@@ -24,6 +24,8 @@
 	<string>????</string>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<key>NSMotionUsageDescription</key>
+	<string>Controller reads how you tilt the phone to steer in gyro mode.</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Controller finds your TV on the local network and sends it your button presses.</string>
 	<key>NSBonjourServices</key>

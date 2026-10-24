@@ -102,7 +102,7 @@ class _Header extends StatelessWidget {
               children: [
                 TextSpan(text: 'Controller Test', style: text.headlineSmall),
                 TextSpan(
-                  text: '   Protocol v$protocolVersion · app $appVersion · Milestone 2',
+                  text: '   Protocol v$protocolVersion · app $appVersion · Milestone 3',
                   style: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
                 ),
               ],
@@ -364,6 +364,12 @@ class _ControllerTile extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                   Text(label, style: text.titleSmall?.copyWith(color: color)),
+                  if (live && (info.input?.hasAnalog ?? false))
+                    Text(
+                      'Tilt x ${info.input!.ax!.toStringAsFixed(2)}  y ${info.input!.ay!.toStringAsFixed(2)}',
+                      key: Key('tilt-${info.controllerId}'),
+                      style: text.bodyMedium?.copyWith(fontFeatures: const [FontFeature.tabularFigures()]),
+                    ),
                 ],
               ),
             ),

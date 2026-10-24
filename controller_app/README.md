@@ -2,7 +2,9 @@
 
 Phone game controller for **Android 16+** and **iOS 26+**, landscape only. App ID: `com.gamecontrollerdev.controller` (fixed, don't rename).
 
-Current state (Milestone 2): a landscape **D-pad controller**: 8-way D-pad on the left, Select/Start in the middle, A/B/X/Y on the right, with full multi-touch (hold a direction and press buttons, slide a thumb between buttons). Every press, release and direction change goes to the TV and plays a haptic tick. The vibration icon opens haptics on/off and intensity (saved). Gyro mode is shown but arrives in M3.
+Current state (Milestone 3): a landscape **D-pad controller**: 8-way D-pad on the left, Select/Start in the middle, A/B/X/Y on the right, with full multi-touch (hold a direction and press buttons, slide a thumb between buttons). Every press, release and direction change goes to the TV and plays a haptic tick. The vibration icon opens haptics on/off and intensity (saved).
+
+**Gyro mode** (switch at the top): steer by tilting the phone. The D-pad is replaced by a circle with a dot, the buttons stay the same, and the screen locks to the way you hold it. The first reading is the center; **Calibrate** sets a new one. The tune icon opens sensitivity (full tilt at 15°–60°), dead zone and smoothing, all saved. Tilt goes to the TV about 60 times a second on the same connection. Phones without a usable gyroscope stay on the D-pad with a message.
 
 The chip at the top left shows the TV and ping (tap it to connect or switch TVs), next to the lowest, average and highest ping over the last 30 s. On launch the app reconnects to the last TV, or opens the Connect screen: TVs found on the Wi-Fi (mDNS), a typed address as a fallback, and the 4-digit code from the TV. **Diagnostics** (heart-monitor icon) shows the connection, TVs found, local network permission, haptics support, current input and the log, with **Share** and **Copy**.
 
@@ -29,6 +31,7 @@ adb install -r build\app\outputs\flutter-apk\app-release.apk
 ## Permissions
 | Platform | What | Where |
 | --- | --- | --- |
+| iOS | Motion sensors for gyro mode (`NSMotionUsageDescription`, required by sensors_plus; reading the gyroscope shows no prompt) | `ios/Runner/Info.plist` |
 | iOS | Local network prompt (`NSLocalNetworkUsageDescription`) and the Bonjour service `_gamectl._tcp` (`NSBonjourServices`) | `ios/Runner/Info.plist` |
 | Android | `INTERNET`, `ACCESS_NETWORK_STATE`, `CHANGE_WIFI_MULTICAST_STATE`, `VIBRATE`, all granted at install (no runtime prompt on Android 16) | `android/app/src/main/AndroidManifest.xml` |
 

@@ -59,20 +59,14 @@ final class ControllerInfo {
 
 /// Everything the host UI shows, as one immutable value.
 final class HostSnapshot {
-  const HostSnapshot({
-    required this.running,
-    required this.pairingCode,
-    required this.controllers,
-    this.port,
-  });
+  const HostSnapshot({required this.running, required this.pairingCode, required this.controllers, this.port});
 
   final bool running;
   final int? port;
   final String pairingCode;
   final List<ControllerInfo> controllers;
 
-  Iterable<ControllerInfo> get connected =>
-      controllers.where((c) => c.state == ControllerState.connected);
+  Iterable<ControllerInfo> get connected => controllers.where((c) => c.state == ControllerState.connected);
 }
 
 /// A message from a paired controller (input messages arrive here from M2).
@@ -143,12 +137,8 @@ class HostServer {
   /// Messages from paired controllers only.
   Stream<ControllerMessage> get messages => _messages.stream;
 
-  HostSnapshot get snapshot => HostSnapshot(
-    running: _http != null,
-    port: _http?.port,
-    pairingCode: _code,
-    controllers: _controllers(),
-  );
+  HostSnapshot get snapshot =>
+      HostSnapshot(running: _http != null, port: _http?.port, pairingCode: _code, controllers: _controllers());
 
   String get pairingCode => _code;
 
@@ -477,8 +467,7 @@ class HostServer {
     return code;
   }
 
-  String _newToken() =>
-      List.generate(16, (_) => _random.nextInt(256).toRadixString(16).padLeft(2, '0')).join();
+  String _newToken() => List.generate(16, (_) => _random.nextInt(256).toRadixString(16).padLeft(2, '0')).join();
 }
 
 void _noLog(String _) {}

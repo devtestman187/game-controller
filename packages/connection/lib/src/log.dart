@@ -31,7 +31,8 @@ class LogBuffer {
   List<LogLine> get lines => List.unmodifiable(_lines);
 
   /// A [LogSink] that tags every line with [source].
-  LogSink sink(String source) => (message) => add(source, message);
+  LogSink sink(String source) =>
+      (message) => add(source, message);
 
   void add(String source, String message) {
     _lines.addLast(LogLine(DateTime.now(), source, message));

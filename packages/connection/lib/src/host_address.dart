@@ -109,12 +109,7 @@ final class HostAddress {
     name: name ?? this.name,
   );
 
-  Map<String, Object?> toJson() => {
-    'addresses': addresses,
-    'port': port,
-    'hostId': ?hostId,
-    'name': ?name,
-  };
+  Map<String, Object?> toJson() => {'addresses': addresses, 'port': port, 'hostId': ?hostId, 'name': ?name};
 
   @override
   bool operator ==(Object other) =>

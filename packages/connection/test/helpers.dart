@@ -52,10 +52,9 @@ Future<ClientSnapshot> clientUntil(
   Duration timeout = const Duration(seconds: 5),
 }) {
   if (test(client.snapshot)) return Future.value(client.snapshot);
-  return client.changes.firstWhere(test).timeout(
-    timeout,
-    onTimeout: () => throw TimeoutException('Client stuck at ${client.snapshot}'),
-  );
+  return client.changes
+      .firstWhere(test)
+      .timeout(timeout, onTimeout: () => throw TimeoutException('Client stuck at ${client.snapshot}'));
 }
 
 Future<ClientSnapshot> clientStatus(ControllerClient client, ClientStatus status) =>
@@ -67,12 +66,14 @@ Future<HostSnapshot> hostUntil(
   Duration timeout = const Duration(seconds: 5),
 }) {
   if (test(host.snapshot)) return Future.value(host.snapshot);
-  return host.changes.firstWhere(test).timeout(
-    timeout,
-    onTimeout: () => throw TimeoutException(
-      'Host stuck at ${host.snapshot.controllers.map((c) => '${c.name}: ${c.state.name}')}',
-    ),
-  );
+  return host.changes
+      .firstWhere(test)
+      .timeout(
+        timeout,
+        onTimeout: () => throw TimeoutException(
+          'Host stuck at ${host.snapshot.controllers.map((c) => '${c.name}: ${c.state.name}')}',
+        ),
+      );
 }
 
 ControllerState? stateOf(HostSnapshot s, String controllerId) =>

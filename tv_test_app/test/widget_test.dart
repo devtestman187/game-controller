@@ -25,6 +25,8 @@ class FakeHostController implements HostController {
   @override
   Stream<HostViewState> get changes => _changes.stream;
 
+  void emit() => _changes.add(state);
+
   @override
   void newPairingCode() => newCodes++;
 
@@ -145,6 +147,37 @@ void main() {
     expect(find.text('9 0 0 1'), findsOneWidget);
     expect(find.textContaining('No controllers yet'), findsOneWidget);
     expect(find.textContaining('mDNS unavailable'), findsOneWidget);
+  });
+
+  testWidgets('shows gyro tilt as numbers and a stick', (tester) async {
+    final fake = await pumpApp(tester);
+    fake.state = HostViewState(
+      hostName: 'Android TV',
+      host: HostSnapshot(
+        running: true,
+        port: 45780,
+        pairingCode: '0427',
+        controllers: [
+          ControllerInfo(
+            controllerId: 'g1',
+            name: 'iPhone 3F1C',
+            platform: 'ios',
+            appVersion: '0.3.0',
+            remoteAddress: '192.168.1.20',
+            state: ControllerState.connected,
+            since: DateTime(2026),
+            rttMs: 8,
+            input: InputStateMessage(seq: 9, buttons: {ControllerButton.b}, ax: 0.25, ay: -0.5),
+          ),
+        ],
+      ),
+    );
+    fake.emit();
+    await tester.pumpAndSettle();
+    expect(find.text('Tilt x 0.25  y -0.50'), findsOneWidget);
+    final shown = tester.widget<InputVisualizer>(find.byKey(const Key('visualizer-g1')));
+    expect([shown.input?.ax, shown.input?.ay], [0.25, -0.5]);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('fits a small laptop window without overflow', (tester) async {

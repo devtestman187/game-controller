@@ -2,7 +2,7 @@
 
 Test bench and connection host for the controller. One codebase runs on **Android TV 12+ (API 31)** and as a **Windows desktop app**. App ID: `com.gamecontrollerdev.tvtest`.
 
-Current state (Milestone 2): hosts the controller server, advertises itself on the network (mDNS), shows the pairing code, the address for manual entry, and each controller's state, live ping and **input** (a small picture of its D-pad and buttons, lit while held), plus a log. It has a built-in simulated controller.
+Current state (Milestone 3): hosts the controller server, advertises itself on the network (mDNS), shows the pairing code, the address for manual entry, and each controller's state, live ping and **input** (a small picture of its D-pad and buttons, lit while held; in gyro mode a stick with a dot and "Tilt x … y …"), plus a log. It has a built-in simulated controller.
 
 ## The screen
 | Area | What it shows |

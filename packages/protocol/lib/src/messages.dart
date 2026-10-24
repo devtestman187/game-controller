@@ -29,10 +29,8 @@ sealed class Message {
   }
 
   @override
-  int get hashCode => Object.hash(
-    type,
-    Object.hashAllUnordered(toPayload().entries.map((e) => Object.hash(e.key, e.value))),
-  );
+  int get hashCode =>
+      Object.hash(type, Object.hashAllUnordered(toPayload().entries.map((e) => Object.hash(e.key, e.value))));
 
   @override
   String toString() => '$type${toPayload()}';
@@ -101,11 +99,7 @@ final class WelcomeMessage extends Message {
   String get type => wireType;
 
   @override
-  Map<String, Object?> toPayload() => {
-    'hostId': hostId,
-    'hostName': hostName,
-    'appVersion': appVersion,
-  };
+  Map<String, Object?> toPayload() => {'hostId': hostId, 'hostName': hostName, 'appVersion': appVersion};
 
   static WelcomeMessage fromPayload(Map<String, Object?> p) => WelcomeMessage(
     hostId: requireString(p, 'hostId'),

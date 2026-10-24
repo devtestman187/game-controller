@@ -3,18 +3,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:protocol/protocol.dart';
 
+import '../gyro.dart';
 import '../providers.dart';
 import 'connect_screen.dart';
 import 'diagnostics_screen.dart';
+import 'gyro_dialog.dart';
 import 'haptics_dialog.dart';
 import 'labels.dart';
 import 'pad_widgets.dart';
+import 'tilt_view.dart';
 
-enum PadMode { dpad, gyro }
-
-/// The controller itself: D-pad on the left, Start/Select in the middle,
-/// face buttons on the right, and a slim bar on top for the connection, mode,
-/// haptics and Diagnostics.
+/// The controller itself: D-pad (or, in gyro mode, the tilt view) on the
+/// left, Start/Select in the middle, face buttons on the right, and a slim bar
+/// on top for the connection, mode, settings and Diagnostics.
 class ControllerScreen extends ConsumerStatefulWidget {
   const ControllerScreen({super.key});
 
@@ -46,8 +47,10 @@ class _ControllerScreenState extends ConsumerState<ControllerScreen> with Widget
       // A fresh search after returning to the app. This also picks up TVs
       // once the user allows local network access in the iOS prompt.
       ref.read(discoveryProvider).restart();
+      ref.read(gyroProvider.notifier).resume();
     } else {
       // Leaving the app (or a system sheet on top) must not leave input held.
+      ref.read(gyroProvider.notifier).pause();
       ref.read(padProvider.notifier).releaseAll();
     }
   }
@@ -62,6 +65,7 @@ class _ControllerScreenState extends ConsumerState<ControllerScreen> with Widget
       }
     });
     final input = ref.watch(padProvider);
+    final mode = ref.watch(gyroProvider.select((g) => g.mode));
     final text = Theme.of(context).textTheme;
 
     return Scaffold(
@@ -72,11 +76,11 @@ class _ControllerScreenState extends ConsumerState<ControllerScreen> with Widget
             Expanded(
               child: Row(
                 children: [
-                  const Expanded(
+                  Expanded(
                     flex: 5,
                     child: Padding(
-                      padding: EdgeInsets.fromLTRB(24, 8, 8, 16),
-                      child: Center(child: DpadView()),
+                      padding: const EdgeInsets.fromLTRB(24, 8, 8, 16),
+                      child: Center(child: mode == PadMode.gyro ? const TiltView() : const DpadView()),
                     ),
                   ),
                   SizedBox(
@@ -123,8 +127,10 @@ class _TopBar extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final client = ref.watch(clientStateProvider);
+    final gyro = ref.watch(gyroProvider);
     final text = Theme.of(context).textTheme;
     final stats = client.rttStats;
+    final gyroUnavailable = gyro.availability == GyroAvailability.unavailable;
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 4, 8, 0),
       child: Row(
@@ -165,19 +171,31 @@ class _TopBar extends ConsumerWidget {
           SegmentedButton<PadMode>(
             showSelectedIcon: false,
             style: const ButtonStyle(visualDensity: VisualDensity.compact),
-            segments: const [
-              ButtonSegment(value: PadMode.dpad, label: Text('D-pad'), icon: Icon(Icons.gamepad_outlined)),
+            segments: [
+              const ButtonSegment(value: PadMode.dpad, label: Text('D-pad'), icon: Icon(Icons.gamepad_outlined)),
               ButtonSegment(
                 value: PadMode.gyro,
-                label: Text('Gyro'),
-                icon: Icon(Icons.screen_rotation_alt_outlined),
-                tooltip: 'Gyro mode arrives in Milestone 3',
-                enabled: false,
+                label: const Text('Gyro'),
+                icon: const Icon(Icons.screen_rotation_alt_outlined),
+                tooltip: gyroUnavailable ? gyro.problem : 'Steer by tilting the phone',
+                enabled: !gyroUnavailable && gyro.availability != GyroAvailability.checking,
               ),
             ],
-            selected: const {PadMode.dpad},
-            onSelectionChanged: (_) {},
+            selected: {gyro.mode},
+            onSelectionChanged: (selection) async {
+              final ok = await ref.read(gyroProvider.notifier).setMode(selection.first);
+              if (!ok && context.mounted) {
+                final problem = ref.read(gyroProvider).problem ?? 'Gyro mode isn\'t available.';
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(problem)));
+              }
+            },
           ),
+          if (gyro.mode == PadMode.gyro)
+            IconButton(
+              tooltip: 'Gyro settings',
+              icon: const Icon(Icons.tune),
+              onPressed: () => showGyroDialog(context),
+            ),
           IconButton(
             tooltip: 'Haptics',
             icon: const Icon(Icons.vibration),

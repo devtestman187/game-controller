@@ -5,7 +5,7 @@ import 'package:protocol/protocol.dart';
 
 /// What the on-screen pad is pressing right now.
 final class PadInput {
-  const PadInput({this.buttons = const {}, this.dx = 0, this.dy = 0});
+  const PadInput({this.buttons = const {}, this.dx = 0, this.dy = 0, this.ax, this.ay});
 
   final Set<ControllerButton> buttons;
 
@@ -13,25 +13,33 @@ final class PadInput {
   final int dx;
   final int dy;
 
-  bool get isNeutral => buttons.isEmpty && dx == 0 && dy == 0;
+  /// Gyro tilt from -1 to 1 (y: -1 forward), null outside gyro mode.
+  final double? ax;
+  final double? ay;
+
+  bool get isNeutral => buttons.isEmpty && dx == 0 && dy == 0 && (ax ?? 0) == 0 && (ay ?? 0) == 0;
 
   @override
   bool operator ==(Object other) =>
       other is PadInput &&
       other.dx == dx &&
       other.dy == dy &&
+      other.ax == ax &&
+      other.ay == ay &&
       other.buttons.length == buttons.length &&
       other.buttons.containsAll(buttons);
 
   @override
-  int get hashCode => Object.hash(dx, dy, Object.hashAllUnordered(buttons));
+  int get hashCode => Object.hash(dx, dy, ax, ay, Object.hashAllUnordered(buttons));
 
   @override
   String toString() {
     final vertical = ['up', '', 'down'][dy + 1];
     final horizontal = ['left', '', 'right'][dx + 1];
     final dir = dx == 0 && dy == 0 ? 'centered' : [vertical, horizontal].where((s) => s.isNotEmpty).join('-');
-    return '${buttons.map((b) => b.name.toUpperCase()).join('+')}${buttons.isEmpty ? '' : ' · '}D-pad $dir';
+    final held = buttons.map((b) => b.name.toUpperCase()).join('+');
+    final stick = ax == null ? 'D-pad $dir' : 'Tilt x ${ax!.toStringAsFixed(2)} y ${ay!.toStringAsFixed(2)}';
+    return '$held${buttons.isEmpty ? '' : ' · '}$stick';
   }
 }
 
@@ -50,7 +58,8 @@ final class PadChange {
   /// How strong the tick for this change is: presses and new directions
   /// full strength, releases and re-centering lighter. 0 means no tick.
   double get tickStrength {
-    if (!changed) return 0;
+    // Tilt changes all the time in gyro mode: only buttons and the D-pad tick.
+    if (presses == 0 && releases == 0 && !directionChanged) return 0;
     if (presses > 0 || (directionChanged && (after.dx != 0 || after.dy != 0))) return 1;
     return 0.6;
   }
@@ -64,8 +73,18 @@ class PadTracker {
   // Pointer → button under it (null when it slid off every button).
   final _buttons = <int, ControllerButton?>{};
   PadInput _current = const PadInput();
+  double? _ax;
+  double? _ay;
 
   PadInput get current => _current;
+
+  /// Gyro tilt, rounded like the wire format (3 decimals), so tiny changes
+  /// that wouldn't reach the TV anyway don't count. Null leaves gyro mode.
+  PadChange tilt(double? ax, double? ay) {
+    _ax = ax == null ? null : (ax * 1000).round() / 1000;
+    _ay = ay == null ? null : (ay * 1000).round() / 1000;
+    return _update();
+  }
 
   /// A finger on the D-pad went down or moved.
   PadChange dpad(int pointer, (int, int) direction) {
@@ -93,13 +112,24 @@ class PadTracker {
   PadChange releaseAll() {
     _dpad.clear();
     _buttons.clear();
+    // Stay in gyro mode, but centered.
+    if (_ax != null) {
+      _ax = 0;
+      _ay = 0;
+    }
     return _update();
   }
 
   PadChange _update() {
     final before = _current;
     final (dx, dy) = _dpad.isEmpty ? (0, 0) : _dpad.values.last;
-    _current = PadInput(buttons: _buttons.values.whereType<ControllerButton>().toSet(), dx: dx, dy: dy);
+    _current = PadInput(
+      buttons: _buttons.values.whereType<ControllerButton>().toSet(),
+      dx: dx,
+      dy: dy,
+      ax: _ax,
+      ay: _ay,
+    );
     return PadChange(before, _current);
   }
 }

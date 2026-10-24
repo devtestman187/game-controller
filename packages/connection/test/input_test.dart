@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math';
 
 import 'package:connection/connection.dart';
 import 'package:protocol/protocol.dart';
@@ -116,5 +117,24 @@ void main() {
     expect(directions.length, 9); // Eight directions plus centered.
     final buttons = demoSteps.expand((s) => s.buttons).toSet();
     expect(buttons, ControllerButton.values.toSet());
+  });
+
+  test('the demo also sweeps the gyro tilt and ends released', () {
+    final tilts = demoSteps.where((s) => s.ax != null).toList();
+    expect(tilts.length, greaterThan(8));
+    expect(tilts.map((s) => s.ax!).reduce(max), closeTo(0.8, 1e-9));
+    expect(demoSteps.last.ax, isNull);
+    expect(demoSteps.last.buttons, isEmpty);
+  });
+
+  test('tilt reaches the host with the buttons', () async {
+    final host = await startHost();
+    final client = newClient();
+    client.connect(addressOf(host), code: host.pairingCode);
+    await clientStatus(client, ClientStatus.connected);
+    client.sendInput({ControllerButton.a}, ax: -0.25, ay: 0.5);
+    final s = await hostUntil(host, (h) => inputOf(h, 'phone-1')?.ax == -0.25);
+    expect(inputOf(s, 'phone-1')!.ay, 0.5);
+    expect(inputOf(s, 'phone-1')!.buttons, {ControllerButton.a});
   });
 }

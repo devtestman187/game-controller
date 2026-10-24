@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:protocol/protocol.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../gyro.dart';
 import '../local_network.dart';
 import '../providers.dart';
 import 'labels.dart';
@@ -25,6 +26,8 @@ class DiagnosticsScreen extends ConsumerWidget {
     final haptics = ref.watch(hapticSettingsProvider);
     final player = ref.read(hapticsPlayerProvider);
     final input = ref.watch(padProvider);
+    final gyro = ref.watch(gyroProvider);
+    final gyroSettings = ref.watch(gyroSettingsProvider);
     final text = Theme.of(context).textTheme;
     final mono = text.bodySmall?.copyWith(fontFamily: 'monospace', height: 1.3);
     final target = client.target;
@@ -96,6 +99,28 @@ class DiagnosticsScreen extends ConsumerWidget {
               ('Now', input.isNeutral ? 'Nothing pressed' : '$input'),
               ('States sent', '${ref.read(clientProvider).inputsSent}'),
             ]),
+            _Section('Gyro', [
+              ('Mode', gyro.mode == PadMode.gyro ? 'Gyro' : 'D-pad'),
+              (
+                'Gyroscope',
+                switch (gyro.availability) {
+                  GyroAvailability.unknown => 'Not checked yet (switch to Gyro)',
+                  GyroAvailability.checking => 'Checking…',
+                  GyroAvailability.available => 'Working',
+                  GyroAvailability.unavailable => 'Not available',
+                },
+              ),
+              if (gyro.problem != null) ('Problem', gyro.problem!),
+              if (gyro.side != null) ('Screen locked to', 'landscape ${gyro.side!.name}'),
+              ('Stick', 'x ${gyro.x.toStringAsFixed(3)}  y ${gyro.y.toStringAsFixed(3)}'),
+              if (gyro.up != null) ('Up direction', '${gyro.up}'),
+              ('Updates', '${gyro.updates}'),
+              (
+                'Settings',
+                'sensitivity ${gyroSettings.sensitivity.toStringAsFixed(2)}, dead zone ${(gyroSettings.deadZone * 100).round()}%, '
+                    'smoothing ${(gyroSettings.smoothing * 100).round()}%',
+              ),
+            ]),
             _Section('This phone', [
               ('Name', identity.name),
               ('Controller ID', identity.controllerId),
@@ -160,6 +185,9 @@ String buildReport(WidgetRef ref) {
       'Haptics: ${ref.read(hapticsPlayerProvider).capabilities.engine}, setting ${ref.read(hapticSettingsProvider).enabled ? 'on' : 'off'} ${ref.read(hapticSettingsProvider).intensity}, played ${ref.read(hapticsPlayerProvider).played}, error ${ref.read(hapticsPlayerProvider).lastError ?? '-'}',
     )
     ..writeln('Ping, last 30 s: ${client.rttStats ?? '-'}')
+    ..writeln(
+      'Gyro: ${ref.read(gyroProvider).mode.name}, ${ref.read(gyroProvider).availability.name}, side ${ref.read(gyroProvider).side?.name ?? '-'}, x ${ref.read(gyroProvider).x.toStringAsFixed(3)} y ${ref.read(gyroProvider).y.toStringAsFixed(3)}, up ${ref.read(gyroProvider).up ?? '-'}, ${ref.read(gyroProvider).problem ?? ''}',
+    )
     ..writeln(
       'Discovery: running ${discovery.running}, error ${discovery.error ?? '-'}, ${discovery.hosts.length} found',
     )

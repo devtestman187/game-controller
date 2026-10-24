@@ -215,10 +215,15 @@ class PadNotifier extends Notifier<PadInput> {
   /// Called when the app leaves the foreground, so nothing stays held.
   void releaseAll() => _apply(_tracker.releaseAll());
 
+  /// Gyro tilt from gyro mode (about 60 per second). Null leaves gyro mode.
+  void tilt(double? ax, double? ay) => _apply(_tracker.tilt(ax, ay));
+
   void _apply(PadChange change) {
     if (!change.changed) return;
     state = change.after;
-    ref.read(clientProvider).sendInput(change.after.buttons, dx: change.after.dx, dy: change.after.dy);
-    unawaited(ref.read(hapticsPlayerProvider).tick(strength: change.tickStrength));
+    final a = change.after;
+    ref.read(clientProvider).sendInput(a.buttons, dx: a.dx, dy: a.dy, ax: a.ax, ay: a.ay);
+    final strength = change.tickStrength;
+    if (strength > 0) unawaited(ref.read(hapticsPlayerProvider).tick(strength: strength));
   }
 }

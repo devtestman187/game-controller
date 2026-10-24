@@ -221,6 +221,8 @@ class ControllerClient {
   Set<ControllerButton> _buttons = const {};
   int _dx = 0;
   int _dy = 0;
+  double? _ax;
+  double? _ay;
   int _inputsSent = 0;
 
   ClientSnapshot get snapshot => _snap;
@@ -236,16 +238,19 @@ class ControllerClient {
   /// Sets the controller's input and sends it if connected. While not
   /// connected it's kept and sent as soon as pairing completes, so a button
   /// held through a reconnect still counts and a released one is released.
-  void sendInput(Set<ControllerButton> buttons, {int dx = 0, int dy = 0}) {
+  /// [ax] and [ay] are the gyro tilt (-1 to 1), null outside gyro mode.
+  void sendInput(Set<ControllerButton> buttons, {int dx = 0, int dy = 0, double? ax, double? ay}) {
     _buttons = Set.of(buttons);
     _dx = dx;
     _dy = dy;
+    _ax = ax;
+    _ay = ay;
     if (_snap.isConnected) _sendInputState();
   }
 
   void _sendInputState() {
     _inputsSent++;
-    _send(InputStateMessage(seq: ++_inputSeq, buttons: _buttons, dx: _dx, dy: _dy));
+    _send(InputStateMessage(seq: ++_inputSeq, buttons: _buttons, dx: _dx, dy: _dy, ax: _ax, ay: _ay));
   }
 
   /// Connects to [target]. If [code] is given it's sent right away;
@@ -351,12 +356,14 @@ class ControllerClient {
     if (_everPaired) {
       _scheduleRetry(detail: detail, osErrorCode: osError);
     } else {
-      _set(_snap.copyWith(
-        status: ClientStatus.failed,
-        problem: ClientProblem.unreachable,
-        detail: detail,
-        osErrorCode: osError,
-      ));
+      _set(
+        _snap.copyWith(
+          status: ClientStatus.failed,
+          problem: ClientProblem.unreachable,
+          detail: detail,
+          osErrorCode: osError,
+        ),
+      );
     }
   }
 
@@ -370,8 +377,11 @@ class ControllerClient {
       message = _codec.decode(data);
     } on ProtocolVersionMismatch catch (e) {
       _log('The TV uses protocol v${e.actual}, this phone uses v${e.expected}');
-      return _giveUp(ClientProblem.versionMismatch, 'TV protocol v${e.actual}, phone v${e.expected}',
-          closeCode: CloseCodes.versionMismatch);
+      return _giveUp(
+        ClientProblem.versionMismatch,
+        'TV protocol v${e.actual}, phone v${e.expected}',
+        closeCode: CloseCodes.versionMismatch,
+      );
     } on ProtocolFormatException catch (e) {
       _log('Bad message from the TV: ${e.message}');
       return _giveUp(ClientProblem.protocolError, e.message, closeCode: CloseCodes.protocolError);
@@ -428,13 +438,7 @@ class ControllerClient {
       }
       _everPaired = true;
       _log('Paired with ${_snap.hostLabel}');
-      _set(_snap.copyWith(
-        status: ClientStatus.connected,
-        problem: null,
-        detail: null,
-        attempt: 0,
-        osErrorCode: null,
-      ));
+      _set(_snap.copyWith(status: ClientStatus.connected, problem: null, detail: null, attempt: 0, osErrorCode: null));
       // The TV starts each connection with nothing pressed. Tell it what is
       // held right now (also after a reconnect).
       _sendInputState();
@@ -505,15 +509,17 @@ class ControllerClient {
   void _scheduleRetry({String? detail, int? osErrorCode}) {
     final attempt = _snap.attempt + 1;
     final delay = retryDelays[min(attempt - 1, retryDelays.length - 1)];
-    _set(_snap.copyWith(
-      status: ClientStatus.reconnecting,
-      problem: ClientProblem.connectionLost,
-      detail: detail,
-      attempt: attempt,
-      rttMs: null,
-      rttStats: null,
-      osErrorCode: osErrorCode,
-    ));
+    _set(
+      _snap.copyWith(
+        status: ClientStatus.reconnecting,
+        problem: ClientProblem.connectionLost,
+        detail: detail,
+        attempt: attempt,
+        rttMs: null,
+        rttStats: null,
+        osErrorCode: osErrorCode,
+      ),
+    );
     _log('Reconnecting in ${delay.inMilliseconds} ms (attempt $attempt)');
     final session = _session;
     _retry?.cancel();

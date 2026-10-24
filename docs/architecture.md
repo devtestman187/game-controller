@@ -61,3 +61,15 @@ Rules:
 | --- | --- | --- | --- |
 | iOS | `ios/Runner/AppDelegate.swift` (`HapticsChannel`, kept in that file so the Xcode project needs no edits) | Core Haptics transient event, intensity from the setting, sharpness 0.7. The engine runs while the app is open and restarts after a reset or on return to the app. | `UIImpactFeedbackGenerator` if the engine can't start. No Taptic Engine → reported as unsupported. |
 | Android | `android/.../Haptics.kt` + `MainActivity.kt` | `VibrationEffect` composition with the click primitive, scaled by intensity, usage "media" (games) | 12 ms one-shot, with amplitude if the motor allows it, otherwise on/off. No vibrator → unsupported. |
+
+## Gyro mode (Milestone 3)
+The pipeline runs on the phone in pure Dart (`controller_app/lib/src/tilt.dart`, unit-tested), fed by `sensors_plus` at 100 Hz:
+
+1. **Up direction (complementary filter).** Each gyroscope sample rotates the estimate of "up" in phone coordinates (`v' = v + (v × ω)·dt`), then nudges it 2% toward the accelerometer, but only while that reads about 1 g. The gyro gives smooth, fast tracking, and the accelerometer removes its drift within about half a second.
+2. **Screen axes.** Gyro mode locks the screen to the landscape side the phone is held in (from the up direction), so tilting doesn't rotate the UI and the axes stay put. `landscapeLeft` (top of the phone on the left): screen right = phone −y, screen up = phone +x.
+3. **Two angles that work held flat or upright.** Roll = −asin(up · screen-right): tilting or steering right is positive. Pitch = atan2(up · screen-up, up · out-of-screen): how far the screen faces the sky.
+4. **Calibration.** The first reading (and every **Calibrate**) becomes neutral. Values are the difference from it.
+5. **Stick values.** `x = Δroll · sensitivity / 30°` and `y = Δpitch · sensitivity / 30°`, clamped to −1..1, then exponential smoothing, then a round dead zone that rescales what's outside it. Tipping forward gives negative y, like "up" on the D-pad.
+6. **Sending.** About 60 times a second, and only when the value (rounded to 3 decimals, as on the wire) changes, in the same `input` message as the buttons (`ax`, `ay`). Older TVs ignore the extra fields, and leaving gyro mode drops them.
+
+Leaving the app pauses the sensors and centers the stick. Coming back resumes with the same calibration. Without a working gyroscope (stream error or no reading within 1.5 s) gyro mode stays off with a message, and the D-pad keeps working.

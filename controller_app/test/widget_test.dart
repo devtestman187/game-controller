@@ -1,13 +1,17 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:connection/connection.dart';
 import 'package:controller/main.dart';
 import 'package:controller/src/discovery.dart';
 import 'package:controller/src/haptics.dart';
+import 'package:controller/src/motion.dart';
+import 'package:controller/src/tilt.dart';
 import 'package:controller/src/providers.dart';
-import 'package:controller/src/ui/controller_screen.dart';
+import 'package:controller/src/gyro.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:protocol/protocol.dart';
@@ -55,12 +59,13 @@ class FakeClient extends ControllerClient {
   void updateAddress(HostAddress found) {}
 
   @override
-  void sendInput(Set<ControllerButton> buttons, {int dx = 0, int dy = 0}) {
+  void sendInput(Set<ControllerButton> buttons, {int dx = 0, int dy = 0, double? ax, double? ay}) {
     final names = [
       for (final b in ControllerButton.values)
         if (buttons.contains(b)) b.name.toUpperCase(),
     ];
-    inputs.add('${names.join('+')} $dx,$dy'.trim());
+    final tilt = ax == null ? '' : ' tilt $ax,$ay';
+    inputs.add('${names.join('+')} $dx,$dy$tilt'.trim());
   }
 
   @override
@@ -110,13 +115,51 @@ final connected = ClientSnapshot(
 /// The app as a test sees it. Without a saved pairing it opens on the
 /// Connect screen; with [paired] it stays on the controller.
 class TestApp {
-  TestApp(this.client, this.discovery, this.haptics, this.prefs);
+  TestApp(this.client, this.discovery, this.haptics, this.prefs, this.motion);
 
   final FakeClient client;
   final FakeDiscovery discovery;
   final FakeHaptics haptics;
   final SharedPreferences prefs;
+  final FakeMotionSensors motion;
 }
+
+/// Motion sensors driven by the test.
+class FakeMotionSensors implements MotionSensors {
+  final _accel = StreamController<Vec3>.broadcast();
+  final _gyro = StreamController<(Vec3, DateTime)>.broadcast();
+  var _time = DateTime(2026);
+
+  /// Makes the gyroscope stream fail, like a phone without one.
+  bool noGyroscope = false;
+
+  bool get listening => _gyro.hasListener;
+
+  @override
+  Stream<Vec3> accelerometer(Duration period) => _accel.stream;
+
+  @override
+  Stream<(Vec3, DateTime)> gyroscope(Duration period) =>
+      noGyroscope ? Stream.error(PlatformException(code: 'NO_SENSOR', message: 'No gyroscope')) : _gyro.stream;
+
+  /// Holds the phone still with "up" along [up] for [samples] readings
+  /// (10 ms apart), so the filter settles on it.
+  void hold(Vec3 up, {int samples = 400}) {
+    for (var i = 0; i < samples; i++) {
+      _accel.add(up.normalized * standardGravity);
+      _time = _time.add(const Duration(milliseconds: 10));
+      _gyro.add((const Vec3(0, 0, 0), _time));
+    }
+  }
+}
+
+/// Landscape-left, upright in front of you, turned like a steering wheel by
+/// [steer] degrees to the right.
+Vec3 uprightSteering(double steer) => Vec3(cos(steer * pi / 180), sin(steer * pi / 180), 0);
+
+/// The x tilt in the last input the pad sent.
+double lastTiltX(FakeClient client) =>
+    double.parse(RegExp(r'tilt (-?[\d.]+),').firstMatch(client.inputs.last)!.group(1)!);
 
 Future<TestApp> pumpApp(
   WidgetTester tester, {
@@ -124,6 +167,7 @@ Future<TestApp> pumpApp(
   bool isIOS = false,
   LogBuffer? log,
   FakeHaptics? haptics,
+  FakeMotionSensors? motion,
 }) async {
   // A landscape phone (iPhone 15-ish).
   tester.view.physicalSize = const Size(852, 393);
@@ -136,6 +180,7 @@ Future<TestApp> pumpApp(
     FakeDiscovery(),
     haptics ?? FakeHaptics(),
     prefs,
+    motion ?? FakeMotionSensors(),
   );
   await tester.pumpWidget(
     ProviderScope(
@@ -144,6 +189,7 @@ Future<TestApp> pumpApp(
         clientProvider.overrideWithValue(app.client),
         discoveryProvider.overrideWithValue(app.discovery),
         hapticsProvider.overrideWithValue(app.haptics),
+        motionSensorsProvider.overrideWithValue(app.motion),
         isIOSProvider.overrideWithValue(isIOS),
         if (log != null) logProvider.overrideWithValue(log),
       ],
@@ -308,12 +354,101 @@ void main() {
       tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
       expect(app.discovery.restarts, 1);
     });
+  });
 
-    testWidgets('the Gyro mode is shown but not available yet', (tester) async {
-      await pumpApp(tester, paired: true);
+  group('gyro mode', () {
+    Future<TestApp> intoGyro(WidgetTester tester, {FakeMotionSensors? motion}) async {
+      final app = await pumpApp(tester, paired: true, motion: motion);
+      app.client.emit(connected);
+      await tester.pump();
+      await tester.tap(find.text('Gyro'));
+      await tester.pump();
+      app.motion.hold(uprightSteering(0), samples: 50);
+      await tester.pump(const Duration(milliseconds: 100));
+      return app;
+    }
+
+    testWidgets('switches mid-session, centered after calibrating, tilt right gives positive x', (tester) async {
+      final app = await intoGyro(tester);
+      expect(find.byKey(const Key('tiltView')), findsOneWidget);
+      expect(find.byKey(const Key('dpad')), findsNothing);
+      expect(app.client.calls, ['connect 192.168.1.50:45780'], reason: 'no reconnect');
+      expect(app.client.inputs.last, '0,0 tilt 0.0,0.0', reason: 'held still: centered');
+
+      app.motion.hold(uprightSteering(15));
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(lastTiltX(app.client), greaterThan(0.3));
+
+      // Calibrate here: this pose becomes the new center.
+      await tester.tap(find.byKey(const Key('calibrate')));
+      app.motion.hold(uprightSteering(15), samples: 20);
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(app.client.inputs.last, '0,0 tilt 0.0,0.0');
+
+      // Back to the D-pad: the tilt fields go away, still connected.
+      await tester.tap(find.text('D-pad'));
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(app.client.inputs.last, '0,0');
+      expect(find.byKey(const Key('dpad')), findsOneWidget);
+      expect(app.motion.listening, isFalse);
+    });
+
+    testWidgets('buttons and ticks work in gyro mode; tilt alone does not tick', (tester) async {
+      final app = await intoGyro(tester);
+      app.motion.hold(uprightSteering(10));
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(app.haptics.ticks, isEmpty);
+
+      await tester.tapAt(_at(tester, const Key('faceButtons'), const Offset(0.5, 0.81)));
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(app.client.inputs.any((i) => i.startsWith('A 0,0 tilt')), isTrue);
+      expect(app.haptics.ticks.length, 2); // Press and release.
+    });
+
+    testWidgets('a phone without a gyroscope stays on the D-pad with a message', (tester) async {
+      final app = await pumpApp(tester, paired: true, motion: FakeMotionSensors()..noGyroscope = true);
+      await tester.tap(find.text('Gyro'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(find.textContaining('no usable gyroscope'), findsOneWidget);
+      expect(find.byKey(const Key('dpad')), findsOneWidget);
       final modes = tester.widget<SegmentedButton<PadMode>>(find.byType(SegmentedButton<PadMode>));
       expect(modes.selected, {PadMode.dpad});
       expect(modes.segments.last.enabled, isFalse);
+      await tester.tap(find.text('Start'));
+      await tester.pump();
+      expect(app.client.inputs, ['START 0,0', '0,0']);
+      await tester.pump(const Duration(seconds: 5)); // Let the snack bar go.
+    });
+
+    testWidgets('leaving the app centers the tilt and stops the sensors', (tester) async {
+      final app = await intoGyro(tester);
+      app.motion.hold(uprightSteering(20));
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(app.client.inputs.last, isNot('0,0 tilt 0.0,0.0'));
+
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(app.client.inputs.last, '0,0 tilt 0.0,0.0');
+      expect(app.motion.listening, isFalse);
+
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pump();
+      app.motion.hold(uprightSteering(20), samples: 50);
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(app.motion.listening, isTrue);
+      expect(lastTiltX(app.client), greaterThan(0.3), reason: 'calibration kept, tilt back');
+    });
+
+    testWidgets('the gyro settings are saved', (tester) async {
+      final app = await intoGyro(tester);
+      await tester.tap(find.byTooltip('Gyro settings'));
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.drag(find.byKey(const Key('gyroSensitivity')), const Offset(200, 0));
+      await tester.pump();
+      expect(app.prefs.getDouble('gyroSensitivity'), greaterThan(1.0));
+      await tester.tap(find.text('Done'));
+      await tester.pump(const Duration(milliseconds: 300));
     });
   });
 

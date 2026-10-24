@@ -19,8 +19,7 @@ class MessageCodec {
     InputStateMessage.wireType: InputStateMessage.fromPayload,
   };
 
-  String encode(Message message) =>
-      jsonEncode({'v': protocolVersion, 't': message.type, ...message.toPayload()});
+  String encode(Message message) => jsonEncode({'v': protocolVersion, 't': message.type, ...message.toPayload()});
 
   /// Decodes a frame.
   ///

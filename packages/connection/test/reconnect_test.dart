@@ -125,7 +125,10 @@ void main() {
     });
 
     final client = newClient();
-    client.connect(HostAddress(addresses: ['127.0.0.1'], port: server.port), code: '1234');
+    client.connect(
+      HostAddress(addresses: ['127.0.0.1'], port: server.port),
+      code: '1234',
+    );
     await clientStatus(client, ClientStatus.connected);
     final s = await clientStatus(client, ClientStatus.reconnecting);
     expect(s.detail, 'No heartbeat');

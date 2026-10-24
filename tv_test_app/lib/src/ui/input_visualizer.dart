@@ -20,6 +20,8 @@ class InputVisualizer extends StatelessWidget {
         painter: _ControllerPainter(
           buttons: input?.buttons ?? const {},
           dx: input?.dx ?? 0,
+          tx: input?.ax,
+          ty: input?.ay,
           dy: input?.dy ?? 0,
           base: scheme.surfaceContainerHighest,
           lit: scheme.primary,
@@ -35,6 +37,8 @@ class _ControllerPainter extends CustomPainter {
     required this.buttons,
     required this.dx,
     required this.dy,
+    this.tx,
+    this.ty,
     required this.base,
     required this.lit,
     required this.label,
@@ -43,6 +47,10 @@ class _ControllerPainter extends CustomPainter {
   final Set<ControllerButton> buttons;
   final int dx;
   final int dy;
+
+  /// Gyro tilt, null outside gyro mode.
+  final double? tx;
+  final double? ty;
   final Color base;
   final Color lit;
   final Color label;
@@ -59,16 +67,32 @@ class _ControllerPainter extends CustomPainter {
     final h = size.height;
     final unit = h / 3;
 
-    // D-pad: a 3x3 grid, lit on the arms of the current direction.
-    for (final (ax, ay) in const [(0, -1), (0, 1), (-1, 0), (1, 0)]) {
-      final on = (ax != 0 && ax == dx) || (ay != 0 && ay == dy);
-      final rect = Rect.fromLTWH((ax + 1) * unit, (ay + 1) * unit, unit, unit);
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(rect.deflate(1), Radius.circular(unit * 0.15)),
-        Paint()..color = on ? lit : base,
-      );
+    final tiltX = tx;
+    final tiltY = ty;
+    if (tiltX != null && tiltY != null) {
+      // Gyro mode: a stick with a dot where the tilt is.
+      final c = Offset(h / 2, h / 2);
+      final r = h / 2 - 1;
+      canvas.drawCircle(c, r, Paint()..color = base);
+      final cross = Paint()
+        ..color = label.withValues(alpha: 0.2)
+        ..strokeWidth = 1;
+      canvas.drawLine(c - Offset(r, 0), c + Offset(r, 0), cross);
+      canvas.drawLine(c - Offset(0, r), c + Offset(0, r), cross);
+      final dot = unit * 0.35;
+      canvas.drawCircle(c + Offset(tiltX, tiltY) * (r - dot), dot, Paint()..color = lit);
+    } else {
+      // D-pad: a 3x3 grid, lit on the arms of the current direction.
+      for (final (ax, ay) in const [(0, -1), (0, 1), (-1, 0), (1, 0)]) {
+        final on = (ax != 0 && ax == dx) || (ay != 0 && ay == dy);
+        final rect = Rect.fromLTWH((ax + 1) * unit, (ay + 1) * unit, unit, unit);
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(rect.deflate(1), Radius.circular(unit * 0.15)),
+          Paint()..color = on ? lit : base,
+        );
+      }
+      canvas.drawRect(Rect.fromLTWH(unit, unit, unit, unit).deflate(1), Paint()..color = base);
     }
-    canvas.drawRect(Rect.fromLTWH(unit, unit, unit, unit).deflate(1), Paint()..color = base);
 
     // Select and Start in the middle.
     final mid = size.width / 2;
@@ -108,6 +132,8 @@ class _ControllerPainter extends CustomPainter {
   @override
   bool shouldRepaint(_ControllerPainter old) =>
       old.dx != dx ||
+      old.tx != tx ||
+      old.ty != ty ||
       old.dy != dy ||
       old.buttons.length != buttons.length ||
       !old.buttons.containsAll(buttons) ||
