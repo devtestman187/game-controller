@@ -1,0 +1,16 @@
+# Normalize line endings in the repo; check out shell scripts with LF for CI (macOS/Linux).
+* text=auto
+*.sh text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+*.pbxproj text eol=lf
+*.bat text eol=crlf
+*.ps1 text eol=crlf
+
+*.png binary
+*.jpg binary
+*.wav binary
+*.ogg binary
+*.mp3 binary
+*.ttf binary
+*.jar binary

@@ -1,0 +1,35 @@
+# Dart / Flutter
+.dart_tool/
+.packages
+build/
+pubspec_overrides.yaml
+**/doc/api/
+coverage/
+
+# IDEs
+.idea/
+*.iml
+.vscode/*
+!.vscode/extensions.json
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Android
+local.properties
+**/android/.gradle/
+**/android/captures/
+**/android/key.properties
+*.jks
+*.keystore
+
+# iOS (signing material must never be committed)
+*.mobileprovision
+*.p12
+*.cer
+*.ipa
+
+# Logs exported from apps
+*.log

@@ -1,0 +1,12 @@
+# Dart pub workspace root. Run `flutter pub get` here once to resolve every package.
+name: game_controller_workspace
+publish_to: 'none'
+
+environment:
+  sdk: ^3.13.0
+
+workspace:
+  - controller_app
+  - tv_test_app
+  - packages/protocol
+  - assets

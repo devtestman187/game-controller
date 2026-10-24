@@ -1,0 +1,23 @@
+name: game_assets
+description: Shared images and audio for both apps, loaded through one asset manifest.
+publish_to: 'none'
+version: 0.1.0
+
+environment:
+  sdk: ^3.13.0
+  flutter: '>=3.38.0'
+
+resolution: workspace
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_lints: ^6.0.0
+
+# Asset folders are declared here as files are added (Milestone 2 onward).
+# Declaring a whole folder (e.g. `- audio/tv/`) means files dropped into it are
+# bundled without code changes. Files in branding/ are source art for platform
+# icons and banners. They are not bundled.
+flutter:

@@ -1,0 +1,48 @@
+# FALLBACK ONLY: unsigned iOS build on a GitHub-hosted macOS runner.
+# Use it when Codemagic is unavailable or out of minutes. Start it manually from
+# GitHub > Actions > "iOS fallback (unsigned)" > Run workflow. Primary path: codemagic.yaml.
+name: iOS fallback (unsigned)
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: ios-fallback
+  cancel-in-progress: true
+
+jobs:
+  build-ios:
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.8'
+          channel: stable
+          cache: true
+      - name: Show Xcode
+        run: xcodebuild -version
+      - name: Get packages
+        run: flutter pub get
+      - name: Analyze
+        run: flutter analyze controller_app packages/protocol
+      - name: Test
+        run: |
+          (cd packages/protocol && dart test)
+          (cd controller_app && flutter test)
+      - name: Build iOS (release, no codesign)
+        working-directory: controller_app
+        run: flutter build ios --release --no-codesign
+      - name: Package unsigned .ipa
+        working-directory: controller_app/build/ios
+        run: |
+          rm -rf Payload ipa && mkdir -p Payload ipa
+          cp -R iphoneos/Runner.app Payload/
+          zip -qry "ipa/controller-unsigned-gha-${GITHUB_RUN_NUMBER}.ipa" Payload
+          ls -lh ipa
+      - uses: actions/upload-artifact@v4
+        with:
+          name: controller-unsigned-ipa
+          path: controller_app/build/ios/ipa/*.ipa
+          retention-days: 14

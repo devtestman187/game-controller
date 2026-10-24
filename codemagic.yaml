@@ -1,0 +1,128 @@
+# Codemagic: unsigned iOS builds of the controller app (no Apple account needed).
+# The .ipa is signed and installed from Windows with Sideloadly. See docs/ios-setup.md.
+#
+# Workflows:
+#   ios-check-main  push to main       } analyze + test + unsigned build, no artifact,
+#   ios-check-pr    PRs into main      } only when controller_app/ or packages/protocol/ change
+#   ios-ipa         any tag (e.g. m0), and manual start: same build, publishes controller-unsigned-<tag>.ipa
+#
+# Free-minute guards: path filter (changeset), cancel superseded builds, 30 min cap, caches.
+# Syntax checked against docs.codemagic.io (Oct 2026): triggering events, branch_patterns
+# `source` (false = PR target branch), tag_patterns, when.changeset, cancel_previous_builds,
+# max_build_duration, cache_paths.
+
+definitions:
+  environment: &environment
+    flutter: stable
+    xcode: latest # latest stable Xcode on the image ("edge" would be the newest beta)
+  cache: &cache
+    cache_paths:
+      - $FLUTTER_ROOT/.pub-cache
+      - $HOME/.pub-cache
+      - $HOME/Library/Caches/CocoaPods # only used if a plugin falls back to CocoaPods
+  changeset: &changeset
+    changeset:
+      includes:
+        - 'controller_app/'
+        - 'packages/protocol/'
+        - 'codemagic.yaml'
+      excludes:
+        - '**/*.md'
+  scripts:
+    - &pub_get
+      name: Get packages (pub workspace)
+      script: |
+        cd "$CM_BUILD_DIR"
+        flutter --version
+        flutter pub get
+    - &analyze
+      name: Analyze
+      script: |
+        cd "$CM_BUILD_DIR"
+        flutter analyze controller_app packages/protocol
+    - &test
+      name: Test
+      script: |
+        cd "$CM_BUILD_DIR/packages/protocol" && dart test
+        cd "$CM_BUILD_DIR/controller_app" && flutter test
+    - &build_ios
+      name: Build iOS (release, no codesign)
+      script: |
+        cd "$CM_BUILD_DIR/controller_app"
+        flutter build ios --release --no-codesign
+    - &package_ipa
+      name: Package unsigned .ipa
+      script: |
+        set -euo pipefail
+        cd "$CM_BUILD_DIR/controller_app/build/ios"
+        rm -rf Payload ipa && mkdir -p Payload ipa
+        cp -R iphoneos/Runner.app Payload/
+        # -y keeps symlinks inside embedded frameworks intact.
+        zip -qry "ipa/controller-unsigned-${CM_TAG:-manual-$BUILD_NUMBER}.ipa" Payload
+        ls -lh ipa
+
+workflows:
+  ios-check-main:
+    name: iOS check (push to main)
+    instance_type: mac_mini_m2
+    max_build_duration: 30
+    environment: *environment
+    cache: *cache
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: 'main'
+          include: true
+          source: true
+      cancel_previous_builds: true
+    when: *changeset
+    scripts:
+      - *pub_get
+      - *analyze
+      - *test
+      - *build_ios
+
+  ios-check-pr:
+    name: iOS check (pull request)
+    instance_type: mac_mini_m2
+    max_build_duration: 30
+    environment: *environment
+    cache: *cache
+    triggering:
+      events:
+        - pull_request
+      branch_patterns:
+        - pattern: 'main'
+          include: true
+          source: false # match the PR's target branch
+      cancel_previous_builds: true
+    when: *changeset
+    scripts:
+      - *pub_get
+      - *analyze
+      - *test
+      - *build_ios
+
+  ios-ipa:
+    name: iOS unsigned .ipa (tag or manual)
+    instance_type: mac_mini_m2
+    max_build_duration: 30
+    environment: *environment
+    cache: *cache
+    triggering:
+      events:
+        - tag
+      tag_patterns:
+        - pattern: '*' # milestone tags (m0..m5) and any future release tags
+          include: true
+      cancel_previous_builds: true
+    # No changeset filter: every milestone tag (and every manual start) produces an .ipa.
+    scripts:
+      - *pub_get
+      - *analyze
+      - *test
+      - *build_ios
+      - *package_ipa
+    artifacts:
+      - controller_app/build/ios/ipa/*.ipa
