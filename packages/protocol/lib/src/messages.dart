@@ -1,3 +1,5 @@
+part 'input.dart';
+
 /// All protocol messages. New message types are added as subclasses of
 /// [Message] and registered in `codec.dart`.
 ///

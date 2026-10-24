@@ -4,10 +4,13 @@ import 'dart:io';
 import 'package:connection/connection.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:protocol/protocol.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'discovery.dart';
+import 'haptics.dart';
 import 'local_network.dart';
+import 'pad.dart';
 import 'storage.dart';
 
 /// Overridden in main() with the loaded instance.
@@ -145,10 +148,77 @@ class ConnectionActions {
     _client.disconnect();
   }
 
-  /// On launch: reconnect to the last TV if this phone is still paired with it.
-  void reconnectToLastHost() {
+  /// On launch: reconnect to the last TV if this phone is still paired with
+  /// it. Returns false if there is nothing to reconnect to.
+  bool reconnectToLastHost() {
     final last = _store.lastHost;
     final id = last?.hostId;
-    if (last != null && id != null && _client.tokens.containsKey(id)) _client.connect(last);
+    if (last == null || id == null || !_client.tokens.containsKey(id)) return false;
+    _client.connect(last);
+    return true;
+  }
+}
+
+/// Overridden in tests with a FakeHaptics.
+final hapticsProvider = Provider<Haptics>((ref) => PlatformHaptics());
+
+final hapticsPlayerProvider = Provider<HapticsPlayer>((ref) {
+  final player = HapticsPlayer(ref.watch(hapticsProvider), log: ref.watch(logProvider).sink('haptics'));
+  player.settings = HapticSettings.load(ref.watch(prefsProvider));
+  return player;
+});
+
+/// What the hardware can do, checked once at startup.
+final hapticsCapabilitiesProvider = FutureProvider<HapticsCapabilities>((ref) async {
+  final player = ref.watch(hapticsPlayerProvider);
+  await player.load();
+  return player.capabilities;
+});
+
+final hapticSettingsProvider = NotifierProvider<HapticSettingsNotifier, HapticSettings>(HapticSettingsNotifier.new);
+
+/// The haptics on/off switch and intensity, saved between launches.
+class HapticSettingsNotifier extends Notifier<HapticSettings> {
+  @override
+  HapticSettings build() => ref.watch(hapticsPlayerProvider).settings;
+
+  void update(HapticSettings settings) {
+    state = settings;
+    ref.read(hapticsPlayerProvider).settings = settings;
+    unawaited(settings.save(ref.read(prefsProvider)));
+  }
+
+  /// Plays one tick at the current settings, for the "Test" button.
+  void test() => unawaited(ref.read(hapticsPlayerProvider).tick());
+}
+
+final padProvider = NotifierProvider<PadNotifier, PadInput>(PadNotifier.new);
+
+/// The pad's input: tracks fingers, sends every change to the TV and plays a
+/// tick for every press, release and direction change.
+class PadNotifier extends Notifier<PadInput> {
+  final _tracker = PadTracker();
+
+  @override
+  PadInput build() {
+    // Make sure the capability check has run before the first tick.
+    ref.watch(hapticsCapabilitiesProvider);
+    return _tracker.current;
+  }
+
+  void dpad(int pointer, (int, int) direction) => _apply(_tracker.dpad(pointer, direction));
+
+  void button(int pointer, ControllerButton? button) => _apply(_tracker.button(pointer, button));
+
+  void up(int pointer) => _apply(_tracker.up(pointer));
+
+  /// Called when the app leaves the foreground, so nothing stays held.
+  void releaseAll() => _apply(_tracker.releaseAll());
+
+  void _apply(PadChange change) {
+    if (!change.changed) return;
+    state = change.after;
+    ref.read(clientProvider).sendInput(change.after.buttons, dx: change.after.dx, dy: change.after.dy);
+    unawaited(ref.read(hapticsPlayerProvider).tick(strength: change.tickStrength));
   }
 }

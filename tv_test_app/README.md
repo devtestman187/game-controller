@@ -2,7 +2,7 @@
 
 Test bench and connection host for the controller. One codebase runs on **Android TV 12+ (API 31)** and as a **Windows desktop app**. App ID: `com.gamecontrollerdev.tvtest`.
 
-Current state (Milestone 1): hosts the controller server, advertises itself on the network (mDNS), shows the pairing code, the address for manual entry, each controller's state and live ping, and a log. It has a built-in simulated controller.
+Current state (Milestone 2): hosts the controller server, advertises itself on the network (mDNS), shows the pairing code, the address for manual entry, and each controller's state, live ping and **input** (a small picture of its D-pad and buttons, lit while held), plus a log. It has a built-in simulated controller.
 
 ## The screen
 | Area | What it shows |
@@ -10,12 +10,12 @@ Current state (Milestone 1): hosts the controller server, advertises itself on t
 | Pairing code | The 4-digit code to enter on the phone. After 5 wrong codes in a row it changes on its own. |
 | Address for manual entry | `IP:port` to type on the phone if discovery doesn't find the TV |
 | Discovery line | Green when phones can find the TV via mDNS. If it fails, manual entry still works. |
-| Controllers | Each phone with its state (**Connected**, **Waiting for code**, **Disconnected**) and round-trip ping in ms |
+| Controllers | Each phone with its state (**Connected**, **Waiting for code**, **Disconnected**), its input (D-pad, Select/Start, A/B/X/Y lit while held), the round-trip ping and the average and highest ping over the last 30 s |
 | Log | Recent connection events, newest at the bottom |
 
 Buttons (arrows to move, center/OK to press):
 - **New code**: shows a different code. Phones that are already paired stay paired.
-- **Simulate controller**: starts a controller inside the app that pairs on its own and exchanges heartbeats (PRD T3). Press again to stop.
+- **Simulate controller**: starts a controller inside the app that pairs on its own, exchanges heartbeats (PRD T3) and presses every button and direction in a loop. Press again to stop.
 - **Drop connections**: closes every connection as if Wi-Fi dropped, so you can watch the phones reconnect by themselves.
 
 Pairings are kept in memory: after the TV app restarts, phones need the code again.

@@ -8,54 +8,23 @@ import '../providers.dart';
 import 'diagnostics_screen.dart';
 import 'labels.dart';
 
-/// Landscape home: TVs found on the network (plus manual entry) on the left,
-/// the connection on the right.
-class HomeScreen extends ConsumerStatefulWidget {
-  const HomeScreen({super.key});
+/// Choosing and pairing a TV: TVs found on the network (plus manual entry) on
+/// the left, the connection on the right. Closes itself once connected.
+class ConnectScreen extends ConsumerWidget {
+  const ConnectScreen({super.key});
 
   @override
-  ConsumerState<HomeScreen> createState() => _HomeScreenState();
-}
-
-class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObserver {
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addObserver(this);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) ref.read(connectionActionsProvider).reconnectToLastHost();
-    });
-  }
-
-  @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    super.dispose();
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    // A fresh search after returning to the app. This also picks up TVs once
-    // the user allows local network access in the iOS prompt or Settings.
-    if (state == AppLifecycleState.resumed) ref.read(discoveryProvider).restart();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    // If the TV shows up at a new address (new DHCP lease), reconnect there.
-    ref.listen(discoveryStateProvider, (_, next) {
-      final client = ref.read(clientProvider);
-      for (final host in next.hosts) {
-        client.updateAddress(host.address);
-      }
+  Widget build(BuildContext context, WidgetRef ref) {
+    ref.listen(clientStateProvider, (previous, next) {
+      if (next.isConnected && !(previous?.isConnected ?? false)) Navigator.of(context).maybePop();
     });
     final client = ref.watch(clientStateProvider);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Game Controller'),
+        title: const Text('Connect to a TV'),
         actions: [
-          _StatusChip(client: client),
+          StatusChip(client: client),
           IconButton(
             tooltip: 'Diagnostics',
             icon: const Icon(Icons.monitor_heart_outlined),
@@ -79,8 +48,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
   }
 }
 
-class _StatusChip extends StatelessWidget {
-  const _StatusChip({required this.client});
+class StatusChip extends StatelessWidget {
+  const StatusChip({super.key, required this.client});
 
   final ClientSnapshot client;
 
@@ -281,8 +250,9 @@ class ConnectionPanel extends ConsumerWidget {
         const SizedBox(height: 8),
         Text('Connected to $host', style: text.titleLarge, textAlign: TextAlign.center),
         Text(s.rttMs == null ? 'Ping –' : 'Ping ${s.rttMs} ms', style: text.titleMedium),
+        if (s.rttStats != null) Text('Last 30 s: ${s.rttStats}', style: text.bodySmall),
         const SizedBox(height: 8),
-        Text('Controls arrive in Milestone 2.', style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
+        Text('Go back to use the controller.', style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
         const SizedBox(height: 8),
         OutlinedButton(onPressed: actions.disconnect, child: const Text('Disconnect')),
       ],

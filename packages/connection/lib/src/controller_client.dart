@@ -6,6 +6,7 @@ import 'package:protocol/protocol.dart';
 
 import 'host_address.dart';
 import 'log.dart';
+import 'rtt.dart';
 
 /// Who this controller is. Sent to the host in the hello message.
 final class ControllerIdentity {
@@ -90,6 +91,7 @@ final class ClientSnapshot {
     this.detail,
     this.attempt = 0,
     this.osErrorCode,
+    this.rttStats,
   });
 
   final ClientStatus status;
@@ -116,6 +118,9 @@ final class ClientSnapshot {
   /// permission is off.
   final int? osErrorCode;
 
+  /// Lowest, average and highest round-trip time over the last 30 s.
+  final RttSummary? rttStats;
+
   bool get isConnected => status == ClientStatus.connected;
 
   /// The best name for the host: its own name, the advertised one, or its
@@ -131,6 +136,7 @@ final class ClientSnapshot {
     Object? detail = _keep,
     int? attempt,
     Object? osErrorCode = _keep,
+    Object? rttStats = _keep,
   }) => ClientSnapshot(
     status: status ?? this.status,
     target: identical(target, _keep) ? this.target : target as HostAddress?,
@@ -140,6 +146,7 @@ final class ClientSnapshot {
     detail: identical(detail, _keep) ? this.detail : detail as String?,
     attempt: attempt ?? this.attempt,
     osErrorCode: identical(osErrorCode, _keep) ? this.osErrorCode : osErrorCode as int?,
+    rttStats: identical(rttStats, _keep) ? this.rttStats : rttStats as RttSummary?,
   );
 
   @override
@@ -209,6 +216,12 @@ class ControllerClient {
   Timer? _retry;
   int _lastHeardMs = 0;
   int _nextPingId = 0;
+  final _rttWindow = RttWindow();
+  int _inputSeq = 0;
+  Set<ControllerButton> _buttons = const {};
+  int _dx = 0;
+  int _dy = 0;
+  int _inputsSent = 0;
 
   ClientSnapshot get snapshot => _snap;
 
@@ -217,11 +230,30 @@ class ControllerClient {
   /// Saved pairing tokens by host ID.
   Map<String, String> get tokens => Map.unmodifiable(_tokens);
 
+  /// Input states sent since the app started, for Diagnostics.
+  int get inputsSent => _inputsSent;
+
+  /// Sets the controller's input and sends it if connected. While not
+  /// connected it's kept and sent as soon as pairing completes, so a button
+  /// held through a reconnect still counts and a released one is released.
+  void sendInput(Set<ControllerButton> buttons, {int dx = 0, int dy = 0}) {
+    _buttons = Set.of(buttons);
+    _dx = dx;
+    _dy = dy;
+    if (_snap.isConnected) _sendInputState();
+  }
+
+  void _sendInputState() {
+    _inputsSent++;
+    _send(InputStateMessage(seq: ++_inputSeq, buttons: _buttons, dx: _dx, dy: _dy));
+  }
+
   /// Connects to [target]. If [code] is given it's sent right away;
   /// otherwise a saved token is used, or the status becomes
   /// [ClientStatus.waitingForCode].
   void connect(HostAddress target, {String? code}) {
     _teardown();
+    _rttWindow.clear();
     _session++;
     _everPaired = false;
     _pendingCode = code;
@@ -351,12 +383,15 @@ class ControllerClient {
         _send(PongMessage.answering(message));
       case PongMessage():
         final rtt = _now - message.sentAtMs;
-        if (rtt >= 0 && _snap.isConnected) _set(_snap.copyWith(rttMs: rtt));
+        if (rtt >= 0 && _snap.isConnected) {
+          _rttWindow.add(_now, rtt);
+          _set(_snap.copyWith(rttMs: rtt, rttStats: _rttWindow.summary(_now)));
+        }
       case WelcomeMessage():
         _onWelcome(message);
       case PairResultMessage():
         _onPairResult(message);
-      case HelloMessage() || PairRequestMessage():
+      case HelloMessage() || PairRequestMessage() || InputStateMessage():
         _log('Ignoring unexpected ${message.type} from the TV');
     }
   }
@@ -400,6 +435,9 @@ class ControllerClient {
         attempt: 0,
         osErrorCode: null,
       ));
+      // The TV starts each connection with nothing pressed. Tell it what is
+      // held right now (also after a reconnect).
+      _sendInputState();
       return;
     }
     switch (result.failure!) {
@@ -473,6 +511,7 @@ class ControllerClient {
       detail: detail,
       attempt: attempt,
       rttMs: null,
+      rttStats: null,
       osErrorCode: osErrorCode,
     ));
     _log('Reconnecting in ${delay.inMilliseconds} ms (attempt $attempt)');
@@ -487,7 +526,7 @@ class ControllerClient {
     _retry?.cancel();
     _dropSocket(closeCode: closeCode);
     _everPaired = false;
-    _set(_snap.copyWith(status: ClientStatus.failed, problem: problem, detail: detail, rttMs: null));
+    _set(_snap.copyWith(status: ClientStatus.failed, problem: problem, detail: detail, rttMs: null, rttStats: null));
   }
 
   void _dropSocket({int? closeCode}) {

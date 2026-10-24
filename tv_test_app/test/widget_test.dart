@@ -5,9 +5,11 @@ import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:protocol/protocol.dart';
 import 'package:tvtest/main.dart';
 import 'package:tvtest/src/host_controller.dart';
 import 'package:tvtest/src/providers.dart';
+import 'package:tvtest/src/ui/input_visualizer.dart';
 import 'package:tvtest/src/ui/tv_button.dart';
 
 class FakeHostController implements HostController {
@@ -52,6 +54,8 @@ HostViewState sampleState() => HostViewState(
         state: ControllerState.connected,
         since: DateTime(2026),
         rttMs: 12,
+        rttStats: const RttSummary(minMs: 8, avgMs: 20, maxMs: 140, samples: 30),
+        input: InputStateMessage(seq: 3, buttons: {ControllerButton.a}, dx: 1),
       ),
       ControllerInfo(
         controllerId: 'p2',
@@ -92,6 +96,13 @@ void main() {
     expect(find.text('12 ms'), findsOneWidget);
     expect(find.text('Waiting for code'), findsOneWidget);
     expect(find.text('1 connected'), findsOneWidget);
+    expect(find.text('avg 20 ms'), findsOneWidget);
+    expect(find.text('max 140 ms'), findsOneWidget);
+    final shown = tester.widget<InputVisualizer>(find.byKey(const Key('visualizer-p1')));
+    expect(shown.input?.buttons, {ControllerButton.a});
+    expect(shown.input?.dx, 1);
+    // A controller still pairing shows nothing pressed.
+    expect(tester.widget<InputVisualizer>(find.byKey(const Key('visualizer-p2'))).input, isNull);
   });
 
   testWidgets('the remote reaches and presses every button', (tester) async {

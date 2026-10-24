@@ -28,7 +28,7 @@
 - **No paid-account capabilities.** No push notifications, App Groups, extensions, iCloud or associated domains.
 - **No stuck inputs.** On disconnect or app backgrounding the controller sends "release all", and the TV also releases all inputs for a controller whose connection drops.
 
-## Message flow (Milestone 1)
+## Message flow
 Every frame is JSON text: `{"v": 1, "t": "<type>", ...}`. A different `v` closes the connection with code 4000, so mismatched builds fail loudly. Unknown types are ignored.
 
 | Step | Direction | Message |
@@ -46,4 +46,18 @@ Rules:
 - **Heartbeats.** Silence for 4 seconds counts as a dropped connection on either side (close code 4004 when it can be sent).
 - **Reconnect.** After being paired, the phone retries forever with backoff (0.25, 0.5, 1, 2, then every 3 s) and resumes with its token. If discovery finds the same hostId at a new address, the next attempt uses it. It doesn't retry after a version mismatch (4000), being replaced by a newer connection from the same phone (4002) or a protocol error (4003).
 - **One connection per controller.** When a controller pairs again (often after a half-open drop), the TV closes the older connection with 4002.
-- Input messages (phone → TV, M2) and haptic events (TV → phone, M4) will use the same connection.
+- Haptic events (TV → phone, M4) will use the same connection.
+
+## Input (Milestone 2)
+- **Full state, not events.** On every change the phone sends `input` with `seq`, the held `buttons` (`a`, `b`, `x`, `y`, `start`, `select`) and the D-pad as `dx`, `dy` (each -1, 0 or 1; `dy` -1 is up). The TV keeps the latest state per controller, so a lost or late release can't leave a button stuck, and an empty state releases everything.
+- **Order.** `seq` grows with every state. The TV ignores anything not newer than what it has, and ignores input from controllers that haven't paired.
+- **No stuck inputs.** The phone releases everything when the app leaves the foreground (any lifecycle state other than resumed). After a reconnect it sends its current state again. The TV drops a controller's state when its connection ends and reports an all-released state to anything reading the input stream.
+- **Ticks.** The phone plays one tick per change: presses and new directions at full strength, releases and re-centering at 60%, scaled by the intensity setting.
+
+## Haptics
+`lib/src/haptics.dart` defines the `Haptics` interface (capabilities + tick), with `PlatformHaptics` (the channel `com.gamecontrollerdev.controller/haptics`) and `FakeHaptics` for tests. `HapticsPlayer` applies the on/off switch, intensity and hardware limits, and swallows native errors so input keeps working.
+
+| Platform | Native code | Tick | Fallback |
+| --- | --- | --- | --- |
+| iOS | `ios/Runner/AppDelegate.swift` (`HapticsChannel`, kept in that file so the Xcode project needs no edits) | Core Haptics transient event, intensity from the setting, sharpness 0.7. The engine runs while the app is open and restarts after a reset or on return to the app. | `UIImpactFeedbackGenerator` if the engine can't start. No Taptic Engine → reported as unsupported. |
+| Android | `android/.../Haptics.kt` + `MainActivity.kt` | `VibrationEffect` composition with the click primitive, scaled by intensity, usage "media" (games) | 12 ms one-shot, with amplitude if the motor allows it, otherwise on/off. No vibrator → unsupported. |

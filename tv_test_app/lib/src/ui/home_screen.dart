@@ -8,6 +8,7 @@ import 'package:protocol/protocol.dart';
 import '../app_info.dart';
 import '../host_controller.dart';
 import '../providers.dart';
+import 'input_visualizer.dart';
 import 'tv_button.dart';
 
 /// The TV's main screen: pairing code, addresses, connected controllers with
@@ -101,7 +102,7 @@ class _Header extends StatelessWidget {
               children: [
                 TextSpan(text: 'Controller Test', style: text.headlineSmall),
                 TextSpan(
-                  text: '   Protocol v$protocolVersion · app $appVersion · Milestone 1',
+                  text: '   Protocol v$protocolVersion · app $appVersion · Milestone 2',
                   style: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
                 ),
               ],
@@ -341,10 +342,13 @@ class _ControllerTile extends StatelessWidget {
       _ => Icons.devices_other,
     };
     final rtt = info.rttMs;
+    final stats = info.rttStats;
+    final live = info.state == ControllerState.connected;
+    final muted = text.bodySmall?.copyWith(color: scheme.onSurfaceVariant);
     return DecoratedBox(
       decoration: BoxDecoration(color: scheme.surfaceContainerHigh, borderRadius: BorderRadius.circular(12)),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         child: Row(
           children: [
             Icon(icon, size: 28),
@@ -356,21 +360,30 @@ class _ControllerTile extends StatelessWidget {
                   Text(info.name, style: text.titleMedium, overflow: TextOverflow.ellipsis),
                   Text(
                     '${info.platform} · ${info.appVersion} · ${info.remoteAddress}',
-                    style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+                    style: muted,
                     overflow: TextOverflow.ellipsis,
                   ),
+                  Text(label, style: text.titleSmall?.copyWith(color: color)),
                 ],
               ),
             ),
             const SizedBox(width: 8),
-            Text(label, style: text.titleSmall?.copyWith(color: color)),
-            const SizedBox(width: 16),
+            InputVisualizer(key: Key('visualizer-${info.controllerId}'), input: live ? info.input : null, width: 210),
+            const SizedBox(width: 12),
             SizedBox(
-              width: 88,
-              child: Text(
-                info.state == ControllerState.connected && rtt != null ? '$rtt ms' : '–',
-                textAlign: TextAlign.end,
-                style: text.titleLarge?.copyWith(fontFeatures: const [FontFeature.tabularFigures()]),
+              width: 92,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    live && rtt != null ? '$rtt ms' : '–',
+                    style: text.titleLarge?.copyWith(fontFeatures: const [FontFeature.tabularFigures()]),
+                  ),
+                  if (live && stats != null) ...[
+                    Text('avg ${stats.avgMs} ms', style: muted),
+                    Text('max ${stats.maxMs} ms', style: muted),
+                  ],
+                ],
               ),
             ),
           ],

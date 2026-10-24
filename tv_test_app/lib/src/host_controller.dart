@@ -102,6 +102,7 @@ class LiveHostController implements HostController {
   Timer? _addressTimer;
   ControllerClient? _sim;
   StreamSubscription<ClientSnapshot>? _simSub;
+  Timer? _demo;
   bool _disposed = false;
 
   @override
@@ -146,6 +147,8 @@ class LiveHostController implements HostController {
     final running = _sim;
     if (running != null) {
       _log('Stopping the simulated controller');
+      _demo?.cancel();
+      _demo = null;
       _simSub?.cancel();
       _sim = null;
       running.dispose();
@@ -165,7 +168,12 @@ class LiveHostController implements HostController {
       log: _logBuffer.sink('sim'),
     );
     _sim = sim;
-    _simSub = sim.changes.listen((_) => _emit());
+    _simSub = sim.changes.listen((s) {
+      // Once paired, press every button and direction in a loop, so the input
+      // display can be checked without a phone.
+      if (s.isConnected) _demo ??= runDemoInput(sim);
+      _emit();
+    });
     sim.connect(
       HostAddress(addresses: ['127.0.0.1'], port: port),
       code: _server.pairingCode,
@@ -177,6 +185,7 @@ class LiveHostController implements HostController {
   Future<void> dispose() async {
     _disposed = true;
     _addressTimer?.cancel();
+    _demo?.cancel();
     await _simSub?.cancel();
     await _sim?.dispose();
     await _broadcastSub?.cancel();

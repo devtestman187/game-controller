@@ -6,6 +6,8 @@
 library;
 
 export 'src/controller_client.dart';
+export 'src/demo_input.dart';
 export 'src/host_address.dart';
 export 'src/host_server.dart';
 export 'src/log.dart';
+export 'src/rtt.dart';

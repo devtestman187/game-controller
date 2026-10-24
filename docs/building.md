@@ -75,7 +75,7 @@ dart run connection:sim_controller --code 1234                         # TV app 
 dart run connection:sim_controller --host 192.168.1.50 --code 1234     # TV app on the TV
 dart run connection:sim_controller --help                              # all options
 ```
-It prints each state change and the ping every 5 seconds. Without `--code` it asks for one. The TV app also has a **Simulate controller** button that does the same from inside the app.
+It prints each state change and the ping (with the last 30 s summary) every 5 seconds. Without `--code` it asks for one. Add `--demo` to press every button and D-pad direction in a loop, to check the TV's input display. The TV app's **Simulate controller** button does the same from inside the app.
 
 ## Network ports
 | What | Port |

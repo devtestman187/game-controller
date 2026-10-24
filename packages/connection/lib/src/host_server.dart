@@ -6,6 +6,7 @@ import 'package:protocol/protocol.dart';
 
 import 'host_address.dart';
 import 'log.dart';
+import 'rtt.dart';
 
 /// Where a controller is in its connection, as seen by the host.
 enum ControllerState {
@@ -31,6 +32,8 @@ final class ControllerInfo {
     required this.state,
     required this.since,
     this.rttMs,
+    this.rttStats,
+    this.input,
   });
 
   final String controllerId;
@@ -45,6 +48,13 @@ final class ControllerInfo {
 
   /// Latest heartbeat round-trip time, measured on the host.
   final int? rttMs;
+
+  /// Lowest, average and highest round-trip time over the last 30 s.
+  final RttSummary? rttStats;
+
+  /// The controller's current input. Null when it isn't connected, so a
+  /// dropped controller never leaves buttons held.
+  final InputStateMessage? input;
 }
 
 /// Everything the host UI shows, as one immutable value.
@@ -277,12 +287,19 @@ class HostServer {
         final rtt = _now - message.sentAtMs;
         if (rtt >= 0 && s.paired) {
           s.rttMs = rtt;
+          s.rttWindow.add(_now, rtt);
           _emit();
         }
       case HelloMessage():
         _onHello(s, message);
       case PairRequestMessage():
         _onPair(s, message);
+      case InputStateMessage():
+        // Input counts only once paired, and only in order.
+        if (!s.paired || message.seq <= (s.input?.seq ?? -1)) return;
+        s.input = message;
+        _emit();
+        if (!_messages.isClosed) _messages.add(ControllerMessage(s.hello!.controllerId, message));
       case WelcomeMessage() || PairResultMessage():
         _close(s, CloseCodes.protocolError, 'Unexpected ${message.type}');
     }
@@ -397,6 +414,11 @@ class HostServer {
     _sessions.remove(s);
     final id = s.hello?.controllerId;
     if (s.paired && id != null) _known[id]?.lastSeen = DateTime.now();
+    // No stuck inputs: whoever reads the input stream sees everything released.
+    final input = s.input;
+    if (id != null && input != null && !input.isNeutral && !_messages.isClosed) {
+      _messages.add(ControllerMessage(id, InputStateMessage(seq: input.seq + 1)));
+    }
     _emit();
   }
 
@@ -417,6 +439,8 @@ class HostServer {
           state: s.paired ? ControllerState.connected : ControllerState.pairing,
           since: s.since,
           rttMs: s.rttMs,
+          rttStats: s.rttWindow.summary(_now),
+          input: s.paired ? s.input : null,
         ),
       );
     }
@@ -470,6 +494,8 @@ class _Session {
   bool paired = false;
   bool closed = false;
   int? rttMs;
+  final rttWindow = RttWindow();
+  InputStateMessage? input;
   int nextPingId = 0;
   DateTime since = DateTime.now();
 }

@@ -21,6 +21,10 @@ class DiagnosticsScreen extends ConsumerWidget {
     final network = ref.watch(localNetworkStatusProvider);
     final identity = ref.watch(identityProvider);
     final lines = ref.watch(logLinesProvider);
+    final caps = ref.watch(hapticsCapabilitiesProvider).value;
+    final haptics = ref.watch(hapticSettingsProvider);
+    final player = ref.read(hapticsPlayerProvider);
+    final input = ref.watch(padProvider);
     final text = Theme.of(context).textTheme;
     final mono = text.bodySmall?.copyWith(fontFamily: 'monospace', height: 1.3);
     final target = client.target;
@@ -58,6 +62,7 @@ class DiagnosticsScreen extends ConsumerWidget {
               ('Address', target?.ordered.map((a) => target.copyWith(addresses: [a]).display).join(', ') ?? '–'),
               ('TV ID', target?.hostId ?? '–'),
               ('Ping', client.rttMs == null ? '–' : '${client.rttMs} ms'),
+              if (client.rttStats != null) ('Ping, last 30 s', '${client.rttStats}'),
               if (client.problem != null) ('Problem', client.problem!.name),
               if (client.detail != null) ('Detail', client.detail!),
               if (client.osErrorCode != null) ('OS error', '${client.osErrorCode}'),
@@ -77,6 +82,19 @@ class DiagnosticsScreen extends ConsumerWidget {
                   '${h.address.addresses.join(', ')} port ${h.address.port} · ID ${h.address.hostId ?? '?'} · '
                       'protocol v${h.advertisedVersion ?? '?'}',
                 ),
+            ]),
+            _Section('Haptics', [
+              ('Supported', caps == null ? 'Checking…' : (caps.supported ? 'Yes' : 'No')),
+              ('Engine', caps?.engine ?? '–'),
+              ('Intensity control', caps == null ? '–' : (caps.intensityControl ? 'Yes' : 'No (on/off only)')),
+              ('Setting', haptics.enabled ? 'On, ${(haptics.intensity * 100).round()}%' : 'Off'),
+              ('Ticks played', '${player.played}'),
+              if (player.lastError != null) ('Last error', player.lastError!),
+              if (caps?.detail != null) ('Native detail', caps!.detail!),
+            ]),
+            _Section('Input', [
+              ('Now', input.isNeutral ? 'Nothing pressed' : '$input'),
+              ('States sent', '${ref.read(clientProvider).inputsSent}'),
             ]),
             _Section('This phone', [
               ('Name', identity.name),
@@ -138,6 +156,10 @@ String buildReport(WidgetRef ref) {
     )
     ..writeln('Problem: ${client.problem?.name ?? '-'} ${client.detail ?? ''} (OS error ${client.osErrorCode ?? '-'})')
     ..writeln('Local network: ${network.label}. ${network.explanation}')
+    ..writeln(
+      'Haptics: ${ref.read(hapticsPlayerProvider).capabilities.engine}, setting ${ref.read(hapticSettingsProvider).enabled ? 'on' : 'off'} ${ref.read(hapticSettingsProvider).intensity}, played ${ref.read(hapticsPlayerProvider).played}, error ${ref.read(hapticsPlayerProvider).lastError ?? '-'}',
+    )
+    ..writeln('Ping, last 30 s: ${client.rttStats ?? '-'}')
     ..writeln(
       'Discovery: running ${discovery.running}, error ${discovery.error ?? '-'}, ${discovery.hosts.length} found',
     )

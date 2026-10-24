@@ -16,6 +16,7 @@ class MessageCodec {
     PairResultMessage.wireType: PairResultMessage.fromPayload,
     PingMessage.wireType: PingMessage.fromPayload,
     PongMessage.wireType: PongMessage.fromPayload,
+    InputStateMessage.wireType: InputStateMessage.fromPayload,
   };
 
   String encode(Message message) =>
