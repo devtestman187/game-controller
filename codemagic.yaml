@@ -1,5 +1,5 @@
 # Codemagic: unsigned iOS builds of the controller app (no Apple account needed).
-# The .ipa is signed and installed from Windows with Sideloadly. See docs/ios-setup.md.
+# The .ipa is imported into iLoader on Windows, which signs and installs it. See docs/ios-setup.md.
 #
 # Workflows:
 #   ios-check-main  push to main       } analyze + test + unsigned build, no artifact,

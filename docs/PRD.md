@@ -145,7 +145,7 @@ Milestone 0 proves that every build and install path works, including iOS in the
 - Monorepo scaffold (/controller\_app, /tv\_test\_app, /packages/protocol, /docs, /assets) in a GitHub repository.
 - Shared protocol package with one placeholder message and a passing unit test.
 - CI: analyze and tests on every pull request and push to main. An unsigned iOS check build runs only when files under /controller\_app or /packages/protocol change. The build also packages an unsigned .ipa as a downloadable artifact on tags and manual triggers, ready to sign and install from Windows. Superseded builds are cancelled, caches are enabled, and builds stop after about 30 minutes.
-- /docs/ios-setup.md with the manual steps only the developer can do: installing iTunes and iCloud from Apple (not the Microsoft Store versions) and Sideloadly on the Windows PC, turning on Developer Mode on the iPhone, connecting the repo to Codemagic, downloading the .ipa artifact, signing and installing it with a free Apple ID, trusting the developer profile, and re-signing every 7 days (with AltStore as an option for automatic refresh).
+- /docs/ios-setup.md with the manual steps only the developer can do: installing Apple's iTunes (not the Microsoft Store version) and iLoader on the Windows PC, turning on Developer Mode on the iPhone, connecting the repo to Codemagic, downloading the .ipa artifact, importing it into iLoader to sign and install it with a free Apple ID, trusting the developer profile, and re-installing it every 7 days.
 - Android TV manifest, banner icon and remote navigation (T1).
 - /assets with CREDITS.md, and placeholder shapes instead of art.
 
@@ -317,7 +317,7 @@ Logic is tested automatically on Windows and in CI, while gyro, haptics, discove
 | Gyro | Real phones only | M3 |
 | Latency | Real devices on home Wi-Fi | M5 |
 
-**How each milestone reaches the devices.** Android builds are made on Windows and installed over USB. A milestone tag triggers a Codemagic build that produces an unsigned .ipa, which is downloaded, signed with a free Apple ID using Sideloadly (or AltStore), installed on the iPhone, and re-signed every 7 days. The TV APK is installed with adb on the TV, and the Windows desktop build runs directly on the laptop.
+**How each milestone reaches the devices.** Android builds are made on Windows and installed over USB. A milestone tag triggers a Codemagic build that produces an unsigned .ipa, which is downloaded, imported into iLoader to be signed with a free Apple ID and installed on the iPhone, and re-installed every 7 days. The TV APK is installed with adb on the TV, and the Windows desktop build runs directly on the laptop.
 
 **Manual checklists.** Each milestone's acceptance tests above are copied into a checklist in /docs, so the same steps are run on the Android phone and the iPhone every time.
 
@@ -328,19 +328,19 @@ The largest risk is slow iOS debugging, because every fix needs a cloud build, a
 | Risk | Mitigation |
 | --- | --- |
 | iOS-only bugs are slow to debug without a Mac | Keep native iOS code minimal, build the Diagnostics screen in Milestone 1, and rent a cloud Mac for a few days if stuck |
-| The free Apple ID signature expires every 7 days, so the controller stops launching | Re-sign weekly with Sideloadly, or use AltStore auto-refresh while AltServer runs on the PC on the same network as the iPhone |
+| The free Apple ID signature expires every 7 days, so the controller stops launching | Re-install the build through iLoader every week, and keep the paid account and TestFlight as the fallback |
 | The router blocks device discovery (client isolation) | Manual IP entry as a built-in fallback |
 | Gyro noise and drift differ between phones | Calibration, smoothing and dead zone, tuned on both test phones |
 | Haptic hardware differs widely across Android devices | Runtime capability checks and a simple-vibration fallback |
 | Free CI minutes run out | Path-filtered triggers, cancelled superseded builds and a build time limit |
-| Sideloading tools lag behind a new iOS release, or Apple changes the free-account rules | Fall back to a paid Apple Developer account and TestFlight |
+| Apple blocks the sign-in method that sideloading tools use again (as happened in October 2026), or a tool lags behind a new iOS release | Fall back to a paid Apple Developer account and TestFlight |
 | Windows Firewall blocks the desktop app, or the mDNS package does not support Windows | Allow the app on private networks, check package support early in Milestone 1, and keep manual IP entry as a fallback |
 
 **Decisions (October 23, 2026)**
 
 - Minimum versions are Android 16 and iOS 26, the current major release minus one.
 - The TV app's minimum is Android TV 12 (API level 31), the version on the physical test TV, so the Android 16 minimum applies to the phones only.
-- iOS builds are sideloaded with a free Apple ID, signed on Windows with Sideloadly or AltStore, instead of going through TestFlight. The paid account stays a fallback and a step toward a store release.
+- iOS builds are sideloaded with a free Apple ID, installed from Windows with iLoader (it worked on October 24, 2026, when Sideloadly and Impactor failed to sign in), instead of going through TestFlight. The paid account stays a fallback and a step toward a store release.
 - A physical Android TV is available for testing.
 - The TV test app also runs as a Windows desktop app, delivered in Milestone 1, so the controller can be tested on a laptop.
 - The haptics off setting also silences haptic events sent by the TV app.
@@ -349,10 +349,10 @@ The largest risk is slow iOS debugging, because every fix needs a cloud build, a
 
 **Open questions**
 
-- Which sideloading tool to standardize on: Sideloadly (simplest to start, re-signed by hand), AltStore (refreshes automatically while AltServer runs on the PC), or SideStore (refreshes on the phone after setup)?
+- Should the iPhone build be re-installed by hand each week through iLoader, or should SideStore (which iLoader can install) refresh it automatically? SideStore's sign-in still needed workarounds in October 2026.
 
 **Next steps**
 
-- [ ] Install Sideloadly on the Windows PC (with iTunes and iCloud from Apple, not the Microsoft Store versions) and turn on Developer Mode on the iPhone.
+- [ ] Keep a copy of the iLoader installer that worked, in case a newer release breaks sign-in.
 - [ ] Answer the open question above.
 - [ ] Give Claude Code the Milestone 0 section first, and move to the next milestone only after its acceptance tests pass.

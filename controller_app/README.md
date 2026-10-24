@@ -20,7 +20,7 @@ adb install -r build\app\outputs\flutter-apk\app-release.apk
 ```
 
 ## iPhone
-You can't build it locally on Windows. Codemagic builds an unsigned `.ipa` on every tag (or manual start) and you install it with Sideloadly using a free Apple ID: [../docs/ios-setup.md](../docs/ios-setup.md). Re-sign every 7 days.
+You can't build it locally on Windows. Codemagic builds an unsigned `.ipa` on every tag (or manual start) and you install it with iLoader using a free Apple ID: [../docs/ios-setup.md](../docs/ios-setup.md). Re-install every 7 days.
 
 ## Native iOS code rule
-Native Swift is limited to one small haptics platform channel (Milestone 2) plus Info.plist configuration. Every iOS change costs a cloud build and a re-sign, so it's kept minimal and reviewed carefully.
+Native Swift is limited to one small haptics platform channel (Milestone 2) plus Info.plist configuration. Every iOS change costs a cloud build and a re-install, so it's kept minimal and reviewed carefully.
