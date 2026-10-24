@@ -1,2 +1,2 @@
 /// Sent to the TV and shown in Diagnostics. Keep in step with pubspec.yaml.
-const String appVersion = '0.3.1';
+const String appVersion = '0.3.2';

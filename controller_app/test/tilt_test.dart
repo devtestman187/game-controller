@@ -77,7 +77,7 @@ void main() {
     });
 
     test('follows the gyroscope: turning the phone left makes up lean right', () {
-      final e = UpEstimator(accelWeight: 0)..accelerometer(const Vec3(0, 9.81, 0));
+      final e = UpEstimator(accelWeight: 0, settleSteps: 0)..accelerometer(const Vec3(0, 9.81, 0));
       // 1 rad/s counter-clockwise around the screen normal for 0.5 s.
       for (var i = 0; i <= 50; i++) {
         e.gyroscope(const Vec3(0, 0, 1), t0.add(Duration(milliseconds: i * 10)));
@@ -87,7 +87,7 @@ void main() {
     });
 
     test('the accelerometer removes gyro drift', () {
-      final e = UpEstimator()..accelerometer(const Vec3(0, 9.81, 0));
+      final e = UpEstimator(settleSteps: 0)..accelerometer(const Vec3(0, 9.81, 0));
       // A biased gyro (0.05 rad/s) while the phone really stays still.
       for (var i = 0; i <= 1000; i++) {
         e.gyroscope(const Vec3(0, 0, 0.05), t0.add(Duration(milliseconds: i * 10)));
@@ -97,15 +97,39 @@ void main() {
     });
 
     test('ignores the accelerometer while the phone is shaken', () {
-      final e = UpEstimator(accelWeight: 0.5)..accelerometer(const Vec3(0, 9.81, 0));
+      final e = UpEstimator(accelWeight: 0.5, settleSteps: 0)..accelerometer(const Vec3(0, 9.81, 0));
       e.gyroscope(const Vec3(0, 0, 0), t0);
       e.accelerometer(const Vec3(30, 9.81, 0)); // About 3 g sideways.
       e.gyroscope(const Vec3(0, 0, 0), t0.add(const Duration(milliseconds: 10)));
       expect(e.up!.y, closeTo(1, 1e-9));
     });
 
+    test('settles quickly from a bad first reading, then counts as settled', () {
+      final e = UpEstimator();
+      // The first reading is off by 20° (the phone was still moving).
+      e.accelerometer(Vec3(sin(20 * pi / 180), 0, cos(20 * pi / 180)) * 9.81);
+      var t = t0;
+      e.gyroscope(const Vec3(0, 0, 0), t); // The first sample only starts the clock.
+      for (var i = 0; i < 30; i++) {
+        expect(e.settled, isFalse);
+        e.accelerometer(const Vec3(0, 0, 9.81)); // Really flat.
+        e.gyroscope(const Vec3(0, 0, 0), t = t.add(const Duration(milliseconds: 10)));
+      }
+      expect(e.settled, isTrue);
+      expect(acos(e.up!.z) * 180 / pi, lessThan(0.5));
+    });
+
+    test('reset forgets an old estimate', () {
+      final e = UpEstimator()..accelerometer(const Vec3(9.81, 0, 0));
+      e.reset();
+      expect(e.up, isNull);
+      expect(e.settled, isFalse);
+      e.accelerometer(const Vec3(0, 0, 9.81));
+      expect(e.up!.z, closeTo(1, 1e-9));
+    });
+
     test('skips a long gap instead of jumping', () {
-      final e = UpEstimator(accelWeight: 0)..accelerometer(const Vec3(0, 9.81, 0));
+      final e = UpEstimator(accelWeight: 0, settleSteps: 0)..accelerometer(const Vec3(0, 9.81, 0));
       e.gyroscope(const Vec3(0, 0, 3), t0);
       e.gyroscope(const Vec3(0, 0, 3), t0.add(const Duration(seconds: 2)));
       expect(e.up!.y, closeTo(1, 1e-9));

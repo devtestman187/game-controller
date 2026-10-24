@@ -117,6 +117,7 @@ class GyroNotifier extends Notifier<GyroState> {
   Timer? _output;
   LandscapeSide _lastSide = LandscapeSide.left;
   StreamSubscription<Vec3>? _sideSub;
+  int _otherSideReadings = 0;
   bool _paused = false;
 
   @override
@@ -139,8 +140,15 @@ class GyroNotifier extends Notifier<GyroState> {
   void _startSideTracking() {
     _sideSub ??= ref.read(motionSensorsProvider).accelerometer(const Duration(milliseconds: 100)).listen(
       (a) {
+        // Like iOS, only change sides once the new side has held for a
+        // moment (3 readings, about 0.3 s), so a brief wobble can't flip it.
         final side = landscapeSideOf(a);
-        if (side != null) _lastSide = side;
+        if (side == null || side == _lastSide) {
+          _otherSideReadings = 0;
+        } else if (++_otherSideReadings >= 3) {
+          _lastSide = side;
+          _otherSideReadings = 0;
+        }
       },
       onError: (Object _) {}, // Gyro mode reports sensor problems itself.
     );
@@ -173,14 +181,16 @@ class GyroNotifier extends Notifier<GyroState> {
       _stopSensors();
       return false;
     }
-    final side = _estimator.up == null ? null : landscapeSideOf(_estimator.up!);
-    _lastSide = side ?? _lastSide;
+    // The side comes from the tracker, which has been following the phone
+    // all along (and is what the screen shows), never from a single reading.
     // Lock the screen to the side it already shows: tilting to steer must
     // not rotate the UI (and with it the axes).
     unawaited(SystemChrome.setPreferredOrientations([orientationFor(_lastSide, isIOS: ref.read(isIOSProvider))]));
     _processor.neutral = null; // Calibrate on the first reading.
     state = state.copyWith(mode: PadMode.gyro, side: _lastSide, calibrated: false, updates: 0);
-    log('Gyro mode on (landscape ${_lastSide.name}), sensors every ${sensorPeriod.inMilliseconds} ms');
+    log(
+      'Gyro mode on (landscape ${_lastSide.name}, up ${_estimator.up}), sensors every ${sensorPeriod.inMilliseconds} ms',
+    );
     _startOutput();
     return true;
   }
@@ -214,6 +224,9 @@ class GyroNotifier extends Notifier<GyroState> {
 
   Future<bool> _startSensors() async {
     final sensors = ref.read(motionSensorsProvider);
+    // The phone may have moved since the sensors last ran: start fresh, or
+    // the old estimate would drift towards the real position.
+    _estimator.reset();
     final firstGyro = Completer<bool>();
     _accelSub = sensors
         .accelerometer(sensorPeriod)
@@ -247,6 +260,11 @@ class GyroNotifier extends Notifier<GyroState> {
       final up = _estimator.up;
       final side = state.side;
       if (up == null || side == null) return;
+      if (!_estimator.settled) {
+        // Settling (about 0.3 s): hold the stick centered, calibrate after.
+        ref.read(padProvider.notifier).tilt(0, 0);
+        return;
+      }
       final out = _processor.process(tiltOf(up, side));
       ref.read(padProvider.notifier).tilt(out.x, out.y);
       state = state.copyWith(x: out.x, y: out.y, up: up, calibrated: true, updates: state.updates + 1);

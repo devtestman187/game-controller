@@ -32,16 +32,36 @@ const double standardGravity = 9.81;
 /// noisy and also feels hand movement. Each gyro step rotates the estimate,
 /// then nudges it a little toward the accelerometer.
 class UpEstimator {
-  UpEstimator({this.accelWeight = 0.02});
+  UpEstimator({this.accelWeight = 0.02, this.settleWeight = 0.25, this.settleSteps = 30});
 
   /// How strongly each sample pulls toward the accelerometer. At ~100 Hz,
   /// 0.02 removes drift within about half a second.
   final double accelWeight;
 
+  /// The stronger pull used for the first [settleSteps] samples after a
+  /// (re)start, so the estimate locks onto the real position quickly instead
+  /// of drifting there.
+  final double settleWeight;
+  final int settleSteps;
+
   /// The current estimate (unit length), or null before the first sample.
   Vec3? up;
   Vec3? _accel;
   DateTime? _lastGyro;
+  int _steps = 0;
+
+  /// True once the estimate has had [settleSteps] samples since [reset]: only
+  /// then is it good enough to calibrate on.
+  bool get settled => up != null && _steps >= settleSteps;
+
+  /// Forgets everything. Call whenever the sensors start: the phone may have
+  /// moved since they last ran, so an old estimate would drift.
+  void reset() {
+    up = null;
+    _accel = null;
+    _lastGyro = null;
+    _steps = 0;
+  }
 
   /// Accelerometer sample in m/s², including gravity (pointing up at rest).
   void accelerometer(Vec3 a) {
@@ -65,9 +85,11 @@ class UpEstimator {
     final a = _accel;
     // Trust the accelerometer only when it reads about 1 g (not shaking).
     if (a != null && (a.length - standardGravity).abs() < 0.2 * standardGravity) {
-      next = (next * (1 - accelWeight) + a.normalized * accelWeight).normalized;
+      final k = _steps < settleSteps ? settleWeight : accelWeight;
+      next = (next * (1 - k) + a.normalized * k).normalized;
     }
     up = next;
+    _steps++;
   }
 }
 

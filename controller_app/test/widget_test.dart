@@ -488,6 +488,36 @@ void main() {
       expect(locks.last, ['DeviceOrientation.landscapeLeft'], reason: 'top on the right is landscapeLeft on iOS');
     });
 
+    testWidgets('restarting gyro mode after the phone moved starts centered, with no drift', (tester) async {
+      final app = await intoGyro(tester); // Held upright.
+      await tester.tap(find.text('D-pad'));
+      await tester.pump(const Duration(milliseconds: 100));
+
+      // Laid flat on a table while in D-pad mode, then back to gyro.
+      app.motion.hold(const Vec3(0, 0, 1), samples: 10);
+      await tester.tap(find.text('Gyro'));
+      await tester.pump();
+      for (var i = 0; i < 20; i++) {
+        app.motion.hold(const Vec3(0, 0, 1), samples: 10); // Still, flat: 2 s in all.
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(app.client.inputs.last, '0,0 tilt 0.0,0.0', reason: 'at ${i * 100} ms');
+      }
+    });
+
+    testWidgets('a brief wobble to the other side does not change the lock', (tester) async {
+      final locks = recordOrientationLocks(tester);
+      final app = await pumpApp(tester, paired: true, isIOS: true);
+      app.motion.hold(const Vec3(1, 0, 0), samples: 5); // Top on the left, steadily.
+      await tester.pump(const Duration(milliseconds: 50));
+      app.motion.hold(const Vec3(-1, 0, 0), samples: 2); // A short flip the other way...
+      await tester.pump(const Duration(milliseconds: 50));
+      await tester.tap(find.text('Gyro')); // ...then laid flat and switched to gyro.
+      await tester.pump();
+      app.motion.hold(const Vec3(0, 0, 1), samples: 50);
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(locks.last, ['DeviceOrientation.landscapeRight'], reason: 'top on the left is landscapeRight on iOS');
+    });
+
     testWidgets('the gyro settings are saved', (tester) async {
       final app = await intoGyro(tester);
       await tester.tap(find.byTooltip('Gyro settings'));
