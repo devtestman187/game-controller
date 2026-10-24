@@ -1,6 +1,8 @@
 import 'dart:math';
 
+import 'package:controller/src/gyro.dart';
 import 'package:controller/src/tilt.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// "Up" in phone coordinates for a phone held in landscape-left (top of the
@@ -57,6 +59,13 @@ void main() {
       expect(angleDelta(179, -179), closeTo(-2, 1e-9));
       expect(angleDelta(-170, 170), closeTo(20, 1e-9));
     });
+  });
+
+  test('the screen lock uses the opposite landscape name on iOS', () {
+    expect(orientationFor(LandscapeSide.left, isIOS: false), DeviceOrientation.landscapeLeft);
+    expect(orientationFor(LandscapeSide.right, isIOS: false), DeviceOrientation.landscapeRight);
+    expect(orientationFor(LandscapeSide.left, isIOS: true), DeviceOrientation.landscapeRight);
+    expect(orientationFor(LandscapeSide.right, isIOS: true), DeviceOrientation.landscapeLeft);
   });
 
   group('up estimator', () {

@@ -440,6 +440,54 @@ void main() {
       expect(lastTiltX(app.client), greaterThan(0.3), reason: 'calibration kept, tilt back');
     });
 
+    /// Records what the app asks the system to lock the screen to.
+    List<List<String>> recordOrientationLocks(WidgetTester tester) {
+      final locks = <List<String>>[];
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+        if (call.method == 'SystemChrome.setPreferredOrientations') {
+          locks.add((call.arguments as List).cast<String>());
+        }
+        return null;
+      });
+      addTearDown(() => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, null));
+      return locks;
+    }
+
+    // Held with the top of the phone on the left: Flutter calls that
+    // landscapeLeft on Android, but iOS needs landscapeRight for the same side.
+    for (final (platform, isIOS, expected) in [
+      ('iOS', true, 'DeviceOrientation.landscapeRight'),
+      ('Android', false, 'DeviceOrientation.landscapeLeft'),
+    ]) {
+      testWidgets('locks the screen to the side it is held in, without turning it ($platform)', (tester) async {
+        final locks = recordOrientationLocks(tester);
+        final app = await pumpApp(tester, paired: true, isIOS: isIOS);
+        await tester.tap(find.text('Gyro'));
+        await tester.pump();
+        app.motion.hold(uprightSteering(0), samples: 50);
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(locks.last, [expected]);
+
+        await tester.tap(find.text('D-pad'));
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(locks.last, ['DeviceOrientation.landscapeLeft', 'DeviceOrientation.landscapeRight']);
+      });
+    }
+
+    testWidgets('starting gyro mode lying flat uses the side the phone was last held in', (tester) async {
+      final locks = recordOrientationLocks(tester);
+      final app = await pumpApp(tester, paired: true, isIOS: true);
+      // Held upright with the top on the right, in D-pad mode...
+      app.motion.hold(const Vec3(-1, 0, 0), samples: 5);
+      await tester.pump(const Duration(milliseconds: 50));
+      // ...then laid flat and switched to gyro: the side can't be read now.
+      await tester.tap(find.text('Gyro'));
+      await tester.pump();
+      app.motion.hold(const Vec3(0, 0, 1), samples: 50);
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(locks.last, ['DeviceOrientation.landscapeLeft'], reason: 'top on the right is landscapeLeft on iOS');
+    });
+
     testWidgets('the gyro settings are saved', (tester) async {
       final app = await intoGyro(tester);
       await tester.tap(find.byTooltip('Gyro settings'));

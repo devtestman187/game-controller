@@ -70,6 +70,18 @@ final class GyroState {
 
 const Object _keep = Object();
 
+/// The orientation to lock to so the screen stays on the physical [side].
+///
+/// Flutter's landscape names follow Android ([LandscapeSide.left] = top of
+/// the phone on the left is `landscapeLeft`). On iOS they reach UIKit's
+/// interface orientations, whose left and right are the other way round, so
+/// the same physical side needs the opposite name. Seen on the iPhone in M3:
+/// with the Android names the screen turned 180° on every mode switch.
+DeviceOrientation orientationFor(LandscapeSide side, {required bool isIOS}) {
+  final topOnLeft = side == LandscapeSide.left;
+  return topOnLeft != isIOS ? DeviceOrientation.landscapeLeft : DeviceOrientation.landscapeRight;
+}
+
 /// Overridden in tests with fake sensors.
 final motionSensorsProvider = Provider<MotionSensors>((ref) => PlatformMotionSensors());
 
@@ -104,14 +116,39 @@ class GyroNotifier extends Notifier<GyroState> {
   StreamSubscription<(Vec3, DateTime)>? _gyroSub;
   Timer? _output;
   LandscapeSide _lastSide = LandscapeSide.left;
+  StreamSubscription<Vec3>? _sideSub;
   bool _paused = false;
 
   @override
   GyroState build() {
     _processor.settings = ref.read(gyroSettingsProvider);
     ref.listen(gyroSettingsProvider, (_, s) => _processor.settings = s);
-    ref.onDispose(_stopSensors);
+    ref.onDispose(() {
+      _stopSensors();
+      _stopSideTracking();
+    });
+    _startSideTracking();
     return const GyroState();
+  }
+
+  /// Keeps track of which landscape side the phone is held in, even in D-pad
+  /// mode, with a light accelerometer reading 10 times a second. iOS turns
+  /// the screen on the same cue, so this is the side the screen shows. It
+  /// matters when gyro mode starts with the phone lying flat, where the side
+  /// can't be read at that moment.
+  void _startSideTracking() {
+    _sideSub ??= ref.read(motionSensorsProvider).accelerometer(const Duration(milliseconds: 100)).listen(
+      (a) {
+        final side = landscapeSideOf(a);
+        if (side != null) _lastSide = side;
+      },
+      onError: (Object _) {}, // Gyro mode reports sensor problems itself.
+    );
+  }
+
+  void _stopSideTracking() {
+    unawaited(_sideSub?.cancel());
+    _sideSub = null;
   }
 
   /// Switches between the D-pad and gyro mode without reconnecting.
@@ -138,14 +175,9 @@ class GyroNotifier extends Notifier<GyroState> {
     }
     final side = _estimator.up == null ? null : landscapeSideOf(_estimator.up!);
     _lastSide = side ?? _lastSide;
-    // Lock the screen: tilting to steer must not rotate the UI. If the
-    // guess is wrong the UI turns over once, the user turns the phone, and
-    // the axes then match.
-    unawaited(
-      SystemChrome.setPreferredOrientations([
-        _lastSide == LandscapeSide.left ? DeviceOrientation.landscapeLeft : DeviceOrientation.landscapeRight,
-      ]),
-    );
+    // Lock the screen to the side it already shows: tilting to steer must
+    // not rotate the UI (and with it the axes).
+    unawaited(SystemChrome.setPreferredOrientations([orientationFor(_lastSide, isIOS: ref.read(isIOSProvider))]));
     _processor.neutral = null; // Calibrate on the first reading.
     state = state.copyWith(mode: PadMode.gyro, side: _lastSide, calibrated: false, updates: 0);
     log('Gyro mode on (landscape ${_lastSide.name}), sensors every ${sensorPeriod.inMilliseconds} ms');
@@ -165,6 +197,7 @@ class GyroNotifier extends Notifier<GyroState> {
 
   /// The app left the foreground: stop the sensors and center the stick.
   void pause() {
+    _stopSideTracking();
     if (state.mode != PadMode.gyro || _paused) return;
     _paused = true;
     _stopSensors();
@@ -173,6 +206,7 @@ class GyroNotifier extends Notifier<GyroState> {
 
   /// Back in the foreground: start again, keeping the calibration.
   Future<void> resume() async {
+    _startSideTracking();
     if (state.mode != PadMode.gyro || !_paused) return;
     _paused = false;
     if (await _startSensors()) _startOutput();

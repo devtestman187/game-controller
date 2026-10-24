@@ -3,7 +3,7 @@ description: "Phone game controller (Android + iOS)."
 publish_to: 'none'
 
 # build-name -> versionName / CFBundleShortVersionString; build-number -> versionCode / CFBundleVersion.
-version: 0.3.0+4
+version: 0.3.1+5
 
 environment:
   sdk: ^3.13.0
