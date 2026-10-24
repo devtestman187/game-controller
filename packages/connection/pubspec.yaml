@@ -1,0 +1,23 @@
+name: connection
+description: >-
+  Host server and controller client for the game controller: WebSocket
+  transport, pairing, heartbeats and automatic reconnect. Pure Dart (dart:io),
+  shared by both apps and the command-line simulated controller.
+publish_to: 'none'
+version: 0.1.0
+
+environment:
+  sdk: ^3.13.0
+
+resolution: workspace
+
+dependencies:
+  protocol:
+    path: ../protocol
+
+dev_dependencies:
+  lints: ^6.0.0
+  test: ^1.26.0
+
+executables:
+  sim_controller:

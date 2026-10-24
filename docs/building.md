@@ -25,6 +25,7 @@ flutter pub get          # resolves the whole workspace
 ```powershell
 flutter analyze controller_app tv_test_app packages assets
 cd packages\protocol; dart test; cd ..\..
+cd packages\connection; dart test; cd ..\..    # real sockets on localhost: pairing, heartbeats, reconnect
 cd controller_app; flutter test; cd ..
 cd tv_test_app; flutter test; cd ..
 ```
@@ -64,10 +65,28 @@ flutter build windows --release               # release build
 ```
 The window is resizable. The layout scales between a small laptop window and a 16:9 TV screen.
 
-**Windows Firewall (needed from Milestone 1, when the app starts a server):** the first time the app listens on the network, Windows asks whether to allow it. Tick **Private networks** and click **Allow**. Phones and the laptop must be on the **same Wi-Fi**, and that network must be set to *Private* (Settings → Network & internet → Wi-Fi → your network → Network profile type → **Private**). Full steps, including how to fix it if you clicked Cancel, are in `tv_test_app/README.md`.
+**Windows Firewall:** the first time the app listens on the network, Windows asks whether to allow it. Tick **Private networks** and click **Allow**. Phones and the laptop must be on the **same Wi-Fi**, and that network must be set to *Private* (Settings → Network & internet → Wi-Fi → your network → Network profile type → **Private**). Full steps, including how to fix it if you clicked Cancel, are in [tv_test_app/README.md](../tv_test_app/README.md#windows-firewall).
+
+## Simulated controller (no phone needed)
+A command-line controller that pairs with the TV app and keeps the connection alive (PRD T3). It works against the Windows app or the physical TV:
+```powershell
+cd packages\connection
+dart run connection:sim_controller --code 1234                         # TV app on this PC
+dart run connection:sim_controller --host 192.168.1.50 --code 1234     # TV app on the TV
+dart run connection:sim_controller --help                              # all options
+```
+It prints each state change and the ping every 5 seconds. Without `--code` it asks for one. The TV app also has a **Simulate controller** button that does the same from inside the app.
+
+## Network ports
+| What | Port |
+| --- | --- |
+| Controller connection (WebSocket at `/ws`) | TCP **45780** (if it's taken, the app picks a free port and shows it on screen) |
+| Discovery (mDNS, service `_gamectl._tcp`) | UDP 5353 (handled by the OS) |
+
+Opening `http://<TV address>:45780` in the phone's browser shows a one-line page when the connection can get through (a quick firewall check).
 
 ## iOS
 Built by Codemagic on tags and manual starts. See [ios-setup.md](ios-setup.md). Fallback: GitHub → Actions → **iOS fallback (unsigned)** → Run workflow.
 
 ## Optional: Android TV emulator
-Android Studio → Device Manager → Create device → **TV** category (e.g. "Television (1080p)") → API 31+ image. It sits behind NAT, so from M1 onward the phone must connect to it with manual IP plus `adb forward`/`adb reverse`. Use it for UI checks only.
+Android Studio → Device Manager → Create device → **TV** category (e.g. "Television (1080p)") → API 31+ image. It sits behind NAT, so the phone can't discover it. For a quick check, run `adb forward tcp:45780 tcp:45780` and then connect the simulated controller to `127.0.0.1` on the PC. Use it for UI checks only.

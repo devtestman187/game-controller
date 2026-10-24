@@ -2,7 +2,23 @@
 
 Test bench and connection host for the controller. One codebase runs on **Android TV 12+ (API 31)** and as a **Windows desktop app**. App ID: `com.gamecontrollerdev.tvtest`.
 
-Current state (Milestone 0): hello-world screen with three remote-navigable buttons, a visible focus ring and a "last key" readout to verify the remote.
+Current state (Milestone 1): hosts the controller server, advertises itself on the network (mDNS), shows the pairing code, the address for manual entry, each controller's state and live ping, and a log. It has a built-in simulated controller.
+
+## The screen
+| Area | What it shows |
+| --- | --- |
+| Pairing code | The 4-digit code to enter on the phone. After 5 wrong codes in a row it changes on its own. |
+| Address for manual entry | `IP:port` to type on the phone if discovery doesn't find the TV |
+| Discovery line | Green when phones can find the TV via mDNS. If it fails, manual entry still works. |
+| Controllers | Each phone with its state (**Connected**, **Waiting for code**, **Disconnected**) and round-trip ping in ms |
+| Log | Recent connection events, newest at the bottom |
+
+Buttons (arrows to move, center/OK to press):
+- **New code**: shows a different code. Phones that are already paired stay paired.
+- **Simulate controller**: starts a controller inside the app that pairs on its own and exchanges heartbeats (PRD T3). Press again to stop.
+- **Drop connections**: closes every connection as if Wi-Fi dropped, so you can watch the phones reconnect by themselves.
+
+Pairings are kept in memory: after the TV app restarts, phones need the code again.
 
 ## Windows setup
 Toolchain: see [../docs/building.md](../docs/building.md) (needs Visual Studio 2022 with **Desktop development with C++** for the Windows build). Then, from the repo root:
@@ -24,7 +40,7 @@ adb -s <TV-IP>:5555 install -r build\app\outputs\flutter-apk\app-release.apk
 ```
 4. Open **Controller Test** from the launcher (banner tile; on Google TV look under Apps → Your apps).
 
-Remote controls: arrows move focus, center/OK selects, Back goes back/exits.
+Remote controls: arrows move focus, center/OK selects, Back exits.
 
 ## Run as a Windows desktop app
 ```powershell
@@ -35,9 +51,16 @@ flutter build windows --release
 ```
 The window is resizable. Arrow keys + Enter act like the TV remote.
 
-### Windows Firewall (from Milestone 1, when the app hosts the server)
+### Windows Firewall
 The phones connect to the laptop, so Windows must allow incoming connections to the app on your **private** network:
 1. Make the Wi-Fi network Private: Settings → Network & internet → Wi-Fi → *your network* → **Network profile type: Private**.
 2. Start the app. When Windows Defender Firewall asks, tick **Private networks**, untick Public, and click **Allow**.
 3. If you missed or cancelled the prompt: Start → "Allow an app through Windows Firewall" → **Change settings** → find `tvtest.exe` (or click **Allow another app…** and browse to `tv_test_app\build\windows\x64\runner\Release\tvtest.exe`; for `flutter run` builds also allow `...\runner\Debug\tvtest.exe`) → tick **Private** → OK.
-4. The phones and the laptop must be on the **same Wi-Fi**. Guest networks and routers with "client/AP isolation" block both discovery and connections. Use manual IP entry if discovery is blocked but connections work.
+   Or, in an **administrator** PowerShell, allow the port for every build:
+   ```powershell
+   New-NetFirewallRule -DisplayName "Controller Test (TCP 45780)" -Direction Inbound -Protocol TCP -LocalPort 45780 -Action Allow -Profile Private
+   ```
+4. Check from the phone: open `http://<laptop address>:45780` in the phone's browser. A one-line page means connections get through.
+5. The phones and the laptop must be on the **same Wi-Fi**. Guest networks and routers with "client/AP isolation" block both discovery and connections. Use manual IP entry if discovery is blocked but connections work.
+
+If the laptop has several network adapters (WSL, Hyper-V, VPN), the screen lists Wi-Fi first. Use that address for manual entry.

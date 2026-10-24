@@ -11,6 +11,11 @@ class MessageCodec {
 
   static const Map<String, Message Function(Map<String, Object?>)> _decoders = {
     HelloMessage.wireType: HelloMessage.fromPayload,
+    WelcomeMessage.wireType: WelcomeMessage.fromPayload,
+    PairRequestMessage.wireType: PairRequestMessage.fromPayload,
+    PairResultMessage.wireType: PairResultMessage.fromPayload,
+    PingMessage.wireType: PingMessage.fromPayload,
+    PongMessage.wireType: PongMessage.fromPayload,
   };
 
   String encode(Message message) =>

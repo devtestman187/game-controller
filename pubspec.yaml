@@ -9,4 +9,5 @@ workspace:
   - controller_app
   - tv_test_app
   - packages/protocol
+  - packages/connection
   - assets

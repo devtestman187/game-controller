@@ -4,6 +4,11 @@
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
     <uses-feature android:name="android.software.leanback" android:required="false" />
 
+    <!-- Run the controller server and advertise it with mDNS (NSD). -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
+
     <application
         android:label="Controller Test"
         android:name="${applicationName}"

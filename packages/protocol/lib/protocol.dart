@@ -5,5 +5,6 @@
 library;
 
 export 'src/codec.dart';
-export 'src/messages.dart';
+export 'src/messages.dart' hide optionalString, requireBool, requireInt, requireString;
+export 'src/network.dart';
 export 'src/version.dart';

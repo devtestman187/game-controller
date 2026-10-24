@@ -24,6 +24,12 @@
 	<string>????</string>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Controller finds your TV on the local network and sends it your button presses.</string>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_gamectl._tcp</string>
+	</array>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>UIApplicationSceneManifest</key>

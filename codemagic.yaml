@@ -3,7 +3,7 @@
 #
 # Workflows:
 #   ios-check-main  push to main       } analyze + test + unsigned build, no artifact,
-#   ios-check-pr    PRs into main      } only when controller_app/ or packages/protocol/ change
+#   ios-check-pr    PRs into main      } only when controller_app/, packages/protocol/ or packages/connection/ change
 #   ios-ipa         any tag (e.g. m0), and manual start: same build, publishes controller-unsigned-<tag>.ipa
 #
 # Free-minute guards: path filter (changeset), cancel superseded builds, 30 min cap, caches.
@@ -25,6 +25,7 @@ definitions:
       includes:
         - 'controller_app/'
         - 'packages/protocol/'
+        - 'packages/connection/'
         - 'codemagic.yaml'
       excludes:
         - '**/*.md'
@@ -39,11 +40,13 @@ definitions:
       name: Analyze
       script: |
         cd "$CM_BUILD_DIR"
-        flutter analyze controller_app packages/protocol
+        flutter analyze controller_app packages/protocol packages/connection
     - &test
       name: Test
       script: |
+        set -euo pipefail
         cd "$CM_BUILD_DIR/packages/protocol" && dart test
+        cd "$CM_BUILD_DIR/packages/connection" && dart test
         cd "$CM_BUILD_DIR/controller_app" && flutter test
     - &build_ios
       name: Build iOS (release, no codesign)

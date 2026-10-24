@@ -1,0 +1,484 @@
+import 'dart:async';
+import 'dart:io';
+import 'dart:math';
+
+import 'package:protocol/protocol.dart';
+
+import 'host_address.dart';
+import 'log.dart';
+
+/// Where a controller is in its connection, as seen by the host.
+enum ControllerState {
+  /// Connected but hasn't entered the right code yet. Its input is ignored.
+  pairing,
+
+  /// Paired and sending heartbeats.
+  connected,
+
+  /// Paired earlier, but its connection is gone. It can come back without a
+  /// code until the host app restarts.
+  disconnected,
+}
+
+/// One controller in [HostSnapshot.controllers].
+final class ControllerInfo {
+  const ControllerInfo({
+    required this.controllerId,
+    required this.name,
+    required this.platform,
+    required this.appVersion,
+    required this.remoteAddress,
+    required this.state,
+    required this.since,
+    this.rttMs,
+  });
+
+  final String controllerId;
+  final String name;
+  final String platform;
+  final String appVersion;
+  final String remoteAddress;
+  final ControllerState state;
+
+  /// When [state] last changed.
+  final DateTime since;
+
+  /// Latest heartbeat round-trip time, measured on the host.
+  final int? rttMs;
+}
+
+/// Everything the host UI shows, as one immutable value.
+final class HostSnapshot {
+  const HostSnapshot({
+    required this.running,
+    required this.pairingCode,
+    required this.controllers,
+    this.port,
+  });
+
+  final bool running;
+  final int? port;
+  final String pairingCode;
+  final List<ControllerInfo> controllers;
+
+  Iterable<ControllerInfo> get connected =>
+      controllers.where((c) => c.state == ControllerState.connected);
+}
+
+/// A message from a paired controller (input messages arrive here from M2).
+final class ControllerMessage {
+  const ControllerMessage(this.controllerId, this.message);
+
+  final String controllerId;
+  final Message message;
+}
+
+/// The WebSocket server that runs on the TV (and on the laptop).
+///
+/// It shows a pairing code, accepts controllers that send that code (or a
+/// token from an earlier pairing), sends heartbeats, measures the round-trip
+/// time and drops connections that go quiet.
+class HostServer {
+  HostServer({
+    required this.hostId,
+    required this.hostName,
+    required this.appVersion,
+    this.preferredPort = defaultPort,
+    this.heartbeatInterval = const Duration(seconds: 1),
+    this.heartbeatTimeout = const Duration(seconds: 4),
+    this.pairingWindow = const Duration(minutes: 5),
+    this.maxWrongCodes = 5,
+    LogSink? log,
+    Random? random,
+  }) : _log = log ?? _noLog,
+       _random = random ?? Random.secure() {
+    _code = _newCode();
+  }
+
+  final String hostId;
+  final String hostName;
+  final String appVersion;
+
+  /// Port to try first. If it's taken, any free port is used.
+  final int preferredPort;
+  final Duration heartbeatInterval;
+
+  /// A connection that sends nothing for this long is dropped.
+  final Duration heartbeatTimeout;
+
+  /// How long an unpaired connection may stay open.
+  final Duration pairingWindow;
+
+  /// After this many wrong codes in a row, the code changes.
+  final int maxWrongCodes;
+
+  final LogSink _log;
+  final Random _random;
+  static const _codec = MessageCodec();
+  final _clock = Stopwatch()..start();
+
+  final _sessions = <_Session>{};
+  final _known = <String, _Known>{};
+  final _changes = StreamController<HostSnapshot>.broadcast();
+  final _messages = StreamController<ControllerMessage>.broadcast();
+  HttpServer? _http;
+  Timer? _heartbeat;
+  late String _code;
+  int _wrongCodes = 0;
+
+  /// Fires a new snapshot after every visible change, including each new
+  /// round-trip time.
+  Stream<HostSnapshot> get changes => _changes.stream;
+
+  /// Messages from paired controllers only.
+  Stream<ControllerMessage> get messages => _messages.stream;
+
+  HostSnapshot get snapshot => HostSnapshot(
+    running: _http != null,
+    port: _http?.port,
+    pairingCode: _code,
+    controllers: _controllers(),
+  );
+
+  String get pairingCode => _code;
+
+  /// The port actually in use, once started.
+  int? get port => _http?.port;
+
+  Future<void> start() async {
+    if (_http != null) return;
+    final http = await _bind();
+    _http = http;
+    _log('Listening on port ${http.port} (pairing code $_code)');
+    http.listen(_onRequest, onError: (Object e) => _log('Server error: $e'));
+    _heartbeat = Timer.periodic(heartbeatInterval, (_) => _tick());
+    _emit();
+  }
+
+  Future<void> stop() async {
+    _heartbeat?.cancel();
+    _heartbeat = null;
+    for (final s in _sessions.toList()) {
+      _close(s, CloseCodes.goingAway, 'Host is closing');
+    }
+    final http = _http;
+    _http = null;
+    await http?.close(force: true);
+    _emit();
+  }
+
+  Future<void> dispose() async {
+    await stop();
+    await _changes.close();
+    await _messages.close();
+  }
+
+  /// Shows a new code. Controllers that are already paired stay paired.
+  void newPairingCode() {
+    _code = _newCode(previous: _code);
+    _wrongCodes = 0;
+    _log('New pairing code $_code');
+    _emit();
+  }
+
+  /// Closes every connection as if the network dropped, so controllers
+  /// reconnect on their own. A testing aid for the reconnect logic.
+  void dropAllConnections() {
+    _log('Dropping all connections (test)');
+    for (final s in _sessions.toList()) {
+      _close(s, CloseCodes.goingAway, 'Dropped for testing');
+    }
+  }
+
+  /// Sends [message] to a paired controller. Returns false if it isn't
+  /// connected.
+  bool send(String controllerId, Message message) {
+    final s = _sessions.where((s) => s.paired && s.hello?.controllerId == controllerId).firstOrNull;
+    if (s == null) return false;
+    _send(s, message);
+    return true;
+  }
+
+  int get _now => _clock.elapsedMilliseconds;
+
+  Future<HttpServer> _bind() async {
+    // Dual-stack first, so phones that resolve the host to IPv6 still connect.
+    final attempts = <(InternetAddress, int)>[
+      (InternetAddress.anyIPv6, preferredPort),
+      (InternetAddress.anyIPv4, preferredPort),
+      if (preferredPort != 0) ...[(InternetAddress.anyIPv6, 0), (InternetAddress.anyIPv4, 0)],
+    ];
+    Object? lastError;
+    for (final (address, port) in attempts) {
+      try {
+        return await HttpServer.bind(address, port, v6Only: false);
+      } on SocketException catch (e) {
+        lastError = e;
+        _log('Could not listen on ${address.address} port $port: ${e.osError?.message ?? e.message}');
+      }
+    }
+    throw lastError ?? StateError('Could not start the server');
+  }
+
+  Future<void> _onRequest(HttpRequest request) async {
+    final remote = displayIp(request.connectionInfo?.remoteAddress.address ?? '?');
+    if (request.uri.path == webSocketPath && WebSocketTransformer.isUpgradeRequest(request)) {
+      try {
+        _onSocket(await WebSocketTransformer.upgrade(request), remote);
+      } catch (e) {
+        _log('WebSocket upgrade from $remote failed: $e');
+      }
+      return;
+    }
+    // A plain page, so opening http://<address>:<port> in the phone's browser
+    // shows whether the firewall lets connections through.
+    request.response
+      ..headers.contentType = ContentType.text
+      ..write('$hostName is running the controller host (protocol v$protocolVersion).\n');
+    await request.response.close();
+  }
+
+  void _onSocket(WebSocket socket, String remote) {
+    if (_http == null) {
+      socket.close(CloseCodes.goingAway, 'Host is closing');
+      return;
+    }
+    final s = _Session(socket, remote, _now);
+    _sessions.add(s);
+    _log('Connection from $remote');
+    socket.listen(
+      (data) => _onData(s, data),
+      onDone: () => _onClosed(s),
+      onError: (Object e) => _log('Connection error from ${_who(s)}: $e'),
+    );
+  }
+
+  void _onData(_Session s, Object? data) {
+    if (s.closed) return;
+    s.lastHeardMs = _now;
+    if (data is! String) return _close(s, CloseCodes.protocolError, 'Expected text frames');
+
+    final Message? message;
+    try {
+      message = _codec.decode(data);
+    } on ProtocolVersionMismatch catch (e) {
+      _log('${_who(s)} uses protocol v${e.actual}, this host uses v${e.expected}');
+      return _close(s, CloseCodes.versionMismatch, 'The TV app uses protocol v$protocolVersion');
+    } on ProtocolFormatException catch (e) {
+      _log('Bad message from ${_who(s)}: ${e.message}');
+      return _close(s, CloseCodes.protocolError, 'Bad message');
+    }
+    if (message == null) return; // An optional message type from a newer peer.
+
+    switch (message) {
+      case PingMessage():
+        _send(s, PongMessage.answering(message));
+      case PongMessage():
+        final rtt = _now - message.sentAtMs;
+        if (rtt >= 0 && s.paired) {
+          s.rttMs = rtt;
+          _emit();
+        }
+      case HelloMessage():
+        _onHello(s, message);
+      case PairRequestMessage():
+        _onPair(s, message);
+      case WelcomeMessage() || PairResultMessage():
+        _close(s, CloseCodes.protocolError, 'Unexpected ${message.type}');
+    }
+  }
+
+  void _onHello(_Session s, HelloMessage hello) {
+    if (s.hello != null) return _close(s, CloseCodes.protocolError, 'Duplicate hello');
+    s.hello = hello;
+    _log('${hello.name} (${hello.platform} ${hello.appVersion}) says hello from ${s.remoteAddress}');
+    _send(s, WelcomeMessage(hostId: hostId, hostName: hostName, appVersion: appVersion));
+    _emit();
+  }
+
+  void _onPair(_Session s, PairRequestMessage request) {
+    final hello = s.hello;
+    if (hello == null) return _close(s, CloseCodes.protocolError, 'Pair request before hello');
+    if (s.paired) {
+      _send(s, PairResultMessage.accepted(token: _known[hello.controllerId]!.token));
+      return;
+    }
+
+    final token = request.token;
+    if (token != null) {
+      final known = _known[hello.controllerId];
+      if (known != null && known.token == token) {
+        _accept(s, token, how: 'saved pairing');
+      } else {
+        _log('${hello.name}: saved pairing not recognized, waiting for the code');
+        _send(s, const PairResultMessage.refused(PairFailure.unknownToken));
+      }
+      return;
+    }
+
+    if (request.code == _code) {
+      _wrongCodes = 0;
+      _accept(s, _newToken(), how: 'pairing code');
+      return;
+    }
+
+    _wrongCodes++;
+    if (_wrongCodes >= maxWrongCodes) {
+      _code = _newCode(previous: _code);
+      _wrongCodes = 0;
+      _log('${hello.name}: wrong code, $maxWrongCodes in a row. New pairing code $_code');
+      _send(s, const PairResultMessage.refused(PairFailure.tooManyAttempts));
+    } else {
+      _log('${hello.name}: wrong code ($_wrongCodes of $maxWrongCodes)');
+      _send(s, const PairResultMessage.refused(PairFailure.wrongCode));
+    }
+    _close(s, CloseCodes.pairingFailed, 'Wrong pairing code');
+  }
+
+  void _accept(_Session s, String token, {required String how}) {
+    final hello = s.hello!;
+    // One live connection per controller. An older one is usually half-open
+    // after a Wi-Fi drop, so replace it.
+    for (final other in _sessions.toList()) {
+      if (other != s && other.hello?.controllerId == hello.controllerId) {
+        _close(other, CloseCodes.replaced, 'Replaced by a newer connection');
+      }
+    }
+    s
+      ..paired = true
+      ..since = DateTime.now();
+    _known[hello.controllerId] = _Known(hello, token, s.remoteAddress);
+    _send(s, PairResultMessage.accepted(token: token));
+    _log('${hello.name} connected ($how)');
+    _emit();
+  }
+
+  void _tick() {
+    final now = _now;
+    for (final s in _sessions.toList()) {
+      final quietMs = now - s.lastHeardMs;
+      if (quietMs > heartbeatTimeout.inMilliseconds) {
+        _log('${_who(s)}: no heartbeat for ${(quietMs / 1000).toStringAsFixed(1)} s, dropping the connection');
+        _close(s, CloseCodes.heartbeatTimeout, 'No heartbeat');
+      } else if (!s.paired && now - s.openedAtMs > pairingWindow.inMilliseconds) {
+        _log('${_who(s)}: didn\'t pair in time');
+        _close(s, CloseCodes.pairingTimeout, 'Pairing timed out');
+      } else {
+        _send(s, PingMessage(id: s.nextPingId++, sentAtMs: now));
+      }
+    }
+  }
+
+  void _send(_Session s, Message message) {
+    if (s.closed) return;
+    try {
+      s.socket.add(_codec.encode(message));
+    } catch (e) {
+      _log('Send to ${_who(s)} failed: $e');
+    }
+  }
+
+  /// Closes from this side. The socket's own onDone then does nothing.
+  void _close(_Session s, int code, String reason) {
+    if (s.closed) return;
+    _ended(s);
+    // close() can wait a long time on a dead network, so don't await it.
+    s.socket.close(code, reason).then((_) {}, onError: (_) {});
+  }
+
+  void _onClosed(_Session s) {
+    if (s.closed) return;
+    _log('${_who(s)} disconnected${s.socket.closeCode == null ? '' : ' (code ${s.socket.closeCode})'}');
+    _ended(s);
+  }
+
+  void _ended(_Session s) {
+    s.closed = true;
+    _sessions.remove(s);
+    final id = s.hello?.controllerId;
+    if (s.paired && id != null) _known[id]?.lastSeen = DateTime.now();
+    _emit();
+  }
+
+  List<ControllerInfo> _controllers() {
+    final list = <ControllerInfo>[];
+    final live = <String>{};
+    for (final s in _sessions) {
+      final hello = s.hello;
+      if (hello == null) continue;
+      if (s.paired) live.add(hello.controllerId);
+      list.add(
+        ControllerInfo(
+          controllerId: hello.controllerId,
+          name: hello.name,
+          platform: hello.platform,
+          appVersion: hello.appVersion,
+          remoteAddress: s.remoteAddress,
+          state: s.paired ? ControllerState.connected : ControllerState.pairing,
+          since: s.since,
+          rttMs: s.rttMs,
+        ),
+      );
+    }
+    for (final MapEntry(key: id, value: k) in _known.entries) {
+      // A paired controller that is reconnecting shows once, as "pairing".
+      if (live.contains(id) || list.any((c) => c.controllerId == id)) continue;
+      list.add(
+        ControllerInfo(
+          controllerId: id,
+          name: k.hello.name,
+          platform: k.hello.platform,
+          appVersion: k.hello.appVersion,
+          remoteAddress: k.remoteAddress,
+          state: ControllerState.disconnected,
+          since: k.lastSeen,
+        ),
+      );
+    }
+    list.sort((a, b) => a.name.compareTo(b.name));
+    return list;
+  }
+
+  void _emit() {
+    if (!_changes.isClosed) _changes.add(snapshot);
+  }
+
+  String _who(_Session s) => s.hello?.name ?? s.remoteAddress;
+
+  String _newCode({String? previous}) {
+    String code;
+    do {
+      code = _random.nextInt(10000).toString().padLeft(4, '0');
+    } while (code == previous);
+    return code;
+  }
+
+  String _newToken() =>
+      List.generate(16, (_) => _random.nextInt(256).toRadixString(16).padLeft(2, '0')).join();
+}
+
+void _noLog(String _) {}
+
+class _Session {
+  _Session(this.socket, this.remoteAddress, this.openedAtMs) : lastHeardMs = openedAtMs;
+
+  final WebSocket socket;
+  final String remoteAddress;
+  final int openedAtMs;
+  int lastHeardMs;
+  HelloMessage? hello;
+  bool paired = false;
+  bool closed = false;
+  int? rttMs;
+  int nextPingId = 0;
+  DateTime since = DateTime.now();
+}
+
+class _Known {
+  _Known(this.hello, this.token, this.remoteAddress);
+
+  final HelloMessage hello;
+  final String token;
+  final String remoteAddress;
+  DateTime lastSeen = DateTime.now();
+}
