@@ -13,7 +13,7 @@ part 'input.dart';
 /// 5. both ways, every second: [PingMessage], answered by [PongMessage]
 ///
 /// Then the controller sends [InputStateMessage]s (M2) and the host sends
-/// [HapticEventMessage]s (M5).
+/// [HapticEventMessage]s (M5) and a [PlayerMessage] (M6).
 sealed class Message {
   const Message();
 
@@ -218,24 +218,63 @@ final class PingMessage extends Message {
 
 /// Answer to [PingMessage], echoing its fields.
 final class PongMessage extends Message {
-  const PongMessage({required this.id, required this.sentAtMs});
+  const PongMessage({required this.id, required this.sentAtMs, this.atMs});
 
-  PongMessage.answering(PingMessage ping) : this(id: ping.id, sentAtMs: ping.sentAtMs);
+  PongMessage.answering(PingMessage ping, {int? atMs}) : this(id: ping.id, sentAtMs: ping.sentAtMs, atMs: atMs);
 
   static const String wireType = 'pong';
 
   final int id;
   final int sentAtMs;
 
+  /// The answering side's own clock when it answered (M6, optional). With
+  /// [sentAtMs] and the arrival time, the pinging side can estimate the
+  /// offset between the two clocks, and so the one-way delay of messages that
+  /// carry a send time ([InputStateMessage.sentAtMs]).
+  final int? atMs;
+
   @override
   String get type => wireType;
 
   @override
-  Map<String, Object?> toPayload() => {'id': id, 'sentAt': sentAtMs};
+  Map<String, Object?> toPayload() => {'id': id, 'sentAt': sentAtMs, 'at': ?atMs};
 
   static PongMessage fromPayload(Map<String, Object?> p) =>
-      PongMessage(id: requireInt(p, 'id'), sentAtMs: requireInt(p, 'sentAt'));
+      PongMessage(id: requireInt(p, 'id'), sentAtMs: requireInt(p, 'sentAt'), atMs: optionalInt(p, 'at'));
 }
+
+/// Host → controller (M6): which player this controller is on the TV, so the
+/// phone can show its number and colour ([playerColors]). Sent after pairing
+/// and again whenever it changes. Older phones ignore it.
+final class PlayerMessage extends Message {
+  const PlayerMessage({required this.number});
+
+  static const String wireType = 'player';
+
+  /// 1 for the first controller, 2 for the second, and so on.
+  final int number;
+
+  /// This player's colour as 0xAARRGGBB.
+  int get color => playerColor(number);
+
+  @override
+  String get type => wireType;
+
+  @override
+  Map<String, Object?> toPayload() => {'n': number};
+
+  static PlayerMessage fromPayload(Map<String, Object?> p) {
+    final n = requireInt(p, 'n');
+    if (n < 1) throw const FormatException('Player numbers start at 1');
+    return PlayerMessage(number: n);
+  }
+}
+
+/// Player colours as 0xAARRGGBB, used for the sprite on the TV and the badge
+/// on the phone. Players past the end reuse them in order.
+const playerColors = [0xFF5AAAFF, 0xFFFFA040, 0xFFD27CFF, 0xFF4DE0C0, 0xFFFF6F91, 0xFFE8E86A];
+
+int playerColor(int number) => playerColors[(number - 1) % playerColors.length];
 
 // Field helpers. They throw FormatException, which the codec turns into a
 // ProtocolFormatException.
@@ -255,6 +294,12 @@ String? optionalString(Map<String, Object?> p, String key) {
 int requireInt(Map<String, Object?> p, String key) {
   final value = p[key];
   if (value is int) return value;
+  throw FormatException('Field "$key" must be an integer, got ${value.runtimeType}');
+}
+
+int? optionalInt(Map<String, Object?> p, String key) {
+  final value = p[key];
+  if (value == null || value is int) return value as int?;
   throw FormatException('Field "$key" must be an integer, got ${value.runtimeType}');
 }
 

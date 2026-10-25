@@ -6,17 +6,25 @@ import 'package:protocol/protocol.dart';
 
 import 'arena.dart';
 
+/// One controller in the game, as the host sees it this frame.
+typedef PlayerFeed = ({String id, int number, String name, Color color, InputStateMessage? input});
+
+extension on PlayerFeed {
+  String get label => 'P$number $name';
+}
+
 /// Plays [ArenaGame] full size: the field fills the space it's given and
 /// follows it when the window resizes. A bar on top shows the round, the
-/// timer and the counters.
+/// timer and each player's counters.
 ///
-/// [readInput] is called every frame for the driving controller's latest
-/// state (null = none), and [onEvent] gets every game event so the host can
-/// send the haptic event and play the sound.
+/// [readPlayers] is called every frame for the connected controllers and
+/// their latest input; each one drives its own sprite. [onEvent] gets every
+/// game event (with the player who caused it), so the host can send the
+/// haptic event to that controller and play the sound.
 class ArenaView extends StatefulWidget {
-  const ArenaView({super.key, required this.readInput, required this.onEvent, this.game});
+  const ArenaView({super.key, required this.readPlayers, required this.onEvent, this.game});
 
-  final InputStateMessage? Function() readInput;
+  final List<PlayerFeed> Function() readPlayers;
   final void Function(GameEvent event) onEvent;
 
   /// The game to show. Tests pass one in to inspect it.
@@ -30,6 +38,7 @@ class _ArenaViewState extends State<ArenaView> with SingleTickerProviderStateMix
   late final ArenaGame _game = widget.game ?? ArenaGame();
   late final Ticker _ticker = createTicker(_tick);
   Duration _last = Duration.zero;
+  List<PlayerFeed> _feeds = const [];
 
   @override
   void initState() {
@@ -46,20 +55,23 @@ class _ArenaViewState extends State<ArenaView> with SingleTickerProviderStateMix
   void _tick(Duration elapsed) {
     final dt = (elapsed - _last).inMicroseconds / 1e6;
     _last = elapsed;
-    final events = _game.update(dt, GameInput.fromState(widget.readInput()));
+    _feeds = widget.readPlayers();
+    final events = _game.update(dt, {for (final f in _feeds) f.id: GameInput.fromState(f.input)});
     for (final e in events) {
       widget.onEvent(e);
     }
     setState(() {});
   }
 
+  PlayerFeed? _feed(String? id) => _feeds.where((f) => f.id == id).firstOrNull;
+
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+    final winner = _feed(_game.winnerId);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _Hud(game: _game),
+        _Hud(game: _game, feeds: _feeds),
         Expanded(
           child: LayoutBuilder(
             builder: (context, constraints) {
@@ -68,12 +80,18 @@ class _ArenaViewState extends State<ArenaView> with SingleTickerProviderStateMix
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
-                    CustomPaint(key: const Key('arena'), painter: _ArenaPainter(_game, scheme)),
+                    CustomPaint(
+                      key: const Key('arena'),
+                      painter: _ArenaPainter(_game, {for (final f in _feeds) f.id: f}),
+                    ),
                     if (_game.phase == ArenaPhase.won)
                       Center(
                         child: _Banner(
-                          'Goal! ${_game.lastTimeS!.toStringAsFixed(1)} s',
+                          _feeds.length > 1 && winner != null
+                              ? 'P${winner.number} wins! ${_game.lastTimeS!.toStringAsFixed(1)} s'
+                              : 'Goal! ${_game.lastTimeS!.toStringAsFixed(1)} s',
                           'Next round in ${max(0, _game.breakLeft).ceil()}…',
+                          color: winner?.color ?? Colors.greenAccent,
                         ),
                       ),
                   ],
@@ -88,39 +106,74 @@ class _ArenaViewState extends State<ArenaView> with SingleTickerProviderStateMix
 }
 
 class _Hud extends StatelessWidget {
-  const _Hud({required this.game});
+  const _Hud({required this.game, required this.feeds});
 
   final ArenaGame game;
+  final List<PlayerFeed> feeds;
 
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
     final scheme = Theme.of(context).colorScheme;
     final tabular = text.titleMedium?.copyWith(fontFeatures: const [FontFeature.tabularFigures()]);
+    final small = text.bodyMedium?.copyWith(fontFeatures: const [FontFeature.tabularFigures()]);
     final best = game.bestTimeS;
-    final cooldown = game.cooldown;
+    final bestBy = feeds.length > 1 ? feeds.where((f) => f.id == game.bestId).firstOrNull?.number : null;
     return Container(
       color: scheme.surfaceContainer,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Wrap(
-        spacing: 24,
-        runSpacing: 4,
-        crossAxisAlignment: WrapCrossAlignment.center,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Round ${game.round}', style: text.titleMedium),
-          Text('${game.roundTime.toStringAsFixed(1)} s', key: const Key('roundTime'), style: tabular),
-          Text('Best ${best == null ? '–' : '${best.toStringAsFixed(1)} s'}', style: tabular),
-          Text('Wins ${game.wins}', key: const Key('wins'), style: tabular),
-          Text('Hits ${game.hits}', key: const Key('hits'), style: tabular),
-          Text(
-            'Dashes ${game.dashes}${game.failedDashes == 0 ? '' : ' (${game.failedDashes} too soon)'}',
-            key: const Key('dashes'),
-            style: tabular,
+          Wrap(
+            spacing: 24,
+            runSpacing: 4,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              Text('Round ${game.round}', style: text.titleMedium),
+              Text('${game.roundTime.toStringAsFixed(1)} s', key: const Key('roundTime'), style: tabular),
+              Text(
+                'Best ${best == null ? '–' : '${best.toStringAsFixed(1)} s${bestBy == null ? '' : ' (P$bestBy)'}'}',
+                style: tabular,
+              ),
+            ],
           ),
-          Text(
-            cooldown == 0 ? 'Dash ready (A)' : 'Dash in ${(cooldown * ArenaGame.dashCooldownS).toStringAsFixed(1)} s',
-            style: text.bodyMedium?.copyWith(color: cooldown == 0 ? Colors.greenAccent : scheme.onSurfaceVariant),
-          ),
+          for (final f in feeds)
+            if (game.player(f.id) case final p?)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Wrap(
+                  key: Key('hud-${f.id}'),
+                  spacing: 20,
+                  runSpacing: 2,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.circle, size: 14, color: f.color),
+                        const SizedBox(width: 6),
+                        Text(f.label, style: text.titleSmall),
+                      ],
+                    ),
+                    Text('Wins ${p.wins}', key: Key('wins-${f.id}'), style: small),
+                    Text('Hits ${p.hits}', key: Key('hits-${f.id}'), style: small),
+                    Text(
+                      'Dashes ${p.dashes}${p.failedDashes == 0 ? '' : ' (${p.failedDashes} too soon)'}',
+                      key: Key('dashes-${f.id}'),
+                      style: small,
+                    ),
+                    Text(
+                      p.cooldown == 0
+                          ? 'Dash ready (A)'
+                          : 'Dash in ${(p.cooldown * ArenaGame.dashCooldownS).toStringAsFixed(1)} s',
+                      style: text.bodyMedium?.copyWith(
+                        color: p.cooldown == 0 ? Colors.greenAccent : scheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
         ],
       ),
     );
@@ -128,10 +181,11 @@ class _Hud extends StatelessWidget {
 }
 
 class _Banner extends StatelessWidget {
-  const _Banner(this.title, this.subtitle);
+  const _Banner(this.title, this.subtitle, {required this.color});
 
   final String title;
   final String subtitle;
+  final Color color;
 
   @override
   Widget build(BuildContext context) {
@@ -145,7 +199,7 @@ class _Banner extends StatelessWidget {
           children: [
             Text(
               title,
-              style: text.displaySmall?.copyWith(color: Colors.greenAccent, fontWeight: FontWeight.bold),
+              style: text.displaySmall?.copyWith(color: color, fontWeight: FontWeight.bold),
             ),
             Text(subtitle, style: text.titleMedium?.copyWith(color: Colors.white)),
           ],
@@ -157,10 +211,10 @@ class _Banner extends StatelessWidget {
 
 /// Plain coloured shapes for now (PRD: CC0 art comes later).
 class _ArenaPainter extends CustomPainter {
-  _ArenaPainter(this.game, this.scheme);
+  _ArenaPainter(this.game, this.feeds);
 
   final ArenaGame game;
-  final ColorScheme scheme;
+  final Map<String, PlayerFeed> feeds;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -204,11 +258,19 @@ class _ArenaPainter extends CustomPainter {
       canvas.drawCircle(h, game.hazardRadiusPx * 0.45, Paint()..color = const Color(0xFF7F0000));
     }
 
-    // Aim cursor (right stick).
-    final aim = game.aimPoint;
+    for (final p in game.players) {
+      _paintPlayer(canvas, p, feeds[p.id], unit);
+    }
+  }
+
+  void _paintPlayer(Canvas canvas, ArenaPlayer player, PlayerFeed? feed, double unit) {
+    final color = feed?.color ?? const Color(0xFF5AAAFF);
+
+    // Aim cursor (right stick), in the player's colour.
+    final aim = player.aimPoint;
     if (aim != null) {
       final cross = Paint()
-        ..color = Colors.amberAccent
+        ..color = color
         ..strokeWidth = 2
         ..style = PaintingStyle.stroke;
       final r = game.playerRadiusPx * 0.7;
@@ -219,14 +281,14 @@ class _ArenaPainter extends CustomPainter {
 
     // The sprite: blinks while recovering from a hazard, glows while dashing,
     // and a ring fills back up as the dash cools down.
-    final p = game.player;
+    final p = player.position;
     final r = game.playerRadiusPx;
-    final blinkOff = game.recovering && (game.roundTime * 10).floor().isEven;
-    if (game.dashing) {
-      canvas.drawCircle(p, r * 1.7, Paint()..color = const Color(0xFF5AAAFF).withValues(alpha: 0.35));
+    final blinkOff = player.recovering && (game.roundTime * 10).floor().isEven;
+    if (player.dashing) {
+      canvas.drawCircle(p, r * 1.7, Paint()..color = color.withValues(alpha: 0.35));
     }
     if (!blinkOff) {
-      canvas.drawCircle(p, r, Paint()..color = const Color(0xFF5AAAFF));
+      canvas.drawCircle(p, r, Paint()..color = color);
       canvas.drawCircle(
         p,
         r,
@@ -235,12 +297,16 @@ class _ArenaPainter extends CustomPainter {
           ..style = PaintingStyle.stroke
           ..strokeWidth = 2,
       );
+      if (feed != null && feeds.length > 1) {
+        // The player number on the sprite, matching the phone's badge.
+        _label(canvas, p, '${feed.number}', r * 1.1, const Color(0xFF14181F));
+      }
     }
-    if (game.cooldown > 0) {
+    if (player.cooldown > 0) {
       canvas.drawArc(
         Rect.fromCircle(center: p, radius: r * 1.35),
         -pi / 2,
-        2 * pi * (1 - game.cooldown),
+        2 * pi * (1 - player.cooldown),
         false,
         Paint()
           ..color = Colors.white54

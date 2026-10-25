@@ -4,6 +4,7 @@ import 'dart:math';
 
 import 'package:connection/connection.dart';
 import 'package:controller/main.dart';
+import 'package:controller/src/device_status.dart';
 import 'package:controller/src/discovery.dart';
 import 'package:controller/src/haptics.dart';
 import 'package:controller/src/motion.dart';
@@ -73,6 +74,14 @@ class FakeClient extends ControllerClient {
   void updateAddress(HostAddress found) {}
 
   @override
+  void resume() => calls.add('resume');
+
+  int sent = 0;
+
+  @override
+  int get inputsSent => sent;
+
+  @override
   void sendInput(
     Set<ControllerButton> buttons, {
     int dx = 0,
@@ -89,6 +98,7 @@ class FakeClient extends ControllerClient {
     final tilt = ax == null ? '' : ' tilt $ax,$ay';
     final sticks = left == null ? '' : ' L ${left.x},${left.y} R ${right!.x},${right.y}';
     inputs.add('${names.join('+')} $dx,$dy$tilt$sticks'.trim());
+    sent++;
   }
 
   @override
@@ -191,12 +201,14 @@ Future<TestApp> pumpApp(
   LogBuffer? log,
   FakeHaptics? haptics,
   FakeMotionSensors? motion,
+  Map<String, Object> saved = const {},
+  FakeDeviceStatus? device,
 }) async {
   // A landscape phone (iPhone 15-ish).
   tester.view.physicalSize = const Size(852, 393);
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
-  SharedPreferences.setMockInitialValues(paired ? {'lastHost': jsonEncode(tv.toJson())} : {});
+  SharedPreferences.setMockInitialValues({if (paired) 'lastHost': jsonEncode(tv.toJson()), ...saved});
   final prefs = await SharedPreferences.getInstance();
   final app = TestApp(
     FakeClient(savedTokens: paired ? {'tv-1': 'token'} : {}),
@@ -214,6 +226,7 @@ Future<TestApp> pumpApp(
         hapticsProvider.overrideWithValue(app.haptics),
         motionSensorsProvider.overrideWithValue(app.motion),
         isIOSProvider.overrideWithValue(isIOS),
+        deviceStatusSourceProvider.overrideWithValue(device ?? FakeDeviceStatus()),
         if (log != null) logProvider.overrideWithValue(log),
       ],
       child: const ControllerApp(),
@@ -233,6 +246,37 @@ Future<void> settle(WidgetTester tester) async {
 Offset _at(WidgetTester tester, Key key, Offset fraction) {
   final rect = tester.getRect(find.byKey(key));
   return rect.topLeft + Offset(rect.width * fraction.dx, rect.height * fraction.dy);
+}
+
+Future<void> openSettings(WidgetTester tester) async {
+  await tester.tap(find.byTooltip('Settings'));
+  await settle(tester);
+}
+
+Future<void> closeSettings(WidgetTester tester) async {
+  await tester.pageBack();
+  await settle(tester);
+}
+
+/// Scrolls the Settings (or Diagnostics) page until [finder] shows.
+Future<void> scrollTo(WidgetTester tester, Finder finder) async {
+  await tester.scrollUntilVisible(finder, 150, scrollable: find.byType(Scrollable).first);
+  await tester.pump();
+}
+
+Future<void> tapVisible(WidgetTester tester, Finder finder) async {
+  await tester.ensureVisible(finder);
+  await tester.pump();
+  await tester.tap(finder);
+  await tester.pump();
+}
+
+/// Battery and CPU readings from the test.
+class FakeDeviceStatus implements DeviceStatusSource {
+  DeviceStatus? next = const DeviceStatus(battery: 0.8, thermal: 'nominal', cpuMs: 0);
+
+  @override
+  Future<DeviceStatus?> read() async => next;
 }
 
 void main() {
@@ -731,13 +775,11 @@ void main() {
   group('haptics', () {
     testWidgets('turning haptics off stops the ticks and is saved', (tester) async {
       final app = await pumpApp(tester, paired: true);
-      await tester.tap(find.byTooltip('Haptics'));
-      await tester.pumpAndSettle();
-      expect(find.text('fake'), findsOneWidget); // The engine name from the capabilities.
-      await tester.tap(find.byKey(const Key('hapticsSwitch')));
+      await openSettings(tester);
+      await tapVisible(tester, find.byKey(const Key('hapticsSwitch')));
       await tester.pump();
-      await tester.tap(find.text('Done'));
-      await tester.pumpAndSettle();
+      await scrollTo(tester, find.text('fake')); // The engine name from the capabilities.
+      await closeSettings(tester);
       expect(app.prefs.getBool('hapticsEnabled'), isFalse);
 
       await tester.tapAt(_at(tester, const Key('faceButtons'), const Offset(0.5, 0.81)));
@@ -746,11 +788,11 @@ void main() {
       expect(app.haptics.ticks, isEmpty);
     });
 
-    testWidgets('the Test button plays one tick at the chosen intensity', (tester) async {
+    testWidgets('the tick'
+        's Try button plays one tick at the chosen intensity', (tester) async {
       final app = await pumpApp(tester, paired: true);
-      await tester.tap(find.byTooltip('Haptics'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Test'));
+      await openSettings(tester);
+      await tapVisible(tester, find.byKey(const Key('tryTick')));
       await tester.pump();
       expect(app.haptics.ticks, [0.7]);
     });
@@ -762,8 +804,8 @@ void main() {
       expect(app.client.inputs, ['START 0,0', '0,0']);
       expect(app.haptics.ticks, isEmpty);
 
-      await tester.tap(find.byTooltip('Haptics'));
-      await tester.pumpAndSettle();
+      await openSettings(tester);
+      await scrollTo(tester, find.textContaining('no haptics'));
       expect(find.textContaining('no haptics'), findsOneWidget);
     });
   });
@@ -797,23 +839,21 @@ void main() {
       expect(app.haptics.ticks, isEmpty, reason: 'events are not ticks');
     });
 
-    testWidgets('the intensity setting scales events, and the TV duration stretches them', (tester) async {
+    testWidgets('the TV intensity scales events, and the TV duration stretches them', (tester) async {
       final app = await connectedApp(tester);
       await send(tester, app, HapticEvent.hit, intensity: 0.5);
-      // Default setting 70% × the TV's 50% → the thump's peak (1.0) plays at 0.35.
-      expect(app.haptics.played.single.$2.peakIntensity, closeTo(0.35, 1e-9));
+      // The event setting (100% by default) × the TV's 50%: the thud's peak (1.0) plays at 0.5. The
+      // button tick's 70% doesn't apply to events any more (M6).
+      expect(app.haptics.played.single.$2.peakIntensity, closeTo(0.5, 1e-9));
       await send(tester, app, HapticEvent.rumble, ms: 900);
       expect(app.haptics.played.last.$2.lengthMs, 900);
     });
 
     testWidgets('with haptics off, TV events play nothing', (tester) async {
       final app = await connectedApp(tester);
-      await tester.tap(find.byTooltip('Haptics'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('hapticsSwitch')));
-      await tester.pump();
-      await tester.tap(find.text('Done'));
-      await tester.pumpAndSettle();
+      await openSettings(tester);
+      await tapVisible(tester, find.byKey(const Key('hapticsSwitch')));
+      await closeSettings(tester);
       for (final e in HapticEvent.values) {
         await send(tester, app, e);
       }
@@ -884,5 +924,210 @@ void main() {
     final logLine = find.textContaining('[client] Connecting to ws://192.168.1.50');
     await tester.scrollUntilVisible(logLine, 300, scrollable: pageList);
     expect(logLine, findsOneWidget);
+  });
+
+  group('settings (M6)', () {
+    testWidgets('each TV event has its own strength; the tick stays as it is', (tester) async {
+      final app = await pumpApp(tester, paired: true);
+      app.client.emit(connected);
+      await openSettings(tester);
+      // Hit all the way down (off).
+      final hit = find.byKey(const Key('eventIntensity-hit'));
+      await tester.ensureVisible(hit);
+      await tester.drag(hit, const Offset(-600, 0));
+      await tester.pump();
+      expect(find.text('Off'), findsOneWidget);
+      expect(app.prefs.getDouble('hapticsEvent_hit'), 0);
+      expect(app.prefs.getDouble('hapticsIntensity'), 0.7, reason: 'the tick is not touched');
+      await tapVisible(tester, find.byKey(const Key('try-success')));
+      expect(app.haptics.played.single.$1, HapticEvent.success);
+      expect(
+        tester.widget<TextButton>(find.byKey(const Key('try-hit'))).onPressed,
+        isNull,
+        reason: 'nothing to try when off',
+      );
+      await closeSettings(tester);
+
+      app.haptics.played.clear();
+      for (final e in HapticEvent.values) {
+        app.client.fromTv(HapticEventMessage(event: e));
+        await tester.pump();
+      }
+      expect(app.haptics.played.map((p) => p.$1), [HapticEvent.success, HapticEvent.error, HapticEvent.rumble]);
+      await tester.tapAt(_at(tester, const Key('faceButtons'), const Offset(0.5, 0.81)));
+      await tester.pump();
+      expect(app.haptics.ticks.first, 0.7, reason: 'the press ticks as before');
+    });
+
+    testWidgets('a lower event strength plays that event more softly', (tester) async {
+      final app = await pumpApp(tester, paired: true, saved: {'hapticsEvent_rumble': 0.4});
+      app.client.emit(connected);
+      await tester.pump();
+      app.client.fromTv(HapticEventMessage(event: HapticEvent.rumble));
+      await tester.pump();
+      expect(app.haptics.played.single.$2.peakIntensity, closeTo(0.4, 1e-9));
+    });
+
+    testWidgets('saved settings come back after a relaunch', (tester) async {
+      await pumpApp(
+        tester,
+        paired: true,
+        saved: {
+          'hapticsEnabled': true,
+          'hapticsIntensity': 0.4,
+          'hapticsEvent_error': 0.3,
+          'gyroSensitivity': 1.5,
+          'stickDeadZone': 0.2,
+          'stickFloating': true,
+        },
+      );
+      await openSettings(tester);
+      expect(find.text('40%'), findsOneWidget, reason: 'the tick');
+      expect(find.text('30%'), findsOneWidget, reason: 'error');
+      expect(find.text('100%'), findsNWidgets(3), reason: 'the other events');
+      await scrollTo(tester, find.byKey(const Key('settingsStickSensitivity')));
+      expect(find.text('1.50×'), findsOneWidget);
+      expect(find.text('20%'), findsOneWidget);
+      expect(tester.widget<SwitchListTile>(find.byKey(const Key('settingsStickFloating'))).value, isTrue);
+    });
+
+    testWidgets('Defaults puts everything back', (tester) async {
+      final app = await pumpApp(
+        tester,
+        paired: true,
+        saved: {'hapticsIntensity': 0.4, 'hapticsEvent_hit': 0.2, 'gyroSmoothing': 0.9, 'stickFloating': true},
+      );
+      await openSettings(tester);
+      await tester.tap(find.byKey(const Key('resetSettings')));
+      await settle(tester);
+      await tester.tap(find.byKey(const Key('confirmReset')));
+      await settle(tester);
+      expect(app.prefs.getDouble('hapticsIntensity'), 0.7);
+      expect(app.prefs.getDouble('hapticsEvent_hit'), 1.0);
+      expect(app.prefs.getDouble('gyroSmoothing'), 0.5);
+      expect(app.prefs.getBool('stickFloating'), isFalse);
+    });
+
+    testWidgets('the settings screen fits a small phone', (tester) async {
+      await pumpApp(tester, paired: true);
+      tester.view.physicalSize = const Size(667, 375); // iPhone SE, landscape.
+      await tester.pump();
+      await openSettings(tester);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('the app starts in the mode used last', (tester) async {
+      final app = await pumpApp(tester, paired: true, saved: {'padMode': 'sticks'});
+      await settle(tester);
+      expect(find.byKey(const Key('leftStick')), findsOneWidget);
+      await tester.tap(find.text('D-pad'));
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(app.prefs.getString('padMode'), 'dpad');
+    });
+
+    testWidgets('a saved gyro mode waits a moment, then comes back', (tester) async {
+      final app = await pumpApp(tester, paired: true, saved: {'padMode': 'gyro'});
+      expect(find.byKey(const Key('dpad')), findsOneWidget, reason: 'not before the side has settled');
+      await tester.pump(const Duration(milliseconds: 1100));
+      app.motion.hold(const Vec3(1, 0, 0), samples: 50);
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(find.byKey(const Key('tiltView')), findsOneWidget);
+      await tester.tap(find.text('D-pad'));
+      await tester.pump(const Duration(seconds: 2));
+    });
+  });
+
+  group('connection (M6)', () {
+    testWidgets('coming back to the app reconnects at once', (tester) async {
+      final app = await pumpApp(tester, paired: true);
+      app.client.emit(connected);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+      await tester.pump();
+      expect(app.client.calls, isNot(contains('resume')));
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pump();
+      expect(app.client.calls, contains('resume'));
+    });
+
+    testWidgets('shows the player number the TV gave this phone', (tester) async {
+      final app = await pumpApp(tester, paired: true);
+      app.client.emit(connected.copyWith(player: 2));
+      await settle(tester);
+      expect(find.text('P2'), findsOneWidget);
+      final badge = tester.widget<Container>(find.byKey(const Key('playerBadge')));
+      expect((badge.decoration! as BoxDecoration).color, Color(playerColors[1]));
+      app.client.emit(connected.copyWith(status: ClientStatus.reconnecting, player: null));
+      await settle(tester);
+      expect(find.byKey(const Key('playerBadge')), findsNothing);
+    });
+
+    testWidgets('while reconnecting for long, the TV is looked for again', (tester) async {
+      final app = await pumpApp(tester, paired: true);
+      final before = app.discovery.restarts;
+      for (var attempt = 1; attempt <= 8; attempt++) {
+        app.client.emit(ClientSnapshot(status: ClientStatus.reconnecting, target: tv, attempt: attempt));
+        await tester.pump();
+      }
+      expect(app.discovery.restarts - before, 2, reason: 'at attempts 4 and 8');
+    });
+
+    testWidgets('Diagnostics lists each drop and how long it took to come back', (tester) async {
+      final app = await pumpApp(tester, paired: true);
+      app.client.emit(connected);
+      await tester.pump();
+      app.client.emit(
+        ClientSnapshot(status: ClientStatus.reconnecting, target: tv, attempt: 1, detail: 'No heartbeat'),
+      );
+      await tester.pump(const Duration(milliseconds: 1200));
+      app.client.emit(connected);
+      await tester.pump();
+      await tester.tap(find.byTooltip('Diagnostics'));
+      await settle(tester);
+      final drop = find.textContaining('Dropped (No heartbeat), back after');
+      await scrollTo(tester, drop);
+      expect(drop, findsOneWidget);
+    });
+  });
+
+  group('session readout (M6)', () {
+    testWidgets('Diagnostics shows CPU, battery and heat', (tester) async {
+      final device = FakeDeviceStatus();
+      await pumpApp(tester, paired: true, device: device);
+      // 10 s later the app has used 0.8 s of CPU: 8 % of one core.
+      device.next = const DeviceStatus(battery: 0.79, thermal: 'fair', cpuMs: 800);
+      await tester.pump(const Duration(seconds: 10));
+      await tester.tap(find.byTooltip('Diagnostics'));
+      await settle(tester);
+      await scrollTo(tester, find.text('Heat'));
+      expect(find.textContaining('of one core'), findsOneWidget);
+      expect(find.text('fair'), findsOneWidget);
+      expect(find.textContaining('79%'), findsOneWidget);
+    });
+
+    test('CPU, battery drain and send rate from the samples', () {
+      DeviceSample s(int seconds, double battery, double cpuMs, int sent) => (
+        at: DateTime(2026).add(Duration(seconds: seconds)),
+        status: DeviceStatus(battery: battery, cpuMs: cpuMs),
+        inputsSent: sent,
+      );
+      final stats = SessionStats(
+        first: s(0, 0.9, 0, 0),
+        latest: s(1800, 0.85, 180000, 108000),
+        recent: s(1740, 0.851, 174000, 104400),
+      );
+      expect(stats.cpuPercent, closeTo(10, 1e-9));
+      expect(stats.recentCpuPercent, closeTo(10, 1e-9));
+      expect(stats.batteryPerHour, closeTo(10, 1e-6), reason: '5 % in half an hour');
+      expect(stats.sendRate, closeTo(60, 1e-9));
+      final charging = SessionStats(
+        first: s(0, 0.5, 0, 0),
+        latest: (
+          at: DateTime(2026).add(const Duration(hours: 1)),
+          status: const DeviceStatus(battery: 0.6, charging: true),
+          inputsSent: 0,
+        ),
+      );
+      expect(charging.batteryPerHour, isNull);
+    });
   });
 }

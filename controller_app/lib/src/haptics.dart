@@ -103,29 +103,60 @@ class FakeHaptics implements Haptics {
 
 /// The user's haptic choices.
 final class HapticSettings {
-  const HapticSettings({this.enabled = true, this.intensity = 0.7});
+  const HapticSettings({this.enabled = true, this.intensity = 0.7, this.events = const {}});
 
+  /// Silences the ticks and the TV's events.
   final bool enabled;
 
-  /// 0.1 to 1.
+  /// The tick on every press, 0.1 to 1.
   final double intensity;
 
+  /// Each TV event's own strength, 0 (off) to 1 (M6). Events not in the map
+  /// are at [defaultEventIntensity]. Separate from [intensity], so the
+  /// button tick stays as it is.
+  final Map<HapticEvent, double> events;
+
+  static const defaultEventIntensity = 1.0;
+
+  double eventIntensity(HapticEvent e) => events[e] ?? defaultEventIntensity;
+
   HapticSettings copyWith({bool? enabled, double? intensity}) =>
-      HapticSettings(enabled: enabled ?? this.enabled, intensity: intensity ?? this.intensity);
+      HapticSettings(enabled: enabled ?? this.enabled, intensity: intensity ?? this.intensity, events: events);
+
+  HapticSettings withEvent(HapticEvent e, double value) =>
+      HapticSettings(enabled: enabled, intensity: intensity, events: {...events, e: value.clamp(0.0, 1.0)});
 
   static HapticSettings load(SharedPreferences prefs) => HapticSettings(
     enabled: prefs.getBool(_enabledKey) ?? true,
     intensity: (prefs.getDouble(_intensityKey) ?? 0.7).clamp(0.1, 1.0),
+    events: {
+      for (final e in HapticEvent.values)
+        if (prefs.getDouble(_eventKey(e)) case final v?) e: v.clamp(0.0, 1.0),
+    },
   );
 
   Future<void> save(SharedPreferences prefs) async {
     await prefs.setBool(_enabledKey, enabled);
     await prefs.setDouble(_intensityKey, intensity);
+    for (final e in HapticEvent.values) {
+      await prefs.setDouble(_eventKey(e), eventIntensity(e));
+    }
   }
+
+  @override
+  bool operator ==(Object other) =>
+      other is HapticSettings &&
+      other.enabled == enabled &&
+      other.intensity == intensity &&
+      HapticEvent.values.every((e) => other.eventIntensity(e) == eventIntensity(e));
+
+  @override
+  int get hashCode => Object.hash(enabled, intensity, Object.hashAll(HapticEvent.values.map(eventIntensity)));
 }
 
 const _enabledKey = 'hapticsEnabled';
 const _intensityKey = 'hapticsIntensity';
+String _eventKey(HapticEvent e) => 'hapticsEvent_${e.name}';
 
 /// Applies the settings and the hardware's limits, and never lets a haptics
 /// error reach the input code.
@@ -170,19 +201,29 @@ class HapticsPlayer {
   }
 
   /// Plays a haptic event sent by the TV (PRD C6). The haptics switch
-  /// silences it too, and the intensity setting scales it like the ticks.
-  /// Returns whether it was played.
+  /// silences it too, and the event's own intensity setting scales it (M6;
+  /// 0 turns that event off). Returns whether it was played.
   Future<bool> event(HapticEventMessage message) async {
     lastEvent = message;
-    if (!settings.enabled || !capabilities.supported || paused) return false;
+    if (paused) return false;
+    return _play(message);
+  }
+
+  /// Plays [event] as the TV would send it by default, for the "Try"
+  /// buttons in Settings. Not counted as a TV event.
+  Future<bool> tryEvent(HapticEvent event) => _play(HapticEventMessage(event: event), count: false);
+
+  Future<bool> _play(HapticEventMessage message, {bool count = true}) async {
+    final strength = settings.eventIntensity(message.event);
+    if (!settings.enabled || !capabilities.supported || strength <= 0) return false;
     final pattern = HapticPattern.forEvent(
       message.event,
-      intensity: message.intensity * settings.intensity,
+      intensity: message.intensity * strength,
       durationMs: message.durationMs,
     );
     try {
       await _haptics.play(message.event, pattern);
-      eventsPlayed++;
+      if (count) eventsPlayed++;
       return true;
     } catch (e) {
       _failed(e);

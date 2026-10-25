@@ -19,9 +19,9 @@ enum HapticEvent {
 
   /// Length used when the sender doesn't care, in milliseconds.
   int get defaultDurationMs => switch (this) {
-    hit => 120,
-    success => 320,
-    error => 220,
+    hit => 100,
+    success => 450,
+    error => 300,
     rumble => 400,
   };
 

@@ -92,6 +92,7 @@ final class ClientSnapshot {
     this.attempt = 0,
     this.osErrorCode,
     this.rttStats,
+    this.player,
   });
 
   final ClientStatus status;
@@ -121,6 +122,10 @@ final class ClientSnapshot {
   /// Lowest, average and highest round-trip time over the last 30 s.
   final RttSummary? rttStats;
 
+  /// This controller's player number on the TV (M6), while connected to a
+  /// TV that sends one.
+  final int? player;
+
   bool get isConnected => status == ClientStatus.connected;
 
   /// The best name for the host: its own name, the advertised one, or its
@@ -137,6 +142,7 @@ final class ClientSnapshot {
     int? attempt,
     Object? osErrorCode = _keep,
     Object? rttStats = _keep,
+    Object? player = _keep,
   }) => ClientSnapshot(
     status: status ?? this.status,
     target: identical(target, _keep) ? this.target : target as HostAddress?,
@@ -147,6 +153,7 @@ final class ClientSnapshot {
     attempt: attempt ?? this.attempt,
     osErrorCode: identical(osErrorCode, _keep) ? this.osErrorCode : osErrorCode as int?,
     rttStats: identical(rttStats, _keep) ? this.rttStats : rttStats as RttSummary?,
+    player: identical(player, _keep) ? this.player : player as int?,
   );
 
   @override
@@ -175,7 +182,9 @@ class ControllerClient {
       Duration(seconds: 3),
     ],
     LogSink? log,
-  }) : _tokens = Map.of(tokens),
+    DateTime Function()? wallClock,
+  }) : _wallClock = wallClock ?? DateTime.now,
+       _tokens = Map.of(tokens),
        _log = log ?? _noLog;
 
   final ControllerIdentity identity;
@@ -193,6 +202,8 @@ class ControllerClient {
   /// Wait before each reconnect attempt. The last value repeats forever.
   final List<Duration> retryDelays;
 
+  /// Wall-clock time, replaced in tests to act out a sleeping phone.
+  final DateTime Function() _wallClock;
   final Map<String, String> _tokens;
   final LogSink _log;
   static const _codec = MessageCodec();
@@ -217,6 +228,7 @@ class ControllerClient {
   Timer? _heartbeat;
   Timer? _retry;
   int _lastHeardMs = 0;
+  late DateTime _lastHeardAt = _wallClock();
   int _nextPingId = 0;
   final _rttWindow = RttWindow();
   int _inputSeq = 0;
@@ -283,6 +295,7 @@ class ControllerClient {
         ly: _left?.y,
         rx: _right?.x,
         ry: _right?.y,
+        sentAtMs: _now,
       ),
     );
   }
@@ -324,6 +337,39 @@ class ControllerClient {
     if (target.port == found.port && _sameList(target.addresses, found.addresses)) return;
     _log('${found.label} is now at ${found.display}');
     _set(_snap.copyWith(target: found.copyWith(name: found.name ?? target.name)));
+    // Waiting for the next attempt at the old address helps no one.
+    if (_snap.status == ClientStatus.reconnecting) retryNow();
+  }
+
+  /// Tries a pending reconnect now instead of waiting for its timer.
+  void retryNow() {
+    if (_snap.status != ClientStatus.reconnecting || _ws != null || _opening) return;
+    _retry?.cancel();
+    _retry = null;
+    _open(_session);
+  }
+
+  /// Call when the app comes back to the foreground or the phone wakes up.
+  ///
+  /// While the app was suspended nothing was heard from the TV, and the TV
+  /// has usually dropped the connection already. Instead of waiting several
+  /// seconds for the heartbeat timeout, a connection that has been quiet for
+  /// longer than [heartbeatTimeout] / 2 is replaced at once, and a pending
+  /// reconnect is tried now. Wall-clock time is used here, because the
+  /// monotonic clock may not advance while the phone sleeps.
+  void resume() {
+    switch (_snap.status) {
+      case ClientStatus.connected:
+        final quiet = _wallClock().difference(_lastHeardAt);
+        if (quiet < heartbeatTimeout ~/ 2) return;
+        _log('Back after ${(quiet.inMilliseconds / 1000).toStringAsFixed(1)} s without the TV, reconnecting now');
+        _dropSocket(closeCode: CloseCodes.heartbeatTimeout);
+        _scheduleRetry(detail: 'App resumed', delay: Duration.zero);
+      case ClientStatus.reconnecting:
+        _log('App resumed, trying to reconnect now');
+        retryNow();
+      default:
+    }
   }
 
   /// Closes the connection and stops retrying.
@@ -374,6 +420,7 @@ class ControllerClient {
     _ws = ws;
     _welcomed = false;
     _lastHeardMs = _now;
+    _lastHeardAt = _wallClock();
     _log('Connected to ${target.display}, saying hello');
     final socket = ws;
     socket.listen(
@@ -405,6 +452,7 @@ class ControllerClient {
   void _onData(int socketId, Object? data) {
     if (socketId != _socketId) return;
     _lastHeardMs = _now;
+    _lastHeardAt = _wallClock();
     if (data is! String) return;
 
     final Message? message;
@@ -425,7 +473,7 @@ class ControllerClient {
 
     switch (message) {
       case PingMessage():
-        _send(PongMessage.answering(message));
+        _send(PongMessage.answering(message, atMs: _now));
       case PongMessage():
         final rtt = _now - message.sentAtMs;
         if (rtt >= 0 && _snap.isConnected) {
@@ -441,6 +489,11 @@ class ControllerClient {
         if (!_snap.isConnected) return;
         _hapticsReceived++;
         if (!_haptics.isClosed) _haptics.add(message);
+      case PlayerMessage():
+        if (_snap.isConnected && _snap.player != message.number) {
+          _log("The TV made this phone player ${message.number}");
+          _set(_snap.copyWith(player: message.number));
+        }
       case HelloMessage() || PairRequestMessage() || InputStateMessage():
         _log('Ignoring unexpected ${message.type} from the TV');
     }
@@ -546,9 +599,9 @@ class ControllerClient {
     _send(PingMessage(id: _nextPingId++, sentAtMs: _now));
   }
 
-  void _scheduleRetry({String? detail, int? osErrorCode}) {
+  void _scheduleRetry({String? detail, int? osErrorCode, Duration? delay}) {
     final attempt = _snap.attempt + 1;
-    final delay = retryDelays[min(attempt - 1, retryDelays.length - 1)];
+    delay ??= retryDelays[min(attempt - 1, retryDelays.length - 1)];
     _set(
       _snap.copyWith(
         status: ClientStatus.reconnecting,
@@ -557,6 +610,7 @@ class ControllerClient {
         attempt: attempt,
         rttMs: null,
         rttStats: null,
+        player: null,
         osErrorCode: osErrorCode,
       ),
     );
@@ -572,7 +626,16 @@ class ControllerClient {
     _retry?.cancel();
     _dropSocket(closeCode: closeCode);
     _everPaired = false;
-    _set(_snap.copyWith(status: ClientStatus.failed, problem: problem, detail: detail, rttMs: null, rttStats: null));
+    _set(
+      _snap.copyWith(
+        status: ClientStatus.failed,
+        problem: problem,
+        detail: detail,
+        rttMs: null,
+        rttStats: null,
+        player: null,
+      ),
+    );
   }
 
   void _dropSocket({int? closeCode}) {

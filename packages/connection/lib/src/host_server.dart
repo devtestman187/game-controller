@@ -5,6 +5,7 @@ import 'dart:math';
 import 'package:protocol/protocol.dart';
 
 import 'host_address.dart';
+import 'latency.dart';
 import 'log.dart';
 import 'rtt.dart';
 
@@ -17,7 +18,8 @@ enum ControllerState {
   connected,
 
   /// Paired earlier, but its connection is gone. It can come back without a
-  /// code until the host app restarts.
+  /// code, also after the host app restarts if the app saves the pairings
+  /// ([HostServer.onPairingsChanged]).
   disconnected,
 }
 
@@ -34,6 +36,10 @@ final class ControllerInfo {
     this.rttMs,
     this.rttStats,
     this.input,
+    this.player,
+    this.inputLatency,
+    this.inputLatencySession,
+    this.latencyErrorMs,
   });
 
   final String controllerId;
@@ -55,6 +61,67 @@ final class ControllerInfo {
   /// The controller's current input. Null when it isn't connected, so a
   /// dropped controller never leaves buttons held.
   final InputStateMessage? input;
+
+  /// Player number (1, 2, …), also sent to the phone in a [PlayerMessage].
+  /// Null while it isn't connected.
+  final int? player;
+
+  /// Estimated one-way input delay, phone to host, over the last 30 s. Null
+  /// until the clocks are compared (and always for phones older than M6).
+  final RttSummary? inputLatency;
+
+  /// The same over the whole connection.
+  final RttSummary? inputLatencySession;
+
+  /// How far off the input delay estimate can be, in ms (half the best
+  /// recent round trip).
+  final int? latencyErrorMs;
+}
+
+/// A pairing the host app can save, so phones reconnect without a code after
+/// the app restarts.
+final class SavedPairing {
+  const SavedPairing({
+    required this.controllerId,
+    required this.token,
+    required this.name,
+    required this.platform,
+    required this.appVersion,
+    this.remoteAddress = '',
+  });
+
+  final String controllerId;
+  final String token;
+  final String name;
+  final String platform;
+  final String appVersion;
+  final String remoteAddress;
+
+  Map<String, Object?> toJson() => {
+    'id': controllerId,
+    'token': token,
+    'name': name,
+    'platform': platform,
+    'appVersion': appVersion,
+    'address': remoteAddress,
+  };
+
+  /// Null if [json] isn't a saved pairing.
+  static SavedPairing? fromJson(Object? json) {
+    if (json is! Map) return null;
+    final id = json['id'];
+    final token = json['token'];
+    if (id is! String || token is! String || id.isEmpty || token.isEmpty) return null;
+    String text(String key) => json[key] is String ? json[key] as String : '';
+    return SavedPairing(
+      controllerId: id,
+      token: token,
+      name: text('name').isEmpty ? 'Controller' : text('name'),
+      platform: text('platform'),
+      appVersion: text('appVersion'),
+      remoteAddress: text('address'),
+    );
+  }
 }
 
 /// Everything the host UI shows, as one immutable value.
@@ -92,11 +159,22 @@ class HostServer {
     this.heartbeatTimeout = const Duration(seconds: 4),
     this.pairingWindow = const Duration(minutes: 5),
     this.maxWrongCodes = 5,
+    this.latencyLogInterval = const Duration(seconds: 30),
+    Iterable<SavedPairing> pairings = const [],
+    this.onPairingsChanged,
+    this.maxSavedPairings = 8,
     LogSink? log,
     Random? random,
   }) : _log = log ?? _noLog,
        _random = random ?? Random.secure() {
     _code = _newCode();
+    for (final p in pairings) {
+      _known[p.controllerId] = _Known(
+        HelloMessage(controllerId: p.controllerId, name: p.name, platform: p.platform, appVersion: p.appVersion),
+        p.token,
+        p.remoteAddress,
+      );
+    }
   }
 
   final String hostId;
@@ -116,6 +194,17 @@ class HostServer {
   /// After this many wrong codes in a row, the code changes.
   final int maxWrongCodes;
 
+  /// How often each connected controller's ping and input delay go to the
+  /// log, so an exported log shows a whole session (PRD T8).
+  final Duration latencyLogInterval;
+
+  /// Called with every pairing whenever one is added or forgotten, so the
+  /// app can save them and pass them back as `pairings` after a restart.
+  final void Function(List<SavedPairing> pairings)? onPairingsChanged;
+
+  /// Only the most recently seen pairings are kept.
+  final int maxSavedPairings;
+
   final LogSink _log;
   final Random _random;
   static const _codec = MessageCodec();
@@ -129,6 +218,7 @@ class HostServer {
   Timer? _heartbeat;
   late String _code;
   int _wrongCodes = 0;
+  int _lastLatencyLogMs = 0;
 
   /// Fires a new snapshot after every visible change, including each new
   /// round-trip time.
@@ -179,6 +269,38 @@ class HostServer {
     _wrongCodes = 0;
     _log('New pairing code $_code');
     _emit();
+  }
+
+  /// The saved pairings, most recently seen first.
+  List<SavedPairing> get pairings {
+    final known = _known.entries.toList()..sort((a, b) => b.value.lastSeen.compareTo(a.value.lastSeen));
+    return [
+      for (final MapEntry(key: id, value: k) in known)
+        SavedPairing(
+          controllerId: id,
+          token: k.token,
+          name: k.hello.name,
+          platform: k.hello.platform,
+          appVersion: k.hello.appVersion,
+          remoteAddress: k.remoteAddress,
+        ),
+    ];
+  }
+
+  /// Forgets every pairing whose controller isn't connected right now, so
+  /// those phones need the code again. Returns how many were forgotten.
+  int forgetDisconnected() {
+    final live = {for (final s in _sessions.where((s) => s.paired)) s.hello!.controllerId};
+    final gone = _known.keys.where((id) => !live.contains(id)).toList();
+    for (final id in gone) {
+      _known.remove(id);
+    }
+    if (gone.isNotEmpty) {
+      _log('Forgot ${gone.length} paired controller${gone.length == 1 ? '' : 's'}');
+      _pairingsChanged();
+      _emit();
+    }
+    return gone.length;
   }
 
   /// Closes every connection as if the network dropped, so controllers
@@ -281,12 +403,15 @@ class HostServer {
 
     switch (message) {
       case PingMessage():
-        _send(s, PongMessage.answering(message));
+        _send(s, PongMessage.answering(message, atMs: _now));
       case PongMessage():
-        final rtt = _now - message.sentAtMs;
+        final now = _now;
+        final rtt = now - message.sentAtMs;
         if (rtt >= 0 && s.paired) {
           s.rttMs = rtt;
-          s.rttWindow.add(_now, rtt);
+          s.rttWindow.add(now, rtt);
+          final peer = message.atMs;
+          if (peer != null) s.latency.addPong(sentAtMs: message.sentAtMs, peerMs: peer, receivedMs: now);
           _emit();
         }
       case HelloMessage():
@@ -297,9 +422,11 @@ class HostServer {
         // Input counts only once paired, and only in order.
         if (!s.paired || message.seq <= (s.input?.seq ?? -1)) return;
         s.input = message;
+        final sent = message.sentAtMs;
+        if (sent != null) s.latency.addInput(peerSentMs: sent, receivedMs: _now);
         _emit();
         if (!_messages.isClosed) _messages.add(ControllerMessage(s.hello!.controllerId, message));
-      case WelcomeMessage() || PairResultMessage() || HapticEventMessage():
+      case WelcomeMessage() || PairResultMessage() || HapticEventMessage() || PlayerMessage():
         _close(s, CloseCodes.protocolError, 'Unexpected ${message.type}');
     }
   }
@@ -360,14 +487,49 @@ class HostServer {
         _close(other, CloseCodes.replaced, 'Replaced by a newer connection');
       }
     }
+    final previous = _known[hello.controllerId];
     s
       ..paired = true
-      ..since = DateTime.now();
-    _known[hello.controllerId] = _Known(hello, token, s.remoteAddress);
+      ..since = DateTime.now()
+      ..player = _pickPlayer(previous?.player);
+    _known[hello.controllerId] = _Known(hello, token, s.remoteAddress)..player = s.player;
+    _trimPairings();
     _send(s, PairResultMessage.accepted(token: token));
-    _log('${hello.name} connected ($how)');
+    _send(s, PlayerMessage(number: s.player!));
+    _log('${hello.name} connected ($how), player ${s.player}');
+    if (previous == null || previous.token != token || previous.hello.name != hello.name) _pairingsChanged();
     _emit();
   }
+
+  /// The controller's number from before if it's still free, otherwise the
+  /// lowest free one. A number stays reserved for a minute after its
+  /// controller drops, so a short Wi-Fi drop doesn't swap players.
+  int _pickPlayer(int? previous) {
+    final taken = {for (final o in _sessions.where((o) => o.paired && o.player != null)) o.player!};
+    final cutoff = DateTime.now().subtract(const Duration(minutes: 1));
+    final reserved = {
+      for (final k in _known.values)
+        if (k.player != null && k.lastSeen.isAfter(cutoff) && !taken.contains(k.player)) k.player!,
+    };
+    if (previous != null && !taken.contains(previous)) return previous;
+    var n = 1;
+    while (taken.contains(n) || reserved.contains(n)) {
+      n++;
+    }
+    return n;
+  }
+
+  void _trimPairings() {
+    if (_known.length <= maxSavedPairings) return;
+    final live = {for (final s in _sessions.where((s) => s.paired)) s.hello!.controllerId};
+    final oldest = _known.entries.where((e) => !live.contains(e.key)).toList()
+      ..sort((a, b) => a.value.lastSeen.compareTo(b.value.lastSeen));
+    for (final e in oldest.take(_known.length - maxSavedPairings)) {
+      _known.remove(e.key);
+    }
+  }
+
+  void _pairingsChanged() => onPairingsChanged?.call(pairings);
 
   void _tick() {
     final now = _now;
@@ -383,6 +545,25 @@ class HostServer {
         _send(s, PingMessage(id: s.nextPingId++, sentAtMs: now));
       }
     }
+    if (now - _lastLatencyLogMs >= latencyLogInterval.inMilliseconds) {
+      _lastLatencyLogMs = now;
+      for (final s in _sessions.where((s) => s.paired)) {
+        final line = _latencyLine(s, now);
+        if (line != null) _log(line);
+      }
+    }
+  }
+
+  String? _latencyLine(_Session s, int now) {
+    final rtt = s.rttWindow.summary(now);
+    if (rtt == null) return null;
+    final input = s.latency.summary(now);
+    final error = s.latency.uncertaintyMs;
+    final inputText = input == null
+        ? 'input delay not measured${s.latency.offsetMs == null ? ' (phone sends no clock)' : ''}'
+        : 'input delay ~ avg ${input.avgMs} · p95 ${input.p95Ms} · max ${input.maxMs} ms (± $error ms, '
+              '${input.samples} states)';
+    return 'Latency ${_who(s)}: ping $rtt, $inputText';
   }
 
   void _send(_Session s, Message message) {
@@ -412,7 +593,15 @@ class HostServer {
     s.closed = true;
     _sessions.remove(s);
     final id = s.hello?.controllerId;
-    if (s.paired && id != null) _known[id]?.lastSeen = DateTime.now();
+    if (s.paired && id != null) {
+      _known[id]?.lastSeen = DateTime.now();
+      final total = s.latency.session;
+      final connectedFor = DateTime.now().difference(s.since);
+      _log(
+        'Session of ${_who(s)} ended after ${_duration(connectedFor)}: input delay ~ $total'
+        '${s.latency.uncertaintyMs == null ? '' : ' (± ${s.latency.uncertaintyMs} ms)'}',
+      );
+    }
     // No stuck inputs: whoever reads the input stream sees everything released.
     final input = s.input;
     if (id != null && input != null && !input.isNeutral && !_messages.isClosed) {
@@ -440,6 +629,13 @@ class HostServer {
           rttMs: s.rttMs,
           rttStats: s.rttWindow.summary(_now),
           input: s.paired ? s.input : null,
+          player: s.paired ? s.player : null,
+          inputLatency: s.latency.summary(_now),
+          inputLatencySession: switch (s.latency.session) {
+            final t when t.count > 0 => RttSummary(minMs: t.minMs!, avgMs: t.avgMs!, maxMs: t.maxMs!, samples: t.count),
+            _ => null,
+          },
+          latencyErrorMs: s.latency.uncertaintyMs,
         ),
       );
     }
@@ -481,6 +677,8 @@ class HostServer {
 
 void _noLog(String _) {}
 
+String _duration(Duration d) => d.inMinutes >= 1 ? '${d.inMinutes} min ${d.inSeconds % 60} s' : '${d.inSeconds} s';
+
 class _Session {
   _Session(this.socket, this.remoteAddress, this.openedAtMs) : lastHeardMs = openedAtMs;
 
@@ -496,6 +694,8 @@ class _Session {
   InputStateMessage? input;
   int nextPingId = 0;
   DateTime since = DateTime.now();
+  int? player;
+  final latency = InputLatency();
 }
 
 class _Known {
@@ -505,4 +705,5 @@ class _Known {
   final String token;
   final String remoteAddress;
   DateTime lastSeen = DateTime.now();
+  int? player;
 }

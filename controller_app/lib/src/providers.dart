@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:protocol/protocol.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'device_status.dart';
 import 'discovery.dart';
 import 'haptics.dart';
 import 'local_network.dart';
@@ -189,8 +190,64 @@ class HapticSettingsNotifier extends Notifier<HapticSettings> {
     unawaited(settings.save(ref.read(prefsProvider)));
   }
 
-  /// Plays one tick at the current settings, for the "Test" button.
+  /// Plays one tick at the current settings, for the "Try" button.
   void test() => unawaited(ref.read(hapticsPlayerProvider).tick());
+
+  /// Plays a TV event at its current strength, for its "Try" button.
+  void tryEvent(HapticEvent event) => unawaited(ref.read(hapticsPlayerProvider).tryEvent(event));
+}
+
+/// Overridden in tests with a fake.
+final deviceStatusSourceProvider = Provider<DeviceStatusSource>((ref) => PlatformDeviceStatus());
+
+/// Battery, CPU and send rate since launch (PRD M6 long-session check). It
+/// samples every 10 s from the moment the controller screen starts it.
+final sessionMonitorProvider = Provider<SessionMonitor>((ref) {
+  final client = ref.watch(clientProvider);
+  final monitor = SessionMonitor(ref.watch(deviceStatusSourceProvider), inputsSent: () => client.inputsSent);
+  ref.onDispose(monitor.dispose);
+  return monitor;
+});
+
+final sessionStatsProvider = NotifierProvider<SessionStatsNotifier, SessionStats?>(SessionStatsNotifier.new);
+
+class SessionStatsNotifier extends Notifier<SessionStats?> {
+  @override
+  SessionStats? build() {
+    final monitor = ref.watch(sessionMonitorProvider);
+    final sub = monitor.changes.listen((s) => state = s);
+    ref.onDispose(sub.cancel);
+    return monitor.stats;
+  }
+}
+
+/// One time the connection dropped and came back (or hasn't yet).
+typedef Outage = ({DateTime from, Duration? length, String reason});
+
+/// The latest connection drops, newest first, for Diagnostics: how long
+/// each one took to recover (PRD M6 reconnect hardening).
+final outagesProvider = NotifierProvider<OutagesNotifier, List<Outage>>(OutagesNotifier.new);
+
+class OutagesNotifier extends Notifier<List<Outage>> {
+  static const keep = 10;
+
+  @override
+  List<Outage> build() {
+    ref.listen(clientStateProvider, (prev, next) {
+      final wasUp = prev?.isConnected ?? false;
+      if (wasUp && next.status == ClientStatus.reconnecting) {
+        final reason = next.detail ?? next.problem?.name ?? 'connection lost';
+        state = [(from: DateTime.now(), length: null, reason: reason), ...state].take(keep).toList();
+      } else if (next.isConnected && state.isNotEmpty && state.first.length == null) {
+        final o = state.first;
+        state = [(from: o.from, length: DateTime.now().difference(o.from), reason: o.reason), ...state.skip(1)];
+        ref
+            .read(logProvider)
+            .add('client', 'Back after ${(state.first.length!.inMilliseconds / 1000).toStringAsFixed(1)} s');
+      }
+    });
+    return const [];
+  }
 }
 
 /// Haptic events from the TV (M5): how many arrived and were played, and

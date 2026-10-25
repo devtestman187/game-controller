@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:connection/connection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,9 +10,9 @@ import '../providers.dart';
 import 'connect_screen.dart';
 import 'diagnostics_screen.dart';
 import 'gyro_dialog.dart';
-import 'haptics_dialog.dart';
 import 'labels.dart';
 import 'pad_widgets.dart';
+import 'settings_screen.dart';
 import 'stick_dialog.dart';
 import 'stick_widgets.dart';
 import 'tilt_view.dart';
@@ -34,6 +36,9 @@ class _ControllerScreenState extends ConsumerState<ControllerScreen> with Widget
       if (!mounted) return;
       // Back to the last TV if still paired, otherwise straight to choosing one.
       if (!ref.read(connectionActionsProvider).reconnectToLastHost()) openConnect(context);
+      // The mode used last (saved), and the battery and CPU readout.
+      unawaited(ref.read(gyroProvider.notifier).restoreMode());
+      ref.read(sessionMonitorProvider).start();
     });
   }
 
@@ -49,6 +54,10 @@ class _ControllerScreenState extends ConsumerState<ControllerScreen> with Widget
       // A fresh search after returning to the app. This also picks up TVs
       // once the user allows local network access in the iOS prompt.
       ref.read(discoveryProvider).restart();
+      // After the phone slept or the app was in the background, the TV has
+      // usually dropped the connection: reconnect now, not after the
+      // heartbeat times out.
+      ref.read(clientProvider).resume();
       ref.read(gyroProvider.notifier).resume();
       ref.read(hapticsPlayerProvider).paused = false;
     } else {
@@ -64,6 +73,14 @@ class _ControllerScreenState extends ConsumerState<ControllerScreen> with Widget
     // Play haptic events from the TV in every mode (listening keeps it alive
     // without rebuilding the screen on each event).
     ref.listen(tvHapticsProvider, (_, _) {});
+    ref.listen(outagesProvider, (_, _) {});
+    // While reconnecting for a while, look for the TV again now and then: it
+    // may have restarted on another port, or the network may have changed.
+    ref.listen(clientStateProvider, (_, next) {
+      if (next.status == ClientStatus.reconnecting && next.attempt > 0 && next.attempt % 4 == 0) {
+        ref.read(discoveryProvider).restart();
+      }
+    });
     // If the TV shows up at a new address (new DHCP lease), reconnect there.
     ref.listen(discoveryStateProvider, (_, next) {
       final client = ref.read(clientProvider);
@@ -151,6 +168,10 @@ class _TopBar extends ConsumerWidget {
           Expanded(
             child: Row(
               children: [
+                if (client.isConnected && client.player != null) ...[
+                  PlayerBadge(number: client.player!),
+                  const SizedBox(width: 6),
+                ],
                 Flexible(
                   child: ActionChip(
                     key: const Key('connectionChip'),
@@ -221,9 +242,10 @@ class _TopBar extends ConsumerWidget {
               onPressed: () => showStickDialog(context),
             ),
           IconButton(
-            tooltip: 'Haptics',
-            icon: const Icon(Icons.vibration),
-            onPressed: () => showHapticsDialog(context),
+            tooltip: 'Settings',
+            icon: const Icon(Icons.settings_outlined),
+            onPressed: () =>
+                Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const SettingsScreen())),
           ),
           IconButton(
             tooltip: 'Diagnostics',
@@ -243,3 +265,24 @@ Color _statusColor(BuildContext context, ClientSnapshot client) => switch (clien
   ClientStatus.waitingForCode => Theme.of(context).colorScheme.primary,
   ClientStatus.idle || ClientStatus.failed => Theme.of(context).colorScheme.onSurfaceVariant,
 };
+
+/// "P1" in the player's colour, matching the sprite and the badge on the TV.
+class PlayerBadge extends StatelessWidget {
+  const PlayerBadge({super.key, required this.number});
+
+  final int number;
+
+  @override
+  Widget build(BuildContext context) => Tooltip(
+    message: 'You are player $number on the TV',
+    child: Container(
+      key: const Key('playerBadge'),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(color: Color(playerColor(number)), borderRadius: BorderRadius.circular(12)),
+      child: Text(
+        'P$number',
+        style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF14181F)),
+      ),
+    ),
+  );
+}

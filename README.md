@@ -8,7 +8,7 @@ A phone game controller (Android + iOS) and a TV test app it drives (Android TV 
 | [tv_test_app/](tv_test_app/README.md) | TV test app (Android TV + Windows desktop) |
 | [packages/protocol/](packages/protocol) | Shared, versioned message definitions |
 | [packages/connection/](packages/connection) | Host server and phone client (pairing, heartbeats, reconnect), plus the command-line simulated controller |
-| [packages/test_game/](packages/test_game) | The test game (top-down arena), kept separate so it can grow |
+| [packages/test_game/](packages/test_game) | The test game (top-down arena, one sprite per controller), kept separate so it can grow |
 | [assets/](assets/CREDITS.md) | Images, audio and their credits |
 | [docs/](docs) | PRD, [architecture](docs/architecture.md), [decisions](docs/decisions.md), [building](docs/building.md), [iOS setup](docs/ios-setup.md), [checklists](docs/checklists) |
 
@@ -34,4 +34,4 @@ Toolchain setup, Android/TV install steps and the Windows Firewall notes are in 
 | M3 Gyro mode | Done (Android phone tests deferred) |
 | M4 Analog stick mode (Xbox-style layout) | Done (Android phone tests deferred) |
 | M5 TV-to-phone haptics and test game | Done (`m5`) |
-| M6 Polish, settings, latency tooling | Not started |
+| M6 Polish, settings, latency tooling, several controllers | In progress (built, awaiting device tests) |

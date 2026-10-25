@@ -20,6 +20,7 @@ class MessageCodec {
     PongMessage.wireType: PongMessage.fromPayload,
     InputStateMessage.wireType: InputStateMessage.fromPayload,
     HapticEventMessage.wireType: HapticEventMessage.fromPayload,
+    PlayerMessage.wireType: PlayerMessage.fromPayload,
   };
 
   String encode(Message message) => jsonEncode({'v': protocolVersion, 't': message.type, ...message.toPayload()});

@@ -6,8 +6,10 @@
 //
 // Options: --host (default 127.0.0.1), --port (default 45780), --code (asked
 // for if missing), --name, --seconds (run time, default: until Ctrl+C),
-// --demo (press every button and D-pad direction in a loop). Haptic events
-// from the TV (M5) are printed as they arrive.
+// --demo (press every button and D-pad direction in a loop), --stream (send a
+// gyro-like tilt 60 times a second, for long-session tests). Haptic events
+// from the TV (M5) and the player number (M6) are printed as they arrive,
+// and a summary (drops, ping) at the end.
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -24,6 +26,7 @@ Usage: dart run connection:sim_controller [options]
   --code <code>      Pairing code shown on the TV (asked for if missing)
   --name <name>      Name shown on the TV (default "Simulated controller")
   --demo             Once connected, press every button and D-pad direction in a loop
+  --stream           Once connected, send a gyro-like tilt 60 times a second (long-session test)
   --seconds <n>      Disconnect and exit after n seconds (default: run until Ctrl+C)''';
 
 Future<void> main(List<String> args) async {
@@ -56,18 +59,24 @@ Future<void> main(List<String> args) async {
       controllerId: id,
       name: options['name'] ?? 'Simulated controller',
       platform: 'sim',
-      appVersion: '0.5.0',
+      appVersion: '0.6.0',
     ),
     log: (m) => stdout.writeln('  · $m'),
   );
 
   final lines = stdin.transform(utf8.decoder).transform(const LineSplitter()).asBroadcastStream();
   var wasConnected = false;
+  var drops = 0;
+  final pings = RunningStats();
+  final started = DateTime.now();
   Timer? demo;
   var lastStatus = client.snapshot.status;
+  int? lastPlayer;
   final done = Completer<int>();
 
   client.changes.listen((s) {
+    if (s.player != null && s.player != lastPlayer) stdout.writeln('player ${s.player}');
+    lastPlayer = s.player;
     if (s.status == lastStatus) return;
     lastStatus = s.status;
     final problem = s.problem == null ? '' : ' (${s.problem!.name}${s.detail == null ? '' : ': ${s.detail}'})';
@@ -76,6 +85,9 @@ Future<void> main(List<String> args) async {
       case ClientStatus.connected:
         wasConnected = true;
         if (options.containsKey('demo') && demo == null) demo = runDemoInput(client);
+        if (options.containsKey('stream') && demo == null) demo = runStreamInput(client);
+      case ClientStatus.reconnecting:
+        drops++;
       case ClientStatus.waitingForCode:
         stdout.write('Pairing code shown on the TV: ');
         lines.first.then((code) => client.submitCode(code.trim()), onError: (_) {});
@@ -92,6 +104,7 @@ Future<void> main(List<String> args) async {
   final pingReport = Timer.periodic(const Duration(seconds: 5), (_) {
     final rtt = client.snapshot.rttMs;
     final stats = client.snapshot.rttStats;
+    if (client.snapshot.isConnected && rtt != null) pings.add(rtt);
     if (client.snapshot.isConnected && rtt != null) stdout.writeln('ping $rtt ms (last 30 s: ${stats ?? '-'})');
   });
   if (seconds != null) {
@@ -107,6 +120,11 @@ Future<void> main(List<String> args) async {
   client.connect(target, code: options['code']);
 
   final code = await done.future;
+  final ran = DateTime.now().difference(started);
+  stdout.writeln(
+    'Summary: ran ${ran.inMinutes} min ${ran.inSeconds % 60} s, ${client.inputsSent} input states sent, '
+    '$drops drop${drops == 1 ? '' : 's'}, ping (every 5 s) $pings',
+  );
   pingReport.cancel();
   demo?.cancel();
   await client.dispose();
@@ -119,8 +137,8 @@ Map<String, String> _parse(List<String> args) {
   final result = <String, String>{};
   for (var i = 0; i < args.length; i++) {
     final arg = args[i];
-    if (arg == '--help' || arg == '-h' || arg == '--demo') {
-      result[arg == '--demo' ? 'demo' : 'help'] = '';
+    if (arg == '--help' || arg == '-h' || arg == '--demo' || arg == '--stream') {
+      result[arg.startsWith('--') && arg != '--help' ? arg.substring(2) : 'help'] = '';
       continue;
     }
     if (!arg.startsWith('--')) throw FormatException('Unexpected argument "$arg"');
@@ -133,7 +151,7 @@ Map<String, String> _parse(List<String> args) {
       throw FormatException('Missing value for $arg');
     }
   }
-  const known = {'host', 'port', 'code', 'name', 'seconds', 'help', 'demo'};
+  const known = {'host', 'port', 'code', 'name', 'seconds', 'help', 'demo', 'stream'};
   final unknown = result.keys.where((k) => !known.contains(k));
   if (unknown.isNotEmpty) throw FormatException('Unknown option --${unknown.first}');
   return result;

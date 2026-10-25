@@ -15,7 +15,8 @@ final prefsProvider = Provider<SharedPreferences>(
 );
 
 final logProvider = Provider<LogBuffer>((ref) {
-  final log = LogBuffer();
+  // Big enough for a 30-minute session with a latency line every 30 s.
+  final log = LogBuffer(capacity: 3000);
   if (kDebugMode) {
     final sub = log.changes.listen((_) => debugPrint(log.lines.last.toString()));
     ref.onDispose(sub.cancel);

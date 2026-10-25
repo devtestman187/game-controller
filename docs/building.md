@@ -85,7 +85,12 @@ dart run connection:sim_controller --code 1234                         # TV app 
 dart run connection:sim_controller --host 192.168.1.50 --code 1234     # TV app on the TV
 dart run connection:sim_controller --help                              # all options
 ```
-It prints each state change and the ping (with the last 30 s summary) every 5 seconds. Without `--code` it asks for one. Add `--demo` to press every button and D-pad direction in a loop, to check the TV's input display. Haptic events the TV sends are printed as they arrive (for example `haptic hit intensity 0.7 120 ms`), so the game and the haptic test can be checked without a phone. The TV app's **Simulate controller** button does the same from inside the app.
+It prints each state change and the ping (with the last 30 s summary) every 5 seconds. Without `--code` it asks for one. Add `--demo` to press every button and D-pad direction in a loop, to check the TV's input display. Haptic events the TV sends are printed as they arrive (for example `haptic hit intensity 0.7 100 ms`), so the game and the haptic test can be checked without a phone. The TV app's **Simulate controller** button does the same from inside the app.
+
+For a long-session test (M6), `--stream` sends a gyro-like tilt 60 times a second, as gyro mode does, and `--seconds` stops it. At the end it prints a summary: how long it ran, the input states sent, the drops and the ping over the session. The TV logs the input delay every 30 s; save the log afterwards (see the TV app README).
+```powershell
+dart run connection:sim_controller --host 192.168.1.100 --code 1234 --stream --seconds 1800   # 30 minutes
+```
 
 ## Network ports
 | What | Port |

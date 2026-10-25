@@ -23,8 +23,9 @@ import UIKit
 
 /// The app's only native channel: input ticks and the TV's haptic events with
 /// Core Haptics (see lib/src/haptics.dart; the event patterns are built in
-/// lib/src/haptic_patterns.dart). It's kept in this file so the Xcode project
-/// needs no changes, since iOS builds only happen in the cloud.
+/// lib/src/haptic_patterns.dart), plus the battery, heat and CPU readout for
+/// Diagnostics (lib/src/device_status.dart). It's kept in this file so the
+/// Xcode project needs no changes, since iOS builds only happen in the cloud.
 final class HapticsChannel: NSObject {
   private let channel: FlutterMethodChannel
   private let supportsHaptics = CHHapticEngine.capabilitiesForHardware().supportsHaptics
@@ -78,8 +79,38 @@ final class HapticsChannel: NSObject {
       }
       play(event, segments)
       result(nil)
+    case "deviceStatus":
+      result(deviceStatus())
     default:
       result(FlutterMethodNotImplemented)
+    }
+  }
+
+  /// Battery, heat and this app's CPU time, for the long-session check in
+  /// Diagnostics (lib/src/device_status.dart).
+  private func deviceStatus() -> [String: Any] {
+    let device = UIDevice.current
+    device.isBatteryMonitoringEnabled = true
+    var usage = rusage()
+    getrusage(RUSAGE_SELF, &usage)
+    let seconds = Double(usage.ru_utime.tv_sec + usage.ru_stime.tv_sec)
+    let micros = Double(usage.ru_utime.tv_usec) + Double(usage.ru_stime.tv_usec)
+    return [
+      "battery": Double(device.batteryLevel),
+      "charging": device.batteryState == .charging || device.batteryState == .full,
+      "thermal": thermalName(ProcessInfo.processInfo.thermalState),
+      "cpuMs": seconds * 1000 + micros / 1000,
+      "lowPower": ProcessInfo.processInfo.isLowPowerModeEnabled,
+    ]
+  }
+
+  private func thermalName(_ state: ProcessInfo.ThermalState) -> String {
+    switch state {
+    case .nominal: return "nominal"
+    case .fair: return "fair"
+    case .serious: return "serious"
+    case .critical: return "critical"
+    @unknown default: return "unknown"
     }
   }
 

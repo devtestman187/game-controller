@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:protocol/protocol.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tvtest/main.dart';
 import 'package:tvtest/src/host_controller.dart';
 import 'package:tvtest/src/providers.dart';
@@ -13,6 +14,7 @@ import 'package:tvtest/src/sound.dart';
 import 'package:tvtest/src/ui/game_screen.dart';
 import 'package:tvtest/src/ui/haptic_panel_screen.dart';
 import 'package:tvtest/src/ui/input_visualizer.dart';
+import 'package:tvtest/src/ui/latency_screen.dart';
 import 'package:tvtest/src/ui/tv_button.dart';
 
 class FakeHostController implements HostController {
@@ -47,6 +49,21 @@ class FakeHostController implements HostController {
     return controllerId != null ? 1 : state.host.connected.length;
   }
 
+  int forgets = 0;
+  int exports = 0;
+
+  @override
+  int forgetPairings() {
+    forgets++;
+    return 1;
+  }
+
+  @override
+  Future<String> exportLog() async {
+    exports++;
+    return 'D:/logs/controller-test-log.txt';
+  }
+
   @override
   Future<void> dispose() => _changes.close();
 }
@@ -67,8 +84,12 @@ HostViewState sampleState() => HostViewState(
         state: ControllerState.connected,
         since: DateTime(2026),
         rttMs: 12,
-        rttStats: const RttSummary(minMs: 8, avgMs: 20, maxMs: 140, samples: 30),
+        rttStats: const RttSummary(minMs: 8, avgMs: 20, maxMs: 140, samples: 30, p95Ms: 60),
         input: InputStateMessage(seq: 3, buttons: {ControllerButton.a}, dx: 1),
+        player: 1,
+        inputLatency: const RttSummary(minMs: 3, avgMs: 9, maxMs: 41, samples: 900, p95Ms: 18),
+        inputLatencySession: const RttSummary(minMs: 2, avgMs: 10, maxMs: 80, samples: 5400),
+        latencyErrorMs: 4,
       ),
       ControllerInfo(
         controllerId: 'p2',
@@ -121,7 +142,7 @@ void main() {
     expect(find.text('Connected'), findsOneWidget);
     expect(find.text('12 ms'), findsOneWidget);
     expect(find.text('Waiting for code'), findsOneWidget);
-    expect(find.text('1 connected'), findsOneWidget);
+    expect(find.text('Controllers · 1 connected'), findsOneWidget);
     expect(find.text('avg 20 ms'), findsOneWidget);
     expect(find.text('max 140 ms'), findsOneWidget);
     final shown = tester.widget<InputVisualizer>(find.byKey(const Key('visualizer-p1')));
@@ -151,7 +172,7 @@ void main() {
       // The game animates every frame, so pump through the page transition.
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 500));
-      for (final screen in [GameScreen, HapticPanelScreen]) {
+      for (final screen in [GameScreen, HapticPanelScreen, LatencyScreen]) {
         if (find.byType(screen).evaluate().isNotEmpty) {
           opened.add(screen);
           await tester.sendKeyEvent(LogicalKeyboardKey.escape);
@@ -162,28 +183,48 @@ void main() {
       await tester.pumpAndSettle();
     }
 
-    // "New code" is focused on launch. Walk the pairing panel's buttons with
-    // Down, or Right when Down doesn't move (they share rows on wide screens).
-    const header = {'Test game', 'Haptic test'};
-    for (var i = 0; i < 8 && pressed.length < 3; i++) {
-      final label = focused();
-      if (!header.contains(label)) await pressFocused();
-      await key(LogicalKeyboardKey.arrowDown);
-      if (focused() == label) await key(LogicalKeyboardKey.arrowRight);
+    // "New code" is focused on launch. Find every button the arrows reach:
+    // from each one found, try all four arrows (going back to it by focusing
+    // it directly before each try). Then press each one with OK.
+    void focusButton(String label) => Focus.of(
+      tester.element(find.descendant(of: find.widgetWithText(TvButton, label), matching: find.text(label))),
+    ).requestFocus();
+    const directions = [
+      LogicalKeyboardKey.arrowDown,
+      LogicalKeyboardKey.arrowRight,
+      LogicalKeyboardKey.arrowUp,
+      LogicalKeyboardKey.arrowLeft,
+    ];
+    final reached = <String>{focused()!};
+    final queue = [focused()!];
+    while (queue.isNotEmpty) {
+      final from = queue.removeLast();
+      for (final d in directions) {
+        focusButton(from);
+        await tester.pump();
+        await key(d);
+        final to = focused();
+        if (to != null && reached.add(to)) queue.add(to);
+      }
     }
-    // Up reaches the two buttons in the header, then Right or Left the other.
-    for (var i = 0; i < 8 && !header.contains(focused()); i++) {
-      await key(LogicalKeyboardKey.arrowUp);
+    for (final label in reached) {
+      focusButton(label);
+      await tester.pump();
+      await pressFocused();
     }
-    final first = focused();
-    await pressFocused();
-    await key(LogicalKeyboardKey.arrowRight);
-    if (focused() == first) await key(LogicalKeyboardKey.arrowLeft);
-    await pressFocused();
 
-    expect(pressed, {'New code', 'Simulate controller', 'Drop connections', 'Test game', 'Haptic test'});
-    expect([fake.newCodes, fake.simToggles, fake.drops], [1, 1, 1]);
-    expect(opened.toSet(), {GameScreen, HapticPanelScreen});
+    expect(pressed, {
+      'New code',
+      'Simulate controller',
+      'Drop connections',
+      'Forget phones',
+      'Save log',
+      'Test game',
+      'Haptic test',
+      'Latency',
+    });
+    expect([fake.newCodes, fake.simToggles, fake.drops, fake.forgets, fake.exports], [1, 1, 1, 1, 1]);
+    expect(opened.toSet(), {GameScreen, HapticPanelScreen, LatencyScreen});
   });
 
   testWidgets('updates when the host state changes', (tester) async {
@@ -398,11 +439,13 @@ void main() {
       await tester.sendKeyEvent(LogicalKeyboardKey.keyD);
       await frames(tester, 5);
       expect(find.byKey(const Key('debugOverlay')), findsOneWidget);
-      expect(find.text('iPhone 3F1C (ios 0.1.0)'), findsOneWidget);
+      expect(find.text('iPhone 3F1C (ios 0.1.0), Connected'), findsOneWidget);
+      expect(find.text('P1'), findsOneWidget);
       expect(find.textContaining('12 ms'), findsOneWidget);
+      expect(find.text('~9 ms avg (± 4 ms)'), findsOneWidget);
       expect(find.text('D-pad'), findsOneWidget);
       expect(find.text('D-pad 1, 0'), findsOneWidget);
-      expect(find.textContaining('rumble (game: dash)'), findsOneWidget);
+      expect(find.textContaining('rumble (game: dash, P1)'), findsOneWidget);
       expect(find.text('4 of 4 loaded'), findsOneWidget);
       await tester.sendKeyEvent(LogicalKeyboardKey.select);
       await frames(tester, 2);
@@ -426,26 +469,121 @@ void main() {
     });
   });
 
-  test('the game follows the controller used last, or the first connected one', () {
-    ControllerInfo c(String id, ControllerState state) => ControllerInfo(
+  group('several controllers (M6)', () {
+    ControllerInfo c(String id, int? player, {InputStateMessage? input, String name = 'Phone'}) => ControllerInfo(
       controllerId: id,
-      name: id,
-      platform: 'test',
-      appVersion: 't',
-      remoteAddress: '1',
-      state: state,
+      name: '$name $id',
+      platform: 'ios',
+      appVersion: '0.6.0',
+      remoteAddress: '192.168.1.2$player',
+      state: player == null ? ControllerState.disconnected : ControllerState.connected,
       since: DateTime(2026),
+      rttMs: 10,
+      player: player,
+      input: input,
     );
-    HostViewState s(List<ControllerInfo> list, String? active) => HostViewState(
+    HostViewState s(List<ControllerInfo> list) => HostViewState(
       hostName: 'TV',
-      host: HostSnapshot(running: true, pairingCode: '1', controllers: list),
-      activeControllerId: active,
+      host: HostSnapshot(running: true, port: 45780, pairingCode: '1234', controllers: list),
     );
-    final a = c('a', ControllerState.connected);
-    final b = c('b', ControllerState.connected);
-    expect(s([a, b], null).driver?.controllerId, 'a');
-    expect(s([a, b], 'b').driver?.controllerId, 'b');
-    expect(s([a, c('b', ControllerState.disconnected)], 'b').driver?.controllerId, 'a');
-    expect(s([], 'b').driver, isNull);
+
+    test('players are the connected controllers in player order, each with its colour', () {
+      final state = s([c('b', 2), c('gone', null), c('a', 1)]);
+      expect(state.players.map((p) => p.controllerId), ['a', 'b']);
+      final feeds = playerFeeds(state);
+      expect(feeds.map((f) => (f.id, f.number)), [('a', 1), ('b', 2)]);
+      expect(feeds.map((f) => f.color), [Color(playerColors[0]), Color(playerColors[1])]);
+    });
+
+    testWidgets('each controller drives its own sprite, and feels only its own events', (tester) async {
+      final fake = await pumpApp(tester);
+      // Player 1 dashes, player 2 walks left into the edge of the field.
+      fake.state = s([
+        c('a', 1, input: InputStateMessage(seq: 1, buttons: {ControllerButton.a})),
+        c('b', 2, input: InputStateMessage(seq: 1, dx: -1)),
+      ]);
+      fake.emit();
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('player-a')), findsOneWidget);
+      expect(find.byKey(const Key('player-b')), findsOneWidget);
+      await tapVisible(tester, find.text('Test game'));
+      for (var i = 0; i < 90; i++) {
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+      final sent = fake.haptics.map((h) => (h.$1.event, h.$2)).toList();
+      expect(sent.where((e) => e.$2 == 'a').map((e) => e.$1).first, HapticEvent.rumble);
+      expect(sent.where((e) => e.$2 == 'b').map((e) => e.$1), contains(HapticEvent.hit));
+      expect(sent.where((e) => e.$2 == null), isEmpty, reason: 'game events never go to everyone');
+      expect(find.text('P1 Phone a'), findsOneWidget);
+      expect(find.text('P2 Phone b'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+  });
+
+  group('latency and the log (M6)', () {
+    testWidgets('the main screen shows the player badge and the input delay', (tester) async {
+      await pumpApp(tester);
+      expect(find.byKey(const Key('player-p1')), findsOneWidget);
+      expect(find.text('input ~9 ms'), findsOneWidget);
+    });
+
+    testWidgets('the latency screen shows ping and input delay against the target', (tester) async {
+      final fake = await pumpApp(tester);
+      await tapVisible(tester, find.text('Latency'));
+      await tester.pumpAndSettle();
+      expect(find.byType(LatencyScreen), findsOneWidget);
+      expect(find.text('iPhone 3F1C'), findsOneWidget);
+      expect(find.text('Within the 50 ms target'), findsOneWidget);
+      expect(tester.widget<Text>(find.byKey(const Key('inputDelay-p1'))).data, '9 ms');
+      expect(find.text('p95 18 · max 41 ms · ± 4 ms'), findsOneWidget);
+      expect(find.text('10 ms'), findsOneWidget, reason: 'session average');
+      expect(find.text('min 8 · p95 60 · max 140 ms'), findsOneWidget);
+      // Save log is focused: OK saves and says where.
+      await tester.sendKeyEvent(LogicalKeyboardKey.select);
+      await tester.pumpAndSettle();
+      expect(fake.exports, 1);
+      expect(find.textContaining('Log saved to D:/logs/controller-test-log.txt'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('the latency screen fits a small window', (tester) async {
+      await pumpApp(tester, size: const Size(600, 800));
+      await tapVisible(tester, find.text('Latency'));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+    });
+
+    test('the exported log starts with each controller\'s latency, then every line', () {
+      final log = LogBuffer()
+        ..add('host', 'Listening on port 45780')
+        ..add('host', 'iPhone 3F1C connected');
+      final text = buildLogExport(sampleState(), log, now: DateTime(2026, 10, 25, 20, 15));
+      expect(text, startsWith('Controller Test '));
+      expect(text, contains('2026-10-25T20:15:00.000'));
+      expect(text, contains('P1 iPhone 3F1C (ios 0.1.0), connected'));
+      expect(text, contains('Ping: min 8 · avg 20 · max 140 ms, p95 60 ms'));
+      expect(
+        text,
+        contains(
+          'Input delay (estimated, one way): avg 9 · p95 18 · max 41 ms (± 4 ms); session avg 10 ms over 5400 states',
+        ),
+      );
+      expect(text, contains('Pixel (android 0.1.0), pairing'));
+      expect(text, contains('[host] iPhone 3F1C connected'));
+    });
+
+    test('pairings are saved and loaded; broken data is ignored', () async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      expect(loadPairings(prefs), isEmpty);
+      savePairings(prefs, const [
+        SavedPairing(controllerId: 'p1', token: 'tok', name: 'iPhone 3F1C', platform: 'ios', appVersion: '0.6.0'),
+      ]);
+      expect(loadPairings(prefs).single.token, 'tok');
+      await prefs.setString('pairings', '[{"id": "x"}, 5, {"id": "p2", "token": "t2"}]');
+      expect(loadPairings(prefs).map((p) => p.controllerId), ['p2']);
+      await prefs.setString('pairings', 'not json');
+      expect(loadPairings(prefs), isEmpty);
+    });
   });
 }

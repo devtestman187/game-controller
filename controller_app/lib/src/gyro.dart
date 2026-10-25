@@ -178,6 +178,7 @@ class GyroNotifier extends Notifier<GyroState> {
       pad.switchMode(tilt: false, sticks: mode == PadMode.sticks);
       state = state.copyWith(mode: mode, x: 0, y: 0);
       log('${mode.name} mode');
+      _saveMode(mode);
       return true;
     }
 
@@ -200,7 +201,27 @@ class GyroNotifier extends Notifier<GyroState> {
       'Gyro mode on (landscape ${_lastSide.name}, up ${_estimator.up}), sensors every ${sensorPeriod.inMilliseconds} ms',
     );
     _startOutput();
+    _saveMode(PadMode.gyro);
     return true;
+  }
+
+  static const _modeKey = 'padMode';
+
+  void _saveMode(PadMode mode) => unawaited(ref.read(prefsProvider).setString(_modeKey, mode.name));
+
+  /// The mode used last, saved between launches (PRD C11).
+  PadMode get savedMode =>
+      PadMode.values.where((m) => m.name == ref.read(prefsProvider).getString(_modeKey)).firstOrNull ?? PadMode.dpad;
+
+  /// On launch: back to the mode used last. Gyro mode waits [gyroDelay]
+  /// first, so the landscape side the screen locks to comes from a settled
+  /// reading (the M3 lesson). Does nothing if the user already picked a mode.
+  Future<void> restoreMode({Duration gyroDelay = const Duration(seconds: 1)}) async {
+    final saved = savedMode;
+    if (saved == PadMode.dpad || state.mode != PadMode.dpad) return;
+    if (saved == PadMode.gyro) await Future<void>.delayed(gyroDelay);
+    if (!ref.mounted || state.mode != PadMode.dpad) return;
+    await setMode(saved);
   }
 
   /// Makes the way the phone is held right now the center.

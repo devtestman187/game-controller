@@ -47,11 +47,13 @@ Offset _unit(Offset v) => v.distance > 1 ? v / v.distance : v;
 /// Why a game event fired, for the log and the debug overlay.
 enum GameEventCause { wall, hazard, goal, dash, cooldown }
 
-/// Something the TV should play on the controller (haptics) and itself
-/// (sound).
+/// Something the TV should play on one player's controller (haptics) and
+/// itself (sound).
 final class GameEvent {
-  const GameEvent(this.event, this.cause, {this.intensity = 1, this.durationMs});
+  const GameEvent(this.playerId, this.event, this.cause, {this.intensity = 1, this.durationMs});
 
+  /// Whose sprite caused it: only that controller feels it.
+  final String playerId;
   final HapticEvent event;
   final GameEventCause cause;
   final double intensity;
@@ -62,7 +64,7 @@ final class GameEvent {
   HapticEventMessage toMessage() => HapticEventMessage(event: event, intensity: intensity, durationMs: durationMs);
 
   @override
-  String toString() => '${event.name} (${cause.name})';
+  String toString() => '${event.name} (${cause.name}) for $playerId';
 }
 
 /// An axis-aligned wall from [from] to [to], in fractions of the field
@@ -110,23 +112,77 @@ final class HazardSpec {
 enum ArenaPhase {
   playing,
 
-  /// Reached the goal. The next round starts after [ArenaGame.roundBreakS].
+  /// Someone reached the goal. The next round starts after
+  /// [ArenaGame.roundBreakS].
   won,
 }
 
-/// The test game's rules (PRD "Test game design"): the sprite crosses a field
-/// of walls and moving hazards to the goal. Hazards never end a round; they
-/// knock the sprite back. Every round the field is mirrored, so the start and
-/// the goal swap sides.
+/// One sprite, driven by one controller. Players don't collide with each
+/// other: each one races the field on its own.
+class ArenaPlayer {
+  ArenaPlayer._(this._game, this.id, this.slot) : _pos = _game._startFor(slot);
+
+  final ArenaGame _game;
+
+  /// The controller ID that drives it.
+  final String id;
+
+  /// Which start position it uses (0 is the middle one).
+  final int slot;
+
+  Offset _pos; // Fraction of the field.
+  Offset _facing = const Offset(1, 0);
+  Offset _aim = Offset.zero;
+  bool _dashHeld = false;
+  bool _touchingWall = false;
+  double _dashLeft = 0;
+  double _cooldownLeft = 0;
+  double _graceLeft = 0;
+  double _sinceHit = double.infinity;
+
+  int wins = 0;
+  int hits = 0;
+  int dashes = 0;
+  int failedDashes = 0;
+  double? bestTimeS;
+
+  /// The sprite's center in pixels.
+  Offset get position => _game._px(_pos);
+
+  bool get dashing => _dashLeft > 0;
+
+  /// 0 when a dash is ready, up to 1 right after one starts.
+  double get cooldown => _cooldownLeft / ArenaGame.dashCooldownS;
+
+  /// True while it can't be hit again (it blinks).
+  bool get recovering => _graceLeft > 0;
+
+  /// The aim cursor, or null when the right stick is centered.
+  Offset? get aimPoint =>
+      _aim.distance < 0.1 ? null : position + _aim * (ArenaGame.aimRange * _game._size.shortestSide);
+
+  void _reset() {
+    _pos = _game._startFor(slot);
+    _facing = Offset(_game.mirrored ? -1 : 1, 0);
+    _dashLeft = 0;
+    _cooldownLeft = 0;
+    _graceLeft = 0;
+    _touchingWall = false;
+  }
+}
+
+/// The test game's rules (PRD "Test game design"): sprites cross a field of
+/// walls and moving hazards to the goal. Every connected controller drives
+/// its own sprite, and the first to reach the goal wins the round. Hazards
+/// never end a round; they knock the sprite back. Every round the field is
+/// mirrored, so the start and the goal swap sides.
 ///
 /// Everything is measured against the field's size: positions are stored as
 /// fractions, and speeds and sizes are fractions of the shorter side per
 /// second, so the game feels the same in any window and survives resizing.
-/// The tuning values below are a first proposal, to be adjusted on devices.
+/// The tuning values below were tried on the devices in M5.
 class ArenaGame {
-  ArenaGame({this.walls = defaultWalls, this.hazards = defaultHazards, this._size = const Size(960, 540)}) {
-    _pos = _start;
-  }
+  ArenaGame({this.walls = defaultWalls, this.hazards = defaultHazards, this._size = const Size(960, 540)});
 
   // Sizes and speeds, as fractions of the field's shorter side.
   static const double playerRadius = 0.032;
@@ -147,8 +203,10 @@ class ArenaGame {
   /// resting a thumb against a wall doesn't buzz.
   static const double bumpThreshold = 0.25;
 
-  /// Start and goal for an unmirrored round (left to right).
+  /// Start and goal for an unmirrored round (left to right). Extra players
+  /// start above and below [startPoint], [startSpacing] apart.
   static const Offset startPoint = Offset(0.07, 0.5);
+  static const double startSpacing = 0.14;
   static const Rect goalArea = Rect.fromLTRB(0.86, 0.38, 0.97, 0.62);
 
   static const defaultWalls = [
@@ -170,17 +228,9 @@ class ArenaGame {
   final List<HazardSpec> hazards;
 
   Size _size;
-  late Offset _pos; // Fraction of the field.
-  Offset _facing = const Offset(1, 0);
-  Offset _aim = Offset.zero;
-  bool _dashHeld = false;
-  bool _touchingWall = false;
+  final _players = <String, ArenaPlayer>{}; // In the order they joined.
   double _time = 0; // Since the game started, for the hazards.
   double _roundTime = 0;
-  double _dashLeft = 0;
-  double _cooldownLeft = 0;
-  double _graceLeft = 0;
-  double _sinceHit = double.infinity;
   double _breakLeft = 0;
 
   ArenaPhase phase = ArenaPhase.playing;
@@ -188,41 +238,36 @@ class ArenaGame {
   /// Every round flips the field left to right.
   bool mirrored = false;
   int round = 1;
-  int wins = 0;
-  int hits = 0;
-  int dashes = 0;
-  int failedDashes = 0;
+
+  /// Who won the current round (while [phase] is won) and how fast.
+  String? winnerId;
   double? lastTimeS;
+
+  /// The fastest round so far, and who ran it.
   double? bestTimeS;
+  String? bestId;
 
   Size get size => _size;
 
   double get _unit => _size.shortestSide;
 
+  /// The sprites, in the order they joined.
+  List<ArenaPlayer> get players => List.unmodifiable(_players.values);
+
+  ArenaPlayer? player(String id) => _players[id];
+
   /// Seconds into the current round (frozen once won).
   double get roundTime => _roundTime;
 
-  bool get dashing => _dashLeft > 0;
-
-  /// 0 when a dash is ready, up to 1 right after one starts.
-  double get cooldown => _cooldownLeft / dashCooldownS;
-
-  /// True while the sprite can't be hit again (it blinks).
-  bool get recovering => _graceLeft > 0;
-
   /// Seconds until the next round, while [phase] is won.
   double get breakLeft => _breakLeft;
-
-  Offset get player => _px(_pos);
 
   double get playerRadiusPx => playerRadius * _unit;
 
   double get hazardRadiusPx => hazardRadius * _unit;
 
-  /// The aim cursor, or null when the right stick is centered.
-  Offset? get aimPoint => _aim.distance < 0.1 ? null : player + _aim * (aimRange * _unit);
-
-  Offset get startPx => _px(_start);
+  /// The middle start position, in pixels.
+  Offset get startPx => _px(_startFor(0));
 
   Rect get goalRect {
     final g = _goal;
@@ -233,7 +278,12 @@ class ArenaGame {
 
   List<Offset> get hazardPositions => [for (final h in hazards) _px(_mirror(h.at(_time, _size)))];
 
-  Offset get _start => _mirror(startPoint);
+  /// Slot 0 in the middle, then above, below, further above, …, kept inside
+  /// the field.
+  Offset _startFor(int slot) {
+    final step = (slot + 1) ~/ 2 * startSpacing * (slot.isOdd ? -1 : 1);
+    return _mirror(Offset(startPoint.dx, (startPoint.dy + step).clamp(0.08, 0.92)));
+  }
 
   Rect get _goal {
     final g = goalArea;
@@ -252,72 +302,114 @@ class ArenaGame {
     return Rect.fromPoints(a, b).inflate(wallThickness * _unit / 2);
   }
 
-  /// The window changed size. The sprite keeps its place on the field.
+  /// The window changed size. The sprites keep their place on the field.
   void resize(Size size) {
     if (size.width <= 0 || size.height <= 0) return;
     _size = size;
   }
 
-  /// Advances the game by [dt] seconds and returns the events to play.
-  List<GameEvent> update(double dt, GameInput input) {
+  /// Adds a sprite for [id] at the lowest free start position (if it isn't
+  /// in the game yet).
+  ArenaPlayer join(String id) {
+    final existing = _players[id];
+    if (existing != null) return existing;
+    final used = {for (final p in _players.values) p.slot};
+    var slot = 0;
+    while (used.contains(slot)) {
+      slot++;
+    }
+    final p = ArenaPlayer._(this, id, slot).._facing = Offset(mirrored ? -1 : 1, 0);
+    _players[id] = p;
+    return p;
+  }
+
+  void leave(String id) => _players.remove(id);
+
+  /// Advances the game by [dt] seconds with each player's input, and returns
+  /// the events to play. Controllers missing from [inputs] leave the game,
+  /// and new ones join it.
+  List<GameEvent> update(double dt, Map<String, GameInput> inputs) {
+    for (final id in _players.keys.where((id) => !inputs.containsKey(id)).toList()) {
+      leave(id);
+    }
+    inputs.keys.forEach(join);
+
     dt = dt.clamp(0.0, 0.1);
     final events = <GameEvent>[];
     _time += dt;
-    _sinceHit += dt;
-    _graceLeft = max(0, _graceLeft - dt);
-    _cooldownLeft = max(0, _cooldownLeft - dt);
-    _dashLeft = max(0, _dashLeft - dt);
+    for (final p in _players.values) {
+      p._sinceHit += dt;
+      p._graceLeft = max(0, p._graceLeft - dt);
+      p._cooldownLeft = max(0, p._cooldownLeft - dt);
+      p._dashLeft = max(0, p._dashLeft - dt);
+    }
 
     if (phase == ArenaPhase.won) {
       _breakLeft -= dt;
       if (_breakLeft <= 0) _newRound();
-      _dashHeld = input.dash;
+      for (final p in _players.values) {
+        p._dashHeld = inputs[p.id]!.dash;
+      }
       return events;
     }
 
     _roundTime += dt;
-    _aim = input.aim;
-    if (input.move.distance > 0.05) _facing = input.move / input.move.distance;
-
-    // A dashes on the press. Pressed again too soon, it's an error.
-    final pressed = input.dash && !_dashHeld;
-    _dashHeld = input.dash;
-    if (pressed) {
-      if (_cooldownLeft > 0) {
-        failedDashes++;
-        events.add(const GameEvent(HapticEvent.error, GameEventCause.cooldown));
-      } else {
-        dashes++;
-        _dashLeft = dashS;
-        _cooldownLeft = dashCooldownS;
-        events.add(
-          GameEvent(HapticEvent.rumble, GameEventCause.dash, intensity: 0.8, durationMs: (dashS * 1000).round()),
-        );
-      }
-    }
-
-    final velocity = dashing ? _facing * (dashSpeed * _unit) : input.move * (speed * _unit);
-    _move(velocity * dt, velocity, events);
-    _checkHazards(events);
-
-    if (_goal.inflate(playerRadius * 0.5 * _unit / _size.width).contains(_pos)) {
-      phase = ArenaPhase.won;
-      wins++;
-      lastTimeS = _roundTime;
-      bestTimeS = bestTimeS == null ? _roundTime : min(bestTimeS!, _roundTime);
-      _breakLeft = roundBreakS;
-      _dashLeft = 0;
-      events.add(const GameEvent(HapticEvent.success, GameEventCause.goal));
+    for (final p in _players.values) {
+      _updatePlayer(p, dt, inputs[p.id]!, events);
+      if (phase == ArenaPhase.won) break; // The first one in wins.
     }
     return events;
   }
 
+  void _updatePlayer(ArenaPlayer p, double dt, GameInput input, List<GameEvent> events) {
+    p._aim = input.aim;
+    if (input.move.distance > 0.05) p._facing = input.move / input.move.distance;
+
+    // A dashes on the press. Pressed again too soon, it's an error.
+    final pressed = input.dash && !p._dashHeld;
+    p._dashHeld = input.dash;
+    if (pressed) {
+      if (p._cooldownLeft > 0) {
+        p.failedDashes++;
+        events.add(GameEvent(p.id, HapticEvent.error, GameEventCause.cooldown));
+      } else {
+        p.dashes++;
+        p._dashLeft = dashS;
+        p._cooldownLeft = dashCooldownS;
+        events.add(
+          GameEvent(p.id, HapticEvent.rumble, GameEventCause.dash, intensity: 0.8, durationMs: (dashS * 1000).round()),
+        );
+      }
+    }
+
+    final velocity = p.dashing ? p._facing * (dashSpeed * _unit) : input.move * (speed * _unit);
+    _move(p, velocity * dt, velocity, events);
+    _checkHazards(p, events);
+
+    if (_goal.inflate(playerRadius * 0.5 * _unit / _size.width).contains(p._pos)) {
+      phase = ArenaPhase.won;
+      winnerId = p.id;
+      p.wins++;
+      lastTimeS = _roundTime;
+      p.bestTimeS = p.bestTimeS == null ? _roundTime : min(p.bestTimeS!, _roundTime);
+      if (bestTimeS == null || _roundTime < bestTimeS!) {
+        bestTimeS = _roundTime;
+        bestId = p.id;
+      }
+      _breakLeft = roundBreakS;
+      for (final other in _players.values) {
+        other._dashLeft = 0;
+      }
+      events.add(GameEvent(p.id, HapticEvent.success, GameEventCause.goal));
+    }
+  }
+
   /// Moves in small steps so a fast dash can't pass through a thin wall,
   /// pushing out of walls and the field's edges after each step.
-  void _move(Offset delta, Offset velocity, List<GameEvent> events) {
+  void _move(ArenaPlayer pl, Offset delta, Offset velocity, List<GameEvent> events) {
     final r = playerRadiusPx;
     final steps = max(1, (delta.distance / (r / 2)).ceil());
-    var p = player;
+    var p = pl.position;
     var touched = false;
     for (var i = 0; i < steps; i++) {
       p += delta / steps.toDouble();
@@ -325,16 +417,16 @@ class ArenaGame {
       p = next;
       touched |= hit;
     }
-    _pos = _frac(p);
+    pl._pos = _frac(p);
     final fastEnough = velocity.distance >= bumpThreshold * speed * _unit;
-    if (touched && !_touchingWall && fastEnough && _sinceHit >= hitGapS) {
-      hits++;
-      _sinceHit = 0;
-      events.add(GameEvent(HapticEvent.hit, GameEventCause.wall, intensity: dashing ? 1 : 0.7));
+    if (touched && !pl._touchingWall && fastEnough && pl._sinceHit >= hitGapS) {
+      pl.hits++;
+      pl._sinceHit = 0;
+      events.add(GameEvent(pl.id, HapticEvent.hit, GameEventCause.wall, intensity: pl.dashing ? 1 : 0.7));
     }
     // Still pressing into a wall counts as touching, so sliding along it
     // doesn't fire again.
-    _touchingWall = touched;
+    pl._touchingWall = touched;
   }
 
   /// Pushes a circle at [p] out of every wall and back inside the field.
@@ -366,22 +458,22 @@ class ArenaGame {
     return (Offset(x, y), hit);
   }
 
-  void _checkHazards(List<GameEvent> events) {
-    if (recovering) return;
-    final p = player;
+  void _checkHazards(ArenaPlayer pl, List<GameEvent> events) {
+    if (pl.recovering) return;
+    final p = pl.position;
     final reach = playerRadiusPx + hazardRadiusPx;
     for (final h in hazardPositions) {
       final away = p - h;
       if (away.distance >= reach) continue;
-      hits++;
-      _sinceHit = 0;
-      _graceLeft = hazardGraceS;
-      _dashLeft = 0;
+      pl.hits++;
+      pl._sinceHit = 0;
+      pl._graceLeft = hazardGraceS;
+      pl._dashLeft = 0;
       // Knocked back out of the hazard, then out of any wall.
-      final dir = away.distance > 1e-6 ? away / away.distance : -_facing;
+      final dir = away.distance > 1e-6 ? away / away.distance : -pl._facing;
       final (pushed, _) = _resolve(h + dir * (reach + playerRadiusPx), playerRadiusPx);
-      _pos = _frac(pushed);
-      events.add(const GameEvent(HapticEvent.hit, GameEventCause.hazard));
+      pl._pos = _frac(pushed);
+      events.add(GameEvent(pl.id, HapticEvent.hit, GameEventCause.hazard));
       return;
     }
   }
@@ -390,11 +482,10 @@ class ArenaGame {
     phase = ArenaPhase.playing;
     mirrored = !mirrored;
     round++;
+    winnerId = null;
     _roundTime = 0;
-    _pos = _start;
-    _facing = Offset(mirrored ? -1 : 1, 0);
-    _cooldownLeft = 0;
-    _graceLeft = 0;
-    _touchingWall = false;
+    for (final p in _players.values) {
+      p._reset();
+    }
   }
 }

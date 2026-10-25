@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:protocol/protocol.dart';
 import 'package:test_game/test_game.dart';
 
+import '../host_controller.dart';
 import '../providers.dart';
 
 /// Keys that show or hide the debug overlay: OK on the remote (and Enter),
@@ -19,9 +20,10 @@ final _debugKeys = {
   LogicalKeyboardKey.f3,
 };
 
-/// The playable test (PRD T7): the arena, driven by the controller that was
-/// used last, with each game event sent to it as a haptic event and played
-/// as a sound on the TV.
+/// The playable test (PRD T7): the arena, where every connected controller
+/// drives its own sprite in its player colour (T9). Each game event goes as a
+/// haptic event to the controller whose sprite caused it, and plays as a
+/// sound on the TV.
 class GameScreen extends ConsumerStatefulWidget {
   const GameScreen({super.key, this.game});
 
@@ -50,15 +52,19 @@ class _GameScreenState extends ConsumerState<GameScreen> {
   }
 
   void _onEvent(GameEvent e) {
-    final driver = ref.read(hostStateProvider).driver;
+    final who = ref.read(hostStateProvider).players.where((c) => c.controllerId == e.playerId).firstOrNull;
     ref
         .read(tvEventsProvider.notifier)
-        .fire(e.toMessage(), source: 'game: ${e.cause.name}', controllerId: driver?.controllerId);
+        .fire(
+          e.toMessage(),
+          source: 'game: ${e.cause.name}${who?.player == null ? '' : ', P${who!.player}'}',
+          controllerId: e.playerId,
+        );
   }
 
   @override
   Widget build(BuildContext context) {
-    final driver = ref.watch(hostStateProvider.select((s) => s.driver?.name));
+    final nobody = ref.watch(hostStateProvider.select((s) => s.players.isEmpty));
     final text = Theme.of(context).textTheme;
     return Focus(
       autofocus: true,
@@ -69,10 +75,10 @@ class _GameScreenState extends ConsumerState<GameScreen> {
             children: [
               ArenaView(
                 game: widget.game,
-                readInput: () => ref.read(hostStateProvider).driver?.input,
+                readPlayers: () => playerFeeds(ref.read(hostStateProvider)),
                 onEvent: _onEvent,
               ),
-              if (driver == null)
+              if (nobody)
                 const Positioned(
                   left: 0,
                   right: 0,
@@ -121,23 +127,30 @@ class DebugOverlay extends ConsumerWidget {
     final state = ref.watch(hostStateProvider);
     final last = ref.watch(tvEventsProvider);
     final sounds = ref.watch(soundStatusProvider);
-    final c = state.driver;
-    final input = c?.input;
+    final players = state.players;
     final rows = <(String, String)>[
-      ('Controller', c == null ? 'none connected' : '${c.name} (${c.platform} ${c.appVersion})'),
-      ('Connection', c == null ? '–' : _stateLabel(c.state)),
-      (
-        'Ping',
-        c?.rttMs == null
-            ? '–'
-            : '${c!.rttMs} ms (30 s avg ${c.rttStats?.avgMs ?? '–'}, max ${c.rttStats?.maxMs ?? '–'})',
-      ),
-      ('Mode', inputModeLabel(input)),
-      ('Values', inputValues(input)),
-      (
-        'Buttons',
-        input == null || input.buttons.isEmpty ? '–' : input.buttons.map((b) => b.name.toUpperCase()).join(' '),
-      ),
+      if (players.isEmpty) ('Controller', 'none connected'),
+      for (final c in players) ...[
+        ('P${c.player ?? '?'}', '${c.name} (${c.platform} ${c.appVersion}), ${_stateLabel(c.state)}'),
+        (
+          '  Ping',
+          c.rttMs == null
+              ? '–'
+              : '${c.rttMs} ms (30 s avg ${c.rttStats?.avgMs ?? '–'}, max ${c.rttStats?.maxMs ?? '–'})',
+        ),
+        (
+          '  Input delay',
+          c.inputLatency == null ? '–' : '~${c.inputLatency!.avgMs} ms avg (± ${c.latencyErrorMs ?? '?'} ms)',
+        ),
+        ('  Mode', inputModeLabel(c.input)),
+        ('  Values', inputValues(c.input)),
+        (
+          '  Buttons',
+          c.input == null || c.input!.buttons.isEmpty
+              ? '–'
+              : c.input!.buttons.map((b) => b.name.toUpperCase()).join(' '),
+        ),
+      ],
       (
         'Last haptic',
         last == null
@@ -179,6 +192,18 @@ class DebugOverlay extends ConsumerWidget {
     );
   }
 }
+
+/// Every connected controller as a player in the game, in its player colour.
+List<PlayerFeed> playerFeeds(HostViewState state) => [
+  for (final (i, c) in state.players.indexed)
+    (
+      id: c.controllerId,
+      number: c.player ?? i + 1,
+      name: c.name,
+      color: Color(playerColor(c.player ?? i + 1)),
+      input: c.input,
+    ),
+];
 
 String _stateLabel(ControllerState s) => switch (s) {
   ControllerState.connected => 'Connected',

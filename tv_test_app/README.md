@@ -1,39 +1,63 @@
 # TV test app
 
-Test bench and connection host for the controller. One codebase runs on **Android TV 12+ (API 31)** and as a **Windows desktop app**. App ID: `com.gamecontrollerdev.tvtest`.
+Test bench and connection host for the controller. One codebase runs on **Android TV 12+ (API 31)** and as a **Windows desktop app**. App ID: `com.gamecontrollerdev.tvtest`. Version 0.6.0 (Milestone 6).
 
-Current state (Milestone 5): hosts the controller server, advertises itself on the network (mDNS), shows the pairing code, the address for manual entry, and each controller's state, live ping and **input** (a small picture of its D-pad and buttons, lit while held; in gyro mode a stick with a dot and "Tilt x … y …"; in stick mode the Xbox-style layout with both sticks, LB/RB and "L x, y   R x, y"), plus a log. It has a built-in simulated controller. **Test game**: a top-down arena driven by the phone, where wall bumps, hazards, the goal and dashes send haptic events to the phone with a sound on the TV. **Haptic test**: fires each haptic event on the connected phones, with its sound.
+It hosts the controller server and advertises it on the network (mDNS), shows the pairing code, each controller's input, ping and input delay, and has a playable test game, a haptic test panel and a latency screen. Everything works with a TV remote and in a laptop window.
 
-## The screen
+## The main screen
 | Area | What it shows |
 | --- | --- |
 | Pairing code | The 4-digit code to enter on the phone. After 5 wrong codes in a row it changes on its own. |
 | Address for manual entry | `IP:port` to type on the phone if discovery doesn't find the TV |
 | Discovery line | Green when phones can find the TV via mDNS. If it fails, manual entry still works. |
-| Controllers | Each phone with its state (**Connected**, **Waiting for code**, **Disconnected**), its input (D-pad, Select/Start, A/B/X/Y lit while held), the round-trip ping and the average and highest ping over the last 30 s |
-| Sound line | "4 of 4 event sounds loaded" once the event sounds are ready (they play in the game and the haptic test) |
-| Log | Recent connection events, newest at the bottom |
+| Sound line | "4 of 4 event sounds loaded" once the event sounds are ready |
+| Controllers | Each phone with its **player badge** (P1, P2… in its colour), state (**Connected**, **Waiting for code**, **Disconnected**), its live input (a picture of its D-pad, buttons, tilt or sticks, lit while held), the ping (now, 30 s average and highest) and the estimated **input delay** |
+| Log | Recent events, newest at the bottom, including a latency line per phone every 30 s |
 
 Buttons (arrows to move, center/OK to press):
 - **New code**: shows a different code. Phones that are already paired stay paired.
-- **Simulate controller**: starts a controller inside the app that pairs on its own, exchanges heartbeats (PRD T3) and presses every button and direction in a loop. Press again to stop.
+- **Simulate controller**: starts a controller inside the app that pairs on its own (PRD T3) and presses every button and direction in a loop. Press again to stop.
 - **Drop connections**: closes every connection as if Wi-Fi dropped, so you can watch the phones reconnect by themselves.
-- **Test game**: the arena (see below).
-- **Haptic test**: four big buttons, **Hit**, **Success**, **Error** and **Rumble**, each sending that haptic event to every connected phone and playing its sound. **Intensity** (10–100%) and **Duration** (natural, or 100 ms to 2 s) are set with the − and + buttons. The last event sent and how many phones got it show below.
+- **Forget phones**: forgets the pairings of phones that aren't connected, so they need the code again.
+- **Save log**: writes the log with a latency summary on top to a file (see below).
+- At the top: **Test game**, **Haptic test** and **Latency**.
+
+Pairings are saved: after the TV app restarts, paired phones reconnect without the code (up to 8 phones, most recent first).
+
+## Several controllers
+Every phone that connects gets a player number, kept through short drops (a minute), and shown on the TV, on its sprite and on the phone itself. In the game each phone drives its own sprite, and only the phone whose sprite caused an event feels it.
 
 ## Test game
-Get the blue sprite from the start pad to the green goal past the grey walls and the red hazards. It plays with any phone mode: the D-pad moves at full speed, tilt or the left stick by how far you push, **A** dashes (a short burst with a cooldown ring), and the right stick moves an aim cursor. What you feel on the phone and hear on the TV:
+Get your sprite from the start pad to the green goal past the grey walls and the red hazards. The first to the goal wins the round; a new, mirrored round starts after 2 s. It plays with any phone mode: the D-pad moves at full speed, tilt or the left stick by how far you push, **A** dashes (a short burst with a cooldown ring), and the right stick moves an aim cursor.
 
-| What happens | Haptic | Sound |
+| What happens | Haptic (to that player's phone) | Sound |
 | --- | --- | --- |
 | Bump a wall or the edge, or a hazard touches you | hit | `hit.ogg` |
-| Reach the goal (a new mirrored round starts after 2 s) | success | `success.ogg` |
+| Reach the goal | success | `success.ogg` |
 | Press A while the dash is cooling down | error | `error.ogg` |
 | Dash | rumble | `rumble.ogg` |
 
-OK (center) or Enter, D or F3 shows a debug overlay: controller, connection, ping, input mode, stick or tilt values, buttons and the last haptic event sent. Back (Esc on Windows) returns to the main screen.
+The bar on top shows the round, the timer, the best time and, per player, wins, hits, dashes and whether the dash is ready. OK (center), Enter, D or F3 shows a debug overlay with each player's connection, ping, input delay, mode, values and buttons, the last haptic event and the sounds. Back (Esc on Windows) returns to the main screen.
 
-Pairings are kept in memory: after the TV app restarts, phones need the code again.
+## Haptic test
+Four big buttons, **Hit**, **Success**, **Error** and **Rumble**, each sending that haptic event to every connected phone and playing its sound. **Intensity** (10–100%) and **Duration** (natural, or 100 ms to 2 s) are set with − and +.
+
+## Latency
+For each connected phone:
+- **Input delay**: how long a press or a stick movement takes from the phone to this app, one way, estimated from the heartbeats (the two clocks are compared like NTP does; the ± shows how far off the estimate can be). Average, 95th percentile and highest over the last 30 s, and the average over the whole connection. The PRD target is about 50 ms; the screen says whether the 30 s average is within it.
+- **Ping**: the full round trip, now and over the last 30 s.
+
+It doesn't include the TV's own display delay (one frame or more, depending on the TV's picture mode), which no app can measure.
+
+### Getting the log off the device
+**Save log** (main screen or Latency screen) writes `controller-test-log-<date>-<time>.txt` and shows where:
+- **Android TV**: the app's folder, `/sdcard/Android/data/com.gamecontrollerdev.tvtest/files/`. Copy it to the PC with
+  ```powershell
+  adb -s <TV-IP>:5555 pull /sdcard/Android/data/com.gamecontrollerdev.tvtest/files/ .
+  ```
+- **Windows**: your Downloads folder.
+
+The file starts with each controller's ping and input delay, then every log line (up to 3000, about half an hour of a busy session).
 
 ## Windows setup
 Toolchain: see [../docs/building.md](../docs/building.md) (needs Visual Studio 2022 with **Desktop development with C++** for the Windows build). Then, from the repo root:

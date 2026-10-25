@@ -38,6 +38,7 @@ final class InputStateMessage extends Message {
     double? ly,
     double? rx,
     double? ry,
+    this.sentAtMs,
   }) : buttons = Set.unmodifiable(buttons),
        ax = _analog(ax),
        ay = _analog(ay),
@@ -78,6 +79,11 @@ final class InputStateMessage extends Message {
   final double? rx;
   final double? ry;
 
+  /// The phone's clock (milliseconds) when it sent this state (M6,
+  /// optional). The TV turns it into a one-way delay estimate with the
+  /// clock offset it measures from pings ([PongMessage.atMs]).
+  final int? sentAtMs;
+
   bool get hasAnalog => ax != null;
 
   bool get hasSticks => lx != null;
@@ -103,6 +109,7 @@ final class InputStateMessage extends Message {
     'ly': ?ly,
     'rx': ?rx,
     'ry': ?ry,
+    'ts': ?sentAtMs,
   };
 
   static InputStateMessage fromPayload(Map<String, Object?> p) {
@@ -135,6 +142,7 @@ final class InputStateMessage extends Message {
       ly: values['ly'],
       rx: values['rx'],
       ry: values['ry'],
+      sentAtMs: optionalInt(p, 'ts'),
     );
   }
 
@@ -151,11 +159,12 @@ final class InputStateMessage extends Message {
       other.ly == ly &&
       other.rx == rx &&
       other.ry == ry &&
+      other.sentAtMs == sentAtMs &&
       other.buttons.length == buttons.length &&
       other.buttons.containsAll(buttons);
 
   @override
-  int get hashCode => Object.hash(seq, dx, dy, ax, ay, lx, ly, rx, ry, Object.hashAllUnordered(buttons));
+  int get hashCode => Object.hash(seq, dx, dy, ax, ay, lx, ly, rx, ry, sentAtMs, Object.hashAllUnordered(buttons));
 }
 
 /// Clamps to -1..1 and rounds to 3 decimals: plenty for a stick, and it keeps

@@ -11,6 +11,7 @@ import '../providers.dart';
 import 'game_screen.dart';
 import 'haptic_panel_screen.dart';
 import 'input_visualizer.dart';
+import 'latency_screen.dart';
 import 'tv_button.dart';
 
 /// The TV's main screen: pairing code, addresses, connected controllers with
@@ -46,9 +47,9 @@ class HomeScreen extends ConsumerWidget {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
-                                Expanded(flex: 3, child: controllers),
+                                Expanded(flex: 7, child: controllers),
                                 const SizedBox(height: 12),
-                                const Expanded(flex: 2, child: _LogPanel()),
+                                const Expanded(flex: 4, child: _LogPanel()),
                               ],
                             ),
                           ),
@@ -104,7 +105,7 @@ class _Header extends StatelessWidget {
               children: [
                 TextSpan(text: 'Controller Test', style: text.headlineSmall),
                 TextSpan(
-                  text: '   Protocol v$protocolVersion · app $appVersion · Milestone 5',
+                  text: '   Protocol v$protocolVersion · app $appVersion · Milestone 6',
                   style: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
                 ),
               ],
@@ -133,6 +134,7 @@ class _Header extends StatelessWidget {
         onPressed: () => _open(context, const GameScreen()),
       ),
       TvButton(label: 'Haptic test', icon: Icons.vibration, onPressed: () => _open(context, const HapticPanelScreen())),
+      TvButton(label: 'Latency', icon: Icons.speed, onPressed: () => _open(context, const LatencyScreen())),
     ];
     return LayoutBuilder(
       builder: (context, constraints) => constraints.maxWidth >= 760
@@ -143,6 +145,8 @@ class _Header extends StatelessWidget {
                 buttons[0],
                 const SizedBox(width: 8),
                 buttons[1],
+                const SizedBox(width: 8),
+                buttons[2],
               ],
             )
           : Column(
@@ -186,7 +190,14 @@ class _Panel extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Expanded(child: Text(title, style: Theme.of(context).textTheme.titleMedium)),
+                    Expanded(
+                      child: Text(
+                        title,
+                        style: Theme.of(context).textTheme.titleMedium,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
                     ?trailing,
                   ],
                 ),
@@ -359,19 +370,36 @@ class _AdvertiseStatus extends StatelessWidget {
   }
 }
 
-class _ControllersPanel extends StatelessWidget {
+class _ControllersPanel extends ConsumerWidget {
   const _ControllersPanel({required this.state});
 
   final HostViewState state;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final controllers = state.host.controllers;
     final connected = state.host.connected.length;
     final text = Theme.of(context).textTheme;
+    final anyGone = controllers.any((c) => c.state != ControllerState.connected);
     return _Panel(
-      title: 'Controllers',
-      trailing: Text('$connected connected', style: text.bodyMedium),
+      title: 'Controllers · $connected connected',
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TvButton(
+            label: 'Forget phones',
+            compact: true,
+            onPressed: anyGone
+                ? () {
+                    final n = ref.read(hostControllerProvider).forgetPairings();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Forgot $n phone${n == 1 ? '' : 's'}. They need the code again.')),
+                    );
+                  }
+                : null,
+          ),
+        ],
+      ),
       child: controllers.isEmpty
           ? Center(
               child: Text(
@@ -414,63 +442,88 @@ class _ControllerTile extends StatelessWidget {
     final stats = info.rttStats;
     final live = info.state == ControllerState.connected;
     final muted = text.bodySmall?.copyWith(color: scheme.onSurfaceVariant);
-    return DecoratedBox(
-      decoration: BoxDecoration(color: scheme.surfaceContainerHigh, borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        child: Row(
-          children: [
-            Icon(icon, size: 28),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(info.name, style: text.titleMedium, overflow: TextOverflow.ellipsis),
-                  Text(
-                    '${info.platform} · ${info.appVersion} · ${info.remoteAddress}',
-                    style: muted,
-                    overflow: TextOverflow.ellipsis,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // On a 1080p TV the tile is narrow: a smaller picture leaves room for the name and state.
+        final narrow = constraints.maxWidth < 560;
+        return DecoratedBox(
+          decoration: BoxDecoration(color: scheme.surfaceContainerHigh, borderRadius: BorderRadius.circular(12)),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Row(
+              children: [
+                if (live && info.player != null)
+                  PlayerBadge(key: Key('player-${info.controllerId}'), number: info.player!, size: 30)
+                else
+                  Icon(icon, size: 28),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(info.name, style: text.titleMedium, overflow: TextOverflow.ellipsis),
+                      Text(
+                        '${info.platform} · ${info.appVersion} · ${info.remoteAddress}',
+                        style: muted,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Text(
+                        label,
+                        style: text.titleSmall?.copyWith(color: color),
+                        maxLines: 1,
+                        softWrap: false,
+                        overflow: TextOverflow.fade,
+                      ),
+                      if (live && (info.input?.hasAnalog ?? false))
+                        Text(
+                          'Tilt x ${info.input!.ax!.toStringAsFixed(2)}  y ${info.input!.ay!.toStringAsFixed(2)}',
+                          key: Key('tilt-${info.controllerId}'),
+                          style: text.bodyMedium?.copyWith(fontFeatures: const [FontFeature.tabularFigures()]),
+                        ),
+                      if (live && (info.input?.hasSticks ?? false))
+                        Text(
+                          'L ${info.input!.lx!.toStringAsFixed(2)}, ${info.input!.ly!.toStringAsFixed(2)}   '
+                          'R ${info.input!.rx!.toStringAsFixed(2)}, ${info.input!.ry!.toStringAsFixed(2)}',
+                          key: Key('sticks-${info.controllerId}'),
+                          style: text.bodyMedium?.copyWith(fontFeatures: const [FontFeature.tabularFigures()]),
+                        ),
+                    ],
                   ),
-                  Text(label, style: text.titleSmall?.copyWith(color: color)),
-                  if (live && (info.input?.hasAnalog ?? false))
-                    Text(
-                      'Tilt x ${info.input!.ax!.toStringAsFixed(2)}  y ${info.input!.ay!.toStringAsFixed(2)}',
-                      key: Key('tilt-${info.controllerId}'),
-                      style: text.bodyMedium?.copyWith(fontFeatures: const [FontFeature.tabularFigures()]),
-                    ),
-                  if (live && (info.input?.hasSticks ?? false))
-                    Text(
-                      'L ${info.input!.lx!.toStringAsFixed(2)}, ${info.input!.ly!.toStringAsFixed(2)}   '
-                      'R ${info.input!.rx!.toStringAsFixed(2)}, ${info.input!.ry!.toStringAsFixed(2)}',
-                      key: Key('sticks-${info.controllerId}'),
-                      style: text.bodyMedium?.copyWith(fontFeatures: const [FontFeature.tabularFigures()]),
-                    ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 8),
-            InputVisualizer(key: Key('visualizer-${info.controllerId}'), input: live ? info.input : null, width: 210),
-            const SizedBox(width: 12),
-            SizedBox(
-              width: 92,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    live && rtt != null ? '$rtt ms' : '–',
-                    style: text.titleLarge?.copyWith(fontFeatures: const [FontFeature.tabularFigures()]),
+                ),
+                const SizedBox(width: 8),
+                InputVisualizer(
+                  key: Key('visualizer-${info.controllerId}'),
+                  input: live ? info.input : null,
+                  width: narrow ? 160 : 210,
+                ),
+                const SizedBox(width: 12),
+                SizedBox(
+                  width: 92,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        live && rtt != null ? '$rtt ms' : '–',
+                        style: text.titleLarge?.copyWith(fontFeatures: const [FontFeature.tabularFigures()]),
+                      ),
+                      if (live && stats != null) ...[
+                        Text('avg ${stats.avgMs} ms', style: muted),
+                        Text('max ${stats.maxMs} ms', style: muted),
+                      ],
+                      if (live && info.inputLatency != null)
+                        Text(
+                          'input ~${info.inputLatency!.avgMs} ms',
+                          key: Key('inputLatency-${info.controllerId}'),
+                          style: muted,
+                        ),
+                    ],
                   ),
-                  if (live && stats != null) ...[
-                    Text('avg ${stats.avgMs} ms', style: muted),
-                    Text('max ${stats.maxMs} ms', style: muted),
-                  ],
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 }
@@ -484,6 +537,12 @@ class _LogPanel extends ConsumerWidget {
     final style = Theme.of(context).textTheme.bodySmall?.copyWith(fontFamily: 'monospace', height: 1.3);
     return _Panel(
       title: 'Log',
+      trailing: TvButton(
+        label: 'Save log',
+        icon: Icons.save_alt,
+        compact: true,
+        onPressed: () => saveLog(context, ref),
+      ),
       child: ExcludeFocus(
         child: ListView.builder(
           reverse: true, // Newest at the bottom, and it stays scrolled there.

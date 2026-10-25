@@ -69,3 +69,15 @@ Timer runDemoInput(ControllerClient client, {Duration step = const Duration(mill
     client.sendInput(s.buttons, dx: s.dx, dy: s.dy, ax: s.ax, ay: s.ay, left: s.left, right: s.right);
   });
 }
+
+/// Streams like gyro mode for long-session tests: the tilt sweeps a slow
+/// circle and is sent about 60 times a second, and A is pressed for a
+/// quarter of every second. Cancel the timer to stop.
+Timer runStreamInput(ControllerClient client, {Duration period = const Duration(microseconds: 16667)}) {
+  final clock = Stopwatch()..start();
+  return Timer.periodic(period, (_) {
+    final t = clock.elapsedMilliseconds / 1000;
+    final a = t * 2 * pi / 4; // One circle every 4 s.
+    client.sendInput({if (t % 1 < 0.25) ControllerButton.a}, ax: 0.7 * cos(a), ay: 0.7 * sin(a));
+  });
+}

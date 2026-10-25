@@ -1,10 +1,12 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
 import 'package:bonsoir/bonsoir.dart';
 import 'package:connection/connection.dart';
 import 'package:protocol/protocol.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app_info.dart';
@@ -37,7 +39,6 @@ final class HostViewState {
     this.advertiseError,
     this.serverError,
     this.sim,
-    this.activeControllerId,
   });
 
   final String hostName;
@@ -55,15 +56,9 @@ final class HostViewState {
   /// The built-in simulated controller, or null when it's off.
   final ClientSnapshot? sim;
 
-  /// The controller that pressed or moved something last.
-  final String? activeControllerId;
-
-  /// The controller that drives the test game: the last one used, or else
-  /// the first connected one.
-  ControllerInfo? get driver {
-    final connected = host.connected.toList();
-    return connected.where((c) => c.controllerId == activeControllerId).firstOrNull ?? connected.firstOrNull;
-  }
+  /// Connected controllers by player number (PRD T9).
+  List<ControllerInfo> get players =>
+      host.connected.toList()..sort((a, b) => (a.player ?? 99).compareTo(b.player ?? 99));
 }
 
 /// What the TV screen needs from the host. A fake implements it in tests.
@@ -73,6 +68,14 @@ abstract class HostController {
   void newPairingCode();
   void toggleSimulatedController();
   void dropAllConnections();
+
+  /// Forgets paired phones that aren't connected, so they need the code
+  /// again. Returns how many were forgotten.
+  int forgetPairings();
+
+  /// Saves the log (with a latency summary on top) to a file and returns its
+  /// path (PRD T8).
+  Future<String> exportLog();
 
   /// Sends a haptic event to one controller, or to every connected one when
   /// [controllerId] is null. Returns how many it reached.
@@ -94,15 +97,20 @@ class LiveHostController implements HostController {
     }
     _hostId = id;
     _hostName = _defaultHostName();
-    _server = HostServer(hostId: id, hostName: _hostName, appVersion: appVersion, log: log.sink('host'));
+    final saved = loadPairings(prefs);
+    _server = HostServer(
+      hostId: id,
+      hostName: _hostName,
+      appVersion: appVersion,
+      // Saved, so phones reconnect without a code after the app restarts.
+      pairings: saved,
+      onPairingsChanged: (p) => savePairings(prefs, p),
+      log: log.sink('host'),
+    );
+    if (saved.isNotEmpty) {
+      _log('Remembered ${saved.length} paired controller${saved.length == 1 ? '' : 's'}');
+    }
     _serverSub = _server.changes.listen((_) => _emit());
-    _messagesSub = _server.messages.listen((m) {
-      final message = m.message;
-      if (message is InputStateMessage && !message.isNeutral && m.controllerId != _active) {
-        _active = m.controllerId;
-        _emit();
-      }
-    });
   }
 
   static const _hostIdKey = 'hostId';
@@ -113,8 +121,6 @@ class LiveHostController implements HostController {
   late final String _hostName;
   late final HostServer _server;
   late final StreamSubscription<HostSnapshot> _serverSub;
-  late final StreamSubscription<ControllerMessage> _messagesSub;
-  String? _active;
   final _changes = StreamController<HostViewState>.broadcast();
 
   List<LocalAddress> _addresses = const [];
@@ -141,7 +147,6 @@ class LiveHostController implements HostController {
     advertiseError: _advertiseError,
     serverError: _serverError,
     sim: _sim?.snapshot,
-    activeControllerId: _active,
   );
 
   @override
@@ -168,6 +173,22 @@ class LiveHostController implements HostController {
 
   @override
   void dropAllConnections() => _server.dropAllConnections();
+
+  @override
+  int forgetPairings() => _server.forgetDisconnected();
+
+  @override
+  Future<String> exportLog() async {
+    final dir = await logExportDirectory();
+    final now = DateTime.now();
+    String two(int n) => n.toString().padLeft(2, '0');
+    final name =
+        'controller-test-log-${now.year}${two(now.month)}${two(now.day)}-${two(now.hour)}${two(now.minute)}${two(now.second)}.txt';
+    final file = File('${dir.path}${Platform.pathSeparator}$name');
+    await file.writeAsString(buildLogExport(state, _logBuffer, now: now));
+    _log('Log saved to ${file.path}');
+    return file.path;
+  }
 
   @override
   int sendHaptic(HapticEventMessage message, {String? controllerId}) {
@@ -232,7 +253,6 @@ class LiveHostController implements HostController {
       await _broadcast?.stop();
     } catch (_) {}
     await _serverSub.cancel();
-    await _messagesSub.cancel();
     await _server.dispose();
     await _changes.close();
   }
@@ -329,4 +349,75 @@ bool _sameAddresses(List<LocalAddress> a, List<LocalAddress> b) =>
 String _randomHex(int bytes) {
   final r = Random.secure();
   return List.generate(bytes, (_) => r.nextInt(256).toRadixString(16).padLeft(2, '0')).join();
+}
+
+const _pairingsKey = 'pairings';
+
+/// The pairings saved by [savePairings]. Broken entries are skipped.
+List<SavedPairing> loadPairings(SharedPreferences prefs) {
+  final raw = prefs.getString(_pairingsKey);
+  if (raw == null) return const [];
+  try {
+    final list = jsonDecode(raw);
+    if (list is! List) return const [];
+    return [for (final item in list) ?SavedPairing.fromJson(item)];
+  } catch (_) {
+    return const [];
+  }
+}
+
+void savePairings(SharedPreferences prefs, List<SavedPairing> pairings) =>
+    prefs.setString(_pairingsKey, jsonEncode([for (final p in pairings) p.toJson()]));
+
+/// Where "Save log" puts its file. On Android TV that's the app's own folder
+/// on shared storage, which needs no permission and `adb pull` can read:
+/// /sdcard/Android/data/com.gamecontrollerdev.tvtest/files. On Windows it's
+/// the Downloads folder.
+Future<Directory> logExportDirectory() async {
+  if (Platform.isAndroid) {
+    final external = await getExternalStorageDirectory();
+    if (external != null) return external;
+  } else {
+    final downloads = await getDownloadsDirectory();
+    if (downloads != null) return downloads;
+  }
+  return getApplicationDocumentsDirectory();
+}
+
+/// The exported log: a header with the app, the time and each controller's
+/// latency (PRD T8), then every log line, oldest first.
+String buildLogExport(HostViewState state, LogBuffer log, {required DateTime now}) {
+  final b = StringBuffer()
+    ..writeln('Controller Test $appVersion log, ${now.toIso8601String()}')
+    ..writeln(
+      'Host: ${state.hostName} (${Platform.operatingSystem}), port ${state.host.port ?? '-'}, protocol v$protocolVersion',
+    )
+    ..writeln('Addresses: ${state.addresses.map((a) => '${a.address} (${a.interfaceName})').join(', ')}')
+    ..writeln()
+    ..writeln('Controllers (latency: last 30 s, and since the controller connected):');
+  if (state.host.controllers.isEmpty) b.writeln('  none');
+  for (final c in state.host.controllers) {
+    b.writeln('  ${c.player == null ? '' : 'P${c.player} '}${c.name} (${c.platform} ${c.appVersion}), ${c.state.name}');
+    if (c.state != ControllerState.connected) continue;
+    final rtt = c.rttStats;
+    b.writeln('    Ping: ${rtt == null ? '-' : '$rtt, p95 ${rtt.p95Ms} ms'}');
+    b.writeln('    Input delay (estimated, one way): ${latencyText(c)}');
+  }
+  b
+    ..writeln()
+    ..writeln('Log (${log.lines.length} lines, oldest first):')
+    ..writeln(log.export());
+  return b.toString();
+}
+
+/// "avg 8 · p95 14 · max 30 ms (± 3 ms); session avg 9 ms", or why it isn't
+/// measured.
+String latencyText(ControllerInfo c) {
+  final l = c.inputLatency;
+  if (l == null) {
+    return c.latencyErrorMs == null ? 'not measured (phone app older than 0.6.0?)' : 'waiting for input';
+  }
+  final session = c.inputLatencySession;
+  return 'avg ${l.avgMs} · p95 ${l.p95Ms} · max ${l.maxMs} ms (± ${c.latencyErrorMs} ms)'
+      '${session == null ? '' : '; session avg ${session.avgMs} ms over ${session.samples} states'}';
 }

@@ -42,8 +42,8 @@ void main() {
 
   test('duration stretches hit, success and error in time', () {
     final normal = HapticPattern.forEvent(HapticEvent.success);
-    final slow = HapticPattern.forEvent(HapticEvent.success, durationMs: 640);
-    expect(slow.lengthMs, closeTo(640, 1));
+    final slow = HapticPattern.forEvent(HapticEvent.success, durationMs: 900);
+    expect(slow.lengthMs, closeTo(900, 1));
     expect(slow.segments[1].startMs, closeTo(normal.segments[1].startMs * 2, 1e-9));
   });
 
@@ -51,16 +51,42 @@ void main() {
     for (final ms in [20, 75, 300, 3000]) {
       final p = HapticPattern.forEvent(HapticEvent.rumble, durationMs: ms);
       expect(p.lengthMs, closeTo(ms, 1e-9), reason: '$ms ms');
-      expect(p.segments.every((s) => !s.isTap && s.durationMs <= 50), isTrue);
+      expect(p.segments.every((s) => !s.isTap && s.durationMs <= rumbleStepMs), isTrue);
       for (var i = 1; i < p.segments.length; i++) {
         expect(p.segments[i].startMs, closeTo(p.segments[i - 1].endMs, 1e-9), reason: 'no gaps');
       }
     }
   });
 
+  test('they differ in pulses and length: 1 short thud, 3 taps, 2 buzzes, a long throb', () {
+    // Separate pulses: segments (taps count as 15 ms) with a gap of 40 ms or more between them.
+    int pulses(HapticEvent e) {
+      final spans = [
+        for (final s in HapticPattern.forEvent(e).segments) (s.startMs, s.isTap ? s.startMs + 15 : s.endMs),
+      ]..sort((a, b) => a.$1.compareTo(b.$1));
+      var count = 0;
+      var end = -1000.0;
+      for (final (start, stop) in spans) {
+        if (start - end >= 40) count++;
+        if (stop > end) end = stop;
+      }
+      return count;
+    }
+
+    expect(pulses(HapticEvent.hit), 1);
+    expect(pulses(HapticEvent.success), 3);
+    expect(pulses(HapticEvent.error), 2);
+    expect(pulses(HapticEvent.rumble), 1);
+    expect(HapticPattern.forEvent(HapticEvent.hit).lengthMs, lessThanOrEqualTo(100));
+    expect(HapticPattern.forEvent(HapticEvent.rumble).lengthMs, greaterThanOrEqualTo(300));
+    // The rumble throbs: strong and weak parts clearly apart.
+    final levels = HapticPattern.forEvent(HapticEvent.rumble).segments.map((s) => s.intensity).toSet();
+    expect(levels.reduce((a, b) => a > b ? a : b) - levels.reduce((a, b) => a < b ? a : b), greaterThanOrEqualTo(0.4));
+  });
+
   test('the wire format is [start, duration, intensity, sharpness] per segment', () {
     final wire = HapticPattern.forEvent(HapticEvent.error).toWire();
-    expect(wire.first, [0, 80, 0.9, 1.0]);
+    expect(wire.first, [0, 110, 1.0, 1.0]);
     expect(wire.every((s) => s.length == 4), isTrue);
   });
 }

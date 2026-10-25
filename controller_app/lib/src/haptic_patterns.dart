@@ -30,16 +30,21 @@ final class HapticSegment {
 
 /// The pattern the phone plays for a haptic event from the TV (PRD C6).
 ///
-/// Each event has its own shape so they can be told apart without looking:
-/// - **hit**: one heavy thump with a short fading tail.
-/// - **success**: three rising taps, "da-da-DAA".
-/// - **error**: two short, harsh buzzes, "bzz-bzz".
-/// - **rumble**: a low, wobbling buzz for the whole duration.
+/// Each event has its own shape so they can be told apart without looking.
+/// They differ in how many pulses they have, their rhythm and their length,
+/// not just in strength (the M5 device test found the first versions "a
+/// little hard to differentiate"):
+/// - **hit**: one short, deep thud (one pulse, 100 ms).
+/// - **success**: three crisp taps, clearly apart and rising, then a ring,
+///   "ti-ti-TIING" (three pulses, 450 ms).
+/// - **error**: two long, harsh buzzes, "BZZT-BZZT" (two pulses, 300 ms).
+/// - **rumble**: a deep throb, strong and weak in turns, for the whole
+///   duration.
 ///
 /// The TV's intensity scales every segment. Its duration stretches hit,
 /// success and error in time (their natural lengths are
 /// [HapticEvent.defaultDurationMs]), and sets how long a rumble lasts.
-/// These values are a first proposal, to be tuned on the phones.
+/// Each event's strength can also be set on its own in Settings.
 final class HapticPattern {
   const HapticPattern(this.segments);
 
@@ -77,31 +82,30 @@ final class HapticPattern {
   String toString() => segments.join(', ');
 }
 
-/// A thump: a heavy tap plus a tail that fades out over the natural length.
+/// A thud: a deep, heavy tap with a short tail, at full strength.
 const _hit = [
-  HapticSegment.tap(0, 1.0, 0.3),
-  HapticSegment.buzz(0, 30, 0.7, 0.2),
-  HapticSegment.buzz(30, 30, 0.45, 0.15),
-  HapticSegment.buzz(60, 30, 0.25, 0.1),
-  HapticSegment.buzz(90, 30, 0.1, 0.1),
+  HapticSegment.tap(0, 1.0, 0.1),
+  HapticSegment.buzz(0, 60, 1.0, 0.0),
+  HapticSegment.buzz(60, 40, 0.45, 0.0),
 ];
 
-/// Three taps getting stronger, the last with a short ring.
+/// Three crisp taps getting stronger, 130 ms apart, the last one ringing out.
 const _success = [
-  HapticSegment.tap(0, 0.55, 0.8),
-  HapticSegment.tap(110, 0.8, 0.85),
-  HapticSegment.tap(220, 1.0, 0.9),
-  HapticSegment.buzz(220, 100, 0.45, 0.7),
+  HapticSegment.tap(0, 0.5, 1.0),
+  HapticSegment.tap(130, 0.75, 1.0),
+  HapticSegment.tap(260, 1.0, 1.0),
+  HapticSegment.buzz(260, 100, 0.7, 0.9),
+  HapticSegment.buzz(360, 90, 0.35, 0.9),
 ];
 
-/// Two short, sharp buzzes with a gap.
-const _error = [HapticSegment.buzz(0, 80, 0.9, 1.0), HapticSegment.buzz(140, 80, 0.9, 1.0)];
+/// Two long, harsh buzzes with a clear gap.
+const _error = [HapticSegment.buzz(0, 110, 1.0, 1.0), HapticSegment.buzz(190, 110, 1.0, 1.0)];
 
-/// A low buzz that wobbles between two strengths every 50 ms, for [lengthMs].
-List<HapticSegment> _rumble(double lengthMs) {
-  const step = 50.0;
-  return [
-    for (var t = 0.0; t < lengthMs; t += step)
-      HapticSegment.buzz(t, min(step, lengthMs - t), (t ~/ step).isEven ? 0.8 : 0.6, 0.05),
-  ];
-}
+/// How long each strong or weak part of a rumble lasts.
+const rumbleStepMs = 70.0;
+
+/// A deep buzz that throbs between strong and weak, for [lengthMs].
+List<HapticSegment> _rumble(double lengthMs) => [
+  for (var t = 0.0; t < lengthMs; t += rumbleStepMs)
+    HapticSegment.buzz(t, min(rumbleStepMs, lengthMs - t), (t ~/ rumbleStepMs).isEven ? 1.0 : 0.45, 0.0),
+];

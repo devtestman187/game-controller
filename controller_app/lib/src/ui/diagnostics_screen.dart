@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:protocol/protocol.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../device_status.dart';
 import '../gyro.dart';
 import '../local_network.dart';
 import '../providers.dart';
@@ -30,6 +31,8 @@ class DiagnosticsScreen extends ConsumerWidget {
     final gyro = ref.watch(gyroProvider);
     final gyroSettings = ref.watch(gyroSettingsProvider);
     final stickSettings = ref.watch(stickSettingsProvider);
+    final outages = ref.watch(outagesProvider);
+    final session = ref.watch(sessionStatsProvider);
     final text = Theme.of(context).textTheme;
     final mono = text.bodySmall?.copyWith(fontFamily: 'monospace', height: 1.3);
     final target = client.target;
@@ -66,8 +69,9 @@ class DiagnosticsScreen extends ConsumerWidget {
               ('TV', client.hostLabel.isEmpty ? '–' : client.hostLabel),
               ('Address', target?.ordered.map((a) => target.copyWith(addresses: [a]).display).join(', ') ?? '–'),
               ('TV ID', target?.hostId ?? '–'),
+              if (client.player != null) ('Player', 'P${client.player} on the TV'),
               ('Ping', client.rttMs == null ? '–' : '${client.rttMs} ms'),
-              if (client.rttStats != null) ('Ping, last 30 s', '${client.rttStats}'),
+              if (client.rttStats != null) ('Ping, last 30 s', '${client.rttStats}, p95 ${client.rttStats!.p95Ms} ms'),
               if (client.problem != null) ('Problem', client.problem!.name),
               if (client.detail != null) ('Detail', client.detail!),
               if (client.osErrorCode != null) ('OS error', '${client.osErrorCode}'),
@@ -92,7 +96,11 @@ class DiagnosticsScreen extends ConsumerWidget {
               ('Supported', caps == null ? 'Checking…' : (caps.supported ? 'Yes' : 'No')),
               ('Engine', caps?.engine ?? '–'),
               ('Intensity control', caps == null ? '–' : (caps.intensityControl ? 'Yes' : 'No (on/off only)')),
-              ('Setting', haptics.enabled ? 'On, ${(haptics.intensity * 100).round()}%' : 'Off'),
+              ('Setting', haptics.enabled ? 'On, tick ${(haptics.intensity * 100).round()}%' : 'Off'),
+              (
+                'TV event strengths',
+                HapticEvent.values.map((e) => '${e.name} ${(haptics.eventIntensity(e) * 100).round()}%').join(', '),
+              ),
               ('Ticks played', '${player.played}'),
               ('TV events', '${tvHaptics.received} received, ${tvHaptics.played} played'),
               if (tvHaptics.last case final last?)
@@ -137,6 +145,42 @@ class DiagnosticsScreen extends ConsumerWidget {
                 'sensitivity ${gyroSettings.sensitivity.toStringAsFixed(2)}, dead zone ${(gyroSettings.deadZone * 100).round()}%, '
                     'smoothing ${(gyroSettings.smoothing * 100).round()}%',
               ),
+            ]),
+            _Section('Reconnects', [
+              if (outages.isEmpty) ('', 'No drops since the app started.'),
+              for (final o in outages)
+                (
+                  _clock(o.from),
+                  o.length == null
+                      ? 'Dropped (${o.reason}), reconnecting…'
+                      : 'Dropped (${o.reason}), back after ${(o.length!.inMilliseconds / 1000).toStringAsFixed(1)} s',
+                ),
+            ]),
+            _Section('Session (battery and CPU)', [
+              if (session == null)
+                ('', 'Measuring… (this phone build may not report it)')
+              else ...[
+                ('Running for', _duration(session.length)),
+                (
+                  'CPU',
+                  '${_pct(session.recentCpuPercent)} of one core (last minute), ${_pct(session.cpuPercent)} since launch',
+                ),
+                (
+                  'Battery',
+                  '${_pct(session.latest.status.battery == null ? null : session.latest.status.battery! * 100)}'
+                      '${session.latest.status.charging ? ', charging' : ''}'
+                      '${session.latest.status.lowPower ? ', Low Power Mode' : ''}'
+                      ' (${_pct(session.first.status.battery == null ? null : session.first.status.battery! * 100)} at launch)',
+                ),
+                (
+                  'Battery use',
+                  session.batteryPerHour == null
+                      ? 'shown after 5 min on battery'
+                      : '${session.batteryPerHour!.toStringAsFixed(1)}% per hour',
+                ),
+                ('Heat', session.latest.status.thermal),
+                ('Input sent', '${session.sendRate.toStringAsFixed(0)} states/s (last minute)'),
+              ],
             ]),
             _Section('This phone', [
               ('Name', identity.name),
@@ -201,7 +245,24 @@ String buildReport(WidgetRef ref) {
     ..writeln(
       'Haptics: ${ref.read(hapticsPlayerProvider).capabilities.engine}, setting ${ref.read(hapticSettingsProvider).enabled ? 'on' : 'off'} ${ref.read(hapticSettingsProvider).intensity}, played ${ref.read(hapticsPlayerProvider).played}, TV events ${ref.read(tvHapticsProvider).received} received ${ref.read(tvHapticsProvider).played} played (last ${ref.read(tvHapticsProvider).last ?? '-'}), error ${ref.read(hapticsPlayerProvider).lastError ?? '-'}',
     )
-    ..writeln('Ping, last 30 s: ${client.rttStats ?? '-'}')
+    ..writeln(
+      'Ping, last 30 s: ${client.rttStats ?? '-'}${client.rttStats == null ? '' : ', p95 ${client.rttStats!.p95Ms} ms'}',
+    )
+    ..writeln('Player: ${client.player == null ? '-' : 'P${client.player}'}')
+    ..writeln(
+      'TV event strengths: ${HapticEvent.values.map((e) => '${e.name} ${(ref.read(hapticSettingsProvider).eventIntensity(e) * 100).round()}%').join(', ')}',
+    )
+    ..writeln('Session: ${_sessionLine(ref.read(sessionStatsProvider))}')
+    ..writeln('Reconnects (newest first): ${ref.read(outagesProvider).isEmpty ? 'none' : ''}')
+    ..writeAll(
+      ref
+          .read(outagesProvider)
+          .map(
+            (o) =>
+                '  ${o.from.toIso8601String()} ${o.reason}: '
+                '${o.length == null ? 'not back yet' : 'back after ${o.length!.inMilliseconds} ms'}\n',
+          ),
+    )
     ..writeln(
       'Gyro: ${ref.read(gyroProvider).mode.name}, ${ref.read(gyroProvider).availability.name}, side ${ref.read(gyroProvider).side?.name ?? '-'}, x ${ref.read(gyroProvider).x.toStringAsFixed(3)} y ${ref.read(gyroProvider).y.toStringAsFixed(3)}, up ${ref.read(gyroProvider).up ?? '-'}, ${ref.read(gyroProvider).problem ?? ''}',
     )
@@ -213,6 +274,26 @@ String buildReport(WidgetRef ref) {
     ..writeln(log.export());
   return b.toString();
 }
+
+String _sessionLine(SessionStats? s) {
+  if (s == null) return 'not measured';
+  final battery = s.latest.status.battery;
+  return '${_duration(s.length)}, CPU ${_pct(s.recentCpuPercent)} (last minute) ${_pct(s.cpuPercent)} (session), '
+      'battery ${_pct(battery == null ? null : battery * 100)}${s.latest.status.charging ? ' charging' : ''}, '
+      '${s.batteryPerHour == null ? 'drain -' : 'drain ${s.batteryPerHour!.toStringAsFixed(1)}%/h'}, '
+      'heat ${s.latest.status.thermal}, ${s.sendRate.toStringAsFixed(0)} inputs/s';
+}
+
+String _pct(double? v) => v == null ? '–' : '${v.toStringAsFixed(v < 10 ? 1 : 0)}%';
+
+String _duration(Duration d) => d.inHours > 0
+    ? '${d.inHours} h ${d.inMinutes % 60} min'
+    : d.inMinutes > 0
+    ? '${d.inMinutes} min ${d.inSeconds % 60} s'
+    : '${d.inSeconds} s';
+
+String _clock(DateTime t) =>
+    '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}:${t.second.toString().padLeft(2, '0')}';
 
 class _Section extends StatelessWidget {
   const _Section(this.title, this.rows, {this.highlight = false});
