@@ -346,6 +346,7 @@ Milestone 6 makes the system dependable and measurable: saved settings, full dia
 **Scope**
 
 - Settings screen that saves haptic intensity and toggle, gyro and analog stick sensitivity and dead zone, and gyro smoothing, between launches (C11).
+- Per-event haptic intensity in settings: hit, success, error and rumble each get their own intensity, separate from the button tick, with a "try it" button for each, so the four events are easier to tell apart (from the M5 device test: "haptics are a little hard to differentiate").
 - Full Diagnostics screen with haptics capability and shareable logs (C10).
 - Latency tooling on the TV: live round-trip ping, rolling average, and log export (T8).
 - Reconnect hardening: sleeping phone, backgrounded app, TV app restart, and changed network.
@@ -357,6 +358,7 @@ Milestone 6 makes the system dependable and measurable: saved settings, full dia
 
 - [ ] Measured input latency on home Wi-Fi meets the target of about 50 ms, or the gap is documented with a plan.
 - [ ] Saved settings survive closing and reopening the controller app.
+- [ ] Each TV haptic event's intensity can be set on its own in settings, changes how that event feels from the TV, and doesn't change the button tick.
 - [ ] A play session of about 30 minutes (proposed) completes with no dropped connection or stuck input.
 - [ ] The controller recovers after the TV app restarts and after the phone sleeps and wakes.
 - [ ] Two controllers connect at the same time, and the TV shows each one's input separately.
