@@ -31,6 +31,6 @@ Toolchain setup, Android/TV install steps and the Windows Firewall notes are in 
 | M1 Discovery, pairing, connection, Windows desktop TV app | Done (Android phone tests deferred) |
 | M2 D-pad mode and input haptics | Done (Android phone tests deferred) |
 | M3 Gyro mode | Done (Android phone tests deferred) |
-| M4 Analog stick mode (Xbox-style layout) | In progress |
+| M4 Analog stick mode (Xbox-style layout) | Done (Android phone tests deferred) |
 | M5 TV-to-phone haptics and test game | Not started |
 | M6 Polish, settings, latency tooling | Not started |
