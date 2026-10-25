@@ -10,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tvtest/main.dart';
 import 'package:tvtest/src/host_controller.dart';
 import 'package:tvtest/src/providers.dart';
+import 'package:tvtest/src/screen_awake.dart';
 import 'package:tvtest/src/sound.dart';
 import 'package:tvtest/src/ui/game_screen.dart';
 import 'package:tvtest/src/ui/haptic_panel_screen.dart';
@@ -108,6 +109,16 @@ HostViewState sampleState() => HostViewState(
 );
 
 late FakeSoundPlayer sounds;
+late FakeScreenAwake awake;
+
+class FakeScreenAwake implements ScreenAwake {
+  final calls = <bool>[];
+
+  bool get on => calls.isNotEmpty && calls.last;
+
+  @override
+  Future<void> set(bool on) async => calls.add(on);
+}
 
 /// Scrolls a button into view first: the pairing panel scrolls at TV size.
 Future<void> tapVisible(WidgetTester tester, Finder finder) async {
@@ -118,13 +129,18 @@ Future<void> tapVisible(WidgetTester tester, Finder finder) async {
 
 Future<FakeHostController> pumpApp(WidgetTester tester, {Size size = const Size(960, 540)}) async {
   sounds = FakeSoundPlayer();
+  awake = FakeScreenAwake();
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
   final fake = FakeHostController(sampleState());
   await tester.pumpWidget(
     ProviderScope(
-      overrides: [hostControllerProvider.overrideWithValue(fake), soundPlayerProvider.overrideWithValue(sounds)],
+      overrides: [
+        hostControllerProvider.overrideWithValue(fake),
+        soundPlayerProvider.overrideWithValue(sounds),
+        screenAwakeProvider.overrideWithValue(awake),
+      ],
       child: const TvTestApp(),
     ),
   );
@@ -521,6 +537,19 @@ void main() {
   });
 
   group('latency and the log (M6)', () {
+    testWidgets('the screen stays on while a controller is connected, and may sleep after', (tester) async {
+      final fake = await pumpApp(tester);
+      expect(awake.on, isTrue, reason: 'the sample state has one connected controller');
+      fake.state = HostViewState(
+        hostName: 'Android TV',
+        host: HostSnapshot(running: true, port: 45780, pairingCode: '0427', controllers: const []),
+      );
+      fake.emit();
+      await tester.pumpAndSettle();
+      expect(awake.on, isFalse);
+      expect(awake.calls, [true, false]);
+    });
+
     testWidgets('the main screen shows the player badge and the input delay', (tester) async {
       await pumpApp(tester);
       expect(find.byKey(const Key('player-p1')), findsOneWidget);

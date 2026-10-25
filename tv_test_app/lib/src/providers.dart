@@ -7,6 +7,7 @@ import 'package:protocol/protocol.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'host_controller.dart';
+import 'screen_awake.dart';
 import 'sound.dart';
 
 /// Overridden in main() with the loaded instance.
@@ -102,5 +103,29 @@ class TvEventsNotifier extends Notifier<FiredEvent?> {
               '→ ${reached == 0 ? 'no controller' : '$reached controller${reached == 1 ? '' : 's'}'}',
         );
     state = (message: message, source: source, reached: reached, at: DateTime.now());
+  }
+}
+
+/// Overridden in tests with a fake.
+final screenAwakeProvider = Provider<ScreenAwake>((ref) => WakelockScreenAwake());
+
+/// True while the screen is kept on: whenever a controller is connected (the
+/// home screen keeps this alive).
+final keepAwakeProvider = NotifierProvider<KeepAwakeNotifier, bool>(KeepAwakeNotifier.new);
+
+class KeepAwakeNotifier extends Notifier<bool> {
+  @override
+  bool build() {
+    final on = ref.watch(hostStateProvider.select((s) => s.host.connected.isNotEmpty));
+    final before = stateOrNull;
+    if (before != on) {
+      unawaited(ref.read(screenAwakeProvider).set(on));
+      if (before != null || on) {
+        ref
+            .read(logProvider)
+            .add('tv', on ? 'Keeping the screen on while controllers are connected' : 'The screen may sleep again');
+      }
+    }
+    return on;
   }
 }

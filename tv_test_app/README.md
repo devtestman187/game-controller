@@ -24,6 +24,8 @@ Buttons (arrows to move, center/OK to press):
 
 Pairings are saved: after the TV app restarts, paired phones reconnect without the code (up to 8 phones, most recent first).
 
+While any controller is connected the app keeps the screen on, so the TV doesn't dim, start its screensaver or go to sleep mid-game (nobody touches the remote while playing). With no controller connected the TV sleeps as usual.
+
 ## Several controllers
 Every phone that connects gets a player number, kept through short drops (a minute), and shown on the TV, on its sprite and on the phone itself. In the game each phone drives its own sprite, and only the phone whose sprite caused an event feels it.
 

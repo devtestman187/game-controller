@@ -22,6 +22,8 @@ class HomeScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(hostStateProvider);
+    // Keeps the screen on while controllers are connected.
+    ref.watch(keepAwakeProvider);
     return Scaffold(
       body: SafeArea(
         child: LayoutBuilder(

@@ -140,6 +140,7 @@ The TV keeps those delays for the last 30 s (min, average, p95, max) and for the
 | TV app restarts | The phone retries (up to every 3 s). The TV app saved its pairings (`pairings` in its preferences), so the token is still valid and no code is needed. |
 | TV at a new address or port | Discovery reports it and the next attempt goes there at once. While reconnecting, the phone restarts discovery every 4 attempts in case it missed the change. |
 | Changed network | The old socket dies, the heartbeat catches it, and the same retries and discovery apply. |
+| The TV dozing off | Nobody touches the remote while playing, so the TV app keeps the screen on while any controller is connected (`tv_test_app/lib/src/screen_awake.dart`, `wakelock_plus`). Found in the 30-minute test run: without it the TV slept after about 10 minutes. |
 
 Diagnostics on the phone lists the last 10 drops with their reason and how long each took to recover.
 
