@@ -92,6 +92,23 @@ The TV app is both the host the controller connects to and a test bench that pro
 | T9 | Multiple controllers connected at once, each identified on the TV. The protocol allows for it from the start | M6 |
 | T10 | Windows desktop build of the TV test app, using the same server, pairing and game code with a layout that fits a laptop window, so the controller can be tested without the TV | M1 |
 
+## Test game design
+
+The test game is a top-down arena where one sprite crosses a field of walls and moving hazards to reach a goal, built to exercise every input mode and every haptic event.
+
+| Decision | Choice |
+| --- | --- |
+| Game type | Top-down arena with walls, moving hazards and a goal |
+| Movement | The D-pad moves the sprite at one fixed speed. Gyro tilt and stick push scale the speed |
+| Buttons and right stick | A dashes, a short speed boost with a cooldown. The right stick moves an aim cursor with no gameplay effect yet. Other buttons only show on the visualizer |
+| Haptic events | Hit: the sprite bumps a wall or a hazard touches it. Success: the sprite reaches the goal. Error: dash pressed while on cooldown. Rumble: while dashing |
+| Round flow | Reaching the goal wins, and a new round starts after about two seconds. Hazards never end a round. A timer and counters show on screen |
+| Field | Fills the window and resizes with it. Speeds are set relative to the field size so movement feels comparable across screens (proposed) |
+| Look | Plain coloured shapes first, replaced later by CC0 art as the assets plan says |
+| Debug info | A toggleable overlay, off by default, showing connection state, live ping, input mode, stick or tilt values and the last haptic event sent. A remote key or keyboard key toggles it |
+
+Left for the build: the arena layout, hazard paths and counts, speeds, dash duration and cooldown, and the exact haptic patterns. Claude Code proposes values and you tune them on the devices.
+
 ## Non-functional requirements
 
 The main quality bar is responsiveness: input should reach the TV in under about 50 ms on a typical home Wi-Fi network. This is a target to measure in Milestone 6, not a guarantee.
@@ -289,16 +306,30 @@ Milestone 5 closes the loop: the TV app sends haptic events to the phone, and a 
 
 - Protocol messages for haptic events: hit, success, error and rumble, each with intensity and duration (C6).
 - Haptic test panel on the TV that triggers each event type on the connected controller (T6).
-- Playable test: a movable sprite with obstacles, controlled by any of the three input modes. Collisions send a hit event, reaching the goal sends success, and failed actions send error (T7).
-- One sound per haptic event on the TV, using free CC0 packs or self-generated effects, loaded through an asset manifest so replacing a file needs no code change.
+- Playable test: a movable sprite with obstacles, controlled by any of the three input modes. Wall bumps and hazard touches send a hit, reaching the goal sends success, a dash pressed on cooldown sends error, and dashing sends rumble (T7). The full design is in the Test game design section.
+- One sound per haptic event on the TV, using Kenney's CC0 Sci-Fi Sounds, loaded through an asset manifest so replacing a file needs no code change.
 - Credits file updated for every asset added.
 - Distinct, recognizable haptic patterns per event on both platforms, with fallback to a simple vibration where fine control is not available.
+
+**Sound files**
+
+The four sounds are picked from Kenney's Sci-Fi Sounds pack (CC0, kenney.nl) and copied into assets/audio as OGG files. The TV app plays them with an audio package that bundles its own decoder (flutter\_soloud is the first choice), so OGG plays the same on Android TV and Windows without codecs installed on the PC. If that package fails on either platform, convert the files to WAV and update the asset manifest.
+
+| Event | File | Kenney Sci-Fi Sounds source file |
+| --- | --- | --- |
+| Hit | assets/audio/hit.ogg | explosionCrunch\_003.ogg |
+| Success | assets/audio/success.ogg | computerNoise\_003.ogg |
+| Error | assets/audio/error.ogg | slime\_001.ogg |
+| Rumble | assets/audio/rumble.ogg | forceField\_003.ogg |
+
+Files can be .wav or .ogg and are named after the event. Each one gets a line in /assets/CREDITS.md with its source and license, and silent stubs let the game run before the files exist.
 
 **Acceptance tests**
 
 - [ ] Each of the four events triggered from the TV panel produces a distinct feel on the iPhone and the Android phone.
 - [ ] The game is playable end to end with the D-pad, the gyro and the analog sticks.
-- [ ] Collisions, wins and errors in the game fire the matching haptic event and sound together.
+- [ ] Wall bumps, hazard touches, wins, failed dashes and dashes fire hit, success, error and rumble with the matching sound.
+- [ ] All four sound files exist, play on the TV with their events in both the Android TV and Windows builds, and are listed in CREDITS.md.
 - [ ] Triggering events repeatedly, and after backgrounding the app, keeps haptics working (the iOS haptic engine restarts when needed).
 - [ ] With the haptics toggle off, events sent from the TV produce no haptics on the phone.
 - [ ] Replacing a sound file in /assets changes the sound without code changes.
@@ -374,6 +405,7 @@ The largest risk is slow iOS debugging, because every fix needs a cloud build, a
 - Minimum versions are Android 16 and iOS 26, the current major release minus one.
 - The TV app's minimum is Android TV 12 (API level 31), the version on the physical test TV, so the Android 16 minimum applies to the phones only.
 - iOS builds are sideloaded with a free Apple ID, installed from Windows with iLoader (it worked on October 24, 2026, when Sideloadly and Impactor failed to sign in), instead of going through TestFlight. The paid account stays a fallback and a step toward a store release.
+- The test game is a top-down arena where hazards never end a round, A dashes, the right stick aims a cursor, and the arena fills the window. Details are in the Test game design section.
 - Analog stick mode is Milestone 4, placed before the test game so the game and the polish milestone cover all three input modes. The later milestones are now Milestone 5 and Milestone 6.
 - A physical Android TV is available for testing.
 - The TV test app also runs as a Windows desktop app, delivered in Milestone 1, so the controller can be tested on a laptop.
@@ -384,6 +416,7 @@ The largest risk is slow iOS debugging, because every fix needs a cloud build, a
 **Open questions**
 
 - Should the iPhone build be re-installed by hand each week through iLoader, or should SideStore (which iLoader can install) refresh it automatically? SideStore's sign-in still needed workarounds in October 2026.
+- How should the game behave when several controllers are connected in Milestone 6?
 - Is the proposed analog stick layout the right set: two sticks, a D-pad, A, B, X and Y, shoulder buttons (LB, RB), triggers (LT, RT), View and Menu?
 - Should the triggers send analog values (a partial pull) or only on and off? The PRD proposes on and off for now.
 - Should tapping a stick act as a stick click (L3, R3), and should the sticks stay fixed or float to where the thumb lands? The PRD proposes fixed sticks and no stick click yet.
