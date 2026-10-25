@@ -5,9 +5,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'motion.dart';
 import 'providers.dart';
+import 'sticks.dart';
 import 'tilt.dart';
 
-enum PadMode { dpad, gyro }
+/// The three layouts. Switching never reconnects.
+enum PadMode { dpad, gyro, sticks }
 
 enum GyroAvailability { unknown, checking, available, unavailable }
 
@@ -164,13 +166,18 @@ class GyroNotifier extends Notifier<GyroState> {
   /// gyroscope.
   Future<bool> setMode(PadMode mode) async {
     if (mode == state.mode) return true;
-    final log = ref.read(logProvider).sink('gyro');
-    if (mode == PadMode.dpad) {
-      log('Gyro mode off');
-      _stopSensors();
-      state = state.copyWith(mode: PadMode.dpad, x: 0, y: 0);
-      ref.read(padProvider.notifier).tilt(null, null);
-      unawaited(_unlockOrientation());
+    final log = ref.read(logProvider).sink('mode');
+    final pad = ref.read(padProvider.notifier);
+
+    if (mode != PadMode.gyro) {
+      if (state.mode == PadMode.gyro) {
+        _stopSensors();
+        unawaited(_unlockOrientation());
+      }
+      // Nothing held in the old layout carries over.
+      pad.switchMode(tilt: false, sticks: mode == PadMode.sticks);
+      state = state.copyWith(mode: mode, x: 0, y: 0);
+      log('${mode.name} mode');
       return true;
     }
 
@@ -181,6 +188,7 @@ class GyroNotifier extends Notifier<GyroState> {
       _stopSensors();
       return false;
     }
+    pad.switchMode(tilt: true, sticks: false);
     // The side comes from the tracker, which has been following the phone
     // all along (and is what the screen shows), never from a single reading.
     // Lock the screen to the side it already shows: tilting to steer must
@@ -284,4 +292,17 @@ class GyroNotifier extends Notifier<GyroState> {
 
   Future<void> _unlockOrientation() =>
       SystemChrome.setPreferredOrientations([DeviceOrientation.landscapeLeft, DeviceOrientation.landscapeRight]);
+}
+
+final stickSettingsProvider = NotifierProvider<StickSettingsNotifier, StickSettings>(StickSettingsNotifier.new);
+
+/// Stick dead zone, sensitivity and fixed/floating, saved between launches.
+class StickSettingsNotifier extends Notifier<StickSettings> {
+  @override
+  StickSettings build() => StickSettings.load(ref.watch(prefsProvider));
+
+  void update(StickSettings settings) {
+    state = settings;
+    unawaited(settings.save(ref.read(prefsProvider)));
+  }
 }

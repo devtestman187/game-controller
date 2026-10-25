@@ -223,6 +223,8 @@ class ControllerClient {
   int _dy = 0;
   double? _ax;
   double? _ay;
+  ({double x, double y})? _left;
+  ({double x, double y})? _right;
   int _inputsSent = 0;
 
   ClientSnapshot get snapshot => _snap;
@@ -239,18 +241,42 @@ class ControllerClient {
   /// connected it's kept and sent as soon as pairing completes, so a button
   /// held through a reconnect still counts and a released one is released.
   /// [ax] and [ay] are the gyro tilt (-1 to 1), null outside gyro mode.
-  void sendInput(Set<ControllerButton> buttons, {int dx = 0, int dy = 0, double? ax, double? ay}) {
+  /// [left] and [right] are the analog sticks, null outside stick mode.
+  void sendInput(
+    Set<ControllerButton> buttons, {
+    int dx = 0,
+    int dy = 0,
+    double? ax,
+    double? ay,
+    ({double x, double y})? left,
+    ({double x, double y})? right,
+  }) {
     _buttons = Set.of(buttons);
     _dx = dx;
     _dy = dy;
     _ax = ax;
     _ay = ay;
+    _left = left;
+    _right = right;
     if (_snap.isConnected) _sendInputState();
   }
 
   void _sendInputState() {
     _inputsSent++;
-    _send(InputStateMessage(seq: ++_inputSeq, buttons: _buttons, dx: _dx, dy: _dy, ax: _ax, ay: _ay));
+    _send(
+      InputStateMessage(
+        seq: ++_inputSeq,
+        buttons: _buttons,
+        dx: _dx,
+        dy: _dy,
+        ax: _ax,
+        ay: _ay,
+        lx: _left?.x,
+        ly: _left?.y,
+        rx: _right?.x,
+        ry: _right?.y,
+      ),
+    );
   }
 
   /// Connects to [target]. If [code] is given it's sent right away;

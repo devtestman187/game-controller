@@ -28,6 +28,7 @@ class DiagnosticsScreen extends ConsumerWidget {
     final input = ref.watch(padProvider);
     final gyro = ref.watch(gyroProvider);
     final gyroSettings = ref.watch(gyroSettingsProvider);
+    final stickSettings = ref.watch(stickSettingsProvider);
     final text = Theme.of(context).textTheme;
     final mono = text.bodySmall?.copyWith(fontFamily: 'monospace', height: 1.3);
     final target = client.target;
@@ -98,9 +99,21 @@ class DiagnosticsScreen extends ConsumerWidget {
             _Section('Input', [
               ('Now', input.isNeutral ? 'Nothing pressed' : '$input'),
               ('States sent', '${ref.read(clientProvider).inputsSent}'),
+              (
+                'Stick settings',
+                '${stickSettings.floating ? 'floating' : 'fixed'}, dead zone ${(stickSettings.deadZone * 100).round()}%, '
+                    'sensitivity ${stickSettings.sensitivity.toStringAsFixed(2)}',
+              ),
             ]),
             _Section('Gyro', [
-              ('Mode', gyro.mode == PadMode.gyro ? 'Gyro' : 'D-pad'),
+              (
+                'Mode',
+                switch (gyro.mode) {
+                  PadMode.dpad => 'D-pad',
+                  PadMode.gyro => 'Gyro',
+                  PadMode.sticks => 'Sticks',
+                },
+              ),
               (
                 'Gyroscope',
                 switch (gyro.availability) {

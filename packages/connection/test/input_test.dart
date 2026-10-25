@@ -127,6 +127,28 @@ void main() {
     expect(demoSteps.last.buttons, isEmpty);
   });
 
+  test('the demo also moves both sticks with the shoulder buttons, then ends released', () {
+    final stickSteps = demoSteps.where((s) => s.left != null).toList();
+    expect(stickSteps.length, greaterThan(8));
+    expect(stickSteps.expand((s) => s.buttons), containsAll([ControllerButton.lb, ControllerButton.rb]));
+    for (final s in stickSteps) {
+      expect(sqrt(s.left!.x * s.left!.x + s.left!.y * s.left!.y), lessThanOrEqualTo(1.0 + 1e-9));
+    }
+    expect(demoSteps.last.left, isNull);
+  });
+
+  test('both sticks reach the host with the shoulder buttons', () async {
+    final host = await startHost();
+    final client = newClient();
+    client.connect(addressOf(host), code: host.pairingCode);
+    await clientStatus(client, ClientStatus.connected);
+    client.sendInput({ControllerButton.lb}, left: (x: 0.5, y: -0.5), right: (x: -1, y: 0));
+    final s = await hostUntil(host, (h) => inputOf(h, 'phone-1')?.hasSticks ?? false);
+    final input = inputOf(s, 'phone-1')!;
+    expect([input.lx, input.ly, input.rx, input.ry], [0.5, -0.5, -1.0, 0.0]);
+    expect(input.buttons, {ControllerButton.lb});
+  });
+
   test('tilt reaches the host with the buttons', () async {
     final host = await startHost();
     final client = newClient();

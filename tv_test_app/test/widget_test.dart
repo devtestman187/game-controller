@@ -180,6 +180,45 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('shows both sticks and the shoulder buttons in stick mode', (tester) async {
+    final fake = await pumpApp(tester);
+    fake.state = HostViewState(
+      hostName: 'Android TV',
+      host: HostSnapshot(
+        running: true,
+        port: 45780,
+        pairingCode: '0427',
+        controllers: [
+          ControllerInfo(
+            controllerId: 's1',
+            name: 'iPhone 3F1C',
+            platform: 'ios',
+            appVersion: '0.4.0',
+            remoteAddress: '192.168.1.20',
+            state: ControllerState.connected,
+            since: DateTime(2026),
+            rttMs: 8,
+            input: InputStateMessage(
+              seq: 4,
+              buttons: {ControllerButton.lb, ControllerButton.a},
+              lx: -0.5,
+              ly: 0.25,
+              rx: 1,
+              ry: 0,
+            ),
+          ),
+        ],
+      ),
+    );
+    fake.emit();
+    await tester.pumpAndSettle();
+    expect(find.text('L -0.50, 0.25   R 1.00, 0.00'), findsOneWidget);
+    final shown = tester.widget<InputVisualizer>(find.byKey(const Key('visualizer-s1')));
+    expect(shown.input?.hasSticks, isTrue);
+    expect(shown.input?.buttons, {ControllerButton.lb, ControllerButton.a});
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('fits a small laptop window without overflow', (tester) async {
     await pumpApp(tester, size: const Size(600, 800));
     expect(tester.takeException(), isNull);

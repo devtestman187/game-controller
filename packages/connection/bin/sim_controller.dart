@@ -55,7 +55,7 @@ Future<void> main(List<String> args) async {
       controllerId: id,
       name: options['name'] ?? 'Simulated controller',
       platform: 'sim',
-      appVersion: '0.3.0',
+      appVersion: '0.4.0',
     ),
     log: (m) => stdout.writeln('  · $m'),
   );

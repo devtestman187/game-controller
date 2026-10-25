@@ -11,6 +11,8 @@ import 'gyro_dialog.dart';
 import 'haptics_dialog.dart';
 import 'labels.dart';
 import 'pad_widgets.dart';
+import 'stick_dialog.dart';
+import 'stick_widgets.dart';
 import 'tilt_view.dart';
 
 /// The controller itself: D-pad (or, in gyro mode, the tilt view) on the
@@ -73,44 +75,49 @@ class _ControllerScreenState extends ConsumerState<ControllerScreen> with Widget
         child: Column(
           children: [
             const _TopBar(),
-            Expanded(
-              child: Row(
-                children: [
-                  Expanded(
-                    flex: 5,
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(24, 8, 8, 16),
-                      child: Center(child: mode == PadMode.gyro ? const TiltView() : const DpadView()),
+            if (mode == PadMode.sticks)
+              const Expanded(
+                child: Padding(padding: EdgeInsets.fromLTRB(4, 8, 4, 4), child: StickModeView()),
+              )
+            else
+              Expanded(
+                child: Row(
+                  children: [
+                    Expanded(
+                      flex: 5,
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(24, 8, 8, 16),
+                        child: Center(child: mode == PadMode.gyro ? const TiltView() : const DpadView()),
+                      ),
                     ),
-                  ),
-                  SizedBox(
-                    width: 150,
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const SmallButton(button: ControllerButton.select, label: 'Select'),
-                        const SizedBox(height: 16),
-                        const SmallButton(button: ControllerButton.start, label: 'Start'),
-                        const SizedBox(height: 24),
-                        Text(
-                          input.isNeutral ? 'Nothing pressed' : input.toString(),
-                          key: const Key('inputSummary'),
-                          style: text.bodySmall,
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
+                    SizedBox(
+                      width: 150,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const SmallButton(button: ControllerButton.select, label: 'Select'),
+                          const SizedBox(height: 16),
+                          const SmallButton(button: ControllerButton.start, label: 'Start'),
+                          const SizedBox(height: 24),
+                          Text(
+                            input.isNeutral ? 'Nothing pressed' : input.toString(),
+                            key: const Key('inputSummary'),
+                            style: text.bodySmall,
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  const Expanded(
-                    flex: 5,
-                    child: Padding(
-                      padding: EdgeInsets.fromLTRB(8, 8, 24, 16),
-                      child: Center(child: FaceButtonsView()),
+                    const Expanded(
+                      flex: 5,
+                      child: Padding(
+                        padding: EdgeInsets.fromLTRB(8, 8, 24, 16),
+                        child: Center(child: FaceButtonsView()),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
           ],
         ),
       ),
@@ -180,6 +187,12 @@ class _TopBar extends ConsumerWidget {
                 tooltip: gyroUnavailable ? gyro.problem : 'Steer by tilting the phone',
                 enabled: !gyroUnavailable && gyro.availability != GyroAvailability.checking,
               ),
+              const ButtonSegment(
+                value: PadMode.sticks,
+                label: Text('Sticks'),
+                icon: Icon(Icons.sports_esports_outlined),
+                tooltip: 'Two analog sticks, Xbox-style',
+              ),
             ],
             selected: {gyro.mode},
             onSelectionChanged: (selection) async {
@@ -195,6 +208,12 @@ class _TopBar extends ConsumerWidget {
               tooltip: 'Gyro settings',
               icon: const Icon(Icons.tune),
               onPressed: () => showGyroDialog(context),
+            ),
+          if (gyro.mode == PadMode.sticks)
+            IconButton(
+              tooltip: 'Stick settings',
+              icon: const Icon(Icons.tune),
+              onPressed: () => showStickDialog(context),
             ),
           IconButton(
             tooltip: 'Haptics',

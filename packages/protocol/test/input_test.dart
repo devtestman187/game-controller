@@ -65,6 +65,44 @@ void main() {
     expect(() => codec.decode(frame), throwsA(isA<ProtocolFormatException>()));
   });
 
+  test('round-trips both sticks and the shoulder buttons', () {
+    final m = InputStateMessage(
+      seq: 5,
+      buttons: {ControllerButton.lb, ControllerButton.rb, ControllerButton.a},
+      dx: 1,
+      lx: -0.7071068,
+      ly: 0.7071068,
+      rx: 0.25,
+      ry: -1,
+    );
+    expect([m.lx, m.ly, m.rx, m.ry], [-0.707, 0.707, 0.25, -1.0]);
+    expect(m.hasSticks, isTrue);
+    expect(codec.decode(codec.encode(m)), m);
+    final json = jsonDecode(codec.encode(m)) as Map;
+    expect(json['buttons'], ['a', 'lb', 'rb']);
+  });
+
+  test('sticks are left out of the frame outside stick mode, and centered sticks are neutral', () {
+    final json = jsonDecode(codec.encode(InputStateMessage(seq: 1, dx: 1))) as Map;
+    expect(json.containsKey('lx'), isFalse);
+    expect(InputStateMessage(seq: 1, lx: 0, ly: 0, rx: 0, ry: 0).isNeutral, isTrue);
+    expect(InputStateMessage(seq: 1, lx: 0, ly: 0, rx: 0.1, ry: 0).isNeutral, isFalse);
+  });
+
+  test('needs both axes of a stick', () {
+    expect(() => InputStateMessage(seq: 1, rx: 0.5), throwsArgumentError);
+    final frame = jsonEncode({
+      'v': protocolVersion,
+      't': 'input',
+      'seq': 1,
+      'buttons': <String>[],
+      'dx': 0,
+      'dy': 0,
+      'lx': 0.5,
+    });
+    expect(() => codec.decode(frame), throwsA(isA<ProtocolFormatException>()));
+  });
+
   test('rejects an out-of-range direction', () {
     final frame = jsonEncode({'v': protocolVersion, 't': 'input', 'seq': 1, 'buttons': <String>[], 'dx': 2, 'dy': 0});
     expect(() => codec.decode(frame), throwsA(isA<ProtocolFormatException>()));

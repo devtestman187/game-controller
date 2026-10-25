@@ -183,17 +183,19 @@ class _FacePainter extends CustomPainter {
 
 /// Start and Select: small pills. Sliding off releases.
 class SmallButton extends ConsumerWidget {
-  const SmallButton({super.key, required this.button, required this.label});
+  const SmallButton({super.key, required this.button, required this.label, this.size = const Size(96, 44)});
 
   final ControllerButton button;
   final String label;
+
+  /// 96 x 44 for Start/Select; stick mode sizes them (and LB/RB) to its layout.
+  final Size size;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final on = ref.watch(padProvider.select((p) => p.buttons.contains(button)));
     final pad = ref.read(padProvider.notifier);
     final scheme = Theme.of(context).colorScheme;
-    const size = Size(96, 44);
     return SizedBox.fromSize(
       size: size,
       child: _PointerArea(
@@ -202,7 +204,7 @@ class SmallButton extends ConsumerWidget {
         child: DecoratedBox(
           decoration: BoxDecoration(
             color: on ? scheme.primary : scheme.surfaceContainerHighest,
-            borderRadius: BorderRadius.circular(22),
+            borderRadius: BorderRadius.circular(size.height / 2),
           ),
           child: Center(
             child: Text(

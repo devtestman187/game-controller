@@ -11,6 +11,7 @@ import 'discovery.dart';
 import 'haptics.dart';
 import 'local_network.dart';
 import 'pad.dart';
+import 'sticks.dart';
 import 'storage.dart';
 
 /// Overridden in main() with the loaded instance.
@@ -203,6 +204,7 @@ class PadNotifier extends Notifier<PadInput> {
   PadInput build() {
     // Make sure the capability check has run before the first tick.
     ref.watch(hapticsCapabilitiesProvider);
+    ref.onDispose(() => _cooldown?.cancel());
     return _tracker.current;
   }
 
@@ -215,15 +217,57 @@ class PadNotifier extends Notifier<PadInput> {
   /// Called when the app leaves the foreground, so nothing stays held.
   void releaseAll() => _apply(_tracker.releaseAll());
 
-  /// Gyro tilt from gyro mode (about 60 per second). Null leaves gyro mode.
-  void tilt(double? ax, double? ay) => _apply(_tracker.tilt(ax, ay));
+  /// Gyro tilt from gyro mode (about 60 per second).
+  void tilt(double ax, double ay) => _apply(_tracker.tilt(ax, ay));
+
+  /// A stick moved, or was let go ([stickCenter]).
+  void stick(StickSide side, Stick value) => _apply(_tracker.stick(side, value));
+
+  /// A new mode starts: nothing from the old layout stays held.
+  void switchMode({required bool tilt, required bool sticks}) =>
+      _apply(_tracker.switchMode(tilt: tilt, sticks: sticks));
+
+  /// At most one send per [analogInterval] for stick and tilt movement.
+  static const analogInterval = Duration(milliseconds: 16);
+  Timer? _cooldown;
+  bool _pending = false;
 
   void _apply(PadChange change) {
     if (!change.changed) return;
     state = change.after;
-    final a = change.after;
-    ref.read(clientProvider).sendInput(a.buttons, dx: a.dx, dy: a.dy, ax: a.ax, ay: a.ay);
     final strength = change.tickStrength;
     if (strength > 0) unawaited(ref.read(hapticsPlayerProvider).tick(strength: strength));
+
+    // Buttons, the D-pad, mode changes and a stick returning to center go
+    // out at once. Analog movement is capped at about 60 per second, always
+    // sending the latest value.
+    final before = change.before;
+    final after = change.after;
+    final onlyAnalogMoved =
+        strength == 0 &&
+        before.buttons.length == after.buttons.length &&
+        (before.ax == null) == (after.ax == null) &&
+        (before.left == null) == (after.left == null) &&
+        !_recentered(before.left, after.left) &&
+        !_recentered(before.right, after.right);
+    if (!onlyAnalogMoved) {
+      _send();
+    } else if (_cooldown == null) {
+      _send();
+    } else {
+      _pending = true;
+    }
+  }
+
+  static bool _recentered(Stick? before, Stick? after) => after == stickCenter && before != stickCenter;
+
+  void _send() {
+    _pending = false;
+    final a = state;
+    ref.read(clientProvider).sendInput(a.buttons, dx: a.dx, dy: a.dy, ax: a.ax, ay: a.ay, left: a.left, right: a.right);
+    _cooldown ??= Timer(analogInterval, () {
+      _cooldown = null;
+      if (_pending) _send();
+    });
   }
 }

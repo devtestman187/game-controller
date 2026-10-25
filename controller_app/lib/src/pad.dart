@@ -3,9 +3,11 @@ import 'dart:ui';
 
 import 'package:protocol/protocol.dart';
 
+import 'sticks.dart';
+
 /// What the on-screen pad is pressing right now.
 final class PadInput {
-  const PadInput({this.buttons = const {}, this.dx = 0, this.dy = 0, this.ax, this.ay});
+  const PadInput({this.buttons = const {}, this.dx = 0, this.dy = 0, this.ax, this.ay, this.left, this.right});
 
   final Set<ControllerButton> buttons;
 
@@ -17,7 +19,18 @@ final class PadInput {
   final double? ax;
   final double? ay;
 
-  bool get isNeutral => buttons.isEmpty && dx == 0 && dy == 0 && (ax ?? 0) == 0 && (ay ?? 0) == 0;
+  /// Analog sticks inside the unit circle, null outside stick mode.
+  final Stick? left;
+  final Stick? right;
+
+  bool get isNeutral =>
+      buttons.isEmpty &&
+      dx == 0 &&
+      dy == 0 &&
+      (ax ?? 0) == 0 &&
+      (ay ?? 0) == 0 &&
+      (left ?? stickCenter) == stickCenter &&
+      (right ?? stickCenter) == stickCenter;
 
   @override
   bool operator ==(Object other) =>
@@ -26,11 +39,13 @@ final class PadInput {
       other.dy == dy &&
       other.ax == ax &&
       other.ay == ay &&
+      other.left == left &&
+      other.right == right &&
       other.buttons.length == buttons.length &&
       other.buttons.containsAll(buttons);
 
   @override
-  int get hashCode => Object.hash(dx, dy, ax, ay, Object.hashAllUnordered(buttons));
+  int get hashCode => Object.hash(dx, dy, ax, ay, left, right, Object.hashAllUnordered(buttons));
 
   @override
   String toString() {
@@ -38,8 +53,14 @@ final class PadInput {
     final horizontal = ['left', '', 'right'][dx + 1];
     final dir = dx == 0 && dy == 0 ? 'centered' : [vertical, horizontal].where((s) => s.isNotEmpty).join('-');
     final held = buttons.map((b) => b.name.toUpperCase()).join('+');
-    final stick = ax == null ? 'D-pad $dir' : 'Tilt x ${ax!.toStringAsFixed(2)} y ${ay!.toStringAsFixed(2)}';
-    return '$held${buttons.isEmpty ? '' : ' · '}$stick';
+    String xy(double x, double y) => 'x ${x.toStringAsFixed(2)} y ${y.toStringAsFixed(2)}';
+    final parts = [
+      if (held.isNotEmpty) held,
+      if (left != null) 'L ${xy(left!.x, left!.y)}',
+      if (right != null) 'R ${xy(right!.x, right!.y)}',
+      if (ax != null) 'Tilt ${xy(ax!, ay!)}' else if (left == null || dx != 0 || dy != 0) 'D-pad $dir',
+    ];
+    return parts.join(' · ');
   }
 }
 
@@ -58,7 +79,7 @@ final class PadChange {
   /// How strong the tick for this change is: presses and new directions
   /// full strength, releases and re-centering lighter. 0 means no tick.
   double get tickStrength {
-    // Tilt changes all the time in gyro mode: only buttons and the D-pad tick.
+    // Tilt and sticks change all the time: only buttons and the D-pad tick.
     if (presses == 0 && releases == 0 && !directionChanged) return 0;
     if (presses > 0 || (directionChanged && (after.dx != 0 || after.dy != 0))) return 1;
     return 0.6;
@@ -75,14 +96,41 @@ class PadTracker {
   PadInput _current = const PadInput();
   double? _ax;
   double? _ay;
+  Stick? _left;
+  Stick? _right;
 
   PadInput get current => _current;
 
+  /// Starts a mode: lets go of every finger (nothing held in the old layout
+  /// carries over), and centers the inputs the new mode uses (tilt for gyro,
+  /// both sticks for stick mode) or drops them.
+  PadChange switchMode({required bool tilt, required bool sticks}) {
+    _dpad.clear();
+    _buttons.clear();
+    _ax = tilt ? 0 : null;
+    _ay = tilt ? 0 : null;
+    _left = sticks ? stickCenter : null;
+    _right = sticks ? stickCenter : null;
+    return _update();
+  }
+
+  /// A stick moved (rounded like the wire format), or was let go
+  /// ([stickCenter]).
+  PadChange stick(StickSide side, Stick value) {
+    final rounded = (x: (value.x * 1000).round() / 1000, y: (value.y * 1000).round() / 1000);
+    if (side == StickSide.left) {
+      _left = rounded;
+    } else {
+      _right = rounded;
+    }
+    return _update();
+  }
+
   /// Gyro tilt, rounded like the wire format (3 decimals), so tiny changes
-  /// that wouldn't reach the TV anyway don't count. Null leaves gyro mode.
-  PadChange tilt(double? ax, double? ay) {
-    _ax = ax == null ? null : (ax * 1000).round() / 1000;
-    _ay = ay == null ? null : (ay * 1000).round() / 1000;
+  /// that wouldn't reach the TV anyway don't count.
+  PadChange tilt(double ax, double ay) {
+    _ax = (ax * 1000).round() / 1000;
+    _ay = (ay * 1000).round() / 1000;
     return _update();
   }
 
@@ -112,10 +160,14 @@ class PadTracker {
   PadChange releaseAll() {
     _dpad.clear();
     _buttons.clear();
-    // Stay in gyro mode, but centered.
+    // Stay in the same mode, but centered.
     if (_ax != null) {
       _ax = 0;
       _ay = 0;
+    }
+    if (_left != null) {
+      _left = stickCenter;
+      _right = stickCenter;
     }
     return _update();
   }
@@ -129,6 +181,8 @@ class PadTracker {
       dy: dy,
       ax: _ax,
       ay: _ay,
+      left: _left,
+      right: _right,
     );
     return PadChange(before, _current);
   }

@@ -102,7 +102,7 @@ class _Header extends StatelessWidget {
               children: [
                 TextSpan(text: 'Controller Test', style: text.headlineSmall),
                 TextSpan(
-                  text: '   Protocol v$protocolVersion · app $appVersion · Milestone 3',
+                  text: '   Protocol v$protocolVersion · app $appVersion · Milestone 4',
                   style: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
                 ),
               ],
@@ -368,6 +368,13 @@ class _ControllerTile extends StatelessWidget {
                     Text(
                       'Tilt x ${info.input!.ax!.toStringAsFixed(2)}  y ${info.input!.ay!.toStringAsFixed(2)}',
                       key: Key('tilt-${info.controllerId}'),
+                      style: text.bodyMedium?.copyWith(fontFeatures: const [FontFeature.tabularFigures()]),
+                    ),
+                  if (live && (info.input?.hasSticks ?? false))
+                    Text(
+                      'L ${info.input!.lx!.toStringAsFixed(2)}, ${info.input!.ly!.toStringAsFixed(2)}   '
+                      'R ${info.input!.rx!.toStringAsFixed(2)}, ${info.input!.ry!.toStringAsFixed(2)}',
+                      key: Key('sticks-${info.controllerId}'),
                       style: text.bodyMedium?.copyWith(fontFeatures: const [FontFeature.tabularFigures()]),
                     ),
                 ],

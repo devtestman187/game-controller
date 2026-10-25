@@ -73,3 +73,10 @@ The pipeline runs on the phone in pure Dart (`controller_app/lib/src/tilt.dart`,
 6. **Sending.** About 60 times a second, and only when the value (rounded to 3 decimals, as on the wire) changes, in the same `input` message as the buttons (`ax`, `ay`). Older TVs ignore the extra fields, and leaving gyro mode drops them.
 
 Leaving the app pauses the sensors and centers the stick. Coming back resumes with the same calibration. Without a working gyroscope (stream error or no reading within 1.5 s) gyro mode stays off with a message, and the D-pad keeps working.
+
+## Stick mode (Milestone 4)
+- **Layout** (`controller_app/lib/src/sticks.dart`, `stickLayout`): computed from the available size. LB and RB along the top; the left stick upper left with the D-pad below it toward the middle; A/B/X/Y upper right with the right stick below it toward the middle; Select and Start in the middle. Unit tests check that nothing overlaps and that controls stay thumb-sized on five phone sizes.
+- **Sticks**: the thumb's offset from the stick's center is divided by its travel, scaled by sensitivity, kept inside the unit circle, then passed through the round, rescaled dead zone. **Fixed** sticks take touches on their circle. **Floating** sticks take them anywhere in their half and center where the thumb lands; the other controls are stacked on top, so they win where they overlap. Letting go sends the center at once.
+- **Wire**: the same `input` message gains `lx`, `ly`, `rx`, `ry` (present only in stick mode) and the buttons `lb` and `rb`. Older TVs ignore both, so the protocol stays v1.
+- **Rate**: buttons, the D-pad, mode changes and a stick returning to center go out at once. Stick and tilt movement is capped at one send per 16 ms (about 60 per second), always sending the latest value.
+- **Mode switches** let go of every finger and center or drop the old mode's analog inputs, so nothing from the old layout stays held.
