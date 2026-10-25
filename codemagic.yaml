@@ -117,7 +117,7 @@ workflows:
       events:
         - tag
       tag_patterns:
-        - pattern: '*' # milestone tags (m0..m5) and any future release tags
+        - pattern: '*' # milestone tags (m0..m6, fixes like m3.2) and any future release tags
           include: true
       cancel_previous_builds: true
     # No changeset filter: every milestone tag (and every manual start) produces an .ipa.

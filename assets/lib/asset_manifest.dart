@@ -10,6 +10,6 @@ library;
 const String assetPackage = 'game_assets';
 
 /// One sound per haptic event type, so audio and haptics fire from the same
-/// event (Milestone 4). The loader will look for `audio/tv/<name>.wav` or
+/// event (Milestone 5). The loader will look for `audio/tv/<name>.wav` or
 /// `.ogg`, so a replacement file only needs the matching name.
 enum SoundKey { hit, success, error, rumble }

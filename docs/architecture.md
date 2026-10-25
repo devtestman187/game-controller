@@ -17,7 +17,7 @@
 | `tv_test_app/` | TV test bench + server | Android TV (minSdk 31), Windows desktop |
 | `packages/protocol/` | Message definitions + codec, no Flutter dependency | anywhere Dart runs |
 | `packages/connection/` | Host server, phone client (pairing, heartbeats, reconnect), log buffer and the command-line simulated controller (`bin/sim_controller.dart`). Pure Dart (`dart:io`) | anywhere `dart:io` runs |
-| `packages/test_game/` (M4) | Sprite test game, kept separate so it can grow | Flutter |
+| `packages/test_game/` (M5) | Sprite test game, kept separate so it can grow | Flutter |
 | `assets/` | `game_assets` package: images, audio, `CREDITS.md`, asset manifest | Flutter |
 | `docs/` | PRD, decisions, setup guides, per-milestone checklists | |
 
@@ -46,7 +46,7 @@ Rules:
 - **Heartbeats.** Silence for 4 seconds counts as a dropped connection on either side (close code 4004 when it can be sent).
 - **Reconnect.** After being paired, the phone retries forever with backoff (0.25, 0.5, 1, 2, then every 3 s) and resumes with its token. If discovery finds the same hostId at a new address, the next attempt uses it. It doesn't retry after a version mismatch (4000), being replaced by a newer connection from the same phone (4002) or a protocol error (4003).
 - **One connection per controller.** When a controller pairs again (often after a half-open drop), the TV closes the older connection with 4002.
-- Haptic events (TV → phone, M4) will use the same connection.
+- Haptic events (TV → phone, M5) will use the same connection.
 
 ## Input (Milestone 2)
 - **Full state, not events.** On every change the phone sends `input` with `seq`, the held `buttons` (`a`, `b`, `x`, `y`, `start`, `select`) and the D-pad as `dx`, `dy` (each -1, 0 or 1; `dy` -1 is up). The TV keeps the latest state per controller, so a lost or late release can't leave a button stuck, and an empty state releases everything.

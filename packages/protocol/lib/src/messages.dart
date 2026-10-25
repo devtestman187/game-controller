@@ -37,7 +37,7 @@ sealed class Message {
 }
 
 /// First message from a controller. It carries the controller's identity, so
-/// several controllers can be told apart (multi-controller support, M5).
+/// several controllers can be told apart (multi-controller support, M6).
 final class HelloMessage extends Message {
   const HelloMessage({
     required this.controllerId,
