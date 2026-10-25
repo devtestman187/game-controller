@@ -193,6 +193,30 @@ class HapticSettingsNotifier extends Notifier<HapticSettings> {
   void test() => unawaited(ref.read(hapticsPlayerProvider).tick());
 }
 
+/// Haptic events from the TV (M5): how many arrived and were played, and
+/// the latest, for Diagnostics.
+typedef TvHaptics = ({int received, int played, HapticEventMessage? last});
+
+final tvHapticsProvider = NotifierProvider<TvHapticsNotifier, TvHaptics>(TvHapticsNotifier.new);
+
+/// Plays every haptic event the TV sends, in any input mode. The controller
+/// screen keeps it alive.
+class TvHapticsNotifier extends Notifier<TvHaptics> {
+  @override
+  TvHaptics build() {
+    // Make sure the capability check has run before the first event.
+    ref.watch(hapticsCapabilitiesProvider);
+    final client = ref.watch(clientProvider);
+    final player = ref.watch(hapticsPlayerProvider);
+    final sub = client.hapticEvents.listen((message) async {
+      await player.event(message);
+      if (ref.mounted) state = (received: client.hapticsReceived, played: player.eventsPlayed, last: message);
+    });
+    ref.onDispose(sub.cancel);
+    return (received: client.hapticsReceived, played: player.eventsPlayed, last: player.lastEvent);
+  }
+}
+
 final padProvider = NotifierProvider<PadNotifier, PadInput>(PadNotifier.new);
 
 /// The pad's input: tracks fingers, sends every change to the TV and plays a

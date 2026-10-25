@@ -13,6 +13,7 @@ Installed on this PC during Milestone 0 (versions as of Oct 2026):
 | Android SDK | command-line tools in `%LOCALAPPDATA%\Android\Sdk`, then `sdkmanager platform-tools "platforms;android-36" "build-tools;36.0.0"` | `ANDROID_HOME` set. Licenses accepted. |
 | Visual Studio 2022 Community + **Desktop development with C++** | `winget install Microsoft.VisualStudio.2022.Community --override "--add Microsoft.VisualStudio.Workload.NativeDesktop --includeRecommended"` | Needed for the Windows desktop TV app |
 | Windows **Developer Mode** | `start ms-settings:developers` → Developer Mode On | Needed once Flutter plugins are added (symlinks) |
+| Android NDK (28.2) | `sdkmanager "ndk;28.2.13676358"` | Needed since M5: `flutter_soloud` compiles its audio engine during the TV app's Android build. The Windows build uses Visual Studio's C++ tools |
 
 Check with `flutter doctor -v`. Everything should be green except optional items.
 
@@ -26,9 +27,18 @@ flutter pub get          # resolves the whole workspace
 flutter analyze controller_app tv_test_app packages assets
 cd packages\protocol; dart test; cd ..\..
 cd packages\connection; dart test; cd ..\..    # real sockets on localhost: pairing, heartbeats, reconnect
+cd packages\test_game; flutter test; cd ..\..    # game rules and the game screen
 cd controller_app; flutter test; cd ..
 cd tv_test_app; flutter test; cd ..
 ```
+
+Sounds need real audio hardware, so they have their own on-device test (it plays each sound for half a second):
+```powershell
+cd tv_test_app
+flutter test integration_test -d windows                 # Windows build
+flutter test integration_test -d 192.168.1.50:5555       # the TV (use its IP), after adb connect
+```
+The first build of the TV app downloads flutter_soloud's prebuilt codec libraries from GitHub (release pinned in the root `pubspec.yaml`) and caches them.
 
 ## Controller app on the Android phone
 1. On the phone: Settings → About phone → tap **Build number** 7 times → back → System → Developer options → **USB debugging** On.
@@ -75,7 +85,7 @@ dart run connection:sim_controller --code 1234                         # TV app 
 dart run connection:sim_controller --host 192.168.1.50 --code 1234     # TV app on the TV
 dart run connection:sim_controller --help                              # all options
 ```
-It prints each state change and the ping (with the last 30 s summary) every 5 seconds. Without `--code` it asks for one. Add `--demo` to press every button and D-pad direction in a loop, to check the TV's input display. The TV app's **Simulate controller** button does the same from inside the app.
+It prints each state change and the ping (with the last 30 s summary) every 5 seconds. Without `--code` it asks for one. Add `--demo` to press every button and D-pad direction in a loop, to check the TV's input display. Haptic events the TV sends are printed as they arrive (for example `haptic hit intensity 0.7 120 ms`), so the game and the haptic test can be checked without a phone. The TV app's **Simulate controller** button does the same from inside the app.
 
 ## Network ports
 | What | Port |

@@ -25,6 +25,7 @@ class DiagnosticsScreen extends ConsumerWidget {
     final caps = ref.watch(hapticsCapabilitiesProvider).value;
     final haptics = ref.watch(hapticSettingsProvider);
     final player = ref.read(hapticsPlayerProvider);
+    final tvHaptics = ref.watch(tvHapticsProvider);
     final input = ref.watch(padProvider);
     final gyro = ref.watch(gyroProvider);
     final gyroSettings = ref.watch(gyroSettingsProvider);
@@ -93,6 +94,9 @@ class DiagnosticsScreen extends ConsumerWidget {
               ('Intensity control', caps == null ? '–' : (caps.intensityControl ? 'Yes' : 'No (on/off only)')),
               ('Setting', haptics.enabled ? 'On, ${(haptics.intensity * 100).round()}%' : 'Off'),
               ('Ticks played', '${player.played}'),
+              ('TV events', '${tvHaptics.received} received, ${tvHaptics.played} played'),
+              if (tvHaptics.last case final last?)
+                ('Last TV event', '${last.event.name}, ${(last.intensity * 100).round()}%, ${last.durationMs} ms'),
               if (player.lastError != null) ('Last error', player.lastError!),
               if (caps?.detail != null) ('Native detail', caps!.detail!),
             ]),
@@ -195,7 +199,7 @@ String buildReport(WidgetRef ref) {
     ..writeln('Problem: ${client.problem?.name ?? '-'} ${client.detail ?? ''} (OS error ${client.osErrorCode ?? '-'})')
     ..writeln('Local network: ${network.label}. ${network.explanation}')
     ..writeln(
-      'Haptics: ${ref.read(hapticsPlayerProvider).capabilities.engine}, setting ${ref.read(hapticSettingsProvider).enabled ? 'on' : 'off'} ${ref.read(hapticSettingsProvider).intensity}, played ${ref.read(hapticsPlayerProvider).played}, error ${ref.read(hapticsPlayerProvider).lastError ?? '-'}',
+      'Haptics: ${ref.read(hapticsPlayerProvider).capabilities.engine}, setting ${ref.read(hapticSettingsProvider).enabled ? 'on' : 'off'} ${ref.read(hapticSettingsProvider).intensity}, played ${ref.read(hapticsPlayerProvider).played}, TV events ${ref.read(tvHapticsProvider).received} received ${ref.read(tvHapticsProvider).played} played (last ${ref.read(tvHapticsProvider).last ?? '-'}), error ${ref.read(hapticsPlayerProvider).lastError ?? '-'}',
     )
     ..writeln('Ping, last 30 s: ${client.rttStats ?? '-'}')
     ..writeln(

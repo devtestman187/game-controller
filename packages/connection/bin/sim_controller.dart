@@ -6,7 +6,8 @@
 //
 // Options: --host (default 127.0.0.1), --port (default 45780), --code (asked
 // for if missing), --name, --seconds (run time, default: until Ctrl+C),
-// --demo (press every button and D-pad direction in a loop).
+// --demo (press every button and D-pad direction in a loop). Haptic events
+// from the TV (M5) are printed as they arrive.
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -55,7 +56,7 @@ Future<void> main(List<String> args) async {
       controllerId: id,
       name: options['name'] ?? 'Simulated controller',
       platform: 'sim',
-      appVersion: '0.4.0',
+      appVersion: '0.5.0',
     ),
     log: (m) => stdout.writeln('  · $m'),
   );
@@ -83,6 +84,10 @@ Future<void> main(List<String> args) async {
       default:
     }
   });
+
+  client.hapticEvents.listen(
+    (e) => stdout.writeln('haptic ${e.event.name} intensity ${e.intensity} ${e.durationMs} ms'),
+  );
 
   final pingReport = Timer.periodic(const Duration(seconds: 5), (_) {
     final rtt = client.snapshot.rttMs;

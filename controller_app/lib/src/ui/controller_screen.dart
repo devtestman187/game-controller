@@ -50,15 +50,20 @@ class _ControllerScreenState extends ConsumerState<ControllerScreen> with Widget
       // once the user allows local network access in the iOS prompt.
       ref.read(discoveryProvider).restart();
       ref.read(gyroProvider.notifier).resume();
+      ref.read(hapticsPlayerProvider).paused = false;
     } else {
       // Leaving the app (or a system sheet on top) must not leave input held.
       ref.read(gyroProvider.notifier).pause();
+      ref.read(hapticsPlayerProvider).paused = true;
       ref.read(padProvider.notifier).releaseAll();
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    // Play haptic events from the TV in every mode (listening keeps it alive
+    // without rebuilding the screen on each event).
+    ref.listen(tvHapticsProvider, (_, _) {});
     // If the TV shows up at a new address (new DHCP lease), reconnect there.
     ref.listen(discoveryStateProvider, (_, next) {
       final client = ref.read(clientProvider);

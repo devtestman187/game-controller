@@ -9,7 +9,9 @@ import 'version.dart';
 class MessageCodec {
   const MessageCodec();
 
-  static const Map<String, Message Function(Map<String, Object?>)> _decoders = {
+  // A decoder may return null to ignore a message it can't use (for example
+  // a haptic event name from a newer TV).
+  static const Map<String, Message? Function(Map<String, Object?>)> _decoders = {
     HelloMessage.wireType: HelloMessage.fromPayload,
     WelcomeMessage.wireType: WelcomeMessage.fromPayload,
     PairRequestMessage.wireType: PairRequestMessage.fromPayload,
@@ -17,6 +19,7 @@ class MessageCodec {
     PingMessage.wireType: PingMessage.fromPayload,
     PongMessage.wireType: PongMessage.fromPayload,
     InputStateMessage.wireType: InputStateMessage.fromPayload,
+    HapticEventMessage.wireType: HapticEventMessage.fromPayload,
   };
 
   String encode(Message message) => jsonEncode({'v': protocolVersion, 't': message.type, ...message.toPayload()});

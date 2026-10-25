@@ -37,6 +37,7 @@ final class HostViewState {
     this.advertiseError,
     this.serverError,
     this.sim,
+    this.activeControllerId,
   });
 
   final String hostName;
@@ -53,6 +54,16 @@ final class HostViewState {
 
   /// The built-in simulated controller, or null when it's off.
   final ClientSnapshot? sim;
+
+  /// The controller that pressed or moved something last.
+  final String? activeControllerId;
+
+  /// The controller that drives the test game: the last one used, or else
+  /// the first connected one.
+  ControllerInfo? get driver {
+    final connected = host.connected.toList();
+    return connected.where((c) => c.controllerId == activeControllerId).firstOrNull ?? connected.firstOrNull;
+  }
 }
 
 /// What the TV screen needs from the host. A fake implements it in tests.
@@ -62,6 +73,11 @@ abstract class HostController {
   void newPairingCode();
   void toggleSimulatedController();
   void dropAllConnections();
+
+  /// Sends a haptic event to one controller, or to every connected one when
+  /// [controllerId] is null. Returns how many it reached.
+  int sendHaptic(HapticEventMessage message, {String? controllerId});
+
   Future<void> dispose();
 }
 
@@ -80,6 +96,13 @@ class LiveHostController implements HostController {
     _hostName = _defaultHostName();
     _server = HostServer(hostId: id, hostName: _hostName, appVersion: appVersion, log: log.sink('host'));
     _serverSub = _server.changes.listen((_) => _emit());
+    _messagesSub = _server.messages.listen((m) {
+      final message = m.message;
+      if (message is InputStateMessage && !message.isNeutral && m.controllerId != _active) {
+        _active = m.controllerId;
+        _emit();
+      }
+    });
   }
 
   static const _hostIdKey = 'hostId';
@@ -90,6 +113,8 @@ class LiveHostController implements HostController {
   late final String _hostName;
   late final HostServer _server;
   late final StreamSubscription<HostSnapshot> _serverSub;
+  late final StreamSubscription<ControllerMessage> _messagesSub;
+  String? _active;
   final _changes = StreamController<HostViewState>.broadcast();
 
   List<LocalAddress> _addresses = const [];
@@ -102,6 +127,7 @@ class LiveHostController implements HostController {
   Timer? _addressTimer;
   ControllerClient? _sim;
   StreamSubscription<ClientSnapshot>? _simSub;
+  StreamSubscription<HapticEventMessage>? _simHapticsSub;
   Timer? _demo;
   bool _disposed = false;
 
@@ -115,6 +141,7 @@ class LiveHostController implements HostController {
     advertiseError: _advertiseError,
     serverError: _serverError,
     sim: _sim?.snapshot,
+    activeControllerId: _active,
   );
 
   @override
@@ -143,6 +170,12 @@ class LiveHostController implements HostController {
   void dropAllConnections() => _server.dropAllConnections();
 
   @override
+  int sendHaptic(HapticEventMessage message, {String? controllerId}) {
+    if (controllerId != null) return _server.send(controllerId, message) ? 1 : 0;
+    return _server.sendToAll(message);
+  }
+
+  @override
   void toggleSimulatedController() {
     final running = _sim;
     if (running != null) {
@@ -150,6 +183,7 @@ class LiveHostController implements HostController {
       _demo?.cancel();
       _demo = null;
       _simSub?.cancel();
+      _simHapticsSub?.cancel();
       _sim = null;
       running.dispose();
       _emit();
@@ -174,6 +208,10 @@ class LiveHostController implements HostController {
       if (s.isConnected) _demo ??= runDemoInput(sim);
       _emit();
     });
+    // So the log shows what a phone would feel.
+    _simHapticsSub = sim.hapticEvents.listen(
+      (e) => _logBuffer.add('sim', 'Felt ${e.event.name} (${(e.intensity * 100).round()}%, ${e.durationMs} ms)'),
+    );
     sim.connect(
       HostAddress(addresses: ['127.0.0.1'], port: port),
       code: _server.pairingCode,
@@ -187,12 +225,14 @@ class LiveHostController implements HostController {
     _addressTimer?.cancel();
     _demo?.cancel();
     await _simSub?.cancel();
+    await _simHapticsSub?.cancel();
     await _sim?.dispose();
     await _broadcastSub?.cancel();
     try {
       await _broadcast?.stop();
     } catch (_) {}
     await _serverSub.cancel();
+    await _messagesSub.cancel();
     await _server.dispose();
     await _changes.close();
   }

@@ -17,8 +17,8 @@
 | `tv_test_app/` | TV test bench + server | Android TV (minSdk 31), Windows desktop |
 | `packages/protocol/` | Message definitions + codec, no Flutter dependency | anywhere Dart runs |
 | `packages/connection/` | Host server, phone client (pairing, heartbeats, reconnect), log buffer and the command-line simulated controller (`bin/sim_controller.dart`). Pure Dart (`dart:io`) | anywhere `dart:io` runs |
-| `packages/test_game/` (M5) | Sprite test game, kept separate so it can grow | Flutter |
-| `assets/` | `game_assets` package: images, audio, `CREDITS.md`, asset manifest | Flutter |
+| `packages/test_game/` | The test game (M5): rules in `ArenaGame` (no widgets, unit-tested) and the screen in `ArenaView`. Kept separate so it can grow | Flutter |
+| `assets/` | `game_assets` package: images, audio (`audio/`, bundled as a folder), `CREDITS.md`, asset manifest (`lib/asset_manifest.dart`) | Flutter |
 | `docs/` | PRD, decisions, setup guides, per-milestone checklists | |
 
 ## Principles
@@ -46,7 +46,7 @@ Rules:
 - **Heartbeats.** Silence for 4 seconds counts as a dropped connection on either side (close code 4004 when it can be sent).
 - **Reconnect.** After being paired, the phone retries forever with backoff (0.25, 0.5, 1, 2, then every 3 s) and resumes with its token. If discovery finds the same hostId at a new address, the next attempt uses it. It doesn't retry after a version mismatch (4000), being replaced by a newer connection from the same phone (4002) or a protocol error (4003).
 - **One connection per controller.** When a controller pairs again (often after a half-open drop), the TV closes the older connection with 4002.
-- Haptic events (TV → phone, M5) will use the same connection.
+- Haptic events (TV → phone, M5) use the same connection. A phone that sends one is closed with 4003.
 
 ## Input (Milestone 2)
 - **Full state, not events.** On every change the phone sends `input` with `seq`, the held `buttons` (`a`, `b`, `x`, `y`, `start`, `select`) and the D-pad as `dx`, `dy` (each -1, 0 or 1; `dy` -1 is up). The TV keeps the latest state per controller, so a lost or late release can't leave a button stuck, and an empty state releases everything.
@@ -80,3 +80,38 @@ Leaving the app pauses the sensors and centers the stick. Coming back resumes wi
 - **Wire**: the same `input` message gains `lx`, `ly`, `rx`, `ry` (present only in stick mode) and the buttons `lb` and `rb`. Older TVs ignore both, so the protocol stays v1.
 - **Rate**: buttons, the D-pad, mode changes and a stick returning to center go out at once. Stick and tilt movement is capped at one send per 16 ms (about 60 per second), always sending the latest value.
 - **Mode switches** let go of every finger and center or drop the old mode's analog inputs, so nothing from the old layout stays held.
+
+## TV-to-phone haptics (Milestone 5)
+- **Wire**: the TV sends `{"t": "haptic", "event": "hit" | "success" | "error" | "rumble", "intensity": 0..1, "ms": 20..3000}`. The phone ignores it unless paired, and ignores an event name it doesn't know (a newer TV), so the protocol stays v1. Older phones ignore the whole type.
+- **Patterns live in Dart** (`controller_app/lib/src/haptic_patterns.dart`): each event is a list of segments `[startMs, durationMs, intensity, sharpness]`, where duration 0 is a tap. Native code only plays segments, so tuning a pattern needs no Swift change (and no extra cloud build).
+
+| Event | Pattern (natural length) | How `ms` applies |
+| --- | --- | --- |
+| hit | One heavy, round tap with a 120 ms tail that fades out | Stretches the pattern |
+| success | Three rising, crisp taps 110 ms apart, the last one ringing briefly (320 ms) | Stretches the pattern |
+| error | Two short, harsh buzzes with a gap (220 ms) | Stretches the pattern |
+| rumble | A low buzz wobbling between two strengths every 50 ms (400 ms) | How long it lasts |
+
+- **Playing**: the TV's intensity × the phone's intensity setting scales every segment. The haptics switch silences TV events as well as ticks. Events arriving while the app isn't in the foreground are skipped.
+- **iOS** (`AppDelegate.swift`, method `play`): one `CHHapticPattern` per event (transient and continuous events). A new rumble stops the one still playing. If the engine was stopped behind the app's back, it restarts and tries once more, then falls back to UIKit (success/error notification feedback, otherwise one heavy impact).
+- **Android** (`Haptics.kt`, method `play`): the segments become one `VibrationEffect` waveform. Taps are 15 ms (crisp) or 30 ms (round) pulses, overlapping segments take the stronger amplitude, and a motor without amplitude control gets an on/off pattern. Android plays one vibration at a time, so a tick during a rumble cuts the rumble short.
+
+## Sound on the TV (Milestone 5)
+- `tv_test_app/lib/src/sound.dart`: `SoundPlayer` with `play(event)`. The game and the haptic test call only that, so the audio package can be swapped. `SoLoudSoundPlayer` uses **flutter_soloud**, which decodes OGG and WAV itself, on Android TV and Windows alike. A missing file or a failed engine is silent and reported on screen.
+- Files come from the asset manifest (`assets/lib/asset_manifest.dart`): `audio/<event>.ogg`, or the same name as `.wav`. Replaying a sound that is still playing restarts it instead of layering.
+- **Firing an event** (`tvEventsProvider`): the sound and the haptic event always go out together, and the TV log records each one with what fired it and how many controllers got it.
+
+## Test game (Milestone 5)
+`packages/test_game`: a top-down arena (PRD "Test game design"). The field fills the window; positions are fractions of the field, and sizes and speeds are fractions of its shorter side, so it plays the same in any window and survives resizing.
+
+| Rule | Value (first proposal, tune on devices) |
+| --- | --- |
+| Movement | D-pad: full speed (0.55 field-heights per second), diagonals too. Tilt or left stick: scaled by how far it's pushed |
+| Dash (A, on the press) | 2.6× speed for 0.3 s in the direction last moved, 1.2 s cooldown. Sends **rumble** for 300 ms. Pressed during the cooldown: **error** |
+| Walls and edges | Bumping one at a quarter of full speed or more sends **hit** (70%, 100% while dashing). Sliding along it or keeping pushing into it doesn't repeat; moving away and bumping it again does, at least 0.3 s apart. Movement is split into small steps so a dash can't pass through a wall |
+| Hazards | Four red discs: three slide back and forth, one circles near the goal. A touch sends **hit** (100%), knocks the sprite back and gives 0.8 s of grace (it blinks). Hazards never end a round |
+| Goal | Sends **success**. The next round starts after 2 s with the field mirrored, so start and goal swap sides |
+| Right stick | Moves an aim cursor around the sprite (no effect yet) |
+| On screen | Round, timer, best time, wins, hits, dashes (and how many were too soon), dash ready |
+
+The TV app runs it in `ui/game_screen.dart`. It's driven by the controller that pressed or moved something last (or else the first one connected), and its events go to that controller. OK, Enter, D, F3, or the remote's Info/Menu key toggles a debug overlay: controller, connection, ping, input mode, stick or tilt values, buttons, the last haptic event sent, and the sound status. Back (or Esc) leaves.

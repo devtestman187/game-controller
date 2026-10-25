@@ -40,6 +40,9 @@ jobs:
       - name: Test connection (pairing, heartbeats, reconnect)
         working-directory: packages/connection
         run: dart test
+      - name: Test the test game
+        working-directory: packages/test_game
+        run: flutter test
       - name: Test controller app
         working-directory: controller_app
         run: flutter test

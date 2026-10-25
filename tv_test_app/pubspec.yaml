@@ -2,7 +2,7 @@ name: tvtest
 description: "TV test app for the phone controller (Android TV + Windows desktop)."
 publish_to: 'none'
 
-version: 0.4.0+7
+version: 0.5.0+8
 
 environment:
   sdk: ^3.13.0
@@ -14,14 +14,21 @@ dependencies:
   flutter:
     sdk: flutter
   flutter_riverpod: ^3.4.3
+  flutter_soloud: ^5.2.1
   connection:
     path: ../packages/connection
+  game_assets:
+    path: ../assets
   protocol:
     path: ../packages/protocol
   shared_preferences: ^2.5.6
+  test_game:
+    path: ../packages/test_game
 
 dev_dependencies:
   flutter_test:
+    sdk: flutter
+  integration_test:
     sdk: flutter
   flutter_lints: ^6.0.0
 

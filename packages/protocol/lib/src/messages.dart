@@ -1,3 +1,4 @@
+part 'haptic.dart';
 part 'input.dart';
 
 /// All protocol messages. New message types are added as subclasses of
@@ -10,6 +11,9 @@ part 'input.dart';
 ///    or with the token from an earlier pairing (reconnects need no code)
 /// 4. host → controller: [PairResultMessage]
 /// 5. both ways, every second: [PingMessage], answered by [PongMessage]
+///
+/// Then the controller sends [InputStateMessage]s (M2) and the host sends
+/// [HapticEventMessage]s (M5).
 sealed class Message {
   const Message();
 

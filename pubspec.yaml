@@ -10,4 +10,13 @@ workspace:
   - tv_test_app
   - packages/protocol
   - packages/connection
+  - packages/test_game
   - assets
+
+# Build hook settings (they must live in the workspace root). flutter_soloud
+# links prebuilt Ogg/Vorbis/Opus/FLAC libraries downloaded from GitHub on the
+# first build; pin the release so a new upstream one can't change our builds.
+hooks:
+  user_defines:
+    flutter_soloud:
+      prebuild_tag: v1.1.0

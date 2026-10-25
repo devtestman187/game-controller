@@ -5,9 +5,11 @@ import android.os.VibrationAttributes
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
+import kotlin.math.max
+import kotlin.math.roundToInt
 
 /**
- * Input ticks with VibrationEffect. Uses the "click" primitive when the
+ * Input ticks and the TV's haptic events with VibrationEffect. Uses the "click" primitive when the
  * hardware supports it (crisp, with intensity), otherwise a short one-shot
  * buzz, with amplitude if the motor allows it. minSdk is 36, so every API
  * used here is available.
@@ -54,7 +56,61 @@ class Haptics(context: Context) {
         }
     }
 
+    /**
+     * A haptic event from the TV. [segments] are `[startMs, durationMs, intensity,
+     * sharpness]` (duration 0 = a tap), built in lib/src/haptic_patterns.dart.
+     * They become one waveform: taps are short pulses (crisp ones shorter),
+     * buzzes hold their strength, and where segments overlap the stronger one
+     * wins. Without amplitude control it's an on/off pattern. A new vibration
+     * replaces the one playing, as Android allows only one at a time.
+     */
+    fun play(segments: List<DoubleArray>) {
+        if (!hasVibrator) return
+        try {
+            waveform(segments)?.let { vibrator.vibrate(it, attributes) }
+        } catch (e: RuntimeException) {
+            lastError = e.toString()
+        }
+    }
+
+    private class Span(val start: Int, val end: Int, val amplitude: Int)
+
+    private fun waveform(segments: List<DoubleArray>): VibrationEffect? {
+        val spans = segments.filter { it.size >= 4 }.map { s ->
+            val start = max(0.0, s[0]).roundToInt()
+            val length = if (s[1] <= 0.0) {
+                if (s[3] >= 0.5) TAP_SHARP_MS else TAP_SOFT_MS
+            } else {
+                max(1, s[1].roundToInt())
+            }
+            Span(start, start + length, (s[2].coerceIn(0.0, 1.0) * 255).roundToInt())
+        }.filter { it.amplitude > 0 }
+        if (spans.isEmpty()) return null
+        val edges = (spans.flatMap { listOf(it.start, it.end) } + 0).toSortedSet().toList()
+        val timings = mutableListOf<Long>()
+        val levels = mutableListOf<Int>()
+        for (i in 0 until edges.size - 1) {
+            val from = edges[i]
+            val to = edges[i + 1]
+            val amplitude = spans.filter { it.start <= from && it.end >= to }.maxOfOrNull { it.amplitude } ?: 0
+            val level = when {
+                amplitude == 0 -> 0
+                hasAmplitude -> amplitude
+                else -> VibrationEffect.DEFAULT_AMPLITUDE
+            }
+            if (levels.isNotEmpty() && levels.last() == level) {
+                timings[timings.size - 1] += (to - from).toLong()
+            } else {
+                timings.add((to - from).toLong())
+                levels.add(level)
+            }
+        }
+        return VibrationEffect.createWaveform(timings.toLongArray(), levels.toIntArray(), -1)
+    }
+
     private companion object {
         const val TICK_MS = 12L
+        const val TAP_SHARP_MS = 15
+        const val TAP_SOFT_MS = 30
     }
 }

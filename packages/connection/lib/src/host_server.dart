@@ -190,6 +190,15 @@ class HostServer {
     }
   }
 
+  /// Sends [message] to every paired controller. Returns how many it went to.
+  int sendToAll(Message message) {
+    final paired = _sessions.where((s) => s.paired).toList();
+    for (final s in paired) {
+      _send(s, message);
+    }
+    return paired.length;
+  }
+
   /// Sends [message] to a paired controller. Returns false if it isn't
   /// connected.
   bool send(String controllerId, Message message) {
@@ -290,7 +299,7 @@ class HostServer {
         s.input = message;
         _emit();
         if (!_messages.isClosed) _messages.add(ControllerMessage(s.hello!.controllerId, message));
-      case WelcomeMessage() || PairResultMessage():
+      case WelcomeMessage() || PairResultMessage() || HapticEventMessage():
         _close(s, CloseCodes.protocolError, 'Unexpected ${message.type}');
     }
   }

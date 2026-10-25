@@ -198,6 +198,8 @@ class ControllerClient {
   static const _codec = MessageCodec();
   final _clock = Stopwatch()..start();
   final _changes = StreamController<ClientSnapshot>.broadcast();
+  final _haptics = StreamController<HapticEventMessage>.broadcast();
+  int _hapticsReceived = 0;
 
   ClientSnapshot _snap = const ClientSnapshot(status: ClientStatus.idle);
 
@@ -236,6 +238,12 @@ class ControllerClient {
 
   /// Input states sent since the app started, for Diagnostics.
   int get inputsSent => _inputsSent;
+
+  /// Haptic events from the TV (M5), only while paired.
+  Stream<HapticEventMessage> get hapticEvents => _haptics.stream;
+
+  /// Haptic events received since the app started, for Diagnostics.
+  int get hapticsReceived => _hapticsReceived;
 
   /// Sets the controller's input and sends it if connected. While not
   /// connected it's kept and sent as soon as pairing completes, so a button
@@ -330,6 +338,7 @@ class ControllerClient {
   Future<void> dispose() async {
     disconnect();
     await _changes.close();
+    await _haptics.close();
   }
 
   int get _now => _clock.elapsedMilliseconds;
@@ -427,6 +436,11 @@ class ControllerClient {
         _onWelcome(message);
       case PairResultMessage():
         _onPairResult(message);
+      case HapticEventMessage():
+        // Only while paired: a TV we are not paired with has no business here.
+        if (!_snap.isConnected) return;
+        _hapticsReceived++;
+        if (!_haptics.isClosed) _haptics.add(message);
       case HelloMessage() || PairRequestMessage() || InputStateMessage():
         _log('Ignoring unexpected ${message.type} from the TV');
     }

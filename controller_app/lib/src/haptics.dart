@@ -1,5 +1,8 @@
 import 'package:flutter/services.dart';
+import 'package:protocol/protocol.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import 'haptic_patterns.dart';
 
 /// What the phone's vibration hardware can do.
 final class HapticsCapabilities {
@@ -40,6 +43,10 @@ abstract class Haptics {
 
   /// A short tick at [intensity] from 0 to 1.
   Future<void> tick(double intensity);
+
+  /// A haptic event from the TV (M5). [event] lets the native side pick a
+  /// fallback when it can't play patterns.
+  Future<void> play(HapticEvent event, HapticPattern pattern);
 }
 
 /// The native implementation, behind one small platform channel:
@@ -59,6 +66,10 @@ class PlatformHaptics implements Haptics {
 
   @override
   Future<void> tick(double intensity) => _channel.invokeMethod<void>('tick', {'intensity': intensity});
+
+  @override
+  Future<void> play(HapticEvent event, HapticPattern pattern) =>
+      _channel.invokeMethod<void>('play', {'event': event.name, 'segments': pattern.toWire()});
 }
 
 /// Records ticks instead of playing them.
@@ -67,6 +78,7 @@ class FakeHaptics implements Haptics {
 
   HapticsCapabilities caps;
   final ticks = <double>[];
+  final played = <(HapticEvent, HapticPattern)>[];
 
   /// When set, every tick throws this, to test that errors don't break input.
   Object? failWith;
@@ -79,6 +91,13 @@ class FakeHaptics implements Haptics {
     final error = failWith;
     if (error != null) throw error;
     ticks.add(intensity);
+  }
+
+  @override
+  Future<void> play(HapticEvent event, HapticPattern pattern) async {
+    final error = failWith;
+    if (error != null) throw error;
+    played.add((event, pattern));
   }
 }
 
@@ -122,6 +141,14 @@ class HapticsPlayer {
   String? lastError;
   int played = 0;
 
+  /// Haptic events from the TV played since launch, and the latest one.
+  int eventsPlayed = 0;
+  HapticEventMessage? lastEvent;
+
+  /// True while the app isn't in the foreground: TV events are skipped, since
+  /// the phone can't (iOS) or shouldn't (Android) vibrate from the background.
+  bool paused = false;
+
   Future<void> load() async {
     capabilities = await _haptics.capabilities();
     _log(
@@ -138,8 +165,33 @@ class HapticsPlayer {
       await _haptics.tick(intensity);
       played++;
     } catch (e) {
-      if (lastError == null) _log('Haptics error (further ones not logged): $e');
-      lastError = '$e';
+      _failed(e);
     }
+  }
+
+  /// Plays a haptic event sent by the TV (PRD C6). The haptics switch
+  /// silences it too, and the intensity setting scales it like the ticks.
+  /// Returns whether it was played.
+  Future<bool> event(HapticEventMessage message) async {
+    lastEvent = message;
+    if (!settings.enabled || !capabilities.supported || paused) return false;
+    final pattern = HapticPattern.forEvent(
+      message.event,
+      intensity: message.intensity * settings.intensity,
+      durationMs: message.durationMs,
+    );
+    try {
+      await _haptics.play(message.event, pattern);
+      eventsPlayed++;
+      return true;
+    } catch (e) {
+      _failed(e);
+      return false;
+    }
+  }
+
+  void _failed(Object e) {
+    if (lastError == null) _log('Haptics error (further ones not logged): $e');
+    lastError = '$e';
   }
 }

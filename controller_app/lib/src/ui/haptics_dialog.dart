@@ -3,7 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers.dart';
 
-/// Haptics on/off and intensity (PRD C5), with a test tick.
+/// Haptics on/off and intensity (PRD C5, C6), with a test tick. The switch
+/// and the intensity apply to the ticks and to haptic events from the TV.
 Future<void> showHapticsDialog(BuildContext context) =>
     showDialog<void>(context: context, builder: (_) => const _HapticsDialog());
 
@@ -31,7 +32,8 @@ class _HapticsDialog extends ConsumerWidget {
             SwitchListTile(
               key: const Key('hapticsSwitch'),
               contentPadding: EdgeInsets.zero,
-              title: const Text('Tick on every press'),
+              title: const Text('Haptics'),
+              subtitle: const Text("A tick on every press, and the TV's game events"),
               value: settings.enabled,
               onChanged: (on) => notifier.update(settings.copyWith(enabled: on)),
             ),

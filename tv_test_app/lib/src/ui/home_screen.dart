@@ -8,6 +8,8 @@ import 'package:protocol/protocol.dart';
 import '../app_info.dart';
 import '../host_controller.dart';
 import '../providers.dart';
+import 'game_screen.dart';
+import 'haptic_panel_screen.dart';
 import 'input_visualizer.dart';
 import 'tv_button.dart';
 
@@ -92,7 +94,7 @@ class _Header extends StatelessWidget {
         : state.host.running
         ? ('Listening on port ${state.host.port}', scheme.onSurface)
         : ('Starting…', scheme.onSurface);
-    return Row(
+    final title = Row(
       children: [
         Icon(Icons.tv, size: 32, color: scheme.primary),
         const SizedBox(width: 12),
@@ -102,7 +104,7 @@ class _Header extends StatelessWidget {
               children: [
                 TextSpan(text: 'Controller Test', style: text.headlineSmall),
                 TextSpan(
-                  text: '   Protocol v$protocolVersion · app $appVersion · Milestone 4',
+                  text: '   Protocol v$protocolVersion · app $appVersion · Milestone 5',
                   style: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
                 ),
               ],
@@ -122,6 +124,35 @@ class _Header extends StatelessWidget {
           ),
         ),
       ],
+    );
+    // Always in view at the top, so the remote reaches them with Up.
+    final buttons = [
+      TvButton(
+        label: 'Test game',
+        icon: Icons.videogame_asset_outlined,
+        onPressed: () => _open(context, const GameScreen()),
+      ),
+      TvButton(label: 'Haptic test', icon: Icons.vibration, onPressed: () => _open(context, const HapticPanelScreen())),
+    ];
+    return LayoutBuilder(
+      builder: (context, constraints) => constraints.maxWidth >= 760
+          ? Row(
+              children: [
+                Expanded(child: title),
+                const SizedBox(width: 16),
+                buttons[0],
+                const SizedBox(width: 8),
+                buttons[1],
+              ],
+            )
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                title,
+                const SizedBox(height: 8),
+                Wrap(spacing: 8, runSpacing: 8, children: buttons),
+              ],
+            ),
     );
   }
 }
@@ -221,6 +252,8 @@ class _PairingPanel extends ConsumerWidget {
               ),
           const SizedBox(height: 12),
           _AdvertiseStatus(state: state),
+          const SizedBox(height: 4),
+          const _SoundLine(),
           if (Platform.isWindows) ...[
             const SizedBox(height: 4),
             Text(
@@ -257,6 +290,42 @@ class _PairingPanel extends ConsumerWidget {
           ],
         ],
       ),
+    );
+  }
+}
+
+void _open(BuildContext context, Widget screen) =>
+    Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => screen));
+
+/// Whether the four event sounds loaded (they play in the game and the
+/// haptic test).
+class _SoundLine extends ConsumerWidget {
+  const _SoundLine();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final s = ref.watch(soundStatusProvider);
+    final text = Theme.of(context).textTheme;
+    final scheme = Theme.of(context).colorScheme;
+    final total = HapticEvent.values.length;
+    final (icon, color, message) = s.error != null
+        ? (Icons.volume_off, scheme.error, 'Sounds are off: ${s.error}')
+        : !s.ready
+        ? (Icons.volume_mute, scheme.onSurfaceVariant, 'Loading sounds…')
+        : (
+            s.loaded == total ? Icons.volume_up : Icons.volume_down,
+            s.loaded == total ? Colors.greenAccent : Colors.amberAccent,
+            '${s.loaded} of $total event sounds loaded (${s.engine})',
+          );
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 20, color: color),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(message, key: const Key('soundStatus'), style: text.bodyMedium),
+        ),
+      ],
     );
   }
 }
