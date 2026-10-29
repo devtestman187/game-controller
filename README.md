@@ -28,10 +28,12 @@ Toolchain setup, Android/TV install steps and the Windows Firewall notes are in 
 ## Status
 | Milestone | State |
 | --- | --- |
-| M0 Foundation and build pipelines | Done (Android phone install test deferred) |
-| M1 Discovery, pairing, connection, Windows desktop TV app | Done (Android phone tests deferred) |
-| M2 D-pad mode and input haptics | Done (Android phone tests deferred) |
-| M3 Gyro mode | Done (Android phone tests deferred) |
-| M4 Analog stick mode (Xbox-style layout) | Done (Android phone tests deferred) |
-| M5 TV-to-phone haptics and test game | Done (`m5`) |
-| M6 Polish, settings, latency tooling, several controllers | In progress (built, awaiting device tests) |
+| M0 Foundation and build pipelines | Done (Android phone install test pending) |
+| M1 Discovery, pairing, connection, Windows desktop TV app | Done (Android phone tests pending) |
+| M2 D-pad mode and input haptics | Done (Android phone tests pending) |
+| M3 Gyro mode | Done (Android phone tests pending) |
+| M4 Analog stick mode (Xbox-style layout) | Done (Android phone tests pending) |
+| M5 TV-to-phone haptics and test game | Done (`m5`, Android phone tests pending) |
+| M6 Polish, settings, latency tooling, several controllers | Done (`m6`, Android phone tests pending) |
+
+All PRD milestones are done. The Android phone tests are still pending for every milestone.

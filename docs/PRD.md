@@ -1,6 +1,6 @@
 # Game Controller + Android TV Test App: PRD
 
-Oct 21, 2026 · @Manveer
+Oct 21, 2026 · @Manveer · Updated Oct 29, 2026: all seven milestones done on the iPhone, the Android TV and the Windows laptop; Android phone tests pending
 
 ## Overview
 
@@ -12,7 +12,7 @@ The TV test app exists so the controller can be verified without building a full
 
 ## Goals and non-goals
 
-The project succeeds when a phone running either Android or iOS can pair with the TV app, control it in both modes, and exchange haptic feedback with it, all verified on real devices.
+The project succeeds when a phone running either Android or iOS can pair with the TV app, control it in all three modes, and exchange haptic feedback with it, all verified on real devices.
 
 **Goals**
 
@@ -72,8 +72,8 @@ The controller runs on Android and iOS in landscape, with each requirement landi
 | C9 | Pairing with a short code shown on the TV, auto-reconnect after a drop, and visible connection status | M1 |
 | C10 | Diagnostics screen: connection state, discovered hosts, local-network permission status, haptics capability, recent log lines, share log | M1 (basic), M6 (full) |
 | C11 | Settings screen that saves haptic, sensitivity, dead zone and smoothing choices | M6 |
-| C12 | Analog stick mode: Xbox-style landscape layout with two analog sticks, A, B, X and Y, a D-pad, shoulder buttons (LB, RB), triggers (LT, RT), View and Menu, with multi-touch across both thumbs | M4 |
-| C13 | Analog stick input: each stick sends normalized x and y inside a unit circle, with adjustable dead zone and sensitivity, and returns to center on release | M4 |
+| C12 | Analog stick mode: Xbox-style landscape layout with two analog sticks, A, B, X and Y, a D-pad, shoulder buttons (LB, RB), Select and Start, with multi-touch across both thumbs. No triggers | M4 |
+| C13 | Analog stick input: each stick sends normalized x and y inside a unit circle, with adjustable dead zone and sensitivity, and returns to center on release. Fixed sticks by default, with a floating option. No stick click | M4 |
 
 ## TV test app requirements
 
@@ -85,11 +85,11 @@ The TV app is both the host the controller connects to and a test bench that pro
 | T2 | Hosts the connection server, advertises on the local network (mDNS), shows the pairing code and connection state | M1 |
 | T3 | Simulated-controller test client that drives the TV app without a phone | M1 |
 | T4 | Live round-trip ping from the heartbeat | M1 |
-| T5 | Input visualizer: D-pad direction and each button state, then analog x and y from the gyro | M2, M3, M4 |
+| T5 | Input visualizer: D-pad direction and each button state, then analog x and y from the gyro, then both sticks | M2, M3, M4 |
 | T6 | Haptic test panel that triggers each haptic event type on the connected controller | M5 |
-| T7 | Playable test: a movable sprite with obstacles, driven by any input mode, with sound effects and haptic events on hits and wins | M5 |
-| T8 | Latency readout with rolling average, and log export | M6 |
-| T9 | Multiple controllers connected at once, each identified on the TV. The protocol allows for it from the start | M6 |
+| T7 | Playable test: a movable sprite with obstacles, driven by any input mode, with sound effects and haptic events on hits and wins. One sprite per connected controller | M5, M6 |
+| T8 | Latency readout with rolling average (ping and estimated one-way input delay), and log export | M6 |
+| T9 | Multiple controllers connected at once, each identified on the TV with a player number and colour. The protocol allows for it from the start | M6 |
 | T10 | Windows desktop build of the TV test app, using the same server, pairing and game code with a layout that fits a laptop window, so the controller can be tested without the TV | M1 |
 
 ## Test game design
@@ -106,8 +106,9 @@ The test game is a top-down arena where one sprite crosses a field of walls and 
 | Field | Fills the window and resizes with it. Speeds are set relative to the field size so movement feels comparable across screens (proposed) |
 | Look | Plain coloured shapes first, replaced later by CC0 art as the assets plan says |
 | Debug info | A toggleable overlay, off by default, showing connection state, live ping, input mode, stick or tilt values and the last haptic event sent. A remote key or keyboard key toggles it |
+| Several controllers | One sprite per controller, in the player's colour. Haptic events go only to the player who caused them, and the first player to reach the goal wins the round (M6) |
 
-Left for the build: the arena layout, hazard paths and counts, speeds, dash duration and cooldown, and the exact haptic patterns. Claude Code proposes values and you tune them on the devices.
+Left for the build: the arena layout, hazard paths and counts, speeds, dash duration and cooldown, and the exact haptic patterns. Claude Code proposed values (recorded in docs/decisions.md), and they passed the device tests unchanged. The haptic patterns were reworked in M6 so the four events differ in rhythm and length, not just strength.
 
 ## Non-functional requirements
 
@@ -115,7 +116,7 @@ The main quality bar is responsiveness: input should reach the TV in under about
 
 | Area | Requirement |
 | --- | --- |
-| Latency | Under about 50 ms from input to TV on typical home Wi-Fi (target to validate) |
+| Latency | Under about 50 ms from input to TV on typical home Wi-Fi. Met in Milestone 6: the TV estimates the one-way input delay from the heartbeats, and a 31-minute run from the PC averaged about 6 ms, and the iPhone latency test passed |
 | Gyro stream | About 60 Hz, throttled so it does not flood the network |
 | Reliability | Heartbeats on every connection, automatic reconnect after a drop, and no stuck buttons after a disconnect or when the app is backgrounded |
 | Pairing | The TV only accepts input from a controller that has entered the correct pairing code |
@@ -134,8 +135,8 @@ Both apps are Flutter apps that talk over a local WebSocket connection, using me
 
 The controller sends input to the TV over one connection, and the TV sends haptic events back on the same connection.
 
-- **Stack:** Flutter and Dart for both apps. The TV test app also builds as a Windows desktop app from the same code. Claude Code picks the state-management approach during planning and records the choice in the docs.
-- **Repo layout:** one GitHub repository with /controller\_app, /tv\_test\_app, /packages/protocol, /docs and /assets.
+- **Stack:** Flutter and Dart for both apps. The TV test app also builds as a Windows desktop app from the same code. State management is Riverpod, recorded with the other build choices in docs/decisions.md.
+- **Repo layout:** one GitHub repository with /controller\_app, /tv\_test\_app, /packages/protocol, /packages/connection (server, phone client and simulated controller), /packages/test\_game, /docs and /assets.
 - **Discovery:** mDNS (NSD on Android, Bonjour on iOS), with manual IP entry as a fallback.
 - **Transport:** bidirectional WebSocket with versioned messages and heartbeats. UDP is considered for the gyro stream only if measured latency requires it.
 - **Haptics:** a Dart interface with native implementations behind platform channels (Core Haptics on iOS, VibrationEffect on Android) and a fake implementation for tests.
@@ -149,6 +150,20 @@ Each milestone ends in installable builds and a gate that must pass before the n
 &#91;embedded content: milestone roadmap · 7 milestones, each with a gate\]
 
 M0 proves the build pipelines, M1 to M5 each add one capability, and M6 measures and hardens the whole system.
+
+**Status (Oct 29, 2026).** Every milestone passed its device tests on the iPhone, the physical Android TV and, where it applies, the Windows laptop. The Android phone tests are still pending for every milestone. The Android phone build is made in CI for each milestone but hasn't been tested on the phone. The results for each milestone are in /docs/checklists.
+
+| Milestone | Tag | Passed | Android phone |
+| --- | --- | --- | --- |
+| M0 Foundation and build pipelines | m0 | Oct 24, 2026 | Pending |
+| M1 Discovery, pairing and connection | m1 | Oct 24, 2026 | Pending |
+| M2 D-pad mode and input haptics | m2 | Oct 24, 2026 | Pending |
+| M3 Gyro mode | m3.2 | Oct 24, 2026 | Pending |
+| M4 Analog stick mode | m4 | Oct 25, 2026 | Pending |
+| M5 TV-to-phone haptics and the test game | m5 | Oct 25, 2026 | Pending |
+| M6 Polish, settings and latency tooling | m6 | Oct 29, 2026 | Pending |
+
+In the acceptance tests below, a ticked box means the test passed on the iPhone and the TV. Tests that name the Android phone still need to be run on it.
 
 ## Milestone 0: Foundation and build pipelines
 
@@ -170,11 +185,11 @@ Milestone 0 proves that every build and install path works, including iOS in the
 
 **Acceptance tests**
 
-- [ ] The controller APK installs and launches on the Android phone.
-- [ ] The CI-built unsigned controller .ipa is signed with a free Apple ID, installs on the iPhone and launches.
-- [ ] The TV app appears in the launcher and can be navigated with the remote.
-- [ ] CI is green, and a docs-only change does not start an iOS build.
-- [ ] The protocol unit test passes locally and in CI.
+- [ ] The controller APK installs and launches on the Android phone (pending).
+- [x] The CI-built unsigned controller .ipa is signed with a free Apple ID, installs on the iPhone and launches.
+- [x] The TV app appears in the launcher and can be navigated with the remote.
+- [x] CI is green, and a docs-only change does not start an iOS build.
+- [x] The protocol unit test passes locally and in CI.
 
 ## Milestone 1: Discovery, pairing and connection
 
@@ -199,14 +214,14 @@ Milestone 1 delivers a phone that finds the TV, pairs with a code and stays conn
 
 **Acceptance tests**
 
-- [ ] The phone finds the TV automatically, accepts the pairing code, and both screens show Connected (Android phone and iPhone).
-- [ ] A wrong pairing code is rejected and the connection is not established.
-- [ ] Manual IP entry connects when discovery does not work.
-- [ ] Turning Wi-Fi off and on makes the phone reconnect without manual steps.
-- [ ] The iPhone shows the local-network permission prompt, and discovery works after allowing it.
-- [ ] The simulated client pairs with the TV app and keeps the connection alive.
-- [ ] The TV shows a live round-trip ping.
-- [ ] The TV test app runs on the Windows laptop, and the Android phone and the iPhone discover it, pair and show Connected, after following the README's Windows Firewall steps.
+- [x] The phone finds the TV automatically, accepts the pairing code, and both screens show Connected (Android phone and iPhone).
+- [x] A wrong pairing code is rejected and the connection is not established.
+- [x] Manual IP entry connects when discovery does not work.
+- [x] Turning Wi-Fi off and on makes the phone reconnect without manual steps.
+- [x] The iPhone shows the local-network permission prompt, and discovery works after allowing it.
+- [x] The simulated client pairs with the TV app and keeps the connection alive.
+- [x] The TV shows a live round-trip ping.
+- [x] The TV test app runs on the Windows laptop, and the Android phone and the iPhone discover it, pair and show Connected, after following the README's Windows Firewall steps.
 
 ## Milestone 2: D-pad mode and input haptics
 
@@ -229,12 +244,12 @@ Milestone 2 turns the phone into a working D-pad controller, with every input vi
 
 **Acceptance tests**
 
-- [ ] Each button press and release shows on the TV visualizer and ticks on the phone (Android phone and iPhone).
-- [ ] Holding a direction while pressing buttons registers both at once.
-- [ ] Changing haptic intensity, and turning haptics off, changes the behavior on both phones.
-- [ ] No input stays stuck after the app is backgrounded or the connection drops.
-- [ ] Diagnostics shows whether haptics are supported, and with haptics turned off or unsupported the app keeps running without errors.
-- [ ] A first latency impression is noted for comparison in Milestone 6.
+- [x] Each button press and release shows on the TV visualizer and ticks on the phone (Android phone and iPhone).
+- [x] Holding a direction while pressing buttons registers both at once.
+- [x] Changing haptic intensity, and turning haptics off, changes the behavior on both phones.
+- [x] No input stays stuck after the app is backgrounded or the connection drops.
+- [x] Diagnostics shows whether haptics are supported, and with haptics turned off or unsupported the app keeps running without errors.
+- [x] A first latency impression is noted for comparison in Milestone 6.
 
 ## Milestone 3: Gyro mode
 
@@ -257,12 +272,12 @@ Milestone 3 adds the second input mode, where tilting the phone steers, with cal
 
 **Acceptance tests**
 
-- [ ] After calibrating, holding the phone at the neutral position shows x and y near zero on the TV.
-- [ ] Tilting left, right, forward and back moves the analog values smoothly in the matching direction (Android phone and iPhone).
-- [ ] Raising the dead zone removes small jitter, and raising sensitivity makes the same tilt produce a larger value.
-- [ ] Switching between D-pad and gyro modes works mid-session without disconnecting.
-- [ ] Buttons and haptic ticks work in gyro mode.
-- [ ] Streaming gyro data does not cause visible lag or dropped connections on home Wi-Fi.
+- [x] After calibrating, holding the phone at the neutral position shows x and y near zero on the TV.
+- [x] Tilting left, right, forward and back moves the analog values smoothly in the matching direction (Android phone and iPhone).
+- [x] Raising the dead zone removes small jitter, and raising sensitivity makes the same tilt produce a larger value.
+- [x] Switching between D-pad and gyro modes works mid-session without disconnecting.
+- [x] Buttons and haptic ticks work in gyro mode.
+- [x] Streaming gyro data does not cause visible lag or dropped connections on home Wi-Fi.
 
 ## Milestone 4: Analog stick mode
 
@@ -275,10 +290,9 @@ Milestone 4 adds the third input mode, an Xbox-style layout with two analog stic
 
 **Scope**
 
-- Xbox-style landscape layout (C12): left stick at the upper left with the D-pad below it, right stick at the lower right with A, B, X and Y above it, View and Menu in the center, and shoulder buttons (LB, RB) and triggers (LT, RT) along the top edges. The exact arrangement is proposed and open for review.
-- Two independent analog sticks (C13): drag a thumb inside a fixed circle, with normalized x and y inside the unit circle, adjustable dead zone and sensitivity, and a return to center on release.
-- Protocol messages for each stick, throttled to about 60 updates per second while a stick moves, with a final center message on release, plus messages for the new buttons.
-- Triggers work as on and off buttons for now (proposed).
+- Xbox-style landscape layout (C12): left stick at the upper left with the D-pad below it, right stick at the lower right with A, B, X and Y above it, Select (left) and Start (right) in the center, and shoulder buttons (LB, RB) along the top edges. Start and Select take the places of Xbox's Menu and View. There are no triggers (LT, RT).
+- Two independent analog sticks (C13): drag a thumb inside a fixed circle, with normalized x and y inside the unit circle, adjustable dead zone and sensitivity, and a return to center on release. A setting switches to floating sticks, which appear where the thumb lands. Fixed sticks are the default. Tapping a stick does nothing (no L3 or R3 stick click).
+- Stick values and the new buttons travel in the same full-state input message as the other buttons, throttled to about 60 updates per second while a stick moves, with a final center message on release.
 - Haptic ticks on button presses, with the same intensity and on/off settings as the other modes.
 - TV input visualizer showing both sticks live, plus the state of every button (T5).
 - A mode selector with three modes, switchable at runtime without reconnecting.
@@ -286,12 +300,12 @@ Milestone 4 adds the third input mode, an Xbox-style layout with two analog stic
 
 **Acceptance tests**
 
-- [ ] Moving each stick moves the matching indicator on the TV smoothly, and releasing it returns the indicator to center (Android phone and iPhone).
-- [ ] Both sticks and a button work at the same time, using both thumbs and a finger on a shoulder button.
-- [ ] A diagonal push never exceeds full scale, and the dead zone removes small jitter.
-- [ ] Every button (A, B, X, Y, LB, RB, LT, RT, View, Menu and the four D-pad directions) shows on the TV and ticks on the phone.
-- [ ] Switching among D-pad, gyro and stick modes mid-session works without disconnecting, and no input stays stuck after a mode switch, a disconnect or backgrounding the app.
-- [ ] The layout fits both test phones in landscape with no overlapping controls.
+- [x] Moving each stick moves the matching indicator on the TV smoothly, and releasing it returns the indicator to center (Android phone and iPhone).
+- [x] Both sticks and a button work at the same time, using both thumbs and a finger on a shoulder button.
+- [x] A diagonal push never exceeds full scale, and the dead zone removes small jitter.
+- [x] Every button (A, B, X, Y, LB, RB, Select, Start and the four D-pad directions) shows on the TV and ticks on the phone.
+- [x] Switching among D-pad, gyro and stick modes mid-session works without disconnecting, and no input stays stuck after a mode switch, a disconnect or backgrounding the app.
+- [x] The layout fits both test phones in landscape with no overlapping controls.
 
 ## Milestone 5: TV-to-phone haptics and the test game
 
@@ -326,13 +340,13 @@ Files can be .wav or .ogg and are named after the event. Each one gets a line in
 
 **Acceptance tests**
 
-- [ ] Each of the four events triggered from the TV panel produces a distinct feel on the iPhone and the Android phone.
-- [ ] The game is playable end to end with the D-pad, the gyro and the analog sticks.
-- [ ] Wall bumps, hazard touches, wins, failed dashes and dashes fire hit, success, error and rumble with the matching sound.
-- [ ] All four sound files exist, play on the TV with their events in both the Android TV and Windows builds, and are listed in CREDITS.md.
-- [ ] Triggering events repeatedly, and after backgrounding the app, keeps haptics working (the iOS haptic engine restarts when needed).
-- [ ] With the haptics toggle off, events sent from the TV produce no haptics on the phone.
-- [ ] Replacing a sound file in /assets changes the sound without code changes.
+- [x] Each of the four events triggered from the TV panel produces a distinct feel on the iPhone and the Android phone.
+- [x] The game is playable end to end with the D-pad, the gyro and the analog sticks.
+- [x] Wall bumps, hazard touches, wins, failed dashes and dashes fire hit, success, error and rumble with the matching sound.
+- [x] All four sound files exist, play on the TV with their events in both the Android TV and Windows builds, and are listed in CREDITS.md.
+- [x] Triggering events repeatedly, and after backgrounding the app, keeps haptics working (the iOS haptic engine restarts when needed).
+- [x] With the haptics toggle off, events sent from the TV produce no haptics on the phone.
+- [x] Replacing a sound file in /assets changes the sound without code changes.
 
 ## Milestone 6: Polish, settings and latency tooling
 
@@ -350,19 +364,19 @@ Milestone 6 makes the system dependable and measurable: saved settings, full dia
 - Full Diagnostics screen with haptics capability and shareable logs (C10).
 - Latency tooling on the TV: live round-trip ping, rolling average, and log export (T8).
 - Reconnect hardening: sleeping phone, backgrounded app, TV app restart, and changed network.
-- Multiple controllers connected at once, each identified on the TV (T9).
+- Multiple controllers connected at once, each identified on the TV (T9). In the test game each controller drives its own sprite.
 - A battery and CPU sanity check of a long gyro-streaming session.
 - Final README per app and the manual test checklist for every milestone in /docs.
 
 **Acceptance tests**
 
-- [ ] Measured input latency on home Wi-Fi meets the target of about 50 ms, or the gap is documented with a plan.
-- [ ] Saved settings survive closing and reopening the controller app.
-- [ ] Each TV haptic event's intensity can be set on its own in settings, changes how that event feels from the TV, and doesn't change the button tick.
-- [ ] A play session of about 30 minutes (proposed) completes with no dropped connection or stuck input.
-- [ ] The controller recovers after the TV app restarts and after the phone sleeps and wakes.
-- [ ] Two controllers connect at the same time, and the TV shows each one's input separately.
-- [ ] Every milestone's checklist passes on a fresh install from the latest tagged builds.
+- [x] Measured input latency on home Wi-Fi meets the target of about 50 ms, or the gap is documented with a plan.
+- [x] Saved settings survive closing and reopening the controller app.
+- [x] Each TV haptic event's intensity can be set on its own in settings, changes how that event feels from the TV, and doesn't change the button tick.
+- [x] A play session of about 30 minutes (proposed) completes with no dropped connection or stuck input.
+- [x] The controller recovers after the TV app restarts and after the phone sleeps and wakes.
+- [x] Two controllers connect at the same time, and the TV shows each one's input separately.
+- [x] Every milestone's checklist passes on a fresh install from the latest tagged builds.
 
 ## Test strategy
 
@@ -400,7 +414,7 @@ The largest risk is slow iOS debugging, because every fix needs a cloud build, a
 | Free CI minutes run out | Path-filtered triggers, cancelled superseded builds and a build time limit |
 | Apple blocks the sign-in method that sideloading tools use again (as happened in October 2026), or a tool lags behind a new iOS release | Fall back to a paid Apple Developer account and TestFlight |
 | Windows Firewall blocks the desktop app, or the mDNS package does not support Windows | Allow the app on private networks, check package support early in Milestone 1, and keep manual IP entry as a fallback |
-| The full Xbox-style layout is cramped on a phone screen, with two sticks, a D-pad, face buttons, shoulders and triggers | Test the layout on both phones early in Milestone 4, keep touch targets large, and simplify secondary buttons if needed |
+| The full Xbox-style layout is cramped on a phone screen, with two sticks, a D-pad, face buttons, shoulders and triggers | Triggers were dropped, and the layout fit the iPhone in Milestone 4. The fit on the Android phone is still to be checked |
 
 **Decisions (October 23, 2026)**
 
@@ -415,16 +429,24 @@ The largest risk is slow iOS debugging, because every fix needs a cloud build, a
 - Multi-controller support is part of Milestone 6.
 - Internet play and acting as a Bluetooth gamepad are firm non-goals. A store release, Apple TV support and a fuller game are possible later.
 
+**Decisions (October 24 to 29, 2026)**
+
+- The Android phone tests are deferred for every milestone and stay pending. Each milestone was accepted on the iPhone, the TV and the laptop.
+- Analog stick mode has two sticks, a D-pad, A, B, X and Y, LB and RB, and Select and Start (in place of View and Menu). There are no triggers and no stick click.
+- The sticks can be fixed or floating, switched in settings. Fixed is the default, because it felt best in the M4 device test.
+- With several controllers connected, each one drives its own sprite in the test game, only the player who causes a haptic event feels it, and the first to the goal wins the round.
+- Each TV haptic event (hit, success, error and rumble) has its own strength setting on the phone, separate from the button tick, because the four events were hard to tell apart in the M5 device test. The patterns were also reworked to differ in rhythm and length.
+- The TV app remembers paired phones, so they reconnect without the code after the TV app restarts, and a Forget phones button clears them.
+- The TV app keeps the screen on while a controller is connected, because the TV went to sleep after 10 minutes without remote input and dropped the controllers.
+- Latency is measured as a one-way input delay estimated from the heartbeats, alongside the round-trip ping. UDP isn't needed, because the WebSocket connection meets the 50 ms target.
+
 **Open questions**
 
 - Should the iPhone build be re-installed by hand each week through iLoader, or should SideStore (which iLoader can install) refresh it automatically? SideStore's sign-in still needed workarounds in October 2026.
-- How should the game behave when several controllers are connected in Milestone 6?
-- Is the proposed analog stick layout the right set: two sticks, a D-pad, A, B, X and Y, shoulder buttons (LB, RB), triggers (LT, RT), View and Menu?
-- Should the triggers send analog values (a partial pull) or only on and off? The PRD proposes on and off for now.
-- Should tapping a stick act as a stick click (L3, R3), and should the sticks stay fixed or float to where the thumb lands? The PRD proposes fixed sticks and no stick click yet.
 
 **Next steps**
 
+- [ ] Run the Android phone tests for every milestone (pending).
 - [ ] Keep a copy of the iLoader installer that worked, in case a newer release breaks sign-in.
 - [ ] Answer the open question above.
-- [ ] Give Claude Code the Milestone 0 section first, and move to the next milestone only after its acceptance tests pass.
+- [x] Give Claude Code the Milestone 0 section first, and move to the next milestone only after its acceptance tests pass.
