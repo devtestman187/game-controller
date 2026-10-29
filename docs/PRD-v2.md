@@ -6,11 +6,12 @@ Oct 29, 2026 · @Manveer · Draft for review. Builds on v1 (docs/PRD.md, milesto
 
 Version 2 turns the working controller and test bench from v1 into something people other than the developer can install, play and learn from.
 
-It makes three changes:
+It makes three changes, plus groundwork for a fourth:
 
 1. **Better controller.** The A, B, X and Y buttons in analog stick mode get bigger and easier to hit, with a size setting for playtests.
 2. **Analytics.** The phone and TV record how each control type (D-pad, gyro, sticks) is used and how it performs. This includes latency, empty taps, near misses, button frequency and game results, so we can tell what makes each mode fun or frustrating.
 3. **A real game.** A collaborative puzzle game for 1 to 4 players, simple enough for an 8-year-old. Players race the clock, or each other, to carry and rotate shape pieces into an outline.
+4. **Platform groundwork.** A written protocol spec, a game-facing host interface that doesn't depend on any engine, and controls the game can define on the phone. These are cheap now and hard to add later. v3 then picks how other games use the controller: a kit for game engines, a PC bridge for existing games, or both (see Platform direction).
 
 Testers install everything through the standard app stores: Google Play testing for the Android phone and TV apps, and TestFlight for the iPhone. The Windows host is a download. No sideloading tools are needed.
 
@@ -40,12 +41,14 @@ v2 succeeds when someone who isn't the developer can follow a one-page guide and
 - A puzzle game for 1, 2, 3 or 4 players that an 8-year-old can finish on Easy, with tuning values exposed for playtests.
 - Installs through Google Play testing tracks, TestFlight and a Windows download, with no sideloading tools.
 - Milestones that each end in builds delivered through that pipeline (from M8 on) and a device-test gate.
+- A protocol and host interface that another engine or a PC bridge could implement from the written spec alone, proven by our own games using nothing else.
 
 **Non-goals**
 
 - A public production release on the Play Store or App Store. v2 stays on testing tracks. Production is a later step.
 - Internet play. This is still a firm non-goal. The only internet use in v2 is the opt-in analytics upload.
-- Acting as a Bluetooth gamepad (HID). Still a firm non-goal.
+- Acting as a Bluetooth gamepad (HID). Still a firm non-goal: iPhones can't do it, and free Android apps already do.
+- Building the engine kits (Unity, Godot), the PC bridge or a browser controller. These are v3 candidates. v2 only lays the groundwork.
 - Apple TV, Samsung or LG hosts. Android TV and Windows stay the only hosts. A macOS host is a possible later option.
 - Online leaderboards. Best times stay on the TV that recorded them.
 
@@ -89,6 +92,7 @@ v2 adds these to v1's C1 to C13.
 | C21 | Haptic patterns for the new puzzle events (snap, wrong, help, tick, drop-ready), each with its own intensity setting like v1's four events | M10, M11 |
 | C22 | Store-ready builds: release signing, version numbers from the tag, app name and icon, privacy policy link in settings, and the "Allow apps from unknown sources" note removed from the docs | M8 |
 | C23 | "Try without a TV" demo screen that shows the controls responding with no host connected, for app reviewers and new testers checking their phone works | M8 |
+| C24 | Shows game-defined controls (P5) and the status panel (P6) in all three modes, without shrinking any control below its C14 size | M10 |
 
 ## TV app requirements
 
@@ -268,6 +272,39 @@ Pickup, countdown and time-up also get sounds without haptics. All sounds come f
 | Time limit | 2 minutes |
 | Warning period | 15 seconds |
 
+## Platform direction
+
+The controller is only useful if games can use it. v2 does the cheap groundwork, and v3 picks the main path once the analytics and tester feedback are in.
+
+**Ways the controller could reach games**
+
+| Path | What it is | Verdict |
+| --- | --- | --- |
+| Games in our host app | Puzzle and Arena, built by us | v2 (current plan) |
+| Engine kits | Host libraries for Unity (C#) and Godot that follow the spec, so other developers can build phone-controlled games. Each phone appears as a normal gamepad in the engine, with extras on top (haptics, gyro, players joining, game-defined controls) | v3 candidate. The stronger product |
+| PC bridge | A Windows app that turns our input into keyboard presses (no driver needed), and later possibly a virtual Xbox controller, so existing PC games work | v3 candidate. Quick usefulness, crowded market. The standard virtual-controller driver (ViGEmBus) was retired in Nov 2023 |
+| Browser controller | The TV serves a controller web page that guests open by scanning a QR code, with no install | v3 candidate, as a guest option. iPhone browsers can't vibrate, and iPhone gyro needs HTTPS |
+| Bluetooth gamepad | The phone pairs as a standard Bluetooth controller | Non-goal. Android only, already covered by free apps, no gyro or game haptics |
+| Consoles | Switch, PlayStation, Xbox | Not possible. They accept only licensed controllers |
+
+**What v2 does now**
+
+| ID | Requirement | Milestone |
+| --- | --- | --- |
+| P1 | Protocol spec in docs/protocol.md, covering discovery and its TXT records, pairing, tokens, heartbeats, close codes, every message and field, timing and throttling rules, and versioning. It grows from today's docs/architecture.md, is updated in every milestone that touches the protocol, and is published with the tester guide in M12 | M9, M12 |
+| P2 | Capabilities: `hello` and `welcome` list what each side supports (for example `metrics`, `layout`, `status`, `haptics:snap`). New messages stay additive, because unknown types are already ignored. The version number only changes for a breaking change. A host never sends a controller a message it hasn't listed | M9 |
+| P3 | Game host interface: one pure-Dart interface in packages/connection that every game and TV screen uses for players joining and leaving (with number, colour and nickname), each player's gamepad state, haptics, layouts, the status panel and latency. Our games use nothing else, so the interface is the template for future engine kits | M9 (Arena), M10 (Puzzle) |
+| P4 | Standard gamepad mapping: every input mode maps to one Xbox-style gamepad state (A, B, X, Y, LB, RB, Select, Start, D-pad, two sticks), plus extras such as raw tilt. Gyro maps to the left stick, and D-pad mode's buttons map to the same names. Documented in the spec, so a bridge or engine kit can present the phone as a normal gamepad | M9 |
+| P5 | Game-defined controls: a `layout` message lets the game set, for each player, the modes allowed (with the default), the buttons used, a short label for each (for example A "Pick up", X "Rotate ⟲"), and the buttons hidden. The phone shows the labels and dims or hides unused buttons. The player still chooses among the allowed modes | M10 |
+| P6 | Phone status panel: a `status` message shows a small panel on the phone with a short text, one simple shape with a colour and angle, and a progress bar. It is limited in size and sent at most 10 times a second. In the puzzle it shows the held piece and the time left | M10 |
+| P7 | Conformance check: `sim_controller --check` runs the spec's required exchanges (pairing, heartbeats, input, haptics, capabilities, layout and status) against any host and prints pass or fail, so a future engine kit can test itself | M12 |
+
+**How v3 will choose**
+
+- **Engine kits first** if the playtests show the native controller is the draw (good ratings, low frustration signals, interest from developers).
+- **PC bridge first** if testers mostly ask to use it with games they already own.
+- **Browser controller** if installing the app is the main thing stopping casual guests from joining.
+
 ## Non-functional requirements
 
 v1's requirements still apply. These are added or changed.
@@ -278,17 +315,19 @@ v1's requirements still apply. These are added or changed.
 | Game performance | The puzzle game runs at 60 frames per second on the test TV with 4 players and all effects on |
 | Kid usability | In a playtest, an 8-year-old finishes an Easy puzzle within 2 minutes after one practice round, in at least one input mode |
 | Privacy | Anonymous, opt-in, no advertising IDs, data limited to gameplay, privacy policy published. Written so it stays compliant if the stores treat the app as one that children use |
-| Protocol | Version 2 adds metrics batches, nicknames and the new haptic events. A v1 phone and a v2 TV reject each other with a clear "update the app" message, and testers update through the stores |
+| Protocol | Metrics batches, ratings, nicknames, layouts, the status panel and the new haptic events are additive messages, announced through capabilities (P2), so slightly older and newer builds still work together. A breaking change raises the version number, which is rejected with a clear "update the app" message, and testers update through the stores |
+| Engine independence | packages/protocol and packages/connection stay pure Dart with no Flutter dependency, and games reach the connection only through the game host interface (P3) |
 | Install | A tester can install every app from the stores or the Windows download without developer tools, USB cables or sideloading apps |
 | Store compliance | Builds meet each store's current target-API and SDK rules, and listings include the privacy policy and data disclosures |
 
 ## Architecture changes
 
-The architecture stays as it is: two Flutter apps, a shared protocol, a WebSocket over the local network. v2 adds three packages and one internet connection, used only for the analytics upload.
+The architecture stays as it is: two Flutter apps, a shared protocol, a WebSocket over the local network. v2 adds two packages, a game-facing interface and one internet connection, used only for the analytics upload.
 
 - **packages/puzzle\_game:** puzzle rules (tolerance with symmetry, snapping, big-piece carrying, scoring and ties), the puzzle data format with the 9 puzzles, and the game screen. It reuses the arena's movement code, moved to a shared place.
 - **packages/metrics:** metric models, counters, aggregation and the session summary format, shared by the phone and the TV, with unit tests. It also contains the report command-line tool.
-- **packages/protocol v2:** metrics batch, player profile (nickname, install ID), new haptic event names, a rating message, and puzzle game hints if needed (for example "holding a piece" to show on the phone).
+- **packages/protocol:** capabilities in `hello` and `welcome`, metrics batch, player profile (nickname, install ID), new haptic event names, rating, `layout` and `status` messages. Written up in docs/protocol.md (P1).
+- **packages/connection:** the game host interface (P3) and the standard gamepad mapping (P4). Games and TV screens use only this interface. The simulated controller gains `--check` (P7).
 - **TV app:** game picker, join and results screens, playtest settings, Stats screen, consent, and the uploader.
 - **Controller app:** stick layout rebalance and size setting, touch metrics, rating prompt, nickname, demo screen.
 - **CI and release:** Codemagic signs the iOS build and uploads it to TestFlight on tags. Android AABs for the phone and TV, and the Windows zip, are built on tags (on Windows or in GitHub Actions) and uploaded to Play and to GitHub Releases. Play uploads are manual at first and automated once stable (proposed).
@@ -301,8 +340,8 @@ Numbering continues from v1, so tags stay unique (m7 and later). Each milestone 
 | --- | --- | --- |
 | M7 | Bigger stick-mode buttons and v1's Android phone tests | A quick fix testers will notice, and it closes v1 on the second phone platform |
 | M8 | Store testing pipeline | Accounts and reviews take time, and every later milestone ships through it |
-| M9 | Analytics | Collection is in place before testers play the new game, so their first sessions count |
-| M10 | Puzzle game, 1 player | Proves the core feel of carrying, rotating and dropping before adding players |
+| M9 | Analytics and platform groundwork | Collection is in place before testers play the new game, so their first sessions count. The protocol changes anyway, so the spec, capabilities and host interface come with it |
+| M10 | Puzzle game, 1 player, with game-defined controls | Proves the core feel of carrying, rotating and dropping before adding players, and is the first game to label the phone's buttons |
 | M11 | Puzzle game, 2 to 4 players | Adds sides, teams, big pieces and win rules on top of a proven core |
 | M12 | Fun, content and the first outside playtest | Adds the extras, all 9 puzzles and tuning, and puts it in testers' hands |
 
@@ -362,9 +401,9 @@ Milestone 8 lets anyone install the apps from a link: Google Play testing for bo
 - [ ] Pushing a tag produces the TestFlight build, the AABs and the Windows zip, and installed apps update to it.
 - [ ] The demo screen works with no host.
 
-## Milestone 9: Analytics
+## Milestone 9: Analytics and platform groundwork
 
-Milestone 9 records how each control type is used and how it performs, shows it on the TV, and, with consent, collects it from testers' homes.
+Milestone 9 records how each control type is used and how it performs, shows it on the TV, and, with consent, collects it from testers' homes. It also writes the protocol down and puts every game behind one engine-independent interface.
 
 **Deployable builds**
 
@@ -374,7 +413,9 @@ Milestone 9 records how each control type is used and how it performs, shows it 
 **Scope**
 
 - packages/metrics with the models, counters and session summary (C17, T17).
-- Protocol v2: metrics batches and the rating message (C18).
+- Protocol additions: capabilities (P2), metrics batches and the rating message (C18).
+- Game host interface (P3) and standard gamepad mapping (P4) in packages/connection, with the arena game and the TV's test screens moved onto it.
+- First version of docs/protocol.md (P1).
 - Phone touch metrics in all three modes: empty taps, near misses, slide-offs, rapid repeated taps, press counts and durations, stick and tilt metrics.
 - TV metrics: latency (median, 95th percentile, max), connection health, arena game events.
 - Rating prompt after arena rounds (C19).
@@ -393,14 +434,17 @@ Milestone 9 records how each control type is used and how it performs, shows it 
 - [ ] An exported session file contains no names, nicknames or network details.
 - [ ] The median input delay with metrics on is within 1 ms of v1's baseline.
 - [ ] The rating prompt appears after a game, can be skipped, and its answer appears in the session summary.
+- [ ] The arena game and the TV's test screens work as before, now through the game host interface. packages/protocol and packages/connection still have no Flutter dependency.
+- [ ] The M8 store build of the controller still works with the M9 TV app, and the reverse, thanks to capabilities.
+- [ ] docs/protocol.md describes every message the apps send. A reviewer can check each field against the code.
 
 ## Milestone 10: Puzzle game, 1 player
 
-Milestone 10 builds the core of the puzzle game for one player, so carrying, rotating and dropping can be tuned before more players are added.
+Milestone 10 builds the core of the puzzle game for one player, so carrying, rotating and dropping can be tuned before more players are added. It is also the first game to tell the phone what its buttons do.
 
 **Deployable builds**
 
-- Controller: the new haptic patterns (snap, wrong, drop-ready) with their intensity settings.
+- Controller: the new haptic patterns (snap, wrong, drop-ready) with their intensity settings, and game-defined labels and the status panel.
 - TV app: game picker, single-player puzzle with 3 Easy puzzles and 1 Medium puzzle, and the playtest settings screen.
 
 **Scope**
@@ -410,6 +454,7 @@ Milestone 10 builds the core of the puzzle game for one player, so carrying, rot
 - Time limit and results for 1 player (finished time or pieces placed).
 - Game picker (T11) and playtest settings screen (T16).
 - New haptic events and sounds for snap, wrong and drop-ready (C21).
+- `layout` and `status` messages (P5, P6), shown on the phone in every mode (C24). The puzzle labels A "Pick up" and X and Y "Rotate", hides unused buttons, and shows the held piece and the time left on the phone. The puzzle uses only the game host interface (P3).
 - Puzzle metrics added to the session summary: completion time, wrong drops, rotation time and overshoots, angle and position error at drop.
 - Unit tests: matching with symmetric and identical pieces, tolerance edges, lock and red states, results.
 
@@ -422,6 +467,8 @@ Milestone 10 builds the core of the puzzle game for one player, so carrying, rot
 - [ ] A square piece matches its outline at any quarter turn.
 - [ ] Time-up shows the pieces placed, and a finished puzzle shows the time.
 - [ ] The arena game is still available from the game picker.
+- [ ] In the puzzle the phone shows "Pick up" on A and "Rotate" on X and Y, hides buttons the puzzle doesn't use, and shows the held piece turning as it rotates. Back on the arena game, the phone returns to its usual buttons.
+- [ ] With labels and the status panel showing, no control is smaller than before in any mode.
 
 ## Milestone 11: Puzzle game, 2 to 4 players
 
@@ -470,6 +517,8 @@ Milestone 12 adds the touches that make the game fun, completes the puzzle set, 
 - A playtest round with outside testers, including at least one child around 8, using a short observation sheet in /docs alongside the metrics.
 - Tuning: adjust defaults from the playtest and the metrics, and record the final values in docs/decisions.md.
 - Final README updates, tester guide, and manual checklists for M7 to M12 in /docs/checklists.
+- Protocol spec finished and published with the tester guide (P1), and `sim_controller --check` (P7).
+- A short v3 recommendation in /docs choosing the platform path, based on the playtest, the metrics and tester requests.
 
 **Acceptance tests**
 
@@ -478,6 +527,8 @@ Milestone 12 adds the touches that make the game fun, completes the puzzle set, 
 - [ ] Best times survive restarting the TV app and show nicknames.
 - [ ] At least 3 outside households install from the stores and play, and their sessions appear in the report.
 - [ ] The report compares the three modes on frustration signals, completion time and ratings, and the findings are written up in /docs.
+- [ ] `sim_controller --check` passes against the Android TV and Windows builds.
+- [ ] The v3 platform recommendation is written and reviewed.
 
 ## Test strategy
 
@@ -511,6 +562,8 @@ The largest new risk is store review and policy. Outside testing depends on two 
 | Android's planned local-network permission changes how the phone finds the TV (to verify) | Track it when raising the target SDK, and keep manual IP entry as a fallback |
 | Windows SmartScreen and firewall prompts confuse testers | Step-by-step guide with screenshots. Code signing later |
 | Codemagic free minutes run low with signing and TestFlight uploads | Keep path filters and tag-only uploads, and upgrade if needed |
+| The host interface and spec end up shaped around our own games, so an engine kit would need breaking changes | Keep both game-neutral (no puzzle-specific messages), check the spec against two different games (Arena and Puzzle), and add the conformance check |
+| Game-defined labels and the status panel crowd the controls | Labels sit on or beside existing controls, the panel goes in the top bar, and a test checks control sizes |
 
 **Decisions (October 29, 2026)**
 
@@ -525,6 +578,7 @@ The largest new risk is store review and policy. Outside testing depends on two 
 - Players set up matches on a join screen. Three players play 2 vs 1, and the solo player carries big pieces at full speed.
 - Extras: countdown and celebration, last-15-seconds warning, hint glow and a best-times board.
 - The time limit is 2 minutes on every level (a playtest setting). There are 3 levels with about 3 puzzles each.
+- v2 stays focused, but does the cheap platform groundwork: protocol spec, capabilities, game host interface, standard gamepad mapping, game-defined controls, status panel and a conformance check. v3 picks among engine kits, a PC bridge and a browser controller. Bluetooth gamepad mode stays a non-goal.
 
 **Open questions**
 
@@ -539,6 +593,7 @@ The largest new risk is store review and policy. Outside testing depends on two 
 
 - [ ] Review this draft and answer the open questions.
 - [ ] Start the Apple Developer Program enrollment and the Google Play developer account.
+- [ ] Choose the app names and IDs (options: Thumb Party, CouchPad, Sofa Squad, Pad Party, with Shape Race as the puzzle's name).
 - [ ] Give Claude Code the Milestone 7 section, and move on only after its acceptance tests pass.
 
-Sources checked on Oct 29, 2026 for the store constraints: Google's [developer verification timeline](https://www.androidauthority.com/android-sideloading-changes-timeline-3679204/), Play Console Help on [internal testing](https://support.google.com/googleplay/android-developer/answer/9845334) and [Android TV distribution](https://support.google.com/googleplay/android-developer/answer/9844679?hl=en), and Apple's [TestFlight overview](https://developer.apple.com/testflight/).
+Sources checked on Oct 29, 2026 for the store constraints: Google's [developer verification timeline](https://www.androidauthority.com/android-sideloading-changes-timeline-3679204/), Play Console Help on [internal testing](https://support.google.com/googleplay/android-developer/answer/9845334) and [Android TV distribution](https://support.google.com/googleplay/android-developer/answer/9844679?hl=en), and Apple's [TestFlight overview](https://developer.apple.com/testflight/). For the platform direction: the [ViGEmBus repository](https://github.com/nefarius/ViGEmBus) (retired Nov 2023) and [AirConsole's Unity plugin](https://developers.airconsole.com/airconsole-unity-plugin).
