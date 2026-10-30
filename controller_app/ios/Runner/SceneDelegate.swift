@@ -5,21 +5,22 @@ class SceneDelegate: FlutterSceneDelegate {
 
 }
 
-/// The app's only screen (set as the custom class in Main.storyboard), with
-/// the iPadOS 26 window rules for a game held in the hands (PRD v2 C32, Apple
-/// TN3192). On iPad, Info.plist must list every orientation (App Store rule
-/// for multitasking), so the landscape preference is made at run time:
-/// Flutter asks for landscape (gyro mode locks to the side the screen shows)
-/// and this screen asks iPadOS to lock the window's orientation.
+/// The app's only screen (set as the custom class in Main.storyboard).
+///
+/// Orientation: Flutter asks for landscape at run time (gyro mode locks to
+/// the side the screen shows). iPhone's Info.plist allows landscape only; on
+/// iPad every orientation is listed, as App Store Connect requires for
+/// multitasking, and the layout works in any window shape.
+///
+/// M7 also set `prefersInterfaceOrientationLocked` here (iPadOS 26). It was
+/// removed in M8: it locks the window to whatever orientation it opens in, so
+/// an iPhone started upright kept a portrait window with the landscape app
+/// turned inside it, and the keyboard for the pairing code came up sideways.
 class ControllerViewController: FlutterViewController {
-  /// Lock the window's orientation while the controller is shown, so the
-  /// controls don't turn when the iPad is tilted.
-  override var prefersInterfaceOrientationLocked: Bool { true }
-
   override func viewDidAppear(_ animated: Bool) {
     super.viewDidAppear(animated)
     // Below about this size the controller shows "Make the window bigger"
-    // anyway, so don't let a resizable window get smaller. Points.
+    // anyway, so don't let a resizable iPad window get smaller. Points.
     view.window?.windowScene?.sizeRestrictions?.minimumSize = CGSize(width: 600, height: 380)
   }
 }
