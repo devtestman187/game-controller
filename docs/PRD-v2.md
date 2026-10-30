@@ -96,7 +96,7 @@ The brand is Thumb Party. The phone app is the main app, because from M12 it hos
 
 - The puzzle game is called **Shape Race** in the game picker, next to Arena.
 - The new IDs make the apps new apps on every device. The developer's devices are uninstalled and reinstalled once, and phones pair again with the code.
-- A trademark search for "Thumb Party" (USPTO) is done before the first upload. A web search found no app with that name.
+- A trademark search for "Thumb Party" (USPTO) is done before the first upload. A web search found no app with that name. The USPTO search ran on Oct 29, 2026 and found no filings for "Thumb Party" or "Shape Race".
 
 ## Controller app requirements
 
@@ -758,7 +758,7 @@ The largest new risk is store review and policy. Outside testing depends on two 
 
 - [ ] Review this draft and answer the open questions.
 - [ ] Start the Apple Developer Program enrollment and the Google Play developer account.
-- [ ] Search the US trademark database (USPTO) for "Thumb Party" before the first store upload in M8.
+- [x] Search the US trademark database (USPTO) for "Thumb Party" before the first store upload in M8. Done Oct 29, 2026: no filings for "Thumb Party", "thumbparty" or "Shape Race" (live or dead). The closest mark, THUMB PART, covers wigs. This covers US filings only, not unfiled use or other countries.
 - [ ] Give Claude Code the Milestone 7 section, and move on only after its acceptance tests pass.
 
 Sources checked on Oct 29, 2026 for the store constraints: Google's [developer verification timeline](https://www.androidauthority.com/android-sideloading-changes-timeline-3679204/), Play Console Help on [internal testing](https://support.google.com/googleplay/android-developer/answer/9845334) and [Android TV distribution](https://support.google.com/googleplay/android-developer/answer/9844679?hl=en), and Apple's [TestFlight overview](https://developer.apple.com/testflight/). For the platform direction: the [ViGEmBus repository](https://github.com/nefarius/ViGEmBus) (retired Nov 2023) and [AirConsole's Unity plugin](https://developers.airconsole.com/airconsole-unity-plugin).
