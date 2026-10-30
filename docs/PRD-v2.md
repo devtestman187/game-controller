@@ -79,7 +79,7 @@ The biggest change from v1 is that the stores are now part of the pipeline. Each
 - **Development stays on Windows.** iOS builds stay on Codemagic, which now signs them and uploads to TestFlight. Android builds can stay local or move to CI.
 - **Store package names are permanent.** The Play Store never allows an app ID to change, so the final IDs were chosen before the first upload (see Names and IDs).
 - **Assets.** CC0 assets as before (Kenney packs, jsfxr, ChipTone). The sounds and any music for the puzzle game are logged in assets/CREDITS.md.
-- **Minimum versions.** The controller's Android minimum drops from Android 16 to Android 12 (API 31), the same as the TV app. That lifts its reach from about a quarter of active Android devices to about four-fifths (StatCounter, mid-2026, rough). No code changes are needed, because the newest Android feature it uses (the vibration manager) arrived in Android 12. iOS and iPadOS stay at 26.
+- **Minimum versions.** The controller's Android minimum drops from Android 16 to Android 12 (API 31), the same as the TV app. That lifts its reach from about a quarter of active Android devices to about four-fifths (StatCounter, mid-2026, rough). One code change was needed: the M7 emulator check found an Android 13 vibration call, which now falls back to the older form on Android 12. iOS and iPadOS stay at 26.
 - **Test devices.** An Android phone, an iPhone, an Android tablet (Android 15), an iPad (iPadOS 26), the Android TV and the Windows laptop. Android 12 itself is checked on an emulator, which can't test haptics or gyro.
 - **Tablet platform rules.** On Android 16 and later, the system ignores an app's landscape lock on large screens (600dp and wider) unless the app declares itself a game. On iPadOS 26, apps run in resizable windows and the old "full screen only" setting is ignored, so orientation is locked per window. The controller must handle both, and cope with any window size.
 
@@ -741,7 +741,7 @@ The largest new risk is store review and policy. Outside testing depends on two 
 - Phone-hosted play is in v2, as M12: one phone hosts, the others join, and every phone shows the game with see-through controls on top (opacity setting). Fun, content and the outside playtest move to M13.
 - The brand is Thumb Party: "Thumb Party" (`com.thumbparty.app`) for phones and tablets, "Thumb Party TV" (`com.thumbparty.tv`) for the TV and PC, renamed in M8. The puzzle game is Shape Race.
 - Tablets are supported in v2: iPad and Android tablets as controllers (M7), in the store builds (M8), and as hosts or a shared screen (M12). Test devices are an Android tablet on Android 15 and an iPad on iPadOS 26.
-- The controller's Android minimum drops from 16 to 12 (API 31), matching the TV app, for about four times the device reach with no code changes. Android 12 is checked on an emulator.
+- The controller's Android minimum drops from 16 to 12 (API 31), matching the TV app, for about four times the device reach. Android 12 is checked on an emulator, which found one Android 13 call to fix in M7.
 - In v2, if the host phone leaves, the round pauses for 30 seconds and then ends. Host takeover, where another phone carries on as host from the latest snapshot, is a v3 item.
 - The store listings declare a general family audience: on Google Play the target age groups are 13 and over (children play with adults), and on the App Store the app is outside the Kids category.
 - The privacy policy and tester guide are published on GitHub Pages from this repository, which is already public.

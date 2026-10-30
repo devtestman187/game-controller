@@ -1,6 +1,8 @@
 package com.gamecontrollerdev.controller
 
 import android.content.Context
+import android.media.AudioAttributes
+import android.os.Build
 import android.os.VibrationAttributes
 import android.os.VibrationEffect
 import android.os.Vibrator
@@ -11,15 +13,27 @@ import kotlin.math.roundToInt
 /**
  * Input ticks and the TV's haptic events with VibrationEffect. Uses the "click" primitive when the
  * hardware supports it (crisp, with intensity), otherwise a short one-shot
- * buzz, with amplitude if the motor allows it. minSdk is 36, so every API
- * used here is available.
+ * buzz, with amplitude if the motor allows it. minSdk is 31 (Android 12):
+ * vibration attributes need Android 13, so Android 12 uses the older audio
+ * attributes (found by the M7 emulator check: the app crashed at start).
  */
 class Haptics(context: Context) {
     private val vibrator: Vibrator =
         (context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager).defaultVibrator
 
     // "Media" covers games, and isn't silenced by the system touch-feedback switch.
-    private val attributes = VibrationAttributes.createForUsage(VibrationAttributes.USAGE_MEDIA)
+    private val attributes: VibrationAttributes? =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            VibrationAttributes.createForUsage(VibrationAttributes.USAGE_MEDIA)
+        } else {
+            null
+        }
+
+    // Android 12: the same "media" usage, as audio attributes.
+    private val audioAttributes: AudioAttributes = AudioAttributes.Builder()
+        .setUsage(AudioAttributes.USAGE_GAME)
+        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+        .build()
     private val hasVibrator = vibrator.hasVibrator()
     private val hasClick = hasVibrator &&
         vibrator.areAllPrimitivesSupported(VibrationEffect.Composition.PRIMITIVE_CLICK)
@@ -50,7 +64,7 @@ class Haptics(context: Context) {
                 hasAmplitude -> VibrationEffect.createOneShot(TICK_MS, (level * 255).toInt().coerceIn(1, 255))
                 else -> VibrationEffect.createOneShot(TICK_MS, VibrationEffect.DEFAULT_AMPLITUDE)
             }
-            vibrator.vibrate(effect, attributes)
+            vibrate(effect)
         } catch (e: RuntimeException) {
             lastError = e.toString()
         }
@@ -67,9 +81,18 @@ class Haptics(context: Context) {
     fun play(segments: List<DoubleArray>) {
         if (!hasVibrator) return
         try {
-            waveform(segments)?.let { vibrator.vibrate(it, attributes) }
+            waveform(segments)?.let { vibrate(it) }
         } catch (e: RuntimeException) {
             lastError = e.toString()
+        }
+    }
+
+    private fun vibrate(effect: VibrationEffect) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && attributes != null) {
+            vibrator.vibrate(effect, attributes)
+        } else {
+            @Suppress("DEPRECATION")
+            vibrator.vibrate(effect, audioAttributes)
         }
     }
 

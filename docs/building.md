@@ -40,7 +40,7 @@ flutter test integration_test -d 192.168.1.50:5555       # the TV (use its IP), 
 ```
 The first build of the TV app downloads flutter_soloud's prebuilt codec libraries from GitHub (release pinned in the root `pubspec.yaml`) and caches them.
 
-## Controller app on the Android phone
+## Controller app on an Android phone or tablet
 1. On the phone: Settings → About phone → tap **Build number** 7 times → back → System → Developer options → **USB debugging** On.
 2. Connect by USB and accept the "Allow USB debugging" prompt.
 ```powershell
@@ -105,3 +105,19 @@ Built by Codemagic on tags and manual starts. See [ios-setup.md](ios-setup.md). 
 
 ## Optional: Android TV emulator
 Android Studio → Device Manager → Create device → **TV** category (e.g. "Television (1080p)") → API 31+ image. It sits behind NAT, so the phone can't discover it. For a quick check, run `adb forward tcp:45780 tcp:45780` and then connect the simulated controller to `127.0.0.1` on the PC. Use it for UI checks only.
+
+## Android 12 emulator check (before each milestone tag, PRD v2 C30)
+The controller supports Android 12 (API 31) and later, but the test phones run newer versions, so an emulator checks the oldest one. It caught a crash in M7 that the release build's lint didn't: an Android 13 vibration call made the app close at start.
+
+One-time setup (about 1.5 GB):
+```powershell
+sdkmanager --install "emulator" "system-images;android-31;default;x86_64"
+avdmanager create avd -n m7_android12 -k "system-images;android-31;default;x86_64" -d pixel_6
+```
+Each check:
+1. Start the emulator: `emulator -avd m7_android12 -no-snapshot` and wait until it has booted.
+2. Install and open the controller: `adb -s emulator-5554 install -r controller_app\build\app\outputs\flutter-apk\app-release.apk`.
+3. Run the Windows TV app on the same PC. The emulator sits behind NAT and can't discover it, so on the controller type the address `10.0.2.2:45780` and the pairing code.
+4. Check it starts in landscape, pairs, lays out every mode, and that a held button shows on the TV app. Then read `adb -s emulator-5554 logcat -d -b crash`: it should be empty.
+
+The emulator has no vibration motor or gyroscope, so haptics and gyro mode stay untested on Android 12.
