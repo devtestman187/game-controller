@@ -1,6 +1,6 @@
-# Game Controller v2: PRD
+# Thumb Party v2: PRD
 
-Oct 29, 2026 · @Manveer · Draft for review. Builds on v1 (docs/PRD.md, milestones M0 to M6)
+Oct 29, 2026 · @Manveer · Draft for review. Builds on v1, the "Game Controller" project (docs/PRD.md, milestones M0 to M6)
 
 ## Overview
 
@@ -25,7 +25,7 @@ Facts from v1 that v2 relies on:
 - The measured input delay was about 6 ms on home Wi-Fi, well under the 50 ms target, so analytics can't be allowed to change it noticeably.
 - The phone ignores haptic event names it doesn't know, so new haptic events reach older controllers without errors.
 - The protocol is at version 1, and mismatched versions are rejected with a clear message.
-- The app IDs are `com.gamecontrollerdev.controller` (phone, Android and iOS) and `com.gamecontrollerdev.tvtest` (TV).
+- The app IDs are `com.gamecontrollerdev.controller` (phone, Android and iOS) and `com.gamecontrollerdev.tvtest` (TV). v2 renames both apps and changes their IDs in M8 (see Names and IDs).
 
 ## Goals and non-goals
 
@@ -77,11 +77,26 @@ The biggest change from v1 is that the stores are now part of the pipeline. Each
 - **Privacy.** Both stores need a privacy policy URL and data disclosures (Play's Data safety form, Apple's privacy details). Because children may play, the analytics must be anonymous, opt-in, free of advertising IDs and limited to gameplay data (see Analytics requirements).
 - **Windows downloads are unsigned.** Windows SmartScreen warns on the first run ("More info", then "Run anyway"), and Windows Firewall must allow the app on private networks. The tester guide covers both. Code signing is a later option.
 - **Development stays on Windows.** iOS builds stay on Codemagic, which now signs them and uploads to TestFlight. Android builds can stay local or move to CI.
-- **Store package names are permanent.** The Play Store never allows an app ID to change, so the final IDs must be chosen before the first upload (see Open questions).
+- **Store package names are permanent.** The Play Store never allows an app ID to change, so the final IDs were chosen before the first upload (see Names and IDs).
 - **Assets.** CC0 assets as before (Kenney packs, jsfxr, ChipTone). The sounds and any music for the puzzle game are logged in assets/CREDITS.md.
 - **Minimum versions.** The controller's Android minimum drops from Android 16 to Android 12 (API 31), the same as the TV app. That lifts its reach from about a quarter of active Android devices to about four-fifths (StatCounter, mid-2026, rough). No code changes are needed, because the newest Android feature it uses (the vibration manager) arrived in Android 12. iOS and iPadOS stay at 26.
 - **Test devices.** An Android phone, an iPhone, an Android tablet (Android 15), an iPad (iPadOS 26), the Android TV and the Windows laptop. Android 12 itself is checked on an emulator, which can't test haptics or gyro.
 - **Tablet platform rules.** On Android 16 and later, the system ignores an app's landscape lock on large screens (600dp and wider) unless the app declares itself a game. On iPadOS 26, apps run in resizable windows and the old "full screen only" setting is ignored, so orientation is locked per window. The controller must handle both, and cope with any window size.
+
+## Names and IDs
+
+The brand is Thumb Party. The phone app is the main app, because from M12 it hosts and shows games as well as controlling them. The rename happens in M8, before the first store upload, because Play never lets an app ID change afterwards.
+
+| | Phone and tablet app | TV and PC app |
+| --- | --- | --- |
+| Store name | Thumb Party | Thumb Party TV (the Windows build uses the same name) |
+| Subtitle (proposed) | Play together on any screen | |
+| App ID (Android, and iOS bundle ID) | `com.thumbparty.app` | `com.thumbparty.tv` |
+| Today | Controller, `com.gamecontrollerdev.controller` | Controller Test, `com.gamecontrollerdev.tvtest` |
+
+- The puzzle game is called **Shape Race** in the game picker, next to Arena.
+- The new IDs make the apps new apps on every device. The developer's devices are uninstalled and reinstalled once, and phones pair again with the code.
+- A trademark search for "Thumb Party" (USPTO) is done before the first upload. A web search found no app with that name.
 
 ## Controller app requirements
 
@@ -97,7 +112,7 @@ v2 adds these to v1's C1 to C13.
 | C19 | A "How did the controls feel?" prompt after a game: three faces plus optional tags (buttons too small, laggy, hard to steer, rotation hard). One tap, skippable, shown at most once every few games | M9 |
 | C20 | Optional player nickname (up to 10 characters) in settings, shown on the TV and on its best-times board. It never leaves the TV | M13 |
 | C21 | Haptic patterns for the new puzzle events (snap, wrong, help, tick, drop-ready), each with its own intensity setting like v1's four events | M10, M11 |
-| C22 | Store-ready builds: release signing, version numbers from the tag, app name and icon, privacy policy link in settings, and the "Allow apps from unknown sources" note removed from the docs | M8 |
+| C22 | Store-ready builds: the new name (Thumb Party) and ID, release signing, version numbers from the tag, icon, privacy policy link in settings, and the "Allow apps from unknown sources" note removed from the docs | M8 |
 | C23 | "Try without a TV" demo screen that shows the controls responding with no host connected, for app reviewers and new testers checking their phone works | M8 |
 | C24 | Shows game-defined controls (P5) and the status panel (P6) in all three modes, without shrinking any control below its C14 size | M10 |
 | C25 | Host a game: "Host a game" on the connect screen runs the host on the phone. It advertises on the network, shows a pairing code and the join screen, and runs the game, with the host phone's owner playing as a local player (S2) | M12 |
@@ -117,7 +132,7 @@ v2 adds these to v1's T1 to T10.
 
 | ID | Requirement | Milestone |
 | --- | --- | --- |
-| T11 | Game picker on the home screen: Puzzle (new) and Arena (v1 test game). The test tools (visualizer, haptic panel, latency) stay available | M10 |
+| T11 | Game picker on the home screen: Shape Race (the puzzle game, new) and Arena (v1 test game). The test tools (visualizer, haptic panel, latency) stay available | M10 |
 | T12 | Puzzle game for 1 player (M10), then 2, 3 and 4 players (M11), as described in Puzzle game design | M10, M11 |
 | T13 | Join screen: players press A to join and left or right to choose a side or team. Difficulty is chosen with the remote or Player 1's controller | M11 |
 | T14 | Results screen with winner, times, pieces placed, and Rematch, Change teams and Back options | M11 |
@@ -126,7 +141,7 @@ v2 adds these to v1's T1 to T10.
 | T17 | Analytics collection: receives phone metrics, adds TV-side metrics (latency, game events), writes one summary per session | M9 |
 | T18 | Stats screen: summary per session and per input mode, and export of the session files | M9 |
 | T19 | Consent prompt on first launch and a setting to change it. Opt-in upload of session summaries when allowed, queued while offline | M9 |
-| T20 | Store-ready builds: AAB for Play's Android TV track, versioned Windows release zip on GitHub Releases, privacy policy link | M8 |
+| T20 | Store-ready builds: the new name (Thumb Party TV) and ID, AAB for Play's Android TV track, versioned Windows release zip on GitHub Releases, privacy policy link | M8 |
 
 ## Analytics requirements
 
@@ -175,7 +190,7 @@ The aim is to explain why a control type feels good or bad, not just to count us
 - Metrics must not raise the median input delay by more than 1 ms. M9 checks this against v1's 6 ms baseline.
 - Batches stay under about 4 KB. A session summary stays under about 50 KB.
 
-## Puzzle game design
+## Puzzle game design (Shape Race)
 
 Each side builds the same shape picture against a 2-minute clock. Players carry pieces from a tray, rotate them, and drop them into an outline. Correct pieces snap and lock, wrong ones turn red.
 
@@ -471,7 +486,7 @@ Milestone 8 lets anyone install the apps from a link: Google Play testing for bo
 
 **Scope**
 
-- Final app names and IDs decided before the first Play upload (see Open questions).
+- Rename both apps and change their IDs (see Names and IDs) before the first Play upload: Android application IDs and namespaces, the iOS bundle ID, display names, the Windows executable and window title, and the docs. The service name used for discovery (`_gamectl._tcp`) stays, because testers never see it.
 - Release signing: a Play upload key with Play App Signing, and App Store Connect API keys in Codemagic. Secrets stay out of the repo.
 - Codemagic signs the iOS build and uploads it to TestFlight on tags. The Beta App Review notes explain that the controller needs a TV or Windows host, link the Windows download and point to the demo screen (C23).
 - Android AABs for the phone and TV, uploaded to the closed testing tracks, with testers joining through a Google Group link.
@@ -484,6 +499,7 @@ Milestone 8 lets anyone install the apps from a link: Google Play testing for bo
 
 - [ ] Someone other than the developer follows the tester guide and installs the controller from Google Play on an Android phone and from TestFlight on an iPhone, without a cable or sideloading tool.
 - [ ] The same store links install the controller on the Android tablet and the iPad.
+- [ ] The installed apps show as Thumb Party and Thumb Party TV with the new IDs, and a phone pairs with the TV app again after the switch from the old apps.
 - [ ] The TV app installs from the Play Store on the Android TV, signed in with a tester account, and appears in the launcher.
 - [ ] The Windows zip from GitHub Releases runs after the SmartScreen and firewall steps in the guide.
 - [ ] Phones installed from the stores pair with the store-installed TV app and the Windows build, and all v1 features work.
@@ -722,6 +738,7 @@ The largest new risk is store review and policy. Outside testing depends on two 
 - v2 stays focused, but does the cheap platform groundwork: protocol spec, capabilities, game host interface, standard gamepad mapping, game-defined controls, status panel and a conformance check. v3 picks the platform path. Bluetooth gamepad mode stays a non-goal.
 - The preferred v3 direction is a framework for phone-hosted games that stream to a receiver on the TV, built for other developers to use. Receivers that can run our game code draw from snapshots, and the others get a low-latency video stream. Streaming stays out of v2 except for rules S1 to S9.
 - Phone-hosted play is in v2, as M12: one phone hosts, the others join, and every phone shows the game with see-through controls on top (opacity setting). Fun, content and the outside playtest move to M13.
+- The brand is Thumb Party: "Thumb Party" (`com.thumbparty.app`) for phones and tablets, "Thumb Party TV" (`com.thumbparty.tv`) for the TV and PC, renamed in M8. The puzzle game is Shape Race.
 - Tablets are supported in v2: iPad and Android tablets as controllers (M7), in the store builds (M8), and as hosts or a shared screen (M12). Test devices are an Android tablet on Android 15 and an iPad on iPadOS 26.
 - The controller's Android minimum drops from 16 to 12 (API 31), matching the TV app, for about four times the device reach with no code changes. Android 12 is checked on an emulator.
 - In v2, if the host phone leaves, the round pauses for 30 seconds and then ends. Host takeover, where another phone carries on as host from the latest snapshot, is a v3 item.
@@ -729,7 +746,6 @@ The largest new risk is store review and policy. Outside testing depends on two 
 
 **Open questions**
 
-- **Final app names and IDs.** Play never allows an ID to change after the first upload, and `com.gamecontrollerdev.tvtest` reads as a test app. Should the TV app become something like `com.gamecontrollerdev.tv`, and what should the apps be called in the stores?
 - **Target audience declaration.** Should the store listings declare a general audience ("for families") or include children under 13? Including children brings Google's Families policy and Apple's Kids rules.
 - **Privacy policy and tester guide hosting.** GitHub Pages is the proposal. Is a public repository acceptable, or should the pages live elsewhere?
 - **Cloud store.** Firebase Firestore (free plan) is the proposal. Is a Google account for the project acceptable?
@@ -742,7 +758,7 @@ The largest new risk is store review and policy. Outside testing depends on two 
 
 - [ ] Review this draft and answer the open questions.
 - [ ] Start the Apple Developer Program enrollment and the Google Play developer account.
-- [ ] Choose the app names and IDs (options: Thumb Party, CouchPad, Sofa Squad, Pad Party, with Shape Race as the puzzle's name).
+- [ ] Search the US trademark database (USPTO) for "Thumb Party" before the first store upload in M8.
 - [ ] Give Claude Code the Milestone 7 section, and move on only after its acceptance tests pass.
 
 Sources checked on Oct 29, 2026 for the store constraints: Google's [developer verification timeline](https://www.androidauthority.com/android-sideloading-changes-timeline-3679204/), Play Console Help on [internal testing](https://support.google.com/googleplay/android-developer/answer/9845334) and [Android TV distribution](https://support.google.com/googleplay/android-developer/answer/9844679?hl=en), and Apple's [TestFlight overview](https://developer.apple.com/testflight/). For the platform direction: the [ViGEmBus repository](https://github.com/nefarius/ViGEmBus) (retired Nov 2023) and [AirConsole's Unity plugin](https://developers.airconsole.com/airconsole-unity-plugin).
