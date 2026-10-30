@@ -49,7 +49,7 @@ Copy these into Google Play Console and App Store Connect. Graphics are in `asse
 | Ads | No, the app doesn't contain ads |
 | App access | All functionality is available without special access. (Note for reviewers: it needs a second device to control; the phone app has "Try without a TV".) |
 | Content rating | Category: Game. Violence, fear, sexuality, language, controlled substances, gambling: none. Users interact or exchange content: **No** (only devices on your own Wi-Fi). Shares location: no. Digital purchases: no. Expect "Everyone" / PEGI 3. |
-| Target audience | **13–15, 16–17 and 18+** (family audience, children play with adults; PRD v2 decision). "Could the app unintentionally appeal to children?": answer honestly; if Play asks for more, the privacy design already meets the Families policy. |
+| Target audience | **6–8, 9–12, 13–15, 16–17 and 18+** (families with children aged 6 and up; PRD v2 decision, Oct 30, 2026). Not "5 and under". This makes it a mixed-audience app under Google's **Families policy**: no ads (correct), no data collected (correct), store listing suitable for children (it is). If Play asks about ads or SDKs for children: none. |
 | News app | No |
 | Data safety | Does the app collect or share any of the required user data types? **No.** Is data encrypted in transit? Not applicable (nothing leaves the local network). Account deletion: not applicable (no accounts). |
 | Government apps, financial features, health | None |
@@ -59,7 +59,7 @@ Copy these into Google Play Console and App Store Connect. Graphics are in `asse
 | Item | Answer |
 | --- | --- |
 | App privacy | **Data Not Collected** |
-| Age rating | All "None" → **4+**. Not "Made for Kids" (PRD v2 decision: outside the Kids category). |
+| Age rating | All "None" → **4+**, which lets children of any age use it. **Not** "Made for Kids": that category would need a parental gate in front of every link out of the app (PRD v2 decision). |
 | Export compliance | Standard encryption only (`ITSAppUsesNonExemptEncryption` is false in Info.plist, so no question per build) |
 | Feedback email | mrman187@gmail.com |
 | Marketing / privacy URL | https://devtestman187.github.io/game-controller/ and …/privacy.html |

@@ -31,7 +31,7 @@ For **each** app, `Thumb Party` and `Thumb Party TV`:
 1. **Create app**: the name, default language English (US), **Game**, **Free**. Accept the declarations.
 2. **Test and release → Setup → App integrity**: keep **Play App Signing** on (Google keeps the app signing key, and ours is only the upload key).
 3. **Grow → Store presence → Main store listing**: texts and graphics from [store-listing.md](store-listing.md) and `assets/branding/`.
-4. **Policy → App content**: privacy policy URL, ads (none), app access (all features available without special access), content rating questionnaire, **target audience: 13 and over**, data safety (no data collected or shared), government apps (no), financial features (none), health (none). Answers are in [store-listing.md](store-listing.md).
+4. **Policy → App content**: privacy policy URL, ads (none), app access (all features available without special access), content rating questionnaire, **target audience: ages 6–8, 9–12, 13–15, 16–17 and 18+** (Families policy applies), data safety (no data collected or shared), government apps (no), financial features (none), health (none). Answers are in [store-listing.md](store-listing.md).
 5. **Testing → Closed testing**: create a track (keep the name Play suggests, `Closed testing`), **Testers → Google Groups**: add the group from step 4 below. Countries: add yours (or all).
 6. Upload the first build by hand: **Create new release** → upload the `.aab` from the `play-bundles` artifact of the latest **Release** run on GitHub (Actions → Release → the run → Artifacts) → **Save → Review → Start rollout**. Play only accepts later uploads from the workflow after this.
 

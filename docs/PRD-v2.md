@@ -395,7 +395,7 @@ v1's requirements still apply. These are added or changed.
 | Phone-hosted delay | On a joined phone, the delay from a touch to the frame that shows it stays under about 50 ms on home Wi-Fi (measured with the S7 stages). Snapshots are sent about 30 times a second (proposed), and joined phones smooth between them |
 | Host phone battery and heat | A 15-minute, 4-player session on the host phone finishes without the phone throttling for heat, and its battery drop is recorded in the session summary |
 | Kid usability | In a playtest, an 8-year-old finishes an Easy puzzle within 2 minutes after one practice round, in at least one input mode |
-| Privacy | Anonymous, opt-in, no advertising IDs, data limited to gameplay, privacy policy published. Written so it stays compliant if the stores treat the app as one that children use |
+| Privacy | Anonymous, opt-in, no advertising IDs, data limited to gameplay, privacy policy published. Meets Google Play's Families policy, because the apps target ages 6 and up |
 | Protocol | Metrics batches, ratings, nicknames, layouts, the status panel and the new haptic events are additive messages, announced through capabilities (P2), so slightly older and newer builds still work together. A breaking change raises the version number, which is rejected with a clear "update the app" message, and testers update through the stores |
 | Engine independence | packages/protocol and packages/connection stay pure Dart with no Flutter dependency, and games reach the connection only through the game host interface (P3) |
 | Host independence | Games and the host interface make no TV-specific assumptions, so a phone can host (S1 to S9) |
@@ -527,6 +527,7 @@ Milestone 9 records how each control type is used and how it performs, shows it 
 - Rating prompt after arena rounds (C19).
 - Stats screen and export (T18).
 - Consent prompt, setting, uploader and offline queue (T19). Cloud store set up with create-only rules.
+- Families policy check before release (the apps target ages 6 and up): what is collected, the Data safety form, App Privacy, and the privacy policy updated to describe the opt-in statistics.
 - Report command-line tool: per-mode and per-device tables and CSV.
 - Privacy policy and store data disclosures updated for the analytics.
 - Unit tests for every counter and derived signal, and a simulated-controller run that produces a known summary.
@@ -705,7 +706,7 @@ The largest new risk is store review and policy. Outside testing depends on two 
 | --- | --- |
 | Apple's reviewer can't test a controller without a host, and rejects the build | Review notes explaining the setup, a link to the Windows build, and the "Try without a TV" demo screen. From M12 the reviewer can also play a solo game on the phone alone |
 | Store accounts or reviews take longer than expected | Start the sign-ups in M7, and keep iLoader and local APKs as fallbacks for the developer |
-| The stores treat the game as one children use and apply stricter rules | Anonymous, opt-in analytics with no advertising IDs or third-party analytics SDKs, and a clear privacy policy. The listings declare a general family audience, and the listing text and art are checked so they don't read as made for children alone. If Google still treats it as appealing to children, the privacy design already fits its Families policy |
+| Google Play's Families policy applies (the app targets ages 6 and up), with stricter and sometimes slower review | No ads, no accounts, no data collected in v2 until M9, no advertising IDs, content and listing suitable for children, and a privacy policy that covers children. M9's analytics stay anonymous and opt-in with an adult's consent, use no third-party analytics SDK, and are checked against the Families policy before they ship |
 | Continuous rotation is too hard for young players | Angle tolerance, the drop-ready highlight, few rotated pieces on Easy, hint glow, and tuning in the playtest |
 | Bigger face buttons crowd the sticks on small phones | Size setting with a no-overlap rule, and layout tests on a small screen size |
 | Older and budget Android devices feel worse (weak vibration, noisy gyros, slow touchscreens) or host poorly | The analytics record the device model and class, so their results can be separated. M12 checks hosting on the slowest device available and warns when a device is too slow to host smoothly |
@@ -743,7 +744,7 @@ The largest new risk is store review and policy. Outside testing depends on two 
 - Tablets are supported in v2: iPad and Android tablets as controllers (M7), in the store builds (M8), and as hosts or a shared screen (M12). Test devices are an Android tablet on Android 15 and an iPad on iPadOS 26.
 - The controller's Android minimum drops from 16 to 12 (API 31), matching the TV app, for about four times the device reach. Android 12 is checked on an emulator, which found one Android 13 call to fix in M7.
 - In v2, if the host phone leaves, the round pauses for 30 seconds and then ends. Host takeover, where another phone carries on as host from the latest snapshot, is a v3 item.
-- The store listings declare a general family audience: on Google Play the target age groups are 13 and over (children play with adults), and on the App Store the app is outside the Kids category.
+- The apps are for families with children aged 6 and up: on Google Play the target age groups are 6–8, 9–12, 13–15, 16–17 and 18+, so Google's Families policy applies (decided Oct 30, 2026, replacing "13 and over"). On the App Store the age rating is 4+ and the app stays outside the "Made for Kids" category, which would need a parental gate in front of every link out of the app.
 - The privacy policy and tester guide are published on GitHub Pages from this repository, which is already public.
 - The cloud store is Firebase Firestore on the free plan, owned by the same Google account as the Play developer account.
 - When the protocol spec is published (M13), it goes out under CC BY 4.0, and code for others to build on goes out under Apache 2.0.
