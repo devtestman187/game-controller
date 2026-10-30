@@ -7,8 +7,10 @@ class SceneDelegate: FlutterSceneDelegate {
 
 /// The app's only screen (set as the custom class in Main.storyboard), with
 /// the iPadOS 26 window rules for a game held in the hands (PRD v2 C32, Apple
-/// TN3192). Info.plist allows landscape only, and Flutter still picks the
-/// side (gyro mode locks to the side the screen shows).
+/// TN3192). On iPad, Info.plist must list every orientation (App Store rule
+/// for multitasking), so the landscape preference is made at run time:
+/// Flutter asks for landscape (gyro mode locks to the side the screen shows)
+/// and this screen asks iPadOS to lock the window's orientation.
 class ControllerViewController: FlutterViewController {
   /// Lock the window's orientation while the controller is shown, so the
   /// controls don't turn when the iPad is tilted.

@@ -69,10 +69,16 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<!-- iPad: App Store Connect rejects uploads without all four orientations, because iPad
+	     apps must support windowing and multitasking (ITMS-90474, M8). The app still asks for
+	     landscape at run time (Flutter's preferred orientations, and the window orientation
+	     lock in SceneDelegate.swift), and its layout works in any window shape. -->
 	<key>UISupportedInterfaceOrientations~ipad</key>
 	<array>
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationPortraitUpsideDown</string>
 	</array>
 </dict>
 </plist>
