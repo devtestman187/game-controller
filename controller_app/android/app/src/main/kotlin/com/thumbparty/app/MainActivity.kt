@@ -1,6 +1,8 @@
 package com.thumbparty.app
 
 import android.content.Context
+import android.content.res.Configuration
+import android.view.Surface
 import android.os.BatteryManager
 import android.os.PowerManager
 import android.os.Process
@@ -30,9 +32,22 @@ class MainActivity : FlutterActivity() {
                         result.success(null)
                     }
                     "deviceStatus" -> result.success(deviceStatus(applicationContext))
+                    "naturalOrientation" -> result.success(naturalOrientation())
                     else -> result.notImplemented()
                 }
             }
+    }
+
+    /**
+     * "landscape" on devices whose screen is naturally landscape, like the Pixel Tablet and most
+     * Android tablets, otherwise "portrait". Android reports motion sensors relative to the natural
+     * orientation, so the tilt code turns them by 90° on landscape devices (lib/src/motion.dart).
+     */
+    private fun naturalOrientation(): String {
+        val rotation = display?.rotation ?: Surface.ROTATION_0
+        val turned = rotation == Surface.ROTATION_90 || rotation == Surface.ROTATION_270
+        val landscapeNow = resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+        return if (landscapeNow != turned) "landscape" else "portrait"
     }
 }
 

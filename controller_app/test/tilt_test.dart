@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:controller/src/gyro.dart';
+import 'package:controller/src/motion.dart';
 import 'package:controller/src/tilt.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -197,6 +198,49 @@ void main() {
       final second = p.process((roll: 30, pitch: 0)).x;
       expect(first, closeTo(0.5, 1e-9));
       expect(second, closeTo(0.75, 1e-9));
+    });
+  });
+  group('tablets whose screen is naturally landscape (Pixel Tablet)', () {
+    // "Up" in the tablet's own axes: +y is the top edge in its natural
+    // landscape, +x the right edge, +z out of the screen.
+    Vec3 tabletUpright({double steer = 0}) {
+      final a = steer * pi / 180;
+      // Turning clockwise lowers the right edge: up leans towards -x.
+      return Vec3(-sin(a), cos(a), 0);
+    }
+
+    test('held upright in its natural landscape, it reads like a phone in landscape-left', () {
+      final up = fromNaturalLandscape(tabletUpright());
+      expect(landscapeSideOf(up), LandscapeSide.left);
+      final t = tiltOf(up, LandscapeSide.left);
+      expect(t.roll, closeTo(0, 1e-9));
+      expect(t.pitch, closeTo(90, 1e-9));
+    });
+
+    test('steering right gives a positive roll, steering left a negative one', () {
+      for (final steer in [10.0, 25.0, -15.0]) {
+        final up = fromNaturalLandscape(tabletUpright(steer: steer));
+        expect(tiltOf(up, LandscapeSide.left).roll, closeTo(steer, 1e-9), reason: 'steer $steer');
+      }
+    });
+
+    test('without turning the axes it would look held upright in portrait, and steering would barely register', () {
+      final raw = tabletUpright();
+      expect(landscapeSideOf(raw), isNull, reason: 'the bug found on the Pixel Tablet in M8');
+    });
+
+    test('upside down (the other landscape), it reads as landscape-right', () {
+      final up = fromNaturalLandscape(const Vec3(0, -1, 0));
+      expect(landscapeSideOf(up), LandscapeSide.right);
+      expect(tiltOf(up, LandscapeSide.right).pitch, closeTo(90, 1e-9));
+    });
+
+    test('lying flat stays flat, and the gyroscope turns the same way', () {
+      final up = fromNaturalLandscape(const Vec3(0, 0, 1));
+      expect(tiltOf(up, LandscapeSide.left).pitch, closeTo(0, 1e-9));
+      // A turn about the tablet's top edge (+y) is a turn about a phone's +x.
+      final spin = fromNaturalLandscape(const Vec3(0, 2, 0));
+      expect([spin.x, spin.y, spin.z], [2.0, -0.0, 0.0]);
     });
   });
 }
