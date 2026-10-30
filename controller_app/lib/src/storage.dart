@@ -8,7 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'app_info.dart';
 
 /// Loads this phone's identity, creating a random controller ID on first run.
-ControllerIdentity loadIdentity(SharedPreferences prefs) {
+ControllerIdentity loadIdentity(SharedPreferences prefs, {bool isTablet = false}) {
   var id = prefs.getString(_controllerIdKey);
   if (id == null) {
     final r = Random.secure();
@@ -16,9 +16,9 @@ ControllerIdentity loadIdentity(SharedPreferences prefs) {
     prefs.setString(_controllerIdKey, id);
   }
   final (platform, base) = Platform.isIOS
-      ? ('ios', 'iPhone')
+      ? ('ios', isTablet ? 'iPad' : 'iPhone')
       : Platform.isAndroid
-      ? ('android', 'Android phone')
+      ? ('android', isTablet ? 'Android tablet' : 'Android phone')
       : (Platform.operatingSystem, 'Controller');
   // The short suffix tells two phones of the same kind apart on the TV.
   return ControllerIdentity(

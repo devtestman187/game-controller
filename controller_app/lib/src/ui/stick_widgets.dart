@@ -5,21 +5,24 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:protocol/protocol.dart';
 
 import '../gyro.dart';
+import '../layout.dart';
 import '../providers.dart';
 import '../sticks.dart';
 import 'pad_widgets.dart';
 
-/// Stick mode (PRD C12): left stick and D-pad, Select and Start, A/B/X/Y and
-/// right stick, LB and RB, laid out by [stickLayout].
+/// Stick mode (PRD C12, v2 C14 to C16): left stick and D-pad, Select and
+/// Start, A/B/X/Y and right stick, LB and RB, laid out by [stickLayout].
 class StickModeView extends ConsumerWidget {
   const StickModeView({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final floating = ref.watch(stickSettingsProvider.select((s) => s.floating));
+    final buttonSize = ref.watch(stickSettingsProvider.select((s) => s.buttonSize));
+    final mm = ref.watch(pxPerMmProvider);
     return LayoutBuilder(
       builder: (context, constraints) {
-        final layout = stickLayout(constraints.biggest);
+        final layout = stickLayout(constraints.biggest, mm: mm, buttonSize: buttonSize);
         return Stack(
           children: [
             // The sticks go first, so in floating mode every other control
@@ -41,7 +44,10 @@ class StickModeView extends ConsumerWidget {
               ),
             ),
             Positioned.fromRect(rect: layout.dpad, child: const DpadView()),
-            Positioned.fromRect(rect: layout.faceButtons, child: const FaceButtonsView()),
+            Positioned.fromRect(
+              rect: layout.faceButtons,
+              child: const FaceButtonsView(geometry: FaceGeometry.compact),
+            ),
             Positioned.fromRect(
               rect: layout.lb,
               child: SmallButton(button: ControllerButton.lb, label: 'LB', size: layout.lb.size),
@@ -93,7 +99,7 @@ class _AnalogStickViewState extends ConsumerState<AnalogStickView> {
     if (_pointer != null) return; // One thumb per stick.
     final floating = ref.read(stickSettingsProvider).floating;
     // A fixed stick takes touches on its circle (a little beyond, for thumbs).
-    if (!floating && (e.localPosition - widget.home.center).distance > _radius * 1.15) return;
+    if (!floating && (e.localPosition - widget.home.center).distance > _radius * stickTouch) return;
     setState(() {
       _pointer = e.pointer;
       _center = floating ? e.localPosition : widget.home.center;

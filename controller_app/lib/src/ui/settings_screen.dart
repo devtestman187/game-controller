@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:protocol/protocol.dart';
 
+import '../feedback.dart';
 import '../gyro.dart';
 import '../haptics.dart';
 import '../providers.dart';
@@ -72,6 +73,7 @@ class SettingsScreen extends ConsumerWidget {
     ref.read(hapticSettingsProvider.notifier).update(const HapticSettings());
     ref.read(gyroSettingsProvider.notifier).update(const GyroSettings());
     ref.read(stickSettingsProvider.notifier).update(const StickSettings());
+    ref.read(pressFeedbackProvider.notifier).update(const PressFeedbackSettings());
   }
 }
 
@@ -260,6 +262,48 @@ class _HapticsSection extends ConsumerWidget {
               : '${caps.engine}${caps.intensityControl ? '' : '. This motor can only buzz on or off, so the strengths have no effect.'}',
           style: text.bodySmall,
         ),
+        const SizedBox(height: 8),
+        const _PressFeedback(),
+      ],
+    );
+  }
+}
+
+/// Flash and click, mostly for devices without vibration (v2 C33).
+class _PressFeedback extends ConsumerWidget {
+  const _PressFeedback();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final s = ref.watch(pressFeedbackProvider);
+    final n = ref.read(pressFeedbackProvider.notifier);
+    final flash = ref.watch(flashOnPressProvider);
+    final isIOS = ref.watch(isIOSProvider);
+    final text = Theme.of(context).textTheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Without haptics', style: text.titleMedium),
+        SwitchListTile(
+          key: const Key('pressFlash'),
+          contentPadding: EdgeInsets.zero,
+          title: const Text('Flash on press'),
+          subtitle: const Text('On by itself on devices without haptics'),
+          value: flash,
+          onChanged: (v) => n.update(s.copyWith(flash: v)),
+        ),
+        SwitchListTile(
+          key: const Key('pressClick'),
+          contentPadding: EdgeInsets.zero,
+          title: const Text('Click sound'),
+          subtitle: Text(
+            isIOS
+                ? 'A click on every press. The device must not be muted.'
+                : 'A click on every press. Needs Touch sounds on in the system settings.',
+          ),
+          value: s.click,
+          onChanged: (v) => n.update(s.copyWith(click: v)),
+        ),
       ],
     );
   }
@@ -327,6 +371,17 @@ class _SticksSection extends ConsumerWidget {
           subtitle: const Text('Each stick starts where your thumb lands'),
           value: s.floating,
           onChanged: (v) => n.update(s.copyWith(floating: v)),
+        ),
+        _SliderRow(
+          label: 'Button size',
+          hint: 'A, B, X and Y, compared with D-pad mode',
+          value: s.buttonSize,
+          valueText: '${(s.buttonSize * 100).round()}%',
+          min: StickSettings.minButtonSize,
+          max: StickSettings.maxButtonSize,
+          divisions: 8,
+          sliderKey: const Key('settingsStickButtonSize'),
+          onChanged: (v) => n.update(s.copyWith(buttonSize: v)),
         ),
         _SliderRow(
           label: 'Dead zone',

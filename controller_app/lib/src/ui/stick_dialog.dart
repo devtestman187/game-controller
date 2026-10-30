@@ -4,7 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../gyro.dart';
 import '../sticks.dart';
 
-/// Stick dead zone, sensitivity and fixed/floating (PRD C13).
+/// Stick dead zone, sensitivity and fixed/floating (PRD C13), and the button
+/// size (v2 C16). The controller stays visible behind the dialog, so size
+/// changes show live.
 Future<void> showStickDialog(BuildContext context) =>
     showDialog<void>(context: context, builder: (_) => const _StickDialog());
 
@@ -32,6 +34,18 @@ class _StickDialog extends ConsumerWidget {
               subtitle: const Text('Each stick starts where your thumb lands in its half of the screen.'),
               value: settings.floating,
               onChanged: (v) => notifier.update(settings.copyWith(floating: v)),
+            ),
+            Text(
+              'Button size: ${(settings.buttonSize * 100).round()}% of D-pad mode (A, B, X and Y)',
+              style: text.bodyMedium,
+            ),
+            Slider(
+              key: const Key('stickButtonSize'),
+              value: settings.buttonSize,
+              min: StickSettings.minButtonSize,
+              max: StickSettings.maxButtonSize,
+              divisions: 8,
+              onChanged: (v) => notifier.update(settings.copyWith(buttonSize: v)),
             ),
             Text('Dead zone: ${(settings.deadZone * 100).round()}%', style: text.bodyMedium),
             Slider(

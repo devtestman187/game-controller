@@ -17,8 +17,8 @@ android {
     defaultConfig {
         // Fixed app ID, shared with the iOS bundle ID. Do not rename (free Apple ID limits).
         applicationId = "com.gamecontrollerdev.controller"
-        // Phones: Android 16 (API 36) minimum, per the PRD.
-        minSdk = 36
+        // Android 12 (API 31) minimum (PRD v2 C30): the newest API used is VibratorManager (31).
+        minSdk = 31
         targetSdk = flutter.targetSdkVersion
         // Uses the version code from pubspec.yaml. When using split APKs, 1000 * ABI_VERSION
         // is added automatically by Flutter. (https://developer.android.com/studio/build/configure-apk-splits#configure-APK-versions)

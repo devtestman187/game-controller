@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:protocol/protocol.dart';
 
 import '../gyro.dart';
+import '../layout.dart';
 import '../providers.dart';
 import 'connect_screen.dart';
 import 'diagnostics_screen.dart';
@@ -88,58 +89,123 @@ class _ControllerScreenState extends ConsumerState<ControllerScreen> with Widget
         client.updateAddress(host.address);
       }
     });
-    final input = ref.watch(padProvider);
     final mode = ref.watch(gyroProvider.select((g) => g.mode));
-    final text = Theme.of(context).textTheme;
 
     return Scaffold(
       body: SafeArea(
-        child: Column(
+        child: LayoutBuilder(
+          builder: (context, window) {
+            // Too narrow for even the top bar (a phone in split screen, a
+            // small window on a tablet): only the message (v2 C32).
+            if (window.maxWidth < minWindowWidth) return const TooSmallView();
+            return Column(
+              children: [
+                const _TopBar(),
+                Expanded(
+                  child: LayoutBuilder(
+                    builder: (context, body) {
+                      if (body.maxHeight < minBodyHeight) return const TooSmallView();
+                      return mode == PadMode.sticks ? const StickModeView() : PadModeView(gyro: mode == PadMode.gyro);
+                    },
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+/// D-pad and gyro modes, laid out by [padLayout]: the D-pad (or the tilt
+/// view) on the left, Select and Start in the middle, A/B/X/Y on the right.
+class PadModeView extends ConsumerWidget {
+  const PadModeView({super.key, required this.gyro});
+
+  final bool gyro;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final input = ref.watch(padProvider);
+    final mm = ref.watch(pxPerMmProvider);
+    final text = Theme.of(context).textTheme;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final layout = padLayout(constraints.biggest, mm: mm);
+        return Stack(
           children: [
-            const _TopBar(),
-            if (mode == PadMode.sticks)
-              const Expanded(
-                child: Padding(padding: EdgeInsets.fromLTRB(4, 8, 4, 4), child: StickModeView()),
+            if (gyro)
+              Positioned.fromRect(
+                rect: layout.leftArea,
+                child: const Center(child: TiltView()),
               )
             else
-              Expanded(
-                child: Row(
-                  children: [
-                    Expanded(
-                      flex: 5,
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(24, 8, 8, 16),
-                        child: Center(child: mode == PadMode.gyro ? const TiltView() : const DpadView()),
-                      ),
-                    ),
-                    SizedBox(
-                      width: 150,
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const SmallButton(button: ControllerButton.select, label: 'Select'),
-                          const SizedBox(height: 16),
-                          const SmallButton(button: ControllerButton.start, label: 'Start'),
-                          const SizedBox(height: 24),
-                          Text(
-                            input.isNeutral ? 'Nothing pressed' : input.toString(),
-                            key: const Key('inputSummary'),
-                            style: text.bodySmall,
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
-                      ),
-                    ),
-                    const Expanded(
-                      flex: 5,
-                      child: Padding(
-                        padding: EdgeInsets.fromLTRB(8, 8, 24, 16),
-                        child: Center(child: FaceButtonsView()),
-                      ),
-                    ),
-                  ],
-                ),
+              Positioned.fromRect(rect: layout.dpad, child: const DpadView()),
+            Positioned.fromRect(
+              rect: layout.select,
+              child: SmallButton(button: ControllerButton.select, label: 'Select', size: layout.select.size),
+            ),
+            Positioned.fromRect(
+              rect: layout.start,
+              child: SmallButton(button: ControllerButton.start, label: 'Start', size: layout.start.size),
+            ),
+            Positioned(
+              left: layout.summary.left,
+              top: layout.summary.top,
+              width: layout.summary.width,
+              child: Text(
+                input.isNeutral ? 'Nothing pressed' : input.toString(),
+                key: const Key('inputSummary'),
+                style: text.bodySmall,
+                textAlign: TextAlign.center,
               ),
+            ),
+            Positioned.fromRect(rect: layout.faceButtons, child: const FaceButtonsView()),
+          ],
+        );
+      },
+    );
+  }
+}
+
+/// Shown instead of the controls when the window is too small for them
+/// (v2 C32). Nothing stays held: fingers on the controls are let go.
+class TooSmallView extends ConsumerStatefulWidget {
+  const TooSmallView({super.key});
+
+  @override
+  ConsumerState<TooSmallView> createState() => _TooSmallViewState();
+}
+
+class _TooSmallViewState extends ConsumerState<TooSmallView> {
+  @override
+  void initState() {
+    super.initState();
+    // The controls under the fingers are gone, so their releases never come.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) ref.read(padProvider.notifier).releaseAll();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.open_in_full, size: 32),
+            const SizedBox(height: 8),
+            Text('Make the window bigger', key: const Key('tooSmall'), style: text.titleMedium),
+            const SizedBox(height: 4),
+            Text(
+              'The controller needs a wider landscape window. Leave split screen, or drag the window larger.',
+              style: text.bodySmall,
+              textAlign: TextAlign.center,
+            ),
           ],
         ),
       ),
@@ -160,6 +226,8 @@ class _TopBar extends ConsumerWidget {
     final text = Theme.of(context).textTheme;
     final stats = client.rttStats;
     final gyroUnavailable = gyro.availability == GyroAvailability.unavailable;
+    // On narrow windows the mode buttons drop their icons, so the bar fits.
+    final compact = MediaQuery.sizeOf(context).width < 680;
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 4, 8, 0),
       child: Row(
@@ -205,18 +273,22 @@ class _TopBar extends ConsumerWidget {
             showSelectedIcon: false,
             style: const ButtonStyle(visualDensity: VisualDensity.compact),
             segments: [
-              const ButtonSegment(value: PadMode.dpad, label: Text('D-pad'), icon: Icon(Icons.gamepad_outlined)),
+              ButtonSegment(
+                value: PadMode.dpad,
+                label: const Text('D-pad'),
+                icon: compact ? null : const Icon(Icons.gamepad_outlined),
+              ),
               ButtonSegment(
                 value: PadMode.gyro,
                 label: const Text('Gyro'),
-                icon: const Icon(Icons.screen_rotation_alt_outlined),
+                icon: compact ? null : const Icon(Icons.screen_rotation_alt_outlined),
                 tooltip: gyroUnavailable ? gyro.problem : 'Steer by tilting the phone',
                 enabled: !gyroUnavailable && gyro.availability != GyroAvailability.checking,
               ),
-              const ButtonSegment(
+              ButtonSegment(
                 value: PadMode.sticks,
-                label: Text('Sticks'),
-                icon: Icon(Icons.sports_esports_outlined),
+                label: const Text('Sticks'),
+                icon: compact ? null : const Icon(Icons.sports_esports_outlined),
                 tooltip: 'Two analog sticks, Xbox-style',
               ),
             ],

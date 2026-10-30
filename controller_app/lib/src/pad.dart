@@ -3,6 +3,7 @@ import 'dart:ui';
 
 import 'package:protocol/protocol.dart';
 
+import 'layout.dart';
 import 'sticks.dart';
 
 /// What the on-screen pad is pressing right now.
@@ -210,31 +211,15 @@ class PadTracker {
   return (x > 0 ? 1 : -1, y > 0 ? 1 : -1);
 }
 
-/// Face button positions in a square of side 1 (Y top, X left, B right,
-/// A bottom, like an Xbox pad).
-const Map<ControllerButton, Offset> faceButtonCenters = {
-  ControllerButton.y: Offset(0.5, 0.19),
-  ControllerButton.x: Offset(0.19, 0.5),
-  ControllerButton.b: Offset(0.81, 0.5),
-  ControllerButton.a: Offset(0.5, 0.81),
-};
+/// Face button positions in a square of side 1 in D-pad mode (Y top, X left,
+/// B right, A bottom, like an Xbox pad).
+Map<ControllerButton, Offset> get faceButtonCenters => FaceGeometry.classic.centers;
 
-/// Drawn radius of a face button, relative to the square's side.
-const double faceButtonRadius = 0.16;
+/// Drawn radius of a face button in D-pad mode, relative to the square's side.
+double get faceButtonRadius => FaceGeometry.classic.radius;
 
 /// The face button under a touch at [local] in a square of side [size], or
 /// null. The touch area is larger than the drawn button, so thumbs don't
 /// miss, but the very middle hits nothing.
-ControllerButton? faceButtonAt(Offset local, double size) {
-  final p = local / size;
-  ControllerButton? best;
-  var bestDistance = double.infinity;
-  for (final MapEntry(key: button, value: center) in faceButtonCenters.entries) {
-    final d = (p - center).distance;
-    if (d < bestDistance) {
-      bestDistance = d;
-      best = button;
-    }
-  }
-  return bestDistance <= 0.26 ? best : null;
-}
+ControllerButton? faceButtonAt(Offset local, double size, [FaceGeometry geometry = FaceGeometry.classic]) =>
+    geometry.buttonAt(local, size);

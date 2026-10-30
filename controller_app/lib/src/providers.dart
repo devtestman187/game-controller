@@ -3,13 +3,17 @@ import 'dart:io';
 
 import 'package:connection/connection.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:protocol/protocol.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'device_status.dart';
 import 'discovery.dart';
+import 'feedback.dart';
 import 'haptics.dart';
+import 'layout.dart';
 import 'local_network.dart';
 import 'pad.dart';
 import 'sticks.dart';
@@ -23,6 +27,45 @@ final prefsProvider = Provider<SharedPreferences>(
 /// Overridden in tests to check the iOS-only behavior on Windows.
 final isIOSProvider = Provider<bool>((ref) => Platform.isIOS);
 
+/// True on tablets: the screen's shorter side is at least 600 (the whole
+/// display, not the window, which can be resized). Overridden in tests.
+final isTabletProvider = Provider<bool>((ref) {
+  final display = WidgetsBinding.instance.platformDispatcher.displays.firstOrNull;
+  if (display == null || display.devicePixelRatio <= 0) return false;
+  return isTabletScreen(display.size / display.devicePixelRatio);
+});
+
+/// Logical pixels per millimetre, for sizing controls physically (v2 C31).
+final pxPerMmProvider = Provider<double>(
+  (ref) => pxPerMmFor(isIOS: ref.watch(isIOSProvider), isTablet: ref.watch(isTabletProvider)),
+);
+
+final pressFeedbackProvider = NotifierProvider<PressFeedbackNotifier, PressFeedbackSettings>(PressFeedbackNotifier.new);
+
+/// Flash and click for devices without vibration (v2 C33), saved.
+class PressFeedbackNotifier extends Notifier<PressFeedbackSettings> {
+  @override
+  PressFeedbackSettings build() => PressFeedbackSettings.load(ref.watch(prefsProvider));
+
+  void update(PressFeedbackSettings settings) {
+    state = settings;
+    unawaited(settings.save(ref.read(prefsProvider)));
+  }
+}
+
+/// Whether controls flash when pressed: the setting, or automatically when
+/// the device has no haptics (unknown while the check runs: no flash).
+final flashOnPressProvider = Provider<bool>((ref) {
+  final caps = ref.watch(hapticsCapabilitiesProvider).value;
+  return ref.watch(pressFeedbackProvider).flashes(hasHaptics: caps?.supported ?? true);
+});
+
+/// Plays the click (v2 C33). Overridden in tests to count clicks.
+final clickSoundProvider = Provider<void Function()>(
+  (ref) =>
+      () => unawaited(SystemSound.play(SystemSoundType.click)),
+);
+
 final logProvider = Provider<LogBuffer>((ref) {
   final log = LogBuffer();
   if (kDebugMode) {
@@ -35,7 +78,9 @@ final logProvider = Provider<LogBuffer>((ref) {
 
 final storeProvider = Provider<ConnectionStore>((ref) => ConnectionStore(ref.watch(prefsProvider)));
 
-final identityProvider = Provider<ControllerIdentity>((ref) => loadIdentity(ref.watch(prefsProvider)));
+final identityProvider = Provider<ControllerIdentity>(
+  (ref) => loadIdentity(ref.watch(prefsProvider), isTablet: ref.watch(isTabletProvider)),
+);
 
 final discoveryProvider = Provider<HostDiscovery>((ref) {
   final discovery = BonsoirHostDiscovery(log: ref.watch(logProvider).sink('discovery'));
@@ -318,6 +363,8 @@ class PadNotifier extends Notifier<PadInput> {
     state = change.after;
     final strength = change.tickStrength;
     if (strength > 0) unawaited(ref.read(hapticsPlayerProvider).tick(strength: strength));
+    // The optional click (v2 C33): presses and new directions, not releases.
+    if (strength == 1 && ref.read(pressFeedbackProvider).click) ref.read(clickSoundProvider)();
 
     // Buttons, the D-pad, mode changes and a stick returning to center go
     // out at once. Analog movement is capped at about 60 per second, always

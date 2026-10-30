@@ -1,6 +1,6 @@
 # Controller app
 
-Phone game controller for **Android 16+** and **iOS 26+**, landscape only. App ID: `com.gamecontrollerdev.controller` (fixed, don't rename). Version 0.6.0 (Milestone 6).
+Phone and tablet game controller for **Android 12+** and **iOS/iPadOS 26+**, landscape only. App ID: `com.gamecontrollerdev.controller` (fixed, don't rename). Version 0.7.0 (Milestone 7).
 
 The phone works as a gamepad for the TV test app over the home Wi-Fi. It has three layouts, switched at the top without reconnecting, and the app starts in the one you used last.
 
@@ -55,7 +55,7 @@ adb install -r build\app\outputs\flutter-apk\app-release.apk
 | --- | --- | --- |
 | iOS | Motion sensors for gyro mode (`NSMotionUsageDescription`, required by sensors_plus; reading the gyroscope shows no prompt) | `ios/Runner/Info.plist` |
 | iOS | Local network prompt (`NSLocalNetworkUsageDescription`) and the Bonjour service `_gamectl._tcp` (`NSBonjourServices`) | `ios/Runner/Info.plist` |
-| Android | `INTERNET`, `ACCESS_NETWORK_STATE`, `CHANGE_WIFI_MULTICAST_STATE`, `VIBRATE`, all granted at install (no runtime prompt on Android 16) | `android/app/src/main/AndroidManifest.xml` |
+| Android | `INTERNET`, `ACCESS_NETWORK_STATE`, `CHANGE_WIFI_MULTICAST_STATE`, `VIBRATE`, all granted at install (no runtime prompt on Android 12 and later) | `android/app/src/main/AndroidManifest.xml` |
 
 On iOS the prompt appears the first time the app searches for TVs. If you tap **Don't Allow**, turn it on later in Settings → Privacy & Security → Local Network → Controller. iOS doesn't let apps read this setting, so Diagnostics infers it: **Allowed** once a TV is found, **Probably denied** if connecting fails with "No route to host".
 

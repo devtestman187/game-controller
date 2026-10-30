@@ -209,9 +209,11 @@ class GyroNotifier extends Notifier<GyroState> {
 
   void _saveMode(PadMode mode) => unawaited(ref.read(prefsProvider).setString(_modeKey, mode.name));
 
-  /// The mode used last, saved between launches (PRD C11).
+  /// The mode used last, saved between launches (PRD C11). On a fresh
+  /// install it's stick mode on tablets (v2 C33) and the D-pad on phones.
   PadMode get savedMode =>
-      PadMode.values.where((m) => m.name == ref.read(prefsProvider).getString(_modeKey)).firstOrNull ?? PadMode.dpad;
+      PadMode.values.where((m) => m.name == ref.read(prefsProvider).getString(_modeKey)).firstOrNull ??
+      (ref.read(isTabletProvider) ? PadMode.sticks : PadMode.dpad);
 
   /// On launch: back to the mode used last. Gyro mode waits [gyroDelay]
   /// first, so the landscape side the screen locks to comes from a settled
