@@ -464,16 +464,16 @@ Milestone 7 makes the stick-mode face buttons easy to hit, makes the controller 
 
 **Acceptance tests**
 
-- [ ] In stick mode, A, B, X and Y are clearly larger, about 75% of their D-pad-mode size, and nothing overlaps on either phone.
-- [ ] The button size setting changes the size live, stays within its range without overlaps, and is saved between launches.
-- [ ] A press just outside a button's drawn edge still registers, and never triggers a neighbouring control.
-- [ ] Both sticks, the D-pad, LB, RB, Select and Start still work with two thumbs at once.
-- [ ] Every v1 checklist item marked "Android phone pending" passes on the Android phone.
-- [ ] On the iPad and the Android tablet, the controls are thumb-sized and within reach of both thumbs while holding the tablet, in all three modes.
-- [ ] The controller stays in landscape on both tablets with rotation lock off, and a resized or split-screen window still works or shows "Make the window bigger".
-- [ ] On the iPad, presses flash and the optional click sound plays, and the app runs without errors with no haptics hardware.
-- [ ] On the Android 12 emulator, the controller installs, pairs with the TV app and sends input.
-- [ ] Both store accounts are applied for.
+- [X] In stick mode, A, B, X and Y are clearly larger, about 75% of their D-pad-mode size, and nothing overlaps on either phone. (iPhone; Android phone pending)
+- [X] The button size setting changes the size live, stays within its range without overlaps, and is saved between launches.
+- [X] A press just outside a button's drawn edge still registers, and never triggers a neighbouring control.
+- [X] Both sticks, the D-pad, LB, RB, Select and Start still work with two thumbs at once.
+- [ ] Every v1 checklist item marked "Android phone pending" passes on the Android phone. (Pending: Android testing is on hold.)
+- [X] On the iPad and the Android tablet, the controls are thumb-sized and within reach of both thumbs while holding the tablet, in all three modes. (iPad; Android tablet pending)
+- [X] The controller stays in landscape on both tablets with rotation lock off, and a resized or split-screen window still works or shows "Make the window bigger". (iPad; Android tablet pending)
+- [X] On the iPad, presses flash and the optional click sound plays, and the app runs without errors with no haptics hardware.
+- [X] On the Android 12 emulator, the controller installs, pairs with the TV app and sends input.
+- [X] Both store accounts are applied for. (Both approved.)
 
 ## Milestone 8: Store testing pipeline
 
@@ -759,7 +759,7 @@ The largest new risk is store review and policy. Outside testing depends on two 
 **Next steps**
 
 - [x] Review this draft and answer the open questions. Done Oct 29, 2026.
-- [ ] Start the Apple Developer Program enrollment and the Google Play developer account.
+- [X] Start the Apple Developer Program enrollment and the Google Play developer account. Both approved Oct 29, 2026.
 - [x] Search the US trademark database (USPTO) for "Thumb Party" before the first store upload in M8. Done Oct 29, 2026: no filings for "Thumb Party", "thumbparty" or "Shape Race" (live or dead). The closest mark, THUMB PART, covers wigs. This covers US filings only, not unfiled use or other countries.
 - [ ] Give Claude Code the Milestone 7 section, and move on only after its acceptance tests pass.
 

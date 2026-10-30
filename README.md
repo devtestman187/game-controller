@@ -35,6 +35,6 @@ Toolchain setup, Android/TV install steps and the Windows Firewall notes are in 
 | M4 Analog stick mode (Xbox-style layout) | Done (Android phone tests pending) |
 | M5 TV-to-phone haptics and test game | Done (`m5`, Android phone tests pending) |
 | M6 Polish, settings, latency tooling, several controllers | Done (`m6`, Android phone tests pending) |
-| **v2** M7 Bigger stick buttons, tablets, Android 12, v1 Android phone tests | Built (0.7.0), awaiting device tests ([checklist](docs/checklists/m7.md)) |
+| **v2** M7 Bigger stick buttons, tablets, Android 12, v1 Android phone tests | Done on iOS (`m7`, Android phone and tablet tests pending) |
 
 All v1 milestones (docs/PRD.md) are done. v2 (docs/PRD-v2.md) runs from M7 to M13; M7 closes the pending v1 Android phone tests.
