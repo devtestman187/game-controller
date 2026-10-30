@@ -6,8 +6,8 @@ Update this file in the same commit that adds, replaces or removes an asset.
 
 | File | Used for | Source URL | Creator | License |
 | --- | --- | --- | --- | --- |
-| `branding/tv_banner.png` (copied to `tv_test_app/android/app/src/main/res/drawable-xhdpi/tv_banner.png`) | Android TV launcher banner (placeholder, 320×180) | Generated for this project (System.Drawing script, no third-party content) | Project | CC0 1.0 |
-| Default Flutter launcher icons (`mipmap-*/ic_launcher.png`, iOS `AppIcon`) | Placeholder app icons | https://github.com/flutter/flutter (app template) | The Flutter Authors | BSD-3-Clause |
+| `branding/*.png` and every app icon made from them (Android `mipmap-*`, the TV banner, iOS `AppIcon`, the Windows `app_icon.ico`, `site/icon.png`) | Thumb Party and Thumb Party TV icons, the TV banner and the Play store graphics | Drawn by `tools/branding/make-artwork.ps1` (System.Drawing, no third-party content) | Project | CC0 1.0 |
+| `branding/screenshots/*.png` | Store screenshots | Captured from the apps (Android 12 emulator, Windows build) | Project | CC0 1.0 |
 | `audio/hit.ogg` | TV sound for the **hit** event (from `explosionCrunch_003.ogg`) | https://kenney.nl/assets/sci-fi-sounds | Kenney (Sci-Fi Sounds) | CC0 1.0 |
 | `audio/success.ogg` | TV sound for the **success** event (from `computerNoise_003.ogg`) | https://kenney.nl/assets/sci-fi-sounds | Kenney (Sci-Fi Sounds) | CC0 1.0 |
 | `audio/error.ogg` | TV sound for the **error** event (from `slime_001.ogg`) | https://kenney.nl/assets/sci-fi-sounds | Kenney (Sci-Fi Sounds) | CC0 1.0 |

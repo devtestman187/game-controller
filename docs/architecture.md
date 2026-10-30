@@ -56,7 +56,7 @@ Rules:
 - **Ticks.** The phone plays one tick per change: presses and new directions at full strength, releases and re-centering at 60%, scaled by the intensity setting.
 
 ## Haptics
-`lib/src/haptics.dart` defines the `Haptics` interface (capabilities + tick), with `PlatformHaptics` (the channel `com.gamecontrollerdev.controller/haptics`) and `FakeHaptics` for tests. `HapticsPlayer` applies the on/off switch, intensity and hardware limits, and swallows native errors so input keeps working.
+`lib/src/haptics.dart` defines the `Haptics` interface (capabilities + tick), with `PlatformHaptics` (the channel `com.thumbparty.app/haptics`) and `FakeHaptics` for tests. `HapticsPlayer` applies the on/off switch, intensity and hardware limits, and swallows native errors so input keeps working.
 
 | Platform | Native code | Tick | Fallback |
 | --- | --- | --- | --- |

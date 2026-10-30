@@ -52,7 +52,7 @@ abstract class Haptics {
 /// The native implementation, behind one small platform channel:
 /// `ios/Runner/AppDelegate.swift` and `android/.../Haptics.kt`.
 class PlatformHaptics implements Haptics {
-  static const _channel = MethodChannel('com.gamecontrollerdev.controller/haptics');
+  static const _channel = MethodChannel('com.thumbparty.app/haptics');
 
   @override
   Future<HapticsCapabilities> capabilities() async {

@@ -1,0 +1,169 @@
+# Store builds for every tag (PRD v2 M8): signed Android App Bundles for Google Play (the phone and
+# tablet app, and the TV app), and the Windows zip on a GitHub Release. The iOS build goes to
+# TestFlight from Codemagic (codemagic.yaml). One-time setup: docs/release.md.
+#
+# Version name: from pubspec.yaml. Build number: the commit count, so every tag gets a higher one
+# and the stores, Diagnostics and the TV home screen all show the same number.
+#
+# Secrets (GitHub > Settings > Secrets and variables > Actions):
+#   ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD
+#     The Play upload key (tools/make-upload-key.ps1 prints them). Without them the Android job fails.
+#   PLAY_SERVICE_ACCOUNT_JSON (optional)
+#     A Play Console service account. Without it the bundles are only attached to the workflow run,
+#     to upload by hand (Play requires the first upload of each app by hand anyway).
+# Variables (same page, Variables tab), used only with the service account:
+#   PLAY_TRACK_APP   closed testing track for the phone app, e.g. alpha
+#   PLAY_TRACK_TV    closed testing track for the TV app, with the tv: prefix, e.g. tv:alpha
+
+name: Release
+
+on:
+  push:
+    tags: ['m*', 'v*']
+  workflow_dispatch:
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  FLUTTER_VERSION: '3.47.8'
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      HAS_PLAY_ACCOUNT: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON != '' }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0 # the commit count is the build number
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - name: Build number and version
+        id: version
+        run: |
+          echo "build=$(git rev-list --count HEAD)" >> "$GITHUB_OUTPUT"
+          echo "name=$(grep -m1 '^version:' controller_app/pubspec.yaml | sed 's/version: *//; s/+.*//')" >> "$GITHUB_OUTPUT"
+      - name: Upload key
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "::error::The Play upload key secrets are missing. See docs/release.md."
+            exit 1
+          fi
+          mkdir -p "$RUNNER_TEMP/signing"
+          echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/signing/upload.jks"
+          {
+            echo "storeFile=$RUNNER_TEMP/signing/upload.jks"
+            echo "storePassword=$KEYSTORE_PASSWORD"
+            echo "keyAlias=$KEY_ALIAS"
+            echo "keyPassword=$KEY_PASSWORD"
+          } > "$RUNNER_TEMP/signing/key.properties"
+          echo "THUMBPARTY_KEY_PROPERTIES=$RUNNER_TEMP/signing/key.properties" >> "$GITHUB_ENV"
+      - name: Get packages
+        run: flutter pub get
+      - name: Build the phone and tablet app bundle
+        working-directory: controller_app
+        run: >
+          flutter build appbundle --release
+          --build-number=${{ steps.version.outputs.build }}
+          --dart-define=BUILD_NUMBER=${{ steps.version.outputs.build }}
+      - name: Build the TV app bundle
+        working-directory: tv_test_app
+        run: >
+          flutter build appbundle --release
+          --build-number=${{ steps.version.outputs.build }}
+          --dart-define=BUILD_NUMBER=${{ steps.version.outputs.build }}
+      - name: Name the bundles
+        run: |
+          mkdir -p dist
+          cp controller_app/build/app/outputs/bundle/release/app-release.aab "dist/thumb-party-${{ steps.version.outputs.name }}-${{ steps.version.outputs.build }}.aab"
+          cp tv_test_app/build/app/outputs/bundle/release/app-release.aab "dist/thumb-party-tv-${{ steps.version.outputs.name }}-${{ steps.version.outputs.build }}.aab"
+          ls -lh dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: play-bundles
+          path: dist/*.aab
+          retention-days: 30
+      - name: Upload the phone app to Google Play
+        if: ${{ env.HAS_PLAY_ACCOUNT == 'true' && vars.PLAY_TRACK_APP != '' }}
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: com.thumbparty.app
+          releaseFiles: dist/thumb-party-${{ steps.version.outputs.name }}-${{ steps.version.outputs.build }}.aab
+          track: ${{ vars.PLAY_TRACK_APP }}
+          status: completed
+      - name: Upload the TV app to Google Play
+        if: ${{ env.HAS_PLAY_ACCOUNT == 'true' && vars.PLAY_TRACK_TV != '' }}
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: com.thumbparty.tv
+          releaseFiles: dist/thumb-party-tv-${{ steps.version.outputs.name }}-${{ steps.version.outputs.build }}.aab
+          track: ${{ vars.PLAY_TRACK_TV }}
+          status: completed
+
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write # create the GitHub Release
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - name: Build number and version
+        id: version
+        shell: bash
+        run: |
+          echo "build=$(git rev-list --count HEAD)" >> "$GITHUB_OUTPUT"
+          echo "name=$(grep -m1 '^version:' tv_test_app/pubspec.yaml | sed 's/version: *//; s/+.*//')" >> "$GITHUB_OUTPUT"
+      - name: Get packages
+        run: flutter pub get
+      - name: Build Thumb Party TV for Windows
+        working-directory: tv_test_app
+        run: flutter build windows --release --build-number=${{ steps.version.outputs.build }} --dart-define=BUILD_NUMBER=${{ steps.version.outputs.build }}
+      - name: Zip it
+        id: zip
+        shell: pwsh
+        run: |
+          $name = "ThumbPartyTV-windows-${{ steps.version.outputs.name }}-${{ steps.version.outputs.build }}.zip"
+          $folder = "ThumbPartyTV"
+          Copy-Item -Recurse tv_test_app/build/windows/x64/runner/Release $folder
+          Compress-Archive -Path $folder -DestinationPath $name
+          "file=$name" >> $env:GITHUB_OUTPUT
+      - name: GitHub Release
+        if: ${{ startsWith(github.ref, 'refs/tags/') }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          cat > notes.md <<EOF
+          Thumb Party ${{ steps.version.outputs.name }} (build ${{ steps.version.outputs.build }}).
+
+          - **Windows**: download ${{ steps.zip.outputs.file }} below, unzip it and run ThumbPartyTV.exe. The tester guide explains the SmartScreen and firewall prompts: https://devtestman187.github.io/game-controller/
+          - **Phones and tablets**: Thumb Party from Google Play (closed testing) or TestFlight. Links are in the tester guide.
+          - **Android TV**: Thumb Party TV from Google Play (closed testing).
+          EOF
+          gh release create "${GITHUB_REF_NAME}" "${{ steps.zip.outputs.file }}" \
+            --title "Thumb Party ${{ steps.version.outputs.name }} (${GITHUB_REF_NAME})" \
+            --notes-file notes.md

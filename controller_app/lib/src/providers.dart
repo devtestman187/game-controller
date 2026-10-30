@@ -9,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:protocol/protocol.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'app_info.dart';
 import 'device_status.dart';
 import 'discovery.dart';
 import 'feedback.dart';
@@ -105,10 +106,7 @@ final clientProvider = Provider<ControllerClient>((ref) {
   final store = ref.watch(storeProvider);
   final identity = ref.watch(identityProvider);
   final log = ref.watch(logProvider);
-  log.add(
-    'app',
-    'Controller ${identity.appVersion} on ${identity.platform}, ID ${identity.controllerId.substring(0, 6)}',
-  );
+  log.add('app', 'Thumb Party $versionLabel on ${identity.platform}, ID ${identity.controllerId.substring(0, 6)}');
   final client = ControllerClient(
     identity: identity,
     tokens: store.tokens,
@@ -137,6 +135,25 @@ class ClientStateNotifier extends Notifier<ClientSnapshot> {
     ref.onDispose(sub.cancel);
     return client.snapshot;
   }
+}
+
+/// "Try without a TV" (v2 C23): the controls work with no host, and the
+/// screen shows what a TV would receive. For app reviewers and new testers.
+/// Ends by itself once a TV connects.
+final demoProvider = NotifierProvider<DemoNotifier, bool>(DemoNotifier.new);
+
+class DemoNotifier extends Notifier<bool> {
+  @override
+  bool build() {
+    ref.listen(clientStateProvider, (_, next) {
+      if (next.isConnected) state = false;
+    });
+    return false;
+  }
+
+  void start() => state = true;
+
+  void stop() => state = false;
 }
 
 /// True once the phone has been connected to a TV since launch.

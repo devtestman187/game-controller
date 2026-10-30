@@ -67,7 +67,7 @@ final class HostAddress {
   /// The host's stable ID, from the mDNS TXT record or the welcome message.
   final String? hostId;
 
-  /// The advertised name, e.g. `Controller Test (Android TV)`.
+  /// The advertised name, e.g. `Thumb Party TV (Android TV)`.
   final String? name;
 
   /// The address to show the user, e.g. `192.168.1.50:45780`.

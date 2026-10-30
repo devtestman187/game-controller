@@ -116,7 +116,7 @@ final class SavedPairing {
     return SavedPairing(
       controllerId: id,
       token: token,
-      name: text('name').isEmpty ? 'Controller' : text('name'),
+      name: text('name').isEmpty ? 'Thumb Party TV' : text('name'),
       platform: text('platform'),
       appVersion: text('appVersion'),
       remoteAddress: text('address'),

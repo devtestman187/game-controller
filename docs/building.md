@@ -63,15 +63,15 @@ cd tv_test_app
 flutter build apk --release
 adb -s 192.168.1.50:5555 install -r build\app\outputs\flutter-apk\app-release.apk
 ```
-4. The app appears in the TV launcher as **Controller Test** with its banner. On Google TV it may be under **Apps** → **Your apps**. Launch it with the remote.
-5. Optional: `adb -s 192.168.1.50:5555 shell monkey -p com.gamecontrollerdev.tvtest 1` launches it from the PC.
+4. The app appears in the TV launcher as **Thumb Party TV** with its banner. On Google TV it may be under **Apps** → **Your apps**. Launch it with the remote.
+5. Optional: `adb -s 192.168.1.50:5555 shell monkey -p com.thumbparty.tv 1` launches it from the PC.
 
 ## TV app as a Windows desktop app
 ```powershell
 cd tv_test_app
 flutter run -d windows                        # development
 flutter build windows --release               # release build
-.\build\windows\x64\runner\Release\tvtest.exe
+.\build\windows\x64\runner\Release\ThumbPartyTV.exe
 ```
 The window is resizable. The layout scales between a small laptop window and a 16:9 TV screen.
 

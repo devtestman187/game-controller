@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:protocol/protocol.dart';
 
+import 'package:url_launcher/url_launcher.dart';
+
+import '../app_info.dart';
 import '../feedback.dart';
 import '../gyro.dart';
 import '../haptics.dart';
@@ -32,7 +35,9 @@ class SettingsScreen extends ConsumerWidget {
         child: LayoutBuilder(
           builder: (context, constraints) {
             const haptics = _HapticsSection();
-            const motion = Column(children: [_GyroSection(), SizedBox(height: 12), _SticksSection()]);
+            const motion = Column(
+              children: [_GyroSection(), SizedBox(height: 12), _SticksSection(), SizedBox(height: 12), _AboutSection()],
+            );
             if (constraints.maxWidth >= 700) {
               return SingleChildScrollView(
                 padding: const EdgeInsets.all(16),
@@ -402,6 +407,45 @@ class _SticksSection extends ConsumerWidget {
           divisions: 15,
           sliderKey: const Key('settingsStickSensitivity'),
           onChanged: (v) => n.update(s.copyWith(sensitivity: v)),
+        ),
+      ],
+    );
+  }
+}
+
+/// The version testers quote, and the privacy policy and tester guide
+/// (v2 C22).
+class _AboutSection extends StatelessWidget {
+  const _AboutSection();
+
+  @override
+  Widget build(BuildContext context) {
+    Future<void> open(String url) async {
+      final ok = await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication).catchError((_) => false);
+      if (!ok && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Couldn\'t open $url')));
+      }
+    }
+
+    return _Section(
+      title: 'About',
+      subtitle: 'Thumb Party $versionLabel',
+      children: [
+        ListTile(
+          key: const Key('privacyPolicy'),
+          contentPadding: EdgeInsets.zero,
+          leading: const Icon(Icons.privacy_tip_outlined),
+          title: const Text('Privacy policy'),
+          subtitle: const Text(privacyPolicyUrl),
+          onTap: () => open(privacyPolicyUrl),
+        ),
+        ListTile(
+          key: const Key('testerGuide'),
+          contentPadding: EdgeInsets.zero,
+          leading: const Icon(Icons.help_outline),
+          title: const Text('Tester guide'),
+          subtitle: const Text(siteUrl),
+          onTap: () => open(siteUrl),
         ),
       ],
     );

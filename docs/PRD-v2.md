@@ -92,7 +92,7 @@ The brand is Thumb Party. The phone app is the main app, because from M12 it hos
 | Store name | Thumb Party | Thumb Party TV (the Windows build uses the same name) |
 | Subtitle (proposed) | Play together on any screen | |
 | App ID (Android, and iOS bundle ID) | `com.thumbparty.app` | `com.thumbparty.tv` |
-| Today | Controller, `com.gamecontrollerdev.controller` | Controller Test, `com.gamecontrollerdev.tvtest` |
+| Before M8 | Controller, `com.gamecontrollerdev.controller` | Controller Test, `com.gamecontrollerdev.tvtest` |
 
 - The puzzle game is called **Shape Race** in the game picker, next to Arena.
 - The new IDs make the apps new apps on every device. The developer's devices are uninstalled and reinstalled once, and phones pair again with the code.

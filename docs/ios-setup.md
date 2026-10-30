@@ -1,5 +1,7 @@
 # iOS setup (Windows PC, free Apple ID, no Mac)
 
+> **Retired in M8 (PRD v2).** iOS builds now go to **TestFlight**, signed with the paid Apple Developer account: see [release.md](release.md). The app ID is now `com.thumbparty.app`. These iLoader steps are kept for reference only.
+
 The controller's iOS build is made in the cloud by **Codemagic** as an **unsigned** `.ipa`. You import it into **iLoader** on Windows, which signs it with a **free Apple ID** and installs it on the iPhone. No paid Apple Developer account, App Store Connect, certificates or provisioning profiles are involved.
 
 Why iLoader: on October 24, 2026 it signed in and installed when Sideloadly and Impactor could not (Apple had blocked the sign-in method they use). See the PRD decisions.

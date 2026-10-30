@@ -26,7 +26,7 @@ class TvTestApp extends StatelessWidget {
         SingleActivator(LogicalKeyboardKey.gameButtonA): ActivateIntent(),
       },
       child: MaterialApp(
-        title: 'Controller Test',
+        title: 'Thumb Party TV',
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
           colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF5AAAFF), brightness: Brightness.dark),

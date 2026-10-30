@@ -146,7 +146,7 @@ class _NoHosts extends StatelessWidget {
           Expanded(
             child: Text(
               error == null
-                  ? 'Searching… Open the Controller Test app on the TV or laptop, on the same Wi-Fi as this phone.'
+                  ? 'Searching… Open the Thumb Party TV app on the TV or PC, on the same Wi-Fi as this phone.'
                   : 'Discovery isn\'t working ($error). Type the address shown on the TV below.',
               style: text.bodyMedium,
             ),
@@ -237,6 +237,16 @@ class ConnectionPanel extends ConsumerWidget {
         Text('Not connected', style: text.titleLarge),
         const SizedBox(height: 4),
         const Text('Pick a TV on the left, or type its address.', textAlign: TextAlign.center),
+        const SizedBox(height: 16),
+        OutlinedButton.icon(
+          key: const Key('tryWithoutTv'),
+          icon: const Icon(Icons.sports_esports_outlined),
+          label: const Text('Try without a TV'),
+          onPressed: () {
+            ref.read(demoProvider.notifier).start();
+            Navigator.of(context).maybePop();
+          },
+        ),
       ],
       ClientStatus.connecting => [
         const CircularProgressIndicator(),
@@ -284,6 +294,16 @@ class ConnectionPanel extends ConsumerWidget {
               FilledButton(onPressed: () => actions.connect(s.target!), child: const Text('Try again')),
             TextButton(onPressed: actions.disconnect, child: const Text('Cancel')),
           ],
+        ),
+        const SizedBox(height: 16),
+        OutlinedButton.icon(
+          key: const Key('tryWithoutTv'),
+          icon: const Icon(Icons.sports_esports_outlined),
+          label: const Text('Try without a TV'),
+          onPressed: () {
+            ref.read(demoProvider.notifier).start();
+            Navigator.of(context).maybePop();
+          },
         ),
       ],
     };

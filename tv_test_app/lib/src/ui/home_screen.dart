@@ -105,9 +105,9 @@ class _Header extends StatelessWidget {
           child: Text.rich(
             TextSpan(
               children: [
-                TextSpan(text: 'Controller Test', style: text.headlineSmall),
+                TextSpan(text: 'Thumb Party TV', style: text.headlineSmall),
                 TextSpan(
-                  text: '   Protocol v$protocolVersion · app $appVersion · Milestone 6',
+                  text: '   Version $versionLabel · protocol v$protocolVersion',
                   style: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
                 ),
               ],
@@ -226,7 +226,7 @@ class _PairingPanel extends ConsumerWidget {
     final controller = ref.read(hostControllerProvider);
     final port = state.host.port;
     final sim = state.sim;
-    final advertisedName = state.advertisedName ?? 'Controller Test (${state.hostName})';
+    final advertisedName = state.advertisedName ?? 'Thumb Party TV (${state.hostName})';
 
     return _Panel(
       title: 'Pairing code',
@@ -270,11 +270,17 @@ class _PairingPanel extends ConsumerWidget {
           if (Platform.isWindows) ...[
             const SizedBox(height: 4),
             Text(
-              'Phones can\'t connect? Allow Controller Test through Windows Firewall on private networks '
-              '(see tv_test_app/README.md).',
+              'Phones can\'t connect? Allow Thumb Party TV through Windows Firewall on private networks '
+              '(see the tester guide).',
               style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
             ),
           ],
+          const SizedBox(height: 4),
+          Text(
+            'Tester guide and privacy policy: $siteUrl',
+            key: const Key('siteUrl'),
+            style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+          ),
           const SizedBox(height: 16),
           Wrap(
             spacing: 12,

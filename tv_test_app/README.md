@@ -1,6 +1,6 @@
 # TV test app
 
-Test bench and connection host for the controller. One codebase runs on **Android TV 12+ (API 31)** and as a **Windows desktop app**. App ID: `com.gamecontrollerdev.tvtest`. Version 0.6.0 (Milestone 6).
+Test bench and connection host for the controller. One codebase runs on **Android TV 12+ (API 31)** and as a **Windows desktop app**. Store name **Thumb Party TV**, app ID `com.thumbparty.tv` (Play never allows changing it). Version 0.8.0 (Milestone 8).
 
 It hosts the controller server and advertises it on the network (mDNS), shows the pairing code, each controller's input, ping and input delay, and has a playable test game, a haptic test panel and a latency screen. Everything works with a TV remote and in a laptop window.
 
@@ -53,9 +53,9 @@ It doesn't include the TV's own display delay (one frame or more, depending on t
 
 ### Getting the log off the device
 **Save log** (main screen or Latency screen) writes `controller-test-log-<date>-<time>.txt` and shows where:
-- **Android TV**: the app's folder, `/sdcard/Android/data/com.gamecontrollerdev.tvtest/files/`. Copy it to the PC with
+- **Android TV**: the app's folder, `/sdcard/Android/data/com.thumbparty.tv/files/`. Copy it to the PC with
   ```powershell
-  adb -s <TV-IP>:5555 pull /sdcard/Android/data/com.gamecontrollerdev.tvtest/files/ .
+  adb -s <TV-IP>:5555 pull /sdcard/Android/data/com.thumbparty.tv/files/ .
   ```
 - **Windows**: your Downloads folder.
 
@@ -79,7 +79,7 @@ cd tv_test_app
 flutter build apk --release
 adb -s <TV-IP>:5555 install -r build\app\outputs\flutter-apk\app-release.apk
 ```
-4. Open **Controller Test** from the launcher (banner tile; on Google TV look under Apps → Your apps).
+4. Open **Thumb Party TV** from the launcher (banner tile; on Google TV look under Apps → Your apps).
 
 Remote controls: arrows move focus, center/OK selects, Back exits.
 
@@ -88,7 +88,7 @@ Remote controls: arrows move focus, center/OK selects, Back exits.
 cd tv_test_app
 flutter run -d windows                         # development
 flutter build windows --release
-.\build\windows\x64\runner\Release\tvtest.exe  # release build
+.\build\windows\x64\runner\Release\ThumbPartyTV.exe  # release build
 ```
 The window is resizable. Arrow keys + Enter act like the TV remote.
 
@@ -96,10 +96,10 @@ The window is resizable. Arrow keys + Enter act like the TV remote.
 The phones connect to the laptop, so Windows must allow incoming connections to the app on your **private** network:
 1. Make the Wi-Fi network Private: Settings → Network & internet → Wi-Fi → *your network* → **Network profile type: Private**.
 2. Start the app. When Windows Defender Firewall asks, tick **Private networks**, untick Public, and click **Allow**.
-3. If you missed or cancelled the prompt: Start → "Allow an app through Windows Firewall" → **Change settings** → find `tvtest.exe` (or click **Allow another app…** and browse to `tv_test_app\build\windows\x64\runner\Release\tvtest.exe`; for `flutter run` builds also allow `...\runner\Debug\tvtest.exe`) → tick **Private** → OK.
+3. If you missed or cancelled the prompt: Start → "Allow an app through Windows Firewall" → **Change settings** → find `ThumbPartyTV.exe` (or click **Allow another app…** and browse to `tv_test_app\build\windows\x64\runner\Release\ThumbPartyTV.exe`; for `flutter run` builds also allow `...\runner\Debug\ThumbPartyTV.exe`) → tick **Private** → OK.
    Or, in an **administrator** PowerShell, allow the port for every build:
    ```powershell
-   New-NetFirewallRule -DisplayName "Controller Test (TCP 45780)" -Direction Inbound -Protocol TCP -LocalPort 45780 -Action Allow -Profile Private
+   New-NetFirewallRule -DisplayName "Thumb Party TV (TCP 45780)" -Direction Inbound -Protocol TCP -LocalPort 45780 -Action Allow -Profile Private
    ```
 4. Check from the phone: open `http://<laptop address>:45780` in the phone's browser. A one-line page means connections get through.
 5. The phones and the laptop must be on the **same Wi-Fi**. Guest networks and routers with "client/AP isolation" block both discovery and connections. Use manual IP entry if discovery is blocked but connections work.

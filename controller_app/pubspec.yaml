@@ -3,7 +3,7 @@ description: "Phone game controller (Android + iOS)."
 publish_to: 'none'
 
 # build-name -> versionName / CFBundleShortVersionString; build-number -> versionCode / CFBundleVersion.
-version: 0.7.0+10
+version: 0.8.0+11
 
 environment:
   sdk: ^3.13.0
@@ -22,6 +22,7 @@ dependencies:
   share_plus: ^13.3.1
   shared_preferences: ^2.5.6
   sensors_plus: ^7.1.1
+  url_launcher: ^6.3.3
 
 dev_dependencies:
   flutter_test:

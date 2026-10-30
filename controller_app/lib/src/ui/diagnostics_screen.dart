@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:protocol/protocol.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../app_info.dart';
 import '../device_status.dart';
 import '../gyro.dart';
 import '../local_network.dart';
@@ -186,7 +187,7 @@ class DiagnosticsScreen extends ConsumerWidget {
               ('Name', identity.name),
               ('Controller ID', identity.controllerId),
               ('Platform', identity.platform),
-              ('App version', identity.appVersion),
+              ('App version', versionLabel),
               ('Protocol', 'v$protocolVersion'),
             ]),
             Padding(
@@ -234,7 +235,7 @@ String buildReport(WidgetRef ref) {
   final log = ref.read(logProvider);
   final b = StringBuffer()
     ..writeln('Controller diagnostics, ${DateTime.now().toIso8601String()}')
-    ..writeln('Phone: ${identity.name} (${identity.platform}), app ${identity.appVersion}, protocol v$protocolVersion')
+    ..writeln('Phone: ${identity.name} (${identity.platform}), app $versionLabel, protocol v$protocolVersion')
     ..writeln('Controller ID: ${identity.controllerId}')
     ..writeln(
       'Connection: ${client.status.name}, TV ${client.hostLabel}, ${client.target?.addresses.join(', ')} '

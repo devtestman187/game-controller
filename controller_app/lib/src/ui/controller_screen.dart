@@ -105,7 +105,16 @@ class _ControllerScreenState extends ConsumerState<ControllerScreen> with Widget
                   child: LayoutBuilder(
                     builder: (context, body) {
                       if (body.maxHeight < minBodyHeight) return const TooSmallView();
-                      return mode == PadMode.sticks ? const StickModeView() : PadModeView(gyro: mode == PadMode.gyro);
+                      return Stack(
+                        children: [
+                          Positioned.fill(
+                            child: mode == PadMode.sticks
+                                ? const StickModeView()
+                                : PadModeView(gyro: mode == PadMode.gyro),
+                          ),
+                          const Positioned(top: 4, left: 0, right: 0, child: Center(child: DemoReadout())),
+                        ],
+                      );
                     },
                   ),
                 ),
@@ -165,6 +174,39 @@ class PadModeView extends ConsumerWidget {
           ],
         );
       },
+    );
+  }
+}
+
+/// "Try without a TV" (v2 C23): while no TV is connected, shows what a TV
+/// would receive, in every mode.
+class DemoReadout extends ConsumerWidget {
+  const DemoReadout({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final demo = ref.watch(demoProvider);
+    final connected = ref.watch(clientStateProvider.select((c) => c.isConnected));
+    if (!demo || connected) return const SizedBox.shrink();
+    final input = ref.watch(padProvider);
+    final scheme = Theme.of(context).colorScheme;
+    return IgnorePointer(
+      child: Container(
+        key: const Key('demoReadout'),
+        constraints: const BoxConstraints(maxWidth: 360),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: scheme.secondaryContainer.withValues(alpha: 0.9),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Text(
+          'Demo: a TV would get ${input.isNeutral ? 'nothing pressed' : input.toString()}',
+          textAlign: TextAlign.center,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(color: scheme.onSecondaryContainer, fontSize: 13),
+        ),
+      ),
     );
   }
 }
@@ -247,6 +289,8 @@ class _TopBar extends ConsumerWidget {
                     label: Text(
                       client.isConnected
                           ? '${client.hostLabel} · ${client.rttMs ?? '–'} ms'
+                          : ref.watch(demoProvider)
+                          ? 'Demo, no TV · tap to connect'
                           : '${statusLabel(client)} · tap to connect',
                       overflow: TextOverflow.ellipsis,
                     ),

@@ -1,4 +1,4 @@
-# Game Controller
+# Thumb Party
 
 A phone game controller (Android + iOS) and a TV test app it drives (Android TV + Windows desktop), in one Flutter monorepo. Requirements and milestones: [docs/PRD.md](docs/PRD.md).
 
@@ -23,7 +23,7 @@ Then, in a second terminal, pair a simulated controller with it (use the code th
 ```powershell
 cd packages\connection; dart run connection:sim_controller --code 1234
 ```
-Toolchain setup, Android/TV install steps and the Windows Firewall notes are in [docs/building.md](docs/building.md). iOS builds come from Codemagic and are sideloaded: [docs/ios-setup.md](docs/ios-setup.md).
+Toolchain setup, Android/TV install steps and the Windows Firewall notes are in [docs/building.md](docs/building.md). Store builds (TestFlight, Google Play testing, the Windows zip) are described in [docs/release.md](docs/release.md); testers follow https://devtestman187.github.io/game-controller/. Older iOS sideloading notes, retired in M8, were: [docs/ios-setup.md](docs/ios-setup.md).
 
 ## Status
 | Milestone | State |

@@ -46,7 +46,7 @@ abstract class DeviceStatusSource {
 /// Uses the same small native channel as the haptics (AppDelegate.swift,
 /// MainActivity.kt).
 class PlatformDeviceStatus implements DeviceStatusSource {
-  static const _channel = MethodChannel('com.gamecontrollerdev.controller/haptics');
+  static const _channel = MethodChannel('com.thumbparty.app/haptics');
 
   @override
   Future<DeviceStatus?> read() async {

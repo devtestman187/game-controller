@@ -105,7 +105,7 @@ HostViewState sampleState() => HostViewState(
   ),
   addresses: const [LocalAddress('192.168.1.50', 'wlan0')],
   advertise: AdvertiseState.advertising,
-  advertisedName: 'Controller Test (Android TV)',
+  advertisedName: 'Thumb Party TV (Android TV)',
 );
 
 late FakeSoundPlayer sounds;
@@ -153,11 +153,17 @@ void main() {
     await pumpApp(tester);
     expect(find.text('0 4 2 7'), findsOneWidget);
     expect(find.textContaining('192.168.1.50:45780'), findsOneWidget);
-    expect(find.textContaining('Controller Test (Android TV)'), findsOneWidget);
+    expect(find.textContaining('Thumb Party TV (Android TV)'), findsOneWidget);
     expect(find.text('iPhone 3F1C'), findsOneWidget);
     expect(find.text('Connected'), findsOneWidget);
     expect(find.text('12 ms'), findsOneWidget);
     expect(find.text('Waiting for code'), findsOneWidget);
+    expect(
+      find.textContaining('devtestman187.github.io/game-controller'),
+      findsOneWidget,
+      reason: 'guide and privacy link',
+    );
+    expect(find.textContaining('Version 0.'), findsOneWidget, reason: 'testers can say which build they have');
     expect(find.text('Controllers · 1 connected'), findsOneWidget);
     expect(find.text('avg 20 ms'), findsOneWidget);
     expect(find.text('max 140 ms'), findsOneWidget);
@@ -202,9 +208,9 @@ void main() {
     // "New code" is focused on launch. Find every button the arrows reach:
     // from each one found, try all four arrows (going back to it by focusing
     // it directly before each try). Then press each one with OK.
-    void focusButton(String label) => Focus.of(
-      tester.element(find.descendant(of: find.widgetWithText(TvButton, label), matching: find.text(label))),
-    ).requestFocus();
+    void focusButton(String label) =>
+        Focus.of(tester.element(find.descendant(of: find.widgetWithText(TvButton, label), matching: find.text(label))))
+            .requestFocus();
     const directions = [
       LogicalKeyboardKey.arrowDown,
       LogicalKeyboardKey.arrowRight,
@@ -587,7 +593,7 @@ void main() {
         ..add('host', 'Listening on port 45780')
         ..add('host', 'iPhone 3F1C connected');
       final text = buildLogExport(sampleState(), log, now: DateTime(2026, 10, 25, 20, 15));
-      expect(text, startsWith('Controller Test '));
+      expect(text, startsWith('Thumb Party TV '));
       expect(text, contains('2026-10-25T20:15:00.000'));
       expect(text, contains('P1 iPhone 3F1C (ios 0.1.0), connected'));
       expect(text, contains('Ping: min 8 · avg 20 · max 140 ms, p95 60 ms'));

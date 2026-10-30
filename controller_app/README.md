@@ -1,6 +1,6 @@
 # Controller app
 
-Phone and tablet game controller for **Android 12+** and **iOS/iPadOS 26+**, landscape only. App ID: `com.gamecontrollerdev.controller` (fixed, don't rename). Version 0.7.0 (Milestone 7).
+**Thumb Party**: the phone and tablet game controller, for **Android 12+** and **iOS/iPadOS 26+**, landscape only. App ID: `com.thumbparty.app` (Play never allows changing it). Version 0.8.0 (Milestone 8).
 
 The phone works as a gamepad for the TV test app over the home Wi-Fi. It has three layouts, switched at the top without reconnecting, and the app starts in the one you used last.
 
@@ -63,7 +63,7 @@ On iOS the prompt appears the first time the app searches for TVs. If you tap **
 You can't build it locally on Windows. Codemagic builds an unsigned `.ipa` on every tag (or manual start) and you install it with iLoader using a free Apple ID: [../docs/ios-setup.md](../docs/ios-setup.md). Re-install every 7 days.
 
 ## Native code rule
-Native code is one small platform channel (`com.gamecontrollerdev.controller/haptics`) plus Info.plist configuration. Every iOS change costs a cloud build and a re-install, so it's kept minimal and reviewed carefully.
+Native code is one small platform channel (`com.thumbparty.app/haptics`) plus Info.plist configuration. Every iOS change costs a cloud build and a re-install, so it's kept minimal and reviewed carefully.
 
 | Platform | File | Methods |
 | --- | --- | --- |

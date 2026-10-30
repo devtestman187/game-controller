@@ -137,7 +137,7 @@ class FakeDiscovery implements HostDiscovery {
   Future<void> dispose() => _changes.close();
 }
 
-final tv = HostAddress(addresses: ['192.168.1.50'], port: 45780, hostId: 'tv-1', name: 'Controller Test (Android TV)');
+final tv = HostAddress(addresses: ['192.168.1.50'], port: 45780, hostId: 'tv-1', name: 'Thumb Party TV (Android TV)');
 final connected = ClientSnapshot(
   status: ClientStatus.connected,
   target: tv,
@@ -294,7 +294,7 @@ void main() {
 
       app.discovery.emit(DiscoveryState(running: true, everFound: true, hosts: [DiscoveredHost(address: tv)]));
       await tester.pump();
-      await tester.tap(find.text('Controller Test (Android TV)'));
+      await tester.tap(find.text('Thumb Party TV (Android TV)'));
       expect(app.client.calls, ['connect 192.168.1.50:45780']);
     });
 
@@ -1365,6 +1365,44 @@ void main() {
       expect(app.prefs.getDouble('stickButtonSize'), 0.75);
       expect(app.prefs.getBool('pressClick'), isFalse);
       expect(app.prefs.getBool('pressFlash'), isNull, reason: 'back to automatic');
+    });
+  });
+  group('store builds (M8)', () {
+    testWidgets('"Try without a TV" shows the controls working with no host', (tester) async {
+      final app = await pumpApp(tester);
+      expect(find.text('Connect to a TV'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('tryWithoutTv')));
+      await settle(tester);
+      expect(find.text('Connect to a TV'), findsNothing);
+      expect(find.textContaining('Demo, no TV'), findsOneWidget);
+      expect(find.text('Demo: a TV would get nothing pressed'), findsOneWidget);
+
+      final a = await tester.startGesture(_at(tester, const Key('faceButtons'), const Offset(0.5, 0.81)));
+      await tester.pump();
+      expect(find.textContaining('Demo: a TV would get A'), findsOneWidget);
+      expect(app.haptics.ticks, isNotEmpty, reason: 'the phone still ticks');
+      await a.up();
+      await tester.pump();
+
+      // Stick mode shows it too.
+      await tester.tap(find.text('Sticks'));
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(find.byKey(const Key('demoReadout')), findsOneWidget);
+      expect(tester.takeException(), isNull);
+
+      // A TV connecting ends the demo.
+      app.client.emit(connected);
+      await tester.pump();
+      expect(find.byKey(const Key('demoReadout')), findsNothing);
+    });
+
+    testWidgets('Settings shows the version and links to the privacy policy and tester guide', (tester) async {
+      await pumpApp(tester, paired: true);
+      await openSettings(tester);
+      await scrollTo(tester, find.byKey(const Key('privacyPolicy')));
+      expect(find.text('Thumb Party 0.8.0 (dev)'), findsOneWidget);
+      expect(find.textContaining('privacy.html'), findsOneWidget);
+      expect(find.byKey(const Key('testerGuide')), findsOneWidget);
     });
   });
 }

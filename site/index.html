@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Thumb Party tester guide</title>
+  <link rel="icon" href="icon.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main>
+  <header>
+    <img src="icon.png" alt="">
+    <h1>Thumb Party</h1>
+  </header>
+  <p class="lead">Your phone is the controller and the TV is the screen. This page shows how to install the test version, connect, and tell us how it went.</p>
+
+  <div class="card">
+    <strong>You need</strong>
+    <ul>
+      <li>A phone or tablet for each player: iPhone or iPad with iOS 26 or later, or Android 12 or later.</li>
+      <li>One screen to play on: an Android TV or Google TV, or a Windows PC.</li>
+      <li>Everything on the <strong>same Wi-Fi</strong>. Guest networks often block devices from seeing each other.</li>
+    </ul>
+  </div>
+
+  <h2>1. Install the controller on each phone or tablet</h2>
+  <h3>iPhone and iPad</h3>
+  <ol>
+    <li>Install <a href="https://apps.apple.com/app/testflight/id899247664">TestFlight</a> from the App Store.</li>
+    <li>On the iPhone or iPad, open the invite link:
+      <!-- TESTFLIGHT_LINK: replace the span below with <a class="button" href="https://testflight.apple.com/join/...">Join on TestFlight</a> -->
+      <span class="soon">the TestFlight link is coming soon</span>.</li>
+    <li>Tap <strong>Accept</strong>, then <strong>Install</strong>. Thumb Party appears on the home screen.</li>
+  </ol>
+  <h3>Android phones and tablets</h3>
+  <ol>
+    <li>Join the testers group with your Google account:
+      <!-- GOOGLE_GROUP_LINK: replace the span below with <a class="button" href="https://groups.google.com/g/...">Join the group</a> -->
+      <span class="soon">the group link is coming soon</span>.</li>
+    <li>Open the testing page and tap <strong>Become a tester</strong>:
+      <!-- PLAY_TEST_LINK_APP: replace the span below with <a class="button" href="https://play.google.com/apps/testing/com.thumbparty.app">Test Thumb Party</a> -->
+      <span class="soon">the Play testing link is coming soon</span>.</li>
+    <li>Install <strong>Thumb Party</strong> from Google Play on the phone or tablet. It can take a few minutes to show up after joining.</li>
+  </ol>
+
+  <h2>2. Install the TV app on the big screen</h2>
+  <h3>Android TV or Google TV</h3>
+  <ol>
+    <li>Use the same Google account as the TV. Join the group above if you haven't.</li>
+    <li>On a phone or computer, open the TV app's testing page and tap <strong>Become a tester</strong>:
+      <!-- PLAY_TEST_LINK_TV: replace the span below with <a class="button" href="https://play.google.com/apps/testing/com.thumbparty.tv">Test Thumb Party TV</a> -->
+      <span class="soon">the link is coming soon</span>.</li>
+    <li>On the TV, open the Play Store, search for <strong>Thumb Party TV</strong> and install it. It appears with your apps (on Google TV, under <strong>Apps</strong>).</li>
+  </ol>
+  <h3>Windows PC</h3>
+  <ol>
+    <li>Download the latest <strong>ThumbPartyTV-windows-….zip</strong> from <a href="https://github.com/devtestman187/game-controller/releases/latest">the releases page</a>.</li>
+    <li>Right-click the zip, choose <strong>Extract All</strong>, and open the <strong>ThumbPartyTV</strong> folder.</li>
+    <li>Run <strong>ThumbPartyTV.exe</strong>. Windows SmartScreen warns about an unrecognised app the first time: click <strong>More info</strong>, then <strong>Run anyway</strong>. The test builds aren't signed yet.</li>
+    <li>When Windows Firewall asks, tick <strong>Private networks</strong> and click <strong>Allow</strong>. Without this, phones can't find the PC.</li>
+  </ol>
+  <p>Missed the firewall prompt? Open Start, search for <strong>Allow an app through Windows Firewall</strong>, click <strong>Change settings</strong>, and tick <strong>Private</strong> next to ThumbPartyTV.</p>
+
+  <h2>3. Connect and play</h2>
+  <ol>
+    <li>Open <strong>Thumb Party TV</strong> on the TV or PC. It shows a 4-digit code.</li>
+    <li>Open <strong>Thumb Party</strong> on the phone. The TV appears under <strong>TVs on this Wi-Fi</strong>. Tap it.</li>
+    <li>Type the code from the TV. The phone remembers the TV, so next time it reconnects by itself.</li>
+    <li>Pick a layout at the top of the phone: <strong>D-pad</strong>, <strong>Gyro</strong> (tilt the phone) or <strong>Sticks</strong>. On the TV, open <strong>Test game</strong>.</li>
+  </ol>
+  <p>No TV nearby? On the phone's connect screen, tap <strong>Try without a TV</strong> to check the controls work.</p>
+
+  <h2>If something doesn't work</h2>
+  <ul>
+    <li><strong>The TV doesn't show up on the phone</strong>: check both are on the same Wi-Fi (not a guest network). You can also type the address shown on the TV under <strong>Address for manual entry</strong>.</li>
+    <li><strong>iPhone or iPad</strong>: allow <strong>Local Network</strong> access when asked, or later in Settings → Thumb Party.</li>
+    <li><strong>Windows</strong>: allow the app through the firewall for private networks (see above), and make sure Windows treats your Wi-Fi as a private network.</li>
+    <li><strong>The connection drops</strong>: it reconnects by itself. If it keeps dropping, move closer to the Wi-Fi router.</li>
+  </ul>
+
+  <h2>Tell us how it went</h2>
+  <p>Email <a href="mailto:mrman187@gmail.com?subject=Thumb%20Party%20test">mrman187@gmail.com</a>. Please say which version you have: on the phone it's in <strong>Settings → About</strong>, and on the TV it's at the top of the home screen. For a problem, the phone's <strong>Diagnostics</strong> screen has a <strong>Share</strong> button that puts the details in a message you can send. iPhone testers can also send feedback from TestFlight (take a screenshot and tap <strong>Share Beta Feedback</strong>).</p>
+
+  <footer>
+    <a href="privacy.html">Privacy policy</a> · Thumb Party is a test version and changes often.
+  </footer>
+</main>
+</body>
+</html>

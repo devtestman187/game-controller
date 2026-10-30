@@ -41,7 +41,7 @@ final class HapticsChannel: NSObject {
 
   init(messenger: FlutterBinaryMessenger) {
     channel = FlutterMethodChannel(
-      name: "com.gamecontrollerdev.controller/haptics", binaryMessenger: messenger)
+      name: "com.thumbparty.app/haptics", binaryMessenger: messenger)
     super.init()
     channel.setMethodCallHandler { [weak self] call, result in
       self?.handle(call, result: result)

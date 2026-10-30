@@ -153,7 +153,7 @@ class LiveHostController implements HostController {
   Stream<HostViewState> get changes => _changes.stream;
 
   Future<void> start() async {
-    _log('Controller Test $appVersion on ${Platform.operatingSystem}, host ID ${_hostId.substring(0, 6)}');
+    _log('Thumb Party TV $versionLabel on ${Platform.operatingSystem}, host ID ${_hostId.substring(0, 6)}');
     try {
       await _server.start();
     } catch (e) {
@@ -259,7 +259,7 @@ class LiveHostController implements HostController {
 
   Future<void> _startAdvertising() async {
     final service = BonsoirService(
-      name: 'Controller Test ($_hostName)',
+      name: 'Thumb Party TV ($_hostName)',
       type: serviceType,
       port: _server.port!,
       attributes: {txtHostId: _hostId, txtProtocolVersion: '$protocolVersion'},
@@ -371,7 +371,7 @@ void savePairings(SharedPreferences prefs, List<SavedPairing> pairings) =>
 
 /// Where "Save log" puts its file. On Android TV that's the app's own folder
 /// on shared storage, which needs no permission and `adb pull` can read:
-/// /sdcard/Android/data/com.gamecontrollerdev.tvtest/files. On Windows it's
+/// /sdcard/Android/data/com.thumbparty.tv/files. On Windows it's
 /// the Downloads folder.
 Future<Directory> logExportDirectory() async {
   if (Platform.isAndroid) {
@@ -388,7 +388,7 @@ Future<Directory> logExportDirectory() async {
 /// latency (PRD T8), then every log line, oldest first.
 String buildLogExport(HostViewState state, LogBuffer log, {required DateTime now}) {
   final b = StringBuffer()
-    ..writeln('Controller Test $appVersion log, ${now.toIso8601String()}')
+    ..writeln('Thumb Party TV $versionLabel log, ${now.toIso8601String()}')
     ..writeln(
       'Host: ${state.hostName} (${Platform.operatingSystem}), port ${state.host.port ?? '-'}, protocol v$protocolVersion',
     )

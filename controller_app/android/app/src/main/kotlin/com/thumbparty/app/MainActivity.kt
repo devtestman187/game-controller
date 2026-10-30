@@ -1,4 +1,4 @@
-package com.gamecontrollerdev.controller
+package com.thumbparty.app
 
 import android.content.Context
 import android.os.BatteryManager
@@ -14,7 +14,7 @@ class MainActivity : FlutterActivity() {
         // The one native channel: haptics (ticks and the TV's events, lib/src/haptics.dart) and
         // the device status for Diagnostics (lib/src/device_status.dart).
         val haptics = Haptics(applicationContext)
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.gamecontrollerdev.controller/haptics")
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.thumbparty.app/haptics")
             .setMethodCallHandler { call, result ->
                 when (call.method) {
                     "capabilities" -> result.success(haptics.capabilities())

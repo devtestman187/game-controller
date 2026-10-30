@@ -89,13 +89,13 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "com.gamecontrollerdev" "\0"
-            VALUE "FileDescription", "tvtest" "\0"
+            VALUE "CompanyName", "Thumb Party" "\0"
+            VALUE "FileDescription", "Thumb Party TV" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "tvtest" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2026 com.gamecontrollerdev. All rights reserved." "\0"
-            VALUE "OriginalFilename", "tvtest.exe" "\0"
-            VALUE "ProductName", "tvtest" "\0"
+            VALUE "InternalName", "ThumbPartyTV" "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2026 Thumb Party" "\0"
+            VALUE "OriginalFilename", "ThumbPartyTV.exe" "\0"
+            VALUE "ProductName", "Thumb Party TV" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

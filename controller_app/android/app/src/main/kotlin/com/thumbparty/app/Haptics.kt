@@ -1,4 +1,4 @@
-package com.gamecontrollerdev.controller
+package com.thumbparty.app
 
 import android.content.Context
 import android.media.AudioAttributes
