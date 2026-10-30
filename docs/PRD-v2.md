@@ -384,6 +384,12 @@ The custom stream framework is the preferred direction. The v2 results still dec
 - **A PC bridge** comes first if testers mostly ask to use the controller with games they already own.
 - **A browser controller** comes in if installing the app is the main thing stopping casual guests from joining.
 
+**Other notes for v3**
+
+Ideas kept for later, outside v2's scope:
+
+- **Google Play's Teacher Approved program.** Experts rate apps for kids, and approved apps get a badge and can be featured in Play's Kids tab. Not joined in v2 (decided Oct 30, 2026): closed testing apps aren't shown in the Kids tab, and the app should be judged once Shape Race and the extras are in, not as a controller with test screens. Opt in from Play Console's Target audience section when planning a public release. The app already targets ages 6 and up under the Families policy.
+
 ## Non-functional requirements
 
 v1's requirements still apply. These are added or changed.
