@@ -1,8 +1,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- Android TV: no touchscreen needed. Leanback is optional so the APK can
-         also be sideloaded onto emulators and non-TV devices for quick checks. -->
+    <!-- Android TV only (PRD v2 M8): leanback is required, so Google Play offers
+         Thumb Party TV only to TVs, and phones and tablets see only Thumb Party.
+         Android doesn't check features when installing with adb, so the APK can
+         still be put on an emulator or another device for quick checks. -->
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
-    <uses-feature android:name="android.software.leanback" android:required="false" />
+    <uses-feature android:name="android.software.leanback" android:required="true" />
 
     <!-- Run the controller server and advertise it with mDNS (NSD). -->
     <uses-permission android:name="android.permission.INTERNET" />

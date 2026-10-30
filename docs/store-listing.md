@@ -27,6 +27,7 @@ Copy these into Google Play Console and App Store Connect. Graphics are in `asse
 
 - **App name**: Thumb Party TV
 - **Package**: `com.thumbparty.tv`
+- **Devices**: Android TV only (leanback is required, so Play doesn't offer it to phones or tablets). First add the **Android TV** form factor (Test and release → Advanced settings → Form factors); the store listing then shows the TV banner and TV screenshot fields.
 - **Category**: Game → Casual
 - **Short description**:
   > The big screen for Thumb Party. Phones become controllers on your TV.
