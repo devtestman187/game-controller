@@ -1,11 +1,25 @@
 # Analyze, test and build the Dart/Android/Windows parts on every PR and push to main.
 # iOS builds run on Codemagic (codemagic.yaml); the macOS fallback is ios-fallback.yml.
+# Pushes that only change docs, the tester site or store images are skipped: each run downloads
+# about 2 GB of cached Flutter toolkit, and GitHub limits cache downloads per account.
 name: CI
 
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+      - 'site/**'
+      - 'assets/branding/**'
+      - 'tools/branding/**'
   pull_request:
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+      - 'site/**'
+      - 'assets/branding/**'
+      - 'tools/branding/**'
   workflow_dispatch:
 
 concurrency:
