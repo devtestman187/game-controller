@@ -154,7 +154,7 @@ The aim is to explain why a control type feels good or bad, not just to count us
 - **One summary per session.** The TV joins both sides into a session summary (JSON) saved on the TV. The Stats screen reads these files, and they can be exported.
 - **Phone hosts do the same.** From M12, a host phone or tablet takes the TV's place in all of this (S6): it collects, saves, shows, exports and, with consent, uploads.
 - **Device class.** Every summary records whether each device is a phone, a tablet or a foldable, with its physical screen size and whether it can vibrate, so tablet results are compared with like for like.
-- **Opt-in upload.** With the adult's consent, the TV uploads each session summary to a small cloud store and queues them while offline. The proposed store is Firebase Firestore through its REST API, so the same code runs on Android TV and Windows. Security rules allow create only, with no reads from the apps.
+- **Opt-in upload.** With the adult's consent, the TV uploads each session summary to a small cloud store and queues them while offline. The store is Firebase Firestore (free plan) through its REST API, in a project owned by the same Google account as the Play developer account, so the same code runs on Android TV and Windows. Security rules allow create only, with no reads from the apps.
 - **Report tool.** A command-line report downloads the uploaded summaries (or reads exported files) and prints per-mode and per-device comparison tables and CSV.
 
 **What it records**
@@ -241,7 +241,7 @@ The rules are the same. Only the view changes, because a phone screen is small a
 | Drop-ready highlight | While a held piece is within tolerance of a matching outline, the outline brightens and the phone gives a light tick, so players learn what "close enough" means. On by default, a playtest setting |
 | Big pieces | Team puzzles (sides with two players) have 1 or 2 big pieces. When both teammates hold one, it moves at normal speed, following the average of their two inputs, and either player can rotate or drop it. One player alone can carry it at a reduced speed. While someone carries it alone, it flashes an edge toward the free teammate, who also feels a "help" haptic (at most every 3 seconds). For a solo player (1 player, 1 vs 1, or the solo side in 2 vs 1), big pieces carry at full speed |
 | Time limit | 2 minutes for every level (playtest setting) |
-| Ending | The round ends when a side finishes, or at time-up. A finished side always beats an unfinished one. At time-up, the side with more correct pieces wins. A tie on pieces goes to the side that placed its last correct piece first (proposed), and if that's also equal, it's a draw. Wrong pieces don't subtract |
+| Ending | The round ends when a side finishes, or at time-up. The first side to finish wins. At time-up, the side with more correct pieces wins. Equal counts (including none on either side) are a draw. Wrong pieces don't subtract |
 | Last 15 seconds | The clock turns red and ticks, and every phone gets a light pulse each second |
 | Hint glow | When a player has held the same piece for a set time (default 10 seconds), its matching outline glows gently until it is placed or dropped |
 
@@ -263,7 +263,7 @@ The rules are the same. Only the view changes, because a phone screen is small a
 1. The home screen's game picker leads to Puzzle and then the difficulty choice.
 2. On the join screen, players press A to join and left or right to pick a side. The mode follows from who joined, and 1, 2, 3 or 4 players are all allowed.
 3. Start shows a 3-2-1-Go countdown and the round begins.
-4. Start during play pauses the round for everyone (proposed).
+4. Any player can press Start during play to pause the round for everyone. The player who paused, or Player 1, can resume it, so Player 1 can always override a pause.
 5. The results screen shows the winner, times, pieces and any new record, with confetti, the win sound and a success haptic for the winners.
 6. The results screen offers Rematch (same teams, new random puzzle), Change teams or Back.
 7. Each phone shows the controls rating (C19).
@@ -492,7 +492,7 @@ Milestone 8 lets anyone install the apps from a link: Google Play testing for bo
 - Android AABs for the phone and TV, uploaded to the closed testing tracks, with testers joining through a Google Group link.
 - Windows release zip on GitHub Releases for each tag, with SmartScreen and firewall steps in the guide.
 - Store listings: short descriptions, icons, screenshots, the TV banner, Data safety and App privacy forms (no data collected yet), and export compliance (standard encryption only).
-- Privacy policy page (first version) and a one-page tester guide, both published on GitHub Pages (proposed): how to join, install, connect to the same Wi-Fi, pair and report problems.
+- Privacy policy page (first version) and a one-page tester guide, both published on GitHub Pages from this repository: how to join, install, connect to the same Wi-Fi, pair and report problems.
 - In-app version shown in Diagnostics and on the TV home screen, so testers can say which build they have.
 
 **Acceptance tests**
@@ -596,7 +596,7 @@ Milestone 11 turns the puzzle into a race between sides and teams, with big piec
 - Split-screen layout with a board and tray per side, and players kept to their own half.
 - Big pieces: carried by two players, carried alone at reduced speed, edge flash and help haptic. Full speed for solo players.
 - Ending and tie rules, and the results screen with Rematch, Change teams and Back (T14).
-- Pause with Start.
+- Pause with Start: any player pauses, and the player who paused or Player 1 resumes.
 - Team and side metrics: help calls, solo big-piece carries, win, loss or draw by mode.
 - Unit tests for the end-of-round rules, ties and big-piece movement.
 - Simulated controllers can join, so 4-player layouts can be checked with fewer phones.
@@ -604,7 +604,8 @@ Milestone 11 turns the puzzle into a race between sides and teams, with big piec
 **Acceptance tests**
 
 - [ ] Two players race side by side, and the first to finish wins with their time shown.
-- [ ] At time-up the side with more correct pieces wins, and the tie rules work in a staged tie.
+- [ ] At time-up the side with more correct pieces wins, and a staged tie on pieces (including 0 vs 0) ends in a draw.
+- [ ] Any player can pause with Start. Another player (not Player 1) can't resume someone else's pause, and Player 1 can resume any pause.
 - [ ] In 2 vs 2, a big piece moves at normal speed with both teammates on it, slowly with one, and calls the other with an edge flash and a help haptic.
 - [ ] In 2 vs 1, the solo player carries big pieces at full speed.
 - [ ] Rematch keeps the teams, and Change teams goes back to the join screen.
@@ -629,7 +630,7 @@ Milestone 12 lets a group play with only their phones. One phone hosts, the othe
 - Show on this device (C34): a host option for a shared screen with no controls on top, mainly for tablets.
 - The arena game on phones: the whole field on every phone, with the same overlay controls.
 - Host-side data on the host phone (C29): consent prompt, stats, best times, playtest settings.
-- Host leaves or drops: everyone sees "Waiting for host", and the round pauses for up to 30 seconds (proposed) for the host to come back before it ends. A joined phone that drops can rejoin, as with a TV.
+- Host leaves or drops: everyone sees "Waiting for host", and the round pauses for up to 30 seconds for the host to come back before it ends. A joined phone that drops can rejoin, as with a TV.
 - Latency stages for joined phones (S7) and the host phone's temperature and battery in the session summary.
 - Tester guide updated with a "No TV? Host on a phone" section.
 
@@ -663,7 +664,7 @@ Milestone 13 adds the touches that make the game fun, completes the puzzle set, 
 - A playtest round with outside testers, including at least one child around 8 and at least one group playing on phones only, using a short observation sheet in /docs alongside the metrics.
 - Tuning: adjust defaults from the playtest and the metrics, and record the final values in docs/decisions.md.
 - Final README updates, tester guide, and manual checklists for M7 to M13 in /docs/checklists.
-- Protocol spec finished and published with the tester guide (P1), and `sim_controller --check` (P7).
+- Protocol spec finished and published with the tester guide (P1) under CC BY 4.0, and `sim_controller --check` (P7). Code published for others to build on is under Apache 2.0, with LICENSE files added.
 - A short v3 recommendation in /docs choosing the platform path, based on the playtest, the metrics and tester requests.
 
 **Acceptance tests**
@@ -704,7 +705,7 @@ The largest new risk is store review and policy. Outside testing depends on two 
 | --- | --- |
 | Apple's reviewer can't test a controller without a host, and rejects the build | Review notes explaining the setup, a link to the Windows build, and the "Try without a TV" demo screen. From M12 the reviewer can also play a solo game on the phone alone |
 | Store accounts or reviews take longer than expected | Start the sign-ups in M7, and keep iLoader and local APKs as fallbacks for the developer |
-| The stores treat the game as one children use and apply stricter rules | Anonymous, opt-in analytics with no advertising IDs or third-party analytics SDKs, and a clear privacy policy. Declare the target audience carefully (open question) |
+| The stores treat the game as one children use and apply stricter rules | Anonymous, opt-in analytics with no advertising IDs or third-party analytics SDKs, and a clear privacy policy. The listings declare a general family audience, and the listing text and art are checked so they don't read as made for children alone. If Google still treats it as appealing to children, the privacy design already fits its Families policy |
 | Continuous rotation is too hard for young players | Angle tolerance, the drop-ready highlight, few rotated pieces on Easy, hint glow, and tuning in the playtest |
 | Bigger face buttons crowd the sticks on small phones | Size setting with a no-overlap rule, and layout tests on a small screen size |
 | Older and budget Android devices feel worse (weak vibration, noisy gyros, slow touchscreens) or host poorly | The analytics record the device model and class, so their results can be separated. M12 checks hosting on the slowest device available and warns when a device is too slow to host smoothly |
@@ -742,21 +743,22 @@ The largest new risk is store review and policy. Outside testing depends on two 
 - Tablets are supported in v2: iPad and Android tablets as controllers (M7), in the store builds (M8), and as hosts or a shared screen (M12). Test devices are an Android tablet on Android 15 and an iPad on iPadOS 26.
 - The controller's Android minimum drops from 16 to 12 (API 31), matching the TV app, for about four times the device reach with no code changes. Android 12 is checked on an emulator.
 - In v2, if the host phone leaves, the round pauses for 30 seconds and then ends. Host takeover, where another phone carries on as host from the latest snapshot, is a v3 item.
+- The store listings declare a general family audience: on Google Play the target age groups are 13 and over (children play with adults), and on the App Store the app is outside the Kids category.
+- The privacy policy and tester guide are published on GitHub Pages from this repository, which is already public.
+- The cloud store is Firebase Firestore on the free plan, owned by the same Google account as the Play developer account.
+- When the protocol spec is published (M13), it goes out under CC BY 4.0, and code for others to build on goes out under Apache 2.0.
+- Any player can pause with Start. The player who paused, or Player 1, can resume, so Player 1 can always override a pause.
+- In Shape Race the first side to finish wins. At time-up, the side with more correct pieces wins, and equal counts (including none) are a draw.
+- When the host phone leaves, the round waits 30 seconds for it to come back.
 - Fire TV (Fire OS) is added once a test device is available. Apple TV, Samsung, LG, Roku and Fire TV's Vega OS are v3 receiver candidates, and a device's role is kept separate from who connects to whom (S3).
 
 **Open questions**
 
-- **Target audience declaration.** Should the store listings declare a general audience ("for families") or include children under 13? Including children brings Google's Families policy and Apple's Kids rules.
-- **Privacy policy and tester guide hosting.** GitHub Pages is the proposal. Is a public repository acceptable, or should the pages live elsewhere?
-- **Cloud store.** Firebase Firestore (free plan) is the proposal. Is a Google account for the project acceptable?
-- **Pause.** Should any player be able to pause with Start, or only Player 1?
-- **Tie rule.** Is "the side that placed its last correct piece first wins" the right tie-breaker, or should a tie on pieces be a draw?
-- **Phone-hosted round when the host leaves.** Is a 30-second pause long enough? It is a playtest setting until M13 settles it.
-- **Licence for the spec.** The protocol spec is published in M13, and others will build on it in v3. Should it go out under an open licence (for example CC BY for the spec and MIT for future kits), or stay closed until v3?
+- None. All questions from the October 29 review are answered above.
 
 **Next steps**
 
-- [ ] Review this draft and answer the open questions.
+- [x] Review this draft and answer the open questions. Done Oct 29, 2026.
 - [ ] Start the Apple Developer Program enrollment and the Google Play developer account.
 - [x] Search the US trademark database (USPTO) for "Thumb Party" before the first store upload in M8. Done Oct 29, 2026: no filings for "Thumb Party", "thumbparty" or "Shape Race" (live or dead). The closest mark, THUMB PART, covers wigs. This covers US filings only, not unfiled use or other countries.
 - [ ] Give Claude Code the Milestone 7 section, and move on only after its acceptance tests pass.
