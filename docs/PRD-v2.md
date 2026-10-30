@@ -11,7 +11,7 @@ It makes three changes, plus groundwork for a fourth:
 1. **Better controller.** The A, B, X and Y buttons in analog stick mode get bigger and easier to hit, with a size setting for playtests.
 2. **Analytics.** The phone and TV record how each control type (D-pad, gyro, sticks) is used and how it performs. This includes latency, empty taps, near misses, button frequency and game results, so we can tell what makes each mode fun or frustrating.
 3. **A real game.** A collaborative puzzle game for 1 to 4 players, simple enough for an 8-year-old. Players race the clock, or each other, to carry and rotate shape pieces into an outline.
-4. **Platform groundwork.** A written protocol spec, a game-facing host interface that doesn't depend on any engine, and controls the game can define on the phone. These are cheap now and hard to add later. v3 then picks how other games use the controller: a kit for game engines, a PC bridge for existing games, or both (see Platform direction).
+4. **Platform groundwork.** A written protocol spec, a game-facing host interface that doesn't depend on any engine or device, and controls the game can define on the phone. These are cheap now and hard to add later. The preferred v3 direction is a framework for games that run on a phone and stream to the TV, so v2 also keeps the host from being tied to the TV (see Platform direction).
 
 Testers install everything through the standard app stores: Google Play testing for the Android phone and TV apps, and TestFlight for the iPhone. The Windows host is a download. No sideloading tools are needed.
 
@@ -48,7 +48,7 @@ v2 succeeds when someone who isn't the developer can follow a one-page guide and
 - A public production release on the Play Store or App Store. v2 stays on testing tracks. Production is a later step.
 - Internet play. This is still a firm non-goal. The only internet use in v2 is the opt-in analytics upload.
 - Acting as a Bluetooth gamepad (HID). Still a firm non-goal: iPhones can't do it, and free Android apps already do.
-- Building the engine kits (Unity, Godot), the PC bridge or a browser controller. These are v3 candidates. v2 only lays the groundwork.
+- Building the phone-hosted streaming framework, the engine kits (Unity, Godot), the PC bridge or a browser controller. These are v3 candidates, with streaming preferred. v2 only lays the groundwork (P1 to P7, S1 to S7).
 - Apple TV, Samsung or LG hosts. Android TV and Windows stay the only hosts. A macOS host is a possible later option.
 - Online leaderboards. Best times stay on the TV that recorded them.
 
@@ -281,6 +281,7 @@ The controller is only useful if games can use it. v2 does the cheap groundwork,
 | Path | What it is | Verdict |
 | --- | --- | --- |
 | Games in our host app | Puzzle and Arena, built by us | v2 (current plan) |
+| Phone-hosted games with a custom stream | The game runs on one phone, which is also the host the other phones connect to. The phone encodes the game as low-latency video and streams it to a receiver app on the TV or PC. Packaged as a framework that other developers can build games with | **Preferred v3 direction.** Target delay roughly 50–100 ms, against about 6 ms today. Needs native video encoding on both phone platforms (heavy on iOS), a receiver app, and a phone that stays in the foreground while hosting |
 | Engine kits | Host libraries for Unity (C#) and Godot that follow the spec, so other developers can build phone-controlled games. Each phone appears as a normal gamepad in the engine, with extras on top (haptics, gyro, players joining, game-defined controls) | v3 candidate. The stronger product |
 | PC bridge | A Windows app that turns our input into keyboard presses (no driver needed), and later possibly a virtual Xbox controller, so existing PC games work | v3 candidate. Quick usefulness, crowded market. The standard virtual-controller driver (ViGEmBus) was retired in Nov 2023 |
 | Browser controller | The TV serves a controller web page that guests open by scanning a QR code, with no install | v3 candidate, as a guest option. iPhone browsers can't vibrate, and iPhone gyro needs HTTPS |
@@ -299,11 +300,28 @@ The controller is only useful if games can use it. v2 does the cheap groundwork,
 | P6 | Phone status panel: a `status` message shows a small panel on the phone with a short text, one simple shape with a colour and angle, and a progress bar. It is limited in size and sent at most 10 times a second. In the puzzle it shows the held piece and the time left | M10 |
 | P7 | Conformance check: `sim_controller --check` runs the spec's required exchanges (pairing, heartbeats, input, haptics, capabilities, layout and status) against any host and prints pass or fail, so a future engine kit can test itself | M12 |
 
+**Keeping streaming possible**
+
+v2 builds no streaming, but a few rules keep the host from being tied to the TV, so the v3 framework doesn't need breaking changes.
+
+| ID | Rule | Milestone |
+| --- | --- | --- |
+| S1 | Host anywhere: the game host interface (P3), the server and the games run unchanged on a phone. Nothing in them assumes a TV, a remote or a particular screen | M9 onward |
+| S2 | Local players: the host interface accepts players whose input comes from the same device, not the network, as a future host phone's own player would. In v2 this is a keyboard player on the Windows build, which also helps testing | M9 |
+| S3 | Device roles: `hello` carries a `role`. Only `controller` is used in v2, and `display` is reserved for a stream receiver. The spec keeps the message channel separate from any future video and audio channel | M9 |
+| S4 | Render to a given size: games draw into the box they are given, with 16:9 as the reference, and never read the device's screen size. A future host can then draw the game off-screen at the stream's resolution | M10 |
+| S5 | Sound through the host: games play sounds by event name through the host interface, not directly through the audio package. A future host can then stream the audio, or tell the receiver to play the event from its own copy of the sound | M10 |
+| S6 | Host-side data: analytics, best times and playtest settings belong to whichever device hosts, and each session summary records the host type (Android TV, Windows, later a phone) | M9 |
+| S7 | Latency in stages: delay is recorded as named stages (input sent, input received by the host, frame drawn with that input), not as one number. Streaming can add encode, network, decode and display stages later, and the results stay comparable | M9 |
+
 **How v3 will choose**
 
-- **Engine kits first** if the playtests show the native controller is the draw (good ratings, low frustration signals, interest from developers).
-- **PC bridge first** if testers mostly ask to use it with games they already own.
-- **Browser controller** if installing the app is the main thing stopping casual guests from joining.
+The custom stream framework is the preferred direction. The v2 results still decide its shape and what comes alongside it:
+
+- **The stream framework** goes ahead if the playtests show people enjoy the native controller (good ratings, low frustration signals). It starts with a latency prototype, because the delay decides whether fast games work over a stream.
+- **Engine kits** are the alternative if other developers would rather keep their own engine, or if streaming delay is too high for the games people want.
+- **A PC bridge** comes first if testers mostly ask to use the controller with games they already own.
+- **A browser controller** comes in if installing the app is the main thing stopping casual guests from joining.
 
 ## Non-functional requirements
 
@@ -317,6 +335,7 @@ v1's requirements still apply. These are added or changed.
 | Privacy | Anonymous, opt-in, no advertising IDs, data limited to gameplay, privacy policy published. Written so it stays compliant if the stores treat the app as one that children use |
 | Protocol | Metrics batches, ratings, nicknames, layouts, the status panel and the new haptic events are additive messages, announced through capabilities (P2), so slightly older and newer builds still work together. A breaking change raises the version number, which is rejected with a clear "update the app" message, and testers update through the stores |
 | Engine independence | packages/protocol and packages/connection stay pure Dart with no Flutter dependency, and games reach the connection only through the game host interface (P3) |
+| Host independence | Games and the host interface make no TV-specific assumptions, so a phone can host later (S1 to S7) |
 | Install | A tester can install every app from the stores or the Windows download without developer tools, USB cables or sideloading apps |
 | Store compliance | Builds meet each store's current target-API and SDK rules, and listings include the privacy policy and data disclosures |
 
@@ -416,6 +435,7 @@ Milestone 9 records how each control type is used and how it performs, shows it 
 - Protocol additions: capabilities (P2), metrics batches and the rating message (C18).
 - Game host interface (P3) and standard gamepad mapping (P4) in packages/connection, with the arena game and the TV's test screens moved onto it.
 - First version of docs/protocol.md (P1).
+- Streaming-ready rules for this milestone: local players with a keyboard player on Windows (S2), `role` in `hello` (S3), host-side data with the host type (S6), latency recorded in stages (S7).
 - Phone touch metrics in all three modes: empty taps, near misses, slide-offs, rapid repeated taps, press counts and durations, stick and tilt metrics.
 - TV metrics: latency (median, 95th percentile, max), connection health, arena game events.
 - Rating prompt after arena rounds (C19).
@@ -437,6 +457,8 @@ Milestone 9 records how each control type is used and how it performs, shows it 
 - [ ] The arena game and the TV's test screens work as before, now through the game host interface. packages/protocol and packages/connection still have no Flutter dependency.
 - [ ] The M8 store build of the controller still works with the M9 TV app, and the reverse, thanks to capabilities.
 - [ ] docs/protocol.md describes every message the apps send. A reviewer can check each field against the code.
+- [ ] On the Windows build, a keyboard player and a phone play the arena game together.
+- [ ] The latency screen and the session summary show the delay broken into stages.
 
 ## Milestone 10: Puzzle game, 1 player
 
@@ -455,6 +477,7 @@ Milestone 10 builds the core of the puzzle game for one player, so carrying, rot
 - Game picker (T11) and playtest settings screen (T16).
 - New haptic events and sounds for snap, wrong and drop-ready (C21).
 - `layout` and `status` messages (P5, P6), shown on the phone in every mode (C24). The puzzle labels A "Pick up" and X and Y "Rotate", hides unused buttons, and shows the held piece and the time left on the phone. The puzzle uses only the game host interface (P3).
+- The puzzle draws into the box it is given (S4) and plays its sounds through the host interface (S5). The arena game is changed to match.
 - Puzzle metrics added to the session summary: completion time, wrong drops, rotation time and overshoots, angle and position error at drop.
 - Unit tests: matching with symmetric and identical pieces, tolerance edges, lock and red states, results.
 
@@ -469,6 +492,7 @@ Milestone 10 builds the core of the puzzle game for one player, so carrying, rot
 - [ ] The arena game is still available from the game picker.
 - [ ] In the puzzle the phone shows "Pick up" on A and "Rotate" on X and Y, hides buttons the puzzle doesn't use, and shows the held piece turning as it rotates. Back on the arena game, the phone returns to its usual buttons.
 - [ ] With labels and the status panel showing, no control is smaller than before in any mode.
+- [ ] A widget test draws the puzzle at 1280 by 720 in a box smaller than the window and at TV size, and the layout is the same apart from scale. The puzzle's sounds still play, through the host interface.
 
 ## Milestone 11: Puzzle game, 2 to 4 players
 
@@ -563,6 +587,7 @@ The largest new risk is store review and policy. Outside testing depends on two 
 | Windows SmartScreen and firewall prompts confuse testers | Step-by-step guide with screenshots. Code signing later |
 | Codemagic free minutes run low with signing and TestFlight uploads | Keep path filters and tag-only uploads, and upgrade if needed |
 | The host interface and spec end up shaped around our own games, so an engine kit would need breaking changes | Keep both game-neutral (no puzzle-specific messages), check the spec against two different games (Arena and Puzzle), and add the conformance check |
+| A rule that ties the host to the TV slips in unnoticed, making the v3 streaming framework a rewrite | Rules S1 to S7, with tests in M9 and M10. The keyboard player and the off-screen drawing test exercise them on every build |
 | Game-defined labels and the status panel crowd the controls | Labels sit on or beside existing controls, the panel goes in the top bar, and a test checks control sizes |
 
 **Decisions (October 29, 2026)**
@@ -578,7 +603,8 @@ The largest new risk is store review and policy. Outside testing depends on two 
 - Players set up matches on a join screen. Three players play 2 vs 1, and the solo player carries big pieces at full speed.
 - Extras: countdown and celebration, last-15-seconds warning, hint glow and a best-times board.
 - The time limit is 2 minutes on every level (a playtest setting). There are 3 levels with about 3 puzzles each.
-- v2 stays focused, but does the cheap platform groundwork: protocol spec, capabilities, game host interface, standard gamepad mapping, game-defined controls, status panel and a conformance check. v3 picks among engine kits, a PC bridge and a browser controller. Bluetooth gamepad mode stays a non-goal.
+- v2 stays focused, but does the cheap platform groundwork: protocol spec, capabilities, game host interface, standard gamepad mapping, game-defined controls, status panel and a conformance check. v3 picks the platform path. Bluetooth gamepad mode stays a non-goal.
+- The preferred v3 direction is a framework for phone-hosted games that stream low-latency video to a receiver on the TV, built for other developers to use. It stays out of v2 except for the streaming-ready rules S1 to S7.
 
 **Open questions**
 
@@ -588,6 +614,7 @@ The largest new risk is store review and policy. Outside testing depends on two 
 - **Cloud store.** Firebase Firestore (free plan) is the proposal. Is a Google account for the project acceptable?
 - **Pause.** Should any player be able to pause with Start, or only Player 1?
 - **Tie rule.** Is "the side that placed its last correct piece first wins" the right tie-breaker, or should a tie on pieces be a draw?
+- **Licence for the spec.** The protocol spec is published in M12, and others will build on it in v3. Should it go out under an open licence (for example CC BY for the spec and MIT for future kits), or stay closed until v3?
 
 **Next steps**
 
