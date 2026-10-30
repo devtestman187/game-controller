@@ -6,14 +6,15 @@ Oct 29, 2026 · @Manveer · Draft for review. Builds on v1 (docs/PRD.md, milesto
 
 Version 2 turns the working controller and test bench from v1 into something people other than the developer can install, play and learn from.
 
-It makes three changes, plus groundwork for a fourth:
+It makes four changes, plus groundwork for v3:
 
 1. **Better controller.** The A, B, X and Y buttons in analog stick mode get bigger and easier to hit, with a size setting for playtests.
 2. **Analytics.** The phone and TV record how each control type (D-pad, gyro, sticks) is used and how it performs. This includes latency, empty taps, near misses, button frequency and game results, so we can tell what makes each mode fun or frustrating.
 3. **A real game.** A collaborative puzzle game for 1 to 4 players, simple enough for an 8-year-old. Players race the clock, or each other, to carry and rotate shape pieces into an outline.
-4. **Platform groundwork.** A written protocol spec, a game-facing host interface that doesn't depend on any engine or device, and controls the game can define on the phone. These are cheap now and hard to add later. The preferred v3 direction is a framework for games that run on a phone and stream to the TV, so v2 also keeps the host from being tied to the TV (see Platform direction).
+4. **Play without a TV.** One phone hosts the game and the other phones join it. Every phone shows the game with its controls laid over it, at an opacity the player sets. A family with only phones can play.
+5. **Platform groundwork.** A written protocol spec, a game-facing host interface that doesn't depend on any engine or device, and controls the game can define on the phone. These are cheap now and hard to add later. The preferred v3 direction is a framework for games that run on a phone and stream to the TV. Phone hosting in v2 is its first half (see Platform direction).
 
-Testers install everything through the standard app stores: Google Play testing for the Android phone and TV apps, and TestFlight for the iPhone. The Windows host is a download. No sideloading tools are needed.
+Testers install everything through the standard app stores: Google Play testing for the Android phone and TV apps, and TestFlight for the iPhone. The Windows host is a download. No sideloading tools are needed, and with phone hosting, no TV or PC is needed either.
 
 ## Where v1 left off
 
@@ -42,19 +43,21 @@ v2 succeeds when someone who isn't the developer can follow a one-page guide and
 - Installs through Google Play testing tracks, TestFlight and a Windows download, with no sideloading tools.
 - Milestones that each end in builds delivered through that pipeline (from M8 on) and a device-test gate.
 - A protocol and host interface that another engine or a PC bridge could implement from the written spec alone, proven by our own games using nothing else.
+- Phone-hosted play for 1 to 4 players on Android and iPhone, with every phone showing the game, so no TV or PC is required.
+- Tablets (iPad and Android) work as controllers, as hosts and as a shared screen, and the controller runs on Android 12 and later, so most families' existing devices can join.
 
 **Non-goals**
 
 - A public production release on the Play Store or App Store. v2 stays on testing tracks. Production is a later step.
 - Internet play. This is still a firm non-goal. The only internet use in v2 is the opt-in analytics upload.
 - Acting as a Bluetooth gamepad (HID). Still a firm non-goal: iPhones can't do it, and free Android apps already do.
-- Building the phone-hosted streaming framework, the engine kits (Unity, Godot), the PC bridge or a browser controller. These are v3 candidates, with streaming preferred. v2 only lays the groundwork (P1 to P7, S1 to S7).
-- Apple TV, Samsung or LG hosts. Android TV and Windows stay the only hosts. A macOS host is a possible later option.
-- Online leaderboards. Best times stay on the TV that recorded them.
+- Streaming video, or building the streaming framework, the engine kits (Unity, Godot), the PC bridge or a browser controller. These are v3 candidates, with streaming preferred. v2 only lays the groundwork (P1 to P7, S1 to S9) and phone hosting.
+- Apple TV, Samsung, LG, Roku or Fire TV apps. The hosts are Android TV, Windows and, from M12, phones. Fire TV (Fire OS) is a cheap later addition once a test device is available, and the rest are v3 stream-receiver candidates (see Platform direction).
+- Online leaderboards. Best times stay on the device that hosted the game.
 
 ## Users and key scenarios
 
-The users are now the developer and outside testers: families and friends with an Android or iOS phone and either an Android or Google TV or a Windows PC. Some players are children, around age 8, playing with an adult.
+The users are now the developer and outside testers: families and friends with an Android or iOS phone or tablet, and optionally an Android or Google TV or a Windows PC. Some players are children, around age 8, playing with an adult.
 
 1. **Install.** A tester opens a link, joins the test, and installs the TV app from the Play Store on the TV (or downloads the Windows build). Each player installs the controller from Google Play or TestFlight.
 2. **Consent.** On first launch, the TV asks the adult whether to share anonymous gameplay stats. The answer is saved and can be changed in settings.
@@ -62,6 +65,7 @@ The users are now the developer and outside testers: families and friends with a
 4. **Play.** Players move their dots, pick up pieces with A, rotate them with X and Y (or the right stick), and drop them into the outline. Wrong drops turn red. A big piece calls for a teammate's help.
 5. **Finish.** A celebration, the results, a new best time if there is one, and a quick "How did the controls feel?" question on each phone.
 6. **Review.** The developer opens the stats report and compares D-pad, gyro and stick play across testers and devices.
+7. **No TV.** In the car or at a friend's house, one player taps "Host a game" on their phone and picks Puzzle. The others join with the code shown on the host phone. Each phone shows the game with see-through controls on top, and in the puzzle each phone zooms to its own side's board.
 
 ## Constraints and assumptions
 
@@ -75,6 +79,9 @@ The biggest change from v1 is that the stores are now part of the pipeline. Each
 - **Development stays on Windows.** iOS builds stay on Codemagic, which now signs them and uploads to TestFlight. Android builds can stay local or move to CI.
 - **Store package names are permanent.** The Play Store never allows an app ID to change, so the final IDs must be chosen before the first upload (see Open questions).
 - **Assets.** CC0 assets as before (Kenney packs, jsfxr, ChipTone). The sounds and any music for the puzzle game are logged in assets/CREDITS.md.
+- **Minimum versions.** The controller's Android minimum drops from Android 16 to Android 12 (API 31), the same as the TV app. That lifts its reach from about a quarter of active Android devices to about four-fifths (StatCounter, mid-2026, rough). No code changes are needed, because the newest Android feature it uses (the vibration manager) arrived in Android 12. iOS and iPadOS stay at 26.
+- **Test devices.** An Android phone, an iPhone, an Android tablet (Android 15), an iPad (iPadOS 26), the Android TV and the Windows laptop. Android 12 itself is checked on an emulator, which can't test haptics or gyro.
+- **Tablet platform rules.** On Android 16 and later, the system ignores an app's landscape lock on large screens (600dp and wider) unless the app declares itself a game. On iPadOS 26, apps run in resizable windows and the old "full screen only" setting is ignored, so orientation is locked per window. The controller must handle both, and cope with any window size.
 
 ## Controller app requirements
 
@@ -88,11 +95,21 @@ v2 adds these to v1's C1 to C13.
 | C17 | Touch metrics recorded on the phone for each input mode: presses per control, empty taps and their positions, near misses, slide-offs, rapid repeated taps, simultaneous touches, stick and tilt behaviour. Details are in Analytics requirements | M9 |
 | C18 | Metrics sent to the TV over the existing connection in small batches, and buffered on the phone while disconnected | M9 |
 | C19 | A "How did the controls feel?" prompt after a game: three faces plus optional tags (buttons too small, laggy, hard to steer, rotation hard). One tap, skippable, shown at most once every few games | M9 |
-| C20 | Optional player nickname (up to 10 characters) in settings, shown on the TV and on its best-times board. It never leaves the TV | M12 |
+| C20 | Optional player nickname (up to 10 characters) in settings, shown on the TV and on its best-times board. It never leaves the TV | M13 |
 | C21 | Haptic patterns for the new puzzle events (snap, wrong, help, tick, drop-ready), each with its own intensity setting like v1's four events | M10, M11 |
 | C22 | Store-ready builds: release signing, version numbers from the tag, app name and icon, privacy policy link in settings, and the "Allow apps from unknown sources" note removed from the docs | M8 |
 | C23 | "Try without a TV" demo screen that shows the controls responding with no host connected, for app reviewers and new testers checking their phone works | M8 |
 | C24 | Shows game-defined controls (P5) and the status panel (P6) in all three modes, without shrinking any control below its C14 size | M10 |
+| C25 | Host a game: "Host a game" on the connect screen runs the host on the phone. It advertises on the network, shows a pairing code and the join screen, and runs the game, with the host phone's owner playing as a local player (S2) | M12 |
+| C26 | Join a phone host: phone hosts appear in discovery next to TVs, labelled as phones, and pair with the code shown on the host phone | M12 |
+| C27 | Game view: on every phone in a phone-hosted game, the game is drawn from the host's snapshots (S8) with the same game code the TV uses. Game sounds and haptics play on each player's own phone | M12 |
+| C28 | Overlay controls: all three input modes drawn on top of the game view (S9), with an opacity setting (proposed 20% to 100%, default 60%) that is saved. Controls keep their C14 to C16 sizes and touch areas, and game-defined controls (P5) still apply | M12 |
+| C29 | The host phone keeps the host-side data (S6): consent prompt, stats, best times and playtest settings, the same as on the TV | M12 |
+| C30 | Android minimum lowered to Android 12 (API 31). An Android 12 emulator check (starts, pairs, lays out, plays) runs before each milestone tag | M7 |
+| C31 | Controls sized by physical size: every layout is sized in millimetres with a maximum size and anchored to the corners the thumbs reach, instead of scaling with the screen. Phones look as they do after C14, and on tablets the controls stay thumb-sized, leaving the middle free for the status panel or the game | M7 |
+| C32 | Orientation and window rules: the controller declares itself a game on Android (`android:appCategory="game"`, so the landscape lock still applies on large screens). The iPad orientation list is fixed to landscape only (today it allows portrait), with the per-window orientation lock that iPadOS 26 expects. The layout copes with resized and split-screen windows and shows "Make the window bigger" below a minimum size | M7 |
+| C33 | Feedback without haptics: on devices without vibration (every iPad, many Android tablets) controls flash when pressed and an optional click sound plays. Stick mode is the default on tablets. The haptics capability is recorded with the metrics | M7 |
+| C34 | Show on this device: a host option where the game fills the host's screen with no controls on top, as on a TV, and every player uses their phone as a controller. Meant for a tablet in the middle of the table, but works on any phone | M12 |
 
 ## TV app requirements
 
@@ -104,7 +121,7 @@ v2 adds these to v1's T1 to T10.
 | T12 | Puzzle game for 1 player (M10), then 2, 3 and 4 players (M11), as described in Puzzle game design | M10, M11 |
 | T13 | Join screen: players press A to join and left or right to choose a side or team. Difficulty is chosen with the remote or Player 1's controller | M11 |
 | T14 | Results screen with winner, times, pieces placed, and Rematch, Change teams and Back options | M11 |
-| T15 | Countdown, celebration, last-15-seconds warning, hint glow, best-times board | M12 |
+| T15 | Countdown, celebration, last-15-seconds warning, hint glow, best-times board | M13 |
 | T16 | Playtest settings screen with every tuning value in the puzzle design (tolerances, speeds, delays, time limit), saved on the TV, with Reset to defaults | M10 |
 | T17 | Analytics collection: receives phone metrics, adds TV-side metrics (latency, game events), writes one summary per session | M9 |
 | T18 | Stats screen: summary per session and per input mode, and export of the session files | M9 |
@@ -120,6 +137,8 @@ The aim is to explain why a control type feels good or bad, not just to count us
 - **The phone measures touch.** Only the phone knows about empty taps, near misses and slide-offs. It keeps counters for each stretch of time spent in one mode (a "mode segment"). It sends a small batch to the TV about every 10 seconds, on every mode switch and at disconnect. The batch goes at low priority, so input messages always go first.
 - **The TV measures everything else.** It records latency, connection health and game events for each player.
 - **One summary per session.** The TV joins both sides into a session summary (JSON) saved on the TV. The Stats screen reads these files, and they can be exported.
+- **Phone hosts do the same.** From M12, a host phone or tablet takes the TV's place in all of this (S6): it collects, saves, shows, exports and, with consent, uploads.
+- **Device class.** Every summary records whether each device is a phone, a tablet or a foldable, with its physical screen size and whether it can vibrate, so tablet results are compared with like for like.
 - **Opt-in upload.** With the adult's consent, the TV uploads each session summary to a small cloud store and queues them while offline. The proposed store is Firebase Firestore through its REST API, so the same code runs on Android TV and Windows. Security rules allow create only, with no reads from the apps.
 - **Report tool.** A command-line report downloads the uploaded summaries (or reads exported files) and prints per-mode and per-device comparison tables and CSV.
 
@@ -127,12 +146,12 @@ The aim is to explain why a control type feels good or bad, not just to count us
 
 | Group | Metrics | What it tells us |
 | --- | --- | --- |
-| Context | Random install ID per device (not tied to a person), device model, OS and app version, screen size, input mode, settings in effect (sensitivity, dead zone, smoothing, button size, fixed or floating sticks, haptics on and intensity), game and difficulty, player count | Lets results be compared fairly across phones and settings |
+| Context | Random install ID per device (not tied to a person), device model, OS and app version, screen size, input mode, settings in effect (sensitivity, dead zone, smoothing, button size, overlay opacity, fixed or floating sticks, haptics on and intensity), game and difficulty, player count, host type, and where the player watched the game (TV or PC screen, host phone, joined phone) | Lets results be compared fairly across phones and settings, and compares playing on a TV with playing on the phone's own screen |
 | Mode usage | Time in each mode, mode switches (from, to, and how long after starting), first mode chosen, games played and finished per mode, quits and disconnects mid-game | Which modes people choose and stay with. Switching away within the first minute is a frustration signal |
 | Touch accuracy | Presses per control, empty taps (touch that lands on no control) with position binned to a grid, near misses (empty tap within about 8 mm of a control, with the nearest control), slide-offs (touch starts on a button and drifts off it), rapid repeated taps (4 or more on one spot within 1 s), press duration, simultaneous controls held | Buttons that are too small or badly placed show up as near misses and slide-offs clustered around them |
 | Sticks | Time at full deflection, time inside the dead zone while touched, touches that start outside a fixed stick's circle, direction reversals while steering | Sticks that are too sensitive or too small, and fixed versus floating |
 | Gyro | Recalibrations, time at full tilt, steering oscillation (left-right reversals while aiming), time to settle on a target | Whether gyro steering is controllable or twitchy |
-| Responsiveness | Estimated one-way input delay (median, 95th percentile, max), ping, jitter, input messages per second, disconnects and time to reconnect, TV frame drops | Ties a bad experience to the network or the device instead of the controls |
+| Responsiveness | Estimated one-way input delay (median, 95th percentile, max), ping, jitter, input messages per second, disconnects and time to reconnect, frame drops on the host and on every phone showing the game, snapshot delay and gaps on joined phones, host phone temperature state and battery drop | Ties a bad experience to the network or the device instead of the controls |
 | Haptics | Events sent per type, haptics on or off, intensity | Whether haptics change outcomes or ratings |
 | Puzzle results | Completion time, pieces placed, wrong drops, pickups, time carrying each piece, time rotating each piece, rotation overshoots (reversing to correct), angle and position error at drop, hint glows shown, help calls, solo big-piece carries, win, loss or draw | How hard each mode makes the precise parts of play: steering, picking up and rotating |
 | Arena results | Wall hits, hazard hits, goals, round time, failed dashes | A second game to compare modes with |
@@ -146,8 +165,8 @@ The aim is to explain why a control type feels good or bad, not just to count us
 
 **Privacy rules**
 
-- Upload is off until an adult opts in on the TV. Each phone shows that stats are recorded and can opt out in settings.
-- No names, nicknames, email addresses, contacts, location, advertising IDs or Wi-Fi details are recorded or uploaded. Nicknames stay on the TV.
+- Upload is off until an adult opts in on the host (the TV, the PC or the host phone). Each phone shows that stats are recorded and can opt out in settings.
+- No names, nicknames, email addresses, contacts, location, advertising IDs or Wi-Fi details are recorded or uploaded. Nicknames stay on the host.
 - Empty-tap positions are stored only as counts on a coarse grid, never as a touch trace.
 - The privacy policy explains all of this in plain language and is linked from both apps and both store listings.
 
@@ -181,6 +200,17 @@ Each side builds the same shape picture against a 2-minute clock. Players carry 
 ```
 
 The trays sit at the outer edges and the boards toward the middle. Players stay inside their own half, and players on the same side pass through each other (proposed).
+
+**On phones (phone-hosted games, M12)**
+
+The rules are the same. Only the view changes, because a phone screen is small and the controls sit on top of it.
+
+- **Own side only.** Each phone zooms to its own side's board and tray. A strip along the top shows the clock and the other side's progress (for example "Right 3/6"). A solo player sees the whole board.
+- **Room for thumbs.** In landscape the thumbs cover the lower-left and lower-right corners. The phone view puts the board in the middle and the tray along the top edge, so pieces are rarely under the controls.
+- **Minimum size.** Pieces are never drawn smaller than about 9 mm across. Easy and Medium puzzles fit at that size on both test phones, and Hard ones are checked in M12.
+- **See-through controls.** Controls are drawn over the game at the player's opacity setting (C28). Game-defined labels (P5) still show.
+- **Status panel.** The phone status panel (P6) isn't needed when the game is on the phone itself, so it is hidden.
+- **Tablets.** A tablet showing the game with controls on top has room for both sides, so it shows the full split screen. With "Show on this device" (C34), a tablet shows the same view as a TV, and players use their phones as controllers.
 
 **Rules**
 
@@ -225,7 +255,7 @@ The trays sit at the outer edges and the boards toward the middle. Players stay 
 
 **Best-times board**
 
-The TV keeps the top 5 completion times for each puzzle and format (solo, 1 vs 1, team). Each entry shows the player colours and nicknames if set. "New record!" appears when one is beaten.
+The host (TV, PC or host phone) keeps the top 5 completion times for each puzzle and format (solo, 1 vs 1, team). Each entry shows the player colours and nicknames if set. "New record!" appears when one is beaten.
 
 **Controls in every mode**
 
@@ -252,11 +282,11 @@ Pickup, countdown and time-up also get sounds without haptics. All sounds come f
 
 **Readability and accessibility**
 
-- Pieces and outlines are large enough to read from about 3 m on a TV.
+- Pieces and outlines are large enough to read from about 3 m on a TV, and at least about 9 mm across on a phone.
 - Shapes, and not only colours, tell pieces apart, and right and wrong also show a ✓ or ✗, so colour-blind players can play.
 - Text on screen is short, because younger players may not read quickly.
 
-**Playtest settings (all on the TV's playtest settings screen)**
+**Playtest settings (all on the host's playtest settings screen)**
 
 | Setting | Proposed default |
 | --- | --- |
@@ -280,39 +310,55 @@ The controller is only useful if games can use it. v2 does the cheap groundwork,
 
 | Path | What it is | Verdict |
 | --- | --- | --- |
-| Games in our host app | Puzzle and Arena, built by us | v2 (current plan) |
-| Phone-hosted games with a custom stream | The game runs on one phone, which is also the host the other phones connect to. The phone encodes the game as low-latency video and streams it to a receiver app on the TV or PC. Packaged as a framework that other developers can build games with | **Preferred v3 direction.** Target delay roughly 50–100 ms, against about 6 ms today. Needs native video encoding on both phone platforms (heavy on iOS), a receiver app, and a phone that stays in the foreground while hosting |
+| Games in our host app | Puzzle and Arena, built by us, hosted on the TV or PC | v2 |
+| Phone-hosted play | One phone hosts and the other phones join it. Every phone draws the game from the host's state snapshots, with the controls laid over it. No video | **v2 (M12).** No TV or PC needed, delay close to today's |
+| Phone-hosted games streamed to a TV | The host phone sends the game to a receiver app on a TV or PC. **Snapshots first:** receivers that can run our game code (Android TV, Windows, and possibly Apple TV, Samsung and LG through Flutter's ports) draw the game from snapshots, with no video. **Video as the fallback:** a low-latency video stream for receivers that can't run our game code (Roku, Fire TV's Vega OS, web-based TV apps) and for games from other engines. Packaged as a framework that other developers can build games with | **Preferred v3 direction.** Snapshots keep the delay close to today's. Video adds roughly 50–100 ms and needs native encoding on both phone platforms (heavy on iOS) |
 | Engine kits | Host libraries for Unity (C#) and Godot that follow the spec, so other developers can build phone-controlled games. Each phone appears as a normal gamepad in the engine, with extras on top (haptics, gyro, players joining, game-defined controls) | v3 candidate. The stronger product |
 | PC bridge | A Windows app that turns our input into keyboard presses (no driver needed), and later possibly a virtual Xbox controller, so existing PC games work | v3 candidate. Quick usefulness, crowded market. The standard virtual-controller driver (ViGEmBus) was retired in Nov 2023 |
 | Browser controller | The TV serves a controller web page that guests open by scanning a QR code, with no install | v3 candidate, as a guest option. iPhone browsers can't vibrate, and iPhone gyro needs HTTPS |
 | Bluetooth gamepad | The phone pairs as a standard Bluetooth controller | Non-goal. Android only, already covered by free apps, no gyro or game haptics |
 | Consoles | Switch, PlayStation, Xbox | Not possible. They accept only licensed controllers |
 
+**TV platforms**
+
+The main limit on other TV platforms is that most of their apps can make outgoing connections but can't accept incoming ones. Today the TV is the host that phones connect to, so those TVs can't play that role. In the v3 model the phone hosts and the TV connects out to it as a display, which suits them (rule S3).
+
+| Platform | Status | Notes |
+| --- | --- | --- |
+| Google TV and Android TV (Sony, TCL, Hisense, Philips, Google TV Streamer, Chromecast with Google TV) | v2 host | Already supported |
+| Amazon Fire TV (Fire OS 7 and 8) | Later, when a test device is available | Same Android app with a lower minimum Android version (Fire OS 8 is API 30, Fire OS 7 is API 28, the TV app needs 31 today), and Amazon Appstore Live App Testing for testers |
+| Amazon Fire TV (Vega OS: Fire TV Stick 4K Select, 2026 Fire TV Stick HD) | v3 receiver candidate | Linux-based, runs React Native or web apps, no Android apps. Video receiver |
+| Apple TV | v3 receiver candidate | Flutter has no official Apple TV support, only a community port (`flutter_tvos`). Video decoding is a natural fit. TestFlight covers it with the paid account |
+| Samsung (Tizen), LG (webOS) | v3 receiver candidates | Web apps can't accept incoming connections. Samsung maintains a Flutter port for Tizen, and Flutter on webOS was reported for 2026. Tester installs need developer mode or store partnership |
+| Roku | Lowest priority | Its own language (BrightScript) and weak graphics. Video receiver at most |
+
 **What v2 does now**
 
 | ID | Requirement | Milestone |
 | --- | --- | --- |
-| P1 | Protocol spec in docs/protocol.md, covering discovery and its TXT records, pairing, tokens, heartbeats, close codes, every message and field, timing and throttling rules, and versioning. It grows from today's docs/architecture.md, is updated in every milestone that touches the protocol, and is published with the tester guide in M12 | M9, M12 |
+| P1 | Protocol spec in docs/protocol.md, covering discovery and its TXT records, pairing, tokens, heartbeats, close codes, every message and field, timing and throttling rules, and versioning. It grows from today's docs/architecture.md, is updated in every milestone that touches the protocol, and is published with the tester guide in M13 | M9, M13 |
 | P2 | Capabilities: `hello` and `welcome` list what each side supports (for example `metrics`, `layout`, `status`, `haptics:snap`). New messages stay additive, because unknown types are already ignored. The version number only changes for a breaking change. A host never sends a controller a message it hasn't listed | M9 |
 | P3 | Game host interface: one pure-Dart interface in packages/connection that every game and TV screen uses for players joining and leaving (with number, colour and nickname), each player's gamepad state, haptics, layouts, the status panel and latency. Our games use nothing else, so the interface is the template for future engine kits | M9 (Arena), M10 (Puzzle) |
 | P4 | Standard gamepad mapping: every input mode maps to one Xbox-style gamepad state (A, B, X, Y, LB, RB, Select, Start, D-pad, two sticks), plus extras such as raw tilt. Gyro maps to the left stick, and D-pad mode's buttons map to the same names. Documented in the spec, so a bridge or engine kit can present the phone as a normal gamepad | M9 |
 | P5 | Game-defined controls: a `layout` message lets the game set, for each player, the modes allowed (with the default), the buttons used, a short label for each (for example A "Pick up", X "Rotate ⟲"), and the buttons hidden. The phone shows the labels and dims or hides unused buttons. The player still chooses among the allowed modes | M10 |
 | P6 | Phone status panel: a `status` message shows a small panel on the phone with a short text, one simple shape with a colour and angle, and a progress bar. It is limited in size and sent at most 10 times a second. In the puzzle it shows the held piece and the time left | M10 |
-| P7 | Conformance check: `sim_controller --check` runs the spec's required exchanges (pairing, heartbeats, input, haptics, capabilities, layout and status) against any host and prints pass or fail, so a future engine kit can test itself | M12 |
+| P7 | Conformance check: `sim_controller --check` runs the spec's required exchanges (pairing, heartbeats, input, haptics, capabilities, layout and status) against any host and prints pass or fail, so a future engine kit can test itself | M13 |
 
-**Keeping streaming possible**
+**Keeping the host independent of the TV**
 
-v2 builds no streaming, but a few rules keep the host from being tied to the TV, so the v3 framework doesn't need breaking changes.
+v2 builds phone hosting (M12) but no streaming to a TV. These rules keep the host from being tied to the TV, so phone hosting in v2 and the v3 framework don't need breaking changes.
 
 | ID | Rule | Milestone |
 | --- | --- | --- |
-| S1 | Host anywhere: the game host interface (P3), the server and the games run unchanged on a phone. Nothing in them assumes a TV, a remote or a particular screen | M9 onward |
-| S2 | Local players: the host interface accepts players whose input comes from the same device, not the network, as a future host phone's own player would. In v2 this is a keyboard player on the Windows build, which also helps testing | M9 |
-| S3 | Device roles: `hello` carries a `role`. Only `controller` is used in v2, and `display` is reserved for a stream receiver. The spec keeps the message channel separate from any future video and audio channel | M9 |
+| S1 | Host anywhere: the game host interface (P3), the server and the games run unchanged on a phone. Nothing in them assumes a TV, a remote or a particular screen. M12 proves it | M9 onward, M12 |
+| S2 | Local players: the host interface accepts players whose input comes from the same device, not the network. In M9 this is a keyboard player on the Windows build, which also helps testing. In M12 it's the host phone's own player | M9, M12 |
+| S3 | Device roles: `hello` carries a `role`. v2 uses `controller` (a controller that also shows the game lists the `view` capability), and `display` is reserved for a v3 receiver. A role is separate from who connects to whom: the spec lets a display be the side that connects out, because most smart TV apps can't accept incoming connections. The spec keeps the message channel separate from any future video and audio channel | M9 |
 | S4 | Render to a given size: games draw into the box they are given, with 16:9 as the reference, and never read the device's screen size. A future host can then draw the game off-screen at the stream's resolution | M10 |
 | S5 | Sound through the host: games play sounds by event name through the host interface, not directly through the audio package. A future host can then stream the audio, or tell the receiver to play the event from its own copy of the sound | M10 |
-| S6 | Host-side data: analytics, best times and playtest settings belong to whichever device hosts, and each session summary records the host type (Android TV, Windows, later a phone) | M9 |
-| S7 | Latency in stages: delay is recorded as named stages (input sent, input received by the host, frame drawn with that input), not as one number. Streaming can add encode, network, decode and display stages later, and the results stay comparable | M9 |
+| S6 | Host-side data: analytics, best times and playtest settings belong to whichever device hosts, and each session summary records the host type (Android TV, Windows, phone) | M9 |
+| S7 | Latency in stages: delay is recorded as named stages (input sent, input received by the host, frame drawn with that input), not as one number. Phone hosting adds "snapshot received" and "frame drawn on the joined phone". Streaming can add encode, network, decode and display stages later, and the results stay comparable | M9, M12 |
+| S8 | Game state as snapshots: every game keeps its rules separate from its drawing, and draws only from a state snapshot that can be sent over the network. Snapshots are compact (proposed: under 2 KB for a 4-player puzzle) and versioned per game. Sound and haptic events travel with them | M10 (Puzzle and Arena) |
+| S9 | Controls as a layer: the controller screen can sit on top of any view with adjustable opacity, instead of assuming it owns the whole screen | M12 |
 
 **How v3 will choose**
 
@@ -330,25 +376,41 @@ v1's requirements still apply. These are added or changed.
 | Area | Requirement |
 | --- | --- |
 | Latency | Still under about 50 ms. Metrics add no more than 1 ms to the median input delay |
-| Game performance | The puzzle game runs at 60 frames per second on the test TV with 4 players and all effects on |
+| Game performance | The puzzle game runs at 60 frames per second on the test TV with 4 players and all effects on. On both test phones it runs at 60 frames per second while hosting 4 players, and while showing the game as a joined phone |
+| Phone-hosted delay | On a joined phone, the delay from a touch to the frame that shows it stays under about 50 ms on home Wi-Fi (measured with the S7 stages). Snapshots are sent about 30 times a second (proposed), and joined phones smooth between them |
+| Host phone battery and heat | A 15-minute, 4-player session on the host phone finishes without the phone throttling for heat, and its battery drop is recorded in the session summary |
 | Kid usability | In a playtest, an 8-year-old finishes an Easy puzzle within 2 minutes after one practice round, in at least one input mode |
 | Privacy | Anonymous, opt-in, no advertising IDs, data limited to gameplay, privacy policy published. Written so it stays compliant if the stores treat the app as one that children use |
 | Protocol | Metrics batches, ratings, nicknames, layouts, the status panel and the new haptic events are additive messages, announced through capabilities (P2), so slightly older and newer builds still work together. A breaking change raises the version number, which is rejected with a clear "update the app" message, and testers update through the stores |
 | Engine independence | packages/protocol and packages/connection stay pure Dart with no Flutter dependency, and games reach the connection only through the game host interface (P3) |
-| Host independence | Games and the host interface make no TV-specific assumptions, so a phone can host later (S1 to S7) |
+| Host independence | Games and the host interface make no TV-specific assumptions, so a phone can host (S1 to S9) |
 | Install | A tester can install every app from the stores or the Windows download without developer tools, USB cables or sideloading apps |
 | Store compliance | Builds meet each store's current target-API and SDK rules, and listings include the privacy policy and data disclosures |
+| Compatibility | Controller: Android 12 (API 31) and iOS and iPadOS 26 minimum, on phones, tablets and foldables. TV app: Android TV 12 (API 31), unchanged. This replaces v1's "current version minus one" rule for the controller, to reach older tablets and phones |
 
 ## Architecture changes
 
-The architecture stays as it is: two Flutter apps, a shared protocol, a WebSocket over the local network. v2 adds two packages, a game-facing interface and one internet connection, used only for the analytics upload.
+The architecture stays as it is: two Flutter apps, a shared protocol, a WebSocket over the local network. v2 adds two packages, a game-facing interface, phone hosting and one internet connection, used only for the analytics upload.
+
+```
+ TV or PC hosts (as today)               Phone hosts (M12)
+ ┌───────────┐                           ┌─────────────────────────┐
+ │ TV or PC  │ game, host, stats         │ Host phone              │ game, host, stats,
+ └─────▲─────┘                           │ + own player (S2)       │ draws the game
+       │ input ↑  haptics, layout ↓      └─────▲───────────────────┘
+ ┌─────┴─────┐                                 │ input ↑  snapshots, haptics ↓
+ │  Phones   │ controls only           ┌───────┴─────────────────┐
+ └───────────┘                         │ Joined phones           │ draw the game from
+                                       │                         │ snapshots, controls on top
+                                       └─────────────────────────┘
+```
 
 - **packages/puzzle\_game:** puzzle rules (tolerance with symmetry, snapping, big-piece carrying, scoring and ties), the puzzle data format with the 9 puzzles, and the game screen. It reuses the arena's movement code, moved to a shared place.
 - **packages/metrics:** metric models, counters, aggregation and the session summary format, shared by the phone and the TV, with unit tests. It also contains the report command-line tool.
-- **packages/protocol:** capabilities in `hello` and `welcome`, metrics batch, player profile (nickname, install ID), new haptic event names, rating, `layout` and `status` messages. Written up in docs/protocol.md (P1).
+- **packages/protocol:** capabilities in `hello` and `welcome`, `role`, metrics batch, player profile (nickname, install ID), new haptic event names, rating, `layout`, `status` and `snapshot` messages. Written up in docs/protocol.md (P1).
 - **packages/connection:** the game host interface (P3) and the standard gamepad mapping (P4). Games and TV screens use only this interface. The simulated controller gains `--check` (P7).
 - **TV app:** game picker, join and results screens, playtest settings, Stats screen, consent, and the uploader.
-- **Controller app:** stick layout rebalance and size setting, touch metrics, rating prompt, nickname, demo screen.
+- **Controller app:** stick layout rebalance and size setting, touch metrics, rating prompt, nickname, demo screen. From M12 it also includes the host server, the game packages and their assets, the game view and the overlay controls, so it can host or show a game. iOS needs its Bonjour declaration to cover advertising as well as browsing, and the app grows by the size of the game assets.
 - **CI and release:** Codemagic signs the iOS build and uploads it to TestFlight on tags. Android AABs for the phone and TV, and the Windows zip, are built on tags (on Windows or in GitHub Actions) and uploaded to Play and to GitHub Releases. Play uploads are manual at first and automated once stable (proposed).
 
 ## Milestone roadmap
@@ -357,28 +419,31 @@ Numbering continues from v1, so tags stay unique (m7 and later). Each milestone 
 
 | Milestone | What it delivers | Why in this order |
 | --- | --- | --- |
-| M7 | Bigger stick-mode buttons and v1's Android phone tests | A quick fix testers will notice, and it closes v1 on the second phone platform |
+| M7 | Bigger stick-mode buttons, tablets, Android 12, and v1's Android phone tests | A quick fix testers will notice. Layout code is being reworked anyway, so tablets come with it, and it closes v1 on the second phone platform |
 | M8 | Store testing pipeline | Accounts and reviews take time, and every later milestone ships through it |
 | M9 | Analytics and platform groundwork | Collection is in place before testers play the new game, so their first sessions count. The protocol changes anyway, so the spec, capabilities and host interface come with it |
 | M10 | Puzzle game, 1 player, with game-defined controls | Proves the core feel of carrying, rotating and dropping before adding players, and is the first game to label the phone's buttons |
 | M11 | Puzzle game, 2 to 4 players | Adds sides, teams, big pieces and win rules on top of a proven core |
-| M12 | Fun, content and the first outside playtest | Adds the extras, all 9 puzzles and tuning, and puts it in testers' hands |
+| M12 | Phone-hosted play | Lets testers without a TV or PC play, in time for the outside playtest, once the game rules are settled |
+| M13 | Fun, content and the first outside playtest | Adds the extras, all 9 puzzles and tuning, and puts it in testers' hands |
 
 The Apple and Google account sign-ups should start during M7, because verification can take several days.
 
-## Milestone 7: Bigger buttons and Android catch-up
+## Milestone 7: Bigger buttons, tablets and Android catch-up
 
-Milestone 7 makes the stick-mode face buttons easy to hit and finishes v1's pending tests on the Android phone.
+Milestone 7 makes the stick-mode face buttons easy to hit, makes the controller work well on tablets and on Android 12 and later, and finishes v1's pending tests on the Android phone.
 
 **Deployable builds**
 
-- Controller: rebalanced stick layout and the button size setting, on the Android phone (local APK) and the iPhone (iLoader, for the last time).
+- Controller: rebalanced stick layout, the button size setting, tablet layouts and Android 12 support. Installed on the Android phone and tablet (local APK) and the iPhone and iPad (iLoader, for the last time).
 - TV app: unchanged.
 
 **Scope**
 
 - Stick layout rebalance (C14), larger touch areas (C15) and button size setting (C16).
-- Layout unit tests: no overlaps at every button size, on the screen sizes of both test phones and a small 16:9 phone.
+- Controls sized by physical size (C31), orientation and window rules (C32), and feedback without haptics (C33).
+- Android minimum lowered to Android 12, with the emulator check (C30).
+- Layout unit tests: no overlaps at every button size, on the screen sizes of both test phones, a small 16:9 phone, both test tablets, an unfolded foldable, and a half-screen split window.
 - Run every pending v1 Android phone test (M0 to M6 checklists) and fix what fails.
 - Start the Apple Developer Program enrollment and the Google Play developer account sign-up.
 
@@ -389,6 +454,10 @@ Milestone 7 makes the stick-mode face buttons easy to hit and finishes v1's pend
 - [ ] A press just outside a button's drawn edge still registers, and never triggers a neighbouring control.
 - [ ] Both sticks, the D-pad, LB, RB, Select and Start still work with two thumbs at once.
 - [ ] Every v1 checklist item marked "Android phone pending" passes on the Android phone.
+- [ ] On the iPad and the Android tablet, the controls are thumb-sized and within reach of both thumbs while holding the tablet, in all three modes.
+- [ ] The controller stays in landscape on both tablets with rotation lock off, and a resized or split-screen window still works or shows "Make the window bigger".
+- [ ] On the iPad, presses flash and the optional click sound plays, and the app runs without errors with no haptics hardware.
+- [ ] On the Android 12 emulator, the controller installs, pairs with the TV app and sends input.
 - [ ] Both store accounts are applied for.
 
 ## Milestone 8: Store testing pipeline
@@ -414,6 +483,7 @@ Milestone 8 lets anyone install the apps from a link: Google Play testing for bo
 **Acceptance tests**
 
 - [ ] Someone other than the developer follows the tester guide and installs the controller from Google Play on an Android phone and from TestFlight on an iPhone, without a cable or sideloading tool.
+- [ ] The same store links install the controller on the Android tablet and the iPad.
 - [ ] The TV app installs from the Play Store on the Android TV, signed in with a tester account, and appears in the launcher.
 - [ ] The Windows zip from GitHub Releases runs after the SmartScreen and firewall steps in the guide.
 - [ ] Phones installed from the stores pair with the store-installed TV app and the Windows build, and all v1 features work.
@@ -477,7 +547,7 @@ Milestone 10 builds the core of the puzzle game for one player, so carrying, rot
 - Game picker (T11) and playtest settings screen (T16).
 - New haptic events and sounds for snap, wrong and drop-ready (C21).
 - `layout` and `status` messages (P5, P6), shown on the phone in every mode (C24). The puzzle labels A "Pick up" and X and Y "Rotate", hides unused buttons, and shows the held piece and the time left on the phone. The puzzle uses only the game host interface (P3).
-- The puzzle draws into the box it is given (S4) and plays its sounds through the host interface (S5). The arena game is changed to match.
+- The puzzle draws into the box it is given (S4), plays its sounds through the host interface (S5), and keeps its rules separate from its drawing, drawing only from a state snapshot (S8). The arena game is changed to match.
 - Puzzle metrics added to the session summary: completion time, wrong drops, rotation time and overshoots, angle and position error at drop.
 - Unit tests: matching with symmetric and identical pieces, tolerance edges, lock and red states, results.
 
@@ -493,6 +563,7 @@ Milestone 10 builds the core of the puzzle game for one player, so carrying, rot
 - [ ] In the puzzle the phone shows "Pick up" on A and "Rotate" on X and Y, hides buttons the puzzle doesn't use, and shows the held piece turning as it rotates. Back on the arena game, the phone returns to its usual buttons.
 - [ ] With labels and the status panel showing, no control is smaller than before in any mode.
 - [ ] A widget test draws the puzzle at 1280 by 720 in a box smaller than the window and at TV size, and the layout is the same apart from scale. The puzzle's sounds still play, through the host interface.
+- [ ] A unit test encodes a puzzle snapshot, decodes it and draws it, and the result matches the original. A 4-player snapshot stays under the size limit.
 
 ## Milestone 11: Puzzle game, 2 to 4 players
 
@@ -523,9 +594,44 @@ Milestone 11 turns the puzzle into a race between sides and teams, with big piec
 - [ ] Rematch keeps the teams, and Change teams goes back to the join screen.
 - [ ] Four controllers (phones or simulated) play a full match without lag, stuck input or disconnects.
 
-## Milestone 12: Fun, content and the first outside playtest
+## Milestone 12: Phone-hosted play
 
-Milestone 12 adds the touches that make the game fun, completes the puzzle set, and puts the game in outside testers' hands.
+Milestone 12 lets a group play with only their phones. One phone hosts, the others join it, and every phone shows the game with its controls on top.
+
+**Deployable builds**
+
+- Controller (Google Play and TestFlight): Host a game, join a phone host, the game view, overlay controls with the opacity setting, and stats on the host phone.
+- TV app: unchanged, apart from fixes. Phones can still join a TV or PC as before.
+
+**Scope**
+
+- Host a game (C25): "Host a game" on the connect screen, the game picker, difficulty choice, pairing code and join screen on the host phone, with the host phone's owner as a local player (S2). The phone advertises on the network (Android NSD and Bonjour, with the iOS Bonjour declaration updated for advertising).
+- Join a phone host (C26): phone hosts listed in discovery next to TVs and PCs, labelled as phones.
+- Snapshot sync (C27, S8): the host sends snapshots about 30 times a second (proposed), and joined phones draw them with the same game code, smoothing between snapshots. Sounds and haptics play on each player's own phone.
+- Overlay controls (C28, S9): all three input modes over the game view, with the opacity setting and game-defined controls.
+- Phone view of the puzzle: each phone zooms to its own side, a top strip shows the clock and the other side's progress, the tray runs along the top edge, and pieces stay at least about 9 mm across (see Puzzle game design). Tablets show the full split screen.
+- Show on this device (C34): a host option for a shared screen with no controls on top, mainly for tablets.
+- The arena game on phones: the whole field on every phone, with the same overlay controls.
+- Host-side data on the host phone (C29): consent prompt, stats, best times, playtest settings.
+- Host leaves or drops: everyone sees "Waiting for host", and the round pauses for up to 30 seconds (proposed) for the host to come back before it ends. A joined phone that drops can rejoin, as with a TV.
+- Latency stages for joined phones (S7) and the host phone's temperature and battery in the session summary.
+- Tester guide updated with a "No TV? Host on a phone" section.
+
+**Acceptance tests**
+
+- [ ] A solo puzzle can be played on one phone, both Android and iPhone, in all three input modes, and the opacity setting changes the controls live and is saved.
+- [ ] Four devices (the two phones and the two tablets) play a 2 vs 2 puzzle hosted on a phone. Every phone shows its own side smoothly, with the other side's progress in the top strip, and the tablets show the full split screen.
+- [ ] With "Show on this device" on the iPad or the Android tablet, the game fills the tablet's screen like a TV and the phones play as controllers only.
+- [ ] An iPhone can host Android phones, and an Android phone can host iPhones.
+- [ ] On a joined phone, the delay from touch to screen stays under about 50 ms, as shown by the latency stages.
+- [ ] Locking the host phone mid-round pauses the game for everyone, and unlocking it within 30 seconds resumes it.
+- [ ] A 15-minute, 4-player session finishes without the host phone throttling for heat, and the battery drop appears in the session summary.
+- [ ] The session summary records the host as a phone and each player's screen (host phone or joined phone), and the report can compare them with TV play.
+- [ ] Phones still join a TV and a PC as before, and nothing in M7 to M11 regresses.
+
+## Milestone 13: Fun, content and the first outside playtest
+
+Milestone 13 adds the touches that make the game fun, completes the puzzle set, and puts the game in outside testers' hands.
 
 **Deployable builds**
 
@@ -538,9 +644,9 @@ Milestone 12 adds the touches that make the game fun, completes the puzzle set, 
 - Nicknames (C20).
 - The remaining puzzles, for 9 in total (3 per level), with tuned starting angles.
 - Sounds and optional music, listed in CREDITS.md.
-- A playtest round with outside testers, including at least one child around 8, using a short observation sheet in /docs alongside the metrics.
+- A playtest round with outside testers, including at least one child around 8 and at least one group playing on phones only, using a short observation sheet in /docs alongside the metrics.
 - Tuning: adjust defaults from the playtest and the metrics, and record the final values in docs/decisions.md.
-- Final README updates, tester guide, and manual checklists for M7 to M12 in /docs/checklists.
+- Final README updates, tester guide, and manual checklists for M7 to M13 in /docs/checklists.
 - Protocol spec finished and published with the tester guide (P1), and `sim_controller --check` (P7).
 - A short v3 recommendation in /docs choosing the platform path, based on the playtest, the metrics and tester requests.
 
@@ -548,10 +654,10 @@ Milestone 12 adds the touches that make the game fun, completes the puzzle set, 
 
 - [ ] Every puzzle on every level can be finished within 2 minutes by an adult, and the Easy ones by an 8-year-old after one practice round.
 - [ ] The countdown, celebration, warning, hint glow and new-record screen all appear at the right moments.
-- [ ] Best times survive restarting the TV app and show nicknames.
-- [ ] At least 3 outside households install from the stores and play, and their sessions appear in the report.
-- [ ] The report compares the three modes on frustration signals, completion time and ratings, and the findings are written up in /docs.
-- [ ] `sim_controller --check` passes against the Android TV and Windows builds.
+- [ ] Best times survive restarting the TV app or the host phone's app, and show nicknames.
+- [ ] At least 3 outside households install from the stores and play, at least one of them on phones only, and their sessions appear in the report.
+- [ ] The report compares the three modes on frustration signals, completion time and ratings, and compares TV play with phone play. The findings are written up in /docs.
+- [ ] `sim_controller --check` passes against the Android TV, Windows and phone-host builds.
 - [ ] The v3 platform recommendation is written and reviewed.
 
 ## Test strategy
@@ -561,14 +667,18 @@ v1's strategy still holds: logic is tested automatically, and anything about fee
 | Area | Where it can be tested | Milestone |
 | --- | --- | --- |
 | Stick layout fit and overlaps at every size | Unit tests, then both phones | M7 |
+| Tablet layouts, orientation and windows | Unit tests at tablet, foldable and split-window sizes, then the iPad and the Android tablet | M7 |
+| Android 12 support | Android 12 emulator on Windows (start, pair, layout, input). Haptics and gyro on older versions stay untested | M7 onward |
 | Store installs and updates | A tester's devices, from the store links | M8 |
 | Metric counters and derived signals | Unit tests in packages/metrics | M9 |
 | End-to-end metrics, upload and report | Simulated controller and real phones, against the Windows and TV builds | M9 |
 | Metrics overhead | Input delay compared with v1's baseline on home Wi-Fi | M9 |
 | Puzzle rules (tolerances, symmetry, locking, ties) | Unit tests in packages/puzzle\_game | M10, M11 |
 | 4-player layouts and load | Phones plus simulated controllers | M11 |
-| Feel of rotation, carrying and haptics | Real phones, in all three modes | M10 to M12 |
-| Kid usability and fun | Playtests with an observation sheet, plus the metrics | M12 |
+| Snapshot encoding and size | Unit tests in each game package | M10 |
+| Phone hosting (cross-platform joins, delay, host drops, heat and battery) | Both test phones as hosts, with the other phone and simulated controllers joining | M12 |
+| Feel of rotation, carrying and haptics | Real phones, in all three modes | M10 to M13 |
+| Kid usability and fun | Playtests with an observation sheet, plus the metrics | M13 |
 
 ## Risks, decisions, open questions and next steps
 
@@ -576,18 +686,24 @@ The largest new risk is store review and policy. Outside testing depends on two 
 
 | Risk | Mitigation |
 | --- | --- |
-| Apple's reviewer can't test a controller without a host, and rejects the build | Review notes explaining the setup, a link to the Windows build, and the "Try without a TV" demo screen |
+| Apple's reviewer can't test a controller without a host, and rejects the build | Review notes explaining the setup, a link to the Windows build, and the "Try without a TV" demo screen. From M12 the reviewer can also play a solo game on the phone alone |
 | Store accounts or reviews take longer than expected | Start the sign-ups in M7, and keep iLoader and local APKs as fallbacks for the developer |
 | The stores treat the game as one children use and apply stricter rules | Anonymous, opt-in analytics with no advertising IDs or third-party analytics SDKs, and a clear privacy policy. Declare the target audience carefully (open question) |
 | Continuous rotation is too hard for young players | Angle tolerance, the drop-ready highlight, few rotated pieces on Easy, hint glow, and tuning in the playtest |
 | Bigger face buttons crowd the sticks on small phones | Size setting with a no-overlap rule, and layout tests on a small screen size |
+| Older and budget Android devices feel worse (weak vibration, noisy gyros, slow touchscreens) or host poorly | The analytics record the device model and class, so their results can be separated. M12 checks hosting on the slowest device available and warns when a device is too slow to host smoothly |
+| iPadOS windowing or Android's large-screen rules break the landscape layout | Declare the controller a game on Android, lock orientation per window on iPad, test resized and split windows in M7, and show "Make the window bigger" below the minimum |
 | Metrics slow input down | Low-priority batches every 10 s, a size cap, and a measured overhead check in M9 |
-| Testers without an Android TV or a Windows PC can't host | Tester guide states the requirement. A macOS host is a later option |
+| Testers without an Android TV or a Windows PC can't host | Phone hosting from M12, before the outside playtest. Before M12, the tester guide states the requirement |
+| Gyro is hard to use while watching the screen being tilted | Measured by the analytics (phone screen versus TV), and the other two modes are always available. Gyro can be left out of a game's allowed modes on phones (P5) if the data says so |
+| Pieces and touch areas are too small on a phone screen | Each phone zooms to its own side, a 9 mm minimum piece size, the tray along the top edge away from the thumbs, and the opacity setting |
+| The host phone overheats or drains quickly | A 15-minute heat and battery check in M12, 30 snapshots a second instead of 60, and temperature in the session summary |
+| The host phone is interrupted (a call, a lock, the app closed) | The round pauses for 30 seconds and resumes. Host takeover comes in v3. iPhone hosting only works while the app is open, which the guide explains |
 | Android's planned local-network permission changes how the phone finds the TV (to verify) | Track it when raising the target SDK, and keep manual IP entry as a fallback |
 | Windows SmartScreen and firewall prompts confuse testers | Step-by-step guide with screenshots. Code signing later |
 | Codemagic free minutes run low with signing and TestFlight uploads | Keep path filters and tag-only uploads, and upgrade if needed |
 | The host interface and spec end up shaped around our own games, so an engine kit would need breaking changes | Keep both game-neutral (no puzzle-specific messages), check the spec against two different games (Arena and Puzzle), and add the conformance check |
-| A rule that ties the host to the TV slips in unnoticed, making the v3 streaming framework a rewrite | Rules S1 to S7, with tests in M9 and M10. The keyboard player and the off-screen drawing test exercise them on every build |
+| A rule that ties the host to the TV slips in unnoticed, making phone hosting and the v3 framework a rewrite | Rules S1 to S9, with tests in M9 and M10. The keyboard player, the off-screen drawing test and the snapshot test exercise them on every build, before M12 depends on them |
 | Game-defined labels and the status panel crowd the controls | Labels sit on or beside existing controls, the panel goes in the top bar, and a test checks control sizes |
 
 **Decisions (October 29, 2026)**
@@ -604,7 +720,12 @@ The largest new risk is store review and policy. Outside testing depends on two 
 - Extras: countdown and celebration, last-15-seconds warning, hint glow and a best-times board.
 - The time limit is 2 minutes on every level (a playtest setting). There are 3 levels with about 3 puzzles each.
 - v2 stays focused, but does the cheap platform groundwork: protocol spec, capabilities, game host interface, standard gamepad mapping, game-defined controls, status panel and a conformance check. v3 picks the platform path. Bluetooth gamepad mode stays a non-goal.
-- The preferred v3 direction is a framework for phone-hosted games that stream low-latency video to a receiver on the TV, built for other developers to use. It stays out of v2 except for the streaming-ready rules S1 to S7.
+- The preferred v3 direction is a framework for phone-hosted games that stream to a receiver on the TV, built for other developers to use. Receivers that can run our game code draw from snapshots, and the others get a low-latency video stream. Streaming stays out of v2 except for rules S1 to S9.
+- Phone-hosted play is in v2, as M12: one phone hosts, the others join, and every phone shows the game with see-through controls on top (opacity setting). Fun, content and the outside playtest move to M13.
+- Tablets are supported in v2: iPad and Android tablets as controllers (M7), in the store builds (M8), and as hosts or a shared screen (M12). Test devices are an Android tablet on Android 15 and an iPad on iPadOS 26.
+- The controller's Android minimum drops from 16 to 12 (API 31), matching the TV app, for about four times the device reach with no code changes. Android 12 is checked on an emulator.
+- In v2, if the host phone leaves, the round pauses for 30 seconds and then ends. Host takeover, where another phone carries on as host from the latest snapshot, is a v3 item.
+- Fire TV (Fire OS) is added once a test device is available. Apple TV, Samsung, LG, Roku and Fire TV's Vega OS are v3 receiver candidates, and a device's role is kept separate from who connects to whom (S3).
 
 **Open questions**
 
@@ -614,7 +735,8 @@ The largest new risk is store review and policy. Outside testing depends on two 
 - **Cloud store.** Firebase Firestore (free plan) is the proposal. Is a Google account for the project acceptable?
 - **Pause.** Should any player be able to pause with Start, or only Player 1?
 - **Tie rule.** Is "the side that placed its last correct piece first wins" the right tie-breaker, or should a tie on pieces be a draw?
-- **Licence for the spec.** The protocol spec is published in M12, and others will build on it in v3. Should it go out under an open licence (for example CC BY for the spec and MIT for future kits), or stay closed until v3?
+- **Phone-hosted round when the host leaves.** Is a 30-second pause long enough? It is a playtest setting until M13 settles it.
+- **Licence for the spec.** The protocol spec is published in M13, and others will build on it in v3. Should it go out under an open licence (for example CC BY for the spec and MIT for future kits), or stay closed until v3?
 
 **Next steps**
 
