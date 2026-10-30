@@ -345,9 +345,18 @@ class PadNotifier extends Notifier<PadInput> {
 
   @override
   PadInput build() {
-    // Make sure the capability check has run before the first tick.
-    ref.watch(hapticsCapabilitiesProvider);
-    ref.onDispose(() => _cooldown?.cancel());
+    // Start the capability check before the first tick. Listening (not
+    // watching) keeps it alive without rebuilding this notifier when it
+    // finishes.
+    ref.listen(hapticsCapabilitiesProvider, (_, _) {});
+    // A cancelled cooldown must also be cleared: if it stayed set, every
+    // later stick or tilt move would wait for a timer that never fires, and
+    // only buttons would reach the TV (found on the Pixel Tablet in M8).
+    ref.onDispose(() {
+      _cooldown?.cancel();
+      _cooldown = null;
+      _pending = false;
+    });
     return _tracker.current;
   }
 

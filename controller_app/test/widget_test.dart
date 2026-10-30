@@ -158,6 +158,16 @@ class TestApp {
   final FakeMotionSensors motion;
 }
 
+/// Haptics whose capability check finishes only when the test completes [caps].
+class SlowCapsHaptics extends FakeHaptics {
+  SlowCapsHaptics() : super(caps: HapticsCapabilities.none);
+
+  final ready = Completer<HapticsCapabilities>();
+
+  @override
+  Future<HapticsCapabilities> capabilities() => ready.future;
+}
+
 /// Motion sensors driven by the test.
 class FakeMotionSensors implements MotionSensors {
   final _accel = StreamController<Vec3>.broadcast();
@@ -1403,6 +1413,31 @@ void main() {
       expect(find.text('Thumb Party 0.8.0 (dev)'), findsOneWidget);
       expect(find.textContaining('privacy.html'), findsOneWidget);
       expect(find.byKey(const Key('testerGuide')), findsOneWidget);
+    });
+  });
+  group('analog sending (found on the Pixel Tablet, M8)', () {
+    testWidgets('stick moves keep reaching the TV when the haptics check finishes during a move', (tester) async {
+      final haptics = SlowCapsHaptics();
+      final app = await pumpApp(tester, paired: true, saved: {'padMode': 'sticks'}, haptics: haptics);
+      app.client.emit(connected);
+      await tester.pump();
+      final center = tester.getCenter(find.byKey(const Key('leftStick')));
+      final g = await tester.startGesture(center);
+      await g.moveBy(const Offset(10, 0)); // Sent at once; the 16 ms cooldown starts.
+      // The haptics check finishes inside that cooldown (a device without a
+      // vibration motor answers at its own pace).
+      haptics.ready.complete(HapticsCapabilities.none);
+      await tester.pump(const Duration(milliseconds: 1));
+      final before = app.client.inputs.length;
+      for (var i = 0; i < 5; i++) {
+        await g.moveBy(const Offset(8, 0));
+        await tester.pump(const Duration(milliseconds: 20));
+      }
+      expect(app.client.inputs.length, greaterThan(before), reason: 'stick moves must keep being sent');
+      expect(app.client.inputs.last, matches(RegExp(r'L 0\.[3-9]')), reason: 'the latest position arrives');
+      await g.up();
+      await tester.pump(const Duration(milliseconds: 20));
+      expect(app.client.inputs.last, '0,0 L 0.0,0.0 R 0.0,0.0');
     });
   });
 }
