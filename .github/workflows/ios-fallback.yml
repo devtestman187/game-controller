@@ -15,7 +15,7 @@ jobs:
     runs-on: macos-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.47.8'
@@ -41,7 +41,7 @@ jobs:
           cp -R iphoneos/Runner.app Payload/
           zip -qry "ipa/controller-unsigned-gha-${GITHUB_RUN_NUMBER}.ipa" Payload
           ls -lh ipa
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: controller-unsigned-ipa
           path: controller_app/build/ios/ipa/*.ipa
