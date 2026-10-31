@@ -85,7 +85,7 @@ From 0.9.0 the TV app can upload anonymous gameplay stats, only after an adult o
 | --- | --- |
 | Does your app collect or share any of the required user data types? | **Yes** |
 | Is all of the user data collected by your app encrypted in transit? | **Yes** (HTTPS) |
-| Do you provide a way for users to request that their data is deleted? | **Yes**: by email, with the Controller ID from the phone's Diagnostics |
+| Do you provide a way for users to request that their data is deleted? | **Yes**: https://devtestman187.github.io/game-controller/privacy.html#delete (by email, with the Controller ID from the phone's Diagnostics) |
 | **App activity → App interactions** | Collected, not shared. Optional (users can choose). Purpose: **Analytics**, **App functionality**. Not processed ephemerally |
 | **App info and performance → Diagnostics** | Collected, not shared. Optional. Purpose: **Analytics** (input delay, ping, reconnects, frame drops) |
 | **App info and performance → Other app performance data** | Collected, not shared. Optional. Purpose: **Analytics** (the post-game face rating) |
