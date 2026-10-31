@@ -21,6 +21,8 @@ dependencies:
     path: ../assets
   metrics:
     path: ../packages/metrics
+  puzzle_game:
+    path: ../packages/puzzle_game
   protocol:
     path: ../packages/protocol
   shared_preferences: ^2.5.6

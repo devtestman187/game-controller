@@ -103,6 +103,7 @@ class _Player {
   final segments = <String, MetricsMessage>{};
   final ratings = <Map<String, Object?>>[];
   final games = <String, Map<String, int>>{};
+  final gameStats = <String, Map<String, _ValueStats>>{};
   final modeGames = <String, int>{};
   final modeWins = <String, int>{};
   int quitsMidGame = 0;
@@ -237,6 +238,14 @@ class SessionCollector {
     counts[name] = (counts[name] ?? 0) + 1;
   }
 
+  /// A number measured in a game for one player, e.g. the angle error at a
+  /// drop or the time spent rotating: kept as count, mean and max.
+  void gameValue(String game, String name, String id, double value) {
+    final p = _players[id];
+    if (p == null || !value.isFinite || name.length > 32) return;
+    ((p.gameStats[game] ??= {})[name] ??= _ValueStats()).add(value);
+  }
+
   /// A round started.
   void roundStarted() => _inGame = true;
 
@@ -314,6 +323,11 @@ class SessionCollector {
         ],
         'ratings': p.ratings,
         'games': p.games,
+        if (p.gameStats.isNotEmpty)
+          'gameStats': {
+            for (final MapEntry(key: game, value: stats) in p.gameStats.entries)
+              game: {for (final MapEntry(:key, :value) in stats.entries) key: value.toJson()},
+          },
       });
     }
     players.sort((a, b) => (a['player'] as int).compareTo(b['player'] as int));
@@ -359,3 +373,17 @@ DeviceInfo _cleanDevice(DeviceInfo d) => DeviceInfo(
 final _technical = RegExp(r'^[A-Za-z0-9 ,._()+-]+$');
 
 final _tagPattern = RegExp(r'^[a-z0-9_]+$');
+
+class _ValueStats {
+  int n = 0;
+  double sum = 0;
+  double max = double.negativeInfinity;
+
+  void add(double v) {
+    n++;
+    sum += v;
+    if (v > max) max = v;
+  }
+
+  Map<String, Object> toJson() => {'n': n, 'mean': (sum / n * 100).round() / 100, 'max': (max * 100).round() / 100};
+}

@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
 
 import 'package:connection/connection.dart';
 import 'package:flutter/services.dart';
@@ -8,6 +10,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:game_assets/asset_manifest.dart';
 import 'package:metrics/metrics.dart';
 import 'package:protocol/protocol.dart';
+import 'package:puzzle_game/puzzle_game.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:test_game/test_game.dart' show feedsOf;
 import 'package:tvtest/main.dart';
@@ -16,7 +19,11 @@ import 'package:tvtest/src/host_controller.dart';
 import 'package:tvtest/src/providers.dart';
 import 'package:tvtest/src/screen_awake.dart';
 import 'package:tvtest/src/sound.dart';
+import 'package:tvtest/src/keyboard_player.dart';
 import 'package:tvtest/src/ui/game_screen.dart';
+import 'package:tvtest/src/ui/games_screen.dart';
+import 'package:tvtest/src/ui/puzzle_screen.dart';
+import 'package:tvtest/src/ui/puzzle_settings_screen.dart';
 import 'package:tvtest/src/ui/haptic_panel_screen.dart';
 import 'package:tvtest/src/ui/input_visualizer.dart';
 import 'package:tvtest/src/ui/latency_screen.dart';
@@ -300,9 +307,13 @@ Future<FakeHostController> pumpApp(
   addTearDown(tester.view.reset);
   final fake = FakeHostController(sampleState(), consent: consent);
   fake.stats.summaries.addAll(sessions);
+  SharedPreferences.setMockInitialValues({});
+  final prefs = await SharedPreferences.getInstance();
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
+        prefsProvider.overrideWithValue(prefs),
+        puzzleLibraryProvider.overrideWith((ref) => testPuzzles()),
         hostControllerProvider.overrideWithValue(fake),
         soundPlayerProvider.overrideWithValue(sounds),
         screenAwakeProvider.overrideWithValue(awake),
@@ -360,7 +371,7 @@ void main() {
       // The game animates every frame, so pump through the page transition.
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 500));
-      for (final screen in [GameScreen, HapticPanelScreen, LatencyScreen, StatsScreen]) {
+      for (final screen in [GamesScreen, HapticPanelScreen, LatencyScreen, StatsScreen]) {
         if (find.byType(screen).evaluate().isNotEmpty) {
           opened.add(screen);
           await tester.sendKeyEvent(LogicalKeyboardKey.escape);
@@ -407,13 +418,13 @@ void main() {
       'Drop connections',
       'Forget phones',
       'Save log',
-      'Test game',
+      'Play',
       'Haptic test',
       'Latency',
       'Stats',
     });
     expect([fake.newCodes, fake.simToggles, fake.drops, fake.forgets, fake.exports], [1, 1, 1, 1, 1]);
-    expect(opened.toSet(), {GameScreen, HapticPanelScreen, LatencyScreen, StatsScreen});
+    expect(opened.toSet(), {GamesScreen, HapticPanelScreen, LatencyScreen, StatsScreen});
   });
 
   testWidgets('updates when the host state changes', (tester) async {
@@ -612,9 +623,7 @@ void main() {
 
     Future<FakeHostController> openGame(WidgetTester tester, {Size size = const Size(960, 540)}) async {
       final fake = await pumpApp(tester, size: size);
-      await tapVisible(tester, find.text('Test game'));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 500));
+      await openArena(tester);
       return fake;
     }
 
@@ -650,12 +659,15 @@ void main() {
       expect(find.byKey(const Key('debugOverlay')), findsNothing);
     });
 
-    testWidgets('Escape goes back to the main screen', (tester) async {
+    testWidgets('Escape goes back to the game picker, and again to the main screen', (tester) async {
       await openGame(tester);
       await tester.sendKeyEvent(LogicalKeyboardKey.escape);
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 500));
       expect(find.byType(GameScreen), findsNothing);
+      expect(find.byType(GamesScreen), findsOneWidget);
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
       expect(find.text('0 4 2 7'), findsOneWidget);
     });
 
@@ -703,7 +715,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byKey(const Key('player-a')), findsOneWidget);
       expect(find.byKey(const Key('player-b')), findsOneWidget);
-      await tapVisible(tester, find.text('Test game'));
+      await openArena(tester);
       for (var i = 0; i < 90; i++) {
         await tester.pump(const Duration(milliseconds: 16));
       }
@@ -798,6 +810,7 @@ void main() {
   });
 
   group('stats (M9)', stats);
+  group('puzzle (M10)', puzzle);
 }
 
 /// A small saved session: one phone, D-pad then sticks.
@@ -923,7 +936,7 @@ void stats() {
     keyboardPlayerAvailable = true;
     addTearDown(() => keyboardPlayerAvailable = false);
     final fake = await pumpApp(tester);
-    await tapVisible(tester, find.text('Test game'));
+    await openArena(tester);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
     await tester.sendKeyDownEvent(LogicalKeyboardKey.arrowLeft);
@@ -947,7 +960,7 @@ void stats() {
 
   testWidgets('the arena reports its rounds and events to the game host', (tester) async {
     final fake = await pumpApp(tester);
-    await tapVisible(tester, find.text('Test game'));
+    await openArena(tester);
     for (var i = 0; i < 90; i++) {
       await tester.pump(const Duration(milliseconds: 16));
     }
@@ -962,4 +975,157 @@ void stats() {
     expect(tester.widget<Text>(find.byKey(const Key('stageSent-p1'))).data, '9 ms');
     expect(tester.widget<Text>(find.byKey(const Key('stageDrawn-p1'))).data, '–');
   });
+}
+
+/// Home → Play → Arena.
+Future<void> openArena(WidgetTester tester) async {
+  await tapVisible(tester, find.byKey(const Key('openPlay')));
+  await tester.pumpAndSettle();
+  await tester.tap(find.byKey(const Key('pickArena')));
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 500));
+}
+
+void puzzle() {
+  Future<FakeHostController> openShapeRace(WidgetTester tester) async {
+    final fake = await pumpApp(tester);
+    await tapVisible(tester, find.byKey(const Key('openPlay')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('pickShapeRace')));
+    await tester.pumpAndSettle();
+    return fake;
+  }
+
+  testWidgets('the game picker offers Shape Race and the Arena; Shape Race lists each level\'s puzzles', (
+    tester,
+  ) async {
+    await openShapeRace(tester);
+    expect(find.byType(ShapeRaceScreen), findsOneWidget);
+    for (final name in ['House', 'Rocket', 'Tree and sun', 'Boat']) {
+      expect(find.text(name), findsOneWidget, reason: name);
+    }
+    expect(find.text('Any Easy puzzle'), findsOneWidget);
+    expect(find.text('Any Medium puzzle'), findsOneWidget);
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pumpAndSettle();
+    // The arena is still there.
+    await tester.tap(find.byKey(const Key('pickArena')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.byType(GameScreen), findsOneWidget);
+  });
+
+  testWidgets('a puzzle gives the phone Pick up and Rotate, and the panel; leaving gives the usual buttons back', (
+    tester,
+  ) async {
+    final fake = await openShapeRace(tester);
+    await tester.tap(find.byKey(const Key('puzzle-house')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.byType(PuzzleScreen), findsOneWidget);
+    expect(find.byKey(const Key('puzzleView')), findsOneWidget);
+    final layout = fake.gameHost.layouts['p1']!;
+    expect(layout.labels[ControllerButton.a], 'Pick up');
+    expect(layout.labels[ControllerButton.x], startsWith('Rotate'));
+    expect(layout.hidden, contains(ControllerButton.b));
+    expect(fake.gameHost.statuses['p1']!.progress, isNotNull);
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(fake.gameHost.layouts['p1']!.isStandard, isTrue);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('a finished puzzle shows the time; Play again starts another', (tester) async {
+    final house = Puzzle.parse(File('../packages/puzzle_game/puzzles/house.json').readAsStringSync());
+    final game = PuzzleGame(house);
+    await pumpApp(tester);
+    final nav = tester.state<NavigatorState>(find.byType(Navigator));
+    nav.push(
+      MaterialPageRoute<void>(
+        builder: (_) => PuzzleScreen(
+          choice: const PuzzleChoice(level: Level.easy),
+          game: game,
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    // Put every piece in place by hand, then let a frame run.
+    for (var i = 0; i < game.pieces.length; i++) {
+      final p = game.pieces[i];
+      p
+        ..state = PieceState.locked
+        ..pos = house.targetAt(i);
+    }
+    await tester.pump(const Duration(milliseconds: 16));
+    await tester.pump(const Duration(milliseconds: 16));
+    expect(find.text('Done!'), findsOneWidget);
+    expect(find.textContaining('seconds'), findsOneWidget);
+    expect(find.byKey(const Key('playAgain')), findsOneWidget);
+    expect(sounds.played, contains('success'));
+  });
+
+  testWidgets('time-up shows the pieces placed', (tester) async {
+    final house = Puzzle.parse(File('../packages/puzzle_game/puzzles/house.json').readAsStringSync());
+    final game = PuzzleGame(house, settings: const PuzzleSettings(timeLimitS: 30));
+    await pumpApp(tester);
+    tester
+        .state<NavigatorState>(find.byType(Navigator))
+        .push(
+          MaterialPageRoute<void>(
+            builder: (_) => PuzzleScreen(
+              choice: const PuzzleChoice(level: Level.easy),
+              game: game,
+            ),
+          ),
+        );
+    await tester.pump();
+    game.pieces[0]
+      ..state = PieceState.locked
+      ..pos = house.targetAt(0);
+    game.timeLeftS = 0.01;
+    for (var i = 0; i < 5; i++) {
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    expect(find.text('Time\'s up!'), findsOneWidget);
+    expect(find.text('1 of 4 pieces placed'), findsOneWidget);
+  });
+
+  testWidgets('the puzzle settings change straight away, are saved, and reset to the defaults', (tester) async {
+    await pumpApp(tester);
+    await tapVisible(tester, find.byKey(const Key('openPlay')));
+    await tester.pumpAndSettle();
+    await tapVisible(tester, find.byKey(const Key('openPuzzleSettings')));
+    await tester.pumpAndSettle();
+    expect(find.text('±15°'), findsOneWidget);
+    // The remote: − is focused first; Right goes to the value's +.
+    await tester.tap(find.byTooltip('More Angle tolerance'));
+    await tester.pump();
+    expect(find.text('±16°'), findsOneWidget);
+    final container = ProviderScope.containerOf(tester.element(find.byType(PuzzleSettingsScreen)));
+    expect(container.read(puzzleSettingsProvider).angleToleranceDeg, 16);
+    final prefs = container.read(prefsProvider);
+    expect(prefs.getString('puzzleSettings'), contains('"angleToleranceDeg":16'));
+    await tester.scrollUntilVisible(find.byKey(const Key('setting-dropReadyHighlight')), 200);
+    await tester.ensureVisible(find.byKey(const Key('setting-dropReadyHighlight')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.descendant(of: find.byKey(const Key('setting-dropReadyHighlight')), matching: find.byType(Switch)));
+    await tester.pump();
+    expect(container.read(puzzleSettingsProvider).dropReadyHighlight, isFalse);
+    await tester.tap(find.byKey(const Key('resetPuzzleSettings')));
+    await tester.pump();
+    expect(container.read(puzzleSettingsProvider).angleToleranceDeg, 15);
+    expect(container.read(puzzleSettingsProvider).dropReadyHighlight, isTrue);
+  });
+}
+
+/// The puzzles, read straight from the package's data files (the asset
+/// bundle loads them outside the test's clock).
+PuzzleLibrary testPuzzles() {
+  const dir = '../packages/puzzle_game/puzzles';
+  final index = jsonDecode(File('$dir/index.json').readAsStringSync()) as Map<String, Object?>;
+  return PuzzleLibrary([
+    for (final id in (index['puzzles'] as List).cast<String>()) Puzzle.parse(File('$dir/$id.json').readAsStringSync()),
+  ]);
 }

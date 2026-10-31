@@ -20,6 +20,8 @@ SegmentRecorder recorder({String mode = 'dpad'}) =>
     SegmentRecorder(id: 's1', mode: mode, startMs: 1000, map: testMap(), settings: const {'buttonSize': 0.75});
 
 void main() {
+  group('game values', gameValues);
+
   group('geometry', () {
     test('a touch on a control hits it; elsewhere the nearest one and how far', () {
       final map = testMap();
@@ -441,6 +443,30 @@ void main() {
         c.metrics('p', MetricsMessage(segment: 'seg$i', index: 0, mode: 'dpad', durationMs: 100, data: const {}));
       }
       expect(((c.summary(0)['players'] as List)[0] as Map)['segments'], hasLength(200));
+    });
+  });
+}
+
+void gameValues() {
+  test('puzzle measurements are kept per player as count, mean and max', () {
+    final c = SessionCollector(
+      id: 's',
+      hostType: HostType.windows,
+      hostApp: '0.10.0',
+      startedAt: DateTime.utc(2026),
+      startMs: 0,
+    );
+    c.joined('p', number: 1, atMs: 0);
+    for (final v in [2.0, 4.0, 9.0]) {
+      c.gameValue('puzzle', 'angleErrorDeg', 'p', v);
+    }
+    c.gameValue('puzzle', 'angleErrorDeg', 'p', double.nan);
+    c.gameValue('puzzle', 'angleErrorDeg', 'nobody', 1);
+    final p = (c.summary(0)['players'] as List).single as Map;
+    expect(p['gameStats'], {
+      'puzzle': {
+        'angleErrorDeg': {'n': 3, 'mean': 5.0, 'max': 9.0},
+      },
     });
   });
 }

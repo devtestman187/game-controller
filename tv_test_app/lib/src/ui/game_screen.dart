@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:connection/connection.dart';
 import 'package:game_assets/asset_manifest.dart';
 import 'package:flutter/material.dart';
@@ -7,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:test_game/test_game.dart';
 
+import '../keyboard_player.dart';
 import '../providers.dart';
 
 /// Keys that show or hide the debug overlay: OK on the remote (and Enter),
@@ -20,21 +19,6 @@ final _debugKeys = {
   LogicalKeyboardKey.keyD,
   LogicalKeyboardKey.f3,
 };
-
-/// The keyboard player's keys on Windows (PRD v2 S2): the arrows move, Space
-/// dashes (A).
-final _keyboardKeys = {
-  LogicalKeyboardKey.arrowUp,
-  LogicalKeyboardKey.arrowDown,
-  LogicalKeyboardKey.arrowLeft,
-  LogicalKeyboardKey.arrowRight,
-  LogicalKeyboardKey.space,
-};
-
-/// Whether this build offers a keyboard player: on a desktop, not on the TV
-/// (whose remote also sends arrow keys). Tests turn it on.
-@visibleForTesting
-bool keyboardPlayerAvailable = Platform.isWindows || Platform.isLinux || Platform.isMacOS;
 
 /// The playable test (PRD T7): the arena, where every player drives their
 /// own sprite in their player colour (T9). It runs through the game host
@@ -53,19 +37,30 @@ class GameScreen extends ConsumerStatefulWidget {
 
 class _GameScreenState extends ConsumerState<GameScreen> {
   bool _debug = false;
-  LocalPlayer? _keyboard;
+  late final KeyboardPlayer _keyboard;
+
+  @override
+  void initState() {
+    super.initState();
+    // Made here, not lazily: dispose() can't read providers any more.
+    final log = ref.read(logProvider);
+    _keyboard = KeyboardPlayer(
+      ref.read(gameHostProvider),
+      onJoined: (p) {
+        log.add('game', 'Keyboard player joined as P${p.number}');
+        if (mounted) setState(() {});
+      },
+    );
+  }
 
   @override
   void dispose() {
-    _keyboard?.remove();
+    _keyboard.dispose();
     super.dispose();
   }
 
   KeyEventResult _onKey(FocusNode node, KeyEvent event) {
-    if (keyboardPlayerAvailable && _keyboardKeys.contains(event.logicalKey)) {
-      _keyboardChanged();
-      return KeyEventResult.handled;
-    }
+    if (_keyboard.handle(event)) return KeyEventResult.handled;
     if (event is! KeyDownEvent) return KeyEventResult.ignored;
     if (_debugKeys.contains(event.logicalKey)) {
       setState(() => _debug = !_debug);
@@ -77,29 +72,6 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     }
     // Back on the remote is left to the system, which closes the screen.
     return KeyEventResult.ignored;
-  }
-
-  /// The keyboard player joins on its first key and follows the held keys.
-  void _keyboardChanged() {
-    final held = HardwareKeyboard.instance.logicalKeysPressed;
-    if (_keyboard == null) {
-      if (held.intersection(_keyboardKeys).isEmpty) return;
-      _keyboard = ref.read(gameHostProvider).addLocalPlayer(nickname: 'Keyboard');
-      ref.read(logProvider).add('game', 'Keyboard player joined as P${_keyboard!.number}');
-      setState(() {});
-    }
-    _keyboard!.set(
-      GamepadState(
-        buttons: {
-          if (held.contains(LogicalKeyboardKey.arrowUp)) GamepadButton.dpadUp,
-          if (held.contains(LogicalKeyboardKey.arrowDown)) GamepadButton.dpadDown,
-          if (held.contains(LogicalKeyboardKey.arrowLeft)) GamepadButton.dpadLeft,
-          if (held.contains(LogicalKeyboardKey.arrowRight)) GamepadButton.dpadRight,
-          if (held.contains(LogicalKeyboardKey.space)) GamepadButton.a,
-        },
-        mode: InputMode.keyboard,
-      ),
-    );
   }
 
   /// The arena already buzzed the phone and played the sound through the
@@ -119,7 +91,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
   Widget build(BuildContext context) {
     final nobody = ref.watch(gamePlayersProvider.select((p) => p.isEmpty));
     final text = Theme.of(context).textTheme;
-    final hint = keyboardPlayerAvailable && _keyboard == null
+    final hint = keyboardPlayerAvailable && _keyboard.player == null
         ? 'Arrows and Space: play on the keyboard · D: debug info · Esc: leave'
         : 'OK or D: debug info · Back: leave';
     return Focus(

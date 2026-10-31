@@ -9,7 +9,7 @@ import 'package:protocol/protocol.dart';
 import '../app_info.dart';
 import '../host_controller.dart';
 import '../providers.dart';
-import 'game_screen.dart';
+import 'games_screen.dart';
 import 'haptic_panel_screen.dart';
 import 'input_visualizer.dart';
 import 'latency_screen.dart';
@@ -136,10 +136,11 @@ class _Header extends StatelessWidget {
     // on a 1080p TV (960 wide), so all four fit beside the title.
     List<Widget> buttonsFor(bool compact) => [
       TvButton(
-        label: 'Test game',
-        icon: Icons.videogame_asset_outlined,
+        key: const Key('openPlay'),
+        label: 'Play',
+        icon: Icons.sports_esports_outlined,
         compact: compact,
-        onPressed: () => _open(context, const GameScreen()),
+        onPressed: () => _open(context, const GamesScreen()),
       ),
       TvButton(
         label: 'Haptic test',

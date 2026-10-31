@@ -324,11 +324,29 @@ class LiveStats implements StatsService {
           modes: modes,
           winnerId: r.data['winner'] as String?,
         );
+        // The puzzle: completion time when finished, pieces placed either way.
+        for (final id in modes.keys) {
+          if (r.data['finished'] == true && time is num) s.gameValue(r.game, 'completionS', id, time.toDouble());
+          if (r.data['placed'] case final num placed) s.gameValue(r.game, 'placed', id, placed.toDouble());
+        }
         _maybeAskRatings(r.game, modes.keys);
       case 'frames':
         s.frames((r.data['drawn'] as num?)?.toInt() ?? 0, (r.data['late'] as num?)?.toInt() ?? 0);
+      case 'player_result':
+        // The puzzle's per-player numbers (M10): rotation time, overshoots, …
+        final id = r.playerId;
+        if (id == null) return;
+        for (final MapEntry(:key, :value) in r.data.entries) {
+          if (value is num) s.gameValue(r.game, key, id, value.toDouble());
+        }
       default:
-        if (r.playerId != null) s.gameEvent(r.game, r.name, r.playerId!);
+        final id = r.playerId;
+        if (id == null) return;
+        s.gameEvent(r.game, r.name, id);
+        // A drop's errors (the puzzle: angle and position at each drop).
+        for (final key in const ['angleErrorDeg', 'positionError']) {
+          if (r.data[key] case final num v) s.gameValue(r.game, '${r.name}.$key', id, v.toDouble());
+        }
     }
   }
 

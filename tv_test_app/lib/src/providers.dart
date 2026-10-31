@@ -1,9 +1,11 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:connection/connection.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:protocol/protocol.dart';
+import 'package:puzzle_game/puzzle_game.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'analytics.dart';
@@ -188,4 +190,32 @@ class KeepAwakeNotifier extends Notifier<bool> {
     }
     return on;
   }
+}
+
+/// Every puzzle, from the puzzle package's data files.
+final puzzleLibraryProvider = FutureProvider<PuzzleLibrary>((ref) => PuzzleLibrary.load());
+
+/// The puzzle's playtest settings (PRD v2 T16), saved on the TV.
+final puzzleSettingsProvider = NotifierProvider<PuzzleSettingsNotifier, PuzzleSettings>(PuzzleSettingsNotifier.new);
+
+class PuzzleSettingsNotifier extends Notifier<PuzzleSettings> {
+  static const _key = 'puzzleSettings';
+
+  @override
+  PuzzleSettings build() {
+    final raw = ref.watch(prefsProvider).getString(_key);
+    if (raw == null) return PuzzleSettings.defaults;
+    try {
+      return PuzzleSettings.fromJson(jsonDecode(raw));
+    } catch (_) {
+      return PuzzleSettings.defaults;
+    }
+  }
+
+  void set(PuzzleSettings settings) {
+    state = settings;
+    unawaited(ref.read(prefsProvider).setString(_key, jsonEncode(settings.toJson())));
+  }
+
+  void reset() => set(PuzzleSettings.defaults);
 }
