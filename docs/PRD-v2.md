@@ -540,18 +540,18 @@ Milestone 9 records how each control type is used and how it performs, shows it 
 
 **Acceptance tests**
 
-- [ ] After a session that uses all three modes, the Stats screen shows time, presses, empty taps, near misses and latency for each mode and each phone.
-- [ ] Tapping deliberately just beside B shows up as near misses next to B, and tapping a blank area shows up as empty taps in the right grid cell.
-- [ ] Turning the phone's Wi-Fi off mid-session loses no metrics: the batches arrive after reconnecting.
-- [ ] With consent off, nothing is uploaded. With consent on, the session appears in the cloud store, and the report tool prints it.
-- [ ] An exported session file contains no names, nicknames or network details.
-- [ ] The median input delay with metrics on is within 1 ms of v1's baseline.
-- [ ] The rating prompt appears after a game, can be skipped, and its answer appears in the session summary.
-- [ ] The arena game and the TV's test screens work as before, now through the game host interface. packages/protocol and packages/connection still have no Flutter dependency.
-- [ ] The M8 store build of the controller still works with the M9 TV app, and the reverse, thanks to capabilities.
-- [ ] docs/protocol.md describes every message the apps send. A reviewer can check each field against the code.
-- [ ] On the Windows build, a keyboard player and a phone play the arena game together.
-- [ ] The latency screen and the session summary show the delay broken into stages.
+- [X] After a session that uses all three modes, the Stats screen shows time, presses, empty taps, near misses and latency for each mode and each phone.
+- [X] Tapping deliberately just beside B shows up as near misses next to B, and tapping a blank area shows up as empty taps in the right grid cell.
+- [X] Turning the phone's Wi-Fi off mid-session loses no metrics: the batches arrive after reconnecting.
+- [X] With consent off, nothing is uploaded. With consent on, the session appears in the cloud store, and the report tool prints it. (13 sessions in Firestore; the report printed them)
+- [X] An exported session file contains no names, nicknames or network details.
+- [X] The median input delay with metrics on is within 1 ms of v1's baseline. (4 ms median in every mode)
+- [X] The rating prompt appears after a game, can be skipped, and its answer appears in the session summary. (after the m9.1 fix and the m9.2 redesign)
+- [X] The arena game and the TV's test screens work as before, now through the game host interface. packages/protocol and packages/connection still have no Flutter dependency.
+- [X] The M8 store build of the controller still works with the M9 TV app, and the reverse, thanks to capabilities.
+- [ ] docs/protocol.md describes every message the apps send. A reviewer can check each field against the code. (Read-through by the developer still to do)
+- [X] On the Windows build, a keyboard player and a phone play the arena game together.
+- [X] The latency screen and the session summary show the delay broken into stages.
 
 ## Milestone 10: Puzzle game, 1 player
 
