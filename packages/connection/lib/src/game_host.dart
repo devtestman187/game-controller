@@ -112,8 +112,16 @@ abstract interface class GameHost {
   /// false if the phone can't show the prompt.
   bool askRating(String playerId, {required String id, required String game});
 
-  /// Heartbeat round trip and input delay over the last 30 s, or null.
-  ({RttSummary? ping, RttSummary? inputDelay, int? errorMs})? latency(String playerId);
+  /// Heartbeat round trip and input delay over the last 30 s (and the input
+  /// delay over the whole connection), or null for a local player.
+  PlayerLatency? latency(String playerId);
+
+  /// A delay stage (S7) over the last 30 s, or null before any samples.
+  RttSummary? stageSummary(String playerId, String stage);
+
+  /// Adds a player whose input comes from this device (S2), with the lowest
+  /// free number. The game sets its controls with [LocalPlayer.set].
+  LocalPlayer addLocalPlayer({String? nickname});
 
   /// Reports something for analytics.
   void record(GameRecord record);
@@ -123,11 +131,20 @@ abstract interface class GameHost {
   void reportStage(String playerId, String stage, int ms);
 }
 
+/// A player's heartbeat round trip and input delay.
+typedef PlayerLatency = ({
+  RttSummary? ping,
+  int? pingNowMs,
+  RttSummary? inputDelay,
+  RttSummary? inputDelaySession,
+  int? errorMs,
+});
+
 /// A player on the host device itself, e.g. a keyboard on Windows (S2).
 final class LocalPlayer {
-  LocalPlayer._(this._host, this.id, this.number, this.nickname);
+  LocalPlayer(this.id, this.number, {this.nickname, required this._onRemove});
 
-  final ServerGameHost _host;
+  final void Function(LocalPlayer) _onRemove;
   final String id;
   final int number;
   final String? nickname;
@@ -146,7 +163,7 @@ final class LocalPlayer {
   void remove() {
     if (_removed) return;
     _removed = true;
-    _host._removeLocal(this);
+    _onRemove(this);
   }
 }
 
@@ -170,7 +187,7 @@ class ServerGameHost implements GameHost {
   final _playersChanged = StreamController<List<GamePlayer>>.broadcast();
   final _records = StreamController<GameRecord>.broadcast();
   final _stages = StreamController<StageSample>.broadcast();
-  final _drawn = <String, RttWindow>{};
+  final _stageWindows = <(String, String), RttWindow>{};
   List<GamePlayer> _lastPlayers = const [];
   int _nextLocal = 1;
 
@@ -179,9 +196,6 @@ class ServerGameHost implements GameHost {
 
   /// Every delay sample, for the analytics collector.
   Stream<StageSample> get stages => _stages.stream;
-
-  /// "Received to drawn" over the last 30 s, for the latency screen.
-  RttSummary? drawnSummary(String playerId) => _drawn[playerId]?.summary(nowMs);
 
   @override
   int get nowMs => server.nowMs;
@@ -224,11 +238,23 @@ class ServerGameHost implements GameHost {
   }
 
   @override
-  ({RttSummary? ping, RttSummary? inputDelay, int? errorMs})? latency(String playerId) {
+  PlayerLatency? latency(String playerId) {
     final c = _info(playerId);
     if (c == null) return null;
-    return (ping: c.rttStats, inputDelay: c.inputLatency, errorMs: c.latencyErrorMs);
+    return (
+      ping: c.rttStats,
+      pingNowMs: c.rttMs,
+      inputDelay: c.inputLatency,
+      inputDelaySession: c.inputLatencySession,
+      errorMs: c.latencyErrorMs,
+    );
   }
+
+  @override
+  RttSummary? stageSummary(String playerId, String stage) => switch (stage) {
+    LatencyStage.sentToReceived => _info(playerId)?.inputLatency,
+    _ => _stageWindows[(playerId, stage)]?.summary(nowMs),
+  };
 
   @override
   void record(GameRecord record) {
@@ -238,14 +264,14 @@ class ServerGameHost implements GameHost {
   @override
   void reportStage(String playerId, String stage, int ms) {
     if (ms < 0) return;
-    if (stage == LatencyStage.receivedToDrawn) (_drawn[playerId] ??= RttWindow()).add(nowMs, ms);
+    if (stage != LatencyStage.sentToReceived) (_stageWindows[(playerId, stage)] ??= RttWindow()).add(nowMs, ms);
     if (!_stages.isClosed) _stages.add((playerId: playerId, stage: stage, ms: ms));
   }
 
-  /// Adds a player on this device, with the lowest free number.
+  @override
   LocalPlayer addLocalPlayer({String? nickname}) {
     final number = server.reserveLocalPlayer();
-    final player = LocalPlayer._(this, 'local-${_nextLocal++}', number, nickname);
+    final player = LocalPlayer('local-${_nextLocal++}', number, nickname: nickname, onRemove: _removeLocal);
     _locals[player.id] = player;
     _checkPlayers();
     return player;
@@ -277,3 +303,108 @@ class ServerGameHost implements GameHost {
 
 bool _samePlayers(List<GamePlayer> a, List<GamePlayer> b) =>
     a.length == b.length && Iterable.generate(a.length).every((i) => a[i] == b[i]);
+
+/// A [GameHost] kept in memory, with players and controls set by hand: for
+/// tests, demos and as the smallest example of the interface.
+class MemoryGameHost implements GameHost {
+  MemoryGameHost({int Function()? now}) : _now = now ?? _stopwatch();
+
+  final int Function() _now;
+  final _players = <String, GamePlayer>{};
+  final _pads = <String, GamepadState>{};
+  final _arrived = <String, int>{};
+  final _locals = <String, LocalPlayer>{};
+  final _changes = StreamController<List<GamePlayer>>.broadcast();
+
+  /// Everything the game sent, for tests to check.
+  final haptics = <(String, HapticEventMessage)>[];
+  final ratingAsks = <(String, String, String)>[];
+  final records = <GameRecord>[];
+  final stages = <StageSample>[];
+  int _nextLocal = 1;
+
+  static int Function() _stopwatch() {
+    final clock = Stopwatch()..start();
+    return () => clock.elapsedMilliseconds;
+  }
+
+  /// Adds or updates a player.
+  void setPlayer(GamePlayer player) {
+    _players[player.id] = player;
+    _changes.add(players);
+  }
+
+  void removePlayer(String id) {
+    _players.remove(id);
+    _pads.remove(id);
+    _changes.add(players);
+  }
+
+  /// Sets a player's controls, as if new input arrived now.
+  void setGamepad(String id, GamepadState state) {
+    _pads[id] = state;
+    _arrived[id] = nowMs;
+  }
+
+  @override
+  int get nowMs => _now();
+
+  @override
+  List<GamePlayer> get players => _players.values.toList()..sort((a, b) => a.number.compareTo(b.number));
+
+  @override
+  Stream<List<GamePlayer>> get playersChanged => _changes.stream;
+
+  @override
+  GamepadState gamepad(String playerId) => _locals[playerId]?.state ?? _pads[playerId] ?? GamepadState.neutral;
+
+  @override
+  int? inputArrivedAtMs(String playerId) => _arrived[playerId];
+
+  @override
+  bool haptic(String playerId, HapticEventMessage event) {
+    if (!_players.containsKey(playerId) || _players[playerId]!.local) return false;
+    haptics.add((playerId, event));
+    return true;
+  }
+
+  @override
+  bool askRating(String playerId, {required String id, required String game}) {
+    if (!_players.containsKey(playerId) || _players[playerId]!.local) return false;
+    ratingAsks.add((playerId, id, game));
+    return true;
+  }
+
+  @override
+  PlayerLatency? latency(String playerId) => null;
+
+  @override
+  RttSummary? stageSummary(String playerId, String stage) => null;
+
+  @override
+  void record(GameRecord record) => records.add(record);
+
+  @override
+  void reportStage(String playerId, String stage, int ms) => stages.add((playerId: playerId, stage: stage, ms: ms));
+
+  @override
+  LocalPlayer addLocalPlayer({String? nickname}) {
+    final used = {for (final p in _players.values) p.number};
+    var n = 1;
+    while (used.contains(n)) {
+      n++;
+    }
+    final player = LocalPlayer(
+      'local-${_nextLocal++}',
+      n,
+      nickname: nickname,
+      onRemove: (p) {
+        _locals.remove(p.id);
+        removePlayer(p.id);
+      },
+    );
+    _locals[player.id] = player;
+    setPlayer(GamePlayer(id: player.id, number: n, nickname: nickname, local: true, mode: InputMode.keyboard));
+    return player;
+  }
+}

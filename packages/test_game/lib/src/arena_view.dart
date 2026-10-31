@@ -1,34 +1,51 @@
 import 'dart:math';
 
+import 'package:connection/connection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
-import 'package:protocol/protocol.dart';
 
 import 'arena.dart';
 
-/// One controller in the game, as the host sees it this frame.
-typedef PlayerFeed = ({String id, int number, String name, Color color, InputStateMessage? input});
+/// One player in the game, as the host sees it this frame.
+typedef PlayerFeed = ({String id, int number, String name, Color color, GamepadState gamepad});
 
 extension on PlayerFeed {
   String get label => 'P$number $name';
 }
 
+/// Every player of [host], with their controls this frame.
+List<PlayerFeed> feedsOf(GameHost host) => [
+  for (final p in host.players)
+    (id: p.id, number: p.number, name: p.nickname ?? '', color: Color(p.color), gamepad: host.gamepad(p.id)),
+];
+
+/// The game's name in analytics records.
+const arenaGame = 'arena';
+
 /// Plays [ArenaGame] full size: the field fills the space it's given and
 /// follows it when the window resizes. A bar on top shows the round, the
 /// timer and each player's counters.
 ///
-/// [readPlayers] is called every frame for the connected controllers and
-/// their latest input; each one drives its own sprite. [onEvent] gets every
-/// game event (with the player who caused it), so the host can send the
-/// haptic event to that controller and play the sound.
+/// Everything comes from the [host] (PRD v2 P3): the players, their controls
+/// (the standard gamepad, P4) and where analytics go. Each player drives
+/// their own sprite. [onEvent] gets every game event (with the player who
+/// caused it), so the host app can send the haptic event to that controller
+/// and play the sound.
+///
+/// For analytics it reports each round's start and end, every game event,
+/// how many frames were late, and the "received to drawn" delay stage (S7):
+/// how long a player's new input waited for the first frame built with it.
 class ArenaView extends StatefulWidget {
-  const ArenaView({super.key, required this.readPlayers, required this.onEvent, this.game});
+  const ArenaView({super.key, required this.host, required this.onEvent, this.game});
 
-  final List<PlayerFeed> Function() readPlayers;
+  final GameHost host;
   final void Function(GameEvent event) onEvent;
 
   /// The game to show. Tests pass one in to inspect it.
   final ArenaGame? game;
+
+  /// A frame that took longer than this was dropped (a 60 Hz frame is 16.7).
+  static const lateFrameMs = 25;
 
   @override
   State<ArenaView> createState() => _ArenaViewState();
@@ -39,6 +56,10 @@ class _ArenaViewState extends State<ArenaView> with SingleTickerProviderStateMix
   late final Ticker _ticker = createTicker(_tick);
   Duration _last = Duration.zero;
   List<PlayerFeed> _feeds = const [];
+  final _arrived = <String, int>{};
+  bool _roundRunning = false;
+  int _frames = 0;
+  int _late = 0;
 
   @override
   void initState() {
@@ -49,19 +70,76 @@ class _ArenaViewState extends State<ArenaView> with SingleTickerProviderStateMix
   @override
   void dispose() {
     _ticker.dispose();
+    if (_frames > 0) _record('frames', data: {'drawn': _frames, 'late': _late});
     super.dispose();
   }
+
+  void _record(String name, {String? playerId, Map<String, Object?> data = const {}}) =>
+      widget.host.record(GameRecord(game: arenaGame, name: name, playerId: playerId, data: data));
 
   void _tick(Duration elapsed) {
     final dt = (elapsed - _last).inMicroseconds / 1e6;
     _last = elapsed;
-    _feeds = widget.readPlayers();
-    final events = _game.update(dt, {for (final f in _feeds) f.id: GameInput.fromState(f.input)});
+    final host = widget.host;
+    _feeds = feedsOf(host);
+    if (_feeds.isNotEmpty) {
+      _frames++;
+      if (dt * 1000 > ArenaView.lateFrameMs && _frames > 1) _late++;
+    }
+    if (!_roundRunning && _feeds.isNotEmpty && _game.phase == ArenaPhase.playing) {
+      _roundRunning = true;
+      _record('round_start');
+    }
+
+    // Inputs that are new this frame: their delay to the drawn frame.
+    final fresh = <String, int>{};
+    for (final f in _feeds) {
+      final at = host.inputArrivedAtMs(f.id);
+      if (at != null && at != _arrived[f.id]) fresh[f.id] = at;
+    }
+    _arrived
+      ..removeWhere((id, _) => !_feeds.any((f) => f.id == id))
+      ..addAll(fresh);
+
+    final before = _game.phase;
+    final events = _game.update(dt, {for (final f in _feeds) f.id: GameInput.fromGamepad(f.gamepad)});
     for (final e in events) {
       widget.onEvent(e);
+      _record(_eventName(e.cause), playerId: e.playerId);
+    }
+    if (before == ArenaPhase.playing && _game.phase == ArenaPhase.won) {
+      _roundRunning = false;
+      _record(
+        'round_end',
+        playerId: _game.winnerId,
+        data: {
+          'timeS': _game.lastTimeS,
+          'modes': {for (final f in _feeds) f.id: f.gamepad.mode.name},
+          'winner': _game.winnerId,
+        },
+      );
+      _record('frames', data: {'drawn': _frames, 'late': _late});
+      _frames = 0;
+      _late = 0;
     }
     setState(() {});
+    if (fresh.isNotEmpty) {
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        final now = host.nowMs;
+        for (final MapEntry(key: id, value: at) in fresh.entries) {
+          host.reportStage(id, LatencyStage.receivedToDrawn, now - at);
+        }
+      });
+    }
   }
+
+  static String _eventName(GameEventCause cause) => switch (cause) {
+    GameEventCause.wall => 'wall_hit',
+    GameEventCause.hazard => 'hazard_hit',
+    GameEventCause.goal => 'goal',
+    GameEventCause.dash => 'dash',
+    GameEventCause.cooldown => 'failed_dash',
+  };
 
   PlayerFeed? _feed(String? id) => _feeds.where((f) => f.id == id).firstOrNull;
 

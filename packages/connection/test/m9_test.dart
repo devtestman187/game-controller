@@ -221,7 +221,7 @@ void main() {
       expect(host.inputArrivedAtMs('phone-1'), isNotNull);
 
       host.reportStage('phone-1', LatencyStage.receivedToDrawn, 12);
-      expect(host.drawnSummary('phone-1')!.avgMs, 12);
+      expect(host.stageSummary('phone-1', LatencyStage.receivedToDrawn)!.avgMs, 12);
       await Future<void>.delayed(Duration.zero);
       expect(stages.where((s) => s.stage == LatencyStage.receivedToDrawn), hasLength(1));
     });

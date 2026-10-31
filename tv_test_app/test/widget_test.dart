@@ -5,9 +5,12 @@ import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:metrics/metrics.dart';
 import 'package:protocol/protocol.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:test_game/test_game.dart' show feedsOf;
 import 'package:tvtest/main.dart';
+import 'package:tvtest/src/analytics.dart';
 import 'package:tvtest/src/host_controller.dart';
 import 'package:tvtest/src/providers.dart';
 import 'package:tvtest/src/screen_awake.dart';
@@ -16,10 +19,19 @@ import 'package:tvtest/src/ui/game_screen.dart';
 import 'package:tvtest/src/ui/haptic_panel_screen.dart';
 import 'package:tvtest/src/ui/input_visualizer.dart';
 import 'package:tvtest/src/ui/latency_screen.dart';
+import 'package:tvtest/src/ui/stats_screen.dart';
 import 'package:tvtest/src/ui/tv_button.dart';
 
 class FakeHostController implements HostController {
-  FakeHostController(this.state);
+  FakeHostController(this.state, {bool? consent = true}) : stats = FakeStats(consent: consent) {
+    gameHost = FakeGameHost(this);
+  }
+
+  @override
+  late final FakeGameHost gameHost;
+
+  @override
+  final FakeStats stats;
 
   @override
   HostViewState state;
@@ -42,13 +54,8 @@ class FakeHostController implements HostController {
   @override
   void dropAllConnections() => drops++;
 
+  /// Haptic events the game host sent: (event, player ID).
   final haptics = <(HapticEventMessage, String?)>[];
-
-  @override
-  int sendHaptic(HapticEventMessage message, {String? controllerId}) {
-    haptics.add((message, controllerId));
-    return controllerId != null ? 1 : state.host.connected.length;
-  }
 
   int forgets = 0;
   int exports = 0;
@@ -67,6 +74,139 @@ class FakeHostController implements HostController {
 
   @override
   Future<void> dispose() => _changes.close();
+}
+
+/// The game host over the fake host state: its connected controllers are the
+/// players, plus any local ones.
+class FakeGameHost implements GameHost {
+  FakeGameHost(this.fake) {
+    fake._changes.stream.listen((_) => _changes.add(players));
+  }
+
+  final FakeHostController fake;
+  final locals = <String, LocalPlayer>{};
+  final records = <GameRecord>[];
+  final stages = <StageSample>[];
+  final asks = <(String, String)>[];
+  final _changes = StreamController<List<GamePlayer>>.broadcast();
+  final _clock = Stopwatch()..start();
+
+  ControllerInfo? _info(String id) => fake.state.players.where((c) => c.controllerId == id).firstOrNull;
+
+  @override
+  int get nowMs => _clock.elapsedMilliseconds;
+
+  @override
+  List<GamePlayer> get players => [
+    for (final (i, c) in fake.state.players.indexed)
+      GamePlayer(id: c.controllerId, number: c.player ?? i + 1, nickname: c.name, mode: InputMode.of(c.input)),
+    for (final l in locals.values)
+      GamePlayer(id: l.id, number: l.number, nickname: l.nickname, local: true, mode: InputMode.keyboard),
+  ]..sort((a, b) => a.number.compareTo(b.number));
+
+  @override
+  Stream<List<GamePlayer>> get playersChanged => _changes.stream;
+
+  @override
+  GamepadState gamepad(String playerId) => locals[playerId]?.state ?? GamepadState.fromInput(_info(playerId)?.input);
+
+  @override
+  int? inputArrivedAtMs(String playerId) => null;
+
+  @override
+  bool haptic(String playerId, HapticEventMessage event) {
+    if (_info(playerId) == null) return false;
+    fake.haptics.add((event, playerId));
+    return true;
+  }
+
+  @override
+  bool askRating(String playerId, {required String id, required String game}) {
+    asks.add((playerId, id));
+    return true;
+  }
+
+  @override
+  PlayerLatency? latency(String playerId) {
+    final c = _info(playerId);
+    if (c == null) return null;
+    return (
+      ping: c.rttStats,
+      pingNowMs: c.rttMs,
+      inputDelay: c.inputLatency,
+      inputDelaySession: c.inputLatencySession,
+      errorMs: c.latencyErrorMs,
+    );
+  }
+
+  @override
+  RttSummary? stageSummary(String playerId, String stage) =>
+      stage == LatencyStage.sentToReceived ? _info(playerId)?.inputLatency : null;
+
+  @override
+  void record(GameRecord record) => records.add(record);
+
+  @override
+  void reportStage(String playerId, String stage, int ms) => stages.add((playerId: playerId, stage: stage, ms: ms));
+
+  @override
+  LocalPlayer addLocalPlayer({String? nickname}) {
+    final n = players.fold(0, (a, p) => p.number > a ? p.number : a) + 1;
+    final p = LocalPlayer(
+      'local-$n',
+      n,
+      nickname: nickname,
+      onRemove: (p) {
+        locals.remove(p.id);
+        _changes.add(players);
+      },
+    );
+    locals[p.id] = p;
+    _changes.add(players);
+    return p;
+  }
+}
+
+/// Analytics for the tests: [summaries] are the saved sessions.
+class FakeStats implements StatsService {
+  FakeStats({bool? consent}) : _state = StatsState(consent: consent, uploadConfigured: true);
+
+  StatsState _state;
+  final _changes = StreamController<StatsState>.broadcast();
+  final summaries = <Map<String, Object?>>[];
+  final consents = <bool>[];
+  int exports = 0;
+
+  void emit(StatsState s) {
+    _state = s;
+    _changes.add(s);
+  }
+
+  @override
+  StatsState get state => _state;
+
+  @override
+  Stream<StatsState> get changes => _changes.stream;
+
+  @override
+  Future<List<SessionFile>> sessions() async => [
+    for (final (i, s) in summaries.indexed) SessionFile('/sessions/s$i.json', s),
+  ];
+
+  @override
+  Future<String> exportAll() async {
+    exports++;
+    return 'D:/Downloads/thumb-party-sessions';
+  }
+
+  @override
+  void setConsent(bool share) {
+    consents.add(share);
+    emit(_state.copyWith(consent: share));
+  }
+
+  @override
+  Future<void> uploadNow() async {}
 }
 
 HostViewState sampleState() => HostViewState(
@@ -127,13 +267,19 @@ Future<void> tapVisible(WidgetTester tester, Finder finder) async {
   await tester.tap(finder);
 }
 
-Future<FakeHostController> pumpApp(WidgetTester tester, {Size size = const Size(960, 540)}) async {
+Future<FakeHostController> pumpApp(
+  WidgetTester tester, {
+  Size size = const Size(960, 540),
+  bool? consent = true,
+  List<Map<String, Object?>> sessions = const [],
+}) async {
   sounds = FakeSoundPlayer();
   awake = FakeScreenAwake();
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
-  final fake = FakeHostController(sampleState());
+  final fake = FakeHostController(sampleState(), consent: consent);
+  fake.stats.summaries.addAll(sessions);
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
@@ -168,10 +314,10 @@ void main() {
     expect(find.text('avg 20 ms'), findsOneWidget);
     expect(find.text('max 140 ms'), findsOneWidget);
     final shown = tester.widget<InputVisualizer>(find.byKey(const Key('visualizer-p1')));
-    expect(shown.input?.buttons, {ControllerButton.a});
-    expect(shown.input?.dx, 1);
+    expect(shown.gamepad?.buttons, {GamepadButton.a, GamepadButton.dpadRight});
+    expect(shown.gamepad?.dpadX, 1);
     // A controller still pairing shows nothing pressed.
-    expect(tester.widget<InputVisualizer>(find.byKey(const Key('visualizer-p2'))).input, isNull);
+    expect(tester.widget<InputVisualizer>(find.byKey(const Key('visualizer-p2'))).gamepad, isNull);
   });
 
   testWidgets('the remote reaches and presses every button', (tester) async {
@@ -194,7 +340,7 @@ void main() {
       // The game animates every frame, so pump through the page transition.
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 500));
-      for (final screen in [GameScreen, HapticPanelScreen, LatencyScreen]) {
+      for (final screen in [GameScreen, HapticPanelScreen, LatencyScreen, StatsScreen]) {
         if (find.byType(screen).evaluate().isNotEmpty) {
           opened.add(screen);
           await tester.sendKeyEvent(LogicalKeyboardKey.escape);
@@ -244,9 +390,10 @@ void main() {
       'Test game',
       'Haptic test',
       'Latency',
+      'Stats',
     });
     expect([fake.newCodes, fake.simToggles, fake.drops, fake.forgets, fake.exports], [1, 1, 1, 1, 1]);
-    expect(opened.toSet(), {GameScreen, HapticPanelScreen, LatencyScreen});
+    expect(opened.toSet(), {GameScreen, HapticPanelScreen, LatencyScreen, StatsScreen});
   });
 
   testWidgets('updates when the host state changes', (tester) async {
@@ -293,7 +440,8 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Tilt x 0.25  y -0.50'), findsOneWidget);
     final shown = tester.widget<InputVisualizer>(find.byKey(const Key('visualizer-g1')));
-    expect([shown.input?.ax, shown.input?.ay], [0.25, -0.5]);
+    expect([shown.gamepad?.tiltX, shown.gamepad?.tiltY], [0.25, -0.5]);
+    expect(shown.gamepad?.mode, InputMode.gyro);
     expect(tester.takeException(), isNull);
   });
 
@@ -331,8 +479,8 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('L -0.50, 0.25   R 1.00, 0.00'), findsOneWidget);
     final shown = tester.widget<InputVisualizer>(find.byKey(const Key('visualizer-s1')));
-    expect(shown.input?.hasSticks, isTrue);
-    expect(shown.input?.buttons, {ControllerButton.lb, ControllerButton.a});
+    expect(shown.gamepad?.mode, InputMode.sticks);
+    expect(shown.gamepad?.buttons, {GamepadButton.lb, GamepadButton.a});
     expect(tester.takeException(), isNull);
   });
 
@@ -363,13 +511,13 @@ void main() {
 
     testWidgets('each button sends its event to the connected controllers and plays its sound', (tester) async {
       final fake = await openPanel(tester);
-      expect(find.text('Sends to iPhone 3F1C'), findsOneWidget);
+      expect(find.text('Sends to P1 iPhone 3F1C'), findsOneWidget);
       for (final e in HapticEvent.values) {
         await tester.tap(find.byKey(Key('fire-${e.name}')));
         await tester.pump();
       }
       expect(fake.haptics.map((h) => h.$1), [for (final e in HapticEvent.values) HapticEventMessage(event: e)]);
-      expect(fake.haptics.every((h) => h.$2 == null), isTrue, reason: 'to every connected controller');
+      expect(fake.haptics.every((h) => h.$2 == 'p1'), isTrue, reason: 'to every connected controller');
       expect(sounds.played, HapticEvent.values);
       expect(find.text('Last: rumble, 100%, 400 ms (panel) → 1 controller'), findsOneWidget);
       expect(tester.takeException(), isNull);
@@ -461,7 +609,7 @@ void main() {
       await tester.sendKeyEvent(LogicalKeyboardKey.keyD);
       await frames(tester, 5);
       expect(find.byKey(const Key('debugOverlay')), findsOneWidget);
-      expect(find.text('iPhone 3F1C (ios 0.1.0), Connected'), findsOneWidget);
+      expect(find.text('iPhone 3F1C'), findsOneWidget);
       expect(find.text('P1'), findsOneWidget);
       expect(find.textContaining('12 ms'), findsOneWidget);
       expect(find.text('~9 ms avg (± 4 ms)'), findsOneWidget);
@@ -510,9 +658,8 @@ void main() {
     );
 
     test('players are the connected controllers in player order, each with its colour', () {
-      final state = s([c('b', 2), c('gone', null), c('a', 1)]);
-      expect(state.players.map((p) => p.controllerId), ['a', 'b']);
-      final feeds = playerFeeds(state);
+      final fake = FakeHostController(s([c('b', 2), c('gone', null), c('a', 1)]));
+      final feeds = feedsOf(fake.gameHost);
       expect(feeds.map((f) => (f.id, f.number)), [('a', 1), ('b', 2)]);
       expect(feeds.map((f) => f.color), [Color(playerColors[0]), Color(playerColors[1])]);
     });
@@ -535,7 +682,7 @@ void main() {
       final sent = fake.haptics.map((h) => (h.$1.event, h.$2)).toList();
       expect(sent.where((e) => e.$2 == 'a').map((e) => e.$1).first, HapticEvent.rumble);
       expect(sent.where((e) => e.$2 == 'b').map((e) => e.$1), contains(HapticEvent.hit));
-      expect(sent.where((e) => e.$2 == null), isEmpty, reason: 'game events never go to everyone');
+      expect(sent.map((e) => e.$2).toSet(), {'a', 'b'}, reason: 'game events go to their own player only');
       expect(find.text('P1 Phone a'), findsOneWidget);
       expect(find.text('P2 Phone b'), findsOneWidget);
       expect(tester.takeException(), isNull);
@@ -620,5 +767,171 @@ void main() {
       await prefs.setString('pairings', 'not json');
       expect(loadPairings(prefs), isEmpty);
     });
+  });
+
+  group('stats (M9)', stats);
+}
+
+/// A small saved session: one phone, D-pad then sticks.
+Map<String, Object?> sampleSession() {
+  final c = SessionCollector(
+    id: 'abcd1234',
+    hostType: HostType.androidTv,
+    hostApp: '0.9.0',
+    startedAt: DateTime.utc(2026, 10, 31),
+    startMs: 0,
+  );
+  c.joined(
+    'p1',
+    number: 1,
+    atMs: 0,
+    platform: 'ios',
+    device: const DeviceInfo(kind: DeviceInfo.phone),
+  );
+  c.metrics(
+    'p1',
+    MetricsMessage(
+      segment: 's1',
+      index: 0,
+      mode: 'dpad',
+      durationMs: 60000,
+      ended: true,
+      data: {
+        'start': 0,
+        'presses': {'a': 40, 'b': 2},
+        'empty': {'5,1': 3},
+        'near': {'b': 4},
+        'slide': {'a': 1},
+      },
+    ),
+  );
+  c.metrics(
+    'p1',
+    MetricsMessage(
+      segment: 's2',
+      index: 0,
+      mode: 'sticks',
+      durationMs: 30000,
+      data: {
+        'start': 60000,
+        'presses': {'ls': 5},
+      },
+    ),
+  );
+  for (final ms in [8, 9, 10]) {
+    c.stage('p1', LatencyStage.sentToReceived, ms);
+  }
+  c.mode('p1', 'sticks');
+  c.rating(
+    'p1',
+    RatingMessage(id: 'r', face: RatingFace.good),
+    game: 'arena',
+  );
+  return c.summary(90000);
+}
+
+void stats() {
+  testWidgets('the first launch asks the adult about sharing; nothing is shared by default', (tester) async {
+    final fake = await pumpApp(tester, consent: null);
+    expect(find.byKey(const Key('consentDialog')), findsOneWidget);
+    expect(find.textContaining('No names, accounts'), findsOneWidget);
+    // "Don't share" has the remote's focus.
+    await tester.sendKeyEvent(LogicalKeyboardKey.select);
+    await tester.pumpAndSettle();
+    expect(fake.stats.consents, [false]);
+    expect(find.byKey(const Key('consentDialog')), findsNothing);
+  });
+
+  testWidgets('once answered, the prompt does not come back', (tester) async {
+    await pumpApp(tester);
+    expect(find.byKey(const Key('consentDialog')), findsNothing);
+  });
+
+  testWidgets('the Stats screen shows each mode with presses, empty taps, near misses and input delay', (tester) async {
+    await pumpApp(tester, sessions: [sampleSession()]);
+    await tapVisible(tester, find.byKey(const Key('openStats')));
+    await tester.pumpAndSettle();
+    expect(find.byType(StatsScreen), findsOneWidget);
+    expect(find.byKey(const Key('sessionTable')), findsOneWidget);
+    expect(find.text('D-pad'), findsOneWidget);
+    expect(find.text('Sticks'), findsOneWidget);
+    expect(find.text('1 min 0 s'), findsOneWidget);
+    expect(find.text('42'), findsOneWidget, reason: 'presses in D-pad mode');
+    expect(find.text('4'), findsOneWidget, reason: 'near misses');
+    expect(find.text('9 ms (p95 10)'), findsNWidgets(2));
+    expect(find.text('1 good'), findsOneWidget);
+    expect(find.textContaining('Sharing is on'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Export saves the session files and says where; Sharing changes the choice', (tester) async {
+    final fake = await pumpApp(tester, sessions: [sampleSession()]);
+    await tapVisible(tester, find.byKey(const Key('openStats')));
+    await tester.pumpAndSettle();
+    // Export has the remote's focus.
+    await tester.sendKeyEvent(LogicalKeyboardKey.select);
+    await tester.pumpAndSettle();
+    expect(fake.stats.exports, 1);
+    expect(find.textContaining('D:/Downloads/thumb-party-sessions'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('statsSharing')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('consentNo')));
+    await tester.pumpAndSettle();
+    expect(fake.stats.consents, [false]);
+    expect(find.text('Sharing: off'), findsOneWidget);
+    expect(find.textContaining('nothing leaves this device'), findsOneWidget);
+  });
+
+  testWidgets('the Stats screen with no sessions, and in a small window', (tester) async {
+    await pumpApp(tester, size: const Size(700, 700));
+    await tapVisible(tester, find.byKey(const Key('openStats')));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('No sessions yet'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('on Windows the arrow keys add a keyboard player, who leaves with the screen', (tester) async {
+    keyboardPlayerAvailable = true;
+    addTearDown(() => keyboardPlayerAvailable = false);
+    final fake = await pumpApp(tester);
+    await tapVisible(tester, find.text('Test game'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.arrowLeft);
+    for (var i = 0; i < 30; i++) {
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    expect(fake.gameHost.locals, hasLength(1));
+    final keyboard = fake.gameHost.locals.values.single;
+    expect(keyboard.number, 2);
+    expect(keyboard.state.pressed(GamepadButton.dpadLeft), isTrue);
+    expect(find.text('P2 Keyboard'), findsOneWidget);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.arrowLeft);
+    await tester.pump(const Duration(milliseconds: 16));
+    expect(keyboard.state.buttons, isEmpty);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(fake.gameHost.locals, isEmpty);
+  });
+
+  testWidgets('the arena reports its rounds and events to the game host', (tester) async {
+    final fake = await pumpApp(tester);
+    await tapVisible(tester, find.text('Test game'));
+    for (var i = 0; i < 90; i++) {
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    final names = fake.gameHost.records.map((r) => r.name).toSet();
+    expect(names, containsAll(['round_start', 'dash', 'wall_hit']));
+  });
+
+  testWidgets('the latency screen breaks the delay into stages', (tester) async {
+    await pumpApp(tester);
+    await tapVisible(tester, find.text('Latency'));
+    await tester.pumpAndSettle();
+    expect(tester.widget<Text>(find.byKey(const Key('stageSent-p1'))).data, '9 ms');
+    expect(tester.widget<Text>(find.byKey(const Key('stageDrawn-p1'))).data, '–');
   });
 }

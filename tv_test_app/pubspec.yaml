@@ -19,6 +19,8 @@ dependencies:
     path: ../packages/connection
   game_assets:
     path: ../assets
+  metrics:
+    path: ../packages/metrics
   protocol:
     path: ../packages/protocol
   shared_preferences: ^2.5.6

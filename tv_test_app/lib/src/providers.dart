@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:protocol/protocol.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'analytics.dart';
 import 'host_controller.dart';
 import 'screen_awake.dart';
 import 'sound.dart';
@@ -42,6 +43,46 @@ class HostStateNotifier extends Notifier<HostViewState> {
     final sub = controller.changes.listen((s) => state = s);
     ref.onDispose(sub.cancel);
     return controller.state;
+  }
+}
+
+/// The game host (PRD v2 P3): what the game and the test screens use.
+final gameHostProvider = Provider<GameHost>((ref) => ref.watch(hostControllerProvider).gameHost);
+
+/// The players in the game, by number: phones and local players (S2).
+final gamePlayersProvider = NotifierProvider<GamePlayersNotifier, List<GamePlayer>>(GamePlayersNotifier.new);
+
+class GamePlayersNotifier extends Notifier<List<GamePlayer>> {
+  @override
+  List<GamePlayer> build() {
+    final host = ref.watch(gameHostProvider);
+    final sub = host.playersChanged.listen((p) => state = p);
+    ref.onDispose(sub.cancel);
+    // Host state changes (a phone joins or switches mode) can also change
+    // the list; reading it again keeps it in step.
+    ref.listen(hostStateProvider, (_, _) {
+      final now = host.players;
+      if (!_same(now, state)) state = now;
+    });
+    return host.players;
+  }
+
+  static bool _same(List<GamePlayer> a, List<GamePlayer> b) =>
+      a.length == b.length && Iterable.generate(a.length).every((i) => a[i] == b[i]);
+}
+
+/// Analytics (M9): the session files, consent and upload.
+final statsServiceProvider = Provider<StatsService>((ref) => ref.watch(hostControllerProvider).stats);
+
+final statsStateProvider = NotifierProvider<StatsStateNotifier, StatsState>(StatsStateNotifier.new);
+
+class StatsStateNotifier extends Notifier<StatsState> {
+  @override
+  StatsState build() {
+    final stats = ref.watch(statsServiceProvider);
+    final sub = stats.changes.listen((s) => state = s);
+    ref.onDispose(sub.cancel);
+    return stats.state;
   }
 }
 
@@ -94,7 +135,12 @@ class TvEventsNotifier extends Notifier<FiredEvent?> {
   /// connected controller.
   void fire(HapticEventMessage message, {required String source, String? controllerId}) {
     ref.read(soundPlayerProvider).play(message.event);
-    final reached = ref.read(hostControllerProvider).sendHaptic(message, controllerId: controllerId);
+    final host = ref.read(gameHostProvider);
+    final targets = controllerId != null ? [controllerId] : [for (final p in host.players) p.id];
+    var reached = 0;
+    for (final id in targets) {
+      if (host.haptic(id, message)) reached++;
+    }
     ref
         .read(logProvider)
         .add(

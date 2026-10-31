@@ -13,6 +13,8 @@ environment:
 resolution: workspace
 
 dependencies:
+  connection:
+    path: ../connection
   flutter:
     sdk: flutter
   protocol:

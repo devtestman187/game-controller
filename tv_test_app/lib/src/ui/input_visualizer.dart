@@ -1,28 +1,30 @@
+import 'package:connection/connection.dart';
 import 'package:flutter/material.dart';
-import 'package:protocol/protocol.dart';
 
 /// A small picture of a controller (PRD T5), lit while held. It follows the
 /// phone's mode: D-pad mode shows the D-pad, Select/Start and A/B/X/Y; gyro
 /// mode replaces the D-pad with a stick showing the tilt; stick mode shows
 /// the Xbox-style layout with both sticks, the D-pad, A/B/X/Y, LB/RB and
-/// Select/Start. A null [input] (not connected) shows everything released.
+/// Select/Start. It reads the standard gamepad (PRD v2 P4), so it shows any
+/// player the same way. A null [gamepad] (not connected) shows everything
+/// released.
 class InputVisualizer extends StatelessWidget {
-  const InputVisualizer({super.key, required this.input, this.width = 210});
+  const InputVisualizer({super.key, required this.gamepad, this.width = 210});
 
-  final InputStateMessage? input;
+  final GamepadState? gamepad;
   final double width;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final sticks = input?.hasSticks ?? false;
+    final sticks = gamepad?.mode == InputMode.sticks;
     return SizedBox(
       width: width,
       // The stick layout needs more height for two rows of controls.
       height: sticks ? width / 2.2 : width / 3.2,
       child: CustomPaint(
         painter: _ControllerPainter(
-          input: input,
+          input: gamepad,
           base: scheme.surfaceContainerHighest,
           lit: scheme.primary,
           label: scheme.onSurface,
@@ -35,24 +37,24 @@ class InputVisualizer extends StatelessWidget {
 class _ControllerPainter extends CustomPainter {
   _ControllerPainter({required this.input, required this.base, required this.lit, required this.label});
 
-  final InputStateMessage? input;
+  final GamepadState? input;
   final Color base;
   final Color lit;
   final Color label;
 
   static const _faceColors = {
-    ControllerButton.a: Color(0xFF4CAF50),
-    ControllerButton.b: Color(0xFFE53935),
-    ControllerButton.x: Color(0xFF1E88E5),
-    ControllerButton.y: Color(0xFFFDD835),
+    GamepadButton.a: Color(0xFF4CAF50),
+    GamepadButton.b: Color(0xFFE53935),
+    GamepadButton.x: Color(0xFF1E88E5),
+    GamepadButton.y: Color(0xFFFDD835),
   };
 
-  Set<ControllerButton> get _buttons => input?.buttons ?? const {};
+  Set<GamepadButton> get _buttons => input?.buttons ?? const {};
 
   @override
   void paint(Canvas canvas, Size size) {
     final i = input;
-    if (i != null && i.hasSticks) {
+    if (i != null && i.mode == InputMode.sticks) {
       _paintSticksLayout(canvas, size, i);
     } else {
       _paintClassicLayout(canvas, size);
@@ -64,8 +66,8 @@ class _ControllerPainter extends CustomPainter {
     final h = size.height;
     final unit = h / 3;
     final i = input;
-    if (i != null && i.hasAnalog) {
-      _stick(canvas, Offset(h / 2, h / 2), h / 2 - 1, i.ax!, i.ay!);
+    if (i != null && i.mode == InputMode.gyro) {
+      _stick(canvas, Offset(h / 2, h / 2), h / 2 - 1, i.tiltX ?? i.leftX, i.tiltY ?? i.leftY);
     } else {
       _dpad(canvas, Offset(h / 2, h / 2), unit);
     }
@@ -73,12 +75,12 @@ class _ControllerPainter extends CustomPainter {
     _pill(
       canvas,
       Rect.fromCenter(center: Offset(mid - unit * 0.75, h / 2), width: unit * 1.2, height: unit * 0.55),
-      ControllerButton.select,
+      GamepadButton.select,
     );
     _pill(
       canvas,
       Rect.fromCenter(center: Offset(mid + unit * 0.75, h / 2), width: unit * 1.2, height: unit * 0.55),
-      ControllerButton.start,
+      GamepadButton.start,
     );
     _face(canvas, Offset(size.width - h / 2, h / 2), unit);
   }
@@ -86,39 +88,39 @@ class _ControllerPainter extends CustomPainter {
   /// Xbox-style: LB/RB on top, left stick upper left with the D-pad below
   /// it, A/B/X/Y upper right with the right stick below it, Select/Start in
   /// the middle.
-  void _paintSticksLayout(Canvas canvas, Size size, InputStateMessage i) {
+  void _paintSticksLayout(Canvas canvas, Size size, GamepadState i) {
     final w = size.width;
     final h = size.height;
     final u = h / 7; // Layout unit.
     final shoulder = Size(w * 0.2, u * 0.75);
-    _pill(canvas, Offset(0, 0) & shoulder, ControllerButton.lb, text: 'LB');
-    _pill(canvas, Offset(w - shoulder.width, 0) & shoulder, ControllerButton.rb, text: 'RB');
+    _pill(canvas, Offset(0, 0) & shoulder, GamepadButton.lb, text: 'LB');
+    _pill(canvas, Offset(w - shoulder.width, 0) & shoulder, GamepadButton.rb, text: 'RB');
 
     final top = u * 1.1;
     final stickRadius = u * 1.6;
-    _stick(canvas, Offset(stickRadius + 1, top + stickRadius), stickRadius, i.lx!, i.ly!);
+    _stick(canvas, Offset(stickRadius + 1, top + stickRadius), stickRadius, i.leftX, i.leftY);
     _face(canvas, Offset(w - u * 1.6, top + u * 1.6), u * 1.05);
     _dpad(canvas, Offset(w * 0.34, h - u * 1.5), u * 0.95);
-    _stick(canvas, Offset(w * 0.66, h - stickRadius - 1), stickRadius, i.rx!, i.ry!);
+    _stick(canvas, Offset(w * 0.66, h - stickRadius - 1), stickRadius, i.rightX, i.rightY);
 
     final mid = w / 2;
     final pill = Size(u * 1.3, u * 0.6);
     _pill(
       canvas,
       Rect.fromCenter(center: Offset(mid - pill.width * 0.65, top + u), width: pill.width, height: pill.height),
-      ControllerButton.select,
+      GamepadButton.select,
     );
     _pill(
       canvas,
       Rect.fromCenter(center: Offset(mid + pill.width * 0.65, top + u), width: pill.width, height: pill.height),
-      ControllerButton.start,
+      GamepadButton.start,
     );
   }
 
   /// A 3x3 grid centered on [c], lit on the arms of the current direction.
   void _dpad(Canvas canvas, Offset c, double unit) {
-    final dx = input?.dx ?? 0;
-    final dy = input?.dy ?? 0;
+    final dx = input?.dpadX ?? 0;
+    final dy = input?.dpadY ?? 0;
     final origin = c - Offset(unit * 1.5, unit * 1.5);
     for (final (ax, ay) in const [(0, -1), (0, 1), (-1, 0), (1, 0)]) {
       final on = (ax != 0 && ax == dx) || (ay != 0 && ay == dy);
@@ -146,10 +148,10 @@ class _ControllerPainter extends CustomPainter {
   /// A/B/X/Y in a diamond around [c], [unit] apart.
   void _face(Canvas canvas, Offset c, double unit) {
     final centers = {
-      ControllerButton.y: c + Offset(0, -unit),
-      ControllerButton.x: c + Offset(-unit, 0),
-      ControllerButton.b: c + Offset(unit, 0),
-      ControllerButton.a: c + Offset(0, unit),
+      GamepadButton.y: c + Offset(0, -unit),
+      GamepadButton.x: c + Offset(-unit, 0),
+      GamepadButton.b: c + Offset(unit, 0),
+      GamepadButton.a: c + Offset(0, unit),
     };
     for (final MapEntry(key: button, value: p) in centers.entries) {
       final on = _buttons.contains(button);
@@ -159,7 +161,7 @@ class _ControllerPainter extends CustomPainter {
     }
   }
 
-  void _pill(Canvas canvas, Rect rect, ControllerButton button, {String? text}) {
+  void _pill(Canvas canvas, Rect rect, GamepadButton button, {String? text}) {
     final on = _buttons.contains(button);
     canvas.drawRRect(RRect.fromRectAndRadius(rect, Radius.circular(rect.height / 2)), Paint()..color = on ? lit : base);
     if (text != null) _text(canvas, rect.center, text, rect.height * 0.6, on ? Colors.black : label);

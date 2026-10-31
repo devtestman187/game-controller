@@ -1,34 +1,30 @@
 import 'dart:math';
 import 'dart:ui';
 
+import 'package:connection/connection.dart';
 import 'package:protocol/protocol.dart';
 
 /// What the game reads from a controller each frame.
 final class GameInput {
   const GameInput({this.move = Offset.zero, this.dash = false, this.aim = Offset.zero});
 
-  /// Maps a controller's state onto the game. The D-pad moves at one fixed
-  /// speed (diagonals too). Otherwise the left stick (stick mode) or the
-  /// tilt (gyro mode) scales the speed by how far it's pushed. A dashes, and
-  /// the right stick aims the cursor. Null (no controller) is no input.
-  factory GameInput.fromState(InputStateMessage? s) {
-    if (s == null) return none;
+  /// Maps a player's standard gamepad (PRD v2 P4) onto the game. The D-pad
+  /// moves at one fixed speed (diagonals too). Otherwise the left stick
+  /// (stick mode, and the tilt in gyro mode) scales the speed by how far it's
+  /// pushed. A dashes, and the right stick aims the cursor.
+  factory GameInput.fromGamepad(GamepadState g) {
     final Offset move;
-    if (s.dx != 0 || s.dy != 0) {
-      move = Offset(s.dx.toDouble(), s.dy.toDouble()) / Offset(s.dx.toDouble(), s.dy.toDouble()).distance;
-    } else if (s.hasSticks) {
-      move = _unit(Offset(s.lx!, s.ly!));
-    } else if (s.hasAnalog) {
-      move = _unit(Offset(s.ax!, s.ay!));
+    if (g.usesDpad) {
+      final d = Offset(g.dpadX.toDouble(), g.dpadY.toDouble());
+      move = d / d.distance;
     } else {
-      move = Offset.zero;
+      move = _unit(Offset(g.leftX, g.leftY));
     }
-    return GameInput(
-      move: move,
-      dash: s.buttons.contains(ControllerButton.a),
-      aim: s.hasSticks ? _unit(Offset(s.rx!, s.ry!)) : Offset.zero,
-    );
+    return GameInput(move: move, dash: g.pressed(GamepadButton.a), aim: _unit(Offset(g.rightX, g.rightY)));
   }
+
+  /// The same for a phone's raw input state. Null (no controller) is no input.
+  factory GameInput.fromState(InputStateMessage? s) => GameInput.fromGamepad(GamepadState.fromInput(s));
 
   static const none = GameInput();
 

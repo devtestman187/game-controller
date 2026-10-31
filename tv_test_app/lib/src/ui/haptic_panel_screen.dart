@@ -39,12 +39,11 @@ class _HapticPanelScreenState extends ConsumerState<HapticPanelScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final state = ref.watch(hostStateProvider);
+    final players = ref.watch(gamePlayersProvider).where((p) => !p.local).toList();
     final sounds = ref.watch(soundStatusProvider);
     final last = ref.watch(tvEventsProvider);
     final text = Theme.of(context).textTheme;
     final scheme = Theme.of(context).colorScheme;
-    final connected = state.host.connected.toList();
     final ms = _durations[_duration];
 
     return CallbackShortcuts(
@@ -57,11 +56,11 @@ class _HapticPanelScreenState extends ConsumerState<HapticPanelScreen> {
               padding: const EdgeInsets.only(right: 24),
               child: Center(
                 child: Text(
-                  connected.isEmpty
+                  players.isEmpty
                       ? 'No controller connected (sounds still play)'
-                      : 'Sends to ${connected.map((c) => c.name).join(', ')}',
+                      : 'Sends to ${players.map((p) => p.label).join(', ')}',
                   key: const Key('panelTargets'),
-                  style: text.titleMedium?.copyWith(color: connected.isEmpty ? Colors.amberAccent : null),
+                  style: text.titleMedium?.copyWith(color: players.isEmpty ? Colors.amberAccent : null),
                 ),
               ),
             ),

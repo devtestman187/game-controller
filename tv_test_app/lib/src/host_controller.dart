@@ -5,10 +5,12 @@ import 'dart:math';
 
 import 'package:bonsoir/bonsoir.dart';
 import 'package:connection/connection.dart';
+import 'package:metrics/metrics.dart' show HostType;
 import 'package:protocol/protocol.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'analytics.dart';
 import 'app_info.dart';
 
 enum AdvertiseState { starting, advertising, failed }
@@ -77,9 +79,12 @@ abstract class HostController {
   /// path (PRD T8).
   Future<String> exportLog();
 
-  /// Sends a haptic event to one controller, or to every connected one when
-  /// [controllerId] is null. Returns how many it reached.
-  int sendHaptic(HapticEventMessage message, {String? controllerId});
+  /// What every game and test screen uses (PRD v2 P3): players, their
+  /// gamepads, haptics, latency and analytics records.
+  GameHost get gameHost;
+
+  /// Analytics collection, the session files, consent and upload (M9).
+  StatsService get stats;
 
   Future<void> dispose();
 }
@@ -106,6 +111,24 @@ class LiveHostController implements HostController {
       pairings: saved,
       onPairingsChanged: (p) => savePairings(prefs, p),
       log: log.sink('host'),
+      // Touch metrics and the rating prompt (M9).
+      capabilities: const [Capability.metrics, Capability.rating],
+    );
+    _gameHost = ServerGameHost(_server);
+    _stats = LiveStats(
+      server: _server,
+      host: _gameHost,
+      prefs: prefs,
+      exportDirectory: logExportDirectory,
+      hostType: Platform.isAndroid
+          ? HostType.androidTv
+          : Platform.isWindows
+          ? HostType.windows
+          : HostType.other,
+      hostApp: appVersion,
+      hostOs: Platform.operatingSystem,
+      log: log.sink('stats'),
+      uploader: firestoreProject.isEmpty ? null : FirestoreUploader(project: firestoreProject, apiKey: firestoreApiKey),
     );
     if (saved.isNotEmpty) {
       _log('Remembered ${saved.length} paired controller${saved.length == 1 ? '' : 's'}');
@@ -120,6 +143,8 @@ class LiveHostController implements HostController {
   late final String _hostId;
   late final String _hostName;
   late final HostServer _server;
+  late final ServerGameHost _gameHost;
+  late final LiveStats _stats;
   late final StreamSubscription<HostSnapshot> _serverSub;
   final _changes = StreamController<HostViewState>.broadcast();
 
@@ -154,6 +179,12 @@ class LiveHostController implements HostController {
 
   Future<void> start() async {
     _log('Thumb Party TV $versionLabel on ${Platform.operatingSystem}, host ID ${_hostId.substring(0, 6)}');
+    // Stats first, so the first phone already counts.
+    try {
+      await _stats.start(await sessionDirectory());
+    } catch (e) {
+      _log('Stats are off: $e');
+    }
     try {
       await _server.start();
     } catch (e) {
@@ -191,10 +222,10 @@ class LiveHostController implements HostController {
   }
 
   @override
-  int sendHaptic(HapticEventMessage message, {String? controllerId}) {
-    if (controllerId != null) return _server.send(controllerId, message) ? 1 : 0;
-    return _server.sendToAll(message);
-  }
+  GameHost get gameHost => _gameHost;
+
+  @override
+  StatsService get stats => _stats;
 
   @override
   void toggleSimulatedController() {
@@ -252,6 +283,8 @@ class LiveHostController implements HostController {
     try {
       await _broadcast?.stop();
     } catch (_) {}
+    await _stats.dispose();
+    await _gameHost.dispose();
     await _serverSub.cancel();
     await _server.dispose();
     await _changes.close();
@@ -368,6 +401,10 @@ List<SavedPairing> loadPairings(SharedPreferences prefs) {
 
 void savePairings(SharedPreferences prefs, List<SavedPairing> pairings) =>
     prefs.setString(_pairingsKey, jsonEncode([for (final p in pairings) p.toJson()]));
+
+/// Where the session summaries are kept: the app's own support folder.
+Future<Directory> sessionDirectory() async =>
+    Directory('${(await getApplicationSupportDirectory()).path}${Platform.pathSeparator}sessions');
 
 /// Where "Save log" puts its file. On Android TV that's the app's own folder
 /// on shared storage, which needs no permission and `adb pull` can read:

@@ -12,6 +12,7 @@ import 'game_screen.dart';
 import 'haptic_panel_screen.dart';
 import 'input_visualizer.dart';
 import 'latency_screen.dart';
+import 'stats_screen.dart';
 import 'tv_button.dart';
 
 /// The TV's main screen: pairing code, addresses, connected controllers with
@@ -128,37 +129,57 @@ class _Header extends StatelessWidget {
         ),
       ],
     );
-    // Always in view at the top, so the remote reaches them with Up.
-    final buttons = [
+    // Always in view at the top, so the remote reaches them with Up. Smaller
+    // on a 1080p TV (960 wide), so all four fit beside the title.
+    List<Widget> buttonsFor(bool compact) => [
       TvButton(
         label: 'Test game',
         icon: Icons.videogame_asset_outlined,
+        compact: compact,
         onPressed: () => _open(context, const GameScreen()),
       ),
-      TvButton(label: 'Haptic test', icon: Icons.vibration, onPressed: () => _open(context, const HapticPanelScreen())),
-      TvButton(label: 'Latency', icon: Icons.speed, onPressed: () => _open(context, const LatencyScreen())),
+      TvButton(
+        label: 'Haptic test',
+        icon: Icons.vibration,
+        compact: compact,
+        onPressed: () => _open(context, const HapticPanelScreen()),
+      ),
+      TvButton(
+        label: 'Latency',
+        icon: Icons.speed,
+        compact: compact,
+        onPressed: () => _open(context, const LatencyScreen()),
+      ),
+      TvButton(
+        key: const Key('openStats'),
+        label: 'Stats',
+        icon: Icons.insights_outlined,
+        compact: compact,
+        onPressed: () => _open(context, const StatsScreen()),
+      ),
+      // Asks the adult about sharing stats on the first launch (M9).
+      const _FirstLaunchConsent(),
     ];
     return LayoutBuilder(
-      builder: (context, constraints) => constraints.maxWidth >= 760
-          ? Row(
-              children: [
-                Expanded(child: title),
-                const SizedBox(width: 16),
-                buttons[0],
-                const SizedBox(width: 8),
-                buttons[1],
-                const SizedBox(width: 8),
-                buttons[2],
-              ],
-            )
-          : Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                title,
-                const SizedBox(height: 8),
-                Wrap(spacing: 8, runSpacing: 8, children: buttons),
-              ],
-            ),
+      builder: (context, constraints) {
+        final buttons = buttonsFor(constraints.maxWidth < 1100);
+        return constraints.maxWidth >= 760
+            ? Row(
+                children: [
+                  Expanded(child: title),
+                  const SizedBox(width: 16),
+                  for (final (i, b) in buttons.indexed) ...[if (i > 0) const SizedBox(width: 8), b],
+                ],
+              )
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  title,
+                  const SizedBox(height: 8),
+                  Wrap(spacing: 8, runSpacing: 8, children: buttons),
+                ],
+              );
+      },
     );
   }
 }
@@ -501,7 +522,7 @@ class _ControllerTile extends StatelessWidget {
                 const SizedBox(width: 8),
                 InputVisualizer(
                   key: Key('visualizer-${info.controllerId}'),
-                  input: live ? info.input : null,
+                  gamepad: live ? GamepadState.fromInput(info.input) : null,
                   width: narrow ? 160 : 210,
                 ),
                 const SizedBox(width: 12),
@@ -571,3 +592,25 @@ String _clientStatusLabel(ClientSnapshot s) => switch (s.status) {
   ClientStatus.reconnecting => 'Reconnecting (attempt ${s.attempt})…',
   ClientStatus.failed => 'Failed (${s.problem?.name ?? 'unknown'})',
 };
+
+/// Shows the consent prompt once, on the first launch (PRD v2 T19), when
+/// the stats sharing choice has never been made. Takes no space.
+class _FirstLaunchConsent extends ConsumerStatefulWidget {
+  const _FirstLaunchConsent();
+
+  @override
+  ConsumerState<_FirstLaunchConsent> createState() => _FirstLaunchConsentState();
+}
+
+class _FirstLaunchConsentState extends ConsumerState<_FirstLaunchConsent> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && ref.read(statsStateProvider).consent == null) askConsent(context, ref);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => const SizedBox.shrink();
+}

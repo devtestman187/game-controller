@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:connection/connection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -5,7 +7,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:protocol/protocol.dart';
 import 'package:test_game/test_game.dart';
 
-import '../host_controller.dart';
 import '../providers.dart';
 
 /// Keys that show or hide the debug overlay: OK on the remote (and Enter),
@@ -20,10 +21,26 @@ final _debugKeys = {
   LogicalKeyboardKey.f3,
 };
 
-/// The playable test (PRD T7): the arena, where every connected controller
-/// drives its own sprite in its player colour (T9). Each game event goes as a
-/// haptic event to the controller whose sprite caused it, and plays as a
-/// sound on the TV.
+/// The keyboard player's keys on Windows (PRD v2 S2): the arrows move, Space
+/// dashes (A).
+final _keyboardKeys = {
+  LogicalKeyboardKey.arrowUp,
+  LogicalKeyboardKey.arrowDown,
+  LogicalKeyboardKey.arrowLeft,
+  LogicalKeyboardKey.arrowRight,
+  LogicalKeyboardKey.space,
+};
+
+/// Whether this build offers a keyboard player: on a desktop, not on the TV
+/// (whose remote also sends arrow keys). Tests turn it on.
+@visibleForTesting
+bool keyboardPlayerAvailable = Platform.isWindows || Platform.isLinux || Platform.isMacOS;
+
+/// The playable test (PRD T7): the arena, where every player drives their
+/// own sprite in their player colour (T9). It runs through the game host
+/// interface (PRD v2 P3), like every game. Each game event goes as a haptic
+/// event to the controller whose sprite caused it, and plays as a sound on
+/// the TV. On Windows, the arrow keys and Space add a keyboard player.
 class GameScreen extends ConsumerStatefulWidget {
   const GameScreen({super.key, this.game});
 
@@ -36,8 +53,19 @@ class GameScreen extends ConsumerStatefulWidget {
 
 class _GameScreenState extends ConsumerState<GameScreen> {
   bool _debug = false;
+  LocalPlayer? _keyboard;
+
+  @override
+  void dispose() {
+    _keyboard?.remove();
+    super.dispose();
+  }
 
   KeyEventResult _onKey(FocusNode node, KeyEvent event) {
+    if (keyboardPlayerAvailable && _keyboardKeys.contains(event.logicalKey)) {
+      _keyboardChanged();
+      return KeyEventResult.handled;
+    }
     if (event is! KeyDownEvent) return KeyEventResult.ignored;
     if (_debugKeys.contains(event.logicalKey)) {
       setState(() => _debug = !_debug);
@@ -51,21 +79,47 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     return KeyEventResult.ignored;
   }
 
+  /// The keyboard player joins on its first key and follows the held keys.
+  void _keyboardChanged() {
+    final held = HardwareKeyboard.instance.logicalKeysPressed;
+    if (_keyboard == null) {
+      if (held.intersection(_keyboardKeys).isEmpty) return;
+      _keyboard = ref.read(gameHostProvider).addLocalPlayer(nickname: 'Keyboard');
+      ref.read(logProvider).add('game', 'Keyboard player joined as P${_keyboard!.number}');
+      setState(() {});
+    }
+    _keyboard!.set(
+      GamepadState(
+        buttons: {
+          if (held.contains(LogicalKeyboardKey.arrowUp)) GamepadButton.dpadUp,
+          if (held.contains(LogicalKeyboardKey.arrowDown)) GamepadButton.dpadDown,
+          if (held.contains(LogicalKeyboardKey.arrowLeft)) GamepadButton.dpadLeft,
+          if (held.contains(LogicalKeyboardKey.arrowRight)) GamepadButton.dpadRight,
+          if (held.contains(LogicalKeyboardKey.space)) GamepadButton.a,
+        },
+        mode: InputMode.keyboard,
+      ),
+    );
+  }
+
   void _onEvent(GameEvent e) {
-    final who = ref.read(hostStateProvider).players.where((c) => c.controllerId == e.playerId).firstOrNull;
+    final who = ref.read(gamePlayersProvider).where((p) => p.id == e.playerId).firstOrNull;
     ref
         .read(tvEventsProvider.notifier)
         .fire(
           e.toMessage(),
-          source: 'game: ${e.cause.name}${who?.player == null ? '' : ', P${who!.player}'}',
+          source: 'game: ${e.cause.name}${who == null ? '' : ', P${who.number}'}',
           controllerId: e.playerId,
         );
   }
 
   @override
   Widget build(BuildContext context) {
-    final nobody = ref.watch(hostStateProvider.select((s) => s.players.isEmpty));
+    final nobody = ref.watch(gamePlayersProvider.select((p) => p.isEmpty));
     final text = Theme.of(context).textTheme;
+    final hint = keyboardPlayerAvailable && _keyboard == null
+        ? 'Arrows and Space: play on the keyboard · D: debug info · Esc: leave'
+        : 'OK or D: debug info · Back: leave';
     return Focus(
       autofocus: true,
       onKeyEvent: _onKey,
@@ -73,26 +127,25 @@ class _GameScreenState extends ConsumerState<GameScreen> {
         body: SafeArea(
           child: Stack(
             children: [
-              ArenaView(
-                game: widget.game,
-                readPlayers: () => playerFeeds(ref.read(hostStateProvider)),
-                onEvent: _onEvent,
-              ),
+              ArenaView(game: widget.game, host: ref.read(gameHostProvider), onEvent: _onEvent),
               if (nobody)
-                const Positioned(
+                Positioned(
                   left: 0,
                   right: 0,
                   bottom: 48,
-                  child: Center(child: _Note('No controller connected. Pair a phone on the main screen.')),
+                  child: Center(
+                    child: _Note(
+                      keyboardPlayerAvailable
+                          ? 'No controller connected. Pair a phone on the main screen, or press an arrow key.'
+                          : 'No controller connected. Pair a phone on the main screen.',
+                    ),
+                  ),
                 ),
               if (_debug) const Positioned(top: 64, left: 12, child: DebugOverlay()),
               Positioned(
                 right: 12,
                 bottom: 8,
-                child: Text(
-                  'OK or D: debug info · Back: leave',
-                  style: text.bodySmall?.copyWith(color: Colors.white60),
-                ),
+                child: Text(hint, style: text.bodySmall?.copyWith(color: Colors.white60)),
               ),
             ],
           ),
@@ -117,39 +170,35 @@ class _Note extends StatelessWidget {
   );
 }
 
-/// Connection state, live ping, input mode, stick or tilt values and the
-/// last haptic event sent (PRD "Test game design": debug info).
+/// Each player's mode, controls and latency, and the last haptic event sent
+/// (PRD "Test game design": debug info), all from the game host.
 class DebugOverlay extends ConsumerWidget {
   const DebugOverlay({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(hostStateProvider);
+    // Rebuilt with the host state, so the values stay live.
+    ref.watch(hostStateProvider);
+    final host = ref.watch(gameHostProvider);
+    final players = ref.watch(gamePlayersProvider);
     final last = ref.watch(tvEventsProvider);
     final sounds = ref.watch(soundStatusProvider);
-    final players = state.players;
     final rows = <(String, String)>[
       if (players.isEmpty) ('Controller', 'none connected'),
-      for (final c in players) ...[
-        ('P${c.player ?? '?'}', '${c.name} (${c.platform} ${c.appVersion}), ${_stateLabel(c.state)}'),
-        (
-          '  Ping',
-          c.rttMs == null
-              ? '–'
-              : '${c.rttMs} ms (30 s avg ${c.rttStats?.avgMs ?? '–'}, max ${c.rttStats?.maxMs ?? '–'})',
-        ),
-        (
-          '  Input delay',
-          c.inputLatency == null ? '–' : '~${c.inputLatency!.avgMs} ms avg (± ${c.latencyErrorMs ?? '?'} ms)',
-        ),
-        ('  Mode', inputModeLabel(c.input)),
-        ('  Values', inputValues(c.input)),
-        (
-          '  Buttons',
-          c.input == null || c.input!.buttons.isEmpty
-              ? '–'
-              : c.input!.buttons.map((b) => b.name.toUpperCase()).join(' '),
-        ),
+      for (final p in players) ...[
+        ('P${p.number}', '${p.nickname ?? ''}${p.local ? ' (on this device)' : ''}'),
+        if (host.latency(p.id) case final l?) ...[
+          (
+            '  Ping',
+            l.pingNowMs == null
+                ? '–'
+                : '${l.pingNowMs} ms (30 s avg ${l.ping?.avgMs ?? '–'}, max ${l.ping?.maxMs ?? '–'})',
+          ),
+          ('  Input delay', l.inputDelay == null ? '–' : '~${l.inputDelay!.avgMs} ms avg (± ${l.errorMs ?? '?'} ms)'),
+        ],
+        ('  Mode', modeLabel(p.mode)),
+        ('  Values', gamepadValues(host.gamepad(p.id))),
+        ('  Buttons', gamepadButtons(host.gamepad(p.id))),
       ],
       (
         'Last haptic',
@@ -193,36 +242,28 @@ class DebugOverlay extends ConsumerWidget {
   }
 }
 
-/// Every connected controller as a player in the game, in its player colour.
-List<PlayerFeed> playerFeeds(HostViewState state) => [
-  for (final (i, c) in state.players.indexed)
-    (
-      id: c.controllerId,
-      number: c.player ?? i + 1,
-      name: c.name,
-      color: Color(playerColor(c.player ?? i + 1)),
-      input: c.input,
-    ),
-];
-
-String _stateLabel(ControllerState s) => switch (s) {
-  ControllerState.connected => 'Connected',
-  ControllerState.pairing => 'Waiting for code',
-  ControllerState.disconnected => 'Disconnected',
+String modeLabel(InputMode mode) => switch (mode) {
+  InputMode.dpad => 'D-pad',
+  InputMode.gyro => 'Gyro',
+  InputMode.sticks => 'Sticks',
+  InputMode.keyboard => 'Keyboard',
+  InputMode.none => '–',
 };
 
-String inputModeLabel(InputStateMessage? i) => i == null
-    ? '–'
-    : i.hasSticks
-    ? 'Sticks'
-    : i.hasAnalog
-    ? 'Gyro'
-    : 'D-pad';
-
-String inputValues(InputStateMessage? i) {
-  if (i == null) return '–';
+String gamepadValues(GamepadState g) {
   String f(double v) => v.toStringAsFixed(2);
-  if (i.hasSticks) return 'L ${f(i.lx!)}, ${f(i.ly!)}   R ${f(i.rx!)}, ${f(i.ry!)}';
-  if (i.hasAnalog) return 'Tilt x ${f(i.ax!)}  y ${f(i.ay!)}';
-  return 'D-pad ${i.dx}, ${i.dy}';
+  return switch (g.mode) {
+    InputMode.sticks => 'L ${f(g.leftX)}, ${f(g.leftY)}   R ${f(g.rightX)}, ${f(g.rightY)}',
+    InputMode.gyro => 'Tilt x ${f(g.tiltX ?? g.leftX)}  y ${f(g.tiltY ?? g.leftY)}',
+    InputMode.none => '–',
+    _ => 'D-pad ${g.dpadX}, ${g.dpadY}',
+  };
+}
+
+String gamepadButtons(GamepadState g) {
+  final names = [
+    for (final b in g.buttons)
+      if (!b.name.startsWith('dpad')) b.name.toUpperCase(),
+  ];
+  return names.isEmpty ? '–' : names.join(' ');
 }
