@@ -9,3 +9,5 @@ export 'src/library.dart';
 export 'src/puzzle.dart';
 export 'src/settings.dart';
 export 'src/snapshot.dart';
+export 'src/play_view.dart';
+export 'src/view.dart';

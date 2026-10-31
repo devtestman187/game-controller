@@ -28,9 +28,10 @@ const arenaGame = 'arena';
 ///
 /// Everything comes from the [host] (PRD v2 P3): the players, their controls
 /// (the standard gamepad, P4) and where analytics go. Each player drives
-/// their own sprite. [onEvent] gets every game event (with the player who
-/// caused it), so the host app can send the haptic event to that controller
-/// and play the sound.
+/// their own sprite. Each game event buzzes the phone of the player who
+/// caused it and plays its sound, by name, through the host (S5); [onEvent]
+/// also gets it, for the host app's log and debug overlay. Drawing reads
+/// only an [ArenaSnapshot] (S8), and fills the box it's given (S4).
 ///
 /// For analytics it reports each round's start and end, every game event,
 /// how many frames were late, and the "received to drawn" delay stage (S7):
@@ -59,6 +60,7 @@ class _ArenaViewState extends State<ArenaView> with SingleTickerProviderStateMix
   late final Ticker _ticker = createTicker(_tick);
   Duration _last = Duration.zero;
   List<PlayerFeed> _feeds = const [];
+  late ArenaSnapshot _snapshot = _game.snapshot();
   final _arrived = <String, int>{};
   bool _roundRunning = false;
   int _frames = 0;
@@ -107,6 +109,8 @@ class _ArenaViewState extends State<ArenaView> with SingleTickerProviderStateMix
     final before = _game.phase;
     final events = _game.update(dt, {for (final f in _feeds) f.id: GameInput.fromGamepad(f.gamepad)});
     for (final e in events) {
+      host.haptic(e.playerId, e.toMessage());
+      host.playSound(e.event.name);
       widget.onEvent(e);
       _record(_eventName(e.cause), playerId: e.playerId);
     }
@@ -125,7 +129,7 @@ class _ArenaViewState extends State<ArenaView> with SingleTickerProviderStateMix
       _frames = 0;
       _late = 0;
     }
-    setState(() {});
+    setState(() => _snapshot = _game.snapshot());
     // After a stall in drawing (the window minimised or covered, the PC
     // asleep) an input waited for frames that weren't being drawn at all:
     // that's not delay a player feels, so it isn't counted (in the M9 device
@@ -153,30 +157,30 @@ class _ArenaViewState extends State<ArenaView> with SingleTickerProviderStateMix
 
   @override
   Widget build(BuildContext context) {
-    final winner = _feed(_game.winnerId);
+    final s = _snapshot;
+    final winner = _feed(s.winnerId);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _Hud(game: _game, feeds: _feeds),
+        _Hud(snapshot: s, feeds: _feeds),
         Expanded(
           child: LayoutBuilder(
             builder: (context, constraints) {
+              // The rules move in the box's size; the drawing only reads the
+              // snapshot, in fractions of it.
               _game.resize(constraints.biggest);
               return ClipRect(
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
-                    CustomPaint(
-                      key: const Key('arena'),
-                      painter: _ArenaPainter(_game, {for (final f in _feeds) f.id: f}),
-                    ),
-                    if (_game.phase == ArenaPhase.won)
+                    CustomPaint(key: const Key('arena'), painter: ArenaPainter(s, {for (final f in _feeds) f.id: f})),
+                    if (s.phase == ArenaPhase.won)
                       Center(
                         child: _Banner(
                           _feeds.length > 1 && winner != null
-                              ? 'P${winner.number} wins! ${_game.lastTimeS!.toStringAsFixed(1)} s'
-                              : 'Goal! ${_game.lastTimeS!.toStringAsFixed(1)} s',
-                          'Next round in ${max(0, _game.breakLeft).ceil()}…',
+                              ? 'P${winner.number} wins! ${s.lastTimeS!.toStringAsFixed(1)} s'
+                              : 'Goal! ${s.lastTimeS!.toStringAsFixed(1)} s',
+                          'Next round in ${max(0, s.breakLeftS).ceil()}…',
                           color: winner?.color ?? Colors.greenAccent,
                         ),
                       ),
@@ -192,9 +196,9 @@ class _ArenaViewState extends State<ArenaView> with SingleTickerProviderStateMix
 }
 
 class _Hud extends StatelessWidget {
-  const _Hud({required this.game, required this.feeds});
+  const _Hud({required this.snapshot, required this.feeds});
 
-  final ArenaGame game;
+  final ArenaSnapshot snapshot;
   final List<PlayerFeed> feeds;
 
   @override
@@ -203,8 +207,9 @@ class _Hud extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final tabular = text.titleMedium?.copyWith(fontFeatures: const [FontFeature.tabularFigures()]);
     final small = text.bodyMedium?.copyWith(fontFeatures: const [FontFeature.tabularFigures()]);
-    final best = game.bestTimeS;
-    final bestBy = feeds.length > 1 ? feeds.where((f) => f.id == game.bestId).firstOrNull?.number : null;
+    final s = snapshot;
+    final best = s.bestTimeS;
+    final bestBy = feeds.length > 1 ? feeds.where((f) => f.id == s.bestId).firstOrNull?.number : null;
     return Container(
       color: scheme.surfaceContainer,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -216,8 +221,8 @@ class _Hud extends StatelessWidget {
             runSpacing: 4,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              Text('Round ${game.round}', style: text.titleMedium),
-              Text('${game.roundTime.toStringAsFixed(1)} s', key: const Key('roundTime'), style: tabular),
+              Text('Round ${s.round}', style: text.titleMedium),
+              Text('${s.roundTimeS.toStringAsFixed(1)} s', key: const Key('roundTime'), style: tabular),
               Text(
                 'Best ${best == null ? '–' : '${best.toStringAsFixed(1)} s${bestBy == null ? '' : ' (P$bestBy)'}'}',
                 style: tabular,
@@ -225,7 +230,7 @@ class _Hud extends StatelessWidget {
             ],
           ),
           for (final f in feeds)
-            if (game.player(f.id) case final p?)
+            if (s.player(f.id) case final p?)
               Padding(
                 padding: const EdgeInsets.only(top: 4),
                 child: Wrap(
@@ -295,15 +300,19 @@ class _Banner extends StatelessWidget {
   }
 }
 
-/// Plain coloured shapes for now (PRD: CC0 art comes later).
-class _ArenaPainter extends CustomPainter {
-  _ArenaPainter(this.game, this.feeds);
+/// Draws the arena from a snapshot only (S8), scaled to the box: positions
+/// are fractions of the field, sizes fractions of its shorter side. Plain
+/// coloured shapes for now (PRD: CC0 art comes later).
+class ArenaPainter extends CustomPainter {
+  ArenaPainter(this.s, this.feeds);
 
-  final ArenaGame game;
+  final ArenaSnapshot s;
   final Map<String, PlayerFeed> feeds;
 
   @override
   void paint(Canvas canvas, Size size) {
+    Offset px(Offset f) => Offset(f.dx * size.width, f.dy * size.height);
+    Rect pxRect(Rect r) => Rect.fromPoints(px(r.topLeft), px(r.bottomRight));
     canvas.drawRect(Offset.zero & size, Paint()..color = const Color(0xFF14181F));
     final unit = size.shortestSide;
 
@@ -320,8 +329,10 @@ class _ArenaPainter extends CustomPainter {
     }
 
     // Start pad and goal.
-    canvas.drawCircle(game.startPx, game.playerRadiusPx * 1.8, Paint()..color = Colors.white.withValues(alpha: 0.08));
-    final goal = RRect.fromRectAndRadius(game.goalRect, Radius.circular(unit * 0.02));
+    final playerR = s.playerRadius * unit;
+    canvas.drawCircle(px(s.start), playerR * 1.8, Paint()..color = Colors.white.withValues(alpha: 0.08));
+    final goalRect = pxRect(s.goal);
+    final goal = RRect.fromRectAndRadius(goalRect, Radius.circular(unit * 0.02));
     canvas.drawRRect(goal, Paint()..color = const Color(0xFF2E7D32).withValues(alpha: 0.55));
     canvas.drawRRect(
       goal,
@@ -330,46 +341,46 @@ class _ArenaPainter extends CustomPainter {
         ..style = PaintingStyle.stroke
         ..strokeWidth = 3,
     );
-    _label(canvas, game.goalRect.center, 'GOAL', unit * 0.04, Colors.greenAccent);
+    _label(canvas, goalRect.center, 'GOAL', unit * 0.04, Colors.greenAccent);
 
     // Walls.
     final wallPaint = Paint()..color = const Color(0xFF5C6B7A);
-    for (final w in game.wallRects) {
-      canvas.drawRRect(RRect.fromRectAndRadius(w, Radius.circular(unit * 0.008)), wallPaint);
+    for (final w in s.walls) {
+      canvas.drawRRect(RRect.fromRectAndRadius(pxRect(w), Radius.circular(unit * 0.008)), wallPaint);
     }
 
     // Hazards: red discs with a darker core.
-    for (final h in game.hazardPositions) {
-      canvas.drawCircle(h, game.hazardRadiusPx, Paint()..color = const Color(0xFFE53935));
-      canvas.drawCircle(h, game.hazardRadiusPx * 0.45, Paint()..color = const Color(0xFF7F0000));
+    final hazardR = s.hazardRadius * unit;
+    for (final h in s.hazards) {
+      canvas.drawCircle(px(h), hazardR, Paint()..color = const Color(0xFFE53935));
+      canvas.drawCircle(px(h), hazardR * 0.45, Paint()..color = const Color(0xFF7F0000));
     }
 
-    for (final p in game.players) {
-      _paintPlayer(canvas, p, feeds[p.id], unit);
+    for (final p in s.players) {
+      _paintPlayer(canvas, p, feeds[p.id], px, playerR);
     }
   }
 
-  void _paintPlayer(Canvas canvas, ArenaPlayer player, PlayerFeed? feed, double unit) {
+  void _paintPlayer(Canvas canvas, ArenaPlayerView player, PlayerFeed? feed, Offset Function(Offset) px, double r) {
     final color = feed?.color ?? const Color(0xFF5AAAFF);
 
     // Aim cursor (right stick), in the player's colour.
-    final aim = player.aimPoint;
-    if (aim != null) {
+    if (player.aimX != null) {
+      final aim = px(Offset(player.aimX!, player.aimY!));
       final cross = Paint()
         ..color = color
         ..strokeWidth = 2
         ..style = PaintingStyle.stroke;
-      final r = game.playerRadiusPx * 0.7;
-      canvas.drawCircle(aim, r, cross);
-      canvas.drawLine(aim - Offset(r * 1.6, 0), aim + Offset(r * 1.6, 0), cross);
-      canvas.drawLine(aim - Offset(0, r * 1.6), aim + Offset(0, r * 1.6), cross);
+      final c = r * 0.7;
+      canvas.drawCircle(aim, c, cross);
+      canvas.drawLine(aim - Offset(c * 1.6, 0), aim + Offset(c * 1.6, 0), cross);
+      canvas.drawLine(aim - Offset(0, c * 1.6), aim + Offset(0, c * 1.6), cross);
     }
 
     // The sprite: blinks while recovering from a hazard, glows while dashing,
     // and a ring fills back up as the dash cools down.
-    final p = player.position;
-    final r = game.playerRadiusPx;
-    final blinkOff = player.recovering && (game.roundTime * 10).floor().isEven;
+    final p = px(Offset(player.x, player.y));
+    final blinkOff = player.recovering && (s.roundTimeS * 10).floor().isEven;
     if (player.dashing) {
       canvas.drawCircle(p, r * 1.7, Paint()..color = color.withValues(alpha: 0.35));
     }
@@ -413,7 +424,6 @@ class _ArenaPainter extends CustomPainter {
     painter.paint(canvas, center - Offset(painter.width / 2, painter.height / 2));
   }
 
-  // The game changes every frame.
   @override
-  bool shouldRepaint(_ArenaPainter old) => true;
+  bool shouldRepaint(ArenaPainter old) => !identical(old.s, s);
 }

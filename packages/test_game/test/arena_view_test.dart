@@ -16,6 +16,8 @@ MemoryGameHost hostWith(Map<String, InputStateMessage?> players) {
 }
 
 void main() {
+  group('snapshots and the host', snapshots);
+
   Future<(ArenaGame, List<GameEvent>)> pump(WidgetTester tester, GameHost host, Size size, {ArenaGame? arena}) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
@@ -165,5 +167,43 @@ void main() {
     expect(frames.data['drawn'], greaterThan(10));
     // The input arrived once, so one "received to drawn" sample.
     expect(host.stages.where((s) => s.stage == LatencyStage.receivedToDrawn && s.playerId == 'a'), hasLength(1));
+  });
+}
+
+void snapshots() {
+  testWidgets('events buzz the right phone and play their sound through the host (S5)', (tester) async {
+    final host = hostWith({'a': InputStateMessage(seq: 1, dx: -1)});
+    tester.view.physicalSize = const Size(960, 540);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: ArenaView(host: host, onEvent: (_) {}),
+        ),
+      ),
+    );
+    for (var i = 0; i < 60; i++) {
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    expect(host.haptics.map((h) => (h.$1, h.$2.event)), contains(('a', HapticEvent.hit)));
+    expect(host.sounds, contains('hit'));
+  });
+
+  test('a snapshot encodes, decodes and keeps everything the view draws (S8)', () {
+    final game = ArenaGame()..resize(const Size(1280, 720));
+    game.join('a');
+    game.join('b');
+    game.update(0.5, {'a': const GameInput(move: Offset(1, 0), aim: Offset(0.8, 0)), 'b': const GameInput(dash: true)});
+    final s = game.snapshot();
+    final back = ArenaSnapshot.decode(s.encode());
+    expect(back.encode(), s.encode());
+    expect(back.walls, hasLength(game.walls.length));
+    expect(back.players.map((p) => p.id), ['a', 'b']);
+    expect(back.player('a')!.aimX, isNotNull);
+    expect(back.player('b')!.dashing, isTrue);
+    // Fractions: the same snapshot draws the same way at any size.
+    expect(back.player('a')!.x, inInclusiveRange(0, 1));
+    expect(s.encode().length, lessThan(2048));
   });
 }

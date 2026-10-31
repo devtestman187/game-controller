@@ -102,14 +102,16 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     );
   }
 
+  /// The arena already buzzed the phone and played the sound through the
+  /// game host (S5): this only notes it for the log and the debug overlay.
   void _onEvent(GameEvent e) {
     final who = ref.read(gamePlayersProvider).where((p) => p.id == e.playerId).firstOrNull;
     ref
         .read(tvEventsProvider.notifier)
-        .fire(
+        .note(
           e.toMessage(),
           source: 'game: ${e.cause.name}${who == null ? '' : ', P${who.number}'}',
-          controllerId: e.playerId,
+          reached: who == null || who.local ? 0 : 1,
         );
   }
 

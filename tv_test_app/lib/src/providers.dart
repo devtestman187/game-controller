@@ -149,6 +149,12 @@ class TvEventsNotifier extends Notifier<FiredEvent?> {
     for (final id in targets) {
       if (host.haptic(id, message)) reached++;
     }
+    note(message, source: source, reached: reached);
+  }
+
+  /// Records an event a game already sent and played through the game host
+  /// (S5), for the log and the debug overlay.
+  void note(HapticEventMessage message, {required String source, required int reached}) {
     ref
         .read(logProvider)
         .add(
