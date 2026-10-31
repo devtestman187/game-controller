@@ -146,16 +146,35 @@ void main() {
       expect(a.client.metrics, isEmpty);
     });
 
-    testWidgets('the rating prompt sends a face with the tags picked', (tester) async {
-      final a = await app.pumpApp(tester, paired: true);
+    Future<app.TestApp> asked(WidgetTester tester, {Size screen = const Size(852, 393)}) async {
+      final a = await app.pumpApp(tester, paired: true, screen: screen);
       a.client.emit(app.connected);
       await tester.pump();
       a.client.ask(const RatingAskMessage(id: 'r1', game: 'arena'));
       await app.settle(tester);
+      return a;
+    }
+
+    testWidgets('Good is one tap, and says thanks', (tester) async {
+      final a = await asked(tester);
       expect(find.byKey(const Key('ratingPrompt')), findsOneWidget);
+      expect(find.byKey(const Key('tag-${RatingTag.laggy}')), findsNothing, reason: 'tags only after Okay or Bad');
+      await tester.tap(find.byKey(const Key('rate-good')));
+      await app.settle(tester);
+      expect(find.byKey(const Key('ratingPrompt')), findsNothing);
+      expect(a.client.ratings.single.face, RatingFace.good);
+      expect(find.textContaining('Thanks!'), findsOneWidget);
+    });
+
+    testWidgets('Bad asks what got in the way, then sends the face with the tags picked', (tester) async {
+      final a = await asked(tester);
+      await tester.tap(find.byKey(const Key('rate-bad')));
+      await tester.pump();
+      expect(find.text('What got in the way?'), findsOneWidget);
+      expect(a.client.ratings, isEmpty, reason: 'nothing sent until Send');
       await tester.tap(find.byKey(const Key('tag-${RatingTag.laggy}')));
       await tester.pump();
-      await tester.tap(find.byKey(const Key('rate-bad')));
+      await tester.tap(find.byKey(const Key('rate-send')));
       await app.settle(tester);
       expect(find.byKey(const Key('ratingPrompt')), findsNothing);
       expect(a.client.ratings.single.id, 'r1');
@@ -163,34 +182,77 @@ void main() {
       expect(a.client.ratings.single.tags, [RatingTag.laggy]);
     });
 
-    testWidgets('the rating prompt fits the smallest phone in landscape (iPhone SE): every tag and Skip on screen', (tester) async {
-      final a = await app.pumpApp(tester, paired: true, screen: const Size(667, 375));
-      a.client.emit(app.connected);
+    testWidgets('the three faces are the same size and evenly spaced', (tester) async {
+      await asked(tester);
+      final rects = [
+        for (final f in ['good', 'okay', 'bad']) tester.getRect(find.byKey(Key('rate-$f'))),
+      ];
+      expect(rects.map((r) => r.size).toSet(), hasLength(1));
+      expect(rects[1].left - rects[0].right, closeTo(rects[2].left - rects[1].right, 0.01));
+      await tester.tap(find.byKey(const Key('rate-okay')));
       await tester.pump();
-      a.client.ask(const RatingAskMessage(id: 'r1', game: 'arena'));
-      await app.settle(tester);
-      final screen = Offset.zero & tester.view.physicalSize;
-      bool inside(Rect outer, Rect r) => outer.contains(r.topLeft) && outer.contains(r.bottomRight - const Offset(1, 1));
-      for (final key in [
-        for (final tag in RatingTag.all) 'tag-$tag',
-        'rate-good',
-        'rate-okay',
-        'rate-bad',
-        'rate-skip',
-      ]) {
-        final finder = find.byKey(Key(key));
-        final rect = tester.getRect(finder);
-        expect(inside(screen, rect), isTrue, reason: '$key at $rect is off the screen');
-        // Inside a scrolling area, it must also be in the part that shows
-        // without scrolling (on the emulator the fourth tag was cut off).
-        final scroll = find.ancestor(of: finder, matching: find.byType(Scrollable));
-        if (scroll.evaluate().isNotEmpty) {
-          final visible = tester.getRect(scroll.first);
-          expect(inside(visible, rect), isTrue, reason: '$key at $rect is cut off (visible area $visible)');
-        }
-      }
-      expect(tester.takeException(), isNull);
+      final tags = [for (final t in RatingTag.all) tester.getRect(find.byKey(Key('tag-$t')))];
+      expect(tags.map((r) => r.size).toSet(), hasLength(1), reason: 'the four tags are the same size');
     });
+
+    testWidgets('every tap gives another 20 seconds, so picking tags never runs out of time', (tester) async {
+      final a = await asked(tester);
+      await tester.pump(const Duration(seconds: 15));
+      await tester.tap(find.byKey(const Key('rate-bad')));
+      await tester.pump(const Duration(seconds: 15));
+      await tester.tap(find.byKey(const Key('tag-${RatingTag.laggy}')));
+      await tester.pump(const Duration(seconds: 15));
+      expect(find.byKey(const Key('ratingPrompt')), findsOneWidget, reason: '45 s in, but never 20 s without a tap');
+      expect(a.client.ratings, isEmpty);
+      await tester.tap(find.byKey(const Key('rate-send')));
+      await app.settle(tester);
+      expect(a.client.ratings.single.tags, [RatingTag.laggy]);
+    });
+
+    testWidgets('a picked face is sent when the prompt times out', (tester) async {
+      final a = await asked(tester);
+      await tester.tap(find.byKey(const Key('rate-okay')));
+      await tester.pump(const Duration(seconds: 21));
+      await app.settle(tester);
+      expect(a.client.ratings.single.face, RatingFace.okay);
+    });
+
+    testWidgets(
+      'the rating prompt fits the smallest phone in landscape (iPhone SE): every face, tag, Skip and Send on screen',
+      (tester) async {
+        final a = await app.pumpApp(tester, paired: true, screen: const Size(667, 375));
+        a.client.emit(app.connected);
+        await tester.pump();
+        a.client.ask(const RatingAskMessage(id: 'r1', game: 'arena'));
+        await app.settle(tester);
+        // The taller step: after Bad, with the tags and Send.
+        await tester.tap(find.byKey(const Key('rate-bad')));
+        await tester.pump();
+        final screen = Offset.zero & tester.view.physicalSize;
+        bool inside(Rect outer, Rect r) =>
+            outer.contains(r.topLeft) && outer.contains(r.bottomRight - const Offset(1, 1));
+        for (final key in [
+          for (final tag in RatingTag.all) 'tag-$tag',
+          'rate-good',
+          'rate-okay',
+          'rate-bad',
+          'rate-skip',
+          'rate-send',
+        ]) {
+          final finder = find.byKey(Key(key));
+          final rect = tester.getRect(finder);
+          expect(inside(screen, rect), isTrue, reason: '$key at $rect is off the screen');
+          // Inside a scrolling area, it must also be in the part that shows
+          // without scrolling (on the emulator the fourth tag was cut off).
+          final scroll = find.ancestor(of: finder, matching: find.byType(Scrollable));
+          if (scroll.evaluate().isNotEmpty) {
+            final visible = tester.getRect(scroll.first);
+            expect(inside(visible, rect), isTrue, reason: '$key at $rect is cut off (visible area $visible)');
+          }
+        }
+        expect(tester.takeException(), isNull);
+      },
+    );
 
     testWidgets('a prompt from the TV is logged when it arrives', (tester) async {
       final log = LogBuffer();
