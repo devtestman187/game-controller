@@ -1,0 +1,23 @@
+name: metrics
+description: >-
+  Analytics for Thumb Party (PRD v2 M9): the phone's touch counters for each
+  mode segment, the host's session summary, and the report tool. Pure Dart,
+  so it runs in both apps, on the command line and in `dart test`.
+publish_to: 'none'
+version: 0.1.0
+
+environment:
+  sdk: ^3.13.0
+
+resolution: workspace
+
+dependencies:
+  protocol:
+    path: ../protocol
+
+dev_dependencies:
+  lints: ^6.0.0
+  test: ^1.26.0
+
+executables:
+  report:

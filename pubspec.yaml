@@ -10,6 +10,7 @@ workspace:
   - tv_test_app
   - packages/protocol
   - packages/connection
+  - packages/metrics
   - packages/test_game
   - assets
 
