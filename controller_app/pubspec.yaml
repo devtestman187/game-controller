@@ -17,6 +17,8 @@ dependencies:
   flutter_riverpod: ^3.4.3
   connection:
     path: ../packages/connection
+  metrics:
+    path: ../packages/metrics
   protocol:
     path: ../packages/protocol
   share_plus: ^13.3.1

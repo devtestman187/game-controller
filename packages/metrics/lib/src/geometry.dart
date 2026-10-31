@@ -3,9 +3,11 @@ import 'dart:math';
 /// A control's touch area on the phone, in millimetres from the top left of
 /// the controller area: a rectangle or a circle.
 final class TouchShape {
-  const TouchShape.rect(this.control, this.left, this.top, this.width, this.height) : circle = false;
+  const TouchShape.rect(this.control, this.left, this.top, this.width, this.height) : circle = false, clip = null;
 
-  TouchShape.circle(this.control, double centerX, double centerY, double radius)
+  /// A circle, optionally only where it lies inside [clip] (a control that
+  /// takes touches only inside its own square).
+  TouchShape.circle(this.control, double centerX, double centerY, double radius, {this.clip})
     : circle = true,
       left = centerX - radius,
       top = centerY - radius,
@@ -20,6 +22,9 @@ final class TouchShape {
   final double height;
   final bool circle;
 
+  /// For a circle: touches count only inside this rectangle too.
+  final TouchShape? clip;
+
   double get right => left + width;
   double get bottom => top + height;
   double get centerX => left + width / 2;
@@ -27,7 +32,11 @@ final class TouchShape {
 
   /// How far a point is from the shape's edge: 0 inside it.
   double distance(double x, double y) {
-    if (circle) return max(0, _hypot(x - centerX, y - centerY) - width / 2);
+    if (circle) {
+      final d = max(0.0, _hypot(x - centerX, y - centerY) - width / 2);
+      final c = clip;
+      return c == null ? d : max(d, c.distance(x, y));
+    }
     final dx = max(max(left - x, 0.0), x - right);
     final dy = max(max(top - y, 0.0), y - bottom);
     return _hypot(dx, dy);

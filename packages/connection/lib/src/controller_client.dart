@@ -30,13 +30,13 @@ final class ControllerIdentity {
   /// The kind of device, for analytics (M9).
   final DeviceInfo? device;
 
-  ControllerIdentity copyWith({List<String>? capabilities}) => ControllerIdentity(
+  ControllerIdentity copyWith({List<String>? capabilities, DeviceInfo? device}) => ControllerIdentity(
     controllerId: controllerId,
     name: name,
     platform: platform,
     appVersion: appVersion,
     capabilities: capabilities ?? this.capabilities,
-    device: device,
+    device: device ?? this.device,
   );
 
   HelloMessage toHello() => HelloMessage(
@@ -217,7 +217,9 @@ class ControllerClient {
        _tokens = Map.of(tokens),
        _log = log ?? _noLog;
 
-  final ControllerIdentity identity;
+  /// Who this phone is. Can change (the device details load a moment after
+  /// launch); the next hello uses the new one.
+  ControllerIdentity identity;
 
   /// Called when a host issues a pairing token (or forgets one, with null),
   /// so the app can save it and reconnect without a code after a restart.

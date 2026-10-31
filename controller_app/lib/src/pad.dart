@@ -102,6 +102,9 @@ class PadTracker {
 
   PadInput get current => _current;
 
+  /// The button under a finger on a button area, or null.
+  ControllerButton? buttonUnder(int pointer) => _buttons[pointer];
+
   /// Starts a mode: lets go of every finger (nothing held in the old layout
   /// carries over), and centers the inputs the new mode uses (tilt for gyro,
   /// both sticks for stick mode) or drops them.

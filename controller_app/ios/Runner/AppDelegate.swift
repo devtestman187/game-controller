@@ -81,9 +81,23 @@ final class HapticsChannel: NSObject {
       result(nil)
     case "deviceStatus":
       result(deviceStatus())
+    case "deviceInfo":
+      result(deviceInfo())
     default:
       result(FlutterMethodNotImplemented)
     }
+  }
+
+  /// The hardware model (e.g. "iPhone15,2") and OS version, for analytics
+  /// (M9). Never the name the user gave the device.
+  private func deviceInfo() -> [String: Any] {
+    var info = utsname()
+    uname(&info)
+    let model = withUnsafePointer(to: &info.machine) {
+      $0.withMemoryRebound(to: CChar.self, capacity: 1) { String(cString: $0) }
+    }
+    let device = UIDevice.current
+    return ["model": model, "os": "\(device.systemName) \(device.systemVersion)"]
   }
 
   /// Battery, heat and this app's CPU time, for the long-session check in

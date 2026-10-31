@@ -102,6 +102,23 @@ class FakeClient extends ControllerClient {
     sent++;
   }
 
+  /// Metrics batches and ratings the phone sent (M9).
+  final metrics = <MetricsMessage>[];
+  final ratings = <RatingMessage>[];
+  final _asks = StreamController<RatingAskMessage>.broadcast();
+
+  /// A rating prompt arriving from the TV.
+  void ask(RatingAskMessage m) => _asks.add(m);
+
+  @override
+  Stream<RatingAskMessage> get ratingAsks => _asks.stream;
+
+  @override
+  void sendMetrics(MetricsMessage batch) => metrics.add(batch);
+
+  @override
+  void sendRating(RatingMessage rating) => ratings.add(rating);
+
   @override
   Future<void> dispose() => _changes.close();
 }

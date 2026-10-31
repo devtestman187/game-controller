@@ -1,14 +1,19 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
+import 'dart:ui' show Size;
 
 import 'package:connection/connection.dart';
+import 'package:protocol/protocol.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app_info.dart';
 
 /// Loads this phone's identity, creating a random controller ID on first run.
-ControllerIdentity loadIdentity(SharedPreferences prefs, {bool isTablet = false}) {
+/// [screenMm] is the physical screen size, for analytics (M9). The model and
+/// OS version are added once the native side has answered
+/// ([withDeviceDetails]).
+ControllerIdentity loadIdentity(SharedPreferences prefs, {bool isTablet = false, Size? screenMm}) {
   var id = prefs.getString(_controllerIdKey);
   if (id == null) {
     final r = Random.secure();
@@ -26,6 +31,28 @@ ControllerIdentity loadIdentity(SharedPreferences prefs, {bool isTablet = false}
     name: '$base ${id.substring(0, 4).toUpperCase()}',
     platform: platform,
     appVersion: appVersion,
+    capabilities: const [Capability.metrics, Capability.rating],
+    device: DeviceInfo(
+      kind: isTablet ? DeviceInfo.tablet : DeviceInfo.phone,
+      // Landscape: the long side is the width.
+      widthMm: screenMm?.longestSide.round(),
+      heightMm: screenMm?.shortestSide.round(),
+    ),
+  );
+}
+
+/// The identity with the model, OS version and haptics added, once known.
+ControllerIdentity withDeviceDetails(ControllerIdentity identity, {String? model, String? os, bool? haptics}) {
+  final d = identity.device ?? const DeviceInfo(kind: DeviceInfo.phone);
+  return identity.copyWith(
+    device: DeviceInfo(
+      kind: d.kind,
+      model: model ?? d.model,
+      os: os ?? d.os,
+      widthMm: d.widthMm,
+      heightMm: d.heightMm,
+      haptics: haptics ?? d.haptics,
+    ),
   );
 }
 

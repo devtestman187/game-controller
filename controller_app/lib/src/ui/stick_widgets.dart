@@ -121,7 +121,7 @@ class _AnalogStickViewState extends ConsumerState<AnalogStickView> {
       _pointer = null;
       _center = null;
     });
-    ref.read(padProvider.notifier).stick(widget.side, stickCenter);
+    ref.read(padProvider.notifier).stick(widget.side, stickCenter, touched: false);
   }
 
   @override

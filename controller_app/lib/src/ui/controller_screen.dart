@@ -7,12 +7,14 @@ import 'package:protocol/protocol.dart';
 
 import '../gyro.dart';
 import '../layout.dart';
+import '../phone_metrics.dart';
 import '../providers.dart';
 import 'connect_screen.dart';
 import 'diagnostics_screen.dart';
 import 'gyro_dialog.dart';
 import 'labels.dart';
 import 'pad_widgets.dart';
+import 'rating_prompt.dart';
 import 'settings_screen.dart';
 import 'stick_dialog.dart';
 import 'stick_widgets.dart';
@@ -90,6 +92,15 @@ class _ControllerScreenState extends ConsumerState<ControllerScreen> with Widget
       }
     });
     final mode = ref.watch(gyroProvider.select((g) => g.mode));
+    // Re-laid out when the button size or fixed/floating changes, so the
+    // metrics' touch areas follow.
+    ref.watch(stickSettingsProvider);
+    // The metrics record while a TV is connected (M9).
+    ref.watch(phoneMetricsProvider);
+    // "How did the controls feel?" after a game, when the TV asks.
+    ref.listen(ratingPromptProvider, (prev, next) {
+      if (next != null && prev == null) showRatingPrompt(context);
+    });
 
     return Scaffold(
       body: SafeArea(
@@ -105,15 +116,29 @@ class _ControllerScreenState extends ConsumerState<ControllerScreen> with Widget
                   child: LayoutBuilder(
                     builder: (context, body) {
                       if (body.maxHeight < minBodyHeight) return const TooSmallView();
-                      return Stack(
-                        children: [
-                          Positioned.fill(
-                            child: mode == PadMode.sticks
-                                ? const StickModeView()
-                                : PadModeView(gyro: mode == PadMode.gyro),
-                          ),
-                          const Positioned(top: 4, left: 0, right: 0, child: Center(child: DemoReadout())),
-                        ],
+                      // The touch metrics (M9) see every touch on the controls,
+                      // and know where each control's touch area is.
+                      final mm = ref.read(pxPerMmProvider);
+                      final metrics = ref.read(phoneMetricsProvider)
+                        ..map = touchMapFor(
+                          mode: mode,
+                          body: body.biggest,
+                          mm: mm,
+                          sticks: ref.read(stickSettingsProvider),
+                        );
+                      return Listener(
+                        behavior: HitTestBehavior.translucent,
+                        onPointerDown: (e) => metrics.touchDown(e.localPosition.dx / mm, e.localPosition.dy / mm),
+                        child: Stack(
+                          children: [
+                            Positioned.fill(
+                              child: mode == PadMode.sticks
+                                  ? const StickModeView()
+                                  : PadModeView(gyro: mode == PadMode.gyro),
+                            ),
+                            const Positioned(top: 4, left: 0, right: 0, child: Center(child: DemoReadout())),
+                          ],
+                        ),
                       );
                     },
                   ),

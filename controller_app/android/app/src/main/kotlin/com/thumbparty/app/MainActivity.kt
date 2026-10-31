@@ -32,6 +32,7 @@ class MainActivity : FlutterActivity() {
                         result.success(null)
                     }
                     "deviceStatus" -> result.success(deviceStatus(applicationContext))
+                    "deviceInfo" -> result.success(deviceInfo())
                     "naturalOrientation" -> result.success(naturalOrientation())
                     else -> result.notImplemented()
                 }
@@ -50,6 +51,15 @@ class MainActivity : FlutterActivity() {
         return if (landscapeNow != turned) "landscape" else "portrait"
     }
 }
+
+/**
+ * The device model and Android version, for analytics (M9): e.g. "Google Pixel 8", "Android 15".
+ * Never the name the user gave the device.
+ */
+private fun deviceInfo(): Map<String, Any?> = mapOf(
+    "model" to "${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}".trim(),
+    "os" to "Android ${android.os.Build.VERSION.RELEASE}",
+)
 
 /** Battery, heat and this app's CPU time, for the long-session check in Diagnostics. */
 private fun deviceStatus(context: Context): Map<String, Any?> {

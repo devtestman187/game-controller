@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../gyro.dart';
+import '../providers.dart';
 
 /// Gyro mode's left side: where the tilt is (dot), the dead zone (inner
 /// ring), and a Calibrate button.
@@ -48,7 +49,10 @@ class TiltView extends ConsumerWidget {
                 ),
                 FilledButton.tonalIcon(
                   key: const Key('calibrate'),
-                  onPressed: ref.read(gyroProvider.notifier).calibrate,
+                  onPressed: () {
+                    ref.read(gyroProvider.notifier).calibrate();
+                    ref.read(phoneMetricsProvider).recalibrated();
+                  },
                   icon: const Icon(Icons.center_focus_strong),
                   label: const Text('Calibrate'),
                 ),

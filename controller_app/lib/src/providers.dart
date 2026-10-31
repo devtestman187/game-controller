@@ -13,10 +13,12 @@ import 'app_info.dart';
 import 'device_status.dart';
 import 'discovery.dart';
 import 'feedback.dart';
+import 'gyro.dart';
 import 'haptics.dart';
 import 'layout.dart';
 import 'local_network.dart';
 import 'pad.dart';
+import 'phone_metrics.dart';
 import 'sticks.dart';
 import 'storage.dart';
 
@@ -79,9 +81,25 @@ final logProvider = Provider<LogBuffer>((ref) {
 
 final storeProvider = Provider<ConnectionStore>((ref) => ConnectionStore(ref.watch(prefsProvider)));
 
-final identityProvider = Provider<ControllerIdentity>(
-  (ref) => loadIdentity(ref.watch(prefsProvider), isTablet: ref.watch(isTabletProvider)),
-);
+final identityProvider = Provider<ControllerIdentity>((ref) {
+  final display = WidgetsBinding.instance.platformDispatcher.displays.firstOrNull;
+  final mm = ref.watch(pxPerMmProvider);
+  final screen = display == null || display.devicePixelRatio <= 0 ? null : display.size / display.devicePixelRatio / mm;
+  return loadIdentity(ref.watch(prefsProvider), isTablet: ref.watch(isTabletProvider), screenMm: screen);
+});
+
+/// The device model and OS version from the native side (M9), or nulls
+/// where it can't say (tests, older builds).
+final deviceDetailsProvider = FutureProvider<({String? model, String? os})>((ref) async {
+  try {
+    final map = await const MethodChannel('com.thumbparty.app/haptics').invokeMapMethod<String, Object?>('deviceInfo');
+    return (model: map?['model'] as String?, os: map?['os'] as String?);
+  } on MissingPluginException {
+    return (model: null, os: null);
+  } on PlatformException {
+    return (model: null, os: null);
+  }
+});
 
 final discoveryProvider = Provider<HostDiscovery>((ref) {
   final discovery = BonsoirHostDiscovery(log: ref.watch(logProvider).sink('discovery'));
@@ -113,6 +131,17 @@ final clientProvider = Provider<ControllerClient>((ref) {
     onTokenChanged: store.setToken,
     log: log.sink('client'),
   );
+  // The model, OS and haptics go into the next hello once known.
+  unawaited(() async {
+    final details = await ref.read(deviceDetailsProvider.future);
+    if (!ref.mounted) return;
+    bool? haptics;
+    try {
+      haptics = (await ref.read(hapticsCapabilitiesProvider.future)).supported;
+    } catch (_) {}
+    if (!ref.mounted) return;
+    client.identity = withDeviceDetails(client.identity, model: details.model, os: details.os, haptics: haptics);
+  }());
   // Remember the TV once paired (with its ID, even if it was typed in), so
   // the app reconnects to it on the next launch.
   final sub = client.changes.listen((s) {
@@ -362,31 +391,62 @@ class PadNotifier extends Notifier<PadInput> {
 
   void dpad(int pointer, (int, int) direction) => _apply(_tracker.dpad(pointer, direction));
 
-  void button(int pointer, ControllerButton? button) => _apply(_tracker.button(pointer, button));
+  void button(int pointer, ControllerButton? button) {
+    // A finger that was on a button and is now on none slid off it (M9).
+    final before = _tracker.buttonUnder(pointer);
+    if (before != null && button == null) ref.read(phoneMetricsProvider).slideOff(before.name);
+    _apply(_tracker.button(pointer, button));
+  }
 
   void up(int pointer) => _apply(_tracker.up(pointer));
 
   /// Called when the app leaves the foreground, so nothing stays held.
-  void releaseAll() => _apply(_tracker.releaseAll());
+  void releaseAll() {
+    _leftTouched = false;
+    _rightTouched = false;
+    _apply(_tracker.releaseAll());
+  }
 
   /// Gyro tilt from gyro mode (about 60 per second).
-  void tilt(double ax, double ay) => _apply(_tracker.tilt(ax, ay));
+  void tilt(double ax, double ay) {
+    ref.read(phoneMetricsProvider).tilt(ax, ay);
+    _apply(_tracker.tilt(ax, ay));
+  }
 
-  /// A stick moved, or was let go ([stickCenter]).
-  void stick(StickSide side, Stick value) => _apply(_tracker.stick(side, value));
+  /// A stick moved, or was let go ([stickCenter], [touched] false).
+  void stick(StickSide side, Stick value, {bool touched = true}) {
+    final left = side == StickSide.left;
+    if (left) {
+      _leftTouched = touched;
+    } else {
+      _rightTouched = touched;
+    }
+    ref.read(phoneMetricsProvider).stick(left ? 'ls' : 'rs', value.x, value.y, touched: touched);
+    _apply(_tracker.stick(side, value), force: true);
+  }
+
+  bool _leftTouched = false;
+  bool _rightTouched = false;
 
   /// A new mode starts: nothing from the old layout stays held.
-  void switchMode({required bool tilt, required bool sticks}) =>
-      _apply(_tracker.switchMode(tilt: tilt, sticks: sticks));
+  void switchMode({required bool tilt, required bool sticks}) {
+    _leftTouched = false;
+    _rightTouched = false;
+    _apply(_tracker.switchMode(tilt: tilt, sticks: sticks));
+  }
 
   /// At most one send per [analogInterval] for stick and tilt movement.
   static const analogInterval = Duration(milliseconds: 16);
   Timer? _cooldown;
   bool _pending = false;
 
-  void _apply(PadChange change) {
-    if (!change.changed) return;
+  void _apply(PadChange change, {bool force = false}) {
+    if (!change.changed) {
+      if (force) _recordHeld(change.after);
+      return;
+    }
     state = change.after;
+    _recordHeld(change.after);
     final strength = change.tickStrength;
     if (strength > 0) unawaited(ref.read(hapticsPlayerProvider).tick(strength: strength));
     // The optional click (v2 C33): presses and new directions, not releases.
@@ -413,6 +473,18 @@ class PadNotifier extends Notifier<PadInput> {
     }
   }
 
+  /// What is held, for the touch metrics (M9).
+  void _recordHeld(PadInput input) => ref
+      .read(phoneMetricsProvider)
+      .held(
+        heldControls(
+          input.buttons,
+          dpad: input.dx != 0 || input.dy != 0,
+          left: _leftTouched && input.left != null,
+          right: _rightTouched && input.right != null,
+        ),
+      );
+
   static bool _recentered(Stick? before, Stick? after) => after == stickCenter && before != stickCenter;
 
   void _send() {
@@ -423,5 +495,91 @@ class PadNotifier extends Notifier<PadInput> {
       _cooldown = null;
       if (_pending) _send();
     });
+  }
+}
+
+/// "Share control stats with the TV" in Settings (PRD v2 privacy rules),
+/// on by default and saved. Off: this phone sends no touch metrics.
+final shareStatsProvider = NotifierProvider<ShareStatsNotifier, bool>(ShareStatsNotifier.new);
+
+class ShareStatsNotifier extends Notifier<bool> {
+  static const _key = 'shareStats';
+
+  @override
+  bool build() => ref.watch(prefsProvider).getBool(_key) ?? true;
+
+  void set(bool on) {
+    state = on;
+    unawaited(ref.read(prefsProvider).setBool(_key, on));
+  }
+}
+
+/// The touch metrics (M9). Records while this phone is connected to a TV
+/// (or reconnecting to one), not in the demo, and not opted out. A new
+/// segment starts on every mode or settings change.
+final phoneMetricsProvider = Provider<PhoneMetrics>((ref) {
+  final client = ref.watch(clientProvider);
+  final metrics = PhoneMetrics(send: client.sendMetrics);
+  ref.onDispose(metrics.dispose);
+
+  void update() {
+    final mode = ref.read(gyroProvider).mode;
+    final haptics = ref.read(hapticSettingsProvider);
+    final feedback = ref.read(pressFeedbackProvider);
+    metrics.setMode(
+      mode.name,
+      metricsSettings(
+        mode: mode,
+        sticks: ref.read(stickSettingsProvider),
+        gyro: ref.read(gyroSettingsProvider),
+        hapticsOn: haptics.enabled,
+        hapticIntensity: haptics.intensity,
+        flash: ref.read(flashOnPressProvider),
+        click: feedback.click,
+        tablet: ref.read(isTabletProvider),
+      ),
+    );
+    final client = ref.read(clientStateProvider);
+    final inSession = client.isConnected || client.status == ClientStatus.reconnecting;
+    metrics.setActive(inSession && !ref.read(demoProvider) && ref.read(shareStatsProvider));
+  }
+
+  ref.listen(gyroProvider.select((g) => g.mode), (_, _) => update());
+  ref.listen(stickSettingsProvider, (_, _) => update());
+  ref.listen(gyroSettingsProvider, (_, _) => update());
+  ref.listen(hapticSettingsProvider, (_, _) => update());
+  ref.listen(pressFeedbackProvider, (_, _) => update());
+  ref.listen(demoProvider, (_, _) => update());
+  ref.listen(shareStatsProvider, (_, _) => update());
+  ref.listen(clientStateProvider, (prev, next) {
+    if ((prev?.isConnected ?? false) && !next.isConnected) metrics.disconnected();
+    update();
+  });
+  final haptics = client.hapticEvents.listen((e) => metrics.haptic(e.event.name));
+  ref.onDispose(haptics.cancel);
+  update();
+  return metrics;
+});
+
+/// The TV's latest "How did the controls feel?" prompt (M9), until it's
+/// answered or skipped. The controller screen shows it.
+final ratingPromptProvider = NotifierProvider<RatingPromptNotifier, RatingAskMessage?>(RatingPromptNotifier.new);
+
+class RatingPromptNotifier extends Notifier<RatingAskMessage?> {
+  @override
+  RatingAskMessage? build() {
+    final client = ref.watch(clientProvider);
+    final sub = client.ratingAsks.listen((ask) => state = ask);
+    ref.onDispose(sub.cancel);
+    return null;
+  }
+
+  /// Sends the answer. A null [face] means skipped.
+  void answer(RatingFace? face, {List<String> tags = const []}) {
+    final ask = state;
+    if (ask == null) return;
+    state = null;
+    ref.read(clientProvider).sendRating(RatingMessage(id: ask.id, face: face, tags: tags));
+    ref.read(logProvider).add('rating', face == null ? 'Skipped the rating' : 'Rated ${face.name} ${tags.join(' ')}');
   }
 }

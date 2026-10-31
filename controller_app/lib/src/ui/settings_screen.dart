@@ -36,7 +36,15 @@ class SettingsScreen extends ConsumerWidget {
           builder: (context, constraints) {
             const haptics = _HapticsSection();
             const motion = Column(
-              children: [_GyroSection(), SizedBox(height: 12), _SticksSection(), SizedBox(height: 12), _AboutSection()],
+              children: [
+                _GyroSection(),
+                SizedBox(height: 12),
+                _SticksSection(),
+                SizedBox(height: 12),
+                _StatsSection(),
+                SizedBox(height: 12),
+                _AboutSection(),
+              ],
             );
             if (constraints.maxWidth >= 700) {
               return SingleChildScrollView(
@@ -407,6 +415,34 @@ class _SticksSection extends ConsumerWidget {
           divisions: 15,
           sliderKey: const Key('settingsStickSensitivity'),
           onChanged: (v) => n.update(s.copyWith(sensitivity: v)),
+        ),
+      ],
+    );
+  }
+}
+
+/// Control stats (PRD v2 privacy rules): every phone shows that the TV
+/// records how the controls are used, and can opt out.
+class _StatsSection extends ConsumerWidget {
+  const _StatsSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final on = ref.watch(shareStatsProvider);
+    return _Section(
+      title: 'Control stats',
+      children: [
+        SwitchListTile(
+          key: const Key('settingsShareStats'),
+          contentPadding: EdgeInsets.zero,
+          title: const Text('Share control stats with the TV'),
+          subtitle: const Text(
+            'The TV counts how the controls are used: presses, missed taps, timing and how each mode feels. '
+            'Never names, contacts, location or a trace of your touches. '
+            'It sends them on to help improve Thumb Party only if an adult allows it on the TV.',
+          ),
+          value: on,
+          onChanged: ref.read(shareStatsProvider.notifier).set,
         ),
       ],
     );
