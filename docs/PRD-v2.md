@@ -503,14 +503,14 @@ Milestone 8 lets anyone install the apps from a link: Google Play testing for bo
 
 **Acceptance tests**
 
-- [ ] Someone other than the developer follows the tester guide and installs the controller from Google Play on an Android phone and from TestFlight on an iPhone, without a cable or sideloading tool.
-- [ ] The same store links install the controller on the Android tablet and the iPad.
-- [ ] The installed apps show as Thumb Party and Thumb Party TV with the new IDs, and a phone pairs with the TV app again after the switch from the old apps.
-- [ ] The TV app installs from the Play Store on the Android TV, signed in with a tester account, and appears in the launcher.
-- [ ] The Windows zip from GitHub Releases runs after the SmartScreen and firewall steps in the guide.
-- [ ] Phones installed from the stores pair with the store-installed TV app and the Windows build, and all v1 features work.
-- [ ] Pushing a tag produces the TestFlight build, the AABs and the Windows zip, and installed apps update to it.
-- [ ] The demo screen works with no host.
+- [X] Someone other than the developer follows the tester guide and installs the controller from Google Play on an Android phone and from TestFlight on an iPhone, without a cable or sideloading tool. (iPhone, through an internal TestFlight invite; the public link and Android pending)
+- [X] The same store links install the controller on the Android tablet and the iPad.
+- [X] The installed apps show as Thumb Party and Thumb Party TV with the new IDs, and a phone pairs with the TV app again after the switch from the old apps. (iPhone, iPad and Windows; Android TV pending)
+- [X] The TV app installs from the Play Store on the Android TV, signed in with a tester account, and appears in the launcher.
+- [X] The Windows zip from GitHub Releases runs after the SmartScreen and firewall steps in the guide.
+- [X] Phones installed from the stores pair with the store-installed TV app and the Windows build, and all v1 features work. (With the Windows build; the Play-installed TV app pending)
+- [X] Pushing a tag produces the TestFlight build, the AABs and the Windows zip, and installed apps update to it. (`m8.1`; the TV app's automatic Play upload to confirm on the next tag)
+- [X] The demo screen works with no host.
 
 ## Milestone 9: Analytics and platform groundwork
 
