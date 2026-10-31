@@ -47,6 +47,9 @@ class ArenaView extends StatefulWidget {
   /// A frame that took longer than this was dropped (a 60 Hz frame is 16.7).
   static const lateFrameMs = 25;
 
+  /// A gap between frames longer than this means drawing stopped for a while.
+  static const stallS = 0.1;
+
   @override
   State<ArenaView> createState() => _ArenaViewState();
 }
@@ -123,7 +126,12 @@ class _ArenaViewState extends State<ArenaView> with SingleTickerProviderStateMix
       _late = 0;
     }
     setState(() {});
-    if (fresh.isNotEmpty) {
+    // After a stall in drawing (the window minimised or covered, the PC
+    // asleep) an input waited for frames that weren't being drawn at all:
+    // that's not delay a player feels, so it isn't counted (in the M9 device
+    // test it showed up as a 4-minute maximum).
+    final stalled = dt > ArenaView.stallS;
+    if (fresh.isNotEmpty && !stalled) {
       SchedulerBinding.instance.addPostFrameCallback((_) {
         final now = host.nowMs;
         for (final MapEntry(key: id, value: at) in fresh.entries) {

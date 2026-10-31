@@ -127,6 +127,24 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('input that waited out a stall in drawing is not counted as delay', (tester) async {
+    final host = hostWith({'a': InputStateMessage(seq: 1)});
+    await pump(tester, host, const Size(960, 540));
+    await tester.pump(const Duration(milliseconds: 16));
+    await tester.pump(const Duration(milliseconds: 16));
+    final before = host.stages.length;
+    // Drawing stops for 2 s (window minimised); new input arrives meanwhile.
+    host.setGamepad('a', GamepadState.fromInput(InputStateMessage(seq: 2, dx: 1)));
+    await tester.pump(const Duration(seconds: 2));
+    await tester.pump(const Duration(milliseconds: 16));
+    expect(host.stages.length, before, reason: 'the frame after the stall is not measured');
+    // Normal frames are measured again.
+    host.setGamepad('a', GamepadState.fromInput(InputStateMessage(seq: 3, dx: -1)));
+    await tester.pump(const Duration(milliseconds: 16));
+    await tester.pump(const Duration(milliseconds: 16));
+    expect(host.stages.length, before + 1);
+  });
+
   testWidgets('reports rounds, game events, frames and the drawn delay stage to the host', (tester) async {
     final open = ArenaGame(walls: const [], hazards: const []);
     final host = hostWith({'a': InputStateMessage(seq: 1, dx: 1, ax: null)});
