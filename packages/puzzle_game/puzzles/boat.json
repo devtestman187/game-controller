@@ -1,0 +1,13 @@
+{
+  "id": "boat",
+  "name": "Boat",
+  "level": "medium",
+  "pieces": [
+    {"id": "hull", "shape": {"polygon": [[-22, -5], [22, -5], [15, 5], [-15, 5]]}, "color": "#8E5B3A", "at": [40, 56], "rotated": true},
+    {"id": "mast", "shape": {"rect": [3, 30]}, "color": "#5D4037", "at": [40, 36]},
+    {"id": "sail", "shape": {"polygon": [[0, -13], [14, 12], [0, 12]]}, "color": "#ECF0F1", "at": [43, 37], "rotated": true},
+    {"id": "flag", "shape": {"polygon": [[0, -3], [7, 0], [0, 3]]}, "color": "#E74C3C", "at": [42, 18], "rotated": true},
+    {"id": "wave 1", "kind": "wave", "shape": {"rect": [14, 4]}, "color": "#3498DB", "at": [14, 66]},
+    {"id": "wave 2", "kind": "wave", "shape": {"rect": [14, 4]}, "color": "#3498DB", "at": [66, 66]}
+  ]
+}

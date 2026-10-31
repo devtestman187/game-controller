@@ -1,0 +1,30 @@
+name: puzzle_game
+description: >-
+  Shape Race, the puzzle game (PRD v2 M10): puzzle data, rules (matching with
+  symmetry, snap and lock, red pieces), state snapshots and the game view.
+  The rules never draw; the view draws only from a snapshot (S8).
+publish_to: 'none'
+version: 0.1.0
+
+environment:
+  sdk: ^3.13.0
+  flutter: '>=3.38.0'
+
+resolution: workspace
+
+dependencies:
+  connection:
+    path: ../connection
+  flutter:
+    sdk: flutter
+  protocol:
+    path: ../protocol
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  assets:
+    - puzzles/

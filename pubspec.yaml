@@ -12,6 +12,7 @@ workspace:
   - packages/connection
   - packages/metrics
   - packages/test_game
+  - packages/puzzle_game
   - assets
 
 # Build hook settings (they must live in the workspace root). flutter_soloud

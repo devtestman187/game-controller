@@ -1,0 +1,12 @@
+{
+  "id": "rocket",
+  "name": "Rocket",
+  "level": "easy",
+  "pieces": [
+    {"id": "body", "shape": {"rect": [14, 34]}, "color": "#D5DBDB", "at": [40, 42]},
+    {"id": "nose", "shape": {"polygon": [[-7, 7], [0, -7], [7, 7]]}, "color": "#E74C3C", "at": [40, 18]},
+    {"id": "left fin", "shape": {"polygon": [[4, -7], [4, 7], [-5, 7]]}, "color": "#3498DB", "at": [29, 55], "rotated": true},
+    {"id": "right fin", "shape": {"polygon": [[-4, -7], [5, 7], [-4, 7]]}, "color": "#2E86C1", "at": [51, 55]},
+    {"id": "window", "shape": {"circle": 4}, "color": "#85C1E9", "at": [40, 36]}
+  ]
+}
