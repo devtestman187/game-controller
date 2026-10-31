@@ -74,3 +74,38 @@ Copy these into Google Play Console and App Store Connect. Graphics are in `asse
 
 **Beta App Review: review notes**
 > Thumb Party is a game controller: the phone sends input to the Thumb Party TV app on the same Wi-Fi network, which shows the game. To review without a TV, tap "Try without a TV" on the first screen: the controls work and a banner shows what a TV would receive. To try the full setup, run Thumb Party TV on a Windows PC (free download: https://github.com/devtestman187/game-controller/releases/latest), then pick the PC on the phone and type the 4-digit code shown on the PC. No account or sign-in is needed.
+
+## M9: stats (update before the M9 builds go to testers)
+
+From 0.9.0 the TV app can upload anonymous gameplay stats, only after an adult opts in on the TV. The phone records touch counters and sends them to the TV on the local network; each phone can opt out in Settings. The check against the Families policy: [families-check.md](families-check.md).
+
+### Google Play: Data safety (both apps, the same answers)
+
+| Question | Answer |
+| --- | --- |
+| Does your app collect or share any of the required user data types? | **Yes** |
+| Is all of the user data collected by your app encrypted in transit? | **Yes** (HTTPS) |
+| Do you provide a way for users to request that their data is deleted? | **Yes**: by email, with the Controller ID from the phone's Diagnostics |
+| **App activity → App interactions** | Collected, not shared. Optional (users can choose). Purpose: **Analytics**, **App functionality**. Not processed ephemerally |
+| **App info and performance → Diagnostics** | Collected, not shared. Optional. Purpose: **Analytics** (input delay, ping, reconnects, frame drops) |
+| **App info and performance → Other app performance data** | Collected, not shared. Optional. Purpose: **Analytics** (the post-game face rating) |
+| **Device or other IDs** | Collected, not shared. Optional. Purpose: **Analytics** (a random ID the app makes per install; not the advertising ID or any hardware ID) |
+| Everything else (location, personal info, financial, health, messages, photos, audio, files, calendar, contacts, web browsing) | Not collected |
+
+"Shared" means given to a third party: Firestore stores the data for us as a service provider, which Play doesn't count as sharing.
+
+### App Store Connect: App Privacy (Thumb Party)
+
+Change **Data Not Collected** to **Data collected**, then:
+
+| Data type | Linked to the user? | Used for tracking? | Purpose |
+| --- | --- | --- | --- |
+| **Usage Data → Product Interaction** | No | No | Analytics, App Functionality |
+| **Diagnostics → Performance Data** | No | No | Analytics |
+| **Diagnostics → Other Diagnostic Data** | No | No | Analytics |
+
+The phone app sends these only to the TV app on the local network; they reach the developer only if an adult allows it on the TV. Not linked to identity, no tracking, still no ads.
+
+### Review notes to add (Play and TestFlight)
+
+> 0.9.0 adds optional anonymous gameplay stats: the TV app asks an adult before sharing any, and each phone can turn them off in Settings → Control stats. No names, accounts, location or advertising IDs.

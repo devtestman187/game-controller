@@ -17,6 +17,7 @@
 | `tv_test_app/` | TV test bench + server | Android TV (minSdk 31), Windows desktop |
 | `packages/protocol/` | Message definitions + codec, no Flutter dependency | anywhere Dart runs |
 | `packages/connection/` | Host server, phone client (pairing, heartbeats, reconnect), log buffer and the command-line simulated controller (`bin/sim_controller.dart`). Pure Dart (`dart:io`) | anywhere `dart:io` runs |
+| `packages/metrics/` | Analytics (M9): the phone's touch counters per mode segment, the host's session summary, and the report tool (`bin/report.dart`). Pure Dart | anywhere Dart runs |
 | `packages/test_game/` | The test game (M5): rules in `ArenaGame` (no widgets, unit-tested) and the screen in `ArenaView`. Kept separate so it can grow | Flutter |
 | `assets/` | `game_assets` package: images, audio (`audio/`, bundled as a folder), `CREDITS.md`, asset manifest (`lib/asset_manifest.dart`) | Flutter |
 | `docs/` | PRD, decisions, setup guides, per-milestone checklists | |
@@ -149,3 +150,11 @@ The TV gives each paired controller a player number (`player` message): its old 
 
 ### Battery and CPU
 The phone's native channel has one more method, `deviceStatus`: battery level and charging, Low Power Mode, the thermal state, and this app's CPU time (`getrusage` on iOS, `Process.getElapsedCpuTime` on Android). `SessionMonitor` samples it every 10 s, and Diagnostics shows CPU use in % of one core (last minute and since launch), battery drain per hour (after 5 minutes on battery), heat and the input send rate.
+
+## Milestone 9: analytics and platform groundwork
+The protocol is written down in [protocol.md](protocol.md) (P1), including capabilities (P2), roles (S3), the metrics and rating messages and the standard gamepad mapping (P4).
+
+- **Game host interface (P3).** `GameHost` in `packages/connection` is all a game or a TV test screen uses: players (number, colour, nickname, local or not), each player's `GamepadState`, haptics, rating prompts, latency, analytics records and named delay stages (S7). `ServerGameHost` wraps the `HostServer` and adds local players (S2: the keyboard player on Windows); `MemoryGameHost` is the in-memory one for tests. The arena (`ArenaView`), the haptic panel, the latency screen, the debug overlay and the input picture all go through it.
+- **Phone metrics.** `PhoneMetrics` (controller_app) records one `SegmentRecorder` (packages/metrics) per mode and settings while connected, fed by a listener over the controls, the pad notifier (held controls, slide-offs, sticks, tilt), Calibrate and the TV's haptic events. Touch areas come from the same layout functions as the controls (`touchMapFor`). Batches go through `ControllerClient.sendMetrics`, which keeps unacknowledged ones across reconnects.
+- **TV collection.** `LiveStats` (tv_test_app/lib/src/analytics.dart) joins server messages, game records and stages into a `SessionCollector`, saves the summary to the app's support folder (`sessions/`) every minute and when the session ends, asks for ratings (`RatingScheduler`), and with consent uploads finished sessions through `FirestoreUploader` (REST, no SDK; rules in `firebase/firestore.rules`). The Stats screen reads the files and exports them.
+- **Privacy.** Only counts leave the phone, only to the TV. The TV keeps known counters only (`sanitizeSegmentData`) and never names or addresses. Upload needs the adult's consent on the TV; each phone can opt out. See [families-check.md](families-check.md).

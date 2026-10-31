@@ -9,13 +9,17 @@
 // --demo (press every button and D-pad direction in a loop), --stream (send a
 // gyro-like tilt 60 times a second, for long-session tests). Haptic events
 // from the TV (M5) and the player number (M6) are printed as they arrive,
-// and a summary (drops, ping) at the end.
+// and a summary (drops, ping) at the end. --metrics (M9) lists the metrics
+// and rating capabilities, sends a made-up metrics batch every 10 s and
+// answers every rating prompt with "good", so the TV's Stats screen fills
+// without a phone.
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
 import 'package:connection/connection.dart';
+import 'package:protocol/protocol.dart';
 
 const _usage = '''
 Simulated controller: pairs with the TV app and keeps the connection alive.
@@ -27,6 +31,7 @@ Usage: dart run connection:sim_controller [options]
   --name <name>      Name shown on the TV (default "Simulated controller")
   --demo             Once connected, press every button and D-pad direction in a loop
   --stream           Once connected, send a gyro-like tilt 60 times a second (long-session test)
+  --metrics          Send metrics batches and answer rating prompts (M9 stats)
   --seconds <n>      Disconnect and exit after n seconds (default: run until Ctrl+C)''';
 
 Future<void> main(List<String> args) async {
@@ -59,7 +64,9 @@ Future<void> main(List<String> args) async {
       controllerId: id,
       name: options['name'] ?? 'Simulated controller',
       platform: 'sim',
-      appVersion: '0.6.0',
+      appVersion: '0.9.0',
+      capabilities: options.containsKey('metrics') ? const [Capability.metrics, Capability.rating] : const [],
+      device: const DeviceInfo(kind: DeviceInfo.sim),
     ),
     log: (m) => stdout.writeln('  · $m'),
   );
@@ -97,6 +104,36 @@ Future<void> main(List<String> args) async {
     }
   });
 
+  // Made-up metrics: one D-pad segment, its counters growing every 10 s.
+  Timer? metrics;
+  var batch = 0;
+  final segment = '$id-1';
+  if (options.containsKey('metrics')) {
+    metrics = Timer.periodic(const Duration(seconds: 10), (_) {
+      batch++;
+      client.sendMetrics(
+        MetricsMessage(
+          segment: segment,
+          index: batch,
+          mode: 'dpad',
+          durationMs: batch * 10000,
+          data: {
+            'start': 0,
+            'touches': batch * 12,
+            'presses': {'a': batch * 8, 'dpad': batch * 3},
+            'near': {'b': batch},
+            'empty': {'5,1': batch},
+          },
+        ),
+      );
+      stdout.writeln('metrics batch $batch (${client.metricsWaiting} waiting)');
+    });
+    client.ratingAsks.listen((ask) {
+      stdout.writeln('rating prompt ${ask.id}: answering "good"');
+      client.sendRating(RatingMessage(id: ask.id, face: RatingFace.good));
+    });
+  }
+
   client.hapticEvents.listen(
     (e) => stdout.writeln('haptic ${e.event.name} intensity ${e.intensity} ${e.durationMs} ms'),
   );
@@ -126,6 +163,7 @@ Future<void> main(List<String> args) async {
     '$drops drop${drops == 1 ? '' : 's'}, ping (every 5 s) $pings',
   );
   pingReport.cancel();
+  metrics?.cancel();
   demo?.cancel();
   await client.dispose();
   // Let the close handshake reach the TV, so it logs a clean disconnect.
@@ -137,7 +175,7 @@ Map<String, String> _parse(List<String> args) {
   final result = <String, String>{};
   for (var i = 0; i < args.length; i++) {
     final arg = args[i];
-    if (arg == '--help' || arg == '-h' || arg == '--demo' || arg == '--stream') {
+    if (arg == '--help' || arg == '-h' || arg == '--demo' || arg == '--stream' || arg == '--metrics') {
       result[arg.startsWith('--') && arg != '--help' ? arg.substring(2) : 'help'] = '';
       continue;
     }
@@ -151,7 +189,7 @@ Map<String, String> _parse(List<String> args) {
       throw FormatException('Missing value for $arg');
     }
   }
-  const known = {'host', 'port', 'code', 'name', 'seconds', 'help', 'demo', 'stream'};
+  const known = {'host', 'port', 'code', 'name', 'seconds', 'help', 'demo', 'stream', 'metrics'};
   final unknown = result.keys.where((k) => !known.contains(k));
   if (unknown.isNotEmpty) throw FormatException('Unknown option --${unknown.first}');
   return result;

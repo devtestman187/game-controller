@@ -1427,7 +1427,7 @@ void main() {
       await pumpApp(tester, paired: true);
       await openSettings(tester);
       await scrollTo(tester, find.byKey(const Key('privacyPolicy')));
-      expect(find.text('Thumb Party 0.8.0 (dev)'), findsOneWidget);
+      expect(find.text('Thumb Party 0.9.0 (dev)'), findsOneWidget);
       expect(find.textContaining('privacy.html'), findsOneWidget);
       expect(find.byKey(const Key('testerGuide')), findsOneWidget);
     });

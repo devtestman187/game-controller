@@ -307,7 +307,15 @@ class HostServer {
 
   /// The saved pairings, most recently seen first.
   List<SavedPairing> get pairings {
-    final known = _known.entries.toList()..sort((a, b) => b.value.lastSeen.compareTo(a.value.lastSeen));
+    // Newest first. The clock can give two pairings the same time (Windows'
+    // clock is coarse), so a tie goes to the one added later.
+    final entries = _known.entries.toList();
+    final order = {for (final (i, e) in entries.indexed) e.key: i};
+    final known = entries
+      ..sort((a, b) {
+        final byTime = b.value.lastSeen.compareTo(a.value.lastSeen);
+        return byTime != 0 ? byTime : order[b.key]!.compareTo(order[a.key]!);
+      });
     return [
       for (final MapEntry(key: id, value: k) in known)
         SavedPairing(

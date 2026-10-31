@@ -1,0 +1,31 @@
+rules_version = '2';
+
+// Thumb Party analytics (PRD v2 M9). The TV app creates one document per play
+// session in `sessions`, only with the adult's consent, through the REST API
+// with no sign-in. These rules let it create a document of the right shape,
+// and nothing else: no reads, no changes, no deletes, and no other
+// collection. Only the developer reads the data, with their own Google login
+// (the report tool: packages/metrics/bin/report.dart), which rules don't
+// apply to.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /sessions/{sessionId} {
+      allow create: if sessionId.size() <= 40
+        && request.resource.data.keys().hasOnly(['json', 'schema', 'date', 'app', 'host'])
+        && request.resource.data.json is string
+        && request.resource.data.json.size() > 0
+        && request.resource.data.json.size() <= 60000
+        && request.resource.data.schema is int
+        && request.resource.data.date is string
+        && request.resource.data.date.size() == 10
+        && request.resource.data.app is string
+        && request.resource.data.app.size() <= 32
+        && request.resource.data.host is string
+        && request.resource.data.host.size() <= 16;
+      allow read, update, delete: if false;
+    }
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

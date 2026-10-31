@@ -61,6 +61,20 @@ Create a Google Group (groups.google.com), for example `thumb-party-testers`, wi
 7. **TestFlight → Internal Testing → +**: a group for yourself. Builds reach it right after processing, without review.
 8. After the first build has passed Beta App Review: **External Testing → +** a group named `Testers`, add the build, and turn on **Public Link**. Send Claude Code the link (it goes into the tester guide) and it adds the group to `codemagic.yaml` so later builds go to it by themselves.
 
+### 7. Firebase for the stats upload (you, M9, optional)
+The TV app keeps every session's stats on the device either way. With an adult's consent it also uploads them to Firestore, so testers' sessions reach you. Until this is done the Stats screen says "this build has no upload set up".
+1. https://console.firebase.google.com → **Create a project** with the same Google account as the Play developer account. Name it e.g. `thumb-party-stats`. Turn **Google Analytics off** (the apps don't use it).
+2. **Build → Firestore Database → Create database**, production mode, a location near you (e.g. `us-central1`). The free Spark plan is enough.
+3. **Firestore → Rules**: paste `firebase/firestore.rules` from this repository and **Publish**. They let the TV app create session documents and nothing else.
+4. **Project settings → General**: copy the **Project ID**. Optional: under "Your apps", add a **Web app** only to get its **Web API key** (no Firebase SDK is used).
+5. Set the GitHub variables:
+   ```
+   gh variable set FIRESTORE_PROJECT --body "<project ID>"
+   gh variable set FIRESTORE_API_KEY --body "<web API key, or leave this one out>"
+   ```
+6. Reading the data: `gcloud auth login`, then in `packages/metrics`: `dart run metrics:report --firestore <project ID> --token "$(gcloud auth print-access-token)" --csv sessions.csv`. Or Export on the TV's Stats screen and `dart run metrics:report <folder>`.
+7. The store forms change with M9: see "M9: stats" in [store-listing.md](store-listing.md) and the check in [families-check.md](families-check.md). Update them before the M9 builds go to testers.
+
 ## Each release
 1. Make sure `version:` in both `pubspec.yaml` files and `appVersion` in both `lib/src/app_info.dart` say the new version.
 2. Tag with release notes and push: `git tag -a m9 -m "What changed, for testers"` then `git push origin m9`. Every release needs notes, even "Minor update for testing."
