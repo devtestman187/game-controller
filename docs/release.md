@@ -47,9 +47,9 @@ Create a Google Group (groups.google.com), for example `thumb-party-testers`, wi
    ```powershell
    Get-Content play-service-account.json -Raw | gh secret set PLAY_SERVICE_ACCOUNT_JSON
    gh variable set PLAY_TRACK_APP --body "<the phone app's closed track API name, e.g. alpha>"
-   gh variable set PLAY_TRACK_TV --body "tv:<the TV track's name>"
+   gh variable set PLAY_TRACK_TV --body "<the TV track's name>"
    ```
-   The track names are on each track's page in Play Console. TV tracks always start with `tv:`.
+   The track names are on each track's page in Play Console. The TV app is its own Play app, so its tracks have plain names like `alpha` (no `tv:` prefix; that is only for TV tracks inside a phone app).
 
 ### 6. App Store Connect and TestFlight (you)
 1. **Certificates, Identifiers & Profiles → Identifiers → +**: App ID `com.thumbparty.app`, name Thumb Party. No extra capabilities.

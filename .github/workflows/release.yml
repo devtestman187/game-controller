@@ -13,7 +13,7 @@
 #     to upload by hand (Play requires the first upload of each app by hand anyway).
 # Variables (same page, Variables tab), used only with the service account:
 #   PLAY_TRACK_APP   closed testing track for the phone app, e.g. alpha
-#   PLAY_TRACK_TV    closed testing track for the TV app, with the tv: prefix, e.g. tv:alpha
+#   PLAY_TRACK_TV    closed testing track for the TV app, e.g. alpha (its own app, so no tv: prefix)
 
 name: Release
 
