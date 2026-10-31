@@ -76,14 +76,14 @@ void main() {
     return stats;
   }
 
-  ControllerClient phone(String id) {
+  ControllerClient phone(String id, {List<String> caps = _caps}) {
     final c = ControllerClient(
       identity: ControllerIdentity(
         controllerId: id,
         name: 'Bob\'s phone',
         platform: 'android',
-        appVersion: '0.9.0',
-        capabilities: _caps,
+        appVersion: caps.isEmpty ? '0.8.0' : '0.9.0',
+        capabilities: caps,
         device: const DeviceInfo(
           kind: DeviceInfo.phone,
           model: 'Pixel 8',
@@ -291,6 +291,42 @@ void main() {
     await stats.uploadNow();
     expect(uploader.uploaded, isEmpty);
     expect((await stats.sessions()), hasLength(1), reason: 'still kept on the TV');
+  });
+
+  test('rounds on an old phone that cannot show the prompt do not delay it on the updated phone', () async {
+    // The M9 device test: the same iPhone on 0.8.0 for 6 rounds, then on 0.9.0.
+    final stats = await startStats(consent: false);
+    final old = phone('same-phone', caps: const []);
+    old.connect(HostAddress(addresses: ['127.0.0.1'], port: server.port!), code: server.pairingCode);
+    await until(old.changes, (s) => s.isConnected);
+    await waitFor(() => stats.session != null);
+    void round() => host.record(
+      const GameRecord(
+        game: 'arena',
+        name: 'round_end',
+        data: {
+          'timeS': 6.0,
+          'modes': {'same-phone': 'dpad'},
+        },
+      ),
+    );
+    for (var i = 0; i < 6; i++) {
+      round();
+    }
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    old.disconnect();
+    await waitFor(() => server.snapshot.connected.isEmpty);
+
+    // Updated: the same controller ID, now with the rating capability.
+    final updated = phone('same-phone');
+    final asks = <RatingAskMessage>[];
+    updated.ratingAsks.listen(asks.add);
+    updated.connect(HostAddress(addresses: ['127.0.0.1'], port: server.port!), code: server.pairingCode);
+    await until(updated.changes, (s) => s.isConnected);
+    await waitFor(() => server.snapshot.connected.any((c) => c.supports(Capability.rating)));
+    round();
+    await waitFor(() => asks.isNotEmpty);
+    expect(asks.single.game, 'arena');
   });
 
   test('Export copies every session file', () async {

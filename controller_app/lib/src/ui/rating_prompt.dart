@@ -60,10 +60,16 @@ class _RatingPromptState extends ConsumerState<RatingPrompt> {
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
+    // Compact, so it fits a phone held in landscape (about 360 tall).
     return AlertDialog(
       key: const Key('ratingPrompt'),
+      scrollable: true,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 40, vertical: 12),
+      titlePadding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+      contentPadding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
+      actionsPadding: const EdgeInsets.fromLTRB(24, 0, 16, 8),
       title: const Text('How did the controls feel?'),
-      content: SingleChildScrollView(
+      content: SizedBox(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -93,17 +99,19 @@ class _RatingPromptState extends ConsumerState<RatingPrompt> {
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 4),
             Text('Anything in particular? (optional, pick before a face)', style: text.bodySmall),
-            const SizedBox(height: 6),
+            const SizedBox(height: 4),
             Wrap(
-              spacing: 8,
-              runSpacing: 4,
+              spacing: 6,
+              runSpacing: 0,
               alignment: WrapAlignment.center,
               children: [
                 for (final MapEntry(key: tag, value: label) in RatingPrompt.tagLabels.entries)
                   FilterChip(
                     key: Key('tag-$tag'),
+                    visualDensity: VisualDensity.compact,
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     label: Text(label),
                     selected: _tags.contains(tag),
                     onSelected: (on) => setState(() => on ? _tags.add(tag) : _tags.remove(tag)),
@@ -131,11 +139,11 @@ class _Face extends StatelessWidget {
     borderRadius: BorderRadius.circular(16),
     onTap: onTap,
     child: Padding(
-      padding: const EdgeInsets.all(8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 56, color: color),
+          Icon(icon, size: 44, color: color),
           Text(label),
         ],
       ),

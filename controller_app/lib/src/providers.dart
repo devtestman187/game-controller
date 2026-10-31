@@ -569,7 +569,10 @@ class RatingPromptNotifier extends Notifier<RatingAskMessage?> {
   @override
   RatingAskMessage? build() {
     final client = ref.watch(clientProvider);
-    final sub = client.ratingAsks.listen((ask) => state = ask);
+    final sub = client.ratingAsks.listen((ask) {
+      ref.read(logProvider).add('rating', 'The TV asks how the controls felt (${ask.game})');
+      state = ask;
+    });
     ref.onDispose(sub.cancel);
     return null;
   }

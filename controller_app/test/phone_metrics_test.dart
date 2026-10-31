@@ -1,3 +1,4 @@
+import 'package:connection/connection.dart' show LogBuffer;
 import 'package:controller/src/gyro.dart';
 import 'package:controller/src/layout.dart';
 import 'package:controller/src/phone_metrics.dart';
@@ -160,6 +161,45 @@ void main() {
       expect(a.client.ratings.single.id, 'r1');
       expect(a.client.ratings.single.face, RatingFace.bad);
       expect(a.client.ratings.single.tags, [RatingTag.laggy]);
+    });
+
+    testWidgets('the rating prompt fits the smallest phone in landscape (iPhone SE): every tag and Skip on screen', (tester) async {
+      final a = await app.pumpApp(tester, paired: true, screen: const Size(667, 375));
+      a.client.emit(app.connected);
+      await tester.pump();
+      a.client.ask(const RatingAskMessage(id: 'r1', game: 'arena'));
+      await app.settle(tester);
+      final screen = Offset.zero & tester.view.physicalSize;
+      bool inside(Rect outer, Rect r) => outer.contains(r.topLeft) && outer.contains(r.bottomRight - const Offset(1, 1));
+      for (final key in [
+        for (final tag in RatingTag.all) 'tag-$tag',
+        'rate-good',
+        'rate-okay',
+        'rate-bad',
+        'rate-skip',
+      ]) {
+        final finder = find.byKey(Key(key));
+        final rect = tester.getRect(finder);
+        expect(inside(screen, rect), isTrue, reason: '$key at $rect is off the screen');
+        // Inside a scrolling area, it must also be in the part that shows
+        // without scrolling (on the emulator the fourth tag was cut off).
+        final scroll = find.ancestor(of: finder, matching: find.byType(Scrollable));
+        if (scroll.evaluate().isNotEmpty) {
+          final visible = tester.getRect(scroll.first);
+          expect(inside(visible, rect), isTrue, reason: '$key at $rect is cut off (visible area $visible)');
+        }
+      }
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('a prompt from the TV is logged when it arrives', (tester) async {
+      final log = LogBuffer();
+      final a = await app.pumpApp(tester, paired: true, log: log);
+      a.client.emit(app.connected);
+      await tester.pump();
+      a.client.ask(const RatingAskMessage(id: 'r1', game: 'arena'));
+      await app.settle(tester);
+      expect(log.lines.map((l) => l.message), contains('The TV asks how the controls felt (arena)'));
     });
 
     testWidgets('the rating prompt can be skipped, and skips itself after a while', (tester) async {

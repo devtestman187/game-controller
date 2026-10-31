@@ -337,6 +337,7 @@ class LiveStats implements StatsService {
       if (!_ratings.gameEnded(id, host.nowMs)) continue;
       final askId = List.generate(6, (_) => _random.nextInt(256).toRadixString(16).padLeft(2, '0')).join();
       if (host.askRating(id, id: askId, game: game)) {
+        _ratings.asked(id, host.nowMs);
         _askedGames[askId] = game;
         _log('Stats: asked P${host.players.where((p) => p.id == id).firstOrNull?.number ?? '?'} how the controls felt');
       }

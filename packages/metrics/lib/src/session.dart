@@ -57,16 +57,22 @@ class RatingScheduler {
   final _lastAskMs = <String, int>{};
 
   /// A game (an arena round) ended for [playerId] at [atMs]. True if the
-  /// player should be asked now.
+  /// player is due to be asked. Nothing counts as asked until [asked] says
+  /// the prompt really went out: a phone that can't show it (an app older
+  /// than 0.9.0, a keyboard player) must not use up the next chance (found
+  /// in the M9 device test: an M8 phone's rounds delayed the first prompt
+  /// on the updated phone past the end of play).
   bool gameEnded(String playerId, int atMs) {
     final games = (_games[playerId] ?? 0) + 1;
     _games[playerId] = games;
     final last = _lastAskMs[playerId];
-    final due = last == null ? games >= firstAfterGames : games >= everyGames && atMs - last >= minGapMs;
-    if (!due) return false;
+    return last == null ? games >= firstAfterGames : games >= everyGames && atMs - last >= minGapMs;
+  }
+
+  /// The prompt went out to [playerId] at [atMs]: the count starts again.
+  void asked(String playerId, int atMs) {
     _games[playerId] = 0;
     _lastAskMs[playerId] = atMs;
-    return true;
   }
 }
 
@@ -295,10 +301,7 @@ class SessionCollector {
         'inputs': p.inputs,
         'inputsPerS': connected == 0 ? 0 : double.parse((p.inputs / (connected / 1000)).toStringAsFixed(1)),
         'ping': ?p.ping.toJson(),
-        'stages': {
-          for (final MapEntry(:key, :value) in p.stages.entries)
-            key: ?value.toJson(),
-        },
+        'stages': {for (final MapEntry(:key, :value) in p.stages.entries) key: ?value.toJson()},
         if (segments.isNotEmpty) 'firstMode': segments.first.mode,
         'modes': {
           for (final m in {...modeMs.keys, ...p.modeGames.keys})
