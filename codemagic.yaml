@@ -128,6 +128,17 @@ workflows:
       - *test
       - name: Use the signing profile
         script: xcode-project use-profiles
+      - name: Release notes (TestFlight "What to Test")
+        script: |
+          set -euo pipefail
+          cd "$CM_BUILD_DIR"
+          git fetch --unshallow --quiet 2>/dev/null || true
+          git fetch --force --tags --quiet
+          BUILD=$(git rev-list --count HEAD)
+          VERSION=$(grep -m1 '^version:' controller_app/pubspec.yaml | sed 's/version: *//; s/+.*//')
+          # Apple rejects < and > in the notes.
+          bash tools/release-notes.sh "${CM_TAG:-HEAD}" "$VERSION" "$BUILD" 4000 | tr -d '<>' > release_notes_en-US.txt
+          cat release_notes_en-US.txt
       - name: Build the signed .ipa
         script: |
           set -euo pipefail

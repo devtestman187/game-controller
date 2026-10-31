@@ -63,8 +63,9 @@ Create a Google Group (groups.google.com), for example `thumb-party-testers`, wi
 
 ## Each release
 1. Make sure `version:` in both `pubspec.yaml` files and `appVersion` in both `lib/src/app_info.dart` say the new version.
-2. Tag and push: `git tag m9 && git push origin m9`.
+2. Tag with release notes and push: `git tag -a m9 -m "What changed, for testers"` then `git push origin m9`. Every release needs notes, even "Minor update for testing."
 3. Codemagic uploads to TestFlight (Beta App Review for external testers, usually within a day). GitHub Actions builds the bundles and the Windows zip, uploads to Play (once set up), and creates the GitHub Release.
+   The notes go to Play "What's new" (500 characters), TestFlight "What to Test" and the GitHub Release, from `tools/release-notes.sh`: the tag's message, or the commit subjects since the last tag if the tag has no message.
 4. Installed apps update from TestFlight and Play. Windows testers download the new zip.
 
 ## If something goes wrong

@@ -5,6 +5,9 @@
 # Version name: from pubspec.yaml. Build number: the commit count, so every tag gets a higher one
 # and the stores, Diagnostics and the TV home screen all show the same number.
 #
+# Release notes: tools/release-notes.sh (the tag message, or the commits since the last tag) go to
+# Play "What's new" and the GitHub Release. Every release has notes.
+#
 # Secrets (GitHub > Settings > Secrets and variables > Actions):
 #   ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD
 #     The Play upload key (tools/make-upload-key.ps1 prints them). Without them the Android job fails.
@@ -73,6 +76,12 @@ jobs:
             echo "keyPassword=$KEY_PASSWORD"
           } > "$RUNNER_TEMP/signing/key.properties"
           echo "THUMBPARTY_KEY_PROPERTIES=$RUNNER_TEMP/signing/key.properties" >> "$GITHUB_ENV"
+      - name: Release notes
+        run: |
+          git fetch --force --tags --quiet # keep annotated tags (the checkout can flatten them)
+          mkdir -p whatsnew
+          bash tools/release-notes.sh "${GITHUB_REF_NAME}" "${{ steps.version.outputs.name }}" "${{ steps.version.outputs.build }}" 500 > whatsnew/whatsnew-en-US
+          cat whatsnew/whatsnew-en-US
       - name: Get packages
         run: flutter pub get
       - name: Build the phone and tablet app bundle
@@ -107,6 +116,7 @@ jobs:
           releaseFiles: dist/thumb-party-${{ steps.version.outputs.name }}-${{ steps.version.outputs.build }}.aab
           track: ${{ vars.PLAY_TRACK_APP }}
           status: completed
+          whatsNewDirectory: whatsnew
       - name: Upload the TV app to Google Play
         if: ${{ env.HAS_PLAY_ACCOUNT == 'true' && vars.PLAY_TRACK_TV != '' }}
         uses: r0adkll/upload-google-play@v1
@@ -116,6 +126,7 @@ jobs:
           releaseFiles: dist/thumb-party-tv-${{ steps.version.outputs.name }}-${{ steps.version.outputs.build }}.aab
           track: ${{ vars.PLAY_TRACK_TV }}
           status: completed
+          whatsNewDirectory: whatsnew
 
   windows:
     runs-on: windows-latest
@@ -157,8 +168,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
-          cat > notes.md <<EOF
-          Thumb Party ${{ steps.version.outputs.name }} (build ${{ steps.version.outputs.build }}).
+          git fetch --force --tags --quiet
+          bash tools/release-notes.sh "${GITHUB_REF_NAME}" "${{ steps.version.outputs.name }}" "${{ steps.version.outputs.build }}" > notes.md
+          cat >> notes.md <<EOF
+
+          **Downloads**
 
           - **Windows**: download ${{ steps.zip.outputs.file }} below, unzip it and run ThumbPartyTV.exe. The tester guide explains the SmartScreen and firewall prompts: https://devtestman187.github.io/game-controller/
           - **Phones and tablets**: Thumb Party from Google Play (closed testing) or TestFlight. Links are in the tester guide.
