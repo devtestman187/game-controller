@@ -14,6 +14,7 @@ Future<HostServer> startHost({
   int maxWrongCodes = 5,
   Duration pairingWindow = const Duration(minutes: 5),
   List<String>? log,
+  List<String> capabilities = const [],
 }) async {
   final host = HostServer(
     hostId: 'host-1',
@@ -25,15 +26,26 @@ Future<HostServer> startHost({
     pairingWindow: pairingWindow,
     maxWrongCodes: maxWrongCodes,
     log: log?.add,
+    capabilities: capabilities,
   );
   await host.start();
   addTearDown(host.dispose);
   return host;
 }
 
-ControllerClient newClient({String id = 'phone-1', Map<String, String> tokens = const {}}) {
+ControllerClient newClient({
+  String id = 'phone-1',
+  Map<String, String> tokens = const {},
+  List<String> capabilities = const [],
+}) {
   final client = ControllerClient(
-    identity: ControllerIdentity(controllerId: id, name: 'Phone $id', platform: 'test', appVersion: 'test'),
+    identity: ControllerIdentity(
+      controllerId: id,
+      name: 'Phone $id',
+      platform: 'test',
+      appVersion: 'test',
+      capabilities: capabilities,
+    ),
     tokens: tokens,
     heartbeatInterval: hb,
     heartbeatTimeout: hbTimeout,

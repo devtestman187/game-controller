@@ -15,6 +15,8 @@ final class ControllerIdentity {
     required this.name,
     required this.platform,
     required this.appVersion,
+    this.capabilities = const [],
+    this.device,
   });
 
   final String controllerId;
@@ -22,8 +24,29 @@ final class ControllerIdentity {
   final String platform;
   final String appVersion;
 
-  HelloMessage toHello() =>
-      HelloMessage(controllerId: controllerId, name: name, platform: platform, appVersion: appVersion);
+  /// What this controller supports ([Capability]), sent in the hello (M9).
+  final List<String> capabilities;
+
+  /// The kind of device, for analytics (M9).
+  final DeviceInfo? device;
+
+  ControllerIdentity copyWith({List<String>? capabilities}) => ControllerIdentity(
+    controllerId: controllerId,
+    name: name,
+    platform: platform,
+    appVersion: appVersion,
+    capabilities: capabilities ?? this.capabilities,
+    device: device,
+  );
+
+  HelloMessage toHello() => HelloMessage(
+    controllerId: controllerId,
+    name: name,
+    platform: platform,
+    appVersion: appVersion,
+    capabilities: capabilities,
+    device: device,
+  );
 }
 
 enum ClientStatus {
@@ -93,6 +116,7 @@ final class ClientSnapshot {
     this.osErrorCode,
     this.rttStats,
     this.player,
+    this.hostCapabilities = const [],
   });
 
   final ClientStatus status;
@@ -126,6 +150,10 @@ final class ClientSnapshot {
   /// TV that sends one.
   final int? player;
 
+  /// What the host supports ([Capability]), from its welcome (M9). Empty for
+  /// TV apps older than M9.
+  final List<String> hostCapabilities;
+
   bool get isConnected => status == ClientStatus.connected;
 
   /// The best name for the host: its own name, the advertised one, or its
@@ -143,6 +171,7 @@ final class ClientSnapshot {
     Object? osErrorCode = _keep,
     Object? rttStats = _keep,
     Object? player = _keep,
+    List<String>? hostCapabilities,
   }) => ClientSnapshot(
     status: status ?? this.status,
     target: identical(target, _keep) ? this.target : target as HostAddress?,
@@ -154,6 +183,7 @@ final class ClientSnapshot {
     osErrorCode: identical(osErrorCode, _keep) ? this.osErrorCode : osErrorCode as int?,
     rttStats: identical(rttStats, _keep) ? this.rttStats : rttStats as RttSummary?,
     player: identical(player, _keep) ? this.player : player as int?,
+    hostCapabilities: hostCapabilities ?? this.hostCapabilities,
   );
 
   @override
@@ -210,7 +240,18 @@ class ControllerClient {
   final _clock = Stopwatch()..start();
   final _changes = StreamController<ClientSnapshot>.broadcast();
   final _haptics = StreamController<HapticEventMessage>.broadcast();
+  final _ratingAsks = StreamController<RatingAskMessage>.broadcast();
   int _hapticsReceived = 0;
+
+  /// Metrics batches not yet acknowledged, the newest per segment, oldest
+  /// segment first (M9). Kept across reconnects, so a Wi-Fi drop loses none.
+  final _outbox = <String, MetricsMessage>{};
+
+  /// The highest acknowledged batch per segment still in [_outbox].
+  final _acked = <String, int>{};
+
+  /// At most this many segments wait for an ack. The oldest go first.
+  static const maxOutbox = 64;
 
   ClientSnapshot _snap = const ClientSnapshot(status: ClientStatus.idle);
 
@@ -256,6 +297,60 @@ class ControllerClient {
 
   /// Haptic events received since the app started, for Diagnostics.
   int get hapticsReceived => _hapticsReceived;
+
+  /// Rating prompts from the TV (M9), only while paired.
+  Stream<RatingAskMessage> get ratingAsks => _ratingAsks.stream;
+
+  /// Metrics segments waiting for the TV to acknowledge them.
+  int get metricsWaiting => _outbox.length;
+
+  /// Whether the connected host takes metrics batches.
+  bool get hostTakesMetrics => _snap.isConnected && _snap.hostCapabilities.contains(Capability.metrics);
+
+  /// Queues a metrics batch (M9) and sends it if the host takes metrics.
+  /// Only the newest batch of each segment is kept; unacknowledged ones go
+  /// again after every reconnect, so nothing is lost while Wi-Fi is off.
+  void sendMetrics(MetricsMessage batch) {
+    final previous = _outbox[batch.segment];
+    if (previous != null && previous.index >= batch.index) return;
+    _outbox.remove(batch.segment);
+    _outbox[batch.segment] = batch;
+    while (_outbox.length > maxOutbox) {
+      final oldest = _outbox.keys.first;
+      _outbox.remove(oldest);
+      _acked.remove(oldest);
+      _log('Metrics: dropped the oldest unsent segment (more than $maxOutbox waiting)');
+    }
+    if (hostTakesMetrics) _send(batch);
+  }
+
+  /// Answers a rating prompt (M9). Sent only if connected.
+  void sendRating(RatingMessage rating) {
+    if (_snap.isConnected && _snap.hostCapabilities.contains(Capability.rating)) _send(rating);
+  }
+
+  void _onMetricsAck(MetricsAckMessage ack) {
+    final batch = _outbox[ack.segment];
+    if (batch == null) return;
+    if (ack.index >= batch.index && batch.ended) {
+      _outbox.remove(ack.segment);
+      _acked.remove(ack.segment);
+    } else {
+      _acked[ack.segment] = max(_acked[ack.segment] ?? -1, ack.index);
+    }
+  }
+
+  /// After pairing: everything the TV hasn't acknowledged yet.
+  void _resendMetrics() {
+    if (!hostTakesMetrics) return;
+    var sent = 0;
+    for (final batch in _outbox.values) {
+      if ((_acked[batch.segment] ?? -1) >= batch.index) continue;
+      _send(batch);
+      sent++;
+    }
+    if (sent > 0) _log('Metrics: sent $sent waiting segment${sent == 1 ? '' : 's'} again');
+  }
 
   /// Sets the controller's input and sends it if connected. While not
   /// connected it's kept and sent as soon as pairing completes, so a button
@@ -385,6 +480,7 @@ class ControllerClient {
     disconnect();
     await _changes.close();
     await _haptics.close();
+    await _ratingAsks.close();
   }
 
   int get _now => _clock.elapsedMilliseconds;
@@ -494,7 +590,12 @@ class ControllerClient {
           _log("The TV made this phone player ${message.number}");
           _set(_snap.copyWith(player: message.number));
         }
-      case HelloMessage() || PairRequestMessage() || InputStateMessage():
+      case MetricsAckMessage():
+        _onMetricsAck(message);
+      case RatingAskMessage():
+        if (!_snap.isConnected || !identity.capabilities.contains(Capability.rating)) return;
+        if (!_ratingAsks.isClosed) _ratingAsks.add(message);
+      case HelloMessage() || PairRequestMessage() || InputStateMessage() || MetricsMessage() || RatingMessage():
         _log('Ignoring unexpected ${message.type} from the TV');
     }
   }
@@ -503,8 +604,11 @@ class ControllerClient {
     _welcomed = true;
     // Trust the host's own ID over the advertised one: tokens are saved by it.
     final target = _snap.target!.copyWith(hostId: welcome.hostId);
-    _set(_snap.copyWith(target: target, hostName: welcome.hostName));
-    _log('Welcome from ${welcome.hostName} (TV app ${welcome.appVersion})');
+    _set(_snap.copyWith(target: target, hostName: welcome.hostName, hostCapabilities: welcome.capabilities));
+    _log(
+      'Welcome from ${welcome.hostName} (TV app ${welcome.appVersion}'
+      '${welcome.capabilities.isEmpty ? '' : ', supports ${welcome.capabilities.join(', ')}'})',
+    );
 
     final code = _pendingCode;
     _pendingCode = null;
@@ -535,6 +639,7 @@ class ControllerClient {
       // The TV starts each connection with nothing pressed. Tell it what is
       // held right now (also after a reconnect).
       _sendInputState();
+      _resendMetrics();
       return;
     }
     switch (result.failure!) {

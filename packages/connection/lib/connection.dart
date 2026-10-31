@@ -7,6 +7,8 @@ library;
 
 export 'src/controller_client.dart';
 export 'src/demo_input.dart';
+export 'src/game_host.dart';
+export 'src/gamepad.dart';
 export 'src/host_address.dart';
 export 'src/host_server.dart';
 export 'src/latency.dart';

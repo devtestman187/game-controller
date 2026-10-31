@@ -1,5 +1,9 @@
+import 'dart:convert';
+
+part 'capabilities.dart';
 part 'haptic.dart';
 part 'input.dart';
+part 'metrics.dart';
 
 /// All protocol messages. New message types are added as subclasses of
 /// [Message] and registered in `codec.dart`.
@@ -14,6 +18,11 @@ part 'input.dart';
 ///
 /// Then the controller sends [InputStateMessage]s (M2) and the host sends
 /// [HapticEventMessage]s (M5) and a [PlayerMessage] (M6).
+///
+/// From M9, `hello` and `welcome` list capabilities ([Capability]), and the
+/// controller sends [MetricsMessage]s and [RatingMessage]s, the host
+/// [MetricsAckMessage]s and [RatingAskMessage]s, each only if the other side
+/// listed the capability. docs/protocol.md describes every message.
 sealed class Message {
   const Message();
 
@@ -24,17 +33,13 @@ sealed class Message {
   /// left out.
   Map<String, Object?> toPayload();
 
+  // Compared as JSON, so lists and nested objects compare by value.
   @override
-  bool operator ==(Object other) {
-    if (other is! Message || other.type != type) return false;
-    final a = toPayload();
-    final b = other.toPayload();
-    return a.length == b.length && a.keys.every((k) => b.containsKey(k) && a[k] == b[k]);
-  }
+  bool operator ==(Object other) =>
+      other is Message && other.type == type && jsonEncode(other.toPayload()) == jsonEncode(toPayload());
 
   @override
-  int get hashCode =>
-      Object.hash(type, Object.hashAllUnordered(toPayload().entries.map((e) => Object.hash(e.key, e.value))));
+  int get hashCode => Object.hash(type, jsonEncode(toPayload()));
 
   @override
   String toString() => '$type${toPayload()}';
@@ -48,6 +53,9 @@ final class HelloMessage extends Message {
     required this.name,
     required this.platform,
     required this.appVersion,
+    this.role = DeviceRole.controller,
+    this.capabilities = const [],
+    this.device,
   });
 
   static const String wireType = 'hello';
@@ -64,6 +72,18 @@ final class HelloMessage extends Message {
   /// Sender app version, for diagnostics.
   final String appVersion;
 
+  /// [DeviceRole.controller] (also when an older phone leaves it out).
+  final String role;
+
+  /// What this controller supports ([Capability]), M9. Empty for older
+  /// phones.
+  final List<String> capabilities;
+
+  /// The kind of device (M9), for analytics. Null for older phones.
+  final DeviceInfo? device;
+
+  bool supports(String capability) => capabilities.contains(capability);
+
   @override
   String get type => wireType;
 
@@ -73,6 +93,9 @@ final class HelloMessage extends Message {
     'name': name,
     'platform': platform,
     'appVersion': appVersion,
+    'role': role,
+    'caps': capabilities,
+    'device': ?device?.toJson(),
   };
 
   static HelloMessage fromPayload(Map<String, Object?> p) => HelloMessage(
@@ -80,13 +103,21 @@ final class HelloMessage extends Message {
     name: requireString(p, 'name'),
     platform: requireString(p, 'platform'),
     appVersion: requireString(p, 'appVersion'),
+    role: optionalString(p, 'role') ?? DeviceRole.controller,
+    capabilities: stringList(p, 'caps'),
+    device: p['device'] == null ? null : DeviceInfo.fromJson(p['device']),
   );
 }
 
 /// The host's answer to [HelloMessage]. Tells the controller which TV it
 /// reached, so it can look up a saved pairing token for that TV.
 final class WelcomeMessage extends Message {
-  const WelcomeMessage({required this.hostId, required this.hostName, required this.appVersion});
+  const WelcomeMessage({
+    required this.hostId,
+    required this.hostName,
+    required this.appVersion,
+    this.capabilities = const [],
+  });
 
   static const String wireType = 'welcome';
 
@@ -99,16 +130,27 @@ final class WelcomeMessage extends Message {
   /// Host app version, for diagnostics.
   final String appVersion;
 
+  /// What this host supports ([Capability]), M9. Empty for older TV apps.
+  final List<String> capabilities;
+
+  bool supports(String capability) => capabilities.contains(capability);
+
   @override
   String get type => wireType;
 
   @override
-  Map<String, Object?> toPayload() => {'hostId': hostId, 'hostName': hostName, 'appVersion': appVersion};
+  Map<String, Object?> toPayload() => {
+    'hostId': hostId,
+    'hostName': hostName,
+    'appVersion': appVersion,
+    'caps': capabilities,
+  };
 
   static WelcomeMessage fromPayload(Map<String, Object?> p) => WelcomeMessage(
     hostId: requireString(p, 'hostId'),
     hostName: requireString(p, 'hostName'),
     appVersion: requireString(p, 'appVersion'),
+    capabilities: stringList(p, 'caps'),
   );
 }
 

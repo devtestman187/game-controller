@@ -40,6 +40,10 @@ final class ControllerInfo {
     this.inputLatency,
     this.inputLatencySession,
     this.latencyErrorMs,
+    this.capabilities = const [],
+    this.device,
+    this.role = DeviceRole.controller,
+    this.inputAtMs,
   });
 
   final String controllerId;
@@ -76,6 +80,20 @@ final class ControllerInfo {
   /// How far off the input delay estimate can be, in ms (half the best
   /// recent round trip).
   final int? latencyErrorMs;
+
+  /// What the controller supports ([Capability]), from its hello (M9).
+  final List<String> capabilities;
+
+  /// The kind of device (M9), or null for older phones.
+  final DeviceInfo? device;
+
+  /// [DeviceRole.controller] for every v2 phone.
+  final String role;
+
+  /// When [input] arrived, on [HostServer.nowMs]. For the latency stages.
+  final int? inputAtMs;
+
+  bool supports(String capability) => capabilities.contains(capability);
 }
 
 /// A pairing the host app can save, so phones reconnect without a code after
@@ -138,10 +156,17 @@ final class HostSnapshot {
 
 /// A message from a paired controller (input messages arrive here from M2).
 final class ControllerMessage {
-  const ControllerMessage(this.controllerId, this.message);
+  const ControllerMessage(this.controllerId, this.message, {this.receivedAtMs = 0, this.delayMs});
 
   final String controllerId;
   final Message message;
+
+  /// When it arrived, on [HostServer.nowMs].
+  final int receivedAtMs;
+
+  /// For input states: the estimated one-way delay from the phone, or null
+  /// before the clocks are compared (the "sent to received" stage, S7).
+  final int? delayMs;
 }
 
 /// The WebSocket server that runs on the TV (and on the laptop).
@@ -163,6 +188,7 @@ class HostServer {
     Iterable<SavedPairing> pairings = const [],
     this.onPairingsChanged,
     this.maxSavedPairings = 8,
+    this.capabilities = const [],
     LogSink? log,
     Random? random,
   }) : _log = log ?? _noLog,
@@ -204,6 +230,14 @@ class HostServer {
 
   /// Only the most recently seen pairings are kept.
   final int maxSavedPairings;
+
+  /// What this host supports ([Capability]), sent in every welcome (M9).
+  /// With [Capability.metrics] the server acknowledges each metrics batch.
+  final List<String> capabilities;
+
+  /// The server's clock in ms, the one [ControllerInfo.inputAtMs] and
+  /// [ControllerMessage.receivedAtMs] use.
+  int get nowMs => _now;
 
   final LogSink _log;
   final Random _random;
@@ -312,9 +346,10 @@ class HostServer {
     }
   }
 
-  /// Sends [message] to every paired controller. Returns how many it went to.
+  /// Sends [message] to every paired controller that can take it. Returns
+  /// how many it went to.
   int sendToAll(Message message) {
-    final paired = _sessions.where((s) => s.paired).toList();
+    final paired = _sessions.where((s) => s.paired && _accepts(s, message)).toList();
     for (final s in paired) {
       _send(s, message);
     }
@@ -322,12 +357,42 @@ class HostServer {
   }
 
   /// Sends [message] to a paired controller. Returns false if it isn't
-  /// connected.
+  /// connected, or if it didn't list the capability the message needs (a
+  /// host never sends a message the controller didn't list, PRD v2 P2).
   bool send(String controllerId, Message message) {
     final s = _sessions.where((s) => s.paired && s.hello?.controllerId == controllerId).firstOrNull;
-    if (s == null) return false;
+    if (s == null || !_accepts(s, message)) return false;
     _send(s, message);
     return true;
+  }
+
+  /// The capability a host message needs, or null for the v1 messages every
+  /// controller takes.
+  static String? capabilityFor(Message message) => switch (message) {
+    MetricsAckMessage() => Capability.metrics,
+    RatingAskMessage() => Capability.rating,
+    _ => null,
+  };
+
+  bool _accepts(_Session s, Message message) {
+    final needed = capabilityFor(message);
+    return needed == null || (s.hello?.supports(needed) ?? false);
+  }
+
+  /// Player numbers taken by players on this device (a keyboard player on
+  /// Windows, PRD v2 S2), so phones get other numbers.
+  final _localNumbers = <int>{};
+
+  /// Takes the lowest free player number for a local player.
+  int reserveLocalPlayer() {
+    final n = _pickPlayer(null);
+    _localNumbers.add(n);
+    _emit();
+    return n;
+  }
+
+  void releaseLocalPlayer(int number) {
+    if (_localNumbers.remove(number)) _emit();
   }
 
   int get _now => _clock.elapsedMilliseconds;
@@ -421,21 +486,43 @@ class HostServer {
       case InputStateMessage():
         // Input counts only once paired, and only in order.
         if (!s.paired || message.seq <= (s.input?.seq ?? -1)) return;
+        final now = _now;
         s.input = message;
+        s.inputAtMs = now;
         final sent = message.sentAtMs;
-        if (sent != null) s.latency.addInput(peerSentMs: sent, receivedMs: _now);
+        final delay = sent == null ? null : s.latency.addInput(peerSentMs: sent, receivedMs: now);
         _emit();
-        if (!_messages.isClosed) _messages.add(ControllerMessage(s.hello!.controllerId, message));
-      case WelcomeMessage() || PairResultMessage() || HapticEventMessage() || PlayerMessage():
+        _forward(s, message, now, delayMs: delay);
+      case MetricsMessage():
+        if (!s.paired) return;
+        // Acknowledged at once: the app keeps it from here (M9).
+        if (capabilities.contains(Capability.metrics) && s.hello!.supports(Capability.metrics)) {
+          _send(s, MetricsAckMessage(segment: message.segment, index: message.index));
+        }
+        _forward(s, message, _now);
+      case RatingMessage():
+        if (s.paired) _forward(s, message, _now);
+      case WelcomeMessage() ||
+          PairResultMessage() ||
+          HapticEventMessage() ||
+          PlayerMessage() ||
+          MetricsAckMessage() ||
+          RatingAskMessage():
         _close(s, CloseCodes.protocolError, 'Unexpected ${message.type}');
     }
+  }
+
+  void _forward(_Session s, Message message, int now, {int? delayMs}) {
+    if (_messages.isClosed) return;
+    _messages.add(ControllerMessage(s.hello!.controllerId, message, receivedAtMs: now, delayMs: delayMs));
   }
 
   void _onHello(_Session s, HelloMessage hello) {
     if (s.hello != null) return _close(s, CloseCodes.protocolError, 'Duplicate hello');
     s.hello = hello;
-    _log('${hello.name} (${hello.platform} ${hello.appVersion}) says hello from ${s.remoteAddress}');
-    _send(s, WelcomeMessage(hostId: hostId, hostName: hostName, appVersion: appVersion));
+    final caps = hello.capabilities.isEmpty ? '' : ', supports ${hello.capabilities.join(', ')}';
+    _log('${hello.name} (${hello.platform} ${hello.appVersion}$caps) says hello from ${s.remoteAddress}');
+    _send(s, WelcomeMessage(hostId: hostId, hostName: hostName, appVersion: appVersion, capabilities: capabilities));
     _emit();
   }
 
@@ -505,7 +592,7 @@ class HostServer {
   /// lowest free one. A number stays reserved for a minute after its
   /// controller drops, so a short Wi-Fi drop doesn't swap players.
   int _pickPlayer(int? previous) {
-    final taken = {for (final o in _sessions.where((o) => o.paired && o.player != null)) o.player!};
+    final taken = {for (final o in _sessions.where((o) => o.paired && o.player != null)) o.player!, ..._localNumbers};
     final cutoff = DateTime.now().subtract(const Duration(minutes: 1));
     final reserved = {
       for (final k in _known.values)
@@ -636,6 +723,10 @@ class HostServer {
             _ => null,
           },
           latencyErrorMs: s.latency.uncertaintyMs,
+          capabilities: hello.capabilities,
+          device: hello.device,
+          role: hello.role,
+          inputAtMs: s.paired ? s.inputAtMs : null,
         ),
       );
     }
@@ -692,6 +783,7 @@ class _Session {
   int? rttMs;
   final rttWindow = RttWindow();
   InputStateMessage? input;
+  int? inputAtMs;
   int nextPingId = 0;
   DateTime since = DateTime.now();
   int? player;

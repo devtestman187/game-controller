@@ -21,6 +21,10 @@ class MessageCodec {
     InputStateMessage.wireType: InputStateMessage.fromPayload,
     HapticEventMessage.wireType: HapticEventMessage.fromPayload,
     PlayerMessage.wireType: PlayerMessage.fromPayload,
+    MetricsMessage.wireType: MetricsMessage.fromPayload,
+    MetricsAckMessage.wireType: MetricsAckMessage.fromPayload,
+    RatingAskMessage.wireType: RatingAskMessage.fromPayload,
+    RatingMessage.wireType: RatingMessage.fromPayload,
   };
 
   String encode(Message message) => jsonEncode({'v': protocolVersion, 't': message.type, ...message.toPayload()});
