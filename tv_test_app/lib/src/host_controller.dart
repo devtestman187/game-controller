@@ -86,6 +86,9 @@ abstract class HostController {
   /// Analytics collection, the session files, consent and upload (M9).
   StatsService get stats;
 
+  /// Sounds the games ask for by name (PRD v2 S5), for the sound player.
+  Stream<String> get gameSounds;
+
   Future<void> dispose();
 }
 
@@ -226,6 +229,9 @@ class LiveHostController implements HostController {
 
   @override
   StatsService get stats => _stats;
+
+  @override
+  Stream<String> get gameSounds => _gameHost.sounds;
 
   @override
   void toggleSimulatedController() {

@@ -243,6 +243,10 @@ class ControllerClient {
   final _changes = StreamController<ClientSnapshot>.broadcast();
   final _haptics = StreamController<HapticEventMessage>.broadcast();
   final _ratingAsks = StreamController<RatingAskMessage>.broadcast();
+  final _layouts = StreamController<GameLayoutMessage>.broadcast();
+  final _statuses = StreamController<StatusMessage>.broadcast();
+  GameLayoutMessage _layout = GameLayoutMessage.standard();
+  StatusMessage _status = StatusMessage.hidden();
   int _hapticsReceived = 0;
 
   /// Metrics batches not yet acknowledged, the newest per segment, oldest
@@ -300,6 +304,17 @@ class ControllerClient {
   /// Haptic events received since the app started, for Diagnostics.
   int get hapticsReceived => _hapticsReceived;
 
+  /// The game's controls for this phone (M10): labels, hidden buttons and
+  /// allowed modes. Back to standard when the connection ends.
+  GameLayoutMessage get layout => _layout;
+
+  Stream<GameLayoutMessage> get layouts => _layouts.stream;
+
+  /// The game's status panel for this phone (M10), hidden when there is none.
+  StatusMessage get status => _status;
+
+  Stream<StatusMessage> get statuses => _statuses.stream;
+
   /// Rating prompts from the TV (M9), only while paired.
   Stream<RatingAskMessage> get ratingAsks => _ratingAsks.stream;
 
@@ -329,6 +344,25 @@ class ControllerClient {
   /// Answers a rating prompt (M9). Sent only if connected.
   void sendRating(RatingMessage rating) {
     if (_snap.isConnected && _snap.hostCapabilities.contains(Capability.rating)) _send(rating);
+  }
+
+  void _setLayout(GameLayoutMessage layout) {
+    if (layout == _layout) return;
+    _layout = layout;
+    if (!_layouts.isClosed) _layouts.add(layout);
+  }
+
+  void _setStatus(StatusMessage status) {
+    if (status == _status) return;
+    _status = status;
+    if (!_statuses.isClosed) _statuses.add(status);
+  }
+
+  /// A new connection starts with the usual buttons and no panel; the game
+  /// sends its own again.
+  void _resetGameControls() {
+    _setLayout(GameLayoutMessage.standard());
+    _setStatus(StatusMessage.hidden());
   }
 
   void _onMetricsAck(MetricsAckMessage ack) {
@@ -483,6 +517,8 @@ class ControllerClient {
     await _changes.close();
     await _haptics.close();
     await _ratingAsks.close();
+    await _layouts.close();
+    await _statuses.close();
   }
 
   int get _now => _clock.elapsedMilliseconds;
@@ -597,6 +633,12 @@ class ControllerClient {
       case RatingAskMessage():
         if (!_snap.isConnected || !identity.capabilities.contains(Capability.rating)) return;
         if (!_ratingAsks.isClosed) _ratingAsks.add(message);
+      case GameLayoutMessage():
+        if (!_snap.isConnected || !identity.capabilities.contains(Capability.layout)) return;
+        _setLayout(message);
+      case StatusMessage():
+        if (!_snap.isConnected || !identity.capabilities.contains(Capability.status)) return;
+        _setStatus(message);
       case HelloMessage() || PairRequestMessage() || InputStateMessage() || MetricsMessage() || RatingMessage():
         _log('Ignoring unexpected ${message.type} from the TV');
     }
@@ -774,7 +816,9 @@ class ControllerClient {
   }
 
   void _set(ClientSnapshot next) {
+    final wasConnected = _snap.isConnected;
     _snap = next;
+    if (wasConnected && !next.isConnected) _resetGameControls();
     if (!_changes.isClosed) _changes.add(next);
   }
 }

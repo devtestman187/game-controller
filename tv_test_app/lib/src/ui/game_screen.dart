@@ -1,10 +1,10 @@
 import 'dart:io';
 
 import 'package:connection/connection.dart';
+import 'package:game_assets/asset_manifest.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:protocol/protocol.dart';
 import 'package:test_game/test_game.dart';
 
 import '../providers.dart';
@@ -209,7 +209,7 @@ class DebugOverlay extends ConsumerWidget {
       ),
       (
         'Sounds',
-        sounds.error != null ? 'off (${sounds.error})' : '${sounds.loaded} of ${HapticEvent.values.length} loaded',
+        sounds.error != null ? 'off (${sounds.error})' : '${sounds.loaded} of ${SoundKey.values.length} loaded',
       ),
     ];
     final text = Theme.of(context).textTheme;

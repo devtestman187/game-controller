@@ -197,6 +197,11 @@ String eventFeel(HapticEvent e) => switch (e) {
   HapticEvent.success => 'three rising taps',
   HapticEvent.error => 'two harsh buzzes',
   HapticEvent.rumble => 'a long throb',
+  HapticEvent.snap => 'a click and a firm lock',
+  HapticEvent.wrong => 'a low, falling uh-oh',
+  HapticEvent.dropReady => 'one light tap',
+  HapticEvent.help => 'two gentle knocks',
+  HapticEvent.tick => 'the lightest tap',
 };
 
 String eventLabel(HapticEvent e) => switch (e) {
@@ -204,6 +209,11 @@ String eventLabel(HapticEvent e) => switch (e) {
   HapticEvent.success => 'Success',
   HapticEvent.error => 'Error',
   HapticEvent.rumble => 'Rumble',
+  HapticEvent.snap => 'Snap (puzzle)',
+  HapticEvent.wrong => 'Wrong (puzzle)',
+  HapticEvent.dropReady => 'Drop-ready (puzzle)',
+  HapticEvent.help => 'Help (puzzle)',
+  HapticEvent.tick => 'Last seconds',
 };
 
 class _HapticsSection extends ConsumerWidget {

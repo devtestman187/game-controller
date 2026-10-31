@@ -15,7 +15,22 @@ enum HapticEvent {
 
   /// A steady rumble for the whole [HapticEventMessage.durationMs], e.g. while
   /// dashing.
-  rumble;
+  rumble,
+
+  /// A piece snapped into place (the puzzle, M10).
+  snap,
+
+  /// A piece was dropped in the wrong spot (M10). Distinct from [snap].
+  wrong,
+
+  /// The held piece is close enough to drop: a light tick (M10).
+  dropReady,
+
+  /// A teammate needs help carrying a big piece (M11).
+  help,
+
+  /// One second gone in the last seconds of a round: a light pulse (M10).
+  tick;
 
   /// Length used when the sender doesn't care, in milliseconds.
   int get defaultDurationMs => switch (this) {
@@ -23,7 +38,15 @@ enum HapticEvent {
     success => 450,
     error => 300,
     rumble => 400,
+    snap => 160,
+    wrong => 260,
+    dropReady => 40,
+    help => 320,
+    tick => 30,
   };
+
+  /// The v1 events every phone knows. Phones before M10 ignore the others.
+  static const v1 = [hit, success, error, rumble];
 
   static HapticEvent? fromWire(String name) => values.where((e) => e.name == name).firstOrNull;
 }

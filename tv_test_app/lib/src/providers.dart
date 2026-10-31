@@ -71,6 +71,14 @@ class GamePlayersNotifier extends Notifier<List<GamePlayer>> {
       a.length == b.length && Iterable.generate(a.length).every((i) => a[i] == b[i]);
 }
 
+/// Plays every sound a game asks for (PRD v2 S5). The home screen keeps it
+/// running.
+final gameSoundsProvider = Provider<void>((ref) {
+  final player = ref.watch(soundPlayerProvider);
+  final sub = ref.watch(hostControllerProvider).gameSounds.listen(player.play);
+  ref.onDispose(sub.cancel);
+});
+
 /// Analytics (M9): the session files, consent and upload.
 final statsServiceProvider = Provider<StatsService>((ref) => ref.watch(hostControllerProvider).stats);
 
@@ -134,7 +142,7 @@ class TvEventsNotifier extends Notifier<FiredEvent?> {
   /// and the debug overlay. With no [controllerId] it goes to every
   /// connected controller.
   void fire(HapticEventMessage message, {required String source, String? controllerId}) {
-    ref.read(soundPlayerProvider).play(message.event);
+    ref.read(soundPlayerProvider).play(message.event.name);
     final host = ref.read(gameHostProvider);
     final targets = controllerId != null ? [controllerId] : [for (final p in host.players) p.id];
     var reached = 0;

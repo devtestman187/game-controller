@@ -10,20 +10,36 @@ import 'package:flutter/services.dart';
 /// Package name used when loading assets from this package.
 const String assetPackage = 'game_assets';
 
-/// One sound per haptic event type, so audio and haptics fire from the same
-/// event (Milestone 5).
-enum SoundKey { hit, success, error, rumble }
+/// The game sounds, played by event name through the game host (PRD v2 S5):
+/// one per haptic event type that has a sound (M5, and the puzzle's in M10),
+/// plus sounds without a haptic (pickup, time-up), by [eventName].
+enum SoundKey {
+  hit,
+  success,
+  error,
+  rumble,
+  snap,
+  wrong,
+  tick,
+  pickup,
+  timeUp('time_up'),
+  help;
+
+  const SoundKey([this._file]);
+
+  final String? _file;
+
+  /// The event name games use, e.g. `time_up`.
+  String get eventName => _file ?? name;
+
+  static SoundKey? byEventName(String name) => values.where((k) => k.eventName == name).firstOrNull;
+}
 
 /// The sound file for each key, relative to this package. Everything in
 /// `audio/` is bundled, so replacing a file with one of the same name needs no
 /// code change. A file with the same name and the other extension (`.wav`
 /// instead of `.ogg`, or the reverse) is found too. Credits: `CREDITS.md`.
-const Map<SoundKey, String> soundFiles = {
-  SoundKey.hit: 'audio/hit.ogg',
-  SoundKey.success: 'audio/success.ogg',
-  SoundKey.error: 'audio/error.ogg',
-  SoundKey.rumble: 'audio/rumble.ogg',
-};
+final Map<SoundKey, String> soundFiles = {for (final k in SoundKey.values) k: 'audio/${k.eventName}.ogg'};
 
 /// The key Flutter bundles a file of this package under, for
 /// `rootBundle.load` and audio players.

@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 part 'capabilities.dart';
+part 'game_controls.dart';
 part 'haptic.dart';
 part 'input.dart';
 part 'metrics.dart';

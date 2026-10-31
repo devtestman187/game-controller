@@ -862,10 +862,10 @@ void main() {
         await tester.tap(find.text(mode));
         await tester.pump(const Duration(milliseconds: 50));
         app.haptics.played.clear();
-        for (final e in HapticEvent.values) {
+        for (final e in HapticEvent.v1) {
           await send(tester, app, e);
         }
-        expect(app.haptics.played.map((p) => p.$1), HapticEvent.values, reason: mode);
+        expect(app.haptics.played.map((p) => p.$1), HapticEvent.v1, reason: mode);
       }
       // Let the gyro availability check finish.
       await tester.pump(const Duration(seconds: 2));
@@ -887,7 +887,7 @@ void main() {
       await openSettings(tester);
       await tapVisible(tester, find.byKey(const Key('hapticsSwitch')));
       await closeSettings(tester);
-      for (final e in HapticEvent.values) {
+      for (final e in HapticEvent.v1) {
         await send(tester, app, e);
       }
       expect(app.haptics.played, isEmpty);
@@ -982,7 +982,7 @@ void main() {
       await closeSettings(tester);
 
       app.haptics.played.clear();
-      for (final e in HapticEvent.values) {
+      for (final e in HapticEvent.v1) {
         app.client.fromTv(HapticEventMessage(event: e));
         await tester.pump();
       }
@@ -1017,7 +1017,7 @@ void main() {
       await openSettings(tester);
       expect(find.text('40%'), findsOneWidget, reason: 'the tick');
       expect(find.text('30%'), findsOneWidget, reason: 'error');
-      expect(find.text('100%'), findsNWidgets(3), reason: 'the other events');
+      expect(find.text('100%'), findsNWidgets(HapticEvent.values.length - 1), reason: 'the other events');
       await scrollTo(tester, find.byKey(const Key('settingsStickSensitivity')));
       expect(find.text('1.50×'), findsOneWidget);
       expect(find.text('20%'), findsOneWidget);

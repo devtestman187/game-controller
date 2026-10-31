@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:connection/connection.dart';
+import 'package:game_assets/asset_manifest.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:protocol/protocol.dart';
@@ -25,6 +26,8 @@ class HomeScreen extends ConsumerWidget {
     final state = ref.watch(hostStateProvider);
     // Keeps the screen on while controllers are connected.
     ref.watch(keepAwakeProvider);
+    // Plays the games' sounds.
+    ref.watch(gameSoundsProvider);
     return Scaffold(
       body: SafeArea(
         child: LayoutBuilder(
@@ -347,7 +350,7 @@ class _SoundLine extends ConsumerWidget {
     final s = ref.watch(soundStatusProvider);
     final text = Theme.of(context).textTheme;
     final scheme = Theme.of(context).colorScheme;
-    final total = HapticEvent.values.length;
+    final total = SoundKey.values.length;
     final (icon, color, message) = s.error != null
         ? (Icons.volume_off, scheme.error, 'Sounds are off: ${s.error}')
         : !s.ready

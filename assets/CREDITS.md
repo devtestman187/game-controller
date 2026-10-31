@@ -1,3 +1,9 @@
+| `audio/snap.ogg` | Puzzle: a piece snaps into place (from `impactMetal_004.ogg`) | https://kenney.nl/assets/sci-fi-sounds | Kenney (Sci-Fi Sounds) | CC0 1.0 |
+| `audio/wrong.ogg` | Puzzle: a piece dropped in the wrong spot (from `lowFrequency_explosion_001.ogg`) | https://kenney.nl/assets/sci-fi-sounds | Kenney (Sci-Fi Sounds) | CC0 1.0 |
+| `audio/tick.ogg` | Puzzle: each second near the end (from `laserSmall_000.ogg`) | https://kenney.nl/assets/sci-fi-sounds | Kenney (Sci-Fi Sounds) | CC0 1.0 |
+| `audio/pickup.ogg` | Puzzle: picking up a piece (from `laserRetro_000.ogg`) | https://kenney.nl/assets/sci-fi-sounds | Kenney (Sci-Fi Sounds) | CC0 1.0 |
+| `audio/time_up.ogg` | Puzzle: time is up (from `doorClose_000.ogg`) | https://kenney.nl/assets/sci-fi-sounds | Kenney (Sci-Fi Sounds) | CC0 1.0 |
+| `audio/help.ogg` | Puzzle (M11): a teammate needs help (from `laserRetro_004.ogg`) | https://kenney.nl/assets/sci-fi-sounds | Kenney (Sci-Fi Sounds) | CC0 1.0 |
 # Asset credits
 
 Every image and sound in `/assets` (and every platform icon or banner made from them) is listed here.
@@ -14,7 +20,7 @@ Update this file in the same commit that adds, replaces or removes an asset.
 | `audio/rumble.ogg` | TV sound for the **rumble** event (from `forceField_003.ogg`) | https://kenney.nl/assets/sci-fi-sounds | Kenney (Sci-Fi Sounds) | CC0 1.0 |
 
 ## Audio
-The TV plays one sound per haptic event. The files live in `audio/`, named after the event: `hit`, `success`, `error`, `rumble`, as `.ogg` or `.wav` (the TV app decodes both itself, so Windows needs no codecs). `lib/asset_manifest.dart` lists them. Replacing a file with one of the same name needs no code change; a missing file plays nothing.
+The TV plays sounds by event name (M10: through the game host). The files live in `audio/`, named after the event: `hit`, `success`, `error`, `rumble`, and for the puzzle `snap`, `wrong`, `tick`, `pickup`, `time_up` and `help`, as `.ogg` or `.wav` (the TV app decodes both itself, so Windows needs no codecs). `lib/asset_manifest.dart` lists them. Replacing a file with one of the same name needs no code change; a missing file plays nothing.
 
 ## Planned sources
 - Kenney.nl packs (CC0): sprites, UI, input prompts/gamepad icons, interface sounds.

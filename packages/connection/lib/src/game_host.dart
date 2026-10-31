@@ -129,6 +129,21 @@ abstract interface class GameHost {
   /// Reports a delay stage (S7), e.g. [LatencyStage.receivedToDrawn] when a
   /// frame with a player's new input was built.
   void reportStage(String playerId, String stage, int ms);
+
+  /// Plays a sound by event name, e.g. `snap` (PRD v2 S5). Games never play
+  /// audio themselves, so a future host can stream it or have the receiver
+  /// play its own copy. An unknown name plays nothing.
+  void playSound(String name);
+
+  /// What the game does with the player's buttons (P5): labels, hidden
+  /// buttons, allowed modes. [GameLayoutMessage.standard] when the game
+  /// ends. Kept and sent again if the phone reconnects.
+  void setLayout(String playerId, GameLayoutMessage layout);
+
+  /// The player's status panel (P6), or [StatusMessage.hidden]. Sent at most
+  /// [StatusMessage.maxPerSecond] times a second; the newest always gets
+  /// there.
+  void setStatus(String playerId, StatusMessage status);
 }
 
 /// A player's heartbeat round trip and input delay.
@@ -188,11 +203,64 @@ class ServerGameHost implements GameHost {
   final _records = StreamController<GameRecord>.broadcast();
   final _stages = StreamController<StageSample>.broadcast();
   final _stageWindows = <(String, String), RttWindow>{};
+  final _sounds = StreamController<String>.broadcast();
+  final _layouts = <String, GameLayoutMessage>{};
+  final _statuses = <String, StatusMessage>{};
+  final _statusSentMs = <String, int>{};
+  final _statusTimers = <String, Timer>{};
   List<GamePlayer> _lastPlayers = const [];
   int _nextLocal = 1;
 
   /// Everything games report, for the analytics collector.
   Stream<GameRecord> get records => _records.stream;
+
+  /// Sounds the games ask for, by event name (S5): the app plays them.
+  Stream<String> get sounds => _sounds.stream;
+
+  /// The layout a player was last given (standard if none).
+  GameLayoutMessage layoutOf(String playerId) => _layouts[playerId] ?? GameLayoutMessage.standard();
+
+  @override
+  void playSound(String name) {
+    if (!_sounds.isClosed) _sounds.add(name);
+  }
+
+  @override
+  void setLayout(String playerId, GameLayoutMessage layout) {
+    if (_locals.containsKey(playerId)) return;
+    if (layout.isStandard) {
+      _layouts.remove(playerId);
+    } else {
+      _layouts[playerId] = layout;
+    }
+    server.send(playerId, layout);
+  }
+
+  @override
+  void setStatus(String playerId, StatusMessage status) {
+    if (_locals.containsKey(playerId)) return;
+    if (status.isHidden) {
+      _statuses.remove(playerId);
+    } else {
+      _statuses[playerId] = status;
+    }
+    final gap = 1000 ~/ StatusMessage.maxPerSecond;
+    final since = nowMs - (_statusSentMs[playerId] ?? -gap);
+    if (since >= gap) {
+      _sendStatus(playerId, status);
+    } else {
+      // Too soon: the newest one goes when the gap is up.
+      _statusTimers[playerId] ??= Timer(Duration(milliseconds: gap - since), () {
+        _statusTimers.remove(playerId);
+        _sendStatus(playerId, _statuses[playerId] ?? StatusMessage.hidden());
+      });
+    }
+  }
+
+  void _sendStatus(String playerId, StatusMessage status) {
+    _statusSentMs[playerId] = nowMs;
+    server.send(playerId, status);
+  }
 
   /// Every delay sample, for the analytics collector.
   Stream<StageSample> get stages => _stages.stream;
@@ -288,16 +356,27 @@ class ServerGameHost implements GameHost {
   void _checkPlayers() {
     final now = players;
     if (_samePlayers(now, _lastPlayers)) return;
+    // A phone that (re)joined gets the game's controls and panel again.
+    final before = {for (final p in _lastPlayers) p.id};
+    for (final p in now) {
+      if (p.local || before.contains(p.id)) continue;
+      if (_layouts[p.id] case final layout?) server.send(p.id, layout);
+      if (_statuses[p.id] case final status?) _sendStatus(p.id, status);
+    }
     _lastPlayers = now;
     if (!_playersChanged.isClosed) _playersChanged.add(now);
   }
 
   Future<void> dispose() async {
+    for (final t in _statusTimers.values) {
+      t.cancel();
+    }
     await _serverSub.cancel();
     await _messagesSub.cancel();
     await _playersChanged.close();
     await _records.close();
     await _stages.close();
+    await _sounds.close();
   }
 }
 
@@ -321,6 +400,11 @@ class MemoryGameHost implements GameHost {
   final ratingAsks = <(String, String, String)>[];
   final records = <GameRecord>[];
   final stages = <StageSample>[];
+  final sounds = <String>[];
+
+  /// Each player's current layout and status panel.
+  final layouts = <String, GameLayoutMessage>{};
+  final statuses = <String, StatusMessage>{};
   int _nextLocal = 1;
 
   static int Function() _stopwatch() {
@@ -386,6 +470,15 @@ class MemoryGameHost implements GameHost {
 
   @override
   void reportStage(String playerId, String stage, int ms) => stages.add((playerId: playerId, stage: stage, ms: ms));
+
+  @override
+  void playSound(String name) => sounds.add(name);
+
+  @override
+  void setLayout(String playerId, GameLayoutMessage layout) => layouts[playerId] = layout;
+
+  @override
+  void setStatus(String playerId, StatusMessage status) => statuses[playerId] = status;
 
   @override
   LocalPlayer addLocalPlayer({String? nickname}) {

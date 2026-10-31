@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:game_assets/asset_manifest.dart';
 import 'package:protocol/protocol.dart';
 
 import '../providers.dart';
+import '../sound.dart';
 import 'tv_button.dart';
 
 /// The haptic test panel (PRD T6): fires each haptic event on every connected
@@ -24,7 +26,19 @@ const _feel = {
   HapticEvent.success: ('Success', Icons.emoji_events_outlined, 'Three rising taps'),
   HapticEvent.error: ('Error', Icons.block, 'Two sharp buzzes'),
   HapticEvent.rumble: ('Rumble', Icons.graphic_eq, 'A low, wobbling buzz'),
+  HapticEvent.snap: ('Snap', Icons.lock_outline, 'A click and a firm lock'),
+  HapticEvent.wrong: ('Wrong', Icons.close, 'A low, falling uh-oh'),
+  HapticEvent.dropReady: ('Drop-ready', Icons.adjust, 'One light tap'),
+  HapticEvent.help: ('Help', Icons.front_hand_outlined, 'Two gentle knocks'),
+  HapticEvent.tick: ('Tick', Icons.timer_outlined, 'The lightest tap'),
 };
+
+/// The event's sound file, "none" for events without a sound.
+String _soundOf(SoundStatus sounds, HapticEvent event) {
+  final key = SoundKey.byEventName(event.name);
+  if (key == null) return 'none';
+  return sounds.files[key] ?? (sounds.error == null ? 'loading…' : 'off');
+}
 
 class _HapticPanelScreenState extends ConsumerState<HapticPanelScreen> {
   double _intensity = 1;
@@ -93,7 +107,7 @@ class _HapticPanelScreenState extends ConsumerState<HapticPanelScreen> {
                           const SizedBox(height: 6),
                           Text(_feel[event]!.$3, style: text.bodyMedium),
                           Text(
-                            'Sound: ${sounds.files[event] ?? (sounds.error == null ? 'loading…' : 'off')}',
+                            'Sound: ${_soundOf(sounds, event)}',
                             style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
                           ),
                         ],

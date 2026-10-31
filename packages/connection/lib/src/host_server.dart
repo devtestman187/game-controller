@@ -379,6 +379,8 @@ class HostServer {
   static String? capabilityFor(Message message) => switch (message) {
     MetricsAckMessage() => Capability.metrics,
     RatingAskMessage() => Capability.rating,
+    GameLayoutMessage() => Capability.layout,
+    StatusMessage() => Capability.status,
     _ => null,
   };
 
@@ -515,7 +517,9 @@ class HostServer {
           HapticEventMessage() ||
           PlayerMessage() ||
           MetricsAckMessage() ||
-          RatingAskMessage():
+          RatingAskMessage() ||
+          GameLayoutMessage() ||
+          StatusMessage():
         _close(s, CloseCodes.protocolError, 'Unexpected ${message.type}');
     }
   }

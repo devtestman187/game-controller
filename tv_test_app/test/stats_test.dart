@@ -297,7 +297,10 @@ void main() {
     // The M9 device test: the same iPhone on 0.8.0 for 6 rounds, then on 0.9.0.
     final stats = await startStats(consent: false);
     final old = phone('same-phone', caps: const []);
-    old.connect(HostAddress(addresses: ['127.0.0.1'], port: server.port!), code: server.pairingCode);
+    old.connect(
+      HostAddress(addresses: ['127.0.0.1'], port: server.port!),
+      code: server.pairingCode,
+    );
     await until(old.changes, (s) => s.isConnected);
     await waitFor(() => stats.session != null);
     void round() => host.record(
@@ -321,7 +324,10 @@ void main() {
     final updated = phone('same-phone');
     final asks = <RatingAskMessage>[];
     updated.ratingAsks.listen(asks.add);
-    updated.connect(HostAddress(addresses: ['127.0.0.1'], port: server.port!), code: server.pairingCode);
+    updated.connect(
+      HostAddress(addresses: ['127.0.0.1'], port: server.port!),
+      code: server.pairingCode,
+    );
     await until(updated.changes, (s) => s.isConnected);
     await waitFor(() => server.snapshot.connected.any((c) => c.supports(Capability.rating)));
     round();

@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:game_assets/asset_manifest.dart';
 import 'package:metrics/metrics.dart';
 import 'package:protocol/protocol.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -32,6 +33,9 @@ class FakeHostController implements HostController {
 
   @override
   final FakeStats stats;
+
+  @override
+  Stream<String> get gameSounds => gameHost.soundStream;
 
   @override
   HostViewState state;
@@ -148,6 +152,22 @@ class FakeGameHost implements GameHost {
 
   @override
   void reportStage(String playerId, String stage, int ms) => stages.add((playerId: playerId, stage: stage, ms: ms));
+
+  final _sounds = StreamController<String>.broadcast();
+  Stream<String> get soundStream => _sounds.stream;
+
+  /// Each player's layout and status panel, as the game set them.
+  final layouts = <String, GameLayoutMessage>{};
+  final statuses = <String, StatusMessage>{};
+
+  @override
+  void playSound(String name) => _sounds.add(name);
+
+  @override
+  void setLayout(String playerId, GameLayoutMessage layout) => layouts[playerId] = layout;
+
+  @override
+  void setStatus(String playerId, StatusMessage status) => statuses[playerId] = status;
 
   @override
   LocalPlayer addLocalPlayer({String? nickname}) {
@@ -498,7 +518,10 @@ void main() {
 
   testWidgets('shows that the four event sounds loaded', (tester) async {
     await pumpApp(tester);
-    expect(find.text('4 of 4 event sounds loaded (fake)'), findsOneWidget);
+    expect(
+      find.text('${SoundKey.values.length} of ${SoundKey.values.length} event sounds loaded (fake)'),
+      findsOneWidget,
+    );
   });
 
   group('haptic test panel', () {
@@ -518,13 +541,16 @@ void main() {
       }
       expect(fake.haptics.map((h) => h.$1), [for (final e in HapticEvent.values) HapticEventMessage(event: e)]);
       expect(fake.haptics.every((h) => h.$2 == 'p1'), isTrue, reason: 'to every connected controller');
-      expect(sounds.played, HapticEvent.values);
-      expect(find.text('Last: rumble, 100%, 400 ms (panel) → 1 controller'), findsOneWidget);
+      expect(sounds.played, [for (final e in HapticEvent.values) e.name]);
+      await tester.scrollUntilVisible(find.byKey(const Key('lastSent')), 200);
+      expect(find.text('Last: tick, 100%, 30 ms (panel) → 1 controller'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
 
     testWidgets('intensity and duration steppers change what is sent', (tester) async {
       final fake = await openPanel(tester);
+      // Nine events: the steppers are further down, as on the TV.
+      await tester.scrollUntilVisible(find.byTooltip('More Duration'), 200);
       await tester.tap(find.byTooltip('Less Intensity'));
       await tester.tap(find.byTooltip('Less Intensity'));
       await tester.tap(find.byTooltip('More Duration'));
@@ -532,11 +558,12 @@ void main() {
       await tester.pump();
       expect(find.text('80%'), findsOneWidget);
       expect(find.text('200 ms'), findsOneWidget);
-      await tester.tap(find.byKey(const Key('fire-error')));
+      await tapVisible(tester, find.byKey(const Key('fire-error')));
       await tester.pump();
       expect(fake.haptics.single.$1, HapticEventMessage(event: HapticEvent.error, intensity: 0.8, durationMs: 200));
 
       // The limits hold, and the buttons stay usable there.
+      await tester.scrollUntilVisible(find.byTooltip('More Duration'), 200);
       for (var i = 0; i < 12; i++) {
         await tester.tap(find.byTooltip('More Intensity'));
         await tester.tap(find.byTooltip('Less Duration'));
@@ -570,7 +597,8 @@ void main() {
       expect(find.textContaining('No controller connected'), findsOneWidget);
       await tester.tap(find.byKey(const Key('fire-hit')));
       await tester.pump();
-      expect(sounds.played, [HapticEvent.hit]);
+      expect(sounds.played, ['hit']);
+      await tester.scrollUntilVisible(find.byKey(const Key('lastSent')), 200);
       expect(find.textContaining('→ no controller'), findsOneWidget);
     });
   });
@@ -598,7 +626,7 @@ void main() {
       final sent = fake.haptics.map((h) => (h.$1.event, h.$2)).toList();
       expect(sent.first, (HapticEvent.rumble, 'p1'));
       expect(sent, contains((HapticEvent.hit, 'p1')));
-      expect(sounds.played.take(2), [HapticEvent.rumble, HapticEvent.hit]);
+      expect(sounds.played.take(2), ['rumble', 'hit']);
       expect(find.text('Dashes 1'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
@@ -616,7 +644,7 @@ void main() {
       expect(find.text('D-pad'), findsOneWidget);
       expect(find.text('D-pad 1, 0'), findsOneWidget);
       expect(find.textContaining('rumble (game: dash, P1)'), findsOneWidget);
-      expect(find.text('4 of 4 loaded'), findsOneWidget);
+      expect(find.text('${SoundKey.values.length} of ${SoundKey.values.length} loaded'), findsOneWidget);
       await tester.sendKeyEvent(LogicalKeyboardKey.select);
       await frames(tester, 2);
       expect(find.byKey(const Key('debugOverlay')), findsNothing);

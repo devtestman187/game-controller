@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:connection/connection.dart';
 import 'package:flutter_soloud/flutter_soloud.dart';
 import 'package:game_assets/asset_manifest.dart';
-import 'package:protocol/protocol.dart';
 
 /// What the sound player has loaded, for the screen and the log.
 final class SoundStatus {
@@ -12,8 +11,8 @@ final class SoundStatus {
   final String engine;
   final bool ready;
 
-  /// Per event: e.g. "hit.ogg, 1.55 s", "no file (silent)" or the load error.
-  final Map<HapticEvent, String> files;
+  /// Per sound: e.g. "hit.ogg, 1.55 s", "no file (silent)" or the load error.
+  final Map<SoundKey, String> files;
 
   /// Set if the audio engine itself couldn't start (everything is silent).
   final String? error;
@@ -21,9 +20,9 @@ final class SoundStatus {
   int get loaded => files.values.where((f) => f.contains(' s')).length;
 }
 
-/// Plays the TV's sound for a haptic event (one sound per event, from the
-/// asset manifest). Game code only calls [play], so the audio package can be
-/// swapped without touching it.
+/// Plays the TV's sounds by event name (PRD v2 S5: games ask the game host,
+/// which hands the name to this). Game code never touches the audio package,
+/// so it can be swapped.
 abstract class SoundPlayer {
   SoundStatus get status;
   Stream<SoundStatus> get changes;
@@ -32,9 +31,10 @@ abstract class SoundPlayer {
   /// that fails is silent and reported in [status].
   Future<void> load();
 
-  /// Plays [event]'s sound. If the same sound is still playing it starts over
-  /// instead of layering, so repeated events stay clear.
-  void play(HapticEvent event);
+  /// Plays the sound for [name] (e.g. `hit`, `snap`, `time_up`). If the same
+  /// sound is still playing it starts over instead of layering, so repeated
+  /// events stay clear. An unknown name plays nothing.
+  void play(String name);
 
   Future<void> dispose();
 }
@@ -47,8 +47,8 @@ class SoLoudSoundPlayer implements SoundPlayer {
 
   final LogSink _log;
   final _changes = StreamController<SoundStatus>.broadcast();
-  final _sources = <HapticEvent, AudioSource>{};
-  final _playing = <HapticEvent, SoundHandle>{};
+  final _sources = <SoundKey, AudioSource>{};
+  final _playing = <SoundKey, SoundHandle>{};
   SoundStatus _status = const SoundStatus(engine: 'flutter_soloud');
   Future<void>? _loading;
 
@@ -70,45 +70,45 @@ class SoLoudSoundPlayer implements SoundPlayer {
       _set(SoundStatus(engine: 'flutter_soloud', error: '$e'));
       return;
     }
-    final files = <HapticEvent, String>{};
-    for (final event in HapticEvent.values) {
-      final key = SoundKey.values.byName(event.name);
+    final files = <SoundKey, String>{};
+    for (final key in SoundKey.values) {
       try {
         final path = await findSound(key);
         if (path == null) {
-          files[event] = 'no file (silent)';
+          files[key] = 'no file (silent)';
           continue;
         }
         final source = await soloud.loadAsset(path);
-        _sources[event] = source;
+        _sources[key] = source;
         final seconds = soloud.getLength(source).inMilliseconds / 1000;
-        files[event] = '${path.split('/').last}, ${seconds.toStringAsFixed(2)} s';
+        files[key] = '${path.split('/').last}, ${seconds.toStringAsFixed(2)} s';
       } catch (e) {
-        files[event] = 'failed: $e';
+        files[key] = 'failed: $e';
       }
     }
-    _log('Sounds: ${HapticEvent.values.map((e) => '${e.name} ${files[e]}').join('; ')}');
+    _log('Sounds: ${SoundKey.values.map((k) => '${k.eventName} ${files[k]}').join('; ')}');
     _set(SoundStatus(engine: 'flutter_soloud', ready: true, files: files));
   }
 
   @override
-  void play(HapticEvent event) {
-    final source = _sources[event];
-    if (source == null) return;
+  void play(String name) {
+    final key = SoundKey.byEventName(name);
+    final source = key == null ? null : _sources[key];
+    if (key == null || source == null) return;
     final soloud = SoLoud.instance;
     try {
-      final previous = _playing[event];
+      final previous = _playing[key];
       if (previous != null && soloud.getIsValidVoiceHandle(previous)) unawaited(soloud.stop(previous));
-      _playing[event] = soloud.play(source);
+      _playing[key] = soloud.play(source);
     } catch (e) {
-      _log('Could not play the ${event.name} sound: $e');
+      _log('Could not play the $name sound: $e');
     }
   }
 
-  /// How far the latest [event] sound has played, or null if it isn't
-  /// playing. For the on-device sound test.
-  Duration? positionOf(HapticEvent event) {
-    final handle = _playing[event];
+  /// How far the latest [key] sound has played, or null if it isn't playing.
+  /// For the on-device sound test.
+  Duration? positionOf(SoundKey key) {
+    final handle = _playing[key];
     if (handle == null || !SoLoud.instance.getIsValidVoiceHandle(handle)) return null;
     return SoLoud.instance.getPosition(handle);
   }
@@ -128,16 +128,16 @@ class SoLoudSoundPlayer implements SoundPlayer {
   }
 }
 
-/// Plays nothing and records what it was asked to play. For tests.
+/// Plays nothing and records the names it was asked to play. For tests.
 class FakeSoundPlayer implements SoundPlayer {
-  final played = <HapticEvent>[];
+  final played = <String>[];
   final _changes = StreamController<SoundStatus>.broadcast();
 
   @override
   SoundStatus status = SoundStatus(
     engine: 'fake',
     ready: true,
-    files: {for (final e in HapticEvent.values) e: '${e.name}.ogg, 1.00 s'},
+    files: {for (final k in SoundKey.values) k: '${k.eventName}.ogg, 1.00 s'},
   );
 
   @override
@@ -147,7 +147,7 @@ class FakeSoundPlayer implements SoundPlayer {
   Future<void> load() async {}
 
   @override
-  void play(HapticEvent event) => played.add(event);
+  void play(String name) => played.add(name);
 
   @override
   Future<void> dispose() => _changes.close();

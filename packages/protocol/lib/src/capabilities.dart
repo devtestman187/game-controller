@@ -14,6 +14,13 @@ abstract final class Capability {
   /// The post-game rating prompt ([RatingAskMessage] and [RatingMessage]). M9.
   static const rating = 'rating';
 
+  /// Game-defined controls ([GameLayoutMessage]): labels, hidden buttons and
+  /// allowed modes. M10.
+  static const layout = 'layout';
+
+  /// The phone status panel ([StatusMessage]). M10.
+  static const status = 'status';
+
   /// A controller that also shows the game (phone-hosted play, M12).
   /// Reserved.
   static const view = 'view';

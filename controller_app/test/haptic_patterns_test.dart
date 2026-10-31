@@ -12,7 +12,7 @@ void main() {
     }
   });
 
-  test('the four patterns differ in shape, not just strength', () {
+  test('every pattern differs in shape, not just strength', () {
     String shape(HapticEvent e) =>
         HapticPattern.forEvent(e).segments
             .map((s) => '${s.isTap ? 'tap' : 'buzz'}${s.sharpness >= 0.5 ? '+' : '-'}')
