@@ -25,6 +25,20 @@ final puzzleLayout = GameLayoutMessage(
   },
 );
 
+/// The buttons once the puzzle is over: the results' menu (Play again, Back)
+/// is worked with the D-pad or left stick, A and B.
+final puzzleResultsLayout = GameLayoutMessage(
+  labels: {ControllerButton.a: 'OK', ControllerButton.b: 'Back'},
+  hidden: {
+    ControllerButton.x,
+    ControllerButton.y,
+    ControllerButton.lb,
+    ControllerButton.rb,
+    ControllerButton.select,
+    ControllerButton.start,
+  },
+);
+
 /// Plays one puzzle through the game host (PRD v2 P3): every player's
 /// gamepad drives a dot, events become haptics and sounds by name (S5), each
 /// phone shows the puzzle's button labels and a status panel with the held
@@ -65,6 +79,7 @@ class PuzzlePlayViewState extends State<PuzzlePlayView> with SingleTickerProvide
   final _withLayout = <String>{};
   final _arrived = <String, int>{};
   bool _reported = false;
+  bool _resultsLayout = false;
   int _frames = 0;
   int _late = 0;
 
@@ -74,16 +89,25 @@ class PuzzlePlayViewState extends State<PuzzlePlayView> with SingleTickerProvide
   void initState() {
     super.initState();
     _record('round_start', data: {'puzzle': widget.puzzle.id, 'level': widget.puzzle.level.name});
+    _current = this;
     _ticker.start();
   }
+
+  /// The newest puzzle on screen. After Play again the old one is disposed
+  /// once the new one is already running, and must not undo its buttons.
+  static PuzzlePlayViewState? _current;
 
   @override
   void dispose() {
     _ticker.dispose();
-    // Every phone goes back to its usual buttons, and the panel goes.
-    for (final id in _withLayout) {
-      widget.host.setLayout(id, GameLayoutMessage.standard());
-      widget.host.setStatus(id, StatusMessage.hidden());
+    // Every phone goes back to its usual buttons, and the panel goes,
+    // unless another puzzle has already taken over.
+    if (_current == this) {
+      _current = null;
+      for (final id in _withLayout) {
+        widget.host.setLayout(id, GameLayoutMessage.standard());
+        widget.host.setStatus(id, StatusMessage.hidden());
+      }
     }
     super.dispose();
   }
@@ -98,9 +122,16 @@ class PuzzlePlayViewState extends State<PuzzlePlayView> with SingleTickerProvide
     game.settings = widget.settings();
     final players = host.players;
 
-    // New players get the puzzle's buttons.
+    // New players get the puzzle's buttons; once it's over, the results'.
+    final over = game.result != null;
     for (final p in players) {
-      if (_withLayout.add(p.id)) host.setLayout(p.id, puzzleLayout);
+      if (_withLayout.add(p.id)) host.setLayout(p.id, over ? puzzleResultsLayout : puzzleLayout);
+    }
+    if (over && !_resultsLayout) {
+      _resultsLayout = true;
+      for (final id in _withLayout) {
+        host.setLayout(id, puzzleResultsLayout);
+      }
     }
     _withLayout.removeWhere((id) => !players.any((p) => p.id == id));
 

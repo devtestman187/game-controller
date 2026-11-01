@@ -5,6 +5,7 @@ import 'package:puzzle_game/puzzle_game.dart';
 
 import '../keyboard_player.dart';
 import '../providers.dart';
+import 'gamepad_menu.dart';
 import 'tv_button.dart';
 
 /// Which puzzle to play: a specific one, or a random one of a level.
@@ -85,37 +86,42 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
       autofocus: true,
       onKeyEvent: _onKey,
       child: Scaffold(
-        body: SafeArea(
-          child: puzzle == null
-              ? const Center(child: CircularProgressIndicator())
-              : Stack(
-                  children: [
-                    Positioned.fill(
-                      child: PuzzlePlayView(
-                        host: ref.read(gameHostProvider),
-                        puzzle: puzzle,
-                        game: widget.game,
-                        settings: () => ref.read(puzzleSettingsProvider),
-                        onFinished: _finished,
-                      ),
-                    ),
-                    if (result != null)
-                      Center(
-                        child: _Results(result: result, onAgain: _again, againFocus: _againFocus),
-                      ),
-                    if (result == null)
-                      Positioned(
-                        right: 12,
-                        bottom: 6,
-                        child: Text(
-                          keyboardPlayerAvailable && _keyboard.player == null
-                              ? 'Arrows, Space, X and Z: play on the keyboard · Esc: leave'
-                              : 'Back: leave',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.white60),
+        body: GamepadMenu(
+          // On the results, the phones work Play again and Back too.
+          enabled: result != null,
+          onBack: () => Navigator.of(context).maybePop(),
+          child: SafeArea(
+            child: puzzle == null
+                ? const Center(child: CircularProgressIndicator())
+                : Stack(
+                    children: [
+                      Positioned.fill(
+                        child: PuzzlePlayView(
+                          host: ref.read(gameHostProvider),
+                          puzzle: puzzle,
+                          game: widget.game,
+                          settings: () => ref.read(puzzleSettingsProvider),
+                          onFinished: _finished,
                         ),
                       ),
-                  ],
-                ),
+                      if (result != null)
+                        Center(
+                          child: _Results(result: result, onAgain: _again, againFocus: _againFocus),
+                        ),
+                      if (result == null)
+                        Positioned(
+                          right: 12,
+                          bottom: 6,
+                          child: Text(
+                            keyboardPlayerAvailable && _keyboard.player == null
+                                ? 'Arrows, Space, X and Z: play on the keyboard · Esc: leave'
+                                : 'Back: leave',
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.white60),
+                          ),
+                        ),
+                    ],
+                  ),
+          ),
         ),
       ),
     );
@@ -168,7 +174,12 @@ class _Results extends StatelessWidget {
                   onPressed: onAgain,
                 ),
                 const SizedBox(width: 12),
-                TvButton(label: 'Back', icon: Icons.arrow_back, onPressed: () => Navigator.of(context).maybePop()),
+                TvButton(
+                  key: const Key('resultsBack'),
+                  label: 'Back',
+                  icon: Icons.arrow_back,
+                  onPressed: () => Navigator.of(context).maybePop(),
+                ),
               ],
             ),
           ],

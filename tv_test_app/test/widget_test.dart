@@ -119,7 +119,13 @@ class FakeGameHost implements GameHost {
   Stream<List<GamePlayer>> get playersChanged => _changes.stream;
 
   @override
-  GamepadState gamepad(String playerId) => locals[playerId]?.state ?? GamepadState.fromInput(_info(playerId)?.input);
+  GamepadState gamepad(String playerId) =>
+      locals[playerId]?.state ?? pads[playerId] ?? GamepadState.fromInput(_info(playerId)?.input);
+
+  /// A phone's buttons, set by the test.
+  final pads = <String, GamepadState>{};
+
+  void setGamepad(String id, GamepadState state) => pads[id] = state;
 
   @override
   int? inputArrivedAtMs(String playerId) => null;
@@ -1070,6 +1076,102 @@ void puzzle() {
     expect(Focus.of(tester.element(find.descendant(of: again, matching: find.byType(Text)).first)).hasFocus, isTrue);
   });
 
+  testWidgets('on the results the phone works the menu: left/right, A and B; the A that finished does nothing', (
+    tester,
+  ) async {
+    final house = Puzzle.parse(File('../packages/puzzle_game/puzzles/house.json').readAsStringSync());
+    final game = PuzzleGame(house);
+    final fake = await pumpApp(tester);
+    final host = fake.gameHost;
+    tester
+        .state<NavigatorState>(find.byType(Navigator))
+        .push(
+          MaterialPageRoute<void>(
+            builder: (_) => PuzzleScreen(
+              choice: const PuzzleChoice(level: Level.easy),
+              game: game,
+            ),
+          ),
+        );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    Future<void> phone(Set<GamepadButton> buttons) async {
+      host.setGamepad('p1', GamepadState(buttons: buttons, mode: InputMode.dpad));
+      await tester.pump(const Duration(milliseconds: 16));
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+
+    bool focused(String key) =>
+        Focus.of(tester.element(find.descendant(of: find.byKey(Key(key)), matching: find.byType(Text)).first)).hasFocus;
+
+    // The last piece goes in while A is held.
+    host.setGamepad('p1', const GamepadState(buttons: {GamepadButton.a}, mode: InputMode.dpad));
+    for (var i = 0; i < game.pieces.length; i++) {
+      game.pieces[i]
+        ..state = PieceState.locked
+        ..pos = house.targetAt(i);
+    }
+    await tester.pump(const Duration(milliseconds: 16));
+    await tester.pump(const Duration(milliseconds: 16));
+    await tester.pump(const Duration(milliseconds: 16));
+    expect(find.text('Done!'), findsOneWidget);
+    // The phone now says A "OK", B "Back".
+    final layout = host.layouts['p1']!;
+    expect(layout.labels[ControllerButton.a], 'OK');
+    expect(layout.labels[ControllerButton.b], 'Back');
+    expect(layout.hidden, containsAll([ControllerButton.x, ControllerButton.y]));
+
+    // Still holding A, then letting go: nothing happens.
+    await phone({GamepadButton.a});
+    await phone({});
+    expect(find.text('Done!'), findsOneWidget);
+    expect(focused('playAgain'), isTrue);
+    // Right moves to Back, left comes back.
+    await phone({GamepadButton.dpadRight});
+    await phone({});
+    expect(focused('resultsBack'), isTrue);
+    await phone({GamepadButton.dpadLeft});
+    await phone({});
+    expect(focused('playAgain'), isTrue);
+    // A presses Play again: a new puzzle starts.
+    await phone({GamepadButton.a});
+    await phone({});
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.text('Done!'), findsNothing);
+    expect(find.byType(PuzzleScreen), findsOneWidget);
+    expect(host.layouts['p1']!.labels[ControllerButton.a], 'Pick up');
+  });
+
+  testWidgets('on the results B on the phone goes back', (tester) async {
+    final house = Puzzle.parse(File('../packages/puzzle_game/puzzles/house.json').readAsStringSync());
+    final game = PuzzleGame(house);
+    final fake = await pumpApp(tester);
+    tester
+        .state<NavigatorState>(find.byType(Navigator))
+        .push(
+          MaterialPageRoute<void>(
+            builder: (_) => PuzzleScreen(
+              choice: const PuzzleChoice(level: Level.easy),
+              game: game,
+            ),
+          ),
+        );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    for (var i = 0; i < game.pieces.length; i++) {
+      game.pieces[i]
+        ..state = PieceState.locked
+        ..pos = house.targetAt(i);
+    }
+    await tester.pump(const Duration(milliseconds: 16));
+    await tester.pump(const Duration(milliseconds: 16));
+    expect(find.text('Done!'), findsOneWidget);
+    fake.gameHost.setGamepad('p1', const GamepadState(buttons: {GamepadButton.b}, mode: InputMode.dpad));
+    await tester.pump(const Duration(milliseconds: 16));
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.byType(PuzzleScreen), findsNothing);
+  });
+
   testWidgets('time-up shows the pieces placed', (tester) async {
     final house = Puzzle.parse(File('../packages/puzzle_game/puzzles/house.json').readAsStringSync());
     final game = PuzzleGame(house, settings: const PuzzleSettings(timeLimitS: 30));
@@ -1114,7 +1216,9 @@ void puzzle() {
     await tester.scrollUntilVisible(find.byKey(const Key('setting-dropReadyHighlight')), 200);
     await tester.ensureVisible(find.byKey(const Key('setting-dropReadyHighlight')));
     await tester.pumpAndSettle();
-    await tester.tap(find.descendant(of: find.byKey(const Key('setting-dropReadyHighlight')), matching: find.byType(Switch)));
+    await tester.tap(
+      find.descendant(of: find.byKey(const Key('setting-dropReadyHighlight')), matching: find.byType(Switch)),
+    );
     await tester.pump();
     expect(container.read(puzzleSettingsProvider).dropReadyHighlight, isFalse);
     await tester.tap(find.byKey(const Key('resetPuzzleSettings')));
