@@ -120,8 +120,9 @@ class PuzzleGame {
   /// The dot's radius.
   static const dotRadius = 2.6;
 
-  /// The right stick turns a held piece this many times faster than X or Y.
-  static const stickTurnFactor = 3.0;
+  /// Pushed fully sideways, the right stick turns a held piece this many
+  /// times as fast as X or Y.
+  static const stickTurnFactor = 1.5;
 
   late final List<PieceRuntime> pieces;
   final _players = <String, PuzzlePlayer>{};
@@ -303,15 +304,13 @@ class PuzzleGame {
     var turn = 0.0;
     if (g.pressed(GamepadButton.x)) turn += settings.rotationSpeedDegPerS * dt;
     if (g.pressed(GamepadButton.y)) turn -= settings.rotationSpeedDegPerS * dt;
-    final stick = Offset(g.rightX, g.rightY);
-    if (g.mode == InputMode.sticks && stick.distance >= settings.stickRotateThreshold) {
-      // Pointing the stick points the piece (0° is up).
-      final goal = atan2(stick.dx, -stick.dy) * 180 / pi;
-      var diff = (goal - piece.angle) % 360;
-      if (diff > 180) diff -= 360;
-      if (diff < -180) diff += 360;
-      final step = settings.rotationSpeedDegPerS * stickTurnFactor * dt;
-      turn = diff.abs() <= step ? diff : step * diff.sign;
+    // The right stick, sideways only: right turns clockwise, left
+    // counter-clockwise, faster the further it's pushed past the dead zone.
+    final x = g.rightX;
+    final dead = settings.stickDeadZone;
+    if (g.mode == InputMode.sticks && x.abs() > dead) {
+      final push = ((x.abs() - dead) / (1 - dead)).clamp(0.0, 1.0);
+      turn += x.sign * push * settings.rotationSpeedDegPerS * stickTurnFactor * dt;
     }
     if (turn == 0) return;
     piece.angle = (piece.angle + turn) % 360;

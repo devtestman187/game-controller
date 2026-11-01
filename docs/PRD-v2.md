@@ -234,7 +234,7 @@ The rules are the same. Only the view changes, because a phone screen is small a
 | Puzzle type | A simple picture made of distinct shapes (for example a house: walls, roof, door, window, sun). Easy outlines are coloured to match their pieces. Medium and Hard outlines are grey, so only the shape helps |
 | Character | A dot in the player's colour with the player number, as in the arena game. Movement works as in the arena: the D-pad moves at a fixed speed, and tilt or stick push scales the speed |
 | Picking up | When a dot is close enough to a piece, the piece highlights. A picks it up. A player holds one piece at a time, which follows the dot. Any piece in the tray or on the board can be picked up, except locked ones |
-| Rotating | Continuous. Holding X turns the held piece clockwise and holding Y turns it counter-clockwise, at a steady speed. In stick mode the right stick also sets the angle: pushed past halfway, the piece turns quickly to face the stick's direction. Only a held piece rotates |
+| Rotating | Continuous. Holding X turns the held piece clockwise and holding Y turns it counter-clockwise, at a steady speed. In stick mode the right stick also turns it: pushed right, clockwise; pushed left, counter-clockwise; the further it is pushed past a small dead zone, the faster (at full push 1.5 times the X and Y speed). Up and down do nothing. (Changed after the M10 device test: pointing the stick to set the angle was hard to control.) Only a held piece rotates |
 | Dropping | A drops the held piece. If it's within the position and angle tolerance of a matching outline, it snaps to the exact place and angle, locks, flashes green, and plays the snap sound and haptic. If it's on the board but not a match, it stays where it is, turns red (with a ✗ mark), and plays the wrong sound and haptic. If it's dropped off the board, it just sits there |
 | Red pieces | Count as not placed. Any player on that side can pick one up again, and it goes back to its normal colour while carried |
 | Matching | Identical pieces are interchangeable, so either of two identical windows fits either window outline. The angle tolerance accounts for symmetry: a square matches at every quarter turn, a circle at any angle |
@@ -249,7 +249,7 @@ The rules are the same. Only the view changes, because a phone screen is small a
 
 | Level | Pieces | Rotated at start | Outlines | Big pieces (teams) |
 | --- | --- | --- | --- | --- |
-| Easy | About 4 | 1 at most | Coloured | 1 |
+| Easy | About 4 | 2 (was "1 at most" until the M10 device test: too easy) | Coloured | 1 |
 | Medium | About 6 | About half | Grey | 1 |
 | Hard | About 8 | Most | Grey | 2 |
 
@@ -579,7 +579,7 @@ Milestone 10 builds the core of the puzzle game for one player, so carrying, rot
 - [ ] An Easy puzzle can be finished with the D-pad, the gyro and the sticks.
 - [ ] A piece dropped within tolerance snaps exactly, locks and buzzes. A piece dropped in the wrong spot stays, turns red and buzzes differently. Both feel distinct on the phone.
 - [ ] Changing the angle tolerance in playtest settings changes what counts as correct straight away.
-- [ ] Holding X and Y rotates smoothly in each direction, and the right stick points the piece in stick mode.
+- [ ] Holding X and Y rotates smoothly in each direction, and in stick mode the right stick turns the piece: right clockwise, left counter-clockwise, faster the further it is pushed.
 - [ ] A square piece matches its outline at any quarter turn.
 - [ ] Time-up shows the pieces placed, and a finished puzzle shows the time.
 - [ ] The arena game is still available from the game picker.

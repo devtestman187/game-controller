@@ -171,17 +171,35 @@ void main() {
       expect(g.player('p1')!.rotatingS, closeTo(0.75, 1e-9));
     });
 
-    test('in stick mode the right stick points the piece', () {
+    test('in stick mode the right stick turns the piece: right clockwise, left counter, faster further', () {
       final g = start(squareAndWaves());
       pickUp(g, 1);
-      // Right: 90°. Turns quickly, then stays.
-      for (var i = 0; i < 30; i++) {
-        g.update(0.016, {'p1': const GamepadState(rightX: 1, rightY: 0, mode: InputMode.sticks)});
+      final speed = g.settings.rotationSpeedDegPerS;
+      double turned(double x, {double y = 0}) {
+        final before = g.pieces[1].angle;
+        g.update(0.1, {'p1': GamepadState(rightX: x, rightY: y, mode: InputMode.sticks)});
+        var d = (g.pieces[1].angle - before) % 360;
+        if (d > 180) d -= 360;
+        return d;
       }
-      expect(g.pieces[1].angle, closeTo(90, 1e-6));
-      // Under half way: no turning.
-      g.update(0.1, {'p1': const GamepadState(rightX: 0, rightY: 0.3, mode: InputMode.sticks)});
-      expect(g.pieces[1].angle, closeTo(90, 1e-6));
+
+      // Full right: 1.5 times the X speed, clockwise. Full left: the same,
+      // counter-clockwise.
+      expect(turned(1), closeTo(speed * PuzzleGame.stickTurnFactor * 0.1, 1e-6));
+      expect(turned(-1), closeTo(-speed * PuzzleGame.stickTurnFactor * 0.1, 1e-6));
+      // Half way past the dead zone: half the speed. A little: slower still.
+      final dead = g.settings.stickDeadZone;
+      final half = dead + (1 - dead) / 2;
+      expect(turned(half), closeTo(speed * PuzzleGame.stickTurnFactor * 0.1 / 2, 1e-6));
+      expect(turned(dead + 0.05).abs(), lessThan(turned(half).abs()));
+      // Inside the dead zone, or straight up or down: no turning.
+      expect(turned(dead * 0.9), 0);
+      expect(turned(0, y: -1), 0);
+      expect(turned(0, y: 1), 0);
+      // The stick doesn't turn the piece outside stick mode.
+      final inGyro = g.pieces[1].angle;
+      g.update(0.1, {'p1': const GamepadState(rightX: 1, mode: InputMode.gyro)});
+      expect(g.pieces[1].angle, inGyro);
       // Only a held piece rotates.
       tapA(g);
       final angle = g.pieces[1].angle;
@@ -292,6 +310,12 @@ void main() {
             );
           }
         }
+      }
+      // Every puzzle needs some turning: at least 2 pieces start turned
+      // (and can be: a circle can't).
+      for (final id in ids) {
+        final turned = load(id).pieces.where((p) => p.rotated && p.shape.symmetry != 0);
+        expect(turned.length, greaterThanOrEqualTo(2), reason: '$id has only ${turned.length} pieces to turn');
       }
       expect(load('house').level, Level.easy);
       expect(load('boat').level, Level.medium);

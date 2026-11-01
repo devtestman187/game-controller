@@ -6,7 +6,7 @@ final class PuzzleSettings {
     this.angleToleranceDeg = 15,
     this.positionTolerance = 0.25,
     this.rotationSpeedDegPerS = 180,
-    this.stickRotateThreshold = 0.5,
+    this.stickDeadZone = 0.15,
     this.pickupRange = 1.0,
     this.soloBigSpeed = 0.35,
     this.helpIntervalS = 3,
@@ -23,8 +23,9 @@ final class PuzzleSettings {
   final double positionTolerance;
   final double rotationSpeedDegPerS;
 
-  /// The right stick turns the piece once pushed this far.
-  final double stickRotateThreshold;
+  /// The right stick turns the piece once pushed sideways past this; the
+  /// further, the faster.
+  final double stickDeadZone;
 
   /// In piece radii from the dot's edge.
   final double pickupRange;
@@ -44,7 +45,7 @@ final class PuzzleSettings {
     'angleToleranceDeg': (min: 5.0, max: 45.0, step: 1.0),
     'positionTolerance': (min: 0.05, max: 0.6, step: 0.05),
     'rotationSpeedDegPerS': (min: 45.0, max: 540.0, step: 15.0),
-    'stickRotateThreshold': (min: 0.2, max: 0.9, step: 0.05),
+    'stickDeadZone': (min: 0.05, max: 0.5, step: 0.05),
     'pickupRange': (min: 0.25, max: 2.0, step: 0.25),
     'soloBigSpeed': (min: 0.1, max: 1.0, step: 0.05),
     'helpIntervalS': (min: 1.0, max: 10.0, step: 0.5),
@@ -57,7 +58,7 @@ final class PuzzleSettings {
     'angleToleranceDeg': angleToleranceDeg,
     'positionTolerance': positionTolerance,
     'rotationSpeedDegPerS': rotationSpeedDegPerS,
-    'stickRotateThreshold': stickRotateThreshold,
+    'stickDeadZone': stickDeadZone,
     'pickupRange': pickupRange,
     'soloBigSpeed': soloBigSpeed,
     'helpIntervalS': helpIntervalS,
@@ -80,7 +81,7 @@ final class PuzzleSettings {
       angleToleranceDeg: d('angleToleranceDeg', defaults.angleToleranceDeg),
       positionTolerance: d('positionTolerance', defaults.positionTolerance),
       rotationSpeedDegPerS: d('rotationSpeedDegPerS', defaults.rotationSpeedDegPerS),
-      stickRotateThreshold: d('stickRotateThreshold', defaults.stickRotateThreshold),
+      stickDeadZone: d('stickDeadZone', defaults.stickDeadZone),
       pickupRange: d('pickupRange', defaults.pickupRange),
       soloBigSpeed: d('soloBigSpeed', defaults.soloBigSpeed),
       helpIntervalS: d('helpIntervalS', defaults.helpIntervalS),
