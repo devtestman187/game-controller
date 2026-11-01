@@ -166,6 +166,34 @@ class ClientStateNotifier extends Notifier<ClientSnapshot> {
   }
 }
 
+/// The game's controls for this phone (PRD v2 P5): labels, hidden buttons
+/// and the allowed modes. Standard when no game sets them or no TV is
+/// connected.
+final gameLayoutProvider = NotifierProvider<GameLayoutNotifier, GameLayoutMessage>(GameLayoutNotifier.new);
+
+class GameLayoutNotifier extends Notifier<GameLayoutMessage> {
+  @override
+  GameLayoutMessage build() {
+    final client = ref.watch(clientProvider);
+    final sub = client.layouts.listen((l) => state = l);
+    ref.onDispose(sub.cancel);
+    return client.layout;
+  }
+}
+
+/// The game's status panel for this phone (PRD v2 P6), hidden when empty.
+final gameStatusProvider = NotifierProvider<GameStatusNotifier, StatusMessage>(GameStatusNotifier.new);
+
+class GameStatusNotifier extends Notifier<StatusMessage> {
+  @override
+  StatusMessage build() {
+    final client = ref.watch(clientProvider);
+    final sub = client.statuses.listen((s) => state = s);
+    ref.onDispose(sub.cancel);
+    return client.status;
+  }
+}
+
 /// "Try without a TV" (v2 C23): the controls work with no host, and the
 /// screen shows what a TV would receive. For app reviewers and new testers.
 /// Ends by itself once a TV connects.

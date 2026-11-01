@@ -74,6 +74,23 @@ final class GamepadState {
     );
   }
 
+  /// The standard button for a phone button.
+  static GamepadButton buttonOf(ControllerButton b) => _buttonMap[b]!;
+
+  /// This state with [extra] buttons held too.
+  GamepadState withButtons(Set<GamepadButton> extra) => extra.every(buttons.contains)
+      ? this
+      : GamepadState(
+          buttons: {...buttons, ...extra},
+          leftX: leftX,
+          leftY: leftY,
+          rightX: rightX,
+          rightY: rightY,
+          tiltX: tiltX,
+          tiltY: tiltY,
+          mode: mode,
+        );
+
   static const _buttonMap = {
     ControllerButton.a: GamepadButton.a,
     ControllerButton.b: GamepadButton.b,

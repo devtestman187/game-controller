@@ -177,14 +177,14 @@ void main() {
       expect(layout.labels[ControllerButton.x], startsWith('Rotate'));
       expect(layout.labels[ControllerButton.y], startsWith('Rotate'));
       expect(layout.hidden, containsAll([ControllerButton.b, ControllerButton.lb, ControllerButton.rb]));
-      expect(host.statuses['p1']!.text, 'Find a piece');
+      expect(host.statuses['p1']!.text, matches(RegExp(r'^[12]:[0-5][0-9] left$')));
 
       // Pick up the roof and turn it: the panel turns with it.
       state.game.player('p1')!.pos = state.game.pieces[1].pos;
       await press(tester, {GamepadButton.a});
       expect(host.sounds, contains('pickup'));
       final status = host.statuses['p1']!;
-      expect(status.text, 'roof');
+      expect(status.text, endsWith(' left'));
       expect(status.shape!.points, hasLength(3));
       final before = status.shape!.angle;
       host.setGamepad('p1', const GamepadState(buttons: {GamepadButton.x}, mode: InputMode.dpad));

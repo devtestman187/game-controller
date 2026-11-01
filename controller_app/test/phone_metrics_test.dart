@@ -298,7 +298,7 @@ void main() {
       final prefs = await SharedPreferences.getInstance();
       final identity = loadIdentity(prefs, isTablet: true, screenMm: const Size(160, 250));
       final hello = identity.toHello();
-      expect(hello.capabilities, [Capability.metrics, Capability.rating]);
+      expect(hello.capabilities, [Capability.metrics, Capability.rating, Capability.layout, Capability.status]);
       expect(hello.device!.kind, DeviceInfo.tablet);
       expect((hello.device!.widthMm, hello.device!.heightMm), (250, 160));
       final detailed = withDeviceDetails(identity, model: 'Google Pixel Tablet', os: 'Android 15', haptics: false);

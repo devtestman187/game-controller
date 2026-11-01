@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:protocol/protocol.dart';
 
 import 'motion.dart';
 import 'providers.dart';
@@ -163,8 +164,9 @@ class GyroNotifier extends Notifier<GyroState> {
 
   /// Switches between the D-pad and gyro mode without reconnecting.
   /// Returns false (staying on the D-pad) if the phone has no usable
-  /// gyroscope.
-  Future<bool> setMode(PadMode mode) async {
+  /// gyroscope. A switch the game makes ([save] false) isn't remembered as
+  /// the player's choice.
+  Future<bool> setMode(PadMode mode, {bool save = true}) async {
     if (mode == state.mode) return true;
     final log = ref.read(logProvider).sink('mode');
     final pad = ref.read(padProvider.notifier);
@@ -177,8 +179,8 @@ class GyroNotifier extends Notifier<GyroState> {
       // Nothing held in the old layout carries over.
       pad.switchMode(tilt: false, sticks: mode == PadMode.sticks);
       state = state.copyWith(mode: mode, x: 0, y: 0);
-      log('${mode.name} mode');
-      _saveMode(mode);
+      log('${mode.name} mode${save ? '' : ' (for the game)'}');
+      if (save) _saveMode(mode);
       return true;
     }
 
@@ -201,8 +203,26 @@ class GyroNotifier extends Notifier<GyroState> {
       'Gyro mode on (landscape ${_lastSide.name}, up ${_estimator.up}), sensors every ${sensorPeriod.inMilliseconds} ms',
     );
     _startOutput();
-    _saveMode(PadMode.gyro);
+    if (save) _saveMode(PadMode.gyro);
     return true;
+  }
+
+  /// A game's allowed modes (PRD v2 P5): if the current mode isn't one,
+  /// switch to the game's default (or its first allowed mode that works),
+  /// without saving it as the player's choice.
+  Future<void> applyGameModes(GameLayoutMessage layout) async {
+    if (layout.allows(state.mode.name)) return;
+    final wanted = [?layout.defaultMode, ...layout.modes];
+    for (final name in wanted) {
+      final mode = PadMode.values.where((m) => m.name == name).firstOrNull;
+      if (mode != null && await setMode(mode, save: false)) return;
+    }
+  }
+
+  /// After a game with its own modes: back to the player's own mode.
+  Future<void> backToSavedMode() async {
+    final saved = savedMode;
+    if (saved != state.mode) await setMode(saved, save: false);
   }
 
   static const _modeKey = 'padMode';

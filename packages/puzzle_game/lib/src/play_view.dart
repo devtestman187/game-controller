@@ -217,14 +217,14 @@ class PuzzlePlayViewState extends State<PuzzlePlayView> with SingleTickerProvide
     final limit = game.settings.timeLimitS;
     final progress = limit == 0 ? null : game.timeLeftS / limit;
     final warning = game.timeLeftS < game.settings.warningS;
+    final left = game.timeLeftS.ceil();
+    final text = switch (game.phase) {
+      PuzzlePhase.playing => '${left ~/ 60}:${(left % 60).toString().padLeft(2, '0')} left',
+      PuzzlePhase.finished => 'Done!',
+      PuzzlePhase.timeUp => 'Time\'s up',
+    };
     final held = p?.held;
-    if (held == null) {
-      return StatusMessage(
-        text: game.phase == PuzzlePhase.playing ? 'Find a piece' : 'Done',
-        progress: progress,
-        warning: warning,
-      );
-    }
+    if (held == null) return StatusMessage(text: text, progress: progress, warning: warning);
     final spec = widget.puzzle.pieces[held];
     final r = spec.shape.radius;
     final shape = spec.shape.circle
@@ -234,7 +234,7 @@ class PuzzlePlayViewState extends State<PuzzlePlayView> with SingleTickerProvide
             color: spec.color,
             angle: game.pieces[held].angle,
           );
-    return StatusMessage(text: spec.id, shape: shape, progress: progress, warning: warning);
+    return StatusMessage(text: text, shape: shape, progress: progress, warning: warning);
   }
 
   @override

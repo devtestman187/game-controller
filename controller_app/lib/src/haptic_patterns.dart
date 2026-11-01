@@ -110,11 +110,7 @@ const _success = [
 const _error = [HapticSegment.buzz(0, 110, 1.0, 1.0), HapticSegment.buzz(190, 110, 1.0, 1.0)];
 
 /// The puzzle (M10): a crisp click, then a firm lock, "ka-CHUNK".
-const _snap = [
-  HapticSegment.tap(0, 0.6, 1.0),
-  HapticSegment.tap(70, 1.0, 0.6),
-  HapticSegment.buzz(70, 90, 0.8, 0.3),
-];
+const _snap = [HapticSegment.tap(0, 0.6, 1.0), HapticSegment.tap(70, 1.0, 0.6), HapticSegment.buzz(70, 90, 0.8, 0.3)];
 
 /// A low, falling "uh-oh": round and soft, so it never feels like [_error]'s
 /// harsh buzzes.

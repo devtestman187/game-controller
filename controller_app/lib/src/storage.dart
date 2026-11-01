@@ -31,7 +31,7 @@ ControllerIdentity loadIdentity(SharedPreferences prefs, {bool isTablet = false,
     name: '$base ${id.substring(0, 4).toUpperCase()}',
     platform: platform,
     appVersion: appVersion,
-    capabilities: const [Capability.metrics, Capability.rating],
+    capabilities: const [Capability.metrics, Capability.rating, Capability.layout, Capability.status],
     device: DeviceInfo(
       kind: isTablet ? DeviceInfo.tablet : DeviceInfo.phone,
       // Landscape: the long side is the width.

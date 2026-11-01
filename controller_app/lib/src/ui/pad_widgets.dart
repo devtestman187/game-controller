@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:protocol/protocol.dart';
@@ -211,32 +212,51 @@ class FaceButtonsView extends ConsumerWidget {
     final pressed = ref.watch(padProvider.select((p) => p.buttons));
     final pad = ref.read(padProvider.notifier);
     final scheme = Theme.of(context).colorScheme;
+    // The game's labels and unused buttons (P5).
+    final game = ref.watch(gameLayoutProvider);
     return LayoutBuilder(
       builder: (context, constraints) {
         final side = min(constraints.maxWidth, constraints.maxHeight);
-        return SizedBox.square(
-          key: const Key('faceButtons'),
-          dimension: side,
-          child: _PointerArea(
-            // In stick mode only the round area around the buttons takes
-            // touches, so the square's corners leave them to the right stick.
-            behavior: geometry.roundHitArea ? HitTestBehavior.deferToChild : HitTestBehavior.opaque,
-            onDownOrMove: (pointer, local) => pad.button(pointer, geometry.buttonAt(local, side)),
-            onUp: pad.up,
-            child: PressFlash<ControllerButton>(
-              pressed: pressed.intersection(colors.keys.toSet()),
-              shapeOf: (button, size) => Path()
-                ..addOval(
-                  Rect.fromCircle(center: geometry.centers[button]! * size.width, radius: geometry.radius * size.width),
-                ),
-              child: CustomPaint(
-                size: Size.square(side),
-                painter: _FacePainter(
-                  side: side,
-                  pressed: pressed,
-                  geometry: geometry,
-                  base: scheme.surfaceContainerHighest,
-                  text: scheme.onSurface,
+        return Semantics(
+          key: const Key('faceButtonLabels'),
+          container: true,
+          label: [
+            for (final b in colors.keys)
+              if (!game.hidden.contains(b)) [b.name.toUpperCase(), ?game.labels[b]].join(' '),
+          ].join(', '),
+          child: SizedBox.square(
+            key: const Key('faceButtons'),
+            dimension: side,
+            child: _PointerArea(
+              // In stick mode only the round area around the buttons takes
+              // touches, so the square's corners leave them to the right stick.
+              behavior: geometry.roundHitArea ? HitTestBehavior.deferToChild : HitTestBehavior.opaque,
+              onDownOrMove: (pointer, local) {
+                final b = geometry.buttonAt(local, side);
+                // A hidden button does nothing.
+                pad.button(pointer, game.hidden.contains(b) ? null : b);
+              },
+              onUp: pad.up,
+              child: PressFlash<ControllerButton>(
+                pressed: pressed.intersection(colors.keys.toSet()),
+                shapeOf: (button, size) => Path()
+                  ..addOval(
+                    Rect.fromCircle(
+                      center: geometry.centers[button]! * size.width,
+                      radius: geometry.radius * size.width,
+                    ),
+                  ),
+                child: CustomPaint(
+                  size: Size.square(side),
+                  painter: _FacePainter(
+                    side: side,
+                    pressed: pressed,
+                    geometry: geometry,
+                    base: scheme.surfaceContainerHighest,
+                    text: scheme.onSurface,
+                    labels: game.labels,
+                    hidden: game.hidden,
+                  ),
                 ),
               ),
             ),
@@ -254,6 +274,8 @@ class _FacePainter extends CustomPainter {
     required this.geometry,
     required this.base,
     required this.text,
+    this.labels = const {},
+    this.hidden = const {},
   });
 
   final double side;
@@ -263,6 +285,13 @@ class _FacePainter extends CustomPainter {
   final Color base;
   final Color text;
 
+  /// The game's labels (P5), drawn inside the button under its letter.
+  final Map<ControllerButton, String> labels;
+
+  /// Buttons the game doesn't use: only a faint outline, so the others keep
+  /// their places.
+  final Set<ControllerButton> hidden;
+
   @override
   void paint(Canvas canvas, Size size) {
     final s = size.width;
@@ -271,6 +300,17 @@ class _FacePainter extends CustomPainter {
       final color = FaceButtonsView.colors[button]!;
       final c = center * s;
       final r = geometry.radius * s * (on ? 0.94 : 1);
+      if (hidden.contains(button)) {
+        canvas.drawCircle(
+          c,
+          geometry.radius * s,
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 1
+            ..color = text.withValues(alpha: 0.12),
+        );
+        continue;
+      }
       canvas.drawCircle(c, r, Paint()..color = on ? color : base);
       canvas.drawCircle(
         c,
@@ -280,14 +320,37 @@ class _FacePainter extends CustomPainter {
           ..strokeWidth = max(1.5, r * 0.075)
           ..color = color,
       );
-      final label = TextPainter(
+      final name = labels[button];
+      final ink = on ? Colors.black : color;
+      final letter = TextPainter(
         text: TextSpan(
           text: button.name.toUpperCase(),
-          style: TextStyle(fontSize: r * 0.69, fontWeight: FontWeight.bold, color: on ? Colors.black : color),
+          style: TextStyle(fontSize: r * (name == null ? 0.69 : 0.5), fontWeight: FontWeight.bold, color: ink),
         ),
         textDirection: TextDirection.ltr,
       )..layout();
-      label.paint(canvas, c - Offset(label.width / 2, label.height / 2));
+      if (name == null) {
+        letter.paint(canvas, c - Offset(letter.width / 2, letter.height / 2));
+        continue;
+      }
+      // The letter above the middle, the label below it, shrunk to fit the
+      // circle's width there.
+      letter.paint(canvas, c - Offset(letter.width / 2, letter.height * 0.95));
+      var fontSize = r * 0.3;
+      late TextPainter label;
+      for (;;) {
+        label = TextPainter(
+          text: TextSpan(
+            text: name,
+            style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.w600, color: on ? Colors.black : text),
+          ),
+          textDirection: TextDirection.ltr,
+          maxLines: 1,
+        )..layout();
+        if (label.width <= r * 1.7 || fontSize <= 8) break;
+        fontSize *= 0.9;
+      }
+      label.paint(canvas, c + Offset(-label.width / 2, letter.height * 0.05));
     }
   }
 
@@ -298,6 +361,8 @@ class _FacePainter extends CustomPainter {
   @override
   bool shouldRepaint(_FacePainter old) =>
       old.geometry != geometry ||
+      !mapEquals(old.labels, labels) ||
+      !setEquals(old.hidden, hidden) ||
       old.pressed.length != pressed.length ||
       !old.pressed.containsAll(pressed) ||
       old.base != base;
@@ -318,6 +383,11 @@ class SmallButton extends ConsumerWidget {
     final on = ref.watch(padProvider.select((p) => p.buttons.contains(button)));
     final pad = ref.read(padProvider.notifier);
     final scheme = Theme.of(context).colorScheme;
+    // The game's label replaces the usual one; a hidden button leaves its
+    // space empty (P5).
+    final game = ref.watch(gameLayoutProvider);
+    if (game.hidden.contains(button)) return SizedBox.fromSize(key: Key('hidden-${button.name}'), size: size);
+    final label = game.labels[button] ?? this.label;
     return SizedBox.fromSize(
       size: size,
       child: _PointerArea(
@@ -332,9 +402,15 @@ class SmallButton extends ConsumerWidget {
               borderRadius: BorderRadius.circular(size.height / 2),
             ),
             child: Center(
-              child: Text(
-                label,
-                style: TextStyle(fontWeight: FontWeight.w600, color: on ? scheme.onPrimary : scheme.onSurface),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    label,
+                    style: TextStyle(fontWeight: FontWeight.w600, color: on ? scheme.onPrimary : scheme.onSurface),
+                  ),
+                ),
               ),
             ),
           ),

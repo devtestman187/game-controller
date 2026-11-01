@@ -109,4 +109,37 @@ void main() {
     expect(HostServer.capabilityFor(puzzleLayout), Capability.layout);
     expect(HostServer.capabilityFor(StatusMessage.hidden()), Capability.status);
   });
+
+  test('a quick tap is seen even if its press and release both arrive between two frames', () async {
+    final server = await startHost(capabilities: _all);
+    final host = ServerGameHost(server);
+    addTearDown(host.dispose);
+    final client = newClient(capabilities: _all);
+    client.connect(addressOf(server), code: server.pairingCode);
+    await clientStatus(client, ClientStatus.connected);
+    await hostUntil(server, (h) => h.connected.isNotEmpty);
+
+    // Wait for exactly the press and the release (the phone also sends a
+    // neutral input when it connects).
+    var sawA = false;
+    final both = server.messages
+        .map((m) => m.message)
+        .where((m) => m is InputStateMessage)
+        .cast<InputStateMessage>()
+        .firstWhere((i) {
+          if (i.buttons.contains(ControllerButton.a)) sawA = true;
+          return sawA && i.buttons.isEmpty;
+        });
+    client
+      ..sendInput({ControllerButton.a})
+      ..sendInput({});
+    await both;
+    await Future<void>.delayed(Duration.zero);
+    expect(server.snapshot.connected.single.input!.buttons, isEmpty);
+    // The latest input has nothing held, but the tap still shows...
+    expect(host.gamepad('phone-1').pressed(GamepadButton.a), isTrue);
+    // ...for a short time only.
+    await Future<void>.delayed(const Duration(milliseconds: ServerGameHost.minPressMs + 20));
+    expect(host.gamepad('phone-1').pressed(GamepadButton.a), isFalse);
+  });
 }

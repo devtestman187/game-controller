@@ -16,6 +16,7 @@ import 'labels.dart';
 import 'pad_widgets.dart';
 import 'rating_prompt.dart';
 import 'settings_screen.dart';
+import 'status_panel.dart';
 import 'stick_dialog.dart';
 import 'stick_widgets.dart';
 import 'tilt_view.dart';
@@ -97,6 +98,17 @@ class _ControllerScreenState extends ConsumerState<ControllerScreen> with Widget
     ref.watch(stickSettingsProvider);
     // The metrics record while a TV is connected (M9).
     ref.watch(phoneMetricsProvider);
+    // The game's controls (P5): its allowed modes, and nothing left held on
+    // a button it hides. After the game, back to the player's own mode.
+    ref.listen(gameLayoutProvider, (prev, next) {
+      final gyro = ref.read(gyroProvider.notifier);
+      if (next.modes.isEmpty && (prev?.modes.isNotEmpty ?? false)) {
+        unawaited(gyro.backToSavedMode());
+      } else {
+        unawaited(gyro.applyGameModes(next));
+      }
+      if (ref.read(padProvider).buttons.any(next.hidden.contains)) ref.read(padProvider.notifier).releaseAll();
+    });
     // "How did the controls feel?" after a game, when the TV asks.
     ref.listen(ratingPromptProvider, (prev, next) {
       if (next != null && prev == null) showRatingPrompt(context);
@@ -293,6 +305,10 @@ class _TopBar extends ConsumerWidget {
     final text = Theme.of(context).textTheme;
     final stats = client.rttStats;
     final gyroUnavailable = gyro.availability == GyroAvailability.unavailable;
+    final status = ref.watch(gameStatusProvider);
+    // Modes the game doesn't allow can't be picked (P5).
+    final game = ref.watch(gameLayoutProvider);
+    const notInGame = 'Not used in this game';
     // On narrow windows the mode buttons drop their icons, so the bar fits.
     final compact = MediaQuery.sizeOf(context).width < 680;
     return Padding(
@@ -322,7 +338,11 @@ class _TopBar extends ConsumerWidget {
                     onPressed: () => openConnect(context),
                   ),
                 ),
-                if (client.isConnected && stats != null) ...[
+                // The game's status panel takes the ping's place (P6, C24).
+                if (client.isConnected && !status.isHidden) ...[
+                  const SizedBox(width: 8),
+                  Flexible(child: StatusPanel(status: status)),
+                ] else if (client.isConnected && stats != null) ...[
                   const SizedBox(width: 8),
                   Flexible(
                     child: Text(
@@ -346,19 +366,26 @@ class _TopBar extends ConsumerWidget {
                 value: PadMode.dpad,
                 label: const Text('D-pad'),
                 icon: compact ? null : const Icon(Icons.gamepad_outlined),
+                tooltip: game.allows('dpad') ? null : notInGame,
+                enabled: game.allows('dpad'),
               ),
               ButtonSegment(
                 value: PadMode.gyro,
                 label: const Text('Gyro'),
                 icon: compact ? null : const Icon(Icons.screen_rotation_alt_outlined),
-                tooltip: gyroUnavailable ? gyro.problem : 'Steer by tilting the phone',
-                enabled: !gyroUnavailable && gyro.availability != GyroAvailability.checking,
+                tooltip: !game.allows('gyro')
+                    ? notInGame
+                    : gyroUnavailable
+                    ? gyro.problem
+                    : 'Steer by tilting the phone',
+                enabled: game.allows('gyro') && !gyroUnavailable && gyro.availability != GyroAvailability.checking,
               ),
               ButtonSegment(
                 value: PadMode.sticks,
                 label: const Text('Sticks'),
                 icon: compact ? null : const Icon(Icons.sports_esports_outlined),
-                tooltip: 'Two analog sticks, Xbox-style',
+                tooltip: game.allows('sticks') ? 'Two analog sticks, Xbox-style' : notInGame,
+                enabled: game.allows('sticks'),
               ),
             ],
             selected: {gyro.mode},

@@ -188,11 +188,28 @@ class ServerGameHost implements GameHost {
   ServerGameHost(this.server) {
     _serverSub = server.changes.listen((_) => _checkPlayers());
     _messagesSub = server.messages.listen((m) {
+      final message = m.message;
+      if (message is! InputStateMessage) return;
+      _notePresses(m.controllerId, message, m.receivedAtMs);
       final delay = m.delayMs;
-      if (m.message is InputStateMessage && delay != null) {
-        reportStage(m.controllerId, LatencyStage.sentToReceived, delay);
-      }
+      if (delay != null) reportStage(m.controllerId, LatencyStage.sentToReceived, delay);
     });
+  }
+
+  /// A button press counts as held for at least this long. Games read the
+  /// latest input once a frame, so a quick tap whose press and release
+  /// arrive between two frames (Wi-Fi often bunches them) would be lost.
+  static const minPressMs = 50;
+
+  final _buttonsBefore = <String, Set<ControllerButton>>{};
+  final _pressedAtMs = <String, Map<ControllerButton, int>>{};
+
+  void _notePresses(String id, InputStateMessage input, int atMs) {
+    final before = _buttonsBefore[id] ?? const {};
+    for (final b in input.buttons) {
+      if (!before.contains(b)) (_pressedAtMs[id] ??= {})[b] = atMs;
+    }
+    _buttonsBefore[id] = input.buttons.toSet();
   }
 
   final HostServer server;
@@ -287,7 +304,12 @@ class ServerGameHost implements GameHost {
   GamepadState gamepad(String playerId) {
     final local = _locals[playerId];
     if (local != null) return local.state;
-    return GamepadState.fromInput(_info(playerId)?.input);
+    final state = GamepadState.fromInput(_info(playerId)?.input);
+    final presses = _pressedAtMs[playerId];
+    if (presses == null || presses.isEmpty) return state;
+    final now = server.nowMs;
+    presses.removeWhere((_, at) => now - at >= minPressMs);
+    return state.withButtons({for (final b in presses.keys) GamepadState.buttonOf(b)});
   }
 
   @override
