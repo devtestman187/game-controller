@@ -4,6 +4,7 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:bonsoir/bonsoir.dart';
+import 'package:flutter/foundation.dart';
 import 'package:connection/connection.dart';
 import 'package:metrics/metrics.dart' show HostType;
 import 'package:protocol/protocol.dart';
@@ -409,8 +410,11 @@ void savePairings(SharedPreferences prefs, List<SavedPairing> pairings) =>
     prefs.setString(_pairingsKey, jsonEncode([for (final p in pairings) p.toJson()]));
 
 /// Where the session summaries are kept: the app's own support folder.
-Future<Directory> sessionDirectory() async =>
-    Directory('${(await getApplicationSupportDirectory()).path}${Platform.pathSeparator}sessions');
+/// Debug builds use their own folder, so test sessions never mix with (or
+/// get uploaded by) a store build on the same PC.
+Future<Directory> sessionDirectory() async => Directory(
+  '${(await getApplicationSupportDirectory()).path}${Platform.pathSeparator}${kDebugMode ? 'sessions-debug' : 'sessions'}',
+);
 
 /// Where "Save log" puts its file. On Android TV that's the app's own folder
 /// on shared storage, which needs no permission and `adb pull` can read:

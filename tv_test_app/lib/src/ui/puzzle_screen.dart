@@ -33,6 +33,7 @@ class PuzzleScreen extends ConsumerStatefulWidget {
 
 class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
   late final KeyboardPlayer _keyboard;
+  final _againFocus = FocusNode(debugLabel: 'playAgain');
   PuzzleResult? _result;
   Puzzle? _puzzle;
 
@@ -45,6 +46,7 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
   @override
   void dispose() {
     _keyboard.dispose();
+    _againFocus.dispose();
     super.dispose();
   }
 
@@ -60,6 +62,15 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
   Puzzle? _pick(PuzzleLibrary library) {
     final id = widget.choice.puzzleId;
     return _puzzle ??= id != null ? library.byId(id) : library.random(widget.choice.level);
+  }
+
+  // The screen's key handler holds the focus, so the button's autofocus
+  // would be ignored: move the focus there, for the remote's OK button.
+  void _finished(PuzzleResult r) {
+    setState(() => _result = r);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _againFocus.requestFocus();
+    });
   }
 
   void _again() =>
@@ -85,12 +96,12 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
                         puzzle: puzzle,
                         game: widget.game,
                         settings: () => ref.read(puzzleSettingsProvider),
-                        onFinished: (r) => setState(() => _result = r),
+                        onFinished: _finished,
                       ),
                     ),
                     if (result != null)
                       Center(
-                        child: _Results(result: result, onAgain: _again),
+                        child: _Results(result: result, onAgain: _again, againFocus: _againFocus),
                       ),
                     if (result == null)
                       Positioned(
@@ -112,10 +123,11 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
 }
 
 class _Results extends StatelessWidget {
-  const _Results({required this.result, required this.onAgain});
+  const _Results({required this.result, required this.onAgain, required this.againFocus});
 
   final PuzzleResult result;
   final VoidCallback onAgain;
+  final FocusNode againFocus;
 
   @override
   Widget build(BuildContext context) {
@@ -152,7 +164,7 @@ class _Results extends StatelessWidget {
                   key: const Key('playAgain'),
                   label: 'Play again',
                   icon: Icons.replay,
-                  autofocus: true,
+                  focusNode: againFocus,
                   onPressed: onAgain,
                 ),
                 const SizedBox(width: 12),

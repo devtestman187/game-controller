@@ -1064,6 +1064,10 @@ void puzzle() {
     expect(find.textContaining('seconds'), findsOneWidget);
     expect(find.byKey(const Key('playAgain')), findsOneWidget);
     expect(sounds.played, contains('success'));
+    // The remote's OK button works at once: Play again has the focus.
+    await tester.pump();
+    final again = find.descendant(of: find.byKey(const Key('playAgain')), matching: find.byType(Focus)).first;
+    expect(Focus.of(tester.element(find.descendant(of: again, matching: find.byType(Text)).first)).hasFocus, isTrue);
   });
 
   testWidgets('time-up shows the pieces placed', (tester) async {

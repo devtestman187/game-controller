@@ -60,22 +60,25 @@ class PuzzlePainter extends CustomPainter {
     canvas.clipRect(Offset.zero & fieldSize);
 
     _panels(canvas);
-    _outlines(canvas);
-    // Locked pieces first, then the rest, and carried pieces on top.
-    final order = [
+    // The picture in its own order: each target shows the piece locked in
+    // it, or its outline, so a door's outline stays on top of a placed wall.
+    final lockedIn = {
       for (final (i, p) in s.pieces.indexed)
-        if (p.state == PieceState.locked) i,
-      for (final (i, p) in s.pieces.indexed)
-        if (p.state != PieceState.locked && p.state != PieceState.held) i,
-    ];
-    for (final i in order) {
-      _piece(canvas, i);
+        if (p.state == PieceState.locked) _targetOf(s.pieces[i]): i,
+    };
+    for (final t in Iterable<int>.generate(puzzle.pieces.length)) {
+      final piece = lockedIn[t];
+      piece != null ? _piece(canvas, piece) : _outline(canvas, t);
     }
-    for (final p in s.players) {
-      _dot(canvas, p);
+    // Then loose pieces, carried pieces, and the dots on top of everything.
+    for (final (i, p) in s.pieces.indexed) {
+      if (p.state != PieceState.locked && p.state != PieceState.held) _piece(canvas, i);
     }
     for (final (i, p) in s.pieces.indexed) {
       if (p.state == PieceState.held) _piece(canvas, i);
+    }
+    for (final p in s.players) {
+      _dot(canvas, p);
     }
     _hud(canvas);
     canvas.restore();
@@ -94,34 +97,28 @@ class PuzzlePainter extends CustomPainter {
     return Path()..addPolygon(shape.placed(at, angle), true);
   }
 
-  void _outlines(Canvas canvas) {
-    final filled = {
-      for (final p in s.pieces)
-        if (p.state == PieceState.locked) _targetOf(p),
-    };
-    for (final (i, spec) in puzzle.pieces.indexed) {
-      if (filled.contains(i)) continue;
-      final path = _path(spec.shape, puzzle.targetAt(i), spec.targetAngle);
-      final ready = s.readyTargets.contains(i);
-      final hint = s.hintTargets.contains(i);
-      final colour = puzzle.level.colouredOutlines ? Color(spec.color) : _outlineGrey;
-      if (hint) {
-        canvas.drawPath(
-          path,
-          Paint()
-            ..color = colour.withValues(alpha: 0.5)
-            ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2.5),
-        );
-      }
-      canvas.drawPath(path, Paint()..color = colour.withValues(alpha: ready ? 0.45 : 0.16));
+  void _outline(Canvas canvas, int i) {
+    final spec = puzzle.pieces[i];
+    final path = _path(spec.shape, puzzle.targetAt(i), spec.targetAngle);
+    final ready = s.readyTargets.contains(i);
+    final hint = s.hintTargets.contains(i);
+    final colour = puzzle.level.colouredOutlines ? Color(spec.color) : _outlineGrey;
+    if (hint) {
       canvas.drawPath(
         path,
         Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = ready ? 0.9 : 0.5
-          ..color = ready ? Colors.white : colour.withValues(alpha: 0.85),
+          ..color = colour.withValues(alpha: 0.5)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2.5),
       );
     }
+    canvas.drawPath(path, Paint()..color = colour.withValues(alpha: ready ? 0.45 : 0.16));
+    canvas.drawPath(
+      path,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = ready ? 0.9 : 0.5
+        ..color = ready ? Colors.white : colour.withValues(alpha: 0.85),
+    );
   }
 
   /// The outline a locked piece sits in: the nearest of its kind.
@@ -161,7 +158,20 @@ class PuzzlePainter extends CustomPainter {
     );
     // Right and wrong also show as a mark, not only a colour.
     if (wrong) _mark(canvas, at, '✗', _wrong);
-    if (p.state == PieceState.locked) _mark(canvas, at, '✓', _right, small: true);
+    if (p.state == PieceState.locked && !_insideOpenTarget(at)) _mark(canvas, at, '✓', _right, small: true);
+  }
+
+  /// Whether [at] is inside the outline of a target nothing is locked in
+  /// yet (a wall's ✓ would otherwise sit in the empty door).
+  bool _insideOpenTarget(Offset at) {
+    final filled = {
+      for (final p in s.pieces)
+        if (p.state == PieceState.locked) _targetOf(p),
+    };
+    for (final (i, spec) in puzzle.pieces.indexed) {
+      if (!filled.contains(i) && _path(spec.shape, puzzle.targetAt(i), spec.targetAngle).contains(at)) return true;
+    }
+    return false;
   }
 
   void _mark(Canvas canvas, Offset at, String mark, Color color, {bool small = false}) {

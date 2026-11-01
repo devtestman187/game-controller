@@ -9,12 +9,16 @@ class TvButton extends StatelessWidget {
     this.icon,
     this.autofocus = false,
     this.compact = false,
+    this.focusNode,
   });
 
   final String label;
   final VoidCallback? onPressed;
   final IconData? icon;
   final bool autofocus;
+
+  /// To move the focus here from code.
+  final FocusNode? focusNode;
 
   /// Smaller, for a panel's title row.
   final bool compact;
@@ -42,9 +46,10 @@ class TvButton extends StatelessWidget {
     );
     final iconData = icon;
     return iconData == null
-        ? FilledButton.tonal(autofocus: autofocus, onPressed: onPressed, style: style, child: Text(label))
+        ? FilledButton.tonal(autofocus: autofocus, focusNode: focusNode, onPressed: onPressed, style: style, child: Text(label))
         : FilledButton.tonalIcon(
             autofocus: autofocus,
+            focusNode: focusNode,
             onPressed: onPressed,
             style: style,
             icon: Icon(iconData),

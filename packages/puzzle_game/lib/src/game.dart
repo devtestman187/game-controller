@@ -142,8 +142,21 @@ class PuzzleGame {
       : PuzzleResult(finished: phase == PuzzlePhase.finished, placed: placed, total: pieces.length, timeS: finishTimeS);
 
   /// Puts every piece in the tray, the rotated ones at a random angle at
-  /// least 30° from any correct one, largest first, in rows.
+  /// least 30° from any correct one, largest first, in rows. Some angles
+  /// make a piece too tall for every row to fit, so it tries again with new
+  /// angles (up to 60 times) and keeps the layout that sticks out least.
   void _layOutTray() {
+    ({Map<int, double> starts, Map<int, Offset> at, double overflow})? best;
+    for (var attempt = 0; attempt < 60; attempt++) {
+      final layout = _trayLayout();
+      if (best == null || layout.overflow < best.overflow) best = layout;
+      if (best.overflow <= 0) break;
+    }
+    final b = best!;
+    pieces = [for (var i = 0; i < puzzle.pieces.length; i++) PieceRuntime(i, b.at[i]!, b.starts[i]!)];
+  }
+
+  ({Map<int, double> starts, Map<int, Offset> at, double overflow}) _trayLayout() {
     final starts = <int, double>{};
     for (final (i, spec) in puzzle.pieces.indexed) {
       var angle = spec.targetAngle;
@@ -167,6 +180,7 @@ class PuzzleGame {
     var y = trayRect.top + gap;
     var rowHeight = 0.0;
     final placedAt = <int, Offset>{};
+    var overflow = double.negativeInfinity;
     for (final i in order) {
       final b = puzzle.pieces[i].shape.bounds(starts[i]!);
       if (x + b.width > trayRect.right - gap && x > trayRect.left + gap) {
@@ -174,14 +188,15 @@ class PuzzleGame {
         y += rowHeight + gap;
         rowHeight = 0;
       }
+      overflow = max(overflow, y + b.height - (trayRect.bottom - gap));
       // Past the bottom: overlap the last row a little rather than leave the
-      // field.
-      final top = min(y, fieldSize.height - b.height - 1);
+      // tray.
+      final top = max(trayRect.top, min(y, trayRect.bottom - gap - b.height));
       placedAt[i] = Offset(x - b.left, top - b.top);
       x += b.width + gap;
       rowHeight = max(rowHeight, b.height);
     }
-    pieces = [for (var i = 0; i < puzzle.pieces.length; i++) PieceRuntime(i, placedAt[i]!, starts[i]!)];
+    return (starts: starts, at: placedAt, overflow: overflow);
   }
 
   /// Start positions: left of the board, one above the other.
