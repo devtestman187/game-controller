@@ -46,7 +46,13 @@ class TvButton extends StatelessWidget {
     );
     final iconData = icon;
     return iconData == null
-        ? FilledButton.tonal(autofocus: autofocus, focusNode: focusNode, onPressed: onPressed, style: style, child: Text(label))
+        ? FilledButton.tonal(
+            autofocus: autofocus,
+            focusNode: focusNode,
+            onPressed: onPressed,
+            style: style,
+            child: Text(label),
+          )
         : FilledButton.tonalIcon(
             autofocus: autofocus,
             focusNode: focusNode,

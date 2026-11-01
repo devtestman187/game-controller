@@ -1,6 +1,6 @@
 # Thumb Party protocol
 
-Version 1, as built in M9 (Thumb Party 0.9.0). This is the contract between a controller (the phone app) and a host (the TV app on Android TV or Windows). It's written so another host or controller (an engine kit, a PC bridge, a v3 receiver) can be built from it alone. The code that implements it is `packages/protocol` (messages, codec) and `packages/connection` (server, client); every field below can be checked there.
+Version 1, as built in M9 and extended in M10 (Thumb Party 0.10.0). This is the contract between a controller (the phone app) and a host (the TV app on Android TV or Windows). It's written so another host or controller (an engine kit, a PC bridge, a v3 receiver) can be built from it alone. The code that implements it is `packages/protocol` (messages, codec) and `packages/connection` (server, client); every field below can be checked there.
 
 ## 1. Discovery
 
@@ -48,6 +48,8 @@ The version number changes only for a breaking change. Everything else is additi
 | --- | --- | --- |
 | `metrics` | `metrics` (controller → host) and `metrics_ack` (host → controller) | M9 |
 | `rating` | `rate_ask` (host → controller) and `rating` (controller → host) | M9 |
+| `layout` | `layout` (host → controller): the game's labels, hidden buttons and modes | M10 |
+| `status` | `status` (host → controller): the phone's status panel | M10 |
 | `view` | A controller that also shows the game (phone-hosted play). Reserved | M12 |
 
 Peers without capabilities (apps before 0.9.0) send no `caps`; treat that as an empty list. The v1 messages (§6 to §9) need no capability.
@@ -73,7 +75,7 @@ controller                                   host
 | `controllerId` | string | yes | Stable random ID of the controller install (not tied to a person) |
 | `name` | string | yes | Label shown on the host, e.g. `iPhone 3F1C` (kept on the host, never recorded in analytics) |
 | `platform` | string | yes | `ios`, `android`, `sim`, … |
-| `appVersion` | string | yes | e.g. `0.9.0` |
+| `appVersion` | string | yes | e.g. `0.10.0` |
 | `role` | string | no | `controller` (default). `display` is reserved for a v3 receiver |
 | `caps` | list of strings | no | Capabilities (§4) |
 | `device` | object | no | Device class for analytics, below |
@@ -148,7 +150,48 @@ Stick y is -1 up, as on the wire. A keyboard on the host (S2) maps its keys onto
 
 ## 8. Haptics (host → controller)
 
-`haptic`: `{"event": "<name>", "intensity": <0..1>, "ms": <20..3000>}`. Events: `hit` (100 ms natural length), `success` (450), `error` (300), `rumble` (a steady buzz for `ms`). `intensity` scales the pattern and `ms` stretches it in time. A controller ignores event names it doesn't know. The phone applies its own settings (off, per-event strength) on top.
+`haptic`: `{"event": "<name>", "intensity": <0..1>, "ms": <20..3000>}`. Events: `hit` (100 ms natural length), `success` (450), `error` (300), `rumble` (a steady buzz for `ms`), and since M10 `snap` (160, a piece locks in place), `wrong` (260, a piece dropped in the wrong place), `dropReady` (40, a carried piece is close enough to drop), `tick` (30) and `help` (320, reserved for M11). `intensity` scales the pattern and `ms` stretches it in time. A controller ignores event names it doesn't know (apps before 0.10.0 ignore the M10 events), so these need no capability. The phone applies its own settings (off, per-event strength) on top.
+
+Game sounds are not part of the protocol: a game plays them by event name through the game host (PRD v2 S5), and the TV plays its own copy.
+
+## 8a. Game-defined controls (capability `layout`)
+
+`layout` (host → controller), per player, whenever a game starts or stops using its own controls:
+
+```json
+{"type": "layout", "modes": ["dpad", "gyro", "sticks"], "default": "dpad",
+ "labels": {"a": "Pick up", "x": "Rotate ⟳", "y": "Rotate ⟲"},
+ "hidden": ["b", "lb", "rb", "select", "start"]}
+```
+
+| Field | Meaning |
+| --- | --- |
+| `modes` | The modes the player may use. Empty: all. The player still picks among them |
+| `default` | Optional. The mode the phone switches to if its current one isn't allowed |
+| `labels` | A short label per button (cut to 12 characters). The phone draws it inside the button, under the letter, or instead of the Start/Select/LB/RB text |
+| `hidden` | Buttons the game doesn't use. The phone shows a faint outline (face buttons) or nothing, and sends no presses for them |
+
+An empty layout (`{"modes": [], "labels": {}, "hidden": []}`) puts the phone back to its usual buttons, and the phone also goes back to them when it disconnects. A switch the game forces isn't saved as the player's mode; after the game the phone returns to the player's own. Unknown modes and buttons are ignored. The host remembers each player's layout and sends it again after a reconnect.
+
+## 8b. Status panel (capability `status`)
+
+`status` (host → controller), per player:
+
+```json
+{"type": "status", "text": "1:23 left", "progress": 0.7, "warning": false,
+ "shape": {"points": [[0, -1], [1, 1], [-1, 1]], "color": 4290787371, "angle": 30}}
+```
+
+| Field | Meaning |
+| --- | --- |
+| `text` | Optional, at most 24 characters |
+| `shape` | Optional. `points`: up to 16 corners, each from -1 to 1 around the middle (y down); or `{"circle": true}`. `color` is 0xAARRGGBB, `angle` clockwise in degrees |
+| `progress` | Optional, 0 to 1 (rounded to hundredths) |
+| `warning` | Optional; true shows the panel in the warning colour |
+
+A status with none of `text`, `shape` and `progress` hides the panel. The host sends at most 10 a second per controller; when it has to wait, the newest status is sent once the gap has passed. The phone shows the panel in its top bar, in the ping's place, so no control gets smaller. The puzzle sends the held piece (turning as it turns) and the time left.
+
+The host closes the connection with 4003 if a controller sends `layout` or `status`.
 
 ## 9. Metrics (capability `metrics`)
 
@@ -187,6 +230,7 @@ Timing: about every 10 s, on every mode or settings change, and at disconnect. T
 | `ping`, `pong` | both | |
 | `metrics`, `rating` | controller → host | host listed `metrics` / `rating` |
 | `metrics_ack`, `rate_ask` | host → controller | controller listed `metrics` / `rating` |
+| `layout`, `status` | host → controller | controller listed `layout` / `status` |
 
 A host that receives a host-only message (or the reverse) closes with 4003; a controller ignores it.
 
@@ -202,5 +246,7 @@ A host that receives a host-only message (or the reverse) closes with 4003; a co
 | Analog input | at most about 60 states a second |
 | Metrics batches | about every 10 s, plus mode changes and disconnect |
 | Player number kept for | 1 minute after a drop |
+| Status panel | at most 10 a second per controller |
+| Shortest press a game sees | 50 ms (the host keeps a quick tap held that long) |
 
-The game host interface (`GameHost` in `packages/connection`, PRD v2 P3) is the in-process side of this: games get players, gamepads, haptics, rating prompts, latency and analytics records from it, and never touch the protocol directly.
+The game host interface (`GameHost` in `packages/connection`, PRD v2 P3) is the in-process side of this: games get players, gamepads, haptics, sounds, layouts, the status panel, rating prompts, latency and analytics records from it, and never touch the protocol directly. Games read each gamepad once a frame; so that a tap whose press and release arrive between two frames isn't lost, the host reports every press as held for at least 50 ms.

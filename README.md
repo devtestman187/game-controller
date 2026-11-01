@@ -38,5 +38,6 @@ Toolchain setup, Android/TV install steps and the Windows Firewall notes are in 
 | **v2** M7 Bigger stick buttons, tablets, Android 12, v1 Android phone tests | Done on iOS (`m7`, Android phone and tablet tests pending) |
 | M8 Store testing pipeline (TestFlight, Google Play testing, Windows zip) | Done (`m8`, `m8.1`; Android checks pending, public TestFlight link to come) |
 | M9 Analytics and platform groundwork | Done (`m9`, `m9.1`, `m9.2`; Android phone and tablet tests pending) |
+| M10 Puzzle game (Shape Race) for 1 player, game-defined controls | In device testing (0.10.0; checklist docs/checklists/m10.md) |
 
 All v1 milestones (docs/PRD.md) are done. v2 (docs/PRD-v2.md) runs from M7 to M13; M7 closes the pending v1 Android phone tests.
