@@ -134,6 +134,20 @@ void main() {
       expect(dropAt(g, g.puzzle.targetAt(3), 137).any((e) => e.kind == PuzzleEventKind.snap), isTrue);
     });
 
+    test('a rectangle snaps at a half turn but not at a quarter turn', () {
+      final g = start(squareAndWaves());
+      pickUp(g, 1);
+      final wrong = dropAt(g, g.puzzle.targetAt(1), 90); // wave 1, a quarter turn off
+      expect(wrong.single.kind, PuzzleEventKind.wrong);
+      expect(g.pieces[1].state, PieceState.wrong);
+      // Half a turn is the same wave: picked up again, it snaps and locks.
+      pickUp(g, 1);
+      final snap = dropAt(g, g.puzzle.targetAt(1), 180);
+      expect(snap.any((e) => e.kind == PuzzleEventKind.snap), isTrue);
+      expect(g.pieces[1].state, PieceState.locked);
+      expect(g.pieces[1].lockedTarget, 1);
+    });
+
     test('changing the angle tolerance counts straight away', () {
       final g = start(squareAndWaves());
       pickUp(g, 0);
