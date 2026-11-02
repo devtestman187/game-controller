@@ -150,6 +150,7 @@ Log:     C:\Users\...\Temp\thumbparty-dev\tv.log
 ```
 
 - Don't pipe `start` into another command (`| tail`, `| head`): the app's Windows processes keep the pipe open, so the command never ends and looks stuck although the app is running (found in M11). Run it on its own, or redirect it to a file.
+- Keys and clicks are real input, which Windows gives to the window in front, so `tv-window.ps1` only sends them once the TV window is confirmed in front, and otherwise stops with "nothing was sent". Before m11.1 they could land in another window: an Esc that reached the terminal stopped Claude Code's running command. (Input posted straight to the window doesn't work: Flutter ignores it while the window isn't active.)
 - `window ...` passes everything on to `tools/tv-window.ps1`, which can also be run from PowerShell: `powershell -NoProfile -ExecutionPolicy Bypass -File tools\tv-window.ps1 shot tv.png`.
 - On Windows the keyboard plays as another player: arrows to move, Space for A, X and Z to rotate.
 - Debug runs save stats to a `sessions-debug` folder, so test sessions don't mix with real ones.

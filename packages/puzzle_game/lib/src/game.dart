@@ -166,7 +166,7 @@ class PuzzleGame {
   int get placed => pieces.where((p) => p.state == PieceState.locked).length;
 
   /// A target's centre in field units.
-  Offset targetAt(int i) => field.board.topLeft + puzzle.pieces[i].target;
+  Offset targetAt(int i) => field.origin + puzzle.pieces[i].target;
 
   /// Two or more players on this side: big pieces need teamwork.
   bool get team => _players.length >= 2;

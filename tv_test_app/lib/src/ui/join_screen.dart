@@ -14,9 +14,15 @@ import 'latency_screen.dart' show PlayerBadge;
 import 'puzzle_screen.dart';
 import 'tv_button.dart';
 
-/// The buttons on the join screen.
+/// The buttons on the join screen, before joining.
 final joinLayout = GameLayoutMessage(
   labels: {ControllerButton.a: 'Join', ControllerButton.b: 'Back', ControllerButton.start: 'Start'},
+  hidden: {ControllerButton.x, ControllerButton.y, ControllerButton.lb, ControllerButton.rb, ControllerButton.select},
+);
+
+/// Once joined: A or Start begins the match, B leaves the side.
+final joinedLayout = GameLayoutMessage(
+  labels: {ControllerButton.a: 'Start', ControllerButton.b: 'Leave', ControllerButton.start: 'Start'},
   hidden: {ControllerButton.x, ControllerButton.y, ControllerButton.lb, ControllerButton.rb, ControllerButton.select},
 );
 
@@ -70,7 +76,7 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
   late final KeyboardPlayer _keyboard;
   late final _teams = Map<String, PuzzleSide>.of(widget.teams);
   final _before = <String, Set<_Key>>{};
-  final _labelled = <String>{};
+  final _labelled = <String, GameLayoutMessage>{};
   bool _handedOver = false;
   final _startFocus = FocusNode(debugLabel: 'joinStart');
 
@@ -113,9 +119,8 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
       changed = true;
     }
     _before.removeWhere((id, _) => !players.any((p) => p.id == id));
-    _labelled.removeWhere((id) => !players.any((p) => p.id == id));
+    _labelled.removeWhere((id, _) => !players.any((p) => p.id == id));
     for (final p in players) {
-      if (!p.local && _labelled.add(p.id)) host.setLayout(p.id, joinLayout);
       if (p.simulated) {
         // Simulated controllers press everything: they just join.
         final side = _teams.containsKey(p.id) ? null : sideForNewPlayer(_teams);
@@ -133,7 +138,13 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
         final side = _teams[p.id];
         switch (key) {
           case _Key.a:
-            final to = side == null ? sideForNewPlayer(_teams) : null;
+            // A joins; once joined, A begins the match, like Start (m11 device
+            // test: A felt like the natural button).
+            if (side != null) {
+              _start();
+              return;
+            }
+            final to = sideForNewPlayer(_teams);
             if (to != null) {
               _teams[p.id] = to;
               changed = true;
@@ -156,6 +167,15 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
             _start();
             return;
         }
+      }
+    }
+    // Each phone shows what A does for it now: Join, or Start once joined.
+    for (final p in players) {
+      if (p.local) continue;
+      final layout = _teams.containsKey(p.id) ? joinedLayout : joinLayout;
+      if (!identical(_labelled[p.id], layout)) {
+        _labelled[p.id] = layout;
+        host.setLayout(p.id, layout);
       }
     }
     if (changed) setState(() {});
@@ -210,8 +230,9 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
                 children: [
                   Text(
                     keyboardPlayerAvailable
-                        ? 'Press A on your phone to join (Space on the keyboard), then left or right to pick a side.'
-                        : 'Press A on your phone to join, then left or right to pick a side.',
+                        ? 'Press A on your phone to join (Space on the keyboard), then left or right to pick a side. '
+                              'Then A or Start begins.'
+                        : 'Press A on your phone to join, then left or right to pick a side. Then A or Start begins.',
                     style: text.titleLarge,
                   ),
                   const SizedBox(height: 16),
@@ -264,9 +285,11 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
                         child: Text(
                           _teams.isEmpty
                               ? 'Nobody has joined yet.'
-                              : '${formatName(MatchFormat.of(_teams))}. Start on a phone (or here) to begin.',
+                              : '${formatName(MatchFormat.of(_teams))}. Press A or Start to begin.',
                           key: const Key('joinFormat'),
-                          style: text.titleMedium,
+                          style: _teams.isEmpty
+                              ? text.titleMedium
+                              : text.headlineSmall?.copyWith(color: scheme.primary, fontWeight: FontWeight.bold),
                         ),
                       ),
                     ],

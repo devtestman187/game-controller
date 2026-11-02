@@ -1084,8 +1084,10 @@ void puzzle() {
     await phone({GamepadButton.a});
     await phone({});
     expect(find.descendant(of: find.byKey(const Key('side-left')), matching: find.text('P1 iPhone 3F1C')), findsOne);
-    expect(find.text('1 player. Start on a phone (or here) to begin.'), findsOneWidget);
-    await phone({GamepadButton.start});
+    expect(find.text('1 player. Press A or Start to begin.'), findsOneWidget);
+    expect(host.layouts['p1']!.labels[ControllerButton.a], 'Start', reason: 'once joined, A begins');
+    // A again begins (Start does too: tested in the M11 group).
+    await phone({GamepadButton.a});
     await phone({});
     await tester.pump(const Duration(milliseconds: 500));
     expect(find.byType(PuzzleScreen), findsOneWidget);

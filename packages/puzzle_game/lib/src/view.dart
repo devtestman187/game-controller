@@ -6,6 +6,7 @@ import 'package:protocol/protocol.dart' show playerColor;
 import 'game.dart';
 import 'puzzle.dart';
 import 'snapshot.dart';
+import 'split_layout.dart';
 
 /// Draws a puzzle from a [PuzzleSnapshot] (PRD v2 S8) into the box it's
 /// given, keeping the field's 16:9 shape and centring it (S4). It never
@@ -59,18 +60,20 @@ class MatchView extends StatelessWidget {
 const _background = Color(0xFF14181F);
 const _wrong = Color(0xFFE53935);
 
-/// Where each half of the split screen is drawn, in field units ([fieldSize]):
-/// below the clock strip.
-const splitLeftRect = Rect.fromLTWH(0, hudHeight, 80, 80);
-const splitRightRect = Rect.fromLTWH(80, hudHeight, 80, 80);
-
-/// The split screen: the clock strip, then each side in its half.
+/// The split screen: each side's world from [SplitLayout], and the clock and
+/// both sides' counts in a strip along the top or in the gap between the
+/// boards, whichever draws the board bigger.
 class MatchPainter extends CustomPainter {
   MatchPainter(this.puzzle, this.s, {this.timeLimitS});
 
   final Puzzle puzzle;
   final MatchSnapshot s;
   final int? timeLimitS;
+
+  /// The widest the clock's bar gets: under the clock in the strip, in the
+  /// gap between the boards.
+  static const _stripBar = 60.0;
+  static const _gapBar = 20.0;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -81,18 +84,42 @@ class MatchPainter extends CustomPainter {
       ..translate(f.origin.dx, f.origin.dy)
       ..scale(f.scale);
     canvas.clipRect(Offset.zero & fieldSize);
+    final layout = SplitLayout.of(puzzle);
     final left = s.boards[0];
     final right = s.boards[1];
-    for (final (rect, board, field) in [
-      (splitLeftRect, left, PuzzleField.left),
-      (splitRightRect, right, PuzzleField.right),
-    ]) {
+    for (final (box, board, field) in [(layout.leftBox, left, layout.left), (layout.rightBox, right, layout.right)]) {
       canvas
         ..save()
-        ..translate(rect.left, rect.top);
-      PuzzlePainter(puzzle, board, field: field, hud: false).paint(canvas, rect.size);
+        ..translate(box.left, box.top);
+      PuzzlePainter(puzzle, board, field: field, hud: false).paint(canvas, box.size);
       canvas.restore();
     }
+
+    final secondsLeft = (left.timeLeftMs / 1000).ceil();
+    final clock = '${secondsLeft ~/ 60}:${(secondsLeft % 60).toString().padLeft(2, '0')}';
+    final warn = left.warning && left.phase == PuzzlePhase.playing;
+    final total = puzzle.pieces.length;
+    final limit = timeLimitS;
+    final frac = limit != null && limit > 0 ? (left.timeLeftMs / 1000 / limit).clamp(0.0, 1.0) : null;
+    if (layout.hudStrip) {
+      _stripHud(canvas, left, right, clock, warn, total, frac);
+    } else {
+      _gapHud(canvas, left, right, clock, warn, total, frac);
+    }
+    canvas.restore();
+  }
+
+  /// The clock and the counts along the top, with a divider between the
+  /// halves.
+  void _stripHud(
+    Canvas canvas,
+    PuzzleSnapshot left,
+    PuzzleSnapshot right,
+    String clock,
+    bool warn,
+    int total,
+    double? frac,
+  ) {
     canvas.drawLine(
       const Offset(80, hudHeight),
       Offset(80, fieldSize.height),
@@ -100,11 +127,6 @@ class MatchPainter extends CustomPainter {
         ..color = Colors.white24
         ..strokeWidth = 0.4,
     );
-
-    final secondsLeft = (left.timeLeftMs / 1000).ceil();
-    final clock = '${secondsLeft ~/ 60}:${(secondsLeft % 60).toString().padLeft(2, '0')}';
-    final warn = left.warning && left.phase == PuzzlePhase.playing;
-    final total = puzzle.pieces.length;
     _text(canvas, 'LEFT  ${left.placed}/$total', const Offset(3, 5), 4.2, Colors.white, align: TextAlign.left);
     _text(canvas, clock, Offset(fieldSize.width / 2, 5), 5.5, warn ? _wrong : Colors.white, bold: true);
     _text(
@@ -115,16 +137,36 @@ class MatchPainter extends CustomPainter {
       Colors.white,
       align: TextAlign.right,
     );
-    final limit = timeLimitS;
-    if (limit != null && limit > 0) {
-      final frac = (left.timeLeftMs / 1000 / limit).clamp(0.0, 1.0);
-      final width = 60.0 * frac;
+    if (frac != null) {
+      final width = _stripBar * frac;
       canvas.drawRect(
         Rect.fromLTWH(fieldSize.width / 2 - width / 2, hudHeight - 1.2, width, 0.8),
         Paint()..color = warn ? _wrong : Colors.white24,
       );
     }
-    canvas.restore();
+  }
+
+  /// The clock and the counts between the two boards, stacked, so each world
+  /// can use the full height.
+  void _gapHud(
+    Canvas canvas,
+    PuzzleSnapshot left,
+    PuzzleSnapshot right,
+    String clock,
+    bool warn,
+    int total,
+    double? frac,
+  ) {
+    _text(canvas, clock, Offset(fieldSize.width / 2, 7), 5.5, warn ? _wrong : Colors.white, bold: true);
+    _text(canvas, 'LEFT  ${left.placed}/$total', Offset(fieldSize.width / 2, 15), 3.6, Colors.white);
+    _text(canvas, 'RIGHT  ${right.placed}/$total', Offset(fieldSize.width / 2, 21), 3.6, Colors.white);
+    if (frac != null) {
+      final width = _gapBar * frac;
+      canvas.drawRect(
+        Rect.fromLTWH(fieldSize.width / 2 - width / 2, 25, width, 0.8),
+        Paint()..color = warn ? _wrong : Colors.white24,
+      );
+    }
   }
 
   @override
@@ -149,7 +191,7 @@ class PuzzlePainter extends CustomPainter {
   static const _outlineGrey = Color(0xFF9AA5B1);
   static const _right = Color(0xFF43D17A);
 
-  Offset _targetAt(int i) => field.board.topLeft + puzzle.pieces[i].target;
+  Offset _targetAt(int i) => field.origin + puzzle.pieces[i].target;
 
   @override
   void paint(Canvas canvas, Size size) {

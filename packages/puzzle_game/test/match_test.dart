@@ -89,11 +89,12 @@ void main() {
       final solo = begin(load('house'), {'p1': PuzzleSide.left});
       expect(solo.sides, hasLength(1));
       expect(solo.sides.single.game.field, PuzzleField.single);
-      // … and a race gets a half each, the left first.
+      // … and a race gets a side each, from the split layout, the left first.
       final race = begin(load('house'), {'p1': PuzzleSide.left, 'p2': PuzzleSide.right});
+      final layout = SplitLayout.of(race.puzzle);
       expect(race.sides, hasLength(2));
-      expect(race.gameOf(PuzzleSide.left).field, PuzzleField.left);
-      expect(race.gameOf(PuzzleSide.right).field, PuzzleField.right);
+      expect(race.gameOf(PuzzleSide.left).field, same(layout.left));
+      expect(race.gameOf(PuzzleSide.right).field, same(layout.right));
     });
 
     test('both sides start with the same tray', () {
@@ -113,7 +114,8 @@ void main() {
     test('every puzzle fits each half: pieces start in the tray, outlines lie on the board', () {
       for (final id in ['house', 'rocket', 'tree', 'boat']) {
         final puzzle = load(id);
-        for (final field in [PuzzleField.left, PuzzleField.right]) {
+        final layout = SplitLayout.of(puzzle);
+        for (final field in [layout.left, layout.right]) {
           for (var seed = 0; seed < 50; seed++) {
             final game = PuzzleGame(puzzle, random: Random(seed), field: field);
             for (final p in game.pieces) {
@@ -136,6 +138,132 @@ void main() {
               );
             }
           }
+        }
+      }
+    });
+  });
+
+  group('split layout', () {
+    const ids = ['house', 'rocket', 'tree', 'boat'];
+
+    test('every puzzle draws its board bigger than the old half, and the layout is worked out once', () {
+      for (final id in ids) {
+        final puzzle = load(id);
+        final layout = SplitLayout.of(puzzle);
+        // The old half drew the board at 80 / 140.
+        expect(layout.scale, greaterThan(0.571), reason: id);
+        expect(layout.scale, greaterThanOrEqualTo(0.6), reason: id);
+        expect(SplitLayout.of(puzzle), same(layout), reason: '$id is computed once');
+      }
+      // Kept per puzzle, not per id: a puzzle with the same id but other pieces
+      // gets its own layout.
+      expect(
+        SplitLayout.of(onePiece()),
+        isNot(
+          same(
+            SplitLayout.of(
+              Puzzle.parse(
+                '{"id": "one", "name": "one", "level": "easy", "pieces": ['
+                '{"id": "long", "shape": {"rect": [60, 6]}, "color": "#FF0000", "at": [40, 30]}]}',
+              ),
+            ),
+          ),
+        ),
+      );
+    });
+
+    test('every puzzle fits its side: the board and the tray sit in the world, pieces start in the tray, outlines '
+        'lie on the board', () {
+      for (final id in ids) {
+        final puzzle = load(id);
+        final layout = SplitLayout.of(puzzle);
+        for (final (side, field) in [('left', layout.left), ('right', layout.right)]) {
+          final world = (Offset.zero & field.size).inflate(0.01);
+          for (final (what, panel) in [('board', field.board), ('tray', field.tray)]) {
+            expect(
+              world.contains(panel.topLeft) && world.contains(panel.bottomRight),
+              isTrue,
+              reason: '$id $side $what leaves the world: $panel',
+            );
+          }
+          expect(field.board.overlaps(field.tray), isFalse, reason: '$id $side: the board and the tray overlap');
+          for (var seed = 0; seed < 50; seed++) {
+            final game = PuzzleGame(puzzle, random: Random(seed), field: field);
+            for (final p in game.pieces) {
+              final spec = puzzle.pieces[p.index];
+              final box = spec.shape.bounds(p.angle).shift(p.pos);
+              expect(
+                field.tray.inflate(0.01).contains(box.topLeft) && field.tray.inflate(0.01).contains(box.bottomRight),
+                isTrue,
+                reason: '$id $side seed $seed ${spec.id} leaves the tray: $box',
+              );
+            }
+            // Every outline lies on the board.
+            for (final (i, spec) in puzzle.pieces.indexed) {
+              final box = spec.shape.bounds(spec.targetAngle).shift(game.targetAt(i));
+              expect(
+                field.board.inflate(0.01).contains(box.topLeft) && field.board.inflate(0.01).contains(box.bottomRight),
+                isTrue,
+                reason: '$id $side seed $seed ${spec.id} outline leaves the board: $box',
+              );
+            }
+          }
+        }
+      }
+    });
+
+    test('each world is drawn in its box: on the screen, apart, at the world\'s shape and scale', () {
+      for (final id in ids) {
+        final layout = SplitLayout.of(load(id));
+        final screen = (Offset.zero & fieldSize).inflate(0.01);
+        for (final (side, box, field) in [
+          ('left', layout.leftBox, layout.left),
+          ('right', layout.rightBox, layout.right),
+        ]) {
+          expect(
+            screen.contains(box.topLeft) && screen.contains(box.bottomRight),
+            isTrue,
+            reason: '$id $side box leaves the screen: $box',
+          );
+          expect(
+            box.width / box.height,
+            closeTo(field.size.width / field.size.height, 1e-9),
+            reason: '$id $side box has another shape than its world',
+          );
+          expect(box.width, closeTo(field.size.width * layout.scale, 1e-9), reason: '$id $side box is another size');
+        }
+        expect(layout.leftBox.overlaps(layout.rightBox), isFalse, reason: '$id: the two worlds overlap');
+        if (layout.hudStrip) {
+          expect(layout.leftBox.top, greaterThanOrEqualTo(hudHeight), reason: id);
+          expect(layout.rightBox.top, greaterThanOrEqualTo(hudHeight), reason: id);
+        } else {
+          expect(
+            layout.rightBox.left - layout.leftBox.right,
+            greaterThanOrEqualTo(24),
+            reason: '$id: the clock needs room between the boards',
+          );
+        }
+      }
+    });
+
+    test('the trays sit below the boards or at the outer edges', () {
+      for (final id in ids) {
+        final layout = SplitLayout.of(load(id));
+        if (layout.trayBelow) {
+          for (final field in [layout.left, layout.right]) {
+            expect(field.tray.top, greaterThanOrEqualTo(field.board.bottom), reason: '$id: the tray is not below');
+          }
+        } else {
+          expect(
+            layout.left.tray.right,
+            lessThanOrEqualTo(layout.left.board.left),
+            reason: '$id: the left tray is not at the outer edge',
+          );
+          expect(
+            layout.right.tray.left,
+            greaterThanOrEqualTo(layout.right.board.right),
+            reason: '$id: the right tray is not at the outer edge',
+          );
         }
       }
     });

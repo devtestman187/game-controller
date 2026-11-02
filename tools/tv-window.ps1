@@ -24,10 +24,11 @@ if (-not ('TvWindow' -as [type])) {
 using System;
 using System.Runtime.InteropServices;
 public static class TvWindow {
-  [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr h);
-  [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr h, int c);
   [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr h, out RECT r);
   [DllImport("user32.dll")] public static extern bool PrintWindow(IntPtr h, IntPtr hdc, uint f);
+  [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr h);
+  [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr h, int c);
+  [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
   [DllImport("user32.dll")] public static extern void keybd_event(byte vk, byte scan, uint flags, UIntPtr extra);
   [DllImport("user32.dll")] public static extern bool SetCursorPos(int x, int y);
   [DllImport("user32.dll")] public static extern void mouse_event(uint f, int dx, int dy, uint d, UIntPtr e);
@@ -50,8 +51,29 @@ if (-not $p) {
 }
 $h = $p.MainWindowHandle
 
-function Front { [TvWindow]::ShowWindow($h, 9) | Out-Null; [TvWindow]::SetForegroundWindow($h) | Out-Null; Start-Sleep -Milliseconds 150 }
 function Rect { $r = New-Object TvWindow+RECT; [TvWindow]::GetWindowRect($h, [ref]$r) | Out-Null; $r }
+
+# Keys and clicks are real input, which Windows sends to the window in front
+# (Flutter ignores input posted to a window that isn't active). So they're only
+# sent once the TV window is confirmed in front: a key that lands somewhere
+# else can do harm (an Esc in a terminal stops Claude Code's running command;
+# found in M11). Windows often refuses to bring a window forward from a
+# background script; a lone Alt press first is the usual way round that, and
+# does nothing in other windows.
+function Front {
+  [TvWindow]::ShowWindow($h, 9) | Out-Null
+  for ($i = 0; $i -lt 5; $i++) {
+    if ([TvWindow]::GetForegroundWindow() -eq $h) { Start-Sleep -Milliseconds 100; return $true }
+    [TvWindow]::keybd_event(0x12, 0, 0, [UIntPtr]::Zero)  # Alt down
+    [TvWindow]::keybd_event(0x12, 0, 2, [UIntPtr]::Zero)  # Alt up
+    [TvWindow]::SetForegroundWindow($h) | Out-Null
+    Start-Sleep -Milliseconds 100
+  }
+  return ([TvWindow]::GetForegroundWindow() -eq $h)
+}
+function RequireFront {
+  if (-not (Front)) { throw 'the TV window did not come to the front, so nothing was sent (it would have gone to another window). Try again.' }
+}
 function KeyCode([string]$k) {
   $named = @{ left = 0x25; up = 0x26; right = 0x27; down = 0x28; space = 0x20; enter = 0x0D; esc = 0x1B; tab = 0x09; backspace = 0x08 }
   if ($named.ContainsKey($k)) { return [byte]$named[$k] }
@@ -60,10 +82,17 @@ function KeyCode([string]$k) {
 }
 function Hold([string]$keys, [int]$ms) {
   $codes = @($keys -split '\+' | ForEach-Object { KeyCode $_ })
-  Front
+  RequireFront
   foreach ($c in $codes) { [TvWindow]::keybd_event($c, 0, 1, [UIntPtr]::Zero) }
   Start-Sleep -Milliseconds $ms
   foreach ($c in $codes) { [TvWindow]::keybd_event($c, 0, 3, [UIntPtr]::Zero) }
+}
+function Click([int]$x, [int]$y) {
+  $r = Rect
+  RequireFront
+  [TvWindow]::SetCursorPos($r.L + $x, $r.T + $y) | Out-Null
+  [TvWindow]::mouse_event(2, 0, 0, 0, [UIntPtr]::Zero); Start-Sleep -Milliseconds 60
+  [TvWindow]::mouse_event(4, 0, 0, 0, [UIntPtr]::Zero)
 }
 
 trap {
@@ -87,11 +116,7 @@ switch ($Action) {
   }
   'click' {
     $x, $y = $Arg -split ','
-    $r = Rect
-    Front
-    [TvWindow]::SetCursorPos($r.L + [int]$x, $r.T + [int]$y) | Out-Null
-    [TvWindow]::mouse_event(2, 0, 0, 0, [UIntPtr]::Zero); Start-Sleep -Milliseconds 60
-    [TvWindow]::mouse_event(4, 0, 0, 0, [UIntPtr]::Zero)
+    Click ([int]$x) ([int]$y)
     Write-Output "clicked $Arg"
   }
   'key' { Hold $Arg 80; Write-Output "pressed $Arg" }

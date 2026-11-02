@@ -9,6 +9,7 @@ export 'src/game.dart';
 export 'src/library.dart';
 export 'src/match.dart';
 export 'src/puzzle.dart';
+export 'src/split_layout.dart';
 export 'src/settings.dart';
 export 'src/snapshot.dart';
 export 'src/play_view.dart';

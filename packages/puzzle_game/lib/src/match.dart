@@ -6,6 +6,7 @@ import 'game.dart';
 import 'puzzle.dart';
 import 'settings.dart';
 import 'snapshot.dart';
+import 'split_layout.dart';
 
 /// A side of the split screen, chosen on the join screen (PRD v2 T13).
 enum PuzzleSide { left, right }
@@ -87,15 +88,16 @@ class PuzzleMatch {
        format = MatchFormat.of(teams) {
     // Both sides start with the same tray, mirrored, so the race is fair.
     final seed = (random ?? Random()).nextInt(1 << 32);
+    final layout = SplitLayout.of(puzzle);
     sides = format.split
         ? [
             MatchSide(
               PuzzleSide.left,
-              PuzzleGame(puzzle, settings: settings, random: Random(seed), field: PuzzleField.left),
+              PuzzleGame(puzzle, settings: settings, random: Random(seed), field: layout.left),
             ),
             MatchSide(
               PuzzleSide.right,
-              PuzzleGame(puzzle, settings: settings, random: Random(seed), field: PuzzleField.right),
+              PuzzleGame(puzzle, settings: settings, random: Random(seed), field: layout.right),
             ),
           ]
         : [
