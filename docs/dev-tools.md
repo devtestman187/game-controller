@@ -227,7 +227,7 @@ How they're used:
 
 How it fits together: Claude Code (subscription) → `tools/flash.sh` (run directly; or through the `flash-worker` agent if asked by name) → `claude --bare -p` with `ANTHROPIC_BASE_URL=https://api.deepseek.com/anthropic` → DeepSeek Flash edits files in the working tree. `--bare` never reads the Claude sign-in, so this process can't use the subscription by mistake. What it may do is set in the script, and Claude Code enforces it rather than relying on the model to obey:
 - **Tools:** `--bare` offers only Read, Edit (which also creates files) and Bash. Read is limited to the repository. Bash is limited to formatting, analysis and tests (`dart`, `flutter`, `tools/check.sh`), read-only `git status`, `log`, `grep` and `ls-files`, and `ls`. Git commands that change anything, `rm`, `gh`, `tools/release.sh`, sub-agents and the web are blocked.
-- **Files it can't change:** `.github/`, `codemagic.yaml`, `firebase/`, `.claude/`, `kenney-audio/`, every `docs/PRD*` file (the PRDs and the owner's backups: PRD changes are judgment calls, so the main session makes them), `tools/release.sh` and `tools/flash.sh`. Editing or creating them is refused.
+- **Files it can't change:** `.github/`, `codemagic.yaml`, `firebase/`, `.claude/`, `kenney-audio/`, every `docs/PRD*` file (the PRDs and the owner's backups: PRD changes are judgment calls, so the main session makes them), `tools/release.sh`, `tools/flash.sh` and `tools/flash_usage.dart`. Editing or creating them is refused.
 - **Files it can't read:** anything outside the repository (so `%USERPROFILE%\.thumbparty\` and other sign-ins stay private), and inside it any signing key, service account or `.env` file, in case one is ever put there. Whatever it reads is sent to DeepSeek.
 - **Not a sandbox:** it can run tests, and a test is code, so a model that deliberately misbehaved could get around these rules. They stop mistakes, not a hostile model.
 - **Checked again afterwards:** the script compares those files before and after the run. If any changed anyway, it ends with `PROTECTED FILES CHANGED` and exit code 3.
@@ -236,6 +236,8 @@ How it fits together: Claude Code (subscription) → `tools/flash.sh` (run direc
 - **What it knows about the project:** `--bare` skips Claude Code's project notes, so the script gives it a short set of rules and points it to [project-notes.md](project-notes.md).
 
 It ends by printing the files this run changed, their `git diff --stat`, the check results and `flash: result <code>`: 0 when everything passed, otherwise the first that applies of 3 (protected file), 4 (outside `--allow`), the worker's own exit code, 5 (a check failed); 2 for bad arguments or a missing key.
+
+**Token use.** After the worker's answer it prints a usage line (turns, seconds, input, cache and output tokens), and every job adds one line to `~/.thumbparty/flash-usage.tsv` (`FLASH_USAGE_LOG` moves it): the time, the result code, those numbers, the files changed and the task's first line. [`tools/flash_usage.dart`](../tools/flash_usage.dart) reads the run's JSON result; the cost figure in it is left out, because it's worked out at Anthropic's prices, not DeepSeek's (DeepSeek's own dashboard has the bill). To compare with the main session, look at `/usage` in Claude Code.
 
 ```bash
 tools/flash.sh --allow packages/puzzle_game/test/rules_test.dart --check puzzle "<spec>"

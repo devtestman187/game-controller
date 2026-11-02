@@ -68,6 +68,9 @@ fi
 
 model="${FLASH_MODEL:-deepseek-v4-flash}"
 log="${TMPDIR:-/tmp}/flash-$(date +%Y%m%d-%H%M%S).log"
+# One line per job (tokens, turns, time, result), kept across runs: see
+# tools/flash_usage.dart. FLASH_USAGE_LOG moves it.
+usage_log="${FLASH_USAGE_LOG:-$HOME/.thumbparty/flash-usage.tsv}"
 
 # Rules the worker always gets. --bare skips CLAUDE.md, hooks and the
 # saved login, so everything it needs to know is here.
@@ -91,7 +94,7 @@ allowed=(
 # permission rules (an Edit rule covers every file-editing tool, Write
 # included), and checked again after the run.
 protected=(".github/**" "codemagic.yaml" "firebase/**" ".claude/**" "kenney-audio/**"
-  "docs/PRD*" "tools/release.sh" "tools/flash.sh")
+  "docs/PRD*" "tools/release.sh" "tools/flash.sh" "tools/flash_usage.dart")
 # Files it may not even read, because whatever it reads is sent to DeepSeek.
 # Signing keys and service accounts (the .gitignore list), in case one is
 # ever put in the repository. Reading outside the repository isn't allowed
@@ -112,7 +115,7 @@ cmd=(claude --bare -p "$task"
   --append-system-prompt "$rules"
   --allowedTools "${allowed[@]}"
   --disallowedTools "${denied[@]}"
-  --output-format text)
+  --output-format json)
 
 if [ "$dry" = 1 ]; then
   printf '%q ' "${cmd[@]}"; echo
@@ -153,7 +156,9 @@ state() {
 }
 start_state="$(state)"
 
-"${cmd[@]}" < /dev/null > "$log" 2>&1
+# The answer and its token use come as JSON on stdout; warnings go to the
+# .err file next to it.
+"${cmd[@]}" < /dev/null > "$log" 2> "$log.err"
 worker=$?
 
 protected_changed=0
@@ -172,7 +177,7 @@ while IFS= read -r p; do
   [ "$ok" = 1 ] || outside+=("$p")
 done < <(comm -3 <(printf '%s\n' "$start_state") <(printf '%s\n' "$(state)") | sed 's/^\t//' | cut -f1 | sort -u)
 
-cat "$log"
+dart tools/flash_usage.dart print "$log"
 echo
 echo "---- flash: worker exit $worker, model $model, log $log"
 echo "---- files this run changed (${#touched[@]})"
@@ -191,7 +196,7 @@ fi
 code=0
 if [ "$protected_changed" = 1 ]; then
   echo "---- flash: PROTECTED FILES CHANGED - review them before anything else:"
-  git status --short -- .github codemagic.yaml firebase .claude kenney-audio tools/release.sh tools/flash.sh 'docs/PRD*'
+  git status --short -- .github codemagic.yaml firebase .claude kenney-audio tools/release.sh tools/flash.sh tools/flash_usage.dart 'docs/PRD*'
   code=3
 elif [ ${#outside[@]} -gt 0 ]; then
   echo "---- flash: CHANGED FILES OUTSIDE --allow (${allow[*]:-none, read-only job}):"
@@ -203,5 +208,9 @@ elif [ "$check" != 0 ]; then
   echo "---- flash: CHECKS FAILED"
   code=5
 fi
+# The task's first line goes in a file: Windows mangles arguments with
+# line breaks or "&" on the way to dart.
+printf '%s' "${task%%$'\n'*}" > "$log.task"
+dart tools/flash_usage.dart record "$log" "$usage_log" "$code" "${#touched[@]}" "$log.task" || true
 echo "---- flash: result $code"
 exit $code
