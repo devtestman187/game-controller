@@ -42,6 +42,13 @@ final class PieceShape {
         Offset(-width / 2, height / 2),
       ]);
 
+  /// A regular polygon: [sides] corners, each [radius] from the centre, the
+  /// first straight up and the rest clockwise.
+  PieceShape.regular(int sides, double radius)
+    : this.polygon([
+        for (var k = 0; k < sides; k++) Offset(sin(k * 2 * pi / sides), -cos(k * 2 * pi / sides)) * radius,
+      ]);
+
   PieceShape.circle(this.radius) : points = const [], circle = true;
 
   final List<Offset> points;
@@ -99,6 +106,11 @@ final class PieceShape {
       return PieceShape.circle(r.toDouble());
     }
     if (json['rect'] case [final num w, final num h]) return PieceShape.rect(w.toDouble(), h.toDouble());
+    if (json['regular'] case [final int sides, final num r]) {
+      if (sides < 3) throw const FormatException('A regular shape needs 3 or more sides');
+      if (r <= 0) throw const FormatException('A regular shape needs a radius above 0');
+      return PieceShape.regular(sides, r.toDouble());
+    }
     if (json['polygon'] case final List points when points.length >= 3) {
       return PieceShape.polygon([
         for (final p in points)
@@ -108,7 +120,9 @@ final class PieceShape {
             throw const FormatException('Polygon points are [x, y]'),
       ]);
     }
-    throw const FormatException('A shape is {"circle": r}, {"rect": [w, h]} or {"polygon": [[x, y], ...]}');
+    throw const FormatException(
+      'A shape is {"circle": r}, {"rect": [w, h]}, {"regular": [sides, r]} or {"polygon": [[x, y], ...]}',
+    );
   }
 }
 

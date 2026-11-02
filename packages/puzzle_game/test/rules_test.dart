@@ -69,6 +69,29 @@ void main() {
       expect(snapAngle(268, 0, 90), 270);
       expect(snapAngle(123, 0, 0), 123);
     });
+
+    test('a regular shape turns onto itself every 360°/sides, starting straight up and going clockwise', () {
+      final triangle = PieceShape.regular(3, 10);
+      final hexagon = PieceShape.regular(6, 5);
+      expect(triangle.symmetry, closeTo(120, 1e-9));
+      expect(hexagon.symmetry, closeTo(60, 1e-9));
+      expect(hexagon.points, hasLength(6));
+      expect(hexagon.radius, closeTo(5, 1e-9));
+      for (final p in hexagon.points) {
+        expect(p.distance, closeTo(5, 1e-9), reason: '$p');
+      }
+      // The first corner is straight up; the next is clockwise, so to the
+      // right and below.
+      expect(triangle.points.first.dx, closeTo(0, 1e-9));
+      expect(triangle.points.first.dy, closeTo(-10, 1e-9));
+      expect(triangle.points[1].dx, greaterThan(0));
+      expect(triangle.points[1].dy, greaterThan(0));
+      // The same triangle as the hand-written one above.
+      final equilateral = PieceShape.polygon([
+        for (var k = 0; k < 3; k++) Offset(sin(k * 2 * pi / 3), -cos(k * 2 * pi / 3)) * 10,
+      ]);
+      expect(triangle.key, equilateral.key);
+    });
   });
 
   group('dropping', () {
@@ -161,6 +184,26 @@ void main() {
       expect(p.readyTarget, 0);
       expect(events.single.kind, PuzzleEventKind.dropReady, reason: 'a light tick when it becomes ready');
     });
+
+    test('with the drop-ready highlight off there is no tick or highlight, but the piece still snaps', () {
+      final g = start(squareAndWaves(), settings: const PuzzleSettings(dropReadyHighlight: false));
+      pickUp(g, 0);
+      final p = g.player('p1')!;
+      p.pos = g.puzzle.targetAt(0);
+      g.pieces[0].angle = 0;
+      var events = g.update(0.016, {'p1': none});
+      expect(events.map((e) => e.kind), isNot(contains(PuzzleEventKind.dropReady)));
+      expect(p.readyTarget, isNull);
+      expect(g.snapshot().readyTargets, isEmpty);
+      // Turning it on counts straight away.
+      g.settings = g.settings.withValue('dropReadyHighlight', true);
+      events = g.update(0.016, {'p1': none});
+      expect(events.single.kind, PuzzleEventKind.dropReady);
+      expect(p.readyTarget, 0, reason: 'the same spot is ready now the highlight is on');
+      // The piece snaps as before.
+      expect(tapA(g).map((e) => e.kind), contains(PuzzleEventKind.snap));
+      expect(g.pieces[0].state, PieceState.locked);
+    });
   });
 
   group('rotating', () {
@@ -221,6 +264,88 @@ void main() {
         'p1': const GamepadState(buttons: {GamepadButton.x}, mode: InputMode.dpad),
       });
       expect(g.pieces[1].angle, angle);
+    });
+  });
+
+  group('picking up and leaving', () {
+    test('a piece is picked up only within reach, the nearest one first, and the pickup range widens the reach', () {
+      // Reach: the dot's radius plus the piece's radius times the pickup
+      // range. The square's radius is about 7.07, so its reach is about 9.7.
+      PuzzleGame fresh() => start(squareAndWaves());
+      double reach(PuzzleGame g) => PuzzleGame.dotRadius + g.puzzle.pieces[0].shape.radius;
+
+      {
+        // Half a unit beyond the reach: nothing is picked up.
+        final g = fresh();
+        g.player('p1')!.pos = g.pieces[0].pos - Offset(reach(g) + 0.5, 0); // left of the square
+        expect(tapA(g).map((e) => e.kind), isNot(contains(PuzzleEventKind.pickup)));
+        expect(g.player('p1')!.held, isNull);
+      }
+      {
+        // Half a unit inside the reach: picked up.
+        final g = fresh();
+        g.player('p1')!.pos = g.pieces[0].pos - Offset(reach(g) - 0.5, 0);
+        expect(tapA(g).map((e) => e.kind), contains(PuzzleEventKind.pickup));
+        expect(g.player('p1')!.held, 0);
+      }
+      {
+        // A wider pickup range reaches half a unit further.
+        final g = fresh();
+        g.settings = g.settings.withValue('pickupRange', 2.0);
+        g.player('p1')!.pos = g.pieces[0].pos - Offset(reach(g) + 0.5, 0);
+        expect(tapA(g).map((e) => e.kind), contains(PuzzleEventKind.pickup));
+        expect(g.player('p1')!.held, 0);
+      }
+      {
+        // Within reach of the square and the ball: the nearer one is taken.
+        final g = fresh();
+        final square = g.pieces[0].pos;
+        final ball = g.pieces[3].pos;
+        final dot = Offset.lerp(ball, square, 0.4)!; // closer to the ball
+        g.player('p1')!.pos = dot;
+        for (final i in [0, 3]) {
+          final near = PuzzleGame.dotRadius + g.puzzle.pieces[i].shape.radius;
+          expect((dot - g.pieces[i].pos).distance, lessThanOrEqualTo(near), reason: 'both in reach');
+        }
+        expect(tapA(g).map((e) => e.kind), contains(PuzzleEventKind.pickup));
+        expect(g.player('p1')!.held, 3, reason: 'the nearer piece wins');
+      }
+    });
+
+    test("a held piece can't be taken by another player; when its holder leaves it is put down for anyone", () {
+      final g = start(squareAndWaves());
+      pickUp(g, 0); // p1 holds the square, before p2 joins
+      // p1 carries it to the middle of the board, away from the other pieces.
+      g.player('p1')!.pos = boardRect.center;
+      g.update(0.016, {'p1': none});
+      expect(g.pieces[0].pos, boardRect.center);
+      g.update(0.016, {'p1': none, 'p2': none}, numbers: {'p2': 2});
+      final p2 = g.player('p2')!;
+      p2.pos = g.pieces[0].pos;
+      // p2 presses A on p1's piece: there is nothing to take.
+      final events = [
+        ...g.update(0.016, {'p1': none, 'p2': pressA}),
+        ...g.update(0.016, {'p1': none, 'p2': none}),
+      ];
+      expect(events.map((e) => e.kind), isNot(contains(PuzzleEventKind.pickup)));
+      expect(p2.held, isNull);
+      expect(g.pieces[0].heldBy, 'p1');
+      expect(g.pieces[0].state, PieceState.held);
+      // p1 leaves (missing from the inputs): the square is put down where it is.
+      final at = g.pieces[0].pos;
+      g.update(0.016, {'p2': none});
+      expect(g.player('p1'), isNull);
+      expect(g.pieces[0].state, PieceState.loose);
+      expect(g.pieces[0].heldBy, isNull);
+      expect(g.pieces[0].pos, at);
+      // Now p2 can take it.
+      final again = [
+        ...g.update(0.016, {'p2': pressA}),
+        ...g.update(0.016, {'p2': none}),
+      ];
+      expect(again.singleWhere((e) => e.kind == PuzzleEventKind.pickup).playerId, 'p2');
+      expect(p2.held, 0);
+      expect(g.pieces[0].heldBy, 'p2');
     });
   });
 
@@ -343,6 +468,32 @@ void main() {
           {"id": "b", "kind": "k", "shape": {"rect": [3, 2]}, "color": "#000000", "at": [5, 5]}]}'''),
         throwsFormatException,
       );
+    });
+
+    test('a regular shape loads from a puzzle file, saves as a polygon, and bad sides or a bad radius are refused', () {
+      final puzzle = Puzzle.parse('''{"id": "x", "name": "x", "level": "easy", "pieces": [
+        {"id": "hex", "shape": {"regular": [6, 5]}, "color": "#000000", "at": [10, 10]}]}''');
+      final shape = puzzle.pieces.single.shape;
+      expect(shape.points, hasLength(6));
+      expect(shape.symmetry, closeTo(60, 1e-9));
+      expect(shape.key, PieceShape.regular(6, 5).key);
+
+      final json = shape.toJson();
+      expect(json.containsKey('polygon'), isTrue);
+      expect(json.containsKey('regular'), isFalse);
+      expect(PieceShape.fromJson(json).key, shape.key);
+
+      for (final (bad, why) in [
+        ([2, 5], 'too few sides'),
+        ([3, 0], 'radius'),
+        ([3, -1], 'radius'),
+        ([3.5, 5], 'sides not whole'),
+        (['3', 5], 'sides not a number'),
+        ([3], 'missing radius'),
+      ]) {
+        final badJson = {'regular': bad};
+        expect(() => PieceShape.fromJson(badJson), throwsFormatException, reason: '$badJson: $why');
+      }
     });
   });
 
