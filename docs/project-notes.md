@@ -25,7 +25,7 @@ Carried from earlier milestones, still to do:
 - **Phone screenshots** for the stores show the PC's old name in the connection chip. Retake them after the PC is renamed: build the Windows TV app, pair the `m7_android12` emulator, capture at 2400×1080 and pad to 2400×1200 (`assets/branding/screenshots/`).
 - **The `docs/protocol.md` read-through** (M9; the owner skipped it then).
 - **Idea:** "time in a mode" counts idle time with the app open, which dilutes per-minute stats. Count only active play in a later milestone.
-- **M10** is released (`m10` to `m10.2`) and in device testing ([checklists/m10.md](checklists/m10.md)), including three optional checks carried from M9.
+- **M10** is released (`m10` to `m10.3`) and in device testing ([checklists/m10.md](checklists/m10.md)), including three optional checks carried from M9.
 - **Offered, not done:** phone control of the TV's game picker and puzzle list (the results screen already has it).
 
 ## Testing recipes
