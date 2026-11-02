@@ -142,7 +142,7 @@ v2 adds these to v1's T1 to T10.
 | T18 | Stats screen: summary per session and per input mode, and export of the session files | M9 |
 | T19 | Consent prompt on first launch and a setting to change it. Opt-in upload of session summaries when allowed, queued while offline | M9 |
 | T20 | Store-ready builds: the new name (Thumb Party TV) and ID, AAB for Play's Android TV track, versioned Windows release zip on GitHub Releases, privacy policy link | M8 |
-| T21 | The whole TV app works from a controller, like the remote: the D-pad or left stick moves the focus, A selects, B goes back. A player can leave a game from the phone (for example Start, then Quit) and then use every screen: the game picker, the puzzle list, Puzzle settings, Stats, Settings and the test tools. Owner's request after the M10 device test: "I should be able to control the full TV app using the controller." The puzzle results screen already works this way (m10.2) | Not scheduled yet |
+| T21 | The whole TV app works from a controller, like the remote: the D-pad or left stick moves the focus, A selects, B goes back. A player can leave a game from the phone (for example Start, then Quit) and then use every screen: the game picker, the puzzle list, Puzzle settings, Stats, Settings and the test tools. Owner's request after the M10 device test: "I should be able to control the full TV app using the controller." The puzzle results screen already works this way (m10.2) | M11 |
 
 ## Analytics requirements
 
@@ -445,7 +445,7 @@ Numbering continues from v1, so tags stay unique (m7 and later). Each milestone 
 | M8 | Store testing pipeline | Accounts and reviews take time, and every later milestone ships through it |
 | M9 | Analytics and platform groundwork | Collection is in place before testers play the new game, so their first sessions count. The protocol changes anyway, so the spec, capabilities and host interface come with it |
 | M10 | Puzzle game, 1 player, with game-defined controls | Proves the core feel of carrying, rotating and dropping before adding players, and is the first game to label the phone's buttons |
-| M11 | Puzzle game, 2 to 4 players | Adds sides, teams, big pieces and win rules on top of a proven core |
+| M11 | Puzzle game, 2 to 4 players, and the whole TV app from a controller | Adds sides, teams, big pieces and win rules on top of a proven core. The pause menu and join screen need controller menus anyway, so every screen gets them |
 | M12 | Phone-hosted play | Lets testers without a TV or PC play, in time for the outside playtest, once the game rules are settled |
 | M13 | Fun, content and the first outside playtest | Adds the extras, all 9 puzzles and tuning, and puts it in testers' hands |
 
@@ -577,26 +577,26 @@ Milestone 10 builds the core of the puzzle game for one player, so carrying, rot
 
 **Acceptance tests**
 
-- [ ] An Easy puzzle can be finished with the D-pad, the gyro and the sticks.
-- [ ] A piece dropped within tolerance snaps exactly, locks and buzzes. A piece dropped in the wrong spot stays, turns red and buzzes differently. Both feel distinct on the phone.
-- [ ] Changing the angle tolerance in playtest settings changes what counts as correct straight away.
-- [ ] Holding X and Y rotates smoothly in each direction, and in stick mode the right stick turns the piece: right clockwise, left counter-clockwise, faster the further it is pushed.
-- [ ] A square piece matches its outline at any quarter turn.
-- [ ] Time-up shows the pieces placed, and a finished puzzle shows the time.
-- [ ] The arena game is still available from the game picker.
-- [ ] In the puzzle the phone shows "Pick up" on A and "Rotate" on X and Y, hides buttons the puzzle doesn't use, and shows the held piece turning as it rotates. Back on the arena game, the phone returns to its usual buttons.
-- [ ] With labels and the status panel showing, no control is smaller than before in any mode.
-- [ ] A widget test draws the puzzle at 1280 by 720 in a box smaller than the window and at TV size, and the layout is the same apart from scale. The puzzle's sounds still play, through the host interface.
-- [ ] A unit test encodes a puzzle snapshot, decodes it and draws it, and the result matches the original. A 4-player snapshot stays under the size limit.
+- [X] An Easy puzzle can be finished with the D-pad, the gyro and the sticks.
+- [X] A piece dropped within tolerance snaps exactly, locks and buzzes. A piece dropped in the wrong spot stays, turns red and buzzes differently. Both feel distinct on the phone.
+- [X] Changing the angle tolerance in playtest settings changes what counts as correct straight away.
+- [X] Holding X and Y rotates smoothly in each direction, and in stick mode the right stick turns the piece: right clockwise, left counter-clockwise, faster the further it is pushed.
+- [X] A square piece matches its outline at any quarter turn.
+- [X] Time-up shows the pieces placed, and a finished puzzle shows the time.
+- [X] The arena game is still available from the game picker.
+- [X] In the puzzle the phone shows "Pick up" on A and "Rotate" on X and Y, hides buttons the puzzle doesn't use, and shows the held piece turning as it rotates. Back on the arena game, the phone returns to its usual buttons.
+- [X] With labels and the status panel showing, no control is smaller than before in any mode.
+- [X] A widget test draws the puzzle at 1280 by 720 in a box smaller than the window and at TV size, and the layout is the same apart from scale. The puzzle's sounds still play, through the host interface.
+- [X] A unit test encodes a puzzle snapshot, decodes it and draws it, and the result matches the original. A 4-player snapshot stays under the size limit.
 
 ## Milestone 11: Puzzle game, 2 to 4 players
 
-Milestone 11 turns the puzzle into a race between sides and teams, with big pieces that make teammates work together.
+Milestone 11 turns the puzzle into a race between sides and teams, with big pieces that make teammates work together. It also lets the controller work the whole TV app, so nobody needs the remote.
 
 **Deployable builds**
 
 - Controller: help haptic.
-- TV app: join screen, split screen, 1 vs 1, 2 vs 1 and 2 vs 2, big pieces, the win and tie rules, and the results screen.
+- TV app: join screen, split screen, 1 vs 1, 2 vs 1 and 2 vs 2, big pieces, the win and tie rules, and the results screen. Every screen works from a controller (T21).
 
 **Scope**
 
@@ -604,7 +604,8 @@ Milestone 11 turns the puzzle into a race between sides and teams, with big piec
 - Split-screen layout with a board and tray per side, and players kept to their own half.
 - Big pieces: carried by two players, carried alone at reduced speed, edge flash and help haptic. Full speed for solo players.
 - Ending and tie rules, and the results screen with Rematch, Change teams and Back (T14).
-- Pause with Start: any player pauses, and the player who paused or Player 1 resumes.
+- Pause with Start: any player pauses, and the player who paused or Player 1 resumes. The pause menu has Resume and Quit, and Quit leaves the game for the game picker. The Arena gets the same pause menu.
+- Control the whole TV app from a controller (T21): the D-pad or left stick moves the focus, A selects and B goes back, on every screen (home, game picker, puzzle list, Puzzle settings, Stats, Settings and the test tools), the same way the puzzle results already work. While a menu is showing, the phone labels A "OK" and B "Back". The remote keeps working as before.
 - Team and side metrics: help calls, solo big-piece carries, win, loss or draw by mode.
 - Unit tests for the end-of-round rules, ties and big-piece movement.
 - Simulated controllers can join, so 4-player layouts can be checked with fewer phones.
@@ -618,6 +619,7 @@ Milestone 11 turns the puzzle into a race between sides and teams, with big piec
 - [ ] In 2 vs 1, the solo player carries big pieces at full speed.
 - [ ] Rematch keeps the teams, and Change teams goes back to the join screen.
 - [ ] Four controllers (phones or simulated) play a full match without lag, stuck input or disconnects.
+- [ ] From a phone alone, with the remote put away: leave a game through Start then Quit, pick another game and difficulty, change a Puzzle setting, open Stats, and go back to the home screen. In each mode, the stick and D-pad never leave the focus somewhere A can't press.
 
 ## Milestone 12: Phone-hosted play
 
