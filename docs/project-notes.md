@@ -9,7 +9,7 @@ How this project is run, what's still open, and the lessons learned along the wa
 - **Every release has tester notes.** The tag's message is the notes, in plain words for testers ("Shape Race: the right stick now turns pieces…"), never empty; even "Minor update for testing" is fine. They go to Play "What's new", TestFlight "What to Test" and the GitHub Release.
 - **Device feedback becomes a recorded change.** When a device test finds a problem, the fix is written into the PRD and the milestone's checklist ("Changes from device testing"), with the tester's words quoted.
 - **Android testing is on hold.** Android phone and tablet checks stay marked *pending*, not skipped. The Android TV and Windows checks go ahead.
-- **Use the scripts.** `tools/check.sh` before committing code, `tools/release.sh` to release ([dev-tools.md](dev-tools.md)).
+- **Use the scripts and helper agents.** `tools/check.sh` before committing code (through the `test-runner` agent in Claude Code), `tools/release.sh` to release (through `release-checker`, only after the owner approves the tag), and `tools/tv-dev.sh` and `tools/emulator.sh` for hands-on checks ([dev-tools.md](dev-tools.md)).
 
 ### Never commit
 
@@ -26,7 +26,7 @@ Carried from earlier milestones, still to do:
 - **The `docs/protocol.md` read-through** (M9; the owner skipped it then).
 - **Idea:** "time in a mode" counts idle time with the app open, which dilutes per-minute stats. Count only active play in a later milestone.
 - **M10** is released (`m10` to `m10.2`) and in device testing ([checklists/m10.md](checklists/m10.md)), including three optional checks carried from M9.
-- **Offered, not done:** phone control of the TV's game picker and puzzle list (the results screen already has it); sub-agents on a cheaper model for checks and releases (next).
+- **Offered, not done:** phone control of the TV's game picker and puzzle list (the results screen already has it).
 
 ## Testing recipes
 

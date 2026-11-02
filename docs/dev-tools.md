@@ -203,6 +203,21 @@ tools/emulator.sh shot phone.png
 tools/emulator.sh stop; tools/tv-dev.sh stop   # always clean up
 ```
 
+## Helper agents for Claude Code
+
+Two sub-agents in [`.claude/agents/`](../.claude/agents) let Claude Code hand the most repetitive jobs to a cheaper model (Haiku). They run the scripts above and return only a short summary, so long test and build output never fills the main conversation. Claude Code loads them when it starts in this repository; `/agents` lists them.
+
+| Agent | Model | Does | Never does |
+| --- | --- | --- | --- |
+| [`test-runner`](../.claude/agents/test-runner.md) | Haiku | Runs `tools/check.sh` (all checks or some) and reports the PASS/FAIL lines, plus the failing tests' expected and actual lines | Edit files, fix anything, run git commands that change things, touch apps or devices |
+| [`release-checker`](../.claude/agents/release-checker.md) | Haiku | Runs `tools/release.sh <tag> "<notes>" --yes` for a tag **the user has approved**, or `--status <tag>`, and returns the summary | Choose or create tags itself, retry, work around a failed check, edit files or settings |
+
+How they're used:
+- Claude Code uses `test-runner` after code changes and before commits and releases, and `release-checker` once you say "tag m10.3". You can also ask for them by name ("use the test-runner").
+- The judgment work stays with the main model: writing code and tests, fixing failures, and the hands-on checks with screenshots (`tv-dev.sh`, `emulator.sh`), where most real bugs were found.
+- To use a different model, change the `model:` line in an agent's file (`haiku`, `sonnet`, `opus`).
+- The agent files are plain instructions around the scripts. Another company's coding agent can't load them, but it can follow the same scripts and this document.
+
 ## Moving development to another computer
 
 Everything needed to build and test is in the repository. A few things live outside it.
