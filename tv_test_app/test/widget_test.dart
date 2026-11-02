@@ -1142,6 +1142,60 @@ void puzzle() {
     expect(host.layouts['p1']!.labels[ControllerButton.a], 'Pick up');
   });
 
+  // m10.2 device test: in stick mode, moving the stick lost the focus and
+  // then A did nothing.
+  testWidgets('on the results the stick in any direction keeps the focus on a button', (tester) async {
+    final house = Puzzle.parse(File('../packages/puzzle_game/puzzles/house.json').readAsStringSync());
+    final game = PuzzleGame(house);
+    final fake = await pumpApp(tester);
+    final host = fake.gameHost;
+    tester
+        .state<NavigatorState>(find.byType(Navigator))
+        .push(
+          MaterialPageRoute<void>(
+            builder: (_) => PuzzleScreen(
+              choice: const PuzzleChoice(level: Level.easy),
+              game: game,
+            ),
+          ),
+        );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    for (var i = 0; i < game.pieces.length; i++) {
+      game.pieces[i]
+        ..state = PieceState.locked
+        ..pos = house.targetAt(i);
+    }
+    await tester.pump(const Duration(milliseconds: 16));
+    await tester.pump(const Duration(milliseconds: 16));
+    expect(find.text('Done!'), findsOneWidget);
+
+    Future<void> phone(GamepadState s) async {
+      host.setGamepad('p1', s);
+      await tester.pump(const Duration(milliseconds: 16));
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+
+    bool focused(String key) =>
+        Focus.of(tester.element(find.descendant(of: find.byKey(Key(key)), matching: find.byType(Text)).first)).hasFocus;
+
+    await phone(const GamepadState(mode: InputMode.sticks));
+    const pushes = [(0.0, -1.0), (0.0, 1.0), (1.0, 0.0), (-1.0, 0.0), (0.8, -0.8), (-0.8, 0.8), (0.8, 0.8)];
+    for (final (x, y) in pushes) {
+      await phone(GamepadState(leftX: x, leftY: y, mode: InputMode.sticks));
+      await phone(const GamepadState(mode: InputMode.sticks));
+      expect(focused('playAgain') || focused('resultsBack'), isTrue, reason: 'after a push to ($x, $y)');
+    }
+    // Back on Play again with the stick, A starts a new puzzle.
+    await phone(const GamepadState(leftX: -1, mode: InputMode.sticks));
+    await phone(const GamepadState(mode: InputMode.sticks));
+    expect(focused('playAgain'), isTrue);
+    await phone(const GamepadState(buttons: {GamepadButton.a}, mode: InputMode.sticks));
+    await phone(const GamepadState(mode: InputMode.sticks));
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.text('Done!'), findsNothing);
+  });
+
   testWidgets('on the results B on the phone goes back', (tester) async {
     final house = Puzzle.parse(File('../packages/puzzle_game/puzzles/house.json').readAsStringSync());
     final game = PuzzleGame(house);

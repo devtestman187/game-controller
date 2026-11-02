@@ -84,6 +84,10 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
     final result = _result;
     return Focus(
       autofocus: true,
+      // Not a stop for arrow keys or the phone's stick: on the results an
+      // up or down push moved the focus here, off the buttons, and A then
+      // pressed nothing (m10.2 device test).
+      skipTraversal: true,
       onKeyEvent: _onKey,
       child: Scaffold(
         body: GamepadMenu(
