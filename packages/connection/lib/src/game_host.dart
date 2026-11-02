@@ -14,6 +14,7 @@ final class GamePlayer {
     this.nickname,
     this.local = false,
     this.mode = InputMode.none,
+    this.simulated = false,
   });
 
   /// The controller ID (or a local player's own ID).
@@ -30,6 +31,10 @@ final class GamePlayer {
 
   final InputMode mode;
 
+  /// A simulated controller (the TV's test tool or `sim_controller`): its demo
+  /// input presses every button, so menus and pausing ignore it.
+  final bool simulated;
+
   /// This player's colour as 0xAARRGGBB.
   int get color => playerColor(number);
 
@@ -42,10 +47,11 @@ final class GamePlayer {
       other.number == number &&
       other.nickname == nickname &&
       other.local == local &&
-      other.mode == mode;
+      other.mode == mode &&
+      other.simulated == simulated;
 
   @override
-  int get hashCode => Object.hash(id, number, nickname, local, mode);
+  int get hashCode => Object.hash(id, number, nickname, local, mode, simulated);
 }
 
 /// Named delay stages (PRD v2 S7). Later hosts add their own (snapshot
@@ -290,7 +296,13 @@ class ServerGameHost implements GameHost {
     final list = <GamePlayer>[
       for (final c in server.snapshot.connected)
         if (c.player != null)
-          GamePlayer(id: c.controllerId, number: c.player!, nickname: c.name, mode: InputMode.of(c.input)),
+          GamePlayer(
+            id: c.controllerId,
+            number: c.player!,
+            nickname: c.name,
+            mode: InputMode.of(c.input),
+            simulated: c.platform == 'sim',
+          ),
       for (final l in _locals.values)
         GamePlayer(id: l.id, number: l.number, nickname: l.nickname, local: true, mode: InputMode.keyboard),
     ]..sort((a, b) => a.number.compareTo(b.number));

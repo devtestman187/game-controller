@@ -323,17 +323,24 @@ class LiveStats implements StatsService {
           timeS: time is num ? time.toDouble() : 0,
           modes: modes,
           winnerId: r.data['winner'] as String?,
+          // The puzzle (M11): a side or a team wins together, or a race is a draw.
+          winnerIds: {...((r.data['winners'] as List?) ?? const []).whereType<String>()},
+          draw: r.data['draw'] == true,
         );
-        // The puzzle: completion time when finished, pieces placed either way.
-        for (final id in modes.keys) {
-          if (r.data['finished'] == true && time is num) s.gameValue(r.game, 'completionS', id, time.toDouble());
-          if (r.data['placed'] case final num placed) s.gameValue(r.game, 'placed', id, placed.toDouble());
+        // Rounds per format (solo, team, 1v1, 2v1, 2v2). The completion time and
+        // pieces placed come with each player's result.
+        if (r.data['format'] case final String format) {
+          for (final id in modes.keys) {
+            s.gameEvent(r.game, 'rounds_$format', id);
+          }
         }
         _maybeAskRatings(r.game, modes.keys);
       case 'frames':
         s.frames((r.data['drawn'] as num?)?.toInt() ?? 0, (r.data['late'] as num?)?.toInt() ?? 0);
       case 'player_result':
-        // The puzzle's per-player numbers (M10): rotation time, overshoots, …
+        // The puzzle's per-player numbers (M10, M11): rotation time, overshoots,
+        // pieces placed, completion time, help calls, solo big-piece carries,
+        // win and draw, …
         final id = r.playerId;
         if (id == null) return;
         for (final MapEntry(:key, :value) in r.data.entries) {

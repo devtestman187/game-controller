@@ -64,7 +64,7 @@ Future<void> main(List<String> args) async {
       controllerId: id,
       name: options['name'] ?? 'Simulated controller',
       platform: 'sim',
-      appVersion: '0.10.0',
+      appVersion: '0.11.0',
       capabilities: options.containsKey('metrics') ? const [Capability.metrics, Capability.rating] : const [],
       device: const DeviceInfo(kind: DeviceInfo.sim),
     ),

@@ -41,7 +41,7 @@ final class HostViewState {
     this.advertisedName,
     this.advertiseError,
     this.serverError,
-    this.sim,
+    this.sims = const [],
   });
 
   final String hostName;
@@ -56,8 +56,9 @@ final class HostViewState {
   /// Set if the server couldn't start at all.
   final String? serverError;
 
-  /// The built-in simulated controller, or null when it's off.
-  final ClientSnapshot? sim;
+  /// The built-in simulated controllers (up to [HostController.maxSims]),
+  /// for checking 4-player layouts with fewer phones (M11).
+  final List<ClientSnapshot> sims;
 
   /// Connected controllers by player number (PRD T9).
   List<ControllerInfo> get players =>
@@ -69,7 +70,16 @@ abstract class HostController {
   HostViewState get state;
   Stream<HostViewState> get changes;
   void newPairingCode();
-  void toggleSimulatedController();
+
+  /// How many simulated controllers can run at once.
+  static const maxSims = 3;
+
+  /// Adds a simulated controller (up to [maxSims]): it pairs on its own and
+  /// presses every button in a loop.
+  void addSimulatedController();
+
+  /// Stops every simulated controller.
+  void stopSimulatedControllers();
   void dropAllConnections();
 
   /// Forgets paired phones that aren't connected, so they need the code
@@ -160,10 +170,7 @@ class LiveHostController implements HostController {
   BonsoirBroadcast? _broadcast;
   StreamSubscription<BonsoirBroadcastEvent>? _broadcastSub;
   Timer? _addressTimer;
-  ControllerClient? _sim;
-  StreamSubscription<ClientSnapshot>? _simSub;
-  StreamSubscription<HapticEventMessage>? _simHapticsSub;
-  Timer? _demo;
+  final _sims = <_Sim>[];
   bool _disposed = false;
 
   @override
@@ -175,7 +182,7 @@ class LiveHostController implements HostController {
     advertisedName: _advertisedName,
     advertiseError: _advertiseError,
     serverError: _serverError,
-    sim: _sim?.snapshot,
+    sims: [for (final s in _sims) s.client.snapshot],
   );
 
   @override
@@ -235,43 +242,37 @@ class LiveHostController implements HostController {
   Stream<String> get gameSounds => _gameHost.sounds;
 
   @override
-  void toggleSimulatedController() {
-    final running = _sim;
-    if (running != null) {
-      _log('Stopping the simulated controller');
-      _demo?.cancel();
-      _demo = null;
-      _simSub?.cancel();
-      _simHapticsSub?.cancel();
-      _sim = null;
-      running.dispose();
-      _emit();
-      return;
-    }
+  void addSimulatedController() {
     final port = _server.port;
-    if (port == null) return;
-    _log('Starting the simulated controller');
-    final sim = ControllerClient(
+    if (port == null || _sims.length >= HostController.maxSims) return;
+    // The first free slot, so the IDs stay the same after a stop.
+    var n = 1;
+    while (_sims.any((s) => s.slot == n)) {
+      n++;
+    }
+    _log('Starting simulated controller $n');
+    final client = ControllerClient(
       identity: ControllerIdentity(
-        controllerId: 'sim-${_hostId.substring(0, 6)}',
-        name: 'Simulated controller',
+        controllerId: 'sim-${_hostId.substring(0, 6)}${n == 1 ? '' : '-$n'}',
+        name: n == 1 ? 'Simulated controller' : 'Simulated controller $n',
         platform: 'sim',
         appVersion: appVersion,
       ),
-      log: _logBuffer.sink('sim'),
+      log: _logBuffer.sink('sim$n'),
     );
-    _sim = sim;
-    _simSub = sim.changes.listen((s) {
+    final sim = _Sim(n, client);
+    sim.sub = client.changes.listen((s) {
       // Once paired, press every button and direction in a loop, so the input
-      // display can be checked without a phone.
-      if (s.isConnected) _demo ??= runDemoInput(sim);
+      // display and the games can be checked without a phone.
+      if (s.isConnected) sim.demo ??= runDemoInput(client);
       _emit();
     });
     // So the log shows what a phone would feel.
-    _simHapticsSub = sim.hapticEvents.listen(
-      (e) => _logBuffer.add('sim', 'Felt ${e.event.name} (${(e.intensity * 100).round()}%, ${e.durationMs} ms)'),
+    sim.hapticsSub = client.hapticEvents.listen(
+      (e) => _logBuffer.add('sim$n', 'Felt ${e.event.name} (${(e.intensity * 100).round()}%, ${e.durationMs} ms)'),
     );
-    sim.connect(
+    _sims.add(sim);
+    client.connect(
       HostAddress(addresses: ['127.0.0.1'], port: port),
       code: _server.pairingCode,
     );
@@ -279,13 +280,23 @@ class LiveHostController implements HostController {
   }
 
   @override
+  void stopSimulatedControllers() {
+    if (_sims.isEmpty) return;
+    _log('Stopping ${_sims.length} simulated controller${_sims.length == 1 ? '' : 's'}');
+    for (final s in _sims) {
+      unawaited(s.stop());
+    }
+    _sims.clear();
+    _emit();
+  }
+
+  @override
   Future<void> dispose() async {
     _disposed = true;
     _addressTimer?.cancel();
-    _demo?.cancel();
-    await _simSub?.cancel();
-    await _simHapticsSub?.cancel();
-    await _sim?.dispose();
+    for (final s in _sims) {
+      await s.stop();
+    }
     await _broadcastSub?.cancel();
     try {
       await _broadcast?.stop();
@@ -467,4 +478,22 @@ String latencyText(ControllerInfo c) {
   final session = c.inputLatencySession;
   return 'avg ${l.avgMs} · p95 ${l.p95Ms} · max ${l.maxMs} ms (± ${c.latencyErrorMs} ms)'
       '${session == null ? '' : '; session avg ${session.avgMs} ms over ${session.samples} states'}';
+}
+
+/// One built-in simulated controller.
+class _Sim {
+  _Sim(this.slot, this.client);
+
+  final int slot;
+  final ControllerClient client;
+  StreamSubscription<ClientSnapshot>? sub;
+  StreamSubscription<HapticEventMessage>? hapticsSub;
+  Timer? demo;
+
+  Future<void> stop() async {
+    demo?.cancel();
+    await sub?.cancel();
+    await hapticsSub?.cancel();
+    await client.dispose();
+  }
 }

@@ -28,26 +28,49 @@ class PuzzleView extends StatelessWidget {
   );
 }
 
-/// The field in [box]: the scale and the offset of its top left.
-({double scale, Offset origin}) fieldIn(Size box) {
-  final scale = min(box.width / fieldSize.width, box.height / fieldSize.height);
-  final origin = Offset((box.width - fieldSize.width * scale) / 2, (box.height - fieldSize.height * scale) / 2);
+/// Draws a whole match (S8): one board as [PuzzleView] does, or the split
+/// screen, with the clock and both sides' counts along the top and each
+/// side's board and tray in its own half, the trays at the outer edges.
+class MatchView extends StatelessWidget {
+  const MatchView({super.key, required this.puzzle, required this.snapshot, this.timeLimitS});
+
+  final Puzzle puzzle;
+  final MatchSnapshot snapshot;
+  final int? timeLimitS;
+
+  @override
+  Widget build(BuildContext context) => CustomPaint(
+    key: const Key('puzzleView'),
+    size: Size.infinite,
+    painter: snapshot.split
+        ? MatchPainter(puzzle, snapshot, timeLimitS: timeLimitS)
+        : PuzzlePainter(puzzle, snapshot.boards.single, timeLimitS: timeLimitS),
+  );
+}
+
+/// The field of size [field] in [box]: the scale and the offset of its top
+/// left.
+({double scale, Offset origin}) fieldIn(Size box, [Size field = fieldSize]) {
+  final scale = min(box.width / field.width, box.height / field.height);
+  final origin = Offset((box.width - field.width * scale) / 2, (box.height - field.height * scale) / 2);
   return (scale: scale, origin: origin);
 }
 
-class PuzzlePainter extends CustomPainter {
-  PuzzlePainter(this.puzzle, this.s, {this.timeLimitS});
+const _background = Color(0xFF14181F);
+const _wrong = Color(0xFFE53935);
+
+/// Where each half of the split screen is drawn, in field units ([fieldSize]):
+/// below the clock strip.
+const splitLeftRect = Rect.fromLTWH(0, hudHeight, 80, 80);
+const splitRightRect = Rect.fromLTWH(80, hudHeight, 80, 80);
+
+/// The split screen: the clock strip, then each side in its half.
+class MatchPainter extends CustomPainter {
+  MatchPainter(this.puzzle, this.s, {this.timeLimitS});
 
   final Puzzle puzzle;
-  final PuzzleSnapshot s;
+  final MatchSnapshot s;
   final int? timeLimitS;
-
-  static const _background = Color(0xFF14181F);
-  static const _board = Color(0xFF242B36);
-  static const _tray = Color(0xFF1C222B);
-  static const _outlineGrey = Color(0xFF9AA5B1);
-  static const _wrong = Color(0xFFE53935);
-  static const _right = Color(0xFF43D17A);
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -58,6 +81,85 @@ class PuzzlePainter extends CustomPainter {
       ..translate(f.origin.dx, f.origin.dy)
       ..scale(f.scale);
     canvas.clipRect(Offset.zero & fieldSize);
+    final left = s.boards[0];
+    final right = s.boards[1];
+    for (final (rect, board, field) in [
+      (splitLeftRect, left, PuzzleField.left),
+      (splitRightRect, right, PuzzleField.right),
+    ]) {
+      canvas
+        ..save()
+        ..translate(rect.left, rect.top);
+      PuzzlePainter(puzzle, board, field: field, hud: false).paint(canvas, rect.size);
+      canvas.restore();
+    }
+    canvas.drawLine(
+      const Offset(80, hudHeight),
+      Offset(80, fieldSize.height),
+      Paint()
+        ..color = Colors.white24
+        ..strokeWidth = 0.4,
+    );
+
+    final secondsLeft = (left.timeLeftMs / 1000).ceil();
+    final clock = '${secondsLeft ~/ 60}:${(secondsLeft % 60).toString().padLeft(2, '0')}';
+    final warn = left.warning && left.phase == PuzzlePhase.playing;
+    final total = puzzle.pieces.length;
+    _text(canvas, 'LEFT  ${left.placed}/$total', const Offset(3, 5), 4.2, Colors.white, align: TextAlign.left);
+    _text(canvas, clock, Offset(fieldSize.width / 2, 5), 5.5, warn ? _wrong : Colors.white, bold: true);
+    _text(
+      canvas,
+      'RIGHT  ${right.placed}/$total',
+      Offset(fieldSize.width - 3, 5),
+      4.2,
+      Colors.white,
+      align: TextAlign.right,
+    );
+    final limit = timeLimitS;
+    if (limit != null && limit > 0) {
+      final frac = (left.timeLeftMs / 1000 / limit).clamp(0.0, 1.0);
+      final width = 60.0 * frac;
+      canvas.drawRect(
+        Rect.fromLTWH(fieldSize.width / 2 - width / 2, hudHeight - 1.2, width, 0.8),
+        Paint()..color = warn ? _wrong : Colors.white24,
+      );
+    }
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(MatchPainter old) => !identical(old.s, s);
+}
+
+class PuzzlePainter extends CustomPainter {
+  PuzzlePainter(this.puzzle, this.s, {this.timeLimitS, this.field = PuzzleField.single, this.hud = true});
+
+  final Puzzle puzzle;
+  final PuzzleSnapshot s;
+  final int? timeLimitS;
+
+  /// The side's world: the one-board layout or a half of the split screen.
+  final PuzzleField field;
+
+  /// The clock and the count along the top (the split screen draws its own).
+  final bool hud;
+
+  static const _board = Color(0xFF242B36);
+  static const _tray = Color(0xFF1C222B);
+  static const _outlineGrey = Color(0xFF9AA5B1);
+  static const _right = Color(0xFF43D17A);
+
+  Offset _targetAt(int i) => field.board.topLeft + puzzle.pieces[i].target;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.drawRect(Offset.zero & size, Paint()..color = _background);
+    final f = fieldIn(size, field.size);
+    canvas
+      ..save()
+      ..translate(f.origin.dx, f.origin.dy)
+      ..scale(f.scale);
+    canvas.clipRect(Offset.zero & field.size);
 
     _panels(canvas);
     // The picture in its own order: each target shows the piece locked in
@@ -80,16 +182,16 @@ class PuzzlePainter extends CustomPainter {
     for (final p in s.players) {
       _dot(canvas, p);
     }
-    _hud(canvas);
+    if (hud) _hud(canvas);
     canvas.restore();
   }
 
   void _panels(Canvas canvas) {
     canvas.drawRRect(
-      RRect.fromRectAndRadius(boardRect.inflate(1.5), const Radius.circular(2)),
+      RRect.fromRectAndRadius(field.board.inflate(1.5), const Radius.circular(2)),
       Paint()..color = _board,
     );
-    canvas.drawRRect(RRect.fromRectAndRadius(trayRect, const Radius.circular(2)), Paint()..color = _tray);
+    canvas.drawRRect(RRect.fromRectAndRadius(field.tray, const Radius.circular(2)), Paint()..color = _tray);
   }
 
   Path _path(PieceShape shape, Offset at, double angle) {
@@ -99,7 +201,7 @@ class PuzzlePainter extends CustomPainter {
 
   void _outline(Canvas canvas, int i) {
     final spec = puzzle.pieces[i];
-    final path = _path(spec.shape, puzzle.targetAt(i), spec.targetAngle);
+    final path = _path(spec.shape, _targetAt(i), spec.targetAngle);
     final ready = s.readyTargets.contains(i);
     final hint = s.hintTargets.contains(i);
     final colour = puzzle.level.colouredOutlines ? Color(spec.color) : _outlineGrey;
@@ -127,7 +229,7 @@ class PuzzlePainter extends CustomPainter {
     var best = 0;
     var bestDistance = double.infinity;
     for (final i in Iterable<int>.generate(puzzle.pieces.length)) {
-      final d = (puzzle.targetAt(i) - at).distance;
+      final d = (_targetAt(i) - at).distance;
       if (d < bestDistance) {
         best = i;
         bestDistance = d;
@@ -156,9 +258,44 @@ class PuzzlePainter extends CustomPainter {
             ? _wrong
             : Colors.black.withValues(alpha: 0.5),
     );
+    if (p.calling) _callFlash(canvas, path, at, p);
     // Right and wrong also show as a mark, not only a colour.
     if (wrong) _mark(canvas, at, '✗', _wrong);
     if (p.state == PieceState.locked && !_insideOpenTarget(at)) _mark(canvas, at, '✓', _right, small: true);
+  }
+
+  /// A big piece carried alone flashes its edge toward each free teammate,
+  /// in their colour, about twice a second.
+  void _callFlash(Canvas canvas, Path path, Offset at, PieceView p) {
+    final pulse = 0.5 + 0.5 * sin(s.timeLeftMs / 1000 * 2 * pi * 2);
+    final reach = field.size.longestSide * 2;
+    for (final mate in s.players) {
+      if (p.holders.contains(mate.number)) continue;
+      final toward = Offset(mate.x, mate.y) - at;
+      if (toward.distance < 0.01) continue;
+      final dir = toward / toward.distance;
+      final side = Offset(-dir.dy, dir.dx);
+      // The half of the piece facing the teammate.
+      final half = Path()
+        ..addPolygon([
+          at + side * reach,
+          at + side * reach + dir * reach,
+          at - side * reach + dir * reach,
+          at - side * reach,
+        ], true);
+      canvas
+        ..save()
+        ..clipPath(half);
+      canvas.drawPath(
+        path,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.6
+          ..color = Color(playerColor(mate.number)).withValues(alpha: 0.35 + 0.65 * pulse)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 0.6),
+      );
+      canvas.restore();
+    }
   }
 
   /// Whether [at] is inside the outline of a target nothing is locked in
@@ -169,7 +306,7 @@ class PuzzlePainter extends CustomPainter {
         if (p.state == PieceState.locked) _targetOf(p),
     };
     for (final (i, spec) in puzzle.pieces.indexed) {
-      if (!filled.contains(i) && _path(spec.shape, puzzle.targetAt(i), spec.targetAngle).contains(at)) return true;
+      if (!filled.contains(i) && _path(spec.shape, _targetAt(i), spec.targetAngle).contains(at)) return true;
     }
     return false;
   }
@@ -192,19 +329,19 @@ class PuzzlePainter extends CustomPainter {
         ..strokeWidth = 0.4
         ..color = Colors.white,
     );
-    _text(canvas, '${p.number}', at, r * 1.2, const Color(0xFF14181F), bold: true);
+    _text(canvas, '${p.number}', at, r * 1.2, _background, bold: true);
   }
 
   void _hud(Canvas canvas) {
     final secondsLeft = (s.timeLeftMs / 1000).ceil();
     final clock = '${secondsLeft ~/ 60}:${(secondsLeft % 60).toString().padLeft(2, '0')}';
     final warn = s.warning && s.phase == PuzzlePhase.playing;
-    _text(canvas, puzzle.name, Offset(boardRect.left + 2, 5), 4, Colors.white70, align: TextAlign.left);
-    _text(canvas, clock, Offset(fieldSize.width / 2, 5), 5.5, warn ? _wrong : Colors.white, bold: true);
+    _text(canvas, puzzle.name, Offset(field.board.left + 2, 5), 4, Colors.white70, align: TextAlign.left);
+    _text(canvas, clock, Offset(field.size.width / 2, 5), 5.5, warn ? _wrong : Colors.white, bold: true);
     _text(
       canvas,
       '${s.placed}/${s.pieces.length} placed',
-      Offset(trayRect.right - 2, 5),
+      Offset(field.tray.right - 2, 5),
       4,
       Colors.white70,
       align: TextAlign.right,
@@ -212,35 +349,35 @@ class PuzzlePainter extends CustomPainter {
     final limit = timeLimitS;
     if (limit != null && limit > 0) {
       final f = (s.timeLeftMs / 1000 / limit).clamp(0.0, 1.0);
-      final bar = Rect.fromLTWH(boardRect.left, hudHeight - 1.2, (trayRect.right - boardRect.left) * f, 0.8);
+      final bar = Rect.fromLTWH(field.board.left, field.top - 1.2, (field.tray.right - field.board.left) * f, 0.8);
       canvas.drawRect(bar, Paint()..color = warn ? _wrong : Colors.white24);
     }
   }
 
-  void _text(
-    Canvas canvas,
-    String text,
-    Offset at,
-    double size,
-    Color color, {
-    bool bold = false,
-    TextAlign align = TextAlign.center,
-  }) {
-    final painter = TextPainter(
-      text: TextSpan(
-        text: text,
-        style: TextStyle(fontSize: size, color: color, fontWeight: bold ? FontWeight.bold : FontWeight.w500, height: 1),
-      ),
-      textDirection: TextDirection.ltr,
-    )..layout();
-    final dx = switch (align) {
-      TextAlign.left => 0.0,
-      TextAlign.right => -painter.width,
-      _ => -painter.width / 2,
-    };
-    painter.paint(canvas, at + Offset(dx, -painter.height / 2));
-  }
-
   @override
   bool shouldRepaint(PuzzlePainter old) => !identical(old.s, s);
+}
+
+void _text(
+  Canvas canvas,
+  String text,
+  Offset at,
+  double size,
+  Color color, {
+  bool bold = false,
+  TextAlign align = TextAlign.center,
+}) {
+  final painter = TextPainter(
+    text: TextSpan(
+      text: text,
+      style: TextStyle(fontSize: size, color: color, fontWeight: bold ? FontWeight.bold : FontWeight.w500, height: 1),
+    ),
+    textDirection: TextDirection.ltr,
+  )..layout();
+  final dx = switch (align) {
+    TextAlign.left => 0.0,
+    TextAlign.right => -painter.width,
+    _ => -painter.width / 2,
+  };
+  painter.paint(canvas, at + Offset(dx, -painter.height / 2));
 }

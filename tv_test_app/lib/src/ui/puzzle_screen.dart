@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -5,7 +7,10 @@ import 'package:puzzle_game/puzzle_game.dart';
 
 import '../keyboard_player.dart';
 import '../providers.dart';
-import 'gamepad_menu.dart';
+import 'controller_menus.dart';
+import 'join_screen.dart';
+import 'latency_screen.dart' show PlayerBadge;
+import 'pause_menu.dart';
 import 'tv_button.dart';
 
 /// Which puzzle to play: a specific one, or a random one of a level.
@@ -16,17 +21,34 @@ final class PuzzleChoice {
   final String? puzzleId;
 }
 
-/// Shape Race for one player (PRD v2 M10): the puzzle, played through the
-/// game host, then the result (the time, or the pieces placed) with Play
-/// again and Back. On Windows the keyboard can play too (arrows, Space, X and
-/// Z).
+/// Shape Race (PRD v2 M10, M11): the match, played through the game host,
+/// with Start to pause, then the results: the winner, each side's time or
+/// pieces placed, and Rematch (Play again on one board), Change teams and
+/// Back (T14). The phones work the results like the remote. On Windows the
+/// keyboard can play too (arrows, Space, X and Z).
 class PuzzleScreen extends ConsumerStatefulWidget {
-  const PuzzleScreen({super.key, required this.choice, this.game});
+  const PuzzleScreen({
+    super.key,
+    required this.choice,
+    required this.teams,
+    this.keyboard,
+    this.match,
+    this.avoidPuzzleId,
+  });
 
   final PuzzleChoice choice;
 
-  /// The game to run. Tests pass one in.
-  final PuzzleGame? game;
+  /// Each player's side, from the join screen.
+  final Map<String, PuzzleSide> teams;
+
+  /// The keyboard player, carried over from the join screen.
+  final KeyboardPlayer? keyboard;
+
+  /// The match to run. Tests pass one in.
+  final PuzzleMatch? match;
+
+  /// A rematch of a random puzzle picks another one than this, if it can.
+  final String? avoidPuzzleId;
 
   @override
   ConsumerState<PuzzleScreen> createState() => _PuzzleScreenState();
@@ -34,19 +56,21 @@ class PuzzleScreen extends ConsumerStatefulWidget {
 
 class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
   late final KeyboardPlayer _keyboard;
-  final _againFocus = FocusNode(debugLabel: 'playAgain');
-  PuzzleResult? _result;
+  final _againFocus = FocusNode(debugLabel: 'rematch');
+  MatchResult? _result;
   Puzzle? _puzzle;
+  bool _handedOver = false;
 
   @override
   void initState() {
     super.initState();
-    _keyboard = KeyboardPlayer(ref.read(gameHostProvider), onJoined: (_) => setState(() {}));
+    // Made here, not lazily: dispose() can't read providers any more.
+    _keyboard = widget.keyboard ?? KeyboardPlayer(ref.read(gameHostProvider), onJoined: (_) => setState(() {}));
   }
 
   @override
   void dispose() {
-    _keyboard.dispose();
+    if (!_handedOver) _keyboard.dispose();
     _againFocus.dispose();
     super.dispose();
   }
@@ -62,68 +86,94 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
 
   Puzzle? _pick(PuzzleLibrary library) {
     final id = widget.choice.puzzleId;
-    return _puzzle ??= id != null ? library.byId(id) : library.random(widget.choice.level);
+    if (id != null) return _puzzle ??= library.byId(id);
+    if (_puzzle != null) return _puzzle;
+    final all = library.ofLevel(widget.choice.level);
+    final others = all.where((p) => p.id != widget.avoidPuzzleId).toList();
+    final from = others.isEmpty ? all : others;
+    return _puzzle = from.isEmpty ? null : from[Random().nextInt(from.length)];
   }
 
   // The screen's key handler holds the focus, so the button's autofocus
   // would be ignored: move the focus there, for the remote's OK button.
-  void _finished(PuzzleResult r) {
+  void _finished(MatchResult r) {
     setState(() => _result = r);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _againFocus.requestFocus();
     });
   }
 
-  void _again() =>
-      Navigator.of(context)
-          .pushReplacement(MaterialPageRoute<void>(builder: (_) => PuzzleScreen(choice: widget.choice)));
+  void _replaceWith(Widget screen) {
+    _handedOver = true;
+    Navigator.of(context).pushReplacement(MaterialPageRoute<void>(builder: (_) => screen));
+  }
+
+  /// Same teams; a random puzzle becomes another random one.
+  void _rematch() => _replaceWith(
+    PuzzleScreen(choice: widget.choice, teams: widget.teams, keyboard: _keyboard, avoidPuzzleId: _puzzle?.id),
+  );
+
+  void _changeTeams() => _replaceWith(JoinScreen(choice: widget.choice, teams: widget.teams, keyboard: _keyboard));
 
   @override
   Widget build(BuildContext context) {
-    final puzzle = widget.game?.puzzle ?? ref.watch(puzzleLibraryProvider).whenOrNull(data: _pick);
+    final puzzle = widget.match?.puzzle ?? ref.watch(puzzleLibraryProvider).whenOrNull(data: _pick);
     final result = _result;
-    return Focus(
-      autofocus: true,
-      // Not a stop for arrow keys or the phone's stick: on the results an
-      // up or down push moved the focus here, off the buttons, and A then
-      // pressed nothing (m10.2 device test).
-      skipTraversal: true,
-      onKeyEvent: _onKey,
-      child: Scaffold(
-        body: GamepadMenu(
-          // On the results, the phones work Play again and Back too.
-          enabled: result != null,
-          onBack: () => Navigator.of(context).maybePop(),
-          child: SafeArea(
+    return ControlsClaim(
+      // The results are a menu like any other; while playing, the game reads
+      // the controllers.
+      controls: result == null ? const Controls.game() : const Controls.menus(),
+      child: Focus(
+        autofocus: true,
+        // Not a stop for arrow keys or the phone's stick: on the results an
+        // up or down push moved the focus here, off the buttons, and A then
+        // pressed nothing (m10.2 device test).
+        skipTraversal: true,
+        onKeyEvent: _onKey,
+        child: Scaffold(
+          body: SafeArea(
             child: puzzle == null
                 ? const Center(child: CircularProgressIndicator())
-                : Stack(
-                    children: [
-                      Positioned.fill(
-                        child: PuzzlePlayView(
-                          host: ref.read(gameHostProvider),
-                          puzzle: puzzle,
-                          game: widget.game,
-                          settings: () => ref.read(puzzleSettingsProvider),
-                          onFinished: _finished,
-                        ),
-                      ),
-                      if (result != null)
-                        Center(
-                          child: _Results(result: result, onAgain: _again, againFocus: _againFocus),
-                        ),
-                      if (result == null)
-                        Positioned(
-                          right: 12,
-                          bottom: 6,
-                          child: Text(
-                            keyboardPlayerAvailable && _keyboard.player == null
-                                ? 'Arrows, Space, X and Z: play on the keyboard · Esc: leave'
-                                : 'Back: leave',
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.white60),
+                : Pausable(
+                    enabled: result == null,
+                    builder: (context, paused) => Stack(
+                      children: [
+                        Positioned.fill(
+                          child: PuzzlePlayView(
+                            host: ref.read(gameHostProvider),
+                            puzzle: puzzle,
+                            teams: widget.teams,
+                            match: widget.match,
+                            paused: paused,
+                            settings: () => ref.read(puzzleSettingsProvider),
+                            onFinished: _finished,
                           ),
                         ),
-                    ],
+                        if (result != null)
+                          Center(
+                            child: _Results(
+                              result: result,
+                              teams: widget.teams,
+                              total: puzzle.pieces.length,
+                              againFocus: _againFocus,
+                              onAgain: _rematch,
+                              onChangeTeams: _changeTeams,
+                            ),
+                          ),
+                        if (result == null)
+                          Positioned(
+                            right: 12,
+                            bottom: 6,
+                            child: Text(
+                              keyboardPlayerAvailable && _keyboard.player == null
+                                  ? 'Arrows, Space, X and Z: play on the keyboard · Start on a phone: pause · '
+                                        'Esc: leave'
+                                  : 'Start on a phone: pause · Back: leave',
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.white60),
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
           ),
         ),
@@ -132,17 +182,66 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
   }
 }
 
-class _Results extends StatelessWidget {
-  const _Results({required this.result, required this.onAgain, required this.againFocus});
+class _Results extends ConsumerWidget {
+  const _Results({
+    required this.result,
+    required this.teams,
+    required this.total,
+    required this.againFocus,
+    required this.onAgain,
+    required this.onChangeTeams,
+  });
 
-  final PuzzleResult result;
-  final VoidCallback onAgain;
+  final MatchResult result;
+  final Map<String, PuzzleSide> teams;
+  final int total;
   final FocusNode againFocus;
+  final VoidCallback onAgain;
+  final VoidCallback onChangeTeams;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final text = Theme.of(context).textTheme;
-    final finished = result.finished;
+    final players = ref.watch(gamePlayersProvider);
+    final race = result.format.split;
+    final (title, colour) = race
+        ? switch (result.winner) {
+            PuzzleSide.left => ('Left wins!', Colors.greenAccent),
+            PuzzleSide.right => ('Right wins!', Colors.greenAccent),
+            null => ('Draw!', Colors.amberAccent),
+          }
+        : result.sides.values.single.finished
+        ? ('Done!', Colors.greenAccent)
+        : ('Time\'s up!', Colors.amberAccent);
+
+    String line(PuzzleResult r) =>
+        r.finished ? '${r.timeS!.toStringAsFixed(1)} seconds' : '${r.placed} of $total pieces placed';
+
+    Widget sideRow(PuzzleSide side, PuzzleResult r) {
+      final badges = [
+        for (final p in players)
+          if (teams[p.id] == side || (!race && teams.containsKey(p.id))) p,
+      ];
+      final won = race && result.winner == side;
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (race)
+              SizedBox(width: 80, child: Text(side == PuzzleSide.left ? 'Left' : 'Right', style: text.titleLarge)),
+            for (final p in badges) ...[PlayerBadge(number: p.number, size: 30), const SizedBox(width: 6)],
+            const SizedBox(width: 8),
+            Text(
+              line(r),
+              key: Key('puzzleResultLine-${side.name}'),
+              style: text.headlineSmall?.copyWith(color: won ? Colors.greenAccent : Colors.white),
+            ),
+          ],
+        ),
+      );
+    }
+
     return DecoratedBox(
       key: const Key('puzzleResults'),
       decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.82), borderRadius: BorderRadius.circular(20)),
@@ -152,30 +251,29 @@ class _Results extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              finished ? 'Done!' : 'Time\'s up!',
-              style: text.displaySmall?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: finished ? Colors.greenAccent : Colors.amberAccent,
-              ),
+              title,
+              key: const Key('puzzleResultTitle'),
+              style: text.displaySmall?.copyWith(fontWeight: FontWeight.bold, color: colour),
             ),
             const SizedBox(height: 8),
-            Text(
-              finished
-                  ? '${result.timeS!.toStringAsFixed(1)} seconds'
-                  : '${result.placed} of ${result.total} pieces placed',
-              key: const Key('puzzleResultLine'),
-              style: text.headlineSmall?.copyWith(color: Colors.white),
-            ),
+            for (final MapEntry(key: side, value: r) in result.sides.entries) sideRow(side, r),
             const SizedBox(height: 24),
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 TvButton(
-                  key: const Key('playAgain'),
-                  label: 'Play again',
+                  key: Key(race ? 'rematch' : 'playAgain'),
+                  label: race ? 'Rematch' : 'Play again',
                   icon: Icons.replay,
                   focusNode: againFocus,
                   onPressed: onAgain,
+                ),
+                const SizedBox(width: 12),
+                TvButton(
+                  key: const Key('changeTeams'),
+                  label: 'Change teams',
+                  icon: Icons.group,
+                  onPressed: onChangeTeams,
                 ),
                 const SizedBox(width: 12),
                 TvButton(

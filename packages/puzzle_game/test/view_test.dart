@@ -27,11 +27,11 @@ PuzzleSnapshot busySnapshot() {
   // Walls into place, the door on a wrong spot, then hold the sun.
   p.pos = g.pieces[0].pos;
   tap();
-  p.pos = g.puzzle.targetAt(0);
+  p.pos = g.targetAt(0);
   tap();
   p.pos = g.pieces[2].pos;
   tap();
-  p.pos = g.puzzle.targetAt(3);
+  p.pos = g.targetAt(3);
   tap();
   p.pos = g.pieces[3].pos;
   tap();
@@ -137,8 +137,8 @@ void main() {
 
     Future<PuzzlePlayViewState> pumpPlay(
       WidgetTester tester, {
-      PuzzleGame? game,
-      void Function(PuzzleResult)? done,
+      PuzzleMatch? match,
+      void Function(MatchResult)? done,
     }) async {
       host = MemoryGameHost()
         ..setPlayer(const GamePlayer(id: 'p1', number: 1, nickname: 'Phone', mode: InputMode.dpad))
@@ -150,9 +150,10 @@ void main() {
         MaterialApp(
           home: PuzzlePlayView(
             host: host,
-            puzzle: game?.puzzle ?? puzzle,
+            puzzle: match?.puzzle ?? puzzle,
             settings: () => PuzzleSettings.defaults,
-            game: game,
+            teams: const {'p1': PuzzleSide.left},
+            match: match,
             onFinished: done,
           ),
         ),
@@ -180,7 +181,8 @@ void main() {
       expect(host.statuses['p1']!.text, matches(RegExp(r'^[12]:[0-5][0-9] left$')));
 
       // Pick up the roof and turn it: the panel turns with it.
-      state.game.player('p1')!.pos = state.game.pieces[1].pos;
+      final g = state.match.sides.single.game;
+      g.player('p1')!.pos = g.pieces[1].pos;
       await press(tester, {GamepadButton.a});
       expect(host.sounds, contains('pickup'));
       final status = host.statuses['p1']!;
@@ -194,17 +196,17 @@ void main() {
 
     testWidgets('snap and wrong drops buzz differently and play their sounds, through the host', (tester) async {
       final state = await pumpPlay(tester);
-      final g = state.game;
+      final g = state.match.sides.single.game;
       // The walls into place.
       g.player('p1')!.pos = g.pieces[0].pos;
       await press(tester, {GamepadButton.a});
-      g.player('p1')!.pos = g.puzzle.targetAt(0);
+      g.player('p1')!.pos = g.targetAt(0);
       await tester.pump(const Duration(milliseconds: 16));
       await press(tester, {GamepadButton.a});
       // The door onto the sun's outline: wrong.
       g.player('p1')!.pos = g.pieces[2].pos;
       await press(tester, {GamepadButton.a});
-      g.player('p1')!.pos = g.puzzle.targetAt(3);
+      g.player('p1')!.pos = g.targetAt(3);
       await tester.pump(const Duration(milliseconds: 16));
       await press(tester, {GamepadButton.a});
       final events = host.haptics.map((h) => h.$2.event).toList();
@@ -213,30 +215,39 @@ void main() {
       expect(host.records.map((r) => r.name), containsAll(['round_start', 'snap', 'wrong_drop']));
     });
 
-    testWidgets('finishing reports the result and the metrics; leaving puts the phone back', (tester) async {
-      PuzzleResult? result;
+    testWidgets('finishing reports the result and the metrics; leaving hides the panel and leaves the buttons', (
+      tester,
+    ) async {
+      MatchResult? result;
       final state = await pumpPlay(tester, done: (r) => result = r);
-      final g = state.game;
+      final g = state.match.sides.single.game;
       for (var i = 0; i < g.pieces.length; i++) {
         g.player('p1')!.pos = g.pieces[i].pos;
         await press(tester, {GamepadButton.a});
-        g.player('p1')!.pos = g.puzzle.targetAt(i);
+        g.player('p1')!.pos = g.targetAt(i);
         g.pieces[i].angle = g.puzzle.pieces[i].targetAngle;
         await tester.pump(const Duration(milliseconds: 16));
         await press(tester, {GamepadButton.a});
       }
-      expect(result?.finished, isTrue);
-      expect(result?.timeS, isNotNull);
+      expect(result?.format, MatchFormat.solo);
+      expect(result?.sides[PuzzleSide.left]?.finished, isTrue);
+      expect(result?.sides[PuzzleSide.left]?.timeS, isNotNull);
       expect(host.sounds, contains('success'));
+      expect(host.haptics.map((h) => h.$2.event), contains(HapticEvent.success));
       final end = host.records.firstWhere((r) => r.name == 'round_end');
-      expect(end.data['finished'], isTrue);
-      expect(end.data['winner'], 'p1');
+      expect(end.data['format'], 'solo');
+      expect(end.data['winners'], ['p1']);
       expect(end.data['modes'], {'p1': 'dpad'});
       final metrics = host.records.firstWhere((r) => r.name == 'player_result');
       expect(metrics.data['snaps'], 4);
+      expect(metrics.data['placed'], 4);
+      expect(metrics.data['win'], 1);
+      expect(host.statuses['p1']!.text, 'Done!');
 
+      // The host (the TV's menus) takes the buttons back, so leaving doesn't
+      // reset them; the panel goes.
       await tester.pumpWidget(const SizedBox());
-      expect(host.layouts['p1']!.isStandard, isTrue);
+      expect(host.layouts['p1']!.labels[ControllerButton.a], 'Pick up');
       expect(host.statuses['p1']!.isHidden, isTrue);
     });
   });

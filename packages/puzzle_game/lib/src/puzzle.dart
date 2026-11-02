@@ -16,6 +16,53 @@ const trayRect = Rect.fromLTWH(102, 13, 54, 72);
 /// The strip along the top with the clock and the count.
 const hudHeight = 10.0;
 
+/// One side's world, in field units: its size, the board, the tray, and
+/// where the dots may go. [single] is the one-board layout (1 player, or a
+/// team of two on one board). [left] and [right] are the halves of the split
+/// screen (PRD v2 "Modes and layout"), with the tray at the outer edge; the
+/// clock and both sides' counts sit above them, outside these worlds.
+final class PuzzleField {
+  const PuzzleField({
+    required this.size,
+    required this.board,
+    required this.tray,
+    required this.top,
+    required this.startX,
+  });
+
+  final Size size;
+  final Rect board;
+  final Rect tray;
+
+  /// Dots stay below this (the one-board layout's clock strip).
+  final double top;
+
+  /// Where the dots start, one above the other.
+  final double startX;
+
+  static const single = PuzzleField(size: fieldSize, board: boardRect, tray: trayRect, top: hudHeight, startX: 8);
+
+  /// A half of the split screen: wide enough for the board and a tray that
+  /// holds the widest piece at any angle (the boat's hull, about 45).
+  static const sideSize = Size(140, 140);
+
+  static const left = PuzzleField(
+    size: sideSize,
+    board: Rect.fromLTWH(58, 34, 80, 72),
+    tray: Rect.fromLTWH(2, 3, 52, 134),
+    top: 0,
+    startX: 64,
+  );
+
+  static const right = PuzzleField(
+    size: sideSize,
+    board: Rect.fromLTWH(2, 34, 80, 72),
+    tray: Rect.fromLTWH(86, 3, 52, 134),
+    top: 0,
+    startX: 76,
+  );
+}
+
 enum Level {
   easy,
   medium,

@@ -140,7 +140,12 @@ class _Header extends StatelessWidget {
         label: 'Play',
         icon: Icons.sports_esports_outlined,
         compact: compact,
-        onPressed: () => _open(context, const GamesScreen()),
+        onPressed: () => Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            settings: const RouteSettings(name: gamesRouteName),
+            builder: (_) => const GamesScreen(),
+          ),
+        ),
       ),
       TvButton(
         label: 'Haptic test',
@@ -250,7 +255,7 @@ class _PairingPanel extends ConsumerWidget {
     final scheme = Theme.of(context).colorScheme;
     final controller = ref.read(hostControllerProvider);
     final port = state.host.port;
-    final sim = state.sim;
+    final sims = state.sims;
     final advertisedName = state.advertisedName ?? 'Thumb Party TV (${state.hostName})';
 
     return _Panel(
@@ -313,10 +318,20 @@ class _PairingPanel extends ConsumerWidget {
             children: [
               TvButton(label: 'New code', icon: Icons.refresh, autofocus: true, onPressed: controller.newPairingCode),
               TvButton(
-                label: sim == null ? 'Simulate controller' : 'Stop simulation',
-                icon: sim == null ? Icons.smart_toy_outlined : Icons.stop_circle_outlined,
-                onPressed: port == null ? null : controller.toggleSimulatedController,
+                key: const Key('addSim'),
+                label: sims.isEmpty ? 'Simulate controller' : 'Add simulated controller',
+                icon: Icons.smart_toy_outlined,
+                onPressed: port == null || sims.length >= HostController.maxSims
+                    ? null
+                    : controller.addSimulatedController,
               ),
+              if (sims.isNotEmpty)
+                TvButton(
+                  key: const Key('stopSims'),
+                  label: sims.length == 1 ? 'Stop simulation' : 'Stop simulations',
+                  icon: Icons.stop_circle_outlined,
+                  onPressed: controller.stopSimulatedControllers,
+                ),
               TvButton(
                 label: 'Drop connections',
                 icon: Icons.link_off,
@@ -324,10 +339,10 @@ class _PairingPanel extends ConsumerWidget {
               ),
             ],
           ),
-          if (sim != null) ...[
+          for (final (i, sim) in sims.indexed) ...[
             const SizedBox(height: 8),
             Text(
-              'Simulated controller: ${_clientStatusLabel(sim)}'
+              'Simulated controller${sims.length == 1 ? '' : ' ${i + 1}'}: ${_clientStatusLabel(sim)}'
               '${sim.isConnected && sim.rttMs != null ? ' · ${sim.rttMs} ms' : ''}',
               style: text.bodyMedium,
             ),

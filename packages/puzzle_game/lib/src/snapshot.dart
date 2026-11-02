@@ -4,15 +4,28 @@ import 'game.dart';
 
 /// A piece as the view sees it.
 final class PieceView {
-  const PieceView({required this.x, required this.y, required this.angle, required this.state, this.holder});
+  const PieceView({
+    required this.x,
+    required this.y,
+    required this.angle,
+    required this.state,
+    this.holders = const [],
+    this.calling = false,
+  });
 
   final double x;
   final double y;
   final double angle;
   final PieceState state;
 
-  /// The player number carrying it.
-  final int? holder;
+  /// The player numbers carrying it: one, or two teammates with a big piece.
+  final List<int> holders;
+
+  /// A big piece carried alone, calling the free teammate (the edge flash).
+  final bool calling;
+
+  /// The first player carrying it.
+  int? get holder => holders.firstOrNull;
 }
 
 /// A player's dot as the view sees it.
@@ -73,8 +86,13 @@ final class PuzzleSnapshot {
     if (warning) 'w': 1,
     'ph': phase.index,
     'pc': [
-      for (final p in pieces) [_i(p.x), _i(p.y), _i(p.angle), p.state.index, ?p.holder],
+      for (final p in pieces) [_i(p.x), _i(p.y), _i(p.angle), p.state.index, ...p.holders],
     ],
+    if (pieces.any((p) => p.calling))
+      'cl': [
+        for (final (i, p) in pieces.indexed)
+          if (p.calling) i,
+      ],
     'pl': [
       for (final p in players) [p.number, _i(p.x), _i(p.y), ?p.held],
     ],
@@ -90,19 +108,21 @@ final class PuzzleSnapshot {
   static PuzzleSnapshot fromJson(Map<String, Object?> j) {
     if (j['v'] != version) throw FormatException('Puzzle snapshot version ${j['v']}, expected $version');
     double d(Object? v) => (v as num) / 10;
+    final calling = {...((j['cl'] as List?) ?? const []).cast<int>()};
     return PuzzleSnapshot(
       puzzleId: j['pz'] as String,
       timeLeftMs: j['t'] as int,
       warning: j['w'] == 1,
       phase: PuzzlePhase.values[j['ph'] as int],
       pieces: [
-        for (final p in (j['pc'] as List).cast<List>())
+        for (final (i, p) in (j['pc'] as List).cast<List>().indexed)
           PieceView(
             x: d(p[0]),
             y: d(p[1]),
             angle: d(p[2]),
             state: PieceState.values[p[3] as int],
-            holder: p.length > 4 ? p[4] as int : null,
+            holders: p.skip(4).cast<int>().toList(),
+            calling: calling.contains(i),
           ),
       ],
       players: [
@@ -117,3 +137,32 @@ final class PuzzleSnapshot {
 }
 
 int _i(double v) => (v * 10).round();
+
+/// A whole match as the view sees it (S8): one board, or the left and right
+/// boards of the split screen.
+final class MatchSnapshot {
+  const MatchSnapshot({required this.boards});
+
+  static const version = 1;
+
+  /// One board, or two: left, then right.
+  final List<PuzzleSnapshot> boards;
+
+  bool get split => boards.length == 2;
+
+  Map<String, Object?> toJson() => {
+    'v': version,
+    'b': [for (final b in boards) b.toJson()],
+  };
+
+  String encode() => jsonEncode(toJson());
+
+  static MatchSnapshot decode(String text) => fromJson(jsonDecode(text) as Map<String, Object?>);
+
+  static MatchSnapshot fromJson(Map<String, Object?> j) {
+    if (j['v'] != version) throw FormatException('Match snapshot version ${j['v']}, expected $version');
+    return MatchSnapshot(
+      boards: [for (final b in (j['b'] as List).cast<Map<String, Object?>>()) PuzzleSnapshot.fromJson(b)],
+    );
+  }
+}

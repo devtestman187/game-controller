@@ -5,9 +5,13 @@ import 'package:puzzle_game/puzzle_game.dart';
 
 import '../providers.dart';
 import 'game_screen.dart';
+import 'join_screen.dart';
 import 'puzzle_screen.dart';
 import 'puzzle_settings_screen.dart';
 import 'tv_button.dart';
+
+/// The game picker's route name: Quit in the pause menu comes back here.
+const gamesRouteName = '/games';
 
 /// The game picker (PRD v2 T11): Shape Race (the puzzle) and the Arena, and
 /// the puzzle's playtest settings. Works with the remote.
@@ -183,8 +187,9 @@ class ShapeRaceScreen extends ConsumerWidget {
     );
   }
 
+  /// Players join and pick sides first (M11).
   void _play(BuildContext context, PuzzleChoice choice) =>
-      Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => PuzzleScreen(choice: choice)));
+      Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => JoinScreen(choice: choice)));
 }
 
 String _levelName(Level level) => switch (level) {

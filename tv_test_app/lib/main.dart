@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'src/providers.dart';
+import 'src/ui/controller_menus.dart';
 import 'src/ui/home_screen.dart';
 
 Future<void> main() async {
@@ -27,6 +28,8 @@ class TvTestApp extends StatelessWidget {
       },
       child: MaterialApp(
         title: 'Thumb Party TV',
+        // The phones work every screen like the remote (PRD v2 T21).
+        builder: (context, child) => ControllerMenus(child: child!),
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
           colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF5AAAFF), brightness: Brightness.dark),

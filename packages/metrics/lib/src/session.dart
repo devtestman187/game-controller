@@ -106,6 +106,7 @@ class _Player {
   final gameStats = <String, Map<String, _ValueStats>>{};
   final modeGames = <String, int>{};
   final modeWins = <String, int>{};
+  final modeDraws = <String, int>{};
   int quitsMidGame = 0;
   String? mode;
 }
@@ -249,15 +250,26 @@ class SessionCollector {
   /// A round started.
   void roundStarted() => _inGame = true;
 
-  /// A round ended. [modes] is each player's mode, [winnerId] who won.
-  void roundEnded(String game, {required double timeS, required Map<String, String> modes, String? winnerId}) {
+  /// A round ended. [modes] is each player's mode; [winnerId] won, or
+  /// [winnerIds] (a team) did; [draw]: a race nobody won.
+  void roundEnded(
+    String game, {
+    required double timeS,
+    required Map<String, String> modes,
+    String? winnerId,
+    Set<String> winnerIds = const {},
+    bool draw = false,
+  }) {
+    final winners = {...winnerIds, ?winnerId};
     _inGame = false;
     if (_rounds.length < 1000) {
       _rounds.add({
         'game': game,
         'timeS': double.parse(timeS.toStringAsFixed(2)),
         'players': modes.length,
-        'winner': ?_players[winnerId]?.number,
+        'winner': ?_players[winners.firstOrNull]?.number,
+        if (winners.length > 1) 'winners': [for (final id in winners) ?_players[id]?.number],
+        if (draw) 'draw': true,
       });
     }
     for (final MapEntry(key: id, value: mode) in modes.entries) {
@@ -265,7 +277,8 @@ class SessionCollector {
       if (p == null) continue;
       final m = _mode(mode);
       p.modeGames[m] = (p.modeGames[m] ?? 0) + 1;
-      if (id == winnerId) {
+      if (draw) p.modeDraws[m] = (p.modeDraws[m] ?? 0) + 1;
+      if (winners.contains(id)) {
         p.modeWins[m] = (p.modeWins[m] ?? 0) + 1;
         final counts = p.games[game] ??= {};
         counts['wins'] = (counts['wins'] ?? 0) + 1;
@@ -314,7 +327,12 @@ class SessionCollector {
         if (segments.isNotEmpty) 'firstMode': segments.first.mode,
         'modes': {
           for (final m in {...modeMs.keys, ...p.modeGames.keys})
-            m: {'ms': modeMs[m] ?? 0, 'games': p.modeGames[m] ?? 0, 'wins': p.modeWins[m] ?? 0},
+            m: {
+              'ms': modeMs[m] ?? 0,
+              'games': p.modeGames[m] ?? 0,
+              'wins': p.modeWins[m] ?? 0,
+              'draws': ?p.modeDraws[m],
+            },
         },
         'switches': switches,
         'segments': [

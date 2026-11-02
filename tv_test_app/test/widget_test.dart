@@ -22,9 +22,11 @@ import 'package:tvtest/src/sound.dart';
 import 'package:tvtest/src/keyboard_player.dart';
 import 'package:tvtest/src/ui/game_screen.dart';
 import 'package:tvtest/src/ui/games_screen.dart';
+import 'package:tvtest/src/ui/home_screen.dart';
 import 'package:tvtest/src/ui/puzzle_screen.dart';
 import 'package:tvtest/src/ui/puzzle_settings_screen.dart';
 import 'package:tvtest/src/ui/haptic_panel_screen.dart';
+import 'package:tvtest/src/ui/join_screen.dart';
 import 'package:tvtest/src/ui/input_visualizer.dart';
 import 'package:tvtest/src/ui/latency_screen.dart';
 import 'package:tvtest/src/ui/stats_screen.dart';
@@ -48,7 +50,8 @@ class FakeHostController implements HostController {
   HostViewState state;
   final _changes = StreamController<HostViewState>.broadcast();
   int newCodes = 0;
-  int simToggles = 0;
+  int simAdds = 0;
+  int simStops = 0;
   int drops = 0;
 
   @override
@@ -60,7 +63,10 @@ class FakeHostController implements HostController {
   void newPairingCode() => newCodes++;
 
   @override
-  void toggleSimulatedController() => simToggles++;
+  void addSimulatedController() => simAdds++;
+
+  @override
+  void stopSimulatedControllers() => simStops++;
 
   @override
   void dropAllConnections() => drops++;
@@ -110,7 +116,13 @@ class FakeGameHost implements GameHost {
   @override
   List<GamePlayer> get players => [
     for (final (i, c) in fake.state.players.indexed)
-      GamePlayer(id: c.controllerId, number: c.player ?? i + 1, nickname: c.name, mode: InputMode.of(c.input)),
+      GamePlayer(
+        id: c.controllerId,
+        number: c.player ?? i + 1,
+        nickname: c.name,
+        mode: InputMode.of(c.input),
+        simulated: c.platform == 'sim',
+      ),
     for (final l in locals.values)
       GamePlayer(id: l.id, number: l.number, nickname: l.nickname, local: true, mode: InputMode.keyboard),
   ]..sort((a, b) => a.number.compareTo(b.number));
@@ -281,6 +293,35 @@ HostViewState sampleState() => HostViewState(
   advertisedName: 'Thumb Party TV (Android TV)',
 );
 
+/// A connected phone, like the sample state's first controller, without input.
+ControllerInfo phoneInfo(String id, int player, {String platform = 'android'}) => ControllerInfo(
+  controllerId: id,
+  name: 'Phone $player',
+  platform: platform,
+  appVersion: '0.1.0',
+  remoteAddress: '192.168.1.2$player',
+  state: ControllerState.connected,
+  since: DateTime(2026),
+  player: player,
+);
+
+/// [s] with [c] added to its controllers, as the host reports a new phone.
+HostViewState withController(HostViewState s, ControllerInfo c) => HostViewState(
+  hostName: s.hostName,
+  host: HostSnapshot(
+    running: s.host.running,
+    port: s.host.port,
+    pairingCode: s.host.pairingCode,
+    controllers: [...s.host.controllers, c],
+  ),
+  addresses: s.addresses,
+  advertise: s.advertise,
+  advertisedName: s.advertisedName,
+  advertiseError: s.advertiseError,
+  serverError: s.serverError,
+  sims: s.sims,
+);
+
 late FakeSoundPlayer sounds;
 late FakeScreenAwake awake;
 
@@ -429,7 +470,7 @@ void main() {
       'Latency',
       'Stats',
     });
-    expect([fake.newCodes, fake.simToggles, fake.drops, fake.forgets, fake.exports], [1, 1, 1, 1, 1]);
+    expect([fake.newCodes, fake.simAdds, fake.drops, fake.forgets, fake.exports], [1, 1, 1, 1, 1]);
     expect(opened.toSet(), {GamesScreen, HapticPanelScreen, LatencyScreen, StatsScreen});
   });
 
@@ -817,6 +858,7 @@ void main() {
 
   group('stats (M9)', stats);
   group('puzzle (M10)', puzzle);
+  group('M11', m11);
 }
 
 /// A small saved session: one phone, D-pad then sticks.
@@ -1021,12 +1063,30 @@ void puzzle() {
     expect(find.byType(GameScreen), findsOneWidget);
   });
 
-  testWidgets('a puzzle gives the phone Pick up and Rotate, and the panel; leaving gives the usual buttons back', (
-    tester,
-  ) async {
+  testWidgets('players join a side first; the puzzle gives the phone Pick up and Rotate, and the panel; '
+      'leaving gives the menu buttons back', (tester) async {
     final fake = await openShapeRace(tester);
+    final host = fake.gameHost;
+    // In the menus the phone says A "OK", B "Back".
+    expect(host.layouts['p1']!.labels[ControllerButton.a], 'OK');
     await tester.tap(find.byKey(const Key('puzzle-house')));
     await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.byType(JoinScreen), findsOneWidget);
+    expect(host.layouts['p1']!.labels[ControllerButton.a], 'Join');
+    Future<void> phone(Set<GamepadButton> buttons) async {
+      host.setGamepad('p1', GamepadState(buttons: buttons, mode: InputMode.dpad));
+      await tester.pump(const Duration(milliseconds: 16));
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+
+    await phone({});
+    await phone({GamepadButton.a});
+    await phone({});
+    expect(find.descendant(of: find.byKey(const Key('side-left')), matching: find.text('P1 iPhone 3F1C')), findsOne);
+    expect(find.text('1 player. Start on a phone (or here) to begin.'), findsOneWidget);
+    await phone({GamepadButton.start});
+    await phone({});
     await tester.pump(const Duration(milliseconds: 500));
     expect(find.byType(PuzzleScreen), findsOneWidget);
     expect(find.byKey(const Key('puzzleView')), findsOneWidget);
@@ -1035,23 +1095,28 @@ void puzzle() {
     expect(layout.labels[ControllerButton.x], startsWith('Rotate'));
     expect(layout.hidden, contains(ControllerButton.b));
     expect(fake.gameHost.statuses['p1']!.progress, isNotNull);
+    expect(layout.labels[ControllerButton.start], 'Pause');
     await tester.sendKeyEvent(LogicalKeyboardKey.escape);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
-    expect(fake.gameHost.layouts['p1']!.isStandard, isTrue);
+    // The menus take the buttons back on their next look, once the screen's gone.
+    await tester.pump(const Duration(milliseconds: 16));
+    expect(fake.gameHost.layouts['p1']!.labels[ControllerButton.a], 'OK');
     expect(tester.takeException(), isNull);
   });
 
   testWidgets('a finished puzzle shows the time; Play again starts another', (tester) async {
     final house = Puzzle.parse(File('../packages/puzzle_game/puzzles/house.json').readAsStringSync());
-    final game = PuzzleGame(house);
+    final match = PuzzleMatch(house, teams: const {'p1': PuzzleSide.left});
+    final game = match.sides.single.game;
     await pumpApp(tester);
     final nav = tester.state<NavigatorState>(find.byType(Navigator));
     nav.push(
       MaterialPageRoute<void>(
         builder: (_) => PuzzleScreen(
           choice: const PuzzleChoice(level: Level.easy),
-          game: game,
+          teams: const {'p1': PuzzleSide.left},
+          match: match,
         ),
       ),
     );
@@ -1062,7 +1127,7 @@ void puzzle() {
       final p = game.pieces[i];
       p
         ..state = PieceState.locked
-        ..pos = house.targetAt(i);
+        ..pos = game.targetAt(i);
     }
     await tester.pump(const Duration(milliseconds: 16));
     await tester.pump(const Duration(milliseconds: 16));
@@ -1080,7 +1145,8 @@ void puzzle() {
     tester,
   ) async {
     final house = Puzzle.parse(File('../packages/puzzle_game/puzzles/house.json').readAsStringSync());
-    final game = PuzzleGame(house);
+    final match = PuzzleMatch(house, teams: const {'p1': PuzzleSide.left});
+    final game = match.sides.single.game;
     final fake = await pumpApp(tester);
     final host = fake.gameHost;
     tester
@@ -1089,7 +1155,8 @@ void puzzle() {
           MaterialPageRoute<void>(
             builder: (_) => PuzzleScreen(
               choice: const PuzzleChoice(level: Level.easy),
-              game: game,
+              teams: const {'p1': PuzzleSide.left},
+              match: match,
             ),
           ),
         );
@@ -1109,7 +1176,7 @@ void puzzle() {
     for (var i = 0; i < game.pieces.length; i++) {
       game.pieces[i]
         ..state = PieceState.locked
-        ..pos = house.targetAt(i);
+        ..pos = game.targetAt(i);
     }
     await tester.pump(const Duration(milliseconds: 16));
     await tester.pump(const Duration(milliseconds: 16));
@@ -1126,10 +1193,15 @@ void puzzle() {
     await phone({});
     expect(find.text('Done!'), findsOneWidget);
     expect(focused('playAgain'), isTrue);
-    // Right moves to Back, left comes back.
+    // Right moves to Change teams, then Back; left comes back.
+    await phone({GamepadButton.dpadRight});
+    await phone({});
+    expect(focused('changeTeams'), isTrue);
     await phone({GamepadButton.dpadRight});
     await phone({});
     expect(focused('resultsBack'), isTrue);
+    await phone({GamepadButton.dpadLeft});
+    await phone({});
     await phone({GamepadButton.dpadLeft});
     await phone({});
     expect(focused('playAgain'), isTrue);
@@ -1146,7 +1218,8 @@ void puzzle() {
   // then A did nothing.
   testWidgets('on the results the stick in any direction keeps the focus on a button', (tester) async {
     final house = Puzzle.parse(File('../packages/puzzle_game/puzzles/house.json').readAsStringSync());
-    final game = PuzzleGame(house);
+    final match = PuzzleMatch(house, teams: const {'p1': PuzzleSide.left});
+    final game = match.sides.single.game;
     final fake = await pumpApp(tester);
     final host = fake.gameHost;
     tester
@@ -1155,7 +1228,8 @@ void puzzle() {
           MaterialPageRoute<void>(
             builder: (_) => PuzzleScreen(
               choice: const PuzzleChoice(level: Level.easy),
-              game: game,
+              teams: const {'p1': PuzzleSide.left},
+              match: match,
             ),
           ),
         );
@@ -1164,7 +1238,7 @@ void puzzle() {
     for (var i = 0; i < game.pieces.length; i++) {
       game.pieces[i]
         ..state = PieceState.locked
-        ..pos = house.targetAt(i);
+        ..pos = game.targetAt(i);
     }
     await tester.pump(const Duration(milliseconds: 16));
     await tester.pump(const Duration(milliseconds: 16));
@@ -1184,11 +1258,17 @@ void puzzle() {
     for (final (x, y) in pushes) {
       await phone(GamepadState(leftX: x, leftY: y, mode: InputMode.sticks));
       await phone(const GamepadState(mode: InputMode.sticks));
-      expect(focused('playAgain') || focused('resultsBack'), isTrue, reason: 'after a push to ($x, $y)');
+      expect(
+        focused('playAgain') || focused('changeTeams') || focused('resultsBack'),
+        isTrue,
+        reason: 'after a push to ($x, $y)',
+      );
     }
     // Back on Play again with the stick, A starts a new puzzle.
-    await phone(const GamepadState(leftX: -1, mode: InputMode.sticks));
-    await phone(const GamepadState(mode: InputMode.sticks));
+    for (var i = 0; i < 2; i++) {
+      await phone(const GamepadState(leftX: -1, mode: InputMode.sticks));
+      await phone(const GamepadState(mode: InputMode.sticks));
+    }
     expect(focused('playAgain'), isTrue);
     await phone(const GamepadState(buttons: {GamepadButton.a}, mode: InputMode.sticks));
     await phone(const GamepadState(mode: InputMode.sticks));
@@ -1198,7 +1278,8 @@ void puzzle() {
 
   testWidgets('on the results B on the phone goes back', (tester) async {
     final house = Puzzle.parse(File('../packages/puzzle_game/puzzles/house.json').readAsStringSync());
-    final game = PuzzleGame(house);
+    final match = PuzzleMatch(house, teams: const {'p1': PuzzleSide.left});
+    final game = match.sides.single.game;
     final fake = await pumpApp(tester);
     tester
         .state<NavigatorState>(find.byType(Navigator))
@@ -1206,7 +1287,8 @@ void puzzle() {
           MaterialPageRoute<void>(
             builder: (_) => PuzzleScreen(
               choice: const PuzzleChoice(level: Level.easy),
-              game: game,
+              teams: const {'p1': PuzzleSide.left},
+              match: match,
             ),
           ),
         );
@@ -1215,7 +1297,7 @@ void puzzle() {
     for (var i = 0; i < game.pieces.length; i++) {
       game.pieces[i]
         ..state = PieceState.locked
-        ..pos = house.targetAt(i);
+        ..pos = game.targetAt(i);
     }
     await tester.pump(const Duration(milliseconds: 16));
     await tester.pump(const Duration(milliseconds: 16));
@@ -1228,7 +1310,12 @@ void puzzle() {
 
   testWidgets('time-up shows the pieces placed', (tester) async {
     final house = Puzzle.parse(File('../packages/puzzle_game/puzzles/house.json').readAsStringSync());
-    final game = PuzzleGame(house, settings: const PuzzleSettings(timeLimitS: 30));
+    final match = PuzzleMatch(
+      house,
+      teams: const {'p1': PuzzleSide.left},
+      settings: const PuzzleSettings(timeLimitS: 30),
+    );
+    final game = match.sides.single.game;
     await pumpApp(tester);
     tester
         .state<NavigatorState>(find.byType(Navigator))
@@ -1236,14 +1323,15 @@ void puzzle() {
           MaterialPageRoute<void>(
             builder: (_) => PuzzleScreen(
               choice: const PuzzleChoice(level: Level.easy),
-              game: game,
+              teams: const {'p1': PuzzleSide.left},
+              match: match,
             ),
           ),
         );
     await tester.pump();
     game.pieces[0]
       ..state = PieceState.locked
-      ..pos = house.targetAt(0);
+      ..pos = game.targetAt(0);
     game.timeLeftS = 0.01;
     for (var i = 0; i < 5; i++) {
       await tester.pump(const Duration(milliseconds: 16));
@@ -1279,6 +1367,434 @@ void puzzle() {
     await tester.pump();
     expect(container.read(puzzleSettingsProvider).angleToleranceDeg, 15);
     expect(container.read(puzzleSettingsProvider).dropReadyHighlight, isTrue);
+  });
+}
+
+void m11() {
+  /// A phone's buttons, read by the menus two frames later.
+  Future<void> phone(WidgetTester tester, FakeHostController fake, String id, Set<GamepadButton> buttons) async {
+    fake.gameHost.setGamepad(id, GamepadState(buttons: buttons, mode: InputMode.dpad));
+    await tester.pump(const Duration(milliseconds: 16));
+    await tester.pump(const Duration(milliseconds: 16));
+  }
+
+  /// A press: the button held, then let go (the menus act on the change).
+  Future<void> press(WidgetTester tester, FakeHostController fake, String id, GamepadButton button) async {
+    await phone(tester, fake, id, {button});
+    await phone(tester, fake, id, {});
+  }
+
+  /// A new player counts as holding what it holds now: settle it first.
+  Future<void> neutral(WidgetTester tester, FakeHostController fake, Iterable<String> ids) async {
+    for (final id in ids) {
+      await phone(tester, fake, id, {});
+    }
+  }
+
+  /// Lets a push, a pop or a replacement finish.
+  Future<void> navigated(WidgetTester tester) async {
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+  }
+
+  Finder focusText(String key) => find.descendant(of: find.byKey(Key(key)), matching: find.byType(Text)).first;
+
+  bool focused(WidgetTester tester, String key) => Focus.of(tester.element(focusText(key))).hasFocus;
+
+  /// The tooltip of the button under the focus (the settings screen's steps).
+  String? focusedTooltip() =>
+      FocusManager.instance.primaryFocus?.context?.findAncestorWidgetOfExactType<Tooltip>()?.message;
+
+  testWidgets('the phone alone works the menus: the game picker, Shape Race, Puzzle settings and back home', (
+    tester,
+  ) async {
+    final fake = await pumpApp(tester);
+    final host = fake.gameHost;
+    // The sample phone starts holding A and right: let it go first.
+    await neutral(tester, fake, ['p1']);
+    // In the menus the phone says A "OK", B "Back".
+    expect(host.layouts['p1']!.labels[ControllerButton.a], 'OK');
+    expect(host.layouts['p1']!.labels[ControllerButton.b], 'Back');
+
+    // Play has the focus, so A on the phone opens the game picker.
+    Focus.of(tester.element(focusText('openPlay'))).requestFocus();
+    await tester.pump();
+    await press(tester, fake, 'p1', GamepadButton.a);
+    await navigated(tester);
+    expect(find.byType(GamesScreen), findsOneWidget);
+    expect(find.byType(HomeScreen), findsNothing);
+
+    // Shape Race has the focus on the picker.
+    await press(tester, fake, 'p1', GamepadButton.a);
+    await navigated(tester);
+    expect(find.byType(ShapeRaceScreen), findsOneWidget);
+    // B goes back to the picker.
+    await press(tester, fake, 'p1', GamepadButton.b);
+    await navigated(tester);
+    expect(find.byType(ShapeRaceScreen), findsNothing);
+    expect(find.byType(GamesScreen), findsOneWidget);
+
+    // The arrows reach Puzzle settings.
+    for (var i = 0; i < 3 && !focused(tester, 'openPuzzleSettings'); i++) {
+      await press(tester, fake, 'p1', GamepadButton.dpadDown);
+    }
+    expect(focused(tester, 'openPuzzleSettings'), isTrue, reason: 'down reaches the settings button');
+    await press(tester, fake, 'p1', GamepadButton.a);
+    await navigated(tester);
+    expect(find.byType(PuzzleSettingsScreen), findsOneWidget);
+    // The first − has the focus; right reaches the value's +.
+    expect(focusedTooltip(), 'Less Angle tolerance');
+    for (var i = 0; i < 3 && !(focusedTooltip()?.startsWith('More') ?? false); i++) {
+      await press(tester, fake, 'p1', GamepadButton.dpadRight);
+    }
+    expect(focusedTooltip(), startsWith('More'));
+    await press(tester, fake, 'p1', GamepadButton.a);
+    await tester.pump();
+    expect(find.text('±16°'), findsOneWidget);
+
+    // B twice: the settings, then the picker, back to the main screen.
+    await press(tester, fake, 'p1', GamepadButton.b);
+    await navigated(tester);
+    expect(find.byType(PuzzleSettingsScreen), findsNothing);
+    expect(find.byType(GamesScreen), findsOneWidget);
+    await press(tester, fake, 'p1', GamepadButton.b);
+    await navigated(tester);
+    expect(find.byType(GamesScreen), findsNothing);
+    expect(find.byType(HomeScreen), findsOneWidget);
+  });
+
+  testWidgets('a held direction repeats, and the focus never ends up where A cannot press', (tester) async {
+    final fake = await pumpApp(tester);
+    await neutral(tester, fake, ['p1']);
+    await tapVisible(tester, find.byKey(const Key('openPlay')));
+    await tester.pumpAndSettle();
+    await tapVisible(tester, find.byKey(const Key('openPuzzleSettings')));
+    await tester.pumpAndSettle();
+    expect(find.byType(PuzzleSettingsScreen), findsOneWidget);
+
+    /// The settings row whose button has the focus ("Less Angle tolerance"
+    /// → "Angle tolerance").
+    String? row() => focusedTooltip()?.split(' ').skip(1).join(' ');
+
+    final start = row();
+    expect(start, 'Angle tolerance');
+    await phone(tester, fake, 'p1', {GamepadButton.dpadDown});
+    final once = row();
+    expect(once, isNot(start), reason: 'a press moves the focus');
+    await tester.pump(const Duration(milliseconds: 16));
+    await tester.pump(const Duration(milliseconds: 16));
+    expect(row(), once, reason: 'a held direction waits before it repeats');
+
+    // Still held for a second more: the focus keeps moving down the list.
+    final rows = <String>{?start, ?once};
+    for (var i = 0; i < 63; i++) {
+      await tester.pump(const Duration(milliseconds: 16));
+      final r = row();
+      if (r != null) rows.add(r);
+    }
+    expect(rows.length, greaterThanOrEqualTo(3), reason: 'the held direction kept moving: $rows');
+
+    // A direction never leaves the focus where A cannot press.
+    await phone(tester, fake, 'p1', {});
+    const directions = [GamepadButton.dpadUp, GamepadButton.dpadDown, GamepadButton.dpadLeft, GamepadButton.dpadRight];
+    for (var i = 0; i < 8; i++) {
+      await press(tester, fake, 'p1', directions[i % directions.length]);
+      final context = FocusManager.instance.primaryFocus?.context;
+      expect(context, isNotNull, reason: 'after ${directions[i % directions.length].name}');
+      expect(
+        Actions.maybeFind<ActivateIntent>(context!),
+        isNotNull,
+        reason: 'the focus after ${directions[i % directions.length].name} must be pressable',
+      );
+    }
+  });
+
+  testWidgets('simulated controllers never work the menus', (tester) async {
+    final fake = await pumpApp(tester);
+    final host = fake.gameHost;
+    await neutral(tester, fake, ['p1']);
+    fake.state = withController(fake.state, phoneInfo('sim1', 2, platform: 'sim'));
+    fake.emit();
+    await tester.pump();
+    await neutral(tester, fake, ['sim1']);
+    expect(host.players.map((p) => (p.id, p.simulated)), [('p1', false), ('sim1', true)]);
+
+    await tapVisible(tester, find.byKey(const Key('openPlay')));
+    await tester.pumpAndSettle();
+    expect(find.byType(GamesScreen), findsOneWidget);
+    // B back and A on the Simulated controller's phone: nothing happens.
+    await press(tester, fake, 'sim1', GamepadButton.b);
+    await navigated(tester);
+    expect(find.byType(GamesScreen), findsOneWidget);
+    await press(tester, fake, 'sim1', GamepadButton.a);
+    await navigated(tester);
+    expect(find.byType(GamesScreen), findsOneWidget);
+    expect(find.byType(ShapeRaceScreen), findsNothing);
+    expect(find.byType(PuzzleSettingsScreen), findsNothing);
+    // It never gets the menu's buttons either.
+    expect(host.layouts['sim1']?.labels[ControllerButton.a], isNot('OK'));
+  });
+
+  testWidgets('on the join screen A joins the side with fewer players, left and right switch sides, B leaves, '
+      'at most two a side', (tester) async {
+    final fake = await pumpApp(tester);
+    fake.state = withController(fake.state, phoneInfo('p3', 2));
+    fake.state = withController(fake.state, phoneInfo('p4', 3));
+    fake.state = withController(fake.state, phoneInfo('p5', 4));
+    fake.emit();
+    await neutral(tester, fake, ['p1', 'p3', 'p4', 'p5']);
+    await tapVisible(tester, find.byKey(const Key('openPlay')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('pickShapeRace')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('puzzle-house')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.byType(JoinScreen), findsOneWidget);
+
+    Finder onSide(String side, String label) =>
+        find.descendant(of: find.byKey(Key('side-$side')), matching: find.text(label));
+
+    // The first player goes left, the next right, then left, then right.
+    await press(tester, fake, 'p1', GamepadButton.a);
+    expect(onSide('left', 'P1 iPhone 3F1C'), findsOneWidget);
+    await press(tester, fake, 'p3', GamepadButton.a);
+    expect(onSide('right', 'P2 Phone 2'), findsOneWidget);
+    await press(tester, fake, 'p4', GamepadButton.a);
+    expect(onSide('left', 'P3 Phone 3'), findsOneWidget);
+    // Two against one while three have joined.
+    expect(tester.widget<Text>(find.byKey(const Key('joinFormat'))).data, startsWith('2 vs 1'));
+    await press(tester, fake, 'p5', GamepadButton.a);
+    expect(onSide('right', 'P4 Phone 4'), findsOneWidget);
+
+    // The right side is full: pushing right keeps player 1 on the left.
+    await press(tester, fake, 'p1', GamepadButton.dpadRight);
+    expect(onSide('left', 'P1 iPhone 3F1C'), findsOneWidget);
+
+    // B leaves a side; again, not joined, it goes back.
+    await press(tester, fake, 'p3', GamepadButton.b);
+    expect(onSide('right', 'P2 Phone 2'), findsNothing);
+    expect(find.byType(JoinScreen), findsOneWidget);
+    await press(tester, fake, 'p3', GamepadButton.b);
+    await navigated(tester);
+    expect(find.byType(JoinScreen), findsNothing);
+    expect(find.byType(ShapeRaceScreen), findsOneWidget);
+  });
+
+  testWidgets('Start begins the match with the teams; simulated controllers join by themselves', (tester) async {
+    final fake = await pumpApp(tester);
+    await neutral(tester, fake, ['p1']);
+    await tapVisible(tester, find.byKey(const Key('openPlay')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('pickShapeRace')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('puzzle-house')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    await press(tester, fake, 'p1', GamepadButton.a);
+    expect(find.descendant(of: find.byKey(const Key('side-left')), matching: find.text('P1 iPhone 3F1C')), findsOne);
+
+    // The simulated controller joins the side with fewer players by itself.
+    fake.state = withController(fake.state, phoneInfo('sim1', 2, platform: 'sim'));
+    fake.emit();
+    await tester.pump();
+    await neutral(tester, fake, ['sim1']);
+    expect(
+      find.descendant(of: find.byKey(const Key('side-right')), matching: find.text('P2 Phone 2 (simulated)')),
+      findsOne,
+    );
+
+    // Start on player 1's phone begins the match: two sides, the split screen.
+    await press(tester, fake, 'p1', GamepadButton.start);
+    await navigated(tester);
+    expect(find.byType(PuzzleScreen), findsOneWidget);
+    expect(find.byType(MatchView), findsOneWidget);
+    expect(tester.widget<CustomPaint>(find.byKey(const Key('puzzleView'))).painter, isA<MatchPainter>());
+  });
+
+  testWidgets('Start pauses for everyone; only the player who paused or Player 1 can resume; Quit goes to the '
+      'game picker', (tester) async {
+    final fake = await pumpApp(tester);
+    final host = fake.gameHost;
+    fake.state = withController(fake.state, phoneInfo('p2', 2));
+    fake.emit();
+    await neutral(tester, fake, ['p1', 'p2']);
+    await tapVisible(tester, find.byKey(const Key('openPlay')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('pickShapeRace')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('puzzle-house')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    // P1 on the left, P2 on the right, then Start on P1's phone.
+    await press(tester, fake, 'p1', GamepadButton.a);
+    await press(tester, fake, 'p2', GamepadButton.a);
+    await press(tester, fake, 'p1', GamepadButton.start);
+    await navigated(tester);
+    expect(find.byType(PuzzleScreen), findsOneWidget);
+    expect(find.byType(JoinScreen), findsNothing);
+
+    // P2 pauses: the menu shows, and the phones offer Resume.
+    await press(tester, fake, 'p2', GamepadButton.start);
+    await navigated(tester);
+    expect(find.byKey(const Key('pauseMenu')), findsOneWidget);
+    expect(host.layouts['p2']!.labels[ControllerButton.start], 'Resume');
+    expect(find.text('P2 or P1 can resume, with Start or Resume.'), findsOneWidget);
+
+    // The clock stops for everyone.
+    int timeLeft() => tester.state<PuzzlePlayViewState>(find.byType(PuzzlePlayView)).snapshot.boards.first.timeLeftMs;
+    final before = timeLeft();
+    for (var i = 0; i < 63; i++) {
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    expect(timeLeft(), before);
+
+    // A phone that hasn't joined can't work the menu.
+    fake.state = withController(fake.state, phoneInfo('p3', 3));
+    fake.emit();
+    await tester.pump();
+    await neutral(tester, fake, ['p3']);
+    await press(tester, fake, 'p3', GamepadButton.start);
+    await press(tester, fake, 'p3', GamepadButton.a);
+    await navigated(tester);
+    expect(find.byKey(const Key('pauseMenu')), findsOneWidget);
+
+    // The player who paused resumes with Start.
+    await press(tester, fake, 'p2', GamepadButton.start);
+    await navigated(tester);
+    expect(find.byKey(const Key('pauseMenu')), findsNothing);
+
+    // P2 pauses again, and P1 resumes with A on Resume.
+    await press(tester, fake, 'p2', GamepadButton.start);
+    await navigated(tester);
+    expect(find.byKey(const Key('pauseMenu')), findsOneWidget);
+    await press(tester, fake, 'p1', GamepadButton.a);
+    await navigated(tester);
+    expect(find.byKey(const Key('pauseMenu')), findsNothing);
+
+    // P1 pauses: now P2 can't resume any more.
+    await press(tester, fake, 'p1', GamepadButton.start);
+    await navigated(tester);
+    expect(find.byKey(const Key('pauseMenu')), findsOneWidget);
+    expect(find.text('P1 can resume, with Start or Resume.'), findsOneWidget);
+    await press(tester, fake, 'p2', GamepadButton.start);
+    await navigated(tester);
+    expect(find.byKey(const Key('pauseMenu')), findsOneWidget);
+
+    // Left to Quit, and A quits to the game picker.
+    await press(tester, fake, 'p1', GamepadButton.dpadLeft);
+    expect(focused(tester, 'pauseQuit'), isTrue);
+    await press(tester, fake, 'p1', GamepadButton.a);
+    await navigated(tester);
+    expect(find.byType(GamesScreen), findsOneWidget);
+    expect(find.byType(PuzzleScreen), findsNothing);
+  });
+
+  testWidgets('the Arena pauses with Start too', (tester) async {
+    final fake = await pumpApp(tester);
+    final host = fake.gameHost;
+    await neutral(tester, fake, ['p1']);
+    await openArena(tester);
+    expect(find.byType(GameScreen), findsOneWidget);
+    expect(host.layouts['p1']!.labels[ControllerButton.start], 'Pause');
+
+    await press(tester, fake, 'p1', GamepadButton.start);
+    await navigated(tester);
+    expect(find.byKey(const Key('pauseMenu')), findsOneWidget);
+    expect(host.layouts['p1']!.labels[ControllerButton.start], 'Resume');
+
+    await press(tester, fake, 'p1', GamepadButton.start);
+    await navigated(tester);
+    expect(find.byKey(const Key('pauseMenu')), findsNothing);
+    expect(host.layouts['p1']!.labels[ControllerButton.start], 'Pause');
+  });
+
+  testWidgets('a race shows the winner, and Rematch keeps the teams; Change teams goes back to the join screen', (
+    tester,
+  ) async {
+    const teams = {'p1': PuzzleSide.left, 'p2': PuzzleSide.right};
+
+    // A race with every piece of the left board put in place by hand.
+    Future<void> finishedRace() async {
+      final house = Puzzle.parse(File('../packages/puzzle_game/puzzles/house.json').readAsStringSync());
+      final match = PuzzleMatch(house, teams: teams);
+      final game = match.gameOf(PuzzleSide.left);
+      final fake = await pumpApp(tester);
+      fake.state = withController(fake.state, phoneInfo('p2', 2));
+      fake.emit();
+      await neutral(tester, fake, ['p1', 'p2']);
+      tester
+          .state<NavigatorState>(find.byType(Navigator))
+          .push(
+            MaterialPageRoute<void>(
+              builder: (_) => PuzzleScreen(
+                choice: const PuzzleChoice(level: Level.easy),
+                teams: teams,
+                match: match,
+              ),
+            ),
+          );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+      for (var i = 0; i < game.pieces.length; i++) {
+        game.pieces[i]
+          ..state = PieceState.locked
+          ..pos = game.targetAt(i);
+      }
+      for (var i = 0; i < 3; i++) {
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+    }
+
+    await finishedRace();
+    expect(tester.widget<Text>(find.byKey(const Key('puzzleResultTitle'))).data, 'Left wins!');
+    expect(tester.widget<Text>(find.byKey(const Key('puzzleResultLine-left'))).data, endsWith('seconds'));
+    expect(tester.widget<Text>(find.byKey(const Key('puzzleResultLine-right'))).data, '0 of 4 pieces placed');
+    expect(focused(tester, 'rematch'), isTrue, reason: 'Rematch has the focus for the phone and the remote');
+
+    // Rematch starts another race with the same teams.
+    await tester.tap(find.byKey(const Key('rematch')));
+    await navigated(tester);
+    expect(find.byType(PuzzleScreen), findsOneWidget);
+    expect(tester.widget<PuzzleScreen>(find.byType(PuzzleScreen)).teams, teams);
+    expect(find.byKey(const Key('puzzleResultTitle')), findsNothing);
+
+    // A second run: Change teams goes back to the join screen, teams kept.
+    await tester.pumpWidget(const SizedBox());
+    await finishedRace();
+    await tester.tap(find.byKey(const Key('changeTeams')));
+    await navigated(tester);
+    expect(find.byType(JoinScreen), findsOneWidget);
+    expect(find.descendant(of: find.byKey(const Key('side-left')), matching: find.text('P1 iPhone 3F1C')), findsOne);
+    expect(find.descendant(of: find.byKey(const Key('side-right')), matching: find.text('P2 Phone 2')), findsOne);
+  });
+
+  testWidgets('Add simulated controller adds up to three; Stop simulations shows once there are some', (tester) async {
+    final fake = await pumpApp(tester);
+    await tapVisible(tester, find.byKey(const Key('addSim')));
+    await tester.pump();
+    expect(fake.simAdds, 1);
+    expect(find.byKey(const Key('stopSims')), findsNothing);
+
+    // Three simulated controllers: no room for more, and a way to stop them.
+    final s = fake.state;
+    fake.state = HostViewState(
+      hostName: s.hostName,
+      host: s.host,
+      addresses: s.addresses,
+      advertise: s.advertise,
+      advertisedName: s.advertisedName,
+      sims: [
+        for (var i = 0; i < HostController.maxSims; i++) ClientSnapshot(status: ClientStatus.connected, player: i + 2),
+      ],
+    );
+    fake.emit();
+    await tester.pumpAndSettle();
+    expect(tester.widget<TvButton>(find.byKey(const Key('addSim'))).onPressed, isNull);
+    expect(find.byKey(const Key('stopSims')), findsOneWidget);
+    await tapVisible(tester, find.byKey(const Key('stopSims')));
+    await tester.pump();
+    expect(fake.simStops, 1);
   });
 }
 

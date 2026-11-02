@@ -4,6 +4,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:protocol/protocol.dart';
 
 import 'game.dart';
+import 'match.dart';
 import 'puzzle.dart';
 import 'settings.dart';
 import 'snapshot.dart';
@@ -13,23 +14,23 @@ import 'view.dart';
 const puzzleGameName = 'puzzle';
 
 /// What the puzzle does with each button, shown on the phone (PRD v2 P5).
-/// B, LB, RB, Select and Start aren't used (pause comes in M11).
+/// Start pauses (M11); B, LB, RB and Select aren't used.
 final puzzleLayout = GameLayoutMessage(
-  labels: {ControllerButton.a: 'Pick up', ControllerButton.x: 'Rotate ⟳', ControllerButton.y: 'Rotate ⟲'},
-  hidden: {
-    ControllerButton.b,
-    ControllerButton.lb,
-    ControllerButton.rb,
-    ControllerButton.select,
-    ControllerButton.start,
+  labels: {
+    ControllerButton.a: 'Pick up',
+    ControllerButton.x: 'Rotate ⟳',
+    ControllerButton.y: 'Rotate ⟲',
+    ControllerButton.start: 'Pause',
   },
+  hidden: {ControllerButton.b, ControllerButton.lb, ControllerButton.rb, ControllerButton.select},
 );
 
-/// The buttons once the puzzle is over: the results' menu (Play again, Back)
-/// is worked with the D-pad or left stick, A and B.
-final puzzleResultsLayout = GameLayoutMessage(
-  labels: {ControllerButton.a: 'OK', ControllerButton.b: 'Back'},
+/// For a player who didn't join a side: nothing to press until the next
+/// game.
+final puzzleWatchLayout = GameLayoutMessage(
   hidden: {
+    ControllerButton.a,
+    ControllerButton.b,
     ControllerButton.x,
     ControllerButton.y,
     ControllerButton.lb,
@@ -39,20 +40,26 @@ final puzzleResultsLayout = GameLayoutMessage(
   },
 );
 
-/// Plays one puzzle through the game host (PRD v2 P3): every player's
-/// gamepad drives a dot, events become haptics and sounds by name (S5), each
-/// phone shows the puzzle's button labels and a status panel with the held
-/// piece and the time left (P5, P6), and the round is reported for
-/// analytics. The rules ([PuzzleGame]) never draw; this widget hands their
-/// snapshot to [PuzzleView] (S8).
+/// Plays one match through the game host (PRD v2 P3): every player on a
+/// side drives a dot on their side's board, events become haptics and
+/// sounds by name (S5), each phone shows the puzzle's button labels and a
+/// status panel with the held piece and the time left (P5, P6), and the
+/// match is reported for analytics. The rules ([PuzzleMatch]) never draw;
+/// this widget hands their snapshot to [MatchView] (S8).
+///
+/// The phones' buttons are set while the match runs. Once it's over, or
+/// while it's [paused], they belong to the host again (the TV's menus), so
+/// this widget doesn't reset them when it goes.
 class PuzzlePlayView extends StatefulWidget {
   const PuzzlePlayView({
     super.key,
     required this.host,
     required this.puzzle,
     required this.settings,
+    required this.teams,
+    this.paused = false,
     this.onFinished,
-    this.game,
+    this.match,
   });
 
   final GameHost host;
@@ -61,53 +68,64 @@ class PuzzlePlayView extends StatefulWidget {
   /// Read every frame, so playtest changes count at once.
   final PuzzleSettings Function() settings;
 
-  /// The round ended (finished or time-up).
-  final void Function(PuzzleResult result)? onFinished;
+  /// Each player's side, from the join screen. Anyone else watches.
+  final Map<String, PuzzleSide> teams;
 
-  /// The game to run. Tests pass one in.
-  final PuzzleGame? game;
+  /// Nothing moves and the clock stops (the pause menu is open).
+  final bool paused;
+
+  /// The match ended: a side finished, or time ran out.
+  final void Function(MatchResult result)? onFinished;
+
+  /// The match to run. Tests pass one in.
+  final PuzzleMatch? match;
 
   @override
   State<PuzzlePlayView> createState() => PuzzlePlayViewState();
 }
 
 class PuzzlePlayViewState extends State<PuzzlePlayView> with SingleTickerProviderStateMixin {
-  late final PuzzleGame game = widget.game ?? PuzzleGame(widget.puzzle, settings: widget.settings());
+  late final PuzzleMatch match =
+      widget.match ?? PuzzleMatch(widget.puzzle, teams: widget.teams, settings: widget.settings());
   late final Ticker _ticker = createTicker(_tick);
   Duration _last = Duration.zero;
-  late PuzzleSnapshot _snapshot = game.snapshot();
+  late MatchSnapshot _snapshot = match.snapshot();
   final _withLayout = <String>{};
+  final _withStatus = <String>{};
   final _arrived = <String, int>{};
   bool _reported = false;
-  bool _resultsLayout = false;
   int _frames = 0;
   int _late = 0;
 
-  PuzzleSnapshot get snapshot => _snapshot;
+  MatchSnapshot get snapshot => _snapshot;
 
   @override
   void initState() {
     super.initState();
-    _record('round_start', data: {'puzzle': widget.puzzle.id, 'level': widget.puzzle.level.name});
-    _current = this;
+    _record(
+      'round_start',
+      data: {
+        'puzzle': widget.puzzle.id,
+        'level': widget.puzzle.level.name,
+        'format': match.format.label,
+        'players': match.teams.length,
+      },
+    );
     _ticker.start();
   }
 
-  /// The newest puzzle on screen. After Play again the old one is disposed
-  /// once the new one is already running, and must not undo its buttons.
-  static PuzzlePlayViewState? _current;
+  @override
+  void didUpdateWidget(PuzzlePlayView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Back from the pause menu: the phones get the puzzle's buttons again.
+    if (oldWidget.paused && !widget.paused) _withLayout.clear();
+  }
 
   @override
   void dispose() {
     _ticker.dispose();
-    // Every phone goes back to its usual buttons, and the panel goes,
-    // unless another puzzle has already taken over.
-    if (_current == this) {
-      _current = null;
-      for (final id in _withLayout) {
-        widget.host.setLayout(id, GameLayoutMessage.standard());
-        widget.host.setStatus(id, StatusMessage.hidden());
-      }
+    for (final id in _withStatus) {
+      widget.host.setStatus(id, StatusMessage.hidden());
     }
     super.dispose();
   }
@@ -118,19 +136,18 @@ class PuzzlePlayViewState extends State<PuzzlePlayView> with SingleTickerProvide
   void _tick(Duration elapsed) {
     final dt = (elapsed - _last).inMicroseconds / 1e6;
     _last = elapsed;
+    if (widget.paused) return;
     final host = widget.host;
-    game.settings = widget.settings();
+    match.settings = widget.settings();
     final players = host.players;
 
-    // New players get the puzzle's buttons; once it's over, the results'.
-    final over = game.result != null;
-    for (final p in players) {
-      if (_withLayout.add(p.id)) host.setLayout(p.id, over ? puzzleResultsLayout : puzzleLayout);
-    }
-    if (over && !_resultsLayout) {
-      _resultsLayout = true;
-      for (final id in _withLayout) {
-        host.setLayout(id, puzzleResultsLayout);
+    // Players get the puzzle's buttons (or nothing to press, if they're only
+    // watching) until it's over.
+    if (match.result == null) {
+      for (final p in players) {
+        if (_withLayout.add(p.id)) {
+          host.setLayout(p.id, match.teams.containsKey(p.id) ? puzzleLayout : puzzleWatchLayout);
+        }
       }
     }
     _withLayout.removeWhere((id) => !players.any((p) => p.id == id));
@@ -148,18 +165,24 @@ class PuzzlePlayViewState extends State<PuzzlePlayView> with SingleTickerProvide
       if (dt > 0.025 && _frames > 1) _late++;
     }
 
-    final events = game.update(
+    final events = match.update(
       dt,
       {for (final p in players) p.id: host.gamepad(p.id)},
       numbers: {for (final p in players) p.id: p.number},
     );
+    final sounds = <String>{};
     for (final e in events) {
-      _onEvent(e, players);
+      _onEvent(e.side, e.event, players, sounds);
+    }
+    if (match.result != null && !_reported) _report(players, sounds);
+    for (final s in sounds) {
+      host.playSound(s);
     }
     for (final p in players) {
       host.setStatus(p.id, _statusFor(p.id));
+      _withStatus.add(p.id);
     }
-    setState(() => _snapshot = game.snapshot());
+    setState(() => _snapshot = match.snapshot());
 
     final stalled = dt > 0.1;
     if (fresh.isNotEmpty && !stalled) {
@@ -172,70 +195,98 @@ class PuzzlePlayViewState extends State<PuzzlePlayView> with SingleTickerProvide
     }
   }
 
-  void _onEvent(PuzzleEvent e, List<GamePlayer> players) {
-    final host = widget.host;
+  /// The players on a side who are here now.
+  List<GamePlayer> _onSide(PuzzleSide side, List<GamePlayer> players) => [
+    for (final p in players)
+      if (match.teams.containsKey(p.id) && (!match.format.split || match.teams[p.id] == side)) p,
+  ];
+
+  void _haptic(String to, HapticEvent event, {double intensity = 1}) =>
+      widget.host.haptic(to, HapticEventMessage(event: event, intensity: intensity));
+
+  /// Each sound plays once a frame, even when both sides tick together.
+  void _onEvent(PuzzleSide side, PuzzleEvent e, List<GamePlayer> players, Set<String> sounds) {
     final id = e.playerId;
-    void haptic(String to, HapticEvent event, {double intensity = 1}) =>
-        host.haptic(to, HapticEventMessage(event: event, intensity: intensity));
     switch (e.kind) {
       case PuzzleEventKind.pickup:
-        host.playSound('pickup');
+        sounds.add('pickup');
       case PuzzleEventKind.snap:
-        haptic(id!, HapticEvent.snap);
-        host.playSound('snap');
+        _haptic(id!, HapticEvent.snap);
+        sounds.add('snap');
         _record('snap', playerId: id, data: e.data);
       case PuzzleEventKind.wrong:
-        haptic(id!, HapticEvent.wrong);
-        host.playSound('wrong');
+        _haptic(id!, HapticEvent.wrong);
+        sounds.add('wrong');
         _record('wrong_drop', playerId: id, data: e.data);
       case PuzzleEventKind.dropReady:
-        haptic(id!, HapticEvent.dropReady, intensity: 0.7);
+        _haptic(id!, HapticEvent.dropReady, intensity: 0.7);
+      case PuzzleEventKind.help:
+        // The teammate is called; the call is the carrier's.
+        _haptic(id!, HapticEvent.help);
+        sounds.add('help');
+        if (e.data['from'] case final String from) _record('help_call', playerId: from);
       case PuzzleEventKind.tick:
-        for (final p in players) {
-          haptic(p.id, HapticEvent.tick, intensity: 0.6);
+        for (final p in _onSide(side, players)) {
+          _haptic(p.id, HapticEvent.tick, intensity: 0.6);
         }
-        host.playSound('tick');
+        sounds.add('tick');
       case PuzzleEventKind.timeUp:
-        host.playSound('time_up');
-        _report(players);
+        sounds.add('time_up');
       case PuzzleEventKind.finished:
-        for (final p in players) {
-          haptic(p.id, HapticEvent.success);
-        }
-        host.playSound('success');
-        _report(players);
+        sounds.add('success');
     }
   }
 
-  /// The round's result and each player's puzzle metrics, for analytics.
-  void _report(List<GamePlayer> players) {
-    if (_reported) return;
+  /// The result and each player's puzzle metrics, for analytics, and the
+  /// success haptic for the winners.
+  void _report(List<GamePlayer> players, Set<String> sounds) {
     _reported = true;
-    final result = game.result!;
-    for (final p in game.players) {
-      _record(
-        'player_result',
-        playerId: p.id,
-        data: {
-          'pickups': p.pickups,
-          'snaps': p.snaps,
-          'wrongDrops': p.wrongDrops,
-          'rotatingS': (p.rotatingS * 10).round() / 10,
-          'overshoots': p.overshoots,
-        },
-      );
+    final result = match.result!;
+    final winners = <String>[];
+    for (final s in match.sides) {
+      final outcome = result.outcomeFor(s.side);
+      final sideResult = result.sides[s.side]!;
+      for (final p in s.game.players) {
+        if (outcome == 'win') winners.add(p.id);
+        _record(
+          'player_result',
+          playerId: p.id,
+          data: {
+            'pickups': p.pickups,
+            'snaps': p.snaps,
+            'wrongDrops': p.wrongDrops,
+            'rotatingS': (p.rotatingS * 10).round() / 10,
+            'overshoots': p.overshoots,
+            'placed': sideResult.placed,
+            'completionS': ?sideResult.timeS,
+            if (s.game.team) ...{
+              'helpCalls': p.helpCalls,
+              'soloBigCarries': p.soloBigCarries,
+              'soloBigS': (p.soloBigS * 10).round() / 10,
+            },
+            'win': outcome == 'win' ? 1 : 0,
+            if (result.format.split) 'draw': outcome == 'draw' ? 1 : 0,
+          },
+        );
+      }
     }
+    for (final id in winners) {
+      _haptic(id, HapticEvent.success);
+    }
+    if (winners.isNotEmpty) sounds.add('success');
+    final first = match.sides.first.game;
     _record(
       'round_end',
       data: {
-        'timeS': result.timeS ?? widget.settings().timeLimitS.toDouble(),
-        'finished': result.finished,
-        'placed': result.placed,
-        'total': result.total,
+        'timeS': first.finishTimeS ?? first.elapsedS,
         'puzzle': widget.puzzle.id,
-        'modes': {for (final p in players) p.id: widget.host.gamepad(p.id).mode.name},
-        // In one-player puzzles a finish is a win.
-        if (result.finished && players.length == 1) 'winner': players.single.id,
+        'format': result.format.label,
+        'modes': {
+          for (final p in players)
+            if (match.teams.containsKey(p.id)) p.id: widget.host.gamepad(p.id).mode.name,
+        },
+        'winners': winners,
+        if (result.draw) 'draw': true,
       },
     );
     _record('frames', data: {'drawn': _frames, 'late': _late});
@@ -244,17 +295,24 @@ class PuzzlePlayViewState extends State<PuzzlePlayView> with SingleTickerProvide
 
   /// The phone's panel: the held piece turning as it turns, and the time.
   StatusMessage _statusFor(String id) {
-    final p = game.player(id);
+    final game = match.gameFor(id);
+    if (game == null) return StatusMessage(text: 'Watching');
     final limit = game.settings.timeLimitS;
     final progress = limit == 0 ? null : game.timeLeftS / limit;
     final warning = game.timeLeftS < game.settings.warningS;
     final left = game.timeLeftS.ceil();
-    final text = switch (game.phase) {
-      PuzzlePhase.playing => '${left ~/ 60}:${(left % 60).toString().padLeft(2, '0')} left',
-      PuzzlePhase.finished => 'Done!',
-      PuzzlePhase.timeUp => 'Time\'s up',
-    };
-    final held = p?.held;
+    final result = match.result;
+    final side = match.sideOf(id)!;
+    final text = result == null
+        ? '${left ~/ 60}:${(left % 60).toString().padLeft(2, '0')} left'
+        : !result.format.split
+        ? (result.sides.values.first.finished ? 'Done!' : 'Time\'s up')
+        : switch (result.outcomeFor(side)) {
+            'win' => 'You won!',
+            'loss' => 'They won',
+            _ => 'Draw',
+          };
+    final held = game.player(id)?.held;
     if (held == null) return StatusMessage(text: text, progress: progress, warning: warning);
     final spec = widget.puzzle.pieces[held];
     final r = spec.shape.radius;
@@ -270,5 +328,5 @@ class PuzzlePlayViewState extends State<PuzzlePlayView> with SingleTickerProvide
 
   @override
   Widget build(BuildContext context) =>
-      PuzzleView(puzzle: widget.puzzle, snapshot: _snapshot, timeLimitS: game.settings.timeLimitS);
+      MatchView(puzzle: widget.puzzle, snapshot: _snapshot, timeLimitS: match.sides.first.game.settings.timeLimitS);
 }

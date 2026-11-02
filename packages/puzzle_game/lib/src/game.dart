@@ -16,7 +16,7 @@ enum PieceState {
   /// as an answer (a player moved it away).
   loose,
 
-  /// Carried by a player.
+  /// Carried by a player (or two, with a big piece).
   held,
 
   /// Snapped into its outline: it can't move any more.
@@ -28,14 +28,15 @@ enum PieceState {
 }
 
 /// What happened, for haptics, sounds and analytics.
-enum PuzzleEventKind { pickup, snap, wrong, dropReady, tick, timeUp, finished }
+enum PuzzleEventKind { pickup, snap, wrong, dropReady, tick, timeUp, finished, help }
 
 final class PuzzleEvent {
   const PuzzleEvent(this.kind, {this.playerId, this.data = const {}});
 
   final PuzzleEventKind kind;
 
-  /// Whose action it was; null for the clock (tick, time-up, finished).
+  /// Whose action it was (for [PuzzleEventKind.help], the teammate being
+  /// called); null for the clock (tick, time-up, finished).
   final String? playerId;
 
   /// For analytics: errors at a drop, the finishing time, …
@@ -53,8 +54,17 @@ class PieceRuntime {
   Offset pos;
   double angle;
   PieceState state = PieceState.tray;
-  String? heldBy;
+
+  /// Who carries it: one player, or two teammates sharing a big piece.
+  final carriers = <String>[];
   int? lockedTarget;
+
+  /// A big piece carried alone calls the free teammate: its edge flashes
+  /// toward them.
+  bool calling = false;
+
+  /// The first carrier.
+  String? get heldBy => carriers.firstOrNull;
 }
 
 /// One player's dot and what it carries.
@@ -71,15 +81,27 @@ class PuzzlePlayer {
   int? hintTarget;
   int _lastTurn = 0;
 
+  /// Where the dot holds a big piece shared with a teammate, from its centre.
+  Offset _grab = Offset.zero;
+
+  /// Until the next help call while carrying a big piece alone.
+  double _helpS = 0;
+
   // Metrics (PRD v2 "Puzzle results").
   int pickups = 0;
   int snaps = 0;
   int wrongDrops = 0;
   double rotatingS = 0;
   int overshoots = 0;
+
+  /// Help calls made while carrying a big piece alone, how many such carries
+  /// were started, and the time spent on them.
+  int helpCalls = 0;
+  int soloBigCarries = 0;
+  double soloBigS = 0;
 }
 
-/// How the round ended.
+/// How the round ended for one side.
 final class PuzzleResult {
   const PuzzleResult({required this.finished, required this.placed, required this.total, this.timeS});
 
@@ -92,22 +114,27 @@ final class PuzzleResult {
   final double? timeS;
 }
 
-enum PuzzlePhase { playing, finished, timeUp }
+/// [stopped]: the round ended early because the other side finished first.
+enum PuzzlePhase { playing, finished, timeUp, stopped }
 
 /// The puzzle's rules for one side (PRD v2 "Puzzle game design"): moving,
 /// picking up, rotating, dropping, matching with symmetry and identical
-/// pieces, red pieces, the drop-ready highlight, the hint glow and the clock.
-/// It never draws: [snapshot] is what the view draws from (S8).
+/// pieces, red pieces, big pieces, the drop-ready highlight, the hint glow
+/// and the clock. It never draws: [snapshot] is what the view draws from
+/// (S8). Two sides race in a [PuzzleMatch].
 ///
-/// Positions are in field units ([fieldSize]), angles clockwise in degrees.
+/// Positions are in field units ([field]), angles clockwise in degrees.
 class PuzzleGame {
-  PuzzleGame(this.puzzle, {this.settings = PuzzleSettings.defaults, Random? random})
+  PuzzleGame(this.puzzle, {this.settings = PuzzleSettings.defaults, Random? random, this.field = PuzzleField.single})
     : _random = random ?? Random(),
       timeLeftS = settings.timeLimitS.toDouble() {
     _layOutTray();
   }
 
   final Puzzle puzzle;
+
+  /// The side's world: the one-board layout, or a half of the split screen.
+  final PuzzleField field;
 
   /// Read every frame, so playtest changes count at once.
   PuzzleSettings settings;
@@ -138,6 +165,12 @@ class PuzzleGame {
 
   int get placed => pieces.where((p) => p.state == PieceState.locked).length;
 
+  /// A target's centre in field units.
+  Offset targetAt(int i) => field.board.topLeft + puzzle.pieces[i].target;
+
+  /// Two or more players on this side: big pieces need teamwork.
+  bool get team => _players.length >= 2;
+
   PuzzleResult? get result => phase == PuzzlePhase.playing
       ? null
       : PuzzleResult(finished: phase == PuzzlePhase.finished, placed: placed, total: pieces.length, timeS: finishTimeS);
@@ -158,6 +191,7 @@ class PuzzleGame {
   }
 
   ({Map<int, double> starts, Map<int, Offset> at, double overflow}) _trayLayout() {
+    final tray = field.tray;
     final starts = <int, double>{};
     for (final (i, spec) in puzzle.pieces.indexed) {
       var angle = spec.targetAngle;
@@ -177,22 +211,22 @@ class PuzzleGame {
             .compareTo(puzzle.pieces[a].shape.bounds(starts[a]!).height),
       );
     const gap = 2.0;
-    var x = trayRect.left + gap;
-    var y = trayRect.top + gap;
+    var x = tray.left + gap;
+    var y = tray.top + gap;
     var rowHeight = 0.0;
     final placedAt = <int, Offset>{};
     var overflow = double.negativeInfinity;
     for (final i in order) {
       final b = puzzle.pieces[i].shape.bounds(starts[i]!);
-      if (x + b.width > trayRect.right - gap && x > trayRect.left + gap) {
-        x = trayRect.left + gap;
+      if (x + b.width > tray.right - gap && x > tray.left + gap) {
+        x = tray.left + gap;
         y += rowHeight + gap;
         rowHeight = 0;
       }
-      overflow = max(overflow, y + b.height - (trayRect.bottom - gap));
+      overflow = max(overflow, y + b.height - (tray.bottom - gap));
       // Past the bottom: overlap the last row a little rather than leave the
       // tray.
-      final top = max(trayRect.top, min(y, trayRect.bottom - gap - b.height));
+      final top = max(tray.top, min(y, tray.bottom - gap - b.height));
       placedAt[i] = Offset(x - b.left, top - b.top);
       x += b.width + gap;
       rowHeight = max(rowHeight, b.height);
@@ -200,10 +234,10 @@ class PuzzleGame {
     return (starts: starts, at: placedAt, overflow: overflow);
   }
 
-  /// Start positions: left of the board, one above the other.
+  /// Start positions: beside the board, one above the other.
   Offset _startFor(int slot) {
     final step = (slot + 1) ~/ 2 * 12.0 * (slot.isOdd ? -1 : 1);
-    return Offset(8, (boardRect.center.dy + step).clamp(hudHeight + 6, fieldSize.height - 6));
+    return Offset(field.startX, (field.board.center.dy + step).clamp(field.top + 6, field.size.height - 6));
   }
 
   PuzzlePlayer join(String id, int number) => _players[id] ??= PuzzlePlayer(id, number, _startFor(_players.length));
@@ -211,7 +245,15 @@ class PuzzleGame {
   void leave(String id) {
     final p = _players.remove(id);
     final held = p?.held;
-    if (held != null) _putDown(pieces[held], PieceState.loose);
+    if (held != null) _letGo(pieces[held], id);
+  }
+
+  /// Ends the round early, for the side that didn't finish first: nothing
+  /// moves any more, and carried pieces are put down.
+  void stop() {
+    if (phase != PuzzlePhase.playing) return;
+    phase = PuzzlePhase.stopped;
+    _putEverythingDown();
   }
 
   /// Advances the game by [dt] seconds with each player's controls, and
@@ -235,8 +277,78 @@ class PuzzleGame {
       events.add(PuzzleEvent(PuzzleEventKind.tick, data: {'secondsLeft': timeLeftS.ceil()}));
     }
 
+    // A presses, on the press only.
+    final presses = <PuzzlePlayer>[];
     for (final p in _players.values) {
-      _updatePlayer(p, dt, inputs[p.id]!, events);
+      final a = inputs[p.id]!.pressed(GamepadButton.a);
+      if (a && !p._aDown) presses.add(p);
+      p._aDown = a;
+    }
+
+    // Moving: a dot moves itself, and an ordinary piece follows its dot. A
+    // big piece shared by a team moves itself, and its carriers with it.
+    for (final p in _players.values) {
+      final held = p.held;
+      if (held != null && _teamCarried(pieces[held])) continue;
+      p.pos = _inField(p.pos + _move(inputs[p.id]!) * (speed * dt), dotRadius);
+      if (held != null) pieces[held].pos = p.pos;
+    }
+    for (final piece in pieces) {
+      if (piece.state == PieceState.held && _teamCarried(piece)) {
+        _carryBig(piece, inputs, dt, events);
+      } else {
+        piece.calling = false;
+      }
+    }
+
+    // Turning: X and Y, or the right stick. Either carrier of a shared piece
+    // can turn it.
+    for (final piece in pieces) {
+      if (piece.state != PieceState.held) continue;
+      var turn = 0.0;
+      for (final id in piece.carriers) {
+        turn += _turn(_players[id]!, inputs[id]!, dt);
+      }
+      if (piece.carriers.length > 1) {
+        final most = settings.rotationSpeedDegPerS * stickTurnFactor * dt;
+        turn = turn.clamp(-most, most);
+      }
+      if (turn != 0) piece.angle = (piece.angle + turn) % 360;
+    }
+
+    // The drop-ready highlight and the hint glow.
+    for (final p in _players.values) {
+      final held = p.held;
+      if (held == null) {
+        p
+          ..readyTarget = null
+          ..hintTarget = null
+          .._holdS = 0;
+        continue;
+      }
+      final piece = pieces[held];
+      p._holdS += dt;
+      final ready = _matchingTarget(piece);
+      if (ready != null && ready != p.readyTarget && settings.dropReadyHighlight) {
+        events.add(PuzzleEvent(PuzzleEventKind.dropReady, playerId: p.id));
+      }
+      p.readyTarget = settings.dropReadyHighlight ? ready : null;
+      p.hintTarget = p._holdS >= settings.hintDelayS ? _nearestFreeTarget(piece) : null;
+    }
+
+    // A picks up (or takes the other end of a teammate's big piece), or
+    // drops. A teammate whose shared piece was just dropped doesn't pick up
+    // something else with the same press.
+    final handled = <String>{};
+    for (final p in presses) {
+      if (!handled.add(p.id)) continue;
+      final held = p.held;
+      if (held == null) {
+        _pickUp(p, events);
+      } else {
+        handled.addAll(pieces[held].carriers);
+        _drop(p, pieces[held], events);
+      }
     }
 
     if (placed == pieces.length) {
@@ -245,62 +357,72 @@ class PuzzleGame {
       events.add(PuzzleEvent(PuzzleEventKind.finished, data: {'timeS': elapsedS}));
     } else if (timeLeftS <= 0) {
       phase = PuzzlePhase.timeUp;
-      for (final p in _players.values) {
-        final held = p.held;
-        if (held != null) _putDown(pieces[held], PieceState.loose);
-        p.held = null;
-      }
+      _putEverythingDown();
       events.add(PuzzleEvent(PuzzleEventKind.timeUp, data: {'placed': placed}));
     }
     return events;
   }
 
-  void _updatePlayer(PuzzlePlayer p, double dt, GamepadState g, List<PuzzleEvent> events) {
-    // Move like the arena: the D-pad at a fixed speed, a stick or the tilt
-    // scaled by how far it's pushed.
-    final Offset move;
+  /// A big piece in a team: carried together, or alone at reduced speed.
+  /// For a player alone on a side it's an ordinary piece.
+  bool _teamCarried(PieceRuntime piece) => team && puzzle.pieces[piece.index].big;
+
+  /// Where the controls push the dot, like the arena: the D-pad at a fixed
+  /// speed, a stick or the tilt scaled by how far it's pushed.
+  Offset _move(GamepadState g) {
     if (g.usesDpad) {
       final d = Offset(g.dpadX.toDouble(), g.dpadY.toDouble());
-      move = d / d.distance;
-    } else {
-      final v = Offset(g.leftX, g.leftY);
-      move = v.distance > 1 ? v / v.distance : v;
+      return d / d.distance;
     }
-    final next = p.pos + move * (speed * dt);
-    p.pos = Offset(
-      next.dx.clamp(dotRadius, fieldSize.width - dotRadius),
-      next.dy.clamp(hudHeight + dotRadius, fieldSize.height - dotRadius),
-    );
-
-    final a = g.pressed(GamepadButton.a);
-    final aPressed = a && !p._aDown;
-    p._aDown = a;
-
-    final held = p.held;
-    if (held == null) {
-      p.readyTarget = null;
-      p.hintTarget = null;
-      p._holdS = 0;
-      if (aPressed) _pickUp(p, events);
-      return;
-    }
-
-    final piece = pieces[held];
-    piece.pos = p.pos;
-    p._holdS += dt;
-    _rotate(p, piece, g, dt);
-
-    final ready = _matchingTarget(piece);
-    if (ready != null && ready != p.readyTarget && settings.dropReadyHighlight) {
-      events.add(PuzzleEvent(PuzzleEventKind.dropReady, playerId: p.id));
-    }
-    p.readyTarget = settings.dropReadyHighlight ? ready : null;
-    p.hintTarget = p._holdS >= settings.hintDelayS ? _nearestFreeTarget(piece) : null;
-
-    if (aPressed) _drop(p, piece, events);
+    final v = Offset(g.leftX, g.leftY);
+    return v.distance > 1 ? v / v.distance : v;
   }
 
-  void _rotate(PuzzlePlayer p, PieceRuntime piece, GamepadState g, double dt) {
+  Offset _inField(Offset at, double margin) => Offset(
+    at.dx.clamp(margin, field.size.width - margin),
+    at.dy.clamp(field.top + margin, field.size.height - margin),
+  );
+
+  /// Moves a big piece shared by a team. With both carriers on it, it follows
+  /// the average of their two pushes at normal speed; with one, it moves at
+  /// the solo big-piece speed and calls the free teammate (a help event at
+  /// once, then every help interval).
+  void _carryBig(PieceRuntime piece, Map<String, GamepadState> inputs, double dt, List<PuzzleEvent> events) {
+    final carriers = [for (final id in piece.carriers) _players[id]!];
+    var push = Offset.zero;
+    for (final c in carriers) {
+      push += _move(inputs[c.id]!);
+    }
+    push /= carriers.length.toDouble();
+    final alone = carriers.length == 1;
+    final factor = alone ? settings.soloBigSpeed : 1.0;
+    piece.pos = _inField(piece.pos + push * (speed * factor * dt), 0);
+    for (final c in carriers) {
+      c.pos = _inField(piece.pos + c._grab, dotRadius);
+    }
+    piece.calling = alone;
+    if (!alone) return;
+    final c = carriers.single;
+    c.soloBigS += dt;
+    c._helpS -= dt;
+    if (c._helpS > 0) return;
+    c._helpS = settings.helpIntervalS;
+    c.helpCalls++;
+    for (final mate in _players.values) {
+      if (mate.id == c.id) continue;
+      events.add(
+        PuzzleEvent(
+          PuzzleEventKind.help,
+          playerId: mate.id,
+          data: {'piece': puzzle.pieces[piece.index].id, 'from': c.id},
+        ),
+      );
+    }
+  }
+
+  /// How far the player turns their piece this frame, and the rotation
+  /// metrics.
+  double _turn(PuzzlePlayer p, GamepadState g, double dt) {
     var turn = 0.0;
     if (g.pressed(GamepadButton.x)) turn += settings.rotationSpeedDegPerS * dt;
     if (g.pressed(GamepadButton.y)) turn -= settings.rotationSpeedDegPerS * dt;
@@ -312,20 +434,23 @@ class PuzzleGame {
       final push = ((x.abs() - dead) / (1 - dead)).clamp(0.0, 1.0);
       turn += x.sign * push * settings.rotationSpeedDegPerS * stickTurnFactor * dt;
     }
-    if (turn == 0) return;
-    piece.angle = (piece.angle + turn) % 360;
+    if (turn == 0) return 0;
     p.rotatingS += dt;
     final dir = turn > 0 ? 1 : -1;
     // Turning back the other way while holding the same piece: an overshoot.
     if (p._lastTurn != 0 && dir != p._lastTurn) p.overshoots++;
     p._lastTurn = dir;
+    return turn;
   }
 
   void _pickUp(PuzzlePlayer p, List<PuzzleEvent> events) {
     PieceRuntime? best;
     var bestDistance = double.infinity;
     for (final piece in pieces) {
-      if (piece.state == PieceState.locked || piece.state == PieceState.held) continue;
+      if (piece.state == PieceState.locked) continue;
+      // A held piece can't be taken, but a teammate can take the other end
+      // of a big one.
+      if (piece.state == PieceState.held && !(_teamCarried(piece) && piece.carriers.length == 1)) continue;
       final reach = dotRadius + puzzle.pieces[piece.index].shape.radius * settings.pickupRange;
       final d = (piece.pos - p.pos).distance;
       if (d <= reach && d < bestDistance) {
@@ -334,15 +459,25 @@ class PuzzleGame {
       }
     }
     if (best == null) return;
+    final joining = best.state == PieceState.held;
     best
       ..state = PieceState.held
-      ..heldBy = p.id;
+      ..carriers.add(p.id);
     p
       ..held = best.index
       .._holdS = 0
       .._lastTurn = 0
+      .._grab = p.pos - best.pos
+      .._helpS = 0
       ..pickups += 1;
-    events.add(PuzzleEvent(PuzzleEventKind.pickup, playerId: p.id, data: {'piece': puzzle.pieces[best.index].id}));
+    if (!joining && _teamCarried(best)) p.soloBigCarries++;
+    events.add(
+      PuzzleEvent(
+        PuzzleEventKind.pickup,
+        playerId: p.id,
+        data: {'piece': puzzle.pieces[best.index].id, if (joining) 'joined': true},
+      ),
+    );
   }
 
   void _drop(PuzzlePlayer p, PieceRuntime piece, List<PuzzleEvent> events) {
@@ -352,24 +487,25 @@ class PuzzleGame {
         ? const <String, Object?>{}
         : {
             'angleErrorDeg': _round(angleError(piece.angle, puzzle.pieces[nearest].targetAngle, spec.shape.symmetry)),
-            'positionError': _round((piece.pos - puzzle.targetAt(nearest)).distance / spec.shape.size),
+            'positionError': _round((piece.pos - targetAt(nearest)).distance / spec.shape.size),
           };
-    p
-      ..held = null
-      ..readyTarget = null
-      ..hintTarget = null;
+    for (final id in piece.carriers) {
+      _players[id]
+        ?..held = null
+        ..readyTarget = null
+        ..hintTarget = null;
+    }
     final target = _matchingTarget(piece);
     if (target != null) {
+      _putDown(piece, PieceState.locked);
       piece
-        ..state = PieceState.locked
-        ..heldBy = null
         ..lockedTarget = target
-        ..pos = puzzle.targetAt(target)
+        ..pos = targetAt(target)
         ..angle = snapAngle(piece.angle, puzzle.pieces[target].targetAngle, spec.shape.symmetry);
       _filled[target] = piece.index;
       p.snaps++;
       events.add(PuzzleEvent(PuzzleEventKind.snap, playerId: p.id, data: {'piece': spec.id, ...errors}));
-    } else if (boardRect.contains(piece.pos)) {
+    } else if (field.board.contains(piece.pos)) {
       _putDown(piece, PieceState.wrong);
       p.wrongDrops++;
       events.add(PuzzleEvent(PuzzleEventKind.wrong, playerId: p.id, data: {'piece': spec.id, ...errors}));
@@ -378,10 +514,26 @@ class PuzzleGame {
     }
   }
 
+  /// A carrier lets go (by leaving): the piece is put down once nobody
+  /// carries it.
+  void _letGo(PieceRuntime piece, String id) {
+    piece.carriers.remove(id);
+    if (piece.carriers.isEmpty) _putDown(piece, PieceState.loose);
+  }
+
+  void _putEverythingDown() {
+    for (final p in _players.values) {
+      final held = p.held;
+      if (held != null) _putDown(pieces[held], PieceState.loose);
+      p.held = null;
+    }
+  }
+
   void _putDown(PieceRuntime piece, PieceState state) {
     piece
       ..state = state
-      ..heldBy = null;
+      ..calling = false
+      ..carriers.clear();
   }
 
   /// A free outline the piece would snap into if dropped now: the same kind,
@@ -392,7 +544,7 @@ class PuzzleGame {
     var bestDistance = double.infinity;
     for (final (i, t) in puzzle.pieces.indexed) {
       if (t.kind != spec.kind || _filled.containsKey(i)) continue;
-      final d = (piece.pos - puzzle.targetAt(i)).distance;
+      final d = (piece.pos - targetAt(i)).distance;
       if (d > settings.positionTolerance * spec.shape.size) continue;
       if (angleError(piece.angle, t.targetAngle, spec.shape.symmetry) > settings.angleToleranceDeg) continue;
       if (d < bestDistance) {
@@ -409,7 +561,7 @@ class PuzzleGame {
     var bestDistance = double.infinity;
     for (final (i, t) in puzzle.pieces.indexed) {
       if (t.kind != spec.kind || _filled.containsKey(i)) continue;
-      final d = (piece.pos - puzzle.targetAt(i)).distance;
+      final d = (piece.pos - targetAt(i)).distance;
       if (d < bestDistance) {
         best = i;
         bestDistance = d;
@@ -431,7 +583,11 @@ class PuzzleGame {
           y: p.pos.dy,
           angle: p.angle,
           state: p.state,
-          holder: p.heldBy == null ? null : _players[p.heldBy]?.number,
+          holders: [
+            for (final id in p.carriers)
+              if (_players[id] case final c?) c.number,
+          ],
+          calling: p.calling,
         ),
     ],
     players: [for (final p in _players.values) PlayerView(number: p.number, x: p.pos.dx, y: p.pos.dy, held: p.held)],

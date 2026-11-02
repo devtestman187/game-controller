@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:connection/connection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:protocol/protocol.dart';
 
 import 'arena.dart';
 
@@ -22,6 +23,9 @@ List<PlayerFeed> feedsOf(GameHost host) => [
 /// The game's name in analytics records.
 const arenaGame = 'arena';
 
+/// The arena's buttons on the phone: the usual ones, with Start to pause (M11).
+final arenaLayout = GameLayoutMessage(labels: {ControllerButton.start: 'Pause'});
+
 /// Plays [ArenaGame] full size: the field fills the space it's given and
 /// follows it when the window resizes. A bar on top shows the round, the
 /// timer and each player's counters.
@@ -37,13 +41,16 @@ const arenaGame = 'arena';
 /// how many frames were late, and the "received to drawn" delay stage (S7):
 /// how long a player's new input waited for the first frame built with it.
 class ArenaView extends StatefulWidget {
-  const ArenaView({super.key, required this.host, required this.onEvent, this.game});
+  const ArenaView({super.key, required this.host, required this.onEvent, this.game, this.paused = false});
 
   final GameHost host;
   final void Function(GameEvent event) onEvent;
 
   /// The game to show. Tests pass one in to inspect it.
   final ArenaGame? game;
+
+  /// Nothing moves (the pause menu is open).
+  final bool paused;
 
   /// A frame that took longer than this was dropped (a 60 Hz frame is 16.7).
   static const lateFrameMs = 25;
@@ -65,6 +72,14 @@ class _ArenaViewState extends State<ArenaView> with SingleTickerProviderStateMix
   bool _roundRunning = false;
   int _frames = 0;
   int _late = 0;
+  final _withLayout = <String>{};
+
+  @override
+  void didUpdateWidget(ArenaView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Back from the pause menu: the phones get the arena's buttons again.
+    if (oldWidget.paused && !widget.paused) _withLayout.clear();
+  }
 
   @override
   void initState() {
@@ -85,8 +100,15 @@ class _ArenaViewState extends State<ArenaView> with SingleTickerProviderStateMix
   void _tick(Duration elapsed) {
     final dt = (elapsed - _last).inMicroseconds / 1e6;
     _last = elapsed;
+    if (widget.paused) return;
     final host = widget.host;
     _feeds = feedsOf(host);
+    // The phones show the arena's buttons while it runs; afterwards they
+    // belong to the host again (the TV's menus).
+    for (final f in _feeds) {
+      if (_withLayout.add(f.id)) host.setLayout(f.id, arenaLayout);
+    }
+    _withLayout.removeWhere((id) => !_feeds.any((f) => f.id == id));
     if (_feeds.isNotEmpty) {
       _frames++;
       if (dt * 1000 > ArenaView.lateFrameMs && _frames > 1) _late++;

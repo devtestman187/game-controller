@@ -7,6 +7,8 @@ import 'package:test_game/test_game.dart';
 
 import '../keyboard_player.dart';
 import '../providers.dart';
+import 'controller_menus.dart';
+import 'pause_menu.dart';
 
 /// Keys that show or hide the debug overlay: OK on the remote (and Enter),
 /// the remote's Info or Menu key if it has one, and D or F3 on a keyboard.
@@ -93,35 +95,42 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     final text = Theme.of(context).textTheme;
     final hint = keyboardPlayerAvailable && _keyboard.player == null
         ? 'Arrows and Space: play on the keyboard · D: debug info · Esc: leave'
-        : 'OK or D: debug info · Back: leave';
-    return Focus(
-      autofocus: true,
-      onKeyEvent: _onKey,
-      child: Scaffold(
-        body: SafeArea(
-          child: Stack(
-            children: [
-              ArenaView(game: widget.game, host: ref.read(gameHostProvider), onEvent: _onEvent),
-              if (nobody)
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  bottom: 48,
-                  child: Center(
-                    child: _Note(
-                      keyboardPlayerAvailable
-                          ? 'No controller connected. Pair a phone on the main screen, or press an arrow key.'
-                          : 'No controller connected. Pair a phone on the main screen.',
+        : 'OK or D: debug info · Start on a phone: pause · Back: leave';
+    // The game reads the controllers (no menus); Start pauses (M11).
+    return ControlsClaim(
+      controls: const Controls.game(),
+      child: Focus(
+        autofocus: true,
+        onKeyEvent: _onKey,
+        child: Scaffold(
+          body: SafeArea(
+            child: Pausable(
+              enabled: true,
+              builder: (context, paused) => Stack(
+                children: [
+                  ArenaView(game: widget.game, host: ref.read(gameHostProvider), onEvent: _onEvent, paused: paused),
+                  if (nobody)
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: 48,
+                      child: Center(
+                        child: _Note(
+                          keyboardPlayerAvailable
+                              ? 'No controller connected. Pair a phone on the main screen, or press an arrow key.'
+                              : 'No controller connected. Pair a phone on the main screen.',
+                        ),
+                      ),
                     ),
+                  if (_debug) const Positioned(top: 64, left: 12, child: DebugOverlay()),
+                  Positioned(
+                    right: 12,
+                    bottom: 8,
+                    child: Text(hint, style: text.bodySmall?.copyWith(color: Colors.white60)),
                   ),
-                ),
-              if (_debug) const Positioned(top: 64, left: 12, child: DebugOverlay()),
-              Positioned(
-                right: 12,
-                bottom: 8,
-                child: Text(hint, style: text.bodySmall?.copyWith(color: Colors.white60)),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),
