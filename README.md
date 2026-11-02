@@ -11,7 +11,7 @@ A phone game controller (Android + iOS) and a TV test app it drives (Android TV 
 | [packages/metrics/](packages/metrics) | Analytics: the phone's touch counters, session summaries and the report tool |
 | [packages/test_game/](packages/test_game) | The Arena game (top-down arena, one sprite per controller) |
 | [packages/puzzle_game/](packages/puzzle_game) | Shape Race, the puzzle game: data, rules, snapshots and view |
-| [tools/](docs/dev-tools.md) | `check.sh` (every check), `release.sh` (tag and release), release notes, signing and artwork scripts |
+| [tools/](docs/dev-tools.md) | `check.sh` (every check), `release.sh` (tag and release), `tv-dev.sh` and `tv-window.ps1` (the Windows TV app for checks), `emulator.sh` (the phone app on the Android emulator), release notes, signing and artwork scripts |
 | [assets/](assets/CREDITS.md) | Images, audio and their credits |
 | [docs/](docs) | PRD, [architecture](docs/architecture.md), [decisions](docs/decisions.md), [building](docs/building.md), [developer tools](docs/dev-tools.md), [project notes](docs/project-notes.md), [release](docs/release.md), [protocol](docs/protocol.md), [checklists](docs/checklists) |
 

@@ -26,26 +26,30 @@ Carried from earlier milestones, still to do:
 - **The `docs/protocol.md` read-through** (M9; the owner skipped it then).
 - **Idea:** "time in a mode" counts idle time with the app open, which dilutes per-minute stats. Count only active play in a later milestone.
 - **M10** is released (`m10` to `m10.2`) and in device testing ([checklists/m10.md](checklists/m10.md)), including three optional checks carried from M9.
-- **Offered, not done:** phone control of the TV's game picker and puzzle list (the results screen already has it); sub-agents on a cheaper model for checks and releases; a saved recipe for the Windows and emulator checks.
+- **Offered, not done:** phone control of the TV's game picker and puzzle list (the results screen already has it); sub-agents on a cheaper model for checks and releases (next).
 
 ## Testing recipes
+
+The scripts and their safety rules are in [dev-tools.md](dev-tools.md#checking-on-screens-the-tv-app-and-the-phone-app): `tools/tv-dev.sh` and `tools/tv-window.ps1` for the Windows TV app, `tools/emulator.sh` for the phone app on the emulator. What they're built on, and what to keep in mind:
 
 ### The Windows TV app, without disturbing a copy that's already running
 
 The owner often has release copies of the TV app open (from the Downloads folder). They own port 45780, and phones may be paired with them.
-- Run a development copy with `cd tv_test_app; flutter run -d windows`. If 45780 is taken it picks another port; read it and the pairing code from the log line `[host] Listening on port 63356 (pairing code 6423)`.
-- Stop only that copy: its path ends in `tv_test_app\build\windows\x64\runner\Debug\ThumbPartyTV.exe`. Never stop processes by name alone.
+- `tools/tv-dev.sh start` runs a development copy and prints its port and pairing code. If 45780 is taken it picks another port, read from the log line `[host] Listening on port 63356 (pairing code 6423)`.
+- Only that copy is ever stopped: its path ends in `tv_test_app\build\windows\x64\runner\Debug\ThumbPartyTV.exe`. Never stop processes by name alone.
+- The development copy shares this PC's saved pairings and network name, so when no release copy is running, the owner's phones can join it. Keep checks short and stop it afterwards.
 - Debug runs save their stats sessions to a `sessions-debug` folder, so test sessions don't mix with real ones.
 - The keyboard plays as another player: arrows, Space (A), X and Z.
-- To drive the window from a script (clicks, held keys, screenshots), Windows APIs (`SetForegroundWindow`, `keybd_event`, `PrintWindow`) work; sending keys with `SendKeys` didn't. Run PowerShell scripts with `-ExecutionPolicy Bypass`.
+- `tools/tv-window.ps1` drives the window with Windows APIs (`SetForegroundWindow`, `keybd_event`, `PrintWindow`); sending keys with `SendKeys` didn't work. PowerShell scripts need `-ExecutionPolicy Bypass` on this PC.
 - The simulated controller needs no phone: `cd packages\connection; dart run connection:sim_controller --code <code>` (`--demo`, `--stream`, `--metrics` for more).
 
 ### The Android 12 emulator
 
-- The emulator's phone app remembers the last TV it paired with and reconnects on launch, which can join the owner's running TV app. **Always clear its data first**: `adb shell pm clear com.thumbparty.app`. Then connect by hand to your own TV app at `10.0.2.2:<port>` (10.0.2.2 is the PC from inside the emulator).
-- In Git Bash, set `MSYS_NO_PATHCONV=1` and use Windows paths for `adb install`, or Git Bash rewrites them.
-- `adb shell input tap` is a very short tap: a good test that quick taps aren't lost. `adb shell input swipe x y x y <ms>` holds a button for that long.
-- After typing the TV's address, Enter on the keyboard submits. The Connect screen closes itself once connected, so pressing Back afterwards leaves the app.
+- The emulator's phone app remembers the last TV it paired with and reconnects on launch, which can join the owner's running TV app. **Always clear its data first** (`tools/emulator.sh launch` and `install` do: `adb shell pm clear com.thumbparty.app`), then connect to your own TV app at `10.0.2.2:<port>` (10.0.2.2 is the PC from inside the emulator).
+- In Git Bash, `MSYS_NO_PATHCONV=1` stops Git Bash rewriting `/sdcard/...` paths, and `adb install` needs a Windows path. The script handles both.
+- `tools/emulator.sh ui` lists labelled controls through Android's accessibility tree (`uiautomator dump`), which works with Flutter apps, so `tap-name` finds buttons by name.
+- `adb shell input tap` is a very short tap: a good test that quick taps aren't lost. `adb shell input swipe x y x y <ms>` holds for that long.
+- The Connect screen closes itself once connected, so pressing Back afterwards leaves the app.
 - Every time the development TV app restarts it may get a new port; reconnect the phone to it.
 - Setup and the full check: [building.md](building.md), "Android 12 emulator check".
 

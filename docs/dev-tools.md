@@ -6,8 +6,11 @@ Two scripts replace the most repeated manual steps:
 | --- | --- | --- |
 | [`tools/check.sh`](../tools/check.sh) | Every automated check (format, analyze, all seven test suites), one line each | about 3 minutes |
 | [`tools/release.sh`](../tools/release.sh) | Tags a release with tester notes, pushes it, waits for the Play, TestFlight and Windows builds, and prints a summary | about 20 to 40 minutes, mostly waiting |
+| [`tools/tv-dev.sh`](../tools/tv-dev.sh) | Starts and stops a development copy of the Windows TV app, and prints its port and pairing code | a few seconds (a few minutes for the first build) |
+| [`tools/tv-window.ps1`](../tools/tv-window.ps1) | Screenshots, clicks and keys in that copy's window | instant |
+| [`tools/emulator.sh`](../tools/emulator.sh) | Runs the phone app on the Android emulator: install with cleared data, connect to a TV app, list what's on screen, tap, screenshot | about a minute to boot |
 
-Both are plain bash with no paths tied to one computer, so they work the same on Windows (Git Bash), macOS and Linux. They run from any folder: each script moves to the repository root itself.
+They're plain bash (and one PowerShell script for the Windows window) with no paths tied to one computer. `check.sh`, `release.sh` and `emulator.sh` work the same on Windows (Git Bash), macOS and Linux; `tv-dev.sh` and `tv-window.ps1` are for Windows, where the desktop TV app runs. Each runs from any folder: the scripts move to the repository root themselves. They're written so a person, Claude Code or another AI agent can use them the same way.
 
 ## What you need
 
@@ -113,6 +116,92 @@ All done.
 - **Exit code:** 0 when everything succeeded; 1 when a build or upload failed or didn't finish in time; 2 when a check before tagging failed (nothing was tagged).
 - **If the window closes while waiting,** nothing is lost: the builds run in the cloud. Run `tools/release.sh --status <tag>` later.
 - **What it doesn't do:** bump the version (edit the two `pubspec.yaml` and two `app_info.dart` files and commit first), or fix failed uploads. For those, see "If something goes wrong" in [release.md](release.md).
+
+## Checking on screens: the TV app and the phone app
+
+Automated tests can't tell whether something looks right or feels right. These scripts make the hands-on check quick: the development TV app on Windows, the phone app on the Android emulator, connected to each other, with screenshots of both.
+
+### Safety rules (the scripts follow them; anyone driving by hand should too)
+
+- **Only the development copy.** A release copy of the TV app (from a Windows zip) may be open and in use, with phones paired to it. `tv-dev.sh` and `tv-window.ps1` only touch this repository's debug build (`tv_test_app\build\windows\x64\runner\Debug\ThumbPartyTV.exe`), found by its full path. Never stop `ThumbPartyTV` processes by name.
+- **The development copy is the same app on the same PC.** It shares the release copy's saved pairings and network name. If no release copy is running, it takes the usual port (45780), and phones paired with this PC (yours too) may reconnect to it. Keep checks short, and stop it afterwards.
+- **Clear the emulator's app data before running it.** The phone app reconnects to the last TV it paired with, which may be a real one. `emulator.sh launch` and `install` always clear it.
+
+### The TV app on Windows: tools/tv-dev.sh and tools/tv-window.ps1
+
+```bash
+tools/tv-dev.sh start                 # build and start; prints port and code
+tools/tv-dev.sh status
+tools/tv-dev.sh window click 707,67   # Play (positions as in a screenshot of the 1280x720 window)
+tools/tv-dev.sh window key space      # keys: left right up down space enter esc tab backspace a-z 0-9
+tools/tv-dev.sh window hold right 900 # hold for 900 ms; several at once: right+space
+tools/tv-dev.sh window shot tv.png    # the whole window, even when covered
+tools/tv-dev.sh log                   # the last 40 log lines
+tools/tv-dev.sh stop
+```
+
+`start` prints, for example:
+
+```
+Running: process 11336
+Port:    45780   (a phone or the Android emulator connects to <this PC's IP>:45780, the emulator uses 10.0.2.2:45780)
+Code:    5416
+Log:     C:\Users\...\Temp\thumbparty-dev\tv.log
+```
+
+- `window ...` passes everything on to `tools/tv-window.ps1`, which can also be run from PowerShell: `powershell -NoProfile -ExecutionPolicy Bypass -File tools\tv-window.ps1 shot tv.png`.
+- On Windows the keyboard plays as another player: arrows to move, Space for A, X and Z to rotate.
+- Debug runs save stats to a `sessions-debug` folder, so test sessions don't mix with real ones.
+- Exit codes: 0 ok, 1 not running or didn't start (the end of the log is printed), 2 bad use.
+
+### The phone app on the Android emulator: tools/emulator.sh
+
+Needs the Android SDK with the emulator and an AVD (`m7_android12`: see "Android 12 emulator check" in [building.md](building.md)). The SDK is found through `ANDROID_HOME`, `ANDROID_SDK_ROOT` or its usual folder on each OS.
+
+```bash
+tools/emulator.sh start                       # boot m7_android12 (or: start <avd>) and wait
+tools/emulator.sh install                     # the debug APK (built if missing); clears data before and after
+tools/emulator.sh install --build             # rebuild it first, after changing the phone app
+tools/emulator.sh launch                      # clears data and opens the Connect screen
+tools/emulator.sh connect 10.0.2.2:45780 5416 # types the address and code, waits for "P1"
+tools/emulator.sh ui                          # everything labelled on screen, with its centre
+tools/emulator.sh tap-name "Sticks"           # tap by label (first match, from the start of the label)
+tools/emulator.sh tap 1882 870                # tap at screen pixels
+tools/emulator.sh hold 828 596 2300           # touch and hold (2.3 s on the D-pad's right arm)
+tools/emulator.sh text "hello"; tools/emulator.sh key enter   # also: back, home, or a keycode
+tools/emulator.sh shot phone.png              # pixels match tap and hold coordinates
+tools/emulator.sh stop
+```
+
+`ui` reads the screen through Android's accessibility tree, so it finds buttons by name without guessing positions:
+
+```
+P1                                       View                76    73
+TV · 5 ms                                Button             285    74
+D-pad                                    Button            1516    73
+Sticks                                   Button            2005    73
+Select                                   View              1200   456
+A, B, X, Y                               View              1858   598
+```
+
+The face buttons are one drawn control (`A, B, X, Y`; in a game it lists the labels too, such as `A Pick up, X Rotate ⟳`), so press them by position: take a screenshot first.
+
+- `adb shell input tap` is a very short tap, good for checking that quick taps aren't lost; `hold` presses for as long as you say.
+- With several devices attached, set `ANDROID_SERIAL` to the one to use. The same commands work on a real Android phone connected with adb, except `start` and `stop`.
+- Exit codes: 0 ok, 1 failed or timed out, 2 bad use.
+
+### A whole check, start to finish
+
+```bash
+tools/tv-dev.sh start                          # note the port and code
+tools/emulator.sh start
+tools/emulator.sh install && tools/emulator.sh launch
+tools/emulator.sh connect 10.0.2.2:<port> <code>
+tools/tv-dev.sh window click 707,67            # Play → then the game and puzzle
+tools/tv-dev.sh window shot tv.png
+tools/emulator.sh shot phone.png
+tools/emulator.sh stop; tools/tv-dev.sh stop   # always clean up
+```
 
 ## Moving development to another computer
 
