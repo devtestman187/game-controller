@@ -142,6 +142,7 @@ v2 adds these to v1's T1 to T10.
 | T18 | Stats screen: summary per session and per input mode, and export of the session files | M9 |
 | T19 | Consent prompt on first launch and a setting to change it. Opt-in upload of session summaries when allowed, queued while offline | M9 |
 | T20 | Store-ready builds: the new name (Thumb Party TV) and ID, AAB for Play's Android TV track, versioned Windows release zip on GitHub Releases, privacy policy link | M8 |
+| T21 | The whole TV app works from a controller, like the remote: the D-pad or left stick moves the focus, A selects, B goes back. A player can leave a game from the phone (for example Start, then Quit) and then use every screen: the game picker, the puzzle list, Puzzle settings, Stats, Settings and the test tools. Owner's request after the M10 device test: "I should be able to control the full TV app using the controller." The puzzle results screen already works this way (m10.2) | Not scheduled yet |
 
 ## Analytics requirements
 
