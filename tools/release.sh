@@ -124,7 +124,11 @@ echo "Notes:    $notes"
 echo "Publishes to Play (both apps), TestFlight and a public GitHub Release."
 if [ $yes = 0 ]; then
   printf 'Tag and push? [y/N] '
-  read -r answer < /dev/tty || answer=""
+  if ! { read -r answer < /dev/tty; } 2> /dev/null; then
+    echo
+    echo "No terminal to ask in. Nothing done; add --yes to release without asking."
+    exit 2
+  fi
   case "$answer" in y | Y | yes) ;; *) echo "Nothing done."; exit 2 ;; esac
 fi
 
