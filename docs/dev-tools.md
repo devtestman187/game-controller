@@ -205,18 +205,61 @@ tools/emulator.sh stop; tools/tv-dev.sh stop   # always clean up
 
 ## Helper agents for Claude Code
 
-Two sub-agents in [`.claude/agents/`](../.claude/agents) let Claude Code hand the most repetitive jobs to a cheaper model (Haiku). They run the scripts above and return only a short summary, so long test and build output never fills the main conversation. Claude Code loads them when it starts in this repository; `/agents` lists them.
+Three sub-agents in [`.claude/agents/`](../.claude/agents) let Claude Code hand the most repetitive jobs to a cheaper model (Haiku, or DeepSeek Flash for `flash-worker`). They run the scripts above and return only a short summary, so long test and build output never fills the main conversation. Claude Code loads them when it starts in this repository; `/agents` lists them.
 
 | Agent | Model | Does | Never does |
 | --- | --- | --- | --- |
 | [`test-runner`](../.claude/agents/test-runner.md) | Haiku | Runs `tools/check.sh` (all checks or some) and reports the PASS/FAIL lines, plus the failing tests' expected and actual lines | Edit files, fix anything, run git commands that change things, touch apps or devices |
 | [`release-checker`](../.claude/agents/release-checker.md) | Haiku | Runs `tools/release.sh <tag> "<notes>" --yes` for a tag **the user has approved**, or `--status <tag>`, and returns the summary | Choose or create tags itself, retry, work around a failed check, edit files or settings |
+| [`flash-worker`](../.claude/agents/flash-worker.md) | Haiku, handing the work to DeepSeek Flash | Runs `tools/flash.sh "<task>"`: a separate, headless Claude Code (`--bare`) on DeepSeek's API does one small, mechanical job (doc updates, renames, analyzer fixes, tests or counters copied from an example) and reports the changed files | Commit, release, run git commands that change things, decide anything, or work on protocol, connection or platform code |
 
 How they're used:
 - Claude Code uses `test-runner` after code changes and before commits and releases, and `release-checker` once you say "tag m10.3". You can also ask for them by name ("use the test-runner").
+- Claude Code uses `flash-worker` for chores that copy an existing pattern, then reviews the diff and runs `test-runner` before committing. It needs `DEEPSEEK_API_KEY` set (a Windows user environment variable) and bills DeepSeek, not the Claude subscription. `FLASH_MODEL` picks another DeepSeek model.
 - The judgment work stays with the main model: writing code and tests, fixing failures, and the hands-on checks with screenshots (`tv-dev.sh`, `emulator.sh`), where most real bugs were found.
 - To use a different model, change the `model:` line in an agent's file (`haiku`, `sonnet`, `opus`).
 - The agent files are plain instructions around the scripts. Another company's coding agent can't load them, but it can follow the same scripts and this document.
+
+## DeepSeek Flash helper: set up, check, remove
+
+`flash-worker` sends small chores to DeepSeek Flash so they don't use the Claude subscription. The main Claude Code session stays on the subscription. Only the separate process that [`tools/flash.sh`](../tools/flash.sh) starts talks to DeepSeek, and only while it runs: nothing is installed, and Claude Code's sign-in and settings aren't changed.
+
+How it fits together: Claude Code (subscription) → `flash-worker` (Haiku, a short briefing and summary) → `tools/flash.sh` → `claude --bare -p` with `ANTHROPIC_BASE_URL=https://api.deepseek.com/anthropic` → DeepSeek Flash edits files in the working tree. `--bare` never reads the Claude sign-in, so this process can't use the subscription by mistake. What it may do is set in the script, and Claude Code enforces it rather than relying on the model to obey:
+- **Tools:** `--bare` offers only Read, Edit (which also creates files) and Bash. Read is limited to the repository. Bash is limited to formatting, analysis and tests (`dart`, `flutter`, `tools/check.sh`), read-only `git status`, `log`, `grep` and `ls-files`, and `ls`. Git commands that change anything, `rm`, `gh`, `tools/release.sh`, sub-agents and the web are blocked.
+- **Files it can't change:** `.github/`, `codemagic.yaml`, `firebase/`, `.claude/`, `kenney-audio/`, every `docs/PRD*` file (the PRDs and the owner's backups: PRD changes are judgment calls, so the main session makes them), `tools/release.sh` and `tools/flash.sh`. Editing or creating them is refused.
+- **Files it can't read:** anything outside the repository (so `%USERPROFILE%\.thumbparty\` and other sign-ins stay private), and inside it any signing key, service account or `.env` file, in case one is ever put there. Whatever it reads is sent to DeepSeek.
+- **Not a sandbox:** it can run tests, and a test is code, so a model that deliberately misbehaved could get around these rules. They stop mistakes, not a hostile model.
+- **Checked again afterwards:** the script compares those files before and after the run. If any changed anyway, it ends with `PROTECTED FILES CHANGED` and exit code 3.
+- **What it knows about the project:** `--bare` skips Claude Code's project notes, so the script gives it a short set of rules and points it to [project-notes.md](project-notes.md).
+
+It ends by printing `git status` and `git diff --stat`.
+
+Whatever Flash works on is sent to DeepSeek's servers. Keep unreleased designs and anything private away from it.
+
+**Set up on a computer** (once per computer; the agent and script come with the repository):
+1. Have Git Bash and the `claude` CLI (`claude --version` in Git Bash).
+2. Create an API key at [platform.deepseek.com](https://platform.deepseek.com) and add some credit.
+3. Save it as a user environment variable, then open a new terminal and restart Claude Code so they see it:
+   ```powershell
+   [Environment]::SetEnvironmentVariable('DEEPSEEK_API_KEY', '<key>', 'User')
+   ```
+   macOS or Linux: `export DEEPSEEK_API_KEY=<key>` in `~/.zshrc` or `~/.bashrc`.
+4. Optional: `FLASH_MODEL` picks another DeepSeek model (default `deepseek-v4-flash`; DeepSeek maps names it doesn't know to Flash).
+
+**Check it:**
+```bash
+tools/flash.sh --dry-run "test"     # prints the command; doesn't call DeepSeek
+tools/flash.sh "Reply with OK"      # prints OK, and git status shows nothing new
+```
+Then, in Claude Code: "use the flash-worker to <a small chore>", and review the diff.
+
+**Turn it off on a computer** (the agent then answers "DEEPSEEK_API_KEY isn't set" and does nothing):
+```powershell
+[Environment]::SetEnvironmentVariable('DEEPSEEK_API_KEY', $null, 'User')
+```
+Open a new terminal and restart Claude Code afterwards. Delete the key at platform.deepseek.com too if it won't be used again.
+
+**Remove it from the repository:** revert the commit that added it (`git log --oneline -- tools/flash.sh` finds it, then `git revert <commit>`), or delete the `flash-worker` branch if it was never merged.
 
 ## Moving development to another computer
 
@@ -240,6 +283,7 @@ Everything needed to build and test is in the repository. A few things live outs
 | Android SDK, emulator image and the `m7_android12` emulator | `%LOCALAPPDATA%\Android\Sdk`, `~\.android\avd` | Android builds and the Android 12 check | [building.md](building.md): the toolchain and "Android 12 emulator check" |
 | Android TV pairing for adb | the TV | installing on the TV | `adb connect <TV IP>:5555` again (accept the prompt on the TV) |
 | Windows Firewall rules for the TV app | Windows | phones reaching the Windows TV app | allowed again on the first run ([building.md](building.md)) |
+| DeepSeek API key (for `flash-worker`) | the `DEEPSEEK_API_KEY` user environment variable | `tools/flash.sh` only; everything else works without it | set it again ([DeepSeek Flash helper](#deepseek-flash-helper-set-up-check-remove)), or leave it unset to not use the helper |
 | Claude Code's notes for this project | `~/.claude/projects/<folder name>/memory/` | Claude remembering the project state and your preferences | copy the `memory` folder into the matching folder on the new computer. The folder name comes from the repository's path (`C--Users-singh-game-controller` for `C:\Users\singh\game-controller`), so it changes if the path does. The same rules, open items and lessons are kept in [project-notes.md](project-notes.md), so nothing important is lost without the folder |
 
 **First steps on the new computer:**
