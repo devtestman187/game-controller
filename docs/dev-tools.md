@@ -211,28 +211,34 @@ Three sub-agents in [`.claude/agents/`](../.claude/agents) let Claude Code hand 
 | --- | --- | --- | --- |
 | [`test-runner`](../.claude/agents/test-runner.md) | Haiku | Runs `tools/check.sh` (all checks or some) and reports the PASS/FAIL lines, plus the failing tests' expected and actual lines | Edit files, fix anything, run git commands that change things, touch apps or devices |
 | [`release-checker`](../.claude/agents/release-checker.md) | Haiku | Runs `tools/release.sh <tag> "<notes>" --yes` for a tag **the user has approved**, or `--status <tag>`, and returns the summary | Choose or create tags itself, retry, work around a failed check, edit files or settings |
-| [`flash-worker`](../.claude/agents/flash-worker.md) | Haiku, handing the work to DeepSeek Flash | Runs `tools/flash.sh "<task>"`: a separate, headless Claude Code (`--bare`) on DeepSeek's API does one small, mechanical job (doc updates, renames, analyzer fixes, tests or counters copied from an example) and reports the changed files | Commit, release, run git commands that change things, decide anything, or work on protocol, connection or platform code |
+| [`flash-worker`](../.claude/agents/flash-worker.md) | Haiku, handing the work to DeepSeek Flash | Runs `tools/flash.sh "<task>"`: a separate, headless Claude Code (`--bare`) on DeepSeek's API does one well-defined job that copies a pattern (`lib/` code filling in a design Claude made, tests from a case list, doc and status updates, renames, analyzer fixes, drafts) and reports the changed files | Commit, release, run git commands that change things, decide anything, or work on protocol, connection or platform code |
 
 How they're used:
 - Claude Code uses `test-runner` after code changes and before commits and releases, and `release-checker` once you say "tag m10.3". You can also ask for them by name ("use the test-runner").
-- Claude Code uses `flash-worker` for chores that copy an existing pattern, then reviews the diff and runs `test-runner` before committing. It needs `DEEPSEEK_API_KEY` set (a Windows user environment variable) and bills DeepSeek, not the Claude subscription. `FLASH_MODEL` picks another DeepSeek model.
+- Claude Code runs `tools/flash.sh` directly (in the background) by default for work that copies an existing pattern (the split is in [project-notes.md](project-notes.md#how-we-work)), then reviews the diff and runs `test-runner` before committing. The `flash-worker` agent does the same thing and is kept for when you ask for it by name. It needs `DEEPSEEK_API_KEY` set (a Windows user environment variable) and bills DeepSeek, not the Claude subscription. `FLASH_MODEL` picks another DeepSeek model.
 - The judgment work stays with the main model: writing code and tests, fixing failures, and the hands-on checks with screenshots (`tv-dev.sh`, `emulator.sh`), where most real bugs were found.
 - To use a different model, change the `model:` line in an agent's file (`haiku`, `sonnet`, `opus`).
 - The agent files are plain instructions around the scripts. Another company's coding agent can't load them, but it can follow the same scripts and this document.
 
 ## DeepSeek Flash helper: set up, check, remove
 
-`flash-worker` sends small chores to DeepSeek Flash so they don't use the Claude subscription. The main Claude Code session stays on the subscription. Only the separate process that [`tools/flash.sh`](../tools/flash.sh) starts talks to DeepSeek, and only while it runs: nothing is installed, and Claude Code's sign-in and settings aren't changed.
+`tools/flash.sh` sends pattern-copying work to DeepSeek Flash so it doesn't use the Claude subscription. The main Claude Code session stays on the subscription. Only the separate process that [`tools/flash.sh`](../tools/flash.sh) starts talks to DeepSeek, and only while it runs: nothing is installed, and Claude Code's sign-in and settings aren't changed.
 
-How it fits together: Claude Code (subscription) → `flash-worker` (Haiku, a short briefing and summary) → `tools/flash.sh` → `claude --bare -p` with `ANTHROPIC_BASE_URL=https://api.deepseek.com/anthropic` → DeepSeek Flash edits files in the working tree. `--bare` never reads the Claude sign-in, so this process can't use the subscription by mistake. What it may do is set in the script, and Claude Code enforces it rather than relying on the model to obey:
+How it fits together: Claude Code (subscription) → `tools/flash.sh` (run directly; or through the `flash-worker` agent if asked by name) → `claude --bare -p` with `ANTHROPIC_BASE_URL=https://api.deepseek.com/anthropic` → DeepSeek Flash edits files in the working tree. `--bare` never reads the Claude sign-in, so this process can't use the subscription by mistake. What it may do is set in the script, and Claude Code enforces it rather than relying on the model to obey:
 - **Tools:** `--bare` offers only Read, Edit (which also creates files) and Bash. Read is limited to the repository. Bash is limited to formatting, analysis and tests (`dart`, `flutter`, `tools/check.sh`), read-only `git status`, `log`, `grep` and `ls-files`, and `ls`. Git commands that change anything, `rm`, `gh`, `tools/release.sh`, sub-agents and the web are blocked.
 - **Files it can't change:** `.github/`, `codemagic.yaml`, `firebase/`, `.claude/`, `kenney-audio/`, every `docs/PRD*` file (the PRDs and the owner's backups: PRD changes are judgment calls, so the main session makes them), `tools/release.sh` and `tools/flash.sh`. Editing or creating them is refused.
 - **Files it can't read:** anything outside the repository (so `%USERPROFILE%\.thumbparty\` and other sign-ins stay private), and inside it any signing key, service account or `.env` file, in case one is ever put there. Whatever it reads is sent to DeepSeek.
 - **Not a sandbox:** it can run tests, and a test is code, so a model that deliberately misbehaved could get around these rules. They stop mistakes, not a hostile model.
 - **Checked again afterwards:** the script compares those files before and after the run. If any changed anyway, it ends with `PROTECTED FILES CHANGED` and exit code 3.
+- **Only the files the job names:** `--allow <path>` (repeatable; a folder covers everything in it) lists what the job may change, and the worker is told. Any other file the run changes, creates or deletes ends the job with `CHANGED FILES OUTSIDE --allow` and exit code 4. Without `--allow` the job is read-only. Files that were already changed before the run don't count.
+- **Checks run for you:** `--check <names>` runs `tools/check.sh <names>` after the worker finishes (e.g. `--check puzzle`); a failure gives exit code 5.
 - **What it knows about the project:** `--bare` skips Claude Code's project notes, so the script gives it a short set of rules and points it to [project-notes.md](project-notes.md).
 
-It ends by printing `git status` and `git diff --stat`.
+It ends by printing the files this run changed, their `git diff --stat`, the check results and `flash: result <code>`: 0 when everything passed, otherwise the first that applies of 3 (protected file), 4 (outside `--allow`), the worker's own exit code, 5 (a check failed); 2 for bad arguments or a missing key.
+
+```bash
+tools/flash.sh --allow packages/puzzle_game/test/rules_test.dart --check puzzle "<spec>"
+```
 
 Whatever Flash works on is sent to DeepSeek's servers. Keep unreleased designs and anything private away from it.
 
@@ -251,7 +257,7 @@ Whatever Flash works on is sent to DeepSeek's servers. Keep unreleased designs a
 tools/flash.sh --dry-run "test"     # prints the command; doesn't call DeepSeek
 tools/flash.sh "Reply with OK"      # prints OK, and git status shows nothing new
 ```
-Then, in Claude Code: "use the flash-worker to <a small chore>", and review the diff.
+Then, in Claude Code: "use the flash-worker to <a job>" (or let Claude Code decide; it runs `tools/flash.sh` itself), and review the diff.
 
 **Turn it off on a computer** (the agent then answers "DEEPSEEK_API_KEY isn't set" and does nothing):
 ```powershell
