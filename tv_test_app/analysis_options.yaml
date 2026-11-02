@@ -32,3 +32,7 @@ linter:
 
 # Additional information about this file can be found at
 # https://dart.dev/guides/language/analysis-options
+
+# The repo is formatted at 120 columns (dart format reads this).
+formatter:
+  page_width: 120

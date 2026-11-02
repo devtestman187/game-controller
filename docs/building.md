@@ -23,11 +23,20 @@ flutter pub get          # resolves the whole workspace
 ```
 
 ## Tests and analysis
+One command runs the format check, analysis and all seven test suites, one line each (details in [dev-tools.md](dev-tools.md)):
+```bash
+tools/check.sh                # in Git Bash; from PowerShell: & "C:\Program Files\Git\bin\bash.exe" tools/check.sh
+tools/check.sh phone tv       # only some of them (tools/check.sh --list)
+```
+By hand, the same thing:
 ```powershell
-flutter analyze controller_app tv_test_app packages assets
+dart format --output=none --set-exit-if-changed controller_app tv_test_app packages assets
+dart analyze
 cd packages\protocol; dart test; cd ..\..
 cd packages\connection; dart test; cd ..\..    # real sockets on localhost: pairing, heartbeats, reconnect
-cd packages\test_game; flutter test; cd ..\..    # game rules and the game screen
+cd packages\metrics; dart test; cd ..\..
+cd packages\test_game; flutter test; cd ..\..    # the Arena's rules and screen
+cd packages\puzzle_game; flutter test; cd ..\..  # Shape Race's rules, view and snapshots
 cd controller_app; flutter test; cd ..
 cd tv_test_app; flutter test; cd ..
 ```

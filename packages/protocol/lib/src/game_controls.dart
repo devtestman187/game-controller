@@ -49,10 +49,7 @@ final class GameLayoutMessage extends Message {
   Map<String, Object?> toPayload() => {
     'modes': modes,
     'default': ?defaultMode,
-    'labels': {
-      for (final b in ControllerButton.values)
-        b.name: ?labels[b],
-    },
+    'labels': {for (final b in ControllerButton.values) b.name: ?labels[b]},
     'hidden': [
       for (final b in ControllerButton.values)
         if (hidden.contains(b)) b.name,

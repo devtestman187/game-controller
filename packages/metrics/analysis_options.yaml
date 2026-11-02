@@ -1,1 +1,5 @@
 include: package:lints/recommended.yaml
+
+# The repo is formatted at 120 columns (dart format reads this).
+formatter:
+  page_width: 120

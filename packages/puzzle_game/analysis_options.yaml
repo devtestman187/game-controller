@@ -2,3 +2,7 @@ analyzer:
   exclude:
     - build/**
 include: package:flutter_lints/flutter.yaml
+
+# The repo is formatted at 120 columns (dart format reads this).
+formatter:
+  page_width: 120

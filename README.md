@@ -8,22 +8,24 @@ A phone game controller (Android + iOS) and a TV test app it drives (Android TV 
 | [tv_test_app/](tv_test_app/README.md) | TV test app (Android TV + Windows desktop) |
 | [packages/protocol/](packages/protocol) | Shared, versioned message definitions |
 | [packages/connection/](packages/connection) | Host server and phone client (pairing, heartbeats, reconnect), plus the command-line simulated controller |
-| [packages/test_game/](packages/test_game) | The test game (top-down arena, one sprite per controller), kept separate so it can grow |
+| [packages/metrics/](packages/metrics) | Analytics: the phone's touch counters, session summaries and the report tool |
+| [packages/test_game/](packages/test_game) | The Arena game (top-down arena, one sprite per controller) |
+| [packages/puzzle_game/](packages/puzzle_game) | Shape Race, the puzzle game: data, rules, snapshots and view |
+| [tools/](docs/dev-tools.md) | `check.sh` (every check), `release.sh` (tag and release), release notes, signing and artwork scripts |
 | [assets/](assets/CREDITS.md) | Images, audio and their credits |
-| [docs/](docs) | PRD, [architecture](docs/architecture.md), [decisions](docs/decisions.md), [building](docs/building.md), [iOS setup](docs/ios-setup.md), [checklists](docs/checklists) |
+| [docs/](docs) | PRD, [architecture](docs/architecture.md), [decisions](docs/decisions.md), [building](docs/building.md), [developer tools](docs/dev-tools.md), [release](docs/release.md), [protocol](docs/protocol.md), [checklists](docs/checklists) |
 
 ## Quick start (Windows, PowerShell)
 ```powershell
 flutter pub get                               # whole workspace
-cd packages\protocol; dart test; cd ..\..
-cd packages\connection; dart test; cd ..\..
+& "C:\Program Files\Git\bin\bash.exe" tools/check.sh   # every check, one line each (in Git Bash: tools/check.sh)
 cd tv_test_app; flutter run -d windows        # TV app on the laptop
 ```
 Then, in a second terminal, pair a simulated controller with it (use the code the app shows):
 ```powershell
 cd packages\connection; dart run connection:sim_controller --code 1234
 ```
-Toolchain setup, Android/TV install steps and the Windows Firewall notes are in [docs/building.md](docs/building.md). Store builds (TestFlight, Google Play testing, the Windows zip) are described in [docs/release.md](docs/release.md); testers follow https://devtestman187.github.io/game-controller/. Older iOS sideloading notes, retired in M8, were: [docs/ios-setup.md](docs/ios-setup.md).
+Toolchain setup, Android/TV install steps and the Windows Firewall notes are in [docs/building.md](docs/building.md). The check and release scripts, and what to move to another computer, are in [docs/dev-tools.md](docs/dev-tools.md). Store builds (TestFlight, Google Play testing, the Windows zip) are described in [docs/release.md](docs/release.md); testers follow https://devtestman187.github.io/game-controller/. Older iOS sideloading notes, retired in M8, were: [docs/ios-setup.md](docs/ios-setup.md).
 
 ## Status
 | Milestone | State |
