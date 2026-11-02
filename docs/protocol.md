@@ -150,7 +150,7 @@ Stick y is -1 up, as on the wire. A keyboard on the host (S2) maps its keys onto
 
 ## 8. Haptics (host → controller)
 
-`haptic`: `{"event": "<name>", "intensity": <0..1>, "ms": <20..3000>}`. Events: `hit` (100 ms natural length), `success` (450), `error` (300), `rumble` (a steady buzz for `ms`), and since M10 `snap` (160, a piece locks in place), `wrong` (260, a piece dropped in the wrong place), `dropReady` (40, a carried piece is close enough to drop), `tick` (30) and `help` (320, reserved for M11). `intensity` scales the pattern and `ms` stretches it in time. A controller ignores event names it doesn't know (apps before 0.10.0 ignore the M10 events), so these need no capability. The phone applies its own settings (off, per-event strength) on top.
+`haptic`: `{"event": "<name>", "intensity": <0..1>, "ms": <20..3000>}`. Events: `hit` (100 ms natural length), `success` (450), `error` (300), `rumble` (a steady buzz for `ms`), and since M10 `snap` (160, a piece locks in place), `wrong` (260, a piece dropped in the wrong place), `dropReady` (40, a carried piece is close enough to drop), `tick` (30) and `help` (320, M11: a teammate is carrying a big piece alone and needs you). `intensity` scales the pattern and `ms` stretches it in time. A controller ignores event names it doesn't know (apps before 0.10.0 ignore the M10 events), so these need no capability. The phone applies its own settings (off, per-event strength) on top.
 
 Game sounds are not part of the protocol: a game plays them by event name through the game host (PRD v2 S5), and the TV plays its own copy.
 

@@ -32,7 +32,7 @@ Carried from earlier milestones, still to do:
 - **The `docs/protocol.md` read-through** (M9; the owner skipped it then).
 - **Idea:** "time in a mode" counts idle time with the app open, which dilutes per-minute stats. Count only active play in a later milestone.
 - **M10 extra checks** kept for later ([checklists/m10.md](checklists/m10.md)): old with new, Puzzle settings with the remote, Stats export, and the three optional checks carried from M9.
-- **T21, planned for M11:** control the whole TV app from a controller: leave a game from the phone, then use the game picker, settings, Stats and every other screen. The results screen already works this way.
+- **M11 device tests** ([checklists/m11.md](checklists/m11.md)): built in 0.11.0 (2 to 4 players, big pieces, pause, and T21: the whole TV app from a controller), waiting for the owner's tests.
 
 ## Testing recipes
 

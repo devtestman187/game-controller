@@ -149,6 +149,7 @@ Code:    5416
 Log:     C:\Users\...\Temp\thumbparty-dev\tv.log
 ```
 
+- Don't pipe `start` into another command (`| tail`, `| head`): the app's Windows processes keep the pipe open, so the command never ends and looks stuck although the app is running (found in M11). Run it on its own, or redirect it to a file.
 - `window ...` passes everything on to `tools/tv-window.ps1`, which can also be run from PowerShell: `powershell -NoProfile -ExecutionPolicy Bypass -File tools\tv-window.ps1 shot tv.png`.
 - On Windows the keyboard plays as another player: arrows to move, Space for A, X and Z to rotate.
 - Debug runs save stats to a `sessions-debug` folder, so test sessions don't mix with real ones.
