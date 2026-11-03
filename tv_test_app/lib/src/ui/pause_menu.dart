@@ -21,13 +21,22 @@ final pauseLayout = GameLayoutMessage(
 /// the game for everyone and opens the pause menu (Resume, Quit). Only the
 /// player who paused and Player 1 can work it, or press Start again to
 /// resume, so Player 1 can always override a pause. If neither is here any
-/// more, anyone can. Quit leaves the game for the game picker. Simulated
-/// controllers never pause. [builder] gets whether the game is paused.
+/// more, anyone can. Quit leaves the game for the game picker. Only the
+/// game's [players] can pause (not someone watching), simulated controllers
+/// never do, and Start does nothing for the first [startGrace] of a game, so
+/// the press that began it can't pause it. [builder] gets whether the game is
+/// paused.
 class Pausable extends ConsumerStatefulWidget {
-  const Pausable({super.key, required this.enabled, required this.builder});
+  const Pausable({super.key, required this.enabled, required this.builder, this.players});
 
   /// Start pauses only while this is true (not on the results).
   final bool enabled;
+
+  /// Who can pause: the players in the game. Null: everyone (the Arena).
+  final Set<String>? players;
+
+  /// Start is ignored this long after the game starts.
+  static const startGrace = Duration(milliseconds: 500);
   final Widget Function(BuildContext context, bool paused) builder;
 
   @override
@@ -42,6 +51,7 @@ class _PausableState extends ConsumerState<Pausable> {
   final _startDown = <String, bool>{};
   GamePlayer? _pausedBy;
   BuildContext? _menuContext;
+  int _sinceStartMs = 0;
 
   @override
   void initState() {
@@ -68,6 +78,7 @@ class _PausableState extends ConsumerState<Pausable> {
 
   void _tick() {
     if (!mounted) return;
+    _sinceStartMs += ControllerMenus.step.inMilliseconds;
     final players = [
       for (final p in ref.read(gameHostProvider).players)
         if (!p.simulated && !p.local) p,
@@ -84,7 +95,9 @@ class _PausableState extends ConsumerState<Pausable> {
     if (pressed.isEmpty) return;
     final menu = _menuContext;
     if (_pausedBy == null) {
-      if (widget.enabled) _pause(pressed.first);
+      final can = widget.players;
+      final by = pressed.where((p) => can == null || can.contains(p.id)).firstOrNull;
+      if (widget.enabled && by != null && _sinceStartMs >= Pausable.startGrace.inMilliseconds) _pause(by);
     } else if (menu != null) {
       final resumers = _resumers(players);
       if (resumers == null || pressed.any((p) => resumers.contains(p.id))) Navigator.of(menu).pop();

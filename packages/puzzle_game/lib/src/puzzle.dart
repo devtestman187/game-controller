@@ -28,6 +28,8 @@ final class PuzzleField {
     required this.origin,
     required this.top,
     required this.startX,
+    this.trayOverlap = 0,
+    this.trayScale = 1,
   });
 
   final Size size;
@@ -43,6 +45,15 @@ final class PuzzleField {
 
   /// Where the dots start, one above the other.
   final double startX;
+
+  /// How much a tray row's pieces may overlap: each piece after the first
+  /// starts this fraction of the previous box's width before its right edge.
+  /// 0: a gap between boxes, as on one board.
+  final double trayOverlap;
+
+  /// The size a piece still in the tray is drawn, packed and picked up at: 1
+  /// on one board, smaller on the split screen so the pile fits.
+  final double trayScale;
 
   static const single = PuzzleField(
     size: fieldSize,
@@ -109,6 +120,27 @@ final class PieceShape {
     final c = cos(a);
     final s = sin(a);
     return [for (final p in points) at + Offset(p.dx * c - p.dy * s, p.dx * s + p.dy * c)];
+  }
+
+  /// Whether [point] is inside the shape placed at [at], turned by [angle]
+  /// and drawn at [scale] of its size (a tray piece on the split screen):
+  /// within the radius for a circle, inside the polygon otherwise.
+  bool contains(Offset point, Offset at, double angle, {double scale = 1}) {
+    if (circle) return (point - at).distance <= radius * scale;
+    final a = angle * pi / 180;
+    final c = cos(a);
+    final s = sin(a);
+    final ps = [for (final p in points) at + Offset((p.dx * c - p.dy * s) * scale, (p.dx * s + p.dy * c) * scale)];
+    var inside = false;
+    for (var i = 0; i < ps.length; i++) {
+      final a = ps[i];
+      final b = ps[(i + 1) % ps.length];
+      if ((a.dy > point.dy) != (b.dy > point.dy) &&
+          point.dx < (b.dx - a.dx) * (point.dy - a.dy) / (b.dy - a.dy) + a.dx) {
+        inside = !inside;
+      }
+    }
+    return inside;
   }
 
   /// The box around the shape turned by [angle].

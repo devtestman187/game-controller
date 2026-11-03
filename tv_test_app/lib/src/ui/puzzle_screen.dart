@@ -136,6 +136,8 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
                 ? const Center(child: CircularProgressIndicator())
                 : Pausable(
                     enabled: result == null,
+                    // Someone watching can't pause the players.
+                    players: widget.teams.keys.toSet(),
                     builder: (context, paused) => Stack(
                       children: [
                         Positioned.fill(

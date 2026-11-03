@@ -85,30 +85,35 @@ class PuzzleMatch {
     PuzzleSettings settings = PuzzleSettings.defaults,
     Random? random,
   }) : teams = Map.unmodifiable(teams),
-       format = MatchFormat.of(teams) {
-    // Both sides start with the same tray, mirrored, so the race is fair.
-    final seed = (random ?? Random()).nextInt(1 << 32);
-    final layout = SplitLayout.of(puzzle);
-    sides = format.split
+       format = MatchFormat.of(teams),
+       seed = (random ?? Random()).nextInt(1 << 32) {
+    // Both sides start with the same tray, mirrored, so the race is fair: the
+    // split layout picks the angles and sizes the tray for them.
+    final layout = format.split ? SplitLayout.of(puzzle, seed) : null;
+    sides = layout == null
         ? [
             MatchSide(
-              PuzzleSide.left,
-              PuzzleGame(puzzle, settings: settings, random: Random(seed), field: layout.left),
-            ),
-            MatchSide(
-              PuzzleSide.right,
-              PuzzleGame(puzzle, settings: settings, random: Random(seed), field: layout.right),
+              teams.values.firstOrNull ?? PuzzleSide.left,
+              PuzzleGame(puzzle, settings: settings, random: Random(seed)),
             ),
           ]
         : [
             MatchSide(
-              teams.values.firstOrNull ?? PuzzleSide.left,
-              PuzzleGame(puzzle, settings: settings, random: Random(seed)),
+              PuzzleSide.left,
+              PuzzleGame(puzzle, settings: settings, random: Random(seed), field: layout.left, angles: layout.angles),
+            ),
+            MatchSide(
+              PuzzleSide.right,
+              PuzzleGame(puzzle, settings: settings, random: Random(seed), field: layout.right, angles: layout.angles),
             ),
           ];
   }
 
   final Puzzle puzzle;
+
+  /// The seed the trays were laid out from, kept so a snapshot can rebuild
+  /// the same layout.
+  final int seed;
 
   /// Each player's side.
   final Map<String, PuzzleSide> teams;
@@ -188,5 +193,6 @@ class PuzzleMatch {
   }
 
   /// Everything the view needs (S8).
-  MatchSnapshot snapshot() => MatchSnapshot(boards: [for (final s in sides) s.game.snapshot()]);
+  MatchSnapshot snapshot() =>
+      MatchSnapshot(boards: [for (final s in sides) s.game.snapshot()], seed: format.split ? seed : null);
 }

@@ -164,6 +164,9 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
               return;
             }
           case _Key.start:
+            // Only a player who joined begins the match (m11 device test: a
+            // phone that hadn't joined started it for the others).
+            if (side == null) continue;
             _start();
             return;
         }

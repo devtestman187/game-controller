@@ -1771,6 +1771,47 @@ void m11() {
     expect(find.descendant(of: find.byKey(const Key('side-right')), matching: find.text('P2 Phone 2')), findsOne);
   });
 
+  // m11.1 device test: P1 joined, P2 hadn't, and P2's Start began a match for
+  // P1 alone, which then paused.
+  testWidgets('only a player who joined begins the match; someone watching can\'t pause; '
+      'the Start that began the match doesn\'t pause it', (tester) async {
+    final fake = await pumpApp(tester);
+    fake.state = withController(fake.state, phoneInfo('p2', 2));
+    fake.emit();
+    await neutral(tester, fake, ['p1', 'p2']);
+    await tapVisible(tester, find.byKey(const Key('openPlay')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('pickShapeRace')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('puzzle-house')));
+    await navigated(tester);
+    await press(tester, fake, 'p1', GamepadButton.a);
+    // P2 hasn't joined: Start does nothing, and the phone still says Join.
+    await press(tester, fake, 'p2', GamepadButton.start);
+    await navigated(tester);
+    expect(find.byType(JoinScreen), findsOneWidget);
+    expect(find.byType(PuzzleScreen), findsNothing);
+    expect(fake.gameHost.layouts['p2']!.labels[ControllerButton.a], 'Join');
+
+    // P1 begins with Start and keeps pressing it at once: no pause yet.
+    await phone(tester, fake, 'p1', {GamepadButton.start});
+    await tester.pump();
+    expect(find.byType(PuzzleScreen), findsOneWidget);
+    await phone(tester, fake, 'p1', {});
+    await press(tester, fake, 'p1', GamepadButton.start);
+    await tester.pump();
+    expect(find.byKey(const Key('pauseMenu')), findsNothing, reason: 'Start in the first half second');
+    await navigated(tester);
+    // P2 is only watching: Start doesn't pause.
+    await press(tester, fake, 'p2', GamepadButton.start);
+    await navigated(tester);
+    expect(find.byKey(const Key('pauseMenu')), findsNothing, reason: 'P2 is watching');
+    // P1, in the game, can.
+    await press(tester, fake, 'p1', GamepadButton.start);
+    await navigated(tester);
+    expect(find.byKey(const Key('pauseMenu')), findsOneWidget);
+  });
+
   testWidgets('Add simulated controller adds up to three; Stop simulations shows once there are some', (tester) async {
     final fake = await pumpApp(tester);
     await tapVisible(tester, find.byKey(const Key('addSim')));

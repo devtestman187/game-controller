@@ -1,7 +1,9 @@
 import 'dart:math';
 import 'dart:ui';
 
+import 'game.dart';
 import 'puzzle.dart';
+import 'tray.dart';
 
 /// Where everything goes on the split screen for one puzzle (PRD v2 "Modes
 /// and layout"), chosen to draw the board as big as possible. In field units
@@ -12,6 +14,7 @@ final class SplitLayout {
     required this.right,
     required this.leftBox,
     required this.rightBox,
+    required this.angles,
     required this.hudStrip,
     required this.trayBelow,
     required this.scale,
@@ -22,6 +25,10 @@ final class SplitLayout {
 
   /// The right side's world.
   final PuzzleField right;
+
+  /// The start angles the tray was sized for: both sides start with the same
+  /// ones, so the race is fair.
+  final Map<int, double> angles;
 
   /// Where the left world is drawn on the screen (exactly the world's aspect).
   final Rect leftBox;
@@ -45,41 +52,81 @@ final class SplitLayout {
   /// tray; the tray's packing has its own gap at the edges and between boxes.
   static const _margin = 2.0;
   static const _boardTrayGap = 4.0;
-  static const _trayGap = 2.0;
 
-  /// The widest tray tried, and the middle kept free for the clock when it
-  /// goes between the boards.
+  /// The widest tray tried.
   static const _widestTray = 120.0;
-  static const _clockGap = 24.0;
 
-  /// One layout per puzzle, so the painter can ask every frame. Kept with the
-  /// puzzle object itself, not its id: two puzzles may share an id (tests,
-  /// an edited file) and must not share a layout.
-  static final _layouts = Expando<SplitLayout>('SplitLayout');
+  /// The clock's strip along the top (with the counts), and the room the
+  /// clock needs between the boards when it goes there instead.
+  static const stripHeight = 6.0;
+  static const clockGap = 12.0;
 
-  /// The layout for [puzzle], computed once and kept.
-  static SplitLayout of(Puzzle puzzle) => _layouts[puzzle] ??= _compute(puzzle);
+  /// How far apart the boards sit in the middle under the strip: just enough
+  /// for the divider.
+  static const _stripGap = 2.0;
 
-  static SplitLayout _compute(Puzzle puzzle) {
+  /// How much the pieces in a tray row overlap, and how much smaller a piece
+  /// still in the tray is drawn on the split screen, so a pile fits where
+  /// rows of separate full-size boxes wouldn't.
+  static const _trayOverlap = 0.5;
+  static const _trayScale = 0.75;
+
+  /// One layout per puzzle and seed, so the painter can ask every frame. Kept
+  /// with the puzzle object itself, not its id: two puzzles may share an id
+  /// (tests, an edited file) and must not share a layout.
+  static final _layouts = Expando<Map<int, SplitLayout>>('SplitLayout');
+
+  /// The layout for [puzzle] with [seed], computed once and kept. Every
+  /// match has its own seed, so only the last few are kept per puzzle.
+  static SplitLayout of(Puzzle puzzle, int seed) {
+    final kept = _layouts[puzzle] ??= {};
+    final layout = kept[seed] ??= _compute(puzzle, seed);
+    while (kept.length > _keep) {
+      kept.remove(kept.keys.first);
+    }
+    return layout;
+  }
+
+  static const _keep = 8;
+
+  static SplitLayout _compute(Puzzle puzzle, int seed) {
     final crop = _crop(puzzle);
-    final boxes = [for (final spec in puzzle.pieces) _pieceBox(spec)];
-    final widest = boxes.map((b) => b.width).reduce(max);
+    // Two trays: one for a board with the tray below it, one beside it. Each
+    // starts at the angles that pack smallest along its tray.
+    final below = Map<int, double>.unmodifiable(compactStartAngles(puzzle, Random(seed), flat: true));
+    final beside = Map<int, double>.unmodifiable(compactStartAngles(puzzle, Random(seed), flat: false));
 
     // The best candidate so far; scale 0 lets the first one win.
-    var best = (width: 0.0, height: 0.0, trayWidth: 0.0, trayHeight: 0.0, scale: 0.0, hudStrip: true, trayBelow: false);
-    for (var trayWidth = widest + _boardTrayGap; trayWidth <= _widestTray; trayWidth += 1) {
-      final trayHeight = _trayHeight(boxes, trayWidth);
-      // The tray beside the board, at the outer edge: a wide, short world.
-      final beside = (
-        width: _margin + crop.width + _boardTrayGap + trayWidth + _margin,
-        height: _margin + max(crop.height, trayHeight) + _margin,
-      );
-      // The tray below the board: a narrow, tall world.
-      final below = (
-        width: _margin + max(crop.width, trayWidth) + _margin,
-        height: _margin + crop.height + _boardTrayGap + trayHeight + _margin,
-      );
-      for (final (world, trayBelow) in [(beside, false), (below, true)]) {
+    var best = (
+      width: 0.0,
+      height: 0.0,
+      trayWidth: 0.0,
+      trayHeight: 0.0,
+      scale: 0.0,
+      hudStrip: true,
+      trayBelow: false,
+      angles: below,
+    );
+
+    void consider(Map<int, double> angles, bool trayBelow) {
+      // The tray holds pieces at [_trayScale], so it is sized for those.
+      final widest = [for (final (i, spec) in puzzle.pieces.indexed) spec.shape.bounds(angles[i]!).width * _trayScale]
+          .reduce(max);
+      for (var trayWidth = widest + _boardTrayGap; trayWidth <= _widestTray; trayWidth += 1) {
+        // The height the game's packing of this tray needs at this width.
+        final trayHeight = packTray(puzzle, angles, trayWidth, overlap: _trayOverlap, scale: _trayScale).height;
+        final world = trayBelow
+            // The tray below the board: a narrow, tall world.
+            ? (
+                width: _margin + max(crop.width, trayWidth) + _margin,
+                height: _margin + crop.height + _boardTrayGap + trayHeight + _margin,
+              )
+            // The tray beside the board, at the outer edge: a wide, short
+            // world.
+            : (
+                width: _margin + crop.width + _boardTrayGap + trayWidth + _margin,
+                height: _margin + max(crop.height, trayHeight) + _margin,
+              );
         final fit = _fit(world.width, world.height);
         if (fit.scale <= best.scale) continue;
         best = (
@@ -90,9 +137,13 @@ final class SplitLayout {
           scale: fit.scale,
           hudStrip: fit.hudStrip,
           trayBelow: trayBelow,
+          angles: angles,
         );
       }
     }
+
+    consider(beside, false);
+    consider(below, true);
 
     final world = Size(best.width, best.height);
     ({Rect board, Rect tray}) panels(bool left) {
@@ -129,23 +180,33 @@ final class SplitLayout {
         origin: p.board.topLeft - crop.topLeft,
         top: 0,
         startX: left ? p.board.left + 6 : p.board.right - 6,
+        trayOverlap: _trayOverlap,
+        trayScale: _trayScale,
       );
     }
 
-    final onScreen = Size(world.width * best.scale, world.height * best.scale);
-    final leftEdge = best.hudStrip ? (fieldSize.width / 2 - onScreen.width) / 2 : 0.0;
-    final rightEdge = best.hudStrip ? fieldSize.width / 2 + leftEdge : fieldSize.width - onScreen.width;
+    // The boards together in the middle, the leftover width at the outer
+    // edges: the strip above them, or the clock between them. The strip's
+    // score leaves half a unit of slack each side; the board is kept on
+    // screen at the room it really has.
+    final middle = fieldSize.width / 2;
+    final half = best.hudStrip ? _stripGap / 2 : clockGap / 2;
+    final roomWidth = middle - half;
+    final roomHeight = best.hudStrip ? fieldSize.height - stripHeight : fieldSize.height;
+    final scale = min(best.scale, min(roomWidth / best.width, roomHeight / best.height));
+    final onScreen = Size(world.width * scale, world.height * scale);
     final top = best.hudStrip
-        ? hudHeight + (fieldSize.height - hudHeight - onScreen.height) / 2
+        ? stripHeight + (fieldSize.height - stripHeight - onScreen.height) / 2
         : (fieldSize.height - onScreen.height) / 2;
     return SplitLayout._(
       left: side(true),
       right: side(false),
-      leftBox: Rect.fromLTWH(leftEdge, top, onScreen.width, onScreen.height),
-      rightBox: Rect.fromLTWH(rightEdge, top, onScreen.width, onScreen.height),
+      leftBox: Rect.fromLTWH(middle - half - onScreen.width, top, onScreen.width, onScreen.height),
+      rightBox: Rect.fromLTWH(middle + half, top, onScreen.width, onScreen.height),
+      angles: best.angles,
       hudStrip: best.hudStrip,
       trayBelow: best.trayBelow,
-      scale: best.scale,
+      scale: scale,
     );
   }
 
@@ -159,40 +220,13 @@ final class SplitLayout {
     return crop.inflate(4);
   }
 
-  /// The biggest box a piece can need in the tray: a piece that starts turned
-  /// fits at any angle in the square around its centre ([PieceShape.radius]),
-  /// the others at their target angle.
-  static Size _pieceBox(PieceSpec spec) => spec.rotated && spec.shape.symmetry != 0
-      ? Size.square(spec.shape.radius * 2)
-      : spec.shape.bounds(spec.targetAngle).size;
-
-  /// The height the tray needs at [width], packed as the game packs it:
-  /// tallest first, rows from the left with a gap at the edges and between
-  /// boxes, and a new row when the next box doesn't fit.
-  static double _trayHeight(List<Size> boxes, double width) {
-    final sorted = [...boxes]..sort((a, b) => b.height.compareTo(a.height));
-    var x = _trayGap;
-    var y = _trayGap;
-    var rowHeight = 0.0;
-    for (final box in sorted) {
-      if (x + box.width > width - _trayGap && x > _trayGap) {
-        x = _trayGap;
-        y += rowHeight + _trayGap;
-        rowHeight = 0;
-      }
-      x += box.width + _trayGap;
-      rowHeight = max(rowHeight, box.height);
-    }
-    return y + rowHeight + _trayGap;
-  }
-
   /// The scale of a world [width] by [height] on the split screen, and the
   /// clock arrangement that goes with it: the bigger of a strip along the top
-  /// (each half is 80 x 80 below it) and the gap between the boards (the full
-  /// 90 high, with [_clockGap] left free in the middle).
+  /// (each half is 80 wide below it) and the gap between the boards (the full
+  /// 90 high, with [clockGap] left free in the middle).
   static ({double scale, bool hudStrip}) _fit(double width, double height) {
-    final strip = min((fieldSize.width / 2) / width, (fieldSize.height - hudHeight) / height);
-    final gap = min((fieldSize.width - _clockGap) / 2 / width, fieldSize.height / height);
+    final strip = min((fieldSize.width / 2) / width, (fieldSize.height - stripHeight) / height);
+    final gap = min((fieldSize.width - clockGap) / 2 / width, fieldSize.height / height);
     return gap > strip ? (scale: gap, hudStrip: false) : (scale: strip, hudStrip: true);
   }
 }

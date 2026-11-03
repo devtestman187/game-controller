@@ -13,4 +13,5 @@ export 'src/split_layout.dart';
 export 'src/settings.dart';
 export 'src/snapshot.dart';
 export 'src/play_view.dart';
+export 'src/tray.dart';
 export 'src/view.dart';

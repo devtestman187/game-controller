@@ -72,8 +72,8 @@ class MatchPainter extends CustomPainter {
 
   /// The widest the clock's bar gets: under the clock in the strip, in the
   /// gap between the boards.
-  static const _stripBar = 60.0;
-  static const _gapBar = 20.0;
+  static const _stripBar = 40.0;
+  static const _gapBar = 10.0;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -84,7 +84,7 @@ class MatchPainter extends CustomPainter {
       ..translate(f.origin.dx, f.origin.dy)
       ..scale(f.scale);
     canvas.clipRect(Offset.zero & fieldSize);
-    final layout = SplitLayout.of(puzzle);
+    final layout = SplitLayout.of(puzzle, s.seed!);
     final left = s.boards[0];
     final right = s.boards[1];
     for (final (box, board, field) in [(layout.leftBox, left, layout.left), (layout.rightBox, right, layout.right)]) {
@@ -102,17 +102,18 @@ class MatchPainter extends CustomPainter {
     final limit = timeLimitS;
     final frac = limit != null && limit > 0 ? (left.timeLeftMs / 1000 / limit).clamp(0.0, 1.0) : null;
     if (layout.hudStrip) {
-      _stripHud(canvas, left, right, clock, warn, total, frac);
+      _stripHud(canvas, layout, left, right, clock, warn, total, frac);
     } else {
       _gapHud(canvas, left, right, clock, warn, total, frac);
     }
     canvas.restore();
   }
 
-  /// The clock and the counts along the top, with a divider between the
-  /// halves.
+  /// The clock and the counts in a strip along the top, with a divider
+  /// between the halves.
   void _stripHud(
     Canvas canvas,
+    SplitLayout layout,
     PuzzleSnapshot left,
     PuzzleSnapshot right,
     String clock,
@@ -120,27 +121,33 @@ class MatchPainter extends CustomPainter {
     int total,
     double? frac,
   ) {
+    final middle = fieldSize.width / 2;
     canvas.drawLine(
-      const Offset(80, hudHeight),
-      Offset(80, fieldSize.height),
+      Offset(middle, SplitLayout.stripHeight),
+      Offset(middle, fieldSize.height),
       Paint()
         ..color = Colors.white24
         ..strokeWidth = 0.4,
     );
-    _text(canvas, 'LEFT  ${left.placed}/$total', const Offset(3, 5), 4.2, Colors.white, align: TextAlign.left);
-    _text(canvas, clock, Offset(fieldSize.width / 2, 5), 5.5, warn ? _wrong : Colors.white, bold: true);
+    _text(
+      canvas,
+      'LEFT  ${left.placed}/$total',
+      Offset(max(layout.leftBox.left + 10, 10), SplitLayout.stripHeight / 2),
+      3.2,
+      Colors.white,
+    );
+    _text(canvas, clock, Offset(middle, SplitLayout.stripHeight / 2), 4.2, warn ? _wrong : Colors.white, bold: true);
     _text(
       canvas,
       'RIGHT  ${right.placed}/$total',
-      Offset(fieldSize.width - 3, 5),
-      4.2,
+      Offset(min(layout.rightBox.right - 10, 150), SplitLayout.stripHeight / 2),
+      3.2,
       Colors.white,
-      align: TextAlign.right,
     );
     if (frac != null) {
       final width = _stripBar * frac;
       canvas.drawRect(
-        Rect.fromLTWH(fieldSize.width / 2 - width / 2, hudHeight - 1.2, width, 0.8),
+        Rect.fromLTWH(middle - width / 2, 5.4, width, 0.5),
         Paint()..color = warn ? _wrong : Colors.white24,
       );
     }
@@ -157,13 +164,14 @@ class MatchPainter extends CustomPainter {
     int total,
     double? frac,
   ) {
-    _text(canvas, clock, Offset(fieldSize.width / 2, 7), 5.5, warn ? _wrong : Colors.white, bold: true);
-    _text(canvas, 'LEFT  ${left.placed}/$total', Offset(fieldSize.width / 2, 15), 3.6, Colors.white);
-    _text(canvas, 'RIGHT  ${right.placed}/$total', Offset(fieldSize.width / 2, 21), 3.6, Colors.white);
+    final middle = fieldSize.width / 2;
+    _text(canvas, clock, Offset(middle, 5), 4.2, warn ? _wrong : Colors.white, bold: true);
+    _text(canvas, 'L ${left.placed}/$total', Offset(middle, 10.5), 2.8, Colors.white);
+    _text(canvas, 'R ${right.placed}/$total', Offset(middle, 14.5), 2.8, Colors.white);
     if (frac != null) {
       final width = _gapBar * frac;
       canvas.drawRect(
-        Rect.fromLTWH(fieldSize.width / 2 - width / 2, 25, width, 0.8),
+        Rect.fromLTWH(middle - width / 2, 17, width, 0.8),
         Paint()..color = warn ? _wrong : Colors.white24,
       );
     }
@@ -214,8 +222,10 @@ class PuzzlePainter extends CustomPainter {
       final piece = lockedIn[t];
       piece != null ? _piece(canvas, piece) : _outline(canvas, t);
     }
-    // Then loose pieces, carried pieces, and the dots on top of everything.
-    for (final (i, p) in s.pieces.indexed) {
+    // Then loose pieces lowest layer first, so the pile looks as it lies,
+    // carried pieces, and the dots on top of everything.
+    for (final i in s.order) {
+      final p = s.pieces[i];
       if (p.state != PieceState.locked && p.state != PieceState.held) _piece(canvas, i);
     }
     for (final (i, p) in s.pieces.indexed) {
@@ -236,9 +246,10 @@ class PuzzlePainter extends CustomPainter {
     canvas.drawRRect(RRect.fromRectAndRadius(field.tray, const Radius.circular(2)), Paint()..color = _tray);
   }
 
-  Path _path(PieceShape shape, Offset at, double angle) {
-    if (shape.circle) return Path()..addOval(Rect.fromCircle(center: at, radius: shape.radius));
-    return Path()..addPolygon(shape.placed(at, angle), true);
+  Path _path(PieceShape shape, Offset at, double angle, {double scale = 1}) {
+    if (shape.circle) return Path()..addOval(Rect.fromCircle(center: at, radius: shape.radius * scale));
+    final points = shape.placed(at, angle);
+    return Path()..addPolygon(scale == 1 ? points : [for (final p in points) at + (p - at) * scale], true);
   }
 
   void _outline(Canvas canvas, int i) {
@@ -284,7 +295,10 @@ class PuzzlePainter extends CustomPainter {
     final p = s.pieces[i];
     final spec = puzzle.pieces[i];
     final at = Offset(p.x, p.y);
-    final path = _path(spec.shape, at, p.angle);
+    // A piece still in the tray is smaller on the split screen; from its
+    // first pickup on it is full size.
+    final scale = p.state == PieceState.tray ? field.trayScale : 1.0;
+    final path = _path(spec.shape, at, p.angle, scale: scale);
     final wrong = p.state == PieceState.wrong;
     canvas.drawPath(path, Paint()..color = Color(spec.color));
     if (wrong) canvas.drawPath(path, Paint()..color = _wrong.withValues(alpha: 0.55));

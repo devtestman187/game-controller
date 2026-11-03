@@ -6,6 +6,7 @@ import 'package:connection/connection.dart';
 import 'puzzle.dart';
 import 'settings.dart';
 import 'snapshot.dart';
+import 'tray.dart';
 
 /// Where a piece is.
 enum PieceState {
@@ -48,12 +49,16 @@ final class PuzzleEvent {
 
 /// One piece as it is now.
 class PieceRuntime {
-  PieceRuntime(this.index, this.pos, this.angle);
+  PieceRuntime(this.index, this.pos, this.angle, this.layer);
 
   final int index;
   Offset pos;
   double angle;
   PieceState state = PieceState.tray;
+
+  /// Where it lies in the pile: pieces put down later have a higher layer and
+  /// are drawn, and picked up, above the others.
+  int layer;
 
   /// Who carries it: one player, or two teammates sharing a big piece.
   final carriers = <String>[];
@@ -125,9 +130,14 @@ enum PuzzlePhase { playing, finished, timeUp, stopped }
 ///
 /// Positions are in field units ([field]), angles clockwise in degrees.
 class PuzzleGame {
-  PuzzleGame(this.puzzle, {this.settings = PuzzleSettings.defaults, Random? random, this.field = PuzzleField.single})
-    : _random = random ?? Random(),
-      timeLeftS = settings.timeLimitS.toDouble() {
+  PuzzleGame(
+    this.puzzle, {
+    this.settings = PuzzleSettings.defaults,
+    Random? random,
+    this.field = PuzzleField.single,
+    this.angles,
+  }) : _random = random ?? Random(),
+       timeLeftS = settings.timeLimitS.toDouble() {
     _layOutTray();
   }
 
@@ -139,6 +149,10 @@ class PuzzleGame {
   /// Read every frame, so playtest changes count at once.
   PuzzleSettings settings;
   final Random _random;
+
+  /// The start angles the split layout sized the tray for; null on one board,
+  /// where the game picks its own and retries until they fit.
+  final Map<int, double>? angles;
 
   /// Speed of a dot at full push, field units a second (the arena's speed
   /// relative to the field's height).
@@ -159,6 +173,9 @@ class PuzzleGame {
   PuzzlePhase phase = PuzzlePhase.playing;
   double? finishTimeS;
 
+  /// The layer the next piece put down gets: above every piece there is.
+  int _nextLayer = 0;
+
   List<PuzzlePlayer> get players => List.unmodifiable(_players.values);
 
   PuzzlePlayer? player(String id) => _players[id];
@@ -175,41 +192,69 @@ class PuzzleGame {
       ? null
       : PuzzleResult(finished: phase == PuzzlePhase.finished, placed: placed, total: pieces.length, timeS: finishTimeS);
 
-  /// Puts every piece in the tray, the rotated ones at a random angle at
-  /// least 30° from any correct one, largest first, in rows. Some angles
-  /// make a piece too tall for every row to fit, so it tries again with new
-  /// angles (up to 60 times) and keeps the layout that sticks out least.
+  /// Puts every piece in the tray, largest first, in rows. The [startAngles]
+  /// are the ones the tray was sized for when the split layout chose them
+  /// (one try); on one board it picks them itself, and since some angles make
+  /// a piece too tall for every row to fit, it tries again with new angles
+  /// (up to 60 times) and keeps the layout that sticks out least.
   void _layOutTray() {
-    ({Map<int, double> starts, Map<int, Offset> at, double overflow})? best;
-    for (var attempt = 0; attempt < 60; attempt++) {
-      final layout = _trayLayout();
-      if (best == null || layout.overflow < best.overflow) best = layout;
-      if (best.overflow <= 0) break;
+    final ({Map<int, double> starts, Map<int, Offset> at, List<int> order, double overflow}) laidOut;
+    if (angles case final given?) {
+      laidOut = _trayLayout(Map.of(given));
+    } else {
+      ({Map<int, double> starts, Map<int, Offset> at, List<int> order, double overflow})? best;
+      for (var attempt = 0; attempt < 60; attempt++) {
+        final layout = _trayLayout(startAngles(puzzle, _random));
+        if (best == null || layout.overflow < best.overflow) best = layout;
+        if (best.overflow <= 0) break;
+      }
+      laidOut = best!;
     }
-    final b = best!;
-    pieces = [for (var i = 0; i < puzzle.pieces.length; i++) PieceRuntime(i, b.at[i]!, b.starts[i]!)];
+    final layers = <int, int>{for (final (layer, i) in laidOut.order.indexed) i: layer};
+    pieces = [
+      for (var i = 0; i < puzzle.pieces.length; i++) PieceRuntime(i, laidOut.at[i]!, laidOut.starts[i]!, layers[i]!),
+    ];
+    _nextLayer = pieces.length;
   }
 
-  ({Map<int, double> starts, Map<int, Offset> at, double overflow}) _trayLayout() {
+  /// Places the pieces in the tray at [starts]: tallest first, rows from the
+  /// left. A piece in a row starts [PuzzleField.trayOverlap] of the previous
+  /// box's width before its right edge (0: a gap after it), and a new row
+  /// when it wouldn't fit. The split screen packs through [packTray], the
+  /// same function the layout sized its tray with.
+  ({Map<int, double> starts, Map<int, Offset> at, List<int> order, double overflow}) _trayLayout(
+    Map<int, double> starts,
+  ) {
     final tray = field.tray;
-    final starts = <int, double>{};
-    for (final (i, spec) in puzzle.pieces.indexed) {
-      var angle = spec.targetAngle;
-      if (spec.rotated && spec.shape.symmetry != 0) {
-        for (var tries = 0; tries < 50; tries++) {
-          angle = spec.targetAngle + _random.nextDouble() * 360;
-          if (angleError(angle, spec.targetAngle, spec.shape.symmetry) >= 30) break;
-        }
-      }
-      starts[i] = angle % 360;
+    final overlap = field.trayOverlap;
+    // The split screen packs smaller pieces that may overlap in a pile; the
+    // layout sized the tray with the same packing, so it fits exactly.
+    if (overlap > 0 || field.trayScale < 1) {
+      final packed = packTray(puzzle, starts, tray.width, overlap: overlap, scale: field.trayScale);
+      return (
+        starts: starts,
+        at: {
+          for (final i in packed.order)
+            i:
+                tray.topLeft +
+                packed.at[i]! -
+                Offset(
+                  puzzle.pieces[i].shape.bounds(starts[i]!).left * field.trayScale,
+                  puzzle.pieces[i].shape.bounds(starts[i]!).top * field.trayScale,
+                ),
+        },
+        order: packed.order,
+        overflow: packed.height - tray.height,
+      );
     }
     final order = [for (var i = 0; i < puzzle.pieces.length; i++) i]
-      ..sort(
-        (a, b) => puzzle.pieces[b].shape
+      ..sort((a, b) {
+        final byHeight = puzzle.pieces[b].shape
             .bounds(starts[b]!)
             .height
-            .compareTo(puzzle.pieces[a].shape.bounds(starts[a]!).height),
-      );
+            .compareTo(puzzle.pieces[a].shape.bounds(starts[a]!).height);
+        return byHeight != 0 ? byHeight : a.compareTo(b);
+      });
     const gap = 2.0;
     var x = tray.left + gap;
     var y = tray.top + gap;
@@ -228,10 +273,10 @@ class PuzzleGame {
       // tray.
       final top = max(tray.top, min(y, tray.bottom - gap - b.height));
       placedAt[i] = Offset(x - b.left, top - b.top);
-      x += b.width + gap;
+      x += b.width + (overlap > 0 ? -overlap * b.width : gap);
       rowHeight = max(rowHeight, b.height);
     }
-    return (starts: starts, at: placedAt, overflow: overflow);
+    return (starts: starts, at: placedAt, order: order, overflow: overflow);
   }
 
   /// Start positions: beside the board, one above the other.
@@ -444,18 +489,33 @@ class PuzzleGame {
   }
 
   void _pickUp(PuzzlePlayer p, List<PuzzleEvent> events) {
-    PieceRuntime? best;
-    var bestDistance = double.infinity;
+    final reachable = <PieceRuntime>[];
     for (final piece in pieces) {
       if (piece.state == PieceState.locked) continue;
       // A held piece can't be taken, but a teammate can take the other end
       // of a big one.
       if (piece.state == PieceState.held && !(_teamCarried(piece) && piece.carriers.length == 1)) continue;
-      final reach = dotRadius + puzzle.pieces[piece.index].shape.radius * settings.pickupRange;
-      final d = (piece.pos - p.pos).distance;
-      if (d <= reach && d < bestDistance) {
-        best = piece;
-        bestDistance = d;
+      // A piece still in the tray is smaller on the split screen, so it is
+      // drawn, packed and reached at [PuzzleField.trayScale] of its size.
+      final scale = piece.state == PieceState.tray ? field.trayScale : 1.0;
+      final reach = dotRadius + puzzle.pieces[piece.index].shape.radius * scale * settings.pickupRange;
+      if ((piece.pos - p.pos).distance <= reach) reachable.add(piece);
+    }
+    // The top piece under the dot if there is one, otherwise the nearest.
+    PieceRuntime? best;
+    for (final piece in reachable) {
+      final scale = piece.state == PieceState.tray ? field.trayScale : 1.0;
+      if (!puzzle.pieces[piece.index].shape.contains(p.pos, piece.pos, piece.angle, scale: scale)) continue;
+      if (best == null || piece.layer > best.layer) best = piece;
+    }
+    if (best == null) {
+      var bestDistance = double.infinity;
+      for (final piece in reachable) {
+        final d = (piece.pos - p.pos).distance;
+        if (d < bestDistance) {
+          best = piece;
+          bestDistance = d;
+        }
       }
     }
     if (best == null) return;
@@ -533,7 +593,8 @@ class PuzzleGame {
     piece
       ..state = state
       ..calling = false
-      ..carriers.clear();
+      ..carriers.clear()
+      ..layer = _nextLayer++;
   }
 
   /// A free outline the piece would snap into if dropped now: the same kind,
@@ -572,6 +633,11 @@ class PuzzleGame {
 
   /// Everything the view needs, and nothing else (S8).
   PuzzleSnapshot snapshot() => PuzzleSnapshot(
+    order: [for (var i = 0; i < pieces.length; i++) i]
+      ..sort((a, b) {
+        final byLayer = pieces[a].layer.compareTo(pieces[b].layer);
+        return byLayer != 0 ? byLayer : a.compareTo(b);
+      }),
     puzzleId: puzzle.id,
     timeLeftMs: (timeLeftS * 1000).round(),
     warning: timeLeftS < settings.warningS,
@@ -595,6 +661,73 @@ class PuzzleGame {
     hintTargets: {for (final p in _players.values) ?p.hintTarget},
     finishTimeMs: finishTimeS == null ? null : (finishTimeS! * 1000).round(),
   );
+}
+
+/// Each piece's start angle: a turned piece (rotated, and not a circle) at a
+/// random angle at least 30° from any correct one (up to 50 tries, as now),
+/// the others at their target angle. In degrees, 0 to 360.
+Map<int, double> startAngles(Puzzle puzzle, Random random) {
+  final starts = <int, double>{};
+  for (final (i, spec) in puzzle.pieces.indexed) {
+    var angle = spec.targetAngle;
+    if (spec.rotated && spec.shape.symmetry != 0) {
+      for (var tries = 0; tries < 50; tries++) {
+        angle = spec.targetAngle + random.nextDouble() * 360;
+        if (angleError(angle, spec.targetAngle, spec.shape.symmetry) >= 30) break;
+      }
+    }
+    starts[i] = angle % 360;
+  }
+  return starts;
+}
+
+/// Start angles for a split-screen tray: each turned piece (rotated, not a
+/// circle) at an allowed angle (at least 30° from any correct one, by
+/// [angleError] with the shape's symmetry) whose box is within 10% of the
+/// smallest allowed box height ([flat] true: for a tray below the board) or
+/// width ([flat] false: for a tray beside it), chosen at random among those,
+/// scanning whole degrees 0 to 359. A long piece that starts correct (not
+/// turned; its box at the target angle at least twice as tall as wide, or
+/// twice as wide as tall) lies along the tray: at targetAngle + 90 when that
+/// makes the box flatter (flat) or narrower (not flat); otherwise at
+/// targetAngle, like every other piece that starts correct. In degrees, 0 to
+/// 360.
+Map<int, double> compactStartAngles(Puzzle puzzle, Random random, {required bool flat}) {
+  final starts = <int, double>{};
+  for (final (i, spec) in puzzle.pieces.indexed) {
+    final shape = spec.shape;
+    if (spec.rotated && shape.symmetry != 0) {
+      // Every whole degree that is far enough from correct, with the box
+      // height (or width) it gives.
+      final allowed = <int>[];
+      final sizes = <int, double>{};
+      var smallest = double.infinity;
+      for (var a = 0; a < 360; a++) {
+        if (angleError(a.toDouble(), spec.targetAngle, shape.symmetry) < 30) continue;
+        final box = shape.bounds(a.toDouble());
+        allowed.add(a);
+        sizes[a] = flat ? box.height : box.width;
+        smallest = min(smallest, sizes[a]!);
+      }
+      if (allowed.isNotEmpty) {
+        final flattest = [
+          for (final a in allowed)
+            if (sizes[a]! <= smallest * 1.1) a,
+        ];
+        starts[i] = flattest[random.nextInt(flattest.length)].toDouble();
+        continue;
+      }
+    }
+    var angle = spec.targetAngle;
+    final box = shape.bounds(spec.targetAngle);
+    final long = !shape.circle && (box.height >= 2 * box.width || box.width >= 2 * box.height);
+    if (long) {
+      final turned = shape.bounds(spec.targetAngle + 90);
+      if (flat ? turned.height < box.height : turned.width < box.width) angle = spec.targetAngle + 90;
+    }
+    starts[i] = angle % 360;
+  }
+  return starts;
 }
 
 double _round(double v) => (v * 100).round() / 100;

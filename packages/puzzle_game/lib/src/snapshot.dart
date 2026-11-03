@@ -45,7 +45,7 @@ final class PlayerView {
 /// game (M12). Versioned, compact JSON: positions to a tenth of a unit,
 /// angles to a tenth of a degree.
 final class PuzzleSnapshot {
-  const PuzzleSnapshot({
+  PuzzleSnapshot({
     required this.puzzleId,
     required this.timeLeftMs,
     required this.phase,
@@ -55,7 +55,8 @@ final class PuzzleSnapshot {
     this.readyTargets = const {},
     this.hintTargets = const {},
     this.finishTimeMs,
-  });
+    List<int>? order,
+  }) : order = List.unmodifiable(order ?? [for (var i = 0; i < pieces.length; i++) i]);
 
   static const version = 1;
 
@@ -70,6 +71,10 @@ final class PuzzleSnapshot {
   final List<PieceView> pieces;
   final List<PlayerView> players;
 
+  /// The piece indices from the lowest layer to the highest: the order the
+  /// loose pieces are drawn in, so a piece on top hides the one under it.
+  final List<int> order;
+
   /// Outlines a held piece is close enough to drop into.
   final Set<int> readyTargets;
 
@@ -79,12 +84,21 @@ final class PuzzleSnapshot {
 
   int get placed => pieces.where((p) => p.state == PieceState.locked).length;
 
+  /// 0, 1, 2, …: the order nothing moved yet leaves them in.
+  bool get _identityOrder {
+    for (var i = 0; i < order.length; i++) {
+      if (order[i] != i) return false;
+    }
+    return true;
+  }
+
   Map<String, Object?> toJson() => {
     'v': version,
     'pz': puzzleId,
     't': timeLeftMs,
     if (warning) 'w': 1,
     'ph': phase.index,
+    if (!_identityOrder) 'o': order,
     'pc': [
       for (final p in pieces) [_i(p.x), _i(p.y), _i(p.angle), p.state.index, ...p.holders],
     ],
@@ -132,6 +146,7 @@ final class PuzzleSnapshot {
       readyTargets: {...((j['rd'] as List?) ?? const []).cast<int>()},
       hintTargets: {...((j['hn'] as List?) ?? const []).cast<int>()},
       finishTimeMs: j['ft'] as int?,
+      order: (j['o'] as List?)?.cast<int>(),
     );
   }
 }
@@ -141,18 +156,23 @@ int _i(double v) => (v * 10).round();
 /// A whole match as the view sees it (S8): one board, or the left and right
 /// boards of the split screen.
 final class MatchSnapshot {
-  const MatchSnapshot({required this.boards});
+  const MatchSnapshot({required this.boards, this.seed});
 
   static const version = 1;
 
   /// One board, or two: left, then right.
   final List<PuzzleSnapshot> boards;
 
+  /// The split layout's seed, so a phone can rebuild the same layout. Null on
+  /// one board, where there is only one.
+  final int? seed;
+
   bool get split => boards.length == 2;
 
   Map<String, Object?> toJson() => {
     'v': version,
     'b': [for (final b in boards) b.toJson()],
+    'sd': ?seed,
   };
 
   String encode() => jsonEncode(toJson());
@@ -163,6 +183,7 @@ final class MatchSnapshot {
     if (j['v'] != version) throw FormatException('Match snapshot version ${j['v']}, expected $version');
     return MatchSnapshot(
       boards: [for (final b in (j['b'] as List).cast<Map<String, Object?>>()) PuzzleSnapshot.fromJson(b)],
+      seed: j['sd'] as int?,
     );
   }
 }
