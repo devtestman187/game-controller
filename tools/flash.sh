@@ -6,13 +6,20 @@
 # releases or devices. Claude Code runs it directly (or through the
 # flash-worker agent); documented in docs/dev-tools.md.
 #
-#   tools/flash.sh [--allow <path>]... [--check <names>]... "<task>"
+#   tools/flash.sh [--allow <path>]... [--read <folder>]... [--check <names>]... "<task>"
 #   tools/flash.sh --dry-run ... "<task>"   # print the command, don't run it
 #
 #   --allow <path>   a file, or a folder and everything in it, that the job
 #                    may change. Repeat for more. Anything else the run
 #                    changes fails the job (exit 4). Without --allow the job
 #                    is read-only: no file may change.
+#   --read <folder>  a folder outside the repository the worker may read (never
+#                    change) for this job, e.g. the owner's DeepSeek workspace.
+#                    Repeat for more. Refused: the home folder or any folder
+#                    above it, and folders that hold keys or sign-ins
+#                    (~/.thumbparty, ~/.ssh, ~/.android, ~/.config, ~/.gnupg,
+#                    ~/.aws, ~/AppData), or anything inside them. Key files
+#                    inside a --read folder stay unreadable.
 #   --check <names>  run tools/check.sh with these check names afterwards
 #                    (e.g. --check puzzle, --check "format analyze").
 #                    A failed check fails the job (exit 5).
@@ -30,16 +37,21 @@ cd "$(dirname "$0")/.." || exit 2
 
 dry=0
 allow=()
+reads=()
 checks=()
 while [ $# -gt 0 ]; do
   case "$1" in
     --dry-run) dry=1; shift ;;
-    --allow|--check)
+    --allow|--check|--read)
       if [ $# -lt 2 ] || [ -z "$2" ]; then
         echo "flash: $1 needs a value" >&2
         exit 2
       fi
-      if [ "$1" = --allow ]; then allow+=("${2%/}"); else read -r -a names <<< "$2"; checks+=("${names[@]}"); fi
+      case "$1" in
+        --allow) allow+=("${2%/}") ;;
+        --read) reads+=("$2") ;;
+        *) read -r -a names <<< "$2"; checks+=("${names[@]}") ;;
+      esac
       shift 2 ;;
     --) shift; break ;;
     -*) echo "flash: unknown option $1" >&2; exit 2 ;;
@@ -52,11 +64,35 @@ if [ -z "$task" ] || [ $# -gt 1 ]; then
   exit 2
 fi
 
+# --read folders: absolute, existing, outside the repository, and not a
+# place that holds keys or sign-ins (whatever the worker reads goes to
+# DeepSeek).
+repo="$(pwd)"
+home="$(cd ~ && pwd)"
+risky=("$home/.thumbparty" "$home/.ssh" "$home/.android" "$home/.config" "$home/.gnupg" "$home/.aws" "$home/AppData")
+read_abs=()
+for r in "${reads[@]+"${reads[@]}"}"; do
+  if [ ! -d "$r" ]; then echo "flash: --read $r isn't a folder" >&2; exit 2; fi
+  a="$(cd "$r" && pwd)"
+  case "$repo/" in "$a"/*) echo "flash: --read $r contains the repository; the worker can already read the repository" >&2; exit 2 ;; esac
+  case "$a/" in "$repo"/*) echo "flash: --read $r is inside the repository; the worker can already read it" >&2; exit 2 ;; esac
+  case "$home/" in "$a"/*) echo "flash: --read $r is the home folder or above it" >&2; exit 2 ;; esac
+  for k in "${risky[@]}"; do
+    case "$a/" in "$k"/*) echo "flash: --read $r is inside $k, which holds keys or sign-ins" >&2; exit 2 ;; esac
+    case "$k/" in "$a"/*) echo "flash: --read $r contains $k, which holds keys or sign-ins" >&2; exit 2 ;; esac
+  done
+  read_abs+=("$a")
+done
+
 # Tell the worker its limits; the script enforces them after the run.
 if [ ${#allow[@]} -gt 0 ]; then
   task+=$'\n\n'"You may change only these files (a folder means anything inside it): ${allow[*]}. Changing any other file fails the job."
 else
   task+=$'\n\n'"This job is read-only: don't change, create or delete any file."
+fi
+if [ ${#read_abs[@]} -gt 0 ]; then
+  task+=$'
+'"You may also read (never change) these folders outside the repository: ${read_abs[*]}. Read them with the Read tool and their full paths."
 fi
 if [ ${#checks[@]} -gt 0 ]; then
   task+=$'\n'"When done, check with: tools/check.sh ${checks[*]}"
@@ -98,7 +134,8 @@ protected=(".github/**" "codemagic.yaml" "firebase/**" ".claude/**" "kenney-audi
 # Files it may not even read, because whatever it reads is sent to DeepSeek.
 # Signing keys and service accounts (the .gitignore list), in case one is
 # ever put in the repository. Reading outside the repository isn't allowed
-# at all (Read is limited to ./ above).
+# at all (Read is limited to ./ above), except the --read folders, where
+# the same key files stay unreadable and nothing may be changed.
 secret=("**/*.jks" "**/*.keystore" "**/*.p8" "**/*.p12" "**/key.properties" "**/play-service-account*.json"
   "**/google-services.json" "**/GoogleService-Info.plist" "**/.env*")
 denied=(
@@ -108,6 +145,14 @@ denied=(
 )
 for p in "${protected[@]}"; do denied+=("Edit(./$p)"); done
 for p in "${secret[@]}"; do denied+=("Read(./$p)" "Edit(./$p)"); done
+add_dirs=()
+for a in "${read_abs[@]+"${read_abs[@]}"}"; do
+  # Claude Code writes an absolute path in a rule as //path.
+  allowed+=("Read(/$a/**)")
+  denied+=("Edit(/$a/**)")
+  for p in "${secret[@]}"; do denied+=("Read(/$a/$p)"); done
+  if command -v cygpath > /dev/null 2>&1; then add_dirs+=(--add-dir "$(cygpath -w "$a")"); else add_dirs+=(--add-dir "$a"); fi
+done
 
 cmd=(claude --bare -p "$task"
   --model "$model"
@@ -115,6 +160,7 @@ cmd=(claude --bare -p "$task"
   --append-system-prompt "$rules"
   --allowedTools "${allowed[@]}"
   --disallowedTools "${denied[@]}"
+  "${add_dirs[@]+"${add_dirs[@]}"}"
   --output-format json)
 
 if [ "$dry" = 1 ]; then
