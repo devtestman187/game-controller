@@ -301,8 +301,10 @@ class SessionCollector {
       final connected = p.connectedMs + (p.joinedAtMs == null ? 0 : max(0, atMs - p.joinedAtMs!));
       final segments = p.segments.values.toList()..sort((a, b) => _start(a).compareTo(_start(b)));
       final modeMs = <String, int>{};
+      final modeActiveMs = <String, int>{};
       for (final s in segments) {
         modeMs[s.mode] = (modeMs[s.mode] ?? 0) + s.durationMs;
+        modeActiveMs[s.mode] = (modeActiveMs[s.mode] ?? 0) + _activeMs(s);
       }
       final switches = [
         for (var i = 1; i < segments.length; i++)
@@ -329,6 +331,7 @@ class SessionCollector {
           for (final m in {...modeMs.keys, ...p.modeGames.keys})
             m: {
               'ms': modeMs[m] ?? 0,
+              'activeMs': modeActiveMs[m] ?? 0,
               'games': p.modeGames[m] ?? 0,
               'wins': p.modeWins[m] ?? 0,
               'draws': ?p.modeDraws[m],
@@ -337,7 +340,14 @@ class SessionCollector {
         'switches': switches,
         'segments': [
           for (final s in segments)
-            {'id': s.segment, 'mode': s.mode, 'ms': s.durationMs, 'ended': s.ended, 'data': s.data},
+            {
+              'id': s.segment,
+              'mode': s.mode,
+              'ms': s.durationMs,
+              'activeMs': _activeMs(s),
+              'ended': s.ended,
+              'data': s.data,
+            },
         ],
         'ratings': p.ratings,
         'games': p.games,
@@ -363,6 +373,13 @@ class SessionCollector {
   }
 
   static int _start(MetricsMessage s) => (s.data['start'] as int?) ?? 0;
+
+  /// The segment's active time, or its full time for an older phone that
+  /// doesn't send one.
+  static int _activeMs(MetricsMessage s) {
+    final active = s.data['activeMs'];
+    return active is num ? active.round() : s.durationMs;
+  }
 
   static String _mode(String mode) => const {'dpad', 'gyro', 'sticks', 'keyboard'}.contains(mode) ? mode : 'other';
 }

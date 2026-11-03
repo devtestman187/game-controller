@@ -33,9 +33,11 @@ Carried from earlier milestones, still to do:
 - **Public TestFlight link:** the external `Testers` group isn't set up yet. When it is, the link goes into the tester guide (`site/`) and the group into `codemagic.yaml`.
 - **Phone screenshots** for the stores show the PC's old name in the connection chip. Retake them after the PC is renamed: build the Windows TV app, pair the `m7_android12` emulator, capture at 2400×1080 and pad to 2400×1200 (`assets/branding/screenshots/`).
 - **The `docs/protocol.md` read-through** (M9; the owner skipped it then).
-- **Idea:** "time in a mode" counts idle time with the app open, which dilutes per-minute stats. Count only active play in a later milestone.
 - **M10 extra checks** kept for later ([checklists/m10.md](checklists/m10.md)): old with new, Puzzle settings with the remote, Stats export, and the three optional checks carried from M9.
 - **M11 device tests** ([checklists/m11.md](checklists/m11.md)): built in 0.11.0 (2 to 4 players, big pieces, pause, and T21: the whole TV app from a controller), waiting for the owner's tests.
+- **m11.3** (built): the "Bubble Pop" sounds (`tools/audio/`) and stats that count active play time only (`activeMs`). Device checks in [checklists/m11.md](checklists/m11.md) ("m11.3 checks"). The untracked `kenney-audio/` folder at the repository root is no longer needed; the owner decides whether to delete it.
+- **Look-and-sound milestone, planned between M12 and M13** (owner still thinking; not in the PRD yet): brighter colours, Canvas outlines and shadows, then the "Toy Box Toon" shader (Arena first), the 3 extra sounds with looping, and a mute or volume setting. Source: the DeepSeek workspace's `game-controller-shaders/DESIGN.md` and `thumb-party-audio/`.
+- **Party ideas** (owner still thinking; not in the PRD): chaos events with a cat, power-ups, points, party nights with end-of-night awards, and on-device leaderboards. Written down in [party-ideas.md](party-ideas.md).
 
 ## Testing recipes
 

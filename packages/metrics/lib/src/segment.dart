@@ -20,6 +20,12 @@ abstract final class Thresholds {
   /// Steering reversals count only past this far out, so jitter around the
   /// middle doesn't count.
   static const reversal = 0.3;
+
+  /// Time after the last input that still counts as playing.
+  static const idleGapMs = 5000;
+
+  /// A tilt change this big counts as activity.
+  static const tiltActivity = 0.05;
 }
 
 /// The touch counters for one mode segment: a stretch of time in one input
@@ -71,6 +77,12 @@ class SegmentRecorder {
   final _sticks = <String, _AxisTimes>{};
   _AxisTimes? _gyro;
   int _recalibrations = 0;
+  int _activeMs = 0;
+  int? _lastActivityMs;
+  bool _busy = false;
+  final _touchedSticks = <String>{};
+  double? _lastTiltX;
+  double? _lastTiltY;
 
   /// The touch areas. Set again when the layout changes (window resized,
   /// button size changed).
@@ -81,6 +93,7 @@ class SegmentRecorder {
   /// A finger touched down.
   void touchDown(double x, double y, int atMs) {
     _touches++;
+    _activity(atMs);
     final hit = map.hit(x, y);
     final target = hit.control ?? Controls.empty;
     if (hit.control == null) {
@@ -100,6 +113,9 @@ class SegmentRecorder {
   void held(Set<String> controls, int atMs) {
     final pressed = controls.difference(_held);
     final released = _held.difference(controls);
+    // A press or a release is activity. The time up to it counts as busy or
+    // not as it was before it.
+    if (pressed.isNotEmpty || released.isNotEmpty) _activity(atMs);
     for (final c in released) {
       final since = _heldSince.remove(c);
       if (since == null) continue;
@@ -114,6 +130,7 @@ class SegmentRecorder {
       _add(_multi, '${min(controls.length, 5)}');
     }
     _held = Set.of(controls);
+    _busy = _held.isNotEmpty || _touchedSticks.isNotEmpty;
   }
 
   /// A finger that started on [control] slid off it while still down.
@@ -121,11 +138,38 @@ class SegmentRecorder {
 
   /// A stick's value ([Controls.leftStick] or [Controls.rightStick]), and
   /// whether a thumb is on it.
-  void stick(String side, double x, double y, {required bool touched, required int atMs}) =>
-      (_sticks[side] ??= _AxisTimes(atMs)).update(x, y, touched: touched, atMs: atMs);
+  void stick(String side, double x, double y, {required bool touched, required int atMs}) {
+    final wasTouched = _touchedSticks.contains(side);
+    // A thumb on a stick is activity, and so is letting go of one.
+    if (touched || wasTouched) {
+      _activity(atMs);
+      if (touched) {
+        _touchedSticks.add(side);
+      } else {
+        _touchedSticks.remove(side);
+      }
+      _busy = _held.isNotEmpty || _touchedSticks.isNotEmpty;
+    }
+    (_sticks[side] ??= _AxisTimes(atMs)).update(x, y, touched: touched, atMs: atMs);
+  }
 
   /// The gyro tilt (gyro mode).
-  void tilt(double x, double y, int atMs) => (_gyro ??= _AxisTimes(atMs)).update(x, y, touched: true, atMs: atMs);
+  void tilt(double x, double y, int atMs) {
+    final lastX = _lastTiltX;
+    final lastY = _lastTiltY;
+    // The first sample sets the reference. After that, moving far enough from
+    // the tilt at the last activity is activity, so slow, smooth steering
+    // (small changes between samples) still counts.
+    if (lastX == null || lastY == null) {
+      _lastTiltX = x;
+      _lastTiltY = y;
+    } else if ((x - lastX).abs() >= Thresholds.tiltActivity || (y - lastY).abs() >= Thresholds.tiltActivity) {
+      _activity(atMs);
+      _lastTiltX = x;
+      _lastTiltY = y;
+    }
+    (_gyro ??= _AxisTimes(atMs)).update(x, y, touched: true, atMs: atMs);
+  }
 
   /// The player pressed Calibrate (gyro mode).
   void recalibrated() => _recalibrations++;
@@ -134,6 +178,28 @@ class SegmentRecorder {
   void haptic(String event) => _add(_haptics, event);
 
   int durationMs(int atMs) => max(0, atMs - startMs);
+
+  /// Time near player activity up to [atMs]: a stretch since the last activity
+  /// counts in full while busy (a control held or a thumb on a stick), and
+  /// otherwise only up to [Thresholds.idleGapMs]. Unlike [toJson] this
+  /// changes nothing.
+  int activeMs(int atMs) {
+    final last = _lastActivityMs;
+    if (last == null) return _activeMs;
+    final dt = max(0, atMs - last);
+    return _activeMs + (_busy ? dt : min(dt, Thresholds.idleGapMs));
+  }
+
+  /// Counts the time since the last activity up to [atMs], with [busy] as it
+  /// was before this event, then moves the mark: callers update [busy] after.
+  void _activity(int atMs) {
+    final last = _lastActivityMs;
+    if (last != null) {
+      final dt = max(0, atMs - last);
+      _activeMs += _busy ? dt : min(dt, Thresholds.idleGapMs);
+    }
+    _lastActivityMs = atMs;
+  }
 
   /// Everything so far, as the `data` of a metrics batch.
   Map<String, Object?> toJson(int atMs) {
@@ -153,6 +219,7 @@ class SegmentRecorder {
       'v': 1,
       'start': offsetMs,
       'touches': _touches,
+      'activeMs': activeMs(atMs),
       if (settings.isNotEmpty) 'settings': settings,
       if (_presses.isNotEmpty) 'presses': Map.of(_presses),
       if (pressMs.isNotEmpty) 'pressMs': pressMs,
@@ -249,6 +316,7 @@ Map<String, Object?> sanitizeSegmentData(Map<String, Object?> data) {
     'v': n(data['v']) ?? 1,
     'start': n(data['start']) ?? 0,
     'touches': n(data['touches']) ?? 0,
+    if (n(data['activeMs']) case final a?) 'activeMs': a,
   };
   for (final key in const ['presses', 'pressMs', 'pressMaxMs', 'empty', 'near', 'slide', 'rapid', 'multi', 'haptics']) {
     final c = counts(data[key]);

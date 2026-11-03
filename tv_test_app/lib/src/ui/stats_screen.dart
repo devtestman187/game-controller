@@ -249,7 +249,7 @@ class SessionView extends StatelessWidget {
                 for (final h in const [
                   'Player',
                   'Mode',
-                  'Time',
+                  'Time playing',
                   'Presses',
                   'Empty taps',
                   'Near misses',
@@ -265,7 +265,7 @@ class SessionView extends StatelessWidget {
                 children: [
                   _Cell(_playerLabel(players[r.install], r)),
                   _Cell(_mode(r.mode)),
-                  _Cell(_time(r.ms)),
+                  _Cell(_time(r.activeMs)),
                   _Cell('${r.presses}'),
                   _Cell('${r.empty}'),
                   _Cell('${r.near}'),

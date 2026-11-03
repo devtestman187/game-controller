@@ -1,0 +1,4 @@
+# render.py writes its WAV masters, archived palettes and tours next to itself.
+final/
+archive/
+tours/

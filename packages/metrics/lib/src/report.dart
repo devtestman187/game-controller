@@ -13,6 +13,7 @@ final class ModeRow {
     required this.platform,
     required this.mode,
     required this.ms,
+    required this.activeMs,
     required this.touches,
     required this.presses,
     required this.empty,
@@ -39,6 +40,9 @@ final class ModeRow {
   final String platform;
   final String mode;
   final int ms;
+
+  /// Time near player activity (m11.3); [ms] for older phones.
+  final int activeMs;
   final int touches;
   final int presses;
   final int empty;
@@ -59,14 +63,19 @@ final class ModeRow {
   final int? inputMedianMs;
   final int? inputP95Ms;
 
-  double get minutes => ms / 60000;
+  /// The mode's full time, idle included.
+  double get openMinutes => ms / 60000;
+
+  /// Time the player was near the controls (m11.3).
+  double get minutes => activeMs / 60000;
 
   /// Empty taps, near misses, slide-offs and rapid repeats per minute.
   double get frustrationPerMin => minutes == 0 ? 0 : (empty + near + slide + rapid) / minutes;
 
   static const csvHeader =
       'session,date,host,install,device,model,platform,mode,minutes,touches,presses,empty,near,slide,rapid,'
-      'games,wins,good,okay,bad,early_switch,first_mode,input_median_ms,input_p95_ms,frustration_per_min';
+      'games,wins,good,okay,bad,early_switch,first_mode,input_median_ms,input_p95_ms,frustration_per_min,'
+      'open_minutes';
 
   String toCsv() => [
     session,
@@ -94,6 +103,7 @@ final class ModeRow {
     inputMedianMs ?? '',
     inputP95Ms ?? '',
     frustrationPerMin.toStringAsFixed(2),
+    openMinutes.toStringAsFixed(2),
   ].join(',');
 }
 
@@ -136,6 +146,9 @@ List<ModeRow> rowsOf(Map<String, Object?> summary) {
         }
       }
       final rated = ratings.where((r) => r['mode'] == mode);
+      final ms = _int((info as Map?)?['ms']);
+      // A summary from an older version has no active time: use the full time.
+      final active = info?['activeMs'];
       rows.add(
         ModeRow(
           session: session,
@@ -146,7 +159,8 @@ List<ModeRow> rowsOf(Map<String, Object?> summary) {
           model: device['model'] as String? ?? '',
           platform: player['platform'] as String? ?? '',
           mode: mode,
-          ms: _int((info as Map?)?['ms']),
+          ms: ms,
+          activeMs: active is num ? active.round() : ms,
           touches: touches,
           presses: sum('presses'),
           empty: sum('empty'),
@@ -179,6 +193,7 @@ final class GroupStats {
     : players = rows.map((r) => r.install).toSet().length,
       sessions = rows.map((r) => r.session).toSet().length,
       minutes = rows.fold(0.0, (a, r) => a + r.minutes),
+      openMinutes = rows.fold(0.0, (a, r) => a + r.openMinutes),
       presses = rows.fold(0, (a, r) => a + r.presses),
       empty = rows.fold(0, (a, r) => a + r.empty),
       near = rows.fold(0, (a, r) => a + r.near),
@@ -196,6 +211,7 @@ final class GroupStats {
   final int players;
   final int sessions;
   final double minutes;
+  final double openMinutes;
   final int presses;
   final int empty;
   final int near;
@@ -240,6 +256,7 @@ String table(String title, List<GroupStats> groups) {
     'players',
     'sessions',
     'minutes',
+    'open min',
     'presses/min',
     'empty/min',
     'near/min',
@@ -261,6 +278,7 @@ String table(String title, List<GroupStats> groups) {
         '${g.players}',
         '${g.sessions}',
         g.minutes.toStringAsFixed(1),
+        g.openMinutes.toStringAsFixed(1),
         g.perMin(g.presses).toStringAsFixed(1),
         g.perMin(g.empty).toStringAsFixed(2),
         g.perMin(g.near).toStringAsFixed(2),
