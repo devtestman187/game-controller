@@ -453,7 +453,12 @@ Record the commit hash: `git -C $REPO rev-parse --short HEAD`. Every footage fil
      - `AdvOut/RecFormat2` = `mkv`;
      - `AdvOut/RecFilePath` = `C:\Users\singh\thumbparty-demo\footage` (create the folder first);
      - `AdvOut/RecRB` = `false`;
-     - rate control CQP 18 for QSV, or CRF 16 for x264, through the encoder's settings.
+     - Encoder settings are written into the profile's `basic.ini` under `[AdvOut]` while OBS is closed (they take
+     effect on the next `StartRecord`; `SetProfileParameter` writes the same keys). Use QSV, **CQP 23 with target
+     usage `speed`**: `RecRateControl=CQP`, `RecCQP=23`, `RecTargetUsage=speed`. Confirm in the OBS log at
+     `StartRecord` (`rate_control: CQP`, `qpi/qpb/qpp: 23`, `target_usage: TU7`). The stock QSV defaults — CBR 5000,
+     lookahead 60, TU4 — are the expensive ones, and x264 starves the emulator (measured Nov 4, 2026: 2.4 vs 12.6
+     fps phone crop at 3840x1080).
    - Scene collection `ThumbPartyDemo` with:
      - scene `TV`: input `tv` of kind `window_capture`, window `Thumb Party TV:FLUTTER_RUNNER_WIN32_WINDOW:ThumbPartyTV.exe`, `capture_cursor` false, method Windows Graphics Capture;
      - an input `desktop_audio` of kind `wasapi_output_capture` (default device);
