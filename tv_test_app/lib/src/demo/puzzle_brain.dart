@@ -53,9 +53,45 @@ final class PuzzleBrain {
   GoalKind? get currentGoal => _goal < goals.length ? goals[_goal].kind : null;
 
   /// One frame. [events] are the events the director saw this frame, for
-  /// `waitFor`.
-  GamepadState step(PuzzleGame game, double dt, {Set<String> events = const {}}) {
+  /// `waitFor`. [game] is null on a lobby or a menu screen, before any match
+  /// exists; only `navigate` (and the timing goals) run there, because they
+  /// need no game object. That is what lets a scene join players and walk the
+  /// TV menus.
+  GamepadState step(PuzzleGame? game, double dt, {Set<String> events = const {}}) {
     if (_finished) return GamepadState.neutral;
+    final player = game?.player(seat);
+    if (player == null) return _menuStep(dt, events);
+    return _playStep(game!, dt, events);
+  }
+
+  GamepadState _menuStep(double dt, Set<String> events) {
+    _elapsed += dt;
+    _goalT += dt;
+    if (_waitS > 0) {
+      _waitS -= dt;
+      return GamepadState.neutral;
+    }
+    while (_goal < goals.length) {
+      final goal = goals[_goal];
+      if (goal.kind == GoalKind.idle && _goalT * 1000 >= (goal.ms ?? 0)) {
+        _next();
+      } else if (goal.kind == GoalKind.waitFor && events.contains(goal.event)) {
+        _next();
+      } else {
+        break;
+      }
+    }
+    if (_goal >= goals.length) return GamepadState.neutral;
+    final goal = goals[_goal];
+    if (goal.kind == GoalKind.navigate) return _navigate(goal);
+    if (goal.kind == GoalKind.waitFor && (goal.timeoutMs ?? 0) > 0 && _goalT * 1000 >= goal.timeoutMs!) {
+      onEvent?.call('wait_timeout', {'seat': seat, 'waiting_for': goal.event ?? ''});
+      _next();
+    }
+    return GamepadState.neutral;
+  }
+
+  GamepadState _playStep(PuzzleGame game, double dt, Set<String> events) {
     final player = game.player(seat);
     if (player == null) return GamepadState.neutral;
     _elapsed += dt;

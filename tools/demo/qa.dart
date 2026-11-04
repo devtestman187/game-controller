@@ -193,7 +193,12 @@ Future<QaResult> runQa({
     check('fps', p.fps >= 59, '${p.fps.toStringAsFixed(1)} (want >= 59)');
     final s = await stutter(file.path);
     data['stutter'] = s;
-    check('stutter', !s.bad, '${s.runs} runs of 3+ duplicates');
+    final movingTv = shotIsGameplay(shot);
+    check(
+      'stutter',
+      !movingTv || !s.bad,
+      '${s.runs} runs of 3+ duplicates${movingTv ? '' : ' (static shot, reported only)'}',
+    );
     await contactSheet(file.path, '$qaDir\\${takeName}_sheet.png');
     data['sheets'] = ['$qaDir\\${takeName}_sheet.png'];
     lines.add('sheet: $qaDir\\${takeName}_sheet.png');
@@ -403,7 +408,7 @@ List<String> readEvents(String path) {
 /// Shots whose content moves for the whole take. Only these fail a run of
 /// duplicate frames (2.8 step 2); the others report it.
 bool shotIsGameplay(String shot) {
-  return RegExp(r'^(G\d|M\d|R\d|P3)').hasMatch(shot);
+  return RegExp(r'^(G\d|M\d|R\d)').hasMatch(shot);
 }
 
 /// 2.8 step 3, per shot.

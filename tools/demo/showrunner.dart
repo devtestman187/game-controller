@@ -41,6 +41,9 @@ Future<void> main(List<String> args) async {
   final tv = cli.has('tv') || !phone;
   final window = cli.value('window');
   final scene = cli.value('scene');
+  final tvScreen = cli.value('tv-screen');
+  final hold = double.tryParse(cli.value('hold') ?? '');
+  final preRoll = cli.value('pre-roll');
   final retakes = int.parse(cli.value('retakes') ?? '3');
   final startTake = int.parse(cli.value('take') ?? '1');
   final work =
@@ -62,9 +65,13 @@ Future<void> main(List<String> args) async {
         tv: tv,
         window: window,
         scene: scene,
+        tvScreen: tvScreen,
+        hold: hold,
+        preRoll: preRoll,
       );
       stdout.writeln('$shot take $take: ok (${seconds.toStringAsFixed(1)} s)');
-      return;
+      await runner.shutdown();
+      exit(0);
     } on Object catch (e, stack) {
       lastFail = '$e';
       stderr.writeln('$shot take $take: failed: $e');
@@ -119,6 +126,9 @@ class Showrunner {
     required bool tv,
     String? window,
     String? scene,
+    String? tvScreen,
+    double? hold,
+    String? preRoll,
   }) async {
     final takeName = '${shot}_take$take';
     Directory(logs).createSync(recursive: true);
@@ -134,7 +144,9 @@ class Showrunner {
     stdout.writeln('tv: port $port, code $code');
     await _director!.request({'t': 'reset'}, 'reset_done');
 
-    // 2. Emulator and the touch driver, when a phone is on screen.
+    // 2. Emulator and the touch driver, when a phone is on screen. This comes
+    // before the TV menu work: `pm clear` stops the phone app that would
+    // otherwise auto-reconnect from its saved pairing and take player 1.
     if (phone) {
       _serial = avd == 'm8_pixel_tablet' ? 'emulator-5556' : 'emulator-5554';
       await ensureEmulator(avd, _serial);
@@ -143,21 +155,12 @@ class Showrunner {
       _driverClient = await DriverClient.connect(47901);
       _pad = KeyPad.fromFile('$repo\\tools\\demo\\layouts\\$avd-$mode.json');
     }
-
-    // 3. Bots, from the scene file.
-    final sceneFile = scene == null ? null : File(scene).absolute.path;
-    final bots = sceneFile == null ? 0 : botsInScene(sceneFile);
-    if (bots > 0) {
-      stdout.writeln('director: $bots bots');
-      await _director!.request(
-        {'t': 'bots', 'count': bots, 'mode': 'sticks'},
-        'bots_ready',
-        timeout: const Duration(seconds: 20),
-      );
+    if (tvScreen != null) {
+      await goToTvScreen(tvScreen);
     }
 
-    // P2 and P4 show the typing itself, so they pair on camera. Every other
-    // filmed shot pairs first, as 2.7 step 2 says.
+    // 3. Pair first, so the phone is player 1 and the bots take 2-4 (2.7
+    // step 2 before step 3). P2/P4 show the typing itself and pair on camera.
     final pairOnCamera = shot == 'P2' || shot == 'P4';
     if (phone && !pairOnCamera) {
       await pair(_driverClient!, port, code);
@@ -167,7 +170,31 @@ class Showrunner {
       await ensureSymbolsPage(_driverClient!);
     }
 
-    // 4. Recorder.
+    // 4. Bots, from the scene file. P3 shows them joining one by one, so its
+    // bots are created during the take instead.
+    final sceneFile = scene == null ? null : File(scene).absolute.path;
+    final bots = sceneFile == null ? 0 : botsInScene(sceneFile);
+    if (bots > 0 && shot != 'P3') {
+      stdout.writeln('director: $bots bots');
+      await _director!.request(
+        {'t': 'bots', 'count': bots, 'mode': 'sticks'},
+        'bots_ready',
+        timeout: const Duration(seconds: 20),
+      );
+    }
+
+    // 5. Recorder.
+    if (preRoll != null) {
+      final file = File(preRoll).absolute.path;
+      stdout.writeln('director: pre-roll ${file.split(RegExp(r'[\\/]')).last}');
+      await _director!.request({
+        't': 'scene',
+        'file': file,
+        'take': '${takeName}_preroll',
+      }, 'scene_started');
+      await _director!.waitFor('scene_done', await sceneTimeout(file));
+      await Future<void>.delayed(const Duration(milliseconds: 1500));
+    }
     final recorder = await startRecorder(
       phone: phone,
       tv: tv,
@@ -185,19 +212,26 @@ class Showrunner {
     try {
       if (pairOnCamera) {
         await pairOnCameraFlow(_driverClient!, port, code);
+      } else if (shot == 'P3') {
+        // One bot per request, 1.2 s apart: the director names them in order.
+        for (var i = 0; i < bots; i++) {
+          await _director!.request(
+            {'t': 'bots', 'count': 1, 'mode': 'sticks'},
+            'bots_ready',
+            timeout: const Duration(seconds: 20),
+          );
+          await Future<void>.delayed(const Duration(milliseconds: 1200));
+        }
+      } else if (hold != null) {
+        await Future<void>.delayed(
+          Duration(milliseconds: (hold * 1000).round()),
+        );
       } else if (sceneFile != null) {
         final duration = await sceneTimeout(sceneFile);
-        final events = File('$logs\\${takeName}_events.jsonl');
-        if (events.existsSync()) events.deleteSync();
-        final subscription = _director!.events.listen((event) {
-          if (event['t'] != 'event') return;
-          final clean = Map<String, dynamic>.from(event)..remove('t');
-          events.writeAsStringSync(
-            '${jsonEncode(clean)}\n',
-            mode: FileMode.append,
-            flush: true,
-          );
-        });
+        // The TV app's own event log is the complete one (scene_start, join,
+        // screen, game_start ...); the director's websocket only carries the
+        // brain events. Takes are separated by their wall-clock start.
+        final takeWall = DateTime.now().millisecondsSinceEpoch;
         stdout.writeln(
           'director: scene ${sceneFile.split(RegExp(r'[\\/]')).last}',
         );
@@ -207,7 +241,7 @@ class Showrunner {
           'take': takeName,
         }, 'scene_started');
         await _director!.waitFor('scene_done', duration);
-        await subscription.cancel();
+        await _copyTvEvents(takeName, takeWall);
       }
       await Future<void>.delayed(const Duration(milliseconds: 1500));
     } finally {
@@ -236,6 +270,93 @@ class Showrunner {
       throw StateError('quality checks failed: ${result.data['failures']}');
 
     return DateTime.now().difference(started).inMilliseconds / 1000;
+  }
+
+  /// Copies the director's events since [sinceWall] into the take's log.
+  Future<void> _copyTvEvents(String takeName, int sinceWall) async {
+    final source = File('$logs\\director_events.jsonl');
+    if (!source.existsSync()) return;
+    final out = File('$logs\\${takeName}_events.jsonl');
+    if (out.existsSync()) out.deleteSync();
+    final keep = <String>[];
+    for (final line in source.readAsLinesSync()) {
+      if (line.trim().isEmpty) continue;
+      try {
+        final event = jsonDecode(line) as Map<String, dynamic>;
+        final wall = event['wall'];
+        if (wall is int && wall >= sinceWall) keep.add(line);
+      } on Object {
+        // A partially written last line; skip it.
+      }
+    }
+    out.writeAsStringSync(keep.isEmpty ? '' : '${keep.join('\n')}\n');
+  }
+
+  /// Drives the TV's own menus before a take (2.7 step 1): the director never
+  /// navigates the TV, so the showrunner clicks Play -> game itself.
+  Future<void> goToTvScreen(String screen) async {
+    // Escape leaves a running game or a lobby; five presses reach the home
+    // screen from any depth (join -> puzzle list -> games -> home).
+    for (var i = 0; i < 5; i++) {
+      await tvKey('esc');
+      await Future<void>.delayed(const Duration(milliseconds: 400));
+    }
+    // The TV hands out player numbers in order, and remembers every phone it
+    // has paired: without this the phone comes back as P5 and no scene's P1
+    // seat ever gets input. Forget the remembered list, then drop the one that
+    // is still connected.
+    await tvClick(1813, 94); // Forget phones
+    await tvClick(485, 388); // Drop connections
+    await Future<void>.delayed(const Duration(milliseconds: 800));
+    switch (screen) {
+      case 'home':
+        break;
+      case 'join':
+        await tvClick(1353, 36); // Play
+        await tvClick(213, 157); // Shape Race
+        await tvClick(453, 121); // Rocket
+        await Future<void>.delayed(const Duration(milliseconds: 1500));
+      case 'arena':
+        await tvClick(1353, 36); // Play
+        await tvClick(617, 157); // Arena
+        await Future<void>.delayed(const Duration(milliseconds: 1500));
+      default:
+        throw StateError('unknown --tv-screen "$screen" (home, join, arena)');
+    }
+    stdout.writeln('tv: on the $screen screen');
+  }
+
+  Future<void> tvClick(int x, int y) async {
+    final result = await Process.run('powershell.exe', [
+      '-NoProfile',
+      '-ExecutionPolicy',
+      'Bypass',
+      '-File',
+      '$repo\\tools\\demo\\tv.ps1',
+      'click',
+      '$x,$y',
+    ]);
+    if (result.exitCode != 0) {
+      throw StateError(
+        'TV click $x,$y failed: ${result.stdout}${result.stderr}',
+      );
+    }
+    await Future<void>.delayed(const Duration(milliseconds: 400));
+  }
+
+  Future<void> tvKey(String key) async {
+    final result = await Process.run('powershell.exe', [
+      '-NoProfile',
+      '-ExecutionPolicy',
+      'Bypass',
+      '-File',
+      '$repo\\tools\\demo\\tv.ps1',
+      'key',
+      key,
+    ]);
+    if (result.exitCode != 0) {
+      throw StateError('TV key $key failed: ${result.stdout}${result.stderr}');
+    }
   }
 
   Future<Director> ensureTv() async {
@@ -404,6 +525,15 @@ class Showrunner {
     _obsClient = null;
   }
 
+  /// Closes the sockets so the process can exit after a good take.
+  Future<void> shutdown() async {
+    await _stopDriver();
+    await _director?.close();
+    _director = null;
+    await _obsClient?.close();
+    _obsClient = null;
+  }
+
   Future<void> _stopDriver() async {
     final client = _driverClient;
     _driverClient = null;
@@ -451,7 +581,23 @@ class Showrunner {
         await obs.setUpBoth(3840, 1080);
       } else {
         await obs.setCanvas(1920, 1080);
-        await obs.request('SetCurrentProgramScene', {'sceneName': 'TV'});
+        // The collection names the TV-window scene either TV (2.6) or, in the
+        // scene collection this machine has, `Scene`.
+        final scenes = await obs.request('GetSceneList');
+        final names = [
+          for (final scene in (scenes['scenes'] as List? ?? const []))
+            (scene as Map)['sceneName'] as String,
+        ];
+        final scene = names.contains('TV')
+            ? 'TV'
+            : (names.contains('Scene') ? 'Scene' : null);
+        if (scene == null) {
+          throw StateError('no TV scene in OBS (scenes: ${names.join(', ')})');
+        }
+        await obs.bindTvWindow();
+        await obs.ensureTvItem(scene);
+        await obs.fitTv(scene);
+        await obs.request('SetCurrentProgramScene', {'sceneName': scene});
       }
       await obs.startRecord();
     });

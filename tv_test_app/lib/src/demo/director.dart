@@ -45,6 +45,8 @@ final class DemoDirector {
   Timer? _timer;
   DateTime? _sceneStart;
   bool _done = false;
+  bool _gameStarted = false;
+  final _seenPlayers = <String>{};
 
   /// The port actually listening (the control port, or whatever the OS chose
   /// when tests ask for 0).
@@ -99,7 +101,7 @@ final class DemoDirector {
     }
   }
 
-  /// Creates `count` bots named "Bot 2", "Bot 3", … and waits for them to pair.
+  /// Creates `count` bots named "Bot 2", "Bot 3", â€¦ and waits for them to pair.
   Future<void> _makeBots(WebSocket socket, Map<String, dynamic> message) async {
     final count = switch (message['count']) {
       final int n => n,
@@ -143,6 +145,7 @@ final class DemoDirector {
     _scene = scene;
     _done = false;
     _sceneStart = DateTime.now();
+    _gameStarted = false;
     _puzzleBrains.clear();
     _arenaBrains.clear();
     var seed = scene.seed;
@@ -178,7 +181,7 @@ final class DemoDirector {
       GamepadState? pad;
       if (scene.game == 'puzzle') {
         final game = match?.gameFor(seat);
-        if (game != null) pad = _puzzleBrains[seat]?.step(game, dt);
+        pad = _puzzleBrains[seat]?.step(game, dt);
       } else if (arena != null) {
         pad = _arenaBrains[seat]?.step(arena, dt);
       }
@@ -200,6 +203,11 @@ final class DemoDirector {
     if (match?.result != null) {
       _finish(ok: true);
       return;
+    }
+    // The first frame with a live game object: what the edit cuts on.
+    if (!_gameStarted && (match != null || arena != null)) {
+      _gameStarted = true;
+      _event('game_start');
     }
     final started = _sceneStart;
     if (started != null && scene.endAfter == 'seconds') {
@@ -233,6 +241,7 @@ final class DemoDirector {
 
   Future<void> _reset(WebSocket socket) async {
     _stopScene();
+    _seenPlayers.clear();
     for (final bot in _bots.values) {
       await bot.dispose();
     }
@@ -254,6 +263,14 @@ final class DemoDirector {
     final text = jsonEncode(message);
     for (final socket in List.of(_sockets)) {
       if (socket.readyState == WebSocket.open) socket.add(text);
+    }
+  }
+
+  /// Logs one `join` per player name that was not here before (2.3's event
+  /// list). DemoBoot feeds it the host's player list on every change.
+  void notePlayers(List<String> names) {
+    for (final name in names) {
+      if (_seenPlayers.add(name)) _event('join', {'player': name});
     }
   }
 

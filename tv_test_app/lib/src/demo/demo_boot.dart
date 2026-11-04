@@ -47,6 +47,8 @@ class _DemoBootState extends ConsumerState<DemoBoot> {
         );
       }
     }
+    final host = ref.watch(hostStateProvider).host;
+    _director?.notePlayers([for (final controller in host.controllers) controller.name]);
     return widget.child;
   }
 

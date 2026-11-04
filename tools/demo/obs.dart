@@ -33,9 +33,12 @@ Future<void> main(List<String> args) async {
     final process = await Process.start(
       r'C:\Program Files\obs-studio\bin\64bit\obs64.exe',
       const [
-        '--profile', 'ThumbPartyDemo',
-        '--collection', 'ThumbPartyDemo',
-        '--scene', 'Phone',
+        '--profile',
+        'ThumbPartyDemo',
+        '--collection',
+        'ThumbPartyDemo',
+        '--scene',
+        'Phone',
         '--minimize-to-tray',
         '--disable-shutdown-check',
       ],
@@ -316,8 +319,15 @@ class ObsClient {
     await _ensureSource('Both', 'tv', 'window_capture');
     await _ensureSource('Both', 'phone', 'window_capture');
     await _setWindow('tv', const ['thumbpartytv.exe']);
-    await _setWindow('phone', const ['qemu-system', 'android emulator']);
-    await _place('Both', 'tv', width / 4, height / 2, width / 2, height.toDouble());
+    await _setWindow('phone', const ['android emulator -']);
+    await _place(
+      'Both',
+      'tv',
+      width / 4,
+      height / 2,
+      width / 2,
+      height.toDouble(),
+    );
     await _place(
       'Both',
       'phone',
@@ -378,10 +388,7 @@ class ObsClient {
     stdout.writeln('obs: $input <- ${chosen['itemName']}');
     await request('SetInputSettings', {
       'inputName': input,
-      'inputSettings': {
-        'window': chosen['itemValue'],
-        'window_priority': 2,
-      },
+      'inputSettings': {'window': chosen['itemValue'], 'window_priority': 2},
       'overlay': true,
     });
   }
@@ -413,6 +420,28 @@ class ObsClient {
     });
   }
 
+  /// Re-binds the TV window capture to the running demo TV window. A scene's
+  /// window_capture keeps a stale window handle across TV restarts, which
+  /// records a black frame.
+  Future<void> bindTvWindow() => _setWindow('tv', const ['thumbpartytv.exe']);
+
+  /// Fits the TV source to the whole 1920x1080 canvas of [scene].
+  Future<void> fitTv(String scene) => _place(scene, 'tv', 960, 540, 1920, 1080);
+
+  /// Adds the tv source to a scene that has no items (the collection on this
+  /// machine calls its TV scene `Scene` but never gave it one).
+  Future<void> ensureTvItem(String scene) async {
+    final list = await request('GetSceneItemList', {'sceneName': scene});
+    for (final raw in (list['sceneItems'] as List?) ?? const []) {
+      if ((raw as Map)['sourceName'] == 'tv') return;
+    }
+    await request('CreateSceneItem', {
+      'sceneName': scene,
+      'sourceName': 'tv',
+      'sceneItemEnabled': true,
+    });
+  }
+
   /// Points the `phone` window capture at the running emulator window and
   /// writes a source screenshot, so a black capture is caught before recording.
   Future<void> prepare(String screenshotPath) async {
@@ -425,7 +454,7 @@ class ObsClient {
     Map<String, dynamic>? chosen;
     for (final item in items) {
       final name = ((item as Map)['itemName'] as String? ?? '').toLowerCase();
-      if (name.contains('qemu-system') || name.contains('android emulator')) {
+      if (name.contains('android emulator -')) {
         chosen = item.cast<String, dynamic>();
         break;
       }
@@ -440,10 +469,7 @@ class ObsClient {
     stdout.writeln('obs: window ${chosen['itemName']}');
     await request('SetInputSettings', {
       'inputName': 'phone',
-      'inputSettings': {
-        'window': chosen['itemValue'],
-        'window_priority': 2,
-      },
+      'inputSettings': {'window': chosen['itemValue'], 'window_priority': 2},
       'overlay': true,
     });
     await Future<void>.delayed(const Duration(milliseconds: 700));
