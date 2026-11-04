@@ -1,4 +1,4 @@
-﻿# Demo video runbook (for an AI agent)
+# Demo video runbook (for an AI agent)
 
 Nov 3, 2026. A step-by-step procedure that an AI agent with access to the owner's Windows PC follows to:
 1. check that **m11.3** (the "Bubble Pop" sounds and the active-time fix for the stats) is already released;
@@ -142,7 +142,7 @@ mkdir -p $WORK/{footage,logs,sessions,charts,graphics,audio,edit,renders,qa,back
 ```
 | Folder | Holds |
 | --- | --- |
-| `footage/` | Raw captures, named `<shotID>_take<N>_<source>.<ext>`, for example `G3_take2_tv.mkv` and `G3_take2_phone.mp4` |
+| `footage/` | Raw captures, named `<shotID>_take<N>_<source>.<ext>`. A phone shot keeps the 3840x1080 OBS master `G3_take2_both.mkv` and its two 1920x1080 crops `G3_take2_tv.mkv` and `G3_take2_phone.mkv`; a `--tv`-only shot is just `G3_take2_tv.mkv` |
 | `logs/` | The director's event logs and the touch driver's logs, named like the footage (`G3_take2_events.jsonl`, `G3_take2_touch.jsonl`) |
 | `sessions/` | The scripted stats dataset (copied from `sessions-demo`) |
 | `charts/`, `graphics/` | Rendered PNGs and PNG sequences |
@@ -360,6 +360,8 @@ It turns P1 intents into multi-touch on the emulator, and gyro intents into sens
      5. Only then run the two-finger test below.
 3. Spike test: install the app (`tools/emulator.sh install` builds the debug APK if missing), launch, connect it to a TV app started with `tools/tv-dev.sh start` (`tools/emulator.sh connect 10.0.2.2:<port> <code>`), and switch to Sticks mode. Stream two fingers for 10 s at 60 Hz: the left one circling on the left stick, the right one circling on the right stick. Record with `scrcpy -s emulator-5554 --no-window --record $WORK/qa/spike.mp4 --max-fps 60 --max-size 1200 --time-limit 12`.
 
+   This clip is only a touch test, not footage: scrcpy's 21-24 fps on the emulator (measured Nov 4, 2026) is enough to see whether the sticks move. Phone shots are recorded with OBS on the both-sides scene instead (2.7 step 4).
+
    **Pass when:** in `spike.mp4`, both sticks move smoothly at the same time, ffprobe reports about 60 fps, and the TV debug overlay (F3) shows both sticks changing.
 4. **If raw injection fails** even with flushing and the corrected coordinates (permission errors, or the sticks still don't move after two tries), use the emulator's gRPC bridge instead. The owner approved this fallback on that condition (Nov 3, 2026). The first spike's failures came from the missing flush, not from the raw path, so try the raw path with flushing first. A gRPC helper must flush its pipes too:
    - start the emulator with `-grpc 8554 -grpc-use-token`;
@@ -470,43 +472,50 @@ Record the commit hash: `git -C $REPO rev-parse --short HEAD`. Every footage fil
 ### 2.7 Showrunner (`tools/demo/showrunner.dart`)
 One command runs one shot:
 ```bash
-dart run tools/demo/showrunner.dart --shot G3 --take 2 --scene tools/demo/scenes/bigpiece.json --avd m7_android12 --mode sticks [--phone] [--tv] [--window Terminal|Editor|Browser]
+dart run tools/demo/showrunner.dart --shot G3 --take 2 [--scene tools/demo/scenes/bigpiece.json] --avd m7_android12 --mode sticks [--phone] [--tv] [--window Terminal|Editor|Browser]
 ```
 It does these steps in order and stops at the first failure, with a clear message:
 1. **TV app:** if not running from an earlier shot, start `tv_test_app\build\windows\x64\runner\Profile\ThumbPartyTV.exe` and record its PID in `$WORK/logs/pids.txt`. Wait until `ws://127.0.0.1:47900/director` answers `hello`. Send `reset`.
-2. **Emulator** (when `--phone` or the scene has a P1 phone seat): if not running, start it as in 2.4 step A (port 5554 for the phone AVD, 5556 for the tablet AVD), then `adb root`. Install `app-profile.apk` if the installed version differs. Clear data (`adb shell pm clear com.thumbparty.app`), launch, start the touch driver, set the mode with its `mode` command, and pair:
-   - **Filmed shots:** through the touch driver: `type` into `address` the text `10.0.2.2:<port>`, then `type` into `code` the 4-digit code, then `tap` Connect. This is how P2 and P4 look on screen.
+2. **Emulator** (when `--phone` or the scene has a P1 phone seat): if not running, start it as in 2.4 step A (port 5554 for the phone AVD, 5556 for the tablet AVD), then `adb root`. The AVD panel is 2400x1080 (landscape, `hw.lcd.width=2400`), so the display never has to be rotated: `wm size 1800x810` gives a landscape 1800x810 display and a landscape emulator window (`adb emu rotate` does not resize the guest display on this emulator, and a rotated display rendered into a non-rotated window records sideways). Put the app in immersive mode with gesture navigation (`settings put global policy_control immersive.full=com.thumbparty.app`, `cmd overlay enable-exclusive --category com.android.internal.systemui.navbar.gestural`) so no navigation bar sits over the keyboard. Install `app-profile.apk` if the installed version differs. Clear data (`adb shell pm clear com.thumbparty.app`), launch, start the touch driver, set the mode with its `mode` command, and pair:
+   - **Filmed shots:** through the touch driver, tapping the on-screen keys at the layout's positions (`tools/demo/layouts/<avd>-<mode>.json`): the address field, then the text `10.0.2.2:<port>` at 180-260 ms per key, Enter, then the 4-digit code on the code keypad, then its submit key. This is how P2 and P4 look on screen.
    - **Unfilmed runs** (the stats sessions in Phase 4, and shots that start after pairing): `tools/emulator.sh connect 10.0.2.2:<port> <code>` (`ANDROID_SERIAL` set) is fine and faster.
    - **Phone render size for takes:** run `tools/emulator.sh capture-size on` before the first take and
-     `capture-size off` after the last one — and in the failure path too (`tools/emulator.sh stop` also resets
-     both). The size and density are variables at the top of that script (810x1800 at density 315). The
-     emulator window is only about 878x427 on the host, so rendering 1080x2400 wastes GPU on pixels nobody
-     sees; 810x1800 at density 315 keeps the same dp layout (411x914) with 44% fewer pixels. Measured Nov 4,
-     2026 with the TV game live: the phone stick region went from 46-47 fps to 50.2 at this size, so the
-     recorder must check `wm size` reports `Override size: 810x1800` before recording.
+     `capture-size off` after the last one - and in the failure path too (`tools/emulator.sh stop` also resets
+     both). The size and density are variables at the top of that script (1800x810 at density 315, the same
+     810x1800 panel in landscape). The emulator window is only about 930x450 on the host, so rendering
+     2400x1080 wastes GPU on pixels nobody sees; 1800x810 at density 315 keeps the same dp layout (914x411)
+     with 44% fewer pixels. Measured Nov 4, 2026 with the TV game live: the phone stick region went from
+     46-47 fps to 50.2 at the smaller size, so the recorder must check `wm size` reports `Override size:
+     1800x810` before recording. The 46-53 fps phone numbers in the handoff were measured at this size.
 
    Wait for `P1` on the TV (director `state`).
 3. **Bots:** send `bots` with the scene's count and wait for `bots_ready`.
 4. **Recorders:**
-   - with `--tv`, OBS `SetCurrentProgramScene TV`, then `StartRecord`;
-   - with `--phone`, `scrcpy -s <serial> --no-window --record $WORK/footage/<shot>_take<N>_phone.mp4 --max-fps 60 --max-size 1200 --no-audio`;
+   - with `--tv` and **not** `--phone`: OBS `SetCurrentProgramScene TV`, then `StartRecord`. The file becomes `<shot>_take<N>_tv.mkv`; `--tv`-only shots are never recorded on the both-sides canvas;
+   - with `--phone`: OBS scene `Both` (3840x1080, 2.6: TV window on the left half, emulator window on the right), then `StartRecord`. One recording gives both halves frame-exact, so nothing has to be aligned later. After `StopRecord`, keep the 3840x1080 master as `<shot>_take<N>_both.mkv` and crop the halves: `crop=1920:1080:0:0` (left = TV) to `<shot>_take<N>_tv.mkv`, copying the audio, and `crop=1920:1080:1920:0` (right = phone) to `<shot>_take<N>_phone.mkv`, with no audio;
+   - **scrcpy is not used to record the emulator.** Measured Nov 4, 2026, phone alone at 60 Hz: scrcpy's files average 21-24 fps (21.6, 23.0 and 23.6 over three takes) because its own capture path is the limit, which is far below the phone floor in 2.8. Phone shots therefore use only the OBS both-sides scene, and the showrunner never starts scrcpy;
    - with `--window <name>`, OBS scene `<name>`, then `StartRecord` (3.3 shots; the TV app must not be running, see 3.3).
 
    Write each recorder's wall-clock start to `$WORK/logs/<shot>_take<N>_recorders.json`.
 5. **Touch driver:** already running from step 2. Point it at this take's log path, and at the scene's controller layout for play.
-6. **Scene:** send `scene` and wait for `scene_done` (timeout = the scene's `pace` + 30 s).
-7. **Stop:** after a 1.5 s tail, OBS `StopRecord` (rename the output to `<shot>_take<N>_tv.mkv`), then stop scrcpy (send it Ctrl+C through its process, or kill by PID) and the touch driver.
+6. **Scene:** with a scene file, send `scene` and wait for `scene_done` (timeout = the scene's `pace` + 30 s). Command-driven shots without a scene (P2, C1-C3, X1, X5) run their touch-driver commands instead and wait for the last one.
+7. **Stop:** after a 1.5 s tail, OBS `StopRecord` (with `--phone`, rename the master to `<shot>_take<N>_both.mkv` and crop the two 1920x1080 halves as in step 4; otherwise rename the output to `<shot>_take<N>_tv.mkv`), then stop the touch driver.
 8. **Quality checks** (2.8). If they fail, the result is "retake". Retake the shot up to 3 times with the next take number, then stop and report.
-9. Print one line: `G3 take 2: ok (tv 63.2 s, phone 63.0 s, events 41)`, or the failure.
+9. Print one line: `G3 take 2: ok (both 63.2 s, events 41)`, or the failure.
 
-Also a `--teardown` flag: stops OBS, scrcpy, the touch driver, the TV app and emulators **by recorded PID or serial only**, and restores nothing (preferences are prefixed, 2.1).
+Also a `--teardown` flag: stops OBS, the touch driver, the TV app and emulators **by recorded PID or serial only**, and restores nothing (preferences are prefixed, 2.1).
 
 Commit `demo: showrunner`.
 
 ### 2.8 Automatic quality checks (`tools/demo/qa.dart`)
 For each take:
-1. **Format:** `ffprobe` gives 1920Ã—1080 for TV and the expected size for phone, and `avg_frame_rate` â‰¥ 59 for TV and â‰¥ 50 for phone.
-2. **Stutter:** decode with `ffmpeg -i <file> -vf mpdecimate=hi=64*12:lo=64*5:frac=0.33,showinfo -f null -`. Count dropped (duplicate) frames between `game_start` and `scene_end`. Fail if any run of 3 or more consecutive duplicates happens while the event log shows movement (any P1 or bot stick off-centre).
+1. **Format:** `ffprobe` on each take, never one file for a phone shot:
+   - `--tv`-only: `$WORK/footage/<shot>_take<N>_tv.mkv` is 1920x1080 and `avg_frame_rate` >= 59.
+   - `--phone`: `$WORK/footage/<shot>_take<N>_both.mkv` is 3840x1080, and each half is checked after cropping (left 1920x1080 = TV, right 1920x1080 = phone):
+     - TV half: `avg_frame_rate` >= 59;
+     - phone half: >= **45** on a **stick-crop** measurement: crop the left stick's circle and count distinct frames with `mpdecimate=hi=1:lo=1:frac=0`, the same method as the Nov 4, 2026 phone measurements. The crop rectangles and commands are in `$WORK/logs/handoff.md` (section "A2 replicates"), with the per-stick outputs in `$WORK/logs/mp_leftstick.log` and `mp_p_stick*.log`. The phone floor is **lower than the TV floor on purpose**: the owner accepted the phone's measured 46-53 fps on Nov 4, 2026, as good enough. 45-59 on the phone half is a pass, not a defect; only < 45 triggers a retake. For P2 and P4 (no sticks on screen) measure the whole phone half over the first 12 s, where the typing and pairing happen; the rest of those takes is a static controller screen, so the whole-take number is reported but not used.
+   - the cropped `<shot>_take<N>_tv.mkv` and `<shot>_take<N>_phone.mkv` are each 1920x1080.
+2. **Stutter:** decode each half separately with `ffmpeg -i <file> -vf mpdecimate=hi=64*12:lo=64*5:frac=0.33,showinfo -f null -`. For a `_both.mkv` take, prefix the filter with `crop=1920:1080:0:0,` for the TV half and `crop=1920:1080:1920:0,` for the phone half. Count dropped (duplicate) frames between `game_start` and `scene_end` in each half. Fail if either half has a run of 3 or more consecutive duplicates while the event log shows movement (any P1 or bot stick off-centre).
 3. **Story:** the event log contains every event the storyboard needs for this shot:
    - G1: `scene_start`, then 4 joins, then `game_start`.
    - G2: at least 6 `snap` and 1 `wrong`.
@@ -515,8 +524,8 @@ For each take:
    - G5: `finish` (left), then `results`.
    - M1â€“M3: at least 15 s of movement.
    - R1: `screen` events home, then games, then puzzle list, then join.
-4. **Contact sheet:** `ffmpeg -i <file> -vf "fps=2,scale=480:-1,tile=6x5" -frames:v 1 $WORK/qa/<take>_sheet.png`. Look at it (read the image): no debug overlay, no dialogs, correct player count, nothing cut off.
-5. Write `$WORK/qa/<take>.json` with every result.
+4. **Contact sheet:** one per delivered file. For a `--tv`-only take: `ffmpeg -i <tv> -vf "fps=2,scale=480:-1,tile=6x5" -frames:v 1 $WORK/qa/<take>_sheet.png`. For a `--phone` take, make `$WORK/qa/<take>_tv_sheet.png` and `$WORK/qa/<take>_phone_sheet.png` from `<take>_both.mkv` with `crop=1920:1080:0:0` and `crop=1920:1080:1920:0` before `fps=2,...`. Look at each (read the image): no debug overlay, no dialogs, correct player count, nothing cut off, and the phone half upright.
+5. Write `$WORK/qa/<take>.json` with every result, including the TV and phone fps of a `_both.mkv` take and each half's stutter count.
 
 ---
 
@@ -671,7 +680,7 @@ All graphics are rendered by Python scripts in `tools/demo/graphics/`, run as `$
 | `stat_card.py` | `stat_latency.png` | "Median N ms" with N = the `input ms` value of the "By input mode" table in `report.txt` (median of the three rows). Line 2 "Target: under 50 ms". Source line "Emulator on the same PC, scripted sessions". **Not** a Wi-Fi number; there is no real-device data in this plan |
 | `haptic.py` | `bzz_%04d.png` (0.8 s) | Three rings expanding from the centre, with "bzz" and the event name |
 | `phone3d.py` | `tilt_%04d.png` | A simple phone rectangle in perspective, rotated by the logged roll and pitch from the M2 touch log, frame by frame |
-| `touch_markers.py` | `markers_<take>_%04d.png` | For each phone shot, transparent frames with 48 px circles in P1 blue at 60% opacity for every finger in the touch log, plus a 150 ms fading trail. Timed to the phone video by `recorders.json` |
+| `touch_markers.py` | `markers_<take>_%04d.png` | For each phone shot, transparent frames with 48 px circles in P1 blue at 60% opacity for every finger in the touch log, plus a 150 ms fading trail. Timed by the take's `recorders.json` start; the phone half is `_phone.mkv`, cropped from the same `_both.mkv` as the TV, so marker time and phone time are the same frame |
 | `cards.py` | `name_card.png`, `end_card.png` | Name card with "Built by <name>" and the role, from `tools/demo/credits.json`, made only when `name` is non-empty (see the defaults table at the end); end card with the logo, `devtestman187.github.io/game-controller`, `github.com/devtestman187/game-controller`, and the text "Google Play Â· TestFlight Â· Windows". No store badge images, to avoid trademark terms |
 | `frames.py` | `phone_frame.png`, `tablet_frame.png` | Plain rounded rectangles, `#2A3038`, corner radius 48 px |
 
@@ -688,11 +697,11 @@ All graphics are rendered by Python scripts in `tools/demo/graphics/`, run as `$
 Write `$WORK/edit/edl.json`: one entry per storyboard row of demo-video.md section 5, in order:
 ```json
 {"n": 19, "dur": 2.0, "layout": "SPLIT", "tv": {"file": "G2_take3_tv.mkv", "in": "event:snap#1-0.8"},
- "phone": {"file": "G2_take3_phone.mp4", "sync": "game_start"}, "zoom": {"scale": 1.5, "center": "board:left"},
+ "phone": {"file": "G2_take3_phone.mkv"}, "zoom": {"scale": 1.5, "center": "board:left"},
  "caption": "cap_19", "markers": true, "audio": ["tv"]}
 ```
 - **Times:** `in` may be absolute seconds or `event:<name>#<k>Â±<s>`, resolved from the take's event log and `recorders.json`.
-- **Phone sync:** the phone's offset to the TV is set by the frame where the phone's buttons relabel. That's the largest frame difference within Â±2 s of `game_start` in the phone video, found with ffmpeg `select='gt(scene,0.2)'`. For menu shots, use the recorders' start times.
+- **Phone sync:** none needed. `_phone.mkv` and `_tv.mkv` are cropped from one `_both.mkv` recording, so frame N of one is frame N of the other; both halves use the same seek. Use `recorders.json`'s start time for absolute times, and the event log for event-relative ones.
 - **Layouts** (pixels in a 1920Ã—1080 frame):
   - FULL: TV at 0,0, 1920Ã—1080.
   - SPLIT: TV scaled to 1248Ã—702 at x=48, y=189; phone frame at x=1336, y=300, with the phone video scaled to 536Ã—241 inside it (tablet: 536Ã—335).

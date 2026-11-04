@@ -15,7 +15,7 @@
 #   tools/emulator.sh hold 828 596 2300    # touch and hold for 2300 ms
 #   tools/emulator.sh text "hello"; tools/emulator.sh key enter|back|<keycode>
 #   tools/emulator.sh shot out.png         # screenshot (pixels match tap coordinates)
-#   tools/emulator.sh capture-size on|off # render at 810x1800 @315 (same dp, 44% fewer pixels)
+#   tools/emulator.sh capture-size on|off # render at 1800x810 @315 (same dp, 44% fewer pixels)
 #   tools/emulator.sh stop                 # shut the emulator down
 #
 # The app reconnects to the last TV it paired with, which may be someone's
@@ -29,10 +29,11 @@ cd "$(dirname "$0")/.." || exit 2
 root="$(pwd)"
 app=com.thumbparty.app
 
-# Phone render size for captures: the emulator window is about 878x427 on the host,
-# so filling 1080x2400 is wasted. 810x1800 at density 315 keeps the same dp layout
-# (411x914 dp) with 44% fewer pixels to draw. Reset after every take, pass or fail.
-capture_size=810x1800
+# Phone render size for captures: the emulator window is about 930x450 on the host,
+# so filling 2400x1080 is wasted. 1800x810 at density 315 is the same 810x1800
+# panel in landscape (914x411 dp, 44% fewer pixels to draw). Reset after every
+# take, pass or fail.
+capture_size=1800x810
 capture_density=315
 
 die() { echo "emulator: $1" >&2; exit "${2:-2}"; }
