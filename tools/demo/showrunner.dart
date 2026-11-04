@@ -21,8 +21,8 @@ Future<void> main(List<String> args) async {
   if (cli.has('help') || args.isEmpty) {
     stdout.writeln(
       'usage: showrunner.dart --shot <id> [--take 1] [--scene file] '
-      '--avd m7_android12 --mode sticks [--phone] [--tv] [--window name] '
-      '[--retakes 3] [--teardown]',
+      '--avd m7_android12 --mode sticks [--phone] [--record tv|both] [--tv] '
+      '[--window name] [--retakes 3] [--teardown]',
     );
     exit(args.isEmpty ? 2 : 0);
   }
@@ -39,6 +39,13 @@ Future<void> main(List<String> args) async {
   final mode = cli.value('mode') ?? 'sticks';
   final phone = cli.has('phone');
   final tv = cli.has('tv') || !phone;
+  // `--record tv` keeps the phone for pairings and scenes (P3) but records
+  // only the TV half; without it, a `--phone` shot records both sides.
+  final record = cli.value('record');
+  if (record != null && record != 'tv' && record != 'both') {
+    throw ArgumentError('--record is tv or both, not "$record"');
+  }
+  final recordTvOnly = record == 'tv';
   final window = cli.value('window');
   final scene = cli.value('scene');
   final tvScreen = cli.value('tv-screen');
@@ -64,6 +71,7 @@ Future<void> main(List<String> args) async {
         mode: mode,
         phone: phone,
         tv: tv,
+        recordTvOnly: recordTvOnly,
         window: window,
         scene: scene,
         tvScreen: tvScreen,
@@ -126,6 +134,7 @@ class Showrunner {
     required String mode,
     required bool phone,
     required bool tv,
+    bool recordTvOnly = false,
     String? window,
     String? scene,
     String? tvScreen,
@@ -198,15 +207,16 @@ class Showrunner {
       await _director!.waitFor('scene_done', await sceneTimeout(file));
       await Future<void>.delayed(const Duration(milliseconds: 1500));
     }
+    final both = phone && !recordTvOnly;
     final recorder = await startRecorder(
-      phone: phone,
+      both: both,
       tv: tv,
       window: window,
       takeName: takeName,
     );
     final recorders = {
       'start': DateTime.now().millisecondsSinceEpoch,
-      'scene': phone ? 'Both' : (window ?? 'TV'),
+      'scene': both ? 'Both' : (window ?? 'TV'),
     };
     File('$logs\\${takeName}_recorders.json')
         .writeAsStringSync(jsonEncode(recorders));
@@ -274,8 +284,8 @@ class Showrunner {
     final result = await qa.runQa(
       shot: shot,
       take: take,
-      phone: phone,
-      tvOnly: !phone,
+      phone: both,
+      tvOnly: !both,
       footageDir: footage,
       qaDir: qaDir,
       eventsPath: '$logs\\${takeName}_events.jsonl',
@@ -582,7 +592,7 @@ class Showrunner {
   }
 
   Future<Recorder> startRecorder({
-    required bool phone,
+    required bool both,
     required bool tv,
     String? window,
     required String takeName,
@@ -600,7 +610,7 @@ class Showrunner {
           'fpsDenominator': 1,
         });
         await obs.request('SetCurrentProgramScene', {'sceneName': window});
-      } else if (phone) {
+      } else if (both) {
         await obs.setUpBoth(3840, 1080);
       } else {
         await obs.setCanvas(1920, 1080);
@@ -624,7 +634,7 @@ class Showrunner {
       }
       await obs.startRecord();
     });
-    return Recorder(obs: obs, work: work, takeName: takeName, both: phone);
+    return Recorder(obs: obs, work: work, takeName: takeName, both: both);
   }
 
   /// OBS opens its websocket before the profile and scene collection have
