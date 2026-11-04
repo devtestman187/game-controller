@@ -141,9 +141,12 @@ final class PuzzleBrain {
   Offset _dotSpotFor(PuzzleGame game, PuzzlePlayer player, int index, Offset target) =>
       target + (player.pos - game.pieces[index].pos);
 
+  /// Moves towards [to]. A is only tapped once the dot is there: tapping it
+  /// while still travelling would drop a carried piece on the way.
   GamepadState _move(Offset from, Offset to, {Set<GamepadButton> extra = const {}}) {
     final v = _steer.stick(from: from, to: to, dotPx: dotPx, dt: 1 / 60);
-    return GamepadState(buttons: _tap({...extra}), leftX: v.dx, leftY: v.dy, mode: InputMode.sticks);
+    final there = (to - from).distance < 2.5;
+    return GamepadState(buttons: there ? _tap({...extra}) : const {}, leftX: v.dx, leftY: v.dy, mode: InputMode.sticks);
   }
 
   GamepadState _pick(PuzzleGame game, PuzzlePlayer player, Goal goal) {
@@ -158,11 +161,13 @@ final class PuzzleBrain {
       _next();
       return GamepadState.neutral;
     }
-    // A grabs whichever piece is nearest, so put down anything else first and
-    // only tap when the wanted piece is the nearest one; otherwise the dot
-    // would come away with a neighbour.
+    // The tray stacks pieces, so A may bring up a neighbour instead of the
+    // wanted one. Place whatever came up rather than dropping it again: the
+    // goals cover every piece, so none is left behind.
     if (player.held != null) {
-      return GamepadState(buttons: _tap({}), mode: InputMode.sticks);
+      onEvent?.call('pickup', {'seat': seat, 'piece': _nameOf(game, player.held!)});
+      _next();
+      return GamepadState.neutral;
     }
     var nearest = -1;
     var best = double.infinity;
