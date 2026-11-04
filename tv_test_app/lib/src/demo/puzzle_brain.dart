@@ -7,7 +7,7 @@ import 'scene.dart';
 import 'steer.dart';
 
 /// Writes one event to the take's log.
-typedef DemoLog = void Function(String name, [Map<String, Object?> data]);
+typedef DemoLog = void Function(String name, [Map<String, Object?>? data]);
 
 /// Plans one seat's play in Shape Race (docs/demo-video-runbook.md 2.3): it
 /// reads the running [PuzzleGame] and turns the seat's goals into stick and
@@ -79,9 +79,29 @@ final class PuzzleBrain {
       }
     }
     if (_goal >= goals.length) {
-      _finished = true;
-      onEvent?.call('brain_done', {'seat': seat});
-      return GamepadState.neutral;
+      // The goals are spent. The tray stacks pieces, so one can have been
+      // picked up under another piece's goal and dropped in the wrong place:
+      // keep going until every piece is on the board.
+      final left = [
+        for (final p in game.pieces)
+          if (p.state != PieceState.locked) p.index,
+      ];
+      if (left.isEmpty) {
+        _finished = true;
+        onEvent?.call('brain_done', {'seat': seat});
+        return GamepadState.neutral;
+      }
+      if (player.held != null) return _place(game, player);
+      var nearest = left.first;
+      var best = double.infinity;
+      for (final i in left) {
+        final d = (game.pieces[i].pos - player.pos).distance;
+        if (d < best) {
+          best = d;
+          nearest = i;
+        }
+      }
+      return _move(player.pos, game.pieces[nearest].pos, extra: {GamepadButton.a});
     }
 
     final goal = goals[_goal];
