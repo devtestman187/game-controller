@@ -168,7 +168,7 @@ class Showrunner {
       _pad = KeyPad.fromFile('$repo\\tools\\demo\\layouts\\$avd-$mode.json');
     }
     if (tvScreen != null) {
-      await goToTvScreen(tvScreen);
+      await resetTvToHome();
       // That path forgets the paired controllers and drops the connections,
       // and the TV issues a new pairing code after that: read it again before
       // the phone or the bots try to pair.
@@ -211,7 +211,9 @@ class Showrunner {
       checkBots(reply, bots);
     }
 
-    // 5. Recorder.
+    // 5. The shot's screen, now that the phone has paired on home, then the
+    // recorder and the action.
+    if (tvScreen != null) await openTvScreen(tvScreen);
     if (preRoll != null) {
       final file = File(preRoll).absolute.path;
       stdout.writeln('director: pre-roll ${file.split(RegExp(r'[\\/]')).last}');
@@ -339,9 +341,9 @@ class Showrunner {
     out.writeAsStringSync(keep.isEmpty ? '' : '${keep.join('\n')}\n');
   }
 
-  /// Drives the TV's own menus before a take (2.7 step 1): the director never
-  /// navigates the TV, so the showrunner clicks Play -> game itself.
-  Future<void> goToTvScreen(String screen) async {
+  /// Drives the TV back to the home screen before a take (2.7 step 1): the
+  /// director never navigates the TV, so the showrunner clicks.
+  Future<void> resetTvToHome() async {
     // Escape leaves a running game or a lobby; five presses reach the home
     // screen from any depth (join -> puzzle list -> games -> home).
     for (var i = 0; i < 5; i++) {
@@ -355,6 +357,12 @@ class Showrunner {
     await tvClick(1813, 94); // Forget phones
     await tvClick(485, 388); // Drop connections
     await Future<void>.delayed(const Duration(milliseconds: 800));
+  }
+
+  /// Opens the screen a shot is filmed on, after the phone has paired. A phone
+  /// cannot pair from inside a game (the Arena says "pair a phone on the main
+  /// screen"), so the pairing always happens on home first.
+  Future<void> openTvScreen(String screen) async {
     switch (screen) {
       case 'home':
         break;
