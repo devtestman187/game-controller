@@ -58,12 +58,15 @@ These come from the project's working rules ([project-notes.md](project-notes.md
    - Back up `shared_preferences.json` before the first demo run (2.1 step 8) and before Phase 3 (step 3.1).
    - **Before every start of the demo TV app**, list running `ThumbPartyTV.exe` processes (`tasklist //FI "IMAGENAME eq ThumbPartyTV.exe"`). If any is running that you didn't start (by PID), **STOP** and ask the owner to close it. Two copies would share the settings file and could overwrite each other's saves. Never close it yourself.
 8. **Secrets:** none are needed. Never print `DEEPSEEK_API_KEY` or any token.
-9. **Clean up before every report and at the end of every block** (owner's request, Nov 3, 2026). The full-screen demo TV app covers the owner's screen, so they can't read your report while it runs.
+9. **Clean up whenever you hand control back to the owner** (owner's request, Nov 3, 2026): at a STOP gate, on a failure you can't get past, or when you need a decision. The full-screen demo TV app covers the owner's screen, so they can't read your report while it runs.
    - Close everything you started, by recorded PID: the demo or debug TV app, OBS (graceful close, 2.6), scrcpy, the touch driver, `ffplay` or any test window.
    - Stop emulators with `adb -s <serial> emu kill`.
    - Check with `tasklist` that none of your PIDs is left, and say so in the report.
-   - The only exception is a run that must keep going while you wait (none in this runbook); name it and its PID in the report.
-   - Starting everything again next block costs a minute; leaving the owner's screen blocked costs them their PC.
+   - **Don't clean up between your own working blocks** when you'll simply carry on next block. Keep the emulator, OBS and the TV app running, and pick up where you left off: restarting them every block wastes most of a block.
+10. **Keep moving; keep overhead low** (owner, Nov 3, 2026). Go on from step to step without asking, until a STOP gate, a failure you can't get past, or a decision the runbook doesn't cover.
+   - Keep a short running note in `$WORK/logs/handoff.md`: current step, what's running (PIDs, port, code) and the next action. Update it as you go. At the start of a block, read it and continue; don't re-verify everything or re-merge `main` unless the owner says the runbook changed.
+   - Between blocks, write at most 5 lines of status. Write a full report only at a STOP gate or a failure.
+   - Commit working code as you finish each piece, so nothing is lost when a block ends.
 
 ---
 
