@@ -83,7 +83,7 @@ final class Scene {
       throw FormatException('$source: not valid JSON (${e.message})');
     }
     if (decoded is! Map<String, dynamic>) throw FormatException('$source: the scene must be a JSON object');
-    final raw = decoded as Map<String, dynamic>;
+    final raw = decoded;
 
     String str(String key, {String? fallback, bool required = false}) {
       final v = raw[key];
