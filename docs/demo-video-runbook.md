@@ -338,7 +338,7 @@ It turns P1 intents into multi-touch on the emulator, and gyro intents into sens
    **Coordinates** (the first spike got these wrong: touches arrived, but at the wrong places):
    - The touchscreen's raw axes follow the panel's natural **portrait** orientation. On `m7_android12` the panel is 1080 wide and 2400 tall: raw X spans the 1080 px width, raw Y spans the 2400 px height, both 0–32767. On the tablet AVD, read the panel size with `adb shell wm size`.
    - The app runs landscape, so turn a screen point `(dx, dy)` (landscape, 2400×1080) into a panel point first. Read the rotation with `adb shell dumpsys input | grep -i orientation`:
-     - rotation 1 (90°): `panel_x = 1080 − dy`, `panel_y = dx`;
+     - rotation 1 (90°): `panel_x = 1080 − dy`, `panel_y = dx`. **Confirmed on `m7_android12`** (Nov 3, 2026): the app runs at rotation 1, and pointer location showed screen (2000, 73) as panel (1007, 2000). Two flushed fingers then moved both sticks at once;
      - rotation 3 (270°): `panel_x = dy`, `panel_y = 2400 − dx`;
      - rotation 0 (portrait): `panel_x = dx`, `panel_y = dy`.
    - Then `raw_x = panel_x × 32768 / 1080` and `raw_y = panel_y × 32768 / 2400`, clamped to 0–32767. **Never** scale a landscape coordinate directly by 2400 and 1080.
