@@ -1,0 +1,11 @@
+{
+  "game": "arena",
+  "seed": 7,
+  "screenStart": "play",
+  "teams": {},
+  "seats": {
+    "P1": {"via": "phone", "mode": "dpad", "goals": [{"idle": 20000}]}
+  },
+  "endAfter": "seconds",
+  "endAfterS": 20
+}

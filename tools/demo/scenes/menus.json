@@ -1,0 +1,35 @@
+{
+  "game": "puzzle",
+  "puzzle": "rocket",
+  "seed": 4242,
+  "screenStart": "menus",
+  "teams": {"left": ["P1"]},
+  "seats": {
+    "P1": {
+      "via": "phone",
+      "mode": "sticks",
+      "goals": [
+        {"idle": 800},
+        {"navigate": ["a"]},
+        {"idle": 1200},
+        {"navigate": ["a"]},
+        {"idle": 1200},
+        {"navigate": ["a"]},
+        {"idle": 1600},
+        {"navigate": ["b"]},
+        {"navigate": ["b"]},
+        {"idle": 800},
+        {"navigate": ["down", "down"]},
+        {"navigate": ["a"]},
+        {"idle": 1500},
+        {"navigate": ["right", "right", "a"]},
+        {"idle": 1500},
+        {"navigate": ["down"]},
+        {"navigate": ["a"]},
+        {"idle": 1200}
+      ]
+    }
+  },
+  "endAfter": "seconds",
+  "endAfterS": 22
+}

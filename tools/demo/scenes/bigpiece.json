@@ -1,0 +1,14 @@
+{
+  "game": "puzzle",
+  "puzzle": "rocket",
+  "seed": 4242,
+  "screenStart": "play",
+  "teams": {"left": ["P1", "Bot 2"], "right": ["Bot 3"]},
+  "seats": {
+    "P1": {"via": "phone", "mode": "sticks", "goals": [{"pick": "nose"}, {"place": {}}, {"waitFor": {"event": "help", "timeoutMs": 20000}}, {"joinBigCarry": "body"}]},
+    "Bot 2": {"via": "bot", "goals": [{"carryBigAlone": "body"}]},
+    "Bot 3": {"via": "bot", "goals": [{"idle": 20000}]}
+  },
+  "endAfter": "seconds",
+  "endAfterS": 40
+}
