@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:puzzle_game/puzzle_game.dart';
 
+import '../demo/demo_navigation.dart';
 import '../providers.dart';
 import 'game_screen.dart';
 import 'join_screen.dart';
@@ -40,14 +41,14 @@ class GamesScreen extends StatelessWidget {
                     subtitle: 'Carry, turn and drop the pieces to build the picture.',
                     icon: Icons.extension_outlined,
                     autofocus: true,
-                    onPressed: () => _open(context, const ShapeRaceScreen()),
+                    onPressed: () => _open(context, const ShapeRaceScreen(), 'puzzle list'),
                   ),
                   _GameCard(
                     key: const Key('pickArena'),
                     title: 'Arena',
                     subtitle: 'Race past walls and hazards to the goal.',
                     icon: Icons.videogame_asset_outlined,
-                    onPressed: () => _open(context, const GameScreen()),
+                    onPressed: () => _open(context, const GameScreen(), 'arena'),
                   ),
                 ],
               ),
@@ -58,7 +59,7 @@ class GamesScreen extends StatelessWidget {
                   key: const Key('openPuzzleSettings'),
                   label: 'Puzzle settings',
                   icon: Icons.tune,
-                  onPressed: () => _open(context, const PuzzleSettingsScreen()),
+                  onPressed: () => _open(context, const PuzzleSettingsScreen(), 'puzzle settings'),
                 ),
               ),
               const SizedBox(height: 8),
@@ -74,8 +75,8 @@ class GamesScreen extends StatelessWidget {
   }
 }
 
-void _open(BuildContext context, Widget screen) =>
-    Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => screen));
+void _open(BuildContext context, Widget screen, String name) =>
+    Navigator.of(context).push(MaterialPageRoute<void>(settings: demoRouteSettings(name), builder: (_) => screen));
 
 class _GameCard extends StatelessWidget {
   const _GameCard({
@@ -188,8 +189,12 @@ class ShapeRaceScreen extends ConsumerWidget {
   }
 
   /// Players join and pick sides first (M11).
-  void _play(BuildContext context, PuzzleChoice choice) =>
-      Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => JoinScreen(choice: choice)));
+  void _play(BuildContext context, PuzzleChoice choice) => Navigator.of(context).push(
+    MaterialPageRoute<void>(
+      settings: demoRouteSettings('join'),
+      builder: (_) => JoinScreen(choice: choice),
+    ),
+  );
 }
 
 String _levelName(Level level) => switch (level) {

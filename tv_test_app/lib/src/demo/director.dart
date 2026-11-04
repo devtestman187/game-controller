@@ -46,7 +46,6 @@ final class DemoDirector {
   DateTime? _sceneStart;
   bool _done = false;
   bool _gameStarted = false;
-  final _seenPlayers = <String>{};
 
   /// The port actually listening (the control port, or whatever the OS chose
   /// when tests ask for 0).
@@ -164,6 +163,10 @@ final class DemoDirector {
       }
     }
     log.add('scene_start', {'scene': scene.game, 'take': log.take});
+    // The take's log starts from the screen it was recorded on: the showrunner
+    // navigates before StartRecord, so those screen events are earlier than
+    // the take and would otherwise be missing (R1 needs home first).
+    _event('screen', {'screen': live.currentScreen});
     _send(socket, {'t': 'scene_started', 'ok': true});
     _timer = Timer.periodic(const Duration(microseconds: 16667), _frame);
   }
@@ -241,7 +244,6 @@ final class DemoDirector {
 
   Future<void> _reset(WebSocket socket) async {
     _stopScene();
-    _seenPlayers.clear();
     for (final bot in _bots.values) {
       await bot.dispose();
     }
@@ -255,6 +257,11 @@ final class DemoDirector {
     _broadcast({'t': 'event', 'wall': DateTime.now().millisecondsSinceEpoch, 'name': name, ...?data});
   }
 
+  /// Logs one director event from elsewhere in the app (the `join` event the
+  /// join screen sends when a player is put on a side). The director only
+  /// exists in a demo build.
+  void reportEvent(String name, [Map<String, Object?>? data]) => _event(name, data);
+
   void _send(WebSocket socket, Map<String, Object?> message) {
     if (socket.readyState == WebSocket.open) socket.add(jsonEncode(message));
   }
@@ -263,14 +270,6 @@ final class DemoDirector {
     final text = jsonEncode(message);
     for (final socket in List.of(_sockets)) {
       if (socket.readyState == WebSocket.open) socket.add(text);
-    }
-  }
-
-  /// Logs one `join` per player name that was not here before (2.3's event
-  /// list). DemoBoot feeds it the host's player list on every change.
-  void notePlayers(List<String> names) {
-    for (final name in names) {
-      if (_seenPlayers.add(name)) _event('join', {'player': name});
     }
   }
 

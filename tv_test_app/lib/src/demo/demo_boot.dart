@@ -40,6 +40,8 @@ class _DemoBootState extends ConsumerState<DemoBoot> {
           log: EventLog(take: 'director', dir: const String.fromEnvironment('DEMO_LOG_DIR')),
         );
         _director = director;
+        // The join screen and the navigator observer send their events here.
+        DemoLive.instance.onEvent = director.reportEvent;
         unawaited(
           director.start().catchError((Object e) {
             debugPrint('demo director: could not start: $e');
@@ -47,13 +49,12 @@ class _DemoBootState extends ConsumerState<DemoBoot> {
         );
       }
     }
-    final host = ref.watch(hostStateProvider).host;
-    _director?.notePlayers([for (final controller in host.controllers) controller.name]);
     return widget.child;
   }
 
   @override
   void dispose() {
+    DemoLive.instance.onEvent = null;
     unawaited(_director?.stop());
     super.dispose();
   }

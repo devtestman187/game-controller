@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:protocol/protocol.dart';
 
 import '../app_info.dart';
+import '../demo/demo_navigation.dart';
 import '../host_controller.dart';
 import '../providers.dart';
 import 'games_screen.dart';
@@ -151,20 +152,20 @@ class _Header extends StatelessWidget {
         label: 'Haptic test',
         icon: Icons.vibration,
         compact: compact,
-        onPressed: () => _open(context, const HapticPanelScreen()),
+        onPressed: () => _open(context, const HapticPanelScreen(), 'haptic'),
       ),
       TvButton(
         label: 'Latency',
         icon: Icons.speed,
         compact: compact,
-        onPressed: () => _open(context, const LatencyScreen()),
+        onPressed: () => _open(context, const LatencyScreen(), 'latency'),
       ),
       TvButton(
         key: const Key('openStats'),
         label: 'Stats',
         icon: Icons.insights_outlined,
         compact: compact,
-        onPressed: () => _open(context, const StatsScreen()),
+        onPressed: () => _open(context, const StatsScreen(), 'stats'),
       ),
       // Asks the adult about sharing stats on the first launch (M9).
       const _FirstLaunchConsent(),
@@ -353,8 +354,8 @@ class _PairingPanel extends ConsumerWidget {
   }
 }
 
-void _open(BuildContext context, Widget screen) =>
-    Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => screen));
+void _open(BuildContext context, Widget screen, String name) =>
+    Navigator.of(context).push(MaterialPageRoute<void>(settings: demoRouteSettings(name), builder: (_) => screen));
 
 /// Whether the four event sounds loaded (they play in the game and the
 /// haptic test).

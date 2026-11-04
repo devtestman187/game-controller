@@ -7,6 +7,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:protocol/protocol.dart';
 import 'package:puzzle_game/puzzle_game.dart';
 
+import '../demo/demo_flags.dart';
+import '../demo/demo_live.dart';
+import '../demo/demo_navigation.dart';
 import '../keyboard_player.dart';
 import '../providers.dart';
 import 'controller_menus.dart';
@@ -127,6 +130,7 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
         if (side != null) {
           _teams[p.id] = side;
           changed = true;
+          if (demoDirector) _joined(p, side);
         }
         continue;
       }
@@ -148,12 +152,17 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
             if (to != null) {
               _teams[p.id] = to;
               changed = true;
+              if (demoDirector) _joined(p, to);
             }
           case _Key.left || _Key.right:
             final to = key == _Key.left ? PuzzleSide.left : PuzzleSide.right;
             if (side != null && side != to && _teams.values.where((s) => s == to).length < maxPerSide) {
               _teams[p.id] = to;
               changed = true;
+              // A player moving to the other side after joining (G1's story).
+              if (demoDirector) {
+                DemoLive.instance.reportEvent('switch_side', {'player': p.label, 'side': to.name});
+              }
             }
           case _Key.b:
             if (side != null) {
@@ -184,11 +193,19 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
     if (changed) setState(() {});
   }
 
+  /// The demo director's `join` event (docs/demo-video-runbook.md 2.3): logged
+  /// when a player is put on a side, not when the controller connects, so the
+  /// four joins land after the scene starts. A store build never calls this.
+  void _joined(GamePlayer p, PuzzleSide side) {
+    DemoLive.instance.reportEvent('join', {'player': p.label, 'side': side.name});
+  }
+
   void _start() {
     if (_teams.isEmpty || _handedOver) return;
     _handedOver = true;
     Navigator.of(context).pushReplacement(
       MaterialPageRoute<void>(
+        settings: demoRouteSettings('match'),
         builder: (_) => PuzzleScreen(choice: widget.choice, teams: Map.of(_teams), keyboard: _keyboard),
       ),
     );

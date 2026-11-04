@@ -16,6 +16,25 @@ final class DemoLive {
 
   /// The Arena game on screen, or null when no game is playing.
   ArenaGame? arena;
+
+  /// The TV route on top, as [reportScreen] last saw it. The director writes
+  /// it as the scene's first `screen` event, so a take's log starts from the
+  /// screen it was recorded on even when the showrunner navigated before it.
+  String currentScreen = 'home';
+
+  /// Sends one event to the director. Null unless [installDemoLive] ran and a
+  /// director is listening, which only a DEMO_DIRECTOR build ever does.
+  void Function(String name, [Map<String, Object?>? data])? onEvent;
+
+  /// Logs one event through [onEvent]; nothing in a normal build.
+  void reportEvent(String name, [Map<String, Object?>? data]) => onEvent?.call(name, data);
+
+  /// Logs a route change as a `screen` event (docs/demo-video-runbook.md 2.8
+  /// step 3: R1 needs home, games, puzzle list, join).
+  void reportScreen(String name) {
+    currentScreen = name;
+    reportEvent('screen', {'screen': name});
+  }
 }
 
 /// Points the two views' demo hooks at [DemoLive]. Call once in `main()`,

@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:puzzle_game/puzzle_game.dart';
 
+import '../demo/demo_navigation.dart';
 import '../keyboard_player.dart';
 import '../providers.dart';
 import 'controller_menus.dart';
@@ -103,17 +104,20 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
     });
   }
 
-  void _replaceWith(Widget screen) {
+  void _replaceWith(Widget screen, String name) {
     _handedOver = true;
-    Navigator.of(context).pushReplacement(MaterialPageRoute<void>(builder: (_) => screen));
+    Navigator.of(context)
+        .pushReplacement(MaterialPageRoute<void>(settings: demoRouteSettings(name), builder: (_) => screen));
   }
 
   /// Same teams; a random puzzle becomes another random one.
   void _rematch() => _replaceWith(
     PuzzleScreen(choice: widget.choice, teams: widget.teams, keyboard: _keyboard, avoidPuzzleId: _puzzle?.id),
+    'match',
   );
 
-  void _changeTeams() => _replaceWith(JoinScreen(choice: widget.choice, teams: widget.teams, keyboard: _keyboard));
+  void _changeTeams() =>
+      _replaceWith(JoinScreen(choice: widget.choice, teams: widget.teams, keyboard: _keyboard), 'join');
 
   @override
   Widget build(BuildContext context) {

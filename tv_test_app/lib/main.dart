@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'src/demo/demo_boot.dart';
 import 'src/demo/demo_flags.dart';
 import 'src/demo/demo_live.dart';
+import 'src/demo/demo_navigation.dart';
 import 'src/demo/demo_window.dart';
 import 'src/providers.dart';
 import 'src/ui/controller_menus.dart';
@@ -78,6 +79,9 @@ class TvTestApp extends StatelessWidget {
           return demoDirector ? DemoBoot(child: menus) : menus;
         },
         debugShowCheckedModeBanner: false,
+        // A demo build logs the TV's route changes as `screen` events (2.3);
+        // a store build installs no observer at all.
+        navigatorObservers: demoDirector ? <NavigatorObserver>[DemoScreenObserver()] : const <NavigatorObserver>[],
         theme: ThemeData(
           colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF5AAAFF), brightness: Brightness.dark),
         ),

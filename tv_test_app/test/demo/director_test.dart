@@ -54,6 +54,23 @@ void main() {
     expect(reply['why'], isNotEmpty);
   });
 
+  test('an app event (a join) is logged and sent to the showrunner', () async {
+    final (director, socket) = await open();
+    final messages = <Map<String, dynamic>>[];
+    socket.listen((raw) => messages.add(jsonDecode(raw as String) as Map<String, dynamic>));
+    // The server adds the socket to its list just after the client's upgrade
+    // returns, so give it a moment before the first event.
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+
+    director.reportEvent('join', {'player': 'P1', 'side': 'left'});
+    await Future<void>.delayed(const Duration(milliseconds: 200));
+
+    expect(director.log.names, contains('join'));
+    expect(messages.last['t'], 'event');
+    expect(messages.last['name'], 'join');
+    expect(messages.last['side'], 'left');
+  });
+
   test('stop answers, even with nothing running', () async {
     final (_, socket) = await open();
     final reply = await ask(socket, {'t': 'stop'});
