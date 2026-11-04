@@ -54,7 +54,7 @@ These come from the project's working rules ([project-notes.md](project-notes.md
 6. **Big files** (footage, renders, sessions, tools you download) go in `C:\Users\singh\thumbparty-demo\` (Git Bash: `/c/Users/singh/thumbparty-demo`). That's the **work folder**, outside the repository. Code and small configs go in the repository under `tools/demo/`.
 7. **Owner's data is off limits.**
    - Don't modify, move or delete anything in `%APPDATA%\Thumb Party\Thumb Party TV\` yourself.
-   - The demo build itself adds the `sessions-demo` folder and its own `demo.`-prefixed keys to `shared_preferences.json`. Nothing else may change.
+   - The demo build itself adds the `sessions-demo` folder and its own `demo.`-prefixed keys to `shared_preferences.json`. Nothing else may change. The one exception: before Phase 4, move (never delete) the Phase 3 files out of `sessions-demo` (4.0).
    - Back up `shared_preferences.json` before the first demo run (2.1 step 8) and before Phase 3 (step 3.1).
    - **Before every start of the demo TV app**, list running `ThumbPartyTV.exe` processes (`tasklist //FI "IMAGENAME eq ThumbPartyTV.exe"`). If any is running that you didn't start (by PID), **STOP** and ask the owner to close it. Two copies would share the settings file and could overwrite each other's saves. Never close it yourself.
 8. **Secrets:** none are needed. Never print `DEEPSEEK_API_KEY` or any token.
@@ -239,7 +239,9 @@ The director must read the running game's state. Both views already accept an in
 - `game_start` is taken from the first frame the board is drawn: subscribe to the match's first `update`.
 - Haptics are logged from `ServerGameHost` haptic sends to each player.
 
-**DemoBot:** wraps a `ControllerClient` with identity name "Bot N", platform `sim`, declaring the `layout` and `status` capabilities. It holds a `GamepadState` that the director sets every frame (60 Hz timer). It sends input only when the state changes, or at least every 100 ms while a stick is off-centre, like the phone app does.
+**DemoBot:** wraps a `ControllerClient` with identity name "Bot N", platform `bot` (**not** `sim`: the TV treats exactly `sim` as a simulated controller, auto-joins it and ignores its menu presses, which would break the Bot 3 side switch in `join.json`; and **not** `android`, which would show phone icons and record the bots as phones in the stats), declaring the `layout` and `status` capabilities. It holds a `GamepadState` that the director sets every frame (60 Hz timer). It sends input only when the state changes, or at least every 100 ms while a stick is off-centre, like the phone app does.
+
+**Bot icon:** in `tv_test_app/lib/src/ui/home_screen.dart`, the controller list's platform icon `switch` (`'ios'`, `'android'`, `'sim'`, then `_`), change the `'sim'` case to `'sim' || 'bot' => Icons.smart_toy_outlined`, so the bots show a robot icon in the footage. This is the only change to existing TV screens for the bots. Add a widget test that a controller with platform `bot` shows that icon.
 
 **Steering (`steer.dart`):** one `Steer` per seat. Given the dot's position, a target and the game's move speed, it outputs a left-stick vector each frame:
 1. **Path:** a quadratic curve from start to target, with a control point offset sideways by a random 0 to 15% of the distance (seeded).
@@ -390,11 +392,13 @@ Then: no unit tests for the injection itself. A test for the human model's maths
 ### 2.5 Builds for capture
 Git Bash, from `$REPO`, on the `demo-video` branch:
 ```bash
-cd $REPO/tv_test_app && flutter build windows --profile --dart-define=DEMO_DIRECTOR=true --dart-define=DEMO_LOG_DIR=C:/Users/singh/thumbparty-demo/logs
+cd $REPO/tv_test_app && flutter build windows --profile --dart-define=DEMO_DIRECTOR=true --dart-define=DEMO_LOG_DIR=C:/Users/singh/thumbparty-demo/logs --dart-define=BUILD_NUMBER=102
 # Expect: build\windows\x64\runner\Profile\ThumbPartyTV.exe
-cd $REPO/controller_app && flutter build apk --profile
+cd $REPO/controller_app && flutter build apk --profile --dart-define=BUILD_NUMBER=102
 # Expect: build\app\outputs\flutter-apk\app-profile.apk
 ```
+`BUILD_NUMBER=102` makes both apps show "0.11.0 (102)", the released m11.3 build the footage represents, instead of "0.11.0 (dev)" (owner's decision). Use it for every capture build, and nowhere else.
+
 Record the commit hash: `git -C $REPO rev-parse --short HEAD`. Every footage file is captured from builds of one commit; write it into `$WORK/edit/build.txt`.
 
 ### 2.6 OBS set-up (scripted, no GUI clicks)
@@ -554,6 +558,18 @@ Close each program you opened (by PID) after its shot. Contact-sheet and review 
 ## Phase 4. Scripted stats sessions
 
 **Needs:** the m11.3 commit (idle fix) in both builds from 2.5.
+
+### 4.0 Clear the capture sessions out of the way
+The Phase 3 takes also saved sessions into `sessions-demo`, bots included. The stats dataset (4.3) and the Stats screen shot (4.4) must contain **only** the Phase 4 sessions. So, with the demo TV app closed:
+```bash
+SRC="$APPDATA/Thumb Party/Thumb Party TV/sessions-demo"
+mkdir -p $WORK/sessions-capture
+ls "$SRC" | wc -l                      # note the count
+mv "$SRC"/* $WORK/sessions-capture/    # move, never delete
+ls "$SRC" | wc -l                      # Expect: 0
+ls $WORK/sessions-capture | wc -l      # Expect: the count noted above
+```
+This move is the only change you make yourself in that AppData folder (ground rule 7). If any count differs, **STOP** and report.
 
 ### 4.1 Plan
 | Device (AVD) | Modes | Sessions per mode | Game per session | Settings variants |
