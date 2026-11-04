@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+﻿#!/usr/bin/env bash
 # Drives the phone app on an Android emulator (or a phone on adb) for checks:
 # start the emulator, install with cleared data, connect to a TV app, list
 # what's on screen, tap by name or position, take screenshots.
@@ -88,7 +88,7 @@ case "${1:-}" in
       exit 0
     fi
     [ -f "$emulator" ] || die "emulator not found in $sdk/emulator (sdkmanager emulator)"
-    (nohup "$emulator" -avd "$avd" -no-snapshot-save -no-audio < /dev/null > /dev/null 2>&1 &)
+    (nohup "$emulator" -avd "$avd" -gpu host -no-snapshot-save -no-audio < /dev/null > /dev/null 2>&1 &)
     echo "Starting $avd..."
     a wait-for-device
     for _ in $(seq 1 180); do
