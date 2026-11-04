@@ -1,4 +1,4 @@
-# Demo video runbook (for an AI agent)
+﻿# Demo video runbook (for an AI agent)
 
 Nov 3, 2026. A step-by-step procedure that an AI agent with access to the owner's Windows PC follows to:
 1. check that **m11.3** (the "Bubble Pop" sounds and the active-time fix for the stats) is already released;
@@ -80,8 +80,8 @@ These come from the project's working rules ([project-notes.md](project-notes.md
 | Android SDK | `%LOCALAPPDATA%\Android\Sdk` (`C:\Users\singh\AppData\Local\Android\Sdk`) | |
 | adb | `%LOCALAPPDATA%\Android\Sdk\platform-tools\adb.exe` (on PATH) | |
 | Android emulator | `%LOCALAPPDATA%\Android\Sdk\emulator\emulator.exe`, version 37.2.13 | Has the gRPC bridge and `lib\emulator_controller.proto` |
-| AVD `m7_android12` | `C:\Users\singh\.android\avd\m7_android12.avd` | Phone, Android 12 (API 31), AOSP image (`adb root` works), 1080×2400, 420 dpi, accelerometer and gyroscope on, `hw.gpu.enabled=no` (launch with `-gpu host`) |
-| AVD `m8_pixel_tablet` | `C:\Users\singh\.android\avd\m8_pixel_tablet.avd` | Tablet, Android 12, 2560×1600, 320 dpi |
+| AVD `m7_android12` | `C:\Users\singh\.android\avd\m7_android12.avd` | Phone, Android 12 (API 31), AOSP image (`adb root` works), 1080Ã—2400, 420 dpi, accelerometer and gyroscope on, `hw.gpu.enabled=no` (launch with `-gpu host`) |
+| AVD `m8_pixel_tablet` | `C:\Users\singh\.android\avd\m8_pixel_tablet.avd` | Tablet, Android 12, 2560Ã—1600, 320 dpi |
 | ffmpeg and ffprobe | `C:\Users\singh\AppData\Local\Microsoft\WinGet\Links\ffmpeg.exe`, `...\Links\ffprobe.exe` | Version 9.0.2 (Gyan full build). **Not on Git Bash's PATH.** Add it with the line below |
 | GitHub CLI | `C:\Program Files\GitHub CLI\gh.exe` | Signed in as the owner |
 | winget | on PATH | Used to install what's missing |
@@ -98,7 +98,7 @@ export WORK=/c/Users/singh/thumbparty-demo
 export REPO=/c/Users/singh/game-controller
 ```
 
-**Hardware:** Intel i5-8350U, Intel UHD Graphics 620, 16 GB RAM, one 1920×1080 display. This is a modest machine. The capture plan keeps the load down: hardware encoding (Intel Quick Sync), the phone recorded at reduced size, and one emulator at a time.
+**Hardware:** Intel i5-8350U, Intel UHD Graphics 620, 16 GB RAM, one 1920Ã—1080 display. This is a modest machine. The capture plan keeps the load down: hardware encoding (Intel Quick Sync), the phone recorded at reduced size, and one emulator at a time.
 
 ### E2. Programs installed on Nov 3, 2026: check them
 Python, OBS Studio and scrcpy were installed with winget on Nov 3, 2026 and are on the user PATH for new shells:
@@ -130,7 +130,7 @@ py -3.12 -m venv venv
 ./venv/Scripts/python.exe -m pip install --upgrade pip
 ./venv/Scripts/python.exe -m pip install numpy==2.* pillow==11.* matplotlib==3.*
 ```
-Expect: "Successfully installed …". From now on, Python means `$WORK/venv/Scripts/python.exe`, run with `-I`.
+Expect: "Successfully installed â€¦". From now on, Python means `$WORK/venv/Scripts/python.exe`, run with `-I`.
 
 ### E3. On a different computer
 If this runbook runs on another PC, follow [building.md](building.md) for the Flutter toolchain, the Android SDK and the `m7_android12` AVD. Create the tablet AVD with Android Studio's Device Manager: Pixel Tablet, API 31 x86_64 "default" image (not Google Play, so `adb root` works). Then do E2. The paths in E1 change; set `WORK` and `REPO` accordingly, and find ffmpeg with `where ffmpeg` in PowerShell.
@@ -192,7 +192,7 @@ Commit after each step that ends with "commit". Message prefix: `demo:`. No rele
    ```
 2. **Sessions folder:** in `tv_test_app/lib/src/host_controller.dart` (line ~427, where the folder is `kDebugMode ? 'sessions-debug' : 'sessions'`), use `demoDirector ? 'sessions-demo' : (kDebugMode ? 'sessions-debug' : 'sessions')`.
 3. **Preferences:** in the TV app's `main()`, before the first `SharedPreferences.getInstance()`, add `if (demoDirector) SharedPreferences.setPrefix('demo.');`. Demo runs then keep their own pairings, consent and Puzzle settings, and never touch the owner's. Check `shared_preferences` supports `setPrefix` in the version in `pubspec.lock`. If it doesn't, stop and report.
-4. **Window:** when `demoDirector`, the TV app starts **borderless, full screen at 1920×1080** on the primary display. Use the existing Windows runner; if there's no full-screen helper, add one in `tv_test_app/windows/runner/` that maximises without borders when the `DEMO_DIRECTOR` define is set. Pass the define through `flutter build` as `--dart-define` and read it in Dart; ask the runner to go full screen through a method channel call from Dart at startup.
+4. **Window:** when `demoDirector`, the TV app starts **borderless, full screen at 1920Ã—1080** on the primary display. Use the existing Windows runner; if there's no full-screen helper, add one in `tv_test_app/windows/runner/` that maximises without borders when the `DEMO_DIRECTOR` define is set. Pass the define through `flutter build` as `--dart-define` and read it in Dart; ask the runner to go full screen through a method channel call from Dart at startup.
    - **Not always on top:** use `HWND_TOP`, never `HWND_TOPMOST`. A topmost window stays above everything, even after the owner switches to another program, so they can't use their PC. It isn't needed: OBS's window capture records the TV window even when other windows cover it, and Windows hides the taskbar for a borderless window that exactly covers the monitor while it's in front.
 5. **No debug UI:** the debug overlay starts off; check that nothing on screen says "debug", "profile" or "demo".
 6. Add a test in `tv_test_app/test/` that `demoDirector` is false in the test build.
@@ -201,7 +201,7 @@ Commit after each step that ends with "commit". Message prefix: `demo:`. No rele
    - Build the profile demo app (the first command in 2.5) and start it.
    - Take a screenshot of the whole screen (OBS isn't set up yet; use `tools/tv-window.ps1`, whose screenshot command is in dev-tools.md, or a PowerShell `CopyFromScreen` one-liner).
    - Confirm these, and close the app by its PID:
-     - (a) It fills the 1920×1080 screen with no border or title bar.
+     - (a) It fills the 1920Ã—1080 screen with no border or title bar.
      - (b) Nothing says debug, profile or demo.
      - (c) `%APPDATA%\Thumb Party\Thumb Party TV\sessions-demo\` exists or is created on the first session, and nothing new appears in `sessions\`.
      - (d) The owner's settings are untouched. The demo build writes its own keys, all starting with `demo.`, into the same `shared_preferences.json`. So compare the file with a copy taken just before the run: every key that doesn't start with `demo.` must still be there with the same value, and no such key may be added.
@@ -218,7 +218,7 @@ The director must read the running game's state. Both views already accept an in
    - `void Function(ArenaGame game)? onArenaGameCreated;` in arena_view.dart.
 
    Call each once, right after the game object is created or received, in `initState`. Doc comment: "For the demo director only; null in every normal run."
-2. In `tv_test_app/lib/src/demo/`, set both hooks when `demoDirector` is true (in `main()`), storing the latest object in a `DemoLive` singleton (`PuzzleMatch? match; ArenaGame? arena;`), cleared in the views' `dispose` through matching `on…Disposed` hooks.
+2. In `tv_test_app/lib/src/demo/`, set both hooks when `demoDirector` is true (in `main()`), storing the latest object in a `DemoLive` singleton (`PuzzleMatch? match; ArenaGame? arena;`), cleared in the views' `dispose` through matching `onâ€¦Disposed` hooks.
 3. Tests: a widget test that pumps `PuzzlePlayView` with the hook set and checks it's called once with the match. Do the same for `ArenaView`.
 4. Checks, then commit `demo: hooks to reach the running game`.
 
@@ -235,15 +235,15 @@ The director must read the running game's state. Both views already accept an in
 | From the showrunner | Meaning |
 | --- | --- |
 | `{"t":"hello"}` | Reply `{"t":"state","port":<host port>,"code":"<pairing code>","screen":"<route name>"}`. **This is how scripts get the port and pairing code** from the profile build, which doesn't print them to the console as debug builds do. Never read them from a screenshot |
-| `{"t":"bots","count":N,"mode":"sticks"}` | Create N `DemoBot`s (N 0 to 3) named "Bot 2", "Bot 3", … paired over loopback, like `HostController.addSimulatedController`, but driven by the director, not `runDemoInput`. Reply `{"t":"bots_ready","players":[…]}` when all are paired |
-| `{"t":"scene","file":"<absolute path to scene JSON>","take":"G3_take2"}` | Load and run a scene. Events stream back. Reply `{"t":"scene_done","ok":true}` at the end, or `{"ok":false,"why":"…"}` |
+| `{"t":"bots","count":N,"mode":"sticks"}` | Create N `DemoBot`s (N 0 to 3) named "Bot 2", "Bot 3", â€¦ paired over loopback, like `HostController.addSimulatedController`, but driven by the director, not `runDemoInput`. Reply `{"t":"bots_ready","players":[â€¦]}` when all are paired |
+| `{"t":"scene","file":"<absolute path to scene JSON>","take":"G3_take2"}` | Load and run a scene. Events stream back. Reply `{"t":"scene_done","ok":true}` at the end, or `{"ok":false,"why":"â€¦"}` |
 | `{"t":"stop"}` | Stop the scene, release every input |
 | `{"t":"reset"}` | Stop bots and scenes, go back to the home screen |
 
 | From the director | Meaning |
 | --- | --- |
-| `{"t":"event","wall":<epoch ms>,"name":"…",…}` | Every scene event, also appended to `<take>_events.jsonl` in the folder given by `--dart-define=DEMO_LOG_DIR=<path>` |
-| `{"t":"p1","x":…,"y":…,"buttons":[…],"tilt":[x,y]?}` | The intent for the visible phone (seat P1), 60 times a second. The touch driver turns it into touches |
+| `{"t":"event","wall":<epoch ms>,"name":"â€¦",â€¦}` | Every scene event, also appended to `<take>_events.jsonl` in the folder given by `--dart-define=DEMO_LOG_DIR=<path>` |
+| `{"t":"p1","x":â€¦,"y":â€¦,"buttons":[â€¦],"tilt":[x,y]?}` | The intent for the visible phone (seat P1), 60 times a second. The touch driver turns it into touches |
 
 **Events to log** (at least): `scene_start`, `screen` (route changes), `game_start`, `pickup` (player, piece), `rotate_start` and `rotate_end`, `drop` (player, piece, ok or wrong), `snap`, `wrong`, `help` (to player), `join_big`, `finish` (side, ms), `results`, `haptic` (to player, event), `pause` and `resume`, `scene_end`.
 - `game_start` is taken from the first frame the board is drawn: subscribe to the match's first `update`.
@@ -256,10 +256,10 @@ The director must read the running game's state. Both views already accept an in
 **Steering (`steer.dart`):** one `Steer` per seat. Given the dot's position, a target and the game's move speed, it outputs a left-stick vector each frame:
 1. **Path:** a quadratic curve from start to target, with a control point offset sideways by a random 0 to 15% of the distance (seeded).
 2. **Speed profile:** ease-in over 150 ms, cruise at stick length 1.0, ease-out starting 1.5 dot-diameters from the target, down to 0.25 near it.
-3. **Noise:** add a smooth random wobble of ±0.06 to the stick angle (sum of two sines at 0.7 Hz and 1.9 Hz, random phases).
+3. **Noise:** add a smooth random wobble of Â±0.06 to the stick angle (sum of two sines at 0.7 Hz and 1.9 Hz, random phases).
 4. **Reaction delay:** each new goal waits a random 150 to 350 ms before moving.
 5. **Overshoot:** 15% of approaches overshoot by 0.3 to 0.6 dot-diameters, then correct.
-6. **Rotation:** to reach a target angle, hold X or Y (whichever is shorter). Release when within the game's snap tolerance. 10% of the time release late by 8 to 15° and correct with the other button after 200 ms.
+6. **Rotation:** to reach a target angle, hold X or Y (whichever is shorter). Release when within the game's snap tolerance. 10% of the time release late by 8 to 15Â° and correct with the other button after 200 ms.
 7. **All randomness** comes from one `Random(seed)` per seat. The seed is in the scene file, so takes are repeatable.
 
 **PuzzleBrain:** reads `DemoLive.match`: boards, pieces (`PieceRuntime`: position, angle, carriers, placed), outline targets, players' positions and help calls. It turns goals into steering and buttons.
@@ -346,15 +346,15 @@ It turns P1 intents into multi-touch on the emulator, and gyro intents into sens
    Codes: EV_SYN 0, EV_KEY 1, EV_ABS 3, BTN_TOUCH 0x14a, ABS_MT_SLOT 0x2f, ABS_MT_POSITION_X 0x35, ABS_MT_POSITION_Y 0x36, ABS_MT_TRACKING_ID 0x39, ABS_MT_PRESSURE 0x3a, SYN_REPORT 0.
 
    **Coordinates** (the first spike got these wrong: touches arrived, but at the wrong places):
-   - The touchscreen's raw axes follow the panel's natural **portrait** orientation. On `m7_android12` the panel is 1080 wide and 2400 tall: raw X spans the 1080 px width, raw Y spans the 2400 px height, both 0–32767. On the tablet AVD, read the panel size with `adb shell wm size`.
-   - The app runs landscape, so turn a screen point `(dx, dy)` (landscape, 2400×1080) into a panel point first. Read the rotation with `adb shell dumpsys input | grep -i orientation`:
-     - rotation 1 (90°): `panel_x = 1080 − dy`, `panel_y = dx`. **Confirmed on `m7_android12`** (Nov 3, 2026): the app runs at rotation 1, and pointer location showed screen (2000, 73) as panel (1007, 2000). Two flushed fingers then moved both sticks at once;
-     - rotation 3 (270°): `panel_x = dy`, `panel_y = 2400 − dx`;
+   - The touchscreen's raw axes follow the panel's natural **portrait** orientation. On `m7_android12` the panel is 1080 wide and 2400 tall: raw X spans the 1080 px width, raw Y spans the 2400 px height, both 0â€“32767. On the tablet AVD, read the panel size with `adb shell wm size`.
+   - The app runs landscape, so turn a screen point `(dx, dy)` (landscape, 2400Ã—1080) into a panel point first. Read the rotation with `adb shell dumpsys input | grep -i orientation`:
+     - rotation 1 (90Â°): `panel_x = 1080 âˆ’ dy`, `panel_y = dx`. **Confirmed on `m7_android12`** (Nov 3, 2026): the app runs at rotation 1, and pointer location showed screen (2000, 73) as panel (1007, 2000). Two flushed fingers then moved both sticks at once;
+     - rotation 3 (270Â°): `panel_x = dy`, `panel_y = 2400 âˆ’ dx`;
      - rotation 0 (portrait): `panel_x = dx`, `panel_y = dy`.
-   - Then `raw_x = panel_x × 32768 / 1080` and `raw_y = panel_y × 32768 / 2400`, clamped to 0–32767. **Never** scale a landscape coordinate directly by 2400 and 1080.
+   - Then `raw_x = panel_x Ã— 32768 / 1080` and `raw_y = panel_y Ã— 32768 / 2400`, clamped to 0â€“32767. **Never** scale a landscape coordinate directly by 2400 and 1080.
    - **Verify before the two-finger test:**
      1. Turn on Android's pointer location overlay: `adb shell settings put system pointer_location 1`.
-     2. Inject one tap at a known screen point (e.g. `(600, 300)`), take a screenshot, and check that the overlay's X and Y read the same point (±5 px). If not, try the other rotation formula.
+     2. Inject one tap at a known screen point (e.g. `(600, 300)`), take a screenshot, and check that the overlay's X and Y read the same point (Â±5 px). If not, try the other rotation formula.
      3. Turn the overlay off again: `adb shell settings put system pointer_location 0`. It must never be on during filming.
      4. Then drag one finger inside the left stick's circle and confirm in a screenshot that the knob moved off-centre.
      5. Only then run the two-finger test below.
@@ -372,7 +372,7 @@ It turns P1 intents into multi-touch on the emulator, and gyro intents into sens
 
 **Step B, layouts.** For each mode (D-pad, Gyro, Sticks) on each AVD, record the screen pixel centres and radii of every control: D-pad centre and arm length; left and right stick centres and radius (fixed sticks) or the left and right touch zones (floating); A, B, X, Y, Start and Select.
 - Use `tools/emulator.sh ui` (labels with centres) and `tools/emulator.sh shot` to confirm.
-- Save as `tools/demo/layouts/m7_android12-<mode>.json` and `m8_pixel_tablet-<mode>.json`, in the form `{"dpad":{"x":…,"y":…,"arm":…},"ls":{…},"rs":{…},"a":{"x":…,"y":…,"r":…},…}`.
+- Save as `tools/demo/layouts/m7_android12-<mode>.json` and `m8_pixel_tablet-<mode>.json`, in the form `{"dpad":{"x":â€¦,"y":â€¦,"arm":â€¦},"ls":{â€¦},"rs":{â€¦},"a":{"x":â€¦,"y":â€¦,"r":â€¦},â€¦}`.
 - Also record the default button size setting in effect. Layouts depend on it.
 - **Screens other than the controller:** for each screen the footage touches, record the centres of the controls it uses in `tools/demo/layouts/<avd>-screens.json`:
   - the **Connect** screen (address field, code field, Connect button);
@@ -380,7 +380,7 @@ It turns P1 intents into multi-touch on the emulator, and gyro intents into sens
   - the **rating prompt** (three faces, each tag, Done or Skip);
   - **Diagnostics** (the scroll area);
   - the mode switch (D-pad, Gyro, Sticks).
-- **On-screen keyboard:** tap the address field, then the code field, and record from a screenshot the centre of every key needed to type an address and a 4-digit code: digits 0–9, `.`, `:`, backspace and Enter, on whichever keyboard Android shows for that field. If `.` or `:` are on a second keyboard page, record the page-switch key and the keys on that page. Store them in the same file under `"keyboard": {"address": {...}, "code": {...}}`.
+- **On-screen keyboard:** tap the address field, then the code field, and record from a screenshot the centre of every key needed to type an address and a 4-digit code: digits 0â€“9, `.`, `:`, backspace and Enter, on whichever keyboard Android shows for that field. If `.` or `:` are on a second keyboard page, record the page-switch key and the keys on that page. Store them in the same file under `"keyboard": {"address": {...}, "code": {...}}`.
 
 **Step C, the driver:** `dart run tools/demo/touch_driver.dart --serial emulator-5554 --layout tools/demo/layouts/m7_android12-sticks.json --director ws://127.0.0.1:47900/director --log $WORK/logs/<take>_touch.jsonl [--human-model off|stats]`
 - It turns each `p1` intent into finger positions:
@@ -392,27 +392,27 @@ It turns P1 intents into multi-touch on the emulator, and gyro intents into sens
 
   | Command | What it does |
   | --- | --- |
-  | `{"cmd":"tap","x":…,"y":…,"ms":80}` | Finger down, hold `ms`, up. `x` and `y` may be a layout name instead, e.g. `{"cmd":"tap","at":"settings.floatingSwitch"}` |
+  | `{"cmd":"tap","x":â€¦,"y":â€¦,"ms":80}` | Finger down, hold `ms`, up. `x` and `y` may be a layout name instead, e.g. `{"cmd":"tap","at":"settings.floatingSwitch"}` |
   | `{"cmd":"drag","from":[x,y],"to":[x,y],"ms":1500}` | Down at `from`, move along an eased path to `to` over `ms` (ease-in-out), hold 100 ms, up. Used for sliders |
   | `{"cmd":"scroll","in":"diagnostics.scroll","dy":-900,"ms":600}` | A drag inside a scroll area, by `dy` pixels, released with a small fling |
-  | `{"cmd":"type","field":"address","text":"10.0.2.2:45780","perKeyMs":[180,260]}` | Tap the field, then tap each character's key on the on-screen keyboard (from the layout's `keyboard` section, switching keyboard pages when needed), waiting a random 180–260 ms between keys (seeded). Ends with Enter only if the text ends in `\n` |
-  | `{"cmd":"wait","ms":…}` | Pause |
+  | `{"cmd":"type","field":"address","text":"10.0.2.2:45780","perKeyMs":[180,260]}` | Tap the field, then tap each character's key on the on-screen keyboard (from the layout's `keyboard` section, switching keyboard pages when needed), waiting a random 180â€“260 ms between keys (seeded). Ends with Enter only if the text ends in `\n` |
+  | `{"cmd":"wait","ms":â€¦}` | Pause |
   | `{"cmd":"mode","to":"sticks"}` | Tap the mode switch button for that mode |
 
-  A command answers `{"ok":true}` when finished, or `{"ok":false,"why":"…"}`. **Never** use `adb shell input` for anything that's filmed: those touches would have no touch markers and wouldn't look typed.
-- Every frame is logged: `{"wall":…, "fingers":[{"id":…,"x":…,"y":…}]}`.
-- The **human model** (`--human-model stats`, used only in Phase 4) adds imprecision, so the phone's real touch counters have something to count. All draws are seeded from `--seed`. Distances are in mm, converted with the AVD's dpi (420 for the phone, 320 for the tablet): `px = mm × dpi / 25.4`.
-  - Each tap lands at its target plus a 2-D Gaussian offset with σ 2.5 mm, and σ 7 mm for 4% of taps ("sloppy").
+  A command answers `{"ok":true}` when finished, or `{"ok":false,"why":"â€¦"}`. **Never** use `adb shell input` for anything that's filmed: those touches would have no touch markers and wouldn't look typed.
+- Every frame is logged: `{"wall":â€¦, "fingers":[{"id":â€¦,"x":â€¦,"y":â€¦}]}`.
+- The **human model** (`--human-model stats`, used only in Phase 4) adds imprecision, so the phone's real touch counters have something to count. All draws are seeded from `--seed`. Distances are in mm, converted with the AVD's dpi (420 for the phone, 320 for the tablet): `px = mm Ã— dpi / 25.4`.
+  - Each tap lands at its target plus a 2-D Gaussian offset with Ïƒ 2.5 mm, and Ïƒ 7 mm for 4% of taps ("sloppy").
   - During a hold longer than 300 ms, the finger drifts on a random walk of 0.4 mm per 100 ms. In 6% of holds it drifts 6 to 9 mm outward over 300 ms (to produce slide-offs).
-  - After a tap that lands on no control, retap within 250 ms with σ 1.5 mm, 70% of the time. A burst of 4 quick taps on one spot happens in 1% of misses.
-  - Stick fingers start where the intent's first vector points, plus σ 3 mm.
-  - Mode differences: D-pad uses the base values. For Sticks with button size below 0.75, multiply σ by 1.3.
+  - After a tap that lands on no control, retap within 250 ms with Ïƒ 1.5 mm, 70% of the time. A burst of 4 quick taps on one spot happens in 1% of misses.
+  - Stick fingers start where the intent's first vector points, plus Ïƒ 3 mm.
+  - Mode differences: D-pad uses the base values. For Sticks with button size below 0.75, multiply Ïƒ by 1.3.
   - These numbers produce plausible counters, not real behaviour. That's why every stats caption says "scripted test sessions".
 
 **Step D, gyro:**
 - Open the emulator console with a TCP socket to `127.0.0.1:5554` and authenticate with `auth <token>` (token from `C:\Users\singh\.emulator_console_auth_token`).
-- At 60 Hz, turn the intent's tilt `(x, y)` (each −1 to 1) into angles `roll = x × 35°`, `pitch = y × 35°`.
-- Send `sensor set acceleration <ax>:<ay>:<az>` with gravity rotated by those angles (9.81 m/s²), and `sensor set gyroscope <gx>:<gy>:<gz>` with the angle change rate in rad/s.
+- At 60 Hz, turn the intent's tilt `(x, y)` (each âˆ’1 to 1) into angles `roll = x Ã— 35Â°`, `pitch = y Ã— 35Â°`.
+- Send `sensor set acceleration <ax>:<ay>:<az>` with gravity rotated by those angles (9.81 m/sÂ²), and `sensor set gyroscope <gx>:<gy>:<gz>` with the angle change rate in rad/s.
 - **Axes:** the app runs landscape, and the sensor axes follow the device's natural portrait orientation. Find the sign and axis mapping in the spike: tilt "right" must move the dot right in the tilt view.
 - Log the angles in the touch log, for the 3D phone graphic.
 
@@ -446,7 +446,7 @@ Record the commit hash: `git -C $REPO rev-parse --short HEAD`. Every footage fil
 3. In `tools/demo/obs.dart`, implement an obs-websocket v5 client: `dart:io` `WebSocket` and the challenge/salt SHA-256 authentication from the obs-websocket v5 spec. Use `dart:convert` and a small SHA-256 written in Dart, or `crypto` if it's already in the workspace lock file. Check with `grep -n "crypto" pubspec.lock`.
 4. On first connect, create everything by request (idempotent: skip what exists):
    - Profile `ThumbPartyDemo` (`CreateProfile`, `SetCurrentProfile`).
-   - `SetVideoSettings` base and output 1920×1080, 60/1.
+   - `SetVideoSettings` base and output 1920Ã—1080, 60/1.
    - `SetProfileParameter`:
      - `Output/Mode` = `Advanced`;
      - `AdvOut/RecEncoder` = the Intel Quick Sync encoder, falling back to `obs_x264`. **Don't guess its ID:** newer OBS versions name it `obs_qsv11_v2` rather than `obs_qsv11`. Read the encoder IDs this install offers from the OBS log (the newest file in `%APPDATA%\obs-studio\logs\`, which lists the loaded encoders at start-up), and use the Quick Sync one listed. An unknown encoder ID makes `StartRecord` fail;
@@ -456,15 +456,15 @@ Record the commit hash: `git -C $REPO rev-parse --short HEAD`. Every footage fil
      - Encoder settings are written into the profile's `basic.ini` under `[AdvOut]` while OBS is closed (they take
      effect on the next `StartRecord`; `SetProfileParameter` writes the same keys). Use QSV, **CQP 23 with target
      usage `speed`**: `RecRateControl=CQP`, `RecCQP=23`, `RecTargetUsage=speed`. Confirm in the OBS log at
-     `StartRecord` (`rate_control: CQP`, `qpi/qpb/qpp: 23`, `target_usage: TU7`). The stock QSV defaults — CBR 5000,
-     lookahead 60, TU4 — are the expensive ones, and x264 starves the emulator (measured Nov 4, 2026: 2.4 vs 12.6
+     `StartRecord` (`rate_control: CQP`, `qpi/qpb/qpp: 23`, `target_usage: TU7`). The stock QSV defaults â€” CBR 5000,
+     lookahead 60, TU4 â€” are the expensive ones, and x264 starves the emulator (measured Nov 4, 2026: 2.4 vs 12.6
      fps phone crop at 3840x1080).
    - Scene collection `ThumbPartyDemo` with:
      - scene `TV`: input `tv` of kind `window_capture`, window `Thumb Party TV:FLUTTER_RUNNER_WIN32_WINDOW:ThumbPartyTV.exe`, `capture_cursor` false, method Windows Graphics Capture;
      - an input `desktop_audio` of kind `wasapi_output_capture` (default device);
-     - scenes `Terminal`, `Editor` and `Browser`: each one `window_capture` (Windows Graphics Capture, `capture_cursor` false) of that program's window: `WindowsTerminal.exe`, `Code.exe` and `msedge.exe`. They're for the 3.3 shots. **Don't capture the whole monitor**: window capture keeps the taskbar, notifications and any other window out of the footage. Set each source to scale to 1920×1080 in its scene (`SetSceneItemTransform`, bounds type `OBS_BOUNDS_SCALE_INNER`).
+     - scenes `Terminal`, `Editor` and `Browser`: each one `window_capture` (Windows Graphics Capture, `capture_cursor` false) of that program's window: `WindowsTerminal.exe`, `Code.exe` and `msedge.exe`. They're for the 3.3 shots. **Don't capture the whole monitor**: window capture keeps the taskbar, notifications and any other window out of the footage. Set each source to scale to 1920Ã—1080 in its scene (`SetSceneItemTransform`, bounds type `OBS_BOUNDS_SCALE_INNER`).
    - Confirm the exact window strings with `GetInputPropertiesListPropertyItems` for `window`: pick the item containing `ThumbPartyTV.exe` for `TV`, and the matching item for each 3.3 window once it's open. Window titles change, so match on the `.exe` part with the "match priority" setting `window_priority` = 2 (executable).
-5. Test: start the profile TV app (2.7), record 10 s, stop, and check with ffprobe: 1920×1080, about 60 fps, an audio stream. Commit `demo: OBS control`.
+5. Test: start the profile TV app (2.7), record 10 s, stop, and check with ffprobe: 1920Ã—1080, about 60 fps, an audio stream. Commit `demo: OBS control`.
    - **If a request fails,** print the whole obs-websocket response (its `requestStatus.code` and `comment`), not just the stack trace's tail, and read the newest OBS log in `%APPDATA%\obs-studio\logs\`: it names the reason, such as an unknown encoder, a missing folder or a window not found. The password file is outside the repository; never commit it.
 
 ### 2.7 Showrunner (`tools/demo/showrunner.dart`)
@@ -477,6 +477,13 @@ It does these steps in order and stops at the first failure, with a clear messag
 2. **Emulator** (when `--phone` or the scene has a P1 phone seat): if not running, start it as in 2.4 step A (port 5554 for the phone AVD, 5556 for the tablet AVD), then `adb root`. Install `app-profile.apk` if the installed version differs. Clear data (`adb shell pm clear com.thumbparty.app`), launch, start the touch driver, set the mode with its `mode` command, and pair:
    - **Filmed shots:** through the touch driver: `type` into `address` the text `10.0.2.2:<port>`, then `type` into `code` the 4-digit code, then `tap` Connect. This is how P2 and P4 look on screen.
    - **Unfilmed runs** (the stats sessions in Phase 4, and shots that start after pairing): `tools/emulator.sh connect 10.0.2.2:<port> <code>` (`ANDROID_SERIAL` set) is fine and faster.
+   - **Phone render size for takes:** run `tools/emulator.sh capture-size on` before the first take and
+     `capture-size off` after the last one — and in the failure path too (`tools/emulator.sh stop` also resets
+     both). The size and density are variables at the top of that script (810x1800 at density 315). The
+     emulator window is only about 878x427 on the host, so rendering 1080x2400 wastes GPU on pixels nobody
+     sees; 810x1800 at density 315 keeps the same dp layout (411x914) with 44% fewer pixels. Measured Nov 4,
+     2026 with the TV game live: the phone stick region went from 46-47 fps to 50.2 at this size, so the
+     recorder must check `wm size` reports `Override size: 810x1800` before recording.
 
    Wait for `P1` on the TV (director `state`).
 3. **Bots:** send `bots` with the scene's count and wait for `bots_ready`.
@@ -498,7 +505,7 @@ Commit `demo: showrunner`.
 
 ### 2.8 Automatic quality checks (`tools/demo/qa.dart`)
 For each take:
-1. **Format:** `ffprobe` gives 1920×1080 for TV and the expected size for phone, and `avg_frame_rate` ≥ 59 for TV and ≥ 50 for phone.
+1. **Format:** `ffprobe` gives 1920Ã—1080 for TV and the expected size for phone, and `avg_frame_rate` â‰¥ 59 for TV and â‰¥ 50 for phone.
 2. **Stutter:** decode with `ffmpeg -i <file> -vf mpdecimate=hi=64*12:lo=64*5:frac=0.33,showinfo -f null -`. Count dropped (duplicate) frames between `game_start` and `scene_end`. Fail if any run of 3 or more consecutive duplicates happens while the event log shows movement (any P1 or bot stick off-centre).
 3. **Story:** the event log contains every event the storyboard needs for this shot:
    - G1: `scene_start`, then 4 joins, then `game_start`.
@@ -506,7 +513,7 @@ For each take:
    - G3: `help`, then `join_big`, then `snap` of the big piece.
    - G4: `pause`, then `resume`.
    - G5: `finish` (left), then `results`.
-   - M1–M3: at least 15 s of movement.
+   - M1â€“M3: at least 15 s of movement.
    - R1: `screen` events home, then games, then puzzle list, then join.
 4. **Contact sheet:** `ffmpeg -i <file> -vf "fps=2,scale=480:-1,tile=6x5" -frames:v 1 $WORK/qa/<take>_sheet.png`. Look at it (read the image): no debug overlay, no dialogs, correct player count, nothing cut off.
 5. Write `$WORK/qa/<take>.json` with every result.
@@ -518,7 +525,7 @@ For each take:
 ### 3.1 Before the first capture
 1. Back up the owner's preferences: copy `%APPDATA%\Thumb Party\Thumb Party TV\shared_preferences.json` to `$WORK/backup/`. Don't modify the original.
 2. Close nothing of the owner's. If a `ThumbPartyTV.exe` you didn't start is running, **STOP** and ask the owner to close it (ground rule 7).
-3. Notifications: Windows has no supported command to turn on Do Not Disturb. **STOP** once and ask the owner to turn it on (Settings → System → Notifications → Do not disturb) for the capture sessions. This is a one-time PC setting, not a person in the video. The taskbar needs nothing: the TV app is borderless full screen.
+3. Notifications: Windows has no supported command to turn on Do Not Disturb. **STOP** once and ask the owner to turn it on (Settings â†’ System â†’ Notifications â†’ Do not disturb) for the capture sessions. This is a one-time PC setting, not a person in the video. The taskbar needs nothing: the TV app is borderless full screen.
 4. Fresh demo state: the demo prefixed preferences start empty, so the TV shows the consent prompt on first launch. Capture X4 first (3.2), then the showrunner answers it ("Not now") through the director's `navigate`.
 
 ### 3.2 Shot order
@@ -538,7 +545,7 @@ Capture in this order, so state builds up naturally. Each line is one showrunner
 | 10 | G2 and G5 | `race.json`: first **one** take with seed 4242, then **STOP** (below); after the owner's OK, 3 more takes with seeds 4243, 4244, 4245 | TV and phone |
 | 11 | G3 | `bigpiece.json`, 3 takes | TV and phone |
 | 12 | G4 | `pause.json` | TV and phone |
-| 13 | C1–C3 | Phone Settings, all through touch-driver commands: `drag` the Button size slider from default to max to min (1.5 s each); `scroll` through the Gyro and Stick settings; `tap` the Floating sticks switch; `scroll` to and `tap` Help (puzzle) **Try** | Phone |
+| 13 | C1â€“C3 | Phone Settings, all through touch-driver commands: `drag` the Button size slider from default to max to min (1.5 s each); `scroll` through the Gyro and Stick settings; `tap` the Floating sticks switch; `scroll` to and `tap` Help (puzzle) **Try** | Phone |
 | 14 | C4 | `menus.json` second part: Puzzle settings, Time limit, Reset to defaults | TV and phone |
 | 15 | X1 | Finish a solo puzzle through the director; the rating prompt appears; touch driver: `tap` the happy face, `tap` the "Rotation hard" tag, `tap` Done | Phone |
 | 16 | X5 | Phone Diagnostics: `tap` to open it, then `scroll` through it, all with the touch driver | Phone |
@@ -612,7 +619,7 @@ This move is the only change you make yourself in that AppData folder (ground ru
 ### 4.1 Plan
 | Device (AVD) | Modes | Sessions per mode | Game per session | Settings variants |
 | --- | --- | --- | --- | --- |
-| `m7_android12` (phone) | D-pad, Gyro, Sticks | 4 | 2 solo Shape Race rounds (random Easy puzzle) + 1 Arena session of 90 s | Sticks: button size 0.75 in sessions 1–2, 0.60 in 3–4; floating off in 1 and 3, on in 2 and 4 |
+| `m7_android12` (phone) | D-pad, Gyro, Sticks | 4 | 2 solo Shape Race rounds (random Easy puzzle) + 1 Arena session of 90 s | Sticks: button size 0.75 in sessions 1â€“2, 0.60 in 3â€“4; floating off in 1 and 3, on in 2 and 4 |
 | `m8_pixel_tablet` | D-pad, Gyro, Sticks | 2 | the same | default settings |
 
 That makes 18 sessions of about 5 minutes of play each. With the 150 s wait between sessions and emulator start-ups, that's about 2.5 hours of unattended running. Every session uses `--human-model stats` with seed `1000 + session number`.
@@ -658,24 +665,24 @@ All graphics are rendered by Python scripts in `tools/demo/graphics/`, run as `$
 | --- | --- | --- |
 | `title.py` | `title_%04d.png` (4 s) | The logo from `assets/branding/` (the largest icon PNG) and "Thumb Party" fade in over 0.3 s; "Your phone is the controller." 0.3 s later; the small disclosure line "Recorded from the real apps. Every player is a script." |
 | `caption.py` | `cap_<id>.png` per caption | Every caption from demo-video.md section 4. Bold 54 px on line 1, 34 px on line 2, left at x=96, baseline y=930, on a 0 to 70% black gradient from y=760 down. A JSON list of captions is the input |
-| `latency_diagram.py` | `latency_%04d.png` (6 s) | Two lanes (TV at y=420, phone at y=660). Arrows animate in order: ping t0 at 0.3 s, pong t1 at 1.3 s, arrival t2 at 2.3 s. The formula `offset = t1 − (t0 + t2) / 2` appears at 3.3 s; "input.ts → one-way delay" at 4.5 s |
-| `heatmap.py` | `heatmap_<mode>.png` | For each mode, sum the sessions' `empty` cell counts (the 6 by 3 grid, keys `"col,row"`). Draw the controller layout from `tools/demo/layouts/m7_android12-<mode>.json` as outlined shapes, then the grid cells coloured by count (sequential palette from `#12161C` to `#FF7A45`) at 70% opacity. Title "Where taps missed: <Mode>"; source line "Scripted test sessions · N sessions · 2 emulated devices · Nov 2026" |
+| `latency_diagram.py` | `latency_%04d.png` (6 s) | Two lanes (TV at y=420, phone at y=660). Arrows animate in order: ping t0 at 0.3 s, pong t1 at 1.3 s, arrival t2 at 2.3 s. The formula `offset = t1 âˆ’ (t0 + t2) / 2` appears at 3.3 s; "input.ts â†’ one-way delay" at 4.5 s |
+| `heatmap.py` | `heatmap_<mode>.png` | For each mode, sum the sessions' `empty` cell counts (the 6 by 3 grid, keys `"col,row"`). Draw the controller layout from `tools/demo/layouts/m7_android12-<mode>.json` as outlined shapes, then the grid cells coloured by count (sequential palette from `#12161C` to `#FF7A45`) at 70% opacity. Title "Where taps missed: <Mode>"; source line "Scripted test sessions Â· N sessions Â· 2 emulated devices Â· Nov 2026" |
 | `mode_bars.py` | `mode_bars.png` | From `modes.csv`: grouped bars per mode for empty, near-miss and slide-off taps per active minute, plus a stacked bar of ratings (good, okay, bad). Same source line |
 | `stat_card.py` | `stat_latency.png` | "Median N ms" with N = the `input ms` value of the "By input mode" table in `report.txt` (median of the three rows). Line 2 "Target: under 50 ms". Source line "Emulator on the same PC, scripted sessions". **Not** a Wi-Fi number; there is no real-device data in this plan |
 | `haptic.py` | `bzz_%04d.png` (0.8 s) | Three rings expanding from the centre, with "bzz" and the event name |
 | `phone3d.py` | `tilt_%04d.png` | A simple phone rectangle in perspective, rotated by the logged roll and pitch from the M2 touch log, frame by frame |
 | `touch_markers.py` | `markers_<take>_%04d.png` | For each phone shot, transparent frames with 48 px circles in P1 blue at 60% opacity for every finger in the touch log, plus a 150 ms fading trail. Timed to the phone video by `recorders.json` |
-| `cards.py` | `name_card.png`, `end_card.png` | Name card with "Built by <name>" and the role, from `tools/demo/credits.json`, made only when `name` is non-empty (see the defaults table at the end); end card with the logo, `devtestman187.github.io/game-controller`, `github.com/devtestman187/game-controller`, and the text "Google Play · TestFlight · Windows". No store badge images, to avoid trademark terms |
+| `cards.py` | `name_card.png`, `end_card.png` | Name card with "Built by <name>" and the role, from `tools/demo/credits.json`, made only when `name` is non-empty (see the defaults table at the end); end card with the logo, `devtestman187.github.io/game-controller`, `github.com/devtestman187/game-controller`, and the text "Google Play Â· TestFlight Â· Windows". No store badge images, to avoid trademark terms |
 | `frames.py` | `phone_frame.png`, `tablet_frame.png` | Plain rounded rectangles, `#2A3038`, corner radius 48 px |
 
 ### 5.2 Audio
 - **Music bed:** `lobby.ogg` from the Bubble Pop folder (project-generated, CC0; 19.20 s, made to loop without a gap). Loop it to the video length with `ffmpeg -stream_loop -1 -i lobby.ogg -t <length> -c:a pcm_s16le $WORK/audio/music.wav`.
-  - Volume: −20 dB under gameplay, −14 dB under the title and end cards, −24 dB under the metrics section. Fade out over the last 2 s.
+  - Volume: âˆ’20 dB under gameplay, âˆ’14 dB under the title and end cards, âˆ’24 dB under the metrics section. Fade out over the last 2 s.
   - Add a row to a `CREDITS.txt` in `$WORK/renders/`.
 - **Game audio:** the TV recordings' audio tracks, kept at their level.
-- **Haptic "bzz":** `rumble.ogg` (Bubble Pop) at −10 dB, 0.3 s, on each haptic graphic.
+- **Haptic "bzz":** `rumble.ogg` (Bubble Pop) at âˆ’10 dB, 0.3 s, on each haptic graphic.
 - **Voice-over:** none, unless the owner decides otherwise (see Questions).
-- **Loudness:** final mix to −14 LUFS integrated with `ffmpeg … -af loudnorm=I=-14:TP=-1.5:LRA=11` in two passes.
+- **Loudness:** final mix to âˆ’14 LUFS integrated with `ffmpeg â€¦ -af loudnorm=I=-14:TP=-1.5:LRA=11` in two passes.
 
 ### 5.3 Edit decision list
 Write `$WORK/edit/edl.json`: one entry per storyboard row of demo-video.md section 5, in order:
@@ -684,15 +691,15 @@ Write `$WORK/edit/edl.json`: one entry per storyboard row of demo-video.md secti
  "phone": {"file": "G2_take3_phone.mp4", "sync": "game_start"}, "zoom": {"scale": 1.5, "center": "board:left"},
  "caption": "cap_19", "markers": true, "audio": ["tv"]}
 ```
-- **Times:** `in` may be absolute seconds or `event:<name>#<k>±<s>`, resolved from the take's event log and `recorders.json`.
-- **Phone sync:** the phone's offset to the TV is set by the frame where the phone's buttons relabel. That's the largest frame difference within ±2 s of `game_start` in the phone video, found with ffmpeg `select='gt(scene,0.2)'`. For menu shots, use the recorders' start times.
-- **Layouts** (pixels in a 1920×1080 frame):
-  - FULL: TV at 0,0, 1920×1080.
-  - SPLIT: TV scaled to 1248×702 at x=48, y=189; phone frame at x=1336, y=300, with the phone video scaled to 536×241 inside it (tablet: 536×335).
-  - PIP: TV full, inset 760×342 at x=1112, y=690.
-  - QUAD: four 944×531 tiles with 16 px gaps.
+- **Times:** `in` may be absolute seconds or `event:<name>#<k>Â±<s>`, resolved from the take's event log and `recorders.json`.
+- **Phone sync:** the phone's offset to the TV is set by the frame where the phone's buttons relabel. That's the largest frame difference within Â±2 s of `game_start` in the phone video, found with ffmpeg `select='gt(scene,0.2)'`. For menu shots, use the recorders' start times.
+- **Layouts** (pixels in a 1920Ã—1080 frame):
+  - FULL: TV at 0,0, 1920Ã—1080.
+  - SPLIT: TV scaled to 1248Ã—702 at x=48, y=189; phone frame at x=1336, y=300, with the phone video scaled to 536Ã—241 inside it (tablet: 536Ã—335).
+  - PIP: TV full, inset 760Ã—342 at x=1112, y=690.
+  - QUAD: four 944Ã—531 tiles with 16 px gaps.
   - Zoom: crop the TV video around the named board's centre (from the event log's board rectangles, or the puzzle's `SplitLayout` boxes) and scale back to the layout size.
-- **Pace rules from demo-video.md section 2** (checked by `edit.py`): no gameplay speed above 1.5×, no gameplay shot over 4 s without an event inside, 60 fps.
+- **Pace rules from demo-video.md section 2** (checked by `edit.py`): no gameplay speed above 1.5Ã—, no gameplay shot over 4 s without an event inside, 60 fps.
 
 ### 5.4 Render
 `tools/demo/graphics/edit.py` reads `edl.json` and builds each shot with ffmpeg:
@@ -703,14 +710,14 @@ Then concatenate the shots (concat demuxer), mix the music (5.2), apply loudnorm
 
 ### 5.5 Cutdowns
 `edit.py --cut recruiter|sizzle|vertical|pairing` builds each cut from the same EDL, with the shot lists in demo-video.md section 7.
-- **In scope now:** the master (5.4) and `--cut recruiter` → `thumb-party-demo-60s.mp4`.
+- **In scope now:** the master (5.4) and `--cut recruiter` â†’ `thumb-party-demo-60s.mp4`.
 - **Later, only if the owner asks:** `sizzle`, `vertical` and `pairing` (`-45s.mp4`, `-vertical.mp4`, `-pairing.mp4`). Build `edit.py` so they work, but don't render them.
-- Vertical (1080×1920): phone video scaled to 1080 wide, centred at y=1000; TV tile 1080×608 at y=120; captions at y=1650.
+- Vertical (1080Ã—1920): phone video scaled to 1080 wide, centred at y=1000; TV tile 1080Ã—608 at y=120; captions at y=1650.
 - **Preview copies:** after the final checks, copy the master and the 60 s cut to the harness's own workspace for preview. The originals stay in `$WORK/renders/`.
 
 ### 5.6 Final checks
-1. `ffprobe` on each render: the expected size, 60 fps, AAC, length within ±1 s of the plan.
-2. Loudness: `ffmpeg -i <render> -af ebur128 -f null -` gives an integrated level of −14 ±1 LUFS.
+1. `ffprobe` on each render: the expected size, 60 fps, AAC, length within Â±1 s of the plan.
+2. Loudness: `ffmpeg -i <render> -af ebur128 -f null -` gives an integrated level of âˆ’14 Â±1 LUFS.
 3. Contact sheet of each render at one frame per second (`$WORK/qa/render_<cut>_sheet.png`). Read it: captions readable, nothing overlapping scores, no debug UI, the disclosure line present.
 4. Number audit: list every number shown on screen and its source (report.txt row, Latency screen, `tools/check.sh` output for the test count, `git tag | wc -l` for tags). Write it to `$WORK/qa/numbers.md`.
 5. Claims audit: nothing from demo-video.md section 4's "Claims to keep accurate" is broken. In particular, no "finds your TV automatically", no phone-only hosting, no M13 features.
@@ -728,15 +735,15 @@ Then concatenate the shots (concat demuxer), mix the music (5.2), apply loudnorm
 
 Kept so the agent understands the `activeMs` and `open_minutes` fields it relies on. **Don't execute these steps.**
 
-### A.1 Sounds (follow `INSTALL.md` §1 to §3 exactly)
+### A.1 Sounds (follow `INSTALL.md` Â§1 to Â§3 exactly)
 1. Copy **only** these ten files from `C:\Users\singh\Documents\deepseek-harness\default-workspace\thumb-party-audio\final\palette-b-bubble-pop\` to `assets\audio\`, overwriting: `hit.ogg success.ogg error.ogg rumble.ogg snap.ogg wrong.ogg tick.ogg pickup.ogg time_up.ogg help.ogg`. **Don't copy** `lobby.ogg`, `countdown.ogg` or `player_joined.ogg`.
    ```bash
    SRC="/c/Users/singh/Documents/deepseek-harness/default-workspace/thumb-party-audio/final/palette-b-bubble-pop"
    for n in hit success error rumble snap wrong tick pickup time_up help; do cp "$SRC/$n.ogg" "$REPO/assets/audio/$n.ogg"; done
    ls "$REPO/assets/audio"   # Expect exactly the ten names, .ogg
    ```
-2. In `assets/CREDITS.md`, replace the ten existing `audio/*.ogg` rows with the ten rows in `INSTALL.md` §2. Keep the table's other rows and the rest of the file unchanged.
-3. Add the generator to the repository: copy `thumb-party-audio\render.py` to `tools/audio/render.py`. Add a 3-line header comment saying it needs `numpy`, writes WAV masters, and that the shipping `.ogg` files are encoded with the ffmpeg command in INSTALL.md §4. Also copy `INSTALL.md` §4 (the encode and duration-check commands) into `tools/audio/README.md`.
+2. In `assets/CREDITS.md`, replace the ten existing `audio/*.ogg` rows with the ten rows in `INSTALL.md` Â§2. Keep the table's other rows and the rest of the file unchanged.
+3. Add the generator to the repository: copy `thumb-party-audio\render.py` to `tools/audio/render.py`. Add a 3-line header comment saying it needs `numpy`, writes WAV masters, and that the shipping `.ogg` files are encoded with the ffmpeg command in INSTALL.md Â§4. Also copy `INSTALL.md` Â§4 (the encode and duration-check commands) into `tools/audio/README.md`.
 4. Delete the untracked `kenney-audio/` folder at the repository root. It's unused; the old sounds came from it. Check first with `git status --short kenney-audio` (expect `??`).
 5. Check durations (Git Bash), comparing each with the table in `thumb-party-audio\README.md`:
    ```bash
@@ -782,10 +789,10 @@ Kept so the agent understands the `activeMs` and `open_minutes` fields it relies
    - In the group table, the column `minutes` shows the summed active minutes. Add a column `open min` right after it with the summed open minutes.
    - In the CSV, keep every existing column in place and append `open_minutes` at the end of the header and of each row. The `minutes` column now means active minutes.
    - The early-switch rule keeps using `ms` (time since the mode started), unchanged.
-4. `tv_test_app/lib/src/ui/stats_screen.dart` uses `ModeRow`, so per-mode figures follow automatically. Check every place it shows minutes per mode: they must show active minutes. The session line ("N min · …", from `durationS`) stays wall time.
-5. `docs/protocol.md` §(metrics `data`, the paragraph starting "`data` (defined in `packages/metrics`"): add `activeMs` (time near player activity: inputs, plus up to 5 s after the last one, and all of any hold) after `touches`. Add one sentence: hosts and the report fall back to `ms` when it's missing.
+4. `tv_test_app/lib/src/ui/stats_screen.dart` uses `ModeRow`, so per-mode figures follow automatically. Check every place it shows minutes per mode: they must show active minutes. The session line ("N min Â· â€¦", from `durationS`) stays wall time.
+5. `docs/protocol.md` Â§(metrics `data`, the paragraph starting "`data` (defined in `packages/metrics`"): add `activeMs` (time near player activity: inputs, plus up to 5 s after the last one, and all of any hold) after `touches`. Add one sentence: hosts and the report fall back to `ms` when it's missing.
 6. `docs/architecture.md`, "Milestone 9" section: one bullet "Active time (m11.3)" summarising the rule.
-7. **Tests** in `packages/metrics/test/metrics_test.dart`, in a new `group('active time', …)` modelled on the existing `SegmentRecorder` tests:
+7. **Tests** in `packages/metrics/test/metrics_test.dart`, in a new `group('active time', â€¦)` modelled on the existing `SegmentRecorder` tests:
    - (a) No input for 60 s gives activeMs 0.
    - (b) One tap at t=1000, read at t=60000, gives 5000.
    - (c) Taps at 1000 and 3000, read at 60000, gives 2000 + 5000 = 7000.

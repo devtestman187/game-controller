@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env bash
+#!/usr/bin/env bash
 # Drives the phone app on an Android emulator (or a phone on adb) for checks:
 # start the emulator, install with cleared data, connect to a TV app, list
 # what's on screen, tap by name or position, take screenshots.
@@ -15,6 +15,7 @@
 #   tools/emulator.sh hold 828 596 2300    # touch and hold for 2300 ms
 #   tools/emulator.sh text "hello"; tools/emulator.sh key enter|back|<keycode>
 #   tools/emulator.sh shot out.png         # screenshot (pixels match tap coordinates)
+#   tools/emulator.sh capture-size on|off # render at 810x1800 @315 (same dp, 44% fewer pixels)
 #   tools/emulator.sh stop                 # shut the emulator down
 #
 # The app reconnects to the last TV it paired with, which may be someone's
@@ -27,6 +28,12 @@ export MSYS_NO_PATHCONV=1 # Git Bash: leave /sdcard/... paths alone
 cd "$(dirname "$0")/.." || exit 2
 root="$(pwd)"
 app=com.thumbparty.app
+
+# Phone render size for captures: the emulator window is about 878x427 on the host,
+# so filling 1080x2400 is wasted. 810x1800 at density 315 keeps the same dp layout
+# (411x914 dp) with 44% fewer pixels to draw. Reset after every take, pass or fail.
+capture_size=810x1800
+capture_density=315
 
 die() { echo "emulator: $1" >&2; exit "${2:-2}"; }
 winpath() { if command -v cygpath > /dev/null 2>&1; then cygpath -w "$1"; else echo "$1"; fi; }
@@ -100,7 +107,27 @@ case "${1:-}" in
     done
     die "didn't finish booting in 6 minutes" 1
     ;;
-  stop) a emu kill ;;
+  stop)
+    # Never leave the render override behind, even if a take failed.
+    a shell wm size reset > /dev/null 2>&1 || true
+    a shell wm density reset > /dev/null 2>&1 || true
+    a emu kill
+    ;;
+  capture-size)
+    case "${2:-on}" in
+      on)
+        a shell wm size "$capture_size" || die "wm size failed" 1
+        a shell wm density "$capture_density" || die "wm density failed" 1
+        echo "capture size $capture_size at density $capture_density"
+        ;;
+      off)
+        a shell wm size reset || die "wm size reset failed" 1
+        a shell wm density reset || die "wm density reset failed" 1
+        echo "capture size reset"
+        ;;
+      *) die "usage: capture-size [on|off]" ;;
+    esac
+    ;;
   install)
     build=0
     if [ "${2:-}" = --build ]; then
