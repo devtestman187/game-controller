@@ -423,9 +423,12 @@ Record the commit hash: `git -C $REPO rev-parse --short HEAD`. Every footage fil
 ### 2.6 OBS set-up (scripted, no GUI clicks)
 1. Start OBS once, minimised, so it creates its config, then close it with the PID you recorded (step 2.7 starts it the same way):
    ```bash
-   "/c/Program Files/obs-studio/bin/64bit/obs64.exe" --minimize-to-tray --disable-shutdown-check --multi &
+   (cd "/c/Program Files/obs-studio/bin/64bit" && ./obs64.exe --minimize-to-tray --disable-shutdown-check --multi) &
    ```
-   Wait 10 s, then `taskkill //PID <pid>`. Only that PID.
+   - **OBS must be started from its own folder** (`C:\Program Files\obs-studio\bin\64bit`), every time, by every script (in Dart: `Process.start(..., workingDirectory: r'C:\Program Files\obs-studio\bin\64bit')`). Started from anywhere else, it stops at a hidden error dialog, "Failed to find locale/en-US.ini", and never starts its websocket server (verified Nov 3, 2026). A main window titled "Error" means this happened.
+   - Before the first start, set `FirstRun=false` under `[General]` in `%APPDATA%\obs-studio\user.ini` and `global.ini`, so the set-up wizard doesn't block a scripted start.
+   - OBS 33 keeps the websocket plugin in `C:\Program Files\obs-studio\core\obs-websocket\`, not `obs-plugins`.
+   - To close OBS: `StopRecord` if recording, then `taskkill //PID <pid>` **without** `/F` (a normal close, which OBS doesn't treat as a crash). Use `/F` only if it hasn't exited after 10 s, and report that. obs-websocket 5 has no Quit request.
 2. Write the obs-websocket config `C:\Users\singh\AppData\Roaming\obs-studio\plugin_config\obs-websocket\config.json` (back up any existing file to `$WORK/backup/` first):
    ```json
    {"alerts_enabled": false, "auth_required": true, "first_load": false, "server_enabled": true, "server_password": "<random 24 chars, saved to $WORK/backup/obs-password.txt>", "server_port": 4455}
