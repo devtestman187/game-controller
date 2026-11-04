@@ -65,9 +65,7 @@ bool FlutterWindow::OnCreate() {
                    WS_MAXIMIZEBOX | WS_SYSMENU);
         style |= WS_POPUP;
         SetWindowLongPtr(window, GWL_STYLE, style);
-        // Topmost as well: the taskbar is always on top, and a borderless
-        // window at the display's size must cover it to fill the frame.
-        SetWindowPos(window, HWND_TOPMOST, 0, 0, width, height,
+        SetWindowPos(window, HWND_TOP, 0, 0, width, height,
                      SWP_FRAMECHANGED | SWP_SHOWWINDOW);
         SetForegroundWindow(window);
         result->Success(flutter::EncodableValue(true));
