@@ -483,7 +483,9 @@ class _ControllerTile extends StatelessWidget {
     final icon = switch (info.platform) {
       'ios' => Icons.phone_iphone,
       'android' => Icons.phone_android,
-      'sim' => Icons.smart_toy_outlined,
+      // The demo video's bots (docs/demo-video-runbook.md 2.3) use their own
+      // platform string and show the same robot as the built-in simulators.
+      'sim' || 'bot' => Icons.smart_toy_outlined,
       _ => Icons.devices_other,
     };
     final rtt = info.rttMs;

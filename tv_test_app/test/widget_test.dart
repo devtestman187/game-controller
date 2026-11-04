@@ -1511,6 +1511,14 @@ void m11() {
     }
   });
 
+  testWidgets('a bot controller shows the robot icon, like a simulator', (tester) async {
+    final fake = await pumpApp(tester);
+    fake.state = withController(fake.state, phoneInfo('bot1', 2, platform: 'bot'));
+    fake.emit();
+    await tester.pump();
+    expect(find.byIcon(Icons.smart_toy_outlined), findsOneWidget);
+  });
+
   testWidgets('simulated controllers never work the menus', (tester) async {
     final fake = await pumpApp(tester);
     final host = fake.gameHost;
