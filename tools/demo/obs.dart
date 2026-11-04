@@ -16,7 +16,8 @@ import 'package:crypto/crypto.dart';
 Future<void> main(List<String> args) async {
   if (args.isEmpty) {
     stderr.writeln(
-      'usage: obs.dart <launch|setup|prepare|record|stop-record|quit> [--password-file f] [--seconds n]',
+      'usage: obs.dart <launch|setup|both|prepare|fit|record|stop-record|quit> '
+      '[--password-file f] [--seconds n]',
     );
     exit(2);
   }
@@ -57,6 +58,23 @@ Future<void> main(List<String> args) async {
       case 'prepare':
         await client.prepare(arg('screenshot', 'obs_phone_check.png'));
         stdout.writeln('obs: Phone scene ready');
+      case 'both':
+        await client.setUpBoth();
+        stdout.writeln('obs: Both scene ready');
+      case 'canvas':
+        await client.setCanvas(
+          int.parse(arg('width', '3840')),
+          int.parse(arg('height', '1080')),
+        );
+        stdout.writeln('obs: canvas set');
+      case 'shot':
+        await client.screenshot(
+          arg('source', 'Both'),
+          arg('out', 'shot.png'),
+          int.parse(arg('width', '3840')),
+          int.parse(arg('height', '1080')),
+        );
+        stdout.writeln('obs: screenshot ${arg('out', 'shot.png')}');
       case 'fit':
         await client.fitPhone(
           double.parse(arg('width', '1920')),
@@ -242,6 +260,145 @@ class ObsClient {
         'boundsWidth': 1200,
         'boundsHeight': 540,
         'alignment': 5,
+      },
+    });
+  }
+
+  Future<void> setCanvas(int width, int height) async {
+    await request('SetVideoSettings', {
+      'baseWidth': width,
+      'baseHeight': height,
+      'outputWidth': width,
+      'outputHeight': height,
+      'fpsNumerator': 60,
+      'fpsDenominator': 1,
+    });
+  }
+
+  Future<void> screenshot(
+    String source,
+    String path,
+    int width,
+    int height,
+  ) async {
+    final shot = await request('GetSourceScreenshot', {
+      'sourceName': source,
+      'imageFormat': 'png',
+      'imageWidth': width,
+      'imageHeight': height,
+      'imageCompressionQuality': 80,
+    });
+    File(path).writeAsBytesSync(
+      base64.decode((shot['imageData'] as String? ?? '').split(',').last),
+    );
+  }
+
+  /// One 3840x1080 canvas: the TV window on the left, the phone window on the
+  /// right. Recording both in one file keeps them frame-exact; the recorder
+  /// crops the halves into the `<shot>_take<N>_tv.mkv` / `_phone.mkv` files.
+  Future<void> setUpBoth() async {
+    await request('SetVideoSettings', {
+      'baseWidth': 3840,
+      'baseHeight': 1080,
+      'outputWidth': 3840,
+      'outputHeight': 1080,
+      'fpsNumerator': 60,
+      'fpsDenominator': 1,
+    });
+    try {
+      await request('CreateScene', {'sceneName': 'Both'});
+    } on ObsError {
+      // Already exists.
+    }
+    await _ensureSource('Both', 'tv', 'window_capture');
+    await _ensureSource('Both', 'phone', 'window_capture');
+    await _setWindow('tv', const ['thumbpartytv.exe']);
+    await _setWindow('phone', const ['qemu-system', 'android emulator']);
+    await _place('Both', 'tv', 960, 540, 1920, 1080);
+    await _place('Both', 'phone', 2880, 540, 1920, 1080);
+    await request('SetCurrentProgramScene', {'sceneName': 'Both'});
+    await Future<void>.delayed(const Duration(milliseconds: 700));
+  }
+
+  Future<void> _ensureSource(String scene, String input, String kind) async {
+    final list = await request('GetSceneItemList', {'sceneName': scene});
+    for (final raw in (list['sceneItems'] as List?) ?? const []) {
+      if ((raw as Map)['sourceName'] == input) return;
+    }
+    try {
+      await request('CreateInput', {
+        'sceneName': scene,
+        'inputName': input,
+        'inputKind': kind,
+        'inputSettings': {'capture_cursor': false, 'method': 2},
+        'sceneItemEnabled': true,
+      });
+    } on ObsError {
+      // The input exists in another scene; just add it to this one.
+      await request('CreateSceneItem', {
+        'sceneName': scene,
+        'sourceName': input,
+        'sceneItemEnabled': true,
+      });
+    }
+  }
+
+  Future<void> _setWindow(String input, List<String> patterns) async {
+    final props = await request('GetInputPropertiesListPropertyItems', {
+      'inputName': input,
+      'propertyName': 'window',
+    });
+    final items = (props['propertyItems'] as List?) ?? const [];
+    Map<String, dynamic>? chosen;
+    for (final raw in items) {
+      final item = (raw as Map).cast<String, dynamic>();
+      final name = (item['itemName'] as String? ?? '').toLowerCase();
+      if (patterns.any(name.contains)) {
+        chosen = item;
+        break;
+      }
+    }
+    if (chosen == null) {
+      stderr.writeln('obs: no window for $input; windows:');
+      for (final raw in items) {
+        stderr.writeln('  ${(raw as Map)['itemName']}');
+      }
+      throw ObsError('window not found for $input');
+    }
+    stdout.writeln('obs: $input <- ${chosen['itemName']}');
+    await request('SetInputSettings', {
+      'inputName': input,
+      'inputSettings': {
+        'window': chosen['itemValue'],
+        'window_priority': 2,
+      },
+      'overlay': true,
+    });
+  }
+
+  Future<void> _place(
+    String scene,
+    String input,
+    double x,
+    double y,
+    double width,
+    double height,
+  ) async {
+    final item = await request('GetSceneItemId', {
+      'sceneName': scene,
+      'sourceName': input,
+    });
+    await request('SetSceneItemTransform', {
+      'sceneName': scene,
+      'sceneItemId': item['sceneItemId'],
+      'sceneItemTransform': {
+        'positionX': x,
+        'positionY': y,
+        'boundsType': 'OBS_BOUNDS_SCALE_INNER',
+        'boundsWidth': width,
+        'boundsHeight': height,
+        'alignment': 0,
+        'rotation': 0,
       },
     });
   }
