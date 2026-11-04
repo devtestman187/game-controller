@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'src/demo/demo_flags.dart';
+import 'src/demo/demo_live.dart';
 import 'src/demo/demo_window.dart';
 import 'src/providers.dart';
 import 'src/ui/controller_menus.dart';
@@ -15,7 +16,10 @@ Future<void> main() async {
   // own sessions folder, so the owner's pairings, consent and settings are
   // never touched, and a borderless full-screen window. Store builds never set
   // DEMO_DIRECTOR, so none of this runs there.
-  if (demoDirector) SharedPreferences.setPrefix('demo.');
+  if (demoDirector) {
+    SharedPreferences.setPrefix('demo.');
+    installDemoLive();
+  }
   final prefs = await SharedPreferences.getInstance();
   if (demoDirector) {
     WidgetsBinding.instance.addPostFrameCallback((_) => demoFullScreen());

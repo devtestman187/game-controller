@@ -40,6 +40,15 @@ final puzzleWatchLayout = GameLayoutMessage(
   },
 );
 
+/// For the demo director only; null in every normal run. Called once, right
+/// after the match the view runs is created or received
+/// (docs/demo-video-runbook.md 2.2).
+void Function(PuzzleMatch match)? onPuzzleMatchCreated;
+
+/// For the demo director only; null in every normal run. Called when the view
+/// running that match goes away.
+void Function(PuzzleMatch match)? onPuzzleMatchDisposed;
+
 /// Plays one match through the game host (PRD v2 P3): every player on a
 /// side drives a dot on their side's board, events become haptics and
 /// sounds by name (S5), each phone shows the puzzle's button labels and a
@@ -102,6 +111,7 @@ class PuzzlePlayViewState extends State<PuzzlePlayView> with SingleTickerProvide
   @override
   void initState() {
     super.initState();
+    onPuzzleMatchCreated?.call(match);
     _record(
       'round_start',
       data: {
@@ -123,6 +133,7 @@ class PuzzlePlayViewState extends State<PuzzlePlayView> with SingleTickerProvide
 
   @override
   void dispose() {
+    onPuzzleMatchDisposed?.call(match);
     _ticker.dispose();
     for (final id in _withStatus) {
       widget.host.setStatus(id, StatusMessage.hidden());

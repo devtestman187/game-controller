@@ -26,6 +26,15 @@ const arenaGame = 'arena';
 /// The arena's buttons on the phone: the usual ones, with Start to pause (M11).
 final arenaLayout = GameLayoutMessage(labels: {ControllerButton.start: 'Pause'});
 
+/// For the demo director only; null in every normal run. Called once, right
+/// after the game the view runs is created or received (docs/demo-video-runbook.md
+/// 2.2).
+void Function(ArenaGame game)? onArenaGameCreated;
+
+/// For the demo director only; null in every normal run. Called when the view
+/// running that game goes away.
+void Function(ArenaGame game)? onArenaGameDisposed;
+
 /// Plays [ArenaGame] full size: the field fills the space it's given and
 /// follows it when the window resizes. A bar on top shows the round, the
 /// timer and each player's counters.
@@ -84,11 +93,13 @@ class _ArenaViewState extends State<ArenaView> with SingleTickerProviderStateMix
   @override
   void initState() {
     super.initState();
+    onArenaGameCreated?.call(_game);
     _ticker.start();
   }
 
   @override
   void dispose() {
+    onArenaGameDisposed?.call(_game);
     _ticker.dispose();
     if (_frames > 0) _record('frames', data: {'drawn': _frames, 'late': _late});
     super.dispose();
