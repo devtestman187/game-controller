@@ -41,12 +41,36 @@ Future<void> main(List<String> args) async {
   await injector.open();
   stdout.writeln('touch driver: injecting into $eventDevice on $serial');
 
+  // Gyro mode (2.4 Step D): the emulator console's virtual sensors, on the
+  // emulator's console port (emulator-5554 -> 5554).
+  GyroSensors? gyro;
+  if (layout.mode == 'gyro') {
+    final consolePort = int.tryParse(serial.split('-').last) ?? 5554;
+    final token =
+        File(
+          '${Platform.environment['USERPROFILE']}\\.emulator_console_auth_token',
+        ).existsSync()
+        ? File(
+            '${Platform.environment['USERPROFILE']}\\.emulator_console_auth_token',
+          ).readAsStringSync().trim()
+        : '';
+    gyro = GyroSensors(consolePort, token);
+    final ok = await gyro.connect();
+    stdout.writeln(
+      ok
+          ? 'touch driver: gyro sensors on the console'
+          : 'touch driver: no emulator console, gyro will not move',
+    );
+  }
+
   final driver = TouchDriver(
     layout: layout,
     injector: injector,
     log: TouchLog(logPath.isEmpty ? null : File(logPath)),
     random: Random(seed),
     humanModel: humanModel == 'stats',
+    serial: serial,
+    gyro: gyro,
   );
 
   await driver.connectDirector(directorUrl);
@@ -260,6 +284,8 @@ class TouchDriver {
     required this.log,
     required this.random,
     required this.humanModel,
+    required this.serial,
+    this.gyro,
   });
 
   final Layout layout;
@@ -268,10 +294,18 @@ class TouchDriver {
   final Random random;
   final bool humanModel;
 
+  /// The adb serial, for the one-off uiautomator lookups (the mode buttons).
+  final String serial;
+
+  /// The virtual sensors, only in gyro mode (2.4 Step D).
+  final GyroSensors? gyro;
+
   ServerSocket? _server;
   Map<String, dynamic>? _intent;
   DateTime _lastIntent = DateTime.fromMillisecondsSinceEpoch(0);
   bool _pageIsSymbols = true;
+  double _tiltX = 0;
+  double _tiltY = 0;
 
   final _finger1 = _Finger(1, 0);
   final _finger2 = _Finger(2, 1);
@@ -323,19 +357,37 @@ class TouchDriver {
 
   void _frame() {
     final intent = _intent;
-    if (intent == null ||
-        DateTime.now().difference(_lastIntent).inMilliseconds > 500) {
-      return;
+    final fresh =
+        intent != null &&
+        DateTime.now().difference(_lastIntent).inMilliseconds <= 500;
+    if (layout.mode == 'gyro') {
+      // The sensors must stream even before the scene starts: the app checks
+      // for live gyro samples the moment its Gyro button is tapped, and a
+      // single reading before that subscribe is not enough.
+      final x = fresh ? ((intent['x'] as num?)?.toDouble() ?? 0) : _tiltX;
+      final y = fresh ? ((intent['y'] as num?)?.toDouble() ?? 0) : _tiltY;
+      _tiltX = x;
+      _tiltY = y;
+      // No finger: the steering vector becomes a tilt, sent to the emulator's
+      // virtual sensors so the app reads it like a real tilt.
+      gyro?.set(x, y);
+      log.tilt(x, y);
     }
-    final stick = layout.controls['ls'];
-    if (stick != null) {
-      final x = (intent['x'] as num?)?.toDouble() ?? 0;
-      final y = (intent['y'] as num?)?.toDouble() ?? 0;
-      final target = _screenPoint(
-        stick.x + x * stick.radius * 0.9,
-        stick.y + y * stick.radius * 0.9,
-      );
-      _finger1.moveTo(target, injector, log);
+    if (!fresh) return;
+    final x = (intent['x'] as num?)?.toDouble() ?? 0;
+    final y = (intent['y'] as num?)?.toDouble() ?? 0;
+    if (layout.mode != 'gyro') {
+      // A finger that is not down does not move: the first non-neutral intent
+      // has to put it down, and a neutral one lifts it. Sticks mode uses the
+      // left stick's circle; D-pad mode presses the arm for the direction.
+      final target = _leftTarget(x, y);
+      if (target == null) {
+        _finger1.up(injector, log);
+      } else if (!_finger1.down) {
+        _finger1.downAt(target, injector, log);
+      } else {
+        _finger1.moveTo(target, injector, log);
+      }
     }
     final buttons = (intent['buttons'] as List?)?.cast<String>() ?? const [];
     final pressed = buttons.isEmpty ? null : layout.controls[buttons.first];
@@ -344,6 +396,64 @@ class TouchDriver {
     } else if (!_finger2.down) {
       _finger2.downAt(_screenPoint(pressed.x, pressed.y), injector, log);
     }
+  }
+
+  /// Where the left finger has to be for the intent's (x, y): the stick's
+  /// deflection, or the D-pad arm for that direction. Null means neutral.
+  _Point? _leftTarget(double x, double y) {
+    final stick = layout.controls['ls'];
+    if (stick != null) {
+      if (x.abs() < 0.02 && y.abs() < 0.02) return null;
+      return _screenPoint(
+        stick.x + x * stick.radius * 0.9,
+        stick.y + y * stick.radius * 0.9,
+      );
+    }
+    final dpad = layout.controls['dpad'];
+    final left = layout.controls['left'];
+    if (dpad == null || left == null) return null;
+    final length = sqrt(x * x + y * y);
+    if (length < 0.2) return null;
+    final arm = (left.x - dpad.x).abs();
+    return _screenPoint(
+      dpad.x + x / length * arm,
+      dpad.y + y / length * arm,
+    );
+  }
+
+  /// The centre of the on-screen button labelled [label], read with
+  /// uiautomator; null when the dump fails (the caller falls back to the
+  /// layout's point).
+  Future<Control?> _modeButton(String label) async {
+    final adb = Platform.environment['ADB'] ?? 'adb';
+    for (var attempt = 0; attempt < 3; attempt++) {
+      final dump = await Process.run(adb, [
+        '-s',
+        serial,
+        'shell',
+        'uiautomator',
+        'dump',
+        '/sdcard/mode.xml',
+      ]);
+      if (!(dump.stdout as String).contains('dumped to')) continue;
+      final xml = await Process.run(adb, [
+        '-s',
+        serial,
+        'exec-out',
+        'cat',
+        '/sdcard/mode.xml',
+      ]);
+      final match = RegExp(
+        'text="$label"[^>]*bounds="\\[(\\d+),(\\d+)\\]\\[(\\d+),(\\d+)\\]"',
+      ).firstMatch(xml.stdout as String);
+      if (match == null) return null;
+      final left = int.parse(match.group(1)!);
+      final top = int.parse(match.group(2)!);
+      final right = int.parse(match.group(3)!);
+      final bottom = int.parse(match.group(4)!);
+      return Control((left + right) / 2, (top + bottom) / 2);
+    }
+    return null;
   }
 
   Future<Map<String, dynamic>> _command(Map<String, dynamic> message) async {
@@ -374,7 +484,20 @@ class TouchDriver {
         };
       case 'mode':
         final button = 'mode.${message['to']}';
-        await _tap(layout.control(button), 90);
+        // The app checks for sensor samples when it enters Gyro: have the
+        // virtual sensors at the hold's angle before tapping the button.
+        if (message['to'] == 'gyro') gyro?.set(0, 0);
+        // The mode buttons shift sideways when the active mode adds its
+        // settings icon, so the layout's fixed point can land on the wrong
+        // segment. Find the button by its label and tap its centre.
+        final label = switch (message['to']) {
+          'dpad' => 'D-pad',
+          'gyro' => 'Gyro',
+          'sticks' => 'Sticks',
+          _ => '',
+        };
+        final found = label.isEmpty ? null : await _modeButton(label);
+        await _tap(found ?? layout.control(button), 90);
         await Future<void>.delayed(const Duration(milliseconds: 400));
         return {'ok': true};
       case 'wait':
@@ -560,8 +683,101 @@ class _Finger {
   }
 }
 
-/// `{"wall":Ã¢â‚¬Â¦,"fingers":[{"id":Ã¢â‚¬Â¦,"x":Ã¢â‚¬Â¦,"y":Ã¢â‚¬Â¦}]}` per frame, as 2.4 Step C
-/// documents. The log is append-only JSON lines.
+/// The emulator console's virtual sensors (2.4 Step D): at 60 Hz a tilt of
+/// -1..1 on each axis becomes gravity rotated by up to 35 degrees and the
+/// matching rotation rate, so the app reads it as a real tilt.
+///
+/// The phone is emulated held upright in landscape (screen tilted 45 degrees
+/// back, top edge up on the left): the app only detects which landscape side
+/// it is in when gravity points along the phone's long axis (`gx` well over
+/// half of g), and a flat phone leaves that undecided.
+class GyroSensors {
+  GyroSensors(this.port, this.token);
+
+  final int port;
+  final String token;
+  Socket? _socket;
+  List<double>? _previousUp;
+  DateTime _last = DateTime.now();
+
+  /// How far a full stick is tilted, in degrees.
+  static const tiltDegrees = 20.0;
+
+  /// The hold's pitch from upright: 45 degrees, so a full deflection either
+  /// way stays well inside the flat/vertical limits.
+  static const basePitch = 45.0 * pi / 180;
+
+  /// Opens the console and authenticates; false when the console is not there
+  /// (the take will then have no tilt).
+  Future<bool> connect() async {
+    try {
+      final socket = await Socket.connect(
+        InternetAddress.loopbackIPv4,
+        port,
+      ).timeout(const Duration(seconds: 3));
+      socket.cast<List<int>>().transform(utf8.decoder).listen((_) {});
+      _socket = socket;
+      await Future<void>.delayed(const Duration(milliseconds: 250));
+      if (token.isNotEmpty) {
+        socket.write('auth $token\r\n');
+        await Future<void>.delayed(const Duration(milliseconds: 250));
+      }
+      // A first sample, so the app's "is the gyro there?" check has one.
+      set(0, 0);
+      return true;
+    } on Object {
+      _socket = null;
+      return false;
+    }
+  }
+
+  /// The up vector in phone coordinates for a screen tilt: [x] rolls the
+  /// screen's right edge down, [y] pitches its top edge back. The mapping is
+  /// done in the screen's own axes (right, top, out) and then converted to
+  /// the phone's portrait axes for landscape-left (top of the phone on the
+  /// left): phone.x = top, phone.y = -right, phone.z = out.
+  static (double, double, double) _up(double x, double y) {
+    final roll = -x * tiltDegrees * pi / 180;
+    final pitch = basePitch + y * tiltDegrees * pi / 180;
+    final top = cos(roll) * cos(pitch);
+    final out = sin(pitch);
+    final right = sin(roll) * cos(pitch);
+    final length = sqrt(top * top + right * right + out * out);
+    return (top / length, -right / length, out / length);
+  }
+
+  void set(double x, double y) {
+    final socket = _socket;
+    if (socket == null) return;
+    final (ux, uy, uz) = _up(x.clamp(-1.0, 1.0), y.clamp(-1.0, 1.0));
+    final up = [ux, uy, uz];
+    final now = DateTime.now();
+    var dt = now.difference(_last).inMicroseconds / 1000000;
+    if (dt <= 0.001 || dt > 0.2) dt = 1 / 60;
+    _last = now;
+    // The rotation rate is the turn that takes the previous up to this one:
+    // in the app's own filter, dv/dt = v x w, so this is exact whatever the
+    // axis conventions are.
+    final w = <double>[0, 0, 0];
+    final previous = _previousUp;
+    if (previous != null) {
+      w[0] = (previous[1] * up[2] - previous[2] * up[1]) / dt;
+      w[1] = (previous[2] * up[0] - previous[0] * up[2]) / dt;
+      w[2] = (previous[0] * up[1] - previous[1] * up[0]) / dt;
+    }
+    _previousUp = up;
+    socket.write(
+      'sensor set acceleration ${(9.81 * up[0]).toStringAsFixed(3)}:${(9.81 * up[1]).toStringAsFixed(3)}:${(9.81 * up[2]).toStringAsFixed(3)}\r\n',
+    );
+    socket.write(
+      'sensor set gyroscope ${w[0].toStringAsFixed(3)}:${w[1].toStringAsFixed(3)}:${w[2].toStringAsFixed(3)}\r\n',
+    );
+  }
+}
+
+/// `{"wall":…,"fingers":[{"id":…,"x":…,"y":…}]}` per frame, as 2.4 Step C
+/// documents. The log is append-only JSON lines. A gyro frame logs its tilt
+/// instead, for the phone graphic in the edit.
 class TouchLog {
   TouchLog(this.file);
   final File? file;
@@ -575,6 +791,18 @@ class TouchLog {
     };
     file?.writeAsStringSync(
       '${jsonEncode(line)}\n',
+      mode: FileMode.append,
+      flush: true,
+    );
+  }
+
+  /// One gyro frame: the tilt the app will read, -1..1 per axis.
+  void tilt(double x, double y) {
+    file?.writeAsStringSync(
+      '${jsonEncode({
+        'wall': DateTime.now().millisecondsSinceEpoch,
+        'tilt': [x, y],
+      })}\n',
       mode: FileMode.append,
       flush: true,
     );

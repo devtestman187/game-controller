@@ -14,6 +14,7 @@ void main() {
     final director = DemoDirector(
       hostPort: 45780,
       pairingCode: () => '1234',
+      players: () => const [],
       live: DemoLive.instance,
       log: EventLog(take: 'test'),
       controlPort: 0,

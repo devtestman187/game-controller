@@ -31,6 +31,14 @@ final class PuzzleBrain {
   final double dotPx;
   final DemoLog? onEvent;
 
+  /// The controller id the seat is playing as (the game keys its players by
+  /// it). The director resolves it once the match exists: a scene calls the
+  /// phone seat `P1`, but the TV knows it as "Android phone 45D0".
+  String? playerId;
+
+  /// The id every player lookup uses.
+  String get id => playerId ?? seat;
+
   /// When this seat's side should finish, in ms after `game_start` (the
   /// scene's `pace`), so it idles between goals instead of running ahead.
   final int? paceFinishMs;
@@ -59,7 +67,7 @@ final class PuzzleBrain {
   /// TV menus.
   GamepadState step(PuzzleGame? game, double dt, {Set<String> events = const {}}) {
     if (_finished) return GamepadState.neutral;
-    final player = game?.player(seat);
+    final player = game?.player(id);
     if (player == null) return _menuStep(dt, events);
     return _playStep(game!, dt, events);
   }
@@ -92,7 +100,7 @@ final class PuzzleBrain {
   }
 
   GamepadState _playStep(PuzzleGame game, double dt, Set<String> events) {
-    final player = game.player(seat);
+    final player = game.player(id);
     if (player == null) return GamepadState.neutral;
     _elapsed += dt;
     _goalT += dt;
@@ -327,7 +335,7 @@ final class PuzzleBrain {
       return GamepadState.neutral;
     }
     final piece = game.pieces[index];
-    if (piece.carriers.contains(seat)) {
+    if (piece.carriers.contains(id)) {
       if (player.readyTarget == index) {
         final state = _move(
           player.pos,

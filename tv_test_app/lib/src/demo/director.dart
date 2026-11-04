@@ -21,6 +21,7 @@ final class DemoDirector {
   DemoDirector({
     required this.hostPort,
     required this.pairingCode,
+    required this.players,
     required this.live,
     required this.log,
     this.controlPort = 47900,
@@ -33,6 +34,11 @@ final class DemoDirector {
   /// drop connections) and after wrong-code attempts, so this is read at the
   /// moment a bot connects, never cached.
   final String Function() pairingCode;
+
+  /// Who is connected right now. Scene seats are named `P1` and `Bot 2`, but
+  /// the games key their players by controller id; a seat is mapped to the
+  /// player with its number (and bots to their own known ids).
+  final List<GamePlayer> Function() players;
 
   /// The games on screen right now.
   final DemoLive live;
@@ -180,6 +186,22 @@ final class DemoDirector {
     _timer = Timer.periodic(const Duration(microseconds: 16667), _frame);
   }
 
+  /// The controller id behind a scene seat: `Bot N` is the director's own bot
+  /// (paired as `demo-bot-n`), `P<number>` is whichever controller the TV gave
+  /// that number. Null before that player is here.
+  String? _playerId(String seat) {
+    if (seat.startsWith('Bot ')) {
+      return 'demo-${seat.toLowerCase().replaceAll(' ', '-')}';
+    }
+    final parsed = RegExp(r'^P(\d+)$').firstMatch(seat);
+    if (parsed == null) return null;
+    final number = int.parse(parsed.group(1)!);
+    for (final player in players()) {
+      if (player.number == number) return player.id;
+    }
+    return null;
+  }
+
   /// One frame: every seat's brain plans, bots send it as input, and the phone
   /// seat's intent goes to the touch driver.
   void _frame(Timer timer) {
@@ -190,12 +212,17 @@ final class DemoDirector {
     final arena = live.arena;
 
     for (final MapEntry(key: seat, value: s) in scene.seats.entries) {
+      final id = _playerId(seat);
       GamepadState? pad;
       if (scene.game == 'puzzle') {
-        final game = match?.gameFor(seat);
-        pad = _puzzleBrains[seat]?.step(game, dt);
+        final brain = _puzzleBrains[seat];
+        if (brain != null && id != null) brain.playerId = id;
+        final game = id == null ? null : match?.gameFor(id);
+        pad = brain?.step(game, dt);
       } else if (arena != null) {
-        pad = _arenaBrains[seat]?.step(arena, dt);
+        final brain = _arenaBrains[seat];
+        if (brain != null && id != null) brain.playerId = id;
+        pad = brain?.step(arena, dt);
       }
       if (pad == null) continue;
       final bot = _bots[seat];

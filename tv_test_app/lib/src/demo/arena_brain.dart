@@ -17,13 +17,19 @@ final class ArenaBrain {
   final double dotPx;
   final Steer _steer;
 
+  /// The controller id the seat is playing as; the director resolves it once
+  /// the arena exists (the scene's `P1` is the TV's "Android phone 45D0").
+  String? playerId;
+
+  String get id => playerId ?? seat;
+
   Offset? _lastPos;
   double _stuckS = 0;
   double _backOffS = 0;
   Offset _backOffDir = Offset.zero;
 
   GamepadState step(ArenaGame game, double dt) {
-    final me = game.player(seat);
+    final me = game.player(id);
     if (me == null) return GamepadState.neutral;
     final at = me.position;
     final goal = game.goalRect.center;
