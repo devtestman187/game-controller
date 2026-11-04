@@ -302,7 +302,7 @@ class ObsClient {
   /// One 3840x1080 canvas: the TV window on the left, the phone window on the
   /// right. Recording both in one file keeps them frame-exact; the recorder
   /// crops the halves into the `<shot>_take<N>_tv.mkv` / `_phone.mkv` files.
-  Future<void> setUpBoth([int width = 3840, int height = 1080]) async {
+  Future<void> setUpBoth([int width = 3840, int height = 1080, String? phoneAvd]) async {
     await request('SetVideoSettings', {
       'baseWidth': width,
       'baseHeight': height,
@@ -319,7 +319,10 @@ class ObsClient {
     await _ensureSource('Both', 'tv', 'window_capture');
     await _ensureSource('Both', 'phone', 'window_capture');
     await _setWindow('tv', const ['thumbpartytv.exe']);
-    await _setWindow('phone', const ['android emulator -']);
+    await _setWindow('phone', [
+      'android emulator -',
+      if (phoneAvd != null) phoneAvd.toLowerCase(),
+    ]);
     await _place(
       'Both',
       'tv',
@@ -363,6 +366,10 @@ class ObsClient {
     }
   }
 
+  /// Points the window capture at the running window whose title contains
+  /// every one of [patterns]. OBS lists stale window titles too (an emulator
+  /// that has quit stays in its list), so one loose pattern can bind a dead
+  /// window and record a black half.
   Future<void> _setWindow(String input, List<String> patterns) async {
     final props = await request('GetInputPropertiesListPropertyItems', {
       'inputName': input,
@@ -373,13 +380,13 @@ class ObsClient {
     for (final raw in items) {
       final item = (raw as Map).cast<String, dynamic>();
       final name = (item['itemName'] as String? ?? '').toLowerCase();
-      if (patterns.any(name.contains)) {
+      if (patterns.every(name.contains)) {
         chosen = item;
         break;
       }
     }
     if (chosen == null) {
-      stderr.writeln('obs: no window for $input; windows:');
+      stderr.writeln('obs: no window for $input (want ${patterns.join(' + ')}); windows:');
       for (final raw in items) {
         stderr.writeln('  ${(raw as Map)['itemName']}');
       }

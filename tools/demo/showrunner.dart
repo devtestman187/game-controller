@@ -184,6 +184,13 @@ class Showrunner {
     final pairOnCamera = shot == 'P2' || shot == 'P4';
     if (phone && !pairOnCamera) {
       await pair(_driverClient!, port, code);
+      // The app opens in D-pad on a phone and Sticks on a tablet, and a
+      // reconnect can leave it on Gyro, so set the shot's mode after pairing
+      // and before recording (the switch is on the controller screen).
+      final reply = await _driverClient!.send({'cmd': 'mode', 'to': mode});
+      if (reply['ok'] != true) {
+        throw StateError('could not set $mode mode: $reply');
+      }
     }
     if (phone && pairOnCamera) {
       // A known keyboard page before recording: no visible extra touches.
@@ -221,6 +228,7 @@ class Showrunner {
       both: both,
       tv: tv,
       window: window,
+      phoneAvd: both ? avd : null,
       takeName: takeName,
     );
     final recorders = {
@@ -490,7 +498,7 @@ class Showrunner {
       '--category',
       'com.android.internal.systemui.navbar.gestural',
     ]);
-    stdout.writeln('emulator: $serial at 1800x810@315, landscape');
+    stdout.writeln('emulator: $serial at $size@$density, landscape');
   }
 
   Future<void> launchApp() async {
@@ -606,6 +614,7 @@ class Showrunner {
     required bool both,
     required bool tv,
     String? window,
+    String? phoneAvd,
     required String takeName,
   }) async {
     _obsClient = await observe();
@@ -622,7 +631,7 @@ class Showrunner {
         });
         await obs.request('SetCurrentProgramScene', {'sceneName': window});
       } else if (both) {
-        await obs.setUpBoth(3840, 1080);
+        await obs.setUpBoth(3840, 1080, phoneAvd);
       } else {
         await obs.setCanvas(1920, 1080);
         // The collection names the TV-window scene either TV (2.6) or, in the

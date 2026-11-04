@@ -112,17 +112,19 @@ Future<QaResult> runQa({
     data['tvFps'] = tvFps;
     check('tv fps', tvFps >= 59, '${tvFps.toStringAsFixed(1)} (want >= 59)');
 
-    // Phone half: the Nov 4 method (mpdecimate hi=1:lo=1:frac=0). A gameplay
-    // shot is measured on the left stick's crop over the take; P2/P4 have no
+    // Phone half: the Nov 4 method (mpdecimate hi=1:lo=1:frac=0). A stick-mode
+    // shot is measured on the left stick's crop over the take. P2/P4 have no
     // sticks, so their whole half is measured over the first 12 s, where the
-    // typing and pairing happen (the tail is a static controller screen).
+    // typing and pairing happen (the tail is a static controller screen); M1
+    // (D-pad) and M2 (gyro) have no sticks either, but move for the whole
+    // take, so their whole half is measured from the start.
     final moving = shotIsGameplay(shot);
-    final hasSticks = shot != 'P2' && shot != 'P4';
+    final hasSticks = shot != 'P2' && shot != 'P4' && shot != 'M1' && shot != 'M2';
     final phoneFps = await phoneHalfFps(
       both.path,
       master.duration,
       stick: hasSticks,
-      start: hasSticks ? 0 : 2,
+      start: hasSticks ? 0 : (shot == 'P2' || shot == 'P4' ? 2 : 0),
       window: hasSticks ? null : 12,
     );
     final phoneWholeFps = hasSticks
