@@ -438,15 +438,20 @@ class Showrunner {
     if (!await adb.isBooted()) throw StateError('$serial did not boot');
     await adb.root();
     if (!await adb.isRoot()) throw StateError('adb root did not take effect');
-    // The AVD panel is 2400x1080, so the capture size is the same 44%-fewer
-    // pixels as 810x1800, shot in landscape. Rotation stays at 0: the
-    // emulator's rotate path does not resize the guest display reliably, and a
-    // portrait display in a landscape window records sideways.
-    await adb.sh(['shell', 'wm', 'size', '1800x810']);
-    await adb.sh(['shell', 'wm', 'density', '315']);
-    final size = (await adb.sh(['shell', 'wm', 'size'])).stdout as String;
-    if (!size.contains('1800x810'))
-      throw StateError('wm size is not 1800x810: $size');
+    // The panel is already landscape (phone 2400x1080, tablet 2560x1600), so
+    // the capture size is the same dp layout at 75% of the panel, 44% fewer
+    // pixels, with no rotation (the emulator's rotate path does not resize the
+    // guest display, and a portrait display in a landscape window records
+    // sideways). Phone 1800x810@315 (914x411 dp); tablet 1920x1200@240
+    // (1280x800 dp).
+    final tablet = avd == 'm8_pixel_tablet';
+    final size = tablet ? '1920x1200' : '1800x810';
+    final density = tablet ? '240' : '315';
+    await adb.sh(['shell', 'wm', 'size', size]);
+    await adb.sh(['shell', 'wm', 'density', density]);
+    final reported = (await adb.sh(['shell', 'wm', 'size'])).stdout as String;
+    if (!reported.contains(size))
+      throw StateError('wm size is not $size: $reported');
     // No navigation bar over the keyboard's bottom row (P2 types on it).
     await adb.sh([
       'shell',

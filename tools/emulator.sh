@@ -15,7 +15,8 @@
 #   tools/emulator.sh hold 828 596 2300    # touch and hold for 2300 ms
 #   tools/emulator.sh text "hello"; tools/emulator.sh key enter|back|<keycode>
 #   tools/emulator.sh shot out.png         # screenshot (pixels match tap coordinates)
-#   tools/emulator.sh capture-size on|off # render at 1800x810 @315 (same dp, 44% fewer pixels)
+#   tools/emulator.sh capture-size on|off # render at the AVD's capture size: phone 1800x810 @315,
+#                                          # tablet 1920x1200 @240 (same dp, 44% fewer pixels)
 #   tools/emulator.sh stop                 # shut the emulator down
 #
 # The app reconnects to the last TV it paired with, which may be someone's
@@ -32,9 +33,12 @@ app=com.thumbparty.app
 # Phone render size for captures: the emulator window is about 930x450 on the host,
 # so filling 2400x1080 is wasted. 1800x810 at density 315 is the same 810x1800
 # panel in landscape (914x411 dp, 44% fewer pixels to draw). Reset after every
-# take, pass or fail.
+# take, pass or fail. The tablet's panel is 2560x1600 at 320 dpi, so its own
+# override is 1920x1200 at 240: the same 1280x800 dp layout, 44% fewer pixels.
 capture_size=1800x810
 capture_density=315
+tablet_capture_size=1920x1200
+tablet_capture_density=240
 
 die() { echo "emulator: $1" >&2; exit "${2:-2}"; }
 winpath() { if command -v cygpath > /dev/null 2>&1; then cygpath -w "$1"; else echo "$1"; fi; }
@@ -115,11 +119,18 @@ case "${1:-}" in
     a emu kill
     ;;
   capture-size)
+    # The override follows the AVD on the device: phone 1800x810@315,
+    # tablet 1920x1200@240.
+    avd_name="$(a emu avd name 2> /dev/null | head -1 | tr -d '\r')"
+    case "$avd_name" in
+      m8_pixel_tablet*) size="$tablet_capture_size"; density="$tablet_capture_density" ;;
+      *) size="$capture_size"; density="$capture_density" ;;
+    esac
     case "${2:-on}" in
       on)
-        a shell wm size "$capture_size" || die "wm size failed" 1
-        a shell wm density "$capture_density" || die "wm density failed" 1
-        echo "capture size $capture_size at density $capture_density"
+        a shell wm size "$size" || die "wm size failed" 1
+        a shell wm density "$density" || die "wm density failed" 1
+        echo "capture size $size at density $density ($avd_name)"
         ;;
       off)
         a shell wm size reset || die "wm size reset failed" 1
@@ -205,7 +216,7 @@ case "${1:-}" in
     echo "saved $2"
     ;;
   *)
-    sed -n '2,24p' "$0" | grep '^#' | sed 's/^# \{0,1\}//'
+    sed -n '2,25p' "$0" | grep '^#' | sed 's/^# \{0,1\}//'
     [ -z "${1:-}" ] && exit 0 || exit 2
     ;;
 esac

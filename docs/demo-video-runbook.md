@@ -383,6 +383,7 @@ It turns P1 intents into multi-touch on the emulator, and gyro intents into sens
   - **Diagnostics** (the scroll area);
   - the mode switch (D-pad, Gyro, Sticks).
 - **On-screen keyboard:** tap the address field, then the code field, and record from a screenshot the centre of every key needed to type an address and a 4-digit code: digits 0â€“9, `.`, `:`, backspace and Enter, on whichever keyboard Android shows for that field. If `.` or `:` are on a second keyboard page, record the page-switch key and the keys on that page. Store them in the same file under `"keyboard": {"address": {...}, "code": {...}}`.
+- **Which layouts exist:** the phone has all three modes; the tablet has **Sticks only**, because P4 and M4 (its two shots) are Sticks. `tools/demo/layouts/m8_pixel_tablet-sticks.json` was measured Nov 4, 2026 at the tablet capture size (1920x1200 at 240): stick and button centres from a controller screenshot, the Connect screen, code keypad and keyboard from uiautomator and screenshots. Its injection was verified with the pointer-location overlay (a raw tap at (162, 856) read back as X 162, Y 856) and by holding a finger at (282, 856), which deflected the left stick.
 
 **Step C, the driver:** `dart run tools/demo/touch_driver.dart --serial emulator-5554 --layout tools/demo/layouts/m7_android12-sticks.json --director ws://127.0.0.1:47900/director --log $WORK/logs/<take>_touch.jsonl [--human-model off|stats]`
 - It turns each `p1` intent into finger positions:
@@ -476,17 +477,19 @@ dart run tools/demo/showrunner.dart --shot G3 --take 2 [--scene tools/demo/scene
 ```
 It does these steps in order and stops at the first failure, with a clear message:
 1. **TV app:** if not running from an earlier shot, start `tv_test_app\build\windows\x64\runner\Profile\ThumbPartyTV.exe` and record its PID in `$WORK/logs/pids.txt`. Wait until `ws://127.0.0.1:47900/director` answers `hello`. Send `reset`.
-2. **Emulator** (when `--phone` or the scene has a P1 phone seat): if not running, start it as in 2.4 step A (port 5554 for the phone AVD, 5556 for the tablet AVD), then `adb root`. The AVD panel is 2400x1080 (landscape, `hw.lcd.width=2400`), so the display never has to be rotated: `wm size 1800x810` gives a landscape 1800x810 display and a landscape emulator window (`adb emu rotate` does not resize the guest display on this emulator, and a rotated display rendered into a non-rotated window records sideways). Put the app in immersive mode with gesture navigation (`settings put global policy_control immersive.full=com.thumbparty.app`, `cmd overlay enable-exclusive --category com.android.internal.systemui.navbar.gestural`) so no navigation bar sits over the keyboard. Install `app-profile.apk` if the installed version differs. Clear data (`adb shell pm clear com.thumbparty.app`), launch, start the touch driver, set the mode with its `mode` command, and pair:
+2. **Emulator** (when `--phone` or the scene has a P1 phone seat, or the shot is a tablet shot): if not running, start it as in 2.4 step A (port 5554 for the phone AVD, 5556 for the tablet AVD), then `adb root`. Both AVD panels are landscape already (phone 2400x1080, tablet 2560x1600), so the display never has to be rotated: `wm size` gives a landscape display and a landscape emulator window (`adb emu rotate` does not resize the guest display on this emulator, and a rotated display rendered into a non-rotated window records sideways). Put the app in immersive mode with gesture navigation (`settings put global policy_control immersive.full=com.thumbparty.app`, `cmd overlay enable-exclusive --category com.android.internal.systemui.navbar.gestural`) so no navigation bar sits over the keyboard. Install `app-profile.apk` if the installed version differs. Clear data (`adb shell pm clear com.thumbparty.app`), launch, start the touch driver, set the mode with its `mode` command, and pair:
    - **Filmed shots:** through the touch driver, tapping the on-screen keys at the layout's positions (`tools/demo/layouts/<avd>-<mode>.json`): the address field, then the text `10.0.2.2:<port>` at 180-260 ms per key, Enter, then the 4-digit code on the code keypad, then its submit key. This is how P2 and P4 look on screen.
    - **Unfilmed runs** (the stats sessions in Phase 4, and shots that start after pairing): `tools/emulator.sh connect 10.0.2.2:<port> <code>` (`ANDROID_SERIAL` set) is fine and faster.
-   - **Phone render size for takes:** run `tools/emulator.sh capture-size on` before the first take and
-     `capture-size off` after the last one - and in the failure path too (`tools/emulator.sh stop` also resets
-     both). The size and density are variables at the top of that script (1800x810 at density 315, the same
-     810x1800 panel in landscape). The emulator window is only about 930x450 on the host, so rendering
-     2400x1080 wastes GPU on pixels nobody sees; 1800x810 at density 315 keeps the same dp layout (914x411)
-     with 44% fewer pixels. Measured Nov 4, 2026 with the TV game live: the phone stick region went from
-     46-47 fps to 50.2 at the smaller size, so the recorder must check `wm size` reports `Override size:
-     1800x810` before recording. The 46-53 fps phone numbers in the handoff were measured at this size.
+   - **Capture render size for takes (both AVDs):** run `tools/emulator.sh capture-size on` before the first
+     take and `capture-size off` after the last one - and in the failure path too (`tools/emulator.sh stop` also
+     resets both). The script picks the size from the running AVD (the variables are at its top): phone
+     **1800x810 at density 315** (the same 810x1800 panel in landscape, 914x411 dp), tablet **1920x1200 at
+     density 240** (the same 1280x800 dp layout as its 2560x1600@320 panel). Both keep the identical dp layout
+     with 44% fewer pixels, because the emulator windows are only about 930x450 and 900x560 on the host, so
+     rendering the full panel wastes GPU on pixels nobody sees. Measured Nov 4, 2026 with the TV game live: the
+     phone stick region went from 46-47 fps to 50.2 at the smaller size, so the recorder must check `wm size`
+     reports `Override size: 1800x810` (phone) or `1920x1200` (tablet) before recording. The 46-53 fps phone
+     numbers in the handoff were measured at the phone size. The showrunner applies the same two pairs itself.
 
    Wait for `P1` on the TV (director `state`).
 3. **Bots:** send `bots` with the scene's count and wait for `bots_ready`.
