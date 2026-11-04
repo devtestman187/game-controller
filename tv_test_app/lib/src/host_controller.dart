@@ -13,6 +13,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'analytics.dart';
 import 'app_info.dart';
+import 'demo/demo_flags.dart';
 
 enum AdvertiseState { starting, advertising, failed }
 
@@ -422,9 +423,12 @@ void savePairings(SharedPreferences prefs, List<SavedPairing> pairings) =>
 
 /// Where the session summaries are kept: the app's own support folder.
 /// Debug builds use their own folder, so test sessions never mix with (or
-/// get uploaded by) a store build on the same PC.
+/// get uploaded by) a store build on the same PC. The demo video's scripted
+/// sessions get a third one, so they never reach anyone's real stats
+/// (docs/demo-video-runbook.md 2.1).
 Future<Directory> sessionDirectory() async => Directory(
-  '${(await getApplicationSupportDirectory()).path}${Platform.pathSeparator}${kDebugMode ? 'sessions-debug' : 'sessions'}',
+  '${(await getApplicationSupportDirectory()).path}${Platform.pathSeparator}'
+  '${demoDirector ? 'sessions-demo' : (kDebugMode ? 'sessions-debug' : 'sessions')}',
 );
 
 /// Where "Save log" puts its file. On Android TV that's the app's own folder
