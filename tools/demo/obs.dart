@@ -16,7 +16,7 @@ import 'package:crypto/crypto.dart';
 Future<void> main(List<String> args) async {
   if (args.isEmpty) {
     stderr.writeln(
-      'usage: obs.dart <setup|record|stop-record|quit> [--password-file f] [--seconds n]',
+      'usage: obs.dart <launch|setup|prepare|record|stop-record|quit> [--password-file f] [--seconds n]',
     );
     exit(2);
   }
@@ -24,6 +24,25 @@ Future<void> main(List<String> args) async {
   String arg(String name, String fallback) {
     final i = args.indexOf('--$name');
     return i >= 0 && i + 1 < args.length ? args[i + 1] : fallback;
+  }
+
+  if (command == 'launch') {
+    // OBS must start from its own folder, or it stops on a hidden
+    // "Failed to find locale/en-US.ini" dialog and never opens the websocket.
+    final process = await Process.start(
+      r'C:\Program Files\obs-studio\bin\64bit\obs64.exe',
+      const [
+        '--profile', 'ThumbPartyDemo',
+        '--collection', 'ThumbPartyDemo',
+        '--scene', 'Phone',
+        '--minimize-to-tray',
+        '--disable-shutdown-check',
+      ],
+      workingDirectory: r'C:\Program Files\obs-studio\bin\64bit',
+      mode: ProcessStartMode.detached,
+    );
+    stdout.writeln('obs: pid ${process.pid}');
+    return;
   }
 
   final password = File(arg('password-file', 'obs-password.txt'))
@@ -35,6 +54,16 @@ Future<void> main(List<String> args) async {
       case 'setup':
         await client.setUp();
         stdout.writeln('obs: profile and scene ready');
+      case 'prepare':
+        await client.prepare(arg('screenshot', 'obs_phone_check.png'));
+        stdout.writeln('obs: Phone scene ready');
+      case 'fit':
+        await client.fitPhone(
+          double.parse(arg('width', '1920')),
+          double.parse(arg('height', '1080')),
+          double.parse(arg('rotation', '0')),
+        );
+        stdout.writeln('obs: phone fitted');
       case 'record':
         final seconds = int.parse(arg('seconds', '12'));
         await client.startRecord();
@@ -101,7 +130,9 @@ class ObsClient {
           );
         }
       } else if (op == 5) {
-        _events.add((message['d'] as Map).cast<String, dynamic>());
+        if (!_events.isClosed) {
+          _events.add((message['d'] as Map).cast<String, dynamic>());
+        }
       }
     });
   }
@@ -215,6 +246,71 @@ class ObsClient {
     });
   }
 
+  /// Points the `phone` window capture at the running emulator window and
+  /// writes a source screenshot, so a black capture is caught before recording.
+  Future<void> prepare(String screenshotPath) async {
+    await request('SetCurrentProgramScene', {'sceneName': 'Phone'});
+    final properties = await request('GetInputPropertiesListPropertyItems', {
+      'inputName': 'phone',
+      'propertyName': 'window',
+    });
+    final items = (properties['propertyItems'] as List?) ?? const [];
+    Map<String, dynamic>? chosen;
+    for (final item in items) {
+      final name = ((item as Map)['itemName'] as String? ?? '').toLowerCase();
+      if (name.contains('qemu-system') || name.contains('android emulator')) {
+        chosen = item.cast<String, dynamic>();
+        break;
+      }
+    }
+    if (chosen == null) {
+      stderr.writeln('obs: no emulator window found; windows:');
+      for (final item in items) {
+        stderr.writeln('  ${(item as Map)['itemName']}');
+      }
+      throw ObsError('emulator window not found');
+    }
+    stdout.writeln('obs: window ${chosen['itemName']}');
+    await request('SetInputSettings', {
+      'inputName': 'phone',
+      'inputSettings': {
+        'window': chosen['itemValue'],
+        'window_priority': 2,
+      },
+      'overlay': true,
+    });
+    await Future<void>.delayed(const Duration(milliseconds: 700));
+    final shot = await request('GetSourceScreenshot', {
+      'sourceName': 'Phone',
+      'imageFormat': 'png',
+      'imageWidth': 1920,
+      'imageHeight': 1080,
+      'imageCompressionQuality': 80,
+    });
+    final data = (shot['imageData'] as String? ?? '').split(',').last;
+    File(screenshotPath).writeAsBytesSync(base64.decode(data));
+    stdout.writeln('obs: screenshot $screenshotPath');
+  }
+
+  /// Scales (and optionally rotates) the `phone` scene item inside the canvas.
+  Future<void> fitPhone(double width, double height, double rotation) async {
+    final item = await request('GetSceneItemId', {
+      'sceneName': 'Phone',
+      'sourceName': 'phone',
+    });
+    await request('SetSceneItemTransform', {
+      'sceneName': 'Phone',
+      'sceneItemId': item['sceneItemId'],
+      'sceneItemTransform': {
+        'boundsType': 'OBS_BOUNDS_SCALE_INNER',
+        'boundsWidth': width,
+        'boundsHeight': height,
+        'alignment': 5,
+        'rotation': rotation,
+      },
+    });
+  }
+
   Future<void> startRecord() => request('StartRecord');
 
   Future<String> stopRecord() async {
@@ -223,8 +319,8 @@ class ObsClient {
   }
 
   Future<void> close() async {
-    await _events.close();
     await _socket.close();
+    await _events.close();
   }
 }
 
