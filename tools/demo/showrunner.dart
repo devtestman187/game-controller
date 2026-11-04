@@ -150,9 +150,9 @@ class Showrunner {
 
     // 1. TV app, hello, reset.
     _director = await ensureTv();
-    final state = await _director!.request({'t': 'hello'}, 'state');
-    final port = state['port'] as int;
-    final code = state['code'] as String;
+    var state = await _director!.request({'t': 'hello'}, 'state');
+    var port = state['port'] as int;
+    var code = state['code'] as String;
     stdout.writeln('tv: port $port, code $code');
     await _director!.request({'t': 'reset'}, 'reset_done');
 
@@ -169,6 +169,14 @@ class Showrunner {
     }
     if (tvScreen != null) {
       await goToTvScreen(tvScreen);
+      // That path forgets the paired controllers and drops the connections,
+      // and the TV issues a new pairing code after that: read it again before
+      // the phone or the bots try to pair.
+      state = await _director!.request({'t': 'hello'}, 'state');
+      port = state['port'] as int;
+      final current = state['code'] as String;
+      if (current != code) stdout.writeln('tv: new pairing code $current');
+      code = current;
     }
 
     // 3. Pair first, so the phone is player 1 and the bots take 2-4 (2.7
@@ -188,11 +196,12 @@ class Showrunner {
     final bots = sceneFile == null ? 0 : botsInScene(sceneFile);
     if (bots > 0 && shot != 'P3') {
       stdout.writeln('director: $bots bots');
-      await _director!.request(
+      final reply = await _director!.request(
         {'t': 'bots', 'count': bots, 'mode': 'sticks'},
         'bots_ready',
         timeout: const Duration(seconds: 20),
       );
+      checkBots(reply, bots);
     }
 
     // 5. Recorder.
@@ -228,11 +237,13 @@ class Showrunner {
       } else if (shot == 'P3') {
         // One bot per request, 1.2 s apart: the director names them in order.
         for (var i = 0; i < bots; i++) {
-          await _director!.request(
-            {'t': 'bots', 'count': 1, 'mode': 'sticks'},
-            'bots_ready',
-            timeout: const Duration(seconds: 20),
-          );
+          await _director!
+              .request(
+                {'t': 'bots', 'count': 1, 'mode': 'sticks'},
+                'bots_ready',
+                timeout: const Duration(seconds: 20),
+              )
+              .then((reply) => checkBots(reply, i + 1));
           await Future<void>.delayed(const Duration(milliseconds: 1200));
         }
       } else if (hold != null) {
@@ -820,6 +831,18 @@ class Showrunner {
     return Duration(
       milliseconds: (seconds > 0 ? seconds * 1000 : pace) + 30000,
     );
+  }
+
+  /// Fails the take when a bot could not pair: `bots_ready` lists the ones
+  /// that did, and a stale pairing code leaves it short.
+  void checkBots(Map<String, dynamic> reply, int expected) {
+    final paired = (reply['players'] as List?)?.length ?? 0;
+    if (paired < expected) {
+      throw StateError(
+        'only $paired of $expected bots paired (wrong pairing code?); '
+        'the TV gives a new code after forget/drop or wrong-code attempts',
+      );
+    }
   }
 
   /// `--key-after <seconds>:<key>`, for a hold shot that presses one key.

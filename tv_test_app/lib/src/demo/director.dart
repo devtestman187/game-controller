@@ -20,15 +20,19 @@ import 'scene.dart';
 final class DemoDirector {
   DemoDirector({
     required this.hostPort,
-    required this.code,
+    required this.pairingCode,
     required this.live,
     required this.log,
     this.controlPort = 47900,
   });
 
-  /// The TV's game port and pairing code, so the bots can pair over loopback.
+  /// The TV's game port, so the bots can pair over loopback.
   final int hostPort;
-  final String code;
+
+  /// The pairing code *now*: the TV issues a new one on some actions (forget or
+  /// drop connections) and after wrong-code attempts, so this is read at the
+  /// moment a bot connects, never cached.
+  final String Function() pairingCode;
 
   /// The games on screen right now.
   final DemoLive live;
@@ -85,7 +89,7 @@ final class DemoDirector {
     }
     switch (message['t']) {
       case 'hello':
-        _send(socket, {'t': 'state', 'port': hostPort, 'code': code, 'screen': _scene?.screenStart ?? 'home'});
+        _send(socket, {'t': 'state', 'port': hostPort, 'code': pairingCode(), 'screen': _scene?.screenStart ?? 'home'});
       case 'bots':
         unawaited(_makeBots(socket, message));
       case 'scene':
@@ -111,7 +115,7 @@ final class DemoDirector {
       final seat = 'Bot ${first + i}';
       final bot = DemoBot(name: seat, id: 'demo-${seat.toLowerCase().replaceAll(' ', '-')}');
       _bots[seat] = bot;
-      bot.connect(port: hostPort, code: code);
+      bot.connect(port: hostPort, code: pairingCode());
     }
     // Wait for every bot to pair, but never forever.
     final deadline = DateTime.now().add(const Duration(seconds: 10));

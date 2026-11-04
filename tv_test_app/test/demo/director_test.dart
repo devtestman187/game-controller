@@ -13,7 +13,7 @@ void main() {
   Future<(DemoDirector, WebSocket)> open() async {
     final director = DemoDirector(
       hostPort: 45780,
-      code: '1234',
+      pairingCode: () => '1234',
       live: DemoLive.instance,
       log: EventLog(take: 'test'),
       controlPort: 0,

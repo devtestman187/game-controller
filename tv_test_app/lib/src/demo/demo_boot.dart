@@ -35,7 +35,9 @@ class _DemoBootState extends ConsumerState<DemoBoot> {
       if (port != null && host.pairingCode.isNotEmpty) {
         final director = DemoDirector(
           hostPort: port,
-          code: host.pairingCode,
+          // Read live: the TV issues a new pairing code on some actions and
+          // after wrong-code attempts, and the bots must use the current one.
+          pairingCode: () => ref.read(hostStateProvider).host.pairingCode,
           live: DemoLive.instance,
           log: EventLog(take: 'director', dir: const String.fromEnvironment('DEMO_LOG_DIR')),
         );
