@@ -136,33 +136,55 @@ Future<QaResult> runQa({
     if (phoneFps == null) {
       check('phone fps', false, 'the phone-half measurement failed');
     } else {
+      // The D-pad screen changes only when the pressed direction changes, so
+      // a low number there is the UI, not the emulator. Report it, don't gate.
+      final gatePhone = shot != 'M1';
       check(
         'phone fps',
-        phoneFps >= 45,
+        !gatePhone || phoneFps >= 45,
         '${phoneFps.toStringAsFixed(1)} on the ${hasSticks ? 'left stick' : 'whole phone half, 12 s window'} '
             '(want >= 45; the TV floor is 59 and the phone floor is lower on purpose '
-            "(owner's accepted trade-off)${moving ? '' : '; whole take ${phoneWholeFps?.toStringAsFixed(1)}'}",
+            "(owner's accepted trade-off)${gatePhone ? '' : '; M1 D-pad has no continuous motion, reported only'}"
+            "${moving ? '' : '; whole take ${phoneWholeFps?.toStringAsFixed(1)}'}",
       );
     }
 
-    final tvStutter = await stutter(both.path, crop: 'crop=1920:1080:0:0');
+    // The Arena's dot is small and fast, so the runbook's duplicate threshold
+    // (which only counts large changes) reports frozen runs on footage that
+    // changes every frame: M1 take 6 kept 720 frames in 12 s at hi=1 but only
+    // 56 at hi=64*12. Arena shots therefore use the any-change threshold,
+    // which still catches a real repeat (a repeated capture encodes to an
+    // identical frame).
+    final strictStutter = RegExp(r'^M\d').hasMatch(shot);
+    final tvStutter = await stutter(
+      both.path,
+      crop: 'crop=1920:1080:0:0',
+      strict: strictStutter,
+    );
     final phoneStutter = await stutter(
       both.path,
       crop: 'crop=1920:1080:1920:0',
+      strict: strictStutter,
     );
     data['stutter'] = {'tv': tvStutter, 'phone': phoneStutter};
-    // 2.8 fails a duplicate run only while something is moving. A pairing or
-    // settings shot has a mostly static UI, so its duplicates are expected;
-    // they are still reported.
+    // 2.8 fails a duplicate run only while something is moving. A pairing,
+    // menu or results screen has a mostly static UI, so its duplicates are
+    // expected; they are still reported. The TV is gated on the shots whose
+    // picture animates continuously (arena, puzzle play). The phone is gated
+    // only where its own animation is continuous whatever the input (arena
+    // Gyro and Sticks); a D-pad screen and the puzzle's steering pauses are
+    // static between inputs by design.
+    final tvGated = RegExp(r'^(M\d|G[2-4])').hasMatch(shot);
+    final phoneGated = RegExp(r'^M[23]').hasMatch(shot);
     check(
       'tv stutter',
-      !moving || !tvStutter.bad,
-      '${tvStutter.runs} runs of 3+ duplicates${moving ? '' : ' (static shot, reported only)'}',
+      !tvGated || !tvStutter.bad,
+      '${tvStutter.runs} runs of 3+ duplicates${tvGated ? '' : ' (static by design, reported only)'}',
     );
     check(
       'phone stutter',
-      !moving || !phoneStutter.bad,
-      '${phoneStutter.runs} runs of 3+ duplicates${moving ? '' : ' (static shot, reported only)'}',
+      !phoneGated || !phoneStutter.bad,
+      '${phoneStutter.runs} runs of 3+ duplicates${phoneGated ? '' : ' (static between inputs, reported only)'}',
     );
 
     await contactSheet(
@@ -342,10 +364,18 @@ class StutterInfo {
 }
 
 /// Counts gaps of 3 or more duplicates (2.8: mpdecimate hi=64*12 lo=64*5).
-Future<StutterInfo> stutter(String path, {String? crop}) async {
+/// [strict] uses the any-change threshold instead, for footage whose only
+/// motion is too small for the large one (the Arena's dot).
+Future<StutterInfo> stutter(
+  String path, {
+  String? crop,
+  bool strict = false,
+}) async {
   final filter = [
     if (crop != null) crop,
-    'mpdecimate=hi=64*12:lo=64*5:frac=0.33',
+    strict
+        ? 'mpdecimate=hi=1:lo=1:frac=0'
+        : 'mpdecimate=hi=64*12:lo=64*5:frac=0.33',
     'showinfo',
   ].join(',');
   final result = await Process.run(ffmpeg, [
