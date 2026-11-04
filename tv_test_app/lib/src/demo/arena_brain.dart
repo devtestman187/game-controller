@@ -75,9 +75,11 @@ final class ArenaBrain {
           best = c;
         }
       }
-      final away = best - goal;
-      final push = away.distance > 0 ? away / away.distance : const Offset(0, -1);
-      return best + push * (game.playerRadiusPx + 8);
+      // Round the corner outwards from the wall, not back towards the player:
+      // pushing the other way walks straight into the wall again.
+      final out = best - wall.center;
+      final push = out.distance > 0 ? out / out.distance : const Offset(0, -1);
+      return best + push * (game.playerRadiusPx + 10);
     }
 
     // A hazard close to the line: swing wide of it.
