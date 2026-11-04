@@ -323,7 +323,12 @@ It turns P1 intents into multi-touch on the emulator, and gyro intents into sens
    adb -s emulator-5554 shell getevent -lp
    ```
    Find the device whose capabilities list `ABS_MT_POSITION_X` and `ABS_MT_SLOT`. Note its `/dev/input/eventN`, and the max of `ABS_MT_POSITION_X` and `_Y` (often 32767, not the pixel size).
-2. Raw input injection: open one persistent stream, `adb -s emulator-5554 exec-in sh -c 'cat > /dev/input/eventN'`, and write binary `input_event` structs. The image is x86_64, so each struct is 24 bytes, little-endian: `tv_sec` int64, `tv_usec` int64 (both 0), `type` uint16, `code` uint16, `value` int32. Use multitouch protocol B:
+   - **The emulator has about eleven `virtio_input_multi_touch_N` devices**, one per possible extra display; only one drives the main screen. Pick it with `adb shell dumpsys input`: the device whose "Touch Input Mapper" says `mode - DIRECT` and whose viewport is `displayId=0`. On `m7_android12` that's `virtio_input_multi_touch_1` = `/dev/input/event3` (checked Nov 3, 2026). The others say `mode - DISABLED`.
+2. Raw input injection: open one persistent stream, `adb -s emulator-5554 exec-in sh -c 'cat > /dev/input/eventN'`, and write binary `input_event` structs.
+   - **Flush after every `SYN_REPORT`.** This was the whole cause of the first spike's failure (verified Nov 3, 2026): a buffered pipe (Python's default `Popen(stdin=PIPE)`, or a Dart `IOSink` without `flush`) holds a tap's ~200 bytes until the stream closes. Then nothing is held while the finger is "down", and taps and drags arrive all at once at the end.
+   - With the same events, a buffered stream showed 0 touches while held and a flushed one showed 1 (`dumpsys input`, "Last Raw Touch: pointerCount").
+   - In Dart: `process.stdin.add(bytes); await process.stdin.flush();` once per frame. In Python: `Popen(..., stdin=PIPE, bufsize=0)` or `stdin.flush()`.
+   - **Quick check** that a device accepts touches, independent of your code: `adb shell sendevent` writes one event per call. Send a down (slot, tracking ID, X, Y, pressure, `BTN_TOUCH 1`, `SYN_REPORT`) with it, then read "Last Raw Touch" in `dumpsys input`. The image is x86_64, so each struct is 24 bytes, little-endian: `tv_sec` int64, `tv_usec` int64 (both 0), `type` uint16, `code` uint16, `value` int32. Use multitouch protocol B:
    - per finger: `EV_ABS ABS_MT_SLOT <slot>`, `EV_ABS ABS_MT_TRACKING_ID <id or -1>`, `EV_ABS ABS_MT_POSITION_X <x>`, `EV_ABS ABS_MT_POSITION_Y <y>`, `EV_ABS ABS_MT_PRESSURE 50`;
    - then `EV_KEY BTN_TOUCH 1/0` when the first finger goes down or the last goes up;
    - then `EV_SYN SYN_REPORT 0`.
@@ -346,7 +351,7 @@ It turns P1 intents into multi-touch on the emulator, and gyro intents into sens
 3. Spike test: install the app (`tools/emulator.sh install` builds the debug APK if missing), launch, connect it to a TV app started with `tools/tv-dev.sh start` (`tools/emulator.sh connect 10.0.2.2:<port> <code>`), and switch to Sticks mode. Stream two fingers for 10 s at 60 Hz: the left one circling on the left stick, the right one circling on the right stick. Record with `scrcpy -s emulator-5554 --no-window --record $WORK/qa/spike.mp4 --max-fps 60 --max-size 1200 --time-limit 12`.
 
    **Pass when:** in `spike.mp4`, both sticks move smoothly at the same time, ffprobe reports about 60 fps, and the TV debug overlay (F3) shows both sticks changing.
-4. **If raw injection fails** (permission errors, or the sticks still don't move after two tries with the corrected coordinates above), use the emulator's gRPC bridge instead. The owner has approved this fallback on that condition (Nov 3, 2026), so you don't need to ask again:
+4. **If raw injection fails** even with flushing and the corrected coordinates (permission errors, or the sticks still don't move after two tries), use the emulator's gRPC bridge instead. The owner approved this fallback on that condition (Nov 3, 2026). The first spike's failures came from the missing flush, not from the raw path, so try the raw path with flushing first. A gRPC helper must flush its pipes too:
    - start the emulator with `-grpc 8554 -grpc-use-token`;
    - the service is `android.emulation.control.EmulatorController`, method `sendTouch(TouchEvent{touches: [Touch{x, y, identifier, pressure}]})` in `%LOCALAPPDATA%\Android\Sdk\emulator\lib\emulator_controller.proto`;
    - the token is in `C:\Users\singh\.emulator_console_auth_token`;
