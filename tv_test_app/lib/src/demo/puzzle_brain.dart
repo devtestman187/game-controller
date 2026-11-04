@@ -165,7 +165,7 @@ final class PuzzleBrain {
   /// while still travelling would drop a carried piece on the way.
   GamepadState _move(Offset from, Offset to, {Set<GamepadButton> extra = const {}}) {
     final v = _steer.stick(from: from, to: to, dotPx: dotPx, dt: 1 / 60);
-    final there = (to - from).distance < 2.5;
+    final there = (to - from).distance < 1.0;
     return GamepadState(buttons: there ? _tap({...extra}) : const {}, leftX: v.dx, leftY: v.dy, mode: InputMode.sticks);
   }
 

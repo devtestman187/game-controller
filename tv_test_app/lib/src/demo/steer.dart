@@ -73,7 +73,9 @@ final class Steer {
     if (_t < _startedAt + _delayS) return Offset.zero;
 
     final distance = (to - from).distance;
-    if (distance <= max(2, dotPx * 0.05)) return Offset.zero; // Arrived.
+    // Arrived. Tight: a small piece's drop tolerance can be 2 px, so stopping
+    // 2 px short would leave every drop refused.
+    if (distance <= max(0.5, dotPx * 0.02)) return Offset.zero;
 
     // The quadratic path: a control point off to one side, so the approach
     // curves instead of running straight at the goal. Aim at a point a little
