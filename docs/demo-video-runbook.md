@@ -328,15 +328,29 @@ It turns P1 intents into multi-touch on the emulator, and gyro intents into sens
    - then `EV_KEY BTN_TOUCH 1/0` when the first finger goes down or the last goes up;
    - then `EV_SYN SYN_REPORT 0`.
 
-   Codes: EV_SYN 0, EV_KEY 1, EV_ABS 3, BTN_TOUCH 0x14a, ABS_MT_SLOT 0x2f, ABS_MT_POSITION_X 0x35, ABS_MT_POSITION_Y 0x36, ABS_MT_TRACKING_ID 0x39, ABS_MT_PRESSURE 0x3a, SYN_REPORT 0. Scale pixels to the raw range: `raw = px * (max + 1) / screenPx` along each axis, taking the current rotation into account (the app runs landscape; work out the mapping in the spike by touching the four corners and reading `getevent`).
+   Codes: EV_SYN 0, EV_KEY 1, EV_ABS 3, BTN_TOUCH 0x14a, ABS_MT_SLOT 0x2f, ABS_MT_POSITION_X 0x35, ABS_MT_POSITION_Y 0x36, ABS_MT_TRACKING_ID 0x39, ABS_MT_PRESSURE 0x3a, SYN_REPORT 0.
+
+   **Coordinates** (the first spike got these wrong: touches arrived, but at the wrong places):
+   - The touchscreen's raw axes follow the panel's natural **portrait** orientation. On `m7_android12` the panel is 1080 wide and 2400 tall: raw X spans the 1080 px width, raw Y spans the 2400 px height, both 0–32767. On the tablet AVD, read the panel size with `adb shell wm size`.
+   - The app runs landscape, so turn a screen point `(dx, dy)` (landscape, 2400×1080) into a panel point first. Read the rotation with `adb shell dumpsys input | grep -i orientation`:
+     - rotation 1 (90°): `panel_x = 1080 − dy`, `panel_y = dx`;
+     - rotation 3 (270°): `panel_x = dy`, `panel_y = 2400 − dx`;
+     - rotation 0 (portrait): `panel_x = dx`, `panel_y = dy`.
+   - Then `raw_x = panel_x × 32768 / 1080` and `raw_y = panel_y × 32768 / 2400`, clamped to 0–32767. **Never** scale a landscape coordinate directly by 2400 and 1080.
+   - **Verify before the two-finger test:**
+     1. Turn on Android's pointer location overlay: `adb shell settings put system pointer_location 1`.
+     2. Inject one tap at a known screen point (e.g. `(600, 300)`), take a screenshot, and check that the overlay's X and Y read the same point (±5 px). If not, try the other rotation formula.
+     3. Turn the overlay off again: `adb shell settings put system pointer_location 0`. It must never be on during filming.
+     4. Then drag one finger inside the left stick's circle and confirm in a screenshot that the knob moved off-centre.
+     5. Only then run the two-finger test below.
 3. Spike test: install the app (`tools/emulator.sh install` builds the debug APK if missing), launch, connect it to a TV app started with `tools/tv-dev.sh start` (`tools/emulator.sh connect 10.0.2.2:<port> <code>`), and switch to Sticks mode. Stream two fingers for 10 s at 60 Hz: the left one circling on the left stick, the right one circling on the right stick. Record with `scrcpy -s emulator-5554 --no-window --record $WORK/qa/spike.mp4 --max-fps 60 --max-size 1200 --time-limit 12`.
 
    **Pass when:** in `spike.mp4`, both sticks move smoothly at the same time, ffprobe reports about 60 fps, and the TV debug overlay (F3) shows both sticks changing.
-4. **If raw injection fails** (permission or no movement), use the emulator's gRPC bridge instead:
+4. **If raw injection fails** (permission errors, or the sticks still don't move after two tries with the corrected coordinates above), use the emulator's gRPC bridge instead. The owner has approved this fallback on that condition (Nov 3, 2026), so you don't need to ask again:
    - start the emulator with `-grpc 8554 -grpc-use-token`;
    - the service is `android.emulation.control.EmulatorController`, method `sendTouch(TouchEvent{touches: [Touch{x, y, identifier, pressure}]})` in `%LOCALAPPDATA%\Android\Sdk\emulator\lib\emulator_controller.proto`;
    - the token is in `C:\Users\singh\.emulator_console_auth_token`;
-   - this needs `protoc` and the Dart `grpc` package in a separate package `tools/demo/grpc_touch/`. Ask the owner before adding it.
+   - this needs `protoc` and the Dart `grpc` package in a separate package `tools/demo/grpc_touch/` (approved on the condition above).
 
    If both fail, **STOP** and report.
 5. **STOP** and show the owner `spike.mp4` (path and a contact sheet). Continue after their OK.
