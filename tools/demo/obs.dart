@@ -59,7 +59,10 @@ Future<void> main(List<String> args) async {
         await client.prepare(arg('screenshot', 'obs_phone_check.png'));
         stdout.writeln('obs: Phone scene ready');
       case 'both':
-        await client.setUpBoth();
+        await client.setUpBoth(
+          int.parse(arg('width', '3840')),
+          int.parse(arg('height', '1080')),
+        );
         stdout.writeln('obs: Both scene ready');
       case 'canvas':
         await client.setCanvas(
@@ -296,12 +299,12 @@ class ObsClient {
   /// One 3840x1080 canvas: the TV window on the left, the phone window on the
   /// right. Recording both in one file keeps them frame-exact; the recorder
   /// crops the halves into the `<shot>_take<N>_tv.mkv` / `_phone.mkv` files.
-  Future<void> setUpBoth() async {
+  Future<void> setUpBoth([int width = 3840, int height = 1080]) async {
     await request('SetVideoSettings', {
-      'baseWidth': 3840,
-      'baseHeight': 1080,
-      'outputWidth': 3840,
-      'outputHeight': 1080,
+      'baseWidth': width,
+      'baseHeight': height,
+      'outputWidth': width,
+      'outputHeight': height,
       'fpsNumerator': 60,
       'fpsDenominator': 1,
     });
@@ -314,8 +317,15 @@ class ObsClient {
     await _ensureSource('Both', 'phone', 'window_capture');
     await _setWindow('tv', const ['thumbpartytv.exe']);
     await _setWindow('phone', const ['qemu-system', 'android emulator']);
-    await _place('Both', 'tv', 960, 540, 1920, 1080);
-    await _place('Both', 'phone', 2880, 540, 1920, 1080);
+    await _place('Both', 'tv', width / 4, height / 2, width / 2, height.toDouble());
+    await _place(
+      'Both',
+      'phone',
+      width * 3 / 4,
+      height / 2,
+      width / 2,
+      height.toDouble(),
+    );
     await request('SetCurrentProgramScene', {'sceneName': 'Both'});
     await Future<void>.delayed(const Duration(milliseconds: 700));
   }
