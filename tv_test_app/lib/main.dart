@@ -1,3 +1,6 @@
+import 'dart:io';
+import 'dart:ui' show PlatformDispatcher;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -20,6 +23,31 @@ Future<void> main() async {
   if (demoDirector) {
     SharedPreferences.setPrefix('demo.');
     installDemoLive();
+    // A profile build has no console, so a demo-build error would vanish.
+    // Everything goes to $DEMO_LOG_DIR/tv_debug.log instead.
+    final dir = const String.fromEnvironment('DEMO_LOG_DIR');
+    if (dir.isNotEmpty) {
+      final file = File('$dir/tv_debug.log');
+      void write(String message) {
+        try {
+          file.writeAsStringSync('${DateTime.now().toIso8601String()} $message\n', mode: FileMode.append, flush: true);
+        } on FileSystemException {
+          // Nowhere to write: nothing useful to do in a demo build.
+        }
+      }
+
+      debugPrint = (String? message, {int? wrapWidth}) => write(message ?? '');
+      final onError = FlutterError.onError;
+      FlutterError.onError = (details) {
+        write('FlutterError: ${details.exceptionAsString()}\n${details.stack}');
+        onError?.call(details);
+      };
+      PlatformDispatcher.instance.onError = (error, stack) {
+        write('Uncaught: $error\n$stack');
+        return false;
+      };
+      write('demo build starting');
+    }
   }
   final prefs = await SharedPreferences.getInstance();
   if (demoDirector) {
