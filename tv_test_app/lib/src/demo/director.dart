@@ -167,6 +167,11 @@ final class DemoDirector {
     // navigates before StartRecord, so those screen events are earlier than
     // the take and would otherwise be missing (R1 needs home first).
     _event('screen', {'screen': live.currentScreen});
+    // A pre-roll scene can start the match before the recording (the
+    // showrunner's join choreography). The take then starts inside a live
+    // game, so log its start here; the edit and the stutter window need it.
+    _gameStarted = live.match != null || live.arena != null;
+    if (_gameStarted) _event('game_start');
     _send(socket, {'t': 'scene_started', 'ok': true});
     _timer = Timer.periodic(const Duration(microseconds: 16667), _frame);
   }

@@ -43,6 +43,7 @@ Future<void> main(List<String> args) async {
   final scene = cli.value('scene');
   final tvScreen = cli.value('tv-screen');
   final hold = double.tryParse(cli.value('hold') ?? '');
+  final keyAfter = cli.value('key-after');
   final preRoll = cli.value('pre-roll');
   final retakes = int.parse(cli.value('retakes') ?? '3');
   final startTake = int.parse(cli.value('take') ?? '1');
@@ -67,6 +68,7 @@ Future<void> main(List<String> args) async {
         scene: scene,
         tvScreen: tvScreen,
         hold: hold,
+        keyAfter: keyAfter,
         preRoll: preRoll,
       );
       stdout.writeln('$shot take $take: ok (${seconds.toStringAsFixed(1)} s)');
@@ -128,6 +130,7 @@ class Showrunner {
     String? scene,
     String? tvScreen,
     double? hold,
+    String? keyAfter,
     String? preRoll,
   }) async {
     final takeName = '${shot}_take$take';
@@ -223,9 +226,24 @@ class Showrunner {
           await Future<void>.delayed(const Duration(milliseconds: 1200));
         }
       } else if (hold != null) {
-        await Future<void>.delayed(
-          Duration(milliseconds: (hold * 1000).round()),
-        );
+        // A menu shot the remote drives: hold, then press one key (X4 answers
+        // the consent prompt with the remote's OK), then hold the tail.
+        final press = keyAfter == null ? null : _keyAfter(keyAfter);
+        if (press == null) {
+          await Future<void>.delayed(
+            Duration(milliseconds: (hold * 1000).round()),
+          );
+        } else {
+          final (at, key) = press;
+          final first = at.clamp(0.0, hold);
+          await Future<void>.delayed(
+            Duration(milliseconds: (first * 1000).round()),
+          );
+          await tvKey(key);
+          await Future<void>.delayed(
+            Duration(milliseconds: ((hold - first) * 1000).round()),
+          );
+        }
       } else if (sceneFile != null) {
         final duration = await sceneTimeout(sceneFile);
         // The TV app's own event log is the complete one (scene_start, join,
@@ -787,6 +805,16 @@ class Showrunner {
     return Duration(
       milliseconds: (seconds > 0 ? seconds * 1000 : pace) + 30000,
     );
+  }
+
+  /// `--key-after <seconds>:<key>`, for a hold shot that presses one key.
+  static (double, String) _keyAfter(String value) {
+    final i = value.indexOf(':');
+    final seconds = i > 0 ? double.tryParse(value.substring(0, i)) : null;
+    if (seconds == null || i == value.length - 1) {
+      throw ArgumentError('--key-after wants <seconds>:<key>, got "$value"');
+    }
+    return (seconds, value.substring(i + 1));
   }
 
   int botsInScene(String sceneFile) {

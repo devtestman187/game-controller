@@ -1,0 +1,18 @@
+{
+  "game": "puzzle",
+  "puzzle": "rocket",
+  "seed": 4242,
+  "screenStart": "join",
+  "teams": {"left": ["P1", "Bot 2"], "right": ["Bot 3"]},
+  "seats": {
+    "P1": {
+      "via": "phone",
+      "mode": "sticks",
+      "goals": [{"navigate": ["a"]}, {"idle": 1900}, {"navigate": ["a"]}, {"idle": 1200}]
+    },
+    "Bot 2": {"via": "bot", "goals": [{"idle": 1400}, {"navigate": ["a"]}, {"idle": 2400}]},
+    "Bot 3": {"via": "bot", "goals": [{"idle": 700}, {"navigate": ["a"]}, {"idle": 3100}]}
+  },
+  "endAfter": "seconds",
+  "endAfterS": 6
+}
