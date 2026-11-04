@@ -48,6 +48,10 @@ final class PuzzleBrain {
 
   bool get done => _finished;
 
+  /// Which goal this seat is on, and its kind, for tests and the event log.
+  int get goalIndex => _goal;
+  GoalKind? get currentGoal => _goal < goals.length ? goals[_goal].kind : null;
+
   /// One frame. [events] are the events the director saw this frame, for
   /// `waitFor`.
   GamepadState step(PuzzleGame game, double dt, {Set<String> events = const {}}) {
@@ -154,7 +158,23 @@ final class PuzzleBrain {
       _next();
       return GamepadState.neutral;
     }
-    return _move(player.pos, game.pieces[index].pos);
+    // A grabs whichever piece is nearest, so put down anything else first and
+    // only tap when the wanted piece is the nearest one; otherwise the dot
+    // would come away with a neighbour.
+    if (player.held != null) {
+      return GamepadState(buttons: _tap({}), mode: InputMode.sticks);
+    }
+    var nearest = -1;
+    var best = double.infinity;
+    for (final piece in game.pieces) {
+      if (piece.state == PieceState.locked || piece.state == PieceState.held) continue;
+      final d = (piece.pos - player.pos).distance;
+      if (d < best) {
+        best = d;
+        nearest = piece.index;
+      }
+    }
+    return _move(player.pos, game.pieces[index].pos, extra: nearest == index ? {GamepadButton.a} : const {});
   }
 
   /// Turn the piece to its target angle, carry it to the outline, then press
