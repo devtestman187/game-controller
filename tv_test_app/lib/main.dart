@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'src/demo/demo_boot.dart';
 import 'src/demo/demo_flags.dart';
 import 'src/demo/demo_live.dart';
 import 'src/demo/demo_window.dart';
@@ -42,8 +43,12 @@ class TvTestApp extends StatelessWidget {
       },
       child: MaterialApp(
         title: 'Thumb Party TV',
-        // The phones work every screen like the remote (PRD v2 T21).
-        builder: (context, child) => ControllerMenus(child: child!),
+        // The phones work every screen like the remote (PRD v2 T21). In a demo
+        // build the director starts on top of it, once the TV is listening.
+        builder: (context, child) {
+          final menus = ControllerMenus(child: child!);
+          return demoDirector ? DemoBoot(child: menus) : menus;
+        },
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
           colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF5AAAFF), brightness: Brightness.dark),
