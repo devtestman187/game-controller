@@ -58,6 +58,12 @@ These come from the project's working rules ([project-notes.md](project-notes.md
    - Back up `shared_preferences.json` before the first demo run (2.1 step 8) and before Phase 3 (step 3.1).
    - **Before every start of the demo TV app**, list running `ThumbPartyTV.exe` processes (`tasklist //FI "IMAGENAME eq ThumbPartyTV.exe"`). If any is running that you didn't start (by PID), **STOP** and ask the owner to close it. Two copies would share the settings file and could overwrite each other's saves. Never close it yourself.
 8. **Secrets:** none are needed. Never print `DEEPSEEK_API_KEY` or any token.
+9. **Clean up before every report and at the end of every block** (owner's request, Nov 3, 2026). The full-screen demo TV app covers the owner's screen, so they can't read your report while it runs.
+   - Close everything you started, by recorded PID: the demo or debug TV app, OBS (graceful close, 2.6), scrcpy, the touch driver, `ffplay` or any test window.
+   - Stop emulators with `adb -s <serial> emu kill`.
+   - Check with `tasklist` that none of your PIDs is left, and say so in the report.
+   - The only exception is a run that must keep going while you wait (none in this runbook); name it and its PID in the report.
+   - Starting everything again next block costs a minute; leaving the owner's screen blocked costs them their PC.
 
 ---
 
@@ -184,6 +190,7 @@ Commit after each step that ends with "commit". Message prefix: `demo:`. No rele
 2. **Sessions folder:** in `tv_test_app/lib/src/host_controller.dart` (line ~427, where the folder is `kDebugMode ? 'sessions-debug' : 'sessions'`), use `demoDirector ? 'sessions-demo' : (kDebugMode ? 'sessions-debug' : 'sessions')`.
 3. **Preferences:** in the TV app's `main()`, before the first `SharedPreferences.getInstance()`, add `if (demoDirector) SharedPreferences.setPrefix('demo.');`. Demo runs then keep their own pairings, consent and Puzzle settings, and never touch the owner's. Check `shared_preferences` supports `setPrefix` in the version in `pubspec.lock`. If it doesn't, stop and report.
 4. **Window:** when `demoDirector`, the TV app starts **borderless, full screen at 1920×1080** on the primary display. Use the existing Windows runner; if there's no full-screen helper, add one in `tv_test_app/windows/runner/` that maximises without borders when the `DEMO_DIRECTOR` define is set. Pass the define through `flutter build` as `--dart-define` and read it in Dart; ask the runner to go full screen through a method channel call from Dart at startup.
+   - **Not always on top:** use `HWND_TOP`, never `HWND_TOPMOST`. A topmost window stays above everything, even after the owner switches to another program, so they can't use their PC. It isn't needed: OBS's window capture records the TV window even when other windows cover it, and Windows hides the taskbar for a borderless window that exactly covers the monitor while it's in front.
 5. **No debug UI:** the debug overlay starts off; check that nothing on screen says "debug", "profile" or "demo".
 6. Add a test in `tv_test_app/test/` that `demoDirector` is false in the test build.
 7. `tools/check.sh` all ok, then commit `demo: DEMO_DIRECTOR flag, separate sessions and preferences`.
@@ -224,7 +231,7 @@ The director must read the running game's state. Both views already accept an in
 **Control server:** when `demoDirector`, start an `HttpServer` on `127.0.0.1:47900` with WebSocket upgrade at `/director`. Messages are JSON, one per frame:
 | From the showrunner | Meaning |
 | --- | --- |
-| `{"t":"hello"}` | Reply `{"t":"state","port":<host port>,"code":"<pairing code>","screen":"<route name>"}` |
+| `{"t":"hello"}` | Reply `{"t":"state","port":<host port>,"code":"<pairing code>","screen":"<route name>"}`. **This is how scripts get the port and pairing code** from the profile build, which doesn't print them to the console as debug builds do. Never read them from a screenshot |
 | `{"t":"bots","count":N,"mode":"sticks"}` | Create N `DemoBot`s (N 0 to 3) named "Bot 2", "Bot 3", … paired over loopback, like `HostController.addSimulatedController`, but driven by the director, not `runDemoInput`. Reply `{"t":"bots_ready","players":[…]}` when all are paired |
 | `{"t":"scene","file":"<absolute path to scene JSON>","take":"G3_take2"}` | Load and run a scene. Events stream back. Reply `{"t":"scene_done","ok":true}` at the end, or `{"ok":false,"why":"…"}` |
 | `{"t":"stop"}` | Stop the scene, release every input |
@@ -423,9 +430,12 @@ Record the commit hash: `git -C $REPO rev-parse --short HEAD`. Every footage fil
 ### 2.6 OBS set-up (scripted, no GUI clicks)
 1. Start OBS once, minimised, so it creates its config, then close it with the PID you recorded (step 2.7 starts it the same way):
    ```bash
-   "/c/Program Files/obs-studio/bin/64bit/obs64.exe" --minimize-to-tray --disable-shutdown-check --multi &
+   (cd "/c/Program Files/obs-studio/bin/64bit" && ./obs64.exe --minimize-to-tray --disable-shutdown-check --multi) &
    ```
-   Wait 10 s, then `taskkill //PID <pid>`. Only that PID.
+   - **OBS must be started from its own folder** (`C:\Program Files\obs-studio\bin\64bit`), every time, by every script (in Dart: `Process.start(..., workingDirectory: r'C:\Program Files\obs-studio\bin\64bit')`). Started from anywhere else, it stops at a hidden error dialog, "Failed to find locale/en-US.ini", and never starts its websocket server (verified Nov 3, 2026). A main window titled "Error" means this happened.
+   - Before the first start, set `FirstRun=false` under `[General]` in `%APPDATA%\obs-studio\user.ini` and `global.ini`, so the set-up wizard doesn't block a scripted start.
+   - OBS 33 keeps the websocket plugin in `C:\Program Files\obs-studio\core\obs-websocket\`, not `obs-plugins`.
+   - To close OBS: `StopRecord` if recording, then `taskkill //PID <pid>` **without** `/F` (a normal close, which OBS doesn't treat as a crash). Use `/F` only if it hasn't exited after 10 s, and report that. obs-websocket 5 has no Quit request.
 2. Write the obs-websocket config `C:\Users\singh\AppData\Roaming\obs-studio\plugin_config\obs-websocket\config.json` (back up any existing file to `$WORK/backup/` first):
    ```json
    {"alerts_enabled": false, "auth_required": true, "first_load": false, "server_enabled": true, "server_password": "<random 24 chars, saved to $WORK/backup/obs-password.txt>", "server_port": 4455}
@@ -436,9 +446,9 @@ Record the commit hash: `git -C $REPO rev-parse --short HEAD`. Every footage fil
    - `SetVideoSettings` base and output 1920×1080, 60/1.
    - `SetProfileParameter`:
      - `Output/Mode` = `Advanced`;
-     - `AdvOut/RecEncoder` = `obs_qsv11` (Intel Quick Sync), falling back to `obs_x264` if QSV isn't listed;
+     - `AdvOut/RecEncoder` = the Intel Quick Sync encoder, falling back to `obs_x264`. **Don't guess its ID:** newer OBS versions name it `obs_qsv11_v2` rather than `obs_qsv11`. Read the encoder IDs this install offers from the OBS log (the newest file in `%APPDATA%\obs-studio\logs\`, which lists the loaded encoders at start-up), and use the Quick Sync one listed. An unknown encoder ID makes `StartRecord` fail;
      - `AdvOut/RecFormat2` = `mkv`;
-     - `AdvOut/RecFilePath` = `C:\Users\singh\thumbparty-demo\footage`;
+     - `AdvOut/RecFilePath` = `C:\Users\singh\thumbparty-demo\footage` (create the folder first);
      - `AdvOut/RecRB` = `false`;
      - rate control CQP 18 for QSV, or CRF 16 for x264, through the encoder's settings.
    - Scene collection `ThumbPartyDemo` with:
@@ -446,7 +456,8 @@ Record the commit hash: `git -C $REPO rev-parse --short HEAD`. Every footage fil
      - an input `desktop_audio` of kind `wasapi_output_capture` (default device);
      - scenes `Terminal`, `Editor` and `Browser`: each one `window_capture` (Windows Graphics Capture, `capture_cursor` false) of that program's window: `WindowsTerminal.exe`, `Code.exe` and `msedge.exe`. They're for the 3.3 shots. **Don't capture the whole monitor**: window capture keeps the taskbar, notifications and any other window out of the footage. Set each source to scale to 1920×1080 in its scene (`SetSceneItemTransform`, bounds type `OBS_BOUNDS_SCALE_INNER`).
    - Confirm the exact window strings with `GetInputPropertiesListPropertyItems` for `window`: pick the item containing `ThumbPartyTV.exe` for `TV`, and the matching item for each 3.3 window once it's open. Window titles change, so match on the `.exe` part with the "match priority" setting `window_priority` = 2 (executable).
-5. Test: start the profile TV app (2.7), record 10 s, stop, and check with ffprobe: 1920×1080, about 60 fps, an audio stream. Commit `demo: OBS control`. The password file is outside the repository; never commit it.
+5. Test: start the profile TV app (2.7), record 10 s, stop, and check with ffprobe: 1920×1080, about 60 fps, an audio stream. Commit `demo: OBS control`.
+   - **If a request fails,** print the whole obs-websocket response (its `requestStatus.code` and `comment`), not just the stack trace's tail, and read the newest OBS log in `%APPDATA%\obs-studio\logs\`: it names the reason, such as an unknown encoder, a missing folder or a window not found. The password file is outside the repository; never commit it.
 
 ### 2.7 Showrunner (`tools/demo/showrunner.dart`)
 One command runs one shot:
