@@ -6,6 +6,7 @@ import 'dart:math';
 import 'obs.dart';
 import 'paths.dart';
 import 'qa.dart' as qa;
+import 'window_scan.dart';
 
 /// One command runs one shot (docs/demo-video-runbook.md 2.7).
 ///
@@ -245,6 +246,7 @@ class Showrunner {
 
     // 5. The shot's screen, now that the phone has paired on home, then the
     // recorder and the action.
+    await preflightWindows();
     if (tvScreen != null) await openTvScreen(tvScreen);
     if (preRoll != null) {
       final file = File(preRoll).absolute.path;
@@ -279,6 +281,7 @@ class Showrunner {
       stdout.writeln('phone: calibrated');
       await Future<void>.delayed(const Duration(milliseconds: 1500));
     }
+    await preflightWindows();
     final both = phone && !recordTvOnly;
     // The pointer goes into a TV half; hide it for those takes only, and put it
     // back in the finally below whatever happens.
@@ -500,6 +503,32 @@ class Showrunner {
     if (result.exitCode != 0) {
       throw StateError('TV key $key failed: ${result.stdout}${result.stderr}');
     }
+  }
+
+  /// Fails the take when a window that cannot show anything is holding the
+  /// desktop (runbook 3.1).
+  ///
+  /// On Nov 5, 2026 two invisible `PickerHost.exe` "Windows Security" windows
+  /// were topmost and owned the foreground for most of a block: every click went
+  /// to them, the TV app never saw one, and the only symptom was a take that
+  /// filmed a menu. Nothing is ever closed here — a window that is not ours is
+  /// not ours to close — so the take stops and the message names the pid,
+  /// process and title to look at.
+  Future<void> preflightWindows() async {
+    final scan = await scanWindows(repo);
+    final problems = windowProblems(scan);
+    if (problems.isEmpty) {
+      stdout.writeln(
+        'desktop: no stray windows (${scan.topmost.length} topmost)',
+      );
+      return;
+    }
+    throw StateError(
+      'a window is holding the desktop, so this take would go to it '
+      '(${problems.length} problem${problems.length == 1 ? '' : 's'}):\n'
+      '  ${problems.join('\n  ')}\n'
+      'Nothing was closed. Close it yourself, then run the take again.',
+    );
   }
 
   /// Blanks the Windows pointer while a take records (tools/demo/cursor.ps1).
@@ -1544,6 +1573,10 @@ Future<int> selfTest() async {
 
   // E1/E3: a missing WORK is an error, not a fallback path.
   workDirSelfTest(check);
+
+  // 3.1: a window that cannot show anything stops the take (the Nov 5, 2026
+  // PickerHost windows). Same cases as window_scan.dart --self-test.
+  windowScanSelfTest(check);
 
   // 2.6 step 4: the recorder encoder comes from what OBS reports, and each
   // list selects the first one this pipeline can use.
