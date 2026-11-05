@@ -153,7 +153,7 @@ class Injector {
   Future<void> _queue = Future<void>.value();
 
   Future<void> open() async {
-    final adb = Platform.environment['ADB'] ?? 'adb';
+    final adb = adbBinary;
     _process = await Process.start(adb, [
       '-s',
       serial,
@@ -481,7 +481,7 @@ class TouchDriver {
 
   /// The current uiautomator dump of the screen, or null when it fails.
   Future<String?> _uiXml([String file = '/sdcard/mode.xml']) async {
-    final adb = Platform.environment['ADB'] ?? 'adb';
+    final adb = adbBinary;
     for (var attempt = 0; attempt < 3; attempt++) {
       final dump = await Process.run(adb, [
         '-s',
