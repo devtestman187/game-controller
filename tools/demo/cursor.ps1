@@ -30,9 +30,18 @@ public static class DemoCursor {
 "@
 }
 
-# A 32x32 cursor whose AND and XOR masks are both zero: it draws nothing.
+# A 32x32 cursor that draws nothing: the AND mask all ones (keep the screen),
+# the XOR mask zero (invert nothing).
+#
+# Both masks zero - the first version - does NOT hide the pointer: it paints a
+# solid 32x32 BLACK square at the hotspot. Windows composites a monochrome
+# cursor as "screen AND mask, then XOR mask", so AND=0 blackens every pixel of
+# the cursor's box. The desktop looks right, but OBS's window capture writes the
+# square into the footage (measured Nov 5, 2026: M1 take 1 has it at 616,157,
+# exactly where the last TV click left the pointer).
 function BlankCursor {
   $and = New-Object byte[] 128
+  for ($i = 0; $i -lt 128; $i++) { $and[$i] = 0xFF }
   $xor = New-Object byte[] 128
   $pa = [System.Runtime.InteropServices.Marshal]::AllocHGlobal(128)
   $px = [System.Runtime.InteropServices.Marshal]::AllocHGlobal(128)
