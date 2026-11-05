@@ -590,16 +590,14 @@ class ObsClient {
 
   /// Adds the tv source to a scene that has no items (the collection on this
   /// machine calls its TV scene `Scene` but never gave it one).
+  ///
+  /// It creates the input as well, and has to run **before** `bindTvWindow`:
+  /// binding sets the input's window property, and OBS answers 600 ("no source
+  /// by that name") when the input is not there yet. That is what every CUR
+  /// take of Nov 5, 2026 hit after the collection was restored without a `tv`
+  /// source.
   Future<void> ensureTvItem(String scene) async {
-    final list = await request('GetSceneItemList', {'sceneName': scene});
-    for (final raw in (list['sceneItems'] as List?) ?? const []) {
-      if ((raw as Map)['sourceName'] == 'tv') return;
-    }
-    await request('CreateSceneItem', {
-      'sceneName': scene,
-      'sourceName': 'tv',
-      'sceneItemEnabled': true,
-    });
+    await _ensureSource(scene, 'tv', 'window_capture');
   }
 
   /// Points the `phone` window capture at the running emulator window and

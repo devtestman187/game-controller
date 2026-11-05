@@ -837,8 +837,8 @@ class Showrunner {
         if (scene == null) {
           throw StateError('no TV scene in OBS (scenes: ${names.join(', ')})');
         }
-        await obs.bindTvWindow();
         await obs.ensureTvItem(scene);
+        await obs.bindTvWindow();
         await obs.fitTv(scene);
         await obs.request('SetCurrentProgramScene', {'sceneName': scene});
       }
@@ -875,7 +875,11 @@ class Showrunner {
   }
 
   Future<ObsClient> observe() async {
-    if (_obs != null) return _obsClient!;
+    // The client, not the process: a failed take closes the websocket and keeps
+    // OBS running, and the next retake has to reconnect instead of returning
+    // a null client through a ! (measured Nov 5, 2026).
+    final existing = _obsClient;
+    if (existing != null) return existing;
     final password = File('$work\\backup\\obs-password.txt')
         .readAsStringSync()
         .trim();
