@@ -9,6 +9,7 @@
       "via": "phone",
       "mode": "sticks",
       "goals": [
+        {"navigate": ["up"]},
         {"idle": 800},
         {"navigate": ["a"]},
         {"idle": 1200},
