@@ -77,13 +77,17 @@ void main() {
     await clientStatus(client, ClientStatus.connected);
     await hostUntil(server, (h) => h.connected.isNotEmpty);
 
-    // 60 a second for half a second.
+    // About 60 a second for half a second. On Windows a 16 ms delay can take 30 ms (the default timer
+    // tick is 15.6 ms), so the allowed count is worked out from the time the loop really took.
+    final clock = Stopwatch()..start();
     for (var i = 0; i < 30; i++) {
       host.setStatus('phone-1', StatusMessage(text: 'n$i'));
       await Future<void>.delayed(const Duration(milliseconds: 16));
     }
     await Future<void>.delayed(const Duration(milliseconds: 300));
-    expect(received.length, lessThanOrEqualTo(8));
+    clock.stop();
+    // At most 10 a second, plus one for the first and one for the last.
+    expect(received.length, lessThanOrEqualTo(clock.elapsedMilliseconds ~/ 100 + 2));
     expect(received.last.text, 'n29');
   });
 
