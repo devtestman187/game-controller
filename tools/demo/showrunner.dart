@@ -1056,20 +1056,13 @@ class Showrunner {
   /// Waits for the code screen, types the code, checks the field and submits.
   Future<void> _enterCode(DriverLink driver, String code) async {
     final adb = Adb(_serial);
-    // The keypad taps are only safe once the code screen is up.
-    var onCodeScreen = false;
-    for (var i = 0; i < 24; i++) {
-      if ((await adb.uiDump()).contains('Enter the code shown')) {
-        onCodeScreen = true;
-        break;
-      }
-      await Future<void>.delayed(const Duration(milliseconds: 250));
-    }
-    if (!onCodeScreen) {
-      throw StateError(
-        'the phone did not open the code screen after the address',
-      );
-    }
+    // The code overlay is Flutter-painted and uiautomator does not expose its
+    // field or keypad (measured Nov 5, 2026: the dump still showed the Connect
+    // screen while the code overlay was on it), and its only label, "Enter
+    // code", is already on the Connect screen. So do not gate on UI text: let
+    // the transition finish, tap the measured code field, and prove the code
+    // by reading the field and the P1 badge below.
+    await Future<void>.delayed(const Duration(milliseconds: 1200));
     // Focus the code field in case the keypad has not opened by itself.
     await _tapPoint(driver, _pad.codeField);
     await Future<void>.delayed(const Duration(milliseconds: 900));
