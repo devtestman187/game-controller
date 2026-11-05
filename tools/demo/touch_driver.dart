@@ -4,6 +4,8 @@ import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
 
+import 'input_device.dart';
+
 /// Raw multi-touch on the up-to-date Android emulator for the demo video
 /// (docs/demo-video-runbook.md 2.4 Step C).
 ///
@@ -18,7 +20,18 @@ import 'dart:typed_data';
 /// through the same stream, so every touch is a real touch and appears in the
 /// log. `adb root` has to have run first; as `shell` the writes silently do
 /// nothing.
+///
+/// The device is found from the emulator's own device list (see
+/// `input_device.dart`); `--event` overrides it when the detection is wrong.
 Future<void> main(List<String> args) async {
+  if (args.contains('--self-test')) {
+    final ok = driverSelfTest();
+    stdout.writeln(
+      ok ? 'touch driver self-test: PASS' : 'touch driver self-test: FAIL',
+    );
+    exit(ok ? 0 : 1);
+  }
+
   String arg(String name, String fallback) {
     final i = args.indexOf('--$name');
     return i >= 0 && i + 1 < args.length ? args[i + 1] : fallback;
@@ -31,11 +44,25 @@ Future<void> main(List<String> args) async {
   );
   final directorUrl = arg('director', 'ws://127.0.0.1:47900/director');
   final logPath = arg('log', '');
-  final eventDevice = arg('event', '/dev/input/event3');
+  final eventOverride = args.contains('--event') ? arg('event', '') : '';
   final port = int.parse(arg('port', '47901'));
   final seed = int.parse(arg('seed', '4242'));
   final humanModel = arg('human-model', 'off');
 
+  final InputDevice chosen;
+  if (eventOverride.isNotEmpty) {
+    chosen = InputDevice(
+      path: eventOverride,
+      name: '--event override',
+      absCodes: const <int>{},
+      direct: false,
+    );
+    stdout.writeln('touch driver: injecting into ${chosen.path} (--event)');
+  } else {
+    chosen = await findTouchDevice(serial);
+    stdout.writeln('touch driver: touch device $chosen');
+  }
+  final eventDevice = chosen.path;
   final layout = Layout.fromFile(layoutFile);
   final injector = Injector(serial: serial, device: eventDevice);
   await injector.open();
@@ -955,3 +982,8 @@ class TouchLog {
     );
   }
 }
+
+/// `dart run tools/demo/touch_driver.dart --self-test`: the device detection
+/// (2.4 Step C) has the same tests as `input_device.dart`, so a driver change
+/// cannot quietly drop them.
+bool driverSelfTest() => selfTest();
