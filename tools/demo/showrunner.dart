@@ -281,6 +281,10 @@ class Showrunner {
       stdout.writeln('phone: calibrated');
       await Future<void>.delayed(const Duration(milliseconds: 1500));
     }
+    // Last look at the guest before recording: an Android system hint or a
+    // rating prompt that is already up would otherwise be filmed. This is not
+    // a substitute for DEMO_DIRECTOR's scheduler suppression.
+    if (phone) await dismissPhonePrompts();
     await preflightWindows();
     final both = phone && !recordTvOnly;
     // The pointer goes into a TV half; hide it for those takes only, and put it
@@ -615,7 +619,8 @@ class Showrunner {
 
   Future<void> ensureEmulator(String avd, String serial) async {
     final adb = Adb(serial);
-    if (!await adb.isBooted()) {
+    final coldBoot = !await adb.isBooted();
+    if (coldBoot) {
       final emulator = File(
         '${Platform.environment['LOCALAPPDATA']}\\Android\\Sdk\\emulator\\emulator.exe',
       );
@@ -639,6 +644,24 @@ class Showrunner {
     if (!await adb.isBooted()) throw StateError('$serial did not boot');
     await adb.root();
     if (!await adb.isRoot()) throw StateError('adb root did not take effect');
+    // The first immersive launch shows Android's "Viewing full screen" hint
+    // (the tablet's "GOT IT" dialog). Mark it confirmed before any app starts,
+    // so it can never appear over a take. The phone was already confirmed on
+    // this AVD, but a fresh tablet is not.
+    await adb.sh([
+      'shell',
+      'settings',
+      'put',
+      'secure',
+      'immersive_mode_confirmations',
+      'confirmed',
+    ]);
+    // A cold tablet boot can take ~90 s. Wait for the launcher, not just
+    // sys.boot_completed: launching into a still-starting System UI is what
+    // produced "System UI isn't responding" on Nov 5, 2026. A warm emulator
+    // has the app in the foreground, so this wait only applies to a boot this
+    // run performed.
+    if (coldBoot) await adb.waitForLauncher();
     // The panel is already landscape (phone 2400x1080, tablet 2560x1600), so
     // the capture size is the same dp layout at 75% of the panel, 44% fewer
     // pixels, with no rotation (the emulator's rotate path does not resize the
@@ -689,10 +712,49 @@ class Showrunner {
     await Future<void>.delayed(const Duration(seconds: 2));
     for (var i = 0; i < 90; i++) {
       final dump = await adb.uiDump();
-      if (dump.contains('Connect to a TV') && dump.contains('EditText')) return;
+      adb.throwIfAnr(dump);
+      if (await adb.dismissFullScreenHint(dump)) {
+        await Future<void>.delayed(const Duration(seconds: 1));
+        continue;
+      }
+      if (dump.contains('Connect to a TV') && dump.contains('EditText')) {
+        return;
+      }
       await Future<void>.delayed(const Duration(seconds: 1));
     }
-    throw StateError('the phone app did not reach the Connect screen');
+    throw StateError(
+      'the phone app did not reach the Connect screen'
+      '${await adb.describeTopWindow()}',
+    );
+  }
+
+  /// Clears a system hint or an already-open rating dialog before recording.
+  /// The rating scheduler is off in this build, so finding one here means the
+  /// build or the install is stale: dismiss it rather than film it, and say so.
+  Future<void> dismissPhonePrompts() async {
+    final adb = Adb(_serial);
+    for (var i = 0; i < 3; i++) {
+      final dump = await adb.uiDump();
+      adb.throwIfAnr(dump);
+      if (await adb.dismissFullScreenHint(dump)) {
+        stdout.writeln('phone: dismissed the Android full-screen hint');
+        await Future<void>.delayed(const Duration(milliseconds: 800));
+        continue;
+      }
+      if (dump.toLowerCase().contains('how did the controls feel?')) {
+        final tapped = await adb.tapText(dump, RegExp(r'^Skip$'));
+        if (!tapped) {
+          throw StateError(
+            'the rating prompt is open but its Skip button was not found',
+          );
+        }
+        stdout.writeln('phone: dismissed a rating prompt before recording');
+        await Future<void>.delayed(const Duration(milliseconds: 800));
+        continue;
+      }
+      return;
+    }
+    throw StateError('the phone still shows a system prompt before recording');
   }
 
   Future<Process> startTouchDriver(
@@ -1447,12 +1509,132 @@ class Adb {
     ]);
     return result.stdout as String;
   }
+
+  /// A cold boot is ready when the launcher is on screen, not just when
+  /// `sys.boot_completed` flips: launching during System UI start-up is what
+  /// produced "System UI isn't responding" on the tablet on Nov 5, 2026.
+  Future<void> waitForLauncher() async {
+    for (var i = 0; i < 45; i++) {
+      if (!await isBooted()) {
+        await Future<void>.delayed(const Duration(seconds: 2));
+        continue;
+      }
+      final dump = await uiDump();
+      if (dump.isEmpty) {
+        await Future<void>.delayed(const Duration(seconds: 2));
+        continue;
+      }
+      throwIfAnr(dump);
+      if (dump.contains('package="com.android.launcher3"') ||
+          dump.contains('package="com.google.android.apps.nexuslauncher"') ||
+          dump.contains('package="com.android.launcher"')) {
+        return;
+      }
+      await Future<void>.delayed(const Duration(seconds: 2));
+    }
+    throw StateError(
+      'the launcher did not appear after boot${await describeTopWindow()}',
+    );
+  }
+
+  /// An ANR dialog is never something to tap through: it means the app or the
+  /// system is not ready, so the take must stop before recording.
+  void throwIfAnr(String xml) {
+    final lower = xml.toLowerCase();
+    for (final marker in [
+      "isn't responding",
+      'not responding',
+      'application not responding',
+    ]) {
+      if (lower.contains(marker)) {
+        throw StateError(
+          'an ANR dialog is on screen ("$marker"); wait for the app, then retry',
+        );
+      }
+    }
+  }
+
+  /// Dismisses Android's one-time "Viewing full screen / GOT IT" hint. Returns
+  /// true when it tapped the button.
+  Future<bool> dismissFullScreenHint(String xml) async {
+    final lower = xml.toLowerCase();
+    if (!lower.contains('viewing full screen') && !lower.contains('got it')) {
+      return false;
+    }
+    final bounds = nodeBounds(xml, (text) {
+      final t = text.trim().toLowerCase();
+      return t == 'got it' || t == 'ok';
+    });
+    if (bounds == null) return false;
+    await Process.run(_adb, [
+      '-s',
+      serial,
+      'shell',
+      'input',
+      'tap',
+      '${bounds.$1}',
+      '${bounds.$2}',
+    ]);
+    return true;
+  }
+
+  /// Taps the first node whose text matches [text] in a uiautomator dump.
+  Future<bool> tapText(String xml, RegExp text) async {
+    final bounds = nodeBounds(xml, (value) => text.hasMatch(value.trim()));
+    if (bounds == null) return false;
+    await Process.run(_adb, [
+      '-s',
+      serial,
+      'shell',
+      'input',
+      'tap',
+      '${bounds.$1}',
+      '${bounds.$2}',
+    ]);
+    return true;
+  }
+
+  Future<String> describeTopWindow() async {
+    try {
+      final result = await Process.run(_adb, [
+        '-s',
+        serial,
+        'shell',
+        'dumpsys',
+        'window',
+      ]);
+      final match = RegExp(r'mCurrentFocus=[^\r\n]+')
+          .firstMatch(result.stdout as String);
+      return match == null ? '' : ' (${match.group(0)})';
+    } on Object {
+      return '';
+    }
+  }
 }
 
 String fieldText(String xml) {
   final match = RegExp(r'text="([^"]*)"[^>]*class="android.widget.EditText"')
       .firstMatch(xml);
   return match?.group(1) ?? '';
+}
+
+/// The centre of the first uiautomator node whose `text` matches, from its
+/// `bounds="[l,t][r,b]"` attribute. Null when no node matches.
+(int, int)? nodeBounds(String xml, bool Function(String text) match) {
+  for (final node in RegExp(r'<node\b[^>]*>').allMatches(xml)) {
+    final element = node.group(0)!;
+    final text = RegExp(r'text="([^"]*)"').firstMatch(element)?.group(1) ?? '';
+    if (!match(text)) continue;
+    final bounds = RegExp(r'bounds="\[(-?\d+),(-?\d+)\]\[(-?\d+),(-?\d+)\]"')
+        .firstMatch(element);
+    if (bounds == null) continue;
+    final left = int.parse(bounds.group(1)!);
+    final top = int.parse(bounds.group(2)!);
+    final right = int.parse(bounds.group(3)!);
+    final bottom = int.parse(bounds.group(4)!);
+    return ((left + right) ~/ 2, (top + bottom) ~/ 2);
+  }
+  return null;
 }
 
 /// The touch points the pairing flow needs, read from the layout file (2.4
