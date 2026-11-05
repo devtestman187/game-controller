@@ -18,7 +18,7 @@ import 'paths.dart';
 Future<void> main(List<String> args) async {
   if (args.isEmpty) {
     stderr.writeln(
-      'usage: obs.dart <launch|setup|both|prepare|fit|record|stop-record|cursor|bind-tv|quit> '
+      'usage: obs.dart <launch|setup|both|prepare|fit|record|stop-record|cursor|bind-tv|params|quit> '
       '[--password-file f] [--seconds n] [--input tv] [--value false]',
     );
     exit(2);
@@ -60,6 +60,8 @@ Future<void> main(List<String> args) async {
       case 'setup':
         await client.setUp();
         stdout.writeln('obs: profile and scene ready');
+      case 'params':
+        await client.readRecorderSettings();
       case 'prepare':
         await client.prepare(arg('screenshot', 'obs_phone_check.png'));
         stdout.writeln('obs: Phone scene ready');
@@ -232,12 +234,14 @@ class ObsClient {
   /// Creates the demo profile and the `Phone` scene with a cropped window
   /// capture of the emulator.
   ///
-  /// The recorder writes into `$WORK/footage` (E4); the folder is created here
-  /// because OBS fails a recording whose folder is missing.
+  /// The recorder writes into `$WORK/footage` (E4), and its encoder is the best
+  /// one OBS reports as available (2.6 step 4). Both are read back afterwards,
+  /// so the log says what OBS will actually encode with.
   Future<void> setUp({String? footageDir}) async {
     final footage = footageDir ?? workPath('footage');
     Directory(footage).createSync(recursive: true);
-    const profile = 'ThumbPartyDemo';
+    final encoder = chooseRecorderEncoder(readAvailableEncoders());
+    const profile = demoProfile;
     const collection = 'ThumbPartyDemo';
     try {
       await request('CreateProfile', {'profileName': profile});
@@ -253,19 +257,18 @@ class ObsClient {
       'fpsNumerator': 60,
       'fpsDenominator': 1,
     });
+    await setProfileParameter('Output', 'Mode', 'Advanced');
     for (final MapEntry(key: name, value: value) in {
-      'Output/Mode': 'Advanced',
-      'AdvOut/RecFilePath': footage,
-      'AdvOut/RecFormat2': 'mkv',
-      'AdvOut/RecRB': 'false',
-      'AdvOut/RecEncoder': 'obs_qsv11_v2',
+      'RecFilePath': footage,
+      'RecFormat2': 'mkv',
+      'RecRB': 'false',
+      'RecEncoder': encoder,
     }.entries) {
-      await request('SetProfileParameter', {
-        'parameterCategory': 'AdvOut',
-        'parameterName': name,
-        'parameterValue': value,
-      });
+      await setProfileParameter('AdvOut', name, value);
     }
+    await writeRecordEncoderSettings(encoder);
+    stdout.writeln('obs: recorder encoder $encoder, $footage');
+    await readRecorderSettings();
 
     try {
       await request('CreateSceneCollection', {
@@ -274,19 +277,24 @@ class ObsClient {
     } on ObsError {
       // Already exists.
     }
-    await request('CreateScene', {'sceneName': 'Phone'});
-    await request('CreateInput', {
-      'sceneName': 'Phone',
-      'inputName': 'phone',
-      'inputKind': 'window_capture',
-      'inputSettings': {
-        'window': 'Android Emulator - m7_android12:5554',
-        'window_priority': 2,
-        'capture_cursor': false,
-        'method': 2,
-      },
-      'sceneItemEnabled': true,
-    });
+    // 2.6 step 4 is idempotent: a second set-up run skips what already exists.
+    try {
+      await request('CreateScene', {'sceneName': 'Phone'});
+      await request('CreateInput', {
+        'sceneName': 'Phone',
+        'inputName': 'phone',
+        'inputKind': 'window_capture',
+        'inputSettings': {
+          'window': 'Android Emulator - m7_android12:5554',
+          'window_priority': 2,
+          'capture_cursor': false,
+          'method': 2,
+        },
+        'sceneItemEnabled': true,
+      });
+    } on ObsError {
+      // The scene and its source are already there.
+    }
     await request('SetCurrentProgramScene', {'sceneName': 'Phone'});
     // Scale into 1200x540 and crop the emulator's toolbars away.
     final item = await request('GetSceneItemId', {
@@ -303,6 +311,76 @@ class ObsClient {
         'alignment': 5,
       },
     });
+  }
+
+  /// Writes one key of the profile's ini (2.6: `SetProfileParameter` writes the
+  /// same keys the encoder settings live in).
+  Future<void> setProfileParameter(
+    String category,
+    String name,
+    String value,
+  ) => request('SetProfileParameter', {
+    'parameterCategory': category,
+    'parameterName': name,
+    'parameterValue': value,
+  });
+
+  /// Reads one key of the profile's ini, or '' when it is not set.
+  Future<String> profileParameter(String category, String name) async {
+    try {
+      final out = await request('GetProfileParameter', {
+        'parameterCategory': category,
+        'parameterName': name,
+      });
+      return out['parameterValue'] as String? ?? '';
+    } on ObsError {
+      return '';
+    }
+  }
+
+  /// Reads back and prints what OBS will record with (2.6 step 4): the encoder
+  /// and output keys from the profile, and the encoder's own settings from the
+  /// `recordEncoder.json` that OBS reads at every `StartRecord`.
+  Future<Map<String, String>> readRecorderSettings() async {
+    final values = <String, String>{};
+    for (final name in const [
+      'RecEncoder',
+      'RecFilePath',
+      'RecFormat2',
+      'RecRB',
+    ]) {
+      final value = await profileParameter('AdvOut', name);
+      if (value.isNotEmpty) values[name] = value;
+    }
+    final settingsFile = File(
+      '${profileDir(demoProfile)}${Platform.pathSeparator}recordEncoder.json',
+    );
+    final settings = settingsFile.existsSync()
+        ? jsonDecode(settingsFile.readAsStringSync())
+        : const <String, dynamic>{};
+    if (settings is Map) {
+      for (final entry in settings.entries) {
+        values['Recorder.${entry.key}'] = '${entry.value}';
+      }
+    }
+    stdout.writeln(
+      'obs: ${[for (final e in values.entries) '${e.key}=${e.value}'].join(' ')}',
+    );
+    return values;
+  }
+
+  /// Writes the recording encoder's settings where OBS reads them at
+  /// `StartRecord`: `<profile folder>/recordEncoder.json`. OBS 33 ignores the
+  /// `Rec*` keys in `basic.ini` that older versions used (verified on this PC,
+  /// Nov 5, 2026: the ini keys left the encoder on its defaults, CBR 10000, and
+  /// this file applied CQP 23 at once).
+  Future<void> writeRecordEncoderSettings(String encoder) async {
+    final file = File(
+      '${profileDir(demoProfile)}${Platform.pathSeparator}recordEncoder.json',
+    );
+    file.parent.createSync(recursive: true);
+    file.writeAsStringSync(jsonEncode(recorderEncoderSettings(encoder)));
+    stdout.writeln('obs: ${file.path} <- $encoder');
   }
 
   Future<void> setCanvas(int width, int height) async {
@@ -604,4 +682,124 @@ class ObsError implements Exception {
   final String message;
   @override
   String toString() => 'ObsError: $message';
+}
+
+/// The recorder encoders this pipeline can use, in preference order (2.6 step
+/// 4): Intel Quick Sync, which every accepted take was recorded with; then
+/// NVIDIA NVENC, which is what the RTX 3080 offers; then x264, which always
+/// exists but starves the emulator (Nov 4, 2026: 2.4 fps phone crop at
+/// 3840x1080 against 12.6 on Quick Sync).
+const recorderEncoders = <String>[
+  'obs_qsv11_v2',
+  'obs_nvenc_h264_tex',
+  'obs_x264',
+];
+
+/// The OBS profile every take records with (2.6 step 4).
+const demoProfile = 'ThumbPartyDemo';
+
+/// Picks the recorder encoder from the IDs OBS reports as available, in
+/// [recorderEncoders] order. Throws when OBS offers none of them, because an
+/// unknown ID in `AdvOut/RecEncoder` only fails later, at `StartRecord`.
+String chooseRecorderEncoder(Iterable<String> available) {
+  final ids = available.toSet();
+  for (final encoder in recorderEncoders) {
+    if (ids.contains(encoder)) return encoder;
+  }
+  throw ObsError(
+    'OBS offers none of ${recorderEncoders.join(', ')}'
+    '${ids.isEmpty ? ' (was its log found?)' : '; it reports ${ids.join(', ')}'}',
+  );
+}
+
+/// The encoder IDs listed in the "Available Encoders:" section of an OBS
+/// start-up log, which is how this install reports them. Every line carries a
+/// timestamp prefix and the entries are tab-indented:
+///
+///     11:04:58.812: Available Encoders:
+///     11:04:58.812:   Video Encoders:
+///     11:04:58.812: 	- obs_nvenc_h264_tex (NVIDIA NVENC H.264)
+Set<String> availableEncodersInLog(String log) {
+  final encoders = <String>{};
+  final entry = RegExp(r'-\s+([A-Za-z0-9_]+)\s+\([^)]*\)\s*$');
+  var inList = false;
+  for (final line in const LineSplitter().convert(log)) {
+    if (line.contains('Available Encoders:')) {
+      inList = true;
+      continue;
+    }
+    if (!inList) continue;
+    if (line.contains('Audio Encoders:')) break;
+    final match = entry.firstMatch(line);
+    if (match != null) encoders.add(match.group(1)!);
+  }
+  return encoders;
+}
+
+/// The obs-studio config folder (`%APPDATA%/obs-studio`, 2.6).
+String obsConfigDir() {
+  final appData = Platform.environment['APPDATA'];
+  if (appData == null) {
+    throw ObsError('APPDATA is not set; OBS keeps its settings there (2.6)');
+  }
+  return '$appData${Platform.pathSeparator}obs-studio';
+}
+
+/// The folder of one OBS profile, where `recordEncoder.json` lives.
+String profileDir(String profile) =>
+    '${obsConfigDir()}${Platform.pathSeparator}basic'
+    '${Platform.pathSeparator}profiles${Platform.pathSeparator}$profile';
+
+/// The encoders the installed OBS offers. obs-websocket v5 has no request for
+/// the encoder list, so it comes from the newest log in
+/// `%APPDATA%/obs-studio/logs`, which OBS writes at every start (2.6 step 4).
+Set<String> readAvailableEncoders() {
+  final Directory dir;
+  try {
+    dir = Directory('${obsConfigDir()}${Platform.pathSeparator}logs');
+  } on ObsError {
+    return {};
+  }
+  if (!dir.existsSync()) return {};
+  final logs =
+      dir
+          .listSync()
+          .whereType<File>()
+          .where((file) => file.path.endsWith('.txt'))
+          .toList()
+        ..sort(
+          (a, b) => b.statSync().modified.compareTo(a.statSync().modified),
+        );
+  if (logs.isEmpty) return {};
+  return availableEncodersInLog(logs.first.readAsStringSync());
+}
+
+/// The recording encoder's own settings for the chosen encoder (2.6 step 4),
+/// keyed by the encoder's property names: OBS reads them from the profile's
+/// `recordEncoder.json` at `StartRecord`.
+///
+/// Every hardware encoder records CQP at 23, the quality target the accepted
+/// takes were made at. QSV keeps the setting measured on the old PC (target
+/// usage `speed`, seen as TU7 in the OBS log). NVENC uses the P1-P7 preset list:
+/// **p3**, OBS's "Fast" preset, close to QSV's `speed` and far above what a
+/// 3080 needs for 3840x1080 at 60 fps, with look-ahead off and no B-frames so
+/// the encoder adds no reordering delay to a take. x264 is the last resort and
+/// keeps the settings measured on Nov 4, 2026 (ultrafast CRF 20).
+Map<String, Object> recorderEncoderSettings(String encoder) {
+  switch (encoder) {
+    case 'obs_qsv11_v2':
+      return {'rate_control': 'CQP', 'cqp': 23, 'target_usage': 'speed'};
+    case 'obs_nvenc_h264_tex':
+      return {
+        'rate_control': 'CQP',
+        'cqp': 23,
+        'preset': 'p3',
+        'lookahead': false,
+        'bf': 0,
+      };
+    case 'obs_x264':
+      return {'rate_control': 'CRF', 'crf': 20, 'preset': 'ultrafast'};
+    default:
+      throw ObsError('no recorder settings for encoder $encoder');
+  }
 }

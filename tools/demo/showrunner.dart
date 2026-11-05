@@ -304,6 +304,9 @@ class Showrunner {
       // pointer, read back at StartRecord. A window shot has no TV half.
       if (recorder != null && window == null)
         'tvCursor': await _obsClient!.cursorCaptured('tv'),
+      // 2.6 step 4: the encoder the take was recorded with, for the report.
+      if (recorder != null)
+        'encoder': await _obsClient!.profileParameter('AdvOut', 'RecEncoder'),
     };
     File('$logs\\${takeName}_recorders.json')
         .writeAsStringSync(jsonEncode(recorders));
@@ -810,6 +813,17 @@ class Showrunner {
         await obs.fitTv(scene);
         await obs.request('SetCurrentProgramScene', {'sceneName': scene});
       }
+      // 2.6 step 4: say which encoder records the take, from the profile OBS
+      // will use, not from what this script asked for, and write the take's
+      // encoder settings so a reset profile cannot silently record at OBS's
+      // defaults.
+      final encoder = await obs.profileParameter('AdvOut', 'RecEncoder');
+      if (recorderEncoders.contains(encoder)) {
+        await obs.writeRecordEncoderSettings(encoder);
+      }
+      stdout.writeln(
+        'obs: recording encoder ${encoder.isEmpty ? '(default)' : encoder}',
+      );
       await obs.startRecord();
     });
     return Recorder(obs: obs, work: work, takeName: takeName, both: both);
@@ -1530,6 +1544,63 @@ Future<int> selfTest() async {
 
   // E1/E3: a missing WORK is an error, not a fallback path.
   workDirSelfTest(check);
+
+  // 2.6 step 4: the recorder encoder comes from what OBS reports, and each
+  // list selects the first one this pipeline can use.
+  check(
+    'Quick Sync wins when OBS offers it: '
+    '${chooseRecorderEncoder({'obs_qsv11_v2', 'obs_nvenc_h264_tex', 'obs_x264'})}',
+    chooseRecorderEncoder({'obs_qsv11_v2', 'obs_nvenc_h264_tex', 'obs_x264'}) ==
+        'obs_qsv11_v2',
+  );
+  check(
+    'NVENC is chosen without Quick Sync: '
+    '${chooseRecorderEncoder({'obs_nvenc_h264_tex', 'obs_x264'})}',
+    chooseRecorderEncoder({'obs_nvenc_h264_tex', 'obs_x264'}) ==
+        'obs_nvenc_h264_tex',
+  );
+  check(
+    'x264 is the last resort: ${chooseRecorderEncoder({'obs_x264'})}',
+    chooseRecorderEncoder({'obs_x264'}) == 'obs_x264',
+  );
+  try {
+    chooseRecorderEncoder({'ffmpeg_svt_av1', 'ffmpeg_aom_av1'});
+    check('an OBS with no usable encoder is an error', false);
+  } on ObsError {
+    check('an OBS with no usable encoder is an error', true);
+  }
+  const sampleLog =
+      '11:04:58.812: Available Encoders:\n'
+      '11:04:58.812:   Video Encoders:\n'
+      '11:04:58.812: \t- ffmpeg_svt_av1 (SVT-AV1)\n'
+      '11:04:58.812: \t- obs_nvenc_h264_tex (NVIDIA NVENC H.264)\n'
+      '11:04:58.812: \t- obs_x264 (x264)\n'
+      '11:04:58.812:   Audio Encoders:\n'
+      '11:04:58.812: \t- ffmpeg_aac (FFmpeg AAC)\n';
+  final listed = availableEncodersInLog(sampleLog);
+  check(
+    'the OBS log list is read: ${listed.join(', ')}',
+    listed.containsAll({'ffmpeg_svt_av1', 'obs_nvenc_h264_tex', 'obs_x264'}) &&
+        !listed.contains('ffmpeg_aac'),
+  );
+  final nvenc = recorderEncoderSettings('obs_nvenc_h264_tex');
+  check(
+    'NVENC records CQP 23: ${nvenc['rate_control']} ${nvenc['cqp']}',
+    nvenc['rate_control'] == 'CQP' && nvenc['cqp'] == 23,
+  );
+  check(
+    'NVENC uses the fast preset ${nvenc['preset']}, no look-ahead, '
+    'no B-frames',
+    nvenc['preset'] == 'p3' && nvenc['lookahead'] == false && nvenc['bf'] == 0,
+  );
+  final qsv = recorderEncoderSettings('obs_qsv11_v2');
+  check(
+    "Quick Sync keeps the accepted takes' setting: "
+    '${qsv['rate_control']} ${qsv['cqp']} ${qsv['target_usage']}',
+    qsv['rate_control'] == 'CQP' &&
+        qsv['cqp'] == 23 &&
+        qsv['target_usage'] == 'speed',
+  );
 
   Showrunner runner() =>
       Showrunner(work: Directory.systemTemp.path, repo: Directory.current.path);

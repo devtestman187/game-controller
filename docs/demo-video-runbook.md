@@ -460,16 +460,28 @@ Record the commit hash: `git -C $REPO rev-parse --short HEAD`. Every footage fil
    - `SetVideoSettings` base and output 1920Ã—1080, 60/1.
    - `SetProfileParameter`:
      - `Output/Mode` = `Advanced`;
-     - `AdvOut/RecEncoder` = the Intel Quick Sync encoder, falling back to `obs_x264`. **Don't guess its ID:** newer OBS versions name it `obs_qsv11_v2` rather than `obs_qsv11`. Read the encoder IDs this install offers from the OBS log (the newest file in `%APPDATA%\obs-studio\logs\`, which lists the loaded encoders at start-up), and use the Quick Sync one listed. An unknown encoder ID makes `StartRecord` fail;
+      - `AdvOut/RecEncoder` = the best encoder OBS reports, in this order: **Quick Sync `obs_qsv11_v2`** (the setting every accepted take was recorded with, unchanged), then **NVIDIA NVENC H.264 `obs_nvenc_h264_tex`**, then **`obs_x264`**. **Don't guess the IDs:** read the `Available Encoders:` section of the OBS log (the newest file in `%APPDATA%\obs-studio\logs\`, which OBS writes at every start) and take the first of the three that is listed; `obs.dart`'s `chooseRecorderEncoder` does that and fails with the list it saw when none of them is there. An unknown encoder ID makes `StartRecord` fail. This PC has no Intel GPU, so it records with NVENC;
      - `AdvOut/RecFormat2` = `mkv`;
      - `AdvOut/RecFilePath` = `C:\Users\singh\thumbparty-demo\footage` (create the folder first);
      - `AdvOut/RecRB` = `false`;
-     - Encoder settings are written into the profile's `basic.ini` under `[AdvOut]` while OBS is closed (they take
-     effect on the next `StartRecord`; `SetProfileParameter` writes the same keys). Use QSV, **CQP 23 with target
-     usage `speed`**: `RecRateControl=CQP`, `RecCQP=23`, `RecTargetUsage=speed`. Confirm in the OBS log at
-     `StartRecord` (`rate_control: CQP`, `qpi/qpb/qpp: 23`, `target_usage: TU7`). The stock QSV defaults â€” CBR 5000,
-     lookahead 60, TU4 â€” are the expensive ones, and x264 starves the emulator (measured Nov 4, 2026: 2.4 vs 12.6
-     fps phone crop at 3840x1080).
+     - Encoder settings do **not** live in `basic.ini` on OBS 33: the recording encoder's own settings are read
+       from `<profile folder>\recordEncoder.json` (the encoder's property names: `rate_control`, `cqp`, `preset`,
+       `lookahead`, `bf`) at every `StartRecord`. The `Rec*` keys in `[AdvOut]` are what older OBS versions used; on
+       this PC they left the encoder on its defaults (CBR 10000, preset p5, 2 B-frames, look-ahead on) while
+       `recordEncoder.json` applied at once (both read in the OBS log at `StartRecord`, Nov 5, 2026). Every hardware
+       encoder records **CQP 23**, the quality target the accepted takes were made at:
+         - **Quick Sync:** `{"rate_control":"CQP","cqp":23,"target_usage":"speed"}`. Confirm in the OBS log at
+           `StartRecord` (`rate_control: CQP`, `qpi/qpb/qpp: 23`, `target_usage: TU7`). The stock QSV defaults (CBR
+           5000, lookahead 60, TU4) are the expensive ones.
+         - **NVENC H.264:** `{"rate_control":"CQP","cqp":23,"preset":"p3","lookahead":false,"bf":0}`. `p3` is OBS's
+           "Fast" preset, the closest match to QSV's `speed`, and a 3080 has far more NVENC headroom than 3840x1080
+           at 60 fps needs; look-ahead off and no B-frames mean the encoder adds no reordering delay to a take.
+           Confirm in the OBS log at `StartRecord` (`rate_control: CQP`, `cqp: 23`, `preset: p3`, `b-frames: 0`,
+           `lookahead: false`).
+         - **x264, the last resort** (it starves the emulator: measured Nov 4, 2026, 2.4 vs 12.6 fps phone crop at
+           3840x1080): `{"rate_control":"CRF","crf":20,"preset":"ultrafast"}`.
+     - The showrunner writes that file before every take, prints the encoder it is about to record with just before
+       `StartRecord`, and writes it into `<take>_recorders.json`, so every take's report says which encoder made it.
    - Scene collection `ThumbPartyDemo` with:
      - scene `TV`: input `tv` of kind `window_capture`, window `Thumb Party TV:FLUTTER_RUNNER_WIN32_WINDOW:ThumbPartyTV.exe`, `capture_cursor` false, method Windows Graphics Capture;
      - an input `desktop_audio` of kind `wasapi_output_capture` (default device);
