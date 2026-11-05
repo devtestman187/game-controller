@@ -756,10 +756,37 @@ class Showrunner {
   }
 
   Future<void> pair(DriverClient driver, int port, String code) async {
-    await ensureSymbolsPage(driver);
-    await typeAddress(driver, '10.0.2.2:$port');
-    await _tapPoint(driver, _pad.enter);
+    await enterAddress(driver, '10.0.2.2:$port');
     await _enterCode(driver, code);
+  }
+
+  /// Types the TV's address on the Connect screen and checks it landed, with
+  /// one clear-and-retype. The check matters: on the Connect screen the code
+  /// keypad's taps fall on "Try without a TV", which drops the app into demo
+  /// mode, so a wrong address has to fail here, not three screens later (the
+  /// Nov 4, 2026 dry run: the address never arrived, the four backspace taps
+  /// at 1480,560 hit that button, and the phone sat in demo mode with no P1).
+  Future<void> enterAddress(DriverClient driver, String address) async {
+    final adb = Adb(_serial);
+    final port = address.split(':').last;
+    await ensureSymbolsPage(driver);
+    for (var attempt = 0; attempt < 2; attempt++) {
+      await typeAddress(driver, address);
+      final text = fieldText(await adb.uiDump()).trim();
+      if (text.endsWith(address)) {
+        await _tapPoint(driver, _pad.enter);
+        return;
+      }
+      for (var i = 0; i < text.length; i++) {
+        await _tapPoint(driver, _pad.backspace);
+        await Future<void>.delayed(const Duration(milliseconds: 90));
+      }
+      if (attempt == 1) {
+        throw StateError(
+          'the address field reads "$text", not "$address" (port $port)',
+        );
+      }
+    }
   }
 
   /// P2/P4: the pairing is the shot, so it runs after StartRecord.
@@ -777,7 +804,20 @@ class Showrunner {
   /// Waits for the code screen, types the code, checks the field and submits.
   Future<void> _enterCode(DriverClient driver, String code) async {
     final adb = Adb(_serial);
-    await Future<void>.delayed(const Duration(milliseconds: 2500));
+    // The keypad taps are only safe once the code screen is up.
+    var onCodeScreen = false;
+    for (var i = 0; i < 24; i++) {
+      if ((await adb.uiDump()).contains('Enter the code shown')) {
+        onCodeScreen = true;
+        break;
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 250));
+    }
+    if (!onCodeScreen) {
+      throw StateError(
+        'the phone did not open the code screen after the address',
+      );
+    }
     // Focus the code field in case the keypad has not opened by itself.
     await _tapPoint(driver, _pad.codeField);
     await Future<void>.delayed(const Duration(milliseconds: 900));
