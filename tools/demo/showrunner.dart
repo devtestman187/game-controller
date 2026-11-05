@@ -439,19 +439,27 @@ class Showrunner {
   /// Drives the TV back to the home screen before a take (2.7 step 1): the
   /// director never navigates the TV, so the showrunner clicks.
   Future<void> resetTvToHome() async {
-    // Escape leaves a running game or a lobby; five presses reach the home
-    // screen from any depth (join -> puzzle list -> games -> home).
-    for (var i = 0; i < 5; i++) {
-      await tvKey('esc');
-      await Future<void>.delayed(const Duration(milliseconds: 400));
+    for (var attempt = 0; attempt < 3; attempt++) {
+      // Escape leaves a running game or a lobby; five presses reach the home
+      // screen from any depth (join -> puzzle list -> games -> home).
+      for (var i = 0; i < 5; i++) {
+        await tvKey('esc');
+        await Future<void>.delayed(const Duration(milliseconds: 400));
+      }
+      // The TV hands out player numbers in order, and remembers every phone it
+      // has paired: without this the phone comes back as P5 and no scene's P1
+      // seat ever gets input. Forget the remembered list, then drop the one that
+      // is still connected.
+      await tvClick(1813, 94); // Forget phones
+      await tvClick(485, 388); // Drop connections
+      await Future<void>.delayed(const Duration(milliseconds: 800));
+      final state = await _director!.request({'t': 'hello'}, 'state');
+      if (state['screen'] == 'home') return;
+      stdout.writeln(
+        'tv: still on ${state['screen'] ?? '?'}, going home again',
+      );
     }
-    // The TV hands out player numbers in order, and remembers every phone it
-    // has paired: without this the phone comes back as P5 and no scene's P1
-    // seat ever gets input. Forget the remembered list, then drop the one that
-    // is still connected.
-    await tvClick(1813, 94); // Forget phones
-    await tvClick(485, 388); // Drop connections
-    await Future<void>.delayed(const Duration(milliseconds: 800));
+    throw StateError('the TV did not return to the home screen');
   }
 
   /// Opens the screen a shot is filmed on, after the phone has paired. A phone
