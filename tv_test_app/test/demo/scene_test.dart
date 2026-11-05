@@ -37,6 +37,16 @@ void main() {
     expect(scene.seats['Bot 3']!.goals.map((g) => g.kind), contains(GoalKind.wrongDrop));
   });
 
+  test('the arena takes wander instead of racing for the goal', () {
+    for (final name in ['arena_gyro.json', 'arena_sticks.json']) {
+      final scene = Scene.fromFile('../tools/demo/scenes/$name');
+      expect(scene.game, 'arena');
+      expect(scene.wander, isTrue, reason: '$name: a won round freezes the picture for the ~2 s break');
+    }
+    // M1's accepted take 12 is the goal-seeking D-pad shot and stays as it is.
+    expect(Scene.fromFile('../tools/demo/scenes/arena_dpad.json').wander, isFalse);
+  });
+
   test('join_race.json is a join pre-roll: four seats, then the match starts', () {
     final scene = Scene.fromFile('../tools/demo/scenes/join_race.json');
     expect(scene.screenStart, 'join');
@@ -52,6 +62,13 @@ void main() {
 
   group('refuses', () {
     Scene parse(String text) => Scene.parse(text, source: 'test');
+
+    test('wander outside an arena scene', () {
+      expect(
+        () => parse('{"game":"puzzle","wander":true,"seats":{"P1":{"goals":[{"place":{}}]}}}'),
+        throwsA(isA<FormatException>().having((e) => e.message, 'message', contains('arena only'))),
+      );
+    });
 
     test('a join order naming a seat with no script', () {
       expect(

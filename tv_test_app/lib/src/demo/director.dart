@@ -222,7 +222,7 @@ final class DemoDirector {
           paceFinishMs: scene.pace[scene.sideOf(seat) ?? ''],
         );
       } else {
-        _arenaBrains[seat] = ArenaBrain(seat: seat, seed: seed);
+        _arenaBrains[seat] = ArenaBrain(seat: seat, seed: seed, wander: scene.wander);
       }
     }
     log.add('scene_start', {'scene': scene.game, 'take': log.take});

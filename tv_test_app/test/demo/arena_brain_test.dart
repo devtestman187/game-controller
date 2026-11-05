@@ -180,4 +180,59 @@ void main() {
       expect(game.player('p1')!.wins, greaterThanOrEqualTo(1), reason: 'won ${game.player('p1')!.wins} rounds in 60 s');
     });
   });
+
+  group('wander mode (the arena takes M2-M4)', () {
+    test('20 s of wander keeps moving and never wins a round', () {
+      final game = ArenaGame()..join('p1');
+      game.resize(const Size(1920, 1080));
+      final brain = ArenaBrain(seat: 'p1', seed: 21, wander: true);
+      final path = <Offset>[];
+      for (var i = 0; i < 20 * 60; i++) {
+        game.update(dt, {'p1': GameInput.fromGamepad(brain.step(game, dt))});
+        expect(
+          game.phase,
+          ArenaPhase.playing,
+          reason: 'frame $i: a won round freezes the picture for the ~2 s break, and 2.8 fails that as stutter',
+        );
+        path.add(game.player('p1')!.position / game.size.shortestSide);
+      }
+
+      // The goal is what ends a round: it starts at 0.86 of the field's width,
+      // so the dot must never reach it.
+      final goal = game.goalRect.center / game.size.shortestSide;
+      for (final p in path) {
+        expect((p - goal).distance, greaterThan(2 * dot), reason: 'the dot reached the goal at $p');
+      }
+
+      // 2.8's arena rule fails a take on three frames in a row with nothing
+      // changed (M2 take 9: a 224-frame run at a round break). The dot is the
+      // only thing the brain moves, so two intervals without movement is the
+      // three identical frames a take may not have.
+      var still = 0;
+      var travelled = 0.0;
+      for (var i = 1; i < path.length; i++) {
+        final d = (path[i] - path[i - 1]).distance;
+        travelled += d;
+        still = d < 1e-6 ? still + 1 : 0;
+        expect(
+          still,
+          lessThan(2),
+          reason: 'frames ${i - still}..$i: the dot did not move, which is three identical frames',
+        );
+      }
+      // And it has to cover the field properly, not creep: a take is 20 s of
+      // steering (up to 0.55 of the shorter side a second), and a jitter would
+      // pass the rule above while looking broken.
+      expect(travelled, greaterThan(6.0), reason: 'the dot only travelled $travelled field units in 20 s');
+    });
+
+    test('wander is optional: the default plan still races for the goal', () {
+      final game = ArenaGame(walls: const [], hazards: const [])..join('p1');
+      final brain = ArenaBrain(seat: 'p1', seed: 11, wander: false);
+      for (var i = 0; i < 8 * 60 && game.phase != ArenaPhase.won; i++) {
+        game.update(dt, {'p1': GameInput.fromGamepad(brain.step(game, dt))});
+      }
+      expect(game.phase, ArenaPhase.won);
+    });
+  });
 }

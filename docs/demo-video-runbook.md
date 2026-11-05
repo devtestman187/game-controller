@@ -279,6 +279,7 @@ The director must read the running game's state. Both views already accept an in
 - Steer to the goal. If the straight line crosses a wall or hazard, steer to the nearest corner waypoint around it first.
 - Dash (A) on straight stretches longer than 3 dot-diameters when the dash is ready.
 - When stuck (less than 2 px of movement in 1 s), back off 400 ms in the opposite direction.
+- **Wander** (`"wander": true` in the scene): steer between random waypoints in the left two-thirds of the field instead of racing to the goal, and no dash. The dot never finishes a round, so the arena never freezes for the ~2 s round break; a break is a long run of identical frames and 2.8's exact-duplicate rule fails the take on it (M2 take 9: 224 frames). A hazard on top of the dot makes it back off at once (the general 1 s stuck rule is too slow), and a stick that would drive into a wall slides along it, so the picture keeps changing.
 
 **Seat P1 (the visible phone):** the same brains plan P1, but the director doesn't set P1's gamepad. It sends `p1` intents to the touch driver. The real phone app then sends the input over the real protocol, and the director reads P1's dot like any other seat. In the scene file, P1 has `"via":"phone"`.
 
@@ -311,6 +312,8 @@ The director must read the running game's state. Both views already accept an in
 | `pause.json` | G4 | P1 presses Start, the pause menu shows, Resume |
 | `arena_dpad.json`, `arena_gyro.json`, `arena_sticks.json` | M1 to M3 | Arena, P1 alone, 20 s each |
 | `menus.json` | R1, R2, C4 | P1 navigates home, then Play, Shape Race, Rocket; and Puzzle settings: Time limit +2 steps, then Reset to defaults |
+
+The arena scenes set `"wander": true` (`arena_gyro.json`, `arena_sticks.json`): the dot weaves instead of racing, so a round is never won and the picture never freezes for the break (2.3's ArenaBrain). `arena_dpad.json` keeps the goal-seeking plan because M1 take 12 is accepted.
 
 **Tests** (`tv_test_app/test/demo/`):
 - `Steer` reaches a target within tolerance from 20 random starts, at a fixed `dt` of 1/60 s.

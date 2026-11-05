@@ -17,6 +17,7 @@ final class Scene {
     this.endAfter = 'results',
     this.endAfterS,
     this.join,
+    this.wander = false,
   });
 
   /// `puzzle` or `arena`.
@@ -51,6 +52,11 @@ final class Scene {
   /// The join pre-roll, when the scene starts on the join screen: the seats to
   /// put on a side, in order, and who starts the match.
   final JoinPlan? join;
+
+  /// Arena only: the seats weave between waypoints instead of racing to the
+  /// goal, so a round is never won and the picture never stops for the round
+  /// break (see [ArenaBrain.wander]). The arena takes M2-M4 set it.
+  final bool wander;
 
   /// The side [seat] plays on, or null if it isn't on one.
   String? sideOf(String seat) {
@@ -165,6 +171,14 @@ final class Scene {
       throw FormatException('$source: endAfter "seconds" needs a positive "endAfterS"');
     }
 
+    final rawWander = raw['wander'];
+    if (rawWander != null && rawWander is! bool) {
+      throw FormatException('$source: "wander" must be true or false');
+    }
+    if (rawWander == true && game != 'arena') {
+      throw FormatException('$source: "wander" is arena only');
+    }
+
     JoinPlan? join;
     final rawJoin = raw['join'];
     if (rawJoin != null) {
@@ -198,6 +212,7 @@ final class Scene {
       endAfter: endAfter,
       endAfterS: endAfterS,
       join: join,
+      wander: rawWander == true,
     );
   }
 }

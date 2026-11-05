@@ -3,6 +3,7 @@
   "seed": 7,
   "screenStart": "play",
   "teams": {},
+  "wander": true,
   "seats": {
     "P1": {"via": "phone", "mode": "gyro", "goals": [{"idle": 20000}]}
   },
