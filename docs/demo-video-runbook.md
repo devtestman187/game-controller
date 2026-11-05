@@ -24,10 +24,10 @@ Small STOPs also appear where something fails or needs the owner once, such as D
 
 **Access the harness needs:**
 - **Write access** to:
-  - `C:\Users\singh\game-controller` (the repository);
-  - `C:\Users\singh\thumbparty-demo` (the work folder);
-  - `C:\Users\singh\AppData\Roaming\obs-studio` (OBS settings, 2.6);
-  - `C:\Users\singh\AppData\Roaming\Code\User` (VS Code settings for the editor shots, 3.3);
+  - `$REPO` (the repository; on this PC `E:\AI\game-controller`);
+  - `$WORK` (the work folder; on this PC `E:\AI\thumbparty-demo`);
+  - `%APPDATA%\obs-studio` (OBS settings, 2.6);
+  - `<home>\AppData\Roaming\Code\User` (VS Code settings for the editor shots, 3.3);
   - the harness's own workspace, for preview copies.
 - **Network access**, and the owner's git sign-in, to push the `demo-video` branch.
 
@@ -47,11 +47,11 @@ The owner may grant full access instead. The ground rules below still apply eith
 These come from the project's working rules ([project-notes.md](project-notes.md)). They apply to every step.
 
 1. **Shell.** Run bash commands in **Git Bash** (`C:\Program Files\Git\bin\bash.exe`). Run PowerShell commands in **Windows PowerShell 5.1**; PowerShell scripts need `-ExecutionPolicy Bypass`. Every command below says which shell.
-2. **Repository:** `C:\Users\singh\game-controller` (Git Bash: `/c/Users/singh/game-controller`). Work only on the branch `demo-video` (created in Phase 1). Commit only when a step says so. After each phase, push the branch (`git push -u origin demo-video`) as a backup. Never commit to, push to, merge into or rebase `main`; the owner merges the branch later. Never commit the files listed under "Never commit" in project-notes.md, or anything in `C:\Users\singh\thumbparty-demo\`.
-3. **Never stop processes by name.** The owner may have release copies of `ThumbPartyTV.exe` running from Downloads, and phones paired with them. Stop only processes you started, by the PID you recorded. The same goes for emulators (stop with `tools/emulator.sh stop` or `adb -s <serial> emu kill`), OBS and scrcpy.
+2. **Repository:** `$REPO` (on this PC `E:\AI\game-controller`; in Git Bash `/e/AI/game-controller`). Work only on the branch `demo-video` (created in Phase 1). Commit only when a step says so. After each phase, push the branch (`git push -u origin demo-video`) as a backup. Never commit to, push to, merge into or rebase `main`; the owner merges the branch later. Never commit the files listed under "Never commit" in project-notes.md, or anything in `$WORK`.
+3. **Never stop processes by name.** The owner may have release copies of `ThumbPartyTV.exe` running from Downloads, and phones paired with them. Stop only processes you started, by the PID you recorded. The same goes for emulators (stop with `tools/emulator.sh stop` or `adb -s <serial> emu kill`) and OBS.
 4. **Checks:** run `tools/check.sh` (Git Bash) after every code change. It runs format, analyze and the seven test suites, one line each. Every line must say ok before a commit.
 5. **No releases.** Never create or push tags, never run `tools/release.sh`, never change app versions. Nothing in this runbook ships to testers.
-6. **Big files** (footage, renders, sessions, tools you download) go in `C:\Users\singh\thumbparty-demo\` (Git Bash: `/c/Users/singh/thumbparty-demo`). That's the **work folder**, outside the repository. Code and small configs go in the repository under `tools/demo/`.
+6. **Big files** (footage, renders, sessions, tools you download) go in `$WORK` (on this PC `E:\AI\thumbparty-demo`). That's the **work folder**, outside the repository. Code and small configs go in the repository under `tools/demo/`.
 7. **Owner's data is off limits.**
    - Don't modify, move or delete anything in `%APPDATA%\Thumb Party\Thumb Party TV\` yourself.
    - The demo build itself adds the `sessions-demo` folder and its own `demo.`-prefixed keys to `shared_preferences.json`. Nothing else may change. The one exception: before Phase 4, move (never delete) the Phase 3 files out of `sessions-demo` (4.0).
@@ -59,7 +59,7 @@ These come from the project's working rules ([project-notes.md](project-notes.md
    - **Before every start of the demo TV app**, list running `ThumbPartyTV.exe` processes (`tasklist //FI "IMAGENAME eq ThumbPartyTV.exe"`). If any is running that you didn't start (by PID), **STOP** and ask the owner to close it. Two copies would share the settings file and could overwrite each other's saves. Never close it yourself.
 8. **Secrets:** none are needed. Never print `DEEPSEEK_API_KEY` or any token.
 9. **Clean up whenever you hand control back to the owner** (owner's request, Nov 3, 2026): at a STOP gate, on a failure you can't get past, or when you need a decision. The full-screen demo TV app covers the owner's screen, so they can't read your report while it runs.
-   - Close everything you started, by recorded PID: the demo or debug TV app, OBS (graceful close, 2.6), scrcpy, the touch driver, `ffplay` or any test window.
+   - Close everything you started, by recorded PID: the demo or debug TV app, OBS (graceful close, 2.6), the touch driver, `ffplay` or any test window.
    - Stop emulators with `adb -s <serial> emu kill`.
    - Check with `tasklist` that none of your PIDs is left, and say so in the report.
    - **Don't clean up between your own working blocks** when you'll simply carry on next block. Keep the emulator, OBS and the TV app running, and pick up where you left off: restarting them every block wastes most of a block.
@@ -72,68 +72,89 @@ These come from the project's working rules ([project-notes.md](project-notes.md
 
 ## Environment (E)
 
-### E1. What is already installed (verified Nov 3, 2026)
+### E1. What is already installed (verified Nov 5, 2026, on this PC)
 | Tool | Path | Notes |
 | --- | --- | --- |
 | Git Bash | `C:\Program Files\Git\bin\bash.exe` | |
-| Flutter and Dart | `C:\src\flutter\bin\flutter`, `C:\src\flutter\bin\dart` (on PATH) | Use only this SDK |
-| Android SDK | `%LOCALAPPDATA%\Android\Sdk` (`C:\Users\singh\AppData\Local\Android\Sdk`) | |
+| Flutter and Dart | `C:\src\flutter\bin\flutter`, `C:\src\flutter\bin\dart` (on PATH) | Flutter 3.47.9 / Dart 3.13.7, accepted by the owner; use only this SDK |
+| Android SDK | `%LOCALAPPDATA%\Android\Sdk` | `ANDROID_HOME` resolves here through a **junction** (it points into a package cache folder), so the SDK path itself is not the real folder. Never delete or move the junction |
 | adb | `%LOCALAPPDATA%\Android\Sdk\platform-tools\adb.exe` (on PATH) | |
 | Android emulator | `%LOCALAPPDATA%\Android\Sdk\emulator\emulator.exe`, version 37.2.13 | Has the gRPC bridge and `lib\emulator_controller.proto` |
-| AVD `m7_android12` | `C:\Users\singh\.android\avd\m7_android12.avd` | Phone, Android 12 (API 31), AOSP image (`adb root` works), 1080Ã—2400, 420 dpi, accelerometer and gyroscope on, `hw.gpu.enabled=no` (launch with `-gpu host`) |
-| AVD `m8_pixel_tablet` | `C:\Users\singh\.android\avd\m8_pixel_tablet.avd` | Tablet, Android 12, 2560Ã—1600, 320 dpi |
-| ffmpeg and ffprobe | `C:\Users\singh\AppData\Local\Microsoft\WinGet\Links\ffmpeg.exe`, `...\Links\ffprobe.exe` | Version 9.0.2 (Gyan full build). **Not on Git Bash's PATH.** Add it with the line below |
+| AVD `m7_android12` | `<home>\.android\avd\m7_android12.avd` | Phone, Android 12 (API 31), AOSP image (`adb root` works), **landscape** panel 2400x1080 at 420 dpi, accelerometer and gyroscope on, `hw.gpu.mode=host`, 2048 MB RAM |
+| AVD `m8_pixel_tablet` | `<home>\.android\avd\m8_pixel_tablet.avd` | Tablet, Android 12, 2560x1600 at 320 dpi, Sticks layout only |
+| ffmpeg and ffprobe | `%LOCALAPPDATA%\Microsoft\WinGet\Links\ffmpeg.exe`, `...\Links\ffprobe.exe` | Version 9.0.2 (Gyan full build). **On PATH**: `where ffmpeg` finds it, and the host scripts look it up there (no hard-coded path) |
 | GitHub CLI | `C:\Program Files\GitHub CLI\gh.exe` | Signed in as the owner |
 | winget | on PATH | Used to install what's missing |
 | Windows Terminal | `wt.exe` (on PATH) | Terminal shots |
 | Microsoft Edge | `C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe` | **Not on PATH**: always use the full path |
-| VS Code | `C:\Users\singh\AppData\Local\Programs\Microsoft VS Code\Code.exe`, command `C:\Users\singh\AppData\Local\Programs\Microsoft VS Code\bin\code.cmd` | Version 1.143.1, installed Nov 3, 2026 for the editor shots (user install, fresh settings). `code` is on the user PATH in new shells; otherwise use the full path |
+| VS Code | `<home>\AppData\Local\Programs\Microsoft VS Code\Code.exe`, command `<home>\AppData\Local\Programs\Microsoft VS Code\bin\code.cmd` | For the editor shots (3.3); `code` is on the user PATH in new shells |
 | Project scripts | `tools/check.sh`, `tools/tv-dev.sh`, `tools/tv-window.ps1`, `tools/emulator.sh` | Documented in [dev-tools.md](dev-tools.md) |
-| Bubble Pop sounds | `C:\Users\singh\Documents\deepseek-harness\default-workspace\thumb-party-audio\` | `final\palette-b-bubble-pop\*.ogg`, `INSTALL.md`, `render.py` |
+| Bubble Pop sounds | `<home>\Documents\deepseek-harness\default-workspace\thumb-party-audio\` | `final\palette-b-bubble-pop\*.ogg`, `INSTALL.md`, `render.py` |
 
-In every Git Bash session for this runbook, first run:
+**The three path variables.** `<home>` is `C:\Users\mrman`; the repository and the work folder are
+on the E: drive on this PC. Every command in this file uses `$REPO` and `$WORK` instead of a
+literal path. In every Git Bash session for this runbook, first run:
 ```bash
-export PATH="/c/Users/singh/AppData/Local/Microsoft/WinGet/Links:$PATH"
-export WORK=/c/Users/singh/thumbparty-demo
-export REPO=/c/Users/singh/game-controller
+export PATH="$LOCALAPPDATA/Microsoft/WinGet/Links:$PATH"   # ffmpeg, if the shell predates that entry
+export REPO=/e/AI/game-controller
+export WORK=/e/AI/thumbparty-demo
 ```
+In PowerShell the same two values are `$env:REPO = 'E:\AI\game-controller'` and
+`$env:WORK = 'E:\AI\thumbparty-demo'`. The host scripts (`tools/demo/*.dart`) read `WORK` from the
+environment and fail with a clear message when it is unset; they never guess a folder.
 
-**Hardware:** Intel i5-8350U, Intel UHD Graphics 620, 16 GB RAM, one 1920Ã—1080 display. This is a modest machine. The capture plan keeps the load down: hardware encoding (Intel Quick Sync), the phone recorded at reduced size, and one emulator at a time.
+**Hardware:** AMD Ryzen 7 5800X (8 cores, 16 threads), NVIDIA GeForce RTX 3080 (10 GB), 31.9 GB
+RAM, one 1920x1080 display at 60 Hz and 100% scaling. There is **no Intel GPU**, so there is no
+Quick Sync: the recorder uses NVENC H.264 (2.6 step 4). The machine has the headroom the old PC
+lacked for the arena, OBS's 3840x1080 capture and the emulator at the same time.
 
-### E2. Programs installed on Nov 3, 2026: check them
-Python, OBS Studio and scrcpy were installed with winget on Nov 3, 2026 and are on the user PATH for new shells:
+### E2. Programs installed on Nov 3, 2026 (on this PC: Nov 5, 2026): check them
+Python, OBS Studio and ffmpeg were installed with winget and are on the user PATH for new shells.
+**scrcpy is not needed any more** (the emulator is recorded through OBS, 2.7 step 4) and is not
+installed here:
 
 | Program | Version | Path |
 | --- | --- | --- |
-| Python | 3.12.10 | `C:\Users\singh\AppData\Local\Programs\Python\Python312\python.exe`; launcher `C:\Users\singh\AppData\Local\Programs\Python\Launcher\py.exe` |
-| OBS Studio | 33.0.0 | `C:\Program Files\obs-studio\bin\64bit\obs64.exe` |
-| scrcpy | 5.0.1 | `C:\Users\singh\AppData\Local\Microsoft\WinGet\Packages\Genymobile.scrcpy_Microsoft.Winget.Source_8wekyb3d8bbwe\scrcpy-win64-v5.0.1\scrcpy.exe` (its folder is on the user PATH) |
+| Python | 3.12.10 | `<home>\AppData\Local\Programs\Python\Python312\python.exe`; launcher `<home>\AppData\Local\Programs\Python\Launcher\py.exe` |
+| OBS Studio | 33.0.1 | `C:\Program Files\obs-studio\bin\64bit\obs64.exe` |
+| ffmpeg / ffprobe | 9.0.2 (Gyan full) | `%LOCALAPPDATA%\Microsoft\WinGet\Links\` (on PATH) |
 
 Check in a **new** Git Bash window:
 ```bash
 py -3.12 --version                                       # Expect: Python 3.12.10
 ls "/c/Program Files/obs-studio/bin/64bit/obs64.exe"     # Expect: the path is printed
-scrcpy --version | head -1                               # Expect: scrcpy 5.0.1 ...
+where ffmpeg ffprobe                                     # Expect: the two WinGet Links paths
 ```
-If `py` or `scrcpy` isn't found, the shell started before the install: open a new one, or call them by the full paths above. If a program is missing entirely (a different PC), install it in **PowerShell** and accept the defaults:
+If `py` isn't found, the shell started before the install: open a new one, or call it by the full
+path above. If a program is missing entirely (a different PC), install it in **PowerShell** and
+accept the defaults:
 ```powershell
 winget install --id Python.Python.3.12 -e --accept-source-agreements --accept-package-agreements
 winget install --id OBSProject.OBSStudio -e --accept-source-agreements --accept-package-agreements
-winget install --id Genymobile.scrcpy -e --accept-source-agreements --accept-package-agreements
+winget install --id Gyan.FFmpeg -e --accept-source-agreements --accept-package-agreements
 ```
-Later steps use scrcpy 5 options (`--no-window`, `--record`, `--max-fps`, `--max-size`, `--no-audio`, `--time-limit`). If `scrcpy --help` doesn't list one of them, **STOP** and report.
+Do not install scrcpy: no capture step uses it.
 
-**Python** is called only as `py -3.12` (on this PC `python` may still resolve to the Microsoft Store placeholder in older shells). Create the virtual environment for graphics:
+**Python** is called only as `py -3.12` (on this PC `python` may still resolve to the Microsoft
+Store placeholder in older shells). Create the virtual environment for graphics:
 ```bash
 mkdir -p $WORK && cd $WORK
 py -3.12 -m venv venv
 ./venv/Scripts/python.exe -m pip install --upgrade pip
 ./venv/Scripts/python.exe -m pip install numpy==2.* pillow==11.* matplotlib==3.*
 ```
-Expect: "Successfully installed â€¦". From now on, Python means `$WORK/venv/Scripts/python.exe`, run with `-I`.
+Expect: "Successfully installed". From now on, Python means `$WORK/venv/Scripts/python.exe`, run
+with `-I`.
 
 ### E3. On a different computer
-If this runbook runs on another PC, follow [building.md](building.md) for the Flutter toolchain, the Android SDK and the `m7_android12` AVD. Create the tablet AVD with Android Studio's Device Manager: Pixel Tablet, API 31 x86_64 "default" image (not Google Play, so `adb root` works). Then do E2. The paths in E1 change; set `WORK` and `REPO` accordingly, and find ffmpeg with `where ffmpeg` in PowerShell.
+If this runbook runs on another PC, follow [building.md](building.md) for the Flutter toolchain,
+the Android SDK and the `m7_android12` AVD. Create the tablet AVD with Android Studio's Device
+Manager: Pixel Tablet, API 31 x86_64 "default" image (not Google Play, so `adb root` works). Then
+do E2. The paths in E1 change; set `WORK` and `REPO` accordingly, find the tools with `where
+ffmpeg` / `where ffprobe` (the host scripts look them up on PATH), and check in
+`tools/demo/obs.dart` which encoder OBS offers: the list is `obs_qsv11_v2` (an Intel GPU), then
+`obs_nvenc_h264_tex` (an NVIDIA GPU), then `obs_x264`. On a PC with a different GPU driver set,
+read the OBS log's `Available Encoders:` section before the first take.
 
 ### E4. Work folder layout
 Create it now (Git Bash):
@@ -163,7 +184,7 @@ git tag -l m11.3                                                    # Expect: m1
 git merge-base --is-ancestor m11.3 origin/main && echo ok           # Expect: ok
 grep -c "activeMs" packages/metrics/lib/src/segment.dart            # Expect: 3 or more
 grep -c "open_minutes" packages/metrics/lib/src/report.dart         # Expect: 1 or more
-cmp assets/audio/snap.ogg "/c/Users/singh/Documents/deepseek-harness/default-workspace/thumb-party-audio/final/palette-b-bubble-pop/snap.ogg" && echo same   # Expect: same
+cmp assets/audio/snap.ogg "$HOME/Documents/deepseek-harness/default-workspace/thumb-party-audio/final/palette-b-bubble-pop/snap.ogg" && echo same   # Expect: same
 ```
 If any line differs from its "Expect", **STOP** and tell the owner: "m11.3 isn't in place: <which check failed>". Don't implement it yourself.
 
@@ -361,15 +382,15 @@ It turns P1 intents into multi-touch on the emulator, and gyro intents into sens
      3. Turn the overlay off again: `adb shell settings put system pointer_location 0`. It must never be on during filming.
      4. Then drag one finger inside the left stick's circle and confirm in a screenshot that the knob moved off-centre.
      5. Only then run the two-finger test below.
-3. Spike test: install the app (`tools/emulator.sh install` builds the debug APK if missing), launch, connect it to a TV app started with `tools/tv-dev.sh start` (`tools/emulator.sh connect 10.0.2.2:<port> <code>`), and switch to Sticks mode. Stream two fingers for 10 s at 60 Hz: the left one circling on the left stick, the right one circling on the right stick. Record with `scrcpy -s emulator-5554 --no-window --record $WORK/qa/spike.mp4 --max-fps 60 --max-size 1200 --time-limit 12`.
+3. Spike test: install the app (`tools/emulator.sh install` builds the debug APK if missing), launch, connect it to a TV app started with `tools/tv-dev.sh start` (`tools/emulator.sh connect 10.0.2.2:<port> <code>`), and switch to Sticks mode. Stream two fingers for 10 s at 60 Hz: the left one circling on the left stick, the right one circling on the right stick. Record it with any screen recorder you have: a 12 s window recording of the emulator is enough (`scrcpy` is no longer installed; its 21-24 fps was only ever enough for this touch test). Save it as `$WORK/qa/spike.mp4`.
 
-   This clip is only a touch test, not footage: scrcpy's 21-24 fps on the emulator (measured Nov 4, 2026) is enough to see whether the sticks move. Phone shots are recorded with OBS on the both-sides scene instead (2.7 step 4).
+   This clip is only a touch test, not footage: any 20 fps recording is enough to see whether the sticks move (scrcpy's 21-24 fps on the emulator, measured Nov 4, 2026, was). Phone shots are recorded with OBS on the both-sides scene instead (2.7 step 4).
 
    **Pass when:** in `spike.mp4`, both sticks move smoothly at the same time, ffprobe reports about 60 fps, and the TV debug overlay (F3) shows both sticks changing.
 4. **If raw injection fails** even with flushing and the corrected coordinates (permission errors, or the sticks still don't move after two tries), use the emulator's gRPC bridge instead. The owner approved this fallback on that condition (Nov 3, 2026). The first spike's failures came from the missing flush, not from the raw path, so try the raw path with flushing first. A gRPC helper must flush its pipes too:
    - start the emulator with `-grpc 8554 -grpc-use-token`;
    - the service is `android.emulation.control.EmulatorController`, method `sendTouch(TouchEvent{touches: [Touch{x, y, identifier, pressure}]})` in `%LOCALAPPDATA%\Android\Sdk\emulator\lib\emulator_controller.proto`;
-   - the token is in `C:\Users\singh\.emulator_console_auth_token`;
+   - the token is in `<home>\.emulator_console_auth_token`;
    - this needs `protoc` and the Dart `grpc` package in a separate package `tools/demo/grpc_touch/` (approved on the condition above).
 
    If both fail, **STOP** and report.
@@ -419,7 +440,7 @@ It turns P1 intents into multi-touch on the emulator, and gyro intents into sens
   - These numbers produce plausible counters, not real behaviour. That's why every stats caption says "scripted test sessions".
 
 **Step D, gyro:**
-- Open the emulator console with a TCP socket to `127.0.0.1:5554` and authenticate with `auth <token>` (token from `C:\Users\singh\.emulator_console_auth_token`).
+- Open the emulator console with a TCP socket to `127.0.0.1:5554` and authenticate with `auth <token>` (token from `<home>\.emulator_console_auth_token`).
 - At 60 Hz, turn the intent's tilt `(x, y)` (each âˆ’1 to 1) into angles: the app's tilt view reaches full deflection at 30Â°, so use 30Â° per unit (the old 20Â° under-drove it; 35Â° would saturate).
 - Send `sensor set acceleration <ax>:<ay>:<az>` with gravity rotated by those angles (9.81 m/sÂ²), and `sensor set gyroscope <gx>:<gy>:<gz>` with the angle change rate in rad/s.
 - **Axes: fixed in the driver on Nov 4, 2026.** The AVD's panel is landscape at rotation 0, so Android tells the app it is a naturally-landscape device and `PlatformMotionSensors` turns every reading with `fromNaturalLandscape` (`controller_app/lib/src/motion.dart`): `up = (s.y, -s.x, s.z)`. A real phone is naturally portrait and never gets that turn, which is why the correction belongs in the driver, not the app. `GyroSensors._up` now sends the inverse, `s = (-up.y, up.x, up.z)`, built from the app's own `tiltOf` (`roll = x * 30`, `pitch = 45 + y * 30` degrees), and `tiltDegrees` is 30 as this step says. Measured on the app's tilt view with four held intents: forward `(0, -0.8)` -> `x 0.00 y -0.79`; back `(0, +0.8)` -> `x 0.00 y 0.79`; left `(-0.8, 0)` -> `x -0.79 y 0.00`; right `(+0.8, 0)` -> `x 0.71 y 0.00`, with the dot in the matching quarter of the circle.
@@ -432,12 +453,14 @@ Then: no unit tests for the injection itself. A test for the human model's maths
 ### 2.5 Builds for capture
 Git Bash, from `$REPO`, on the `demo-video` branch:
 ```bash
-cd $REPO/tv_test_app && flutter build windows --profile --dart-define=DEMO_DIRECTOR=true --dart-define=DEMO_LOG_DIR=C:/Users/singh/thumbparty-demo/logs --dart-define=BUILD_NUMBER=102
+cd $REPO/tv_test_app && flutter build windows --profile --dart-define=DEMO_DIRECTOR=true --dart-define=DEMO_LOG_DIR=E:/AI/thumbparty-demo/logs --dart-define=BUILD_NUMBER=102
 # Expect: build\windows\x64\runner\Profile\ThumbPartyTV.exe
 cd $REPO/controller_app && flutter build apk --profile --dart-define=BUILD_NUMBER=102
 # Expect: build\app\outputs\flutter-apk\app-profile.apk
 ```
 `BUILD_NUMBER=102` makes both apps show "0.11.0 (102)", the released m11.3 build the footage represents, instead of "0.11.0 (dev)" (owner's decision). Use it for every capture build, and nowhere else.
+
+`DEMO_LOG_DIR` is baked into the TV build, so it is this PC's `$WORK` written as a Windows path (`E:/AI/thumbparty-demo/logs`). If the work folder moves, rebuild the TV app.
 
 Record the commit hash: `git -C $REPO rev-parse --short HEAD`. Every footage file is captured from builds of one commit; write it into `$WORK/edit/build.txt`.
 
@@ -450,7 +473,7 @@ Record the commit hash: `git -C $REPO rev-parse --short HEAD`. Every footage fil
    - Before the first start, set `FirstRun=false` under `[General]` in `%APPDATA%\obs-studio\user.ini` and `global.ini`, so the set-up wizard doesn't block a scripted start.
    - OBS 33 keeps the websocket plugin in `C:\Program Files\obs-studio\core\obs-websocket\`, not `obs-plugins`.
    - To close OBS: `StopRecord` if recording, then `taskkill //PID <pid>` **without** `/F` (a normal close, which OBS doesn't treat as a crash). Use `/F` only if it hasn't exited after 10 s, and report that. obs-websocket 5 has no Quit request.
-2. Write the obs-websocket config `C:\Users\singh\AppData\Roaming\obs-studio\plugin_config\obs-websocket\config.json` (back up any existing file to `$WORK/backup/` first):
+2. Write the obs-websocket config `%APPDATA%\obs-studio\plugin_config\obs-websocket\config.json` (back up any existing file to `$WORK/backup/` first):
    ```json
    {"alerts_enabled": false, "auth_required": true, "first_load": false, "server_enabled": true, "server_password": "<random 24 chars, saved to $WORK/backup/obs-password.txt>", "server_port": 4455}
    ```
@@ -460,9 +483,9 @@ Record the commit hash: `git -C $REPO rev-parse --short HEAD`. Every footage fil
    - `SetVideoSettings` base and output 1920Ã—1080, 60/1.
    - `SetProfileParameter`:
      - `Output/Mode` = `Advanced`;
-      - `AdvOut/RecEncoder` = the best encoder OBS reports, in this order: **Quick Sync `obs_qsv11_v2`** (the setting every accepted take was recorded with, unchanged), then **NVIDIA NVENC H.264 `obs_nvenc_h264_tex`**, then **`obs_x264`**. **Don't guess the IDs:** read the `Available Encoders:` section of the OBS log (the newest file in `%APPDATA%\obs-studio\logs\`, which OBS writes at every start) and take the first of the three that is listed; `obs.dart`'s `chooseRecorderEncoder` does that and fails with the list it saw when none of them is there. An unknown encoder ID makes `StartRecord` fail. This PC has no Intel GPU, so it records with NVENC;
+     - `AdvOut/RecEncoder` = the best encoder OBS reports, in this order: **Quick Sync `obs_qsv11_v2`** (the setting every accepted take was recorded with, unchanged), then **NVIDIA NVENC H.264 `obs_nvenc_h264_tex`**, then **`obs_x264`**. **Don't guess the IDs:** read the `Available Encoders:` section of the OBS log (the newest file in `%APPDATA%\obs-studio\logs\`, which OBS writes at every start) and take the first of the three that is listed; `obs.dart`'s `chooseRecorderEncoder` does that and fails with the list it saw when none of them is there. An unknown encoder ID makes `StartRecord` fail. This PC has no Intel GPU, so it records with NVENC;
      - `AdvOut/RecFormat2` = `mkv`;
-     - `AdvOut/RecFilePath` = `C:\Users\singh\thumbparty-demo\footage` (create the folder first);
+     - `AdvOut/RecFilePath` = `$WORK/footage` (the set-up creates the folder);
      - `AdvOut/RecRB` = `false`;
      - Encoder settings do **not** live in `basic.ini` on OBS 33: the recording encoder's own settings are read
        from `<profile folder>\recordEncoder.json` (the encoder's property names: `rate_control`, `cqp`, `preset`,
@@ -574,7 +597,7 @@ For each take:
 2. Close nothing of the owner's. If a `ThumbPartyTV.exe` you didn't start is running, **STOP** and ask the owner to close it (ground rule 7).
 3. Notifications: Windows has no supported command to turn on Do Not Disturb. **STOP** once and ask the owner to turn it on (Settings â†’ System â†’ Notifications â†’ Do not disturb) for the capture sessions. This is a one-time PC setting, not a person in the video. The taskbar needs nothing: the TV app is borderless full screen.
 4. Fresh demo state: the demo prefixed preferences start empty, so the TV shows the consent prompt on first launch. Capture X4 first (3.2), then the showrunner answers it ("Not now") through the director's `navigate`.
-5. **Keep the session awake for the whole block.** Start `tools/demo/awake.ps1` detached at the start of a capture block (PowerShell: `Start-Process powershell -ArgumentList '-NoProfile','-ExecutionPolicy','Bypass','-File','C:\Users\singh\game-controller\tools\demo\awake.ps1','240'`). A locked session (the idle timeout gets there after about 10 minutes) breaks capture in two ways, both measured on Nov 5, 2026: OBS's window capture records a **black** frame (CUR take 2: 1920x1080, 60 fps, every frame black, and every 2.8 rule still passes), and no click or key reaches the TV app because the lock screen owns the foreground (`tools/demo/tv.ps1` fails with "the TV window did not come to the front"). If a take is black, look at the contact sheet first (2.8 step 4) and check whether the session is locked before anything else. Also hide the pointer: `tools/demo/cursor.ps1 hide` before a take and `show` after (the showrunner does this itself).
+5. **Keep the session awake for the whole block.** Start `tools/demo/awake.ps1` detached at the start of a capture block (PowerShell: `Start-Process powershell -ArgumentList '-NoProfile','-ExecutionPolicy','Bypass','-File','E:\AI\game-controller\tools\demo\awake.ps1','240'`). A locked session (the idle timeout gets there after about 10 minutes) breaks capture in two ways, both measured on Nov 5, 2026: OBS's window capture records a **black** frame (CUR take 2: 1920x1080, 60 fps, every frame black, and every 2.8 rule still passes), and no click or key reaches the TV app because the lock screen owns the foreground (`tools/demo/tv.ps1` fails with "the TV window did not come to the front"). If a take is black, look at the contact sheet first (2.8 step 4) and check whether the session is locked before anything else. Also hide the pointer: `tools/demo/cursor.ps1 hide` before a take and `show` after (the showrunner does this itself).
 
 ### 3.2 Shot order
 Capture in this order, so state builds up naturally. Each line is one showrunner call. Retakes are automatic (2.7 step 8). Footage IDs match demo-video.md section 3.
@@ -621,21 +644,21 @@ After all of these, run `--teardown`.
 - A typing helper `tools/demo/typer.ps1` types into the focused window at 40 to 70 ms per character, through `keybd_event` (the method `tools/tv-window.ps1` already uses, because `SendKeys` failed on this PC).
 
 **VS Code set-up**, once, before D2 and X7 (a fresh install, so set it up by file, not by clicking):
-- Write `C:\Users\singh\AppData\Roaming\Code\User\settings.json` with: `"workbench.colorTheme": "Default Dark Modern"`, `"editor.fontSize": 18`, `"window.zoomLevel": 1`, `"editor.minimap.enabled": false`, `"workbench.startupEditor": "none"`, `"telemetry.telemetryLevel": "off"`, `"update.mode": "none"`, `"workbench.tips.enabled": false`, `"security.workspace.trust.enabled": false`, `"extensions.ignoreRecommendations": true`.
+- Write `<home>\AppData\Roaming\Code\User\settings.json` with: `"workbench.colorTheme": "Default Dark Modern"`, `"editor.fontSize": 18`, `"window.zoomLevel": 1`, `"editor.minimap.enabled": false`, `"workbench.startupEditor": "none"`, `"telemetry.telemetryLevel": "off"`, `"update.mode": "none"`, `"workbench.tips.enabled": false`, `"security.workspace.trust.enabled": false`, `"extensions.ignoreRecommendations": true`.
 - Back up any existing file to `$WORK/backup/` first. This folder must be writable for the harness; if it isn't, **STOP** and ask.
 - Open VS Code once without recording, close any welcome or notification pop-up (Escape), then close it.
 
-**The shots** (`code` = `C:\Users\singh\AppData\Local\Programs\Microsoft VS Code\bin\code.cmd`; `msedge` = `C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe`):
+**The shots** (`code` = `<home>\AppData\Local\Programs\Microsoft VS Code\bin\code.cmd`; `msedge` = `C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe`):
 - **X6** (`Terminal`):
-  - Open Windows Terminal: `wt.exe -d C:\Users\singh\game-controller\packages\metrics --title Report`, font size 16, dark theme.
-  - Type `dart run metrics:report C:\Users\singh\thumbparty-demo\sessions`, then Enter. Wait for the output, hold 4 s.
-  - Then type the same command with ` --csv C:\Users\singh\thumbparty-demo\charts\modes.csv`.
+  - Open Windows Terminal: `wt.exe -d E:\AI\game-controller\packages\metrics --title Report`, font size 16, dark theme.
+  - Type `dart run metrics:report E:\AI\thumbparty-demo\sessions`, then Enter. Wait for the output, hold 4 s.
+  - Then type the same command with ` --csv E:\AI\thumbparty-demo\charts\modes.csv`.
 - **X7** (`Editor`):
-  - Run `code --new-window C:\Users\singh\thumbparty-demo\sessions\<largest file>.json`.
+  - Run `code --new-window E:\AI\thumbparty-demo\sessions\<largest file>.json`.
   - Format the document (Shift+Alt+F), then scroll with PageDown every 0.8 s.
 - **D1** (`Terminal`): `bash tools/check.sh` from `$REPO`, recorded until it finishes.
 - **D2** (`Editor`):
-  - Run `code --new-window C:\Users\singh\game-controller`, with the Explorer tree expanded for `controller_app`, `tv_test_app` and `packages/*`.
+  - Run `code --new-window E:\AI\game-controller`, with the Explorer tree expanded for `controller_app`, `tv_test_app` and `packages/*`.
   - Open `docs/protocol.md` for 3 s, then `packages/connection/lib/src/latency.dart` for 3 s.
 - **D3** (`Browser`):
   - Run `msedge --new-window --start-maximized https://github.com/devtestman187/game-controller/releases/tag/m11.3`.
@@ -643,7 +666,7 @@ After all of these, run `--teardown`.
   - Close only that window (by its PID).
 - **D4:**
   - `Terminal`: a showrunner log scrolling (`tail -f $WORK/logs/<a showrunner log>` in Git Bash).
-  - `Editor`: `code --new-window C:\Users\singh\game-controller\tools\demo\scenes\bigpiece.json`. Two separate recordings.
+  - `Editor`: `code --new-window E:\AI\game-controller\tools\demo\scenes\bigpiece.json`. Two separate recordings.
 
 Close each program you opened (by PID) after its shot. Contact-sheet and review each, as in 2.8 step 4.
 
@@ -788,9 +811,9 @@ Then concatenate the shots (concat demuxer), mix the music (5.2), apply loudnorm
 Kept so the agent understands the `activeMs` and `open_minutes` fields it relies on. **Don't execute these steps.**
 
 ### A.1 Sounds (follow `INSTALL.md` Â§1 to Â§3 exactly)
-1. Copy **only** these ten files from `C:\Users\singh\Documents\deepseek-harness\default-workspace\thumb-party-audio\final\palette-b-bubble-pop\` to `assets\audio\`, overwriting: `hit.ogg success.ogg error.ogg rumble.ogg snap.ogg wrong.ogg tick.ogg pickup.ogg time_up.ogg help.ogg`. **Don't copy** `lobby.ogg`, `countdown.ogg` or `player_joined.ogg`.
+1. Copy **only** these ten files from `<home>\Documents\deepseek-harness\default-workspace\thumb-party-audio\final\palette-b-bubble-pop\` to `assets\audio\`, overwriting: `hit.ogg success.ogg error.ogg rumble.ogg snap.ogg wrong.ogg tick.ogg pickup.ogg time_up.ogg help.ogg`. **Don't copy** `lobby.ogg`, `countdown.ogg` or `player_joined.ogg`.
    ```bash
-   SRC="/c/Users/singh/Documents/deepseek-harness/default-workspace/thumb-party-audio/final/palette-b-bubble-pop"
+   SRC="$HOME/Documents/deepseek-harness/default-workspace/thumb-party-audio/final/palette-b-bubble-pop"
    for n in hit success error rumble snap wrong tick pickup time_up help; do cp "$SRC/$n.ogg" "$REPO/assets/audio/$n.ogg"; done
    ls "$REPO/assets/audio"   # Expect exactly the ten names, .ogg
    ```
