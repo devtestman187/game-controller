@@ -24,7 +24,8 @@ Future<void> main(List<String> args) async {
     stdout.writeln(
       'usage: showrunner.dart --shot <id> [--take 1] [--scene file] '
       '--avd m7_android12 --mode sticks [--phone] [--record tv|both] [--tv] '
-      '[--calibrate] [--pair touch|adb] [--window name] [--retakes 3] [--teardown] [--self-test]',
+      '[--calibrate] [--pair touch|adb] [--pin-code 9998] [--window name] '
+      '[--retakes 3] [--teardown] [--self-test]',
     );
     exit(args.isEmpty ? 2 : 0);
   }
@@ -67,6 +68,13 @@ Future<void> main(List<String> args) async {
   if (pair != 'touch' && pair != 'adb') {
     throw ArgumentError('--pair is touch or adb, not "$pair"');
   }
+  // The demo footage needs one pairing code across P1-P3, but the TV issues a
+  // new random code after "Forget phones". Pin it after the reset instead
+  // (docs/demo-video-runbook.md 2.7).
+  final pinCode = cli.value('pin-code');
+  if (pinCode != null && !RegExp(r'^\d{4}$').hasMatch(pinCode)) {
+    throw ArgumentError('--pin-code wants four digits, got "$pinCode"');
+  }
   // M2: press the app's Calibrate button (a real tap on the phone screen)
   // before StartRecord. Only a gyro layout has that button.
   final calibrate = cli.has('calibrate');
@@ -105,6 +113,7 @@ Future<void> main(List<String> args) async {
         preRoll: preRoll,
         noRecord: noRecord,
         calibrate: calibrate,
+        pinCode: pinCode,
       );
       stdout.writeln('$shot take $take: ok (${seconds.toStringAsFixed(1)} s)');
       await runner.shutdown();
@@ -174,6 +183,7 @@ class Showrunner {
     String? preRoll,
     bool noRecord = false,
     bool calibrate = false,
+    String? pinCode,
   }) async {
     final takeName = '${shot}_take$take';
     Directory(logs).createSync(recursive: true);
@@ -212,6 +222,17 @@ class Showrunner {
       final current = state['code'] as String;
       if (current != code) stdout.writeln('tv: new pairing code $current');
       code = current;
+    }
+    if (pinCode != null) {
+      final pinned = await _director!.request({
+        't': 'pin_code',
+        'code': pinCode,
+      }, 'code_set');
+      code = pinned['code'] as String;
+      stdout.writeln('tv: pairing code pinned to $code');
+      if (code != pinCode) {
+        throw StateError('the TV pinned $code, not $pinCode');
+      }
     }
 
     // 3. Pair first, so the phone is player 1 and the bots take 2-4 (2.7

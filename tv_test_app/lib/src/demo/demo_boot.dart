@@ -38,6 +38,8 @@ class _DemoBootState extends ConsumerState<DemoBoot> {
           // Read live: the TV issues a new pairing code on some actions and
           // after wrong-code attempts, and the bots must use the current one.
           pairingCode: () => ref.read(hostStateProvider).host.pairingCode,
+          // The showrunner's --pin-code: P1-P3 show the same four digits.
+          setPairingCode: (code) => ref.read(hostControllerProvider).setPairingCode(code),
           players: () => ref.read(gameHostProvider).players,
           live: DemoLive.instance,
           log: EventLog(take: 'director', dir: const String.fromEnvironment('DEMO_LOG_DIR')),

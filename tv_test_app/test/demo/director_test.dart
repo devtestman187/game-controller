@@ -10,10 +10,14 @@ import 'package:tvtest/src/demo/events.dart';
 /// showrunner's side of it. Each test binds its own port, so nothing clashes
 /// with a real demo run on 47900.
 void main() {
-  Future<(DemoDirector, WebSocket)> open() async {
+  Future<(DemoDirector, WebSocket)> open({
+    String Function()? pairingCode,
+    void Function(String)? setPairingCode,
+  }) async {
     final director = DemoDirector(
       hostPort: 45780,
-      pairingCode: () => '1234',
+      pairingCode: pairingCode ?? () => '1234',
+      setPairingCode: setPairingCode,
       players: () => const [],
       live: DemoLive.instance,
       log: EventLog(take: 'test'),
@@ -38,6 +42,24 @@ void main() {
     expect(reply['port'], 45780);
     expect(reply['code'], '1234');
     expect(reply['screen'], 'home');
+  });
+
+  test('pin_code sets the TV code the showrunner will type', () async {
+    var code = '1234';
+    final (_, socket) = await open(pairingCode: () => code, setPairingCode: (value) => code = value);
+    final reply = await ask(socket, {'t': 'pin_code', 'code': '9998'});
+    expect(reply['t'], 'code_set');
+    expect(reply['code'], '9998');
+    expect(code, '9998');
+  });
+
+  test('pin_code refuses a code that is not four digits', () async {
+    final seen = <String>[];
+    final (_, socket) = await open(setPairingCode: seen.add);
+    final reply = await ask(socket, {'t': 'pin_code', 'code': '12'});
+    expect(reply['t'], 'error');
+    expect(reply['why'], contains('four digits'));
+    expect(seen, isEmpty);
   });
 
   test('an unknown message is answered with an error, not silence', () async {

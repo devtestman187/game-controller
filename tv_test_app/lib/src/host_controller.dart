@@ -72,6 +72,12 @@ abstract class HostController {
   Stream<HostViewState> get changes;
   void newPairingCode();
 
+  /// Shows [code] instead of a random one. Only the demo showrunner's
+  /// `--pin-code` calls this (docs/demo-video-runbook.md 2.7); P1-P3 must all
+  /// show the same four digits, but the TV issues a new code after "Forget
+  /// phones". Store builds never call it.
+  void setPairingCode(String code);
+
   /// How many simulated controllers can run at once.
   static const maxSims = 3;
 
@@ -213,6 +219,9 @@ class LiveHostController implements HostController {
 
   @override
   void newPairingCode() => _server.newPairingCode();
+
+  @override
+  void setPairingCode(String code) => _server.setPairingCode(code);
 
   @override
   void dropAllConnections() => _server.dropAllConnections();

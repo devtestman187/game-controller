@@ -27,6 +27,7 @@ final class DemoDirector {
     required this.players,
     required this.live,
     required this.log,
+    this.setPairingCode,
     this.controlPort = 47900,
   });
 
@@ -37,6 +38,12 @@ final class DemoDirector {
   /// drop connections) and after wrong-code attempts, so this is read at the
   /// moment a bot connects, never cached.
   final String Function() pairingCode;
+
+  /// Shows [code] as the pairing code (`{"t":"pin_code"}`), for the showrunner's
+  /// `--pin-code`: P1-P3 must all show the same four digits, and the TV
+  /// otherwise issues a new random code after "Forget phones". Null in tests
+  /// that do not need it.
+  final void Function(String code)? setPairingCode;
 
   /// Who is connected right now. Scene seats are named `P1` and `Bot 2`, but
   /// the games key their players by controller id; a seat is mapped to the
@@ -116,6 +123,17 @@ final class DemoDirector {
       case 'stop':
         _stopScene();
         _send(socket, {'t': 'stopped'});
+      case 'pin_code':
+        final setter = setPairingCode;
+        final code = message['code'];
+        if (setter == null) {
+          _send(socket, {'t': 'error', 'why': 'this director cannot pin a code'});
+        } else if (code is! String || !RegExp(r'^\d{4}$').hasMatch(code)) {
+          _send(socket, {'t': 'error', 'why': 'pin_code needs four digits'});
+        } else {
+          setter(code);
+          _send(socket, {'t': 'code_set', 'code': pairingCode()});
+        }
       case 'reset':
         unawaited(_reset(socket));
       case 'probe':

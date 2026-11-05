@@ -305,6 +305,24 @@ class HostServer {
     _emit();
   }
 
+  /// Shows [code] instead of a random one (the demo showrunner's
+  /// `--pin-code`, docs/demo-video-runbook.md 2.7). Only the demo build calls
+  /// this; the normal app never does, and a store build cannot reach it.
+  ///
+  /// The demo footage needs one code across P1-P3, but the TV issues a new
+  /// random code after "Forget phones"/"Drop connections", so the showrunner
+  /// pins the code after that reset. A malformed code is refused rather than
+  /// shown: the pair screen draws four digits.
+  void setPairingCode(String code) {
+    if (!RegExp(r'^\d{4}$').hasMatch(code)) {
+      throw ArgumentError.value(code, 'code', 'must be exactly four digits');
+    }
+    _code = code;
+    _wrongCodes = 0;
+    _log('Pairing code pinned to $_code');
+    _emit();
+  }
+
   /// The saved pairings, most recently seen first.
   List<SavedPairing> get pairings {
     // Newest first. The clock can give two pairings the same time (Windows'

@@ -63,6 +63,9 @@ class FakeHostController implements HostController {
   void newPairingCode() => newCodes++;
 
   @override
+  void setPairingCode(String code) {}
+
+  @override
   void addSimulatedController() => simAdds++;
 
   @override

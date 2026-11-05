@@ -90,6 +90,32 @@ void main() {
     await clientStatus(client, ClientStatus.connected);
   });
 
+  test('the demo showrunner can pin the code the TV shows', () async {
+    final host = await startHost();
+    final seen = <String>[];
+    final sub = host.changes.listen((s) => seen.add(s.pairingCode));
+    addTearDown(sub.cancel);
+
+    host.setPairingCode('9998');
+    expect(host.pairingCode, '9998');
+    expect(host.snapshot.pairingCode, '9998');
+    await Future<void>.delayed(Duration.zero);
+    expect(seen, contains('9998'));
+
+    // The pinned code is the one a controller must type.
+    final client = newClient();
+    client.connect(addressOf(host), code: '9998');
+    await clientStatus(client, ClientStatus.connected);
+  });
+
+  test('refuses a pinned code that is not four digits', () async {
+    final host = await startHost();
+    final before = host.pairingCode;
+    expect(() => host.setPairingCode('999'), throwsArgumentError);
+    expect(() => host.setPairingCode('abcd'), throwsArgumentError);
+    expect(host.pairingCode, before);
+  });
+
   test('closes connections that never pair', () async {
     final host = await startHost(pairingWindow: const Duration(milliseconds: 200));
     final client = newClient();
