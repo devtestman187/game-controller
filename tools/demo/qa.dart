@@ -15,9 +15,15 @@ import 'dart:io';
 /// Arena shots (M1-M4) use an exact-duplicate stutter rule instead of the stock
 /// `mpdecimate` threshold: the Arena's dot changes too few pixels per frame for
 /// the stock rule to see it (M1 take 10: 720 distinct frames in 12 s = 60.0 fps
-/// at hi=1, yet 23 "duplicate runs"). A half fails only if 3 or more
+/// at hi=1, yet 23 "duplicate runs"). The TV half fails only if 3 or more
 /// *exactly-identical* frames run together while the event log's arena match is
-/// running. `--self-test` builds the two fixture clips for that rule.
+/// running. The phone half of an arena shot is judged by **delivery** instead
+/// (owner-approved, Nov 4, 2026): decoded frames per second >= 45 over the take
+/// and no gap between decoded frame timestamps over 100 ms. M1's phone half is
+/// a D-pad screen that is static between direction changes, so the distinct-
+/// frame count measured the artwork, not the capture (9.6 and 13.8 fps on takes
+/// 10 and 6 while every frame was delivered). `--self-test` builds the fixture
+/// clips for both rules.
 Future<void> main(List<String> args) async {
   if (args.contains('--self-test')) {
     exit(await selfTest());
@@ -122,43 +128,44 @@ Future<QaResult> runQa({
     data['tvFps'] = tvFps;
     check('tv fps', tvFps >= 59, '${tvFps.toStringAsFixed(1)} (want >= 59)');
 
-    // Phone half: the Nov 4 method (mpdecimate hi=1:lo=1:frac=0). A stick-mode
-    // shot is measured on the left stick's crop over the take. P2/P4 have no
-    // sticks, so their whole half is measured over the first 12 s, where the
-    // typing and pairing happen (the tail is a static controller screen); M1
-    // (D-pad) and M2 (gyro) have no sticks either, but move for the whole
-    // take, so their whole half is measured from the start.
     final moving = shotIsGameplay(shot);
-    final hasSticks =
-        shot != 'P2' && shot != 'P4' && shot != 'M1' && shot != 'M2';
-    final phoneFps = await phoneHalfFps(
-      both.path,
-      master.duration,
-      stick: hasSticks,
-      start: hasSticks ? 0 : (shot == 'P2' || shot == 'P4' ? 2 : 0),
-      window: hasSticks ? null : 12,
-    );
-    final phoneWholeFps = hasSticks
-        ? phoneFps
-        : await phoneHalfFps(both.path, master.duration, stick: false);
-    data['phoneFps'] = phoneFps;
-    data['phoneFpsWholeTake'] = phoneWholeFps;
-    data['phoneFpsCrop'] = hasSticks ? 'stick' : 'whole half, 12 s window';
-    if (phoneFps == null) {
-      check('phone fps', false, 'the phone-half measurement failed');
-    } else {
-      check(
-        'phone fps',
-        phoneFps >= 45,
-        '${phoneFps.toStringAsFixed(1)} on the ${hasSticks ? 'left stick' : 'whole phone half, 12 s window'} '
-            '(want >= 45; the TV floor is 59 and the phone floor is lower on purpose '
-            "(owner's accepted trade-off)${moving ? '' : '; whole take ${phoneWholeFps?.toStringAsFixed(1)}'}",
+    final arena = isArenaShot(shot);
+    if (!arena) {
+      // Phone half: the Nov 4 method (mpdecimate hi=1:lo=1:frac=0). A
+      // stick-mode shot is measured on the left stick's crop over the take.
+      // P2/P4 have no sticks, so their whole half is measured over the first
+      // 12 s, where the typing and pairing happen (the tail is a static
+      // controller screen). Arena shots skip this and use the delivery check
+      // in the stutter branch below (owner-approved, Nov 4, 2026).
+      final hasSticks = shot != 'P2' && shot != 'P4';
+      final phoneFps = await phoneHalfFps(
+        both.path,
+        master.duration,
+        stick: hasSticks,
+        start: hasSticks ? 0 : 2,
+        window: hasSticks ? null : 12,
       );
+      final phoneWholeFps = hasSticks
+          ? phoneFps
+          : await phoneHalfFps(both.path, master.duration, stick: false);
+      data['phoneFps'] = phoneFps;
+      data['phoneFpsWholeTake'] = phoneWholeFps;
+      data['phoneFpsCrop'] = hasSticks ? 'stick' : 'whole half, 12 s window';
+      if (phoneFps == null) {
+        check('phone fps', false, 'the phone-half measurement failed');
+      } else {
+        check(
+          'phone fps',
+          phoneFps >= 45,
+          '${phoneFps.toStringAsFixed(1)} on the ${hasSticks ? 'left stick' : 'whole phone half, 12 s window'} '
+              '(want >= 45; the TV floor is 59 and the phone floor is lower on purpose '
+              "(owner's accepted trade-off)${moving ? '' : '; whole take ${phoneWholeFps?.toStringAsFixed(1)}'}",
+        );
+      }
     }
 
     final recordersPath =
         '${File(eventsPath).parent.path}\\${takeName}_recorders.json';
-    final arena = isArenaShot(shot);
     if (arena) {
       // Owner-approved exception (runbook 2.8 step 2): the Arena dot moves too
       // few pixels per frame for the stock mpdecimate thresholds. Compare
@@ -181,14 +188,9 @@ Future<QaResult> runQa({
               to: window.end,
             ) ??
             StutterInfo.unmeasured('the exact-duplicate decode failed');
-        phoneStutter =
-            await exactStutter(
-              both.path,
-              crop: 'crop=1920:1080:1920:0',
-              from: window.start,
-              to: window.end,
-            ) ??
-            StutterInfo.unmeasured('the exact-duplicate decode failed');
+        phoneStutter = StutterInfo.unmeasured(
+          'replaced by the phone-half delivery check',
+        );
       }
       data['stutter'] = {'tv': tvStutter, 'phone': phoneStutter};
       String exactDetail(StutterInfo s) => s.runs < 0
@@ -196,7 +198,29 @@ Future<QaResult> runQa({
           : '${s.runs} runs of 3+ exactly-identical frames in ${s.frames} frames '
                 'between game_start and scene_end (longest run ${s.maxRun})';
       check('tv stutter', !tvStutter.bad, exactDetail(tvStutter));
-      check('phone stutter', !phoneStutter.bad, exactDetail(phoneStutter));
+
+      // Phone half of an arena shot: delivery, not content (owner-approved,
+      // Nov 4, 2026). M1's phone half is a D-pad screen that is static between
+      // direction changes, so the distinct-frame count measured the artwork,
+      // not the capture: takes 10 and 6 read 9.6 and 13.8 fps while every
+      // frame the recorder produced arrived. What matters is that the phone's
+      // half of the recording carries frames: at least 45 decoded per second
+      // over the take, and no hole in the frame timestamps over 100 ms.
+      final delivered = await delivery(
+        both.path,
+        crop: 'crop=1920:1080:1920:0',
+        seconds: master.duration,
+      );
+      data['phoneDelivery'] = delivered?.toJson();
+      check(
+        'phone delivery',
+        delivered != null && delivered.ok,
+        delivered == null
+            ? 'the phone-half delivery decode failed'
+            : '${delivered.fps.toStringAsFixed(1)} decoded fps over the take, '
+                  'largest timestamp gap ${delivered.maxGapMs} ms '
+                  '(want >= 45 fps and a gap <= 100 ms)',
+      );
     } else {
       final tvStutter = await stutter(both.path, crop: 'crop=1920:1080:0:0');
       final phoneStutter = await stutter(
@@ -526,6 +550,84 @@ MovementWindow? arenaMovementWindow(String eventsPath, String recordersPath) {
   return MovementWindow(gameStart, sceneEnd);
 }
 
+/// Frame delivery in a half of a take, for the phone half of an arena shot
+/// (2.8 step 2, owner-approved Nov 4, 2026): how many frames the recorder
+/// actually carried per second, and the largest hole between consecutive frame
+/// timestamps. Content may be static; delivery may not.
+class DeliveryInfo {
+  DeliveryInfo(this.fps, this.maxGapMs, this.frames);
+  final double fps;
+  final double maxGapMs;
+  final int frames;
+
+  /// 2.8: at least 45 decoded frames a second, no timestamp gap over 100 ms.
+  bool get ok => fps >= 45 && maxGapMs <= 100;
+
+  Map<String, dynamic> toJson() => {
+    'fps': double.parse(fps.toStringAsFixed(2)),
+    'maxGapMs': maxGapMs,
+    'frames': frames,
+    'ok': ok,
+  };
+}
+
+/// Decodes [path] (optionally cropped) and reports delivery over [seconds]:
+/// frames / seconds, and the largest gap between two decoded frames' timestamps
+/// in milliseconds. `-fps_mode passthrough` keeps the file's own timestamps, so
+/// a freeze that stops frames being delivered shows up as a long gap; a
+/// duplicated picture does not.
+Future<DeliveryInfo?> delivery(
+  String path, {
+  String? crop,
+  required double seconds,
+}) async {
+  if (seconds <= 0) return null;
+  final result = await Process.run(ffmpeg, [
+    '-hide_banner',
+    '-nostats',
+    '-i',
+    path,
+    if (crop != null) ...['-vf', crop],
+    '-map',
+    '0:v',
+    '-fps_mode',
+    'passthrough',
+    '-an',
+    '-f',
+    'framehash',
+    '-',
+  ]);
+  if (result.exitCode != 0) return null;
+  final out = result.stdout as String;
+  var tb = 1 / 60.0;
+  final tbMatch = RegExp(
+    r'^#tb 0: (\d+)/(\d+)',
+    multiLine: true,
+  ).firstMatch(out);
+  if (tbMatch != null) {
+    tb = int.parse(tbMatch.group(1)!) / int.parse(tbMatch.group(2)!);
+  }
+  var frames = 0;
+  double? previous;
+  var maxGapMs = 0.0;
+  for (final line in out.split('\n')) {
+    if (line.isEmpty || line.startsWith('#')) continue;
+    final parts = line.split(',');
+    if (parts.length < 6) continue;
+    final pts = int.tryParse(parts[2].trim());
+    if (pts == null) continue;
+    final t = pts * tb;
+    if (previous != null) {
+      final gap = (t - previous) * 1000;
+      if (gap > maxGapMs) maxGapMs = gap;
+    }
+    previous = t;
+    frames++;
+  }
+  if (frames == 0) return null;
+  return DeliveryInfo(frames / seconds, maxGapMs, frames);
+}
+
 /// Counts runs of 3 or more exactly-identical decoded frames in [from]..[to]
 /// (2.8 step 2's arena rule). Frames are compared by ffmpeg's `framehash`
 /// SHA-256 of the cropped decoded picture, so this sees changes far smaller
@@ -590,9 +692,11 @@ Future<StutterInfo?> exactStutter(
   return StutterInfo(runs, runs > 0, maxRun: maxRun, frames: frames);
 }
 
-/// Builds the two fixture clips for the arena rule: one with 60 distinct
+/// Builds the fixture clips for the arena rules. Stutter: one with 60 distinct
 /// frames a second (must pass) and one whose every 4th frame appears three
-/// times in a row (must fail). Run: `dart run tools/demo/qa.dart --self-test`.
+/// times in a row (must fail). Delivery: one with a static first half at 60 fps
+/// (must pass) and one with a 300 ms hole in its timestamps (must fail).
+/// Run: `dart run tools/demo/qa.dart --self-test`.
 Future<int> selfTest() async {
   final temp = Directory.systemTemp.createTempSync('qa_selftest_');
   var ok = true;
@@ -609,9 +713,9 @@ Future<int> selfTest() async {
       '-f',
       'lavfi',
       '-i',
-      'testsrc2=size=320x240:rate=60:duration=1',
+      'testsrc2=size=320x240:rate=60:duration=2',
       '-frames:v',
-      '60',
+      '120',
       '${frames.path}\\f%03d.png',
     ]);
     if (gen.exitCode != 0) {
@@ -685,6 +789,66 @@ Future<int> selfTest() async {
       'every 4th frame repeated 3 times fails: '
       '${duplicate?.runs} runs, longest ${duplicate?.maxRun}, '
       '${duplicate?.frames} frames (want 15 runs of 3 in 90)',
+    );
+
+    // Delivery fixtures (2.8 step 2, arena phone half). The first clip is 60
+    // fps with its first second one static picture, the kind of content M1's
+    // phone half is: every frame is delivered, so it passes. The second is the
+    // same clip with 18 frames (300 ms) removed: its timestamps now have a hole
+    // and it fails even though the remaining rate is still over 45 fps.
+    final staticDir = Directory('${temp.path}\\static')..createSync();
+    var staticN = 0;
+    String framePath(int i) =>
+        '${frames.path}\\f${i.toString().padLeft(3, '0')}.png';
+    for (var i = 1; i <= 60; i++) {
+      File(framePath(1)).copySync(
+        '${staticDir.path}\\s${(++staticN).toString().padLeft(4, '0')}.png',
+      );
+    }
+    for (var i = 61; i <= 120; i++) {
+      File(framePath(i)).copySync(
+        '${staticDir.path}\\s${(++staticN).toString().padLeft(4, '0')}.png',
+      );
+    }
+    final staticClip = '${temp.path}\\static.mkv';
+    line(
+      await encode(staticDir, staticClip),
+      'built the static-first-half clip',
+    );
+    final freezeClip = '${temp.path}\\freeze.mkv';
+    final freeze = await Process.run(ffmpeg, [
+      '-y',
+      '-hide_banner',
+      '-nostats',
+      '-i',
+      staticClip,
+      '-vf',
+      "select='not(between(t,1.0,1.29))'",
+      '-fps_mode',
+      'passthrough',
+      '-c:v',
+      'ffv1',
+      freezeClip,
+    ]);
+    if (freeze.exitCode != 0) stderr.writeln(freeze.stderr);
+    line(freeze.exitCode == 0, 'built the 300-ms-freeze clip');
+
+    final staticDelivery = await delivery(staticClip, seconds: 2);
+    line(
+      staticDelivery != null && staticDelivery.ok && staticDelivery.fps >= 59,
+      '60 fps with a static first half passes delivery: '
+      '${staticDelivery?.fps.toStringAsFixed(1)} fps, largest gap '
+      '${staticDelivery?.maxGapMs} ms (want pass at 60 fps)',
+    );
+    final freezeDelivery = await delivery(freezeClip, seconds: 2);
+    line(
+      freezeDelivery != null &&
+          !freezeDelivery.ok &&
+          freezeDelivery.maxGapMs >= 250 &&
+          freezeDelivery.fps >= 45,
+      'a 300 ms freeze fails delivery: '
+      '${freezeDelivery?.fps.toStringAsFixed(1)} fps, largest gap '
+      '${freezeDelivery?.maxGapMs} ms (want a failure on the gap, rate still >= 45)',
     );
   } finally {
     try {
