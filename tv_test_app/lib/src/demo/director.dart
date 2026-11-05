@@ -237,6 +237,10 @@ final class DemoDirector {
           goals: s.goals,
           seed: seed,
           onEvent: (name, [data]) => _event(name, {...?data, 'seat': seat}),
+          // A `layout` goal in a scene switches the phone's mode through the
+          // app's own mode switch (the touch driver taps it), so a shot can
+          // walk D-pad menus and then show Sticks once the game is up.
+          onLayout: (mode) => _broadcast({'t': 'mode', 'to': mode}),
           paceFinishMs: scene.pace[scene.sideOf(seat) ?? ''],
         );
       } else {

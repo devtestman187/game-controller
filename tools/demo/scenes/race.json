@@ -9,6 +9,7 @@
       "via": "phone",
       "mode": "sticks",
       "goals": [
+        {"layout": "sticks"},
         {"pick": "nose"}, {"place": {}},
         {"pick": "left fin"}, {"place": {}},
         {"pick": "right fin"}, {"place": {}},

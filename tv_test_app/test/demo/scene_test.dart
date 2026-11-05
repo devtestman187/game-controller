@@ -60,8 +60,46 @@ void main() {
     expect(scene.teams['right'], ['Bot 3', 'Bot 4']);
   });
 
+  test('a layout goal switches the phone mode mid-scene', () {
+    final scene = Scene.parse(
+      '{"game":"puzzle","seats":{"P1":{"via":"phone","goals":['
+      '{"navigate":["a"]},{"waitFor":"game_start"},{"layout":"sticks"},{"idle":2000}]}}}',
+      source: 'test',
+    );
+    final goals = scene.seats['P1']!.goals;
+    expect(goals.map((g) => g.kind), [GoalKind.navigate, GoalKind.waitFor, GoalKind.layout, GoalKind.idle]);
+    expect(goals[2].mode, 'sticks');
+  });
+
+  test('R1/R2 (menus.json) and G1/G2 switch to Sticks once the game is up', () {
+    // The menus and the join screen only allow the D-pad, so the switch has to
+    // come after `game_start`, not at the start of the scene.
+    for (final name in ['menus.json', 'join.json', 'race.json']) {
+      final scene = Scene.fromFile('../tools/demo/scenes/$name');
+      final goals = scene.seats['P1']!.goals;
+      final layout = goals.indexWhere((g) => g.kind == GoalKind.layout);
+      expect(layout, greaterThanOrEqualTo(0), reason: '$name has no layout goal');
+      expect(goals[layout].mode, 'sticks', reason: name);
+      if (name == 'race.json') {
+        // race.json starts inside a live match, so the switch comes first.
+        expect(layout, 0, reason: 'race.json starts in-game');
+      } else {
+        final wait = goals.indexWhere((g) => g.kind == GoalKind.waitFor && g.event == 'game_start');
+        expect(wait, greaterThanOrEqualTo(0), reason: '$name should wait for game_start');
+        expect(layout, greaterThan(wait), reason: '$name: switch after game_start');
+      }
+    }
+  });
+
   group('refuses', () {
     Scene parse(String text) => Scene.parse(text, source: 'test');
+
+    test('an unknown layout mode', () {
+      expect(
+        () => parse('{"game":"puzzle","seats":{"P1":{"goals":[{"layout":"keyboard"}]}}}'),
+        throwsA(isA<FormatException>().having((e) => e.message, 'message', contains('unknown mode'))),
+      );
+    });
 
     test('wander outside an arena scene', () {
       expect(

@@ -361,6 +361,14 @@ class TouchDriver {
           if (decoded is Map<String, dynamic> && decoded['t'] == 'p1') {
             _intent = decoded;
             _lastIntent = DateTime.now();
+          } else if (decoded is Map<String, dynamic> &&
+              decoded['t'] == 'mode') {
+            // A scene's `layout` goal (2.3): the TV director says which mode
+            // the phone must show from here on, and the app's own mode switch
+            // does the work - so a shot walks the D-pad menus and then films
+            // the match in Sticks, in one take.
+            final to = decoded['to'];
+            if (to is String) unawaited(_switchMode(to));
           }
         },
         onDone: () {},
@@ -369,6 +377,21 @@ class TouchDriver {
       socket.add(jsonEncode({'t': 'hello'}));
     } on Object {
       // The showrunner starts us before the scene; keep going.
+    }
+  }
+
+  /// The director's mid-scene `mode` message: run the same `mode` command the
+  /// showrunner uses, and print what happened. A refusal (the screen does not
+  /// allow that mode yet) is logged, not fatal: the take's picture shows the
+  /// truth, and the scene carries on.
+  Future<void> _switchMode(String to) async {
+    try {
+      final reply = await _command({'cmd': 'mode', 'to': to});
+      stdout.writeln(
+        'touch driver: layout -> $to: ${reply['ok'] == true ? 'ok' : reply['why']}',
+      );
+    } on Object catch (e) {
+      stderr.writeln('touch driver: layout -> $to failed: $e');
     }
   }
 

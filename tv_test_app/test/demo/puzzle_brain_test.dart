@@ -57,4 +57,49 @@ void main() {
     ]);
     expect(kinds, contains(PuzzleEventKind.wrong));
   });
+
+  group('a layout goal', () {
+    test('switches the phone mode once, then moves on', () {
+      final goals = Scene.parse(
+        '{"game":"puzzle","seats":{"P1":{"goals":[{"layout":"sticks"},{"idle":500}]}}}',
+        source: 'test',
+      ).seats['P1']!.goals;
+      final asked = <String>[];
+      final events = <String>[];
+      final brain = PuzzleBrain(
+        seat: 'P1',
+        goals: goals,
+        seed: 7,
+        onLayout: asked.add,
+        onEvent: (name, [data]) => events.add(name),
+      );
+      // On a menu screen (no game object yet) the goal still has to fire: the
+      // menus and the join screen are exactly where a scene switches.
+      brain.step(null, 1 / 60);
+      expect(asked, ['sticks']);
+      expect(events, contains('layout'));
+      expect(brain.currentGoal, GoalKind.idle);
+      brain.step(null, 1 / 60);
+      expect(asked, ['sticks'], reason: 'it must switch once, not every frame');
+    });
+
+    test('does not take a paced goal\'s share of the scene time', () {
+      // race.json switches to Sticks as its very first goal, with a 52 s pace
+      // on the left side. Pacing that step would idle for seconds right after
+      // game_start and the race would start late.
+      final goals = Scene.parse(
+        '{"game":"puzzle","seats":{"P1":{"goals":[{"layout":"sticks"},{"idle":100}]}}}',
+        source: 'test',
+      ).seats['P1']!.goals;
+      final brain = PuzzleBrain(seat: 'P1', goals: goals, seed: 7, paceFinishMs: 52000);
+      brain.step(null, 1 / 60);
+      expect(brain.currentGoal, GoalKind.idle);
+      // Both goals are spent within 0.2 s: with the pace wait they would still
+      // be waiting ~4.7 s after game_start.
+      for (var i = 0; i < 12; i++) {
+        brain.step(null, 1 / 60);
+      }
+      expect(brain.currentGoal, isNull, reason: 'the layout goal took a paced goal\'s share of the scene time');
+    });
+  });
 }

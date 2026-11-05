@@ -266,11 +266,11 @@ final class Seat {
 }
 
 /// What a seat does. Each one is a JSON object with exactly one key.
-enum GoalKind { pick, place, wrongDrop, carryBigAlone, joinBigCarry, waitFor, idle, navigate, pace }
+enum GoalKind { pick, place, wrongDrop, carryBigAlone, joinBigCarry, waitFor, idle, navigate, layout, pace }
 
 /// One step of a seat's script.
 final class Goal {
-  const Goal(this.kind, {this.piece, this.event, this.timeoutMs, this.ms, this.keys, this.finishMs});
+  const Goal(this.kind, {this.piece, this.event, this.timeoutMs, this.ms, this.keys, this.mode, this.finishMs});
 
   final GoalKind kind;
 
@@ -289,6 +289,12 @@ final class Goal {
 
   /// For [GoalKind.navigate]: the presses, in order.
   final List<String>? keys;
+
+  /// For [GoalKind.layout]: the input mode to switch the phone to (`sticks`,
+  /// `dpad` or `gyro`), at this point in the scene — for a shot whose phone has
+  /// to show Sticks once the game is up, while the menus before it only allow
+  /// the D-pad.
+  final String? mode;
 
   /// For [GoalKind.pace]: the finish time, in ms after `game_start`.
   final int? finishMs;
@@ -339,17 +345,27 @@ final class Goal {
           keys.add(k);
         }
         return Goal(GoalKind.navigate, keys: List.unmodifiable(keys));
+      case 'layout':
+        if (value is! String || !_modes.contains(value)) {
+          throw FormatException(
+            '$source: seat "$seat" layout has unknown mode "$value" (expected ${_modes.join(', ')})',
+          );
+        }
+        return Goal(GoalKind.layout, mode: value);
       case 'pace':
         return Goal(GoalKind.pace, finishMs: integer(value, 'pace finishMs'));
       default:
         throw FormatException(
           '$source: seat "$seat" has unknown goal "$key" '
-          '(expected pick, place, wrongDrop, carryBigAlone, joinBigCarry, waitFor, idle, navigate, pace)',
+          '(expected pick, place, wrongDrop, carryBigAlone, joinBigCarry, waitFor, idle, navigate, layout, pace)',
         );
     }
   }
 
   static const _presses = {'up', 'down', 'left', 'right', 'a', 'b', 'start'};
+
+  /// The phone input modes a scene may switch to (the app's own mode switch).
+  static const _modes = {'sticks', 'dpad', 'gyro'};
 
   static String _name(Object? v, String source, String seat, String goal) {
     if (v is! String || v.isEmpty) throw FormatException('$source: seat "$seat" $goal needs a piece name');

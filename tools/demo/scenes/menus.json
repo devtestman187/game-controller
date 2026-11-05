@@ -15,7 +15,7 @@
         {"idle": 1200},
         {"navigate": ["a"]},
         {"idle": 1200},
-        {"navigate": ["a"]},
+        {"navigate": ["right", "right", "a"]},
         {"idle": 1600},
         {"navigate": ["b"]},
         {"navigate": ["b"]},
@@ -27,7 +27,17 @@
         {"idle": 1500},
         {"navigate": ["down"]},
         {"navigate": ["a"]},
-        {"idle": 1200}
+        {"idle": 1200},
+        {"navigate": ["b"]},
+        {"idle": 700},
+        {"navigate": ["a"]},
+        {"idle": 1000},
+        {"navigate": ["a"]},
+        {"idle": 500},
+        {"navigate": ["a"]},
+        {"waitFor": {"event": "game_start", "timeoutMs": 8000}},
+        {"layout": "sticks"},
+        {"idle": 2600}
       ]
     }
   },

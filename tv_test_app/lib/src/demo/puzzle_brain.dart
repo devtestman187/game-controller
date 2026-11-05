@@ -23,6 +23,7 @@ final class PuzzleBrain {
     required int seed,
     this.dotPx = 40,
     this.onEvent,
+    this.onLayout,
     this.paceFinishMs,
   }) : _steer = Steer(seed: seed);
 
@@ -30,6 +31,11 @@ final class PuzzleBrain {
   final List<Goal> goals;
   final double dotPx;
   final DemoLog? onEvent;
+
+  /// Called for a `layout` goal: switch the phone's input mode (`sticks`,
+  /// `dpad`, `gyro`) through the app's own mode switch. The director turns it
+  /// into the touch driver's `mode` command. Null in tests that do not care.
+  final void Function(String mode)? onLayout;
 
   /// The controller id the seat is playing as (the game keys its players by
   /// it). The director resolves it once the match exists: a scene calls the
@@ -85,6 +91,8 @@ final class PuzzleBrain {
         _next();
       } else if (goal.kind == GoalKind.waitFor && events.contains(goal.event)) {
         _next();
+      } else if (goal.kind == GoalKind.layout) {
+        _switchLayout(goal);
       } else {
         break;
       }
@@ -118,6 +126,8 @@ final class PuzzleBrain {
         _next();
       } else if (goal.kind == GoalKind.waitFor && events.contains(goal.event)) {
         _next();
+      } else if (goal.kind == GoalKind.layout) {
+        _switchLayout(goal);
       } else {
         break;
       }
@@ -160,6 +170,9 @@ final class PuzzleBrain {
         return GamepadState.neutral;
       case GoalKind.navigate:
         return _navigate(goal);
+      case GoalKind.layout:
+        // Consumed by the skip loop above; here only to keep the switch total.
+        return GamepadState.neutral;
       case GoalKind.pick:
       case GoalKind.carryBigAlone:
         return _pick(game, player, goal);
@@ -178,6 +191,20 @@ final class PuzzleBrain {
   void _next() {
     final spread = paceFinishMs == null || goals.isEmpty ? 0.0 : paceFinishMs! / 1000 * (_goal + 1) / goals.length;
     _waitS = spread > _elapsed ? spread - _elapsed : 0;
+    _goal++;
+    _goalT = 0;
+    _tapT = 0;
+    _phase = 'start';
+    _phaseT = 0;
+  }
+
+  /// A `layout` goal: switch the phone's mode once, then move on. It does not
+  /// take a goal's share of the scene's `pace`: the switch is not play, and
+  /// pacing it would idle for seconds right after `game_start`.
+  void _switchLayout(Goal goal) {
+    final mode = goal.mode ?? 'sticks';
+    onLayout?.call(mode);
+    onEvent?.call('layout', {'seat': seat, 'mode': mode});
     _goal++;
     _goalT = 0;
     _tapT = 0;

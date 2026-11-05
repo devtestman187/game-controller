@@ -8,12 +8,19 @@
     "P1": {
       "via": "phone",
       "mode": "sticks",
-      "goals": [{"navigate": ["a"]}, {"idle": 4200}, {"navigate": ["start"]}, {"idle": 1500}]
+      "goals": [
+        {"navigate": ["a"]},
+        {"idle": 4200},
+        {"navigate": ["start"]},
+        {"waitFor": {"event": "game_start", "timeoutMs": 8000}},
+        {"layout": "sticks"},
+        {"idle": 2500}
+      ]
     },
     "Bot 2": {"via": "bot", "goals": [{"idle": 800}, {"navigate": ["a"]}, {"idle": 3300}]},
     "Bot 3": {"via": "bot", "goals": [{"idle": 1400}, {"navigate": ["a"]}, {"idle": 300}, {"navigate": ["right"]}, {"idle": 2300}]},
     "Bot 4": {"via": "bot", "goals": [{"idle": 2600}, {"navigate": ["a"]}, {"idle": 1500}]}
   },
   "endAfter": "seconds",
-  "endAfterS": 8
+  "endAfterS": 9
 }

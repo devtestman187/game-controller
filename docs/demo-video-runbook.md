@@ -294,6 +294,7 @@ The director must read the running game's state. Both views already accept an in
 | `waitFor(event, timeoutMs)` | Wait until the named event happens |
 | `idle(ms)` | Stick centred, no buttons |
 | `navigate([...])` | A list of `"up" "down" "left" "right" "a" "b" "start"` presses (120 ms each, 250 ms apart) for menus |
+| `layout(mode)` | Switch the phone's input mode (`sticks`, `dpad`, `gyro`) at this point in the scene, through the app's own mode switch: the director broadcasts `{"t":"mode","to":<mode>}` and the touch driver taps the mode segment. Menus and the join screen only allow the D-pad, so the switch goes **after** `{"waitFor":"game_start"}` — that is how `menus.json`, `join.json` and `race.json` film the D-pad menus and then the match in Sticks in one take (owner-approved, Nov 5, 2026) |
 | `pace(finishMs)` | Spread the remaining goals so this seat's side finishes at about `finishMs` after `game_start`, by adding idle time between goals (never by slowing the stick) |
 
 **ArenaBrain:** reads `DemoLive.arena`: player position, goal, walls and hazards (see `packages/test_game/lib/src/arena.dart`).
@@ -427,6 +428,8 @@ It turns P1 intents into multi-touch on the emulator, and gyro intents into sens
   | `{"cmd":"type","field":"address","text":"10.0.2.2:45780","perKeyMs":[180,260]}` | Tap the field, then tap each character's key on the on-screen keyboard (from the layout's `keyboard` section, switching keyboard pages when needed), waiting a random 180â€“260 ms between keys (seeded). Ends with Enter only if the text ends in `\n` |
   | `{"cmd":"wait","ms":â€¦}` | Pause |
   | `{"cmd":"mode","to":"sticks"}` | Tap the mode switch button for that mode |
+
+  The driver also accepts `{"t":"mode","to":"sticks"}` on its **director socket** (`--director`): that is the message a scene's `layout` goal broadcasts (2.3). It runs the same `mode` command and prints `layout -> sticks: ok` or the refusal, so a mid-scene switch shows up in the take's run log.
 
   A command answers `{"ok":true}` when finished, or `{"ok":false,"why":"â€¦"}`. **Never** use `adb shell input` for anything that's filmed: those touches would have no touch markers and wouldn't look typed.
 - Every frame is logged: `{"wall":â€¦, "fingers":[{"id":â€¦,"x":â€¦,"y":â€¦}]}`.
