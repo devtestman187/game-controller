@@ -73,8 +73,14 @@ final class DemoDirector {
   /// Seats the join screen has confirmed with a `join` event this scene.
   final _joinedSeats = <String>{};
 
-  /// The event names of the frame being run, for a goal's `waitFor`.
-  final _frameEvents = <String>{};
+  /// The events of the last couple of seconds, for a goal's `waitFor`. A scene
+  /// reaches `{"waitFor": "game_start"}` a moment after the press that started
+  /// the match, so a frame's worth of events is not enough: by then the event
+  /// has already been logged (measured Nov 5, 2026, R1 take 6).
+  final _recentEvents = <String, int>{};
+
+  /// How long an event stays visible to `waitFor`.
+  static const _recentEventMs = 2000;
 
   /// The last pre-roll input sent, so one press is logged once, not once a
   /// frame.
@@ -289,10 +295,12 @@ final class DemoDirector {
     final match = live.match;
     final arena = live.arena;
     final gameLive = match != null || arena != null;
-    // The events of this frame, for a goal's `waitFor`: without them a
-    // `{"waitFor":"game_start"}` never sees its event and the scene sits on the
-    // goal for ever (measured Nov 5, 2026, on menus.json's Start).
-    _frameEvents.clear();
+    // The events a `waitFor` can still see: everything from the last
+    // [_recentEventMs]. A scene gets to its `{"waitFor":"game_start"}` after
+    // the press that started the match, so this has to look back a little.
+    final nowWall = DateTime.now().millisecondsSinceEpoch;
+    _recentEvents.removeWhere((_, wall) => nowWall - wall > _recentEventMs);
+    final events = _recentEvents.keys.toSet();
 
     // The first frame with a live game object: what the edit cuts on.
     if (!_gameStarted && gameLive) {
@@ -341,7 +349,7 @@ final class DemoDirector {
         final brain = _puzzleBrains[seat];
         if (brain != null && id != null) brain.playerId = id;
         final game = id == null ? null : match?.gameFor(id);
-        pad = brain?.step(game, dt, events: _frameEvents);
+        pad = brain?.step(game, dt, events: events);
       } else if (arena != null) {
         final brain = _arenaBrains[seat];
         if (brain != null && id != null) brain.playerId = id;
@@ -420,7 +428,7 @@ final class DemoDirector {
       final seat = _seatForControllerId(data?['id']);
       if (seat != null) _joinedSeats.add(seat);
     }
-    _frameEvents.add(name);
+    _recentEvents[name] = DateTime.now().millisecondsSinceEpoch;
     log.add(name, data);
     _broadcast({'t': 'event', 'wall': DateTime.now().millisecondsSinceEpoch, 'name': name, ...?data});
   }
