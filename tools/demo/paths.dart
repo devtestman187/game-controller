@@ -79,6 +79,25 @@ String toolOnPath(String name, [Map<String, String>? environment]) {
   );
 }
 
+/// Git Bash, for the shell scripts the showrunner calls (`emulator.sh
+/// connect`).
+///
+/// `bash` is not on the PATH of a Windows session even where Git Bash is
+/// installed (measured Nov 5, 2026: `bash tools/emulator.sh connect` threw
+/// "The system cannot find the file specified" and lost every M1 retake), so
+/// `BASH`, then the two usual Git install folders, then `bash` on the PATH.
+String get bashBinary {
+  final fromEnv = Platform.environment['BASH'];
+  if (fromEnv != null && fromEnv.isNotEmpty) return fromEnv;
+  for (final candidate in const [
+    r'C:\Program Files\Git\bin\bash.exe',
+    r'C:\Program Files\Git\usr\bin\bash.exe',
+  ]) {
+    if (File(candidate).existsSync()) return candidate;
+  }
+  return 'bash';
+}
+
 /// The `--self-test` check for `$WORK`: an unset or blank value is an error
 /// that names WORK, and a set value is used as given.
 void workDirSelfTest(void Function(String what, bool pass) check) {

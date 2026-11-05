@@ -937,7 +937,7 @@ class Showrunner {
   /// the phone paired must not be lost to that.
   Future<void> adbPair(int port, String code) async {
     final result = await Process.run(
-      'bash',
+      bashBinary,
       ['tools/emulator.sh', 'connect', '10.0.2.2:$port', code],
       workingDirectory: repo,
       environment: {...Platform.environment, 'ANDROID_SERIAL': _serial},
