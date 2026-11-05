@@ -22,9 +22,12 @@ Future<void> main(List<String> args) async {
     stdout.writeln(
       'usage: showrunner.dart --shot <id> [--take 1] [--scene file] '
       '--avd m7_android12 --mode sticks [--phone] [--record tv|both] [--tv] '
-      '[--window name] [--retakes 3] [--teardown]',
+      '[--window name] [--retakes 3] [--teardown] [--self-test]',
     );
     exit(args.isEmpty ? 2 : 0);
+  }
+  if (cli.has('self-test')) {
+    exit(await selfTest());
   }
   if (cli.has('teardown')) {
     await Showrunner(
@@ -121,7 +124,7 @@ class Showrunner {
   Process? _emulator;
   Process? _driver;
   Process? _obs;
-  DriverClient? _driverClient;
+  DriverLink? _driverClient;
   Director? _director;
   ObsClient? _obsClient;
   String _serial = 'emulator-5554';
@@ -610,45 +613,63 @@ class Showrunner {
   }
 
   /// Stops what this take started, so a failure does not leave the control
-  /// socket or the emulator input stream behind.
+  /// socket or the emulator input stream behind. Like `_stopDriver`, it never
+  /// throws: it runs on the failure path too, where the sockets may be gone.
   Future<void> abort() async {
     await _stopDriver();
-    await _director?.close();
-    _director = null;
-    await _obsClient?.close();
-    _obsClient = null;
+    await _closeClients();
   }
 
   /// Closes the sockets so the process can exit after a good take.
   Future<void> shutdown() async {
     await _stopDriver();
-    await _director?.close();
-    _director = null;
-    await _obsClient?.close();
-    _obsClient = null;
+    await _closeClients();
   }
 
+  Future<void> _closeClients() async {
+    final director = _director;
+    _director = null;
+    if (director != null) await _ignore('director close', director.close);
+    final obs = _obsClient;
+    _obsClient = null;
+    if (obs != null) await _ignore('OBS close', obs.close);
+  }
+
+  /// Stops the touch driver. Never throws: a take that already failed can have
+  /// lost the driver (killed by hand, or a crash), and a `SocketException`
+  /// raised while cleaning up used to replace the real failure with an
+  /// unhandled cleanup error. Each step is best-effort and reports what it
+  /// ignored; `--self-test` covers both a dead driver client and a dead
+  /// process.
   Future<void> _stopDriver() async {
     final client = _driverClient;
     _driverClient = null;
     if (client != null) {
-      try {
-        await client.send({'cmd': 'quit'});
-      } on Object {
-        // Already gone.
-      }
-      await client.close();
+      await _ignore('driver quit', () => client.send({'cmd': 'quit'}));
+      await _ignore('driver close', client.close);
     }
     final driver = _driver;
     _driver = null;
     if (driver != null) {
-      await driver.exitCode.timeout(
-        const Duration(seconds: 5),
-        onTimeout: () {
-          driver.kill();
-          return -1;
-        },
-      );
+      await _ignore('driver exit', () async {
+        await driver.exitCode.timeout(
+          const Duration(seconds: 5),
+          onTimeout: () {
+            driver.kill();
+            return -1;
+          },
+        );
+      });
+    }
+  }
+
+  /// Runs a cleanup step that must not throw. The error is printed, not
+  /// dropped, so a real problem is still visible in the block's log.
+  static Future<void> _ignore(String what, Future<void> Function() step) async {
+    try {
+      await step();
+    } on Object catch (e) {
+      stderr.writeln('cleanup: $what failed, ignored: $e');
     }
   }
 
@@ -755,7 +776,7 @@ class Showrunner {
     throw StateError('OBS did not open its websocket');
   }
 
-  Future<void> pair(DriverClient driver, int port, String code) async {
+  Future<void> pair(DriverLink driver, int port, String code) async {
     await enterAddress(driver, '10.0.2.2:$port');
     await _enterCode(driver, code);
   }
@@ -766,7 +787,7 @@ class Showrunner {
   /// mode, so a wrong address has to fail here, not three screens later (the
   /// Nov 4, 2026 dry run: the address never arrived, the four backspace taps
   /// at 1480,560 hit that button, and the phone sat in demo mode with no P1).
-  Future<void> enterAddress(DriverClient driver, String address) async {
+  Future<void> enterAddress(DriverLink driver, String address) async {
     final adb = Adb(_serial);
     final port = address.split(':').last;
     await ensureSymbolsPage(driver);
@@ -791,7 +812,7 @@ class Showrunner {
 
   /// P2/P4: the pairing is the shot, so it runs after StartRecord.
   Future<void> pairOnCameraFlow(
-    DriverClient driver,
+    DriverLink driver,
     int port,
     String code,
   ) async {
@@ -802,7 +823,7 @@ class Showrunner {
   }
 
   /// Waits for the code screen, types the code, checks the field and submits.
-  Future<void> _enterCode(DriverClient driver, String code) async {
+  Future<void> _enterCode(DriverLink driver, String code) async {
     final adb = Adb(_serial);
     // The keypad taps are only safe once the code screen is up.
     var onCodeScreen = false;
@@ -854,7 +875,7 @@ class Showrunner {
     return null;
   }
 
-  Future<void> typeAddress(DriverClient driver, String text) async {
+  Future<void> typeAddress(DriverLink driver, String text) async {
     for (final character in text.split('')) {
       final point = _pad.address[character];
       if (point == null) throw StateError('no address key for "$character"');
@@ -865,7 +886,7 @@ class Showrunner {
     }
   }
 
-  Future<void> typeCode(DriverClient driver, String code) async {
+  Future<void> typeCode(DriverLink driver, String code) async {
     for (final character in code.split('')) {
       final point = _pad.code[character];
       if (point == null) throw StateError('no code key for "$character"');
@@ -876,7 +897,7 @@ class Showrunner {
     }
   }
 
-  Future<void> _tapPoint(DriverClient driver, List<double> point) async {
+  Future<void> _tapPoint(DriverLink driver, List<double> point) async {
     final reply = await driver.send({
       'cmd': 'tap',
       'x': point[0],
@@ -887,7 +908,7 @@ class Showrunner {
 
   /// Puts the on-screen keyboard on its symbols page (digits, '.', ':') and
   /// leaves the address field empty, so the address taps are deterministic.
-  Future<void> ensureSymbolsPage(DriverClient driver) async {
+  Future<void> ensureSymbolsPage(DriverLink driver) async {
     final adb = Adb(_serial);
     await _tapPoint(driver, _pad.field);
     await Future<void>.delayed(const Duration(milliseconds: 1800));
@@ -1136,8 +1157,14 @@ class Director {
   }
 }
 
-/// The touch driver's command socket (2.4 Step C, port 47901).
-class DriverClient {
+/// The touch driver's command socket (2.4 Step C, port 47901). An interface so
+/// `--self-test` can hand `_stopDriver` a link whose driver has already gone.
+abstract class DriverLink {
+  Future<Map<String, dynamic>> send(Map<String, dynamic> command);
+  Future<void> close();
+}
+
+class DriverClient implements DriverLink {
   DriverClient._(this._socket, this._lines);
 
   final Socket _socket;
@@ -1154,6 +1181,7 @@ class DriverClient {
     return DriverClient._(socket, lines);
   }
 
+  @override
   Future<Map<String, dynamic>> send(Map<String, dynamic> command) async {
     _socket.writeln(jsonEncode(command));
     if (!await _lines.moveNext())
@@ -1161,6 +1189,7 @@ class DriverClient {
     return jsonDecode(_lines.current) as Map<String, dynamic>;
   }
 
+  @override
   Future<void> close() async {
     await _lines.cancel();
     _socket.destroy();
@@ -1335,4 +1364,85 @@ class ListProcesses {
       );
     }
   }
+}
+
+/// A driver link whose process has gone: every call fails the way a killed
+/// driver's socket does.
+class _GoneDriver implements DriverLink {
+  @override
+  Future<Map<String, dynamic>> send(Map<String, dynamic> command) async {
+    throw const SocketException('the touch driver has gone');
+  }
+
+  @override
+  Future<void> close() async {
+    throw const SocketException('the touch driver has gone');
+  }
+}
+
+/// `dart run tools/demo/showrunner.dart --self-test`.
+///
+/// `_stopDriver` runs on the failure path, where the driver may already be
+/// gone; before the fix, its close step threw a `SocketException` there and
+/// replaced the take's own error. Every case below must complete without
+/// throwing. Prints PASS or FAIL and exits 0 only when all of them pass.
+Future<int> selfTest() async {
+  var ok = true;
+  void check(String what, bool pass) {
+    stdout.writeln('${pass ? 'PASS' : 'FAIL'}  $what');
+    if (!pass) ok = false;
+  }
+
+  Showrunner runner() =>
+      Showrunner(work: Directory.systemTemp.path, repo: Directory.current.path);
+
+  Future<bool> stops(Showrunner runner, String what) async {
+    try {
+      await runner._stopDriver();
+      return true;
+    } on Object catch (e) {
+      stderr.writeln('  $what: _stopDriver threw: $e');
+      return false;
+    }
+  }
+
+  final empty = runner();
+  check('nothing to stop', await stops(empty, 'nothing'));
+
+  final killedByHand = runner();
+  killedByHand._driverClient = _GoneDriver();
+  check(
+    'a driver client that is already gone',
+    await stops(killedByHand, 'gone client'),
+  );
+  check('the gone client is dropped', killedByHand._driverClient == null);
+
+  // The case seen Nov 4, 2026: our socket is still open, the driver's end has
+  // closed, so both send and close hit the dead pipe.
+  final server = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);
+  final client = await DriverClient.connect(server.port);
+  final peer = await server.first;
+  peer.destroy();
+  await server.close();
+  final deadSocket = runner();
+  deadSocket._driverClient = client;
+  check(
+    'a driver socket whose end closed',
+    await stops(deadSocket, 'dead socket'),
+  );
+
+  final exited = runner();
+  exited._driver = Platform.isWindows
+      ? await Process.start('cmd', ['/c', 'exit', '0'])
+      : await Process.start('true', const []);
+  await exited._driver!.exitCode;
+  check(
+    'a driver process that already exited',
+    await stops(exited, 'exited process'),
+  );
+
+  stdout.writeln(
+    ok ? 'showrunner self-test: PASS' : 'showrunner self-test: FAIL',
+  );
+  return ok ? 0 : 1;
 }
