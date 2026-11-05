@@ -6,10 +6,20 @@
   "teams": {"left": ["P1", "Bot 2"], "right": ["Bot 3", "Bot 4"]},
   "join": {"order": ["P1", "Bot 3", "Bot 2", "Bot 4"], "start": "P1"},
   "seats": {
-    "P1": {"via": "phone", "mode": "sticks", "goals": [{"idle": 1000}]},
+    "P1": {
+      "via": "phone",
+      "mode": "sticks",
+      "goals": [
+        {"idle": 1000},
+        {"waitFor": {"event": "game_start", "timeoutMs": 12000}},
+        {"layout": "sticks"},
+        {"idle": 1500}
+      ]
+    },
     "Bot 2": {"via": "bot", "goals": [{"idle": 1000}]},
     "Bot 3": {"via": "bot", "goals": [{"idle": 1000}]},
     "Bot 4": {"via": "bot", "goals": [{"idle": 1000}]}
   },
-  "endAfter": "game_start"
+  "endAfter": "seconds",
+  "endAfterS": 3
 }

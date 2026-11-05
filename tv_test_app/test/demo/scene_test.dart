@@ -50,7 +50,10 @@ void main() {
   test('join_race.json is a join pre-roll: four seats, then the match starts', () {
     final scene = Scene.fromFile('../tools/demo/scenes/join_race.json');
     expect(scene.screenStart, 'join');
-    expect(scene.endAfter, 'game_start');
+    // It runs 3 s past `game_start` so it can leave the phone in Sticks: the
+    // join screen only allows the D-pad, the race has to be shot in Sticks.
+    expect(scene.endAfter, 'seconds');
+    expect(scene.endAfterS, 3);
     expect(scene.join, isNotNull);
     // The natural side order: the first and third to join go left, so this
     // order gives the 2 vs 2 the race scene expects.
@@ -58,6 +61,11 @@ void main() {
     expect(scene.join!.startSeat, 'P1');
     expect(scene.teams['left'], ['P1', 'Bot 2']);
     expect(scene.teams['right'], ['Bot 3', 'Bot 4']);
+    final goals = scene.seats['P1']!.goals;
+    final wait = goals.indexWhere((g) => g.kind == GoalKind.waitFor && g.event == 'game_start');
+    final layout = goals.indexWhere((g) => g.kind == GoalKind.layout);
+    expect(wait, greaterThanOrEqualTo(0));
+    expect(layout, greaterThan(wait), reason: 'Sticks only after game_start');
   });
 
   test('a layout goal switches the phone mode mid-scene', () {
