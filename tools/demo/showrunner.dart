@@ -450,8 +450,8 @@ class Showrunner {
       // has paired: without this the phone comes back as P5 and no scene's P1
       // seat ever gets input. Forget the remembered list, then drop the one that
       // is still connected.
-      await tvClick(1813, 94); // Forget phones
-      await tvClick(485, 388); // Drop connections
+      await tvClick(1855, 94); // Forget phones
+      await tvClick(529, 398); // Drop connections (the button's centre)
       await Future<void>.delayed(const Duration(milliseconds: 800));
       final state = await _director!.request({'t': 'hello'}, 'state');
       if (state['screen'] == 'home') return;
