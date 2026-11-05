@@ -90,6 +90,23 @@ wait_for() { # label, seconds
   return 1
 }
 
+# The measured centre of a Connect-screen control, from the layout the touch
+# driver uses (2.4 Step B): tools/demo/layouts/<avd>-sticks.json. uiautomator
+# reports the address box and the Connect button with bounds [0,0][0,0]
+# (measured Nov 5, 2026, at the 1800x810 capture size), so the dump has no
+# usable centre for them; the layout does.
+connect_screen_xy() { # address|connect|code -> "x y", or nothing
+  local name layout
+  name="$(a emu avd name 2> /dev/null | head -1 | tr -d '\r')"
+  layout="$root/tools/demo/layouts/${name}-sticks.json"
+  [ -f "$layout" ] || return 0
+  awk -v key="\"connect.$1\"" '
+    index($0, key) { inside = 1; next }
+    inside && /"x"/ { x = $0; gsub(/[^0-9-]/, "", x) }
+    inside && /"y"/ { y = $0; gsub(/[^0-9-]/, "", y); print x, y; exit }
+  ' "$layout"
+}
+
 clear_data() { a shell pm clear "$app" > /dev/null 2>&1 || true; }
 
 case "${1:-}" in
@@ -168,13 +185,22 @@ case "${1:-}" in
     code="${3:-}"
     [ -n "$address" ] && [ -n "$code" ] || die "usage: connect <host:port> <code>"
     xy="$(find_node EditText 1)"
+    case "$xy" in
+      '' | '0 0')
+        xy="$(connect_screen_xy address)"
+        [ -n "$xy" ] && echo "address box: uiautomator says 0,0, tapping the measured $xy"
+        ;;
+    esac
     [ -n "$xy" ] || die "no address box on screen: run 'tools/emulator.sh launch' first" 1
     a shell input tap $xy
     sleep 1
     a shell input text "$address"
     a shell input keyevent 66
     echo "Connecting to $address..."
-    if wait_for "Enter the code" 20; then
+    # The code panel has no "Enter the code" label: what appears with it is the
+    # "Pair" / "Enter code" header, and its field is not in the dump at all (the
+    # autofocused TextField still takes `input text`). Measured Nov 5, 2026.
+    if wait_for "Pair" 20 || wait_for "Enter code" 20; then
       sleep 1
       a shell input text "$code"
       a shell input keyevent 66
@@ -189,6 +215,27 @@ case "${1:-}" in
       sleep 1
     done
     die "not connected after 30 s (wrong code? see: tools/emulator.sh ui)" 1
+    ;;
+  self-check)
+    # `connect` taps the address box from the measured layout when uiautomator
+    # reports it at 0,0 (measured Nov 5, 2026, at the 1800x810 capture size).
+    # This checks that fallback for the AVD that is running.
+    fail=0
+    for key in address connect; do
+      xy="$(connect_screen_xy "$key")"
+      if [ -n "$xy" ] && [ "$xy" != "0 0" ]; then
+        echo "PASS  connect.$key -> $xy"
+      else
+        echo "FAIL  connect.$key -> '${xy}'"
+        fail=1
+      fi
+    done
+    if [ $fail = 0 ]; then
+      echo "emulator.sh self-check: PASS"
+    else
+      echo "emulator.sh self-check: FAIL"
+    fi
+    exit $fail
     ;;
   ui)
     nodes | awk -F'|' '{ printf "%-40s %-16s %5d %5d\n", substr($1, 1, 40), $2, $3, $4 }' ||
