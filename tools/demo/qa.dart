@@ -11,7 +11,17 @@ import 'dart:io';
 /// fps, the right half is the phone and has to keep >= 45 fps on a stick-crop
 /// measurement. The phone floor is lower on purpose: the emulator renders at
 /// 46-53 fps with the game live and the owner accepted that on Nov 4, 2026.
+///
+/// Arena shots (M1-M4) use an exact-duplicate stutter rule instead of the stock
+/// `mpdecimate` threshold: the Arena's dot changes too few pixels per frame for
+/// the stock rule to see it (M1 take 10: 720 distinct frames in 12 s = 60.0 fps
+/// at hi=1, yet 23 "duplicate runs"). A half fails only if 3 or more
+/// *exactly-identical* frames run together while the event log's arena match is
+/// running. `--self-test` builds the two fixture clips for that rule.
 Future<void> main(List<String> args) async {
+  if (args.contains('--self-test')) {
+    exit(await selfTest());
+  }
   String arg(String name, [String? fallback]) {
     final i = args.indexOf('--$name');
     if (i >= 0 && i + 1 < args.length) return args[i + 1];
@@ -146,25 +156,68 @@ Future<QaResult> runQa({
       );
     }
 
-    final tvStutter = await stutter(both.path, crop: 'crop=1920:1080:0:0');
-    final phoneStutter = await stutter(
-      both.path,
-      crop: 'crop=1920:1080:1920:0',
-    );
-    data['stutter'] = {'tv': tvStutter, 'phone': phoneStutter};
-    // 2.8 fails a duplicate run only while something is moving. A pairing or
-    // settings shot has a mostly static UI, so its duplicates are expected;
-    // they are still reported.
-    check(
-      'tv stutter',
-      !moving || !tvStutter.bad,
-      '${tvStutter.runs} runs of 3+ duplicates${moving ? '' : ' (static shot, reported only)'}',
-    );
-    check(
-      'phone stutter',
-      !moving || !phoneStutter.bad,
-      '${phoneStutter.runs} runs of 3+ duplicates${moving ? '' : ' (static shot, reported only)'}',
-    );
+    final recordersPath =
+        '${File(eventsPath).parent.path}\\${takeName}_recorders.json';
+    final arena = isArenaShot(shot);
+    if (arena) {
+      // Owner-approved exception (runbook 2.8 step 2): the Arena dot moves too
+      // few pixels per frame for the stock mpdecimate thresholds. Compare
+      // decoded frames exactly and fail only a run of 3+ identical frames
+      // inside the window where the event log says the match was running.
+      final window = arenaMovementWindow(eventsPath, recordersPath);
+      data['stutterMethod'] = 'exact framehash: runs of 3+ identical frames between game_start and scene_end';
+      data['movementWindow'] = window?.toJson();
+      var tvStutter = StutterInfo.unmeasured(
+        'no arena movement window (needs game_start and scene_end in the event log, '
+        'and a recorders.json start time)',
+      );
+      var phoneStutter = tvStutter;
+      if (window != null) {
+        tvStutter =
+            await exactStutter(
+              both.path,
+              crop: 'crop=1920:1080:0:0',
+              from: window.start,
+              to: window.end,
+            ) ??
+            StutterInfo.unmeasured('the exact-duplicate decode failed');
+        phoneStutter =
+            await exactStutter(
+              both.path,
+              crop: 'crop=1920:1080:1920:0',
+              from: window.start,
+              to: window.end,
+            ) ??
+            StutterInfo.unmeasured('the exact-duplicate decode failed');
+      }
+      data['stutter'] = {'tv': tvStutter, 'phone': phoneStutter};
+      String exactDetail(StutterInfo s) => s.runs < 0
+          ? (s.note ?? 'not measured')
+          : '${s.runs} runs of 3+ exactly-identical frames in ${s.frames} frames '
+                'between game_start and scene_end (longest run ${s.maxRun})';
+      check('tv stutter', !tvStutter.bad, exactDetail(tvStutter));
+      check('phone stutter', !phoneStutter.bad, exactDetail(phoneStutter));
+    } else {
+      final tvStutter = await stutter(both.path, crop: 'crop=1920:1080:0:0');
+      final phoneStutter = await stutter(
+        both.path,
+        crop: 'crop=1920:1080:1920:0',
+      );
+      data['stutter'] = {'tv': tvStutter, 'phone': phoneStutter};
+      // 2.8 fails a duplicate run only while something is moving. A pairing or
+      // settings shot has a mostly static UI, so its duplicates are expected;
+      // they are still reported.
+      check(
+        'tv stutter',
+        !moving || !tvStutter.bad,
+        '${tvStutter.runs} runs of 3+ duplicates${moving ? '' : ' (static shot, reported only)'}',
+      );
+      check(
+        'phone stutter',
+        !moving || !phoneStutter.bad,
+        '${phoneStutter.runs} runs of 3+ duplicates${moving ? '' : ' (static shot, reported only)'}',
+      );
+    }
 
     await contactSheet(
       both.path,
@@ -194,14 +247,40 @@ Future<QaResult> runQa({
       '${p.width}x${p.height} (want 1920x1080)',
     );
     check('fps', p.fps >= 59, '${p.fps.toStringAsFixed(1)} (want >= 59)');
-    final s = await stutter(file.path);
-    data['stutter'] = s;
-    final movingTv = shotIsGameplay(shot);
-    check(
-      'stutter',
-      !movingTv || !s.bad,
-      '${s.runs} runs of 3+ duplicates${movingTv ? '' : ' (static shot, reported only)'}',
-    );
+    if (isArenaShot(shot)) {
+      final movement = arenaMovementWindow(
+        eventsPath,
+        '${File(eventsPath).parent.path}\\${takeName}_recorders.json',
+      );
+      data['stutterMethod'] = 'exact framehash: runs of 3+ identical frames between game_start and scene_end';
+      data['movementWindow'] = movement?.toJson();
+      final s = movement == null
+          ? StutterInfo.unmeasured('no arena movement window')
+          : await exactStutter(
+                  file.path,
+                  from: movement.start,
+                  to: movement.end,
+                ) ??
+                StutterInfo.unmeasured('the exact-duplicate decode failed');
+      data['stutter'] = s;
+      check(
+        'stutter',
+        !s.bad,
+        s.runs < 0
+            ? (s.note ?? 'not measured')
+            : '${s.runs} runs of 3+ exactly-identical frames in ${s.frames} frames '
+                  'between game_start and scene_end (longest run ${s.maxRun})',
+      );
+    } else {
+      final s = await stutter(file.path);
+      data['stutter'] = s;
+      final movingTv = shotIsGameplay(shot);
+      check(
+        'stutter',
+        !movingTv || !s.bad,
+        '${s.runs} runs of 3+ duplicates${movingTv ? '' : ' (static shot, reported only)'}',
+      );
+    }
     await contactSheet(file.path, '$qaDir\\${takeName}_sheet.png');
     data['sheets'] = ['$qaDir\\${takeName}_sheet.png'];
     lines.add('sheet: $qaDir\\${takeName}_sheet.png');
@@ -367,10 +446,255 @@ Future<int?> countFrames(
 }
 
 class StutterInfo {
-  StutterInfo(this.runs, this.bad);
+  StutterInfo(
+    this.runs,
+    this.bad, {
+    this.maxRun = 0,
+    this.frames = 0,
+    this.note,
+  });
+
+  /// -1 when the check could not run; [note] says why.
+  factory StutterInfo.unmeasured(String why) =>
+      StutterInfo(-1, true, note: why);
+
   final int runs;
   final bool bad;
-  Map<String, dynamic> toJson() => {'runs': runs, 'bad': bad};
+  final int maxRun;
+  final int frames;
+  final String? note;
+  Map<String, dynamic> toJson() => {
+    'runs': runs,
+    'bad': bad,
+    if (frames > 0) 'frames': frames,
+    if (maxRun > 0) 'maxRun': maxRun,
+    if (note != null) 'note': note,
+  };
+}
+
+/// Shots whose pictures are the Arena, where 2.8 step 2 uses the exact
+/// duplicate rule instead of the stock mpdecimate thresholds.
+bool isArenaShot(String shot) => RegExp(r'^M[1-4]$').hasMatch(shot);
+
+class MovementWindow {
+  MovementWindow(this.start, this.end);
+  final double start;
+  final double end;
+  Map<String, dynamic> toJson() => {'from': start, 'to': end};
+}
+
+/// The part of a take where the event log says the arena match was running
+/// (`game_start` to the next `scene_end`), in video seconds. The take's
+/// `recorders.json` `start` is the wall clock of video time 0.
+MovementWindow? arenaMovementWindow(String eventsPath, String recordersPath) {
+  final recorders = File(recordersPath);
+  if (!recorders.existsSync()) return null;
+  final int? recordedStart;
+  try {
+    final json = jsonDecode(recorders.readAsStringSync());
+    recordedStart = json is Map ? (json['start'] as num?)?.toInt() : null;
+  } on Object {
+    return null;
+  }
+  if (recordedStart == null) return null;
+  final startWall = recordedStart;
+  final events = File(eventsPath);
+  if (!events.existsSync()) return null;
+  double? gameStart;
+  double? sceneEnd;
+  for (final line in events.readAsLinesSync()) {
+    if (line.trim().isEmpty) continue;
+    Map<String, dynamic> event;
+    try {
+      event = jsonDecode(line) as Map<String, dynamic>;
+    } on Object {
+      continue;
+    }
+    final wall = (event['wall'] as num?)?.toInt();
+    if (wall == null) continue;
+    final t = (wall - startWall) / 1000;
+    if (event['name'] == 'game_start' && gameStart == null && t >= 0) {
+      gameStart = t;
+    } else if (event['name'] == 'scene_end' &&
+        gameStart != null &&
+        t > gameStart) {
+      sceneEnd = t;
+      break;
+    }
+  }
+  if (gameStart == null || sceneEnd == null) return null;
+  return MovementWindow(gameStart, sceneEnd);
+}
+
+/// Counts runs of 3 or more exactly-identical decoded frames in [from]..[to]
+/// (2.8 step 2's arena rule). Frames are compared by ffmpeg's `framehash`
+/// SHA-256 of the cropped decoded picture, so this sees changes far smaller
+/// than a pixel value and cannot call two different frames equal.
+Future<StutterInfo?> exactStutter(
+  String path, {
+  String? crop,
+  required double from,
+  required double to,
+}) async {
+  final result = await Process.run(ffmpeg, [
+    '-hide_banner',
+    '-nostats',
+    '-i',
+    path,
+    if (crop != null) ...['-vf', crop],
+    '-map',
+    '0:v',
+    '-fps_mode',
+    'passthrough',
+    '-an',
+    '-f',
+    'framehash',
+    '-',
+  ]);
+  if (result.exitCode != 0) return null;
+  final out = result.stdout as String;
+  var tb = 1 / 60.0;
+  final tbMatch = RegExp(
+    r'^#tb 0: (\d+)/(\d+)',
+    multiLine: true,
+  ).firstMatch(out);
+  if (tbMatch != null) {
+    tb = int.parse(tbMatch.group(1)!) / int.parse(tbMatch.group(2)!);
+  }
+  var frames = 0;
+  var runs = 0;
+  var maxRun = 0;
+  var run = 0;
+  String? previous;
+  for (final line in out.split('\n')) {
+    if (line.isEmpty || line.startsWith('#')) continue;
+    final parts = line.split(',');
+    if (parts.length < 6) continue;
+    final pts = int.tryParse(parts[2].trim());
+    if (pts == null) continue;
+    final t = pts * tb;
+    if (t < from - 1e-9 || t > to + 1e-9) continue;
+    final hash = parts[5].trim();
+    frames++;
+    if (hash == previous) {
+      run++;
+    } else {
+      if (run >= 3) runs++;
+      if (run > maxRun) maxRun = run;
+      run = 1;
+      previous = hash;
+    }
+  }
+  if (run >= 3) runs++;
+  if (run > maxRun) maxRun = run;
+  return StutterInfo(runs, runs > 0, maxRun: maxRun, frames: frames);
+}
+
+/// Builds the two fixture clips for the arena rule: one with 60 distinct
+/// frames a second (must pass) and one whose every 4th frame appears three
+/// times in a row (must fail). Run: `dart run tools/demo/qa.dart --self-test`.
+Future<int> selfTest() async {
+  final temp = Directory.systemTemp.createTempSync('qa_selftest_');
+  var ok = true;
+  void line(bool pass, String what) {
+    stdout.writeln('${pass ? 'PASS' : 'FAIL'}  $what');
+    if (!pass) ok = false;
+  }
+
+  try {
+    final frames = Directory('${temp.path}\\frames')..createSync();
+    final gen = await Process.run(ffmpeg, [
+      '-y',
+      '-hide_banner',
+      '-f',
+      'lavfi',
+      '-i',
+      'testsrc2=size=320x240:rate=60:duration=1',
+      '-frames:v',
+      '60',
+      '${frames.path}\\f%03d.png',
+    ]);
+    if (gen.exitCode != 0) {
+      stderr.writeln('could not generate the fixtures:\n${gen.stderr}');
+      return 1;
+    }
+
+    // Lay the frames out as image sequences: distinct once, and with every
+    // fourth frame copied three times in a row.
+    final plain = Directory('${temp.path}\\plain')..createSync();
+    final repeated = Directory('${temp.path}\\repeated')..createSync();
+    var plainN = 0;
+    var repeatedN = 0;
+    for (var i = 1; i <= 60; i++) {
+      final source = File(
+        '${frames.path}\\f${i.toString().padLeft(3, '0')}.png',
+      );
+      void add(Directory dir, int n) =>
+          source.copySync('${dir.path}\\s${n.toString().padLeft(4, '0')}.png');
+      plainN++;
+      add(plain, plainN);
+      repeatedN++;
+      add(repeated, repeatedN);
+      if ((i - 1) % 4 == 3) {
+        repeatedN++;
+        add(repeated, repeatedN);
+        repeatedN++;
+        add(repeated, repeatedN);
+      }
+    }
+
+    Future<bool> encode(Directory dir, String out) async {
+      final result = await Process.run(ffmpeg, [
+        '-y',
+        '-hide_banner',
+        '-nostats',
+        '-framerate',
+        '60',
+        '-i',
+        '${dir.path}\\s%04d.png',
+        '-c:v',
+        'ffv1',
+        '-pix_fmt',
+        'yuv420p',
+        out,
+      ]);
+      if (result.exitCode != 0) stderr.writeln(result.stderr);
+      return result.exitCode == 0;
+    }
+
+    final plainClip = '${temp.path}\\plain.mkv';
+    final repeatedClip = '${temp.path}\\repeated.mkv';
+    line(await encode(plain, plainClip), 'built the 60-distinct-frames clip');
+    line(
+      await encode(repeated, repeatedClip),
+      'built the every-4th-frame-repeated clip',
+    );
+
+    final distinct = await exactStutter(plainClip, from: 0, to: 10);
+    final duplicate = await exactStutter(repeatedClip, from: 0, to: 10);
+    line(
+      distinct != null && distinct.runs == 0 && distinct.frames == 60,
+      '60 distinct frames/s passes: '
+      '${distinct?.runs} runs in ${distinct?.frames} frames (want 0 in 60)',
+    );
+    line(
+      duplicate != null &&
+          duplicate.runs == 15 &&
+          duplicate.maxRun == 3 &&
+          duplicate.frames == 90,
+      'every 4th frame repeated 3 times fails: '
+      '${duplicate?.runs} runs, longest ${duplicate?.maxRun}, '
+      '${duplicate?.frames} frames (want 15 runs of 3 in 90)',
+    );
+  } finally {
+    try {
+      temp.deleteSync(recursive: true);
+    } on Object {
+      // A leftover temp folder is harmless.
+    }
+  }
+  stdout.writeln(ok ? 'qa self-test: PASS' : 'qa self-test: FAIL');
+  return ok ? 0 : 1;
 }
 
 /// Counts gaps of 3 or more duplicates (2.8: mpdecimate hi=64*12 lo=64*5).
