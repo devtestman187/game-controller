@@ -299,7 +299,9 @@ final class DemoDirector {
     final join = _join;
     if (join != null && !join.done && !join.failed) {
       final elapsed = DateTime.now().difference(_sceneStart!).inMilliseconds;
-      final step = join.tick(elapsed, joined: _joinedSeats, started: gameLive);
+      // Start waits for the join screen's own "ready" flag instead of a fixed
+      // delay (Nov 5, 2026: a Start 140 ms after the fourth join was dropped).
+      final step = join.tick(elapsed, joined: _joinedSeats, started: gameLive, startReady: live.joinStartReady);
       if (step != null) {
         _sendSeatInput(step.seat, GamepadState(buttons: {step.button}, mode: InputMode.sticks));
         final name = '$step';

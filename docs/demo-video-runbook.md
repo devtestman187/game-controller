@@ -337,6 +337,8 @@ The director must read the running game's state. Both views already accept an in
 
 The arena scenes set `"wander": true` (`arena_gyro.json`, `arena_sticks.json`): the dot weaves instead of racing, so a round is never won and the picture never freezes for the break (2.3's ArenaBrain). `arena_dpad.json` keeps the goal-seeking plan because M1 take 12 is accepted.
 
+**Join pre-roll (`"join"`).** A scene that starts on the join screen can carry `"join": {"order": ["P1", "Bot 3", "Bot 2", "Bot 4"], "start": "P1"}`: the director puts each seat on a side in that order (A, retried up to 3 times), then presses Start. **Start goes out on the first frame the join screen reports it will be accepted** — the screen publishes its own state (`start_ready`, a director event), so a press is never sent into a screen that is still applying the last join. That replaced the fixed delay of Nov 5, 2026, whose failure was a Start sent 140 ms after the fourth join, ignored, and an 86 s take of the join screen. A press that is dropped anyway is pressed again after 3 s, up to 3 presses; then the scene ends with `join_failed` and the reason. With `"endAfter": "game_start"` starting the match is the pre-roll's whole job, and the showrunner's `--pre-roll` fails fast when it does not happen.
+
 **Tests** (`tv_test_app/test/demo/`):
 - `Steer` reaches a target within tolerance from 20 random starts, at a fixed `dt` of 1/60 s.
 - The stick never exceeds length 1.
@@ -520,7 +522,7 @@ Record the commit hash: `git -C $REPO rev-parse --short HEAD`. Every footage fil
 ### 2.7 Showrunner (`tools/demo/showrunner.dart`)
 One command runs one shot:
 ```bash
-dart run tools/demo/showrunner.dart --shot G3 --take 2 [--scene tools/demo/scenes/bigpiece.json] --avd m7_android12 --mode sticks [--phone] [--tv] [--calibrate] [--window Terminal|Editor|Browser]
+dart run tools/demo/showrunner.dart --shot G3 --take 2 [--scene tools/demo/scenes/bigpiece.json] [--pre-roll tools/demo/scenes/join_race.json] --avd m7_android12 --mode sticks [--phone] [--tv] [--calibrate] [--window Terminal|Editor|Browser]
 ```
 It does these steps in order and stops at the first failure, with a clear message:
 1. **TV app:** if not running from an earlier shot, start `tv_test_app\build\windows\x64\runner\Profile\ThumbPartyTV.exe` and record its PID in `$WORK/logs/pids.txt`. Wait until `ws://127.0.0.1:47900/director` answers `hello`. Send `reset`.

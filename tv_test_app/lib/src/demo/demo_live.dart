@@ -22,6 +22,12 @@ final class DemoLive {
   /// screen it was recorded on even when the showrunner navigated before it.
   String currentScreen = 'home';
 
+  /// True while the join screen would accept a Start press: at least one
+  /// player is on a side and the screen has not handed over to the match yet.
+  /// The director's join pre-roll waits for this instead of a fixed delay
+  /// (2.3), because a press sent before the screen is ready is dropped.
+  bool joinStartReady = false;
+
   /// Sends one event to the director. Null unless [installDemoLive] ran and a
   /// director is listening, which only a DEMO_DIRECTOR build ever does.
   void Function(String name, [Map<String, Object?>? data])? onEvent;

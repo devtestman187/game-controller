@@ -100,6 +100,10 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
   void dispose() {
     _timer.cancel();
     _startFocus.dispose();
+    if (demoDirector) {
+      DemoLive.instance.joinStartReady = false;
+      DemoLive.instance.reportEvent('start_ready', {'ready': false});
+    }
     if (!_handedOver) _keyboard.dispose();
     super.dispose();
   }
@@ -191,6 +195,20 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
       }
     }
     if (changed) setState(() {});
+    _reportStartReady();
+  }
+
+  /// Tells the demo director whether this screen would accept Start right now
+  /// (2.3). The join pre-roll presses Start on the first frame this is true, so
+  /// it never presses into a screen that is still applying the last join - the
+  /// press that was dropped 140 ms after the fourth join on Nov 5, 2026.
+  void _reportStartReady() {
+    if (!demoDirector) return;
+    final ready = _teams.isNotEmpty && !_handedOver;
+    if (DemoLive.instance.joinStartReady != ready) {
+      DemoLive.instance.joinStartReady = ready;
+      DemoLive.instance.reportEvent('start_ready', {'ready': ready});
+    }
   }
 
   /// The demo director's `join` event (docs/demo-video-runbook.md 2.3): logged

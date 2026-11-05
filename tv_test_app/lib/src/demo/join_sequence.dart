@@ -17,23 +17,29 @@ final class JoinStep {
 /// put every seat on a side, then start the match.
 ///
 /// Pure logic: no Flutter, no sockets and no clock of its own. The director
-/// calls [tick] once a frame with how long the sequence has been running and
-/// the seats the join screen has confirmed, and sends the returned input. A
-/// seat's A is only pressed once the seat before it has a `join` event, and
-/// Start only goes out when every seat is on a side, so the match cannot start
-/// early with half the players - which is what the last G2 pre-roll did.
+/// calls [tick] once a frame with how long the sequence has been running, the
+/// seats the join screen has confirmed, and whether the join screen says Start
+/// will be accepted, and sends the returned input. A seat's A is only pressed
+/// once the seat before it has a `join` event, and Start only goes out when
+/// every seat is on a side **and** the screen is ready for it, so the match
+/// cannot start early with half the players - which is what the last G2
+/// pre-roll did.
 ///
 /// A seat that never confirms is pressed A again, up to [attempts] times, and
-/// then the sequence fails with a reason the caller can report. The runbook's
-/// 3-attempt cap applies to it too: three presses, then stop.
+/// then the sequence fails with a reason the caller can report. Start works the
+/// same way: a press the join screen drops (Nov 5, 2026: one sent 140 ms after
+/// the fourth join was ignored, and the take recorded 86 s of the join screen)
+/// is retried after [startRetryMs], up to [startAttempts] presses. The runbook's
+/// 3-attempt cap applies to both.
 final class JoinSequence {
   JoinSequence({
     required this.order,
     String? startSeat,
     this.pressMs = 120,
     this.joinTimeoutMs = 4000,
-    this.startTimeoutMs = 12000,
-    this.startDelayMs = 2000,
+    this.startReadyTimeoutMs = 12000,
+    this.startRetryMs = 3000,
+    this.startAttempts = 3,
     this.attempts = 3,
   }) : startSeat = startSeat ?? (order.isEmpty ? null : order.first);
 
@@ -51,23 +57,28 @@ final class JoinSequence {
   /// How long to wait for a seat's `join` event before pressing its A again.
   final int joinTimeoutMs;
 
-  /// How long to wait for the match to start after Start.
-  final int startTimeoutMs;
+  /// How long to wait for the TV to offer Start before giving up. This is not
+  /// a delay: Start goes out on the first frame the join screen reports it is
+  /// ready, which is what replaced the fixed 2 s wait of Nov 5, 2026.
+  final int startReadyTimeoutMs;
 
-  /// How long to wait after the last seat joins before pressing Start. The
-  /// join screen disables Start for a moment while the last card animates in;
-  /// a Start press 140 ms after the fourth join (the G2 pre-roll on Nov 5,
-  /// 2026) was ignored and the 12 s wait then failed the whole pre-roll.
-  final int startDelayMs;
+  /// How long to wait after one Start press before pressing it again. A press
+  /// that lands while the join screen is still applying the last join is
+  /// dropped, and a second press is what makes it work.
+  final int startRetryMs;
+
+  /// Start presses before the sequence gives up.
+  final int startAttempts;
 
   /// A presses one seat gets before the sequence gives up.
   final int attempts;
 
   int _index = 0;
   int _attempt = 0;
+  int _startPresses = 0;
   int? _pressSince;
   int? _waitSince;
-  int? _startAt;
+  int? _readySince;
   JoinStep? _held;
   _Phase _phase = _Phase.joining;
   String? _why;
@@ -80,13 +91,17 @@ final class JoinSequence {
 
   String? get why => _why;
 
+  /// How many Start presses have gone out, for the take's log.
+  int get startPresses => _startPresses;
+
   /// The seat being pressed or waited for, for logging.
   String? get seat => _index < order.length ? order[_index] : startSeat;
 
   /// The input to send this frame, or null for nothing. [joined] is the set of
   /// seats the join screen has confirmed; [started] is true once a game object
-  /// exists (the director logs `game_start` on the same frame).
-  JoinStep? tick(int ms, {required Set<String> joined, required bool started}) {
+  /// exists (the director logs `game_start` on the same frame); [startReady]
+  /// is the join screen's own answer to "would a Start press do anything now".
+  JoinStep? tick(int ms, {required Set<String> joined, required bool started, bool startReady = true}) {
     if (_phase == _Phase.done || _phase == _Phase.failed) return null;
 
     // The match is live: whatever we did worked. Stop pressing.
@@ -94,7 +109,7 @@ final class JoinSequence {
       _phase = _Phase.done;
       _pressSince = null;
       _waitSince = null;
-      _startAt = null;
+      _readySince = null;
       _held = null;
       return null;
     }
@@ -125,9 +140,13 @@ final class JoinSequence {
           return null;
         }
       } else {
-        // Starting: wait for the match, which the caller reports as `started`.
-        if (ms - _waitSince! >= startTimeoutMs) _fail('the match did not start after Start');
-        return null;
+        // Starting: the press is out. Wait for the match, then press again.
+        if (ms - _waitSince! < startRetryMs) return null;
+        _waitSince = null;
+        if (_startPresses >= startAttempts) {
+          _fail('the match did not start after $_startPresses Start presses');
+          return null;
+        }
       }
     }
 
@@ -139,17 +158,24 @@ final class JoinSequence {
       }
       if (_index >= order.length) {
         _phase = _Phase.starting;
-        _attempt = 0;
-        _startAt = ms + startDelayMs;
+        _startPresses = 0;
       } else {
         return _press(order[_index], GamepadButton.a, ms);
       }
     }
 
-    if (_startAt != null && ms < _startAt!) return null;
-    final starter = startSeat ?? order.first;
-    _startAt = null;
-    return _press(starter, GamepadButton.start, ms);
+    // Starting. The press only goes out once the join screen says it will be
+    // accepted, so a press it ignores is never the only one.
+    if (!startReady) {
+      _readySince ??= ms;
+      if (ms - _readySince! >= startReadyTimeoutMs) {
+        _fail('the join screen never offered Start');
+      }
+      return null;
+    }
+    _readySince = null;
+    _startPresses++;
+    return _press(startSeat ?? order.first, GamepadButton.start, ms);
   }
 
   JoinStep _press(String seat, GamepadButton button, int ms) {
@@ -165,7 +191,7 @@ final class JoinSequence {
     _held = null;
     _pressSince = null;
     _waitSince = null;
-    _startAt = null;
+    _readySince = null;
   }
 }
 

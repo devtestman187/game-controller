@@ -109,24 +109,93 @@ void main() {
     expect(seq.done, isFalse);
   });
 
-  test('waits for the join screen to settle before Start', () {
-    final seq = JoinSequence(order: const ['P1'], startSeat: 'P1', startDelayMs: 2000);
+  test('waits for the TV to offer Start, then presses it at once', () {
+    final seq = JoinSequence(order: const ['P1'], startSeat: 'P1');
     const joined = {'P1'};
-    expect(seq.tick(0, joined: joined, started: false), isNull);
-    expect(seq.tick(1999, joined: joined, started: false), isNull);
-    final start = seq.tick(2000, joined: joined, started: false);
+    // Not ready yet: no press, however long it takes.
+    for (var ms = 0; ms <= 4000; ms += 16) {
+      expect(seq.tick(ms, joined: joined, started: false, startReady: false), isNull, reason: 'at $ms ms');
+    }
+    final start = seq.tick(4016, joined: joined, started: false, startReady: true);
     expect(start?.button, GamepadButton.start);
+    expect(seq.startPresses, 1);
   });
 
-  test('fails when the match does not start after Start', () {
-    final seq = JoinSequence(order: const ['P1'], startSeat: 'P1', startTimeoutMs: 2000);
-    final joined = {'P1'};
+  test('fails when the TV never offers Start', () {
+    final seq = JoinSequence(order: const ['P1'], startSeat: 'P1', startReadyTimeoutMs: 1000);
     var ms = 0;
-    while (!seq.done && !seq.failed && ms < 10000) {
-      seq.tick(ms, joined: joined, started: false);
+    while (!seq.done && !seq.failed && ms < 5000) {
+      seq.tick(ms, joined: const {'P1'}, started: false, startReady: false);
       ms += 16;
     }
     expect(seq.failed, isTrue);
+    expect(seq.why, contains('never offered Start'));
+    expect(seq.startPresses, 0);
+  });
+
+  test('a slow join: nothing goes out before the last seat is on a side', () {
+    // The G2 pre-roll's failure was a Start pressed before the join screen had
+    // taken the fourth join. Here that join takes 3 s: no Start before it.
+    final seq = JoinSequence(order: const ['P1', 'Bot 3', 'Bot 2', 'Bot 4'], startSeat: 'P1');
+    const all = {'P1', 'Bot 3', 'Bot 2', 'Bot 4'};
+    var ms = 0;
+    int? startAt;
+    while (!seq.done && !seq.failed && ms < 20000) {
+      final joined = ms >= 3000 ? all : const <String>{};
+      final step = seq.tick(
+        ms,
+        joined: joined,
+        started: startAt != null && ms >= startAt + 240,
+        startReady: joined.isNotEmpty,
+      );
+      if (step != null && step.button == GamepadButton.start && startAt == null) {
+        startAt = ms;
+      }
+      ms += 16;
+    }
+    expect(startAt, isNotNull);
+    expect(startAt, greaterThanOrEqualTo(3000), reason: 'Start before the last join');
+    expect(seq.done, isTrue);
+  });
+
+  test('a Start the join screen drops is pressed again', () {
+    // Nov 5, 2026: the first Start was ignored and the take recorded 86 s of
+    // the join screen. The second press must go out, and the third too.
+    final seq = JoinSequence(order: const ['P1'], startSeat: 'P1', startRetryMs: 3000);
+    var ms = 0;
+    final pressedAt = <int>[];
+    JoinStep? holding;
+    var starts = 0;
+    while (!seq.done && !seq.failed && ms < 20000) {
+      final step = seq.tick(ms, joined: const {'P1'}, started: starts >= 2);
+      if (step == null && holding != null) {
+        if (holding.button == GamepadButton.start) {
+          starts++;
+          if (starts == 2) {
+            // The picture only changes after the second press lands.
+          }
+        }
+        holding = null;
+      } else if (step != null && holding == null) {
+        holding = step;
+        if (step.button == GamepadButton.start) pressedAt.add(ms);
+      }
+      ms += 16;
+    }
+    expect(pressedAt.length, 2, reason: 'Start at $pressedAt');
+    expect(pressedAt[1] - pressedAt[0], greaterThanOrEqualTo(3000), reason: 'retry gap');
+    expect(seq.done, isTrue);
+  });
+
+  test('gives up after three Start presses', () {
+    final seq = JoinSequence(order: const ['P1'], startSeat: 'P1', startRetryMs: 1000);
+    var ms = 0;
+    while (!seq.done && !seq.failed && ms < 20000) {
+      seq.tick(ms, joined: const {'P1'}, started: false);
+      ms += 16;
+    }
+    expect(seq.failed, isTrue);
+    expect(seq.startPresses, 3);
     expect(seq.why, contains('did not start'));
   });
 
