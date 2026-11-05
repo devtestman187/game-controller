@@ -35,9 +35,10 @@ class _DemoBootState extends ConsumerState<DemoBoot> {
       if (port != null && host.pairingCode.isNotEmpty) {
         final director = DemoDirector(
           hostPort: port,
-          // Read live: the TV issues a new pairing code on some actions and
-          // after wrong-code attempts, and the bots must use the current one.
-          pairingCode: () => ref.read(hostStateProvider).host.pairingCode,
+          // Read live from the controller, not the Riverpod view state: the
+          // view state is rebuilt from a change stream, so it still showed the
+          // old code right after a pin and the showrunner's read-back failed.
+          pairingCode: () => ref.read(hostControllerProvider).state.host.pairingCode,
           // The showrunner's --pin-code: P1-P3 show the same four digits.
           setPairingCode: (code) => ref.read(hostControllerProvider).setPairingCode(code),
           players: () => ref.read(gameHostProvider).players,
