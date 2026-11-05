@@ -6,75 +6,69 @@
                    "h":  810
                },
     "touch":  "direct",
-    "measured":  "Nov 4, 2026 at 1800x810@315 (landscape panel, rotation 0, immersive app, gesture navigation). Measured by tapping and reading the field back with uiautomator.",
+    "measured":  "Nov 4, 2026 at 1800x810@315 (landscape panel, rotation 0, immersive app, gesture navigation). Re-measured from screenshots and every control tapped through the raw touch driver with pointer_location on: the overlay's X/Y and the app's input summary (D-pad/gyro) or the stick knob (sticks) confirmed each point. See qa/verify/ and qa/verify_*_montage.png.",
     "controls":  {
-                     "ls":  {
-                                "x":  198,
-                                "y":  385,
-                                "r":  168
-                            },
-                     "rs":  {
-                                "x":  1192,
-                                "y":  670,
-                                "r":  140
-                            },
                      "dpad":  {
-                                  "x":  622,
-                                  "y":  670,
-                                  "arm":  63
-                              },
-                     "a":  {
-                               "x":  1541,
-                               "y":  563,
-                               "r":  75
-                           },
-                     "b":  {
-                               "x":  1668,
-                               "y":  429,
-                               "r":  75
-                           },
-                     "x":  {
-                               "x":  1412,
-                               "y":  425,
-                               "r":  75
-                           },
-                     "y":  {
-                               "x":  1538,
-                               "y":  280,
-                               "r":  75
-                           },
+                                  "x":  388,
+                                  "y":  448,
+                                  "arm":  264
+                                },
                      "left":  {
-                                  "y":  670,
-                                  "x":  559
-                              },
+                                  "x":  124,
+                                  "y":  448
+                                },
                      "right":  {
-                                   "y":  670,
-                                   "x":  685
-                               },
-                     "down":  {
-                                  "y":  733,
-                                  "x":  622
-                              },
+                                  "x":  652,
+                                  "y":  448
+                                },
                      "up":  {
-                                "y":  607,
-                                "x":  622
-                            },
+                                  "x":  388,
+                                  "y":  184
+                                },
+                     "down":  {
+                                  "x":  388,
+                                  "y":  712
+                                },
+                     "a":  {
+                                  "x":  1411,
+                                  "y":  652,
+                                  "r":  106
+                                },
+                     "b":  {
+                                  "x":  1616,
+                                  "y":  448,
+                                  "r":  106
+                                },
+                     "x":  {
+                                  "x":  1207,
+                                  "y":  448,
+                                  "r":  106
+                                },
+                     "y":  {
+                                  "x":  1411,
+                                  "y":  243,
+                                  "r":  106
+                                },
+                     "select":  {
+                                  "x":  900,
+                                  "y":  342
+                                },
                      "start":  {
-                                   "y":  460,
-                                   "x":  900
-                               }
+                                  "x":  900,
+                                  "y":  460
+                                }
                  },
     "screens":  {
                     "mode.sticks":  {
-                                        "x":  1409,
+                                        "x":  1503,
                                         "y":  55
                                     },
                     "mode.dpad":  {
-                                      "x":  1042,
+                                      "x":  1137,
                                       "y":  55
                                   },
                     "mode.gyro":  {
-                                      "x":  1225,
+                                      "x":  1320,
                                       "y":  55
                                   },
                     "connect.address":  {

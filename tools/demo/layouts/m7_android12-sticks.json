@@ -6,63 +6,67 @@
                    "h":  810
                },
     "touch":  "direct",
-    "measured":  "Nov 4, 2026 at 1800x810@315 (landscape panel, rotation 0, immersive app, gesture navigation). Measured by tapping and reading the field back with uiautomator.",
+    "measured":  "Nov 4, 2026 at 1800x810@315 (landscape panel, rotation 0, immersive app, gesture navigation). Re-measured from screenshots and every control tapped through the raw touch driver with pointer_location on: the overlay's X/Y and the app's input summary (D-pad/gyro) or the stick knob (sticks) confirmed each point. See qa/verify/ and qa/verify_*_montage.png.",
     "controls":  {
                      "ls":  {
-                                "x":  198,
-                                "y":  385,
-                                "r":  168
-                            },
+                                  "x":  202,
+                                  "y":  383,
+                                  "r":  171
+                                },
                      "rs":  {
-                                "x":  1192,
-                                "y":  670,
-                                "r":  140
-                            },
+                                  "x":  1200,
+                                  "y":  664,
+                                  "r":  135
+                                },
                      "dpad":  {
-                                  "x":  622,
-                                  "y":  670,
-                                  "arm":  63
-                              },
+                                  "x":  620,
+                                  "y":  686,
+                                  "arm":  93
+                                },
                      "a":  {
-                               "x":  1541,
-                               "y":  563,
-                               "r":  75
-                           },
+                                  "x":  1542,
+                                  "y":  573,
+                                  "r":  79
+                                },
                      "b":  {
-                               "x":  1668,
-                               "y":  429,
-                               "r":  75
-                           },
+                                  "x":  1677,
+                                  "y":  438,
+                                  "r":  79
+                                },
                      "x":  {
-                               "x":  1412,
-                               "y":  425,
-                               "r":  75
-                           },
+                                  "x":  1408,
+                                  "y":  438,
+                                  "r":  79
+                                },
                      "y":  {
-                               "x":  1538,
-                               "y":  280,
-                               "r":  75
-                           },
+                                  "x":  1542,
+                                  "y":  303,
+                                  "r":  79
+                                },
                      "left":  {
-                                  "y":  670,
-                                  "x":  559
-                              },
+                                  "x":  527,
+                                  "y":  686
+                                },
                      "right":  {
-                                   "y":  670,
-                                   "x":  685
-                               },
+                                  "x":  713,
+                                  "y":  686
+                                },
                      "down":  {
-                                  "y":  733,
-                                  "x":  622
-                              },
+                                  "x":  620,
+                                  "y":  778
+                                },
                      "up":  {
-                                "y":  607,
-                                "x":  622
-                            },
+                                  "x":  620,
+                                  "y":  593
+                                },
                      "start":  {
-                                   "y":  460,
-                                   "x":  900
-                               }
+                                  "x":  972,
+                                  "y":  399
+                                },
+                     "select":  {
+                                  "x":  827,
+                                  "y":  399
+                                }
                  },
     "screens":  {
                     "mode.sticks":  {
