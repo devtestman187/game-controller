@@ -240,13 +240,6 @@ class Showrunner {
     final pairOnCamera = shot == 'P2' || shot == 'P4';
     if (phone && !pairOnCamera) {
       await pair(_driverClient!, port, code);
-      // The app opens in D-pad on a phone and Sticks on a tablet, and a
-      // reconnect can leave it on Gyro, so set the shot's mode after pairing
-      // and before recording (the switch is on the controller screen).
-      final reply = await _driverClient!.send({'cmd': 'mode', 'to': mode});
-      if (reply['ok'] != true) {
-        throw StateError('could not set $mode mode: $reply');
-      }
     }
     if (phone && pairOnCamera) {
       // A known keyboard page before recording: no visible extra touches.
@@ -271,6 +264,17 @@ class Showrunner {
     // recorder and the action.
     await preflightWindows();
     if (tvScreen != null) await openTvScreen(tvScreen);
+    if (phone && !pairOnCamera) {
+      // The app disables a mode the current screen's game layout does not
+      // allow (P5), and on the home screen Sticks is disabled, so the old
+      // pairing-time switch silently left every phone shot on D-pad. Set the
+      // shot's mode once its own screen is open, before the pre-roll and the
+      // recording.
+      final reply = await _driverClient!.send({'cmd': 'mode', 'to': mode});
+      if (reply['ok'] != true) {
+        throw StateError('could not set $mode mode: $reply');
+      }
+    }
     if (preRoll != null) {
       final file = File(preRoll).absolute.path;
       stdout.writeln('director: pre-roll ${file.split(RegExp(r'[\\/]')).last}');
