@@ -221,7 +221,8 @@ final class PuzzleBrain {
       return GamepadState.neutral;
     }
     if (player.held == index) {
-      onEvent?.call('pickup', {'seat': seat, 'piece': goal.piece ?? ''});
+      // No event: the game logs the real `pickup` (the director mirrors it),
+      // so the log says which piece the game actually handed over.
       _next();
       return GamepadState.neutral;
     }
@@ -229,7 +230,6 @@ final class PuzzleBrain {
     // wanted one. Place whatever came up rather than dropping it again: the
     // goals cover every piece, so none is left behind.
     if (player.held != null) {
-      onEvent?.call('pickup', {'seat': seat, 'piece': _nameOf(game, player.held!)});
       _next();
       return GamepadState.neutral;
     }
@@ -290,7 +290,7 @@ final class PuzzleBrain {
     if (_phase == 'start') _phase = 'pick';
     if (_phase == 'pick') {
       if (player.held == index) {
-        onEvent?.call('pickup', {'seat': seat, 'piece': goal.piece ?? ''});
+        // The game logs the pickup; the brain only tracks its own phase.
         _phase = 'carry';
         _phaseT = 0;
         return GamepadState.neutral;
@@ -298,13 +298,17 @@ final class PuzzleBrain {
       return _pick(game, player, goal);
     }
     if (_phase == 'carry') {
-      final spot = _dotSpotFor(game, player, index, game.targetAt(index) + Offset(dotPx * 1.75, dotPx * 0.4));
+      // Stick only, no A: a tap on the way would drop the piece and pick it up
+      // again at every stop, which is what stopped the wrong drop landing on
+      // the board at all.
+      final spot = _dotSpotFor(game, player, index, _wrongSpot(game, index));
       final v = _steer.stick(from: player.pos, to: spot, dotPx: dotPx, dt: 1 / 60);
-      if ((player.pos - spot).distance < dotPx * 0.6 || _phaseT > 6) {
+      if ((player.pos - spot).distance < dotPx * 0.3 || _phaseT > 6) {
         _phase = 'drop';
         _phaseT = 0;
+        _tapT = 1; // Drop on this frame, not after the tap interval.
       }
-      return GamepadState(buttons: _tap({}), leftX: v.dx, leftY: v.dy, mode: InputMode.sticks);
+      return GamepadState(leftX: v.dx, leftY: v.dy, mode: InputMode.sticks);
     }
     if (_phase == 'drop') {
       if (player.held == null) {
@@ -325,6 +329,23 @@ final class PuzzleBrain {
     // 'fix': pick it up again, then place it.
     if (player.held == null) return _pick(game, player, goal);
     return _place(game, player);
+  }
+
+  /// Where the wrong drop goes: on the board, 1.6 piece-widths from the
+  /// outline and towards the middle of it, so the piece lands on empty board
+  /// and the game marks it wrong (turns it red). A drop off the board is only
+  /// loose, and the game never calls that wrong.
+  Offset _wrongSpot(PuzzleGame game, int index) {
+    final target = game.targetAt(index);
+    final board = game.field.board;
+    final size = game.puzzle.pieces[index].shape.size;
+    final inward = board.center - target;
+    final dir = inward.distance < 1e-6 ? const Offset(0, 1) : inward / inward.distance;
+    final spot = target + dir * (size * 1.6);
+    // Well inside the board: the dot can stop a few pixels short of the spot
+    // and the piece still has to land on the board.
+    final inside = board.deflate(size * 0.8);
+    return Offset(spot.dx.clamp(inside.left, inside.right), spot.dy.clamp(inside.top, inside.bottom));
   }
 
   /// Join a teammate on the big piece: go to it, press A, then carry it too.

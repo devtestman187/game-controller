@@ -45,6 +45,8 @@ class _DemoBootState extends ConsumerState<DemoBoot> {
         _director = director;
         // The join screen and the navigator observer send their events here.
         DemoLive.instance.onEvent = director.reportEvent;
+        // The match's own events (pickup, snap, wrong, help, finished).
+        DemoLive.instance.onPuzzleEvent = director.reportPuzzleEvent;
         unawaited(
           director.start().catchError((Object e) {
             debugPrint('demo director: could not start: $e');
@@ -58,6 +60,7 @@ class _DemoBootState extends ConsumerState<DemoBoot> {
   @override
   void dispose() {
     DemoLive.instance.onEvent = null;
+    DemoLive.instance.onPuzzleEvent = null;
     unawaited(_director?.stop());
     super.dispose();
   }

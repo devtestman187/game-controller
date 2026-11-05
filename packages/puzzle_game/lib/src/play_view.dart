@@ -49,6 +49,13 @@ void Function(PuzzleMatch match)? onPuzzleMatchCreated;
 /// running that match goes away.
 void Function(PuzzleMatch match)? onPuzzleMatchDisposed;
 
+/// For the demo director only; null in every normal run. Every event the
+/// running match produced this frame, with the side it came from: pickup,
+/// snap, wrong, help, finished, time up. The director mirrors them into the
+/// take's event log (docs/demo-video-runbook.md 2.3), so the log says what the
+/// game did rather than what a script guessed.
+void Function(PuzzleSide side, PuzzleEvent event)? onPuzzleMatchEvent;
+
 /// Plays one match through the game host (PRD v2 P3): every player on a
 /// side drives a dot on their side's board, events become haptics and
 /// sounds by name (S5), each phone shows the puzzle's button labels and a
@@ -183,6 +190,7 @@ class PuzzlePlayViewState extends State<PuzzlePlayView> with SingleTickerProvide
     );
     final sounds = <String>{};
     for (final e in events) {
+      onPuzzleMatchEvent?.call(e.side, e.event);
       _onEvent(e.side, e.event, players, sounds);
     }
     if (match.result != null && !_reported) _report(players, sounds);

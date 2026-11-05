@@ -16,6 +16,7 @@ final class Scene {
     this.pace = const {},
     this.endAfter = 'results',
     this.endAfterS,
+    this.join,
   });
 
   /// `puzzle` or `arena`.
@@ -40,11 +41,16 @@ final class Scene {
   /// `game_start`.
   final Map<String, int> pace;
 
-  /// What ends the shot: `results`, or `seconds` (with [endAfterS]).
+  /// What ends the shot: `results`, `seconds` (with [endAfterS]), or
+  /// `game_start` (a pre-roll that only has to get the match started).
   final String endAfter;
 
   /// Seconds of play, when [endAfter] is `seconds`.
   final int? endAfterS;
+
+  /// The join pre-roll, when the scene starts on the join screen: the seats to
+  /// put on a side, in order, and who starts the match.
+  final JoinPlan? join;
 
   /// The side [seat] plays on, or null if it isn't on one.
   String? sideOf(String seat) {
@@ -151,12 +157,34 @@ final class Scene {
     }
 
     final endAfter = str('endAfter', fallback: 'results');
-    if (endAfter != 'results' && endAfter != 'seconds') {
-      throw FormatException('$source: unknown endAfter "$endAfter" (expected "results" or "seconds")');
+    if (endAfter != 'results' && endAfter != 'seconds' && endAfter != 'game_start') {
+      throw FormatException('$source: unknown endAfter "$endAfter" (expected "results", "seconds" or "game_start")');
     }
     final endAfterS = endAfter == 'seconds' ? integer(raw['endAfterS'], '"endAfterS"') : null;
     if (endAfter == 'seconds' && (endAfterS == null || endAfterS <= 0)) {
       throw FormatException('$source: endAfter "seconds" needs a positive "endAfterS"');
+    }
+
+    JoinPlan? join;
+    final rawJoin = raw['join'];
+    if (rawJoin != null) {
+      if (rawJoin is! Map<String, dynamic>) throw FormatException('$source: "join" must be an object');
+      final rawOrder = rawJoin['order'];
+      if (rawOrder is! List || rawOrder.isEmpty) {
+        throw FormatException('$source: "join" needs a non-empty "order" list of seat ids');
+      }
+      final order = <String>[];
+      for (final s in rawOrder) {
+        if (s is! String || !seats.containsKey(s)) {
+          throw FormatException('$source: join order names "$s", which "seats" does not define');
+        }
+        order.add(s);
+      }
+      final start = rawJoin['start'];
+      if (start != null && (start is! String || !seats.containsKey(start))) {
+        throw FormatException('$source: join "start" names "$start", which "seats" does not define');
+      }
+      join = JoinPlan(order: List.unmodifiable(order), start: start as String?);
     }
 
     return Scene(
@@ -169,8 +197,24 @@ final class Scene {
       pace: Map.unmodifiable(pace),
       endAfter: endAfter,
       endAfterS: endAfterS,
+      join: join,
     );
   }
+}
+
+/// The join pre-roll from a scene file: `"join": {"order": ["P1", "Bot 2"],
+/// "start": "P1"}`. The director puts each seat on a side in this order,
+/// confirming each one on the TV before the next, then has [start] press
+/// Start.
+final class JoinPlan {
+  const JoinPlan({required this.order, this.start});
+
+  final List<String> order;
+
+  /// The seat that starts the match; the first seat by default.
+  final String? start;
+
+  String get startSeat => start ?? order.first;
 }
 
 /// One seat: how it connects and what it does, in order.

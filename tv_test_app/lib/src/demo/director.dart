@@ -3,11 +3,13 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:connection/connection.dart';
+import 'package:puzzle_game/puzzle_game.dart';
 
 import 'arena_brain.dart';
 import 'bot.dart';
 import 'demo_live.dart';
 import 'events.dart';
+import 'join_sequence.dart';
 import 'puzzle_brain.dart';
 import 'scene.dart';
 
@@ -56,6 +58,16 @@ final class DemoDirector {
   DateTime? _sceneStart;
   bool _done = false;
   bool _gameStarted = false;
+
+  /// The scene's join pre-roll, while it is running (2.3).
+  JoinSequence? _join;
+
+  /// Seats the join screen has confirmed with a `join` event this scene.
+  final _joinedSeats = <String>{};
+
+  /// The last pre-roll input sent, so one press is logged once, not once a
+  /// frame.
+  String? _lastJoinStep;
 
   /// The port actually listening (the control port, or whatever the OS chose
   /// when tests ask for 0).
@@ -117,7 +129,9 @@ final class DemoDirector {
       _ => 0,
     };
     final first = _bots.length + 2;
-    for (var i = 0; i < count && _bots.length < 3; i++) {
+    // Up to 4: a scene has at most 4 players, and a dry run can stand in a bot
+    // for the phone (the dry-run pre-rolls use Bot 2 to Bot 5).
+    for (var i = 0; i < count && _bots.length < 4; i++) {
       final seat = 'Bot ${first + i}';
       final bot = DemoBot(name: seat, id: 'demo-${seat.toLowerCase().replaceAll(' ', '-')}');
       _bots[seat] = bot;
@@ -155,6 +169,9 @@ final class DemoDirector {
     _done = false;
     _sceneStart = DateTime.now();
     _gameStarted = false;
+    _joinedSeats.clear();
+    _lastJoinStep = null;
+    _join = scene.join == null ? null : JoinSequence(order: scene.join!.order, startSeat: scene.join!.startSeat);
     _puzzleBrains.clear();
     _arenaBrains.clear();
     var seed = scene.seed;
@@ -210,6 +227,45 @@ final class DemoDirector {
     const dt = 1 / 60;
     final match = live.match;
     final arena = live.arena;
+    final gameLive = match != null || arena != null;
+
+    // The first frame with a live game object: what the edit cuts on.
+    if (!_gameStarted && gameLive) {
+      _gameStarted = true;
+      _event('game_start');
+    }
+
+    // The join pre-roll: get every seat on a side, then start the match. The
+    // brains only run once it is done, so a brain's A press can never start
+    // the match early with half the players on screen.
+    final join = _join;
+    if (join != null && !join.done && !join.failed) {
+      final elapsed = DateTime.now().difference(_sceneStart!).inMilliseconds;
+      final step = join.tick(elapsed, joined: _joinedSeats, started: gameLive);
+      if (step != null) {
+        _sendSeatInput(step.seat, GamepadState(buttons: {step.button}, mode: InputMode.sticks));
+        final name = '$step';
+        if (name != _lastJoinStep) {
+          _lastJoinStep = name;
+          _event('join_press', {'seat': step.seat, 'button': step.button.name});
+        }
+      } else {
+        _lastJoinStep = null;
+      }
+      if (join.failed) {
+        _event('join_failed', {'why': join.why});
+        _finish(ok: false, why: join.why);
+        return;
+      }
+      if (!join.done) return;
+      _event('join_done', {'seats': join.order, 'joined': _joinedSeats.toList()});
+    }
+
+    if (scene.endAfter == 'game_start' && _gameStarted) {
+      // A pre-roll: getting the match started is the whole job.
+      _finish(ok: true);
+      return;
+    }
 
     for (final MapEntry(key: seat, value: s) in scene.seats.entries) {
       final id = _playerId(seat);
@@ -239,14 +295,18 @@ final class DemoDirector {
       }
     }
 
-    if (match?.result != null) {
+    final result = match?.result;
+    if (result != null) {
+      // G5's story: the finishing `results`, with the winner and both sides.
+      _event('results', {
+        'winner': ?result.winner?.name,
+        'sides': {
+          for (final MapEntry(key: side, value: r) in result.sides.entries)
+            side.name: {'finished': r.finished, 'placed': r.placed, 'total': r.total, 'timeS': r.timeS},
+        },
+      });
       _finish(ok: true);
       return;
-    }
-    // The first frame with a live game object: what the edit cuts on.
-    if (!_gameStarted && (match != null || arena != null)) {
-      _gameStarted = true;
-      _event('game_start');
     }
     final started = _sceneStart;
     if (started != null && scene.endAfter == 'seconds') {
@@ -264,8 +324,8 @@ final class DemoDirector {
     for (final bot in _bots.values) {
       bot.step(GamepadState.neutral, 1);
     }
-    _broadcast({'t': 'scene_done', 'ok': ok, if (why != null) 'why': why});
-    log.add('scene_end', {'ok': ok, if (why != null) 'why': why});
+    _broadcast({'t': 'scene_done', 'ok': ok, 'why': ?why});
+    log.add('scene_end', {'ok': ok, 'why': ?why});
   }
 
   void _stopScene() {
@@ -289,14 +349,80 @@ final class DemoDirector {
   }
 
   void _event(String name, [Map<String, Object?>? data]) {
+    if (name == 'join') {
+      final seat = _seatForControllerId(data?['id']);
+      if (seat != null) _joinedSeats.add(seat);
+    }
     log.add(name, data);
     _broadcast({'t': 'event', 'wall': DateTime.now().millisecondsSinceEpoch, 'name': name, ...?data});
+  }
+
+  /// The scene seat behind a controller id, so a `join` event from the join
+  /// screen can be matched to `P1` or `Bot 2`.
+  String? _seatForControllerId(Object? id) {
+    if (id is! String) return null;
+    for (final seat in _scene?.seats.keys ?? const <String>[]) {
+      if (_playerId(seat) == id) return seat;
+    }
+    return null;
+  }
+
+  /// Sends one seat's input the way that seat is driven: the bot's protocol
+  /// client, or the phone's touch-driver intent.
+  void _sendSeatInput(String seat, GamepadState pad) {
+    final bot = _bots[seat];
+    if (bot != null) {
+      bot.step(pad, 1 / 60);
+      return;
+    }
+    if (_scene?.seats[seat]?.via == 'phone') {
+      _broadcast({
+        't': 'p1',
+        'x': pad.leftX,
+        'y': pad.leftY,
+        'buttons': [for (final b in pad.buttons) b.name],
+      });
+    }
   }
 
   /// Logs one director event from elsewhere in the app (the `join` event the
   /// join screen sends when a player is put on a side). The director only
   /// exists in a demo build.
   void reportEvent(String name, [Map<String, Object?>? data]) => _event(name, data);
+
+  /// Mirrors one of the running match's own events into the take's log (2.3):
+  /// `pickup`, `snap`, `wrong`, `help`, `finish` and `time_up`. The puzzle game
+  /// emits these; the director never has to guess from the picture, and G2's
+  /// "6 snaps and 1 wrong" check counts the game's snaps, not a script's.
+  void reportPuzzleEvent(PuzzleSide side, PuzzleEvent event) {
+    final data = <String, Object?>{
+      'side': side.name,
+      'seat': ?_seatForControllerId(event.playerId),
+      'player': ?event.playerId,
+      ...event.data,
+    };
+    switch (event.kind) {
+      case PuzzleEventKind.pickup:
+        _event('pickup', data);
+        // A teammate taking the other end of a big piece is the runbook's
+        // `join_big` (G3's story): the game marks that pickup `joined`.
+        if (event.data['joined'] == true) _event('join_big', data);
+      case PuzzleEventKind.snap:
+        _event('snap', data);
+      case PuzzleEventKind.wrong:
+        _event('wrong', data);
+      case PuzzleEventKind.help:
+        _event('help', data);
+      case PuzzleEventKind.dropReady:
+        _event('drop_ready', data);
+      case PuzzleEventKind.finished:
+        _event('finish', data);
+      case PuzzleEventKind.timeUp:
+        _event('time_up', data);
+      case PuzzleEventKind.tick:
+        break; // Once a second, too noisy for the log.
+    }
+  }
 
   void _send(WebSocket socket, Map<String, Object?> message) {
     if (socket.readyState == WebSocket.open) socket.add(jsonEncode(message));

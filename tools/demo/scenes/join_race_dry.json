@@ -1,0 +1,15 @@
+{
+  "game": "puzzle",
+  "puzzle": "rocket",
+  "seed": 4242,
+  "screenStart": "join",
+  "teams": {"left": ["Bot 2", "Bot 5"], "right": ["Bot 3", "Bot 4"]},
+  "join": {"order": ["Bot 2", "Bot 3", "Bot 5", "Bot 4"], "start": "Bot 2"},
+  "seats": {
+    "Bot 2": {"via": "bot", "goals": [{"idle": 1000}]},
+    "Bot 3": {"via": "bot", "goals": [{"idle": 1000}]},
+    "Bot 4": {"via": "bot", "goals": [{"idle": 1000}]},
+    "Bot 5": {"via": "bot", "goals": [{"idle": 1000}]}
+  },
+  "endAfter": "game_start"
+}

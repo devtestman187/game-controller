@@ -26,8 +26,15 @@ final class DemoLive {
   /// director is listening, which only a DEMO_DIRECTOR build ever does.
   void Function(String name, [Map<String, Object?>? data])? onEvent;
 
+  /// The running match's own events (pickup, snap, wrong, help, finished),
+  /// for the take's log. Null unless a director is listening.
+  void Function(PuzzleSide side, PuzzleEvent event)? onPuzzleEvent;
+
   /// Logs one event through [onEvent]; nothing in a normal build.
   void reportEvent(String name, [Map<String, Object?>? data]) => onEvent?.call(name, data);
+
+  /// Logs one of the match's events through [onPuzzleEvent].
+  void reportPuzzleEvent(PuzzleSide side, PuzzleEvent event) => onPuzzleEvent?.call(side, event);
 
   /// Logs a route change as a `screen` event (docs/demo-video-runbook.md 2.8
   /// step 3: R1 needs home, games, puzzle list, join).
@@ -48,4 +55,5 @@ void installDemoLive() {
   onArenaGameDisposed = (arena) {
     if (identical(DemoLive.instance.arena, arena)) DemoLive.instance.arena = null;
   };
+  onPuzzleMatchEvent = (side, event) => DemoLive.instance.reportPuzzleEvent(side, event);
 }

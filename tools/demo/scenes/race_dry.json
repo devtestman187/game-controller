@@ -1,0 +1,33 @@
+{
+  "game": "puzzle",
+  "puzzle": "rocket",
+  "seed": 4242,
+  "screenStart": "play",
+  "teams": {"left": ["Bot 2", "Bot 5"], "right": ["Bot 3", "Bot 4"]},
+  "seats": {
+    "Bot 5": {
+      "via": "bot",
+      "goals": [
+        {"pick": "nose"}, {"place": {}},
+        {"pick": "left fin"}, {"place": {}},
+        {"pick": "right fin"}, {"place": {}},
+        {"pick": "window"}, {"place": {}},
+        {"pick": "body"}, {"place": {}}
+      ]
+    },
+    "Bot 2": {"via": "bot", "goals": [{"carryBigAlone": "body"}]},
+    "Bot 3": {
+      "via": "bot",
+      "goals": [
+        {"pick": "nose"}, {"place": {}},
+        {"wrongDrop": "left fin"},
+        {"pick": "left fin"}, {"place": {}},
+        {"pick": "window"}, {"place": {}},
+        {"pick": "body"}, {"place": {}}
+      ]
+    },
+    "Bot 4": {"via": "bot", "goals": [{"pick": "right fin"}, {"place": {}}, {"joinBigCarry": "body"}]}
+  },
+  "pace": {"left": 52000, "right": 56000},
+  "endAfter": "results"
+}

@@ -195,9 +195,12 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
 
   /// The demo director's `join` event (docs/demo-video-runbook.md 2.3): logged
   /// when a player is put on a side, not when the controller connects, so the
-  /// four joins land after the scene starts. A store build never calls this.
+  /// four joins land after the scene starts. The controller id lets the
+  /// director's join pre-roll match the event to the scene's seat (its `P1`
+  /// is whatever number-1 player the TV gave that slot). A store build never
+  /// calls this.
   void _joined(GamePlayer p, PuzzleSide side) {
-    DemoLive.instance.reportEvent('join', {'player': p.label, 'side': side.name});
+    DemoLive.instance.reportEvent('join', {'player': p.label, 'id': p.id, 'side': side.name});
   }
 
   void _start() {

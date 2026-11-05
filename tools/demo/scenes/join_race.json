@@ -4,16 +4,12 @@
   "seed": 4242,
   "screenStart": "join",
   "teams": {"left": ["P1", "Bot 2"], "right": ["Bot 3", "Bot 4"]},
+  "join": {"order": ["P1", "Bot 3", "Bot 2", "Bot 4"], "start": "P1"},
   "seats": {
-    "P1": {
-      "via": "phone",
-      "mode": "sticks",
-      "goals": [{"navigate": ["a"]}, {"idle": 2600}, {"navigate": ["a"]}, {"idle": 1200}]
-    },
-    "Bot 2": {"via": "bot", "goals": [{"idle": 1400}, {"navigate": ["a"]}, {"idle": 3000}]},
-    "Bot 3": {"via": "bot", "goals": [{"idle": 700}, {"navigate": ["a"]}, {"idle": 3700}]},
-    "Bot 4": {"via": "bot", "goals": [{"idle": 2100}, {"navigate": ["a"]}, {"idle": 2300}]}
+    "P1": {"via": "phone", "mode": "sticks", "goals": [{"idle": 1000}]},
+    "Bot 2": {"via": "bot", "goals": [{"idle": 1000}]},
+    "Bot 3": {"via": "bot", "goals": [{"idle": 1000}]},
+    "Bot 4": {"via": "bot", "goals": [{"idle": 1000}]}
   },
-  "endAfter": "seconds",
-  "endAfterS": 7
+  "endAfter": "game_start"
 }

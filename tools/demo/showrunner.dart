@@ -222,7 +222,15 @@ class Showrunner {
         'file': file,
         'take': '${takeName}_preroll',
       }, 'scene_started');
-      await _director!.waitFor('scene_done', await sceneTimeout(file));
+      final done = await _director!.waitFor(
+        'scene_done',
+        await sceneTimeout(file),
+      );
+      if (done['ok'] != true) {
+        throw StateError(
+          'the pre-roll did not get the match started: ${done['why'] ?? 'no reason given'}',
+        );
+      }
       await Future<void>.delayed(const Duration(milliseconds: 1500));
     }
     final both = phone && !recordTvOnly;
@@ -289,7 +297,12 @@ class Showrunner {
           'file': sceneFile,
           'take': takeName,
         }, 'scene_started');
-        await _director!.waitFor('scene_done', duration);
+        final done = await _director!.waitFor('scene_done', duration);
+        if (done['ok'] != true) {
+          throw StateError(
+            'the scene stopped early: ${done['why'] ?? 'no reason given'}',
+          );
+        }
         await _copyTvEvents(takeName, takeWall);
       }
       await Future<void>.delayed(const Duration(milliseconds: 1500));

@@ -37,8 +37,42 @@ void main() {
     expect(scene.seats['Bot 3']!.goals.map((g) => g.kind), contains(GoalKind.wrongDrop));
   });
 
+  test('join_race.json is a join pre-roll: four seats, then the match starts', () {
+    final scene = Scene.fromFile('../tools/demo/scenes/join_race.json');
+    expect(scene.screenStart, 'join');
+    expect(scene.endAfter, 'game_start');
+    expect(scene.join, isNotNull);
+    // The natural side order: the first and third to join go left, so this
+    // order gives the 2 vs 2 the race scene expects.
+    expect(scene.join!.order, ['P1', 'Bot 3', 'Bot 2', 'Bot 4']);
+    expect(scene.join!.startSeat, 'P1');
+    expect(scene.teams['left'], ['P1', 'Bot 2']);
+    expect(scene.teams['right'], ['Bot 3', 'Bot 4']);
+  });
+
   group('refuses', () {
     Scene parse(String text) => Scene.parse(text, source: 'test');
+
+    test('a join order naming a seat with no script', () {
+      expect(
+        () => parse('{"game":"puzzle","join":{"order":["P1","P9"]},"seats":{"P1":{"goals":[{"place":{}}]}}}'),
+        throwsA(isA<FormatException>().having((e) => e.message, 'message', contains('P9'))),
+      );
+    });
+
+    test('a join block with an empty order', () {
+      expect(
+        () => parse('{"game":"puzzle","join":{"order":[]},"seats":{"P1":{"goals":[{"place":{}}]}}}'),
+        throwsA(isA<FormatException>().having((e) => e.message, 'message', contains('order'))),
+      );
+    });
+
+    test('a join start naming a seat with no script', () {
+      expect(
+        () => parse('{"game":"puzzle","join":{"order":["P1"],"start":"P9"},"seats":{"P1":{"goals":[{"place":{}}]}}}'),
+        throwsA(isA<FormatException>().having((e) => e.message, 'message', contains('P9'))),
+      );
+    });
 
     test('an unknown goal, naming it and the seat', () {
       expect(
@@ -58,6 +92,13 @@ void main() {
       expect(
         () => parse('{"game":"pong","seats":{"P1":{"goals":[{"place":{}}]}}}'),
         throwsA(isA<FormatException>().having((e) => e.message, 'message', contains('unknown game'))),
+      );
+    });
+
+    test('an unknown endAfter', () {
+      expect(
+        () => parse('{"game":"puzzle","endAfter":"tea","seats":{"P1":{"goals":[{"place":{}}]}}}'),
+        throwsA(isA<FormatException>().having((e) => e.message, 'message', contains('endAfter'))),
       );
     });
 
