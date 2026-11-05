@@ -200,11 +200,13 @@ class Showrunner {
       _driverClient = await DriverClient.connect(47901);
       _pad = KeyPad.fromFile('$repo\\tools\\demo\\layouts\\$avd-$mode.json');
     }
-    if (tvScreen != null) {
+    if (tvScreen != null || phone) {
       await resetTvToHome();
       // That path forgets the paired controllers and drops the connections,
       // and the TV issues a new pairing code after that: read it again before
-      // the phone or the bots try to pair.
+      // the phone or the bots try to pair. P2/P3 need this too: a controller
+      // left over from the previous shot otherwise takes P1 and the new phone
+      // becomes P2 (the Nov 5, 2026 P2 take 3).
       state = await _director!.request({'t': 'hello'}, 'state');
       port = state['port'] as int;
       final current = state['code'] as String;
@@ -288,8 +290,10 @@ class Showrunner {
     await preflightWindows();
     final both = phone && !recordTvOnly;
     // The pointer goes into a TV half; hide it for those takes only, and put it
-    // back in the finally below whatever happens.
-    final hidingPointer = !noRecord && window == null && (tv || both);
+    // back in the finally below whatever happens. `--phone --record tv` has
+    // both == false and tv == false, but it still records the TV half (P3).
+    final hidingPointer =
+        !noRecord && window == null && (tv || both || recordTvOnly);
     if (hidingPointer) {
       await hidePointer();
       stdout.writeln('pointer: hidden for the take');
