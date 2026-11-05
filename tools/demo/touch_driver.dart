@@ -775,6 +775,12 @@ class GyroSensors {
   DateTime _last = DateTime.now();
   bool _connecting = false;
 
+  /// The last value written but not yet flushed, and whether a flush is in
+  /// flight. `Socket` is an `IOSink`: its writes stay in Dart until something
+  /// flushes them, and only one flush can be pending at a time.
+  String? _pending;
+  bool _busy = false;
+
   /// The console takes one client at a time: anything else that connects to
   /// 5554 (a hand-run `sensor set`, `adb emu`) silently orphans this socket,
   /// and writes then go nowhere while the take believes the tilt is live
@@ -812,6 +818,7 @@ class GyroSensors {
       await Future<void>.delayed(const Duration(milliseconds: 250));
       if (token.isNotEmpty) {
         socket.write('auth $token\r\n');
+        await socket.flush();
         await Future<void>.delayed(const Duration(milliseconds: 250));
       }
       // A first sample, so the app's "is the gyro there?" check has one.
@@ -884,12 +891,34 @@ class GyroSensors {
       w[2] = (up[0] * previous[1] - up[1] * previous[0]) / dt;
     }
     _previousUp = up;
-    socket.write(
-      'sensor set acceleration ${(9.81 * up[0]).toStringAsFixed(3)}:${(9.81 * up[1]).toStringAsFixed(3)}:${(9.81 * up[2]).toStringAsFixed(3)}\r\n',
-    );
-    socket.write(
-      'sensor set gyroscope ${w[0].toStringAsFixed(3)}:${w[1].toStringAsFixed(3)}:${w[2].toStringAsFixed(3)}\r\n',
-    );
+    _pending =
+        'sensor set acceleration ${(9.81 * up[0]).toStringAsFixed(3)}:${(9.81 * up[1]).toStringAsFixed(3)}:${(9.81 * up[2]).toStringAsFixed(3)}\r\n'
+        'sensor set gyroscope ${w[0].toStringAsFixed(3)}:${w[1].toStringAsFixed(3)}:${w[2].toStringAsFixed(3)}\r\n';
+    unawaited(_pump());
+  }
+
+  /// Writes the newest sensor values and flushes them. A write that is never
+  /// flushed stays in Dart and never reaches the console (measured Nov 4,
+  /// 2026: the guest accelerometer kept the last delivered value for the whole
+  /// take, so the app's estimate froze and the TV dot never moved). One flush
+  /// can be pending at a time, so while it is the newest values wait here; the
+  /// intermediate frames are dropped rather than queued.
+  Future<void> _pump() async {
+    if (_busy) return;
+    final socket = _socket;
+    final data = _pending;
+    if (socket == null || data == null) return;
+    _busy = true;
+    _pending = null;
+    try {
+      socket.write(data);
+      await socket.flush();
+    } on Object {
+      _closed();
+    } finally {
+      _busy = false;
+      if (_pending != null) unawaited(_pump());
+    }
   }
 }
 
