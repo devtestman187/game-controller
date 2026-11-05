@@ -790,21 +790,29 @@ int? recorderStartWall(String recordersPath) {
 /// merged across gaps of the same size and padded by [padMs] on both sides.
 /// Wall clock becomes video time through the take's `recorders.json` `start`.
 ///
+/// A span only counts if it is *continuous movement*: at least [minMoves]
+/// position changes over at least [minSpanMs]. A tap is not movement — the
+/// driver puts a finger down, it settles by a pixel or two and then holds —
+/// and calling that a motion window failed four good R1 takes on Nov 5, 2026
+/// (0.6 s of a static controller screen, 1.5 "distinct fps", one TV duplicate).
+///
 /// The log is the evidence, never the picture. A menu, join list or pairing
-/// screen produces no such span - a tap puts a finger down and lifts it at one
-/// place - so its static frames are not graded as missing content. A take with
-/// no window has the delivery rule only.
+/// screen produces no such span, so its static frames are not graded as missing
+/// content. A take with no window has the delivery rule only.
 List<MovementWindow> motionWindowsFromTouch(
   String touchPath, {
   required int? videoStartWall,
   required double duration,
   int maxMoveGapMs = 250,
   int padMs = 300,
+  int minMoves = 5,
+  int minSpanMs = 150,
 }) {
   if (videoStartWall == null || duration <= 0) return const [];
   final file = File(touchPath);
   if (!file.existsSync()) return const [];
-  final spans = <List<int>>[]; // [fromWall, toWall] per move
+  // [fromWall, toWall, moveCount] per run of moves.
+  final spans = <List<int>>[];
   Map<int, List<double>>? previous;
   var previousWall = 0;
   for (final line in file.readAsLinesSync()) {
@@ -841,7 +849,7 @@ List<MovementWindow> motionWindowsFromTouch(
       }
       final gap = wall - previousWall;
       if (moved && gap > 0 && gap < maxMoveGapMs)
-        spans.add([previousWall, wall]);
+        spans.add([previousWall, wall, 1]);
     }
     previous = fingers;
     previousWall = wall;
@@ -852,12 +860,15 @@ List<MovementWindow> motionWindowsFromTouch(
     final current = merged.last;
     if (span[0] - current[1] <= maxMoveGapMs) {
       if (span[1] > current[1]) current[1] = span[1];
+      current[2] += span[2];
     } else {
       merged.add(span);
     }
   }
   final windows = <MovementWindow>[];
   for (final span in merged) {
+    // A tap's settle, not movement: too few moves over too short a time.
+    if (span[2] < minMoves || span[1] - span[0] < minSpanMs) continue;
     final from = ((span[0] - padMs - videoStartWall) / 1000).clamp(
       0.0,
       duration,
@@ -1344,6 +1355,55 @@ Future<int> selfTest() async {
       'the same halving outside every motion window: passes '
       '(${outsideGrade.distinctFps?.toStringAsFixed(1)} distinct fps in '
       '${spans(outsideWindows)}; the halved second is outside it)',
+    );
+
+    // 5. A tap is not movement. The driver puts a finger down, it settles by a
+    // pixel or two, then holds for the rest of the press: no motion window.
+    // Four good R1 takes failed on exactly that on Nov 5, 2026.
+    final tapPath = '${temp.path}\\tap.jsonl';
+    final tapBuffer = StringBuffer();
+    void tapAt(double x, double y) => tapBuffer.writeln(
+      jsonEncode({
+        'wall': startWall + 1000,
+        'fingers': [
+          {'id': 1, 'x': x, 'y': y},
+        ],
+      }),
+    );
+    tapAt(20000, 20000);
+    tapBuffer.writeln(
+      jsonEncode({
+        'wall': startWall + 1016,
+        'fingers': [
+          {'id': 1, 'x': 20002, 'y': 20014},
+        ],
+      }),
+    );
+    for (var t = 1032; t <= 1120; t += 16) {
+      tapBuffer.writeln(
+        jsonEncode({
+          'wall': startWall + t,
+          'fingers': [
+            {'id': 1, 'x': 20002, 'y': 20014},
+          ],
+        }),
+      );
+    }
+    File(tapPath).writeAsStringSync(tapBuffer.toString());
+    final tapWindows = motionWindowsFromTouch(
+      tapPath,
+      videoStartWall: startWall,
+      duration: 2,
+    );
+    final tapGrade = await gradePhoneHalf(
+      stillClip,
+      duration: 2,
+      windows: tapWindows,
+    );
+    line(
+      tapWindows.isEmpty && tapGrade.ok,
+      'a tap settles but does not move: no motion window '
+      '(${tapWindows.length} windows)',
     );
   } finally {
     try {
