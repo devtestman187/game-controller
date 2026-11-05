@@ -26,6 +26,8 @@ public static class DemoCursor {
   [DllImport("user32.dll")] public static extern IntPtr CreateCursor(IntPtr hInst, int xHot, int yHot, int w, int h, IntPtr andPlane, IntPtr xorPlane);
   [DllImport("user32.dll", SetLastError = true)] public static extern bool SetSystemCursor(IntPtr hcur, uint id);
   [DllImport("user32.dll", SetLastError = true)] public static extern bool SystemParametersInfo(uint action, uint param, IntPtr pv, uint winIni);
+  [DllImport("user32.dll")] public static extern bool SetCursorPos(int x, int y);
+  [DllImport("user32.dll")] public static extern int GetSystemMetrics(int n);
 }
 "@
 }
@@ -58,7 +60,13 @@ function BlankCursor {
 # Every system cursor the pointer can be (OCR_* ids). SetSystemCursor takes
 # ownership of the handle, so each id gets its own blank cursor.
 $ids = @(32512, 32513, 32514, 32515, 32516, 32642, 32643, 32644, 32645, 32646, 32648, 32649, 32650)
+$tokenFile = Join-Path $env:TEMP 'thumbparty-cursor-hide.token'
 function HidePointer {
+  # Park on the black margin left of the home panels. A button under the
+  # pointer can put its own cursor back (Flutter's hover cursor), which is why
+  # P3 take 2 still showed the arrow over "Drop connections" (Nov 5, 2026).
+  [DemoCursor]::SetCursorPos(8, [int]([DemoCursor]::GetSystemMetrics(1) / 2)) | Out-Null
+  Start-Sleep -Milliseconds 200
   foreach ($id in $ids) {
     $h = BlankCursor
     if ($h -eq [IntPtr]::Zero) { throw "CreateCursor failed for id $id" }
@@ -70,10 +78,14 @@ function ShowPointer {
   if (-not [DemoCursor]::SystemParametersInfo(0x57, 0, [IntPtr]::Zero, 2)) {
     throw 'SystemParametersInfo(SPI_SETCURSORS) failed'
   }
+  Remove-Item $tokenFile -ErrorAction SilentlyContinue
 }
 
 switch ($Action) {
   'hide' {
+    # The token must exist before the cursor is hidden: a watchdog covers the
+    # case where this process dies before the matching `show`.
+    Set-Content -Path $tokenFile -Value ([guid]::NewGuid().ToString()) -NoNewline
     HidePointer
     Write-Output 'cursor: pointer hidden'
     break
@@ -84,11 +96,20 @@ switch ($Action) {
     break
   }
   'watchdog' {
+    # Restore only if no newer take has hidden the pointer since this watchdog
+    # started. Otherwise a take longer than N seconds shows the arrow again
+    # halfway through the next take.
+    $token = if (Test-Path $tokenFile) { Get-Content $tokenFile -Raw } else { '' }
     try {
       Start-Sleep -Seconds $Seconds
     } finally {
-      ShowPointer
-      Write-Output 'cursor: pointer restored (watchdog)'
+      $now = if (Test-Path $tokenFile) { Get-Content $tokenFile -Raw } else { '' }
+      if ($token -and $now -eq $token) {
+        ShowPointer
+        Write-Output 'cursor: pointer restored (watchdog)'
+      } else {
+        Write-Output 'cursor: a newer hide is active; watchdog left it alone'
+      }
     }
     break
   }
