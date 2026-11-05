@@ -9,6 +9,7 @@ import 'package:puzzle_game/puzzle_game.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'analytics.dart';
+import 'demo/demo_flags.dart';
 import 'host_controller.dart';
 import 'screen_awake.dart';
 import 'sound.dart';
@@ -108,6 +109,14 @@ class LogLinesNotifier extends Notifier<List<LogLine>> {
     return log.lines;
   }
 }
+
+/// Whether the home screen shows the event log strip.
+///
+/// On in a normal build. **Off in the demo build** (`demoDirector`): the log
+/// panel puts host latency lines and its "Save log" button in the picture,
+/// and the P1 shot is the home screen with nothing else on it
+/// (docs/demo-video-runbook.md 2.1 step 5, 3.2 P1). Overridden in tests.
+final homeLogVisibleProvider = Provider<bool>((ref) => !demoDirector);
 
 /// The TV's sounds. Overridden in tests with a FakeSoundPlayer.
 final soundPlayerProvider = Provider<SoundPlayer>((ref) {

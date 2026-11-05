@@ -29,6 +29,8 @@ class HomeScreen extends ConsumerWidget {
     ref.watch(keepAwakeProvider);
     // Plays the games' sounds.
     ref.watch(gameSoundsProvider);
+    // The demo build hides the log strip (docs/demo-video-runbook.md P1).
+    final showLog = ref.watch(homeLogVisibleProvider);
     return Scaffold(
       body: SafeArea(
         child: LayoutBuilder(
@@ -55,8 +57,10 @@ class HomeScreen extends ConsumerWidget {
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
                                 Expanded(flex: 7, child: controllers),
-                                const SizedBox(height: 12),
-                                const Expanded(flex: 4, child: _LogPanel()),
+                                if (showLog) ...[
+                                  const SizedBox(height: 12),
+                                  const Expanded(flex: 4, child: _LogPanel()),
+                                ],
                               ],
                             ),
                           ),
@@ -76,8 +80,7 @@ class HomeScreen extends ConsumerWidget {
                 pairing,
                 const SizedBox(height: 12),
                 SizedBox(height: 320, child: controllers),
-                const SizedBox(height: 12),
-                const SizedBox(height: 240, child: _LogPanel()),
+                if (showLog) ...[const SizedBox(height: 12), const SizedBox(height: 240, child: _LogPanel())],
               ],
             );
           },

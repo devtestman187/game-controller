@@ -346,6 +346,7 @@ Future<FakeHostController> pumpApp(
   Size size = const Size(960, 540),
   bool? consent = true,
   List<Map<String, Object?>> sessions = const [],
+  bool showLog = true,
 }) async {
   sounds = FakeSoundPlayer();
   awake = FakeScreenAwake();
@@ -364,6 +365,7 @@ Future<FakeHostController> pumpApp(
         hostControllerProvider.overrideWithValue(fake),
         soundPlayerProvider.overrideWithValue(sounds),
         screenAwakeProvider.overrideWithValue(awake),
+        if (!showLog) homeLogVisibleProvider.overrideWithValue(false),
       ],
       child: const TvTestApp(),
     ),
@@ -396,6 +398,20 @@ void main() {
     expect(shown.gamepad?.dpadX, 1);
     // A controller still pairing shows nothing pressed.
     expect(tester.widget<InputVisualizer>(find.byKey(const Key('visualizer-p2'))).gamepad, isNull);
+  });
+
+  testWidgets('the demo build hides the log panel', (tester) async {
+    // P1 films the home screen with nothing else on it (runbook 3.2): the log
+    // strip puts host latency lines and "Save log" in the picture, so the demo
+    // build (DEMO_DIRECTOR) leaves it out.
+    await pumpApp(tester, showLog: false);
+    expect(find.text('Save log'), findsNothing, reason: 'the demo build must not show the log panel');
+    expect(find.text('Controllers · 1 connected'), findsOneWidget, reason: 'the rest of the home screen is unchanged');
+  });
+
+  testWidgets('a normal build still shows the log panel', (tester) async {
+    await pumpApp(tester);
+    expect(find.text('Save log'), findsOneWidget);
   });
 
   testWidgets('the remote reaches and presses every button', (tester) async {
