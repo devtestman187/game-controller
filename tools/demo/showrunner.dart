@@ -22,7 +22,7 @@ Future<void> main(List<String> args) async {
     stdout.writeln(
       'usage: showrunner.dart --shot <id> [--take 1] [--scene file] '
       '--avd m7_android12 --mode sticks [--phone] [--record tv|both] [--tv] '
-      '[--window name] [--retakes 3] [--teardown] [--self-test]',
+      '[--calibrate] [--window name] [--retakes 3] [--teardown] [--self-test]',
     );
     exit(args.isEmpty ? 2 : 0);
   }
@@ -59,6 +59,17 @@ Future<void> main(List<String> args) async {
   // checks, which need a file to look at. Used to test the director, the bots
   // and the touch driver without filming (2.7, and the Nov 4 2026 block).
   final noRecord = cli.has('no-record');
+  // M2: press the app's Calibrate button (a real tap on the phone screen)
+  // before StartRecord. Only a gyro layout has that button.
+  final calibrate = cli.has('calibrate');
+  if (calibrate && !phone) {
+    throw ArgumentError(
+      '--calibrate needs --phone: the button is on the phone',
+    );
+  }
+  if (calibrate && mode != 'gyro') {
+    throw ArgumentError('--calibrate is for --mode gyro, not "$mode"');
+  }
   final retakes = int.parse(cli.value('retakes') ?? '3');
   final startTake = int.parse(cli.value('take') ?? '1');
   final work =
@@ -86,6 +97,7 @@ Future<void> main(List<String> args) async {
         keyAfter: keyAfter,
         preRoll: preRoll,
         noRecord: noRecord,
+        calibrate: calibrate,
       );
       stdout.writeln('$shot take $take: ok (${seconds.toStringAsFixed(1)} s)');
       await runner.shutdown();
@@ -150,6 +162,7 @@ class Showrunner {
     String? keyAfter,
     String? preRoll,
     bool noRecord = false,
+    bool calibrate = false,
   }) async {
     final takeName = '${shot}_take$take';
     Directory(logs).createSync(recursive: true);
@@ -240,6 +253,20 @@ class Showrunner {
           'the pre-roll did not get the match started: ${done['why'] ?? 'no reason given'}',
         );
       }
+      await Future<void>.delayed(const Duration(milliseconds: 1500));
+    }
+    // M2's countdown: the app's Gyro screen has a Calibrate button, and 2.4
+    // Step D says to press it before a gyro shot. The tap is real and lands on
+    // the phone screen, so it must happen before StartRecord.
+    if (calibrate) {
+      final reply = await _driverClient!.send({
+        'cmd': 'tap',
+        'at': 'calibrate',
+      });
+      if (reply['ok'] != true) {
+        throw StateError('could not tap Calibrate: $reply');
+      }
+      stdout.writeln('phone: calibrated');
       await Future<void>.delayed(const Duration(milliseconds: 1500));
     }
     final both = phone && !recordTvOnly;

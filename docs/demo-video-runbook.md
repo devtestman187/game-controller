@@ -478,7 +478,7 @@ Record the commit hash: `git -C $REPO rev-parse --short HEAD`. Every footage fil
 ### 2.7 Showrunner (`tools/demo/showrunner.dart`)
 One command runs one shot:
 ```bash
-dart run tools/demo/showrunner.dart --shot G3 --take 2 [--scene tools/demo/scenes/bigpiece.json] --avd m7_android12 --mode sticks [--phone] [--tv] [--window Terminal|Editor|Browser]
+dart run tools/demo/showrunner.dart --shot G3 --take 2 [--scene tools/demo/scenes/bigpiece.json] --avd m7_android12 --mode sticks [--phone] [--tv] [--calibrate] [--window Terminal|Editor|Browser]
 ```
 It does these steps in order and stops at the first failure, with a clear message:
 1. **TV app:** if not running from an earlier shot, start `tv_test_app\build\windows\x64\runner\Profile\ThumbPartyTV.exe` and record its PID in `$WORK/logs/pids.txt`. Wait until `ws://127.0.0.1:47900/director` answers `hello`. Send `reset`.
@@ -580,7 +580,7 @@ Capture in this order, so state builds up naturally. Each line is one showrunner
 | 16 | X5 | Phone Diagnostics: `tap` to open it, then `scroll` through it, all with the touch driver | Phone |
 | 17 | X2 | Latency screen during 30 s of Arena play by P1 | TV |
 
-**Every M1 to M4 take is called with `--tv-screen arena`.** Without it the showrunner never opens the Arena screen, so the recording shows the TV menu, the log has no `game_start`, and 2.8's story check (M1-M3: at least 15 s of movement) and the arena TV-half rules have no window to grade. M1 take 11 is not a take for exactly this reason. The calls are `--tv-screen arena --scene tools/demo/scenes/arena_<mode>.json` with `--mode dpad` (M1), `gyro` (M2) or `sticks` (M3, M4), plus `--phone` for M1-M3 and the tablet AVD for M4.
+**Every M1 to M4 take is called with `--tv-screen arena`.** Without it the showrunner never opens the Arena screen, so the recording shows the TV menu, the log has no `game_start`, and 2.8's story check (M1-M3: at least 15 s of movement) and the arena TV-half rules have no window to grade. M1 take 11 is not a take for exactly this reason. The calls are `--tv-screen arena --scene tools/demo/scenes/arena_<mode>.json` with `--mode dpad` (M1), `gyro` (M2) or `sticks` (M3, M4), plus `--phone` for M1-M3 and the tablet AVD for M4. **M2 also passes `--calibrate`**: it taps the app's Calibrate button (2.4 Step D) after the phone is in Gyro and the Arena screen is open, but before StartRecord, so the tap is not in the footage.
 
 **Accepted takes (do not reshoot).** M1 is **take 12**, accepted by the owner as the M1 candidate on Nov 4, 2026 (Nov 4 shoot, 19.7 s, D-pad, `--tv-screen arena`). Files `$WORK/footage/M1_take12_{both,tv,phone}.mkv`, `$WORK/qa/M1_take12.json`, sheets `$WORK/qa/M1_take12_{tv,phone}_sheet.png`. It passed every 2.8 rule: 3840x1080 master, 1920x1080 halves, TV 60.0 fps with 0 runs of 3+ identical frames in 1176 frames, phone delivery 59.9 fps with a 33.3 ms largest gap, `tvCursor` false, and a story with `game_start`. Keep earlier takes until the owner has reviewed the whole set; never delete footage on your own.
 
