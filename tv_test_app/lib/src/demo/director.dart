@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:connection/connection.dart';
 import 'package:puzzle_game/puzzle_game.dart';
+import 'package:test_game/test_game.dart';
 
 import 'arena_brain.dart';
 import 'bot.dart';
@@ -117,6 +118,41 @@ final class DemoDirector {
         _send(socket, {'t': 'stopped'});
       case 'reset':
         unawaited(_reset(socket));
+      case 'probe':
+        // What the games on screen are doing right now, for a dry run with no
+        // recorder (2.4/2.7): the arena's sprites as fractions of the field,
+        // so a test can tell whether the phone's finger path actually moved
+        // the dot. The real takes read the pictures instead.
+        final arena = live.arena?.snapshot();
+        final match = live.match;
+        _send(socket, {
+          't': 'probe',
+          'screen': live.currentScreen,
+          if (arena != null)
+            'arena': {
+              'round': arena.round,
+              'timeS': arena.roundTimeS,
+              'phase': arena.phase.name,
+              'players': [
+                for (final p in arena.players)
+                  {'id': p.id, 'x': p.x, 'y': p.y, 'wins': p.wins, 'dashes': p.dashes, 'hits': p.hits},
+              ],
+            },
+          if (match != null)
+            'match': {
+              'format': match.format.label,
+              'teams': {for (final MapEntry(:key, :value) in match.teams.entries) key: value.name},
+              'result': match.result == null
+                  ? null
+                  : {
+                      'winner': ?match.result!.winner?.name,
+                      'sides': {
+                        for (final MapEntry(key: side, value: r) in match.result!.sides.entries)
+                          side.name: {'finished': r.finished, 'placed': r.placed, 'total': r.total},
+                      },
+                    },
+            },
+        });
       default:
         _send(socket, {'t': 'error', 'why': 'unknown message "${message['t']}"'});
     }

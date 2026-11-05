@@ -16,8 +16,8 @@ import 'package:crypto/crypto.dart';
 Future<void> main(List<String> args) async {
   if (args.isEmpty) {
     stderr.writeln(
-      'usage: obs.dart <launch|setup|both|prepare|fit|record|stop-record|quit> '
-      '[--password-file f] [--seconds n]',
+      'usage: obs.dart <launch|setup|both|prepare|fit|record|stop-record|cursor|bind-tv|quit> '
+      '[--password-file f] [--seconds n] [--input tv] [--value false]',
     );
     exit(2);
   }
@@ -74,6 +74,14 @@ Future<void> main(List<String> args) async {
         );
         stdout.writeln('obs: canvas set');
       case 'shot':
+        // A window capture that is not in the program scene renders blank in
+        // GetSourceScreenshot, so the scene can be set first.
+        if (args.contains('--scene')) {
+          await client.request('SetCurrentProgramScene', {
+            'sceneName': arg('scene', 'TV'),
+          });
+          await Future<void>.delayed(const Duration(milliseconds: 700));
+        }
         await client.screenshot(
           arg('source', 'Both'),
           arg('out', 'shot.png'),
@@ -97,6 +105,26 @@ Future<void> main(List<String> args) async {
         stdout.writeln('obs: saved $path');
       case 'stop-record':
         stdout.writeln('obs: saved ${await client.stopRecord()}');
+      case 'scenes':
+        final list = await client.request('GetSceneList');
+        stdout.writeln(
+          'obs: scenes ${[for (final s in (list['scenes'] as List? ?? const [])) (s as Map)['sceneName']]}',
+        );
+      case 'cursor':
+        // 2.8's cursor gate: read (or set) what a window capture does with the
+        // pointer. `--value false` is what every take needs.
+        final input = arg('input', 'tv');
+        if (args.contains('--value')) {
+          await client.setCaptureCursor(input, arg('value', 'false') == 'true');
+        }
+        stdout.writeln(
+          'obs: $input capture_cursor=${await client.cursorCaptured(input)}',
+        );
+      case 'bind-tv':
+        await client.bindTvWindow();
+        stdout.writeln(
+          'obs: tv capture_cursor=${await client.cursorCaptured('tv')}',
+        );
       case 'quit':
         await client.close();
       default:
@@ -302,7 +330,11 @@ class ObsClient {
   /// One 3840x1080 canvas: the TV window on the left, the phone window on the
   /// right. Recording both in one file keeps them frame-exact; the recorder
   /// crops the halves into the `<shot>_take<N>_tv.mkv` / `_phone.mkv` files.
-  Future<void> setUpBoth([int width = 3840, int height = 1080, String? phoneAvd]) async {
+  Future<void> setUpBoth([
+    int width = 3840,
+    int height = 1080,
+    String? phoneAvd,
+  ]) async {
     await request('SetVideoSettings', {
       'baseWidth': width,
       'baseHeight': height,
@@ -386,16 +418,52 @@ class ObsClient {
       }
     }
     if (chosen == null) {
-      stderr.writeln('obs: no window for $input (want ${patterns.join(' + ')}); windows:');
+      stderr.writeln(
+        'obs: no window for $input (want ${patterns.join(' + ')}); windows:',
+      );
       for (final raw in items) {
         stderr.writeln('  ${(raw as Map)['itemName']}');
       }
       throw ObsError('window not found for $input');
     }
     stdout.writeln('obs: $input <- ${chosen['itemName']}');
+    // `capture_cursor` again on every bind: a source created before the demo
+    // pipeline set it (the TV scene in this machine's collection) would keep
+    // drawing the arrow over the footage, and the value at creation time is
+    // long gone by the time a take runs.
     await request('SetInputSettings', {
       'inputName': input,
-      'inputSettings': {'window': chosen['itemValue'], 'window_priority': 2},
+      'inputSettings': {
+        'window': chosen['itemValue'],
+        'window_priority': 2,
+        'capture_cursor': false,
+      },
+      'overlay': true,
+    });
+    final cursor = await cursorCaptured(input);
+    if (cursor) {
+      throw ObsError(
+        'obs: $input still captures the cursor; a take would show the pointer',
+      );
+    }
+  }
+
+  /// Whether a window capture draws the pointer. Read back from OBS rather
+  /// than assumed, so 2.8's cursor check has something to record per take.
+  Future<bool> cursorCaptured(String input) async {
+    final settings = await request('GetInputSettings', {'inputName': input});
+    final values =
+        (settings['inputSettings'] as Map?)?.cast<String, dynamic>() ??
+        const {};
+    return values['capture_cursor'] == true;
+  }
+
+  /// Sets the pointer setting on a window capture. Used by the `cursor`
+  /// command to show the gate working on the real source.
+  Future<void> setCaptureCursor(String input, bool captured) async {
+    await request('SetInputSettings', {
+      'inputName': input,
+      'inputSettings': {'capture_cursor': captured},
       'overlay': true,
     });
   }

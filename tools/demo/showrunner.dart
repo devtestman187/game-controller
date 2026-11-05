@@ -52,6 +52,10 @@ Future<void> main(List<String> args) async {
   final hold = double.tryParse(cli.value('hold') ?? '');
   final keyAfter = cli.value('key-after');
   final preRoll = cli.value('pre-roll');
+  // A dry run: everything a take does except the recorder and the quality
+  // checks, which need a file to look at. Used to test the director, the bots
+  // and the touch driver without filming (2.7, and the Nov 4 2026 block).
+  final noRecord = cli.has('no-record');
   final retakes = int.parse(cli.value('retakes') ?? '3');
   final startTake = int.parse(cli.value('take') ?? '1');
   final work =
@@ -78,6 +82,7 @@ Future<void> main(List<String> args) async {
         hold: hold,
         keyAfter: keyAfter,
         preRoll: preRoll,
+        noRecord: noRecord,
       );
       stdout.writeln('$shot take $take: ok (${seconds.toStringAsFixed(1)} s)');
       await runner.shutdown();
@@ -141,6 +146,7 @@ class Showrunner {
     double? hold,
     String? keyAfter,
     String? preRoll,
+    bool noRecord = false,
   }) async {
     final takeName = '${shot}_take$take';
     Directory(logs).createSync(recursive: true);
@@ -234,19 +240,27 @@ class Showrunner {
       await Future<void>.delayed(const Duration(milliseconds: 1500));
     }
     final both = phone && !recordTvOnly;
-    final recorder = await startRecorder(
-      both: both,
-      tv: tv,
-      window: window,
-      phoneAvd: both ? avd : null,
-      takeName: takeName,
-    );
+    final recorder = noRecord
+        ? null
+        : await startRecorder(
+            both: both,
+            tv: tv,
+            window: window,
+            phoneAvd: both ? avd : null,
+            takeName: takeName,
+          );
     final recorders = {
       'start': DateTime.now().millisecondsSinceEpoch,
-      'scene': both ? 'Both' : (window ?? 'TV'),
+      'scene': noRecord ? 'none' : (both ? 'Both' : (window ?? 'TV')),
+      'recording': !noRecord,
+      // 2.8's cursor check: what OBS says the TV capture does with the
+      // pointer, read back at StartRecord. A window shot has no TV half.
+      if (recorder != null && window == null)
+        'tvCursor': await _obsClient!.cursorCaptured('tv'),
     };
     File('$logs\\${takeName}_recorders.json')
         .writeAsStringSync(jsonEncode(recorders));
+    if (noRecord) stdout.writeln('showrunner: --no-record, nothing is filmed');
 
     // 5/6. The action, then a 1.5 s tail.
     try {
@@ -307,14 +321,21 @@ class Showrunner {
       }
       await Future<void>.delayed(const Duration(milliseconds: 1500));
     } finally {
-      final master = await recorder.stop();
-      stdout.writeln('obs: saved $master');
+      if (recorder != null) {
+        final master = await recorder.stop();
+        stdout.writeln('obs: saved $master');
+      }
     }
 
     // 7. Touch driver stops; the emulator stays for the next shot.
     await _stopDriver();
 
-    // 8. Quality checks.
+    // 8. Quality checks. Nothing was filmed in a dry run, so there is nothing
+    // to measure: the scene's own result above is the check.
+    if (noRecord) {
+      return DateTime.now().difference(started).inMilliseconds / 1000;
+    }
+
     final result = await qa.runQa(
       shot: shot,
       take: take,

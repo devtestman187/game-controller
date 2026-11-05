@@ -530,6 +530,11 @@ For each take:
    - R1: `screen` events home, then games, then puzzle list, then join.
 4. **Contact sheet:** one per delivered file. For a `--tv`-only take: `ffmpeg -i <tv> -vf "fps=2,scale=480:-1,tile=6x5" -frames:v 1 $WORK/qa/<take>_sheet.png`. For a `--phone` take, make `$WORK/qa/<take>_tv_sheet.png` and `$WORK/qa/<take>_phone_sheet.png` from `<take>_both.mkv` with `crop=1920:1080:0:0` and `crop=1920:1080:1920:0` before `fps=2,...`. Look at each (read the image): no debug overlay, no dialogs, correct player count, nothing cut off, and the phone half upright.
 5. Write `$WORK/qa/<take>.json` with every result, including the TV and phone fps of a `_both.mkv` take and each half's stutter count.
+6. **No pointer in the TV half** (Nov 4, 2026: M1's frames and the kept P1/P2/P3 takes all show the mouse arrow, because the TV scene's `tv` source still had `capture_cursor` true). Windows Graphics Capture draws the arrow over the app unless the source says not to, so every take checks it instead of assuming it:
+   - `obs.dart` sets `capture_cursor` false on **every** window bind (`_setWindow`), so a source created before the pipeline set it is fixed too, and it fails if the read-back is still true. A source created by `_ensureSource` gets it at creation.
+   - The showrunner reads the value back with `GetInputSettings` at `StartRecord` and writes it into `<take>_recorders.json` as `tvCursor`.
+   - `qa.dart` fails the take unless `tvCursor` is `false`, and reports the value. A `--window` shot has no TV half and skips the check.
+   - **How it is verified:** the value OBS reports *is* the check, because a picture test cannot tell a 12 by 19 pixel white arrow from the game's white pieces on moving footage, and `GetSourceScreenshot` draws the pointer whatever the setting says, so a still proves nothing either way. The arrow does show on the contact sheet (step 4), which is looked at for every take, so check there as well.
 
 ---
 

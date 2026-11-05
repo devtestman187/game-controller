@@ -119,7 +119,8 @@ Future<QaResult> runQa({
     // (D-pad) and M2 (gyro) have no sticks either, but move for the whole
     // take, so their whole half is measured from the start.
     final moving = shotIsGameplay(shot);
-    final hasSticks = shot != 'P2' && shot != 'P4' && shot != 'M1' && shot != 'M2';
+    final hasSticks =
+        shot != 'P2' && shot != 'P4' && shot != 'M1' && shot != 'M2';
     final phoneFps = await phoneHalfFps(
       both.path,
       master.duration,
@@ -204,6 +205,37 @@ Future<QaResult> runQa({
     await contactSheet(file.path, '$qaDir\\${takeName}_sheet.png');
     data['sheets'] = ['$qaDir\\${takeName}_sheet.png'];
     lines.add('sheet: $qaDir\\${takeName}_sheet.png');
+  }
+
+  // 2.8's cursor check for a take with a TV half: the showrunner reads the
+  // `capture_cursor` value OBS used for the TV source at StartRecord and
+  // writes it into the take's recorders.json, and the take fails if it is
+  // true or missing. A picture test cannot tell Windows' white arrow from the
+  // game's own white shapes across a moving frame, so the capture path is what
+  // is checked; the contact sheets still show the picture, and the arrow would
+  // be obvious on them.
+  if (window == null) {
+    final recorders = File(
+      '${File(eventsPath).parent.path}\\${takeName}_recorders.json',
+    );
+    Map<String, dynamic>? recorded;
+    if (recorders.existsSync()) {
+      try {
+        recorded =
+            jsonDecode(recorders.readAsStringSync()) as Map<String, dynamic>;
+      } on Object {
+        recorded = null;
+      }
+    }
+    final tvCursor = recorded?['tvCursor'];
+    data['tvCursor'] = tvCursor;
+    check(
+      'tv cursor',
+      tvCursor == false,
+      tvCursor == null
+          ? 'the take does not record what OBS did with the pointer (${recorders.path})'
+          : 'capture_cursor ${tvCursor == false ? 'false' : 'TRUE: the pointer is in the TV half'}',
+    );
   }
 
   // Story: every event the shot needs.
