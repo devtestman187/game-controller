@@ -280,6 +280,13 @@ class Showrunner {
       await Future<void>.delayed(const Duration(milliseconds: 1500));
     }
     final both = phone && !recordTvOnly;
+    // The pointer goes into a TV half; hide it for those takes only, and put it
+    // back in the finally below whatever happens.
+    final hidingPointer = !noRecord && window == null && (tv || both);
+    if (hidingPointer) {
+      await hidePointer();
+      stdout.writeln('pointer: hidden for the take');
+    }
     final recorder = noRecord
         ? null
         : await startRecorder(
@@ -364,6 +371,10 @@ class Showrunner {
       if (recorder != null) {
         final master = await recorder.stop();
         stdout.writeln('obs: saved $master');
+      }
+      if (hidingPointer) {
+        await showPointer();
+        stdout.writeln('pointer: back');
       }
     }
 
@@ -486,6 +497,53 @@ class Showrunner {
     if (result.exitCode != 0) {
       throw StateError('TV key $key failed: ${result.stdout}${result.stderr}');
     }
+  }
+
+  /// Blanks the Windows pointer while a take records (tools/demo/cursor.ps1).
+  ///
+  /// The demo window is borderless full screen, so the pointer is always over
+  /// it, and OBS's window capture puts it in the picture even with
+  /// `capture_cursor` false (measured Nov 5, 2026: M1 take 12, M3 takes 4 and 6
+  /// all show the arrow). 2.8 step 6 cannot see it through the OBS setting and
+  /// P1's "no cursor" rule needs it gone, so the pointer itself is hidden.
+  Future<void> hidePointer() async {
+    final result = await Process.run('powershell.exe', [
+      '-NoProfile',
+      '-ExecutionPolicy',
+      'Bypass',
+      '-File',
+      '$repo\\tools\\demo\\cursor.ps1',
+      'hide',
+    ]);
+    if (result.exitCode != 0) {
+      throw StateError(
+        'hiding the pointer failed: ${result.stdout}${result.stderr}',
+      );
+    }
+    // Safety net: restore even if this process dies mid-take.
+    unawaited(
+      Process.start('powershell.exe', [
+        '-NoProfile',
+        '-ExecutionPolicy',
+        'Bypass',
+        '-File',
+        '$repo\\tools\\demo\\cursor.ps1',
+        'watchdog',
+        '300',
+      ], mode: ProcessStartMode.detached),
+    );
+    await Future<void>.delayed(const Duration(milliseconds: 250));
+  }
+
+  Future<void> showPointer() async {
+    await Process.run('powershell.exe', [
+      '-NoProfile',
+      '-ExecutionPolicy',
+      'Bypass',
+      '-File',
+      '$repo\\tools\\demo\\cursor.ps1',
+      'show',
+    ]);
   }
 
   Future<Director> ensureTv() async {
@@ -1052,6 +1110,8 @@ class Showrunner {
 
   Future<void> teardown() async {
     final adb = Adb(_serial);
+    // A take hides the Windows pointer; never leave the owner without one.
+    await showPointer();
     await _stopDriver();
     await _director?.close();
     final obs = _obsClient;

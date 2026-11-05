@@ -551,6 +551,7 @@ For each take:
    - The showrunner reads the value back with `GetInputSettings` at `StartRecord` and writes it into `<take>_recorders.json` as `tvCursor`.
    - `qa.dart` fails the take unless `tvCursor` is `false`, and reports the value. A `--window` shot has no TV half and skips the check.
    - **How it is verified:** the value OBS reports *is* the check, because a picture test cannot tell a 12 by 19 pixel white arrow from the game's white pieces on moving footage, and `GetSourceScreenshot` draws the pointer whatever the setting says, so a still proves nothing either way. The arrow does show on the contact sheet (step 4), which is looked at for every take, so check there as well.
+   - **The setting alone is not enough on this PC (measured Nov 5, 2026).** M1 take 12, M3 take 4 and M3 take 6 all read `tvCursor: false` and all show the white arrow in the TV half: the app is borderless full screen, so the pointer always sits over the window, and OBS 33's Windows Graphics Capture puts it in the picture anyway. Only the contact sheet sees it. The showrunner therefore hides the pointer for any take with a TV half (`tools/demo/cursor.ps1 hide`, restored after `StopRecord` and in `--teardown`, plus a 300 s watchdog). Any take recorded before that fix has the arrow in it.
 
 ---
 
@@ -561,6 +562,7 @@ For each take:
 2. Close nothing of the owner's. If a `ThumbPartyTV.exe` you didn't start is running, **STOP** and ask the owner to close it (ground rule 7).
 3. Notifications: Windows has no supported command to turn on Do Not Disturb. **STOP** once and ask the owner to turn it on (Settings â†’ System â†’ Notifications â†’ Do not disturb) for the capture sessions. This is a one-time PC setting, not a person in the video. The taskbar needs nothing: the TV app is borderless full screen.
 4. Fresh demo state: the demo prefixed preferences start empty, so the TV shows the consent prompt on first launch. Capture X4 first (3.2), then the showrunner answers it ("Not now") through the director's `navigate`.
+5. **Keep the session awake for the whole block.** Start `tools/demo/awake.ps1` detached at the start of a capture block (PowerShell: `Start-Process powershell -ArgumentList '-NoProfile','-ExecutionPolicy','Bypass','-File','C:\Users\singh\game-controller\tools\demo\awake.ps1','240'`). A locked session (the idle timeout gets there after about 10 minutes) breaks capture in two ways, both measured on Nov 5, 2026: OBS's window capture records a **black** frame (CUR take 2: 1920x1080, 60 fps, every frame black, and every 2.8 rule still passes), and no click or key reaches the TV app because the lock screen owns the foreground (`tools/demo/tv.ps1` fails with "the TV window did not come to the front"). If a take is black, look at the contact sheet first (2.8 step 4) and check whether the session is locked before anything else. Also hide the pointer: `tools/demo/cursor.ps1 hide` before a take and `show` after (the showrunner does this itself).
 
 ### 3.2 Shot order
 Capture in this order, so state builds up naturally. Each line is one showrunner call. Retakes are automatic (2.7 step 8). Footage IDs match demo-video.md section 3.
