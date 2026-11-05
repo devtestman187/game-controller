@@ -8,6 +8,8 @@ import 'package:metrics/metrics.dart';
 import 'package:protocol/protocol.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'demo/demo_flags.dart';
+
 /// The Firebase project the stats go to, set at build time
 /// (`--dart-define=FIRESTORE_PROJECT=...`, from the release workflow). Empty
 /// in local builds: then nothing can be uploaded.
@@ -168,7 +170,9 @@ class LiveStats implements StatsService {
   Timer? _endTimer;
   Timer? _checkpointTimer;
   final _present = <String>{};
-  final _ratings = RatingScheduler();
+  // A demo-video build must never put "How did the controls feel?" into a
+  // take. The scheduler is compiled off, so no round can become due.
+  final _ratings = RatingScheduler(enabled: !demoDirector);
   final _askedGames = <String, String>{};
   bool _uploading = false;
   Timer? _retry;

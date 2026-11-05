@@ -47,11 +47,16 @@ class DelayStats {
 /// few games, and not too often in time either. The first time comes after
 /// a few games, so a player has had a chance to get used to the controls.
 class RatingScheduler {
-  RatingScheduler({this.firstAfterGames = 3, this.everyGames = 5, this.minGapMs = 3 * 60 * 1000});
+  RatingScheduler({this.firstAfterGames = 3, this.everyGames = 5, this.minGapMs = 3 * 60 * 1000, this.enabled = true});
 
   final int firstAfterGames;
   final int everyGames;
   final int minGapMs;
+
+  /// False in the demo-video build (`DEMO_DIRECTOR`): the prompt would land
+  /// inside a take and cover the controls. Disabled means no round is ever
+  /// due, so nothing is logged or asked.
+  final bool enabled;
 
   final _games = <String, int>{};
   final _lastAskMs = <String, int>{};
@@ -63,6 +68,7 @@ class RatingScheduler {
   /// in the M9 device test: an M8 phone's rounds delayed the first prompt
   /// on the updated phone past the end of play).
   bool gameEnded(String playerId, int atMs) {
+    if (!enabled) return false;
     final games = (_games[playerId] ?? 0) + 1;
     _games[playerId] = games;
     final last = _lastAskMs[playerId];

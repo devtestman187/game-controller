@@ -398,6 +398,18 @@ void main() {
       expect(askIfDue(s, 'p2', 0), isFalse);
       expect(askIfDue(s, 'p1', 0), isTrue);
     });
+
+    test('disabled (the DEMO_DIRECTOR build) never asks, even after many rounds', () {
+      final s = RatingScheduler(enabled: false);
+      for (var game = 1; game <= 100; game++) {
+        expect(askIfDue(s, 'p1', game * 6000), isFalse, reason: 'round $game');
+      }
+      // The demo scheduler does not quietly count rounds either: turning it
+      // back on behaves like a fresh scheduler.
+      final normal = RatingScheduler();
+      final due = [for (var game = 1; game <= 3; game++) askIfDue(normal, 'p1', game * 6000)];
+      expect(due, [false, false, true]);
+    });
   });
 
   group('session summary', () {
