@@ -519,6 +519,8 @@ Also a `--teardown` flag: stops OBS, the touch driver, the TV app and emulators 
 
 `--self-test` prints PASS or FAIL for the showrunner's cleanup path (a driver client that is gone, a socket whose end closed, a process that already exited). Run it after touching the shutdown code: `dart run tools/demo/showrunner.dart --self-test`. It is not part of `tools/check.sh`; the host scripts have no test package (2.4), so run it by hand and put the result in the report.
 
+`--pair adb` pairs the phone with `tools/emulator.sh connect` (`adb shell input`) instead of the touch driver's key-by-key typing. Use it for **every shot whose pairing is not filmed**: M1-M4, P3 and any arena take. The touch typing is fragile because the on-screen keyboard shifts its rows when the suggestion strip appears and the symbols page can be the wrong one, which turned the address into `10.¿…²…2:´5ž80` and lost three takes on Nov 4/5, 2026. P2 and P4 keep the default (`--pair touch`): the typing is the shot there.
+
 Commit `demo: showrunner`.
 
 ### 2.8 Automatic quality checks (`tools/demo/qa.dart`)

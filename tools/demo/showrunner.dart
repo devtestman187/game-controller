@@ -22,7 +22,7 @@ Future<void> main(List<String> args) async {
     stdout.writeln(
       'usage: showrunner.dart --shot <id> [--take 1] [--scene file] '
       '--avd m7_android12 --mode sticks [--phone] [--record tv|both] [--tv] '
-      '[--calibrate] [--window name] [--retakes 3] [--teardown] [--self-test]',
+      '[--calibrate] [--pair touch|adb] [--window name] [--retakes 3] [--teardown] [--self-test]',
     );
     exit(args.isEmpty ? 2 : 0);
   }
@@ -59,6 +59,12 @@ Future<void> main(List<String> args) async {
   // checks, which need a file to look at. Used to test the director, the bots
   // and the touch driver without filming (2.7, and the Nov 4 2026 block).
   final noRecord = cli.has('no-record');
+  // `--pair adb` types the pairing with adb for shots that do not film it;
+  // the default (touch) is the key-by-key look P2/P4 need.
+  final pair = cli.value('pair') ?? 'touch';
+  if (pair != 'touch' && pair != 'adb') {
+    throw ArgumentError('--pair is touch or adb, not "$pair"');
+  }
   // M2: press the app's Calibrate button (a real tap on the phone screen)
   // before StartRecord. Only a gyro layout has that button.
   final calibrate = cli.has('calibrate');
@@ -76,7 +82,7 @@ Future<void> main(List<String> args) async {
       Platform.environment['WORK'] ?? r'C:\Users\singh\thumbparty-demo';
   final repo = Directory.current.path;
 
-  final runner = Showrunner(work: work, repo: repo);
+  final runner = Showrunner(work: work, repo: repo, pairByAdb: pair == 'adb');
   var lastFail = '';
   for (var attempt = 0; attempt <= retakes; attempt++) {
     final take = startTake + attempt;
@@ -127,10 +133,14 @@ class Cli {
 }
 
 class Showrunner {
-  Showrunner({required this.work, required this.repo});
+  Showrunner({required this.work, required this.repo, this.pairByAdb = false});
 
   final String work;
   final String repo;
+
+  /// Pair the phone with adb instead of the touch driver's on-screen typing.
+  /// Only for shots whose pairing is not filmed (`--pair adb`).
+  final bool pairByAdb;
 
   Process? _tvProcess;
   Process? _emulator;
@@ -804,8 +814,35 @@ class Showrunner {
   }
 
   Future<void> pair(DriverLink driver, int port, String code) async {
+    if (pairByAdb) {
+      await adbPair(port, code);
+      return;
+    }
     await enterAddress(driver, '10.0.2.2:$port');
     await _enterCode(driver, code);
+  }
+
+  /// Pairs with adb `input tap`/`input text` instead of the touch driver, for
+  /// shots where the pairing is not filmed (2.7: the recorder starts after it).
+  ///
+  /// The driver's key-by-key typing is the look P2/P4 need, but it is fragile:
+  /// the on-screen keyboard shifts its rows when the suggestion strip appears
+  /// and the symbols page can be the wrong one, so the address came out as
+  /// `10.¿…²…2:´5ž80` on two attempts (Nov 4/5, 2026). A take that only needs
+  /// the phone paired must not be lost to that.
+  Future<void> adbPair(int port, String code) async {
+    final result = await Process.run(
+      'bash',
+      ['tools/emulator.sh', 'connect', '10.0.2.2:$port', code],
+      workingDirectory: repo,
+      environment: {...Platform.environment, 'ANDROID_SERIAL': _serial},
+    );
+    if (result.exitCode != 0) {
+      throw StateError('adb pairing failed: ${result.stdout}${result.stderr}');
+    }
+    stdout.writeln(
+      'phone: paired with adb (${(result.stdout as String).trim()})',
+    );
   }
 
   /// Types the TV's address on the Connect screen and checks it landed, with
