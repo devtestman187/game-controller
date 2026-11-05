@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'paths.dart';
+
 /// Automatic quality checks for one take (docs/demo-video-runbook.md 2.8).
 ///
 ///   dart run tools/demo/qa.dart --shot P2 --take 1 --phone \
@@ -36,8 +38,7 @@ Future<void> main(List<String> args) async {
     exit(2);
   }
 
-  final work =
-      Platform.environment['WORK'] ?? r'C:\Users\singh\thumbparty-demo';
+  final work = _requireWork();
   final shot = arg('shot');
   final take = int.parse(arg('take', '1'));
   final phone = args.contains('--phone');
@@ -705,6 +706,17 @@ Future<int> selfTest() async {
     if (!pass) ok = false;
   }
 
+  // E1/E3: `$WORK` comes from the environment and the tools from PATH. Both
+  // must fail loudly instead of falling back to one PC's paths.
+  workDirSelfTest((what, pass) => line(pass, what));
+  toolLookupSelfTest((what, pass) => line(pass, what));
+  try {
+    line(true, 'ffmpeg is on PATH: $ffmpeg');
+    line(true, 'ffprobe is on PATH: $ffprobe');
+  } on DemoEnvError catch (e) {
+    line(false, '$e');
+  }
+
   try {
     final frames = Directory('${temp.path}\\frames')..createSync();
     final gen = await Process.run(ffmpeg, [
@@ -968,8 +980,20 @@ List<String> storyGaps(String shot, List<String> events) {
   return const [];
 }
 
-String get ffmpeg =>
-    Platform.environment['FFMPEG'] ??
-    r'C:\Users\singh\AppData\Local\Microsoft\WinGet\Packages\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\ffmpeg-9.0.2-full_build\bin\ffmpeg.exe';
+String get ffmpeg => _ffmpeg ??= toolOnPath('ffmpeg');
 
-String get ffprobe => ffmpeg.replaceAll('ffmpeg.exe', 'ffprobe.exe');
+String get ffprobe => _ffprobe ??= toolOnPath('ffprobe');
+
+String? _ffmpeg;
+String? _ffprobe;
+
+/// `$WORK`, or a clear error on stderr and exit code 2 (E1/E3: the folder is
+/// never guessed, because the paths change with the computer).
+String _requireWork() {
+  try {
+    return workDir();
+  } on DemoEnvError catch (e) {
+    stderr.writeln('qa: $e');
+    exit(2);
+  }
+}

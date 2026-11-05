@@ -4,6 +4,8 @@ import 'dart:io';
 
 import 'package:crypto/crypto.dart';
 
+import 'paths.dart';
+
 /// Minimal obs-websocket v5 client for the demo video pipeline
 /// (docs/demo-video-runbook.md 2.6).
 ///
@@ -229,7 +231,12 @@ class ObsClient {
 
   /// Creates the demo profile and the `Phone` scene with a cropped window
   /// capture of the emulator.
-  Future<void> setUp() async {
+  ///
+  /// The recorder writes into `$WORK/footage` (E4); the folder is created here
+  /// because OBS fails a recording whose folder is missing.
+  Future<void> setUp({String? footageDir}) async {
+    final footage = footageDir ?? workPath('footage');
+    Directory(footage).createSync(recursive: true);
     const profile = 'ThumbPartyDemo';
     const collection = 'ThumbPartyDemo';
     try {
@@ -248,7 +255,7 @@ class ObsClient {
     });
     for (final MapEntry(key: name, value: value) in {
       'Output/Mode': 'Advanced',
-      'AdvOut/RecFilePath': r'C:\Users\singh\thumbparty-demo\footage',
+      'AdvOut/RecFilePath': footage,
       'AdvOut/RecFormat2': 'mkv',
       'AdvOut/RecRB': 'false',
       'AdvOut/RecEncoder': 'obs_qsv11_v2',

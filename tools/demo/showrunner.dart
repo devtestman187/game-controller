@@ -4,6 +4,7 @@ import 'dart:io';
 import 'dart:math';
 
 import 'obs.dart';
+import 'paths.dart';
 import 'qa.dart' as qa;
 
 /// One command runs one shot (docs/demo-video-runbook.md 2.7).
@@ -31,7 +32,7 @@ Future<void> main(List<String> args) async {
   }
   if (cli.has('teardown')) {
     await Showrunner(
-      work: Platform.environment['WORK'] ?? r'C:\Users\singh\thumbparty-demo',
+      work: _requireWork(),
       repo: Directory.current.path,
     ).teardown();
     return;
@@ -78,8 +79,7 @@ Future<void> main(List<String> args) async {
   }
   final retakes = int.parse(cli.value('retakes') ?? '3');
   final startTake = int.parse(cli.value('take') ?? '1');
-  final work =
-      Platform.environment['WORK'] ?? r'C:\Users\singh\thumbparty-demo';
+  final work = _requireWork();
   final repo = Directory.current.path;
 
   final runner = Showrunner(work: work, repo: repo, pairByAdb: pair == 'adb');
@@ -1504,6 +1504,17 @@ class _GoneDriver implements DriverLink {
   }
 }
 
+/// `$WORK`, or a clear error on stderr and exit code 2. The work folder moves
+/// with the computer (E1/E3), so it is never guessed.
+String _requireWork() {
+  try {
+    return workDir();
+  } on DemoEnvError catch (e) {
+    stderr.writeln('showrunner: $e');
+    exit(2);
+  }
+}
+
 /// `dart run tools/demo/showrunner.dart --self-test`.
 ///
 /// `_stopDriver` runs on the failure path, where the driver may already be
@@ -1516,6 +1527,9 @@ Future<int> selfTest() async {
     stdout.writeln('${pass ? 'PASS' : 'FAIL'}  $what');
     if (!pass) ok = false;
   }
+
+  // E1/E3: a missing WORK is an error, not a fallback path.
+  workDirSelfTest(check);
 
   Showrunner runner() =>
       Showrunner(work: Directory.systemTemp.path, repo: Directory.current.path);
