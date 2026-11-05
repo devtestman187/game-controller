@@ -6,13 +6,32 @@ import 'paths.dart';
 /// Automatic quality checks for one take (docs/demo-video-runbook.md 2.8).
 ///
 ///   dart run tools/demo/qa.dart --shot P2 --take 1 --phone \
-///     [--footage $WORK/footage] [--qa $WORK/qa] [--events $WORK/logs/P2_take1_events.jsonl]
+///     [--footage $WORK/footage] [--qa $WORK/qa] [--events $WORK/logs/P2_take1_events.jsonl] \
+///     [--touch $WORK/logs/P2_take1_touch.jsonl] [--suffix _regraded] [--no-sheets]
+///
+/// `--suffix` writes `<take><suffix>.json` instead of `<take>.json`, so a take
+/// can be re-graded with a newer rule without overwriting its old grade.
 ///
 /// A `--phone` shot is checked on its 3840x1080 OBS master
 /// (`<shot>_take<N>_both.mkv`): the left half is the TV and has to keep >= 59
 /// fps, the right half is the phone and has to keep >= 45 fps on a stick-crop
 /// measurement. The phone floor is lower on purpose: the emulator renders at
 /// 46-53 fps with the game live and the owner accepted that on Nov 4, 2026.
+///
+/// **Motion windows (owner-approved, Nov 5, 2026).** The distinct-frame count
+/// and the `mpdecimate` stutter rule measure *changing content*, so they are
+/// only applied where the take's **touch log** shows the driver moving a finger
+/// or stick: consecutive logged frames whose finger changed position with less
+/// than 250 ms between them, merged, plus 300 ms either side. A menu, join list
+/// or pairing screen has no such span, and measuring it there counted the
+/// artwork, not the capture (P2 takes 4-6: 26.5-26.9 "fps", R1 take 3: 2.6,
+/// G1 take 1: 1.0, while every frame was delivered). Every phone half is now
+/// checked for **delivery** instead: at least 45 decoded frames a second over
+/// the take and no gap between decoded frame timestamps over 100 ms. With no
+/// motion window, delivery is the whole phone rule and the content rules are
+/// reported as not measured. The thresholds are unchanged (phone content floor
+/// 45 distinct fps, stock `mpdecimate` thresholds, 3+ duplicate frames) and
+/// arena shots (M1-M4) keep their own rule untouched.
 ///
 /// Arena shots (M1-M4) use an exact-duplicate stutter rule instead of the stock
 /// `mpdecimate` threshold: the Arena's dot changes too few pixels per frame for
@@ -51,7 +70,10 @@ Future<void> main(List<String> args) async {
     footageDir: arg('footage', '$work\\footage'),
     qaDir: arg('qa', '$work\\qa'),
     eventsPath: arg('events', '$work\\logs\\${shot}_take${take}_events.jsonl'),
+    touchPath: args.contains('--touch') ? arg('touch') : null,
     window: args.contains('--window') ? arg('window') : null,
+    gradeSuffix: arg('suffix', ''),
+    sheets: !args.contains('--no-sheets'),
   );
   stdout.writeln(result.ok ? 'qa: PASS' : 'qa: FAIL');
   for (final line in result.lines) {
@@ -75,7 +97,10 @@ Future<QaResult> runQa({
   required String footageDir,
   required String qaDir,
   required String eventsPath,
+  String? touchPath,
   String? window,
+  String gradeSuffix = '',
+  bool sheets = true,
 }) async {
   final lines = <String>[];
   final failures = <String>[];
@@ -129,45 +154,157 @@ Future<QaResult> runQa({
     data['tvFps'] = tvFps;
     check('tv fps', tvFps >= 59, '${tvFps.toStringAsFixed(1)} (want >= 59)');
 
-    final moving = shotIsGameplay(shot);
     final arena = isArenaShot(shot);
-    if (!arena) {
-      // Phone half: the Nov 4 method (mpdecimate hi=1:lo=1:frac=0). A
-      // stick-mode shot is measured on the left stick's crop over the take.
-      // P2/P4 have no sticks, so their whole half is measured over the first
-      // 12 s, where the typing and pairing happen (the tail is a static
-      // controller screen). Arena shots skip this and use the delivery check
-      // in the stutter branch below (owner-approved, Nov 4, 2026).
-      final hasSticks = shot != 'P2' && shot != 'P4';
-      final phoneFps = await phoneHalfFps(
-        both.path,
-        master.duration,
-        stick: hasSticks,
-        start: hasSticks ? 0 : 2,
-        window: hasSticks ? null : 12,
-      );
-      final phoneWholeFps = hasSticks
-          ? phoneFps
-          : await phoneHalfFps(both.path, master.duration, stick: false);
-      data['phoneFps'] = phoneFps;
-      data['phoneFpsWholeTake'] = phoneWholeFps;
-      data['phoneFpsCrop'] = hasSticks ? 'stick' : 'whole half, 12 s window';
-      if (phoneFps == null) {
-        check('phone fps', false, 'the phone-half measurement failed');
-      } else {
-        check(
-          'phone fps',
-          phoneFps >= 45,
-          '${phoneFps.toStringAsFixed(1)} on the ${hasSticks ? 'left stick' : 'whole phone half, 12 s window'} '
-              '(want >= 45; the TV floor is 59 and the phone floor is lower on purpose '
-              "(owner's accepted trade-off)${moving ? '' : '; whole take ${phoneWholeFps?.toStringAsFixed(1)}'}",
-        );
-      }
-    }
-
     final recordersPath =
         '${File(eventsPath).parent.path}\\${takeName}_recorders.json';
-    if (arena) {
+    final touchLog =
+        touchPath ?? '${File(eventsPath).parent.path}\\${takeName}_touch.jsonl';
+    if (!arena) {
+      // (b) The content rules - the distinct-frame fps count and the mpdecimate
+      // stutter rule - apply only inside the take's **motion windows**: the
+      // spans where the touch log shows the driver moving a finger or stick
+      // (owner-approved, Nov 5, 2026). A menu, join list or pairing screen has
+      // no such span, and counting distinct frames there measured the artwork,
+      // not the capture: P2 takes 4-6 read 26.5-26.9 fps, R1 take 3 2.6 and G1
+      // take 1 1.0 while every frame was delivered. Both halves of a non-arena
+      // take use the same windows; the arena shots below keep their own rule.
+      final windows = motionWindowsFromTouch(
+        touchLog,
+        videoStartWall: recorderStartWall(recordersPath),
+        duration: master.duration,
+      );
+      final windowSeconds = windows.fold<double>(
+        0,
+        (sum, w) => sum + (w.end - w.start),
+      );
+      data['motionWindows'] = [for (final w in windows) w.toJson()];
+      data['motionWindowSeconds'] = double.parse(
+        windowSeconds.toStringAsFixed(2),
+      );
+
+      // (a) Every phone half is checked for delivery, with or without a motion
+      // window: at least 45 decoded frames a second over the take, and no gap
+      // between decoded frame timestamps over 100 ms. This is the rule the
+      // arena phone half already used (owner-approved, Nov 4, 2026).
+      final hasSticks = shot != 'P2' && shot != 'P4';
+      final phoneGrade = await gradePhoneHalf(
+        both.path,
+        duration: master.duration,
+        windows: windows,
+        crop: hasSticks ? stickCrop : phoneHalfCrop,
+      );
+      final delivered = phoneGrade.delivery;
+      data['phoneDelivery'] = delivered?.toJson();
+      check(
+        'phone delivery',
+        delivered != null && delivered.ok,
+        delivered == null
+            ? 'the phone-half delivery decode failed'
+            : '${delivered.fps.toStringAsFixed(1)} decoded fps over the take, '
+                  'largest timestamp gap ${delivered.maxGapMs} ms '
+                  '(want >= 45 fps and a gap <= 100 ms)',
+      );
+
+      data['phoneFps'] = phoneGrade.distinctFps;
+      data['phoneFpsCrop'] = hasSticks
+          ? 'left stick, inside the motion windows'
+          : 'whole phone half, inside the motion windows';
+      if (windows.isEmpty) {
+        lines.add(
+          'note phone fps + stutter: not measured - no motion window in the '
+          'touch log (a menu, join or pairing screen); delivery is the whole '
+          'phone rule for this take',
+        );
+      } else {
+        final fps = phoneGrade.distinctFps;
+        if (fps == null) {
+          check('phone fps', false, 'the phone-half measurement failed');
+        } else {
+          check(
+            'phone fps',
+            fps >= phoneFpsFloor,
+            '${fps.toStringAsFixed(1)} on the '
+                '${hasSticks ? 'left stick' : 'whole phone half'} inside '
+                '${windows.length} motion window(s), '
+                '${windowSeconds.toStringAsFixed(1)} s of the '
+                '${master.duration.toStringAsFixed(1)} s take '
+                '(want >= 45 distinct fps; the TV floor is 59 and the phone '
+                'floor is lower on purpose)',
+          );
+        }
+        final phoneStutter = phoneGrade.stutter;
+        check(
+          'phone stutter',
+          phoneStutter != null && !phoneStutter.bad,
+          '${phoneStutter?.runs ?? -1} runs of 3+ duplicates inside the motion '
+              'windows',
+        );
+      }
+
+      // The TV half follows the same windows for the same reason: a menu or
+      // join screen is static by design, and the stock thresholds call those
+      // frames duplicates. R1 take 3 kept 132 frames of about 1400 that way.
+      final tvStutter = windows.isEmpty
+          ? null
+          : await stutterInWindows(
+              both.path,
+              crop: 'crop=1920:1080:0:0',
+              windows: windows,
+            );
+      data['stutter'] = {'tv': tvStutter, 'phone': phoneGrade.stutter};
+      data['stutterMethod'] =
+          'stock mpdecimate, inside the touch log\'s motion windows';
+      if (windows.isEmpty) {
+        // Nothing to grade in, but the number the old whole-take rule gave is
+        // still worth seeing: reported only, never a failure.
+        final tvWhole = await stutter(both.path, crop: 'crop=1920:1080:0:0');
+        final phoneWhole = await stutter(
+          both.path,
+          crop: 'crop=1920:1080:1920:0',
+        );
+        data['stutterWholeTakeReportedOnly'] = {
+          'tv': tvWhole,
+          'phone': phoneWhole,
+        };
+        lines.add(
+          'note tv stutter: not measured - no motion window in the touch log; '
+          'the whole take reads ${tvWhole.runs} runs of 3+ duplicates on the '
+          'old rule (reported only, the picture is a static screen)',
+        );
+        lines.add(
+          'note phone stutter: not measured - no motion window; the whole take '
+          'reads ${phoneWhole.runs} runs of 3+ duplicates on the old rule',
+        );
+      } else {
+        check(
+          'tv stutter',
+          tvStutter != null && !tvStutter.bad,
+          tvStutter == null
+              ? 'the TV-half stutter decode failed'
+              : '${tvStutter.runs} runs of 3+ duplicates inside the motion '
+                    'windows',
+        );
+      }
+
+      // Continuity with the grades taken before this rule: the number the old
+      // whole-half measure gave for the two shots it applied to.
+      if (shot == 'P2' || shot == 'P4') {
+        final oldRule = await phoneHalfFps(
+          both.path,
+          master.duration,
+          stick: false,
+          start: 2,
+          window: 12,
+        );
+        data['phoneFpsOldRuleInfo'] = oldRule;
+        if (oldRule != null) {
+          lines.add(
+            'note old whole-half rule (reported only, no longer pass/fail): '
+            '${oldRule.toStringAsFixed(1)} over the 12 s window from 2 s',
+          );
+        }
+      }
+    } else {
       // Owner-approved exception (runbook 2.8 step 2): the Arena dot moves too
       // few pixels per frame for the stock mpdecimate thresholds. Compare
       // decoded frames exactly and fail only a run of 3+ identical frames
@@ -222,44 +359,32 @@ Future<QaResult> runQa({
                   'largest timestamp gap ${delivered.maxGapMs} ms '
                   '(want >= 45 fps and a gap <= 100 ms)',
       );
-    } else {
-      final tvStutter = await stutter(both.path, crop: 'crop=1920:1080:0:0');
-      final phoneStutter = await stutter(
-        both.path,
-        crop: 'crop=1920:1080:1920:0',
-      );
-      data['stutter'] = {'tv': tvStutter, 'phone': phoneStutter};
-      // 2.8 fails a duplicate run only while something is moving. A pairing or
-      // settings shot has a mostly static UI, so its duplicates are expected;
-      // they are still reported.
-      check(
-        'tv stutter',
-        !moving || !tvStutter.bad,
-        '${tvStutter.runs} runs of 3+ duplicates${moving ? '' : ' (static shot, reported only)'}',
-      );
-      check(
-        'phone stutter',
-        !moving || !phoneStutter.bad,
-        '${phoneStutter.runs} runs of 3+ duplicates${moving ? '' : ' (static shot, reported only)'}',
-      );
     }
 
-    await contactSheet(
-      both.path,
-      '$qaDir\\${takeName}_tv_sheet.png',
-      crop: 'crop=1920:1080:0:0',
-    );
-    await contactSheet(
-      both.path,
-      '$qaDir\\${takeName}_phone_sheet.png',
-      crop: 'crop=1920:1080:1920:0',
-    );
+    if (sheets) {
+      await contactSheet(
+        both.path,
+        '$qaDir\\${takeName}_tv_sheet.png',
+        crop: 'crop=1920:1080:0:0',
+      );
+      await contactSheet(
+        both.path,
+        '$qaDir\\${takeName}_phone_sheet.png',
+        crop: 'crop=1920:1080:1920:0',
+      );
+    }
     data['sheets'] = [
       '$qaDir\\${takeName}_tv_sheet.png',
       '$qaDir\\${takeName}_phone_sheet.png',
     ];
-    lines.add('sheet tv: $qaDir\\${takeName}_tv_sheet.png');
-    lines.add('sheet phone: $qaDir\\${takeName}_phone_sheet.png');
+    lines.add(
+      '${sheets ? 'sheet' : 'existing sheet'} tv: '
+      '$qaDir\\${takeName}_tv_sheet.png',
+    );
+    lines.add(
+      '${sheets ? 'sheet' : 'existing sheet'} phone: '
+      '$qaDir\\${takeName}_phone_sheet.png',
+    );
   } else {
     final file = window != null
         ? File('$footageDir\\${takeName}_$window.mkv')
@@ -306,9 +431,12 @@ Future<QaResult> runQa({
         '${s.runs} runs of 3+ duplicates${movingTv ? '' : ' (static shot, reported only)'}',
       );
     }
-    await contactSheet(file.path, '$qaDir\\${takeName}_sheet.png');
+    if (sheets) await contactSheet(file.path, '$qaDir\\${takeName}_sheet.png');
     data['sheets'] = ['$qaDir\\${takeName}_sheet.png'];
-    lines.add('sheet: $qaDir\\${takeName}_sheet.png');
+    lines.add(
+      '${sheets ? 'sheet' : 'existing sheet'}: '
+      '$qaDir\\${takeName}_sheet.png',
+    );
   }
 
   // 2.8's cursor check for a take with a TV half: the showrunner reads the
@@ -360,9 +488,13 @@ Future<QaResult> runQa({
 
   data['ok'] = failures.isEmpty;
   data['failures'] = failures;
+  // A re-grade writes its own file: the old `<take>.json` is evidence of what
+  // the take was accepted or rejected with, and is never overwritten.
+  final gradePath = '$qaDir\\$takeName$gradeSuffix.json';
   File(
-    '$qaDir\\$takeName.json',
+    gradePath,
   ).writeAsStringSync('${const JsonEncoder.withIndent('  ').convert(data)}\n');
+  lines.add('grade: $gradePath');
   return QaResult(failures.isEmpty, lines, data);
 }
 
@@ -629,6 +761,257 @@ Future<DeliveryInfo?> delivery(
   return DeliveryInfo(frames / seconds, maxGapMs, frames);
 }
 
+/// The phone half of the 3840x1080 OBS master.
+const phoneHalfCrop = 'crop=1920:1080:1920:0';
+
+/// The left stick's circle in the master: the stick sits at (211, 484) in the
+/// phone half (runbook 2.4 step B), plus the 1920 px of the TV half.
+const stickCrop = 'crop=240:240:2011:364';
+
+/// 2.8's phone content floor. The TV floor is 59; the phone's lower number is
+/// the owner's accepted trade-off (Nov 4, 2026).
+const phoneFpsFloor = 45.0;
+
+/// The wall clock a take's `recorders.json` records as video time 0, or null.
+int? recorderStartWall(String recordersPath) {
+  final file = File(recordersPath);
+  if (!file.existsSync()) return null;
+  try {
+    final json = jsonDecode(file.readAsStringSync());
+    return json is Map ? (json['start'] as num?)?.toInt() : null;
+  } on Object {
+    return null;
+  }
+}
+
+/// The spans of a take where its **touch log** shows the driver moving a finger
+/// or stick (owner-approved, Nov 5, 2026): consecutive logged frames in which a
+/// finger that stayed down changed position, less than [maxMoveGapMs] apart,
+/// merged across gaps of the same size and padded by [padMs] on both sides.
+/// Wall clock becomes video time through the take's `recorders.json` `start`.
+///
+/// The log is the evidence, never the picture. A menu, join list or pairing
+/// screen produces no such span - a tap puts a finger down and lifts it at one
+/// place - so its static frames are not graded as missing content. A take with
+/// no window has the delivery rule only.
+List<MovementWindow> motionWindowsFromTouch(
+  String touchPath, {
+  required int? videoStartWall,
+  required double duration,
+  int maxMoveGapMs = 250,
+  int padMs = 300,
+}) {
+  if (videoStartWall == null || duration <= 0) return const [];
+  final file = File(touchPath);
+  if (!file.existsSync()) return const [];
+  final spans = <List<int>>[]; // [fromWall, toWall] per move
+  Map<int, List<double>>? previous;
+  var previousWall = 0;
+  for (final line in file.readAsLinesSync()) {
+    if (line.trim().isEmpty) continue;
+    Map<String, dynamic> entry;
+    try {
+      entry = jsonDecode(line) as Map<String, dynamic>;
+    } on Object {
+      continue; // a partial last line, or a line the driver is still writing
+    }
+    final wall = (entry['wall'] as num?)?.toInt();
+    if (wall == null) continue;
+    final fingers = <int, List<double>>{};
+    for (final finger in (entry['fingers'] as List?) ?? const []) {
+      if (finger is! Map) continue;
+      final id = (finger['id'] as num?)?.toInt();
+      final x = (finger['x'] as num?)?.toDouble();
+      final y = (finger['y'] as num?)?.toDouble();
+      if (id == null || x == null || y == null) continue;
+      fingers[id] = [x, y];
+    }
+    if (fingers.isEmpty) {
+      previous = null;
+      continue;
+    }
+    final before = previous;
+    if (before != null) {
+      var moved = false;
+      for (final id in fingers.keys) {
+        final was = before[id];
+        if (was == null) continue;
+        final now = fingers[id]!;
+        if (was[0] != now[0] || was[1] != now[1]) moved = true;
+      }
+      final gap = wall - previousWall;
+      if (moved && gap > 0 && gap < maxMoveGapMs)
+        spans.add([previousWall, wall]);
+    }
+    previous = fingers;
+    previousWall = wall;
+  }
+  if (spans.isEmpty) return const [];
+  final merged = <List<int>>[spans.first];
+  for (final span in spans.skip(1)) {
+    final current = merged.last;
+    if (span[0] - current[1] <= maxMoveGapMs) {
+      if (span[1] > current[1]) current[1] = span[1];
+    } else {
+      merged.add(span);
+    }
+  }
+  final windows = <MovementWindow>[];
+  for (final span in merged) {
+    final from = ((span[0] - padMs - videoStartWall) / 1000).clamp(
+      0.0,
+      duration,
+    );
+    final to = ((span[1] + padMs - videoStartWall) / 1000).clamp(0.0, duration);
+    if (to - from <= 0.001) continue;
+    if (windows.isNotEmpty && from <= windows.last.end) {
+      if (to > windows.last.end) {
+        windows[windows.length - 1] = MovementWindow(windows.last.start, to);
+      }
+    } else {
+      windows.add(MovementWindow(from, to));
+    }
+  }
+  return windows;
+}
+
+/// Whether [t] sits inside one of [windows].
+bool inAnyWindow(double t, List<MovementWindow> windows) {
+  for (final window in windows) {
+    if (t >= window.start - 1e-9 && t <= window.end + 1e-9) return true;
+  }
+  return false;
+}
+
+/// 2.8's distinct-frame fps count inside [windows]: the Nov 4 method
+/// (`mpdecimate=hi=1:lo=1:frac=0`) over each window, one decode each, kept
+/// frames divided by the windowed seconds.
+Future<double?> distinctFpsInWindows(
+  String path, {
+  String? crop,
+  required List<MovementWindow> windows,
+}) async {
+  if (windows.isEmpty) return null;
+  final filter = [
+    if (crop != null) crop,
+    'mpdecimate=hi=1:lo=1:frac=0',
+  ].join(',');
+  var kept = 0;
+  var seconds = 0.0;
+  for (final window in windows) {
+    final length = window.end - window.start;
+    if (length <= 0) continue;
+    final count = await countFrames(
+      path,
+      filter: filter,
+      start: window.start,
+      window: length,
+    );
+    if (count == null) return null;
+    kept += count;
+    seconds += length;
+  }
+  if (seconds <= 0) return null;
+  return kept / seconds;
+}
+
+/// 2.8's stock stutter rule (`mpdecimate=hi=64*12:lo=64*5:frac=0.33`) counted
+/// only where both frames of a drop gap fall inside the same motion window.
+Future<StutterInfo?> stutterInWindows(
+  String path, {
+  String? crop,
+  required List<MovementWindow> windows,
+}) async {
+  if (windows.isEmpty) return null;
+  final filter = [
+    if (crop != null) crop,
+    'mpdecimate=hi=64*12:lo=64*5:frac=0.33',
+    'showinfo',
+  ].join(',');
+  final result = await Process.run(ffmpeg, [
+    '-hide_banner',
+    '-nostats',
+    '-i',
+    path,
+    '-vf',
+    filter,
+    '-an',
+    '-f',
+    'null',
+    '-',
+  ]);
+  if (result.exitCode != 0) return null;
+  final times = <double>[];
+  for (final match in RegExp(
+    r'pts_time:([0-9.]+)',
+  ).allMatches(result.stderr as String)) {
+    times.add(double.parse(match.group(1)!));
+  }
+  var runs = 0;
+  var frames = 0;
+  for (var i = 0; i < times.length; i++) {
+    if (inAnyWindow(times[i], windows)) frames++;
+    if (i == 0) continue;
+    if (times[i] - times[i - 1] <= 3 / 60 + 0.001) continue;
+    if (inAnyWindow(times[i - 1], windows) && inAnyWindow(times[i], windows)) {
+      runs++;
+    }
+  }
+  return StutterInfo(runs, runs > 0, frames: frames);
+}
+
+/// One half of a non-arena take, graded the way 2.8 now says: delivery always,
+/// content (distinct frames and duplicates) only inside the motion windows.
+class PhoneHalfGrade {
+  PhoneHalfGrade({
+    required this.delivery,
+    required this.windows,
+    required this.distinctFps,
+    required this.stutter,
+  });
+
+  final DeliveryInfo? delivery;
+  final List<MovementWindow> windows;
+
+  /// Null when there is no motion window to measure: not a failure.
+  final double? distinctFps;
+
+  /// Null when there is no motion window to measure: not a failure.
+  final StutterInfo? stutter;
+
+  double get windowSeconds =>
+      windows.fold<double>(0, (sum, w) => sum + (w.end - w.start));
+
+  /// (a) delivery, always; (b) the content rules only inside a motion window,
+  /// so a take with none is judged by delivery alone.
+  bool get ok =>
+      delivery != null &&
+      delivery!.ok &&
+      (distinctFps == null || distinctFps! >= phoneFpsFloor) &&
+      (stutter == null || !stutter!.bad);
+}
+
+Future<PhoneHalfGrade> gradePhoneHalf(
+  String path, {
+  required double duration,
+  required List<MovementWindow> windows,
+  String? crop,
+}) async {
+  final delivered = await delivery(path, crop: crop, seconds: duration);
+  double? fps;
+  StutterInfo? stutter;
+  if (windows.isNotEmpty) {
+    fps = await distinctFpsInWindows(path, crop: crop, windows: windows);
+    stutter = await stutterInWindows(path, crop: crop, windows: windows);
+  }
+  return PhoneHalfGrade(
+    delivery: delivered,
+    windows: windows,
+    distinctFps: fps,
+    stutter: stutter,
+  );
+}
+
 /// Counts runs of 3 or more exactly-identical decoded frames in [from]..[to]
 /// (2.8 step 2's arena rule). Frames are compared by ffmpeg's `framehash`
 /// SHA-256 of the cropped decoded picture, so this sees changes far smaller
@@ -693,10 +1076,12 @@ Future<StutterInfo?> exactStutter(
   return StutterInfo(runs, runs > 0, maxRun: maxRun, frames: frames);
 }
 
-/// Builds the fixture clips for the arena rules. Stutter: one with 60 distinct
+/// Builds the fixture clips for the 2.8 rules. Stutter: one with 60 distinct
 /// frames a second (must pass) and one whose every 4th frame appears three
-/// times in a row (must fail). Delivery: one with a static first half at 60 fps
-/// (must pass) and one with a 300 ms hole in its timestamps (must fail).
+/// times in a row (must fail). Motion windows, with touch-log fixtures: a
+/// static 60 fps clip with no window (passes), a 300 ms freeze (fails), the
+/// update rate halved to 30 fps inside a window (fails on content), and the
+/// same halving outside every window (passes).
 /// Run: `dart run tools/demo/qa.dart --self-test`.
 Future<int> selfTest() async {
   final temp = Directory.systemTemp.createTempSync('qa_selftest_');
@@ -803,37 +1188,74 @@ Future<int> selfTest() async {
       '${duplicate?.frames} frames (want 15 runs of 3 in 90)',
     );
 
-    // Delivery fixtures (2.8 step 2, arena phone half). The first clip is 60
-    // fps with its first second one static picture, the kind of content M1's
-    // phone half is: every frame is delivered, so it passes. The second is the
-    // same clip with 18 frames (300 ms) removed: its timestamps now have a hole
-    // and it fails even though the remaining rate is still over 45 fps.
-    final staticDir = Directory('${temp.path}\\static')..createSync();
-    var staticN = 0;
+    // Motion-window fixtures (2.8, owner-approved Nov 5, 2026). Three clips of
+    // 2 s at 60 fps, and touch logs that say where the driver was moving:
+    //   still  - one picture for both seconds, no motion window anywhere;
+    //   freeze - the same clip with 300 ms of frames removed;
+    //   halved - 60 distinct frames a second for 1 s, then every frame doubled
+    //            (30 distinct a second) for 1 s. The content rule fails it
+    //            inside a window over the second half and passes it with the
+    //            window over the first half, because the halving is outside.
     String framePath(int i) =>
         '${frames.path}\\f${i.toString().padLeft(3, '0')}.png';
+    final stillDir = Directory('${temp.path}\\still')..createSync();
+    final halvedDir = Directory('${temp.path}\\halved')..createSync();
+    var n = 0;
+    void add(Directory dir, int frame) =>
+        File(framePath(frame))
+            .copySync('${dir.path}\\s${(++n).toString().padLeft(4, '0')}.png');
+    for (var i = 1; i <= 120; i++) {
+      add(stillDir, 1);
+    }
+    n = 0;
     for (var i = 1; i <= 60; i++) {
-      File(framePath(1)).copySync(
-        '${staticDir.path}\\s${(++staticN).toString().padLeft(4, '0')}.png',
-      );
+      add(halvedDir, i);
     }
-    for (var i = 61; i <= 120; i++) {
-      File(framePath(i)).copySync(
-        '${staticDir.path}\\s${(++staticN).toString().padLeft(4, '0')}.png',
-      );
+    for (var i = 61; i <= 90; i++) {
+      add(halvedDir, i);
+      add(halvedDir, i);
     }
-    final staticClip = '${temp.path}\\static.mkv';
+    final stillClip = '${temp.path}\\still.mkv';
+    final halvedClip = '${temp.path}\\halved.mkv';
+    line(await encode(stillDir, stillClip), 'built the 2 s static clip');
     line(
-      await encode(staticDir, staticClip),
-      'built the static-first-half clip',
+      await encode(halvedDir, halvedClip),
+      'built the clip whose second second updates at 30 fps',
     );
+
+    // The touch logs. `start` is the recorders.json wall clock of video time 0;
+    // a log only ever contains the frames where a finger was down.
+    const startWall = 1700000000000;
+    String touchLog(String name, int fromMs, int toMs) {
+      final buffer = StringBuffer();
+      for (var t = fromMs; t <= toMs; t += 16) {
+        buffer.writeln(
+          jsonEncode({
+            'wall': startWall + t,
+            'fingers': [
+              {'id': 1, 'x': 1000 + (t - fromMs) * 5, 'y': 5000},
+            ],
+          }),
+        );
+      }
+      final path = '${temp.path}\\$name';
+      File(path).writeAsStringSync(buffer.toString());
+      return path;
+    }
+
+    String spans(List<MovementWindow> windows) => windows
+        .map(
+          (w) => '${w.start.toStringAsFixed(2)}-${w.end.toStringAsFixed(2)} s',
+        )
+        .join(', ');
+
     final freezeClip = '${temp.path}\\freeze.mkv';
     final freeze = await Process.run(ffmpeg, [
       '-y',
       '-hide_banner',
       '-nostats',
       '-i',
-      staticClip,
+      stillClip,
       '-vf',
       "select='not(between(t,1.0,1.29))'",
       '-fps_mode',
@@ -845,22 +1267,83 @@ Future<int> selfTest() async {
     if (freeze.exitCode != 0) stderr.writeln(freeze.stderr);
     line(freeze.exitCode == 0, 'built the 300-ms-freeze clip');
 
-    final staticDelivery = await delivery(staticClip, seconds: 2);
-    line(
-      staticDelivery != null && staticDelivery.ok && staticDelivery.fps >= 59,
-      '60 fps with a static first half passes delivery: '
-      '${staticDelivery?.fps.toStringAsFixed(1)} fps, largest gap '
-      '${staticDelivery?.maxGapMs} ms (want pass at 60 fps)',
+    // 1. Static 60 fps with no motion window: delivery alone, and it passes.
+    final noWindows = motionWindowsFromTouch(
+      '${temp.path}\\no-such-touch.jsonl',
+      videoStartWall: startWall,
+      duration: 2,
     );
-    final freezeDelivery = await delivery(freezeClip, seconds: 2);
+    final stillGrade = await gradePhoneHalf(
+      stillClip,
+      duration: 2,
+      windows: noWindows,
+    );
     line(
-      freezeDelivery != null &&
-          !freezeDelivery.ok &&
-          freezeDelivery.maxGapMs >= 250 &&
-          freezeDelivery.fps >= 45,
-      'a 300 ms freeze fails delivery: '
-      '${freezeDelivery?.fps.toStringAsFixed(1)} fps, largest gap '
-      '${freezeDelivery?.maxGapMs} ms (want a failure on the gap, rate still >= 45)',
+      noWindows.isEmpty &&
+          stillGrade.ok &&
+          (stillGrade.delivery?.fps ?? 0) >= 59,
+      'static 60 fps with no motion window: passes '
+      '(${stillGrade.delivery?.fps.toStringAsFixed(1)} fps, largest gap '
+      '${stillGrade.delivery?.maxGapMs} ms, content rule not measured)',
+    );
+
+    // 2. The same clip with a 300 ms freeze: fails, on the gap, not the rate.
+    final freezeGrade = await gradePhoneHalf(
+      freezeClip,
+      duration: 2,
+      windows: noWindows,
+    );
+    line(
+      !freezeGrade.ok &&
+          (freezeGrade.delivery?.maxGapMs ?? 0) >= 250 &&
+          (freezeGrade.delivery?.fps ?? 0) >= 45,
+      'a 300 ms freeze: fails '
+      '(${freezeGrade.delivery?.fps.toStringAsFixed(1)} fps, largest gap '
+      '${freezeGrade.delivery?.maxGapMs} ms, want > 100)',
+    );
+
+    // 3. The update rate halved inside a motion window: fails on content while
+    // delivery is still perfect.
+    final insideWindows = motionWindowsFromTouch(
+      touchLog('inside.jsonl', 1100, 1900),
+      videoStartWall: startWall,
+      duration: 2,
+    );
+    final insideGrade = await gradePhoneHalf(
+      halvedClip,
+      duration: 2,
+      windows: insideWindows,
+    );
+    line(
+      insideWindows.length == 1 &&
+          !insideGrade.ok &&
+          (insideGrade.distinctFps ?? 99) < phoneFpsFloor &&
+          (insideGrade.delivery?.ok ?? false),
+      'update rate halved to 30 fps inside a motion window: fails on content '
+      '(${insideGrade.distinctFps?.toStringAsFixed(1)} distinct fps in '
+      '${spans(insideWindows)}, delivery still '
+      '${insideGrade.delivery?.fps.toStringAsFixed(1)} fps)',
+    );
+
+    // 4. The same halving, with the motion window over the first second only:
+    // the content rule passes, because the halving is outside every window.
+    final outsideWindows = motionWindowsFromTouch(
+      touchLog('outside.jsonl', 200, 600),
+      videoStartWall: startWall,
+      duration: 2,
+    );
+    final outsideGrade = await gradePhoneHalf(
+      halvedClip,
+      duration: 2,
+      windows: outsideWindows,
+    );
+    line(
+      outsideWindows.length == 1 &&
+          outsideGrade.ok &&
+          (outsideGrade.distinctFps ?? 0) >= phoneFpsFloor,
+      'the same halving outside every motion window: passes '
+      '(${outsideGrade.distinctFps?.toStringAsFixed(1)} distinct fps in '
+      '${spans(outsideWindows)}; the halved second is outside it)',
     );
   } finally {
     try {
