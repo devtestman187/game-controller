@@ -117,6 +117,14 @@ class Injector {
   final String device;
   late final Process _process;
 
+  /// Writes are queued one at a time. `IOSink.flush` binds the sink until it
+  /// completes, so a second `add` while a flush is pending throws "StreamSink
+  /// is bound to a stream". The 60 Hz frame loop and the `drag` command call
+  /// `write` from separate async paths without awaiting each other, so without
+  /// this queue the first move of a drag (and most 60 Hz frames) hit that
+  /// error and the driver dies.
+  Future<void> _queue = Future<void>.value();
+
   Future<void> open() async {
     final adb = Platform.environment['ADB'] ?? 'adb';
     _process = await Process.start(adb, [
@@ -130,13 +138,19 @@ class Injector {
     _process.stderr.drain<void>();
   }
 
-  Future<void> write(Iterable<InputEvent> events, {bool flush = true}) async {
+  Future<void> write(Iterable<InputEvent> events, {bool flush = true}) {
     final bytes = BytesBuilder(copy: false);
     for (final event in events) {
       bytes.add(event.toBytes());
     }
-    _process.stdin.add(bytes.takeBytes());
-    if (flush) await _process.stdin.flush();
+    final data = bytes.takeBytes();
+    final result = _queue.then((_) async {
+      _process.stdin.add(data);
+      if (flush) await _process.stdin.flush();
+    });
+    // Keep the chain alive after a failed write; the caller still sees it.
+    _queue = result.then<void>((_) {}, onError: (Object _) {});
+    return result;
   }
 
   Future<void> close() async {
@@ -415,10 +429,7 @@ class TouchDriver {
     final length = sqrt(x * x + y * y);
     if (length < 0.2) return null;
     final arm = (left.x - dpad.x).abs();
-    return _screenPoint(
-      dpad.x + x / length * arm,
-      dpad.y + y / length * arm,
-    );
+    return _screenPoint(dpad.x + x / length * arm, dpad.y + y / length * arm);
   }
 
   /// The centre of the on-screen button labelled [label], read with
@@ -505,6 +516,15 @@ class TouchDriver {
           Duration(milliseconds: (message['ms'] as num?)?.toInt() ?? 0),
         );
         return {'ok': true};
+      // A dry run can feed the p1 intent stream without a director (2.4/2.7).
+      case 'intent':
+        _intent = {
+          'x': (message['x'] as num?)?.toDouble() ?? 0,
+          'y': (message['y'] as num?)?.toDouble() ?? 0,
+          'buttons': (message['buttons'] as List?)?.cast<String>() ?? const [],
+        };
+        _lastIntent = DateTime.now();
+        return {'ok': true};
       case 'drag':
         await _drag(message);
         return {'ok': true};
@@ -520,9 +540,9 @@ class TouchDriver {
 
   Future<void> _tap(Control point, int ms) async {
     final p = _screenPoint(point.x, point.y);
-    _finger1.downAt(p, injector, log);
+    await _finger1.downAt(p, injector, log);
     await Future<void>.delayed(Duration(milliseconds: ms));
-    _finger1.up(injector, log);
+    await _finger1.up(injector, log);
     await Future<void>.delayed(const Duration(milliseconds: 30));
   }
 
@@ -579,12 +599,12 @@ class TouchDriver {
     final ms = (message['ms'] as num?)?.toInt() ?? 1000;
     final start = _screenPoint(from[0], from[1]);
     final end = _screenPoint(to[0], to[1]);
-    _finger1.downAt(start, injector, log);
+    await _finger1.downAt(start, injector, log);
     final steps = max(1, ms ~/ 16);
     for (var i = 1; i <= steps; i++) {
       final t = i / steps;
       final eased = t < 0.5 ? 2 * t * t : 1 - pow(-2 * t + 2, 2) / 2;
-      _finger1.moveTo(
+      await _finger1.moveTo(
         _Point(
           start.x + (end.x - start.x) * eased,
           start.y + (end.y - start.y) * eased,
@@ -595,7 +615,7 @@ class TouchDriver {
       await Future<void>.delayed(Duration(milliseconds: ms ~/ steps));
     }
     await Future<void>.delayed(const Duration(milliseconds: 100));
-    _finger1.up(injector, log);
+    await _finger1.up(injector, log);
   }
 
   Future<void> _scroll(Map<String, dynamic> message) async {
