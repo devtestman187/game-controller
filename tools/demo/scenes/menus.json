@@ -30,10 +30,14 @@
         {"idle": 1200},
         {"navigate": ["b"]},
         {"idle": 700},
+        {"navigate": ["up"]},
+        {"idle": 400},
         {"navigate": ["a"]},
-        {"idle": 1000},
+        {"idle": 900},
         {"navigate": ["a"]},
-        {"idle": 500},
+        {"idle": 900},
+        {"navigate": ["a"]},
+        {"idle": 900},
         {"navigate": ["a"]},
         {"waitFor": {"event": "game_start", "timeoutMs": 8000}},
         {"layout": "sticks"},
@@ -42,5 +46,5 @@
     }
   },
   "endAfter": "seconds",
-  "endAfterS": 22
+  "endAfterS": 24
 }
