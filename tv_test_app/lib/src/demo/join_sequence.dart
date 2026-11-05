@@ -33,6 +33,7 @@ final class JoinSequence {
     this.pressMs = 120,
     this.joinTimeoutMs = 4000,
     this.startTimeoutMs = 12000,
+    this.startDelayMs = 2000,
     this.attempts = 3,
   }) : startSeat = startSeat ?? (order.isEmpty ? null : order.first);
 
@@ -53,6 +54,12 @@ final class JoinSequence {
   /// How long to wait for the match to start after Start.
   final int startTimeoutMs;
 
+  /// How long to wait after the last seat joins before pressing Start. The
+  /// join screen disables Start for a moment while the last card animates in;
+  /// a Start press 140 ms after the fourth join (the G2 pre-roll on Nov 5,
+  /// 2026) was ignored and the 12 s wait then failed the whole pre-roll.
+  final int startDelayMs;
+
   /// A presses one seat gets before the sequence gives up.
   final int attempts;
 
@@ -60,6 +67,7 @@ final class JoinSequence {
   int _attempt = 0;
   int? _pressSince;
   int? _waitSince;
+  int? _startAt;
   JoinStep? _held;
   _Phase _phase = _Phase.joining;
   String? _why;
@@ -86,6 +94,7 @@ final class JoinSequence {
       _phase = _Phase.done;
       _pressSince = null;
       _waitSince = null;
+      _startAt = null;
       _held = null;
       return null;
     }
@@ -131,12 +140,15 @@ final class JoinSequence {
       if (_index >= order.length) {
         _phase = _Phase.starting;
         _attempt = 0;
+        _startAt = ms + startDelayMs;
       } else {
         return _press(order[_index], GamepadButton.a, ms);
       }
     }
 
+    if (_startAt != null && ms < _startAt!) return null;
     final starter = startSeat ?? order.first;
+    _startAt = null;
     return _press(starter, GamepadButton.start, ms);
   }
 
@@ -153,6 +165,7 @@ final class JoinSequence {
     _held = null;
     _pressSince = null;
     _waitSince = null;
+    _startAt = null;
   }
 }
 

@@ -109,6 +109,15 @@ void main() {
     expect(seq.done, isFalse);
   });
 
+  test('waits for the join screen to settle before Start', () {
+    final seq = JoinSequence(order: const ['P1'], startSeat: 'P1', startDelayMs: 2000);
+    const joined = {'P1'};
+    expect(seq.tick(0, joined: joined, started: false), isNull);
+    expect(seq.tick(1999, joined: joined, started: false), isNull);
+    final start = seq.tick(2000, joined: joined, started: false);
+    expect(start?.button, GamepadButton.start);
+  });
+
   test('fails when the match does not start after Start', () {
     final seq = JoinSequence(order: const ['P1'], startSeat: 'P1', startTimeoutMs: 2000);
     final joined = {'P1'};
