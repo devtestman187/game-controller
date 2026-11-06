@@ -24,10 +24,10 @@ void main() {
       } else {
         // A press ended: the TV answers it.
         for (final held in holding.values.toList()) {
-          if (held.button == GamepadButton.a) {
-            joined.add(held.seat);
-          } else if (held.button == GamepadButton.start) {
+          if (held.isStart) {
             startAt = ms + 240; // The match object appears a moment later.
+          } else if (held.button == GamepadButton.a) {
+            joined.add(held.seat);
           }
           holding.remove(held.seat);
         }
@@ -41,13 +41,8 @@ void main() {
     final seq = JoinSequence(order: const ['P1', 'Bot 3', 'Bot 2', 'Bot 4'], startSeat: 'P1');
     final steps = presses(seq);
     expect(steps.map((s) => s.seat).toList(), ['P1', 'Bot 3', 'Bot 2', 'Bot 4', 'P1']);
-    expect(steps.map((s) => s.button).toList(), [
-      GamepadButton.a,
-      GamepadButton.a,
-      GamepadButton.a,
-      GamepadButton.a,
-      GamepadButton.start,
-    ]);
+    expect(steps.map((s) => s.isStart).toList(), [false, false, false, false, true]);
+    expect(steps.every((s) => s.button == GamepadButton.a), isTrue);
     expect(seq.done, isTrue);
     expect(seq.failed, isFalse);
   });
@@ -70,7 +65,7 @@ void main() {
     final steps = presses(seq, join: const {}, untilMs: 20000);
     final aSeats = [
       for (final s in steps)
-        if (s.button == GamepadButton.a) s.seat,
+        if (!s.isStart && s.button == GamepadButton.a) s.seat,
     ];
     expect(aSeats, ['P1', 'Bot 2']);
   });
@@ -79,7 +74,7 @@ void main() {
     final seq = JoinSequence(order: const ['P1', 'Bot 2', 'Bot 3'], startSeat: 'P1');
     final steps = presses(seq, join: const {'P1'}, untilMs: 20000);
     expect(steps.map((s) => s.seat).toList(), ['Bot 2', 'Bot 3', 'P1']);
-    expect(steps.last.button, GamepadButton.start);
+    expect(steps.last.isStart, isTrue);
   });
 
   test('does not press Start while a seat is missing: 3 A presses, then fails', () {
@@ -103,7 +98,7 @@ void main() {
     }
     final aForBot2 = seen.where((s) => s.seat == 'Bot 2').length;
     expect(aForBot2, 3, reason: 'the runbook caps a failure at 3 attempts, got $aForBot2');
-    expect(seen.any((s) => s.button == GamepadButton.start), isFalse, reason: 'Start with a seat missing');
+    expect(seen.any((s) => s.isStart), isFalse, reason: 'Start with a seat missing');
     expect(seq.failed, isTrue);
     expect(seq.why, contains('Bot 2'));
     expect(seq.done, isFalse);
@@ -117,7 +112,7 @@ void main() {
       expect(seq.tick(ms, joined: joined, started: false, startReady: false), isNull, reason: 'at $ms ms');
     }
     final start = seq.tick(4016, joined: joined, started: false, startReady: true);
-    expect(start?.button, GamepadButton.start);
+    expect(start?.isStart, isTrue);
     expect(seq.startPresses, 1);
   });
 
@@ -148,7 +143,7 @@ void main() {
         started: startAt != null && ms >= startAt + 240,
         startReady: joined.isNotEmpty,
       );
-      if (step != null && step.button == GamepadButton.start && startAt == null) {
+      if (step != null && step.isStart && startAt == null) {
         startAt = ms;
       }
       ms += 16;
@@ -169,7 +164,7 @@ void main() {
     while (!seq.done && !seq.failed && ms < 20000) {
       final step = seq.tick(ms, joined: const {'P1'}, started: starts >= 2);
       if (step == null && holding != null) {
-        if (holding.button == GamepadButton.start) {
+        if (holding.button == GamepadButton.a) {
           starts++;
           if (starts == 2) {
             // The picture only changes after the second press lands.
@@ -178,7 +173,7 @@ void main() {
         holding = null;
       } else if (step != null && holding == null) {
         holding = step;
-        if (step.button == GamepadButton.start) pressedAt.add(ms);
+        if (step.isStart) pressedAt.add(ms);
       }
       ms += 16;
     }

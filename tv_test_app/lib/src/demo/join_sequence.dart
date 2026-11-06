@@ -2,15 +2,19 @@ import 'package:connection/connection.dart';
 
 /// One frame of the join pre-roll: whose input to send, and with what held.
 final class JoinStep {
-  const JoinStep(this.seat, this.button);
+  const JoinStep(this.seat, this.button, {this.isStart = false});
 
   /// The scene seat, `P1` or `Bot N`.
   final String seat;
 
   final GamepadButton button;
 
+  /// True for the press that begins the match, so a log line and a test can
+  /// tell it from the same seat's A that joined.
+  final bool isStart;
+
   @override
-  String toString() => '$seat ${button.name}';
+  String toString() => '$seat ${button.name}${isStart ? ' (start)' : ''}';
 }
 
 /// The join pre-roll (docs/demo-video-runbook.md 2.3, and the G2/G5 takes):
@@ -175,11 +179,17 @@ final class JoinSequence {
     }
     _readySince = null;
     _startPresses++;
-    return _press(startSeat ?? order.first, GamepadButton.start, ms);
+    // A, not the row's Start button: on the join screen a joined player's A
+    // begins the match too (join_screen.dart), and the phone's A is the button
+    // that seat has just used, so it is where the driver expects it. The
+    // dedicated Start button sits elsewhere once the joined layout arrives, and
+    // three Start taps in a row landed on nothing (G2 pre-roll, Nov 5, 2026:
+    // "the match did not start after 3 Start presses").
+    return _press(startSeat ?? order.first, GamepadButton.a, ms, isStart: true);
   }
 
-  JoinStep _press(String seat, GamepadButton button, int ms) {
-    final step = JoinStep(seat, button);
+  JoinStep _press(String seat, GamepadButton button, int ms, {bool isStart = false}) {
+    final step = JoinStep(seat, button, isStart: isStart);
     _held = step;
     _pressSince = ms;
     return step;
