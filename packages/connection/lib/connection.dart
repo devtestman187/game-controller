@@ -5,15 +5,19 @@
 /// command-line simulated controller and in `dart test` on Windows and CI.
 library;
 
+export 'src/client_types.dart';
 export 'src/controller_client.dart';
+export 'src/controller_identity.dart';
 export 'src/demo_input.dart';
 export 'src/game_host.dart';
 export 'src/gamepad.dart';
 export 'src/host_address.dart';
 export 'src/host_server.dart';
+export 'src/host_types.dart';
 export 'src/latency.dart';
 export 'src/log.dart';
 export 'src/rtt.dart';
+export 'src/saved_pairing.dart';
 export 'src/transport/channel_listener.dart';
 export 'src/transport/connector.dart';
 export 'src/transport/in_process_connector.dart';

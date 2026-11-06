@@ -4,6 +4,7 @@ import 'package:protocol/protocol.dart';
 
 import 'gamepad.dart';
 import 'host_server.dart';
+import 'host_types.dart';
 import 'rtt.dart';
 
 /// One player in a game: a phone, or a local player on the host itself.

@@ -41,6 +41,7 @@ Carried into M12, not blocking it:
 - **The `docs/protocol.md` read-through**, best done once M12's `view` messages are in.
 
 Found by `tools/review.sh --all` (Nov 6, 2026), for a cleanup job between M12 steps:
+- **`connection/lib/src/game_host.dart`** is 538 lines (limit 400): split `ServerGameHost` from `MemoryGameHost` and the shared types.
 - **Long members:** six over 60 lines in `party_host` screens (`controller_menus._tick`, `game_screen` build, `join_screen` `_tick` and build, `puzzle_screen`'s two builds), plus `stats_screen`, `haptic_panel_screen` and `latency_screen` builds. Split into named widgets.
 - **Determinism:** `puzzle_game` `game`, `library` and `match` fall back to an unseeded `Random()`. The `Random` should be required (guidelines §5).
 - **Leftovers:** `debugPrint` in `party_host` and `controller_app` providers, empty catches in `controller_app/lib/src/providers.dart` and `packages/metrics/bin/report.dart`, two `// ignore` in `tv_test_app/integration_test/sound_test.dart`.

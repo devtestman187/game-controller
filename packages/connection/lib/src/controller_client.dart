@@ -1,198 +1,19 @@
 import 'dart:async';
-import 'dart:io';
 import 'dart:math';
 
 import 'package:protocol/protocol.dart';
 
+import 'client_connection.dart';
+import 'client_controls.dart';
+import 'client_host.dart';
+import 'client_input.dart';
+import 'client_metrics.dart';
+import 'client_messages.dart';
+import 'client_types.dart';
+import 'controller_identity.dart';
 import 'host_address.dart';
 import 'log.dart';
 import 'rtt.dart';
-import 'transport/connect_error.dart';
-
-/// Who this controller is. Sent to the host in the hello message.
-final class ControllerIdentity {
-  const ControllerIdentity({
-    required this.controllerId,
-    required this.name,
-    required this.platform,
-    required this.appVersion,
-    this.capabilities = const [],
-    this.device,
-  });
-
-  final String controllerId;
-  final String name;
-  final String platform;
-  final String appVersion;
-
-  /// What this controller supports ([Capability]), sent in the hello (M9).
-  final List<String> capabilities;
-
-  /// The kind of device, for analytics (M9).
-  final DeviceInfo? device;
-
-  ControllerIdentity copyWith({List<String>? capabilities, DeviceInfo? device}) => ControllerIdentity(
-    controllerId: controllerId,
-    name: name,
-    platform: platform,
-    appVersion: appVersion,
-    capabilities: capabilities ?? this.capabilities,
-    device: device ?? this.device,
-  );
-
-  HelloMessage toHello() => HelloMessage(
-    controllerId: controllerId,
-    name: name,
-    platform: platform,
-    appVersion: appVersion,
-    capabilities: capabilities,
-    device: device,
-  );
-}
-
-enum ClientStatus {
-  /// Not connected and not trying to.
-  idle,
-
-  /// Opening the first connection to a host.
-  connecting,
-
-  /// Reached the host. It needs the code shown on the TV.
-  waitingForCode,
-
-  /// Sent the code, waiting for the answer.
-  pairing,
-
-  /// Paired, with heartbeats flowing.
-  connected,
-
-  /// The connection dropped after pairing. Retrying on its own.
-  reconnecting,
-
-  /// Gave up. See [ClientSnapshot.problem].
-  failed,
-}
-
-/// Why the client isn't (or wasn't) connected.
-enum ClientProblem {
-  /// The host couldn't be reached at all.
-  unreachable,
-
-  /// The code was wrong.
-  wrongCode,
-
-  /// Too many wrong codes in a row. The TV now shows a new code.
-  tooManyAttempts,
-
-  /// The host didn't recognize the saved pairing (for example the TV app
-  /// restarted), so the code is needed again.
-  pairingForgotten,
-
-  /// The TV and the phone run different protocol versions.
-  versionMismatch,
-
-  /// This phone connected again on another connection.
-  replaced,
-
-  /// The host rejected a message.
-  protocolError,
-
-  /// The code wasn't entered in time.
-  pairingTimeout,
-
-  /// The connection dropped.
-  connectionLost,
-}
-
-/// Everything the controller UI shows about the connection, as one value.
-final class ClientSnapshot {
-  const ClientSnapshot({
-    required this.status,
-    this.target,
-    this.hostName,
-    this.rttMs,
-    this.problem,
-    this.detail,
-    this.attempt = 0,
-    this.osErrorCode,
-    this.rttStats,
-    this.player,
-    this.hostCapabilities = const [],
-  });
-
-  final ClientStatus status;
-
-  /// The host being connected to.
-  final HostAddress? target;
-
-  /// The host's name from its welcome message.
-  final String? hostName;
-
-  /// Latest heartbeat round-trip time, measured on the phone.
-  final int? rttMs;
-
-  final ClientProblem? problem;
-
-  /// Technical detail for Diagnostics, such as the OS error message.
-  final String? detail;
-
-  /// Reconnect attempt number while [ClientStatus.reconnecting].
-  final int attempt;
-
-  /// OS error code from the last failed connection attempt. On iOS, 65 (no
-  /// route to host) to a local address usually means the local network
-  /// permission is off.
-  final int? osErrorCode;
-
-  /// Lowest, average and highest round-trip time over the last 30 s.
-  final RttSummary? rttStats;
-
-  /// This controller's player number on the TV (M6), while connected to a
-  /// TV that sends one.
-  final int? player;
-
-  /// What the host supports ([Capability]), from its welcome (M9). Empty for
-  /// TV apps older than M9.
-  final List<String> hostCapabilities;
-
-  bool get isConnected => status == ClientStatus.connected;
-
-  /// The best name for the host: its own name, the advertised one, or its
-  /// address.
-  String get hostLabel => hostName ?? target?.label ?? '';
-
-  ClientSnapshot copyWith({
-    ClientStatus? status,
-    Object? target = _keep,
-    Object? hostName = _keep,
-    Object? rttMs = _keep,
-    Object? problem = _keep,
-    Object? detail = _keep,
-    int? attempt,
-    Object? osErrorCode = _keep,
-    Object? rttStats = _keep,
-    Object? player = _keep,
-    List<String>? hostCapabilities,
-  }) => ClientSnapshot(
-    status: status ?? this.status,
-    target: identical(target, _keep) ? this.target : target as HostAddress?,
-    hostName: identical(hostName, _keep) ? this.hostName : hostName as String?,
-    rttMs: identical(rttMs, _keep) ? this.rttMs : rttMs as int?,
-    problem: identical(problem, _keep) ? this.problem : problem as ClientProblem?,
-    detail: identical(detail, _keep) ? this.detail : detail as String?,
-    attempt: attempt ?? this.attempt,
-    osErrorCode: identical(osErrorCode, _keep) ? this.osErrorCode : osErrorCode as int?,
-    rttStats: identical(rttStats, _keep) ? this.rttStats : rttStats as RttSummary?,
-    player: identical(player, _keep) ? this.player : player as int?,
-    hostCapabilities: hostCapabilities ?? this.hostCapabilities,
-  );
-
-  @override
-  String toString() =>
-      'ClientSnapshot(${status.name}, ${target?.display}, problem: ${problem?.name}, attempt: $attempt)';
-}
-
-const Object _keep = Object();
 
 /// The phone's side of the connection: connects to a host, pairs with the
 /// code (or a saved token), keeps heartbeats going and reconnects on its own
@@ -235,59 +56,41 @@ class ControllerClient {
   /// Wait before each reconnect attempt. The last value repeats forever.
   final List<Duration> retryDelays;
 
+  /// At most this many metrics segments wait for an ack. The oldest go first.
+  static const maxOutbox = MetricsOutbox.maxOutbox;
+
   /// Wall-clock time, replaced in tests to act out a sleeping phone.
   final DateTime Function() _wallClock;
   final Map<String, String> _tokens;
   final LogSink _log;
-  static const _codec = MessageCodec();
   final _clock = Stopwatch()..start();
   final _changes = StreamController<ClientSnapshot>.broadcast();
-  final _haptics = StreamController<HapticEventMessage>.broadcast();
-  final _ratingAsks = StreamController<RatingAskMessage>.broadcast();
-  final _layouts = StreamController<GameLayoutMessage>.broadcast();
-  final _statuses = StreamController<StatusMessage>.broadcast();
-  GameLayoutMessage _layout = GameLayoutMessage.standard();
-  StatusMessage _status = StatusMessage.hidden();
-  int _hapticsReceived = 0;
-
-  /// Metrics batches not yet acknowledged, the newest per segment, oldest
-  /// segment first (M9). Kept across reconnects, so a Wi-Fi drop loses none.
-  final _outbox = <String, MetricsMessage>{};
-
-  /// The highest acknowledged batch per segment still in [_outbox].
-  final _acked = <String, int>{};
-
-  /// At most this many segments wait for an ack. The oldest go first.
-  static const maxOutbox = 64;
+  final _controls = ClientControls();
+  final _input = ClientInput();
+  final _metrics = MetricsOutbox();
+  final _rtt = RttWindow();
 
   ClientSnapshot _snap = const ClientSnapshot(status: ClientStatus.idle);
 
-  /// Bumped by [connect] and [disconnect], so callbacks from an older
-  /// session do nothing.
-  int _session = 0;
+  /// The channel's and the handlers' view of this client, made on first use.
+  ClientHost? _clientHost;
 
-  /// Bumped for every socket, so events from a replaced socket do nothing.
-  int _socketId = 0;
-  WebSocket? _ws;
-  bool _welcomed = false;
-  bool _opening = false;
+  /// The channel to the host; it outlives reconnects, so its counters do too.
+  ClientConnection? _channel;
   bool _everPaired = false;
+  bool _welcomed = false;
   String? _pendingCode;
-  Timer? _heartbeat;
   Timer? _retry;
-  int _lastHeardMs = 0;
-  late DateTime _lastHeardAt = _wallClock();
-  int _nextPingId = 0;
-  final _rttWindow = RttWindow();
-  int _inputSeq = 0;
-  Set<ControllerButton> _buttons = const {};
-  int _dx = 0;
-  int _dy = 0;
-  double? _ax;
-  double? _ay;
-  ({double x, double y})? _left;
-  ({double x, double y})? _right;
-  int _inputsSent = 0;
+
+  ClientHost get _host => _clientHost ??= _ClientHost(this);
+
+  ClientConnection get _connection => _channel ??= ClientConnection(
+    _host,
+    heartbeatInterval: heartbeatInterval,
+    heartbeatTimeout: heartbeatTimeout,
+    connectTimeout: connectTimeout,
+    wallClock: _wallClock,
+  );
 
   ClientSnapshot get snapshot => _snap;
 
@@ -297,30 +100,30 @@ class ControllerClient {
   Map<String, String> get tokens => Map.unmodifiable(_tokens);
 
   /// Input states sent since the app started, for Diagnostics.
-  int get inputsSent => _inputsSent;
+  int get inputsSent => _input.statesSent;
 
   /// Haptic events from the TV (M5), only while paired.
-  Stream<HapticEventMessage> get hapticEvents => _haptics.stream;
+  Stream<HapticEventMessage> get hapticEvents => _controls.hapticEvents;
 
   /// Haptic events received since the app started, for Diagnostics.
-  int get hapticsReceived => _hapticsReceived;
+  int get hapticsReceived => _controls.hapticsReceived;
 
   /// The game's controls for this phone (M10): labels, hidden buttons and
   /// allowed modes. Back to standard when the connection ends.
-  GameLayoutMessage get layout => _layout;
+  GameLayoutMessage get layout => _controls.layout;
 
-  Stream<GameLayoutMessage> get layouts => _layouts.stream;
+  Stream<GameLayoutMessage> get layouts => _controls.layouts;
 
   /// The game's status panel for this phone (M10), hidden when there is none.
-  StatusMessage get status => _status;
+  StatusMessage get status => _controls.status;
 
-  Stream<StatusMessage> get statuses => _statuses.stream;
+  Stream<StatusMessage> get statuses => _controls.statuses;
 
   /// Rating prompts from the TV (M9), only while paired.
-  Stream<RatingAskMessage> get ratingAsks => _ratingAsks.stream;
+  Stream<RatingAskMessage> get ratingAsks => _controls.ratingAsks;
 
   /// Metrics segments waiting for the TV to acknowledge them.
-  int get metricsWaiting => _outbox.length;
+  int get metricsWaiting => _metrics.waiting;
 
   /// Whether the connected host takes metrics batches.
   bool get hostTakesMetrics => _snap.isConnected && _snap.hostCapabilities.contains(Capability.metrics);
@@ -329,15 +132,12 @@ class ControllerClient {
   /// Only the newest batch of each segment is kept; unacknowledged ones go
   /// again after every reconnect, so nothing is lost while Wi-Fi is off.
   void sendMetrics(MetricsMessage batch) {
-    final previous = _outbox[batch.segment];
-    if (previous != null && previous.index >= batch.index) return;
-    _outbox.remove(batch.segment);
-    _outbox[batch.segment] = batch;
-    while (_outbox.length > maxOutbox) {
-      final oldest = _outbox.keys.first;
-      _outbox.remove(oldest);
-      _acked.remove(oldest);
-      _log('Metrics: dropped the oldest unsent segment (more than $maxOutbox waiting)');
+    switch (_metrics.add(batch)) {
+      case OutboxResult.ignored:
+        return;
+      case OutboxResult.droppedOldest:
+        _log('Metrics: dropped the oldest unsent segment (more than $maxOutbox waiting)');
+      case OutboxResult.kept:
     }
     if (hostTakesMetrics) _send(batch);
   }
@@ -345,48 +145,6 @@ class ControllerClient {
   /// Answers a rating prompt (M9). Sent only if connected.
   void sendRating(RatingMessage rating) {
     if (_snap.isConnected && _snap.hostCapabilities.contains(Capability.rating)) _send(rating);
-  }
-
-  void _setLayout(GameLayoutMessage layout) {
-    if (layout == _layout) return;
-    _layout = layout;
-    if (!_layouts.isClosed) _layouts.add(layout);
-  }
-
-  void _setStatus(StatusMessage status) {
-    if (status == _status) return;
-    _status = status;
-    if (!_statuses.isClosed) _statuses.add(status);
-  }
-
-  /// A new connection starts with the usual buttons and no panel; the game
-  /// sends its own again.
-  void _resetGameControls() {
-    _setLayout(GameLayoutMessage.standard());
-    _setStatus(StatusMessage.hidden());
-  }
-
-  void _onMetricsAck(MetricsAckMessage ack) {
-    final batch = _outbox[ack.segment];
-    if (batch == null) return;
-    if (ack.index >= batch.index && batch.ended) {
-      _outbox.remove(ack.segment);
-      _acked.remove(ack.segment);
-    } else {
-      _acked[ack.segment] = max(_acked[ack.segment] ?? -1, ack.index);
-    }
-  }
-
-  /// After pairing: everything the TV hasn't acknowledged yet.
-  void _resendMetrics() {
-    if (!hostTakesMetrics) return;
-    var sent = 0;
-    for (final batch in _outbox.values) {
-      if ((_acked[batch.segment] ?? -1) >= batch.index) continue;
-      _send(batch);
-      sent++;
-    }
-    if (sent > 0) _log('Metrics: sent $sent waiting segment${sent == 1 ? '' : 's'} again');
   }
 
   /// Sets the controller's input and sends it if connected. While not
@@ -403,33 +161,8 @@ class ControllerClient {
     ({double x, double y})? left,
     ({double x, double y})? right,
   }) {
-    _buttons = Set.of(buttons);
-    _dx = dx;
-    _dy = dy;
-    _ax = ax;
-    _ay = ay;
-    _left = left;
-    _right = right;
-    if (_snap.isConnected) _sendInputState();
-  }
-
-  void _sendInputState() {
-    _inputsSent++;
-    _send(
-      InputStateMessage(
-        seq: ++_inputSeq,
-        buttons: _buttons,
-        dx: _dx,
-        dy: _dy,
-        ax: _ax,
-        ay: _ay,
-        lx: _left?.x,
-        ly: _left?.y,
-        rx: _right?.x,
-        ry: _right?.y,
-        sentAtMs: _now,
-      ),
-    );
+    _input.remember(buttons, dx: dx, dy: dy, ax: ax, ay: ay, left: left, right: right);
+    if (_snap.isConnected) _send(_input.nextState(_now));
   }
 
   /// Connects to [target]. If [code] is given it's sent right away;
@@ -437,27 +170,28 @@ class ControllerClient {
   /// [ClientStatus.waitingForCode].
   void connect(HostAddress target, {String? code}) {
     _teardown();
-    _rttWindow.clear();
-    _session++;
+    _rtt.clear();
+    final session = _connection.startSession();
     _everPaired = false;
     _pendingCode = code;
     _set(ClientSnapshot(status: ClientStatus.connecting, target: target));
-    _open(_session);
+    _open(session);
   }
 
   /// Sends the code the user typed. Reconnects first if the host closed the
   /// connection after a wrong code.
   void submitCode(String code) {
     if (_snap.target == null) return;
+    final channel = _connection;
     _retry?.cancel();
-    if (_ws != null && _welcomed) {
+    if (channel.hasChannel && _welcomed) {
       _log('Sending pairing code');
       _send(PairRequestMessage(code: code));
       _set(_snap.copyWith(status: ClientStatus.pairing, problem: null, detail: null));
     } else {
       _pendingCode = code;
       _set(_snap.copyWith(status: ClientStatus.pairing, problem: null, detail: null));
-      if (_ws == null && !_opening) _open(_session);
+      if (!channel.hasChannel && !channel.isOpening) _open(channel.session);
     }
   }
 
@@ -475,10 +209,11 @@ class ControllerClient {
 
   /// Tries a pending reconnect now instead of waiting for its timer.
   void retryNow() {
-    if (_snap.status != ClientStatus.reconnecting || _ws != null || _opening) return;
+    final channel = _connection;
+    if (_snap.status != ClientStatus.reconnecting || channel.hasChannel || channel.isOpening) return;
     _retry?.cancel();
     _retry = null;
-    _open(_session);
+    _open(channel.session);
   }
 
   /// Call when the app comes back to the foreground or the phone wakes up.
@@ -492,10 +227,7 @@ class ControllerClient {
   void resume() {
     switch (_snap.status) {
       case ClientStatus.connected:
-        final quiet = _wallClock().difference(_lastHeardAt);
-        if (quiet < heartbeatTimeout ~/ 2) return;
-        _log('Back after ${(quiet.inMilliseconds / 1000).toStringAsFixed(1)} s without the TV, reconnecting now');
-        _dropSocket(closeCode: CloseCodes.heartbeatTimeout);
+        if (!_connection.replaceQuietChannel(_wallClock())) return;
         _scheduleRetry(detail: 'App resumed', delay: Duration.zero);
       case ClientStatus.reconnecting:
         _log('App resumed, trying to reconnect now');
@@ -507,7 +239,7 @@ class ControllerClient {
   /// Closes the connection and stops retrying.
   void disconnect() {
     if (_snap.status != ClientStatus.idle) _log('Disconnecting');
-    _session++;
+    _channel?.startSession();
     _teardown();
     _everPaired = false;
     _set(const ClientSnapshot(status: ClientStatus.idle));
@@ -516,237 +248,26 @@ class ControllerClient {
   Future<void> dispose() async {
     disconnect();
     await _changes.close();
-    await _haptics.close();
-    await _ratingAsks.close();
-    await _layouts.close();
-    await _statuses.close();
+    await _controls.close();
   }
 
   int get _now => _clock.elapsedMilliseconds;
 
-  Future<void> _open(int session) async {
-    final target = _snap.target;
-    if (target == null) return;
-    _opening = true;
-    Object? lastError;
-    WebSocket? ws;
-    for (final address in target.ordered) {
-      final uri = target.uriFor(address);
-      _log('Connecting to $uri');
-      final http = HttpClient()..connectionTimeout = connectTimeout;
-      try {
-        ws = await WebSocket.connect(uri.toString(), customClient: http);
-        break;
-      } catch (e) {
-        lastError = e;
-        http.close(force: true);
-        _log('Could not connect to $uri: ${describeError(e)}');
-      }
-      if (session != _session) break;
-    }
-    if (session != _session) {
-      ws?.close(CloseCodes.goingAway).ignore();
+  /// Starts an attempt to reach the host again for [session].
+  void _open(int session) {
+    _connection.open(session, ClientMessages(_host, rtt: _rtt, controls: _controls, input: _input, metrics: _metrics));
+  }
+
+  /// Saves [token] for [hostId], or forgets it with null, and tells the app
+  /// when that changed anything.
+  void _saveToken(String hostId, String? token) {
+    if (token == null) {
+      if (_tokens.remove(hostId) != null) onTokenChanged?.call(hostId, null);
       return;
     }
-    _opening = false;
-    if (ws == null) return _onConnectFailed(lastError);
-
-    final socketId = ++_socketId;
-    _ws = ws;
-    _welcomed = false;
-    _lastHeardMs = _now;
-    _lastHeardAt = _wallClock();
-    _log('Connected to ${target.display}, saying hello');
-    final socket = ws;
-    socket.listen(
-      (data) => _onData(socketId, data),
-      onDone: () => _onSocketDone(socketId, socket.closeCode, socket.closeReason),
-      onError: (Object e) => _log('Connection error: ${describeError(e)}'),
-    );
-    _send(identity.toHello());
-    _heartbeat = Timer.periodic(heartbeatInterval, (_) => _beat(socketId));
-  }
-
-  void _onConnectFailed(Object? error) {
-    final osError = error is SocketException ? error.osError?.errorCode : null;
-    final detail = error == null ? null : describeError(error);
-    if (_everPaired) {
-      _scheduleRetry(detail: detail, osErrorCode: osError);
-    } else {
-      _set(
-        _snap.copyWith(
-          status: ClientStatus.failed,
-          problem: ClientProblem.unreachable,
-          detail: detail,
-          osErrorCode: osError,
-        ),
-      );
-    }
-  }
-
-  void _onData(int socketId, Object? data) {
-    if (socketId != _socketId) return;
-    _lastHeardMs = _now;
-    _lastHeardAt = _wallClock();
-    if (data is! String) return;
-
-    final Message? message;
-    try {
-      message = _codec.decode(data);
-    } on ProtocolVersionMismatch catch (e) {
-      _log('The TV uses protocol v${e.actual}, this phone uses v${e.expected}');
-      return _giveUp(
-        ClientProblem.versionMismatch,
-        'TV protocol v${e.actual}, phone v${e.expected}',
-        closeCode: CloseCodes.versionMismatch,
-      );
-    } on ProtocolFormatException catch (e) {
-      _log('Bad message from the TV: ${e.message}');
-      return _giveUp(ClientProblem.protocolError, e.message, closeCode: CloseCodes.protocolError);
-    }
-    if (message == null) return;
-
-    switch (message) {
-      case PingMessage():
-        _send(PongMessage.answering(message, atMs: _now));
-      case PongMessage():
-        final rtt = _now - message.sentAtMs;
-        if (rtt >= 0 && _snap.isConnected) {
-          _rttWindow.add(_now, rtt);
-          _set(_snap.copyWith(rttMs: rtt, rttStats: _rttWindow.summary(_now)));
-        }
-      case WelcomeMessage():
-        _onWelcome(message);
-      case PairResultMessage():
-        _onPairResult(message);
-      case HapticEventMessage():
-        // Only while paired: a TV we are not paired with has no business here.
-        if (!_snap.isConnected) return;
-        _hapticsReceived++;
-        if (!_haptics.isClosed) _haptics.add(message);
-      case PlayerMessage():
-        if (_snap.isConnected && _snap.player != message.number) {
-          _log("The TV made this phone player ${message.number}");
-          _set(_snap.copyWith(player: message.number));
-        }
-      case MetricsAckMessage():
-        _onMetricsAck(message);
-      case RatingAskMessage():
-        if (!_snap.isConnected || !identity.capabilities.contains(Capability.rating)) return;
-        if (!_ratingAsks.isClosed) _ratingAsks.add(message);
-      case GameLayoutMessage():
-        if (!_snap.isConnected || !identity.capabilities.contains(Capability.layout)) return;
-        _setLayout(message);
-      case StatusMessage():
-        if (!_snap.isConnected || !identity.capabilities.contains(Capability.status)) return;
-        _setStatus(message);
-      case HelloMessage() || PairRequestMessage() || InputStateMessage() || MetricsMessage() || RatingMessage():
-        _log('Ignoring unexpected ${message.type} from the TV');
-    }
-  }
-
-  void _onWelcome(WelcomeMessage welcome) {
-    _welcomed = true;
-    // Trust the host's own ID over the advertised one: tokens are saved by it.
-    final target = _snap.target!.copyWith(hostId: welcome.hostId);
-    _set(_snap.copyWith(target: target, hostName: welcome.hostName, hostCapabilities: welcome.capabilities));
-    _log(
-      'Welcome from ${welcome.hostName} (TV app ${welcome.appVersion}'
-      '${welcome.capabilities.isEmpty ? '' : ', supports ${welcome.capabilities.join(', ')}'})',
-    );
-
-    final code = _pendingCode;
-    _pendingCode = null;
-    final token = _tokens[welcome.hostId];
-    if (code != null) {
-      _log('Sending pairing code');
-      _send(PairRequestMessage(code: code));
-      _set(_snap.copyWith(status: ClientStatus.pairing));
-    } else if (token != null) {
-      _log('Using the saved pairing');
-      _send(PairRequestMessage(token: token));
-    } else {
-      _set(_snap.copyWith(status: ClientStatus.waitingForCode));
-    }
-  }
-
-  void _onPairResult(PairResultMessage result) {
-    final hostId = _snap.target!.hostId!;
-    if (result.ok) {
-      final token = result.token!;
-      if (_tokens[hostId] != token) {
-        _tokens[hostId] = token;
-        onTokenChanged?.call(hostId, token);
-      }
-      _everPaired = true;
-      _log('Paired with ${_snap.hostLabel}');
-      _set(_snap.copyWith(status: ClientStatus.connected, problem: null, detail: null, attempt: 0, osErrorCode: null));
-      // The TV starts each connection with nothing pressed. Tell it what is
-      // held right now (also after a reconnect).
-      _sendInputState();
-      _resendMetrics();
-      return;
-    }
-    switch (result.failure!) {
-      case PairFailure.unknownToken:
-        _log('The TV no longer knows this phone, the code is needed again');
-        if (_tokens.remove(hostId) != null) onTokenChanged?.call(hostId, null);
-        _everPaired = false;
-        _set(_snap.copyWith(status: ClientStatus.waitingForCode, problem: ClientProblem.pairingForgotten));
-      case PairFailure.wrongCode:
-        _log('Wrong pairing code');
-        _dropSocket(); // The host closes it anyway. A new code reconnects.
-        _set(_snap.copyWith(status: ClientStatus.waitingForCode, problem: ClientProblem.wrongCode));
-      case PairFailure.tooManyAttempts:
-        _log('Too many wrong codes, the TV shows a new one');
-        _dropSocket();
-        _set(_snap.copyWith(status: ClientStatus.waitingForCode, problem: ClientProblem.tooManyAttempts));
-    }
-  }
-
-  void _onSocketDone(int socketId, int? code, String? reason) {
-    if (socketId != _socketId) return;
-    _dropSocket();
-    final why = reason == null || reason.isEmpty ? '' : ': $reason';
-    _log('Connection closed${code == null ? '' : ' (code $code$why)'}');
-    switch (code) {
-      case CloseCodes.versionMismatch:
-        _giveUp(ClientProblem.versionMismatch, reason);
-      case CloseCodes.replaced:
-        _giveUp(ClientProblem.replaced, reason);
-      case CloseCodes.protocolError:
-        _giveUp(ClientProblem.protocolError, reason);
-      case CloseCodes.pairingTimeout:
-        _giveUp(ClientProblem.pairingTimeout, reason);
-      case CloseCodes.pairingFailed:
-        // The pair result already set the status. A new code reconnects.
-        if (_snap.status != ClientStatus.waitingForCode) {
-          _set(_snap.copyWith(status: ClientStatus.waitingForCode, problem: ClientProblem.wrongCode));
-        }
-      default:
-        if (_snap.status == ClientStatus.waitingForCode) return; // A new code reconnects.
-        if (_everPaired) {
-          _scheduleRetry(detail: reason);
-        } else {
-          _giveUp(ClientProblem.connectionLost, reason);
-        }
-    }
-  }
-
-  void _beat(int socketId) {
-    if (socketId != _socketId) return;
-    final quietMs = _now - _lastHeardMs;
-    if (quietMs > heartbeatTimeout.inMilliseconds) {
-      _log('No heartbeat for ${(quietMs / 1000).toStringAsFixed(1)} s, the connection is gone');
-      _dropSocket(closeCode: CloseCodes.heartbeatTimeout);
-      if (_everPaired) {
-        _scheduleRetry(detail: 'No heartbeat');
-      } else if (_snap.status != ClientStatus.waitingForCode) {
-        _giveUp(ClientProblem.connectionLost, 'No heartbeat');
-      }
-      return;
-    }
-    _send(PingMessage(id: _nextPingId++, sentAtMs: _now));
+    if (_tokens[hostId] == token) return;
+    _tokens[hostId] = token;
+    onTokenChanged?.call(hostId, token);
   }
 
   void _scheduleRetry({String? detail, int? osErrorCode, Duration? delay}) {
@@ -765,16 +286,17 @@ class ControllerClient {
       ),
     );
     _log('Reconnecting in ${delay.inMilliseconds} ms (attempt $attempt)');
-    final session = _session;
+    final session = _connection.session;
     _retry?.cancel();
     _retry = Timer(delay, () {
-      if (session == _session && _ws == null && !_opening) _open(session);
+      final channel = _connection;
+      if (session == channel.session && !channel.hasChannel && !channel.isOpening) _open(session);
     });
   }
 
   void _giveUp(ClientProblem problem, String? detail, {int? closeCode}) {
     _retry?.cancel();
-    _dropSocket(closeCode: closeCode);
+    _channel?.dropChannel(closeCode: closeCode);
     _everPaired = false;
     _set(
       _snap.copyWith(
@@ -788,38 +310,19 @@ class ControllerClient {
     );
   }
 
-  void _dropSocket({int? closeCode}) {
-    _heartbeat?.cancel();
-    _heartbeat = null;
-    final ws = _ws;
-    _ws = null;
-    _welcomed = false;
-    _socketId++;
-    // close() can wait a long time on a dead network, so don't await it.
-    ws?.close(closeCode ?? 1000).then((_) {}, onError: (_) {});
-  }
-
   void _teardown() {
     _retry?.cancel();
     _retry = null;
     _pendingCode = null;
-    _dropSocket();
+    _channel?.dropChannel();
   }
 
-  void _send(Message message) {
-    final ws = _ws;
-    if (ws == null) return;
-    try {
-      ws.add(_codec.encode(message));
-    } catch (e) {
-      _log('Send failed: $e');
-    }
-  }
+  void _send(Message message) => _channel?.send(message);
 
   void _set(ClientSnapshot next) {
     final wasConnected = _snap.isConnected;
     _snap = next;
-    if (wasConnected && !next.isConnected) _resetGameControls();
+    if (wasConnected && !next.isConnected) _controls.reset();
     if (!_changes.isClosed) _changes.add(next);
   }
 }
@@ -828,3 +331,68 @@ void _noLog(String _) {}
 
 bool _sameList(List<String> a, List<String> b) =>
     a.length == b.length && Iterable.generate(a.length).every((i) => a[i] == b[i]);
+
+/// What the channel and the message handlers can do with a [ControllerClient]
+/// (internal), so the client's own members stay private.
+final class _ClientHost implements ClientHost {
+  _ClientHost(this._client);
+
+  final ControllerClient _client;
+
+  @override
+  void log(String message) => _client._log(message);
+
+  @override
+  int get nowMs => _client._now;
+
+  @override
+  ClientSnapshot get snapshot => _client._snap;
+
+  @override
+  void setSnapshot(ClientSnapshot next) => _client._set(next);
+
+  @override
+  String? takePendingCode() {
+    final code = _client._pendingCode;
+    _client._pendingCode = null;
+    return code;
+  }
+
+  @override
+  bool get everPaired => _client._everPaired;
+
+  @override
+  set everPaired(bool value) => _client._everPaired = value;
+
+  @override
+  bool get welcomed => _client._welcomed;
+
+  @override
+  set welcomed(bool value) => _client._welcomed = value;
+
+  @override
+  String? tokenFor(String hostId) => _client._tokens[hostId];
+
+  @override
+  void saveToken(String hostId, String? token) => _client._saveToken(hostId, token);
+
+  @override
+  ControllerIdentity get identity => _client.identity;
+
+  @override
+  bool get hostTakesMetrics => _client.hostTakesMetrics;
+
+  @override
+  void send(Message message) => _client._send(message);
+
+  @override
+  void dropChannel({int? closeCode}) => _client._channel?.dropChannel(closeCode: closeCode);
+
+  @override
+  void scheduleRetry({String? detail, int? osErrorCode, Duration? delay}) =>
+      _client._scheduleRetry(detail: detail, osErrorCode: osErrorCode, delay: delay);
+
+  @override
+  void giveUp(ClientProblem problem, String? detail, {int? closeCode}) =>
+      _client._giveUp(problem, detail, closeCode: closeCode);
+}
