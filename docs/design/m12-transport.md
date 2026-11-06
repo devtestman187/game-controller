@@ -63,7 +63,12 @@ abstract interface class Connector {
 }
 
 /// A listener couldn't start (every bind attempt failed).
-final class ListenFailed implements Exception { ListenFailed(this.message); final String message; }
+final class ListenFailed implements Exception {
+  ListenFailed(this.message);
+  final String message;
+  @override
+  String toString() => message; // HostService shows it as is
+}
 
 /// A connector couldn't open a channel. [osErrorCode] is the socket's OS
 /// error, when there was one (the client shows "is the firewall on?" from it).
@@ -71,6 +76,8 @@ final class ConnectFailed implements Exception {
   ConnectFailed(this.detail, {this.osErrorCode});
   final String detail;
   final int? osErrorCode;
+  @override
+  String toString() => detail;
 }
 ```
 
@@ -79,7 +86,7 @@ final class ConnectFailed implements Exception {
 | Type | File | What it does |
 | --- | --- | --- |
 | `WebSocketChannelAdapter` | `transport/web_socket_channel.dart` | Wraps a `dart:io` `WebSocket` and its remote address. The only place, with the two below, that imports `WebSocket`. |
-| `WebSocketListener` | `transport/web_socket_listener.dart` | Today's `_bind` (dual-stack first, preferred port then any) and `_onRequest` (upgrade on `webSocketPath`, the plain status page otherwise). Constructor: `preferredPort`, `hostName` (for the page), `log`. |
+| `WebSocketListener` | `transport/web_socket_listener.dart` | Today's `_bind` (dual-stack first, preferred port then any) and `_onRequest` (upgrade on `webSocketPath`, the plain status page otherwise). Constructor: `preferredPort` (default `defaultPort`, as today), `hostName` (for the page), `log`. |
 | `WebSocketConnector` | `transport/web_socket_connector.dart` | Today's loop in `ControllerClient._open`: each of `target.ordered`, `connectTimeout`, the log lines. Constructor: `connectTimeout` (default 4 s, named constant), `log`. Rejects a local target with ConnectFailed. |
 | `InProcessLink` | `transport/in_process_link.dart` | A connected pair: `MessageChannel get host`, `MessageChannel get controller`. Both ends `isLocal`, `remoteAddress` null. Frames are delivered asynchronously (never inside `send`), in order. Closing either end closes both, with the same code and reason on both. |
 | `InProcessListener` | `transport/in_process_listener.dart` | `ChannelListener` with `port` null, plus `MessageChannel connect()`: makes a link, hands its host end to the server, returns the controller end. Throws ConnectFailed when not started. |
@@ -88,9 +95,9 @@ final class ConnectFailed implements Exception {
 ## 2. Changes to existing types
 
 - `HostServer({required List<ChannelListener> listeners, ...})` replaces `preferredPort`. `start()` starts every listener (any failure: stop the started ones, rethrow). `stop()` stops them and closes every session as today. `port` and `HostSnapshot.port` come from the first listener with a port. `running` means started. Session code takes a `MessageChannel`; the session's address is `channel.remoteAddress`.
-- `ControllerInfo` gets `bool isLocal` (from the channel). `SavedPairing.remoteAddress` keeps the last network address; a local session doesn't overwrite it.
+- `ControllerInfo` gets `bool isLocal` (from the channel), and `remoteAddress` becomes `String?`: null for a local player, never `''` as a stand-in. Callers that show it handle null. `SavedPairing.remoteAddress` keeps the last network address; a local session doesn't overwrite it.
 - `ControllerClient({required Connector connector, ...})` replaces `connectTimeout`. `_open` asks the connector; `ConnectFailed.osErrorCode` replaces the `SocketException` check. Everything after the channel opens is unchanged. `describeError` stays for the connector's messages.
-- `HostAddress.local({required String hostId, String? name})`: the target for the host phone's own player. `isLocal` true, `addresses` empty, `port` 0. `display` is its `label` (no address to show). `uriFor` and `ordered` aren't used for it (the web socket connector rejects it). JSON round-trips `isLocal`.
+- `HostAddress.local({required String hostId, required String name})`: the target for the host phone's own player. `isLocal` true, `addresses` empty, `port` 0. `display` and `label` are `name` (no address to show). `uriFor` and `ordered` aren't used for it (the web socket connector rejects it). JSON round-trips `isLocal`.
 - `HostServer` and `ControllerClient` no longer import `dart:io` for sockets. `HostServer` may keep `dart:io` only if something else needs it: say what in the plan.
 - Callers updated in the same job (G4): `party_host` (`LiveHostService` builds `HostServer` with `[WebSocketListener(...)]`, the simulated controllers get a `WebSocketConnector`), `controller_app` (its client gets a `WebSocketConnector`). No behaviour change in either app: the host phone's own player comes in step 3.
 
@@ -99,6 +106,12 @@ final class ConnectFailed implements Exception {
 - Files: `host_server.dart` (813 lines) and `controller_client.dart` (839) are split along responsibilities as part of this job, each file ≤300 (hard limit 400). Suggested seams, to be confirmed in the G1 plan: host: the server's lifecycle and public API / the per-session state and message handling / pairing and saved pairings / the public value types (HostSnapshot, ControllerInfo, ControllerMessage, SavedPairing). Client: lifecycle and public API / the message handling / reconnect and retry / the value types (ClientSnapshot, ControllerIdentity, ClientStatus, ClientProblem).
 - No public name changes beyond §2. Every message, close code, log line and timing stays the same.
 - No `Future.delayed` or timers in the in-process link: asynchrony comes from the stream (a non-sync `StreamController`).
-- Tests: `test/helpers.dart` gets `enum TestTransport { webSocket, inProcess }`; `startHost`, `newClient` and `addressOf` take one. Each test file runs its tests once per transport (`for (final t in TestTransport.values) group(t.name, ...)`), except the tests about sockets themselves (port fallback, the plain status page, binary frames, address ordering, `host_address_test.dart`), which stay web-socket only. The plan lists which.
+- Tests: `test/helpers.dart` gets `enum TestTransport { webSocket, inProcess }`; `startHost`, `newClient` and `addressOf` take one, required (no default: a missed call site must not compile). Tests that drive a raw peer use `rawPeer(host, transport)` and a test `Connector`; tests that open no channel run once, outside the loop. Each test file runs its tests once per transport (`for (final t in TestTransport.values) group(t.name, ...)`), except the tests about sockets themselves (port fallback, the plain status page, binary frames, address ordering, `host_address_test.dart`), which stay web-socket only. The plan lists which.
 - New contract tests in `test/transport_test.dart`, run against both channel types: order kept; close code and reason seen on both ends; `send` after close does nothing; `close` twice does nothing; `incoming` done once. Web socket only: a binary frame closes with protocolError. In-process: `connect()` before `start()` and after `stop()` throws ConnectFailed; a frame is never delivered inside `send`. Listener: `stop()` leaves handed-over channels open.
 - `docs/architecture.md` gets a short transport section (the three interfaces, the two transports, why: D1).
+
+## 4. Gates (decided at G1, Nov 6; plan: [s2-g1-plan.md](../briefs/m12/s2-g1-plan.md))
+
+- **G2** the `transport/` types and `test/transport_test.dart`. `HostServer` and `ControllerClient` untouched.
+- **G3** the split of `host_server.dart` and `controller_client.dart` per the plan's §1b–1d, as a pure move: still on `WebSocket`, no behaviour or test change, every check green.
+- **G4** the server and client on `MessageChannel`, the callers, the parameterised tests, `docs/architecture.md`, every check green.

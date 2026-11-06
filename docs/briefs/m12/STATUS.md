@@ -6,7 +6,7 @@ Updated Nov 6, 2026, 15:50. Branch `m12`, worktree `E:\AI\game-controller-m12` (
 
 | Step | State |
 | --- | --- |
-| 1 Extract `party_host` | **Done** (`490633d`, pushed). All 10 checks pass (613 tests). Not yet done: the step's exit check "the Windows build runs" (build `tv_test_app` for Windows and start it once) |
+| 1 Extract `party_host` | **Done** (`490633d`, pushed). All 10 checks pass (613 tests). Windows exit check passed Nov 6 (release build ok; `tools/tv-dev.sh start` hosts on 45780 and advertises; sounds untested here because Claude's sandbox blocks %TEMP%) |
 | 1b Follow-ups | **Done**: `tools/review.sh`, `controls.dart` (cycle broken), home screen split into `ui/home/`, `hostActivateShortcuts`. Answers to s1b-report Q1–5: Q1 default base is now `HEAD` (one job's diff; `--base origin/main` for the branch) · Q2 TODO in tests too, ok · Q3 export `ClaimHandle` only when a caller needs it · Q4 `number` stays a NOTE; spacing scale is tech debt · Q5 long members are tech debt (project-notes) |
 | 2 Transport | Contract written: [../../design/m12-transport.md](../../design/m12-transport.md). Next: G1 plan (`s2-g1.md`) |
 | 3–9 | Not started |
