@@ -12,7 +12,7 @@ final class SessionFile {
 
   /// The session ID, which the upload queue uses to skip files it already
   /// sent.
-  String get id => throw UnimplementedError();
+  String get id => summary['id'] as String? ?? '';
 }
 
 /// What the host screens need from the analytics. A fake implements it in

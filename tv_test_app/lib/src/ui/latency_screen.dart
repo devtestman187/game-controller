@@ -72,7 +72,7 @@ class LatencyScreen extends ConsumerWidget {
 Future<void> saveLog(BuildContext context, WidgetRef ref) async {
   final messenger = ScaffoldMessenger.of(context);
   try {
-    final path = await ref.read(hostControllerProvider).exportLog();
+    final path = await ref.read(hostServiceProvider).exportLog();
     messenger.showSnackBar(SnackBar(content: Text('Log saved to $path'), duration: const Duration(seconds: 8)));
   } catch (e) {
     messenger.showSnackBar(SnackBar(content: Text('Could not save the log: $e')));

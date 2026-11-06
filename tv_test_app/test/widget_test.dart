@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -9,16 +8,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:game_assets/asset_manifest.dart';
 import 'package:metrics/metrics.dart';
+import 'package:party_host/party_host.dart';
+import 'package:party_host/testing.dart';
 import 'package:protocol/protocol.dart';
 import 'package:puzzle_game/puzzle_game.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:test_game/test_game.dart' show feedsOf;
 import 'package:tvtest/main.dart';
-import 'package:tvtest/src/analytics.dart';
-import 'package:tvtest/src/host_controller.dart';
 import 'package:tvtest/src/providers.dart';
-import 'package:tvtest/src/screen_awake.dart';
-import 'package:tvtest/src/sound.dart';
 import 'package:tvtest/src/keyboard_player.dart';
 import 'package:tvtest/src/ui/game_screen.dart';
 import 'package:tvtest/src/ui/games_screen.dart';
@@ -32,307 +29,8 @@ import 'package:tvtest/src/ui/latency_screen.dart';
 import 'package:tvtest/src/ui/stats_screen.dart';
 import 'package:tvtest/src/ui/tv_button.dart';
 
-class FakeHostController implements HostController {
-  FakeHostController(this.state, {bool? consent = true}) : stats = FakeStats(consent: consent) {
-    gameHost = FakeGameHost(this);
-  }
-
-  @override
-  late final FakeGameHost gameHost;
-
-  @override
-  final FakeStats stats;
-
-  @override
-  Stream<String> get gameSounds => gameHost.soundStream;
-
-  @override
-  HostViewState state;
-  final _changes = StreamController<HostViewState>.broadcast();
-  int newCodes = 0;
-  int simAdds = 0;
-  int simStops = 0;
-  int drops = 0;
-
-  @override
-  Stream<HostViewState> get changes => _changes.stream;
-
-  void emit() => _changes.add(state);
-
-  @override
-  void newPairingCode() => newCodes++;
-
-  @override
-  void addSimulatedController() => simAdds++;
-
-  @override
-  void stopSimulatedControllers() => simStops++;
-
-  @override
-  void dropAllConnections() => drops++;
-
-  /// Haptic events the game host sent: (event, player ID).
-  final haptics = <(HapticEventMessage, String?)>[];
-
-  int forgets = 0;
-  int exports = 0;
-
-  @override
-  int forgetPairings() {
-    forgets++;
-    return 1;
-  }
-
-  @override
-  Future<String> exportLog() async {
-    exports++;
-    return 'D:/logs/controller-test-log.txt';
-  }
-
-  @override
-  Future<void> dispose() => _changes.close();
-}
-
-/// The game host over the fake host state: its connected controllers are the
-/// players, plus any local ones.
-class FakeGameHost implements GameHost {
-  FakeGameHost(this.fake) {
-    fake._changes.stream.listen((_) => _changes.add(players));
-  }
-
-  final FakeHostController fake;
-  final locals = <String, LocalPlayer>{};
-  final records = <GameRecord>[];
-  final stages = <StageSample>[];
-  final asks = <(String, String)>[];
-  final _changes = StreamController<List<GamePlayer>>.broadcast();
-  final _clock = Stopwatch()..start();
-
-  ControllerInfo? _info(String id) => fake.state.players.where((c) => c.controllerId == id).firstOrNull;
-
-  @override
-  int get nowMs => _clock.elapsedMilliseconds;
-
-  @override
-  List<GamePlayer> get players => [
-    for (final (i, c) in fake.state.players.indexed)
-      GamePlayer(
-        id: c.controllerId,
-        number: c.player ?? i + 1,
-        nickname: c.name,
-        mode: InputMode.of(c.input),
-        simulated: c.platform == 'sim',
-      ),
-    for (final l in locals.values)
-      GamePlayer(id: l.id, number: l.number, nickname: l.nickname, local: true, mode: InputMode.keyboard),
-  ]..sort((a, b) => a.number.compareTo(b.number));
-
-  @override
-  Stream<List<GamePlayer>> get playersChanged => _changes.stream;
-
-  @override
-  GamepadState gamepad(String playerId) =>
-      locals[playerId]?.state ?? pads[playerId] ?? GamepadState.fromInput(_info(playerId)?.input);
-
-  /// A phone's buttons, set by the test.
-  final pads = <String, GamepadState>{};
-
-  void setGamepad(String id, GamepadState state) => pads[id] = state;
-
-  @override
-  int? inputArrivedAtMs(String playerId) => null;
-
-  @override
-  bool haptic(String playerId, HapticEventMessage event) {
-    if (_info(playerId) == null) return false;
-    fake.haptics.add((event, playerId));
-    return true;
-  }
-
-  @override
-  bool askRating(String playerId, {required String id, required String game}) {
-    asks.add((playerId, id));
-    return true;
-  }
-
-  @override
-  PlayerLatency? latency(String playerId) {
-    final c = _info(playerId);
-    if (c == null) return null;
-    return (
-      ping: c.rttStats,
-      pingNowMs: c.rttMs,
-      inputDelay: c.inputLatency,
-      inputDelaySession: c.inputLatencySession,
-      errorMs: c.latencyErrorMs,
-    );
-  }
-
-  @override
-  RttSummary? stageSummary(String playerId, String stage) =>
-      stage == LatencyStage.sentToReceived ? _info(playerId)?.inputLatency : null;
-
-  @override
-  void record(GameRecord record) => records.add(record);
-
-  @override
-  void reportStage(String playerId, String stage, int ms) => stages.add((playerId: playerId, stage: stage, ms: ms));
-
-  final _sounds = StreamController<String>.broadcast();
-  Stream<String> get soundStream => _sounds.stream;
-
-  /// Each player's layout and status panel, as the game set them.
-  final layouts = <String, GameLayoutMessage>{};
-  final statuses = <String, StatusMessage>{};
-
-  @override
-  void playSound(String name) => _sounds.add(name);
-
-  @override
-  void setLayout(String playerId, GameLayoutMessage layout) => layouts[playerId] = layout;
-
-  @override
-  void setStatus(String playerId, StatusMessage status) => statuses[playerId] = status;
-
-  @override
-  LocalPlayer addLocalPlayer({String? nickname}) {
-    final n = players.fold(0, (a, p) => p.number > a ? p.number : a) + 1;
-    final p = LocalPlayer(
-      'local-$n',
-      n,
-      nickname: nickname,
-      onRemove: (p) {
-        locals.remove(p.id);
-        _changes.add(players);
-      },
-    );
-    locals[p.id] = p;
-    _changes.add(players);
-    return p;
-  }
-}
-
-/// Analytics for the tests: [summaries] are the saved sessions.
-class FakeStats implements StatsService {
-  FakeStats({bool? consent}) : _state = StatsState(consent: consent, uploadConfigured: true);
-
-  StatsState _state;
-  final _changes = StreamController<StatsState>.broadcast();
-  final summaries = <Map<String, Object?>>[];
-  final consents = <bool>[];
-  int exports = 0;
-
-  void emit(StatsState s) {
-    _state = s;
-    _changes.add(s);
-  }
-
-  @override
-  StatsState get state => _state;
-
-  @override
-  Stream<StatsState> get changes => _changes.stream;
-
-  @override
-  Future<List<SessionFile>> sessions() async => [
-    for (final (i, s) in summaries.indexed) SessionFile('/sessions/s$i.json', s),
-  ];
-
-  @override
-  Future<String> exportAll() async {
-    exports++;
-    return 'D:/Downloads/thumb-party-sessions';
-  }
-
-  @override
-  void setConsent(bool share) {
-    consents.add(share);
-    emit(_state.copyWith(consent: share));
-  }
-
-  @override
-  Future<void> uploadNow() async {}
-}
-
-HostViewState sampleState() => HostViewState(
-  hostName: 'Android TV',
-  host: HostSnapshot(
-    running: true,
-    port: 45780,
-    pairingCode: '0427',
-    controllers: [
-      ControllerInfo(
-        controllerId: 'p1',
-        name: 'iPhone 3F1C',
-        platform: 'ios',
-        appVersion: '0.1.0',
-        remoteAddress: '192.168.1.20',
-        state: ControllerState.connected,
-        since: DateTime(2026),
-        rttMs: 12,
-        rttStats: const RttSummary(minMs: 8, avgMs: 20, maxMs: 140, samples: 30, p95Ms: 60),
-        input: InputStateMessage(seq: 3, buttons: {ControllerButton.a}, dx: 1),
-        player: 1,
-        inputLatency: const RttSummary(minMs: 3, avgMs: 9, maxMs: 41, samples: 900, p95Ms: 18),
-        inputLatencySession: const RttSummary(minMs: 2, avgMs: 10, maxMs: 80, samples: 5400),
-        latencyErrorMs: 4,
-      ),
-      ControllerInfo(
-        controllerId: 'p2',
-        name: 'Pixel',
-        platform: 'android',
-        appVersion: '0.1.0',
-        remoteAddress: '192.168.1.21',
-        state: ControllerState.pairing,
-        since: DateTime(2026),
-      ),
-    ],
-  ),
-  addresses: const [LocalAddress('192.168.1.50', 'wlan0')],
-  advertise: AdvertiseState.advertising,
-  advertisedName: 'Thumb Party TV (Android TV)',
-);
-
-/// A connected phone, like the sample state's first controller, without input.
-ControllerInfo phoneInfo(String id, int player, {String platform = 'android'}) => ControllerInfo(
-  controllerId: id,
-  name: 'Phone $player',
-  platform: platform,
-  appVersion: '0.1.0',
-  remoteAddress: '192.168.1.2$player',
-  state: ControllerState.connected,
-  since: DateTime(2026),
-  player: player,
-);
-
-/// [s] with [c] added to its controllers, as the host reports a new phone.
-HostViewState withController(HostViewState s, ControllerInfo c) => HostViewState(
-  hostName: s.hostName,
-  host: HostSnapshot(
-    running: s.host.running,
-    port: s.host.port,
-    pairingCode: s.host.pairingCode,
-    controllers: [...s.host.controllers, c],
-  ),
-  addresses: s.addresses,
-  advertise: s.advertise,
-  advertisedName: s.advertisedName,
-  advertiseError: s.advertiseError,
-  serverError: s.serverError,
-  sims: s.sims,
-);
-
 late FakeSoundPlayer sounds;
 late FakeScreenAwake awake;
-
-class FakeScreenAwake implements ScreenAwake {
-  final calls = <bool>[];
-
-  bool get on => calls.isNotEmpty && calls.last;
-
-  @override
-  Future<void> set(bool on) async => calls.add(on);
-}
 
 /// Scrolls a button into view first: the pairing panel scrolls at TV size.
 Future<void> tapVisible(WidgetTester tester, Finder finder) async {
@@ -341,7 +39,7 @@ Future<void> tapVisible(WidgetTester tester, Finder finder) async {
   await tester.tap(finder);
 }
 
-Future<FakeHostController> pumpApp(
+Future<FakeHostService> pumpApp(
   WidgetTester tester, {
   Size size = const Size(960, 540),
   bool? consent = true,
@@ -352,7 +50,7 @@ Future<FakeHostController> pumpApp(
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
-  final fake = FakeHostController(sampleState(), consent: consent);
+  final fake = FakeHostService(sampleState(), consent: consent);
   fake.stats.summaries.addAll(sessions);
   SharedPreferences.setMockInitialValues({});
   final prefs = await SharedPreferences.getInstance();
@@ -361,7 +59,7 @@ Future<FakeHostController> pumpApp(
       overrides: [
         prefsProvider.overrideWithValue(prefs),
         puzzleLibraryProvider.overrideWith((ref) => testPuzzles()),
-        hostControllerProvider.overrideWithValue(fake),
+        hostServiceProvider.overrideWithValue(fake),
         soundPlayerProvider.overrideWithValue(sounds),
         screenAwakeProvider.overrideWithValue(awake),
       ],
@@ -484,7 +182,7 @@ void main() {
       advertise: AdvertiseState.failed,
       advertiseError: 'mDNS unavailable',
     );
-    fake._changes.add(fake.state);
+    fake.emit();
     await tester.pumpAndSettle();
     expect(find.text('9 0 0 1'), findsOneWidget);
     expect(find.textContaining('No controllers yet'), findsOneWidget);
@@ -583,7 +281,7 @@ void main() {
   });
 
   group('haptic test panel', () {
-    Future<FakeHostController> openPanel(WidgetTester tester) async {
+    Future<FakeHostService> openPanel(WidgetTester tester) async {
       final fake = await pumpApp(tester);
       await tapVisible(tester, find.text('Haptic test'));
       await tester.pumpAndSettle();
@@ -668,7 +366,7 @@ void main() {
       }
     }
 
-    Future<FakeHostController> openGame(WidgetTester tester, {Size size = const Size(960, 540)}) async {
+    Future<FakeHostService> openGame(WidgetTester tester, {Size size = const Size(960, 540)}) async {
       final fake = await pumpApp(tester, size: size);
       await openArena(tester);
       return fake;
@@ -745,7 +443,7 @@ void main() {
     );
 
     test('players are the connected controllers in player order, each with its colour', () {
-      final fake = FakeHostController(s([c('b', 2), c('gone', null), c('a', 1)]));
+      final fake = FakeHostService(s([c('b', 2), c('gone', null), c('a', 1)]));
       final feeds = feedsOf(fake.gameHost);
       expect(feeds.map((f) => (f.id, f.number)), [('a', 1), ('b', 2)]);
       expect(feeds.map((f) => f.color), [Color(playerColors[0]), Color(playerColors[1])]);
@@ -826,7 +524,18 @@ void main() {
       final log = LogBuffer()
         ..add('host', 'Listening on port 45780')
         ..add('host', 'iPhone 3F1C connected');
-      final text = buildLogExport(sampleState(), log, now: DateTime(2026, 10, 25, 20, 15));
+      final text = buildLogExport(
+        sampleState(),
+        log,
+        const HostIdentity(
+          appVersion: '0.11.0',
+          versionLabel: '0.11.0 (dev)',
+          hostType: 'android_tv',
+          hostOs: 'windows',
+          defaultHostName: 'Android TV',
+        ),
+        now: DateTime(2026, 10, 25, 20, 15),
+      );
       expect(text, startsWith('Thumb Party TV '));
       expect(text, contains('2026-10-25T20:15:00.000'));
       expect(text, contains('P1 iPhone 3F1C (ios 0.1.0), connected'));
@@ -1035,7 +744,7 @@ Future<void> openArena(WidgetTester tester) async {
 }
 
 void puzzle() {
-  Future<FakeHostController> openShapeRace(WidgetTester tester) async {
+  Future<FakeHostService> openShapeRace(WidgetTester tester) async {
     final fake = await pumpApp(tester);
     await tapVisible(tester, find.byKey(const Key('openPlay')));
     await tester.pumpAndSettle();
@@ -1374,20 +1083,20 @@ void puzzle() {
 
 void m11() {
   /// A phone's buttons, read by the menus two frames later.
-  Future<void> phone(WidgetTester tester, FakeHostController fake, String id, Set<GamepadButton> buttons) async {
+  Future<void> phone(WidgetTester tester, FakeHostService fake, String id, Set<GamepadButton> buttons) async {
     fake.gameHost.setGamepad(id, GamepadState(buttons: buttons, mode: InputMode.dpad));
     await tester.pump(const Duration(milliseconds: 16));
     await tester.pump(const Duration(milliseconds: 16));
   }
 
   /// A press: the button held, then let go (the menus act on the change).
-  Future<void> press(WidgetTester tester, FakeHostController fake, String id, GamepadButton button) async {
+  Future<void> press(WidgetTester tester, FakeHostService fake, String id, GamepadButton button) async {
     await phone(tester, fake, id, {button});
     await phone(tester, fake, id, {});
   }
 
   /// A new player counts as holding what it holds now: settle it first.
-  Future<void> neutral(WidgetTester tester, FakeHostController fake, Iterable<String> ids) async {
+  Future<void> neutral(WidgetTester tester, FakeHostService fake, Iterable<String> ids) async {
     for (final id in ids) {
       await phone(tester, fake, id, {});
     }
@@ -1828,7 +1537,7 @@ void m11() {
       advertise: s.advertise,
       advertisedName: s.advertisedName,
       sims: [
-        for (var i = 0; i < HostController.maxSims; i++) ClientSnapshot(status: ClientStatus.connected, player: i + 2),
+        for (var i = 0; i < HostService.maxSims; i++) ClientSnapshot(status: ClientStatus.connected, player: i + 2),
       ],
     );
     fake.emit();

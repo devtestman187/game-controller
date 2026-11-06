@@ -4,14 +4,12 @@ import 'dart:convert';
 import 'package:connection/connection.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:party_host/party_host.dart';
 import 'package:protocol/protocol.dart';
 import 'package:puzzle_game/puzzle_game.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'analytics.dart';
-import 'host_controller.dart';
-import 'screen_awake.dart';
-import 'sound.dart';
+import 'tv_host_setup.dart';
 
 /// Overridden in main() with the loaded instance.
 final prefsProvider = Provider<SharedPreferences>(
@@ -29,11 +27,19 @@ final logProvider = Provider<LogBuffer>((ref) {
   return log;
 });
 
-final hostControllerProvider = Provider<HostController>((ref) {
-  final controller = LiveHostController(prefs: ref.watch(prefsProvider), log: ref.watch(logProvider));
-  unawaited(controller.start());
-  ref.onDispose(controller.dispose);
-  return controller;
+final hostServiceProvider = Provider<HostService>((ref) {
+  final log = ref.watch(logProvider);
+  final service = LiveHostService(
+    prefs: ref.watch(prefsProvider),
+    log: log,
+    identity: tvHostIdentity(),
+    directories: const TvDirectories(),
+    advertiser: BonsoirAdvertiser(log: log.sink('tv')),
+    uploader: tvUploader(),
+  );
+  unawaited(service.start());
+  ref.onDispose(service.dispose);
+  return service;
 });
 
 final hostStateProvider = NotifierProvider<HostStateNotifier, HostViewState>(HostStateNotifier.new);
@@ -41,7 +47,7 @@ final hostStateProvider = NotifierProvider<HostStateNotifier, HostViewState>(Hos
 class HostStateNotifier extends Notifier<HostViewState> {
   @override
   HostViewState build() {
-    final controller = ref.watch(hostControllerProvider);
+    final controller = ref.watch(hostServiceProvider);
     final sub = controller.changes.listen((s) => state = s);
     ref.onDispose(sub.cancel);
     return controller.state;
@@ -49,7 +55,7 @@ class HostStateNotifier extends Notifier<HostViewState> {
 }
 
 /// The game host (PRD v2 P3): what the game and the test screens use.
-final gameHostProvider = Provider<GameHost>((ref) => ref.watch(hostControllerProvider).gameHost);
+final gameHostProvider = Provider<GameHost>((ref) => ref.watch(hostServiceProvider).gameHost);
 
 /// The players in the game, by number: phones and local players (S2).
 final gamePlayersProvider = NotifierProvider<GamePlayersNotifier, List<GamePlayer>>(GamePlayersNotifier.new);
@@ -77,12 +83,12 @@ class GamePlayersNotifier extends Notifier<List<GamePlayer>> {
 /// running.
 final gameSoundsProvider = Provider<void>((ref) {
   final player = ref.watch(soundPlayerProvider);
-  final sub = ref.watch(hostControllerProvider).gameSounds.listen(player.play);
+  final sub = ref.watch(hostServiceProvider).gameSounds.listen(player.play);
   ref.onDispose(sub.cancel);
 });
 
 /// Analytics (M9): the session files, consent and upload.
-final statsServiceProvider = Provider<StatsService>((ref) => ref.watch(hostControllerProvider).stats);
+final statsServiceProvider = Provider<StatsService>((ref) => ref.watch(hostServiceProvider).stats);
 
 final statsStateProvider = NotifierProvider<StatsStateNotifier, StatsState>(StatsStateNotifier.new);
 

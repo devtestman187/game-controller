@@ -13,10 +13,11 @@ final class LocalAddress {
   final String interfaceName;
 
   @override
-  bool operator ==(Object other) => throw UnimplementedError();
+  bool operator ==(Object other) =>
+      other is LocalAddress && other.address == address && other.interfaceName == interfaceName;
 
   @override
-  int get hashCode => throw UnimplementedError();
+  int get hashCode => Object.hash(address, interfaceName);
 }
 
 /// Everything the host screens show.
@@ -59,5 +60,6 @@ final class HostViewState {
   final List<ClientSnapshot> sims;
 
   /// Connected controllers by player number (PRD T9).
-  List<ControllerInfo> get players => throw UnimplementedError();
+  List<ControllerInfo> get players =>
+      host.connected.toList()..sort((a, b) => (a.player ?? 99).compareTo(b.player ?? 99));
 }

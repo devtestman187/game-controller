@@ -10,7 +10,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:game_assets/asset_manifest.dart';
-import 'package:tvtest/src/sound.dart';
+import 'package:party_host/party_host.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();

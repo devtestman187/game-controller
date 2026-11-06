@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:game_assets/asset_manifest.dart';
+import 'package:party_host/party_host.dart';
 import 'package:protocol/protocol.dart';
 
 import '../providers.dart';
-import '../sound.dart';
 import 'tv_button.dart';
 
 /// The haptic test panel (PRD T6): fires each haptic event on every connected

@@ -1,4 +1,8 @@
+import 'dart:async';
+
+import 'package:bonsoir/bonsoir.dart';
 import 'package:connection/connection.dart';
+import 'package:protocol/protocol.dart';
 
 /// Where advertising the host's game service stands (PRD T6).
 enum AdvertiseState {
@@ -53,22 +57,74 @@ abstract interface class Advertiser {
 /// Advertises through `package:bonsoir` (Bonjour on Apple, NSD on Android and
 /// Windows), the same plugin the phone apps use to find hosts.
 ///
-/// The implementation comes at G3; this is the declaration the host service
-/// is written against.
+/// The `bonsoir` plugin is the only platform code here: a build without the
+/// plugin fails advertising ([AdvertiseState.failed]) and phones can still
+/// join by address and code. [stop] closes [changes], as nothing is left
+/// listening after it.
 class BonsoirAdvertiser implements Advertiser {
   /// [log] gets short lines about advertising, tagged `host`.
-  BonsoirAdvertiser({LogSink? log});
+  BonsoirAdvertiser({LogSink? log}) : _log = log ?? ((_) {});
+
+  final LogSink _log;
+  final _changes = StreamController<AdvertiserStatus>.broadcast();
+  AdvertiserStatus _status = const AdvertiserStatus(state: AdvertiseState.starting);
+  BonsoirBroadcast? _broadcast;
+  StreamSubscription<BonsoirBroadcastEvent>? _sub;
 
   @override
-  Future<void> start({required String serviceName, required int port, required Map<String, String> txt}) =>
-      throw UnimplementedError();
+  AdvertiserStatus get status => _status;
 
   @override
-  Future<void> stop() => throw UnimplementedError();
+  Stream<AdvertiserStatus> get changes => _changes.stream;
 
   @override
-  AdvertiserStatus get status => throw UnimplementedError();
+  Future<void> start({required String serviceName, required int port, required Map<String, String> txt}) async {
+    final service = BonsoirService(name: serviceName, type: serviceType, port: port, attributes: txt);
+    final broadcast = BonsoirBroadcast(service: service);
+    _broadcast = broadcast;
+    try {
+      await broadcast.initialize();
+      _sub = broadcast.eventStream?.listen((event) {
+        switch (event) {
+          case BonsoirBroadcastStartedEvent():
+            _set(AdvertiserStatus(state: AdvertiseState.advertising, advertisedName: event.service.name));
+            _log('Advertising "${event.service.name}" ($serviceType, port ${event.service.port})');
+          case BonsoirBroadcastNameAlreadyExistsEvent():
+            _set(AdvertiserStatus(state: _status.state, advertisedName: event.service.name, error: _status.error));
+            _log('Name already taken on the network, now advertising as "${event.service.name}"');
+          case BonsoirBroadcastStoppedEvent():
+            _log('Advertising stopped');
+            _set(_status);
+          default:
+            _set(_status);
+        }
+      }, onError: _failed);
+      await broadcast.start();
+    } catch (e) {
+      _failed(e);
+    }
+  }
 
   @override
-  Stream<AdvertiserStatus> get changes => throw UnimplementedError();
+  Future<void> stop() async {
+    await _sub?.cancel();
+    _sub = null;
+    try {
+      await _broadcast?.stop();
+    } catch (e) {
+      _log('Could not stop advertising: $e');
+    }
+    _broadcast = null;
+    await _changes.close();
+  }
+
+  void _failed(Object error) {
+    _set(AdvertiserStatus(state: AdvertiseState.failed, advertisedName: _status.advertisedName, error: '$error'));
+    _log('Advertising failed: $error');
+  }
+
+  void _set(AdvertiserStatus s) {
+    _status = s;
+    if (!_changes.isClosed) _changes.add(s);
+  }
 }

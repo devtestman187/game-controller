@@ -40,7 +40,15 @@ final class StatsState {
     Object? lastError = _keep,
     Object? current = _keep,
     int? saved,
-  }) => throw UnimplementedError();
+  }) => StatsState(
+    consent: identical(consent, _keep) ? this.consent : consent as bool?,
+    uploadConfigured: uploadConfigured,
+    waiting: waiting ?? this.waiting,
+    uploaded: uploaded ?? this.uploaded,
+    lastError: identical(lastError, _keep) ? this.lastError : lastError as String?,
+    current: identical(current, _keep) ? this.current : current as Map<String, Object?>?,
+    saved: saved ?? this.saved,
+  );
 }
 
 /// Marks a [StatsState.copyWith] argument that wasn't given, so the current

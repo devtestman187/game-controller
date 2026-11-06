@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 /// Sends one session summary to the cloud store.
@@ -15,7 +16,8 @@ class FirestoreUploader implements SessionUploader {
   /// [project] and [apiKey] come from the shell's own build-time constants,
   /// so `party_host` holds no project or key of its own (S-e). [client] lets
   /// a test point it at a local server instead of Google.
-  FirestoreUploader({required this.project, this.apiKey = '', HttpClient Function()? client});
+  FirestoreUploader({required this.project, this.apiKey = '', HttpClient Function()? client})
+    : _client = client ?? HttpClient.new;
 
   /// The Firebase project the stats go to.
   final String project;
@@ -23,7 +25,39 @@ class FirestoreUploader implements SessionUploader {
   /// The project's web API key (optional for Firestore, which the security
   /// rules protect).
   final String apiKey;
+  final HttpClient Function() _client;
 
   @override
-  Future<String?> upload(Map<String, Object?> summary) => throw UnimplementedError();
+  Future<String?> upload(Map<String, Object?> summary) async {
+    final id = summary['id'];
+    if (id is! String || id.isEmpty) return 'no session ID';
+    final uri = Uri.https('firestore.googleapis.com', '/v1/projects/$project/databases/(default)/documents/sessions', {
+      'documentId': id,
+      if (apiKey.isNotEmpty) 'key': apiKey,
+    });
+    final body = jsonEncode({
+      'fields': {
+        'json': {'stringValue': jsonEncode(summary)},
+        'schema': {'integerValue': '${summary['schema']}'},
+        'date': {'stringValue': '${summary['date']}'},
+        'app': {'stringValue': '${(summary['host'] as Map?)?['app'] ?? ''}'},
+        'host': {'stringValue': '${(summary['host'] as Map?)?['type'] ?? ''}'},
+      },
+    });
+    final client = _client()..connectionTimeout = const Duration(seconds: 10);
+    try {
+      final request = await client.postUrl(uri);
+      request.headers.contentType = ContentType.json;
+      request.write(body);
+      final response = await request.close().timeout(const Duration(seconds: 20));
+      final text = await response.transform(utf8.decoder).join();
+      if (response.statusCode == 200) return null;
+      if (response.statusCode == 409) return null; // Already uploaded.
+      return 'HTTP ${response.statusCode}: ${text.length > 200 ? text.substring(0, 200) : text}';
+    } catch (e) {
+      return '$e';
+    } finally {
+      client.close();
+    }
+  }
 }

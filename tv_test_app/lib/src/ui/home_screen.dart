@@ -4,10 +4,10 @@ import 'package:connection/connection.dart';
 import 'package:game_assets/asset_manifest.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:party_host/party_host.dart';
 import 'package:protocol/protocol.dart';
 
 import '../app_info.dart';
-import '../host_controller.dart';
 import '../providers.dart';
 import 'games_screen.dart';
 import 'haptic_panel_screen.dart';
@@ -253,7 +253,7 @@ class _PairingPanel extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final text = Theme.of(context).textTheme;
     final scheme = Theme.of(context).colorScheme;
-    final controller = ref.read(hostControllerProvider);
+    final controller = ref.read(hostServiceProvider);
     final port = state.host.port;
     final sims = state.sims;
     final advertisedName = state.advertisedName ?? 'Thumb Party TV (${state.hostName})';
@@ -321,7 +321,7 @@ class _PairingPanel extends ConsumerWidget {
                 key: const Key('addSim'),
                 label: sims.isEmpty ? 'Simulate controller' : 'Add simulated controller',
                 icon: Icons.smart_toy_outlined,
-                onPressed: port == null || sims.length >= HostController.maxSims
+                onPressed: port == null || sims.length >= HostService.maxSims
                     ? null
                     : controller.addSimulatedController,
               ),
@@ -439,7 +439,7 @@ class _ControllersPanel extends ConsumerWidget {
             compact: true,
             onPressed: anyGone
                 ? () {
-                    final n = ref.read(hostControllerProvider).forgetPairings();
+                    final n = ref.read(hostServiceProvider).forgetPairings();
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(content: Text('Forgot $n phone${n == 1 ? '' : 's'}. They need the code again.')),
                     );
