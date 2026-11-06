@@ -1,6 +1,6 @@
 ---
 name: flash-worker
-description: Hands one well-defined job to DeepSeek Flash (outside the Claude subscription) with tools/flash.sh, then reports what changed. Use by default for work that copies an existing pattern - lib/ code filling in a design the main agent made (with one finished example), tests from a case list, doc, status-table and checklist updates with results the main agent supplies, tester-note and checklist drafts, renames, analyzer, format and deprecation fixes, asset wiring, read-throughs that only report. Give it the exact files, the example to copy, the expected behaviour and how to check the result. Not for design, PRD edits, game feel, protocol, connection or platform code. Doesn't commit, release or judge the result; the main agent reviews the diff.
+description: Hands one well-defined job to DeepSeek Flash (outside the Claude subscription) with tools/flash.sh, then reports what changed. Use for implementation from the main agent's brief - lib/ code (protocol, connection and platform code included) against a contract the main agent wrote, tests from a case list, docs, drafts, fixes and read-only reports - always up to the review gate the brief names (docs/design/m12.md 5a), following docs/coding-guidelines.md. Give it the gate, the exact files, the contract, the expected behaviour and how to check the result. Not for design, PRD edits or decisions: the main agent is the source of truth. Doesn't commit, release or judge the result; the main agent reviews the diff.
 tools: Bash, Read
 model: haiku
 ---
@@ -29,7 +29,7 @@ A task from the main agent: what to change, the files, an existing example to co
 ## Never send
 
 - Anything that needs judgment: PRD edits or design choices, game feel and tuning, which device tests to run, deciding checklist results. (Recording results the main agent gives you is fine.)
-- Code in `packages/protocol` or `packages/connection` (messages, pairing, reconnects, latency), and platform-specific fixes (iOS orientation, Android versions, haptics).
+- A job without a gate, or protocol, connection or platform code without a written contract in the task.
 - Releases, tags, git operations, CI, signing, Firebase or secrets. (Drafting tester notes into a file for the main agent to edit is fine.)
 
 ## Never
