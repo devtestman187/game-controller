@@ -19,19 +19,36 @@ import 'paths.dart';
 /// 46-53 fps with the game live and the owner accepted that on Nov 4, 2026.
 ///
 /// **Motion windows (owner-approved, Nov 5, 2026).** The distinct-frame count
-/// and the `mpdecimate` stutter rule measure *changing content*, so they are
-/// only applied where the take's **touch log** shows the driver moving a finger
-/// or stick: consecutive logged frames whose finger changed position with less
-/// than 250 ms between them, merged, plus 300 ms either side. A menu, join list
-/// or pairing screen has no such span, and measuring it there counted the
-/// artwork, not the capture (P2 takes 4-6: 26.5-26.9 "fps", R1 take 3: 2.6,
-/// G1 take 1: 1.0, while every frame was delivered). Every phone half is now
-/// checked for **delivery** instead: at least 45 decoded frames a second over
-/// the take and no gap between decoded frame timestamps over 100 ms. With no
-/// motion window, delivery is the whole phone rule and the content rules are
-/// reported as not measured. The thresholds are unchanged (phone content floor
-/// 45 distinct fps, stock `mpdecimate` thresholds, 3+ duplicate frames) and
-/// arena shots (M1-M4) keep their own rule untouched.
+/// and the `mpdecimate` stutter rule measure *changing content*, so for the
+/// **phone half** they are only applied where the take's **touch log** shows
+/// the driver moving a finger or stick: consecutive logged frames whose finger
+/// changed position with less than 250 ms between them, merged, plus 300 ms
+/// either side. A menu, join list or pairing screen has no such span, and
+/// measuring it there counted the artwork, not the capture (P2 takes 4-6:
+/// 26.5-26.9 "fps", R1 take 3: 2.6, G1 take 1: 1.0, while every frame was
+/// delivered). Every phone half is now checked for **delivery** instead: at
+/// least 45 decoded frames a second over the take and no gap between decoded
+/// frame timestamps over 100 ms. With no motion window, delivery is the whole
+/// phone rule and the content rules are reported as not measured. The
+/// thresholds are unchanged (phone content floor 45 distinct fps, stock
+/// `mpdecimate` thresholds, 3+ duplicate frames) and arena shots (M1-M4) keep
+/// their own phone rule untouched.
+///
+/// **The TV half uses the event log, not the touch log (owner-approved change,
+/// Nov 5, 2026).** The phone's finger only moves when the phone is played, but
+/// the TV picture moves whenever *any* seat does, so the touch windows are the
+/// wrong span for the TV half: a race can stutter between two of the phone's
+/// moves and every window would miss it. For a non-arena shot whose event log
+/// has a `game_start`, the TV half is now graded the way an arena shot's is -
+/// the **exact-duplicate** rule (3+ identical decoded frames, framehash) over
+/// `game_start` to `scene_end`, mapped through the take's `recorders.json`
+/// `start`. A shot with no `game_start` (menus, joins, the lobby, pairing) has
+/// no gameplay span to grade, so it gets the **delivery check only**: at least
+/// 59 decoded frames a second and no timestamp gap over 100 ms. The stock
+/// `mpdecimate` number over the same span is still recorded, reported only:
+/// its thresholds call ordinary 60 fps gameplay duplicates (G1 take 1 read 164
+/// "runs" in 3.5 s of play where all 210 frames were distinct), which is why
+/// the arena rule exists.
 ///
 /// Arena shots (M1-M4) use an exact-duplicate stutter rule instead of the stock
 /// `mpdecimate` threshold: the Arena's dot changes too few pixels per frame for
@@ -241,48 +258,64 @@ Future<QaResult> runQa({
         );
       }
 
-      // The TV half follows the same windows for the same reason: a menu or
-      // join screen is static by design, and the stock thresholds call those
-      // frames duplicates. R1 take 3 kept 132 frames of about 1400 that way.
-      final tvStutter = windows.isEmpty
-          ? null
-          : await stutterInWindows(
-              both.path,
-              crop: 'crop=1920:1080:0:0',
-              windows: windows,
-            );
-      data['stutter'] = {'tv': tvStutter, 'phone': phoneGrade.stutter};
+      // The TV half is graded on the **event log's** span instead (owner-
+      // approved change, Nov 5, 2026): `game_start` to `scene_end` with the
+      // exact-duplicate rule, as the arena shots do. The touch windows are the
+      // phone's own activity, and the TV picture moves whenever any seat moves;
+      // a menu, join or lobby shot has no game_start, so delivery is its whole
+      // rule. See the file comment for why the stock mpdecimate thresholds are
+      // only reported on this span.
+      final tvGrade = await gradeTvHalf(
+        both.path,
+        crop: 'crop=1920:1080:0:0',
+        duration: master.duration,
+        eventsPath: eventsPath,
+        recordersPath: recordersPath,
+      );
+      data['tvDelivery'] = tvGrade.delivery?.toJson();
+      data['movementWindow'] = tvGrade.gameWindow?.toJson();
+      data['stutter'] = {'tv': tvGrade.exact, 'phone': phoneGrade.stutter};
       data['stutterMethod'] =
-          'stock mpdecimate, inside the touch log\'s motion windows';
-      if (windows.isEmpty) {
-        // Nothing to grade in, but the number the old whole-take rule gave is
-        // still worth seeing: reported only, never a failure.
+          'TV half: exact framehash, 3+ identical frames between game_start '
+          'and scene_end. Phone half: stock mpdecimate, inside the touch '
+          'log\'s motion windows';
+      data['stutterStockInSpanReportedOnly'] = tvGrade.stock?.toJson();
+      check(
+        'tv delivery',
+        tvGrade.delivery != null && tvGrade.delivery!.ok,
+        tvGrade.delivery == null
+            ? 'the TV-half delivery decode failed'
+            : '${tvGrade.delivery!.fps.toStringAsFixed(1)} decoded fps over the '
+                  'take, largest timestamp gap ${tvGrade.delivery!.maxGapMs} ms '
+                  '(want >= 59 fps and a gap <= 100 ms)',
+      );
+      if (tvGrade.gameWindow == null) {
+        lines.add(
+          'note tv stutter: not measured - no game_start in the event log (a '
+          'menu, join or lobby screen), so the TV half is judged by delivery '
+          'only',
+        );
+        // The old whole-take numbers stay visible, reported only: the picture
+        // really is static there, and the stock thresholds call that stutter.
         final tvWhole = await stutter(both.path, crop: 'crop=1920:1080:0:0');
-        final phoneWhole = await stutter(
-          both.path,
-          crop: 'crop=1920:1080:1920:0',
-        );
-        data['stutterWholeTakeReportedOnly'] = {
-          'tv': tvWhole,
-          'phone': phoneWhole,
-        };
+        data['stutterWholeTakeReportedOnly'] = {'tv': tvWhole};
         lines.add(
-          'note tv stutter: not measured - no motion window in the touch log; '
-          'the whole take reads ${tvWhole.runs} runs of 3+ duplicates on the '
-          'old rule (reported only, the picture is a static screen)',
-        );
-        lines.add(
-          'note phone stutter: not measured - no motion window; the whole take '
-          'reads ${phoneWhole.runs} runs of 3+ duplicates on the old rule',
+          'note tv stutter (old rule, reported only): the whole take reads '
+          '${tvWhole.runs} runs of 3+ duplicates',
         );
       } else {
         check(
           'tv stutter',
-          tvStutter != null && !tvStutter.bad,
-          tvStutter == null
+          tvGrade.exact != null && !tvGrade.exact!.bad,
+          tvGrade.exact == null
               ? 'the TV-half stutter decode failed'
-              : '${tvStutter.runs} runs of 3+ duplicates inside the motion '
-                    'windows',
+              : '${tvGrade.exact!.runs} runs of 3+ exactly-identical frames in '
+                    '${tvGrade.exact!.frames} frames between game_start and '
+                    'scene_end (longest run ${tvGrade.exact!.maxRun})',
+        );
+        lines.add(
+          'note tv stutter (stock mpdecimate over the same span, reported '
+          'only): ${tvGrade.stock?.runs ?? -1} runs',
         );
       }
 
@@ -309,7 +342,7 @@ Future<QaResult> runQa({
       // few pixels per frame for the stock mpdecimate thresholds. Compare
       // decoded frames exactly and fail only a run of 3+ identical frames
       // inside the window where the event log says the match was running.
-      final window = arenaMovementWindow(eventsPath, recordersPath);
+      final window = gameMovementWindow(eventsPath, recordersPath);
       data['stutterMethod'] = 'exact framehash: runs of 3+ identical frames between game_start and scene_end';
       data['movementWindow'] = window?.toJson();
       var tvStutter = StutterInfo.unmeasured(
@@ -398,7 +431,7 @@ Future<QaResult> runQa({
     );
     check('fps', p.fps >= 59, '${p.fps.toStringAsFixed(1)} (want >= 59)');
     if (isArenaShot(shot)) {
-      final movement = arenaMovementWindow(
+      final movement = gameMovementWindow(
         eventsPath,
         '${File(eventsPath).parent.path}\\${takeName}_recorders.json',
       );
@@ -422,14 +455,54 @@ Future<QaResult> runQa({
                   'between game_start and scene_end (longest run ${s.maxRun})',
       );
     } else {
-      final s = await stutter(file.path);
-      data['stutter'] = s;
-      final movingTv = shotIsGameplay(shot);
-      check(
-        'stutter',
-        !movingTv || !s.bad,
-        '${s.runs} runs of 3+ duplicates${movingTv ? '' : ' (static shot, reported only)'}',
+      // A non-arena shot with no phone half: the same event-log rule as the TV
+      // half of a `--phone` take (owner-approved change, Nov 5, 2026).
+      final tvGrade = await gradeTvHalf(
+        file.path,
+        duration: p.duration,
+        eventsPath: eventsPath,
+        recordersPath:
+            '${File(eventsPath).parent.path}\\${takeName}_recorders.json',
       );
+      data['tvDelivery'] = tvGrade.delivery?.toJson();
+      data['movementWindow'] = tvGrade.gameWindow?.toJson();
+      data['stutter'] = tvGrade.exact;
+      data['stutterStockInSpanReportedOnly'] = tvGrade.stock?.toJson();
+      data['stutterMethod'] =
+          'exact framehash, 3+ identical frames between game_start and '
+          'scene_end; delivery only when there is no game_start';
+      check(
+        'delivery',
+        tvGrade.delivery != null && tvGrade.delivery!.ok,
+        tvGrade.delivery == null
+            ? 'the delivery decode failed'
+            : '${tvGrade.delivery!.fps.toStringAsFixed(1)} decoded fps over the '
+                  'take, largest timestamp gap ${tvGrade.delivery!.maxGapMs} ms '
+                  '(want >= 59 fps and a gap <= 100 ms)',
+      );
+      if (tvGrade.gameWindow == null) {
+        lines.add(
+          'note stutter: not measured - no game_start in the event log, so the '
+          'take is judged by delivery only',
+        );
+        final whole = await stutter(file.path);
+        data['stutterWholeTakeReportedOnly'] = whole;
+        lines.add(
+          'note stutter (old rule, reported only): the whole take reads '
+          '${whole.runs} runs of 3+ duplicates',
+        );
+      } else {
+        final s = tvGrade.exact;
+        check(
+          'stutter',
+          s != null && !s.bad,
+          s == null
+              ? 'the exact-duplicate decode failed'
+              : '${s.runs} runs of 3+ exactly-identical frames in ${s.frames} '
+                    'frames between game_start and scene_end (longest run '
+                    '${s.maxRun})',
+        );
+      }
     }
     if (sheets) await contactSheet(file.path, '$qaDir\\${takeName}_sheet.png');
     data['sheets'] = ['$qaDir\\${takeName}_sheet.png'];
@@ -640,10 +713,12 @@ class MovementWindow {
   Map<String, dynamic> toJson() => {'from': start, 'to': end};
 }
 
-/// The part of a take where the event log says the arena match was running
+/// The part of a take where the event log says a match was running
 /// (`game_start` to the next `scene_end`), in video seconds. The take's
-/// `recorders.json` `start` is the wall clock of video time 0.
-MovementWindow? arenaMovementWindow(String eventsPath, String recordersPath) {
+/// `recorders.json` `start` is the wall clock of video time 0. Used by the
+/// arena shots' TV rule, and since Nov 5, 2026 by every non-arena TV half that
+/// has a `game_start`.
+MovementWindow? gameMovementWindow(String eventsPath, String recordersPath) {
   final recorders = File(recordersPath);
   if (!recorders.existsSync()) return null;
   final int? recordedStart;
@@ -759,6 +834,84 @@ Future<DeliveryInfo?> delivery(
   }
   if (frames == 0) return null;
   return DeliveryInfo(frames / seconds, maxGapMs, frames);
+}
+
+/// One TV half, graded the way 2.8 now says (owner-approved change, Nov 5,
+/// 2026): **delivery always**, and the exact-duplicate content rule only over
+/// the event log's `game_start`..`scene_end` span, when the log has one.
+///
+/// The span comes from the events, not from the touch log: the phone's finger
+/// moves only when the phone is played, while the TV picture moves whenever
+/// any seat does, so a race can stutter between two of the phone's moves. A
+/// menu, join or lobby screen has no `game_start` and is static by design, so
+/// delivery is its whole rule.
+class TvHalfGrade {
+  TvHalfGrade({
+    required this.delivery,
+    required this.gameWindow,
+    required this.exact,
+    required this.stock,
+    this.fpsFloor = 59.0,
+  });
+
+  /// At least 59 decoded frames a second over the take, and no gap between
+  /// decoded frame timestamps over 100 ms.
+  final DeliveryInfo? delivery;
+
+  /// `game_start`..`scene_end` in video seconds, or null when the event log has
+  /// no `game_start` (or no recorders.json start time).
+  final MovementWindow? gameWindow;
+
+  /// Runs of 3+ exactly-identical frames inside [gameWindow]; null when there
+  /// is no window to measure.
+  final StutterInfo? exact;
+
+  /// The stock `mpdecimate` number over the same span. Reported only: its
+  /// thresholds call ordinary 60 fps gameplay duplicates (G1 take 1: 164
+  /// "runs" over 3.5 s of play where all 210 frames were distinct).
+  final StutterInfo? stock;
+
+  /// The TV floor (`DeliveryInfo.ok` carries the phone's lower one).
+  final double fpsFloor;
+
+  /// Delivery, plus the exact-duplicate rule where there is a game span.
+  bool get ok =>
+      delivery != null &&
+      delivery!.fps >= fpsFloor &&
+      delivery!.maxGapMs <= 100 &&
+      (exact == null || !exact!.bad);
+}
+
+Future<TvHalfGrade> gradeTvHalf(
+  String path, {
+  String? crop,
+  required double duration,
+  required String eventsPath,
+  required String recordersPath,
+  double fpsFloor = 59.0,
+}) async {
+  final delivered = await delivery(path, crop: crop, seconds: duration);
+  final window = gameMovementWindow(eventsPath, recordersPath);
+  StutterInfo? exact;
+  StutterInfo? stock;
+  if (window != null) {
+    exact =
+        await exactStutter(
+          path,
+          crop: crop,
+          from: window.start,
+          to: window.end,
+        ) ??
+        StutterInfo.unmeasured('the exact-duplicate decode failed');
+    stock = await stutterInWindows(path, crop: crop, windows: [window]);
+  }
+  return TvHalfGrade(
+    delivery: delivered,
+    gameWindow: window,
+    exact: exact,
+    stock: stock,
+    fpsFloor: fpsFloor,
+  );
 }
 
 /// The phone half of the 3840x1080 OBS master.
@@ -1404,6 +1557,97 @@ Future<int> selfTest() async {
       tapWindows.isEmpty && tapGrade.ok,
       'a tap settles but does not move: no motion window '
       '(${tapWindows.length} windows)',
+    );
+
+    // 6-8. The TV half's rule (owner-approved change, Nov 5, 2026): the
+    // exact-duplicate rule over game_start..scene_end from the **event log**,
+    // and delivery only when the log has no game_start. One clip, 2 s at
+    // 60 fps: 60 distinct frames, then 15 frames each repeated 4 times.
+    //   - game span over the repeated second: FAILS on 3+ identical frames;
+    //   - game span over the first second: passes, the stutter is outside it;
+    //   - a static menu clip with no game_start: passes on delivery.
+    final tvDir = Directory('${temp.path}\\tvstutter')..createSync();
+    n = 0;
+    void addTv(int frame, int times) {
+      for (var k = 0; k < times; k++) {
+        File(
+          framePath(frame),
+        ).copySync('${tvDir.path}\\s${(++n).toString().padLeft(4, '0')}.png');
+      }
+    }
+
+    for (var i = 1; i <= 60; i++) {
+      addTv(i, 1);
+    }
+    for (var i = 61; i <= 75; i++) {
+      addTv(i, 4);
+    }
+    final tvStutter = '${temp.path}\\tvstutter.mkv';
+    line(await encode(tvDir, tvStutter), 'built the TV stutter clip');
+
+    final recordersPath = '${temp.path}\\recorders.json';
+    File(recordersPath).writeAsStringSync(jsonEncode({'start': startWall}));
+    String eventsFile(String name, List<List<Object>> events) {
+      final buffer = StringBuffer();
+      for (final event in events) {
+        buffer.writeln(
+          jsonEncode({
+            'wall': startWall + ((event[0] as double) * 1000).round(),
+            'name': event[1],
+          }),
+        );
+      }
+      final path = '${temp.path}\\$name';
+      File(path).writeAsStringSync(buffer.toString());
+      return path;
+    }
+
+    final stutterSpan = await gradeTvHalf(
+      tvStutter,
+      duration: 2,
+      eventsPath: eventsFile('stutter_span.jsonl', [
+        [1.0, 'game_start'],
+        [2.0, 'scene_end'],
+      ]),
+      recordersPath: recordersPath,
+    );
+    line(
+      !stutterSpan.ok &&
+          (stutterSpan.exact?.runs ?? 0) > 0 &&
+          (stutterSpan.delivery?.ok ?? false),
+      'a TV clip that stutters inside the game span fails '
+      '(${stutterSpan.exact?.runs} runs of 3+ identical frames between '
+      '${stutterSpan.gameWindow?.start.toStringAsFixed(2)} and '
+      '${stutterSpan.gameWindow?.end.toStringAsFixed(2)} s, '
+      '${stutterSpan.delivery?.fps.toStringAsFixed(1)} frames/s delivered)',
+    );
+
+    final cleanSpan = await gradeTvHalf(
+      tvStutter,
+      duration: 2,
+      eventsPath: eventsFile('clean_span.jsonl', [
+        [0.05, 'game_start'],
+        [0.95, 'scene_end'],
+      ]),
+      recordersPath: recordersPath,
+    );
+    line(
+      cleanSpan.ok && (cleanSpan.exact?.runs ?? -1) == 0,
+      'the same stutter before game_start passes '
+      '(${cleanSpan.exact?.runs} runs in the graded span)',
+    );
+
+    final menuSpan = await gradeTvHalf(
+      stillClip,
+      duration: 2,
+      eventsPath: '${temp.path}\\no-such-events.jsonl',
+      recordersPath: recordersPath,
+    );
+    line(
+      menuSpan.ok && menuSpan.gameWindow == null,
+      'a static menu clip with no game_start passes on delivery '
+      '(${menuSpan.delivery?.fps.toStringAsFixed(1)} frames/s, largest gap '
+      '${menuSpan.delivery?.maxGapMs} ms)',
     );
   } finally {
     try {
