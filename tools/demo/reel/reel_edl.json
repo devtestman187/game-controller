@@ -1,0 +1,110 @@
+{
+  "title": "Thumb Party - 30 s highlight reel",
+  "fps": 60,
+  "width": 1920,
+  "height": 1080,
+  "segments": [
+    {
+      "id": "title",
+      "dur": 3.0,
+      "layout": "CARD",
+      "graphic": "title.png",
+      "fadeIn": 0.5,
+      "note": "Logo, name, tagline and the disclosure line (docs/demo-video.md 2)."
+    },
+    {
+      "id": "pairing",
+      "dur": 5.0,
+      "layout": "SPLIT",
+      "tv": {"file": "P2_take4_tv.mkv", "in": 1.0},
+      "phone": {"file": "P2_take4_phone.mkv", "in": 1.0},
+      "caption": "Type the code. You're in."
+    },
+    {
+      "id": "lobby",
+      "dur": 4.0,
+      "layout": "FULL",
+      "tv": {"file": "P3_take4_tv.mkv", "in": 0.2},
+      "caption": "Bots: scripted input"
+    },
+    {
+      "id": "controls",
+      "dur": 6.0,
+      "layout": "QUAD",
+      "tiles": [
+        {"file": "M1_take3_tv.mkv", "in": 2.0},
+        {"file": "M2_take1_tv.mkv", "in": 2.0},
+        {"file": "M3_take1_tv.mkv", "in": 2.0},
+        {"file": "M4_take1_tv.mkv", "in": 2.0}
+      ],
+      "caption": "D-pad, Gyro, Sticks and tablet"
+    },
+    {
+      "id": "race",
+      "dur": 6.0,
+      "layout": "FULL",
+      "tv": {"file": "G1_take1_tv.mkv", "in": 3.45},
+      "caption": "Shape Race: four players, one match",
+      "note": "G2 has no accepted take: this is G1 take 1's play, the storyboard's fallback row."
+    },
+    {
+      "id": "race2",
+      "dur": 5.0,
+      "layout": "SLATE",
+      "slate": {
+        "title": "G2 - owner review",
+        "sub": "no accepted race take yet: QA failed on stutter"
+      },
+      "note": "A labelled slate, never substitute footage."
+    },
+    {
+      "id": "end",
+      "dur": 1.0,
+      "layout": "CARD",
+      "graphic": "end.png",
+      "fadeOut": 0.4,
+      "note": "Music and join/countdown sounds are upcoming Thumb Party audio."
+    }
+  ],
+  "cues": [
+    {
+      "file": "player_joined.ogg",
+      "at": {"s": 8.6},
+      "gainDb": -4,
+      "why": "hand-set (P3 has no event log; the joins land 0.3-1.6 s into the take)"
+    },
+    {
+      "file": "player_joined.ogg",
+      "at": {"s": 9.5},
+      "gainDb": -4,
+      "why": "hand-set (P3 has no event log)"
+    },
+    {
+      "file": "snap.ogg",
+      "segment": "race",
+      "at": {"take": "G1_take1", "event": "snap", "k": 1},
+      "gainDb": 0,
+      "why": "log"
+    },
+    {
+      "file": "snap.ogg",
+      "segment": "race",
+      "at": {"take": "G1_take1", "event": "snap", "k": 2},
+      "gainDb": 0,
+      "why": "log"
+    },
+    {
+      "file": "success.ogg",
+      "at": {"s": 23.4},
+      "gainDb": -6,
+      "why": "hand-set (the finish is not in G1 take 1; G2's finish would be a log cue)"
+    }
+  ],
+  "music": {
+    "file": "lobby.ogg",
+    "gainDb": -20,
+    "fadeInS": 1.5,
+    "fadeOutS": 2.0,
+    "duckDb": -10
+  }
+}
