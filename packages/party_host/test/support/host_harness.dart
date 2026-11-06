@@ -3,7 +3,6 @@ import 'dart:io';
 
 import 'package:connection/connection.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:party_host/party_host.dart';
@@ -46,14 +45,8 @@ Future<FakeHostService> pumpHost(
         screenAwakeProvider.overrideWithValue(awake),
       ],
       child: Shortcuts(
-        // A TV remote sends "select" for OK, and the TV app maps it (and
-        // Enter and the gamepad's A) to "activate". The harness does the same
-        // so the tests can press what has the focus.
-        shortcuts: const <ShortcutActivator, Intent>{
-          SingleActivator(LogicalKeyboardKey.select): ActivateIntent(),
-          SingleActivator(LogicalKeyboardKey.enter): ActivateIntent(),
-          SingleActivator(LogicalKeyboardKey.gameButtonA): ActivateIntent(),
-        },
+        // The TV app's own keys, so the tests press what the remote presses.
+        shortcuts: hostActivateShortcuts,
         child: MaterialApp(
           title: 'Thumb Party host',
           theme: ThemeData(

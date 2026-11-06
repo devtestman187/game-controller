@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:test_game/test_game.dart';
 
+import '../controls.dart';
 import '../local_player_source.dart';
 import '../providers.dart';
 import 'controller_menus.dart';

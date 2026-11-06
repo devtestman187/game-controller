@@ -40,6 +40,12 @@ Carried into M12, not blocking it:
 - **M11 device tests** ([checklists/m11.md](checklists/m11.md)): 13 of 18 items open, and all 8 of PRD v2's M11 acceptance tests, including the m11.3 checks (Bubble Pop sounds, active play time). M12's device tests repeat the M11 checks phone hosting touches (join, pause, results, 4 players).
 - **The `docs/protocol.md` read-through**, best done once M12's `view` messages are in.
 
+Found by `tools/review.sh --all` (Nov 6, 2026), for a cleanup job between M12 steps:
+- **Long members:** six over 60 lines in `party_host` screens (`controller_menus._tick`, `game_screen` build, `join_screen` `_tick` and build, `puzzle_screen`'s two builds), plus `stats_screen`, `haptic_panel_screen` and `latency_screen` builds. Split into named widgets.
+- **Determinism:** `puzzle_game` `game`, `library` and `match` fall back to an unseeded `Random()`. The `Random` should be required (guidelines §5).
+- **Leftovers:** `debugPrint` in `party_host` and `controller_app` providers, empty catches in `controller_app/lib/src/providers.dart` and `packages/metrics/bin/report.dart`, two `// ignore` in `tv_test_app/integration_test/sound_test.dart`.
+- **UI spacing:** paddings and sizes are bare numbers (most of the script's `number` notes). Give the host and phone apps a small spacing scale and use it.
+
 ## Open items
 
 Carried from earlier milestones, still to do:

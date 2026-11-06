@@ -6,6 +6,7 @@
 library;
 
 export 'src/advertiser.dart';
+export 'src/controls.dart' show Controls, ControlsClaims;
 export 'src/host_directories.dart';
 export 'src/host_identity.dart';
 export 'src/host_log_export.dart';
@@ -24,6 +25,7 @@ export 'src/ui/controller_menus.dart';
 export 'src/ui/game_screen.dart';
 export 'src/ui/games_screen.dart';
 export 'src/ui/host_button.dart';
+export 'src/ui/host_shortcuts.dart';
 export 'src/ui/join_screen.dart';
 export 'src/ui/pause_menu.dart';
 export 'src/ui/player_badge.dart';

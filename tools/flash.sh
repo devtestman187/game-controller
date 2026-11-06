@@ -136,7 +136,8 @@ Finish with: the files you changed (one line each, what changed), the checks you
 allowed=(
   "Read(./**)" "Edit" "Bash(git grep:*)" "Bash(git ls-files:*)"
   "Bash(dart format:*)" "Bash(dart analyze:*)" "Bash(dart test:*)" "Bash(flutter test:*)" "Bash(flutter analyze:*)"
-  "Bash(tools/check.sh:*)" "Bash(git status:*)" "Bash(git log:*)" "Bash(ls:*)"
+  "Bash(tools/check.sh:*)" "Bash(tools/review.sh:*)" "Bash(bash tools/review.sh:*)"
+  "Bash(git status:*)" "Bash(git log:*)" "Bash(git diff:*)" "Bash(git merge-base:*)" "Bash(ls:*)"
 )
 # Files the worker may read but never change. Enforced by Claude Code's
 # permission rules (an Edit rule covers every file-editing tool, Write

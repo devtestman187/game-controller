@@ -5,6 +5,7 @@ Two scripts replace the most repeated manual steps:
 | Script | What it does | Takes |
 | --- | --- | --- |
 | [`tools/check.sh`](../tools/check.sh) | Every automated check (format, analyze, all seven test suites), one line each | about 3 minutes |
+| [`tools/review.sh`](../tools/review.sh) | The coding guidelines' mechanical checks over the `.dart` files that changed, one line per finding | a few seconds |
 | [`tools/release.sh`](../tools/release.sh) | Tags a release with tester notes, pushes it, waits for the Play, TestFlight and Windows builds, and prints a summary | about 20 to 40 minutes, mostly waiting |
 | [`tools/tv-dev.sh`](../tools/tv-dev.sh) | Starts and stops a development copy of the Windows TV app, and prints its port and pairing code | a few seconds (a few minutes for the first build) |
 | [`tools/tv-window.ps1`](../tools/tv-window.ps1) | Screenshots, clicks and keys in that copy's window | instant |
@@ -78,6 +79,29 @@ FAIL  puzzle      (24 passed, exit 1, 6s)  log: /tmp/thumbparty-check-.../puzzle
 - **Not included:** the on-device sound test (`tv_test_app/integration_test`, needs audio hardware; see [building.md](building.md)) and checks on real devices or the emulator.
 
 Run it before every commit that changes code, and always before a release.
+
+## tools/review.sh
+
+```bash
+tools/review.sh                     # the uncommitted changes (one job's diff)
+tools/review.sh --base origin/main  # the whole branch (any commit or branch works)
+tools/review.sh --all           # every file, every line
+tools/review.sh --help
+```
+
+It's the [coding guidelines](coding-guidelines.md) done by script. It prints one line per finding, the failures first, then the notes:
+
+```
+FAIL func     tv_test_app/lib/src/ui/home_screen.dart:471 102 lines (>60): Widget build(BuildContext context)
+FAIL leftover packages/party_host/lib/src/providers.dart:47 debugPrint(
+NOTE number   tv_test_app/lib/src/ui/home/panel.dart:25 numeric literal 16
+review: 2 fail, 1 note
+```
+
+- **Scope:** the `.dart` files under `controller_app`, `tv_test_app`, `packages` and `assets`, without `build/`, `.dart_tool/`, `*.g.dart` and `generated_plugin_registrant*`. By default it takes the files that changed since the last commit (staged, unstaged and untracked), so it reviews one job's diff; `--base <ref>` compares with another commit and includes what was committed since. Inside those files, the line checks look only at the lines the change adds; `--all` takes every file and every line.
+- **Checks:** `size` (a lib file over 400 lines, a test over 500), `func` (a member over 60 lines; a note from 41; a `build` method's limit is 60), `platform` (`Platform.is` in a package), `layers` (a package importing an app, `flutter` in a pure Dart package, a game importing another game or `party_host`, any `package:x/src/` from outside `x`), `leftover` (`TODO`/`FIXME`/`XXX`, `print` and `debugPrint` in lib, `// ignore`), `catch` (an empty one), `types` (`dynamic` in lib), `timing` (`Future.delayed`, `sleep`), `clock` (`DateTime.now()` or an unseeded `Random()` in a game) and `number` (a numeric literal other than 0, 1, -1, 2, 0.0, 1.0 or 0.5 that isn't a named constant).
+- **Exit code:** 0 when there is no FAIL, 1 when there is any, 2 for bad arguments, an unknown base or a missing git.
+- **It doesn't replace the review, it finds the mechanical things first.** A design that won't hold, a name that lies, a test that checks the wrong thing and a race all pass it.
 
 ## tools/release.sh
 

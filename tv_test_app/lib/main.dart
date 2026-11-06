@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:party_host/party_host.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'src/keyboard_player.dart';
 import 'src/tv_host_setup.dart';
-import 'src/ui/home_screen.dart';
+import 'src/ui/home/home_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -34,13 +33,8 @@ class TvTestApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Shortcuts(
-      // TV remotes send "select" (D-pad center). Map it, Enter and the gamepad A
-      // button to "activate" so every focused control works with a remote.
-      shortcuts: const <ShortcutActivator, Intent>{
-        SingleActivator(LogicalKeyboardKey.select): ActivateIntent(),
-        SingleActivator(LogicalKeyboardKey.enter): ActivateIntent(),
-        SingleActivator(LogicalKeyboardKey.gameButtonA): ActivateIntent(),
-      },
+      // The remote's OK button and the gamepad's A press what has the focus.
+      shortcuts: hostActivateShortcuts,
       child: MaterialApp(
         title: 'Thumb Party TV',
         // The phones work every screen like the remote (PRD v2 T21).

@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:protocol/protocol.dart';
 import 'package:puzzle_game/puzzle_game.dart';
 
+import '../controls.dart';
 import '../local_player_source.dart';
 import '../providers.dart';
 import 'controller_menus.dart';

@@ -5,23 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:protocol/protocol.dart';
 
+import '../controls.dart';
 import '../providers.dart';
-
-/// What the players' controllers do right now: work the host app's menus like
-/// the remote (PRD v2 T21), or play a game, which reads them itself.
-final class Controls {
-  /// Every screen's menus, for everyone, or only for the players in [only]
-  /// (the pause menu: the player who paused and Player 1). [layout] replaces
-  /// the usual menu buttons on the phones.
-  const Controls.menus({this.only, this.layout}) : menus = true;
-
-  /// A game is reading the controllers.
-  const Controls.game() : menus = false, only = null, layout = null;
-
-  final bool menus;
-  final Set<String>? only;
-  final GameLayoutMessage? layout;
-}
 
 /// The buttons while a menu is showing: A "OK" and B "Back".
 final menuLayout = GameLayoutMessage(
@@ -35,20 +20,6 @@ final menuLayout = GameLayoutMessage(
     ControllerButton.start,
   },
 );
-
-/// The screens' claims on the controllers, newest on top. With none, they
-/// work the menus.
-class ControlsClaims {
-  final _claims = <_Claim>[];
-
-  Controls get current => _claims.lastOrNull?.controls ?? const Controls.menus();
-}
-
-class _Claim {
-  _Claim(this.controls);
-
-  Controls controls;
-}
 
 /// Says what the controllers do while this widget is on screen: a game
 /// screen claims them while it plays, the pause menu limits the menus to
@@ -65,13 +36,12 @@ class ControlsClaim extends ConsumerStatefulWidget {
 }
 
 class _ControlsClaimState extends ConsumerState<ControlsClaim> {
-  late final ControlsClaims _claims = ref.read(controlsClaimsProvider);
-  late final _Claim _claim = _Claim(widget.controls);
+  late final ClaimHandle _claim;
 
   @override
   void initState() {
     super.initState();
-    _claims._claims.add(_claim);
+    _claim = ref.read(controlsClaimsProvider).claim(widget.controls);
   }
 
   @override
@@ -82,7 +52,7 @@ class _ControlsClaimState extends ConsumerState<ControlsClaim> {
 
   @override
   void dispose() {
-    _claims._claims.remove(_claim);
+    _claim.release();
     super.dispose();
   }
 

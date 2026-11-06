@@ -9,6 +9,7 @@ import 'package:puzzle_game/puzzle_game.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'advertiser.dart';
+import 'controls.dart';
 import 'host_directories.dart';
 import 'host_identity.dart';
 import 'host_service.dart';
@@ -19,7 +20,6 @@ import 'session_uploader.dart';
 import 'sound.dart';
 import 'stats_service.dart';
 import 'stats_state.dart';
-import 'ui/controller_menus.dart';
 
 /// The host app's own identity (S-a). Overridden in each app's `main()`: the
 /// TV app builds it from `app_info.dart` and the platform, the phone app
