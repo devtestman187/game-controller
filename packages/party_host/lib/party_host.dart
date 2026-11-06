@@ -1,3 +1,22 @@
 /// The host side of Thumb Party (PRD v2 M12, design B1): everything a device
 /// needs to host games, shared by the TV app and the phone app's host mode.
+///
+/// Exports its public surface only; fakes and sample values for tests live in
+/// `package:party_host/testing.dart`, which shipped code never imports.
 library;
+
+export 'src/advertiser.dart';
+export 'src/host_directories.dart';
+export 'src/host_identity.dart';
+export 'src/host_log_export.dart';
+export 'src/host_service.dart';
+export 'src/host_view_state.dart';
+export 'src/live_stats.dart';
+export 'src/local_player_source.dart';
+export 'src/providers.dart';
+export 'src/saved_pairings.dart';
+export 'src/screen_awake.dart';
+export 'src/session_uploader.dart';
+export 'src/sound.dart';
+export 'src/stats_service.dart';
+export 'src/stats_state.dart';
