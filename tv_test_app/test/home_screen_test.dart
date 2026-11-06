@@ -202,6 +202,35 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('leaves the address out for the host phone\'s own player', (tester) async {
+    final fake = await pumpApp(tester);
+    fake.state = HostViewState(
+      hostName: 'Android TV',
+      host: HostSnapshot(
+        running: true,
+        port: 45780,
+        pairingCode: '0427',
+        controllers: [
+          ControllerInfo(
+            controllerId: 'local',
+            name: 'Keyboard',
+            platform: 'android',
+            appVersion: '0.6.0',
+            remoteAddress: null,
+            isLocal: true,
+            state: ControllerState.connected,
+            since: DateTime(2026),
+            rttMs: 0,
+          ),
+        ],
+      ),
+    );
+    fake.emit();
+    await tester.pumpAndSettle();
+    expect(find.text('android · 0.6.0'), findsOneWidget);
+    expect(find.textContaining(' · 192.168.'), findsNothing);
+  });
+
   testWidgets('fits a small laptop window without overflow', (tester) async {
     await pumpApp(tester, size: const Size(600, 800));
     expect(tester.takeException(), isNull);

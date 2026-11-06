@@ -1,6 +1,6 @@
 # M12 status (read this first when resuming)
 
-Updated Nov 6, 2026, 15:50. Branch `m12`, worktree `E:\AI\game-controller-m12` (the main checkout `E:\AI\game-controller` stays on the frozen `demo-video`). Design: [../../design/m12.md](../../design/m12.md). Rules: [../../coding-guidelines.md](../../coding-guidelines.md). Working model: [../../project-notes.md](../../project-notes.md#how-we-work).
+Updated Nov 6, 2026, 16:55. Branch `m12`, worktree `E:\AI\game-controller-m12` (the main checkout `E:\AI\game-controller` stays on the frozen `demo-video`). Design: [../../design/m12.md](../../design/m12.md). Rules: [../../coding-guidelines.md](../../coding-guidelines.md). Working model: [../../project-notes.md](../../project-notes.md#how-we-work).
 
 ## Steps
 
@@ -8,8 +8,9 @@ Updated Nov 6, 2026, 15:50. Branch `m12`, worktree `E:\AI\game-controller-m12` (
 | --- | --- |
 | 1 Extract `party_host` | **Done** (`490633d`, pushed). All 10 checks pass (613 tests). Windows exit check passed Nov 6 (release build ok; `tools/tv-dev.sh start` hosts on 45780 and advertises; sounds untested here because Claude's sandbox blocks %TEMP%) |
 | 1b Follow-ups | **Done**: `tools/review.sh`, `controls.dart` (cycle broken), home screen split into `ui/home/`, `hostActivateShortcuts`. Answers to s1b-report Q1–5: Q1 default base is now `HEAD` (one job's diff; `--base origin/main` for the branch) · Q2 TODO in tests too, ok · Q3 export `ClaimHandle` only when a caller needs it · Q4 `number` stays a NOTE; spacing scale is tech debt · Q5 long members are tech debt (project-notes) |
-| 2 Transport | Contract written: [../../design/m12-transport.md](../../design/m12-transport.md). Next: G1 plan (`s2-g1.md`) |
-| 3–9 | Not started |
+| 2 Transport | **Done** (G1 plan → G4, Nov 6). Server and client on `MessageChannel`; WebSocket and in-process transports; connection tests run on both (176). Contract: [../../design/m12-transport.md](../../design/m12-transport.md). G4 answers: Q1 fixed by Claude (ListenFailed carries only the cause) · Q2–4 ok · Q5–6 tech debt |
+| 3 Host phone's own player | Next: Claude writes the brief (m12.md §2.2, D1) |
+| 4–9 | Not started |
 
 ## How to run a job (lessons from step 1)
 - Brief in `docs/briefs/m12/s<step>-g<gate>.md`, compact format (see s1-g3.md / s1-g4.md); the task argument only points at it (Windows' 32 KB command-line limit).

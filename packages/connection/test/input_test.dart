@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'dart:math';
 
 import 'package:connection/connection.dart';
@@ -11,96 +10,125 @@ InputStateMessage? inputOf(HostSnapshot s, String id) =>
     s.controllers.where((c) => c.controllerId == id).firstOrNull?.input;
 
 void main() {
-  test('input from a paired phone reaches the host snapshot and message stream', () async {
-    final host = await startHost();
-    final received = <ControllerMessage>[];
-    host.messages.listen(received.add);
-    final client = newClient();
-    client.connect(addressOf(host), code: host.pairingCode);
-    await clientStatus(client, ClientStatus.connected);
+  for (final t in TestTransport.values) {
+    group(t.name, () {
+      test('input from a paired phone reaches the host snapshot and message stream', () async {
+        final host = await startHost(t);
+        final received = <ControllerMessage>[];
+        host.messages.listen(received.add);
+        final client = newClient(t);
+        client.connect(addressOf(host, t), code: host.pairingCode);
+        await clientStatus(client, ClientStatus.connected);
 
-    client.sendInput({ControllerButton.a}, dx: -1, dy: 1);
-    final s = await hostUntil(host, (h) => inputOf(h, 'phone-1')?.buttons.contains(ControllerButton.a) ?? false);
-    expect(inputOf(s, 'phone-1')!.dx, -1);
-    expect(inputOf(s, 'phone-1')!.dy, 1);
-    await Future<void>.delayed(const Duration(milliseconds: 20)); // The message stream fires right after.
-    expect(received.last.controllerId, 'phone-1');
-    expect((received.last.message as InputStateMessage).buttons, {ControllerButton.a});
-  });
+        client.sendInput({ControllerButton.a}, dx: -1, dy: 1);
+        final s = await hostUntil(host, (h) => inputOf(h, 'phone-1')?.buttons.contains(ControllerButton.a) ?? false);
+        expect(inputOf(s, 'phone-1')!.dx, -1);
+        expect(inputOf(s, 'phone-1')!.dy, 1);
+        await Future<void>.delayed(const Duration(milliseconds: 20)); // The message stream fires right after.
+        expect(received.last.controllerId, 'phone-1');
+        expect((received.last.message as InputStateMessage).buttons, {ControllerButton.a});
+      });
 
-  test('a direction and buttons register at the same time', () async {
-    final host = await startHost();
-    final client = newClient();
-    client.connect(addressOf(host), code: host.pairingCode);
-    await clientStatus(client, ClientStatus.connected);
+      test('a direction and buttons register at the same time', () async {
+        final host = await startHost(t);
+        final client = newClient(t);
+        client.connect(addressOf(host, t), code: host.pairingCode);
+        await clientStatus(client, ClientStatus.connected);
 
-    client.sendInput({ControllerButton.a, ControllerButton.b}, dx: 1);
-    final s = await hostUntil(host, (h) => inputOf(h, 'phone-1')?.buttons.length == 2);
-    expect(inputOf(s, 'phone-1')!.dx, 1);
-  });
+        client.sendInput({ControllerButton.a, ControllerButton.b}, dx: 1);
+        final s = await hostUntil(host, (h) => inputOf(h, 'phone-1')?.buttons.length == 2);
+        expect(inputOf(s, 'phone-1')!.dx, 1);
+      });
 
-  test('ignores input before pairing and out of order', () async {
-    final host = await startHost();
-    const codec = MessageCodec();
-    final ws = await WebSocket.connect('ws://127.0.0.1:${host.port}$webSocketPath');
-    addTearDown(ws.close);
-    ws.listen((_) {});
-    ws.add(codec.encode(const HelloMessage(controllerId: 'raw', name: 'Raw', platform: 'test', appVersion: 't')));
-    ws.add(codec.encode(InputStateMessage(seq: 1, buttons: {ControllerButton.x})));
-    await hostUntil(host, (h) => h.controllers.isNotEmpty);
-    ws.add(codec.encode(PairRequestMessage(code: host.pairingCode)));
-    await hostUntil(host, (h) => stateOf(h, 'raw') == ControllerState.connected);
-    expect(inputOf(host.snapshot, 'raw'), isNull, reason: 'input sent before pairing is dropped');
+      test('ignores input before pairing and out of order', () async {
+        final host = await startHost(t);
+        const codec = MessageCodec();
+        final channel = await rawPeer(host, t);
+        channel.incoming.listen((_) {});
+        channel.send(
+          codec.encode(const HelloMessage(controllerId: 'raw', name: 'Raw', platform: 'test', appVersion: 't')),
+        );
+        channel.send(codec.encode(InputStateMessage(seq: 1, buttons: {ControllerButton.x})));
+        await hostUntil(host, (h) => h.controllers.isNotEmpty);
+        channel.send(codec.encode(PairRequestMessage(code: host.pairingCode)));
+        await hostUntil(host, (h) => stateOf(h, 'raw') == ControllerState.connected);
+        expect(inputOf(host.snapshot, 'raw'), isNull, reason: 'input sent before pairing is dropped');
 
-    ws.add(codec.encode(InputStateMessage(seq: 5, buttons: {ControllerButton.y})));
-    ws.add(codec.encode(InputStateMessage(seq: 4, buttons: {ControllerButton.b}))); // Late, ignored.
-    ws.add(codec.encode(InputStateMessage(seq: 6, buttons: {ControllerButton.y, ControllerButton.start})));
-    final s = await hostUntil(host, (h) => inputOf(h, 'raw')?.seq == 6);
-    expect(inputOf(s, 'raw')!.buttons, {ControllerButton.y, ControllerButton.start});
-  });
+        channel.send(codec.encode(InputStateMessage(seq: 5, buttons: {ControllerButton.y})));
+        channel.send(codec.encode(InputStateMessage(seq: 4, buttons: {ControllerButton.b}))); // Late, ignored.
+        channel.send(codec.encode(InputStateMessage(seq: 6, buttons: {ControllerButton.y, ControllerButton.start})));
+        final s = await hostUntil(host, (h) => inputOf(h, 'raw')?.seq == 6);
+        expect(inputOf(s, 'raw')!.buttons, {ControllerButton.y, ControllerButton.start});
+      });
 
-  test('a held button is sent again after a reconnect', () async {
-    final host = await startHost();
-    final client = newClient();
-    client.connect(addressOf(host), code: host.pairingCode);
-    await clientStatus(client, ClientStatus.connected);
-    client.sendInput({ControllerButton.b});
-    await hostUntil(host, (h) => inputOf(h, 'phone-1')?.buttons.isNotEmpty ?? false);
+      test('a held button is sent again after a reconnect', () async {
+        final host = await startHost(t);
+        final client = newClient(t);
+        client.connect(addressOf(host, t), code: host.pairingCode);
+        await clientStatus(client, ClientStatus.connected);
+        client.sendInput({ControllerButton.b});
+        await hostUntil(host, (h) => inputOf(h, 'phone-1')?.buttons.isNotEmpty ?? false);
 
-    host.dropAllConnections();
-    await clientStatus(client, ClientStatus.reconnecting);
-    await clientStatus(client, ClientStatus.connected);
-    final s = await hostUntil(host, (h) => inputOf(h, 'phone-1')?.buttons.isNotEmpty ?? false);
-    expect(inputOf(s, 'phone-1')!.buttons, {ControllerButton.b});
-  });
+        host.dropAllConnections();
+        await clientStatus(client, ClientStatus.reconnecting);
+        await clientStatus(client, ClientStatus.connected);
+        final s = await hostUntil(host, (h) => inputOf(h, 'phone-1')?.buttons.isNotEmpty ?? false);
+        expect(inputOf(s, 'phone-1')!.buttons, {ControllerButton.b});
+      });
 
-  test('a dropped controller releases everything', () async {
-    final host = await startHost();
-    final received = <ControllerMessage>[];
-    host.messages.listen(received.add);
-    final client = newClient();
-    client.connect(addressOf(host), code: host.pairingCode);
-    await clientStatus(client, ClientStatus.connected);
-    client.sendInput({ControllerButton.a}, dx: 1);
-    await hostUntil(host, (h) => inputOf(h, 'phone-1')?.buttons.isNotEmpty ?? false);
+      test('a dropped controller releases everything', () async {
+        final host = await startHost(t);
+        final received = <ControllerMessage>[];
+        host.messages.listen(received.add);
+        final client = newClient(t);
+        client.connect(addressOf(host, t), code: host.pairingCode);
+        await clientStatus(client, ClientStatus.connected);
+        client.sendInput({ControllerButton.a}, dx: 1);
+        await hostUntil(host, (h) => inputOf(h, 'phone-1')?.buttons.isNotEmpty ?? false);
 
-    client.disconnect();
-    final s = await hostUntil(host, (h) => stateOf(h, 'phone-1') == ControllerState.disconnected);
-    expect(inputOf(s, 'phone-1'), isNull);
-    await Future<void>.delayed(const Duration(milliseconds: 50));
-    expect((received.last.message as InputStateMessage).isNeutral, isTrue);
-  });
+        client.disconnect();
+        final s = await hostUntil(host, (h) => stateOf(h, 'phone-1') == ControllerState.disconnected);
+        expect(inputOf(s, 'phone-1'), isNull);
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+        expect((received.last.message as InputStateMessage).isNeutral, isTrue);
+      });
 
-  test('both sides report lowest, average and highest ping', () async {
-    final host = await startHost();
-    final client = newClient();
-    client.connect(addressOf(host), code: host.pairingCode);
-    final c = await clientUntil(client, (s) => (s.rttStats?.samples ?? 0) >= 2);
-    expect(c.rttStats!.minMs, lessThanOrEqualTo(c.rttStats!.maxMs));
-    final h = await hostUntil(host, (h) => (h.connected.firstOrNull?.rttStats?.samples ?? 0) >= 2);
-    expect(h.connected.single.rttStats!.avgMs, lessThan(1000));
-  });
+      test('both sides report lowest, average and highest ping', () async {
+        final host = await startHost(t);
+        final client = newClient(t);
+        client.connect(addressOf(host, t), code: host.pairingCode);
+        final c = await clientUntil(client, (s) => (s.rttStats?.samples ?? 0) >= 2);
+        expect(c.rttStats!.minMs, lessThanOrEqualTo(c.rttStats!.maxMs));
+        final h = await hostUntil(host, (h) => (h.connected.firstOrNull?.rttStats?.samples ?? 0) >= 2);
+        expect(h.connected.single.rttStats!.avgMs, lessThan(1000));
+      });
 
+      test('both sticks reach the host with the shoulder buttons', () async {
+        final host = await startHost(t);
+        final client = newClient(t);
+        client.connect(addressOf(host, t), code: host.pairingCode);
+        await clientStatus(client, ClientStatus.connected);
+        client.sendInput({ControllerButton.lb}, left: (x: 0.5, y: -0.5), right: (x: -1, y: 0));
+        final s = await hostUntil(host, (h) => inputOf(h, 'phone-1')?.hasSticks ?? false);
+        final input = inputOf(s, 'phone-1')!;
+        expect([input.lx, input.ly, input.rx, input.ry], [0.5, -0.5, -1.0, 0.0]);
+        expect(input.buttons, {ControllerButton.lb});
+      });
+
+      test('tilt reaches the host with the buttons', () async {
+        final host = await startHost(t);
+        final client = newClient(t);
+        client.connect(addressOf(host, t), code: host.pairingCode);
+        await clientStatus(client, ClientStatus.connected);
+        client.sendInput({ControllerButton.a}, ax: -0.25, ay: 0.5);
+        final s = await hostUntil(host, (h) => inputOf(h, 'phone-1')?.ax == -0.25);
+        expect(inputOf(s, 'phone-1')!.ay, 0.5);
+        expect(inputOf(s, 'phone-1')!.buttons, {ControllerButton.a});
+      });
+    });
+  }
+
+  // No channel to open: these read values the phone keeps on its own.
   test('the ping window keeps only the last 30 seconds', () {
     final w = RttWindow();
     w.add(0, 100);
@@ -135,28 +163,5 @@ void main() {
       expect(sqrt(s.left!.x * s.left!.x + s.left!.y * s.left!.y), lessThanOrEqualTo(1.0 + 1e-9));
     }
     expect(demoSteps.last.left, isNull);
-  });
-
-  test('both sticks reach the host with the shoulder buttons', () async {
-    final host = await startHost();
-    final client = newClient();
-    client.connect(addressOf(host), code: host.pairingCode);
-    await clientStatus(client, ClientStatus.connected);
-    client.sendInput({ControllerButton.lb}, left: (x: 0.5, y: -0.5), right: (x: -1, y: 0));
-    final s = await hostUntil(host, (h) => inputOf(h, 'phone-1')?.hasSticks ?? false);
-    final input = inputOf(s, 'phone-1')!;
-    expect([input.lx, input.ly, input.rx, input.ry], [0.5, -0.5, -1.0, 0.0]);
-    expect(input.buttons, {ControllerButton.lb});
-  });
-
-  test('tilt reaches the host with the buttons', () async {
-    final host = await startHost();
-    final client = newClient();
-    client.connect(addressOf(host), code: host.pairingCode);
-    await clientStatus(client, ClientStatus.connected);
-    client.sendInput({ControllerButton.a}, ax: -0.25, ay: 0.5);
-    final s = await hostUntil(host, (h) => inputOf(h, 'phone-1')?.ax == -0.25);
-    expect(inputOf(s, 'phone-1')!.ay, 0.5);
-    expect(inputOf(s, 'phone-1')!.buttons, {ControllerButton.a});
   });
 }

@@ -24,6 +24,7 @@ final class ControllerInfo {
     required this.platform,
     required this.appVersion,
     required this.remoteAddress,
+    this.isLocal = false,
     required this.state,
     required this.since,
     this.rttMs,
@@ -43,7 +44,15 @@ final class ControllerInfo {
   final String name;
   final String platform;
   final String appVersion;
-  final String remoteAddress;
+
+  /// The peer's network address, as the host shows it. Null for a local
+  /// player ([isLocal]): the host phone's own player has no address (D1).
+  final String? remoteAddress;
+
+  /// True when this player runs in the host's own process: the host phone's
+  /// own player (D1). Such a player has no [remoteAddress].
+  final bool isLocal;
+
   final ControllerState state;
 
   /// When [state] last changed.

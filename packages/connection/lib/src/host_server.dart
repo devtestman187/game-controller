@@ -1,27 +1,29 @@
 import 'dart:async';
-import 'dart:io';
 import 'dart:math';
 
 import 'package:protocol/protocol.dart';
 
-import 'host_address.dart';
 import 'host_connection.dart';
 import 'host_pairings.dart';
 import 'host_types.dart';
 import 'log.dart';
 import 'saved_pairing.dart';
+import 'transport/channel_listener.dart';
+import 'transport/message_channel.dart';
 
-/// The WebSocket server that runs on the TV (and on the laptop).
+/// The server that runs on the TV (and on the laptop), and on a phone hosting
+/// a game itself (M12).
 ///
 /// It shows a pairing code, accepts controllers that send that code (or a
-/// token from an earlier pairing), sends heartbeats, measures the round-trip
-/// time and drops connections that go quiet.
+/// token from an earlier pairing) over any of its listeners, sends
+/// heartbeats, measures the round-trip time and drops connections that go
+/// quiet.
 class HostServer {
   HostServer({
     required this.hostId,
     required this.hostName,
     required this.appVersion,
-    this.preferredPort = defaultPort,
+    required List<ChannelListener> listeners,
     this.heartbeatInterval = const Duration(seconds: 1),
     this.heartbeatTimeout = const Duration(seconds: 4),
     this.pairingWindow = const Duration(minutes: 5),
@@ -34,6 +36,7 @@ class HostServer {
     LogSink? log,
     Random? random,
   }) : _log = log ?? _noLog,
+       _listeners = List.unmodifiable(listeners),
        _pairings = PairingBook(
          random: random ?? Random.secure(),
          maxSavedPairings: maxSavedPairings,
@@ -45,8 +48,10 @@ class HostServer {
   final String hostName;
   final String appVersion;
 
-  /// Port to try first. If it's taken, any free port is used.
-  final int preferredPort;
+  /// Where controllers reach this host: the WebSocket on the LAN, and (on a
+  /// phone) the link to its own player (D1).
+  final List<ChannelListener> _listeners;
+
   final Duration heartbeatInterval;
 
   /// A connection that sends nothing for this long is dropped.
@@ -84,7 +89,7 @@ class HostServer {
   final _sessions = <HostConnection>{};
   final _changes = StreamController<HostSnapshot>.broadcast();
   final _messages = StreamController<ControllerMessage>.broadcast();
-  HttpServer? _http;
+  bool _running = false;
   Timer? _heartbeat;
   int _lastLatencyLogMs = 0;
 
@@ -96,19 +101,40 @@ class HostServer {
   Stream<ControllerMessage> get messages => _messages.stream;
 
   HostSnapshot get snapshot =>
-      HostSnapshot(running: _http != null, port: _http?.port, pairingCode: _pairings.code, controllers: _controllers());
+      HostSnapshot(running: _running, port: port, pairingCode: _pairings.code, controllers: _controllers());
 
   String get pairingCode => _pairings.code;
 
-  /// The port actually in use, once started.
-  int? get port => _http?.port;
+  /// The port phones reach this host on: the first listener that has one.
+  int? get port {
+    for (final listener in _listeners) {
+      final port = listener.port;
+      if (port != null) return port;
+    }
+    return null;
+  }
 
+  /// Starts every listener and the heartbeats. A listener that can't start
+  /// stops the ones already going and its failure is thrown.
   Future<void> start() async {
-    if (_http != null) return;
-    final http = await _bind();
-    _http = http;
-    _log('Listening on port ${http.port} (pairing code ${_pairings.code})');
-    http.listen(_onRequest, onError: (Object e) => _log('Server error: $e'));
+    if (_running) return;
+    final started = <ChannelListener>[];
+    for (final listener in _listeners) {
+      try {
+        await listener.start(_onChannel);
+      } on Object {
+        for (final going in started) {
+          await going.stop();
+        }
+        rethrow;
+      }
+      started.add(listener);
+    }
+    _running = true;
+    final port = this.port;
+    // A listener without a port (the host phone's own player) adds no line,
+    // so the TV's log reads as it always has.
+    if (port != null) _log('Listening on port $port (pairing code ${_pairings.code})');
     _heartbeat = Timer.periodic(heartbeatInterval, (_) => _tick());
     _emit();
   }
@@ -116,12 +142,15 @@ class HostServer {
   Future<void> stop() async {
     _heartbeat?.cancel();
     _heartbeat = null;
+    // Sessions first: each phone sees 1001 "Host is closing", as it always
+    // has.
     for (final s in _sessions.toList()) {
       s.close(CloseCodes.goingAway, 'Host is closing');
     }
-    final http = _http;
-    _http = null;
-    await http?.close(force: true);
+    _running = false;
+    for (final listener in _listeners) {
+      await listener.stop();
+    }
     _emit();
   }
 
@@ -220,53 +249,17 @@ class HostServer {
   /// lowest free one.
   int _reservePlayerNumber(int? previous) => _pairings.pickPlayer(previous, taken: _takenPlayerNumbers);
 
-  Future<HttpServer> _bind() async {
-    // Dual-stack first, so phones that resolve the host to IPv6 still connect.
-    final attempts = <(InternetAddress, int)>[
-      (InternetAddress.anyIPv6, preferredPort),
-      (InternetAddress.anyIPv4, preferredPort),
-      if (preferredPort != 0) ...[(InternetAddress.anyIPv6, 0), (InternetAddress.anyIPv4, 0)],
-    ];
-    Object? lastError;
-    for (final (address, port) in attempts) {
-      try {
-        return await HttpServer.bind(address, port, v6Only: false);
-      } on SocketException catch (e) {
-        lastError = e;
-        _log('Could not listen on ${address.address} port $port: ${e.osError?.message ?? e.message}');
-      }
-    }
-    throw lastError ?? StateError('Could not start the server');
-  }
-
-  Future<void> _onRequest(HttpRequest request) async {
-    final remote = displayIp(request.connectionInfo?.remoteAddress.address ?? '?');
-    if (request.uri.path == webSocketPath && WebSocketTransformer.isUpgradeRequest(request)) {
-      try {
-        _onSocket(await WebSocketTransformer.upgrade(request), remote);
-      } catch (e) {
-        _log('WebSocket upgrade from $remote failed: $e');
-      }
+  /// Takes one new channel from a listener. The server owns it from here on.
+  void _onChannel(MessageChannel channel) {
+    if (!_running) {
+      channel.close(CloseCodes.goingAway, 'Host is closing');
       return;
     }
-    // A plain page, so opening http://<address>:<port> in the phone's browser
-    // shows whether the firewall lets connections through.
-    request.response
-      ..headers.contentType = ContentType.text
-      ..write('$hostName is running the controller host (protocol v$protocolVersion).\n');
-    await request.response.close();
-  }
-
-  void _onSocket(WebSocket socket, String remote) {
-    if (_http == null) {
-      socket.close(CloseCodes.goingAway, 'Host is closing');
-      return;
-    }
-    final s = HostConnection(socket, remote, _now, _SessionHost(this));
+    final s = HostConnection(channel, _now, _SessionHost(this));
     _sessions.add(s);
-    _log('Connection from $remote');
-    socket.listen(
-      (data) => s.onData(data),
+    _log('Connection from ${s.who}');
+    channel.incoming.listen(
+      s.onData,
       onDone: s.onClosed,
       onError: (Object e) => _log('Connection error from ${s.who}: $e'),
     );

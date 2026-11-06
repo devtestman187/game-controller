@@ -6,16 +6,14 @@ import 'package:connection/connection.dart';
 import 'package:protocol/protocol.dart';
 import 'package:test/test.dart';
 
-/// The two ways to make a channel: a WebSocket on localhost, or a link inside
-/// this process (D1).
-enum _Transport { webSocket, inProcess }
+import 'helpers.dart';
 
 /// The target the in-process connector takes: the host phone's own player.
 final _localTarget = HostAddress.local(hostId: 'host-1', name: 'Test TV');
 
 void main() {
   group('a connected pair', () {
-    for (final transport in _Transport.values) {
+    for (final transport in TestTransport.values) {
       group(transport.name, () {
         test('keeps the order of frames, also those sent before the peer listens', () async {
           final pair = await _Pair.open(transport);
@@ -86,7 +84,7 @@ void main() {
 
         test('says whether the peer is local, and its address', () async {
           final pair = await _Pair.open(transport);
-          final local = transport == _Transport.inProcess;
+          final local = transport == TestTransport.inProcess;
           for (final end in [pair.host, pair.controller]) {
             expect(end.isLocal, local);
             expect(end.remoteAddress, local ? isNull : '127.0.0.1');
@@ -157,6 +155,25 @@ void main() {
       expect(channels, isEmpty);
     });
 
+    test('the web socket connector closes the socket when cancelled after it opened', () async {
+      final accepted = Completer<MessageChannel>();
+      final listener = WebSocketListener(preferredPort: 0, hostName: 'Test TV');
+      addTearDown(listener.stop);
+      await listener.start(accepted.complete);
+      final target = HostAddress(addresses: ['127.0.0.1'], port: _portOf(listener));
+
+      // Not cancelled before the connect, cancelled right after it.
+      var checks = 0;
+      await expectLater(
+        WebSocketConnector().open(target, isCancelled: () => ++checks > 1),
+        throwsA(isA<ConnectFailed>()),
+      );
+      expect(checks, 2);
+      final channel = await accepted.future;
+      await channel.incoming.drain<void>();
+      expect(channel.closeCode, CloseCodes.goingAway);
+    });
+
     test('the in-process connector rejects a network target', () async {
       final listener = InProcessListener();
       await listener.start((_) {});
@@ -209,9 +226,9 @@ final class _Pair {
   final MessageChannel host;
   final MessageChannel controller;
 
-  static Future<_Pair> open(_Transport transport) async {
+  static Future<_Pair> open(TestTransport transport) async {
     switch (transport) {
-      case _Transport.webSocket:
+      case TestTransport.webSocket:
         final listener = WebSocketListener(preferredPort: 0, hostName: 'Test TV');
         addTearDown(listener.stop);
         final accepted = Completer<MessageChannel>();
@@ -222,7 +239,7 @@ final class _Pair {
         final host = await accepted.future;
         addTearDown(() => host.close(CloseCodes.goingAway));
         return _Pair._(listener, host, controller);
-      case _Transport.inProcess:
+      case TestTransport.inProcess:
         final listener = InProcessListener();
         MessageChannel? host;
         await listener.start((channel) => host = channel);

@@ -29,9 +29,9 @@ final class ClientMessages {
   final ClientInput _input;
   final MetricsOutbox _metrics;
 
-  /// Takes one frame from the TV.
-  void onData(Object? data) {
-    if (data is! String) return;
+  /// Takes one text frame from the TV. A binary frame never gets here: the
+  /// channel closes it as a protocol error.
+  void onData(String data) {
     final message = _decode(data);
     if (message == null) return;
 

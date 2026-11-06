@@ -103,6 +103,9 @@ class LiveHostService implements HostService {
       hostId: id,
       hostName: _hostName,
       appVersion: identity.appVersion,
+      // Phones reach this host on the LAN (M12 step 2; a phone hosting its own
+      // player adds a listener of its own in step 3).
+      listeners: [WebSocketListener(hostName: _hostName, log: log.sink('host'))],
       // Saved, so phones reconnect without a code after the app restarts.
       pairings: saved,
       onPairingsChanged: (p) => savePairings(prefs, p),

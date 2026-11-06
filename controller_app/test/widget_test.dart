@@ -23,6 +23,7 @@ class FakeClient extends ControllerClient {
   FakeClient({this.savedTokens = const {}})
     : super(
         identity: const ControllerIdentity(controllerId: 'test', name: 'Test', platform: 'test', appVersion: 't'),
+        connector: WebSocketConnector(),
       );
 
   final Map<String, String> savedTokens;

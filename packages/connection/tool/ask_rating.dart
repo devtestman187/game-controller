@@ -14,7 +14,7 @@ Future<void> main() async {
     hostId: 'ask-rating-tool',
     hostName: 'Rating check',
     appVersion: 'tool',
-    preferredPort: 0,
+    listeners: [WebSocketListener(preferredPort: 0, hostName: 'Rating check')],
     capabilities: const [Capability.metrics, Capability.rating],
   );
   await host.start();

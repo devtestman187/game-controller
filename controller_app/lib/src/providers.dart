@@ -127,6 +127,7 @@ final clientProvider = Provider<ControllerClient>((ref) {
   log.add('app', 'Thumb Party $versionLabel on ${identity.platform}, ID ${identity.controllerId.substring(0, 6)}');
   final client = ControllerClient(
     identity: identity,
+    connector: WebSocketConnector(log: log.sink('client')),
     tokens: store.tokens,
     onTokenChanged: store.setToken,
     log: log.sink('client'),

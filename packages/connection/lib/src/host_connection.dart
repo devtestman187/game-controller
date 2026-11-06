@@ -1,11 +1,14 @@
-import 'dart:io';
-
 import 'package:protocol/protocol.dart';
 
 import 'host_pairings.dart';
 import 'host_types.dart';
 import 'latency.dart';
 import 'rtt.dart';
+import 'transport/message_channel.dart';
+
+/// What the log calls a peer without a network address: the host phone's own
+/// player (D1).
+const String localPeerLabel = 'the local player';
 
 /// What a controller is told about its host in the welcome (internal).
 final class HostDetails {
@@ -70,15 +73,16 @@ abstract interface class HostSessionHost {
 /// out, and its heartbeats (internal; today's `HostServer._Session` plus the
 /// server's handling for one session).
 final class HostConnection {
-  HostConnection(this._socket, this.remoteAddress, this.openedAtMs, this._host) : lastHeardMs = openedAtMs;
+  HostConnection(this._channel, this.openedAtMs, this._host) : lastHeardMs = openedAtMs;
 
   static const _codec = MessageCodec();
 
-  final WebSocket _socket;
+  final MessageChannel _channel;
   final HostSessionHost _host;
 
-  /// The peer's network address, as the host shows it.
-  final String remoteAddress;
+  /// The peer's network address, as the host shows it. Null for the host
+  /// phone's own player (D1).
+  String? get remoteAddress => _channel.remoteAddress;
 
   /// When the connection opened, on the host's clock.
   final int openedAtMs;
@@ -96,38 +100,39 @@ final class HostConnection {
   final latency = InputLatency();
 
   /// The name for logs: the controller's own, or its address before hello.
-  String get who => hello?.name ?? remoteAddress;
+  String get who => hello?.name ?? remoteAddress ?? localPeerLabel;
 
-  /// Takes one frame from the socket.
-  void onData(Object? data) {
+  /// Takes one text frame from the channel. A binary frame never gets here:
+  /// the channel closes it as a protocol error.
+  void onData(String data) {
     if (closed) return;
     lastHeardMs = _host.nowMs;
-    if (data is! String) return close(CloseCodes.protocolError, 'Expected text frames');
     final message = _decode(data);
     if (message == null) return; // An optional message type from a newer peer.
     _handle(message);
   }
 
-  /// The socket's done callback: the peer closed or the network dropped.
+  /// The channel's done callback: the peer closed or the network dropped.
   void onClosed() {
     if (closed) return;
-    _host.log('$who disconnected${_socket.closeCode == null ? '' : ' (code ${_socket.closeCode})'}');
+    final code = _channel.closeCode;
+    _host.log('$who disconnected${code == null ? '' : ' (code $code)'}');
     _ended();
   }
 
-  /// Closes from this side. The socket's own done callback then does nothing.
+  /// Closes from this side. The channel's own done callback then does nothing.
   void close(int code, String reason) {
     if (closed) return;
     _ended();
     // close() can wait a long time on a dead network, so don't await it.
-    _socket.close(code, reason).then((_) {}, onError: (_) {});
+    _channel.close(code, reason).then((_) {}, onError: (_) {});
   }
 
   /// Sends [message] to this controller, if the connection is still open.
   void send(Message message) {
     if (closed) return;
     try {
-      _socket.add(_codec.encode(message));
+      _channel.send(_codec.encode(message));
     } catch (e) {
       _host.log('Send to $who failed: $e');
     }
@@ -156,6 +161,7 @@ final class HostConnection {
     platform: hello!.platform,
     appVersion: hello!.appVersion,
     remoteAddress: remoteAddress,
+    isLocal: _channel.isLocal,
     state: paired ? ControllerState.connected : ControllerState.pairing,
     since: since,
     rttMs: rttMs,
@@ -268,7 +274,9 @@ final class HostConnection {
     if (this.hello != null) return close(CloseCodes.protocolError, 'Duplicate hello');
     this.hello = hello;
     final caps = hello.capabilities.isEmpty ? '' : ', supports ${hello.capabilities.join(', ')}';
-    _host.log('${hello.name} (${hello.platform} ${hello.appVersion}$caps) says hello from $remoteAddress');
+    _host.log(
+      '${hello.name} (${hello.platform} ${hello.appVersion}$caps) says hello from ${remoteAddress ?? localPeerLabel}',
+    );
     final details = _host.details;
     send(
       WelcomeMessage(

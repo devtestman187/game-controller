@@ -13,7 +13,10 @@ final class KnownPairing {
 
   final HelloMessage hello;
   final String token;
-  final String remoteAddress;
+
+  /// The last address this controller was reached at; null when it only ever
+  /// connected in this process (the host phone's own player, D1).
+  final String? remoteAddress;
 
   /// When this controller last connected or disconnected; the order saved
   /// pairings are kept in.
@@ -30,6 +33,9 @@ final class KnownPairing {
     platform: hello.platform,
     appVersion: hello.appVersion,
     remoteAddress: remoteAddress,
+    // Only a peer without an address is local: a network channel always has
+    // one.
+    isLocal: remoteAddress == null,
     state: ControllerState.disconnected,
     since: lastSeen,
   );
@@ -102,7 +108,7 @@ final class PairingBook {
           name: k.hello.name,
           platform: k.hello.platform,
           appVersion: k.hello.appVersion,
-          remoteAddress: k.remoteAddress,
+          remoteAddress: k.remoteAddress ?? '',
         ),
     ];
   }
@@ -135,15 +141,18 @@ final class PairingBook {
   /// there are too many ([live] are the controllers connected right now,
   /// which are never forgotten). Returns true when this is a new pairing or
   /// one whose token or name changed, so the app has something new to save.
+  ///
+  /// [remoteAddress] is null for the host phone's own player, which keeps the
+  /// last network address this controller paired from (if any).
   bool remember(
     HelloMessage hello,
     String token, {
-    required String remoteAddress,
+    required String? remoteAddress,
     required int player,
     required Set<String> live,
   }) {
     final previous = _known[hello.controllerId];
-    _known[hello.controllerId] = KnownPairing(hello, token, remoteAddress)..player = player;
+    _known[hello.controllerId] = KnownPairing(hello, token, remoteAddress ?? previous?.remoteAddress)..player = player;
     _trim(live);
     return previous == null || previous.token != token || previous.hello.name != hello.name;
   }

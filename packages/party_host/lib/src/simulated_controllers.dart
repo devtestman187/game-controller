@@ -57,6 +57,7 @@ class SimulatedControllers {
         platform: 'sim',
         appVersion: appVersion,
       ),
+      connector: WebSocketConnector(log: logBuffer.sink('sim$n')),
       log: logBuffer.sink('sim$n'),
     );
     final sim = _Sim(n, client);

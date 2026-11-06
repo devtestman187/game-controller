@@ -14,6 +14,7 @@ import 'controller_identity.dart';
 import 'host_address.dart';
 import 'log.dart';
 import 'rtt.dart';
+import 'transport/connector.dart';
 
 /// The phone's side of the connection: connects to a host, pairs with the
 /// code (or a saved token), keeps heartbeats going and reconnects on its own
@@ -21,11 +22,11 @@ import 'rtt.dart';
 class ControllerClient {
   ControllerClient({
     required this.identity,
+    required this._connector,
     Map<String, String> tokens = const {},
     this.onTokenChanged,
     this.heartbeatInterval = const Duration(seconds: 1),
     this.heartbeatTimeout = const Duration(seconds: 4),
-    this.connectTimeout = const Duration(seconds: 4),
     this.retryDelays = const [
       Duration(milliseconds: 250),
       Duration(milliseconds: 500),
@@ -51,13 +52,16 @@ class ControllerClient {
 
   /// The connection counts as dropped after this long without any message.
   final Duration heartbeatTimeout;
-  final Duration connectTimeout;
 
   /// Wait before each reconnect attempt. The last value repeats forever.
   final List<Duration> retryDelays;
 
   /// At most this many metrics segments wait for an ack. The oldest go first.
   static const maxOutbox = MetricsOutbox.maxOutbox;
+
+  /// How a channel to the host is opened: a WebSocket on the LAN, or the
+  /// link to the host phone's own player (D1).
+  final Connector _connector;
 
   /// Wall-clock time, replaced in tests to act out a sleeping phone.
   final DateTime Function() _wallClock;
@@ -88,7 +92,7 @@ class ControllerClient {
     _host,
     heartbeatInterval: heartbeatInterval,
     heartbeatTimeout: heartbeatTimeout,
-    connectTimeout: connectTimeout,
+    connector: _connector,
     wallClock: _wallClock,
   );
 
@@ -218,12 +222,10 @@ class ControllerClient {
 
   /// Call when the app comes back to the foreground or the phone wakes up.
   ///
-  /// While the app was suspended nothing was heard from the TV, and the TV
-  /// has usually dropped the connection already. Instead of waiting several
-  /// seconds for the heartbeat timeout, a connection that has been quiet for
-  /// longer than [heartbeatTimeout] / 2 is replaced at once, and a pending
-  /// reconnect is tried now. Wall-clock time is used here, because the
-  /// monotonic clock may not advance while the phone sleeps.
+  /// The TV has usually dropped a connection that was quiet while the app
+  /// slept, so one quiet for longer than [heartbeatTimeout] / 2 is replaced
+  /// at once, and a pending reconnect is tried now. Wall-clock time is used
+  /// here: the monotonic clock may not advance while the phone sleeps.
   void resume() {
     switch (_snap.status) {
       case ClientStatus.connected:

@@ -129,8 +129,9 @@ class _ControllerDetails extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(info.name, style: text.titleMedium, overflow: TextOverflow.ellipsis),
+        // The host phone's own player has no address to show (M12).
         Text(
-          '${info.platform} · ${info.appVersion} · ${info.remoteAddress}',
+          [info.platform, info.appVersion, ?info.remoteAddress].join(' · '),
           style: muted,
           overflow: TextOverflow.ellipsis,
         ),

@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:protocol/protocol.dart';
 
@@ -7,18 +6,20 @@ import 'client_host.dart';
 import 'client_messages.dart';
 import 'client_types.dart';
 import 'transport/connect_error.dart';
+import 'transport/connector.dart';
+import 'transport/message_channel.dart';
 
 /// The channel to the TV: opening it, the heartbeats over it and what happens
 /// when it goes (internal; today's `ControllerClient` socket code).
 ///
-/// The client owns it from the first [open], so the socket count and the
+/// The client owns it from the first [open], so the channel count and the
 /// last-heard time outlive a reconnect.
 final class ClientConnection {
   ClientConnection(
     this._host, {
     required this.heartbeatInterval,
     required this.heartbeatTimeout,
-    required this.connectTimeout,
+    required this.connector,
     required DateTime Function() wallClock,
   }) : _wallClock = wallClock,
        _lastHeardAt = wallClock();
@@ -33,8 +34,8 @@ final class ClientConnection {
   /// The connection counts as dropped after this long without any message.
   final Duration heartbeatTimeout;
 
-  /// How long one connect attempt may take.
-  final Duration connectTimeout;
+  /// How a channel to the host is opened.
+  final Connector connector;
 
   /// Wall-clock time, replaced in tests to act out a sleeping phone.
   final DateTime Function() _wallClock;
@@ -43,8 +44,8 @@ final class ClientConnection {
   int _session = 0;
 
   /// Bumped for every channel, so events from a replaced one do nothing.
-  int _socketId = 0;
-  WebSocket? _ws;
+  int _channelId = 0;
+  MessageChannel? _channel;
   bool _opening = false;
   Timer? _heartbeat;
   int _lastHeardMs = 0;
@@ -55,7 +56,7 @@ final class ClientConnection {
   int get session => _session;
 
   /// Whether a channel is open.
-  bool get hasChannel => _ws != null;
+  bool get hasChannel => _channel != null;
 
   /// Whether [open] is trying the target's addresses right now.
   bool get isOpening => _opening;
@@ -64,65 +65,58 @@ final class ClientConnection {
   /// an older session, and an [open] still running, then do nothing.
   int startSession() => ++_session;
 
-  /// Tries the target's addresses in order and, when one opens, says hello
-  /// and starts the heartbeats. [messages] gets the frames from then on.
+  /// Asks the [connector] for a channel and, when one opens, says hello and
+  /// starts the heartbeats. [messages] gets the frames from then on.
   Future<void> open(int session, ClientMessages messages) async {
     final target = _host.snapshot.target;
     if (target == null) return;
     _opening = true;
-    Object? lastError;
-    WebSocket? ws;
-    for (final address in target.ordered) {
-      final uri = target.uriFor(address);
-      _host.log('Connecting to $uri');
-      final http = HttpClient()..connectionTimeout = connectTimeout;
-      try {
-        ws = await WebSocket.connect(uri.toString(), customClient: http);
-        break;
-      } catch (e) {
-        lastError = e;
-        http.close(force: true);
-        _host.log('Could not connect to $uri: ${describeError(e)}');
-      }
-      if (session != _session) break;
+    MessageChannel? channel;
+    ConnectFailed? failure;
+    try {
+      // A session that ends while it is connecting gets no channel.
+      channel = await connector.open(target, isCancelled: () => session != _session);
+    } on ConnectFailed catch (e) {
+      failure = e;
     }
     if (session != _session) {
-      ws?.close(CloseCodes.goingAway).ignore();
+      channel?.close(CloseCodes.goingAway).ignore();
       return;
     }
     _opening = false;
-    if (ws == null) return _onConnectFailed(lastError);
-    _attach(ws, target.display, messages);
+    final opened = channel;
+    if (opened == null) return _onConnectFailed(failure);
+    _attach(opened, target.display, messages);
   }
 
-  /// Takes over a socket that just opened: says hello, listens and beats.
-  void _attach(WebSocket socket, String display, ClientMessages messages) {
-    final socketId = ++_socketId;
-    _ws = socket;
+  /// Takes over a channel that just opened: says hello, listens and beats.
+  void _attach(MessageChannel channel, String display, ClientMessages messages) {
+    final channelId = ++_channelId;
+    _channel = channel;
     _host.welcomed = false;
     _lastHeardMs = _host.nowMs;
     _lastHeardAt = _wallClock();
     _host.log('Connected to $display, saying hello');
-    socket.listen(
+    channel.incoming.listen(
       (data) {
-        if (socketId != _socketId) return;
+        if (channelId != _channelId) return;
         _lastHeardMs = _host.nowMs;
         _lastHeardAt = _wallClock();
         messages.onData(data);
       },
-      onDone: () => _onSocketDone(socketId, socket.closeCode, socket.closeReason),
+      onDone: () => _onChannelDone(channelId, channel.closeCode, channel.closeReason),
       onError: (Object e) => _host.log('Connection error: ${describeError(e)}'),
     );
     send(_host.identity.toHello());
-    _heartbeat = Timer.periodic(heartbeatInterval, (_) => _beat(socketId));
+    _heartbeat = Timer.periodic(heartbeatInterval, (_) => _beat(channelId));
   }
 
   /// Sends [message] to the TV, if a channel is open.
   void send(Message message) {
-    final ws = _ws;
-    if (ws == null) return;
+    final channel = _channel;
+    if (channel == null) return;
     try {
-      ws.add(_codec.encode(message));
+      channel.send(_codec.encode(message));
     } catch (e) {
       _host.log('Send failed: $e');
     }
@@ -132,12 +126,12 @@ final class ClientConnection {
   void dropChannel({int? closeCode}) {
     _heartbeat?.cancel();
     _heartbeat = null;
-    final ws = _ws;
-    _ws = null;
+    final channel = _channel;
+    _channel = null;
     _host.welcomed = false;
-    _socketId++;
+    _channelId++;
     // close() can wait a long time on a dead network, so don't await it.
-    ws?.close(closeCode ?? 1000).then((_) {}, onError: (_) {});
+    channel?.close(closeCode ?? 1000).then((_) {}, onError: (_) {});
   }
 
   /// Replaces the channel when the app was away for longer than half the
@@ -151,9 +145,11 @@ final class ClientConnection {
     return true;
   }
 
-  void _onConnectFailed(Object? error) {
-    final osError = error is SocketException ? error.osError?.errorCode : null;
-    final detail = error == null ? null : describeError(error);
+  /// The connector couldn't open a channel: retry once this phone has paired,
+  /// otherwise say that the host can't be reached.
+  void _onConnectFailed(ConnectFailed? failure) {
+    final detail = failure?.detail;
+    final osError = failure?.osErrorCode;
     if (_host.everPaired) {
       _host.scheduleRetry(detail: detail, osErrorCode: osError);
     } else {
@@ -168,8 +164,9 @@ final class ClientConnection {
     }
   }
 
-  void _onSocketDone(int socketId, int? code, String? reason) {
-    if (socketId != _socketId) return;
+  /// The channel's done callback: the TV closed it or the network dropped.
+  void _onChannelDone(int channelId, int? code, String? reason) {
+    if (channelId != _channelId) return;
     dropChannel();
     final why = reason == null || reason.isEmpty ? '' : ': $reason';
     _host.log('Connection closed${code == null ? '' : ' (code $code$why)'}');
@@ -199,8 +196,8 @@ final class ClientConnection {
     }
   }
 
-  void _beat(int socketId) {
-    if (socketId != _socketId) return;
+  void _beat(int channelId) {
+    if (channelId != _channelId) return;
     final quietMs = _host.nowMs - _lastHeardMs;
     if (quietMs > heartbeatTimeout.inMilliseconds) {
       _host.log('No heartbeat for ${(quietMs / 1000).toStringAsFixed(1)} s, the connection is gone');

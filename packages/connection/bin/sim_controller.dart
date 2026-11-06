@@ -68,6 +68,7 @@ Future<void> main(List<String> args) async {
       capabilities: options.containsKey('metrics') ? const [Capability.metrics, Capability.rating] : const [],
       device: const DeviceInfo(kind: DeviceInfo.sim),
     ),
+    connector: WebSocketConnector(log: (m) => stdout.writeln('  · $m')),
     log: (m) => stdout.writeln('  · $m'),
   );
 

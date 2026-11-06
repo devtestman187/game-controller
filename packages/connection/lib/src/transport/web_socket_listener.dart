@@ -59,9 +59,10 @@ final class WebSocketListener implements ChannelListener {
         _log('Could not listen on ${address.address} port $port: ${e.osError?.message ?? e.message}');
       }
     }
-    // Every address failed; the last error is the one the user sees.
-    final reason = lastError == null ? '' : ': ${describeError(lastError)}';
-    throw ListenFailed('Could not start the server$reason');
+    // Every address failed; the last error is the one the user sees. The
+    // message is only the cause: callers say what failed ("The server could
+    // not start: …").
+    throw ListenFailed(lastError == null ? 'No address to listen on' : describeError(lastError));
   }
 
   Future<void> _onRequest(HttpRequest request, void Function(MessageChannel channel) onChannel) async {
