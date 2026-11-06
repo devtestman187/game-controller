@@ -92,6 +92,7 @@ Future<void> main(List<String> args) async {
 
   final driver = TouchDriver(
     layout: layout,
+    layoutPath: layoutFile,
     injector: injector,
     log: TouchLog(logPath.isEmpty ? null : File(logPath)),
     random: Random(seed),
@@ -326,10 +327,18 @@ class TouchDriver {
     required this.random,
     required this.humanModel,
     required this.serial,
+    this.layoutPath = '',
     this.gyro,
   });
 
-  final Layout layout;
+  /// The controls for the phone's current mode. Mutable because a scene's
+  /// `layout` goal switches the app's mode, and the buttons move with it
+  /// (Sticks: A at (1542,573); D-pad: A at (1411,652)).
+  Layout layout;
+
+  /// The layout file given at start, so a mode switch can load its sibling
+  /// `<device>-<mode>.json` from the same folder.
+  final String layoutPath;
   final Injector injector;
   final TouchLog log;
   final Random random;
@@ -350,6 +359,10 @@ class TouchDriver {
 
   final _finger1 = _Finger(1, 0);
   final _finger2 = _Finger(2, 1);
+
+  /// The control the button finger is on, so a press on a different one is a
+  /// lift-and-press rather than a move.
+  Control? _buttonControl;
 
   Future<void> connectDirector(String url) async {
     try {
@@ -385,10 +398,11 @@ class TouchDriver {
   /// allow that mode yet) is logged, not fatal: the take's picture shows the
   /// truth, and the scene carries on.
   Future<void> _switchMode(String to) async {
+    stdout.writeln('touch driver: mode request -> $to');
     try {
       final reply = await _command({'cmd': 'mode', 'to': to});
       stdout.writeln(
-        'touch driver: layout -> $to: ${reply['ok'] == true ? 'ok' : reply['why']}',
+        'touch driver: layout -> $to: ${reply['ok'] == true ? 'ok${reply['verified'] == false ? ' (unverified: the screen dump never came back)' : ''}' : reply['why']}',
       );
     } on Object catch (e) {
       stderr.writeln('touch driver: layout -> $to failed: $e');
@@ -457,7 +471,17 @@ class TouchDriver {
       gyro?.set(x, y);
       log.tilt(x, y);
     }
-    if (!fresh) return;
+    if (!fresh) {
+      // The director stopped sending input (a scene's pre-roll press is a
+      // 120 ms hold, then silence). Lift everything: a finger left down made
+      // every later press on the same button a move, which the app never sees
+      // as a new key-down. That is the G2 join bug of Nov 5, 2026: the second
+      // and third A presses injected no touch at all.
+      _finger1.up(injector, log);
+      _finger2.up(injector, log);
+      _buttonControl = null;
+      return;
+    }
     final x = (intent['x'] as num?)?.toDouble() ?? 0;
     final y = (intent['y'] as num?)?.toDouble() ?? 0;
     if (layout.mode != 'gyro') {
@@ -475,10 +499,34 @@ class TouchDriver {
     }
     final buttons = (intent['buttons'] as List?)?.cast<String>() ?? const [];
     final pressed = buttons.isEmpty ? null : layout.controls[buttons.first];
-    if (pressed == null) {
-      _finger2.up(injector, log);
-    } else if (!_finger2.down) {
-      _finger2.downAt(_screenPoint(pressed.x, pressed.y), injector, log);
+    // A press on a **different** control has to lift and press again: while the
+    // finger is down the old code only moved it (downAt -> moveTo), so the app
+    // saw one long press and every later button did nothing. Three Start
+    // presses after the four joins injected nothing that way (Nov 5, 2026).
+    switch (buttonAction(
+      target: pressed,
+      current: _buttonControl,
+      down: _finger2.down,
+    )) {
+      case ButtonAction.hold:
+        break;
+      case ButtonAction.lift:
+        _finger2.up(injector, log);
+      case ButtonAction.press:
+        _finger2.downAt(_screenPoint(pressed!.x, pressed.y), injector, log);
+      case ButtonAction.repress:
+        unawaited(_repress(pressed!));
+    }
+    _buttonControl = pressed;
+  }
+
+  /// Lifts the button finger and presses a different control, one frame apart
+  /// so the app sees a new key-down rather than a slide off the old button.
+  Future<void> _repress(Control target) async {
+    await _finger2.up(injector, log);
+    await Future<void>.delayed(const Duration(milliseconds: 24));
+    if (!_finger2.down) {
+      await _finger2.downAt(_screenPoint(target.x, target.y), injector, log);
     }
   }
 
@@ -502,42 +550,73 @@ class TouchDriver {
     return _screenPoint(dpad.x + x / length * arm, dpad.y + y / length * arm);
   }
 
+  /// Runs one adb command with a deadline, so a `uiautomator dump` that never
+  /// returns cannot block a scene (measured Nov 5, 2026: the dump hung while
+  /// the game was drawing at 60 fps, and the mode switch never reported).
+  /// Returns stdout, or null on a timeout or a failed start.
+  Future<String?> _adbText(
+    List<String> args, {
+    Duration timeout = const Duration(seconds: 6),
+  }) async {
+    Process? process;
+    try {
+      process = await Process.start(adbBinary, ['-s', serial, ...args]);
+      final out = process.stdout
+          .transform(const SystemEncoding().decoder)
+          .join()
+          .then<String?>((text) => text, onError: (Object _) => null);
+      unawaited(process.stderr.drain<void>().then((_) {}, onError: (_) {}));
+      final code = await process.exitCode.timeout(
+        timeout,
+        onTimeout: () {
+          process?.kill();
+          return -1;
+        },
+      );
+      if (code != 0) {
+        unawaited(out);
+        return null;
+      }
+      return await out.timeout(
+        const Duration(seconds: 2),
+        onTimeout: () => null,
+      );
+    } on Object {
+      return null;
+    }
+  }
+
   /// The current uiautomator dump of the screen, or null when it fails.
-  Future<String?> _uiXml([String file = '/sdcard/mode.xml']) async {
-    final adb = adbBinary;
-    for (var attempt = 0; attempt < 3; attempt++) {
-      final dump = await Process.run(adb, [
-        '-s',
-        serial,
+  ///
+  /// [attempts] and [timeout] are small on a game screen: the dump hangs while
+  /// the app draws at 60 fps (measured Nov 5, 2026), and the mode command must
+  /// not wait 20 s for it when the layout has a measured point for the switch.
+  Future<String?> _uiXml([
+    String file = '/sdcard/mode.xml',
+    int attempts = 2,
+    int timeoutS = 5,
+  ]) async {
+    for (var attempt = 0; attempt < attempts; attempt++) {
+      final dump = await _adbText([
         'shell',
         'uiautomator',
         'dump',
         file,
-      ]);
-      if (!(dump.stdout as String).contains('dumped to')) continue;
-      final xml = await Process.run(adb, [
-        '-s',
-        serial,
-        'exec-out',
-        'cat',
-        file,
-      ]);
-      return xml.stdout as String;
+      ], timeout: Duration(seconds: timeoutS));
+      if (dump == null || !dump.contains('dumped to')) continue;
+      final xml = await _adbText(['exec-out', 'cat', file]);
+      if (xml != null && xml.contains('hierarchy')) return xml;
     }
     return null;
   }
 
-  /// The centre of the on-screen button labelled [label], read with
-  /// uiautomator; null when the dump fails (the caller falls back to the
-  /// layout's point).
+  /// The centre of the button labelled [label] in an accessibility dump.
   ///
   /// Flutter exposes a button's label as `content-desc`, not `text` (verified
   /// Nov 4, 2026: the mode segments carry `content-desc="Gyro"` and
   /// `selected="true"`/`"false"`). Matching only `text` silently missed them,
   /// so the mode command used to report ok without switching anything.
-  Future<Control?> _modeButton(String label) async {
-    final xml = await _uiXml();
-    if (xml == null) return null;
+  Control? _modeButtonIn(String xml, String label) {
     final match = RegExp(
       '(?:content-desc|text)="$label"[^>]*bounds="\\[(\\d+),(\\d+)\\]\\[(\\d+),(\\d+)\\]"',
     ).firstMatch(xml);
@@ -549,13 +628,49 @@ class TouchDriver {
     return Control((left + right) / 2, (top + bottom) / 2);
   }
 
-  /// The mode segment the app currently has selected, or null.
-  Future<String?> _activeMode() async {
-    final xml = await _uiXml();
-    if (xml == null) return null;
+  /// The mode segment's point from the layout file, for when the accessibility
+  /// dump does not answer in time.
+  ///
+  /// The three segments shift 94 px left while the active mode shows its
+  /// settings icon to their right (measured Nov 5, 2026: with the D-pad
+  /// selected Sticks is at x 1503 and there is no icon; with Sticks selected
+  /// "Stick settings" sits at x 1501-1595 and Sticks is at x 1409). The
+  /// layouts were measured with the D-pad selected, so a non-D-pad active mode
+  /// means the whole row has moved.
+  Control? _fixedModePoint(String label) {
+    final key = switch (label) {
+      'D-pad' => 'mode.dpad',
+      'Gyro' => 'mode.gyro',
+      'Sticks' => 'mode.sticks',
+      _ => null,
+    };
+    if (key == null) return null;
+    final base = layout.screens[key];
+    if (base == null) return null;
+    final shift = layout.mode == 'dpad' ? 0.0 : 94.0;
+    return Control(base.x - shift, base.y);
+  }
+
+  String? _activeModeIn(String xml) {
     return RegExp('content-desc="(D-pad|Gyro|Sticks)"[^>]*selected="true"')
         .firstMatch(xml)
         ?.group(1);
+  }
+
+  /// Loads the sibling `<device>-<mode>.json` next to the layout file given at
+  /// start, for a mid-scene mode switch (2.3's `layout` goal). Returns the new
+  /// mode, or null when there is no such file (the current layout is kept and
+  /// the take's picture shows what really happened).
+  String? _reloadLayout(String mode) {
+    if (layoutPath.isEmpty) return null;
+    final dir = File(layoutPath).parent.path;
+    final path = '$dir\\${layout.device}-$mode.json';
+    if (!File(path).existsSync()) return null;
+    _finger1.up(injector, log);
+    _finger2.up(injector, log);
+    _buttonControl = null;
+    layout = Layout.fromFile(path);
+    return layout.mode;
   }
 
   Future<Map<String, dynamic>> _command(Map<String, dynamic> message) async {
@@ -597,24 +712,57 @@ class TouchDriver {
           'sticks' => 'Sticks',
           _ => '',
         };
-        final found = label.isEmpty ? null : await _modeButton(label);
+        // Get the segment's centre from the screen when the dump answers
+        // quickly, otherwise from the layout's measured point: the dump hangs
+        // for many seconds while the game draws at 60 fps (Nov 5, 2026), and a
+        // scene cannot wait that long before the take starts.
+        Control? found;
+        var fromDump = true;
+        if (label.isNotEmpty) {
+          final xml = await _uiXml('/sdcard/mode.xml', 1, 3);
+          found = xml == null ? null : _modeButtonIn(xml, label);
+        }
+        if (found == null) {
+          fromDump = false;
+          found = _fixedModePoint(label);
+        }
         if (found == null) {
           return {'ok': false, 'why': 'no "$label" button on screen'};
         }
+        // A held stick or button would be dragged to the mode bar by the tap
+        // (`_tap` reuses finger 1), so let go of both first.
+        _finger1.up(injector, log);
+        _finger2.up(injector, log);
+        _buttonControl = null;
         await _tap(found, 90);
-        await Future<void>.delayed(const Duration(milliseconds: 500));
-        // Never report a switch that did not happen: a silent ok here left the
-        // app on the D-pad while the take believed it was in Gyro.
-        final active = await _activeMode();
-        if (active != label) {
+        // Verify, but a dump that returns nothing is not a failed switch: the
+        // tap went to the segment. The take's picture and the game's own
+        // events are the truth either way.
+        String? active;
+        for (var attempt = 0; attempt < 4; attempt++) {
+          await Future<void>.delayed(const Duration(milliseconds: 300));
+          final xml = await _uiXml('/sdcard/mode.xml', 1, 3);
+          active = xml == null ? null : _activeModeIn(xml);
+          if (active == label) break;
+        }
+        if (active != null && active != label) {
           return {
             'ok': false,
-            'why':
-                'the tap did not switch the mode (the app shows '
-                '"${active ?? 'no mode'}")',
+            'why': 'the tap did not switch the mode (the app shows "$active")',
           };
         }
-        return {'ok': true};
+        // The app's controls move with its mode, so the driver's layout has to
+        // follow: otherwise the phone is in Sticks while the driver still taps
+        // the D-pad's A, and the game never sees a press.
+        final switched = _reloadLayout(message['to'] as String);
+        if (switched != null) {
+          stdout.writeln('touch driver: controls -> $switched');
+        }
+        return {
+          'ok': true,
+          'source': fromDump ? 'dump' : 'layout',
+          if (active == null) 'verified': false,
+        };
       case 'wait':
         await Future<void>.delayed(
           Duration(milliseconds: (message['ms'] as num?)?.toInt() ?? 0),
@@ -780,7 +928,7 @@ class _Finger {
       InputEvent(InputEvent.key, InputEvent.btnTouch, 1),
       InputEvent(InputEvent.synReport, 0, 0),
     ]);
-    log.add(slot, p, down: true);
+    log.add(slot, p, down: true, action: 'down');
   }
 
   Future<void> moveTo(_Point p, Injector injector, TouchLog log) async {
@@ -791,7 +939,7 @@ class _Finger {
       InputEvent(InputEvent.abs, InputEvent.mtPositionY, p.y.round()),
       InputEvent(InputEvent.synReport, 0, 0),
     ]);
-    log.add(slot, p, down: true);
+    log.add(slot, p, down: true, action: 'move');
   }
 
   Future<void> up(Injector injector, TouchLog log) async {
@@ -803,7 +951,7 @@ class _Finger {
       InputEvent(InputEvent.key, InputEvent.btnTouch, 0),
       InputEvent(InputEvent.synReport, 0, 0),
     ]);
-    log.add(slot, const _Point(0, 0), down: false);
+    log.add(slot, const _Point(0, 0), down: false, action: 'up');
   }
 }
 
@@ -979,9 +1127,10 @@ class TouchLog {
   TouchLog(this.file);
   final File? file;
 
-  void add(int slot, _Point p, {required bool down}) {
+  void add(int slot, _Point p, {required bool down, String? action}) {
     final line = {
       'wall': DateTime.now().millisecondsSinceEpoch,
+      if (action != null) 'action': action,
       'fingers': [
         if (down) {'id': slot, 'x': p.x.round(), 'y': p.y.round()},
       ],
@@ -1006,7 +1155,63 @@ class TouchLog {
   }
 }
 
+/// What the button finger must do on this frame (2.4 Step C).
+///
+/// A press is a *down* on a control, so the finger has to be up before it:
+/// asking for a different control while the finger is down has to lift and
+/// press again, and asking for nothing has to lift. Without that the app sees
+/// one long press and every later button does nothing - the G2 join bug of
+/// Nov 5, 2026, where the pre-roll's second and third A presses and three
+/// Start presses injected no touch at all.
+enum ButtonAction { hold, lift, press, repress }
+
+ButtonAction buttonAction({
+  required Control? target,
+  required Control? current,
+  required bool down,
+}) {
+  if (target == null) return down ? ButtonAction.lift : ButtonAction.hold;
+  if (!down) return ButtonAction.press;
+  if (current == null) return ButtonAction.repress;
+  if (current.x == target.x && current.y == target.y) return ButtonAction.hold;
+  return ButtonAction.repress;
+}
+
 /// `dart run tools/demo/touch_driver.dart --self-test`: the device detection
-/// (2.4 Step C) has the same tests as `input_device.dart`, so a driver change
-/// cannot quietly drop them.
-bool driverSelfTest() => selfTest();
+/// (2.4 Step C) has the same tests as `input_device.dart`, plus this file's
+/// press logic, which is the bug that cost the G2 pre-roll its takes.
+bool driverSelfTest() {
+  var ok = selfTest();
+  void check(String what, bool pass) {
+    stdout.writeln('${pass ? 'PASS' : 'FAIL'}  $what');
+    if (!pass) ok = false;
+  }
+
+  const a = Control(1411, 652);
+  const start = Control(900, 460);
+  check(
+    'no button asked, finger up: nothing',
+    buttonAction(target: null, current: null, down: false) == ButtonAction.hold,
+  );
+  check(
+    'no button asked, finger down: lift',
+    buttonAction(target: null, current: a, down: true) == ButtonAction.lift,
+  );
+  check(
+    'a button asked, finger up: press',
+    buttonAction(target: a, current: null, down: false) == ButtonAction.press,
+  );
+  check(
+    'the same button held: hold',
+    buttonAction(target: a, current: a, down: true) == ButtonAction.hold,
+  );
+  check(
+    'a different button while down: lift and press again',
+    buttonAction(target: start, current: a, down: true) == ButtonAction.repress,
+  );
+  check(
+    'down with no control recorded: lift and press again',
+    buttonAction(target: a, current: null, down: true) == ButtonAction.repress,
+  );
+  return ok;
+}

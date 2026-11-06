@@ -13,13 +13,13 @@
         {"idle": 1000},
         {"waitFor": {"event": "game_start", "timeoutMs": 12000}},
         {"layout": "sticks"},
-        {"idle": 1500}
+        {"idle": 9000}
       ]
     },
-    "Bot 2": {"via": "bot", "goals": [{"idle": 1000}]},
-    "Bot 3": {"via": "bot", "goals": [{"idle": 1000}]},
-    "Bot 4": {"via": "bot", "goals": [{"idle": 1000}]}
+    "Bot 2": {"via": "bot", "goals": [{"idle": 20000}]},
+    "Bot 3": {"via": "bot", "goals": [{"idle": 20000}]},
+    "Bot 4": {"via": "bot", "goals": [{"idle": 20000}]}
   },
   "endAfter": "seconds",
-  "endAfterS": 3
+  "endAfterS": 20
 }

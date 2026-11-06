@@ -50,10 +50,12 @@ void main() {
   test('join_race.json is a join pre-roll: four seats, then the match starts', () {
     final scene = Scene.fromFile('../tools/demo/scenes/join_race.json');
     expect(scene.screenStart, 'join');
-    // It runs 3 s past `game_start` so it can leave the phone in Sticks: the
-    // join screen only allows the D-pad, the race has to be shot in Sticks.
+    // It runs 20 s past `game_start` so it can leave the phone in Sticks: the
+    // join screen only allows the D-pad, the race has to be shot in Sticks, and
+    // the switch costs a `uiautomator` lookup (Nov 5, 2026: 3 s was not enough
+    // and the switch landed after the take had started).
     expect(scene.endAfter, 'seconds');
-    expect(scene.endAfterS, 3);
+    expect(scene.endAfterS, 20);
     expect(scene.join, isNotNull);
     // The natural side order: the first and third to join go left, so this
     // order gives the 2 vs 2 the race scene expects.
@@ -79,23 +81,24 @@ void main() {
     expect(goals[2].mode, 'sticks');
   });
 
-  test('R1/R2 (menus.json) and G1/G2 switch to Sticks once the game is up', () {
+  test('R1/R2 (menus.json) and G1 (join.json) switch to Sticks once the game is up', () {
     // The menus and the join screen only allow the D-pad, so the switch has to
     // come after `game_start`, not at the start of the scene.
-    for (final name in ['menus.json', 'join.json', 'race.json']) {
+    //
+    // race.json is not in this list any more (Nov 5, 2026): its match starts in
+    // the join_race.json pre-roll, which leaves the phone in Sticks before the
+    // recording, so a second switch inside the take only cost the first seconds
+    // of play. A G5 take that runs race.json alone sets the mode with the
+    // showrunner's `--mode sticks`.
+    for (final name in ['menus.json', 'join.json']) {
       final scene = Scene.fromFile('../tools/demo/scenes/$name');
       final goals = scene.seats['P1']!.goals;
       final layout = goals.indexWhere((g) => g.kind == GoalKind.layout);
       expect(layout, greaterThanOrEqualTo(0), reason: '$name has no layout goal');
       expect(goals[layout].mode, 'sticks', reason: name);
-      if (name == 'race.json') {
-        // race.json starts inside a live match, so the switch comes first.
-        expect(layout, 0, reason: 'race.json starts in-game');
-      } else {
-        final wait = goals.indexWhere((g) => g.kind == GoalKind.waitFor && g.event == 'game_start');
-        expect(wait, greaterThanOrEqualTo(0), reason: '$name should wait for game_start');
-        expect(layout, greaterThan(wait), reason: '$name: switch after game_start');
-      }
+      final wait = goals.indexWhere((g) => g.kind == GoalKind.waitFor && g.event == 'game_start');
+      expect(wait, greaterThanOrEqualTo(0), reason: '$name should wait for game_start');
+      expect(layout, greaterThan(wait), reason: '$name: switch after game_start');
     }
   });
 
