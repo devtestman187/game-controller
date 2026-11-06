@@ -23,6 +23,10 @@
 #   --check <names>  run tools/check.sh with these check names afterwards
 #                    (e.g. --check puzzle, --check "format analyze").
 #                    A failed check fails the job (exit 5).
+#   --report <file>  the worker writes its full report to this file (inside
+#                    the repository; it may always change it) and answers
+#                    with a short summary only, so the main session reads
+#                    the details only when it needs them.
 #
 # Needs: DEEPSEEK_API_KEY in the environment (Windows: a user environment
 # variable; Git Bash picks it up). Optional: FLASH_MODEL (default
@@ -36,19 +40,21 @@ set -u
 cd "$(dirname "$0")/.." || exit 2
 
 dry=0
+report=""
 allow=()
 reads=()
 checks=()
 while [ $# -gt 0 ]; do
   case "$1" in
     --dry-run) dry=1; shift ;;
-    --allow|--check|--read)
+    --allow|--check|--read|--report)
       if [ $# -lt 2 ] || [ -z "$2" ]; then
         echo "flash: $1 needs a value" >&2
         exit 2
       fi
       case "$1" in
         --allow) allow+=("${2%/}") ;;
+        --report) report="$2"; allow+=("$2") ;;
         --read) reads+=("$2") ;;
         *) read -r -a names <<< "$2"; checks+=("${names[@]}") ;;
       esac
@@ -96,6 +102,9 @@ if [ ${#read_abs[@]} -gt 0 ]; then
 fi
 if [ ${#checks[@]} -gt 0 ]; then
   task+=$'\n'"When done, check with: tools/check.sh ${checks[*]}"
+fi
+if [ -n "$report" ]; then
+  task+=$'\n'"Write your full report (files changed and why, computed test values, questions, suggestions) to $report. Your final answer is only this summary, at most 25 lines: STATUS: done|stopped <reason> / CHECKS: <name> PASS|FAIL ... / FILES: <count> / QUESTIONS: numbered, one line each (details in the report)."
 fi
 if ! command -v claude > /dev/null 2>&1; then
   echo "flash: the claude CLI isn't on PATH" >&2

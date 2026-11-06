@@ -21,6 +21,8 @@ dependencies:
     path: ../assets
   metrics:
     path: ../packages/metrics
+  party_host:
+    path: ../packages/party_host
   puzzle_game:
     path: ../packages/puzzle_game
   protocol:
