@@ -10,11 +10,9 @@ environment:
 resolution: workspace
 
 dependencies:
-  bonsoir: ^7.1.5
   flutter:
     sdk: flutter
   flutter_riverpod: ^3.4.3
-  flutter_soloud: ^5.2.1
   connection:
     path: ../packages/connection
   game_assets:
@@ -31,7 +29,6 @@ dependencies:
   test_game:
     path: ../packages/test_game
   path_provider: ^2.1.6
-  wakelock_plus: ^1.8.2
 
 dev_dependencies:
   flutter_test:

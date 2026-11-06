@@ -1,16 +1,31 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:party_host/party_host.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'src/providers.dart';
-import 'src/ui/controller_menus.dart';
+import 'src/keyboard_player.dart';
+import 'src/tv_host_setup.dart';
 import 'src/ui/home_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final prefs = await SharedPreferences.getInstance();
-  runApp(ProviderScope(overrides: [prefsProvider.overrideWithValue(prefs)], child: const TvTestApp()));
+  // The shell's own inputs for the host: its identity, its folders and its
+  // uploader come from `tv_host_setup.dart`, its local player from the
+  // keyboard player on a desktop (M12 design §2.6).
+  runApp(
+    ProviderScope(
+      overrides: [
+        prefsProvider.overrideWithValue(prefs),
+        hostIdentityProvider.overrideWithValue(tvHostIdentity()),
+        hostDirectoriesProvider.overrideWithValue(const TvDirectories()),
+        sessionUploaderProvider.overrideWith((ref) => tvUploader()),
+        localPlayerSourceProvider.overrideWithValue(tvKeyboardPlayer),
+      ],
+      child: const TvTestApp(),
+    ),
+  );
 }
 
 class TvTestApp extends StatelessWidget {

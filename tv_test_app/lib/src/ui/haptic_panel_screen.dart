@@ -5,9 +5,6 @@ import 'package:game_assets/asset_manifest.dart';
 import 'package:party_host/party_host.dart';
 import 'package:protocol/protocol.dart';
 
-import '../providers.dart';
-import 'tv_button.dart';
-
 /// The haptic test panel (PRD T6): fires each haptic event on every connected
 /// controller, with its sound on the TV. Works with the remote (arrows and
 /// OK) and with a mouse or keyboard.
@@ -96,7 +93,7 @@ class _HapticPanelScreenState extends ConsumerState<HapticPanelScreen> {
                         children: [
                           SizedBox(
                             height: 72,
-                            child: TvButton(
+                            child: HostButton(
                               key: Key('fire-${event.name}'),
                               label: _feel[event]!.$1,
                               icon: _feel[event]!.$2,

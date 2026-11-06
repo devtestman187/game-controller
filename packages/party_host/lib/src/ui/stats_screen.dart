@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:metrics/metrics.dart';
-import 'package:party_host/party_host.dart';
 
 import '../providers.dart';
-import 'tv_button.dart';
+import '../stats_service.dart';
+import '../stats_state.dart';
+import 'host_button.dart';
 
 /// The Stats screen (PRD v2 T18): each session's summary for each phone and
 /// input mode, Export of the session files, and the stats sharing choice
@@ -72,7 +73,7 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
           actions: [
             Padding(
               padding: const EdgeInsets.only(right: 12),
-              child: TvButton(
+              child: HostButton(
                 key: const Key('statsSharing'),
                 label: stats.consent == true ? 'Sharing: on' : 'Sharing: off',
                 icon: stats.consent == true ? Icons.cloud_upload_outlined : Icons.cloud_off_outlined,
@@ -81,7 +82,7 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
             ),
             Padding(
               padding: const EdgeInsets.only(right: 16),
-              child: TvButton(
+              child: HostButton(
                 key: const Key('statsExport'),
                 label: 'Export',
                 icon: Icons.save_alt,

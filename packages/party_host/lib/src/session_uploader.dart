@@ -27,6 +27,13 @@ class FirestoreUploader implements SessionUploader {
   final String apiKey;
   final HttpClient Function() _client;
 
+  /// How long the upload may take to connect (M9: a phone's summary is
+  /// small, so a slow network is a failure worth retrying later).
+  static const connectTimeout = Duration(seconds: 10);
+
+  /// How long the upload waits for the store's answer.
+  static const responseTimeout = Duration(seconds: 20);
+
   @override
   Future<String?> upload(Map<String, Object?> summary) async {
     final id = summary['id'];
@@ -44,12 +51,12 @@ class FirestoreUploader implements SessionUploader {
         'host': {'stringValue': '${(summary['host'] as Map?)?['type'] ?? ''}'},
       },
     });
-    final client = _client()..connectionTimeout = const Duration(seconds: 10);
+    final client = _client()..connectionTimeout = connectTimeout;
     try {
       final request = await client.postUrl(uri);
       request.headers.contentType = ContentType.json;
       request.write(body);
-      final response = await request.close().timeout(const Duration(seconds: 20));
+      final response = await request.close().timeout(responseTimeout);
       final text = await response.transform(utf8.decoder).join();
       if (response.statusCode == 200) return null;
       if (response.statusCode == 409) return null; // Already uploaded.

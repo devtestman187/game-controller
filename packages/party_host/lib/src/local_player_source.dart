@@ -1,6 +1,5 @@
 import 'package:connection/connection.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// A player on the host device itself (PRD v2 S2), behind an interface so
 /// `party_host` has no platform code: the TV app offers the keyboard player on
@@ -29,15 +28,8 @@ abstract interface class LocalPlayerSource {
 /// the player joins, so the host can log it.
 typedef LocalPlayerSourceFactory = LocalPlayerSource Function(GameHost host, {void Function()? onJoined});
 
-/// The local player source for this host. The default offers none; the TV app
-/// overrides it in `main()` with its keyboard player on a desktop.
-final localPlayerSourceProvider = Provider<LocalPlayerSourceFactory>((ref) => _noLocalPlayer);
-
-/// Builds the source that ignores every key, for hosts with no local player.
-LocalPlayerSource _noLocalPlayer(GameHost host, {void Function()? onJoined}) => const NoLocalPlayerSource();
-
-/// A [LocalPlayerSource] for hosts with no local player: nothing can join and
-/// every key is ignored.
+/// A [LocalPlayerSource] for hosts with no local player (the default in
+/// `localPlayerSourceProvider`): nothing can join and every key is ignored.
 final class NoLocalPlayerSource implements LocalPlayerSource {
   const NoLocalPlayerSource();
 

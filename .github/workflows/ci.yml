@@ -57,6 +57,9 @@ jobs:
       - name: Test the test game
         working-directory: packages/test_game
         run: flutter test
+      - name: Test the host (host service, host screens, sound, stats)
+        working-directory: packages/party_host
+        run: flutter test
       - name: Test controller app
         working-directory: controller_app
         run: flutter test

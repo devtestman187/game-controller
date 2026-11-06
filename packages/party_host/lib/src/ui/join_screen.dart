@@ -7,12 +7,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:protocol/protocol.dart';
 import 'package:puzzle_game/puzzle_game.dart';
 
-import '../keyboard_player.dart';
+import '../local_player_source.dart';
 import '../providers.dart';
 import 'controller_menus.dart';
-import 'latency_screen.dart' show PlayerBadge;
+import 'host_button.dart';
+import 'player_badge.dart';
 import 'puzzle_screen.dart';
-import 'tv_button.dart';
 
 /// The buttons on the join screen, before joining.
 final joinLayout = GameLayoutMessage(
@@ -54,7 +54,7 @@ enum _Key { a, b, left, right, start }
 /// right (the D-pad, the left stick or a tilt) to pick a side, at most two
 /// a side. B leaves a side, or goes back for a player who hasn't joined.
 /// Start (or the remote's OK on Start) begins the match; the format follows
-/// from who joined. Simulated controllers join by themselves. On Windows
+/// from who joined. Simulated controllers join by themselves. On a desktop
 /// the keyboard joins with Space and picks a side with the arrows.
 class JoinScreen extends ConsumerStatefulWidget {
   const JoinScreen({super.key, required this.choice, this.teams = const {}, this.keyboard});
@@ -64,8 +64,8 @@ class JoinScreen extends ConsumerStatefulWidget {
   /// The sides from the last match (Change teams), for players still here.
   final Map<String, PuzzleSide> teams;
 
-  /// The keyboard player, carried over from the last match.
-  final KeyboardPlayer? keyboard;
+  /// The local player, carried over from the last match.
+  final LocalPlayerSource? keyboard;
 
   @override
   ConsumerState<JoinScreen> createState() => _JoinScreenState();
@@ -73,7 +73,7 @@ class JoinScreen extends ConsumerStatefulWidget {
 
 class _JoinScreenState extends ConsumerState<JoinScreen> {
   late final Timer _timer = Timer.periodic(ControllerMenus.step, (_) => _tick());
-  late final KeyboardPlayer _keyboard;
+  late final LocalPlayerSource _keyboard;
   late final _teams = Map<String, PuzzleSide>.of(widget.teams);
   final _before = <String, Set<_Key>>{};
   final _labelled = <String, GameLayoutMessage>{};
@@ -89,7 +89,7 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
       if (mounted) _startFocus.requestFocus();
     });
     // Made here, not lazily: dispose() can't read providers any more.
-    _keyboard = widget.keyboard ?? KeyboardPlayer(ref.read(gameHostProvider), onJoined: (_) => _tick());
+    _keyboard = widget.keyboard ?? ref.read(localPlayerSourceProvider)(ref.read(gameHostProvider), onJoined: _tick);
     _timer;
   }
 
@@ -232,7 +232,7 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text(
-                    keyboardPlayerAvailable
+                    _keyboard.available
                         ? 'Press A on your phone to join (Space on the keyboard), then left or right to pick a side. '
                               'Then A or Start begins.'
                         : 'Press A on your phone to join, then left or right to pick a side. Then A or Start begins.',
@@ -269,7 +269,7 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
                   const SizedBox(height: 12),
                   Row(
                     children: [
-                      TvButton(
+                      HostButton(
                         key: const Key('joinStart'),
                         label: 'Start',
                         icon: Icons.play_arrow,
@@ -277,7 +277,7 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
                         onPressed: _start,
                       ),
                       const SizedBox(width: 12),
-                      TvButton(
+                      HostButton(
                         key: const Key('joinBack'),
                         label: 'Back',
                         icon: Icons.arrow_back,

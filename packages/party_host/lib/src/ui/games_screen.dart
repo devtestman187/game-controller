@@ -5,10 +5,10 @@ import 'package:puzzle_game/puzzle_game.dart';
 
 import '../providers.dart';
 import 'game_screen.dart';
+import 'host_button.dart';
 import 'join_screen.dart';
 import 'puzzle_screen.dart';
 import 'puzzle_settings_screen.dart';
-import 'tv_button.dart';
 
 /// The game picker's route name: Quit in the pause menu comes back here.
 const gamesRouteName = '/games';
@@ -54,7 +54,7 @@ class GamesScreen extends StatelessWidget {
               const SizedBox(height: 24),
               Align(
                 alignment: Alignment.centerLeft,
-                child: TvButton(
+                child: HostButton(
                   key: const Key('openPuzzleSettings'),
                   label: 'Puzzle settings',
                   icon: Icons.tune,
@@ -160,7 +160,7 @@ class ShapeRaceScreen extends ConsumerWidget {
                       spacing: 12,
                       runSpacing: 12,
                       children: [
-                        TvButton(
+                        HostButton(
                           key: Key('random-${level.name}'),
                           label: 'Any ${_levelName(level)} puzzle',
                           icon: Icons.shuffle,
@@ -168,7 +168,7 @@ class ShapeRaceScreen extends ConsumerWidget {
                           onPressed: () => _play(context, PuzzleChoice(level: level)),
                         ),
                         for (final p in puzzles)
-                          TvButton(
+                          HostButton(
                             key: Key('puzzle-${p.id}'),
                             label: p.name,
                             onPressed: () => _play(context, PuzzleChoice(level: level, puzzleId: p.id)),

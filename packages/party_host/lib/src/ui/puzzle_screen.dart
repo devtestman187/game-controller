@@ -5,13 +5,13 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:puzzle_game/puzzle_game.dart';
 
-import '../keyboard_player.dart';
+import '../local_player_source.dart';
 import '../providers.dart';
 import 'controller_menus.dart';
+import 'host_button.dart';
 import 'join_screen.dart';
-import 'latency_screen.dart' show PlayerBadge;
 import 'pause_menu.dart';
-import 'tv_button.dart';
+import 'player_badge.dart';
 
 /// Which puzzle to play: a specific one, or a random one of a level.
 final class PuzzleChoice {
@@ -24,7 +24,7 @@ final class PuzzleChoice {
 /// Shape Race (PRD v2 M10, M11): the match, played through the game host,
 /// with Start to pause, then the results: the winner, each side's time or
 /// pieces placed, and Rematch (Play again on one board), Change teams and
-/// Back (T14). The phones work the results like the remote. On Windows the
+/// Back (T14). The phones work the results like the remote. On a desktop the
 /// keyboard can play too (arrows, Space, X and Z).
 class PuzzleScreen extends ConsumerStatefulWidget {
   const PuzzleScreen({
@@ -41,8 +41,8 @@ class PuzzleScreen extends ConsumerStatefulWidget {
   /// Each player's side, from the join screen.
   final Map<String, PuzzleSide> teams;
 
-  /// The keyboard player, carried over from the join screen.
-  final KeyboardPlayer? keyboard;
+  /// The local player, carried over from the join screen.
+  final LocalPlayerSource? keyboard;
 
   /// The match to run. Tests pass one in.
   final PuzzleMatch? match;
@@ -55,7 +55,7 @@ class PuzzleScreen extends ConsumerStatefulWidget {
 }
 
 class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
-  late final KeyboardPlayer _keyboard;
+  late final LocalPlayerSource _keyboard;
   final _againFocus = FocusNode(debugLabel: 'rematch');
   MatchResult? _result;
   Puzzle? _puzzle;
@@ -65,7 +65,9 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
   void initState() {
     super.initState();
     // Made here, not lazily: dispose() can't read providers any more.
-    _keyboard = widget.keyboard ?? KeyboardPlayer(ref.read(gameHostProvider), onJoined: (_) => setState(() {}));
+    _keyboard =
+        widget.keyboard ??
+        ref.read(localPlayerSourceProvider)(ref.read(gameHostProvider), onJoined: () => setState(() {}));
   }
 
   @override
@@ -167,7 +169,7 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
                             right: 12,
                             bottom: 6,
                             child: Text(
-                              keyboardPlayerAvailable && _keyboard.player == null
+                              _keyboard.available && !_keyboard.hasPlayer
                                   ? 'Arrows, Space, X and Z: play on the keyboard · Start on a phone: pause · '
                                         'Esc: leave'
                                   : 'Start on a phone: pause · Back: leave',
@@ -263,7 +265,7 @@ class _Results extends ConsumerWidget {
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                TvButton(
+                HostButton(
                   key: Key(race ? 'rematch' : 'playAgain'),
                   label: race ? 'Rematch' : 'Play again',
                   icon: Icons.replay,
@@ -271,14 +273,14 @@ class _Results extends ConsumerWidget {
                   onPressed: onAgain,
                 ),
                 const SizedBox(width: 12),
-                TvButton(
+                HostButton(
                   key: const Key('changeTeams'),
                   label: 'Change teams',
                   icon: Icons.group,
                   onPressed: onChangeTeams,
                 ),
                 const SizedBox(width: 12),
-                TvButton(
+                HostButton(
                   key: const Key('resultsBack'),
                   label: 'Back',
                   icon: Icons.arrow_back,

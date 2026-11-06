@@ -7,7 +7,7 @@ import 'package:protocol/protocol.dart';
 
 import '../providers.dart';
 
-/// What the players' controllers do right now: work the TV app's menus like
+/// What the players' controllers do right now: work the host app's menus like
 /// the remote (PRD v2 T21), or play a game, which reads them itself.
 final class Controls {
   /// Every screen's menus, for everyone, or only for the players in [only]
@@ -49,8 +49,6 @@ class _Claim {
 
   Controls controls;
 }
-
-final controlsClaimsProvider = Provider<ControlsClaims>((ref) => ControlsClaims());
 
 /// Says what the controllers do while this widget is on screen: a game
 /// screen claims them while it plays, the pause menu limits the menus to
@@ -94,7 +92,7 @@ class _ControlsClaimState extends ConsumerState<ControlsClaim> {
 
 enum _Key { up, down, left, right, a, b }
 
-/// Lets the players' phones work every screen of the TV app like the remote
+/// Lets the players' phones work every screen of the host like the remote
 /// (PRD v2 T21): the D-pad or the left stick moves the focus (held, it
 /// repeats), A presses the focused button, B goes back. The phones show A
 /// "OK" and B "Back". It pauses while a game claims the controllers

@@ -59,7 +59,7 @@ class LiveStats implements StatsService {
       host.stages.listen((s) => _session?.stage(s.playerId, s.stage, s.ms)),
       host.records.listen(_recorder.onRecord),
     ]);
-    _pingTimer = Timer.periodic(const Duration(seconds: 5), (_) => _samplePings());
+    _pingTimer = Timer.periodic(pingSampleInterval, (_) => _samplePings());
   }
 
   /// The server whose controllers' messages and heartbeats it records.
@@ -94,6 +94,10 @@ class LiveStats implements StatsService {
   final LogSink _log;
   final DateTime Function() _clock;
   final Random _random;
+
+  /// How often every connected phone's ping is sampled while a session runs
+  /// (PRD T8: the latency figures).
+  static const pingSampleInterval = Duration(seconds: 5);
 
   static const _consentKey = 'statsConsent';
   static const _uploadedKey = 'uploadedSessions';

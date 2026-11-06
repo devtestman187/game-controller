@@ -5,7 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:test_game/test_game.dart';
 
-import '../keyboard_player.dart';
+import '../local_player_source.dart';
 import '../providers.dart';
 import 'controller_menus.dart';
 import 'pause_menu.dart';
@@ -26,7 +26,7 @@ final _debugKeys = {
 /// own sprite in their player colour (T9). It runs through the game host
 /// interface (PRD v2 P3), like every game. Each game event goes as a haptic
 /// event to the controller whose sprite caused it, and plays as a sound on
-/// the TV. On Windows, the arrow keys and Space add a keyboard player.
+/// the host. On a desktop, the arrow keys and Space add a keyboard player.
 class GameScreen extends ConsumerStatefulWidget {
   const GameScreen({super.key, this.game});
 
@@ -39,17 +39,19 @@ class GameScreen extends ConsumerStatefulWidget {
 
 class _GameScreenState extends ConsumerState<GameScreen> {
   bool _debug = false;
-  late final KeyboardPlayer _keyboard;
+  late final LocalPlayerSource _keyboard;
 
   @override
   void initState() {
     super.initState();
     // Made here, not lazily: dispose() can't read providers any more.
     final log = ref.read(logProvider);
-    _keyboard = KeyboardPlayer(
+    _keyboard = ref.read(localPlayerSourceProvider)(
       ref.read(gameHostProvider),
-      onJoined: (p) {
-        log.add('game', 'Keyboard player joined as P${p.number}');
+      onJoined: () {
+        // The player joined the host a moment ago; its number names it here.
+        final who = ref.read(gameHostProvider).players.where((p) => p.local).lastOrNull;
+        log.add('game', 'Keyboard player joined${who == null ? '' : ' as P${who.number}'}');
         if (mounted) setState(() {});
       },
     );
@@ -93,7 +95,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
   Widget build(BuildContext context) {
     final nobody = ref.watch(gamePlayersProvider.select((p) => p.isEmpty));
     final text = Theme.of(context).textTheme;
-    final hint = keyboardPlayerAvailable && _keyboard.player == null
+    final hint = _keyboard.available && !_keyboard.hasPlayer
         ? 'Arrows and Space: play on the keyboard · D: debug info · Esc: leave'
         : 'OK or D: debug info · Start on a phone: pause · Back: leave';
     // The game reads the controllers (no menus); Start pauses (M11).
@@ -116,7 +118,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
                       bottom: 48,
                       child: Center(
                         child: _Note(
-                          keyboardPlayerAvailable
+                          _keyboard.available
                               ? 'No controller connected. Pair a phone on the main screen, or press an arrow key.'
                               : 'No controller connected. Pair a phone on the main screen.',
                         ),

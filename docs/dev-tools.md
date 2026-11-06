@@ -48,6 +48,7 @@ tools/check.sh --verbose puzzle # also print the full output
 | `metrics` | `packages/metrics` | `dart test` |
 | `arena` | `packages/test_game` | `flutter test` |
 | `puzzle` | `packages/puzzle_game` | `flutter test` |
+| `host` | `packages/party_host` | `flutter test` |
 | `phone` | `controller_app` | `flutter test` |
 | `tv` | `tv_test_app` | `flutter test` |
 

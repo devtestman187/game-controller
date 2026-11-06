@@ -8,8 +8,8 @@ import 'package:protocol/protocol.dart';
 import '../providers.dart';
 import 'controller_menus.dart';
 import 'games_screen.dart';
-import 'latency_screen.dart' show PlayerBadge;
-import 'tv_button.dart';
+import 'host_button.dart';
+import 'player_badge.dart';
 
 /// The buttons while the game is paused: the menu, and Start to resume.
 final pauseLayout = GameLayoutMessage(
@@ -160,13 +160,13 @@ class _PauseMenu extends ConsumerWidget {
           style: text.titleMedium,
         ),
         actions: [
-          TvButton(
+          HostButton(
             key: const Key('pauseQuit'),
             label: 'Quit',
             icon: Icons.exit_to_app,
             onPressed: () => Navigator.of(context).pop(true),
           ),
-          TvButton(
+          HostButton(
             key: const Key('pauseResume'),
             label: 'Resume',
             icon: Icons.play_arrow,

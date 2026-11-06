@@ -138,6 +138,11 @@ class LiveHostService implements HostService {
 
   static const _hostIdKey = 'hostId';
 
+  /// How often the host re-reads the machine's addresses while it runs: a
+  /// Wi-Fi reconnect changes them, and the home screen shows the latest ones
+  /// (PRD T5).
+  static const addressRefreshInterval = Duration(seconds: 10);
+
   final LogSink _log;
   final LogBuffer _logBuffer;
   final HostIdentity _identity;
@@ -198,7 +203,7 @@ class LiveHostService implements HostService {
     }
     await _refreshAddresses();
     // Addresses change when Wi-Fi reconnects, so keep them fresh.
-    _addressTimer = Timer.periodic(const Duration(seconds: 10), (_) => _refreshAddresses());
+    _addressTimer = Timer.periodic(addressRefreshInterval, (_) => _refreshAddresses());
     await _startAdvertising();
   }
 

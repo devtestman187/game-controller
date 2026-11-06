@@ -4,11 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:puzzle_game/puzzle_game.dart';
 
 import '../providers.dart';
-import 'tv_button.dart';
+import 'host_button.dart';
 
 /// The puzzle's playtest settings (PRD v2 T16): every tuning value, saved on
-/// the TV, with Reset to defaults. A change counts in the next frame, also in
-/// a puzzle that's already running. Works with the remote.
+/// the host, with Reset to defaults. A change counts in the next frame, also
+/// in a puzzle that's already running. Works with the remote.
 class PuzzleSettingsScreen extends ConsumerWidget {
   const PuzzleSettingsScreen({super.key});
 
@@ -50,7 +50,7 @@ class PuzzleSettingsScreen extends ConsumerWidget {
           actions: [
             Padding(
               padding: const EdgeInsets.only(right: 16),
-              child: TvButton(
+              child: HostButton(
                 key: const Key('resetPuzzleSettings'),
                 label: 'Reset to defaults',
                 icon: Icons.restart_alt,

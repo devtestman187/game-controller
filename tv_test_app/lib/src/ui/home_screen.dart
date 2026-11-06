@@ -8,13 +8,9 @@ import 'package:party_host/party_host.dart';
 import 'package:protocol/protocol.dart';
 
 import '../app_info.dart';
-import '../providers.dart';
-import 'games_screen.dart';
 import 'haptic_panel_screen.dart';
 import 'input_visualizer.dart';
 import 'latency_screen.dart';
-import 'stats_screen.dart';
-import 'tv_button.dart';
 
 /// The TV's main screen: pairing code, addresses, connected controllers with
 /// live ping, and the log. Works with a TV remote and in a laptop window.
@@ -135,7 +131,7 @@ class _Header extends StatelessWidget {
     // Always in view at the top, so the remote reaches them with Up. Smaller
     // on a 1080p TV (960 wide), so all four fit beside the title.
     List<Widget> buttonsFor(bool compact) => [
-      TvButton(
+      HostButton(
         key: const Key('openPlay'),
         label: 'Play',
         icon: Icons.sports_esports_outlined,
@@ -147,19 +143,19 @@ class _Header extends StatelessWidget {
           ),
         ),
       ),
-      TvButton(
+      HostButton(
         label: 'Haptic test',
         icon: Icons.vibration,
         compact: compact,
         onPressed: () => _open(context, const HapticPanelScreen()),
       ),
-      TvButton(
+      HostButton(
         label: 'Latency',
         icon: Icons.speed,
         compact: compact,
         onPressed: () => _open(context, const LatencyScreen()),
       ),
-      TvButton(
+      HostButton(
         key: const Key('openStats'),
         label: 'Stats',
         icon: Icons.insights_outlined,
@@ -316,8 +312,8 @@ class _PairingPanel extends ConsumerWidget {
             spacing: 12,
             runSpacing: 12,
             children: [
-              TvButton(label: 'New code', icon: Icons.refresh, autofocus: true, onPressed: controller.newPairingCode),
-              TvButton(
+              HostButton(label: 'New code', icon: Icons.refresh, autofocus: true, onPressed: controller.newPairingCode),
+              HostButton(
                 key: const Key('addSim'),
                 label: sims.isEmpty ? 'Simulate controller' : 'Add simulated controller',
                 icon: Icons.smart_toy_outlined,
@@ -326,13 +322,13 @@ class _PairingPanel extends ConsumerWidget {
                     : controller.addSimulatedController,
               ),
               if (sims.isNotEmpty)
-                TvButton(
+                HostButton(
                   key: const Key('stopSims'),
                   label: sims.length == 1 ? 'Stop simulation' : 'Stop simulations',
                   icon: Icons.stop_circle_outlined,
                   onPressed: controller.stopSimulatedControllers,
                 ),
-              TvButton(
+              HostButton(
                 label: 'Drop connections',
                 icon: Icons.link_off,
                 onPressed: state.host.controllers.isEmpty ? null : controller.dropAllConnections,
@@ -434,7 +430,7 @@ class _ControllersPanel extends ConsumerWidget {
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          TvButton(
+          HostButton(
             label: 'Forget phones',
             compact: true,
             onPressed: anyGone
@@ -585,7 +581,7 @@ class _LogPanel extends ConsumerWidget {
     final style = Theme.of(context).textTheme.bodySmall?.copyWith(fontFamily: 'monospace', height: 1.3);
     return _Panel(
       title: 'Log',
-      trailing: TvButton(
+      trailing: HostButton(
         label: 'Save log',
         icon: Icons.save_alt,
         compact: true,

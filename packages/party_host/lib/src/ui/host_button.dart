@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 
-/// A button with a strong focus ring that is easy to see from the couch.
-class TvButton extends StatelessWidget {
-  const TvButton({
+/// A button with a strong focus ring that is easy to see from the couch (was
+/// `TvButton`: the host screens run on a phone too, M12).
+class HostButton extends StatelessWidget {
+  const HostButton({
     super.key,
     required this.label,
     required this.onPressed,

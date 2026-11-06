@@ -2,10 +2,7 @@ import 'package:connection/connection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:protocol/protocol.dart';
-
-import '../providers.dart';
-import 'tv_button.dart';
+import 'package:party_host/party_host.dart';
 
 /// The PRD's latency target: input should reach the TV in about this long.
 const latencyTargetMs = 50;
@@ -33,7 +30,7 @@ class LatencyScreen extends ConsumerWidget {
           actions: [
             Padding(
               padding: const EdgeInsets.only(right: 16),
-              child: TvButton(
+              child: HostButton(
                 label: 'Save log',
                 icon: Icons.save_alt,
                 autofocus: true,
@@ -193,24 +190,4 @@ class _Figure extends StatelessWidget {
       ),
     );
   }
-}
-
-/// A round badge with the player number in the player's colour.
-class PlayerBadge extends StatelessWidget {
-  const PlayerBadge({super.key, required this.number, this.size = 32});
-
-  final int number;
-  final double size;
-
-  @override
-  Widget build(BuildContext context) => Container(
-    width: size,
-    height: size,
-    alignment: Alignment.center,
-    decoration: BoxDecoration(color: Color(playerColor(number)), shape: BoxShape.circle),
-    child: Text(
-      '$number',
-      style: TextStyle(fontSize: size * 0.55, fontWeight: FontWeight.bold, color: const Color(0xFF14181F)),
-    ),
-  );
 }
