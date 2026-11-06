@@ -7,6 +7,7 @@ import 'package:protocol/protocol.dart';
 import 'host_address.dart';
 import 'log.dart';
 import 'rtt.dart';
+import 'transport/connect_error.dart';
 
 /// Who this controller is. Sent to the host in the hello message.
 final class ControllerIdentity {
@@ -827,13 +828,3 @@ void _noLog(String _) {}
 
 bool _sameList(List<String> a, List<String> b) =>
     a.length == b.length && Iterable.generate(a.length).every((i) => a[i] == b[i]);
-
-/// A short, readable description of a connection error.
-String describeError(Object error) => switch (error) {
-  SocketException(osError: final os?) => '${os.message.trim()} (OS error ${os.errorCode})',
-  SocketException(:final message) => message,
-  WebSocketException(:final message) => message,
-  HttpException(:final message) => message,
-  TimeoutException() => 'Timed out',
-  _ => '$error',
-};

@@ -54,6 +54,44 @@ void main() {
     expect(displayIp('fe80::1'), 'fe80::1');
   });
 
+  group('HostAddress.local', () {
+    final local = HostAddress.local(hostId: 'host-1', name: 'Thumb Party TV');
+
+    test('shows the host name: it has no address and no port', () {
+      expect(local.isLocal, isTrue);
+      expect(local.addresses, isEmpty);
+      expect(local.port, 0);
+      expect(local.display, 'Thumb Party TV');
+      expect(local.label, 'Thumb Party TV');
+    });
+
+    test('writes isLocal to JSON and reads it back', () {
+      expect(local.toJson()['isLocal'], isTrue);
+      final back = HostAddress.fromJson(local.toJson());
+      expect(back, local);
+      expect(back.isLocal, isTrue);
+      expect(back.display, 'Thumb Party TV');
+    });
+
+    test('reads JSON without isLocal as a network address, as before', () {
+      final json = HostAddress(addresses: ['10.0.0.2'], port: defaultPort).toJson();
+      expect(json.containsKey('isLocal'), isFalse);
+      final address = HostAddress.fromJson(json);
+      expect(address.isLocal, isFalse);
+      expect(address.display, '10.0.0.2:45780');
+      expect(address.ordered, ['10.0.0.2']);
+    });
+
+    test('is not the same as a network address of the same host', () {
+      final network = HostAddress(addresses: ['10.0.0.5'], port: defaultPort, hostId: 'host-1', name: 'Thumb Party TV');
+      expect(local, isNot(network));
+    });
+
+    test('is rejected by the web socket connector', () async {
+      await expectLater(WebSocketConnector().open(local, isCancelled: () => false), throwsA(isA<ConnectFailed>()));
+    });
+  });
+
   test('the log buffer keeps only the newest lines', () {
     final log = LogBuffer(capacity: 3);
     final sink = log.sink('test');

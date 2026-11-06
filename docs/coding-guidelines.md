@@ -44,7 +44,7 @@ Each of these is a rejected diff:
 
 ## 4. Naming and units
 
-- Units in names: `Ms`, `S`, `Hz`, `Mm`, `Px`, `Deg`, `Rad`, and world units without a suffix (document what one unit is).
+- Units in names: `Ms`, `S`, `Hz`, `Mm`, `Px`, `Deg`, `Rad`, and world units without a suffix (document what one unit is). A `Duration` carries its unit, so it takes no suffix (`heartbeatInterval`, `defaultConnectTimeout`).
 - Booleans read as questions (`isPaused`, `hasView`); events as past tense (`pieceSnapped`); commands as verbs (`dropPiece`).
 - Names come from the PRD and the protocol spec. Don't invent a second name for something that already has one.
 
