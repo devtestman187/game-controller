@@ -36,7 +36,7 @@ running_pid() {
 # "port code" from the newest "Listening on port N (pairing code C)" line.
 port_and_code() {
   [ -f "$log" ] || return 1
-  tr -d '\r' < "$log" | grep -oE 'Listening on port [0-9]+ \(pairing code [0-9]+\)' | tail -1 |
+  tr -d '\r' < "$log" | grep -aoE 'Listening on port [0-9]+ \(pairing code [0-9]+\)' | tail -1 |
     sed -E 's/Listening on port ([0-9]+) \(pairing code ([0-9]+)\)/\1 \2/'
 }
 
@@ -97,7 +97,7 @@ case "${1:-}" in
         status
         exit 0
       fi
-      if grep -qE 'Error: |BUILD FAILED|Exception:|Lost connection to device' "$log" 2> /dev/null; then
+      if grep -aqE 'Error: |BUILD FAILED|Exception:|Lost connection to device' "$log" 2> /dev/null; then
         echo "It didn't start. The end of the log:"
         tail -20 "$log"
         exit 1

@@ -130,7 +130,7 @@ lines_in() {
 wait_line() {
   local file="$1" from="$2" pattern="$3" secs="${4:-$wait_secs}" i
   for ((i = 0; i < secs * 2; i++)); do
-    if tail -n "+$((from + 1))" "$file" 2> /dev/null | grep -qE -- "$pattern"; then return 0; fi
+    if tail -n "+$((from + 1))" "$file" 2> /dev/null | grep -aqE -- "$pattern"; then return 0; fi
     sleep "$poll_secs"
   done
   return 1
@@ -166,9 +166,9 @@ bad() { # step [the log the step was reading]
 tv_is_live() {
   local listening
   [ -f "$tv_log" ] || return 1
-  listening="$(grep -n 'Listening on port' "$tv_log" 2> /dev/null | tail -1 | cut -d: -f1)"
+  listening="$(grep -an 'Listening on port' "$tv_log" 2> /dev/null | tail -1 | cut -d: -f1)"
   [ -n "$listening" ] || return 1
-  tail -n "+$((listening + 1))" "$tv_log" 2> /dev/null | grep -q '\[host\]'
+  tail -n "+$((listening + 1))" "$tv_log" 2> /dev/null | grep -aq '\[host\]'
 }
 
 # The TV app's second proof for a step: 0 when its line ($2) came after the
@@ -178,7 +178,7 @@ tv_line() { # step pattern
   tv_is_live || return 1
   wait_line "$tv_log" "$mark" "$2" && return 0
   echo "  The TV app's log is live, but no line for this step came:"
-  tail -n "+$((mark + 1))" "$tv_log" 2> /dev/null | tr -d '\r' | grep -F -- "$sim_name" | sed 's/^/  | /'
+  tail -n "+$((mark + 1))" "$tv_log" 2> /dev/null | tr -d '\r' | grep -aF -- "$sim_name" | sed 's/^/  | /'
   bad "$1"
 }
 
@@ -410,7 +410,7 @@ else
   sim_step frames "$sim_log" 'Touch to frame: [0-9]+ ms median' '' "$sim_wait"
   wait "$sim_view_pid" 2> /dev/null
   sim_view_pid=""
-  grep -E '^(Touch to frame|Frame jitter|Frames): ' "$sim_log" 2> /dev/null | sed 's/^/  /'
+  grep -aE '^(Touch to frame|Frame jitter|Frames): ' "$sim_log" 2> /dev/null | sed 's/^/  /'
 fi
 
 echo "Smoke passed. Logs: $out"
