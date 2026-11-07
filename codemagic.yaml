@@ -156,9 +156,8 @@ workflows:
     publishing:
       app_store_connect:
         auth: integration
-        # Sends each build to Beta App Review for the external group. Add the group name under
-        # beta_groups once it exists in App Store Connect (docs/release.md).
+        # Builds go to the internal group only. Owner's decision (Nov 7, 2026): never add
+        # beta_groups here. Each build is promoted to the external group `Testers` by hand,
+        # only when the owner says so (docs/release.md, "Each release").
         submit_to_testflight: true
-        # beta_groups:
-        #   - Testers
         submit_to_app_store: false

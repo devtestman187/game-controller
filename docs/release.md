@@ -59,7 +59,7 @@ Create a Google Group (groups.google.com), for example `thumb-party-testers`, wi
 5. **Codemagic → Team settings → Code signing identities**: **iOS certificates → Generate certificate** (type *Apple Distribution*, using the Thumb Party key), then **iOS provisioning profiles → Fetch profiles** and pick the *App Store* profile for `com.thumbparty.app` (create it in the Apple portal if it isn't listed: Profiles → + → App Store Connect → `com.thumbparty.app`).
 6. **TestFlight → Test Information**: feedback email, privacy policy URL, the **Beta App Description** and **Review notes** from [store-listing.md](store-listing.md).
 7. **TestFlight → Internal Testing → +**: a group for yourself. Builds reach it right after processing, without review.
-8. After the first build has passed Beta App Review: **External Testing → +** a group named `Testers`, add the build, and turn on **Public Link**. Send Claude Code the link (it goes into the tester guide) and it adds the group to `codemagic.yaml` so later builds go to it by themselves.
+8. **External Testing → +** a group named `Testers` with **Public Link** on (done Nov 7, 2026: https://testflight.apple.com/join/afaU2DHU, in the tester guide). Builds are **not** sent to it automatically: the owner decided that every build goes to internal testing first, and is promoted to `Testers` only when the owner says so (see "Each release"). So `codemagic.yaml` has no `beta_groups`.
 
 ### 7. Firebase for the stats upload (you, M9, optional)
 The TV app keeps every session's stats on the device either way. With an adult's consent it also uploads them to Firestore, so testers' sessions reach you. Until this is done the Stats screen says "this build has no upload set up".
@@ -86,6 +86,7 @@ The TV app keeps every session's stats on the device either way. With an adult's
 3. Codemagic uploads to TestFlight (Beta App Review for external testers, usually within a day). GitHub Actions builds the bundles and the Windows zip, uploads to Play (once set up), and creates the GitHub Release.
    The notes go to Play "What's new" (500 characters), TestFlight "What to Test" and the GitHub Release, from `tools/release-notes.sh`: the tag's message, or the commit subjects since the last tag if the tag has no message.
 4. Installed apps update from TestFlight and Play. Windows testers download the new zip.
+5. **iOS external testers: only on the owner's word.** A build reaches TestFlight's internal group first. After each release Claude asks the owner whether to promote it to the external `Testers` group, and does nothing until the owner says yes. To promote: App Store Connect → Thumb Party → **TestFlight** → the build → **Groups** → add **Testers** (the first build of a version goes through Beta App Review, usually within a day).
 
 ## If something goes wrong
 | Problem | Fix |
