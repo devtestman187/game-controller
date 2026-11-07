@@ -166,7 +166,9 @@ if ! command -v claude > /dev/null 2>&1; then
 fi
 
 model="${FLASH_MODEL:-deepseek-v4-flash}"
-log="${TMPDIR:-/tmp}/flash-$(date +%Y%m%d-%H%M%S).log"
+# The process ID keeps two jobs started in the same second apart (the log
+# name is also the job worktree's name).
+log="${TMPDIR:-/tmp}/flash-$(date +%Y%m%d-%H%M%S)-$$.log"
 # One line per job (tokens, turns, time, result), kept across runs: see
 # tools/flash_usage.dart. FLASH_USAGE_LOG moves it.
 usage_log="${FLASH_USAGE_LOG:-$HOME/.thumbparty/flash-usage.tsv}"
@@ -190,7 +192,7 @@ Finish with: the files you changed (one line each, what changed), the checks you
 allowed=(
   "Read(./**)" "Edit" "Bash(git grep:*)" "Bash(git ls-files:*)"
   "Bash(dart format:*)" "Bash(dart analyze:*)" "Bash(dart test:*)" "Bash(flutter test:*)" "Bash(flutter analyze:*)"
-  "Bash(tools/check.sh:*)" "Bash(tools/review.sh:*)" "Bash(bash tools/review.sh:*)"
+  "Bash(tools/check.sh:*)" "Bash(tools/review.sh:*)" "Bash(bash tools/review.sh:*)" "Bash(bash -n:*)"
   "Bash(git status:*)" "Bash(git log:*)" "Bash(git diff:*)" "Bash(git show:*)" "Bash(git merge-base:*)" "Bash(ls:*)" "Bash(wc:*)"
 )
 [ "$pub" = 1 ] && allowed+=("Bash(flutter pub get:*)" "Bash(dart pub get:*)")
@@ -360,7 +362,7 @@ if [ ${#checks[@]} -gt 0 ]; then
 fi
 if [ -n "$report" ] && [ -f "$report" ]; then
   echo "---- commit message draft (from $report)"
-  sed -n '/^## Commit message/,/^## /p' "$report" | tr -d '\r' | sed '1d;/^## /d'
+  sed -n '/^## Commit message/,/^## /p' "$report" | tr -d '\r' | sed '1d;/^## /d;/^```/d'
 fi
 
 code=0

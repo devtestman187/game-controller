@@ -14,7 +14,7 @@ How this project is run, what's still open, and the lessons learned along the wa
   - *Claude:* milestone scope and design (`docs/design/mN.md`), contracts (public types, signatures, doc comments, message formats), briefs with test cases, every review, every PRD edit, commits, pushes and releases. Claude writes code itself only as a last resort (see *Failures*) and for one-line fixes.
   - *Flash-worker:* everything else, protocol, connection and platform code included (owner, Nov 6: "Let flash worker implement. But you perform code reviews at set stages"). It follows [coding-guidelines.md](coding-guidelines.md) on every job.
   - *Source of truth:* Claude. The worker may suggest or ask in its report; nothing it suggests is done until Claude approves it in a later brief.
-  - *Review gates:* larger jobs are split at gates (G1 plan, G2 contract and tests, G3 first slice, G4 complete; [design/m12.md](design/m12.md#5a-review-gates)). The worker stops at the gate its brief names. The next job starts only after Claude has reviewed the diff and the checks and written the corrections into the next brief (owner, Nov 6: "Only on your approval and implementation of suggestions should it continue"). Gates follow risk: protocol, connection or new design get every gate; pure moves and cleanups go straight to G4 (with G1 when they split files).
+  - *Review gates:* larger jobs are split at gates (G1 plan, G2 contract and tests, G3 first slice, G4 complete; [design/m12.md](design/m12.md#5a-review-gates)). The worker stops at the gate its brief names. The next job starts only after Claude has reviewed the diff and the checks and written the corrections into the next brief (owner, Nov 6: "Only on your approval and implementation of suggestions should it continue"). Gates follow risk: protocol, connection or new design get every gate; pure moves and cleanups go straight to G4. A split gets a G1 plan when the worker designs it; when Claude's brief gives the move map, it goes straight to G4, with `tools/review.sh --strings` and unchanged test counts as the proof.
   - *Survey first (G0):* before Claude writes a contract, a read-only job answers Claude's questions about the code with file:line facts, sizes and conflicts ([briefs/templates/survey.md](briefs/templates/survey.md)). Claude designs from the survey instead of reading the code.
   - *Briefs:* one complete spec per job ([briefs/templates/job.md](briefs/templates/job.md)): the gate, the files (`allow:`), the contract, the behaviour and edge cases from the PRD, the test cases as rules with expected values, and the checks (`check:`). `tools/flash.sh --brief <file>` reads those header lines. No back and forth inside a job.
   - *Bugs:* Claude diagnoses (or sends a read-only job to reproduce and report); the worker writes the failing test first, then the fix.
@@ -42,15 +42,18 @@ Carried into M12, not blocking it:
 - **M11 device tests** ([checklists/m11.md](checklists/m11.md)): 13 of 18 items open, and all 8 of PRD v2's M11 acceptance tests, including the m11.3 checks (Bubble Pop sounds, active play time). M12's device tests repeat the M11 checks phone hosting touches (join, pause, results, 4 players).
 - **The `docs/protocol.md` read-through**, best done once M12's `view` messages are in.
 
-Found by `tools/review.sh --all` (Nov 6, 2026), for a cleanup job between M12 steps:
-- **`connection/lib/src/game_host.dart`** is 538 lines (limit 400): split `ServerGameHost` from `MemoryGameHost` and the shared types.
-- **Phone app size:** `controller_app/lib/src/providers.dart` (617 lines, two providers over 60) and `controller_app/test/widget_test.dart` (1614) need splitting, as the TV app's were in M12 step 1. `connection`'s `controller_client.dart` is at the 400 limit.
-- **Waits in connection tests:** older tests still use short real waits (`settle()`, 16 to 300 ms loops). Replace them with stream waits or fake time.
-- **Long members:** six over 60 lines in `party_host` screens (`controller_menus._tick`, `game_screen` build, `join_screen` `_tick` and build, `puzzle_screen`'s two builds), plus `stats_screen`, `haptic_panel_screen` and `latency_screen` builds. Split into named widgets.
-- **Determinism:** `puzzle_game` `game`, `library` and `match` fall back to an unseeded `Random()`. The `Random` should be required (guidelines §5).
-- **Leftovers:** `debugPrint` in `party_host` and `controller_app` providers, empty catches in `controller_app/lib/src/providers.dart` and `packages/metrics/bin/report.dart`, two `// ignore` in `tv_test_app/integration_test/sound_test.dart`.
+Found by `tools/review.sh --all` (Nov 6, 2026) and **cleared the same day** by cleanup jobs c1, c1b, c2 and c3 (owner: "Start the cleanup"; briefs `docs/briefs/m12/c*-g4.md`): `game_host.dart` split into five files; real waits gone from the connection tests, and the "nothing was sent" checks now read the wire; the phone app's providers and widget tests split; the long screen members split into named widgets; the puzzle's `Random` required; the two empty catches explained or counted.
+
+Left for later:
+- `connection/test/m9_test.dart:37` ("a host never sends a message the controller did not list") checks `host.send` results only; the wire check c1b added (`test/wire_phone.dart`) would fit it.
+- `tools/review.sh` reads a `labels: {` map entry as a member (a FAIL in `puzzle_game/lib/src/play_view.dart`), and `play_view.dart`'s `_tick` is 61 lines.
+- `docs/dev-tools.md` is 400 lines: the DeepSeek Flash part (about 60 lines) could be a doc of its own. Its `smoke.sh` sample output is hand-written; replace it with a real run.
+- Extracted widgets go in plain sibling files from now on, not `part` files (c3 used `part` for three host screens; fine as it is).
+- `connection`'s `controller_client.dart` is at the 400 limit: split it when a step next adds to it.
 - **`tools/review.sh`** is 399 lines with a 76-line `--strings` branch: move that branch into its own function or script.
-- **UI spacing:** paddings and sizes are bare numbers (most of the script's `number` notes). Give the host and phone apps a small spacing scale and use it.
+- **UI spacing:** paddings and sizes are bare numbers (most of the script's `number` notes). A small spacing scale for the host and phone apps belongs with the look-and-sound milestone, which restyles the same screens.
+
+Not debt (checked Nov 6): the `debugPrint` in both `logProvider`s copies log lines to the console in debug builds only, and the `print`s in `tv_test_app/integration_test/sound_test.dart` are that on-device test's output.
 
 ## Open items
 
