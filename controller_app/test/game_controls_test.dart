@@ -1,5 +1,8 @@
 import 'package:controller/src/layout.dart';
+import 'package:controller/src/providers.dart';
+import 'package:controller/src/ui/controls_layer.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:protocol/protocol.dart';
 
@@ -105,6 +108,23 @@ void main() {
       app.client.setStatus(StatusMessage.hidden());
       await settle(tester);
       expect(find.byKey(const Key('statusPanel')), findsNothing);
+    });
+
+    testWidgets('a game shown on this phone hides the status panel', (tester) async {
+      final app = await inMode(tester, 'dpad');
+      app.client.setStatus(held);
+      await settle(tester);
+      expect(find.byKey(const Key('statusPanel')), findsOneWidget);
+
+      final shown = ProviderScope.containerOf(tester.element(find.byType(ControlsLayer)))
+          .read(gameShownProvider.notifier);
+      shown.set(true);
+      await settle(tester);
+      expect(find.byKey(const Key('statusPanel')), findsNothing, reason: 'the game draws its own status (m12 §2.7)');
+
+      shown.set(false);
+      await settle(tester);
+      expect(find.byKey(const Key('statusPanel')), findsOneWidget);
     });
 
     testWidgets('a game that allows only the D-pad switches to it without saving, then switches back', (tester) async {

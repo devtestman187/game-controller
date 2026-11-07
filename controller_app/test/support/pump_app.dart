@@ -59,26 +59,49 @@ Future<TestApp> pumpApp(
     prefs,
     motion ?? FakeMotionSensors(),
   );
-  await tester.pumpWidget(
-    ProviderScope(
-      overrides: [
-        prefsProvider.overrideWithValue(prefs),
-        clientProvider.overrideWithValue(app.client),
-        discoveryProvider.overrideWithValue(app.discovery),
-        hapticsProvider.overrideWithValue(app.haptics),
-        motionSensorsProvider.overrideWithValue(app.motion),
-        isIOSProvider.overrideWithValue(isIOS),
-        isTabletProvider.overrideWithValue(tablet),
-        clickSoundProvider.overrideWithValue(click ?? () {}),
-        deviceStatusSourceProvider.overrideWithValue(device ?? FakeDeviceStatus()),
-        if (log != null) logProvider.overrideWithValue(log),
-      ],
-      child: const ControllerApp(),
-    ),
+  await pumpFaked(
+    tester,
+    const ControllerApp(),
+    app: app,
+    isIOS: isIOS,
+    tablet: tablet,
+    log: log,
+    device: device,
+    click: click,
   );
   await settle(tester);
   return app;
 }
+
+/// Pumps a widget of its own with the app's providers faked as [pumpApp]
+/// fakes them: for a test that gives a widget a child the app doesn't, such
+/// as the game behind [ControlsLayer]. It doesn't settle.
+Future<void> pumpFaked(
+  WidgetTester tester,
+  Widget child, {
+  required TestApp app,
+  bool isIOS = false,
+  bool tablet = false,
+  LogBuffer? log,
+  FakeDeviceStatus? device,
+  void Function()? click,
+}) => tester.pumpWidget(
+  ProviderScope(
+    overrides: [
+      prefsProvider.overrideWithValue(app.prefs),
+      clientProvider.overrideWithValue(app.client),
+      discoveryProvider.overrideWithValue(app.discovery),
+      hapticsProvider.overrideWithValue(app.haptics),
+      motionSensorsProvider.overrideWithValue(app.motion),
+      isIOSProvider.overrideWithValue(isIOS),
+      isTabletProvider.overrideWithValue(tablet),
+      clickSoundProvider.overrideWithValue(click ?? () {}),
+      deviceStatusSourceProvider.overrideWithValue(device ?? FakeDeviceStatus()),
+      if (log != null) logProvider.overrideWithValue(log),
+    ],
+    child: child,
+  ),
+);
 
 /// pumpAndSettle never settles while a progress spinner turns, so pump
 /// through page transitions instead.

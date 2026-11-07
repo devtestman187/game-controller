@@ -5,21 +5,23 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:protocol/protocol.dart';
 
+import '../controls_settings.dart';
 import '../gyro.dart';
 import '../layout.dart';
 import '../phone_metrics.dart';
 import '../providers.dart';
 import 'connect_screen.dart';
+import 'controls_layer.dart';
 import 'diagnostics_screen.dart';
 import 'gyro_dialog.dart';
 import 'labels.dart';
-import 'pad_widgets.dart';
 import 'rating_prompt.dart';
 import 'settings_screen.dart';
 import 'status_panel.dart';
 import 'stick_dialog.dart';
-import 'stick_widgets.dart';
-import 'tilt_view.dart';
+
+part 'controller_parts.dart';
+part 'controller_top_bar.dart';
 
 /// The controller itself: D-pad (or, in gyro mode, the tilt view) on the
 /// left, Start/Select in the middle, face buttons on the right, and a slim bar
@@ -72,6 +74,26 @@ class _ControllerScreenState extends ConsumerState<ControllerScreen> with Widget
     }
   }
 
+  /// The game's side of the screen (P5): the controls it allows and hides,
+  /// the mode to go back to after it, and its rating ask.
+  void _followTheGame(BuildContext context) {
+    // The game's controls (P5): its allowed modes, and nothing left held on
+    // a button it hides. After the game, back to the player's own mode.
+    ref.listen(gameLayoutProvider, (prev, next) {
+      final gyro = ref.read(gyroProvider.notifier);
+      if (next.modes.isEmpty && (prev?.modes.isNotEmpty ?? false)) {
+        unawaited(gyro.backToSavedMode());
+      } else {
+        unawaited(gyro.applyGameModes(next));
+      }
+      if (ref.read(padProvider).buttons.any(next.hidden.contains)) ref.read(padProvider.notifier).releaseAll();
+    });
+    // "How did the controls feel?" after a game, when the TV asks.
+    ref.listen(ratingPromptProvider, (prev, next) {
+      if (next != null && prev == null) showRatingPrompt(context);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     // Play haptic events from the TV in every mode (listening keeps it alive
@@ -98,21 +120,7 @@ class _ControllerScreenState extends ConsumerState<ControllerScreen> with Widget
     ref.watch(stickSettingsProvider);
     // The metrics record while a TV is connected (M9).
     ref.watch(phoneMetricsProvider);
-    // The game's controls (P5): its allowed modes, and nothing left held on
-    // a button it hides. After the game, back to the player's own mode.
-    ref.listen(gameLayoutProvider, (prev, next) {
-      final gyro = ref.read(gyroProvider.notifier);
-      if (next.modes.isEmpty && (prev?.modes.isNotEmpty ?? false)) {
-        unawaited(gyro.backToSavedMode());
-      } else {
-        unawaited(gyro.applyGameModes(next));
-      }
-      if (ref.read(padProvider).buttons.any(next.hidden.contains)) ref.read(padProvider.notifier).releaseAll();
-    });
-    // "How did the controls feel?" after a game, when the TV asks.
-    ref.listen(ratingPromptProvider, (prev, next) {
-      if (next != null && prev == null) showRatingPrompt(context);
-    });
+    _followTheGame(context);
 
     return Scaffold(
       body: SafeArea(
@@ -128,30 +136,7 @@ class _ControllerScreenState extends ConsumerState<ControllerScreen> with Widget
                   child: LayoutBuilder(
                     builder: (context, body) {
                       if (body.maxHeight < minBodyHeight) return const TooSmallView();
-                      // The touch metrics (M9) see every touch on the controls,
-                      // and know where each control's touch area is.
-                      final mm = ref.read(pxPerMmProvider);
-                      final metrics = ref.read(phoneMetricsProvider)
-                        ..map = touchMapFor(
-                          mode: mode,
-                          body: body.biggest,
-                          mm: mm,
-                          sticks: ref.read(stickSettingsProvider),
-                        );
-                      return Listener(
-                        behavior: HitTestBehavior.translucent,
-                        onPointerDown: (e) => metrics.touchDown(e.localPosition.dx / mm, e.localPosition.dy / mm),
-                        child: Stack(
-                          children: [
-                            Positioned.fill(
-                              child: mode == PadMode.sticks
-                                  ? const StickModeView()
-                                  : PadModeView(gyro: mode == PadMode.gyro),
-                            ),
-                            const Positioned(top: 4, left: 0, right: 0, child: Center(child: DemoReadout())),
-                          ],
-                        ),
-                      );
+                      return _Controls(mode: mode, body: body.biggest);
                     },
                   ),
                 ),
@@ -162,295 +147,4 @@ class _ControllerScreenState extends ConsumerState<ControllerScreen> with Widget
       ),
     );
   }
-}
-
-/// D-pad and gyro modes, laid out by [padLayout]: the D-pad (or the tilt
-/// view) on the left, Select and Start in the middle, A/B/X/Y on the right.
-class PadModeView extends ConsumerWidget {
-  const PadModeView({super.key, required this.gyro});
-
-  final bool gyro;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final input = ref.watch(padProvider);
-    final mm = ref.watch(pxPerMmProvider);
-    final text = Theme.of(context).textTheme;
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final layout = padLayout(constraints.biggest, mm: mm);
-        return Stack(
-          children: [
-            if (gyro)
-              Positioned.fromRect(
-                rect: layout.leftArea,
-                child: const Center(child: TiltView()),
-              )
-            else
-              Positioned.fromRect(rect: layout.dpad, child: const DpadView()),
-            Positioned.fromRect(
-              rect: layout.select,
-              child: SmallButton(button: ControllerButton.select, label: 'Select', size: layout.select.size),
-            ),
-            Positioned.fromRect(
-              rect: layout.start,
-              child: SmallButton(button: ControllerButton.start, label: 'Start', size: layout.start.size),
-            ),
-            Positioned(
-              left: layout.summary.left,
-              top: layout.summary.top,
-              width: layout.summary.width,
-              child: Text(
-                input.isNeutral ? 'Nothing pressed' : input.toString(),
-                key: const Key('inputSummary'),
-                style: text.bodySmall,
-                textAlign: TextAlign.center,
-              ),
-            ),
-            Positioned.fromRect(rect: layout.faceButtons, child: const FaceButtonsView()),
-          ],
-        );
-      },
-    );
-  }
-}
-
-/// "Try without a TV" (v2 C23): while no TV is connected, shows what a TV
-/// would receive, in every mode.
-class DemoReadout extends ConsumerWidget {
-  const DemoReadout({super.key});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final demo = ref.watch(demoProvider);
-    final connected = ref.watch(clientStateProvider.select((c) => c.isConnected));
-    if (!demo || connected) return const SizedBox.shrink();
-    final input = ref.watch(padProvider);
-    final scheme = Theme.of(context).colorScheme;
-    return IgnorePointer(
-      child: Container(
-        key: const Key('demoReadout'),
-        constraints: const BoxConstraints(maxWidth: 360),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: scheme.secondaryContainer.withValues(alpha: 0.9),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Text(
-          'Demo: a TV would get ${input.isNeutral ? 'nothing pressed' : input.toString()}',
-          textAlign: TextAlign.center,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(color: scheme.onSecondaryContainer, fontSize: 13),
-        ),
-      ),
-    );
-  }
-}
-
-/// Shown instead of the controls when the window is too small for them
-/// (v2 C32). Nothing stays held: fingers on the controls are let go.
-class TooSmallView extends ConsumerStatefulWidget {
-  const TooSmallView({super.key});
-
-  @override
-  ConsumerState<TooSmallView> createState() => _TooSmallViewState();
-}
-
-class _TooSmallViewState extends ConsumerState<TooSmallView> {
-  @override
-  void initState() {
-    super.initState();
-    // The controls under the fingers are gone, so their releases never come.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) ref.read(padProvider.notifier).releaseAll();
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
-    return Center(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.open_in_full, size: 32),
-            const SizedBox(height: 8),
-            Text('Make the window bigger', key: const Key('tooSmall'), style: text.titleMedium),
-            const SizedBox(height: 4),
-            Text(
-              'The controller needs a wider landscape window. Leave split screen, or drag the window larger.',
-              style: text.bodySmall,
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-void openConnect(BuildContext context) =>
-    Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const ConnectScreen()));
-
-class _TopBar extends ConsumerWidget {
-  const _TopBar();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final client = ref.watch(clientStateProvider);
-    final gyro = ref.watch(gyroProvider);
-    final text = Theme.of(context).textTheme;
-    final stats = client.rttStats;
-    final gyroUnavailable = gyro.availability == GyroAvailability.unavailable;
-    final status = ref.watch(gameStatusProvider);
-    // Modes the game doesn't allow can't be picked (P5).
-    final game = ref.watch(gameLayoutProvider);
-    const notInGame = 'Not used in this game';
-    // On narrow windows the mode buttons drop their icons, so the bar fits.
-    final compact = MediaQuery.sizeOf(context).width < 680;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 4, 8, 0),
-      child: Row(
-        children: [
-          // The connection and ping take whatever room is left, and shorten.
-          Expanded(
-            child: Row(
-              children: [
-                if (client.isConnected && client.player != null) ...[
-                  PlayerBadge(number: client.player!),
-                  const SizedBox(width: 6),
-                ],
-                Flexible(
-                  child: ActionChip(
-                    key: const Key('connectionChip'),
-                    avatar: Icon(Icons.circle, size: 12, color: _statusColor(context, client)),
-                    label: Text(
-                      client.isConnected
-                          ? '${client.hostLabel} · ${client.rttMs ?? '–'} ms'
-                          : ref.watch(demoProvider)
-                          ? 'Demo, no TV · tap to connect'
-                          : '${statusLabel(client)} · tap to connect',
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    onPressed: () => openConnect(context),
-                  ),
-                ),
-                // The game's status panel takes the ping's place (P6, C24).
-                if (client.isConnected && !status.isHidden) ...[
-                  const SizedBox(width: 8),
-                  Flexible(child: StatusPanel(status: status)),
-                ] else if (client.isConnected && stats != null) ...[
-                  const SizedBox(width: 8),
-                  Flexible(
-                    child: Text(
-                      '30 s: min ${stats.minMs} · avg ${stats.avgMs} · max ${stats.maxMs} ms',
-                      key: const Key('pingStats'),
-                      style: text.bodySmall,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          SegmentedButton<PadMode>(
-            showSelectedIcon: false,
-            style: const ButtonStyle(visualDensity: VisualDensity.compact),
-            segments: [
-              ButtonSegment(
-                value: PadMode.dpad,
-                label: const Text('D-pad'),
-                icon: compact ? null : const Icon(Icons.gamepad_outlined),
-                tooltip: game.allows('dpad') ? null : notInGame,
-                enabled: game.allows('dpad'),
-              ),
-              ButtonSegment(
-                value: PadMode.gyro,
-                label: const Text('Gyro'),
-                icon: compact ? null : const Icon(Icons.screen_rotation_alt_outlined),
-                tooltip: !game.allows('gyro')
-                    ? notInGame
-                    : gyroUnavailable
-                    ? gyro.problem
-                    : 'Steer by tilting the phone',
-                enabled: game.allows('gyro') && !gyroUnavailable && gyro.availability != GyroAvailability.checking,
-              ),
-              ButtonSegment(
-                value: PadMode.sticks,
-                label: const Text('Sticks'),
-                icon: compact ? null : const Icon(Icons.sports_esports_outlined),
-                tooltip: game.allows('sticks') ? 'Two analog sticks, Xbox-style' : notInGame,
-                enabled: game.allows('sticks'),
-              ),
-            ],
-            selected: {gyro.mode},
-            onSelectionChanged: (selection) async {
-              final ok = await ref.read(gyroProvider.notifier).setMode(selection.first);
-              if (!ok && context.mounted) {
-                final problem = ref.read(gyroProvider).problem ?? 'Gyro mode isn\'t available.';
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(problem)));
-              }
-            },
-          ),
-          if (gyro.mode == PadMode.gyro)
-            IconButton(
-              tooltip: 'Gyro settings',
-              icon: const Icon(Icons.tune),
-              onPressed: () => showGyroDialog(context),
-            ),
-          if (gyro.mode == PadMode.sticks)
-            IconButton(
-              tooltip: 'Stick settings',
-              icon: const Icon(Icons.tune),
-              onPressed: () => showStickDialog(context),
-            ),
-          IconButton(
-            tooltip: 'Settings',
-            icon: const Icon(Icons.settings_outlined),
-            onPressed: () =>
-                Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const SettingsScreen())),
-          ),
-          IconButton(
-            tooltip: 'Diagnostics',
-            icon: const Icon(Icons.monitor_heart_outlined),
-            onPressed: () =>
-                Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const DiagnosticsScreen())),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-Color _statusColor(BuildContext context, ClientSnapshot client) => switch (client.status) {
-  ClientStatus.connected => Colors.greenAccent,
-  ClientStatus.reconnecting || ClientStatus.connecting || ClientStatus.pairing => Colors.amberAccent,
-  ClientStatus.waitingForCode => Theme.of(context).colorScheme.primary,
-  ClientStatus.idle || ClientStatus.failed => Theme.of(context).colorScheme.onSurfaceVariant,
-};
-
-/// "P1" in the player's colour, matching the sprite and the badge on the TV.
-class PlayerBadge extends StatelessWidget {
-  const PlayerBadge({super.key, required this.number});
-
-  final int number;
-
-  @override
-  Widget build(BuildContext context) => Tooltip(
-    message: 'You are player $number on the TV',
-    child: Container(
-      key: const Key('playerBadge'),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(color: Color(playerColor(number)), borderRadius: BorderRadius.circular(12)),
-      child: Text(
-        'P$number',
-        style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF14181F)),
-      ),
-    ),
-  );
 }

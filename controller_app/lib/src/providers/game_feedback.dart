@@ -31,6 +31,20 @@ class GameStatusNotifier extends Notifier<StatusMessage> {
   }
 }
 
+/// Whether a game is drawn on this phone behind the controls (m12 §2.7).
+/// While it is, the status panel is hidden and the controls take the saved
+/// opacity; in controller mode they stay fully opaque.
+final gameShownProvider = NotifierProvider<GameShownNotifier, bool>(GameShownNotifier.new);
+
+/// Nothing shows a game behind the controls yet: steps 5 and 6 (the host
+/// phone's own player and a joined phone's view) turn it on.
+class GameShownNotifier extends Notifier<bool> {
+  @override
+  bool build() => false;
+
+  void set(bool shown) => state = shown;
+}
+
 /// Haptic events from the TV (M5): how many arrived and were played, and
 /// the latest, for Diagnostics.
 typedef TvHaptics = ({int received, int played, HapticEventMessage? last});
