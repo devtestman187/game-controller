@@ -31,3 +31,5 @@ export 'src/transport/message_channel.dart';
 export 'src/transport/web_socket_channel.dart';
 export 'src/transport/web_socket_connector.dart';
 export 'src/transport/web_socket_listener.dart';
+export 'src/viewer_stats.dart';
+export 'src/viewer_timing.dart';

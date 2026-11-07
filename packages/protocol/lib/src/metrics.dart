@@ -21,9 +21,16 @@ final class MetricsMessage extends Message {
     required this.durationMs,
     this.ended = false,
     Map<String, Object?> data = const {},
-  }) : data = Map.unmodifiable(data);
+    Map<String, List<int>> stages = const {},
+    this.view,
+  }) : data = Map.unmodifiable(data),
+       stages = Map.unmodifiable({for (final entry in stages.entries) entry.key: List<int>.unmodifiable(entry.value)});
 
   static const String wireType = 'metrics';
+
+  /// Most samples one stage may carry in a batch (m12 §1). A viewer with more
+  /// keeps evenly spaced ones; a batch with more is rejected.
+  static const maxStageSamples = 256;
 
   /// Unique segment ID, made by the phone (random, not tied to a person).
   final String segment;
@@ -43,6 +50,15 @@ final class MetricsMessage extends Message {
   /// The counters, as JSON.
   final Map<String, Object?> data;
 
+  /// Raw samples per named delay stage ([LatencyStage]s such as
+  /// `frame_jitter`), in ms (M12). The host feeds each one into its own
+  /// stage statistics. Empty when the batch has none.
+  final Map<String, List<int>> stages;
+
+  /// What the viewer counted since its last batch (M12): frames drawn, gaps
+  /// and late frames. Null for a controller that doesn't show the game.
+  final ({int frames, int gaps, int late})? view;
+
   @override
   String get type => wireType;
 
@@ -54,7 +70,15 @@ final class MetricsMessage extends Message {
     'ms': durationMs,
     'end': ended,
     'data': data,
+    'stages': ?(stages.isEmpty ? null : stages),
+    'view': ?_viewPayload(),
   };
+
+  Map<String, Object?>? _viewPayload() {
+    final view = this.view;
+    if (view == null) return null;
+    return {'frames': view.frames, 'gaps': view.gaps, 'late': view.late};
+  }
 
   static MetricsMessage fromPayload(Map<String, Object?> p) {
     final data = p['data'];
@@ -68,7 +92,37 @@ final class MetricsMessage extends Message {
       durationMs: requireInt(p, 'ms'),
       ended: ended as bool? ?? false,
       data: data.cast<String, Object?>(),
+      stages: _stageSamples(p),
+      view: _viewCounts(p),
     );
+  }
+
+  // Unknown stage names are kept: they are names, not code.
+  static Map<String, List<int>> _stageSamples(Map<String, Object?> p) {
+    final stages = p['stages'];
+    if (stages == null) return const {};
+    if (stages is! Map) throw FormatException('Field "stages" must be an object, got ${stages.runtimeType}');
+    final samples = <String, List<int>>{};
+    for (final entry in stages.entries) {
+      final stage = entry.key;
+      final values = entry.value;
+      if (stage is! String) throw FormatException('Field "stages" keys must be strings, got ${stage.runtimeType}');
+      if (values is! List) throw FormatException('Field "stages" list for "$stage" must be a list');
+      if (values.length > maxStageSamples) {
+        throw FormatException('Field "stages" for "$stage" has ${values.length} samples, at most $maxStageSamples');
+      }
+      for (final value in values) {
+        if (value is! int) throw FormatException('Field "stages" sample for "$stage" must be an integer');
+      }
+      samples[stage] = List.unmodifiable(values.cast<int>());
+    }
+    return Map.unmodifiable(samples);
+  }
+
+  static ({int frames, int gaps, int late})? _viewCounts(Map<String, Object?> p) {
+    if (p['view'] == null) return null;
+    final view = _objectField(p, 'view');
+    return (frames: requireInt(view, 'frames'), gaps: requireInt(view, 'gaps'), late: requireInt(view, 'late'));
   }
 }
 

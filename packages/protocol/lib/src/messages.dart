@@ -5,6 +5,7 @@ part 'game_controls.dart';
 part 'haptic.dart';
 part 'input.dart';
 part 'metrics.dart';
+part 'view.dart';
 
 /// All protocol messages. New message types are added as subclasses of
 /// [Message] and registered in `codec.dart`.

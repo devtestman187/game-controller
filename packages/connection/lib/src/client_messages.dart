@@ -64,6 +64,10 @@ final class ClientMessages {
       case StatusMessage():
         if (!_host.snapshot.isConnected || !_host.identity.capabilities.contains(Capability.status)) return;
         _controls.setStatus(message);
+      case ViewStartMessage() || FrameMessage() || ViewEndMessage():
+        // Viewing isn't wired up yet (m12 s3a G4); a host only sends these to
+        // controllers that list Capability.view, which none does yet.
+        return;
       case HelloMessage() || PairRequestMessage() || InputStateMessage() || MetricsMessage() || RatingMessage():
         _host.log('Ignoring unexpected ${message.type} from the TV');
     }

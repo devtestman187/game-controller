@@ -51,14 +51,24 @@ final class GamePlayer {
 }
 
 /// Named delay stages (PRD v2 S7). Later hosts add their own (snapshot
-/// received, frame drawn on a joined phone, encode, decode, …), and results
-/// stay comparable.
+/// received, encode, decode, …), and results stay comparable.
 abstract final class LatencyStage {
   /// Input sent on the phone → received by the host (estimated one way).
   static const sentToReceived = 'sent_to_received';
 
   /// Input received by the host → the first frame built with it.
   static const receivedToDrawn = 'received_to_drawn';
+
+  /// A touch on the phone → the drawn frame that first acknowledges it
+  /// (PRD v2 D3, M12). Measured on the phone's own clock: the time from when
+  /// the input was sent to the post-frame callback of the frame whose `acks`
+  /// covered it.
+  static const touchToFrame = 'touch_to_frame';
+
+  /// How much later a frame arrived than the fastest frame of the last 2 s
+  /// (m12 §4). One sample per frame, measured on the phone's clock; it is
+  /// what sizes the viewer's playout delay.
+  static const frameJitter = 'frame_jitter';
 }
 
 /// One delay measurement.

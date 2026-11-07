@@ -21,8 +21,9 @@ abstract final class Capability {
   /// The phone status panel ([StatusMessage]). M10.
   static const status = 'status';
 
-  /// A controller that also shows the game (phone-hosted play, M12).
-  /// Reserved.
+  /// A controller that also shows the game (phone-hosted play, M12). One that
+  /// lists it gets a [ViewStartMessage], the game's [FrameMessage]s and a
+  /// [ViewEndMessage].
   static const view = 'view';
 }
 

@@ -67,7 +67,7 @@ void endView(ViewEndMessage end);
 
 - `ControllerClient` exposes `Stream<ViewEvent> get view`: `ViewStarted(ViewStartMessage)`, `ViewFrame(FrameMessage, int arrivedAtMs)` (the phone's clock, taken on receipt) and `ViewEnded(ViewEndMessage)`, sealed. Only when the client listed `view`; otherwise those messages are ignored as unexpected.
 - `controller_client.dart` is at 400 lines (tech debt): split it first, a pure move, before adding anything. No other file over 300 grows past 400.
-- `ViewerTiming` (new, pure Dart, `lib/src/viewer_timing.dart`): §4's arithmetic, so that both the phone's `FrameView` and `sim_controller` use it. It holds no frames.
+- `ViewerTiming` (new, pure Dart, `lib/src/viewer_timing.dart`): §4's arithmetic, so that both the phone's `FrameView` and `sim_controller` use it. It holds no frames. `PlayoutBuffer<T>` (same file) holds them and picks `a`, `b` and `t` for a render time.
 - `ViewerStats` (new, pure Dart): collects §4's samples and counts. `drain()` returns them for one metrics batch, capped at `maxStageSamples` per stage by keeping evenly spaced samples (index `i * count ~/ cap`), and empties itself.
 
 ## 3. The host loop (`packages/game_kit`, new Flutter package)
@@ -190,7 +190,7 @@ typedef ViewContext = ({Map<String, ({int number, String name})> roster, String?
 
 | Job | What | Gates |
 | --- | --- | --- |
-| s3a | §1, §2: messages, `GameHost` members, the client's `view` stream, `ViewerTiming`, `ViewerStats`, protocol.md | G2 (types and the tests from this contract) → G4 |
+| s3a | §1, §2: messages, `GameHost` members, the client's `view` stream, `ViewerTiming`, `ViewerStats`, protocol.md | G2: the messages, `ViewerTiming`, `PlayoutBuffer`, `ViewerStats`, the stage names, with tests (self-contained, so checks pass) → G4: the `controller_client.dart` split, `GameHost` members, the server and client wiring, protocol.md |
 | s3b | §3, §4's game_kit types, §5: the sessions, the thin views, the modules and `lerpTo` | G1 plan (it moves both loops) → G3 the Arena → G4 Shape Race |
 | s3c | `FrameView`, §6's tools, report and smoke step | G2 → G4; then the measurement |
 

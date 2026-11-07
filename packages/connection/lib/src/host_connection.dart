@@ -232,7 +232,10 @@ final class HostConnection {
           MetricsAckMessage() ||
           RatingAskMessage() ||
           GameLayoutMessage() ||
-          StatusMessage():
+          StatusMessage() ||
+          ViewStartMessage() ||
+          FrameMessage() ||
+          ViewEndMessage():
         close(CloseCodes.protocolError, 'Unexpected ${message.type}');
     }
   }

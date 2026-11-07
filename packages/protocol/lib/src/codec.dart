@@ -27,6 +27,9 @@ class MessageCodec {
     RatingMessage.wireType: RatingMessage.fromPayload,
     GameLayoutMessage.wireType: GameLayoutMessage.fromPayload,
     StatusMessage.wireType: StatusMessage.fromPayload,
+    ViewStartMessage.wireType: ViewStartMessage.fromPayload,
+    FrameMessage.wireType: FrameMessage.fromPayload,
+    ViewEndMessage.wireType: ViewEndMessage.fromPayload,
   };
 
   String encode(Message message) => jsonEncode({'v': protocolVersion, 't': message.type, ...message.toPayload()});
