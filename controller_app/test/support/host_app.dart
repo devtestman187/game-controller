@@ -85,18 +85,38 @@ PhoneHost hostOf(WidgetTester tester) {
   return host;
 }
 
+/// The longest a wait on the host's own work may take: the puzzle library
+/// loads, the server starts and the own player pairs outside the test's clock,
+/// and a busy PC slows them all down (s9c).
+const _waitLimit = Duration(seconds: 5);
+
+/// The test's clock one wait step moves, after [_hostWorkStep] of real time:
+/// the host's file work, its socket and its own player's link need the event
+/// loop between the pumps, and the screens' timers need the pumps between them.
+const _frameStep = Duration(milliseconds: 16);
+const _hostWorkStep = Duration(milliseconds: 5);
+
 /// Lets the real time the host needs pass in small steps until [done] is
 /// true: its file work, its socket and its own player's link run outside the
 /// test's clock, so every wait in the real event loop is followed by a pump
-/// that hands the result back to the test's zone.
+/// that hands the result back to the test's zone. Fails after [_waitLimit]
+/// with [why]'s message.
 Future<void> until(WidgetTester tester, bool Function() done, String Function() why) async {
-  for (var i = 0; i < 200; i++) {
+  for (var waited = Duration.zero; waited < _waitLimit; waited += _frameStep) {
     if (done()) return;
-    await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 5)));
-    await tester.pump(const Duration(milliseconds: 16));
+    await tester.runAsync(() => Future<void>.delayed(_hostWorkStep));
+    await tester.pump(_frameStep);
   }
+  if (done()) return;
   fail(why());
 }
+
+/// Pumps in small steps until [finder] matches: for a screen that is up only
+/// after the host's own work — the puzzle library's load, a pad press reaching
+/// the host's menus, the own player's pairing — which a fixed number of pumps
+/// can race (s9c). [what] names it in the failure.
+Future<void> untilShown(WidgetTester tester, Finder finder, String what) =>
+    until(tester, () => finder.evaluate().isNotEmpty, () => '$what did not show within ${_waitLimit.inSeconds} s');
 
 /// Waits until this phone's own player has paired on its host's link.
 Future<void> hostReady(WidgetTester tester, PhoneHost host) =>

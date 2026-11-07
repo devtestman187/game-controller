@@ -60,17 +60,23 @@ void main() {
     // 4. The menus' buttons reach the pad: client, host, menus, layout, client.
     expect(faceLabels(tester), allOf(contains('A OK'), contains('B Back')));
 
-    // 5. A on the pad presses the focused card: Shape Race.
+    // 5. A on the pad presses the focused card: Shape Race. The screens come
+    // up after the host's menus read the press and the puzzle library loads,
+    // which a busy PC delays past a fixed number of pumps (s9c).
     await pressA(tester);
+    await untilShown(tester, find.byType(party.ShapeRaceScreen), 'The Shape Race screen');
     expect(find.byType(party.ShapeRaceScreen), findsOneWidget);
+    await untilShown(tester, find.byKey(const Key('random-easy')), 'The puzzle list');
     expect(find.byKey(const Key('random-easy')), findsOneWidget);
 
     // 6. A again opens the join screen, A joins the left side, A again starts:
     // the puzzle runs inside the body box, and the pad gets its buttons.
     await pressA(tester);
+    await untilShown(tester, find.byType(party.JoinScreen), 'The join screen');
     expect(find.byType(party.JoinScreen), findsOneWidget);
     await pressA(tester);
     await pressA(tester);
+    await untilShown(tester, find.byType(party.PuzzleScreen), 'The puzzle screen');
     final puzzle = tester.widget<party.PuzzleScreen>(find.byType(party.PuzzleScreen));
     expect(puzzle.teams.keys, [host.client.identity.controllerId]);
     expect(puzzle.teams.values.map((s) => s.name), ['left']);
