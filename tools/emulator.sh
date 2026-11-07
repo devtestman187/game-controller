@@ -144,6 +144,12 @@ case "${1:-}" in
     echo "Connecting to $address..."
     if wait_for "Enter the code" 20; then
       sleep 1
+      # The code screen's box is the first EditText on it: tap it before typing,
+      # or the code goes nowhere (found on the emulator, Nov 7, 2026).
+      xy="$(find_node EditText 1)"
+      [ -n "$xy" ] || die "no code box on screen (see: tools/emulator.sh ui)" 1
+      a shell input tap $xy
+      sleep 1
       a shell input text "$code"
       a shell input keyevent 66
     fi

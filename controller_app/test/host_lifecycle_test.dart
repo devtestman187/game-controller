@@ -55,7 +55,11 @@ void main() {
       // A hosting phone still has no TV to look for.
       expect(app.discovery.restarts, restarts);
       await settle(tester);
+      // The bar came back with the app, and the host is still up under it: the
+      // compact bar over the game keeps the code to join it (s7d2 Q1).
+      expect(find.byKey(const Key('modeMenu')), findsOneWidget);
       expect(find.byKey(const Key('hostChip')), findsOneWidget);
+      expect(hostOf(tester), same(host));
       await tester.runAsync(host.dispose);
     });
 

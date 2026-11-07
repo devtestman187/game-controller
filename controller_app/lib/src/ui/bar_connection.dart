@@ -31,7 +31,7 @@ class BarConnection extends ConsumerWidget {
         Flexible(
           child: ActionChip(
             key: const Key('connectionChip'),
-            avatar: Icon(Icons.circle, size: 12, color: _statusColor(context, client)),
+            avatar: const ConnectionDot(),
             label: Text(
               client.isConnected
                   ? '${client.hostLabel} · ${client.rttMs ?? '–'} ms'
@@ -64,12 +64,39 @@ class BarConnection extends ConsumerWidget {
   }
 }
 
-Color _statusColor(BuildContext context, ClientSnapshot client) => switch (client.status) {
-  ClientStatus.connected => Colors.greenAccent,
-  ClientStatus.reconnecting || ClientStatus.connecting || ClientStatus.pairing => Colors.amberAccent,
-  ClientStatus.waitingForCode => Theme.of(context).colorScheme.primary,
-  ClientStatus.idle || ClientStatus.failed => Theme.of(context).colorScheme.onSurfaceVariant,
-};
+/// The bar's left side over a game (m12-phone-layout §0.7b): the own player
+/// and the link's dot alone. The host's name, the ping and the status panel
+/// would cover the game's own HUD, so they stay out of the compact bar.
+class CompactConnection extends ConsumerWidget {
+  const CompactConnection({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final player = ref.watch(clientStateProvider.select((s) => s.player));
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (player != null) ...[PlayerBadge(number: player), const SizedBox(width: 6)],
+        const ConnectionDot(key: Key('connectionDot')),
+      ],
+    );
+  }
+}
+
+/// The link's state as a dot (P6): the chip's avatar, on its own in the
+/// compact bar. Green when connected, amber on the way, grey when idle.
+class ConnectionDot extends ConsumerWidget {
+  const ConnectionDot({super.key});
+
+  /// The dot's diameter, the size the chip's avatar always drew.
+  static const dotSize = 12.0;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final status = ref.watch(clientStateProvider.select((s) => s.status));
+    return Icon(Icons.circle, size: dotSize, color: _statusColor(context, status));
+  }
+}
 
 /// "P1" in the player's colour, matching the sprite and the badge on the TV.
 class PlayerBadge extends StatelessWidget {
@@ -91,3 +118,10 @@ class PlayerBadge extends StatelessWidget {
     ),
   );
 }
+
+Color _statusColor(BuildContext context, ClientStatus status) => switch (status) {
+  ClientStatus.connected => Colors.greenAccent,
+  ClientStatus.reconnecting || ClientStatus.connecting || ClientStatus.pairing => Colors.amberAccent,
+  ClientStatus.waitingForCode => Theme.of(context).colorScheme.primary,
+  ClientStatus.idle || ClientStatus.failed => Theme.of(context).colorScheme.onSurfaceVariant,
+};

@@ -10,8 +10,21 @@ import 'bar_connection.dart';
 /// pairing code with the address to type in, "New code" and "Stop hosting".
 /// It is how players join, since the phone has no home screen to show the
 /// code on.
+///
+/// In the compact bar over this phone's own game it is the code alone
+/// ([compact]): the word costs the room the mode and the icons need
+/// (m12-phone-layout §0.7b), and the menu behind it is the same.
 class HostChip extends ConsumerWidget {
-  const HostChip({super.key});
+  const HostChip({super.key, this.compact = false});
+
+  /// True in the compact bar over a game: the code alone, and no player badge
+  /// (the bar draws that before its dot already).
+  final bool compact;
+
+  /// The compact chip's height: the full bar's Settings button is
+  /// [kMinInteractiveDimension] high (C14), and a host over its game must be
+  /// able to hit the code just as well.
+  static const compactHeight = kMinInteractiveDimension;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -25,17 +38,18 @@ class HostChip extends ConsumerWidget {
     // is the own player's while this phone hosts (m12 §3).
     final player = ref.watch(clientStateProvider.select((s) => s.player));
     final address = state.addresses.firstOrNull?.address;
+    final code = state.host.pairingCode;
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (player != null) ...[PlayerBadge(number: player), const SizedBox(width: 6)],
+        if (!compact && player != null) ...[PlayerBadge(number: player), const SizedBox(width: 6)],
         Flexible(
           child: MenuAnchor(
             menuChildren: [
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
                 child: Text(
-                  state.host.pairingCode,
+                  code,
                   key: const Key('hostCode'),
                   style: Theme.of(context).textTheme.headlineMedium?.copyWith(letterSpacing: 8),
                 ),
@@ -59,15 +73,38 @@ class HostChip extends ConsumerWidget {
                 child: const Text('Stop hosting'),
               ),
             ],
-            builder: (context, menu, _) => ActionChip(
-              key: const Key('hostChip'),
-              avatar: const Icon(Icons.circle, size: 12, color: Colors.greenAccent),
-              label: Text('Hosting · ${state.host.pairingCode}', overflow: TextOverflow.ellipsis),
-              onPressed: () => menu.isOpen ? menu.close() : menu.open(),
-            ),
+            builder: (context, menu, _) => _CodeChip(menu: menu, code: code, compact: compact),
           ),
         ),
       ],
     );
+  }
+}
+
+/// The chip that opens the host's menu: "Hosting · 2333" in the full bar, the
+/// code alone in the compact one, at the bar's touch height (C14).
+class _CodeChip extends StatelessWidget {
+  const _CodeChip({required this.menu, required this.code, required this.compact});
+
+  /// The menu the chip opens and closes.
+  final MenuController menu;
+
+  /// The pairing code players type in.
+  final String code;
+
+  /// True for the code alone, in the compact bar over a game.
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    final chip = ActionChip(
+      key: const Key('hostChip'),
+      // The word the compact bar drops, so the bare code still says what it is.
+      tooltip: 'Hosting · $code',
+      avatar: const Icon(Icons.circle, size: 12, color: Colors.greenAccent),
+      label: Text(compact ? code : 'Hosting · $code', overflow: TextOverflow.ellipsis),
+      onPressed: () => menu.isOpen ? menu.close() : menu.open(),
+    );
+    return compact ? SizedBox(height: HostChip.compactHeight, child: chip) : chip;
   }
 }

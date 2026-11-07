@@ -43,6 +43,11 @@ double layerOpacity(WidgetTester tester) => tester
     .widget<Opacity>(find.ancestor(of: find.byKey(const Key('faceButtons')), matching: find.byType(Opacity)).first)
     .opacity;
 
+/// The opacity the bar draws an item with (m12-phone-layout §0.7b): the
+/// control's opacity while a game shows behind it.
+double barOpacity(WidgetTester tester, Key key) =>
+    tester.widget<Opacity>(find.ancestor(of: find.byKey(key), matching: find.byType(Opacity)).first).opacity;
+
 /// The app connected to a host that shows the Arena, with a status panel up
 /// and the first frame drawn.
 Future<TestApp> joined(
@@ -189,6 +194,133 @@ void main() {
       await settle(tester);
 
       expect(sounds.restarts, 1);
+    });
+  });
+
+  group('the bar over a game (m12-phone-layout §0.7b)', () {
+    testWidgets('the full bar goes compact: the badge, the dot and three icons at the controls\' opacity', (
+      tester,
+    ) async {
+      final app = await pumpApp(tester, paired: true, saved: {'controlsOpacity': 0.6});
+      app.client.emit(connected.copyWith(player: 1));
+      await settle(tester);
+      // Controller mode has the full bar: the host's name, the ping, the labels.
+      expect(find.byKey(const Key('connectionChip')), findsOneWidget);
+      expect(find.textContaining('Android TV'), findsOneWidget);
+      expect(find.byKey(const Key('modeMenu')), findsNothing);
+
+      app.client.nowMs = 1000;
+      app.client.viewStart(arenaStart());
+      await settle(tester);
+      app.client.viewFrame(arenaFrame(0));
+      await settle(tester);
+
+      // Over the game: the player's badge and the link's dot on the left, the
+      // mode, Settings and Diagnostics as icons on the right.
+      expect(find.byKey(const Key('playerBadge')), findsOneWidget);
+      expect(find.text('P1'), findsOneWidget);
+      expect(find.byKey(const Key('connectionDot')), findsOneWidget);
+      expect(find.byKey(const Key('modeMenu')), findsOneWidget);
+      expect(find.byTooltip('Settings'), findsOneWidget);
+      expect(find.byTooltip('Diagnostics'), findsOneWidget);
+      // Nothing in the middle: no host name, no ping, no status panel.
+      expect(find.byKey(const Key('connectionChip')), findsNothing);
+      expect(find.textContaining('Android TV'), findsNothing);
+      expect(find.byKey(const Key('pingStats')), findsNothing);
+      expect(find.byKey(const Key('statusPanel')), findsNothing);
+      // Drawn at the controls' opacity, the saved one.
+      expect(barOpacity(tester, const Key('modeMenu')), 0.6);
+      expect(barOpacity(tester, const Key('playerBadge')), 0.6);
+      expect(barOpacity(tester, const Key('connectionDot')), 0.6);
+    });
+
+    testWidgets('the one mode icon opens the three modes, and picking one switches the pad', (tester) async {
+      await joined(tester);
+      expect(find.byKey(const Key('inputSummary')), findsOneWidget, reason: 'the D-pad mode is on');
+
+      await tester.tap(find.byKey(const Key('modeMenu')));
+      await settle(tester);
+      expect(find.text('D-pad'), findsOneWidget);
+      expect(find.text('Gyro'), findsOneWidget);
+      expect(find.text('Sticks'), findsOneWidget);
+
+      await tester.tap(find.text('Sticks'));
+      await settle(tester);
+      expect(find.byKey(const Key('leftStick')), findsOneWidget);
+      expect(find.byKey(const Key('inputSummary')), findsNothing);
+
+      // Back again, the same way.
+      await tester.tap(find.byKey(const Key('modeMenu')));
+      await settle(tester);
+      await tester.tap(find.text('D-pad'));
+      await settle(tester);
+      expect(find.byKey(const Key('inputSummary')), findsOneWidget);
+    });
+
+    testWidgets('the mode menu holds the mode in use\'s settings, which open the full bar\'s dialog', (tester) async {
+      await joined(tester);
+
+      // D-pad has nothing to tune: the menu is the three modes alone.
+      await tester.tap(find.byKey(const Key('modeMenu')));
+      await settle(tester);
+      expect(find.text('Stick settings'), findsNothing);
+      expect(find.text('Gyro settings'), findsNothing);
+      await tester.tap(find.text('Sticks'));
+      await settle(tester);
+
+      // Sticks adds "Stick settings" below a divider (s7d2 Q4), and it opens
+      // the dialog the full bar's tune button opens.
+      await tester.tap(find.byKey(const Key('modeMenu')));
+      await settle(tester);
+      expect(find.text('Stick settings'), findsOneWidget);
+      expect(find.byType(Divider), findsOneWidget);
+      await tester.tap(find.text('Stick settings'));
+      await settle(tester);
+      expect(find.byKey(const Key('stickFloating')), findsOneWidget);
+
+      // Done closes it, and the pad is still on the sticks.
+      await tester.tap(find.text('Done'));
+      await settle(tester);
+      expect(find.byKey(const Key('leftStick')), findsOneWidget);
+    });
+
+    testWidgets('the compact bar keeps the full bar\'s touch sizes and the pad\'s body below it (C14 to C16)', (
+      tester,
+    ) async {
+      final app = await pumpApp(tester, paired: true);
+      app.client.emit(connected.copyWith(player: 1));
+      await settle(tester);
+      // The full bar's two icon buttons: the sizes the compact bar must keep.
+      final settings = tester.getSize(find.byTooltip('Settings'));
+      final diagnostics = tester.getSize(find.byTooltip('Diagnostics'));
+
+      app.client.nowMs = 1000;
+      app.client.viewStart(arenaStart());
+      await settle(tester);
+      app.client.viewFrame(arenaFrame(0));
+      await settle(tester);
+
+      expect(tester.getSize(find.byTooltip('Settings')), settings);
+      expect(tester.getSize(find.byTooltip('Diagnostics')), diagnostics);
+      final mode = tester.getSize(find.byKey(const Key('modeMenu')));
+      expect(mode.width, greaterThanOrEqualTo(settings.width), reason: 'the one mode icon is no smaller');
+      expect(mode.height, greaterThanOrEqualTo(settings.height), reason: 'the one mode icon is no smaller');
+      // The bar is still 52 px: the pad and its touch map keep the same body.
+      expect(tester.getSize(find.byType(ControlsLayer)), const Size(852, 341));
+    });
+
+    testWidgets('the full bar comes back when the game ends', (tester) async {
+      final app = await joined(tester);
+      expect(find.byKey(const Key('modeMenu')), findsOneWidget);
+
+      app.client.viewEnd(const ViewEndMessage(reason: ViewEndReason.finished));
+      await settle(tester);
+
+      expect(find.byKey(const Key('connectionChip')), findsOneWidget);
+      expect(find.textContaining('Android TV'), findsOneWidget);
+      expect(find.text('D-pad'), findsOneWidget, reason: 'the mode labels are back');
+      expect(find.byKey(const Key('modeMenu')), findsNothing);
+      expect(find.byKey(const Key('connectionDot')), findsNothing);
     });
   });
 

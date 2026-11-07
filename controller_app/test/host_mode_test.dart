@@ -39,7 +39,13 @@ void main() {
     expect(tester.getRect(find.byType(party.GamesScreen)), const Rect.fromLTWH(0, 0, 852, 393));
     expect(tester.getRect(find.byType(ControlsLayer)), const Rect.fromLTWH(0, 52, 852, 341));
     expect(find.byKey(const Key('pickShapeRace')), findsOneWidget);
-    // The bar says this phone hosts, and shows the pairing code.
+    // The bar over the game is the compact one (m12-phone-layout §0.7b): the
+    // mode, Settings and Diagnostics as icons, and the host's code in a
+    // compact chip right after the dot, so players can still join and the
+    // host can stop from here (s7d2 Q1).
+    expect(find.byKey(const Key('modeMenu')), findsOneWidget);
+    expect(find.byTooltip('Settings'), findsOneWidget);
+    expect(find.byTooltip('Diagnostics'), findsOneWidget);
     expect(find.byKey(const Key('hostChip')), findsOneWidget);
     expect(find.textContaining(host.service.state.host.pairingCode), findsOneWidget);
 
@@ -96,10 +102,41 @@ void main() {
     // this phone", nothing sits beside the game (C34).
     expect(tester.getRect(find.byType(party.GamesScreen)), const Rect.fromLTWH(0, 0, 852, 393));
 
-    // How the others join is still the bar's: the chip and Diagnostics.
-    expect(find.byKey(const Key('hostChip')), findsOneWidget);
+    // The bar over the game is the compact one (m12-phone-layout §0.7b), and
+    // with no pad there is nothing to configure: the own player's badge, the
+    // link's dot, the host's code and Diagnostics.
+    expect(find.byKey(const Key('playerBadge')), findsOneWidget);
+    expect(find.byKey(const Key('connectionDot')), findsOneWidget);
     expect(find.byTooltip('Diagnostics'), findsOneWidget);
+    expect(find.byKey(const Key('modeMenu')), findsNothing);
+    expect(find.byKey(const Key('hostChip')), findsOneWidget);
     expect(find.textContaining(host.service.state.host.pairingCode), findsOneWidget);
+
+    await tester.runAsync(host.dispose);
+  });
+
+  testWidgets('the host route gets the compact bar too (m12-phone-layout §0.7b)', (tester) async {
+    await pumpHostApp(tester);
+    final host = await enterHostMode(tester);
+
+    // "Play on this phone": the own player's badge, the link's dot and the
+    // host's code on the left, the mode, Settings and Diagnostics as icons on
+    // the right (s7d2 Q1).
+    expect(find.byKey(const Key('playerBadge')), findsOneWidget);
+    expect(find.byKey(const Key('connectionDot')), findsOneWidget);
+    expect(find.byKey(const Key('modeMenu')), findsOneWidget);
+    expect(find.byTooltip('Settings'), findsOneWidget);
+    expect(find.byTooltip('Diagnostics'), findsOneWidget);
+    expect(find.byKey(const Key('hostChip')), findsOneWidget);
+    expect(find.textContaining(host.service.state.host.pairingCode), findsOneWidget);
+    // It sits right after the dot (s7d2 Q1).
+    expect(
+      tester.getRect(find.byKey(const Key('hostChip'))).left,
+      greaterThan(tester.getRect(find.byKey(const Key('connectionDot'))).right),
+    );
+    // The compact chip is as easy to hit as the bar's Settings button (C14).
+    final settings = tester.getSize(find.byTooltip('Settings'));
+    expect(tester.getSize(find.byKey(const Key('hostChip'))).height, greaterThanOrEqualTo(settings.height));
 
     await tester.runAsync(host.dispose);
   });
@@ -125,10 +162,38 @@ void main() {
     final host = await enterHostMode(tester);
     final restarts = app.discovery.restarts;
 
+    // The compact chip over the game opens the same menu as the full one, so
+    // the host can still stop from its own screens (s7d2 Q1).
     await tester.tap(find.byKey(const Key('hostChip')));
     await settle(tester);
+    expect(find.byKey(const Key('newCode')), findsOneWidget);
     expect(find.byKey(const Key('stopHosting')), findsOneWidget);
     await tester.tap(find.byKey(const Key('stopHosting')));
+    await until(tester, () => !host.live, () => 'The host did not stop');
+    await settle(tester);
+
+    // Back on the Connect screen: the own player let go, the search again.
+    expect(find.byType(HostScreen), findsNothing);
+    expect(find.byType(ConnectScreen), findsOneWidget);
+    expect(host.client.snapshot.status, ClientStatus.idle);
+    expect(app.discovery.restarts, restarts + 1);
+
+    // Hosting again starts a new host, on the same providers.
+    final second = await enterHostMode(tester);
+    expect(second, isNot(same(host)));
+    expect(find.byType(party.GamesScreen), findsOneWidget);
+    expect(second.service.gameHost.players.single.number, 1);
+    await tester.runAsync(second.dispose);
+  });
+
+  testWidgets('a stopped host lets a second "Host a game" start on the same providers', (tester) async {
+    final app = await pumpHostApp(tester);
+    final host = await enterHostMode(tester);
+    final restarts = app.discovery.restarts;
+
+    // The back press is the host route's other way out than the chip's "Stop
+    // hosting", and it stops the server the same way (m12 §3).
+    await tester.binding.handlePopRoute();
     await until(tester, () => !host.live, () => 'The host did not stop');
     await settle(tester);
 

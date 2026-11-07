@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:protocol/protocol.dart';
 
 import '../gyro.dart';
 import '../providers.dart';
@@ -19,10 +20,14 @@ class BarModes extends ConsumerWidget {
       children: [
         _ModePicker(gyro: gyro),
         if (gyro.mode == PadMode.gyro)
-          IconButton(tooltip: 'Gyro settings', icon: const Icon(Icons.tune), onPressed: () => showGyroDialog(context)),
+          IconButton(
+            tooltip: _gyroSettingsLabel,
+            icon: const Icon(Icons.tune),
+            onPressed: () => showGyroDialog(context),
+          ),
         if (gyro.mode == PadMode.sticks)
           IconButton(
-            tooltip: 'Stick settings',
+            tooltip: _stickSettingsLabel,
             icon: const Icon(Icons.tune),
             onPressed: () => showStickDialog(context),
           ),
@@ -30,6 +35,54 @@ class BarModes extends ConsumerWidget {
     );
   }
 }
+
+/// The pad's mode over a game (m12-phone-layout §0.7b): one icon showing the
+/// mode in use, because the three labels would cover the game's clock. It
+/// opens the same three choices as [BarModes], with the ones the game or the
+/// phone can't use disabled; picking one switches the pad the same way.
+class ModeMenuButton extends ConsumerWidget {
+  const ModeMenuButton({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final gyro = ref.watch(gyroProvider);
+    final game = ref.watch(gameLayoutProvider);
+    return MenuAnchor(
+      menuChildren: [
+        for (final mode in PadMode.values)
+          MenuItemButton(
+            key: Key('pickMode-${mode.name}'),
+            leadingIcon: Icon(_modeIcon(mode)),
+            onPressed: _canPick(mode, game, gyro) ? () => _pickMode(context, ref, mode) : null,
+            child: Text(_modeLabel(mode)),
+          ),
+        // The mode in use's tune dialog, which the full bar keeps in a button
+        // beside the labels (C12): over a game this menu is its only way
+        // there (s7d2 Q4). D-pad has nothing to tune.
+        if (gyro.mode != PadMode.dpad) ...[
+          const Divider(),
+          MenuItemButton(
+            key: Key('tune-${gyro.mode.name}'),
+            leadingIcon: const Icon(Icons.tune),
+            onPressed: gyro.mode == PadMode.gyro ? () => showGyroDialog(context) : () => showStickDialog(context),
+            child: Text(gyro.mode == PadMode.gyro ? _gyroSettingsLabel : _stickSettingsLabel),
+          ),
+        ],
+      ],
+      builder: (context, menu, _) => IconButton(
+        key: const Key('modeMenu'),
+        tooltip: 'Pad mode',
+        icon: Icon(_modeIcon(gyro.mode)),
+        onPressed: () => menu.isOpen ? menu.close() : menu.open(),
+      ),
+    );
+  }
+}
+
+/// What the mode in use's tune dialog is called (C12), the same in the full
+/// bar's button and in the game bar's menu.
+const _gyroSettingsLabel = 'Gyro settings';
+const _stickSettingsLabel = 'Stick settings';
 
 /// The three modes, with the ones the game or the phone can't use disabled.
 class _ModePicker extends ConsumerWidget {
@@ -51,38 +104,69 @@ class _ModePicker extends ConsumerWidget {
       segments: [
         ButtonSegment(
           value: PadMode.dpad,
-          label: const Text('D-pad'),
-          icon: compact ? null : const Icon(Icons.gamepad_outlined),
-          tooltip: game.allows('dpad') ? null : notInGame,
-          enabled: game.allows('dpad'),
+          label: Text(_modeLabel(PadMode.dpad)),
+          icon: compact ? null : Icon(_modeIcon(PadMode.dpad)),
+          tooltip: game.allows(PadMode.dpad.name) ? null : notInGame,
+          enabled: _canPick(PadMode.dpad, game, gyro),
         ),
         ButtonSegment(
           value: PadMode.gyro,
-          label: const Text('Gyro'),
-          icon: compact ? null : const Icon(Icons.screen_rotation_alt_outlined),
-          tooltip: !game.allows('gyro')
+          label: Text(_modeLabel(PadMode.gyro)),
+          icon: compact ? null : Icon(_modeIcon(PadMode.gyro)),
+          tooltip: !game.allows(PadMode.gyro.name)
               ? notInGame
               : gyroUnavailable
               ? gyro.problem
               : 'Steer by tilting the phone',
-          enabled: game.allows('gyro') && !gyroUnavailable && gyro.availability != GyroAvailability.checking,
+          enabled: _canPick(PadMode.gyro, game, gyro),
         ),
         ButtonSegment(
           value: PadMode.sticks,
-          label: const Text('Sticks'),
-          icon: compact ? null : const Icon(Icons.sports_esports_outlined),
-          tooltip: game.allows('sticks') ? 'Two analog sticks, Xbox-style' : notInGame,
-          enabled: game.allows('sticks'),
+          label: Text(_modeLabel(PadMode.sticks)),
+          icon: compact ? null : Icon(_modeIcon(PadMode.sticks)),
+          tooltip: game.allows(PadMode.sticks.name) ? 'Two analog sticks, Xbox-style' : notInGame,
+          enabled: _canPick(PadMode.sticks, game, gyro),
         ),
       ],
       selected: {gyro.mode},
-      onSelectionChanged: (selection) async {
-        final ok = await ref.read(gyroProvider.notifier).setMode(selection.first);
-        if (!ok && context.mounted) {
-          final problem = ref.read(gyroProvider).problem ?? 'Gyro mode isn\'t available.';
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(problem)));
-        }
-      },
+      onSelectionChanged: (selection) => _pickMode(context, ref, selection.first),
     );
+  }
+}
+
+/// What the player calls each mode (C12): the bar's three labels and the
+/// game bar's one icon's menu say the same.
+String _modeLabel(PadMode mode) => switch (mode) {
+  PadMode.dpad => 'D-pad',
+  PadMode.gyro => 'Gyro',
+  PadMode.sticks => 'Sticks',
+};
+
+/// The mode's icon, as the bar's labels draw it and the game bar's icon shows
+/// the mode in use.
+IconData _modeIcon(PadMode mode) => switch (mode) {
+  PadMode.dpad => Icons.gamepad_outlined,
+  PadMode.gyro => Icons.screen_rotation_alt_outlined,
+  PadMode.sticks => Icons.sports_esports_outlined,
+};
+
+/// Whether the pad can switch to [mode] now: the game allows it (P5), and
+/// gyro needs a gyro this phone can use.
+bool _canPick(PadMode mode, GameLayoutMessage game, GyroState gyro) => switch (mode) {
+  PadMode.dpad => game.allows(PadMode.dpad.name),
+  PadMode.gyro =>
+    game.allows(PadMode.gyro.name) &&
+        gyro.availability != GyroAvailability.unavailable &&
+        gyro.availability != GyroAvailability.checking,
+  PadMode.sticks => game.allows(PadMode.sticks.name),
+};
+
+/// Switches the pad to [mode], or says why it can't: the bar's labels and the
+/// game bar's menu both come here.
+Future<void> _pickMode(BuildContext context, WidgetRef ref, PadMode mode) async {
+  final ok = await ref.read(gyroProvider.notifier).setMode(mode);
+  if (!ok && context.mounted) {
+    final problem = ref.read(gyroProvider).problem ?? 'Gyro mode isn\'t available.';
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(problem)));
   }
 }

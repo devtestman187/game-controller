@@ -9,6 +9,7 @@ export 'src/camera.dart';
 export 'src/game.dart';
 export 'src/library.dart';
 export 'src/match.dart';
+export 'src/piece_size.dart';
 export 'src/puzzle.dart';
 export 'src/puzzle_module.dart';
 export 'src/puzzle_session.dart';
