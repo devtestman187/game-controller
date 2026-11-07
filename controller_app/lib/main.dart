@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'src/host/host_overrides.dart';
+import 'src/host/phone_host_setup.dart';
 import 'src/providers.dart';
 import 'src/ui/controller_screen.dart';
 
@@ -13,7 +15,17 @@ Future<void> main() async {
   // Full screen, so the status bar doesn't take room from the pad.
   await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
   final prefs = await SharedPreferences.getInstance();
-  runApp(ProviderScope(overrides: [prefsProvider.overrideWithValue(prefs)], child: const ControllerApp()));
+  runApp(
+    ProviderScope(
+      // The host's inputs live in the root scope (m12 §3): the host route, the
+      // pause menu's dialog and the games all read the one container.
+      overrides: [
+        prefsProvider.overrideWithValue(prefs),
+        ...phoneHostOverrides(directories: const PhoneHostDirectories()),
+      ],
+      child: const ControllerApp(),
+    ),
+  );
 }
 
 class ControllerApp extends StatelessWidget {

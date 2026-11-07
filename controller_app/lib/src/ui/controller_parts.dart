@@ -3,7 +3,7 @@ part of 'controller_screen.dart';
 /// The touch metrics, the mode's controls over whatever this phone shows
 /// behind them (m12 §2.7), and the demo readout, in a body of [body].
 class _Controls extends ConsumerWidget {
-  const _Controls({required this.mode, required this.body});
+  const _Controls({required this.mode, required this.body, this.background, this.controls = true});
 
   final PadMode mode;
 
@@ -11,8 +11,17 @@ class _Controls extends ConsumerWidget {
   /// layouts are measured in.
   final Size body;
 
+  /// The game behind the controls, when this phone shows one.
+  final Widget? background;
+
+  /// False for "Show on this device" (C34): nothing to play with here, so
+  /// only the game is drawn and no touch is watched.
+  final bool controls;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final game = background;
+    if (!controls) return game ?? const SizedBox.shrink();
     // The touch metrics (M9) see every touch on the controls, and know where
     // each control's touch area is.
     final mm = ref.read(pxPerMmProvider);
@@ -28,8 +37,10 @@ class _Controls extends ConsumerWidget {
       onPointerDown: (e) => metrics.touchDown(e.localPosition.dx / mm, e.localPosition.dy / mm),
       child: Stack(
         children: [
-          Positioned.fill(child: ControlsLayer(opacity: opacity)),
-          const Positioned(top: 4, left: 0, right: 0, child: Center(child: DemoReadout())),
+          Positioned.fill(
+            child: ControlsLayer(opacity: opacity, child: game ?? const SizedBox.shrink()),
+          ),
+          if (game == null) const Positioned(top: 4, left: 0, right: 0, child: Center(child: DemoReadout())),
         ],
       ),
     );
@@ -112,6 +123,3 @@ class _TooSmallViewState extends ConsumerState<TooSmallView> {
     );
   }
 }
-
-void openConnect(BuildContext context) =>
-    Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const ConnectScreen()));

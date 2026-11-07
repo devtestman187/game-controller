@@ -7,6 +7,7 @@ import 'package:controller/src/haptics.dart';
 import 'package:controller/src/providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -45,6 +46,7 @@ Future<TestApp> pumpApp(
   bool tablet = false,
   Size screen = const Size(852, 393),
   void Function()? click,
+  List<Override> extra = const [],
 }) async {
   // A landscape phone (iPhone 15-ish) unless the test picks another screen.
   tester.view.physicalSize = screen;
@@ -68,6 +70,7 @@ Future<TestApp> pumpApp(
     log: log,
     device: device,
     click: click,
+    extra: extra,
   );
   await settle(tester);
   return app;
@@ -85,6 +88,7 @@ Future<void> pumpFaked(
   LogBuffer? log,
   FakeDeviceStatus? device,
   void Function()? click,
+  List<Override> extra = const [],
 }) => tester.pumpWidget(
   ProviderScope(
     overrides: [
@@ -98,6 +102,7 @@ Future<void> pumpFaked(
       clickSoundProvider.overrideWithValue(click ?? () {}),
       deviceStatusSourceProvider.overrideWithValue(device ?? FakeDeviceStatus()),
       if (log != null) logProvider.overrideWithValue(log),
+      ...extra,
     ],
     child: child,
   ),

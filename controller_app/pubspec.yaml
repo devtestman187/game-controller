@@ -19,6 +19,9 @@ dependencies:
     path: ../packages/connection
   metrics:
     path: ../packages/metrics
+  party_host:
+    path: ../packages/party_host
+  path_provider: ^2.1.6
   protocol:
     path: ../packages/protocol
   share_plus: ^13.3.1

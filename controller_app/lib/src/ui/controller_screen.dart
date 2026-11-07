@@ -3,22 +3,21 @@ import 'dart:async';
 import 'package:connection/connection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:protocol/protocol.dart';
 
 import '../controls_settings.dart';
 import '../gyro.dart';
+import '../host/hosting.dart';
 import '../layout.dart';
 import '../phone_metrics.dart';
 import '../providers.dart';
+import 'bar_connection.dart';
+import 'bar_modes.dart';
 import 'connect_screen.dart';
 import 'controls_layer.dart';
 import 'diagnostics_screen.dart';
-import 'gyro_dialog.dart';
-import 'labels.dart';
+import 'host_chip.dart';
 import 'rating_prompt.dart';
 import 'settings_screen.dart';
-import 'status_panel.dart';
-import 'stick_dialog.dart';
 
 part 'controller_parts.dart';
 part 'controller_top_bar.dart';
@@ -26,25 +25,41 @@ part 'controller_top_bar.dart';
 /// The controller itself: D-pad (or, in gyro mode, the tilt view) on the
 /// left, Start/Select in the middle, face buttons on the right, and a slim bar
 /// on top for the connection, mode, settings and Diagnostics.
+///
+/// With a [background] it is the game behind the controls instead (m12 §2.7):
+/// the app is hosting, and the same pad plays that game.
 class ControllerScreen extends ConsumerStatefulWidget {
-  const ControllerScreen({super.key});
+  const ControllerScreen({super.key, this.background, this.controls = true});
+
+  /// Drawn behind the controls: the game, when this phone is hosting.
+  final Widget? background;
+
+  /// False for "Show on this device" (C34): the game alone, no pad.
+  final bool controls;
 
   @override
   ConsumerState<ControllerScreen> createState() => _ControllerScreenState();
 }
 
 class _ControllerScreenState extends ConsumerState<ControllerScreen> with WidgetsBindingObserver {
+  /// A background means this app is hosting (m12 §2.7).
+  bool get _hosting => widget.background != null;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    final hosting = _hosting;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      // Back to the last TV if still paired, otherwise straight to choosing one.
-      if (!ref.read(connectionActionsProvider).reconnectToLastHost()) openConnect(context);
-      // The mode used last (saved), and the battery and CPU readout.
+      // Back to the last TV if still paired, otherwise straight to choosing
+      // one. A hosting phone has no TV to find: its own player is already
+      // connecting.
+      if (!hosting && !ref.read(connectionActionsProvider).reconnectToLastHost()) openConnect(context);
+      // The mode used last (saved).
       unawaited(ref.read(gyroProvider.notifier).restoreMode());
-      ref.read(sessionMonitorProvider).start();
+      // The battery and CPU readout is the controller's; a host has its own.
+      if (!hosting) ref.read(sessionMonitorProvider).start();
     });
   }
 
@@ -59,10 +74,10 @@ class _ControllerScreenState extends ConsumerState<ControllerScreen> with Widget
     if (state == AppLifecycleState.resumed) {
       // A fresh search after returning to the app. This also picks up TVs
       // once the user allows local network access in the iOS prompt.
-      ref.read(discoveryProvider).restart();
+      if (!_hosting) ref.read(discoveryProvider).restart();
       // After the phone slept or the app was in the background, the TV has
       // usually dropped the connection: reconnect now, not after the
-      // heartbeat times out.
+      // heartbeat times out. In host mode this resumes the own player.
       ref.read(clientProvider).resume();
       ref.read(gyroProvider.notifier).resume();
       ref.read(hapticsPlayerProvider).paused = false;
@@ -72,6 +87,30 @@ class _ControllerScreenState extends ConsumerState<ControllerScreen> with Widget
       ref.read(hapticsPlayerProvider).paused = true;
       ref.read(padProvider.notifier).releaseAll();
     }
+  }
+
+  /// The TV's side while this phone is not hosting (m12 §5): a fresh search
+  /// after a long reconnect, the TV's new address, and its rating prompt.
+  void _followTheTv(BuildContext context) {
+    // While reconnecting for a while, look for the TV again now and then: it
+    // may have restarted on another port, or the network may have changed.
+    ref.listen(clientStateProvider, (_, next) {
+      if (next.status == ClientStatus.reconnecting && next.attempt > 0 && next.attempt % 4 == 0) {
+        ref.read(discoveryProvider).restart();
+      }
+    });
+    // If the TV shows up at a new address (new DHCP lease), reconnect there.
+    ref.listen(discoveryStateProvider, (_, next) {
+      final client = ref.read(clientProvider);
+      for (final host in next.hosts) {
+        client.updateAddress(host.address);
+      }
+    });
+    // "How did the controls feel?" after a game, when the TV asks. Not while
+    // hosting: it would be a dialog over this phone's own game (m12 §2.7).
+    ref.listen(ratingPromptProvider, (prev, next) {
+      if (next != null && prev == null) showRatingPrompt(context);
+    });
   }
 
   /// The game's side of the screen (P5): the controls it allows and hides,
@@ -88,38 +127,26 @@ class _ControllerScreenState extends ConsumerState<ControllerScreen> with Widget
       }
       if (ref.read(padProvider).buttons.any(next.hidden.contains)) ref.read(padProvider.notifier).releaseAll();
     });
-    // "How did the controls feel?" after a game, when the TV asks.
-    ref.listen(ratingPromptProvider, (prev, next) {
-      if (next != null && prev == null) showRatingPrompt(context);
-    });
   }
 
   @override
   Widget build(BuildContext context) {
+    // Host mode: the app's host, for this screen and the one still below the
+    // host route (m12 §2.7).
+    final hosting = _hosting || (ref.watch(hostingProvider)?.live ?? false);
     // Play haptic events from the TV in every mode (listening keeps it alive
     // without rebuilding the screen on each event).
     ref.listen(tvHapticsProvider, (_, _) {});
     ref.listen(outagesProvider, (_, _) {});
-    // While reconnecting for a while, look for the TV again now and then: it
-    // may have restarted on another port, or the network may have changed.
-    ref.listen(clientStateProvider, (_, next) {
-      if (next.status == ClientStatus.reconnecting && next.attempt > 0 && next.attempt % 4 == 0) {
-        ref.read(discoveryProvider).restart();
-      }
-    });
-    // If the TV shows up at a new address (new DHCP lease), reconnect there.
-    ref.listen(discoveryStateProvider, (_, next) {
-      final client = ref.read(clientProvider);
-      for (final host in next.hosts) {
-        client.updateAddress(host.address);
-      }
-    });
+    // A host has nothing to find, so no search and nothing to rate.
+    if (!hosting) _followTheTv(context);
     final mode = ref.watch(gyroProvider.select((g) => g.mode));
     // Re-laid out when the button size or fixed/floating changes, so the
     // metrics' touch areas follow.
     ref.watch(stickSettingsProvider);
-    // The metrics record while a TV is connected (M9).
-    ref.watch(phoneMetricsProvider);
+    // The metrics record while a TV is connected (M9), and over a game only
+    // when this phone's pad plays it (C34).
+    if (widget.controls) ref.watch(phoneMetricsProvider);
     _followTheGame(context);
 
     return Scaffold(
@@ -131,12 +158,17 @@ class _ControllerScreenState extends ConsumerState<ControllerScreen> with Widget
             if (window.maxWidth < minWindowWidth) return const TooSmallView();
             return Column(
               children: [
-                const _TopBar(),
+                _TopBar(hosting: _hosting, controls: widget.controls),
                 Expanded(
                   child: LayoutBuilder(
                     builder: (context, body) {
                       if (body.maxHeight < minBodyHeight) return const TooSmallView();
-                      return _Controls(mode: mode, body: body.biggest);
+                      return _Controls(
+                        mode: mode,
+                        body: body.biggest,
+                        background: widget.background,
+                        controls: widget.controls,
+                      );
                     },
                   ),
                 ),
