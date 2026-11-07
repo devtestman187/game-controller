@@ -6,13 +6,15 @@ Two scripts replace the most repeated manual steps:
 | --- | --- | --- |
 | [`tools/check.sh`](../tools/check.sh) | Every automated check (format, analyze, all seven test suites), one line each | about 3 minutes |
 | [`tools/review.sh`](../tools/review.sh) | The coding guidelines' mechanical checks over the `.dart` files that changed, one line per finding | a few seconds |
+| [`tools/commit-job.sh`](../tools/commit-job.sh) | Commits one finished job: the changes under its brief's `allow:` paths, the brief, its report and its review files, with the report's draft message | instant |
 | [`tools/release.sh`](../tools/release.sh) | Tags a release with tester notes, pushes it, waits for the Play, TestFlight and Windows builds, and prints a summary | about 20 to 40 minutes, mostly waiting |
 | [`tools/tv-dev.sh`](../tools/tv-dev.sh) | Starts and stops a development copy of the Windows TV app, and prints its port and pairing code | a few seconds (a few minutes for the first build) |
 | [`tools/tv-window.ps1`](../tools/tv-window.ps1) | Screenshots, clicks and keys in that copy's window | instant |
 | [`tools/emulator.sh`](../tools/emulator.sh) | Runs the phone app on the Android emulator: install with cleared data, connect to a TV app, list what's on screen, tap, screenshot | about a minute to boot |
+| [`tools/smoke.sh`](../tools/smoke.sh) | Pairs a simulated controller (and with `--emulator` the phone app) with the development TV app and checks each step against the clients' and the app's own logs | about 30 seconds (a few minutes with `--emulator`) |
 | [`tools/audio/`](../tools/audio/README.md) | `render.py`, which generates the game's sound effects, and how to encode them | a few seconds |
 
-They're plain bash (and one PowerShell script for the Windows window) with no paths tied to one computer. `check.sh`, `release.sh` and `emulator.sh` work the same on Windows (Git Bash), macOS and Linux; `tv-dev.sh` and `tv-window.ps1` are for Windows, where the desktop TV app runs. Each runs from any folder: the scripts move to the repository root themselves. They're written so a person, Claude Code or another AI agent can use them the same way.
+They're plain bash (and one PowerShell script for the Windows window) with no paths tied to one computer. `check.sh`, `review.sh`, `commit-job.sh`, `release.sh` and `emulator.sh` work the same on Windows (Git Bash), macOS and Linux; `tv-dev.sh` and `tv-window.ps1` are for Windows, where the desktop TV app runs, and so is `smoke.sh`, which drives them. Each runs from any folder: the scripts move to the repository root themselves. They're written so a person, Claude Code or another AI agent can use them the same way.
 
 ## What you need
 
@@ -115,6 +117,26 @@ review: 2 fail, 1 note
 
   Run it before committing a pure move: what it prints is then the texts that really changed (a move that only renamed variables shows a few pairs, one that changed no text shows none). `--head` needs `--strings` and `--strings` can't be used with `--all`; a run is information, not a check, so it exits 0 (2 only for bad arguments, an unknown ref or a missing git).
 - **It doesn't replace the review, it finds the mechanical things first.** A design that won't hold, a name that lies, a test that checks the wrong thing and a race all pass it.
+
+## tools/commit-job.sh
+
+```bash
+tools/commit-job.sh docs/briefs/m12/t2-g4.md                            # commit the job
+tools/commit-job.sh docs/briefs/m12/t2-g4.md --dry-run                  # the files and the message, nothing staged
+tools/commit-job.sh docs/briefs/m12/t2-g4.md --message-file message.txt # a message Claude edited
+tools/commit-job.sh docs/briefs/m12/t2-g4.md --push
+```
+
+A finished job leaves work in a few places: the files its brief allowed, the brief, its report, and the review files of its gate. This stages exactly those and commits them with the message the report drafted, so committing a job is one command.
+
+- **What it stages:** every change under the brief's `allow:` paths (modified, untracked and deleted files alike), the brief itself, its report (the `report:` line), and the job's `<brief>-review.md`, `<brief>-review-report.md` and `<brief>-plan.md` when they exist. `allow:` and `report:` are read the way `tools/flash.sh` reads them (` · ` between paths), and the paths are from the repository root.
+- **What it never stages:** anything outside those paths, and no `*/windows/flutter/generated_*` file: Flutter rewrites those on every run, so they never belong in a commit.
+- **It refuses (exit code 1), staging nothing,** when something was already staged before it ran (it lists it: commit or unstage that first), when the report the brief names isn't there, when the message is empty, or when there is nothing to commit under the allow paths.
+- **The message:** the report's `## Commit message` section, without the code fence around it and without blank lines at its edges, or the file given with `--message-file`. When `COMMIT_TRAILER` is set in the environment, it is added as a last paragraph (a `Co-Authored-By:` line, for example).
+- **Then** it prints `git diff --cached --stat` and the message, commits with `git commit -F` (hooks and signing run as configured: it never skips them), and pushes only with `--push`.
+- **`--dry-run`** prints the same file list and message with a scratch index of its own, so the real index is untouched and nothing is committed: the same checks run as in a real commit.
+- **Exit code:** 0 committed (or shown, with `--dry-run`), 1 refused or a git command failed, 2 bad use (no brief, a missing message file, a brief without `allow:`).
+- **What it doesn't do:** choose which changes belong together, split a job into several commits, or edit the message. Those are decisions: change the message with `--message-file`, or say what to include in the brief.
 
 ## tools/release.sh
 
@@ -230,6 +252,38 @@ The face buttons are one drawn control (`A, B, X, Y`; in a game it lists the lab
 - `adb shell input tap` is a very short tap, good for checking that quick taps aren't lost; `hold` presses for as long as you say.
 - With several devices attached, set `ANDROID_SERIAL` to the one to use. The same commands work on a real Android phone connected with adb, except `start` and `stop`.
 - Exit codes: 0 ok, 1 failed or timed out, 2 bad use.
+
+### A quick check with real clients: tools/smoke.sh
+
+```bash
+tools/smoke.sh                # the development TV app and a simulated controller
+tools/smoke.sh --emulator     # also the phone app on the emulator
+tools/smoke.sh --keep         # leave what it started running
+```
+
+Before committing a change to `connection`, to the protocol or to the host, this checks it the way a phone would: over the real network stack, against the development TV app, without a phone in hand. Each step is proved by a line in the simulated controller's own output and, when the TV app's log is live, by the app's matching line too; the PASS line says which proofs it used (`sim`, `sim+tv`, `tv` or `tool`). The output below is a sample (sample; replaced after the first real run): the steps and their wording are what a run prints, the seconds are guesses.
+
+```
+PASS  tv-app        (0s)
+TV app on port 45780, pairing code 5416 (log: /c/Users/.../thumbparty-dev/tv.log)
+PASS  hello         (2s)
+PASS  paired        (0s)
+PASS  input         (10s)
+PASS  metrics       (0s)
+PASS  disconnect    (1s)
+Smoke passed. Logs: /c/Users/.../thumbparty-smoke-20261106-195842
+```
+
+- **The steps.** `tv-app` starts the development TV app with `tools/tv-dev.sh start` (or uses the copy that is already running) and reads its port and pairing code. The simulated controller's 12-second run then proves, from its own output: `hello` (the host's `Welcome from …`, which is its answer to the hello), `paired` (`Paired with …`), `player` (the number the TV gave this controller), `ping` (the host's answers to its pings), `input` (its summary's `N input states sent, 0 drops`; the `--stream` option sends tilt 60 times a second), `metrics` (`metrics batch 1`) and `disconnect` once it has quit. Its `--name` is `Smoke controller`, so its lines can't be taken for the TV app's own built-in simulated controllers.
+- **The TV app's own log, when it is live.** A step is also checked against the app's log then: `hello` against `Smoke controller (sim 0.11.0, supports metrics, rating) says hello from 127.0.0.1`, `paired` and `player` against `Smoke controller connected (pairing code), player 1`, `disconnect` against `Smoke controller disconnected`. A step passes on the simulated controller's line alone (`PASS hello (sim, 2s)`), and it prints `sim+tv` when the app's line came too. When the app's log is live and has no line for the step, the step fails and prints what the log says about the controller (`ping`, `input` and `metrics` have no line of the host's own: it answers pings and takes input and metrics silently).
+- **When the app's log is silent.** In a sandbox `flutter run`'s tool can crash after the app starts (it can't make the folder it needs for a reload). The app keeps running and pairing, but its later lines no longer reach the log, which holds only the `[host] Listening on port …` line: that log isn't live, and the run goes on the simulated controller's proofs (`sim`) instead of failing. The log counts as live when it has a `[host]` line after the last `Listening` one. On an ordinary PC it is live and the steps print `sim+tv`.
+- **The second connect, with the saved pairing.** `sim_controller`'s `--token-file` makes it save the pairing after the first connect (this controller's id, the host's id and the token the host gave) to `sim-token.json` in the run's folder, deleted when the run ends. A second, 5-second run then connects with that file and no code: `reconnect` passes when it reaches `CONNECTED` without `Sending pairing code`, and the app's log adds `Smoke controller connected (saved pairing), player 1`.
+- **With `--emulator`** it also boots the emulator if none is attached, installs the phone app when the device hasn't got it (`pm path com.thumbparty.app` finds nothing, so `tools/emulator.sh install` runs: `phone-install`), launches the phone app with cleared data (`phone-app`), connects it to `10.0.2.2:<port>` with the pairing code (`phone-paired`: `tools/emulator.sh connect` exits 0 once the phone shows the player badge), saves a screenshot to the run's folder (`phone-shot`) and launches the app once more, which clears its data so it doesn't rejoin a TV later (`phone-reset`). `phone-hello` reads the app's log for the phone's hello, and is skipped when that log is silent (its `tv` proof is the only one there is). The emulator is left running.
+- **A failure** is a step that doesn't see its line within 20 s (`SMOKE_WAIT_SECS` changes that; the summary steps wait the simulated controller's whole run plus that): it prints `FAIL <step>`, the last 10 lines of the log that step was reading (the simulated controller's, the TV app's, or the tool's own output), the TV app's lines about the controller when its log is live, and `Smoke failed: <step>`.
+- **Safety.** It starts the TV app only when no development copy is running, and never touches a release copy. On the way out it stops only what it started (the simulated controller, and the development TV app through `tools/tv-dev.sh stop`, which stops this repository's debug build only), unless `--keep` leaves them running. It never stops a phone, the emulator, or any other process. Like `tv-dev.sh` it needs Windows (Git Bash) and Flutter.
+- **The output folder** (`%TEMP%`, `$TMPDIR` or `/tmp`, named `thumbparty-smoke-<date>-<time>`) holds each tool's own output (`tv-start.log`, `sim.log`, `sim2.log`, `emulator.log`, `phone-*.log`) and, with `--emulator`, `phone.png`. Its path is printed at the end; the saved pairing (`sim-token.json`) is deleted on the way out.
+- **Exit code:** 0 smoke passed, 1 a step failed, 2 bad use or a missing tool.
+- **What it doesn't check:** whether anything looks right on screen (that still needs the screenshots and a person), sound, and a saved pairing that outlives the TV app: the second run reconnects to the same running app, not one restarted since.
 
 ### A whole check, start to finish
 
