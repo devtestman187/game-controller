@@ -13,6 +13,11 @@ void main() {
       tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
       await tester.pump();
       expect(app.client.calls, isNot(contains('resume')));
+      // The platform walks back through the states it left by; a jump from
+      // paused straight to resumed is one it never sends, and the app's
+      // lifecycle listeners reject it.
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
       tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
       await tester.pump();
       expect(app.client.calls, contains('resume'));

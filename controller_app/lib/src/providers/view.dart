@@ -1,9 +1,13 @@
+import 'dart:async';
+
 import 'package:connection/connection.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:game_kit/game_kit.dart';
+import 'package:protocol/protocol.dart';
 import 'package:puzzle_game/puzzle_game.dart';
 import 'package:test_game/test_game.dart';
 
+import '../host_grace.dart';
 import '../providers.dart';
 
 /// Every game this app version can draw (m12 §4): the registry the joined
@@ -38,5 +42,122 @@ class ViewActiveNotifier extends Notifier<bool> {
     });
     ref.onDispose(sub.cancel);
     return false;
+  }
+}
+
+/// What a phone that shows a game waits for (m12-joined-view §0.3): how many
+/// seconds the round still runs from [sinceMs] on the client's clock, or no
+/// number when there is none to show.
+typedef HostWait = ({int? secondsLeft, int sinceMs});
+
+/// The wait a phone that shows a game is in (m12-joined-view §0.3), for the
+/// card over the game: null when it waits for nothing.
+///
+/// Two things start a wait. A [HostAway] says how long the round still runs,
+/// and the countdown runs from when it arrived. A link that drops while a view
+/// is on is the other: an iOS host that is suspended can't say anything, so
+/// the phone counts [hostGraceS] down from the moment it noticed. A host back,
+/// a new view or the end of the view ends either; a reconnected link ends only
+/// the one the drop started, so an away message keeps its countdown until the
+/// host says it is back.
+final hostWaitProvider = NotifierProvider<HostWaitNotifier, HostWait?>(HostWaitNotifier.new);
+
+class HostWaitNotifier extends Notifier<HostWait?> {
+  HostWait? _away;
+  HostWait? _dropped;
+  bool _hasView = false;
+
+  @override
+  HostWait? build() {
+    // A new client starts over, as the view does (m12 §5).
+    _away = null;
+    _dropped = null;
+    _hasView = false;
+    final client = ref.watch(clientProvider);
+    final sub = client.view.listen(_onViewEvent);
+    ref.onDispose(sub.cancel);
+    ref.listen(clientStateProvider, _onClientState);
+    return null;
+  }
+
+  void _onViewEvent(ViewEvent event) {
+    switch (event) {
+      case HostAway(:final secondsLeft, :final arrivedAtMs):
+        _away = (secondsLeft: secondsLeft, sinceMs: arrivedAtMs);
+      case HostBack():
+        _away = null;
+      case ViewStarted():
+        _hasView = true;
+        _away = null;
+        _dropped = null;
+      case ViewEnded():
+        _hasView = false;
+        _away = null;
+        _dropped = null;
+      case ViewFrame():
+        return;
+    }
+    _publish();
+  }
+
+  void _onClientState(ClientSnapshot? previous, ClientSnapshot next) {
+    if (next.isConnected) {
+      _dropped = null;
+    } else if (_hasView && _dropped == null) {
+      _dropped = (secondsLeft: hostGraceS, sinceMs: ref.read(clientProvider).nowMs);
+    }
+    _publish();
+  }
+
+  void _publish() => state = _away ?? _dropped;
+}
+
+/// How long "the host was away too long" stays over the controls (m12 §0.5).
+const abandonedNoticeDuration = Duration(seconds: 4);
+
+/// Whether the phone says the host was away too long (m12 §0.5): a
+/// [ViewEnded] with reason `abandoned` says so for
+/// [abandonedNoticeDuration], and every other end or a new view hides it.
+final abandonedNoticeProvider = NotifierProvider<AbandonedNoticeNotifier, bool>(AbandonedNoticeNotifier.new);
+
+class AbandonedNoticeNotifier extends Notifier<bool> {
+  Timer? _hide;
+
+  @override
+  bool build() {
+    ref.onDispose(_cancel);
+    final client = ref.watch(clientProvider);
+    final sub = client.view.listen((event) {
+      switch (event) {
+        case ViewEnded(:final end):
+          if (end.reason == ViewEndReason.abandoned) {
+            _show();
+          } else {
+            _hideNow();
+          }
+        case ViewStarted():
+          _hideNow();
+        case ViewFrame() || HostAway() || HostBack():
+          break;
+      }
+    });
+    ref.onDispose(sub.cancel);
+    return false;
+  }
+
+  void _show() {
+    _cancel();
+    state = true;
+    _hide = Timer(abandonedNoticeDuration, _hideNow);
+  }
+
+  void _hideNow() {
+    _cancel();
+    if (state) state = false;
+  }
+
+  void _cancel() {
+    _hide?.cancel();
+    _hide = null;
   }
 }

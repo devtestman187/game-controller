@@ -1,6 +1,7 @@
 import 'package:connection/connection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:party_host/party_host.dart' as party;
 
 import '../discovery.dart';
 import '../host/hosting.dart';
@@ -89,7 +90,7 @@ class _HostList extends ConsumerWidget {
         children: [
           Row(
             children: [
-              Expanded(child: Text('TVs on this Wi-Fi', style: text.titleMedium)),
+              Expanded(child: Text('Games on this Wi-Fi', style: text.titleMedium)),
               IconButton(
                 tooltip: 'Search again',
                 icon: const Icon(Icons.refresh),
@@ -105,13 +106,9 @@ class _HostList extends ConsumerWidget {
                       for (final host in discovery.hosts)
                         ListTile(
                           contentPadding: EdgeInsets.zero,
-                          leading: const Icon(Icons.tv),
+                          leading: Icon(_hostIcon(host.kind)),
                           title: Text(host.name),
-                          subtitle: Text(
-                            host.compatible
-                                ? host.address.display
-                                : '${host.address.display} · needs a matching app version',
-                          ),
+                          subtitle: Text(_hostSubtitle(host)),
                           trailing: target != null && target.sameHostAs(host.address)
                               ? const Icon(Icons.check_circle_outline)
                               : const Icon(Icons.chevron_right),
@@ -125,6 +122,32 @@ class _HostList extends ConsumerWidget {
       ),
     );
   }
+}
+
+/// The icon a host's kind gets in the list (m12 §0.6): a TV when the host
+/// didn't say, which is what every host looked like before kinds existed.
+IconData _hostIcon(String? kind) => switch (kind) {
+  party.HostKind.pc => Icons.computer,
+  party.HostKind.phone => Icons.smartphone,
+  party.HostKind.tablet => Icons.tablet,
+  _ => Icons.tv,
+};
+
+/// The kind's word at the front of a host's second line (m12 §0.6), empty
+/// when the host didn't say.
+String _hostKindWord(String? kind) => switch (kind) {
+  party.HostKind.pc => 'PC',
+  party.HostKind.phone => 'Phone',
+  party.HostKind.tablet => 'Tablet',
+  party.HostKind.tv => 'TV',
+  _ => '',
+};
+
+/// A host's second line (m12 §0.6): its kind first, then what it shows today.
+String _hostSubtitle(DiscoveredHost host) {
+  final shown = host.compatible ? host.address.display : '${host.address.display} · needs a matching app version';
+  final word = _hostKindWord(host.kind);
+  return word.isEmpty ? shown : '$word · $shown';
 }
 
 class _NoHosts extends StatelessWidget {

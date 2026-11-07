@@ -6,7 +6,8 @@ Refines m12.md §2.8 (D4) for step 7, and wins where they differ. From the G0 su
 
 1. **"9 mm across" is the piece's circumscribed diameter** (`PieceShape.size`) drawn at full size on the board. Tray pieces are previews drawn at `trayScale` and aren't counted. (Pieces are moved with the controls, not touched, so the minimum is about seeing a piece, and a long thin piece like the mast is long enough to see.)
 2. **The smallest supported phone is the iPhone SE screen, 667×375 pt**, with the px-per-mm `controller_app` uses for an iOS phone (`layout.dart`). A shown game fills the whole safe area, behind the top bar (see 7), so the body size isn't the measure.
-3. **The check lives in `controller_app/test`**, which has the screen table and the px-per-mm; it asks `puzzle_game` for the drawn scale through a public pure function (§2). `minPieceMm = 9` is a named constant in `puzzle_game` (PRD v2 "On phones").
+3. **The check lives in `controller_app/test`**, which has the screen table and the px-per-mm; it asks `puzzle_game` for the drawn scale through a public pure function (§2). `minPieceMm` is a named constant in `puzzle_game`.
+   - **Owner decision, Nov 7: the tray goes along the top, and the minimum drops below 9 mm** (option A of [m12-phone-layout-sketch.png](m12-phone-layout-sketch.png)). 9 mm can't be met: the 72-unit board nearly fills a landscape phone's height ([s7-g1-plan.md](../briefs/m12/s7-g1-plan.md) §4). `minPieceMm = 7.5` on the SE, which is about 8 mm on the owner's iPhone. The rocket's window grows from radius 4 to 6 in `rocket.json` (the TV shows it bigger too).
 4. **The layout target travels in the setup.** `shapeRaceSetup` gains `layout`: `"phones"`, or absent for `screen`. The host decides when the round is created: `phones` when the host shares its view with joined phones (`HostService.shareView`, step 6), else `screen`. So the TV and "Show on this device" keep today's layout, and "Play on this phone" uses `phones`. The rules and every viewer build the same world from (puzzle, seed, target). No snapshot version change: no older app lists `view`.
 5. **A solo `phones` match** is one side with the tray on top and the board below it, all of it shown.
 6. **Tablets show the whole match through a camera choice, not another world.** `ViewContext` gains `wholeMatch` (bool): the phone app sets it on a tablet (`isTabletProvider`). The world stays the `phones` one.
@@ -15,13 +16,19 @@ Refines m12.md §2.8 (D4) for step 7, and wins where they differ. From the G0 su
 
 ## 1. The `phones` world (puzzle_game)
 - `enum LayoutTarget { screen, phones }`. `SplitLayout.of(puzzle, seed, {LayoutTarget target = LayoutTarget.screen})`, memoised per (puzzle, seed, target). `screen` is today's layout: no existing expected value changes.
-- A `phones` side: a HUD strip of `hudStrip` (6) units at the top, then the tray along the top edge across the side's whole width, then the board centred below it. The side's world aims at `phoneSideAspect` = 2.0 (width : height; landscape phones run 16:9 to 19.5:9 and the camera letterboxes the rest): the tray is packed into the width that gives that aspect, rows added as needed, and the board stays 80×72. Both sides get the same shape. The rules pack the tray at start with the same width (`packTray`, `trayLayout` in `game.dart`), so pieces start where every viewer draws them.
+- A `phones` side is sized to its content, because a phone's height is what limits the scale (the s7-g1 plan's 2:1 aim left half the tray empty and made every piece smaller):
+  - Top: the tray, one row of the pieces at `trayScale` 0.75 with 0.5 overlap, and `compactStartAngles(flat: true)`. To its right, a `hudWidth` (40 units) area for the clock, the two sides' counts and the time bar, in the same row: no separate strip band.
+  - Below: the board, the crop as the `screen` layout uses (not the full 80×72), centred.
+  - Size: margins of 2 units around and between. Width = max(board + margins, tray row + `hudWidth` + margins); height = margin + tray height + margin + board height + margin. If that world is wider than 2.2 × its height (wider than any landscape phone), the tray packs in two rows instead.
+  - Both sides get the same world and angles. The rules pack the tray at start with the same width (`packTray`, `_trayLayout` in `game.dart`), so pieces start where every viewer draws them.
+- `SplitLayout`'s screen-only members (`scale`, `leftBox`, `rightBox`, `hudStrip`, `trayBelow`) take the plan's placeholder values for `phones` (§2 of the plan), each documented as screen-only.
+- A one-board `phones` match's snapshot carries `seed` (an additive key; version stays 1).
 - `PuzzleMatch` takes the target from the setup and passes it to the layout.
 
 ## 2. Cameras (puzzle_game)
 - `PuzzleCamera`: `whole` or `side(left|right)`. A pure `PuzzleCamera.scale(SplitLayout layout, PuzzleCamera camera, Size box)` returns px per world unit; the painters and the size check both use it.
-- `side`: that side's world, fitted to the box and aligned to its bottom (spare height goes on top, away from the thumbs), with the strip along the top: the clock, this side's progress and the other side's ("Right 3/6"), and the time bar.
-- `whole` for a `phones` match: the two sides side by side when the box is wider than 3:1, else stacked with the left side on top, and one strip on top. `whole` for `screen`: today's picture.
+- `side`: that side's world, fitted to the box and aligned to its bottom (spare height goes on top, away from the thumbs). The HUD area shows the clock, this side's progress and the other side's ("Right 3/6"), and the time bar.
+- `whole` for a `phones` match: the two sides side by side when the box is wider than 3:1, else stacked with the left side on top; each side keeps its own HUD area. `whole` for `screen`: today's picture.
 - The viewer picks `side` for the side `ViewContext.playerId` plays on, and `whole` when the player isn't in the match, when `wholeMatch` is set, or for a `screen` match.
 
 ## 3. The host phone's own view (party_host)
@@ -31,7 +38,7 @@ Refines m12.md §2.8 (D4) for step 7, and wins where they differ. From the G0 su
 - The whole field on every phone (it already stretches to any box). Widget tests at 667×375 and 852×393: no overflow; if the HUD overflows, it gets a one-line form below a box height the job names.
 
 ## 5. The size check (controller_app/test)
-For every puzzle file, with the `phones` target and the `side` camera, on every non-tablet screen in the layout table drawn as a full safe area: the smallest piece in mm. Easy and Medium under `minPieceMm` fail with the puzzle, piece, screen and size; Hard is printed. The test also prints a table of the smallest piece per puzzle per screen, which goes in the job report.
+For every puzzle file, with the `phones` target and the `side` camera, on every non-tablet phone screen in the layout table drawn as a full safe area (not the 540×250 smallest window, which is a split-screen case): the smallest piece in mm. Easy and Medium under `minPieceMm` (7.5) fail with the puzzle, piece, screen and size; Hard is printed. The test also prints a table of the smallest piece per puzzle per screen, which goes in the job report.
 
 ## 6. Jobs and gates
 | Job | What | Gates |

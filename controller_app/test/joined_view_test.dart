@@ -1,3 +1,4 @@
+import 'package:connection/connection.dart';
 import 'package:controller/src/controls_settings.dart';
 import 'package:controller/src/host/hosting.dart';
 import 'package:controller/src/layout.dart';
@@ -42,6 +43,25 @@ double layerOpacity(WidgetTester tester) => tester
     .widget<Opacity>(find.ancestor(of: find.byKey(const Key('faceButtons')), matching: find.byType(Opacity)).first)
     .opacity;
 
+/// The app connected to a host that shows the Arena, with a status panel up
+/// and the first frame drawn.
+Future<TestApp> joined(
+  WidgetTester tester, {
+  Size screen = const Size(852, 393),
+  FakeViewPadding padding = const FakeViewPadding(),
+}) async {
+  final app = await pumpApp(tester, paired: true, screen: screen, padding: padding);
+  app.client.emit(connected);
+  app.client.setStatus(StatusMessage(text: 'Left 3/6'));
+  await settle(tester);
+  app.client.nowMs = 1000;
+  app.client.viewStart(arenaStart());
+  await settle(tester);
+  app.client.viewFrame(arenaFrame(0));
+  await settle(tester);
+  return app;
+}
+
 void main() {
   group('the phone\'s capabilities (m12 §0.1)', () {
     test('the hello lists view, and the host\'s own player\'s does not', () async {
@@ -58,25 +78,6 @@ void main() {
   });
 
   group('the joined view (m12 §5)', () {
-    /// The app connected to a host that shows the Arena, with a status panel
-    /// up and the first frame drawn.
-    Future<TestApp> joined(
-      WidgetTester tester, {
-      Size screen = const Size(852, 393),
-      FakeViewPadding padding = const FakeViewPadding(),
-    }) async {
-      final app = await pumpApp(tester, paired: true, screen: screen, padding: padding);
-      app.client.emit(connected);
-      app.client.setStatus(StatusMessage(text: 'Left 3/6'));
-      await settle(tester);
-      app.client.nowMs = 1000;
-      app.client.viewStart(arenaStart());
-      await settle(tester);
-      app.client.viewFrame(arenaFrame(0));
-      await settle(tester);
-      return app;
-    }
-
     testWidgets('a started view draws the Arena behind the controls, dims them and hides the status panel', (
       tester,
     ) async {
@@ -168,6 +169,108 @@ void main() {
 
       expect(find.byKey(const Key('arena')), findsNothing);
       expect(layerOpacity(tester), ControlsSettings.maxOpacity);
+    });
+
+    testWidgets('showing the app again starts the sound engine once while a game is shown', (tester) async {
+      final sounds = party_test.FakeSoundPlayer();
+      final app = await pumpApp(tester, paired: true, extra: [party.soundPlayerProvider.overrideWithValue(sounds)]);
+      app.client.nowMs = 1000;
+      app.client.viewStart(arenaStart());
+      await settle(tester);
+      expect(sounds.restarts, 0);
+
+      // The phone locked or another app took it, then back: iOS stopped the
+      // app's sound (s5c).
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+      await tester.pump();
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await settle(tester);
+
+      expect(sounds.restarts, 1);
+    });
+  });
+
+  group('waiting for the host (m12-joined-view §0.3)', () {
+    testWidgets('an away host counts its round down once a second, and coming back hides the card', (tester) async {
+      final app = await joined(tester);
+      app.client.hostAway(30);
+      await settle(tester);
+      expect(find.text('Waiting for the host to come back'), findsOneWidget);
+      expect(find.text('The game goes on if they\'re back in 30 s'), findsOneWidget);
+
+      // 5 s pass on the phone's clock, and the card ticks once.
+      app.client.nowMs += 5000;
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.text('The game goes on if they\'re back in 25 s'), findsOneWidget);
+
+      app.client.hostBack();
+      await settle(tester);
+      expect(find.byKey(const Key('waitingCard')), findsNothing);
+    });
+
+    testWidgets('a countdown that ran out says the host may have left', (tester) async {
+      final app = await joined(tester);
+      app.client.hostAway(2);
+      await settle(tester);
+      app.client.nowMs += 3000;
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.text('The host may have left'), findsOneWidget);
+    });
+
+    testWidgets('a link that drops over a game counts the grace, and reconnecting clears it', (tester) async {
+      final app = await joined(tester);
+      app.client.emit(ClientSnapshot(status: ClientStatus.reconnecting, target: tv));
+      await settle(tester);
+      expect(find.text('The game goes on if they\'re back in 30 s'), findsOneWidget);
+
+      app.client.nowMs += 5000;
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.text('The game goes on if they\'re back in 25 s'), findsOneWidget);
+
+      app.client.emit(connected);
+      await settle(tester);
+      expect(find.byKey(const Key('waitingCard')), findsNothing);
+    });
+
+    testWidgets('a phone with no game shown says nothing when its link drops', (tester) async {
+      final app = await pumpApp(tester, paired: true);
+      app.client.emit(ClientSnapshot(status: ClientStatus.reconnecting, target: tv));
+      await settle(tester);
+      expect(find.byKey(const Key('waitingCard')), findsNothing);
+      expect(find.text('Waiting for the host to come back'), findsNothing);
+    });
+
+    testWidgets('a new view clears the wait', (tester) async {
+      final app = await joined(tester);
+      app.client.hostAway(30);
+      await settle(tester);
+      expect(find.byKey(const Key('waitingCard')), findsOneWidget);
+
+      app.client.viewStart(arenaStart());
+      await settle(tester);
+      expect(find.byKey(const Key('waitingCard')), findsNothing);
+    });
+  });
+
+  group('a round the host abandoned (m12 §0.5)', () {
+    testWidgets('says the host was away too long, then goes after a moment', (tester) async {
+      final app = await joined(tester);
+      app.client.viewEnd(const ViewEndMessage(reason: ViewEndReason.abandoned));
+      await settle(tester);
+      expect(find.byKey(const Key('abandonedNotice')), findsOneWidget);
+      expect(find.text('The host was away too long, so the round ended.'), findsOneWidget);
+
+      await tester.pump(const Duration(seconds: 4));
+      expect(find.byKey(const Key('abandonedNotice')), findsNothing);
+    });
+
+    testWidgets('a round that finished shows no notice', (tester) async {
+      final app = await joined(tester);
+      app.client.viewEnd(const ViewEndMessage(reason: ViewEndReason.finished));
+      await settle(tester);
+      expect(find.byKey(const Key('abandonedNotice')), findsNothing);
     });
   });
 }

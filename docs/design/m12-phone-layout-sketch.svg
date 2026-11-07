@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 800" font-family="Helvetica, Arial, sans-serif">
+  <defs><clipPath id="screen"><rect width="852" height="393" rx="32"/></clipPath></defs><rect width="680" height="800" fill="#ffffff"/>
+
+  <text x="20" y="28" font-size="17" fill="#222">Option A: tray along the top (recommended)</text>
+  <text x="20" y="48" font-size="12" fill="#555">House puzzle on an 852×393 phone, to scale. Sun about 8.7 mm.</text>
+  <g transform="translate(20,60) scale(0.75)">
+    <rect x="-12" y="-12" width="876" height="417" rx="44" fill="#2a2d34"/>
+    <rect width="852" height="393" rx="32" fill="#f6f1e7"/>
+    <rect x="12" y="8" width="828" height="92" rx="8" fill="#ebe3d3"/>
+    <text x="24" y="28" font-size="14" fill="#8a7f6c">tray</text>
+    <rect x="40" y="34" width="88" height="64" fill="#d9534f"/>
+    <polygon points="150,96 261,96 205,43" fill="#8a4b2d"/>
+    <rect x="285" y="56" width="23" height="35" fill="#5b3a29"/>
+    <text x="760" y="40" font-size="22" fill="#333" text-anchor="middle">0:42</text>
+    <text x="760" y="66" font-size="14" fill="#555" text-anchor="middle">You 1/4 · Right 2/4</text>
+    <rect x="626" y="80" width="200" height="6" rx="3" fill="#d6cdbb"/>
+    <rect x="626" y="80" width="130" height="6" rx="3" fill="#7a9a5a"/>
+    <rect x="270" y="105" width="312" height="281" rx="6" fill="#efe6d4" stroke="#c9bda5"/>
+    <text x="282" y="125" font-size="14" fill="#8a7f6c">board</text>
+    <rect x="367" y="265" width="117" height="86" fill="none" stroke="#9c8f77" stroke-width="2" stroke-dasharray="6 4"/>
+    <polygon points="352,265 500,265 426,195" fill="none" stroke="#9c8f77" stroke-width="2" stroke-dasharray="6 4"/>
+    <rect x="410" y="304" width="31" height="47" fill="none" stroke="#9c8f77" stroke-width="2" stroke-dasharray="6 4"/>
+    <circle cx="527" cy="160" r="27" fill="#f2b632"/>
+    <ellipse clip-path="url(#screen)" cx="70" cy="345" rx="125" ry="95" fill="#7d8ca3" fill-opacity="0.28"/>
+    <ellipse clip-path="url(#screen)" cx="782" cy="345" rx="125" ry="95" fill="#7d8ca3" fill-opacity="0.28"/>
+    <text x="40" y="360" font-size="16" fill="#3d4a5e">left thumb</text>
+    <text x="712" y="360" font-size="16" fill="#3d4a5e">right thumb</text>
+  </g>
+
+  <text x="20" y="420" font-size="17" fill="#222">Option B: tray beside the board</text>
+  <text x="20" y="440" font-size="12" fill="#555">Same puzzle and phone. Sun about 10.9 mm; tray pieces run down toward the right thumb.</text>
+  <g transform="translate(20,452) scale(0.75)">
+    <rect x="-12" y="-12" width="876" height="417" rx="44" fill="#2a2d34"/>
+    <rect width="852" height="393" rx="32" fill="#f6f1e7"/>
+    <text x="300" y="22" font-size="22" fill="#333" text-anchor="middle">0:42</text>
+    <text x="440" y="22" font-size="14" fill="#555">You 1/4 · Right 2/4</text>
+    <rect x="120" y="33" width="384" height="346" rx="6" fill="#efe6d4" stroke="#c9bda5"/>
+    <text x="132" y="53" font-size="14" fill="#8a7f6c">board</text>
+    <rect x="240" y="230" width="144" height="105" fill="none" stroke="#9c8f77" stroke-width="2" stroke-dasharray="6 4"/>
+    <polygon points="221,230 403,230 312,143" fill="none" stroke="#9c8f77" stroke-width="2" stroke-dasharray="6 4"/>
+    <rect x="293" y="278" width="38" height="57" fill="none" stroke="#9c8f77" stroke-width="2" stroke-dasharray="6 4"/>
+    <circle cx="437" cy="100" r="34" fill="#f2b632"/>
+    <rect x="548" y="33" width="290" height="346" rx="8" fill="#ebe3d3"/>
+    <text x="560" y="53" font-size="14" fill="#8a7f6c">tray</text>
+    <rect x="570" y="66" width="108" height="79" fill="#d9534f"/>
+    <polygon points="570,230 707,230 638,165" fill="#8a4b2d"/>
+    <rect x="725" y="80" width="29" height="43" fill="#5b3a29"/>
+    <circle cx="775" cy="200" r="25" fill="#f2b632" fill-opacity="0"/>
+    <text x="693" y="300" font-size="13" fill="#8a7f6c" text-anchor="middle">more pieces go here</text>
+    <text x="693" y="318" font-size="13" fill="#8a7f6c" text-anchor="middle">(the boat has 6)</text>
+    <ellipse clip-path="url(#screen)" cx="70" cy="345" rx="125" ry="95" fill="#7d8ca3" fill-opacity="0.28"/>
+    <ellipse clip-path="url(#screen)" cx="782" cy="345" rx="125" ry="95" fill="#7d8ca3" fill-opacity="0.28"/>
+    <text x="40" y="360" font-size="16" fill="#3d4a5e">left thumb</text>
+    <text x="712" y="360" font-size="16" fill="#3d4a5e">right thumb</text>
+  </g>
+
+  <text x="20" y="786" font-size="11" fill="#666">Dashed: where pieces go. The sun is already placed in both. The controls draw see-through over everything (60% by default).</text>
+</svg>

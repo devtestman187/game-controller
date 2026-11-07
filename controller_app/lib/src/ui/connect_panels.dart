@@ -87,6 +87,8 @@ class _NoTvActions extends ConsumerWidget {
           final choice = await showHostStartSheet(context);
           if (choice == null || !context.mounted) return;
           final host = hosting.start();
+          // Phones that join see it only when this phone plays it itself (m12-joined-view §0.1).
+          host.service.shareView = choice == HostChoice.onPhone;
           await Navigator.of(context).push(
             MaterialPageRoute<void>(
               builder: (_) => HostScreen(host: host, choice: choice),

@@ -6,6 +6,8 @@ import 'package:flutter/widgets.dart';
 import 'package:party_host/party_host.dart' as party;
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../host_grace.dart';
+
 /// What a [PhoneHost] is built from: the host's inputs, which the app's root
 /// scope supplies to `party_host`, and this phone's own controller identity.
 typedef PhoneHostInputs = ({
@@ -19,9 +21,6 @@ typedef PhoneHostInputs = ({
 
 /// Builds the host this app runs; a test overrides it with its own inputs.
 typedef PhoneHostBuilder = PhoneHost Function(PhoneHostInputs inputs);
-
-/// How long the app may stay hidden before the round is abandoned (m12 §2.10).
-const int hostGraceS = 30;
 
 /// The phone as a host (m12 §2.7, D1): the service, the link this phone's own
 /// player pairs on, and the presence that pauses a round while the app is

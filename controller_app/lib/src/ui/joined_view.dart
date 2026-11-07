@@ -1,22 +1,53 @@
+import 'dart:async';
+
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:game_kit/game_kit.dart';
 import 'package:party_host/party_host.dart' as party;
 
 import '../providers.dart';
+import 'waiting_card.dart';
 
 /// The game the host shows this phone (m12 §5), drawn behind this phone's own
 /// controls: the frames the client receives, and each frame's sounds played
-/// by the party sound player.
+/// by the party sound player. The waiting card sits over it while the host is
+/// away or the link is down (m12-joined-view §0.3).
 ///
 /// Shown only while the host shows a view, and nothing at all while it shows
 /// none, so a phone joined to a host that sends it no game keeps its
 /// controller screen.
-class JoinedView extends ConsumerWidget {
+class JoinedView extends ConsumerStatefulWidget {
   const JoinedView({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<JoinedView> createState() => _JoinedViewState();
+}
+
+class _JoinedViewState extends ConsumerState<JoinedView> {
+  late final AppLifecycleListener _lifecycle;
+
+  @override
+  void initState() {
+    super.initState();
+    // iOS stops the app's sound while it is hidden, when the phone locks or
+    // another app takes it, and the engine doesn't come back by itself: start
+    // it again when the app is shown, as the host route does (s5c). Only a
+    // game shown here plays through that engine.
+    _lifecycle = AppLifecycleListener(onShow: _onShown);
+  }
+
+  @override
+  void dispose() {
+    _lifecycle.dispose();
+    super.dispose();
+  }
+
+  void _onShown() {
+    if (ref.read(viewActiveProvider)) unawaited(ref.read(party.soundPlayerProvider).restart());
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final client = ref.watch(clientProvider);
     final stats = client.viewerStats;
     // A client without the view capability is sent no frames and measures
@@ -31,10 +62,17 @@ class JoinedView extends ConsumerWidget {
       playerId: ref.watch(identityProvider).controllerId,
       onSounds: (names) => _play(ref, names),
     );
-    // The view stays mounted while none is on, so it hears the start that
-    // turns one on: it draws nothing itself until then. Keeping it off the
-    // screen and its ticker quiet is all this does.
-    return Visibility(visible: ref.watch(viewActiveProvider), maintainState: true, child: view);
+    final wait = ref.watch(hostWaitProvider);
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        // The view stays mounted while none is on, so it hears the start that
+        // turns one on: it draws nothing itself until then. Keeping it off the
+        // screen and its ticker quiet is all this does.
+        Visibility(visible: ref.watch(viewActiveProvider), maintainState: true, child: view),
+        if (wait != null) WaitingCard(wait: wait),
+      ],
+    );
   }
 
   /// A frame's sounds, through the player the host screens use (m12 §0.2):

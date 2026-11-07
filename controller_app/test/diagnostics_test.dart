@@ -10,6 +10,26 @@ import 'support/fakes.dart';
 import 'support/host_app.dart';
 import 'support/pump_app.dart';
 
+/// Opens Diagnostics and copies its report, with the clipboard mocked: the
+/// copied text is what "Copy report" shares.
+Future<String> copiedReport(WidgetTester tester) async {
+  String? copied;
+  final messenger = tester.binding.defaultBinaryMessenger;
+  messenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+    if (call.method == 'Clipboard.setData') {
+      final args = call.arguments as Map<Object?, Object?>;
+      copied = args['text']?.toString();
+    }
+    return null;
+  });
+  addTearDown(() => messenger.setMockMethodCallHandler(SystemChannels.platform, null));
+  await tester.tap(find.byTooltip('Diagnostics'));
+  await settle(tester);
+  await tester.tap(find.byTooltip('Copy report'));
+  await settle(tester);
+  return copied ?? fail('Nothing was copied');
+}
+
 void main() {
   testWidgets('Diagnostics shows the connection, permission, haptics and log', (tester) async {
     final log = LogBuffer()..add('client', 'Connecting to ws://192.168.1.50:45780/ws');
@@ -40,26 +60,6 @@ void main() {
   });
 
   group('the host log in the report (s5c)', () {
-    /// Opens Diagnostics and copies its report, with the clipboard mocked:
-    /// the copied text is what "Copy report" shares.
-    Future<String> copiedReport(WidgetTester tester) async {
-      String? copied;
-      final messenger = tester.binding.defaultBinaryMessenger;
-      messenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
-        if (call.method == 'Clipboard.setData') {
-          final args = call.arguments as Map<Object?, Object?>;
-          copied = args['text']?.toString();
-        }
-        return null;
-      });
-      addTearDown(() => messenger.setMockMethodCallHandler(SystemChannels.platform, null));
-      await tester.tap(find.byTooltip('Diagnostics'));
-      await settle(tester);
-      await tester.tap(find.byTooltip('Copy report'));
-      await settle(tester);
-      return copied ?? fail('Nothing was copied');
-    }
-
     testWidgets('a hosting phone puts the host log after its own', (tester) async {
       await pumpHostApp(tester);
       final host = await enterHostMode(tester);
@@ -121,6 +121,66 @@ void main() {
         ),
       );
       expect(charging.batteryPerHour, isNull);
+    });
+  });
+
+  group('the game view (m12-joined-view §5)', () {
+    /// Feeds the client's own stats a session at 60 Hz and then one at 30.
+    void measure(ViewerStats stats) {
+      // 60 Hz: inputs reach the screen 20, 41 and 58 ms after they were sent,
+      // four frames arrive 1, 2, 3 and 9 ms late, no draw is late (16 ms
+      // apart, the limit is 25).
+      stats.inputSent(1, 980);
+      stats.frameArrived(0, jitterMs: 1);
+      stats.frameDrawn(1, 1000);
+      stats.inputSent(2, 975);
+      stats.frameArrived(1, jitterMs: 2);
+      stats.frameDrawn(2, 1016);
+      stats.inputSent(3, 974);
+      stats.frameArrived(2, jitterMs: 3);
+      stats.frameDrawn(3, 1032);
+      stats.frameArrived(3, jitterMs: 9);
+      stats.frameDrawn(null, 1048);
+
+      // 30 Hz after a new game: 100, 120 and 150 ms to the frame, the draws
+      // 33 and 67 ms apart (the limit is 50, so the second is late), and a
+      // jump of 6 steps (more than 3, so a gap).
+      stats.reset(hz: 30);
+      stats.inputSent(4, 1900);
+      stats.frameArrived(0, jitterMs: 5);
+      stats.frameDrawn(4, 2000);
+      stats.inputSent(5, 1913);
+      stats.frameArrived(2, jitterMs: 10);
+      stats.frameDrawn(5, 2033);
+      stats.inputSent(6, 1950);
+      stats.frameArrived(8, jitterMs: 20);
+      stats.frameDrawn(6, 2100);
+    }
+
+    const line60 =
+        '60 Hz: touch-to-frame 41 ms median, 58 ms p95 (3 samples) · jitter 3/9 ms · frames 4, late 0, gaps 0';
+    const line30 =
+        '30 Hz: touch-to-frame 120 ms median, 150 ms p95 (3 samples) · jitter 10/20 ms · frames 3, late 1, gaps 1';
+
+    testWidgets('Diagnostics and the report both show one line per frame rate', (tester) async {
+      final app = await pumpApp(tester, paired: true);
+      measure(app.client.viewerStats);
+
+      final report = await copiedReport(tester);
+      await scrollTo(tester, find.text('Game view'));
+      expect(find.text(line60), findsOneWidget);
+      expect(find.text(line30), findsOneWidget);
+      expect(report, contains('Game view:'));
+      expect(report, contains(line60));
+      expect(report, contains(line30));
+    });
+
+    testWidgets('a phone that was shown no game has no Game view', (tester) async {
+      await pumpApp(tester, paired: true);
+      final report = await copiedReport(tester);
+      await scrollTo(tester, find.textContaining('Log (newest last'));
+      expect(find.text('Game view'), findsNothing);
+      expect(report, isNot(contains('Game view')));
     });
   });
 }

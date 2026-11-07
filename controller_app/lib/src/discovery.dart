@@ -2,21 +2,39 @@ import 'dart:async';
 
 import 'package:bonsoir/bonsoir.dart';
 import 'package:connection/connection.dart';
+import 'package:party_host/party_host.dart' as party;
 import 'package:protocol/protocol.dart';
 
-/// A TV found on the network.
+/// A host found on the network.
 final class DiscoveredHost {
-  const DiscoveredHost({required this.address, this.advertisedVersion});
+  const DiscoveredHost({required this.address, this.advertisedVersion, this.kind});
 
   final HostAddress address;
 
   /// Protocol version from the TXT record. Null if the host didn't say.
   final int? advertisedVersion;
 
+  /// What kind of device hosts, as the TXT record says it (m12 §0.6): one of
+  /// [party.HostKind]'s values, or null when the host didn't say or said
+  /// something this app doesn't know. The host list shows it as an icon and a
+  /// word.
+  final String? kind;
+
   bool get compatible => advertisedVersion == null || advertisedVersion == protocolVersion;
 
   String get name => address.name ?? address.display;
 }
+
+/// The host kind from a TXT record's `kind` attribute (m12 §0.6): one of
+/// [party.HostKind]'s values, or null when the host didn't say or said
+/// something this app doesn't know.
+///
+/// [party.HostKind]'s constants are the only copy of those names in the app:
+/// a phone app that listed its own would drift from the host's.
+String? hostKindFrom(String? txt) => switch (txt) {
+  party.HostKind.tv || party.HostKind.pc || party.HostKind.phone || party.HostKind.tablet => txt,
+  _ => null,
+};
 
 final class DiscoveryState {
   const DiscoveryState({
@@ -173,6 +191,7 @@ class BonsoirHostDiscovery implements HostDiscovery {
         name: service.name,
       ),
       advertisedVersion: int.tryParse(service.attributes[txtProtocolVersion] ?? ''),
+      kind: hostKindFrom(service.attributes[party.HostKind.txtKey]),
     );
     _log('Resolved "${service.name}" at ${addresses.join(', ')} port ${service.port}');
     _hosts[service.name] = host;

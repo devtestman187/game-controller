@@ -10,6 +10,7 @@ import '../host/hosting.dart';
 import '../layout.dart';
 import '../phone_metrics.dart';
 import '../providers.dart';
+import 'abandoned_notice.dart';
 import 'bar_connection.dart';
 import 'bar_modes.dart';
 import 'connect_screen.dart';
@@ -185,6 +186,9 @@ class _ControllerScreenState extends ConsumerState<ControllerScreen> with Widget
                     ],
                   ),
                 ),
+                // The host was away too long (m12 §0.5): said over the
+                // controls for a moment, which stay usable under it.
+                const Positioned.fill(child: AbandonedNotice()),
               ],
             );
           },

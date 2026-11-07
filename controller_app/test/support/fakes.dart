@@ -159,6 +159,13 @@ class FakeClient extends ControllerClient {
   /// The host stops showing its game.
   void viewEnd(ViewEndMessage end) => _view.add(ViewEnded(end));
 
+  /// The host is away for [secondsLeft], arriving now on this phone's clock
+  /// (m12-joined-view §0.3).
+  void hostAway(int secondsLeft) => _view.add(HostAway(secondsLeft, nowMs));
+
+  /// The host is back, so the game goes on.
+  void hostBack() => _view.add(const HostBack());
+
   @override
   Future<void> dispose() async {
     await _view.close();

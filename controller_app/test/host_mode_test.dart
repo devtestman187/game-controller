@@ -104,6 +104,22 @@ void main() {
     await tester.runAsync(host.dispose);
   });
 
+  group('shareView from the start sheet (m12-joined-view §0.1)', () {
+    testWidgets('"Play on this phone" lets the phones that join see the game', (tester) async {
+      await pumpHostApp(tester);
+      final host = await enterHostMode(tester, choice: HostChoice.onPhone);
+      expect(host.service.shareView, isTrue, reason: 'the phones that join show the game too');
+      await tester.runAsync(host.dispose);
+    });
+
+    testWidgets('"Show on this device" keeps the game on this screen', (tester) async {
+      await pumpHostApp(tester);
+      final host = await enterHostMode(tester, choice: HostChoice.onDevice);
+      expect(host.service.shareView, isFalse, reason: 'this phone is the screen everyone watches');
+      await tester.runAsync(host.dispose);
+    });
+  });
+
   testWidgets('Stop hosting in the chip stops the host, and a second "Host a game" works', (tester) async {
     final app = await pumpHostApp(tester);
     final host = await enterHostMode(tester);

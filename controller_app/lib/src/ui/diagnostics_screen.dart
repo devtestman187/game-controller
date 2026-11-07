@@ -11,6 +11,7 @@ import '../gyro.dart';
 import '../host/hosting.dart';
 import '../local_network.dart';
 import '../providers.dart';
+import 'diagnostics_view_section.dart';
 import 'labels.dart';
 
 /// Basic Diagnostics (PRD C10): connection state, discovered TVs, local
@@ -36,6 +37,7 @@ class DiagnosticsScreen extends ConsumerWidget {
     final stickSettings = ref.watch(stickSettingsProvider);
     final outages = ref.watch(outagesProvider);
     final session = ref.watch(sessionStatsProvider);
+    final viewSummary = ref.watch(clientProvider).viewerStats?.summary;
     final text = Theme.of(context).textTheme;
     final mono = text.bodySmall?.copyWith(fontFamily: 'monospace', height: 1.3);
     final target = client.target;
@@ -192,6 +194,7 @@ class DiagnosticsScreen extends ConsumerWidget {
               ('App version', versionLabel),
               ('Protocol', 'v$protocolVersion'),
             ]),
+            if (viewSummary != null && viewSummary.isNotEmpty) DiagnosticsViewSection(summary: viewSummary),
             Padding(
               padding: const EdgeInsets.only(top: 8, bottom: 4),
               child: Text('Log (newest last, ${lines.length} lines)', style: text.titleMedium),
@@ -273,6 +276,7 @@ String buildReport(WidgetRef ref) {
       'Discovery: running ${discovery.running}, error ${discovery.error ?? '-'}, ${discovery.hosts.length} found',
     )
     ..writeAll(discovery.hosts.map((h) => '  ${h.name}: ${h.address.addresses.join(', ')} port ${h.address.port}\n'))
+    ..write(viewReport(ref.read(clientProvider).viewerStats?.summary))
     ..writeln()
     ..writeln(log.export());
   _writeHostLog(b, ref);

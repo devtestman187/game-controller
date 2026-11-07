@@ -5,8 +5,16 @@ import 'package:controller/src/ui/connect_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:party_host/party_host.dart' as party;
+import 'package:protocol/protocol.dart';
 
 import 'support/pump_app.dart';
+
+/// A host with [ip] and a kind, as the TXT record gave it.
+DiscoveredHost hostFrom(String name, String ip, String? kind) => DiscoveredHost(
+  address: HostAddress(addresses: [ip], port: defaultPort, name: name),
+  kind: kind,
+);
 
 void main() {
   group('connecting', () {
@@ -97,6 +105,50 @@ void main() {
       expect(app.client.calls, ['connect 192.168.1.50:45780']);
       expect(find.text('Connect to a TV'), findsNothing);
       expect(find.byKey(const Key('dpad')), findsOneWidget);
+    });
+  });
+
+  group('the host list labels (m12 §0.6)', () {
+    test('the kind in the TXT record, and null for one the app does not know', () {
+      expect(hostKindFrom(party.HostKind.phone), party.HostKind.phone);
+      expect(hostKindFrom(party.HostKind.tablet), party.HostKind.tablet);
+      expect(hostKindFrom(party.HostKind.tv), party.HostKind.tv);
+      expect(hostKindFrom(party.HostKind.pc), party.HostKind.pc);
+      expect(hostKindFrom('fridge'), isNull, reason: 'a kind from a newer host than this app');
+      expect(hostKindFrom(''), isNull);
+      expect(hostKindFrom(null), isNull, reason: 'a host that did not say');
+    });
+
+    testWidgets('each host shows its kind\'s icon and word, under Games on this Wi-Fi', (tester) async {
+      // Tall enough for all five hosts at once.
+      final app = await pumpApp(tester, screen: const Size(852, 720));
+      app.discovery.emit(
+        DiscoveryState(
+          running: true,
+          everFound: true,
+          hosts: [
+            hostFrom('A phone', '192.168.1.51', party.HostKind.phone),
+            hostFrom('A tablet', '192.168.1.52', party.HostKind.tablet),
+            hostFrom('A TV', '192.168.1.53', party.HostKind.tv),
+            hostFrom('A PC', '192.168.1.54', party.HostKind.pc),
+            hostFrom('An old host', '192.168.1.55', null),
+          ],
+        ),
+      );
+      await tester.pump();
+
+      expect(find.text('Games on this Wi-Fi'), findsOneWidget);
+      expect(find.text('TVs on this Wi-Fi'), findsNothing);
+      expect(find.byIcon(Icons.smartphone), findsOneWidget);
+      expect(find.byIcon(Icons.tablet), findsOneWidget);
+      expect(find.byIcon(Icons.computer), findsOneWidget);
+      // The TV host's icon, and the same one for a host that said no kind.
+      expect(find.byIcon(Icons.tv), findsNWidgets(2));
+      expect(find.text('Phone · 192.168.1.51:$defaultPort'), findsOneWidget);
+      expect(find.text('Tablet · 192.168.1.52:$defaultPort'), findsOneWidget);
+      expect(find.text('TV · 192.168.1.53:$defaultPort'), findsOneWidget);
+      expect(find.text('PC · 192.168.1.54:$defaultPort'), findsOneWidget);
+      expect(find.text('192.168.1.55:$defaultPort'), findsOneWidget, reason: 'a host that said no kind gets no word');
     });
   });
 
