@@ -4,12 +4,15 @@
 # (packages/connection/bin/sim_controller.dart) and, with --emulator, the
 # phone app on the Android emulator. Each step is proved by a line in the
 # client's own output or a tool's exit code, and by the TV app's own log too
-# when that log is live; the PASS line says which proofs it used. Documented
-# in docs/dev-tools.md.
+# when that log is live; the PASS line says which proofs it used. A log that
+# ends in the flutter tool's crash report counts as silent, since the tool
+# died and the app's later lines never reach it (Nov 7, docs/dev-tools.md).
+# Documented in docs/dev-tools.md.
 #
 #   tools/smoke.sh              # the TV app and the simulated controller
 #   tools/smoke.sh --emulator   # also the phone app on the emulator
 #   tools/smoke.sh --keep       # leave what it started running
+#   tools/smoke.sh --self-test  # check what it makes of a crashed log, then stop
 #   tools/smoke.sh --help
 #
 # It starts the development TV app only when no copy is running, reads its
@@ -26,12 +29,14 @@ cd "$(dirname "$0")/.." || exit 2
 
 use_emulator=0
 keep=0
+wants_self_test=0
 for arg in "$@"; do
   case "$arg" in
     --emulator) use_emulator=1 ;;
     --keep) keep=1 ;;
+    --self-test) wants_self_test=1 ;;
     -h | --help)
-      sed -n '2,22p' "$0" | sed 's/^# \{0,1\}//'
+      sed -n '2,25p' "$0" | sed 's/^# \{0,1\}//'
       exit 0
       ;;
     *)
@@ -74,6 +79,12 @@ sim_name="Smoke controller"
 emulator_pc=10.0.2.2
 # The phone app's package, for asking the device whether it is installed.
 app_package=com.thumbparty.app
+# The flutter tool's crash report and how many of the log's last non-blank
+# lines are looked at for it. When they hold it, the tool died after the app
+# started, so the app's lines stop there and the log proves nothing (Nov 7;
+# docs/dev-tools.md).
+tool_crash_line='A crash report has been written to'
+crash_tail_lines=3
 
 out="${TMPDIR:-${TEMP:-/tmp}}/thumbparty-smoke-$(date +%Y%m%d-%H%M%S)"
 mkdir -p "$out" || exit 2
@@ -160,16 +171,57 @@ bad() { # step [the log the step was reading]
 }
 
 # Whether the TV app's log is live: it has a host line after the last
-# "Listening" line. A sandbox can lose the app's lines after it starts while
-# the app keeps running (docs/dev-tools.md); then the simulated controller's
-# own output is the only proof there is.
+# "Listening" line and doesn't end in the flutter tool's crash report. A
+# sandbox can lose the app's lines after it starts while the app keeps
+# running (docs/dev-tools.md); then the simulated controller's own output is
+# the only proof there is.
 tv_is_live() {
-  local listening
+  local listening ended
   [ -f "$tv_log" ] || return 1
+  # The crash report comes after the app's own lines, so those don't make the
+  # log live: the tool that writes new lines into it is gone (Nov 7).
+  ended="$(tr -d '\r' < "$tv_log" 2> /dev/null | grep -av '^[[:space:]]*$' |
+    tail -n "$crash_tail_lines" | grep -aF -- "$tool_crash_line")"
+  [ -z "$ended" ] || return 1
   listening="$(grep -an 'Listening on port' "$tv_log" 2> /dev/null | tail -1 | cut -d: -f1)"
   [ -n "$listening" ] || return 1
   tail -n "+$((listening + 1))" "$tv_log" 2> /dev/null | grep -aq '\[host\]'
 }
+
+# The two log shapes the TV app's log took on Nov 7, checked against
+# tv_is_live: one ending in a normal app line (live) and one ending in the
+# flutter tool's crash report after the app's lines (silent). Nothing else
+# runs for --self-test. 0 when both are read right, 1 when one isn't.
+self_test() {
+  local live="$out/self-test-live.log" crashed="$out/self-test-crashed.log" rc=0
+  printf '%s\n' '[host] Listening on port 45780 (pairing code 5416)' \
+    '[host] Smoke controller (sim 0.11.0, supports metrics) says hello from 127.0.0.1' > "$live"
+  printf '%s\n' '[host] Listening on port 45780 (pairing code 5416)' \
+    '[host] Smoke controller (sim 0.11.0, supports metrics) says hello from 127.0.0.1' \
+    'A crash report has been written to C:\Users\...\flutter_01.log' > "$crashed"
+  tv_log="$crashed"
+  if tv_is_live; then
+    echo "FAIL self-test: a log ending in the flutter tool's crash report was read as live" >&2
+    rc=1
+  else
+    echo "PASS self-test: a log ending in the flutter tool's crash report is silent"
+  fi
+  tv_log="$live"
+  if tv_is_live; then
+    echo "PASS self-test: a log ending in an app line is live"
+  else
+    echo "FAIL self-test: a log ending in an app line was read as silent" >&2
+    rc=1
+  fi
+  rm -f "$live" "$crashed"
+  rmdir "$out" 2> /dev/null # it holds nothing else: a self-test starts no app
+  return $rc
+}
+
+if [ "$wants_self_test" = 1 ]; then
+  self_test
+  exit $?
+fi
 
 # The TV app's second proof for a step: 0 when its line ($2) came after the
 # mark this run set before the client started, 1 when the log isn't live, and

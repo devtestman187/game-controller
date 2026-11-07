@@ -10,7 +10,7 @@
 #   tools/emulator.sh launch               # clear data and open the app on the Connect screen
 #   tools/emulator.sh connect 10.0.2.2:45780 1234   # type the TV's address and code, wait until connected
 #   tools/emulator.sh ui                   # the labelled things on screen, with their centres
-#   tools/emulator.sh tap-name "Connect"   # tap the first thing with that label
+#   tools/emulator.sh tap-name "Connect"   # tap the label exactly, else one containing it
 #   tools/emulator.sh tap 1882 870         # tap at screen pixels (as in the screenshot)
 #   tools/emulator.sh hold 828 596 2300    # touch and hold for 2300 ms
 #   tools/emulator.sh text "hello"; tools/emulator.sh key enter|back|<keycode>
@@ -27,6 +27,9 @@ export MSYS_NO_PATHCONV=1 # Git Bash: leave /sdcard/... paths alone
 cd "$(dirname "$0")/.." || exit 2
 root="$(pwd)"
 app=com.thumbparty.app
+# How many times connect taps and types the address before it gives up: the
+# app can ignore a text that lands before it is ready (Nov 7, 2026).
+address_tries=3
 
 die() { echo "emulator: $1" >&2; exit "${2:-2}"; }
 winpath() { if command -v cygpath > /dev/null 2>&1; then cygpath -w "$1"; else echo "$1"; fi; }
@@ -51,23 +54,66 @@ emulator="$sdk/emulator/emulator$ext"
 a() { "$adb" "$@"; }
 device_ready() { [ "$(a shell getprop sys.boot_completed 2> /dev/null | tr -d '\r')" = "1" ]; }
 
+# The screen's nodes, one per line, as uiautomator wrote them.
+elements() {
+  a shell uiautomator dump /sdcard/thumbparty-ui.xml > /dev/null 2>&1 || return 1
+  a exec-out cat /sdcard/thumbparty-ui.xml | sed 's/></>\n</g'
+}
+
 # Every labelled node on screen: "label|class|x|y" (centre in screen pixels).
 nodes() {
-  a shell uiautomator dump /sdcard/thumbparty-ui.xml > /dev/null 2>&1 || return 1
-  a exec-out cat /sdcard/thumbparty-ui.xml | sed 's/></>\n</g' |
+  elements |
     sed -nE 's/.*text="([^"]*)".*class="([^"]*)".*content-desc="([^"]*)".*bounds="\[([0-9]+),([0-9]+)\]\[([0-9]+),([0-9]+)\]".*/\1|\3|\2|\4|\5|\6|\7/p' |
     awk -F'|' '{ label = ($2 != "" ? $2 : $1); cls = $3; sub(/.*\./, "", cls);
                  if (label != "" || cls == "EditText") printf "%s|%s|%d|%d\n", label, cls, ($4 + $6) / 2, ($5 + $7) / 2 }'
 }
 
-# The centre "x y" of the first node whose label matches $1 (or of the
-# $2-th EditText when $1 is "EditText").
+# What the $1-th edit box shows now (the text Android's accessibility tree has
+# for it): empty while nothing reached it.
+edit_text() {
+  elements | sed -nE 's/.* text="([^"]*)".*class="[^"]*EditText".*/\1/p' | sed -n "${1:-1}p"
+}
+
+# The centre "x y" of the node whose label matches $1 (or of the $2-th
+# EditText when $1 is "EditText"). A label equal to $1 wins, and among equals
+# a Button before any other kind; a label that only contains $1 is taken when
+# nothing matches exactly (Nov 7, 2026: "Connect" found the title "Connect to
+# a TV" before the Connect button).
 find_node() {
   if [ "$1" = EditText ]; then
     nodes | awk -F'|' -v n="${2:-1}" '$2 == "EditText" { if (++i == n) { print $3, $4; exit } }'
   else
-    nodes | awk -F'|' -v want="$1" 'index($1, want) == 1 { print $3, $4; exit }'
+    nodes | awk -F'|' -v want="$1" '
+      BEGIN { best = 0 }
+      {
+        if ($1 == want) score = ($2 == "Button" ? 4 : 3)
+        else if (index($1, want) > 0) score = ($2 == "Button" ? 2 : 1)
+        else score = 0
+        if (score > best) { best = score; x = $3; y = $4 }
+      }
+      END { if (best > 0) print x, y }'
   fi
+}
+
+# Types $1 into the first box and checks the box shows it: a text that lands
+# before the app is ready never reaches the field (Nov 7, 2026), so this taps
+# and types again, a second apart, up to $address_tries times. 1 when the box
+# never shows it.
+type_address() {
+  local address="$1" xy
+  local try
+  for ((try = 1; try <= address_tries; try++)); do
+    xy="$(find_node EditText 1)"
+    [ -n "$xy" ] || return 1
+    a shell input tap $xy
+    sleep 1
+    a shell input text "$address"
+    sleep 1
+    case "$(edit_text 1)" in
+      *"$address"*) return 0 ;;
+    esac
+  done
+  return 1
 }
 
 wait_for() { # label, seconds
@@ -135,12 +181,13 @@ case "${1:-}" in
     address="${2:-}"
     code="${3:-}"
     [ -n "$address" ] && [ -n "$code" ] || die "usage: connect <host:port> <code>"
-    xy="$(find_node EditText 1)"
-    [ -n "$xy" ] || die "no address box on screen: run 'tools/emulator.sh launch' first" 1
+    [ -n "$(find_node EditText 1)" ] || die "no address box on screen: run 'tools/emulator.sh launch' first" 1
+    type_address "$address" ||
+      die "the address box doesn't show $address after $address_tries tries (see: tools/emulator.sh ui)" 1
+    # The button, not Enter: the exact label (Nov 7, 2026, find_node's rule).
+    xy="$(find_node Connect)"
+    [ -n "$xy" ] || die "no Connect button on screen (see: tools/emulator.sh ui)" 1
     a shell input tap $xy
-    sleep 1
-    a shell input text "$address"
-    a shell input keyevent 66
     echo "Connecting to $address..."
     if wait_for "Enter the code" 20; then
       sleep 1
@@ -152,6 +199,8 @@ case "${1:-}" in
       sleep 1
       a shell input text "$code"
       a shell input keyevent 66
+    else
+      die "the code screen didn't show after Connect: is the TV app on at $address? (see: tools/emulator.sh ui)" 1
     fi
     # Connected: the controller screen's player badge (P1, P2...) shows.
     for _ in $(seq 1 30); do
