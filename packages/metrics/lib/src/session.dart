@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:protocol/protocol.dart';
 
 import 'segment.dart';
+import 'session_player.dart';
 import 'session_stats.dart';
 
 /// What hosted the session (PRD v2 S6).
@@ -14,36 +15,6 @@ abstract final class HostType {
   /// A tablet hosting its own game (M12 host mode, design §0).
   static const tablet = 'tablet';
   static const other = 'other';
-}
-
-class _Player {
-  _Player({required this.number, required this.local, required this.platform, required this.app, this.device});
-
-  int number;
-  final bool local;
-  final String platform;
-  String app;
-  DeviceInfo? device;
-  int connectedMs = 0;
-  int? joinedAtMs;
-  int? leftAtMs;
-  int disconnects = 0;
-  final reconnect = DelayStats();
-  int inputs = 0;
-  final ping = DelayStats();
-  final stages = <String, DelayStats>{};
-  int viewFrames = 0;
-  int viewGaps = 0;
-  int viewLate = 0;
-  final segments = <String, MetricsMessage>{};
-  final ratings = <Map<String, Object?>>[];
-  final games = <String, Map<String, int>>{};
-  final gameStats = <String, Map<String, _ValueStats>>{};
-  final modeGames = <String, int>{};
-  final modeWins = <String, int>{};
-  final modeDraws = <String, int>{};
-  int quitsMidGame = 0;
-  String? mode;
 }
 
 /// Joins everything the host learns in one play session into one summary
@@ -73,7 +44,7 @@ class SessionCollector {
   /// [startedAt] on the host's monotonic clock.
   final int startMs;
 
-  final _players = <String, _Player>{};
+  final _players = <String, PlayerRecord>{};
   final _rounds = <Map<String, Object?>>[];
   int _frames = 0;
   int _frameDrops = 0;
@@ -96,7 +67,7 @@ class SessionCollector {
     app = _clean(app, 24) ?? '';
     platform = _clean(platform, 16) ?? '';
     device = device == null ? null : _cleanDevice(device);
-    final p = _players[id] ??= _Player(number: number, local: local, platform: platform, app: app, device: device);
+    final p = _players[id] ??= PlayerRecord(number: number, local: local, platform: platform, app: app, device: device);
     p.number = number;
     if (app.isNotEmpty) p.app = app;
     p.device = device ?? p.device;
@@ -187,7 +158,7 @@ class SessionCollector {
   void gameValue(String game, String name, String id, double value) {
     final p = _players[id];
     if (p == null || !value.isFinite || name.length > 32) return;
-    ((p.gameStats[game] ??= {})[name] ??= _ValueStats()).add(value);
+    ((p.gameStats[game] ??= {})[name] ??= ValueStats()).add(value);
   }
 
   /// A round started.
@@ -239,7 +210,7 @@ class SessionCollector {
 
   /// The session so far, as JSON (PRD v2 "What it records").
   Map<String, Object?> summary(int atMs) {
-    final players = [for (final MapEntry(key: id, value: p) in _players.entries) _playerJson(id, p, atMs)]
+    final players = [for (final MapEntry(key: id, value: p) in _players.entries) playerJson(id, p, atMs)]
       ..sort((a, b) => (a['player'] as int).compareTo(b['player'] as int));
     return {
       'schema': summarySchema,
@@ -252,88 +223,6 @@ class SessionCollector {
       'rounds': _rounds,
       'frames': {'drawn': _frames, 'dropped': _frameDrops},
     };
-  }
-
-  /// One player's part of the summary: connection, inputs, latency, modes,
-  /// segments, ratings and games.
-  Map<String, Object?> _playerJson(String id, _Player p, int atMs) {
-    final connected = p.connectedMs + (p.joinedAtMs == null ? 0 : max(0, atMs - p.joinedAtMs!));
-    final segments = p.segments.values.toList()..sort((a, b) => _start(a).compareTo(_start(b)));
-    return {
-      'install': id,
-      'player': p.number,
-      if (p.local) 'local': true,
-      'platform': p.platform,
-      'app': p.app,
-      'device': ?p.device?.toJson(),
-      'connectedS': (connected / 1000).round(),
-      'disconnects': p.joinedAtMs == null ? max(0, p.disconnects - 1) : p.disconnects,
-      'reconnect': ?p.reconnect.toJson(),
-      if (p.quitsMidGame > 0) 'quitsMidGame': p.quitsMidGame,
-      'inputs': p.inputs,
-      'inputsPerS': connected == 0 ? 0 : double.parse((p.inputs / (connected / 1000)).toStringAsFixed(1)),
-      'ping': ?p.ping.toJson(),
-      'stages': {for (final MapEntry(:key, :value) in p.stages.entries) key: ?value.toJson()},
-      if (p.viewFrames + p.viewGaps + p.viewLate > 0)
-        'view': {'frames': p.viewFrames, 'gaps': p.viewGaps, 'late': p.viewLate},
-      if (segments.isNotEmpty) 'firstMode': segments.first.mode,
-      'modes': _modesJson(p, segments),
-      'switches': _switches(segments),
-      'segments': [for (final s in segments) _segmentJson(s)],
-      'ratings': p.ratings,
-      'games': p.games,
-      if (p.gameStats.isNotEmpty)
-        'gameStats': {
-          for (final MapEntry(key: game, value: stats) in p.gameStats.entries)
-            game: {for (final MapEntry(:key, :value) in stats.entries) key: value.toJson()},
-        },
-    };
-  }
-
-  /// A player's modes: time, time near the controls, games, wins and draws.
-  static Map<String, Object?> _modesJson(_Player p, List<MetricsMessage> segments) {
-    final ms = <String, int>{};
-    final activeMs = <String, int>{};
-    for (final s in segments) {
-      ms[s.mode] = (ms[s.mode] ?? 0) + s.durationMs;
-      activeMs[s.mode] = (activeMs[s.mode] ?? 0) + _activeMs(s);
-    }
-    return {
-      for (final m in {...ms.keys, ...p.modeGames.keys})
-        m: {
-          'ms': ms[m] ?? 0,
-          'activeMs': activeMs[m] ?? 0,
-          'games': p.modeGames[m] ?? 0,
-          'wins': p.modeWins[m] ?? 0,
-          'draws': ?p.modeDraws[m],
-        },
-    };
-  }
-
-  /// The player's switches between modes, in order.
-  static List<Map<String, Object?>> _switches(List<MetricsMessage> segments) => [
-    for (var i = 1; i < segments.length; i++)
-      if (segments[i].mode != segments[i - 1].mode)
-        {'from': segments[i - 1].mode, 'to': segments[i].mode, 'atS': (_start(segments[i]) / 1000).round()},
-  ];
-
-  /// One of a player's segments, as the summary lists it.
-  static Map<String, Object?> _segmentJson(MetricsMessage s) => {
-    'id': s.segment,
-    'mode': s.mode,
-    'ms': s.durationMs,
-    'activeMs': _activeMs(s),
-    'ended': s.ended,
-    'data': s.data,
-  };
-
-  static int _start(MetricsMessage s) => (s.data['start'] as int?) ?? 0;
-
-  /// The segment's active time, or its full time for an older phone that
-  /// doesn't send one.
-  static int _activeMs(MetricsMessage s) {
-    final active = s.data['activeMs'];
-    return active is num ? active.round() : s.durationMs;
   }
 
   static String _mode(String mode) => const {'dpad', 'gyro', 'sticks', 'keyboard'}.contains(mode) ? mode : 'other';
@@ -363,17 +252,3 @@ DeviceInfo _cleanDevice(DeviceInfo d) => DeviceInfo(
 final _technical = RegExp(r'^[A-Za-z0-9 ,._()+-]+$');
 
 final _tagPattern = RegExp(r'^[a-z0-9_]+$');
-
-class _ValueStats {
-  int n = 0;
-  double sum = 0;
-  double max = double.negativeInfinity;
-
-  void add(double v) {
-    n++;
-    sum += v;
-    if (v > max) max = v;
-  }
-
-  Map<String, Object> toJson() => {'n': n, 'mean': (sum / n * 100).round() / 100, 'max': (max * 100).round() / 100};
-}
