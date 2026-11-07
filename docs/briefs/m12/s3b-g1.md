@@ -1,0 +1,17 @@
+job: m12 step3 s3b G1 — plan the game sessions, the thin views and the modules (no code)
+stop: after G1. Write only the plan file and the report. Don't change code.
+read: docs/design/m12-sessions.md §0, §3, §4 (GameModule, GameViewer, GameSnapshot, ViewContext), §5 (the contract; it wins) · docs/briefs/m12/s3-g0-survey.md (answers 1–6, 10, 11, Conflicts) · docs/coding-guidelines.md · packages/puzzle_game (lib, test) · packages/test_game (lib, test) · packages/connection/lib/src/{game_host,memory_game_host}.dart · packages/party_host/lib/src/ui/{puzzle_screen,game_screen}.dart and their tests · pubspec.yaml, tools/check.sh
+
+plan (docs/briefs/m12/s3b-g1-plan.md), sections:
+1 game_kit: every file of the new package with its types (contract §3, §4: GameSession, HostingSettings, GameModule, GameViewer, GameSnapshot, ViewContext, GameRegistry) and estimated lines (each ≤300); its pubspec, analysis options, the workspace and check.sh lines (check name `kit`). No FrameView (s3c).
+2 Move map, Arena then Shape Race: for each line range of `_ArenaViewState._tick` and `PuzzlePlayViewState._tick` (and the helpers they call: `_onEvent`, `_report`, `_statusFor`, `_record`, the layout and status bookkeeping), where it goes in `ArenaSession` / `PuzzleSession` or `GameSession`, or that it stays in the view (drawing). Name each new file with its estimated lines; arena.dart (695), game.dart (732) and view.dart (439) are over 400 and must not grow; say where new code goes instead.
+3 Timing: how `advance` turns the Ticker's elapsed time into fixed 1/60 s steps, the 0.1 s catch-up limit, pause, the `at` rule (contract §3), the frame-rate schedule, and where frames/late and received_to_drawn are counted, so they mean what they mean today (one count per drawn frame).
+4 The modules and lerpTo: `shapeRaceModule`, `arenaModule`; the puzzle setup `{puzzle, level, timeLimitS, teams}` and how its viewer finds the puzzle; for both snapshots, which fields lerp, which take the shortest arc, which are discrete; where the Arena's roster replaces the live list (survey Conflict 4).
+5 Test map: every test that drives a view or a screen with pumps (survey answer 10: view_test, arena_view_test, pause_menu_test, game_screen_test, puzzle_screen_test, puzzle_results_test, games_screen_test, and tv_test_app's), whether its expected values depend on step timing, and what you expect to change (old → new, computed, or "unsure"). The new session, lerpTo and size tests from the contract §3, §4 and s3a-g2 Q6 (the real 4-player MatchSnapshot frame under 2.5 KB), one line each.
+6 Risks: places where fixed steps could change behaviour on the TV (a timer that counted ticks, press holds of 50 ms against 16.7 ms steps, a sound or haptic played twice when two steps run in one frame, the puzzle's results report firing once, rematch and change-teams rebuilding the session, the keyboard player). For each: how the plan keeps today's behaviour.
+7 Questions: anything in the contract that doesn't fit the code, numbered. Don't decide them yourself.
+8 Gates: G3 = game_kit + the Arena (ArenaSession, thin ArenaView, arenaModule, its tests; all checks green); G4 = Shape Race the same way, the size test, every check green. Adjust only if needed, and say why.
+
+rules: ≤250 lines for the plan · cite file:line for what you read · no proposals that change the contract; put them in Questions.
+allow: docs/briefs/m12/s3b-g1-plan.md
+report: docs/briefs/m12/s3b-g1-report.md
