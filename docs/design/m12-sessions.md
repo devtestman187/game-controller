@@ -2,7 +2,7 @@
 
 The types for [m12.md §2.3 to §2.5 and §3](m12.md) (fixes B4). They're Claude's contract: the worker implements them as written. A change goes back to Claude first. Facts it rests on: the G0 survey, [s3-g0-survey.md](../briefs/m12/s3-g0-survey.md) (cited as "survey").
 
-**Goal:** the host runs each game in fixed 1/60 s steps inside a `GameSession`, not inside its widget, and after each step can send a frame (snapshot, sounds, input acks) to controllers that listed `view`. A joined phone can buffer those frames, draw them smoothly, and measure touch-to-frame exactly (D3). On a TV nothing visible changes. The step ends with a measured touch-to-frame median.
+**Goal:** the host runs each game in fixed 1/60 s steps inside a `GameSession`, not inside its widget, and after each step can send a frame (snapshot, sounds, input acks) to controllers that listed `view`. A joined phone can buffer those frames, draw them smoothly, and measure touch-to-frame exactly (D3). On a TV nothing visible changes. The step ends with a host-side measurement on the PC; the measurement on phones is in step 6 (Nov 7).
 
 ## 0. Decisions on the survey's conflicts
 
@@ -181,10 +181,11 @@ typedef ViewContext = ({Map<String, ({int number, String name})> roster, String?
 ## 6. Measuring (the step's exit check)
 
 - `sim_controller --view` lists `view` and uses `ViewerTiming` and `ViewerStats` without drawing. Its draw time is the moment `r` passes the frame. It prints a `touch_to_frame` and `frame_jitter` summary at the end and sends samples in its metrics batches.
-- The phone app gets a test option in its debug screen: "Show the game view (test)". When on, the phone lists `view` and shows `FrameView` as an inset over the controller screen (top half). It sends the samples in its metrics batches. It's off by default and not in release builds' settings. Step 6 replaces it.
+- ~~The phone app's "Show the game view (test)" option~~ is dropped (Nov 7): the phone measurement moved to step 6, where a phone hosts and the joined phone shows `FrameView` for real, so a TV-hosted inset would be built only to be replaced. `FrameView` itself is still built and widget-tested in s3c.
 - The metrics report prints `touch_to_frame` and `frame_jitter` (median, p95) and the view counts next to the input delay.
 - `tools/smoke.sh` gets a `frames` step: a `--view` sim receives frames from the dev TV app during a game and reports a touch-to-frame median.
-- **The measurement:** the Windows TV app hosts Shape Race and the Arena for 2 minutes each. On the emulator, Claude joins with the test option. On both phones, the owner joins. The report's touch-to-frame median should be under 50 ms; if not, the owner decides on D2.
+- **The measurement in step 3 (host side, on the PC):** the Windows TV app hosts Shape Race and the Arena for 2 minutes each, with a `--view` sim joined, at 60, 30 and 20 Hz (the development TV app takes the rate from a debug-only start option, added in s3c). Claude reads the host stages (`received_to_drawn`, frame sizes, late frames) and the sim's touch-to-frame and jitter from the report, and sends the owner TV screenshots of both games. This needs no device of the owner's. The emulator check is broken on this PC (project-notes, Tech debt) and isn't part of it.
+- **The measurement on phones** moves to step 6 (m12.md §2.5): one phone hosts, one joins. The median should be under 50 ms; if not, the owner decides on D2 or local echo.
 
 ## 7. Jobs and gates
 
@@ -192,6 +193,6 @@ typedef ViewContext = ({Map<String, ({int number, String name})> roster, String?
 | --- | --- | --- |
 | s3a | §1, §2: messages, `GameHost` members, the client's `view` stream, `ViewerTiming`, `ViewerStats`, protocol.md | G2: the messages, `ViewerTiming`, `PlayoutBuffer`, `ViewerStats`, the stage names, with tests (self-contained, so checks pass) → G4: the `controller_client.dart` split, `GameHost` members, the server and client wiring, protocol.md |
 | s3b | §3, §4's game_kit types, §5: the sessions, the thin views, the modules and `lerpTo` | G1 plan (it moves both loops) → G3 the Arena → G4 Shape Race |
-| s3c | `FrameView`, §6's tools, report and smoke step | G2 → G4; then the measurement |
+| s3c | `FrameView`, §6's tools, report and smoke step, the debug rate option | G2 → G4; then the PC measurement |
 
 s3a and the start of s3b touch different packages and may run in parallel; s3b's G3 needs s3a's `GameHost` members.
