@@ -13,6 +13,10 @@ import 'support/host_app.dart';
 import 'support/pump_app.dart';
 
 void main() {
+  // The puzzle files are read once, before any test runs: no test here waits
+  // on their real reads while it runs (s9g).
+  setUpAll(loadPuzzles);
+
   testWidgets('a phone hosting plays its own game: the pad, the menus, and a solo Shape Race', (tester) async {
     // A landscape phone: the host's screens get the 341-high body under this
     // app's bar, and the join screen's sides scroll to fit it.

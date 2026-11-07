@@ -13,8 +13,23 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:party_host/party_host.dart' as party;
 import 'package:party_host/testing.dart' as party_test;
 import 'package:protocol/protocol.dart';
+import 'package:puzzle_game/puzzle_game.dart';
 
 import 'pump_app.dart';
+
+/// Every puzzle, read from the puzzle package's files once per test file
+/// (s9g): the load is real file and asset work, which the test's clock never
+/// waits out, so [loadPuzzles] reads it before a file's first test and
+/// [pumpHostApp] hands the ready library to the app.
+PuzzleLibrary? _puzzles;
+
+/// Reads the puzzle files in the real event loop, once per test file: call it
+/// from `setUpAll`, so no test waits on their reads while it runs (s9g).
+Future<void> loadPuzzles() async {
+  if (_puzzles != null) return;
+  TestWidgetsFlutterBinding.ensureInitialized();
+  _puzzles = await PuzzleLibrary.load();
+}
 
 /// The app with a real host in it (m12 §3): the fakes the other tests use,
 /// the host's own inputs, its folders in a temp folder, and fakes for the
@@ -32,16 +47,10 @@ Future<TestApp> pumpHostApp(
 }) async {
   final dir = Directory.systemTemp.createTempSync('thumb-party-host-');
   addTearDown(() => dir.deleteSync(recursive: true));
-  // The puzzles come from the asset bundle, which never answers inside the
-  // test's clock: read them first, in the real one.
-  final puzzles = await tester.runAsync(() async {
-    final container = ProviderContainer();
-    try {
-      return await container.read(party.puzzleLibraryProvider.future);
-    } finally {
-      container.dispose();
-    }
-  });
+  // A file that didn't read the puzzles in setUpAll gets them here, the slow
+  // way: the asset bundle never answers inside the test's clock, so the real
+  // event loop has to.
+  final puzzles = _puzzles ?? await tester.runAsync(PuzzleLibrary.load);
   if (puzzles == null) fail('The puzzles did not load');
   return pumpApp(
     tester,
@@ -52,7 +61,9 @@ Future<TestApp> pumpHostApp(
       party.advertiserProvider.overrideWithValue(advertiser ?? party_test.FakeAdvertiser()),
       party.soundPlayerProvider.overrideWithValue(sounds ?? party_test.FakeSoundPlayer()),
       party.screenAwakeProvider.overrideWithValue(party_test.FakeScreenAwake()),
-      party.puzzleLibraryProvider.overrideWith((ref) async => puzzles),
+      // The ready library, not a load: the screens' puzzle lists show on their
+      // first frame, with nothing to wait for (s9g).
+      party.puzzleLibraryProvider.overrideWith((ref) => puzzles),
       ...extra,
     ],
   );

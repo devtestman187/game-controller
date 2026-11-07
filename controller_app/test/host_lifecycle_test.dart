@@ -9,6 +9,10 @@ import 'support/host_app.dart';
 import 'support/pump_app.dart';
 
 void main() {
+  // The puzzle files are read once, before any test runs: no test here waits
+  // on their real reads while it runs (s9g).
+  setUpAll(loadPuzzles);
+
   group('a hosting phone and the app lifecycle (m12 §2.10)', () {
     testWidgets('coming back to the app leaves the search off and the own player paired', (tester) async {
       final app = await pumpHostApp(tester);
