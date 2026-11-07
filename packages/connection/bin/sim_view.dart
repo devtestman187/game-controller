@@ -96,6 +96,10 @@ class SimView {
       case ViewEnded():
         _buffer.clear();
         _lastDrawnN = null;
+      case HostAway(:final secondsLeft):
+        stdout.writeln('host_away s=$secondsLeft');
+      case HostBack():
+        stdout.writeln('host_back');
     }
   }
 

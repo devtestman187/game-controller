@@ -73,6 +73,12 @@ final class ClientMessages {
       case ViewEndMessage():
         if (!_showsView) return;
         _controls.addViewEnd(message);
+      case HostAwayMessage():
+        if (!_showsView) return;
+        _controls.addHostAway(message, arrivedAtMs: _host.nowMs);
+      case HostBackMessage():
+        if (!_showsView) return;
+        _controls.addHostBack();
       case HelloMessage() || PairRequestMessage() || InputStateMessage() || MetricsMessage() || RatingMessage():
         _host.log('Ignoring unexpected ${message.type} from the TV');
     }

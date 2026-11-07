@@ -59,6 +59,13 @@ abstract class HostService {
   /// gamepads, haptics, latency and analytics records.
   GameHost get gameHost;
 
+  /// Whether the phones that join show the game themselves (m12-joined-view §0.1). False
+  /// when this host's own screen is the one everyone watches; the phone host
+  /// sets it for the game on the phone. A change applies from the next view a
+  /// game starts.
+  bool get shareView;
+  set shareView(bool value);
+
   /// Analytics collection, the session files, consent and upload (M9).
   StatsService get stats;
 
@@ -87,6 +94,8 @@ class LiveHostService implements HostService {
   /// the network, and [uploader] sends finished sessions (null when the
   /// build knows no cloud store). [inProcess] is the link to the host
   /// device's own player, which only the phone app passes (m12 §1).
+  /// [shareView] is false by default: this host's own screen shows the game
+  /// unless the shell says the phones do (m12-joined-view §0.1).
   LiveHostService({
     required SharedPreferences prefs,
     required LogBuffer log,
@@ -95,6 +104,7 @@ class LiveHostService implements HostService {
     required Advertiser advertiser,
     InProcessListener? inProcess,
     SessionUploader? uploader,
+    bool shareView = false,
   }) : _log = log.sink('tv'),
        _logBuffer = log,
        _identity = identity,
@@ -123,7 +133,7 @@ class LiveHostService implements HostService {
       // Touch metrics and the rating prompt (M9).
       capabilities: const [Capability.metrics, Capability.rating],
     );
-    _gameHost = ServerGameHost(_server);
+    _gameHost = ServerGameHost(_server)..shareView = shareView;
     _stats = LiveStats(
       server: _server,
       host: _gameHost,
@@ -266,6 +276,12 @@ class LiveHostService implements HostService {
 
   @override
   GameHost get gameHost => _gameHost;
+
+  @override
+  bool get shareView => _gameHost.shareView;
+
+  @override
+  set shareView(bool value) => _gameHost.shareView = value;
 
   @override
   StatsService get stats => _stats;

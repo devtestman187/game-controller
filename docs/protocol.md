@@ -225,13 +225,15 @@ Timing: about every 10 s, on every mode or settings change, and at disconnect. T
 
 ## 10a. Viewing the game (capability `view`, M12)
 
-A controller that lists `view` also shows the game itself: the host runs the game in fixed steps and sends the phone what to draw. The three messages below need the capability, so a controller without it never gets one.
+A controller that lists `view` also shows the game itself: the host runs the game in fixed steps and sends the phone what to draw. The messages below need the capability, so a controller without it never gets one.
 
 | Message | Direction | Fields (wire key: meaning) |
 | --- | --- | --- |
 | `view_start` | host → controller | `game`: module ID · `sv`: the snapshot version the frames carry · `setup`: the module's setup JSON · `hz`: frames a second the host publishes |
 | `frame` | host → controller | `n`: step number from 0 · `at`: the host's clock in ms at that step · `s`: the module's snapshot JSON · `snd`: sound names since the last sent frame, left out when empty · `acks`: player ID → the last input seq the host applied (only players with one) · `pl`: player ID → `[number, name]`, the name `""` when the player has none |
 | `view_end` | host → controller | `reason`: `finished` (the game ended), `quit` (someone left) or `abandoned` (the host closed, a new game started) |
+| `host_away` | host → controller | `s`: whole seconds left before the round ends if the host stays away (0 or more) |
+| `host_back` | host → controller | no fields |
 
 `view_start` comes first, every `frame` after it is one step, and `view_end` last. The host encodes each frame once and sends every viewer the same text.
 
@@ -239,7 +241,7 @@ A controller that lists `view` also shows the game itself: the host runs the gam
 
 **A viewer that pairs while a game is being shown** — a controller that just joined, or one that reconnected after a drop — gets the stored `view_start` and then the latest `frame`, before any later frame, so it can draw the game at once. A viewer that pairs after `view_end` gets nothing. A viewer sends its measurements back in its metrics batches (§9): the raw samples in `stages` and its frame counts in `view`.
 
-The host closes with 4003 if a controller sends one of these three messages.
+The host closes with 4003 if a controller sends one of these view messages.
 
 ## 11. Message direction summary
 

@@ -118,6 +118,35 @@ void main() {
     });
   });
 
+  group('host_away and host_back (M12)', () {
+    test('the seconds left round-trip, and host_back carries no fields', () {
+      const away = HostAwayMessage(secondsLeft: 30);
+      final back = roundTrip(away) as HostAwayMessage;
+      expect(back, away);
+      expect(back.secondsLeft, 30);
+      expect(wire(away)['s'], 30);
+
+      const hostBack = HostBackMessage();
+      expect(roundTrip(hostBack), hostBack);
+      expect(wire(hostBack).length, 2, reason: 'the envelope only: v and t');
+    });
+
+    test('a host_away without s, with a negative s or with a string s is rejected', () {
+      for (final json in [
+        {'t': 'host_away'},
+        {'t': 'host_away', 's': -1},
+        {'t': 'host_away', 's': '30'},
+      ]) {
+        expect(
+          () => codec.decode(jsonEncode({'v': protocolVersion, ...json})),
+          throwsA(isA<ProtocolFormatException>().having((e) => e.message, 'message', contains('"s"'))),
+        );
+      }
+      final zero = codec.decode(jsonEncode({'v': protocolVersion, 't': 'host_away', 's': 0}));
+      expect((zero as HostAwayMessage).secondsLeft, 0, reason: '0 s left is allowed');
+    });
+  });
+
   group('malformed fields name the field', () {
     final cases = <({String what, Map<String, Object?> json, String field})>[
       (

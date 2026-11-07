@@ -30,6 +30,8 @@ class MessageCodec {
     ViewStartMessage.wireType: ViewStartMessage.fromPayload,
     FrameMessage.wireType: FrameMessage.fromPayload,
     ViewEndMessage.wireType: ViewEndMessage.fromPayload,
+    HostAwayMessage.wireType: HostAwayMessage.fromPayload,
+    HostBackMessage.wireType: HostBackMessage.fromPayload,
   };
 
   String encode(Message message) => jsonEncode({'v': protocolVersion, 't': message.type, ...message.toPayload()});

@@ -82,6 +82,17 @@ final class ClientControls {
     if (!_views.isClosed) _views.add(ViewEnded(end));
   }
 
+  /// Hands [away] to the view listeners, with [arrivedAtMs]: this phone's
+  /// clock when it handled the message, which the countdown runs from.
+  void addHostAway(HostAwayMessage away, {required int arrivedAtMs}) {
+    if (!_views.isClosed) _views.add(HostAway(away.secondsLeft, arrivedAtMs));
+  }
+
+  /// Hands the host's return to the view listeners.
+  void addHostBack() {
+    if (!_views.isClosed) _views.add(const HostBack());
+  }
+
   /// A new connection starts with the usual buttons and no panel; the game
   /// sends its own again.
   void reset() {
@@ -128,4 +139,23 @@ final class ViewEnded extends ViewEvent {
   const ViewEnded(this.end);
 
   final ViewEndMessage end;
+}
+
+/// The host is away for a while (m12 §2.10): its app went to the background,
+/// the screen locked, or a pause menu is open.
+final class HostAway extends ViewEvent {
+  const HostAway(this.secondsLeft, this.arrivedAtMs);
+
+  /// How long the round still runs, in seconds, from [arrivedAtMs]: the phone
+  /// counts down to it and then keeps the words without a number.
+  final int secondsLeft;
+
+  /// This phone's clock when the message was handled: the countdown runs from
+  /// it, so a late arrival doesn't lengthen the wait.
+  final int arrivedAtMs;
+}
+
+/// The host is back, so the game goes on.
+final class HostBack extends ViewEvent {
+  const HostBack();
 }

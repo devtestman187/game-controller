@@ -12,7 +12,9 @@ import 'host_service.dart';
 final hostAwayProvider = Provider<ValueListenable<bool>>((ref) => const NeverAway());
 
 /// Pauses the game while the host app is hidden, and ends the round when it
-/// stays hidden longer than [graceS] (m12 §2.10).
+/// stays hidden longer than [graceS] (m12 §2.10). The host's game host hears
+/// both events through its `hostAway`, so the phones that show the game can
+/// say it's waiting for the host.
 ///
 /// The shell drives it from the app's lifecycle (`hidden` when the app goes
 /// to the background or the screen locks, `shown` when it comes back), and
@@ -48,6 +50,9 @@ class HostPresence {
     // doesn't restart the grace period.
     _hiddenAtMs = _nowMs();
     _away.value = true;
+    // A phone that shows the game can say "Waiting for the host" and count
+    // down to the round's end (m12 §2.10); one it doesn't show sends nothing.
+    host.gameHost.hostAway(graceS);
   }
 
   /// The app is back: restarts what the system stopped, then unpauses. Hidden
@@ -61,8 +66,13 @@ class HostPresence {
     // still paused, so a phone can reconnect before the pause ends.
     await host.resume();
     if (_disposed) return;
-    // Too long away: the round ends without running another step.
-    if (awayMs > graceS * Duration.millisecondsPerSecond) onAbandon();
+    // Too long away: the round ends without running another step. Otherwise
+    // the phones that show it hear that the host is back (m12 §2.10).
+    if (awayMs > graceS * Duration.millisecondsPerSecond) {
+      onAbandon();
+    } else {
+      host.gameHost.hostAway(null);
+    }
     _away.value = false;
   }
 

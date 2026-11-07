@@ -122,6 +122,10 @@ class PlayoutBuffer<T> {
   /// How many frames are held.
   int get length => _frames.length;
 
+  /// The frames it holds, oldest first, in host time: a caller can walk them
+  /// before [pick] drops the ones it passed (a viewer reports their sounds).
+  Iterable<({int atMs, T frame})> get frames => _frames;
+
   /// Adds a frame shown on the host at [atMs]. Frames must come in order: one
   /// not after the newest is ignored, so a repeated frame can't rewind the
   /// buffer.

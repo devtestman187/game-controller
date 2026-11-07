@@ -55,6 +55,10 @@ class FakeHostService implements HostService {
   /// How many times [resume] was called.
   int resumes = 0;
 
+  /// Whether the phones that join show the game: set by the test.
+  @override
+  bool shareView = false;
+
   /// Haptic events the game host sent: (event, player ID).
   final haptics = <(HapticEventMessage, String?)>[];
 
@@ -119,6 +123,9 @@ class FakeGameHost implements GameHost {
   final viewStarts = <ViewStartMessage>[];
   final frames = <FrameMessage>[];
   final viewEnds = <ViewEndMessage>[];
+
+  /// Every [hostAway] call, in order: the seconds left, or null for "back".
+  final hostAways = <int?>[];
 
   /// Whether anyone would get a frame: the test sets it.
   @override
@@ -187,6 +194,9 @@ class FakeGameHost implements GameHost {
 
   @override
   void endView(ViewEndMessage end) => viewEnds.add(end);
+
+  @override
+  void hostAway(int? secondsLeft) => hostAways.add(secondsLeft);
 
   @override
   bool haptic(String playerId, HapticEventMessage event) {

@@ -63,6 +63,11 @@ class ServerGameHost implements GameHost {
   ViewStartMessage? _viewStart;
   FrameMessage? _viewFrame;
 
+  /// Whether phones show this host's game at all (m12-joined-view §0.1): false when the
+  /// host's own screen is the one everyone watches. A change applies from the
+  /// next [startView], so a running view finishes as it began.
+  bool shareView = true;
+
   /// Everything games report, for the analytics collector.
   Stream<GameRecord> get records => _records.stream;
 
@@ -191,14 +196,20 @@ class ServerGameHost implements GameHost {
   };
 
   @override
-  bool get hasViewers => server.snapshot.connected.any((c) => c.supports(Capability.view));
+  bool get hasViewers => shareView && server.snapshot.connected.any(_isViewer);
+
+  /// A controller that gets frames: it listed [Capability.view].
+  static bool _isViewer(ControllerInfo info) => info.supports(Capability.view);
 
   @override
   void startView(ViewStartMessage start) {
-    _viewStart = start;
+    // A view that isn't shared is no view here: no start is kept, so no frame
+    // or end can follow, and a viewer that pairs later gets nothing.
+    _viewStart = shareView ? start : null;
     // A viewer that pairs from now on gets this start and the frames after it,
     // never a frame of a game that has ended or a previous one.
     _viewFrame = null;
+    if (_viewStart == null) return;
     server.sendToAll(start);
   }
 
@@ -211,9 +222,19 @@ class ServerGameHost implements GameHost {
 
   @override
   void endView(ViewEndMessage end) {
-    server.sendToAll(end);
+    final wasRunning = _viewStart != null;
     _viewStart = null;
     _viewFrame = null;
+    if (wasRunning) server.sendToAll(end);
+  }
+
+  @override
+  void hostAway(int? secondsLeft) {
+    // Only a running view sends: a host that isn't sharing has no viewer to
+    // tell (m12 §2.10).
+    if (_viewStart == null) return;
+    final message = secondsLeft == null ? const HostBackMessage() : HostAwayMessage(secondsLeft: secondsLeft);
+    server.sendToAll(message);
   }
 
   @override
@@ -275,7 +296,6 @@ class ServerGameHost implements GameHost {
   void _sendView(String controllerId) {
     final start = _viewStart;
     if (start == null) return;
-    if (!(_info(controllerId)?.supports(Capability.view) ?? false)) return;
     server.send(controllerId, start);
     if (_viewFrame case final frame?) server.send(controllerId, frame);
   }

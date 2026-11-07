@@ -31,6 +31,31 @@ void main() {
       expect(abandoned, 0, reason: '10 s is inside the 30 s grace');
     });
 
+    test('hidden tells the game host it is away, and shown inside the grace tells it back', () async {
+      final p = presence();
+      addTearDown(p.dispose);
+      p.hidden();
+      expect(host.gameHost.hostAways, [30], reason: 'the default grace, so a viewer counts down from 30 s');
+
+      clockMs = 10000;
+      await p.shown();
+      expect(host.resumes, 1);
+      expect(host.gameHost.hostAways, [30, null], reason: 'back after the server restarted, before the game unpauses');
+      expect(abandoned, 0);
+    });
+
+    test('shown after the grace abandons the round and tells nobody it is back', () async {
+      final p = HostPresence(host: host, onAbandon: () => abandoned++, nowMs: () => clockMs, graceS: 20);
+      addTearDown(p.dispose);
+      p.hidden();
+      expect(host.gameHost.hostAways, [20], reason: 'the grace this presence was given');
+
+      clockMs = 21000;
+      await p.shown();
+      expect(abandoned, 1);
+      expect(host.gameHost.hostAways, [20], reason: 'nobody waits for a host whose round has ended');
+    });
+
     test('hidden 31 s then shown: the round is abandoned', () async {
       final p = presence();
       addTearDown(p.dispose);

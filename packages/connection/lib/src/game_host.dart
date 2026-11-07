@@ -88,6 +88,13 @@ abstract interface class GameHost {
   /// The game stopped being shown. Sent to every viewer; forgets the start
   /// and the latest frame.
   void endView(ViewEndMessage end);
+
+  /// This host is away for a while, so the viewers it shows the game to can
+  /// say "Waiting for the host" and count down (m12 §2.10). [secondsLeft] is
+  /// how long the round still runs; null says the host is back. Ignored when
+  /// no view is running, and by a host whose screen is the one everybody
+  /// watches.
+  void hostAway(int? secondsLeft);
 }
 
 /// A player's heartbeat round trip and input delay.

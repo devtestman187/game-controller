@@ -1,6 +1,44 @@
+import 'dart:collection';
+
 import 'package:protocol/protocol.dart';
 
 import 'game_types.dart';
+
+/// Samples in ms at one frame rate: how many, and their median and 95th
+/// percentile, both null before the first sample.
+typedef SampleSummary = ({int count, int? medianMs, int? p95Ms});
+
+/// What a viewer measured at one frame rate since its stats were made
+/// (m12 §6), for the phone's Diagnostics: the owner reads it back to Claude.
+final class ViewSummary {
+  const ViewSummary({
+    required this.touchToFrame,
+    required this.jitter,
+    required this.frames,
+    required this.late,
+    required this.gaps,
+  });
+
+  /// The wait from an input's send to the frame that first acknowledged it
+  /// ([LatencyStage.touchToFrame]): the measurement's headline number.
+  final SampleSummary touchToFrame;
+
+  /// Every frame's lateness ([LatencyStage.frameJitter]).
+  final SampleSummary jitter;
+
+  /// Frames the viewer drew.
+  final int frames;
+
+  /// Drawn frames that came more than 1.5 frame intervals after the one
+  /// before ([ViewerStats.lateFactor]).
+  final int late;
+
+  /// Frames whose step jumped by more than 1.5 expected strides.
+  final int gaps;
+
+  @override
+  String toString() => 'ViewSummary(touch $touchToFrame, jitter $jitter, $frames drawn, $late late, $gaps gaps)';
+}
 
 /// What a viewer measures while it shows a game (m12 §4), for the metrics
 /// batches it sends to the host.
@@ -34,6 +72,14 @@ class ViewerStats {
   /// be matched to its send time (m12 §4).
   static const maxRememberedInputs = 256;
 
+  /// How many of each stage's samples [summary] keeps per frame rate: the last
+  /// 2000, a little over half a minute at 60 Hz (m12 §6).
+  static const maxSummarySamples = 2000;
+
+  /// The percentiles [summary] reports (m12 §6): the median and the 95th.
+  static const medianFraction = 0.5;
+  static const p95Fraction = 0.95;
+
   int _hz;
   final Map<int, int> _sentAtMs = {};
   final List<int> _touchToFrame = [];
@@ -44,6 +90,7 @@ class ViewerStats {
   int _frames = 0;
   int _gaps = 0;
   int _late = 0;
+  final Map<int, _Totals> _totals = {};
 
   /// The frame rate from view_start, so it counts the right stride.
   int get hz => _hz;
@@ -67,9 +114,14 @@ class ViewerStats {
   /// first frame after a start never does.
   void frameArrived(int n, {required int jitterMs}) {
     final previous = _lastFrameN;
-    if (previous != null && n - previous > gapStrideFactor * simStepHz / _hz) _gaps++;
+    final totals = _totals.putIfAbsent(_hz, _Totals.new);
+    if (previous != null && n - previous > gapStrideFactor * simStepHz / _hz) {
+      _gaps++;
+      totals.gaps++;
+    }
     _lastFrameN = n;
     _frameJitter.add(jitterMs);
+    totals.addJitter(jitterMs);
   }
 
   /// Records that a frame was drawn at phone time [drawnAtMs] and that it
@@ -85,8 +137,13 @@ class ViewerStats {
   /// nothing.
   void frameDrawn(int? ackSeq, int drawnAtMs) {
     _frames++;
+    final totals = _totals.putIfAbsent(_hz, _Totals.new);
+    totals.frames++;
     final previous = _lastDrawnAtMs;
-    if (previous != null && drawnAtMs - previous > _lateLimitMs) _late++;
+    if (previous != null && drawnAtMs - previous > _lateLimitMs) {
+      _late++;
+      totals.late++;
+    }
     _lastDrawnAtMs = drawnAtMs;
 
     final lastAcked = _lastAckedSeq;
@@ -97,7 +154,9 @@ class ViewerStats {
         if ((lastAcked == null || seq > lastAcked) && seq <= ackSeq) seq,
     ]..sort();
     for (final seq in newlyAcked) {
-      _touchToFrame.add(drawnAtMs - _sentAtMs[seq]!);
+      final sample = drawnAtMs - _sentAtMs[seq]!;
+      _touchToFrame.add(sample);
+      totals.addTouch(sample);
     }
   }
 
@@ -145,5 +204,57 @@ class ViewerStats {
     const cap = MetricsMessage.maxStageSamples;
     if (samples.length <= cap) return List.unmodifiable(samples);
     return List.unmodifiable([for (var i = 0; i < cap; i++) samples[i * samples.length ~/ cap]]);
+  }
+
+  /// What this viewer measured at each frame rate since it was made (m12 §6),
+  /// by the `hz` of the view_start it measured under: the medians and 95th
+  /// percentiles of the last [maxSummarySamples] samples of each stage, and
+  /// the frames, late draws and gaps. [reset] and [drain] leave it alone, so
+  /// the phone's Diagnostics covers a whole session.
+  Map<int, ViewSummary> get summary => Map.unmodifiable({
+    for (final MapEntry(key: hz, value: totals) in _totals.entries)
+      hz: ViewSummary(
+        touchToFrame: (
+          count: totals.touch.length,
+          medianMs: _quantile(totals.touch, medianFraction),
+          p95Ms: _quantile(totals.touch, p95Fraction),
+        ),
+        jitter: (
+          count: totals.jitter.length,
+          medianMs: _quantile(totals.jitter, medianFraction),
+          p95Ms: _quantile(totals.jitter, p95Fraction),
+        ),
+        frames: totals.frames,
+        late: totals.late,
+        gaps: totals.gaps,
+      ),
+  });
+}
+
+/// The nearest-rank quantile the metrics report's `DelayStats` uses, so these
+/// numbers agree with it: the sample at index `(q × (n − 1)).round()`. Null
+/// for no samples.
+int? _quantile(Iterable<int> samples, double q) {
+  if (samples.isEmpty) return null;
+  final sorted = samples.toList()..sort();
+  return sorted[(q * (sorted.length - 1)).round()];
+}
+
+/// The summary at one frame rate: the samples it keeps and the totals.
+final class _Totals {
+  final touch = ListQueue<int>();
+  final jitter = ListQueue<int>();
+  int frames = 0;
+  int late = 0;
+  int gaps = 0;
+
+  void addTouch(int ms) => _add(touch, ms);
+
+  void addJitter(int ms) => _add(jitter, ms);
+
+  // Only the last maxSummarySamples of a stage count; the oldest goes first.
+  static void _add(ListQueue<int> samples, int ms) {
+    samples.addLast(ms);
+    if (samples.length > ViewerStats.maxSummarySamples) samples.removeFirst();
   }
 }

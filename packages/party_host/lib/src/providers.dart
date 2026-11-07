@@ -59,6 +59,12 @@ final advertiserProvider = Provider<Advertiser>((ref) => BonsoirAdvertiser(log: 
 /// build has no store set up; each app overrides it with its own.
 final sessionUploaderProvider = Provider<SessionUploader?>((ref) => null);
 
+/// Whether the phones that join show the game this host runs (m12-joined-view §0.1). False
+/// by default: this host's own screen is the one everyone watches. The dev TV
+/// app overrides it with its debug `SHARE_VIEW` define, so a measuring run and
+/// the smoke check keep their viewers.
+final shareViewProvider = Provider<bool>((ref) => false);
+
 /// The host service and everything it runs, built from the providers above so
 /// an app only supplies its own inputs.
 final hostServiceProvider = Provider<HostService>((ref) {
@@ -69,6 +75,7 @@ final hostServiceProvider = Provider<HostService>((ref) {
     directories: ref.watch(hostDirectoriesProvider),
     advertiser: ref.watch(advertiserProvider),
     uploader: ref.watch(sessionUploaderProvider),
+    shareView: ref.watch(shareViewProvider),
   );
   unawaited(service.start());
   ref.onDispose(service.dispose);

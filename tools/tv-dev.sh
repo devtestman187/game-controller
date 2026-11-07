@@ -4,6 +4,8 @@
 # Documented in docs/dev-tools.md.
 #
 #   tools/tv-dev.sh start     # build and start; prints the port and pairing code
+#                             # (always passes --dart-define=SHARE_VIEW=true, so
+#                             # phones joined to it show the games it hosts, M12)
 #   tools/tv-dev.sh start --hz 20|30|60 --game arena|shape_race
 #                             # start straight into a game, for measuring runs (M12)
 #   tools/tv-dev.sh status    # running? port, pairing code, log file
@@ -59,7 +61,8 @@ status() {
 case "${1:-}" in
   start)
     shift
-    defines=()
+    # A dev TV always shares its game with the phones that join it (m12-joined-view §0.1).
+    defines=(--dart-define=SHARE_VIEW=true)
     while [ $# -gt 0 ]; do
       case "$1" in
         --hz | --game)

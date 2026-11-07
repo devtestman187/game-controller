@@ -146,6 +146,50 @@ final class ViewEndMessage extends Message {
   }
 }
 
+/// Host → viewer (M12, needs [Capability.view]): the host is away for a while
+/// (m12 §2.10): its app went to the background, the screen locked, or a pause
+/// menu is open.
+///
+/// The host sends it only while it shows a game, and only to the viewers that
+/// get its frames. [HostBackMessage] ends the wait.
+final class HostAwayMessage extends Message {
+  const HostAwayMessage({required this.secondsLeft});
+
+  static const String wireType = 'host_away';
+
+  /// How long the round still runs if the host stays away, in seconds: the
+  /// phone counts down from it. A round that outlives it ends abandoned.
+  final int secondsLeft;
+
+  @override
+  String get type => wireType;
+
+  @override
+  Map<String, Object?> toPayload() => {'s': secondsLeft};
+
+  static HostAwayMessage fromPayload(Map<String, Object?> p) {
+    final seconds = requireInt(p, 's');
+    if (seconds < 0) throw FormatException('Field "s" must be 0 or more seconds, got $seconds');
+    return HostAwayMessage(secondsLeft: seconds);
+  }
+}
+
+/// Host → viewer (M12, needs [Capability.view]): the host is back, so the game
+/// goes on (m12 §2.10).
+final class HostBackMessage extends Message {
+  const HostBackMessage();
+
+  static const String wireType = 'host_back';
+
+  @override
+  String get type => wireType;
+
+  @override
+  Map<String, Object?> toPayload() => const {};
+
+  static HostBackMessage fromPayload(Map<String, Object?> p) => const HostBackMessage();
+}
+
 /// Reads a required field that must be a JSON object.
 Map<String, Object?> _objectField(Map<String, Object?> p, String key) {
   final value = p[key];

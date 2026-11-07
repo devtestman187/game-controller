@@ -24,6 +24,14 @@ void main() {
     expect(debugStartScreen('shape_race'), isNotNull);
   });
 
+  test('SHARE_VIEW shares the game only in a debug build that passes it', () {
+    expect(shareViewDefine, isFalse, reason: 'a test run has no --dart-define');
+    expect(shareViewEnabled(), isFalse);
+    expect(shareViewEnabled(defined: true), isTrue, reason: 'SHARE_VIEW=true in a debug build');
+    expect(shareViewEnabled(defined: false), isFalse, reason: 'SHARE_VIEW=false shares nothing, as absent does');
+    expect(shareViewEnabled(debug: false, defined: true), isFalse, reason: 'a release build ignores it');
+  });
+
   testWidgets('without START_GAME the app opens on the home screen', (tester) async {
     await pumpApp(tester);
     expect(find.byType(HomeScreen), findsOneWidget);

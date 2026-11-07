@@ -12,6 +12,17 @@ import 'package:puzzle_game/puzzle_game.dart';
 /// both.
 const String startGame = String.fromEnvironment('START_GAME');
 
+/// Whether this build lets phones show the game it hosts, from
+/// `--dart-define=SHARE_VIEW=true` (m12-joined-view §0.1). `tools/tv-dev.sh start` always
+/// passes it, so the smoke check's `frames` step and the PC measurement keep
+/// their viewers. Unset or false sends no frames; release builds ignore it.
+const bool shareViewDefine = bool.fromEnvironment('SHARE_VIEW');
+
+/// Whether this build shares its game with the phones that join (m12-joined-view §0.1):
+/// only a debug build that [shareViewDefine] names. [debug] and [defined] are
+/// how a test says what a build was told.
+bool shareViewEnabled({bool debug = kDebugMode, bool defined = shareViewDefine}) => debug && defined;
+
 /// The screen the app starts on (M12 §6): the game [game] names, skipping the
 /// menus so `tools/tv-dev.sh` and `tools/smoke.sh` can measure a game without
 /// a phone pressing through them. Null for the home screen: no game named, or

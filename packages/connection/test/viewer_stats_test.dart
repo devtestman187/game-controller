@@ -134,4 +134,97 @@ void main() {
     expect(LatencyStage.touchToFrame, 'touch_to_frame');
     expect(LatencyStage.frameJitter, 'frame_jitter');
   });
+
+  group('ViewerStats summary (m12 §6)', () {
+    test('samples at 60 Hz and at 30 Hz land in separate entries', () {
+      final stats = ViewerStats(hz: 60);
+      stats.frameArrived(0, jitterMs: 4);
+      stats.frameDrawn(null, 0);
+      stats.reset(hz: 30);
+      stats.frameArrived(0, jitterMs: 9);
+      stats.frameArrived(2, jitterMs: 1);
+      stats.frameDrawn(null, 100);
+      stats.frameDrawn(null, 200);
+
+      final summary = stats.summary;
+      expect(summary.keys, unorderedEquals([60, 30]));
+      expect(summary[60]?.jitter.count, 1);
+      expect(summary[60]?.jitter.medianMs, 4);
+      expect(summary[60]?.touchToFrame.count, 0);
+      expect(summary[60]?.touchToFrame.medianMs, isNull, reason: 'no acked input at 60 Hz');
+      expect(summary[60]?.frames, 1);
+      expect(summary[30]?.jitter.count, 2);
+      expect(summary[30]?.frames, 2);
+    });
+
+    test('reset and drain leave the summary alone, and only frames count once', () {
+      final stats = ViewerStats(hz: 60);
+      stats.frameArrived(0, jitterMs: 3);
+      stats.frameDrawn(null, 0);
+      expect(stats.drain().view.frames, 1);
+      stats.reset(hz: 60);
+
+      final summary = stats.summary[60];
+      expect(summary?.jitter.count, 1, reason: 'the sample is still in the summary after drain and reset');
+      expect(summary?.frames, 1, reason: 'the total counts every draw since the stats were made');
+      expect(stats.drain().view.frames, 0, reason: 'the batch counts did start over');
+    });
+
+    test('the median and p95 are nearest rank: [10, 20, 30, 40, 100] is 30 and 100', () {
+      final stats = ViewerStats(hz: 60);
+      for (final jitterMs in [40, 10, 100, 20, 30]) {
+        stats.frameArrived(0, jitterMs: jitterMs);
+      }
+      final jitter = stats.summary[60]?.jitter;
+      expect(jitter?.count, 5);
+      // Sorted [10, 20, 30, 40, 100]: the median is index (0.5 × 4).round() = 2
+      // and p95 is index (0.95 × 4).round() = 4.
+      expect(jitter?.medianMs, 30);
+      expect(jitter?.p95Ms, 100);
+    });
+
+    test('touch_to_frame has the same median and p95 over every acknowledged input', () {
+      final stats = ViewerStats(hz: 60);
+      // Four inputs sent 100 ms apart, acked by the draw 400 ms after the first:
+      // samples 400, 300, 200 and 100.
+      for (var seq = 1; seq <= 4; seq++) {
+        stats.inputSent(seq, (seq - 1) * 100);
+      }
+      stats.frameDrawn(4, 400);
+      final touch = stats.summary[60]?.touchToFrame;
+      expect(touch?.count, 4);
+      // Sorted [100, 200, 300, 400]: the median is index (0.5 × 3).round() = 2
+      // and p95 is index (0.95 × 3).round() = 3.
+      expect(touch?.medianMs, 300);
+      expect(touch?.p95Ms, 400);
+    });
+
+    test('only the last 2000 samples count', () {
+      final stats = ViewerStats(hz: 60);
+      for (var i = 0; i <= ViewerStats.maxSummarySamples; i++) {
+        stats.frameArrived(0, jitterMs: i);
+      }
+      final jitter = stats.summary[60]?.jitter;
+      expect(ViewerStats.maxSummarySamples, 2000);
+      expect(jitter?.count, 2000, reason: '2001 samples: the oldest is dropped');
+      // The kept samples are 1 to 2000: the median is index (0.5 × 1999).round()
+      // = 1000, which holds 1001, and p95 is index (0.95 × 1999).round() = 1899,
+      // which holds 1900.
+      expect(jitter?.medianMs, 1001);
+      expect(jitter?.p95Ms, 1900);
+    });
+
+    test('the summary records the late draws and the gaps at each rate', () {
+      final stats = ViewerStats(hz: 60);
+      for (final n in [0, 1, 4]) {
+        stats.frameArrived(n, jitterMs: 0);
+      }
+      stats.frameDrawn(null, 0);
+      stats.frameDrawn(null, 40);
+      final summary = stats.summary[60];
+      expect(summary?.gaps, 1, reason: 'n jumps 1 to 4 at 60 Hz');
+      expect(summary?.late, 1, reason: '40 ms is over the 25 ms limit');
+      expect(summary?.frames, 2);
+    });
+  });
 }

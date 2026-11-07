@@ -22,6 +22,10 @@ Future<void> main() async {
         hostDirectoriesProvider.overrideWithValue(const TvDirectories()),
         sessionUploaderProvider.overrideWith((ref) => tvUploader()),
         localPlayerSourceProvider.overrideWithValue(tvKeyboardPlayer),
+        // The dev build shares its game with the phones when SHARE_VIEW names
+        // it, so a measuring run needs only the TV and a joined phone (m12
+        // §2.9).
+        shareViewProvider.overrideWithValue(shareViewEnabled()),
       ],
       child: const TvTestApp(),
     ),

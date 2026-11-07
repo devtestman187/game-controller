@@ -249,7 +249,9 @@ final class HostConnection {
           StatusMessage() ||
           ViewStartMessage() ||
           FrameMessage() ||
-          ViewEndMessage():
+          ViewEndMessage() ||
+          HostAwayMessage() ||
+          HostBackMessage():
         close(CloseCodes.protocolError, 'Unexpected ${message.type}');
     }
   }

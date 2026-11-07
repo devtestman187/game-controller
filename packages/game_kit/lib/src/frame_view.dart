@@ -38,6 +38,7 @@ class FrameView extends StatefulWidget {
     required this.nowMs,
     this.playerId,
     this.settings = HostingSettings.defaults,
+    this.onSounds,
     super.key,
   });
 
@@ -63,6 +64,12 @@ class FrameView extends StatefulWidget {
   /// How much playout the phone may buffer ([HostingSettings.maxPlayoutFrames]).
   final HostingSettings settings;
 
+  /// A frame's sound names, as the render time first reaches it (m12 §2.3):
+  /// the app plays them. Each frame's sounds come once, in the order the
+  /// frames ran, so a phone that draws two frames in one tick hears both in
+  /// turn. Null plays nothing.
+  final void Function(List<String> names)? onSounds;
+
   @override
   State<FrameView> createState() => _FrameViewState();
 }
@@ -80,6 +87,11 @@ class _FrameViewState extends State<FrameView> with SingleTickerProviderStateMix
   _PlayedFrame? _a;
   _PlayedFrame? _b;
   double _t = 0;
+
+  /// The host's step number of the last frame whose sounds were reported, or
+  /// null before a start this view can show: a frame at or below it has had
+  /// its turn (m12 §2.3).
+  int? _soundsReportedN;
 
   @override
   void initState() {
@@ -113,6 +125,10 @@ class _FrameViewState extends State<FrameView> with SingleTickerProviderStateMix
         _addFrame(frame, arrivedAtMs);
       case ViewEnded():
         _stop();
+      case HostAway() || HostBack():
+        // Frames stop while the host is away and come back with it; the view
+        // keeps drawing its newest frame either way (m12 §2.10).
+        break;
     }
   }
 
@@ -132,11 +148,18 @@ class _FrameViewState extends State<FrameView> with SingleTickerProviderStateMix
     _needsUpdate = viewer == null;
     _timing = viewer == null ? null : ViewerTiming(hz: start.hz, maxPlayoutFrames: widget.settings.maxPlayoutFrames);
     _buffer = viewer == null ? null : PlayoutBuffer<_PlayedFrame>();
-    if (viewer != null) widget.stats.reset(hz: start.hz);
+    if (viewer != null) {
+      widget.stats.reset(hz: start.hz);
+      // A new game's frames count from their own first step. A rejoin sends
+      // the newest frame again, so one frame's sounds may replay: accepted
+      // (m12 §0.2).
+      _soundsReportedN = null;
+    }
     _forgetDrawn();
     if (viewer == null) {
       _ticker.stop();
-    } else {
+    } else if (!_ticker.isActive) {
+      // A rejoin sends view_start again while the view is still running.
       _ticker.start();
     }
     setState(() {});
@@ -183,7 +206,11 @@ class _FrameViewState extends State<FrameView> with SingleTickerProviderStateMix
     final timing = _timing;
     final buffer = _buffer;
     if (timing == null || buffer == null) return;
-    final pick = buffer.pick(timing.renderAtMs(widget.nowMs()));
+    final renderAtMs = timing.renderAtMs(widget.nowMs());
+    // Before pick drops the frames the render time has passed: their sounds
+    // play once each, oldest first (m12 §2.3).
+    _reportSounds(buffer, renderAtMs);
+    final pick = buffer.pick(renderAtMs);
     if (pick == null) return;
     final isNewA = !identical(pick.a, _a);
     if (!isNewA && identical(pick.b, _b) && pick.t == _t) return;
@@ -196,6 +223,23 @@ class _FrameViewState extends State<FrameView> with SingleTickerProviderStateMix
       WidgetsBinding.instance.addPostFrameCallback((_) => _reportDrawn(a));
     }
     setState(() {});
+  }
+
+  /// Reports the sounds of every kept frame up to [renderAtMs], in step order,
+  /// once per frame: a frame at or below the last reported step has had its
+  /// turn, and a frame with no sounds still moves that step up (m12 §2.3).
+  void _reportSounds(PlayoutBuffer<_PlayedFrame> buffer, double renderAtMs) {
+    final onSounds = widget.onSounds;
+    if (onSounds == null) return;
+    var last = _soundsReportedN;
+    for (final held in buffer.frames) {
+      if (held.atMs > renderAtMs) break;
+      final frame = held.frame.frame;
+      if (last != null && frame.n <= last) continue;
+      if (frame.sounds.isNotEmpty) onSounds(frame.sounds);
+      last = frame.n;
+    }
+    _soundsReportedN = last;
   }
 
   /// Measures the draw of [a], once per frame: the touch_to_frame sample.
@@ -213,6 +257,13 @@ class _FrameViewState extends State<FrameView> with SingleTickerProviderStateMix
     if (a == null) return const SizedBox.shrink();
     final b = _b;
     final snapshot = b == null ? a.snapshot : a.snapshot.lerpTo(b.snapshot, _t);
-    return viewer.build(context, snapshot, (roster: a.frame.roster, playerId: widget.playerId));
+    return viewer.build(context, _toDraw(snapshot), (roster: a.frame.roster, playerId: widget.playerId));
   }
+
+  /// The snapshot the viewer draws, after the lerp: one seam for whatever the
+  /// phone adds to the host's picture. A `LocalEcho` would apply here, drawing
+  /// this phone's own input before the host's frame shows it (m12 §2.5); it
+  /// isn't built until the measurement asks for it, so this returns [snapshot]
+  /// unchanged.
+  GameSnapshot _toDraw(GameSnapshot snapshot) => snapshot;
 }

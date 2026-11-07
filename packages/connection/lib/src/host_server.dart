@@ -231,7 +231,11 @@ class HostServer {
     RatingAskMessage() => Capability.rating,
     GameLayoutMessage() => Capability.layout,
     StatusMessage() => Capability.status,
-    ViewStartMessage() || FrameMessage() || ViewEndMessage() => Capability.view,
+    ViewStartMessage() ||
+    FrameMessage() ||
+    ViewEndMessage() ||
+    HostAwayMessage() ||
+    HostBackMessage() => Capability.view,
     _ => null,
   };
 

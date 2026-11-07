@@ -32,6 +32,9 @@ class MemoryGameHost implements GameHost {
   final frames = <FrameMessage>[];
   final viewEnds = <ViewEndMessage>[];
 
+  /// Every [hostAway] call, in order: the seconds left, or null for "back".
+  final hostAways = <int?>[];
+
   /// Whether anyone would get a frame: the test sets it.
   @override
   bool hasViewers = false;
@@ -93,6 +96,9 @@ class MemoryGameHost implements GameHost {
 
   @override
   void endView(ViewEndMessage end) => viewEnds.add(end);
+
+  @override
+  void hostAway(int? secondsLeft) => hostAways.add(secondsLeft);
 
   @override
   bool haptic(String playerId, HapticEventMessage event) {

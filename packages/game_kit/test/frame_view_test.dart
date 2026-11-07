@@ -24,15 +24,24 @@ ViewStarted startEvent({
   int hz = 60,
 }) => ViewStarted(ViewStartMessage(game: game, snapshotVersion: snapshotVersion, setup: setup, hz: hz));
 
-/// A frame the host ran at [atMs] with the dot at [x], arriving on time.
+/// A frame the host ran at [atMs] with the dot at [x], arriving on time, with
+/// the sounds [sounds].
 ViewFrame frameEvent(
   int n, {
   required int atMs,
   required double x,
+  List<String> sounds = const [],
   Map<String, int> acks = const {},
   Map<String, ({int number, String name})> roster = const {},
 }) => ViewFrame(
-  FrameMessage(n: n, atMs: atMs, snapshot: {'v': DotSnapshot.version, 'x': x}, acks: acks, roster: roster),
+  FrameMessage(
+    n: n,
+    atMs: atMs,
+    snapshot: {'v': DotSnapshot.version, 'x': x},
+    sounds: sounds,
+    acks: acks,
+    roster: roster,
+  ),
   atMs,
 );
 
@@ -50,7 +59,12 @@ void main() {
   tearDown(() => events.close());
 
   /// The view under test, on the test's clock and stats.
-  Widget underTest({Stream<ViewEvent>? stream, String? playerId, GameRegistry? registry}) => Directionality(
+  Widget underTest({
+    Stream<ViewEvent>? stream,
+    String? playerId,
+    GameRegistry? registry,
+    void Function(List<String>)? onSounds,
+  }) => Directionality(
     textDirection: TextDirection.ltr,
     child: FrameView(
       views: stream ?? events.stream,
@@ -58,12 +72,17 @@ void main() {
       stats: stats,
       nowMs: () => clock.nowMs,
       playerId: playerId,
+      onSounds: onSounds,
     ),
   );
 
   /// Mounts a [FrameView] on the test's stream, clock and stats.
-  Future<void> mount(WidgetTester tester, {String? playerId, GameRegistry? registry}) =>
-      tester.pumpWidget(underTest(playerId: playerId, registry: registry));
+  Future<void> mount(
+    WidgetTester tester, {
+    String? playerId,
+    GameRegistry? registry,
+    void Function(List<String>)? onSounds,
+  }) => tester.pumpWidget(underTest(playerId: playerId, registry: registry, onSounds: onSounds));
 
   /// Delivers [event] to the view (a stream is asynchronous) and draws the
   /// frame that follows it.
@@ -210,6 +229,64 @@ void main() {
     final drained = stats.drain();
     expect(drained.view.frames, 0);
     expect(drained.stages, isEmpty);
+
+    await unmount(tester);
+  });
+
+  testWidgets('each frame reports its sounds once, in step order, as the render time reaches it', (tester) async {
+    final played = <List<String>>[];
+    await mount(tester, onSounds: played.add);
+
+    // Late enough that the first tick after the frames arrive has passed all
+    // three of them.
+    clock.nowMs = 2000;
+    await send(tester, startEvent());
+    // Three frames arriving together: sounds, none, sounds.
+    events.add(frameEvent(1, atMs: 1000, x: 0.1, sounds: const ['A']));
+    events.add(frameEvent(2, atMs: 1016, x: 0.2));
+    events.add(frameEvent(3, atMs: 1032, x: 0.3, sounds: const ['B']));
+    await tester.pump();
+    expect(played, [
+      ['A'],
+      ['B'],
+    ], reason: 'both, in step order, from the one tick that passed all three');
+
+    await tick(tester);
+    expect(played, hasLength(2), reason: 'a frame reports its sounds once, however many ticks draw it');
+
+    // The same step again, with sounds: it has had its turn.
+    events.add(frameEvent(1, atMs: 1048, x: 0.9, sounds: const ['C']));
+    await tester.pump();
+    await tester.pump();
+    expect(played, hasLength(2), reason: 'a step at or below the last reported one never reports again');
+
+    // A new start is a new game: its first step reports its sounds again.
+    await send(tester, const ViewEnded(ViewEndMessage(reason: ViewEndReason.finished)));
+    await send(tester, startEvent());
+    await send(tester, frameEvent(1, atMs: 1100, x: 0.4, sounds: const ['A']));
+    await tick(tester);
+    expect(played, [
+      ['A'],
+      ['B'],
+      ['A'],
+    ]);
+
+    await unmount(tester);
+  });
+
+  testWidgets('a second start without an end (a rejoin) starts over and keeps drawing', (tester) async {
+    await mount(tester);
+    clock.nowMs = 1000;
+    await send(tester, startEvent());
+    await send(tester, frameEvent(0, atMs: 1000, x: 0.25));
+    expect(drawn(tester).snapshot.x, 0.25);
+
+    // The server re-sends view_start and the newest frame to a phone that
+    // reconnects mid-view; the view is still running here.
+    await send(tester, startEvent());
+    await send(tester, frameEvent(5, atMs: 1080, x: 0.75));
+    await tick(tester);
+    expect(drawn(tester).snapshot.x, 0.75);
 
     await unmount(tester);
   });

@@ -123,6 +123,20 @@ void main() {
     expect(advertiser.starts, hasLength(1), reason: 'the advertisement still names a running host');
   });
 
+  test('shareView is off by default, and what the service sets reaches its game host', () async {
+    final service = await startService(advertiser: FakeAdvertiser());
+    expect(service.shareView, isFalse, reason: 'the TV shows its own game');
+    expect(service.gameHost.hasViewers, isFalse, reason: 'nobody has joined');
+
+    service.shareView = true;
+    expect(service.shareView, isTrue);
+    expect(
+      service.gameHost,
+      isA<ServerGameHost>().having((h) => h.shareView, 'shareView', isTrue),
+      reason: 'the game host is the one that sends the frames',
+    );
+  });
+
   test('resume does nothing while the server listens and advertising runs', () async {
     final advertiser = FakeAdvertiser();
     final service = await startService(advertiser: advertiser);
