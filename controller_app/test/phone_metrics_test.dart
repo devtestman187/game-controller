@@ -10,7 +10,7 @@ import 'package:metrics/metrics.dart';
 import 'package:protocol/protocol.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'widget_test.dart' as app;
+import 'support/pump_app.dart' as app;
 
 const mm = phonePxPerMm;
 
