@@ -3,6 +3,7 @@
 /// and a viewer draws a game through a [GameModule].
 library;
 
+export 'src/frame_view.dart';
 export 'src/game_module.dart';
 export 'src/game_registry.dart';
 export 'src/game_session.dart';

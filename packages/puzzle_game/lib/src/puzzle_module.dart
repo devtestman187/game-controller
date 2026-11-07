@@ -91,7 +91,7 @@ final class ShapeRaceViewer implements GameViewer {
 Future<PuzzleLibrary>? _puzzleLoad;
 
 /// Draws the match with the setup's puzzle once the files load: nothing until
-/// then, and "Update the app to see this game" when this app version has no
+/// then, and [updateAppText] when this app version has no
 /// such puzzle (or never loaded its files).
 class _LoadedPuzzle extends StatelessWidget {
   const _LoadedPuzzle({required this.puzzleId, required this.builder});
@@ -106,7 +106,7 @@ class _LoadedPuzzle extends StatelessWidget {
       final puzzle = loaded.data?.byId(puzzleId);
       if (puzzle != null) return builder(puzzle);
       if (loaded.connectionState != ConnectionState.done) return const SizedBox.shrink();
-      return const Center(child: Text('Update the app to see this game'));
+      return const Center(child: Text(updateAppText));
     },
   );
 }
