@@ -69,6 +69,32 @@ void main() {
     );
   });
 
+  test('the setup names the phones layout only for a phones match; a viewer reads it, a missing key means the '
+      'screen, and another value names the key', () {
+    final screen = PuzzleMatch(house(), teams: const {'p1': PuzzleSide.left}, random: Random(1));
+    expect(shapeRaceSetup(screen).containsKey('layout'), isFalse, reason: 'the screen layout is the absent key');
+    final phones = PuzzleMatch(
+      house(),
+      teams: const {'p1': PuzzleSide.left},
+      random: Random(1),
+      target: LayoutTarget.phones,
+    );
+    final phonesSetup = shapeRaceSetup(phones);
+    expect(phonesSetup['layout'], phonesLayoutName);
+    expect(
+      shapeRaceModule.createViewer(phonesSetup),
+      isA<ShapeRaceViewer>().having((v) => v.target, 'target', LayoutTarget.phones),
+    );
+    expect(
+      shapeRaceModule.createViewer(Map.of(phonesSetup)..remove('layout')),
+      isA<ShapeRaceViewer>().having((v) => v.target, 'target', LayoutTarget.screen),
+    );
+    expect(
+      () => shapeRaceModule.createViewer({...phonesSetup, 'layout': 'diagonal'}),
+      throwsA(isA<FormatException>().having((e) => e.message, 'message', contains('"layout"'))),
+    );
+  });
+
   // One test for both viewers: the files load once per process, and a future
   // made in one test's fake clock never resolves in the next test's (Q1).
   testWidgets('a known puzzle draws the match once the files load; an unknown one says to update the app', (

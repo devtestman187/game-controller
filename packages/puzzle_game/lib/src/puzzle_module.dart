@@ -5,15 +5,23 @@ import 'library.dart';
 import 'match.dart';
 import 'puzzle.dart';
 import 'snapshot.dart';
+import 'split_layout.dart';
 import 'view.dart';
 
+/// The setup's "layout" value for the `phones` world (m12 §0.4). The key is
+/// absent for the screen layout, so an app that doesn't know it reads the
+/// setup as before.
+const phonesLayoutName = 'phones';
+
 /// The Shape Race viewer setup (m12 §4): the puzzle to draw, its level, the
-/// clock the bar fills against, and who plays on which side.
+/// clock the bar fills against, who plays on which side, and the world the
+/// sides are laid out in ([phonesLayoutName] when that is the phones').
 Map<String, Object?> shapeRaceSetup(PuzzleMatch match) => {
   'puzzle': match.puzzle.id,
   'level': match.puzzle.level.name,
   'timeLimitS': match.sides.first.game.settings.timeLimitS,
   'teams': {for (final MapEntry(key: id, value: side) in match.teams.entries) id: side.name},
+  if (match.target == LayoutTarget.phones) 'layout': phonesLayoutName,
 };
 
 /// Shape Race as a viewer draws it (m12 §4): frames of [MatchSnapshot], drawn
@@ -41,12 +49,24 @@ final class ShapeRaceModule implements GameModule {
         throw FormatException('view setup "teams": $key has ${value.runtimeType} instead of a side name');
       }
     }
-    return ShapeRaceViewer(puzzleId: puzzleId, timeLimitS: timeLimitS);
+    return ShapeRaceViewer(puzzleId: puzzleId, timeLimitS: timeLimitS, target: _layoutTarget(setup));
   }
 }
 
 /// The one Shape Race module the apps put in their registry (m12 §0).
 const shapeRaceModule = ShapeRaceModule();
+
+/// [setup]'s "layout": the phones' world when it says [phonesLayoutName], the
+/// screen's when the key is absent, and a [FormatException] naming the key
+/// for any other value (m12 §0.4).
+LayoutTarget _layoutTarget(Map<String, Object?> setup) {
+  final layout = setup['layout'];
+  return switch (layout) {
+    null => LayoutTarget.screen,
+    phonesLayoutName => LayoutTarget.phones,
+    _ => throw FormatException('view setup "layout": $layout is not "$phonesLayoutName"'),
+  };
+}
 
 /// [setup]'s [key], or a [FormatException] naming the key when it is missing
 /// or of another type.
@@ -61,7 +81,7 @@ T _field<T>(Map<String, Object?> setup, String key) {
 /// Draws a match on a phone showing the game: the same board (or split
 /// screen) the TV draws, from the frames' [MatchSnapshot] (S8).
 final class ShapeRaceViewer implements GameViewer {
-  const ShapeRaceViewer({required this.puzzleId, required this.timeLimitS});
+  const ShapeRaceViewer({required this.puzzleId, required this.timeLimitS, this.target = LayoutTarget.screen});
 
   /// The puzzle the frames draw, found by ID in the shared files.
   final String puzzleId;
@@ -69,6 +89,10 @@ final class ShapeRaceViewer implements GameViewer {
   /// What the clock bar fills against: the time limit the match started with
   /// (m12 §4, Q2).
   final int timeLimitS;
+
+  /// The world the sides are laid out in, from the setup's "layout": the
+  /// phones' when the host shares its view, else the screen's (m12 §0.4).
+  final LayoutTarget target;
 
   @override
   GameSnapshot decode(Map<String, Object?> json) => MatchSnapshot.fromJson(json);

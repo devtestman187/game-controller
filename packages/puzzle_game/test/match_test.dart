@@ -431,5 +431,24 @@ void main() {
       expect(board.toJson().containsKey('sd'), isFalse);
       expect(board.boards.single.toJson().containsKey('o'), isFalse);
     });
+
+    test('a one-board phones match plays the layout\'s left world and keeps its seed in the snapshot', () {
+      final puzzle = load('house');
+      final m = PuzzleMatch(
+        puzzle,
+        teams: const {'p1': PuzzleSide.left},
+        random: Random(1),
+        target: LayoutTarget.phones,
+      );
+      final layout = SplitLayout.of(puzzle, m.seed, target: LayoutTarget.phones);
+      expect(m.sides, hasLength(1));
+      expect(m.gameOf(PuzzleSide.left).field, same(layout.left));
+      expect(m.gameOf(PuzzleSide.left).angles, layout.angles);
+      final s = m.snapshot();
+      expect(s.boards, hasLength(1));
+      expect(s.seed, m.seed);
+      expect(s.toJson()['sd'], m.seed);
+      expect(MatchSnapshot.decode(s.encode()).seed, m.seed);
+    });
   });
 }

@@ -66,6 +66,12 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
   /// The screen's randomness, made once here at the edge: the puzzle to play
   /// and the match's trays start from it (S8).
   final _random = Random();
+
+  /// The world this round plays in, fixed when the round starts (m12 §0.4):
+  /// the phones' when this host shares its view, because the phones draw the
+  /// game; the screen's otherwise. A change of [HostService.shareView] waits
+  /// for the next round (a rematch builds a new screen).
+  late final LayoutTarget _target;
   MatchResult? _result;
   Puzzle? _puzzle;
   bool _handedOver = false;
@@ -73,6 +79,7 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
   @override
   void initState() {
     super.initState();
+    _target = ref.read(hostServiceProvider).shareView ? LayoutTarget.phones : LayoutTarget.screen;
     // Made here, not lazily: dispose() can't read providers any more.
     _keyboard =
         widget.keyboard ??
@@ -157,6 +164,7 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
                             puzzle: puzzle,
                             teams: widget.teams,
                             random: _random,
+                            target: _target,
                             match: widget.match,
                             paused: paused,
                             abandon: ref.read(hostAbandonProvider),

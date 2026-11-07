@@ -75,4 +75,34 @@ void main() {
     expect(find.text('Time\'s up!'), findsOneWidget);
     expect(find.text('1 of 4 pieces placed'), findsOneWidget);
   });
+
+  testWidgets('a host that shares its view plays a round in the phones layout', (tester) async {
+    final setup = await startRound(tester, shareView: true);
+    expect(setup['layout'], phonesLayoutName, reason: 'the phones draw this round: it names their world');
+  });
+
+  testWidgets('a host that keeps its view plays a round in the screen layout', (tester) async {
+    final setup = await startRound(tester, shareView: false);
+    expect(setup.containsKey('layout'), isFalse, reason: 'the screen is the world a setup leaves unnamed');
+  });
+}
+
+/// Starts one Shape Race round on a host whose [HostService.shareView] is
+/// [shareView], and returns the setup it sent to its view.
+Future<Map<String, Object?>> startRound(WidgetTester tester, {required bool shareView}) async {
+  final fake = await pumpHost(tester, screen: const StubHome());
+  fake.shareView = shareView;
+  tester
+      .state<NavigatorState>(find.byType(Navigator))
+      .push(
+        MaterialPageRoute<void>(
+          builder: (_) => const PuzzleScreen(
+            choice: PuzzleChoice(level: Level.easy),
+            teams: {'p1': PuzzleSide.left},
+          ),
+        ),
+      );
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 500));
+  return fake.gameHost.viewStarts.last.setup;
 }

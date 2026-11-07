@@ -9,6 +9,7 @@ import 'puzzle.dart';
 import 'puzzle_session.dart';
 import 'settings.dart';
 import 'snapshot.dart';
+import 'split_layout.dart';
 import 'view.dart';
 
 /// Plays one match through the game host (PRD v2 P3): every player on a side
@@ -28,6 +29,7 @@ class PuzzlePlayView extends StatefulWidget {
     required this.settings,
     required this.teams,
     required this.random,
+    this.target = LayoutTarget.screen,
     this.paused = false,
     this.onFinished,
     this.match,
@@ -42,6 +44,10 @@ class PuzzlePlayView extends StatefulWidget {
 
   /// Each player's side, from the join screen. Anyone else watches.
   final Map<String, PuzzleSide> teams;
+
+  /// The world the match plays in, chosen by the host when the round starts
+  /// (m12 §0.4): the split screen, or one side per phone.
+  final LayoutTarget target;
 
   /// Nothing moves and the clock stops (the pause menu is open).
   final bool paused;
@@ -83,6 +89,7 @@ class PuzzlePlayViewState extends State<PuzzlePlayView> with SingleTickerProvide
       teams: widget.teams,
       random: widget.random,
       playtest: widget.settings,
+      target: widget.target,
       match: widget.match,
       onFinished: widget.onFinished,
     )..paused = widget.paused;

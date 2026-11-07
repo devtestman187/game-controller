@@ -3,16 +3,21 @@ import 'dart:ui';
 
 import 'puzzle.dart';
 
+/// The gap a tray's packing leaves at its edges and between its rows, in
+/// world units; a layout that sizes a tray to its pieces adds it to the
+/// pieces' extent on each side.
+const trayGap = 2.0;
+
 /// Packs pieces into a tray [width] wide, tallest box first, in rows from the
-/// left with a gap of 2 at the edges and between rows. Each piece after the
-/// first in a row starts [overlap] of the previous box's width before that
-/// box's right edge (overlap 0: a gap of 2 after it instead); a new row starts
-/// when the box would pass width - 2. With overlap > 0, a piece's overlap is
-/// reduced in steps of 0.05 (down to 0) while any piece already placed would
-/// be left less than 55% visible (sample each placed piece's shape on a 0.5
-/// grid; a point is hidden when a later piece's shape contains it). Returns
-/// each piece's box position (top left, relative to the tray's top left), the
-/// packing order (bottom to top) and the height used.
+/// left with a gap of [trayGap] at the edges and between rows. Each piece
+/// after the first in a row starts [overlap] of the previous box's width
+/// before that box's right edge (overlap 0: a [trayGap] after it instead); a
+/// new row starts when the box would pass width - 2. With overlap > 0, a
+/// piece's overlap is reduced in steps of 0.05 (down to 0) while any piece
+/// already placed would be left less than 55% visible (sample each placed
+/// piece's shape on a 0.5 grid; a point is hidden when a later piece's shape
+/// contains it). Returns each piece's box position (top left, relative to the
+/// tray's top left), the packing order (bottom to top) and the height used.
 ({Map<int, Offset> at, List<int> order, double height}) packTray(
   Puzzle puzzle,
   Map<int, double> angles,
@@ -20,7 +25,6 @@ import 'puzzle.dart';
   double overlap = 0,
   double scale = 1,
 }) {
-  const gap = 2.0;
   final shapes = [for (final spec in puzzle.pieces) spec.shape];
   final boxes = [for (final (i, spec) in puzzle.pieces.indexed) _scaledBox(spec.shape.bounds(angles[i]!), scale)];
   final order = [for (var i = 0; i < puzzle.pieces.length; i++) i]
@@ -42,7 +46,7 @@ import 'puzzle.dart';
   final row = <int>[];
   final total = <int, int>{}; // sampled points
   final visible = <int, int>{}; // points still in view
-  var y = gap;
+  var y = trayGap;
   var rowHeight = 0.0;
 
   /// How many of [p]'s points a piece at [boxTopLeft] hides, and whether that
@@ -72,19 +76,19 @@ import 'puzzle.dart';
 
   for (final i in order) {
     final box = boxes[i];
-    var place = Offset(gap, y);
+    var place = Offset(trayGap, y);
     if (row.isNotEmpty) {
       final prev = row.last;
       final prevBox = boxes[prev];
       // The left edge for a piece overlapping the box before it by [o].
       Offset leftAt(double o) =>
-          Offset(o > 0 ? at[prev]!.dx + prevBox.width * (1 - o) : at[prev]!.dx + prevBox.width + gap, y);
+          Offset(o > 0 ? at[prev]!.dx + prevBox.width * (1 - o) : at[prev]!.dx + prevBox.width + trayGap, y);
 
       var hidden = <int, int>{};
       var wrap = false;
       var o = overlap;
       place = leftAt(o);
-      var check = place.dx + box.width > width - gap;
+      var check = place.dx + box.width > width - trayGap;
       while (!check) {
         final result = hideAt(i, place);
         if (!result.tooMuch) {
@@ -99,7 +103,7 @@ import 'puzzle.dart';
         }
         o = max(0, o - 0.05);
         place = leftAt(o);
-        check = place.dx + box.width > width - gap;
+        check = place.dx + box.width > width - trayGap;
       }
       if (check) {
         wrap = true;
@@ -110,9 +114,9 @@ import 'puzzle.dart';
       }
       if (wrap) {
         row.clear();
-        y += rowHeight + gap;
+        y += rowHeight + trayGap;
         rowHeight = 0;
-        place = Offset(gap, y);
+        place = Offset(trayGap, y);
       }
     }
     at[i] = place;
@@ -122,7 +126,7 @@ import 'puzzle.dart';
     total[i] = samplesOf(i).length;
     visible[i] = total[i]!;
   }
-  return (at: at, order: order, height: y + rowHeight + gap);
+  return (at: at, order: order, height: y + rowHeight + trayGap);
 }
 
 /// Sampled shapes, by shape, then angle and scale.

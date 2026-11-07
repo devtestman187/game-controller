@@ -12,6 +12,7 @@ import 'puzzle_report.dart';
 import 'puzzle_status.dart';
 import 'settings.dart';
 import 'snapshot.dart';
+import 'split_layout.dart';
 
 /// The game's name in analytics records.
 const puzzleGameName = 'puzzle';
@@ -54,11 +55,12 @@ class PuzzleSession extends GameSession {
     required Map<String, PuzzleSide> teams,
     required Random random,
     required PuzzleSettings Function() playtest,
+    LayoutTarget target = LayoutTarget.screen,
     PuzzleMatch? match,
     void Function(MatchResult result)? onFinished,
   }) : this._(
          host: host,
-         match: match ?? PuzzleMatch(puzzle, teams: teams, settings: playtest(), random: random),
+         match: match ?? PuzzleMatch(puzzle, teams: teams, settings: playtest(), random: random, target: target),
          playtest: playtest,
          onFinished: onFinished,
        );

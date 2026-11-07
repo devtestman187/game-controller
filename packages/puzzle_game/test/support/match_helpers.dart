@@ -67,6 +67,16 @@ Puzzle crateAndBall() => Puzzle.parse('''
   {"id": "ball", "shape": {"circle": 5}, "color": "#00FF00", "at": [60, 20]}
 ]}''');
 
+/// Four flat pieces spread along the board: a picture far wider than it is
+/// tall, whose one-row phones world would be wider than any landscape phone.
+Puzzle flatWorld() => Puzzle.parse('''
+{"id": "flat", "name": "flat", "level": "easy", "pieces": [
+  {"id": "a", "shape": {"rect": [10, 4]}, "color": "#FF0000", "at": [10, 20]},
+  {"id": "b", "shape": {"rect": [10, 4]}, "color": "#00FF00", "at": [30, 20]},
+  {"id": "c", "shape": {"rect": [10, 4]}, "color": "#0000FF", "at": [50, 20]},
+  {"id": "d", "shape": {"rect": [10, 4]}, "color": "#FFFF00", "at": [70, 20]}
+]}''');
+
 Puzzle twoSquares() => Puzzle.parse('''
 {"id": "squares", "name": "squares", "level": "easy", "pieces": [
   {"id": "left", "shape": {"rect": [10, 10]}, "color": "#FF0000", "at": [20, 20]},

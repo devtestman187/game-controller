@@ -75,42 +75,57 @@ final class MatchSide {
 
 /// Shape Race for 1 to 4 players (PRD v2 M11): one board for a solo player
 /// or a team of two, or two boards side by side, each with its own tray,
-/// against one clock. Players play only on their own side, so they stay in
-/// their own half. The first side to finish wins; at time-up the side with
-/// more pieces placed wins, and equal counts are a draw. Players who didn't
-/// join a side just watch.
+/// against one clock. On phones ([LayoutTarget.phones]) each side plays in the
+/// same on-a-phone world, tray on top, and a solo player has the one side
+/// (m12 §0.4–0.5). Players play only on their own side, so they stay in their
+/// own half. The first side to finish wins; at time-up the side with more
+/// pieces placed wins, and equal counts are a draw. Players who didn't join a
+/// side just watch.
 class PuzzleMatch {
   PuzzleMatch(
     this.puzzle, {
     required Map<String, PuzzleSide> teams,
     PuzzleSettings settings = PuzzleSettings.defaults,
     required Random random,
+    this.target = LayoutTarget.screen,
   }) : teams = Map.unmodifiable(teams),
        format = MatchFormat.of(teams),
        seed = random.nextInt(1 << 32) {
     // Both sides start with the same tray, mirrored, so the race is fair: the
-    // split layout picks the angles and sizes the tray for them.
-    final layout = format.split ? SplitLayout.of(puzzle, seed) : null;
-    sides = layout == null
-        ? [
-            MatchSide(
-              teams.values.firstOrNull ?? PuzzleSide.left,
-              PuzzleGame(puzzle, settings: settings, random: Random(seed)),
-            ),
-          ]
-        : [
-            MatchSide(
-              PuzzleSide.left,
-              PuzzleGame(puzzle, settings: settings, random: Random(seed), field: layout.left, angles: layout.angles),
-            ),
-            MatchSide(
-              PuzzleSide.right,
-              PuzzleGame(puzzle, settings: settings, random: Random(seed), field: layout.right, angles: layout.angles),
-            ),
-          ];
+    // layout picks the angles and sizes the tray for them. A one-board screen
+    // match has no layout; one on phones shows the layout's left world.
+    final layout = format.split || target == LayoutTarget.phones ? SplitLayout.of(puzzle, seed, target: target) : null;
+    sides = switch (layout) {
+      null => [
+        MatchSide(
+          teams.values.firstOrNull ?? PuzzleSide.left,
+          PuzzleGame(puzzle, settings: settings, random: Random(seed)),
+        ),
+      ],
+      final SplitLayout l when format.split => [
+        MatchSide(
+          PuzzleSide.left,
+          PuzzleGame(puzzle, settings: settings, random: Random(seed), field: l.left, angles: l.angles),
+        ),
+        MatchSide(
+          PuzzleSide.right,
+          PuzzleGame(puzzle, settings: settings, random: Random(seed), field: l.right, angles: l.angles),
+        ),
+      ],
+      final SplitLayout l => [
+        MatchSide(
+          teams.values.firstOrNull ?? PuzzleSide.left,
+          PuzzleGame(puzzle, settings: settings, random: Random(seed), field: l.left, angles: l.angles),
+        ),
+      ],
+    };
   }
 
   final Puzzle puzzle;
+
+  /// The world the sides are laid out in (m12 §0.4), from the view's setup:
+  /// the split screen, or one side per phone.
+  final LayoutTarget target;
 
   /// The seed the trays were laid out from, kept so a snapshot can rebuild
   /// the same layout.
@@ -193,7 +208,11 @@ class PuzzleMatch {
     _result = MatchResult(format: format, sides: {for (final s in sides) s.side: s.game.result!}, winner: winner);
   }
 
-  /// Everything the view needs (S8).
-  MatchSnapshot snapshot() =>
-      MatchSnapshot(boards: [for (final s in sides) s.game.snapshot()], seed: format.split ? seed : null);
+  /// Everything the view needs (S8). The seed travels whenever the sides came
+  /// from a layout, so a viewer can rebuild it: a race, and a one-board phones
+  /// match, whose side is the layout's left world.
+  MatchSnapshot snapshot() => MatchSnapshot(
+    boards: [for (final s in sides) s.game.snapshot()],
+    seed: format.split || target == LayoutTarget.phones ? seed : null,
+  );
 }

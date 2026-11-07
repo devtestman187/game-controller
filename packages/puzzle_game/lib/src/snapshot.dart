@@ -211,8 +211,9 @@ final class MatchSnapshot implements GameSnapshot {
   /// One board, or two: left, then right.
   final List<PuzzleSnapshot> boards;
 
-  /// The split layout's seed, so a phone can rebuild the same layout. Null on
-  /// one board, where there is only one.
+  /// The seed the sides' layout was built from, so a phone can rebuild the
+  /// same one: a race, or a one-board `phones` match (m12 §1). Null for one
+  /// board on the screen, which starts at its own angles.
   final int? seed;
 
   bool get split => boards.length == 2;

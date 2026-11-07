@@ -1,5 +1,7 @@
 import 'dart:math';
+import 'dart:ui' show Rect, Size;
 
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:puzzle_game/puzzle_game.dart';
 
@@ -219,6 +221,200 @@ void main() {
             }
           }
         }
+      }
+    });
+  });
+
+  group('phones layout', () {
+    const ids = ['house', 'rocket', 'tree', 'boat'];
+
+    /// The picture a phones board holds: every outline's box at its target
+    /// angle, with the layout's 4-unit margin (m12 §1).
+    Rect cropOf(Puzzle puzzle) {
+      var crop = puzzle.pieces.first.shape.bounds(puzzle.pieces.first.targetAngle).shift(puzzle.pieces.first.target);
+      for (final spec in puzzle.pieces.skip(1)) {
+        crop = crop.expandToInclude(spec.shape.bounds(spec.targetAngle).shift(spec.target));
+      }
+      return crop.inflate(4);
+    }
+
+    test('every puzzle and seed puts the tray on top with the clock area beside it and the crop centred below, and the '
+        'pieces pack into the tray as wide as it is', () {
+      for (final id in ids) {
+        final puzzle = load(id);
+        final crop = cropOf(puzzle);
+        for (var seed = 0; seed < 20; seed++) {
+          final layout = SplitLayout.of(puzzle, seed, target: LayoutTarget.phones);
+          final where = '$id seed $seed';
+          // Both sides are the one phone world, and it is kept per target.
+          expect(layout.right, same(layout.left), reason: where);
+          expect(
+            SplitLayout.of(puzzle, seed, target: LayoutTarget.phones),
+            same(layout),
+            reason: '$where: computed once',
+          );
+          expect(SplitLayout.of(puzzle, seed), isNot(same(layout)), reason: '$where: the screen layout is another');
+          final hud = layout.hud!;
+          for (final (side, field) in [('left', layout.left), ('right', layout.right)]) {
+            final world = (Offset.zero & field.size).inflate(0.01);
+            for (final (what, panel) in [('board', field.board), ('tray', field.tray)]) {
+              expect(
+                world.contains(panel.topLeft) && world.contains(panel.bottomRight),
+                isTrue,
+                reason: '$where $side $what leaves the world: $panel',
+              );
+            }
+            expect(
+              field.tray.bottom,
+              lessThanOrEqualTo(field.board.top),
+              reason: '$where $side: the tray is not on top',
+            );
+            expect(
+              field.tray.left,
+              closeTo(SplitLayout.margin, 1e-9),
+              reason: '$where $side: the tray is not at the left',
+            );
+            expect(field.board.overlaps(field.tray), isFalse, reason: '$where $side: the board and the tray overlap');
+            // The clock area is at the right end of the tray row, and the
+            // tray leaves it free.
+            expect(
+              field.tray.right,
+              lessThanOrEqualTo(hud.left + 1e-9),
+              reason: '$where $side: the tray reaches the HUD',
+            );
+            expect(hud.width, closeTo(SplitLayout.hudWidth, 1e-9), reason: '$where $side: the HUD is another width');
+            expect(
+              hud.right,
+              closeTo(field.size.width - SplitLayout.margin, 1e-9),
+              reason: '$where $side: the HUD is not at the right end',
+            );
+            expect(
+              field.tray.width,
+              lessThanOrEqualTo(field.size.width - SplitLayout.hudWidth - 2 * SplitLayout.margin + 1e-9),
+              reason: '$where $side: the tray is wider than the world minus the HUD',
+            );
+            // The board is the crop, centred.
+            expect(field.board.width, closeTo(crop.width, 1e-9), reason: '$where $side: the board is not the crop');
+            expect(field.board.height, closeTo(crop.height, 1e-9), reason: '$where $side: the board is not the crop');
+            expect(
+              field.board.center.dx,
+              closeTo(field.size.width / 2, 1e-9),
+              reason: '$where $side: the board is not centred',
+            );
+            // The rules' packing at the tray's width fits, in one row, and no
+            // piece reaches into the clock's area.
+            final packed = packTray(
+              puzzle,
+              layout.angles,
+              field.tray.width,
+              overlap: field.trayOverlap,
+              scale: field.trayScale,
+            );
+            expect(
+              packed.height,
+              lessThanOrEqualTo(field.tray.height + 1e-9),
+              reason: '$where $side: the pieces overflow the tray by ${packed.height - field.tray.height}',
+            );
+            expect({for (final at in packed.at.values) at.dy}, hasLength(1), reason: '$where $side: more than one row');
+            for (final (i, spec) in puzzle.pieces.indexed) {
+              // The packed box's top left is the piece's centre minus its
+              // scaled box's top left, as the rules place it.
+              final scaled = scaledBounds(spec.shape, layout.angles[i]!, field.trayScale);
+              final box = scaled.shift(field.tray.topLeft + packed.at[i]! - scaled.topLeft);
+              expect(
+                field.tray.inflate(0.01).contains(box.topLeft) && field.tray.inflate(0.01).contains(box.bottomRight),
+                isTrue,
+                reason: '$where $side ${spec.id} leaves the tray: $box',
+              );
+              expect(box.overlaps(hud), isFalse, reason: '$where $side ${spec.id} is in the clock area: $box');
+            }
+            // The one-row world is within a phone's shape, so the tray stays
+            // in one row.
+            expect(
+              field.size.width,
+              lessThanOrEqualTo(SplitLayout.phoneMaxAspect * field.size.height + 1e-9),
+              reason: '$where $side: the world is wider than 2.2:1',
+            );
+          }
+        }
+      }
+    });
+
+    test('a phones split match starts every piece where packTray puts it in the tray, on both sides, and both sides '
+        'start with the same angles', () {
+      for (final id in ids) {
+        final puzzle = load(id);
+        for (var seed = 0; seed < 20; seed++) {
+          final m = PuzzleMatch(
+            puzzle,
+            teams: const {'p1': PuzzleSide.left, 'p2': PuzzleSide.right},
+            random: Random(seed),
+            target: LayoutTarget.phones,
+          );
+          final layout = SplitLayout.of(puzzle, m.seed, target: LayoutTarget.phones);
+          for (final (side, game) in [('left', m.gameOf(PuzzleSide.left)), ('right', m.gameOf(PuzzleSide.right))]) {
+            final field = game.field;
+            expect(field, same(layout.left), reason: '$id seed $seed $side: not the phones world');
+            final packed = packTray(
+              puzzle,
+              layout.angles,
+              field.tray.width,
+              overlap: field.trayOverlap,
+              scale: field.trayScale,
+            );
+            for (final p in game.pieces) {
+              final spec = puzzle.pieces[p.index];
+              expect(p.angle, layout.angles[p.index], reason: '$id seed $seed $side ${spec.id} angle');
+              final scaled = scaledBounds(spec.shape, p.angle, field.trayScale);
+              final at = p.pos - field.tray.topLeft + scaled.topLeft;
+              expect(at.dx, closeTo(packed.at[p.index]!.dx, 1e-9), reason: '$id seed $seed $side ${spec.id} x');
+              expect(at.dy, closeTo(packed.at[p.index]!.dy, 1e-9), reason: '$id seed $seed $side ${spec.id} y');
+            }
+          }
+        }
+      }
+    });
+
+    test('a puzzle whose one-row world would be wider than a phone packs its tray in two rows', () {
+      final puzzle = flatWorld();
+      final layout = SplitLayout.of(puzzle, 1, target: LayoutTarget.phones);
+      final field = layout.left;
+      final oneRow = packTray(puzzle, layout.angles, 1000, overlap: field.trayOverlap, scale: field.trayScale);
+      final packed = packTray(
+        puzzle,
+        layout.angles,
+        field.tray.width,
+        overlap: field.trayOverlap,
+        scale: field.trayScale,
+      );
+      expect({for (final at in packed.at.values) at.dy}, hasLength(2), reason: 'two rows, not one');
+      expect(packed.height, closeTo(field.tray.height, 1e-9), reason: 'the tray is two rows tall');
+      expect(packed.height, greaterThan(oneRow.height), reason: 'one row at a wide tray is shorter');
+    });
+
+    test('prints every puzzle\'s phone world and its smallest piece at two phone sizes', () {
+      // 160 / 25.4 is the px-per-mm the phone app uses for an iOS phone
+      // (m12 §0.2); nothing is asserted on the millimetres yet (s7c checks).
+      const pxPerMm = 160 / 25.4;
+      const boxes = [Size(667, 375), Size(734, 372)];
+      for (final id in ids) {
+        final puzzle = load(id);
+        final world = SplitLayout.of(puzzle, 1, target: LayoutTarget.phones).left.size;
+        final smallest = [for (final spec in puzzle.pieces) spec.shape.size].reduce(min);
+        final line = StringBuffer(
+          '$id: world ${world.width.toStringAsFixed(2)} x ${world.height.toStringAsFixed(2)} units, '
+          'smallest piece ${smallest.toStringAsFixed(2)} units',
+        );
+        for (final box in boxes) {
+          final scale = min(box.width / world.width, box.height / world.height);
+          final px = smallest * scale;
+          line.write(
+            ' | ${box.width.round()}x${box.height.round()}: '
+            '${scale.toStringAsFixed(4)} px/unit, ${px.toStringAsFixed(1)} px, '
+            '${(px / pxPerMm).toStringAsFixed(2)} mm',
+          );
+        }
+        debugPrint(line.toString());
       }
     });
   });

@@ -12,6 +12,7 @@ Refines m12.md §2.8 (D4) for step 7, and wins where they differ. From the G0 su
 5. **A solo `phones` match** is one side with the tray on top and the board below it, all of it shown.
 6. **Tablets show the whole match through a camera choice, not another world.** `ViewContext` gains `wholeMatch` (bool): the phone app sets it on a tablet (`isTabletProvider`). The world stays the `phones` one.
 7. **The game fills the screen behind the top bar** on a phone, for the joined view and the host route alike; the top bar draws over it with a transparent background while a game is shown. (Step 6's s6b does this, since it changes `ControllerScreen` anyway.)
+7b. **Over a game the top bar goes compact** (found on the emulator, Nov 7: the full bar's host name, latency text and mode labels covered the Arena's HUD): only the player badge with the connection dot on the left, and the mode, Settings and Diagnostics as icons on the right, nothing in the middle. Its items draw at the controls' opacity. The full bar comes back when no game is shown. (s7c.)
 8. **No Hard puzzle exists today.** The check prints "no Hard puzzle" until one does; with one, it prints its smallest piece in mm and doesn't fail.
 
 ## 1. The `phones` world (puzzle_game)
