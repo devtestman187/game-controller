@@ -17,6 +17,8 @@ dependencies:
     path: ../connection
   flutter:
     sdk: flutter
+  game_kit:
+    path: ../game_kit
   protocol:
     path: ../protocol
 

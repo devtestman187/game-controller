@@ -152,6 +152,10 @@ void main() {
     }
     await tester.pump(const Duration(milliseconds: 16));
     await tester.pump(const Duration(milliseconds: 16));
+    // The rules run in 1/60 s steps, so a 16 ms frame can pass without one:
+    // a third frame makes sure the step that ends the match (and opens the
+    // results) has run before B is pressed.
+    await tester.pump(const Duration(milliseconds: 16));
     expect(find.text('Done!'), findsOneWidget);
     fake.gameHost.setGamepad('p1', const GamepadState(buttons: {GamepadButton.b}, mode: InputMode.dpad));
     await tester.pump(const Duration(milliseconds: 16));

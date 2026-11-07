@@ -9,6 +9,8 @@ export 'src/game.dart';
 export 'src/library.dart';
 export 'src/match.dart';
 export 'src/puzzle.dart';
+export 'src/puzzle_module.dart';
+export 'src/puzzle_session.dart';
 export 'src/split_layout.dart';
 export 'src/settings.dart';
 export 'src/snapshot.dart';

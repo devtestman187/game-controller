@@ -173,6 +173,9 @@ void main() {
           ),
         ),
       );
+      // Two 16 ms frames: a 1/60 s step runs on the second, and the step is
+      // what sets the phones' layouts, panels and sounds (m12 §3).
+      await tester.pump(const Duration(milliseconds: 16));
       await tester.pump(const Duration(milliseconds: 16));
       return tester.state<PuzzlePlayViewState>(find.byType(PuzzlePlayView));
     }
@@ -181,6 +184,9 @@ void main() {
       host.setGamepad('p1', GamepadState(buttons: buttons, mode: InputMode.dpad));
       await tester.pump(const Duration(milliseconds: 16));
       host.setGamepad('p1', const GamepadState(mode: InputMode.dpad));
+      await tester.pump(const Duration(milliseconds: 16));
+      // The session latches a press until a step has seen the button up, so a
+      // third frame lets the release itself reach a step before the next press.
       await tester.pump(const Duration(milliseconds: 16));
     }
 

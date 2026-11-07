@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'package:game_kit/game_kit.dart';
+
 import 'game.dart';
 
 /// A piece as the view sees it.
@@ -44,7 +46,7 @@ final class PlayerView {
 /// drawing are separate, so a host can send this to phones that show the
 /// game (M12). Versioned, compact JSON: positions to a tenth of a unit,
 /// angles to a tenth of a degree.
-final class PuzzleSnapshot {
+final class PuzzleSnapshot implements GameSnapshot {
   PuzzleSnapshot({
     required this.puzzleId,
     required this.timeLeftMs,
@@ -92,6 +94,7 @@ final class PuzzleSnapshot {
     return true;
   }
 
+  @override
   Map<String, Object?> toJson() => {
     'v': version,
     'pz': puzzleId,
@@ -149,13 +152,58 @@ final class PuzzleSnapshot {
       order: (j['o'] as List?)?.cast<int>(),
     );
   }
+
+  /// The board at [t] between this snapshot (0) and [next] (1) (m12 §4): dots
+  /// and pieces move, a piece turns the shortest way round (350° → 10° passes
+  /// through 0°), and its state, who holds it and the clock stay this
+  /// snapshot's. Pieces are paired by index, which every board lists the same
+  /// way; a piece only in [next] isn't drawn yet.
+  @override
+  PuzzleSnapshot lerpTo(GameSnapshot next, double t) {
+    if (next is! PuzzleSnapshot) {
+      throw ArgumentError.value(next, 'next', 'A puzzle snapshot lerps with another puzzle snapshot');
+    }
+    if (t <= 0) return this;
+    if (t >= 1) return next;
+    double lerp(double from, double to) => from + (to - from) * t;
+    PieceView piece(PieceView a, PieceView b) => PieceView(
+      x: lerp(a.x, b.x),
+      y: lerp(a.y, b.y),
+      angle: _lerpAngleDeg(a.angle, b.angle, t),
+      state: a.state,
+      holders: a.holders,
+      calling: a.calling,
+    );
+    PlayerView player(PlayerView a, PlayerView b) =>
+        PlayerView(number: a.number, x: lerp(a.x, b.x), y: lerp(a.y, b.y), held: a.held);
+    return PuzzleSnapshot(
+      puzzleId: puzzleId,
+      timeLeftMs: timeLeftMs,
+      warning: warning,
+      phase: phase,
+      order: order,
+      readyTargets: readyTargets,
+      hintTargets: hintTargets,
+      finishTimeMs: finishTimeMs,
+      pieces: [for (final (i, a) in pieces.indexed) i < next.pieces.length ? piece(a, next.pieces[i]) : a],
+      players: [for (final (i, a) in players.indexed) i < next.players.length ? player(a, next.players[i]) : a],
+    );
+  }
 }
 
 int _i(double v) => (v * 10).round();
 
+/// [from] turned [t] of the way to [to], the shortest way round the circle:
+/// 350° to 10° passes 0°, so half way is 0° (or 360°).
+double _lerpAngleDeg(double from, double to, double t) {
+  // −180..180: the shortest signed turn, so a piece never spins the long way.
+  final turn = (to - from + 540) % 360 - 180;
+  return (from + turn * t) % 360;
+}
+
 /// A whole match as the view sees it (S8): one board, or the left and right
 /// boards of the split screen.
-final class MatchSnapshot {
+final class MatchSnapshot implements GameSnapshot {
   const MatchSnapshot({required this.boards, this.seed});
 
   static const version = 1;
@@ -169,6 +217,7 @@ final class MatchSnapshot {
 
   bool get split => boards.length == 2;
 
+  @override
   Map<String, Object?> toJson() => {
     'v': version,
     'b': [for (final b in boards) b.toJson()],
@@ -184,6 +233,22 @@ final class MatchSnapshot {
     return MatchSnapshot(
       boards: [for (final b in (j['b'] as List).cast<Map<String, Object?>>()) PuzzleSnapshot.fromJson(b)],
       seed: j['sd'] as int?,
+    );
+  }
+
+  /// The match at [t] between this snapshot (0) and [next] (1) (m12 §4): each
+  /// board moves towards the board of the same side, and the seed stays this
+  /// snapshot's. A board only in [next] isn't drawn yet.
+  @override
+  MatchSnapshot lerpTo(GameSnapshot next, double t) {
+    if (next is! MatchSnapshot) {
+      throw ArgumentError.value(next, 'next', 'A match snapshot lerps with another match snapshot');
+    }
+    if (t <= 0) return this;
+    if (t >= 1) return next;
+    return MatchSnapshot(
+      boards: [for (final (i, a) in boards.indexed) i < next.boards.length ? a.lerpTo(next.boards[i], t) : a],
+      seed: seed,
     );
   }
 }
