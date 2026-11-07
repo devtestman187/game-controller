@@ -1,0 +1,26 @@
+name: game_kit
+description: >-
+  The host's game loop (PRD v2 M12): a game runs in fixed 1/60 s steps inside
+  a GameSession, which sends frames to the controllers showing it, and a viewer
+  draws a game through a GameModule. Shared by the games and the apps.
+publish_to: 'none'
+version: 0.1.0
+
+environment:
+  sdk: ^3.13.0
+  flutter: '>=3.38.0'
+
+resolution: workspace
+
+dependencies:
+  connection:
+    path: ../connection
+  flutter:
+    sdk: flutter
+  protocol:
+    path: ../protocol
+
+dev_dependencies:
+  flutter_lints: ^6.0.0
+  flutter_test:
+    sdk: flutter

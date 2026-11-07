@@ -4,7 +4,7 @@ Two scripts replace the most repeated manual steps:
 
 | Script | What it does | Takes |
 | --- | --- | --- |
-| [`tools/check.sh`](../tools/check.sh) | Every automated check (format, analyze, all seven test suites), one line each | about 3 minutes |
+| [`tools/check.sh`](../tools/check.sh) | Every automated check (format, analyze, all eight test suites), one line each | about 3 minutes |
 | [`tools/review.sh`](../tools/review.sh) | The coding guidelines' mechanical checks over the `.dart` files that changed, one line per finding | a few seconds |
 | [`tools/commit-job.sh`](../tools/commit-job.sh) | Commits one finished job: the changes under its brief's `allow:` paths, the brief, its report and its review files, with the report's draft message | instant |
 | [`tools/release.sh`](../tools/release.sh) | Tags a release with tester notes, pushes it, waits for the Play, TestFlight and Windows builds, and prints a summary | about 20 to 40 minutes, mostly waiting |
@@ -49,6 +49,7 @@ tools/check.sh --verbose puzzle # also print the full output
 | `protocol` | `packages/protocol` | `dart test` |
 | `connection` | `packages/connection` | `dart test` (real sockets on localhost) |
 | `metrics` | `packages/metrics` | `dart test` |
+| `kit` | `packages/game_kit` | `flutter test` |
 | `arena` | `packages/test_game` | `flutter test` |
 | `puzzle` | `packages/puzzle_game` | `flutter test` |
 | `host` | `packages/party_host` | `flutter test` |
