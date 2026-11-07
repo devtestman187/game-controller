@@ -10,21 +10,26 @@
             └────────── packages/protocol (pure Dart) ────────┘
 ```
 
+Since M12 a phone or tablet can host too: `controller_app` runs `party_host`, and its own player reaches it over an in-process link. The M12 sections at the end of this page say who draws the game and who gets its frames.
+
 ## Repo layout
 | Path | What | Platforms |
 | --- | --- | --- |
-| `controller_app/` | Phone controller | Android (minSdk 36), iOS 26+ |
-| `tv_test_app/` | TV test bench + server | Android TV (minSdk 31), Windows desktop |
-| `packages/protocol/` | Message definitions + codec, no Flutter dependency | anywhere Dart runs |
-| `packages/connection/` | Host server, phone client (pairing, heartbeats, reconnect), log buffer and the command-line simulated controller (`bin/sim_controller.dart`). Pure Dart (`dart:io`) | anywhere `dart:io` runs |
-| `packages/metrics/` | Analytics (M9): the phone's touch counters per mode segment, the host's session summary, and the report tool (`bin/report.dart`). Pure Dart | anywhere Dart runs |
-| `packages/test_game/` | The test game (M5): rules in `ArenaGame` (no widgets, unit-tested) and the screen in `ArenaView`, which draws from `ArenaSnapshot` (M10) | Flutter |
-| `packages/puzzle_game/` | Shape Race (M10): puzzle data (`puzzles/`), rules in `PuzzleGame`, snapshots, `PuzzleView` and `PuzzlePlayView` | Flutter |
+| `controller_app/` | Phone and tablet controller; since M12 it also hosts, with the `party_host` screens behind its own controls | Android (minSdk 36), iOS 26+ |
+| `tv_test_app/` | TV test bench: the shell around `party_host` (home screen, test tools) and the TV-only parts | Android TV (minSdk 31), Windows desktop |
+| `packages/protocol/` | Message definitions and codec, capabilities and roles. No Flutter dependency | anywhere Dart runs |
+| `packages/connection/` | The transports (WebSocket, in-process), the host server, the phone client (pairing, heartbeats, reconnect), `GameHost`, the viewer's timing and stats, and the simulated controller (`bin/sim_controller.dart`). Pure Dart (`dart:io`) | anywhere `dart:io` runs |
+| `packages/metrics/` | Analytics (M9 to M12): the phone's touch counters per mode segment, the host's session summary (rounds, battery, heat, where each player watched, frames a second) and the report tool (`bin/report.dart`). Pure Dart | anywhere Dart runs |
+| `packages/game_kit/` | The host's game loop (M12): a `GameSession` in fixed steps that publishes frames, the `GameModule` and `GameViewer` a game exports, and `FrameView`, which draws the game a host shows | Flutter |
+| `packages/test_game/` | The Arena (M5): rules in `ArenaGame` (no widgets, unit-tested), `ArenaSnapshot`, `ArenaView`, the session and the module | Flutter |
+| `packages/puzzle_game/` | Shape Race (M10): puzzle data (`puzzles/`), rules in `PuzzleGame` and `PuzzleMatch`, snapshots, the split layout and the phone cameras, the views and the module | Flutter |
+| `packages/party_host/` | The host app's services and screens (M12): `HostService`, advertising, `HostPresence`, stats, sound, and the game picker, join, play, pause, results, Puzzle settings and Stats screens. Both hosts use them | Flutter |
 | `assets/` | `game_assets` package: images, audio (`audio/`, bundled as a folder), `CREDITS.md`, asset manifest (`lib/asset_manifest.dart`) | Flutter |
 | `docs/` | PRD, decisions, setup guides, per-milestone checklists | |
 
 ## Principles
 - **Protocol is platform-independent.** Nothing in `packages/protocol` knows about Android TV, Windows or Flutter, so Apple TV or smart-TV hosts can be added later.
+- **One host stack (M12).** Everything a host does lives in `party_host`; the TV app and the phone app each supply their identity, folders and platform pieces and nothing else. What a TV host does, a phone host does through the same code (coding guidelines §6).
 - **Hardware behind interfaces.** Haptics, sensors, discovery and transport each sit behind a Dart interface with a fake implementation, so logic is testable on Windows.
 - **Minimal native iOS code.** One small haptics platform channel (M2) plus Info.plist configuration. Everything else uses well-established Flutter packages.
 - **No paid-account capabilities.** No push notifications, App Groups, extensions, iCloud or associated domains.
@@ -178,10 +183,60 @@ The protocol is written down in [protocol.md](protocol.md) (P1), including capab
 - **Simulated controllers.** The TV's home screen adds up to three (`addSimulatedController`), so a 4-player match can be checked with one phone.
 - **Analytics.** Each player's result adds pieces placed, completion time, win and draw, and for teams help calls, solo big-piece carries and the time spent on them. The round end has the format and the winners; the session summary counts rounds per format and wins and draws per input mode.
 
-## Transport (M12 step 2)
+## Milestone 12: phone-hosted play
+Play with no TV: a phone or tablet runs the whole host itself, and the other phones join it and see the game. The design is [m12.md](design/m12.md); each step's contract is beside it. The sections below are the shape of the code.
+
+### Two hosts, one stack
+- **The TV host** is `tv_test_app`: a shell around `party_host` (home screen, test tools, the Windows keyboard player). `LiveHostService` listens on the network, advertises the service with the `kind` its identity names, and plays the games on its own screen.
+- **The phone host** is `controller_app`. "Host a game" builds the same `LiveHostService` with the phone's identity, folders, a `LanListener` on the network and an `InProcessListener` for the phone itself. The `party_host` game picker, Puzzle settings and game screens are the body, with the phone's own `ControlsLayer` over them. "Show on this device" leaves that layer out (C34), so the phone draws the games like a TV: its own player can't press anything then, and the other phones play.
+- **The host phone's own player** is an ordinary `ControllerClient` over `InProcessLink`, pairing with the host's code like a phone on the Wi-Fi (D1). It keeps every controller feature — haptics, layouts, status, rating, metrics — and the host marks its channel `local`.
+- **What each side draws:**
+
+| Host | `shareView` | Who draws the game | What a joined phone shows |
+| --- | --- | --- | --- |
+| TV app, PC, or "Show on this device" | false | the host's screen only | its controls, as before |
+| "Play on this phone" | true | the host phone, and every joined phone | the game behind its own controls |
+
+`HostService.shareView` decides who gets frames, and a change applies from the next `view_start` (m12-joined-view §0.1). The phone host sets it from the start sheet's choice; the TV app keeps it false, and the dev TV app turns it on with a debug define. The host phone's player pairs without the `view` capability, so it never gets frames of its own game.
+
+### Transport (M12 step 2)
 The server and the client no longer name a socket: they talk to a channel, so the host phone's own player can join a game without a network (D1). The contract is in [m12-transport.md](design/m12-transport.md).
 
 - **Three interfaces** (`packages/connection/lib/src/transport/`). `MessageChannel` is one open, ordered, text-only connection with a close code and reason; `ChannelListener` accepts channels for the server; `Connector` opens one for the client and gives up when the client says the session changed. `HostServer({listeners})` starts one or more listeners, `ControllerClient({connector})` opens its channels through one.
 - **Two transports.** `WebSocketListener`, `WebSocketConnector` and `WebSocketChannelAdapter` are the LAN transport that was there before, now with the bind, the status page and the connect loop inside them. `InProcessListener`, `InProcessConnector` and `InProcessLink` connect two ends inside one process.
 - **Why in-process.** A phone host plays its own games (D1): its player is an ordinary `ControllerClient` over a local channel, so it pairs, sends input, takes haptics, reconnects and shows along the same code path as a phone on the Wi-Fi, with no port to open and no firewall to ask about.
 - **Local channels.** An in-process channel reports `isLocal` and no `remoteAddress`, and so does the `ControllerInfo` it produces: the TV leaves the address out for that controller, and a saved pairing keeps the last network address instead of the empty one.
+
+### Sessions and frames (M12 step 3)
+- **The loop.** `GameSession` (`packages/game_kit`) owns time and frames for one game. A screen builds `PuzzleSession` or `ArenaSession` with the host, the game's module, the setup and the `HostingSettings`; on construction the session calls `host.startView`. The view's `Ticker` calls `advance(elapsed)`, which runs as many 1/60 s steps as the time allows (at most 0.1 s), and its post-frame callback calls `drawn()`, which reports `received_to_drawn` for the inputs the drawn frame first carried.
+- **The games.** `step`, `snapshot` and the effects (haptics, records, layouts, status) live in the session; `PuzzlePlayView` and `ArenaView` only drive it and draw `session.current`, so a phone can draw the same game without the loop.
+- **Frames.** After a step that is due at `frameRateHz`, and only while `GameHost.hasViewers`, the session calls `host.publishFrame` with the step number, `at` (the host's clock less the time still to simulate), the snapshot JSON, the sounds played since the last sent frame, each player's last applied input `seq` and the roster. `ServerGameHost` encodes it once for every viewer and keeps the start and newest frame for a viewer that pairs mid-game.
+- **Sound and haptics.** The host plays sounds as it always has, and the frame names them too: a phone showing the game plays them from its own copy when it draws them (S5, C27). Haptics stay per-player messages.
+
+### The frame path: step → frame → playout → `FrameView`
+1. A 1/60 s step runs in the session; the session takes the snapshot the rules now have.
+2. When a frame is due, the host publishes it. The server sends the one encoded `frame` to each controller that listed `view`.
+3. The client takes its arrival on the phone's own clock (`ControllerClient.nowMs`) and puts `ViewFrame` on `ControllerClient.view`.
+4. `FrameView` (game_kit) measures the frame's skew above the fastest arrival in the last 2 s, decodes the snapshot through the module's `GameViewer` and adds it to the `PlayoutBuffer`.
+5. Each Ticker frame it asks `ViewerTiming.renderAtMs(now)` = the phone's clock − the base − the playout delay. The delay is the 95th percentile of the recent frames' lateness, clamped to `maxPlayoutFrames` frame intervals, so it covers what the network holds up without adding much. The buffer picks the frames either side of that host time and the view draws the older one lerped toward the newer (`GameSnapshot.lerpTo`: positions lerp, angles take the shortest arc, everything else from the older frame), and holds at the newest rather than drawing ahead of it.
+6. The draw reports `touch_to_frame` (from the frame's `acks` and the phone's own clock) and the arrival `frame_jitter` to `ViewerStats`. They go to the host in the phone's metrics batches, and the session summary keeps them per frame rate. Diagnostics shows them in its "Game view" section.
+
+A game this app version can't draw — no module for it, or a newer snapshot version in its start — is shown as "Update the app to see this game", and a frame that doesn't decode is dropped while the frame before it keeps drawing.
+
+### Host interruptions (M12 step 5)
+- **While the host is hidden.** The phone host drives `HostPresence` from an `AppLifecycleListener`. When the app is hidden or the screen locks, the round pauses like an open pause menu (no menu is shown) and the game host sends `host_away` with 30 s.
+- **When it comes back.** `HostService.resume()` restarts the server on its port if the system stopped listening, and the advertising, while the round is still paused; then the round goes on and `host_back` tells the phones that show it. Resuming doesn't catch up the missed time.
+- **When it stays away.** Over 30 s the round is abandoned: `GameSession.abandon` ends the view with `abandoned` without another step, the round is recorded with reason `abandoned`, and the host returns to the game picker.
+- **On the joined phone.** "Waiting for the host" counts down from `host_away`'s seconds, or from 30 s when its link to a host showing a game drops (a suspended host says nothing, and the heartbeat catches it). `host_back`, a new `view_start` or a `view_end` ends the wait; an `abandoned` end shows "The host was away too long, so the round ended." for 4 s. A phone that dropped reconnects with its token and gets the start and the newest frame.
+
+### The puzzle and the Arena on phones (M12 step 7)
+- **The layout target.** `LayoutTarget` is `screen` (the picture a TV draws) or `phones` (the tray along the top). The host picks it when the round is made — `phones` when it shares its view, `screen` otherwise — and sends it in the puzzle's setup as `layout`. The rules and every viewer build the same world from the puzzle, the seed and the target, so they agree on where every piece is.
+- **A `phones` side.** The tray is one row of pieces at 75% with the most compact start angles, the clock, both sides' counts and the time bar sit to its right, and the cropped board is below; the world is sized to that content, because a phone's height is what limits the scale. A solo match is the one board with the tray on top.
+- **Cameras (`PuzzleCamera`).** A phone draws its own side: that side's world fitted to the box, with the spare height on top away from the thumbs, and the strip says "You 2/4" and "Right 3/6". It draws the whole match when its player plays no side, on a tablet (`ViewContext.wholeMatch`), or on a screen layout. The host phone draws with the same rule through `ownPlayerIdProvider`, so a host and a joined phone see the same picture.
+- **The Arena** shows the whole field on every phone, under the same layer of controls.
+- **The size check.** `minPieceMm` (8.5) is the smallest a piece's circumscribed diameter may draw on a phone; a test in `controller_app` checks every puzzle at the smallest phone screen and prints the table.
+
+### Battery and heat (M12 step 8)
+- **The host's own readings.** `party_host` asks `hostDeviceMonitorProvider` for battery, charging, Low Power Mode and thermal state; the phone app supplies an adapter over its `DeviceStatusSource`, and the TV supplies none, so it records nothing.
+- **The summary.** The session summary gains where each player watched (`host_screen`, `host_phone` or `joined_phone`), the frame rate of each round (`hz`), each round's battery start and end and thermal state, and the host device's own tally: battery at the start and end, whether it charged, whether the system asked for less work, and the seconds spent in each thermal state. A player's delay samples are kept by the frame rate they arrived under (`stagesByHz`) as well as together.
+- **The frame rate.** `HostingSettings.frameRateHz` is 20 to 60, 60 by default, and a round keeps the rate it started at; the dev TV app can take one from a debug start option. The summary schema stays 1: every new field is optional.

@@ -1,6 +1,6 @@
 # Thumb Party protocol
 
-Version 1, as built in M9 and extended in M10 (Thumb Party 0.10.0). This is the contract between a controller (the phone app) and a host (the TV app on Android TV or Windows). It's written so another host or controller (an engine kit, a PC bridge, a v3 receiver) can be built from it alone. The code that implements it is `packages/protocol` (messages, codec) and `packages/connection` (server, client); every field below can be checked there.
+Version 1, as built in M9 and extended in M10, M11 and M12 (Thumb Party 0.12.0). This is the contract between a controller (the phone app) and a host (the TV app on Android TV or Windows, or the phone app hosting a game since M12). It's written so another host or controller (an engine kit, a PC bridge, a v3 receiver) can be built from it alone. The code that implements it is `packages/protocol` (messages, codec) and `packages/connection` (server, client); every field below can be checked there.
 
 ## 1. Discovery
 
@@ -9,10 +9,13 @@ The host advertises a DNS-SD service on the local network:
 | Item | Value |
 | --- | --- |
 | Service type | `_gamectl._tcp` (iOS needs it in `NSBonjourServices`) |
-| Instance name | `Thumb Party TV (<host name>)`; may get a suffix if taken |
+| Instance name | `Thumb Party TV (<host name>)` for the TV app, `Thumb Party on <phone name>` for a phone host (M12); may get a suffix if taken |
 | Port | `45780`, or any free port if that's taken (the advertised port is the truth) |
 | TXT `id` | The host's stable random ID (hex) |
 | TXT `v` | The protocol version, `1` |
+| TXT `kind` | M12: `tv`, `pc`, `phone` or `tablet`. Left out by older hosts |
+
+A phone's host list shows a phone or tablet as such from `kind`; a host without it shows as a TV, which is what every host looked like before M12.
 
 A controller may also connect to an address the user types (`IP` or `IP:port`, port 45780 by default). The TXT `id` lets the controller know a host it has paired with before, even at a new address.
 
@@ -20,7 +23,8 @@ Any HTTP request to the port other than the WebSocket upgrade gets a short plain
 
 ## 2. Transport and framing
 
-- One WebSocket per controller: `ws://<address>:<port>/ws`. The controller connects (the host only listens). Roles (§5) are separate from this: a future display may be the side that connects out.
+- **On the network**: one WebSocket per controller, `ws://<address>:<port>/ws`. The controller connects (the host only listens). Roles (§5) are separate from this: a future display may be the side that connects out.
+- **Inside one process** (M12): the host phone's own player reaches the host over a local channel, which carries the same messages in the same order. It has no network address, and the host marks it `local`. Pairing, tokens, heartbeats and close codes are the same on both: the own player pairs with the host's current code like a phone on the Wi-Fi.
 - Every frame is a UTF-8 text frame holding one JSON object, the **envelope**: `{"v": 1, "t": "<type>", ...fields}`.
   - `v` (integer, required): the protocol version. A peer with a different `v` closes with **4000**.
   - `t` (string, required): the message type.
@@ -50,7 +54,7 @@ The version number changes only for a breaking change. Everything else is additi
 | `rating` | `rate_ask` (host → controller) and `rating` (controller → host) | M9 |
 | `layout` | `layout` (host → controller): the game's labels, hidden buttons and modes | M10 |
 | `status` | `status` (host → controller): the phone's status panel | M10 |
-| `view` | `view_start`, `frame` and `view_end` (host → controller): the game itself, for a controller that shows it (§10a) | M12 |
+| `view` | `view_start`, `frame`, `view_end`, `host_away` and `host_back` (host → controller): the game itself, for a controller that shows it (§10a) | M12 |
 
 Peers without capabilities (apps before 0.9.0) send no `caps`; treat that as an empty list. The v1 messages (§6 to §9) need no capability.
 
@@ -109,7 +113,7 @@ Until a controller is paired the host accepts only `hello`, `pair`, `ping` and `
 
 ### `player` (host → controller)
 
-`{"n": 1}`: the controller's player number (from 1), sent after pairing and whenever it changes. Colours by number (ARGB): 1 `0xFF5AAAFF`, 2 `0xFFFFA040`, 3 `0xFFD27CFF`, 4 `0xFF4DE0C0`, 5 `0xFFFF6F91`, 6 `0xFFE8E86A`, then repeating. A number stays reserved for a minute after its controller drops, so a short Wi-Fi drop doesn't swap players. Players on the host itself (a keyboard) take numbers too.
+`{"n": 1}`: the controller's player number (from 1), sent after pairing and whenever it changes. Colours by number (ARGB): 1 `0xFF5AAAFF`, 2 `0xFFFFA040`, 3 `0xFFD27CFF`, 4 `0xFF4DE0C0`, 5 `0xFFFF6F91`, 6 `0xFFE8E86A`, then repeating. A number stays reserved for a minute after its controller drops, so a short Wi-Fi drop doesn't swap players. Players on the host itself (a keyboard, or the host phone's own player) take numbers too.
 
 ## 6. Heartbeats and latency
 
@@ -225,17 +229,23 @@ Timing: about every 10 s, on every mode or settings change, and at disconnect. T
 
 ## 10a. Viewing the game (capability `view`, M12)
 
-A controller that lists `view` also shows the game itself: the host runs the game in fixed steps and sends the phone what to draw. The messages below need the capability, so a controller without it never gets one.
+A controller that lists `view` also shows the game itself: the host runs the game in fixed steps and sends the phone what to draw. The messages below need the capability, so a controller without it never gets one. A host that shows the game on its own screen sends none of them: a controller that lists `view` and gets no `view_start` keeps its controller screen.
 
 | Message | Direction | Fields (wire key: meaning) |
 | --- | --- | --- |
-| `view_start` | host → controller | `game`: module ID · `sv`: the snapshot version the frames carry · `setup`: the module's setup JSON · `hz`: frames a second the host publishes |
+| `view_start` | host → controller | `game`: module ID (`shape_race`, `arena`) · `sv`: the snapshot version the frames carry · `setup`: the module's setup JSON · `hz`: frames a second the host publishes |
 | `frame` | host → controller | `n`: step number from 0 · `at`: the host's clock in ms at that step · `s`: the module's snapshot JSON · `snd`: sound names since the last sent frame, left out when empty · `acks`: player ID → the last input seq the host applied (only players with one) · `pl`: player ID → `[number, name]`, the name `""` when the player has none |
-| `view_end` | host → controller | `reason`: `finished` (the game ended), `quit` (someone left) or `abandoned` (the host closed, a new game started) |
+| `view_end` | host → controller | `reason`: `finished` (the game ended), `quit` (someone left) or `abandoned` (the game stopped without ending: the host closed, the connection dropped, a new game started) |
 | `host_away` | host → controller | `s`: whole seconds left before the round ends if the host stays away (0 or more) |
 | `host_back` | host → controller | no fields |
 
-`view_start` comes first, every `frame` after it is one step, and `view_end` last. The host encodes each frame once and sends every viewer the same text.
+`view_start` comes first, `view_end` last, and each `frame` between them is one step of the game, sent `hz` times a second. The host encodes each frame once and sends every viewer the same text.
+
+**`view_start`'s `setup`** belongs to the module. Shape Race sends `puzzle` (the puzzle file's ID), `level` (`easy`, `medium` or `hard`), `timeLimitS`, `teams` (player ID → `left` or `right`) and, when the match uses the tray-on-top layout phones draw, `layout`: `phones`, left out otherwise. The Arena sends `{}`. A viewer of another app version that finds no such puzzle, or can't decode the frames' snapshot version, shows "Update the app to see this game" instead of drawing.
+
+**Sounds.** `snd` lists the sound names a step played, and a phone plays them from its own copy when it draws the frame that carries them, so every phone hears the game. Haptics stay per-player messages (§8).
+
+**Waiting for the host.** While it shows a game, a host that goes away (its app is hidden, the screen locks) sends `host_away` with the seconds left; `host_back` means the game goes on and the frames come back. The host's grace is 30 s, and a round that outlives it ends with `view_end` `abandoned`. A phone whose link to the host drops while it shows a game counts 30 s down by itself, because a suspended host can't send anything.
 
 **`at`.** A step's `at` is the host's clock when the frame is published minus the game time still to simulate after that step, rounded to ms. Steps run inside one drawn frame therefore get evenly spaced times, and a stall or a pause shows up as real time passing. A phone measures a frame's **skew** as its arrival on the phone's own clock minus `at`; the fastest arrival of the last 2 s sets the base and every later frame's jitter is its skew above the base. The phone draws after a playout delay worked out from those jitters, so the host's clock never has to be estimated.
 
@@ -253,7 +263,7 @@ The host closes with 4003 if a controller sends one of these view messages.
 | `metrics`, `rating` | controller → host | host listed `metrics` / `rating` |
 | `metrics_ack`, `rate_ask` | host → controller | controller listed `metrics` / `rating` |
 | `layout`, `status` | host → controller | controller listed `layout` / `status` |
-| `view_start`, `frame`, `view_end` | host → controller | controller listed `view` |
+| `view_start`, `frame`, `view_end`, `host_away`, `host_back` | host → controller | controller listed `view` |
 
 A host that receives a host-only message (or the reverse) closes with 4003; a controller ignores it.
 
@@ -270,6 +280,8 @@ A host that receives a host-only message (or the reverse) closes with 4003; a co
 | Metrics batches | about every 10 s, plus mode changes and disconnect |
 | Player number kept for | 1 minute after a drop |
 | Status panel | at most 10 a second per controller |
+| Frames to a viewer | 20 to 60 a second, 60 by default (`view_start`'s `hz`) |
+| Host away before the round ends | 30 s (the host's grace) |
 | Shortest press a game sees | 50 ms (the host keeps a quick tap held that long) |
 
 The game host interface (`GameHost` in `packages/connection`, PRD v2 P3) is the in-process side of this: games get players, gamepads, haptics, sounds, layouts, the status panel, rating prompts, latency and analytics records from it, and never touch the protocol directly. Games read each gamepad once a frame; so that a tap whose press and release arrive between two frames isn't lost, the host reports every press as held for at least 50 ms.
