@@ -53,6 +53,11 @@ Left for later:
 - **`tools/review.sh`** is 399 lines with a 76-line `--strings` branch: move that branch into its own function or script.
 - **UI spacing:** paddings and sizes are bare numbers (most of the script's `number` notes). A small spacing scale for the host and phone apps belongs with the look-and-sound milestone, which restyles the same screens.
 
+Broken on this PC, left for later (owner, Nov 6: "log what's broken here and move on"). None of them can make `tools/smoke.sh` pass wrongly:
+- **The emulator's window crashes at start** (both AVDs, every GPU mode). Smoke runs it headless, so its results are unaffected; you can't watch the phone live or record from the window. Try: update or reinstall the emulator in Android Studio's SDK Manager. Details under "The Android 12 emulator" below.
+- **The Flutter tool crashes on temp folders when Claude runs `flutter run`** (sandbox on or off; maybe because the Claude app is packaged). The TV app keeps running and hosting; only its log goes quiet. So smoke proves steps from the controller's side only, retries the TV start once (both failing is a false failure), and Claude can't hot-reload or read the TV log, or test TV sounds. Not yet tried from the owner's own terminal: if it works there, one owner run restores the TV-side checks.
+- **Smoke's phone-hello step is skipped** while the TV log is quiet. The phone's player badge already proves the TV took its hello; what's unchecked is that the TV read the phone's details (platform, version) right.
+
 Not debt (checked Nov 6): the `debugPrint` in both `logProvider`s copies log lines to the console in debug builds only, and the `print`s in `tv_test_app/integration_test/sound_test.dart` are that on-device test's output.
 
 ## Open items
