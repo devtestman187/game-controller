@@ -1,5 +1,5 @@
 /// Sent to the TV and shown in Diagnostics. Keep in step with pubspec.yaml.
-const String appVersion = '0.11.0';
+const String appVersion = '0.12.0';
 
 /// The store build number: CI passes the commit count with
 /// `--dart-define=BUILD_NUMBER=...`, the same number the stores show. Local
