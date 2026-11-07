@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:protocol/protocol.dart';
 
 import '../controls.dart';
+import '../host_presence.dart';
 import '../providers.dart';
 import 'controller_menus.dart';
 import 'games_screen.dart';
@@ -27,6 +28,10 @@ final pauseLayout = GameLayoutMessage(
 /// never do, and Start does nothing for the first [startGrace] of a game, so
 /// the press that began it can't pause it. [builder] gets whether the game is
 /// paused.
+///
+/// The game is paused too while the host app is away (m12 §2.10): the
+/// builder gets `paused == true` and no menu opens, so the app comes back to
+/// the game where it left it.
 class Pausable extends ConsumerStatefulWidget {
   const Pausable({super.key, required this.enabled, required this.builder, this.players});
 
@@ -78,7 +83,9 @@ class _PausableState extends ConsumerState<Pausable> {
   }
 
   void _tick() {
-    if (!mounted) return;
+    // Away, the app is hidden: the game is paused as it is, and nothing
+    // opens a menu behind it.
+    if (!mounted || ref.read(hostAwayProvider).value) return;
     _sinceStartMs += ControllerMenus.step.inMilliseconds;
     final players = [
       for (final p in ref.read(gameHostProvider).players)
@@ -122,12 +129,22 @@ class _PausableState extends ConsumerState<Pausable> {
   }
 
   @override
-  Widget build(BuildContext context) => widget.builder(context, _pausedBy != null);
+  Widget build(BuildContext context) {
+    final away = ref.watch(hostAwayProvider);
+    return ValueListenableBuilder<bool>(
+      valueListenable: away,
+      builder: (context, hidden, _) => widget.builder(context, _pausedBy != null || hidden),
+    );
+  }
 }
 
 /// Goes back to the game picker (or the main screen, if the game was opened
 /// from somewhere else).
-void leaveForGamePicker(BuildContext context) =>
+void leaveForGamePicker(BuildContext context) => abandonRound(context);
+
+/// Ends the round the host can't show any more (m12 §2.10): back to the game
+/// picker, as Quit in the pause menu does.
+void abandonRound(BuildContext context) =>
     Navigator.of(context).popUntil((r) => r.settings.name == gamesRouteName || r.isFirst);
 
 class _PauseMenu extends ConsumerWidget {

@@ -10,3 +10,4 @@ export 'src/geometry.dart';
 export 'src/report.dart';
 export 'src/segment.dart';
 export 'src/session.dart';
+export 'src/session_stats.dart';

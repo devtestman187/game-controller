@@ -52,6 +52,9 @@ class FakeHostService implements HostService {
   /// How many times the log was exported.
   int exports = 0;
 
+  /// How many times [resume] was called.
+  int resumes = 0;
+
   /// Haptic events the game host sent: (event, player ID).
   final haptics = <(HapticEventMessage, String?)>[];
 
@@ -84,6 +87,9 @@ class FakeHostService implements HostService {
     exports++;
     return 'D:/logs/controller-test-log.txt';
   }
+
+  @override
+  Future<void> resume() async => resumes++;
 
   @override
   Future<void> dispose() => _changes.close();

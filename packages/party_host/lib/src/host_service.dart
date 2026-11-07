@@ -6,10 +6,12 @@ import 'package:protocol/protocol.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'advertiser.dart';
+import 'host_advertising.dart';
 import 'host_directories.dart';
 import 'host_identity.dart';
 import 'host_log_export.dart';
 import 'host_view_state.dart';
+import 'lan_listener.dart';
 import 'live_stats.dart';
 import 'network_addresses.dart';
 import 'saved_pairings.dart';
@@ -63,6 +65,11 @@ abstract class HostService {
   /// Sounds the games ask for by name (PRD v2 S5), for the sound player.
   Stream<String> get gameSounds;
 
+  /// After the app was in the background (m12 §2.10): restarts the server on
+  /// its port if it stopped listening, and the advertising. Does nothing
+  /// when both run.
+  Future<void> resume();
+
   /// Stops everything and releases the port.
   Future<void> dispose();
 }
@@ -78,13 +85,15 @@ class LiveHostService implements HostService {
   /// [identity] names the host and versions its summaries, [directories]
   /// supplies the session and export folders, [advertiser] finds the host on
   /// the network, and [uploader] sends finished sessions (null when the
-  /// build knows no cloud store).
+  /// build knows no cloud store). [inProcess] is the link to the host
+  /// device's own player, which only the phone app passes (m12 §1).
   LiveHostService({
     required SharedPreferences prefs,
     required LogBuffer log,
     required HostIdentity identity,
     required HostDirectories directories,
     required Advertiser advertiser,
+    InProcessListener? inProcess,
     SessionUploader? uploader,
   }) : _log = log.sink('tv'),
        _logBuffer = log,
@@ -97,15 +106,16 @@ class LiveHostService implements HostService {
       prefs.setString(_hostIdKey, id);
     }
     _hostId = id;
-    _hostName = identity.defaultHostName;
     final saved = loadPairings(prefs);
     _server = HostServer(
       hostId: id,
-      hostName: _hostName,
+      hostName: identity.defaultHostName,
       appVersion: identity.appVersion,
-      // Phones reach this host on the LAN (M12 step 2; a phone hosting its own
-      // player adds a listener of its own in step 3).
-      listeners: [WebSocketListener(hostName: _hostName, log: log.sink('host'))],
+      // Phones reach this host on the LAN, and a phone its own player here (D1).
+      listeners: [
+        LanListener(hostName: identity.defaultHostName, log: log.sink('host')),
+        ?inProcess,
+      ],
       // Saved, so phones reconnect without a code after the app restarts.
       pairings: saved,
       onPairingsChanged: (p) => savePairings(prefs, p),
@@ -152,7 +162,6 @@ class LiveHostService implements HostService {
   final HostDirectories _directories;
   late final Advertiser _advertiser;
   late final String _hostId;
-  late final String _hostName;
   late final HostServer _server;
   late final ServerGameHost _gameHost;
   late final LiveStats _stats;
@@ -172,7 +181,7 @@ class LiveHostService implements HostService {
   HostViewState get state {
     final advert = _advertiser.status;
     return HostViewState(
-      hostName: _hostName,
+      hostName: _identity.defaultHostName,
       host: _server.snapshot,
       addresses: _addresses,
       advertise: advert.state,
@@ -189,7 +198,9 @@ class LiveHostService implements HostService {
   /// Starts the stats, the server and advertising, and keeps the addresses
   /// fresh while it runs.
   Future<void> start() async {
-    _log('Thumb Party TV ${_identity.versionLabel} on ${_identity.hostOs}, host ID ${_hostId.substring(0, 6)}');
+    _log(
+      '${_identity.serviceName} ${_identity.versionLabel} on ${_identity.hostOs}, host ID ${_hostId.substring(0, 6)}',
+    );
     // Stats first, so the first phone already counts.
     try {
       await _stats.start(await _directories.sessions());
@@ -208,6 +219,26 @@ class LiveHostService implements HostService {
     // Addresses change when Wi-Fi reconnects, so keep them fresh.
     _addressTimer = Timer.periodic(addressRefreshInterval, (_) => _refreshAddresses());
     await _startAdvertising();
+  }
+
+  @override
+  Future<void> resume() async {
+    if (_disposed) return;
+    if (!_server.snapshot.running) {
+      try {
+        await _server.start();
+      } catch (e) {
+        _serverError = 'The server could not start: $e';
+        _log(_serverError!);
+        _emit();
+        return;
+      }
+      _serverError = null;
+      await _refreshAddresses();
+      _addressTimer ??= Timer.periodic(addressRefreshInterval, (_) => _refreshAddresses());
+      _emit();
+    }
+    if (_advertiser.status.state != AdvertiseState.advertising) await _startAdvertising();
   }
 
   @override
@@ -271,15 +302,8 @@ class LiveHostService implements HostService {
     await _changes.close();
   }
 
-  Future<void> _startAdvertising() async {
-    final port = _server.port;
-    if (port == null) return;
-    await _advertiser.start(
-      serviceName: 'Thumb Party TV ($_hostName)',
-      port: port,
-      txt: {txtHostId: _hostId, txtProtocolVersion: '$protocolVersion'},
-    );
-  }
+  Future<void> _startAdvertising() =>
+      startAdvertising(advertiser: _advertiser, identity: _identity, hostId: _hostId, port: _server.port);
 
   Future<void> _refreshAddresses() async {
     try {

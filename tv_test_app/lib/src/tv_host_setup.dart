@@ -17,7 +17,8 @@ const firestoreProject = String.fromEnvironment('FIRESTORE_PROJECT');
 const firestoreApiKey = String.fromEnvironment('FIRESTORE_API_KEY');
 
 /// The TV app's host identity (S-a): its version, the host type the stats
-/// record, and the name phones see before the network names it.
+/// record, the kind phones see in the TXT record, and the names it advertises
+/// under.
 HostIdentity tvHostIdentity() => HostIdentity(
   appVersion: appVersion,
   versionLabel: versionLabel,
@@ -26,8 +27,10 @@ HostIdentity tvHostIdentity() => HostIdentity(
       : Platform.isWindows
       ? HostType.windows
       : HostType.other,
+  kind: Platform.isAndroid ? HostKind.tv : HostKind.pc,
   hostOs: Platform.operatingSystem,
   defaultHostName: tvDefaultHostName(),
+  serviceName: tvServiceName(),
 );
 
 /// What the TV calls itself before advertising: "Android TV" on a TV, this
@@ -36,6 +39,9 @@ String tvDefaultHostName() {
   if (Platform.isAndroid) return 'Android TV';
   return Platform.localHostname;
 }
+
+/// The name phones see for this host, e.g. "Thumb Party TV (Android TV)".
+String tvServiceName() => 'Thumb Party TV (${tvDefaultHostName()})';
 
 /// The TV app's folders for the host service (M12 design §2.6): its own
 /// support folder for session summaries and the log export folder.

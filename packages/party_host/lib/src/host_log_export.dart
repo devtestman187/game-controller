@@ -10,12 +10,12 @@ import 'host_view_state.dart';
 /// The exported log: a header with the app, the time and each controller's
 /// latency (PRD T8), then every log line, oldest first.
 ///
-/// [identity] supplies the app's version label and operating system for the
-/// header, so this file has no platform code (S-a). [now] is the time written
-/// in the header, so tests can fix it.
+/// [identity] supplies the app's own name, version label and operating system
+/// for the header, so this file has no platform code (S-a). [now] is the time
+/// written in the header, so tests can fix it.
 String buildLogExport(HostViewState state, LogBuffer log, HostIdentity identity, {required DateTime now}) {
   final b = StringBuffer()
-    ..writeln('Thumb Party TV ${identity.versionLabel} log, ${now.toIso8601String()}')
+    ..writeln('${identity.serviceName} ${identity.versionLabel} log, ${now.toIso8601String()}')
     ..writeln(
       'Host: ${state.hostName} (${identity.hostOs}), port ${state.host.port ?? '-'}, protocol v$protocolVersion',
     )

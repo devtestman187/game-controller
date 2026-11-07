@@ -4,14 +4,16 @@ import 'package:metrics/metrics.dart';
 import 'package:party_host/party_host.dart';
 import 'package:party_host/testing.dart';
 
-/// The identity a TV build supplies: its version label and operating system
-/// go in the header.
+/// The identity a TV build supplies: its name, version label and operating
+/// system go in the header.
 const _identity = HostIdentity(
   appVersion: '0.11.0',
   versionLabel: '0.11.0 (dev)',
   hostType: HostType.androidTv,
+  kind: HostKind.tv,
   hostOs: 'windows',
   defaultHostName: 'Android TV',
+  serviceName: 'Thumb Party TV (Android TV)',
 );
 
 void main() {
@@ -20,7 +22,7 @@ void main() {
       ..add('host', 'Listening on port 45780')
       ..add('host', 'iPhone 3F1C connected');
     final text = buildLogExport(sampleState(), log, _identity, now: DateTime(2026, 10, 25, 20, 15));
-    expect(text, startsWith('Thumb Party TV 0.11.0 (dev) log, '));
+    expect(text, startsWith('Thumb Party TV (Android TV) 0.11.0 (dev) log, '));
     expect(text, contains('2026-10-25T20:15:00.000'));
     expect(text, contains('Host: Android TV (windows), port 45780, protocol v1'), reason: 'from the identity');
     expect(text, contains('P1 iPhone 3F1C (ios 0.1.0), connected'));

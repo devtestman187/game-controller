@@ -10,6 +10,7 @@ export 'src/controls.dart' show Controls, ControlsClaims;
 export 'src/host_directories.dart';
 export 'src/host_identity.dart';
 export 'src/host_log_export.dart';
+export 'src/host_presence.dart';
 export 'src/host_service.dart';
 export 'src/host_view_state.dart';
 export 'src/live_stats.dart';
