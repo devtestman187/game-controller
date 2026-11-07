@@ -3,25 +3,22 @@ part of 'controller_screen.dart';
 /// The touch metrics, the mode's controls over whatever this phone shows
 /// behind them (m12 §2.7), and the demo readout, in a body of [body].
 class _Controls extends ConsumerWidget {
-  const _Controls({required this.mode, required this.body, this.background, this.controls = true});
+  const _Controls({required this.mode, required this.body, this.controls = true});
 
   final PadMode mode;
 
   /// Everything below the top bar: the box the touch metrics and the
-  /// layouts are measured in.
+  /// layouts are measured in. The game behind the controls is bigger than
+  /// this: it fills the safe area, under the bar too (m12 §5).
   final Size body;
 
-  /// The game behind the controls, when this phone shows one.
-  final Widget? background;
-
   /// False for "Show on this device" (C34): nothing to play with here, so
-  /// only the game is drawn and no touch is watched.
+  /// the game alone is drawn and no touch is watched.
   final bool controls;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final game = background;
-    if (!controls) return game ?? const SizedBox.shrink();
+    if (!controls) return const SizedBox.shrink();
     // The touch metrics (M9) see every touch on the controls, and know where
     // each control's touch area is.
     final mm = ref.read(pxPerMmProvider);
@@ -29,18 +26,15 @@ class _Controls extends ConsumerWidget {
       ..map = touchMapFor(mode: mode, body: body, mm: mm, sticks: ref.read(stickSettingsProvider));
     // Over a game the controls take the saved opacity (C28); in controller
     // mode there is nothing behind them and they stay opaque.
-    final opacity = ref.watch(gameShownProvider)
-        ? ref.watch(controlsSettingsProvider).opacity
-        : ControlsSettings.maxOpacity;
+    final showsGame = ref.watch(showsGameProvider);
+    final opacity = showsGame ? ref.watch(controlsSettingsProvider).opacity : ControlsSettings.maxOpacity;
     return Listener(
       behavior: HitTestBehavior.translucent,
       onPointerDown: (e) => metrics.touchDown(e.localPosition.dx / mm, e.localPosition.dy / mm),
       child: Stack(
         children: [
-          Positioned.fill(
-            child: ControlsLayer(opacity: opacity, child: game ?? const SizedBox.shrink()),
-          ),
-          if (game == null) const Positioned(top: 4, left: 0, right: 0, child: Center(child: DemoReadout())),
+          Positioned.fill(child: ControlsLayer(opacity: opacity)),
+          if (!showsGame) const Positioned(top: 4, left: 0, right: 0, child: Center(child: DemoReadout())),
         ],
       ),
     );

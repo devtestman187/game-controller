@@ -33,9 +33,11 @@ void main() {
     await hostReady(tester, host);
     await settle(tester);
 
-    // The picker fills the body, behind the controls that stay on top.
+    // The picker fills the safe area, behind the bar and the controls that
+    // stay on top of it (m12 §5).
     expect(find.byType(party.GamesScreen), findsOneWidget);
-    expect(tester.getRect(find.byType(party.GamesScreen)), tester.getRect(find.byType(ControlsLayer)));
+    expect(tester.getRect(find.byType(party.GamesScreen)), const Rect.fromLTWH(0, 0, 852, 393));
+    expect(tester.getRect(find.byType(ControlsLayer)), const Rect.fromLTWH(0, 52, 852, 341));
     expect(find.byKey(const Key('pickShapeRace')), findsOneWidget);
     // The bar says this phone hosts, and shows the pairing code.
     expect(find.byKey(const Key('hostChip')), findsOneWidget);
@@ -67,7 +69,7 @@ void main() {
     expect(puzzle.teams.keys, [host.client.identity.controllerId]);
     expect(puzzle.teams.values.map((s) => s.name), ['left']);
     await settle(tester);
-    expect(tester.getRect(find.byType(party.PuzzleScreen)), tester.getRect(find.byType(ControlsLayer)));
+    expect(tester.getRect(find.byType(party.PuzzleScreen)), const Rect.fromLTWH(0, 0, 852, 393));
     await until(
       tester,
       () => faceLabels(tester).contains('A Pick up'),
@@ -90,9 +92,9 @@ void main() {
     expect(find.byKey(const Key('dpad')), findsNothing);
     expect(find.byType(BarModes), findsNothing);
     expect(find.byTooltip('Settings'), findsNothing);
-    // It takes the whole body under the bar (the padding's 4 plus the 48-high
-    // row): unlike "Play on this phone", nothing sits beside the game (C34).
-    expect(tester.getRect(find.byType(party.GamesScreen)), const Rect.fromLTWH(0, 52, 852, 341));
+    // It takes the whole safe area, behind the bar (m12 §5): unlike "Play on
+    // this phone", nothing sits beside the game (C34).
+    expect(tester.getRect(find.byType(party.GamesScreen)), const Rect.fromLTWH(0, 0, 852, 393));
 
     // How the others join is still the bar's: the chip and Diagnostics.
     expect(find.byKey(const Key('hostChip')), findsOneWidget);

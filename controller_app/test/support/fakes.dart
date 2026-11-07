@@ -132,8 +132,38 @@ class FakeClient extends ControllerClient {
   @override
   Stream<StatusMessage> get statuses => _statuses.stream;
 
+  /// The game a host shows this phone (m12 §5): the test adds its events to
+  /// this stream, as the client's handler would.
+  final _view = StreamController<ViewEvent>.broadcast();
+
   @override
-  Future<void> dispose() => _changes.close();
+  Stream<ViewEvent> get view => _view.stream;
+
+  /// What the phone measures while it shows a game: a real one, as the client
+  /// makes for a phone that listed view (m12 §4).
+  @override
+  final ViewerStats viewerStats = ViewerStats(hz: ViewerStats.simStepHz);
+
+  /// This phone's clock in ms, which a frame's arrival and its draw are
+  /// measured on (m12 §4): the test moves it, as it moves a real client's
+  /// stopwatch.
+  @override
+  int nowMs = 0;
+
+  /// The host starts showing [start].
+  void viewStart(ViewStartMessage start) => _view.add(ViewStarted(start));
+
+  /// The frame [frame] of the shown game, arriving now on this phone's clock.
+  void viewFrame(FrameMessage frame) => _view.add(ViewFrame(frame, nowMs));
+
+  /// The host stops showing its game.
+  void viewEnd(ViewEndMessage end) => _view.add(ViewEnded(end));
+
+  @override
+  Future<void> dispose() async {
+    await _view.close();
+    await _changes.close();
+  }
 }
 
 class FakeDiscovery implements HostDiscovery {

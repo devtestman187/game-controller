@@ -21,7 +21,7 @@ class BarConnection extends ConsumerWidget {
     final status = ref.watch(gameStatusProvider);
     // While a game shows on this phone the game draws its own status (m12
     // §2.7), so the panel stays out of the bar and the ping shows instead.
-    final gameShown = ref.watch(gameShownProvider);
+    final gameShown = ref.watch(showsGameProvider);
     return Row(
       children: [
         if (client.isConnected && client.player != null) ...[

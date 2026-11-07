@@ -26,12 +26,14 @@ ControllerIdentity loadIdentity(SharedPreferences prefs, {bool isTablet = false,
       ? ('android', isTablet ? 'Android tablet' : 'Android phone')
       : (Platform.operatingSystem, 'Controller');
   // The short suffix tells two phones of the same kind apart on the TV.
+  // Every phone lists `view`: it can show the game its host sends it (m12
+  // §0.1). The host's own player takes it out again in `host/hosting.dart`.
   return ControllerIdentity(
     controllerId: id,
     name: '$base ${id.substring(0, 4).toUpperCase()}',
     platform: platform,
     appVersion: appVersion,
-    capabilities: const [Capability.metrics, Capability.rating, Capability.layout, Capability.status],
+    capabilities: const [Capability.metrics, Capability.rating, Capability.layout, Capability.status, Capability.view],
     device: DeviceInfo(
       kind: isTablet ? DeviceInfo.tablet : DeviceInfo.phone,
       // Landscape: the long side is the width.

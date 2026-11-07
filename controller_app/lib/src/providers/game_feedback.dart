@@ -31,19 +31,25 @@ class GameStatusNotifier extends Notifier<StatusMessage> {
   }
 }
 
-/// Whether a game is drawn on this phone behind the controls (m12 §2.7).
-/// While it is, the status panel is hidden and the controls take the saved
-/// opacity; in controller mode they stay fully opaque.
+/// Whether a game is drawn on this phone behind the controls (m12 §2.7)
+/// because this phone is hosting it: the host route turns it on (m12 §3).
+/// A game a host sends this phone is [viewActiveProvider] instead, and
+/// [showsGameProvider] is the two together.
 final gameShownProvider = NotifierProvider<GameShownNotifier, bool>(GameShownNotifier.new);
 
-/// The host route turns it on while this phone hosts a game (m12 §3); a
-/// joined phone's own view is step 6's turn.
 class GameShownNotifier extends Notifier<bool> {
   @override
   bool build() => false;
 
   void set(bool shown) => state = shown;
 }
+
+/// Whether this phone shows a game at all (m12 §2.7): its own while hosting
+/// ([gameShownProvider]), or the one the host sends it ([viewActiveProvider]).
+/// While it does, the status panel is hidden and the controls take the saved
+/// opacity; in controller mode there's nothing behind them and they stay
+/// fully opaque.
+final showsGameProvider = Provider<bool>((ref) => ref.watch(gameShownProvider) || ref.watch(viewActiveProvider));
 
 /// Haptic events from the TV (M5): how many arrived and were played, and
 /// the latest, for Diagnostics.

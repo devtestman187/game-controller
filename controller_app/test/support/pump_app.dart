@@ -45,12 +45,15 @@ Future<TestApp> pumpApp(
   FakeDeviceStatus? device,
   bool tablet = false,
   Size screen = const Size(852, 393),
+  FakeViewPadding padding = const FakeViewPadding(),
   void Function()? click,
   List<Override> extra = const [],
 }) async {
   // A landscape phone (iPhone 15-ish) unless the test picks another screen.
+  // [padding] is its safe area: a notch, the home indicator.
   tester.view.physicalSize = screen;
   tester.view.devicePixelRatio = 1;
+  tester.view.padding = padding;
   addTearDown(tester.view.reset);
   SharedPreferences.setMockInitialValues({if (paired) 'lastHost': jsonEncode(tv.toJson()), ...saved});
   final prefs = await SharedPreferences.getInstance();

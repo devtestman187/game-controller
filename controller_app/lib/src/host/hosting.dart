@@ -1,7 +1,9 @@
 import 'dart:async';
 
+import 'package:connection/connection.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:party_host/party_host.dart' as party;
+import 'package:protocol/protocol.dart';
 
 import '../providers.dart';
 import 'phone_host.dart';
@@ -57,7 +59,19 @@ PhoneHostInputs _inputs(Ref ref) => (
   identity: ref.read(party.hostIdentityProvider),
   directories: ref.read(party.hostDirectoriesProvider),
   advertiser: ref.read(party.advertiserProvider),
-  controller: ref.read(identityProvider),
+  controller: ownPlayerIdentity(ref.read(identityProvider)),
+);
+
+/// The identity this phone's own player pairs with: the phone's, without
+/// [Capability.view] (m12 §0.1). The host phone draws its own game in
+/// `host/host_games.dart`, so the server must not send it frames, and a server
+/// rule on `isLocal` would also have caught the connection tests' in-process
+/// viewers.
+ControllerIdentity ownPlayerIdentity(ControllerIdentity identity) => identity.copyWith(
+  capabilities: [
+    for (final capability in identity.capabilities)
+      if (capability != Capability.view) capability,
+  ],
 );
 
 /// Builds the host this app runs (the seam tests use, as the TV's

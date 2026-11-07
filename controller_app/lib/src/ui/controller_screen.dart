@@ -16,6 +16,7 @@ import 'connect_screen.dart';
 import 'controls_layer.dart';
 import 'diagnostics_screen.dart';
 import 'host_chip.dart';
+import 'joined_view.dart';
 import 'rating_prompt.dart';
 import 'settings_screen.dart';
 
@@ -27,7 +28,8 @@ part 'controller_top_bar.dart';
 /// on top for the connection, mode, settings and Diagnostics.
 ///
 /// With a [background] it is the game behind the controls instead (m12 §2.7):
-/// the app is hosting, and the same pad plays that game.
+/// the app is hosting, and the same pad plays that game. Without one the
+/// background is the game a host shows this phone ([JoinedView]).
 class ControllerScreen extends ConsumerStatefulWidget {
   const ControllerScreen({super.key, this.background, this.controls = true});
 
@@ -162,20 +164,25 @@ class _ControllerScreenState extends ConsumerState<ControllerScreen> with Widget
             // Too narrow for even the top bar (a phone in split screen, a
             // small window on a tablet): only the message (v2 C32).
             if (window.maxWidth < minWindowWidth) return const TooSmallView();
-            return Column(
+            return Stack(
               children: [
-                _TopBar(hosting: _hosting, controls: widget.controls),
-                Expanded(
-                  child: LayoutBuilder(
-                    builder: (context, body) {
-                      if (body.maxHeight < minBodyHeight) return const TooSmallView();
-                      return _Controls(
-                        mode: mode,
-                        body: body.biggest,
-                        background: widget.background,
-                        controls: widget.controls,
-                      );
-                    },
+                // The game fills the whole safe area, behind the top bar (m12
+                // §5, phone layout §0.7): the bar paints no background of its
+                // own, so the game shows through it.
+                Positioned.fill(child: widget.background ?? const JoinedView()),
+                Positioned.fill(
+                  child: Column(
+                    children: [
+                      _TopBar(hosting: _hosting, controls: widget.controls),
+                      Expanded(
+                        child: LayoutBuilder(
+                          builder: (context, body) {
+                            if (body.maxHeight < minBodyHeight) return const TooSmallView();
+                            return _Controls(mode: mode, body: body.biggest, controls: widget.controls);
+                          },
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],

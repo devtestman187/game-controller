@@ -22,7 +22,7 @@ G3 tests (controller_app):
 
 G4 list (NOT in this job; for your plan only): the waiting card and countdown (contract §0.3), the abandoned notice (§0.5), host list labels (§0.6), `service.shareView` from the start sheet (§0.1), the sound player restart on app show for the joined view, the Diagnostics "Game view" section.
 
-report: line counts of files touched (flag > 300), test counts per check before and after, how `viewActiveProvider` follows a client change, and a plan for the G4 list (files, order, risks) in at most 20 lines.
+in the report: line counts of files touched (flag > 300), test counts per check before and after, how `viewActiveProvider` follows a client change, and a plan for the G4 list (files, order, risks) in at most 20 lines.
 rules: no lib file over 400 (tests 500); every party_host import is `as party`; `diagnostics_screen.dart` untouched in G3; `controller_client.dart` untouched · tools/review.sh: no FAIL on your lines.
 allow: docs/briefs/m12/s6b-g3-report.md · controller_app/lib · controller_app/test · controller_app/pubspec.yaml · pubspec.lock
 pub: yes
