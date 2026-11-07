@@ -8,8 +8,11 @@ library;
 
 export 'src/geometry.dart';
 export 'src/host_device_sample.dart';
+export 'src/paste.dart';
 export 'src/report.dart';
+export 'src/report_rounds.dart';
 export 'src/report_table.dart';
+export 'src/report_watched.dart';
 export 'src/segment.dart';
 export 'src/session.dart';
 export 'src/session_stats.dart';

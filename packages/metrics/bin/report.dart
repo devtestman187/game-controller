@@ -1,14 +1,18 @@
 // The analytics report (PRD v2 M9): per-mode and per-device comparison
-// tables, and CSV, from session summaries.
+// tables, the host and frame-rate tables, and CSV, from session summaries.
 //
 //   cd packages/metrics
 //   dart run metrics:report <folder or .json files>          # exported from the TV app
 //   dart run metrics:report --firestore <project-id> --token "$(gcloud auth print-access-token)"
+//   dart run metrics:report --paste diagnostics.txt           # a phone host's copied Diagnostics
 //   ... --csv sessions.csv                                    # also write one CSV row per player and mode
+//   ... --csv-rounds rounds.csv                               # also write one CSV row per round
 //
 // The TV app's Stats screen exports the session files (Export), and with
 // consent uploads them to Firestore, where only the developer can read them
-// (the security rules allow apps to create documents, nothing else).
+// (the security rules allow apps to create documents, nothing else). A phone
+// that hosts has neither: its last session leaves in the Diagnostics text,
+// which --paste reads back (m12 §0.6).
 import 'dart:convert';
 import 'dart:io';
 
@@ -20,13 +24,21 @@ Thumb Party analytics report.
 Usage: dart run metrics:report [options] [folder or .json files ...]
   --firestore <project>  Download the uploaded sessions from this Firebase project
   --token <token>        OAuth access token for --firestore (gcloud auth print-access-token)
+  --paste <file>         Read the sessions in a pasted text, such as a phone host's Diagnostics
   --csv <file>           Also write one CSV row per player and input mode
-  --help                 This text''';
+  --csv-rounds <file>    Also write one CSV row per round
+  --help                 This text
+
+The by-mode tables count a row per mode: a player's view counts (frames,
+gaps, late, touch ms) repeat on each of their mode rows. The tables after
+them count each player once, and the frame-rate table counts rounds.''';
 
 Future<void> main(List<String> args) async {
   String? project;
   String? token;
   String? csvPath;
+  String? roundsPath;
+  String? pastePath;
   final paths = <String>[];
   for (var i = 0; i < args.length; i++) {
     String value() => i + 1 < args.length ? args[++i] : (throw FormatException('${args[i]} needs a value'));
@@ -35,8 +47,12 @@ Future<void> main(List<String> args) async {
         project = value();
       case '--token':
         token = value();
+      case '--paste':
+        pastePath = value();
       case '--csv':
         csvPath = value();
+      case '--csv-rounds':
+        roundsPath = value();
       case '--help' || '-h':
         stdout.writeln(_usage);
         return;
@@ -44,8 +60,8 @@ Future<void> main(List<String> args) async {
         paths.add(args[i]);
     }
   }
-  if (project == null && paths.isEmpty) {
-    stderr.writeln('Give a folder of session files, or --firestore.\n\n$_usage');
+  if (project == null && pastePath == null && paths.isEmpty) {
+    stderr.writeln('Give a folder of session files, --paste, or --firestore.\n\n$_usage');
     exit(64);
   }
 
@@ -53,6 +69,15 @@ Future<void> main(List<String> args) async {
   var skipped = 0;
   for (final path in paths) {
     summaries.addAll(await readSummaries(path));
+  }
+  if (pastePath != null) {
+    if (!await File(pastePath).exists()) {
+      stderr.writeln('No file at $pastePath');
+      exit(66);
+    }
+    final pasted = summariesInPaste(await File(pastePath).readAsString());
+    if (pasted.isEmpty) stderr.writeln('No session summaries found in $pastePath');
+    summaries.addAll(pasted);
   }
   if (project != null) {
     if (token == null) {
@@ -71,6 +96,10 @@ Future<void> main(List<String> args) async {
   if (csvPath != null) {
     await File(csvPath).writeAsString('${csv(unique)}\n');
     stdout.writeln('CSV written to $csvPath');
+  }
+  if (roundsPath != null) {
+    await File(roundsPath).writeAsString('${csvRounds(unique)}\n');
+    stdout.writeln('Round CSV written to $roundsPath');
   }
   if (skipped > 0) stderr.writeln("Skipped $skipped summaries that couldn't be read");
 }

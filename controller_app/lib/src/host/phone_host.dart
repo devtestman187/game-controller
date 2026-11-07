@@ -10,6 +10,9 @@ import '../host_grace.dart';
 
 /// What a [PhoneHost] is built from: the host's inputs, which the app's root
 /// scope supplies to `party_host`, and this phone's own controller identity.
+/// [monitor] reads this phone's battery and heat for the session summary: the
+/// host service it builds takes it from here, not from the provider graph
+/// (m12 §0.1).
 typedef PhoneHostInputs = ({
   SharedPreferences prefs,
   LogBuffer log,
@@ -17,6 +20,7 @@ typedef PhoneHostInputs = ({
   party.HostDirectories directories,
   party.Advertiser advertiser,
   ControllerIdentity controller,
+  party.HostDeviceMonitor monitor,
 });
 
 /// Builds the host this app runs; a test overrides it with its own inputs.
@@ -42,6 +46,7 @@ class PhoneHost {
       directories: inputs.directories,
       advertiser: inputs.advertiser,
       inProcess: listener,
+      monitor: inputs.monitor,
     );
     final client = ControllerClient(
       identity: inputs.controller,

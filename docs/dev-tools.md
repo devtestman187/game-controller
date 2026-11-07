@@ -307,6 +307,23 @@ tools/emulator.sh shot phone.png
 tools/emulator.sh stop; tools/tv-dev.sh stop   # always clean up
 ```
 
+## The stats report: metrics:report
+
+The session summaries the TV and a host phone save are read by the report tool, from `packages/metrics`:
+
+```bash
+dart run metrics:report <folder or .json files>          # the TV app's Stats → Export writes the folder
+dart run metrics:report --firestore <project> --token "$(gcloud auth print-access-token)"
+dart run metrics:report --paste diagnostics.txt          # a phone host's copied Diagnostics text
+dart run metrics:report <input> --csv sessions.csv       # also: one row per player and input mode
+dart run metrics:report <input> --csv-rounds rounds.csv  # also: one row per round
+```
+
+- **The tables.** By input mode, by device and mode, by host and where they watched, by frame rate, then enjoyment. The by-mode tables count a row per mode, so a player's view counts (frames, gaps, late, touch ms) repeat on each of their mode rows; the tables after them count each player once, and the frame-rate table counts rounds. A round's battery drop per hour is "—" until the round has 5 minutes of samples, and rounds that ran on the charger are skipped.
+- **`--paste`** reads a text where each `Session summary (for the report):` line is followed by one line of session JSON: what a phone that hosts ends its Diagnostics "Copy report" with, so its last session leaves the phone without a file share. Lines that aren't such a summary (junk, older versions) are skipped.
+- **`--csv` and `--csv-rounds`** write plain CSVs for charts: one row per player and mode, and one row per round (`session,host,game,hz,time_s,battery_start,battery_end,thermal`).
+- **Where the sessions come from.** The TV app's Stats screen exports them (and, with consent, uploads them for `--firestore`). A host phone has no such screen; its session reaches the report through the Diagnostics text.
+
 ## Helper agents for Claude Code
 
 Three sub-agents in [`.claude/agents/`](../.claude/agents) let Claude Code hand the most repetitive jobs to a cheaper model (Haiku, or DeepSeek Flash for `flash-worker`). They run the scripts above and return only a short summary, so long test and build output never fills the main conversation. Claude Code loads them when it starts in this repository; `/agents` lists them.

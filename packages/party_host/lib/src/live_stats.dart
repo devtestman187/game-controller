@@ -245,7 +245,9 @@ class LiveStats implements StatsService {
     final s = _session;
     if (s == null) return;
     final summary = s.summary(host.nowMs);
-    _set(_state.copyWith(current: summary));
+    // The last saved summary stays in the state after the session ends, so
+    // the phone's Diagnostics can show it until the app closes (m12 §0.6).
+    _set(_state.copyWith(current: summary, lastSaved: summary));
     await _files.save(_sessionPath, summary);
   }
 

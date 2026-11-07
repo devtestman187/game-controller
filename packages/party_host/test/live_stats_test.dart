@@ -22,6 +22,21 @@ Future<void> waitFor(bool Function() test, {Duration timeout = const Duration(se
   }
 }
 
+/// Deletes a test's temp folder, waiting out Windows' late release of the
+/// session file the last save wrote: under a full run the delete can come
+/// before the file's handle is gone (errno 32), and a moment later it goes.
+Future<void> deleteTempFolder(Directory folder) async {
+  for (var tries = 0; ; tries++) {
+    try {
+      await folder.delete(recursive: true);
+      return;
+    } on FileSystemException {
+      if (tries >= 20) rethrow;
+      await Future<void>.delayed(const Duration(milliseconds: 25));
+    }
+  }
+}
+
 void main() {
   late Directory dir;
   late HostServer server;
@@ -33,7 +48,8 @@ void main() {
     SharedPreferences.setMockInitialValues({'statsConsent': ?consent});
     prefs = await SharedPreferences.getInstance();
     dir = await Directory.systemTemp.createTemp('tp-stats-');
-    addTearDown(() => dir.delete(recursive: true));
+    final folder = dir;
+    addTearDown(() => deleteTempFolder(folder));
     server = HostServer(
       hostId: 'tv',
       hostName: 'Test TV',
@@ -360,6 +376,26 @@ void main() {
       },
     });
     expect(record['watched'], 'host_screen', reason: 'the phone drew no frames');
+  });
+
+  test('the last saved session stays in the state after the session ends', () async {
+    final stats = await startStats();
+    final p = phone('phone-e');
+    p.connect(
+      HostAddress(addresses: ['127.0.0.1'], port: server.port!),
+      code: server.pairingCode,
+    );
+    await until(p.changes, (s) => s.isConnected);
+    await waitFor(() => stats.session != null);
+    final running = stats.session!.id;
+    expect(stats.state.lastSaved, isNull, reason: 'nothing is saved while the session runs');
+
+    // The session ends a [sessionGap] after the last player leaves, and its
+    // save is the one the phone's Diagnostics keeps (m12 §0.6).
+    p.disconnect();
+    await waitFor(() => stats.session == null);
+    expect(stats.state.current, isNull);
+    expect(stats.state.lastSaved?['id'], running, reason: 'the Diagnostics report still shows it');
   });
 
   test('Export copies every session file', () async {

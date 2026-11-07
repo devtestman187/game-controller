@@ -280,6 +280,7 @@ String buildReport(WidgetRef ref) {
     ..writeln()
     ..writeln(log.export());
   _writeHostLog(b, ref);
+  b.write(sessionReport(lastSessionSummary(ref)));
   return b.toString();
 }
 

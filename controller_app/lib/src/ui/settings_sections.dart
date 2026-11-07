@@ -238,7 +238,45 @@ class _GameSection extends ConsumerWidget {
           sliderKey: const Key('controlsOpacitySlider'),
           onChanged: (v) => n.update(s.copyWith(opacity: v)),
         ),
+        const _FrameRateRow(),
       ],
+    );
+  }
+}
+
+/// The rate a game this phone hosts runs at (m12 §0.5): a test option, so it
+/// is always shown and its label says what it is. A change applies from the
+/// next round, since a running round keeps the rate it started with.
+class _FrameRateRow extends ConsumerWidget {
+  const _FrameRateRow();
+
+  /// The space above the row, which puts it apart from the slider before it.
+  static const _topGap = 12.0;
+
+  /// The space between the row's texts and its buttons.
+  static const _labelGap = 4.0;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final hz = ref.watch(hostingFrameRateProvider);
+    final text = Theme.of(context).textTheme;
+    return Padding(
+      padding: const EdgeInsets.only(top: _topGap),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Frame rate (test)', style: text.bodyLarge),
+          Text('For testing: fewer pictures a second saves battery but looks less smooth', style: text.bodySmall),
+          const SizedBox(height: _labelGap),
+          SegmentedButton<int>(
+            key: const Key('settingsFrameRate'),
+            segments: [for (final rate in hostingFrameRates) ButtonSegment(value: rate, label: Text('$rate'))],
+            selected: {hz},
+            showSelectedIcon: false,
+            onSelectionChanged: (rates) => ref.read(hostingFrameRateProvider.notifier).set(rates.single),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -71,6 +71,27 @@ void main() {
       expect(tester.widget<SwitchListTile>(find.byKey(const Key('settingsStickFloating'))).value, isTrue);
     });
 
+    testWidgets('the frame rate shows 60 and saves the rate picked', (tester) async {
+      final app = await pumpApp(tester, paired: true);
+      await openSettings(tester);
+      await scrollTo(tester, find.byKey(const Key('settingsFrameRate')));
+      expect(find.text('Frame rate (test)'), findsOneWidget);
+      expect(find.text('For testing: fewer pictures a second saves battery but looks less smooth'), findsOneWidget);
+      final button = find.byKey(const Key('settingsFrameRate'));
+      expect(tester.widget<SegmentedButton<int>>(button).selected, {60});
+      await tapVisible(tester, find.text('30'));
+      expect(app.prefs.getInt('hostingFrameRateHz'), 30);
+      expect(tester.widget<SegmentedButton<int>>(button).selected, {30});
+    });
+
+    testWidgets('a saved frame rate comes back after a relaunch', (tester) async {
+      await pumpApp(tester, paired: true, saved: {'hostingFrameRateHz': 30});
+      await openSettings(tester);
+      await scrollTo(tester, find.byKey(const Key('settingsFrameRate')));
+      expect(tester.widget<SegmentedButton<int>>(find.byKey(const Key('settingsFrameRate'))).selected, {30});
+      expect(find.text('20'), findsOneWidget, reason: 'the other rates are still offered');
+    });
+
     testWidgets('Defaults puts everything back', (tester) async {
       final app = await pumpApp(
         tester,

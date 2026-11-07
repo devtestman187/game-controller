@@ -1,5 +1,8 @@
+import 'dart:convert';
+
 import 'package:connection/connection.dart';
 import 'package:controller/src/device_status.dart';
+import 'package:controller/src/host/hosting.dart';
 import 'package:controller/src/providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -181,6 +184,51 @@ void main() {
       await scrollTo(tester, find.textContaining('Log (newest last'));
       expect(find.text('Game view'), findsNothing);
       expect(report, isNot(contains('Game view')));
+    });
+  });
+
+  group('the session summary in the report (m12 §0.6)', () {
+    const marker = 'Session summary (for the report):';
+
+    testWidgets('a hosting phone ends its report with the session, one line of JSON', (tester) async {
+      await pumpHostApp(tester);
+      final host = await enterHostMode(tester);
+      // What the every-minute checkpoint does: a save while the session runs.
+      await tester.runAsync(host.service.stats.exportAll);
+      await tester.pump();
+
+      final report = await copiedReport(tester);
+
+      final at = report.indexOf(marker);
+      expect(at, greaterThan(report.indexOf('Host log (this phone is the host):')), reason: 'the report ends with it');
+      final line = report.substring(at + marker.length).split('\n')[1];
+      final summary = jsonDecode(line) as Map<String, Object?>;
+      expect(summary['schema'], 1);
+      expect((summary['host']! as Map<String, Object?>)['type'], 'phone');
+      await tester.runAsync(host.dispose);
+    });
+
+    testWidgets('the session stays in the report after the host stops', (tester) async {
+      await pumpHostApp(tester);
+      final host = await enterHostMode(tester);
+      await tester.runAsync(host.service.stats.exportAll);
+      await tester.runAsync(hostContainer(tester).read(hostingProvider.notifier).stop);
+      await settle(tester);
+
+      final report = await copiedReport(tester);
+
+      expect(report, contains(marker));
+      expect(
+        report,
+        isNot(contains('Host log (this phone is the host):')),
+        reason: 'the host is gone, its session is not',
+      );
+    });
+
+    testWidgets('a phone that has not hosted has no session line', (tester) async {
+      await pumpApp(tester, paired: true);
+      final report = await copiedReport(tester);
+      expect(report, isNot(contains(marker)));
     });
   });
 }

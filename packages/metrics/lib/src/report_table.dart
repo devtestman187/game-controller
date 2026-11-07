@@ -1,6 +1,8 @@
 import 'dart:math';
 
 import 'report.dart';
+import 'report_rounds.dart';
+import 'report_watched.dart';
 
 /// Sums for a group of rows (one mode, or one device and mode).
 final class GroupStats {
@@ -20,11 +22,11 @@ final class GroupStats {
       bad = rows.fold(0, (a, r) => a + r.bad),
       earlySwitches = rows.where((r) => r.earlySwitch).length,
       firstPicks = rows.where((r) => r.firstMode).length,
-      inputMedianMs = _median([for (final r in rows) ?r.inputMedianMs]),
-      touchMedianMs = _median([for (final r in rows) ?r.touchMedianMs]),
-      touchP95Ms = _median([for (final r in rows) ?r.touchP95Ms]),
-      jitterMedianMs = _median([for (final r in rows) ?r.jitterMedianMs]),
-      jitterP95Ms = _median([for (final r in rows) ?r.jitterP95Ms]),
+      inputMedianMs = medianOf([for (final r in rows) ?r.inputMedianMs]),
+      touchMedianMs = medianOf([for (final r in rows) ?r.touchMedianMs]),
+      touchP95Ms = medianOf([for (final r in rows) ?r.touchP95Ms]),
+      jitterMedianMs = medianOf([for (final r in rows) ?r.jitterMedianMs]),
+      jitterP95Ms = medianOf([for (final r in rows) ?r.jitterP95Ms]),
       viewFrames = _sum(rows, (r) => r.viewFrames),
       viewGaps = _sum(rows, (r) => r.viewGaps),
       viewLate = _sum(rows, (r) => r.viewLate);
@@ -68,7 +70,9 @@ final class GroupStats {
   double get frustrationPerMin => perMin(empty + near + slide + rapid);
 }
 
-int? _median(List<int> values) {
+/// The middle of [values], or null when there are none: the tables compare
+/// groups by a median, so one bad sample can't move a whole row.
+int? medianOf(List<int> values) {
   if (values.isEmpty) return null;
   final sorted = [...values]..sort();
   return sorted[sorted.length ~/ 2];
@@ -146,18 +150,18 @@ List<String> _cells(GroupStats g) => [
   g.viewFrames == null ? '-' : '${g.viewFrames}/${g.viewGaps}/${g.viewLate}',
 ];
 
-/// A plain-text comparison table.
-String table(String title, List<GroupStats> groups) {
-  final rows = [for (final g in groups) _cells(g)];
+/// A plain-text table of [headers] and [rows], the first column left-aligned
+/// and the rest right-aligned: the report's one way of printing numbers.
+String plainTable(String title, List<String> headers, List<List<String>> rows) {
   final widths = [
-    for (var c = 0; c < _headers.length; c++) [_headers[c].length, for (final r in rows) r[c].length].reduce(max),
+    for (var c = 0; c < headers.length; c++) [headers[c].length, for (final r in rows) r[c].length].reduce(max),
   ];
   String line(List<String> cells) =>
       [for (var c = 0; c < cells.length; c++) c == 0 ? cells[c].padRight(widths[c]) : cells[c].padLeft(widths[c])]
           .join('  ');
   final b = StringBuffer()
     ..writeln(title)
-    ..writeln(line(_headers))
+    ..writeln(line(headers))
     ..writeln(line([for (final w in widths) '-' * w]));
   for (final r in rows) {
     b.writeln(line(r));
@@ -165,6 +169,9 @@ String table(String title, List<GroupStats> groups) {
   if (rows.isEmpty) b.writeln('(no data)');
   return b.toString();
 }
+
+/// The comparison table of [groups]: the columns above, one row per group.
+String table(String title, List<GroupStats> groups) => plainTable(title, _headers, [for (final g in groups) _cells(g)]);
 
 /// Enjoyment signals per session: length, games played and good ratings.
 String enjoyment(List<Map<String, Object?>> summaries) {
@@ -195,6 +202,8 @@ String report(List<Map<String, Object?>> summaries) {
   return [
     table('By input mode', groupBy(rows, (r) => r.mode)),
     table('By device and mode', groupBy(rows, (r) => '${r.deviceKind} ${r.mode}')),
+    watchedTable(rows),
+    frameRateTable(summaries),
     enjoyment(summaries),
   ].join('\n');
 }

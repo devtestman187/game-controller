@@ -9,6 +9,7 @@ import '../controls_settings.dart';
 import '../feedback.dart';
 import '../gyro.dart';
 import '../haptics.dart';
+import '../host/hosting_frame_rate.dart';
 import '../providers.dart';
 import '../sticks.dart';
 import '../tilt.dart';

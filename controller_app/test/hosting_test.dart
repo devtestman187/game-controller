@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:connection/connection.dart';
 import 'package:controller/src/host/host_overrides.dart';
 import 'package:controller/src/host/hosting.dart';
+import 'package:controller/src/host/hosting_frame_rate.dart';
 import 'package:controller/src/host/phone_host.dart';
 import 'package:controller/src/providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -42,6 +43,7 @@ void main() {
     // Nothing reads the host before the first "Host a game": the chip returns
     // early, so the provider may throw then (m12 §3).
     expect(container.read(hostingProvider), isNull);
+    expect(container.read(party.hostingSettingsProvider).frameRateHz, 60, reason: 'the default rate for tests');
     expect(
       () => container.read(phoneServiceProvider),
       throwsA(predicate((e) => '$e'.contains('No host is running in this app'))),
@@ -82,6 +84,29 @@ void main() {
     await waitFor(() => again.service.state.players.length == 1, () => 'The own player did not join again');
     await hosting.stop();
     expect(again.live, isFalse);
+  });
+
+  test('a game this phone hosts runs at the frame rate saved for tests', () async {
+    final dir = Directory.systemTemp.createTempSync('thumb-party-hosting-');
+    addTearDown(() => dir.deleteSync(recursive: true));
+    SharedPreferences.setMockInitialValues({'hostingFrameRateHz': 30});
+    final prefs = await SharedPreferences.getInstance();
+    final container = ProviderContainer(
+      overrides: [
+        ...phoneHostOverrides(directories: TempHostDirectories(dir)),
+        prefsProvider.overrideWithValue(prefs),
+        identityProvider.overrideWithValue(
+          const ControllerIdentity(controllerId: 'phone-1', name: 'Phone', platform: 'test', appVersion: 't'),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    // The game screens read this when they start a round (m12 §0.5).
+    expect(container.read(party.hostingSettingsProvider).frameRateHz, 30);
+    container.read(hostingFrameRateProvider.notifier).set(20);
+    expect(container.read(party.hostingSettingsProvider).frameRateHz, 20, reason: 'a change needs no restart');
+    expect(prefs.getInt('hostingFrameRateHz'), 20);
   });
 }
 

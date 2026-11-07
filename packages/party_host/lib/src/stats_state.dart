@@ -7,6 +7,7 @@ final class StatsState {
     this.uploaded = 0,
     this.lastError,
     this.current,
+    this.lastSaved,
     this.saved = 0,
   });
 
@@ -28,6 +29,10 @@ final class StatsState {
   /// The session being recorded right now, or null.
   final Map<String, Object?>? current;
 
+  /// The last session saved to a file (m12 §0.6): it stays after the session
+  /// ends, so a host phone can put its last session in the Diagnostics report.
+  final Map<String, Object?>? lastSaved;
+
   /// Session files on this device.
   final int saved;
 
@@ -39,6 +44,7 @@ final class StatsState {
     int? uploaded,
     Object? lastError = _keep,
     Object? current = _keep,
+    Object? lastSaved = _keep,
     int? saved,
   }) => StatsState(
     consent: identical(consent, _keep) ? this.consent : consent as bool?,
@@ -47,6 +53,7 @@ final class StatsState {
     uploaded: uploaded ?? this.uploaded,
     lastError: identical(lastError, _keep) ? this.lastError : lastError as String?,
     current: identical(current, _keep) ? this.current : current as Map<String, Object?>?,
+    lastSaved: identical(lastSaved, _keep) ? this.lastSaved : lastSaved as Map<String, Object?>?,
     saved: saved ?? this.saved,
   );
 }

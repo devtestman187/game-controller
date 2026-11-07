@@ -240,14 +240,16 @@ class SessionCollector {
   }
 
   /// Gives the round that just ended its battery and heat (m12 §0.8): [start]
-  /// is the level when it began, [end] when it ended, and [thermal] the
-  /// device's state at the end. Nothing is written when no round is waiting
-  /// (a game that didn't record a start) or when the round has them already.
-  void roundBattery({double? start, double? end, String? thermal}) {
+  /// is the level when it began, [end] when it ended, [charging] whether the
+  /// device was on the charger then (the report leaves such a round out of the
+  /// battery drop, m12 §1), and [thermal] the device's state at the end.
+  /// Nothing is written when no round is waiting (a game that didn't record a
+  /// start) or when the round has them already.
+  void roundBattery({double? start, double? end, String? thermal, bool charging = false}) {
     if (_rounds.isEmpty) return;
     final round = _rounds.last;
     if (round.containsKey('battery') || round.containsKey('thermal')) return;
-    final battery = {'start': ?batteryLevel(start), 'end': ?batteryLevel(end)};
+    final battery = {'start': ?batteryLevel(start), 'end': ?batteryLevel(end), if (charging) 'charging': true};
     if (battery.isNotEmpty) round['battery'] = battery;
     if (thermal != null) round['thermal'] = thermal;
   }

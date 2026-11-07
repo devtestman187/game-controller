@@ -90,7 +90,12 @@ class HostDeviceSampler {
     final startLevel = await start;
     final sample = await _sample();
     if (round != _round) return; // a newer round began while it read
-    session()?.roundBattery(start: startLevel, end: sample?.battery, thermal: sample?.thermal);
+    session()?.roundBattery(
+      start: startLevel,
+      end: sample?.battery,
+      thermal: sample?.thermal,
+      charging: sample?.charging ?? false,
+    );
   }
 
   /// The timer's reading: [period] seconds have passed in the state it finds,

@@ -1,3 +1,5 @@
+import 'session_player.dart';
+
 /// One player in one input mode in one session: the report's unit of
 /// comparison (PRD v2 "Derived signals in the report").
 final class ModeRow {
@@ -9,6 +11,7 @@ final class ModeRow {
     required this.deviceKind,
     required this.model,
     required this.platform,
+    required this.watched,
     required this.mode,
     required this.ms,
     required this.activeMs,
@@ -43,6 +46,11 @@ final class ModeRow {
   final String deviceKind;
   final String model;
   final String platform;
+
+  /// Where the player watched the game (m12 §0.2): `host_phone`,
+  /// `joined_phone` or `host_screen`, and null for a summary from a version
+  /// that didn't record it.
+  final String? watched;
   final String mode;
   final int ms;
 
@@ -167,6 +175,7 @@ class _PlayerRows {
           if (s is Map) s,
       ],
       stages = (player['stages'] as Map?) ?? const {},
+      watched = _watchedOf(player['watched']),
       firstMode = player['firstMode'] as String?;
 
   final Map player;
@@ -176,6 +185,10 @@ class _PlayerRows {
   final List<Map> ratings;
   final List<Map> switches;
   final Map stages;
+
+  /// Where the player watched (m12 §0.2), or null when the summary doesn't
+  /// say or says something a report can't place.
+  final String? watched;
   final String? firstMode;
 
   /// A row per mode the player was in.
@@ -211,6 +224,7 @@ class _PlayerRows {
       deviceKind: device['kind'] as String? ?? (player['local'] == true ? 'keyboard' : 'unknown'),
       model: device['model'] as String? ?? '',
       platform: player['platform'] as String? ?? '',
+      watched: watched,
       mode: mode,
       ms: ms,
       activeMs: active is num ? active.round() : ms,
@@ -241,5 +255,10 @@ class _PlayerRows {
 }
 
 int _int(Object? v) => v is num ? v.round() : 0;
+
+/// Where a player watched, when the summary names one of the places
+/// [Watched] defines: anything else is a summary a newer version wrote.
+String? _watchedOf(Object? value) =>
+    const {Watched.hostPhone, Watched.joinedPhone, Watched.hostScreen}.contains(value) ? value as String : null;
 
 int _total(Object? counts) => counts is Map ? counts.values.fold(0, (a, v) => a + _int(v)) : 0;

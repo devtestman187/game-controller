@@ -2,7 +2,9 @@ import 'package:flutter_riverpod/misc.dart';
 import 'package:party_host/party_host.dart' as party;
 
 import '../providers.dart';
+import 'host_monitor.dart';
 import 'hosting.dart';
+import 'hosting_frame_rate.dart';
 import 'phone_host_setup.dart';
 
 /// The `party_host` providers this app supplies, in the app's root scope
@@ -24,6 +26,12 @@ List<Override> phoneHostOverrides({required party.HostDirectories directories}) 
   // round hidden too long is abandoned (m12 §2.10). Before the first host
   // there is no round to pause.
   party.hostAwayProvider.overrideWith((ref) => ref.watch(hostingProvider)?.away ?? const party.NeverAway()),
+  // How this phone runs a game: the rate "Frame rate (test)" saves in Settings,
+  // which the host screens read when a round starts (m12 §0.5).
+  party.hostingSettingsProvider.overrideWith((ref) => hostingSettingsAt(ref.watch(hostingFrameRateProvider))),
+  // The battery and heat a hosted session records (m12 §0.1): this phone's own
+  // reading, as the Diagnostics screen shows it.
+  party.hostDeviceMonitorProvider.overrideWith((ref) => PhoneHostMonitor(ref.watch(deviceStatusSourceProvider))),
   // This phone's own player in the match it hosts, so the puzzle screen draws
   // its own side of a phones match (m12-phone-layout §3).
   party.ownPlayerIdProvider.overrideWith((ref) => ref.watch(identityProvider).controllerId),

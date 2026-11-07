@@ -94,6 +94,17 @@ void main() {
     ]);
   });
 
+  test('a round that ran on the charger keeps that in its battery block', () {
+    final c = collector();
+    c.roundStarted(hz: 60);
+    c.roundEnded('arena', timeS: 90, modes: const {});
+    c.roundBattery(start: 0.77, end: 0.79, charging: true, thermal: 'serious');
+    final round = (c.summary(0)['rounds'] as List).single as Map;
+    // The report leaves such a round out of the battery drop (m12 §1).
+    expect(round['battery'], {'start': 0.77, 'end': 0.79, 'charging': true});
+    expect(round['thermal'], 'serious');
+  });
+
   test('a round with no battery sample has no battery block', () {
     final c = collector();
     c.roundStarted(hz: 30);

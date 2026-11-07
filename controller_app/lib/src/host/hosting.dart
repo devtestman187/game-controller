@@ -60,6 +60,7 @@ PhoneHostInputs _inputs(Ref ref) => (
   directories: ref.read(party.hostDirectoriesProvider),
   advertiser: ref.read(party.advertiserProvider),
   controller: ownPlayerIdentity(ref.read(identityProvider)),
+  monitor: ref.read(party.hostDeviceMonitorProvider),
 );
 
 /// The identity this phone's own player pairs with: the phone's, without
