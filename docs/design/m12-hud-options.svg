@@ -1,0 +1,96 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 1490" font-family="Helvetica, Arial, sans-serif">
+  <defs>
+    <clipPath id="scr"><rect width="852" height="393" rx="32"/></clipPath>
+    <g id="base">
+      <rect x="-12" y="-12" width="876" height="417" rx="44" fill="#2a2d34"/>
+      <rect width="852" height="393" rx="32" fill="#12161d"/>
+      <g clip-path="url(#scr)">
+        <rect x="291" y="112" width="270" height="273" rx="8" fill="#232a36"/>
+        <circle cx="363" cy="254" r="52" fill="none" stroke="#2bb365" stroke-width="2.5" stroke-dasharray="7 5"/>
+        <rect x="348" y="299" width="30" height="66" fill="none" stroke="#a0673d" stroke-width="2.5" stroke-dasharray="7 5"/>
+        <circle cx="503" cy="161" r="30" fill="none" stroke="#e8c13a" stroke-width="2.5" stroke-dasharray="7 5"/>
+        <polygon points="437,365 541,365 489,291" fill="none" stroke="#8a96a3" stroke-width="2.5" stroke-dasharray="7 5"/>
+        <circle cx="150" cy="185" r="85" fill="#ffffff" fill-opacity="0.05" stroke="#ffffff" stroke-opacity="0.12"/>
+        <circle cx="150" cy="185" r="36" fill="#ffffff" fill-opacity="0.08"/>
+        <circle cx="620" cy="320" r="68" fill="#ffffff" fill-opacity="0.05" stroke="#ffffff" stroke-opacity="0.12"/>
+        <circle cx="700" cy="120" r="30" fill="none" stroke="#c9a227" stroke-opacity="0.35" stroke-width="3"/>
+        <circle cx="655" cy="168" r="30" fill="none" stroke="#3a7bd5" stroke-opacity="0.35" stroke-width="3"/>
+        <circle cx="745" cy="168" r="30" fill="none" stroke="#ffffff" stroke-opacity="0.12" stroke-width="2"/>
+        <circle cx="700" cy="216" r="30" fill="none" stroke="#2bb365" stroke-opacity="0.35" stroke-width="3"/>
+        <rect x="24" y="12" width="40" height="28" rx="14" fill="#2d4d7a" fill-opacity="0.6"/>
+        <text x="44" y="31" font-size="14" fill="#cfd8e3" text-anchor="middle" fill-opacity="0.7">P1</text>
+        <circle cx="78" cy="26" r="5" fill="#2bb365" fill-opacity="0.6"/>
+        <rect x="92" y="12" width="66" height="28" rx="8" fill="none" stroke="#ffffff" stroke-opacity="0.15"/>
+        <text x="125" y="31" font-size="14" fill="#cfd8e3" fill-opacity="0.6" text-anchor="middle">4541</text>
+        <rect x="748" y="16" width="22" height="18" rx="4" fill="none" stroke="#ffffff" stroke-opacity="0.35"/>
+        <circle cx="796" cy="25" r="10" fill="none" stroke="#ffffff" stroke-opacity="0.35" stroke-width="2"/>
+        <rect x="818" y="16" width="22" height="18" rx="3" fill="none" stroke="#ffffff" stroke-opacity="0.35"/>
+        <circle cx="359" cy="119" r="10" fill="#4f9dff" stroke="#ffffff" stroke-width="2"/>
+        <text x="359" y="124" font-size="12" fill="#ffffff" text-anchor="middle">1</text>
+      </g>
+    </g>
+    <g id="trayPacked">
+      <rect x="259" y="8" width="181" height="96" rx="8" fill="#1d232d"/>
+      <circle cx="308" cy="56" r="40" fill="#2bb365"/>
+      <polygon points="311,17 369,17 353,74" fill="#8a96a3"/>
+      <circle cx="376" cy="39" r="23" fill="#e8c13a"/>
+      <rect x="378" y="16" width="55" height="23" fill="#a0673d"/>
+    </g>
+  </defs>
+
+  <rect width="680" height="1490" fill="#ffffff"/>
+
+  <text x="20" y="28" font-size="17" fill="#222">Today (build 2)</text>
+  <text x="20" y="47" font-size="12" fill="#555">The clock and score float at the tray row's right end, left-aligned, with a thin bar under them.</text>
+  <g transform="translate(20,62) scale(0.75)">
+    <use href="#base"/>
+    <use href="#trayPacked"/>
+    <text x="446" y="52" font-size="40" font-weight="bold" fill="#ffffff">1:31</text>
+    <text x="446" y="86" font-size="22" fill="#ffffff">You 0/4</text>
+    <rect x="440" y="98" width="154" height="5" fill="#4a5260"/>
+  </g>
+
+  <text x="20" y="388" font-size="17" fill="#222">Option 1: a matching card</text>
+  <text x="20" y="407" font-size="12" fill="#555">The clock gets a card the same height and style as the tray, centred, with the time bar inside it.</text>
+  <g transform="translate(20,422) scale(0.75)">
+    <use href="#base"/>
+    <use href="#trayPacked"/>
+    <rect x="448" y="8" width="146" height="96" rx="8" fill="#1d232d"/>
+    <text x="521" y="52" font-size="34" font-weight="bold" fill="#ffffff" text-anchor="middle">1:31</text>
+    <text x="521" y="76" font-size="14" fill="#9aa4b2" text-anchor="middle">0 of 4 placed</text>
+    <rect x="462" y="88" width="118" height="6" rx="3" fill="#323a47"/>
+    <rect x="462" y="88" width="78" height="6" rx="3" fill="#2bb365"/>
+  </g>
+
+  <text x="20" y="748" font-size="17" fill="#222">Option 2: a countdown ring and piece dots</text>
+  <text x="20" y="767" font-size="12" fill="#555">The time drains around a ring; one dot per piece fills in as you place it. Less text to read mid-game.</text>
+  <g transform="translate(20,782) scale(0.75)">
+    <use href="#base"/>
+    <use href="#trayPacked"/>
+    <circle cx="500" cy="50" r="36" fill="none" stroke="#323a47" stroke-width="7"/>
+    <path d="M 500 14 A 36 36 0 1 1 465.8 61.1" fill="none" stroke="#2bb365" stroke-width="7" stroke-linecap="round"/>
+    <text x="500" y="58" font-size="22" font-weight="bold" fill="#ffffff" text-anchor="middle">1:31</text>
+    <circle cx="560" cy="34" r="7" fill="none" stroke="#9aa4b2" stroke-width="2"/>
+    <circle cx="560" cy="56" r="7" fill="none" stroke="#9aa4b2" stroke-width="2"/>
+    <circle cx="560" cy="78" r="7" fill="none" stroke="#9aa4b2" stroke-width="2"/>
+    <circle cx="582" cy="34" r="7" fill="none" stroke="#9aa4b2" stroke-width="2"/>
+  </g>
+
+  <text x="20" y="1108" font-size="17" fill="#222">Option 3: beside the board (recommended)</text>
+  <text x="20" y="1127" font-size="12" fill="#555">The clock moves to the free space left of the puzzle, above the stick.</text>
+  <g transform="translate(20,1158) scale(0.75)">
+    <use href="#base"/>
+    <rect x="259" y="8" width="335" height="96" rx="8" fill="#1d232d"/>
+    <circle cx="305" cy="56" r="40" fill="#2bb365"/>
+    <polygon points="355,85 436,85 395,27" fill="#8a96a3"/>
+    <circle cx="474" cy="56" r="23" fill="#e8c13a"/>
+    <rect x="515" y="30" width="23" height="52" fill="#a0673d"/>
+    <text x="26" y="84" font-size="30" font-weight="bold" fill="#ffffff">1:31</text>
+    <text x="104" y="83" font-size="16" fill="#9aa4b2">0 of 4 placed</text>
+    <rect x="28" y="92" width="200" height="5" rx="2.5" fill="#323a47"/>
+    <rect x="28" y="92" width="133" height="5" rx="2.5" fill="#2bb365"/>
+  </g>
+
+  <text x="20" y="1146" font-size="12" fill="#555">The tray gets the whole row, so its pieces stop overlapping.</text>
+  <text x="20" y="1478" font-size="11" fill="#666">To scale on an 852×393 iPhone, tree puzzle. In a race, each option adds the other side's count ("Right 2/4").</text>
+</svg>

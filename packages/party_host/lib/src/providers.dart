@@ -58,7 +58,7 @@ LogBuffer _logBuffer(Ref ref) {
 
 /// Finds the host on the network (S-b). The default advertises it with
 /// Bonsoir; tests override it with a fake.
-final advertiserProvider = Provider<Advertiser>((ref) => BonsoirAdvertiser(log: ref.watch(logProvider).sink('tv')));
+final advertiserProvider = Provider<Advertiser>((ref) => BonsoirAdvertiser(log: ref.watch(logProvider).sink('host')));
 
 /// Sends finished sessions to the cloud store (M9). Null when the shell's
 /// build has no store set up; each app overrides it with its own.

@@ -290,8 +290,9 @@ final class SplitLayout {
       board: board,
       tray: Rect.fromLTWH(margin, margin, tray.width, tray.height),
       origin: board.topLeft - crop.topLeft,
-      // The dots stay below the tray, on the board.
-      top: margin + tray.height,
+      // The dots go anywhere in the world, into the tray and its top margin,
+      // because the pieces start up there (m12 §1).
+      top: margin,
       startX: board.left + _dotInset,
       trayOverlap: _trayOverlap,
       trayScale: _trayScale,

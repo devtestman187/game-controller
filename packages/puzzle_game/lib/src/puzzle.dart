@@ -40,7 +40,9 @@ final class PuzzleField {
   /// stays the rectangle drawn as the board.
   final Offset origin;
 
-  /// Dots stay below this (the one-board layout's clock strip).
+  /// Dots stay below this: the one-board layout's clock strip, nothing on the
+  /// split screen, and the world's top margin on phones, where the tray and
+  /// its pieces are above the board (m12 §1).
   final double top;
 
   /// Where the dots start, one above the other.
