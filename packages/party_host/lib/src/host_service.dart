@@ -328,10 +328,10 @@ class LiveHostService implements HostService {
 
   Future<void> _refreshAddresses() async {
     try {
-      final list = await networkAddresses();
-      if (!sameAddresses(list, _addresses)) {
-        _addresses = list;
-        _log('Addresses: ${list.map((a) => '${a.address} (${a.interfaceName})').join(', ')}');
+      final scan = await networkAddresses();
+      if (!sameAddresses(scan.shown, _addresses)) {
+        _addresses = scan.shown;
+        _log(_addressesLine(scan));
         _emit();
       }
     } catch (e) {
@@ -347,4 +347,15 @@ class LiveHostService implements HostService {
 String _randomHex(int bytes) {
   final r = Random.secure();
   return List.generate(bytes, (_) => r.nextInt(256).toRadixString(16).padLeft(2, '0')).join();
+}
+
+/// "Addresses: 192.168.50.193 (en0), 192.168.0.2 (en2); dropped 10.1.2.3
+/// (pdp_ip0)": every interface the OS gave, with its address, and what became
+/// of it, so the next report's log names the interface the phone actually
+/// has (bug 1107b). The `Addresses:` prefix stays: it is how the log marks
+/// the line.
+String _addressesLine(AddressScan scan) {
+  String list(List<LocalAddress> addresses) => addresses.map((a) => '${a.address} (${a.interfaceName})').join(', ');
+  final shown = scan.shown.isEmpty ? 'none' : list(scan.shown);
+  return scan.dropped.isEmpty ? 'Addresses: $shown' : 'Addresses: $shown; dropped ${list(scan.dropped)}';
 }

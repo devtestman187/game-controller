@@ -54,11 +54,7 @@ class HostChip extends ConsumerWidget {
                   style: Theme.of(context).textTheme.headlineMedium?.copyWith(letterSpacing: 8),
                 ),
               ),
-              if (address != null)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                  child: Text(address, key: const Key('hostAddress'), style: Theme.of(context).textTheme.bodyMedium),
-                ),
+              _JoinHint(address: address),
               MenuItemButton(
                 key: const Key('newCode'),
                 leadingIcon: const Icon(Icons.refresh),
@@ -77,6 +73,28 @@ class HostChip extends ConsumerWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// How a player joins by address, under the code: the address to type in, or,
+/// when this host has none a phone can reach, what to do about it (bug 1107b:
+/// a hosting phone's only address was its cellular one, which is dropped).
+class _JoinHint extends StatelessWidget {
+  const _JoinHint({required this.address});
+
+  /// The address to show, or null when the host has none.
+  final String? address;
+
+  @override
+  Widget build(BuildContext context) {
+    final address = this.address;
+    final style = Theme.of(context).textTheme.bodyMedium;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+      child: address == null
+          ? Text('Turn on Wi-Fi so other phones can join', key: const Key('hostNoWifi'), style: style)
+          : Text(address, key: const Key('hostAddress'), style: style),
     );
   }
 }
