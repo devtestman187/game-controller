@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:test_game/test_game.dart';
 
+import '../abandon_signal.dart';
 import '../controls.dart';
 import '../local_player_source.dart';
 import '../providers.dart';
@@ -111,7 +112,13 @@ class _GameScreenState extends ConsumerState<GameScreen> {
               enabled: true,
               builder: (context, paused) => Stack(
                 children: [
-                  ArenaView(game: widget.game, host: ref.read(gameHostProvider), onEvent: _onEvent, paused: paused),
+                  ArenaView(
+                    game: widget.game,
+                    host: ref.read(gameHostProvider),
+                    onEvent: _onEvent,
+                    paused: paused,
+                    abandon: ref.read(hostAbandonProvider),
+                  ),
                   if (nobody)
                     Positioned(
                       left: 0,

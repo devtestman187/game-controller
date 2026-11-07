@@ -150,10 +150,25 @@ class PuzzleSession extends GameSession {
   @override
   void dispose({bool finished = false}) {
     if (isDisposed) return;
+    _hideStatuses();
+    super.dispose(finished: finished);
+  }
+
+  /// The host lost the match (m12 §2.10): `round_end` says why, without a
+  /// winner, unless it had already played to its end and reported itself.
+  /// Then the view ends `abandoned`, as [GameSession.abandon] does.
+  @override
+  void abandon() {
+    if (isDisposed) return;
+    if (match.result == null) _record('round_end', data: {'reason': ViewEndReason.abandoned});
+    _hideStatuses();
+    super.abandon();
+  }
+
+  void _hideStatuses() {
     for (final id in _withStatus) {
       host.setStatus(id, StatusMessage.hidden());
     }
-    super.dispose(finished: finished);
   }
 
   void _record(String name, {String? playerId, Map<String, Object?> data = const {}}) =>

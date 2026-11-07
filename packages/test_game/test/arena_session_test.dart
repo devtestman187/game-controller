@@ -89,6 +89,36 @@ void main() {
     session.dispose();
   });
 
+  test('an abandoned round ends without a winner, with its frames, and the view abandoned', () {
+    final clock = Clock();
+    clock.host
+      ..setPlayer(const GamePlayer(id: 'a', number: 1))
+      ..setGamepad('a', GamepadState.fromInput(InputStateMessage(seq: 1, dx: 1)));
+    final game = ArenaGame(walls: const [], hazards: const []);
+    final session = ArenaSession(host: clock.host, game: game, onEvent: (_) {});
+    for (var i = 0; i < 10; i++) {
+      clock.frame(session, 16);
+    }
+    expect(game.phase, ArenaPhase.playing);
+    expect(clock.host.records.where((r) => r.name == 'round_start'), hasLength(1));
+
+    session.abandon();
+    final end = clock.host.records.singleWhere((r) => r.name == 'round_end');
+    expect(end.playerId, isNull);
+    expect(end.data, {'reason': ViewEndReason.abandoned});
+    // The frames the round drew, as leaving the screen records them.
+    expect(clock.host.records.last.name, 'frames');
+    expect(clock.host.records.last.data['drawn'], session.frameCount);
+    expect(clock.host.viewEnds.single.reason, ViewEndReason.abandoned);
+
+    // Nothing runs after it: a later dispose records nothing more.
+    final names = clock.host.records.map((r) => r.name).toList();
+    clock.frame(session, 16);
+    session.dispose();
+    expect(clock.host.records.map((r) => r.name), names);
+    expect(clock.host.viewEnds, hasLength(1));
+  });
+
   test('the session ends as quit, and a won round does not end it', () {
     final clock = Clock();
     clock.host

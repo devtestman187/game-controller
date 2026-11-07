@@ -9,7 +9,7 @@ import 'host_service.dart';
 ///
 /// The phone app overrides it with its [HostPresence.away]; the default never
 /// goes away, so the TV never pauses this way.
-final hostAwayProvider = Provider<ValueListenable<bool>>((ref) => const _NeverAway());
+final hostAwayProvider = Provider<ValueListenable<bool>>((ref) => const NeverAway());
 
 /// Pauses the game while the host app is hidden, and ends the round when it
 /// stays hidden longer than [graceS] (m12 §2.10).
@@ -82,9 +82,10 @@ final _clock = Stopwatch()..start();
 
 int _monotonicMs() => _clock.elapsedMilliseconds;
 
-/// The default [hostAwayProvider] value: a host that never goes away.
-final class _NeverAway implements ValueListenable<bool> {
-  const _NeverAway();
+/// A host that never goes away: [hostAwayProvider]'s value before an app has
+/// a host of its own.
+final class NeverAway implements ValueListenable<bool> {
+  const NeverAway();
 
   @override
   bool get value => false;

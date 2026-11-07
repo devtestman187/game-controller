@@ -13,7 +13,9 @@ class _SidePanel extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     return DecoratedBox(
       decoration: BoxDecoration(color: scheme.surfaceContainer, borderRadius: BorderRadius.circular(16)),
-      child: Padding(
+      // Scrolls when the screen is too short for a full side (a landscape
+      // phone hosting, with its own bar above): on a TV it always fits.
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

@@ -93,7 +93,9 @@ Future<void> pumpFaked(
   ProviderScope(
     overrides: [
       prefsProvider.overrideWithValue(app.prefs),
-      clientProvider.overrideWithValue(app.client),
+      // The TV client: while this phone hosts, the screens use its own
+      // player's client instead (m12 §3).
+      tvClientProvider.overrideWithValue(app.client),
       discoveryProvider.overrideWithValue(app.discovery),
       hapticsProvider.overrideWithValue(app.haptics),
       motionSensorsProvider.overrideWithValue(app.motion),

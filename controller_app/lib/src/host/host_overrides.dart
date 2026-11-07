@@ -20,4 +20,8 @@ List<Override> phoneHostOverrides({required party.HostDirectories directories}) 
   // The one running service: the app starts it when the player hosts, and the
   // host screens, the pause menu and the own player all use that same one.
   party.hostServiceProvider.overrideWith((ref) => ref.watch(phoneServiceProvider)),
+  // The host's away state, so a game pauses while this phone is hidden and a
+  // round hidden too long is abandoned (m12 §2.10). Before the first host
+  // there is no round to pause.
+  party.hostAwayProvider.overrideWith((ref) => ref.watch(hostingProvider)?.away ?? const party.NeverAway()),
 ];

@@ -31,6 +31,7 @@ class PuzzlePlayView extends StatefulWidget {
     this.paused = false,
     this.onFinished,
     this.match,
+    this.abandon,
   });
 
   final GameHost host;
@@ -54,6 +55,10 @@ class PuzzlePlayView extends StatefulWidget {
   /// Seeds the match when none is passed in: the host makes one and hands it
   /// over (S8), so the rules start from what they're given.
   final Random random;
+
+  /// Fires when the host app lost the round (m12 §2.10): the match is
+  /// abandoned, and the view ends `abandoned`.
+  final Listenable? abandon;
 
   @override
   State<PuzzlePlayView> createState() => PuzzlePlayViewState();
@@ -81,6 +86,7 @@ class PuzzlePlayViewState extends State<PuzzlePlayView> with SingleTickerProvide
       match: widget.match,
       onFinished: widget.onFinished,
     )..paused = widget.paused;
+    widget.abandon?.addListener(_abandoned);
     _ticker.start();
   }
 
@@ -92,12 +98,15 @@ class PuzzlePlayViewState extends State<PuzzlePlayView> with SingleTickerProvide
 
   @override
   void dispose() {
+    widget.abandon?.removeListener(_abandoned);
     _ticker.dispose();
     // A match that ran to its end is the view's end too: a phone drawing it
     // can say "Done!" and stop asking for frames (m12 §3).
     _session.dispose(finished: match.result != null);
     super.dispose();
   }
+
+  void _abandoned() => _session.abandon();
 
   void _tick(Duration elapsed) {
     _session.advance(elapsed);

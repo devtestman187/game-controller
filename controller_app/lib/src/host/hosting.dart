@@ -9,7 +9,7 @@ import 'phone_host.dart';
 /// The host this app runs, or null before the first "Host a game" (m12 §3).
 final hostingProvider = NotifierProvider<HostingNotifier, PhoneHost?>(HostingNotifier.new);
 
-/// Starts the app's host, and (in m12's next step) stops it again.
+/// Starts and stops the app's host.
 class HostingNotifier extends Notifier<PhoneHost?> {
   @override
   PhoneHost? build() => null;
@@ -17,12 +17,36 @@ class HostingNotifier extends Notifier<PhoneHost?> {
   /// Starts a host and returns it: the caller shows it in the host route.
   PhoneHost start() {
     final host = ref.read(phoneHostBuilderProvider)(_inputs(ref));
+    // The screens' client, before the route opens: this phone's own player
+    // plays the game it hosts (m12 §3).
+    ref.read(ownClientProvider.notifier).set(host.client);
+    // Over a game the controls take the saved opacity and the bar shows the
+    // ping instead of the status panel (m12 §2.7). Set here, not by the
+    // route: Riverpod refuses a provider changed from a widget's dispose.
+    ref.read(gameShownProvider.notifier).set(true);
     unawaited(host.start());
     // Searching for a TV is pointless while this phone is the host, and
     // Bonsoir would browse for the app's life (m12 §3).
     unawaited(ref.read(discoveryProvider).stop());
     state = host;
     return host;
+  }
+
+  /// Stops the host; the host route pops itself when it is done. Calling it
+  /// again does nothing. The stopped host stays in the state on purpose: the
+  /// party host providers below still watch its service, and a state that
+  /// went back to null would leave them with nothing to read (m12 §3). The
+  /// screens ask [PhoneHost.live].
+  Future<void> stop() async {
+    final host = state;
+    if (host == null || !host.live) return;
+    // Back to the TV client before the host lets its own client go.
+    ref.read(ownClientProvider.notifier).clear();
+    ref.read(gameShownProvider.notifier).set(false);
+    await host.dispose();
+    // Searching again: the player lands on the Connect screen, and a phone
+    // that hosts is one that found no TV (m12 §3).
+    unawaited(ref.read(discoveryProvider).restart());
   }
 }
 

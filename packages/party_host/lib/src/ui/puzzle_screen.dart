@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:puzzle_game/puzzle_game.dart';
 
+import '../abandon_signal.dart';
 import '../controls.dart';
 import '../local_player_source.dart';
 import '../providers.dart';
@@ -158,6 +159,7 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
                             random: _random,
                             match: widget.match,
                             paused: paused,
+                            abandon: ref.read(hostAbandonProvider),
                             settings: () => ref.read(puzzleSettingsProvider),
                             onFinished: _finished,
                           ),

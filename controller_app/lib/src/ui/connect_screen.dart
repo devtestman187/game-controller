@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../discovery.dart';
+import '../host/hosting.dart';
 import '../providers.dart';
 import 'connect_panels.dart';
 import 'diagnostics_screen.dart';
@@ -16,6 +17,9 @@ class ConnectScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     ref.listen(clientStateProvider, (previous, next) {
+      // A hosting phone's own player connects to this phone: that is no reason
+      // to close this screen, which would pop the host route above it (m12 §3).
+      if (ref.read(hostingProvider)?.live ?? false) return;
       if (next.isConnected && !(previous?.isConnected ?? false)) Navigator.of(context).maybePop();
     });
     final client = ref.watch(clientStateProvider);

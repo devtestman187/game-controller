@@ -71,10 +71,13 @@ class _ControllerScreenState extends ConsumerState<ControllerScreen> with Widget
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Both screens hear this: the host route's and the controller's still
+    // below it, which must not search for a TV either (m12 §2.7).
+    final hosting = _hosting || (ref.read(hostingProvider)?.live ?? false);
     if (state == AppLifecycleState.resumed) {
       // A fresh search after returning to the app. This also picks up TVs
       // once the user allows local network access in the iOS prompt.
-      if (!_hosting) ref.read(discoveryProvider).restart();
+      if (!hosting) ref.read(discoveryProvider).restart();
       // After the phone slept or the app was in the background, the TV has
       // usually dropped the connection: reconnect now, not after the
       // heartbeat times out. In host mode this resumes the own player.

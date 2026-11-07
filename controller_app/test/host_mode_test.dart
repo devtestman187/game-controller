@@ -1,3 +1,7 @@
+import 'package:connection/connection.dart';
+import 'package:controller/src/host/host_screen.dart';
+import 'package:controller/src/host/host_start_sheet.dart';
+import 'package:controller/src/ui/bar_modes.dart';
 import 'package:controller/src/ui/connect_screen.dart';
 import 'package:controller/src/ui/controls_layer.dart';
 import 'package:flutter/material.dart';
@@ -8,11 +12,9 @@ import 'support/host_app.dart';
 import 'support/pump_app.dart';
 
 void main() {
-  // Only the entry is asserted: the own player's pad (its labels, and A
-  // through the menus) still reads the TV client's providers, because the
-  // root screen built them before this route's scope existed — see the
-  // report, "The scope does not reach the pad".
-  testWidgets('a phone hosting shows its own game: the picker in the body, its own player paired', (tester) async {
+  testWidgets('a phone hosting plays its own game: the pad, the menus, and a solo Shape Race', (tester) async {
+    // A landscape phone: the host's screens get the 341-high body under this
+    // app's bar, and the join screen's sides scroll to fit it.
     await pumpHostApp(tester);
     // No TV answered, so the app is on the Connect screen.
     expect(find.byType(ConnectScreen), findsOneWidget);
@@ -46,8 +48,93 @@ void main() {
     expect(find.byKey(const Key('playerBadge')), findsOneWidget);
     expect(find.text('P1'), findsOneWidget);
 
+    // 4. The menus' buttons reach the pad: client, host, menus, layout, client.
+    expect(faceLabels(tester), allOf(contains('A OK'), contains('B Back')));
+
+    // 5. A on the pad presses the focused card: Shape Race.
+    await pressA(tester);
+    expect(find.byType(party.ShapeRaceScreen), findsOneWidget);
+    expect(find.byKey(const Key('random-easy')), findsOneWidget);
+
+    // 6. A again opens the join screen, A joins the left side, A again starts:
+    // the puzzle runs inside the body box, and the pad gets its buttons.
+    await pressA(tester);
+    expect(find.byType(party.JoinScreen), findsOneWidget);
+    await pressA(tester);
+    await pressA(tester);
+    final puzzle = tester.widget<party.PuzzleScreen>(find.byType(party.PuzzleScreen));
+    expect(puzzle.teams.keys, [host.client.identity.controllerId]);
+    expect(puzzle.teams.values.map((s) => s.name), ['left']);
+    await settle(tester);
+    expect(tester.getRect(find.byType(party.PuzzleScreen)), tester.getRect(find.byType(ControlsLayer)));
+    await until(
+      tester,
+      () => faceLabels(tester).contains('A Pick up'),
+      () => 'The puzzle did not reach the pad: ${faceLabels(tester)}',
+    );
+
     // The host's timers (heartbeats, the address refresh) would outlive the
     // test, so it is stopped here, in the real clock.
     await tester.runAsync(host.dispose);
+  });
+
+  testWidgets('"Show on this device" shows the game alone: no pad, no modes, no Settings', (tester) async {
+    await pumpHostApp(tester);
+    final host = await enterHostMode(tester, choice: HostChoice.onDevice);
+
+    // The game, and none of the controls that would play it here (C34).
+    expect(find.byType(party.GamesScreen), findsOneWidget);
+    expect(find.byType(ControlsLayer), findsNothing);
+    expect(find.byKey(const Key('faceButtons')), findsNothing);
+    expect(find.byKey(const Key('dpad')), findsNothing);
+    expect(find.byType(BarModes), findsNothing);
+    expect(find.byTooltip('Settings'), findsNothing);
+    // It takes the whole body under the bar (the padding's 4 plus the 48-high
+    // row): unlike "Play on this phone", nothing sits beside the game (C34).
+    expect(tester.getRect(find.byType(party.GamesScreen)), const Rect.fromLTWH(0, 52, 852, 341));
+
+    // How the others join is still the bar's: the chip and Diagnostics.
+    expect(find.byKey(const Key('hostChip')), findsOneWidget);
+    expect(find.byTooltip('Diagnostics'), findsOneWidget);
+    expect(find.textContaining(host.service.state.host.pairingCode), findsOneWidget);
+
+    await tester.runAsync(host.dispose);
+  });
+
+  testWidgets('Stop hosting in the chip stops the host, and a second "Host a game" works', (tester) async {
+    final app = await pumpHostApp(tester);
+    final host = await enterHostMode(tester);
+    final restarts = app.discovery.restarts;
+
+    await tester.tap(find.byKey(const Key('hostChip')));
+    await settle(tester);
+    expect(find.byKey(const Key('stopHosting')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('stopHosting')));
+    await until(tester, () => !host.live, () => 'The host did not stop');
+    await settle(tester);
+
+    // Back on the Connect screen: the own player let go, the search again.
+    expect(find.byType(HostScreen), findsNothing);
+    expect(find.byType(ConnectScreen), findsOneWidget);
+    expect(host.client.snapshot.status, ClientStatus.idle);
+    expect(app.discovery.restarts, restarts + 1);
+
+    // Hosting again starts a new host, on the same providers.
+    final second = await enterHostMode(tester);
+    expect(second, isNot(same(host)));
+    expect(find.byType(party.GamesScreen), findsOneWidget);
+    expect(second.service.gameHost.players.single.number, 1);
+    await tester.runAsync(second.dispose);
+  });
+
+  testWidgets('the system back press stops hosting rather than leaving the server behind it', (tester) async {
+    await pumpHostApp(tester);
+    final host = await enterHostMode(tester);
+
+    await tester.binding.handlePopRoute();
+    await until(tester, () => !host.live, () => 'The back press did not stop the host');
+    await settle(tester);
+    expect(find.byType(HostScreen), findsNothing);
+    expect(find.byType(ConnectScreen), findsOneWidget);
   });
 }

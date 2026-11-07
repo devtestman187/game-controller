@@ -1,11 +1,13 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:party_host/party_host.dart' as party;
 
-import '../providers.dart';
 import '../ui/controller_screen.dart';
 import 'host_games.dart';
 import 'host_start_sheet.dart';
+import 'hosting.dart';
 import 'phone_host.dart';
 
 /// The route of a hosting phone (m12 §2.7): the game behind this phone's own
@@ -23,37 +25,14 @@ class HostScreen extends ConsumerStatefulWidget {
 }
 
 class _HostScreenState extends ConsumerState<HostScreen> {
-  late final GameShownNotifier _gameShown;
-  late final Widget _body;
-
   @override
   void initState() {
     super.initState();
-    // Read here, not in a field initializer: dispose() needs it, and there is
-    // no `ref` any more then (project notes).
-    _gameShown = ref.read(gameShownProvider.notifier);
-    // One scope, built once: the own player's client replaces the app's, and
-    // everything else is inherited from the root scope.
-    _body = ProviderScope(
-      overrides: [clientProvider.overrideWithValue(widget.host.client)],
-      child: party.ControllerMenus(
-        child: ControllerScreen(
-          background: HostGames(navigatorKey: widget.host.gamesKey),
-          controls: widget.choice == HostChoice.onPhone,
-        ),
-      ),
-    );
-    // Over a game the controls take the saved opacity and the bar shows the
-    // ping instead of the status panel (m12 §2.7).
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _gameShown.set(true);
+    // The route goes when the host does: "Stop hosting" and the back press
+    // both stop it, and nothing is shown of a stopped host (m12 §3).
+    widget.host.disposed.then((_) {
+      if (mounted) Navigator.of(context).pop();
     });
-  }
-
-  @override
-  void dispose() {
-    _gameShown.set(false);
-    super.dispose();
   }
 
   @override
@@ -62,6 +41,19 @@ class _HostScreenState extends ConsumerState<HostScreen> {
     // for a host, and the phone has no home screen (m12 §2.7).
     ref.watch(party.gameSoundsProvider);
     ref.watch(party.keepAwakeProvider);
-    return _body;
+    return PopScope(
+      // A back press stops the host, rather than leaving the game behind a
+      // server nobody sees (m12 §3).
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) unawaited(ref.read(hostingProvider.notifier).stop());
+      },
+      child: party.ControllerMenus(
+        child: ControllerScreen(
+          background: HostGames(navigatorKey: widget.host.gamesKey),
+          controls: widget.choice == HostChoice.onPhone,
+        ),
+      ),
+    );
   }
 }

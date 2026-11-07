@@ -36,8 +36,8 @@ class GameStatusNotifier extends Notifier<StatusMessage> {
 /// opacity; in controller mode they stay fully opaque.
 final gameShownProvider = NotifierProvider<GameShownNotifier, bool>(GameShownNotifier.new);
 
-/// Nothing shows a game behind the controls yet: steps 5 and 6 (the host
-/// phone's own player and a joined phone's view) turn it on.
+/// The host route turns it on while this phone hosts a game (m12 §3); a
+/// joined phone's own view is step 6's turn.
 class GameShownNotifier extends Notifier<bool> {
   @override
   bool build() => false;

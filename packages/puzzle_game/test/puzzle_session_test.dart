@@ -124,6 +124,43 @@ void main() {
     expect(clock.host.viewEnds, hasLength(1), reason: 'a second dispose does nothing');
   });
 
+  test('an abandoned match records its round_end with no winner, and ends the view abandoned', () {
+    final clock = Clock();
+    final session = sessionFor(clock);
+    clock.frame(session, 100);
+    expect(clock.host.records.where((r) => r.name == 'round_end'), isEmpty);
+
+    session.abandon();
+    final end = clock.host.records.singleWhere((r) => r.name == 'round_end');
+    expect(end.game, puzzleGameName);
+    expect(end.data, {'reason': ViewEndReason.abandoned});
+    expect(clock.host.records.where((r) => r.name == 'frames'), isEmpty, reason: 'the match never finished');
+    expect(clock.host.statuses['p1']!.isHidden, isTrue, reason: 'the panels go with the round');
+    expect(clock.host.viewEnds.single.reason, ViewEndReason.abandoned);
+
+    // A later dispose sends nothing more: the round already ended.
+    session.dispose();
+    expect(clock.host.viewEnds, hasLength(1));
+    expect(clock.host.records.where((r) => r.name == 'round_end'), hasLength(1));
+  });
+
+  test('abandoning after the match was reported records nothing new', () {
+    final clock = Clock();
+    final session = sessionFor(clock);
+    clock.frame(session, 100);
+    placeEverything(session.match);
+    for (var i = 0; i < 10; i++) {
+      clock.frame(session, 16);
+    }
+    expect(session.match.result, isNotNull);
+    final names = clock.host.records.map((r) => r.name).toList();
+    expect(names.where((n) => n == 'round_end'), hasLength(1));
+
+    session.abandon();
+    expect(clock.host.records.map((r) => r.name), names, reason: 'the result was already recorded');
+    expect(clock.host.viewEnds.single.reason, ViewEndReason.abandoned);
+  });
+
   test('a player who didn\'t join a side watches: nothing to press, a Watching panel', () {
     final clock = Clock();
     clock.host.setPlayer(const GamePlayer(id: 'p3', number: 3));

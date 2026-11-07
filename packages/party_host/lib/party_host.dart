@@ -5,6 +5,7 @@
 /// `package:party_host/testing.dart`, which shipped code never imports.
 library;
 
+export 'src/abandon_signal.dart';
 export 'src/advertiser.dart';
 export 'src/controls.dart' show Controls, ControlsClaims;
 export 'src/host_directories.dart';

@@ -28,7 +28,8 @@ class DiscoveryStateNotifier extends Notifier<DiscoveryState> {
   }
 }
 
-final clientProvider = Provider<ControllerClient>((ref) {
+/// The client this phone pairs with a TV over the network.
+final tvClientProvider = Provider<ControllerClient>((ref) {
   final store = ref.watch(storeProvider);
   final identity = ref.watch(identityProvider);
   final log = ref.watch(logProvider);
@@ -52,6 +53,27 @@ final clientProvider = Provider<ControllerClient>((ref) {
   });
   return client;
 });
+
+/// The client this phone's own player pairs with the host it runs (m12 §3):
+/// null while the app isn't hosting, so the screens use the TV client then.
+final ownClientProvider = NotifierProvider<OwnClientNotifier, ControllerClient?>(OwnClientNotifier.new);
+
+/// Holds the own player's client, from the moment a host starts until it stops.
+class OwnClientNotifier extends Notifier<ControllerClient?> {
+  @override
+  ControllerClient? build() => null;
+
+  /// The own player's client, before the host route opens.
+  void set(ControllerClient client) => state = client;
+
+  /// Back to the TV client, from the moment the host stops.
+  void clear() => state = null;
+}
+
+/// The client the screens use: the own player's while this phone hosts
+/// (m12 §3), the TV's otherwise. It owns neither — each owner disposes its
+/// own ([tvClientProvider]'s the TV one, the host the own one).
+final clientProvider = Provider<ControllerClient>((ref) => ref.watch(ownClientProvider) ?? ref.watch(tvClientProvider));
 
 /// Puts the model, OS and haptics into the next hello once they are known.
 Future<void> _addDeviceDetails(Ref ref, ControllerClient client) async {

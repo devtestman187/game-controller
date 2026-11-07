@@ -214,6 +214,16 @@ abstract class GameSession {
     host.endView(ViewEndMessage(reason: finished ? ViewEndReason.finished : ViewEndReason.quit));
   }
 
+  /// Ends the view as abandoned (m12 §2.10) and stops: the host lost the
+  /// round, so it stops without running another step. Subclasses record what
+  /// the round did first. Calling it again, or a later [dispose], does
+  /// nothing.
+  void abandon() {
+    if (_disposed) return;
+    _disposed = true;
+    host.endView(const ViewEndMessage(reason: ViewEndReason.abandoned));
+  }
+
   /// Reads the players and their controls, and remembers the inputs that are
   /// new since the last advance.
   void _sample() {

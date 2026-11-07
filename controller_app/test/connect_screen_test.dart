@@ -1,6 +1,9 @@
 import 'package:connection/connection.dart';
 import 'package:controller/src/discovery.dart';
+import 'package:controller/src/host/hosting.dart';
+import 'package:controller/src/ui/connect_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'support/pump_app.dart';
@@ -94,6 +97,47 @@ void main() {
       expect(app.client.calls, ['connect 192.168.1.50:45780']);
       expect(find.text('Connect to a TV'), findsNothing);
       expect(find.byKey(const Key('dpad')), findsOneWidget);
+    });
+  });
+
+  group('hosting from the Connect screen (m12 §3)', () {
+    testWidgets('"Host a game" is offered with no TV, and asks how to host', (tester) async {
+      await pumpApp(tester);
+      expect(find.text('Not connected'), findsWidgets);
+
+      await tester.tap(find.byKey(const Key('hostGame')));
+      await settle(tester);
+      expect(find.byKey(const Key('hostStartSheet')), findsOneWidget);
+      expect(find.text('Play on this phone'), findsOneWidget);
+      expect(find.text('Show on this device'), findsOneWidget);
+      // The phone one has the focus, so a remote's OK picks it.
+      final focus = FocusManager.instance.primaryFocus!.context!;
+      expect(
+        find.descendant(of: find.byKey(const Key('hostOnPhone')), matching: find.byWidget(focus.widget)),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('"Host a game" is offered when the TV cannot be reached', (tester) async {
+      final app = await pumpApp(tester);
+      app.client.emit(ClientSnapshot(status: ClientStatus.failed, target: tv, problem: ClientProblem.unreachable));
+      await tester.pump();
+      expect(find.textContaining('Couldn\'t reach'), findsOneWidget);
+      expect(find.byKey(const Key('hostGame')), findsOneWidget);
+    });
+
+    testWidgets('cancelling the sheet starts nothing', (tester) async {
+      final app = await pumpApp(tester);
+      final container = ProviderScope.containerOf(tester.element(find.byType(ConnectScreen)));
+      await tester.tap(find.byKey(const Key('hostGame')));
+      await settle(tester);
+      await tester.tap(find.byKey(const Key('hostCancel')));
+      await settle(tester);
+
+      expect(find.byKey(const Key('hostStartSheet')), findsNothing);
+      expect(container.read(hostingProvider), isNull);
+      // Nothing stopped searching either.
+      expect(app.discovery.stops, 0);
     });
   });
 }

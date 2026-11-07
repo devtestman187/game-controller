@@ -1,12 +1,14 @@
 import 'dart:io';
 
 import 'package:controller/src/host/host_overrides.dart';
+import 'package:controller/src/host/host_start_sheet.dart';
 import 'package:controller/src/host/hosting.dart';
 import 'package:controller/src/host/phone_host.dart';
 import 'package:controller/src/layout.dart';
 import 'package:controller/src/ui/controller_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:party_host/party_host.dart' as party;
 import 'package:party_host/testing.dart' as party_test;
@@ -16,8 +18,16 @@ import 'pump_app.dart';
 
 /// The app with a real host in it (m12 §3): the fakes the other tests use,
 /// the host's own inputs, its folders in a temp folder, and fakes for the
-/// advertiser, the sound player and the screen-on adapter.
-Future<TestApp> pumpHostApp(WidgetTester tester, {bool tablet = false, Size screen = const Size(852, 393)}) async {
+/// advertiser, the sound player and the screen-on adapter. [advertiser] is the
+/// fake advertising is recorded on; [extra] overrides more, after these, so a
+/// test can replace the host's builder.
+Future<TestApp> pumpHostApp(
+  WidgetTester tester, {
+  bool tablet = false,
+  Size screen = const Size(852, 393),
+  party_test.FakeAdvertiser? advertiser,
+  List<Override> extra = const [],
+}) async {
   final dir = Directory.systemTemp.createTempSync('thumb-party-host-');
   addTearDown(() => dir.deleteSync(recursive: true));
   // The puzzles come from the asset bundle, which never answers inside the
@@ -37,10 +47,11 @@ Future<TestApp> pumpHostApp(WidgetTester tester, {bool tablet = false, Size scre
     screen: screen,
     extra: [
       ...phoneHostOverrides(directories: TempHostDirectories(dir)),
-      party.advertiserProvider.overrideWithValue(party_test.FakeAdvertiser()),
+      party.advertiserProvider.overrideWithValue(advertiser ?? party_test.FakeAdvertiser()),
       party.soundPlayerProvider.overrideWithValue(party_test.FakeSoundPlayer()),
       party.screenAwakeProvider.overrideWithValue(party_test.FakeScreenAwake()),
       party.puzzleLibraryProvider.overrideWith((ref) async => puzzles),
+      ...extra,
     ],
   );
 }
@@ -60,37 +71,62 @@ class TempHostDirectories implements party.HostDirectories {
   Future<Directory> exports() async => base;
 }
 
+/// The app's one container: the party host providers live here, and the
+/// pause menu's dialog and the host route read it alike (m12 §3).
+ProviderContainer hostContainer(WidgetTester tester) =>
+    ProviderScope.containerOf(tester.element(find.byType(ControllerScreen).first));
+
 /// The host the app started: the route is up and `hostingProvider` holds it.
 PhoneHost hostOf(WidgetTester tester) {
-  final container = ProviderScope.containerOf(tester.element(find.byType(ControllerScreen).first));
-  final host = container.read(hostingProvider);
+  final host = hostContainer(tester).read(hostingProvider);
   if (host == null) fail('No host was started');
   return host;
 }
 
-/// Lets the real service finish its file and socket work and pair this
-/// phone's own player: the test's clock doesn't move real I/O, so every wait
-/// in the real event loop is followed by a pump that hands the result back to
-/// the test's zone.
-Future<void> hostReady(WidgetTester tester, PhoneHost host) async {
+/// Lets the real time the host needs pass in small steps until [done] is
+/// true: its file work, its socket and its own player's link run outside the
+/// test's clock, so every wait in the real event loop is followed by a pump
+/// that hands the result back to the test's zone.
+Future<void> until(WidgetTester tester, bool Function() done, String Function() why) async {
   for (var i = 0; i < 200; i++) {
-    if (host.client.snapshot.isConnected) return;
+    if (done()) return;
     await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 5)));
     await tester.pump(const Duration(milliseconds: 16));
   }
-  fail('The own player did not pair: ${host.client.snapshot}');
+  fail(why());
 }
 
-/// Opens the start sheet and picks "Play on this phone"; returns the host.
-Future<PhoneHost> enterHostMode(WidgetTester tester) async {
+/// Waits until this phone's own player has paired on its host's link.
+Future<void> hostReady(WidgetTester tester, PhoneHost host) =>
+    until(tester, () => host.client.snapshot.isConnected, () => 'The own player did not pair: ${host.client.snapshot}');
+
+/// Opens the start sheet and picks [choice]; returns the host.
+Future<PhoneHost> enterHostMode(WidgetTester tester, {HostChoice choice = HostChoice.onPhone}) async {
+  final key = switch (choice) {
+    HostChoice.onPhone => const Key('hostOnPhone'),
+    HostChoice.onDevice => const Key('hostOnDevice'),
+  };
   await tester.tap(find.byKey(const Key('hostGame')));
   await settle(tester);
-  await tester.tap(find.byKey(const Key('hostOnPhone')));
+  await tester.tap(find.byKey(key));
   await settle(tester);
   final host = hostOf(tester);
   await hostReady(tester, host);
   await settle(tester);
   return host;
+}
+
+/// Presses A on the pad to work the host's menus: the press goes out to the
+/// host, the menus act on it, and the next screen is up.
+Future<void> pressA(WidgetTester tester) async {
+  await pressFace(tester, ControllerButton.a);
+  await settle(tester);
+}
+
+/// Presses B on the pad, as the menus' "Back".
+Future<void> pressB(WidgetTester tester) async {
+  await pressFace(tester, ControllerButton.b);
+  await settle(tester);
 }
 
 /// Presses a face button on the pad, where a finger would.

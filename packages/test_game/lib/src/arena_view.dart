@@ -19,7 +19,7 @@ import 'arena_view_widgets.dart';
 /// the box they're in (S4). [onEvent] also gets every game event, for the host
 /// app's log and debug overlay.
 class ArenaView extends StatefulWidget {
-  const ArenaView({super.key, required this.host, required this.onEvent, this.game, this.paused = false});
+  const ArenaView({super.key, required this.host, required this.onEvent, this.game, this.paused = false, this.abandon});
 
   final GameHost host;
   final void Function(GameEvent event) onEvent;
@@ -29,6 +29,10 @@ class ArenaView extends StatefulWidget {
 
   /// Nothing moves (the pause menu is open).
   final bool paused;
+
+  /// Fires when the host app lost the round (m12 §2.10): the session
+  /// abandons its round, and the view ends `abandoned`.
+  final Listenable? abandon;
 
   @override
   State<ArenaView> createState() => _ArenaViewState();
@@ -44,6 +48,7 @@ class _ArenaViewState extends State<ArenaView> with SingleTickerProviderStateMix
     super.initState();
     _session = ArenaSession(host: widget.host, game: widget.game, onEvent: widget.onEvent)..paused = widget.paused;
     _snapshot = _session.current;
+    widget.abandon?.addListener(_abandoned);
     _ticker.start();
   }
 
@@ -55,10 +60,13 @@ class _ArenaViewState extends State<ArenaView> with SingleTickerProviderStateMix
 
   @override
   void dispose() {
+    widget.abandon?.removeListener(_abandoned);
     _ticker.dispose();
     _session.dispose();
     super.dispose();
   }
+
+  void _abandoned() => _session.abandon();
 
   void _tick(Duration elapsed) {
     _session.advance(elapsed);

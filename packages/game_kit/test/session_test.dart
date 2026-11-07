@@ -189,4 +189,25 @@ void main() {
     expect(clock.host.frames, hasLength(frames));
     expect(clock.host.viewEnds, hasLength(1));
   });
+
+  test('an abandoned round ends the view abandoned, once, and runs no more steps', () {
+    final clock = Clock()..host.hasViewers = true;
+    final session = CounterSession(host: clock.host);
+    clock.frames(session, 10);
+
+    session.abandon();
+    expect(session.isDisposed, isTrue);
+    expect(clock.host.viewEnds.single.reason, ViewEndReason.abandoned);
+
+    // A later dispose, finished or not, sends nothing more.
+    session.dispose();
+    session.dispose(finished: true);
+    expect(clock.host.viewEnds, hasLength(1), reason: 'the view ended once');
+
+    final steps = session.stepCount;
+    final frames = clock.host.frames.length;
+    clock.frames(session, 10);
+    expect(session.stepCount, steps, reason: 'the host lost the round: no step runs after it');
+    expect(clock.host.frames, hasLength(frames));
+  });
 }

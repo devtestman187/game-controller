@@ -98,8 +98,25 @@ class ArenaSession extends GameSession {
   @override
   void dispose({bool finished = false}) {
     if (isDisposed) return;
-    if (frameCount > 0) _record('frames', data: {'drawn': frameCount, 'late': lateFrameCount});
+    _recordFrames();
     super.dispose();
+  }
+
+  /// The host lost the arena (m12 §2.10): a running round's `round_end` says
+  /// why, without a winner, then the frame counts as [dispose] records them.
+  @override
+  void abandon() {
+    if (isDisposed) return;
+    if (_roundRunning) {
+      _roundRunning = false;
+      _record('round_end', data: {'reason': ViewEndReason.abandoned});
+    }
+    _recordFrames();
+    super.abandon();
+  }
+
+  void _recordFrames() {
+    if (frameCount > 0) _record('frames', data: {'drawn': frameCount, 'late': lateFrameCount});
   }
 
   void _record(String name, {String? playerId, Map<String, Object?> data = const {}}) =>

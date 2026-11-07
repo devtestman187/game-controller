@@ -143,6 +143,9 @@ class FakeDiscovery implements HostDiscovery {
   final _changes = StreamController<DiscoveryState>.broadcast();
   int restarts = 0;
 
+  /// How many times the search was stopped: a hosting phone stops it.
+  int stops = 0;
+
   void emit(DiscoveryState s) {
     _state = s;
     _changes.add(s);
@@ -158,7 +161,7 @@ class FakeDiscovery implements HostDiscovery {
   Future<void> start() async {}
 
   @override
-  Future<void> stop() async {}
+  Future<void> stop() async => stops++;
 
   @override
   Future<void> restart() async => restarts++;

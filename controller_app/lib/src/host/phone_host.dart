@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:connection/connection.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:party_host/party_host.dart' as party;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -27,11 +28,13 @@ const int hostGraceS = 30;
 /// hidden. No Riverpod here, so the facts the UI asks ([live], [disposed])
 /// are plain fields.
 class PhoneHost {
-  PhoneHost._({required this.service, required this.listener, required this.client});
+  PhoneHost._(this.service, this.listener, this.client, [this._nowMs]);
 
   /// Builds the host the phone app runs: the server with the in-process link
   /// for its own player, and the client on the other end of that link.
-  factory PhoneHost.live(PhoneHostInputs inputs) {
+  /// [nowMs] is the clock the presence measures a hidden period on; a test
+  /// moves it, the app leaves it out.
+  factory PhoneHost.live(PhoneHostInputs inputs, {int Function()? nowMs}) {
     final listener = InProcessListener();
     final service = party.LiveHostService(
       prefs: inputs.prefs,
@@ -46,7 +49,7 @@ class PhoneHost {
       connector: InProcessConnector(listener),
       log: inputs.log.sink('own'),
     );
-    return PhoneHost._(service: service, listener: listener, client: client);
+    return PhoneHost._(service, listener, client, nowMs);
   }
 
   /// The host service: the server, the stats and the games. The live class,
@@ -64,6 +67,10 @@ class PhoneHost {
   /// [abandon] comes back to it.
   final gamesKey = GlobalKey<NavigatorState>();
 
+  /// The clock the presence measures a hidden period on; null means the real
+  /// one.
+  final int Function()? _nowMs;
+
   party.HostPresence? _presence;
   AppLifecycleListener? _lifecycle;
   final _disposed = Completer<void>();
@@ -73,6 +80,11 @@ class PhoneHost {
 
   /// Completes when the host has stopped; the host route pops itself then.
   Future<void> get disposed => _disposed.future;
+
+  /// True while the app is hidden (m12 §2.10): the game pauses then, and a
+  /// round hidden for longer than [hostGraceS] is abandoned. Before [start]
+  /// there is no round to pause, so this never goes away.
+  ValueListenable<bool> get away => _presence?.away ?? const party.NeverAway();
 
   /// Starts the server, then pairs the own player on the link: the listener
   /// has to be running first, since [InProcessListener.connect] throws until
@@ -87,7 +99,12 @@ class PhoneHost {
       HostAddress.local(hostId: client.identity.controllerId, name: state.hostName),
       code: state.host.pairingCode,
     );
-    final presence = _presence = party.HostPresence(host: service, onAbandon: abandon, graceS: hostGraceS);
+    final presence = _presence = party.HostPresence(
+      host: service,
+      onAbandon: abandon,
+      nowMs: _nowMs,
+      graceS: hostGraceS,
+    );
     _lifecycle = AppLifecycleListener(onHide: presence.hidden, onShow: () => unawaited(presence.shown()));
   }
 
