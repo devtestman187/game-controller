@@ -325,6 +325,43 @@ void main() {
     expect(asks.single.game, 'arena');
   });
 
+  test('a stage sample is filed under the rate of the view that was running', () async {
+    final stats = await startStats(consent: false);
+    final p = phone('phone-e');
+    p.connect(
+      HostAddress(addresses: ['127.0.0.1'], port: server.port!),
+      code: server.pairingCode,
+    );
+    await until(p.changes, (s) => s.isConnected);
+    await waitFor(() => stats.session != null && host.players.isNotEmpty);
+
+    Map? player() => (stats.session!.summary(host.nowMs)['players'] as List).cast<Map?>().firstOrNull;
+    int samples() => (((player()?['stages'] as Map?)?['touch_to_frame'] as Map?)?['n'] as int?) ?? 0;
+
+    // One sample with no view, one while a 60 Hz view runs, one after it. Each
+    // is let through before the view changes: a stage reaches the session as
+    // the host reports it, and reads the rate that is running then.
+    host.reportStage('phone-e', LatencyStage.touchToFrame, 40);
+    await waitFor(() => samples() == 1);
+    host.startView(ViewStartMessage(game: 'shape_race', snapshotVersion: 1, setup: const {}, hz: 60));
+    host.reportStage('phone-e', LatencyStage.touchToFrame, 30);
+    await waitFor(() => samples() == 2);
+    host.endView(const ViewEndMessage(reason: ViewEndReason.finished));
+    host.reportStage('phone-e', LatencyStage.touchToFrame, 20);
+    await waitFor(() => samples() == 3);
+
+    final record = player()!;
+    expect(record['stages'], {
+      'touch_to_frame': {'n': 3, 'median': 30, 'p95': 40, 'max': 40},
+    });
+    expect(record['stagesByHz'], {
+      '60': {
+        'touch_to_frame': {'n': 1, 'median': 30, 'p95': 30, 'max': 30},
+      },
+    });
+    expect(record['watched'], 'host_screen', reason: 'the phone drew no frames');
+  });
+
   test('Export copies every session file', () async {
     final stats = await startStats();
     final p = phone('phone-d');

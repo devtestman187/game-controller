@@ -8,6 +8,8 @@ library;
 export 'src/abandon_signal.dart';
 export 'src/advertiser.dart';
 export 'src/controls.dart' show Controls, ControlsClaims;
+export 'src/device_sampler.dart';
+export 'src/host_device_monitor.dart';
 export 'src/host_directories.dart';
 export 'src/host_identity.dart';
 export 'src/host_log_export.dart';

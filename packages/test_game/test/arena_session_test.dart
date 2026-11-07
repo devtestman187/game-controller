@@ -37,6 +37,11 @@ void main() {
     expect(names.where((n) => n == 'round_start'), hasLength(1));
     expect(names.where((n) => n == 'round_end'), hasLength(1));
     expect(names.where((n) => n == 'frames'), hasLength(1));
+    expect(
+      clock.host.records.firstWhere((r) => r.name == 'round_start').data['hz'],
+      HostingSettings.defaults.frameRateHz,
+      reason: 'the round ran at the default rate',
+    );
     final end = clock.host.records.firstWhere((r) => r.name == 'round_end');
     expect(end.game, arenaGame);
     expect(end.playerId, 'a');
@@ -46,6 +51,25 @@ void main() {
     // count times the step length.
     expect(end.data['timeS'], closeTo(session.stepCount * HostingSettings.defaults.simStepS, 1e-9));
     expect(clock.host.records.last.data['drawn'], greaterThan(1));
+    session.dispose();
+  });
+
+  test('the round is reported at the rate the host settings ask for', () {
+    final clock = Clock();
+    clock.host
+      ..setPlayer(const GamePlayer(id: 'a', number: 1))
+      ..setGamepad('a', GamepadState.fromInput(InputStateMessage(seq: 1, dx: 1)));
+    final game = ArenaGame(walls: const [], hazards: const []);
+    final session = ArenaSession(
+      host: clock.host,
+      game: game,
+      onEvent: (_) {},
+      settings: const HostingSettings(frameRateHz: 20),
+    );
+    for (var i = 0; i < 10; i++) {
+      clock.frame(session, 16);
+    }
+    expect(clock.host.records.firstWhere((r) => r.name == 'round_start').data['hz'], 20);
     session.dispose();
   });
 

@@ -49,6 +49,9 @@ final puzzleWatchLayout = GameLayoutMessage(
 /// the time left (P5, P6), buzzes and plays its events, and reports the match
 /// once it ends (PRD v2 M10). The view only draws [current] (S8).
 class PuzzleSession extends GameSession {
+  /// [settings] is how the host runs the round (m12 §3): the frame rate it
+  /// sends frames to the phones at, which the round records. Null takes this
+  /// build's start option ([HostingSettings.fromEnvironment]).
   PuzzleSession({
     required GameHost host,
     required Puzzle puzzle,
@@ -56,26 +59,20 @@ class PuzzleSession extends GameSession {
     required Random random,
     required PuzzleSettings Function() playtest,
     LayoutTarget target = LayoutTarget.screen,
+    HostingSettings? settings,
     PuzzleMatch? match,
     void Function(MatchResult result)? onFinished,
   }) : this._(
          host: host,
          match: match ?? PuzzleMatch(puzzle, teams: teams, settings: playtest(), random: random, target: target),
          playtest: playtest,
+         settings: settings,
          onFinished: onFinished,
        );
 
-  PuzzleSession._({required super.host, required this.match, required this.playtest, this.onFinished})
+  PuzzleSession._({required super.host, required this.match, required this.playtest, super.settings, this.onFinished})
     : super(module: shapeRaceModule, setup: shapeRaceSetup(match)) {
-    _record(
-      'round_start',
-      data: {
-        'puzzle': match.puzzle.id,
-        'level': match.puzzle.level.name,
-        'format': match.format.label,
-        'players': match.teams.length,
-      },
-    );
+    _record('round_start', data: _roundStartData(match, settings));
   }
 
   /// The rules. Tests pass one in, to look at the match itself.
@@ -176,3 +173,13 @@ class PuzzleSession extends GameSession {
   void _record(String name, {String? playerId, Map<String, Object?> data = const {}}) =>
       host.record(GameRecord(game: puzzleGameName, name: name, playerId: playerId, data: data));
 }
+
+/// The `round_start` record's data: the match's setup and the rate its frames
+/// go out at (m12 §0.4).
+Map<String, Object?> _roundStartData(PuzzleMatch match, HostingSettings settings) => {
+  'puzzle': match.puzzle.id,
+  'level': match.puzzle.level.name,
+  'format': match.format.label,
+  'players': match.teams.length,
+  'hz': settings.frameRateHz,
+};

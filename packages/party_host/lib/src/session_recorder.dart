@@ -45,7 +45,9 @@ class SessionRecorder {
           ..input(m.controllerId)
           ..mode(m.controllerId, InputMode.of(m.message as InputStateMessage).name);
       case final MetricsMessage batch:
-        s.metrics(m.controllerId, batch);
+        // The viewer counted its frames while drawing the host's view: they go
+        // under that view's rate, like its stage samples (m12 §0.4).
+        s.metrics(m.controllerId, batch, hz: host.viewRateHz);
       case final RatingMessage r:
         s.rating(m.controllerId, r, game: _askedGames.remove(r.id) ?? arenaGameName);
       default:
@@ -59,7 +61,9 @@ class SessionRecorder {
     if (s == null) return;
     switch (r.name) {
       case 'round_start':
-        s.roundStarted();
+        // The round's game records the rate of the view it runs (m12 §0.4).
+        final hz = r.data['hz'];
+        s.roundStarted(hz: hz is int ? hz : null);
       case 'round_end':
         final modes = <String, String>{
           for (final MapEntry(:key, :value) in ((r.data['modes'] as Map?) ?? const {}).entries)

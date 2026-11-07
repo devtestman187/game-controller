@@ -4,12 +4,14 @@ import 'dart:convert';
 import 'package:connection/connection.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:game_kit/game_kit.dart';
 import 'package:protocol/protocol.dart';
 import 'package:puzzle_game/puzzle_game.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'advertiser.dart';
 import 'controls.dart';
+import 'host_device_monitor.dart';
 import 'host_directories.dart';
 import 'host_identity.dart';
 import 'host_service.dart';
@@ -68,6 +70,16 @@ final sessionUploaderProvider = Provider<SessionUploader?>((ref) => null);
 /// the smoke check keep their viewers.
 final shareViewProvider = Provider<bool>((ref) => false);
 
+/// How this host runs a game (m12 §3): the frame rate its rounds send frames
+/// at. A debug build's start option decides it; the phone app overrides it
+/// with its saved "Frame rate (test)" setting.
+final hostingSettingsProvider = Provider<HostingSettings>((ref) => HostingSettings.fromEnvironment());
+
+/// Reads the host device's battery and heat for the session summary (m12
+/// §0.1). None by default, so the TV records nothing; the phone app overrides
+/// it with an adapter over its `DeviceStatusSource`.
+final hostDeviceMonitorProvider = Provider<HostDeviceMonitor>((ref) => const NoHostDeviceMonitor());
+
 /// The host's own player in the round it runs (m12-phone-layout §3): the
 /// phone host overrides it with its client's controller ID, so its screen
 /// draws its own side of a `phones` match, as a joined phone would. Null on
@@ -91,6 +103,7 @@ final hostServiceProvider = Provider<HostService>((ref) {
     advertiser: ref.watch(advertiserProvider),
     uploader: ref.watch(sessionUploaderProvider),
     shareView: ref.watch(shareViewProvider),
+    monitor: ref.watch(hostDeviceMonitorProvider),
   );
   unawaited(service.start());
   ref.onDispose(service.dispose);

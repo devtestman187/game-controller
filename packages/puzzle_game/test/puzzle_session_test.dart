@@ -27,7 +27,7 @@ final class Clock {
 }
 
 /// A session with [twoOnOneBoard], both players here.
-PuzzleSession sessionFor(Clock clock, {Map<String, PuzzleSide> teams = twoOnOneBoard}) {
+PuzzleSession sessionFor(Clock clock, {Map<String, PuzzleSide> teams = twoOnOneBoard, HostingSettings? settings}) {
   clock.host
     ..setPlayer(const GamePlayer(id: 'p1', number: 1, nickname: 'Phone p1'))
     ..setPlayer(const GamePlayer(id: 'p2', number: 2))
@@ -39,6 +39,7 @@ PuzzleSession sessionFor(Clock clock, {Map<String, PuzzleSide> teams = twoOnOneB
     teams: teams,
     random: Random(1),
     playtest: () => PuzzleSettings.defaults,
+    settings: settings,
   );
 }
 
@@ -65,6 +66,11 @@ void main() {
     expect(result, isNotNull);
     final names = clock.host.records.map((r) => r.name).toList();
     expect(names.where((n) => n == 'round_start'), hasLength(1));
+    expect(
+      clock.host.records.firstWhere((r) => r.name == 'round_start').data['hz'],
+      HostingSettings.defaults.frameRateHz,
+      reason: 'the round ran at the default rate',
+    );
     expect(names.where((n) => n == 'player_result'), hasLength(2), reason: 'one per player');
     expect(names.where((n) => n == 'round_end'), hasLength(1));
     expect(names.where((n) => n == 'frames'), hasLength(1));
@@ -102,6 +108,14 @@ void main() {
       'teams': {'p1': 'left', 'p2': 'left'},
     });
     expect(start.hz, HostingSettings.defaults.frameRateHz);
+    session.dispose();
+  });
+
+  test('the view and the round run at the rate the host settings ask for', () {
+    final clock = Clock();
+    final session = sessionFor(clock, settings: const HostingSettings(frameRateHz: 30));
+    expect(clock.host.viewStarts.single.hz, 30);
+    expect(clock.host.records.firstWhere((r) => r.name == 'round_start').data['hz'], 30);
     session.dispose();
   });
 

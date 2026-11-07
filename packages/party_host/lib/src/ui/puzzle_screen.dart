@@ -4,6 +4,7 @@ import 'package:connection/connection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:game_kit/game_kit.dart';
 import 'package:puzzle_game/puzzle_game.dart';
 
 import '../abandon_signal.dart';
@@ -72,6 +73,10 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
   /// game; the screen's otherwise. A change of [HostService.shareView] waits
   /// for the next round (a rematch builds a new screen).
   late final LayoutTarget _target;
+
+  /// How this round runs (m12 §3): its frame rate, read when the round starts
+  /// so a change of the setting waits for the next one.
+  late final HostingSettings _hosting;
   MatchResult? _result;
   Puzzle? _puzzle;
   bool _handedOver = false;
@@ -80,6 +85,7 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
   void initState() {
     super.initState();
     _target = ref.read(hostServiceProvider).shareView ? LayoutTarget.phones : LayoutTarget.screen;
+    _hosting = ref.read(hostingSettingsProvider);
     // Made here, not lazily: dispose() can't read providers any more.
     _keyboard =
         widget.keyboard ??
@@ -174,6 +180,7 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
                             teams: widget.teams,
                             random: _random,
                             target: _target,
+                            hosting: _hosting,
                             camera: _camera,
                             match: widget.match,
                             paused: paused,

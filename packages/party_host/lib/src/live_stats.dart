@@ -7,6 +7,8 @@ import 'package:metrics/metrics.dart';
 import 'package:path/path.dart' as p;
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'device_sampler.dart';
+import 'host_device_monitor.dart';
 import 'session_recorder.dart';
 import 'session_store.dart';
 import 'session_uploader.dart';
@@ -29,8 +31,9 @@ class LiveStats implements StatsService {
   ///
   /// [sessionGap] is how long nobody may be connected before the session
   /// ends (two minutes); [checkpoint] is how often the running session is
-  /// saved (one minute). [clock] and [random] are injected so tests are
-  /// deterministic.
+  /// saved (one minute). [monitor] reads the host device's battery and heat
+  /// (m12 §0.8); without one, as on the TV, nothing is recorded. [clock] and
+  /// [random] are injected so tests are deterministic.
   LiveStats({
     required this.server,
     required this.host,
@@ -43,6 +46,7 @@ class LiveStats implements StatsService {
     this.sessionGap = const Duration(minutes: 2),
     this.checkpoint = const Duration(minutes: 1),
     this.uploader,
+    HostDeviceMonitor? monitor,
     DateTime Function()? clock,
     Random? random,
   }) : _log = log ?? ((_) {}),
@@ -52,11 +56,19 @@ class LiveStats implements StatsService {
     _state = StatsState(consent: consent, uploadConfigured: uploader != null, uploaded: _uploadedIds.length);
     _recorder = SessionRecorder(host: host, session: () => _session, log: _log, random: _random);
     _files = SessionStore(exportDirectory: exportDirectory, now: _clock, log: _log);
+    _deviceSampler = HostDeviceSampler(
+      host: host,
+      monitor: monitor ?? const NoHostDeviceMonitor(),
+      session: () => _session,
+      log: _log,
+    );
     _subs.addAll([
       server.changes.listen((_) => _checkPlayers()),
       host.playersChanged.listen((_) => _checkPlayers()),
       server.messages.listen(_recorder.onMessage),
-      host.stages.listen((s) => _session?.stage(s.playerId, s.stage, s.ms)),
+      // Each sample goes under the rate of the view that was running (m12
+      // §0.4), which is how the report tells 60 Hz from 30.
+      host.stages.listen((s) => _session?.stage(s.playerId, s.stage, s.ms, hz: host.viewRateHz)),
       host.records.listen(_recorder.onRecord),
     ]);
     _pingTimer = Timer.periodic(pingSampleInterval, (_) => _samplePings());
@@ -107,6 +119,7 @@ class LiveStats implements StatsService {
   late StatsState _state;
   late final Timer _pingTimer;
   late final SessionRecorder _recorder;
+  late final HostDeviceSampler _deviceSampler;
   late final SessionStore _files;
   SessionCollector? _session;
   String? _sessionPath;
@@ -159,7 +172,17 @@ class LiveStats implements StatsService {
     for (final id in here.difference(_present)) {
       final c = connected[id];
       if (c != null) {
-        s.joined(id, number: c.player ?? 0, atMs: now, platform: c.platform, app: c.appVersion, device: c.device);
+        // The host phone's own player comes in over the in-process link (m12
+        // §1), so its record says where it watched.
+        s.joined(
+          id,
+          number: c.player ?? 0,
+          atMs: now,
+          inProcess: c.isLocal,
+          platform: c.platform,
+          app: c.appVersion,
+          device: c.device,
+        );
       } else {
         s.joined(id, number: locals[id]!.number, atMs: now, local: true, platform: hostOs ?? '');
       }
@@ -286,9 +309,11 @@ class LiveStats implements StatsService {
     if (!_changes.isClosed) _changes.add(s);
   }
 
-  /// Ends the session, stops the timers and closes the streams.
+  /// Ends the session, stops the timers and the device readings, and closes
+  /// the streams.
   Future<void> dispose() async {
     await endSession();
+    await _deviceSampler.dispose();
     _pingTimer.cancel();
     _retry?.cancel();
     for (final s in _subs) {

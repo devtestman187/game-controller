@@ -68,6 +68,12 @@ class ServerGameHost implements GameHost {
   /// next [startView], so a running view finishes as it began.
   bool shareView = true;
 
+  /// The rate of the view a game is running, in frames a second (m12 §0.4):
+  /// the same rate the viewers were told in the view's start, so the analytics
+  /// file each player's samples under it. Null between games, and on a host
+  /// that keeps the game on its own screen.
+  int? get viewRateHz => _viewStart?.hz;
+
   /// Everything games report, for the analytics collector.
   Stream<GameRecord> get records => _records.stream;
 

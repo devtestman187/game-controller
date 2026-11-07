@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:game_assets/asset_manifest.dart';
+import 'package:game_kit/game_kit.dart';
 import 'package:party_host/party_host.dart';
 import 'package:party_host/testing.dart';
 import 'package:protocol/protocol.dart';
@@ -127,5 +128,17 @@ void main() {
     }
     final names = fake.gameHost.records.map((r) => r.name).toSet();
     expect(names, containsAll(['round_start', 'dash', 'wall_hit']));
+  });
+
+  testWidgets('the round runs at the rate the hosting settings ask for', (tester) async {
+    final fake = await pumpHost(
+      tester,
+      screen: const StubHome(),
+      overrides: [hostingSettingsProvider.overrideWithValue(const HostingSettings(frameRateHz: 20))],
+    );
+    await openArena(tester);
+    await frames(tester, 10);
+    final start = fake.gameHost.records.firstWhere((r) => r.name == 'round_start');
+    expect(start.data['hz'], 20);
   });
 }

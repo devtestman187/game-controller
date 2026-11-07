@@ -4,11 +4,42 @@ import 'package:protocol/protocol.dart';
 
 import 'session_stats.dart';
 
+/// The slowest and the fastest rate a view can run at (m12 §3): a sample that
+/// says it came from a view outside this range is a bug or a newer game, and
+/// counts in the totals only, never by rate.
+const minViewHz = 20;
+const maxViewHz = 120;
+
+/// Where a player watched the game (m12 §0.2), as the summary's `watched`.
+abstract final class Watched {
+  /// The host phone's own player, joined over the in-process channel (D1).
+  static const hostPhone = 'host_phone';
+
+  /// A phone that drew frames of the game on itself.
+  static const joinedPhone = 'joined_phone';
+
+  /// Everyone else: the host's own screen showed the game, as on the TV.
+  static const hostScreen = 'host_screen';
+}
+
+/// Where [p] watched the game (m12 §0.2): the host phone's own player is on
+/// the host's screen whether or not it also drew frames; a phone that drew
+/// frames watched on itself; a keyboard player and a host that keeps the game
+/// to itself watched on the host's screen.
+String watchedOf(PlayerRecord p) {
+  if (p.inProcess) return Watched.hostPhone;
+  return p.viewFrames > 0 ? Watched.joinedPhone : Watched.hostScreen;
+}
+
 class PlayerRecord {
   PlayerRecord({required this.number, required this.local, required this.platform, required this.app, this.device});
 
   int number;
   final bool local;
+
+  /// Joined over the host device's own link, not a phone on the network
+  /// (m12 §1): only the phone app's host mode has one.
+  bool inProcess = false;
   final String platform;
   String app;
   DeviceInfo? device;
@@ -20,9 +51,17 @@ class PlayerRecord {
   int inputs = 0;
   final ping = DelayStats();
   final stages = <String, DelayStats>{};
+
+  /// The same stages filed by the rate of the view that was running when each
+  /// sample arrived, keyed by that rate in frames a second (m12 §0.4).
+  final stagesByHz = <String, Map<String, DelayStats>>{};
   int viewFrames = 0;
   int viewGaps = 0;
   int viewLate = 0;
+
+  /// The viewer's counts filed by the rate of the view it was drawing, keyed
+  /// like [stagesByHz] (m12 §0.4).
+  final viewByHz = <String, ({int frames, int gaps, int late})>{};
   final segments = <String, MetricsMessage>{};
   final ratings = <Map<String, Object?>>[];
   final games = <String, Map<String, int>>{};
@@ -34,8 +73,8 @@ class PlayerRecord {
   String? mode;
 }
 
-/// One player's part of the summary: connection, inputs, latency, modes,
-/// segments, ratings and games.
+/// One player's part of the summary: connection, inputs, latency (by rate
+/// too), where they watched, modes, segments, ratings and games.
 Map<String, Object?> playerJson(String id, PlayerRecord p, int atMs) {
   final connected = p.connectedMs + (p.joinedAtMs == null ? 0 : max(0, atMs - p.joinedAtMs!));
   final segments = p.segments.values.toList()..sort((a, b) => startMsOf(a).compareTo(startMsOf(b)));
@@ -53,9 +92,14 @@ Map<String, Object?> playerJson(String id, PlayerRecord p, int atMs) {
     'inputs': p.inputs,
     'inputsPerS': connected == 0 ? 0 : double.parse((p.inputs / (connected / 1000)).toStringAsFixed(1)),
     'ping': ?p.ping.toJson(),
-    'stages': {for (final MapEntry(:key, :value) in p.stages.entries) key: ?value.toJson()},
+    'stages': stagesOf(p.stages),
+    if (p.stagesByHz.isNotEmpty)
+      'stagesByHz': {for (final MapEntry(key: hz, value: stages) in p.stagesByHz.entries) hz: stagesOf(stages)},
     if (p.viewFrames + p.viewGaps + p.viewLate > 0)
-      'view': {'frames': p.viewFrames, 'gaps': p.viewGaps, 'late': p.viewLate},
+      'view': viewOf((frames: p.viewFrames, gaps: p.viewGaps, late: p.viewLate)),
+    if (p.viewByHz.isNotEmpty)
+      'viewByHz': {for (final MapEntry(:key, :value) in p.viewByHz.entries) key: viewOf(value)},
+    'watched': watchedOf(p),
     if (segments.isNotEmpty) 'firstMode': segments.first.mode,
     'modes': modesJson(p, segments),
     'switches': switchesOf(segments),
@@ -69,6 +113,19 @@ Map<String, Object?> playerJson(String id, PlayerRecord p, int atMs) {
       },
   };
 }
+
+/// Delay statistics of some stages, as the summary writes them: a stage with
+/// no sample is left out.
+Map<String, Object?> stagesOf(Map<String, DelayStats> stages) => {
+  for (final MapEntry(:key, :value) in stages.entries) key: ?value.toJson(),
+};
+
+/// A viewer's counts, as the summary writes them.
+Map<String, int> viewOf(({int frames, int gaps, int late}) view) => {
+  'frames': view.frames,
+  'gaps': view.gaps,
+  'late': view.late,
+};
 
 /// A player's modes: time, time near the controls, games, wins and draws.
 Map<String, Object?> modesJson(PlayerRecord p, List<MetricsMessage> segments) {

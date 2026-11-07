@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'advertiser.dart';
 import 'host_advertising.dart';
+import 'host_device_monitor.dart';
 import 'host_directories.dart';
 import 'host_identity.dart';
 import 'host_log_export.dart';
@@ -96,6 +97,8 @@ class LiveHostService implements HostService {
   /// device's own player, which only the phone app passes (m12 §1).
   /// [shareView] is false by default: this host's own screen shows the game
   /// unless the shell says the phones do (m12-joined-view §0.1).
+  /// [monitor] reads the device's battery and heat (m12 §0.8); without one
+  /// the summary records neither.
   LiveHostService({
     required SharedPreferences prefs,
     required LogBuffer log,
@@ -104,6 +107,7 @@ class LiveHostService implements HostService {
     required Advertiser advertiser,
     InProcessListener? inProcess,
     SessionUploader? uploader,
+    HostDeviceMonitor? monitor,
     bool shareView = false,
   }) : _log = log.sink('tv'),
        _logBuffer = log,
@@ -144,6 +148,7 @@ class LiveHostService implements HostService {
       hostOs: identity.hostOs,
       log: log.sink('stats'),
       uploader: uploader,
+      monitor: monitor,
     );
     _sims = SimulatedControllers(
       hostId: id,

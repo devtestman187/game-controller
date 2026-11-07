@@ -1,6 +1,7 @@
 import 'package:connection/connection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:game_kit/game_kit.dart';
 
 import 'arena.dart';
 import 'arena_roster.dart';
@@ -19,13 +20,25 @@ import 'arena_view_widgets.dart';
 /// the box they're in (S4). [onEvent] also gets every game event, for the host
 /// app's log and debug overlay.
 class ArenaView extends StatefulWidget {
-  const ArenaView({super.key, required this.host, required this.onEvent, this.game, this.paused = false, this.abandon});
+  const ArenaView({
+    super.key,
+    required this.host,
+    required this.onEvent,
+    this.game,
+    this.settings,
+    this.paused = false,
+    this.abandon,
+  });
 
   final GameHost host;
   final void Function(GameEvent event) onEvent;
 
   /// The game to show. Tests pass one in to inspect it.
   final ArenaGame? game;
+
+  /// How the host runs the round (m12 §3): the frame rate it sends frames at.
+  /// Null takes this build's start option.
+  final HostingSettings? settings;
 
   /// Nothing moves (the pause menu is open).
   final bool paused;
@@ -46,7 +59,8 @@ class _ArenaViewState extends State<ArenaView> with SingleTickerProviderStateMix
   @override
   void initState() {
     super.initState();
-    _session = ArenaSession(host: widget.host, game: widget.game, onEvent: widget.onEvent)..paused = widget.paused;
+    _session = ArenaSession(host: widget.host, game: widget.game, settings: widget.settings, onEvent: widget.onEvent)
+      ..paused = widget.paused;
     _snapshot = _session.current;
     widget.abandon?.addListener(_abandoned);
     _ticker.start();

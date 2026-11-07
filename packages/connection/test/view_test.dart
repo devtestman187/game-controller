@@ -371,6 +371,23 @@ void main() {
     });
   }
 
+  test('the host reports the rate of the running view, and none when it shows the game itself', () async {
+    final server = await startHost(TestTransport.webSocket);
+    final host = ServerGameHost(server);
+    addTearDown(host.dispose);
+    expect(host.viewRateHz, isNull, reason: 'no view yet');
+
+    host.startView(_start);
+    expect(host.viewRateHz, 60, reason: 'the rate the viewers were told');
+
+    host.endView(_end);
+    expect(host.viewRateHz, isNull, reason: 'the view ended');
+
+    host.shareView = false;
+    host.startView(_start);
+    expect(host.viewRateHz, isNull, reason: 'a host that keeps the game on its own screen sends no view');
+  });
+
   // No channel: the memory host keeps the calls for the test to check.
   test('the memory host records the view calls and its input seqs', () {
     final host = MemoryGameHost();

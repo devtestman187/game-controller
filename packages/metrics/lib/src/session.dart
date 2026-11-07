@@ -2,7 +2,9 @@ import 'dart:math';
 
 import 'package:protocol/protocol.dart';
 
+import 'host_device_sample.dart';
 import 'segment.dart';
+import 'session_device.dart';
 import 'session_player.dart';
 import 'session_stats.dart';
 
@@ -19,8 +21,9 @@ abstract final class HostType {
 
 /// Joins everything the host learns in one play session into one summary
 /// (PRD v2 T17): each phone's mode segments, ratings, latency, connection
-/// health and game events. Pure Dart: the TV app feeds it, and saves
-/// [summary] as JSON.
+/// health, where they watched from, the rounds with their battery and heat,
+/// and the host device's own samples. Pure Dart: the host app feeds it, and
+/// saves [summary] as JSON.
 ///
 /// No names, nicknames or network details go in: players are known by
 /// their random install ID and number only.
@@ -46,6 +49,8 @@ class SessionCollector {
 
   final _players = <String, PlayerRecord>{};
   final _rounds = <Map<String, Object?>>[];
+  final _device = HostDeviceTally();
+  int? _roundHz;
   int _frames = 0;
   int _frameDrops = 0;
   bool _inGame = false;
@@ -54,12 +59,15 @@ class SessionCollector {
 
   Iterable<String> get playerIds => _players.keys;
 
-  /// A player joined, or came back after a drop.
+  /// A player joined, or came back after a drop. [inProcess] is the host
+  /// device's own player, over its in-process link (m12 §1): it watched on
+  /// the host's screen, whatever else it did.
   void joined(
     String id, {
     required int number,
     required int atMs,
     bool local = false,
+    bool inProcess = false,
     String platform = '',
     String app = '',
     DeviceInfo? device,
@@ -69,6 +77,7 @@ class SessionCollector {
     device = device == null ? null : _cleanDevice(device);
     final p = _players[id] ??= PlayerRecord(number: number, local: local, platform: platform, app: app, device: device);
     p.number = number;
+    if (inProcess) p.inProcess = true;
     if (app.isNotEmpty) p.app = app;
     p.device = device ?? p.device;
     if (p.joinedAtMs != null) return; // Already here.
@@ -90,8 +99,10 @@ class SessionCollector {
     if (_inGame) p.quitsMidGame++;
   }
 
-  /// A metrics batch: the newest batch of each segment wins.
-  void metrics(String id, MetricsMessage batch) {
+  /// A metrics batch: the newest batch of each segment wins. [hz] is the rate
+  /// of the view the batch's player was drawing when it was counted (m12
+  /// §0.4): its view counts are filed under that rate too.
+  void metrics(String id, MetricsMessage batch, {int? hz}) {
     final p = _players[id];
     if (p == null) return;
     final old = p.segments[batch.segment];
@@ -101,9 +112,16 @@ class SessionCollector {
     if (view != null) {
       // The counts are the player's, not the mode's: they carry across the
       // batches of every segment (m12 §6).
-      p.viewFrames += max(0, view.frames);
-      p.viewGaps += max(0, view.gaps);
-      p.viewLate += max(0, view.late);
+      final frames = max(0, view.frames);
+      final gaps = max(0, view.gaps);
+      final late = max(0, view.late);
+      p.viewFrames += frames;
+      p.viewGaps += gaps;
+      p.viewLate += late;
+      if (hz case final hz? when hz >= minViewHz && hz <= maxViewHz) {
+        final byHz = p.viewByHz['$hz'] ?? (frames: 0, gaps: 0, late: 0);
+        p.viewByHz['$hz'] = (frames: byHz.frames + frames, gaps: byHz.gaps + gaps, late: byHz.late + late);
+      }
     }
     p.segments[batch.segment] = MetricsMessage(
       segment: batch.segment,
@@ -122,11 +140,16 @@ class SessionCollector {
 
   void ping(String id, int ms) => _players[id]?.ping.add(ms);
 
-  /// A latency stage sample (S7).
-  void stage(String id, String stage, int ms) {
+  /// A latency stage sample (S7). [hz] is the rate of the view that was
+  /// running when it arrived (m12 §0.4), or null when the host doesn't share
+  /// its view: the sample is then filed by stage only.
+  void stage(String id, String stage, int ms, {int? hz}) {
     final p = _players[id];
     if (p == null || stage.length > 32) return;
     (p.stages[stage] ??= DelayStats()).add(ms);
+    if (hz case final hz? when hz >= minViewHz && hz <= maxViewHz) {
+      ((p.stagesByHz['$hz'] ??= {})[stage] ??= DelayStats()).add(ms);
+    }
   }
 
   void rating(String id, RatingMessage r, {required String game}) {
@@ -161,11 +184,17 @@ class SessionCollector {
     ((p.gameStats[game] ??= {})[name] ??= ValueStats()).add(value);
   }
 
-  /// A round started.
-  void roundStarted() => _inGame = true;
+  /// A round started at the rate of the view that runs it (m12 §0.4): [hz] is
+  /// null when the host keeps the game on its own screen, and the round then
+  /// has no rate to be filed under.
+  void roundStarted({int? hz}) {
+    _inGame = true;
+    _roundHz = hz != null && hz >= minViewHz && hz <= maxViewHz ? hz : null;
+  }
 
   /// A round ended. [modes] is each player's mode; [winnerId] won, or
-  /// [winnerIds] (a team) did; [draw]: a race nobody won.
+  /// [winnerIds] (a team) did; [draw]: a race nobody won. The round keeps the
+  /// rate of the view it started at.
   void roundEnded(
     String game, {
     required double timeS,
@@ -179,6 +208,7 @@ class SessionCollector {
     if (_rounds.length < 1000) {
       _rounds.add({
         'game': game,
+        'hz': ?_roundHz,
         'timeS': double.parse(timeS.toStringAsFixed(2)),
         'players': modes.length,
         'winner': ?_players[winners.firstOrNull]?.number,
@@ -186,6 +216,7 @@ class SessionCollector {
         if (draw) 'draw': true,
       });
     }
+    _roundHz = null;
     for (final MapEntry(key: id, value: mode) in modes.entries) {
       final p = _players[id];
       if (p == null) continue;
@@ -208,6 +239,26 @@ class SessionCollector {
     _frameDrops += max(0, drops);
   }
 
+  /// Gives the round that just ended its battery and heat (m12 §0.8): [start]
+  /// is the level when it began, [end] when it ended, and [thermal] the
+  /// device's state at the end. Nothing is written when no round is waiting
+  /// (a game that didn't record a start) or when the round has them already.
+  void roundBattery({double? start, double? end, String? thermal}) {
+    if (_rounds.isEmpty) return;
+    final round = _rounds.last;
+    if (round.containsKey('battery') || round.containsKey('thermal')) return;
+    final battery = {'start': ?batteryLevel(start), 'end': ?batteryLevel(end)};
+    if (battery.isNotEmpty) round['battery'] = battery;
+    if (thermal != null) round['thermal'] = thermal;
+  }
+
+  /// A reading of the host device's battery and heat while the session runs
+  /// (m12 §0.8). [forS] is the seconds passed in the sample's thermal state:
+  /// its interval since the last one, or 0 for a sample at a round's edge.
+  void deviceSample(HostDeviceSample? sample, {int forS = 0}) {
+    if (sample != null) _device.add(sample, forS: forS);
+  }
+
   /// The session so far, as JSON (PRD v2 "What it records").
   Map<String, Object?> summary(int atMs) {
     final players = [for (final MapEntry(key: id, value: p) in _players.entries) playerJson(id, p, atMs)]
@@ -215,7 +266,7 @@ class SessionCollector {
     return {
       'schema': summarySchema,
       'id': id,
-      'host': {'type': hostType, 'app': hostApp, 'os': ?hostOs},
+      'host': {'type': hostType, 'app': hostApp, 'os': ?hostOs, 'device': ?_device.toJson()},
       // The day only, not the time: enough for the report, less to know.
       'date': startedAt.toUtc().toIso8601String().substring(0, 10),
       'durationS': (max(0, atMs - startMs) / 1000).round(),

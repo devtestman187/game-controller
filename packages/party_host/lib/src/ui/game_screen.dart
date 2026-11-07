@@ -3,6 +3,7 @@ import 'package:game_assets/asset_manifest.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:game_kit/game_kit.dart';
 import 'package:test_game/test_game.dart';
 
 import '../abandon_signal.dart';
@@ -43,9 +44,14 @@ class _GameScreenState extends ConsumerState<GameScreen> {
   bool _debug = false;
   late final LocalPlayerSource _keyboard;
 
+  /// How this round runs (m12 §3): its frame rate, read when the round starts
+  /// so a change of the setting waits for the next one.
+  late final HostingSettings _hosting;
+
   @override
   void initState() {
     super.initState();
+    _hosting = ref.read(hostingSettingsProvider);
     // Made here, not lazily: dispose() can't read providers any more.
     final log = ref.read(logProvider);
     _keyboard = ref.read(localPlayerSourceProvider)(
@@ -115,6 +121,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
                   ArenaView(
                     game: widget.game,
                     host: ref.read(gameHostProvider),
+                    settings: _hosting,
                     onEvent: _onEvent,
                     paused: paused,
                     abandon: ref.read(hostAbandonProvider),

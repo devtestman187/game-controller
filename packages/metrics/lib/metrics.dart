@@ -7,6 +7,7 @@
 library;
 
 export 'src/geometry.dart';
+export 'src/host_device_sample.dart';
 export 'src/report.dart';
 export 'src/report_table.dart';
 export 'src/segment.dart';

@@ -26,7 +26,10 @@ final arenaLayout = GameLayoutMessage(labels: {ControllerButton.start: 'Pause'})
 /// phone the arena's buttons, buzzes and plays its events, and records each
 /// round (S7). The view only draws [current].
 class ArenaSession extends GameSession {
-  ArenaSession({required super.host, required this.onEvent, ArenaGame? game})
+  /// [settings] is how the host runs the round (m12 §3): the frame rate it
+  /// sends frames to the phones at, which the round records. Null takes this
+  /// build's start option ([HostingSettings.fromEnvironment]).
+  ArenaSession({required super.host, required this.onEvent, ArenaGame? game, super.settings})
     : game = game ?? ArenaGame(),
       super(module: arenaModule, setup: arenaSetup);
 
@@ -65,7 +68,8 @@ class ArenaSession extends GameSession {
     _withLayout.removeWhere((id) => !ids.contains(id));
     if (!_roundRunning && ids.isNotEmpty && game.phase == ArenaPhase.playing) {
       _roundRunning = true;
-      _record('round_start');
+      // The rate the round's frames go out at (m12 §0.4).
+      _record('round_start', data: {'hz': settings.frameRateHz});
     }
 
     final before = game.phase;

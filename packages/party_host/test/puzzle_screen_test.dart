@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:game_kit/game_kit.dart';
 import 'package:party_host/party_host.dart';
 import 'package:puzzle_game/puzzle_game.dart';
 
@@ -136,6 +137,29 @@ void main() {
       overrides: [ownPlayerIdProvider.overrideWithValue('p2'), wholeMatchProvider.overrideWithValue(true)],
     );
     expect(drawnCamera(tester).side, isNull, reason: 'a tablet has the room for both sides');
+  });
+
+  testWidgets('the round runs at the rate the hosting settings ask for', (tester) async {
+    final fake = await pumpHost(
+      tester,
+      screen: const StubHome(),
+      overrides: [hostingSettingsProvider.overrideWithValue(const HostingSettings(frameRateHz: 30))],
+    );
+    tester
+        .state<NavigatorState>(find.byType(Navigator))
+        .push(
+          MaterialPageRoute<void>(
+            builder: (_) => const PuzzleScreen(
+              choice: PuzzleChoice(level: Level.easy),
+              teams: {'p1': PuzzleSide.left},
+            ),
+          ),
+        );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(fake.gameHost.viewStarts.single.hz, 30);
+    final start = fake.gameHost.records.firstWhere((r) => r.name == 'round_start');
+    expect(start.data['hz'], 30);
   });
 }
 

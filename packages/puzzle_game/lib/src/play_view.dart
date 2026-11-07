@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:connection/connection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:game_kit/game_kit.dart';
 
 import 'camera.dart';
 import 'match.dart';
@@ -31,6 +32,7 @@ class PuzzlePlayView extends StatefulWidget {
     required this.teams,
     required this.random,
     this.target = LayoutTarget.screen,
+    this.hosting,
     this.camera = const PuzzleCamera.whole(),
     this.paused = false,
     this.onFinished,
@@ -50,6 +52,10 @@ class PuzzlePlayView extends StatefulWidget {
   /// The world the match plays in, chosen by the host when the round starts
   /// (m12 §0.4): the split screen, or one side per phone.
   final LayoutTarget target;
+
+  /// How the host runs the round (m12 §3): the frame rate it sends frames at,
+  /// which the round records. Null takes this build's start option.
+  final HostingSettings? hosting;
 
   /// What a phone's screen shows of a `phones` match (m12-phone-layout §3):
   /// the host's own side, or the whole match. The host app picks it from its
@@ -97,6 +103,7 @@ class PuzzlePlayViewState extends State<PuzzlePlayView> with SingleTickerProvide
       random: widget.random,
       playtest: widget.settings,
       target: widget.target,
+      settings: widget.hosting,
       match: widget.match,
       onFinished: widget.onFinished,
     )..paused = widget.paused;

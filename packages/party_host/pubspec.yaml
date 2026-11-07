@@ -23,6 +23,9 @@ dependencies:
   flutter_soloud: ^5.2.1
   game_assets:
     path: ../../assets
+  # For HostingSettings: the frame rate a round runs at (m12 §3).
+  game_kit:
+    path: ../game_kit
   metrics:
     path: ../metrics
   path: ^1.9.1
