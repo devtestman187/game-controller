@@ -106,6 +106,9 @@ The owner often has release copies of the TV app open (from the Downloads folder
 
 ## Lessons learned
 
+**Releases**
+- A tag with the same name as a branch (`m12` on branch `m12`) can't be pushed by `tools/release.sh`: `git push origin m12` is ambiguous and fails. Tag by hand and push `refs/tags/<tag>` (docs/release.md), then `tools/release.sh --status <tag>`, which reports once rather than waiting (Nov 7, 2026).
+
 **Flutter and Dart**
 - Don't run two Flutter builds at once: they share a build cache and collide.
 - Don't pipe a build or test through `| tail`: the pipe hides the exit code, so a failed build looks successful. `tools/check.sh` keeps the exit codes.
