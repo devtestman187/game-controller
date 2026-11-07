@@ -5,6 +5,7 @@ import 'package:protocol/protocol.dart' show playerColor;
 
 import 'game.dart';
 import 'puzzle.dart';
+import 'puzzle_values.dart';
 import 'snapshot.dart';
 import 'split_layout.dart';
 

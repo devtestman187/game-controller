@@ -1,8 +1,8 @@
 import 'package:connection/connection.dart';
 import 'package:protocol/protocol.dart';
 
-import 'game.dart';
 import 'match.dart';
+import 'puzzle_values.dart';
 
 /// One step's events as the players feel and hear them (S5, S7): the haptics,
 /// sounds and records the play view applied inline before (PRD v2 M10).

@@ -4,6 +4,7 @@ import 'package:connection/connection.dart';
 
 import 'game.dart';
 import 'puzzle.dart';
+import 'puzzle_values.dart';
 import 'settings.dart';
 import 'snapshot.dart';
 import 'split_layout.dart';

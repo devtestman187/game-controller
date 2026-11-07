@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:game_kit/game_kit.dart';
 
-import 'game.dart';
+import 'puzzle_values.dart';
 
 /// A piece as the view sees it.
 final class PieceView {

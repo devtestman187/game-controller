@@ -1,8 +1,8 @@
 import 'dart:math';
 import 'dart:ui';
 
-import 'game.dart';
 import 'puzzle.dart';
+import 'start_angles.dart';
 import 'tray.dart';
 
 /// Where everything goes on the split screen for one puzzle (PRD v2 "Modes
