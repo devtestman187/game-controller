@@ -62,10 +62,12 @@ void main() {
           client.sendInput(const {});
           // The input goes out after the batch would have; one frame arrives
           // after the other, so the batch never left the phone.
-          await host.messages.firstWhere((m) {
-            if (m.message case final InputStateMessage i) return i.seq > pairedSeq;
-            return false;
-          });
+          await host.messages
+              .firstWhere((m) {
+                if (m.message case final InputStateMessage i) return i.seq > pairedSeq;
+                return false;
+              })
+              .timeout(const Duration(seconds: 5));
           expect(got.whereType<MetricsMessage>(), isEmpty);
           expect(client.metricsWaiting, 1, reason: 'kept for a host that takes them');
         });
@@ -109,10 +111,12 @@ void main() {
           client.connect(addressOf(host, t), code: host.pairingCode);
           await clientStatus(client, ClientStatus.connected);
           client.sendMetrics(batch('s1', 0, presses: 1));
-          await host.messages.firstWhere((m) {
-            if (m.message case final MetricsMessage b) return b.segment == 's1' && b.index == 0;
-            return false;
-          });
+          await host.messages
+              .firstWhere((m) {
+                if (m.message case final MetricsMessage b) return b.segment == 's1' && b.index == 0;
+                return false;
+              })
+              .timeout(const Duration(seconds: 5));
 
           host.dropAllConnections();
           await clientStatus(client, ClientStatus.reconnecting);

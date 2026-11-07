@@ -6,6 +6,7 @@ import 'package:test/test.dart';
 
 import 'fake_host.dart';
 import 'helpers.dart';
+import 'wire_phone.dart';
 
 void main() {
   for (final t in TestTransport.values) {
@@ -33,26 +34,24 @@ void main() {
         final host = await startHost(t);
         final a = newClient(t, id: 'a');
         final b = newClient(t, id: 'b');
-        final unpaired = newClient(t, id: 'c');
         a.connect(addressOf(host, t), code: host.pairingCode);
         b.connect(addressOf(host, t), code: host.pairingCode);
-        unpaired.connect(addressOf(host, t));
         await clientStatus(a, ClientStatus.connected);
         await clientStatus(b, ClientStatus.connected);
-        await clientStatus(unpaired, ClientStatus.waitingForCode);
+        // A phone that never pairs, seen on the wire: whatever the host sends
+        // it arrives here as a message, so the rule under test is the host's
+        // ("don't send it"), not the phone's ("ignore it").
+        final unpaired = await WirePhone.open(host, t, controllerId: 'c');
 
         final gotA = a.hapticEvents.first;
         final gotB = b.hapticEvents.first;
-        var unpairedGot = 0;
-        unpaired.hapticEvents.listen((_) => unpairedGot++);
         expect(host.sendToAll(HapticEventMessage(event: HapticEvent.success)), 2);
         expect((await gotA.timeout(const Duration(seconds: 5))).event, HapticEvent.success);
         expect((await gotB.timeout(const Duration(seconds: 5))).event, HapticEvent.success);
-        // A message the unpaired phone gets after the haptics: had one been
-        // sent to it, it would have arrived first.
-        unpaired.submitCode(host.pairingCode);
-        await clientUntil(unpaired, (s) => s.isConnected);
-        expect(unpairedGot, 0);
+        // A round trip after the haptics: had one gone to the unpaired phone,
+        // it would be in fromHost by the pong.
+        await unpaired.drain();
+        expect(unpaired.fromHost.whereType<HapticEventMessage>(), isEmpty);
       });
 
       test('a phone that sends a haptic event to the host is closed as a protocol error', () async {

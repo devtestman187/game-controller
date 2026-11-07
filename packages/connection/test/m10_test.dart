@@ -5,6 +5,7 @@ import 'package:protocol/protocol.dart';
 import 'package:test/test.dart';
 
 import 'helpers.dart';
+import 'wire_phone.dart';
 
 const _all = [Capability.metrics, Capability.rating, Capability.layout, Capability.status];
 
@@ -25,8 +26,8 @@ void main() {
         await clientStatus(client, ClientStatus.connected);
         await hostUntil(server, (h) => h.connected.isNotEmpty);
 
-        final layout = client.layouts.firstWhere((l) => !l.isStandard);
-        final status = client.statuses.firstWhere((s) => !s.isHidden);
+        final layout = client.layouts.firstWhere((l) => !l.isStandard).timeout(const Duration(seconds: 5));
+        final status = client.statuses.firstWhere((s) => !s.isHidden).timeout(const Duration(seconds: 5));
         host.setLayout('phone-1', puzzleLayout);
         host.setStatus('phone-1', StatusMessage(text: 'Roof', progress: 0.5));
         await layout;
@@ -35,8 +36,8 @@ void main() {
         expect(client.status.text, 'Roof');
 
         // A drop: the phone forgets the game's controls...
-        final layoutAgain = client.layouts.firstWhere((l) => !l.isStandard);
-        final statusAgain = client.statuses.firstWhere((s) => !s.isHidden);
+        final layoutAgain = client.layouts.firstWhere((l) => !l.isStandard).timeout(const Duration(seconds: 5));
+        final statusAgain = client.statuses.firstWhere((s) => !s.isHidden).timeout(const Duration(seconds: 5));
         server.dropAllConnections();
         await clientStatus(client, ClientStatus.reconnecting);
         expect(client.layout.isStandard, isTrue);
@@ -49,8 +50,8 @@ void main() {
         expect(client.status.text, 'Roof');
 
         // The game ends: standard again, and the panel goes.
-        final standard = client.layouts.firstWhere((l) => l.isStandard);
-        final hidden = client.statuses.firstWhere((s) => s.isHidden);
+        final standard = client.layouts.firstWhere((l) => l.isStandard).timeout(const Duration(seconds: 5));
+        final hidden = client.statuses.firstWhere((s) => s.isHidden).timeout(const Duration(seconds: 5));
         host.setLayout('phone-1', GameLayoutMessage.standard());
         host.setStatus('phone-1', StatusMessage.hidden());
         await standard;
@@ -63,16 +64,24 @@ void main() {
         final server = await startHost(t, capabilities: _all);
         final host = ServerGameHost(server);
         addTearDown(host.dispose);
-        final client = newClient(t, capabilities: const [Capability.metrics]);
-        client.connect(addressOf(server, t), code: server.pairingCode);
-        await clientStatus(client, ClientStatus.connected);
-        await hostUntil(server, (h) => h.connected.isNotEmpty);
+        // A phone that lists the metrics capability only, seen on the wire. It
+        // is paired, so the only thing that can stop a layout or status is the
+        // host's capability check — and this end sees the frame if it doesn't.
+        // What the host sends is checked here, not what the phone makes of it.
+        final older = await WirePhone.open(
+          server,
+          t,
+          controllerId: 'phone-1',
+          capabilities: const [Capability.metrics],
+          code: server.pairingCode,
+        );
         host.setLayout('phone-1', puzzleLayout);
         host.setStatus('phone-1', StatusMessage(text: 'Roof'));
-        // The round trip shows the phone took everything the host sent it.
-        await hapticRoundTrip(server, client);
-        expect(client.layout.isStandard, isTrue);
-        expect(client.status.isHidden, isTrue);
+        // A round trip after both: had the host sent either, it would be in
+        // fromHost by the pong.
+        await older.drain();
+        expect(older.fromHost.whereType<GameLayoutMessage>(), isEmpty);
+        expect(older.fromHost.whereType<StatusMessage>(), isEmpty);
         expect(server.snapshot.connected, hasLength(1), reason: 'still connected');
       });
 
@@ -127,27 +136,32 @@ void main() {
         await hostUntil(server, (h) => h.connected.isNotEmpty);
 
         // Wait for exactly the press and the release (the phone also sends a
-        // neutral input when it connects).
+        // neutral input when it connects), keeping when the press arrived.
         var sawA = false;
-        final both = server.messages
-            .map((m) => m.message)
-            .where((m) => m is InputStateMessage)
-            .cast<InputStateMessage>()
-            .firstWhere((i) {
-              if (i.buttons.contains(ControllerButton.a)) sawA = true;
-              return sawA && i.buttons.isEmpty;
-            });
+        final pressedAt = Completer<int>();
+        final both = server.messages.firstWhere((m) {
+          if (m.message case final InputStateMessage i) {
+            if (i.buttons.contains(ControllerButton.a)) {
+              sawA = true;
+              if (!pressedAt.isCompleted) pressedAt.complete(m.receivedAtMs);
+            }
+            return sawA && i.buttons.isEmpty;
+          }
+          return false;
+        });
         client
           ..sendInput({ControllerButton.a})
           ..sendInput({});
-        await both; // The host applies an input before it passes the message on.
+        // The host applies an input before it passes the message on.
+        await both.timeout(const Duration(seconds: 5));
         expect(server.snapshot.connected.single.input!.buttons, isEmpty);
         // The latest input has nothing held, but the tap still shows...
         expect(host.gamepad('phone-1').pressed(GamepadButton.a), isTrue);
-        // ...for a short time only: two heartbeats of the phone are longer
-        // than minPressMs, and they are events rather than a sleep.
-        final samples = server.snapshot.connected.single.rttStats?.samples ?? 0;
-        await hostUntil(server, (h) => (h.connected.single.rttStats?.samples ?? 0) >= samples + 2);
+        // ...until minPressMs has passed on the host's own clock, which is the
+        // clock the host holds a press by. A new snapshot arrives with every
+        // heartbeat; the time it is judged on is the host's, not the ping's.
+        final pressMs = await pressedAt.future;
+        await hostUntil(server, (_) => server.nowMs - pressMs >= ServerGameHost.minPressMs);
         expect(host.gamepad('phone-1').pressed(GamepadButton.a), isFalse);
       });
     });
@@ -160,7 +174,7 @@ void main() {
     addTearDown(host.dispose);
     final sounds = <String>[];
     host.sounds.listen(sounds.add);
-    final snap = host.sounds.first;
+    final snap = host.sounds.first.timeout(const Duration(seconds: 5));
     host.playSound('snap');
     final keyboard = host.addLocalPlayer(nickname: 'Keyboard');
     host.setLayout(keyboard.id, puzzleLayout);
