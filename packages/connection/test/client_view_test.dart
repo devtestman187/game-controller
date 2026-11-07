@@ -21,26 +21,27 @@ void main() {
 
   for (final t in TestTransport.values) {
     group(t.name, () {
-      test('the frame that acknowledges an input measures the touch to frame time', () async {
+      test('a drawn frame measures every input it newly acks', () async {
         final host = await startHost(t, capabilities: _both);
         final client = newClient(t, capabilities: _both);
         final got = _Batches(host);
         client.connect(addressOf(host, t), code: host.pairingCode);
         await clientStatus(client, ClientStatus.connected);
         await hostUntil(host, (h) => h.connected.isNotEmpty && h.connected.single.input != null);
-        final pairedSeq = host.snapshot.connected.single.input!.seq;
+        final paired = host.snapshot.connected.single.input!;
 
         client.sendInput({ControllerButton.a});
         final state = await host.messages
-            .firstWhere((m) => m.message is InputStateMessage && (m.message as InputStateMessage).seq > pairedSeq)
+            .firstWhere((m) => m.message is InputStateMessage && (m.message as InputStateMessage).seq > paired.seq)
             .then((m) => m.message as InputStateMessage)
             .timeout(const Duration(seconds: 5));
-        // The draw is 40 ms after the input left the phone (one clock for both).
+        // The draw is 40 ms after the input left the phone (one clock for both);
+        // it acks the pairing state too, so that one gets its own sample.
         client.viewerStats!.frameDrawn(state.seq, _sendTime(state) + 40);
 
         client.sendMetrics(batch(0));
         final sent = await got.next();
-        expect(sent.stages[LatencyStage.touchToFrame], [40]);
+        expect(sent.stages[LatencyStage.touchToFrame], [_sendTime(state) + 40 - _sendTime(paired), 40]);
         expect(sent.view, (frames: 1, gaps: 0, late: 0));
       });
 
@@ -98,10 +99,15 @@ void main() {
         addTearDown(inputs.close);
 
         final client = newClient(t, connector: host, capabilities: _both);
+        // The state sent as pairing completes, and the one sendInput sends: a
+        // draw that acks the second measures both.
+        final paired = inputs.stream.first.timeout(const Duration(seconds: 5));
         client.connect(host.address, code: '1234');
         await clientStatus(client, ClientStatus.connected);
+        final pairedState = await paired;
+        final sentState = inputs.stream.firstWhere((s) => s.seq > pairedState.seq).timeout(const Duration(seconds: 5));
         client.sendInput({ControllerButton.a});
-        final state = await inputs.stream.first.timeout(const Duration(seconds: 5));
+        final state = await sentState;
         client.viewerStats!.frameDrawn(state.seq, _sendTime(state) + 40);
 
         client.sendMetrics(batch(0));
@@ -109,7 +115,10 @@ void main() {
         host.channels.single.close(CloseCodes.goingAway);
 
         final resent = await got.future.timeout(const Duration(seconds: 5));
-        expect(resent.stages[LatencyStage.touchToFrame], [40], reason: 'the queued batch kept its sample');
+        expect(resent.stages[LatencyStage.touchToFrame], [
+          _sendTime(state) + 40 - _sendTime(pairedState),
+          40,
+        ], reason: 'the queued batch kept its samples');
         expect(resent.view, (frames: 1, gaps: 0, late: 0), reason: 'and a resend drains nothing more');
       });
 

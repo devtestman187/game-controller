@@ -134,9 +134,9 @@ abstract class GameSession {
 - To draw at phone time `now`, render host time `r` = `now` − `base` − `playoutDelayMs`. With frames `a` and `b` such that `a.at` ≤ `r` < `b.at`, draw `a.snapshot.lerpTo(b.snapshot, (r − a.at) / (b.at − a.at))`. If `r` is at or after the newest frame, draw the newest (never extrapolate). If `r` is before the oldest kept frame, draw the oldest. Frames older than `a` are dropped.
 - `ViewStarted` resets everything.
 
-**Measurements** (phone clock only):
-- `touch_to_frame`: `ViewerStats` remembers when each of the phone's input seqs was sent (the last 256). When a drawn `a` first acks a seq ≥ s for this phone's player, it records draw time − send time of the highest such remembered seq. Draw time is the post-frame callback of the Flutter frame that showed it.
-- `gaps`: frames whose `n` jumps by more than 1.5 × the expected stride (60 / `hz` steps). `late`: drawn frames more than 25 ms after the previous one. `frames`: frames drawn.
+**Measurements** (phone clock only; the two bullets were revised Nov 7 — the earlier ones measured only the newest input and counted a draw late after a fixed 25 ms, which held only at 60 Hz):
+- `touch_to_frame`: `ViewerStats` remembers when each of the phone's input seqs was sent (the last 256). When a drawn frame first acks a seq above the last acknowledged one, it records one sample per remembered input seq in (last acknowledged, ack seq]: draw time − that input's send time, in seq order. So every input sent gets its trip to the screen, and the samples show the wait for the frame that first carried it. Inputs no longer remembered are skipped. Draw time is the post-frame callback of the Flutter frame that showed it.
+- `gaps`: frames whose `n` jumps by more than 1.5 × the expected stride (60 / `hz` steps). `late`: drawn frames more than `lateFactor` = 1.5 × (1000 / `hz`) ms after the previous one, so the limit follows the frame rate (25 ms at 60 Hz, 50 at 30, 75 at 20) instead of fitting only 60 Hz. `frames`: frames drawn.
 
 **`GameModule`, `GameViewer`, `GameSnapshot`** (game_kit):
 

@@ -23,10 +23,12 @@ class ViewerStats {
   /// after a gap (m12 §4).
   static const gapStrideFactor = 1.5;
 
-  /// A drawn frame more than this many ms after the previous draw was late
-  /// (m12 §4). 25 ms is one missed frame at 60 Hz plus slack, the same limit
-  /// the games' views use.
-  static const lateDrawMs = 25;
+  /// A drawn frame more than this many expected frame intervals (1000 / [hz]
+  /// ms each) after the previous draw was late (m12 §4). The interval is the
+  /// host's frame rate, so the limit is 25 ms at 60 Hz, 50 ms at 30 Hz and
+  /// 75 ms at 20 Hz: 1.5 intervals lets a normal spacing through with room for
+  /// ms rounding, and counts a draw that missed a whole frame as late.
+  static const lateFactor = 1.5;
 
   /// How many of the phone's latest input seqs are kept, so a frame's ack can
   /// be matched to its send time (m12 §4).
@@ -45,6 +47,10 @@ class ViewerStats {
 
   /// The frame rate from view_start, so it counts the right stride.
   int get hz => _hz;
+
+  /// The draw gap above which a draw is late at the current [hz]: [lateFactor]
+  /// frame intervals in ms.
+  double get _lateLimitMs => lateFactor * 1000 / _hz;
 
   /// Remembers that input [seq] was sent at phone time [atMs], keeping only
   /// the last [maxRememberedInputs] seqs.
@@ -70,26 +76,29 @@ class ViewerStats {
   /// acknowledged input [ackSeq] of this phone's player (null when the frame
   /// has no ack for it).
   ///
-  /// The draw is late when it comes more than [lateDrawMs] after the previous
-  /// one. For touch_to_frame it takes the highest remembered input seq above
-  /// the last acknowledged one and up to [ackSeq], and records the time from
-  /// that input's send to this draw; an older frame catching up later records
+  /// The draw is late when it comes more than [_lateLimitMs] after the previous
+  /// one. For touch_to_frame it records one sample per remembered input seq in
+  /// (the last acknowledged one, [ackSeq]]: the time from that input's send to
+  /// this draw, in seq order. So every input sent gets its trip to the screen
+  /// and the samples show the wait for the frame that first acked them. Inputs
+  /// it no longer remembers are skipped, and a frame with no new ack records
   /// nothing.
   void frameDrawn(int? ackSeq, int drawnAtMs) {
     _frames++;
     final previous = _lastDrawnAtMs;
-    if (previous != null && drawnAtMs - previous > lateDrawMs) _late++;
+    if (previous != null && drawnAtMs - previous > _lateLimitMs) _late++;
     _lastDrawnAtMs = drawnAtMs;
 
     final lastAcked = _lastAckedSeq;
     if (ackSeq == null || (lastAcked != null && ackSeq <= lastAcked)) return;
     _lastAckedSeq = ackSeq;
-    int? acked;
-    for (final seq in _sentAtMs.keys) {
-      if ((lastAcked == null || seq > lastAcked) && seq <= ackSeq && (acked == null || seq > acked)) acked = seq;
+    final newlyAcked = [
+      for (final seq in _sentAtMs.keys)
+        if ((lastAcked == null || seq > lastAcked) && seq <= ackSeq) seq,
+    ]..sort();
+    for (final seq in newlyAcked) {
+      _touchToFrame.add(drawnAtMs - _sentAtMs[seq]!);
     }
-    final sentAtMs = acked == null ? null : _sentAtMs[acked];
-    if (sentAtMs != null) _touchToFrame.add(drawnAtMs - sentAtMs);
   }
 
   /// The samples and counts since the last drain, for one metrics batch (m12

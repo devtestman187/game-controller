@@ -3,28 +3,26 @@ import 'package:test/test.dart';
 
 void main() {
   group('ViewerStats touch_to_frame', () {
-    test('the highest newly acked input gives the time from its send to the draw', () {
+    test('every input a frame first acks gives its trip to that draw, in seq order', () {
       final stats = ViewerStats(hz: 60);
-      stats.inputSent(1, 100);
-      stats.inputSent(2, 110);
-      stats.inputSent(3, 120);
+      stats.inputSent(5, 0);
+      stats.inputSent(6, 16);
+      stats.inputSent(7, 33);
 
-      // The ack of seq 2 covers seqs 1 and 2; the highest is 2, sent at 110.
-      stats.frameDrawn(2, 150);
-      expect(stats.drain().stages[LatencyStage.touchToFrame], [40]);
+      // One frame acking 5, 6 and 7 draws all three: 60 − 0, 60 − 16, 60 − 33.
+      stats.frameDrawn(7, 60);
+      expect(stats.drain().stages[LatencyStage.touchToFrame], [60, 44, 27]);
 
-      // Seq 2 is already acknowledged, so an old frame catching up adds nothing.
-      stats.frameDrawn(2, 166);
+      // Nothing above 7 is new, so an old frame catching up adds nothing.
+      stats.frameDrawn(7, 76);
       expect(stats.drain().stages, isEmpty);
 
-      stats.frameDrawn(3, 182);
-      expect(stats.drain().stages[LatencyStage.touchToFrame], [62]);
+      // 8 is remembered and 9 isn't, so the frame acking 9 measures 8 alone: 80 − 50.
+      stats.inputSent(8, 50);
+      stats.frameDrawn(9, 80);
+      expect(stats.drain().stages[LatencyStage.touchToFrame], [30]);
 
-      // Seqs 4 and 5 were never remembered: nothing to measure.
-      stats.frameDrawn(5, 200);
-      expect(stats.drain().stages, isEmpty);
-
-      stats.frameDrawn(null, 216);
+      stats.frameDrawn(null, 96);
       expect(stats.drain().stages, isEmpty);
     });
 
@@ -33,6 +31,10 @@ void main() {
       stats.inputSent(4, 200);
       stats.frameDrawn(4, 240);
       expect(stats.drain().stages[LatencyStage.touchToFrame], [40]);
+
+      // 4 is acked, so drawing it again measures nothing.
+      stats.frameDrawn(4, 260);
+      expect(stats.drain().stages, isEmpty);
 
       stats.reset(hz: 60);
       stats.frameDrawn(4, 300);
@@ -75,12 +77,40 @@ void main() {
   });
 
   group('ViewerStats draws', () {
-    test('a draw more than 25 ms after the previous one is late', () {
+    test('at 60 Hz a draw 26 ms after the previous one is late and one 24 ms after is not', () {
       final stats = ViewerStats(hz: 60);
       stats.frameDrawn(null, 0);
-      stats.frameDrawn(null, 16);
+      stats.frameDrawn(null, 24);
       stats.frameDrawn(null, 50);
       expect(stats.drain().view, (frames: 3, gaps: 0, late: 1));
+    });
+
+    test('the late limit is 1.5 frame intervals: 75 ms at 20 Hz and 50 ms at 30 Hz', () {
+      final slow = ViewerStats(hz: 20);
+      slow.frameDrawn(null, 0);
+      slow.frameDrawn(null, 60);
+      slow.frameDrawn(null, 140);
+      expect(slow.drain().view, (frames: 3, gaps: 0, late: 1), reason: '60 ms is under 75, 80 ms is over');
+
+      final half = ViewerStats(hz: 30);
+      half.frameDrawn(null, 0);
+      half.frameDrawn(null, 50);
+      half.frameDrawn(null, 101);
+      expect(half.drain().view, (frames: 3, gaps: 0, late: 1), reason: '50 ms is not late, 51 ms is');
+    });
+
+    test('reset(hz:) changes the late limit', () {
+      final stats = ViewerStats(hz: 60);
+      stats.reset(hz: 20);
+      expect(stats.hz, 20);
+      stats.frameDrawn(null, 0);
+      stats.frameDrawn(null, 80);
+      expect(stats.drain().view.late, 1, reason: '80 ms is over the 75 ms limit at 20 Hz');
+
+      stats.reset(hz: 60);
+      stats.frameDrawn(null, 100);
+      stats.frameDrawn(null, 124);
+      expect(stats.drain().view.late, 0, reason: '24 ms is under the 25 ms limit at 60 Hz');
     });
 
     test('drain keeps 256 evenly spaced samples per stage, then starts over', () {
