@@ -146,44 +146,63 @@ class _ControllerMenusState extends ConsumerState<ControllerMenus> {
       for (final p in host.players)
         if (!p.simulated && !p.local) p,
     ];
-    final layout = controls.layout ?? menuLayout;
+    _showLayout(host, players, controls.layout ?? menuLayout);
+    for (final p in players) {
+      // A or B may change the screen: nothing more this time.
+      if (_read(host, p, controls.only)) return;
+    }
+  }
+
+  /// Each phone gets the menu's buttons, or gets them back after a game.
+  void _showLayout(GameHost host, List<GamePlayer> players, GameLayoutMessage layout) {
     for (final p in players) {
       if (!identical(_labelled[p.id], layout)) {
         _labelled[p.id] = layout;
         host.setLayout(p.id, layout);
       }
     }
-    _labelled.removeWhere((id, _) => !players.any((p) => p.id == id));
-    _before.removeWhere((id, _) => !players.any((p) => p.id == id));
-    _repeat.removeWhere((id, _) => !players.any((p) => p.id == id));
+    _forget(players);
+  }
 
-    final only = controls.only;
-    for (final p in players) {
-      final now = _keysOf(host.gamepad(p.id));
-      final before = _before[p.id];
-      _before[p.id] = now;
-      if (before == null) continue;
-      if (only != null && !only.contains(p.id)) continue;
-      final pressed = now.difference(before);
-      for (final key in pressed) {
-        if (key == _Key.a || key == _Key.b) {
-          _repeat.remove(p.id);
-          _press(key);
-          // A or B may change the screen: nothing more this time.
-          return;
-        }
-        _repeat[p.id] = (key: key, atMs: _clockMs + ControllerMenus.repeatAfter.inMilliseconds);
+  /// Drops what the menus remembered about the phones that left.
+  void _forget(List<GamePlayer> players) {
+    bool gone(String id) => !players.any((p) => p.id == id);
+    _labelled.removeWhere((id, _) => gone(id));
+    _before.removeWhere((id, _) => gone(id));
+    _repeat.removeWhere((id, _) => gone(id));
+  }
+
+  /// Reads one phone's buttons: a new press, and a held direction repeating.
+  /// True when A or B was pressed, which may have changed the screen.
+  bool _read(GameHost host, GamePlayer p, Set<String>? only) {
+    final now = _keysOf(host.gamepad(p.id));
+    final before = _before[p.id];
+    _before[p.id] = now;
+    if (before == null) return false;
+    if (only != null && !only.contains(p.id)) return false;
+    final pressed = now.difference(before);
+    for (final key in pressed) {
+      if (key == _Key.a || key == _Key.b) {
+        _repeat.remove(p.id);
         _press(key);
+        return true;
       }
-      final held = _repeat[p.id];
-      if (held != null && pressed.isEmpty) {
-        if (!now.contains(held.key)) {
-          _repeat.remove(p.id);
-        } else if (_clockMs >= held.atMs) {
-          _repeat[p.id] = (key: held.key, atMs: _clockMs + ControllerMenus.repeatEvery.inMilliseconds);
-          _press(held.key);
-        }
-      }
+      _repeat[p.id] = (key: key, atMs: _clockMs + ControllerMenus.repeatAfter.inMilliseconds);
+      _press(key);
+    }
+    _repeatHeld(p.id, now, pressed);
+    return false;
+  }
+
+  /// A direction still held, with nothing new pressed, repeats once it's due.
+  void _repeatHeld(String id, Set<_Key> now, Set<_Key> pressed) {
+    final held = _repeat[id];
+    if (held == null || pressed.isNotEmpty) return;
+    if (!now.contains(held.key)) {
+      _repeat.remove(id);
+    } else if (_clockMs >= held.atMs) {
+      _repeat[id] = (key: held.key, atMs: _clockMs + ControllerMenus.repeatEvery.inMilliseconds);
+      _press(held.key);
     }
   }
 

@@ -15,6 +15,8 @@ import 'host_button.dart';
 import 'player_badge.dart';
 import 'puzzle_screen.dart';
 
+part 'join_screen_widgets.dart';
+
 /// The buttons on the join screen, before joining.
 final joinLayout = GameLayoutMessage(
   labels: {ControllerButton.a: 'Join', ControllerButton.b: 'Back', ControllerButton.start: 'Start'},
@@ -114,66 +116,95 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
     if (!mounted) return;
     final host = ref.read(gameHostProvider);
     final players = host.players;
-    var changed = false;
-    if (_teams.keys.any((id) => !players.any((p) => p.id == id))) {
-      _teams.removeWhere((id, _) => !players.any((p) => p.id == id));
-      changed = true;
-    }
-    _before.removeWhere((id, _) => !players.any((p) => p.id == id));
-    _labelled.removeWhere((id, _) => !players.any((p) => p.id == id));
+    var changed = _prune(players);
     for (final p in players) {
       if (p.simulated) {
-        // Simulated controllers press everything: they just join.
-        final side = _teams.containsKey(p.id) ? null : sideForNewPlayer(_teams);
-        if (side != null) {
-          _teams[p.id] = side;
-          changed = true;
-        }
+        if (_simulatedJoin(p)) changed = true;
         continue;
       }
-      final now = _keysOf(host.gamepad(p.id));
-      final before = _before[p.id];
-      _before[p.id] = now;
-      if (before == null) continue;
-      for (final key in now.difference(before)) {
-        final side = _teams[p.id];
-        switch (key) {
-          case _Key.a:
-            // A joins; once joined, A begins the match, like Start (m11 device
-            // test: A felt like the natural button).
-            if (side != null) {
-              _start();
-              return;
-            }
-            final to = sideForNewPlayer(_teams);
-            if (to != null) {
-              _teams[p.id] = to;
-              changed = true;
-            }
-          case _Key.left || _Key.right:
-            final to = key == _Key.left ? PuzzleSide.left : PuzzleSide.right;
-            if (side != null && side != to && _teams.values.where((s) => s == to).length < maxPerSide) {
-              _teams[p.id] = to;
-              changed = true;
-            }
-          case _Key.b:
-            if (side != null) {
-              _teams.remove(p.id);
-              changed = true;
-            } else if (!p.local) {
-              Navigator.of(context).maybePop();
-              return;
-            }
-          case _Key.start:
-            // Only a player who joined begins the match (m11 device test: a
-            // phone that hadn't joined started it for the others).
-            if (side == null) continue;
-            _start();
-            return;
-        }
-      }
+      final read = _read(host, p);
+      if (read.changed) changed = true;
+      // A or B may change the screen: nothing more this time.
+      if (read.stop) return;
     }
-    // Each phone shows what A does for it now: Join, or Start once joined.
+    _showLayouts(host, players);
+    if (changed) setState(() {});
+  }
+
+  /// Drops the players who left; true when a side lost a player.
+  bool _prune(List<GamePlayer> players) {
+    bool gone(String id) => !players.any((p) => p.id == id);
+    _before.removeWhere((id, _) => gone(id));
+    _labelled.removeWhere((id, _) => gone(id));
+    if (!_teams.keys.any(gone)) return false;
+    _teams.removeWhere((id, _) => gone(id));
+    return true;
+  }
+
+  /// Simulated controllers press everything: they just join.
+  bool _simulatedJoin(GamePlayer p) {
+    final side = _teams.containsKey(p.id) ? null : sideForNewPlayer(_teams);
+    if (side == null) return false;
+    _teams[p.id] = side;
+    return true;
+  }
+
+  /// Reads one phone's newly pressed buttons, each one through [_tap].
+  ({bool changed, bool stop}) _read(GameHost host, GamePlayer p) {
+    final now = _keysOf(host.gamepad(p.id));
+    final before = _before[p.id];
+    _before[p.id] = now;
+    if (before == null) return (changed: false, stop: false);
+    var changed = false;
+    for (final key in now.difference(before)) {
+      final tap = _tap(p, key);
+      if (tap.changed) changed = true;
+      if (tap.stop) return (changed: changed, stop: true);
+    }
+    return (changed: changed, stop: false);
+  }
+
+  /// What one newly pressed button does: A joins or begins, left and right
+  /// pick a side, B leaves, Start begins.
+  ({bool changed, bool stop}) _tap(GamePlayer p, _Key key) {
+    final side = _teams[p.id];
+    switch (key) {
+      case _Key.a:
+        // A joins; once joined, A begins the match, like Start (m11 device
+        // test: A felt like the natural button).
+        if (side != null) {
+          _start();
+          return (changed: false, stop: true);
+        }
+        final to = sideForNewPlayer(_teams);
+        if (to == null) return (changed: false, stop: false);
+        _teams[p.id] = to;
+        return (changed: true, stop: false);
+      case _Key.left || _Key.right:
+        final to = key == _Key.left ? PuzzleSide.left : PuzzleSide.right;
+        final hasRoom = _teams.values.where((s) => s == to).length < maxPerSide;
+        if (side == null || side == to || !hasRoom) return (changed: false, stop: false);
+        _teams[p.id] = to;
+        return (changed: true, stop: false);
+      case _Key.b:
+        if (side != null) {
+          _teams.remove(p.id);
+          return (changed: true, stop: false);
+        }
+        if (p.local) return (changed: false, stop: false);
+        Navigator.of(context).maybePop();
+        return (changed: false, stop: true);
+      case _Key.start:
+        // Only a player who joined begins the match (m11 device test: a
+        // phone that hadn't joined started it for the others).
+        if (side == null) return (changed: false, stop: false);
+        _start();
+        return (changed: false, stop: true);
+    }
+  }
+
+  /// Each phone shows what A does for it now: Join, or Start once joined.
+  void _showLayouts(GameHost host, List<GamePlayer> players) {
     for (final p in players) {
       if (p.local) continue;
       final layout = _teams.containsKey(p.id) ? joinedLayout : joinLayout;
@@ -182,7 +213,6 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
         host.setLayout(p.id, layout);
       }
     }
-    if (changed) setState(() {});
   }
 
   void _start() {
@@ -211,7 +241,6 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
   Widget build(BuildContext context) {
     final players = ref.watch(gamePlayersProvider);
     final text = Theme.of(context).textTheme;
-    final scheme = Theme.of(context).colorScheme;
     final watching = [
       for (final p in players)
         if (!_teams.containsKey(p.id)) p,
@@ -241,63 +270,12 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
                   ),
                   const SizedBox(height: 16),
                   Expanded(
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        for (final (i, side) in PuzzleSide.values.indexed) ...[
-                          if (i > 0) const SizedBox(width: 16),
-                          Expanded(
-                            child: _SidePanel(
-                              key: Key('side-${side.name}'),
-                              side: side,
-                              players: [
-                                for (final p in players)
-                                  if (_teams[p.id] == side) p,
-                              ],
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
+                    child: _Sides(players: players, teams: _teams),
                   ),
                   const SizedBox(height: 12),
-                  if (watching.isNotEmpty)
-                    Text(
-                      'Not joined: ${watching.map((p) => p.label).join(', ')}',
-                      key: const Key('notJoined'),
-                      style: text.bodyLarge?.copyWith(color: scheme.onSurfaceVariant),
-                    ),
+                  if (watching.isNotEmpty) _NotJoined(watching: watching),
                   const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      HostButton(
-                        key: const Key('joinStart'),
-                        label: 'Start',
-                        icon: Icons.play_arrow,
-                        focusNode: _startFocus,
-                        onPressed: _start,
-                      ),
-                      const SizedBox(width: 12),
-                      HostButton(
-                        key: const Key('joinBack'),
-                        label: 'Back',
-                        icon: Icons.arrow_back,
-                        onPressed: () => Navigator.of(context).maybePop(),
-                      ),
-                      const SizedBox(width: 20),
-                      Expanded(
-                        child: Text(
-                          _teams.isEmpty
-                              ? 'Nobody has joined yet.'
-                              : '${formatName(MatchFormat.of(_teams))}. Press A or Start to begin.',
-                          key: const Key('joinFormat'),
-                          style: _teams.isEmpty
-                              ? text.titleMedium
-                              : text.headlineSmall?.copyWith(color: scheme.primary, fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                    ],
-                  ),
+                  _JoinButtons(teams: _teams, startFocus: _startFocus, onStart: _start),
                 ],
               ),
             ),
@@ -316,52 +294,4 @@ String _choiceName(PuzzleChoice choice, PuzzleLibrary? library) {
   };
   final id = choice.puzzleId;
   return id == null ? 'any $level puzzle' : library?.byId(id)?.name ?? level;
-}
-
-class _SidePanel extends StatelessWidget {
-  const _SidePanel({super.key, required this.side, required this.players});
-
-  final PuzzleSide side;
-  final List<GamePlayer> players;
-
-  @override
-  Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
-    final scheme = Theme.of(context).colorScheme;
-    return DecoratedBox(
-      decoration: BoxDecoration(color: scheme.surfaceContainer, borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              side == PuzzleSide.left ? '◀ Left' : 'Right ▶',
-              style: text.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 12),
-            for (final p in players)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Row(
-                  children: [
-                    PlayerBadge(number: p.number, size: 36),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        '${p.label}${p.simulated ? ' (simulated)' : ''}',
-                        style: text.titleLarge,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            if (players.length < maxPerSide)
-              Text('Room for ${maxPerSide - players.length} more', style: text.bodyLarge),
-          ],
-        ),
-      ),
-    );
-  }
 }

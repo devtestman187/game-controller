@@ -83,10 +83,10 @@ class PuzzleMatch {
     this.puzzle, {
     required Map<String, PuzzleSide> teams,
     PuzzleSettings settings = PuzzleSettings.defaults,
-    Random? random,
+    required Random random,
   }) : teams = Map.unmodifiable(teams),
        format = MatchFormat.of(teams),
-       seed = (random ?? Random()).nextInt(1 << 32) {
+       seed = random.nextInt(1 << 32) {
     // Both sides start with the same tray, mirrored, so the race is fair: the
     // split layout picks the angles and sizes the tray for them.
     final layout = format.split ? SplitLayout.of(puzzle, seed) : null;

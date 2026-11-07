@@ -167,6 +167,7 @@ void main() {
             puzzle: match?.puzzle ?? puzzle,
             settings: () => PuzzleSettings.defaults,
             teams: const {'p1': PuzzleSide.left},
+            random: Random(1),
             match: match,
             onFinished: done,
           ),

@@ -198,6 +198,18 @@ class DebugOverlay extends ConsumerWidget {
         sounds.error != null ? 'off (${sounds.error})' : '${sounds.loaded} of ${SoundKey.values.length} loaded',
       ),
     ];
+    return _DebugTable(rows: rows);
+  }
+}
+
+/// The overlay's table: a label and a value for each row.
+class _DebugTable extends StatelessWidget {
+  const _DebugTable({required this.rows});
+
+  final List<(String, String)> rows;
+
+  @override
+  Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
     final mono = text.bodyMedium?.copyWith(fontFeatures: const [FontFeature.tabularFigures()], color: Colors.white);
     return DecoratedBox(

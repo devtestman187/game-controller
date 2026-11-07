@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:party_host/party_host.dart';
@@ -7,7 +9,7 @@ import 'support/host_harness.dart';
 
 void main() {
   testWidgets('a finished puzzle shows the time; Play again starts another', (tester) async {
-    final match = PuzzleMatch(housePuzzle(), teams: const {'p1': PuzzleSide.left});
+    final match = PuzzleMatch(housePuzzle(), teams: const {'p1': PuzzleSide.left}, random: Random(1));
     final game = match.sides.single.game;
     await pumpHost(tester, screen: const StubHome());
     tester
@@ -47,6 +49,7 @@ void main() {
       housePuzzle(),
       teams: const {'p1': PuzzleSide.left},
       settings: const PuzzleSettings(timeLimitS: 30),
+      random: Random(1),
     );
     final game = match.sides.single.game;
     await pumpHost(tester, screen: const StubHome());

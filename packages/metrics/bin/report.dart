@@ -50,6 +50,7 @@ Future<void> main(List<String> args) async {
   }
 
   final summaries = <Map<String, Object?>>[];
+  var skipped = 0;
   for (final path in paths) {
     summaries.addAll(await readSummaries(path));
   }
@@ -58,7 +59,9 @@ Future<void> main(List<String> args) async {
       stderr.writeln('--firestore needs --token (run: gcloud auth print-access-token)');
       exit(64);
     }
-    summaries.addAll(await downloadSummaries(project, token));
+    final downloaded = await downloadSummaries(project, token);
+    summaries.addAll(downloaded.summaries);
+    skipped = downloaded.skipped;
   }
   // The same session can be both exported and uploaded.
   final unique = {for (final s in summaries) s['id']: s}.values.toList();
@@ -69,6 +72,7 @@ Future<void> main(List<String> args) async {
     await File(csvPath).writeAsString('${csv(unique)}\n');
     stdout.writeln('CSV written to $csvPath');
   }
+  if (skipped > 0) stderr.writeln("Skipped $skipped summaries that couldn't be read");
 }
 
 /// Every session summary in a file or folder (non-summaries are skipped).
@@ -94,10 +98,12 @@ Future<List<Map<String, Object?>>> readSummaries(String path) async {
   return out;
 }
 
-/// The uploaded sessions, through the Firestore REST API.
-Future<List<Map<String, Object?>>> downloadSummaries(String project, String token) async {
+/// The uploaded sessions, through the Firestore REST API. [skipped] counts
+/// the documents whose summary text isn't valid JSON.
+Future<({List<Map<String, Object?>> summaries, int skipped})> downloadSummaries(String project, String token) async {
   final client = HttpClient();
   final out = <Map<String, Object?>>[];
+  var skipped = 0;
   String? pageToken;
   try {
     do {
@@ -121,12 +127,16 @@ Future<List<Map<String, Object?>>> downloadSummaries(String project, String toke
         try {
           final summary = jsonDecode(text);
           if (summary is Map<String, Object?>) out.add(summary);
-        } catch (_) {}
+        } on FormatException {
+          // The summary is counted and reported at the end, not printed for
+          // each document.
+          skipped++;
+        }
       }
       pageToken = json['nextPageToken'] as String?;
     } while (pageToken != null);
   } finally {
     client.close();
   }
-  return out;
+  return (summaries: out, skipped: skipped);
 }

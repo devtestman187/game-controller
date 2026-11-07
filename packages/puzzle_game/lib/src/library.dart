@@ -29,9 +29,9 @@ class PuzzleLibrary {
 
   Puzzle? byId(String id) => puzzles.where((p) => p.id == id).firstOrNull;
 
-  /// A random puzzle of [level], or null if there are none.
-  Puzzle? random(Level level, [Random? random]) {
+  /// A random puzzle of [level] from [random], or null if there are none.
+  Puzzle? random(Level level, Random random) {
     final list = ofLevel(level);
-    return list.isEmpty ? null : list[(random ?? Random()).nextInt(list.length)];
+    return list.isEmpty ? null : list[random.nextInt(list.length)];
   }
 }

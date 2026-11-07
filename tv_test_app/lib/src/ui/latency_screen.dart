@@ -86,13 +86,8 @@ class _ControllerLatency extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
     final scheme = Theme.of(context).colorScheme;
-    final l = host.latency(player.id);
-    final rtt = l?.ping;
-    final input = l?.inputDelay;
-    final session = l?.inputDelaySession;
-    final drawn = host.stageSummary(player.id, LatencyStage.receivedToDrawn);
+    final input = host.latency(player.id)?.inputDelay;
     final id = player.id;
     final (verdict, color) = switch (input) {
       null => ('Not measured yet', scheme.onSurfaceVariant),
@@ -107,57 +102,95 @@ class _ControllerLatency extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                PlayerBadge(number: player.number),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(player.nickname ?? '', style: text.titleLarge, overflow: TextOverflow.ellipsis),
-                ),
-                Text(verdict, style: text.titleMedium?.copyWith(color: color)),
-              ],
-            ),
+            _Header(player: player, verdict: verdict, verdictColor: color),
             const SizedBox(height: 12),
-            Wrap(
-              spacing: 32,
-              runSpacing: 12,
-              children: [
-                _Figure(
-                  'Input delay, 30 s avg',
-                  input == null ? '–' : '${input.avgMs} ms',
-                  input == null
-                      ? (l?.errorMs == null ? 'not measured (phone app older than 0.6.0?)' : 'waiting for input')
-                      : 'p95 ${input.p95Ms} · max ${input.maxMs} ms · ± ${l?.errorMs} ms',
-                  valueKey: Key('inputDelay-$id'),
-                ),
-                _Figure(
-                  'Input delay, whole session',
-                  session == null ? '–' : '${session.avgMs} ms',
-                  session == null ? '' : 'max ${session.maxMs} ms · ${session.samples} states',
-                ),
-                _Figure('Ping now', l?.pingNowMs == null ? '–' : '${l!.pingNowMs} ms', 'round trip'),
-                _Figure(
-                  'Ping, 30 s avg',
-                  rtt == null ? '–' : '${rtt.avgMs} ms',
-                  rtt == null ? '' : 'min ${rtt.minMs} · p95 ${rtt.p95Ms} · max ${rtt.maxMs} ms',
-                ),
-                _Figure(
-                  'Stage: phone to TV',
-                  input == null ? '–' : '${input.avgMs} ms',
-                  'sent → received, 30 s avg',
-                  valueKey: Key('stageSent-$id'),
-                ),
-                _Figure(
-                  'Stage: TV to the screen',
-                  drawn == null ? '–' : '${drawn.avgMs} ms',
-                  drawn == null ? 'received → drawn, while a game runs' : 'received → drawn, p95 ${drawn.p95Ms} ms',
-                  valueKey: Key('stageDrawn-$id'),
-                ),
-              ],
-            ),
+            _Figures(player: player, host: host),
           ],
         ),
       ),
+    );
+  }
+}
+
+/// The player's badge and name, with the verdict on the delay.
+class _Header extends StatelessWidget {
+  const _Header({required this.player, required this.verdict, required this.verdictColor});
+
+  final GamePlayer player;
+  final String verdict;
+  final Color verdictColor;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    return Row(
+      children: [
+        PlayerBadge(number: player.number),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(player.nickname ?? '', style: text.titleLarge, overflow: TextOverflow.ellipsis),
+        ),
+        Text(verdict, style: text.titleMedium?.copyWith(color: verdictColor)),
+      ],
+    );
+  }
+}
+
+/// The six figures: the input delay (now and for the whole session), the ping,
+/// and the delay broken into stages (S7). Keys name the player, for the tests.
+class _Figures extends StatelessWidget {
+  const _Figures({required this.player, required this.host});
+
+  final GamePlayer player;
+  final GameHost host;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = host.latency(player.id);
+    final rtt = l?.ping;
+    final input = l?.inputDelay;
+    final session = l?.inputDelaySession;
+    final drawn = host.stageSummary(player.id, LatencyStage.receivedToDrawn);
+    final id = player.id;
+    final figures = <(String, String, String, Key?)>[
+      (
+        'Input delay, 30 s avg',
+        input == null ? '–' : '${input.avgMs} ms',
+        input == null
+            ? (l?.errorMs == null ? 'not measured (phone app older than 0.6.0?)' : 'waiting for input')
+            : 'p95 ${input.p95Ms} · max ${input.maxMs} ms · ± ${l?.errorMs} ms',
+        Key('inputDelay-$id'),
+      ),
+      (
+        'Input delay, whole session',
+        session == null ? '–' : '${session.avgMs} ms',
+        session == null ? '' : 'max ${session.maxMs} ms · ${session.samples} states',
+        null,
+      ),
+      ('Ping now', l?.pingNowMs == null ? '–' : '${l!.pingNowMs} ms', 'round trip', null),
+      (
+        'Ping, 30 s avg',
+        rtt == null ? '–' : '${rtt.avgMs} ms',
+        rtt == null ? '' : 'min ${rtt.minMs} · p95 ${rtt.p95Ms} · max ${rtt.maxMs} ms',
+        null,
+      ),
+      (
+        'Stage: phone to TV',
+        input == null ? '–' : '${input.avgMs} ms',
+        'sent → received, 30 s avg',
+        Key('stageSent-$id'),
+      ),
+      (
+        'Stage: TV to the screen',
+        drawn == null ? '–' : '${drawn.avgMs} ms',
+        drawn == null ? 'received → drawn, while a game runs' : 'received → drawn, p95 ${drawn.p95Ms} ms',
+        Key('stageDrawn-$id'),
+      ),
+    ];
+    return Wrap(
+      spacing: 32,
+      runSpacing: 12,
+      children: [for (final (label, value, detail, key) in figures) _Figure(label, value, detail, valueKey: key)],
     );
   }
 }

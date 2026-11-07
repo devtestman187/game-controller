@@ -50,89 +50,26 @@ class _HapticPanelScreenState extends ConsumerState<HapticPanelScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final players = ref.watch(gamePlayersProvider).where((p) => !p.local).toList();
     final sounds = ref.watch(soundStatusProvider);
     final last = ref.watch(tvEventsProvider);
     final text = Theme.of(context).textTheme;
     final scheme = Theme.of(context).colorScheme;
-    final ms = _durations[_duration];
 
     return CallbackShortcuts(
       bindings: {const SingleActivator(LogicalKeyboardKey.escape): () => Navigator.of(context).maybePop()},
       child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Haptic test'),
-          actions: [
-            Padding(
-              padding: const EdgeInsets.only(right: 24),
-              child: Center(
-                child: Text(
-                  players.isEmpty
-                      ? 'No controller connected (sounds still play)'
-                      : 'Sends to ${players.map((p) => p.label).join(', ')}',
-                  key: const Key('panelTargets'),
-                  style: text.titleMedium?.copyWith(color: players.isEmpty ? Colors.amberAccent : null),
-                ),
-              ),
-            ),
-          ],
-        ),
+        appBar: AppBar(title: const Text('Haptic test'), actions: [_Targets()]),
         body: SafeArea(
           child: ListView(
             padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
             children: [
-              Wrap(
-                spacing: 16,
-                runSpacing: 16,
-                children: [
-                  for (final (i, event) in HapticEvent.values.indexed)
-                    SizedBox(
-                      width: 200,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          SizedBox(
-                            height: 72,
-                            child: HostButton(
-                              key: Key('fire-${event.name}'),
-                              label: _feel[event]!.$1,
-                              icon: _feel[event]!.$2,
-                              autofocus: i == 0,
-                              onPressed: () => _fire(event),
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(_feel[event]!.$3, style: text.bodyMedium),
-                          Text(
-                            'Sound: ${_soundOf(sounds, event)}',
-                            style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
-                          ),
-                        ],
-                      ),
-                    ),
-                ],
-              ),
+              _EventButtons(sounds: sounds, onFire: _fire),
               const SizedBox(height: 24),
-              Wrap(
-                spacing: 32,
-                runSpacing: 16,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                children: [
-                  _Stepper(
-                    label: 'Intensity',
-                    value: '${(_intensity * 100).round()}%',
-                    valueKey: const Key('intensityValue'),
-                    onLess: () => setState(() => _intensity = _step(_intensity, -0.1)),
-                    onMore: () => setState(() => _intensity = _step(_intensity, 0.1)),
-                  ),
-                  _Stepper(
-                    label: 'Duration',
-                    value: ms == null ? 'Natural' : '$ms ms',
-                    valueKey: const Key('durationValue'),
-                    onLess: () => setState(() => _duration = (_duration - 1).clamp(0, _durations.length - 1)),
-                    onMore: () => setState(() => _duration = (_duration + 1).clamp(0, _durations.length - 1)),
-                  ),
-                ],
+              _Steppers(
+                intensity: _intensity,
+                durationMs: _durations[_duration],
+                onIntensity: (by) => setState(() => _intensity = _step(_intensity, by)),
+                onDuration: (by) => setState(() => _duration = (_duration + by).clamp(0, _durations.length - 1)),
               ),
               const SizedBox(height: 8),
               Text(
@@ -160,6 +97,117 @@ class _HapticPanelScreenState extends ConsumerState<HapticPanelScreen> {
       ),
     );
   }
+}
+
+/// Which controllers the presses go to.
+class _Targets extends ConsumerWidget {
+  const _Targets();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final players = ref.watch(gamePlayersProvider).where((p) => !p.local).toList();
+    return Padding(
+      padding: const EdgeInsets.only(right: 24),
+      child: Center(
+        child: Text(
+          players.isEmpty
+              ? 'No controller connected (sounds still play)'
+              : 'Sends to ${players.map((p) => p.label).join(', ')}',
+          key: const Key('panelTargets'),
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(color: players.isEmpty ? Colors.amberAccent : null),
+        ),
+      ),
+    );
+  }
+}
+
+/// A button for each haptic event, with what it feels like and its sound.
+class _EventButtons extends StatelessWidget {
+  const _EventButtons({required this.sounds, required this.onFire});
+
+  final SoundStatus sounds;
+  final void Function(HapticEvent event) onFire;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    final scheme = Theme.of(context).colorScheme;
+    return Wrap(
+      spacing: 16,
+      runSpacing: 16,
+      children: [
+        for (final (i, event) in HapticEvent.values.indexed)
+          SizedBox(
+            width: 200,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SizedBox(
+                  height: 72,
+                  child: HostButton(
+                    key: Key('fire-${event.name}'),
+                    label: _feel[event]!.$1,
+                    icon: _feel[event]!.$2,
+                    autofocus: i == 0,
+                    onPressed: () => onFire(event),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(_feel[event]!.$3, style: text.bodyMedium),
+                Text(
+                  'Sound: ${_soundOf(sounds, event)}',
+                  style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+/// The intensity and duration steps.
+class _Steppers extends StatelessWidget {
+  const _Steppers({
+    required this.intensity,
+    required this.durationMs,
+    required this.onIntensity,
+    required this.onDuration,
+  });
+
+  final double intensity;
+
+  /// The chosen duration, or null for each event's natural length.
+  final int? durationMs;
+
+  /// Moves the intensity by a step of 0.1.
+  final void Function(double by) onIntensity;
+
+  /// Moves the duration up or down the list by one.
+  final void Function(int by) onDuration;
+
+  @override
+  Widget build(BuildContext context) => Wrap(
+    spacing: 32,
+    runSpacing: 16,
+    crossAxisAlignment: WrapCrossAlignment.center,
+    children: [
+      _Stepper(
+        label: 'Intensity',
+        value: '${(intensity * 100).round()}%',
+        valueKey: const Key('intensityValue'),
+        onLess: () => onIntensity(-0.1),
+        onMore: () => onIntensity(0.1),
+      ),
+      _Stepper(
+        label: 'Duration',
+        value: durationMs == null ? 'Natural' : '$durationMs ms',
+        valueKey: const Key('durationValue'),
+        onLess: () => onDuration(-1),
+        onMore: () => onDuration(1),
+      ),
+    ],
+  );
 }
 
 double _step(double v, double by) => ((v + by).clamp(0.1, 1.0) * 10).round() / 10;

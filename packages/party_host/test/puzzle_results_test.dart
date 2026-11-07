@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:connection/connection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -12,7 +14,7 @@ void main() {
   testWidgets('on the results the phone works the menu: left/right, A and B; the A that finished does nothing', (
     tester,
   ) async {
-    final match = PuzzleMatch(housePuzzle(), teams: const {'p1': PuzzleSide.left});
+    final match = PuzzleMatch(housePuzzle(), teams: const {'p1': PuzzleSide.left}, random: Random(1));
     final game = match.sides.single.game;
     final fake = await pumpHost(tester, screen: const StubHome());
     final host = fake.gameHost;
@@ -71,7 +73,7 @@ void main() {
   // m10.2 device test: in stick mode, moving the stick lost the focus and
   // then A did nothing.
   testWidgets('on the results the stick in any direction keeps the focus on a button', (tester) async {
-    final match = PuzzleMatch(housePuzzle(), teams: const {'p1': PuzzleSide.left});
+    final match = PuzzleMatch(housePuzzle(), teams: const {'p1': PuzzleSide.left}, random: Random(1));
     final game = match.sides.single.game;
     final fake = await pumpHost(tester, screen: const StubHome());
     final host = fake.gameHost;
@@ -127,7 +129,7 @@ void main() {
   });
 
   testWidgets('on the results B on the phone goes back', (tester) async {
-    final match = PuzzleMatch(housePuzzle(), teams: const {'p1': PuzzleSide.left});
+    final match = PuzzleMatch(housePuzzle(), teams: const {'p1': PuzzleSide.left}, random: Random(1));
     final game = match.sides.single.game;
     final fake = await pumpHost(tester, screen: const StubHome());
     tester
@@ -164,7 +166,7 @@ void main() {
 
     // A race with every piece of the left board put in place by hand.
     Future<void> finishedRace() async {
-      final match = PuzzleMatch(housePuzzle(), teams: teams);
+      final match = PuzzleMatch(housePuzzle(), teams: teams, random: Random(1));
       final game = match.gameOf(PuzzleSide.left);
       final fake = await pumpHost(tester, screen: const StubHome());
       fake.state = withController(fake.state, phoneInfo('p2', 2));

@@ -133,11 +133,10 @@ class PuzzleGame {
   PuzzleGame(
     this.puzzle, {
     this.settings = PuzzleSettings.defaults,
-    Random? random,
+    required this._random,
     this.field = PuzzleField.single,
     this.angles,
-  }) : _random = random ?? Random(),
-       timeLeftS = settings.timeLimitS.toDouble() {
+  }) : timeLeftS = settings.timeLimitS.toDouble() {
     _layOutTray();
   }
 

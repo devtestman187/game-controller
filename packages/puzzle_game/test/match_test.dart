@@ -186,7 +186,7 @@ void main() {
         for (var seed = 0; seed < 20; seed++) {
           final layout = SplitLayout.of(puzzle, seed);
           for (final field in [layout.left, layout.right]) {
-            final game = PuzzleGame(puzzle, angles: layout.angles, field: field);
+            final game = PuzzleGame(puzzle, angles: layout.angles, field: field, random: Random(seed));
             for (final p in game.pieces) {
               final spec = puzzle.pieces[p.index];
               final box = pieceBox(puzzle, game, p);
@@ -368,7 +368,7 @@ void main() {
               );
             }
             expect(field.board.overlaps(field.tray), isFalse, reason: '$id $side: the board and the tray overlap');
-            final game = PuzzleGame(puzzle, angles: layout.angles, field: field);
+            final game = PuzzleGame(puzzle, angles: layout.angles, field: field, random: Random(seed));
             for (final p in game.pieces) {
               final spec = puzzle.pieces[p.index];
               final box = pieceBox(puzzle, game, p);

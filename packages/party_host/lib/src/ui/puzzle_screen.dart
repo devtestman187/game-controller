@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'package:connection/connection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -13,6 +14,8 @@ import 'host_button.dart';
 import 'join_screen.dart';
 import 'pause_menu.dart';
 import 'player_badge.dart';
+
+part 'puzzle_screen_widgets.dart';
 
 /// Which puzzle to play: a specific one, or a random one of a level.
 final class PuzzleChoice {
@@ -58,6 +61,10 @@ class PuzzleScreen extends ConsumerStatefulWidget {
 class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
   late final LocalPlayerSource _keyboard;
   final _againFocus = FocusNode(debugLabel: 'rematch');
+
+  /// The screen's randomness, made once here at the edge: the puzzle to play
+  /// and the match's trays start from it (S8).
+  final _random = Random();
   MatchResult? _result;
   Puzzle? _puzzle;
   bool _handedOver = false;
@@ -94,7 +101,7 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
     final all = library.ofLevel(widget.choice.level);
     final others = all.where((p) => p.id != widget.avoidPuzzleId).toList();
     final from = others.isEmpty ? all : others;
-    return _puzzle = from.isEmpty ? null : from[Random().nextInt(from.length)];
+    return _puzzle = from.isEmpty ? null : from[_random.nextInt(from.length)];
   }
 
   // The screen's key handler holds the focus, so the button's autofocus
@@ -148,6 +155,7 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
                             host: ref.read(gameHostProvider),
                             puzzle: puzzle,
                             teams: widget.teams,
+                            random: _random,
                             match: widget.match,
                             paused: paused,
                             settings: () => ref.read(puzzleSettingsProvider),
@@ -165,131 +173,11 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
                               onChangeTeams: _changeTeams,
                             ),
                           ),
-                        if (result == null)
-                          Positioned(
-                            right: 12,
-                            bottom: 6,
-                            child: Text(
-                              _keyboard.available && !_keyboard.hasPlayer
-                                  ? 'Arrows, Space, X and Z: play on the keyboard · Start on a phone: pause · '
-                                        'Esc: leave'
-                                  : 'Start on a phone: pause · Back: leave',
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.white60),
-                            ),
-                          ),
+                        if (result == null) _PlayHint(keyboard: _keyboard),
                       ],
                     ),
                   ),
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _Results extends ConsumerWidget {
-  const _Results({
-    required this.result,
-    required this.teams,
-    required this.total,
-    required this.againFocus,
-    required this.onAgain,
-    required this.onChangeTeams,
-  });
-
-  final MatchResult result;
-  final Map<String, PuzzleSide> teams;
-  final int total;
-  final FocusNode againFocus;
-  final VoidCallback onAgain;
-  final VoidCallback onChangeTeams;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final text = Theme.of(context).textTheme;
-    final players = ref.watch(gamePlayersProvider);
-    final race = result.format.split;
-    final (title, colour) = race
-        ? switch (result.winner) {
-            PuzzleSide.left => ('Left wins!', Colors.greenAccent),
-            PuzzleSide.right => ('Right wins!', Colors.greenAccent),
-            null => ('Draw!', Colors.amberAccent),
-          }
-        : result.sides.values.single.finished
-        ? ('Done!', Colors.greenAccent)
-        : ('Time\'s up!', Colors.amberAccent);
-
-    String line(PuzzleResult r) =>
-        r.finished ? '${r.timeS!.toStringAsFixed(1)} seconds' : '${r.placed} of $total pieces placed';
-
-    Widget sideRow(PuzzleSide side, PuzzleResult r) {
-      final badges = [
-        for (final p in players)
-          if (teams[p.id] == side || (!race && teams.containsKey(p.id))) p,
-      ];
-      final won = race && result.winner == side;
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (race)
-              SizedBox(width: 80, child: Text(side == PuzzleSide.left ? 'Left' : 'Right', style: text.titleLarge)),
-            for (final p in badges) ...[PlayerBadge(number: p.number, size: 30), const SizedBox(width: 6)],
-            const SizedBox(width: 8),
-            Text(
-              line(r),
-              key: Key('puzzleResultLine-${side.name}'),
-              style: text.headlineSmall?.copyWith(color: won ? Colors.greenAccent : Colors.white),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return DecoratedBox(
-      key: const Key('puzzleResults'),
-      decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.82), borderRadius: BorderRadius.circular(20)),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 28),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              title,
-              key: const Key('puzzleResultTitle'),
-              style: text.displaySmall?.copyWith(fontWeight: FontWeight.bold, color: colour),
-            ),
-            const SizedBox(height: 8),
-            for (final MapEntry(key: side, value: r) in result.sides.entries) sideRow(side, r),
-            const SizedBox(height: 24),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                HostButton(
-                  key: Key(race ? 'rematch' : 'playAgain'),
-                  label: race ? 'Rematch' : 'Play again',
-                  icon: Icons.replay,
-                  focusNode: againFocus,
-                  onPressed: onAgain,
-                ),
-                const SizedBox(width: 12),
-                HostButton(
-                  key: const Key('changeTeams'),
-                  label: 'Change teams',
-                  icon: Icons.group,
-                  onPressed: onChangeTeams,
-                ),
-                const SizedBox(width: 12),
-                HostButton(
-                  key: const Key('resultsBack'),
-                  label: 'Back',
-                  icon: Icons.arrow_back,
-                  onPressed: () => Navigator.of(context).maybePop(),
-                ),
-              ],
-            ),
-          ],
         ),
       ),
     );

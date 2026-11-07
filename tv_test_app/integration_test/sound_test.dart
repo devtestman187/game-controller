@@ -19,6 +19,7 @@ void main() {
     final log = <String>[];
     final player = SoLoudSoundPlayer(log: log.add);
     await tester.runAsync(player.load);
+    // The test's output is read from the console: the log says what loaded.
     // ignore: avoid_print
     print(log.join('\n'));
     expect(player.status.error, isNull);

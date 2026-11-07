@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:connection/connection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
@@ -57,6 +59,7 @@ class PuzzlePlayView extends StatefulWidget {
     required this.puzzle,
     required this.settings,
     required this.teams,
+    required this.random,
     this.paused = false,
     this.onFinished,
     this.match,
@@ -80,13 +83,18 @@ class PuzzlePlayView extends StatefulWidget {
   /// The match to run. Tests pass one in.
   final PuzzleMatch? match;
 
+  /// Seeds the match when none is passed in: the host makes one and hands it
+  /// over (S8), so the rules start from what they're given.
+  final Random random;
+
   @override
   State<PuzzlePlayView> createState() => PuzzlePlayViewState();
 }
 
 class PuzzlePlayViewState extends State<PuzzlePlayView> with SingleTickerProviderStateMixin {
   late final PuzzleMatch match =
-      widget.match ?? PuzzleMatch(widget.puzzle, teams: widget.teams, settings: widget.settings());
+      widget.match ??
+      PuzzleMatch(widget.puzzle, teams: widget.teams, settings: widget.settings(), random: widget.random);
   late final Ticker _ticker = createTicker(_tick);
   Duration _last = Duration.zero;
   late MatchSnapshot _snapshot = match.snapshot();
