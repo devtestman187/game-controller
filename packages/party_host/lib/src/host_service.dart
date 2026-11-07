@@ -109,7 +109,7 @@ class LiveHostService implements HostService {
     SessionUploader? uploader,
     HostDeviceMonitor? monitor,
     bool shareView = false,
-  }) : _log = log.sink('tv'),
+  }) : _log = log.sink('host'),
        _logBuffer = log,
        _identity = identity,
        _directories = directories {

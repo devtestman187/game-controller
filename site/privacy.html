@@ -13,7 +13,7 @@
     <img src="icon.png" alt="">
     <h1>Privacy policy</h1>
   </header>
-  <p class="lead">For the Thumb Party app (phones and tablets) and the Thumb Party TV app (Android TV and Windows). Effective November 1, 2026 (version 0.9.0). The previous version, from October 29, 2026, said no data was collected.</p>
+  <p class="lead">For the Thumb Party app (phones and tablets) and the Thumb Party TV app (Android TV and Windows). Effective November 7, 2026 (version 0.12.0). The previous version, from October 29, 2026, said no data was collected.</p>
 
   <div class="card">
     <strong>In short:</strong> the apps don't collect, sell or share any personal information. They have no accounts, no ads and no advertising or analytics tools. From version 0.9.0 the TV app can send <strong>anonymous gameplay stats</strong> to the developer, but only if an adult says yes on the TV. Without that, everything stays on your devices and your home Wi-Fi.
@@ -21,20 +21,21 @@
 
   <h2>What the apps do with data</h2>
   <ul>
-    <li><strong>Controller input stays on your Wi-Fi.</strong> The phone sends button presses, stick positions and tilt directly to the TV app on the same local network. Nothing goes over the internet.</li>
-    <li><strong>Pairing and settings stay on the device.</strong> To reconnect without the code, the phone and the TV app each save a random pairing code and a random device ID. Your settings (vibration strength, layout, and so on) are saved on the device too. Deleting the app deletes them.</li>
-    <li><strong>Device names.</strong> The TV app shows each phone as something like "iPhone 3F1C" and the phone shows the TV's name, only on the local network.</li>
+    <li><strong>Controller input stays on your Wi-Fi.</strong> A phone sends button presses, stick positions and tilt directly to the host on the same local network: the TV app, or a phone hosting a game. Nothing goes over the internet.</li>
+    <li><strong>Pairing and settings stay on the device.</strong> To reconnect without the code, a phone and the host it joined each save a random pairing code and a random device ID. Your settings (vibration strength, layout, and so on) are saved on the device too. Deleting the app deletes them.</li>
+    <li><strong>Device names.</strong> The host shows each phone as something like "iPhone 3F1C", and a phone shows the name of the host it joined, only on the local network.</li>
     <li><strong>Diagnostics.</strong> The phone's Diagnostics screen shows connection details, battery and temperature readings. They aren't sent anywhere. If you tap <strong>Share</strong>, the report goes only to the app and person you choose.</li>
   </ul>
 
   <h2>Anonymous gameplay stats</h2>
   <p>To find out which controls feel good and which are hard to use, the apps count how the controls are used. This is how it works:</p>
   <ul>
-    <li><strong>The phone counts, the TV collects.</strong> While a phone is connected to the TV app, it counts things like how often each button is pressed and for how long, taps that miss a control (counted on a coarse grid, never a trace of your touches), how the sticks and tilt are used, and the settings in use. It sends these counts to the TV app on your Wi-Fi only. The TV app adds how quick the connection is, how the games went, and the answer to "How did the controls feel?" after some games.</li>
+    <li><strong>A phone counts, the host collects.</strong> While a phone is connected to a host, it counts things like how often each button is pressed and for how long, taps that miss a control (counted on a coarse grid, never a trace of your touches), how the sticks and tilt are used, and the settings in use. It sends these counts to the host on your Wi-Fi only. The host adds how quick the connection is, how the games went, the picture rate and frame timing of a game shown on the phones, whether each player watched the game on the host's screen or on their own phone, and the answer to "How did the controls feel?" after some games.</li>
     <li><strong>What it includes about the device:</strong> phone or tablet, screen size, model (for example "Google Pixel 8"), operating system version, whether it can vibrate, and a random ID the app makes for each install. Not the device's name, the advertising ID or any hardware ID.</li>
+    <li><strong>What it includes about the host phone:</strong> when a phone hosts a game, its battery level at the start and at the end, whether it was charging, whether it was in low power mode, how hot it got, and the picture rate and frame timing of the game.</li>
     <li><strong>What it never includes:</strong> names or nicknames, accounts, email addresses, contacts, photos, location, Wi-Fi or network details, or advertising IDs.</li>
-    <li><strong>Kept on the TV either way.</strong> The TV app keeps a summary of each play session on the device, which you can see on its <strong>Stats</strong> screen and export to a file.</li>
-    <li><strong>Sent only with an adult's yes.</strong> The first time the TV app starts, it asks the adult in charge whether to share the stats. Only then does it send each session summary, over an encrypted connection, to a database the developer runs on Google Firebase (Firestore). The answer can be changed at any time on the Stats screen. Nothing is shared by default.</li>
+    <li><strong>Kept on the host either way.</strong> The host keeps a summary of each play session on the device. The TV app shows its sessions on its <strong>Stats</strong> screen and can export them to a file. A phone that hosts a game keeps its sessions on the phone, and its Diagnostics screen shows the session you just played, to send with a report.</li>
+    <li><strong>Sent only with an adult's yes.</strong> The first time the TV app starts, it asks the adult in charge whether to share the stats. Only then does it send each session summary, over an encrypted connection, to a database the developer runs on Google Firebase (Firestore). The answer can be changed at any time on the Stats screen. Nothing is shared by default. Sessions from a game hosted on a phone aren't uploaded at all.</li>
     <li><strong>Each phone can opt out:</strong> in the phone app, <strong>Settings → Control stats</strong> shows that stats are recorded and turns them off for that phone.</li>
     <li><strong>How it's used:</strong> only to make the controls and games better. It's never sold, never used for ads, and never shared with anyone else. Firebase stores it for the developer as a service provider.</li>
     <li><strong>Deleting it:</strong> the stats aren't linked to a person. To have sessions deleted, email the developer the <strong>Controller ID</strong> shown on the phone's Diagnostics screen. Uninstalling the TV app deletes the sessions kept on the TV.</li>
@@ -50,9 +51,9 @@
 
   <h2>Permissions</h2>
   <ul>
-    <li><strong>Local network</strong>: to find and connect to the TV app on your Wi-Fi.</li>
+    <li><strong>Local network</strong>: to find and connect to a host on your Wi-Fi, or to host a game on the phone, so other phones can find it.</li>
     <li><strong>Vibration</strong>: for the buzz when you press a button or something happens in the game.</li>
-    <li><strong>Motion sensors</strong>: for gyro mode, where tilting the phone steers. The readings are turned into controller input on the phone and sent only to the TV app.</li>
+    <li><strong>Motion sensors</strong>: for gyro mode, where tilting the phone steers. The readings are turned into controller input on the phone and sent only to the host.</li>
   </ul>
 
   <h2>Children</h2>
