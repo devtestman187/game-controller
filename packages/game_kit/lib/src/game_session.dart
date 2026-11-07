@@ -25,14 +25,14 @@ abstract class GameSession {
     required this.host,
     required this.module,
     required Map<String, Object?> setup,
-    this.settings = const HostingSettings(),
-  }) {
+    HostingSettings? settings,
+  }) : settings = settings ?? HostingSettings.fromEnvironment() {
     host.startView(
       ViewStartMessage(
         game: module.id,
         snapshotVersion: module.snapshotVersion,
         setup: setup,
-        hz: settings.frameRateHz,
+        hz: this.settings.frameRateHz,
       ),
     );
   }
@@ -61,6 +61,11 @@ abstract class GameSession {
   /// The game as a viewer draws it (m12 §4).
   final GameModule module;
 
+  /// How the game runs: the step rate and the frame rate
+  /// ([HostingSettings.frameRateHz]). A
+  /// session built without settings takes this build's debug start option
+  /// ([HostingSettings.fromEnvironment]), so every game gets it with no
+  /// change of its own.
   final HostingSettings settings;
 
   Duration _last = Duration.zero;

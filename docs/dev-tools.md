@@ -11,7 +11,7 @@ Two scripts replace the most repeated manual steps:
 | [`tools/tv-dev.sh`](../tools/tv-dev.sh) | Starts and stops a development copy of the Windows TV app, and prints its port and pairing code | a few seconds (a few minutes for the first build) |
 | [`tools/tv-window.ps1`](../tools/tv-window.ps1) | Screenshots, clicks and keys in that copy's window | instant |
 | [`tools/emulator.sh`](../tools/emulator.sh) | Runs the phone app on the Android emulator: install with cleared data, connect to a TV app, list what's on screen, tap, screenshot | about a minute to boot |
-| [`tools/smoke.sh`](../tools/smoke.sh) | Pairs a simulated controller (and with `--emulator` the phone app) with the development TV app and checks each step against the clients' and the app's own logs | about 30 seconds (a few minutes with `--emulator`) |
+| [`tools/smoke.sh`](../tools/smoke.sh) | Pairs a simulated controller (and with `--emulator` the phone app) with the development TV app and checks each step against the clients' and the app's own logs | about 30 seconds, a minute longer with the frames step (a few minutes with `--emulator`) |
 | [`tools/audio/`](../tools/audio/README.md) | `render.py`, which generates the game's sound effects, and how to encode them | a few seconds |
 
 They're plain bash (and one PowerShell script for the Windows window) with no paths tied to one computer. `check.sh`, `review.sh`, `commit-job.sh`, `release.sh` and `emulator.sh` work the same on Windows (Git Bash), macOS and Linux; `tv-dev.sh` and `tv-window.ps1` are for Windows, where the desktop TV app runs, and so is `smoke.sh`, which drives them. Each runs from any folder: the scripts move to the repository root themselves. They're written so a person, Claude Code or another AI agent can use them the same way.
@@ -193,6 +193,7 @@ Automated tests can't tell whether something looks right or feels right. These s
 
 ```bash
 tools/tv-dev.sh start                 # build and start; prints port and code
+tools/tv-dev.sh start --game arena --hz 30   # start straight in a game, at 30 frames a second
 tools/tv-dev.sh status
 tools/tv-dev.sh window click 707,67   # Play (positions as in a screenshot of the 1280x720 window)
 tools/tv-dev.sh window key space      # keys: left right up down space enter esc tab backspace a-z 0-9
@@ -216,6 +217,7 @@ Log:     C:\Users\...\Temp\thumbparty-dev\tv.log
 - `window ...` passes everything on to `tools/tv-window.ps1`, which can also be run from PowerShell: `powershell -NoProfile -ExecutionPolicy Bypass -File tools\tv-window.ps1 shot tv.png`.
 - On Windows the keyboard plays as another player: arrows to move, Space for A, X and Z to rotate.
 - Debug runs save stats to a `sessions-debug` folder, so test sessions don't mix with real ones.
+- `start --game arena|shape_race --hz 20|30|60` starts the app in a game instead of on the home screen, at that frame rate (M12's measuring runs; `tools/tv-dev.sh status` still prints the code and port). Debug builds only: a release build ignores both. They apply to a new start, so when a copy is already running `start` says to stop it first.
 - Exit codes: 0 ok, 1 not running or didn't start (the end of the log is printed), 2 bad use.
 
 ### The phone app on the Android emulator: tools/emulator.sh
@@ -272,6 +274,11 @@ PASS  paired        (0s)
 PASS  input         (10s)
 PASS  metrics       (0s)
 PASS  disconnect    (1s)
+TV app in the arena on port 45780, pairing code 1973
+PASS  frames        (14s)
+  Touch to frame: 41 ms median, 62 ms p95 (712 samples)
+  Frame jitter: 3 ms median, 9 ms p95 (712 samples)
+  Frames: 710 drawn, 0 gaps, 12 late; frame size 812 B mean, 900 B max
 Smoke passed. Logs: /c/Users/.../thumbparty-smoke-20261106-195842
 ```
 
@@ -279,10 +286,11 @@ Smoke passed. Logs: /c/Users/.../thumbparty-smoke-20261106-195842
 - **The TV app's own log, when it is live.** A step is also checked against the app's log then: `hello` against `Smoke controller (sim 0.11.0, supports metrics, rating) says hello from 127.0.0.1`, `paired` and `player` against `Smoke controller connected (pairing code), player 1`, `disconnect` against `Smoke controller disconnected`. A step passes on the simulated controller's line alone (`PASS hello (sim, 2s)`), and it prints `sim+tv` when the app's line came too. When the app's log is live and has no line for the step, the step fails and prints what the log says about the controller (`ping`, `input` and `metrics` have no line of the host's own: it answers pings and takes input and metrics silently).
 - **When the app's log is silent.** In a sandbox `flutter run`'s tool can crash after the app starts (it can't make the folder it needs for a reload). The app keeps running and pairing, but its later lines no longer reach the log, which holds only the `[host] Listening on port …` line: that log isn't live, and the run goes on the simulated controller's proofs (`sim`) instead of failing. The log counts as live when it has a `[host]` line after the last `Listening` one. On an ordinary PC it is live and the steps print `sim+tv`.
 - **The second connect, with the saved pairing.** `sim_controller`'s `--token-file` makes it save the pairing after the first connect (this controller's id, the host's id and the token the host gave) to `sim-token.json` in the run's folder, deleted when the run ends. A second, 5-second run then connects with that file and no code: `reconnect` passes when it reaches `CONNECTED` without `Sending pairing code`, and the app's log adds `Smoke controller connected (saved pairing), player 1`.
+- **The frames step (M12).** Last, because it restarts the TV app: `tools/tv-dev.sh stop`, then `start --game arena` so the app is in a game rather than on the home screen (a restart also ends every pairing and starts the app's log again). A second simulated controller pairs with the code, lists the `view` capability, streams input and draws the frames it is sent for 12 seconds, then prints what it measured. `frames` passes on its summary's `Touch to frame: N ms median` line, and the three summary lines (`Touch to frame`, `Frame jitter`, `Frames: N drawn, N gaps, N late; frame size …`) are printed under it. The TV app has nothing to say about the frames it sends, so this step's proof is `sim` only. When this run didn't start the TV app (a copy was already running), the step is `SKIP`: it must not stop a copy it didn't start, and the start options only apply to a new start.
 - **With `--emulator`** it also boots the emulator if none is attached, installs the phone app when the device hasn't got it (`pm path com.thumbparty.app` finds nothing, so `tools/emulator.sh install` runs: `phone-install`), launches the phone app with cleared data (`phone-app`), connects it to `10.0.2.2:<port>` with the pairing code (`phone-paired`: `tools/emulator.sh connect` exits 0 once the phone shows the player badge), saves a screenshot to the run's folder (`phone-shot`) and launches the app once more, which clears its data so it doesn't rejoin a TV later (`phone-reset`). `phone-hello` reads the app's log for the phone's hello, and is skipped when that log is silent (its `tv` proof is the only one there is). The emulator is left running.
 - **A failure** is a step that doesn't see its line within 20 s (`SMOKE_WAIT_SECS` changes that; the summary steps wait the simulated controller's whole run plus that): it prints `FAIL <step>`, the last 10 lines of the log that step was reading (the simulated controller's, the TV app's, or the tool's own output), the TV app's lines about the controller when its log is live, and `Smoke failed: <step>`.
-- **Safety.** It starts the TV app only when no development copy is running, and never touches a release copy. On the way out it stops only what it started (the simulated controller, and the development TV app through `tools/tv-dev.sh stop`, which stops this repository's debug build only), unless `--keep` leaves them running. It never stops a phone, the emulator, or any other process. Like `tv-dev.sh` it needs Windows (Git Bash) and Flutter.
-- **The output folder** (`%TEMP%`, `$TMPDIR` or `/tmp`, named `thumbparty-smoke-<date>-<time>`) holds each tool's own output (`tv-start.log`, `sim.log`, `sim2.log`, `emulator.log`, `phone-*.log`) and, with `--emulator`, `phone.png`. Its path is printed at the end; the saved pairing (`sim-token.json`) is deleted on the way out.
+- **Safety.** It starts the TV app only when no development copy is running, and never touches a release copy. On the way out it stops only what it started (the simulated controller, and the development TV app through `tools/tv-dev.sh stop`, which stops this repository's debug build only), unless `--keep` leaves them running: the TV app is then left in the arena (the frames step's game), not on the home screen. It never stops a phone, the emulator, or any other process. Like `tv-dev.sh` it needs Windows (Git Bash) and Flutter.
+- **The output folder** (`%TEMP%`, `$TMPDIR` or `/tmp`, named `thumbparty-smoke-<date>-<time>`) holds each tool's own output (`tv-start.log`, `sim.log`, `sim2.log`, `sim-view.log`, `emulator.log`, `phone-*.log`) and, with `--emulator`, `phone.png`. Its path is printed at the end; the saved pairing (`sim-token.json`) is deleted on the way out.
 - **Exit code:** 0 smoke passed, 1 a step failed, 2 bad use or a missing tool.
 - **What it doesn't check:** whether anything looks right on screen (that still needs the screenshots and a person), sound, and a saved pairing that outlives the TV app: the second run reconnects to the same running app, not one restarted since.
 

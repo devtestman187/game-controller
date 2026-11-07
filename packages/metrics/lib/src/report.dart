@@ -1,5 +1,3 @@
-import 'dart:math';
-
 /// One player in one input mode in one session: the report's unit of
 /// comparison (PRD v2 "Derived signals in the report").
 final class ModeRow {
@@ -29,6 +27,13 @@ final class ModeRow {
     required this.firstMode,
     this.inputMedianMs,
     this.inputP95Ms,
+    this.touchMedianMs,
+    this.touchP95Ms,
+    this.jitterMedianMs,
+    this.jitterP95Ms,
+    this.viewFrames,
+    this.viewGaps,
+    this.viewLate,
   });
 
   final String session;
@@ -63,6 +68,21 @@ final class ModeRow {
   final int? inputMedianMs;
   final int? inputP95Ms;
 
+  /// The mode's touch_to_frame median and p95 in ms (m12 §6), null for a
+  /// player that doesn't show the game.
+  final int? touchMedianMs;
+  final int? touchP95Ms;
+
+  /// The mode's frame_jitter median and p95 in ms (m12 §6), null likewise.
+  final int? jitterMedianMs;
+  final int? jitterP95Ms;
+
+  /// The frames the player drew, the gaps in the host's frames and the late
+  /// draws (m12 §6), null for a player that doesn't show the game.
+  final int? viewFrames;
+  final int? viewGaps;
+  final int? viewLate;
+
   /// The mode's full time, idle included.
   double get openMinutes => ms / 60000;
 
@@ -75,7 +95,7 @@ final class ModeRow {
   static const csvHeader =
       'session,date,host,install,device,model,platform,mode,minutes,touches,presses,empty,near,slide,rapid,'
       'games,wins,good,okay,bad,early_switch,first_mode,input_median_ms,input_p95_ms,frustration_per_min,'
-      'open_minutes';
+      'open_minutes,touch_median_ms,touch_p95_ms,jitter_median_ms,jitter_p95_ms,view_frames,view_gaps,view_late';
 
   String toCsv() => [
     session,
@@ -104,6 +124,13 @@ final class ModeRow {
     inputP95Ms ?? '',
     frustrationPerMin.toStringAsFixed(2),
     openMinutes.toStringAsFixed(2),
+    touchMedianMs ?? '',
+    touchP95Ms ?? '',
+    jitterMedianMs ?? '',
+    jitterP95Ms ?? '',
+    viewFrames ?? '',
+    viewGaps ?? '',
+    viewLate ?? '',
   ].join(',');
 }
 
@@ -111,241 +138,108 @@ String _csv(String s) => s.contains(',') || s.contains('"') ? '"${s.replaceAll('
 
 /// The rows of one session summary (as saved by the TV app).
 List<ModeRow> rowsOf(Map<String, Object?> summary) {
-  final rows = <ModeRow>[];
-  final session = summary['id'] as String? ?? '';
-  final date = summary['date'] as String? ?? '';
-  final host = (summary['host'] as Map?)?['type'] as String? ?? '';
-  for (final player in (summary['players'] as List?) ?? const []) {
-    if (player is! Map) continue;
-    final device = player['device'] as Map? ?? const {};
-    final segments = [
-      for (final s in (player['segments'] as List?) ?? const [])
-        if (s is Map) s,
-    ];
-    final modes = (player['modes'] as Map?) ?? const {};
-    final ratings = [
-      for (final r in (player['ratings'] as List?) ?? const [])
-        if (r is Map) r,
-    ];
-    final switches = [
-      for (final s in (player['switches'] as List?) ?? const [])
-        if (s is Map) s,
-    ];
-    final input = ((player['stages'] as Map?)?['sent_to_received'] as Map?) ?? const {};
-    final firstMode = player['firstMode'] as String?;
+  final about = (
+    session: summary['id'] as String? ?? '',
+    date: summary['date'] as String? ?? '',
+    host: (summary['host'] as Map?)?['type'] as String? ?? '',
+  );
+  return [
+    for (final player in (summary['players'] as List?) ?? const [])
+      if (player is Map) ..._PlayerRows(player, about: about).rows(),
+  ];
+}
 
-    for (final MapEntry(key: mode as String, value: info) in modes.entries) {
-      final ofMode = segments.where((s) => s['mode'] == mode).toList();
-      int sum(String key) => ofMode.fold(0, (a, s) => a + _total((s['data'] as Map?)?[key]));
-      int touches = ofMode.fold(0, (a, s) => a + _int((s['data'] as Map?)?['touches']));
-      // A switch away from this mode less than a minute after starting it.
-      var early = false;
-      for (var i = 0; i < segments.length - 1; i++) {
-        if (segments[i]['mode'] == mode && segments[i + 1]['mode'] != mode && _int(segments[i]['ms']) < 60000) {
-          early = true;
-        }
-      }
-      final rated = ratings.where((r) => r['mode'] == mode);
-      final ms = _int((info as Map?)?['ms']);
-      // A summary from an older version has no active time: use the full time.
-      final active = info?['activeMs'];
-      rows.add(
-        ModeRow(
-          session: session,
-          date: date,
-          hostType: host,
-          install: player['install'] as String? ?? '',
-          deviceKind: device['kind'] as String? ?? (player['local'] == true ? 'keyboard' : 'unknown'),
-          model: device['model'] as String? ?? '',
-          platform: player['platform'] as String? ?? '',
-          mode: mode,
-          ms: ms,
-          activeMs: active is num ? active.round() : ms,
-          touches: touches,
-          presses: sum('presses'),
-          empty: sum('empty'),
-          near: sum('near'),
-          slide: sum('slide'),
-          rapid: sum('rapid'),
-          games: _int(info?['games']),
-          wins: _int(info?['wins']),
-          good: rated.where((r) => r['face'] == 'good').length,
-          okay: rated.where((r) => r['face'] == 'okay').length,
-          bad: rated.where((r) => r['face'] == 'bad').length,
-          earlySwitch: early && switches.isNotEmpty,
-          firstMode: firstMode == mode,
-          inputMedianMs: input['median'] as int?,
-          inputP95Ms: input['p95'] as int?,
-        ),
-      );
-    }
+/// One player's part of a summary, read once for all their modes. The session,
+/// date and host are the same for every row.
+class _PlayerRows {
+  _PlayerRows(this.player, {required this.about})
+    : device = player['device'] as Map? ?? const {},
+      segments = [
+        for (final s in (player['segments'] as List?) ?? const [])
+          if (s is Map) s,
+      ],
+      ratings = [
+        for (final r in (player['ratings'] as List?) ?? const [])
+          if (r is Map) r,
+      ],
+      switches = [
+        for (final s in (player['switches'] as List?) ?? const [])
+          if (s is Map) s,
+      ],
+      stages = (player['stages'] as Map?) ?? const {},
+      firstMode = player['firstMode'] as String?;
+
+  final Map player;
+  final ({String session, String date, String host}) about;
+  final Map device;
+  final List<Map> segments;
+  final List<Map> ratings;
+  final List<Map> switches;
+  final Map stages;
+  final String? firstMode;
+
+  /// A row per mode the player was in.
+  List<ModeRow> rows() {
+    final modes = (player['modes'] as Map?) ?? const {};
+    return [for (final MapEntry(key: mode as String, value: info) in modes.entries) _row(mode, info)];
   }
-  return rows;
+
+  ModeRow _row(String mode, Object? info) {
+    final ofMode = segments.where((s) => s['mode'] == mode).toList();
+    int sum(String key) => ofMode.fold(0, (a, s) => a + _total((s['data'] as Map?)?[key]));
+    final touches = ofMode.fold(0, (a, s) => a + _int((s['data'] as Map?)?['touches']));
+    // A switch away from this mode less than a minute after starting it.
+    var early = false;
+    for (var i = 0; i < segments.length - 1; i++) {
+      if (segments[i]['mode'] == mode && segments[i + 1]['mode'] != mode && _int(segments[i]['ms']) < 60000) {
+        early = true;
+      }
+    }
+    final rated = ratings.where((r) => r['mode'] == mode);
+    final ms = _int((info as Map?)?['ms']);
+    // A summary from an older version has no active time: use the full time.
+    final active = info?['activeMs'];
+    final input = (stages['sent_to_received'] as Map?) ?? const {};
+    final touch = (stages['touch_to_frame'] as Map?) ?? const {};
+    final jitter = (stages['frame_jitter'] as Map?) ?? const {};
+    final view = (player['view'] as Map?) ?? const {};
+    return ModeRow(
+      session: about.session,
+      date: about.date,
+      hostType: about.host,
+      install: player['install'] as String? ?? '',
+      deviceKind: device['kind'] as String? ?? (player['local'] == true ? 'keyboard' : 'unknown'),
+      model: device['model'] as String? ?? '',
+      platform: player['platform'] as String? ?? '',
+      mode: mode,
+      ms: ms,
+      activeMs: active is num ? active.round() : ms,
+      touches: touches,
+      presses: sum('presses'),
+      empty: sum('empty'),
+      near: sum('near'),
+      slide: sum('slide'),
+      rapid: sum('rapid'),
+      games: _int(info?['games']),
+      wins: _int(info?['wins']),
+      good: rated.where((r) => r['face'] == 'good').length,
+      okay: rated.where((r) => r['face'] == 'okay').length,
+      bad: rated.where((r) => r['face'] == 'bad').length,
+      earlySwitch: early && switches.isNotEmpty,
+      firstMode: firstMode == mode,
+      inputMedianMs: input['median'] as int?,
+      inputP95Ms: input['p95'] as int?,
+      touchMedianMs: touch['median'] as int?,
+      touchP95Ms: touch['p95'] as int?,
+      jitterMedianMs: jitter['median'] as int?,
+      jitterP95Ms: jitter['p95'] as int?,
+      viewFrames: view['frames'] as int?,
+      viewGaps: view['gaps'] as int?,
+      viewLate: view['late'] as int?,
+    );
+  }
 }
 
 int _int(Object? v) => v is num ? v.round() : 0;
 
 int _total(Object? counts) => counts is Map ? counts.values.fold(0, (a, v) => a + _int(v)) : 0;
-
-/// Sums for a group of rows (one mode, or one device and mode).
-final class GroupStats {
-  GroupStats(this.label, List<ModeRow> rows)
-    : players = rows.map((r) => r.install).toSet().length,
-      sessions = rows.map((r) => r.session).toSet().length,
-      minutes = rows.fold(0.0, (a, r) => a + r.minutes),
-      openMinutes = rows.fold(0.0, (a, r) => a + r.openMinutes),
-      presses = rows.fold(0, (a, r) => a + r.presses),
-      empty = rows.fold(0, (a, r) => a + r.empty),
-      near = rows.fold(0, (a, r) => a + r.near),
-      slide = rows.fold(0, (a, r) => a + r.slide),
-      rapid = rows.fold(0, (a, r) => a + r.rapid),
-      games = rows.fold(0, (a, r) => a + r.games),
-      good = rows.fold(0, (a, r) => a + r.good),
-      okay = rows.fold(0, (a, r) => a + r.okay),
-      bad = rows.fold(0, (a, r) => a + r.bad),
-      earlySwitches = rows.where((r) => r.earlySwitch).length,
-      firstPicks = rows.where((r) => r.firstMode).length,
-      inputMedianMs = _median([for (final r in rows) ?r.inputMedianMs]);
-
-  final String label;
-  final int players;
-  final int sessions;
-  final double minutes;
-  final double openMinutes;
-  final int presses;
-  final int empty;
-  final int near;
-  final int slide;
-  final int rapid;
-  final int games;
-  final int good;
-  final int okay;
-  final int bad;
-  final int earlySwitches;
-  final int firstPicks;
-
-  /// The median of the sessions' median input delays.
-  final int? inputMedianMs;
-
-  double perMin(int n) => minutes == 0 ? 0 : n / minutes;
-
-  double get frustrationPerMin => perMin(empty + near + slide + rapid);
-}
-
-int? _median(List<int> values) {
-  if (values.isEmpty) return null;
-  final sorted = [...values]..sort();
-  return sorted[sorted.length ~/ 2];
-}
-
-/// Groups rows by [key] (e.g. the mode, or the device kind and mode).
-List<GroupStats> groupBy(List<ModeRow> rows, String Function(ModeRow) key) {
-  final groups = <String, List<ModeRow>>{};
-  for (final r in rows) {
-    (groups[key(r)] ??= []).add(r);
-  }
-  final list = [for (final MapEntry(:key, :value) in groups.entries) GroupStats(key, value)]
-    ..sort((a, b) => a.label.compareTo(b.label));
-  return list;
-}
-
-/// A plain-text comparison table.
-String table(String title, List<GroupStats> groups) {
-  const headers = [
-    'group',
-    'players',
-    'sessions',
-    'minutes',
-    'open min',
-    'presses/min',
-    'empty/min',
-    'near/min',
-    'slide/min',
-    'rapid/min',
-    'frustr/min',
-    'games',
-    'good',
-    'okay',
-    'bad',
-    'early sw',
-    'first pick',
-    'input ms',
-  ];
-  final rows = [
-    for (final g in groups)
-      [
-        g.label,
-        '${g.players}',
-        '${g.sessions}',
-        g.minutes.toStringAsFixed(1),
-        g.openMinutes.toStringAsFixed(1),
-        g.perMin(g.presses).toStringAsFixed(1),
-        g.perMin(g.empty).toStringAsFixed(2),
-        g.perMin(g.near).toStringAsFixed(2),
-        g.perMin(g.slide).toStringAsFixed(2),
-        g.perMin(g.rapid).toStringAsFixed(2),
-        g.frustrationPerMin.toStringAsFixed(2),
-        '${g.games}',
-        '${g.good}',
-        '${g.okay}',
-        '${g.bad}',
-        '${g.earlySwitches}',
-        '${g.firstPicks}',
-        g.inputMedianMs == null ? '-' : '${g.inputMedianMs}',
-      ],
-  ];
-  final widths = [
-    for (var c = 0; c < headers.length; c++) [headers[c].length, for (final r in rows) r[c].length].reduce(max),
-  ];
-  String line(List<String> cells) =>
-      [for (var c = 0; c < cells.length; c++) c == 0 ? cells[c].padRight(widths[c]) : cells[c].padLeft(widths[c])]
-          .join('  ');
-  final b = StringBuffer()
-    ..writeln(title)
-    ..writeln(line(headers))
-    ..writeln(line([for (final w in widths) '-' * w]));
-  for (final r in rows) {
-    b.writeln(line(r));
-  }
-  if (rows.isEmpty) b.writeln('(no data)');
-  return b.toString();
-}
-
-/// Enjoyment signals per session: length, games played and good ratings.
-String enjoyment(List<Map<String, Object?>> summaries) {
-  if (summaries.isEmpty) return 'Enjoyment: no sessions\n';
-  final minutes = [for (final s in summaries) _int(s['durationS']) / 60];
-  final games = [for (final s in summaries) ((s['rounds'] as List?) ?? const []).length];
-  var good = 0;
-  var all = 0;
-  for (final s in summaries) {
-    for (final p in (s['players'] as List?) ?? const []) {
-      for (final r in ((p as Map)['ratings'] as List?) ?? const []) {
-        if ((r as Map)['face'] == null) continue;
-        all++;
-        if (r['face'] == 'good') good++;
-      }
-    }
-  }
-  final avgMinutes = minutes.reduce((a, b) => a + b) / minutes.length;
-  final avgGames = games.reduce((a, b) => a + b) / games.length;
-  return 'Enjoyment: ${summaries.length} sessions, ${avgMinutes.toStringAsFixed(1)} min and '
-      '${avgGames.toStringAsFixed(1)} games on average, '
-      '${all == 0 ? 'no ratings' : '${(100 * good / all).round()}% of $all ratings good'}\n';
-}
-
-/// The whole report for a set of session summaries.
-String report(List<Map<String, Object?>> summaries) {
-  final rows = [for (final s in summaries) ...rowsOf(s)];
-  return [
-    table('By input mode', groupBy(rows, (r) => r.mode)),
-    table('By device and mode', groupBy(rows, (r) => '${r.deviceKind} ${r.mode}')),
-    enjoyment(summaries),
-  ].join('\n');
-}
-
-String csv(List<Map<String, Object?>> summaries) => [
-  ModeRow.csvHeader,
-  for (final s in summaries)
-    for (final r in rowsOf(s)) r.toCsv(),
-].join('\n');

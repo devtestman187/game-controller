@@ -32,6 +32,9 @@ class _Player {
   int inputs = 0;
   final ping = DelayStats();
   final stages = <String, DelayStats>{};
+  int viewFrames = 0;
+  int viewGaps = 0;
+  int viewLate = 0;
   final segments = <String, MetricsMessage>{};
   final ratings = <Map<String, Object?>>[];
   final games = <String, Map<String, int>>{};
@@ -123,6 +126,14 @@ class SessionCollector {
     final old = p.segments[batch.segment];
     if (old != null && old.index >= batch.index) return;
     if (p.segments.length >= 200 && old == null) return; // A runaway phone.
+    final view = batch.view;
+    if (view != null) {
+      // The counts are the player's, not the mode's: they carry across the
+      // batches of every segment (m12 §6).
+      p.viewFrames += max(0, view.frames);
+      p.viewGaps += max(0, view.gaps);
+      p.viewLate += max(0, view.late);
+    }
     p.segments[batch.segment] = MetricsMessage(
       segment: batch.segment,
       index: batch.index,
@@ -228,69 +239,8 @@ class SessionCollector {
 
   /// The session so far, as JSON (PRD v2 "What it records").
   Map<String, Object?> summary(int atMs) {
-    final players = <Map<String, Object?>>[];
-    for (final MapEntry(key: id, value: p) in _players.entries) {
-      final connected = p.connectedMs + (p.joinedAtMs == null ? 0 : max(0, atMs - p.joinedAtMs!));
-      final segments = p.segments.values.toList()..sort((a, b) => _start(a).compareTo(_start(b)));
-      final modeMs = <String, int>{};
-      final modeActiveMs = <String, int>{};
-      for (final s in segments) {
-        modeMs[s.mode] = (modeMs[s.mode] ?? 0) + s.durationMs;
-        modeActiveMs[s.mode] = (modeActiveMs[s.mode] ?? 0) + _activeMs(s);
-      }
-      final switches = [
-        for (var i = 1; i < segments.length; i++)
-          if (segments[i].mode != segments[i - 1].mode)
-            {'from': segments[i - 1].mode, 'to': segments[i].mode, 'atS': (_start(segments[i]) / 1000).round()},
-      ];
-      players.add({
-        'install': id,
-        'player': p.number,
-        if (p.local) 'local': true,
-        'platform': p.platform,
-        'app': p.app,
-        'device': ?p.device?.toJson(),
-        'connectedS': (connected / 1000).round(),
-        'disconnects': p.joinedAtMs == null ? max(0, p.disconnects - 1) : p.disconnects,
-        'reconnect': ?p.reconnect.toJson(),
-        if (p.quitsMidGame > 0) 'quitsMidGame': p.quitsMidGame,
-        'inputs': p.inputs,
-        'inputsPerS': connected == 0 ? 0 : double.parse((p.inputs / (connected / 1000)).toStringAsFixed(1)),
-        'ping': ?p.ping.toJson(),
-        'stages': {for (final MapEntry(:key, :value) in p.stages.entries) key: ?value.toJson()},
-        if (segments.isNotEmpty) 'firstMode': segments.first.mode,
-        'modes': {
-          for (final m in {...modeMs.keys, ...p.modeGames.keys})
-            m: {
-              'ms': modeMs[m] ?? 0,
-              'activeMs': modeActiveMs[m] ?? 0,
-              'games': p.modeGames[m] ?? 0,
-              'wins': p.modeWins[m] ?? 0,
-              'draws': ?p.modeDraws[m],
-            },
-        },
-        'switches': switches,
-        'segments': [
-          for (final s in segments)
-            {
-              'id': s.segment,
-              'mode': s.mode,
-              'ms': s.durationMs,
-              'activeMs': _activeMs(s),
-              'ended': s.ended,
-              'data': s.data,
-            },
-        ],
-        'ratings': p.ratings,
-        'games': p.games,
-        if (p.gameStats.isNotEmpty)
-          'gameStats': {
-            for (final MapEntry(key: game, value: stats) in p.gameStats.entries)
-              game: {for (final MapEntry(:key, :value) in stats.entries) key: value.toJson()},
-          },
-      });
-    }
-    players.sort((a, b) => (a['player'] as int).compareTo(b['player'] as int));
+    final players = [for (final MapEntry(key: id, value: p) in _players.entries) _playerJson(id, p, atMs)]
+      ..sort((a, b) => (a['player'] as int).compareTo(b['player'] as int));
     return {
       'schema': summarySchema,
       'id': id,
@@ -303,6 +253,79 @@ class SessionCollector {
       'frames': {'drawn': _frames, 'dropped': _frameDrops},
     };
   }
+
+  /// One player's part of the summary: connection, inputs, latency, modes,
+  /// segments, ratings and games.
+  Map<String, Object?> _playerJson(String id, _Player p, int atMs) {
+    final connected = p.connectedMs + (p.joinedAtMs == null ? 0 : max(0, atMs - p.joinedAtMs!));
+    final segments = p.segments.values.toList()..sort((a, b) => _start(a).compareTo(_start(b)));
+    return {
+      'install': id,
+      'player': p.number,
+      if (p.local) 'local': true,
+      'platform': p.platform,
+      'app': p.app,
+      'device': ?p.device?.toJson(),
+      'connectedS': (connected / 1000).round(),
+      'disconnects': p.joinedAtMs == null ? max(0, p.disconnects - 1) : p.disconnects,
+      'reconnect': ?p.reconnect.toJson(),
+      if (p.quitsMidGame > 0) 'quitsMidGame': p.quitsMidGame,
+      'inputs': p.inputs,
+      'inputsPerS': connected == 0 ? 0 : double.parse((p.inputs / (connected / 1000)).toStringAsFixed(1)),
+      'ping': ?p.ping.toJson(),
+      'stages': {for (final MapEntry(:key, :value) in p.stages.entries) key: ?value.toJson()},
+      if (p.viewFrames + p.viewGaps + p.viewLate > 0)
+        'view': {'frames': p.viewFrames, 'gaps': p.viewGaps, 'late': p.viewLate},
+      if (segments.isNotEmpty) 'firstMode': segments.first.mode,
+      'modes': _modesJson(p, segments),
+      'switches': _switches(segments),
+      'segments': [for (final s in segments) _segmentJson(s)],
+      'ratings': p.ratings,
+      'games': p.games,
+      if (p.gameStats.isNotEmpty)
+        'gameStats': {
+          for (final MapEntry(key: game, value: stats) in p.gameStats.entries)
+            game: {for (final MapEntry(:key, :value) in stats.entries) key: value.toJson()},
+        },
+    };
+  }
+
+  /// A player's modes: time, time near the controls, games, wins and draws.
+  static Map<String, Object?> _modesJson(_Player p, List<MetricsMessage> segments) {
+    final ms = <String, int>{};
+    final activeMs = <String, int>{};
+    for (final s in segments) {
+      ms[s.mode] = (ms[s.mode] ?? 0) + s.durationMs;
+      activeMs[s.mode] = (activeMs[s.mode] ?? 0) + _activeMs(s);
+    }
+    return {
+      for (final m in {...ms.keys, ...p.modeGames.keys})
+        m: {
+          'ms': ms[m] ?? 0,
+          'activeMs': activeMs[m] ?? 0,
+          'games': p.modeGames[m] ?? 0,
+          'wins': p.modeWins[m] ?? 0,
+          'draws': ?p.modeDraws[m],
+        },
+    };
+  }
+
+  /// The player's switches between modes, in order.
+  static List<Map<String, Object?>> _switches(List<MetricsMessage> segments) => [
+    for (var i = 1; i < segments.length; i++)
+      if (segments[i].mode != segments[i - 1].mode)
+        {'from': segments[i - 1].mode, 'to': segments[i].mode, 'atS': (_start(segments[i]) / 1000).round()},
+  ];
+
+  /// One of a player's segments, as the summary lists it.
+  static Map<String, Object?> _segmentJson(MetricsMessage s) => {
+    'id': s.segment,
+    'mode': s.mode,
+    'ms': s.durationMs,
+    'activeMs': _activeMs(s),
+    'ended': s.ended,
+    'data': s.data,
+  };
 
   static int _start(MetricsMessage s) => (s.data['start'] as int?) ?? 0;
 

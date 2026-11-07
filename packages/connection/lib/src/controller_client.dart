@@ -10,11 +10,13 @@ import 'client_input.dart';
 import 'client_metrics.dart';
 import 'client_messages.dart';
 import 'client_types.dart';
+import 'client_viewer.dart';
 import 'controller_identity.dart';
 import 'host_address.dart';
 import 'log.dart';
 import 'rtt.dart';
 import 'transport/connector.dart';
+import 'viewer_stats.dart';
 
 /// The phone's side of the connection: connects to a host, pairs with the
 /// code (or a saved token), keeps heartbeats going and reconnects on its own
@@ -38,6 +40,8 @@ class ControllerClient {
     DateTime Function()? wallClock,
   }) : _wallClock = wallClock ?? DateTime.now,
        _tokens = Map.of(tokens),
+       // Only a phone that listed view measures the game (m12 §4).
+       _viewer = identity.capabilities.contains(Capability.view) ? ClientViewer() : null,
        _log = log ?? noLog;
 
   /// Who this phone is. Can change (the device details load a moment after
@@ -73,6 +77,9 @@ class ControllerClient {
   final _input = ClientInput();
   final _metrics = MetricsOutbox();
   final _rtt = RttWindow();
+
+  /// What this phone measures while it shows the game (m12 §4); null without the capability.
+  final ClientViewer? _viewer;
 
   ClientSnapshot _snap = const ClientSnapshot(status: ClientStatus.idle);
 
@@ -130,6 +137,10 @@ class ControllerClient {
   /// arrival times and the end, for a phone that listed [Capability.view].
   Stream<ViewEvent> get view => _controls.views;
 
+  /// The viewer's measurements since its last metrics batch (m12 §4, §6):
+  /// `FrameView` or `SimView` feeds them; null without [Capability.view].
+  ViewerStats? get viewerStats => _viewer?.stats;
+
   /// Metrics segments waiting for the TV to acknowledge them.
   int get metricsWaiting => _metrics.waiting;
 
@@ -140,14 +151,15 @@ class ControllerClient {
   /// Only the newest batch of each segment is kept; unacknowledged ones go
   /// again after every reconnect, so nothing is lost while Wi-Fi is off.
   void sendMetrics(MetricsMessage batch) {
-    switch (_metrics.add(batch)) {
+    final measured = _viewer?.withSamples(batch) ?? batch;
+    switch (_metrics.add(measured)) {
       case OutboxResult.ignored:
         return;
       case OutboxResult.droppedOldest:
         _log('Metrics: dropped the oldest unsent segment (more than $maxOutbox waiting)');
       case OutboxResult.kept:
     }
-    if (hostTakesMetrics) _send(batch);
+    if (hostTakesMetrics) _send(measured);
   }
 
   /// Answers a rating prompt (M9). Sent only if connected.
@@ -170,7 +182,7 @@ class ControllerClient {
     ({double x, double y})? right,
   }) {
     _input.remember(buttons, dx: dx, dy: dy, ax: ax, ay: ay, left: left, right: right);
-    if (_snap.isConnected) _send(_input.nextState(_now));
+    if (_snap.isConnected) _send(_input.nextState(nowMs));
   }
 
   /// Connects to [target]. If [code] is given it's sent right away;
@@ -257,7 +269,9 @@ class ControllerClient {
     await _controls.close();
   }
 
-  int get _now => _clock.elapsedMilliseconds;
+  /// This phone's clock in ms: the clock the frames' `arrivedAtMs` is taken on
+  /// (m12 §4), which the viewer measures the playout delay with.
+  int get nowMs => _clock.elapsedMilliseconds;
 
   /// Starts an attempt to reach the host again for [session].
   void _open(int session) {
@@ -303,7 +317,12 @@ class ControllerClient {
     _channel?.dropChannel();
   }
 
-  void _send(Message message) => _channel?.send(message);
+  /// Every message goes out here, so the inputs a viewer measures can't miss
+  /// the hook: the state a phone sends as it pairs takes this path too.
+  void _send(Message message) {
+    if (message is InputStateMessage) _viewer?.inputSent(message);
+    _channel?.send(message);
+  }
 
   void _set(ClientSnapshot next) {
     final wasConnected = _snap.isConnected;
@@ -324,7 +343,7 @@ final class _ClientHost implements ClientHost {
   void log(String message) => _client._log(message);
 
   @override
-  int get nowMs => _client._now;
+  int get nowMs => _client.nowMs;
 
   @override
   ClientSnapshot get snapshot => _client._snap;

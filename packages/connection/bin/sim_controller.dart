@@ -14,7 +14,9 @@
 // answers every rating prompt with "good", so the TV's Stats screen fills
 // without a phone. --token-file <path> saves the pairing after the first
 // connect (this controller's id, the host's id and the token the host gave),
-// so a later run with the same file gets in without the code.
+// so a later run with the same file gets in without the code. --view (M12)
+// lists the view capability, "draws" the game's frames on a 60 Hz timer and
+// prints the touch-to-frame, jitter and frame counts when the run ends.
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -22,6 +24,9 @@ import 'dart:math';
 
 import 'package:connection/connection.dart';
 import 'package:protocol/protocol.dart';
+
+import 'sim_token_file.dart';
+import 'sim_view.dart';
 
 const _usage = '''
 Simulated controller: pairs with the TV app and keeps the connection alive.
@@ -36,6 +41,7 @@ Usage: dart run connection:sim_controller [options]
   --demo             Once connected, press every button and D-pad direction in a loop
   --stream           Once connected, send a gyro-like tilt 60 times a second (long-session test)
   --metrics          Send metrics batches and answer rating prompts (M9 stats)
+  --view             Show the game's frames without a screen and measure them (M12)
   --seconds <n>      Disconnect and exit after n seconds (default: run until Ctrl+C)''';
 
 Future<void> main(List<String> args) async {
@@ -61,9 +67,9 @@ Future<void> main(List<String> args) async {
   }
   final seconds = int.tryParse(options['seconds'] ?? '');
   final tokenFile = options['token-file'];
-  final _Pairing? saved;
+  final Pairing? saved;
   try {
-    saved = tokenFile == null ? null : _readTokenFile(tokenFile);
+    saved = tokenFile == null ? null : readTokenFile(tokenFile);
   } on FormatException catch (e) {
     stderr.writeln(e.message);
     exit(64);
@@ -76,7 +82,7 @@ Future<void> main(List<String> args) async {
   // file: a later run with it gets in without the code.
   void savePairing(String hostId, String? token) {
     if (token == null || tokenFile == null) return;
-    _writeTokenFile(tokenFile, (controllerId: id, hostId: hostId, token: token));
+    writeTokenFile(tokenFile, (controllerId: id, hostId: hostId, token: token));
     stdout.writeln('  · Saved the pairing to $tokenFile');
   }
 
@@ -86,7 +92,10 @@ Future<void> main(List<String> args) async {
       name: options['name'] ?? 'Simulated controller',
       platform: 'sim',
       appVersion: '0.11.0',
-      capabilities: options.containsKey('metrics') ? const [Capability.metrics, Capability.rating] : const [],
+      capabilities: [
+        if (options.containsKey('metrics')) ...[Capability.metrics, Capability.rating],
+        if (options.containsKey('view')) Capability.view,
+      ],
       device: const DeviceInfo(kind: DeviceInfo.sim),
     ),
     connector: WebSocketConnector(log: (m) => stdout.writeln('  · $m')),
@@ -94,6 +103,9 @@ Future<void> main(List<String> args) async {
     onTokenChanged: tokenFile == null ? null : savePairing,
     log: (m) => stdout.writeln('  · $m'),
   );
+  // A viewer that pairs mid-game gets the latest frame (s3a), so drawing can
+  // start at once: it does nothing until a frame arrives.
+  final view = options.containsKey('view') ? (SimView.of(client, playerId: id)..start()) : null;
 
   final lines = stdin.transform(utf8.decoder).transform(const LineSplitter()).asBroadcastStream();
   var wasConnected = false;
@@ -187,9 +199,12 @@ Future<void> main(List<String> args) async {
     'Summary: ran ${ran.inMinutes} min ${ran.inSeconds % 60} s, ${client.inputsSent} input states sent, '
     '$drops drop${drops == 1 ? '' : 's'}, ping (every 5 s) $pings',
   );
+  view?.stop();
+  view?.summary();
   pingReport.cancel();
   metrics?.cancel();
   demo?.cancel();
+  await view?.dispose();
   await client.dispose();
   // Let the close handshake reach the TV, so it logs a clean disconnect.
   await Future<void>.delayed(const Duration(milliseconds: 300));
@@ -200,7 +215,12 @@ Map<String, String> _parse(List<String> args) {
   final result = <String, String>{};
   for (var i = 0; i < args.length; i++) {
     final arg = args[i];
-    if (arg == '--help' || arg == '-h' || arg == '--demo' || arg == '--stream' || arg == '--metrics') {
+    if (arg == '--help' ||
+        arg == '-h' ||
+        arg == '--demo' ||
+        arg == '--stream' ||
+        arg == '--metrics' ||
+        arg == '--view') {
       result[arg.startsWith('--') && arg != '--help' ? arg.substring(2) : 'help'] = '';
       continue;
     }
@@ -214,53 +234,8 @@ Map<String, String> _parse(List<String> args) {
       throw FormatException('Missing value for $arg');
     }
   }
-  const known = {'host', 'port', 'code', 'name', 'seconds', 'help', 'demo', 'stream', 'metrics', 'token-file'};
+  const known = {'host', 'port', 'code', 'name', 'seconds', 'help', 'demo', 'stream', 'metrics', 'view', 'token-file'};
   final unknown = result.keys.where((k) => !known.contains(k));
   if (unknown.isNotEmpty) throw FormatException('Unknown option --${unknown.first}');
   return result;
-}
-
-/// What a `--token-file` holds: the controller id the host knows, the host's
-/// id (the client looks a token up by it) and the token the host gave.
-typedef _Pairing = ({String controllerId, String hostId, String token});
-
-/// The pairing saved in [path], or null when the file isn't there yet (the
-/// first run, which pairs with the code). It holds only the id, the host id
-/// and the token: a file without all three is refused.
-_Pairing? _readTokenFile(String path) {
-  if (!File(path).existsSync()) return null;
-  final Object? json;
-  try {
-    json = jsonDecode(_readText(path));
-  } on FormatException catch (e) {
-    throw FormatException('$path is not a saved pairing: ${e.message}');
-  }
-  if (json is! Map<Object?, Object?>) throw FormatException('$path is not a saved pairing');
-  final id = json['id'];
-  final host = json['host'];
-  final token = json['token'];
-  if (id is! String || id.isEmpty || host is! String || host.isEmpty || token is! String || token.isEmpty) {
-    throw FormatException('$path is not a saved pairing (it needs "id", "host" and "token")');
-  }
-  return (controllerId: id, hostId: host, token: token);
-}
-
-/// The text of a token file, with the file system's own error as a message.
-String _readText(String path) {
-  try {
-    return File(path).readAsStringSync();
-  } on FileSystemException catch (e) {
-    throw FormatException("Can't read $path: ${e.message}");
-  }
-}
-
-/// Saves [pairing] to [path]. A failure is told to the user: the run itself
-/// works without the file, only a later one can't use the saved pairing.
-void _writeTokenFile(String path, _Pairing pairing) {
-  final json = {'id': pairing.controllerId, 'host': pairing.hostId, 'token': pairing.token};
-  try {
-    File(path).writeAsStringSync(jsonEncode(json));
-  } on FileSystemException catch (e) {
-    stderr.writeln("  · Couldn't save the pairing to $path: ${e.message}");
-  }
 }

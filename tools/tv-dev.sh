@@ -4,6 +4,8 @@
 # Documented in docs/dev-tools.md.
 #
 #   tools/tv-dev.sh start     # build and start; prints the port and pairing code
+#   tools/tv-dev.sh start --hz 20|30|60 --game arena|shape_race
+#                             # start straight into a game, for measuring runs (M12)
 #   tools/tv-dev.sh status    # running? port, pairing code, log file
 #   tools/tv-dev.sh stop      # stops only this repository's debug build
 #   tools/tv-dev.sh log       # the last 40 log lines
@@ -22,6 +24,7 @@ log="$state/tv.log"
 mkdir -p "$state" || exit 2
 
 winpath() { if command -v cygpath > /dev/null 2>&1; then cygpath -w "$1"; else echo "$1"; fi; }
+usage() { sed -n '2,/^set -u/p' "$0" | grep '^#' | sed 's/^# \{0,1\}//'; }
 ps_run() { powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "$1" | tr -d '\r'; }
 exe="$(winpath "$root/tv_test_app/build/windows/x64/runner/Debug/ThumbPartyTV.exe")"
 
@@ -55,8 +58,31 @@ status() {
 
 case "${1:-}" in
   start)
+    shift
+    defines=()
+    while [ $# -gt 0 ]; do
+      case "$1" in
+        --hz | --game)
+          [ $# -ge 2 ] || { echo "$1 needs a value." >&2; usage >&2; exit 2; }
+          if [ "$1" = --hz ]; then
+            case "$2" in
+              20 | 30 | 60) defines+=("--dart-define=FRAME_RATE_HZ=$2") ;;
+              *) echo "--hz is 20, 30 or 60, not $2." >&2; usage >&2; exit 2 ;;
+            esac
+          else
+            case "$2" in
+              arena | shape_race) defines+=("--dart-define=START_GAME=$2") ;;
+              *) echo "--game is arena or shape_race, not $2." >&2; usage >&2; exit 2 ;;
+            esac
+          fi
+          shift 2
+          ;;
+        *) echo "Unknown start option $1." >&2; usage >&2; exit 2 ;;
+      esac
+    done
     if [ -n "$(running_pid)" ]; then
       echo "Already running."
+      [ ${#defines[@]} -gt 0 ] && echo "The start options apply to a new start: tools/tv-dev.sh stop first."
       status
       exit 0
     fi
@@ -64,7 +90,7 @@ case "${1:-}" in
     : > "$log"
     # Detached, so it keeps running after this shell closes. stdin from
     # /dev/null: flutter run would otherwise wait for keys (r, R, q).
-    (cd "$root/tv_test_app" && nohup flutter run -d windows < /dev/null >> "$log" 2>&1 &)
+    (cd "$root/tv_test_app" && nohup flutter run -d windows "${defines[@]}" < /dev/null >> "$log" 2>&1 &)
     echo "Building and starting (the first build takes a few minutes)..."
     for _ in $(seq 1 600); do
       if [ -n "$(port_and_code)" ]; then
@@ -102,7 +128,7 @@ case "${1:-}" in
     exit "${PIPESTATUS[0]}"
     ;;
   *)
-    sed -n '2,16p' "$0" | grep '^#' | sed 's/^# \{0,1\}//'
+    usage
     [ -z "${1:-}" ] && exit 0 || exit 2
     ;;
 esac

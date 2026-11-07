@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:party_host/party_host.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'src/debug_start.dart';
 import 'src/keyboard_player.dart';
 import 'src/tv_host_setup.dart';
 import 'src/ui/home/home_screen.dart';
@@ -28,7 +29,11 @@ Future<void> main() async {
 }
 
 class TvTestApp extends StatelessWidget {
-  const TvTestApp({super.key});
+  const TvTestApp({super.key, this.game = startGame});
+
+  /// The game to start in, from the build's `START_GAME` (see
+  /// `debug_start.dart`); tests pass one in.
+  final String game;
 
   @override
   Widget build(BuildContext context) {
@@ -43,7 +48,7 @@ class TvTestApp extends StatelessWidget {
         theme: ThemeData(
           colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF5AAAFF), brightness: Brightness.dark),
         ),
-        home: const HomeScreen(),
+        home: debugStartScreen(game) ?? const HomeScreen(),
       ),
     );
   }

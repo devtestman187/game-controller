@@ -30,20 +30,26 @@ Future<void> tapVisible(WidgetTester tester, Finder finder) async {
 /// `party_host`; the app is the shell.
 ///
 /// [localPlayer] replaces the local player source, as the Windows build's
-/// keyboard player would.
+/// keyboard player would. [game] is the app's debug start (none by default,
+/// as a plain build has) and [state] the host it shows (the sample host by
+/// default). [settle] waits until nothing is scheduled before returning; a
+/// game screen animates for as long as it runs, so its tests pass false.
 Future<FakeHostService> pumpApp(
   WidgetTester tester, {
   Size size = const Size(960, 540),
   bool? consent = true,
   List<Map<String, Object?>> sessions = const [],
   LocalPlayerSourceFactory? localPlayer,
+  String game = '',
+  HostViewState? state,
+  bool settle = true,
 }) async {
   sounds = FakeSoundPlayer();
   awake = FakeScreenAwake();
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
-  final fake = FakeHostService(sampleState(), consent: consent);
+  final fake = FakeHostService(state ?? sampleState(), consent: consent);
   fake.stats.summaries.addAll(sessions);
   SharedPreferences.setMockInitialValues({});
   final prefs = await SharedPreferences.getInstance();
@@ -60,10 +66,14 @@ Future<FakeHostService> pumpApp(
         sessionUploaderProvider.overrideWith((ref) => tvUploader()),
         if (localPlayer != null) localPlayerSourceProvider.overrideWithValue(localPlayer),
       ],
-      child: const TvTestApp(),
+      child: TvTestApp(game: game),
     ),
   );
-  await tester.pumpAndSettle();
+  if (settle) {
+    await tester.pumpAndSettle();
+  } else {
+    await tester.pump();
+  }
   return fake;
 }
 

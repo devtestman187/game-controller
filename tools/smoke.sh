@@ -87,13 +87,14 @@ tv_log=""
 started_tv=0
 sim_pid=""
 sim2_pid=""
+sim_view_pid=""
 
 # Everything this run started goes away here, unless it may stay (--keep).
 # The development TV app is stopped through tv-dev.sh, which stops only this
 # repository's debug build; no other process is touched.
 cleanup() {
   trap - EXIT
-  for pid in "$sim_pid" "$sim2_pid"; do
+  for pid in "$sim_pid" "$sim2_pid" "$sim_view_pid"; do
     if [ -n "$pid" ]; then
       kill "$pid" 2> /dev/null
       wait "$pid" 2> /dev/null
@@ -223,7 +224,7 @@ start_tv() {
   # start fails although the app runs; the second try usually gets through.
   local ok=0 try
   for try in 1 2; do
-    tools/tv-dev.sh start > "$out/tv-start.log" 2>&1 && ok=1
+    tools/tv-dev.sh start "$@" > "$out/tv-start.log" 2>&1 && ok=1
     grep -q '^Already running' "$out/tv-start.log" || started_tv=1
     [ "$ok" = 1 ] && break
     tools/tv-dev.sh stop > /dev/null 2>&1
@@ -231,6 +232,17 @@ start_tv() {
   [ "$ok" = 1 ] || return 1
   for ((i = 0; i < wait_secs * 2; i++)); do
     if read_status; then return 0; fi
+    sleep "$poll_secs"
+  done
+  return 1
+}
+
+# Waits until the development TV app has stopped, for the frames step's
+# restart. Returns 1 if it is still there after the wait.
+wait_tv_stopped() {
+  local i
+  for ((i = 0; i < wait_secs * 2; i++)); do
+    tools/tv-dev.sh status > /dev/null 2>&1 || return 0
     sleep "$poll_secs"
   done
   return 1
@@ -373,6 +385,32 @@ if [ "$use_emulator" = 1 ]; then
   else
     bad phone-reset "$out/phone-reset.log"
   fi
+fi
+
+# The frames step (M12 §6): the measuring tools end to end. It restarts the
+# TV app in the arena, so a copy this run didn't start is left alone (a
+# restart also ends every pairing and truncates the TV app's log). The
+# simulated controller views the game the way a phone does, streams input, and
+# prints the medians it measured when its seconds run out: that line is the
+# proof, since the TV app has nothing to say about its own frames.
+if [ "$started_tv" = 0 ]; then
+  skip frames "the TV app was already running, and the step needs one started in the arena"
+else
+  t0=$(date +%s)
+  tools/tv-dev.sh stop > "$out/tv-stop.log" 2>&1
+  wait_tv_stopped || bad frames "$out/tv-stop.log"
+  start_tv --game arena || bad frames "$out/tv-start.log"
+  echo "TV app in the arena on port $tv_port, pairing code $tv_code"
+  mark="$(lines_in "$tv_log")"
+  (cd packages/connection && exec dart run connection:sim_controller \
+    --host 127.0.0.1 --port "$tv_port" --code "$tv_code" --name "$sim_name" \
+    --view --stream --seconds "$sim_seconds") > "$out/sim-view.log" 2>&1 &
+  sim_view_pid=$!
+  sim_log="$out/sim-view.log"
+  sim_step frames "$sim_log" 'Touch to frame: [0-9]+ ms median' '' "$sim_wait"
+  wait "$sim_view_pid" 2> /dev/null
+  sim_view_pid=""
+  grep -E '^(Touch to frame|Frame jitter|Frames): ' "$sim_log" 2> /dev/null | sed 's/^/  /'
 fi
 
 echo "Smoke passed. Logs: $out"
