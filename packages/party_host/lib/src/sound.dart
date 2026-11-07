@@ -38,6 +38,12 @@ abstract class SoundPlayer {
   /// that fails is silent and reported in [status].
   Future<void> load();
 
+  /// Starts the engine again after the app was in the background, because iOS
+  /// stops the app's sound when the phone locks or another app takes it and
+  /// the engine doesn't come back by itself. A restart already running is
+  /// shared, not doubled.
+  Future<void> restart();
+
   /// Plays the sound for [name] (e.g. `hit`, `snap`, `time_up`). If the same
   /// sound is still playing it starts over instead of layering, so repeated
   /// events stay clear. An unknown name plays nothing.
@@ -60,6 +66,7 @@ class SoLoudSoundPlayer implements SoundPlayer {
   final _playing = <SoundKey, SoundHandle>{};
   SoundStatus _status = const SoundStatus(engine: 'flutter_soloud');
   Future<void>? _loading;
+  Future<void>? _restarting;
 
   @override
   SoundStatus get status => _status;
@@ -97,6 +104,25 @@ class SoLoudSoundPlayer implements SoundPlayer {
     }
     _log('Sounds: ${SoundKey.values.map((k) => '${k.eventName} ${files[k]}').join('; ')}');
     _set(SoundStatus(engine: 'flutter_soloud', ready: true, files: files));
+  }
+
+  @override
+  Future<void> restart() => _restarting ??= _restart().whenComplete(() => _restarting = null);
+
+  Future<void> _restart() async {
+    // A load still running would put back the sources this restart replaces.
+    await _loading;
+    try {
+      if (SoLoud.instance.isInitialized) SoLoud.instance.deinit();
+    } catch (e) {
+      // Loading below starts the engine over, whatever state it stopped in.
+      _log('Could not stop the sound engine to restart it: $e');
+    }
+    _sources.clear();
+    _playing.clear();
+    _loading = null;
+    await load();
+    _log('Sound engine restarted (${_status.loaded} of ${SoundKey.values.length} sounds)');
   }
 
   @override

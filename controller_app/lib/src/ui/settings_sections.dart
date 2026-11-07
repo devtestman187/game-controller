@@ -225,10 +225,10 @@ class _GameSection extends ConsumerWidget {
     final n = ref.read(controlsSettingsProvider.notifier);
     return _Section(
       title: 'Game on this phone',
-      subtitle: 'How the controls look while a game shows behind them',
+      subtitle: 'How much you can see the buttons when a game is behind them',
       children: [
         _SliderRow(
-          label: 'Controls over the game',
+          label: 'Button visibility (opacity)',
           value: s.opacity,
           valueText: '${(s.opacity * 100).round()}%',
           min: ControlsSettings.minOpacity,

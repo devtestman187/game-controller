@@ -59,6 +59,41 @@ void main() {
       await tester.runAsync(host.dispose);
     });
 
+    testWidgets('showing the app again starts the host sound engine once', (tester) async {
+      final sounds = party_test.FakeSoundPlayer();
+      await pumpHostApp(tester, sounds: sounds);
+      final host = await enterHostMode(tester);
+      expect(sounds.restarts, 0);
+
+      // The phone locked or another app took it, then back: iOS stopped the
+      // app's sound (s5c).
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+      await tester.pump();
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await until(tester, () => !host.away.value, () => 'The host did not come back');
+      await settle(tester);
+
+      expect(sounds.restarts, 1);
+      await tester.runAsync(host.dispose);
+    });
+
+    testWidgets('an app that is not hosting restarts no sound when it is shown again', (tester) async {
+      final sounds = party_test.FakeSoundPlayer();
+      await pumpHostApp(tester, sounds: sounds);
+      expect(sounds.restarts, 0);
+
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+      await tester.pump();
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await settle(tester);
+
+      expect(sounds.restarts, 0);
+    });
+
     testWidgets('a round hidden longer than the grace is abandoned: back to the game picker', (tester) async {
       // The presence's clock, moved by the test: 31 s under 30 s of grace.
       var nowMs = 0;

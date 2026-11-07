@@ -1,6 +1,7 @@
 import 'package:connection/connection.dart';
 import 'package:controller/src/host/host_screen.dart';
 import 'package:controller/src/host/host_start_sheet.dart';
+import 'package:controller/src/providers.dart';
 import 'package:controller/src/ui/bar_modes.dart';
 import 'package:controller/src/ui/connect_screen.dart';
 import 'package:controller/src/ui/controls_layer.dart';
@@ -125,6 +126,27 @@ void main() {
     expect(find.byType(party.GamesScreen), findsOneWidget);
     expect(second.service.gameHost.players.single.number, 1);
     await tester.runAsync(second.dispose);
+  });
+
+  testWidgets('a rating prompt for the own player shows no dialog while this phone hosts', (tester) async {
+    await pumpHostApp(tester);
+    final host = await enterHostMode(tester);
+    // Read first, so the prompt reaches a live provider: it has to hear the
+    // own player before the host asks it.
+    expect(hostContainer(tester).read(ratingPromptProvider), isNull);
+
+    final asked = host.service.gameHost.askRating(host.client.identity.controllerId, id: 'r1', game: 'arena');
+    expect(asked, isTrue, reason: 'the own player is connected');
+    await until(
+      tester,
+      () => hostContainer(tester).read(ratingPromptProvider) != null,
+      () => 'The own player got no prompt',
+    );
+    await settle(tester);
+
+    // Nothing is shown over this phone's own game: the prompt goes unanswered.
+    expect(find.text('How did the controls feel?'), findsNothing);
+    await tester.runAsync(host.dispose);
   });
 
   testWidgets('the system back press stops hosting rather than leaving the server behind it', (tester) async {

@@ -27,8 +27,15 @@ class FakeSoundPlayer implements SoundPlayer {
   @override
   Stream<SoundStatus> get changes => _changes.stream;
 
+  /// How many times the engine was asked to start again after the app was in
+  /// the background.
+  int restarts = 0;
+
   @override
   Future<void> load() async {}
+
+  @override
+  Future<void> restart() async => restarts++;
 
   @override
   void play(String name) => played.add(name);

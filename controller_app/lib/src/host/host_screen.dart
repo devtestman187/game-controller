@@ -25,6 +25,8 @@ class HostScreen extends ConsumerStatefulWidget {
 }
 
 class _HostScreenState extends ConsumerState<HostScreen> {
+  late final AppLifecycleListener _lifecycle;
+
   @override
   void initState() {
     super.initState();
@@ -33,6 +35,18 @@ class _HostScreenState extends ConsumerState<HostScreen> {
     widget.host.disposed.then((_) {
       if (mounted) Navigator.of(context).pop();
     });
+    // iOS stops the app's sound while the app is hidden, when the phone locks
+    // or another app takes it, and the engine doesn't come back by itself:
+    // start it again the moment the app is shown (s5c). The route owns this
+    // listener rather than the presence, which only exists once the server has
+    // started and so could not be listened to from here.
+    _lifecycle = AppLifecycleListener(onShow: () => unawaited(ref.read(party.soundPlayerProvider).restart()));
+  }
+
+  @override
+  void dispose() {
+    _lifecycle.dispose();
+    super.dispose();
   }
 
   @override

@@ -19,13 +19,15 @@ import 'pump_app.dart';
 /// The app with a real host in it (m12 §3): the fakes the other tests use,
 /// the host's own inputs, its folders in a temp folder, and fakes for the
 /// advertiser, the sound player and the screen-on adapter. [advertiser] is the
-/// fake advertising is recorded on; [extra] overrides more, after these, so a
-/// test can replace the host's builder.
+/// fake advertising is recorded on, [sounds] the fake the sounds are counted
+/// on; [extra] overrides more, after these, so a test can replace the host's
+/// builder.
 Future<TestApp> pumpHostApp(
   WidgetTester tester, {
   bool tablet = false,
   Size screen = const Size(852, 393),
   party_test.FakeAdvertiser? advertiser,
+  party_test.FakeSoundPlayer? sounds,
   List<Override> extra = const [],
 }) async {
   final dir = Directory.systemTemp.createTempSync('thumb-party-host-');
@@ -48,7 +50,7 @@ Future<TestApp> pumpHostApp(
     extra: [
       ...phoneHostOverrides(directories: TempHostDirectories(dir)),
       party.advertiserProvider.overrideWithValue(advertiser ?? party_test.FakeAdvertiser()),
-      party.soundPlayerProvider.overrideWithValue(party_test.FakeSoundPlayer()),
+      party.soundPlayerProvider.overrideWithValue(sounds ?? party_test.FakeSoundPlayer()),
       party.screenAwakeProvider.overrideWithValue(party_test.FakeScreenAwake()),
       party.puzzleLibraryProvider.overrideWith((ref) async => puzzles),
       ...extra,

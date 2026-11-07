@@ -110,9 +110,12 @@ class _ControllerScreenState extends ConsumerState<ControllerScreen> with Widget
       }
     });
     // "How did the controls feel?" after a game, when the TV asks. Not while
-    // hosting: it would be a dialog over this phone's own game (m12 §2.7).
+    // hosting: it would be a dialog over this phone's own game (m12 §2.7),
+    // and the own player's prompt reaches this screen below the host route
+    // through the same client (s5c).
     ref.listen(ratingPromptProvider, (prev, next) {
-      if (next != null && prev == null) showRatingPrompt(context);
+      final hosting = _hosting || (ref.read(hostingProvider)?.live ?? false);
+      if (next != null && prev == null && !hosting) showRatingPrompt(context);
     });
   }
 

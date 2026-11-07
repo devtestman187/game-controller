@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:party_host/party_host.dart' as party;
 import 'package:protocol/protocol.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../app_info.dart';
 import '../device_status.dart';
 import '../gyro.dart';
+import '../host/hosting.dart';
 import '../local_network.dart';
 import '../providers.dart';
 import 'labels.dart';
@@ -273,7 +275,19 @@ String buildReport(WidgetRef ref) {
     ..writeAll(discovery.hosts.map((h) => '  ${h.name}: ${h.address.addresses.join(', ')} port ${h.address.port}\n'))
     ..writeln()
     ..writeln(log.export());
+  _writeHostLog(b, ref);
   return b.toString();
+}
+
+/// Adds the host's own log, on a phone that is hosting (s5c): a sound error
+/// on this phone can't be seen anywhere else.
+void _writeHostLog(StringBuffer b, WidgetRef ref) {
+  final host = ref.read(hostingProvider);
+  if (host == null || !host.live) return;
+  b
+    ..writeln()
+    ..writeln('Host log (this phone is the host):')
+    ..writeln(ref.read(party.logProvider).export());
 }
 
 String _sessionLine(SessionStats? s) {

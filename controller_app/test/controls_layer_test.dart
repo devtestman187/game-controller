@@ -184,6 +184,10 @@ void main() {
       await openSettings(tester);
       final slider = find.byKey(const Key('controlsOpacitySlider'));
       await scrollTo(tester, slider);
+      // Said so an eight-year-old knows what it does (s5c).
+      expect(find.text('Game on this phone'), findsOneWidget);
+      expect(find.text('Button visibility (opacity)'), findsOneWidget);
+      expect(find.text('How much you can see the buttons when a game is behind them'), findsOneWidget);
       expect(tester.widget<Slider>(slider).value, ControlsSettings.defaultOpacity);
       expect(find.text('60%'), findsOneWidget, reason: 'the section shows its value');
 
