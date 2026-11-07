@@ -107,7 +107,7 @@ The owner often has release copies of the TV app open (from the Downloads folder
 ## Lessons learned
 
 **Releases**
-- A tag with the same name as a branch (`m12` on branch `m12`) can't be pushed by `tools/release.sh`: `git push origin m12` is ambiguous and fails. Tag by hand and push `refs/tags/<tag>` (docs/release.md), then `tools/release.sh --status <tag>`, which reports once rather than waiting (Nov 7, 2026).
+- A tag with the same name as a branch (`m12` on branch `m12`) can't be pushed by `tools/release.sh`: `git push origin m12` is ambiguous and fails. Tag by hand and push `refs/tags/<tag>` (docs/release.md), then `tools/release.sh --status <tag>`, which reports once rather than waiting. Even then Codemagic can't check the tag out ("Failed to set the repository head"), so the iPhone build fails: never name a tag after a branch; milestone branches should be `mN-work` or similar (Nov 7, 2026: `m12` failed on TestFlight, `m12.1` went out).
 
 **Flutter and Dart**
 - Don't run two Flutter builds at once: they share a build cache and collide.
