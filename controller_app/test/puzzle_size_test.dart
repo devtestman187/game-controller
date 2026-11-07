@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:ui';
 
 import 'package:controller/src/layout.dart';
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:puzzle_game/puzzle_game.dart';
 
@@ -119,28 +120,28 @@ void main() {
       for (final MapEntry(key: name, value: safeArea) in screens.entries)
         '$name (${safeArea.width.toStringAsFixed(0)} x ${safeArea.height.toStringAsFixed(0)})',
     ];
-    print(['puzzle', 'piece', ...columns].join(' | '));
+    debugPrint(['puzzle', 'piece', ...columns].join(' | '));
     for (final MapEntry(key: id, value: puzzle) in puzzles.entries) {
       final row = [id, smallestPiece(puzzle).piece.id];
       for (final safeArea in screens.values) {
         row.add(smallestPieceMm(puzzle, safeArea, 1, PuzzleSide.left).toStringAsFixed(2));
       }
-      print(row.join(' | '));
+      debugPrint(row.join(' | '));
     }
     for (final MapEntry(key: id, value: puzzle) in puzzles.entries) {
       final low = lowestMm(puzzle, screens);
-      print('lowest $id: ${low.mm.toStringAsFixed(2)} mm (${low.where})');
+      debugPrint('lowest $id: ${low.mm.toStringAsFixed(2)} mm (${low.where})');
     }
     final hard = [
       for (final MapEntry(key: id, value: puzzle) in puzzles.entries)
         if (puzzle.level == Level.hard) (id: id, puzzle: puzzle),
     ];
     if (hard.isEmpty) {
-      print('no Hard puzzle');
+      debugPrint('no Hard puzzle');
     } else {
       for (final (:id, :puzzle) in hard) {
         final low = lowestMm(puzzle, screens);
-        print('Hard $id: ${low.mm.toStringAsFixed(2)} mm (${low.where})');
+        debugPrint('Hard $id: ${low.mm.toStringAsFixed(2)} mm (${low.where})');
       }
     }
   });

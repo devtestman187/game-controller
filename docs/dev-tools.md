@@ -45,7 +45,7 @@ tools/check.sh --verbose puzzle # also print the full output
 | Check | Folder | Command |
 | --- | --- | --- |
 | `format` | repo root | `dart format --output=none --set-exit-if-changed controller_app tv_test_app packages assets` |
-| `analyze` | repo root | `dart analyze` |
+| `analyze` | repo root | `dart analyze --fatal-infos` |
 | `protocol` | `packages/protocol` | `dart test` |
 | `connection` | `packages/connection` | `dart test` (real sockets on localhost) |
 | `metrics` | `packages/metrics` | `dart test` |
@@ -79,6 +79,7 @@ FAIL  puzzle      (24 passed, exit 1, 6s)  log: /tmp/thumbparty-check-.../puzzle
 - **Exit code:** 0 when everything passed, 1 when anything failed, 2 for an unknown check name or a missing tool.
 - **Logs:** one file per check in a new folder under the system temp folder (`$TMPDIR`, `%TEMP%` or `/tmp`), named with the date and time.
 - **Formatting:** the width (120 columns) is set in every `analysis_options.yaml` (`formatter: page_width: 120`), so a plain `dart format .` or the editor's format command gives the same result. To fix a `format` failure: `dart format controller_app tv_test_app packages assets`.
+- **Analysis:** `--fatal-infos` makes an info fail the check here, as `flutter analyze` on CI does (it fails on infos), so CI doesn't find what this missed. A `print` in a test is such an info: use `debugPrint`.
 - **Not included:** the on-device sound test (`tv_test_app/integration_test`, needs audio hardware; see [building.md](building.md)) and checks on real devices or the emulator.
 
 Run it before every commit that changes code, and always before a release.

@@ -19,7 +19,7 @@ root="$(pwd)"
 # name | folder | command | what it covers
 checks=(
   "format|.|dart format --output=none --set-exit-if-changed controller_app tv_test_app packages assets|code formatting (120 columns, from analysis_options.yaml)"
-  "analyze|.|dart analyze|static analysis of the whole workspace"
+  "analyze|.|dart analyze --fatal-infos|static analysis of the whole workspace (infos fail, as on CI)"
   "protocol|packages/protocol|dart test|messages and codec"
   "connection|packages/connection|dart test|server, client, game host (real sockets on localhost)"
   "metrics|packages/metrics|dart test|analytics counters, sessions, report"
