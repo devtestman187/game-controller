@@ -12,7 +12,9 @@
 // and a summary (drops, ping) at the end. --metrics (M9) lists the metrics
 // and rating capabilities, sends a made-up metrics batch every 10 s and
 // answers every rating prompt with "good", so the TV's Stats screen fills
-// without a phone.
+// without a phone. --token-file <path> saves the pairing after the first
+// connect (this controller's id, the host's id and the token the host gave),
+// so a later run with the same file gets in without the code.
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -29,6 +31,8 @@ Usage: dart run connection:sim_controller [options]
   --port <port>      Port shown on the TV (default 45780)
   --code <code>      Pairing code shown on the TV (asked for if missing)
   --name <name>      Name shown on the TV (default "Simulated controller")
+  --token-file <f>   Where the pairing is saved after the first connect; when the file
+                     exists, connect with it instead of the code
   --demo             Once connected, press every button and D-pad direction in a loop
   --stream           Once connected, send a gyro-like tilt 60 times a second (long-session test)
   --metrics          Send metrics batches and answer rating prompts (M9 stats)
@@ -56,8 +60,25 @@ Future<void> main(List<String> args) async {
     exit(64);
   }
   final seconds = int.tryParse(options['seconds'] ?? '');
+  final tokenFile = options['token-file'];
+  final _Pairing? saved;
+  try {
+    saved = tokenFile == null ? null : _readTokenFile(tokenFile);
+  } on FormatException catch (e) {
+    stderr.writeln(e.message);
+    exit(64);
+  }
   final random = Random.secure();
-  final id = 'sim-${List.generate(6, (_) => random.nextInt(16).toRadixString(16)).join()}';
+  final id = saved?.controllerId ?? 'sim-${List.generate(6, (_) => random.nextInt(16).toRadixString(16)).join()}';
+
+  // The host knows a saved pairing by this controller id and its token, and
+  // the client looks the token up by the host's id, so all three go in the
+  // file: a later run with it gets in without the code.
+  void savePairing(String hostId, String? token) {
+    if (token == null || tokenFile == null) return;
+    _writeTokenFile(tokenFile, (controllerId: id, hostId: hostId, token: token));
+    stdout.writeln('  · Saved the pairing to $tokenFile');
+  }
 
   final client = ControllerClient(
     identity: ControllerIdentity(
@@ -69,6 +90,8 @@ Future<void> main(List<String> args) async {
       device: const DeviceInfo(kind: DeviceInfo.sim),
     ),
     connector: WebSocketConnector(log: (m) => stdout.writeln('  · $m')),
+    tokens: saved == null ? const {} : {saved.hostId: saved.token},
+    onTokenChanged: tokenFile == null ? null : savePairing,
     log: (m) => stdout.writeln('  · $m'),
   );
 
@@ -155,7 +178,8 @@ Future<void> main(List<String> args) async {
   });
 
   stdout.writeln('Simulated controller $id → ${target.display}');
-  client.connect(target, code: options['code']);
+  // With a saved pairing the code isn't needed; without one, connect as before.
+  client.connect(target, code: saved == null ? options['code'] : null);
 
   final code = await done.future;
   final ran = DateTime.now().difference(started);
@@ -190,8 +214,53 @@ Map<String, String> _parse(List<String> args) {
       throw FormatException('Missing value for $arg');
     }
   }
-  const known = {'host', 'port', 'code', 'name', 'seconds', 'help', 'demo', 'stream', 'metrics'};
+  const known = {'host', 'port', 'code', 'name', 'seconds', 'help', 'demo', 'stream', 'metrics', 'token-file'};
   final unknown = result.keys.where((k) => !known.contains(k));
   if (unknown.isNotEmpty) throw FormatException('Unknown option --${unknown.first}');
   return result;
+}
+
+/// What a `--token-file` holds: the controller id the host knows, the host's
+/// id (the client looks a token up by it) and the token the host gave.
+typedef _Pairing = ({String controllerId, String hostId, String token});
+
+/// The pairing saved in [path], or null when the file isn't there yet (the
+/// first run, which pairs with the code). It holds only the id, the host id
+/// and the token: a file without all three is refused.
+_Pairing? _readTokenFile(String path) {
+  if (!File(path).existsSync()) return null;
+  final Object? json;
+  try {
+    json = jsonDecode(_readText(path));
+  } on FormatException catch (e) {
+    throw FormatException('$path is not a saved pairing: ${e.message}');
+  }
+  if (json is! Map<Object?, Object?>) throw FormatException('$path is not a saved pairing');
+  final id = json['id'];
+  final host = json['host'];
+  final token = json['token'];
+  if (id is! String || id.isEmpty || host is! String || host.isEmpty || token is! String || token.isEmpty) {
+    throw FormatException('$path is not a saved pairing (it needs "id", "host" and "token")');
+  }
+  return (controllerId: id, hostId: host, token: token);
+}
+
+/// The text of a token file, with the file system's own error as a message.
+String _readText(String path) {
+  try {
+    return File(path).readAsStringSync();
+  } on FileSystemException catch (e) {
+    throw FormatException("Can't read $path: ${e.message}");
+  }
+}
+
+/// Saves [pairing] to [path]. A failure is told to the user: the run itself
+/// works without the file, only a later one can't use the saved pairing.
+void _writeTokenFile(String path, _Pairing pairing) {
+  final json = {'id': pairing.controllerId, 'host': pairing.hostId, 'token': pairing.token};
+  try {
+    File(path).writeAsStringSync(jsonEncode(json));
+  } on FileSystemException catch (e) {
+    stderr.writeln("  · Couldn't save the pairing to $path: ${e.message}");
+  }
 }
