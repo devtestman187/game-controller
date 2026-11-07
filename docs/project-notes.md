@@ -65,7 +65,7 @@ Not debt (checked Nov 6): the `debugPrint` in both `logProvider`s copies log lin
 
 Carried from earlier milestones, still to do:
 - **Android checks** (on hold): the v1 Android phone tests, the M7 tablet tests, the M8 Android install by another person, the Android TV rename and pairing checks, the Play-installed TV app with store phones, and the TV launcher banner.
-- **Public TestFlight link:** the external `Testers` group isn't set up yet. When it is, the link goes into the tester guide (`site/`) and the group into `codemagic.yaml`.
+- **Public TestFlight link:** https://testflight.apple.com/join/afaU2DHU (owner, Nov 7, 2026), in the tester guide (`site/index.html`). Still to do: the external group's exact name into `codemagic.yaml`'s `beta_groups`, so builds reach it by themselves (a wrong name could fail the TestFlight upload, so only with the owner's confirmed name).
 - **Phone screenshots** for the stores show the PC's old name in the connection chip. Retake them after the PC is renamed: build the Windows TV app, pair the `m7_android12` emulator, capture at 2400×1080 and pad to 2400×1200 (`assets/branding/screenshots/`).
 - **M10 extra checks** kept for later ([checklists/m10.md](checklists/m10.md)): old with new, Puzzle settings with the remote, Stats export, and the three optional checks carried from M9.
 - **m11.3** (built): the "Bubble Pop" sounds (`tools/audio/`) and stats that count active play time only (`activeMs`). Device checks in [checklists/m11.md](checklists/m11.md) ("m11.3 checks"). The untracked `kenney-audio/` folder at the repository root is no longer needed; the owner decides whether to delete it.
