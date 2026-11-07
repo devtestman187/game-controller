@@ -137,6 +137,16 @@ Future<HostSnapshot> hostUntil(
       );
 }
 
+/// A round trip on the phone's channel: the host sends a haptic event and the
+/// test waits until the phone has it. Frames keep their order, so everything
+/// the host sent before it is handled by then. That is how a test checks what
+/// the phone did with an earlier message, or that no such message went out.
+Future<void> hapticRoundTrip(HostServer host, ControllerClient client, {String id = 'phone-1'}) async {
+  final arrived = client.hapticEvents.first;
+  expect(host.send(id, HapticEventMessage(event: HapticEvent.hit)), isTrue, reason: '$id is not connected');
+  await arrived.timeout(const Duration(seconds: 5));
+}
+
 ControllerState? stateOf(HostSnapshot s, String controllerId) =>
     s.controllers.where((c) => c.controllerId == controllerId).firstOrNull?.state;
 

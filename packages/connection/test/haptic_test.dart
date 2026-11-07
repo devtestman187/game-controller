@@ -48,7 +48,10 @@ void main() {
         expect(host.sendToAll(HapticEventMessage(event: HapticEvent.success)), 2);
         expect((await gotA.timeout(const Duration(seconds: 5))).event, HapticEvent.success);
         expect((await gotB.timeout(const Duration(seconds: 5))).event, HapticEvent.success);
-        await Future<void>.delayed(const Duration(milliseconds: 100));
+        // A message the unpaired phone gets after the haptics: had one been
+        // sent to it, it would have arrived first.
+        unpaired.submitCode(host.pairingCode);
+        await clientUntil(unpaired, (s) => s.isConnected);
         expect(unpairedGot, 0);
       });
 

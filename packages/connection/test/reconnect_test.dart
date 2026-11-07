@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:connection/connection.dart';
 import 'package:protocol/protocol.dart';
 import 'package:test/test.dart';
@@ -136,9 +134,15 @@ void main() {
         client.disconnect();
         expect(client.snapshot.status, ClientStatus.idle);
         await host.start();
-        await Future<void>.delayed(const Duration(milliseconds: 300));
+        // Another phone's heartbeats take longer than the first phone's last
+        // retry gap (its retryDelays end at 100 ms), so a retry would have
+        // shown in its status by now.
+        final other = newClient(t, id: 'other');
+        other.connect(addressOf(host, t), code: host.pairingCode);
+        await clientStatus(other, ClientStatus.connected);
+        await clientUntil(other, (s) => (s.rttStats?.samples ?? 0) >= 3);
         expect(client.snapshot.status, ClientStatus.idle);
-        expect(host.snapshot.connected, isEmpty);
+        expect(host.snapshot.connected.map((c) => c.controllerId), ['other']);
       });
     });
   }

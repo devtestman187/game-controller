@@ -20,11 +20,15 @@ void main() {
         client.connect(addressOf(host, t), code: host.pairingCode);
         await clientStatus(client, ClientStatus.connected);
 
+        final press = host.messages.firstWhere((m) {
+          if (m.message case final InputStateMessage i) return i.buttons.contains(ControllerButton.a);
+          return false;
+        });
         client.sendInput({ControllerButton.a}, dx: -1, dy: 1);
         final s = await hostUntil(host, (h) => inputOf(h, 'phone-1')?.buttons.contains(ControllerButton.a) ?? false);
         expect(inputOf(s, 'phone-1')!.dx, -1);
         expect(inputOf(s, 'phone-1')!.dy, 1);
-        await Future<void>.delayed(const Duration(milliseconds: 20)); // The message stream fires right after.
+        await press.timeout(const Duration(seconds: 5)); // The same input, passed on by the host.
         expect(received.last.controllerId, 'phone-1');
         expect((received.last.message as InputStateMessage).buttons, {ControllerButton.a});
       });
@@ -85,11 +89,17 @@ void main() {
         await clientStatus(client, ClientStatus.connected);
         client.sendInput({ControllerButton.a}, dx: 1);
         await hostUntil(host, (h) => inputOf(h, 'phone-1')?.buttons.isNotEmpty ?? false);
+        final pressedSeq = inputOf(host.snapshot, 'phone-1')!.seq;
+        // The released state the host makes up when the phone goes, after the press.
+        final released = host.messages.firstWhere((m) {
+          if (m.message case final InputStateMessage i) return i.isNeutral && i.seq > pressedSeq;
+          return false;
+        });
 
         client.disconnect();
         final s = await hostUntil(host, (h) => stateOf(h, 'phone-1') == ControllerState.disconnected);
         expect(inputOf(s, 'phone-1'), isNull);
-        await Future<void>.delayed(const Duration(milliseconds: 50));
+        await released.timeout(const Duration(seconds: 5));
         expect((received.last.message as InputStateMessage).isNeutral, isTrue);
       });
 

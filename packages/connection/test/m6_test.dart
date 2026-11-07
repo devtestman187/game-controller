@@ -111,6 +111,15 @@ void main() {
       group('input latency', () {
         test('the host measures it for a phone that stamps its input, and logs it', () async {
           final log = <String>[];
+          // The two lines the test waits for, as the host writes them.
+          final latencyLogged = Completer<void>();
+          final sessionEnded = Completer<void>();
+          void onLog(String line) {
+            log.add(line);
+            if (line.startsWith('Latency Phone phone-1: ping') && !latencyLogged.isCompleted) latencyLogged.complete();
+            if (line.startsWith('Session of Phone phone-1 ended') && !sessionEnded.isCompleted) sessionEnded.complete();
+          }
+
           final host = HostServer(
             hostId: 'host-1',
             hostName: 'Test TV',
@@ -119,12 +128,13 @@ void main() {
             heartbeatInterval: hb,
             heartbeatTimeout: hbTimeout,
             latencyLogInterval: const Duration(milliseconds: 300),
-            log: log.add,
+            log: onLog,
           );
           await host.start();
           addTearDown(host.dispose);
           final phone = await paired(host, t);
           await hostUntil(host, (h) => h.connected.single.latencyErrorMs != null);
+          // Five states, each on its own: the spacing is the input, not a wait.
           for (var i = 0; i < 5; i++) {
             phone.sendInput({ControllerButton.a}, dx: i.isEven ? 1 : 0);
             await Future<void>.delayed(const Duration(milliseconds: 20));
@@ -136,11 +146,12 @@ void main() {
           // On one machine the delay is a few ms; allow for a slow CI runner.
           expect(c.inputLatency!.avgMs, lessThan(200));
           expect(c.inputLatencySession!.samples, greaterThanOrEqualTo(5));
-          await Future<void>.delayed(const Duration(milliseconds: 700));
+          await latencyLogged.future.timeout(const Duration(seconds: 5));
           expect(log.where((l) => l.startsWith('Latency Phone phone-1: ping')), isNotEmpty);
           expect(log.where((l) => l.contains('input delay ~ avg')), isNotEmpty);
           phone.disconnect();
           await hostUntil(host, (h) => h.connected.isEmpty);
+          await sessionEnded.future.timeout(const Duration(seconds: 5));
           expect(log.where((l) => l.startsWith('Session of Phone phone-1 ended')), hasLength(1));
         });
       });

@@ -19,8 +19,6 @@ MetricsMessage batch(String seg, int i, {bool ended = false, int presses = 0}) =
   },
 );
 
-Future<void> settle() => Future<void>.delayed(const Duration(milliseconds: 150));
-
 void main() {
   for (final t in TestTransport.values) {
     group(t.name, () {
@@ -55,8 +53,19 @@ void main() {
           host.messages.listen((m) => got.add(m.message));
           client.connect(addressOf(host, t), code: host.pairingCode);
           await clientStatus(client, ClientStatus.connected);
+          // Wait for the state the phone sends as it pairs: from here on the
+          // host has it, and a later one comes after anything this test sends.
+          await hostUntil(host, (h) => h.connected.isNotEmpty && h.connected.single.input != null);
+          final pairedSeq = host.snapshot.connected.single.input!.seq;
+
           client.sendMetrics(batch('s1', 0));
-          await settle();
+          client.sendInput(const {});
+          // The input goes out after the batch would have; one frame arrives
+          // after the other, so the batch never left the phone.
+          await host.messages.firstWhere((m) {
+            if (m.message case final InputStateMessage i) return i.seq > pairedSeq;
+            return false;
+          });
           expect(got.whereType<MetricsMessage>(), isEmpty);
           expect(client.metricsWaiting, 1, reason: 'kept for a host that takes them');
         });
@@ -67,16 +76,22 @@ void main() {
           final host = await startHost(t, capabilities: _both);
           final client = newClient(t, capabilities: _both);
           final got = <MetricsMessage>[];
+          final both = Completer<void>();
           host.messages.listen((m) {
-            if (m.message is MetricsMessage) got.add(m.message as MetricsMessage);
+            if (m.message case final MetricsMessage b) {
+              got.add(b);
+              if (got.length == 2) both.complete();
+            }
           });
           client.connect(addressOf(host, t), code: host.pairingCode);
           await clientStatus(client, ClientStatus.connected);
 
           client.sendMetrics(batch('s1', 0, presses: 3));
           client.sendMetrics(batch('s1', 1, presses: 5, ended: true));
-          await settle();
+          await both.future.timeout(const Duration(seconds: 5));
           expect(got.map((b) => b.index), [0, 1]);
+          // The host acknowledged both before the round trip: the phone took them.
+          await hapticRoundTrip(host, client);
           expect(client.metricsWaiting, 0);
         });
 
@@ -84,13 +99,20 @@ void main() {
           final host = await startHost(t, capabilities: _both);
           final client = newClient(t, capabilities: _both);
           final got = <String, MetricsMessage>{};
+          final resent = Completer<void>();
           host.messages.listen((m) {
-            if (m.message case final MetricsMessage b) got[b.segment] = b;
+            if (m.message case final MetricsMessage b) {
+              got[b.segment] = b;
+              if (got['s1']?.index == 1 && got['s2'] != null && !resent.isCompleted) resent.complete();
+            }
           });
           client.connect(addressOf(host, t), code: host.pairingCode);
           await clientStatus(client, ClientStatus.connected);
           client.sendMetrics(batch('s1', 0, presses: 1));
-          await settle();
+          await host.messages.firstWhere((m) {
+            if (m.message case final MetricsMessage b) return b.segment == 's1' && b.index == 0;
+            return false;
+          });
 
           host.dropAllConnections();
           await clientStatus(client, ClientStatus.reconnecting);
@@ -100,10 +122,12 @@ void main() {
           expect(client.metricsWaiting, 2);
 
           await clientStatus(client, ClientStatus.connected);
-          await settle();
+          await resent.future.timeout(const Duration(seconds: 5));
           expect(got['s1']!.index, 1);
           expect(got['s1']!.ended, isTrue);
           expect(got['s2']!.index, 0);
+          // The host acknowledged everything before the round trip.
+          await hapticRoundTrip(host, client);
           expect(client.metricsWaiting, 1, reason: 's2 is still open');
         });
       });
@@ -113,8 +137,12 @@ void main() {
           final host = await startHost(t, capabilities: _both);
           final client = newClient(t, capabilities: _both);
           final answers = <RatingMessage>[];
+          final answered = Completer<void>();
           host.messages.listen((m) {
-            if (m.message case final RatingMessage r) answers.add(r);
+            if (m.message case final RatingMessage r) {
+              answers.add(r);
+              if (!answered.isCompleted) answered.complete();
+            }
           });
           client.ratingAsks.listen((ask) => client.sendRating(RatingMessage(id: ask.id, face: RatingFace.good)));
           client.connect(addressOf(host, t), code: host.pairingCode);
@@ -122,7 +150,7 @@ void main() {
           await hostUntil(host, (h) => h.connected.isNotEmpty);
 
           expect(host.send('phone-1', const RatingAskMessage(id: 'r1', game: 'arena')), isTrue);
-          await settle();
+          await answered.future.timeout(const Duration(seconds: 5));
           expect(answers.single.id, 'r1');
           expect(answers.single.face, RatingFace.good);
         });
@@ -156,6 +184,7 @@ void main() {
           addTearDown(host.dispose);
           final stages = <StageSample>[];
           host.stages.listen(stages.add);
+          final drawn = host.stages.firstWhere((s) => s.stage == LatencyStage.receivedToDrawn);
           final client = newClient(t, capabilities: _both);
           client.connect(addressOf(server, t), code: server.pairingCode);
           await clientStatus(client, ClientStatus.connected);
@@ -168,7 +197,7 @@ void main() {
 
           host.reportStage('phone-1', LatencyStage.receivedToDrawn, 12);
           expect(host.stageSummary('phone-1', LatencyStage.receivedToDrawn)!.avgMs, 12);
-          await Future<void>.delayed(Duration.zero);
+          await drawn.timeout(const Duration(seconds: 5));
           expect(stages.where((s) => s.stage == LatencyStage.receivedToDrawn), hasLength(1));
         });
       });
