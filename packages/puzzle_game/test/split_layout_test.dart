@@ -238,8 +238,8 @@ void main() {
       return crop.inflate(4);
     }
 
-    test('every puzzle and seed puts the tray on top with the clock area beside it and the crop centred below, and the '
-        'pieces pack into the tray as wide as it is', () {
+    test('every puzzle and seed puts the tray on top with piece beside piece and the crop centred below, and the '
+        'pieces pack into the tray as wide as it is, a tray gap apart', () {
       for (final id in ids) {
         final puzzle = load(id);
         final crop = cropOf(puzzle);
@@ -248,94 +248,83 @@ void main() {
           final where = '$id seed $seed';
           // Both sides are the one phone world, and it is kept per target.
           expect(layout.right, same(layout.left), reason: where);
+          expect(layout.target, LayoutTarget.phones, reason: where);
           expect(
             SplitLayout.of(puzzle, seed, target: LayoutTarget.phones),
             same(layout),
             reason: '$where: computed once',
           );
           expect(SplitLayout.of(puzzle, seed), isNot(same(layout)), reason: '$where: the screen layout is another');
-          final hud = layout.hud!;
-          for (final (side, field) in [('left', layout.left), ('right', layout.right)]) {
-            final world = (Offset.zero & field.size).inflate(0.01);
-            for (final (what, panel) in [('board', field.board), ('tray', field.tray)]) {
-              expect(
-                world.contains(panel.topLeft) && world.contains(panel.bottomRight),
-                isTrue,
-                reason: '$where $side $what leaves the world: $panel',
-              );
-            }
+          final field = layout.left;
+          final world = (Offset.zero & field.size).inflate(0.01);
+          for (final (what, panel) in [('board', field.board), ('tray', field.tray)]) {
             expect(
-              field.tray.bottom,
-              lessThanOrEqualTo(field.board.top),
-              reason: '$where $side: the tray is not on top',
-            );
-            expect(
-              field.tray.left,
-              closeTo(SplitLayout.margin, 1e-9),
-              reason: '$where $side: the tray is not at the left',
-            );
-            expect(field.board.overlaps(field.tray), isFalse, reason: '$where $side: the board and the tray overlap');
-            // The clock area is at the right end of the tray row, and the
-            // tray leaves it free.
-            expect(
-              field.tray.right,
-              lessThanOrEqualTo(hud.left + 1e-9),
-              reason: '$where $side: the tray reaches the HUD',
-            );
-            expect(hud.width, closeTo(SplitLayout.hudWidth, 1e-9), reason: '$where $side: the HUD is another width');
-            expect(
-              hud.right,
-              closeTo(field.size.width - SplitLayout.margin, 1e-9),
-              reason: '$where $side: the HUD is not at the right end',
-            );
-            expect(
-              field.tray.width,
-              lessThanOrEqualTo(field.size.width - SplitLayout.hudWidth - 2 * SplitLayout.margin + 1e-9),
-              reason: '$where $side: the tray is wider than the world minus the HUD',
-            );
-            // The board is the crop, centred.
-            expect(field.board.width, closeTo(crop.width, 1e-9), reason: '$where $side: the board is not the crop');
-            expect(field.board.height, closeTo(crop.height, 1e-9), reason: '$where $side: the board is not the crop');
-            expect(
-              field.board.center.dx,
-              closeTo(field.size.width / 2, 1e-9),
-              reason: '$where $side: the board is not centred',
-            );
-            // The rules' packing at the tray's width fits, in one row, and no
-            // piece reaches into the clock's area.
-            final packed = packTray(
-              puzzle,
-              layout.angles,
-              field.tray.width,
-              overlap: field.trayOverlap,
-              scale: field.trayScale,
-            );
-            expect(
-              packed.height,
-              lessThanOrEqualTo(field.tray.height + 1e-9),
-              reason: '$where $side: the pieces overflow the tray by ${packed.height - field.tray.height}',
-            );
-            expect({for (final at in packed.at.values) at.dy}, hasLength(1), reason: '$where $side: more than one row');
-            for (final (i, spec) in puzzle.pieces.indexed) {
-              // The packed box's top left is the piece's centre minus its
-              // scaled box's top left, as the rules place it.
-              final scaled = scaledBounds(spec.shape, layout.angles[i]!, field.trayScale);
-              final box = scaled.shift(field.tray.topLeft + packed.at[i]! - scaled.topLeft);
-              expect(
-                field.tray.inflate(0.01).contains(box.topLeft) && field.tray.inflate(0.01).contains(box.bottomRight),
-                isTrue,
-                reason: '$where $side ${spec.id} leaves the tray: $box',
-              );
-              expect(box.overlaps(hud), isFalse, reason: '$where $side ${spec.id} is in the clock area: $box');
-            }
-            // The one-row world is within a phone's shape, so the tray stays
-            // in one row.
-            expect(
-              field.size.width,
-              lessThanOrEqualTo(SplitLayout.phoneMaxAspect * field.size.height + 1e-9),
-              reason: '$where $side: the world is wider than 2.2:1',
+              world.contains(panel.topLeft) && world.contains(panel.bottomRight),
+              isTrue,
+              reason: '$where $what leaves the world: $panel',
             );
           }
+          expect(field.tray.bottom, lessThanOrEqualTo(field.board.top), reason: '$where: the tray is not on top');
+          expect(field.tray.left, closeTo(SplitLayout.margin, 1e-9), reason: '$where: the tray is not at the left');
+          expect(field.board.overlaps(field.tray), isFalse, reason: '$where: the board and the tray overlap');
+          expect(field.trayOverlap, 0, reason: '$where: the tray pieces overlap');
+          expect(
+            field.tray.width,
+            greaterThanOrEqualTo(crop.width),
+            reason: '$where: the tray row is narrower than the board it sits over',
+          );
+          // The board is the crop, centred.
+          expect(field.board.width, closeTo(crop.width, 1e-9), reason: '$where: the board is not the crop');
+          expect(field.board.height, closeTo(crop.height, 1e-9), reason: '$where: the board is not the crop');
+          expect(
+            field.board.center.dx,
+            closeTo(field.size.width / 2, 1e-9),
+            reason: '$where: the board is not centred',
+          );
+          // The rules' packing at the tray's width fits, in one row, with at
+          // least a tray gap between each box and the next.
+          final packed = packTray(
+            puzzle,
+            layout.angles,
+            field.tray.width,
+            overlap: field.trayOverlap,
+            scale: field.trayScale,
+          );
+          expect(
+            packed.height,
+            lessThanOrEqualTo(field.tray.height + 1e-9),
+            reason: '$where: the pieces overflow the tray by ${packed.height - field.tray.height}',
+          );
+          expect({for (final at in packed.at.values) at.dy}, hasLength(1), reason: '$where: more than one row');
+          final boxes = <Rect>[];
+          for (final (i, spec) in puzzle.pieces.indexed) {
+            // The packed box's top left is the piece's centre minus its
+            // scaled box's top left, as the rules place it.
+            final scaled = scaledBounds(spec.shape, layout.angles[i]!, field.trayScale);
+            final box = scaled.shift(field.tray.topLeft + packed.at[i]! - scaled.topLeft);
+            expect(
+              field.tray.inflate(0.01).contains(box.topLeft) && field.tray.inflate(0.01).contains(box.bottomRight),
+              isTrue,
+              reason: '$where ${spec.id} leaves the tray: $box',
+            );
+            boxes.add(box);
+          }
+          boxes.sort((a, b) => a.left.compareTo(b.left));
+          for (var i = 1; i < boxes.length; i++) {
+            expect(
+              boxes[i].left,
+              greaterThanOrEqualTo(boxes[i - 1].right + trayGap - 1e-9),
+              reason: '$where: ${boxes[i - 1]} and ${boxes[i]} are closer than a tray gap',
+            );
+            expect(boxes[i].overlaps(boxes[i - 1]), isFalse, reason: '$where: ${boxes[i]} overlaps ${boxes[i - 1]}');
+          }
+          // The one-row world is within a phone's shape, so the tray stays
+          // in one row.
+          expect(
+            field.size.width,
+            lessThanOrEqualTo(SplitLayout.phoneMaxAspect * field.size.height + 1e-9),
+            reason: '$where: the world is wider than 2.2:1',
+          );
         }
       }
     });

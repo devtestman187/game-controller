@@ -35,8 +35,13 @@ final class SplitLayout {
     required this.hudStrip,
     required this.trayBelow,
     required this.scale,
-    this.hud,
+    this.target = LayoutTarget.screen,
   });
+
+  /// The target this layout was built for (m12-phone-layout §0.4). A `phones`
+  /// layout is fitted to the box its phone draws in and has no clock area of
+  /// its own: the clock is drawn beside the world (m12-phone-layout §0.7c).
+  final LayoutTarget target;
 
   /// The left side's world. Both sides are the same world on phones, where a
   /// phone shows only its own side.
@@ -50,12 +55,6 @@ final class SplitLayout {
   /// ones, so the race is fair.
   final Map<int, double> angles;
 
-  /// The clock's area at the right end of a `phones` side's tray row, in
-  /// world units (the same on both sides): the clock, the two sides' counts
-  /// and the time bar share it with no separate band (m12 §1). Screen-only
-  /// layouts have no such area, because their clock is [hudStrip]'s.
-  final Rect? hud;
-
   /// Screen-only: where the left world is drawn on the screen (exactly the
   /// world's aspect). On phones the viewer fits the world to its box.
   final Rect leftBox;
@@ -66,7 +65,7 @@ final class SplitLayout {
 
   /// Screen-only: true when the clock and counts are in a strip along the
   /// top; false when they are in the gap between the boards. On phones they
-  /// are in [hud].
+  /// are drawn beside the world (m12-phone-layout §0.7c).
   final bool hudStrip;
 
   /// Screen-only: true when the tray is below the board; false when it is
@@ -82,11 +81,6 @@ final class SplitLayout {
   /// has its own gap at the edges and between boxes.
   static const margin = 2.0;
   static const _boardTrayGap = 4.0;
-
-  /// The room the clock, the two sides' counts and the time bar take at the
-  /// right end of a `phones` side's tray row, in world units (m12 §1), so no
-  /// separate strip band is needed.
-  static const hudWidth = 40.0;
 
   /// The widest a `phones` side may be, against its height: 2.2:1 is wider
   /// than any landscape phone. Past it the tray packs in two rows instead,
@@ -269,11 +263,13 @@ final class SplitLayout {
     return crop.inflate(4);
   }
 
-  /// The `phones` world (m12 §1): each side sized to its own content, because
-  /// a phone's height is what limits the scale. The tray runs along the top,
-  /// packed as [_trayScale] pieces with [_trayOverlap], at the angles that
-  /// make it flat; [hudWidth] at its right end holds the clock; the picture's
-  /// crop sits below, centred. Both sides are the same world and angles.
+  /// The `phones` world (m12-phone-layout §0.7c): each side sized to its own
+  /// content, because a phone's height is what limits the scale. The tray
+  /// runs along the top, packed as [_trayScale] pieces with no overlap so its
+  /// pieces sit side by side, at the angles that make it flat; the picture's
+  /// crop sits below, centred. Both sides are the same world and angles. No
+  /// area is reserved for the clock: it is drawn beside the world, in the
+  /// box's spare width (m12-phone-layout §0.7c).
   static SplitLayout _computePhones(Puzzle puzzle, int seed) {
     final crop = _crop(puzzle);
     final angles = Map<int, double>.unmodifiable(compactStartAngles(puzzle, Random(seed), flat: true));
@@ -294,7 +290,7 @@ final class SplitLayout {
       // because the pieces start up there (m12 §1).
       top: margin,
       startX: board.left + _dotInset,
-      trayOverlap: _trayOverlap,
+      trayOverlap: 0,
       trayScale: _trayScale,
     );
     return SplitLayout._(
@@ -306,20 +302,19 @@ final class SplitLayout {
       hudStrip: true,
       trayBelow: false,
       scale: 1,
-      hud: Rect.fromLTWH(world.width - margin - hudWidth, margin, hudWidth, tray.height),
+      target: LayoutTarget.phones,
     );
   }
 
   /// A `phones` side's world for a tray [trayWidth] by [trayHeight] above the
-  /// picture's [crop]: the margins around and between, and [hudWidth] beside
-  /// the tray.
-  static Size _phoneWorld(Rect crop, double trayWidth, double trayHeight) => Size(
-    max(crop.width + 2 * margin, trayWidth + hudWidth + 2 * margin),
-    margin + trayHeight + margin + crop.height + margin,
-  );
+  /// picture's [crop]: the margins around and between, wide enough for the
+  /// tray row or the crop, whichever needs more (m12-phone-layout §0.7c).
+  static Size _phoneWorld(Rect crop, double trayWidth, double trayHeight) =>
+      Size(max(crop.width + 2 * margin, trayWidth + 2 * margin), margin + trayHeight + margin + crop.height + margin);
 
   /// A `phones` side's tray in one row, as wide as the row of pieces needs: no
-  /// tray width can break the row, so it is packed without a limit.
+  /// tray width can break the row, so it is packed without a limit, and with
+  /// no overlap so the pieces sit side by side (m12-phone-layout §0.7c).
   static ({double width, double height, int rows}) _phoneTray(Puzzle puzzle, Map<int, double> angles) =>
       _packedTray(puzzle, angles, double.infinity);
 
@@ -339,12 +334,13 @@ final class SplitLayout {
     return _phoneTray(puzzle, angles);
   }
 
-  /// The pieces packed at [width], as the rules will pack them: the tray's
-  /// size with [trayGap] at both edges, and how many rows that makes. A
-  /// [width] the packing fits in is kept, so the rules pack it the same way
-  /// again; no limit means the tray is as wide as the one row needs.
+  /// The pieces packed at [width] with no overlap, as the rules will pack
+  /// them: the tray's size with [trayGap] at both edges, and how many rows
+  /// that makes. A [width] the packing fits in is kept, so the rules pack it
+  /// the same way again; no limit means the tray is as wide as the one row
+  /// needs.
   static ({double width, double height, int rows}) _packedTray(Puzzle puzzle, Map<int, double> angles, double width) {
-    final packed = packTray(puzzle, angles, width, overlap: _trayOverlap, scale: _trayScale);
+    final packed = packTray(puzzle, angles, width, overlap: 0, scale: _trayScale);
     // Each box's width as the rules scale it, so a width worked out here is
     // the width the rules compare against, down to the last bit.
     final widths = <double>[];
@@ -361,7 +357,8 @@ final class SplitLayout {
       if (n > 0) {
         final prev = packed.order[n - 1];
         if (packed.at[i]!.dy == packed.at[prev]!.dy) {
-          start = max(start, packed.at[prev]!.dx + widths[prev] * (1 - _trayOverlap));
+          // As packTray steps on with no overlap: past the box and a gap.
+          start = max(start, packed.at[prev]!.dx + widths[prev] + trayGap);
         }
       }
       right = max(right, start + widths[i]);

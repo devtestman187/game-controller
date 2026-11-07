@@ -73,3 +73,12 @@ class MatchView extends StatelessWidget {
 
 const _background = Color(0xFF14181F);
 const _wrong = Color(0xFFE53935);
+
+/// A right answer's mark, and the phone HUD's time bar while the clock has
+/// time left (m12-phone-layout §0.7c).
+const _right = Color(0xFF43D17A);
+
+/// The panel a phone's HUD sits on when it has no room beside the world, over
+/// the board's top-left corner (m12-phone-layout §0.7c): 55% black, so the
+/// board stays visible behind the texts.
+const _hudPanel = Color(0x8C000000);

@@ -4,8 +4,8 @@ part of 'view.dart';
 /// both sides' counts in a strip along the top or in the gap between the
 /// boards, whichever draws the board bigger. A `phones` world is drawn
 /// through [camera] instead (m12-phone-layout §2): one side, or the whole
-/// match, each side with the clock, the counts and the time bar in its
-/// [SplitLayout.hud].
+/// match, with the clock, the score and the time bar beside the world in
+/// screen space (§0.7c).
 class MatchPainter extends CustomPainter {
   MatchPainter(
     this.puzzle,
@@ -30,16 +30,9 @@ class MatchPainter extends CustomPainter {
   static const _stripBar = 40.0;
   static const _gapBar = 10.0;
 
-  /// The phone HUD's lines, as fractions of its area's height (m12 §2): the
-  /// clock above this side's count and the other side's, with the time bar
-  /// along the bottom. The text's sizes are fractions of the same height, so
-  /// the HUD fills the 40-unit area whatever scale the phone draws at.
-  static const _clockLine = 0.22;
-  static const _ownLine = 0.55;
-  static const _otherLine = 0.8;
-  static const _clockShare = 0.34;
-  static const _countShare = 0.22;
-  static const _barShare = 0.06;
+  /// The phone HUD is placed by [PuzzleCamera.hudPlace], and its text sizes
+  /// are fractions of the box height ([PuzzleCamera.hudClockFraction],
+  /// [PuzzleCamera.hudScoreFraction]) (m12-phone-layout §0.7c).
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -83,8 +76,9 @@ class MatchPainter extends CustomPainter {
     canvas.restore();
   }
 
-  /// A phone: each side the camera shows, placed by [PuzzleCamera.place], with
-  /// the clock area drawn in its world.
+  /// A phone: each side the camera shows, placed by [PuzzleCamera.place], then
+  /// the clock area beside the world, in screen space, so no world covers it
+  /// (m12-phone-layout §0.7c).
   void _phones(Canvas canvas, Size size, SplitLayout layout) {
     final whole = camera.side == null;
     final sides = [camera.side ?? PuzzleSide.left, if (whole && s.split) PuzzleSide.right];
@@ -95,50 +89,84 @@ class MatchPainter extends CustomPainter {
         ..translate(place.origin.dx, place.origin.dy)
         ..scale(place.scale);
       PuzzlePainter(puzzle, _boardOf(s, side), field: layout.left, hud: false).paint(canvas, layout.left.size);
-      _phoneHud(canvas, layout.hud!, side, whole: whole);
       canvas.restore();
+    }
+    _hud(canvas, size, layout);
+  }
+
+  /// The clock, the score and the time bar beside the world (m12-phone-layout
+  /// §0.7c): on a panel over the board's corner when the box has no room, in
+  /// the form [PuzzleCamera.hudPlace] picked otherwise. The bar is green while
+  /// the clock has time left and red while it warns.
+  void _hud(Canvas canvas, Size size, SplitLayout layout) {
+    final placement = PuzzleCamera.hudPlace(layout, camera, size);
+    final rect = placement.rect;
+    final board = camera.side == null ? s.boards.first : _boardOf(s, camera.side!);
+    final gap = size.height * PuzzleCamera.hudLineGapFraction;
+    final bar = size.height * PuzzleCamera.hudBarFraction;
+    if (placement.form == HudForm.corner) {
+      final panel = rect.inflate(gap);
+      canvas.drawRRect(RRect.fromRectAndRadius(panel, Radius.circular(gap)), Paint()..color = _hudPanel);
+    }
+    _hudTexts(canvas, placement, phoneHud(s, camera.side), size);
+    if (_barFraction(board.timeLeftMs) case final frac?) {
+      final warn = board.warning && board.phase == PuzzlePhase.playing;
+      canvas.drawRect(
+        Rect.fromLTWH(rect.left, rect.bottom - bar, rect.width * frac, bar),
+        Paint()..color = warn ? _wrong : _right,
+      );
     }
   }
 
-  /// The clock, the counts and the time bar in a phone's [SplitLayout.hud].
-  void _phoneHud(Canvas canvas, Rect hud, PuzzleSide side, {required bool whole}) {
-    final board = _boardOf(s, side);
-    final text = phoneHud(s, side, whole: whole);
-    final warn = board.warning && board.phase == PuzzlePhase.playing;
+  /// The clock and the score in [placement]'s form: one line, or the clock
+  /// above the score (m12-phone-layout §0.7c).
+  void _hudTexts(Canvas canvas, ({Rect rect, HudForm form}) placement, ({String clock, String score}) text, Size size) {
+    final rect = placement.rect;
+    final clock = size.height * PuzzleCamera.hudClockFraction;
+    final score = size.height * PuzzleCamera.hudScoreFraction;
+    final gap = size.height * PuzzleCamera.hudLineGapFraction;
+    if (placement.form == HudForm.oneLine) {
+      _hudLine(canvas, text, Offset(rect.left, rect.top + (clock + gap) / 2), clock, score);
+      return;
+    }
     _text(
       canvas,
       text.clock,
-      Offset(hud.left, hud.top + hud.height * _clockLine),
-      hud.height * _clockShare,
-      warn ? _wrong : Colors.white,
+      Offset(rect.left, rect.top + clock / 2),
+      clock,
+      Colors.white,
       bold: true,
       align: TextAlign.left,
     );
     _text(
       canvas,
-      text.own,
-      Offset(hud.left, hud.top + hud.height * _ownLine),
-      hud.height * _countShare,
+      text.score,
+      Offset(rect.left, rect.top + clock + gap + score / 2),
+      score,
       Colors.white,
       align: TextAlign.left,
     );
-    if (text.other case final other?) {
-      _text(
-        canvas,
-        other,
-        Offset(hud.left, hud.top + hud.height * _otherLine),
-        hud.height * _countShare,
-        Colors.white70,
-        align: TextAlign.left,
-      );
-    }
-    if (_barFraction(board.timeLeftMs) case final frac?) {
-      final height = hud.height * _barShare;
-      canvas.drawRect(
-        Rect.fromLTWH(hud.left, hud.bottom - height, hud.width * frac, height),
-        Paint()..color = warn ? _wrong : Colors.white24,
-      );
-    }
+  }
+
+  /// The clock, bold, with the score beside it on one line (m12-phone-layout
+  /// §0.7c), left-aligned at [at]'s left and centred on its y.
+  void _hudLine(Canvas canvas, ({String clock, String score}) text, Offset at, double clockSize, double scoreSize) {
+    final painter = TextPainter(
+      text: TextSpan(
+        children: [
+          TextSpan(
+            text: text.clock,
+            style: TextStyle(fontSize: clockSize, color: Colors.white, fontWeight: FontWeight.bold, height: 1),
+          ),
+          TextSpan(
+            text: ' ${text.score}',
+            style: TextStyle(fontSize: scoreSize, color: Colors.white, fontWeight: FontWeight.w500, height: 1),
+          ),
+        ],
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    painter.paint(canvas, at + Offset(0, -painter.height / 2));
   }
 
   /// The clock and the counts in a strip along the top, with a divider
@@ -219,23 +247,27 @@ class MatchPainter extends CustomPainter {
   bool shouldRepaint(MatchPainter old) => !identical(old.s, s) || old.target != target || old.camera != camera;
 }
 
-/// What a phone side's HUD shows, top to bottom (m12-phone-layout §2): the
-/// clock, this side's count and, in a race drawn as one side, the other
-/// side's. [whole] draws the whole match, so each count names its side
-/// ("Left 2/4") instead of speaking to the player ("You 2/4"); a one-board
-/// match shows its count alone.
-({String clock, String own, String? other}) phoneHud(MatchSnapshot s, PuzzleSide side, {required bool whole}) {
-  final board = _boardOf(s, side);
-  final other = s.split && !whole ? _boardOf(s, _otherSide(side)) : null;
-  final total = board.pieces.length;
-  final own = whole
-      ? (s.split ? '${_sideName(side)} ${board.placed}/$total' : '${board.placed}/$total')
-      : 'You ${board.placed}/$total';
-  return (
-    clock: _clock(board.timeLeftMs),
-    own: own,
-    other: other == null ? null : '${_sideName(_otherSide(side))} ${other.placed}/${other.pieces.length}',
-  );
+/// What a phone's clock area shows (m12-phone-layout §0.7c): the clock and one
+/// score line. With [side], the score speaks to that side's player and names
+/// the other side's count ("You 2/4 · Right 3/6"), the camera's side first; a
+/// one-board match shows its count alone ("0 of 4 placed"); and a null [side]
+/// is the whole match, whose one HUD names both sides ("Left 2/4 · Right
+/// 3/6").
+({String clock, String score}) phoneHud(MatchSnapshot s, PuzzleSide? side) {
+  final left = s.boards.first;
+  final board = side == null ? left : _boardOf(s, side);
+  final right = s.split ? s.boards[1] : null;
+  String count(PuzzleSnapshot b) => '${b.placed}/${b.pieces.length}';
+  final String score;
+  if (right == null) {
+    score = '${left.placed} of ${left.pieces.length} placed';
+  } else if (side == null) {
+    score = '${_sideName(PuzzleSide.left)} ${count(left)} · ${_sideName(PuzzleSide.right)} ${count(right)}';
+  } else {
+    final other = _otherSide(side);
+    score = 'You ${count(_boardOf(s, side))} · ${_sideName(other)} ${count(_boardOf(s, other))}';
+  }
+  return (clock: _clock(board.timeLeftMs), score: score);
 }
 
 /// The board a [side] plays: left then right in a race, the one board

@@ -16,7 +16,6 @@ class PuzzlePainter extends CustomPainter {
   static const _board = Color(0xFF242B36);
   static const _tray = Color(0xFF1C222B);
   static const _outlineGrey = Color(0xFF9AA5B1);
-  static const _right = Color(0xFF43D17A);
 
   Offset _targetAt(int i) => field.origin + puzzle.pieces[i].target;
 

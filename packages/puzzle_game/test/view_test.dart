@@ -166,20 +166,13 @@ void main() {
       return m;
     }
 
-    test('a side\'s HUD speaks to its player and names the other side\'s count, with the clock; the whole match names '
-        'each side', () {
+    test('a side\'s score speaks to its player and names the other side\'s count, the camera\'s side first; the whole '
+        'match has one HUD naming both sides', () {
       final s = phonesMatch().snapshot();
-      final left = phoneHud(s, PuzzleSide.left, whole: false);
-      expect(left.own, 'You 0/4');
-      expect(left.other, 'Right 2/4');
-      expect(left.clock, '1:05');
-      final right = phoneHud(s, PuzzleSide.right, whole: false);
-      expect(right.own, 'You 2/4');
-      expect(right.other, 'Left 0/4');
-      expect(right.clock, '1:05');
-      // Drawn whole, each side's HUD names its own count: no other side's.
-      expect(phoneHud(s, PuzzleSide.left, whole: true), (clock: '1:05', own: 'Left 0/4', other: null));
-      expect(phoneHud(s, PuzzleSide.right, whole: true), (clock: '1:05', own: 'Right 2/4', other: null));
+      expect(phoneHud(s, PuzzleSide.left), (clock: '1:05', score: 'You 0/4 · Right 2/4'));
+      expect(phoneHud(s, PuzzleSide.right), (clock: '1:05', score: 'You 2/4 · Left 0/4'));
+      // Drawn whole, the one HUD counts both sides.
+      expect(phoneHud(s, null), (clock: '1:05', score: 'Left 0/4 · Right 2/4'));
     });
 
     test('a one-board match\'s HUD shows its count alone', () {
@@ -190,32 +183,32 @@ void main() {
         target: LayoutTarget.phones,
       );
       final s = m.snapshot();
-      expect(phoneHud(s, PuzzleSide.left, whole: false), (clock: '2:00', own: 'You 0/4', other: null));
-      expect(phoneHud(s, PuzzleSide.left, whole: true), (clock: '2:00', own: '0/4', other: null));
+      expect(phoneHud(s, PuzzleSide.left), (clock: '2:00', score: '0 of 4 placed'));
+      expect(phoneHud(s, null), (clock: '2:00', score: '0 of 4 placed'));
     });
 
-    testWidgets('a phone draws one side, or the whole match, in a phone box; the screen draws today\'s picture', (
-      tester,
-    ) async {
+    testWidgets('a phone draws one side, or the whole match, at both phone sizes; the screen draws today\'s '
+        'picture', (tester) async {
       final match = phonesMatch();
       final s = match.snapshot();
       Widget view(PuzzleCamera camera, {LayoutTarget target = LayoutTarget.phones}) =>
           MatchView(puzzle: puzzle, snapshot: s, timeLimitS: 65, target: target, camera: camera);
-      const box = Size(667, 375);
-      for (final camera in const [
-        PuzzleCamera.side(PuzzleSide.left),
-        PuzzleCamera.side(PuzzleSide.right),
-        PuzzleCamera.whole(),
-      ]) {
-        final (width, height, bytes) = await capture(tester, view(camera), window: box, box: box);
-        expect((width, height), (667, 375));
-        expect(tester.takeException(), isNull, reason: '$camera');
-        // Not blank: the board (and its HUD) draws many colours.
-        final colours = <int>{};
-        for (var i = 0; i < bytes.length; i += 4 * 97) {
-          colours.add(bytes[i] << 16 | bytes[i + 1] << 8 | bytes[i + 2]);
+      for (final box in const [Size(852, 393), Size(667, 375)]) {
+        for (final camera in const [
+          PuzzleCamera.side(PuzzleSide.left),
+          PuzzleCamera.side(PuzzleSide.right),
+          PuzzleCamera.whole(),
+        ]) {
+          final (width, height, bytes) = await capture(tester, view(camera), window: box, box: box);
+          expect((width, height), (box.width, box.height));
+          expect(tester.takeException(), isNull, reason: '$camera at $box');
+          // Not blank: the board (and its HUD) draws many colours.
+          final colours = <int>{};
+          for (var i = 0; i < bytes.length; i += 4 * 97) {
+            colours.add(bytes[i] << 16 | bytes[i + 1] << 8 | bytes[i + 2]);
+          }
+          expect(colours.length, greaterThan(8), reason: '$camera at $box');
         }
-        expect(colours.length, greaterThan(8), reason: '$camera');
       }
       // On the screen the camera changes nothing: one camera choice, or none.
       const tv = Size(960, 540);
@@ -232,6 +225,44 @@ void main() {
         box: tv,
       );
       expect(difference(plain.$3, side.$3), 0.0, reason: 'the screen ignores the camera');
+    });
+
+    testWidgets('the HUD\'s time bar is green while the clock has time left and red while it warns', (tester) async {
+      const box = Size(852, 393);
+      const camera = PuzzleCamera.side(PuzzleSide.left);
+      Future<int> barColour(PuzzleMatch m, int limitS) async {
+        final (width, _, bytes) = await capture(
+          tester,
+          MatchView(
+            puzzle: puzzle,
+            snapshot: m.snapshot(),
+            timeLimitS: limitS,
+            target: LayoutTarget.phones,
+            camera: camera,
+          ),
+          window: box,
+          box: box,
+        );
+        final rect = PuzzleCamera.hudPlace(
+          SplitLayout.of(puzzle, m.seed, target: LayoutTarget.phones),
+          camera,
+          box,
+        ).rect;
+        // Just inside the bar's left end, halfway down its height.
+        final y = (rect.bottom - box.height * PuzzleCamera.hudBarFraction / 2).round();
+        final i = 4 * (y * width + rect.left.round() + 1);
+        return bytes[i] << 16 | bytes[i + 1] << 8 | bytes[i + 2];
+      }
+
+      expect(await barColour(phonesMatch(), 65), 0x43D17A);
+      final warning = PuzzleMatch(
+        puzzle,
+        teams: const {'p1': PuzzleSide.left, 'p2': PuzzleSide.right},
+        settings: const PuzzleSettings(timeLimitS: 10),
+        random: Random(1),
+        target: LayoutTarget.phones,
+      )..update(0.016, const {'p1': helpers.none, 'p2': helpers.none}, numbers: const {'p1': 1, 'p2': 2});
+      expect(await barColour(warning, 10), 0xE53935);
     });
   });
 
