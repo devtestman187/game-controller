@@ -67,6 +67,9 @@ class BarConnection extends ConsumerWidget {
 /// The bar's left side over a game (m12-phone-layout §0.7b): the own player
 /// and the link's dot alone. The host's name, the ping and the status panel
 /// would cover the game's own HUD, so they stay out of the compact bar.
+///
+/// The dot is a button to the Connect screen (m12-joined-view §0.3): a phone
+/// that plays a host's game can always leave it, not only while it waits.
 class CompactConnection extends ConsumerWidget {
   const CompactConnection({super.key});
 
@@ -77,7 +80,12 @@ class CompactConnection extends ConsumerWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         if (player != null) ...[PlayerBadge(number: player), const SizedBox(width: 6)],
-        const ConnectionDot(key: Key('connectionDot')),
+        IconButton(
+          key: const Key('connectionButton'),
+          tooltip: 'Connection',
+          icon: const ConnectionDot(key: Key('connectionDot')),
+          onPressed: () => openConnect(context),
+        ),
       ],
     );
   }

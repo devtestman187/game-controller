@@ -41,6 +41,23 @@ class _Controls extends ConsumerWidget {
   }
 }
 
+/// The waiting card (m12-joined-view §0.3) while this phone waits for the host
+/// it plays with, and nothing otherwise.
+///
+/// It is drawn here rather than inside the game behind the controls, because
+/// its Leave game button must be reachable: the pad covers the game, and a
+/// button under the pad's Start and Select could never be tapped.
+class _WaitingOverlay extends ConsumerWidget {
+  const _WaitingOverlay();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final wait = ref.watch(hostWaitProvider);
+    if (wait == null) return const SizedBox.shrink();
+    return WaitingCard(wait: wait);
+  }
+}
+
 /// "Try without a TV" (v2 C23): while no TV is connected, shows what a TV
 /// would receive, in every mode.
 class DemoReadout extends ConsumerWidget {

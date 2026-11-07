@@ -6,12 +6,12 @@ import 'package:game_kit/game_kit.dart';
 import 'package:party_host/party_host.dart' as party;
 
 import '../providers.dart';
-import 'waiting_card.dart';
 
 /// The game the host shows this phone (m12 §5), drawn behind this phone's own
 /// controls: the frames the client receives, and each frame's sounds played
 /// by the party sound player. The waiting card sits over it while the host is
-/// away or the link is down (m12-joined-view §0.3).
+/// away or the link is down (m12-joined-view §0.3); the last frame it drew
+/// stays under the card until the link is back or the player leaves.
 ///
 /// Shown only while the host shows a view, and nothing at all while it shows
 /// none, so a phone joined to a host that sends it no game keeps its
@@ -65,15 +65,17 @@ class _JoinedViewState extends ConsumerState<JoinedView> {
       wholeMatch: ref.watch(isTabletProvider),
       onSounds: (names) => _play(ref, names),
     );
-    final wait = ref.watch(hostWaitProvider);
+    // A dropped link ended the view ([viewActiveProvider]), but its last frame
+    // stays under the card until the link is back or the player leaves: the
+    // card then covers the game they played last (m12-joined-view §0.3).
+    final drawn = ref.watch(viewActiveProvider) || ref.watch(hostWaitProvider) != null;
     return Stack(
       fit: StackFit.expand,
       children: [
         // The view stays mounted while none is on, so it hears the start that
         // turns one on: it draws nothing itself until then. Keeping it off the
         // screen and its ticker quiet is all this does.
-        Visibility(visible: ref.watch(viewActiveProvider), maintainState: true, child: view),
-        if (wait != null) WaitingCard(wait: wait),
+        Visibility(visible: drawn, maintainState: true, child: view),
       ],
     );
   }

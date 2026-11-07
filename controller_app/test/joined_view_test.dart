@@ -1,9 +1,9 @@
-import 'package:connection/connection.dart';
 import 'package:controller/src/controls_settings.dart';
 import 'package:controller/src/host/hosting.dart';
 import 'package:controller/src/layout.dart';
 import 'package:controller/src/providers.dart';
 import 'package:controller/src/storage.dart';
+import 'package:controller/src/ui/connect_screen.dart';
 import 'package:controller/src/ui/controls_layer.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -13,59 +13,15 @@ import 'package:party_host/party_host.dart' as party;
 import 'package:party_host/testing.dart' as party_test;
 import 'package:protocol/protocol.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:test_game/test_game.dart';
 
 import 'support/fakes.dart';
+import 'support/joined.dart';
 import 'support/pump_app.dart';
-
-/// The Arena a test's frames carry: one player in the middle of the field,
-/// nothing in its way.
-final arena = ArenaSnapshot(
-  round: 1,
-  roundTimeS: 30,
-  phase: ArenaPhase.playing,
-  walls: const [],
-  goal: const Rect.fromLTRB(0.9, 0.4, 1, 0.6),
-  hazards: const [],
-  players: const [ArenaPlayerView(id: 'phone-1', x: 0.5, y: 0.5)],
-);
-
-/// The start the host sends for [arena], at 60 frames a second.
-ViewStartMessage arenaStart() =>
-    ViewStartMessage(game: arenaModule.id, snapshotVersion: arenaModule.snapshotVersion, setup: arenaSetup, hz: 60);
-
-/// Step [n] of [arena] at host time [atMs], with the sounds it fired.
-FrameMessage arenaFrame(int n, {int atMs = 1000, List<String> sounds = const []}) =>
-    FrameMessage(n: n, atMs: atMs, snapshot: arena.toJson(), sounds: sounds);
-
-/// The opacity the controls are drawn with, over the game behind them.
-double layerOpacity(WidgetTester tester) => tester
-    .widget<Opacity>(find.ancestor(of: find.byKey(const Key('faceButtons')), matching: find.byType(Opacity)).first)
-    .opacity;
 
 /// The opacity the bar draws an item with (m12-phone-layout §0.7b): the
 /// control's opacity while a game shows behind it.
 double barOpacity(WidgetTester tester, Key key) =>
     tester.widget<Opacity>(find.ancestor(of: find.byKey(key), matching: find.byType(Opacity)).first).opacity;
-
-/// The app connected to a host that shows the Arena, with a status panel up
-/// and the first frame drawn.
-Future<TestApp> joined(
-  WidgetTester tester, {
-  Size screen = const Size(852, 393),
-  FakeViewPadding padding = const FakeViewPadding(),
-}) async {
-  final app = await pumpApp(tester, paired: true, screen: screen, padding: padding);
-  app.client.emit(connected);
-  app.client.setStatus(StatusMessage(text: 'Left 3/6'));
-  await settle(tester);
-  app.client.nowMs = 1000;
-  app.client.viewStart(arenaStart());
-  await settle(tester);
-  app.client.viewFrame(arenaFrame(0));
-  await settle(tester);
-  return app;
-}
 
 void main() {
   group('the phone\'s capabilities (m12 §0.1)', () {
@@ -234,6 +190,17 @@ void main() {
       expect(barOpacity(tester, const Key('connectionDot')), 0.6);
     });
 
+    testWidgets('the dot is a button to the Connect screen, so a joined game can always be left', (tester) async {
+      await joined(tester);
+      expect(find.byKey(const Key('connectionChip')), findsNothing, reason: 'the compact bar draws the dot');
+      expect(tester.getSize(find.byKey(const Key('connectionButton'))), const Size(48, 48));
+
+      await tester.tap(find.byTooltip('Connection'));
+      await settle(tester);
+      expect(find.byType(ConnectScreen), findsOneWidget);
+      expect(find.text('Connect to a TV'), findsOneWidget);
+    });
+
     testWidgets('the one mode icon opens the three modes, and picking one switches the pad', (tester) async {
       await joined(tester);
       expect(find.byKey(const Key('inputSummary')), findsOneWidget, reason: 'the D-pad mode is on');
@@ -321,68 +288,6 @@ void main() {
       expect(find.text('D-pad'), findsOneWidget, reason: 'the mode labels are back');
       expect(find.byKey(const Key('modeMenu')), findsNothing);
       expect(find.byKey(const Key('connectionDot')), findsNothing);
-    });
-  });
-
-  group('waiting for the host (m12-joined-view §0.3)', () {
-    testWidgets('an away host counts its round down once a second, and coming back hides the card', (tester) async {
-      final app = await joined(tester);
-      app.client.hostAway(30);
-      await settle(tester);
-      expect(find.text('Waiting for the host to come back'), findsOneWidget);
-      expect(find.text('The game goes on if they\'re back in 30 s'), findsOneWidget);
-
-      // 5 s pass on the phone's clock, and the card ticks once.
-      app.client.nowMs += 5000;
-      await tester.pump(const Duration(seconds: 1));
-      expect(find.text('The game goes on if they\'re back in 25 s'), findsOneWidget);
-
-      app.client.hostBack();
-      await settle(tester);
-      expect(find.byKey(const Key('waitingCard')), findsNothing);
-    });
-
-    testWidgets('a countdown that ran out says the host may have left', (tester) async {
-      final app = await joined(tester);
-      app.client.hostAway(2);
-      await settle(tester);
-      app.client.nowMs += 3000;
-      await tester.pump(const Duration(seconds: 1));
-      expect(find.text('The host may have left'), findsOneWidget);
-    });
-
-    testWidgets('a link that drops over a game counts the grace, and reconnecting clears it', (tester) async {
-      final app = await joined(tester);
-      app.client.emit(ClientSnapshot(status: ClientStatus.reconnecting, target: tv));
-      await settle(tester);
-      expect(find.text('The game goes on if they\'re back in 30 s'), findsOneWidget);
-
-      app.client.nowMs += 5000;
-      await tester.pump(const Duration(seconds: 1));
-      expect(find.text('The game goes on if they\'re back in 25 s'), findsOneWidget);
-
-      app.client.emit(connected);
-      await settle(tester);
-      expect(find.byKey(const Key('waitingCard')), findsNothing);
-    });
-
-    testWidgets('a phone with no game shown says nothing when its link drops', (tester) async {
-      final app = await pumpApp(tester, paired: true);
-      app.client.emit(ClientSnapshot(status: ClientStatus.reconnecting, target: tv));
-      await settle(tester);
-      expect(find.byKey(const Key('waitingCard')), findsNothing);
-      expect(find.text('Waiting for the host to come back'), findsNothing);
-    });
-
-    testWidgets('a new view clears the wait', (tester) async {
-      final app = await joined(tester);
-      app.client.hostAway(30);
-      await settle(tester);
-      expect(find.byKey(const Key('waitingCard')), findsOneWidget);
-
-      app.client.viewStart(arenaStart());
-      await settle(tester);
-      expect(find.byKey(const Key('waitingCard')), findsNothing);
     });
   });
 

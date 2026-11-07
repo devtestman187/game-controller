@@ -58,6 +58,17 @@ void main() {
     });
   });
 
+  group('coming back to the app (1107d Q 4a)', () {
+    testWidgets('showing the app again asks the client to reconnect at once', (tester) async {
+      final app = await pumpApp(tester, paired: true);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pump();
+
+      expect(app.client.calls, contains('resume'), reason: 'not after the heartbeat times out');
+    });
+  });
+
   group('analog sending (found on the Pixel Tablet, M8)', () {
     testWidgets('stick moves keep reaching the TV when the haptics check finishes during a move', (tester) async {
       final haptics = SlowCapsHaptics();

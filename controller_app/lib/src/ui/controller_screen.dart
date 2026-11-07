@@ -20,6 +20,7 @@ import 'host_chip.dart';
 import 'joined_view.dart';
 import 'rating_prompt.dart';
 import 'settings_screen.dart';
+import 'waiting_card.dart';
 
 part 'controller_parts.dart';
 part 'controller_top_bar.dart';
@@ -189,6 +190,9 @@ class _ControllerScreenState extends ConsumerState<ControllerScreen> with Widget
                 // The host was away too long (m12 §0.5): said over the
                 // controls for a moment, which stay usable under it.
                 const Positioned.fill(child: AbandonedNotice()),
+                // The host is away or the link dropped (m12-joined-view §0.3):
+                // the card sits over the game and the controls.
+                const Positioned.fill(child: _WaitingOverlay()),
               ],
             );
           },

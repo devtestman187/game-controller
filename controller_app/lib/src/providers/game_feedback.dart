@@ -45,11 +45,14 @@ class GameShownNotifier extends Notifier<bool> {
 }
 
 /// Whether this phone shows a game at all (m12 §2.7): its own while hosting
-/// ([gameShownProvider]), or the one the host sends it ([viewActiveProvider]).
+/// ([gameShownProvider]), the one the host sends it ([viewActiveProvider]), or
+/// that game's last frame while it waits for the host ([hostWaitProvider]).
 /// While it does, the status panel is hidden and the controls take the saved
 /// opacity; in controller mode there's nothing behind them and they stay
 /// fully opaque.
-final showsGameProvider = Provider<bool>((ref) => ref.watch(gameShownProvider) || ref.watch(viewActiveProvider));
+final showsGameProvider = Provider<bool>(
+  (ref) => ref.watch(gameShownProvider) || ref.watch(viewActiveProvider) || ref.watch(hostWaitProvider) != null,
+);
 
 /// Haptic events from the TV (M5): how many arrived and were played, and
 /// the latest, for Diagnostics.
