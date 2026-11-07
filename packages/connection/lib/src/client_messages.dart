@@ -64,14 +64,23 @@ final class ClientMessages {
       case StatusMessage():
         if (!_host.snapshot.isConnected || !_host.identity.capabilities.contains(Capability.status)) return;
         _controls.setStatus(message);
-      case ViewStartMessage() || FrameMessage() || ViewEndMessage():
-        // Viewing isn't wired up yet (m12 s3a G4); a host only sends these to
-        // controllers that list Capability.view, which none does yet.
-        return;
+      case ViewStartMessage():
+        if (!_showsView) return;
+        _controls.addViewStart(message);
+      case FrameMessage():
+        if (!_showsView) return;
+        _controls.addViewFrame(message, arrivedAtMs: _host.nowMs);
+      case ViewEndMessage():
+        if (!_showsView) return;
+        _controls.addViewEnd(message);
       case HelloMessage() || PairRequestMessage() || InputStateMessage() || MetricsMessage() || RatingMessage():
         _host.log('Ignoring unexpected ${message.type} from the TV');
     }
   }
+
+  /// True while this phone shows the game (M12): paired, and its identity
+  /// listed [Capability.view].
+  bool get _showsView => _host.snapshot.isConnected && _host.identity.capabilities.contains(Capability.view);
 
   /// The decoded message, or null when it was bad (the client gives up then)
   /// or an optional type this phone doesn't know.

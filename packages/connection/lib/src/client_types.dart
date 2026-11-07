@@ -108,6 +108,31 @@ final class ClientSnapshot {
 
   bool get isConnected => status == ClientStatus.connected;
 
+  /// This connection dropped and another attempt is on its way: the state
+  /// while reconnecting, with what this connection measured forgotten (the
+  /// next one measures its own).
+  ClientSnapshot reconnecting({String? detail, required int attempt, int? osErrorCode}) => copyWith(
+    status: ClientStatus.reconnecting,
+    problem: ClientProblem.connectionLost,
+    detail: detail,
+    attempt: attempt,
+    rttMs: null,
+    rttStats: null,
+    player: null,
+    osErrorCode: osErrorCode,
+  );
+
+  /// The client gave up for [problem]: the state while failed, with what this
+  /// connection measured forgotten.
+  ClientSnapshot failed(ClientProblem problem, String? detail) => copyWith(
+    status: ClientStatus.failed,
+    problem: problem,
+    detail: detail,
+    rttMs: null,
+    rttStats: null,
+    player: null,
+  );
+
   /// The best name for the host: its own name, the advertised one, or its
   /// address.
   String get hostLabel => hostName ?? target?.label ?? '';
@@ -142,5 +167,10 @@ final class ClientSnapshot {
   String toString() =>
       'ClientSnapshot(${status.name}, ${target?.display}, problem: ${problem?.name}, attempt: $attempt)';
 }
+
+/// Whether two lists hold the same strings in the same order (a host's
+/// addresses, for one).
+bool sameStrings(List<String> a, List<String> b) =>
+    a.length == b.length && Iterable.generate(a.length).every((i) => a[i] == b[i]);
 
 const Object _keep = Object();

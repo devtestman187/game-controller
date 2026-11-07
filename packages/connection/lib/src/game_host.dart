@@ -67,6 +67,27 @@ abstract interface class GameHost {
   /// [StatusMessage.maxPerSecond] times a second; the newest always gets
   /// there.
   void setStatus(String playerId, StatusMessage status);
+
+  /// True while at least one paired controller listed [Capability.view]. A
+  /// session skips building frames when nobody would get them.
+  bool get hasViewers;
+
+  /// The seq of the input [gamepad] returns for [playerId] now: the last
+  /// applied InputStateMessage.seq. Null for a local player or before any
+  /// input.
+  int? inputSeq(String playerId);
+
+  /// A game starts being shown on viewers. Sent to every viewer now, and to
+  /// any viewer that pairs later until [endView], followed by the latest frame.
+  void startView(ViewStartMessage start);
+
+  /// One frame, to every viewer. Encoded once, the same text to each.
+  /// Ignored before startView or after endView.
+  void publishFrame(FrameMessage frame);
+
+  /// The game stopped being shown. Sent to every viewer; forgets the start
+  /// and the latest frame.
+  void endView(ViewEndMessage end);
 }
 
 /// A player's heartbeat round trip and input delay.

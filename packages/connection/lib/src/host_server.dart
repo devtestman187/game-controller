@@ -35,7 +35,7 @@ class HostServer {
     this.capabilities = const [],
     LogSink? log,
     Random? random,
-  }) : _log = log ?? _noLog,
+  }) : _log = log ?? noLog,
        _listeners = List.unmodifiable(listeners),
        _pairings = PairingBook(
          random: random ?? Random.secure(),
@@ -81,6 +81,8 @@ class HostServer {
   /// The server's clock in ms, the one [ControllerInfo.inputAtMs] and
   /// [ControllerMessage.receivedAtMs] use.
   int get nowMs => _now;
+
+  static const _codec = MessageCodec();
 
   final LogSink _log;
   final PairingBook _pairings;
@@ -191,12 +193,23 @@ class HostServer {
     }
   }
 
-  /// Sends [message] to every paired controller that can take it. Returns
-  /// how many it went to.
+  /// Sends [message] to every paired controller that can take it, encoding it
+  /// once and handing the same text to each (a frame at 60 Hz to several
+  /// viewers is the reason, m12 §2). Returns how many it went to.
   int sendToAll(Message message) {
     final paired = _sessions.where((s) => s.paired && _accepts(s, message)).toList();
+    if (paired.isEmpty) return 0;
+    final String text;
+    try {
+      text = _codec.encode(message);
+    } catch (e) {
+      // A payload that can't be encoded (a game snapshot with something that
+      // isn't JSON) goes to nobody, and the host carries on.
+      _log('Could not encode ${message.type} for ${paired.length} controller(s): $e');
+      return 0;
+    }
     for (final s in paired) {
-      s.send(message);
+      s.sendText(text);
     }
     return paired.length;
   }
@@ -218,6 +231,7 @@ class HostServer {
     RatingAskMessage() => Capability.rating,
     GameLayoutMessage() => Capability.layout,
     StatusMessage() => Capability.status,
+    ViewStartMessage() || FrameMessage() || ViewEndMessage() => Capability.view,
     _ => null,
   };
 
@@ -317,8 +331,6 @@ class HostServer {
     if (!_changes.isClosed) _changes.add(snapshot);
   }
 }
-
-void _noLog(String _) {}
 
 /// What a [HostConnection] can do with its server (internal): the server's
 /// callbacks, without putting them in [HostServer]'s public API.

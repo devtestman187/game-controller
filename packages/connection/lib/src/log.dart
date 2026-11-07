@@ -4,6 +4,10 @@ import 'dart:collection';
 /// Where the host and client write human-readable log lines.
 typedef LogSink = void Function(String message);
 
+/// A [LogSink] that writes nothing: what a client given no log writes to, so
+/// the code that logs needs no null checks.
+void noLog(String _) {}
+
 /// One log line with its time and source (e.g. `client`, `host`, `discovery`).
 final class LogLine {
   LogLine(this.time, this.source, this.message);

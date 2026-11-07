@@ -131,8 +131,22 @@ final class HostConnection {
   /// Sends [message] to this controller, if the connection is still open.
   void send(Message message) {
     if (closed) return;
+    final String text;
     try {
-      _channel.send(_codec.encode(message));
+      text = _codec.encode(message);
+    } catch (e) {
+      _host.log('Send to $who failed: $e');
+      return;
+    }
+    sendText(text);
+  }
+
+  /// Sends [text], a message that is already encoded: [HostServer.sendToAll]
+  /// encodes one message once for every controller that takes it.
+  void sendText(String text) {
+    if (closed) return;
+    try {
+      _channel.send(text);
     } catch (e) {
       _host.log('Send to $who failed: $e');
     }

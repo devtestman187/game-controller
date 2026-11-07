@@ -60,6 +60,10 @@ final class WirePhone {
   /// Every message the host has sent this phone so far, in order.
   List<Message> get fromHost => List.unmodifiable(_fromHost);
 
+  /// Sends [message] without waiting for an answer, for a test that only
+  /// needs it to arrive (a later [drain] shows the host handled it).
+  void send(Message message) => _channel.send(_codec.encode(message));
+
   /// Sends [message] and waits up to 5 s for the host's next message of type
   /// [T]. It waits before it sends, so an answer that comes at once is not
   /// missed.

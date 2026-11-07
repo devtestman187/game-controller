@@ -5,7 +5,8 @@
 /// command-line simulated controller and in `dart test` on Windows and CI.
 library;
 
-export 'src/client_types.dart';
+export 'src/client_controls.dart' show ViewEnded, ViewEvent, ViewFrame, ViewStarted;
+export 'src/client_types.dart' hide sameStrings;
 export 'src/controller_client.dart';
 export 'src/controller_identity.dart';
 export 'src/demo_input.dart';
@@ -17,7 +18,7 @@ export 'src/host_server.dart';
 export 'src/host_types.dart';
 export 'src/latency.dart';
 export 'src/local_player.dart' show LocalPlayer;
-export 'src/log.dart';
+export 'src/log.dart' hide noLog;
 export 'src/memory_game_host.dart' show MemoryGameHost;
 export 'src/rtt.dart';
 export 'src/saved_pairing.dart';

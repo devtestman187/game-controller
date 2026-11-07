@@ -14,7 +14,7 @@ import 'web_socket_channel.dart';
 final class WebSocketListener implements ChannelListener {
   /// [preferredPort] is tried first, then any free port (0 asks for one).
   /// [hostName] goes on the status page.
-  WebSocketListener({this.preferredPort = defaultPort, required this.hostName, LogSink? log}) : _log = log ?? _noLog;
+  WebSocketListener({this.preferredPort = defaultPort, required this.hostName, LogSink? log}) : _log = log ?? noLog;
 
   /// Port to try first. If it's taken, any free port is used.
   final int preferredPort;
@@ -83,5 +83,3 @@ final class WebSocketListener implements ChannelListener {
     await request.response.close();
   }
 }
-
-void _noLog(String _) {}

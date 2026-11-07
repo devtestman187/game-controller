@@ -17,10 +17,13 @@ class ServerGameHost implements GameHost {
     _serverSub = server.changes.listen((_) => _checkPlayers());
     _messagesSub = server.messages.listen((m) {
       final message = m.message;
-      if (message is! InputStateMessage) return;
-      _notePresses(m.controllerId, message, m.receivedAtMs);
-      final delay = m.delayMs;
-      if (delay != null) reportStage(m.controllerId, LatencyStage.sentToReceived, delay);
+      if (message is InputStateMessage) {
+        _notePresses(m.controllerId, message, m.receivedAtMs);
+        final delay = m.delayMs;
+        if (delay != null) reportStage(m.controllerId, LatencyStage.sentToReceived, delay);
+      } else if (message is MetricsMessage) {
+        _reportStages(m.controllerId, message.stages);
+      }
     });
   }
 
@@ -55,6 +58,10 @@ class ServerGameHost implements GameHost {
   final _statusTimers = <String, Timer>{};
   List<GamePlayer> _lastPlayers = const [];
   int _nextLocal = 1;
+
+  /// The view a game asked for, kept for viewers that pair mid-game (m12 §2).
+  ViewStartMessage? _viewStart;
+  FrameMessage? _viewFrame;
 
   /// Everything games report, for the analytics collector.
   Stream<GameRecord> get records => _records.stream;
@@ -150,6 +157,9 @@ class ServerGameHost implements GameHost {
   int? inputArrivedAtMs(String playerId) => _info(playerId)?.inputAtMs;
 
   @override
+  int? inputSeq(String playerId) => _info(playerId)?.input?.seq;
+
+  @override
   bool haptic(String playerId, HapticEventMessage event) {
     if (_locals.containsKey(playerId)) return false;
     return server.send(playerId, event);
@@ -181,6 +191,32 @@ class ServerGameHost implements GameHost {
   };
 
   @override
+  bool get hasViewers => server.snapshot.connected.any((c) => c.supports(Capability.view));
+
+  @override
+  void startView(ViewStartMessage start) {
+    _viewStart = start;
+    // A viewer that pairs from now on gets this start and the frames after it,
+    // never a frame of a game that has ended or a previous one.
+    _viewFrame = null;
+    server.sendToAll(start);
+  }
+
+  @override
+  void publishFrame(FrameMessage frame) {
+    if (_viewStart == null) return;
+    _viewFrame = frame;
+    server.sendToAll(frame);
+  }
+
+  @override
+  void endView(ViewEndMessage end) {
+    server.sendToAll(end);
+    _viewStart = null;
+    _viewFrame = null;
+  }
+
+  @override
   void record(GameRecord record) {
     if (!_records.isClosed) _records.add(record);
   }
@@ -190,6 +226,16 @@ class ServerGameHost implements GameHost {
     if (ms < 0) return;
     if (stage != LatencyStage.sentToReceived) (_stageWindows[(playerId, stage)] ??= RttWindow()).add(nowMs, ms);
     if (!_stages.isClosed) _stages.add((playerId: playerId, stage: stage, ms: ms));
+  }
+
+  /// A viewer's own samples (m12 §1) become the host's, so they reach
+  /// [stages], [stageSummary] and the session summary like the host's own.
+  void _reportStages(String controllerId, Map<String, List<int>> stages) {
+    for (final MapEntry(key: stage, value: samples) in stages.entries) {
+      for (final ms in samples) {
+        reportStage(controllerId, stage, ms);
+      }
+    }
   }
 
   @override
@@ -218,9 +264,20 @@ class ServerGameHost implements GameHost {
       if (p.local || before.contains(p.id)) continue;
       if (_layouts[p.id] case final layout?) server.send(p.id, layout);
       if (_statuses[p.id] case final status?) _sendStatus(p.id, status);
+      _sendView(p.id);
     }
     _lastPlayers = now;
     if (!_playersChanged.isClosed) _playersChanged.add(now);
+  }
+
+  /// A viewer that just (re)paired mid-game gets the view's start and its
+  /// latest frame before any later frame (m12 §2): it missed both.
+  void _sendView(String controllerId) {
+    final start = _viewStart;
+    if (start == null) return;
+    if (!(_info(controllerId)?.supports(Capability.view) ?? false)) return;
+    server.send(controllerId, start);
+    if (_viewFrame case final frame?) server.send(controllerId, frame);
   }
 
   Future<void> dispose() async {

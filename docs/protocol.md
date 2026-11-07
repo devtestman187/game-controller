@@ -50,7 +50,7 @@ The version number changes only for a breaking change. Everything else is additi
 | `rating` | `rate_ask` (host → controller) and `rating` (controller → host) | M9 |
 | `layout` | `layout` (host → controller): the game's labels, hidden buttons and modes | M10 |
 | `status` | `status` (host → controller): the phone's status panel | M10 |
-| `view` | A controller that also shows the game (phone-hosted play). Reserved | M12 |
+| `view` | `view_start`, `frame` and `view_end` (host → controller): the game itself, for a controller that shows it (§10a) | M12 |
 
 Peers without capabilities (apps before 0.9.0) send no `caps`; treat that as an empty list. The v1 messages (§6 to §9) need no capability.
 
@@ -117,7 +117,7 @@ Until a controller is paired the host accepts only `hello`, `pair`, `ping` and `
 - The receiver answers at once with `pong`: `{"id", "sentAt"}` echoed, plus `at` (optional, the answerer's clock in ms when it answered).
 - Each side measures the round trip on its own clock. Silence (no message of any kind) for **4 seconds** means the connection is gone (4004).
 - **One-way input delay.** The host estimates the offset between the two clocks from the pong with the shortest round trip in the last 20 s: `offset = at - (sentAt + received) / 2`. An `input` carrying `ts` (the phone's clock when sent) then took `received - (ts - offset)` ms. Half that best round trip is the error bound.
-- **Stages** (named so later hosts can add their own): `sent_to_received` (the estimate above) and `received_to_drawn` (from arrival to the first frame built with the input, measured by the game). Phone hosting adds `snapshot_received` and `frame_drawn_joined` in M12.
+- **Stages** (named so later hosts can add their own): `sent_to_received` (the estimate above) and `received_to_drawn` (from arrival to the first frame built with the input, measured by the game). A phone that shows the game adds `touch_to_frame` and `frame_jitter` (§10a), sent in its metrics batches (§9).
 
 ## 7. Input (controller → host)
 
@@ -207,6 +207,8 @@ The touch metrics of one **mode segment**: a stretch of time in one input mode w
 | `ms` | int | How long the segment has lasted |
 | `end` | bool | True on the segment's last batch (mode or settings change, recording stops) |
 | `data` | object | The counters, below |
+| `stages` | object | Optional (M12). Stage name → list of ms integers, at most 256 per stage: a viewer's own samples (`touch_to_frame`, `frame_jitter`). The host feeds each one into its stage statistics, as if the host had measured it. Unknown stage names are kept; more than 256 samples of one stage is a protocol error. Left out when empty |
+| `view` | object | Optional (M12). `{"frames": n, "gaps": n, "late": n}`: the frames the viewer drew since its last batch, how many arrived out of step and how many it drew late. Left out when the phone doesn't show the game |
 
 Timing: about every 10 s, on every mode or settings change, and at disconnect. The controller keeps every batch not yet acknowledged (the newest per segment, up to 64 segments) and sends them again after each reconnect. Batches stay under about 4 KB.
 
@@ -221,6 +223,24 @@ Timing: about every 10 s, on every mode or settings change, and at disconnect. T
 - `rate_ask` (host → controller): `{"id": "<string>", "game": "arena"}`. The host decides when: after a game, first after the third, then at most once every 5 games and 3 minutes per player.
 - `rating` (controller → host): `{"id": <echoed>, "face": "good" | "okay" | "bad", "tags": [...]}`. No `face` means skipped (also after 20 s). Tags: `buttons_too_small`, `laggy`, `hard_to_steer`, `rotation_hard`; others may come from newer apps. An unknown face counts as skipped.
 
+## 10a. Viewing the game (capability `view`, M12)
+
+A controller that lists `view` also shows the game itself: the host runs the game in fixed steps and sends the phone what to draw. The three messages below need the capability, so a controller without it never gets one.
+
+| Message | Direction | Fields (wire key: meaning) |
+| --- | --- | --- |
+| `view_start` | host → controller | `game`: module ID · `sv`: the snapshot version the frames carry · `setup`: the module's setup JSON · `hz`: frames a second the host publishes |
+| `frame` | host → controller | `n`: step number from 0 · `at`: the host's clock in ms at that step · `s`: the module's snapshot JSON · `snd`: sound names since the last sent frame, left out when empty · `acks`: player ID → the last input seq the host applied (only players with one) · `pl`: player ID → `[number, name]`, the name `""` when the player has none |
+| `view_end` | host → controller | `reason`: `finished` (the game ended), `quit` (someone left) or `abandoned` (the host closed, a new game started) |
+
+`view_start` comes first, every `frame` after it is one step, and `view_end` last. The host encodes each frame once and sends every viewer the same text.
+
+**`at`.** A step's `at` is the host's clock when the frame is published minus the game time still to simulate after that step, rounded to ms. Steps run inside one drawn frame therefore get evenly spaced times, and a stall or a pause shows up as real time passing. A phone measures a frame's **skew** as its arrival on the phone's own clock minus `at`; the fastest arrival of the last 2 s sets the base and every later frame's jitter is its skew above the base. The phone draws after a playout delay worked out from those jitters, so the host's clock never has to be estimated.
+
+**A viewer that pairs while a game is being shown** — a controller that just joined, or one that reconnected after a drop — gets the stored `view_start` and then the latest `frame`, before any later frame, so it can draw the game at once. A viewer that pairs after `view_end` gets nothing. A viewer sends its measurements back in its metrics batches (§9): the raw samples in `stages` and its frame counts in `view`.
+
+The host closes with 4003 if a controller sends one of these three messages.
+
 ## 11. Message direction summary
 
 | Type | Direction | Needs |
@@ -231,6 +251,7 @@ Timing: about every 10 s, on every mode or settings change, and at disconnect. T
 | `metrics`, `rating` | controller → host | host listed `metrics` / `rating` |
 | `metrics_ack`, `rate_ask` | host → controller | controller listed `metrics` / `rating` |
 | `layout`, `status` | host → controller | controller listed `layout` / `status` |
+| `view_start`, `frame`, `view_end` | host → controller | controller listed `view` |
 
 A host that receives a host-only message (or the reverse) closes with 4003; a controller ignores it.
 

@@ -109,6 +109,18 @@ class FakeGameHost implements GameHost {
   /// Every delay stage the game reported.
   final stages = <StageSample>[];
 
+  /// The view, as the game sent it: every start, frame and end, in order.
+  final viewStarts = <ViewStartMessage>[];
+  final frames = <FrameMessage>[];
+  final viewEnds = <ViewEndMessage>[];
+
+  /// Whether anyone would get a frame: the test sets it.
+  @override
+  bool hasViewers = false;
+
+  /// Each controller's last applied input seq, for [inputSeq], set by hand.
+  final inputSeqs = <String, int>{};
+
   /// Every rating prompt asked: (player ID, prompt ID).
   final asks = <(String, String)>[];
 
@@ -157,6 +169,18 @@ class FakeGameHost implements GameHost {
 
   @override
   int? inputArrivedAtMs(String playerId) => null;
+
+  @override
+  int? inputSeq(String playerId) => inputSeqs[playerId];
+
+  @override
+  void startView(ViewStartMessage start) => viewStarts.add(start);
+
+  @override
+  void publishFrame(FrameMessage frame) => frames.add(frame);
+
+  @override
+  void endView(ViewEndMessage end) => viewEnds.add(end);
 
   @override
   bool haptic(String playerId, HapticEventMessage event) {

@@ -49,7 +49,7 @@ Left for later:
 - `tools/review.sh` reads a `labels: {` map entry as a member (a FAIL in `puzzle_game/lib/src/play_view.dart`), and `play_view.dart`'s `_tick` is 61 lines.
 - `docs/dev-tools.md` is 400 lines: the DeepSeek Flash part (about 60 lines) could be a doc of its own. Its `smoke.sh` sample output is hand-written; replace it with a real run.
 - Extracted widgets go in plain sibling files from now on, not `part` files (c3 used `part` for three host screens; fine as it is).
-- `connection`'s `controller_client.dart` is at the 400 limit: split it when a step next adds to it.
+- `connection`: `host_connection.dart` is 394 lines, `controller_client.dart` and `host_server.dart` 379 (after s3a split controller_client from 400). Split whichever one a step next adds to, before adding; `client_messages.dart`'s `onData` is 46 lines, one case per message type.
 - **`tools/review.sh`** is 399 lines with a 76-line `--strings` branch: move that branch into its own function or script.
 - **UI spacing:** paddings and sizes are bare numbers (most of the script's `number` notes). A small spacing scale for the host and phone apps belongs with the look-and-sound milestone, which restyles the same screens.
 

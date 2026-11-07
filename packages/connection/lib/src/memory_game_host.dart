@@ -27,6 +27,18 @@ class MemoryGameHost implements GameHost {
   final stages = <StageSample>[];
   final sounds = <String>[];
 
+  /// The view, as the game sent it: every start, frame and end, in order.
+  final viewStarts = <ViewStartMessage>[];
+  final frames = <FrameMessage>[];
+  final viewEnds = <ViewEndMessage>[];
+
+  /// Whether anyone would get a frame: the test sets it.
+  @override
+  bool hasViewers = false;
+
+  /// Each controller's last applied input seq, for [inputSeq], set by hand.
+  final inputSeqs = <String, int>{};
+
   /// Each player's current layout and status panel.
   final layouts = <String, GameLayoutMessage>{};
   final statuses = <String, StatusMessage>{};
@@ -69,6 +81,18 @@ class MemoryGameHost implements GameHost {
 
   @override
   int? inputArrivedAtMs(String playerId) => _arrived[playerId];
+
+  @override
+  int? inputSeq(String playerId) => inputSeqs[playerId];
+
+  @override
+  void startView(ViewStartMessage start) => viewStarts.add(start);
+
+  @override
+  void publishFrame(FrameMessage frame) => frames.add(frame);
+
+  @override
+  void endView(ViewEndMessage end) => viewEnds.add(end);
 
   @override
   bool haptic(String playerId, HapticEventMessage event) {

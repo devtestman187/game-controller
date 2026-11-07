@@ -21,7 +21,7 @@ const String _cancelledMessage = 'Connection cancelled';
 final class WebSocketConnector implements Connector {
   /// [connectTimeout] limits one attempt; [log] gets the same lines the
   /// client always wrote.
-  WebSocketConnector({this.connectTimeout = defaultConnectTimeout, LogSink? log}) : _log = log ?? _noLog;
+  WebSocketConnector({this.connectTimeout = defaultConnectTimeout, LogSink? log}) : _log = log ?? noLog;
 
   /// How long each address gets to answer.
   final Duration connectTimeout;
@@ -64,5 +64,3 @@ final class WebSocketConnector implements Connector {
     _ => ConnectFailed(describeError(error)),
   };
 }
-
-void _noLog(String _) {}

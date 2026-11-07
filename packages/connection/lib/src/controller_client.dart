@@ -38,7 +38,7 @@ class ControllerClient {
     DateTime Function()? wallClock,
   }) : _wallClock = wallClock ?? DateTime.now,
        _tokens = Map.of(tokens),
-       _log = log ?? _noLog;
+       _log = log ?? noLog;
 
   /// Who this phone is. Can change (the device details load a moment after
   /// launch); the next hello uses the new one.
@@ -126,6 +126,10 @@ class ControllerClient {
   /// Rating prompts from the TV (M9), only while paired.
   Stream<RatingAskMessage> get ratingAsks => _controls.ratingAsks;
 
+  /// The game as this phone sees it (M12): the start, the frames with their
+  /// arrival times and the end, for a phone that listed [Capability.view].
+  Stream<ViewEvent> get view => _controls.views;
+
   /// Metrics segments waiting for the TV to acknowledge them.
   int get metricsWaiting => _metrics.waiting;
 
@@ -204,7 +208,7 @@ class ControllerClient {
   void updateAddress(HostAddress found) {
     final target = _snap.target;
     if (target == null || !target.sameHostAs(found)) return;
-    if (target.port == found.port && _sameList(target.addresses, found.addresses)) return;
+    if (target.port == found.port && sameStrings(target.addresses, found.addresses)) return;
     _log('${found.label} is now at ${found.display}');
     _set(_snap.copyWith(target: found.copyWith(name: found.name ?? target.name)));
     // Waiting for the next attempt at the old address helps no one.
@@ -275,18 +279,7 @@ class ControllerClient {
   void _scheduleRetry({String? detail, int? osErrorCode, Duration? delay}) {
     final attempt = _snap.attempt + 1;
     delay ??= retryDelays[min(attempt - 1, retryDelays.length - 1)];
-    _set(
-      _snap.copyWith(
-        status: ClientStatus.reconnecting,
-        problem: ClientProblem.connectionLost,
-        detail: detail,
-        attempt: attempt,
-        rttMs: null,
-        rttStats: null,
-        player: null,
-        osErrorCode: osErrorCode,
-      ),
-    );
+    _set(_snap.reconnecting(detail: detail, attempt: attempt, osErrorCode: osErrorCode));
     _log('Reconnecting in ${delay.inMilliseconds} ms (attempt $attempt)');
     final session = _connection.session;
     _retry?.cancel();
@@ -300,16 +293,7 @@ class ControllerClient {
     _retry?.cancel();
     _channel?.dropChannel(closeCode: closeCode);
     _everPaired = false;
-    _set(
-      _snap.copyWith(
-        status: ClientStatus.failed,
-        problem: problem,
-        detail: detail,
-        rttMs: null,
-        rttStats: null,
-        player: null,
-      ),
-    );
+    _set(_snap.failed(problem, detail));
   }
 
   void _teardown() {
@@ -328,11 +312,6 @@ class ControllerClient {
     if (!_changes.isClosed) _changes.add(next);
   }
 }
-
-void _noLog(String _) {}
-
-bool _sameList(List<String> a, List<String> b) =>
-    a.length == b.length && Iterable.generate(a.length).every((i) => a[i] == b[i]);
 
 /// What the channel and the message handlers can do with a [ControllerClient]
 /// (internal), so the client's own members stay private.
