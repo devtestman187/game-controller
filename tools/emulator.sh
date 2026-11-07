@@ -89,7 +89,12 @@ case "${1:-}" in
     fi
     [ -f "$emulator" ] || die "emulator not found in $sdk/emulator (sdkmanager emulator)"
     emu_log="${TMPDIR:-/tmp}/thumbparty-emulator.log"
-    (nohup "$emulator" -avd "$avd" -no-snapshot-save -no-audio < /dev/null > "$emu_log" 2>&1 &)
+    # Headless, software graphics, cold boot (Nov 6, 2026): on this PC the
+    # emulator's window crashes at start whatever the GPU mode, and the AVD's
+    # quick-boot snapshot predates its demo-video hardware changes. adb
+    # screenshots work without a window. EMULATOR_FLAGS replaces these.
+    read -r -a flags <<< "${EMULATOR_FLAGS:--no-window -gpu swiftshader_indirect -no-snapshot}"
+    (nohup "$emulator" -avd "$avd" "${flags[@]}" -no-audio < /dev/null > "$emu_log" 2>&1 &)
     echo "Starting $avd (emulator output: $emu_log)..."
     # An emulator that never comes up would leave wait-for-device waiting forever.
     timeout 180 "$adb" wait-for-device || die "the emulator didn't come up in 3 minutes (see $emu_log)" 1

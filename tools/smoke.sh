@@ -218,9 +218,16 @@ start_tv() {
   fi
   # A failed start can leave the app running (the flutter tool crashed, the
   # app didn't), so it's ours to stop either way.
-  local ok=1
-  tools/tv-dev.sh start > "$out/tv-start.log" 2>&1 || ok=0
-  grep -q '^Already running' "$out/tv-start.log" || started_tv=1
+  # Two tries: in some shells the flutter tool crashes at start (it can't make
+  # a temp folder), and when that happens before it prints the port, the
+  # start fails although the app runs; the second try usually gets through.
+  local ok=0 try
+  for try in 1 2; do
+    tools/tv-dev.sh start > "$out/tv-start.log" 2>&1 && ok=1
+    grep -q '^Already running' "$out/tv-start.log" || started_tv=1
+    [ "$ok" = 1 ] && break
+    tools/tv-dev.sh stop > /dev/null 2>&1
+  done
   [ "$ok" = 1 ] || return 1
   for ((i = 0; i < wait_secs * 2; i++)); do
     if read_status; then return 0; fi

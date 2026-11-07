@@ -83,6 +83,7 @@ The owner often has release copies of the TV app open (from the Downloads folder
 
 ### The Android 12 emulator
 
+- **Since Nov 6, 2026 the emulator's window crashes at start on this PC** ("Android Emulator closed unexpectedly", after "Failed to load opengl32sw … Falling back to system OpenGL"), for both AVDs and every GPU mode; the crash dialog then waits, which looks like a hang. Headless works: `tools/emulator.sh start` now boots with `-no-window -gpu swiftshader_indirect -no-snapshot` (about 25 s; `EMULATOR_FLAGS` replaces those). A headless emulator is invisible: stop it with `tools/emulator.sh stop`. The demo videos (Nov 5) changed `m7_android12` (host GPU, 2 GB, a 2400×1080 landscape panel) after its quick-boot snapshot was saved, so cold boots only. For the window again, try updating or reinstalling the emulator package in Android Studio's SDK Manager.
 - The emulator's phone app remembers the last TV it paired with and reconnects on launch, which can join the owner's running TV app. **Always clear its data first** (`tools/emulator.sh launch` and `install` do: `adb shell pm clear com.thumbparty.app`), then connect to your own TV app at `10.0.2.2:<port>` (10.0.2.2 is the PC from inside the emulator).
 - In Git Bash, `MSYS_NO_PATHCONV=1` stops Git Bash rewriting `/sdcard/...` paths, and `adb install` needs a Windows path. The script handles both.
 - `tools/emulator.sh ui` lists labelled controls through Android's accessibility tree (`uiautomator dump`), which works with Flutter apps, so `tap-name` finds buttons by name.

@@ -222,7 +222,7 @@ Log:     C:\Users\...\Temp\thumbparty-dev\tv.log
 Needs the Android SDK with the emulator and an AVD (`m7_android12`: see "Android 12 emulator check" in [building.md](building.md)). The SDK is found through `ANDROID_HOME`, `ANDROID_SDK_ROOT` or its usual folder on each OS.
 
 ```bash
-tools/emulator.sh start                       # boot m7_android12 (or: start <avd>) and wait
+tools/emulator.sh start                       # boot m7_android12 (or: start <avd>) headless and wait (project-notes: why)
 tools/emulator.sh install                     # the debug APK (built if missing); clears data before and after
 tools/emulator.sh install --build             # rebuild it first, after changing the phone app
 tools/emulator.sh launch                      # clears data and opens the Connect screen
