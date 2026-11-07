@@ -40,7 +40,10 @@ final prefsProvider = Provider<SharedPreferences>(
   (ref) => throw UnimplementedError('prefsProvider must be overridden'),
 );
 
-final logProvider = Provider<LogBuffer>((ref) {
+final logProvider = Provider<LogBuffer>(_logBuffer);
+
+/// The host's one log, which [logProvider] keeps for the app's life.
+LogBuffer _logBuffer(Ref ref) {
   // Big enough for a 30-minute session with a latency line every 30 s.
   final log = LogBuffer(capacity: 3000);
   if (kDebugMode) {
@@ -49,7 +52,7 @@ final logProvider = Provider<LogBuffer>((ref) {
   }
   ref.onDispose(log.close);
   return log;
-});
+}
 
 /// Finds the host on the network (S-b). The default advertises it with
 /// Bonsoir; tests override it with a fake.
@@ -64,6 +67,18 @@ final sessionUploaderProvider = Provider<SessionUploader?>((ref) => null);
 /// app overrides it with its debug `SHARE_VIEW` define, so a measuring run and
 /// the smoke check keep their viewers.
 final shareViewProvider = Provider<bool>((ref) => false);
+
+/// The host's own player in the round it runs (m12-phone-layout §3): the
+/// phone host overrides it with its client's controller ID, so its screen
+/// draws its own side of a `phones` match, as a joined phone would. Null on
+/// the TV, which draws the whole match as it always has.
+final ownPlayerIdProvider = Provider<String?>((ref) => null);
+
+/// Whether this host's screen draws the whole `phones` match instead of one
+/// side (m12-phone-layout §0.6): the phone app sets it on a tablet, which has
+/// the room for both sides. False by default, so the TV and a phone draw what
+/// they always did.
+final wholeMatchProvider = Provider<bool>((ref) => false);
 
 /// The host service and everything it runs, built from the providers above so
 /// an app only supplies its own inputs.

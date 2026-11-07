@@ -37,6 +37,7 @@ class FrameView extends StatefulWidget {
     required this.stats,
     required this.nowMs,
     this.playerId,
+    this.wholeMatch = false,
     this.settings = HostingSettings.defaults,
     this.onSounds,
     super.key,
@@ -60,6 +61,11 @@ class FrameView extends StatefulWidget {
   /// This phone's player, for the frames it acknowledges and for
   /// [ViewContext.playerId]. Null for a phone that only watches.
   final String? playerId;
+
+  /// Whether the viewer draws the whole match rather than this phone's own
+  /// side, for [ViewContext.wholeMatch]: this phone has the room for both
+  /// sides (a tablet, m12-phone-layout §0.6).
+  final bool wholeMatch;
 
   /// How much playout the phone may buffer ([HostingSettings.maxPlayoutFrames]).
   final HostingSettings settings;
@@ -257,7 +263,11 @@ class _FrameViewState extends State<FrameView> with SingleTickerProviderStateMix
     if (a == null) return const SizedBox.shrink();
     final b = _b;
     final snapshot = b == null ? a.snapshot : a.snapshot.lerpTo(b.snapshot, _t);
-    return viewer.build(context, _toDraw(snapshot), (roster: a.frame.roster, playerId: widget.playerId));
+    return viewer.build(context, _toDraw(snapshot), (
+      roster: a.frame.roster,
+      playerId: widget.playerId,
+      wholeMatch: widget.wholeMatch,
+    ));
   }
 
   /// The snapshot the viewer draws, after the lerp: one seam for whatever the

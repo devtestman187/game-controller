@@ -9,7 +9,9 @@ import 'arena_roster.dart';
 import 'arena_snapshot.dart';
 
 /// The arena as a view draws it: the counters bar over the field. The TV and a
-/// phone draw the same box from the same snapshot and roster.
+/// phone draw the same box from the same snapshot and roster; on a short box
+/// the bar folds to one line so the field keeps the room (m12-phone-layout
+/// §4).
 class ArenaBoard extends StatelessWidget {
   const ArenaBoard({super.key, required this.snapshot, required this.roster, this.onResize});
 
@@ -21,14 +23,16 @@ class ArenaBoard extends StatelessWidget {
   final ValueChanged<Size>? onResize;
 
   @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    children: [
-      ArenaHud(snapshot: snapshot, roster: roster),
-      Expanded(
-        child: ArenaField(snapshot: snapshot, roster: roster, onResize: onResize),
-      ),
-    ],
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) => Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        ArenaHud(snapshot: snapshot, roster: roster, oneLine: constraints.maxHeight < ArenaHud.oneLineBelow),
+        Expanded(
+          child: ArenaField(snapshot: snapshot, roster: roster, onResize: onResize),
+        ),
+      ],
+    ),
   );
 }
 
@@ -75,46 +79,97 @@ class ArenaField extends StatelessWidget {
 
 /// The bar over the field: the round, its clock, the best round, and a row of
 /// counters for each player in the [roster]. It draws from an [ArenaSnapshot]
-/// only (S8).
+/// only (S8). On a short box ([oneLine]) everything goes in one Wrap instead
+/// of a row per player, so the whole field still fits a phone (m12-phone-
+/// layout §4).
 class ArenaHud extends StatelessWidget {
-  const ArenaHud({super.key, required this.snapshot, required this.roster});
+  const ArenaHud({super.key, required this.snapshot, required this.roster, this.oneLine = false});
+
+  /// The box height, in px, below which the bar folds to one line: landscape
+  /// phones are 375–393 high and the TV and tablets 540 and up, so a box
+  /// shorter than the phones' tallest is one where the field needs the room
+  /// more than the bar does (m12-phone-layout §4).
+  static const oneLineBelow = 480.0;
+
+  /// The bar's padding in px: roomy on a tall box, and tight in the one-line
+  /// form so its runs share a phone's height with the field.
+  static const _pad = EdgeInsets.symmetric(horizontal: 16, vertical: 8);
+  static const _oneLinePad = EdgeInsets.symmetric(horizontal: 12, vertical: 2);
+
+  /// The gap between the bar's items in px, and between the round's texts.
+  static const _itemGap = 24.0;
+  static const _oneLineItemGap = 12.0;
+  static const _runGap = 4.0;
+
+  /// A player's counters: the gap between them in px, the gap above its row,
+  /// and its colour dot's size and gap from the name.
+  static const _counterGap = 20.0;
+  static const _oneLineCounterGap = 10.0;
+  static const _counterRunGap = 2.0;
+  static const _dot = 14.0;
+  static const _oneLineDot = 10.0;
+  static const _dotGap = 6.0;
+  static const _oneLineDotGap = 4.0;
 
   final ArenaSnapshot snapshot;
   final ArenaRoster roster;
 
+  /// Everything in one Wrap rather than the round above each player.
+  final bool oneLine;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final byNumber = roster.entries.toList()..sort((a, b) => a.value.number.compareTo(b.value.number));
+    final items = <Widget>[
+      _RoundRow(snapshot: snapshot, roster: roster, oneLine: oneLine),
+      for (final MapEntry(key: id, value: player) in byNumber)
+        if (snapshot.player(id) case final p?) _PlayerRow(id: id, player: player, view: p, oneLine: oneLine),
+    ];
+    return Container(
+      color: scheme.surfaceContainer,
+      padding: oneLine ? _oneLinePad : _pad,
+      child: oneLine
+          ? Wrap(
+              spacing: _oneLineItemGap,
+              runSpacing: 0,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: items,
+            )
+          : Column(crossAxisAlignment: CrossAxisAlignment.start, children: items),
+    );
+  }
+}
+
+/// The round, its clock and the best round: in the one-line bar's small text,
+/// so the runs share a phone's height with the field.
+class _RoundRow extends StatelessWidget {
+  const _RoundRow({required this.snapshot, required this.roster, required this.oneLine});
+
+  final ArenaSnapshot snapshot;
+  final ArenaRoster roster;
+  final bool oneLine;
+
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
-    final scheme = Theme.of(context).colorScheme;
-    final tabular = text.titleMedium?.copyWith(fontFeatures: const [FontFeature.tabularFigures()]);
-    final s = snapshot;
-    final best = s.bestTimeS;
-    final bestId = s.bestId;
+    final style = oneLine ? text.bodySmall : text.titleMedium;
+    final tabular = style?.copyWith(fontFeatures: const [FontFeature.tabularFigures()]);
+    final best = snapshot.bestTimeS;
+    final bestId = snapshot.bestId;
     final bestBy = roster.length > 1 && bestId != null ? roster[bestId]?.number : null;
-    final byNumber = roster.entries.toList()..sort((a, b) => a.value.number.compareTo(b.value.number));
-    return Container(
-      color: scheme.surfaceContainer,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Wrap(
-            spacing: 24,
-            runSpacing: 4,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              Text('Round ${s.round}', style: text.titleMedium),
-              Text('${s.roundTimeS.toStringAsFixed(1)} s', key: const Key('roundTime'), style: tabular),
-              Text(
-                'Best ${best == null ? '–' : '${best.toStringAsFixed(1)} s${bestBy == null ? '' : ' (P$bestBy)'}'}',
-                style: tabular,
-              ),
-            ],
-          ),
-          for (final MapEntry(key: id, value: player) in byNumber)
-            if (s.player(id) case final p?) _PlayerRow(id: id, player: player, view: p),
-        ],
-      ),
+    return Wrap(
+      spacing: oneLine ? ArenaHud._oneLineItemGap : ArenaHud._itemGap,
+      runSpacing: oneLine ? 0 : ArenaHud._runGap,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        Text('Round ${snapshot.round}', style: style),
+        Text('${snapshot.roundTimeS.toStringAsFixed(1)} s', key: const Key('roundTime'), style: tabular),
+        Text(
+          'Best ${best == null ? '–' : '${best.toStringAsFixed(1)} s${bestBy == null ? '' : ' (P$bestBy)'}'}',
+          style: tabular,
+        ),
+      ],
     );
   }
 }
@@ -122,32 +177,39 @@ class ArenaHud extends StatelessWidget {
 /// One player's counters in the bar: colour dot, number and name, wins, hits,
 /// dashes and whether a dash is ready.
 class _PlayerRow extends StatelessWidget {
-  const _PlayerRow({required this.id, required this.player, required this.view});
+  const _PlayerRow({required this.id, required this.player, required this.view, required this.oneLine});
 
   final String id;
   final ({int number, String name}) player;
   final ArenaPlayerView view;
+  final bool oneLine;
 
   @override
   Widget build(BuildContext context) {
-    final p = view;
     final text = Theme.of(context).textTheme;
-    final small = text.bodyMedium?.copyWith(fontFeatures: const [FontFeature.tabularFigures()]);
     final scheme = Theme.of(context).colorScheme;
+    final p = view;
+    final small = (oneLine ? text.bodySmall : text.bodyMedium)?.copyWith(
+      fontFeatures: const [FontFeature.tabularFigures()],
+    );
     return Padding(
-      padding: const EdgeInsets.only(top: 4),
+      padding: EdgeInsets.only(top: oneLine ? 0 : ArenaHud._runGap),
       child: Wrap(
         key: Key('hud-$id'),
-        spacing: 20,
-        runSpacing: 2,
+        spacing: oneLine ? ArenaHud._oneLineCounterGap : ArenaHud._counterGap,
+        runSpacing: ArenaHud._counterRunGap,
         crossAxisAlignment: WrapCrossAlignment.center,
         children: [
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.circle, size: 14, color: Color(playerColor(player.number))),
-              const SizedBox(width: 6),
-              Text('P${player.number} ${player.name}', style: text.titleSmall),
+              Icon(
+                Icons.circle,
+                size: oneLine ? ArenaHud._oneLineDot : ArenaHud._dot,
+                color: Color(playerColor(player.number)),
+              ),
+              SizedBox(width: oneLine ? ArenaHud._oneLineDotGap : ArenaHud._dotGap),
+              Text('P${player.number} ${player.name}', style: oneLine ? small : text.titleSmall),
             ],
           ),
           Text('Wins ${p.wins}', key: Key('wins-$id'), style: small),
@@ -161,7 +223,7 @@ class _PlayerRow extends StatelessWidget {
             p.cooldown == 0
                 ? 'Dash ready (A)'
                 : 'Dash in ${(p.cooldown * ArenaGame.dashCooldownS).toStringAsFixed(1)} s',
-            style: text.bodyMedium?.copyWith(color: p.cooldown == 0 ? Colors.greenAccent : scheme.onSurfaceVariant),
+            style: small?.copyWith(color: p.cooldown == 0 ? Colors.greenAccent : scheme.onSurfaceVariant),
           ),
         ],
       ),

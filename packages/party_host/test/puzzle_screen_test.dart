@@ -1,11 +1,40 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:party_host/party_host.dart';
 import 'package:puzzle_game/puzzle_game.dart';
 
 import 'support/host_harness.dart';
+
+/// The camera the last [openRound] drew its match with.
+PuzzleCamera drawnCamera(WidgetTester tester) => tester.widget<MatchView>(find.byType(MatchView)).camera;
+
+/// Opens a `phones` round with [teams] on a host that shares its view, with
+/// [overrides] naming the host's own player and its screen.
+Future<void> openRound(
+  WidgetTester tester,
+  Map<String, PuzzleSide> teams, {
+  List<Override> overrides = const [],
+}) async {
+  final match = PuzzleMatch(housePuzzle(), teams: teams, random: Random(1), target: LayoutTarget.phones);
+  final fake = await pumpHost(tester, screen: const StubHome(), overrides: overrides);
+  fake.shareView = true;
+  tester
+      .state<NavigatorState>(find.byType(Navigator))
+      .push(
+        MaterialPageRoute<void>(
+          builder: (_) => PuzzleScreen(
+            choice: const PuzzleChoice(level: Level.easy),
+            teams: teams,
+            match: match,
+          ),
+        ),
+      );
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 500));
+}
 
 void main() {
   testWidgets('a finished puzzle shows the time; Play again starts another', (tester) async {
@@ -84,6 +113,29 @@ void main() {
   testWidgets('a host that keeps its view plays a round in the screen layout', (tester) async {
     final setup = await startRound(tester, shareView: false);
     expect(setup.containsKey('layout'), isFalse, reason: 'the screen is the world a setup leaves unnamed');
+  });
+
+  testWidgets('the host phone draws its own side of a phones match', (tester) async {
+    await openRound(
+      tester,
+      const {'p1': PuzzleSide.left, 'p2': PuzzleSide.right},
+      overrides: [ownPlayerIdProvider.overrideWithValue('p2')],
+    );
+    expect(drawnCamera(tester).side, PuzzleSide.right, reason: 'p2 plays on the right');
+  });
+
+  testWidgets('a host that plays no side draws the whole match, the TV\'s picture', (tester) async {
+    await openRound(tester, const {'p1': PuzzleSide.left, 'p2': PuzzleSide.right});
+    expect(drawnCamera(tester).side, isNull);
+  });
+
+  testWidgets('a host with the room for both sides draws the whole match', (tester) async {
+    await openRound(
+      tester,
+      const {'p1': PuzzleSide.left, 'p2': PuzzleSide.right},
+      overrides: [ownPlayerIdProvider.overrideWithValue('p2'), wholeMatchProvider.overrideWithValue(true)],
+    );
+    expect(drawnCamera(tester).side, isNull, reason: 'a tablet has the room for both sides');
   });
 }
 

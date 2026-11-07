@@ -24,4 +24,10 @@ List<Override> phoneHostOverrides({required party.HostDirectories directories}) 
   // round hidden too long is abandoned (m12 §2.10). Before the first host
   // there is no round to pause.
   party.hostAwayProvider.overrideWith((ref) => ref.watch(hostingProvider)?.away ?? const party.NeverAway()),
+  // This phone's own player in the match it hosts, so the puzzle screen draws
+  // its own side of a phones match (m12-phone-layout §3).
+  party.ownPlayerIdProvider.overrideWith((ref) => ref.watch(identityProvider).controllerId),
+  // A tablet has the room for both sides, so the same screen draws the whole
+  // match there (m12-phone-layout §0.6).
+  party.wholeMatchProvider.overrideWith((ref) => ref.watch(isTabletProvider)),
 ];

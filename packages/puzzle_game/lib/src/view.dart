@@ -3,7 +3,9 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:protocol/protocol.dart' show playerColor;
 
+import 'camera.dart';
 import 'game.dart';
+import 'match.dart';
 import 'puzzle.dart';
 import 'puzzle_values.dart';
 import 'snapshot.dart';
@@ -35,30 +37,38 @@ class PuzzleView extends StatelessWidget {
 
 /// Draws a whole match (S8): one board as [PuzzleView] does, or the split
 /// screen, with the clock and both sides' counts along the top and each
-/// side's board and tray in its own half, the trays at the outer edges.
+/// side's board and tray in its own half, the trays at the outer edges. On
+/// phones it draws through [camera] (m12-phone-layout §2): one side's world,
+/// or the whole match, with the clock area beside the tray.
 class MatchView extends StatelessWidget {
-  const MatchView({super.key, required this.puzzle, required this.snapshot, this.timeLimitS});
+  const MatchView({
+    super.key,
+    required this.puzzle,
+    required this.snapshot,
+    this.timeLimitS,
+    this.target = LayoutTarget.screen,
+    this.camera = const PuzzleCamera.whole(),
+  });
 
   final Puzzle puzzle;
   final MatchSnapshot snapshot;
   final int? timeLimitS;
 
+  /// The world the match plays in, from the setup (m12 §0.4).
+  final LayoutTarget target;
+
+  /// What the box shows, for a phone (m12-phone-layout §2). The screen always
+  /// draws the whole match.
+  final PuzzleCamera camera;
+
   @override
   Widget build(BuildContext context) => CustomPaint(
     key: const Key('puzzleView'),
     size: Size.infinite,
-    painter: snapshot.split
-        ? MatchPainter(puzzle, snapshot, timeLimitS: timeLimitS)
+    painter: snapshot.split || target == LayoutTarget.phones
+        ? MatchPainter(puzzle, snapshot, timeLimitS: timeLimitS, target: target, camera: camera)
         : PuzzlePainter(puzzle, snapshot.boards.single, timeLimitS: timeLimitS),
   );
-}
-
-/// The field of size [field] in [box]: the scale and the offset of its top
-/// left.
-({double scale, Offset origin}) fieldIn(Size box, [Size field = fieldSize]) {
-  final scale = min(box.width / field.width, box.height / field.height);
-  final origin = Offset((box.width - field.width * scale) / 2, (box.height - field.height * scale) / 2);
-  return (scale: scale, origin: origin);
 }
 
 const _background = Color(0xFF14181F);

@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:connection/connection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:party_host/party_host.dart';
 import 'package:party_host/testing.dart';
@@ -25,6 +26,7 @@ Future<FakeHostService> pumpHost(
   Size size = const Size(960, 540),
   bool? consent = true,
   List<Map<String, Object?>> sessions = const [],
+  List<Override> overrides = const [],
 }) async {
   sounds = FakeSoundPlayer();
   awake = FakeScreenAwake();
@@ -43,6 +45,7 @@ Future<FakeHostService> pumpHost(
         hostServiceProvider.overrideWithValue(fake),
         soundPlayerProvider.overrideWithValue(sounds),
         screenAwakeProvider.overrideWithValue(awake),
+        ...overrides,
       ],
       child: Shortcuts(
         // The TV app's own keys, so the tests press what the remote presses.

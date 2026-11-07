@@ -5,6 +5,7 @@
 /// a snapshot into the box it's given (S4).
 library;
 
+export 'src/camera.dart';
 export 'src/game.dart';
 export 'src/library.dart';
 export 'src/match.dart';

@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:game_kit/game_kit.dart';
 
+import 'camera.dart';
 import 'library.dart';
 import 'match.dart';
 import 'puzzle.dart';
@@ -44,12 +45,12 @@ final class ShapeRaceModule implements GameModule {
     _field<String>(setup, 'level');
     final timeLimitS = _field<int>(setup, 'timeLimitS');
     final teams = _field<Map<String, Object?>>(setup, 'teams');
-    for (final MapEntry(:key, :value) in teams.entries) {
-      if (value is! String) {
-        throw FormatException('view setup "teams": $key has ${value.runtimeType} instead of a side name');
-      }
-    }
-    return ShapeRaceViewer(puzzleId: puzzleId, timeLimitS: timeLimitS, target: _layoutTarget(setup));
+    return ShapeRaceViewer(
+      puzzleId: puzzleId,
+      timeLimitS: timeLimitS,
+      teams: {for (final MapEntry(:key, :value) in teams.entries) key: _side(key, value)},
+      target: _layoutTarget(setup),
+    );
   }
 }
 
@@ -68,6 +69,14 @@ LayoutTarget _layoutTarget(Map<String, Object?> setup) {
   };
 }
 
+/// The side a "teams" entry names, or a [FormatException] naming the key
+/// when it isn't a side's name (m12 §0.4).
+PuzzleSide _side(String playerId, Object? name) => switch (name) {
+  'left' => PuzzleSide.left,
+  'right' => PuzzleSide.right,
+  _ => throw FormatException('view setup "teams": $playerId has $name instead of a side name'),
+};
+
 /// [setup]'s [key], or a [FormatException] naming the key when it is missing
 /// or of another type.
 T _field<T>(Map<String, Object?> setup, String key) {
@@ -79,9 +88,16 @@ T _field<T>(Map<String, Object?> setup, String key) {
 }
 
 /// Draws a match on a phone showing the game: the same board (or split
-/// screen) the TV draws, from the frames' [MatchSnapshot] (S8).
+/// screen) the TV draws, from the frames' [MatchSnapshot] (S8). In a `phones`
+/// match the phone draws its own side, and the whole match when it plays no
+/// side or has the room for both (m12-phone-layout §2).
 final class ShapeRaceViewer implements GameViewer {
-  const ShapeRaceViewer({required this.puzzleId, required this.timeLimitS, this.target = LayoutTarget.screen});
+  const ShapeRaceViewer({
+    required this.puzzleId,
+    required this.timeLimitS,
+    this.teams = const {},
+    this.target = LayoutTarget.screen,
+  });
 
   /// The puzzle the frames draw, found by ID in the shared files.
   final String puzzleId;
@@ -89,6 +105,10 @@ final class ShapeRaceViewer implements GameViewer {
   /// What the clock bar fills against: the time limit the match started with
   /// (m12 §4, Q2).
   final int timeLimitS;
+
+  /// Each player's side, from the setup's "teams": which side this phone's
+  /// player draws as its own.
+  final Map<String, PuzzleSide> teams;
 
   /// The world the sides are laid out in, from the setup's "layout": the
   /// phones' when the host shares its view, else the screen's (m12 §0.4).
@@ -102,9 +122,16 @@ final class ShapeRaceViewer implements GameViewer {
     if (snapshot is! MatchSnapshot) {
       throw ArgumentError.value(snapshot, 'snapshot', 'The Shape Race viewer draws MatchSnapshot frames');
     }
+    final camera = PuzzleCamera.forPlayer(
+      target: target,
+      teams: teams,
+      playerId: view.playerId,
+      wholeMatch: view.wholeMatch,
+    );
     return _LoadedPuzzle(
       puzzleId: puzzleId,
-      builder: (puzzle) => MatchView(puzzle: puzzle, snapshot: snapshot, timeLimitS: timeLimitS),
+      builder: (puzzle) =>
+          MatchView(puzzle: puzzle, snapshot: snapshot, timeLimitS: timeLimitS, target: target, camera: camera),
     );
   }
 }

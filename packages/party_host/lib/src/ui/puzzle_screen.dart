@@ -133,6 +133,15 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
 
   void _changeTeams() => _replaceWith(JoinScreen(choice: widget.choice, teams: widget.teams, keyboard: _keyboard));
 
+  /// The same camera rule as a viewer's (m12-phone-layout §3): this phone's
+  /// own side of a phones match, the whole match otherwise or on a tablet.
+  PuzzleCamera get _camera => PuzzleCamera.forPlayer(
+    target: _target,
+    teams: widget.teams,
+    playerId: ref.watch(ownPlayerIdProvider),
+    wholeMatch: ref.watch(wholeMatchProvider),
+  );
+
   @override
   Widget build(BuildContext context) {
     final puzzle = widget.match?.puzzle ?? ref.watch(puzzleLibraryProvider).whenOrNull(data: _pick);
@@ -165,6 +174,7 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
                             teams: widget.teams,
                             random: _random,
                             target: _target,
+                            camera: _camera,
                             match: widget.match,
                             paused: paused,
                             abandon: ref.read(hostAbandonProvider),

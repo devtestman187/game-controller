@@ -60,6 +60,9 @@ class _JoinedViewState extends ConsumerState<JoinedView> {
       // The client's clock is the one frame arrivals are taken on (D3).
       nowMs: () => client.nowMs,
       playerId: ref.watch(identityProvider).controllerId,
+      // A tablet has the room for both sides of a phones match (m12-phone-
+      // layout §0.6); a phone draws its own.
+      wholeMatch: ref.watch(isTabletProvider),
       onSounds: (names) => _play(ref, names),
     );
     final wait = ref.watch(hostWaitProvider);

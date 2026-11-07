@@ -30,14 +30,20 @@ void servePuzzles() {
 }
 
 /// The viewer's game in a 960 x 540 box, as a phone would draw it.
-Widget draw(GameViewer viewer, MatchSnapshot snapshot) => Directionality(
+Widget draw(GameViewer viewer, MatchSnapshot snapshot, {String? playerId, bool wholeMatch = false}) => Directionality(
   textDirection: TextDirection.ltr,
   child: SizedBox(
     width: 960,
     height: 540,
-    child: Builder(builder: (context) => viewer.build(context, snapshot, (roster: const {}, playerId: null))),
+    child: Builder(
+      builder: (context) =>
+          viewer.build(context, snapshot, (roster: const {}, playerId: playerId, wholeMatch: wholeMatch)),
+    ),
   ),
 );
+
+/// The camera the drawn [MatchView] paints with.
+PuzzleCamera cameraOf(WidgetTester tester) => tester.widget<MatchView>(find.byType(MatchView)).camera;
 
 void main() {
   final snapshot = PuzzleMatch(house(), teams: const {'p1': PuzzleSide.left}, random: Random(1)).snapshot();
@@ -95,11 +101,11 @@ void main() {
     );
   });
 
-  // One test for both viewers: the files load once per process, and a future
-  // made in one test's fake clock never resolves in the next test's (Q1).
-  testWidgets('a known puzzle draws the match once the files load; an unknown one says to update the app', (
-    tester,
-  ) async {
+  // One test for all these viewers: the files load once per process, and a
+  // future made in one test's fake clock never resolves in the next test's
+  // (Q1), so every viewer that draws shares this one test.
+  testWidgets('a known puzzle draws the match once the files load, with this phone\'s side of a phones match or the '
+      'whole match; an unknown one says to update the app', (tester) async {
     servePuzzles();
     await tester.pumpWidget(draw(shapeRaceModule.createViewer(setup), snapshot));
     expect(find.byType(MatchView), findsNothing, reason: 'nothing is drawn before the files load');
@@ -112,5 +118,37 @@ void main() {
     await tester.pump();
     expect(find.text('Update the app to see this game'), findsOneWidget);
     expect(find.byType(MatchView), findsNothing);
+
+    // A phones match, and the camera each phone draws it with (m12-phone-
+    // layout §2): its own side, or the whole match.
+    const teams = <String, Object?>{'p1': 'left', 'p2': 'right'};
+    final phones = shapeRaceModule.createViewer({...setup, 'teams': teams, 'layout': phonesLayoutName});
+    final screen = shapeRaceModule.createViewer({...setup, 'teams': teams});
+    final phonesSnapshot = PuzzleMatch(
+      house(),
+      teams: const {'p1': PuzzleSide.left, 'p2': PuzzleSide.right},
+      random: Random(1),
+      target: LayoutTarget.phones,
+    ).snapshot();
+
+    await tester.pumpWidget(draw(phones, phonesSnapshot, playerId: 'p1'));
+    await tester.pump();
+    expect(cameraOf(tester), const PuzzleCamera.side(PuzzleSide.left));
+
+    await tester.pumpWidget(draw(phones, phonesSnapshot, playerId: 'p2'));
+    await tester.pump();
+    expect(cameraOf(tester), const PuzzleCamera.side(PuzzleSide.right));
+
+    await tester.pumpWidget(draw(phones, phonesSnapshot));
+    await tester.pump();
+    expect(cameraOf(tester), const PuzzleCamera.whole(), reason: 'this phone plays no side');
+
+    await tester.pumpWidget(draw(phones, phonesSnapshot, playerId: 'p2', wholeMatch: true));
+    await tester.pump();
+    expect(cameraOf(tester), const PuzzleCamera.whole(), reason: 'a tablet draws both sides');
+
+    await tester.pumpWidget(draw(screen, snapshot, playerId: 'p2'));
+    await tester.pump();
+    expect(cameraOf(tester), const PuzzleCamera.whole(), reason: 'the screen keeps today\'s picture');
   });
 }

@@ -62,6 +62,7 @@ void main() {
   Widget underTest({
     Stream<ViewEvent>? stream,
     String? playerId,
+    bool wholeMatch = false,
     GameRegistry? registry,
     void Function(List<String>)? onSounds,
   }) => Directionality(
@@ -72,6 +73,7 @@ void main() {
       stats: stats,
       nowMs: () => clock.nowMs,
       playerId: playerId,
+      wholeMatch: wholeMatch,
       onSounds: onSounds,
     ),
   );
@@ -80,9 +82,11 @@ void main() {
   Future<void> mount(
     WidgetTester tester, {
     String? playerId,
+    bool wholeMatch = false,
     GameRegistry? registry,
     void Function(List<String>)? onSounds,
-  }) => tester.pumpWidget(underTest(playerId: playerId, registry: registry, onSounds: onSounds));
+  }) =>
+      tester.pumpWidget(underTest(playerId: playerId, wholeMatch: wholeMatch, registry: registry, onSounds: onSounds));
 
   /// Delivers [event] to the view (a stream is asynchronous) and draws the
   /// frame that follows it.
@@ -207,6 +211,17 @@ void main() {
     expect(stats.drain().stages[LatencyStage.touchToFrame], isNull, reason: 'no ack was drawn yet');
     await tick(tester);
     expect(stats.drain().stages[LatencyStage.touchToFrame], [16], reason: 'acked 5 was sent at 1000 and drawn at 1016');
+
+    await unmount(tester);
+  });
+
+  testWidgets('the viewer is told to draw the whole match when this phone has the room for it', (tester) async {
+    await mount(tester, playerId: 'p1', wholeMatch: true);
+    clock.nowMs = 1000;
+    await send(tester, startEvent());
+    await send(tester, frameEvent(0, atMs: 1000, x: 0.5, roster: players));
+    expect(drawn(tester).view.wholeMatch, isTrue, reason: 'a tablet draws both sides');
+    expect(drawn(tester).view.playerId, 'p1', reason: 'and still knows whose phone it is');
 
     await unmount(tester);
   });

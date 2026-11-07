@@ -40,5 +40,7 @@ abstract interface class GameSnapshot {
 }
 
 /// What a viewer draws for (m12 §4): the roster (number and name per player
-/// ID) and this phone's player, if it plays.
-typedef ViewContext = ({Map<String, ({int number, String name})> roster, String? playerId});
+/// ID), this phone's player, if it plays, and whether a phone that shows a
+/// game laid out for phones draws the whole match instead of its own side
+/// (a tablet, which has the room for both: m12-phone-layout §0.6).
+typedef ViewContext = ({Map<String, ({int number, String name})> roster, String? playerId, bool wholeMatch});

@@ -75,6 +75,48 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('the bar folds to one line on a phone box and leaves the field most of the height', (tester) async {
+    for (final box in const [Size(667, 375), Size(852, 393)]) {
+      final host = hostWith({'a': InputStateMessage(seq: 1), 'b': InputStateMessage(seq: 1)});
+      await pump(
+        tester,
+        host,
+        box,
+        arena: ArenaGame(walls: const [], hazards: const []),
+      );
+      for (var i = 0; i < 20; i++) {
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+      expect(tester.takeException(), isNull, reason: 'no overflow at $box');
+      final bar = box.height - tester.getSize(find.byKey(const Key('arena'))).height;
+      // 52 px: three runs of small text and 2 px of padding above and below.
+      expect(bar, lessThanOrEqualTo(box.height * 0.15), reason: 'the bar shares $box with the field');
+      expect(find.byKey(const Key('hud-a')), findsOneWidget);
+      expect(find.byKey(const Key('hud-b')), findsOneWidget);
+      // The runs abut: no row padding between the round and the players.
+      expect(tester.getRect(find.text('P2 Phone b')).top, tester.getRect(find.text('P1 Phone a')).bottom);
+    }
+  });
+
+  testWidgets('the bar keeps the round above the players in a tall box', (tester) async {
+    final host = hostWith({'a': InputStateMessage(seq: 1), 'b': InputStateMessage(seq: 1)});
+    const box = Size(960, 540);
+    await pump(
+      tester,
+      host,
+      box,
+      arena: ArenaGame(walls: const [], hazards: const []),
+    );
+    for (var i = 0; i < 20; i++) {
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    // 88 px: the round, then one row per player with 4 px above it.
+    final bar = box.height - tester.getSize(find.byKey(const Key('arena'))).height;
+    expect(bar, greaterThan(box.height * 0.15), reason: 'the one-line form is only for a phone box');
+    expect(tester.getRect(find.text('P1 Phone a')).top, greaterThan(tester.getRect(find.text('Round 1')).bottom));
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('a keyboard player on the host plays like any other', (tester) async {
     final host = hostWith({'a': InputStateMessage(seq: 1)});
     final keyboard = host.addLocalPlayer(nickname: 'Keyboard')
