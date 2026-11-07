@@ -228,6 +228,17 @@ void main() {
   group('phones layout', () {
     const ids = ['house', 'rocket', 'tree', 'boat'];
 
+    /// The tray row's overlap per puzzle (m12-phone-layout §0.7c): the boat's
+    /// six pieces are wider than 1.3:1 with none, so their row overlaps; the
+    /// others leave the clock its room beside the world with pieces side by
+    /// side. Checked for every seed below.
+    const overlaps = {
+      'house': [0.0],
+      'rocket': [0.0],
+      'tree': [0.0],
+      'boat': [0.25, 0.5],
+    };
+
     /// The picture a phones board holds: every outline's box at its target
     /// angle, with the layout's 4-unit margin (m12 §1).
     Rect cropOf(Puzzle puzzle) {
@@ -238,8 +249,8 @@ void main() {
       return crop.inflate(4);
     }
 
-    test('every puzzle and seed puts the tray on top with piece beside piece and the crop centred below, and the '
-        'pieces pack into the tray as wide as it is, a tray gap apart', () {
+    test('every puzzle and seed puts the tray on top with the crop centred below, and the pieces pack into the tray '
+        'as wide as it is, a tray gap apart where the row does not overlap', () {
       for (final id in ids) {
         final puzzle = load(id);
         final crop = cropOf(puzzle);
@@ -267,7 +278,11 @@ void main() {
           expect(field.tray.bottom, lessThanOrEqualTo(field.board.top), reason: '$where: the tray is not on top');
           expect(field.tray.left, closeTo(SplitLayout.margin, 1e-9), reason: '$where: the tray is not at the left');
           expect(field.board.overlaps(field.tray), isFalse, reason: '$where: the board and the tray overlap');
-          expect(field.trayOverlap, 0, reason: '$where: the tray pieces overlap');
+          expect(
+            overlaps[id],
+            contains(field.trayOverlap),
+            reason: '$where: the tray row\'s overlap is not the one it needs',
+          );
           expect(
             field.tray.width,
             greaterThanOrEqualTo(crop.width),
@@ -310,20 +325,32 @@ void main() {
             boxes.add(box);
           }
           boxes.sort((a, b) => a.left.compareTo(b.left));
-          for (var i = 1; i < boxes.length; i++) {
-            expect(
-              boxes[i].left,
-              greaterThanOrEqualTo(boxes[i - 1].right + trayGap - 1e-9),
-              reason: '$where: ${boxes[i - 1]} and ${boxes[i]} are closer than a tray gap',
-            );
-            expect(boxes[i].overlaps(boxes[i - 1]), isFalse, reason: '$where: ${boxes[i]} overlaps ${boxes[i - 1]}');
+          if (field.trayOverlap == 0) {
+            for (var i = 1; i < boxes.length; i++) {
+              expect(
+                boxes[i].left,
+                greaterThanOrEqualTo(boxes[i - 1].right + trayGap - 1e-9),
+                reason: '$where: ${boxes[i - 1]} and ${boxes[i]} are closer than a tray gap',
+              );
+              expect(boxes[i].overlaps(boxes[i - 1]), isFalse, reason: '$where: ${boxes[i]} overlaps ${boxes[i - 1]}');
+            }
+          } else {
+            // An overlapping row still leaves every piece in the tray, one
+            // row, with the next piece over the one before.
+            for (var i = 1; i < boxes.length; i++) {
+              expect(
+                boxes[i].left,
+                greaterThanOrEqualTo(boxes[i - 1].right - field.trayOverlap * boxes[i - 1].width - 1e-9),
+                reason: '$where: ${boxes[i]} is over more than the row\'s overlap of ${boxes[i - 1]}',
+              );
+            }
           }
-          // The one-row world is within a phone's shape, so the tray stays
-          // in one row.
+          // The world leaves the clock its room beside it on a phone, which
+          // keeps the tray in one row too.
           expect(
             field.size.width,
-            lessThanOrEqualTo(SplitLayout.phoneMaxAspect * field.size.height + 1e-9),
-            reason: '$where: the world is wider than 2.2:1',
+            lessThanOrEqualTo(SplitLayout.phoneWorldMaxAspect * field.size.height + 1e-9),
+            reason: '$where: the world leaves the clock no room beside it',
           );
         }
       }

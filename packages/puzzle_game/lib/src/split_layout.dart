@@ -87,6 +87,15 @@ final class SplitLayout {
   /// so the world stays closer to a phone's shape (m12 §1).
   static const phoneMaxAspect = 2.2;
 
+  /// The widest a `phones` world may be, against its height, for the clock to
+  /// keep room beside it (m12-phone-layout §0.7c): a 16:9 to 19.5:9 phone as
+  /// tall as the world leaves 0.48 to 0.87 of its height of spare width.
+  static const phoneWorldMaxAspect = 1.3;
+
+  /// The overlaps a `phones` tray row is tried at, smallest first (§0.7c):
+  /// side by side, then a quarter, then half of the piece before.
+  static const _phoneRowOverlaps = [0.0, 0.25, 0.5];
+
   /// Where the players' dots start along the board's edge, in world units.
   static const _dotInset = 6.0;
 
@@ -265,19 +274,27 @@ final class SplitLayout {
 
   /// The `phones` world (m12-phone-layout §0.7c): each side sized to its own
   /// content, because a phone's height is what limits the scale. The tray
-  /// runs along the top, packed as [_trayScale] pieces with no overlap so its
-  /// pieces sit side by side, at the angles that make it flat; the picture's
-  /// crop sits below, centred. Both sides are the same world and angles. No
-  /// area is reserved for the clock: it is drawn beside the world, in the
-  /// box's spare width (m12-phone-layout §0.7c).
+  /// runs along the top, packed as [_trayScale] pieces at the angles that make
+  /// it flat and overlapping just enough to leave the clock its room; the
+  /// picture's crop sits below, centred. Both sides are the same world and
+  /// angles. No area is reserved for the clock: it is drawn beside the world,
+  /// in the box's spare width (m12-phone-layout §0.7c).
   static SplitLayout _computePhones(Puzzle puzzle, int seed) {
     final crop = _crop(puzzle);
     final angles = Map<int, double>.unmodifiable(compactStartAngles(puzzle, Random(seed), flat: true));
-    var tray = _phoneTray(puzzle, angles);
+    // The smallest overlap that leaves the clock its room beside the world.
+    var overlap = _phoneRowOverlaps.first;
+    var tray = _phoneTray(puzzle, angles, overlap);
     var world = _phoneWorld(crop, tray.width, tray.height);
+    for (final next in _phoneRowOverlaps.skip(1)) {
+      if (world.width <= phoneWorldMaxAspect * world.height) break;
+      overlap = next;
+      tray = _phoneTray(puzzle, angles, overlap);
+      world = _phoneWorld(crop, tray.width, tray.height);
+    }
     if (world.width > phoneMaxAspect * world.height) {
       // Wider than any landscape phone: pack the tray in two rows instead.
-      tray = _twoRowTray(puzzle, angles, tray.width);
+      tray = _twoRowTray(puzzle, angles, tray.width, overlap);
       world = _phoneWorld(crop, tray.width, tray.height);
     }
     final board = Rect.fromLTWH((world.width - crop.width) / 2, margin + tray.height + margin, crop.width, crop.height);
@@ -290,7 +307,7 @@ final class SplitLayout {
       // because the pieces start up there (m12 §1).
       top: margin,
       startX: board.left + _dotInset,
-      trayOverlap: 0,
+      trayOverlap: overlap,
       trayScale: _trayScale,
     );
     return SplitLayout._(
@@ -313,10 +330,10 @@ final class SplitLayout {
       Size(max(crop.width + 2 * margin, trayWidth + 2 * margin), margin + trayHeight + margin + crop.height + margin);
 
   /// A `phones` side's tray in one row, as wide as the row of pieces needs: no
-  /// tray width can break the row, so it is packed without a limit, and with
-  /// no overlap so the pieces sit side by side (m12-phone-layout §0.7c).
-  static ({double width, double height, int rows}) _phoneTray(Puzzle puzzle, Map<int, double> angles) =>
-      _packedTray(puzzle, angles, double.infinity);
+  /// tray width can break the row, so it is packed without a limit, with
+  /// [overlap] of each box over the one before (§0.7c).
+  static ({double width, double height, int rows}) _phoneTray(Puzzle puzzle, Map<int, double> angles, double overlap) =>
+      _packedTray(puzzle, angles, double.infinity, overlap);
 
   /// The narrowest tray that still packs the pieces in two rows, found from
   /// the widest piece's box upward; the one-row tray if none is narrower.
@@ -324,44 +341,34 @@ final class SplitLayout {
     Puzzle puzzle,
     Map<int, double> angles,
     double oneRowWidth,
+    double overlap,
   ) {
     final widest = [for (final (i, spec) in puzzle.pieces.indexed) spec.shape.bounds(angles[i]!).width * _trayScale]
         .reduce(max);
     for (var width = widest + trayGap; width < oneRowWidth; width += 1) {
-      final tray = _packedTray(puzzle, angles, width);
+      final tray = _packedTray(puzzle, angles, width, overlap);
       if (tray.rows <= 2) return tray;
     }
-    return _phoneTray(puzzle, angles);
+    return _phoneTray(puzzle, angles, overlap);
   }
 
-  /// The pieces packed at [width] with no overlap, as the rules will pack
-  /// them: the tray's size with [trayGap] at both edges, and how many rows
-  /// that makes. A [width] the packing fits in is kept, so the rules pack it
-  /// the same way again; no limit means the tray is as wide as the one row
-  /// needs.
-  static ({double width, double height, int rows}) _packedTray(Puzzle puzzle, Map<int, double> angles, double width) {
-    final packed = packTray(puzzle, angles, width, overlap: 0, scale: _trayScale);
-    // Each box's width as the rules scale it, so a width worked out here is
-    // the width the rules compare against, down to the last bit.
-    final widths = <double>[];
+  /// The pieces packed at [width] with [overlap], as the rules will pack them:
+  /// the tray's size with [trayGap] at both edges, and how many rows that makes.
+  /// A [width] the packing fits is kept; no limit means as wide as one row needs.
+  static ({double width, double height, int rows}) _packedTray(
+    Puzzle puzzle,
+    Map<int, double> angles,
+    double width,
+    double overlap,
+  ) {
+    final packed = packTray(puzzle, angles, width, overlap: overlap, scale: _trayScale);
+    // The row's right edge: each box's right where the packing places it, at
+    // the width the rules scale it to, bit for bit.
+    var right = 0.0;
     for (final (i, spec) in puzzle.pieces.indexed) {
       final box = spec.shape.bounds(angles[i]!);
-      widths.add(box.right * _trayScale - box.left * _trayScale);
-    }
-    var right = 0.0;
-    for (final (n, i) in packed.order.indexed) {
-      // A piece starts its row at its full overlap and steps back only when
-      // the row would hide another piece, so the first try is the rightmost
-      // place it can take.
-      var start = packed.at[i]!.dx;
-      if (n > 0) {
-        final prev = packed.order[n - 1];
-        if (packed.at[i]!.dy == packed.at[prev]!.dy) {
-          // As packTray steps on with no overlap: past the box and a gap.
-          start = max(start, packed.at[prev]!.dx + widths[prev] + trayGap);
-        }
-      }
-      right = max(right, start + widths[i]);
+      final boxWidth = box.right * _trayScale - box.left * _trayScale;
+      right = max(right, packed.at[i]!.dx + boxWidth);
     }
     return (
       width: width.isFinite ? max(width, right + trayGap) : right + trayGap,

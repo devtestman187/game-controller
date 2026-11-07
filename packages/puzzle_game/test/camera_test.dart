@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'dart:ui' show Rect, Size;
 
 import 'package:flutter_test/flutter_test.dart';
@@ -88,9 +89,24 @@ void main() {
 
   group('the clock area beside the world', () {
     const camera = PuzzleCamera.side(PuzzleSide.left);
+    const ids = ['house', 'rocket', 'tree', 'boat'];
+
+    /// The scores a phones match of [id] draws with no piece placed: a solo
+    /// game's ("0 of 4 placed"), or with [race] the left side's ("You 0/4 ·
+    /// Right 0/4"), or with [whole] the one HUD that names both sides.
+    ({String score, List<String> short}) scores(String id, {bool race = false, bool whole = false}) {
+      final match = PuzzleMatch(
+        load(id),
+        teams: race || whole ? const {'p1': PuzzleSide.left, 'p2': PuzzleSide.right} : const {'p1': PuzzleSide.left},
+        random: Random(1),
+        target: LayoutTarget.phones,
+      );
+      final hud = phoneHud(match.snapshot(), whole ? null : PuzzleSide.left);
+      return (score: hud.score, short: hud.short);
+    }
 
     /// The board of a phones layout in px, as the camera draws it.
-    Rect boardPx(SplitLayout layout, Size box) {
+    Rect boardPx(SplitLayout layout, PuzzleCamera camera, Size box) {
       final world = PuzzleCamera.place(layout, camera, box, PuzzleSide.left);
       final board = layout.left.board;
       return Rect.fromLTWH(
@@ -101,16 +117,84 @@ void main() {
       );
     }
 
-    test('one line beside the world at 852 x 393: left of the world, top at 0.14 of the box', () {
+    test('the form follows the score\'s real text: beside the board on every phone, a shorter form for a longer '
+        'score', () {
+      // Seed 1, the layout the size check and the G3 report use. The spare
+      // width beside the world is 222.5 / 197.7 / 252.8 / 187.1 px at 852 x
+      // 393, 174.4 / 151.1 / 203.0 / 141.1 at 734 x 370 and 138.6 / 114.9 /
+      // 167.5 / 104.8 at 667 x 375 (house / rocket / tree / boat).
+      const forms = [
+        (
+          box: Size(852, 393),
+          puzzles: {
+            'house': (solo: HudForm.oneLine, race: HudForm.twoLines),
+            'rocket': (solo: HudForm.oneLine, race: HudForm.twoLines),
+            'tree': (solo: HudForm.oneLine, race: HudForm.oneLine),
+            'boat': (solo: HudForm.twoLines, race: HudForm.twoLines),
+          },
+        ),
+        (
+          box: Size(734, 370),
+          puzzles: {
+            'house': (solo: HudForm.twoLines, race: HudForm.twoLines),
+            'rocket': (solo: HudForm.twoLines, race: HudForm.twoLines),
+            'tree': (solo: HudForm.oneLine, race: HudForm.twoLines),
+            'boat': (solo: HudForm.twoLines, race: HudForm.twoLines),
+          },
+        ),
+        (
+          box: Size(667, 375),
+          puzzles: {
+            'house': (solo: HudForm.twoLines, race: HudForm.short),
+            'rocket': (solo: HudForm.twoLines, race: HudForm.short),
+            'tree': (solo: HudForm.twoLines, race: HudForm.twoLines),
+            'boat': (solo: HudForm.twoLines, race: HudForm.short),
+          },
+        ),
+      ];
+      for (final (:box, :puzzles) in forms) {
+        for (final id in ids) {
+          final layout = SplitLayout.of(load(id), 1, target: LayoutTarget.phones);
+          final solo = PuzzleCamera.hudPlace(layout, camera, box, scores(id));
+          final race = PuzzleCamera.hudPlace(layout, camera, box, scores(id, race: true));
+          final where = '$id at ${box.width.round()} x ${box.height.round()}';
+          expect(solo.form, puzzles[id]!.solo, reason: '$where solo');
+          expect(race.form, puzzles[id]!.race, reason: '$where race');
+          // Every form found here is beside the board, never over it: the
+          // box's spare width keeps the clock its room on a 16:9 phone.
+          expect(solo.form, isNot(HudForm.corner), reason: '$where solo goes over the board');
+          expect(race.form, isNot(HudForm.corner), reason: '$where race goes over the board');
+        }
+      }
+      // One HUD for the whole match on a tablet, stacked worlds: the text
+      // names both sides ("Left 0/4 · Right 0/4", 19 characters).
+      const tablet = Size(1024, 768);
+      const wholeForms = {
+        'house': HudForm.twoLines,
+        'rocket': HudForm.short,
+        'tree': HudForm.twoLines,
+        'boat': HudForm.short,
+      };
+      for (final MapEntry(key: id, value: form) in wholeForms.entries) {
+        final layout = SplitLayout.of(load(id), 1, target: LayoutTarget.phones);
+        final hud = PuzzleCamera.hudPlace(layout, const PuzzleCamera.whole(), tablet, scores(id, whole: true));
+        expect(hud.form, form, reason: '$id whole at $tablet');
+      }
+    });
+
+    test('the clock area sits at 0.14 of the box height, left of the world, in the width its text needs', () {
       final layout = SplitLayout.of(load('tree'), 1, target: LayoutTarget.phones);
       const box = Size(852, 393);
-      final hud = PuzzleCamera.hudPlace(layout, camera, box);
+      final hud = PuzzleCamera.hudPlace(layout, camera, box, scores('tree'));
       final world = PuzzleCamera.place(layout, camera, box, PuzzleSide.left);
       expect(hud.form, HudForm.oneLine);
       // 0.14 x 393 = 55.02 px, below the phone app's 52 px top bar.
       expect(hud.rect.top, closeTo(55.02, 1e-9));
       expect(hud.rect.left, PuzzleCamera.hudMarginPx);
-      expect(hud.rect.width, closeTo(243.66, 0.01), reason: '0.62 x 393: the clock, the gap and the score');
+      // 5 clock characters at 0.08 of the height, the 0.02 gap and 13 score
+      // characters at 0.04, each glyph half its height: (0.2 + 0.02 + 0.26)
+      // x 393 = 188.64 px, not the 243.66 px a 20-character score would need.
+      expect(hud.rect.width, closeTo(188.64, 0.01));
       expect(hud.rect.height, closeTo(44.02, 0.01), reason: '0.112 x 393: the clock, the gap and the bar');
       // The tree's 81.62-unit world at 393 / 102 = 3.8529 px/unit is 314.47 px
       // wide, centred: the HUD ends 8 px short of the world's left edge.
@@ -118,31 +202,14 @@ void main() {
       expect(hud.rect.right, lessThanOrEqualTo(world.origin.dx - PuzzleCamera.hudWorldGapPx + 1e-9));
     });
 
-    test('two lines at 667 x 375, where the one line would reach into the world', () {
-      final layout = SplitLayout.of(load('tree'), 1, target: LayoutTarget.phones);
-      const box = Size(667, 375);
-      final hud = PuzzleCamera.hudPlace(layout, camera, box);
-      final world = PuzzleCamera.place(layout, camera, box, PuzzleSide.left);
-      expect(hud.form, HudForm.twoLines);
-      expect(hud.rect.top, closeTo(52.5, 1e-9), reason: '0.14 x 375');
-      expect(hud.rect.width, closeTo(150, 1e-9), reason: '0.4 x 375: the score on its own');
-      expect(hud.rect.height, closeTo(64.5, 1e-9), reason: '0.172 x 375: the clock, the score and the bar');
-      // The tree's world is 300.16 px wide at 375 / 102 = 3.6765 px/unit:
-      // 183.46 px of spare width, short of the 232.5 px a line needs and
-      // inside the 150 px two lines take.
-      expect(world.origin.dx, closeTo(183.46, 0.01));
-      expect(hud.rect.right, lessThanOrEqualTo(world.origin.dx - PuzzleCamera.hudWorldGapPx + 1e-9));
-      expect(hud.rect.width, lessThan(box.height * PuzzleCamera.hudOneLineWidth));
-    });
-
-    test('a box too narrow for two lines puts the HUD over the board\'s top-left corner', () {
+    test('a box too narrow even for the short form puts the HUD over the board\'s top-left corner', () {
       final layout = SplitLayout.of(load('tree'), 1, target: LayoutTarget.phones);
       const box = Size(380, 375);
-      final hud = PuzzleCamera.hudPlace(layout, camera, box);
+      final hud = PuzzleCamera.hudPlace(layout, camera, box, scores('tree'));
       expect(hud.form, HudForm.corner);
       // 380 px of width leaves the 81.62 x 102 world nothing spare (it is
       // 300.16 px wide): the clock area goes 8 px inside the board's corner.
-      final board = boardPx(layout, box);
+      final board = boardPx(layout, camera, box);
       expect(hud.rect.left, closeTo(board.left + PuzzleCamera.hudCornerMarginPx, 1e-9));
       expect(hud.rect.top, closeTo(board.top + PuzzleCamera.hudCornerMarginPx, 1e-9));
       expect(hud.rect.right, lessThanOrEqualTo(board.right - PuzzleCamera.hudCornerMarginPx + 1e-9));
@@ -153,7 +220,7 @@ void main() {
       final layout = SplitLayout.of(load('tree'), 1, target: LayoutTarget.phones);
       const box = Size(1024, 768);
       const whole = PuzzleCamera.whole();
-      final hud = PuzzleCamera.hudPlace(layout, whole, box);
+      final hud = PuzzleCamera.hudPlace(layout, whole, box, scores('tree', whole: true));
       final left = PuzzleCamera.place(layout, whole, box, PuzzleSide.left);
       final right = PuzzleCamera.place(layout, whole, box, PuzzleSide.right);
       expect(hud.form, HudForm.twoLines);

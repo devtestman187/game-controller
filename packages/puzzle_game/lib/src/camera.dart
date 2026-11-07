@@ -103,27 +103,35 @@ final class PuzzleCamera {
   static const hudOneLineHeight = hudClockFraction + hudLineGapFraction + hudBarFraction;
   static const hudTwoLineHeight = hudClockFraction + 2 * hudLineGapFraction + hudScoreFraction + hudBarFraction;
 
-  /// How wide the box's spare width must be for the clock area's one-line
-  /// form, as a fraction of the box height (§0.7c): the clock's five
-  /// characters (a 10 minute limit) at [hudClockFraction] and the longest
-  /// score ("Left 2/4 · Right 3/6") at [hudScoreFraction], with
-  /// [hudLineGapFraction] between them.
-  static const hudOneLineWidth =
-      _clockChars * _glyphEm * hudClockFraction + hudLineGapFraction + _scoreChars * _glyphEm * hudScoreFraction;
-
-  /// How wide it must be for two lines, as a fraction of the box height: the
-  /// longer of the clock and the longest score on its own.
-  static const hudTwoLineWidth = _scoreChars * _glyphEm * hudScoreFraction;
-
   /// A character's width as a fraction of its text height. The app's font
   /// draws most glyphs narrower than this, so a form chosen by it is never too
   /// small for the texts; the test font's square glyphs are wider.
   static const _glyphEm = 0.5;
 
-  /// The characters the one-line form is measured for: the clock and the
-  /// longest of the scores ("Left 2/4 · Right 3/6", one HUD for a race).
+  /// The characters the clock is measured for: "10:00", a 10 minute limit, so
+  /// the clock area never changes form as the clock counts down.
   static const _clockChars = 5;
-  static const _scoreChars = 20;
+
+  /// The width [text] takes at [hudScoreFraction], as a fraction of the box
+  /// height.
+  static double _textWidth(String text) => text.length * _glyphEm * hudScoreFraction;
+
+  /// The width and the height [form] needs for [text], as fractions of the box
+  /// height (m12-phone-layout §0.7c): one line is the clock and the score
+  /// beside each other, two lines put the score under the clock, and the short
+  /// form puts each of [text]'s short lines under the clock on a line of its
+  /// own, with [hudLineGapFraction] between lines and the bar under them all.
+  static ({double width, double height}) _hudSize(HudForm form, ({String score, List<String> short}) text) {
+    final clock = _clockChars * _glyphEm * hudClockFraction;
+    final lines = form == HudForm.oneLine || form == HudForm.twoLines ? [text.score] : text.short;
+    final widest = [clock, ...lines.map(_textWidth)].reduce(max);
+    return (
+      width: form == HudForm.oneLine ? clock + hudLineGapFraction + _textWidth(text.score) : widest,
+      height: form == HudForm.oneLine
+          ? hudOneLineHeight
+          : hudTwoLineHeight + (lines.length - 1) * (hudLineGapFraction + hudScoreFraction),
+    );
+  }
 
   /// The distance from the box's left edge to the clock area, and from the
   /// clock area to the world, in px: enough to keep the texts clear of the
@@ -137,25 +145,27 @@ final class PuzzleCamera {
 
   /// Where the clock area goes in [box] and which form it takes
   /// (m12-phone-layout §0.7c): beside the world, at [hudTopFraction] of the
-  /// box's height, one line when the spare width fits the clock beside the
-  /// score, two lines when it fits one under the other, and otherwise over
-  /// the board's top-left corner on a panel the painter draws. [rect] is the
-  /// area the texts and the bar go in, in px.
-  static ({Rect rect, HudForm form}) hudPlace(SplitLayout layout, PuzzleCamera camera, Size box) {
+  /// box's height, in the first of [HudForm]'s forms that the spare width fits
+  /// — one line, two lines, then [HudForm.short] — and otherwise over the
+  /// board's top-left corner on a panel the painter draws. [text] is what the
+  /// HUD may draw, so the form is picked by the real score; the clock counts
+  /// for "10:00" whatever it says now. [rect] is the area the texts and the
+  /// bar go in, in px.
+  static ({Rect rect, HudForm form}) hudPlace(
+    SplitLayout layout,
+    PuzzleCamera camera,
+    Size box,
+    ({String score, List<String> short}) text,
+  ) {
     final world = place(layout, camera, box, PuzzleSide.left);
     final spare = world.origin.dx - hudMarginPx - hudWorldGapPx;
     final top = box.height * hudTopFraction;
-    if (spare >= box.height * hudOneLineWidth) {
-      return (
-        rect: Rect.fromLTWH(hudMarginPx, top, box.height * hudOneLineWidth, box.height * hudOneLineHeight),
-        form: HudForm.oneLine,
-      );
-    }
-    if (spare >= box.height * hudTwoLineWidth) {
-      return (
-        rect: Rect.fromLTWH(hudMarginPx, top, box.height * hudTwoLineWidth, box.height * hudTwoLineHeight),
-        form: HudForm.twoLines,
-      );
+    const forms = [HudForm.oneLine, HudForm.twoLines, HudForm.short];
+    for (final form in forms) {
+      final size = _hudSize(form, text);
+      if (spare >= box.height * size.width) {
+        return (rect: Rect.fromLTWH(hudMarginPx, top, box.height * size.width, box.height * size.height), form: form);
+      }
     }
     final board = Rect.fromLTWH(
       world.origin.dx + layout.left.board.left * world.scale,
@@ -163,13 +173,14 @@ final class PuzzleCamera {
       layout.left.board.width * world.scale,
       layout.left.board.height * world.scale,
     );
-    final width = min(box.height * hudTwoLineWidth, board.width - 2 * hudCornerMarginPx);
+    final size = _hudSize(HudForm.corner, text);
+    final width = min(box.height * size.width, board.width - 2 * hudCornerMarginPx);
     return (
       rect: Rect.fromLTWH(
         board.left + hudCornerMarginPx,
         board.top + hudCornerMarginPx,
         width,
-        box.height * hudTwoLineHeight,
+        box.height * size.height,
       ),
       form: HudForm.corner,
     );
@@ -182,11 +193,12 @@ final class PuzzleCamera {
   int get hashCode => side.hashCode;
 }
 
-/// The form a phone's clock area takes (m12-phone-layout §0.7c): one line
-/// when the box's spare width fits the clock beside the score, two lines when
-/// it fits one under the other, and over the board's corner when it fits
-/// neither.
-enum HudForm { oneLine, twoLines, corner }
+/// The form a phone's clock area takes (m12-phone-layout §0.7c), narrowest
+/// first: one line when the box's spare width fits the clock beside the whole
+/// score, two lines when it fits the score under the clock, [short] when it
+/// fits only the score's short lines ("You 2/4", "Right 3/6") under the clock,
+/// and over the board's corner when it fits none of them.
+enum HudForm { oneLine, twoLines, short, corner }
 
 /// The field of size [field] in [box]: the scale and the offset of its top
 /// left.

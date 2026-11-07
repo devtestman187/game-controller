@@ -167,15 +167,21 @@ void main() {
     }
 
     test('a side\'s score speaks to its player and names the other side\'s count, the camera\'s side first; the whole '
-        'match has one HUD naming both sides', () {
+        'match has one HUD naming both sides; each has its short lines', () {
       final s = phonesMatch().snapshot();
-      expect(phoneHud(s, PuzzleSide.left), (clock: '1:05', score: 'You 0/4 · Right 2/4'));
-      expect(phoneHud(s, PuzzleSide.right), (clock: '1:05', score: 'You 2/4 · Left 0/4'));
+      final left = phoneHud(s, PuzzleSide.left);
+      expect((left.clock, left.score), ('1:05', 'You 0/4 · Right 2/4'));
+      expect(left.short, ['You 0/4', 'Right 2/4']);
+      final right = phoneHud(s, PuzzleSide.right);
+      expect((right.clock, right.score), ('1:05', 'You 2/4 · Left 0/4'));
+      expect(right.short, ['You 2/4', 'Left 0/4']);
       // Drawn whole, the one HUD counts both sides.
-      expect(phoneHud(s, null), (clock: '1:05', score: 'Left 0/4 · Right 2/4'));
+      final whole = phoneHud(s, null);
+      expect((whole.clock, whole.score), ('1:05', 'Left 0/4 · Right 2/4'));
+      expect(whole.short, ['Left 0/4', 'Right 2/4']);
     });
 
-    test('a one-board match\'s HUD shows its count alone', () {
+    test('a one-board match\'s HUD shows its count alone, on one short line', () {
       final m = PuzzleMatch(
         puzzle,
         teams: const {'p1': PuzzleSide.left},
@@ -183,8 +189,10 @@ void main() {
         target: LayoutTarget.phones,
       );
       final s = m.snapshot();
-      expect(phoneHud(s, PuzzleSide.left), (clock: '2:00', score: '0 of 4 placed'));
-      expect(phoneHud(s, null), (clock: '2:00', score: '0 of 4 placed'));
+      for (final hud in [phoneHud(s, PuzzleSide.left), phoneHud(s, null)]) {
+        expect((hud.clock, hud.score), ('2:00', '0 of 4 placed'));
+        expect(hud.short, ['0/4']);
+      }
     });
 
     testWidgets('a phone draws one side, or the whole match, at both phone sizes; the screen draws today\'s '
@@ -231,23 +239,18 @@ void main() {
       const box = Size(852, 393);
       const camera = PuzzleCamera.side(PuzzleSide.left);
       Future<int> barColour(PuzzleMatch m, int limitS) async {
+        final s = m.snapshot();
         final (width, _, bytes) = await capture(
           tester,
-          MatchView(
-            puzzle: puzzle,
-            snapshot: m.snapshot(),
-            timeLimitS: limitS,
-            target: LayoutTarget.phones,
-            camera: camera,
-          ),
+          MatchView(puzzle: puzzle, snapshot: s, timeLimitS: limitS, target: LayoutTarget.phones, camera: camera),
           window: box,
           box: box,
         );
-        final rect = PuzzleCamera.hudPlace(
-          SplitLayout.of(puzzle, m.seed, target: LayoutTarget.phones),
-          camera,
-          box,
-        ).rect;
+        final hud = phoneHud(s, PuzzleSide.left);
+        final rect = PuzzleCamera.hudPlace(SplitLayout.of(puzzle, m.seed, target: LayoutTarget.phones), camera, box, (
+          score: hud.score,
+          short: hud.short,
+        )).rect;
         // Just inside the bar's left end, halfway down its height.
         final y = (rect.bottom - box.height * PuzzleCamera.hudBarFraction / 2).round();
         final i = 4 * (y * width + rect.left.round() + 1);
