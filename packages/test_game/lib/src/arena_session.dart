@@ -26,9 +26,9 @@ final arenaLayout = GameLayoutMessage(labels: {ControllerButton.start: 'Pause'})
 /// phone the arena's buttons, buzzes and plays its events, and records each
 /// round (S7). The view only draws [current].
 class ArenaSession extends GameSession {
-  ArenaSession({required GameHost host, required this.onEvent, ArenaGame? game})
+  ArenaSession({required super.host, required this.onEvent, ArenaGame? game})
     : game = game ?? ArenaGame(),
-      super(host: host, module: arenaModule, setup: arenaSetup);
+      super(module: arenaModule, setup: arenaSetup);
 
   /// The rules. Tests pass one in, to look at the game itself.
   final ArenaGame game;

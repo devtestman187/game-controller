@@ -316,7 +316,7 @@ Map<String, Object?> sanitizeSegmentData(Map<String, Object?> data) {
     'v': n(data['v']) ?? 1,
     'start': n(data['start']) ?? 0,
     'touches': n(data['touches']) ?? 0,
-    if (n(data['activeMs']) case final a?) 'activeMs': a,
+    'activeMs': ?n(data['activeMs']),
   };
   for (final key in const ['presses', 'pressMs', 'pressMaxMs', 'empty', 'near', 'slide', 'rapid', 'multi', 'haptics']) {
     final c = counts(data[key]);
