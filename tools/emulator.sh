@@ -88,9 +88,11 @@ case "${1:-}" in
       exit 0
     fi
     [ -f "$emulator" ] || die "emulator not found in $sdk/emulator (sdkmanager emulator)"
-    (nohup "$emulator" -avd "$avd" -no-snapshot-save -no-audio < /dev/null > /dev/null 2>&1 &)
-    echo "Starting $avd..."
-    a wait-for-device
+    emu_log="${TMPDIR:-/tmp}/thumbparty-emulator.log"
+    (nohup "$emulator" -avd "$avd" -no-snapshot-save -no-audio < /dev/null > "$emu_log" 2>&1 &)
+    echo "Starting $avd (emulator output: $emu_log)..."
+    # An emulator that never comes up would leave wait-for-device waiting forever.
+    timeout 180 "$adb" wait-for-device || die "the emulator didn't come up in 3 minutes (see $emu_log)" 1
     for _ in $(seq 1 180); do
       if device_ready; then
         echo "Booted: $(a get-serialno | tr -d '\r') ($(a shell wm size | tr -d '\r' | sed 's/.*: //'))"
