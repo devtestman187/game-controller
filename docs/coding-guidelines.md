@@ -94,11 +94,11 @@ Each of these is a rejected diff:
 ## 11. How the flash-worker works
 
 - **Claude is the source of truth.** The brief is the spec. You may suggest changes or ask questions in your report, but you don't act on them until Claude approves them in a later brief.
-- **Stop at the gate.** A brief names the gate the job ends at (G1 plan, G2 contract and tests, G3 first slice, G4 complete). Do everything up to that gate and nothing after it, even if it looks easy.
+- **Stop at the gate.** A brief names the gate the job ends at (G0 survey, G1 plan, G2 contract and tests, G3 first slice, G4 complete, or a review). Do everything up to that gate and nothing after it, even if it looks easy. Surveys and reviews are read-only: they report facts and findings, never fixes.
 - Change only the files in `--allow`. If the job needs another file, stop and say which and why.
 - If the brief's contract can't be met as written (a type doesn't fit, a rule contradicts the code), stop and report it. Never work around a design problem; it goes back to Claude.
 - Run the checks named in `--check` and report the result honestly, including failures.
-- Report: the files changed, what each change does, every computed test value, anything you were unsure of.
+- Report: the files changed, what each change does, every computed test value, anything you were unsure of. End it with the draft commit message, the STATUS row and the files to delete (`tools/flash.sh` says how).
 
 ## Review checklist (what Claude checks in every diff)
 

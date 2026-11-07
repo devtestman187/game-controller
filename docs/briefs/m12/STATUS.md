@@ -1,6 +1,6 @@
 # M12 status (read this first when resuming)
 
-Updated Nov 6, 2026, 16:55. Branch `m12`, worktree `E:\AI\game-controller-m12` (the main checkout `E:\AI\game-controller` stays on the frozen `demo-video`). Design: [../../design/m12.md](../../design/m12.md). Rules: [../../coding-guidelines.md](../../coding-guidelines.md). Working model: [../../project-notes.md](../../project-notes.md#how-we-work).
+Updated Nov 6, 2026, 18:15. Branch `m12`, worktree `E:\AI\game-controller-m12` (the main checkout `E:\AI\game-controller` stays on the frozen `demo-video`). Design: [../../design/m12.md](../../design/m12.md). Rules: [../../coding-guidelines.md](../../coding-guidelines.md). Working model: [../../project-notes.md](../../project-notes.md#how-we-work).
 
 ## Steps
 
@@ -9,14 +9,13 @@ Updated Nov 6, 2026, 16:55. Branch `m12`, worktree `E:\AI\game-controller-m12` (
 | 1 Extract `party_host` | **Done** (`490633d`, pushed). All 10 checks pass (613 tests). Windows exit check passed Nov 6 (release build ok; `tools/tv-dev.sh start` hosts on 45780 and advertises; sounds untested here because Claude's sandbox blocks %TEMP%) |
 | 1b Follow-ups | **Done**: `tools/review.sh`, `controls.dart` (cycle broken), home screen split into `ui/home/`, `hostActivateShortcuts`. Answers to s1b-report Q1–5: Q1 default base is now `HEAD` (one job's diff; `--base origin/main` for the branch) · Q2 TODO in tests too, ok · Q3 export `ClaimHandle` only when a caller needs it · Q4 `number` stays a NOTE; spacing scale is tech debt · Q5 long members are tech debt (project-notes) |
 | 2 Transport | **Done** (G1 plan → G4, Nov 6). Server and client on `MessageChannel`; WebSocket and in-process transports; connection tests run on both (176). Contract: [../../design/m12-transport.md](../../design/m12-transport.md). G4 answers: Q1 fixed by Claude (ListenFailed carries only the cause) · Q2–4 ok · Q5–6 tech debt |
-| 3 Host phone's own player | Next: Claude writes the brief (m12.md §2.2, D1) |
-| 4–9 | Not started |
+| Worker flow | Owner, Nov 6: "Do all 5 before step 3". `flash.sh --brief`, the key read by the script, report sections (commit draft, STATUS row, Delete), `pub: yes`, one worktree per job; templates for job, survey (G0) and review; `review.sh --strings` (tools job t1, reviewed by the first review job: it found a rename bug, fixed by Claude with `--no-renames`; raw `r` now kept). t1 answers: Q1 the help line is fine · Q2 totals verified by Claude (0/0, 55/708) · Q3, Q5 ok · Q4 no generated `.dart` files exist, skip |
+| 3 Sessions, frames, playout, stages | Next: a G0 survey (m12.md §2.3, §2.5, §3), then Claude writes the contract (`GameModule`, `GameSession`, `GameFrame`, the `view` messages) |
+| 4–9 | Not started (the host phone's own player, D1, is step 5) |
 
-## How to run a job (lessons from step 1)
-- Brief in `docs/briefs/m12/s<step>-g<gate>.md`, compact format (see s1-g3.md / s1-g4.md); the task argument only points at it (Windows' 32 KB command-line limit).
-- `tools/flash.sh --allow … --check "…" --report docs/briefs/m12/<job>-report.md "Your brief is …"`, run with `run_in_background` (never `&` inside it: no completion notice). Load the key first: `export DEEPSEEK_API_KEY="$(powershell.exe -NoProfile -Command "[Environment]::GetEnvironmentVariable('DEEPSEEK_API_KEY','User')" | tr -d '\r\n')"`.
-- The worker can't delete files or run `flutter pub get`: Claude deletes what the report lists under DELETE and edits pubspecs plus runs `pub get` before or after the job.
+## How to run a job
+- Brief from a template in `docs/briefs/templates/` (job, survey, review), saved as `docs/briefs/m12/s<step>-g<gate>.md`.
+- `tools/flash.sh --brief <file>` with `run_in_background` (never `&`: no completion notice). The script reads `allow:`, `check:`, `report:`, `pub:` from the brief, loads the key itself and runs the job in `E:\AI\game-controller-m12-jobs\<job>`, a copy of this checkout with its uncommitted work; at the end it applies the changes back here. Exit 6: the same files changed here meanwhile; the patch and worktree are kept.
+- Working here while a job runs is fine; just don't edit the files in the job's `allow:`.
+- After a gate: a review job (templates/review.md) on the diff, then Claude checks its findings and the risky code, runs `tools/check.sh`, and commits with the report's draft message (edited).
 - `tv_test_app/windows/flutter/generated_*` show as modified after any Flutter run: never commit them.
-- Review: read the summary; open the report only for questions; grep for guideline violations; run `tools/check.sh`; commit the report with the work.
-- Don't write files in the repository while a job runs: `flash.sh` reports them as changed outside `--allow` (exit 4).
-- Before committing a job: `tools/review.sh` (the job's diff, FAIL lines only matter) and `tools/check.sh`.

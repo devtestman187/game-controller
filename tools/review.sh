@@ -8,6 +8,7 @@
 #   tools/review.sh                  # uncommitted changes (one job's diff)
 #   tools/review.sh --base origin/main  # the whole branch
 #   tools/review.sh --all            # every file, every line
+#   tools/review.sh --strings        # the texts a diff adds or removes
 #   tools/review.sh --help
 #
 # Checks: size func platform layers leftover catch types timing clock number
@@ -18,20 +19,29 @@ cd "$(dirname "$0")/.." || exit 2
 root="$(pwd)"
 
 base=""
+head=""
 all=0
+strings=0
 while [ $# -gt 0 ]; do
   case "$1" in
     -h | --help)
-      sed -n '2,14p' "$0" | sed 's/^# \{0,1\}//'
+      sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//'
       exit 0
       ;;
     --all) all=1 ;;
+    --strings) strings=1 ;;
     --base)
       [ $# -ge 2 ] || { echo "--base needs a ref (try --help)" >&2; exit 2; }
       base="$2"
       shift
       ;;
     --base=*) base="${1#--base=}" ;;
+    --head)
+      [ $# -ge 2 ] || { echo "--head needs a ref (try --help)" >&2; exit 2; }
+      head="$2"
+      shift
+      ;;
+    --head=*) head="${1#--head=}" ;;
     *)
       echo "Unknown option: $1 (try --help)" >&2
       exit 2
@@ -39,6 +49,9 @@ while [ $# -gt 0 ]; do
   esac
   shift
 done
+
+[ -z "$head" ] || [ $strings = 1 ] || { echo "--head needs --strings (try --help)" >&2; exit 2; }
+[ $strings = 0 ] || [ $all = 0 ] || { echo "--strings can't be used with --all (try --help)" >&2; exit 2; }
 
 command -v git > /dev/null 2>&1 || { echo "git isn't on the PATH." >&2; exit 2; }
 git rev-parse --is-inside-work-tree > /dev/null 2>&1 || { echo "Not inside a git repository." >&2; exit 2; }
@@ -61,6 +74,99 @@ in_scope() {
   esac
   return 0
 }
+
+# The .dart files a message is read from: lib/ and bin/ only, since a test's
+# own text isn't shipped and would only add noise to the comparison.
+in_strings_scope() {
+  case "$1" in *.dart) ;; *) return 1 ;; esac
+  case "$1" in */lib/* | */bin/* | lib/* | bin/*) return 0 ;; esac
+  return 1
+}
+
+# One file's literals on one side: at a commit, or ("tree") on disk.
+print_literals() {
+  if [ "$1" = tree ]; then awk -v file="$2" -f tools/review-strings.awk "$2"
+  else git show "$1:$2" 2> /dev/null | awk -v file="$2" -f tools/review-strings.awk; fi
+}
+
+# --strings answers "did any message change?", which the line checks can't, so
+# it prints its own report and stops.
+if [ $strings = 1 ]; then
+  [ -z "$head" ] || git rev-parse --verify --quiet "$head^{commit}" > /dev/null ||
+    { echo "Unknown head: $head" >&2; exit 2; }
+  sides=()
+  if [ -n "$head" ]; then
+    while IFS= read -r f; do sides+=("$f"); done < <(git diff --name-only --no-renames "$base" "$head" 2> /dev/null)
+  else
+    while IFS= read -r f; do sides+=("$f"); done < <(git diff --name-only --no-renames "$base" 2> /dev/null)
+    while IFS= read -r f; do sides+=("$f"); done < <(git ls-files --others --exclude-standard 2> /dev/null)
+  fi
+  # A file missing from one side has no literals there, so an added or a
+  # deleted file counts as new or gone text.
+  while IFS= read -r f; do
+    [ -n "$f" ] && in_strings_scope "$f" || continue
+    if git cat-file -e "$base:$f" 2> /dev/null; then print_literals "$base" "$f" >> "$tmp/old"; fi
+    if [ -n "$head" ]; then
+      if git cat-file -e "$head:$f" 2> /dev/null; then print_literals "$head" "$f" >> "$tmp/new"; fi
+    elif [ -f "$f" ]; then
+      print_literals tree "$f" >> "$tmp/new"
+    fi
+  done < <(printf '%s\n' ${sides[@]+"${sides[@]}"} | LC_ALL=C sort -u)
+
+  # One multiset per side, so a text that moved to another file is unchanged.
+  # Each report line starts with 1 (removed) or 2 (added) so the sort can key
+  # on it first: the removed lines, then the added ones, each by file and line.
+  awk -F '\t' -v of="$tmp/old" -v nf="$tmp/new" -v totals="$tmp/totals" '
+    BEGIN {
+      while ((getline l < of) > 0) {
+        n = split(l, f, "\t"); x = f[3]; for (i = 4; i <= n; i++) x = x "\t" f[i]
+        oc[x]++; ol[x, oc[x]] = f[2] + 0; ofile[x, oc[x]] = f[1]; seen[x] = 1
+      }
+      close(of)
+      while ((getline l < nf) > 0) {
+        n = split(l, f, "\t"); x = f[3]; for (i = 4; i <= n; i++) x = x "\t" f[i]
+        nc[x]++; nline[x, nc[x]] = f[2] + 0; nfile[x, nc[x]] = f[1]; seen[x] = 1
+      }
+      close(nf)
+      for (x in seen) {
+        m = (oc[x] < nc[x]) ? oc[x] : nc[x]
+        same += m
+        # Report the occurrence whose file no longer holds the text first, so
+        # text that only shifted down its own file stays out of the report.
+        for (k = 1; k <= oc[x] - m; k++) {
+          b = 0
+          for (j = 1; j <= oc[x] && !b; j++) {
+            if (oused[x, j]) continue
+            s = 1; for (q = 1; q <= nc[x]; q++) if (nfile[x, q] == ofile[x, j]) s = 0
+            if (s) b = j
+          }
+          for (j = 1; j <= oc[x] && !b; j++) if (!oused[x, j]) b = j
+          if (!b) break
+          oused[x, b] = 1; rem++
+          printf "1\t%s\t%d\t- %s  %s\n", ofile[x, b], ol[x, b], x, ofile[x, b]
+        }
+        for (k = 1; k <= nc[x] - m; k++) {
+          b = 0
+          for (j = 1; j <= nc[x] && !b; j++) {
+            if (nused[x, j]) continue
+            s = 1; for (q = 1; q <= oc[x]; q++) if (ofile[x, q] == nfile[x, j]) s = 0
+            if (s) b = j
+          }
+          for (j = 1; j <= nc[x] && !b; j++) if (!nused[x, j]) b = j
+          if (!b) break
+          nused[x, b] = 1; add++
+          printf "2\t%s\t%d\t+ %s  %s:%d\n", nfile[x, b], nline[x, b], x, nfile[x, b], nline[x, b]
+        }
+      }
+      printf "strings: %d removed, %d added, %d unchanged or moved\n", rem, add, same > totals
+    }
+  ' < /dev/null > "$tmp/strings"
+
+  tab=$'\t'
+  LC_ALL=C sort -t "$tab" -k1,1 -k2,2 -k3,3n "$tmp/strings" | cut -f 4-
+  cat "$tmp/totals"
+  exit 0
+fi
 
 changed=()
 if [ $all = 1 ]; then

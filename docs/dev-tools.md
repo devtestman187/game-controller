@@ -86,6 +86,7 @@ Run it before every commit that changes code, and always before a release.
 tools/review.sh                     # the uncommitted changes (one job's diff)
 tools/review.sh --base origin/main  # the whole branch (any commit or branch works)
 tools/review.sh --all           # every file, every line
+tools/review.sh --strings       # which texts a diff adds or removes
 tools/review.sh --help
 ```
 
@@ -101,6 +102,18 @@ review: 2 fail, 1 note
 - **Scope:** the `.dart` files under `controller_app`, `tv_test_app`, `packages` and `assets`, without `build/`, `.dart_tool/`, `*.g.dart` and `generated_plugin_registrant*`. By default it takes the files that changed since the last commit (staged, unstaged and untracked), so it reviews one job's diff; `--base <ref>` compares with another commit and includes what was committed since. Inside those files, the line checks look only at the lines the change adds; `--all` takes every file and every line.
 - **Checks:** `size` (a lib file over 400 lines, a test over 500), `func` (a member over 60 lines; a note from 41; a `build` method's limit is 60), `platform` (`Platform.is` in a package), `layers` (a package importing an app, `flutter` in a pure Dart package, a game importing another game or `party_host`, any `package:x/src/` from outside `x`), `leftover` (`TODO`/`FIXME`/`XXX`, `print` and `debugPrint` in lib, `// ignore`), `catch` (an empty one), `types` (`dynamic` in lib), `timing` (`Future.delayed`, `sleep`), `clock` (`DateTime.now()` or an unseeded `Random()` in a game) and `number` (a numeric literal other than 0, 1, -1, 2, 0.0, 1.0 or 0.5 that isn't a named constant).
 - **Exit code:** 0 when there is no FAIL, 1 when there is any, 2 for bad arguments, an unknown base or a missing git.
+- **Messages (`--strings`):** `tools/review.sh --strings [--base <ref>] [--head <ref>]` compares the string literals of a diff instead of running the checks: the `.dart` files under any `lib/` or `bin/` folder, as they are at `--base` (default `HEAD`) and at `--head` (default the working tree, untracked files included), a file added or deleted counting with an empty other side. The literals are read as written in the source (quotes and `$x`/`${…}` kept, one literal per line of a `'''` string, no comments or `import`/`part` lines) and the two sides are compared as one multiset, so a text that moved to another changed file counts as unchanged (only files that differ are read: a copy that stays in an untouched file still shows as removed) while a renamed variable inside `${…}` counts as a change. It prints each text that is only on the old side as `- 'text'  file` and each one only on the new side as `+ 'text'  file:line`, sorted by file and line, then the totals:
+
+  ```
+  - 'A shape is {"circle": r}, {"rect": [w, h]} or {"polygon": [[x, y], ...]}'  packages/puzzle_game/lib/src/puzzle.dart
+  + 'regular'  packages/puzzle_game/lib/src/puzzle.dart:109
+  + 'A regular shape needs 3 or more sides'  packages/puzzle_game/lib/src/puzzle.dart:110
+  + 'A regular shape needs a radius above 0'  packages/puzzle_game/lib/src/puzzle.dart:111
+  + 'A shape is {"circle": r}, {"rect": [w, h]}, {"regular": [sides, r]} or {"polygon": [[x, y], ...]}'  packages/puzzle_game/lib/src/puzzle.dart:124
+  strings: 1 removed, 4 added, 28 unchanged or moved
+  ```
+
+  Run it before committing a pure move: what it prints is then the texts that really changed (a move that only renamed variables shows a few pairs, one that changed no text shows none). `--head` needs `--strings` and `--strings` can't be used with `--all`; a run is information, not a check, so it exits 0 (2 only for bad arguments, an unknown ref or a missing git).
 - **It doesn't replace the review, it finds the mechanical things first.** A design that won't hold, a name that lies, a test that checks the wrong thing and a race all pass it.
 
 ## tools/release.sh
@@ -253,7 +266,7 @@ How they're used:
 `tools/flash.sh` sends pattern-copying work to DeepSeek Flash so it doesn't use the Claude subscription. The main Claude Code session stays on the subscription. Only the separate process that [`tools/flash.sh`](../tools/flash.sh) starts talks to DeepSeek, and only while it runs: nothing is installed, and Claude Code's sign-in and settings aren't changed.
 
 How it fits together: Claude Code (subscription) → `tools/flash.sh` (run directly; or through the `flash-worker` agent if asked by name) → `claude --bare -p` with `ANTHROPIC_BASE_URL=https://api.deepseek.com/anthropic` → DeepSeek Flash edits files in the working tree. `--bare` never reads the Claude sign-in, so this process can't use the subscription by mistake. What it may do is set in the script, and Claude Code enforces it rather than relying on the model to obey:
-- **Tools:** `--bare` offers only Read, Edit (which also creates files) and Bash. Read is limited to the repository. Bash is limited to formatting, analysis and tests (`dart`, `flutter`, `tools/check.sh`), read-only `git status`, `log`, `grep` and `ls-files`, and `ls`. Git commands that change anything, `rm`, `gh`, `tools/release.sh`, sub-agents and the web are blocked.
+- **Tools:** `--bare` offers only Read, Edit (which also creates files) and Bash. Read is limited to the repository. Bash is limited to formatting, analysis and tests (`dart`, `flutter`, `tools/check.sh`, `tools/review.sh`), read-only `git status`, `log`, `diff`, `show`, `grep`, `ls-files` and `merge-base`, `ls` and `wc`. Git commands that change anything (`worktree` included), `rm`, `gh`, `tools/release.sh`, sub-agents and the web are blocked.
 - **Files it can't change:** `.github/`, `codemagic.yaml`, `firebase/`, `.claude/`, `kenney-audio/`, every `docs/PRD*` file (the PRDs and the owner's backups: PRD changes are judgment calls, so the main session makes them), `tools/release.sh`, `tools/flash.sh` and `tools/flash_usage.dart`. Editing or creating them is refused.
 - **Files it can't read:** anything outside the repository (so `%USERPROFILE%\.thumbparty\` and other sign-ins stay private), except the folders a job names with `--read`, and in the repository or those folders any signing key, service account or `.env` file, in case one is ever put there. Whatever it reads is sent to DeepSeek.
 - **Reading outside folders, per job:** `--read <folder>` (repeatable) lets that one job read a folder outside the repository, such as the DeepSeek workspace's sounds or shader notes, instead of pasting excerpts into the brief. It can't change anything there: writes are refused by a deny rule, and the script's after-run checks only cover the repository. The script refuses the home folder and anything above it, the repository itself, and folders that hold keys or sign-ins (`~/.thumbparty`, `~/.ssh`, `~/.android`, `~/.config`, `~/.gnupg`, `~/.aws`, `~/AppData`), or anything inside them.
@@ -261,13 +274,18 @@ How it fits together: Claude Code (subscription) → `tools/flash.sh` (run direc
 - **Checked again afterwards:** the script compares those files before and after the run. If any changed anyway, it ends with `PROTECTED FILES CHANGED` and exit code 3.
 - **Only the files the job names:** `--allow <path>` (repeatable; a folder covers everything in it) lists what the job may change, and the worker is told. Any other file the run changes, creates or deletes ends the job with `CHANGED FILES OUTSIDE --allow` and exit code 4. Without `--allow` the job is read-only. Files that were already changed before the run don't count.
 - **Checks run for you:** `--check <names>` runs `tools/check.sh <names>` after the worker finishes (e.g. `--check puzzle`); a failure gives exit code 5.
+- **Briefs as options:** `--brief <file>` reads the brief's `allow:`, `check:`, `report:` and `pub:` header lines as the options above, and the task becomes "read the brief" ([briefs/README.md](briefs/README.md) has the templates). The script reads `DEEPSEEK_API_KEY` from the Windows user environment itself when the shell doesn't have it; it never prints it.
+- **Paperwork in the report:** with `--report`, a job that changes files ends its report with a draft commit message (printed at the end of the run), a STATUS row and a Delete list. The worker can't delete files, so the script deletes the listed ones that are inside `--allow`, before the checks; anything else on the list is refused and named.
+- **Dependencies:** `--pub` (or `pub: yes` in the brief) lets the worker run `flutter pub get` and change `pubspec.lock`, for a brief that adds a dependency.
+- **A worktree per job:** by default the job runs in a worktree of its own in `<repo>-jobs/` next to the checkout: a copy of the checkout as it is, uncommitted and untracked files included (not `kenney-audio/`), with its packages resolved. You and Claude can keep working in the checkout, and jobs on separate files can run side by side. At the end the job's changes are applied back to the checkout and the worktree is removed; if the same files changed in the checkout meanwhile, nothing is applied, and the patch and the worktree are kept (exit 6). `--here` runs in the checkout instead, the old way.
 - **What it knows about the project:** `--bare` skips Claude Code's project notes, so the script gives it a short set of rules and points it to [project-notes.md](project-notes.md).
 
-It ends by printing the files this run changed, their `git diff --stat`, the check results and `flash: result <code>`: 0 when everything passed, otherwise the first that applies of 3 (protected file), 4 (outside `--allow`), the worker's own exit code, 5 (a check failed); 2 for bad arguments or a missing key.
+It ends by printing the files this run changed, their `git diff --stat`, the check results and `flash: result <code>`: 0 when everything passed, otherwise the first that applies of 3 (protected file), 4 (outside `--allow`), the worker's own exit code, 5 (a check failed), 6 (the changes couldn't be applied back); 2 for bad arguments, a missing key or a failed worktree setup.
 
 **Token use.** After the worker's answer it prints a usage line (turns, seconds, input, cache and output tokens), and every job adds one line to `~/.thumbparty/flash-usage.tsv` (`FLASH_USAGE_LOG` moves it): the time, the result code, those numbers, the files changed and the task's first line. [`tools/flash_usage.dart`](../tools/flash_usage.dart) reads the run's JSON result; the cost figure in it is left out, because it's worked out at Anthropic's prices, not DeepSeek's (DeepSeek's own dashboard has the bill). To compare with the main session, look at `/usage` in Claude Code.
 
 ```bash
+tools/flash.sh --brief docs/briefs/m12/s3-g1.md
 tools/flash.sh --allow packages/puzzle_game/test/rules_test.dart --check puzzle "<spec>"
 ```
 
