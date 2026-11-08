@@ -39,7 +39,7 @@ void main() {
       expect(app.discovery.restarts, restarts);
       expect(app.discovery.stops, stops);
       expect(app.client.calls, isEmpty);
-      expect(host.client.snapshot.isConnected, isTrue);
+      expect(ownClientOf(host).snapshot.isConnected, isTrue);
       expect(hostOf(tester), same(host));
       await tester.runAsync(host.dispose);
     });
@@ -66,7 +66,7 @@ void main() {
       // The server can be found again before the pause ends: one more start.
       expect(advertiser.starts.length, starts + 1);
       expect(host.live, isTrue);
-      expect(host.client.snapshot.isConnected, isTrue);
+      expect(ownClientOf(host).snapshot.isConnected, isTrue);
       // A hosting phone still has no TV to look for.
       expect(app.discovery.restarts, restarts);
       await settle(tester);
@@ -152,9 +152,9 @@ void main() {
       expect(app.motion.listening, isTrue);
 
       // Start pauses the round: the pad goes away with it, and tilt too.
-      host.client.sendInput({ControllerButton.start});
+      ownClientOf(host).sendInput({ControllerButton.start});
       await untilShown(tester, find.byKey(const Key('pauseMenu')), 'The pause menu');
-      host.client.sendInput({});
+      ownClientOf(host).sendInput({});
       await until(tester, () => hostPhase(tester) == party.RoundPhase.none, () => 'The phase did not stop');
       await settle(tester);
       final paused = app.client.inputs.length;
@@ -191,7 +191,11 @@ void main() {
       var nowMs = 0;
       await pumpHostApp(
         tester,
-        extra: [phoneHostBuilderProvider.overrideWithValue((inputs) => PhoneHost.live(inputs, nowMs: () => nowMs))],
+        extra: [
+          phoneHostBuilderProvider.overrideWithValue(
+            (inputs, {required playsHere}) => PhoneHost.live(inputs, playsHere: playsHere, nowMs: () => nowMs),
+          ),
+        ],
       );
       final host = await enterHostMode(tester);
       // Into Shape Race, join, and the match starts (m12 §3): the picker and

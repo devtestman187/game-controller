@@ -83,9 +83,9 @@ void main() {
     expect(app.motion.listening, isTrue);
 
     // Start pauses the round: the pad goes away, and tilt with it.
-    host.client.sendInput({ControllerButton.start});
+    ownClientOf(host).sendInput({ControllerButton.start});
     await untilShown(tester, find.byKey(const Key('pauseMenu')), 'The pause menu');
-    host.client.sendInput({});
+    ownClientOf(host).sendInput({});
     await until(tester, () => hostPhase(tester) == party.RoundPhase.none, () => 'The phase did not stop');
     await settle(tester);
     final paused = app.client.inputs.length;

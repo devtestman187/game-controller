@@ -17,11 +17,21 @@ class HostingNotifier extends Notifier<PhoneHost?> {
   PhoneHost? build() => null;
 
   /// Starts a host and returns it: the caller shows it in the host route.
-  PhoneHost start() {
-    final host = ref.read(phoneHostBuilderProvider)(_inputs(ref));
+  /// [playsHere] is the caller's choice, known before the host is built: this
+  /// phone's own player plays the game it hosts, or the phone is only the
+  /// screen. Passing it here means a phone that shows the game never pairs a
+  /// player and then drops it (m12 bug 1108a rule D).
+  PhoneHost start({required bool playsHere}) {
+    final host = ref.read(phoneHostBuilderProvider)(_inputs(ref), playsHere: playsHere);
+    // Whether this phone draws the game itself, before the host starts: the
+    // screens read it as soon as they open, and a phone that shows the game is
+    // the screen and pairs nobody (m12 bug 1108a rules A, D).
+    host.service.shareView = playsHere;
     // The screens' client, before the route opens: this phone's own player
-    // plays the game it hosts (m12 §3).
-    ref.read(ownClientProvider.notifier).set(host.client);
+    // plays the game it hosts (m12 §3). A phone that shows the game has none,
+    // so the bar falls back to what it shows without a player (rule B).
+    final client = host.client;
+    if (client != null) ref.read(ownClientProvider.notifier).set(client);
     // Over a game the controls take the saved opacity and the bar shows the
     // ping instead of the status panel (m12 §2.7). Set here, not by the
     // route: Riverpod refuses a provider changed from a widget's dispose.

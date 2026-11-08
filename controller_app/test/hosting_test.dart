@@ -50,11 +50,11 @@ void main() {
     );
 
     final hosting = container.read(hostingProvider.notifier);
-    final host = hosting.start();
+    final host = hosting.start(playsHere: true);
     expect(container.read(hostingProvider), same(host));
     // The screens use the own player's client from now on.
-    expect(container.read(ownClientProvider), same(host.client));
-    expect(container.read(clientProvider), same(host.client));
+    expect(container.read(ownClientProvider), same(ownClientOf(host)));
+    expect(container.read(clientProvider), same(ownClientOf(host)));
     // The search for a TV stops, since this phone is one now.
     expect(discovery.stops, 1);
 
@@ -66,17 +66,17 @@ void main() {
 
     await hosting.stop();
     expect(host.live, isFalse);
-    expect(host.client.snapshot.status, ClientStatus.idle);
+    expect(ownClientOf(host).snapshot.status, ClientStatus.idle);
     // Back to the TV client, and searching again for the next game.
     expect(container.read(ownClientProvider), isNull);
-    expect(container.read(clientProvider), isNot(same(host.client)));
+    expect(container.read(clientProvider), isNot(same(ownClientOf(host))));
     expect(discovery.restarts, 1);
     // A second stop is a no-op: the host is already gone.
     await hosting.stop();
     expect(discovery.restarts, 1);
 
     // A second "Host a game" gives a host of its own, and the graph follows it.
-    final again = hosting.start();
+    final again = hosting.start(playsHere: true);
     expect(again, isNot(same(host)));
     expect(container.read(phoneServiceProvider), same(again.service));
     expect(container.read(party.hostServiceProvider), same(again.service));
@@ -84,6 +84,63 @@ void main() {
     await waitFor(() => again.service.state.players.length == 1, () => 'The own player did not join again');
     await hosting.stop();
     expect(again.live, isFalse);
+  });
+
+  test('"Show on this device" pairs no own player, so the first phone to join is P1', () async {
+    final dir = Directory.systemTemp.createTempSync('thumb-party-hosting-');
+    addTearDown(() => dir.deleteSync(recursive: true));
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    final discovery = FakeDiscovery();
+    final tv = FakeClient();
+    final container = ProviderContainer(
+      overrides: [
+        ...phoneHostOverrides(directories: TempHostDirectories(dir)),
+        prefsProvider.overrideWithValue(prefs),
+        identityProvider.overrideWithValue(
+          const ControllerIdentity(controllerId: 'phone-1', name: 'Phone', platform: 'test', appVersion: 't'),
+        ),
+        tvClientProvider.overrideWithValue(tv),
+        discoveryProvider.overrideWithValue(discovery),
+        party.advertiserProvider.overrideWithValue(party_test.FakeAdvertiser()),
+        party.soundPlayerProvider.overrideWithValue(party_test.FakeSoundPlayer()),
+        party.screenAwakeProvider.overrideWithValue(party_test.FakeScreenAwake()),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    final hosting = container.read(hostingProvider.notifier);
+    final host = hosting.start(playsHere: false);
+
+    // No own player on the link, and the screens keep the TV client, so the
+    // bar falls back to what it shows without a player (m12 bug 1108a A, B).
+    expect(host.client, isNull);
+    expect(host.listener, isNull);
+    expect(container.read(ownClientProvider), isNull);
+    expect(container.read(clientProvider), same(tv));
+    expect(container.read(party.ownPlayerIdProvider), isNull, reason: 'this phone is the screen, not a player');
+    // The phones that join keep the game on this screen (m12-joined-view §0.1).
+    expect(host.service.shareView, isFalse);
+
+    await waitFor(() => host.service.state.host.running, () => 'The host server did not start');
+    expect(host.service.state.host.controllers, isEmpty);
+    expect(host.service.gameHost.players, isEmpty);
+    // The first player to take a number gets P1, as a pairing phone does.
+    final joiner = host.service.gameHost.addLocalPlayer(nickname: 'Ada');
+    expect(joiner.number, 1);
+
+    await hosting.stop();
+    expect(host.live, isFalse);
+    expect(discovery.restarts, 1);
+
+    // "Play on this phone" after it pairs the own player again (rule C).
+    final again = hosting.start(playsHere: true);
+    expect(container.read(ownClientProvider), same(ownClientOf(again)));
+    expect(container.read(party.ownPlayerIdProvider), 'phone-1');
+    await waitFor(() => again.service.state.host.running, () => 'The host server did not start again');
+    await ownPlayerReady(again);
+    await waitFor(() => again.service.gameHost.players.length == 1, () => 'The own player did not join again');
+    await hosting.stop();
   });
 
   test('a game this phone hosts runs at the frame rate saved for tests', () async {
@@ -120,6 +177,9 @@ Future<void> waitFor(bool Function() done, String Function() why) async {
   fail(why());
 }
 
-/// Waits until this phone's own player has paired on its host's link.
-Future<void> ownPlayerReady(PhoneHost host) =>
-    waitFor(() => host.client.snapshot.isConnected, () => 'The own player did not pair: ${host.client.snapshot}');
+/// Waits until this phone's own player has paired on its host's link; a host
+/// that shows the game on this device pairs none (m12 bug 1108a rule A).
+Future<void> ownPlayerReady(PhoneHost host) => waitFor(
+  () => ownClientOf(host).snapshot.isConnected,
+  () => 'The own player did not pair: ${ownClientOf(host).snapshot}',
+);

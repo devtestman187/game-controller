@@ -24,21 +24,24 @@ typedef PhoneHostInputs = ({
 });
 
 /// Builds the host this app runs; a test overrides it with its own inputs.
-typedef PhoneHostBuilder = PhoneHost Function(PhoneHostInputs inputs);
+typedef PhoneHostBuilder = PhoneHost Function(PhoneHostInputs inputs, {required bool playsHere});
 
 /// The phone as a host (m12 §2.7, D1): the service, the link this phone's own
-/// player pairs on, and the presence that pauses a round while the app is
-/// hidden. No Riverpod here, so the facts the UI asks ([live], [disposed])
-/// are plain fields.
+/// player pairs on when it plays here, and the presence that pauses a round
+/// while the app is hidden. No Riverpod here, so the facts the UI asks
+/// ([live], [disposed]) are plain fields.
 class PhoneHost {
-  PhoneHost._(this.service, this.listener, this.client, [this._nowMs]);
+  PhoneHost._(this.service, this.listener, this.client, this.playsHere, [this._nowMs]);
 
-  /// Builds the host the phone app runs: the server with the in-process link
-  /// for its own player, and the client on the other end of that link.
+  /// Builds the host the phone app runs: the server, and, when this phone
+  /// plays here ("Play on this phone"), the in-process link for its own
+  /// player and the client on the other end of it. "Show on this device" makes
+  /// the phone the game's screen, like the TV, so [playsHere] false builds no
+  /// link and no client and pairs no player (m12 bug 1108a rule A).
   /// [nowMs] is the clock the presence measures a hidden period on; a test
   /// moves it, the app leaves it out.
-  factory PhoneHost.live(PhoneHostInputs inputs, {int Function()? nowMs}) {
-    final listener = InProcessListener();
+  factory PhoneHost.live(PhoneHostInputs inputs, {required bool playsHere, int Function()? nowMs}) {
+    final listener = playsHere ? InProcessListener() : null;
     final service = party.LiveHostService(
       prefs: inputs.prefs,
       log: inputs.log,
@@ -48,12 +51,14 @@ class PhoneHost {
       inProcess: listener,
       monitor: inputs.monitor,
     );
-    final client = ControllerClient(
-      identity: inputs.controller,
-      connector: InProcessConnector(listener),
-      log: inputs.log.sink('own'),
-    );
-    return PhoneHost._(service, listener, client, nowMs);
+    final client = playsHere
+        ? ControllerClient(
+            identity: inputs.controller,
+            connector: InProcessConnector(listener!),
+            log: inputs.log.sink('own'),
+          )
+        : null;
+    return PhoneHost._(service, listener, client, playsHere, nowMs);
   }
 
   /// The host service: the server, the stats and the games. The live class,
@@ -61,11 +66,16 @@ class PhoneHost {
   /// it (`tv_host_setup.dart`).
   final party.LiveHostService service;
 
-  /// The link the own player pairs on: one process, no socket, no port.
-  final InProcessListener listener;
+  /// Whether this phone's own player plays the game it hosts: true for "Play
+  /// on this phone", false for "Show on this device" (C34, m12 bug 1108a).
+  final bool playsHere;
 
-  /// This phone's own player, as the host sees it.
-  final ControllerClient client;
+  /// The link the own player pairs on: one process, no socket, no port. Null
+  /// when this phone plays no part in the game it hosts.
+  final InProcessListener? listener;
+
+  /// This phone's own player, as the host sees it; null when it has none.
+  final ControllerClient? client;
 
   /// The navigator the host's games live in. `HostGames` installs it, and
   /// [abandon] comes back to it.
@@ -78,12 +88,19 @@ class PhoneHost {
   party.HostPresence? _presence;
   AppLifecycleListener? _lifecycle;
   final _disposed = Completer<void>();
+  bool _started = false;
 
   /// False from the moment [dispose] runs: a stopped host is never shown.
   bool get live => !_disposed.isCompleted;
 
   /// Completes when the host has stopped; the host route pops itself then.
   Future<void> get disposed => _disposed.future;
+
+  /// True once [start] has finished: the server is listening, its addresses
+  /// are read and it is advertised. "Show on this device" pairs no own player,
+  /// so this is what its screens — and its tests — wait for, where a phone
+  /// that plays here waits for its player (m12 bug 1108a).
+  bool get started => _started;
 
   /// True while the app is hidden (m12 §2.10): the game pauses then, and a
   /// round hidden for longer than [hostGraceS] is abandoned. Before [start]
@@ -92,17 +109,24 @@ class PhoneHost {
 
   /// Starts the server, then pairs the own player on the link: the listener
   /// has to be running first, since [InProcessListener.connect] throws until
-  /// it is.
+  /// it is. A host that plays no part in the game it hosts has no client and
+  /// pairs nobody (m12 bug 1108a rule A).
   Future<void> start() async {
     await service.start();
-    if (!live) return;
+    if (!live) {
+      _started = true;
+      return;
+    }
     final state = service.state;
-    client.connect(
-      // A placeholder host id: the welcome replaces it before anything is
-      // saved, and this client keeps no tokens (m12 §3).
-      HostAddress.local(hostId: client.identity.controllerId, name: state.hostName),
-      code: state.host.pairingCode,
-    );
+    final client = this.client;
+    if (client != null) {
+      client.connect(
+        // A placeholder host id: the welcome replaces it before anything is
+        // saved, and this client keeps no tokens (m12 §3).
+        HostAddress.local(hostId: client.identity.controllerId, name: state.hostName),
+        code: state.host.pairingCode,
+      );
+    }
     final presence = _presence = party.HostPresence(
       host: service,
       onAbandon: abandon,
@@ -110,6 +134,7 @@ class PhoneHost {
       graceS: hostGraceS,
     );
     _lifecycle = AppLifecycleListener(onHide: presence.hidden, onShow: () => unawaited(presence.shown()));
+    _started = true;
   }
 
   /// Back to the game picker: the app stayed hidden too long (m12 §2.10).
@@ -125,8 +150,10 @@ class PhoneHost {
     if (_disposed.isCompleted) return;
     _lifecycle?.dispose();
     _presence?.dispose();
-    await client.dispose();
-    await listener.stop();
+    final client = this.client;
+    if (client != null) await client.dispose();
+    final listener = this.listener;
+    if (listener != null) await listener.stop();
     await service.dispose();
     _disposed.complete();
   }

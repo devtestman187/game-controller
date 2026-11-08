@@ -42,8 +42,13 @@ List<Override> phoneHostOverrides({required party.HostDirectories directories}) 
   // reading, as the Diagnostics screen shows it.
   party.hostDeviceMonitorProvider.overrideWith((ref) => PhoneHostMonitor(ref.watch(deviceStatusSourceProvider))),
   // This phone's own player in the match it hosts, so the puzzle screen draws
-  // its own side of a phones match (m12-phone-layout §3).
-  party.ownPlayerIdProvider.overrideWith((ref) => ref.watch(identityProvider).controllerId),
+  // its own side of a phones match (m12-phone-layout §3). "Show on this device"
+  // has no own player: the phone is the screen, and the whole match is drawn
+  // there (m12 bug 1108a rule A).
+  party.ownPlayerIdProvider.overrideWith((ref) {
+    final host = ref.watch(hostingProvider);
+    return host == null || !host.playsHere ? null : ref.watch(identityProvider).controllerId;
+  }),
   // A tablet has the room for both sides, so the same screen draws the whole
   // match there (m12-phone-layout §0.6).
   party.wholeMatchProvider.overrideWith((ref) => ref.watch(isTabletProvider)),

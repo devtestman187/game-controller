@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:connection/connection.dart';
 import 'package:controller/src/host/host_overrides.dart';
 import 'package:controller/src/host/host_start_sheet.dart';
 import 'package:controller/src/host/hosting.dart';
@@ -108,6 +109,15 @@ PhoneHost hostOf(WidgetTester tester) {
 /// and a busy PC slows them all down (s9c).
 const _waitLimit = Duration(seconds: 5);
 
+/// This phone's own player of a host that plays here: a host in "Show on this
+/// device" has none (m12 bug 1108a rule A), and asking this one for it fails
+/// the test rather than reading a null.
+ControllerClient ownClientOf(PhoneHost host) {
+  final client = host.client;
+  if (client == null) fail('This host has no own player: ${host.service.shareView}');
+  return client;
+}
+
 /// The test's clock one wait step moves, after [_hostWorkStep] of real time:
 /// the host's file work, its socket and its own player's link need the event
 /// loop between the pumps, and the screens' timers need the pumps between them.
@@ -136,9 +146,14 @@ Future<void> until(WidgetTester tester, bool Function() done, String Function() 
 Future<void> untilShown(WidgetTester tester, Finder finder, String what) =>
     until(tester, () => finder.evaluate().isNotEmpty, () => '$what did not show within ${_waitLimit.inSeconds} s');
 
-/// Waits until this phone's own player has paired on its host's link.
-Future<void> hostReady(WidgetTester tester, PhoneHost host) =>
-    until(tester, () => host.client.snapshot.isConnected, () => 'The own player did not pair: ${host.client.snapshot}');
+/// Waits until this phone's own player has paired on its host's link; a host
+/// that shows the game on this device pairs none (m12 bug 1108a rule A), so
+/// asking this of it fails the test.
+Future<void> hostReady(WidgetTester tester, PhoneHost host) => until(
+  tester,
+  () => ownClientOf(host).snapshot.isConnected,
+  () => 'The own player did not pair: ${ownClientOf(host).snapshot}',
+);
 
 /// Waits for the round's "Get ready" beat to end (m12-host-touch rule 3): the
 /// round steps, and the pad's presses reach it, only then. The phone app asks
@@ -160,9 +175,26 @@ Future<PhoneHost> enterHostMode(WidgetTester tester, {HostChoice choice = HostCh
   await tester.tap(find.byKey(key));
   await settle(tester);
   final host = hostOf(tester);
-  await hostReady(tester, host);
+  if (choice == HostChoice.onPhone) {
+    // This phone's own player is what its screens wait for (m12 §3).
+    await hostReady(tester, host);
+  } else {
+    // "Show on this device" has no own player to wait for: the host's start is
+    // what its screens wait on (m12 bug 1108a).
+    await until(tester, () => host.started, () => 'The host did not start');
+  }
   await settle(tester);
   return host;
+}
+
+/// Stops the host from its chip, as a player does (s7d2 Q1): "Stop hosting",
+/// then the host route pops and the Connect screen is back under it.
+Future<void> stopHosting(WidgetTester tester, PhoneHost host) async {
+  await tester.tap(find.byKey(const Key('hostChip')));
+  await settle(tester);
+  await tester.tap(find.byKey(const Key('stopHosting')));
+  await until(tester, () => !host.live, () => 'The host did not stop');
+  await settle(tester);
 }
 
 /// The host phone's own player on the join screen's [side] panel, where it

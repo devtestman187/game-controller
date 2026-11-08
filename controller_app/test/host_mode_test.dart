@@ -95,7 +95,7 @@ void main() {
     await tester.tap(find.byKey(const Key('joinStart')));
     await untilShown(tester, find.byType(party.PuzzleScreen), 'The puzzle screen');
     final puzzle = tester.widget<party.PuzzleScreen>(find.byType(party.PuzzleScreen));
-    expect(puzzle.teams.keys, [host.client.identity.controllerId]);
+    expect(puzzle.teams.keys, [ownClientOf(host).identity.controllerId]);
     expect(puzzle.teams.values.map((s) => s.name), ['left']);
     await settle(tester);
     expect(tester.getRect(find.byType(party.PuzzleScreen)), const Rect.fromLTWH(0, 0, 852, 393));
@@ -166,8 +166,10 @@ void main() {
     // The bar over the picker is the full one on this route too
     // (m12-host-touch rule 1, both host routes): the host's chip with its code
     // and Diagnostics. With no pad there is nothing to configure, so no mode
-    // and no Settings (C34).
-    expect(find.byKey(const Key('playerBadge')), findsOneWidget);
+    // and no Settings (C34), and no player badge: this phone is the screen,
+    // not a player (m12 bug 1108a rule B).
+    expect(find.byKey(const Key('playerBadge')), findsNothing);
+    expect(find.text('P1'), findsNothing);
     expect(find.byTooltip('Diagnostics'), findsOneWidget);
     expect(find.byKey(const Key('modeMenu')), findsNothing);
     expect(find.byKey(const Key('connectionDot')), findsNothing);
@@ -233,7 +235,7 @@ void main() {
     // Back on the Connect screen: the own player let go, the search again.
     expect(find.byType(HostScreen), findsNothing);
     expect(find.byType(ConnectScreen), findsOneWidget);
-    expect(host.client.snapshot.status, ClientStatus.idle);
+    expect(ownClientOf(host).snapshot.status, ClientStatus.idle);
     expect(app.discovery.restarts, restarts + 1);
 
     // Hosting again starts a new host, on the same providers.
@@ -258,7 +260,7 @@ void main() {
     // Back on the Connect screen: the own player let go, the search again.
     expect(find.byType(HostScreen), findsNothing);
     expect(find.byType(ConnectScreen), findsOneWidget);
-    expect(host.client.snapshot.status, ClientStatus.idle);
+    expect(ownClientOf(host).snapshot.status, ClientStatus.idle);
     expect(app.discovery.restarts, restarts + 1);
 
     // Hosting again starts a new host, on the same providers.
@@ -276,7 +278,7 @@ void main() {
     // own player before the host asks it.
     expect(hostContainer(tester).read(ratingPromptProvider), isNull);
 
-    final asked = host.service.gameHost.askRating(host.client.identity.controllerId, id: 'r1', game: 'arena');
+    final asked = host.service.gameHost.askRating(ownClientOf(host).identity.controllerId, id: 'r1', game: 'arena');
     expect(asked, isTrue, reason: 'the own player is connected');
     await until(
       tester,
@@ -419,9 +421,9 @@ void main() {
     // Start pauses the round: the pad goes away with the finger still on it.
     // It comes from the own player's client, since the pad's own sends go to
     // the fake from here.
-    host.client.sendInput({ControllerButton.start});
+    ownClientOf(host).sendInput({ControllerButton.start});
     await untilShown(tester, find.byKey(const Key('pauseMenu')), 'The pause menu');
-    host.client.sendInput({});
+    ownClientOf(host).sendInput({});
     await until(tester, () => hostPhase(tester) == party.RoundPhase.none, () => 'The phase did not stop');
     await until(tester, () => app.client.inputs.length > sent + 1, () => 'The pad let go of nothing');
     // A frame more: the pad is told to go away by the same change, and goes on
