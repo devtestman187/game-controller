@@ -670,6 +670,7 @@ Milestone 13 adds the touches that make the game fun, completes the puzzle set, 
 - Countdown, celebration, last-15-seconds warning, hint glow, best-times board (T15).
 - Nicknames (C20).
 - Results on joined phones (owner, Nov 8, 2026, from the m12 build 5 test: "When the host wins a game, the remote doesn't see a win or lose screen"). When a phone-hosted round ends, each joined phone keeps the final board and shows a results card over it: the result from its own player's side ("You win!", "You lose", "Draw"; "Done!" with the time on one board), each side's time or pieces placed, and "Waiting for the host to pick what's next." The card goes when the host starts the next round or leaves the results. The host sends the result with `view_end` (an optional field, so a host one build older sends none and the phone goes back to its pad as in M12); docs/protocol.md lists the field.
+- The Arena waits for its players (owner, Nov 8, 2026, from the m12 build 5 test: on "Show on this device", picking the Arena went straight to the 3-2-1 countdown with nobody joined). The Arena has one side, so no two-sided lobby: a "Waiting for players" card over the Arena shows the pairing code and each phone that joins, and each player presses A to say they're ready (marked on the card). The countdown starts once at least one player has joined and every joined player is ready. On a TV and on a phone host alike.
 - The remaining puzzles, for 9 in total (3 per level), with tuned starting angles.
 - Sounds and optional music, listed in CREDITS.md.
 - A playtest round with outside testers, including at least one child around 8 and at least one group playing on phones only, using a short observation sheet in /docs alongside the metrics.
@@ -682,6 +683,7 @@ Milestone 13 adds the touches that make the game fun, completes the puzzle set, 
 
 - [ ] Every puzzle on every level can be finished within 2 minutes by an adult, and the Easy ones by an 8-year-old after one practice round.
 - [ ] The countdown, celebration, warning, hint glow and new-record screen all appear at the right moments.
+- [ ] Picking the Arena with nobody joined shows the waiting card, not the countdown; the countdown starts only when every joined player has pressed A.
 - [ ] In a phone-hosted match, every joined phone shows its own results card when the round ends (win, lose, draw and a solo round), and it goes when the host picks what's next.
 - [ ] Best times survive restarting the TV app or the host phone's app, and show nicknames.
 - [ ] At least 3 outside households install from the stores and play, at least one of them on phones only, and their sessions appear in the report.
