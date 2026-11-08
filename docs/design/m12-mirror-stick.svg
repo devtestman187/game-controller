@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 760" font-family="Helvetica, Arial, sans-serif">
+  <defs>
+    <clipPath id="scr"><rect width="852" height="393" rx="32"/></clipPath>
+    <!-- 852x393 iPhone, stick mode, a 1v1 Shape Race: you placed the crown. -->
+    <g id="base">
+      <rect x="-12" y="-12" width="876" height="417" rx="44" fill="#2a2d34"/>
+      <rect width="852" height="393" rx="32" fill="#12161d"/>
+      <g clip-path="url(#scr)">
+        <rect x="291" y="112" width="270" height="273" rx="8" fill="#232a36"/>
+        <circle cx="363" cy="254" r="52" fill="#2bb365"/>
+        <rect x="348" y="299" width="30" height="66" fill="none" stroke="#a0673d" stroke-width="2.5" stroke-dasharray="7 5"/>
+        <circle cx="503" cy="161" r="30" fill="none" stroke="#e8c13a" stroke-width="2.5" stroke-dasharray="7 5"/>
+        <polygon points="437,365 541,365 489,291" fill="none" stroke="#8a96a3" stroke-width="2.5" stroke-dasharray="7 5"/>
+        <rect x="259" y="8" width="335" height="96" rx="8" fill="#1d232d"/>
+        <polygon points="300,85 381,85 340,27" fill="#8a96a3"/>
+        <circle cx="430" cy="56" r="23" fill="#e8c13a"/>
+        <rect x="485" y="30" width="23" height="52" fill="#a0673d"/>
+        <!-- the left stick's disc, where the app draws it in stick mode -->
+        <circle cx="97.5" cy="189.5" r="81.5" fill="#ffffff" fill-opacity="0.05" stroke="#ffffff" stroke-opacity="0.14"/>
+        <circle cx="97.5" cy="189.5" r="34" fill="#ffffff" fill-opacity="0.09"/>
+        <circle cx="620" cy="320" r="68" fill="#ffffff" fill-opacity="0.05" stroke="#ffffff" stroke-opacity="0.12"/>
+        <circle cx="700" cy="120" r="30" fill="none" stroke="#c9a227" stroke-opacity="0.35" stroke-width="3"/>
+        <circle cx="655" cy="168" r="30" fill="none" stroke="#3a7bd5" stroke-opacity="0.35" stroke-width="3"/>
+        <circle cx="745" cy="168" r="30" fill="none" stroke="#ffffff" stroke-opacity="0.12" stroke-width="2"/>
+        <circle cx="700" cy="216" r="30" fill="none" stroke="#2bb365" stroke-opacity="0.35" stroke-width="3"/>
+        <rect x="24" y="12" width="40" height="28" rx="14" fill="#2d4d7a" fill-opacity="0.6"/>
+        <text x="44" y="31" font-size="14" fill="#cfd8e3" text-anchor="middle" fill-opacity="0.7">P1</text>
+        <circle cx="78" cy="26" r="5" fill="#2bb365" fill-opacity="0.6"/>
+        <rect x="92" y="12" width="66" height="28" rx="8" fill="none" stroke="#ffffff" stroke-opacity="0.15"/>
+        <text x="125" y="31" font-size="14" fill="#cfd8e3" fill-opacity="0.6" text-anchor="middle">4541</text>
+        <rect x="748" y="16" width="22" height="18" rx="4" fill="none" stroke="#ffffff" stroke-opacity="0.35"/>
+        <circle cx="796" cy="25" r="10" fill="none" stroke="#ffffff" stroke-opacity="0.35" stroke-width="2"/>
+        <rect x="818" y="16" width="22" height="18" rx="3" fill="none" stroke="#ffffff" stroke-opacity="0.35"/>
+        <circle cx="440" cy="200" r="10" fill="#4f9dff" stroke="#ffffff" stroke-width="2"/>
+        <text x="440" y="205" font-size="12" fill="#ffffff" text-anchor="middle">1</text>
+      </g>
+    </g>
+  </defs>
+
+  <rect width="680" height="760" fill="#ffffff"/>
+
+  <text x="20" y="28" font-size="17" fill="#222">Stick mode today: no mirror</text>
+  <text x="20" y="47" font-size="12" fill="#555">The mirror's corner would sit under the stick, so the count is all you get.</text>
+  <g transform="translate(20,62) scale(0.75)">
+    <use href="#base"/>
+    <text x="26" y="80" font-size="30" font-weight="bold" fill="#ffffff">1:31</text>
+    <text x="104" y="79" font-size="16" fill="#9aa4b2">You 1/4 ·</text>
+    <text x="180" y="79" font-size="16" fill="#ff9f40">Them 2/4</text>
+    <rect x="28" y="90" width="200" height="5" rx="2.5" fill="#323a47"/>
+    <rect x="28" y="90" width="133" height="5" rx="2.5" fill="#2bb365"/>
+  </g>
+
+  <text x="20" y="388" font-size="17" fill="#222">Recommended: the mirror beside the stick</text>
+  <text x="20" y="407" font-size="12" fill="#555">Same size as in D-pad mode, in the free gap between the stick and the board, under the clock.</text>
+  <g transform="translate(20,422) scale(0.75)">
+    <use href="#base"/>
+    <text x="26" y="80" font-size="30" font-weight="bold" fill="#ffffff">1:31</text>
+    <text x="104" y="79" font-size="16" fill="#9aa4b2">You 1/4 ·</text>
+    <text x="180" y="79" font-size="16" fill="#ff9f40">Them 2/4</text>
+    <rect x="28" y="90" width="200" height="5" rx="2.5" fill="#323a47"/>
+    <rect x="28" y="90" width="133" height="5" rx="2.5" fill="#2bb365"/>
+    <!-- the mirror: their board at 0.259 scale, x 205-275, y 112-183 -->
+    <rect x="203" y="110" width="74" height="75" rx="4" fill="#232a36" stroke="#ff9f40" stroke-width="2"/>
+    <circle cx="223.6" cy="148.8" r="13.5" fill="none" stroke="#ffffff" stroke-opacity="0.25" stroke-width="1.1" stroke-dasharray="2.5 2"/>
+    <polygon points="242.8,177.5 269.8,177.5 256.3,158.4" fill="none" stroke="#ffffff" stroke-opacity="0.25" stroke-width="1.1" stroke-dasharray="2.5 2"/>
+    <circle cx="259.9" cy="124.7" r="7.8" fill="#e8c13a"/>
+    <rect x="219.8" y="160.4" width="7.8" height="17.1" fill="#a0673d"/>
+    <!-- their dot, carrying the mountain and turning it -->
+    <polygon points="235.7,147.5 256.7,147.5 246.2,132.5" fill="#8a96a3" transform="rotate(-18 246.2 141)"/>
+    <circle cx="246.2" cy="141" r="7" fill="#ff9f40" stroke="#ffffff" stroke-width="1.2"/>
+  </g>
+
+  <text x="20" y="742" font-size="11" fill="#666">To scale on an 852×393 iPhone. The stick disc is where the app draws it (r 81.5, ends at x 179); the mirror starts at x 203.</text>
+</svg>
