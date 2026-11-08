@@ -219,6 +219,89 @@ void main() {
     });
   });
 
+  // m12 bug 1108g: the host says why a slot ended, so its log can say whether
+  // the phone came back or the round went on without it.
+  group('a slot that ends says why', () {
+    const t = TestTransport.webSocket;
+    final grace = const Duration(milliseconds: 300);
+
+    test('a phone back within the grace says back', () async {
+      final server = await startHost(t);
+      final host = ServerGameHost(server, awayGrace: _grace);
+      addTearDown(host.dispose);
+      host.startView(_start);
+      final one = await join(server, t, newClient(t));
+      await playersUntil(host, (p) => p.length == 1);
+      final ended = host.awayEnded.first;
+      one.disconnect();
+      await playersUntil(host, (p) => p.any((x) => x.away));
+      await join(server, t, one);
+
+      final end = await ended.timeout(const Duration(seconds: 5));
+      expect(end.reason, AwayEnd.back);
+      expect(end.player.id, 'phone-1', reason: 'the slot\'s player, as the round last saw them');
+      expect(end.player.number, 1);
+      expect(end.player.away, isTrue, reason: 'the slot held them away');
+      expect(end.grace, _grace, reason: 'the grace the round waited');
+    });
+
+    test('a grace that runs out on its own says so, with its seconds', () async {
+      final server = await startHost(t);
+      final host = ServerGameHost(server, awayGrace: grace);
+      addTearDown(host.dispose);
+      host.startView(_start);
+      final one = await join(server, t, newClient(t));
+      await playersUntil(host, (p) => p.length == 1);
+      final ended = host.awayEnded.first;
+      one.disconnect();
+
+      final end = await ended.timeout(const Duration(seconds: 5));
+      expect(end.reason, AwayEnd.graceOver);
+      expect(end.player.number, 1);
+      expect(end.grace, grace, reason: 'the host says the grace it really held, 300 ms');
+      expect(host.players, isEmpty, reason: 'the round goes on without them');
+    });
+
+    test('Go on without them says so', () async {
+      final server = await startHost(t);
+      final host = ServerGameHost(server, awayGrace: _grace);
+      addTearDown(host.dispose);
+      host.startView(_start);
+      final one = await join(server, t, newClient(t));
+      await playersUntil(host, (p) => p.length == 1);
+      one.disconnect();
+      await playersUntil(host, (p) => p.any((x) => x.away));
+      final ended = host.awayEnded.first;
+
+      host.goOnWithout('phone-1');
+
+      final end = await ended.timeout(const Duration(seconds: 5));
+      expect(end.reason, AwayEnd.wentOnWithout);
+      expect(end.player.number, 1);
+      expect(host.players, isEmpty, reason: 'no wait for the timer');
+    });
+
+    test('the round being over ends every slot, and says so', () async {
+      final server = await startHost(t);
+      final host = ServerGameHost(server, awayGrace: _grace);
+      addTearDown(host.dispose);
+      host.startView(_start);
+      final one = await join(server, t, newClient(t));
+      final two = await join(server, t, newClient(t, id: 'phone-2'));
+      await playersUntil(host, (p) => p.length == 2);
+      one.disconnect();
+      two.disconnect();
+      await playersUntil(host, (p) => p.length == 2 && p.every((x) => x.away));
+      final ended = host.awayEnded.take(2).toList();
+
+      host.endView(_end);
+
+      final ends = await ended.timeout(const Duration(seconds: 5));
+      expect([for (final e in ends) e.reason], [AwayEnd.roundOver, AwayEnd.roundOver]);
+      expect([for (final e in ends) e.player.number], [1, 2]);
+    });
+  });
+
   group('the host\'s own player', () {
     const t = TestTransport.inProcess;
 

@@ -134,6 +134,46 @@ void main() {
     expect(logLines(log), contains('Round resumed: the host is back'));
   });
 
+  // m12 bug 1108g: the round had ended, so the host leaving paused nothing.
+  testWidgets('the host leaving on the results goes in the host log as a host leaving, not a pause', (tester) async {
+    final away = ValueNotifier(false);
+    final (fake, log) = await pumpLogged(tester, away: away);
+    await openSoloRound(tester, fake);
+    lockEveryPiece(tester);
+    await endRound(tester);
+    expect(find.text('Done!'), findsOneWidget, reason: 'the round is over');
+
+    away.value = true;
+    await tester.pump();
+    expect(logLines(log), contains('The host went away'));
+    expect(logLines(log), isNot(contains('Round paused: the host went away')));
+
+    away.value = false;
+    await tester.pump();
+    expect(logLines(log), contains('The host is back'));
+    expect(logLines(log), isNot(contains('Round resumed: the host is back')));
+  });
+
+  // A menu holds the round already: the host leaving pauses nothing new.
+  testWidgets('the host leaving with the pause menu open goes in the host log as a host leaving', (tester) async {
+    final away = ValueNotifier(false);
+    final (fake, log) = await pumpLogged(tester, away: away);
+    await openSoloRound(tester, fake);
+    await press(tester, fake, 'p1', GamepadButton.start);
+    await navigated(tester);
+    expect(find.byKey(const Key('pauseMenu')), findsOneWidget);
+    final before = logLines(log).length;
+
+    away.value = true;
+    await tester.pump();
+    expect(logLines(log), contains('The host went away'));
+    away.value = false;
+    await tester.pump();
+    expect(logLines(log), contains('The host is back'));
+    expect(logLines(log).where((line) => line.contains('host')), hasLength(2), reason: 'no pause lines for it');
+    expect(logLines(log).length, before + 2);
+  });
+
   testWidgets('a player who is away and back goes in the host log', (tester) async {
     final (fake, log) = await pumpLogged(tester);
     await openSoloRound(tester, fake);
@@ -145,5 +185,56 @@ void main() {
     fake.gameHost.away.remove('p1');
     await tester.pump(const Duration(milliseconds: 16));
     expect(logLines(log), contains('P1 back: the round goes on'));
+  });
+
+  // m12 bug 1108g rule 1: the log says when the round stopped waiting, so it
+  // never reads as a longer wait than it was.
+  testWidgets('a phone that stays away past the grace goes in the host log when its slot ends, and its return '
+      'later is only a return', (tester) async {
+    final log = LogBuffer();
+    final fake = await openRace(tester, overrides: [logProvider.overrideWithValue(log)]);
+    await holdSlot(tester, fake, 'p2');
+    await tester.pump(const Duration(milliseconds: 16));
+    expect(logLines(log), contains('P2 away: the round waits for them'));
+
+    // The host's grace timer ends the slot 30 s on: the round goes on without it.
+    fake.gameHost.graceOver('p2');
+    await tester.pump();
+    final grace = FakeGameHost.grace.inSeconds;
+    expect(logLines(log), contains('P2 didn\'t come back in $grace s: the round goes on without them'));
+    expect(logLines(log).where((line) => line.startsWith('P2')), hasLength(2), reason: 'away, then the grace out');
+    expect(find.byKey(const Key('awayCard')), findsNothing);
+
+    // The phone comes back later in the same round: the round wasn't waiting
+    // for it any more, so it is only back.
+    fake.state = withController(fake.state, phoneInfo('p2', 2));
+    fake.emit();
+    await tester.pump(const Duration(milliseconds: 16));
+    expect(logLines(log), contains('P2 back'));
+    expect(logLines(log), isNot(contains('P2 back: the round goes on')));
+  });
+
+  testWidgets('Go on without them goes in the host log once', (tester) async {
+    final log = LogBuffer();
+    final fake = await openRace(tester, overrides: [logProvider.overrideWithValue(log)]);
+    await holdSlot(tester, fake, 'p2');
+    await tester.pump(const Duration(milliseconds: 16));
+    expect(logLines(log), contains('P2 away: the round waits for them'));
+
+    await tester.tap(find.byKey(const Key('goOnWithout')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 16));
+    expect(logLines(log), contains('Go on without P2: the round goes on'));
+    expect(logLines(log).where((line) => line.startsWith('Go on without')), hasLength(1));
+    expect(
+      logLines(log),
+      isNot(
+        contains(
+          'P2 didn\'t come back in ${FakeGameHost.grace.inSeconds} s: '
+          'the round goes on without them',
+        ),
+      ),
+    );
+    expect(find.byKey(const Key('awayCard')), findsNothing);
   });
 }

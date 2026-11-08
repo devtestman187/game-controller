@@ -66,6 +66,28 @@ final class GamePlayer {
   int get hashCode => Object.hash(id, number, nickname, local, mode, simulated, away, ownPlayer);
 }
 
+/// Why a player's away slot ended (m12 bug 1108g): the round stopped waiting
+/// for a phone that dropped (m12 bug 1107d).
+enum AwayEnd {
+  /// The phone is back within the grace, so the round goes on with it.
+  back,
+
+  /// The host's grace ran out and the phone never came back: the round goes on
+  /// without the player.
+  graceOver,
+
+  /// Someone chose Go on without them: the round goes on without the player.
+  wentOnWithout,
+
+  /// The round is over: every slot ends with it.
+  roundOver,
+}
+
+/// One away player's slot ending (m12 bug 1108g): who, why, and the grace the
+/// host holds a dropped player's slot for. The host's log says the grace's real
+/// seconds from it.
+typedef AwayEnded = ({GamePlayer player, AwayEnd reason, Duration grace});
+
 /// Named delay stages (PRD v2 S7). Later hosts add their own (snapshot
 /// received, encode, decode, …), and results stay comparable.
 abstract final class LatencyStage {

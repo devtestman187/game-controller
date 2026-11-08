@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:protocol/protocol.dart';
 
 import '../abandon_signal.dart';
+import '../away_log.dart';
 import '../controls.dart';
 import '../host_presence.dart';
 import '../players_away.dart';
@@ -80,10 +81,10 @@ class _PausableState extends ConsumerState<Pausable> {
   /// holding what they hold now.
   final _startDown = <String, bool>{};
 
-  /// The numbers of the players whose phone has dropped and whose slot the
-  /// round still holds, so the log says when each one comes and goes (m12
-  /// bug 1107e).
-  final _awayNos = <int>{};
+  /// The log's lines about the phones the round waits for (m12 bug 1107e,
+  /// 1108g).
+  late final AwayLog _awayLog;
+  late final StreamSubscription<AwayEnded> _awayEnds;
   late final LogSink _log;
   late final ValueListenable<bool> _away;
   late final VoidCallback _awayChanged;
@@ -101,6 +102,10 @@ class _PausableState extends ConsumerState<Pausable> {
   void initState() {
     super.initState();
     _log = ref.read(logProvider).sink('host');
+    // The round's waits are logged as the host ends them, not a tick later
+    // (m12 bug 1108g).
+    _awayLog = AwayLog(_log);
+    _awayEnds = ref.read(hostServiceProvider).awayEnded.listen(_awayLog.ended);
     _away = ref.read(hostAwayProvider);
     _awayChanged = _noteHostAway;
     _away.addListener(_awayChanged);
@@ -121,6 +126,7 @@ class _PausableState extends ConsumerState<Pausable> {
   @override
   void dispose() {
     _away.removeListener(_awayChanged);
+    unawaited(_awayEnds.cancel());
     _timer.cancel();
     // The round is gone, and its phase with it: unless the screen that
     // replaced it (Play again) has said what its own round is (M10).
@@ -128,13 +134,14 @@ class _PausableState extends ConsumerState<Pausable> {
     super.dispose();
   }
 
+  /// The round is running: on, with no menu over it (m12 bug 1108g rule 2).
+  /// Only then does the host's own going away pause it, and only then does the
+  /// log say "Round paused" and "Round resumed".
+  bool get _running => widget.enabled && _pausedBy == null;
+
   /// The round stands still: the results, an open menu, the host app away or a
   /// phone the round waits for (m12 §2.10, bug 1107d).
-  bool get _stopped =>
-      !widget.enabled ||
-      _pausedBy != null ||
-      ref.read(hostAwayProvider).value ||
-      ref.read(playersAwayProvider).isNotEmpty;
+  bool get _stopped => !_running || ref.read(hostAwayProvider).value || ref.read(playersAwayProvider).isNotEmpty;
 
   /// The "Get ready" beat is still holding the round (m12-host-touch rule 3).
   bool get _onBeat => _readyMs > 0;
@@ -183,21 +190,18 @@ class _PausableState extends ConsumerState<Pausable> {
   }
 
   /// The host app went away or came back: the game pauses with it, without a
-  /// menu (m12 §2.10), and the log says which of the round's stops it was.
+  /// menu (m12 §2.10), and the log says which of the round's stops it was. A
+  /// round that isn't running (the results, an open menu) is no round to pause,
+  /// so there the log only says the host went and came back (m12 bug 1108g
+  /// rule 2).
   void _noteHostAway() {
-    _log(_away.value ? 'Round paused: the host went away' : 'Round resumed: the host is back');
-    _publish();
-  }
-
-  /// Notes the dropped phones whose slot the round holds, and their return.
-  void _noteAway(List<GamePlayer> players) {
-    for (final p in players) {
-      if (p.away) {
-        if (_awayNos.add(p.number)) _log('P${p.number} away: the round waits for them');
-      } else if (_awayNos.remove(p.number)) {
-        _log('P${p.number} back: the round goes on');
-      }
+    final away = _away.value;
+    if (_running) {
+      _log(away ? 'Round paused: the host went away' : 'Round resumed: the host is back');
+    } else {
+      _log(away ? 'The host went away' : 'The host is back');
     }
+    _publish();
   }
 
   /// Who may resume: the player who paused and Player 1, or anyone if
@@ -214,7 +218,7 @@ class _PausableState extends ConsumerState<Pausable> {
   void _tick() {
     if (!mounted) return;
     final host = ref.read(gameHostProvider);
-    _noteAway(host.players);
+    _awayLog.note(host.players);
     _beat();
     // A phone that dropped, or came back, stands the round still (1107d).
     _publish();

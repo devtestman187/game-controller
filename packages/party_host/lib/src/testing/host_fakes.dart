@@ -5,9 +5,7 @@ import 'package:protocol/protocol.dart';
 
 import '../host_service.dart';
 import '../host_view_state.dart';
-import '../session_uploader.dart';
-import '../stats_service.dart';
-import '../stats_state.dart';
+import 'fake_stats.dart';
 
 /// The fake host service (was `FakeHostController`): the test sets [state]
 /// and calls [emit]; its [gameHost] reads the players from that state.
@@ -27,6 +25,9 @@ class FakeHostService implements HostService {
 
   @override
   Stream<String> get gameSounds => gameHost.soundStream;
+
+  @override
+  Stream<AwayEnded> get awayEnded => gameHost.awayEnded;
 
   /// What the screens show; the test replaces it and calls [emit].
   @override
@@ -184,7 +185,15 @@ class FakeGameHost implements GameHost {
 
   final _changes = StreamController<List<GamePlayer>>.broadcast();
   final _sounds = StreamController<String>.broadcast();
+  final _awayEnds = StreamController<AwayEnded>.broadcast();
   final _clock = Stopwatch()..start();
+
+  /// Every away player's slot ending, as the host reports it (m12 bug 1108g).
+  Stream<AwayEnded> get awayEnded => _awayEnds.stream;
+
+  /// The grace the fake's host holds a slot for
+  /// ([ServerGameHost.defaultAwayGrace]): what its ends say.
+  static const grace = ServerGameHost.defaultAwayGrace;
 
   /// The names passed to [playSound], in order.
   Stream<String> get soundStream => _sounds.stream;
@@ -241,7 +250,14 @@ class FakeGameHost implements GameHost {
   void goOnWithout(String playerId) {
     goOnWithouts.add(playerId);
     // The round goes on without them: the phone leaves the roster.
-    if (away.remove(playerId)) fake.removeController(playerId);
+    if (away.contains(playerId)) _end(playerId, AwayEnd.wentOnWithout);
+  }
+
+  /// The host's grace running out for [id]'s phone (m12 bug 1108g): the slot
+  /// ends, so the round goes on without the player and the phone leaves the
+  /// roster.
+  void graceOver(String id) {
+    if (away.contains(id)) _end(id, AwayEnd.graceOver);
   }
 
   /// Puts [id]'s phone away or back, as the host holds its slot for a while
@@ -250,6 +266,22 @@ class FakeGameHost implements GameHost {
   void setAway(String id, {required bool isAway}) {
     final changed = isAway ? away.add(id) : away.remove(id);
     if (changed) _changes.add(players);
+  }
+
+  /// Tells the away-ended listeners that [id]'s slot ended, then drops the
+  /// phone: the host reports the end of the slot it held, before the roster
+  /// without it.
+  void _end(String id, AwayEnd reason) {
+    _report(id, reason);
+    away.remove(id);
+    fake.removeController(id);
+  }
+
+  /// Reports [id]'s slot ending for [reason], with the player as the slot holds
+  /// them (away).
+  void _report(String id, AwayEnd reason) {
+    final player = players.where((p) => p.id == id).firstOrNull;
+    if (player != null) _awayEnds.add((player: player, reason: reason, grace: grace));
   }
 
   @override
@@ -312,71 +344,5 @@ class FakeGameHost implements GameHost {
     locals[p.id] = p;
     _changes.add(players);
     return p;
-  }
-}
-
-/// Analytics for the tests: [summaries] are the saved sessions, [consents]
-/// every answer to the consent prompt.
-class FakeStats implements StatsService {
-  FakeStats({bool? consent}) : _state = StatsState(consent: consent, uploadConfigured: true);
-
-  StatsState _state;
-  final _changes = StreamController<StatsState>.broadcast();
-
-  /// The saved sessions, as [sessions] reports them.
-  final summaries = <Map<String, Object?>>[];
-
-  /// Every answer given to the consent prompt.
-  final consents = <bool>[];
-
-  /// How many times the sessions were exported.
-  int exports = 0;
-
-  /// Replaces the state and tells the listeners.
-  void emit(StatsState s) {
-    _state = s;
-    _changes.add(s);
-  }
-
-  @override
-  StatsState get state => _state;
-
-  @override
-  Stream<StatsState> get changes => _changes.stream;
-
-  @override
-  Future<List<SessionFile>> sessions() async => [
-    for (final (i, s) in summaries.indexed) SessionFile('/sessions/s$i.json', s),
-  ];
-
-  @override
-  Future<String> exportAll() async {
-    exports++;
-    return 'D:/Downloads/thumb-party-sessions';
-  }
-
-  @override
-  void setConsent(bool share) {
-    consents.add(share);
-    emit(_state.copyWith(consent: share));
-  }
-
-  @override
-  Future<void> uploadNow() async {}
-}
-
-/// An uploader that keeps what it was given and can be told to fail.
-class FakeUploader implements SessionUploader {
-  /// Every summary uploaded successfully, in order.
-  final uploaded = <Map<String, Object?>>[];
-
-  /// While set, every upload fails with this message.
-  String? failWith;
-
-  @override
-  Future<String?> upload(Map<String, Object?> summary) async {
-    if (failWith != null) return failWith;
-    uploaded.add(summary);
-    return null;
   }
 }

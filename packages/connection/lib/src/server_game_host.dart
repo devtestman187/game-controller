@@ -112,6 +112,11 @@ class ServerGameHost implements GameHost {
   /// Everything games report, for the analytics collector.
   Stream<GameRecord> get records => _records.stream;
 
+  /// Every away player's slot ending, with the reason (m12 bug 1108g): the
+  /// host's log says whether a phone came back, its grace ran out, or the round
+  /// went on without it.
+  Stream<AwayEnded> get awayEnded => _away.ends;
+
   /// Sounds the games ask for, by event name (S5): the app plays them.
   Stream<String> get sounds => _sounds.stream;
 
@@ -352,7 +357,7 @@ class ServerGameHost implements GameHost {
 
   @override
   void goOnWithout(String playerId) {
-    if (_away.end(playerId)) _checkPlayers();
+    if (_away.end(playerId, AwayEnd.wentOnWithout)) _checkPlayers();
   }
 
   /// A viewer that just (re)paired mid-game gets the view's start, its latest

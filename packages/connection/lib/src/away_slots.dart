@@ -13,6 +13,8 @@ import 'host_server.dart';
 /// player that dropped while a round runs, frees it when the phone is back or
 /// the grace is over, and tells the viewers with `player_away` and
 /// `player_back` (m12 §2). The slot's timer is owned here, from [_hold] on.
+/// Every ending goes to [ends] with its reason, for the host's log (m12 bug
+/// 1108g).
 final class AwaySlots {
   AwaySlots({
     required this.server,
@@ -42,6 +44,11 @@ final class AwaySlots {
   final void Function() onEnded;
 
   final _slots = <String, _Slot>{};
+  final _ends = StreamController<AwayEnded>.broadcast();
+
+  /// Every slot that ends, with the reason (m12 bug 1108g): the host's log says
+  /// when a round stops waiting for a phone, and how the wait ended.
+  Stream<AwayEnded> get ends => _ends.stream;
 
   /// The players of the last check that could drop: a phone or a tablet, not
   /// a local player and not a simulated controller.
@@ -68,26 +75,28 @@ final class AwaySlots {
       if (roundRunning && !live.containsKey(id) && !_slots.containsKey(id)) _hold(player);
     }
     for (final id in _slots.keys.toList()) {
-      if (live.containsKey(id)) end(id);
+      if (live.containsKey(id)) end(id, AwayEnd.back);
     }
     _live = live;
   }
 
-  /// Ends [id]'s slot: the player is back, the grace is over, or the round goes
-  /// on without them. True when the player was away. While a view runs, the
-  /// viewers hear it.
-  bool end(String id) {
+  /// Ends [id]'s slot for [reason]: the player is back, the grace is over, or
+  /// the round goes on without them. True when the player was away. While a
+  /// view runs, the viewers hear it, and [ends] says why either way.
+  bool end(String id, AwayEnd reason) {
     final slot = _slots.remove(id);
-    slot?.timer.cancel();
-    if (slot != null && hasView()) _tellBack(id);
-    return slot != null;
+    if (slot == null) return false;
+    slot.timer.cancel();
+    if (hasView()) _tellBack(id);
+    if (!_ends.isClosed) _ends.add((player: slot.player, reason: reason, grace: grace));
+    return true;
   }
 
   /// Frees every slot: the round is over. Its view has ended by then, so no
   /// viewer is told.
   void endAll() {
     for (final id in _slots.keys.toList()) {
-      end(id);
+      end(id, AwayEnd.roundOver);
     }
   }
 
@@ -116,6 +125,7 @@ final class AwaySlots {
       slot.timer.cancel();
     }
     _slots.clear();
+    unawaited(_ends.close());
   }
 
   /// Holds a slot for [player], away, until [end] or [grace] runs out, and
@@ -123,7 +133,7 @@ final class AwaySlots {
   void _hold(GamePlayer player) {
     final at = nowMs();
     final timer = Timer(grace, () {
-      if (end(player.id)) onEnded();
+      if (end(player.id, AwayEnd.graceOver)) onEnded();
     });
     final slot = _Slot(
       GamePlayer(id: player.id, number: player.number, nickname: player.nickname, mode: player.mode, away: true),

@@ -73,6 +73,11 @@ abstract class HostService {
   /// Sounds the games ask for by name (PRD v2 S5), for the sound player.
   Stream<String> get gameSounds;
 
+  /// Every away player's slot ending, with the reason (m12 bug 1108g): the
+  /// host's log says whether the phone came back, its grace ran out, or the
+  /// round went on without it.
+  Stream<AwayEnded> get awayEnded;
+
   /// After the app was in the background (m12 §2.10): restarts the server on
   /// its port if it stopped listening, and the advertising. Does nothing
   /// when both run.
@@ -293,6 +298,9 @@ class LiveHostService implements HostService {
 
   @override
   Stream<String> get gameSounds => _gameHost.sounds;
+
+  @override
+  Stream<AwayEnded> get awayEnded => _gameHost.awayEnded;
 
   @override
   void addSimulatedController() {
