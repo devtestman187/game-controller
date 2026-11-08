@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:flutter/material.dart' show WidgetState;
 import 'package:flutter/painting.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:toy_look/toy_look.dart';
@@ -56,6 +57,43 @@ void main() {
           ratio,
           greaterThanOrEqualTo(_minimumRatio),
           reason: '${palette.name}: ${entry.key} is ${ratio.toStringAsFixed(2)}:1',
+        );
+      }
+    });
+  }
+
+  for (final palette in ToyPalette.values) {
+    test('${palette.name}: a switch stands out on the screen and on paper, on and off, at 3:1', () {
+      // WCAG's 3:1 for the parts of a control (owner, Nov 8, 2026: the
+      // Sunny/Night switch was hard to see). The track is seen either by its
+      // fill or by its outline, so the stronger of the two must reach 3:1
+      // against every surface a switch sits on; the thumb, against its track.
+      final colors = ToyColors.of(palette);
+      final theme = toyTheme(ToyLook.build(palette: palette, tv: false)).switchTheme;
+      for (final selected in [false, true]) {
+        final states = {if (selected) WidgetState.selected};
+        final state = selected ? 'on' : 'off';
+        final track = theme.trackColor!.resolve(states)!;
+        final outline = theme.trackOutlineColor!.resolve(states)!;
+        final thumb = theme.thumbColor!.resolve(states)!;
+        expect(theme.trackOutlineWidth!.resolve(states), greaterThanOrEqualTo(2), reason: '$state: outline width');
+        for (final surface in {
+          'background': colors.background,
+          'backgroundGlow': colors.backgroundGlow,
+          'paper': colors.paper,
+        }.entries) {
+          final ratio = math.max(contrastRatio(track, surface.value), contrastRatio(outline, surface.value));
+          expect(
+            ratio,
+            greaterThanOrEqualTo(3),
+            reason: '$state: track on ${surface.key} is ${ratio.toStringAsFixed(2)}:1',
+          );
+        }
+        final thumbRatio = contrastRatio(thumb, track);
+        expect(
+          thumbRatio,
+          greaterThanOrEqualTo(3),
+          reason: '$state: thumb on track is ${thumbRatio.toStringAsFixed(2)}:1',
         );
       }
     });

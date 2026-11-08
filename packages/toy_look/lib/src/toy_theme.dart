@@ -38,11 +38,16 @@ ThemeData toyTheme(ToyLook look) {
       contentTextStyle: look.type.body.copyWith(color: colors.ink),
     ),
     listTileTheme: ListTileThemeData(textColor: colors.onBackground, iconColor: colors.onBackground),
+    // A toy switch, easy to see on the sky, the grape and on paper (owner,
+    // Nov 8, 2026: the switch was hard to see): an ink outline round the
+    // track, an ink thumb, and a paper track when off, a good one when on.
     switchTheme: SwitchThemeData(
-      thumbColor: WidgetStatePropertyAll(colors.good),
+      thumbColor: WidgetStatePropertyAll(colors.ink),
       trackColor: WidgetStateProperty.resolveWith(
-        (states) => states.contains(WidgetState.selected) ? colors.ink : colors.targetNeutral,
+        (states) => states.contains(WidgetState.selected) ? colors.good : colors.paper,
       ),
+      trackOutlineColor: WidgetStatePropertyAll(colors.ink),
+      trackOutlineWidth: WidgetStatePropertyAll(look.sizes.outlineWidth),
     ),
     sliderTheme: SliderThemeData(
       activeTrackColor: colors.good,

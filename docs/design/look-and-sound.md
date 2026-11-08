@@ -67,7 +67,7 @@ Names are by meaning, not colour, so a later change moves every use at once. The
 
 Sizes: outline width 3 px on menus (4 on TV), a piece's outline 0.8 world units; shadow offset 4 px down and 3 px right (0.9 world units in a game); corner radius 16 px for cards, full pill for buttons; spacing scale 4, 8, 12, 16, 24, 32 px (project-notes.md's spacing scale). Type: Fredoka 600 for titles (TV 56, phone 32), buttons (TV 28, phone 18) and the clock; Nunito 700 for body (TV 22, phone 15). TV sizes are for reading from 3 metres.
 
-Contrast: every text and background pair in the tokens is checked at 4.5:1 or better, in both palettes, by a test in `toy_look` (the PRD's acceptance test), so a palette change that breaks it fails.
+Contrast: every text and background pair in the tokens is checked at 4.5:1 or better, in both palettes, by a test in `toy_look` (the PRD's acceptance test), so a palette change that breaks it fails. Controls are held to WCAG's 3:1 for their parts: a switch has an ink-outlined track (paper when off, `good` when on) and an ink thumb, and the test checks it against the background, the glow and paper, on and off (owner, Nov 8, 2026: the first switch was hard to see).
 
 ## 4. Parts
 
