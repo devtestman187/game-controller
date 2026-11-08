@@ -98,18 +98,28 @@ class MatchPainter extends CustomPainter {
   /// §0.7c): on a panel over the board's corner when the box has no room, in
   /// the form [PuzzleCamera.hudPlace] picked otherwise. The bar is green while
   /// the clock has time left and red while it warns.
+  ///
+  /// Where the box has the room, the other side's mirror sits at its top left
+  /// with the clock area to its right, and the count it plays is "Them n/N"
+  /// in orange (m12-opponent-mirror rules 2 and 5).
   void _hud(Canvas canvas, Size size, SplitLayout layout) {
     final text = phoneHud(s, camera.side);
-    final placement = PuzzleCamera.hudPlace(layout, camera, size, (score: text.score, short: text.short));
+    final scores = (score: text.score, short: text.short);
+    final mirror = PuzzleCamera.mirrorPlace(layout, camera, size, split: s.split, text: scores);
+    final shown = mirror == null ? text : phoneHud(s, camera.side, mirrored: true);
+    // Measured on the sides' names, the widest the short form gets ("Right 3/6"
+    // is longer than "Them 3/6"), so the area is the same either way.
+    final placement = PuzzleCamera.hudPlace(layout, camera, size, scores, mirror: mirror?.rect);
     final rect = placement.rect;
     final board = camera.side == null ? s.boards.first : _boardOf(s, camera.side!);
     final gap = size.height * PuzzleCamera.hudLineGapFraction;
     final bar = size.height * PuzzleCamera.hudBarFraction;
+    if (mirror != null) _mirror(canvas, layout, mirror);
     if (placement.form == HudForm.corner) {
       final panel = rect.inflate(gap);
       canvas.drawRRect(RRect.fromRectAndRadius(panel, Radius.circular(gap)), Paint()..color = _hudPanel);
     }
-    _hudTexts(canvas, placement, text, size);
+    _hudTexts(canvas, placement, shown, size, mirrored: mirror != null);
     if (_barFraction(board.timeLeftMs) case final frac?) {
       final warn = board.warning && board.phase == PuzzlePhase.playing;
       canvas.drawRect(
@@ -119,15 +129,27 @@ class MatchPainter extends CustomPainter {
     }
   }
 
+  /// The other side's board, drawn small at the HUD's left (m12-opponent-
+  /// mirror rule 1): their side's snapshot, in their side's world.
+  void _mirror(Canvas canvas, SplitLayout layout, ({Rect rect, double scale}) mirror) => MirrorPainter(
+    puzzle,
+    _boardOf(s, _otherSide(camera.side!)),
+    layout.left,
+    rect: mirror.rect,
+    scale: mirror.scale,
+  ).paint(canvas);
+
   /// The clock and the score in [placement]'s form: one line, or the clock
   /// above the score — in the short form, the score's short lines, one each
-  /// (m12-phone-layout §0.7c).
+  /// (m12-phone-layout §0.7c). With [mirrored], the last short line is the
+  /// other side's count, drawn in their orange (m12-opponent-mirror rule 4).
   void _hudTexts(
     Canvas canvas,
     ({Rect rect, HudForm form}) placement,
     ({String clock, String score, List<String> short}) text,
-    Size size,
-  ) {
+    Size size, {
+    bool mirrored = false,
+  }) {
     final rect = placement.rect;
     final clock = size.height * PuzzleCamera.hudClockFraction;
     final score = size.height * PuzzleCamera.hudScoreFraction;
@@ -148,13 +170,14 @@ class MatchPainter extends CustomPainter {
     );
     // The one-line form has returned; the rest draw the score under the clock,
     // or the short lines in its place.
-    for (final (i, line) in (placement.form == HudForm.twoLines ? [text.score] : text.short).indexed) {
+    final lines = placement.form == HudForm.twoLines ? [text.score] : text.short;
+    for (final (i, line) in lines.indexed) {
       _text(
         canvas,
         line,
         Offset(rect.left, rect.top + clock + (i + 1) * gap + (i + 0.5) * score),
         score,
-        Colors.white,
+        mirrored && i == lines.length - 1 ? _them : Colors.white,
         align: TextAlign.left,
       );
     }
@@ -266,7 +289,15 @@ class MatchPainter extends CustomPainter {
 /// Right 3/6"), the camera's side first; a one-board match shows its count
 /// alone ("0 of 4 placed"); and a null [side] is the whole match, whose one
 /// HUD names both sides ("Left 2/4 · Right 3/6").
-({String clock, String score, List<String> short}) phoneHud(MatchSnapshot s, PuzzleSide? side) {
+///
+/// With [mirrored] the other side is the picture above the clock, so it is
+/// named "Them" ("You 2/4 · Them 3/6"), in the orange the mirror's frame and
+/// dot are drawn (m12-opponent-mirror rules 4 and 5).
+({String clock, String score, List<String> short}) phoneHud(
+  MatchSnapshot s,
+  PuzzleSide? side, {
+  bool mirrored = false,
+}) {
   final left = s.boards.first;
   final board = side == null ? left : _boardOf(s, side);
   final right = s.split ? s.boards[1] : null;
@@ -278,7 +309,8 @@ class MatchPainter extends CustomPainter {
     short = ['${_sideName(PuzzleSide.left)} ${count(left)}', '${_sideName(PuzzleSide.right)} ${count(right)}'];
   } else {
     final other = _otherSide(side);
-    short = ['You ${count(_boardOf(s, side))}', '${_sideName(other)} ${count(_boardOf(s, other))}'];
+    final name = mirrored ? 'Them' : _sideName(other);
+    short = ['You ${count(_boardOf(s, side))}', '$name ${count(_boardOf(s, other))}'];
   }
   final score = right == null ? '${left.placed} of ${left.pieces.length} placed' : short.join(' · ');
   return (clock: _clock(board.timeLeftMs), score: score, short: short);

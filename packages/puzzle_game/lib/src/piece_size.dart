@@ -14,3 +14,16 @@
 /// `controller_app/test/puzzle_size_test.dart` fails when a puzzle or the
 /// layout shrinks a piece below the floor, so a regression can't go unnoticed.
 const double minPieceMm = 8.5;
+
+/// The smallest a piece may be drawn in the other side's mirror, in mm
+/// (m12-opponent-mirror rules 1 and 5). The mirror shows where they are and
+/// what they have placed, not what the shapes are, so a piece there only has
+/// to read as a mark: a quarter of the board's size is 2.13 mm for a piece at
+/// [minPieceMm], which is a smudge on a phone held at arm's length, and 2.2 mm
+/// is the smallest that reads. `PuzzleCamera.mirrorFraction` scales the mirror
+/// to keep it, and the mirror tests check it on both phones.
+///
+/// It follows [minPieceMm] the same way: the board's mm per unit is at least
+/// [minPieceMm] over the smallest piece's diameter, so the mirror's mm per
+/// unit is its fraction of the board's, and the piece cancels out.
+const double mirrorMinPieceMm = 2.2;

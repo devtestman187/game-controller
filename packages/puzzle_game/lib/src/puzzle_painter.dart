@@ -13,7 +13,6 @@ class PuzzlePainter extends CustomPainter {
   /// The clock and the count along the top (the split screen draws its own).
   final bool hud;
 
-  static const _board = Color(0xFF242B36);
   static const _tray = Color(0xFF1C222B);
   static const _outlineGrey = Color(0xFF9AA5B1);
 

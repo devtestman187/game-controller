@@ -1,15 +1,13 @@
 import 'dart:io';
 import 'dart:math';
-import 'dart:typed_data';
-import 'dart:ui' as ui;
 
 import 'package:connection/connection.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:protocol/protocol.dart';
 import 'package:puzzle_game/puzzle_game.dart';
 
+import 'support/frames.dart';
 import 'support/match_helpers.dart' as helpers;
 
 Puzzle load(String id) => Puzzle.parse(File('puzzles/$id.json').readAsStringSync());
@@ -40,45 +38,6 @@ PuzzleSnapshot busySnapshot() {
   p.pos = const Offset(60, 40);
   g.update(0.016, {'p1': still});
   return g.snapshot();
-}
-
-/// Draws [child] in a box of [box] inside a window of [window], and returns
-/// the box's pixels at [pixelRatio].
-Future<(int, int, Uint8List)> capture(
-  WidgetTester tester,
-  Widget child, {
-  required Size window,
-  required Size box,
-  double pixelRatio = 1,
-}) async {
-  tester.view.physicalSize = window;
-  tester.view.devicePixelRatio = 1;
-  addTearDown(tester.view.reset);
-  final key = GlobalKey();
-  await tester.pumpWidget(
-    MaterialApp(
-      home: Center(
-        child: RepaintBoundary(
-          key: key,
-          child: SizedBox.fromSize(size: box, child: child),
-        ),
-      ),
-    ),
-  );
-  final boundary = key.currentContext!.findRenderObject()! as RenderRepaintBoundary;
-  final image = (await tester.runAsync(() => boundary.toImage(pixelRatio: pixelRatio)))!;
-  final bytes = (await tester.runAsync(() => image.toByteData(format: ui.ImageByteFormat.rawRgba)))!;
-  return (image.width, image.height, bytes.buffer.asUint8List());
-}
-
-/// The average difference per colour channel, 0 to 255.
-double difference(Uint8List a, Uint8List b) {
-  expect(a.length, b.length);
-  var sum = 0;
-  for (var i = 0; i < a.length; i++) {
-    sum += (a[i] - b[i]).abs();
-  }
-  return sum / a.length;
 }
 
 void main() {
@@ -246,15 +205,16 @@ void main() {
           window: box,
           box: box,
         );
+        final layout = SplitLayout.of(puzzle, m.seed, target: LayoutTarget.phones);
         final hud = phoneHud(s, PuzzleSide.left);
-        final rect = PuzzleCamera.hudPlace(SplitLayout.of(puzzle, m.seed, target: LayoutTarget.phones), camera, box, (
-          score: hud.score,
-          short: hud.short,
-        )).rect;
+        final scores = (score: hud.score, short: hud.short);
+        // The house's race has room for the other side's mirror, which pushes
+        // the clock area right (m12-opponent-mirror rule 5).
+        final mirror = PuzzleCamera.mirrorPlace(layout, camera, box, split: true, text: scores);
+        final rect = PuzzleCamera.hudPlace(layout, camera, box, scores, mirror: mirror?.rect).rect;
         // Just inside the bar's left end, halfway down its height.
         final y = (rect.bottom - box.height * PuzzleCamera.hudBarFraction / 2).round();
-        final i = 4 * (y * width + rect.left.round() + 1);
-        return bytes[i] << 16 | bytes[i + 1] << 8 | bytes[i + 2];
+        return pixel(bytes, width, rect.left.round() + 1, y);
       }
 
       expect(await barColour(phonesMatch(), 65), 0x43D17A);

@@ -2,6 +2,7 @@ import 'dart:math';
 import 'dart:ui';
 
 import 'match.dart';
+import 'piece_size.dart';
 import 'puzzle.dart';
 import 'split_layout.dart';
 
@@ -139,9 +140,57 @@ final class PuzzleCamera {
   static const hudMarginPx = 8.0;
   static const hudWorldGapPx = 8.0;
 
+  /// The distance between the other side's mirror and the clock area to its
+  /// right, in px (m12-opponent-mirror rule 5).
+  static const hudMirrorGapPx = 8.0;
+
   /// The distance from the board's top-left corner to the clock area when it
   /// has no room beside the world, in px (§0.7c's last resort).
   static const hudCornerMarginPx = 8.0;
+
+  /// The mirror's size against the board's drawn size (m12-opponent-mirror
+  /// rules 1 and 5): a quarter of the board is what the owner's sketch shows,
+  /// but a quarter of a board at the size check's floor draws its smallest
+  /// piece at 2.13 mm, under the 2.2 mm that reads, so the mirror draws at
+  /// [mirrorMinPieceMm] over [minPieceMm] — 0.26 of the board, and every piece
+  /// at 2.2 mm or more.
+  static const mirrorFraction = mirrorMinPieceMm / minPieceMm;
+
+  /// Where the other side's mirror goes in [box], and the px per world unit it
+  /// draws their board at, or null where a phone draws none (m12-opponent-
+  /// mirror rules 1–6): a one-board match ([split] false — solo or a team),
+  /// the whole match (a tablet), the screen (the TV), a box whose spare width
+  /// only fits the HUD's short form or its corner over the board (a narrow
+  /// phone), and a box too narrow for the HUD that the mirror brings.
+  ///
+  /// The mirror is their board alone, at [hudMarginPx] from the box's left and
+  /// [hudTopFraction] of its height down, under the top bar; their board's
+  /// aspect, so their picture is not stretched. [text] is the HUD the phone
+  /// draws without a mirror, whose form says whether the box has the room.
+  static ({Rect rect, double scale})? mirrorPlace(
+    SplitLayout layout,
+    PuzzleCamera camera,
+    Size box, {
+    required bool split,
+    required ({String score, List<String> short}) text,
+  }) {
+    if (!split || camera.side == null || layout.target != LayoutTarget.phones) return null;
+    if (hudPlace(layout, camera, box, text).form case HudForm.short || HudForm.corner) return null;
+    final board = layout.left.board;
+    final scale = place(layout, camera, box, camera.side!).scale * mirrorFraction;
+    final rect = Rect.fromLTWH(hudMarginPx, box.height * hudTopFraction, board.width * scale, board.height * scale);
+    final room = _hudRoom(layout, camera, box, rect).spare;
+    if (room < box.height * _hudSize(HudForm.short, text).width) return null;
+    return (rect: rect, scale: scale);
+  }
+
+  /// Where the clock area starts in [box] and the width it has, right of the
+  /// world and of [mirror] when the box shows one (m12-opponent-mirror rule 5).
+  static ({double left, double spare}) _hudRoom(SplitLayout layout, PuzzleCamera camera, Size box, Rect? mirror) {
+    final world = place(layout, camera, box, PuzzleSide.left);
+    final left = mirror == null ? hudMarginPx : mirror.right + hudMirrorGapPx;
+    return (left: left, spare: world.origin.dx - hudWorldGapPx - left);
+  }
 
   /// Where the clock area goes in [box] and which form it takes
   /// (m12-phone-layout §0.7c): beside the world, at [hudTopFraction] of the
@@ -151,22 +200,28 @@ final class PuzzleCamera {
   /// HUD may draw, so the form is picked by the real score; the clock counts
   /// for "10:00" whatever it says now. [rect] is the area the texts and the
   /// bar go in, in px.
+  ///
+  /// With a [mirror] to its left the area starts at the mirror's right edge
+  /// and draws the short form (m12-opponent-mirror rule 5): the mirror takes
+  /// the width one line needs, and the short form puts "You 2/4" and
+  /// "Them 3/6" on a line each, which is what fits beside it.
   static ({Rect rect, HudForm form}) hudPlace(
     SplitLayout layout,
     PuzzleCamera camera,
     Size box,
-    ({String score, List<String> short}) text,
-  ) {
-    final world = place(layout, camera, box, PuzzleSide.left);
-    final spare = world.origin.dx - hudMarginPx - hudWorldGapPx;
+    ({String score, List<String> short}) text, {
+    Rect? mirror,
+  }) {
+    final room = _hudRoom(layout, camera, box, mirror);
     final top = box.height * hudTopFraction;
-    const forms = [HudForm.oneLine, HudForm.twoLines, HudForm.short];
+    final forms = mirror == null ? const [HudForm.oneLine, HudForm.twoLines, HudForm.short] : const [HudForm.short];
     for (final form in forms) {
       final size = _hudSize(form, text);
-      if (spare >= box.height * size.width) {
-        return (rect: Rect.fromLTWH(hudMarginPx, top, box.height * size.width, box.height * size.height), form: form);
+      if (room.spare >= box.height * size.width) {
+        return (rect: Rect.fromLTWH(room.left, top, box.height * size.width, box.height * size.height), form: form);
       }
     }
+    final world = place(layout, camera, box, PuzzleSide.left);
     final board = Rect.fromLTWH(
       world.origin.dx + layout.left.board.left * world.scale,
       world.origin.dy + layout.left.board.top * world.scale,

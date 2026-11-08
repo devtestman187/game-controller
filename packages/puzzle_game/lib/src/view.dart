@@ -12,6 +12,7 @@ import 'snapshot.dart';
 import 'split_layout.dart';
 
 part 'match_painter.dart';
+part 'mirror_painter.dart';
 part 'puzzle_painter.dart';
 
 /// Draws a puzzle from a [PuzzleSnapshot] (PRD v2 S8) into the box it's
@@ -82,3 +83,12 @@ const _right = Color(0xFF43D17A);
 /// the board's top-left corner (m12-phone-layout §0.7c): 55% black, so the
 /// board stays visible behind the texts.
 const _hudPanel = Color(0x8C000000);
+
+/// The board's panel, on the split screen and in the other side's mirror
+/// (m12-opponent-mirror rule 1).
+const _board = Color(0xFF242B36);
+
+/// The orange that marks the other side (m12-opponent-mirror rule 4): the
+/// mirror's frame, their dot and their count. Player 2's colour, so the other
+/// side of a race reads as one of the pads whatever numbers it holds.
+const _them = Color(0xFFFFA040);
