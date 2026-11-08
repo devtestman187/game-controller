@@ -61,7 +61,7 @@ void main() {
           _ => 'dpad',
         };
         testWidgets('in $mode mode on $device no control moves at 20%, 60% or 100% over a game', (tester) async {
-          await inMode(tester, mode, screen: screen, tablet: tablet);
+          final app = await inMode(tester, mode, screen: screen, tablet: tablet);
           final scope = containerOf(tester);
           final shown = scope.read(gameShownProvider.notifier);
           final settings = scope.read(controlsSettingsProvider.notifier);
@@ -80,6 +80,10 @@ void main() {
           shown.set(false);
           await settle(tester);
           expect(controlRects(tester), before, reason: 'controller mode');
+          // The pad is back with the game gone, and tilt with it (m12 fix-f2):
+          // a reading so the sensors have nothing left waiting.
+          app.motion.hold(const Vec3(1, 0, 0), samples: 50);
+          await tester.pump(const Duration(milliseconds: 100));
           expect(tester.takeException(), isNull);
         });
       }

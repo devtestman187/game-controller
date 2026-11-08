@@ -103,6 +103,10 @@ class GyroSettingsNotifier extends Notifier<GyroSettings> {
 
 final gyroProvider = NotifierProvider<GyroNotifier, GyroState>(GyroNotifier.new);
 
+/// What keeps tilt from sending (m12 §2.10, m12-host-touch rule 2): the app
+/// left the foreground, or this phone's pad is not on screen.
+enum _TiltHold { background, noRound }
+
 /// Gyro mode: reads both motion sensors, turns tilt into stick values and
 /// sends them (with the buttons) about 60 times a second.
 class GyroNotifier extends Notifier<GyroState> {
@@ -121,18 +125,64 @@ class GyroNotifier extends Notifier<GyroState> {
   LandscapeSide _lastSide = LandscapeSide.left;
   StreamSubscription<Vec3>? _sideSub;
   int _otherSideReadings = 0;
-  bool _paused = false;
+
+  /// What keeps tilt from sending (m12 §2.10, m12-host-touch rule 2): the app
+  /// left the foreground, or this phone's pad is not on screen. The sensors
+  /// run only while neither holds.
+  final _holds = <_TiltHold>{};
 
   @override
   GyroState build() {
     _processor.settings = ref.read(gyroSettingsProvider);
     ref.listen(gyroSettingsProvider, (_, s) => _processor.settings = s);
+    // The pad can already be away when gyro mode starts: a host phone on its
+    // menus has nothing to tilt for (m12 fix-f2).
+    if (!ref.read(padOnScreenProvider)) _holds.add(_TiltHold.noRound);
+    ref.listen(padOnScreenProvider, (_, onScreen) => _followPad(onScreen));
     ref.onDispose(() {
       _stopSensors();
       _stopSideTracking();
     });
-    _startSideTracking();
+    if (_holds.isEmpty) _startSideTracking();
     return const GyroState();
+  }
+
+  /// The pad came back or went away (m12-host-touch rule 2, m12 fix-f2): tilt
+  /// sends only while it is on screen.
+  void _followPad(bool onScreen) => onScreen ? unawaited(_release(_TiltHold.noRound)) : _hold(_TiltHold.noRound);
+
+  /// Tilt stops for [hold] (m12 §2.10, m12-host-touch rule 2): the sensors go
+  /// with it and the stick is centered. The reason stays until it is released,
+  /// so the app coming back while the pad is away starts nothing.
+  void _hold(_TiltHold hold) {
+    _stopSideTracking();
+    if (!_holds.add(hold)) return;
+    _stopSensors();
+    _centerLater();
+  }
+
+  /// Centers the stick once the sensors have stopped. A hold can begin from
+  /// the pad's phase, which widgets follow while they build, and a provider
+  /// can't be written then (m12 fix-f2): the write goes a microtask later.
+  void _centerLater() => Future.microtask(() {
+    if (!ref.mounted || state.mode != PadMode.gyro) return;
+    state = state.copyWith(x: 0, y: 0);
+  });
+
+  /// [hold] is over: with the last one gone the sensors start again, keeping
+  /// the calibration.
+  Future<void> _release(_TiltHold hold) async {
+    if (!_holds.remove(hold) || _holds.isNotEmpty) return;
+    _startSideTracking();
+    if (state.mode != PadMode.gyro) return;
+    if (!await _startSensors()) return;
+    // A hold can come back while the first reading is awaited (the round's
+    // phase goes with its menus): it keeps tilt off (m12 fix-f2).
+    if (_holds.isEmpty) {
+      _startOutput();
+    } else {
+      _stopSensors();
+    }
   }
 
   /// Keeps track of which landscape side the phone is held in, even in D-pad
@@ -202,7 +252,13 @@ class GyroNotifier extends Notifier<GyroState> {
     log(
       'Gyro mode on (landscape ${_lastSide.name}, up ${_estimator.up}), sensors every ${sensorPeriod.inMilliseconds} ms',
     );
-    _startOutput();
+    if (_holds.isEmpty) {
+      _startOutput();
+    } else {
+      // The pad is not on screen (m12-host-touch rule 2): the mode is on, and
+      // the sensors wait for it.
+      _stopSensors();
+    }
     if (save) _saveMode(PadMode.gyro);
     return true;
   }
@@ -256,24 +312,13 @@ class GyroNotifier extends Notifier<GyroState> {
     ref.read(logProvider).add('gyro', 'Calibrated at ${tiltOf(up, side)}');
   }
 
-  /// The app left the foreground, or the host phone's pad went away with the
-  /// round (m12-host-touch): stop the sensors and center the stick.
-  void pause() {
-    _stopSideTracking();
-    if (state.mode != PadMode.gyro || _paused) return;
-    _paused = true;
-    _stopSensors();
-    state = state.copyWith(x: 0, y: 0);
-  }
+  /// The app left the foreground (m12 §2.10): stop the sensors and center the
+  /// stick.
+  void pause() => _hold(_TiltHold.background);
 
-  /// Back in the foreground, or the pad back with the round: start again,
-  /// keeping the calibration.
-  Future<void> resume() async {
-    _startSideTracking();
-    if (state.mode != PadMode.gyro || !_paused) return;
-    _paused = false;
-    if (await _startSensors()) _startOutput();
-  }
+  /// Back in the foreground (m12 §2.10): start again, keeping the calibration,
+  /// unless the pad is still away outside a round (m12-host-touch rule 2).
+  Future<void> resume() => _release(_TiltHold.background);
 
   Future<bool> _startSensors() async {
     final sensors = ref.read(motionSensorsProvider);

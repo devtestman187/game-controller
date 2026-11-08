@@ -91,9 +91,10 @@ typedef HostWait = ({HostWaitKind kind, int? secondsLeft, int sinceMs, List<Away
 /// them. The host's own wait comes first whenever it and a player's meet.
 ///
 /// A host back, a new view, the end of the view or an [ClientStatus.idle]
-/// client ends them all; a reconnected link ends only the one the drop
-/// started, so an away message keeps its countdown until the host says it is
-/// back.
+/// client ends them all. So does a link that comes back: a host that accepts
+/// a connection is not away (m12 fix-f2), and one that still runs a round
+/// sends its view again. An away message that arrives after the reconnect
+/// starts its own wait, countdown and all.
 final hostWaitProvider = NotifierProvider<HostWaitNotifier, HostWait?>(HostWaitNotifier.new);
 
 class HostWaitNotifier extends Notifier<HostWait?> {
@@ -153,8 +154,16 @@ class HostWaitNotifier extends Notifier<HostWait?> {
   }
 
   void _onClientState(ClientSnapshot? previous, ClientSnapshot next) {
+    // Every ping brings a snapshot while the link is up, so only the step
+    // from down to up is a reconnect: it is what ends a host's wait.
+    final cameBack = next.isConnected && !(previous?.isConnected ?? false);
     if (next.isConnected) {
       _dropped = null;
+      // The host answered, so it is not away: a `host_away` whose `host_back`
+      // went nowhere while the link was down can't outlive the link (m12
+      // fix-f2). A host that still runs a round sends its view again, and one
+      // that is away sends a new `host_away`.
+      if (cameBack) _away = null;
     } else if (next.status == ClientStatus.idle) {
       // The player left, from Stop or Leave game: nothing is waited for, and
       // the next thing they see is the Connect screen (m12-joined-view §0.3).

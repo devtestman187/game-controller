@@ -171,6 +171,73 @@ void main() {
       await settle(tester);
       expect(find.byKey(const Key('waitingCard')), findsNothing);
     });
+
+    // m12 fix-f2, R3 finding 1: a host that hid its app mid-round sent
+    // `host_away`; its `host_back` went nowhere while this phone's link was
+    // down, and a phone that pairs back into no round is sent no view_start.
+    testWidgets('a missed host_back ends with the link: no card and no game when no view comes back', (tester) async {
+      final app = await joined(tester);
+      app.client.hostAway(30);
+      await settle(tester);
+      expect(find.text('Waiting for the host to come back'), findsOneWidget);
+
+      // The link drops, the round ends before the phone pairs back, and the
+      // host has nothing to start again.
+      app.client.emit(ClientSnapshot(status: ClientStatus.reconnecting, target: tv));
+      await settle(tester);
+      app.client.emit(connected);
+      await settle(tester);
+
+      expect(find.byKey(const Key('waitingCard')), findsNothing, reason: 'a host that answers is not away');
+      expect(find.text('The host has left'), findsNothing);
+      expect(find.byKey(const Key('arena')), findsNothing, reason: 'the round ended while the phone was away');
+    });
+
+    testWidgets('a missed host_back does not outlive the link: a view that still runs comes back alone', (
+      tester,
+    ) async {
+      final app = await joined(tester);
+      app.client.hostAway(30);
+      await settle(tester);
+      app.client.emit(ClientSnapshot(status: ClientStatus.reconnecting, target: tv));
+      await settle(tester);
+      app.client.emit(connected);
+      await settle(tester);
+      expect(find.byKey(const Key('waitingCard')), findsNothing, reason: 'the host that answered is not away');
+      expect(find.byKey(const Key('arena')), findsNothing, reason: 'no view has come back yet');
+
+      // The host still runs the round, so it sends the start again (1107d Q3).
+      app.client.viewStart(arenaStart());
+      await settle(tester);
+      app.client.viewFrame(arenaFrame(1));
+      await settle(tester);
+
+      expect(find.byKey(const Key('arena')), findsOneWidget);
+      expect(find.byKey(const Key('waitingCard')), findsNothing);
+      expect(find.text('Waiting for the host to come back'), findsNothing);
+    });
+
+    testWidgets('a host_away that arrives after the reconnect starts the wait again', (tester) async {
+      final app = await joined(tester);
+      app.client.hostAway(30);
+      await settle(tester);
+      app.client.emit(ClientSnapshot(status: ClientStatus.reconnecting, target: tv));
+      await settle(tester);
+      app.client.emit(connected);
+      await settle(tester);
+      expect(find.byKey(const Key('waitingCard')), findsNothing, reason: 'the link is back, so the host is too');
+
+      // Away again on the new link: the countdown runs from this message.
+      app.client.nowMs += 2000;
+      app.client.hostAway(20);
+      await settle(tester);
+      expect(find.text('Waiting for the host to come back'), findsOneWidget);
+      expect(find.text('The game goes on if they\'re back in 20 s'), findsOneWidget);
+
+      app.client.hostBack();
+      await settle(tester);
+      expect(find.byKey(const Key('waitingCard')), findsNothing);
+    });
   });
 
   group('a player away (m12 bug 1107d)', () {

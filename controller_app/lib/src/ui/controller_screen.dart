@@ -91,18 +91,14 @@ class _ControllerScreenState extends ConsumerState<ControllerScreen> with Widget
 
   /// The round started, stopped or started again (m12-host-touch rules 1, 2):
   /// the pad is built only while a round runs, so a finger held on it never
-  /// sends its release. The pad lets go of every button instead, and gyro mode
-  /// stops sending by itself. A frame later: the results can end the round
-  /// while they build, and a pad's state changed then would rebuild it there.
+  /// sends its release. The pad lets go of every button instead; gyro mode
+  /// follows the pad by itself ([padOnScreenProvider], m12 fix-f2). A frame
+  /// later: the results can end the round while they build, and a pad's state
+  /// changed then would rebuild it there.
   void _notePhase() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      if (_phase?.value == party.RoundPhase.none) {
-        ref.read(padProvider.notifier).releaseAll();
-        ref.read(gyroProvider.notifier).pause();
-      } else {
-        unawaited(ref.read(gyroProvider.notifier).resume());
-      }
+      if (_phase?.value == party.RoundPhase.none) ref.read(padProvider.notifier).releaseAll();
     });
   }
 

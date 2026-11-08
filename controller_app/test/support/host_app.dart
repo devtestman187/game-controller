@@ -36,12 +36,13 @@ Future<void> loadPuzzles() async {
 /// the host's own inputs, its folders in a temp folder, and fakes for the
 /// advertiser, the sound player and the screen-on adapter. [advertiser] is the
 /// fake advertising is recorded on, [sounds] the fake the sounds are counted
-/// on; [extra] overrides more, after these, so a test can replace the host's
-/// builder.
+/// on, [saved] the settings saved before the launch; [extra] overrides more,
+/// after these, so a test can replace the host's builder.
 Future<TestApp> pumpHostApp(
   WidgetTester tester, {
   bool tablet = false,
   Size screen = const Size(852, 393),
+  Map<String, Object> saved = const {},
   party_test.FakeAdvertiser? advertiser,
   party_test.FakeSoundPlayer? sounds,
   List<Override> extra = const [],
@@ -57,6 +58,7 @@ Future<TestApp> pumpHostApp(
     tester,
     tablet: tablet,
     screen: screen,
+    saved: saved,
     extra: [
       ...phoneHostOverrides(directories: TempHostDirectories(dir)),
       party.advertiserProvider.overrideWithValue(advertiser ?? party_test.FakeAdvertiser()),

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:party_host/party_host.dart' as party;
 import 'package:protocol/protocol.dart';
 
 import '../pad.dart';
@@ -8,10 +9,38 @@ import '../phone_metrics.dart';
 import '../sticks.dart';
 import 'connection.dart';
 import 'feedback.dart';
+import 'game_feedback.dart';
 import 'haptics.dart';
 import 'metrics.dart';
 
 final padProvider = NotifierProvider<PadNotifier, PadInput>(PadNotifier.new);
+
+/// Whether this phone's pad is on screen (m12-host-touch rules 1, 2): a host
+/// phone builds its pad only while its round's phase is not
+/// [party.RoundPhase.none], and every other phone's pad is always there. It is
+/// the rule tilt follows, the one input that sends by itself (m12 fix-f2).
+///
+/// Only a host phone has a phase to follow: [gameShownProvider] is on from the
+/// moment this phone hosts until it stops, as its host route is. The phase is
+/// a [party.RoundPhaseSignal] in a provider, so its changes are followed here
+/// rather than watched.
+final padOnScreenProvider = NotifierProvider<PadOnScreenNotifier, bool>(PadOnScreenNotifier.new);
+
+class PadOnScreenNotifier extends Notifier<bool> {
+  @override
+  bool build() {
+    final hosting = ref.watch(gameShownProvider);
+    final phase = ref.watch(party.roundPhaseProvider);
+    if (!hosting) return true;
+    void update() {
+      if (ref.mounted) state = phase.value != party.RoundPhase.none;
+    }
+
+    phase.addListener(update);
+    ref.onDispose(() => phase.removeListener(update));
+    return phase.value != party.RoundPhase.none;
+  }
+}
 
 /// The pad's input: tracks fingers, sends every change to the TV and plays a
 /// tick for every press, release and direction change.
