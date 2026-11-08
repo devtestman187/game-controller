@@ -1,0 +1,11 @@
+job: m12 bug 1107d B G4 — the round pauses while a player is away; the host's away card
+stop: after G4.
+read: docs/briefs/m12/bug-1107d-g1-plan.md §1 (Pause), §4, job B (yours; Claude approved, answers in bug-1107d-a1.md) · docs/briefs/m12/bug-1107d-a1-report.md (landed: `GamePlayer.away`, `goOnWithout`; a slot is held only while a round runs) · docs/briefs/m12/bug-1107e-fix-report.md (landed just before you: back on the results, pause logging) · packages/party_host/lib/src/{providers,host_presence}.dart · packages/party_host/lib/src/ui/{pause_menu,puzzle_screen,game_screen,controller_menus}.dart · packages/party_host/lib/src/testing/host_fakes.dart · packages/game_kit/lib/src/game_session.dart · packages/party_host/test (pause_menu_test, puzzle_screen_test)
+
+do: the plan's job B: `playersAwayProvider`; `Pausable` pauses while anyone is away (same pause as the host's lock: no steps, no clock, no frames, no catch-up on resume); a new `ui/away_card.dart` over the game on the host's screen: one line per away player ("P2 is away", "The game goes on if they're back in N s"), one **Go on without them** button (calls `goOnWithout` for every away player) and **End round** (the menu's Quit path, `quit`). The card takes the menu controls like the pause dialog, so the host phone's touch, a remote and the other phones' pads all work it. No Start menu while someone is away. The countdown comes from the slot's start on the host clock; when a slot ends by itself the round resumes.
+tests (each failing first): the plan's B list; also: a player back within the grace resumes the round with the clock where it stopped; the round resumes at once when the grace runs out; End round lands on the picker (1107e's rule); the host's own lock and a player away at once: the host-away pause wins and nothing double-counts.
+in the report: test counts before and after, the files changed, the card's exact text.
+rules: no lib file over 400 · no change in packages/connection or controller_app · tools/review.sh: no FAIL on your lines · write only inside this job's folder.
+allow: docs/briefs/m12/bug-1107d-b-report.md · packages/party_host · packages/game_kit · packages/puzzle_game · tv_test_app/lib · tv_test_app/test
+check: format analyze host puzzle tv
+report: docs/briefs/m12/bug-1107d-b-report.md
