@@ -110,7 +110,7 @@ v2 adds these to v1's C1 to C13.
 | C17 | Touch metrics recorded on the phone for each input mode: presses per control, empty taps and their positions, near misses, slide-offs, rapid repeated taps, simultaneous touches, stick and tilt behaviour. Details are in Analytics requirements | M9 |
 | C18 | Metrics sent to the TV over the existing connection in small batches, and buffered on the phone while disconnected | M9 |
 | C19 | A "How did the controls feel?" prompt after a game: three faces plus optional tags (buttons too small, laggy, hard to steer, rotation hard). One tap, skippable, shown at most once every few games | M9 |
-| C20 | Optional player nickname (up to 10 characters) in settings, shown on the TV and on its best-times board. It never leaves the TV | M13 |
+| C20 | Optional player nickname (up to 10 characters) in settings, shown on the TV and on its best-times board. It never leaves the TV | M14 |
 | C21 | Haptic patterns for the new puzzle events (snap, wrong, help, tick, drop-ready), each with its own intensity setting like v1's four events | M10, M11 |
 | C22 | Store-ready builds: the new name (Thumb Party) and ID, release signing, version numbers from the tag, icon, privacy policy link in settings, and the "Allow apps from unknown sources" note removed from the docs | M8 |
 | C23 | "Try without a TV" demo screen that shows the controls responding with no host connected, for app reviewers and new testers checking their phone works | M8 |
@@ -136,13 +136,25 @@ v2 adds these to v1's T1 to T10.
 | T12 | Puzzle game for 1 player (M10), then 2, 3 and 4 players (M11), as described in Puzzle game design | M10, M11 |
 | T13 | Join screen: players press A to join and left or right to choose a side or team. Difficulty is chosen with the remote or Player 1's controller | M11 |
 | T14 | Results screen with winner, times, pieces placed, and Rematch, Change teams and Back options | M11 |
-| T15 | Countdown, celebration, last-15-seconds warning, hint glow, best-times board | M13 |
+| T15 | Countdown, celebration, last-15-seconds warning, hint glow, best-times board | M14 |
 | T16 | Playtest settings screen with every tuning value in the puzzle design (tolerances, speeds, delays, time limit), saved on the TV, with Reset to defaults | M10 |
 | T17 | Analytics collection: receives phone metrics, adds TV-side metrics (latency, game events), writes one summary per session | M9 |
 | T18 | Stats screen: summary per session and per input mode, and export of the session files | M9 |
 | T19 | Consent prompt on first launch and a setting to change it. Opt-in upload of session summaries when allowed, queued while offline | M9 |
 | T20 | Store-ready builds: the new name (Thumb Party TV) and ID, AAB for Play's Android TV track, versioned Windows release zip on GitHub Releases, privacy policy link | M8 |
 | T21 | The whole TV app works from a controller, like the remote: the D-pad or left stick moves the focus, A selects, B goes back. A player can leave a game from the phone (for example Start, then Quit) and then use every screen: the game picker, the puzzle list, Puzzle settings, Stats, Settings and the test tools. Owner's request after the M10 device test: "I should be able to control the full TV app using the controller." The puzzle results screen already works this way (m10.2) | M11 |
+
+## Look and sound requirements
+
+These apply to the TV app, the host phone and joined phones alike. The design is in docs/design/look-and-sound.md.
+
+| ID | Requirement | Milestone |
+| --- | --- | --- |
+| L1 | One look package: the palette (including the player colours), outlines, shadows, corners, spacing, the font and the Material theme are defined once and used by every app and game. Game rules never refer to them | M13 |
+| L2 | "Toy Box Toon" games: Shape Race (board, pieces, tray, HUD, phone strip, mirror, results) and the Arena drawn with bright colours, bold rounded outlines, soft shadows and cel shading | M13 |
+| L3 | Every menu, card and screen in the same look, on the TV and on phones, with an easy-to-see focus highlight for controller navigation | M13 |
+| L4 | A toon shader on game pieces and backgrounds, with a drawn fallback that looks right without it, and an effects setting (on or off) | M13 |
+| L5 | Lobby music (looping), countdown and player-joined sounds, a mute switch and a volume setting, saved with the other settings | M13 |
 
 ## Analytics requirements
 
@@ -352,13 +364,13 @@ The main limit on other TV platforms is that most of their apps can make outgoin
 
 | ID | Requirement | Milestone |
 | --- | --- | --- |
-| P1 | Protocol spec in docs/protocol.md, covering discovery and its TXT records, pairing, tokens, heartbeats, close codes, every message and field, timing and throttling rules, and versioning. It grows from today's docs/architecture.md, is updated in every milestone that touches the protocol, and is published with the tester guide in M13 | M9, M13 |
+| P1 | Protocol spec in docs/protocol.md, covering discovery and its TXT records, pairing, tokens, heartbeats, close codes, every message and field, timing and throttling rules, and versioning. It grows from today's docs/architecture.md, is updated in every milestone that touches the protocol, and is published with the tester guide in M14 | M9, M14 |
 | P2 | Capabilities: `hello` and `welcome` list what each side supports (for example `metrics`, `layout`, `status`, `haptics:snap`). New messages stay additive, because unknown types are already ignored. The version number only changes for a breaking change. A host never sends a controller a message it hasn't listed | M9 |
 | P3 | Game host interface: one pure-Dart interface in packages/connection that every game and TV screen uses for players joining and leaving (with number, colour and nickname), each player's gamepad state, haptics, layouts, the status panel and latency. Our games use nothing else, so the interface is the template for future engine kits | M9 (Arena), M10 (Puzzle) |
 | P4 | Standard gamepad mapping: every input mode maps to one Xbox-style gamepad state (A, B, X, Y, LB, RB, Select, Start, D-pad, two sticks), plus extras such as raw tilt. Gyro maps to the left stick, and D-pad mode's buttons map to the same names. Documented in the spec, so a bridge or engine kit can present the phone as a normal gamepad | M9 |
 | P5 | Game-defined controls: a `layout` message lets the game set, for each player, the modes allowed (with the default), the buttons used, a short label for each (for example A "Pick up", X "Rotate ⟲"), and the buttons hidden. The phone shows the labels and dims or hides unused buttons. The player still chooses among the allowed modes | M10 |
 | P6 | Phone status panel: a `status` message shows a small panel on the phone with a short text, one simple shape with a colour and angle, and a progress bar. It is limited in size and sent at most 10 times a second. In the puzzle it shows the held piece and the time left | M10 |
-| P7 | Conformance check: `sim_controller --check` runs the spec's required exchanges (pairing, heartbeats, input, haptics, capabilities, layout and status) against any host and prints pass or fail, so a future engine kit can test itself | M13 |
+| P7 | Conformance check: `sim_controller --check` runs the spec's required exchanges (pairing, heartbeats, input, haptics, capabilities, layout and status) against any host and prints pass or fail, so a future engine kit can test itself | M14 |
 
 **Keeping the host independent of the TV**
 
@@ -447,7 +459,8 @@ Numbering continues from v1, so tags stay unique (m7 and later). Each milestone 
 | M10 | Puzzle game, 1 player, with game-defined controls | Proves the core feel of carrying, rotating and dropping before adding players, and is the first game to label the phone's buttons |
 | M11 | Puzzle game, 2 to 4 players, and the whole TV app from a controller | Adds sides, teams, big pieces and win rules on top of a proven core. The pause menu and join screen need controller menus anyway, so every screen gets them |
 | M12 | Phone-hosted play | Lets testers without a TV or PC play, in time for the outside playtest, once the game rules are settled |
-| M13 | Fun, content and the first outside playtest | Adds the extras, all 9 puzzles and tuning, and puts it in testers' hands |
+| M13 | Look and sound | Gives Shape Race, the Arena and every menu the "Toy Box Toon" look, with music and volume, before outside testers' first impression |
+| M14 | Fun, content and the first outside playtest | Adds the extras, all 9 puzzles and tuning, and puts it in testers' hands |
 
 The Apple and Google account sign-ups should start during M7, because verification can take several days.
 
@@ -656,14 +669,44 @@ Milestone 12 lets a group play with only their phones. One phone hosts, the othe
 - [ ] The session summary records the host as a phone and each player's screen (host phone or joined phone), and the report can compare them with TV play.
 - [ ] Phones still join a TV and a PC as before, and nothing in M7 to M11 regresses.
 
-## Milestone 13: Fun, content and the first outside playtest
+## Milestone 13: Look and sound
 
-Milestone 13 adds the touches that make the game fun, completes the puzzle set, and puts the game in outside testers' hands.
+Milestone 13 gives the games and menus a bright, cartoony "Toy Box Toon" look and finishes the sound: Shape Race, the Arena and every menu, card and screen on the TV app, the host phone and the joined phones. Owner, Nov 8, 2026: "I want the new look and feel applied to the shape race game as all the game menus." It was first noted in project-notes.md as a milestone between M12 and M13; the design is in docs/design/look-and-sound.md.
+
+**Deployable builds**
+
+- Controller: the new look on every screen (connect, settings, host start, the game view, menus and cards), the pad's controls restyled at their current sizes, music, and the mute and volume settings.
+- TV app: the new look on Shape Race, the Arena and every menu, music, and the mute and volume settings.
+
+**Scope**
+
+- Mock-ups first: the owner reviews mock-ups of the look (Shape Race's board and HUD, the Arena, a menu, the join screen, a card and the results) and approves them before any code changes.
+- One look package used by every app (L1): the palette, outlines, shadows, corners, spacing, the font and the Material theme live in one place, so a later change of look touches one package and never the game rules (review-rules.md row C1, code-health.md "Look-and-sound").
+- Shape Race in the new look (L2): the board, pieces, outlines and tray, the HUD, the phone view's top strip, the mirror, the results and the cards.
+- The Arena in the new look (L2), and the first place the toon shader is used.
+- Every menu and screen in the new look (L3): home and game picker, puzzle list, join screen, pause menu, results, settings, puzzle settings, stats, the host start sheet, and the away, waiting and host-away cards, on the TV and on phones. Controller navigation stays as it is, with a focus highlight that is easy to see from across the room.
+- The toon shader (L4) on game pieces and backgrounds, with a fallback that draws the same look without it, and a setting to turn effects off.
+- Sound (L5): the 3 extra sounds (lobby music on the join screen, looping; countdown; player joined), a mute switch and a volume setting, on the TV and on phones. Sounds are listed in CREDITS.md.
+- Fonts and any art are free to ship (OFL, CC0 or our own) and listed in CREDITS.md.
+
+**Acceptance tests**
+
+- [ ] The owner approved the mock-ups before implementation started.
+- [ ] Every screen in the design's screen list shows the new look on the TV app (Android TV and Windows), an Android phone, an iPhone and a tablet, and no colour, font or size is written outside the look package (a check fails on new ones).
+- [ ] Text and the focus highlight can be read from 3 metres on a TV, and text meets a 4.5:1 contrast ratio.
+- [ ] A 4-player Shape Race round keeps its frame rate with effects on: no more dropped frames than before on the Android TV, Windows, the host phone and a joined phone.
+- [ ] With effects off, or when a shader can't load, every screen still looks right, without the shader.
+- [ ] Lobby music loops on the join screen and stops when the round starts; the countdown and player-joined sounds play; mute and volume work and are saved, on the TV and on phones.
+- [ ] No game rule changed: every rules test passes unchanged.
+
+## Milestone 14: Fun, content and the first outside playtest
+
+Milestone 14 adds the touches that make the game fun, completes the puzzle set, and puts the game in outside testers' hands.
 
 **Deployable builds**
 
 - Controller: tick haptic, nickname setting.
-- TV app: all 9 puzzles, countdown, celebration, last-15-seconds warning, hint glow, best-times board and music, released to every tester group.
+- TV app: all 9 puzzles, countdown, celebration, last-15-seconds warning, hint glow, best-times board, released to every tester group.
 
 **Scope**
 
@@ -672,10 +715,10 @@ Milestone 13 adds the touches that make the game fun, completes the puzzle set, 
 - Results on joined phones (owner, Nov 8, 2026, from the m12 build 5 test: "When the host wins a game, the remote doesn't see a win or lose screen"). When a phone-hosted round ends, each joined phone keeps the final board and shows a results card over it: the result from its own player's side ("You win!", "You lose", "Draw"; "Done!" with the time on one board), each side's time or pieces placed, and "Waiting for the host to pick what's next." The card goes when the host starts the next round or leaves the results. The host sends the result with `view_end` (an optional field, so a host one build older sends none and the phone goes back to its pad as in M12); docs/protocol.md lists the field.
 - The Arena waits for its players (owner, Nov 8, 2026, from the m12 build 5 test: on "Show on this device", picking the Arena went straight to the 3-2-1 countdown with nobody joined). The Arena has one side, so no two-sided lobby: a "Waiting for players" card over the Arena shows the pairing code and each phone that joins, and each player presses A to say they're ready (marked on the card). The countdown starts once at least one player has joined and every joined player is ready. On a TV and on a phone host alike.
 - The remaining puzzles, for 9 in total (3 per level), with tuned starting angles.
-- Sounds and optional music, listed in CREDITS.md.
+- Sounds for the new moments (celebration, last-15-seconds warning, new record), listed in CREDITS.md. Music and volume come in M13.
 - A playtest round with outside testers, including at least one child around 8 and at least one group playing on phones only, using a short observation sheet in /docs alongside the metrics.
 - Tuning: adjust defaults from the playtest and the metrics, and record the final values in docs/decisions.md.
-- Final README updates, tester guide, and manual checklists for M7 to M13 in /docs/checklists.
+- Final README updates, tester guide, and manual checklists for M7 to M14 in /docs/checklists.
 - Protocol spec finished and published with the tester guide (P1) under CC BY 4.0, and `sim_controller --check` (P7). Code published for others to build on is under Apache 2.0, with LICENSE files added.
 - A short v3 recommendation in /docs choosing the platform path, based on the playtest, the metrics and tester requests.
 
@@ -708,8 +751,8 @@ v1's strategy still holds: logic is tested automatically, and anything about fee
 | 4-player layouts and load | Phones plus simulated controllers | M11 |
 | Snapshot encoding and size | Unit tests in each game package | M10 |
 | Phone hosting (cross-platform joins, delay, host drops, heat and battery) | Both test phones as hosts, with the other phone and simulated controllers joining | M12 |
-| Feel of rotation, carrying and haptics | Real phones, in all three modes | M10 to M13 |
-| Kid usability and fun | Playtests with an observation sheet, plus the metrics | M13 |
+| Feel of rotation, carrying and haptics | Real phones, in all three modes | M10 to M14 |
+| Kid usability and fun | Playtests with an observation sheet, plus the metrics | M14 |
 
 ## Risks, decisions, open questions and next steps
 
@@ -752,7 +795,7 @@ The largest new risk is store review and policy. Outside testing depends on two 
 - The time limit is 2 minutes on every level (a playtest setting). There are 3 levels with about 3 puzzles each.
 - v2 stays focused, but does the cheap platform groundwork: protocol spec, capabilities, game host interface, standard gamepad mapping, game-defined controls, status panel and a conformance check. v3 picks the platform path. Bluetooth gamepad mode stays a non-goal.
 - The preferred v3 direction is a framework for phone-hosted games that stream to a receiver on the TV, built for other developers to use. Receivers that can run our game code draw from snapshots, and the others get a low-latency video stream. Streaming stays out of v2 except for rules S1 to S9.
-- Phone-hosted play is in v2, as M12: one phone hosts, the others join, and every phone shows the game with see-through controls on top (opacity setting). Fun, content and the outside playtest move to M13.
+- Phone-hosted play is in v2, as M12: one phone hosts, the others join, and every phone shows the game with see-through controls on top (opacity setting). Fun, content and the outside playtest move to M13, then to M14 when the look-and-sound milestone became M13 (owner, Nov 8, 2026).
 - The brand is Thumb Party: "Thumb Party" (`com.thumbparty.app`) for phones and tablets, "Thumb Party TV" (`com.thumbparty.tv`) for the TV and PC, renamed in M8. The puzzle game is Shape Race.
 - Tablets are supported in v2: iPad and Android tablets as controllers (M7), in the store builds (M8), and as hosts or a shared screen (M12). Test devices are an Android tablet on Android 15 and an iPad on iPadOS 26.
 - The controller's Android minimum drops from 16 to 12 (API 31), matching the TV app, for about four times the device reach. Android 12 is checked on an emulator, which found one Android 13 call to fix in M7.
@@ -760,7 +803,7 @@ The largest new risk is store review and policy. Outside testing depends on two 
 - The apps are for families with children aged 6 and up: on Google Play the target age groups are 6–8, 9–12, 13–15, 16–17 and 18+, so Google's Families policy applies (decided Oct 30, 2026, replacing "13 and over"). On the App Store the age rating is 4+ and the app stays outside the "Made for Kids" category, which would need a parental gate in front of every link out of the app.
 - The privacy policy and tester guide are published on GitHub Pages from this repository, which is already public.
 - The cloud store is Firebase Firestore on the free plan, owned by the same Google account as the Play developer account.
-- When the protocol spec is published (M13), it goes out under CC BY 4.0, and code for others to build on goes out under Apache 2.0.
+- When the protocol spec is published (M14), it goes out under CC BY 4.0, and code for others to build on goes out under Apache 2.0.
 - Any player can pause with Start. The player who paused, or Player 1, can resume, so Player 1 can always override a pause.
 - In Shape Race the first side to finish wins. At time-up, the side with more correct pieces wins, and equal counts (including none) are a draw.
 - When the host phone leaves, the round waits 30 seconds for it to come back.

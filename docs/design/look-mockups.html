@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Thumb Party M13: Toy Box Toon mock-ups</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800&display=block" rel="stylesheet">
+<style>
+  body { margin: 0; font-family: Nunito, sans-serif; background: #f3efe6; color: #1e1646; }
+  body.single { background: transparent; }
+  header { padding: 20px 24px 8px; }
+  h1 { font-family: Fredoka, sans-serif; font-weight: 600; margin: 0 0 6px; }
+  .bar button { font: 700 15px Nunito, sans-serif; padding: 8px 14px; margin-right: 6px; border: 3px solid #1e1646; border-radius: 99px; background: #fff6e3; cursor: pointer; }
+  .bar button.on { background: #ffd23f; }
+  figure { margin: 18px 24px 28px; }
+  figcaption { font-weight: 700; margin-bottom: 8px; max-width: 960px; }
+  figcaption span { font-weight: 600; opacity: .75; display: block; }
+  svg { display: block; max-width: 100%; height: auto; }
+  body.single svg { max-width: none; }
+</style>
+</head>
+<body>
+<header id="head">
+  <h1>Thumb Party M13: "Toy Box Toon" mock-ups</h1>
+  <p>For the owner's review before any code. Design: docs/design/look-and-sound.md. Pictures are drawn by hand in SVG to show the look; the real screens are drawn by the apps.</p>
+  <div class="bar">
+    <button id="b-sunny">Sunny (recommended)</button><button id="b-night">Night</button>
+    <button id="b-fx1">Effects on</button><button id="b-fx0">Effects off</button>
+  </div>
+</header>
+<main id="out"></main>
+<script>
+const PAL = {
+  sunny: { name: 'Sunny', ink: '#1E1646', bg: '#7CC8F8', glow: '#C4EAFF', dots: '#FFFFFF', dotsA: .28, onBg: '#1E1646',
+    paper: '#FFF6E3', board: '#FFEFD0', tray: '#F5D9A8', neutral: '#B3A285', wall: '#7F8FD1', field: '#A9DCFB' },
+  night: { name: 'Night', ink: '#120D2E', bg: '#241C5E', glow: '#3B2F8F', dots: '#FFFFFF', dotsA: .07, onBg: '#FFFFFF',
+    paper: '#FFF6E3', board: '#30297A', tray: '#3D3592', neutral: '#9289D6', wall: '#8C9BD8', field: '#2A2270' },
+};
+const C = { focus: '#FFD23F', good: '#2FCB74', caution: '#FFB020', bad: '#FF4D5E',
+  p: ['#2E9BF0', '#FF8A1F', '#9B5CFF', '#14C8A0', '#FF5C8A', '#F2C200'],
+  face: { A: '#2FCB74', B: '#FF4D5E', X: '#2E9BF0', Y: '#FFD23F' },
+  crown: '#2FCB74', trunk: '#C26A2C', sun: '#FFD23F', hill: '#8E9CC9', roof: '#FF5C8A' };
+let T = PAL.sunny, FX = true, uid = 0, defs = [];
+
+// ---- colour helpers
+const hx = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+const toHex = a => '#' + a.map(v => Math.round(Math.max(0, Math.min(255, v))).toString(16).padStart(2, '0')).join('');
+const mix = (h, to, t) => { const a = hx(h), b = hx(to); return toHex(a.map((v, i) => v + (b[i] - v) * t)); };
+const light = (h, t = .38) => mix(h, '#FFFFFF', t), dark = (h, t = .26) => mix(h, '#000000', t);
+
+// ---- primitives
+function geo(kind, x, y, w, h, a = '') {
+  if (kind === 'circle') return `<ellipse cx="${x + w / 2}" cy="${y + h / 2}" rx="${w / 2}" ry="${h / 2}" ${a}/>`;
+  if (kind === 'tri') return `<polygon points="${x + w / 2},${y} ${x + w},${y + h} ${x},${y + h}" ${a}/>`;
+  if (kind === 'pill') return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${Math.min(w, h) / 2}" ${a}/>`;
+  if (kind === 'house') return `<polygon points="${x},${y + h * .42} ${x + w / 2},${y} ${x + w},${y + h * .42}" ${a}/>`;
+  const r = Math.min(w, h) * .14;
+  return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${r}" ${a}/>`;
+}
+function fillFor(color) {
+  const id = 'g' + (++uid), hi = light(color), sh = dark(color);
+  if (FX) defs.push(`<radialGradient id="${id}" cx="34%" cy="28%" r="80%" fx="30%" fy="24%">
+    <stop offset="0" stop-color="${light(color, .55)}"/><stop offset=".22" stop-color="${hi}"/>
+    <stop offset=".22" stop-color="${color}"/><stop offset=".66" stop-color="${color}"/>
+    <stop offset=".66" stop-color="${sh}"/><stop offset=".9" stop-color="${dark(color, .34)}"/><stop offset="1" stop-color="${mix(sh, '#FFFFFF', .18)}"/></radialGradient>`);
+  else defs.push(`<linearGradient id="${id}" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="${hi}"/><stop offset=".3" stop-color="${hi}"/><stop offset=".3" stop-color="${color}"/>
+    <stop offset=".75" stop-color="${color}"/><stop offset=".75" stop-color="${sh}"/><stop offset="1" stop-color="${sh}"/></linearGradient>`);
+  return `url(#${id})`;
+}
+// The one call that draws a game object: shadow, body, glint, ink outline.
+function toy(kind, x, y, w, h, color, o = {}) {
+  const ow = o.ow ?? 3, s = o.shadow ?? Math.max(3, Math.min(w, h) * .07);
+  let g = '';
+  if (s) g += geo(kind, x + s * .75, y + s, w, h, `fill="${T.ink}" fill-opacity=".35"`);
+  g += geo(kind, x, y, w, h, `fill="${o.flat ? color : fillFor(color)}"`);
+  if (o.glint !== false && w > 16) {
+    const gx = kind === 'tri' ? x + w * .5 : x + w * .27, gy = kind === 'tri' ? y + h * .42 : y + h * .24;
+    g += `<ellipse cx="${gx}" cy="${gy}" rx="${Math.max(2, w * .08)}" ry="${Math.max(1.5, h * .05)}" fill="#fff" fill-opacity="${FX ? .9 : .75}" transform="rotate(-30 ${gx} ${gy})"/>`;
+  }
+  g += geo(kind, x, y, w, h, `fill="none" stroke="${T.ink}" stroke-width="${ow}" stroke-linejoin="round"`);
+  return g;
+}
+function target(kind, x, y, w, h, color) {
+  return geo(kind, x, y, w, h, `fill="${color}" fill-opacity=".18" stroke="${color}" stroke-width="3.5" stroke-dasharray="9 6" stroke-linejoin="round" stroke-linecap="round"`);
+}
+function txt(x, y, s, size, o = {}) {
+  const f = o.font ?? 'Fredoka', w = o.w ?? (f === 'Fredoka' ? 600 : 700), fill = o.fill ?? T.ink;
+  const st = o.stroke ? `stroke="${o.stroke}" stroke-width="${o.sw ?? size * .16}" paint-order="stroke" stroke-linejoin="round"` : '';
+  return `<text x="${x}" y="${y}" font-family="${f}, Nunito, sans-serif" font-weight="${w}" font-size="${size}" fill="${fill}" text-anchor="${o.anchor ?? 'start'}" dominant-baseline="${o.base ?? 'auto'}" ${st} ${o.extra ?? ''}>${s}</text>`;
+}
+function bg(w, h, o = {}) {
+  const id = 'p' + (++uid), gl = 'r' + uid;
+  defs.push(`<pattern id="${id}" width="44" height="44" patternUnits="userSpaceOnUse" patternTransform="rotate(${FX ? 18 : 0})">
+    <circle cx="11" cy="11" r="${FX ? 5 : 4}" fill="${T.dots}" fill-opacity="${T.dotsA}"/><circle cx="33" cy="33" r="${FX ? 3 : 4}" fill="${T.dots}" fill-opacity="${T.dotsA * .8}"/></pattern>
+    <radialGradient id="${gl}" cx="50%" cy="42%" r="70%"><stop offset="0" stop-color="${T.glow}"/><stop offset="1" stop-color="${T.bg}"/></radialGradient>`);
+  return `<rect width="${w}" height="${h}" fill="url(#${gl})"/>` + (o.dots === false ? '' : `<rect width="${w}" height="${h}" fill="url(#${id})"/>`);
+}
+function card(x, y, w, h, o = {}) {
+  const id = 'c' + (++uid);
+  defs.push(`<clipPath id="${id}"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="18"/></clipPath>`);
+  let g = `<rect x="${x + 4}" y="${y + 6}" width="${w}" height="${h}" rx="18" fill="${T.ink}" fill-opacity=".35"/>`;
+  g += `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="18" fill="${o.fill ?? T.paper}"/>`;
+  if (o.header) {
+    const hh = o.hh ?? 54;
+    g += `<g clip-path="url(#${id})"><rect x="${x}" y="${y}" width="${w}" height="${hh}" fill="${o.hc}"/><rect x="${x}" y="${y}" width="${w}" height="${hh * .45}" fill="#fff" fill-opacity=".22"/></g>`;
+    g += `<line x1="${x}" y1="${y + hh}" x2="${x + w}" y2="${y + hh}" stroke="${T.ink}" stroke-width="3"/>`;
+    g += txt(x + w / 2, y + hh / 2 + 2, o.header, o.hs ?? 26, { anchor: 'middle', base: 'middle' });
+  }
+  g += `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="18" fill="none" stroke="${T.ink}" stroke-width="${o.ow ?? 3.5}"/>`;
+  return g;
+}
+function focusRing(x, y, w, h, r) {
+  return `<rect x="${x - 9}" y="${y - 9}" width="${w + 18}" height="${h + 18}" rx="${r + 9}" fill="none" stroke="${T.ink}" stroke-width="10"/>
+    <rect x="${x - 9}" y="${y - 9}" width="${w + 18}" height="${h + 18}" rx="${r + 9}" fill="none" stroke="${C.focus}" stroke-width="6"/>`;
+}
+function btn(x, y, w, h, label, o = {}) {
+  const color = o.color ?? T.paper, st = o.state ?? 'normal', r = h / 2, s = st === 'pressed' ? 0 : 5;
+  const yy = st === 'pressed' ? y + 5 : y;
+  let g = st === 'focus' ? focusRing(x, y, w, h, r) : '';
+  if (s) g += `<rect x="${x + 3}" y="${y + s}" width="${w}" height="${h}" rx="${r}" fill="${T.ink}" fill-opacity=".4"/>`;
+  g += `<rect x="${x}" y="${yy}" width="${w}" height="${h}" rx="${r}" fill="${color}"/>`;
+  g += `<rect x="${x + h * .3}" y="${yy + 5}" width="${w - h * .6}" height="${h * .28}" rx="${h * .14}" fill="#fff" fill-opacity=".35"/>`;
+  g += `<rect x="${x}" y="${yy}" width="${w}" height="${h}" rx="${r}" fill="none" stroke="${T.ink}" stroke-width="3.5"/>`;
+  g += txt(x + w / 2, yy + h / 2 + 2, label, o.size ?? h * .42, { anchor: 'middle', base: 'middle' });
+  return g;
+}
+function badge(cx, cy, r, n, color) {
+  return toy('circle', cx - r, cy - r, r * 2, r * 2, color, { ow: Math.max(2.5, r * .14), shadow: r * .18, glint: false }) +
+    txt(cx, cy + r * .06, n, r * 1.15, { anchor: 'middle', base: 'middle', w: 700 });
+}
+function check(cx, cy, r, ok) {
+  const c = ok ? C.good : C.bad;
+  const mark = ok ? `<path d="M${cx - r * .45} ${cy} l${r * .3} ${r * .32} l${r * .6} ${-r * .62}" fill="none" stroke="${T.ink}" stroke-width="${r * .28}" stroke-linecap="round" stroke-linejoin="round"/>`
+    : `<path d="M${cx - r * .35} ${cy - r * .35} l${r * .7} ${r * .7} M${cx + r * .35} ${cy - r * .35} l${-r * .7} ${r * .7}" stroke="${T.ink}" stroke-width="${r * .28}" stroke-linecap="round"/>`;
+  return toy('circle', cx - r, cy - r, r * 2, r * 2, c, { ow: 2.5, shadow: 2, glint: false }) + mark;
+}
+function sparkle(cx, cy, r, c = '#fff') {
+  return `<path d="M${cx} ${cy - r} Q${cx + r * .18} ${cy - r * .18} ${cx + r} ${cy} Q${cx + r * .18} ${cy + r * .18} ${cx} ${cy + r} Q${cx - r * .18} ${cy + r * .18} ${cx - r} ${cy} Q${cx - r * .18} ${cy - r * .18} ${cx} ${cy - r}Z" fill="${c}" stroke="${T.ink}" stroke-width="2"/>`;
+}
+function svg(w, h, body) {
+  const d = defs.join(''); defs = [];
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}"><defs>${d}</defs>${body}</svg>`;
+}
+
+// ---- Shape Race: the "Tree" puzzle on a board (fractions of the board)
+// Positions and sizes in board heights, so circles stay round; the picture is centred across the board.
+const PIECES = [
+  { k: 'circle', x: .06, y: .10, w: .42, h: .42, c: C.crown },
+  { k: 'rect', x: .23, y: .50, w: .08, h: .38, c: C.trunk },
+  { k: 'circle', x: .84, y: .08, w: .2, h: .2, c: C.sun },
+  { k: 'tri', x: .60, y: .50, w: .52, h: .38, c: C.hill },
+];
+const PIC_W = 1.12;
+function boardSide(x, y, w, h, o = {}) {
+  // o.placed: indexes placed; o.held: [index, x, y] carried by the dot; o.wrong: [index, x, y]; o.player; o.easy
+  const trayH = h * .2, gap = h * .03, by = y + trayH + gap, bh = h - trayH - gap, ox = x + (w - PIC_W * bh) / 2;
+  const at = (p, px, py, s = 1) => [ox + px * bh, by + py * bh, p.w * bh * s, p.h * bh * s];
+  let g = card(x, y, w, trayH, { fill: T.tray, ow: 3 }) + card(x, by, w, bh, { fill: T.board, ow: 3 });
+  const placed = o.placed ?? [], held = o.held?.[0], wrong = o.wrong?.[0];
+  const tray = PIECES.map((p, i) => i).filter(i => !placed.includes(i) && i !== held && i !== wrong);
+  PIECES.forEach((p, i) => { if (!placed.includes(i)) { const [px, py, pw, ph] = at(p, p.x, p.y); g += target(p.k, px, py, pw, ph, o.easy === false ? T.neutral : dark(p.c, .12)); } });
+  PIECES.forEach((p, i) => { if (placed.includes(i)) { const [px, py, pw, ph] = at(p, p.x, p.y); g += toy(p.k, px, py, pw, ph, p.c, { shadow: 3 }); } });
+  if (o.wrong) {
+    const p = PIECES[wrong], [px, py, pw, ph] = at(p, o.wrong[1], o.wrong[2]);
+    g += geo(p.k, px, py, pw, ph, `fill="none" stroke="${C.bad}" stroke-width="9" stroke-linejoin="round"`);
+    g += toy(p.k, px, py, pw, ph, p.c, { shadow: 4 }) + check(px + pw * .5, py + ph * .62, 14, false);
+  }
+  // tray pieces, small
+  let tx = x + 20;
+  tray.forEach(i => {
+    const p = PIECES[i], s = Math.min((trayH * .7) / (p.h * bh), .8), pw = p.w * bh * s, ph = p.h * bh * s;
+    g += toy(p.k, tx, y + (trayH - ph) / 2, pw, ph, p.c, { shadow: 2.5, ow: 2.5 });
+    tx += pw + 24;
+  });
+  placed.forEach(i => { const p = PIECES[i], [px, py, pw] = at(p, p.x, p.y); g += sparkle(px + pw - 6, py + 8, 9, '#FFF6B0'); });
+  const r = Math.max(11, bh * .045), pl = o.player ?? 1;
+  if (o.held) {
+    const p = PIECES[held], [px, py, pw, ph] = at(p, o.held[1], o.held[2], 1.06);
+    g += toy(p.k, px, py, pw, ph, p.c, { shadow: 9 }) + badge(px + pw * .5, py + ph * (p.k === 'tri' ? .66 : .5), r, pl, C.p[pl - 1]);
+  } else if (o.player) g += badge(ox + .7 * bh, by + .3 * bh, r, pl, C.p[pl - 1]);
+  return g;
+}
+function clockChip(cx, y, s, size, warn) {
+  const w = size * 3.4, h = size * 1.45;
+  return card(cx - w / 2, y, w, h, { fill: warn ? C.bad : T.paper, ow: 3.5 }) + txt(cx, y + h / 2 + 2, s, size, { anchor: 'middle', base: 'middle', w: 700 });
+}
+
+// ---- Frames
+const F = [];
+F.push(['The parts', 'Palette, buttons (normal, focused by the controller, pressed), badges, a card, and the same pieces drawn without and with the shader. Right and wrong keep their ✓ and ✗.', 960, 540, () => {
+  let g = bg(960, 540);
+  g += txt(30, 50, 'Toy Box Toon parts', 34, { fill: T.onBg });
+  const sw = [['ink', T.ink], ['paper', T.paper], ['board', T.board], ['focus', C.focus], ['good', C.good], ['caution', C.caution], ['bad', C.bad]];
+  sw.forEach(([n, c], i) => { g += card(30 + i * 72, 72, 58, 46, { fill: c, ow: 3 }) + txt(59 + i * 72, 136, n, 13, { anchor: 'middle', font: 'Nunito', fill: T.onBg }); });
+  C.p.forEach((c, i) => g += badge(570 + i * 58, 96, 21, i + 1, c));
+  g += btn(30, 170, 180, 58, 'Play', { color: C.good });
+  g += btn(240, 170, 180, 58, 'Play', { color: C.good, state: 'focus' });
+  g += btn(450, 170, 180, 58, 'Play', { color: C.good, state: 'pressed' });
+  ['normal', 'focused', 'pressed'].forEach((s, i) => g += txt(120 + i * 210, 252, s, 14, { anchor: 'middle', font: 'Nunito', fill: T.onBg }));
+  g += card(670, 160, 260, 160, { header: 'P2 is away', hc: C.caution, hs: 22, hh: 46 }) + txt(800, 248, '0:24', 40, { anchor: 'middle', w: 700 }) + txt(800, 292, 'The round waits for them', 15, { anchor: 'middle', font: 'Nunito' });
+  const row = (y, fx, label) => {
+    const keep = FX; FX = fx;
+    let r = toy('circle', 40, y, 90, 90, C.crown) + toy('rect', 160, y + 5, 80, 80, C.roof) + toy('tri', 270, y, 96, 90, C.sun) + toy('rect', 396, y + 22, 120, 46, C.hill);
+    FX = keep;
+    return r + txt(540, y + 52, label, 18, { font: 'Nunito', fill: T.onBg });
+  };
+  g += row(300, false, 'Effects off (drawn)');
+  g += row(420, true, 'Effects on (shader)');
+  g += target('circle', 740, 380, 70, 70, dark(C.crown, .12)) + target('tri', 830, 380, 76, 70, T.neutral);
+  g += txt(775, 470, 'Easy', 14, { anchor: 'middle', font: 'Nunito', fill: T.onBg }) + txt(868, 470, 'Medium, Hard', 14, { anchor: 'middle', font: 'Nunito', fill: T.onBg });
+  g += check(760, 505, 15, true) + check(850, 505, 15, false);
+  return g;
+}]);
+F.push(['TV: pick a game', 'The game picker. The controller\'s focus is on Shape Race: a thick yellow ring, readable from across the room. Each game is a big card with a drawn picture.', 960, 540, () => {
+  let g = bg(960, 540);
+  g += txt(480, 78, 'Pick a game', 50, { anchor: 'middle', fill: '#fff', stroke: T.ink, sw: 9 });
+  g += focusRing(120, 120, 330, 300, 18) + card(120, 120, 330, 300, { header: 'Shape Race', hc: C.p[0], hh: 58, hs: 30 });
+  g += toy('circle', 180, 200, 110, 100, C.crown) + toy('rect', 222, 292, 24, 80, C.trunk) + toy('circle', 340, 196, 54, 54, C.sun) + toy('tri', 300, 290, 120, 92, C.hill);
+  g += card(510, 120, 330, 300, { header: 'Arena', hc: C.p[1], hh: 58, hs: 30 });
+  g += toy('rect', 545, 210, 26, 150, T.wall, { glint: false }) + marble(640, 300, 34, C.p[0], 1) + flag(730, 230, 90, 110);
+  g += btn(205, 450, 220, 56, 'Puzzle settings') + btn(450, 450, 140, 56, 'Stats') + btn(615, 450, 140, 56, 'Back');
+  g += txt(940, 528, 'D-pad: move · A: select · B: back', 15, { anchor: 'end', font: 'Nunito', fill: T.onBg });
+  return g;
+}]);
+F.push(['TV: join screen', 'Players press A on their phone to join a side. The join code sits top right. Lobby music plays here (and on the game picker).', 960, 540, () => {
+  let g = bg(960, 540);
+  g += txt(40, 66, 'Shape Race', 44, { fill: '#fff', stroke: T.ink, sw: 8 }) + txt(318, 66, 'Easy · Tree', 26, { fill: T.onBg });
+  g += card(720, 26, 210, 56, { ow: 3.5 }) + txt(740, 62, 'Code', 18, { font: 'Nunito' }) + txt(912, 63, '4821', 32, { anchor: 'end', w: 700 });
+  const side = (x, title, c, players) => {
+    let s = card(x, 110, 400, 260, { header: title, hc: c, hh: 52, hs: 26 });
+    players.forEach((p, i) => {
+      const y = 200 + i * 74;
+      if (p) s += badge(x + 50, y, 24, p[0], C.p[p[0] - 1]) + txt(x + 88, y + 8, p[1], 24, { font: 'Nunito', w: 800 }) + check(x + 360, y, 15, true);
+      else s += `<rect x="${x + 24}" y="${y - 28}" width="352" height="56" rx="28" fill="none" stroke="${T.ink}" stroke-opacity=".45" stroke-width="3" stroke-dasharray="8 7"/>` + txt(x + 200, y + 7, 'Press A on a phone to join', 19, { anchor: 'middle', font: 'Nunito', fill: dark(T.paper, .5) });
+    });
+    return s;
+  };
+  g += side(60, 'Side 1', light(C.p[0], .25), [[1, "Mia's phone"], null]);
+  g += side(500, 'Side 2', light(C.p[1], .25), [[2, "Dad's phone"], [3, 'Android phone 6671']]);
+  g += btn(270, 410, 200, 64, 'Start', { color: C.good, state: 'focus' }) + btn(500, 410, 190, 64, 'Back');
+  g += txt(480, 512, 'Press A or Start to begin.', 20, { anchor: 'middle', font: 'Nunito', w: 800, fill: T.onBg });
+  return g;
+}]);
+const raceTV = (o = {}) => {
+  let g = bg(960, 540, { dots: false });
+  g += boardSide(24, 70, 440, 450, { placed: [0, 2], held: [3, .44, .36], player: 1, easy: true });
+  g += boardSide(496, 70, 440, 450, { placed: [0], held: [2, .62, .14], player: 2, easy: true, wrong: o.wrong ? [3, .5, .56] : null });
+  g += clockChip(480, 10, '1:24', 30);
+  g += badge(60, 36, 20, 1, C.p[0]) + txt(90, 46, '2 / 4', 28, { fill: T.onBg, w: 700 });
+  g += badge(900, 36, 20, 2, C.p[1]) + txt(870, 46, '1 / 4', 28, { anchor: 'end', fill: T.onBg, w: 700 });
+  return g;
+};
+F.push(['TV: Shape Race, 1 vs 1', 'Each side: the tray on top, the cream play mat below. Targets are dashed outlines (Easy: in the piece\'s colour). Placed pieces lock with a sparkle; the player\'s dot is a numbered marble carrying a piece. Side 2 just made a wrong drop: red outline and ✗.', 960, 540, () => raceTV({ wrong: true })]);
+F.push(['TV: results', 'The results card pops in over the dimmed boards, in the winner\'s colour, with confetti. Rematch has the focus.', 960, 540, () => {
+  let g = raceTV() + `<rect width="960" height="540" fill="${T.ink}" fill-opacity=".5"/>`;
+  const conf = [[250, 90, C.p[0]], [300, 60, C.focus], [690, 80, C.p[4]], [720, 130, C.good], [220, 160, C.p[2]], [760, 60, C.p[1]], [640, 50, C.p[3]]];
+  conf.forEach(([x, y, c], i) => g += `<rect x="${x}" y="${y}" width="16" height="9" rx="2" fill="${c}" stroke="${T.ink}" stroke-width="2" transform="rotate(${i * 37} ${x} ${y})"/>`);
+  g += card(250, 90, 460, 380, { header: 'Side 1 wins!', hc: C.p[0], hh: 72, hs: 38 });
+  g += badge(310, 210, 22, 1, C.p[0]) + txt(345, 219, 'Side 1', 26, { font: 'Nunito', w: 800 }) + txt(560, 219, '0:58', 28, { w: 700 }) + txt(680, 219, '4/4', 24, { anchor: 'end', font: 'Nunito', w: 800 });
+  g += badge(310, 268, 22, 2, C.p[1]) + txt(345, 277, 'Side 2', 26, { font: 'Nunito', w: 800 }) + txt(560, 277, '—', 28, { w: 700 }) + txt(680, 277, '3/4', 24, { anchor: 'end', font: 'Nunito', w: 800 });
+  g += sparkle(645, 150, 14, '#FFF6B0') + sparkle(300, 140, 10, '#FFF6B0');
+  g += btn(285, 330, 180, 56, 'Rematch', { color: C.good, state: 'focus' }) + btn(495, 330, 180, 56, 'Change teams');
+  g += btn(390, 400, 180, 50, 'Back');
+  return g;
+}]);
+function marble(cx, cy, r, color, n, dir = 1) {
+  let g = toy('circle', cx - r, cy - r, r * 2, r * 2, color, { ow: 3.5, shadow: r * .2 });
+  [-.32, .32].forEach(dx => {
+    const ex = cx + dx * r + dir * r * .18, ey = cy - r * .12;
+    g += `<ellipse cx="${ex}" cy="${ey}" rx="${r * .22}" ry="${r * .3}" fill="#fff" stroke="${T.ink}" stroke-width="2.5"/><circle cx="${ex + dir * r * .08}" cy="${ey + r * .04}" r="${r * .11}" fill="${T.ink}"/>`;
+  });
+  return g;
+}
+function flag(x, y, w, h) {
+  let g = toy('rect', x, y + h * .45, w, h * .55, C.good, { glint: false });
+  g += `<rect x="${x + w * .2}" y="${y}" width="6" height="${h * .75}" rx="3" fill="${T.paper}" stroke="${T.ink}" stroke-width="2.5"/>`;
+  for (let i = 0; i < 3; i++) for (let j = 0; j < 2; j++) g += `<rect x="${x + w * .2 + 6 + i * 13}" y="${y + 2 + j * 13}" width="13" height="13" fill="${(i + j) % 2 ? T.ink : '#fff'}"/>`;
+  g += `<rect x="${x + w * .2 + 6}" y="${y + 2}" width="39" height="26" fill="none" stroke="${T.ink}" stroke-width="2.5"/>`;
+  return g;
+}
+function bumper(cx, cy, r) {
+  return toy('circle', cx - r, cy - r, r * 2, r * 2, C.bad, { ow: 3.5, shadow: 5 }) +
+    `<circle cx="${cx}" cy="${cy}" r="${r * .55}" fill="none" stroke="#fff" stroke-width="4"/><circle cx="${cx}" cy="${cy}" r="${r * .3}" fill="${dark(C.bad, .4)}" stroke="${T.ink}" stroke-width="2.5"/>`;
+}
+F.push(['TV: Arena', 'The shader\'s first game, as planned. Marbles with eyes that look where they roll, toy-block walls, red bumpers, a goal pad with a flag. The top bar is a paper strip.', 960, 540, () => {
+  const id = 'm' + (++uid);
+  defs.push(`<pattern id="${id}" width="48" height="48" patternUnits="userSpaceOnUse"><circle cx="24" cy="24" r="3" fill="${T.ink}" fill-opacity=".12"/></pattern>`);
+  let g = `<rect width="960" height="540" fill="${T.field}"/><rect width="960" height="540" fill="url(#${id})"/>`;
+  g += `<circle cx="80" cy="292" r="40" fill="${T.ink}" fill-opacity=".08" stroke="${T.ink}" stroke-opacity=".35" stroke-width="3" stroke-dasharray="8 7"/>`;
+  [[222, 40, 22, 290], [446, 250, 22, 300], [665, 40, 22, 190], [665, 350, 22, 200], [282, 390, 110, 22]].forEach(([x, y, w, h]) => g += toy('rect', x, y, w, h, T.wall, { glint: false, shadow: 5 }));
+  [[340, 110], [560, 345], [708, 315], [305, 480]].forEach(([x, y]) => g += bumper(x, y, 22));
+  g += flag(828, 232, 100, 120) + txt(878, 342, 'GOAL', 22, { anchor: 'middle', w: 700 });
+  g += marble(198, 292, 22, C.p[0], 1) + `<path d="M150 292 h-28 M154 280 h-18 M154 304 h-18" stroke="#fff" stroke-width="4" stroke-linecap="round"/>`;
+  g += `<rect x="0" y="0" width="960" height="44" fill="${T.paper}"/><line x1="0" y1="44" x2="960" y2="44" stroke="${T.ink}" stroke-width="3.5"/>`;
+  g += txt(20, 30, 'Round 1', 20) + txt(130, 30, '16.3 s', 20, { w: 700 }) + txt(230, 30, 'Best —', 20);
+  g += badge(345, 22, 13, 1, C.p[0]) + txt(366, 29, 'Android phone 6671', 17, { font: 'Nunito', w: 800 }) + txt(560, 29, 'Wins 0 · Hits 1', 17, { font: 'Nunito' });
+  g += card(720, 7, 160, 30, { fill: C.good, ow: 3 }) + txt(800, 28, 'Dash ready (A)', 16, { anchor: 'middle', font: 'Nunito', w: 800 });
+  return g;
+}]);
+function pad(x, y, s) { // D-pad
+  const a = s / 3;
+  let g = `<path d="M${x + a} ${y} h${a} v${a} h${a} v${a} h${-a} v${a} h${-a} v${-a} h${-a} v${-a} h${a}z" transform="translate(4 5)" fill="${T.ink}" fill-opacity=".4"/>`;
+  g += `<path d="M${x + a} ${y} h${a} v${a} h${a} v${a} h${-a} v${a} h${-a} v${-a} h${-a} v${-a} h${a}z" fill="${T.paper}" stroke="${T.ink}" stroke-width="3.5" stroke-linejoin="round"/>`;
+  [[x + s / 2, y + a * .5, 0], [x + s - a * .5, y + s / 2, 90], [x + s / 2, y + s - a * .5, 180], [x + a * .5, y + s / 2, 270]].forEach(([cx, cy, r]) =>
+    g += `<path d="M${cx} ${cy - 8} l8 10 h-16z" fill="${T.ink}" fill-opacity=".55" transform="rotate(${r} ${cx} ${cy})"/>`);
+  return g;
+}
+function faces(cx, cy, r, gap) {
+  let g = '';
+  [['Y', 0, -1], ['X', -1, 0], ['B', 1, 0], ['A', 0, 1]].forEach(([k, dx, dy]) => {
+    const x = cx + dx * gap, y = cy + dy * gap;
+    g += toy('circle', x - r, y - r, r * 2, r * 2, C.face[k], { ow: 3.5, shadow: 5 }) + txt(x, y + 2, k, r * .95, { anchor: 'middle', base: 'middle', w: 700 });
+  });
+  return g;
+}
+function phone(w, h, body) {
+  return `<rect x="0" y="0" width="${w + 36}" height="${h + 24}" rx="40" fill="#15121F"/><g transform="translate(18 12)"><clipPath id="ph${++uid}"><rect width="${w}" height="${h}" rx="26"/></clipPath><g clip-path="url(#ph${uid})">${body}</g></g>`;
+}
+F.push(['Phone: Shape Race on a joined phone', 'Your own side fills the screen, the strip on top shows the clock, your count and the other side\'s board small. The controls float on top at the opacity setting (60% here); their sizes don\'t change.', 816, 384, () => {
+  const W = 780, H = 360;
+  let g = bg(W, H, { dots: false });
+  g += boardSide(170, 58, 440, 296, { placed: [0], held: [2, .62, .16], player: 1, easy: true });
+  g += `<rect x="0" y="0" width="${W}" height="48" fill="${T.paper}"/><line x1="0" y1="48" x2="${W}" y2="48" stroke="${T.ink}" stroke-width="3"/>`;
+  g += badge(196, 24, 14, 1, C.p[0]) + txt(218, 33, '1 / 4', 22, { w: 700 });
+  g += txt(390, 34, '1:24', 28, { anchor: 'middle', w: 700 });
+  g += card(520, 6, 46, 36, { fill: T.board, ow: 3 }) + `<rect x="520" y="6" width="46" height="36" rx="8" fill="none" stroke="${C.p[1]}" stroke-width="3.5"/>` + toy('circle', 528, 12, 14, 14, C.crown, { shadow: 0, ow: 1.5, glint: false });
+  g += txt(576, 33, 'Them 2 / 4', 18, { font: 'Nunito', w: 800 });
+  g += `<g opacity=".6">${pad(30, 170, 130)}${faces(680, 245, 26, 50)}${btn(24, 66, 62, 26, 'Select', { size: 11 })}${btn(96, 66, 62, 26, 'Start', { size: 11 })}</g>`;
+  return phone(W, H, g);
+}]);
+F.push(['Phone: connect screen', 'The first screen on a phone: TVs and phone hosts nearby, and Host a game. Same buttons, cards and font as the TV.', 816, 384, () => {
+  const W = 780, H = 360;
+  let g = bg(W, H);
+  const d = [['Y', 0, -1], ['X', -1, 0], ['B', 1, 0], ['A', 0, 1]];
+  d.forEach(([k, dx, dy]) => g += toy('circle', 120 + dx * 34 - 20, 92 + dy * 34 - 20, 40, 40, C.face[k], { ow: 3, shadow: 4 }));
+  g += txt(120, 190, 'Thumb Party', 34, { anchor: 'middle', fill: '#fff', stroke: T.ink, sw: 7 });
+  g += txt(120, 222, 'Your phone is the controller', 14, { anchor: 'middle', font: 'Nunito', w: 800, fill: T.onBg });
+  g += card(262, 22, 496, 230, { header: 'Play on a screen nearby', hc: light(C.p[0], .3), hh: 46, hs: 21 });
+  g += focusRing(282, 84, 456, 58, 29) + btn(282, 84, 456, 58, '', {}) + txt(306, 121, '📺', 24) + txt(344, 121, 'Living room TV', 21, { font: 'Nunito', w: 800 }) + txt(722, 121, 'TV', 15, { anchor: 'end', font: 'Nunito' });
+  g += btn(282, 158, 456, 58, '') + txt(306, 195, '📱', 22) + txt(344, 195, "Sam's phone", 21, { font: 'Nunito', w: 800 }) + txt(722, 195, 'Phone', 15, { anchor: 'end', font: 'Nunito' });
+  g += btn(262, 280, 300, 60, 'Host a game', { color: C.good }) + btn(580, 280, 178, 60, 'Settings');
+  g += txt(120, 300, 'Type an address', 15, { anchor: 'middle', font: 'Nunito', w: 800, fill: T.onBg, extra: 'text-decoration="underline"' });
+  return phone(W, H, g);
+}]);
+F.push(['Phone: paused', 'Cards over the game use the same paper card with a coloured header. The controls stay visible but faded.', 816, 384, () => {
+  const W = 780, H = 360;
+  let g = bg(W, H, { dots: false }) + boardSide(170, 58, 440, 296, { placed: [0, 2], player: 1, easy: true });
+  g += `<rect width="${W}" height="${H}" fill="${T.ink}" fill-opacity=".5"/>`;
+  g += card(230, 50, 320, 250, { header: 'Paused', hc: C.focus, hh: 54, hs: 28 });
+  g += badge(300, 150, 20, 2, C.p[1]) + txt(330, 158, 'P2 paused the game', 19, { font: 'Nunito', w: 800 });
+  g += txt(390, 196, 'P2 or P1 can resume', 15, { anchor: 'middle', font: 'Nunito' });
+  g += btn(255, 228, 130, 50, 'Resume', { color: C.good, state: 'focus' }) + btn(400, 228, 125, 50, 'Quit', { color: light(C.bad, .2) });
+  return phone(W, H, g);
+}]);
+
+// ---- render
+const q = new URLSearchParams(location.search);
+function render() {
+  const out = document.getElementById('out'); out.innerHTML = '';
+  const only = q.get('frame');
+  F.forEach(([title, note, w, h, draw], i) => {
+    if (only != null && +only !== i) return;
+    uid = i * 1000; defs = [];
+    const s = svg(w, h, draw());
+    out.insertAdjacentHTML('beforeend', only != null ? s : `<figure><figcaption>${i + 1}. ${title} (${T.name}${FX ? '' : ', effects off'})<span>${note}</span></figcaption>${s}</figure>`);
+  });
+  document.querySelectorAll('.bar button').forEach(b => b.classList.toggle('on',
+    (b.id === 'b-sunny' && T === PAL.sunny) || (b.id === 'b-night' && T === PAL.night) || (b.id === 'b-fx1' && FX) || (b.id === 'b-fx0' && !FX)));
+}
+T = PAL[q.get('theme')] ?? PAL.sunny; FX = q.get('fx') !== '0';
+if (q.get('frame') != null) { document.body.classList.add('single'); document.getElementById('head').remove(); }
+else {
+  document.getElementById('b-sunny').onclick = () => { T = PAL.sunny; render(); };
+  document.getElementById('b-night').onclick = () => { T = PAL.night; render(); };
+  document.getElementById('b-fx1').onclick = () => { FX = true; render(); };
+  document.getElementById('b-fx0').onclick = () => { FX = false; render(); };
+}
+document.fonts.ready.then(render);
+render();
+</script>
+</body>
+</html>
