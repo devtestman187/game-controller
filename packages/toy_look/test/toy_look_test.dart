@@ -54,6 +54,9 @@ void main() {
   test('the sizes are the design\'s', () {
     expect(ToySizes.menu.outlineWidth, 3);
     expect(ToySizes.tv.outlineWidth, 4);
+    // A menu button is the 48 px touch target; a TV's is 64 (design section 4).
+    expect(ToySizes.menu.buttonHeight, 48);
+    expect(ToySizes.tv.buttonHeight, 64);
     expect(ToySizes.shadowOffset, const Offset(3, 4));
     expect(ToySizes.cardCorner, 16);
     expect(ToySizes.focusRing, 4);

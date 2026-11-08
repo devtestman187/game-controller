@@ -17,6 +17,7 @@ final class ToyColors {
     required this.ink,
     required this.background,
     required this.backgroundGlow,
+    required this.dotAlpha,
     required this.onBackground,
     required this.paper,
     required this.board,
@@ -39,6 +40,7 @@ final class ToyColors {
     ink: Color(0xFF1E1646),
     background: Color(0xFF7CC8F8),
     backgroundGlow: Color(0xFFC4EAFF),
+    dotAlpha: 0.22,
     onBackground: Color(0xFF1E1646),
     paper: Color(0xFFFFF6E3),
     board: Color(0xFFFFEFD0),
@@ -62,6 +64,7 @@ final class ToyColors {
     ink: Color(0xFF120D2E),
     background: Color(0xFF241C5E),
     backgroundGlow: Color(0xFF3B2F8F),
+    dotAlpha: 0.07,
     onBackground: Color(0xFFFFFFFF),
     paper: Color(0xFFFFF6E3),
     board: Color(0xFF30297A),
@@ -93,6 +96,11 @@ final class ToyColors {
 
   /// The soft lighter centre of [background].
   final Color backgroundGlow;
+
+  /// How strongly the background's white polka dots show over [background]:
+  /// faint in the sunlight (22 %) and fainter at night (7 %), where the dots
+  /// are a hint rather than a pattern (design section 4).
+  final double dotAlpha;
 
   /// Text straight on the background.
   final Color onBackground;

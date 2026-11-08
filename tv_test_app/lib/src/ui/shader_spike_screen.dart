@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:toy_look/toy_look.dart';
 
 import 'shader_spike_rows.dart';
+import 'toy_gallery.dart';
 
 /// The Sunny background (design section 3): a light sky behind a screen.
 const _background = Color(0xFF7CC8F8);
@@ -14,9 +15,13 @@ const _background = Color(0xFF7CC8F8);
 /// A row of shapes is this tall, in logical pixels.
 const _rowHeight = 180.0;
 
+/// The screen's two sections: the shader rows and the widgets' gallery.
+const _tabCount = 2;
+
 /// The shader spike (M13 step 1): proves the Toy Box shader loads and draws on
 /// this device, shows the Canvas fallback beside it, and says what a frame
-/// costs.
+/// costs. Its Widgets tab shows the look's widgets as a TV draws them (step
+/// 2b).
 ///
 /// The look of this screen isn't the job: plain Material labels and buttons,
 /// a Shader line, two labelled rows and a frame time are all it needs. Back
@@ -28,12 +33,15 @@ class ShaderSpikeScreen extends StatefulWidget {
   State<ShaderSpikeScreen> createState() => _ShaderSpikeScreenState();
 }
 
-class _ShaderSpikeScreenState extends State<ShaderSpikeScreen> with SingleTickerProviderStateMixin {
+class _ShaderSpikeScreenState extends State<ShaderSpikeScreen> with TickerProviderStateMixin {
   /// One whole turn of the shapes, so frames keep coming.
   static const _turnPeriod = Duration(seconds: 8);
 
   /// The frames the time is averaged and its worst taken over.
   static const _frameWindow = 120;
+
+  /// Which section is shown: the shader rows or the gallery.
+  late final TabController _tabs = TabController(length: _tabCount, vsync: this);
 
   /// The last [_frameWindow] frames' build plus raster time, in milliseconds.
   final _frameMs = <double>[];
@@ -75,6 +83,7 @@ class _ShaderSpikeScreenState extends State<ShaderSpikeScreen> with SingleTicker
   @override
   void dispose() {
     SchedulerBinding.instance.removeTimingsCallback(_onTimings);
+    _tabs.dispose();
     _turn.dispose();
     super.dispose();
   }
@@ -106,35 +115,48 @@ class _ShaderSpikeScreenState extends State<ShaderSpikeScreen> with SingleTicker
         appBar: AppBar(
           title: const Text('Look test'),
           actions: [_StressButton(stress: _stress, onChanged: (on) => setState(() => _stress = on))],
+          bottom: TabBar(
+            controller: _tabs,
+            tabs: const [
+              Tab(text: 'Shapes'),
+              Tab(text: 'Widgets'),
+            ],
+          ),
         ),
         body: SafeArea(
-          child: ListView(
-            padding: const EdgeInsets.all(16),
+          child: TabBarView(
+            controller: _tabs,
             children: [
-              Text(_status, key: const Key('shaderStatus'), style: text.titleMedium),
-              Text(_frameText, key: const Key('frameStats'), style: text.bodyMedium),
-              const SizedBox(height: 8),
-              Text(
-                'The top row uses the shader when it loaded and the bottom row always uses the fallback; '
-                'they should look the same. Stress adds 60 more shapes to each row.',
-                style: text.bodyMedium,
+              ListView(
+                padding: const EdgeInsets.all(16),
+                children: [
+                  Text(_status, key: const Key('shaderStatus'), style: text.titleMedium),
+                  Text(_frameText, key: const Key('frameStats'), style: text.bodyMedium),
+                  const SizedBox(height: 8),
+                  Text(
+                    'The top row uses the shader when it loaded and the bottom row always uses the fallback; '
+                    'they should look the same. Stress adds 60 more shapes to each row.',
+                    style: text.bodyMedium,
+                  ),
+                  const SizedBox(height: 8),
+                  _SpikeRow(
+                    rowKey: const Key('lookRowShader'),
+                    label: 'With the shader',
+                    shade: _shaders?.shade,
+                    animation: _turn,
+                    stress: _stress,
+                  ),
+                  const SizedBox(height: 12),
+                  _SpikeRow(
+                    rowKey: const Key('lookRowFallback'),
+                    label: 'Without it (the fallback)',
+                    shade: null,
+                    animation: _turn,
+                    stress: _stress,
+                  ),
+                ],
               ),
-              const SizedBox(height: 8),
-              _SpikeRow(
-                rowKey: const Key('lookRowShader'),
-                label: 'With the shader',
-                shade: _shaders?.shade,
-                animation: _turn,
-                stress: _stress,
-              ),
-              const SizedBox(height: 12),
-              _SpikeRow(
-                rowKey: const Key('lookRowFallback'),
-                label: 'Without it (the fallback)',
-                shade: null,
-                animation: _turn,
-                stress: _stress,
-              ),
+              const ToyGallery(),
             ],
           ),
         ),

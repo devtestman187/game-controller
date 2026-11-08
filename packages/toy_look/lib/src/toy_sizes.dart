@@ -4,19 +4,25 @@ import 'dart:ui' show Offset;
 /// logical pixels. They're the same in both palettes: the palette is only
 /// colour, so a screen is measured once.
 ///
-/// The two instances differ only in the outline's width; every other size is a
-/// constant shared by both.
+/// The two instances differ only in the outline's width and the button's
+/// height; every other size is a constant shared by both.
 final class ToySizes {
-  const ToySizes._({required this.outlineWidth});
+  const ToySizes._({required this.outlineWidth, required this.buttonHeight});
 
-  /// A menu's outline: 3 px, the size the mock-ups draw (design section 3).
-  static const menu = ToySizes._(outlineWidth: 3);
+  /// A menu's outline: 3 px, the size the mock-ups draw (design section 3), and
+  /// its buttons at the 48 px touch-target minimum (design section 4).
+  static const menu = ToySizes._(outlineWidth: 3, buttonHeight: 48);
 
-  /// A TV screen's outline: 4 px, to read from 3 metres (design section 3).
-  static const tv = ToySizes._(outlineWidth: 4);
+  /// A TV screen's outline: 4 px, to read from 3 metres (design section 3), and
+  /// its buttons 64 px, to hit from the couch (design section 4).
+  static const tv = ToySizes._(outlineWidth: 4, buttonHeight: 64);
 
   /// How wide this screen's ink outlines are.
   final double outlineWidth;
+
+  /// How tall a button is, in logical pixels: 48 on a menu (the touch
+  /// target's minimum) and 64 on a TV (design section 4).
+  final double buttonHeight;
 
   /// How far a widget's hard shadow falls: 3 px right and 4 px down, like a
   /// sticker rather than a blur (design section 3).
