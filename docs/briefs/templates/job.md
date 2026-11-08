@@ -1,8 +1,9 @@
 job: <milestone> step<N> G<gate> — <what, in one line>
 stop: after G<gate>. <what not to start yet>
-read: <contract or design section> · <the survey or last report, the parts that matter> · docs/coding-guidelines.md
+read: <contract or design section> · <the survey or last report, the parts that matter> · docs/coding-guidelines.md · docs/code-health.md (<area>: the items Claude names below)
 
 decisions (answers to <last report> Q1–n): Q1 … · Q2 …
+code health: <the code-health.md items this job also does, or "none">
 
 do:
 1 <one change per line: the type or file, what it does, the rule it follows>

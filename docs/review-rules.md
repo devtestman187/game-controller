@@ -8,6 +8,7 @@ What a review checks, beyond [coding-guidelines.md](coding-guidelines.md) (which
 - **A targeted look before the first tag** of a change that is hard to take back: a new protocol message or field, a saved file's format, a store setting.
 - **How a full review runs, to keep its cost down:** the worker reviews first, against parts A to C, split by area so each pass fits; Claude then verifies every `must` finding and samples the rest, and reads only the risky paths itself. Findings Claude confirms become fixes (small ones by Claude, the rest as worker jobs) or tech debt with an owner's decision.
 - **Each finding that repeats becomes a rule** here or in the guidelines, so the next review finds less.
+- **Every finding Claude keeps goes into [code-health.md](code-health.md)**, by area, as *now*, *when touched* or *before a milestone*, with its risk and benefit; briefs that touch an area take its items.
 
 ## A. Every job: the worker's self-check
 Answer each in the report, one line, with the test that shows it. "Not affected" is an answer; silence is not.
