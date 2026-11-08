@@ -41,6 +41,12 @@ List<Override> phoneHostOverrides({required party.HostDirectories directories}) 
   // The battery and heat a hosted session records (m12 §0.1): this phone's own
   // reading, as the Diagnostics screen shows it.
   party.hostDeviceMonitorProvider.overrideWith((ref) => PhoneHostMonitor(ref.watch(deviceStatusSourceProvider))),
+  // A phone that hosts keeps its screen on for the whole time it hosts, in both
+  // modes (m12 bug 1108a fix2 Q2): one that dims or locks while it waits for
+  // players pauses and then abandons the round. This phone draws the game it
+  // hosts for exactly that time, so that is what it turns the seam on with; the
+  // TV keeps its rule, on while a controller is connected.
+  party.keepAwakeWhileHostingProvider.overrideWith((ref) => ref.watch(gameShownProvider)),
   // This phone's own player in the match it hosts, so the puzzle screen draws
   // its own side of a phones match (m12-phone-layout §3). "Show on this device"
   // has no own player: the phone is the screen, and the whole match is drawn

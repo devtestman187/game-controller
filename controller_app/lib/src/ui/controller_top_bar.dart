@@ -58,8 +58,12 @@ class _GameTopBar extends ConsumerWidget {
       opacity: ref.watch(controlsSettingsProvider).opacity,
       child: Row(
         children: [
-          const CompactConnection(),
-          if (hosting) ...[const SizedBox(width: 8), const HostChip(compact: true)],
+          // The dot is the way into Connect, and a phone that only shows the
+          // game has no link of its own to connect: its bar keeps the host's
+          // chip alone, after the dot when there is one (m12 bug 1108a fix2
+          // Q1).
+          if (controls) ...[const CompactConnection(), const SizedBox(width: 8)],
+          if (hosting) const HostChip(compact: true),
           const Spacer(),
           if (controls) const ModeMenuButton(),
           if (controls) const _SettingsButton(),

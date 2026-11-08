@@ -16,6 +16,7 @@ export 'src/host_log_export.dart';
 export 'src/host_presence.dart';
 export 'src/host_service.dart';
 export 'src/host_view_state.dart';
+export 'src/keep_awake.dart';
 export 'src/live_stats.dart';
 export 'src/local_player_source.dart';
 export 'src/network_addresses.dart' show orderedAddresses;

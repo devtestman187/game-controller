@@ -37,8 +37,9 @@ Future<void> loadPuzzles() async {
 /// the host's own inputs, its folders in a temp folder, and fakes for the
 /// advertiser, the sound player and the screen-on adapter. [advertiser] is the
 /// fake advertising is recorded on, [sounds] the fake the sounds are counted
-/// on, [saved] the settings saved before the launch; [extra] overrides more,
-/// after these, so a test can replace the host's builder.
+/// on, [awake] the fake the screen-on calls are recorded on, [saved] the
+/// settings saved before the launch; [extra] overrides more, after these, so a
+/// test can replace the host's builder.
 Future<TestApp> pumpHostApp(
   WidgetTester tester, {
   bool tablet = false,
@@ -46,6 +47,7 @@ Future<TestApp> pumpHostApp(
   Map<String, Object> saved = const {},
   party_test.FakeAdvertiser? advertiser,
   party_test.FakeSoundPlayer? sounds,
+  party_test.FakeScreenAwake? awake,
   List<Override> extra = const [],
 }) async {
   final dir = Directory.systemTemp.createTempSync('thumb-party-host-');
@@ -64,7 +66,7 @@ Future<TestApp> pumpHostApp(
       ...phoneHostOverrides(directories: TempHostDirectories(dir)),
       party.advertiserProvider.overrideWithValue(advertiser ?? party_test.FakeAdvertiser()),
       party.soundPlayerProvider.overrideWithValue(sounds ?? party_test.FakeSoundPlayer()),
-      party.screenAwakeProvider.overrideWithValue(party_test.FakeScreenAwake()),
+      party.screenAwakeProvider.overrideWithValue(awake ?? party_test.FakeScreenAwake()),
       // The ready library, not a load: the screens' puzzle lists show on their
       // first frame, with nothing to wait for (s9g).
       party.puzzleLibraryProvider.overrideWith((ref) => puzzles),
