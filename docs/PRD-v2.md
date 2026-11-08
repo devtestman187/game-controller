@@ -150,11 +150,11 @@ These apply to the TV app, the host phone and joined phones alike. The design is
 
 | ID | Requirement | Milestone |
 | --- | --- | --- |
-| L1 | One look package: the palette (including the player colours), outlines, shadows, corners, spacing, the font and the Material theme are defined once and used by every app and game. Game rules never refer to them | M13 |
-| L2 | "Toy Box Toon" games: Shape Race (board, pieces, tray, HUD, phone strip, mirror, results) and the Arena drawn with bright colours, bold rounded outlines, soft shadows and cel shading | M13 |
+| L1 | One look package: the palette (including the player colours), outlines, shadows, corners, spacing, the font and the Material theme are defined once and used by every app and game. Game rules never refer to them. Two palettes, Sunny (light) and Night (dark), chosen by a Look setting: Auto (by the local time of day, Sunny from 7:00 to 19:00, the default), Sunny or Night. The palette changes only between screens, never mid-round | M13 |
+| L2 | "Toy Box Toon" games: Shape Race (board, pieces, tray, HUD, phone strip, mirror, results) and the Arena drawn with bright colours, bold rounded outlines, soft shadows and cel shading. Shape Race's player dot becomes the worker: a character with eyes, arms and faces that show effort when it pushes or pulls a piece, joy at a right drop and "oops" at a wrong one. The Arena's marbles get eyes | M13 |
 | L3 | Every menu, card and screen in the same look, on the TV and on phones, with an easy-to-see focus highlight for controller navigation | M13 |
 | L4 | A toon shader on game pieces and backgrounds, with a drawn fallback that looks right without it, and an effects setting (on or off) | M13 |
-| L5 | Lobby music (looping), countdown and player-joined sounds, a mute switch and a volume setting, saved with the other settings | M13 |
+| L5 | Lobby music (looping), countdown and player-joined sounds, a mute switch and a volume setting, saved with the other settings. Only the hosting device plays music: the TV or PC when phones join it, and a host phone only when no TV is used | M13 |
 
 ## Analytics requirements
 
@@ -697,6 +697,8 @@ Milestone 13 gives the games and menus a bright, cartoony "Toy Box Toon" look an
 - [ ] A 4-player Shape Race round keeps its frame rate with effects on: no more dropped frames than before on the Android TV, Windows, the host phone and a joined phone.
 - [ ] With effects off, or when a shader can't load, every screen still looks right, without the shader.
 - [ ] Lobby music loops on the join screen and stops when the round starts; the countdown and player-joined sounds play; mute and volume work and are saved, on the TV and on phones.
+- [ ] The Look setting switches between Sunny and Night; on Auto, a device shows Sunny before 19:00 and Night after, and never switches in the middle of a round.
+- [ ] In Shape Race the worker shows its effort face when pushing or pulling, its happy face on a right drop and "oops" on a wrong one, the same on the host and on a joined phone.
 - [ ] No game rule changed: every rules test passes unchanged.
 
 ## Milestone 14: Fun, content and the first outside playtest

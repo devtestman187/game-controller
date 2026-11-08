@@ -12,7 +12,7 @@ Everything looks like a well-made plastic toy on a playroom table. Shapes are br
 
 | # | Decision | Why |
 | --- | --- | --- |
-| D1 | Two palettes are mocked up, **Sunny** (light sky background, cream boards) and **Night** (deep grape background, as today but brighter). **Recommended: Sunny.** One ships; the other is not kept | The plan asks for "brighter colours" and the players are 6 and up. Ink outlines keep yellow and white pieces readable on a light background, which is what outlines are for. Night is the safe option for dark living rooms |
+| D1 | **Both palettes ship**, Sunny (light sky background, cream boards) and Night (deep grape background). A **Look** setting picks **Auto** (the default), Sunny or Night. Auto follows the device's local time: Sunny from 7:00 to 19:00, Night otherwise. Each device decides for itself, and the palette only changes when a new screen opens, never in the middle of a round (owner, Nov 8, 2026: "Can we have both pallets. Have the user choose in settings or go based on the local time of day.") | Bright for daytime play, easy on the eyes in a dark living room at night. The palette is only colour: every size, shape and outline is the same in both, so the screens are designed once |
 | D2 | The look is mostly **drawn with Canvas**: outlines, shadows and banded shading (a gradient with hard stops). The shader adds the finishing touches on top: a rounded, dome-like shading that follows the shape, the glint, a soft rim light and the animated background | Canvas works on every target today, so the whole look is safe even where a shader can't run. The shader is never needed for the game to look right (L4's fallback) |
 | D3 | Shaders are used only as a **paint on one shape or one background** (`FragmentShader` set on a `Paint`), never as a filter over the whole screen | A paint shader runs on both of Flutter's renderers (Impeller and Skia), so on iOS, Android, Android TV and Windows. A whole-screen filter (`ImageFilter.shader`) needs Impeller and costs a full-screen pass every frame |
 | D4 | One new package, **`packages/toy_look`**, holds the whole look (L1). Rules code never imports it | review-rules.md row C1 and code-health.md's "Look-and-sound" row: a later change of look touches one package |
@@ -26,15 +26,20 @@ Everything looks like a well-made plastic toy on a playroom table. Shapes are br
 
 ## 3. Design tokens (in `toy_look`)
 
-Names are by meaning, not colour, so a later change moves every use at once. Values below are **Sunny**; Night's are in the mock-ups.
+Names are by meaning, not colour, so a later change moves every use at once. The tokens that differ between the palettes have two values; the rest are shared.
 
-| Token | Sunny | Used for |
+| Token | Sunny | Night | Used for |
+| --- | --- | --- | --- |
+| `ink` | `#1E1646` | `#120D2E` | Every outline, shadow colour (at 35%), text on paper |
+| `background` / `backgroundGlow` | `#7CC8F8` / `#C4EAFF` | `#241C5E` / `#3B2F8F` | The screen behind everything, with a soft lighter centre and faint dots |
+| `onBackground` | ink | `#FFFFFF` | Text straight on the background |
+| `paper` | `#FFF6E3` | `#FFF6E3` | Cards, dialogs, side panels, the results card |
+| `board` / `tray` | `#FFEFD0` / `#F5D9A8` | `#30297A` / `#3D3592` | Shape Race's play mat and the tray strip |
+| `targetNeutral` | `#B3A285` | `#9289D6` | Medium and Hard outlines |
+| `field` / `wall` | `#A9DCFB` / `#7F8FD1` | `#2A2270` / `#8C9BD8` | The Arena's floor and walls |
+
+| Token (shared) | Value | Used for |
 | --- | --- | --- |
-| `ink` | `#1E1646` | Every outline, shadow colour (at 35%), text on paper |
-| `background` / `backgroundGlow` | `#7CC8F8` / `#BDE6FF` | The screen behind everything, with a soft lighter centre and faint dots |
-| `paper` | `#FFF6E3` | Cards, dialogs, side panels, the results card |
-| `board` / `tray` | `#FFEFD0` / `#F7DDB0` | Shape Race's play mat and the tray strip |
-| `targetNeutral` | `#B9A98E` | Medium and Hard outlines |
 | `focus` | `#FFD23F` with an ink edge | The controller's focus ring and glow |
 | `good` / `caution` / `bad` | `#2FCB74` / `#FFB020` / `#FF4D5E` | Right, link OK, winner; waiting, slow link; wrong, hazard, last 15 s |
 | `player(1..6)` | `#2E9BF0`, `#FF8A1F`, `#9B5CFF`, `#14C8A0`, `#FF5C8A`, `#F2C200` | Players (D6) |
@@ -42,7 +47,7 @@ Names are by meaning, not colour, so a later change moves every use at once. Val
 
 Sizes: outline width 3 px on menus (4 on TV), a piece's outline 0.8 world units; shadow offset 4 px down and 3 px right (0.9 world units in a game); corner radius 16 px for cards, full pill for buttons; spacing scale 4, 8, 12, 16, 24, 32 px (project-notes.md's spacing scale). Type: Fredoka 600 for titles (TV 56, phone 32), buttons (TV 28, phone 18) and the clock; Nunito 700 for body (TV 22, phone 15). TV sizes are for reading from 3 metres.
 
-Contrast: every text and background pair in the tokens is checked at 4.5:1 or better by a test in `toy_look` (the PRD's acceptance test), so a palette change that breaks it fails.
+Contrast: every text and background pair in the tokens is checked at 4.5:1 or better, in both palettes, by a test in `toy_look` (the PRD's acceptance test), so a palette change that breaks it fails.
 
 ## 4. Parts
 
@@ -58,11 +63,39 @@ Contrast: every text and background pair in the tokens is checked at 4.5:1 or be
 Every screen and card in look-inventory-report.md section 1 moves to the new look. The main ones are mocked up:
 
 - **Shape Race** (TV, split screen and one side; phone, joined view): the board is a cream play mat with an ink edge on the sky background; the tray is a darker strip; targets are drawn as dashed ink outlines with a faint fill (Easy: in the piece's colour); placed pieces lock with a short "boing" (scale overshoot, 150 ms) and a ✓ sparkle; a wrong drop shows a red outline, a ✗ and a 2-frame wobble; the player's dot is a badge-like marble with the number. The HUD uses Fredoka; the clock turns `bad` in the last 15 s. The mirror gets an ink frame in the other side's colour. `PuzzleCamera`'s text-width estimate (`_glyphEm`) is re-measured for Fredoka (a wider font would otherwise break the HUD's placement).
-- **Arena** (the shader's first target, as planned): sprites are glossy marbles with two simple eyes that look in the direction of travel; walls are toy blocks (two-tone, ink edge); hazards are red bumpers with a white ring; the goal is a green pad with a checkered flag and a gentle glow; the faint grid becomes a dotted play mat.
+- **The worker** (Shape Race's player dot, section 5a) becomes a small character with eyes, arms and faces.
+- **Arena** (the shader's first target, as planned): sprites are glossy marbles with two simple eyes that look in the direction of travel (owner: "Keep eyes on the marbles"); walls are toy blocks (two-tone, ink edge); hazards are red bumpers with a white ring; the goal is a green pad with a checkered flag and a gentle glow; the faint grid becomes a dotted play mat.
 - **Menus** (game picker, puzzle list, join screen, pause, results, settings, puzzle settings, stats, host start sheet, connect screen): `ToyBackground`, a Fredoka title, `ToyButton`s, `ToyCard`s. The game picker shows each game as a big card with a drawn picture (the Shape Race tree, the Arena marble).
 - **Cards over the game** (away, waiting, host away, ready 3-2-1, abandoned, rating): `ToyCard` with a coloured header. The 3-2-1 numbers are huge Fredoka with a pop each second.
 - **The phone pad**: A/B/X/Y in the face colours with ink edges and shadows; the D-pad and sticks in paper and ink. Opacity still applies to the whole overlay. Sizes don't change (D11).
 - **TV home and test tools** (pairing panel, controllers panel, log, haptic panel, latency): the theme only; their layouts stay as they are.
+
+## 5a. The worker
+
+Owner, Nov 8, 2026: "Can the worker in the shape race game have eyes and arms? Can it also make faces that show it's making effort to push/pull pieces?" Yes: the player's dot becomes **the worker**, a round character in the player's colour with its number on its tummy (so players still tell each other apart without colour), two eyes and two noodle arms with mitten hands.
+
+| Moment (from the game's state) | Face and body |
+| --- | --- |
+| Empty-handed, still | Smile, blinks every few seconds, arms down |
+| Moving | Eyes look where it's going, a slight lean |
+| Carrying a small piece | Hands on the piece's edge, a determined little smile |
+| **Pushing** (moving away from the piece's side it holds) | Behind the piece, leaning in, arms straight; effort face: squeezed eyes (> <), gritted teeth |
+| **Pulling** (moving towards its own side of the piece) | In front of the piece, leaning back, arms stretched back to it; effort face |
+| A big piece alone (slow) | The strongest effort: squashed body, sweat drop, a small shake |
+| A big piece with a teammate | Each worker on its own side, focused "o" mouth, less strain |
+| Calling the teammate (the call flash) | One arm waves, mouth open |
+| Rotating | Arms twist with the piece, tongue out in concentration |
+| Right drop (snap) | Happy closed eyes (^ ^), arms up, a small hop, for about half a second |
+| Wrong drop | "Oops": wide eyes, wavy mouth, a hand on its head, sweat drop |
+| Round won / lost | Cheering jump / a shrug |
+| Player away | Eyes closed, faded, "zzz" |
+
+Rules for it:
+- **The rules don't change.** The grab point, the dot's reach and every tolerance stay as they are; the worker is only how the dot is drawn. Its body is about 1.3 times the dot's drawn size today, and never less than 7 mm across on a phone so its face can be read; a small ring under it marks the exact grab point while it's empty-handed.
+- **Everything is worked out from the snapshot**: the held piece, whether it's big and who else holds it, the dot's movement between frames (push or pull, and which way it looks), the call flash, and the last snap or wrong drop with its time. So a joined phone shows the same faces as the host, with nothing added to the protocol.
+- **Push or pull** compares the direction of travel with the side of the piece the worker holds; standing still while carrying uses the small-piece face.
+- The worker never covers a target the player is aiming at: when carrying, it sits on the edge of the piece it holds, not in the middle.
+- The faces are drawn with simple shapes (arcs, ovals, a few lines), so they read at a phone's size and cost little to draw with 4 players.
 
 ## 6. The shaders
 
@@ -72,6 +105,11 @@ Two fragment shaders in `packages/toy_look/shaders/`, declared under `flutter: s
 2. **`toy_backdrop.frag`** (the background): the background colour, the centre glow, and polka dots on a slow diagonal drift (time uniform). Used on menus with effects on; in a game the background is drawn once into an image and reused.
 
 Fallback, and how the look is the same without the shader: the body is a `LinearGradient` from top-left to bottom-right with hard stops (highlight to 30%, base to 75%, shade after), and the glint is a small white oval. In the mock-ups, "effects on" and "effects off" can be compared.
+
+What the research found (docs/briefs/m13/research-flutter-shaders-report.md, the flash worker's first web research job, checked by Claude against docs.flutter.dev):
+- A shader on a `Paint` works on both Skia and Impeller ("Both the Skia and Impeller backends support writing a custom shader"), so one code path serves all four targets. `ImageFilter.shader` throws on Skia, so it's not used (D3 stands).
+- Impeller is the default on iOS, on Android API 29+ with Vulkan (older or Vulkan-less devices, which includes many TV boxes, fall back to OpenGL ES) and, from Flutter 3.47, on Windows.
+- So: uniforms by name (`getUniformFloat`), not by index; the background is one full-screen rectangle; both programs are loaded once at start, behind the start screen, because a first use can stall (about 1.5 s reported on Windows); and the spike measures start-up and frame time on the Android TV, where a slow GPU driver can take seconds to compile. If a TV box draws wrong, the Android manifest can force OpenGL ES or turn Impeller off.
 
 Risk check first (step 1 below): no shader has ever been compiled in this repository. The first job builds one shader and draws it on Windows (the TV app's desktop build), the Android TV emulator, an Android phone and an iPhone (via TestFlight), and measures the frame time with 4 players' pieces on the Android TV emulator. If a target can't run it, that target ships with effects off.
 
@@ -98,8 +136,8 @@ rules (puzzle_game rules, test_game rules, game_kit sessions) ── never impor
 
 - New `SoundKey`s: `lobby`, `countdown`, `playerJoined` (from the existing audio package: lobby is a 19.2 s seamless loop, countdown 4.42 s with beeps at 0, 1, 2 s and "go" at 3 s, player joined 1.02 s). They're copied into `assets/audio/` with their CREDITS.md rows.
 - `SoundPlayer` gains `playLoop(key)` and `stopLoop()` (flutter_soloud's looping), and a master volume and mute.
-- Lobby music plays on the game picker and join screen of whoever hosts (TV or host phone) and stops when a round starts; joined phones don't play it. The countdown plays with every 3-2-1 (the Arena and the ready card). Player joined plays on the host when a phone joins.
-- Settings: **Sound volume** (0 to 100%, default 80%) and **Music** (on/off, default on) on the TV's settings and the phone's settings; each device's own, saved with its other settings.
+- Lobby music plays on the game picker and join screen of the device that hosts, and stops when a round starts. When phones join a TV or PC, only the TV or PC plays it; a host phone plays it only when no TV is used, which is always the case when a phone hosts. Joined phones never play it (owner, Nov 8, 2026: "Play music on host phone only if the TV is not used."). The countdown plays with every 3-2-1 (the Arena and the ready card). Player joined plays on the host when a phone joins.
+- Settings: **Sound volume** (0 to 100%, default 80%) and **Music** (on/off, default on) on the TV's settings and the phone's settings; each device's own, saved with its other settings. A new **Look and sound** settings section holds them with **Look** (Auto, Sunny, Night) and **Effects** (on/off).
 
 ## 9. Implementation order (after the owner's OK)
 
@@ -115,9 +153,11 @@ Each step is a flash-worker job with a brief and a review gate, as in M12.
 8. **The pad**: restyled at the same sizes.
 9. Full review (worker first, Claude verifies), device tests, then a build on the owner's word.
 
-## 10. Questions for the owner (answered with the mock-ups)
+## 10. Owner's answers (Nov 8, 2026)
 
-1. **Sunny or Night?** Recommended: Sunny.
-2. **Eyes on the Arena's marbles?** Recommended: yes; they're cheap and make it feel like a toy. Shape Race's dots stay plain.
-3. **Lobby music on the host phone too**, or only on the TV? Recommended: both, with the Music switch.
-4. Anything from the original "Toy Box Toon" file on the other PC that should override this design.
+1. Palettes: both, chosen in settings or by the time of day (D1).
+2. Eyes on the Arena's marbles: yes.
+3. Lobby music: on the host phone only when no TV is used (section 8).
+4. Shape Race's dot becomes the worker, with eyes, arms and effort faces (section 5a).
+
+Still open: anything from the original "Toy Box Toon" file on the other PC that should override this design.
