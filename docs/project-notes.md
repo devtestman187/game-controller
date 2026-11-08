@@ -109,8 +109,11 @@ The owner often has release copies of the TV app open (from the Downloads folder
 
 **Releases**
 - A tag with the same name as a branch (`m12` on branch `m12`) can't be pushed by `tools/release.sh`: `git push origin m12` is ambiguous and fails. Tag by hand and push `refs/tags/<tag>` (docs/release.md), then `tools/release.sh --status <tag>`, which reports once rather than waiting. Even then Codemagic can't check the tag out ("Failed to set the repository head"), so the iPhone build fails: never name a tag after a branch; milestone branches should be `mN-work` or similar (Nov 7, 2026: `m12` failed on TestFlight, `m12.1` went out).
+- A release step that downloads from GitHub (the Gradle zip, flutter_soloud's prebuilt libraries, which its build hook fetches even in `flutter test`) can fail with HTTP 504 when GitHub is slow. Rerun: `gh run rerun <id> --failed` for GitHub Actions; for Codemagic the owner starts a new build of the tag (Builds → ⋮ → Start new build → Build tag, workflow "iOS TestFlight"), since a check rerequest through GitHub returns 404 (Nov 8, 2026: m12.7).
 
 **Flutter and Dart**
+- `find.byType(OutlinedButton)` doesn't match `OutlinedButton.icon`, which builds a private subclass; count button kinds with `find.byWidgetPredicate((w) => w is OutlinedButton)`.
+- On iOS, a plugin call that blocks the main thread freezes the whole screen even though Dart keeps running (the `Host start:` lines still log). bonsoir_darwin 7.1.1's broadcast did this for ~0.7 s; 7.1.2 fixed it (m12 bug 1108b).
 - Don't run two Flutter builds at once: they share a build cache and collide.
 - Don't pipe a build or test through `| tail`: the pipe hides the exit code, so a failed build looks successful. `tools/check.sh` keeps the exit codes.
 - A `late final` field that uses `ref` must be set in `initState`. If it's first used in `dispose`, it throws "Using ref when unmounted".

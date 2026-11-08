@@ -53,10 +53,10 @@ packages:
     dependency: transitive
     description:
       name: bonsoir_darwin
-      sha256: "6f695a0b4465514b75fc1a457746ab6dfc10d7180f0d04810fd9512e6520df69"
+      sha256: "5fceef2e607db0b63fc7a51fe3c0e4da66ec77e2896acc697bb531cf48b8df0a"
       url: "https://pub.dev"
     source: hosted
-    version: "7.1.1"
+    version: "7.1.2"
   bonsoir_linux:
     dependency: transitive
     description:
