@@ -1,5 +1,4 @@
-import 'dart:ui'
-    show Canvas, Color, ImageByteFormat, Paint, PictureRecorder, Rect, Size;
+import 'dart:ui' show Canvas, Color, ImageByteFormat, Paint, PictureRecorder, Rect, Size;
 
 /// The white every test paints over first, so a shape's transparent parts and
 /// its shadow read as colour rather than as alpha.
@@ -22,24 +21,14 @@ final class Pixels {
 
 /// Paints [paint] onto a [size] canvas over [white] and reads the pixels back,
 /// so a test can say what a painter drew where.
-Future<Pixels> paintedPixels(
-  Size size,
-  void Function(Canvas canvas) paint,
-) async {
+Future<Pixels> paintedPixels(Size size, void Function(Canvas canvas) paint) async {
   final recorder = PictureRecorder();
   final canvas = Canvas(recorder);
-  canvas.drawRect(
-    Rect.fromLTWH(0, 0, size.width, size.height),
-    Paint()..color = white,
-  );
+  canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), Paint()..color = white);
   paint(canvas);
-  final image = await recorder.endRecording().toImage(
-    size.width.round(),
-    size.height.round(),
-  );
+  final image = await recorder.endRecording().toImage(size.width.round(), size.height.round());
   final data = await image.toByteData(format: ImageByteFormat.rawRgba);
   image.dispose();
-  if (data == null)
-    throw StateError('the painter test could not read the image it drew');
+  if (data == null) throw StateError('the painter test could not read the image it drew');
   return Pixels(data.buffer.asUint8List(), size.width.round());
 }

@@ -1,16 +1,5 @@
 import 'dart:math' as math;
-import 'dart:ui'
-    show
-        Canvas,
-        Color,
-        FragmentProgram,
-        Offset,
-        Paint,
-        PaintingStyle,
-        Path,
-        Rect,
-        StrokeCap,
-        StrokeJoin;
+import 'dart:ui' show Canvas, Color, FragmentProgram, Offset, Paint, PaintingStyle, Path, Rect, StrokeCap, StrokeJoin;
 
 import 'body_fallback.dart';
 import 'turn.dart';
@@ -82,13 +71,7 @@ final class ToyShapeStyle {
 /// only translated or scaled has no angle and draws as it always did.
 /// Mirroring (a negative scale) doesn't occur in the games — no game draws a
 /// mirrored piece — and would need its own handling, so it isn't handled here.
-void toyShape(
-  Canvas canvas,
-  Path path,
-  Color color,
-  ToyShapeStyle style, {
-  FragmentProgram? shade,
-}) {
+void toyShape(Canvas canvas, Path path, Color color, ToyShapeStyle style, {FragmentProgram? shade}) {
   final bounds = path.getBounds();
   final turnRad = _canvasTurnRad(canvas);
   // The shadow falls down and to the right on screen, like the light, however
@@ -117,12 +100,7 @@ void toyShape(
 ///
 /// The uniforms are set by name, so the shader's source can be reordered
 /// without silently swapping a size for a colour.
-Paint _shadedBody(
-  FragmentProgram program,
-  Rect bounds,
-  Color color,
-  double angleRad,
-) {
+Paint _shadedBody(FragmentProgram program, Rect bounds, Color color, double angleRad) {
   final shader = program.fragmentShader();
   final light = toyLightIn(angleRad);
   shader.getUniformVec2('uOrigin').set(bounds.left, bounds.top);

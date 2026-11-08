@@ -56,10 +56,7 @@ const glintAlpha = 0.75;
 /// diagonal apart whatever the angle, so the bands cross the shape alike.
 ({Alignment begin, Alignment end}) toyGradientAxis(double angleRad) {
   final diagonal = toyTurnBack(const Offset(1, 1), angleRad);
-  return (
-    begin: Alignment(-diagonal.dx, -diagonal.dy),
-    end: Alignment(diagonal.dx, diagonal.dy),
-  );
+  return (begin: Alignment(-diagonal.dx, -diagonal.dy), end: Alignment(diagonal.dx, diagonal.dy));
 }
 
 /// The body without a shader (design section 6): a [LinearGradient] across
@@ -83,10 +80,7 @@ LinearGradient toyBodyGradient(Color color, double angleRad) {
 /// side.
 Rect toyGlintBounds(Rect bounds, double angleRad) {
   final fromCentre = toyTurnBack(
-    Offset(
-      (glintCentre.dx - _centreShare) * bounds.width,
-      (glintCentre.dy - _centreShare) * bounds.height,
-    ),
+    Offset((glintCentre.dx - _centreShare) * bounds.width, (glintCentre.dy - _centreShare) * bounds.height),
     angleRad,
   );
   return Rect.fromCenter(
@@ -99,28 +93,15 @@ Rect toyGlintBounds(Rect bounds, double angleRad) {
 /// Paints the fallback body for [path]: the three bands over [bounds] for a
 /// canvas turned by [angleRad], then the glint turned [glintTurnDeg], clipped
 /// to the path so it never spills off a triangle's edge.
-void paintFallbackBody(
-  Canvas canvas,
-  Path path,
-  Color color,
-  Rect bounds,
-  double angleRad,
-) {
-  canvas.drawPath(
-    path,
-    Paint()..shader = toyBodyGradient(color, angleRad).createShader(bounds),
-  );
+void paintFallbackBody(Canvas canvas, Path path, Color color, Rect bounds, double angleRad) {
+  canvas.drawPath(path, Paint()..shader = toyBodyGradient(color, angleRad).createShader(bounds));
   final glint = toyGlintBounds(bounds, angleRad);
   canvas.save();
   canvas.clipPath(path);
   canvas.translate(glint.center.dx, glint.center.dy);
   canvas.rotate(glintTurnRad);
   canvas.drawOval(
-    Rect.fromCenter(
-      center: Offset.zero,
-      width: glint.width,
-      height: glint.height,
-    ),
+    Rect.fromCenter(center: Offset.zero, width: glint.width, height: glint.height),
     Paint()..color = _white.withValues(alpha: glintAlpha),
   );
   canvas.restore();

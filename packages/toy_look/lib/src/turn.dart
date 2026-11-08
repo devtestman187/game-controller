@@ -12,8 +12,5 @@ import 'dart:ui' show Offset;
 Offset toyTurnBack(Offset offset, double angleRad) {
   final cosine = cos(angleRad);
   final sine = sin(angleRad);
-  return Offset(
-    offset.dx * cosine + offset.dy * sine,
-    offset.dy * cosine - offset.dx * sine,
-  );
+  return Offset(offset.dx * cosine + offset.dy * sine, offset.dy * cosine - offset.dx * sine);
 }

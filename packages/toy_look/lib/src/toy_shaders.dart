@@ -40,10 +40,7 @@ final class ToyShaders {
       // The documented boundary: the engine's shader loader, which can refuse
       // a shader on any device for reasons Dart can't inspect. The caller gets
       // a state it handles, not an exception.
-      return ToyShaders._(
-        error: e.toString(),
-        loadMs: watch.elapsedMilliseconds,
-      );
+      return ToyShaders._(error: e.toString(), loadMs: watch.elapsedMilliseconds);
     }
   }
 }

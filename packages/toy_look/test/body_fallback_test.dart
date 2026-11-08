@@ -12,24 +12,21 @@ const _blue = Color(0xFF2E9BF0);
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  test(
-    'the gradient runs from the screen\'s top-left whatever the canvas\'s turn',
-    () {
-      // With no turn the gradient is the design's top-left to bottom-right.
-      final straight = toyGradientAxis(0);
-      expect(straight.begin, Alignment.topLeft);
-      expect(straight.end, Alignment.bottomRight);
-      // Half a turn: the shape's own bottom-right now faces the screen's
-      // top-left, so the gradient is reversed in the shape's own bounds — the
-      // same corners on screen. sin(pi) is 1.2e-16, not 0, so the ends are
-      // compared with a tolerance.
-      final halfTurn = toyGradientAxis(pi);
-      expect(halfTurn.begin.x, closeTo(1, 1e-9));
-      expect(halfTurn.begin.y, closeTo(1, 1e-9));
-      expect(halfTurn.end.x, closeTo(-1, 1e-9));
-      expect(halfTurn.end.y, closeTo(-1, 1e-9));
-    },
-  );
+  test('the gradient runs from the screen\'s top-left whatever the canvas\'s turn', () {
+    // With no turn the gradient is the design's top-left to bottom-right.
+    final straight = toyGradientAxis(0);
+    expect(straight.begin, Alignment.topLeft);
+    expect(straight.end, Alignment.bottomRight);
+    // Half a turn: the shape's own bottom-right now faces the screen's
+    // top-left, so the gradient is reversed in the shape's own bounds — the
+    // same corners on screen. sin(pi) is 1.2e-16, not 0, so the ends are
+    // compared with a tolerance.
+    final halfTurn = toyGradientAxis(pi);
+    expect(halfTurn.begin.x, closeTo(1, 1e-9));
+    expect(halfTurn.begin.y, closeTo(1, 1e-9));
+    expect(halfTurn.end.x, closeTo(-1, 1e-9));
+    expect(halfTurn.end.y, closeTo(-1, 1e-9));
+  });
 
   test('the fallback body is a hard-stop gradient from its highlight to its shade', () {
     final gradient = toyBodyGradient(_blue, 0);
@@ -54,17 +51,14 @@ void main() {
     ]);
   });
 
-  test(
-    'the glint sits at 27% across and 24% down the bounds, 8% by 5% of them',
-    () {
-      final glint = toyGlintBounds(const Rect.fromLTWH(100, 200, 200, 100), 0);
-      // centre = (100 + 200 * 0.27, 200 + 100 * 0.24) = (154, 224)
-      expect(glint.center, const Offset(154, 224));
-      // width = 200 * 0.08 = 16, height = 100 * 0.05 = 5
-      expect(glint.width, closeTo(16, 1e-9));
-      expect(glint.height, closeTo(5, 1e-9));
-    },
-  );
+  test('the glint sits at 27% across and 24% down the bounds, 8% by 5% of them', () {
+    final glint = toyGlintBounds(const Rect.fromLTWH(100, 200, 200, 100), 0);
+    // centre = (100 + 200 * 0.27, 200 + 100 * 0.24) = (154, 224)
+    expect(glint.center, const Offset(154, 224));
+    // width = 200 * 0.08 = 16, height = 100 * 0.05 = 5
+    expect(glint.width, closeTo(16, 1e-9));
+    expect(glint.height, closeTo(5, 1e-9));
+  });
 
   test('the glint is turned -30 degrees, so it leans up to the right', () async {
     // A 400 x 400 square at (0, 0): the glint's centre is
@@ -85,10 +79,6 @@ void main() {
       ),
     );
     final pixel = pixels.at(116, 85);
-    expect(
-      pixel.$1,
-      greaterThan(165),
-      reason: 'the glint covers the pixel at (116, 85): $pixel',
-    );
+    expect(pixel.$1, greaterThan(165), reason: 'the glint covers the pixel at (116, 85): $pixel');
   });
 }

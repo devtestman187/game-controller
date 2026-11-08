@@ -4,17 +4,12 @@ import 'package:toy_look/toy_look.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  test(
-    'a shader that is not there leaves no shade and says why, and never throws',
-    () async {
-      final shaders = await ToyShaders.load(
-        asset: 'packages/toy_look/shaders/not_there.frag',
-      );
-      expect(shaders.shade, isNull);
-      expect(shaders.error, isNotNull);
-      expect(shaders.error, isNotEmpty);
-    },
-  );
+  test('a shader that is not there leaves no shade and says why, and never throws', () async {
+    final shaders = await ToyShaders.load(asset: 'packages/toy_look/shaders/not_there.frag');
+    expect(shaders.shade, isNull);
+    expect(shaders.error, isNotNull);
+    expect(shaders.error, isNotEmpty);
+  });
 
   test('none is the effects-off state: no shader and nothing to report', () {
     expect(ToyShaders.none.shade, isNull);

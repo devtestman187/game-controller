@@ -113,7 +113,7 @@ Until a controller is paired the host accepts only `hello`, `pair`, `ping` and `
 
 ### `player` (host → controller)
 
-`{"n": 1}`: the controller's player number (from 1), sent after pairing and whenever it changes. Colours by number (ARGB): 1 `0xFF5AAAFF`, 2 `0xFFFFA040`, 3 `0xFFD27CFF`, 4 `0xFF4DE0C0`, 5 `0xFFFF6F91`, 6 `0xFFE8E86A`, then repeating. A number stays reserved for a minute after its controller drops, so a short Wi-Fi drop doesn't swap players. Players on the host itself (a keyboard, or the host phone's own player) take numbers too.
+`{"n": 1}`: the controller's player number (from 1), sent after pairing and whenever it changes. Colours by number (ARGB): 1 `0xFF2E9BF0`, 2 `0xFFFF8A1F`, 3 `0xFFA66CFF`, 4 `0xFF14C8A0`, 5 `0xFFFF5C8A`, 6 `0xFFF2C200`, then repeating. A number stays reserved for a minute after its controller drops, so a short Wi-Fi drop doesn't swap players. Players on the host itself (a keyboard, or the host phone's own player) take numbers too.
 
 ## 6. Heartbeats and latency
 

@@ -95,11 +95,13 @@ Puzzle madeUpPuzzle({required double aspect, required double side, String id = '
 Offset mirrorPoint(SplitLayout layout, Rect rect, double scale, Offset world) =>
     rect.topLeft + (world - layout.left.board.topLeft) * scale;
 
-/// Whether the mirror's orange frame is drawn along [rect]'s top edge.
-bool hasFrame(Uint8List bytes, int width, Rect rect, {int colour = 0xFFA040}) {
+/// Whether the mirror's orange frame — the palette's other-side colour,
+/// [them], unless [colour] says otherwise — is drawn along [rect]'s top edge.
+bool hasFrame(Uint8List bytes, int width, Rect rect, {int? colour}) {
+  final ink = colour ?? them;
   for (var y = rect.top.round() - 2; y <= rect.top.round() + 2; y++) {
     for (var x = rect.left.round() + 4; x <= rect.right.round() - 4; x++) {
-      if (pixel(bytes, width, x, y) == colour) return true;
+      if (pixel(bytes, width, x, y) == ink) return true;
     }
   }
   return false;

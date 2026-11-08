@@ -1,6 +1,7 @@
 name: toy_look
 description: >-
-  The "Toy Box Toon" look (M13, docs/design/look-and-sound.md): the body
+  The "Toy Box Toon" look (M13, docs/design/look-and-sound.md): the palettes
+  and the Look setting, the fonts and their type, the Material theme, the body
   shader and the Canvas fallback that draw every game object the same way.
   Rules code never imports this package.
 publish_to: 'none'
@@ -15,6 +16,8 @@ resolution: workspace
 dependencies:
   flutter:
     sdk: flutter
+  protocol:
+    path: ../protocol
 
 dev_dependencies:
   flutter_lints: ^6.0.0
@@ -24,5 +27,17 @@ dev_dependencies:
 # The shaders are compiled by the build (impellerc) and ship as assets; the
 # key they load by is `packages/toy_look/shaders/toy_shade.frag`.
 flutter:
+  fonts:
+    - family: Fredoka
+      fonts:
+        - asset: fonts/fredoka/Fredoka-Variable.ttf
+    - family: Nunito
+      fonts:
+        - asset: fonts/nunito/Nunito-Variable.ttf
+  # The OFL asks for its text to travel with the font (design D13); the apps
+  # add both to their licence page with registerToyFontLicenses.
+  assets:
+    - fonts/fredoka/OFL.txt
+    - fonts/nunito/OFL.txt
   shaders:
     - shaders/toy_shade.frag

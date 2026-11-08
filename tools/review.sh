@@ -11,7 +11,7 @@
 #   tools/review.sh --strings        # the texts a diff adds or removes
 #   tools/review.sh --help
 #
-# Checks: size func platform layers leftover catch types timing clock number
+# Checks: size func platform layers color leftover catch types timing clock number
 # Exit code: 0 no FAIL, 1 any FAIL, 2 bad arguments or a missing git.
 set -u
 
@@ -286,6 +286,7 @@ for f in ${files[@]+"${files[@]}"}; do
     case "$f" in
       packages/protocol/* | packages/connection/* | packages/metrics/*)
         [ "$pkg" = flutter ] && msg="flutter in a pure Dart package"
+        [ "$pkg" = toy_look ] && msg="toy_look in a pure Dart package"
         ;;
       packages/puzzle_game/*)
         case "$pkg" in
@@ -298,6 +299,20 @@ for f in ${files[@]+"${files[@]}"}; do
           party_host) msg="a game imports party_host" ;;
           puzzle_game) msg="a game imports the other game (puzzle_game)" ;;
         esac
+        ;;
+    esac
+    # The look draws; it never decides (design section 7). A game file may use
+    # it only if it draws: a painter, a view, a widgets file or a module that
+    # builds those. A new file defaults to rules, which is the safe side. Only
+    # lib files count: a test may import the look to check what it draws.
+    case "$f" in
+      packages/puzzle_game/lib/* | packages/test_game/lib/* | packages/game_kit/lib/*)
+        if [ "$pkg" = toy_look ]; then
+          case "${f##*/}" in
+            *painter* | *view* | *widgets* | *_module.dart) ;;
+            *) msg="a rules file imports toy_look" ;;
+          esac
+        fi
         ;;
     esac
     if [ -z "$msg" ] && [ "${rest#src/}" != "$rest" ] && [ "$pkg" != "$own" ]; then
@@ -378,6 +393,8 @@ for f in ${files[@]+"${files[@]}"}; do
         if ($0 ~ /catch/ && $0 ~ /\{[ \t]*\}[ \t]*;?[ \t]*$/) say("FAIL", "catch", FNR, "empty catch body")
         else if ($0 ~ /catch/ && $0 ~ /\{[ \t]*$/) pending = FNR
         if (lib && $0 ~ /(^|[^A-Za-z0-9_])dynamic([^A-Za-z0-9_]|$)/) say("FAIL", "types", FNR, "dynamic")
+        if (lib && file !~ /^packages\/toy_look\// && $0 ~ /Color\(0x|Colors\.|Color\.fromARGB\(|Color\.fromRGBO\(/)
+          say("FAIL", "color", FNR, "a colour outside toy_look")
         if (lib && $0 ~ /Future\.delayed\(/) say("NOTE", "timing", FNR, "Future.delayed(")
         if (lib && $0 ~ /sleep\(/) say("NOTE", "timing", FNR, "sleep(")
         if (file ~ /^packages\/(puzzle_game|test_game)\/lib\//) {

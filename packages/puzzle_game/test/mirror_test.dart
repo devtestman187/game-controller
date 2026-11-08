@@ -71,10 +71,10 @@ void main() {
         ),
       );
       final dot = at(const Offset(26, 40));
-      expect(pixel(bytes, width, dot.dx.round(), dot.dy.round()), 0xFFA040);
+      expect(pixel(bytes, width, dot.dx.round(), dot.dy.round()), them);
       // 10 board units away it is the board, not the dot.
       final away = at(const Offset(36, 40));
-      expect(pixel(bytes, width, away.dx.round(), away.dy.round()), isNot(0xFFA040));
+      expect(pixel(bytes, width, away.dx.round(), away.dy.round()), isNot(them));
     });
 
     testWidgets('their dot is drawn at least mirrorMinPieceMm across on every phone', (tester) async {
@@ -169,15 +169,15 @@ void main() {
       // mirror's top edge.
       final r = mirrorDotRadius(puzzle);
       final pinned = mirrorPoint(layout, mirror.rect, mirror.scale, Offset(above.dx, board.top + r));
-      expect(pixel(bytes, width, pinned.dx.round(), pinned.dy.round()), 0xFFA040);
+      expect(pixel(bytes, width, pinned.dx.round(), pinned.dy.round()), them);
       // Its place across the board is its own: 10 units along is the board.
       final along = Offset(pinned.dx + 10, pinned.dy);
-      expect(pixel(bytes, width, along.dx.round(), along.dy.round()), isNot(0xFFA040));
+      expect(pixel(bytes, width, along.dx.round(), along.dy.round()), isNot(them));
       // Nothing is drawn at its real place, above the mirror.
-      expect(pixel(bytes, width, pinned.dx.round(), (mirror.rect.top - 3).round()), isNot(0xFFA040));
+      expect(pixel(bytes, width, pinned.dx.round(), (mirror.rect.top - 3).round()), isNot(them));
       // And it is not 10 board units lower, where an unpinned dot would be.
       final lower = Offset(pinned.dx, pinned.dy + 15);
-      expect(pixel(bytes, width, lower.dx.round(), lower.dy.round()), isNot(0xFFA040));
+      expect(pixel(bytes, width, lower.dx.round(), lower.dy.round()), isNot(them));
     });
 
     testWidgets('the piece they hold is drawn with their dot, turned as they turn it', (tester) async {
@@ -226,7 +226,7 @@ void main() {
       );
       for (final boardUnit in places) {
         final where = at(boardUnit);
-        expect(pixel(bytes, width, where.dx.round(), where.dy.round()), 0xFFA040, reason: '$boardUnit');
+        expect(pixel(bytes, width, where.dx.round(), where.dy.round()), them, reason: '$boardUnit');
       }
     });
   });

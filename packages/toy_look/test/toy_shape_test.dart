@@ -16,10 +16,7 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   Future<Pixels> paintedSquare({ToyShapeStyle style = const ToyShapeStyle()}) =>
-      paintedPixels(
-        const Size(100, 100),
-        (canvas) => toyShape(canvas, Path()..addRect(_square), _blue, style),
-      );
+      paintedPixels(const Size(100, 100), (canvas) => toyShape(canvas, Path()..addRect(_square), _blue, style));
 
   test('the light turns back by the canvas\'s angle, so it stays at the screen\'s top-left', () {
     // No turn: the light is exactly the design's toyLight, (-0.55, -0.65).
@@ -96,12 +93,7 @@ void main() {
     // Two squares side by side, each a different colour: a shared shader or
     // gradient would paint both the last one's.
     final pixels = await paintedPixels(const Size(200, 100), (canvas) {
-      toyShape(
-        canvas,
-        Path()..addRect(const Rect.fromLTWH(20, 20, 40, 40)),
-        _blue,
-        const ToyShapeStyle(),
-      );
+      toyShape(canvas, Path()..addRect(const Rect.fromLTWH(20, 20, 40, 40)), _blue, const ToyShapeStyle());
       toyShape(
         canvas,
         Path()..addRect(const Rect.fromLTWH(120, 20, 40, 40)),

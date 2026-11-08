@@ -24,7 +24,7 @@ checks=(
   "connection|packages/connection|dart test|server, client, game host (real sockets on localhost)"
   "metrics|packages/metrics|dart test|analytics counters, sessions, report"
   "kit|packages/game_kit|flutter test|the session loop, modules and hosting settings"
-  "look|packages/toy_look|flutter test|the look package: shapes, shaders and fallback"
+  "look|packages/toy_look|flutter test|the look package: palettes, Look setting, type, theme, shapes, shaders and fallback"
   "arena|packages/test_game|flutter test|the Arena game's rules and view"
   "puzzle|packages/puzzle_game|flutter test|Shape Race rules, view and snapshots"
   "host|packages/party_host|flutter test|the host service, host screens, sound and stats"
