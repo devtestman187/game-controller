@@ -1,0 +1,16 @@
+job: m12 build 4 fix-f5 G4 — the mirror beside the stick; the host phone's mirror clear of its pad
+stop: after G4.
+read: docs/design/m12-opponent-mirror.md (rule 8 is the owner's new decision) · docs/design/m12-mirror-stick.png (look at it as an image: the place to draw) · docs/briefs/m12/fix-f3-report.md (yours: `ViewContext.padRects`, `leftPadRects`, the per-mode table, its Questions) · packages/puzzle_game/lib/src/{camera,mirror_painter,match_painter,view,puzzle_module}.dart · packages/game_kit/lib/src/{frame_view,game_module}.dart · controller_app/lib/src/ui/{joined_view,controller_top_bar}.dart · packages/party_host/lib/src/ui/puzzle_screen.dart, packages/party_host/lib/src/providers.dart and controller_app/lib/src/host/host_overrides.dart (how the host phone draws its own game) · packages/puzzle_game/test/{mirror_test,mirror_place_test}.dart · docs/coding-guidelines.md
+code health: fix-f3's Question 3 (`topBarHeightPx = 52.0` copies the top bar's height): make it the bar's own public constant and use it.
+
+do:
+1 Rule 8: where the top-left corner meets the pad (stick and tilt modes), place the mirror in the gap between the left control's area and the board, under the clock, at the same scale; the clock and counts stay where today's HUD puts them (not to the mirror's right). It must not meet any pad rect, the board, the tray row or the HUD; if that gap can't hold it either, no mirror. One placement rule in `camera.dart` that tries the corner, then the gap: not a mode switch in the painter.
+2 The host phone ("Play on this phone") passes its pad's rects to its own game the way `JoinedView` does, through a `party_host` seam the phone app overrides (a provider or the screen's constructor; say which and why). The TV and "Show on this device" (no pad) pass none.
+3 Redraw docs/design/m12-mirror-iphone.png and add docs/design/m12-mirror-iphone-stick.png (stick mode), from the game's own painter as before.
+tests (each failing first): the mirror's rect per pad mode (D-pad, stick, tilt) on the three phone sizes: in the corner with the D-pad, in the gap with the stick and tilt, never meeting a pad rect, the board or the HUD; the host phone's puzzle screen gets the pad rects (a widget test); the TV gets none. Report the new per-mode table (which puzzles keep a mirror where).
+in the report: test counts before and after, the files changed, the table, the gap's size per phone.
+self-check: docs/review-rules.md part A, items 1–5, one line each in the report with the test that shows it.
+rules: no lib file over 400 · tests first, each failing for the bug's reason · tools/review.sh: no FAIL on your lines · write only inside this job's folder.
+allow: docs/briefs/m12/fix-f5-report.md · docs/design/m12-mirror-iphone.png · docs/design/m12-mirror-iphone-stick.png · docs/design/m12-mirror-169.png · packages/puzzle_game · packages/game_kit · packages/party_host · controller_app/lib · controller_app/test
+check: format analyze puzzle kit host phone tv
+report: docs/briefs/m12/fix-f5-report.md

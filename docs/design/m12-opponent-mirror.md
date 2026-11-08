@@ -13,5 +13,8 @@ The owner's words: "Can we do option A but also show what the remote player is a
 6. Not shown: in solo and team games (one board), on a tablet that already draws the whole match, and on the TV.
 7. A 2-v-1: the mirror shows the other side's board and every dot on it.
 
+## Where it goes with each pad (owner, Nov 7 evening: "Go with your recommendation")
+8. **Clear of the pad.** The mirror never sits under a control. With the D-pad it goes top left, as rule 5 says. With the stick or tilt, whose area reaches that corner, it goes in the gap between the left control and the board, under the clock, at the same size ([m12-mirror-stick.png](m12-mirror-stick.png)). Where neither place is clear, today's count only. The host phone follows the same rule as a joined phone.
+
 ## How
 Drawing only: every phone already receives the whole match in each frame. No protocol change. Built after bugs 1107c, 1107d and 1107e land.
