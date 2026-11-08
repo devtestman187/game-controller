@@ -9,10 +9,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../host_grace.dart';
 
 /// What a [PhoneHost] is built from: the host's inputs, which the app's root
-/// scope supplies to `party_host`, and this phone's own controller identity.
-/// [monitor] reads this phone's battery and heat for the session summary: the
-/// host service it builds takes it from here, not from the provider graph
-/// (m12 §0.1).
+/// scope supplies to `party_host`, this phone's own controller identity, and
+/// the log of the start it is part of (m12 bug 1108b). [monitor] reads this
+/// phone's battery and heat for the session summary: the host service it
+/// builds takes it from here, not from the provider graph (m12 §0.1).
 typedef PhoneHostInputs = ({
   SharedPreferences prefs,
   LogBuffer log,
@@ -21,6 +21,7 @@ typedef PhoneHostInputs = ({
   party.Advertiser advertiser,
   ControllerIdentity controller,
   party.HostDeviceMonitor monitor,
+  party.HostStartLog start,
 });
 
 /// Builds the host this app runs; a test overrides it with its own inputs.
@@ -31,7 +32,7 @@ typedef PhoneHostBuilder = PhoneHost Function(PhoneHostInputs inputs, {required 
 /// while the app is hidden. No Riverpod here, so the facts the UI asks
 /// ([live], [disposed]) are plain fields.
 class PhoneHost {
-  PhoneHost._(this.service, this.listener, this.client, this.playsHere, [this._nowMs]);
+  PhoneHost._(this.service, this.listener, this.client, this.playsHere, this._start, [this._nowMs]);
 
   /// Builds the host the phone app runs: the server, and, when this phone
   /// plays here ("Play on this phone"), the in-process link for its own
@@ -58,8 +59,12 @@ class PhoneHost {
             log: inputs.log.sink('own'),
           )
         : null;
-    return PhoneHost._(service, listener, client, playsHere, nowMs);
+    return PhoneHost._(service, listener, client, playsHere, inputs.start, nowMs);
   }
+
+  /// The log of the start that built this host: what its steps' ms count on
+  /// (m12 bug 1108b).
+  final party.HostStartLog _start;
 
   /// The host service: the server, the stats and the games. The live class,
   /// not `HostService`, because only it has `start()` — as the TV app holds
@@ -87,6 +92,7 @@ class PhoneHost {
 
   party.HostPresence? _presence;
   AppLifecycleListener? _lifecycle;
+  StreamSubscription<ClientSnapshot>? _paired;
   final _disposed = Completer<void>();
   bool _started = false;
 
@@ -113,6 +119,7 @@ class PhoneHost {
   /// pairs nobody (m12 bug 1108a rule A).
   Future<void> start() async {
     await service.start();
+    _start.step(party.HostStartStep.serviceStarted);
     if (!live) {
       _started = true;
       return;
@@ -126,6 +133,7 @@ class PhoneHost {
         HostAddress.local(hostId: client.identity.controllerId, name: state.hostName),
         code: state.host.pairingCode,
       );
+      _notePaired(client);
     }
     final presence = _presence = party.HostPresence(
       host: service,
@@ -135,6 +143,18 @@ class PhoneHost {
     );
     _lifecycle = AppLifecycleListener(onHide: presence.hidden, onShow: () => unawaited(presence.shown()));
     _started = true;
+  }
+
+  /// Logs the own player's pairing, once: the start's line for it (m12 bug
+  /// 1108b). The subscription ends with the host, or with the pairing itself.
+  void _notePaired(ControllerClient client) {
+    _paired = client.changes.listen((snapshot) {
+      if (!snapshot.isConnected) return;
+      _start.step(party.HostStartStep.ownPlayerPaired);
+      final paired = _paired;
+      _paired = null;
+      unawaited(paired?.cancel());
+    });
   }
 
   /// Back to the game picker: the app stayed hidden too long (m12 §2.10).
@@ -150,6 +170,8 @@ class PhoneHost {
     if (_disposed.isCompleted) return;
     _lifecycle?.dispose();
     _presence?.dispose();
+    await _paired?.cancel();
+    _paired = null;
     final client = this.client;
     if (client != null) await client.dispose();
     final listener = this.listener;

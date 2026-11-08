@@ -4,6 +4,8 @@ import 'package:connection/connection.dart';
 import 'package:flutter_soloud/flutter_soloud.dart';
 import 'package:game_assets/asset_manifest.dart';
 
+import 'host_start_log.dart';
+
 /// What the sound player has loaded, for the screen and the log.
 final class SoundStatus {
   const SoundStatus({required this.engine, this.ready = false, this.files = const {}, this.error});
@@ -57,10 +59,18 @@ abstract class SoundPlayer {
 /// OGG and WAV decoders, so Android TV and Windows play the same files with
 /// no codecs installed.
 class SoLoudSoundPlayer implements SoundPlayer {
-  /// [log] gets short lines about the engine and each sound.
-  SoLoudSoundPlayer({LogSink? log}) : _log = log ?? ((_) {});
+  /// [log] gets short lines about the engine and each sound. [start] is the
+  /// log of the host's start this player belongs to (m12 bug 1108b): its first
+  /// load adds when the engine came up and when the sounds were in, so a phone
+  /// that froze while it started names that step too.
+  SoLoudSoundPlayer({LogSink? log, HostStartLog? start}) : this._(log ?? ((_) {}), start);
+
+  SoLoudSoundPlayer._(this._log, this._start);
 
   final LogSink _log;
+
+  /// The start's log, for this player's first load only (see [_load]).
+  final HostStartLog? _start;
   final _changes = StreamController<SoundStatus>.broadcast();
   final _sources = <SoundKey, AudioSource>{};
   final _playing = <SoundKey, SoundHandle>{};
@@ -78,6 +88,9 @@ class SoLoudSoundPlayer implements SoundPlayer {
   Future<void> load() => _loading ??= _load();
 
   Future<void> _load() async {
+    // A restart after the app was hidden is not a start: its engine's time
+    // would read as a frame frozen minutes after the tap (m12 bug 1108b).
+    final start = _restarting == null ? _start : null;
     final soloud = SoLoud.instance;
     try {
       await soloud.init();
@@ -86,6 +99,7 @@ class SoLoudSoundPlayer implements SoundPlayer {
       _set(SoundStatus(engine: 'flutter_soloud', error: '$e'));
       return;
     }
+    start?.step(HostStartStep.soundEngineInit);
     final files = <SoundKey, String>{};
     for (final key in SoundKey.values) {
       try {
@@ -103,6 +117,7 @@ class SoLoudSoundPlayer implements SoundPlayer {
       }
     }
     _log('Sounds: ${SoundKey.values.map((k) => '${k.eventName} ${files[k]}').join('; ')}');
+    start?.step(HostStartStep.soundsLoaded);
     _set(SoundStatus(engine: 'flutter_soloud', ready: true, files: files));
   }
 

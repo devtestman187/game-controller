@@ -41,6 +41,11 @@ class _HostScreenState extends ConsumerState<HostScreen> {
     // listener rather than the presence, which only exists once the server has
     // started and so could not be listened to from here.
     _lifecycle = AppLifecycleListener(onShow: () => unawaited(ref.read(party.soundPlayerProvider).restart()));
+    // The route's first frame ends the start's log (m12 bug 1108b): the time
+    // it took to get here is the freeze the player sees after picking a mode.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) ref.read(party.hostStartLogProvider).step(party.HostStartStep.firstFrame);
+    });
   }
 
   @override

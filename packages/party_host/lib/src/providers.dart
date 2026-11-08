@@ -16,6 +16,7 @@ import 'host_device_monitor.dart';
 import 'host_directories.dart';
 import 'host_identity.dart';
 import 'host_service.dart';
+import 'host_start_log.dart';
 import 'host_view_state.dart';
 import 'local_player_source.dart';
 import 'session_uploader.dart';
@@ -254,9 +255,15 @@ class LogLinesNotifier extends Notifier<List<LogLine>> {
   }
 }
 
+/// The log of a host's start, one `host` line per step (m12 bug 1108b): the
+/// app logs the tap and the host's steps, the sound player adds the engine's,
+/// and the host route its first frame. A host that was never tapped (the TV)
+/// logs no line, so its log reads as it always has.
+final hostStartLogProvider = Provider<HostStartLog>((ref) => HostStartLog(ref.watch(logProvider).sink('host')));
+
 /// The host's sounds. Overridden in tests with a FakeSoundPlayer.
 final soundPlayerProvider = Provider<SoundPlayer>((ref) {
-  final player = SoLoudSoundPlayer(log: ref.watch(logProvider).sink('sound'));
+  final player = SoLoudSoundPlayer(log: ref.watch(logProvider).sink('sound'), start: ref.watch(hostStartLogProvider));
   unawaited(player.load());
   ref.onDispose(player.dispose);
   return player;

@@ -22,7 +22,9 @@ class HostingNotifier extends Notifier<PhoneHost?> {
   /// screen. Passing it here means a phone that shows the game never pairs a
   /// player and then drops it (m12 bug 1108a rule D).
   PhoneHost start({required bool playsHere}) {
+    final start = ref.read(party.hostStartLogProvider);
     final host = ref.read(phoneHostBuilderProvider)(_inputs(ref), playsHere: playsHere);
+    start.step(party.HostStartStep.hostBuilt);
     // Whether this phone draws the game itself, before the host starts: the
     // screens read it as soon as they open, and a phone that shows the game is
     // the screen and pairs nobody (m12 bug 1108a rules A, D).
@@ -71,6 +73,7 @@ PhoneHostInputs _inputs(Ref ref) => (
   advertiser: ref.read(party.advertiserProvider),
   controller: ownPlayerIdentity(ref.read(identityProvider)),
   monitor: ref.read(party.hostDeviceMonitorProvider),
+  start: ref.read(party.hostStartLogProvider),
 );
 
 /// The identity this phone's own player pairs with: the phone's, without

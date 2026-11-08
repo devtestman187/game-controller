@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:party_host/party_host.dart' as party;
 
 /// What "Host a game" does with this phone (m12 §3, C34).
 enum HostChoice {
@@ -13,11 +15,19 @@ enum HostChoice {
 Future<HostChoice?> showHostStartSheet(BuildContext context) =>
     showDialog<HostChoice>(context: context, builder: (_) => const _HostStartSheet());
 
-class _HostStartSheet extends StatelessWidget {
+class _HostStartSheet extends ConsumerWidget {
   const _HostStartSheet();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    // The start's clock begins at the tap that picks a way (m12 bug 1108b):
+    // the lines after it say how long the picker took to come up, and where
+    // the time went.
+    void choose(HostChoice choice) {
+      ref.read(party.hostStartLogProvider).tap();
+      Navigator.of(context).pop(choice);
+    }
+
     return AlertDialog(
       key: const Key('hostStartSheet'),
       title: const Text('Host a game'),
@@ -30,7 +40,7 @@ class _HostStartSheet extends StatelessWidget {
             title: 'Play on this phone',
             why: 'Play here with the controls on the screen',
             primary: true,
-            onPressed: () => Navigator.of(context).pop(HostChoice.onPhone),
+            onPressed: () => choose(HostChoice.onPhone),
           ),
           const SizedBox(height: 8),
           _Choice(
@@ -39,7 +49,7 @@ class _HostStartSheet extends StatelessWidget {
             title: 'Show on this device',
             why: 'Everyone joins from their phones; this phone shows the game',
             primary: false,
-            onPressed: () => Navigator.of(context).pop(HostChoice.onDevice),
+            onPressed: () => choose(HostChoice.onDevice),
           ),
         ],
       ),

@@ -15,6 +15,7 @@ export 'src/host_identity.dart';
 export 'src/host_log_export.dart';
 export 'src/host_presence.dart';
 export 'src/host_service.dart';
+export 'src/host_start_log.dart';
 export 'src/host_view_state.dart';
 export 'src/keep_awake.dart';
 export 'src/live_stats.dart';
