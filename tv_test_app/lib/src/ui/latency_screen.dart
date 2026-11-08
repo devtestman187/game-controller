@@ -19,7 +19,8 @@ class LatencyScreen extends ConsumerWidget {
     // Rebuilt with every heartbeat, so the figures stay live.
     ref.watch(hostStateProvider);
     final host = ref.watch(gameHostProvider);
-    final players = ref.watch(gamePlayersProvider).where((p) => !p.local).toList();
+    // A phone that is away has no latency to show (m12 bug 1107d).
+    final players = ref.watch(gamePlayersProvider).where((p) => !p.local && !p.away).toList();
     final text = Theme.of(context).textTheme;
     final scheme = Theme.of(context).colorScheme;
     return CallbackShortcuts(

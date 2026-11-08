@@ -11,6 +11,7 @@ final class GamePlayer {
     this.local = false,
     this.mode = InputMode.none,
     this.simulated = false,
+    this.away = false,
   });
 
   /// The controller ID (or a local player's own ID).
@@ -31,6 +32,12 @@ final class GamePlayer {
   /// input presses every button, so menus and pausing ignore it.
   final bool simulated;
 
+  /// True while this phone has dropped and the round still holds its slot
+  /// (m12 bug 1107d): the rules keep its place and its held piece, but no
+  /// input comes and the round waits for it for the host's grace. A player
+  /// who is here is never away.
+  final bool away;
+
   /// This player's colour as 0xAARRGGBB.
   int get color => playerColor(number);
 
@@ -44,10 +51,11 @@ final class GamePlayer {
       other.nickname == nickname &&
       other.local == local &&
       other.mode == mode &&
-      other.simulated == simulated;
+      other.simulated == simulated &&
+      other.away == away;
 
   @override
-  int get hashCode => Object.hash(id, number, nickname, local, mode, simulated);
+  int get hashCode => Object.hash(id, number, nickname, local, mode, simulated, away);
 }
 
 /// Named delay stages (PRD v2 S7). Later hosts add their own (snapshot

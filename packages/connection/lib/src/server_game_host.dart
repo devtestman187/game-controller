@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:protocol/protocol.dart';
 
+import 'away_slots.dart';
 import 'game_host.dart';
 import 'game_types.dart';
 import 'gamepad.dart';
@@ -13,7 +14,7 @@ import 'rtt.dart';
 /// The [GameHost] of the TV and Windows apps: the phones connected to a
 /// [HostServer], plus local players.
 class ServerGameHost implements GameHost {
-  ServerGameHost(this.server) {
+  ServerGameHost(this.server, {this.awayGrace = defaultAwayGrace}) {
     _serverSub = server.changes.listen((_) => _checkPlayers());
     _messagesSub = server.messages.listen((m) {
       final message = m.message;
@@ -31,6 +32,18 @@ class ServerGameHost implements GameHost {
   /// latest input once a frame, so a quick tap whose press and release
   /// arrive between two frames (Wi-Fi often bunches them) would be lost.
   static const minPressMs = 50;
+
+  /// How many seconds a player whose phone dropped keeps their slot (m12 bug
+  /// 1107d, `hostGraceS`): the round waits for them this long, then goes on
+  /// without them.
+  static const hostGraceS = 30;
+
+  /// The default [awayGrace]: [hostGraceS].
+  static const defaultAwayGrace = Duration(seconds: hostGraceS);
+
+  /// How long a dropped player keeps their slot: [defaultAwayGrace] unless
+  /// the caller says otherwise (a test runs with less).
+  final Duration awayGrace;
 
   final _buttonsBefore = <String, Set<ControllerButton>>{};
   final _pressedAtMs = <String, Map<ControllerButton, int>>{};
@@ -58,6 +71,19 @@ class ServerGameHost implements GameHost {
   final _statusTimers = <String, Timer>{};
   List<GamePlayer> _lastPlayers = const [];
   int _nextLocal = 1;
+
+  /// The players connected at the last check, so the next one sees who
+  /// dropped (m12 bug 1107d).
+  Map<String, GamePlayer> _live = const {};
+
+  /// The dropped players who still hold their slot.
+  final _away = AwaySlots();
+
+  /// Whether a round runs: from [startView] to [endView], shared or not. Only
+  /// then does a dropped player keep a slot; on the picker or the join screen
+  /// a phone that goes is simply gone, so the next round never starts waiting
+  /// for it (m12 bug 1107d).
+  bool _roundRunning = false;
 
   /// The view a game asked for, kept for viewers that pair mid-game (m12 §2).
   ViewStartMessage? _viewStart;
@@ -145,6 +171,7 @@ class ServerGameHost implements GameHost {
           ),
       for (final l in _locals.values)
         GamePlayer(id: l.id, number: l.number, nickname: l.nickname, local: true, mode: InputMode.keyboard),
+      ..._away.players,
     ]..sort((a, b) => a.number.compareTo(b.number));
     return list;
   }
@@ -209,6 +236,7 @@ class ServerGameHost implements GameHost {
 
   @override
   void startView(ViewStartMessage start) {
+    _roundRunning = true;
     // A view that isn't shared is no view here: no start is kept, so no frame
     // or end can follow, and a viewer that pairs later gets nothing.
     _viewStart = shareView ? start : null;
@@ -228,10 +256,17 @@ class ServerGameHost implements GameHost {
 
   @override
   void endView(ViewEndMessage end) {
+    _roundRunning = false;
     final wasRunning = _viewStart != null;
     _viewStart = null;
     _viewFrame = null;
     if (wasRunning) server.sendToAll(end);
+    // A slot ends with the round (m12 bug 1107d): when it is over, the
+    // players away lose it at once, so a rematch never waits for someone
+    // who left. The game has already stopped, so no step sees them go.
+    if (_away.isEmpty) return;
+    _away.endAll();
+    _checkPlayers();
   }
 
   @override
@@ -283,18 +318,55 @@ class ServerGameHost implements GameHost {
   ControllerInfo? _info(String id) => server.snapshot.connected.where((c) => c.controllerId == id).firstOrNull;
 
   void _checkPlayers() {
+    _updateSlots();
     final now = players;
     if (_samePlayers(now, _lastPlayers)) return;
-    // A phone that (re)joined gets the game's controls and panel again.
-    final before = {for (final p in _lastPlayers) p.id};
+    // A phone that (re)joined gets the game's controls and panel again; one
+    // that came back from a drop counts as rejoined, not as already here.
+    final before = {
+      for (final p in _lastPlayers)
+        if (!p.away) p.id,
+    };
     for (final p in now) {
-      if (p.local || before.contains(p.id)) continue;
+      if (p.local || p.away || before.contains(p.id)) continue;
       if (_layouts[p.id] case final layout?) server.send(p.id, layout);
       if (_statuses[p.id] case final status?) _sendStatus(p.id, status);
       _sendView(p.id);
     }
     _lastPlayers = now;
     if (!_playersChanged.isClosed) _playersChanged.add(now);
+  }
+
+  /// Holds the slot of every player who dropped since the last check, for
+  /// [awayGrace], and frees it for one whose phone came back (m12 bug
+  /// 1107d). A simulated controller gets no slot: it is not a person the
+  /// round waits for.
+  void _updateSlots() {
+    final live = <String, GamePlayer>{
+      for (final p in players)
+        if (!p.away && !p.local && !p.simulated) p.id: p,
+    };
+    for (final MapEntry(key: id, value: player) in _live.entries) {
+      if (_roundRunning && !live.containsKey(id) && !_away.contains(id)) _holdSlot(player);
+    }
+    for (final id in _away.ids.toList()) {
+      if (live.containsKey(id)) _away.end(id);
+    }
+    _live = live;
+  }
+
+  /// Keeps [player]'s number, name and mode in the game, away, until the
+  /// grace is over.
+  void _holdSlot(GamePlayer player) => _away.hold(
+    player,
+    Timer(awayGrace, () {
+      if (_away.end(player.id)) _checkPlayers();
+    }),
+  );
+
+  @override
+  void goOnWithout(String playerId) {
+    if (_away.end(playerId)) _checkPlayers();
   }
 
   /// A viewer that just (re)paired mid-game gets the view's start and its
@@ -310,6 +382,7 @@ class ServerGameHost implements GameHost {
     for (final t in _statusTimers.values) {
       t.cancel();
     }
+    _away.dispose();
     await _serverSub.cancel();
     await _messagesSub.cancel();
     await _playersChanged.close();

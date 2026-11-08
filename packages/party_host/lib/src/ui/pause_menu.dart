@@ -88,9 +88,10 @@ class _PausableState extends ConsumerState<Pausable> {
     // opens a menu behind it.
     if (!mounted || ref.read(hostAwayProvider).value) return;
     _sinceStartMs += ControllerMenus.step.inMilliseconds;
+    // A player who is away isn't here to press Start (m12 bug 1107d).
     final players = [
       for (final p in ref.read(gameHostProvider).players)
-        if (!p.simulated && !p.local) p,
+        if (!p.simulated && !p.local && !p.away) p,
     ];
     final host = ref.read(gameHostProvider);
     final pressed = <GamePlayer>[];
@@ -163,7 +164,7 @@ class _PauseMenu extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final players = [
       for (final p in ref.watch(gamePlayersProvider))
-        if (!p.simulated && !p.local) p,
+        if (!p.simulated && !p.local && !p.away) p,
     ];
     final only = resumers(players);
     final text = Theme.of(context).textTheme;

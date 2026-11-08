@@ -227,7 +227,13 @@ class TvEventsNotifier extends Notifier<FiredEvent?> {
   void fire(HapticEventMessage message, {required String source, String? controllerId}) {
     ref.read(soundPlayerProvider).play(message.event.name);
     final host = ref.read(gameHostProvider);
-    final targets = controllerId != null ? [controllerId] : [for (final p in host.players) p.id];
+    // A phone that is away can't feel it (m12 bug 1107d).
+    final targets = controllerId != null
+        ? [controllerId]
+        : [
+            for (final p in host.players)
+              if (!p.away) p.id,
+          ];
     var reached = 0;
     for (final id in targets) {
       if (host.haptic(id, message)) reached++;

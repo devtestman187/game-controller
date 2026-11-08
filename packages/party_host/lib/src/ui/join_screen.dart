@@ -115,7 +115,11 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
   void _tick() {
     if (!mounted) return;
     final host = ref.read(gameHostProvider);
-    final players = host.players;
+    // A phone that is away isn't listed and keeps no team (m12 bug 1107d).
+    final players = [
+      for (final p in host.players)
+        if (!p.away) p,
+    ];
     var changed = _prune(players);
     for (final p in players) {
       if (p.simulated) {
@@ -239,7 +243,11 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final players = ref.watch(gamePlayersProvider);
+    // A phone that is away isn't listed on this screen (m12 bug 1107d).
+    final players = [
+      for (final p in ref.watch(gamePlayersProvider))
+        if (!p.away) p,
+    ];
     final text = Theme.of(context).textTheme;
     final watching = [
       for (final p in players)

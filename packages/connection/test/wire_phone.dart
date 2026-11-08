@@ -32,12 +32,14 @@ final class WirePhone {
 
   /// A phone that has said hello as [controllerId], listing [capabilities],
   /// and got the host's welcome: the host has its session from here on. With
-  /// [code] it pairs as well, and the host must accept it.
+  /// [code] it pairs as well, and the host must accept it. [platform] is what
+  /// it says it runs on: `sim` makes it a simulated controller.
   static Future<WirePhone> open(
     HostServer host,
     TestTransport transport, {
     required String controllerId,
     List<String> capabilities = const [],
+    String platform = 'test',
     String? code,
   }) async {
     final phone = WirePhone._(await rawPeer(host, transport));
@@ -45,7 +47,7 @@ final class WirePhone {
       HelloMessage(
         controllerId: controllerId,
         name: 'Phone $controllerId',
-        platform: 'test',
+        platform: platform,
         appVersion: 'test',
         capabilities: capabilities,
       ),

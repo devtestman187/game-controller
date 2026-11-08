@@ -105,7 +105,8 @@ class _Targets extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final players = ref.watch(gamePlayersProvider).where((p) => !p.local).toList();
+    // A phone that is away wouldn't feel it (m12 bug 1107d).
+    final players = ref.watch(gamePlayersProvider).where((p) => !p.local && !p.away).toList();
     return Padding(
       padding: const EdgeInsets.only(right: 24),
       child: Center(

@@ -35,6 +35,10 @@ class MemoryGameHost implements GameHost {
   /// Every [hostAway] call, in order: the seconds left, or null for "back".
   final hostAways = <int?>[];
 
+  /// Every [goOnWithout] call, in order: the player the round went on
+  /// without.
+  final goOnWithouts = <String>[];
+
   /// Whether anyone would get a frame: the test sets it.
   @override
   bool hasViewers = false;
@@ -99,6 +103,12 @@ class MemoryGameHost implements GameHost {
 
   @override
   void hostAway(int? secondsLeft) => hostAways.add(secondsLeft);
+
+  @override
+  void goOnWithout(String playerId) {
+    goOnWithouts.add(playerId);
+    if (_players[playerId]?.away ?? false) removePlayer(playerId);
+  }
 
   @override
   bool haptic(String playerId, HapticEventMessage event) {

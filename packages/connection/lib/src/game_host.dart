@@ -14,7 +14,8 @@ abstract interface class GameHost {
   /// The host's clock in ms (monotonic).
   int get nowMs;
 
-  /// The players in the game right now, by number.
+  /// The players in the game right now, by number, including a player who is
+  /// [GamePlayer.away] while their phone has dropped.
   List<GamePlayer> get players;
 
   /// Fires when a player joins or leaves, or changes mode.
@@ -95,6 +96,11 @@ abstract interface class GameHost {
   /// no view is running, and by a host whose screen is the one everybody
   /// watches.
   void hostAway(int? secondsLeft);
+
+  /// Ends the grace of an away player now: the round goes on without them,
+  /// and they leave the game (m12 bug 1107d). Does nothing for a player who
+  /// is here or already gone.
+  void goOnWithout(String playerId);
 }
 
 /// A player's heartbeat round trip and input delay.
