@@ -9,11 +9,31 @@ import 'package:puzzle_game/puzzle_game.dart';
 import 'support/frames.dart';
 import 'support/match_helpers.dart' as helpers;
 
+/// The left stick's disc and the D-pad's arms under it at 852 x 393, in stick
+/// mode: `controller_app`'s `leftPadRects` there, passed to the game the way a
+/// joined phone and the host phone pass it (m12-opponent-mirror rule 3). The
+/// disc is what moves the mirror into the gap; the arms are below it.
+const stickPad = [
+  Rect.fromLTWH(16, 108, 163, 163),
+  Rect.fromLTWH(274.3, 279, 37.4, 55),
+  Rect.fromLTWH(274.3, 334, 37.4, 55),
+  Rect.fromLTWH(238, 315.3, 55, 37.4),
+  Rect.fromLTWH(293, 315.3, 55, 37.4),
+];
+
 /// The report's frames (m12 s11): a race on the two phones the report measures,
 /// each with the other side's mirror and the HUD that gives it room. The test
 /// font draws the HUD's texts as blocks; the mirror itself is the picture.
+///
+/// The 852 phone is drawn twice: with no pad, where the mirror keeps the box's
+/// top left, and with its own stick over the corner, where the mirror goes into
+/// the gap under the clock and the clock stays where it is (rule 8).
 void main() {
-  for (final (name, box) in const [('iphone', Size(852, 393)), ('169', Size(667, 375))]) {
+  for (final (name, box, pad) in const [
+    ('iphone', Size(852, 393), <Rect>[]),
+    ('iphone-stick', Size(852, 393), stickPad),
+    ('169', Size(667, 375), <Rect>[]),
+  ]) {
     testWidgets('writes docs/design/m12-mirror-$name.png', (tester) async {
       final puzzle = helpers.load('tree');
       final m = PuzzleMatch(
@@ -53,6 +73,7 @@ void main() {
           timeLimitS: 65,
           target: LayoutTarget.phones,
           camera: const PuzzleCamera.side(PuzzleSide.left),
+          padRects: pad,
         ),
         window: box,
         box: box,

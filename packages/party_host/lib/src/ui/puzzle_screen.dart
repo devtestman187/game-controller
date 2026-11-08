@@ -208,19 +208,30 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
               builder: (context, paused) => Stack(
                 children: [
                   Positioned.fill(
-                    child: PuzzlePlayView(
-                      host: ref.read(gameHostProvider),
-                      puzzle: puzzle,
-                      teams: widget.teams,
-                      random: _random,
-                      target: _target,
-                      hosting: _hosting,
-                      camera: _camera,
-                      match: widget.match,
-                      paused: paused,
-                      abandon: ref.read(hostAbandonProvider),
-                      settings: () => ref.read(puzzleSettingsProvider),
-                      onFinished: _finished,
+                    child: LayoutBuilder(
+                      builder: (context, box) {
+                        // Where this app draws its own pad over the game, and
+                        // its screen's density: the round keeps the other
+                        // side's mirror clear of both (m12-opponent-mirror
+                        // rules 3, 7 and 8). A host with no pad passes none.
+                        final pad = ref.watch(hostPadProvider);
+                        return PuzzlePlayView(
+                          host: ref.read(gameHostProvider),
+                          puzzle: puzzle,
+                          teams: widget.teams,
+                          random: _random,
+                          target: _target,
+                          hosting: _hosting,
+                          camera: _camera,
+                          padRects: pad.rects(box.biggest),
+                          pxPerMm: pad.pxPerMm,
+                          match: widget.match,
+                          paused: paused,
+                          abandon: ref.read(hostAbandonProvider),
+                          settings: () => ref.read(puzzleSettingsProvider),
+                          onFinished: _finished,
+                        );
+                      },
                     ),
                   ),
                   if (result != null)

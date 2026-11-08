@@ -159,8 +159,12 @@ class MirrorPainter {
 /// The mirror draws at [PuzzleCamera.mirrorFraction] of the board's scale, and
 /// the board draws its smallest piece at `minPieceMm` or more, so a dot that
 /// size is `mirrorMinPieceMm` or more across on every phone — the smallest mark
-/// that reads — and the game needs no px per millimetre to know it. The floor
-/// [PuzzleGame.dotRadius] only holds a puzzle of smaller pieces.
+/// that reads. The floor [PuzzleGame.dotRadius] only holds a puzzle of smaller
+/// pieces.
+///
+/// [PuzzleCamera.mirrorPlace] keeps the piece's size, which is never bigger
+/// than this one, so a dot that is at its floor draws every piece over the
+/// floor too.
 double mirrorDotRadius(Puzzle puzzle) {
   final smallest = puzzle.pieces.map((p) => p.shape.size).reduce(min);
   return max(PuzzleGame.dotRadius, smallest / 2);

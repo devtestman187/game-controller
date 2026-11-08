@@ -10,12 +10,7 @@ import '../layout.dart';
 import '../providers.dart';
 import '../sticks.dart';
 import 'pad_widgets.dart';
-
-/// The height of the bar this screen draws over the game (m12 §5): the bar's
-/// 4 px top padding and its 48 px row of icons. The game fills the whole safe
-/// area and shows through the bar, so this is how far down the pad's body
-/// starts, which is what [leftPadRects] measures from.
-const double topBarHeightPx = 52.0;
+import 'top_bar_metrics.dart';
 
 /// Where the game [JoinedView] draws must keep clear, in a screen of [box]: the
 /// left hand's controls as [mode] draws them, in the screen's px, passed to the
@@ -127,6 +122,9 @@ class _JoinedViewState extends ConsumerState<JoinedView> {
               // phone-layout §0.6); a phone draws its own.
               wholeMatch: ref.watch(isTabletProvider),
               padRects: leftPadRects(window.biggest, mode: mode, mm: mm, sticks: sticks),
+              // The screen's own density: the game keeps the other side's
+              // mirror's marks at a physical size by it (rule 7).
+              pxPerMm: mm,
               onSounds: (names) => _play(ref, names),
             ),
           ),

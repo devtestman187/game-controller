@@ -36,6 +36,7 @@ Widget draw(
   String? playerId,
   bool wholeMatch = false,
   List<Rect> padRects = const [],
+  double pxPerMm = phonePxPerMm,
 }) => Directionality(
   textDirection: TextDirection.ltr,
   child: SizedBox(
@@ -47,6 +48,7 @@ Widget draw(
         playerId: playerId,
         wholeMatch: wholeMatch,
         padRects: padRects,
+        pxPerMm: pxPerMm,
       )),
     ),
   ),
@@ -57,6 +59,9 @@ PuzzleCamera cameraOf(WidgetTester tester) => tester.widget<MatchView>(find.byTy
 
 /// The app's controls the drawn [MatchView] keeps clear of, as it was given them.
 List<Rect> padRectsOf(WidgetTester tester) => tester.widget<MatchView>(find.byType(MatchView)).padRects;
+
+/// The drawn [MatchView]'s px per millimetre, as it was given it.
+double pxPerMmOf(WidgetTester tester) => tester.widget<MatchView>(find.byType(MatchView)).pxPerMm;
 
 void main() {
   final snapshot = PuzzleMatch(house(), teams: const {'p1': PuzzleSide.left}, random: Random(1)).snapshot();
@@ -165,10 +170,14 @@ void main() {
     expect(cameraOf(tester), const PuzzleCamera.whole(), reason: 'the screen keeps today\'s picture');
 
     // The controls the app draws under the game reach the view as it passed
-    // them, for the mirror to keep clear of (m12-opponent-mirror rule 3).
+    // them, for the mirror to keep clear of (m12-opponent-mirror rule 3), and
+    // so does its px per millimetre, which sizes the mirror's marks (rule 7).
     const pad = [Rect.fromLTWH(24, 250, 120, 120)];
     await tester.pumpWidget(draw(phones, phonesSnapshot, playerId: 'p1', padRects: pad));
     await tester.pump();
     expect(padRectsOf(tester), pad);
+    await tester.pumpWidget(draw(phones, phonesSnapshot, playerId: 'p1', padRects: pad, pxPerMm: 8.5));
+    await tester.pump();
+    expect(pxPerMmOf(tester), 8.5);
   });
 }

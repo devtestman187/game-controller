@@ -137,6 +137,7 @@ final class ShapeRaceViewer implements GameViewer {
         target: target,
         camera: camera,
         padRects: view.padRects,
+        pxPerMm: view.pxPerMm,
       ),
     );
   }

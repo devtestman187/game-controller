@@ -3,15 +3,20 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:controller/src/gyro.dart';
+import 'package:controller/src/host/host_start_sheet.dart';
 import 'package:controller/src/layout.dart';
 import 'package:controller/src/sticks.dart';
 import 'package:controller/src/ui/joined_view.dart';
 import 'package:controller/src/ui/pad_widgets.dart';
+import 'package:controller/src/ui/top_bar_metrics.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:puzzle_game/puzzle_game.dart';
+import 'package:party_host/party_host.dart' as party;
+import 'package:puzzle_game/puzzle_game.dart' hide phonePxPerMm;
 
+import 'support/host_app.dart';
 import 'support/joined.dart';
+import 'support/mirror_boards.dart';
 
 /// The three phone sizes the layout is tested at (m12-phone-layout §0.2): the
 /// owner's iPhone, the iPhone 15 and the smallest 16:9 phone.
@@ -38,17 +43,35 @@ const sideLeft = PuzzleCamera.side(PuzzleSide.left);
   return (score: 'You 0/$n · Right 0/$n', short: ['You 0/$n', 'Right 0/$n']);
 }
 
-/// The mirror [box] draws for [puzzle]'s race with the app's [mode] pad on the
-/// screen, or null.
-({Rect rect, double scale})? mirrorOf(Puzzle puzzle, Size box, PadMode mode) {
+/// The mirror [box] draws for [puzzle]'s race with [pad] over the game, or
+/// null.
+MirrorPlacement? mirrorWith(Puzzle puzzle, Size box, List<Rect> pad) {
   final layout = SplitLayout.of(puzzle, 1, target: LayoutTarget.phones);
   return PuzzleCamera.mirrorPlace(
+    puzzle,
     layout,
     sideLeft,
     box,
     split: true,
     text: raceText(puzzle),
-    padRects: leftPadRects(box, mode: mode, mm: phonePxPerMm),
+    pxPerMm: phonePxPerMm,
+    padRects: pad,
+  );
+}
+
+/// The mirror [box] draws for [puzzle]'s race with the app's [mode] pad on the
+/// screen, or null.
+MirrorPlacement? mirrorOf(Puzzle puzzle, Size box, PadMode mode) =>
+    mirrorWith(puzzle, box, leftPadRects(box, mode: mode, mm: phonePxPerMm));
+
+/// [rect] of [layout]'s own world as [box] draws it, in the box's px.
+Rect onScreen(SplitLayout layout, Size box, Rect rect) {
+  final place = PuzzleCamera.place(layout, sideLeft, box, PuzzleSide.left);
+  return Rect.fromLTWH(
+    place.origin.dx + rect.left * place.scale,
+    place.origin.dy + rect.top * place.scale,
+    rect.width * place.scale,
+    rect.height * place.scale,
   );
 }
 
@@ -64,12 +87,12 @@ List<ControlShape> drawnLeft(Size box, PadMode mode) {
   ];
   switch (mode) {
     case PadMode.dpad:
-      return arms(padLayout(body).dpad);
+      return arms(padLayout(body, mm: phonePxPerMm).dpad);
     case PadMode.sticks:
-      final layout = stickLayout(body);
+      final layout = stickLayout(body, mm: phonePxPerMm);
       return [ControlShape.circle(layout.leftStick.shift(bar)), ...arms(layout.dpad)];
     case PadMode.gyro:
-      return [ControlShape.rect(padLayout(body).leftArea.shift(bar))];
+      return [ControlShape.rect(padLayout(body, mm: phonePxPerMm).leftArea.shift(bar))];
   }
 }
 
@@ -122,7 +145,7 @@ void main() {
   });
 
   group('the mirror and the pad (m12-opponent-mirror rule 3, code-health N4)', () {
-    test('the mirror never meets the left stick\'s disc or the D-pad, in any mode or phone size', () {
+    test('the mirror never meets a control the app draws, in any mode or phone size', () {
       for (final box in const [iphone, phone15, phone169]) {
         for (final mode in PadMode.values) {
           final shapes = drawnLeft(box, mode);
@@ -146,34 +169,153 @@ void main() {
       }
     });
 
+    test('the corner with the D-pad, the gap with the stick, the tilt view over both', () {
+      // Rule 8's one placement rule: the box's top left first, then the gap
+      // under the clock between the pad and the board. The D-pad leaves the
+      // corner free; the left stick's disc takes it, so the stick's mirror is
+      // under the clock, which stays where the phone without a mirror draws it;
+      // the tilt view fills the left area from the corner to the board, so no
+      // place is clear of it (question 2 in the report).
+      for (final box in const [iphone, phone15, phone169]) {
+        for (final MapEntry(key: id, value: puzzle) in puzzles.entries) {
+          final layout = SplitLayout.of(puzzle, 1, target: LayoutTarget.phones);
+          final where = '$id at $box';
+          final board = onScreen(layout, box, layout.left.board);
+          final tray = onScreen(layout, box, layout.left.tray);
+          final corner = mirrorOf(puzzle, box, PadMode.dpad);
+          if (corner != null) {
+            expect(corner.rect.left, PuzzleCamera.hudMarginPx, reason: where);
+            expect(corner.rect.top, closeTo(box.height * PuzzleCamera.hudTopFraction, 1e-9), reason: where);
+            // The clock area keeps today's corner picture: the short form to
+            // the mirror's right (rule 5), clear of the world.
+            expect(corner.hud.form, HudForm.short, reason: where);
+            expect(corner.hud.rect.left, closeTo(corner.rect.right + PuzzleCamera.mirrorGapPx, 1e-9), reason: where);
+          }
+          final stick = mirrorOf(puzzle, box, PadMode.sticks);
+          if (stick != null) {
+            final disc = leftPadRects(box, mode: PadMode.sticks, mm: phonePxPerMm).first;
+            final alone = PuzzleCamera.hudPlace(layout, sideLeft, box, raceText(puzzle));
+            // Under the clock, where the box without a mirror puts it, and to
+            // the right of the disc: the gap between the pad and the board.
+            expect(stick.hud, alone, reason: where);
+            expect(stick.rect.top, closeTo(alone.rect.bottom + PuzzleCamera.mirrorGapPx, 1e-9), reason: where);
+            expect(stick.rect.left, greaterThanOrEqualTo(disc.right + PuzzleCamera.mirrorGapPx - 1e-9), reason: where);
+          }
+          for (final mirror in [corner, stick]) {
+            if (mirror == null) continue;
+            expect(mirror.rect.overlaps(board), isFalse, reason: where);
+            expect(mirror.rect.overlaps(tray), isFalse, reason: where);
+            expect(mirror.rect.overlaps(mirror.hud.rect), isFalse, reason: where);
+            expect(mirror.rect.right, lessThanOrEqualTo(box.width + 1e-9), reason: where);
+            expect(mirror.rect.bottom, lessThanOrEqualTo(box.height + 1e-9), reason: where);
+          }
+          expect(mirrorOf(puzzle, box, PadMode.gyro), isNull, reason: '$where: the tilt view covers both places');
+        }
+      }
+    });
+
     test('which puzzles keep the mirror, phone by phone and mode by mode', () {
       List<String> kept(Size box, PadMode mode) => [
         for (final MapEntry(key: id, value: puzzle) in puzzles.entries)
           if (mirrorOf(puzzle, box, mode) != null) id,
       ];
-      // D-pad mode: the mirror is in the board's top left, above the arms, and
-      // the HUD's room decides the rest (the same table s11 pinned).
+      // The D-pad leaves the corner free, so the mirror is the board's top left
+      // as it is with no pad, and the clock area's room decides the rest (the
+      // table s11 pinned): the boat's world leaves no room on the 15, and only
+      // the tree's fits on the 16:9 phone.
       expect(kept(iphone, PadMode.dpad), ['house', 'rocket', 'tree', 'boat']);
       expect(kept(phone15, PadMode.dpad), ['house', 'rocket', 'tree']);
       expect(kept(phone169, PadMode.dpad), ['tree']);
-      // Sticks: the left stick's disc reaches up to where the mirror goes on
-      // every one of the three phones (at 852 the disc's top is 108 and the
-      // mirror's bottom 126 to 132), so the box keeps today's HUD.
+      // The stick's disc takes the corner and the clock area keeps its place,
+      // so the mirror must fit the gap under it: the boat's board is too close
+      // to the disc on the 852 phone, and the tree's and the boat's on the 15.
+      expect(kept(iphone, PadMode.sticks), ['house', 'rocket', 'tree']);
+      expect(kept(phone15, PadMode.sticks), ['house', 'rocket']);
+      expect(kept(phone169, PadMode.sticks), ['rocket']);
+      // The tilt view fills the left area, corner and gap alike.
       for (final box in const [iphone, phone15, phone169]) {
-        expect(kept(box, PadMode.sticks), isEmpty, reason: 'the stick is over the mirror at $box');
-        // Gyro: the tilt view fills the same top left.
-        expect(kept(box, PadMode.gyro), isEmpty, reason: 'the tilt view is over the mirror at $box');
+        expect(kept(box, PadMode.gyro), isEmpty, reason: 'the tilt view covers both places at $box');
       }
     });
 
     test('a control anywhere else leaves the mirror where it is', () {
-      // The same mirror without the pad is what the D-pad mode still draws, so
-      // the pad changes nothing where it doesn't reach.
+      // The D-pad is below both places, so the mirror it leaves is the one the
+      // game draws with no pad at all.
       for (final MapEntry(key: id, value: puzzle) in puzzles.entries) {
-        final layout = SplitLayout.of(puzzle, 1, target: LayoutTarget.phones);
-        final bare = PuzzleCamera.mirrorPlace(layout, sideLeft, iphone, split: true, text: raceText(puzzle));
-        expect(mirrorOf(puzzle, iphone, PadMode.dpad), bare, reason: id);
+        expect(mirrorOf(puzzle, iphone, PadMode.dpad), mirrorWith(puzzle, iphone, const []), reason: id);
       }
+    });
+
+    test('over boards of every shape and piece size, on every phone and mode: absent or clear, and readable', () {
+      // Rule 7: the mirror is sized from the board's shape and its pieces, so
+      // every made-up board must either keep it clear of everything or have
+      // none, and a board that only fits a smaller one gets the smaller one.
+      // Boards from half as wide as they are tall to twice as wide, pieces from
+      // comfortably big down to just under the floor (at these boards' scales
+      // 10 units square is 2.5 mm at the mirror's, 8 is under 2 mm).
+      var mirrors = 0;
+      var smaller = 0;
+      for (final box in const [iphone, phone15, phone169]) {
+        for (final mode in PadMode.values) {
+          final pad = leftPadRects(box, mode: mode, mm: phonePxPerMm);
+          for (final aspect in const [0.5, 1.0, 1.5, 2.0]) {
+            for (final side in const [24.0, 16.0, 10.0, 8.0]) {
+              final puzzle = madeUpPuzzle(aspect: aspect, side: side);
+              final layout = SplitLayout.of(puzzle, 1, target: LayoutTarget.phones);
+              final where = 'aspect $aspect, side $side, $mode, $box';
+              final mirror = mirrorWith(puzzle, box, pad);
+              if (mirror == null) continue;
+              mirrors++;
+              final board = onScreen(layout, box, layout.left.board);
+              final tray = onScreen(layout, box, layout.left.tray);
+              for (final rect in [...pad, board, tray, mirror.hud.rect]) {
+                expect(rect.overlaps(mirror.rect), isFalse, reason: where);
+              }
+              // Every piece the mirror draws, and the dot, is at the floor...
+              final smallest = puzzle.pieces.map((p) => p.shape.size).reduce(min);
+              expect(
+                mirror.scale * smallest / phonePxPerMm,
+                greaterThanOrEqualTo(mirrorMinPieceMm - 1e-9),
+                reason: where,
+              );
+              final dot = 2 * mirrorDotRadius(puzzle) * mirror.scale / phonePxPerMm;
+              expect(dot, greaterThanOrEqualTo(mirrorMinPieceMm - 1e-9), reason: where);
+              // ...and it is no bigger than the board fraction allows.
+              final maxScale =
+                  PuzzleCamera.place(layout, sideLeft, box, PuzzleSide.left).scale * PuzzleCamera.mirrorFraction;
+              expect(mirror.scale, lessThanOrEqualTo(maxScale + 1e-9), reason: where);
+              if (mirror.scale < maxScale - 1e-9) smaller++;
+            }
+          }
+        }
+      }
+      expect(mirrors, greaterThan(0));
+      expect(smaller, greaterThan(0), reason: 'a board that only fits smaller gets a smaller mirror, not none');
+    });
+  });
+
+  group('the host phone\'s own round', () {
+    setUpAll(loadPuzzles);
+
+    testWidgets('gets this phone\'s pad rects and density, as a joined phone does', (tester) async {
+      // "Play on this phone": the round shows on this phone under its pad, so
+      // the game is told where the pad is (m12-opponent-mirror rule 3).
+      await pumpHostApp(tester);
+      final host = await soloRound(tester);
+      final view = tester.widget<MatchView>(find.byType(MatchView));
+      final box = tester.getSize(find.byType(MatchView));
+      expect(view.pxPerMm, phonePxPerMm);
+      expect(view.padRects, leftPadRects(box, mode: PadMode.dpad, mm: phonePxPerMm));
+      await tester.runAsync(host.dispose);
+    });
+
+    testWidgets('"Show on this device" draws no pad over its game, so it passes none', (tester) async {
+      await pumpHostApp(tester);
+      final host = await enterHostMode(tester, choice: HostChoice.onDevice);
+      final pad = hostContainer(tester).read(party.hostPadProvider);
+      expect(pad.rects(iphone), isEmpty);
+      expect(pad.pxPerMm, phonePxPerMm);
+      await tester.runAsync(host.dispose);
     });
   });
 }

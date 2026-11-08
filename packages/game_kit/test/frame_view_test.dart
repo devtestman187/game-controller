@@ -58,12 +58,17 @@ void main() {
 
   tearDown(() => events.close());
 
+  /// The phone's px per millimetre these tests pass, when they don't say: a
+  /// round number the seam has to hand over unchanged.
+  const testPxPerMm = 6.0;
+
   /// The view under test, on the test's clock and stats.
   Widget underTest({
     Stream<ViewEvent>? stream,
     String? playerId,
     bool wholeMatch = false,
     List<Rect> padRects = const [],
+    double pxPerMm = testPxPerMm,
     GameRegistry? registry,
     void Function(List<String>)? onSounds,
   }) => Directionality(
@@ -76,6 +81,7 @@ void main() {
       playerId: playerId,
       wholeMatch: wholeMatch,
       padRects: padRects,
+      pxPerMm: pxPerMm,
       onSounds: onSounds,
     ),
   );
@@ -86,10 +92,18 @@ void main() {
     String? playerId,
     bool wholeMatch = false,
     List<Rect> padRects = const [],
+    double pxPerMm = testPxPerMm,
     GameRegistry? registry,
     void Function(List<String>)? onSounds,
   }) => tester.pumpWidget(
-    underTest(playerId: playerId, wholeMatch: wholeMatch, padRects: padRects, registry: registry, onSounds: onSounds),
+    underTest(
+      playerId: playerId,
+      wholeMatch: wholeMatch,
+      padRects: padRects,
+      pxPerMm: pxPerMm,
+      registry: registry,
+      onSounds: onSounds,
+    ),
   );
 
   /// Delivers [event] to the view (a stream is asynchronous) and draws the
@@ -230,15 +244,17 @@ void main() {
     await unmount(tester);
   });
 
-  testWidgets('the viewer is told where this phone draws its pad, so it can keep clear of it', (tester) async {
+  testWidgets('the viewer is told where this phone draws its pad and how many px make a mm', (tester) async {
     // The app's geometry, in this view's own px: a D-pad's arm and a stick's
-    // disc, the shapes a game must not cover (m12-opponent-mirror rule 3).
+    // disc, the shapes a game must not cover (m12-opponent-mirror rule 3), and
+    // the screen's density, which a game draws a physical size with (rule 7).
     const pad = [Rect.fromLTWH(24, 300, 120, 44), Rect.fromLTWH(16, 108, 163, 163)];
-    await mount(tester, playerId: 'p1', padRects: pad);
+    await mount(tester, playerId: 'p1', padRects: pad, pxPerMm: 8.5);
     clock.nowMs = 1000;
     await send(tester, startEvent());
     await send(tester, frameEvent(0, atMs: 1000, x: 0.5, roster: players));
     expect(drawn(tester).view.padRects, pad, reason: 'the app\'s controls, passed through unchanged');
+    expect(drawn(tester).view.pxPerMm, 8.5, reason: 'the app\'s own density, passed through unchanged');
 
     await unmount(tester);
   });

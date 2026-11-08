@@ -27,3 +27,13 @@ const double minPieceMm = 8.5;
 /// [minPieceMm] over the smallest piece's diameter, so the mirror's mm per
 /// unit is its fraction of the board's, and the piece cancels out.
 const double mirrorMinPieceMm = 2.2;
+
+/// The px per millimetre a phone's screen has, for the sizes above: the mirror
+/// is the one thing the game draws at a physical size of its own, so it needs
+/// one (m12-opponent-mirror rule 7). Android's dp is 1/160 inch and iPhone
+/// points are within about 5% of it, which is what `controller_app` lays its
+/// controls out in.
+///
+/// It is only the default: each app knows its own screen and passes its own
+/// value through the view's `pxPerMm`, as it does the pad's rects.
+const double phonePxPerMm = 160 / 25.4;

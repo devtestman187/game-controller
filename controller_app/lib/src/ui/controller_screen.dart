@@ -21,6 +21,7 @@ import 'host_chip.dart';
 import 'joined_view.dart';
 import 'rating_prompt.dart';
 import 'settings_screen.dart';
+import 'top_bar_metrics.dart';
 import 'waiting_card.dart';
 
 part 'controller_parts.dart';

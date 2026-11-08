@@ -1,7 +1,11 @@
+import 'package:flutter/widgets.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart';
 import 'package:party_host/party_host.dart' as party;
 
+import '../gyro.dart';
 import '../providers.dart';
+import '../ui/joined_view.dart';
 import 'host_monitor.dart';
 import 'hosting.dart';
 import 'hosting_frame_rate.dart';
@@ -42,4 +46,16 @@ List<Override> phoneHostOverrides({required party.HostDirectories directories}) 
   // A tablet has the room for both sides, so the same screen draws the whole
   // match there (m12-phone-layout §0.6).
   party.wholeMatchProvider.overrideWith((ref) => ref.watch(isTabletProvider)),
+  // The pad this phone draws over the game it hosts, and its density, so a
+  // round it plays keeps the other side's mirror clear of the thumb, as a
+  // joined phone's game does (m12-opponent-mirror rules 3, 7 and 8). "Show on
+  // this device" shares no view and draws no pad, so it passes none.
+  party.hostPadProvider.overrideWith((ref) {
+    final mm = ref.watch(pxPerMmProvider);
+    final host = ref.watch(hostingProvider);
+    if (host == null || !host.service.shareView) return (pxPerMm: mm, rects: (Size box) => const <Rect>[]);
+    final mode = ref.watch(gyroProvider.select((g) => g.mode));
+    final sticks = ref.watch(stickSettingsProvider);
+    return (pxPerMm: mm, rects: (Size box) => leftPadRects(box, mode: mode, mm: mm, sticks: sticks));
+  }),
 ];

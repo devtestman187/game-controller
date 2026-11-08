@@ -210,7 +210,7 @@ void main() {
         final scores = (score: hud.score, short: hud.short);
         // The house's race has room for the other side's mirror, which pushes
         // the clock area right (m12-opponent-mirror rule 5).
-        final mirror = PuzzleCamera.mirrorPlace(layout, camera, box, split: true, text: scores);
+        final mirror = PuzzleCamera.mirrorPlace(puzzle, layout, camera, box, split: true, text: scores);
         final rect = PuzzleCamera.hudPlace(layout, camera, box, scores, mirror: mirror?.rect).rect;
         // Just inside the bar's left end, halfway down its height.
         final y = (rect.bottom - box.height * PuzzleCamera.hudBarFraction / 2).round();

@@ -7,6 +7,7 @@ import 'package:protocol/protocol.dart' show playerColor, playerColors;
 import 'camera.dart';
 import 'game.dart';
 import 'match.dart';
+import 'piece_size.dart';
 import 'puzzle.dart';
 import 'puzzle_values.dart';
 import 'snapshot.dart';
@@ -51,6 +52,7 @@ class MatchView extends StatelessWidget {
     this.target = LayoutTarget.screen,
     this.camera = const PuzzleCamera.whole(),
     this.padRects = const [],
+    this.pxPerMm = phonePxPerMm,
   });
 
   final Puzzle puzzle;
@@ -71,12 +73,25 @@ class MatchView extends StatelessWidget {
   /// a tablet, "Show on this device").
   final List<Rect> padRects;
 
+  /// This phone's px per millimetre, which the mirror keeps its marks above
+  /// (m12-opponent-mirror rule 7): the app's own reading, as [padRects] is its
+  /// own geometry.
+  final double pxPerMm;
+
   @override
   Widget build(BuildContext context) => CustomPaint(
     key: const Key('puzzleView'),
     size: Size.infinite,
     painter: snapshot.split || target == LayoutTarget.phones
-        ? MatchPainter(puzzle, snapshot, timeLimitS: timeLimitS, target: target, camera: camera, padRects: padRects)
+        ? MatchPainter(
+            puzzle,
+            snapshot,
+            timeLimitS: timeLimitS,
+            target: target,
+            camera: camera,
+            padRects: padRects,
+            pxPerMm: pxPerMm,
+          )
         : PuzzlePainter(puzzle, snapshot.boards.single, timeLimitS: timeLimitS),
   );
 }

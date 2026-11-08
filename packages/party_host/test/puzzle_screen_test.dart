@@ -130,6 +130,42 @@ void main() {
     expect(drawnCamera(tester).side, isNull);
   });
 
+  testWidgets('the TV has no pad over the game, so it passes the game none and a phone\'s density', (tester) async {
+    // No pad but the host's own: it draws none, and if it showed a game as a
+    // phone does, its 160-dpi screen would be the reading (m12-opponent-mirror
+    // rule 3). The TV passes it nothing.
+    await openRound(tester, const {'p1': PuzzleSide.left, 'p2': PuzzleSide.right});
+    final view = tester.widget<MatchView>(find.byType(MatchView));
+    expect(view.padRects, isEmpty);
+    expect(view.pxPerMm, phonePxPerMm);
+  });
+
+  testWidgets('the host phone\'s app hands its pad to the round through the hostPad seam', (tester) async {
+    // The host app overrides the seam with the pad it draws over the game; the
+    // round passes those rects, from the box the game fills, and the app's px
+    // per mm, to the game (m12-opponent-mirror rules 3 and 7).
+    Size? asked;
+    const overGame = Rect.fromLTWH(10, 60, 120, 120);
+    await openRound(
+      tester,
+      const {'p1': PuzzleSide.left, 'p2': PuzzleSide.right},
+      overrides: [
+        ownPlayerIdProvider.overrideWithValue('p2'),
+        hostPadProvider.overrideWithValue((
+          pxPerMm: 7.5,
+          rects: (Size box) {
+            asked = box;
+            return [overGame];
+          },
+        )),
+      ],
+    );
+    final view = tester.widget<MatchView>(find.byType(MatchView));
+    expect(view.padRects, [overGame]);
+    expect(view.pxPerMm, 7.5);
+    expect(asked, tester.getSize(find.byType(MatchView)), reason: 'the box the game draws in, as the screen has it');
+  });
+
   testWidgets('a host with the room for both sides draws the whole match', (tester) async {
     await openRound(
       tester,

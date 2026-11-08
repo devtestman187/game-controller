@@ -14,6 +14,7 @@ class MatchPainter extends CustomPainter {
     this.target = LayoutTarget.screen,
     this.camera = const PuzzleCamera.whole(),
     this.padRects = const [],
+    this.pxPerMm = phonePxPerMm,
   });
 
   final Puzzle puzzle;
@@ -29,6 +30,11 @@ class MatchPainter extends CustomPainter {
   /// Where the app draws this phone's pad, in the box's px: the mirror keeps
   /// clear of it (m12-opponent-mirror rule 3, code-health N4).
   final List<Rect> padRects;
+
+  /// This phone's px per millimetre, which the mirror keeps its marks above
+  /// (rule 7): the app's own reading, so a screen of another density measures
+  /// its own floor.
+  final double pxPerMm;
 
   /// The widest the clock's bar gets: under the clock in the strip, in the
   /// gap between the boards.
@@ -104,17 +110,28 @@ class MatchPainter extends CustomPainter {
   /// the form [PuzzleCamera.hudPlace] picked otherwise. The bar is green while
   /// the clock has time left and red while it warns.
   ///
-  /// Where the box has the room, the other side's mirror sits at its top left
-  /// with the clock area to its right, and the count it plays is "Them n/N"
-  /// in orange (m12-opponent-mirror rules 2 and 5).
+  /// Where the box has a place for it, the other side's mirror goes there and
+  /// the clock area with it ([PuzzleCamera.mirrorPlace]: to its right in the
+  /// corner, or where it was with the mirror below it in the gap), and the
+  /// count it plays is "Them n/N" in orange (m12-opponent-mirror rules 2, 5
+  /// and 8).
   void _hud(Canvas canvas, Size size, SplitLayout layout) {
     final text = phoneHud(s, camera.side);
     final scores = (score: text.score, short: text.short);
-    final mirror = PuzzleCamera.mirrorPlace(layout, camera, size, split: s.split, text: scores, padRects: padRects);
+    final mirror = PuzzleCamera.mirrorPlace(
+      puzzle,
+      layout,
+      camera,
+      size,
+      split: s.split,
+      text: scores,
+      pxPerMm: pxPerMm,
+      padRects: padRects,
+    );
     final shown = mirror == null ? text : phoneHud(s, camera.side, mirrored: true);
     // Measured on the sides' names, the widest the short form gets ("Right 3/6"
     // is longer than "Them 3/6"), so the area is the same either way.
-    final placement = PuzzleCamera.hudPlace(layout, camera, size, scores, mirror: mirror?.rect);
+    final placement = mirror?.hud ?? PuzzleCamera.hudPlace(layout, camera, size, scores);
     final rect = placement.rect;
     final board = camera.side == null ? s.boards.first : _boardOf(s, camera.side!);
     final gap = size.height * PuzzleCamera.hudLineGapFraction;
@@ -136,7 +153,7 @@ class MatchPainter extends CustomPainter {
 
   /// The other side's board, drawn small at the HUD's left (m12-opponent-
   /// mirror rule 1): their side's snapshot, in their side's world.
-  void _mirror(Canvas canvas, SplitLayout layout, ({Rect rect, double scale}) mirror) => MirrorPainter(
+  void _mirror(Canvas canvas, SplitLayout layout, MirrorPlacement mirror) => MirrorPainter(
     puzzle,
     _boardOf(s, _otherSide(camera.side!)),
     layout.left,
@@ -285,7 +302,11 @@ class MatchPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(MatchPainter old) =>
-      !identical(old.s, s) || old.target != target || old.camera != camera || !listEquals(old.padRects, padRects);
+      !identical(old.s, s) ||
+      old.target != target ||
+      old.camera != camera ||
+      old.pxPerMm != pxPerMm ||
+      !listEquals(old.padRects, padRects);
 }
 
 /// What a phone's clock area shows (m12-phone-layout §0.7c): the clock, one

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:ui' show Rect, Size;
 
 import 'package:connection/connection.dart';
 import 'package:flutter/foundation.dart';
@@ -98,6 +99,24 @@ final ownPlayerIdProvider = Provider<String?>((ref) => null);
 /// the room for both sides. False by default, so the TV and a phone draw what
 /// they always did.
 final wholeMatchProvider = Provider<bool>((ref) => false);
+
+/// Where this host draws its own pad over the game it shows, and the px per
+/// millimetre of its screen (m12-opponent-mirror rules 3, 7 and 8): the game a
+/// host phone plays keeps the other side's mirror clear of the thumb and its
+/// marks reading, exactly as a game shown on a joined phone does
+/// ([ViewContext.padRects] and [ViewContext.pxPerMm]).
+///
+/// The pad is the app's geometry, which `party_host` can't read: the phone app
+/// overrides this with its own `leftPadRects` and density, and says no pad to
+/// keep clear of where it draws none. The TV, and "Show on this device", draw
+/// no pad over the game: the defaults, so their rounds pass nothing and their
+/// screen keeps today's picture.
+final hostPadProvider = Provider<HostPad>((ref) => (pxPerMm: phonePxPerMm, rects: (_) => const <Rect>[]));
+
+/// A host app's own pad over the game (m12-opponent-mirror rules 3 and 8): its
+/// px per millimetre, and the controls it draws in a box of the given size,
+/// which the game must not meet.
+typedef HostPad = ({double pxPerMm, List<Rect> Function(Size box) rects});
 
 /// The host service and everything it runs, built from the providers above so
 /// an app only supplies its own inputs.

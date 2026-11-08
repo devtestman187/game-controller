@@ -12,7 +12,7 @@ void main() {
   final layout = SplitLayout.of(tree, 1, target: LayoutTarget.phones);
 
   group('what the mirror draws', () {
-    late ({Rect rect, double scale}) mirror;
+    late MirrorPlacement mirror;
     late Puzzle puzzle;
 
     setUpAll(() {

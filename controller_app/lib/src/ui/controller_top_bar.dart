@@ -53,7 +53,7 @@ class _GameTopBar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) => Padding(
-    padding: _barPadding,
+    padding: barPadding,
     child: Opacity(
       opacity: ref.watch(controlsSettingsProvider).opacity,
       child: Row(
@@ -81,7 +81,7 @@ class _ControllerTopBar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) => Padding(
-    padding: _barPadding,
+    padding: barPadding,
     child: Row(
       children: [
         // The chip and the ping take whatever room is left, and shorten.
@@ -94,11 +94,6 @@ class _ControllerTopBar extends ConsumerWidget {
     ),
   );
 }
-
-/// The bar's inset inside the safe area: 12 at the left, 8 at the right, 4
-/// above the 48-high row the buttons need (C14 to C16 keep the pad's own
-/// touch areas below this bar).
-const _barPadding = EdgeInsets.fromLTRB(12, 4, 8, 0);
 
 /// The bar's way into Settings: the pad's and the phone's.
 class _SettingsButton extends StatelessWidget {

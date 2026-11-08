@@ -5,6 +5,7 @@ import 'package:controller/src/providers.dart';
 import 'package:controller/src/storage.dart';
 import 'package:controller/src/ui/connect_screen.dart';
 import 'package:controller/src/ui/controls_layer.dart';
+import 'package:controller/src/ui/top_bar_metrics.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -272,8 +273,10 @@ void main() {
       final mode = tester.getSize(find.byKey(const Key('modeMenu')));
       expect(mode.width, greaterThanOrEqualTo(settings.width), reason: 'the one mode icon is no smaller');
       expect(mode.height, greaterThanOrEqualTo(settings.height), reason: 'the one mode icon is no smaller');
-      // The bar is still 52 px: the pad and its touch map keep the same body.
-      expect(tester.getSize(find.byType(ControlsLayer)), const Size(852, 341));
+      // The bar draws the pad's body below its own height: the bar's padding
+      // and its 48-high row are [topBarHeightPx], the constant `leftPadRects`
+      // measures the controls from.
+      expect(tester.getRect(find.byType(ControlsLayer)), Rect.fromLTWH(0, topBarHeightPx, 852, 393 - topBarHeightPx));
     });
 
     testWidgets('the full bar comes back when the game ends', (tester) async {

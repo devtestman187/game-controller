@@ -7,6 +7,7 @@ import 'package:game_kit/game_kit.dart';
 
 import 'camera.dart';
 import 'match.dart';
+import 'piece_size.dart';
 import 'puzzle.dart';
 import 'puzzle_session.dart';
 import 'settings.dart';
@@ -34,6 +35,8 @@ class PuzzlePlayView extends StatefulWidget {
     this.target = LayoutTarget.screen,
     this.hosting,
     this.camera = const PuzzleCamera.whole(),
+    this.padRects = const [],
+    this.pxPerMm = phonePxPerMm,
     this.paused = false,
     this.onFinished,
     this.match,
@@ -61,6 +64,14 @@ class PuzzlePlayView extends StatefulWidget {
   /// the host's own side, or the whole match. The host app picks it from its
   /// own player and whether it has the room for both sides.
   final PuzzleCamera camera;
+
+  /// Where the host app draws its pad over the game, in the box's px, and its
+  /// px per millimetre: the same two things a joined phone's app passes its
+  /// game, so the other side's mirror keeps clear of the thumb and its marks
+  /// read (m12-opponent-mirror rules 7 and 8). A host that draws no pad — the
+  /// TV, "Show on this device" — passes none.
+  final List<Rect> padRects;
+  final double pxPerMm;
 
   /// Nothing moves and the clock stops (the pause menu is open).
   final bool paused;
@@ -144,5 +155,7 @@ class PuzzlePlayViewState extends State<PuzzlePlayView> with SingleTickerProvide
     timeLimitS: match.sides.first.game.settings.timeLimitS,
     target: widget.target,
     camera: widget.camera,
+    padRects: widget.padRects,
+    pxPerMm: widget.pxPerMm,
   );
 }

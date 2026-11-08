@@ -6,6 +6,11 @@ import 'piece_size.dart';
 import 'puzzle.dart';
 import 'split_layout.dart';
 
+/// What a phone draws of the other side (m12-opponent-mirror rules 1–8): the
+/// mirror's rect in the box's px, the px per board unit it draws their board
+/// at, and where the clock area goes with it ([PuzzleCamera.mirrorPlace]).
+typedef MirrorPlacement = ({Rect rect, double scale, ({Rect rect, HudForm form}) hud});
+
 /// What a phone draws of a match (m12-phone-layout §2): the whole match, or
 /// the one side a player plays on. [forPlayer] picks it from a phone's player
 /// ID; the painters and the size check ask it for the scale, so both always
@@ -140,9 +145,15 @@ final class PuzzleCamera {
   static const hudMarginPx = 8.0;
   static const hudWorldGapPx = 8.0;
 
-  /// The distance between the other side's mirror and the clock area to its
-  /// right, in px (m12-opponent-mirror rule 5).
-  static const hudMirrorGapPx = 8.0;
+  /// The air between the other side's mirror and what it must not meet — the
+  /// clock area beside it, their board, the tray row and this player's pad — in
+  /// px (m12-opponent-mirror rules 5 and 8): its own frame, with room round it.
+  static const mirrorGapPx = 8.0;
+
+  /// The slack on the mirror's floor, so a board whose smallest piece draws
+  /// exactly at [mirrorMinPieceMm] keeps its mirror: floating point may put the
+  /// scale a hair under.
+  static const _floorSlack = 1e-9;
 
   /// The distance from the board's top-left corner to the clock area when it
   /// has no room beside the world, in px (§0.7c's last resort).
@@ -156,46 +167,108 @@ final class PuzzleCamera {
   /// at 2.2 mm or more.
   static const mirrorFraction = mirrorMinPieceMm / minPieceMm;
 
-  /// Where the other side's mirror goes in [box], and the px per world unit it
-  /// draws their board at, or null where a phone draws none (m12-opponent-
-  /// mirror rules 1–6): a one-board match ([split] false — solo or a team),
-  /// the whole match (a tablet), the screen (the TV), a box whose spare width
-  /// only fits the HUD's short form or its corner over the board (a narrow
-  /// phone), a box too narrow for the HUD that the mirror brings, and a box
-  /// where the player's own pad is ([padRects]) — the mirror never covers a
-  /// control the thumb is on (rule 3, code-health N4).
+  /// Where the other side's mirror goes in [box] and where the clock area goes
+  /// with it, or null where a phone draws none (m12-opponent-mirror rules
+  /// 1–8): a one-board match ([split] false — solo or a team), the whole match
+  /// (a tablet), the screen (the TV), and a box where neither place is both
+  /// clear of this player's pad and big enough to read.
   ///
-  /// The mirror is their board alone, at [hudMarginPx] from the box's left and
-  /// [hudTopFraction] of its height down, under the top bar; their board's
-  /// aspect, so their picture is not stretched. [text] is the HUD the phone
-  /// draws without a mirror, whose form says whether the box has the room.
+  /// Rule 8's two places, in order. The corner: [hudMarginPx] from the box's
+  /// left and [hudTopFraction] of its height down, under the top bar, with the
+  /// clock area to its right in its short form (rule 5). The gap: under the
+  /// clock area, between the left hand's controls and their board, with the
+  /// clock area where a phone without a mirror draws it (rule 8's sketch). In
+  /// each place the mirror takes the largest scale that fits — up to
+  /// [mirrorFraction] of the board's drawn size — and keeps it only if its
+  /// smallest piece still draws at [mirrorMinPieceMm], which [pxPerMm] turns
+  /// into px: a wide board on a narrow box draws a smaller mirror rather than
+  /// none, and one too small to read draws no mirror there.
+  ///
+  /// [puzzle] is their picture, whose smallest piece sets that floor; the
+  /// mirror is their board's own shape, never stretched. [text] is the HUD the
+  /// phone draws without a mirror, which the corner measures its room against.
   /// [padRects] are the controls the app draws under the game, in the box's
   /// px: the app's own geometry, passed through the view, so the game never
   /// copies it (rules 3 and 6).
-  static ({Rect rect, double scale})? mirrorPlace(
+  static MirrorPlacement? mirrorPlace(
+    Puzzle puzzle,
     SplitLayout layout,
     PuzzleCamera camera,
     Size box, {
     required bool split,
     required ({String score, List<String> short}) text,
+    double pxPerMm = phonePxPerMm,
     List<Rect> padRects = const [],
   }) {
     if (!split || camera.side == null || layout.target != LayoutTarget.phones) return null;
-    if (hudPlace(layout, camera, box, text).form case HudForm.short || HudForm.corner) return null;
+    final world = place(layout, camera, box, camera.side!);
     final board = layout.left.board;
-    final scale = place(layout, camera, box, camera.side!).scale * mirrorFraction;
-    final rect = Rect.fromLTWH(hudMarginPx, box.height * hudTopFraction, board.width * scale, board.height * scale);
-    final room = _hudRoom(layout, camera, box, rect).spare;
-    if (room < box.height * _hudSize(HudForm.short, text).width) return null;
-    if (padRects.any(rect.overlaps)) return null;
-    return (rect: rect, scale: scale);
+    final maxScale = world.scale * mirrorFraction;
+    // The smallest mark the mirror draws is the smallest piece: a dot is that
+    // size or bigger ([mirrorDotRadius]), so it never sets a smaller floor.
+    final smallest = puzzle.pieces.map((p) => p.shape.size).reduce(min);
+    final floor = mirrorMinPieceMm * pxPerMm / smallest;
+    Rect onScreen(Rect r) => Rect.fromLTWH(
+      world.origin.dx + r.left * world.scale,
+      world.origin.dy + r.top * world.scale,
+      r.width * world.scale,
+      r.height * world.scale,
+    );
+    // What the mirror must not meet: their board and tray row, this phone's own
+    // pad (rules 3 and 8), and the clock area.
+    final boardAndTray = [onScreen(board), onScreen(layout.left.tray), ...padRects];
+    final hud = hudPlace(layout, camera, box, text);
+    // The corner, with the clock area to its right in its short form, clear of
+    // the world: its left edge is where the mirror's right must stop.
+    final shortForm = _hudSize(HudForm.short, text);
+    final besideHud = Rect.fromLTWH(
+      world.origin.dx - hudWorldGapPx - box.height * shortForm.width,
+      box.height * hudTopFraction,
+      box.height * shortForm.width,
+      box.height * shortForm.height,
+    );
+    final cornerTop = box.height * hudTopFraction;
+    final corner = _fitting(box, board.size, Offset(hudMarginPx, cornerTop), maxScale, floor, [
+      ...boardAndTray,
+      besideHud,
+    ]);
+    if (corner != null) {
+      final rect = Rect.fromLTWH(hudMarginPx, cornerTop, board.width * corner, board.height * corner);
+      return (rect: rect, scale: corner, hud: hudPlace(layout, camera, box, text, mirror: rect));
+    }
+    // The gap, under the clock area, right of the controls that reach into the
+    // band the mirror can take there.
+    final top = hud.rect.bottom + mirrorGapPx;
+    var left = hudMarginPx;
+    for (final pad in padRects) {
+      if (pad.top < top + board.height * maxScale && pad.bottom > top) left = max(left, pad.right + mirrorGapPx);
+    }
+    final gap = _fitting(box, board.size, Offset(left, top), maxScale, floor, [...boardAndTray, hud.rect]);
+    if (gap == null) return null;
+    return (rect: Rect.fromLTWH(left, top, board.width * gap, board.height * gap), scale: gap, hud: hud);
+  }
+
+  /// The largest scale, up to [maxScale], at which [board]'s shape with its top
+  /// left at [at] fits [box] and meets none of [obstacles] — each with
+  /// [mirrorGapPx] of air round it — or null when that is under [floor], the
+  /// scale below which the mirror's smallest piece stops reading.
+  static double? _fitting(Size box, Size board, Offset at, double maxScale, double floor, List<Rect> obstacles) {
+    var scale = min(maxScale, min((box.width - at.dx) / board.width, (box.height - at.dy) / board.height));
+    for (final obstacle in obstacles) {
+      final r = obstacle.inflate(mirrorGapPx);
+      // A rect wholly up or left of the place can't be met however big the
+      // mirror gets.
+      if (r.right <= at.dx || r.bottom <= at.dy) continue;
+      scale = min(scale, max((r.left - at.dx) / board.width, (r.top - at.dy) / board.height));
+    }
+    return scale + _floorSlack >= floor ? scale : null;
   }
 
   /// Where the clock area starts in [box] and the width it has, right of the
   /// world and of [mirror] when the box shows one (m12-opponent-mirror rule 5).
   static ({double left, double spare}) _hudRoom(SplitLayout layout, PuzzleCamera camera, Size box, Rect? mirror) {
     final world = place(layout, camera, box, PuzzleSide.left);
-    final left = mirror == null ? hudMarginPx : mirror.right + hudMirrorGapPx;
+    final left = mirror == null ? hudMarginPx : mirror.right + mirrorGapPx;
     return (left: left, spare: world.origin.dx - hudWorldGapPx - left);
   }
 

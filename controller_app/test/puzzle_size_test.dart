@@ -3,23 +3,19 @@ import 'dart:io';
 import 'dart:ui';
 
 import 'package:controller/src/layout.dart';
+import 'package:controller/src/ui/top_bar_metrics.dart';
 import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter_test/flutter_test.dart';
-import 'package:puzzle_game/puzzle_game.dart';
+import 'package:puzzle_game/puzzle_game.dart' hide phonePxPerMm;
 
 import 'layout_test.dart' as layouts;
-
-/// The top bar's height above the body: its 4 px top padding and its 48 px
-/// row. `joined_view_test` pins it: on an 852 x 393 screen with the notch's
-/// 48/24 padding the safe area is 369 px high and the pad's body 317.
-const barHeight = 52.0;
 
 /// The smallest supported phone's screen, an iPhone SE (m12-phone-layout
 /// §0.2): no insets, so a shown game fills all of it behind the top bar.
 const seScreen = Size(667, 375);
 
 /// The layout table rows whose body is shorter than their phone's safe area
-/// over a [barHeight] bar: the iPhone SE's row is 300 high (a 75 px bar),
+/// over a [topBarHeightPx] bar: the iPhone SE's row is 300 high (a 75 px bar),
 /// while its safe area is its whole [seScreen].
 const rowScreens = {'iPhone SE': seScreen};
 
@@ -41,8 +37,8 @@ Map<String, Puzzle> loadPuzzles() {
     puzzle.pieces.map((p) => (piece: p, diameter: p.shape.size)).reduce((a, b) => b.diameter < a.diameter ? b : a);
 
 /// The phone screens to check, each as the safe area a shown game fills: the
-/// layout table's body (below the top bar) plus [barHeight], the bar this app
-/// draws, or the phone's own screen where [rowScreens] has it.
+/// layout table's body (below the top bar) plus [topBarHeightPx], the bar this
+/// app draws, or the phone's own screen where [rowScreens] has it.
 ///
 /// The table's rows are bodies under a bar of 52 to 54 px, so body + bar is
 /// the safe area a phone gives the game. The iPhone SE's row can't be read
@@ -54,7 +50,8 @@ Map<String, Puzzle> loadPuzzles() {
 /// is a split screen case (m12-phone-layout §5).
 Map<String, Size> phoneSafeAreas() => {
   for (final MapEntry(key: name, value: screen) in layouts.phones.entries)
-    if (screen.body != minBodySize) name: rowScreens[name] ?? Size(screen.body.width, screen.body.height + barHeight),
+    if (screen.body != minBodySize)
+      name: rowScreens[name] ?? Size(screen.body.width, screen.body.height + topBarHeightPx),
 };
 
 /// The seeds checked: seed 1, which the layout and camera tests pin, and 20
