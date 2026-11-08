@@ -191,6 +191,33 @@ void main() {
       }
       expect(((c.summary(0)['players'] as List)[0] as Map)['segments'], hasLength(200));
     });
+
+    // m12 bug 1107e: a summary the host uploaded keeps what it had, even as
+    // the session it came from goes on.
+    test('a summary does not change as the session goes on', () {
+      final c = SessionCollector(
+        id: 's',
+        hostType: HostType.androidTv,
+        hostApp: '0.10.0',
+        startedAt: DateTime.utc(2026),
+        startMs: 0,
+      );
+      c.joined('p', number: 1, atMs: 0);
+      final early = c.summary(1000);
+
+      c.roundStarted();
+      c.roundEnded('puzzle', timeS: 3.5, modes: {'p': 'dpad'});
+      c.gameEvent('puzzle', 'piece_locked', 'p');
+      c.frames(60, 1);
+
+      expect(early['rounds'], isEmpty);
+      expect(early['frames'], {'drawn': 0, 'dropped': 0});
+      expect(((early['players'] as List).single as Map)['games'], isEmpty);
+      // And the next summary has the lot.
+      final late = c.summary(2000);
+      expect(late['rounds'], hasLength(1));
+      expect(late['frames'], {'drawn': 60, 'dropped': 1});
+    });
   });
 }
 

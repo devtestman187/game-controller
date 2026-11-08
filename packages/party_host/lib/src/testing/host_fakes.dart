@@ -144,6 +144,10 @@ class FakeGameHost implements GameHost {
   /// Each player's buttons, set by the test.
   final pads = <String, GamepadState>{};
 
+  /// The controls whose phone has dropped and whose slot the round holds
+  /// (the game host's away players): the test adds and removes them.
+  final away = <String>{};
+
   /// Each player's layout and status panel, as the game set them.
   final layouts = <String, GameLayoutMessage>{};
   final statuses = <String, StatusMessage>{};
@@ -169,6 +173,7 @@ class FakeGameHost implements GameHost {
         nickname: c.name,
         mode: InputMode.of(c.input),
         simulated: c.platform == 'sim',
+        away: away.contains(c.controllerId),
       ),
     for (final l in locals.values)
       GamePlayer(id: l.id, number: l.number, nickname: l.nickname, local: true, mode: InputMode.keyboard),

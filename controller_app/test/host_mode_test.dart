@@ -8,6 +8,7 @@ import 'package:controller/src/ui/controls_layer.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:party_host/party_host.dart' as party;
+import 'package:puzzle_game/puzzle_game.dart';
 
 import 'support/host_app.dart';
 import 'support/pump_app.dart';
@@ -239,6 +240,39 @@ void main() {
 
     // Nothing is shown over this phone's own game: the prompt goes unanswered.
     expect(find.text('How did the controls feel?'), findsNothing);
+    await tester.runAsync(host.dispose);
+  });
+
+  // m12 bug 1107e: the picker is the games' root, so the back from a game
+  // goes up to it first, and the host only stops there.
+  testWidgets('the system back on the results goes to the picker and the host stays on', (tester) async {
+    await pumpHostApp(tester);
+    final host = await enterHostMode(tester);
+    await pressA(tester);
+    await untilShown(tester, find.byType(party.ShapeRaceScreen), 'The Shape Race screen');
+    await untilShown(tester, find.byKey(const Key('random-easy')), 'The puzzle list');
+    await pressA(tester);
+    await untilShown(tester, find.byType(party.JoinScreen), 'The join screen');
+    await pressA(tester);
+    await pressA(tester);
+    await untilShown(tester, find.byType(party.PuzzleScreen), 'The puzzle screen');
+
+    // The own player's board goes in at once: the round ends on the results.
+    final match = tester.state<PuzzlePlayViewState>(find.byType(PuzzlePlayView)).match;
+    final board = match.gameOf(PuzzleSide.left);
+    for (var i = 0; i < board.pieces.length; i++) {
+      board.pieces[i]
+        ..state = PieceState.locked
+        ..pos = board.targetAt(i);
+    }
+    await untilShown(tester, find.text('Done!'), 'The results');
+
+    await tester.binding.handlePopRoute();
+    await settle(tester);
+    expect(find.byKey(const Key('pickShapeRace')), findsOneWidget);
+    expect(find.byType(party.PuzzleScreen), findsNothing);
+    expect(find.byType(HostScreen), findsOneWidget);
+    expect(host.live, isTrue, reason: 'the back went up to the picker, not out of the host');
     await tester.runAsync(host.dispose);
   });
 

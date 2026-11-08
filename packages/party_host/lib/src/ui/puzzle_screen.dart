@@ -62,6 +62,10 @@ class PuzzleScreen extends ConsumerStatefulWidget {
 
 class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
   late final LocalPlayerSource _keyboard;
+
+  /// Where the round's moments go (m12 bug 1107e): the Diagnostics screen
+  /// reads them back.
+  late final LogSink _log;
   final _againFocus = FocusNode(debugLabel: 'rematch');
 
   /// The screen's randomness, made once here at the edge: the puzzle to play
@@ -84,12 +88,15 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
   @override
   void initState() {
     super.initState();
+    _log = ref.read(logProvider).sink('host');
     _target = ref.read(hostServiceProvider).shareView ? LayoutTarget.phones : LayoutTarget.screen;
     _hosting = ref.read(hostingSettingsProvider);
     // Made here, not lazily: dispose() can't read providers any more.
     _keyboard =
         widget.keyboard ??
         ref.read(localPlayerSourceProvider)(ref.read(gameHostProvider), onJoined: () => setState(() {}));
+    final format = MatchFormat.of(widget.teams);
+    _log('Round started: $puzzleGameName, ${format.label}, ${_playersLine(widget.teams.length)}');
   }
 
   @override
@@ -122,6 +129,7 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
   // would be ignored: move the focus there, for the remote's OK button.
   void _finished(MatchResult r) {
     setState(() => _result = r);
+    _log('Round ended: ${_resultsHead(r).title}${_endTime(r)}');
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _againFocus.requestFocus();
     });
@@ -133,9 +141,12 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
   }
 
   /// Same teams; a random puzzle becomes another random one.
-  void _rematch() => _replaceWith(
-    PuzzleScreen(choice: widget.choice, teams: widget.teams, keyboard: _keyboard, avoidPuzzleId: _puzzle?.id),
-  );
+  void _rematch() {
+    _log('Results: ${_result?.format.split ?? false ? 'Rematch' : 'Play again'}');
+    _replaceWith(
+      PuzzleScreen(choice: widget.choice, teams: widget.teams, keyboard: _keyboard, avoidPuzzleId: _puzzle?.id),
+    );
+  }
 
   void _changeTeams() => _replaceWith(JoinScreen(choice: widget.choice, teams: widget.teams, keyboard: _keyboard));
 
@@ -152,61 +163,78 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
   Widget build(BuildContext context) {
     final puzzle = widget.match?.puzzle ?? ref.watch(puzzleLibraryProvider).whenOrNull(data: _pick);
     final result = _result;
-    return ControlsClaim(
-      // The results are a menu like any other; while playing, the game reads
-      // the controllers.
-      controls: result == null ? const Controls.game() : const Controls.menus(),
-      child: Focus(
-        autofocus: true,
-        // Not a stop for arrow keys or the phone's stick: on the results an
-        // up or down push moved the focus here, off the buttons, and A then
-        // pressed nothing (m10.2 device test).
-        skipTraversal: true,
-        onKeyEvent: _onKey,
-        child: Scaffold(
-          body: SafeArea(
-            child: puzzle == null
-                ? const Center(child: CircularProgressIndicator())
-                : Pausable(
-                    enabled: result == null,
-                    // Someone watching can't pause the players.
-                    players: widget.teams.keys.toSet(),
-                    builder: (context, paused) => Stack(
-                      children: [
-                        Positioned.fill(
-                          child: PuzzlePlayView(
-                            host: ref.read(gameHostProvider),
-                            puzzle: puzzle,
-                            teams: widget.teams,
-                            random: _random,
-                            target: _target,
-                            hosting: _hosting,
-                            camera: _camera,
-                            match: widget.match,
-                            paused: paused,
-                            abandon: ref.read(hostAbandonProvider),
-                            settings: () => ref.read(puzzleSettingsProvider),
-                            onFinished: _finished,
-                          ),
-                        ),
-                        if (result != null)
-                          Center(
-                            child: _Results(
-                              result: result,
-                              teams: widget.teams,
-                              total: puzzle.pieces.length,
-                              againFocus: _againFocus,
-                              onAgain: _rematch,
-                              onChangeTeams: _changeTeams,
-                            ),
-                          ),
-                        if (result == null) _PlayHint(keyboard: _keyboard),
-                      ],
-                    ),
-                  ),
-          ),
+    return PopScope(
+      // Back on the results goes to the game picker, never one route short of
+      // it where the next A starts a game (m12 bug 1107e): the Back button,
+      // B on a phone and the system back all ask the route first.
+      canPop: result == null,
+      onPopInvokedWithResult: (didPop, _) => _leaveForGames(didPop),
+      child: ControlsClaim(
+        // The results are a menu like any other; while playing, the game reads
+        // the controllers.
+        controls: result == null ? const Controls.game() : const Controls.menus(),
+        child: Focus(
+          autofocus: true,
+          // Not a stop for arrow keys or the phone's stick: on the results an
+          // up or down push moved the focus here, off the buttons, and A then
+          // pressed nothing (m10.2 device test).
+          skipTraversal: true,
+          onKeyEvent: _onKey,
+          child: _screen(puzzle, result),
         ),
       ),
     );
   }
+
+  /// The route asked: on the results the answer is the game picker.
+  void _leaveForGames(bool didPop) {
+    if (didPop) return;
+    _log('Results: back to the games');
+    leaveForGamePicker(context);
+  }
+
+  /// The board, the results over it, and the play hint.
+  Widget _screen(Puzzle? puzzle, MatchResult? result) => Scaffold(
+    body: SafeArea(
+      child: puzzle == null
+          ? const Center(child: CircularProgressIndicator())
+          : Pausable(
+              enabled: result == null,
+              // Someone watching can't pause the players.
+              players: widget.teams.keys.toSet(),
+              builder: (context, paused) => Stack(
+                children: [
+                  Positioned.fill(
+                    child: PuzzlePlayView(
+                      host: ref.read(gameHostProvider),
+                      puzzle: puzzle,
+                      teams: widget.teams,
+                      random: _random,
+                      target: _target,
+                      hosting: _hosting,
+                      camera: _camera,
+                      match: widget.match,
+                      paused: paused,
+                      abandon: ref.read(hostAbandonProvider),
+                      settings: () => ref.read(puzzleSettingsProvider),
+                      onFinished: _finished,
+                    ),
+                  ),
+                  if (result != null)
+                    Center(
+                      child: _Results(
+                        result: result,
+                        teams: widget.teams,
+                        total: puzzle.pieces.length,
+                        againFocus: _againFocus,
+                        onAgain: _rematch,
+                        onChangeTeams: _changeTeams,
+                      ),
+                    ),
+                  if (result == null) _PlayHint(keyboard: _keyboard),
+                ],
+              ),
+            ),
+    ),
+  );
 }

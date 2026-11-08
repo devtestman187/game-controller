@@ -1,0 +1,131 @@
+import 'package:connection/connection.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:party_host/party_host.dart';
+import 'package:party_host/testing.dart';
+import 'package:puzzle_game/puzzle_game.dart';
+
+import 'support/host_harness.dart';
+
+/// The log's lines, oldest first.
+List<String> logLines(LogBuffer log) => [for (final line in log.lines) line.message];
+
+/// Mounts the host with a log the test reads back, and, when given, the
+/// app's "this phone went away" switch.
+Future<(FakeHostService, LogBuffer)> pumpLogged(WidgetTester tester, {ValueNotifier<bool>? away}) async {
+  final log = LogBuffer();
+  final fake = await pumpHost(
+    tester,
+    screen: const StubHome(),
+    overrides: [logProvider.overrideWithValue(log), if (away != null) hostAwayProvider.overrideWithValue(away)],
+  );
+  return (fake, log);
+}
+
+/// Home → Play → Shape Race → the house puzzle → P1 joins and starts.
+Future<void> openSoloRound(WidgetTester tester, FakeHostService fake) async {
+  await neutral(tester, fake, ['p1']);
+  await openJoin(tester);
+  await startRound(tester, fake);
+  expect(find.byType(PuzzleScreen), findsOneWidget);
+}
+
+void main() {
+  testWidgets('a round starting and ending goes in the host log', (tester) async {
+    final (fake, log) = await pumpLogged(tester);
+    await openSoloRound(tester, fake);
+    expect(logLines(log), contains('Round started: puzzle, solo, 1 player'));
+
+    final match = lockEveryPiece(tester);
+    await endRound(tester);
+    expect(find.text('Done!'), findsOneWidget);
+    final time = match.result!.sides[PuzzleSide.left]!.timeS!.toStringAsFixed(1);
+    expect(logLines(log), contains('Round ended: Done! ($time s)'));
+  });
+
+  testWidgets('a player leaving the results by back goes in the host log', (tester) async {
+    final (fake, log) = await pumpLogged(tester);
+    await openSoloRound(tester, fake);
+    lockEveryPiece(tester);
+    await endRound(tester);
+
+    await tester.tap(find.byKey(const Key('resultsBack')));
+    await navigated(tester);
+    expect(logLines(log), contains('Results: back to the games'));
+  });
+
+  testWidgets('a player leaving the results to play again goes in the host log', (tester) async {
+    final (fake, log) = await pumpLogged(tester);
+    await openSoloRound(tester, fake);
+    lockEveryPiece(tester);
+    await endRound(tester);
+
+    await tester.tap(find.byKey(const Key('playAgain')));
+    await navigated(tester);
+    expect(logLines(log), contains('Results: Play again'));
+    expect(logLines(log).where((line) => line == 'Round started: puzzle, solo, 1 player'), hasLength(2));
+  });
+
+  testWidgets('a race leaving the results to rematch goes in the host log', (tester) async {
+    final (fake, log) = await pumpLogged(tester);
+    fake.state = withController(fake.state, phoneInfo('p2', 2));
+    fake.emit();
+    await neutral(tester, fake, ['p1', 'p2']);
+    await openJoin(tester);
+    await press(tester, fake, 'p1', GamepadButton.a);
+    await press(tester, fake, 'p2', GamepadButton.a);
+    await press(tester, fake, 'p1', GamepadButton.start);
+    await navigated(tester);
+    expect(logLines(log), contains('Round started: puzzle, 1v1, 2 players'));
+
+    lockEveryPiece(tester);
+    await endRound(tester);
+    expect(find.text('Left wins!'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('rematch')));
+    await navigated(tester);
+    expect(logLines(log), contains('Results: Rematch'));
+  });
+
+  testWidgets('the round pausing and resuming from the menu goes in the host log', (tester) async {
+    final (fake, log) = await pumpLogged(tester);
+    await openSoloRound(tester, fake);
+
+    await press(tester, fake, 'p1', GamepadButton.start);
+    await navigated(tester);
+    expect(find.byKey(const Key('pauseMenu')), findsOneWidget);
+    expect(logLines(log), contains('Round paused: P1 pressed Start'));
+
+    await press(tester, fake, 'p1', GamepadButton.start);
+    await navigated(tester);
+    expect(find.byKey(const Key('pauseMenu')), findsNothing);
+    expect(logLines(log), contains('Round resumed: the menu closed'));
+  });
+
+  testWidgets('the round pausing for the host being away goes in the host log', (tester) async {
+    final away = ValueNotifier(false);
+    final (fake, log) = await pumpLogged(tester, away: away);
+    await openSoloRound(tester, fake);
+
+    away.value = true;
+    await tester.pump();
+    expect(logLines(log), contains('Round paused: the host went away'));
+
+    away.value = false;
+    await tester.pump();
+    expect(logLines(log), contains('Round resumed: the host is back'));
+  });
+
+  testWidgets('a player who is away and back goes in the host log', (tester) async {
+    final (fake, log) = await pumpLogged(tester);
+    await openSoloRound(tester, fake);
+
+    fake.gameHost.away.add('p1');
+    await tester.pump(const Duration(milliseconds: 16));
+    expect(logLines(log), contains('P1 away: the round waits for them'));
+
+    fake.gameHost.away.remove('p1');
+    await tester.pump(const Duration(milliseconds: 16));
+    expect(logLines(log), contains('P1 back: the round goes on'));
+  });
+}

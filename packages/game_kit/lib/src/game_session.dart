@@ -75,6 +75,11 @@ abstract class GameSession {
   bool _paused = false;
   bool _disposed = false;
 
+  /// When the round last came back from a pause, on [host.nowMs]. An input
+  /// that arrived before it waited out the pause, not for the host, so it is
+  /// no received_to_drawn sample (m12 bug 1107e).
+  int? _resumedAtMs;
+
   double? _frameStartMs;
   int _lastFrameIndex = -1;
   // A set, so a sound repeated across the advances of one frame interval (20
@@ -155,7 +160,10 @@ abstract class GameSession {
   set paused(bool value) {
     if (_paused == value) return;
     _paused = value;
-    if (!value) resumed();
+    if (!value) {
+      _resumedAtMs = host.nowMs;
+      resumed();
+    }
   }
 
   /// Called when [paused] goes false: the game can give the phones their
@@ -237,14 +245,20 @@ abstract class GameSession {
       _latest[p.id] = state;
       (_pendingButtons[p.id] ??= <GamepadButton>{}).addAll(state.buttons);
     }
+    final resumedAt = _resumedAtMs;
     final fresh = <String, int>{};
+    final seen = <String, int>{};
     for (final id in ids) {
       final arrivedAt = host.inputArrivedAtMs(id);
-      if (arrivedAt != null && arrivedAt != _arrived[id]) fresh[id] = arrivedAt;
+      if (arrivedAt == null || arrivedAt == _arrived[id]) continue;
+      // Seen either way, so it is never counted later; reported only when it
+      // arrived after the round came back, since a pause is no input delay.
+      seen[id] = arrivedAt;
+      if (resumedAt == null || arrivedAt > resumedAt) fresh[id] = arrivedAt;
     }
     _arrived
       ..removeWhere((id, _) => !ids.contains(id))
-      ..addAll(fresh);
+      ..addAll(seen);
     _fresh = fresh;
   }
 

@@ -273,7 +273,9 @@ class SessionCollector {
       'date': startedAt.toUtc().toIso8601String().substring(0, 10),
       'durationS': (max(0, atMs - startMs) / 1000).round(),
       'players': players,
-      'rounds': _rounds,
+      // Copied: a summary taken at a checkpoint keeps the rounds it had, and
+      // the rounds recorded after it go in the next one (m12 bug 1107e).
+      'rounds': [for (final round in _rounds) Map<String, Object?>.of(round)],
       'frames': {'drawn': _frames, 'dropped': _frameDrops},
     };
   }

@@ -63,6 +63,33 @@ void main() {
     expect(session.stepCount, 1);
   });
 
+  // m12 bug 1107e: an input that arrived while the round was paused waited
+  // for the round, not for the host, so it is no received_to_drawn sample.
+  test('an input that arrived while paused is no received_to_drawn sample', () {
+    final clock = Clock()..host.hasViewers = true;
+    clock.host.setPlayer(const GamePlayer(id: 'a', number: 1));
+    final session = CounterSession(host: clock.host);
+    clock.frame(session, 16);
+    session.drawn();
+
+    // A press arrives 50 ms into a 70 ms pause: short enough that the frame
+    // that comes back is no stall.
+    session.paused = true;
+    clock.frame(session, 50);
+    clock.host.setGamepad('a', const GamepadState(buttons: {GamepadButton.a}));
+    clock.frame(session, 20);
+    session.paused = false;
+    clock.frame(session, 16);
+    session.drawn();
+    expect(clock.host.stages, isEmpty, reason: 'it waited out the pause, not for the host');
+
+    // An input that arrives once the round is back is measured.
+    clock.host.setGamepad('a', GamepadState.neutral);
+    clock.frame(session, 16);
+    session.drawn();
+    expect(clock.host.stages.single, (playerId: 'a', stage: LatencyStage.receivedToDrawn, ms: 16));
+  });
+
   test('steps run without viewers, but frames are not built', () {
     final clock = Clock();
     final session = CounterSession(host: clock.host);

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:connection/connection.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:protocol/protocol.dart';
@@ -56,6 +57,14 @@ class _PausableState extends ConsumerState<Pausable> {
   /// Whether each player held Start last time; a new player counts as
   /// holding what they hold now.
   final _startDown = <String, bool>{};
+
+  /// The numbers of the players whose phone has dropped and whose slot the
+  /// round still holds, so the log says when each one comes and goes (m12
+  /// bug 1107e).
+  final _awayNos = <int>{};
+  late final LogSink _log;
+  late final ValueListenable<bool> _away;
+  late final VoidCallback _awayChanged;
   GamePlayer? _pausedBy;
   BuildContext? _menuContext;
   int _sinceStartMs = 0;
@@ -63,13 +72,33 @@ class _PausableState extends ConsumerState<Pausable> {
   @override
   void initState() {
     super.initState();
+    _log = ref.read(logProvider).sink('host');
+    _away = ref.read(hostAwayProvider);
+    _awayChanged = _noteHostAway;
+    _away.addListener(_awayChanged);
     _timer;
   }
 
   @override
   void dispose() {
+    _away.removeListener(_awayChanged);
     _timer.cancel();
     super.dispose();
+  }
+
+  /// The host app went away or came back: the game pauses with it, without a
+  /// menu (m12 §2.10), and the log says which of the round's stops it was.
+  void _noteHostAway() => _log(_away.value ? 'Round paused: the host went away' : 'Round resumed: the host is back');
+
+  /// Notes the dropped phones whose slot the round holds, and their return.
+  void _noteAway(List<GamePlayer> players) {
+    for (final p in players) {
+      if (p.away) {
+        if (_awayNos.add(p.number)) _log('P${p.number} away: the round waits for them');
+      } else if (_awayNos.remove(p.number)) {
+        _log('P${p.number} back: the round goes on');
+      }
+    }
   }
 
   /// Who may resume: the player who paused and Player 1, or anyone if
@@ -84,16 +113,18 @@ class _PausableState extends ConsumerState<Pausable> {
   }
 
   void _tick() {
+    if (!mounted) return;
+    final host = ref.read(gameHostProvider);
+    _noteAway(host.players);
     // Away, the app is hidden: the game is paused as it is, and nothing
     // opens a menu behind it.
-    if (!mounted || ref.read(hostAwayProvider).value) return;
+    if (ref.read(hostAwayProvider).value) return;
     _sinceStartMs += ControllerMenus.step.inMilliseconds;
     // A player who is away isn't here to press Start (m12 bug 1107d).
     final players = [
-      for (final p in ref.read(gameHostProvider).players)
+      for (final p in host.players)
         if (!p.simulated && !p.local && !p.away) p,
     ];
-    final host = ref.read(gameHostProvider);
     final pressed = <GamePlayer>[];
     for (final p in players) {
       final down = host.gamepad(p.id).pressed(GamepadButton.start);
@@ -116,6 +147,7 @@ class _PausableState extends ConsumerState<Pausable> {
 
   Future<void> _pause(GamePlayer by) async {
     setState(() => _pausedBy = by);
+    _log('Round paused: P${by.number} pressed Start');
     final quit = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
@@ -127,7 +159,11 @@ class _PausableState extends ConsumerState<Pausable> {
     _menuContext = null;
     if (!mounted) return;
     setState(() => _pausedBy = null);
-    if (quit == true) leaveForGamePicker(context);
+    if (quit == true) {
+      leaveForGamePicker(context);
+    } else {
+      _log('Round resumed: the menu closed');
+    }
   }
 
   @override

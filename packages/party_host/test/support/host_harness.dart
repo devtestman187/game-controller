@@ -126,6 +126,34 @@ Future<void> openJoin(WidgetTester tester) async {
   await tester.pump(const Duration(milliseconds: 500));
 }
 
+/// From the join screen: P1 joins the left side and starts the round.
+Future<void> startRound(WidgetTester tester, FakeHostService fake) async {
+  await press(tester, fake, 'p1', GamepadButton.a);
+  await press(tester, fake, 'p1', GamepadButton.a);
+  await navigated(tester);
+}
+
+/// Puts every piece of [side]'s board in place by hand, so the round ends on
+/// the steps after it. Returns the play view's match.
+PuzzleMatch lockEveryPiece(WidgetTester tester, {PuzzleSide side = PuzzleSide.left}) {
+  final match = tester.state<PuzzlePlayViewState>(find.byType(PuzzlePlayView)).match;
+  final game = match.gameOf(side);
+  for (var i = 0; i < game.pieces.length; i++) {
+    game.pieces[i]
+      ..state = PieceState.locked
+      ..pos = game.targetAt(i);
+  }
+  return match;
+}
+
+/// The frames the rules need to see the end and show the results: a 16 ms
+/// frame can pass without one of their 1/60 s steps.
+Future<void> endRound(WidgetTester tester) async {
+  for (var i = 0; i < 3; i++) {
+    await tester.pump(const Duration(milliseconds: 16));
+  }
+}
+
 /// A phone's buttons, read by the menus two frames later.
 Future<void> phone(WidgetTester tester, FakeHostService fake, String id, Set<GamepadButton> buttons) async {
   fake.gameHost.setGamepad(id, GamepadState(buttons: buttons, mode: InputMode.dpad));

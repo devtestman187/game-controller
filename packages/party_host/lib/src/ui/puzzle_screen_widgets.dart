@@ -1,5 +1,29 @@
 part of 'puzzle_screen.dart';
 
+/// The results' headline and its colour: who won a race, or how a one-board
+/// game went. The host log says the same words (m12 bug 1107e).
+({String title, Color colour}) _resultsHead(MatchResult result) => result.format.split
+    ? switch (result.winner) {
+        PuzzleSide.left => (title: 'Left wins!', colour: Colors.greenAccent),
+        PuzzleSide.right => (title: 'Right wins!', colour: Colors.greenAccent),
+        null => (title: 'Draw!', colour: Colors.amberAccent),
+      }
+    : result.sides.values.single.finished
+    ? (title: 'Done!', colour: Colors.greenAccent)
+    : (title: 'Time\'s up!', colour: Colors.amberAccent);
+
+/// The winning side's time for the log, ` (105.9 s)`: nothing when the round
+/// ran out of time or drew.
+String _endTime(MatchResult result) {
+  final side = result.winner ?? (result.format.split ? null : PuzzleSide.left);
+  final done = side == null ? null : result.sides[side];
+  if (done == null || !done.finished) return '';
+  return ' (${done.timeS!.toStringAsFixed(1)} s)';
+}
+
+/// How many players a round has, in words: `1 player`, `2 players`.
+String _playersLine(int count) => count == 1 ? '1 player' : '$count players';
+
 /// The line at the bottom right: how to play, to pause and to leave.
 class _PlayHint extends StatelessWidget {
   const _PlayHint({required this.keyboard});
@@ -44,15 +68,7 @@ class _Results extends ConsumerWidget {
     final text = Theme.of(context).textTheme;
     final players = ref.watch(gamePlayersProvider);
     final race = result.format.split;
-    final (title, colour) = race
-        ? switch (result.winner) {
-            PuzzleSide.left => ('Left wins!', Colors.greenAccent),
-            PuzzleSide.right => ('Right wins!', Colors.greenAccent),
-            null => ('Draw!', Colors.amberAccent),
-          }
-        : result.sides.values.single.finished
-        ? ('Done!', Colors.greenAccent)
-        : ('Time\'s up!', Colors.amberAccent);
+    final (:title, :colour) = _resultsHead(result);
 
     return DecoratedBox(
       key: const Key('puzzleResults'),

@@ -163,6 +163,41 @@ void main() {
     expect(find.byType(PuzzleScreen), findsNothing);
   });
 
+  // m12 bug 1107e: back on the results popped the games' navigator one route
+  // short of the picker, onto the level list, where the next A started a game.
+  testWidgets('on the results B on the phone goes to the game picker', (tester) async {
+    final fake = await pumpHost(tester, screen: const StubHome());
+    await neutral(tester, fake, ['p1']);
+    await openJoin(tester);
+    await startRound(tester, fake);
+    expect(find.byType(PuzzleScreen), findsOneWidget);
+    lockEveryPiece(tester);
+    await endRound(tester);
+    expect(find.text('Done!'), findsOneWidget);
+
+    await press(tester, fake, 'p1', GamepadButton.b);
+    await navigated(tester);
+    expect(find.byKey(const Key('pickShapeRace')), findsOneWidget);
+    expect(find.byType(ShapeRaceScreen), findsNothing);
+    expect(find.byType(PuzzleScreen), findsNothing);
+  });
+
+  testWidgets('on the results the Back button goes to the game picker', (tester) async {
+    final fake = await pumpHost(tester, screen: const StubHome());
+    await neutral(tester, fake, ['p1']);
+    await openJoin(tester);
+    await startRound(tester, fake);
+    lockEveryPiece(tester);
+    await endRound(tester);
+    expect(find.text('Done!'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('resultsBack')));
+    await navigated(tester);
+    expect(find.byKey(const Key('pickShapeRace')), findsOneWidget);
+    expect(find.byType(ShapeRaceScreen), findsNothing);
+    expect(find.byType(PuzzleScreen), findsNothing);
+  });
+
   testWidgets('a race shows the winner, and Rematch keeps the teams; Change teams goes back to the join screen', (
     tester,
   ) async {

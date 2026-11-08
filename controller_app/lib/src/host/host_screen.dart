@@ -56,11 +56,18 @@ class _HostScreenState extends ConsumerState<HostScreen> {
     ref.watch(party.gameSoundsProvider);
     ref.watch(party.keepAwakeProvider);
     return PopScope(
-      // A back press stops the host, rather than leaving the game behind a
-      // server nobody sees (m12 §3).
+      // A back press goes up inside the games first (m12 bug 1107e): the
+      // picker is their root, and only there does it stop the host, rather
+      // than leaving the game behind a server nobody sees (m12 §3).
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) unawaited(ref.read(hostingProvider.notifier).stop());
+        if (didPop) return;
+        final games = widget.host.gamesKey.currentState;
+        if (games != null && games.canPop()) {
+          unawaited(games.maybePop());
+        } else {
+          unawaited(ref.read(hostingProvider.notifier).stop());
+        }
       },
       child: party.ControllerMenus(
         child: ControllerScreen(
