@@ -341,4 +341,33 @@ void main() {
     await navigated(tester);
     expect(find.byKey(const Key('pauseMenu')), findsOneWidget);
   });
+
+  testWidgets('each side is a card in its own colour, with a badge for each player', (tester) async {
+    final fake = await pumpHost(tester, screen: const StubHome());
+    await neutral(tester, fake, ['p1']);
+    await openJoin(tester);
+    await press(tester, fake, 'p1', GamepadButton.a);
+
+    final look = ToyLookScope.of(tester.element(find.byType(JoinScreen)));
+    ToyCard card(String side) =>
+        tester.widget<ToyCard>(find.descendant(of: find.byKey(Key('side-$side')), matching: find.byType(ToyCard)));
+    expect(card('left').header, HostText.leftSide);
+    expect(card('left').headerColor, look.colors.player(1), reason: 'the left side is player 1\'s colour');
+    expect(card('right').header, HostText.rightSide);
+    expect(card('right').headerColor, look.colors.player(2), reason: 'the right side is player 2\'s colour');
+
+    // P1 is on the left: a badge on its row, and none on the empty right side.
+    expect(find.descendant(of: find.byKey(const Key('side-left')), matching: find.byType(ToyBadge)), findsOneWidget);
+    expect(find.descendant(of: find.byKey(const Key('side-right')), matching: find.byType(ToyBadge)), findsNothing);
+    expect(find.text('Room for 1 more'), findsOneWidget, reason: 'the right side is empty');
+
+    // Each side says its room once, on its first empty seat, in the soft ink
+    // that keeps 4.5:1 on paper (Claude's 3b review: an empty side said "Room
+    // for 2 more" on both its seats, at 2.8:1).
+    final rooms = find.textContaining('Room for');
+    expect(rooms, findsNWidgets(2), reason: 'one line a side');
+    for (final room in tester.widgetList<Text>(rooms)) {
+      expect(room.style?.color, look.colors.inkSoft);
+    }
+  });
 }

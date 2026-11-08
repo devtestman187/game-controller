@@ -27,6 +27,10 @@ const _bouncePeak = 1.06;
 /// The scale a focused button rests at (design section 4).
 const _focusScale = 1.04;
 
+/// How tall a dense button is, as a share of the look's button height: 36 px on
+/// a menu and 48 on a TV, for a panel's title row.
+const denseHeightShare = 0.75;
+
 /// A menu button in the look (design section 4): a fat pill with the fill, an
 /// ink edge and the hard shadow, which squishes when pressed and bounces when
 /// the focus lands on it.
@@ -46,6 +50,7 @@ class ToyButton extends StatefulWidget {
     this.focusNode,
     this.autofocus = false,
     this.showFocus = true,
+    this.dense = false,
   });
 
   /// What the button says, in the look's button type and ink (design D12).
@@ -69,6 +74,10 @@ class ToyButton extends StatefulWidget {
   /// Whether the focus draws the ring and the bounce: false on a touch-first
   /// host, where the focus look isn't shown (M12 bug 1107f).
   final bool showFocus;
+
+  /// Smaller, for a panel's title row: [denseHeightShare] of the look's button
+  /// height, and its label at the look's body size in the button's own font.
+  final bool dense;
 
   @override
   State<ToyButton> createState() => _ToyButtonState();
@@ -214,7 +223,7 @@ class _ToyButtonState extends State<ToyButton> with SingleTickerProviderStateMix
   /// with the pill while it is pressed.
   Widget _buttonFace(ToyLook look, bool enabled) {
     return SizedBox(
-      height: look.sizes.buttonHeight,
+      height: _heightOf(look),
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTapDown: enabled ? (_) => _press() : null,
@@ -235,22 +244,43 @@ class _ToyButtonState extends State<ToyButton> with SingleTickerProviderStateMix
     );
   }
 
+  /// How tall this button is: the look's button height, or [denseHeightShare]
+  /// of it for a dense one.
+  double _heightOf(ToyLook look) => widget.dense ? look.sizes.buttonHeight * denseHeightShare : look.sizes.buttonHeight;
+
+  /// The label's style: the look's button type, or for a dense button its
+  /// family and weight at the body's size. The button's own style is the one
+  /// changed, because a style's family carries its package in the family name
+  /// and a copy that names the family again would name the package twice.
+  TextStyle _labelStyle(ToyLook look) {
+    final type = look.type;
+    final style = widget.dense ? type.button.copyWith(fontSize: type.body.fontSize) : type.button;
+    return style.copyWith(color: look.colors.ink);
+  }
+
   /// The icon and the label, in ink, with the look's button type.
   Widget _content(ToyLook look) {
     final icon = widget.icon;
     final colors = look.colors;
+    final label = _labelStyle(look);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: ToySizes.space24),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           if (icon != null) ...[
-            Icon(icon, size: look.type.button.fontSize, color: colors.ink),
+            Icon(icon, size: label.fontSize, color: colors.ink),
             const SizedBox(width: ToySizes.space8),
           ],
-          DefaultTextStyle.merge(
-            style: look.type.button.copyWith(color: colors.ink),
-            child: Text(widget.label),
+          // A label too long for the room the button is given is cut short
+          // rather than overflowing it: a button in a wrap takes the width of
+          // its narrowest slot, and a long label there (a TV's, at the look's
+          // button type) would otherwise paint past the pill's edge.
+          Flexible(
+            child: DefaultTextStyle.merge(
+              style: label,
+              child: Text(widget.label, maxLines: 1, softWrap: false, overflow: TextOverflow.ellipsis),
+            ),
           ),
         ],
       ),

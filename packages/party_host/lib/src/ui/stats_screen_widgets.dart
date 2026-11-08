@@ -8,10 +8,10 @@ class _SharingButton extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) => Padding(
-    padding: const EdgeInsets.only(right: 12),
+    padding: const EdgeInsets.only(right: ToySizes.space12),
     child: HostButton(
       key: const Key('statsSharing'),
-      label: consent == true ? 'Sharing: on' : 'Sharing: off',
+      label: consent == true ? HostText.sharingOn : HostText.sharingOff,
       icon: consent == true ? Icons.cloud_upload_outlined : Icons.cloud_off_outlined,
       onPressed: () => askConsent(context, ref),
     ),
@@ -26,10 +26,10 @@ class _ExportButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(right: 16),
+    padding: const EdgeInsets.only(right: ToySizes.space16),
     child: HostButton(
       key: const Key('statsExport'),
-      label: 'Export',
+      label: HostText.export,
       icon: Icons.save_alt,
       autofocus: true,
       onPressed: onPressed,
@@ -56,37 +56,37 @@ class _StatsBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
-    final scheme = Theme.of(context).colorScheme;
+    final look = ToyLookScope.of(context);
     final shown = entries.isEmpty ? null : entries[selected.clamp(0, entries.length - 1)];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(
-          _statusLine(stats),
-          key: const Key('statsStatus'),
-          style: text.bodyLarge?.copyWith(color: scheme.onSurfaceVariant),
+        ToyCard(
+          padding: const EdgeInsets.symmetric(horizontal: ToySizes.space24, vertical: ToySizes.space12),
+          child: Text(
+            HostText.statusLine(stats),
+            key: const Key('statsStatus'),
+            style: look.type.body.copyWith(color: look.colors.inkSoft),
+          ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: ToySizes.space16),
         Expanded(
           child: loading
               ? const Center(child: CircularProgressIndicator())
               : entries.isEmpty
               ? Center(
-                  child: Text(
-                    'No sessions yet. Stats are recorded while phones are connected.',
-                    style: text.titleLarge,
-                    textAlign: TextAlign.center,
+                  child: ToyCard(
+                    child: Text(HostText.noSessions, style: look.type.button, textAlign: TextAlign.center),
                   ),
                 )
               : Row(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     SizedBox(
-                      width: 240,
+                      width: look.sizes.buttonHeight * _sessionListWidthShare,
                       child: _SessionList(entries: entries, selected: selected, onSelect: onSelect),
                     ),
-                    const SizedBox(width: 16),
+                    const SizedBox(width: ToySizes.space16),
                     Expanded(
                       child: SingleChildScrollView(child: SessionView(summary: shown!.summary)),
                     ),
@@ -97,6 +97,10 @@ class _StatsBody extends StatelessWidget {
     );
   }
 }
+
+/// How wide the session list is, in button heights: enough for a date and a
+/// line of its detail at both sizes.
+const _sessionListWidthShare = 5.0;
 
 /// The sessions to pick from: the live one, then the saved ones.
 class _SessionList extends StatelessWidget {
@@ -111,11 +115,11 @@ class _SessionList extends StatelessWidget {
     children: [
       for (final (i, e) in entries.indexed)
         Padding(
-          padding: const EdgeInsets.only(bottom: 6),
+          padding: const EdgeInsets.only(bottom: ToySizes.space8),
           child: _SessionButton(
             key: Key('session-$i'),
             label: e.label,
-            detail: _detail(e.summary),
+            detail: HostText.sessionDetail(e.summary),
             selected: i == selected,
             onPressed: () => onSelect(i),
           ),
@@ -124,7 +128,9 @@ class _SessionList extends StatelessWidget {
   );
 }
 
-class _SessionButton extends ConsumerWidget {
+/// One session in the list: a paper card headed with its date, filled with
+/// the look's focus colour while it is the one shown.
+class _SessionButton extends StatelessWidget {
   const _SessionButton({
     super.key,
     required this.label,
@@ -139,28 +145,16 @@ class _SessionButton extends ConsumerWidget {
   final VoidCallback onPressed;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final scheme = Theme.of(context).colorScheme;
-    final text = Theme.of(context).textTheme;
-    return FilledButton.tonal(
+  Widget build(BuildContext context) {
+    final look = ToyLookScope.of(context);
+    return HostCardButton(
       onPressed: onPressed,
-      style:
-          ButtonStyle(
-            alignment: Alignment.centerLeft,
-            padding: const WidgetStatePropertyAll(EdgeInsets.symmetric(horizontal: 14, vertical: 10)),
-          ).merge(
-            hostButtonLook(
-              context,
-              showFocus: ref.watch(hostFocusLookProvider),
-              fill: selected ? scheme.primaryContainer : scheme.surfaceContainerHigh,
-            ),
-          ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label, style: text.titleMedium),
-          Text(detail, style: text.bodySmall),
-        ],
+      child: ToyCard(
+        header: label,
+        headerColor: selected ? look.colors.focus : look.colors.paper,
+        popIn: false,
+        padding: const EdgeInsets.symmetric(horizontal: ToySizes.space16, vertical: ToySizes.space12),
+        child: Text(detail, style: look.type.body),
       ),
     );
   }

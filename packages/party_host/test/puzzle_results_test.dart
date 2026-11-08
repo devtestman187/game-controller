@@ -266,7 +266,19 @@ void main() {
 
     await finishedRace();
     expect(tester.widget<Text>(find.byKey(const Key('puzzleResultTitle'))).data, 'Left wins!');
+    // The card is headed in the winning side's colour (M13 3b).
+    final look = ToyLookScope.of(tester.element(find.byKey(const Key('puzzleResults'))));
+    expect(tester.widget<ToyCard>(find.byKey(const Key('puzzleResults'))).headerColor, look.colors.player(1));
     expect(tester.widget<Text>(find.byKey(const Key('puzzleResultLine-left'))).data, endsWith('seconds'));
+    // The winner's time and tick are ink: good on paper is 2:1 (Claude's 3b
+    // review); the header says who won.
+    expect(tester.widget<Text>(find.byKey(const Key('puzzleResultLine-left'))).style?.color, look.colors.ink);
+    expect(
+      tester
+          .widget<Icon>(find.descendant(of: find.byKey(const Key('puzzleResults')), matching: find.byIcon(Icons.check)))
+          .color,
+      look.colors.ink,
+    );
     expect(tester.widget<Text>(find.byKey(const Key('puzzleResultLine-right'))).data, '0 of 4 pieces placed');
     expect(find.text('Rematch'), findsOneWidget, reason: 'a chosen race rematches (m12 bug 1108e)');
     expect(focused(tester, 'rematch'), isTrue, reason: 'Rematch has the focus for the phone and the remote');
@@ -340,5 +352,21 @@ void main() {
 
     expect(find.byKey(const Key('playAgain')), findsOneWidget, reason: 'there is no other puzzle to go to');
     expect(find.byKey(const Key('nextPuzzle')), findsNothing);
+  });
+
+  testWidgets('a race both sides finish in the same frame is a draw, headed in the focus colour', (tester) async {
+    final fake = await pumpHost(tester, screen: const StubHome());
+    fake.state = withController(fake.state, phoneInfo('p2', 2));
+    fake.emit();
+    await openAnyPuzzle(tester, fake, race: true);
+    // Both boards' pieces go in before the rules step, so both sides finish
+    // in one frame: a draw (M13 3b's header colour for one).
+    lockEveryPiece(tester);
+    lockEveryPiece(tester, side: PuzzleSide.right);
+    await endRound(tester);
+
+    expect(find.text('Draw!'), findsOneWidget);
+    final look = ToyLookScope.of(tester.element(find.byKey(const Key('puzzleResults'))));
+    expect(tester.widget<ToyCard>(find.byKey(const Key('puzzleResults'))).headerColor, look.colors.focus);
   });
 }

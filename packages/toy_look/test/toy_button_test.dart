@@ -192,6 +192,22 @@ void main() {
     expect(tester.getSize(find.byType(ToyButton)).height, 64);
   });
 
+  testWidgets('a dense button is 36 px on a menu and 48 on a TV, its label at the body size in the button font', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_screen(_sunny, ToyButton(label: 'Play', onPressed: () {}, dense: true)));
+    expect(tester.getSize(find.byType(ToyButton)).height, 36, reason: '0.75 of the menu\'s 48 px button height');
+    final style = (tester.renderObject<RenderParagraph>(find.text('Play')).text as TextSpan).style!;
+    expect(style.fontSize, _sunny.type.body.fontSize);
+    expect(style.fontFamily, _sunny.type.button.fontFamily);
+    expect(style.fontWeight, _sunny.type.button.fontWeight);
+    expect(style.color, _sunny.colors.ink);
+
+    final tv = ToyLook.build(palette: ToyPalette.sunny, tv: true);
+    await tester.pumpWidget(_screen(tv, ToyButton(label: 'Play', onPressed: () {}, dense: true)));
+    expect(tester.getSize(find.byType(ToyButton)).height, 48, reason: '0.75 of the TV\'s 64 px button height');
+  });
+
   testWidgets('the label is the look\'s button type in ink, and the widget is a button with its label', (tester) async {
     final semantics = tester.ensureSemantics();
     await tester.pumpWidget(_screen(_sunny, ToyButton(label: 'Play', onPressed: () {})));

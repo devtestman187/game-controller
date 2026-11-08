@@ -5,26 +5,42 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:protocol/protocol.dart';
+import 'package:toy_look/toy_look.dart';
 
 import '../abandon_signal.dart';
 import '../away_log.dart';
 import '../controls.dart';
 import '../host_presence.dart';
 import '../players_away.dart';
+import '../host_text.dart';
 import '../providers.dart';
 import 'away_card.dart';
 import 'controller_menus.dart';
 import 'games_screen.dart';
 import 'host_button.dart';
-import 'player_badge.dart';
 import 'ready_card.dart';
 import 'round_phase.dart';
 
+part 'pause_menu_widgets.dart';
+
+/// The labels while the game is paused: the menu, and Start to resume.
+const _pauseLabels = {
+  ControllerButton.a: HostText.ok,
+  ControllerButton.b: HostText.resume,
+  ControllerButton.start: HostText.resume,
+};
+
+/// The buttons a phone never shows while the game is paused.
+const _pauseHidden = {
+  ControllerButton.x,
+  ControllerButton.y,
+  ControllerButton.lb,
+  ControllerButton.rb,
+  ControllerButton.select,
+};
+
 /// The buttons while the game is paused: the menu, and Start to resume.
-final pauseLayout = GameLayoutMessage(
-  labels: {ControllerButton.a: 'OK', ControllerButton.b: 'Resume', ControllerButton.start: 'Resume'},
-  hidden: {ControllerButton.x, ControllerButton.y, ControllerButton.lb, ControllerButton.rb, ControllerButton.select},
-);
+final pauseLayout = GameLayoutMessage(labels: _pauseLabels, hidden: _pauseHidden);
 
 /// Pausing with Start, for any game (PRD v2 M11): any player's Start pauses
 /// the game for everyone and opens the pause menu (Resume, Quit). Only the
@@ -332,54 +348,4 @@ void leaveForGamePicker(BuildContext context) =>
 void abandonRound(BuildContext context) {
   ProviderScope.containerOf(context, listen: false).read(hostAbandonProvider).fire();
   leaveForGamePicker(context);
-}
-
-class _PauseMenu extends ConsumerWidget {
-  const _PauseMenu({required this.pausedBy, required this.resumers});
-
-  final GamePlayer pausedBy;
-  final Set<String>? Function(List<GamePlayer> players) resumers;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final players = [
-      for (final p in ref.watch(gamePlayersProvider))
-        if (!p.simulated && !p.local && !p.away) p,
-    ];
-    final only = resumers(players);
-    final text = Theme.of(context).textTheme;
-    final who = pausedBy.number == 1 ? 'P1' : 'P${pausedBy.number} or P1';
-    return ControlsClaim(
-      controls: Controls.menus(only: only, layout: pauseLayout),
-      child: AlertDialog(
-        key: const Key('pauseMenu'),
-        title: Row(
-          children: [
-            PlayerBadge(number: pausedBy.number, size: 30),
-            const SizedBox(width: 12),
-            const Text('Paused'),
-          ],
-        ),
-        content: Text(
-          only == null ? 'Anyone can resume.' : '$who can resume, with Start or Resume.',
-          style: text.titleMedium,
-        ),
-        actions: [
-          HostButton(
-            key: const Key('pauseQuit'),
-            label: 'Quit',
-            icon: Icons.exit_to_app,
-            onPressed: () => Navigator.of(context).pop(true),
-          ),
-          HostButton(
-            key: const Key('pauseResume'),
-            label: 'Resume',
-            icon: Icons.play_arrow,
-            autofocus: true,
-            onPressed: () => Navigator.of(context).pop(false),
-          ),
-        ],
-      ),
-    );
-  }
 }

@@ -27,14 +27,11 @@ List<(String, Finder)> barParts() => [
 Finder titleBarOf(Type screen) =>
     find.descendant(of: find.byType(screen), matching: find.byKey(const Key('hostTitleBar')));
 
-/// The fill and the ring the button under [key] draws this frame (m12 bug
-/// 1107f rule A), read off the Material it paints.
-({Color? fill, double ring}) drawn(WidgetTester tester, String key) {
-  final material = tester.widget<Material>(
-    find.descendant(of: find.byKey(Key(key)), matching: find.byType(Material)).first,
-  );
-  return (fill: material.color, ring: (material.shape! as OutlinedBorder).side.width);
-}
+/// Whether the focus ring shows round the picker card under [key] this frame
+/// (M13 3b), read off the card's own [party.HostCardFocus].
+bool lit(WidgetTester tester, String key) => tester
+    .widget<party.HostCardFocus>(find.descendant(of: find.byKey(Key(key)), matching: find.byType(party.HostCardFocus)))
+    .isLit;
 
 /// Checks that [screen]'s title bar starts below the phone's bar and meets none
 /// of its parts (m12 bug 1107f rule C): its title ran into the bar's mode
@@ -155,27 +152,25 @@ void main() {
     await tester.runAsync(host.dispose);
   });
 
-  testWidgets('the hosted menus show no focus look, and a button lights only under a thumb', (tester) async {
+  testWidgets('the hosted menus show no focus ring, and a thumb does not start one', (tester) async {
     await pumpHostApp(tester);
     final host = await enterHostMode(tester);
-    final scheme = Theme.of(tester.element(find.byType(party.GamesScreen))).colorScheme;
 
     // Rule A on this phone: Shape Race's card has the focus, as the remote
-    // expects, but no thumb put it there, so nothing is highlighted (bug
-    // 1107f).
-    expect(drawn(tester, 'pickShapeRace'), (fill: scheme.surfaceContainerHighest, ring: 0));
+    // expects, but no thumb put it there, so no ring shows (bug 1107f).
+    expect(lit(tester, 'pickShapeRace'), isFalse);
 
-    // A thumb on the card lights it up.
+    // A thumb on the card starts no ring either, and lifting it presses
+    // nothing.
     final card = tester.getCenter(find.byKey(const Key('pickShapeRace')));
     final finger = await tester.startGesture(card);
     await tester.pump(kPressTimeout);
     await tester.pump();
-    expect(drawn(tester, 'pickShapeRace'), (fill: scheme.primaryContainer, ring: party.hostRingPx));
+    expect(lit(tester, 'pickShapeRace'), isFalse);
 
-    // Lifting the thumb takes the look away and presses nothing.
     await finger.cancel();
     await tester.pump();
-    expect(drawn(tester, 'pickShapeRace'), (fill: scheme.surfaceContainerHighest, ring: 0));
+    expect(lit(tester, 'pickShapeRace'), isFalse);
     expect(find.byType(party.ShapeRaceScreen), findsNothing);
 
     await tester.runAsync(host.dispose);

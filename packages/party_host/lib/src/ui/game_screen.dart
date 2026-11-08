@@ -1,17 +1,19 @@
-import 'package:connection/connection.dart';
 import 'package:game_assets/asset_manifest.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:game_kit/game_kit.dart';
 import 'package:test_game/test_game.dart';
+import 'package:toy_look/toy_look.dart';
 
 import '../abandon_signal.dart';
 import '../controls.dart';
+import '../host_text.dart';
 import '../local_player_source.dart';
 import '../providers.dart';
 import 'controller_menus.dart';
 import 'pause_menu.dart';
+import 'play_hint.dart';
 
 /// Keys that show or hide the debug overlay: OK on the remote (and Enter),
 /// the remote's Info or Menu key if it has one, and D or F3 on a keyboard.
@@ -102,10 +104,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
   @override
   Widget build(BuildContext context) {
     final nobody = ref.watch(gamePlayersProvider.select((p) => p.isEmpty));
-    final text = Theme.of(context).textTheme;
-    final hint = _keyboard.available && !_keyboard.hasPlayer
-        ? 'Arrows and Space: play on the keyboard · D: debug info · Esc: leave'
-        : 'OK or D: debug info · Start on a phone: pause · Back: leave';
+    final hint = _keyboard.available && !_keyboard.hasPlayer ? HostText.arenaHintKeyboard : HostText.arenaHint;
     // The game reads the controllers (no menus); Start pauses (M11).
     return ControlsClaim(
       controls: const Controls.game(),
@@ -130,21 +129,13 @@ class _GameScreenState extends ConsumerState<GameScreen> {
                     Positioned(
                       left: 0,
                       right: 0,
-                      bottom: 48,
+                      bottom: _noteBottomPx,
                       child: Center(
-                        child: _Note(
-                          _keyboard.available
-                              ? 'No controller connected. Pair a phone on the main screen, or press an arrow key.'
-                              : 'No controller connected. Pair a phone on the main screen.',
-                        ),
+                        child: _Note(_keyboard.available ? HostText.noControllerKeys : HostText.noController),
                       ),
                     ),
-                  if (_debug) const Positioned(top: 64, left: 12, child: DebugOverlay()),
-                  Positioned(
-                    right: 12,
-                    bottom: 8,
-                    child: Text(hint, style: text.bodySmall?.copyWith(color: Colors.white60)),
-                  ),
+                  if (_debug) const Positioned(top: _debugTopPx, left: ToySizes.space12, child: DebugOverlay()),
+                  Positioned(right: ToySizes.space12, bottom: ToySizes.space8, child: PlayHint(hint)),
                 ],
               ),
             ),
@@ -155,18 +146,28 @@ class _GameScreenState extends ConsumerState<GameScreen> {
   }
 }
 
+/// How far above the bottom edge the arena's note sits, clear of the sprites'
+/// play area.
+const _noteBottomPx = 48.0;
+
+/// How far from the top edge the debug overlay sits, under the title bars.
+const _debugTopPx = 64.0;
+
+/// How wide the debug overlay may grow before its values wrap: wide enough for
+/// a latency and a haptic event on one line.
+const _debugWidthPx = 460.0;
+
+/// The arena's note on a paper card (M13 3b): "No controller connected" in ink
+/// over the board, where the old black box used to be.
 class _Note extends StatelessWidget {
   const _Note(this.message);
 
   final String message;
 
   @override
-  Widget build(BuildContext context) => DecoratedBox(
-    decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.7), borderRadius: BorderRadius.circular(12)),
-    child: Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-      child: Text(message, style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Colors.amberAccent)),
-    ),
+  Widget build(BuildContext context) => ToyCard(
+    padding: const EdgeInsets.symmetric(horizontal: ToySizes.space24, vertical: ToySizes.space12),
+    child: Text(message, style: ToyLookScope.of(context).type.button),
   );
 }
 
@@ -184,39 +185,48 @@ class DebugOverlay extends ConsumerWidget {
     final last = ref.watch(tvEventsProvider);
     final sounds = ref.watch(soundStatusProvider);
     final rows = <(String, String)>[
-      if (players.isEmpty) ('Controller', 'none connected'),
+      if (players.isEmpty) (HostText.controller, HostText.noneConnected),
       for (final p in players) ...[
-        ('P${p.number}', '${p.nickname ?? ''}${p.local ? ' (on this device)' : ''}'),
+        ('P${p.number}', '${p.nickname ?? ''}${p.local ? HostText.onThisDevice : ''}'),
         if (host.latency(p.id) case final l?) ...[
           (
-            '  Ping',
-            l.pingNowMs == null
-                ? '–'
-                : '${l.pingNowMs} ms (30 s avg ${l.ping?.avgMs ?? '–'}, max ${l.ping?.maxMs ?? '–'})',
+            '  ${HostText.ping}',
+            l.pingNowMs == null ? HostText.dash : HostText.pingMs(l.pingNowMs!, l.ping?.avgMs, l.ping?.maxMs),
           ),
-          ('  Input delay', l.inputDelay == null ? '–' : '~${l.inputDelay!.avgMs} ms avg (± ${l.errorMs ?? '?'} ms)'),
+          (
+            '  ${HostText.inputDelay}',
+            l.inputDelay == null ? HostText.dash : HostText.inputDelayMs(l.inputDelay!.avgMs, l.errorMs),
+          ),
         ],
-        ('  Mode', modeLabel(p.mode)),
-        ('  Values', gamepadValues(host.gamepad(p.id))),
-        ('  Buttons', gamepadButtons(host.gamepad(p.id))),
+        ('  ${HostText.mode}', HostText.modeName(p.mode)),
+        ('  ${HostText.values}', HostText.gamepadValues(host.gamepad(p.id))),
+        ('  ${HostText.buttons}', HostText.gamepadButtons(host.gamepad(p.id))),
       ],
       (
-        'Last haptic',
+        HostText.lastHaptic,
         last == null
-            ? '–'
-            : '${last.message.event.name} (${last.source}), ${(last.message.intensity * 100).round()}%, '
-                  '${last.message.durationMs} ms → ${last.reached}',
+            ? HostText.dash
+            : HostText.hapticEvent(
+                last.message.event.name,
+                last.source,
+                (last.message.intensity * 100).round(),
+                last.message.durationMs,
+                last.reached,
+              ),
       ),
       (
-        'Sounds',
-        sounds.error != null ? 'off (${sounds.error})' : '${sounds.loaded} of ${SoundKey.values.length} loaded',
+        HostText.sounds,
+        sounds.error != null
+            ? HostText.soundsOff(sounds.error!)
+            : HostText.soundsLoaded(sounds.loaded, SoundKey.values.length),
       ),
     ];
     return _DebugTable(rows: rows);
   }
 }
 
-/// The overlay's table: a label and a value for each row.
+/// The overlay's table on a paper card (M13 3b): a label and a value for each
+/// row, in the look's ink, with tabular figures so the numbers stay put.
 class _DebugTable extends StatelessWidget {
   const _DebugTable({required this.rows});
 
@@ -224,58 +234,30 @@ class _DebugTable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
-    final mono = text.bodyMedium?.copyWith(fontFeatures: const [FontFeature.tabularFigures()], color: Colors.white);
-    return DecoratedBox(
+    final look = ToyLookScope.of(context);
+    final mono = look.type.body.copyWith(fontFeatures: const [FontFeature.tabularFigures()], color: look.colors.ink);
+    return ToyCard(
       key: const Key('debugOverlay'),
-      decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.75), borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 460),
-          child: Table(
-            columnWidths: const {0: IntrinsicColumnWidth()},
-            children: [
-              for (final (label, value) in rows)
-                TableRow(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.only(right: 12, bottom: 2),
-                      child: Text(label, style: mono?.copyWith(color: Colors.white60)),
-                    ),
-                    Text(value, style: mono),
-                  ],
-                ),
-            ],
-          ),
+      padding: const EdgeInsets.all(ToySizes.space12),
+      popIn: false,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: _debugWidthPx),
+        child: Table(
+          columnWidths: const {0: IntrinsicColumnWidth()},
+          children: [
+            for (final (label, value) in rows)
+              TableRow(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(right: ToySizes.space12, bottom: 2),
+                    child: Text(label, style: mono.copyWith(color: look.colors.inkSoft)),
+                  ),
+                  Text(value, style: mono),
+                ],
+              ),
+          ],
         ),
       ),
     );
   }
-}
-
-String modeLabel(InputMode mode) => switch (mode) {
-  InputMode.dpad => 'D-pad',
-  InputMode.gyro => 'Gyro',
-  InputMode.sticks => 'Sticks',
-  InputMode.keyboard => 'Keyboard',
-  InputMode.none => '–',
-};
-
-String gamepadValues(GamepadState g) {
-  String f(double v) => v.toStringAsFixed(2);
-  return switch (g.mode) {
-    InputMode.sticks => 'L ${f(g.leftX)}, ${f(g.leftY)}   R ${f(g.rightX)}, ${f(g.rightY)}',
-    InputMode.gyro => 'Tilt x ${f(g.tiltX ?? g.leftX)}  y ${f(g.tiltY ?? g.leftY)}',
-    InputMode.none => '–',
-    _ => 'D-pad ${g.dpadX}, ${g.dpadY}',
-  };
-}
-
-String gamepadButtons(GamepadState g) {
-  final names = [
-    for (final b in g.buttons)
-      if (!b.name.startsWith('dpad')) b.name.toUpperCase(),
-  ];
-  return names.isEmpty ? '–' : names.join(' ');
 }

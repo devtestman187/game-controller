@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:connection/connection.dart';
 import 'package:flutter/material.dart';
@@ -6,29 +7,47 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:protocol/protocol.dart';
 import 'package:puzzle_game/puzzle_game.dart';
+import 'package:toy_look/toy_look.dart';
 
 import '../controls.dart';
+import '../host_text.dart';
 import '../local_player_source.dart';
 import '../providers.dart';
 import 'controller_menus.dart';
 import 'host_button.dart';
 import 'host_screen.dart';
-import 'player_badge.dart';
 import 'puzzle_screen.dart';
 
 part 'join_screen_widgets.dart';
 
-/// The buttons on the join screen, before joining.
-final joinLayout = GameLayoutMessage(
-  labels: {ControllerButton.a: 'Join', ControllerButton.b: 'Back', ControllerButton.start: 'Start'},
-  hidden: {ControllerButton.x, ControllerButton.y, ControllerButton.lb, ControllerButton.rb, ControllerButton.select},
-);
+/// The buttons a phone never shows on this screen.
+const _hidden = {
+  ControllerButton.x,
+  ControllerButton.y,
+  ControllerButton.lb,
+  ControllerButton.rb,
+  ControllerButton.select,
+};
 
-/// Once joined: A or Start begins the match, B leaves the side.
-final joinedLayout = GameLayoutMessage(
-  labels: {ControllerButton.a: 'Start', ControllerButton.b: 'Leave', ControllerButton.start: 'Start'},
-  hidden: {ControllerButton.x, ControllerButton.y, ControllerButton.lb, ControllerButton.rb, ControllerButton.select},
-);
+/// The labels of the buttons on the join screen, before joining.
+const _joinLabels = {
+  ControllerButton.a: HostText.join,
+  ControllerButton.b: HostText.back,
+  ControllerButton.start: HostText.start,
+};
+
+/// The labels once joined: A or Start begins the match, B leaves the side.
+const _joinedLabels = {
+  ControllerButton.a: HostText.start,
+  ControllerButton.b: HostText.leave,
+  ControllerButton.start: HostText.start,
+};
+
+/// The buttons on the join screen, before joining.
+final joinLayout = GameLayoutMessage(labels: _joinLabels, hidden: _hidden);
+
+/// The buttons once joined: A or Start begins the match, B leaves the side.
+final joinedLayout = GameLayoutMessage(labels: _joinedLabels, hidden: _hidden);
 
 /// The most players on one side.
 const maxPerSide = 2;
@@ -54,13 +73,9 @@ PuzzleSide? sideForNewPlayer(Map<String, PuzzleSide> teams) {
   return right < left ? PuzzleSide.right : PuzzleSide.left;
 }
 
-String formatName(MatchFormat format) => switch (format) {
-  MatchFormat.solo => '1 player',
-  MatchFormat.team => 'A team of 2 on one board',
-  MatchFormat.oneVsOne => '1 vs 1',
-  MatchFormat.twoVsOne => '2 vs 1',
-  MatchFormat.twoVsTwo => '2 vs 2',
-};
+/// The format the joined players make: [HostText.formatName]'s words (M13 3b:
+/// the screen's texts moved to the string table).
+String formatName(MatchFormat format) => HostText.formatName(format);
 
 enum _Key { a, b, left, right, start }
 
@@ -263,11 +278,8 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
   /// What the screen tells the players. On the host phone a tap is the way in
   /// (m12-host-touch rule 5); on a TV or a joined phone it is still the pad's.
   static String _hint({required bool hasOwnPlayer, required bool hasKeyboard}) {
-    if (hasOwnPlayer) return 'Tap a side to play; press A on a phone to join.';
-    return hasKeyboard
-        ? 'Press A on your phone to join (Space on the keyboard), then left or right to pick a side. '
-              'Then A or Start begins.'
-        : 'Press A on your phone to join, then left or right to pick a side. Then A or Start begins.';
+    if (hasOwnPlayer) return HostText.hintOwnPlayer;
+    return hasKeyboard ? HostText.hintWithKeyboard : HostText.hint;
   }
 
   void _start() {
@@ -299,7 +311,7 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
       for (final p in ref.watch(gamePlayersProvider))
         if (!p.away) p,
     ];
-    final text = Theme.of(context).textTheme;
+    final look = ToyLookScope.of(context);
     final watching = [
       for (final p in players)
         if (!_teams.containsKey(p.id)) p,
@@ -317,7 +329,10 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
         skipTraversal: true,
         onKeyEvent: _onKey,
         child: HostScreen(
-          title: 'Shape Race · ${_choiceName(widget.choice, ref.watch(puzzleLibraryProvider).value)}',
+          title: HostText.titled(
+            HostText.shapeRace,
+            _choiceName(widget.choice, ref.watch(puzzleLibraryProvider).value),
+          ),
           body: SafeArea(
             child: Padding(
               padding: hostMenuPadding(barHeight),
@@ -326,7 +341,7 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
                 children: [
                   Text(
                     _hint(hasOwnPlayer: ownHere != null, hasKeyboard: _keyboard.available),
-                    style: text.titleLarge,
+                    style: look.type.button.copyWith(color: look.colors.onBackground),
                   ),
                   SizedBox(height: tight ? _tightGapPx : _hintGapPx),
                   Expanded(
@@ -353,11 +368,7 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
 }
 
 String _choiceName(PuzzleChoice choice, PuzzleLibrary? library) {
-  final level = switch (choice.level) {
-    Level.easy => 'Easy',
-    Level.medium => 'Medium',
-    Level.hard => 'Hard',
-  };
+  final level = HostText.level(choice.level);
   final id = choice.puzzleId;
-  return id == null ? 'any $level puzzle' : library?.byId(id)?.name ?? level;
+  return id == null ? HostText.anyPuzzleTitle(level) : library?.byId(id)?.name ?? level;
 }

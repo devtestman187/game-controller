@@ -6,17 +6,20 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:game_kit/game_kit.dart';
 import 'package:puzzle_game/puzzle_game.dart';
+import 'package:toy_look/toy_look.dart';
 
 import '../abandon_signal.dart';
 import '../controls.dart';
+import '../host_text.dart';
 import '../local_player_source.dart';
+import '../look_providers.dart';
 import '../players_away.dart';
 import '../providers.dart';
 import 'controller_menus.dart';
 import 'host_button.dart';
 import 'join_screen.dart';
 import 'pause_menu.dart';
-import 'player_badge.dart';
+import 'play_hint.dart';
 
 part 'puzzle_screen_widgets.dart';
 
@@ -131,7 +134,7 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
   // would be ignored: move the focus there, for the remote's OK button.
   void _finished(MatchResult r) {
     setState(() => _result = r);
-    _log('Round ended: ${_resultsHead(r).title}${_endTime(r)}');
+    _log('Round ended: ${_resultsHead(ref.read(toyLookProvider), r).title}${_endTime(r)}');
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _againFocus.requestFocus();
     });
@@ -152,10 +155,10 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
     final level = widget.choice.level;
     final another = (ref.read(puzzleLibraryProvider).whenOrNull(data: (l) => l.ofLevel(level).length) ?? 0) > 1;
     final (label, icon, key) = widget.choice.puzzleId == null && another
-        ? ('Next puzzle', Icons.skip_next, 'nextPuzzle')
+        ? (HostText.nextPuzzle, Icons.skip_next, 'nextPuzzle')
         : race
-        ? ('Rematch', Icons.replay, 'rematch')
-        : ('Play again', Icons.replay, 'playAgain');
+        ? (HostText.rematch, Icons.replay, 'rematch')
+        : (HostText.playAgain, Icons.replay, 'playAgain');
     return (label: label, icon: icon, key: key, focusNode: _againFocus, onPressed: _rematch);
   }
 

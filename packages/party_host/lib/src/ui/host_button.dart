@@ -1,36 +1,101 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:toy_look/toy_look.dart';
 
 import '../providers.dart';
 
-/// The ring a lit host button draws (m12 bug 1107f rule A): as wide as the
-/// TV's focus ring was, so it reads from the couch.
-const hostRingPx = 4.0;
+/// The ring a lit host button draws (m12 bug 1107f rule A): the look's focus
+/// ring, as wide as the TV's focus ring was, so it reads from the couch.
+const hostRingPx = ToySizes.focusRing;
 
-/// What every host button looks like while it is lit (m12 bug 1107f rules A
-/// and B): the primary fill and [hostRingPx] of the primary colour. A button is
-/// lit while a finger is pressing it, and, when [showFocus] says the focus look
-/// shows, while the focus is on it. [fill] is what it shows the rest of the
-/// time; null keeps the button's own.
+/// What a host row, step or card that is a button looks like (m12 bug 1107f
+/// rules A and B, in the look: M13 3b). At rest it is paper with the ink edge,
+/// the look's corners and ink text. Lit — pressed, or focused while [showFocus]
+/// says the focus look shows — it takes the focus fill and a [hostRingPx] focus
+/// ring outside its ink edge.
 ///
-/// The host's buttons, cards, rows and steps all take their look from here, so
-/// a phone and a TV light up the same way and there is one place to change it.
+/// The host's rows, steps and cards that are buttons all take their look from
+/// here, so a phone and a TV light up the same way and there is one place to
+/// change it. [fill] is what the button shows at rest; null is the look's paper.
 ButtonStyle hostButtonLook(BuildContext context, {required bool showFocus, Color? fill}) {
-  final scheme = Theme.of(context).colorScheme;
+  final look = ToyLookScope.of(context);
+  final colors = look.colors;
   bool isLit(Set<WidgetState> states) =>
       states.contains(WidgetState.pressed) || (showFocus && states.contains(WidgetState.focused));
+  final edge = BorderSide(color: colors.ink, width: look.sizes.outlineWidth);
   return ButtonStyle(
-    side: WidgetStateProperty.resolveWith(
-      (states) => isLit(states) ? BorderSide(color: scheme.primary, width: hostRingPx) : BorderSide.none,
-    ),
-    backgroundColor: WidgetStateProperty.resolveWith((states) => isLit(states) ? scheme.primaryContainer : fill),
+    side: WidgetStatePropertyAll(edge),
+    foregroundColor: WidgetStatePropertyAll(colors.ink),
+    shape: WidgetStateProperty.resolveWith((states) => HostEdgeBorder(look: look, isLit: isLit(states), side: edge)),
+    backgroundColor: WidgetStateProperty.resolveWith((states) => isLit(states) ? colors.focus : fill ?? colors.paper),
   );
 }
 
-/// A button with a strong focus ring that is easy to see from the couch (was
-/// `TvButton`: the host screens run on a phone too, M12). On a touch-first host
-/// it lights up under a thumb and no longer stays lit from the focus
-/// ([hostButtonLook]).
+/// A card-shaped button's edge (M13 3b): the ink outline, and outside it the
+/// focus ring while the button is lit, so a row or a card that is a button
+/// shows the focus the way a [ToyButton] does.
+class HostEdgeBorder extends OutlinedBorder {
+  const HostEdgeBorder({required this.look, required this.isLit, super.side});
+
+  /// The look the ring is drawn in.
+  final ToyLook look;
+
+  /// Whether the button is lit, which draws the focus ring.
+  final bool isLit;
+
+  /// The paper's rounded rect, [rect]'s own corners.
+  static Path _paperPath(Rect rect) =>
+      Path()..addRRect(RRect.fromRectAndRadius(rect, Radius.circular(ToySizes.cardCorner)));
+
+  @override
+  EdgeInsetsGeometry get dimensions => EdgeInsets.all(side.width);
+
+  @override
+  Path getInnerPath(Rect rect, {TextDirection? textDirection}) => _paperPath(rect.deflate(side.strokeInset));
+
+  @override
+  Path getOuterPath(Rect rect, {TextDirection? textDirection}) => _paperPath(rect);
+
+  @override
+  void paint(Canvas canvas, Rect rect, {TextDirection? textDirection}) {
+    if (isLit) {
+      final ring = _paperPath(rect.inflate(hostRingPx));
+      canvas.drawPath(ring, Paint()..color = look.colors.focus);
+      canvas.drawPath(
+        ring,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = side.width
+          ..color = side.color,
+      );
+    }
+    canvas.drawPath(
+      _paperPath(rect),
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = side.width
+        ..color = side.color,
+    );
+  }
+
+  @override
+  OutlinedBorder copyWith({BorderSide? side}) => HostEdgeBorder(look: look, isLit: isLit, side: side ?? this.side);
+
+  @override
+  HostEdgeBorder scale(double t) => HostEdgeBorder(look: look, isLit: isLit, side: side.scale(t));
+
+  @override
+  bool operator ==(Object other) =>
+      other is HostEdgeBorder && other.look == look && other.isLit == isLit && other.side == side;
+
+  @override
+  int get hashCode => Object.hash(look, isLit, side);
+}
+
+/// A host menu button (was `TvButton`: the host screens run on a phone too,
+/// M12), drawn as the look's [ToyButton] with the look's good fill. On a
+/// touch-first host it lights up under a thumb and no longer stays lit from the
+/// focus ([hostFocusLookProvider], m12 bug 1107f).
 class HostButton extends ConsumerWidget {
   const HostButton({
     super.key,
@@ -50,53 +115,19 @@ class HostButton extends ConsumerWidget {
   /// To move the focus here from code.
   final FocusNode? focusNode;
 
-  /// Smaller, for a panel's title row.
+  /// Smaller, for a panel's title row: the look's dense button.
   final bool compact;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final style =
-        ButtonStyle(
-          minimumSize: WidgetStatePropertyAll(compact ? const Size(0, 32) : const Size(150, 48)),
-          tapTargetSize: compact ? MaterialTapTargetSize.shrinkWrap : null,
-          visualDensity: compact ? VisualDensity.compact : null,
-          padding: WidgetStatePropertyAll(
-            compact
-                ? const EdgeInsets.symmetric(horizontal: 12, vertical: 2)
-                : const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-          ),
-          // The label keeps the theme's font: a style that names none falls back
-          // to the renderer's own, which a themed face never reaches.
-          textStyle: WidgetStatePropertyAll(
-            TextStyle(
-              fontFamily: Theme.of(context).textTheme.labelLarge?.fontFamily,
-              fontSize: compact ? 15 : 18,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ).merge(
-          hostButtonLook(
-            context,
-            showFocus: ref.watch(hostFocusLookProvider),
-            fill: Theme.of(context).colorScheme.surfaceContainerHighest,
-          ),
-        );
-    final iconData = icon;
-    return iconData == null
-        ? FilledButton.tonal(
-            autofocus: autofocus,
-            focusNode: focusNode,
-            onPressed: onPressed,
-            style: style,
-            child: Text(label),
-          )
-        : FilledButton.tonalIcon(
-            autofocus: autofocus,
-            focusNode: focusNode,
-            onPressed: onPressed,
-            style: style,
-            icon: Icon(iconData),
-            label: Text(label),
-          );
+    return ToyButton(
+      label: label,
+      onPressed: onPressed,
+      icon: icon,
+      autofocus: autofocus,
+      focusNode: focusNode,
+      dense: compact,
+      showFocus: ref.watch(hostFocusLookProvider),
+    );
   }
 }

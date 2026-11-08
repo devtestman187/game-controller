@@ -1,16 +1,22 @@
 part of 'puzzle_screen.dart';
 
-/// The results' headline and its colour: who won a race, or how a one-board
-/// game went. The host log says the same words (m12 bug 1107e).
-({String title, Color colour}) _resultsHead(MatchResult result) => result.format.split
-    ? switch (result.winner) {
-        PuzzleSide.left => (title: 'Left wins!', colour: Colors.greenAccent),
-        PuzzleSide.right => (title: 'Right wins!', colour: Colors.greenAccent),
-        null => (title: 'Draw!', colour: Colors.amberAccent),
-      }
-    : result.sides.values.single.finished
-    ? (title: 'Done!', colour: Colors.greenAccent)
-    : (title: 'Time\'s up!', colour: Colors.amberAccent);
+/// The results' headline and its colour (M13 3b): who won a race, or how a
+/// one-board game went. A winning side's header takes its own colour, a draw
+/// takes the focus yellow, and a one-board game is good or a caution by whether
+/// it finished. The host log says the same words (m12 bug 1107e).
+({String title, Color colour}) _resultsHead(ToyLook look, MatchResult result) {
+  final colors = look.colors;
+  if (!result.format.split) {
+    return result.sides.values.single.finished
+        ? (title: HostText.done, colour: colors.good)
+        : (title: HostText.timeUp, colour: colors.caution);
+  }
+  return switch (result.winner) {
+    PuzzleSide.left => (title: HostText.leftWins, colour: colors.player(1)),
+    PuzzleSide.right => (title: HostText.rightWins, colour: colors.player(2)),
+    null => (title: HostText.draw, colour: colors.focus),
+  };
+}
 
 /// The winning side's time for the log, ` (105.9 s)`: nothing when the round
 /// ran out of time or drew.
@@ -24,7 +30,9 @@ String _endTime(MatchResult result) {
 /// How many players a round has, in words: `1 player`, `2 players`.
 String _playersLine(int count) => count == 1 ? '1 player' : '$count players';
 
-/// The line at the bottom right: how to play, to pause and to leave.
+/// The line at the bottom right: how to pause and to leave, in the look's
+/// onBackground text on a pill of the background colour (M13 3b), with the
+/// words unchanged.
 class _PlayHint extends StatelessWidget {
   const _PlayHint({required this.keyboard});
 
@@ -32,15 +40,9 @@ class _PlayHint extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Positioned(
-    right: 12,
-    bottom: 6,
-    child: Text(
-      keyboard.available && !keyboard.hasPlayer
-          ? 'Arrows, Space, X and Z: play on the keyboard · Start on a phone: pause · '
-                'Esc: leave'
-          : 'Start on a phone: pause · Back: leave',
-      style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.white60),
-    ),
+    right: ToySizes.space12,
+    bottom: ToySizes.space4,
+    child: PlayHint(keyboard.available && !keyboard.hasPlayer ? HostText.playHintKeyboard : HostText.playHint),
   );
 }
 
@@ -70,30 +72,24 @@ class _Results extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final text = Theme.of(context).textTheme;
+    final look = ToyLookScope.of(context);
     final players = ref.watch(gamePlayersProvider);
-    final (:title, :colour) = _resultsHead(result);
+    final (:title, :colour) = _resultsHead(look, result);
 
-    return DecoratedBox(
+    return ToyCard(
       key: const Key('puzzleResults'),
-      decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.82), borderRadius: BorderRadius.circular(20)),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 28),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              title,
-              key: const Key('puzzleResultTitle'),
-              style: text.displaySmall?.copyWith(fontWeight: FontWeight.bold, color: colour),
-            ),
-            const SizedBox(height: 8),
-            for (final side in result.sides.keys)
-              _ResultSideRow(side: side, result: result, teams: teams, players: players, total: total),
-            const SizedBox(height: 24),
-            _ResultButtons(again: again, onChangeTeams: onChangeTeams),
-          ],
-        ),
+      header: title,
+      headerKey: const Key('puzzleResultTitle'),
+      headerColor: colour,
+      padding: const EdgeInsets.symmetric(horizontal: ToySizes.space32, vertical: ToySizes.space24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (final side in result.sides.keys)
+            _ResultSideRow(side: side, result: result, teams: teams, players: players, total: total),
+          const SizedBox(height: ToySizes.space24),
+          _ResultButtons(again: again, onChangeTeams: onChangeTeams),
+        ],
       ),
     );
   }
@@ -118,30 +114,42 @@ class _ResultSideRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
+    final look = ToyLookScope.of(context);
+    final colors = look.colors;
     final race = result.format.split;
     final badges = [
       for (final p in players)
         if (teams[p.id] == side || (!race && teams.containsKey(p.id))) p,
     ];
     final r = result.sides[side]!;
-    final line = r.finished ? '${r.timeS!.toStringAsFixed(1)} seconds' : '${r.placed} of $total pieces placed';
+    final line = r.finished ? HostText.seconds(r.timeS!) : HostText.piecesPlaced(r.placed, total);
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(vertical: ToySizes.space4),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           if (race)
-            SizedBox(width: 80, child: Text(side == PuzzleSide.left ? 'Left' : 'Right', style: text.titleLarge)),
-          for (final p in badges) ...[PlayerBadge(number: p.number, size: 30), const SizedBox(width: 6)],
-          const SizedBox(width: 8),
+            SizedBox(
+              width: look.sizes.buttonHeight * 2,
+              child: Text(
+                side == PuzzleSide.left ? HostText.left : HostText.right,
+                style: look.type.button.copyWith(color: colors.ink),
+              ),
+            ),
+          for (final p in badges) ...[
+            ToyBadge(number: p.number, diameter: look.sizes.buttonHeight * 0.75),
+            const SizedBox(width: ToySizes.space8),
+          ],
+          const SizedBox(width: ToySizes.space8),
           Text(
             line,
             key: Key('puzzleResultLine-${side.name}'),
-            style: text.headlineSmall?.copyWith(
-              color: race && result.winner == side ? Colors.greenAccent : Colors.white,
-            ),
+            style: look.type.button.copyWith(color: colors.ink),
           ),
+          if (r.finished) ...[
+            const SizedBox(width: ToySizes.space8),
+            Icon(Icons.check, size: look.type.button.fontSize, color: colors.ink),
+          ],
         ],
       ),
     );
@@ -167,12 +175,17 @@ class _ResultButtons extends StatelessWidget {
         focusNode: again.focusNode,
         onPressed: again.onPressed,
       ),
-      const SizedBox(width: 12),
-      HostButton(key: const Key('changeTeams'), label: 'Change teams', icon: Icons.group, onPressed: onChangeTeams),
-      const SizedBox(width: 12),
+      const SizedBox(width: ToySizes.space12),
+      HostButton(
+        key: const Key('changeTeams'),
+        label: HostText.changeTeams,
+        icon: Icons.group,
+        onPressed: onChangeTeams,
+      ),
+      const SizedBox(width: ToySizes.space12),
       HostButton(
         key: const Key('resultsBack'),
-        label: 'Back',
+        label: HostText.back,
         icon: Icons.arrow_back,
         onPressed: () => Navigator.of(context).maybePop(),
       ),

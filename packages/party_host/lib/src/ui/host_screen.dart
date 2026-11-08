@@ -1,10 +1,19 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:toy_look/toy_look.dart';
 
+import '../host_text.dart';
 import '../providers.dart';
 
 /// The room the title bar leaves around its title, and after its actions.
 const hostTitleBarPaddingPx = 16.0;
+
+/// How tall the title bar is, in shares of the look's title size (M13 3b): 1.4
+/// leaves a title room for its ascenders at the TV's size, and on a phone the
+/// bar stays Material's [kToolbarHeight], which is taller than that.
+const hostTitleBarHeightShare = 1.4;
 
 /// The room a host menu's body leaves round its content, and how much of it a
 /// phone needs at the top where the bar above already gives the room (m12 bug
@@ -75,9 +84,10 @@ class HostScreen extends ConsumerWidget {
   }
 }
 
-/// The title bar itself: the room for the bar above ([inset]), then one
-/// [kToolbarHeight] row with the back arrow (when there is something to go
-/// back to), the title and the screen's actions.
+/// The title bar itself (M13 3b): the room for the bar above ([inset]), then
+/// one row with the back arrow (when there is something to go back to), the
+/// title in the look's type, and the screen's actions, on the page's toy
+/// background.
 class _HostTitleBar extends StatelessWidget {
   const _HostTitleBar({required this.title, required this.actions, required this.inset});
 
@@ -87,32 +97,32 @@ class _HostTitleBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Material(
-      color: theme.colorScheme.surface,
-      child: Padding(
-        padding: EdgeInsets.only(top: inset),
-        child: SizedBox(
-          height: kToolbarHeight,
-          child: Row(
-            key: const Key('hostTitleBar'),
-            children: [
-              if (Navigator.of(context).canPop())
-                IconButton(
-                  key: const Key('hostTitleBarBack'),
-                  tooltip: 'Back',
-                  icon: const Icon(Icons.arrow_back),
-                  onPressed: () => Navigator.of(context).maybePop(),
-                ),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: hostTitleBarPaddingPx),
-                  child: Text(title, style: theme.textTheme.titleLarge, maxLines: 1, overflow: TextOverflow.ellipsis),
-                ),
+    final look = ToyLookScope.of(context);
+    final colors = look.colors;
+    final titleStyle = look.type.title.copyWith(color: colors.onBackground);
+    return Padding(
+      padding: EdgeInsets.only(top: inset),
+      child: SizedBox(
+        height: math.max(kToolbarHeight, titleStyle.fontSize! * hostTitleBarHeightShare),
+        child: Row(
+          key: const Key('hostTitleBar'),
+          children: [
+            if (Navigator.of(context).canPop())
+              IconButton(
+                key: const Key('hostTitleBarBack'),
+                tooltip: HostText.back,
+                color: colors.onBackground,
+                icon: const Icon(Icons.arrow_back),
+                onPressed: () => Navigator.of(context).maybePop(),
               ),
-              ...actions,
-            ],
-          ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: hostTitleBarPaddingPx),
+                child: Text(title, style: titleStyle, maxLines: 1, overflow: TextOverflow.ellipsis),
+              ),
+            ),
+            ...actions,
+          ],
         ),
       ),
     );

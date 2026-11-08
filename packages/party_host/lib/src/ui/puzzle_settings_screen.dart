@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:puzzle_game/puzzle_game.dart';
+import 'package:toy_look/toy_look.dart';
 
+import '../host_text.dart';
 import '../providers.dart';
 import 'host_button.dart';
 import 'host_screen.dart';
@@ -14,45 +16,32 @@ class PuzzleSettingsScreen extends ConsumerWidget {
   const PuzzleSettingsScreen({super.key});
 
   static const _rows = [
-    ('angleToleranceDeg', 'Angle tolerance', '±'),
-    ('positionTolerance', 'Position tolerance', ''),
-    ('rotationSpeedDegPerS', 'Rotation speed (X and Y)', ''),
-    ('stickDeadZone', 'Right-stick dead zone (rotation)', ''),
-    ('pickupRange', 'Pickup range', ''),
-    ('hintDelayS', 'Hint glow delay', ''),
-    ('timeLimitS', 'Time limit', ''),
-    ('warningS', 'Warning period', ''),
-    ('soloBigSpeed', 'Solo big-piece speed (teams, M11)', ''),
-    ('helpIntervalS', 'Help haptic interval (teams, M11)', ''),
+    ('angleToleranceDeg', HostText.angleTolerance),
+    ('positionTolerance', HostText.positionTolerance),
+    ('rotationSpeedDegPerS', HostText.rotationSpeed),
+    ('stickDeadZone', HostText.stickDeadZone),
+    ('pickupRange', HostText.pickupRange),
+    ('hintDelayS', HostText.hintDelay),
+    ('timeLimitS', HostText.timeLimit),
+    ('warningS', HostText.warningPeriod),
+    ('soloBigSpeed', HostText.soloBigSpeed),
+    ('helpIntervalS', HostText.helpInterval),
   ];
-
-  static String format(String key, num v) => switch (key) {
-    'angleToleranceDeg' => '±${v.round()}°',
-    'positionTolerance' => '${(v * 100).round()}% of the piece',
-    'rotationSpeedDegPerS' => '${v.round()}° a second',
-    'stickDeadZone' => '${(v * 100).round()}% push',
-    'pickupRange' => '${v.toStringAsFixed(2)} piece radius',
-    'soloBigSpeed' => '${(v * 100).round()}% of normal',
-    'timeLimitS' => '${v ~/ 60}:${(v.round() % 60).toString().padLeft(2, '0')}',
-    _ => '${v % 1 == 0 ? v.round() : v.toStringAsFixed(1)} s',
-  };
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final s = ref.watch(puzzleSettingsProvider);
     final notifier = ref.read(puzzleSettingsProvider.notifier);
-    final json = s.toJson();
-    final text = Theme.of(context).textTheme;
     return CallbackShortcuts(
       bindings: {const SingleActivator(LogicalKeyboardKey.escape): () => Navigator.of(context).maybePop()},
       child: HostScreen(
-        title: 'Puzzle settings',
+        title: HostText.puzzleSettings,
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: hostTitleBarPaddingPx),
             child: HostButton(
               key: const Key('resetPuzzleSettings'),
-              label: 'Reset to defaults',
+              label: HostText.resetToDefaults,
               icon: Icons.restart_alt,
               onPressed: notifier.reset,
             ),
@@ -60,27 +49,55 @@ class PuzzleSettingsScreen extends ConsumerWidget {
         ],
         body: SafeArea(
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+            padding: const EdgeInsets.fromLTRB(ToySizes.space24, ToySizes.space8, ToySizes.space24, ToySizes.space24),
             children: [
-              for (final (i, (key, label, _)) in _rows.indexed)
-                _Row(
-                  key: Key('setting-$key'),
-                  label: label,
-                  value: format(key, json[key]! as num),
-                  autofocus: i == 0,
-                  onLess: () => notifier.set(_step(s, key, -1)),
-                  onMore: () => notifier.set(_step(s, key, 1)),
-                ),
-              const SizedBox(height: 8),
-              SwitchListTile(
-                key: const Key('setting-dropReadyHighlight'),
-                title: Text('Drop-ready highlight', style: text.titleMedium),
-                subtitle: const Text('The outline brightens and the phone ticks when a piece is close enough'),
-                value: s.dropReadyHighlight,
-                onChanged: (v) => notifier.set(s.withValue('dropReadyHighlight', v)),
-              ),
+              _settingsCard(s, notifier),
+              const SizedBox(height: ToySizes.space24),
+              _highlightCard(context, s, notifier),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  /// Every setting on one card: its name, its value and its two step buttons.
+  Widget _settingsCard(PuzzleSettings s, PuzzleSettingsNotifier notifier) {
+    final json = s.toJson();
+    return ToyCard(
+      padding: const EdgeInsets.symmetric(horizontal: ToySizes.space24, vertical: ToySizes.space16),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (final (i, (key, label)) in _rows.indexed)
+            _Row(
+              key: Key('setting-$key'),
+              label: label,
+              value: HostText.settingValue(key, json[key]! as num),
+              autofocus: i == 0,
+              onLess: () => notifier.set(_step(s, key, -1)),
+              onMore: () => notifier.set(_step(s, key, 1)),
+            ),
+        ],
+      ),
+    );
+  }
+
+  /// The drop-ready highlight's switch, on a card of its own.
+  Widget _highlightCard(BuildContext context, PuzzleSettings s, PuzzleSettingsNotifier notifier) {
+    final look = ToyLookScope.of(context);
+    return ToyCard(
+      // A tile paints its ink on the nearest Material, and a toy card's paper
+      // is a ColoredBox: a Material of its own gives the tile somewhere to
+      // paint (as the Look and sound section does).
+      child: Material(
+        type: MaterialType.transparency,
+        child: SwitchListTile(
+          key: const Key('setting-dropReadyHighlight'),
+          title: Text(HostText.dropReadyHighlight, style: look.type.button),
+          subtitle: Text(HostText.dropReadyLine, style: look.type.body),
+          value: s.dropReadyHighlight,
+          onChanged: (v) => notifier.set(s.withValue('dropReadyHighlight', v)),
         ),
       ),
     );
@@ -94,6 +111,11 @@ class PuzzleSettingsScreen extends ConsumerWidget {
   }
 }
 
+/// How wide the value column is, in button heights: room for "1:30" and
+/// "55% of the piece" without the two step buttons moving a row apart.
+const _valueWidthShare = 3.0;
+
+/// One setting on the paper: its name, its two step buttons and its value.
 class _Row extends StatelessWidget {
   const _Row({
     super.key,
@@ -112,25 +134,26 @@ class _Row extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
+    final look = ToyLookScope.of(context);
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
+      padding: const EdgeInsets.symmetric(vertical: ToySizes.space8),
       child: Row(
         children: [
-          Expanded(child: Text(label, style: text.titleMedium)),
-          _Step(label: '−', tooltip: 'Less $label', autofocus: autofocus, onPressed: onLess),
+          Expanded(child: Text(label, style: look.type.button)),
+          _Step(label: HostText.less, tooltip: HostText.lessOf(label), autofocus: autofocus, onPressed: onLess),
           SizedBox(
-            width: 200,
-            child: Text(value, style: text.titleLarge, textAlign: TextAlign.center),
+            width: look.sizes.buttonHeight * _valueWidthShare,
+            child: Text(value, style: look.type.button, textAlign: TextAlign.center),
           ),
-          _Step(label: '+', tooltip: 'More $label', onPressed: onMore),
+          _Step(label: HostText.more, tooltip: HostText.moreOf(label), onPressed: onMore),
         ],
       ),
     );
   }
 }
 
-class _Step extends ConsumerWidget {
+/// One step button, with the tooltip the remote's focus reads.
+class _Step extends StatelessWidget {
   const _Step({required this.label, required this.tooltip, required this.onPressed, this.autofocus = false});
 
   final String label;
@@ -139,18 +162,8 @@ class _Step extends ConsumerWidget {
   final bool autofocus;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return Tooltip(
-      message: tooltip,
-      child: FilledButton.tonal(
-        autofocus: autofocus,
-        onPressed: onPressed,
-        style: ButtonStyle(
-          minimumSize: const WidgetStatePropertyAll(Size(56, 44)),
-          textStyle: const WidgetStatePropertyAll(TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-        ).merge(hostButtonLook(context, showFocus: ref.watch(hostFocusLookProvider))),
-        child: Text(label),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => Tooltip(
+    message: tooltip,
+    child: HostButton(label: label, onPressed: onPressed, autofocus: autofocus),
+  );
 }

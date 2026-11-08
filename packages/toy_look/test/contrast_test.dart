@@ -24,6 +24,8 @@ double contrastRatio(Color foreground, Color background) {
 Map<String, (Color, Color)> _pairs(ToyColors colors) {
   final pairs = <String, (Color, Color)>{
     'ink on paper': (colors.ink, colors.paper),
+    // A label beside its value, and an empty seat's words (M13 3b review).
+    'inkSoft on paper': (Color.alphaBlend(colors.inkSoft, colors.paper), colors.paper),
     'onBackground on background': (colors.onBackground, colors.background),
     'onBackground on backgroundGlow': (colors.onBackground, colors.backgroundGlow),
     'onBackground on board': (colors.onBackground, colors.board),

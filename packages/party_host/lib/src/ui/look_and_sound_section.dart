@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:toy_look/toy_look.dart';
 
+import '../host_text.dart';
 import '../look_providers.dart';
 
 /// The Look and sound settings (M13, docs/design/look-and-sound.md section 8):
@@ -20,18 +21,18 @@ class LookAndSoundSection extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(lookSettingsProvider);
     final notifier = ref.read(lookSettingsProvider.notifier);
-    final text = Theme.of(context).textTheme;
+    final type = ToyLookScope.of(context).type;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Look', style: text.bodyLarge),
+        Text(HostText.look, style: type.body),
         const SizedBox(height: ToySizes.space8),
         SegmentedButton<LookChoice>(
           key: const Key('lookChoice'),
           segments: const [
-            ButtonSegment(value: LookChoice.auto, label: Text('Auto')),
-            ButtonSegment(value: LookChoice.sunny, label: Text('Sunny')),
-            ButtonSegment(value: LookChoice.night, label: Text('Night')),
+            ButtonSegment(value: LookChoice.auto, label: Text(HostText.auto)),
+            ButtonSegment(value: LookChoice.sunny, label: Text(HostText.sunny)),
+            ButtonSegment(value: LookChoice.night, label: Text(HostText.night)),
           ],
           selected: {settings.choice},
           showSelectedIcon: false,
@@ -40,7 +41,7 @@ class LookAndSoundSection extends ConsumerWidget {
         const SizedBox(height: ToySizes.space4),
         // The hours come from the setting's own rule, so the text and the
         // palette can never disagree.
-        Text('Auto: Sunny from $sunnyFromHour:00 to $sunnyUntilHour:00, Night otherwise', style: text.bodySmall),
+        Text(HostText.autoLine(sunnyFromHour, sunnyUntilHour), style: type.body),
         // A tile paints its ink on the nearest Material, and a toy card's paper
         // is a ColoredBox: a Material of its own gives the tile somewhere to
         // paint, whichever card the section is put in.
@@ -49,8 +50,8 @@ class LookAndSoundSection extends ConsumerWidget {
           child: SwitchListTile(
             key: const Key('lookEffects'),
             contentPadding: EdgeInsets.zero,
-            title: const Text('Effects'),
-            subtitle: const Text('Shaders and menu motion. Turn off on an older device.'),
+            title: const Text(HostText.effects),
+            subtitle: const Text(HostText.effectsLine),
             value: settings.effects,
             onChanged: notifier.setEffects,
           ),

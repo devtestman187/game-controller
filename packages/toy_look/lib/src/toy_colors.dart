@@ -91,6 +91,14 @@ final class ToyColors {
   /// Every outline and shadow, and the text on paper.
   final Color ink;
 
+  /// [ink] faded for a label beside its value, or an empty seat's words: soft
+  /// on paper and still at 4.5:1 (the contrast test).
+  Color get inkSoft => ink.withValues(alpha: inkSoftAlpha);
+
+  /// How strong [inkSoft] is: 6.1:1 on paper in Sunny (at 0.6 it fell to
+  /// 4.41:1, M13 3b review).
+  static const inkSoftAlpha = 0.7;
+
   /// The screen behind everything.
   final Color background;
 

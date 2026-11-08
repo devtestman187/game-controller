@@ -26,7 +26,7 @@ void main() {
   setUpAll(loadHostFonts);
   setUpAll(loadPuzzles);
 
-  testWidgets('the phone\'s picker and level list fit at 852x393 without scrolling', (tester) async {
+  testWidgets('the phone\'s picker fits at 852x393 without scrolling, and its level list scrolls', (tester) async {
     await pumpHostApp(tester);
     final host = await enterHostMode(tester);
     await settle(tester);
@@ -38,7 +38,10 @@ void main() {
     await tester.tap(find.byKey(const Key('pickShapeRace')));
     await untilShown(tester, find.byType(party.ShapeRaceScreen), 'The Shape Race screen');
     await settle(tester);
-    expect(scrollRangeOf(tester, party.ShapeRaceScreen), 0, reason: 'the level list fits');
+    // A level is a card of the look's buttons now (M13 3b), so the four of them
+    // scroll on a landscape phone; what they must not do is overflow.
+    expect(scrollRangeOf(tester, party.ShapeRaceScreen), greaterThan(0), reason: 'the level list scrolls');
+    expect(tester.takeException(), isNull);
 
     await tester.runAsync(host.dispose);
   });

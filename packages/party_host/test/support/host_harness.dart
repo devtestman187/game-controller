@@ -169,9 +169,15 @@ Future<void> startRace(WidgetTester tester, FakeHostService fake) async {
 }
 
 /// Home → Play → Shape Race → the house puzzle, with P1 on the left and P2 on
-/// the right: a race is running when it returns.
-Future<FakeHostService> openRace(WidgetTester tester, {List<Override> overrides = const []}) async {
-  final fake = await pumpHost(tester, screen: const StubHome(), overrides: overrides);
+/// the right: a race is running when it returns. [size] and [clock] are
+/// [pumpHost]'s.
+Future<FakeHostService> openRace(
+  WidgetTester tester, {
+  List<Override> overrides = const [],
+  Size size = const Size(960, 540),
+  DateTime Function()? clock,
+}) async {
+  final fake = await pumpHost(tester, screen: const StubHome(), overrides: overrides, size: size, clock: clock);
   fake.state = withController(fake.state, phoneInfo('p2', 2));
   fake.emit();
   await neutral(tester, fake, ['p1', 'p2']);

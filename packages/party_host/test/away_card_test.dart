@@ -15,8 +15,19 @@ void main() {
     await holdSlot(tester, fake, 'p2');
 
     expect(find.byKey(const Key('awayCard')), findsOneWidget);
-    expect(find.text('P2 is away'), findsOneWidget);
+    expect(find.text('Player 2 is away'), findsOneWidget);
     expect(find.text('The game goes on if they\'re back in 30 s'), findsOneWidget);
+    // The card is headed caution, and says the away line the string table's
+    // one spelling of it gives (M13 3b: "P2 is away" and "Player 2 is away"
+    // were one thing said two ways).
+    final look = ToyLookScope.of(tester.element(find.byKey(const Key('awayCard'))));
+    final card = tester.widget<ToyCard>(find.byKey(const Key('awayCard')));
+    expect(card.header, HostText.playersAway);
+    expect(card.headerColor, look.colors.caution);
+    expect(find.text(HostText.playerAway(2)), findsOneWidget);
+    // The countdown is a sentence, so it is in the button's type, not the
+    // clock's (Claude's 3b review: the clock's size filled the card).
+    expect(tester.widget<Text>(find.byKey(const Key('awayCountdown-2'))).style?.fontSize, look.type.button.fontSize);
 
     // Six seconds of the host's clock: 30 − 6 = 24 to go.
     host.clockMs = 6000;
@@ -39,8 +50,8 @@ void main() {
     await holdSlot(tester, fake, 'p2');
     fake.gameHost.setAway('p3', isAway: true);
     await tester.pump();
-    expect(find.text('P2 is away'), findsOneWidget);
-    expect(find.text('P3 is away'), findsOneWidget);
+    expect(find.text('Player 2 is away'), findsOneWidget);
+    expect(find.text('Player 3 is away'), findsOneWidget);
     expect(find.textContaining('back in 30 s'), findsNWidgets(2));
   });
 

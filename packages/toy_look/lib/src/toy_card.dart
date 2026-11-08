@@ -18,8 +18,10 @@ class ToyCard extends StatefulWidget {
     required this.child,
     this.header,
     this.headerColor,
+    this.headerKey,
     this.padding = const EdgeInsets.all(ToySizes.space16),
     this.popIn = true,
+    this.scrollBody = false,
   });
 
   /// What the card holds, under [padding] and in ink.
@@ -31,12 +33,23 @@ class ToyCard extends StatefulWidget {
   /// The band's fill, or the palette's focus yellow.
   final Color? headerColor;
 
+  /// The header text's key, for a screen whose title a test or a player looks
+  /// up by name (the results).
+  final Key? headerKey;
+
   /// The room around [child].
   final EdgeInsets padding;
 
   /// Whether the card pops in when it first appears; the effects setting also
   /// has to be on (design D8).
   final bool popIn;
+
+  /// Whether [child] scrolls when the card is shorter than it is (M13 3b, the
+  /// join screen's sides): a card in a layout that gives it a height, like a
+  /// panel under the phone's own bar. The card has to be given a bounded
+  /// height, as a column's child is not; without one the scroll has nothing to
+  /// shrink into.
+  final bool scrollBody;
 
   @override
   State<ToyCard> createState() => _ToyCardState();
@@ -90,9 +103,14 @@ class _ToyCardState extends State<ToyCard> with SingleTickerProviderStateMixin {
 
   /// The card: the shadow behind, the clipped paper with its band and body,
   /// and the ink edge over all of it so the band's corners stay inside it.
+  ///
+  /// The paper takes the width the card is given, as a [Stack]'s passthrough
+  /// does, so a card in a list or a side of the join screen fills it (M13 3b);
+  /// with room to choose, it is as wide as its widest part.
   Widget _card(ToyLook look) {
     final header = widget.header;
     return Stack(
+      fit: StackFit.passthrough,
       children: [
         Positioned.fill(
           child: Transform.translate(
@@ -110,10 +128,7 @@ class _ToyCardState extends State<ToyCard> with SingleTickerProviderStateMixin {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  if (header != null) _header(look, header),
-                  Padding(padding: widget.padding, child: _body(look)),
-                ],
+                children: [if (header != null) _header(look, header), _bodyArea(look)],
               ),
             ),
           ),
@@ -123,6 +138,15 @@ class _ToyCardState extends State<ToyCard> with SingleTickerProviderStateMixin {
         ),
       ],
     );
+  }
+
+  /// What the card holds, on its padding: in a scroll view that takes the room
+  /// left under the header band when [ToyCard.scrollBody] is set, so a card
+  /// shorter than its content scrolls rather than overflowing.
+  Widget _bodyArea(ToyLook look) {
+    final body = Padding(padding: widget.padding, child: _body(look));
+    if (!widget.scrollBody) return body;
+    return Flexible(child: SingleChildScrollView(child: body));
   }
 
   /// The header band: [ToyCard.headerColor] (or focus), its title in ink and
@@ -140,6 +164,7 @@ class _ToyCardState extends State<ToyCard> with SingleTickerProviderStateMixin {
         padding: const EdgeInsets.symmetric(horizontal: ToySizes.space16, vertical: ToySizes.space8),
         child: Text(
           header,
+          key: widget.headerKey,
           textAlign: TextAlign.center,
           style: look.type.button.copyWith(color: colors.ink),
         ),

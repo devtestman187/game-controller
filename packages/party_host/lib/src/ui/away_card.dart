@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:protocol/protocol.dart';
+import 'package:toy_look/toy_look.dart';
 
 import '../controls.dart';
+import '../host_text.dart';
 import '../players_away.dart';
 import '../providers.dart';
 import 'controller_menus.dart';
 import 'host_button.dart';
-import 'player_badge.dart';
 
 /// The buttons while the card is up: A "OK" and nothing else. The arrows still
 /// move the focus between the card's two buttons; B is hidden, and the card
@@ -86,6 +87,7 @@ class _AwayCardState extends ConsumerState<AwayCard> {
       for (final p in ref.watch(gamePlayersProvider))
         if (!p.away && !p.simulated && !p.local) p.id,
     };
+    final look = ToyLookScope.of(context);
     return PopScope(
       // The round stays out of the remote's Back while the card asks for a
       // phone: Go on without them and End round are the way on (N1).
@@ -93,33 +95,32 @@ class _AwayCardState extends ConsumerState<AwayCard> {
       child: Center(
         child: ControlsClaim(
           controls: Controls.menus(only: here, layout: awayLayout),
-          child: DecoratedBox(
+          child: ToyCard(
             key: const Key('awayCard'),
-            decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.88),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
+            header: HostText.playersAway,
+            headerColor: look.colors.caution,
+            padding: const EdgeInsets.symmetric(horizontal: ToySizes.space32, vertical: ToySizes.space16),
+            child: SizedBox(
+              width: look.sizes.buttonHeight * awayCardWidthShare,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   for (final away in widget.players) _AwayLine(away: away),
-                  const SizedBox(height: 20),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
+                  const SizedBox(height: ToySizes.space8),
+                  Wrap(
+                    spacing: ToySizes.space12,
+                    runSpacing: ToySizes.space8,
                     children: [
                       HostButton(
                         key: const Key('goOnWithout'),
-                        label: 'Go on without them',
+                        label: HostText.goOnWithout,
                         icon: Icons.play_arrow,
                         focusNode: _goOnFocus,
                         onPressed: _goOnWithout,
                       ),
-                      const SizedBox(width: 12),
                       HostButton(
                         key: const Key('awayEndRound'),
-                        label: 'End round',
+                        label: HostText.endRound,
                         icon: Icons.exit_to_app,
                         onPressed: widget.onEndRound,
                       ),
@@ -135,7 +136,13 @@ class _AwayCardState extends ConsumerState<AwayCard> {
   }
 }
 
-/// One away player's line: who it is, and how long the round waits for them.
+/// How wide the away card's body is, in shares of the look's button height:
+/// wide enough for its two buttons, so a long line wraps inside it.
+const awayCardWidthShare = 13.0;
+
+/// One away player's line: who it is, and how long the round waits for them
+/// (M13 3b). The wait is a sentence, so it is in the button's type, not the
+/// clock's (Claude's review).
 class _AwayLine extends StatelessWidget {
   const _AwayLine({required this.away});
 
@@ -143,27 +150,31 @@ class _AwayLine extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
+    final look = ToyLookScope.of(context);
     final n = away.player.number;
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
+      padding: const EdgeInsets.symmetric(vertical: ToySizes.space4),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          PlayerBadge(number: n, size: 30),
-          const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('P$n is away', key: Key('awayLine-$n'), style: text.titleLarge),
-              Text(
-                away.secondsLeft == 0
-                    ? 'The game goes on without them…'
-                    : 'The game goes on if they\'re back in ${away.secondsLeft} s',
-                key: Key('awayCountdown-$n'),
-                style: text.bodyLarge,
-              ),
-            ],
+          ToyBadge(number: n, diameter: look.sizes.buttonHeight * 0.75),
+          const SizedBox(width: ToySizes.space12),
+          Flexible(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  HostText.playerAway(n),
+                  key: Key('awayLine-$n'),
+                  style: look.type.button.copyWith(color: look.colors.ink),
+                ),
+                Text(
+                  away.secondsLeft == 0 ? HostText.awayGone : HostText.awayCountdown(away.secondsLeft),
+                  key: Key('awayCountdown-$n'),
+                  style: look.type.button.copyWith(color: look.colors.ink),
+                ),
+              ],
+            ),
           ),
         ],
       ),

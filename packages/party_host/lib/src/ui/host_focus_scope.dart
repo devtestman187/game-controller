@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:toy_look/toy_look.dart';
 
 import '../providers.dart';
 
@@ -28,7 +29,9 @@ class HostFocusScope extends ConsumerWidget {
       child: showFocus
           ? child
           : Theme(
-              data: Theme.of(context).copyWith(focusColor: Colors.transparent),
+              // The look's own focus colour, drawn with no alpha at all, so no
+              // Material focus overlay shows while a thumb is on the screen.
+              data: Theme.of(context).copyWith(focusColor: ToyLookScope.of(context).colors.focus.withValues(alpha: 0)),
               child: child,
             ),
     );

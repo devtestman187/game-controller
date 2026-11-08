@@ -6,11 +6,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:protocol/protocol.dart';
 
 import '../controls.dart';
+import '../host_text.dart';
 import '../providers.dart';
 
 /// The buttons while a menu is showing: A "OK" and B "Back".
 final menuLayout = GameLayoutMessage(
-  labels: {ControllerButton.a: 'OK', ControllerButton.b: 'Back'},
+  labels: {ControllerButton.a: HostText.ok, ControllerButton.b: HostText.back},
   hidden: {
     ControllerButton.x,
     ControllerButton.y,

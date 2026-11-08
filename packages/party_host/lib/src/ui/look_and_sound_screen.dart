@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:toy_look/toy_look.dart';
 
+import '../host_text.dart';
 import '../providers.dart';
 import 'host_screen.dart';
 import 'look_and_sound_section.dart';
@@ -18,7 +19,7 @@ class LookAndSoundScreen extends ConsumerWidget {
     return CallbackShortcuts(
       bindings: {const SingleActivator(LogicalKeyboardKey.escape): () => Navigator.of(context).maybePop()},
       child: HostScreen(
-        title: 'Look and sound',
+        title: HostText.lookAndSound,
         body: SafeArea(
           // The page takes the focus as it opens, as the other host pages do,
           // so Back (Esc on a keyboard) leaves it and the arrows start at the
