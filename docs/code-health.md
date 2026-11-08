@@ -57,6 +57,7 @@ Every known code change that isn't a feature: review findings and tech debt, gro
 | What | Risk | Benefit | Rec. |
 | --- | --- | --- | --- |
 | `gyro.dart` 353 lines; `DiagnosticsScreen.build` long. (M12 debt) | Low | — | when touched |
+| `PhoneHost.dispose()` doesn't wait for a `start()` in flight: stopping within ms of hosting leaves the service's 10 s timer behind (tests wait on `host.started` instead). Make `dispose` await the start, then drop `started`. ([1108a Q3](briefs/m12/bug-1108a-fix-report.md)) | Low: the host's lifecycle, well tested | No leaked timer on a fast stop | when touched: `phone_host.dart` (likely the 1108b freeze fix) |
 
 ### tools and housekeeping
 | What | Risk | Benefit | Rec. |
