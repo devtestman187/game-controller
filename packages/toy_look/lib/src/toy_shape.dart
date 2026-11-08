@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:ui'
     show
         Canvas,
@@ -12,6 +13,7 @@ import 'dart:ui'
         StrokeJoin;
 
 import 'body_fallback.dart';
+import 'turn.dart';
 
 /// The ink of every outline and shadow in the Sunny palette, and of the
 /// outline and shadow a [ToyShapeStyle] makes when it's given none (design
@@ -33,6 +35,11 @@ const toyShadowAlpha = 0.35;
 /// Where the shader's light comes from, in the shape's -1..1 box, top-left
 /// negative (design section 6).
 const toyLight = Offset(-0.55, -0.65);
+
+/// The light as a shape's own coordinates see it when the canvas is turned by
+/// [angleRad]: [toyLight] with the canvas's turn taken back out ([toyTurnBack]),
+/// so the light stays at the screen's top-left. At 0 it is exactly [toyLight].
+Offset toyLightIn(double angleRad) => toyTurnBack(toyLight, angleRad);
 
 /// How [toyShape] draws a game object: the ink of its outline and shadow, the
 /// outline's width, and where and how strongly its shadow falls (design
@@ -68,6 +75,13 @@ final class ToyShapeStyle {
 /// One `FragmentShader` is made per draw: a shader's uniforms are read when it
 /// draws, so a single one reused for two colours would paint both shapes the
 /// last colour set on it.
+///
+/// The light stays at the screen's top-left however the canvas is turned (M13
+/// spike): the canvas's angle is read from its transform and the light is
+/// turned back by it, for the shader and the fallback alike. A canvas that is
+/// only translated or scaled has no angle and draws as it always did.
+/// Mirroring (a negative scale) doesn't occur in the games — no game draws a
+/// mirrored piece — and would need its own handling, so it isn't handled here.
 void toyShape(
   Canvas canvas,
   Path path,
@@ -76,14 +90,17 @@ void toyShape(
   FragmentProgram? shade,
 }) {
   final bounds = path.getBounds();
+  final turnRad = _canvasTurnRad(canvas);
+  // The shadow falls down and to the right on screen, like the light, however
+  // the shape is turned.
   canvas.drawPath(
-    path.shift(style.shadowOffset),
+    path.shift(toyTurnBack(style.shadowOffset, turnRad)),
     Paint()..color = style.ink.withValues(alpha: style.shadowAlpha),
   );
   if (shade == null) {
-    paintFallbackBody(canvas, path, color, bounds);
+    paintFallbackBody(canvas, path, color, bounds, turnRad);
   } else {
-    canvas.drawPath(path, _shadedBody(shade, bounds, color));
+    canvas.drawPath(path, _shadedBody(shade, bounds, color, turnRad));
   }
   canvas.drawPath(
     path,
@@ -100,11 +117,25 @@ void toyShape(
 ///
 /// The uniforms are set by name, so the shader's source can be reordered
 /// without silently swapping a size for a colour.
-Paint _shadedBody(FragmentProgram program, Rect bounds, Color color) {
+Paint _shadedBody(
+  FragmentProgram program,
+  Rect bounds,
+  Color color,
+  double angleRad,
+) {
   final shader = program.fragmentShader();
+  final light = toyLightIn(angleRad);
   shader.getUniformVec2('uOrigin').set(bounds.left, bounds.top);
   shader.getUniformVec2('uSize').set(bounds.width, bounds.height);
   shader.getUniformVec4('uColor').set(color.r, color.g, color.b, color.a);
-  shader.getUniformVec2('uLight').set(toyLight.dx, toyLight.dy);
+  shader.getUniformVec2('uLight').set(light.dx, light.dy);
   return Paint()..shader = shader;
+}
+
+/// The angle the canvas has already turned its drawing by, in radians: the
+/// angle of its transformed x axis, so a translation or a scale adds nothing
+/// and a turn is the angle itself.
+double _canvasTurnRad(Canvas canvas) {
+  final transform = canvas.getTransform();
+  return math.atan2(transform[1], transform[0]);
 }

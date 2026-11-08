@@ -1,3 +1,5 @@
+import 'dart:math' show pi;
+
 import 'package:flutter/painting.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:toy_look/toy_look.dart';
@@ -19,6 +21,25 @@ void main() {
         (canvas) => toyShape(canvas, Path()..addRect(_square), _blue, style),
       );
 
+  test('the light turns back by the canvas\'s angle, so it stays at the screen\'s top-left', () {
+    // No turn: the light is exactly the design's toyLight, (-0.55, -0.65).
+    expect(toyLightIn(0), toyLight);
+    // A quarter turn: (x, y) becomes (y, -x), so (-0.55, -0.65) becomes
+    // (-0.65, 0.55).
+    expect(toyLightIn(pi / 2).dx, closeTo(-0.65, 1e-9));
+    expect(toyLightIn(pi / 2).dy, closeTo(0.55, 1e-9));
+    // Half a turn: the screen's top-left is the shape's own bottom-right, so
+    // the light is (0.55, 0.65).
+    expect(toyLightIn(pi).dx, closeTo(0.55, 1e-9));
+    expect(toyLightIn(pi).dy, closeTo(0.65, 1e-9));
+    // 225°, the angle the spike showed the bug at (the highlight at the
+    // bottom): -0.55 * cos 225 + -0.65 * sin 225 = 0.7071 * 1.2 = 0.848528,
+    // and 0.55 * sin 225 + -0.65 * cos 225 = 0.7071 * 0.1 = 0.070711.
+    final at225 = toyLightIn(225 * pi / 180);
+    expect(at225.dx, closeTo(0.848528, 1e-6));
+    expect(at225.dy, closeTo(0.070711, 1e-6));
+  });
+
   test('toyShape draws the shadow under the shape, down and to the right of it', () async {
     final pixels = await paintedSquare();
     // The shadow is the path moved (2.25, 3) and filled with ink (30, 22, 70)
@@ -32,6 +53,24 @@ void main() {
     expect(shadow.$3, closeTo(190, 2));
     // Nothing falls up and to the left of the shape.
     expect(pixels.at(16, 16), (255, 255, 255));
+  });
+
+  test('a turned shape still casts its shadow down and to the right on screen', () async {
+    // Half a turn about the square's centre (40, 40): drawn in the shape's own
+    // coordinates, the shadow would fall up and to the left on screen.
+    final pixels = await paintedPixels(const Size(100, 100), (canvas) {
+      canvas
+        ..translate(40, 40)
+        ..rotate(pi)
+        ..translate(-40, -40);
+      toyShape(canvas, Path()..addRect(_square), _blue, const ToyShapeStyle());
+    });
+    // Below the bottom edge (y 60, outline to 61.5) the shadow shows, as
+    // unturned; above the top edge (y 20, outline from 18.5) there's nothing.
+    final below = pixels.at(40, 62);
+    expect(below.$1, closeTo(176, 2));
+    expect(below.$3, closeTo(190, 2));
+    expect(pixels.at(40, 17), (255, 255, 255));
   });
 
   test('toyShape strokes the ink outline over the body\'s edge', () async {

@@ -19,6 +19,13 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
 
   flutter::DartProject project(L"data");
 
+  // The Windows TV app draws with Skia, not Impeller: Impeller on Windows
+  // (Flutter 3.47) drew many outlined, shadowed shapes about 15 times slower
+  // (M13 spike, Nov 8, 2026: 71 ms against 4.8 ms a frame for 128 shapes on an
+  // RTX 3080). Re-check at every Flutter upgrade; Flutter says the switch will
+  // be removed in a future release.
+  project.set_impeller_switch(flutter::ImpellerSwitch::Disabled);
+
   std::vector<std::string> command_line_arguments =
       GetCommandLineArguments();
 

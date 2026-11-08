@@ -112,6 +112,7 @@ The owner often has release copies of the TV app open (from the Downloads folder
 - A release step that downloads from GitHub (the Gradle zip, flutter_soloud's prebuilt libraries, which its build hook fetches even in `flutter test`) can fail with HTTP 504 when GitHub is slow. Rerun: `gh run rerun <id> --failed` for GitHub Actions; for Codemagic the owner starts a new build of the tag (Builds → ⋮ → Start new build → Build tag, workflow "iOS TestFlight"), since a check rerequest through GitHub returns 404 (Nov 8, 2026: m12.7).
 
 **Flutter and Dart**
+- `flutter test` doesn't load fragment shaders: `FragmentProgram.fromAsset` fails with "Asset … not found" because the test bundle carries no compiled `shaders/`. Shader code is tested through its Canvas fallback, and its real drawing is checked on a device (M13 spike).
 - `find.byType(OutlinedButton)` doesn't match `OutlinedButton.icon`, which builds a private subclass; count button kinds with `find.byWidgetPredicate((w) => w is OutlinedButton)`.
 - On iOS, a plugin call that blocks the main thread freezes the whole screen even though Dart keeps running (the `Host start:` lines still log). bonsoir_darwin 7.1.1's broadcast did this for ~0.7 s; 7.1.2 fixed it (m12 bug 1108b).
 - Don't run two Flutter builds at once: they share a build cache and collide.
@@ -124,6 +125,7 @@ The owner often has release copies of the TV app open (from the Downloads folder
 - When a screen is replaced (Play again), the new one starts before the old one is disposed: clean-up in `dispose` must not undo what the new one set up (M10).
 
 **Platforms**
+- **Windows draws with Skia.** Flutter 3.47's default renderer (Impeller) drew 128 outlined, shadowed shapes in 71 ms a frame where Skia took 4.8 ms on the same PC (M13 spike, Nov 8, 2026), so the Windows TV app turns Impeller off in `tv_test_app/windows/runner/main.cpp` (`project.set_impeller_switch(flutter::ImpellerSwitch::Disabled)`). Re-check at every Flutter upgrade: Flutter says that switch goes in a future release.
 - iOS: Flutter's `landscapeLeft` and `landscapeRight` are the reverse of iOS's, so the orientation lock needs the platform (M3).
 - iPad apps must list all four orientations or App Store Connect rejects the upload (error 90474). The orientation-lock API kept an iPhone's pairing keyboard sideways, so it was removed (M8).
 - Some Android tablets have a portrait natural orientation, others landscape, which changes the gyro's axes (M8).
