@@ -54,7 +54,7 @@ The version number changes only for a breaking change. Everything else is additi
 | `rating` | `rate_ask` (host → controller) and `rating` (controller → host) | M9 |
 | `layout` | `layout` (host → controller): the game's labels, hidden buttons and modes | M10 |
 | `status` | `status` (host → controller): the phone's status panel | M10 |
-| `view` | `view_start`, `frame`, `view_end`, `host_away` and `host_back` (host → controller): the game itself, for a controller that shows it (§10a) | M12 |
+| `view` | `view_start`, `frame`, `view_end`, `host_away`, `host_back`, `player_away` and `player_back` (host → controller): the game itself, for a controller that shows it (§10a) | M12 |
 
 Peers without capabilities (apps before 0.9.0) send no `caps`; treat that as an empty list. The v1 messages (§6 to §9) need no capability.
 
@@ -238,6 +238,8 @@ A controller that lists `view` also shows the game itself: the host runs the gam
 | `view_end` | host → controller | `reason`: `finished` (the game ended), `quit` (someone left) or `abandoned` (the game stopped without ending: the host closed, the connection dropped, a new game started) |
 | `host_away` | host → controller | `s`: whole seconds left before the round ends if the host stays away (0 or more) |
 | `host_back` | host → controller | no fields |
+| `player_away` | host → controller | `player`: player ID, as in a frame's `pl` · `n`: the player's number, from 1 · `s`: whole seconds left before the game goes on without them (0 or more) |
+| `player_back` | host → controller | `player`: player ID: the player is back, or the grace is over and the game went on without them |
 
 `view_start` comes first, `view_end` last, and each `frame` between them is one step of the game, sent `hz` times a second. The host encodes each frame once and sends every viewer the same text.
 
@@ -247,9 +249,11 @@ A controller that lists `view` also shows the game itself: the host runs the gam
 
 **Waiting for the host.** While it shows a game, a host that goes away (its app is hidden, the screen locks) sends `host_away` with the seconds left; `host_back` means the game goes on and the frames come back. The host's grace is 30 s, and a round that outlives it ends with `view_end` `abandoned`. A phone whose link to the host drops while it shows a game counts 30 s down by itself, because a suspended host can't send anything.
 
+**Waiting for a player.** A player who drops while a round runs keeps their place for 30 s, and the game waits for them: the frames stop, so the others learn why. The host sends `player_away` with that player's number and the seconds left, and `player_back` when the player is back, when the grace is over with the game going on without them, or when someone on the host screen says to go on. The messages go to the viewers of a running view, like `host_away`; the phone that was away is not told it is back.
+
 **`at`.** A step's `at` is the host's clock when the frame is published minus the game time still to simulate after that step, rounded to ms. Steps run inside one drawn frame therefore get evenly spaced times, and a stall or a pause shows up as real time passing. A phone measures a frame's **skew** as its arrival on the phone's own clock minus `at`; the fastest arrival of the last 2 s sets the base and every later frame's jitter is its skew above the base. The phone draws after a playout delay worked out from those jitters, so the host's clock never has to be estimated.
 
-**A viewer that pairs while a game is being shown** — a controller that just joined, or one that reconnected after a drop — gets the stored `view_start` and then the latest `frame`, before any later frame, so it can draw the game at once. A viewer that pairs after `view_end` gets nothing. A viewer sends its measurements back in its metrics batches (§9): the raw samples in `stages` and its frame counts in `view`.
+**A viewer that pairs while a game is being shown** — a controller that just joined, or one that reconnected after a drop — gets the stored `view_start` and then the latest `frame`, before any later frame, so it can draw the game at once. A viewer that pairs while the game waits for players gets a `player_away` for each of them after those two, so it can say why the frames have stopped. A viewer that pairs after `view_end` gets nothing. A viewer sends its measurements back in its metrics batches (§9): the raw samples in `stages` and its frame counts in `view`.
 
 The host closes with 4003 if a controller sends one of these view messages.
 
@@ -263,7 +267,7 @@ The host closes with 4003 if a controller sends one of these view messages.
 | `metrics`, `rating` | controller → host | host listed `metrics` / `rating` |
 | `metrics_ack`, `rate_ask` | host → controller | controller listed `metrics` / `rating` |
 | `layout`, `status` | host → controller | controller listed `layout` / `status` |
-| `view_start`, `frame`, `view_end`, `host_away`, `host_back` | host → controller | controller listed `view` |
+| `view_start`, `frame`, `view_end`, `host_away`, `host_back`, `player_away`, `player_back` | host → controller | controller listed `view` |
 
 A host that receives a host-only message (or the reverse) closes with 4003; a controller ignores it.
 
@@ -282,6 +286,7 @@ A host that receives a host-only message (or the reverse) closes with 4003; a co
 | Status panel | at most 10 a second per controller |
 | Frames to a viewer | 20 to 60 a second, 60 by default (`view_start`'s `hz`) |
 | Host away before the round ends | 30 s (the host's grace) |
+| A player away before the round goes on | 30 s (the same grace, per player) |
 | Shortest press a game sees | 50 ms (the host keeps a quick tap held that long) |
 
 The game host interface (`GameHost` in `packages/connection`, PRD v2 P3) is the in-process side of this: games get players, gamepads, haptics, sounds, layouts, the status panel, rating prompts, latency and analytics records from it, and never touch the protocol directly. Games read each gamepad once a frame; so that a tap whose press and release arrive between two frames isn't lost, the host reports every press as held for at least 50 ms.

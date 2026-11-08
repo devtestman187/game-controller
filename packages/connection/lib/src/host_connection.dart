@@ -251,7 +251,9 @@ final class HostConnection {
           FrameMessage() ||
           ViewEndMessage() ||
           HostAwayMessage() ||
-          HostBackMessage():
+          HostBackMessage() ||
+          PlayerAwayMessage() ||
+          PlayerBackMessage():
         close(CloseCodes.protocolError, 'Unexpected ${message.type}');
     }
   }

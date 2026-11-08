@@ -147,6 +147,62 @@ void main() {
     });
   });
 
+  group('player_away and player_back (M12)', () {
+    test('the player, their number and the seconds left round-trip, and player_back carries the player', () {
+      const away = PlayerAwayMessage(playerId: 'p2', number: 2, secondsLeft: 24);
+      final back = roundTrip(away) as PlayerAwayMessage;
+      expect(back, away);
+      expect(back.playerId, 'p2');
+      expect(back.number, 2);
+      expect(back.secondsLeft, 24);
+      expect(wire(away)['player'], 'p2');
+      expect(wire(away)['n'], 2, reason: 'no frame comes while the round waits, so the number travels');
+      expect(wire(away)['s'], 24);
+
+      const playerBack = PlayerBackMessage(playerId: 'p2');
+      expect(roundTrip(playerBack), playerBack);
+      expect((roundTrip(playerBack) as PlayerBackMessage).playerId, 'p2');
+      expect(wire(playerBack).length, 3, reason: 'the envelope (v, t) and the player');
+    });
+
+    test('0 s left is allowed: the round is about to go on without them', () {
+      final zero = codec.decode(jsonEncode({'v': protocolVersion, 't': 'player_away', 'player': 'p2', 'n': 2, 's': 0}));
+      expect((zero as PlayerAwayMessage).secondsLeft, 0);
+    });
+
+    test('a bad player, number or seconds names the field', () {
+      final cases = <({String what, Map<String, Object?> json, String field})>[
+        (what: 'player_away without a player', json: {'t': 'player_away', 'n': 2, 's': 24}, field: 'player'),
+        (
+          what: 'player_away with a number player',
+          json: {'t': 'player_away', 'player': 2, 'n': 2, 's': 24},
+          field: 'player',
+        ),
+        (what: 'player_away without a number', json: {'t': 'player_away', 'player': 'p2', 's': 24}, field: 'n'),
+        (what: 'player_away with number 0', json: {'t': 'player_away', 'player': 'p2', 'n': 0, 's': 24}, field: 'n'),
+        (
+          what: 'player_away with a string number',
+          json: {'t': 'player_away', 'player': 'p2', 'n': '2', 's': 24},
+          field: 'n',
+        ),
+        (what: 'player_away without seconds', json: {'t': 'player_away', 'player': 'p2', 'n': 2}, field: 's'),
+        (
+          what: 'player_away with negative seconds',
+          json: {'t': 'player_away', 'player': 'p2', 'n': 2, 's': -1},
+          field: 's',
+        ),
+        (what: 'player_back without a player', json: {'t': 'player_back'}, field: 'player'),
+      ];
+      for (final c in cases) {
+        expect(
+          () => codec.decode(jsonEncode({'v': protocolVersion, ...c.json})),
+          throwsA(isA<ProtocolFormatException>().having((e) => e.message, 'message', contains('"${c.field}"'))),
+          reason: c.what,
+        );
+      }
+    });
+  });
+
   group('malformed fields name the field', () {
     final cases = <({String what, Map<String, Object?> json, String field})>[
       (

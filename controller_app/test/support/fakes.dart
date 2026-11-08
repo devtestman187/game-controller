@@ -166,6 +166,15 @@ class FakeClient extends ControllerClient {
   /// The host is back, so the game goes on.
   void hostBack() => _view.add(const HostBack());
 
+  /// The player [playerId], number [number] in the round, is away and the game
+  /// waits [secondsLeft] for it, arriving now on this phone's clock (m12 bug
+  /// 1107d).
+  void playerAway(String playerId, int number, int secondsLeft) =>
+      _view.add(PlayerAway(playerId, number, secondsLeft, nowMs));
+
+  /// The player [playerId] is back, so its card line goes.
+  void playerBack(String playerId) => _view.add(PlayerBack(playerId));
+
   @override
   Future<void> dispose() async {
     await _view.close();

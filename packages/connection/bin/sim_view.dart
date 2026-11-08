@@ -100,6 +100,10 @@ class SimView {
         stdout.writeln('host_away s=$secondsLeft');
       case HostBack():
         stdout.writeln('host_back');
+      case PlayerAway(:final playerId, :final number, :final secondsLeft):
+        stdout.writeln('player_away $playerId P$number s=$secondsLeft');
+      case PlayerBack(:final playerId):
+        stdout.writeln('player_back $playerId');
     }
   }
 

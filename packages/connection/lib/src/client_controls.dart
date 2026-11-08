@@ -93,6 +93,19 @@ final class ClientControls {
     if (!_views.isClosed) _views.add(const HostBack());
   }
 
+  /// Hands [away] to the view listeners, with [arrivedAtMs]: this phone's
+  /// clock when it handled the message, which the countdown runs from.
+  void addPlayerAway(PlayerAwayMessage away, {required int arrivedAtMs}) {
+    if (!_views.isClosed) {
+      _views.add(PlayerAway(away.playerId, away.number, away.secondsLeft, arrivedAtMs));
+    }
+  }
+
+  /// Hands the end of a player's wait to the view listeners.
+  void addPlayerBack(PlayerBackMessage back) {
+    if (!_views.isClosed) _views.add(PlayerBack(back.playerId));
+  }
+
   /// A new connection starts with the usual buttons and no panel; the game
   /// sends its own again.
   void reset() {
@@ -158,4 +171,32 @@ final class HostAway extends ViewEvent {
 /// The host is back, so the game goes on.
 final class HostBack extends ViewEvent {
   const HostBack();
+}
+
+/// A player's phone dropped and the round waits for them (m12 bug 1107d).
+final class PlayerAway extends ViewEvent {
+  const PlayerAway(this.playerId, this.number, this.secondsLeft, this.arrivedAtMs);
+
+  /// The player's ID: the host keys a frame's roster and acks by it.
+  final String playerId;
+
+  /// The player's number, from 1, as it shows on the phone and the host.
+  final int number;
+
+  /// How long the round still waits for them, in seconds, from
+  /// [arrivedAtMs].
+  final int secondsLeft;
+
+  /// This phone's clock when the message was handled: the countdown runs from
+  /// it, so a late arrival doesn't lengthen the wait.
+  final int arrivedAtMs;
+}
+
+/// The player is back, or the grace is over and the round went on without
+/// them (m12 bug 1107d).
+final class PlayerBack extends ViewEvent {
+  const PlayerBack(this.playerId);
+
+  /// The player's ID, as in [PlayerAway].
+  final String playerId;
 }

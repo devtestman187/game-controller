@@ -121,6 +121,20 @@ Future<ClientSnapshot> clientUntil(
 Future<ClientSnapshot> clientStatus(ControllerClient client, ClientStatus status) =>
     clientUntil(client, (s) => s.status == status);
 
+/// The game host's players once [test] accepts them: them now, or the next
+/// list the host reports (the stream is hot, so this listens before it
+/// changes). A host that never gets there fails after [timeout].
+Future<List<GamePlayer>> playersUntil(
+  ServerGameHost host,
+  bool Function(List<GamePlayer> players) test, {
+  Duration timeout = const Duration(seconds: 5),
+}) {
+  if (test(host.players)) return Future.value(host.players);
+  return host.playersChanged
+      .firstWhere(test)
+      .timeout(timeout, onTimeout: () => throw TimeoutException('Host stuck at ${host.players}'));
+}
+
 Future<HostSnapshot> hostUntil(
   HostServer host,
   bool Function(HostSnapshot s) test, {

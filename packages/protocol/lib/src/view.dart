@@ -190,6 +190,63 @@ final class HostBackMessage extends Message {
   static HostBackMessage fromPayload(Map<String, Object?> p) => const HostBackMessage();
 }
 
+/// Host → viewer (M12, needs [Capability.view]): a player's phone dropped and
+/// the round waits for them (m12 bug 1107d).
+///
+/// The host sends it while a view runs, when it starts holding the player's
+/// slot, and again to a viewer that pairs mid-away. [PlayerBackMessage] ends
+/// the wait. The number travels with it because no frame comes while the round
+/// waits, so a phone has no roster to look it up in.
+final class PlayerAwayMessage extends Message {
+  const PlayerAwayMessage({required this.playerId, required this.number, required this.secondsLeft});
+
+  static const String wireType = 'player_away';
+
+  /// The player's ID, as in a frame's `pl` and `acks`.
+  final String playerId;
+
+  /// The player's number, from 1, as [PlayerMessage] gives it.
+  final int number;
+
+  /// How long the round still waits for them, in whole seconds (0 or more):
+  /// the phone counts down from it.
+  final int secondsLeft;
+
+  @override
+  String get type => wireType;
+
+  @override
+  Map<String, Object?> toPayload() => {'player': playerId, 'n': number, 's': secondsLeft};
+
+  static PlayerAwayMessage fromPayload(Map<String, Object?> p) {
+    final number = requireInt(p, 'n');
+    if (number < 1) throw FormatException('Field "n" must be 1 or more, got $number');
+    final seconds = requireInt(p, 's');
+    if (seconds < 0) throw FormatException('Field "s" must be 0 or more seconds, got $seconds');
+    return PlayerAwayMessage(playerId: requireString(p, 'player'), number: number, secondsLeft: seconds);
+  }
+}
+
+/// Host → viewer (M12, needs [Capability.view]): the player is back, or their
+/// grace is over and the round went on without them (m12 bug 1107d).
+final class PlayerBackMessage extends Message {
+  const PlayerBackMessage({required this.playerId});
+
+  static const String wireType = 'player_back';
+
+  /// The player's ID, as in [PlayerAwayMessage].
+  final String playerId;
+
+  @override
+  String get type => wireType;
+
+  @override
+  Map<String, Object?> toPayload() => {'player': playerId};
+
+  static PlayerBackMessage fromPayload(Map<String, Object?> p) =>
+      PlayerBackMessage(playerId: requireString(p, 'player'));
+}
+
 /// Reads a required field that must be a JSON object.
 Map<String, Object?> _objectField(Map<String, Object?> p, String key) {
   final value = p[key];

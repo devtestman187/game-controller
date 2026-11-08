@@ -235,7 +235,9 @@ class HostServer {
     FrameMessage() ||
     ViewEndMessage() ||
     HostAwayMessage() ||
-    HostBackMessage() => Capability.view,
+    HostBackMessage() ||
+    PlayerAwayMessage() ||
+    PlayerBackMessage() => Capability.view,
     _ => null,
   };
 

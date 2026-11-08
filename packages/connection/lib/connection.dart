@@ -5,7 +5,8 @@
 /// command-line simulated controller and in `dart test` on Windows and CI.
 library;
 
-export 'src/client_controls.dart' show HostAway, HostBack, ViewEnded, ViewEvent, ViewFrame, ViewStarted;
+export 'src/client_controls.dart'
+    show HostAway, HostBack, PlayerAway, PlayerBack, ViewEnded, ViewEvent, ViewFrame, ViewStarted;
 export 'src/client_types.dart' hide sameStrings;
 export 'src/controller_client.dart';
 export 'src/controller_identity.dart';

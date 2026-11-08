@@ -172,4 +172,109 @@ void main() {
       expect(find.byKey(const Key('waitingCard')), findsNothing);
     });
   });
+
+  group('a player away (m12 bug 1107d)', () {
+    testWidgets('it says which player is away and counts down, and the card goes when they are back', (tester) async {
+      final app = await joined(tester);
+      app.client.playerAway('p2', 2, 12);
+      await settle(tester);
+      expect(find.byKey(const Key('waitingCard')), findsOneWidget);
+      expect(find.text('Player 2 is away'), findsOneWidget);
+      expect(find.text('The game goes on if they\'re back in 12 s'), findsOneWidget);
+      expect(find.byKey(const Key('arena')), findsOneWidget, reason: 'the last frame stays under the card');
+      expect(find.widgetWithText(TextButton, 'Leave game'), findsOneWidget, reason: 'Leave game as it was');
+
+      // 5 s pass on the phone's clock, and the card ticks once.
+      app.client.nowMs += 5000;
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.text('The game goes on if they\'re back in 7 s'), findsOneWidget);
+
+      app.client.playerBack('p2');
+      await settle(tester);
+      expect(find.byKey(const Key('waitingCard')), findsNothing);
+      expect(find.byKey(const Key('arena')), findsOneWidget);
+    });
+
+    testWidgets('a countdown that runs out says the game goes on without them, until the next frame', (tester) async {
+      final app = await joined(tester);
+      app.client.playerAway('p2', 2, 2);
+      await settle(tester);
+      expect(find.text('The game goes on if they\'re back in 2 s'), findsOneWidget);
+
+      // 3 s on: the countdown is out, and no frame has come.
+      app.client.nowMs += 3000;
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.text('The game goes on without them…'), findsOneWidget);
+      expect(find.widgetWithText(TextButton, 'Leave game'), findsOneWidget, reason: 'the host has not left');
+      expect(find.byKey(const Key('waitingCard')), findsOneWidget);
+
+      // The game went on: the next frame takes the line away.
+      app.client.viewFrame(arenaFrame(1));
+      await settle(tester);
+      expect(find.byKey(const Key('waitingCard')), findsNothing);
+    });
+
+    testWidgets('two away at once get a line each, and one that is back leaves one', (tester) async {
+      final app = await joined(tester);
+      app.client.playerAway('p2', 2, 12);
+      app.client.playerAway('p3', 3, 20);
+      await settle(tester);
+      expect(find.text('Player 2 is away'), findsOneWidget);
+      expect(find.text('Player 3 is away'), findsOneWidget);
+      expect(find.text('The game goes on if they\'re back in 12 s'), findsOneWidget);
+      expect(find.text('The game goes on if they\'re back in 20 s'), findsOneWidget);
+
+      app.client.playerBack('p2');
+      await settle(tester);
+      expect(find.text('Player 2 is away'), findsNothing);
+      expect(find.text('The game goes on if they\'re back in 12 s'), findsNothing);
+      expect(find.text('Player 3 is away'), findsOneWidget);
+      expect(find.byKey(const Key('waitingCard')), findsOneWidget);
+    });
+
+    testWidgets('the host\'s own wait wins over a player\'s, and the player comes back after it', (tester) async {
+      final app = await joined(tester);
+      app.client.playerAway('p2', 2, 12);
+      await settle(tester);
+      expect(find.text('Player 2 is away'), findsOneWidget);
+
+      app.client.hostAway(30);
+      await settle(tester);
+      expect(find.text('Waiting for the host to come back'), findsOneWidget);
+      expect(find.text('Player 2 is away'), findsNothing, reason: 'the host wins');
+
+      app.client.hostBack();
+      await settle(tester);
+      expect(find.text('Player 2 is away'), findsOneWidget, reason: 'the player still has to come back');
+    });
+
+    testWidgets('the phone that was away itself shows no card for its own player', (tester) async {
+      final app = await joined(tester);
+      app.client.playerAway(app.client.identity.controllerId, 1, 12);
+      await settle(tester);
+      expect(find.byKey(const Key('waitingCard')), findsNothing);
+    });
+
+    testWidgets('a drop hides the line, and the view coming back with player_away puts it up again', (tester) async {
+      final app = await joined(tester);
+      app.client.playerAway('p2', 2, 12);
+      await settle(tester);
+      expect(find.text('Player 2 is away'), findsOneWidget);
+
+      app.client.emit(ClientSnapshot(status: ClientStatus.reconnecting, target: tv));
+      await settle(tester);
+      expect(find.text('Reconnecting to the game…'), findsOneWidget);
+      expect(find.text('Player 2 is away'), findsNothing);
+
+      // The host sends the start and the away players again to the phone that
+      // pairs back into the round (server_game_host.dart).
+      app.client.emit(connected);
+      await settle(tester);
+      app.client.viewStart(arenaStart());
+      await settle(tester);
+      app.client.playerAway('p2', 2, 12);
+      await settle(tester);
+      expect(find.text('Player 2 is away'), findsOneWidget);
+    });
+  });
 }

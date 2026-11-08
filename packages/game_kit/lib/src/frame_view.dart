@@ -131,9 +131,10 @@ class _FrameViewState extends State<FrameView> with SingleTickerProviderStateMix
         _addFrame(frame, arrivedAtMs);
       case ViewEnded():
         _stop();
-      case HostAway() || HostBack():
-        // Frames stop while the host is away and come back with it; the view
-        // keeps drawing its newest frame either way (m12 §2.10).
+      case HostAway() || HostBack() || PlayerAway() || PlayerBack():
+        // Frames stop while the game waits for a player (the host, or one who
+        // dropped) and come back with them; the view keeps drawing its newest
+        // frame either way (m12 §2.10, m12 bug 1107d).
         break;
     }
   }

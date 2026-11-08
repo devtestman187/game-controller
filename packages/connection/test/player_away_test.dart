@@ -15,19 +15,6 @@ final _start = ViewStartMessage(game: 'shape_race', snapshotVersion: 1, setup: c
 
 const _end = ViewEndMessage(reason: ViewEndReason.finished);
 
-/// The host's players once [test] accepts them: them now, or the next list
-/// the host reports (the stream is hot, so this listens before it changes).
-Future<List<GamePlayer>> playersUntil(
-  ServerGameHost host,
-  bool Function(List<GamePlayer> players) test, {
-  Duration timeout = const Duration(seconds: 5),
-}) {
-  if (test(host.players)) return Future.value(host.players);
-  return host.playersChanged
-      .firstWhere(test)
-      .timeout(timeout, onTimeout: () => throw TimeoutException('Host stuck at ${host.players}'));
-}
-
 /// A paired phone, connected to [server] the way [t] does.
 Future<ControllerClient> join(HostServer server, TestTransport t, ControllerClient client) async {
   client.connect(addressOf(server, t), code: server.pairingCode);
