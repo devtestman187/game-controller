@@ -234,14 +234,14 @@ A controller that lists `view` also shows the game itself: the host runs the gam
 | Message | Direction | Fields (wire key: meaning) |
 | --- | --- | --- |
 | `view_start` | host → controller | `game`: module ID (`shape_race`, `arena`) · `sv`: the snapshot version the frames carry · `setup`: the module's setup JSON · `hz`: frames a second the host publishes |
-| `frame` | host → controller | `n`: step number from 0 · `at`: the host's clock in ms at that step · `s`: the module's snapshot JSON · `snd`: sound names since the last sent frame, left out when empty · `acks`: player ID → the last input seq the host applied (only players with one) · `pl`: player ID → `[number, name]`, the name `""` when the player has none |
+| `frame` | host → controller | `n`: step number: `-1` for the frame a host sends before the first step while the round is held (the "Get ready" beat), then from 0 · `at`: the host's clock in ms at that step · `s`: the module's snapshot JSON · `snd`: sound names since the last sent frame, left out when empty · `acks`: player ID → the last input seq the host applied (only players with one) · `pl`: player ID → `[number, name]`, the name `""` when the player has none |
 | `view_end` | host → controller | `reason`: `finished` (the game ended), `quit` (someone left) or `abandoned` (the game stopped without ending: the host closed, the connection dropped, a new game started) |
 | `host_away` | host → controller | `s`: whole seconds left before the round ends if the host stays away (0 or more) |
 | `host_back` | host → controller | no fields |
 | `player_away` | host → controller | `player`: player ID, as in a frame's `pl` · `n`: the player's number, from 1 · `s`: whole seconds left before the game goes on without them (0 or more) |
 | `player_back` | host → controller | `player`: player ID: the player is back, or the grace is over and the game went on without them |
 
-`view_start` comes first, `view_end` last, and each `frame` between them is one step of the game, sent `hz` times a second. The host encodes each frame once and sends every viewer the same text.
+`view_start` comes first, `view_end` last, and each `frame` between them carries one step of the game, sent `hz` times a second. Before the first step, a host that holds a round (the "Get ready" beat) sends one frame with `n` `-1`: the board at step 0, with the `s`, `pl` and `acks` a step's frame has and no `snd`. It goes out whether or not a viewer has paired yet, so a viewer that pairs during the beat gets it after `view_start` and draws the held board. No frame follows while a round is held or paused, and the next one carries step 0. An older viewer reads `-1` → `0` as no gap and draws that frame as it draws any other. The host encodes each frame once and sends every viewer the same text.
 
 **`view_start`'s `setup`** belongs to the module. Shape Race sends `puzzle` (the puzzle file's ID), `level` (`easy`, `medium` or `hard`), `timeLimitS`, `teams` (player ID → `left` or `right`) and, when the match uses the tray-on-top layout phones draw, `layout`: `phones`, left out otherwise. The Arena sends `{}`. A viewer of another app version that finds no such puzzle, or can't decode the frames' snapshot version, shows "Update the app to see this game" instead of drawing.
 

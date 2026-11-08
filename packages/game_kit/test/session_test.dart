@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:connection/connection.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:game_kit/game_kit.dart';
@@ -87,11 +89,72 @@ void main() {
     expect(clock.host.frames.map((f) => f.n), [-1, 0], reason: 'the first step\'s frame follows the board');
   });
 
-  test('with no viewer the first frame is not sent', () {
+  // Review R1 finding 3: the host keeps the round's first frame as the view's
+  // latest frame, so a phone that pairs during the beat gets it (test below).
+  test('the round\'s first frame is sent even when no viewer has paired yet', () {
     final clock = Clock();
     final session = CounterSession(host: clock.host)..paused = true;
     expect(session.paused, isTrue);
-    expect(clock.host.frames, isEmpty);
+    expect(clock.host.frames, hasLength(1), reason: 'the host holds it until a viewer pairs');
+    expect(clock.host.frames.single.n, -1);
+  });
+
+  // Review R1 finding 2: the beat's frame is a step's frame (bar its `n`), so a
+  // joined phone draws the counters through the beat instead of after it.
+  test('the round\'s first frame carries the roster and the acks, like a step\'s', () {
+    final clock = Clock();
+    clock.host
+      ..setPlayer(const GamePlayer(id: 'a', number: 1, nickname: 'Phone a'))
+      ..setPlayer(const GamePlayer(id: 'b', number: 2));
+    clock.host.inputSeqs['a'] = 4;
+    CounterSession(host: clock.host).paused = true;
+    final first = clock.host.frames.single;
+    expect(first.n, -1);
+    expect(first.acks, {'a': 4}, reason: 'only the player with an input has an ack');
+    expect(first.roster, {'a': (number: 1, name: 'Phone a'), 'b': (number: 2, name: '')});
+  });
+
+  // Review R1 finding 3: a phone that pairs while the round is held gets the
+  // start and the held board's frame, so it draws the game through the beat.
+  test('a viewer that pairs during the beat gets view_start and the beat frame', () async {
+    final listener = InProcessListener();
+    final server = HostServer(hostId: 'host-1', hostName: 'Test TV', appVersion: 'test', listeners: [listener]);
+    await server.start();
+    addTearDown(server.dispose);
+    final host = ServerGameHost(server);
+    addTearDown(host.dispose);
+
+    // The round is held before any phone shows it.
+    final session = CounterSession(host: host)..paused = true;
+    addTearDown(session.dispose);
+    expect(host.hasViewers, isFalse);
+
+    final client = ControllerClient(
+      identity: const ControllerIdentity(
+        controllerId: 'viewer',
+        name: 'Phone',
+        platform: 'test',
+        appVersion: 'test',
+        capabilities: [Capability.view],
+      ),
+      connector: InProcessConnector(listener),
+    );
+    addTearDown(client.dispose);
+    final events = <ViewEvent>[];
+    final beat = Completer<ViewFrame>();
+    final watching = client.view.listen((event) {
+      events.add(event);
+      if (event is ViewFrame && !beat.isCompleted) beat.complete(event);
+    });
+    addTearDown(watching.cancel);
+
+    client.connect(
+      HostAddress.local(hostId: 'host-1', name: 'Test TV'),
+      code: server.pairingCode,
+    );
+    final frame = await beat.future.timeout(const Duration(seconds: 5));
+    expect(events.first, isA<ViewStarted>(), reason: 'the start comes before the frame');
+    expect(frame.frame.n, -1, reason: 'the held round has run no step');
   });
 
   // m12 bug 1107e: an input that arrived while the round was paused waited

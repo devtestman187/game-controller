@@ -160,8 +160,9 @@ abstract class GameSession {
   /// false calls [resumed], and resuming doesn't catch up.
   ///
   /// A session paused before its first step sends its first frame all the same
-  /// ([_publishFirstFrame]): a round held for the "Get ready" beat still shows
-  /// its board on every phone showing the game (m12-host-touch rule 3).
+  /// ([_publishFirstFrame]), whether or not a viewer has paired yet: a round
+  /// held for the "Get ready" beat shows its board on every phone showing the
+  /// game, including one that pairs during the beat (m12-host-touch rule 3).
   set paused(bool value) {
     if (_paused == value) return;
     _paused = value;
@@ -242,17 +243,34 @@ abstract class GameSession {
   /// Sends the round's first frame while no step has run (m12-host-touch rule
   /// 3): a phone showing the game draws nothing before its first frame (m12
   /// §4), so a round held for the "Get ready" beat would be blank on every
-  /// phone until the beat ended. The frame is the snapshot at step 0, and its
-  /// step is -1, so the first step's frame (0) follows it without a gap.
+  /// phone until the beat ended. The frame is a step's frame with its step at
+  /// -1, so the first step's frame (0) follows it without a gap.
+  ///
+  /// It goes out whether or not a viewer has paired yet, so the host keeps it
+  /// as the view's latest frame and a phone that pairs during the beat gets it
+  /// after `view_start` (review R1 findings 2 and 3).
   void _publishFirstFrame() {
-    if (_firstFrameSent || _stepCount != 0 || _disposed || !host.hasViewers) return;
+    if (_firstFrameSent || _stepCount != 0 || _disposed) return;
     _firstFrameSent = true;
-    host.publishFrame(FrameMessage(n: -1, atMs: host.nowMs, snapshot: current.toJson()));
+    // No advance has read the players yet, and the frame carries them.
+    _readPlayers();
+    host.publishFrame(_frame(-1, host.nowMs));
   }
 
-  /// Reads the players and their controls, and remembers the inputs that are
-  /// new since the last advance.
-  void _sample() {
+  /// A frame of the game as it stands: step [n] at [atMs], with the players'
+  /// acks and the roster, and the [sounds] since the last sent frame. A step's
+  /// frame and the round's first frame are built here, so both carry the same.
+  FrameMessage _frame(int n, int atMs, {List<String> sounds = const []}) => FrameMessage(
+    n: n,
+    atMs: atMs,
+    snapshot: current.toJson(),
+    sounds: sounds,
+    acks: _acks(),
+    roster: {for (final p in _players) p.id: (number: p.number, name: p.nickname ?? '')},
+  );
+
+  /// Reads the players and their controls, and remembers the buttons held.
+  void _readPlayers() {
     final now = host.players;
     _players = now;
     final ids = {for (final p in now) p.id};
@@ -263,6 +281,13 @@ abstract class GameSession {
       _latest[p.id] = state;
       (_pendingButtons[p.id] ??= <GamepadButton>{}).addAll(state.buttons);
     }
+  }
+
+  /// Reads the players and their controls, and remembers the inputs that are
+  /// new since the last advance.
+  void _sample() {
+    _readPlayers();
+    final ids = {for (final p in _players) p.id};
     final resumedAt = _resumedAtMs;
     final fresh = <String, int>{};
     final seen = <String, int>{};
@@ -294,16 +319,7 @@ abstract class GameSession {
     }
     if (index <= _lastFrameIndex) return;
     _lastFrameIndex = index;
-    host.publishFrame(
-      FrameMessage(
-        n: _stepCount - 1,
-        atMs: atMs.round(),
-        snapshot: current.toJson(),
-        sounds: List.of(_pendingSounds),
-        acks: _acks(),
-        roster: {for (final p in _players) p.id: (number: p.number, name: p.nickname ?? '')},
-      ),
-    );
+    host.publishFrame(_frame(_stepCount - 1, atMs.round(), sounds: List.of(_pendingSounds)));
     _pendingSounds.clear();
   }
 

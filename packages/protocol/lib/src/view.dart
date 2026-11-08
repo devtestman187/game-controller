@@ -58,7 +58,10 @@ final class FrameMessage extends Message {
 
   static const String wireType = 'frame';
 
-  /// The host's step number, from 0. A viewer counts a jump as a gap.
+  /// The host's step number: -1 for the frame a host sends before the first
+  /// step while the round is held (the "Get ready" beat), then from 0. No
+  /// frame follows while a round is paused. A viewer counts a jump as a gap,
+  /// and an older viewer reads -1 → 0 as no gap.
   final int n;
 
   /// The host's clock in ms at that step (m12 §3). The arrival time minus

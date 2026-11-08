@@ -104,9 +104,9 @@ Map<String, Object?> playerJson(String id, PlayerRecord p, int atMs) {
     'modes': modesJson(p, segments),
     'switches': switchesOf(segments),
     'segments': [for (final s in segments) segmentJson(s)],
-    'ratings': p.ratings,
     // Copied, like the rounds: a saved checkpoint must not grow when a later
-    // round is recorded (m12 bug 1107e).
+    // rating or round is recorded (m12 bug 1107e, code-health N7).
+    'ratings': [for (final rating in p.ratings) Map<String, Object?>.of(rating)],
     'games': {for (final MapEntry(key: game, value: counts) in p.games.entries) game: Map<String, int>.of(counts)},
     if (p.gameStats.isNotEmpty)
       'gameStats': {

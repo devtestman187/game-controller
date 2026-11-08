@@ -218,6 +218,37 @@ void main() {
       expect(late['rounds'], hasLength(1));
       expect(late['frames'], {'drawn': 60, 'dropped': 1});
     });
+
+    // Review R1 finding 5 (code-health N7): the ratings are copied into a
+    // summary like the rounds and the games, so a checkpoint keeps what it had.
+    test('a summary taken before a rating doesn\'t change after it', () {
+      final c = SessionCollector(
+        id: 's',
+        hostType: HostType.androidTv,
+        hostApp: '0.10.0',
+        startedAt: DateTime.utc(2026),
+        startMs: 0,
+      );
+      c.joined('p', number: 1, atMs: 0);
+      final early = c.summary(1000);
+      expect(((early['players'] as List).single as Map)['ratings'], isEmpty);
+
+      c.rating(
+        'p',
+        RatingMessage(id: 'r1', face: RatingFace.good, tags: [RatingTag.laggy]),
+        game: 'arena',
+      );
+      expect(((early['players'] as List).single as Map)['ratings'], isEmpty, reason: 'the saved summary is a copy');
+
+      final late = c.summary(2000);
+      expect(((late['players'] as List).single as Map)['ratings'], [
+        {
+          'game': 'arena',
+          'face': 'good',
+          'tags': ['laggy'],
+        },
+      ]);
+    });
   });
 }
 
