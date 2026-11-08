@@ -62,7 +62,7 @@ class _GameTopBar extends ConsumerWidget {
           // game has no link of its own to connect: its bar keeps the host's
           // chip alone, after the dot when there is one (m12 bug 1108a fix2
           // Q1).
-          if (controls) ...[const CompactConnection(), const SizedBox(width: 8)],
+          if (controls) ...[const CompactConnection(), const SizedBox(width: party.ToySizes.space8)],
           if (hosting) const HostChip(compact: true),
           const Spacer(),
           if (controls) const ModeMenuButton(),
@@ -90,7 +90,7 @@ class _ControllerTopBar extends ConsumerWidget {
       children: [
         // The chip and the ping take whatever room is left, and shorten.
         Expanded(child: hosting ? const HostChip() : const BarConnection()),
-        const SizedBox(width: 8),
+        const SizedBox(width: party.ToySizes.space8),
         if (controls) const BarModes(),
         if (controls) const _SettingsButton(),
         const _DiagnosticsButton(),
@@ -99,26 +99,27 @@ class _ControllerTopBar extends ConsumerWidget {
   );
 }
 
-/// The bar's way into Settings: the pad's and the phone's.
+/// The bar's way into Settings: the pad's and the phone's. Its icon is drawn
+/// on the pad's background, so it takes `onBackground` (M13 3c).
 class _SettingsButton extends StatelessWidget {
   const _SettingsButton();
 
   @override
   Widget build(BuildContext context) => IconButton(
-    tooltip: 'Settings',
-    icon: const Icon(Icons.settings_outlined),
+    tooltip: party.PhoneText.settings,
+    icon: Icon(Icons.settings_outlined, color: party.ToyLookScope.of(context).colors.onBackground),
     onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const SettingsScreen())),
   );
 }
 
-/// The bar's way into Diagnostics (M9).
+/// The bar's way into Diagnostics (M9), in the background's own colour.
 class _DiagnosticsButton extends StatelessWidget {
   const _DiagnosticsButton();
 
   @override
   Widget build(BuildContext context) => IconButton(
-    tooltip: 'Diagnostics',
-    icon: const Icon(Icons.monitor_heart_outlined),
+    tooltip: party.PhoneText.diagnostics,
+    icon: Icon(Icons.monitor_heart_outlined, color: party.ToyLookScope.of(context).colors.onBackground),
     onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const DiagnosticsScreen())),
   );
 }

@@ -2,12 +2,24 @@ import 'package:connection/connection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:party_host/party_host.dart' show PhoneText, ToyButton, ToyLook, ToyLookScope, ToySizes;
 
 import '../host/host_screen.dart';
 import '../host/host_start_sheet.dart';
 import '../host/hosting.dart';
 import '../providers.dart';
 import 'labels.dart';
+import 'settings_screen.dart';
+
+/// A panel's icon, in shares of the look's title size: the 40 px link and
+/// warning icons the panel always drew.
+const panelIconShare = 1.25;
+
+/// A panel's text, on the page's sky: onBackground, never a fill's colour.
+TextStyle panelStyle(ToyLook look) => look.type.body.copyWith(color: look.colors.onBackground);
+
+/// A panel's heading, on the page's sky.
+TextStyle panelHeading(ToyLook look) => look.type.button.copyWith(color: look.colors.onBackground);
 
 /// The right-hand side of the Connect screen: what the connection is doing
 /// and what to do next.
@@ -28,7 +40,7 @@ class ConnectionPanel extends ConsumerWidget {
     };
     return Center(
       child: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(ToySizes.space16),
         child: Column(mainAxisSize: MainAxisSize.min, children: [status]),
       ),
     );
@@ -41,16 +53,16 @@ class _NotConnected extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final text = Theme.of(context).textTheme;
+    final look = ToyLookScope.of(context);
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const Icon(Icons.link_off, size: 40),
-        const SizedBox(height: 8),
-        Text('Not connected', style: text.titleLarge),
-        const SizedBox(height: 4),
-        const Text('Pick a TV on the left, or type its address.', textAlign: TextAlign.center),
-        const SizedBox(height: 16),
+        Icon(Icons.link_off, size: look.type.title.fontSize! * panelIconShare, color: look.colors.onBackground),
+        const SizedBox(height: ToySizes.space8),
+        Text(PhoneText.notConnected, style: panelHeading(look)),
+        const SizedBox(height: ToySizes.space4),
+        Text(PhoneText.pickATv, textAlign: TextAlign.center, style: panelStyle(look)),
+        const SizedBox(height: ToySizes.space16),
         const _NoTvActions(),
       ],
     );
@@ -58,46 +70,57 @@ class _NotConnected extends ConsumerWidget {
 }
 
 /// What to do while no TV answers (v2 C23, m12 §3): the controls without one,
-/// or host the game here.
+/// host the game here, or change the settings. The mock-up's three ways on,
+/// as the look's buttons (M13 3c).
 class _NoTvActions extends ConsumerWidget {
   const _NoTvActions();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) => Wrap(
-    spacing: 8,
-    runSpacing: 8,
-    alignment: WrapAlignment.center,
-    children: [
-      OutlinedButton.icon(
-        key: const Key('tryWithoutTv'),
-        icon: const Icon(Icons.sports_esports_outlined),
-        label: const Text('Try without a TV'),
-        onPressed: () {
-          ref.read(demoProvider.notifier).start();
-          Navigator.of(context).maybePop();
-        },
-      ),
-      OutlinedButton.icon(
-        key: const Key('hostGame'),
-        icon: const Icon(Icons.wifi_tethering),
-        label: const Text('Host a game'),
-        onPressed: () async {
-          // Read before the dialog: after it, this widget may be gone.
-          final hosting = ref.read(hostingProvider.notifier);
-          final choice = await showHostStartSheet(context);
-          if (choice == null || !context.mounted) return;
-          // Phones that join see it only when this phone plays it itself:
-          // the host is told which before it starts (m12 bug 1108a rule D).
-          final host = hosting.start(playsHere: choice == HostChoice.onPhone);
-          await Navigator.of(context).push(
-            MaterialPageRoute<void>(
-              builder: (_) => HostScreen(host: host, choice: choice),
-            ),
-          );
-        },
-      ),
-    ],
-  );
+  Widget build(BuildContext context, WidgetRef ref) {
+    final look = ToyLookScope.of(context);
+    return Wrap(
+      spacing: ToySizes.space8,
+      runSpacing: ToySizes.space8,
+      alignment: WrapAlignment.center,
+      children: [
+        ToyButton(
+          key: const Key('tryWithoutTv'),
+          icon: Icons.sports_esports_outlined,
+          label: PhoneText.tryWithoutTv,
+          color: look.colors.paper,
+          onPressed: () {
+            ref.read(demoProvider.notifier).start();
+            Navigator.of(context).maybePop();
+          },
+        ),
+        ToyButton(
+          key: const Key('hostGame'),
+          icon: Icons.wifi_tethering,
+          label: PhoneText.hostAGame,
+          onPressed: () async {
+            // Read before the dialog: after it, this widget may be gone.
+            final hosting = ref.read(hostingProvider.notifier);
+            final choice = await showHostStartSheet(context);
+            if (choice == null || !context.mounted) return;
+            // Phones that join see it only when this phone plays it itself:
+            // the host is told which before it starts (m12 bug 1108a rule D).
+            final host = hosting.start(playsHere: choice == HostChoice.onPhone);
+            await Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => HostScreen(host: host, choice: choice),
+              ),
+            );
+          },
+        ),
+        ToyButton(
+          icon: Icons.settings_outlined,
+          label: PhoneText.settings,
+          color: look.colors.paper,
+          onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const SettingsScreen())),
+        ),
+      ],
+    );
+  }
 }
 
 /// A connection on its way: the first one, or another after a drop.
@@ -113,20 +136,20 @@ class _Waiting extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final s = snapshot;
     final host = s.hostLabel;
-    final text = Theme.of(context).textTheme;
+    final look = ToyLookScope.of(context);
     final disconnect = ref.read(connectionActionsProvider).disconnect;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         const CircularProgressIndicator(),
-        const SizedBox(height: 12),
+        const SizedBox(height: ToySizes.space12),
         Text(
-          reconnecting ? 'Connection lost. Reconnecting to $host…' : 'Connecting to $host…',
-          style: text.titleMedium,
+          reconnecting ? PhoneText.connectionLostTo(host) : PhoneText.connectingTo(host),
+          style: panelHeading(look),
           textAlign: TextAlign.center,
         ),
-        if (reconnecting) Text('Attempt ${s.attempt}', style: text.bodySmall),
-        TextButton(onPressed: disconnect, child: Text(reconnecting ? 'Stop' : 'Cancel')),
+        if (reconnecting) Text(PhoneText.attempt(s.attempt), style: panelStyle(look)),
+        TextButton(onPressed: disconnect, child: Text(reconnecting ? PhoneText.stop : PhoneText.cancel)),
       ],
     );
   }
@@ -141,21 +164,20 @@ class _Connected extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final s = snapshot;
     final host = s.hostLabel;
-    final text = Theme.of(context).textTheme;
-    final scheme = Theme.of(context).colorScheme;
+    final look = ToyLookScope.of(context);
     final actions = ref.read(connectionActionsProvider);
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const Icon(Icons.check_circle, size: 48, color: Colors.greenAccent),
-        const SizedBox(height: 8),
-        Text('Connected to $host', style: text.titleLarge, textAlign: TextAlign.center),
-        Text(s.rttMs == null ? 'Ping –' : 'Ping ${s.rttMs} ms', style: text.titleMedium),
-        if (s.rttStats != null) Text('Last 30 s: ${s.rttStats}', style: text.bodySmall),
-        const SizedBox(height: 8),
-        Text('Go back to use the controller.', style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
-        const SizedBox(height: 8),
-        OutlinedButton(onPressed: actions.disconnect, child: const Text('Disconnect')),
+        Icon(Icons.check_circle, size: look.type.title.fontSize! * panelIconShare, color: look.colors.good),
+        const SizedBox(height: ToySizes.space8),
+        Text(PhoneText.connectedTo(host), style: panelHeading(look), textAlign: TextAlign.center),
+        Text(PhoneText.ping(s.rttMs), style: panelStyle(look)),
+        if (s.rttStats != null) Text(PhoneText.last30('${s.rttStats}'), style: panelStyle(look)),
+        const SizedBox(height: ToySizes.space8),
+        Text(PhoneText.goBackToControls, style: look.type.body.copyWith(color: look.colors.inkSoft)),
+        const SizedBox(height: ToySizes.space8),
+        ToyButton(label: PhoneText.disconnect, onPressed: actions.disconnect),
       ],
     );
   }
@@ -170,35 +192,34 @@ class _Failed extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final text = Theme.of(context).textTheme;
-    final scheme = Theme.of(context).colorScheme;
+    final look = ToyLookScope.of(context);
     final actions = ref.read(connectionActionsProvider);
     final target = snapshot.target;
     final detail = snapshot.detail;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(Icons.error_outline, size: 40, color: scheme.error),
-        const SizedBox(height: 8),
-        Text(problem ?? 'Not connected', textAlign: TextAlign.center, style: text.bodyLarge),
+        Icon(Icons.error_outline, size: look.type.title.fontSize! * panelIconShare, color: look.colors.bad),
+        const SizedBox(height: ToySizes.space8),
+        Text(problem ?? PhoneText.notConnected, textAlign: TextAlign.center, style: panelHeading(look)),
         if (detail != null) ...[
-          const SizedBox(height: 4),
+          const SizedBox(height: ToySizes.space4),
           Text(
             detail,
             textAlign: TextAlign.center,
-            style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+            style: look.type.body.copyWith(color: look.colors.inkSoft),
           ),
         ],
-        const SizedBox(height: 8),
+        const SizedBox(height: ToySizes.space8),
         Wrap(
-          spacing: 8,
+          spacing: ToySizes.space8,
           alignment: WrapAlignment.center,
           children: [
-            if (target != null) FilledButton(onPressed: () => actions.connect(target), child: const Text('Try again')),
-            TextButton(onPressed: actions.disconnect, child: const Text('Cancel')),
+            if (target != null) ToyButton(label: PhoneText.tryAgain, onPressed: () => actions.connect(target)),
+            ToyButton(label: PhoneText.cancel, color: look.colors.paper, onPressed: actions.disconnect),
           ],
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: ToySizes.space16),
         const _NoTvActions(),
       ],
     );
@@ -217,6 +238,10 @@ class _CodeEntry extends ConsumerStatefulWidget {
 
 class _CodeEntryState extends ConsumerState<_CodeEntry> {
   final _controller = TextEditingController();
+
+  /// The room the code's field takes: four digits at the look's title size,
+  /// with room between them.
+  static const _codeFieldWidthShare = 5.6;
 
   @override
   void didUpdateWidget(_CodeEntry old) {
@@ -240,21 +265,16 @@ class _CodeEntryState extends ConsumerState<_CodeEntry> {
 
   @override
   Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
-    final scheme = Theme.of(context).colorScheme;
+    final look = ToyLookScope.of(context);
     final busy = widget.snapshot.status == ClientStatus.pairing;
     final problem = widget.problem;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(
-          'Enter the code shown on ${widget.snapshot.hostLabel}',
-          style: text.titleMedium,
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 8),
+        Text(PhoneText.enterCodeOn(widget.snapshot.hostLabel), style: panelHeading(look), textAlign: TextAlign.center),
+        const SizedBox(height: ToySizes.space8),
         SizedBox(
-          width: 180,
+          width: look.type.title.fontSize! * _codeFieldWidthShare,
           child: TextField(
             key: const Key('pairingCode'),
             controller: _controller,
@@ -263,8 +283,9 @@ class _CodeEntryState extends ConsumerState<_CodeEntry> {
             keyboardType: TextInputType.number,
             inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(4)],
             textAlign: TextAlign.center,
-            style: text.headlineMedium?.copyWith(letterSpacing: 8),
-            decoration: const InputDecoration(border: OutlineInputBorder(), hintText: '0000', counterText: ''),
+            // Ink on the theme's paper field (Claude's 3c review).
+            style: look.type.title.copyWith(color: look.colors.ink, letterSpacing: 8),
+            decoration: const InputDecoration(hintText: PhoneText.codeHint, counterText: ''),
             // Four digits is a whole code, so send it without an extra tap.
             onChanged: (value) {
               if (value.length == 4) _submit();
@@ -273,25 +294,28 @@ class _CodeEntryState extends ConsumerState<_CodeEntry> {
           ),
         ),
         if (problem != null) ...[
-          const SizedBox(height: 8),
-          Text(
-            problem,
-            textAlign: TextAlign.center,
-            style: text.bodyMedium?.copyWith(color: scheme.error),
-          ),
+          const SizedBox(height: ToySizes.space8),
+          Text(problem, textAlign: TextAlign.center, style: panelStyle(look)),
         ],
-        const SizedBox(height: 8),
+        const SizedBox(height: ToySizes.space8),
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             if (busy)
-              const Padding(
-                padding: EdgeInsets.only(right: 12),
-                child: SizedBox.square(dimension: 20, child: CircularProgressIndicator(strokeWidth: 2)),
+              Padding(
+                padding: const EdgeInsets.only(right: ToySizes.space12),
+                child: SizedBox.square(
+                  dimension: ToySizes.space24,
+                  child: const CircularProgressIndicator(strokeWidth: 2),
+                ),
               ),
-            FilledButton(onPressed: busy ? null : _submit, child: const Text('Pair')),
-            const SizedBox(width: 8),
-            TextButton(onPressed: ref.read(connectionActionsProvider).disconnect, child: const Text('Cancel')),
+            ToyButton(label: PhoneText.pair, onPressed: busy ? null : _submit),
+            const SizedBox(width: ToySizes.space8),
+            ToyButton(
+              label: PhoneText.cancel,
+              color: look.colors.paper,
+              onPressed: ref.read(connectionActionsProvider).disconnect,
+            ),
           ],
         ),
       ],

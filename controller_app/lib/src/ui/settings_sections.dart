@@ -8,7 +8,7 @@ class _LookAndSoundSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const _Section(title: 'Look and sound', children: [LookAndSoundSection()]);
+    return const _Section(title: HostText.lookAndSound, children: [LookAndSoundSection()]);
   }
 }
 
@@ -20,71 +20,101 @@ class _HapticsSection extends ConsumerWidget {
     final settings = ref.watch(hapticSettingsProvider);
     final notifier = ref.read(hapticSettingsProvider.notifier);
     final caps = ref.watch(hapticsCapabilitiesProvider).value;
-    final text = Theme.of(context).textTheme;
     final supported = caps?.supported ?? false;
     final canScale = supported && (caps?.intensityControl ?? false);
     final on = settings.enabled && supported;
-
     return _Section(
-      title: 'Haptics',
+      title: SettingsText.haptics,
       children: [
         SwitchListTile(
           key: const Key('hapticsSwitch'),
           contentPadding: EdgeInsets.zero,
-          title: const Text('Haptics'),
-          subtitle: const Text("A tick on every press, and the TV's game events"),
+          title: const Text(SettingsText.haptics),
+          subtitle: const Text(SettingsText.hapticsLine),
           value: settings.enabled,
           onChanged: (v) => notifier.update(settings.copyWith(enabled: v)),
         ),
-        _SliderRow(
-          label: 'Button tick',
-          value: settings.intensity,
-          valueText: '${(settings.intensity * 100).round()}%',
-          min: 0.1,
-          divisions: 9,
-          sliderKey: const Key('hapticsIntensity'),
-          onChanged: on && canScale ? (v) => notifier.update(settings.copyWith(intensity: v)) : null,
-          trailing: TextButton(
-            key: const Key('tryTick'),
-            onPressed: on ? notifier.test : null,
-            child: const Text('Try'),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text('TV events', style: text.titleMedium),
-        Text(
-          'How strong each event from the TV feels, on its own. 0% turns that event off. The button tick '
-          "isn't affected.",
-          style: text.bodySmall,
-        ),
-        for (final e in HapticEvent.values)
-          _SliderRow(
-            label: eventLabel(e),
-            hint: eventFeel(e),
-            value: settings.eventIntensity(e),
-            valueText: settings.eventIntensity(e) == 0 ? 'Off' : '${(settings.eventIntensity(e) * 100).round()}%',
-            divisions: 10,
-            sliderKey: Key('eventIntensity-${e.name}'),
-            onChanged: on && canScale ? (v) => notifier.update(settings.withEvent(e, v)) : null,
-            trailing: TextButton(
-              key: Key('try-${e.name}'),
-              onPressed: on && settings.eventIntensity(e) > 0 ? () => notifier.tryEvent(e) : null,
-              child: const Text('Try'),
-            ),
-          ),
-        const SizedBox(height: 4),
-        Text(
-          caps == null
-              ? 'Checking the hardware…'
-              : !supported
-              ? 'This device has no haptics. Everything else still works.'
-              : '${caps.engine}${caps.intensityControl ? '' : '. This motor can only buzz on or off, so the strengths have no effect.'}',
-          style: text.bodySmall,
-        ),
-        const SizedBox(height: 8),
+        _tickRow(settings, notifier, on: on, canScale: canScale),
+        const SizedBox(height: ToySizes.space8),
+        _eventsHeading(context),
+        for (final e in HapticEvent.values) _eventRow(settings, notifier, e, on: on, canScale: canScale),
+        const SizedBox(height: ToySizes.space4),
+        _hardwareLine(context, caps, supported),
+        const SizedBox(height: ToySizes.space8),
         const _PressFeedback(),
       ],
     );
+  }
+
+  /// The button's own tick: its strength, and Try.
+  Widget _tickRow(
+    HapticSettings settings,
+    HapticSettingsNotifier notifier, {
+    required bool on,
+    required bool canScale,
+  }) => _SliderRow(
+    label: SettingsText.buttonTick,
+    value: settings.intensity,
+    valueText: SettingsText.share(settings.intensity),
+    min: 0.1,
+    divisions: 9,
+    sliderKey: const Key('hapticsIntensity'),
+    onChanged: on && canScale ? (v) => notifier.update(settings.copyWith(intensity: v)) : null,
+    trailing: TextButton(
+      key: const Key('tryTick'),
+      onPressed: on ? notifier.test : null,
+      child: const Text(SettingsText.trySomething),
+    ),
+  );
+
+  /// What the event sliders do, above them.
+  Widget _eventsHeading(BuildContext context) {
+    final look = ToyLookScope.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(SettingsText.tvEvents, style: look.type.button),
+        Text(SettingsText.tvEventsLine, style: look.type.body.copyWith(color: look.colors.inkSoft)),
+      ],
+    );
+  }
+
+  /// One TV event: how strong it feels, and Try.
+  Widget _eventRow(
+    HapticSettings settings,
+    HapticSettingsNotifier notifier,
+    HapticEvent e, {
+    required bool on,
+    required bool canScale,
+  }) {
+    final strength = settings.eventIntensity(e);
+    return _SliderRow(
+      label: eventLabel(e),
+      hint: eventFeel(e),
+      value: strength,
+      valueText: strength == 0 ? SettingsText.off : SettingsText.share(strength),
+      divisions: 10,
+      sliderKey: Key('eventIntensity-${e.name}'),
+      onChanged: on && canScale ? (v) => notifier.update(settings.withEvent(e, v)) : null,
+      trailing: TextButton(
+        key: Key('try-${e.name}'),
+        onPressed: on && strength > 0 ? () => notifier.tryEvent(e) : null,
+        child: const Text(SettingsText.trySomething),
+      ),
+    );
+  }
+
+  /// What the hardware can do, or why the strengths do nothing.
+  Widget _hardwareLine(BuildContext context, HapticsCapabilities? caps, bool supported) {
+    final look = ToyLookScope.of(context);
+    final line = caps == null
+        ? SettingsText.checkingHardware
+        : !supported
+        ? SettingsText.noHaptics
+        : caps.intensityControl
+        ? caps.engine
+        : SettingsText.motorOnOff(caps.engine);
+    return Text(line, style: look.type.body.copyWith(color: look.colors.inkSoft));
   }
 }
 
@@ -98,28 +128,24 @@ class _PressFeedback extends ConsumerWidget {
     final n = ref.read(pressFeedbackProvider.notifier);
     final flash = ref.watch(flashOnPressProvider);
     final isIOS = ref.watch(isIOSProvider);
-    final text = Theme.of(context).textTheme;
+    final look = ToyLookScope.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Without haptics', style: text.titleMedium),
+        Text(SettingsText.withoutHaptics, style: look.type.button),
         SwitchListTile(
           key: const Key('pressFlash'),
           contentPadding: EdgeInsets.zero,
-          title: const Text('Flash on press'),
-          subtitle: const Text('On by itself on devices without haptics'),
+          title: const Text(SettingsText.flashOnPress),
+          subtitle: const Text(SettingsText.flashOnPressLine),
           value: flash,
           onChanged: (v) => n.update(s.copyWith(flash: v)),
         ),
         SwitchListTile(
           key: const Key('pressClick'),
           contentPadding: EdgeInsets.zero,
-          title: const Text('Click sound'),
-          subtitle: Text(
-            isIOS
-                ? 'A click on every press. The device must not be muted.'
-                : 'A click on every press. Needs Touch sounds on in the system settings.',
-          ),
+          title: const Text(SettingsText.clickSound),
+          subtitle: Text(isIOS ? SettingsText.clickSoundLineIOS : SettingsText.clickSoundLine),
           value: s.click,
           onChanged: (v) => n.update(s.copyWith(click: v)),
         ),
@@ -136,14 +162,14 @@ class _GyroSection extends ConsumerWidget {
     final s = ref.watch(gyroSettingsProvider);
     final n = ref.read(gyroSettingsProvider.notifier);
     return _Section(
-      title: 'Gyro',
-      subtitle: 'Calibrate from the gyro mode screen (or its settings button).',
+      title: PhoneText.gyro,
+      subtitle: SettingsText.gyroCalibrate,
       children: [
         _SliderRow(
-          label: 'Sensitivity',
-          hint: 'full at ${(fullTiltDegrees / s.sensitivity).round()}° of tilt',
+          label: SettingsText.sensitivity,
+          hint: SettingsText.gyroTiltHint((fullTiltDegrees / s.sensitivity).round()),
           value: s.sensitivity,
-          valueText: '${s.sensitivity.toStringAsFixed(2)}×',
+          valueText: SettingsText.times(s.sensitivity),
           min: 0.5,
           max: 2.0,
           divisions: 15,
@@ -151,18 +177,18 @@ class _GyroSection extends ConsumerWidget {
           onChanged: (v) => n.update(s.copyWith(sensitivity: v)),
         ),
         _SliderRow(
-          label: 'Dead zone',
+          label: SettingsText.deadZone,
           value: s.deadZone,
-          valueText: '${(s.deadZone * 100).round()}%',
+          valueText: SettingsText.share(s.deadZone),
           max: 0.3,
           divisions: 15,
           sliderKey: const Key('settingsGyroDeadZone'),
           onChanged: (v) => n.update(s.copyWith(deadZone: v)),
         ),
         _SliderRow(
-          label: 'Smoothing',
+          label: SettingsText.smoothing,
           value: s.smoothing,
-          valueText: '${(s.smoothing * 100).round()}%',
+          valueText: SettingsText.share(s.smoothing),
           max: 0.9,
           divisions: 9,
           sliderKey: const Key('settingsGyroSmoothing'),
@@ -181,21 +207,21 @@ class _SticksSection extends ConsumerWidget {
     final s = ref.watch(stickSettingsProvider);
     final n = ref.read(stickSettingsProvider.notifier);
     return _Section(
-      title: 'Sticks',
+      title: PhoneText.sticks,
       children: [
         SwitchListTile(
           key: const Key('settingsStickFloating'),
           contentPadding: EdgeInsets.zero,
-          title: const Text('Floating sticks'),
-          subtitle: const Text('Each stick starts where your thumb lands'),
+          title: const Text(SettingsText.floatingSticks),
+          subtitle: const Text(SettingsText.floatingLine),
           value: s.floating,
           onChanged: (v) => n.update(s.copyWith(floating: v)),
         ),
         _SliderRow(
-          label: 'Button size',
-          hint: 'A, B, X and Y, compared with D-pad mode',
+          label: SettingsText.buttonSize,
+          hint: SettingsText.buttonSizeHint,
           value: s.buttonSize,
-          valueText: '${(s.buttonSize * 100).round()}%',
+          valueText: SettingsText.share(s.buttonSize),
           min: StickSettings.minButtonSize,
           max: StickSettings.maxButtonSize,
           divisions: 8,
@@ -203,19 +229,19 @@ class _SticksSection extends ConsumerWidget {
           onChanged: (v) => n.update(s.copyWith(buttonSize: v)),
         ),
         _SliderRow(
-          label: 'Dead zone',
+          label: SettingsText.deadZone,
           value: s.deadZone,
-          valueText: '${(s.deadZone * 100).round()}%',
+          valueText: SettingsText.share(s.deadZone),
           max: 0.4,
           divisions: 20,
           sliderKey: const Key('settingsStickDeadZone'),
           onChanged: (v) => n.update(s.copyWith(deadZone: v)),
         ),
         _SliderRow(
-          label: 'Sensitivity',
-          hint: 'full at ${(100 / s.sensitivity).round()}% of the travel',
+          label: SettingsText.sensitivity,
+          hint: SettingsText.stickTravelHint((100 / s.sensitivity).round()),
           value: s.sensitivity,
-          valueText: '${s.sensitivity.toStringAsFixed(2)}×',
+          valueText: SettingsText.times(s.sensitivity),
           min: 0.5,
           max: 2.0,
           divisions: 15,
@@ -236,13 +262,13 @@ class _GameSection extends ConsumerWidget {
     final s = ref.watch(controlsSettingsProvider);
     final n = ref.read(controlsSettingsProvider.notifier);
     return _Section(
-      title: 'Game on this phone',
-      subtitle: 'How much you can see the buttons when a game is behind them',
+      title: SettingsText.gameOnThisPhone,
+      subtitle: SettingsText.gameOnThisPhoneLine,
       children: [
         _SliderRow(
-          label: 'Button visibility (opacity)',
+          label: SettingsText.opacity,
           value: s.opacity,
-          valueText: '${(s.opacity * 100).round()}%',
+          valueText: SettingsText.share(s.opacity),
           min: ControlsSettings.minOpacity,
           max: ControlsSettings.maxOpacity,
           // 20% to 100% in steps of 10%.
@@ -263,22 +289,22 @@ class _FrameRateRow extends ConsumerWidget {
   const _FrameRateRow();
 
   /// The space above the row, which puts it apart from the slider before it.
-  static const _topGap = 12.0;
+  static const _topGap = ToySizes.space12;
 
   /// The space between the row's texts and its buttons.
-  static const _labelGap = 4.0;
+  static const _labelGap = ToySizes.space4;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final hz = ref.watch(hostingFrameRateProvider);
-    final text = Theme.of(context).textTheme;
+    final look = ToyLookScope.of(context);
     return Padding(
       padding: const EdgeInsets.only(top: _topGap),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Frame rate (test)', style: text.bodyLarge),
-          Text('For testing: fewer pictures a second saves battery but looks less smooth', style: text.bodySmall),
+          Text(SettingsText.frameRate, style: look.type.body),
+          Text(SettingsText.frameRateLine, style: look.type.body.copyWith(color: look.colors.inkSoft)),
           const SizedBox(height: _labelGap),
           SegmentedButton<int>(
             key: const Key('settingsFrameRate'),

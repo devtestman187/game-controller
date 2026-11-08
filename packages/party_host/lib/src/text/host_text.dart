@@ -1,7 +1,7 @@
 import 'package:connection/connection.dart' show GamepadState, InputMode;
 import 'package:puzzle_game/puzzle_game.dart' show Level, MatchFormat;
 
-import 'stats_state.dart';
+import '../stats_state.dart';
 
 /// Every word the host's screens show a player, in one place (M13, design
 /// section 7: "one string table"; docs/code-health.md's Look-and-sound row).

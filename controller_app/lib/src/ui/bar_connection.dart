@@ -1,7 +1,7 @@
 import 'package:connection/connection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:protocol/protocol.dart';
+import 'package:party_host/party_host.dart' show PhoneText, ToyLook, ToyLookScope, ToySizes;
 
 import '../providers.dart';
 import 'connect_screen.dart';
@@ -16,9 +16,10 @@ class BarConnection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final client = ref.watch(clientStateProvider);
-    final text = Theme.of(context).textTheme;
+    final look = ToyLookScope.of(context);
     final stats = client.rttStats;
     final status = ref.watch(gameStatusProvider);
+    final label = look.type.body.copyWith(color: look.colors.onBackground);
     // While a game shows on this phone the game draws its own status (m12
     // §2.7), so the panel stays out of the bar and the ping shows instead.
     final gameShown = ref.watch(showsGameProvider);
@@ -26,18 +27,19 @@ class BarConnection extends ConsumerWidget {
       children: [
         if (client.isConnected && client.player != null) ...[
           PlayerBadge(number: client.player!),
-          const SizedBox(width: 6),
+          const SizedBox(width: ToySizes.space8),
         ],
         Flexible(
           child: ActionChip(
             key: const Key('connectionChip'),
             avatar: const ConnectionDot(),
+            labelStyle: label,
             label: Text(
               client.isConnected
-                  ? '${client.hostLabel} · ${client.rttMs ?? '–'} ms'
+                  ? PhoneText.linkWithPing(client.hostLabel, client.rttMs)
                   : ref.watch(demoProvider)
-                  ? 'Demo, no TV · tap to connect'
-                  : '${statusLabel(client)} · tap to connect',
+                  ? PhoneText.demoLink
+                  : PhoneText.tapToConnect(statusLabel(client)),
               overflow: TextOverflow.ellipsis,
             ),
             onPressed: () => openConnect(context),
@@ -45,15 +47,15 @@ class BarConnection extends ConsumerWidget {
         ),
         // The game's status panel takes the ping's place (P6, C24).
         if (client.isConnected && !gameShown && !status.isHidden) ...[
-          const SizedBox(width: 8),
+          const SizedBox(width: ToySizes.space8),
           Flexible(child: StatusPanel(status: status)),
         ] else if (client.isConnected && stats != null) ...[
-          const SizedBox(width: 8),
+          const SizedBox(width: ToySizes.space8),
           Flexible(
             child: Text(
-              '30 s: min ${stats.minMs} · avg ${stats.avgMs} · max ${stats.maxMs} ms',
+              PhoneText.pingStats(stats.minMs, stats.avgMs, stats.maxMs),
               key: const Key('pingStats'),
-              style: text.bodySmall,
+              style: label,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
@@ -79,10 +81,10 @@ class CompactConnection extends ConsumerWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (player != null) ...[PlayerBadge(number: player), const SizedBox(width: 6)],
+        if (player != null) ...[PlayerBadge(number: player), const SizedBox(width: ToySizes.space8)],
         IconButton(
           key: const Key('connectionButton'),
-          tooltip: 'Connection',
+          tooltip: PhoneText.connection,
           icon: const ConnectionDot(key: Key('connectionDot')),
           onPressed: () => openConnect(context),
         ),
@@ -91,19 +93,78 @@ class CompactConnection extends ConsumerWidget {
   }
 }
 
-/// The link's state as a dot (P6): the chip's avatar, on its own in the
-/// compact bar. Green when connected, amber on the way, grey when idle.
+/// The link's state as a dot (P6, M13 3c): the chip's avatar, on its own in
+/// the compact bar. A badge's disc, in the state's colour with the look's ink
+/// edge, so the bar's text never changes colour with the link.
 class ConnectionDot extends ConsumerWidget {
   const ConnectionDot({super.key});
+
+  /// The dot's diameter, the size the chip's avatar always drew.
+  static const dotSize = LinkDot.dotSize;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final status = ref.watch(clientStateProvider.select((s) => s.status));
+    return LinkDot(status: status);
+  }
+}
+
+/// The link's dot for a [status] the caller already has, as the Connect
+/// screen's chip draws it beside its word.
+class LinkDot extends StatelessWidget {
+  const LinkDot({super.key, required this.status});
+
+  final ClientStatus status;
 
   /// The dot's diameter, the size the chip's avatar always drew.
   static const dotSize = 12.0;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final status = ref.watch(clientStateProvider.select((s) => s.status));
-    return Icon(Icons.circle, size: dotSize, color: _statusColor(context, status));
+  Widget build(BuildContext context) {
+    final look = ToyLookScope.of(context);
+    return CustomPaint(
+      size: const Size.square(dotSize),
+      painter: LinkDotPainter(look: look, color: linkDotColor(look, status)),
+    );
   }
+}
+
+/// A link's state as a colour (M13 3c, rule 4): good when connected, caution
+/// on the way, focus for a code to enter, and paper when there is no link (a
+/// faded ink dot was lost on the Night sky, Claude's review).
+Color linkDotColor(ToyLook look, ClientStatus status) => switch (status) {
+  ClientStatus.connected => look.colors.good,
+  ClientStatus.reconnecting || ClientStatus.connecting || ClientStatus.pairing => look.colors.caution,
+  ClientStatus.waitingForCode => look.colors.focus,
+  ClientStatus.idle || ClientStatus.failed => look.colors.paper,
+};
+
+/// Paints [LinkDot]: the state's disc with the look's ink edge, as a badge is
+/// drawn, so a dot reads on the pad and on the sky alike.
+class LinkDotPainter extends CustomPainter {
+  const LinkDotPainter({required this.look, required this.color});
+
+  /// The look whose edge colour and width the dot is drawn with.
+  final ToyLook look;
+
+  /// The state's fill.
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final centre = size.center(Offset.zero);
+    final radius = size.shortestSide / 2 - look.sizes.outlineWidth / 2;
+    final edge = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = look.sizes.outlineWidth
+      ..color = look.colors.ink;
+    canvas
+      ..drawCircle(centre, radius, Paint()..color = color)
+      ..drawCircle(centre, radius, edge);
+  }
+
+  @override
+  bool shouldRepaint(LinkDotPainter oldDelegate) => oldDelegate.look != look || oldDelegate.color != color;
 }
 
 /// "P1" in the player's colour, matching the sprite and the badge on the TV.
@@ -113,23 +174,19 @@ class PlayerBadge extends StatelessWidget {
   final int number;
 
   @override
-  Widget build(BuildContext context) => Tooltip(
-    message: 'You are player $number on the TV',
-    child: Container(
-      key: const Key('playerBadge'),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(color: Color(playerColor(number)), borderRadius: BorderRadius.circular(12)),
-      child: Text(
-        'P$number',
-        style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF14181F)),
+  Widget build(BuildContext context) {
+    final look = ToyLookScope.of(context);
+    return Tooltip(
+      message: PhoneText.youArePlayer(number),
+      child: Container(
+        key: const Key('playerBadge'),
+        padding: const EdgeInsets.symmetric(horizontal: ToySizes.space8, vertical: ToySizes.space4),
+        decoration: BoxDecoration(
+          color: look.colors.player(number),
+          borderRadius: BorderRadius.circular(ToySizes.space12),
+        ),
+        child: Text(PhoneText.playerShort(number), style: look.type.body.copyWith(color: look.colors.ink)),
       ),
-    ),
-  );
+    );
+  }
 }
-
-Color _statusColor(BuildContext context, ClientStatus status) => switch (status) {
-  ClientStatus.connected => Colors.greenAccent,
-  ClientStatus.reconnecting || ClientStatus.connecting || ClientStatus.pairing => Colors.amberAccent,
-  ClientStatus.waitingForCode => Theme.of(context).colorScheme.primary,
-  ClientStatus.idle || ClientStatus.failed => Theme.of(context).colorScheme.onSurfaceVariant,
-};

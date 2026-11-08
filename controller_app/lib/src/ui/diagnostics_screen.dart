@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:party_host/party_host.dart' as party;
+import 'package:party_host/party_host.dart' show HostText, PhoneText, SettingsText, ToyCard, ToyLookScope, ToySizes;
 import 'package:protocol/protocol.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -14,6 +15,14 @@ import '../providers.dart';
 import 'diagnostics_view_section.dart';
 import 'labels.dart';
 
+part 'diagnostics_screen_widgets.dart';
+
+/// The log lines the screen shows: the tail of a longer log.
+const _keptLogLines = 200;
+
+/// The log's line height, tighter than the look's body so more lines fit.
+const _logLineHeight = 1.3;
+
 /// Basic Diagnostics (PRD C10): connection state, discovered TVs, local
 /// network permission and recent log lines, with a share button. This is how
 /// iOS problems get debugged without Xcode.
@@ -22,43 +31,24 @@ class DiagnosticsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final client = ref.watch(clientStateProvider);
-    final discovery = ref.watch(discoveryStateProvider);
-    final network = ref.watch(localNetworkStatusProvider);
-    final identity = ref.watch(identityProvider);
-    final lines = ref.watch(logLinesProvider);
-    final caps = ref.watch(hapticsCapabilitiesProvider).value;
-    final haptics = ref.watch(hapticSettingsProvider);
-    final player = ref.read(hapticsPlayerProvider);
-    final tvHaptics = ref.watch(tvHapticsProvider);
-    final input = ref.watch(padProvider);
-    final gyro = ref.watch(gyroProvider);
-    final gyroSettings = ref.watch(gyroSettingsProvider);
-    final stickSettings = ref.watch(stickSettingsProvider);
-    final outages = ref.watch(outagesProvider);
-    final session = ref.watch(sessionStatsProvider);
-    final viewSummary = ref.watch(clientProvider).viewerStats?.summary;
-    final text = Theme.of(context).textTheme;
-    final mono = text.bodySmall?.copyWith(fontFamily: 'monospace', height: 1.3);
-    final target = client.target;
-
+    final summary = ref.watch(clientProvider).viewerStats?.summary;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Diagnostics'),
+        title: const Text(PhoneText.diagnostics),
         actions: [
           IconButton(
-            tooltip: 'Copy report',
+            tooltip: SettingsText.copyReport,
             icon: const Icon(Icons.copy),
             onPressed: () async {
               await Clipboard.setData(ClipboardData(text: buildReport(ref)));
               if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Report copied')));
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text(SettingsText.reportCopied)));
               }
             },
           ),
           Builder(
             builder: (buttonContext) => IconButton(
-              tooltip: 'Share log',
+              tooltip: SettingsText.shareLog,
               icon: const Icon(Icons.share),
               onPressed: () => _share(buttonContext, ref),
             ),
@@ -67,151 +57,19 @@ class DiagnosticsScreen extends ConsumerWidget {
       ),
       body: SafeArea(
         child: ListView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(ToySizes.space16),
           children: [
-            _Section('Connection', [
-              ('Status', statusLabel(client)),
-              ('TV', client.hostLabel.isEmpty ? '–' : client.hostLabel),
-              ('Address', target?.ordered.map((a) => target.copyWith(addresses: [a]).display).join(', ') ?? '–'),
-              ('TV ID', target?.hostId ?? '–'),
-              if (client.player != null) ('Player', 'P${client.player} on the TV'),
-              ('Ping', client.rttMs == null ? '–' : '${client.rttMs} ms'),
-              if (client.rttStats != null) ('Ping, last 30 s', '${client.rttStats}, p95 ${client.rttStats!.p95Ms} ms'),
-              if (client.problem != null) ('Problem', client.problem!.name),
-              if (client.detail != null) ('Detail', client.detail!),
-              if (client.osErrorCode != null) ('OS error', '${client.osErrorCode}'),
-              if (client.attempt > 0) ('Reconnect attempt', '${client.attempt}'),
-            ]),
-            _Section('Local network permission', [
-              ('Status', network.label),
-              ('', network.explanation),
-            ], highlight: network.access == LocalNetworkAccess.probablyDenied),
-            _Section('Discovery ($serviceType)', [
-              ('Running', discovery.running ? 'Yes' : 'No'),
-              if (discovery.error != null) ('Error', discovery.error!),
-              ('TVs found', '${discovery.hosts.length}'),
-              for (final h in discovery.hosts)
-                (
-                  h.name,
-                  '${h.address.addresses.join(', ')} port ${h.address.port} · ID ${h.address.hostId ?? '?'} · '
-                      'protocol v${h.advertisedVersion ?? '?'}',
-                ),
-            ]),
-            _Section('Haptics', [
-              ('Supported', caps == null ? 'Checking…' : (caps.supported ? 'Yes' : 'No')),
-              ('Engine', caps?.engine ?? '–'),
-              ('Intensity control', caps == null ? '–' : (caps.intensityControl ? 'Yes' : 'No (on/off only)')),
-              ('Setting', haptics.enabled ? 'On, tick ${(haptics.intensity * 100).round()}%' : 'Off'),
-              (
-                'TV event strengths',
-                HapticEvent.values.map((e) => '${e.name} ${(haptics.eventIntensity(e) * 100).round()}%').join(', '),
-              ),
-              ('Ticks played', '${player.played}'),
-              ('TV events', '${tvHaptics.received} received, ${tvHaptics.played} played'),
-              if (tvHaptics.last case final last?)
-                ('Last TV event', '${last.event.name}, ${(last.intensity * 100).round()}%, ${last.durationMs} ms'),
-              if (player.lastError != null) ('Last error', player.lastError!),
-              if (caps?.detail != null) ('Native detail', caps!.detail!),
-            ]),
-            _Section('Input', [
-              ('Now', input.isNeutral ? 'Nothing pressed' : '$input'),
-              ('States sent', '${ref.read(clientProvider).inputsSent}'),
-              (
-                'Stick settings',
-                '${stickSettings.floating ? 'floating' : 'fixed'}, dead zone ${(stickSettings.deadZone * 100).round()}%, '
-                    'sensitivity ${stickSettings.sensitivity.toStringAsFixed(2)}',
-              ),
-            ]),
-            _Section('Gyro', [
-              (
-                'Mode',
-                switch (gyro.mode) {
-                  PadMode.dpad => 'D-pad',
-                  PadMode.gyro => 'Gyro',
-                  PadMode.sticks => 'Sticks',
-                },
-              ),
-              (
-                'Gyroscope',
-                switch (gyro.availability) {
-                  GyroAvailability.unknown => 'Not checked yet (switch to Gyro)',
-                  GyroAvailability.checking => 'Checking…',
-                  GyroAvailability.available => 'Working',
-                  GyroAvailability.unavailable => 'Not available',
-                },
-              ),
-              if (gyro.problem != null) ('Problem', gyro.problem!),
-              if (gyro.side != null) ('Screen locked to', 'landscape ${gyro.side!.name}'),
-              ('Stick', 'x ${gyro.x.toStringAsFixed(3)}  y ${gyro.y.toStringAsFixed(3)}'),
-              if (gyro.up != null) ('Up direction', '${gyro.up}'),
-              ('Updates', '${gyro.updates}'),
-              (
-                'Settings',
-                'sensitivity ${gyroSettings.sensitivity.toStringAsFixed(2)}, dead zone ${(gyroSettings.deadZone * 100).round()}%, '
-                    'smoothing ${(gyroSettings.smoothing * 100).round()}%',
-              ),
-            ]),
-            _Section('Reconnects', [
-              if (outages.isEmpty) ('', 'No drops since the app started.'),
-              for (final o in outages)
-                (
-                  _clock(o.from),
-                  o.length == null
-                      ? 'Dropped (${o.reason}), reconnecting…'
-                      : 'Dropped (${o.reason}), back after ${(o.length!.inMilliseconds / 1000).toStringAsFixed(1)} s',
-                ),
-            ]),
-            _Section('Session (battery and CPU)', [
-              if (session == null)
-                ('', 'Measuring… (this phone build may not report it)')
-              else ...[
-                ('Running for', _duration(session.length)),
-                (
-                  'CPU',
-                  '${_pct(session.recentCpuPercent)} of one core (last minute), ${_pct(session.cpuPercent)} since launch',
-                ),
-                (
-                  'Battery',
-                  '${_pct(session.latest.status.battery == null ? null : session.latest.status.battery! * 100)}'
-                      '${session.latest.status.charging ? ', charging' : ''}'
-                      '${session.latest.status.lowPower ? ', Low Power Mode' : ''}'
-                      ' (${_pct(session.first.status.battery == null ? null : session.first.status.battery! * 100)} at launch)',
-                ),
-                (
-                  'Battery use',
-                  session.batteryPerHour == null
-                      ? 'shown after 5 min on battery'
-                      : '${session.batteryPerHour!.toStringAsFixed(1)}% per hour',
-                ),
-                ('Heat', session.latest.status.thermal),
-                ('Input sent', '${session.sendRate.toStringAsFixed(0)} states/s (last minute)'),
-              ],
-            ]),
-            _Section('This phone', [
-              ('Name', identity.name),
-              ('Controller ID', identity.controllerId),
-              ('Platform', identity.platform),
-              ('App version', versionLabel),
-              ('Protocol', 'v$protocolVersion'),
-            ]),
-            if (viewSummary != null && viewSummary.isNotEmpty) DiagnosticsViewSection(summary: viewSummary),
-            Padding(
-              padding: const EdgeInsets.only(top: 8, bottom: 4),
-              child: Text('Log (newest last, ${lines.length} lines)', style: text.titleMedium),
-            ),
-            DecoratedBox(
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surfaceContainer,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(8),
-                child: SelectableText(
-                  lines.length > 200 ? lines.sublist(lines.length - 200).join('\n') : lines.join('\n'),
-                  style: mono,
-                ),
-              ),
-            ),
+            _connectionSection(ref),
+            _networkSection(ref),
+            _discoverySection(ref),
+            _hapticsSection(ref),
+            _inputSection(ref),
+            _gyroSection(ref),
+            _reconnectsSection(ref),
+            _sessionSection(ref),
+            _thisPhoneSection(ref),
+            if (summary != null && summary.isNotEmpty) DiagnosticsViewSection(summary: summary),
+            _logBlock(context, ref),
           ],
         ),
       ),
@@ -223,12 +81,201 @@ class DiagnosticsScreen extends ConsumerWidget {
     await SharePlus.instance.share(
       ShareParams(
         text: buildReport(ref),
-        subject: 'Controller diagnostics',
+        subject: SettingsText.copySubject,
         // Needed on iPad, harmless on iPhone.
         sharePositionOrigin: box == null ? null : box.localToGlobal(Offset.zero) & box.size,
       ),
     );
   }
+}
+
+/// The connection's group: the state, the TV, where it is, and what went wrong.
+Widget _connectionSection(WidgetRef ref) {
+  final client = ref.watch(clientStateProvider);
+  final target = client.target;
+  return _Section(SettingsText.connectionSection, [
+    (SettingsText.statusRow, statusLabel(client)),
+    (SettingsText.tvRow, client.hostLabel.isEmpty ? HostText.dash : client.hostLabel),
+    (
+      SettingsText.addressRow,
+      target?.ordered.map((a) => target.copyWith(addresses: [a]).display).join(', ') ?? HostText.dash,
+    ),
+    (SettingsText.tvIdRow, target?.hostId ?? HostText.dash),
+    if (client.player != null) (SettingsText.playerRow, SettingsText.playerOnTv(client.player!)),
+    (SettingsText.pingRow, SettingsText.milliseconds(client.rttMs)),
+    if (client.rttStats != null)
+      (SettingsText.pingLast30Row, SettingsText.summaryWithP95('${client.rttStats}', client.rttStats!.p95Ms)),
+    if (client.problem != null) (SettingsText.problemRow, client.problem!.name),
+    if (client.detail != null) (SettingsText.detailRow, client.detail!),
+    if (client.osErrorCode != null) (SettingsText.osErrorRow, '${client.osErrorCode}'),
+    if (client.attempt > 0) (SettingsText.reconnectAttemptRow, '${client.attempt}'),
+  ]);
+}
+
+/// The local network's permission, which a denied one marks bad.
+Widget _networkSection(WidgetRef ref) {
+  final network = ref.watch(localNetworkStatusProvider);
+  return _Section(SettingsText.localNetworkSection, [
+    (SettingsText.statusRow, network.label),
+    ('', network.explanation),
+  ], highlight: network.access == LocalNetworkAccess.probablyDenied);
+}
+
+/// The TVs discovery found.
+Widget _discoverySection(WidgetRef ref) {
+  final discovery = ref.watch(discoveryStateProvider);
+  return _Section(SettingsText.discoveryWithType(serviceType), [
+    (SettingsText.runningRow, discovery.running ? SettingsText.yes : SettingsText.no),
+    if (discovery.error != null) (SettingsText.errorRow, discovery.error!),
+    (SettingsText.foundRow, '${discovery.hosts.length}'),
+    for (final h in discovery.hosts)
+      (
+        h.name,
+        SettingsText.discovered(
+          h.address.addresses.join(', '),
+          h.address.port,
+          h.address.hostId,
+          h.advertisedVersion?.toString(),
+        ),
+      ),
+  ]);
+}
+
+/// What the phone's motors are and do.
+Widget _hapticsSection(WidgetRef ref) {
+  final caps = ref.watch(hapticsCapabilitiesProvider).value;
+  final haptics = ref.watch(hapticSettingsProvider);
+  final player = ref.read(hapticsPlayerProvider);
+  final tvHaptics = ref.watch(tvHapticsProvider);
+  return _Section(SettingsText.haptics, [
+    (
+      SettingsText.supportedRow,
+      caps == null ? SettingsText.checking : (caps.supported ? SettingsText.yes : SettingsText.no),
+    ),
+    (SettingsText.engineRow, caps?.engine ?? HostText.dash),
+    (
+      SettingsText.intensityControlRow,
+      caps == null ? HostText.dash : (caps.intensityControl ? SettingsText.yes : SettingsText.onOffOnly),
+    ),
+    (SettingsText.settingRow, SettingsText.tickSetting(haptics.enabled, (haptics.intensity * 100).round())),
+    (
+      SettingsText.eventStrengthsRow,
+      HapticEvent.values
+          .map((e) => SettingsText.eventStrength(e.name, (haptics.eventIntensity(e) * 100).round()))
+          .join(', '),
+    ),
+    (SettingsText.ticksPlayedRow, '${player.played}'),
+    (SettingsText.tvEventsRow, SettingsText.receivedPlayed(tvHaptics.received, tvHaptics.played)),
+    if (tvHaptics.last case final last?)
+      (
+        SettingsText.lastEventRow,
+        SettingsText.eventDetail(last.event.name, (last.intensity * 100).round(), last.durationMs),
+      ),
+    if (player.lastError != null) (SettingsText.lastErrorRow, player.lastError!),
+    if (caps?.detail != null) (SettingsText.nativeDetailRow, caps!.detail!),
+  ]);
+}
+
+/// What the pad is sending now, and how its sticks are set.
+Widget _inputSection(WidgetRef ref) {
+  final input = ref.watch(padProvider);
+  final stickSettings = ref.watch(stickSettingsProvider);
+  return _Section(SettingsText.inputSection, [
+    (SettingsText.nowRow, input.isNeutral ? SettingsText.nothingPressed : '$input'),
+    (SettingsText.statesSentRow, '${ref.read(clientProvider).inputsSent}'),
+    (
+      SettingsText.stickSettingsRow,
+      SettingsText.stickSettingsValue(
+        stickSettings.floating ? SettingsText.floating : SettingsText.fixed,
+        (stickSettings.deadZone * 100).round(),
+        stickSettings.sensitivity,
+      ),
+    ),
+  ]);
+}
+
+/// The tilt mode: whether the phone has a gyroscope, and how it reads it.
+Widget _gyroSection(WidgetRef ref) {
+  final gyro = ref.watch(gyroProvider);
+  final gyroSettings = ref.watch(gyroSettingsProvider);
+  return _Section(PhoneText.gyro, [
+    (SettingsText.modeRow, PhoneText.modeName(gyro.mode.name)),
+    (
+      SettingsText.gyroscopeRow,
+      switch (gyro.availability) {
+        GyroAvailability.unknown => SettingsText.gyroNotChecked,
+        GyroAvailability.checking => SettingsText.checking,
+        GyroAvailability.available => SettingsText.working,
+        GyroAvailability.unavailable => SettingsText.notAvailable,
+      },
+    ),
+    if (gyro.problem != null) (SettingsText.problemRow, gyro.problem!),
+    if (gyro.side != null) (SettingsText.lockedToRow, SettingsText.landscape(gyro.side!.name)),
+    (SettingsText.stickRow, SettingsText.tilt(gyro.x, gyro.y)),
+    if (gyro.up != null) (SettingsText.upDirectionRow, '${gyro.up}'),
+    (SettingsText.updatesRow, '${gyro.updates}'),
+    (
+      SettingsText.settingsRow,
+      SettingsText.gyroSettingsValue((gyroSettings.deadZone * 100).round(), (gyroSettings.smoothing * 100).round()),
+    ),
+  ]);
+}
+
+/// The drops this session, newest first.
+Widget _reconnectsSection(WidgetRef ref) {
+  final outages = ref.watch(outagesProvider);
+  return _Section(SettingsText.reconnectsSection, [
+    if (outages.isEmpty) ('', SettingsText.noDrops),
+    for (final o in outages)
+      (
+        _clock(o.from),
+        o.length == null
+            ? SettingsText.droppedReconnecting(o.reason)
+            : SettingsText.droppedBackAfter(o.reason, (o.length!.inMilliseconds / 1000).toStringAsFixed(1)),
+      ),
+  ]);
+}
+
+/// What the session cost: time, CPU, battery and heat.
+Widget _sessionSection(WidgetRef ref) {
+  final session = ref.watch(sessionStatsProvider);
+  return _Section(SettingsText.sessionSection, [
+    if (session == null)
+      ('', SettingsText.measuring)
+    else ...[
+      (SettingsText.runningForRow, _duration(session.length)),
+      (SettingsText.cpuRow, SettingsText.cpuValue(_pct(session.recentCpuPercent), _pct(session.cpuPercent))),
+      (
+        SettingsText.batteryRow,
+        SettingsText.batteryValue(
+          _pct(session.latest.status.battery == null ? null : session.latest.status.battery! * 100),
+          charging: session.latest.status.charging,
+          lowPower: session.latest.status.lowPower,
+          atLaunch: _pct(session.first.status.battery == null ? null : session.first.status.battery! * 100),
+        ),
+      ),
+      (
+        SettingsText.batteryUseRow,
+        session.batteryPerHour == null
+            ? SettingsText.batteryLater
+            : SettingsText.perHour(session.batteryPerHour!.toStringAsFixed(1)),
+      ),
+      (SettingsText.heatRow, session.latest.status.thermal),
+      (SettingsText.inputSentRow, SettingsText.statesPerSecond(session.sendRate.toStringAsFixed(0))),
+    ],
+  ]);
+}
+
+/// Which phone this is, and what it runs.
+Widget _thisPhoneSection(WidgetRef ref) {
+  final identity = ref.watch(identityProvider);
+  return _Section(SettingsText.thisPhoneSection, [
+    (SettingsText.nameRow, identity.name),
+    (SettingsText.controllerIdRow, identity.controllerId),
+    (SettingsText.platformRow, identity.platform),
+    (SettingsText.appVersionRow, versionLabel),
+    (SettingsText.protocolRow, SettingsText.protocolVersion(protocolVersion)),
+  ]);
 }
 
 /// The whole Diagnostics screen plus the full log, as plain text to share.
@@ -291,7 +338,7 @@ void _writeHostLog(StringBuffer b, WidgetRef ref) {
   if (host == null || !host.live) return;
   b
     ..writeln()
-    ..writeln('Host log (this phone is the host):')
+    ..writeln(SettingsText.hostLogHeading)
     ..writeln(ref.read(party.logProvider).export());
 }
 
@@ -314,47 +361,3 @@ String _duration(Duration d) => d.inHours > 0
 
 String _clock(DateTime t) =>
     '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}:${t.second.toString().padLeft(2, '0')}';
-
-class _Section extends StatelessWidget {
-  const _Section(this.title, this.rows, {this.highlight = false});
-
-  final String title;
-  final List<(String, String)> rows;
-  final bool highlight;
-
-  @override
-  Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
-    final scheme = Theme.of(context).colorScheme;
-    return Card(
-      color: highlight ? scheme.errorContainer : null,
-      margin: const EdgeInsets.only(bottom: 12),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(title, style: text.titleMedium),
-            const SizedBox(height: 4),
-            for (final (label, value) in rows)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 2),
-                child: label.isEmpty
-                    ? Text(value, style: text.bodyMedium)
-                    : Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          SizedBox(
-                            width: 150,
-                            child: Text(label, style: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant)),
-                          ),
-                          Expanded(child: SelectableText(value, style: text.bodyMedium)),
-                        ],
-                      ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-}

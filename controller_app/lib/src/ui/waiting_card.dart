@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:party_host/party_host.dart' show HostText, PhoneText, ToyCard, ToyLookScope, ToySizes;
 
 import '../host_grace.dart';
 import '../providers.dart';
@@ -68,51 +69,52 @@ class _WaitingCardState extends ConsumerState<WaitingCard> {
         : left == null
         ? elapsedS >= hostGraceS
         : left <= 0;
+    final look = ToyLookScope.of(context);
     return Center(
-      child: Card(
+      child: ToyCard(
         key: const Key('waitingCard'),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              for (final (i, away) in widget.wait.away.indexed) ...[
-                if (i > 0) const SizedBox(height: 8),
-                _AwayLines(away: away, nowMs: nowMs),
-              ],
-              if (widget.wait.kind != HostWaitKind.playerAway) _hostLines(context, hostLeft: hostLeft, left: left),
-              const SizedBox(height: 8),
-              if (hostLeft)
-                FilledButton(key: const Key('leaveGame'), onPressed: _leave, child: const Text('Leave game'))
-              else
-                TextButton(key: const Key('leaveGame'), onPressed: _leave, child: const Text('Leave game')),
+        header: PhoneText.waiting,
+        headerColor: look.colors.caution,
+        padding: const EdgeInsets.symmetric(horizontal: ToySizes.space24, vertical: ToySizes.space16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (final (i, away) in widget.wait.away.indexed) ...[
+              if (i > 0) const SizedBox(height: ToySizes.space8),
+              _AwayLines(away: away, nowMs: nowMs),
             ],
-          ),
+            if (widget.wait.kind != HostWaitKind.playerAway) _hostLines(hostLeft: hostLeft, left: left),
+            const SizedBox(height: ToySizes.space8),
+            if (hostLeft)
+              FilledButton(key: const Key('leaveGame'), onPressed: _leave, child: const Text(PhoneText.leaveGame))
+            else
+              TextButton(key: const Key('leaveGame'), onPressed: _leave, child: const Text(PhoneText.leaveGame)),
+          ],
         ),
       ),
     );
   }
 
   /// What the host (or the link to it) is doing, and how long the round waits.
-  Widget _hostLines(BuildContext context, {required bool hostLeft, required int? left}) {
-    final text = Theme.of(context).textTheme;
+  Widget _hostLines({required bool hostLeft, required int? left}) {
+    final look = ToyLookScope.of(context);
     final title = hostLeft
-        ? 'The host has left'
+        ? PhoneText.hostHasLeft
         : widget.wait.kind == HostWaitKind.hostAway
-        ? 'Waiting for the host to come back'
-        : 'Reconnecting to the game…';
+        ? PhoneText.waitingForHost
+        : PhoneText.reconnectingToGame;
     final line = hostLeft
-        ? 'You can keep waiting, or leave.'
+        ? PhoneText.youCanKeepWaiting
         : left == null
         ? null
-        : "The game goes on if they're back in $left s";
+        : HostText.awayCountdown(left);
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(title, style: text.titleMedium, textAlign: TextAlign.center),
+        Text(title, style: look.type.button, textAlign: TextAlign.center),
         if (line != null) ...[
-          const SizedBox(height: 4),
-          Text(line, style: text.bodyMedium, textAlign: TextAlign.center),
+          const SizedBox(height: ToySizes.space4),
+          Text(line, style: look.type.body, textAlign: TextAlign.center),
         ],
       ],
     );
@@ -133,16 +135,16 @@ class _AwayLines extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
+    final look = ToyLookScope.of(context);
     final elapsedS = (nowMs - away.sinceMs) ~/ Duration.millisecondsPerSecond;
     final left = away.secondsLeft - elapsedS;
-    final line = left > 0 ? "The game goes on if they're back in $left s" : 'The game goes on without them…';
+    final line = left > 0 ? HostText.awayCountdown(left) : HostText.awayGone;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text('Player ${away.number} is away', style: text.titleMedium, textAlign: TextAlign.center),
-        const SizedBox(height: 4),
-        Text(line, style: text.bodyMedium, textAlign: TextAlign.center),
+        Text(HostText.playerAway(away.number), style: look.type.button, textAlign: TextAlign.center),
+        const SizedBox(height: ToySizes.space4),
+        Text(line, style: look.type.body, textAlign: TextAlign.center),
       ],
     );
   }

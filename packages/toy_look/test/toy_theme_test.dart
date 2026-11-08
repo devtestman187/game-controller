@@ -52,6 +52,32 @@ void main() {
     expect(theme.dialogTheme.shape, _paperShape(ToyColors.night, ToySizes.menu.outlineWidth));
   });
 
+  test('a text field is paper with an ink edge and 16 px corners, ink text, in both palettes', () {
+    // The Connect screen's address field was a stock Material box on the sky
+    // (Claude's 3c review).
+    for (final look in [sunny, night]) {
+      final fields = toyTheme(look).inputDecorationTheme;
+      final colors = look.colors;
+      expect(fields.filled, isTrue);
+      expect(fields.fillColor, colors.paper);
+      final edge = OutlineInputBorder(
+        borderRadius: BorderRadius.circular(ToySizes.cardCorner),
+        borderSide: BorderSide(color: colors.ink, width: look.sizes.outlineWidth),
+      );
+      expect(fields.enabledBorder, edge);
+      expect(fields.border, edge);
+      expect(
+        fields.focusedBorder,
+        edge.copyWith(
+          borderSide: BorderSide(color: colors.ink, width: look.sizes.outlineWidth + 1),
+        ),
+      );
+      expect(fields.hintStyle?.color, colors.inkSoft);
+      expect(fields.labelStyle?.color, colors.inkSoft);
+      expect(toyTheme(look).textSelectionTheme.cursorColor, colors.ink);
+    }
+  });
+
   test('a TV theme draws the 4 px edge instead of the menu\'s 3 px', () {
     final tv = toyTheme(ToyLook.build(palette: ToyPalette.sunny, tv: true));
     expect(tv.cardTheme.shape, _paperShape(ToyColors.sunny, ToySizes.tv.outlineWidth));

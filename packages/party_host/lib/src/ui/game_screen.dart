@@ -8,7 +8,7 @@ import 'package:toy_look/toy_look.dart';
 
 import '../abandon_signal.dart';
 import '../controls.dart';
-import '../host_text.dart';
+import '../text/host_text.dart';
 import '../local_player_source.dart';
 import '../providers.dart';
 import 'controller_menus.dart';

@@ -18,6 +18,7 @@ export 'src/toy_colors.dart';
 export 'src/toy_font_licenses.dart';
 export 'src/toy_look.dart';
 export 'src/toy_look_scope.dart';
+export 'src/toy_pill.dart';
 export 'src/toy_shape.dart';
 export 'src/toy_shaders.dart';
 export 'src/toy_sizes.dart';

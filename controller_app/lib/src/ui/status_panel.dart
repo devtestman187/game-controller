@@ -1,11 +1,26 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:party_host/party_host.dart' show ToyLook, ToyLookScope, ToySizes, toyShadowAlpha;
 import 'package:protocol/protocol.dart';
 
+/// The status panel's height, in shares of the look's button height: the 36 px
+/// the bar always gave it (M13 3c, rule 3: the bar's sizes don't change).
+const statusPanelHeightShare = 0.75;
+
+/// The room between the panel's parts, in shares of the look's button height.
+const statusPanelGapShare = 0.15;
+
+/// How wide the progress bar is, in shares of the look's button height.
+const statusProgressWidthShare = 1.5;
+
+/// The shape's size in the panel, in shares of the panel's height.
+const statusShapeShare = 0.75;
+
 /// The game's status panel (PRD v2 P6), in the top bar so no control gets
-/// smaller (C24): one shape at its angle, a short text and a progress bar,
-/// red while [StatusMessage.warning] is on.
+/// smaller (C24): one shape at its angle, a short text and a progress bar, on
+/// paper with the look's ink edge, and filled with bad while
+/// [StatusMessage.warning] is on (M13 3c, rule 4: a warning's text stays ink).
 class StatusPanel extends StatelessWidget {
   const StatusPanel({super.key, required this.status});
 
@@ -13,79 +28,86 @@ class StatusPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final text = status.text;
-    final progress = status.progress;
-    final shape = status.shape;
-    final accent = status.warning ? scheme.error : scheme.primary;
+    final look = ToyLookScope.of(context);
+    final colors = look.colors;
+    final height = look.sizes.buttonHeight * statusPanelHeightShare;
     return Container(
       key: const Key('statusPanel'),
-      height: 36,
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(10),
-        border: status.warning ? Border.all(color: scheme.error, width: 1.5) : null,
+      height: height,
+      padding: const EdgeInsets.symmetric(horizontal: ToySizes.space8),
+      decoration: ShapeDecoration(
+        color: status.warning ? colors.bad : colors.paper,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(ToySizes.space8),
+          side: BorderSide(color: colors.ink, width: look.sizes.outlineWidth),
+        ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (shape != null) ...[
+          if (status.shape case final shape?) ...[
             SizedBox.square(
               key: const Key('statusShape'),
-              dimension: 28,
-              child: CustomPaint(painter: StatusShapePainter(shape)),
+              dimension: height * statusShapeShare,
+              child: CustomPaint(painter: StatusShapePainter(shape, look)),
             ),
-            const SizedBox(width: 8),
+            SizedBox(width: look.sizes.buttonHeight * statusPanelGapShare),
           ],
-          Flexible(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (text != null)
-                  Text(
-                    text,
-                    key: const Key('statusText'),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: status.warning ? scheme.error : scheme.onSurface,
-                    ),
-                  ),
-                if (progress != null) ...[
-                  const SizedBox(height: 3),
-                  SizedBox(
-                    width: 72,
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(2),
-                      child: LinearProgressIndicator(
-                        key: const Key('statusProgress'),
-                        value: progress,
-                        minHeight: 4,
-                        color: accent,
-                        backgroundColor: scheme.onSurface.withValues(alpha: 0.15),
-                      ),
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
+          Flexible(child: _label(look)),
         ],
       ),
     );
   }
+
+  /// The line of text and, under it, how far the game has gone.
+  Widget _label(ToyLook look) {
+    final colors = look.colors;
+    final text = status.text;
+    final progress = status.progress;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (text != null)
+          Text(
+            text,
+            key: const Key('statusText'),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: look.type.body.copyWith(color: colors.ink),
+          ),
+        if (progress != null) ...[
+          SizedBox(height: ToySizes.space4 / 2),
+          SizedBox(
+            width: look.sizes.buttonHeight * statusProgressWidthShare,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(ToySizes.space4 / 2),
+              child: LinearProgressIndicator(
+                key: const Key('statusProgress'),
+                value: progress,
+                minHeight: ToySizes.space4,
+                color: status.warning ? colors.ink : colors.good,
+                backgroundColor: colors.ink.withValues(alpha: toyShadowAlpha),
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
 }
 
-/// Draws a [StatusShape] filling its box, turned to its angle.
+/// Draws a [StatusShape] filling its box, turned to its angle, in the game's
+/// own colours with the look's ink edge, so a shape reads at any angle.
 class StatusShapePainter extends CustomPainter {
-  StatusShapePainter(this.shape);
+  StatusShapePainter(this.shape, this.look);
 
+  /// The game's shape: its colour, angle and outline.
   final StatusShape shape;
+
+  /// The look whose ink edge colour and width it is drawn with.
+  final ToyLook look;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -94,8 +116,8 @@ class StatusShapePainter extends CustomPainter {
     final fill = Paint()..color = Color(shape.color);
     final edge = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 1
-      ..color = Colors.black.withValues(alpha: 0.5);
+      ..strokeWidth = look.sizes.outlineWidth / 2
+      ..color = look.colors.ink;
     if (shape.circle) {
       canvas
         ..drawCircle(c, r * 0.9, fill)
@@ -114,5 +136,5 @@ class StatusShapePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(StatusShapePainter old) => old.shape != shape;
+  bool shouldRepaint(StatusShapePainter old) => old.shape != shape || old.look != look;
 }

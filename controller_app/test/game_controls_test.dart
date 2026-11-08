@@ -4,6 +4,7 @@ import 'package:controller/src/ui/controls_layer.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:party_host/party_host.dart' show ToyLookScope;
 import 'package:protocol/protocol.dart';
 
 import 'support/pump_app.dart';
@@ -102,8 +103,14 @@ void main() {
       app.client.setStatus(StatusMessage(text: '0:09 left', progress: 0.05, warning: true));
       await settle(tester);
       expect(find.byKey(const Key('statusShape')), findsNothing);
-      final scheme = Theme.of(tester.element(find.byKey(const Key('statusPanel')))).colorScheme;
-      expect(tester.widget<Text>(find.byKey(const Key('statusText'))).style!.color, scheme.error);
+      // A warning is a bad fill with the look's ink on it, never the text in
+      // the status colour itself (M13 3c).
+      final look = ToyLookScope.of(tester.element(find.byKey(const Key('statusPanel'))));
+      expect(tester.widget<Text>(find.byKey(const Key('statusText'))).style!.color, look.colors.ink);
+      final panel = tester.widget<DecoratedBox>(
+        find.descendant(of: find.byKey(const Key('statusPanel')), matching: find.byType(DecoratedBox)).first,
+      );
+      expect((panel.decoration as ShapeDecoration).color, look.colors.bad);
 
       app.client.setStatus(StatusMessage.hidden());
       await settle(tester);

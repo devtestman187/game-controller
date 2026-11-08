@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:metrics/metrics.dart';
 import 'package:toy_look/toy_look.dart';
 
-import '../host_text.dart';
+import '../text/host_text.dart';
 import '../providers.dart';
 import '../stats_service.dart';
 import '../stats_state.dart';

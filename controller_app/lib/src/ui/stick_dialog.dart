@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:party_host/party_host.dart' show PhoneText, SettingsText, ToyLook, ToyLookScope;
 
 import '../gyro.dart';
 import '../sticks.dart';
@@ -13,73 +14,90 @@ Future<void> showStickDialog(BuildContext context) =>
 class _StickDialog extends ConsumerWidget {
   const _StickDialog();
 
+  /// The dialog's width: 420 px on the phone's look.
+  static const _widthShare = 420 / 48;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final look = ToyLookScope.of(context);
+    final notifier = ref.read(stickSettingsProvider.notifier);
+    return AlertDialog(
+      title: const Text(PhoneText.sticks),
+      scrollable: true,
+      content: SizedBox(width: look.sizes.buttonHeight * _widthShare, child: _content(ref, look)),
+      actions: [
+        TextButton(onPressed: () => notifier.update(const StickSettings()), child: const Text(SettingsText.defaults)),
+        TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text(SettingsText.done)),
+      ],
+    );
+  }
+
+  /// Floating or fixed, then the button's size, the dead zone and the
+  /// sensitivity, each changing the settings as it moves.
+  Widget _content(WidgetRef ref, ToyLook look) {
     final settings = ref.watch(stickSettingsProvider);
     final notifier = ref.read(stickSettingsProvider.notifier);
-    final text = Theme.of(context).textTheme;
-    return AlertDialog(
-      title: const Text('Sticks'),
-      scrollable: true,
-      content: SizedBox(
-        width: 420,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SwitchListTile(
-              key: const Key('stickFloating'),
-              contentPadding: EdgeInsets.zero,
-              title: const Text('Floating sticks'),
-              subtitle: const Text('Each stick starts where your thumb lands in its half of the screen.'),
-              value: settings.floating,
-              onChanged: (v) => notifier.update(settings.copyWith(floating: v)),
-            ),
-            Text(
-              'Button size: ${(settings.buttonSize * 100).round()}% of D-pad mode (A, B, X and Y)',
-              style: text.bodyMedium,
-            ),
-            Slider(
-              key: const Key('stickButtonSize'),
-              value: settings.buttonSize,
-              min: StickSettings.minButtonSize,
-              max: StickSettings.maxButtonSize,
-              divisions: 8,
-              onChanged: (v) => notifier.update(settings.copyWith(buttonSize: v)),
-            ),
-            Text('Dead zone: ${(settings.deadZone * 100).round()}%', style: text.bodyMedium),
-            Slider(
-              key: const Key('stickDeadZone'),
-              value: settings.deadZone,
-              max: 0.4,
-              divisions: 20,
-              onChanged: (v) => notifier.update(settings.copyWith(deadZone: v)),
-            ),
-            Text(
-              'Sensitivity: ${settings.sensitivity.toStringAsFixed(2)}× '
-              '(full at ${(100 / settings.sensitivity).round()}% of the travel)',
-              style: text.bodyMedium,
-            ),
-            Slider(
-              key: const Key('stickSensitivity'),
-              value: settings.sensitivity,
-              min: 0.5,
-              max: 2.0,
-              divisions: 15,
-              onChanged: (v) => notifier.update(settings.copyWith(sensitivity: v)),
-            ),
-            Text(
-              'A bigger dead zone ignores small thumb movements around the center. Higher sensitivity reaches '
-              'full scale with less travel; a stick never goes past full scale, even diagonally.',
-              style: text.bodySmall,
-            ),
-          ],
+    void change(StickSettings next) => notifier.update(next);
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SwitchListTile(
+          key: const Key('stickFloating'),
+          contentPadding: EdgeInsets.zero,
+          title: const Text(SettingsText.floatingSticks),
+          subtitle: const Text(SettingsText.floatingLine),
+          value: settings.floating,
+          onChanged: (v) => change(settings.copyWith(floating: v)),
         ),
-      ),
-      actions: [
-        TextButton(onPressed: () => notifier.update(const StickSettings()), child: const Text('Defaults')),
-        TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Done')),
+        _slider(
+          look,
+          key: 'stickButtonSize',
+          shown: SettingsText.stickButtonSizeLine((settings.buttonSize * 100).round()),
+          value: settings.buttonSize,
+          min: StickSettings.minButtonSize,
+          max: StickSettings.maxButtonSize,
+          divisions: 8,
+          onChanged: (v) => change(settings.copyWith(buttonSize: v)),
+        ),
+        _slider(
+          look,
+          key: 'stickDeadZone',
+          shown: SettingsText.stickDeadZoneLine((settings.deadZone * 100).round()),
+          value: settings.deadZone,
+          max: 0.4,
+          divisions: 20,
+          onChanged: (v) => change(settings.copyWith(deadZone: v)),
+        ),
+        _slider(
+          look,
+          key: 'stickSensitivity',
+          shown: SettingsText.stickSensitivityLine(settings.sensitivity, (100 / settings.sensitivity).round()),
+          value: settings.sensitivity,
+          min: 0.5,
+          max: 2.0,
+          onChanged: (v) => change(settings.copyWith(sensitivity: v)),
+        ),
+        Text(SettingsText.stickLine, style: look.type.body.copyWith(color: look.colors.inkSoft)),
       ],
     );
   }
 }
+
+/// One setting: the line saying what it is now, then the slider that moves it.
+Widget _slider(
+  ToyLook look, {
+  required String key,
+  required String shown,
+  required double value,
+  required double max,
+  double min = 0,
+  int divisions = 15,
+  required void Function(double) onChanged,
+}) => Column(
+  crossAxisAlignment: CrossAxisAlignment.start,
+  children: [
+    Text(shown, style: look.type.body),
+    Slider(key: Key(key), value: value, min: min, max: max, divisions: divisions, onChanged: onChanged),
+  ],
+);

@@ -41,18 +41,10 @@ ThemeData toyTheme(ToyLook look) {
       titleTextStyle: look.type.button.copyWith(color: colors.ink),
       contentTextStyle: look.type.body.copyWith(color: colors.ink),
     ),
+    inputDecorationTheme: _fieldTheme(look),
+    textSelectionTheme: TextSelectionThemeData(cursorColor: colors.ink),
     listTileTheme: ListTileThemeData(textColor: colors.onBackground, iconColor: colors.onBackground),
-    // A toy switch, easy to see on the sky, the grape and on paper (owner,
-    // Nov 8, 2026: the switch was hard to see): an ink outline round the
-    // track, an ink thumb, and a paper track when off, a good one when on.
-    switchTheme: SwitchThemeData(
-      thumbColor: WidgetStatePropertyAll(colors.ink),
-      trackColor: WidgetStateProperty.resolveWith(
-        (states) => states.contains(WidgetState.selected) ? colors.good : colors.paper,
-      ),
-      trackOutlineColor: WidgetStatePropertyAll(colors.ink),
-      trackOutlineWidth: WidgetStatePropertyAll(look.sizes.outlineWidth),
-    ),
+    switchTheme: _switchTheme(look),
     sliderTheme: SliderThemeData(
       activeTrackColor: colors.good,
       thumbColor: colors.good,
@@ -103,6 +95,44 @@ RoundedRectangleBorder _paperShape(ToyLook look) => RoundedRectangleBorder(
   borderRadius: BorderRadius.circular(ToySizes.cardCorner),
   side: BorderSide(color: look.colors.ink, width: look.sizes.outlineWidth),
 );
+
+/// A toy switch, easy to see on the sky, the grape and on paper (owner, Nov
+/// 8, 2026: the switch was hard to see): an ink outline round the track, an
+/// ink thumb, and a paper track when off, a good one when on.
+SwitchThemeData _switchTheme(ToyLook look) {
+  final colors = look.colors;
+  return SwitchThemeData(
+    thumbColor: WidgetStatePropertyAll(colors.ink),
+    trackColor: WidgetStateProperty.resolveWith(
+      (states) => states.contains(WidgetState.selected) ? colors.good : colors.paper,
+    ),
+    trackOutlineColor: WidgetStatePropertyAll(colors.ink),
+    trackOutlineWidth: WidgetStatePropertyAll(look.sizes.outlineWidth),
+  );
+}
+
+/// A text field: paper with the ink edge and a card's corners, a thicker edge
+/// when focused, and its label kept inside, so no label floats onto the sky
+/// (Claude's 3c review). The field's own text is ink, set where it is built:
+/// the theme's body text is onBackground, which is white at night.
+InputDecorationTheme _fieldTheme(ToyLook look) {
+  final colors = look.colors;
+  OutlineInputBorder edge(double width) => OutlineInputBorder(
+    borderRadius: BorderRadius.circular(ToySizes.cardCorner),
+    borderSide: BorderSide(color: colors.ink, width: width),
+  );
+  final soft = look.type.body.copyWith(color: colors.inkSoft);
+  return InputDecorationTheme(
+    filled: true,
+    fillColor: colors.paper,
+    border: edge(look.sizes.outlineWidth),
+    enabledBorder: edge(look.sizes.outlineWidth),
+    focusedBorder: edge(look.sizes.outlineWidth + 1),
+    floatingLabelBehavior: FloatingLabelBehavior.never,
+    hintStyle: soft,
+    labelStyle: soft,
+  );
+}
 
 /// A button: a pill with the ink edge and ink text, flat (design section 4;
 /// D12: text on a coloured fill is always ink).

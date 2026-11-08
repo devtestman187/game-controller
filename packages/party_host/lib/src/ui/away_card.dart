@@ -4,7 +4,7 @@ import 'package:protocol/protocol.dart';
 import 'package:toy_look/toy_look.dart';
 
 import '../controls.dart';
-import '../host_text.dart';
+import '../text/host_text.dart';
 import '../players_away.dart';
 import '../providers.dart';
 import 'controller_menus.dart';

@@ -6,7 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:protocol/protocol.dart';
 
 import '../controls.dart';
-import '../host_text.dart';
+import '../text/host_text.dart';
 import '../providers.dart';
 
 /// The buttons while a menu is showing: A "OK" and B "Back".

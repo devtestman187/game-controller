@@ -1,29 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:party_host/party_host.dart' show PhoneText, ToyCard, ToyLookScope, ToySizes;
 
 import '../providers.dart';
 
 /// What the phone says when the host was away too long (m12 §0.5): the round
 /// ended without a winner, and the screen goes back to its controls.
-const abandonedNoticeText = 'The host was away too long, so the round ended.';
-
-/// [abandonedNoticeText] over the game while [abandonedNoticeProvider] says
-/// so. It takes no touches, so the controls work under it.
+///
+/// It sits in a toy card whose header band is bad, so the round's end reads as
+/// the bad news it is (M13 3c).
 class AbandonedNotice extends ConsumerWidget {
   const AbandonedNotice({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     if (!ref.watch(abandonedNoticeProvider)) return const SizedBox.shrink();
-    final text = Theme.of(context).textTheme;
+    final look = ToyLookScope.of(context);
     return IgnorePointer(
       child: Center(
-        child: Card(
+        child: ToyCard(
           key: const Key('abandonedNotice'),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-            child: Text(abandonedNoticeText, style: text.titleMedium, textAlign: TextAlign.center),
-          ),
+          header: PhoneText.roundOver,
+          headerColor: look.colors.bad,
+          padding: const EdgeInsets.symmetric(horizontal: ToySizes.space24, vertical: ToySizes.space16),
+          child: Text(PhoneText.abandoned, style: look.type.body, textAlign: TextAlign.center),
         ),
       ),
     );

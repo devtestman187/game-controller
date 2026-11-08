@@ -12,7 +12,7 @@ import '../away_log.dart';
 import '../controls.dart';
 import '../host_presence.dart';
 import '../players_away.dart';
-import '../host_text.dart';
+import '../text/host_text.dart';
 import '../providers.dart';
 import 'away_card.dart';
 import 'controller_menus.dart';

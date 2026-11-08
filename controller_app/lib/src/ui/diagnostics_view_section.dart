@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:metrics/metrics.dart' show sessionSummaryMarker;
 import 'package:party_host/party_host.dart' as party;
+import 'package:party_host/party_host.dart' show SettingsText, ToyCard, ToySizes;
 
 import '../host/hosting.dart';
 
@@ -21,20 +22,18 @@ class DiagnosticsViewSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: ToySizes.space12),
+      child: ToyCard(
+        header: SettingsText.gameView,
+        padding: const EdgeInsets.all(ToySizes.space12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Game view', style: text.titleMedium),
-            const SizedBox(height: 4),
             for (final line in viewSummaryLines(summary))
               Padding(
-                padding: const EdgeInsets.symmetric(vertical: 2),
-                child: SelectableText(line, style: text.bodyMedium),
+                padding: const EdgeInsets.symmetric(vertical: ToySizes.space4 / 2),
+                child: SelectableText(line),
               ),
           ],
         ),

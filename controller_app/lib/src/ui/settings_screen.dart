@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:party_host/party_host.dart' show LookAndSoundSection;
+import 'package:party_host/party_host.dart'
+    show HostText, LookAndSoundSection, PhoneText, SettingsText, ToyCard, ToyLookScope, ToySizes;
 import 'package:protocol/protocol.dart';
 
 import 'package:url_launcher/url_launcher.dart';
@@ -17,76 +18,94 @@ import '../tilt.dart';
 
 part 'settings_sections.dart';
 
+/// The width from which the sections sit in two columns: a tablet, never a
+/// phone held in landscape.
+const _twoColumnWidth = 700;
+
 /// Every setting in one place (PRD C11), saved on the phone between
 /// launches: haptics (the button tick and each TV event on its own), gyro
 /// and sticks. The mode last used is remembered too.
+///
+/// Every section is a toy card with its name in the header band, and Look and
+/// sound comes first, above the controls' own settings (M13 3c).
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Settings'),
-        actions: [
-          TextButton(
-            key: const Key('resetSettings'),
-            onPressed: () => _resetAll(context, ref),
-            child: const Text('Defaults'),
-          ),
-        ],
-      ),
-      body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            const haptics = _HapticsSection();
-            const motion = Column(
-              children: [
-                _GyroSection(),
-                SizedBox(height: 12),
-                _SticksSection(),
-                SizedBox(height: 12),
-                _GameSection(),
-                SizedBox(height: 12),
-                _LookAndSoundSection(),
-                SizedBox(height: 12),
-                _StatsSection(),
-                SizedBox(height: 12),
-                _AboutSection(),
-              ],
-            );
-            if (constraints.maxWidth >= 700) {
-              return SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
-                    Expanded(child: haptics),
-                    SizedBox(width: 16),
-                    Expanded(child: motion),
-                  ],
-                ),
-              );
-            }
-            return ListView(padding: const EdgeInsets.all(16), children: const [haptics, SizedBox(height: 12), motion]);
-          },
+  Widget build(BuildContext context, WidgetRef ref) => Scaffold(
+    appBar: AppBar(
+      title: const Text(PhoneText.settings),
+      actions: [
+        TextButton(
+          key: const Key('resetSettings'),
+          onPressed: () => _resetAll(context, ref),
+          child: const Text(SettingsText.defaults),
         ),
-      ),
+      ],
+    ),
+    body: SafeArea(child: LayoutBuilder(builder: (context, constraints) => _sections(constraints.maxWidth))),
+  );
+
+  /// The sections: two columns on a tablet, one scrolling list on the phone.
+  /// The look's own settings come first, above the controls' (M13 3c).
+  Widget _sections(double width) {
+    const controls = Column(
+      children: [
+        _LookAndSoundSection(),
+        SizedBox(height: ToySizes.space12),
+        _HapticsSection(),
+      ],
+    );
+    const motion = Column(
+      children: [
+        _GyroSection(),
+        SizedBox(height: ToySizes.space12),
+        _SticksSection(),
+        SizedBox(height: ToySizes.space12),
+        _GameSection(),
+        SizedBox(height: ToySizes.space12),
+        _StatsSection(),
+        SizedBox(height: ToySizes.space12),
+        _AboutSection(),
+      ],
+    );
+    if (width >= _twoColumnWidth) {
+      return SingleChildScrollView(
+        padding: const EdgeInsets.all(ToySizes.space16),
+        child: const Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(child: controls),
+            SizedBox(width: ToySizes.space16),
+            Expanded(child: motion),
+          ],
+        ),
+      );
+    }
+    return ListView(
+      padding: const EdgeInsets.all(ToySizes.space16),
+      children: const [
+        controls,
+        SizedBox(height: ToySizes.space12),
+        motion,
+      ],
     );
   }
 
+  /// Back to the defaults. The look is a display choice, not a control
+  /// setting: it stays as the player set it (M13 3c).
   Future<void> _resetAll(BuildContext context, WidgetRef ref) async {
     final ok = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Back to the defaults?'),
-        content: const Text('Haptics, gyro, stick and game settings go back to how they were on a fresh install.'),
+        title: const Text(SettingsText.resetQuestion),
+        content: const Text(SettingsText.resetLine),
         actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text(PhoneText.cancel)),
           TextButton(
             key: const Key('confirmReset'),
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Reset'),
+            child: const Text(SettingsText.reset),
           ),
         ],
       ),
@@ -100,6 +119,8 @@ class SettingsScreen extends ConsumerWidget {
   }
 }
 
+/// A section of the screen: a toy card with its name in the header band, then
+/// its line about itself, then its rows (M13 3c).
 class _Section extends StatelessWidget {
   const _Section({required this.title, required this.children, this.subtitle});
 
@@ -109,20 +130,20 @@ class _Section extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
-    return Card(
-      margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+    final look = ToyLookScope.of(context);
+    return ToyCard(
+      header: title,
+      // A tile paints its ink on the nearest Material, and the card's paper is
+      // a ColoredBox: one of its own gives every row somewhere to paint.
+      child: Material(
+        type: MaterialType.transparency,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(title, style: text.titleLarge),
-            if (subtitle != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 2, bottom: 4),
-                child: Text(subtitle!, style: text.bodySmall),
-              ),
+            if (subtitle != null) ...[
+              Text(subtitle!, style: look.type.body.copyWith(color: look.colors.inkSoft)),
+              const SizedBox(height: ToySizes.space4),
+            ],
             ...children,
           ],
         ),
@@ -157,11 +178,14 @@ class _SliderRow extends StatelessWidget {
   final void Function(double)? onChanged;
   final Widget? trailing;
 
+  /// The space above a row, which puts it apart from the one before it.
+  static const _topGap = ToySizes.space8;
+
   @override
   Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
+    final look = ToyLookScope.of(context);
     return Padding(
-      padding: const EdgeInsets.only(top: 6),
+      padding: const EdgeInsets.only(top: _topGap),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -171,13 +195,17 @@ class _SliderRow extends StatelessWidget {
                 child: Text.rich(
                   TextSpan(
                     children: [
-                      TextSpan(text: label, style: text.bodyLarge),
-                      if (hint != null) TextSpan(text: '  $hint', style: text.bodySmall),
+                      TextSpan(text: label, style: look.type.body),
+                      if (hint != null)
+                        TextSpan(
+                          text: '  $hint',
+                          style: look.type.body.copyWith(color: look.colors.inkSoft),
+                        ),
                     ],
                   ),
                 ),
               ),
-              Text(valueText, style: text.bodyLarge?.copyWith(fontFeatures: const [FontFeature.tabularFigures()])),
+              Text(valueText, style: look.type.body.copyWith(fontFeatures: const [FontFeature.tabularFigures()])),
             ],
           ),
           Row(
@@ -202,29 +230,10 @@ class _SliderRow extends StatelessWidget {
 }
 
 /// What each TV event feels like, so the sliders are easy to match up.
-String eventFeel(HapticEvent e) => switch (e) {
-  HapticEvent.hit => 'one deep thud',
-  HapticEvent.success => 'three rising taps',
-  HapticEvent.error => 'two harsh buzzes',
-  HapticEvent.rumble => 'a long throb',
-  HapticEvent.snap => 'a click and a firm lock',
-  HapticEvent.wrong => 'a low, falling uh-oh',
-  HapticEvent.dropReady => 'one light tap',
-  HapticEvent.help => 'two gentle knocks',
-  HapticEvent.tick => 'the lightest tap',
-};
+String eventFeel(HapticEvent e) => SettingsText.eventFeel(e);
 
-String eventLabel(HapticEvent e) => switch (e) {
-  HapticEvent.hit => 'Hit',
-  HapticEvent.success => 'Success',
-  HapticEvent.error => 'Error',
-  HapticEvent.rumble => 'Rumble',
-  HapticEvent.snap => 'Snap (puzzle)',
-  HapticEvent.wrong => 'Wrong (puzzle)',
-  HapticEvent.dropReady => 'Drop-ready (puzzle)',
-  HapticEvent.help => 'Help (puzzle)',
-  HapticEvent.tick => 'Last seconds',
-};
+/// What each TV event is called.
+String eventLabel(HapticEvent e) => SettingsText.eventLabel(e);
 
 /// Control stats (PRD v2 privacy rules): every phone shows that the TV
 /// records how the controls are used, and can opt out.
@@ -235,17 +244,13 @@ class _StatsSection extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final on = ref.watch(shareStatsProvider);
     return _Section(
-      title: 'Control stats',
+      title: SettingsText.controlStats,
       children: [
         SwitchListTile(
           key: const Key('settingsShareStats'),
           contentPadding: EdgeInsets.zero,
-          title: const Text('Share control stats with the TV'),
-          subtitle: const Text(
-            'The TV counts how the controls are used: presses, missed taps, timing and how each mode feels. '
-            'Never names, contacts, location or a trace of your touches. '
-            'It sends them on to help improve Thumb Party only if an adult allows it on the TV.',
-          ),
+          title: const Text(SettingsText.shareStats),
+          subtitle: const Text(SettingsText.shareStatsLine),
           value: on,
           onChanged: ref.read(shareStatsProvider.notifier).set,
         ),
@@ -264,19 +269,19 @@ class _AboutSection extends StatelessWidget {
     Future<void> open(String url) async {
       final ok = await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication).catchError((_) => false);
       if (!ok && context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Couldn\'t open $url')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(SettingsText.couldNotOpen(url))));
       }
     }
 
     return _Section(
-      title: 'About',
-      subtitle: 'Thumb Party $versionLabel',
+      title: SettingsText.about,
+      subtitle: SettingsText.aboutVersion(versionLabel),
       children: [
         ListTile(
           key: const Key('privacyPolicy'),
           contentPadding: EdgeInsets.zero,
           leading: const Icon(Icons.privacy_tip_outlined),
-          title: const Text('Privacy policy'),
+          title: const Text(SettingsText.privacyPolicy),
           subtitle: const Text(privacyPolicyUrl),
           onTap: () => open(privacyPolicyUrl),
         ),
@@ -284,7 +289,7 @@ class _AboutSection extends StatelessWidget {
           key: const Key('testerGuide'),
           contentPadding: EdgeInsets.zero,
           leading: const Icon(Icons.help_outline),
-          title: const Text('Tester guide'),
+          title: const Text(SettingsText.testerGuide),
           subtitle: const Text(siteUrl),
           onTap: () => open(siteUrl),
         ),

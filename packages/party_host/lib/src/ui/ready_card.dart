@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:toy_look/toy_look.dart';
 
-import '../host_text.dart';
+import '../text/host_text.dart';
 
 /// How much bigger the count is than the look's clock type (M13 3b): three
 /// times, so a thumb finds the pad from across the room.

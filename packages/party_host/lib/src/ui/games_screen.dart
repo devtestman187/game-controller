@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:puzzle_game/puzzle_game.dart';
 import 'package:toy_look/toy_look.dart';
 
-import '../host_text.dart';
+import '../text/host_text.dart';
 import '../providers.dart';
 import 'game_picture.dart';
 import 'game_screen.dart';

@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:party_host/party_host.dart' as party;
+import 'package:party_host/party_host.dart' show ToyButton;
 import 'package:protocol/protocol.dart';
 
 import 'support/pump_app.dart';
@@ -173,7 +174,7 @@ void main() {
       // owner: the sheet opens with nothing lit (m12 bug 1108d).
       final sheet = find.byKey(const Key('hostStartSheet'));
       Finder inSheet<T>() => find.descendant(of: sheet, matching: find.byWidgetPredicate((w) => w is T));
-      expect(inSheet<OutlinedButton>(), findsNWidgets(2));
+      expect(inSheet<ToyButton>(), findsNWidgets(2));
       expect(inSheet<FilledButton>(), findsNothing);
       expect(choiceFocused(tester, 'hostOnPhone'), isFalse, reason: 'no choice is lit when the sheet opens');
       expect(choiceFocused(tester, 'hostOnDevice'), isFalse, reason: 'no choice is lit when the sheet opens');

@@ -1,17 +1,32 @@
 import 'package:connection/connection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:party_host/party_host.dart' as party;
+import 'package:party_host/party_host.dart' show HostKind, PhoneText, ToyButton, ToyCard, ToyLookScope, ToySizes;
 
 import '../discovery.dart';
 import '../host/hosting.dart';
 import '../providers.dart';
+import 'bar_connection.dart';
 import 'connect_panels.dart';
 import 'diagnostics_screen.dart';
 import 'labels.dart';
 
+/// How much of a host's row its icon takes, in shares of the look's button
+/// height (M13 3c): the round icon the mock-up puts at the front of a row.
+const hostRowIconShare = 0.75;
+
+/// The room inside a host's row, in shares of the look's button height.
+const hostRowPaddingShare = 0.2;
+
+/// The corner of a host's paper row, in shares of the look's button height.
+const hostRowCornerShare = 0.2;
+
 /// Choosing and pairing a TV: TVs found on the network (plus manual entry) on
 /// the left, the connection on the right. Closes itself once connected.
+///
+/// The look's card holds the rows (M13 3c): the found TVs on its paper, and a
+/// paper row each, with the screen's title and its way into Diagnostics on the
+/// page's own sky above.
 class ConnectScreen extends ConsumerWidget {
   const ConnectScreen({super.key});
 
@@ -27,16 +42,16 @@ class ConnectScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Connect to a TV'),
+        title: const Text(PhoneText.connectTitle),
         actions: [
           StatusChip(client: client),
           IconButton(
-            tooltip: 'Diagnostics',
+            tooltip: PhoneText.diagnostics,
             icon: const Icon(Icons.monitor_heart_outlined),
             onPressed: () =>
                 Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const DiagnosticsScreen())),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: ToySizes.space8),
         ],
       ),
       body: const SafeArea(
@@ -53,6 +68,8 @@ class ConnectScreen extends ConsumerWidget {
   }
 }
 
+/// The connection's state, as the bar's link dot and its word (M13 3c): the
+/// dot carries the state's colour, the text stays onBackground.
 class StatusChip extends StatelessWidget {
   const StatusChip({super.key, required this.client});
 
@@ -60,17 +77,18 @@ class StatusChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final color = switch (client.status) {
-      ClientStatus.connected => Colors.greenAccent,
-      ClientStatus.reconnecting || ClientStatus.connecting || ClientStatus.pairing => Colors.amberAccent,
-      ClientStatus.waitingForCode => scheme.primary,
-      ClientStatus.idle || ClientStatus.failed => scheme.onSurfaceVariant,
-    };
+    final look = ToyLookScope.of(context);
     final rtt = client.rttMs;
-    return Chip(
-      avatar: Icon(Icons.circle, size: 12, color: color),
-      label: Text(client.isConnected && rtt != null ? '${statusLabel(client)} · $rtt ms' : statusLabel(client)),
+    final label = client.isConnected && rtt != null
+        ? PhoneText.linkWithPing(statusLabel(client), rtt)
+        : statusLabel(client);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        LinkDot(status: client.status),
+        const SizedBox(width: ToySizes.space8),
+        Text(label, style: look.type.body.copyWith(color: look.colors.onBackground)),
+      ],
     );
   }
 }
@@ -82,40 +100,43 @@ class _HostList extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final discovery = ref.watch(discoveryStateProvider);
     final target = ref.watch(clientStateProvider.select((s) => s.target));
-    final text = Theme.of(context).textTheme;
+    final look = ToyLookScope.of(context);
+    final hosts = discovery.hosts;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+      padding: const EdgeInsets.fromLTRB(ToySizes.space16, ToySizes.space8, ToySizes.space16, ToySizes.space8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
             children: [
-              Expanded(child: Text('Games on this Wi-Fi', style: text.titleMedium)),
+              Expanded(
+                child: Text(PhoneText.gamesOnWifi, style: look.type.body.copyWith(color: look.colors.onBackground)),
+              ),
               IconButton(
-                tooltip: 'Search again',
+                tooltip: PhoneText.searchAgain,
+                color: look.colors.onBackground,
                 icon: const Icon(Icons.refresh),
                 onPressed: () => ref.read(discoveryProvider).restart(),
               ),
             ],
           ),
           Expanded(
-            child: discovery.hosts.isEmpty
-                ? _NoHosts(discovery: discovery)
-                : ListView(
-                    children: [
-                      for (final host in discovery.hosts)
-                        ListTile(
-                          contentPadding: EdgeInsets.zero,
-                          leading: Icon(_hostIcon(host.kind)),
-                          title: Text(host.name),
-                          subtitle: Text(_hostSubtitle(host)),
-                          trailing: target != null && target.sameHostAs(host.address)
-                              ? const Icon(Icons.check_circle_outline)
-                              : const Icon(Icons.chevron_right),
-                          onTap: () => ref.read(connectionActionsProvider).connect(host.address),
-                        ),
-                    ],
-                  ),
+            child: ToyCard(
+              scrollBody: true,
+              padding: const EdgeInsets.all(ToySizes.space8),
+              child: hosts.isEmpty
+                  ? _NoHosts(discovery: discovery)
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        for (final host in hosts)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: ToySizes.space8),
+                            child: _HostRow(host: host, isTarget: target != null && target.sameHostAs(host.address)),
+                          ),
+                      ],
+                    ),
+            ),
           ),
           const _ManualEntry(),
         ],
@@ -124,30 +145,83 @@ class _HostList extends ConsumerWidget {
   }
 }
 
+/// One found TV: its kind's icon, its name and what it shows, on paper with an
+/// ink edge (M13 3c). A tap connects to it, as the list's rows always did.
+class _HostRow extends ConsumerWidget {
+  const _HostRow({required this.host, required this.isTarget});
+
+  final DiscoveredHost host;
+
+  /// The TV this phone is connecting to, or connected to.
+  final bool isTarget;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final look = ToyLookScope.of(context);
+    final colors = look.colors;
+    final buttonHeight = look.sizes.buttonHeight;
+    return DecoratedBox(
+      key: Key('hostRow-${host.name}'),
+      decoration: ShapeDecoration(
+        color: colors.paper,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(buttonHeight * hostRowCornerShare),
+          side: BorderSide(color: colors.ink, width: look.sizes.outlineWidth),
+        ),
+      ),
+      child: Material(
+        type: MaterialType.transparency,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(buttonHeight * hostRowCornerShare),
+          onTap: () => ref.read(connectionActionsProvider).connect(host.address),
+          child: Padding(
+            padding: EdgeInsets.all(buttonHeight * hostRowPaddingShare),
+            child: Row(
+              children: [
+                Icon(_hostIcon(host.kind), size: buttonHeight * hostRowIconShare, color: colors.ink),
+                const SizedBox(width: ToySizes.space12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        host.name,
+                        style: look.type.button.copyWith(color: colors.ink),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Text(
+                        _hostSubtitle(host),
+                        style: look.type.body.copyWith(color: colors.inkSoft),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(isTarget ? Icons.check_circle_outline : Icons.chevron_right, color: colors.ink),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// The icon a host's kind gets in the list (m12 §0.6): a TV when the host
 /// didn't say, which is what every host looked like before kinds existed.
 IconData _hostIcon(String? kind) => switch (kind) {
-  party.HostKind.pc => Icons.computer,
-  party.HostKind.phone => Icons.smartphone,
-  party.HostKind.tablet => Icons.tablet,
+  HostKind.pc => Icons.computer,
+  HostKind.phone => Icons.smartphone,
+  HostKind.tablet => Icons.tablet,
   _ => Icons.tv,
-};
-
-/// The kind's word at the front of a host's second line (m12 §0.6), empty
-/// when the host didn't say.
-String _hostKindWord(String? kind) => switch (kind) {
-  party.HostKind.pc => 'PC',
-  party.HostKind.phone => 'Phone',
-  party.HostKind.tablet => 'Tablet',
-  party.HostKind.tv => 'TV',
-  _ => '',
 };
 
 /// A host's second line (m12 §0.6): its kind first, then what it shows today.
 String _hostSubtitle(DiscoveredHost host) {
-  final shown = host.compatible ? host.address.display : '${host.address.display} · needs a matching app version';
-  final word = _hostKindWord(host.kind);
-  return word.isEmpty ? shown : '$word · $shown';
+  final shown = host.compatible ? host.address.display : PhoneText.needsMatchingApp(host.address.display);
+  return PhoneText.hostLine(PhoneText.hostKindWord(host.kind), shown);
 }
 
 class _NoHosts extends StatelessWidget {
@@ -157,7 +231,9 @@ class _NoHosts extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
+    final look = ToyLookScope.of(context);
+    // On the card's paper, so ink: onBackground is for the page's sky.
+    final style = look.type.body.copyWith(color: look.colors.ink);
     final error = discovery.error;
     return SingleChildScrollView(
       child: Row(
@@ -165,19 +241,15 @@ class _NoHosts extends StatelessWidget {
         children: [
           if (error == null)
             const Padding(
-              padding: EdgeInsets.only(top: 2, right: 12),
-              child: SizedBox.square(dimension: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+              padding: EdgeInsets.only(top: ToySizes.space4, right: ToySizes.space12),
+              child: SizedBox.square(dimension: ToySizes.space16, child: CircularProgressIndicator(strokeWidth: 2)),
             )
           else
-            const Padding(padding: EdgeInsets.only(right: 12), child: Icon(Icons.wifi_off)),
-          Expanded(
-            child: Text(
-              error == null
-                  ? 'Searching… Open the Thumb Party TV app on the TV or PC, on the same Wi-Fi as this phone.'
-                  : 'Discovery isn\'t working ($error). Type the address shown on the TV below.',
-              style: text.bodyMedium,
+            Padding(
+              padding: const EdgeInsets.only(right: ToySizes.space12),
+              child: Icon(Icons.wifi_off, color: look.colors.ink),
             ),
-          ),
+          Expanded(child: Text(error == null ? PhoneText.searching : PhoneText.discoveryFailed(error), style: style)),
         ],
       ),
     );
@@ -214,8 +286,9 @@ class _ManualEntryState extends ConsumerState<_ManualEntry> {
 
   @override
   Widget build(BuildContext context) {
+    final look = ToyLookScope.of(context);
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.end,
       children: [
         Expanded(
           child: TextField(
@@ -225,20 +298,18 @@ class _ManualEntryState extends ConsumerState<_ManualEntry> {
             autocorrect: false,
             textInputAction: TextInputAction.go,
             onSubmitted: (_) => _connect(),
+            // Text on the theme's paper field is ink (Claude's 3c review).
+            style: look.type.body.copyWith(color: look.colors.ink),
             decoration: InputDecoration(
               isDense: true,
-              border: const OutlineInputBorder(),
-              labelText: 'Or type the address',
-              hintText: '192.168.1.50:45780',
+              labelText: PhoneText.addressLabel,
+              hintText: PhoneText.addressHint,
               errorText: _error,
             ),
           ),
         ),
-        const SizedBox(width: 8),
-        Padding(
-          padding: const EdgeInsets.only(top: 2),
-          child: FilledButton(onPressed: _connect, child: const Text('Connect')),
-        ),
+        const SizedBox(width: ToySizes.space8),
+        ToyButton(label: PhoneText.connect, onPressed: _connect),
       ],
     );
   }

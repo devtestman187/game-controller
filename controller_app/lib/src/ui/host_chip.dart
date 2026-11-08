@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:party_host/party_host.dart' as party;
+import 'package:party_host/party_host.dart' show PhoneText, ToyLookScope, ToySizes;
 
 import '../host/hosting.dart';
 import '../providers.dart';
@@ -39,34 +40,39 @@ class HostChip extends ConsumerWidget {
     final player = ref.watch(clientStateProvider.select((s) => s.player));
     final address = state.addresses.firstOrNull?.address;
     final code = state.host.pairingCode;
+    final look = ToyLookScope.of(context);
+    // The menu is a surface of its own: its rows take the look's ink on it.
+    final rowStyle = MenuItemButton.styleFrom(foregroundColor: look.colors.ink);
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (!compact && player != null) ...[PlayerBadge(number: player), const SizedBox(width: 6)],
+        if (!compact && player != null) ...[PlayerBadge(number: player), const SizedBox(width: ToySizes.space8)],
         Flexible(
           child: MenuAnchor(
             menuChildren: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+                padding: EdgeInsets.fromLTRB(ToySizes.space16, ToySizes.space12, ToySizes.space16, ToySizes.space4),
                 child: Text(
                   code,
                   key: const Key('hostCode'),
-                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(letterSpacing: 8),
+                  style: look.type.title.copyWith(color: look.colors.ink, letterSpacing: ToySizes.space8),
                 ),
               ),
               _JoinHint(address: address),
               MenuItemButton(
                 key: const Key('newCode'),
+                style: rowStyle,
                 leadingIcon: const Icon(Icons.refresh),
                 onPressed: host.service.newPairingCode,
-                child: const Text('New code'),
+                child: const Text(PhoneText.newCode),
               ),
               MenuItemButton(
                 key: const Key('stopHosting'),
+                style: rowStyle,
                 leadingIcon: const Icon(Icons.stop_circle_outlined),
                 // The host route pops itself once the host is down.
                 onPressed: hosting.stop,
-                child: const Text('Stop hosting'),
+                child: const Text(PhoneText.stopHosting),
               ),
             ],
             builder: (context, menu, _) => _CodeChip(menu: menu, code: code, compact: compact),
@@ -89,11 +95,12 @@ class _JoinHint extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final address = this.address;
-    final style = Theme.of(context).textTheme.bodyMedium;
+    final look = ToyLookScope.of(context);
+    final style = look.type.body.copyWith(color: look.colors.inkSoft);
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+      padding: const EdgeInsets.fromLTRB(ToySizes.space16, 0, ToySizes.space16, ToySizes.space8),
       child: address == null
-          ? Text('Turn on Wi-Fi so other phones can join', key: const Key('hostNoWifi'), style: style)
+          ? Text(PhoneText.noWifi, key: const Key('hostNoWifi'), style: style)
           : Text(address, key: const Key('hostAddress'), style: style),
     );
   }
@@ -115,12 +122,16 @@ class _CodeChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final look = ToyLookScope.of(context);
+    final label = PhoneText.hosting(code);
     final chip = ActionChip(
       key: const Key('hostChip'),
       // The word the compact bar drops, so the bare code still says what it is.
-      tooltip: 'Hosting · $code',
-      avatar: const Icon(Icons.circle, size: 12, color: Colors.greenAccent),
-      label: Text(compact ? code : 'Hosting · $code', overflow: TextOverflow.ellipsis),
+      tooltip: label,
+      // A dot beside the words, never the words' own colour.
+      avatar: Icon(Icons.circle, size: LinkDot.dotSize, color: look.colors.good),
+      labelStyle: look.type.body.copyWith(color: look.colors.onBackground),
+      label: Text(compact ? code : label, overflow: TextOverflow.ellipsis),
       onPressed: () => menu.isOpen ? menu.close() : menu.open(),
     );
     return compact ? SizedBox(height: HostChip.compactHeight, child: chip) : chip;
