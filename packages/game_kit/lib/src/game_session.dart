@@ -17,6 +17,11 @@ import 'hosting_settings.dart';
 /// [GameHost.hasViewers]), so a phone can draw the game smoothly and measure a
 /// touch's trip to its screen (D3).
 ///
+/// Which steps go out depends on the step count alone — a 60 Hz host sends
+/// every step, a 30 Hz one every second — and a step clock times them: the
+/// anchor's host time plus the steps since, so the few ms by which [GameHost.nowMs]
+/// wobbles around the Ticker's elapsed can't drop a step (m12 bug 1108f).
+///
 /// A step reads its input through [input]: the newest sample, with the buttons
 /// pressed since the last step added, so a tap that starts and ends between two
 /// steps still reaches exactly one step.
@@ -51,11 +56,6 @@ abstract class GameSession {
   /// that moment instead of jumping.
   static const maxCatchUpS = 0.1;
 
-  /// How close a step's `at` must be to a send time to count as on it: the `at`
-  /// is a double built from the host's clock, so rounding alone can put a step
-  /// a tiny fraction of a microsecond early.
-  static const frameSlackMs = 0.001;
-
   final GameHost host;
 
   /// The game as a viewer draws it (m12 §4).
@@ -81,7 +81,16 @@ abstract class GameSession {
   /// no received_to_drawn sample (m12 bug 1107e).
   int? _resumedAtMs;
 
-  double? _frameStartMs;
+  // The step clock: the host time of step [_anchorStep], and whether the next
+  // step anchors again (a resume). A frame's `at` is the anchor plus the steps
+  // since it (m12 bug 1108f).
+  double? _anchorMs;
+  int _anchorStep = 0;
+  bool _reanchor = false;
+
+  // The last sent frame's `at`: a frame is never sent at or before it, since
+  // a viewer drops a frame that isn't after its newest (m12 bug 1108f).
+  int? _lastSentAtMs;
   int _lastFrameIndex = -1;
   // A set, so a sound repeated across the advances of one frame interval (20
   // or 30 Hz) is carried once.
@@ -157,7 +166,8 @@ abstract class GameSession {
 
   /// While paused nothing steps, nothing accumulates and no frame is sent; the
   /// pause menu can stay open for minutes and the game stands still. Setting it
-  /// false calls [resumed], and resuming doesn't catch up.
+  /// false calls [resumed], and resuming doesn't catch up: the step clock
+  /// re-anchors to the host's clock, since the pause stood it still.
   ///
   /// A session paused before its first step sends its first frame all the same
   /// ([_publishFirstFrame]), whether or not a viewer has paired yet: a round
@@ -171,6 +181,7 @@ abstract class GameSession {
       return;
     }
     _resumedAtMs = host.nowMs;
+    _reanchor = true;
     resumed();
   }
 
@@ -184,6 +195,10 @@ abstract class GameSession {
 
   /// Called once per drawn frame by the view's Ticker, with the Ticker's
   /// elapsed time.
+  ///
+  /// Each step goes to [_publishIfDue] with the host's estimate of when it
+  /// ran: [GameHost.nowMs] this advance, less the time still in the
+  /// accumulator.
   void advance(Duration elapsed) {
     if (_disposed) return;
     final rawS = (elapsed - _last).inMicroseconds / Duration.microsecondsPerSecond;
@@ -206,7 +221,7 @@ abstract class GameSession {
         _pendingButtons[id] = {...state.buttons};
       }
       _current = snapshot();
-      _publishIfDue(nowMs - _accS * Duration.millisecondsPerSecond);
+      _publishIfDue(_stepCount - 1, nowMs - _accS * Duration.millisecondsPerSecond);
     }
   }
 
@@ -305,12 +320,20 @@ abstract class GameSession {
     _fresh = fresh;
   }
 
-  /// Sends a frame when the step at [atMs] is on or past the next send time:
-  /// every `1000 / settings.frameRateHz` ms, counted from the first step.
-  void _publishIfDue(double atMs) {
-    final startMs = _frameStartMs ??= atMs;
-    final intervalMs = Duration.millisecondsPerSecond / settings.frameRateHz;
-    final index = ((atMs - startMs + frameSlackMs) / intervalMs).floor();
+  /// Sends step [n]'s frame when the frame rate is due one: step [n] goes out
+  /// once `(n × frameRateHz) ~/ [HostingSettings.simHz]` passes the last sent
+  /// index, so 60 Hz sends every step, 30 every second and 20 every third, and
+  /// a rate between them spreads its steps evenly. The step count alone
+  /// decides it: taken from the host's clock, a frame slot of exactly one step
+  /// at 60 Hz put two steps in one slot whenever the clock wobbled, and the
+  /// second was dropped on every phone showing the game (m12 bug 1108f).
+  /// Sounds wait for the next sent frame.
+  ///
+  /// [wallMs] is the host's estimate of when the step ran, which [_stepTimeMs]
+  /// keeps the step clock near.
+  void _publishIfDue(int n, double wallMs) {
+    final atMs = _stepTimeMs(n, wallMs);
+    final index = (n * settings.frameRateHz) ~/ HostingSettings.simHz;
     if (!host.hasViewers) {
       // Nobody would get the sounds: don't let them pile up for a viewer that
       // joins later (it would play a whole game's sounds at once).
@@ -319,8 +342,35 @@ abstract class GameSession {
     }
     if (index <= _lastFrameIndex) return;
     _lastFrameIndex = index;
-    host.publishFrame(_frame(_stepCount - 1, atMs.round(), sounds: List.of(_pendingSounds)));
+    // A re-anchor can pull the clock back by its wobble: never behind a sent
+    // frame, or the phones would drop this one.
+    final last = _lastSentAtMs;
+    final sentAtMs = last != null && atMs <= last ? last + 1 : atMs;
+    _lastSentAtMs = sentAtMs;
+    host.publishFrame(_frame(n, sentAtMs, sounds: List.of(_pendingSounds)));
     _pendingSounds.clear();
+  }
+
+  /// The host time step [n] ran at: the anchor's host time plus the steps
+  /// since it, times a step, rounded to a whole ms once at the end. The clock
+  /// moves with the steps alone, so consecutive sent frames are one frame
+  /// interval apart however [GameHost.nowMs] wobbles (m12 bug 1108f).
+  ///
+  /// [wallMs] is the host's estimate of the step's time this advance. It
+  /// re-anchors the step clock when the two differ by more than a step (a
+  /// stall, a slow device, which would drift apart), and on the first step
+  /// after a pause, so the clock never strays from the host's.
+  int _stepTimeMs(int n, double wallMs) {
+    final stepMs = settings.simStepS * Duration.millisecondsPerSecond;
+    final anchorMs = _anchorMs;
+    var stepTimeMs = anchorMs == null ? wallMs : anchorMs + (n - _anchorStep) * stepMs;
+    if (anchorMs == null || _reanchor || (wallMs - stepTimeMs).abs() > stepMs) {
+      stepTimeMs = wallMs;
+      _anchorMs = wallMs;
+      _anchorStep = n;
+      _reanchor = false;
+    }
+    return stepTimeMs.round();
   }
 
   /// Each player's last applied input seq, for the frame's `acks`.

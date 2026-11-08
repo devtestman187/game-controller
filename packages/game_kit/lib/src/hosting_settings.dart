@@ -36,12 +36,15 @@ final class HostingSettings {
     return HostingSettings(frameRateHz: hz);
   }
 
+  /// Steps a second the rules run (m12 §3): a frame goes out for every step of
+  /// them a frame rate counts.
+  static const simHz = 60;
+
   /// How long one step of the rules is, in seconds: 1/60 s (m12 §3). Fixed, so
   /// the same game plays the same on any host.
   double get simStepS => _simStepS;
 
-  // 60 steps a second (m12 §3).
-  static const _simStepS = 1 / 60;
+  static const _simStepS = 1 / simHz;
 
   /// Frames a second the host publishes to viewers (m12 §3).
   final int frameRateHz;
