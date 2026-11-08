@@ -98,6 +98,7 @@ Each of these is a rejected diff:
 - Change only the files in `--allow`. If the job needs another file, stop and say which and why.
 - If the brief's contract can't be met as written (a type doesn't fit, a rule contradicts the code), stop and report it. Never work around a design problem; it goes back to Claude.
 - Run the checks named in `--check` and report the result honestly, including failures.
+- Answer the self-check in [review-rules.md](review-rules.md) part A (every host setup; when kept state starts and ends; how a new state combines with the others; your folder only; stop rather than overstep), one line each with its test.
 - Report: the files changed, what each change does, every computed test value, anything you were unsure of. End it with the draft commit message, the STATUS row and the files to delete (`tools/flash.sh` says how).
 
 ## Review checklist (what Claude checks in every diff)
@@ -108,3 +109,5 @@ Each of these is a rejected diff:
 4. Tests match the brief's rules; no real time; dispose is tested.
 5. Protocol changes documented and capability-gated.
 6. The diff stays inside the job and the brief.
+7. The self-check (review-rules.md part A) is answered and true.
+8. Full reviews (a milestone's end, a public release) also cover review-rules.md parts B and C.

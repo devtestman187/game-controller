@@ -8,6 +8,7 @@ do:
 1 <one change per line: the type or file, what it does, the rule it follows>
 2 Tests: <the cases, each a rule that a test must fail on if broken>
 3 Report: <anything Claude needs to check: line counts, a move map, computed values>
+self-check: docs/review-rules.md part A, items 1–5, one line each in the report with the test that shows it.
 
 rules: <limits beyond the guidelines: sizes, no behaviour or text changes, …> · tools/review.sh: no FAIL on your lines.
 allow: <path> · <path>

@@ -87,6 +87,7 @@ The TV app keeps every session's stats on the device either way. With an adult's
    The notes go to Play "What's new" (500 characters), TestFlight "What to Test" and the GitHub Release, from `tools/release-notes.sh`: the tag's message, or the commit subjects since the last tag if the tag has no message.
 4. Installed apps update from TestFlight and Play. Windows testers download the new zip.
 5. **iOS external testers: only on the owner's word.** A build reaches TestFlight's internal group first. After each release Claude asks the owner whether to promote it to the external `Testers` group, and does nothing until the owner says yes. To promote: App Store Connect → Thumb Party → **TestFlight** → the build → **Groups** → add **Testers** (the first build of a version goes through Beta App Review, usually within a day).
+6. **A full code review before anything public.** Before a build is promoted to `Testers`, released to a store, or a milestone is called done, the changes since the last full review get one (owner's decision, Nov 7, 2026): the worker's pass first, then Claude verifies, as [review-rules.md](review-rules.md) says. Internal-only builds don't need one.
 
 ## If something goes wrong
 | Problem | Fix |
