@@ -40,7 +40,18 @@ abstract interface class GameSnapshot {
 }
 
 /// What a viewer draws for (m12 §4): the roster (number and name per player
-/// ID), this phone's player, if it plays, and whether a phone that shows a
-/// game laid out for phones draws the whole match instead of its own side
-/// (a tablet, which has the room for both: m12-phone-layout §0.6).
-typedef ViewContext = ({Map<String, ({int number, String name})> roster, String? playerId, bool wholeMatch});
+/// ID), this phone's player, if it plays, whether a phone that shows a game
+/// laid out for phones draws the whole match instead of its own side (a
+/// tablet, which has the room for both: m12-phone-layout §0.6), and where the
+/// app draws this phone's pad, in the box's px ([padRects]).
+///
+/// [padRects] is the app's geometry, which the game can't import: the app
+/// passes the controls it draws so the game can keep what it adds (the other
+/// side's mirror: m12-opponent-mirror rule 3) clear of them. Empty where the
+/// app draws no pad over the game.
+typedef ViewContext = ({
+  Map<String, ({int number, String name})> roster,
+  String? playerId,
+  bool wholeMatch,
+  List<Rect> padRects,
+});

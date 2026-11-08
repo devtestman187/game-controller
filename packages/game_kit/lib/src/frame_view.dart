@@ -38,6 +38,7 @@ class FrameView extends StatefulWidget {
     required this.nowMs,
     this.playerId,
     this.wholeMatch = false,
+    this.padRects = const [],
     this.settings = HostingSettings.defaults,
     this.onSounds,
     super.key,
@@ -66,6 +67,12 @@ class FrameView extends StatefulWidget {
   /// side, for [ViewContext.wholeMatch]: this phone has the room for both
   /// sides (a tablet, m12-phone-layout §0.6).
   final bool wholeMatch;
+
+  /// Where this phone's app draws its pad, in this view's own px, for
+  /// [ViewContext.padRects]: the game keeps what it adds over the screen clear
+  /// of it (m12-opponent-mirror rule 3). Empty where nothing is drawn over the
+  /// game.
+  final List<Rect> padRects;
 
   /// How much playout the phone may buffer ([HostingSettings.maxPlayoutFrames]).
   final HostingSettings settings;
@@ -268,6 +275,7 @@ class _FrameViewState extends State<FrameView> with SingleTickerProviderStateMix
       roster: a.frame.roster,
       playerId: widget.playerId,
       wholeMatch: widget.wholeMatch,
+      padRects: widget.padRects,
     ));
   }
 

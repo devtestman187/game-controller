@@ -13,6 +13,7 @@ class MatchPainter extends CustomPainter {
     this.timeLimitS,
     this.target = LayoutTarget.screen,
     this.camera = const PuzzleCamera.whole(),
+    this.padRects = const [],
   });
 
   final Puzzle puzzle;
@@ -24,6 +25,10 @@ class MatchPainter extends CustomPainter {
 
   /// What a `phones` box shows: one side's world, or the whole match.
   final PuzzleCamera camera;
+
+  /// Where the app draws this phone's pad, in the box's px: the mirror keeps
+  /// clear of it (m12-opponent-mirror rule 3, code-health N4).
+  final List<Rect> padRects;
 
   /// The widest the clock's bar gets: under the clock in the strip, in the
   /// gap between the boards.
@@ -105,7 +110,7 @@ class MatchPainter extends CustomPainter {
   void _hud(Canvas canvas, Size size, SplitLayout layout) {
     final text = phoneHud(s, camera.side);
     final scores = (score: text.score, short: text.short);
-    final mirror = PuzzleCamera.mirrorPlace(layout, camera, size, split: s.split, text: scores);
+    final mirror = PuzzleCamera.mirrorPlace(layout, camera, size, split: s.split, text: scores, padRects: padRects);
     final shown = mirror == null ? text : phoneHud(s, camera.side, mirrored: true);
     // Measured on the sides' names, the widest the short form gets ("Right 3/6"
     // is longer than "Them 3/6"), so the area is the same either way.
@@ -279,7 +284,8 @@ class MatchPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(MatchPainter old) => !identical(old.s, s) || old.target != target || old.camera != camera;
+  bool shouldRepaint(MatchPainter old) =>
+      !identical(old.s, s) || old.target != target || old.camera != camera || !listEquals(old.padRects, padRects);
 }
 
 /// What a phone's clock area shows (m12-phone-layout §0.7c): the clock, one

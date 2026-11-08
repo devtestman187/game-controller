@@ -161,18 +161,24 @@ final class PuzzleCamera {
   /// mirror rules 1–6): a one-board match ([split] false — solo or a team),
   /// the whole match (a tablet), the screen (the TV), a box whose spare width
   /// only fits the HUD's short form or its corner over the board (a narrow
-  /// phone), and a box too narrow for the HUD that the mirror brings.
+  /// phone), a box too narrow for the HUD that the mirror brings, and a box
+  /// where the player's own pad is ([padRects]) — the mirror never covers a
+  /// control the thumb is on (rule 3, code-health N4).
   ///
   /// The mirror is their board alone, at [hudMarginPx] from the box's left and
   /// [hudTopFraction] of its height down, under the top bar; their board's
   /// aspect, so their picture is not stretched. [text] is the HUD the phone
   /// draws without a mirror, whose form says whether the box has the room.
+  /// [padRects] are the controls the app draws under the game, in the box's
+  /// px: the app's own geometry, passed through the view, so the game never
+  /// copies it (rules 3 and 6).
   static ({Rect rect, double scale})? mirrorPlace(
     SplitLayout layout,
     PuzzleCamera camera,
     Size box, {
     required bool split,
     required ({String score, List<String> short}) text,
+    List<Rect> padRects = const [],
   }) {
     if (!split || camera.side == null || layout.target != LayoutTarget.phones) return null;
     if (hudPlace(layout, camera, box, text).form case HudForm.short || HudForm.corner) return null;
@@ -181,6 +187,7 @@ final class PuzzleCamera {
     final rect = Rect.fromLTWH(hudMarginPx, box.height * hudTopFraction, board.width * scale, board.height * scale);
     final room = _hudRoom(layout, camera, box, rect).spare;
     if (room < box.height * _hudSize(HudForm.short, text).width) return null;
+    if (padRects.any(rect.overlaps)) return null;
     return (rect: rect, scale: scale);
   }
 

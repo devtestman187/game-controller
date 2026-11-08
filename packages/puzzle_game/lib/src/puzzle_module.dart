@@ -130,8 +130,14 @@ final class ShapeRaceViewer implements GameViewer {
     );
     return _LoadedPuzzle(
       puzzleId: puzzleId,
-      builder: (puzzle) =>
-          MatchView(puzzle: puzzle, snapshot: snapshot, timeLimitS: timeLimitS, target: target, camera: camera),
+      builder: (puzzle) => MatchView(
+        puzzle: puzzle,
+        snapshot: snapshot,
+        timeLimitS: timeLimitS,
+        target: target,
+        camera: camera,
+        padRects: view.padRects,
+      ),
     );
   }
 }

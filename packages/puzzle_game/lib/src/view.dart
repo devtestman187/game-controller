@@ -1,7 +1,8 @@
 import 'dart:math';
 
+import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
-import 'package:protocol/protocol.dart' show playerColor;
+import 'package:protocol/protocol.dart' show playerColor, playerColors;
 
 import 'camera.dart';
 import 'game.dart';
@@ -49,6 +50,7 @@ class MatchView extends StatelessWidget {
     this.timeLimitS,
     this.target = LayoutTarget.screen,
     this.camera = const PuzzleCamera.whole(),
+    this.padRects = const [],
   });
 
   final Puzzle puzzle;
@@ -62,12 +64,19 @@ class MatchView extends StatelessWidget {
   /// draws the whole match.
   final PuzzleCamera camera;
 
+  /// Where the app draws this phone's pad, in the box's px, which the other
+  /// side's mirror keeps clear of (m12-opponent-mirror rule 3, code-health
+  /// N4): the pad is the app's, so the game is told where it is rather than
+  /// knowing it (rule 6). Empty where nothing is drawn over the game (the TV,
+  /// a tablet, "Show on this device").
+  final List<Rect> padRects;
+
   @override
   Widget build(BuildContext context) => CustomPaint(
     key: const Key('puzzleView'),
     size: Size.infinite,
     painter: snapshot.split || target == LayoutTarget.phones
-        ? MatchPainter(puzzle, snapshot, timeLimitS: timeLimitS, target: target, camera: camera)
+        ? MatchPainter(puzzle, snapshot, timeLimitS: timeLimitS, target: target, camera: camera, padRects: padRects)
         : PuzzlePainter(puzzle, snapshot.boards.single, timeLimitS: timeLimitS),
   );
 }
@@ -89,6 +98,8 @@ const _hudPanel = Color(0x8C000000);
 const _board = Color(0xFF242B36);
 
 /// The orange that marks the other side (m12-opponent-mirror rule 4): the
-/// mirror's frame, their dot and their count. Player 2's colour, so the other
-/// side of a race reads as one of the pads whatever numbers it holds.
-const _them = Color(0xFFFFA040);
+/// mirror's frame, their dot and their count. Player 2's colour from the
+/// protocol's palette — [playerColors]' second entry — so a re-skin moves the
+/// mirror with the pads' badges, as the look-and-sound milestone will
+/// (code-health, the look row).
+final _them = Color(playerColors[1]);

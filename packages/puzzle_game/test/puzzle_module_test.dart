@@ -30,20 +30,33 @@ void servePuzzles() {
 }
 
 /// The viewer's game in a 960 x 540 box, as a phone would draw it.
-Widget draw(GameViewer viewer, MatchSnapshot snapshot, {String? playerId, bool wholeMatch = false}) => Directionality(
+Widget draw(
+  GameViewer viewer,
+  MatchSnapshot snapshot, {
+  String? playerId,
+  bool wholeMatch = false,
+  List<Rect> padRects = const [],
+}) => Directionality(
   textDirection: TextDirection.ltr,
   child: SizedBox(
     width: 960,
     height: 540,
     child: Builder(
-      builder: (context) =>
-          viewer.build(context, snapshot, (roster: const {}, playerId: playerId, wholeMatch: wholeMatch)),
+      builder: (context) => viewer.build(context, snapshot, (
+        roster: const {},
+        playerId: playerId,
+        wholeMatch: wholeMatch,
+        padRects: padRects,
+      )),
     ),
   ),
 );
 
 /// The camera the drawn [MatchView] paints with.
 PuzzleCamera cameraOf(WidgetTester tester) => tester.widget<MatchView>(find.byType(MatchView)).camera;
+
+/// The app's controls the drawn [MatchView] keeps clear of, as it was given them.
+List<Rect> padRectsOf(WidgetTester tester) => tester.widget<MatchView>(find.byType(MatchView)).padRects;
 
 void main() {
   final snapshot = PuzzleMatch(house(), teams: const {'p1': PuzzleSide.left}, random: Random(1)).snapshot();
@@ -150,5 +163,12 @@ void main() {
     await tester.pumpWidget(draw(screen, snapshot, playerId: 'p2'));
     await tester.pump();
     expect(cameraOf(tester), const PuzzleCamera.whole(), reason: 'the screen keeps today\'s picture');
+
+    // The controls the app draws under the game reach the view as it passed
+    // them, for the mirror to keep clear of (m12-opponent-mirror rule 3).
+    const pad = [Rect.fromLTWH(24, 250, 120, 120)];
+    await tester.pumpWidget(draw(phones, phonesSnapshot, playerId: 'p1', padRects: pad));
+    await tester.pump();
+    expect(padRectsOf(tester), pad);
   });
 }

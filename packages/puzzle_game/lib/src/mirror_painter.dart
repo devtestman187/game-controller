@@ -4,7 +4,8 @@ part of 'view.dart';
 /// board alone — its panel, the targets faint, the pieces they've placed
 /// filled — with their dot on it at its place, and the piece they hold drawn
 /// where their dot carries it, turned as they turn it. Orange marks the other
-/// side: the frame, the dots and their count.
+/// side: the frame, the dots and their count. Their dot is at least
+/// `mirrorMinPieceMm` across ([mirrorDotRadius]).
 ///
 /// While their dot is above the board (their tray row) it is pinned onto the
 /// mirror's top edge, at its place across their side, and the piece they hold
@@ -98,25 +99,31 @@ class MirrorPainter {
   }
 
   /// Every dot of the other side (two in a 2-v-1), and the piece each holds.
+  ///
+  /// The dot goes under the piece they hold: a dot is as big as the smallest
+  /// piece the mirror draws (code-health N3), so it would hide the piece's
+  /// whole fill if it were drawn over it, and the piece's orange outline says
+  /// whose it is anyway.
   void _players(Canvas canvas) {
+    final r = mirrorDotRadius(puzzle);
     for (final p in theirs.players) {
       final at = Offset(p.x, p.y);
       final pinned = _pinned(at);
-      final held = p.held;
-      if (held != null && held < theirs.pieces.length && held < puzzle.pieces.length) {
-        final piece = theirs.pieces[held];
-        _held(canvas, Offset(piece.x, piece.y) + (pinned - at), held, piece.angle);
-      }
       canvas
-        ..drawCircle(pinned, PuzzleGame.dotRadius, Paint()..color = _them)
+        ..drawCircle(pinned, r, Paint()..color = _them)
         ..drawCircle(
           pinned,
-          PuzzleGame.dotRadius,
+          r,
           Paint()
             ..style = PaintingStyle.stroke
             ..strokeWidth = _targetPx / scale
             ..color = Colors.white,
         );
+      final held = p.held;
+      if (held != null && held < theirs.pieces.length && held < puzzle.pieces.length) {
+        final piece = theirs.pieces[held];
+        _held(canvas, Offset(piece.x, piece.y) + (pinned - at), held, piece.angle);
+      }
     }
   }
 
@@ -140,7 +147,21 @@ class MirrorPainter {
   /// the board, in their tray row — pinned onto the board's top edge at its
   /// place across it, never so near an edge that the dot leaves the mirror.
   Offset _pinned(Offset at) {
-    const r = PuzzleGame.dotRadius;
+    final r = mirrorDotRadius(puzzle);
     return Offset(at.dx.clamp(field.board.left + r, field.board.right - r), max(at.dy, field.board.top + r));
   }
+}
+
+/// The radius the mirror draws a dot at, in board units: the smallest piece's
+/// ([PieceShape.size] halved), so their dot is as big as the smallest piece the
+/// mirror draws (m12-opponent-mirror rule 1, code-health N3).
+///
+/// The mirror draws at [PuzzleCamera.mirrorFraction] of the board's scale, and
+/// the board draws its smallest piece at `minPieceMm` or more, so a dot that
+/// size is `mirrorMinPieceMm` or more across on every phone — the smallest mark
+/// that reads — and the game needs no px per millimetre to know it. The floor
+/// [PuzzleGame.dotRadius] only holds a puzzle of smaller pieces.
+double mirrorDotRadius(Puzzle puzzle) {
+  final smallest = puzzle.pieces.map((p) => p.shape.size).reduce(min);
+  return max(PuzzleGame.dotRadius, smallest / 2);
 }
