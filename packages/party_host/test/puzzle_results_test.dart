@@ -10,6 +10,30 @@ import 'package:puzzle_game/puzzle_game.dart';
 
 import 'support/host_harness.dart';
 
+/// Home → Play → Shape Race → "Any `<level>` puzzle" (easy unless [level]),
+/// then P1 joins and starts: a solo round, or a race when [race] (P2 joins
+/// the right side too).
+Future<void> openAnyPuzzle(
+  WidgetTester tester,
+  FakeHostService fake, {
+  bool race = false,
+  Level level = Level.easy,
+}) async {
+  await neutral(tester, fake, race ? ['p1', 'p2'] : ['p1']);
+  await openShapeRace(tester);
+  final any = find.byKey(Key('random-${level.name}'));
+  await tester.ensureVisible(any);
+  await tester.pump();
+  await tester.tap(any);
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 500));
+  if (race) {
+    await startRace(tester, fake);
+  } else {
+    await startRound(tester, fake);
+  }
+}
+
 void main() {
   testWidgets('on the results the phone works the menu: left/right, A and B; the A that finished does nothing', (
     tester,
@@ -23,7 +47,9 @@ void main() {
         .push(
           MaterialPageRoute<void>(
             builder: (_) => PuzzleScreen(
-              choice: const PuzzleChoice(level: Level.easy),
+              // The house puzzle, chosen: the first button is Play again, the
+              // board these two tests work through the phone (m12 bug 1108e).
+              choice: PuzzleChoice(level: Level.easy, puzzleId: housePuzzle().id),
               teams: const {'p1': PuzzleSide.left},
               match: match,
             ),
@@ -82,7 +108,9 @@ void main() {
         .push(
           MaterialPageRoute<void>(
             builder: (_) => PuzzleScreen(
-              choice: const PuzzleChoice(level: Level.easy),
+              // The house puzzle, chosen: the first button is Play again, the
+              // board these two tests work through the phone (m12 bug 1108e).
+              choice: PuzzleChoice(level: Level.easy, puzzleId: housePuzzle().id),
               teams: const {'p1': PuzzleSide.left},
               match: match,
             ),
@@ -216,7 +244,9 @@ void main() {
           .push(
             MaterialPageRoute<void>(
               builder: (_) => PuzzleScreen(
-                choice: const PuzzleChoice(level: Level.easy),
+                // The house puzzle, chosen: a chosen race rematches (m12
+                // bug 1108e).
+                choice: PuzzleChoice(level: Level.easy, puzzleId: housePuzzle().id),
                 teams: teams,
                 match: match,
               ),
@@ -238,6 +268,7 @@ void main() {
     expect(tester.widget<Text>(find.byKey(const Key('puzzleResultTitle'))).data, 'Left wins!');
     expect(tester.widget<Text>(find.byKey(const Key('puzzleResultLine-left'))).data, endsWith('seconds'));
     expect(tester.widget<Text>(find.byKey(const Key('puzzleResultLine-right'))).data, '0 of 4 pieces placed');
+    expect(find.text('Rematch'), findsOneWidget, reason: 'a chosen race rematches (m12 bug 1108e)');
     expect(focused(tester, 'rematch'), isTrue, reason: 'Rematch has the focus for the phone and the remote');
 
     // Rematch starts another race with the same teams.
@@ -255,5 +286,59 @@ void main() {
     expect(find.byType(JoinScreen), findsOneWidget);
     expect(find.descendant(of: find.byKey(const Key('side-left')), matching: find.text('P1 iPhone 3F1C')), findsOne);
     expect(find.descendant(of: find.byKey(const Key('side-right')), matching: find.text('P2 Phone 2')), findsOne);
+  });
+
+  // m12 bug 1108e: an "any puzzle" round said "Play again" and played another
+  // puzzle of the level, so the owner expected the same board back.
+  testWidgets('an any-puzzle round says Next puzzle, and pressing it opens another easy puzzle', (tester) async {
+    final fake = await pumpHost(tester, screen: const StubHome());
+    await openAnyPuzzle(tester, fake);
+    expect(find.byType(PuzzleScreen), findsOneWidget);
+    final played = tester.widget<PuzzlePlayView>(find.byType(PuzzlePlayView)).puzzle.id;
+    lockEveryPiece(tester);
+    await endRound(tester);
+
+    expect(find.text('Done!'), findsOneWidget);
+    expect(find.text('Next puzzle'), findsOneWidget);
+    expect(find.byKey(const Key('nextPuzzle')), findsOneWidget);
+    expect(find.byKey(const Key('playAgain')), findsNothing, reason: 'the round did not play a chosen puzzle');
+    expect(
+      focused(tester, 'nextPuzzle'),
+      isTrue,
+      reason: 'the first button keeps the focus for the phone and the remote',
+    );
+
+    await tester.tap(find.byKey(const Key('nextPuzzle')));
+    await navigated(tester);
+    expect(find.byType(PuzzleScreen), findsOneWidget);
+    final next = tester.widget<PuzzlePlayView>(find.byType(PuzzlePlayView)).puzzle.id;
+    expect(next, isNot(played), reason: 'the next puzzle is another one of the level');
+    expect(testPuzzles().byId(next)?.level, Level.easy);
+  });
+
+  testWidgets('an any-puzzle race says Next puzzle', (tester) async {
+    final fake = await pumpHost(tester, screen: const StubHome());
+    fake.state = withController(fake.state, phoneInfo('p2', 2));
+    fake.emit();
+    await openAnyPuzzle(tester, fake, race: true);
+    lockEveryPiece(tester);
+    await endRound(tester);
+
+    expect(find.text('Left wins!'), findsOneWidget);
+    expect(find.text('Next puzzle'), findsOneWidget);
+    expect(find.byKey(const Key('nextPuzzle')), findsOneWidget);
+    expect(find.byKey(const Key('rematch')), findsNothing, reason: 'the race had no chosen puzzle to rematch');
+    expect(focused(tester, 'nextPuzzle'), isTrue);
+  });
+
+  testWidgets('an any-puzzle round of a level with one puzzle says Play again', (tester) async {
+    expect(testPuzzles().ofLevel(Level.medium), hasLength(1), reason: 'the case needs a one-puzzle level');
+    final fake = await pumpHost(tester, screen: const StubHome());
+    await openAnyPuzzle(tester, fake, level: Level.medium);
+    lockEveryPiece(tester);
+    await endRound(tester);
+
+    expect(find.byKey(const Key('playAgain')), findsOneWidget, reason: 'there is no other puzzle to go to');
+    expect(find.byKey(const Key('nextPuzzle')), findsNothing);
   });
 }

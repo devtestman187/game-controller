@@ -44,30 +44,34 @@ class _PlayHint extends StatelessWidget {
   );
 }
 
+/// The results' first button (T14): Rematch or Play again for one chosen
+/// puzzle, Next puzzle after a round that played `any <level> puzzle` (m12
+/// bug 1108e). The focus starts on it, so the remote's OK and a phone's A work
+/// at once.
+typedef _AgainButton = ({String label, IconData icon, String key, FocusNode focusNode, VoidCallback onPressed});
+
 /// The results over the board: the winner, each side's time or pieces
-/// placed, and Rematch (Play again), Change teams and Back (T14).
+/// placed, and the first button (Rematch, Play again or Next puzzle), Change
+/// teams and Back (T14).
 class _Results extends ConsumerWidget {
   const _Results({
     required this.result,
     required this.teams,
     required this.total,
-    required this.againFocus,
-    required this.onAgain,
+    required this.again,
     required this.onChangeTeams,
   });
 
   final MatchResult result;
   final Map<String, PuzzleSide> teams;
   final int total;
-  final FocusNode againFocus;
-  final VoidCallback onAgain;
+  final _AgainButton again;
   final VoidCallback onChangeTeams;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final text = Theme.of(context).textTheme;
     final players = ref.watch(gamePlayersProvider);
-    final race = result.format.split;
     final (:title, :colour) = _resultsHead(result);
 
     return DecoratedBox(
@@ -87,7 +91,7 @@ class _Results extends ConsumerWidget {
             for (final side in result.sides.keys)
               _ResultSideRow(side: side, result: result, teams: teams, players: players, total: total),
             const SizedBox(height: 24),
-            _ResultButtons(race: race, againFocus: againFocus, onAgain: onAgain, onChangeTeams: onChangeTeams),
+            _ResultButtons(again: again, onChangeTeams: onChangeTeams),
           ],
         ),
       ),
@@ -144,18 +148,12 @@ class _ResultSideRow extends StatelessWidget {
   }
 }
 
-/// Rematch (Play again on one board), Change teams and Back.
+/// The first button (Rematch, Play again or Next puzzle), Change teams and
+/// Back.
 class _ResultButtons extends StatelessWidget {
-  const _ResultButtons({
-    required this.race,
-    required this.againFocus,
-    required this.onAgain,
-    required this.onChangeTeams,
-  });
+  const _ResultButtons({required this.again, required this.onChangeTeams});
 
-  final bool race;
-  final FocusNode againFocus;
-  final VoidCallback onAgain;
+  final _AgainButton again;
   final VoidCallback onChangeTeams;
 
   @override
@@ -163,11 +161,11 @@ class _ResultButtons extends StatelessWidget {
     mainAxisSize: MainAxisSize.min,
     children: [
       HostButton(
-        key: Key(race ? 'rematch' : 'playAgain'),
-        label: race ? 'Rematch' : 'Play again',
-        icon: Icons.replay,
-        focusNode: againFocus,
-        onPressed: onAgain,
+        key: Key(again.key),
+        label: again.label,
+        icon: again.icon,
+        focusNode: again.focusNode,
+        onPressed: again.onPressed,
       ),
       const SizedBox(width: 12),
       HostButton(key: const Key('changeTeams'), label: 'Change teams', icon: Icons.group, onPressed: onChangeTeams),

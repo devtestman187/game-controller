@@ -30,9 +30,10 @@ final class PuzzleChoice {
 
 /// Shape Race (PRD v2 M10, M11): the match, played through the game host,
 /// with Start to pause, then the results: the winner, each side's time or
-/// pieces placed, and Rematch (Play again on one board), Change teams and
-/// Back (T14). The phones work the results like the remote. On a desktop the
-/// keyboard can play too (arrows, Space, X and Z).
+/// pieces placed, and Rematch (Play again on one board, Next puzzle after an
+/// "any puzzle" round), Change teams and Back (T14). The phones work the
+/// results like the remote. On a desktop the keyboard can play too (arrows,
+/// Space, X and Z).
 class PuzzleScreen extends ConsumerStatefulWidget {
   const PuzzleScreen({
     super.key,
@@ -141,9 +142,27 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
     Navigator.of(context).pushReplacement(MaterialPageRoute<void>(builder: (_) => screen));
   }
 
-  /// Same teams; a random puzzle becomes another random one.
+  /// The first button on the results (m12 bug 1108e), by what this round
+  /// played: a round that found its puzzle from `any <level> puzzle` plays
+  /// another of the level, so its button says Next puzzle; a round of one
+  /// chosen puzzle, or of a level that holds only this one, plays it again, as
+  /// Rematch in a race and Play again on one board.
+  _AgainButton get _again {
+    final race = _result?.format.split ?? false;
+    final level = widget.choice.level;
+    final another = (ref.read(puzzleLibraryProvider).whenOrNull(data: (l) => l.ofLevel(level).length) ?? 0) > 1;
+    final (label, icon, key) = widget.choice.puzzleId == null && another
+        ? ('Next puzzle', Icons.skip_next, 'nextPuzzle')
+        : race
+        ? ('Rematch', Icons.replay, 'rematch')
+        : ('Play again', Icons.replay, 'playAgain');
+    return (label: label, icon: icon, key: key, focusNode: _againFocus, onPressed: _rematch);
+  }
+
+  /// The first button's press: the same teams; a random puzzle becomes
+  /// another one of the level.
   void _rematch() {
-    _log('Results: ${_result?.format.split ?? false ? 'Rematch' : 'Play again'}');
+    _log('Results: ${_again.label}');
     _replaceWith(
       PuzzleScreen(choice: widget.choice, teams: widget.teams, keyboard: _keyboard, avoidPuzzleId: _puzzle?.id),
     );
@@ -240,8 +259,7 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
                         result: result,
                         teams: widget.teams,
                         total: puzzle.pieces.length,
-                        againFocus: _againFocus,
-                        onAgain: _rematch,
+                        again: _again,
                         onChangeTeams: _changeTeams,
                       ),
                     ),

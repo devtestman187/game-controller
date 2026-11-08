@@ -67,6 +67,24 @@ void main() {
     expect(logLines(log).where((line) => line == 'Round started: puzzle, solo, 1 player'), hasLength(2));
   });
 
+  // m12 bug 1108e: the log says what the first results button said.
+  testWidgets('an any-puzzle round leaving the results for the next puzzle goes in the host log', (tester) async {
+    final (fake, log) = await pumpLogged(tester);
+    await neutral(tester, fake, ['p1']);
+    await openShapeRace(tester);
+    await tester.tap(find.byKey(const Key('random-easy')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    await startRound(tester, fake);
+    lockEveryPiece(tester);
+    await endRound(tester);
+    expect(find.text('Next puzzle'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('nextPuzzle')));
+    await navigated(tester);
+    expect(logLines(log), contains('Results: Next puzzle'));
+  });
+
   testWidgets('a race leaving the results to rematch goes in the host log', (tester) async {
     final (fake, log) = await pumpLogged(tester);
     fake.state = withController(fake.state, phoneInfo('p2', 2));

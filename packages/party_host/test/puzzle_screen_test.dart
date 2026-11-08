@@ -47,7 +47,9 @@ void main() {
         .push(
           MaterialPageRoute<void>(
             builder: (_) => PuzzleScreen(
-              choice: const PuzzleChoice(level: Level.easy),
+              // The house puzzle, chosen: its results say Play again (m12
+              // bug 1108e); an "any puzzle" round says Next puzzle.
+              choice: PuzzleChoice(level: Level.easy, puzzleId: housePuzzle().id),
               teams: const {'p1': PuzzleSide.left},
               match: match,
             ),
@@ -66,6 +68,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 16));
     expect(find.text('Done!'), findsOneWidget);
     expect(find.textContaining('seconds'), findsOneWidget);
+    expect(find.text('Play again'), findsOneWidget, reason: 'a chosen puzzle plays again (m12 bug 1108e)');
     expect(find.byKey(const Key('playAgain')), findsOneWidget);
     expect(sounds.played, contains('success'));
     // The remote's OK button works at once: Play again has the focus.
