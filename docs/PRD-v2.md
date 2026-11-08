@@ -691,7 +691,7 @@ Milestone 13 gives the games and menus a bright, cartoony "Toy Box Toon" look an
 
 **Acceptance tests**
 
-- [ ] The owner approved the mock-ups before implementation started.
+- [x] The owner approved the mock-ups before implementation started (Nov 8, 2026: "Yes it looks good."; pictures in docs/design/look-mockups/).
 - [ ] Every screen in the design's screen list shows the new look on the TV app (Android TV and Windows), an Android phone, an iPhone and a tablet, and no colour, font or size is written outside the look package (a check fails on new ones).
 - [ ] Text and the focus highlight can be read from 3 metres on a TV, and text meets a 4.5:1 contrast ratio.
 - [ ] A 4-player Shape Race round keeps its frame rate with effects on: no more dropped frames than before on the Android TV, Windows, the host phone and a joined phone.

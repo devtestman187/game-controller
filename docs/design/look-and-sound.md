@@ -1,6 +1,24 @@
 # M13 design: Look and sound ("Toy Box Toon")
 
-Status: **design, for the owner's review with the mock-ups** (docs/design/look-mockups.html). No code changes until the owner approves (owner, Nov 8, 2026: "Do not start implementation until I give the Ok. I want to review mock ups of the look and feel before moving on.").
+Status: **approved by the owner on Nov 8, 2026** ("Yes it looks good. Make sure this is documented and committed. Also include the mock-up designs. Begin implementation."). The mock-ups are in docs/design/look-mockups/ (22 pictures: each screen in Sunny and Night) and are drawn by docs/design/look-mockups.html, which can redraw them. The approved mock-ups are the target for M13's screens; a change to the look after this goes back to the owner with a new mock-up.
+
+M13 is built on the branch `m13` (a worktree at `E:\AI\game-controller-m13`), cut from `m12`. M12's device-test fixes stay on `m12` and are merged into `m13` as they land, so a build of `m12` never carries half-built M13 work.
+
+| # | Mock-up (docs/design/look-mockups/, `sunny-` and `night-`) | Shows |
+| --- | --- | --- |
+| 01 | parts | Palette, buttons (normal, focused, pressed), badges, a card, pieces with and without the shader, targets, ✓ and ✗ |
+| 02 | game-picker | TV game picker with the controller's focus |
+| 03 | join-screen | TV join screen: sides, the code, Start |
+| 04 | shape-race | TV Shape Race 1 vs 1: the worker pushing, a wrong drop |
+| 05 | results | Results card over the boards |
+| 06 | arena | The Arena: marbles with eyes, toy blocks, bumpers, the goal |
+| 07 | phone-shape-race | A joined phone: the strip, the worker carrying, the controls at 60% |
+| 08 | phone-connect | The phone's connect screen |
+| 09 | phone-paused | A card over the game on a phone |
+| 10 | worker | The worker's faces and poses |
+| 11 | settings | Look and sound settings |
+
+Earlier status, kept for the record: no code changes until the owner approves (owner, Nov 8, 2026: "Do not start implementation until I give the Ok. I want to review mock ups of the look and feel before moving on.").
 
 Sources: the PRD's M13 and L1 to L5; the plan noted in project-notes.md ("brighter colours, Canvas outlines and shadows, then the Toy Box Toon shader (Arena first), the 3 extra sounds with looping, and a mute or volume setting"); the flash worker's two surveys (docs/briefs/m12/look-sources-report.md, look-inventory-report.md). The first "Toy Box Toon" design file (`game-controller-shaders/DESIGN.md`) is on the owner's other PC and was not available, so this design starts again from the plan. If the owner sends that file, anything in it that conflicts with this design is decided by the owner.
 
