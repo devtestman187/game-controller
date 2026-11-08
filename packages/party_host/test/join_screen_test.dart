@@ -264,6 +264,48 @@ void main() {
     });
   });
 
+  // m12 bug 1108c: the owner read "press A or start to begin" on a phone that
+  // has no pad. The line says what begins the match on this host.
+  group('the status line says what begins the match (m12 bug 1108c)', () {
+    String formatLine(WidgetTester tester) => tester.widget<Text>(find.byKey(const Key('joinFormat'))).data!;
+
+    testWidgets('a TV host keeps "Press A or Start to begin"', (tester) async {
+      final fake = await pumpHost(tester, screen: const StubHome());
+      await neutral(tester, fake, ['p1']);
+      await openJoin(tester);
+      await press(tester, fake, 'p1', GamepadButton.a);
+      expect(formatLine(tester), '1 player. Press A or Start to begin.');
+    });
+
+    testWidgets('a touch-first host that plays here says "Tap Start to begin"', (tester) async {
+      final fake = await pumpHost(
+        tester,
+        screen: const StubHome(),
+        overrides: [ownPlayerIdProvider.overrideWithValue('p1'), hostTouchFirstProvider.overrideWithValue(true)],
+      );
+      // "Play on this phone" shares the view, so the own player is in the match.
+      fake.shareView = true;
+      await neutral(tester, fake, ['p1']);
+      await openJoin(tester);
+      expect(sideText('left', 'P1 iPhone 3F1C (you)'), findsOneWidget);
+      expect(formatLine(tester), '1 player. Tap Start to begin.');
+    });
+
+    testWidgets('a touch-first host that only shows the game says "Tap Start, or press A on a phone"', (tester) async {
+      final fake = await pumpHost(
+        tester,
+        screen: const StubHome(),
+        overrides: [hostTouchFirstProvider.overrideWithValue(true)],
+      );
+      await neutral(tester, fake, ['p1']);
+      await openJoin(tester);
+      // A joined phone takes a side; this screen has no player of its own.
+      await press(tester, fake, 'p1', GamepadButton.a);
+      expect(sideText('left', 'P1 iPhone 3F1C'), findsOneWidget);
+      expect(formatLine(tester), '1 player. Tap Start, or press A on a phone, to begin.');
+    });
+  });
+
   // m11.1 device test: P1 joined, P2 hadn't, and P2's Start began a match for
   // P1 alone, which then paused.
   testWidgets('only a player who joined begins the match; someone watching can\'t pause; '

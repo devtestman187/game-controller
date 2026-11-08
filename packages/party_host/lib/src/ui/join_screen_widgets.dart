@@ -132,18 +132,34 @@ class _NotJoined extends StatelessWidget {
   );
 }
 
+/// What begins the match, in the words for this host (m12 bug 1108c): the TV
+/// has a pad that presses A or Start; a phone has a Start button to tap, and
+/// when it only shows the game a joined phone still begins with A.
+String _beginText({required bool touchFirst, required bool hasOwnPlayer}) {
+  if (!touchFirst) return 'Press A or Start to begin.';
+  return hasOwnPlayer ? 'Tap Start to begin.' : 'Tap Start, or press A on a phone, to begin.';
+}
+
 /// Start, Back, and the format the joined players make.
-class _JoinButtons extends StatelessWidget {
-  const _JoinButtons({required this.teams, required this.startFocus, required this.onStart});
+class _JoinButtons extends ConsumerWidget {
+  const _JoinButtons({required this.teams, required this.ownPlayerId, required this.startFocus, required this.onStart});
 
   final Map<String, PuzzleSide> teams;
+
+  /// The host phone's own player in the match, when it plays here ("Play on
+  /// this phone"); null on a TV and on a phone that only shows the game.
+  final String? ownPlayerId;
+
   final FocusNode startFocus;
   final VoidCallback onStart;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final text = Theme.of(context).textTheme;
     final scheme = Theme.of(context).colorScheme;
+    // A touch-first host has no pad, so the line says what its screen does
+    // (m12 bug 1108c); the flag is read here, where the words are chosen.
+    final begin = _beginText(touchFirst: ref.watch(hostTouchFirstProvider), hasOwnPlayer: ownPlayerId != null);
     return Row(
       children: [
         HostButton(
@@ -163,9 +179,7 @@ class _JoinButtons extends StatelessWidget {
         const SizedBox(width: 20),
         Expanded(
           child: Text(
-            teams.isEmpty
-                ? 'Nobody has joined yet.'
-                : '${formatName(MatchFormat.of(teams))}. Press A or Start to begin.',
+            teams.isEmpty ? 'Nobody has joined yet.' : '${formatName(MatchFormat.of(teams))}. $begin',
             key: const Key('joinFormat'),
             style: teams.isEmpty
                 ? text.titleMedium

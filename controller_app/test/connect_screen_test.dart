@@ -16,6 +16,13 @@ DiscoveredHost hostFrom(String name, String ip, String? kind) => DiscoveredHost(
   kind: kind,
 );
 
+/// Whether the button behind [key] holds the focus, or a widget inside it does
+/// (m12 bug 1108d).
+bool choiceFocused(WidgetTester tester, String key) {
+  final label = find.descendant(of: find.byKey(Key(key)), matching: find.byType(Text)).first;
+  return Focus.of(tester.element(label)).hasFocus;
+}
+
 void main() {
   group('connecting', () {
     testWidgets('opens the Connect screen when there is no saved TV', (tester) async {
@@ -162,12 +169,14 @@ void main() {
       expect(find.byKey(const Key('hostStartSheet')), findsOneWidget);
       expect(find.text('Play on this phone'), findsOneWidget);
       expect(find.text('Show on this device'), findsOneWidget);
-      // The phone one has the focus, so a remote's OK picks it.
-      final focus = FocusManager.instance.primaryFocus!.context!;
-      expect(
-        find.descendant(of: find.byKey(const Key('hostOnPhone')), matching: find.byWidget(focus.widget)),
-        findsOneWidget,
-      );
+      // Both ways are the same kind of button, and neither is picked for the
+      // owner: the sheet opens with nothing lit (m12 bug 1108d).
+      final sheet = find.byKey(const Key('hostStartSheet'));
+      Finder inSheet<T>() => find.descendant(of: sheet, matching: find.byWidgetPredicate((w) => w is T));
+      expect(inSheet<OutlinedButton>(), findsNWidgets(2));
+      expect(inSheet<FilledButton>(), findsNothing);
+      expect(choiceFocused(tester, 'hostOnPhone'), isFalse, reason: 'no choice is lit when the sheet opens');
+      expect(choiceFocused(tester, 'hostOnDevice'), isFalse, reason: 'no choice is lit when the sheet opens');
     });
 
     testWidgets('"Host a game" is offered when the TV cannot be reached', (tester) async {

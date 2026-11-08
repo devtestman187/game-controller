@@ -341,7 +341,7 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
                   SizedBox(height: tight ? _tightGapPx : _gapPx),
                   if (watching.isNotEmpty) _NotJoined(watching: watching),
                   SizedBox(height: tight ? _tightGapPx : _gapPx),
-                  _JoinButtons(teams: _teams, startFocus: _startFocus, onStart: _start),
+                  _JoinButtons(teams: _teams, ownPlayerId: ownHere, startFocus: _startFocus, onStart: _start),
                 ],
               ),
             ),

@@ -39,7 +39,6 @@ class _HostStartSheet extends ConsumerWidget {
             icon: Icons.sports_esports,
             title: 'Play on this phone',
             why: 'Play here with the controls on the screen',
-            primary: true,
             onPressed: () => choose(HostChoice.onPhone),
           ),
           const SizedBox(height: 8),
@@ -48,7 +47,6 @@ class _HostStartSheet extends ConsumerWidget {
             icon: Icons.tv,
             title: 'Show on this device',
             why: 'Everyone joins from their phones; this phone shows the game',
-            primary: false,
             onPressed: () => choose(HostChoice.onDevice),
           ),
         ],
@@ -64,22 +62,16 @@ class _HostStartSheet extends ConsumerWidget {
   }
 }
 
-/// One way to host: a button with a line under its name. The primary one has
-/// the focus, so the remote's OK picks it.
+/// One way to host: an outlined button with a line under its name. Both ways
+/// look the same and neither takes the focus, so nothing is lit when the sheet
+/// opens (m12 bug 1108d); a choice lights only while a thumb presses it, as
+/// Material's own ink does. This phone has no remote to move a focus with.
 class _Choice extends StatelessWidget {
-  const _Choice({
-    super.key,
-    required this.icon,
-    required this.title,
-    required this.why,
-    required this.primary,
-    required this.onPressed,
-  });
+  const _Choice({super.key, required this.icon, required this.title, required this.why, required this.onPressed});
 
   final IconData icon;
   final String title;
   final String why;
-  final bool primary;
   final VoidCallback onPressed;
 
   @override
@@ -96,8 +88,6 @@ class _Choice extends StatelessWidget {
       alignment: Alignment.centerLeft,
       padding: const WidgetStatePropertyAll(EdgeInsets.symmetric(horizontal: 16, vertical: 12)),
     );
-    return primary
-        ? FilledButton.icon(autofocus: true, style: style, icon: Icon(icon), label: label, onPressed: onPressed)
-        : OutlinedButton.icon(style: style, icon: Icon(icon), label: label, onPressed: onPressed);
+    return OutlinedButton.icon(style: style, icon: Icon(icon), label: label, onPressed: onPressed);
   }
 }
