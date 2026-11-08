@@ -14,7 +14,7 @@ Resume here. Branch `m13` in the worktree `E:\AI\game-controller-m13`, cut from 
 
 | # | Step | State |
 | --- | --- | --- |
-| 1 | Spike: toy_look skeleton, toy_shade.frag, toyShape with fallback, a Look test screen in the TV app; checked on Windows and the Android TV emulator | Running (brief s1-spike.md) |
+| 1 | Spike: toy_look skeleton, toy_shade.frag, toyShape with fallback, a Look test screen in the TV app; checked on Windows and the Android emulator | **Done** (f600fc6, 759f74e): shader works on Windows (Skia and Impeller) and Android (Impeller GLES); Windows TV app now on Skia (Impeller 15x slower drawing shapes); light and shadow fixed on screen. Not yet seen: iPhone, a real Android TV box (owner, through the TV and phone Look test screens once a build has them) |
 | 2 | Look package: tokens (Sunny and Night), the Look setting (Auto by time), toyTheme, ToyButton, ToyCard, ToyBadge, ToyBackground, fonts (Fredoka, Nunito), contrast test, rule-boundary test, literal check, string table | Waits for the font download (owner's OK) |
 | 3 | Menus and cards on both apps | |
 | 4 | Shape Race in the new look, and the worker | |
