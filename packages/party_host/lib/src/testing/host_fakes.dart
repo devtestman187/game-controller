@@ -68,6 +68,32 @@ class FakeHostService implements HostService {
   /// Tells the listeners that [state] changed.
   void emit() => _changes.add(state);
 
+  /// [state] without [id]'s phone, told to the listeners: the host reports a
+  /// dropped phone that way, and an away player's slot ending too (m12 bug
+  /// 1107d).
+  void removeController(String id) {
+    final host = state.host;
+    state = HostViewState(
+      hostName: state.hostName,
+      host: HostSnapshot(
+        running: host.running,
+        port: host.port,
+        pairingCode: host.pairingCode,
+        controllers: [
+          for (final c in host.controllers)
+            if (c.controllerId != id) c,
+        ],
+      ),
+      addresses: state.addresses,
+      advertise: state.advertise,
+      advertisedName: state.advertisedName,
+      advertiseError: state.advertiseError,
+      serverError: state.serverError,
+      sims: state.sims,
+    );
+    emit();
+  }
+
   @override
   void newPairingCode() => newCodes++;
 
@@ -145,8 +171,12 @@ class FakeGameHost implements GameHost {
   final pads = <String, GamepadState>{};
 
   /// The controls whose phone has dropped and whose slot the round holds
-  /// (the game host's away players): the test adds and removes them.
+  /// (the game host's away players): the test sets them with [setAway].
   final away = <String>{};
+
+  /// A clock the test sets, in ms, or null to read the fake's own stopwatch: a
+  /// countdown test moves the clock on instead of waiting.
+  int? clockMs;
 
   /// Each player's layout and status panel, as the game set them.
   final layouts = <String, GameLayoutMessage>{};
@@ -162,7 +192,7 @@ class FakeGameHost implements GameHost {
   ControllerInfo? _info(String id) => fake.state.players.where((c) => c.controllerId == id).firstOrNull;
 
   @override
-  int get nowMs => _clock.elapsedMilliseconds;
+  int get nowMs => clockMs ?? _clock.elapsedMilliseconds;
 
   @override
   List<GamePlayer> get players => [
@@ -208,7 +238,19 @@ class FakeGameHost implements GameHost {
   void hostAway(int? secondsLeft) => hostAways.add(secondsLeft);
 
   @override
-  void goOnWithout(String playerId) => goOnWithouts.add(playerId);
+  void goOnWithout(String playerId) {
+    goOnWithouts.add(playerId);
+    // The round goes on without them: the phone leaves the roster.
+    if (away.remove(playerId)) fake.removeController(playerId);
+  }
+
+  /// Puts [id]'s phone away or back, as the host holds its slot for a while
+  /// when the phone drops (m12 bug 1107d): the players change, so the screens
+  /// hear it.
+  void setAway(String id, {required bool isAway}) {
+    final changed = isAway ? away.add(id) : away.remove(id);
+    if (changed) _changes.add(players);
+  }
 
   @override
   bool haptic(String playerId, HapticEventMessage event) {

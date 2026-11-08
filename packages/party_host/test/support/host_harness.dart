@@ -133,6 +133,40 @@ Future<void> startRound(WidgetTester tester, FakeHostService fake) async {
   await navigated(tester);
 }
 
+/// From the join screen with both phones on the roster: P1 takes the left
+/// side, P2 the right, and P1 starts the race.
+Future<void> startRace(WidgetTester tester, FakeHostService fake) async {
+  await press(tester, fake, 'p1', GamepadButton.a);
+  await press(tester, fake, 'p2', GamepadButton.a);
+  await press(tester, fake, 'p1', GamepadButton.start);
+  await navigated(tester);
+}
+
+/// Home → Play → Shape Race → the house puzzle, with P1 on the left and P2 on
+/// the right: a race is running when it returns.
+Future<FakeHostService> openRace(WidgetTester tester, {List<Override> overrides = const []}) async {
+  final fake = await pumpHost(tester, screen: const StubHome(), overrides: overrides);
+  fake.state = withController(fake.state, phoneInfo('p2', 2));
+  fake.emit();
+  await neutral(tester, fake, ['p1', 'p2']);
+  await openJoin(tester);
+  await startRace(tester, fake);
+  return fake;
+}
+
+/// The round's clock in ms, as the rules left it (Shape Race's first board).
+int timeLeftMs(WidgetTester tester) =>
+    tester.state<PuzzlePlayViewState>(find.byType(PuzzlePlayView)).snapshot.boards.first.timeLeftMs;
+
+/// Puts [id]'s phone away, at the host clock's zero unless the test set it,
+/// and lets the screens hear it: the round waits for that player.
+Future<void> holdSlot(WidgetTester tester, FakeHostService fake, String id) async {
+  fake.gameHost.clockMs ??= 0;
+  fake.gameHost.setAway(id, isAway: true);
+  await tester.pump();
+  await tester.pump();
+}
+
 /// Puts every piece of [side]'s board in place by hand, so the round ends on
 /// the steps after it. Returns the play view's match.
 PuzzleMatch lockEveryPiece(WidgetTester tester, {PuzzleSide side = PuzzleSide.left}) {

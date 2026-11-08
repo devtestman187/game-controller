@@ -1,4 +1,5 @@
 import 'package:connection/connection.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:party_host/party_host.dart';
@@ -79,6 +80,133 @@ void main() {
     await navigated(tester);
     expect(find.byType(GamesScreen), findsOneWidget);
     expect(find.byType(PuzzleScreen), findsNothing);
+  });
+
+  testWidgets('the round waits while a phone is away, and goes on from where it stopped', (tester) async {
+    final fake = await openRace(tester);
+    final host = fake.gameHost;
+    await holdSlot(tester, fake, 'p2');
+    expect(find.byKey(const Key('awayCard')), findsOneWidget);
+    final stopped = timeLeftMs(tester);
+
+    // A second of real frames: the clock stands still for everyone.
+    for (var i = 0; i < 63; i++) {
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    expect(timeLeftMs(tester), stopped);
+
+    host.setAway('p2', isAway: false);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    final went = stopped - timeLeftMs(tester);
+    expect(went, greaterThan(0), reason: 'the clock goes on when the phone is back');
+    expect(went, lessThan(200), reason: 'it goes on from where it stopped, without catching the pause up');
+    expect(find.byKey(const Key('awayCard')), findsNothing);
+  });
+
+  testWidgets('the round goes on at once when the away phone\'s grace runs out', (tester) async {
+    final fake = await openRace(tester);
+    await holdSlot(tester, fake, 'p2');
+    final stopped = timeLeftMs(tester);
+    for (var i = 0; i < 10; i++) {
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    expect(timeLeftMs(tester), stopped);
+
+    // The host's grace timer ends the slot: the phone leaves the roster.
+    fake.removeController('p2');
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.byKey(const Key('awayCard')), findsNothing);
+    expect(timeLeftMs(tester), lessThan(stopped), reason: 'the round goes on without them, with no press');
+  });
+
+  testWidgets('the Arena waits for an away phone too', (tester) async {
+    final fake = await pumpHost(tester, screen: const StubHome());
+    final host = fake.gameHost;
+    // A viewer would get the round's frames: none come while it waits.
+    host.hasViewers = true;
+    await neutral(tester, fake, ['p1']);
+    await openArena(tester);
+    for (var i = 0; i < 10; i++) {
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    expect(host.frames, isNotEmpty, reason: 'the round sends frames while it runs');
+
+    host.setAway('p1', isAway: true);
+    await tester.pump();
+    await tester.pump();
+    final sent = host.frames.length;
+    for (var i = 0; i < 63; i++) {
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    expect(host.frames, hasLength(sent), reason: 'nothing steps while the round waits');
+
+    host.setAway('p1', isAway: false);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 32));
+    expect(host.frames.length, greaterThan(sent));
+  });
+
+  testWidgets('Start opens no menu while the round waits for an away phone', (tester) async {
+    final fake = await openRace(tester);
+    await holdSlot(tester, fake, 'p2');
+
+    await press(tester, fake, 'p1', GamepadButton.start);
+    await navigated(tester);
+    expect(find.byKey(const Key('pauseMenu')), findsNothing);
+    expect(find.byKey(const Key('awayCard')), findsOneWidget);
+  });
+
+  testWidgets('an away phone gets no menu and cannot work one', (tester) async {
+    final fake = await pumpHost(tester, screen: const StubHome());
+    await neutral(tester, fake, ['p1']);
+    await tapVisible(tester, find.byKey(const Key('openPlay')));
+    await tester.pumpAndSettle();
+    expect(find.byType(GamesScreen), findsOneWidget);
+
+    fake.gameHost.setAway('p1', isAway: true);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 16));
+    // A on the phone that is away presses nothing: the menus skip it.
+    await press(tester, fake, 'p1', GamepadButton.a);
+    await navigated(tester);
+    expect(find.byType(GamesScreen), findsOneWidget);
+    expect(find.byType(ShapeRaceScreen), findsNothing);
+  });
+
+  testWidgets('the host going away and a phone away pause the round once', (tester) async {
+    final appAway = ValueNotifier(false);
+    final log = LogBuffer();
+    final fake = await openRace(
+      tester,
+      overrides: [hostAwayProvider.overrideWithValue(appAway), logProvider.overrideWithValue(log)],
+    );
+    await holdSlot(tester, fake, 'p2');
+    final stopped = timeLeftMs(tester);
+    expect(find.byKey(const Key('awayCard')), findsOneWidget);
+
+    appAway.value = true;
+    await tester.pump();
+    expect(find.byKey(const Key('awayCard')), findsNothing, reason: 'the host\'s own pause wins while the app is away');
+    for (var i = 0; i < 30; i++) {
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    expect(timeLeftMs(tester), stopped);
+
+    appAway.value = false;
+    await tester.pump();
+    await tester.pump();
+    expect(find.byKey(const Key('awayCard')), findsOneWidget, reason: 'a phone is still away');
+    for (var i = 0; i < 30; i++) {
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    expect(timeLeftMs(tester), stopped);
+
+    // One pause, described by the host's own line; the away line is once.
+    final lines = [for (final line in log.lines) line.message];
+    expect(lines.where((l) => l.startsWith('Round paused:')), ['Round paused: the host went away']);
+    expect(lines.where((l) => l == 'P2 away: the round waits for them'), hasLength(1));
   });
 
   testWidgets('the Arena pauses with Start too', (tester) async {

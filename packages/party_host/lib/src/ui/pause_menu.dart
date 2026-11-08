@@ -9,7 +9,9 @@ import 'package:protocol/protocol.dart';
 import '../abandon_signal.dart';
 import '../controls.dart';
 import '../host_presence.dart';
+import '../players_away.dart';
 import '../providers.dart';
+import 'away_card.dart';
 import 'controller_menus.dart';
 import 'games_screen.dart';
 import 'host_button.dart';
@@ -33,7 +35,9 @@ final pauseLayout = GameLayoutMessage(
 ///
 /// The game is paused too while the host app is away (m12 §2.10): the
 /// builder gets `paused == true` and no menu opens, so the app comes back to
-/// the game where it left it.
+/// the game where it left it. It is paused the same way while the round waits
+/// for a phone that dropped (m12 bug 1107d): the away card shows over the game
+/// there, and Start opens no menu either.
 class Pausable extends ConsumerStatefulWidget {
   const Pausable({super.key, required this.enabled, required this.builder, this.players});
 
@@ -136,6 +140,10 @@ class _PausableState extends ConsumerState<Pausable> {
     if (pressed.isEmpty) return;
     final menu = _menuContext;
     if (_pausedBy == null) {
+      // The away card is the screen's menu while the round waits for a phone
+      // that dropped: Start opens no second one (m12 bug 1107d). A menu that
+      // was already open can still resume.
+      if (ref.read(playersAwayProvider).isNotEmpty) return;
       final can = widget.players;
       final by = pressed.where((p) => can == null || can.contains(p.id)).firstOrNull;
       if (widget.enabled && by != null && _sinceStartMs >= Pausable.startGrace.inMilliseconds) _pause(by);
@@ -168,10 +176,23 @@ class _PausableState extends ConsumerState<Pausable> {
 
   @override
   Widget build(BuildContext context) {
-    final away = ref.watch(hostAwayProvider);
+    final hostAway = ref.watch(hostAwayProvider);
+    // Who the round waits for (m12 bug 1107d): it stands still while anyone
+    // is away, as it does for the menu or a hidden app.
+    final away = ref.watch(playersAwayProvider);
+    final waiting = widget.enabled && away.isNotEmpty;
     return ValueListenableBuilder<bool>(
-      valueListenable: away,
-      builder: (context, hidden, _) => widget.builder(context, _pausedBy != null || hidden),
+      valueListenable: hostAway,
+      builder: (context, hidden, _) => Stack(
+        fit: StackFit.expand,
+        children: [
+          widget.builder(context, _pausedBy != null || hidden || waiting),
+          // The host's own pause wins while the app is hidden, and the card
+          // never stands over the menu: nobody pressed Start for it.
+          if (waiting && !hidden && _pausedBy == null)
+            AwayCard(players: away, onEndRound: () => leaveForGamePicker(context)),
+        ],
+      ),
     );
   }
 }

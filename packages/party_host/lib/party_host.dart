@@ -19,6 +19,7 @@ export 'src/host_view_state.dart';
 export 'src/live_stats.dart';
 export 'src/local_player_source.dart';
 export 'src/network_addresses.dart' show orderedAddresses;
+export 'src/players_away.dart';
 export 'src/providers.dart';
 export 'src/saved_pairings.dart';
 export 'src/screen_awake.dart';
