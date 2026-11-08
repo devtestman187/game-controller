@@ -8,6 +8,7 @@ import 'package:protocol/protocol.dart';
 import 'package:tvtest/src/ui/haptic_panel_screen.dart';
 import 'package:tvtest/src/ui/input_visualizer.dart';
 import 'package:tvtest/src/ui/latency_screen.dart';
+import 'package:tvtest/src/ui/shader_spike_screen.dart';
 
 import 'support/pump_app.dart';
 
@@ -58,7 +59,7 @@ void main() {
       // The game animates every frame, so pump through the page transition.
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 500));
-      for (final screen in [GamesScreen, HapticPanelScreen, LatencyScreen, StatsScreen]) {
+      for (final screen in [GamesScreen, HapticPanelScreen, LatencyScreen, ShaderSpikeScreen, StatsScreen]) {
         if (find.byType(screen).evaluate().isNotEmpty) {
           opened.add(screen);
           await tester.sendKeyEvent(LogicalKeyboardKey.escape);
@@ -108,10 +109,11 @@ void main() {
       'Play',
       'Haptic test',
       'Latency',
+      'Look test',
       'Stats',
     });
     expect([fake.newCodes, fake.simAdds, fake.drops, fake.forgets, fake.exports], [1, 1, 1, 1, 1]);
-    expect(opened.toSet(), {GamesScreen, HapticPanelScreen, LatencyScreen, StatsScreen});
+    expect(opened.toSet(), {GamesScreen, HapticPanelScreen, LatencyScreen, ShaderSpikeScreen, StatsScreen});
   });
 
   testWidgets('updates when the host state changes', (tester) async {

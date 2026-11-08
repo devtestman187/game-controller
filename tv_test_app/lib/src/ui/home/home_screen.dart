@@ -6,6 +6,7 @@ import 'package:protocol/protocol.dart';
 import '../../app_info.dart';
 import '../haptic_panel_screen.dart';
 import '../latency_screen.dart';
+import '../shader_spike_screen.dart';
 import 'controllers_panel.dart';
 import 'first_launch_consent.dart';
 import 'log_panel.dart';
@@ -113,7 +114,7 @@ class Header extends StatelessWidget {
   /// they wrap underneath, where a narrow window has room.
   static const rowWidth = 760.0;
 
-  /// Below this window width the buttons are compact, so all four fit beside
+  /// Below this window width the buttons are compact, so all five fit beside
   /// the title on a 1080p TV (960 logical pixels wide).
   static const compactWidth = 1100.0;
 
@@ -232,6 +233,12 @@ class _HeaderButtons extends StatelessWidget {
         icon: Icons.speed,
         compact: compact,
         onPressed: () => _open(context, const LatencyScreen()),
+      ),
+      HostButton(
+        label: 'Look test',
+        icon: Icons.palette_outlined,
+        compact: compact,
+        onPressed: () => _open(context, const ShaderSpikeScreen()),
       ),
       HostButton(
         key: const Key('openStats'),

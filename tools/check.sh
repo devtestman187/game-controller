@@ -8,7 +8,7 @@
 #   tools/check.sh --list          # list the checks
 #   tools/check.sh --verbose ...   # also print every check's full output
 #
-# Checks: format analyze protocol connection metrics kit arena puzzle host phone tv
+# Checks: format analyze protocol connection metrics kit look arena puzzle host phone tv
 # Exit code: 0 if every check passed, 1 if any failed, 2 for bad arguments
 # or a missing tool. Works in Git Bash on Windows and bash on macOS/Linux.
 set -u
@@ -24,6 +24,7 @@ checks=(
   "connection|packages/connection|dart test|server, client, game host (real sockets on localhost)"
   "metrics|packages/metrics|dart test|analytics counters, sessions, report"
   "kit|packages/game_kit|flutter test|the session loop, modules and hosting settings"
+  "look|packages/toy_look|flutter test|the look package: shapes, shaders and fallback"
   "arena|packages/test_game|flutter test|the Arena game's rules and view"
   "puzzle|packages/puzzle_game|flutter test|Shape Race rules, view and snapshots"
   "host|packages/party_host|flutter test|the host service, host screens, sound and stats"

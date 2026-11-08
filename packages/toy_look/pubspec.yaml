@@ -1,0 +1,28 @@
+name: toy_look
+description: >-
+  The "Toy Box Toon" look (M13, docs/design/look-and-sound.md): the body
+  shader and the Canvas fallback that draw every game object the same way.
+  Rules code never imports this package.
+publish_to: 'none'
+version: 0.1.0
+
+environment:
+  sdk: ^3.13.0
+  flutter: '>=3.38.0'
+
+resolution: workspace
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_lints: ^6.0.0
+  flutter_test:
+    sdk: flutter
+
+# The shaders are compiled by the build (impellerc) and ship as assets; the
+# key they load by is `packages/toy_look/shaders/toy_shade.frag`.
+flutter:
+  shaders:
+    - shaders/toy_shade.frag
