@@ -84,7 +84,6 @@ app_package=com.thumbparty.app
 # started, so the app's lines stop there and the log proves nothing (Nov 7;
 # docs/dev-tools.md).
 tool_crash_line='A crash report has been written to'
-crash_tail_lines=3
 
 out="${TMPDIR:-${TEMP:-/tmp}}/thumbparty-smoke-$(date +%Y%m%d-%H%M%S)"
 mkdir -p "$out" || exit 2
@@ -171,20 +170,21 @@ bad() { # step [the log the step was reading]
 }
 
 # Whether the TV app's log is live: it has a host line after the last
-# "Listening" line and doesn't end in the flutter tool's crash report. A
-# sandbox can lose the app's lines after it starts while the app keeps
-# running (docs/dev-tools.md); then the simulated controller's own output is
-# the only proof there is.
+# "Listening" line and no flutter tool crash report after it. A sandbox (and
+# this PC outside it) can lose the app's lines after it starts while the app
+# keeps running (docs/dev-tools.md); then the simulated controller's own
+# output is the only proof there is.
 tv_is_live() {
-  local listening ended
+  local listening
   [ -f "$tv_log" ] || return 1
-  # The crash report comes after the app's own lines, so those don't make the
-  # log live: the tool that writes new lines into it is gone (Nov 7).
-  ended="$(tr -d '\r' < "$tv_log" 2> /dev/null | grep -av '^[[:space:]]*$' |
-    tail -n "$crash_tail_lines" | grep -aF -- "$tool_crash_line")"
-  [ -z "$ended" ] || return 1
   listening="$(grep -an 'Listening on port' "$tv_log" 2> /dev/null | tail -1 | cut -d: -f1)"
   [ -n "$listening" ] || return 1
+  # The crash report can come anywhere after the app's start, and its links
+  # and blank lines can follow it (Nov 7: 9 lines from the end): once the
+  # tool that writes the log is gone, nothing after it is live.
+  if tail -n "+$((listening + 1))" "$tv_log" 2> /dev/null | grep -aqF -- "$tool_crash_line"; then
+    return 1
+  fi
   tail -n "+$((listening + 1))" "$tv_log" 2> /dev/null | grep -aq '\[host\]'
 }
 
@@ -199,6 +199,9 @@ self_test() {
   printf '%s\n' '[host] Listening on port 45780 (pairing code 5416)' \
     '[host] Smoke controller (sim 0.11.0, supports metrics) says hello from 127.0.0.1' \
     'A crash report has been written to C:\Users\...\flutter_01.log' > "$crashed"
+  # The Nov 7 evening shape: the report's link and blank lines after it.
+  printf '%s
+' 'To report your crash to the Flutter team, first read the guide to filing a bug.'     'https://flutter.dev/to/report-bugs' '' 'Create a new GitHub issue by pasting this link into your browser.'     'https://github.com/flutter/flutter/issues/new?title=tool_crash' '' >> "$crashed"
   tv_log="$crashed"
   if tv_is_live; then
     echo "FAIL self-test: a log ending in the flutter tool's crash report was read as live" >&2
