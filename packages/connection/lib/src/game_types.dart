@@ -12,6 +12,7 @@ final class GamePlayer {
     this.mode = InputMode.none,
     this.simulated = false,
     this.away = false,
+    this.ownPlayer = false,
   });
 
   /// The controller ID (or a local player's own ID).
@@ -38,6 +39,12 @@ final class GamePlayer {
   /// who is here is never away.
   final bool away;
 
+  /// True when this player came in on the host's own in-process link: the
+  /// host phone's own player (D1). It is a controller like any other, but its
+  /// link going is the host's own business, so the round never waits for it
+  /// and it is never [away] (m12 code health N5).
+  final bool ownPlayer;
+
   /// This player's colour as 0xAARRGGBB.
   int get color => playerColor(number);
 
@@ -52,10 +59,11 @@ final class GamePlayer {
       other.local == local &&
       other.mode == mode &&
       other.simulated == simulated &&
-      other.away == away;
+      other.away == away &&
+      other.ownPlayer == ownPlayer;
 
   @override
-  int get hashCode => Object.hash(id, number, nickname, local, mode, simulated, away);
+  int get hashCode => Object.hash(id, number, nickname, local, mode, simulated, away, ownPlayer);
 }
 
 /// Named delay stages (PRD v2 S7). Later hosts add their own (snapshot

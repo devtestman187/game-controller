@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:protocol/protocol.dart';
 
 import '../controls.dart';
 import '../players_away.dart';
@@ -7,6 +8,23 @@ import '../providers.dart';
 import 'controller_menus.dart';
 import 'host_button.dart';
 import 'player_badge.dart';
+
+/// The buttons while the card is up: A "OK" and nothing else. The arrows still
+/// move the focus between the card's two buttons; B is hidden, and the card
+/// refuses the Back itself, so a stray press can't end everyone's round (m12
+/// code health N1).
+final awayLayout = GameLayoutMessage(
+  labels: {ControllerButton.a: 'OK'},
+  hidden: {
+    ControllerButton.b,
+    ControllerButton.x,
+    ControllerButton.y,
+    ControllerButton.lb,
+    ControllerButton.rb,
+    ControllerButton.select,
+    ControllerButton.start,
+  },
+);
 
 /// The card over the game while the round waits for a phone that dropped (m12
 /// bug 1107d): one line for each away player with the seconds their slot has
@@ -17,6 +35,11 @@ import 'player_badge.dart';
 /// for has no buttons to press. Go on without them ends every away player's
 /// slot at once, so the round goes on; End round is the pause menu's Quit,
 /// back to the game picker with the round ended `quit`.
+///
+/// While it is up the round can't be left: the card gives the phones A and the
+/// arrows and no Back ([awayLayout]), and it blocks the remote's Back (and the
+/// system's) itself, so a press can't end a round that is only waiting (m12
+/// code health N1). The two buttons are the way on.
 class AwayCard extends ConsumerStatefulWidget {
   const AwayCard({super.key, required this.players, required this.onEndRound});
 
@@ -63,42 +86,47 @@ class _AwayCardState extends ConsumerState<AwayCard> {
       for (final p in ref.watch(gamePlayersProvider))
         if (!p.away && !p.simulated && !p.local) p.id,
     };
-    return Center(
-      child: ControlsClaim(
-        controls: Controls.menus(only: here),
-        child: DecoratedBox(
-          key: const Key('awayCard'),
-          decoration: BoxDecoration(
-            color: Colors.black.withValues(alpha: 0.88),
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                for (final away in widget.players) _AwayLine(away: away),
-                const SizedBox(height: 20),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    HostButton(
-                      key: const Key('goOnWithout'),
-                      label: 'Go on without them',
-                      icon: Icons.play_arrow,
-                      focusNode: _goOnFocus,
-                      onPressed: _goOnWithout,
-                    ),
-                    const SizedBox(width: 12),
-                    HostButton(
-                      key: const Key('awayEndRound'),
-                      label: 'End round',
-                      icon: Icons.exit_to_app,
-                      onPressed: widget.onEndRound,
-                    ),
-                  ],
-                ),
-              ],
+    return PopScope(
+      // The round stays out of the remote's Back while the card asks for a
+      // phone: Go on without them and End round are the way on (N1).
+      canPop: false,
+      child: Center(
+        child: ControlsClaim(
+          controls: Controls.menus(only: here, layout: awayLayout),
+          child: DecoratedBox(
+            key: const Key('awayCard'),
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.88),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  for (final away in widget.players) _AwayLine(away: away),
+                  const SizedBox(height: 20),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      HostButton(
+                        key: const Key('goOnWithout'),
+                        label: 'Go on without them',
+                        icon: Icons.play_arrow,
+                        focusNode: _goOnFocus,
+                        onPressed: _goOnWithout,
+                      ),
+                      const SizedBox(width: 12),
+                      HostButton(
+                        key: const Key('awayEndRound'),
+                        label: 'End round',
+                        icon: Icons.exit_to_app,
+                        onPressed: widget.onEndRound,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         ),

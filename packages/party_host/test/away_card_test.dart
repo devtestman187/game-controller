@@ -70,6 +70,34 @@ void main() {
     expect(timeLeftMs(tester), lessThan(stopped), reason: 'the round goes on without them');
   });
 
+  testWidgets('B on a phone and the remote\'s Back leave the round where it waits', (tester) async {
+    final fake = await openRace(tester);
+    final host = fake.gameHost;
+    await holdSlot(tester, fake, 'p2');
+    final stopped = timeLeftMs(tester);
+    // The card gives the phones A and the arrows, and no Back: a menu tick
+    // after it claims them.
+    await tester.pump(const Duration(milliseconds: 16));
+    expect(host.layouts['p1']!.labels, {ControllerButton.a: 'OK'});
+    expect(host.layouts['p1']!.hidden, contains(ControllerButton.b));
+
+    // A phone that is here presses B: nothing pops the round.
+    await neutral(tester, fake, ['p1']);
+    await press(tester, fake, 'p1', GamepadButton.b);
+    await tester.pump();
+    await navigated(tester);
+    expect(find.byType(PuzzleScreen), findsOneWidget, reason: 'B never leaves a round that waits');
+    expect(host.viewEnds, isEmpty, reason: 'and nothing ends it');
+
+    // The remote's Back (the system back) does nothing either.
+    await tester.binding.handlePopRoute();
+    await navigated(tester);
+    expect(find.byKey(const Key('awayCard')), findsOneWidget);
+    expect(find.byType(PuzzleScreen), findsOneWidget);
+    expect(host.viewEnds, isEmpty);
+    expect(timeLeftMs(tester), stopped, reason: 'the round is still where it waited');
+  });
+
   testWidgets('End round is the menu Quit: the game picker, the round quit', (tester) async {
     final fake = await openRace(tester);
     await holdSlot(tester, fake, 'p2');

@@ -95,6 +95,43 @@ void main() {
         expect(_views(viewer), isEmpty, reason: 'no view_start yet');
       });
 
+      test('a viewer that pairs while the host is away is told, with the time left', () async {
+        final server = await startHost(t);
+        final host = ServerGameHost(server);
+        addTearDown(host.dispose);
+        host.startView(_start);
+        host.publishFrame(_frame(0));
+        host.hostAway(30);
+
+        final late = await WirePhone.open(
+          server,
+          t,
+          controllerId: 'phone-1',
+          capabilities: _view,
+          code: server.pairingCode,
+        );
+        await late.drain();
+
+        expect(_views(late).map((m) => m.type), ['view_start', 'frame', 'host_away']);
+        expect(
+          (_views(late).last as HostAwayMessage).secondsLeft,
+          inInclusiveRange(29, 30),
+          reason: 'the grace still to go: 30 s given, the pairing a moment later',
+        );
+
+        // The host is back: a viewer that pairs now hears nothing of its away.
+        host.hostAway(null);
+        final after = await WirePhone.open(
+          server,
+          t,
+          controllerId: 'phone-2',
+          capabilities: _view,
+          code: server.pairingCode,
+        );
+        await after.drain();
+        expect(_views(after).map((m) => m.type), ['view_start', 'frame'], reason: 'the host is here again');
+      });
+
       test('a controller without view gets no away message while a viewer does', () async {
         final server = await startHost(t);
         final host = ServerGameHost(server);

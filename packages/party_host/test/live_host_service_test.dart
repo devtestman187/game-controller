@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:connection/connection.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:metrics/metrics.dart';
 import 'package:party_host/party_host.dart';
@@ -45,9 +46,15 @@ Future<LiveHostService> startService({required FakeAdvertiser advertiser, InProc
 HostServer serverOf(LiveHostService service) => (service.stats as LiveStats).server;
 
 /// A phone that pairs on its own and stays paired for the test.
-ControllerClient phone(String id, Connector connector) {
+ControllerClient phone(String id, Connector connector, {List<String> capabilities = const []}) {
   final client = ControllerClient(
-    identity: ControllerIdentity(controllerId: id, name: 'Phone $id', platform: 'test', appVersion: '0.12.0'),
+    identity: ControllerIdentity(
+      controllerId: id,
+      name: 'Phone $id',
+      platform: 'test',
+      appVersion: '0.12.0',
+      capabilities: capabilities,
+    ),
     connector: connector,
   );
   addTearDown(client.dispose);
@@ -102,6 +109,47 @@ void main() {
           .timeout(const Duration(seconds: 5), onTimeout: () => throw TimeoutException('Not both players yet'));
     }
     expect(service.gameHost.players, hasLength(2));
+  });
+
+  test('the own player\'s link dropping mid-round keeps no slot and raises no card', () async {
+    final inProcess = InProcessListener();
+    final service = await startService(advertiser: FakeAdvertiser(), inProcess: inProcess);
+    service.shareView = true;
+    final code = service.state.host.pairingCode;
+    final watcher = phone('watcher', InProcessConnector(inProcess), capabilities: const [Capability.view]);
+    final views = <ViewEvent>[];
+    addTearDown(watcher.view.listen(views.add).cancel);
+    watcher.connect(
+      HostAddress.local(hostId: 'this-device', name: _identity.serviceName),
+      code: code,
+    );
+    final own = phone('own', InProcessConnector(inProcess));
+    own.connect(
+      HostAddress.local(hostId: 'this-device', name: _identity.serviceName),
+      code: code,
+    );
+    await paired(watcher);
+    await paired(own);
+    if (service.gameHost.players.length != 2) {
+      await service.gameHost.playersChanged
+          .firstWhere((p) => p.length == 2)
+          .timeout(const Duration(seconds: 5), onTimeout: () => throw TimeoutException('Not both players yet'));
+    }
+    const start = ViewStartMessage(game: 'arena', snapshotVersion: 1, setup: {}, hz: 30);
+    service.gameHost.startView(start);
+    final container = ProviderContainer(overrides: [hostServiceProvider.overrideWithValue(service)]);
+    addTearDown(container.dispose);
+    expect(container.read(playersAwayProvider), isEmpty, reason: 'everyone is here');
+
+    // The host's own app goes (a lock), mid-round: its link is all that drops.
+    final dropped = serverOf(service).changes.firstWhere((s) => s.connected.length == 1);
+    own.disconnect();
+    await dropped.timeout(const Duration(seconds: 5), onTimeout: () => throw TimeoutException('The own link stayed'));
+    await pumpEventQueue();
+
+    expect(service.gameHost.players.map((p) => p.id), ['watcher'], reason: 'the round never waits for the host itself');
+    expect(views.whereType<PlayerAway>(), isEmpty, reason: 'and no phone is told to wait');
+    expect(container.read(playersAwayProvider), isEmpty, reason: 'so no card pauses the round');
   });
 
   test('resume listens again on the port it had after the server stopped', () async {

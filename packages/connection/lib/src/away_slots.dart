@@ -55,11 +55,14 @@ final class AwaySlots {
   /// Notes the roster of this check: a player who was here at the last one and
   /// isn't now keeps their slot for [grace] while [roundRunning], and one whose
   /// phone is back loses it (m12 bug 1107d). A simulated controller never gets
-  /// a slot: the round doesn't wait for a test tool.
+  /// a slot: the round doesn't wait for a test tool. Nor does the host phone's
+  /// own player, whose link drops with the host's own app (a lock does it): the
+  /// host-away pause covers that, and no one is told to wait for the host
+  /// (m12 code health N5).
   void noteRoster(List<GamePlayer> roster, {required bool roundRunning}) {
     final live = <String, GamePlayer>{
       for (final p in roster)
-        if (!p.away && !p.local && !p.simulated) p.id: p,
+        if (!p.away && !p.local && !p.simulated && !p.ownPlayer) p.id: p,
     };
     for (final MapEntry(key: id, value: player) in _live.entries) {
       if (roundRunning && !live.containsKey(id) && !_slots.containsKey(id)) _hold(player);

@@ -10,6 +10,7 @@ import 'package:puzzle_game/puzzle_game.dart';
 import '../abandon_signal.dart';
 import '../controls.dart';
 import '../local_player_source.dart';
+import '../players_away.dart';
 import '../providers.dart';
 import 'controller_menus.dart';
 import 'host_button.dart';
@@ -186,9 +187,11 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
     );
   }
 
-  /// The route asked: on the results the answer is the game picker.
+  /// The route asked: on the results the answer is the game picker. A round
+  /// that waits for a phone that dropped stays where it is: the away card
+  /// blocks the Back and is the way on (m12 code health N1).
   void _leaveForGames(bool didPop) {
-    if (didPop) return;
+    if (didPop || ref.read(playersAwayProvider).isNotEmpty) return;
     _log('Results: back to the games');
     leaveForGamePicker(context);
   }

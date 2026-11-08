@@ -93,6 +93,11 @@ class ServerGameHost implements GameHost {
   ViewStartMessage? _viewStart;
   FrameMessage? _viewFrame;
 
+  /// When the host's away grace runs out, on the host's clock, while the host
+  /// is away and a view runs: a viewer that pairs mid-away is told the time it
+  /// has left (m12 code health, R1 finding 9). Null while the host is here.
+  int? _hostAwayEndsAtMs;
+
   /// Whether phones show this host's game at all (m12-joined-view §0.1): false when the
   /// host's own screen is the one everyone watches. A change applies from the
   /// next [startView], so a running view finishes as it began.
@@ -172,6 +177,7 @@ class ServerGameHost implements GameHost {
             nickname: c.name,
             mode: InputMode.of(c.input),
             simulated: c.platform == 'sim',
+            ownPlayer: c.isLocal,
           ),
       for (final l in _locals.values)
         GamePlayer(id: l.id, number: l.number, nickname: l.nickname, local: true, mode: InputMode.keyboard),
@@ -241,6 +247,7 @@ class ServerGameHost implements GameHost {
   @override
   void startView(ViewStartMessage start) {
     _roundRunning = true;
+    _hostAwayEndsAtMs = null;
     // A view that isn't shared is no view here: no start is kept, so no frame
     // or end can follow, and a viewer that pairs later gets nothing.
     _viewStart = shareView ? start : null;
@@ -264,6 +271,7 @@ class ServerGameHost implements GameHost {
     final wasRunning = _viewStart != null;
     _viewStart = null;
     _viewFrame = null;
+    _hostAwayEndsAtMs = null;
     if (wasRunning) server.sendToAll(end);
     // A slot ends with the round (m12 bug 1107d): when it is over, the
     // players away lose it at once, so a rematch never waits for someone
@@ -278,6 +286,7 @@ class ServerGameHost implements GameHost {
     // Only a running view sends: a host that isn't sharing has no viewer to
     // tell (m12 §2.10).
     if (_viewStart == null) return;
+    _hostAwayEndsAtMs = secondsLeft == null ? null : nowMs + secondsLeft * Duration.millisecondsPerSecond;
     final message = secondsLeft == null ? const HostBackMessage() : HostAwayMessage(secondsLeft: secondsLeft);
     server.sendToAll(message);
   }
@@ -347,14 +356,24 @@ class ServerGameHost implements GameHost {
   }
 
   /// A viewer that just (re)paired mid-game gets the view's start, its latest
-  /// frame and the players who are away, before any later frame (m12 §2): it
-  /// missed all of them.
+  /// frame, the players who are away and the host's own away, before any later
+  /// frame (m12 §2): it missed all of them.
   void _sendView(String controllerId) {
     final start = _viewStart;
     if (start == null) return;
     server.send(controllerId, start);
     if (_viewFrame case final frame?) server.send(controllerId, frame);
     _away.sendTo(controllerId);
+    if (_hostAwayEndsAtMs case final endsAt?) {
+      server.send(controllerId, HostAwayMessage(secondsLeft: _secondsToGo(endsAt)));
+    }
+  }
+
+  /// The whole seconds left of the host's away grace at [endsAtMs], rounded up
+  /// like the wait's own count, and 0 once it is over.
+  int _secondsToGo(int endsAtMs) {
+    final ms = endsAtMs - nowMs;
+    return ms <= 0 ? 0 : (ms / Duration.millisecondsPerSecond).ceil();
   }
 
   Future<void> dispose() async {
