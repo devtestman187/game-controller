@@ -16,11 +16,11 @@ const gamesRouteName = '/games';
 
 /// The game picker (PRD v2 T11): Shape Race (the puzzle) and the Arena, and
 /// the puzzle's playtest settings. Works with the remote.
-class GamesScreen extends StatelessWidget {
+class GamesScreen extends ConsumerWidget {
   const GamesScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final text = Theme.of(context).textTheme;
     final scheme = Theme.of(context).colorScheme;
     return CallbackShortcuts(
@@ -29,7 +29,7 @@ class GamesScreen extends StatelessWidget {
         title: 'Play',
         body: SafeArea(
           child: ListView(
-            padding: const EdgeInsets.all(24),
+            padding: hostMenuPadding(ref.watch(hostBarHeightProvider)),
             children: [
               Wrap(
                 spacing: 24,
@@ -151,7 +151,7 @@ class ShapeRaceScreen extends ConsumerWidget {
         body: SafeArea(
           child: switch (library) {
             AsyncData(:final value) => ListView(
-              padding: const EdgeInsets.all(24),
+              padding: hostMenuPadding(ref.watch(hostBarHeightProvider)),
               children: [
                 for (final (i, level) in Level.values.indexed)
                   if (value.ofLevel(level) case final puzzles when puzzles.isNotEmpty) ...[

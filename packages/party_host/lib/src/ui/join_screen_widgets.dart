@@ -4,13 +4,23 @@ part of 'join_screen.dart';
 /// phone it is a touch target too (m12-host-touch rule 5): a tap moves the
 /// own player here, when the side has room.
 class _SidePanel extends StatelessWidget {
-  const _SidePanel({super.key, required this.side, required this.players, this.ownPlayerId, this.onTap});
+  const _SidePanel({
+    super.key,
+    required this.side,
+    required this.players,
+    this.ownPlayerId,
+    this.tight = false,
+    this.onTap,
+  });
 
   final PuzzleSide side;
   final List<GamePlayer> players;
 
   /// The host phone's own player, marked "(you)" on its row; null on a TV.
   final String? ownPlayerId;
+
+  /// Less room inside, under the phone's own bar (bug 1107f).
+  final bool tight;
 
   /// A tap moves the own player to this side; null when there is no own
   /// player here.
@@ -32,7 +42,7 @@ class _SidePanel extends StatelessWidget {
         // Scrolls when the screen is too short for a full side (a landscape
         // phone hosting, with its own bar above): on a TV it always fits.
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.all(tight ? _tightPanelPaddingPx : _panelPaddingPx),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -66,13 +76,16 @@ class _SidePanel extends StatelessWidget {
 
 /// Both sides, side by side.
 class _Sides extends StatelessWidget {
-  const _Sides({required this.players, required this.teams, this.ownPlayerId, this.onPick});
+  const _Sides({required this.players, required this.teams, this.ownPlayerId, this.tight = false, this.onPick});
 
   final List<GamePlayer> players;
   final Map<String, PuzzleSide> teams;
 
   /// The host phone's own player, marked on its side; null on a TV.
   final String? ownPlayerId;
+
+  /// Less room inside the panels, under the phone's own bar (bug 1107f).
+  final bool tight;
 
   /// Moves the own player to the tapped side; null on a TV, whose panels are
   /// then not tappable at all.
@@ -95,6 +108,7 @@ class _Sides extends StatelessWidget {
                   if (teams[p.id] == side) p,
               ],
               ownPlayerId: ownPlayerId,
+              tight: tight,
               onTap: pick == null ? null : () => pick(side),
             ),
           ),

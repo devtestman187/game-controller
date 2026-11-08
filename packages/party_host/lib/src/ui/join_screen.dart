@@ -33,6 +33,16 @@ final joinedLayout = GameLayoutMessage(
 /// The most players on one side.
 const maxPerSide = 2;
 
+/// The join screen's gaps: under the hint, around the sides, and both where
+/// the phone's own bar is above (bug 1107f).
+const _hintGapPx = 16.0;
+const _gapPx = 12.0;
+const _tightGapPx = 8.0;
+
+/// The room inside a side's panel, and where the phone's own bar is above.
+const _panelPaddingPx = 16.0;
+const _tightPanelPaddingPx = 12.0;
+
 /// Where a joining player goes: the side with fewer players (left on a
 /// tie), or null when both are full.
 PuzzleSide? sideForNewPlayer(Map<String, PuzzleSide> teams) {
@@ -296,6 +306,10 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
     ];
     final own = _ownPlayer;
     final ownHere = own != null && players.any((p) => p.id == own) ? own : null;
+    // Under the phone's own bar the screen is short: tighter gaps and panels,
+    // so a side with the own player fits without scrolling (bug 1107f).
+    final barHeight = ref.watch(hostBarHeightProvider);
+    final tight = barHeight > 0;
     return ControlsClaim(
       controls: const Controls.game(),
       child: Focus(
@@ -306,7 +320,7 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
           title: 'Shape Race · ${_choiceName(widget.choice, ref.watch(puzzleLibraryProvider).value)}',
           body: SafeArea(
             child: Padding(
-              padding: const EdgeInsets.all(24),
+              padding: hostMenuPadding(barHeight),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -314,18 +328,19 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
                     _hint(hasOwnPlayer: ownHere != null, hasKeyboard: _keyboard.available),
                     style: text.titleLarge,
                   ),
-                  const SizedBox(height: 16),
+                  SizedBox(height: tight ? _tightGapPx : _hintGapPx),
                   Expanded(
                     child: _Sides(
                       players: players,
                       teams: _teams,
                       ownPlayerId: ownHere,
+                      tight: tight,
                       onPick: ownHere == null ? null : (side) => _pickSide(ownHere, side),
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  SizedBox(height: tight ? _tightGapPx : _gapPx),
                   if (watching.isNotEmpty) _NotJoined(watching: watching),
-                  const SizedBox(height: 12),
+                  SizedBox(height: tight ? _tightGapPx : _gapPx),
                   _JoinButtons(teams: _teams, startFocus: _startFocus, onStart: _start),
                 ],
               ),

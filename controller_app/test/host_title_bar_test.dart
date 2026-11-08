@@ -52,10 +52,18 @@ void main() {
   // The puzzle files are read once, before any test runs (s9g).
   setUpAll(loadPuzzles);
 
-  testWidgets('the picker, the level list and the join screen keep their titles below the bar', (tester) async {
+  testWidgets('the picker starts under the bar, and the level list and the join screen keep their titles', (
+    tester,
+  ) async {
     await pumpHostApp(tester);
     final host = await enterHostMode(tester);
-    expectRoomBelowTheBar(tester, party.GamesScreen);
+
+    // The picker has nothing to go back to, so it draws no title bar at all and
+    // its body starts right under the phone's bar (m12 bug 1107f rule D).
+    expect(find.byKey(const Key('hostTitleBar')), findsNothing);
+    final picker = find.descendant(of: find.byType(party.GamesScreen), matching: find.byType(Scrollable)).first;
+    expect(tester.getRect(picker).top, topBarHeightPx);
+    expect(tester.getSize(picker).height, phoneScreenHeightPx - topBarHeightPx);
 
     // The level list, where "Shape Race" was almost cut off by the bar (bug
     // 1107f): its title and its back arrow are down here, in the clear.
@@ -102,10 +110,35 @@ void main() {
     await tester.runAsync(host.dispose);
   });
 
-  testWidgets('"Show on this device" keeps its title bar below the bar too', (tester) async {
+  testWidgets('"Show on this device" loses the picker\'s title bar too', (tester) async {
     await pumpHostApp(tester);
     final host = await enterHostMode(tester, choice: HostChoice.onDevice);
-    expectRoomBelowTheBar(tester, party.GamesScreen);
+    // The bar is above the games here too, and the picker is still the route
+    // with nothing to go back to (rule D).
+    expect(find.byKey(const Key('hostTitleBar')), findsNothing);
+    expect(
+      tester.getRect(find.descendant(of: find.byType(party.GamesScreen), matching: find.byType(Scrollable)).first).top,
+      topBarHeightPx,
+    );
+    await tester.runAsync(host.dispose);
+  });
+
+  testWidgets('the phone\'s menus leave 12 at the top of their bodies, where 24 would waste room', (tester) async {
+    await pumpHostApp(tester);
+    final host = await enterHostMode(tester);
+    final picker = tester.widget<ListView>(
+      find.descendant(of: find.byType(party.GamesScreen), matching: find.byType(ListView)),
+    );
+    expect(picker.padding, const EdgeInsets.fromLTRB(24, 12, 24, 24));
+
+    await tester.tap(find.byKey(const Key('pickShapeRace')));
+    await untilShown(tester, find.byType(party.ShapeRaceScreen), 'The Shape Race screen');
+    await settle(tester);
+    final levels = tester.widget<ListView>(
+      find.descendant(of: find.byType(party.ShapeRaceScreen), matching: find.byType(ListView)),
+    );
+    expect(levels.padding, const EdgeInsets.fromLTRB(24, 12, 24, 24));
+
     await tester.runAsync(host.dispose);
   });
 
