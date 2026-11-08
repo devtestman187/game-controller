@@ -41,6 +41,8 @@ Everything looks like a well-made plastic toy on a playroom table. Shapes are br
 | D9 | Puzzle piece colours are re-picked from the toy palette (data change in the puzzle files, not a rule change). Easy-level outlines keep matching their pieces; Medium and Hard keep a neutral outline | PRD-v2: "Easy outlines are coloured to match their pieces. Medium and Hard outlines are grey, so only the shape helps" |
 | D10 | Right and wrong keep their ✓ and ✗, and players keep their numbers on badges and dots | PRD-v2: colour-blind players can play. Colour never carries meaning alone |
 | D11 | The phone's pad keeps every size and touch area (C14 to C16, C28's opacity); only colour, outline, shadow and the press squish change | The pad's sizes are tested and tuned; a restyle must not move a thumb target |
+| D12 | Text on a coloured fill (badges, buttons, face buttons) is always ink, never white. Player 3 is `#A66CFF`, not the mock-ups' `#9B5CFF` (Claude, Nov 8, 2026, at the start of step 2) | Ink passes 4.5:1 on every fill in both palettes once player 3 is lightened (lowest: player 3 at 4.94, `bad` at 5.15); white fails on most of them. The change is barely visible |
+| D13 | Font files are renamed `Fredoka-Variable.ttf` and `Nunito-Variable.ttf` (Google Fonts names them `Fredoka[wdth,wght].ttf` and `Nunito[wght].ttf`) and ship with their `OFL.txt`, which the apps add to their licence page | Square brackets in asset paths are fragile in YAML and URLs; the OFL requires its text to travel with the font, and renaming the file is allowed |
 
 ## 3. Design tokens (in `toy_look`)
 
@@ -60,7 +62,7 @@ Names are by meaning, not colour, so a later change moves every use at once. The
 | --- | --- | --- |
 | `focus` | `#FFD23F` with an ink edge | The controller's focus ring and glow |
 | `good` / `caution` / `bad` | `#2FCB74` / `#FFB020` / `#FF4D5E` | Right, link OK, winner; waiting, slow link; wrong, hazard, last 15 s |
-| `player(1..6)` | `#2E9BF0`, `#FF8A1F`, `#9B5CFF`, `#14C8A0`, `#FF5C8A`, `#F2C200` | Players (D6) |
+| `player(1..6)` | `#2E9BF0`, `#FF8A1F`, `#A66CFF`, `#14C8A0`, `#FF5C8A`, `#F2C200` | Players (D6). Player 3 was `#9B5CFF` in the mock-ups; ink text on it measured 4.27:1, under the 4.5:1 rule, so it was lightened (D12) |
 | `faceA/B/X/Y` | `#2FCB74`, `#FF4D5E`, `#2E9BF0`, `#FFD23F` | The pad's A, B, X and Y |
 
 Sizes: outline width 3 px on menus (4 on TV), a piece's outline 0.8 world units; shadow offset 4 px down and 3 px right (0.9 world units in a game); corner radius 16 px for cards, full pill for buttons; spacing scale 4, 8, 12, 16, 24, 32 px (project-notes.md's spacing scale). Type: Fredoka 600 for titles (TV 56, phone 32), buttons (TV 28, phone 18) and the clock; Nunito 700 for body (TV 22, phone 15). TV sizes are for reading from 3 metres.

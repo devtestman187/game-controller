@@ -6,13 +6,15 @@
 | `audio/help.ogg` | Puzzle (M11): a big piece carried alone, calling a teammate | Generated for this project with `tools/audio/render.py` (numpy synthesis, no sampled material) | Project | CC0 1.0 |
 # Asset credits
 
-Every image and sound in `/assets` (and every platform icon or banner made from them) is listed here.
+Every image and sound in `/assets` (and every platform icon or banner made from them), and every font, is listed here.
 Only assets whose license allows commercial use are accepted (CC0 preferred, e.g. Kenney.nl).
 Update this file in the same commit that adds, replaces or removes an asset.
 
 | File | Used for | Source URL | Creator | License |
 | --- | --- | --- | --- | --- |
 | `branding/*.png` and every app icon made from them (Android `mipmap-*`, the TV banner, iOS `AppIcon`, the Windows `app_icon.ico`, `site/icon.png`) | Thumb Party and Thumb Party TV icons, the TV banner and the Play store graphics | Drawn by `tools/branding/make-artwork.ps1` (System.Drawing, no third-party content) | Project | CC0 1.0 |
+| `packages/toy_look/fonts/fredoka/Fredoka-Variable.ttf` (Google Fonts' `Fredoka[wdth,wght].ttf`, renamed), with its `OFL.txt` | The look's titles, buttons and numbers (M13) | https://github.com/google/fonts/tree/main/ofl/fredoka | The Fredoka Project Authors | SIL OFL 1.1 |
+| `packages/toy_look/fonts/nunito/Nunito-Variable.ttf` (Google Fonts' `Nunito[wght].ttf`, renamed), with its `OFL.txt` | The look's body text (M13) | https://github.com/google/fonts/tree/main/ofl/nunito | The Nunito Project Authors | SIL OFL 1.1 |
 | `branding/screenshots/*.png` | Store screenshots | Captured from the apps (Android 12 emulator, Windows build) | Project | CC0 1.0 |
 | `audio/hit.ogg` | TV sound for the **hit** event (Arena: bumping a wall or edge, a hazard touching you) | Generated for this project with `tools/audio/render.py` (numpy synthesis, no sampled material) | Project | CC0 1.0 |
 | `audio/success.ogg` | TV sound for the **success** event (Arena: reaching the goal; Shape Race: all pieces matched) | Generated for this project with `tools/audio/render.py` (numpy synthesis, no sampled material) | Project | CC0 1.0 |
