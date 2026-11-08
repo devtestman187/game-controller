@@ -91,9 +91,19 @@ case "${1:-}" in
     fi
     command -v flutter > /dev/null 2>&1 || { echo "flutter isn't on the PATH (docs/building.md)" >&2; exit 2; }
     : > "$log"
+    # The app's own temp folder, in the git-ignored build folder. On some PCs
+    # a process started this way may not create folders in the user's temp
+    # folder: flutter run's reload support crashed its tool and the sound
+    # engine failed ("Access is denied", Nov 7, 2026). The saved settings in
+    # AppData can't be moved this way (Windows finds that folder by itself),
+    # so on such a PC the app still fails to save them: docs/dev-tools.md.
+    app_tmp="$(cd "$root/tv_test_app" && pwd -W 2> /dev/null || pwd)/build/dev-tmp"
+    mkdir -p "$root/tv_test_app/build/dev-tmp"
     # Detached, so it keeps running after this shell closes. stdin from
     # /dev/null: flutter run would otherwise wait for keys (r, R, q).
-    (cd "$root/tv_test_app" && nohup flutter run -d windows "${defines[@]}" < /dev/null >> "$log" 2>&1 &)
+    (cd "$root/tv_test_app" &&
+      TEMP="$app_tmp" TMP="$app_tmp" TMPDIR="$app_tmp" \
+        nohup flutter run -d windows "${defines[@]}" < /dev/null >> "$log" 2>&1 &)
     echo "Building and starting (the first build takes a few minutes)..."
     for _ in $(seq 1 600); do
       if [ -n "$(port_and_code)" ]; then
