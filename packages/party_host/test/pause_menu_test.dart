@@ -1,6 +1,7 @@
 import 'package:connection/connection.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:party_host/party_host.dart';
 import 'package:party_host/testing.dart';
@@ -226,5 +227,78 @@ void main() {
     await navigated(tester);
     expect(find.byKey(const Key('pauseMenu')), findsNothing);
     expect(host.layouts['p1']!.labels[ControllerButton.start], 'Pause');
+  });
+
+  testWidgets('the round\'s phase is none on the menus and playing in a round, and after Resume', (tester) async {
+    final fake = await pumpHost(tester, screen: const StubHome());
+    final container = ProviderScope.containerOf(tester.element(find.byType(StubHome)));
+    RoundPhase phase() => container.read(roundPhaseProvider).value;
+
+    // No round is on: the home screen, the game picker and the join screen.
+    expect(phase(), RoundPhase.none);
+    await neutral(tester, fake, ['p1']);
+    await tapVisible(tester, find.byKey(const Key('openPlay')));
+    await tester.pumpAndSettle();
+    expect(find.byType(GamesScreen), findsOneWidget);
+    expect(phase(), RoundPhase.none, reason: 'the picker is no round');
+    await tester.tap(find.byKey(const Key('pickShapeRace')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('puzzle-house')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.byType(JoinScreen), findsOneWidget);
+    expect(phase(), RoundPhase.none, reason: 'the join screen is no round');
+
+    // The round runs, and a pause menu stands it still.
+    await startRound(tester, fake);
+    expect(find.byType(PuzzleScreen), findsOneWidget);
+    expect(phase(), RoundPhase.playing);
+    await press(tester, fake, 'p1', GamepadButton.start);
+    await navigated(tester);
+    expect(find.byKey(const Key('pauseMenu')), findsOneWidget);
+    expect(phase(), RoundPhase.none, reason: 'the menu is no round');
+    await press(tester, fake, 'p1', GamepadButton.a);
+    await navigated(tester);
+    expect(find.byKey(const Key('pauseMenu')), findsNothing);
+    expect(phase(), RoundPhase.playing, reason: 'Resume starts the round again');
+
+    // The results end it.
+    lockEveryPiece(tester);
+    await endRound(tester);
+    expect(find.text('Done!'), findsOneWidget);
+    expect(phase(), RoundPhase.none, reason: 'the results are no round');
+
+    // Play again replaces the screen before the results are disposed (M10):
+    // the new round's phase is the one that stands.
+    await tester.tap(find.byKey(const Key('playAgain')));
+    await navigated(tester);
+    expect(find.byType(PuzzleScreen), findsOneWidget);
+    expect(phase(), RoundPhase.playing, reason: 'the new round runs');
+  });
+
+  testWidgets('a round that waits for a phone away or for the host is none', (tester) async {
+    final appAway = ValueNotifier(false);
+    final fake = await openRace(tester, overrides: [hostAwayProvider.overrideWithValue(appAway)]);
+    final container = ProviderScope.containerOf(tester.element(find.byType(PuzzleScreen)));
+    RoundPhase phase() => container.read(roundPhaseProvider).value;
+    expect(phase(), RoundPhase.playing);
+
+    // The away card stands the round still (m12 bug 1107d).
+    await holdSlot(tester, fake, 'p2');
+    expect(find.byKey(const Key('awayCard')), findsOneWidget);
+    expect(phase(), RoundPhase.none);
+    fake.gameHost.setAway('p2', isAway: false);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(phase(), RoundPhase.playing, reason: 'the phone is back and the round goes on');
+
+    // So does the host app going away (m12 §2.10).
+    appAway.value = true;
+    await tester.pump();
+    expect(phase(), RoundPhase.none);
+    appAway.value = false;
+    await tester.pump();
+    await tester.pump();
+    expect(phase(), RoundPhase.playing);
   });
 }

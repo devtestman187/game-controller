@@ -1,9 +1,13 @@
 part of 'controller_screen.dart';
 
-/// The touch metrics, the mode's controls over whatever this phone shows
-/// behind them (m12 §2.7), and the demo readout, in a body of [body].
+/// The pad on top of whatever this phone shows behind it (m12 §2.7).
+///
+/// While this phone hosts, the pad is not built outside a round
+/// (m12-host-touch rules 1, 2): the host's menus are touch screens then, and a
+/// pad built but hidden would keep the held finger's pointer route, for a
+/// release that comes after the round.
 class _Controls extends ConsumerWidget {
-  const _Controls({required this.mode, required this.body, this.controls = true});
+  const _Controls({required this.mode, required this.body, required this.hosting, this.controls = true});
 
   final PadMode mode;
 
@@ -12,6 +16,9 @@ class _Controls extends ConsumerWidget {
   /// this: it fills the safe area, under the bar too (m12 §5).
   final Size body;
 
+  /// This phone hosts: what it shows behind the pad is its own game.
+  final bool hosting;
+
   /// False for "Show on this device" (C34): nothing to play with here, so
   /// the game alone is drawn and no touch is watched.
   final bool controls;
@@ -19,6 +26,35 @@ class _Controls extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     if (!controls) return const SizedBox.shrink();
+    if (!hosting) return _Pad(mode: mode, body: body);
+    // The join screen keeps its pad until s10b gives it taps
+    // (m12-host-touch rule 5): the own player joins there with A.
+    final joining = _atJoinScreen(ref.watch(gameLayoutProvider));
+    return ValueListenableBuilder<party.RoundPhase>(
+      valueListenable: ref.watch(party.roundPhaseProvider),
+      builder: (context, phase, _) =>
+          phase == party.RoundPhase.none && !joining ? const SizedBox.shrink() : _Pad(mode: mode, body: body),
+    );
+  }
+}
+
+/// Whether the own player's buttons are the join screen's: A joins, then A and
+/// Start begin the match, and no other screen of the host gives it those. The
+/// phone that hosts has no other way to reach the screens inside the game
+/// behind its pad.
+bool _atJoinScreen(GameLayoutMessage layout) =>
+    mapEquals(layout.labels, party.joinLayout.labels) || mapEquals(layout.labels, party.joinedLayout.labels);
+
+/// The touch metrics, the mode's controls over whatever this phone shows
+/// behind them (m12 §2.7), and the demo readout, in a body of [body].
+class _Pad extends ConsumerWidget {
+  const _Pad({required this.mode, required this.body});
+
+  final PadMode mode;
+  final Size body;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
     // The touch metrics (M9) see every touch on the controls, and know where
     // each control's touch area is.
     final mm = ref.read(pxPerMmProvider);

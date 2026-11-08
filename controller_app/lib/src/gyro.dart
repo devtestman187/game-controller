@@ -256,7 +256,8 @@ class GyroNotifier extends Notifier<GyroState> {
     ref.read(logProvider).add('gyro', 'Calibrated at ${tiltOf(up, side)}');
   }
 
-  /// The app left the foreground: stop the sensors and center the stick.
+  /// The app left the foreground, or the host phone's pad went away with the
+  /// round (m12-host-touch): stop the sensors and center the stick.
   void pause() {
     _stopSideTracking();
     if (state.mode != PadMode.gyro || _paused) return;
@@ -265,7 +266,8 @@ class GyroNotifier extends Notifier<GyroState> {
     state = state.copyWith(x: 0, y: 0);
   }
 
-  /// Back in the foreground: start again, keeping the calibration.
+  /// Back in the foreground, or the pad back with the round: start again,
+  /// keeping the calibration.
   Future<void> resume() async {
     _startSideTracking();
     if (state.mode != PadMode.gyro || !_paused) return;

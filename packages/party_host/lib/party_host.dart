@@ -37,4 +37,5 @@ export 'src/ui/pause_menu.dart';
 export 'src/ui/player_badge.dart';
 export 'src/ui/puzzle_screen.dart';
 export 'src/ui/puzzle_settings_screen.dart';
+export 'src/ui/round_phase.dart';
 export 'src/ui/stats_screen.dart';

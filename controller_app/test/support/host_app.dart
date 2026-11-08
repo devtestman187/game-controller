@@ -6,6 +6,7 @@ import 'package:controller/src/host/hosting.dart';
 import 'package:controller/src/host/phone_host.dart';
 import 'package:controller/src/layout.dart';
 import 'package:controller/src/ui/controller_screen.dart';
+import 'package:controller/src/ui/pad_widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart';
@@ -89,6 +90,10 @@ class TempHostDirectories implements party.HostDirectories {
 ProviderContainer hostContainer(WidgetTester tester) =>
     ProviderScope.containerOf(tester.element(find.byType(ControllerScreen).first));
 
+/// The round's phase as the host writes it (m12-host-touch): what the host
+/// phone's pad and top bar follow.
+party.RoundPhase hostPhase(WidgetTester tester) => hostContainer(tester).read(party.roundPhaseProvider).value;
+
 /// The host the app started: the route is up and `hostingProvider` holds it.
 PhoneHost hostOf(WidgetTester tester) {
   final host = hostContainer(tester).read(hostingProvider);
@@ -149,6 +154,26 @@ Future<PhoneHost> enterHostMode(WidgetTester tester, {HostChoice choice = HostCh
   return host;
 }
 
+/// Hosts on this phone and opens a solo Shape Race round: a tap on the
+/// picker's card and on a random easy puzzle, then A on the pad the join
+/// screen keeps until s10b. Returns the host.
+Future<PhoneHost> soloRound(WidgetTester tester) async {
+  final host = await enterHostMode(tester);
+  await tester.tap(find.byKey(const Key('pickShapeRace')));
+  await untilShown(tester, find.byType(party.ShapeRaceScreen), 'The Shape Race screen');
+  await untilShown(tester, find.byKey(const Key('random-easy')), 'The puzzle list');
+  await tester.tap(find.byKey(const Key('random-easy')));
+  await untilShown(tester, find.byType(party.JoinScreen), 'The join screen');
+  // The pad is there once the join screen has given the own player its
+  // buttons.
+  await untilShown(tester, find.byKey(const Key('faceButtons')), 'The pad on the join screen');
+  await pressA(tester);
+  await pressA(tester);
+  await untilShown(tester, find.byType(party.PuzzleScreen), 'The puzzle screen');
+  await settle(tester);
+  return host;
+}
+
 /// Presses A on the pad to work the host's menus: the press goes out to the
 /// host, the menus act on it, and the next screen is up.
 Future<void> pressA(WidgetTester tester) async {
@@ -162,10 +187,26 @@ Future<void> pressB(WidgetTester tester) async {
   await settle(tester);
 }
 
+/// Presses Start on the pad, where a finger would: how the host phone pauses
+/// its round (m12-host-touch rule 4), whatever the game labels the button.
+Future<void> pressStart(WidgetTester tester) async {
+  await tester.tap(_startButton);
+  await _afterPress(tester);
+}
+
+/// The pad's Start pill: the one [SmallButton] drawn for
+/// [ControllerButton.start].
+Finder get _startButton => find.byWidgetPredicate((w) => w is SmallButton && w.button == ControllerButton.start);
+
+/// Where a finger presses [button] on the pad.
+Offset atFace(WidgetTester tester, ControllerButton button) {
+  final rect = tester.getRect(find.byKey(const Key('faceButtons')));
+  return rect.topLeft + FaceGeometry.classic.centers[button]! * rect.width;
+}
+
 /// Presses a face button on the pad, where a finger would.
 Future<void> tapFace(WidgetTester tester, ControllerButton button) async {
-  final rect = tester.getRect(find.byKey(const Key('faceButtons')));
-  await tester.tapAt(rect.topLeft + FaceGeometry.classic.centers[button]! * rect.width);
+  await tester.tapAt(atFace(tester, button));
   await tester.pump();
 }
 
@@ -174,7 +215,12 @@ Future<void> tapFace(WidgetTester tester, ControllerButton button) async {
 /// move, so the button has to be up again before the next press.
 Future<void> pressFace(WidgetTester tester, ControllerButton button) async {
   await tapFace(tester, button);
-  // A few frames for the press to reach the host and the menus to act on it.
+  await _afterPress(tester);
+}
+
+/// The frames and the real time a press needs to reach the host and the menus
+/// to act on it, and the button to be up again for the next one.
+Future<void> _afterPress(WidgetTester tester) async {
   for (var i = 0; i < 4; i++) {
     await tester.pump(const Duration(milliseconds: 16));
   }

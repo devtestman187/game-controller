@@ -16,6 +16,7 @@ import 'controller_menus.dart';
 import 'games_screen.dart';
 import 'host_button.dart';
 import 'player_badge.dart';
+import 'round_phase.dart';
 
 /// The buttons while the game is paused: the menu, and Start to resume.
 final pauseLayout = GameLayoutMessage(
@@ -38,6 +39,11 @@ final pauseLayout = GameLayoutMessage(
 /// the game where it left it. It is paused the same way while the round waits
 /// for a phone that dropped (m12 bug 1107d): the away card shows over the game
 /// there, and Start opens no menu either.
+///
+/// It is the one place that is up exactly while a round is on, so it also
+/// writes the round's phase ([roundPhaseProvider], m12-host-touch): `none`
+/// whenever the round stands still, `playing` while it runs. The host phone
+/// hides its own pad from it.
 class Pausable extends ConsumerStatefulWidget {
   const Pausable({super.key, required this.enabled, required this.builder, this.players});
 
@@ -69,6 +75,7 @@ class _PausableState extends ConsumerState<Pausable> {
   late final LogSink _log;
   late final ValueListenable<bool> _away;
   late final VoidCallback _awayChanged;
+  late final RoundPhaseSignal _phase;
   GamePlayer? _pausedBy;
   BuildContext? _menuContext;
   int _sinceStartMs = 0;
@@ -80,19 +87,56 @@ class _PausableState extends ConsumerState<Pausable> {
     _away = ref.read(hostAwayProvider);
     _awayChanged = _noteHostAway;
     _away.addListener(_awayChanged);
+    _phase = ref.read(roundPhaseProvider)..claim(this);
+    _publish();
     _timer;
+  }
+
+  @override
+  void didUpdateWidget(Pausable oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // The results end the round: nothing is playing any more (m12-host-touch).
+    _publish();
   }
 
   @override
   void dispose() {
     _away.removeListener(_awayChanged);
     _timer.cancel();
+    // The round is gone, and its phase with it: unless the screen that
+    // replaced it (Play again) has said what its own round is (M10).
+    _phase.release(this);
     super.dispose();
+  }
+
+  /// The round stands still: the results, an open menu, the host app away or a
+  /// phone the round waits for (m12 §2.10, bug 1107d).
+  bool get _stopped =>
+      !widget.enabled ||
+      _pausedBy != null ||
+      ref.read(hostAwayProvider).value ||
+      ref.read(playersAwayProvider).isNotEmpty;
+
+  /// Says what this round is doing to the host phone's own screens
+  /// ([roundPhaseProvider], m12-host-touch rules 1, 2), after the frame: the
+  /// results end the round during a build, and a screen that read the phase
+  /// there must not be rebuilt then.
+  void _publish() {
+    final phase = _stopped ? RoundPhase.none : RoundPhase.playing;
+    if (phase == _phase.value) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _phase.publish(this, _stopped ? RoundPhase.none : RoundPhase.playing);
+    });
+    // A frame to say it in: a tick or an away signal need not come with one.
+    WidgetsBinding.instance.ensureVisualUpdate();
   }
 
   /// The host app went away or came back: the game pauses with it, without a
   /// menu (m12 §2.10), and the log says which of the round's stops it was.
-  void _noteHostAway() => _log(_away.value ? 'Round paused: the host went away' : 'Round resumed: the host is back');
+  void _noteHostAway() {
+    _log(_away.value ? 'Round paused: the host went away' : 'Round resumed: the host is back');
+    _publish();
+  }
 
   /// Notes the dropped phones whose slot the round holds, and their return.
   void _noteAway(List<GamePlayer> players) {
@@ -120,6 +164,8 @@ class _PausableState extends ConsumerState<Pausable> {
     if (!mounted) return;
     final host = ref.read(gameHostProvider);
     _noteAway(host.players);
+    // A phone that dropped, or came back, stands the round still (1107d).
+    _publish();
     // Away, the app is hidden: the game is paused as it is, and nothing
     // opens a menu behind it.
     if (ref.read(hostAwayProvider).value) return;
@@ -155,6 +201,7 @@ class _PausableState extends ConsumerState<Pausable> {
 
   Future<void> _pause(GamePlayer by) async {
     setState(() => _pausedBy = by);
+    _publish();
     _log('Round paused: P${by.number} pressed Start');
     final quit = await showDialog<bool>(
       context: context,
@@ -167,6 +214,7 @@ class _PausableState extends ConsumerState<Pausable> {
     _menuContext = null;
     if (!mounted) return;
     setState(() => _pausedBy = null);
+    _publish();
     if (quit == true) {
       leaveForGamePicker(context);
     } else {
@@ -181,6 +229,9 @@ class _PausableState extends ConsumerState<Pausable> {
     // is away, as it does for the menu or a hidden app.
     final away = ref.watch(playersAwayProvider);
     final waiting = widget.enabled && away.isNotEmpty;
+    // A phone that drops or comes back changes the phase at once, not on the
+    // beat's next step (m12-host-touch).
+    ref.listen(playersAwayProvider, (_, _) => _publish());
     return ValueListenableBuilder<bool>(
       valueListenable: hostAway,
       builder: (context, hidden, _) => Stack(

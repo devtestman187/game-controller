@@ -1,8 +1,11 @@
 import 'dart:async';
 
 import 'package:connection/connection.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:party_host/party_host.dart' as party;
+import 'package:protocol/protocol.dart';
 
 import '../controls_settings.dart';
 import '../gyro.dart';
@@ -49,11 +52,24 @@ class _ControllerScreenState extends ConsumerState<ControllerScreen> with Widget
   /// A background means this app is hosting (m12 §2.7).
   bool get _hosting => widget.background != null;
 
+  /// The round's phase, while this phone hosts (m12-host-touch): the pad is
+  /// not built while it is [party.RoundPhase.none].
+  party.RoundPhaseSignal? _phase;
+  VoidCallback? _phaseChanged;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     final hosting = _hosting;
+    if (hosting) {
+      // A plain notifier in a provider, so it is read here and dropped in
+      // dispose, as the host away signal is (m12 §2.10).
+      final phase = ref.read(party.roundPhaseProvider);
+      _phase = phase;
+      _phaseChanged = _notePhase;
+      phase.addListener(_notePhase);
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       // Back to the last TV if still paired, otherwise straight to choosing
@@ -70,7 +86,26 @@ class _ControllerScreenState extends ConsumerState<ControllerScreen> with Widget
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    final changed = _phaseChanged;
+    if (changed != null) _phase?.removeListener(changed);
     super.dispose();
+  }
+
+  /// The round started, stopped or started again (m12-host-touch rules 1, 2):
+  /// the pad is built only while a round runs, so a finger held on it never
+  /// sends its release. The pad lets go of every button instead, and gyro mode
+  /// stops sending by itself. A frame later: the results can end the round
+  /// while they build, and a pad's state changed then would rebuild it there.
+  void _notePhase() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (_phase?.value == party.RoundPhase.none) {
+        ref.read(padProvider.notifier).releaseAll();
+        ref.read(gyroProvider.notifier).pause();
+      } else {
+        unawaited(ref.read(gyroProvider.notifier).resume());
+      }
+    });
   }
 
   @override
@@ -178,10 +213,9 @@ class _ControllerScreenState extends ConsumerState<ControllerScreen> with Widget
                       _TopBar(hosting: _hosting, controls: widget.controls),
                       Expanded(
                         child: LayoutBuilder(
-                          builder: (context, body) {
-                            if (body.maxHeight < minBodyHeight) return const TooSmallView();
-                            return _Controls(mode: mode, body: body.biggest, controls: widget.controls);
-                          },
+                          builder: (context, body) => body.maxHeight < minBodyHeight
+                              ? const TooSmallView()
+                              : _Controls(mode: mode, body: body.biggest, hosting: _hosting, controls: widget.controls),
                         ),
                       ),
                     ],

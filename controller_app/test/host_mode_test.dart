@@ -8,6 +8,7 @@ import 'package:controller/src/ui/controls_layer.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:party_host/party_host.dart' as party;
+import 'package:protocol/protocol.dart';
 import 'package:puzzle_game/puzzle_game.dart';
 
 import 'support/host_app.dart';
@@ -38,19 +39,23 @@ void main() {
     await hostReady(tester, host);
     await settle(tester);
 
-    // The picker fills the safe area, behind the bar and the controls that
-    // stay on top of it (m12 §5).
+    // The picker fills the safe area, behind the bar (m12 §5), with no pad
+    // over it: outside a round the host's screens are touch screens
+    // (m12-host-touch rule 1).
     expect(find.byType(party.GamesScreen), findsOneWidget);
     expect(tester.getRect(find.byType(party.GamesScreen)), const Rect.fromLTWH(0, 0, 852, 393));
-    expect(tester.getRect(find.byType(ControlsLayer)), const Rect.fromLTWH(0, 52, 852, 341));
     expect(find.byKey(const Key('pickShapeRace')), findsOneWidget);
-    // The bar over the game is the compact one (m12-phone-layout §0.7b): the
-    // mode, Settings and Diagnostics as icons, and the host's code in a
-    // compact chip right after the dot, so players can still join and the
-    // host can stop from here (s7d2 Q1).
-    expect(find.byKey(const Key('modeMenu')), findsOneWidget);
+    expect(find.byType(ControlsLayer), findsNothing);
+    expect(find.byKey(const Key('faceButtons')), findsNothing);
+    expect(hostPhase(tester), party.RoundPhase.none);
+    // The bar over the menus is the full one (rule 1): the host's chip and
+    // its code on the left, the mode's three labels, Settings and Diagnostics
+    // on the right. The compact one waits for the round.
+    expect(find.byType(BarModes), findsOneWidget);
     expect(find.byTooltip('Settings'), findsOneWidget);
     expect(find.byTooltip('Diagnostics'), findsOneWidget);
+    expect(find.byKey(const Key('modeMenu')), findsNothing);
+    expect(find.byKey(const Key('connectionDot')), findsNothing);
     expect(find.byKey(const Key('hostChip')), findsOneWidget);
     expect(find.textContaining(host.service.state.host.pairingCode), findsOneWidget);
 
@@ -62,23 +67,28 @@ void main() {
     expect(find.byKey(const Key('playerBadge')), findsOneWidget);
     expect(find.text('P1'), findsOneWidget);
 
-    // 4. The menus' buttons reach the pad: client, host, menus, layout, client.
-    expect(faceLabels(tester), allOf(contains('A OK'), contains('B Back')));
-
-    // 5. A on the pad presses the focused card: Shape Race. The screens come
-    // up after the host's menus read the press and the puzzle library loads,
-    // which a busy PC delays past a fixed number of pumps (s9c).
-    await pressA(tester);
+    // 5. A tap presses Shape Race's card, then its levels. The screens come up
+    // after the host's menus read the tap and the puzzle library loads, which
+    // a busy PC delays past a fixed number of pumps (s9c).
+    await tester.tap(find.byKey(const Key('pickShapeRace')));
     await untilShown(tester, find.byType(party.ShapeRaceScreen), 'The Shape Race screen');
     expect(find.byType(party.ShapeRaceScreen), findsOneWidget);
     await untilShown(tester, find.byKey(const Key('random-easy')), 'The puzzle list');
     expect(find.byKey(const Key('random-easy')), findsOneWidget);
+    expect(hostPhase(tester), party.RoundPhase.none);
 
-    // 6. A again opens the join screen, A joins the left side, A again starts:
-    // the puzzle runs inside the body box, and the pad gets its buttons.
-    await pressA(tester);
+    // 6. A level opens the join screen, which keeps its pad until s10b gives
+    // it taps (rule 5): A on the pad joins the left side, A again starts. The
+    // puzzle runs inside the body box, and the pad gets its buttons.
+    await tester.tap(find.byKey(const Key('random-easy')));
     await untilShown(tester, find.byType(party.JoinScreen), 'The join screen');
     expect(find.byType(party.JoinScreen), findsOneWidget);
+    // The pad comes back once the join screen has given the own player its
+    // buttons (they are how it keeps its pad there at all).
+    await untilShown(tester, find.byType(ControlsLayer), 'The pad on the join screen');
+    expect(tester.getRect(find.byType(ControlsLayer)), const Rect.fromLTWH(0, 52, 852, 341));
+    expect(find.byType(BarModes), findsOneWidget, reason: 'the join screen is outside the round too');
+    expect(hostPhase(tester), party.RoundPhase.none);
     await pressA(tester);
     await pressA(tester);
     await untilShown(tester, find.byType(party.PuzzleScreen), 'The puzzle screen');
@@ -87,6 +97,27 @@ void main() {
     expect(puzzle.teams.values.map((s) => s.name), ['left']);
     await settle(tester);
     expect(tester.getRect(find.byType(party.PuzzleScreen)), const Rect.fromLTWH(0, 0, 852, 393));
+
+    // The round: the pad is up and the bar goes compact (rule 2), the mode,
+    // Settings and Diagnostics as icons, and the host's code in a compact chip
+    // right after the dot, so players can still join and the host can stop
+    // from here (s7d2 Q1). The compact chip is as easy to hit as the bar's
+    // Settings button (C14).
+    expect(hostPhase(tester), party.RoundPhase.playing);
+    expect(find.byKey(const Key('faceButtons')), findsOneWidget);
+    expect(find.byType(BarModes), findsNothing);
+    expect(find.byKey(const Key('modeMenu')), findsOneWidget);
+    expect(find.byTooltip('Settings'), findsOneWidget);
+    expect(find.byTooltip('Diagnostics'), findsOneWidget);
+    expect(find.byKey(const Key('connectionDot')), findsOneWidget);
+    expect(find.byKey(const Key('hostChip')), findsOneWidget);
+    expect(find.textContaining(host.service.state.host.pairingCode), findsOneWidget);
+    expect(
+      tester.getRect(find.byKey(const Key('hostChip'))).left,
+      greaterThan(tester.getRect(find.byKey(const Key('connectionDot'))).right),
+    );
+    final settings = tester.getSize(find.byTooltip('Settings'));
+    expect(tester.getSize(find.byKey(const Key('hostChip'))).height, greaterThanOrEqualTo(settings.height));
     await until(
       tester,
       () => faceLabels(tester).contains('A Pick up'),
@@ -113,41 +144,37 @@ void main() {
     // this phone", nothing sits beside the game (C34).
     expect(tester.getRect(find.byType(party.GamesScreen)), const Rect.fromLTWH(0, 0, 852, 393));
 
-    // The bar over the game is the compact one (m12-phone-layout §0.7b), and
-    // with no pad there is nothing to configure: the own player's badge, the
-    // link's dot, the host's code and Diagnostics.
+    // The bar over the picker is the full one on this route too
+    // (m12-host-touch rule 1, both host routes): the host's chip with its code
+    // and Diagnostics. With no pad there is nothing to configure, so no mode
+    // and no Settings (C34).
     expect(find.byKey(const Key('playerBadge')), findsOneWidget);
-    expect(find.byKey(const Key('connectionDot')), findsOneWidget);
     expect(find.byTooltip('Diagnostics'), findsOneWidget);
     expect(find.byKey(const Key('modeMenu')), findsNothing);
+    expect(find.byKey(const Key('connectionDot')), findsNothing);
     expect(find.byKey(const Key('hostChip')), findsOneWidget);
+    expect(find.textContaining('Hosting · '), findsOneWidget);
     expect(find.textContaining(host.service.state.host.pairingCode), findsOneWidget);
 
     await tester.runAsync(host.dispose);
   });
 
-  testWidgets('the host route gets the compact bar too (m12-phone-layout §0.7b)', (tester) async {
+  testWidgets('the host route gets the full bar over its menus (m12-host-touch rule 1)', (tester) async {
     await pumpHostApp(tester);
     final host = await enterHostMode(tester);
 
-    // "Play on this phone": the own player's badge, the link's dot and the
-    // host's code on the left, the mode, Settings and Diagnostics as icons on
-    // the right (s7d2 Q1).
+    // "Play on this phone": the own player's badge and the host's code on the
+    // left, the mode's three labels, Settings and Diagnostics on the right.
     expect(find.byKey(const Key('playerBadge')), findsOneWidget);
-    expect(find.byKey(const Key('connectionDot')), findsOneWidget);
-    expect(find.byKey(const Key('modeMenu')), findsOneWidget);
+    expect(find.byType(BarModes), findsOneWidget);
     expect(find.byTooltip('Settings'), findsOneWidget);
     expect(find.byTooltip('Diagnostics'), findsOneWidget);
     expect(find.byKey(const Key('hostChip')), findsOneWidget);
+    expect(find.textContaining('Hosting · '), findsOneWidget);
     expect(find.textContaining(host.service.state.host.pairingCode), findsOneWidget);
-    // It sits right after the dot (s7d2 Q1).
-    expect(
-      tester.getRect(find.byKey(const Key('hostChip'))).left,
-      greaterThan(tester.getRect(find.byKey(const Key('connectionDot'))).right),
-    );
-    // The compact chip is as easy to hit as the bar's Settings button (C14).
-    final settings = tester.getSize(find.byTooltip('Settings'));
-    expect(tester.getSize(find.byKey(const Key('hostChip'))).height, greaterThanOrEqualTo(settings.height));
+    // The compact bar's own widgets are not here: they come with the round.
+    expect(find.byKey(const Key('modeMenu')), findsNothing);
+    expect(find.byKey(const Key('connectionDot')), findsNothing);
 
     await tester.runAsync(host.dispose);
   });
@@ -173,8 +200,9 @@ void main() {
     final host = await enterHostMode(tester);
     final restarts = app.discovery.restarts;
 
-    // The compact chip over the game opens the same menu as the full one, so
-    // the host can still stop from its own screens (s7d2 Q1).
+    // The chip in the bar over the picker opens the same menu as the compact
+    // one over a round, so the host can still stop from its own screens
+    // (s7d2 Q1).
     await tester.tap(find.byKey(const Key('hostChip')));
     await settle(tester);
     expect(find.byKey(const Key('newCode')), findsOneWidget);
@@ -248,16 +276,21 @@ void main() {
   testWidgets('the system back on the results goes to the picker and the host stays on', (tester) async {
     await pumpHostApp(tester);
     final host = await enterHostMode(tester);
-    await pressA(tester);
+    await tester.tap(find.byKey(const Key('pickShapeRace')));
     await untilShown(tester, find.byType(party.ShapeRaceScreen), 'The Shape Race screen');
     await untilShown(tester, find.byKey(const Key('random-easy')), 'The puzzle list');
-    await pressA(tester);
+    await tester.tap(find.byKey(const Key('random-easy')));
     await untilShown(tester, find.byType(party.JoinScreen), 'The join screen');
+    // The pad is there once the join screen has given the own player its
+    // buttons.
+    await untilShown(tester, find.byKey(const Key('faceButtons')), 'The pad on the join screen');
     await pressA(tester);
     await pressA(tester);
     await untilShown(tester, find.byType(party.PuzzleScreen), 'The puzzle screen');
 
-    // The own player's board goes in at once: the round ends on the results.
+    // The own player's board goes in at once: the round ends on the results,
+    // which are outside the round: the pad goes away and the bar goes full
+    // (m12-host-touch rules 1, 2).
     final match = tester.state<PuzzlePlayViewState>(find.byType(PuzzlePlayView)).match;
     final board = match.gameOf(PuzzleSide.left);
     for (var i = 0; i < board.pieces.length; i++) {
@@ -266,6 +299,10 @@ void main() {
         ..pos = board.targetAt(i);
     }
     await untilShown(tester, find.text('Done!'), 'The results');
+    await until(tester, () => hostPhase(tester) == party.RoundPhase.none, () => 'The phase did not stop');
+    await settle(tester);
+    expect(find.byKey(const Key('faceButtons')), findsNothing);
+    expect(find.byType(BarModes), findsOneWidget);
 
     await tester.binding.handlePopRoute();
     await settle(tester);
@@ -273,6 +310,78 @@ void main() {
     expect(find.byType(party.PuzzleScreen), findsNothing);
     expect(find.byType(HostScreen), findsOneWidget);
     expect(host.live, isTrue, reason: 'the back went up to the picker, not out of the host');
+    await tester.runAsync(host.dispose);
+  });
+
+  // m12-host-touch rule 4: Start on the pad opens the pause menu, which is a
+  // touch screen with the pad hidden, and Resume brings the pad back.
+  testWidgets('Start on the pad pauses the round: the menu is touch, Resume brings the pad back', (tester) async {
+    await pumpHostApp(tester);
+    final host = await soloRound(tester);
+    expect(hostPhase(tester), party.RoundPhase.playing);
+
+    await pressStart(tester);
+    await untilShown(tester, find.byKey(const Key('pauseMenu')), 'The pause menu');
+    await until(tester, () => hostPhase(tester) == party.RoundPhase.none, () => 'The phase did not stop');
+    await settle(tester);
+    // Paused: nothing is playing, so the pad is gone and the bar is full
+    // again (rules 1, 2, 4).
+    expect(find.byKey(const Key('faceButtons')), findsNothing);
+    expect(find.byType(BarModes), findsOneWidget);
+    expect(find.byKey(const Key('modeMenu')), findsNothing);
+
+    // Resume is a touch button, and the pad comes back with the round.
+    await tester.tap(find.byKey(const Key('pauseResume')));
+    await until(tester, () => hostPhase(tester) == party.RoundPhase.playing, () => 'The phase did not go on');
+    await settle(tester);
+    expect(find.byKey(const Key('pauseMenu')), findsNothing);
+    expect(find.byKey(const Key('faceButtons')), findsOneWidget);
+    expect(find.byType(BarModes), findsNothing);
+
+    await tester.runAsync(host.dispose);
+  });
+
+  // The plan's "one neutral input on hide" (§2): a pad that goes away under a
+  // held finger leaves nothing pressed, and the app lets go of every button
+  // with one neutral input.
+  testWidgets('a pad hidden under a held finger lets go of it with one neutral input', (tester) async {
+    final app = await pumpHostApp(tester);
+    final host = await soloRound(tester);
+    // Past Start's grace, so the press below counts as a new one (m12 §2.10).
+    await tester.pump(const Duration(milliseconds: 640));
+
+    // From here the pad's input goes to a fake client, so the input a hidden
+    // pad sends can be counted: the own player's client is a real one.
+    hostContainer(tester).read(ownClientProvider.notifier).set(app.client);
+    final sent = app.client.inputs.length;
+    final finger = await tester.startGesture(atFace(tester, ControllerButton.a));
+    await tester.pump();
+    expect(app.client.inputs.sublist(sent), ['A 0,0']);
+
+    // Start pauses the round: the pad goes away with the finger still on it.
+    // It comes from the own player's client, since the pad's own sends go to
+    // the fake from here.
+    host.client.sendInput({ControllerButton.start});
+    await untilShown(tester, find.byKey(const Key('pauseMenu')), 'The pause menu');
+    host.client.sendInput({});
+    await until(tester, () => hostPhase(tester) == party.RoundPhase.none, () => 'The phase did not stop');
+    await until(tester, () => app.client.inputs.length > sent + 1, () => 'The pad let go of nothing');
+    // A frame more: the pad is told to go away by the same change, and goes on
+    // the next build.
+    await settle(tester);
+    expect(app.client.inputs.sublist(sent), ['A 0,0', '0,0']);
+    expect(hostContainer(tester).read(padProvider).isNeutral, isTrue);
+    expect(find.byKey(const Key('faceButtons')), findsNothing);
+
+    // Back in the round the pad is built again, and the finger's release
+    // arrives after it went away: it presses nothing.
+    await tester.tap(find.byKey(const Key('pauseResume')));
+    await until(tester, () => hostPhase(tester) == party.RoundPhase.playing, () => 'The phase did not go on');
+    await settle(tester);
+    await finger.up();
+    await settle(tester);
+    expect(app.client.inputs.sublist(sent), ['A 0,0', '0,0']);
+
     await tester.runAsync(host.dispose);
   });
 

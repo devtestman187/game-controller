@@ -7,6 +7,10 @@ part of 'controller_screen.dart';
 /// Over a game it goes compact (m12-phone-layout §0.7b): the game draws its
 /// own clock and counts right under the bar, so the bar keeps only what
 /// playing needs and draws it at the controls' opacity.
+///
+/// The phone that hosts follows the round's phase instead (m12-host-touch
+/// rules 1, 2): the full bar over its menus and the compact one over the
+/// round, which is the only game it shows.
 class _TopBar extends ConsumerWidget {
   const _TopBar({required this.hosting, required this.controls});
 
@@ -18,9 +22,19 @@ class _TopBar extends ConsumerWidget {
   final bool controls;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) => ref.watch(showsGameProvider)
-      ? _GameTopBar(hosting: hosting, controls: controls)
-      : _ControllerTopBar(hosting: hosting, controls: controls);
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (hosting) {
+      return ValueListenableBuilder<party.RoundPhase>(
+        valueListenable: ref.watch(party.roundPhaseProvider),
+        builder: (context, phase, _) => phase == party.RoundPhase.none
+            ? _ControllerTopBar(hosting: hosting, controls: controls)
+            : _GameTopBar(hosting: hosting, controls: controls),
+      );
+    }
+    return ref.watch(showsGameProvider)
+        ? _GameTopBar(hosting: hosting, controls: controls)
+        : _ControllerTopBar(hosting: hosting, controls: controls);
+  }
 }
 
 /// The bar over a game (m12-phone-layout §0.7b): the own player and the

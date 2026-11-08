@@ -1,5 +1,6 @@
 import 'package:controller/src/host/hosting.dart';
 import 'package:controller/src/host/phone_host.dart';
+import 'package:controller/src/ui/bar_modes.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:party_host/party_host.dart' as party;
@@ -60,8 +61,9 @@ void main() {
       expect(app.discovery.restarts, restarts);
       await settle(tester);
       // The bar came back with the app, and the host is still up under it: the
-      // compact bar over the game keeps the code to join it (s7d2 Q1).
-      expect(find.byKey(const Key('modeMenu')), findsOneWidget);
+      // full bar over the picker keeps the code to join it, and the mode's
+      // labels with it (m12-host-touch rule 1, s7d2 Q1).
+      expect(find.byType(BarModes), findsOneWidget);
       expect(find.byKey(const Key('hostChip')), findsOneWidget);
       expect(hostOf(tester), same(host));
       await tester.runAsync(host.dispose);
@@ -110,14 +112,17 @@ void main() {
         extra: [phoneHostBuilderProvider.overrideWithValue((inputs) => PhoneHost.live(inputs, nowMs: () => nowMs))],
       );
       final host = await enterHostMode(tester);
-      // Into Shape Race, join, and the match starts (m12 §3). Each screen comes
-      // up after the host's menus read the press and the puzzle library loads,
-      // which a busy PC delays past a fixed number of pumps (s9c).
-      await pressA(tester);
+      // Into Shape Race, join, and the match starts (m12 §3): the picker and
+      // the levels are taps now, the join screen keeps its pad until s10b
+      // (m12-host-touch rule 5). Each screen comes up after the host's menus
+      // read the tap and the puzzle library loads, which a busy PC delays past
+      // a fixed number of pumps (s9c).
+      await tester.tap(find.byKey(const Key('pickShapeRace')));
       await untilShown(tester, find.byType(party.ShapeRaceScreen), 'The Shape Race screen');
       await untilShown(tester, find.byKey(const Key('random-easy')), 'The puzzle list');
-      await pressA(tester);
+      await tester.tap(find.byKey(const Key('random-easy')));
       await untilShown(tester, find.byType(party.JoinScreen), 'The join screen');
+      await untilShown(tester, find.byKey(const Key('faceButtons')), 'The pad on the join screen');
       await pressA(tester);
       await pressA(tester);
       await untilShown(tester, find.byType(party.PuzzleScreen), 'The puzzle screen');
