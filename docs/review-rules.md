@@ -27,6 +27,7 @@ The guidelines' §5 rules (fixed step, determinism, untrusted input, per-frame c
 3. **The host is the authority.** Phones send input and draw frames; they never decide the game. A message may arrive late, twice or not at all: say what happens in each case, and what a reconnecting phone needs re-sent (`view_start`, its layout, its panel, away players).
 4. **Input safety.** No stuck input: every way input stops (hide the pad, lock, drop, leave) releases everything. A press is counted once (edge detection), and a press that starts one screen never acts on the next.
 5. **Drawing from snapshots only.** A view draws what the frame holds and the box it's given; it never reads host state, the clock or the platform. Sizes come from mm (`pxPerMm`) with a floor, so they hold on the smallest supported phone.
+9. **Content will grow.** Layout and sizing rules are computed from the content's shape (a puzzle's board, its pieces, the number of players), never tuned to today's set, and tested over a spread of made-up shapes, with today's content as a sample only. M13 brings the puzzles to 9 and more games follow. *(Found: the mirror's fit was judged puzzle by puzzle.)*
 6. **Per-frame budget.** No allocation proportional to history, no I/O, no decoding outside the frame path; anything extra a frame draws (the mirror) is bounded and says its cost.
 7. **Compatibility.** A new message is behind a capability; an older peer ignores it and still plays; a newer peer talking to an older host still plays. Tested both ways.
 8. **Kid-safe text.** What a player reads is short, plain, kind, and says what to do next.
@@ -45,7 +46,7 @@ Check each change against the work ahead (PRD v2 milestones, [party-ideas.md](pa
 | Internet play | A transport that isn't the LAN | Addresses, mDNS or "same Wi-Fi" assumptions outside `connection`; trust in a peer's input or timing; anything that breaks with 100 ms of delay |
 
 ## D. The review report
-- **Findings, most severe first:** `must | should | later` · `file:line` · the rule (A1–5, B1–8, C row, or a guideline §) · the concrete failure ("the host locks during Get ready while P2 is away → …"). A `must` is a bug a tester could hit or a rule broken; `should` is risk or cost; `later` is a C-table item, with what it would cost to fix now.
+- **Findings, most severe first:** `must | should | later` · `file:line` · the rule (A1–5, B1–9, C row, or a guideline §) · the concrete failure ("the host locks during Get ready while P2 is away → …"). A `must` is a bug a tester could hit or a rule broken; `should` is risk or cost; `later` is a C-table item, with what it would cost to fix now.
 - **Combination table** (rule A3) for the states the diff touches: one row per pair, "tested by" or "not tested".
 - **Not checked:** what the pass did not cover.
 - At most 120 lines; no praise, no summary of what the code does; no fixes.
