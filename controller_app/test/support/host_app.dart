@@ -154,9 +154,15 @@ Future<PhoneHost> enterHostMode(WidgetTester tester, {HostChoice choice = HostCh
   return host;
 }
 
+/// The host phone's own player on the join screen's [side] panel, where it
+/// says "(you)" (m12-host-touch rule 5).
+Finder ownPlayerOn(String side) =>
+    find.descendant(of: find.byKey(Key('side-$side')), matching: find.textContaining('(you)'));
+
 /// Hosts on this phone and opens a solo Shape Race round: a tap on the
-/// picker's card and on a random easy puzzle, then A on the pad the join
-/// screen keeps until s10b. Returns the host.
+/// picker's card and on a random easy puzzle, then Start on the join screen,
+/// where the own player is in by itself (m12-host-touch rule 5). Returns the
+/// host.
 Future<PhoneHost> soloRound(WidgetTester tester) async {
   final host = await enterHostMode(tester);
   await tester.tap(find.byKey(const Key('pickShapeRace')));
@@ -164,11 +170,8 @@ Future<PhoneHost> soloRound(WidgetTester tester) async {
   await untilShown(tester, find.byKey(const Key('random-easy')), 'The puzzle list');
   await tester.tap(find.byKey(const Key('random-easy')));
   await untilShown(tester, find.byType(party.JoinScreen), 'The join screen');
-  // The pad is there once the join screen has given the own player its
-  // buttons.
-  await untilShown(tester, find.byKey(const Key('faceButtons')), 'The pad on the join screen');
-  await pressA(tester);
-  await pressA(tester);
+  await untilShown(tester, ownPlayerOn('left'), 'The own player on the left');
+  await tester.tap(find.byKey(const Key('joinStart')));
   await untilShown(tester, find.byType(party.PuzzleScreen), 'The puzzle screen');
   await settle(tester);
   return host;

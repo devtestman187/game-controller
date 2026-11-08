@@ -113,18 +113,18 @@ void main() {
       );
       final host = await enterHostMode(tester);
       // Into Shape Race, join, and the match starts (m12 §3): the picker and
-      // the levels are taps now, the join screen keeps its pad until s10b
-      // (m12-host-touch rule 5). Each screen comes up after the host's menus
-      // read the tap and the puzzle library loads, which a busy PC delays past
-      // a fixed number of pumps (s9c).
+      // the levels are taps, the join screen's own player is in by itself and
+      // Start on the screen begins the round (m12-host-touch rules 1, 5).
+      // Each screen comes up after the host's menus read the tap and the
+      // puzzle library loads, which a busy PC delays past a fixed number of
+      // pumps (s9c).
       await tester.tap(find.byKey(const Key('pickShapeRace')));
       await untilShown(tester, find.byType(party.ShapeRaceScreen), 'The Shape Race screen');
       await untilShown(tester, find.byKey(const Key('random-easy')), 'The puzzle list');
       await tester.tap(find.byKey(const Key('random-easy')));
       await untilShown(tester, find.byType(party.JoinScreen), 'The join screen');
-      await untilShown(tester, find.byKey(const Key('faceButtons')), 'The pad on the join screen');
-      await pressA(tester);
-      await pressA(tester);
+      await untilShown(tester, ownPlayerOn('left'), 'The own player on the left');
+      await tester.tap(find.byKey(const Key('joinStart')));
       await untilShown(tester, find.byType(party.PuzzleScreen), 'The puzzle screen');
       expect(find.byType(party.PuzzleScreen), findsOneWidget);
 

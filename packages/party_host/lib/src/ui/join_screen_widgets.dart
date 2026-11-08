@@ -1,50 +1,63 @@
 part of 'join_screen.dart';
 
-/// One side of the join screen: its name and the players on it.
+/// One side of the join screen: its name and the players on it. On the host
+/// phone it is a touch target too (m12-host-touch rule 5): a tap moves the
+/// own player here, when the side has room.
 class _SidePanel extends StatelessWidget {
-  const _SidePanel({super.key, required this.side, required this.players});
+  const _SidePanel({super.key, required this.side, required this.players, this.ownPlayerId, this.onTap});
 
   final PuzzleSide side;
   final List<GamePlayer> players;
+
+  /// The host phone's own player, marked "(you)" on its row; null on a TV.
+  final String? ownPlayerId;
+
+  /// A tap moves the own player to this side; null when there is no own
+  /// player here.
+  final VoidCallback? onTap;
+
+  /// A player's name, and "(you)" for the host phone's own player.
+  String _label(GamePlayer p) => '${p.label}${p.simulated ? ' (simulated)' : ''}${p.id == ownPlayerId ? ' (you)' : ''}';
 
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
     final scheme = Theme.of(context).colorScheme;
-    return DecoratedBox(
-      decoration: BoxDecoration(color: scheme.surfaceContainer, borderRadius: BorderRadius.circular(16)),
-      // Scrolls when the screen is too short for a full side (a landscape
-      // phone hosting, with its own bar above): on a TV it always fits.
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              side == PuzzleSide.left ? '◀ Left' : 'Right ▶',
-              style: text.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 12),
-            for (final p in players)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Row(
-                  children: [
-                    PlayerBadge(number: p.number, size: 36),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        '${p.label}${p.simulated ? ' (simulated)' : ''}',
-                        style: text.titleLarge,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
+    return Material(
+      color: scheme.surfaceContainer,
+      borderRadius: BorderRadius.circular(16),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        // Scrolls when the screen is too short for a full side (a landscape
+        // phone hosting, with its own bar above): on a TV it always fits.
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                side == PuzzleSide.left ? '◀ Left' : 'Right ▶',
+                style: text.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
               ),
-            if (players.length < maxPerSide)
-              Text('Room for ${maxPerSide - players.length} more', style: text.bodyLarge),
-          ],
+              const SizedBox(height: 12),
+              for (final p in players)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Row(
+                    children: [
+                      PlayerBadge(number: p.number, size: 36),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(_label(p), style: text.titleLarge, overflow: TextOverflow.ellipsis),
+                      ),
+                    ],
+                  ),
+                ),
+              if (players.length < maxPerSide)
+                Text('Room for ${maxPerSide - players.length} more', style: text.bodyLarge),
+            ],
+          ),
         ),
       ),
     );
@@ -53,30 +66,42 @@ class _SidePanel extends StatelessWidget {
 
 /// Both sides, side by side.
 class _Sides extends StatelessWidget {
-  const _Sides({required this.players, required this.teams});
+  const _Sides({required this.players, required this.teams, this.ownPlayerId, this.onPick});
 
   final List<GamePlayer> players;
   final Map<String, PuzzleSide> teams;
 
+  /// The host phone's own player, marked on its side; null on a TV.
+  final String? ownPlayerId;
+
+  /// Moves the own player to the tapped side; null on a TV, whose panels are
+  /// then not tappable at all.
+  final void Function(PuzzleSide side)? onPick;
+
   @override
-  Widget build(BuildContext context) => Row(
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    children: [
-      for (final (i, side) in PuzzleSide.values.indexed) ...[
-        if (i > 0) const SizedBox(width: 16),
-        Expanded(
-          child: _SidePanel(
-            key: Key('side-${side.name}'),
-            side: side,
-            players: [
-              for (final p in players)
-                if (teams[p.id] == side) p,
-            ],
+  Widget build(BuildContext context) {
+    final pick = onPick;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (final (i, side) in PuzzleSide.values.indexed) ...[
+          if (i > 0) const SizedBox(width: 16),
+          Expanded(
+            child: _SidePanel(
+              key: Key('side-${side.name}'),
+              side: side,
+              players: [
+                for (final p in players)
+                  if (teams[p.id] == side) p,
+              ],
+              ownPlayerId: ownPlayerId,
+              onTap: pick == null ? null : () => pick(side),
+            ),
           ),
-        ),
+        ],
       ],
-    ],
-  );
+    );
+  }
 }
 
 /// The players who haven't picked a side yet.

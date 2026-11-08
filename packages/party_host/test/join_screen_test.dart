@@ -9,6 +9,10 @@ import 'package:puzzle_game/puzzle_game.dart';
 
 import 'support/host_harness.dart';
 
+/// A text inside one side's panel.
+Finder sideText(String side, String text) =>
+    find.descendant(of: find.byKey(Key('side-$side')), matching: find.text(text));
+
 void main() {
   testWidgets('players join a side first; the puzzle gives the phone Pick up and Rotate, and the panel; '
       'leaving gives the menu buttons back', (tester) async {
@@ -113,6 +117,151 @@ void main() {
     expect(find.byType(PuzzleScreen), findsOneWidget);
     expect(find.byType(MatchView), findsOneWidget);
     expect(tester.widget<CustomPaint>(find.byKey(const Key('puzzleView'))).painter, isA<MatchPainter>());
+  });
+
+  group('the host phone\'s own player (m12-host-touch rule 5)', () {
+    /// The join screen with this host's own player: the phone app overrides
+    /// [ownPlayerIdProvider] with its own player's ID.
+    Future<FakeHostService> openOwnJoin(WidgetTester tester) async {
+      final fake = await pumpHost(
+        tester,
+        screen: const StubHome(),
+        overrides: [ownPlayerIdProvider.overrideWithValue('p1')],
+      );
+      // "Play on this phone" shares the view; only then does the own player play.
+      fake.shareView = true;
+      await neutral(tester, fake, ['p1']);
+      await openJoin(tester);
+      return fake;
+    }
+
+    testWidgets('the own player is on the left on entry, marked, and Start begins the match', (tester) async {
+      await openOwnJoin(tester);
+      expect(sideText('left', 'P1 iPhone 3F1C (you)'), findsOneWidget);
+      expect(sideText('right', 'P1 iPhone 3F1C (you)'), findsNothing);
+      expect(find.byKey(const Key('notJoined')), findsNothing);
+      expect(tester.widget<Text>(find.byKey(const Key('joinFormat'))).data, startsWith('1 player'));
+      // The hint is the host phone's: tapping is the way in, and a phone that
+      // joins uses A (rule 5).
+      expect(find.text('Tap a side to play; press A on a phone to join.'), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('joinStart')));
+      await navigated(tester);
+      expect(find.byType(PuzzleScreen), findsOneWidget);
+    });
+
+    testWidgets('a tap on a side moves only the own player there, and the format follows', (tester) async {
+      final fake = await pumpHost(
+        tester,
+        screen: const StubHome(),
+        overrides: [ownPlayerIdProvider.overrideWithValue('p1')],
+      );
+      // "Play on this phone" shares the view; only then does the own player play.
+      fake.shareView = true;
+      fake.state = withController(fake.state, phoneInfo('p3', 2));
+      fake.emit();
+      await neutral(tester, fake, ['p1', 'p3']);
+      await openJoin(tester);
+      expect(sideText('left', 'P1 iPhone 3F1C (you)'), findsOneWidget);
+
+      // The other phone joins the right side with A: one against one.
+      await press(tester, fake, 'p3', GamepadButton.a);
+      expect(sideText('right', 'P2 Phone 2'), findsOneWidget);
+      expect(tester.widget<Text>(find.byKey(const Key('joinFormat'))).data, startsWith('1 vs 1'));
+
+      // A tap on the right moves the own player alone: the phone that joined
+      // with A stays, and the two on one side make a team.
+      await tester.tap(find.byKey(const Key('side-right')));
+      await tester.pump();
+      expect(sideText('left', 'P1 iPhone 3F1C (you)'), findsNothing);
+      expect(sideText('right', 'P1 iPhone 3F1C (you)'), findsOneWidget);
+      expect(sideText('right', 'P2 Phone 2'), findsOneWidget);
+      expect(tester.widget<Text>(find.byKey(const Key('joinFormat'))).data, startsWith('A team of 2 on one board'));
+    });
+
+    testWidgets('a full side refuses the own player\'s tap', (tester) async {
+      final fake = await pumpHost(
+        tester,
+        screen: const StubHome(),
+        overrides: [ownPlayerIdProvider.overrideWithValue('p1')],
+      );
+      // "Play on this phone" shares the view; only then does the own player play.
+      fake.shareView = true;
+      fake.state = withController(fake.state, phoneInfo('p3', 2));
+      fake.state = withController(fake.state, phoneInfo('p4', 3));
+      fake.state = withController(fake.state, phoneInfo('p5', 4));
+      fake.emit();
+      await neutral(tester, fake, ['p1', 'p3', 'p4', 'p5']);
+      await openJoin(tester);
+      // The own player is on the left; the other three join (right, left,
+      // right) and fill both sides.
+      await press(tester, fake, 'p3', GamepadButton.a);
+      await press(tester, fake, 'p4', GamepadButton.a);
+      await press(tester, fake, 'p5', GamepadButton.a);
+      expect(sideText('left', 'P1 iPhone 3F1C (you)'), findsOneWidget);
+      expect(sideText('left', 'P3 Phone 3'), findsOneWidget);
+      expect(sideText('right', 'P2 Phone 2'), findsOneWidget);
+      expect(sideText('right', 'P4 Phone 4'), findsOneWidget);
+      expect(tester.widget<Text>(find.byKey(const Key('joinFormat'))).data, startsWith('2 vs 2'));
+
+      await tester.tap(find.byKey(const Key('side-right')));
+      await tester.pump();
+      expect(sideText('left', 'P1 iPhone 3F1C (you)'), findsOneWidget);
+      expect(sideText('right', 'P1 iPhone 3F1C (you)'), findsNothing);
+      expect(tester.widget<Text>(find.byKey(const Key('joinFormat'))).data, startsWith('2 vs 2'));
+    });
+
+    testWidgets('"Show on this device": the own player never takes a side', (tester) async {
+      final fake = await pumpHost(
+        tester,
+        screen: const StubHome(),
+        overrides: [ownPlayerIdProvider.overrideWithValue('p1')],
+      );
+      await neutral(tester, fake, ['p1']);
+      await openJoin(tester);
+      expect(sideText('left', 'P1 iPhone 3F1C (you)'), findsNothing);
+      expect(find.text('Nobody has joined yet.'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('side-left')));
+      await tester.pump();
+      expect(sideText('left', 'P1 iPhone 3F1C (you)'), findsNothing, reason: 'the phone is the screen, not a player');
+    });
+
+    testWidgets('without an own player the sides are not tappable and the hint is unchanged', (tester) async {
+      final fake = await pumpHost(tester, screen: const StubHome());
+      await neutral(tester, fake, ['p1']);
+      await openJoin(tester);
+      await press(tester, fake, 'p1', GamepadButton.a);
+      expect(sideText('left', 'P1 iPhone 3F1C'), findsOneWidget);
+      expect(
+        find.text('Press A on your phone to join, then left or right to pick a side. Then A or Start begins.'),
+        findsOneWidget,
+      );
+
+      // A TV has nobody to move: a tap on a side does nothing.
+      await tester.tap(find.byKey(const Key('side-right')));
+      await tester.pump();
+      expect(sideText('left', 'P1 iPhone 3F1C'), findsOneWidget);
+      expect(sideText('right', 'P1 iPhone 3F1C'), findsNothing);
+      expect(tester.widget<Text>(find.byKey(const Key('joinFormat'))).data, startsWith('1 player'));
+    });
+
+    testWidgets('the own player back from away joins a side again', (tester) async {
+      final fake = await openOwnJoin(tester);
+      expect(sideText('left', 'P1 iPhone 3F1C (you)'), findsOneWidget);
+
+      // Away: the join screen drops its side (m12 bug 1107d).
+      fake.gameHost.setAway('p1', isAway: true);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 16));
+      expect(sideText('left', 'P1 iPhone 3F1C (you)'), findsNothing);
+      expect(find.text('Nobody has joined yet.'), findsOneWidget);
+
+      // Back: it takes a side by itself again.
+      fake.gameHost.setAway('p1', isAway: false);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 16));
+      expect(sideText('left', 'P1 iPhone 3F1C (you)'), findsOneWidget);
+    });
   });
 
   // m11.1 device test: P1 joined, P2 hadn't, and P2's Start began a match for

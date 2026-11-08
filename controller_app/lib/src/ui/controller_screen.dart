@@ -1,11 +1,9 @@
 import 'dart:async';
 
 import 'package:connection/connection.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:party_host/party_host.dart' as party;
-import 'package:protocol/protocol.dart';
 
 import '../controls_settings.dart';
 import '../gyro.dart';

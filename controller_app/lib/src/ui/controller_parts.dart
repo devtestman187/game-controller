@@ -27,23 +27,13 @@ class _Controls extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     if (!controls) return const SizedBox.shrink();
     if (!hosting) return _Pad(mode: mode, body: body);
-    // The join screen keeps its pad until s10b gives it taps
-    // (m12-host-touch rule 5): the own player joins there with A.
-    final joining = _atJoinScreen(ref.watch(gameLayoutProvider));
     return ValueListenableBuilder<party.RoundPhase>(
       valueListenable: ref.watch(party.roundPhaseProvider),
       builder: (context, phase, _) =>
-          phase == party.RoundPhase.none && !joining ? const SizedBox.shrink() : _Pad(mode: mode, body: body),
+          phase == party.RoundPhase.none ? const SizedBox.shrink() : _Pad(mode: mode, body: body),
     );
   }
 }
-
-/// Whether the own player's buttons are the join screen's: A joins, then A and
-/// Start begin the match, and no other screen of the host gives it those. The
-/// phone that hosts has no other way to reach the screens inside the game
-/// behind its pad.
-bool _atJoinScreen(GameLayoutMessage layout) =>
-    mapEquals(layout.labels, party.joinLayout.labels) || mapEquals(layout.labels, party.joinedLayout.labels);
 
 /// The touch metrics, the mode's controls over whatever this phone shows
 /// behind them (m12 §2.7), and the demo readout, in a body of [body].

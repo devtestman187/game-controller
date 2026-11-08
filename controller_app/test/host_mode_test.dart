@@ -77,20 +77,22 @@ void main() {
     expect(find.byKey(const Key('random-easy')), findsOneWidget);
     expect(hostPhase(tester), party.RoundPhase.none);
 
-    // 6. A level opens the join screen, which keeps its pad until s10b gives
-    // it taps (rule 5): A on the pad joins the left side, A again starts. The
-    // puzzle runs inside the body box, and the pad gets its buttons.
+    // 6. A level opens the join screen: outside a round there is no pad here
+    // either (rule 1), and the own player is in by itself with a tap to pick
+    // its side (rule 5), so Start on the screen begins the round. The puzzle
+    // runs inside the body box, and the pad gets its buttons.
     await tester.tap(find.byKey(const Key('random-easy')));
     await untilShown(tester, find.byType(party.JoinScreen), 'The join screen');
+    await settle(tester);
     expect(find.byType(party.JoinScreen), findsOneWidget);
-    // The pad comes back once the join screen has given the own player its
-    // buttons (they are how it keeps its pad there at all).
-    await untilShown(tester, find.byType(ControlsLayer), 'The pad on the join screen');
-    expect(tester.getRect(find.byType(ControlsLayer)), const Rect.fromLTWH(0, 52, 852, 341));
+    expect(tester.getRect(find.byType(party.JoinScreen)), const Rect.fromLTWH(0, 0, 852, 393));
+    expect(find.byType(ControlsLayer), findsNothing);
+    expect(find.byKey(const Key('faceButtons')), findsNothing);
     expect(find.byType(BarModes), findsOneWidget, reason: 'the join screen is outside the round too');
     expect(hostPhase(tester), party.RoundPhase.none);
-    await pressA(tester);
-    await pressA(tester);
+    expect(find.text('Tap a side to play; press A on a phone to join.'), findsOneWidget);
+    await untilShown(tester, ownPlayerOn('left'), 'The own player on the left');
+    await tester.tap(find.byKey(const Key('joinStart')));
     await untilShown(tester, find.byType(party.PuzzleScreen), 'The puzzle screen');
     final puzzle = tester.widget<party.PuzzleScreen>(find.byType(party.PuzzleScreen));
     expect(puzzle.teams.keys, [host.client.identity.controllerId]);
@@ -281,11 +283,10 @@ void main() {
     await untilShown(tester, find.byKey(const Key('random-easy')), 'The puzzle list');
     await tester.tap(find.byKey(const Key('random-easy')));
     await untilShown(tester, find.byType(party.JoinScreen), 'The join screen');
-    // The pad is there once the join screen has given the own player its
-    // buttons.
-    await untilShown(tester, find.byKey(const Key('faceButtons')), 'The pad on the join screen');
-    await pressA(tester);
-    await pressA(tester);
+    // The own player joined by itself (m12-host-touch rule 5): Start on the
+    // screen begins the round, with no pad there.
+    await untilShown(tester, ownPlayerOn('left'), 'The own player on the left');
+    await tester.tap(find.byKey(const Key('joinStart')));
     await untilShown(tester, find.byType(party.PuzzleScreen), 'The puzzle screen');
 
     // The own player's board goes in at once: the round ends on the results,

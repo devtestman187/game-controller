@@ -1,104 +1,167 @@
-# M12 s10b — G4 report: **stopped**; the app side needs a file outside `allow:`
+# M12 s10b — G4 report: the host's own player joins by itself; a tap picks its side; no pad on the join screen
 
-**STATUS: stopped.** The job's step 2 ("remove s10a's join-screen exception, `_atJoinScreen`") cannot be
-done inside the allow list: the helper is the only code in the `controller_screen.dart` library that uses
-two of that file's imports, and `controller_screen.dart` is not in `allow:`. Removing the helper leaves
-two analyzer diagnostics in a file I may not edit, so `analyze` fails and the whole job (step 1 included)
-cannot land. No code was changed; this report is the only file I wrote (`git diff --stat` lists no
-tracked file).
+**STATUS: done**, at G4, the gate the brief names. This replaces the first run's stopped report (that run
+stopped because `controller_screen.dart` was outside `allow:`; the brief now allows it for the two unused
+imports). Done in this run:
 
-## The blocker, measured
+1. The host phone's own player (`ownPlayerIdProvider`, null on the TV) takes a side through
+   `sideForNewPlayer` the moment it is here and sideless (a return from away re-joins), each side panel is a
+   touch target that moves only the own player there when that side has room, the panel marks it "(you)", and
+   the hint is the brief's sentence.
+2. s10a's join-screen pad exception (`_atJoinScreen`) is gone: the host phone shows no pad on the join screen
+   either, and the screen's own Start button (a `HostButton`, `Key('joinStart')`) begins the round.
+3. `controller_screen.dart` lost its now-unused `foundation.dart` and `protocol.dart` imports, as the brief
+   allows. Nothing else in that file changed.
 
-`_atJoinScreen` (`controller_app/lib/src/ui/controller_parts.dart:32, 41-46`) is the only user of
+## The hint's exact text
 
-- `GameLayoutMessage` → `import 'package:protocol/protocol.dart';` (`controller_app/lib/src/ui/controller_screen.dart:8`), and
-- `mapEquals` → `import 'package:flutter/foundation.dart';` (`controller_screen.dart:4`).
-
-`controller_parts.dart` is a `part of 'controller_screen.dart'`, and a part file cannot carry imports, so
-those two lines can only be removed from `controller_screen.dart` itself. I made the removal as a probe
-(the `_Controls` gate kept, `_atJoinScreen` gone), ran the check, and reverted the probe
-(`git diff --stat` now shows nothing):
+On a device with its own player (the phone host):
 
 ```
-$ dart analyze --fatal-infos controller_app      # exit 2
-warning - lib\src\ui\controller_screen.dart:8:8 - Unused import: 'package:protocol/protocol.dart'. - unused_import
-   info - lib\src\ui\controller_screen.dart:4:8 - The import of 'package:flutter/foundation.dart' is unnecessary
-         because all of the used elements are also provided by the import of 'package:flutter/material.dart'. - unnecessary_import
-$ tools/check.sh analyze                          # on the untouched tree: PASS (10s)
+Tap a side to play; press A on a phone to join.
 ```
 
-The baseline is clean, so both diagnostics are caused by this job alone. `--fatal-infos` makes the
-warning and the info fail `analyze`, which is one of the brief's four checks.
+The TV and a joined phone keep today's two texts (with and without the keyboard clause):
 
-## What the job needs
+```
+Press A on your phone to join, then left or right to pick a side. Then A or Start begins.
+Press A on your phone to join (Space on the keyboard), then left or right to pick a side. Then A or Start begins.
+```
 
-Either
+## Files changed
 
-1. `controller_app/lib/src/ui/controller_screen.dart` added to `allow:` for exactly two deleted import
-   lines (4 and 8) and nothing else, or
-2. Claude lands those two deletions first (they are inert on their own only if `_atJoinScreen` goes in the
-   same commit, so this is really the same as 1), or
-3. a different home for the pad gate: the pad's "is it built" decision could move out of
-   `controller_parts.dart`... it cannot – the widget lives there.
+- `packages/party_host/lib/src/ui/join_screen.dart` — 305 → 344 lines. New `_ownJoin(players)` called from
+  `_tick` right after `_prune`: the own player takes `sideForNewPlayer(_teams)` whenever it is connected (in
+  the non-away player list) and has no side, and only a missing side is filled, so a tap's choice and a
+  rematch's carried sides are never overridden. New `_pickSide(id, side)`: a tap moves the own player when the
+  side has room (`maxPerSide` = 2), nothing else. New `static _hint(...)` picks the brief's sentence when
+  there is an own player here. `build` reads `ownPlayerIdProvider` and passes `ownHere` (the own ID only while
+  it is in the player list) plus `onPick` to `_Sides`; the class doc gains the rule-5 sentence.
+- `packages/party_host/lib/src/ui/join_screen_widgets.dart` — 140 → 164 lines. `_SidePanel` takes
+  `ownPlayerId` and a nullable `onTap`, draws its background as `Material(color: surfaceContainer,
+  borderRadius: 16, clipBehavior: antiAlias)` + `InkWell` (same look, a touch target), and appends `" (you)"`
+  to the own player's row (`'${p.label}${p.simulated ? ' (simulated)' : ''}${p.id == ownPlayerId ? ' (you)' :
+  ''}'`). `_Sides` takes `ownPlayerId`/`onPick` (both nullable) and gives a panel a tap only when `onPick` is
+  not null: a TV's panels have no `InkWell` callback at all.
+- `packages/party_host/test/join_screen_test.dart` — 153 → 281 lines: a top-level `sideText` finder and a new
+  group of five tests (below).
+- `controller_app/lib/src/ui/controller_parts.dart` — 172 → 162 lines: `_Controls` no longer builds the pad
+  for the join screen (`_atJoinScreen` and its doc deleted); the gate is the round's phase alone, so the host
+  phone has no pad on any menu, the join screen included (rule 1).
+- `controller_app/lib/src/ui/controller_screen.dart` — 237 → 235 lines: two imports deleted
+  (`package:flutter/foundation.dart`, `package:protocol/protocol.dart`), the only user of both being the
+  deleted `_atJoinScreen`. Nothing else.
+- `controller_app/test/host_mode_test.dart` — 398 → 399 lines: the two join-screen steps now tap Start (below).
+- `controller_app/test/host_lifecycle_test.dart` — 153 → 153 lines: the same change in the abandoned-round test.
+- `controller_app/test/support/host_app.dart` — 234 → 237 lines: new `ownPlayerOn(side)` finder; `soloRound`
+  waits for the own player on the left and taps `joinStart`; doc comments updated.
+- `docs/briefs/m12/s10b-report.md` — this file.
 
-I did not choose any of these myself: the first two break the file list, and the third does not exist.
+## Old → new, test by test
 
-## What I had ready for the rest (facts checked today, not done)
+`packages/party_host/test/join_screen_test.dart`, five new tests (`ownPlayerIdProvider` overridden with
+`'p1'`, the fake host's connected iPhone):
 
-- **Step 1, party_host** (its own files, no blocker): the own player (`ownPlayerIdProvider`, null on the
-  TV) joins with `sideForNewPlayer` on entry and again whenever it is connected and sideless – the tick
-  runs every `ControllerMenus.step` = 16 ms (`controller_menus.dart:82`), so one frame after the screen
-  opens. `_tick` would call it beside `_simulatedJoin`, filling only a missing side, so a tap's choice
-  and a rematch's carried sides are never overridden. `_SidePanel` becomes an `InkWell`/`Material` with the
-  own player's row reading `P1 (you)` (the phone host's own player has no nickname: `host_mode_test`
-  finds `P1`), and `_Sides` passes `onTap` only when there is an own player, so the TV's panels are not
-  tappable at all.
-- **The hint**, exactly: `Tap a side to play; press A on a phone to join.` on a device with its own player;
-  today's two texts (with and without the keyboard clause) stay for the TV and a joined phone, where the
-  sentence would be a lie.
-- **`joinLayout`/`joinedLayout`**: after the exception goes they have no caller outside `party_host`
-  (`grep`); the guideline "public surface minimal" would make them private in the same diff. That is a
-  public-surface change to `party_host`, so it should be named in the brief.
-- **App tests that must change with step 2**: `host_mode_test.dart:84-97` and `:276-289`,
-  `host_lifecycle_test.dart:124-128`, and `support/host_app.dart`'s `soloRound` (all in `allow:`): the
-  `untilShown(faceButtons)` + `pressA` ×2 becomes "wait until the own player is on a side" (the panel
-  reads `P1 (you)`) then `tester.tap(find.byKey(const Key('joinStart')))`. Pressing A twice would now start
-  the match on the **first** press, since the own player is already joined.
-- **party_host tests** (the plan's §6 list): own player on the left on entry; tapping the right moves it
-  only (a second phone stays where it is) and the format follows (`1 vs 1` → `A team of 2 on one board`);
-  a full side refuses it; `ownPlayerIdProvider` null (a TV) changes nothing (the existing tests stand
-  unchanged, plus one that the panels are not tappable and the hint is today's); a player back from away
-  re-joins.
+1. **"the own player is on the left on entry, marked, and Start begins the match"**: on entry the panel
+   shows `P1 iPhone 3F1C (you)` on the left and not on the right, no `notJoined` row, `joinFormat`
+   `1 player`, hint `Tap a side to play; press A on a phone to join.`; tapping `joinStart` shows
+   `PuzzleScreen`. Computed: `sideForNewPlayer({})` = left (a tie goes left); one player on one side is
+   `MatchFormat.solo` → `formatName` `1 player`.
+2. **"a tap on a side moves only the own player there, and the format follows"**: p3 (number 2) joins with A
+   → right (left = 1, right = 0 → the fewer side), format `1 vs 1` (`oneVsOne`). Tap `side-right`: the own
+   player is right, `P2 Phone 2` stays right, left is empty, format `A team of 2 on one board`
+   (`MatchFormat.team`, 2 players on one side).
+3. **"a full side refuses the own player's tap"**: p3 joins → right; p4 (number 3) joins → left (1–1 tie);
+   p5 (number 4) joins → right (left is full). Sides: left `P1 (you)` + `P3 Phone 3`, right `P2 Phone 2` +
+   `P4 Phone 4`, format `2 vs 2` (`twoVsTwo`). Tap `side-right` (2 taken, `maxPerSide` 2): the own player
+   stays left and the format stays `2 vs 2`.
+4. **"without an own player the sides are not tappable and the hint is unchanged"** (the TV): no override, so
+   `ownPlayerIdProvider` is null; A joins p1 to the left, `P1 iPhone 3F1C` with no "(you)", the hint is
+   today's second text, and a tap on `side-right` changes nothing (`1 player`).
+5. **"the own player back from away joins a side again"**: on the left on entry; `setAway('p1', true)` drops
+   its side (1107d's rule, `Nobody has joined yet.`); `setAway('p1', false)` puts it back on the left.
 
-## Checks
+`controller_app/test/host_mode_test.dart`:
 
-- `tools/check.sh format analyze host phone tv` on the tree as I leave it (no code changed):
-  **format PASS, analyze PASS, host 106 tests PASS, phone 347 tests PASS, tv PASS**.
-- `dart analyze --fatal-infos controller_app` with the probe edit (the job's step 2 without step 1):
-  **FAIL**, the two lines above. Probe reverted; no other check was run on the probe.
+1. **"a phone hosting plays its own game…"**, step 6 — old: `untilShown(faceButtons)` on the join screen,
+   `ControlsLayer` rect `(0, 52, 852, 341)`, `pressA` ×2. New: `settle`, `JoinScreen` rect
+   `(0, 0, 852, 393)`, **no** `ControlsLayer` and **no** `faceButtons`, the hint text above,
+   `ownPlayerOn('left')`, then `tester.tap(Key('joinStart'))`. The `puzzle.teams` expectations are unchanged
+   (own player id → `left`).
+2. **"the system back on the results…"** — old: `untilShown(faceButtons)` + `pressA` ×2. New:
+   `ownPlayerOn('left')` + tap `joinStart`.
 
-## Questions
+`controller_app/test/host_lifecycle_test.dart`:
 
-1. Please allow `controller_app/lib/src/ui/controller_screen.dart` (two deleted imports) in the next
-   s10b brief, or say which of the three ways above you want.
-2. If the next brief keeps `joinLayout`/`joinedLayout` public, say so; otherwise I make them private.
+1. **"a round hidden longer than the grace is abandoned…"** — old: `untilShown(faceButtons)` + `pressA` ×2.
+   New: `ownPlayerOn('left')` + tap `joinStart`; the comment now names rules 1 and 5.
+
+`controller_app/test/support/host_app.dart`:
+
+1. **new** `ownPlayerOn(String side)`: the "(you)" text inside a side's panel.
+2. **`soloRound`** — old: `untilShown(faceButtons)` + `pressA` ×2. New: `ownPlayerOn('left')` + tap
+   `joinStart` (three host-mode tests use it).
+
+Tests failed first, as the brief asks: the four own-player party_host tests failed on the run before
+`_ownJoin`/`_pickSide`/`(you)` existed (0 widgets with the "(you)" text, no tap handler), and the app's pad
+assertions fail against the old code, where `host_mode_test` itself expected a `ControlsLayer` on the join
+screen (it had one). The first new fail of the full-side test was my own expectation, not the code: I had the
+players on the wrong sides (right = `P2`, left = `P3`/`P4`); the computed values above are the corrected ones.
+
+## Checks (all on the tree I leave)
+
+```
+$ tools/check.sh format analyze host phone tv
+PASS  format      (2s)
+PASS  analyze     (8s)
+PASS  host        (111 tests, 13s)
+PASS  phone       (347 tests, 21s)
+PASS  tv          (11s)
+All checks passed (56s)
+$ tools/review.sh
+review: 0 fail, 8 note     # two size notes and six layout-literal notes, all pre-existing lines
+```
+
+- **Test counts:** host **106 → 111** (+5 new tests in `join_screen_test.dart`); phone **347 → 347** (no
+  test added or removed, only steps rewritten); tv **28 passed, 1 skipped** (unchanged).
+- `tv_test_app` alone: `+28 ~1: All tests passed!`.
+- `join_screen.dart` 344 lines (limit 400); `join_screen_widgets.dart` 164; no file over the limit.
+
+## Not sure / questions
+
+1. **`joinLayout`/`joinedLayout`** are public in `join_screen.dart` and now have no caller outside
+   `party_host` (their only outside use was the deleted `_atJoinScreen`). The first run asked whether to make
+   them private; this brief did not answer, and its note allows `controller_screen.dart` "for the two unused
+   imports only", so I left them public. Say the word and a one-line later job makes them private.
+2. **The mark's wording** is `" (you)"` on the row (`P1 iPhone 3F1C (you)`); the brief only says "the panel
+   marks the own player". The app's own player does have a nickname (its device name, e.g.
+   `Controller 983A`), so the host phone's panel reads `P1 Controller 983A (you)` — the first run's report
+   said it had none, which was wrong.
+3. **The panel's look** is unchanged apart from `Material` + `InkWell` (same `surfaceContainer`, radius 16,
+   anti-aliased clip). A full side still shows its ripple when tapped and does nothing; I chose to keep the
+   panel a touch target whenever the own player is here, and to refuse inside `_pickSide`, so there is one
+   place that decides room. If you would rather a full side not react at all, that is a one-line change.
+4. `git status` also lists `tv_test_app/windows/flutter/generated_plugin_registrant.{cc,h}` and
+   `generated_plugins.cmake` as modified: Flutter's Windows build rewrites them; I did not edit them (s10a's
+   report notes the same).
 
 ## Commit message
 
 ```
-docs(m12): s10b stopped; the pad gate needs controller_screen.dart
+feat(m12): the host phone's own player joins by itself; a tap picks its side
 
-Deleting _atJoinScreen, the only user of protocol's GameLayoutMessage and
-of foundation's mapEquals in the controller_screen library, leaves two
-analyzer diagnostics in controller_screen.dart, which the job's file list
-excludes. The job is otherwise ready: the own player joins by itself and
-a tap picks its side, the hint and the tests are planned, and the app's
-tests move from A on the pad to the join screen's Start button.
+The own player takes a side on entry with sideForNewPlayer and again
+whenever it is here and sideless, so a phone back from away re-joins. A
+tap on a side panel moves only the own player there when the side has
+room, the panel marks it "(you)", and the hint says "Tap a side to play;
+press A on a phone to join". s10a's join-screen pad exception goes: the
+host phone shows no pad on the join screen either, and its tests begin
+the round with the screen's Start. The TV and joined phones are unchanged.
 ```
 
 ## Status row
 
-| Step 10 host touch s10b | **Stopped, no code**: removing `_atJoinScreen` leaves `controller_screen.dart:4` (foundation, `unnecessary_import`) and `:8` (protocol, `unused_import`) unused, and that file is outside the job's `allow:`; `analyze` fails with `--fatal-infos`. Needs `controller_app/lib/src/ui/controller_screen.dart` allowed for the two import deletions. Open: everything else of s10b |
+| Step 10 host touch s10b | Done ([s10b-report.md](s10b-report.md)): the host phone's own player joins by itself on entry and whenever it is back and sideless, a tap on a side moves only it when there is room, the panel marks it "(you)" and the hint is "Tap a side to play; press A on a phone to join"; s10a's join-screen pad exception is gone (no pad on the join screen) and the app's tests start the round with the screen's Start. Checks: format, analyze, host 106→111, phone 347, tv 28+1 skipped, review 0 fail | Open: none (s10c is next) |
 
 ## Delete
 

@@ -59,6 +59,9 @@ enum _Key { a, b, left, right, start }
 /// Start (or the remote's OK on Start) begins the match; the format follows
 /// from who joined. Simulated controllers join by themselves. On a desktop
 /// the keyboard joins with Space and picks a side with the arrows.
+///
+/// The phone that hosts has no pad here (m12-host-touch rules 1, 5): its own
+/// player joins by itself and a tap on a side picks or moves it.
 class JoinScreen extends ConsumerStatefulWidget {
   const JoinScreen({super.key, required this.choice, this.teams = const {}, this.keyboard});
 
@@ -121,6 +124,7 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
         if (!p.away) p,
     ];
     var changed = _prune(players);
+    if (_ownJoin(players)) changed = true;
     for (final p in players) {
       if (p.simulated) {
         if (_simulatedJoin(p)) changed = true;
@@ -150,6 +154,19 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
     final side = _teams.containsKey(p.id) ? null : sideForNewPlayer(_teams);
     if (side == null) return false;
     _teams[p.id] = side;
+    return true;
+  }
+
+  /// The host phone's own player joins by itself (m12-host-touch rule 5): it
+  /// takes a side whenever it is here and has none, so a phone back from away
+  /// joins again. Only a missing side is filled, so a tap's choice stands; a
+  /// TV has no own player and nothing happens.
+  bool _ownJoin(List<GamePlayer> players) {
+    final own = _ownPlayer;
+    if (own == null || _teams.containsKey(own) || !players.any((p) => p.id == own)) return false;
+    final side = sideForNewPlayer(_teams);
+    if (side == null) return false;
+    _teams[own] = side;
     return true;
   }
 
@@ -219,6 +236,29 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
     }
   }
 
+  /// The host phone's own player, when it plays here: in "Play on this
+  /// phone", which shares the view. In "Show on this device" the phone is the
+  /// screen, so its own player never takes a side (m12-host-touch rule 5).
+  String? get _ownPlayer => ref.read(hostServiceProvider).shareView ? ref.watch(ownPlayerIdProvider) : null;
+
+  /// A tap picks a side for the host phone's own player (m12-host-touch rule
+  /// 5): only its own, and only when that side has room.
+  void _pickSide(String id, PuzzleSide side) {
+    final taken = _teams.values.where((s) => s == side).length;
+    if (_teams[id] == side || taken >= maxPerSide) return;
+    setState(() => _teams[id] = side);
+  }
+
+  /// What the screen tells the players. On the host phone a tap is the way in
+  /// (m12-host-touch rule 5); on a TV or a joined phone it is still the pad's.
+  static String _hint({required bool hasOwnPlayer, required bool hasKeyboard}) {
+    if (hasOwnPlayer) return 'Tap a side to play; press A on a phone to join.';
+    return hasKeyboard
+        ? 'Press A on your phone to join (Space on the keyboard), then left or right to pick a side. '
+              'Then A or Start begins.'
+        : 'Press A on your phone to join, then left or right to pick a side. Then A or Start begins.';
+  }
+
   void _start() {
     if (_teams.isEmpty || _handedOver) return;
     _handedOver = true;
@@ -253,6 +293,8 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
       for (final p in players)
         if (!_teams.containsKey(p.id)) p,
     ];
+    final own = _ownPlayer;
+    final ownHere = own != null && players.any((p) => p.id == own) ? own : null;
     return ControlsClaim(
       controls: const Controls.game(),
       child: Focus(
@@ -270,15 +312,17 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text(
-                    _keyboard.available
-                        ? 'Press A on your phone to join (Space on the keyboard), then left or right to pick a side. '
-                              'Then A or Start begins.'
-                        : 'Press A on your phone to join, then left or right to pick a side. Then A or Start begins.',
+                    _hint(hasOwnPlayer: ownHere != null, hasKeyboard: _keyboard.available),
                     style: text.titleLarge,
                   ),
                   const SizedBox(height: 16),
                   Expanded(
-                    child: _Sides(players: players, teams: _teams),
+                    child: _Sides(
+                      players: players,
+                      teams: _teams,
+                      ownPlayerId: ownHere,
+                      onPick: ownHere == null ? null : (side) => _pickSide(ownHere, side),
+                    ),
                   ),
                   const SizedBox(height: 12),
                   if (watching.isNotEmpty) _NotJoined(watching: watching),
