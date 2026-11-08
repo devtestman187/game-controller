@@ -100,12 +100,20 @@ void main() {
     await settle(tester);
     expect(tester.getRect(find.byType(party.PuzzleScreen)), const Rect.fromLTWH(0, 0, 852, 393));
 
+    // The round starts with the "Get ready" beat (rule 3): the pad is already
+    // up under the card, so thumbs find it before the clock runs.
+    expect(hostPhase(tester), party.RoundPhase.ready);
+    expect(find.byKey(const Key('getReady')), findsOneWidget);
+    expect(find.byKey(const Key('faceButtons')), findsOneWidget);
+    await untilPlaying(tester);
+
     // The round: the pad is up and the bar goes compact (rule 2), the mode,
     // Settings and Diagnostics as icons, and the host's code in a compact chip
     // right after the dot, so players can still join and the host can stop
     // from here (s7d2 Q1). The compact chip is as easy to hit as the bar's
     // Settings button (C14).
     expect(hostPhase(tester), party.RoundPhase.playing);
+    expect(find.byKey(const Key('getReady')), findsNothing);
     expect(find.byKey(const Key('faceButtons')), findsOneWidget);
     expect(find.byType(BarModes), findsNothing);
     expect(find.byKey(const Key('modeMenu')), findsOneWidget);
@@ -125,6 +133,15 @@ void main() {
       () => faceLabels(tester).contains('A Pick up'),
       () => 'The puzzle did not reach the pad: ${faceLabels(tester)}',
     );
+
+    // The back goes up from the round to the game's levels, which the join
+    // screen replaced: the round ends here, so no status its session sends
+    // last is left half-sent when the tree goes.
+    await tester.binding.handlePopRoute();
+    await settle(tester);
+    expect(find.byType(party.PuzzleScreen), findsNothing);
+    expect(find.byType(party.ShapeRaceScreen), findsOneWidget);
+    expect(hostPhase(tester), party.RoundPhase.none);
 
     // The host's timers (heartbeats, the address refresh) would outlive the
     // test, so it is stopped here, in the real clock.
@@ -288,6 +305,9 @@ void main() {
     await untilShown(tester, ownPlayerOn('left'), 'The own player on the left');
     await tester.tap(find.byKey(const Key('joinStart')));
     await untilShown(tester, find.byType(party.PuzzleScreen), 'The puzzle screen');
+    // The round starts with the "Get ready" beat (rule 3): it has to end before
+    // a step can end the round.
+    await untilPlaying(tester);
 
     // The own player's board goes in at once: the round ends on the results,
     // which are outside the round: the pad goes away and the bar goes full
@@ -339,6 +359,43 @@ void main() {
     expect(find.byKey(const Key('faceButtons')), findsOneWidget);
     expect(find.byType(BarModes), findsNothing);
 
+    await tester.runAsync(host.dispose);
+  });
+
+  // m12-host-touch rule 3: the phone app asks its host for a 3 s "Get ready"
+  // beat, so thumbs find the pad before the clock runs.
+  testWidgets('a round starts with a 3 s Get ready beat: the pad is up and the clock is held', (tester) async {
+    await pumpHostApp(tester);
+    final host = await enterHostMode(tester);
+    await tester.tap(find.byKey(const Key('pickShapeRace')));
+    await untilShown(tester, find.byType(party.ShapeRaceScreen), 'The Shape Race screen');
+    await untilShown(tester, find.byKey(const Key('random-easy')), 'The puzzle list');
+    await tester.tap(find.byKey(const Key('random-easy')));
+    await untilShown(tester, find.byType(party.JoinScreen), 'The join screen');
+    await untilShown(tester, ownPlayerOn('left'), 'The own player on the left');
+    await tester.tap(find.byKey(const Key('joinStart')));
+    await untilShown(tester, find.byType(party.PuzzleScreen), 'The puzzle screen');
+    await settle(tester);
+
+    // The beat: the card counts, and the pad is up under it (rule 2).
+    String count() => tester.widget<Text>(find.byKey(const Key('getReadyCount'))).data!;
+    int timeLeft() => tester.state<PuzzlePlayViewState>(find.byType(PuzzlePlayView)).snapshot.boards.first.timeLeftMs;
+    final held = timeLeft();
+    expect(hostPhase(tester), party.RoundPhase.ready);
+    expect(count(), '3');
+    expect(find.byKey(const Key('faceButtons')), findsOneWidget);
+    await tester.pump(const Duration(seconds: 1));
+    expect(count(), '2');
+    expect(timeLeft(), held, reason: 'the beat holds the round: no step runs');
+    await tester.pump(const Duration(seconds: 1));
+    expect(count(), '1');
+    await tester.pump(const Duration(seconds: 1));
+
+    // Three seconds on, the round plays.
+    await settle(tester);
+    expect(hostPhase(tester), party.RoundPhase.playing);
+    expect(find.byKey(const Key('getReady')), findsNothing);
+    expect(timeLeft(), lessThan(held), reason: 'the round goes on when the beat ends');
     await tester.runAsync(host.dispose);
   });
 

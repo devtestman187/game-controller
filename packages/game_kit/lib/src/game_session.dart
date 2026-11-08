@@ -74,6 +74,7 @@ abstract class GameSession {
   GameSnapshot? _current;
   bool _paused = false;
   bool _disposed = false;
+  bool _firstFrameSent = false;
 
   /// When the round last came back from a pause, on [host.nowMs]. An input
   /// that arrived before it waited out the pause, not for the host, so it is
@@ -157,13 +158,19 @@ abstract class GameSession {
   /// While paused nothing steps, nothing accumulates and no frame is sent; the
   /// pause menu can stay open for minutes and the game stands still. Setting it
   /// false calls [resumed], and resuming doesn't catch up.
+  ///
+  /// A session paused before its first step sends its first frame all the same
+  /// ([_publishFirstFrame]): a round held for the "Get ready" beat still shows
+  /// its board on every phone showing the game (m12-host-touch rule 3).
   set paused(bool value) {
     if (_paused == value) return;
     _paused = value;
-    if (!value) {
-      _resumedAtMs = host.nowMs;
-      resumed();
+    if (value) {
+      _publishFirstFrame();
+      return;
     }
+    _resumedAtMs = host.nowMs;
+    resumed();
   }
 
   /// Called when [paused] goes false: the game can give the phones their
@@ -230,6 +237,17 @@ abstract class GameSession {
     if (_disposed) return;
     _disposed = true;
     host.endView(const ViewEndMessage(reason: ViewEndReason.abandoned));
+  }
+
+  /// Sends the round's first frame while no step has run (m12-host-touch rule
+  /// 3): a phone showing the game draws nothing before its first frame (m12
+  /// §4), so a round held for the "Get ready" beat would be blank on every
+  /// phone until the beat ended. The frame is the snapshot at step 0, and its
+  /// step is -1, so the first step's frame (0) follows it without a gap.
+  void _publishFirstFrame() {
+    if (_firstFrameSent || _stepCount != 0 || _disposed || !host.hasViewers) return;
+    _firstFrameSent = true;
+    host.publishFrame(FrameMessage(n: -1, atMs: host.nowMs, snapshot: current.toJson()));
   }
 
   /// Reads the players and their controls, and remembers the inputs that are

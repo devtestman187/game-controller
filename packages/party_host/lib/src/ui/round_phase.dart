@@ -10,8 +10,8 @@ enum RoundPhase {
   /// the host app away).
   none,
 
-  /// The round is up and held for the "Get ready" beat (m12-host-touch rule 3);
-  /// s10c writes it.
+  /// The round is up and held for the "Get ready" beat (m12-host-touch rule 3):
+  /// no step runs until the card has counted the seconds down.
   ready,
 
   /// The round is running.
@@ -19,8 +19,9 @@ enum RoundPhase {
 }
 
 /// The round's phase, as the round's screen writes it: [Pausable] says
-/// [RoundPhase.playing] while its round runs and clears it to
-/// [RoundPhase.none] as the round's screen goes.
+/// [RoundPhase.ready] while the "Get ready" beat holds its round,
+/// [RoundPhase.playing] while it runs and clears it to [RoundPhase.none] as the
+/// round's screen goes.
 ///
 /// A [ValueNotifier] in a provider and not a provider's state, so the screen
 /// may still write it while it is disposed (a provider changed from a widget's

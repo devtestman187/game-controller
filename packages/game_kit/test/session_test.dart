@@ -55,12 +55,43 @@ void main() {
     final session = CounterSession(host: clock.host)..paused = true;
     clock.frames(session, 60);
     expect(session.stepCount, 0);
-    expect(clock.host.frames, isEmpty);
+    expect(
+      clock.host.frames,
+      hasLength(1),
+      reason: 'only the round\'s first frame: the board a held round shows (m12-host-touch rule 3)',
+    );
     session.paused = false;
     clock.frame(session, 16);
     expect(session.stepCount, 0, reason: 'the paused time is dropped, not caught up');
     clock.frame(session, 16);
     expect(session.stepCount, 1);
+  });
+
+  // m12-host-touch rule 3: a phone draws nothing until the round's first
+  // frame, so a round held for the "Get ready" beat sends the board at once.
+  test('a session that starts paused sends the round\'s first frame at once', () {
+    final clock = Clock()..host.hasViewers = true;
+    final session = CounterSession(host: clock.host)..paused = true;
+    expect(clock.host.frames, hasLength(1));
+    final first = clock.host.frames.single;
+    expect(first.n, -1, reason: 'no step has run: the frame is the round before its first step');
+    expect(first.snapshot, {'n': 0});
+    expect(first.atMs, 0);
+
+    clock.frames(session, 60);
+    expect(clock.host.frames, hasLength(1), reason: 'a held round sends nothing more');
+
+    session.paused = false;
+    clock.frame(session, 16);
+    clock.frame(session, 16);
+    expect(clock.host.frames.map((f) => f.n), [-1, 0], reason: 'the first step\'s frame follows the board');
+  });
+
+  test('with no viewer the first frame is not sent', () {
+    final clock = Clock();
+    final session = CounterSession(host: clock.host)..paused = true;
+    expect(session.paused, isTrue);
+    expect(clock.host.frames, isEmpty);
   });
 
   // m12 bug 1107e: an input that arrived while the round was paused waited

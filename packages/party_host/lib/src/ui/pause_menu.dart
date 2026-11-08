@@ -16,6 +16,7 @@ import 'controller_menus.dart';
 import 'games_screen.dart';
 import 'host_button.dart';
 import 'player_badge.dart';
+import 'ready_card.dart';
 import 'round_phase.dart';
 
 /// The buttons while the game is paused: the menu, and Start to resume.
@@ -40,10 +41,15 @@ final pauseLayout = GameLayoutMessage(
 /// for a phone that dropped (m12 bug 1107d): the away card shows over the game
 /// there, and Start opens no menu either.
 ///
+/// A round also starts held for the "Get ready" beat its host asks for
+/// ([readyCountdownProvider], m12-host-touch rule 3): the builder gets
+/// `paused == true` and [ReadyCard] counts the seconds down. The TV asks for no
+/// beat, so nothing of it shows there (rule 6).
+///
 /// It is the one place that is up exactly while a round is on, so it also
 /// writes the round's phase ([roundPhaseProvider], m12-host-touch): `none`
-/// whenever the round stands still, `playing` while it runs. The host phone
-/// hides its own pad from it.
+/// whenever the round stands still, `ready` while the beat holds it and
+/// `playing` while it runs. The host phone hides its own pad from it.
 class Pausable extends ConsumerStatefulWidget {
   const Pausable({super.key, required this.enabled, required this.builder, this.players});
 
@@ -55,6 +61,12 @@ class Pausable extends ConsumerStatefulWidget {
 
   /// Start is ignored this long after the game starts.
   static const startGrace = Duration(milliseconds: 500);
+
+  /// The "Get ready" beat a round is held for before its first step, when the
+  /// host asks for one ([readyCountdownProvider], m12-host-touch rule 3): 3 s,
+  /// long enough for thumbs to find the pad before the clock runs. The TV asks
+  /// for none (rule 6).
+  static const ready = Duration(seconds: 3);
   final Widget Function(BuildContext context, bool paused) builder;
 
   @override
@@ -80,6 +92,11 @@ class _PausableState extends ConsumerState<Pausable> {
   BuildContext? _menuContext;
   int _sinceStartMs = 0;
 
+  /// The "Get ready" beat this round was given, and how much of it is left, in
+  /// ms (m12-host-touch rule 3). Zero asks for no beat, as the TV does.
+  int _readyTotalMs = 0;
+  int _readyMs = 0;
+
   @override
   void initState() {
     super.initState();
@@ -88,6 +105,8 @@ class _PausableState extends ConsumerState<Pausable> {
     _awayChanged = _noteHostAway;
     _away.addListener(_awayChanged);
     _phase = ref.read(roundPhaseProvider)..claim(this);
+    _readyTotalMs = ref.read(readyCountdownProvider).inMilliseconds;
+    _readyMs = _readyTotalMs;
     _publish();
     _timer;
   }
@@ -117,15 +136,47 @@ class _PausableState extends ConsumerState<Pausable> {
       ref.read(hostAwayProvider).value ||
       ref.read(playersAwayProvider).isNotEmpty;
 
+  /// The "Get ready" beat is still holding the round (m12-host-touch rule 3).
+  bool get _onBeat => _readyMs > 0;
+
+  /// The whole seconds the card shows: 3, 2, 1.
+  int get _readySeconds => (_readyMs / Duration.millisecondsPerSecond).ceil();
+
+  /// Moves the "Get ready" beat on (m12-host-touch rule 3): the round is held
+  /// with no step while the card counts down. A round that stands still holds
+  /// the beat too, and it starts again from the top once nothing waits (§2.10,
+  /// bug 1107d); the results end it.
+  void _beat() {
+    if (!_onBeat) return;
+    final int next;
+    if (!widget.enabled) {
+      next = 0;
+    } else if (_stopped) {
+      // The host is away, or a phone the round waits for is: the beat waits
+      // with the round, and starts over from the top (bug 1107d).
+      next = _readyTotalMs;
+    } else {
+      next = _readyMs - ControllerMenus.step.inMilliseconds;
+    }
+    if (next == _readyMs) return;
+    setState(() => _readyMs = next < 0 ? 0 : next);
+  }
+
+  /// What this round is doing now (m12-host-touch rules 1–3): still while it
+  /// stands, `ready` while the beat holds it, `playing` once it runs.
+  RoundPhase get _roundPhase {
+    if (_stopped) return RoundPhase.none;
+    return _onBeat ? RoundPhase.ready : RoundPhase.playing;
+  }
+
   /// Says what this round is doing to the host phone's own screens
-  /// ([roundPhaseProvider], m12-host-touch rules 1, 2), after the frame: the
+  /// ([roundPhaseProvider], m12-host-touch rules 1–3), after the frame: the
   /// results end the round during a build, and a screen that read the phase
   /// there must not be rebuilt then.
   void _publish() {
-    final phase = _stopped ? RoundPhase.none : RoundPhase.playing;
-    if (phase == _phase.value) return;
+    if (_roundPhase == _phase.value) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _phase.publish(this, _stopped ? RoundPhase.none : RoundPhase.playing);
+      if (mounted) _phase.publish(this, _roundPhase);
     });
     // A frame to say it in: a tick or an away signal need not come with one.
     WidgetsBinding.instance.ensureVisualUpdate();
@@ -164,17 +215,26 @@ class _PausableState extends ConsumerState<Pausable> {
     if (!mounted) return;
     final host = ref.read(gameHostProvider);
     _noteAway(host.players);
+    _beat();
     // A phone that dropped, or came back, stands the round still (1107d).
     _publish();
     // Away, the app is hidden: the game is paused as it is, and nothing
     // opens a menu behind it.
     if (ref.read(hostAwayProvider).value) return;
+    // The beat holds the round and Start opens nothing until it ends (rule 3).
+    if (_onBeat) return;
     _sinceStartMs += ControllerMenus.step.inMilliseconds;
     // A player who is away isn't here to press Start (m12 bug 1107d).
     final players = [
       for (final p in host.players)
         if (!p.simulated && !p.local && !p.away) p,
     ];
+    final pressed = _newPresses(host, players);
+    if (pressed.isNotEmpty) _startPressed(pressed, players);
+  }
+
+  /// The players who pressed Start on this tick.
+  List<GamePlayer> _newPresses(GameHost host, List<GamePlayer> players) {
     final pressed = <GamePlayer>[];
     for (final p in players) {
       final down = host.gamepad(p.id).pressed(GamepadButton.start);
@@ -183,7 +243,11 @@ class _PausableState extends ConsumerState<Pausable> {
       if (before == false && down) pressed.add(p);
     }
     _startDown.removeWhere((id, _) => !players.any((p) => p.id == id));
-    if (pressed.isEmpty) return;
+    return pressed;
+  }
+
+  /// Start opens the menu, or works the one that is up.
+  void _startPressed(List<GamePlayer> pressed, List<GamePlayer> players) {
     final menu = _menuContext;
     if (_pausedBy == null) {
       // The away card is the screen's menu while the round waits for a phone
@@ -237,7 +301,11 @@ class _PausableState extends ConsumerState<Pausable> {
       builder: (context, hidden, _) => Stack(
         fit: StackFit.expand,
         children: [
-          widget.builder(context, _pausedBy != null || hidden || waiting),
+          widget.builder(context, _onBeat || _pausedBy != null || hidden || waiting),
+          // The "Get ready" beat stands over the game while it holds the round
+          // (m12-host-touch rule 3); the away card takes its place when the
+          // round waits for a phone.
+          if (_onBeat && !waiting && !hidden) ReadyCard(seconds: _readySeconds),
           // The host's own pause wins while the app is hidden, and the card
           // never stands over the menu: nobody pressed Start for it.
           if (waiting && !hidden && _pausedBy == null)

@@ -138,6 +138,15 @@ Future<void> untilShown(WidgetTester tester, Finder finder, String what) =>
 Future<void> hostReady(WidgetTester tester, PhoneHost host) =>
     until(tester, () => host.client.snapshot.isConnected, () => 'The own player did not pair: ${host.client.snapshot}');
 
+/// Waits for the round's "Get ready" beat to end (m12-host-touch rule 3): the
+/// round steps, and the pad's presses reach it, only then. The phone app asks
+/// its host for the beat, so every round starts with one.
+Future<void> untilPlaying(WidgetTester tester) => until(
+  tester,
+  () => hostPhase(tester) == party.RoundPhase.playing,
+  () => 'The Get ready beat did not end: ${hostPhase(tester)}',
+);
+
 /// Opens the start sheet and picks [choice]; returns the host.
 Future<PhoneHost> enterHostMode(WidgetTester tester, {HostChoice choice = HostChoice.onPhone}) async {
   final key = switch (choice) {
@@ -161,8 +170,8 @@ Finder ownPlayerOn(String side) =>
 
 /// Hosts on this phone and opens a solo Shape Race round: a tap on the
 /// picker's card and on a random easy puzzle, then Start on the join screen,
-/// where the own player is in by itself (m12-host-touch rule 5). Returns the
-/// host.
+/// where the own player is in by itself (m12-host-touch rule 5). The round's
+/// "Get ready" beat is waited out (rule 3), so the round plays when it returns.
 Future<PhoneHost> soloRound(WidgetTester tester) async {
   final host = await enterHostMode(tester);
   await tester.tap(find.byKey(const Key('pickShapeRace')));
@@ -173,6 +182,7 @@ Future<PhoneHost> soloRound(WidgetTester tester) async {
   await untilShown(tester, ownPlayerOn('left'), 'The own player on the left');
   await tester.tap(find.byKey(const Key('joinStart')));
   await untilShown(tester, find.byType(party.PuzzleScreen), 'The puzzle screen');
+  await untilPlaying(tester);
   await settle(tester);
   return host;
 }

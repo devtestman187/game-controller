@@ -75,6 +75,13 @@ final shareViewProvider = Provider<bool>((ref) => false);
 /// with its saved "Frame rate (test)" setting.
 final hostingSettingsProvider = Provider<HostingSettings>((ref) => HostingSettings.fromEnvironment());
 
+/// How long a round is held for the "Get ready" beat before its first step
+/// (m12-host-touch rule 3): the rules and the round's clock stand still while
+/// the pad comes up, and the card over the game counts the seconds down. Zero
+/// by default, so the TV and the joined phones start as they always did (rule
+/// 6); the phone app asks for `Pausable.ready`, 3 s.
+final readyCountdownProvider = Provider<Duration>((ref) => Duration.zero);
+
 /// Reads the host device's battery and heat for the session summary (m12
 /// §0.1). None by default, so the TV records nothing; the phone app overrides
 /// it with an adapter over its `DeviceStatusSource`.
