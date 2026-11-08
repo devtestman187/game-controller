@@ -1,5 +1,17 @@
 part of 'settings_screen.dart';
 
+/// The look's settings (M13): the Look and effects rows, in a card like the
+/// sections beside them. The section itself lives in `party_host`, so the
+/// phone and the TV show and save the same setting.
+class _LookAndSoundSection extends StatelessWidget {
+  const _LookAndSoundSection();
+
+  @override
+  Widget build(BuildContext context) {
+    return const _Section(title: 'Look and sound', children: [LookAndSoundSection()]);
+  }
+}
+
 class _HapticsSection extends ConsumerWidget {
   const _HapticsSection();
 

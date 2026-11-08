@@ -20,6 +20,8 @@ export 'src/host_view_state.dart';
 export 'src/keep_awake.dart';
 export 'src/live_stats.dart';
 export 'src/local_player_source.dart';
+export 'src/look_providers.dart';
+export 'src/look_settings.dart';
 export 'src/network_addresses.dart' show orderedAddresses;
 export 'src/players_away.dart';
 export 'src/providers.dart';
@@ -37,9 +39,17 @@ export 'src/ui/host_focus_scope.dart';
 export 'src/ui/host_screen.dart';
 export 'src/ui/host_shortcuts.dart';
 export 'src/ui/join_screen.dart';
+export 'src/ui/look_and_sound_screen.dart';
+export 'src/ui/look_and_sound_section.dart';
 export 'src/ui/pause_menu.dart';
 export 'src/ui/player_badge.dart';
 export 'src/ui/puzzle_screen.dart';
 export 'src/ui/puzzle_settings_screen.dart';
 export 'src/ui/round_phase.dart';
 export 'src/ui/stats_screen.dart';
+
+// The look itself (M13): both apps wrap their MaterialApp in a ToyLookScope
+// with the look their providers build and take toyTheme(look), and the phone
+// app gets the scope and the theme from here because it depends on this
+// package rather than on toy_look.
+export 'package:toy_look/toy_look.dart';

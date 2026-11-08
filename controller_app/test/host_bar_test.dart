@@ -6,14 +6,18 @@ import 'package:party_host/party_host.dart' as party;
 
 import 'support/host_app.dart';
 import 'support/pump_app.dart';
+import 'support/test_font.dart';
 
 /// m12 bug 1108a fix2 (Q1): the compact bar over a round. A phone that only
 /// shows the game has no link of its own, so its bar shows the code to join
 /// and no link dot; a phone that plays here keeps the dot, with the Connect
 /// screen behind it.
 void main() {
-  // The puzzle files are read once, before any test runs (s9g).
+  // The puzzle files are read once, before any test runs (s9g), and the look's
+  // fonts are loaded: the join screen is laid out to fit a phone's height
+  // (m13 §3a).
   setUpAll(loadPuzzles);
+  setUpAll(loadHostFonts);
 
   testWidgets('the compact bar over a "Show on this device" round has the code and no link dot', (tester) async {
     await pumpHostApp(tester);

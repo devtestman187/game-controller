@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:party_host/party_host.dart' show LookAndSoundSection;
 import 'package:protocol/protocol.dart';
 
 import 'package:url_launcher/url_launcher.dart';
@@ -46,6 +47,8 @@ class SettingsScreen extends ConsumerWidget {
                 _SticksSection(),
                 SizedBox(height: 12),
                 _GameSection(),
+                SizedBox(height: 12),
+                _LookAndSoundSection(),
                 SizedBox(height: 12),
                 _StatsSection(),
                 SizedBox(height: 12),

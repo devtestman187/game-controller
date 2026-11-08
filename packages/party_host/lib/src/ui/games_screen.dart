@@ -97,39 +97,44 @@ class _GameCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final text = Theme.of(context).textTheme;
+    // 180 high is the card's size in the look; the box grows with it if this
+    // device's type needs more room than that, rather than clipping a word
+    // (M13 3a: the word layouts are still 3b's).
     return SizedBox(
       width: 380,
-      height: 180,
-      child: FilledButton.tonal(
-        autofocus: autofocus,
-        onPressed: onPressed,
-        style:
-            ButtonStyle(
-              shape: WidgetStatePropertyAll(RoundedRectangleBorder(borderRadius: BorderRadius.circular(20))),
-              padding: const WidgetStatePropertyAll(EdgeInsets.all(20)),
-            ).merge(
-              hostButtonLook(
-                context,
-                showFocus: ref.watch(hostFocusLookProvider),
-                fill: Theme.of(context).colorScheme.surfaceContainerHighest,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 180),
+        child: FilledButton.tonal(
+          autofocus: autofocus,
+          onPressed: onPressed,
+          style:
+              ButtonStyle(
+                shape: WidgetStatePropertyAll(RoundedRectangleBorder(borderRadius: BorderRadius.circular(20))),
+                padding: const WidgetStatePropertyAll(EdgeInsets.all(20)),
+              ).merge(
+                hostButtonLook(
+                  context,
+                  showFocus: ref.watch(hostFocusLookProvider),
+                  fill: Theme.of(context).colorScheme.surfaceContainerHighest,
+                ),
               ),
-            ),
-        child: Row(
-          children: [
-            Icon(icon, size: 64),
-            const SizedBox(width: 20),
-            Expanded(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: text.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 6),
-                  Text(subtitle, style: text.bodyLarge),
-                ],
+          child: Row(
+            children: [
+              Icon(icon, size: 64),
+              const SizedBox(width: 20),
+              Expanded(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: text.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 6),
+                    Text(subtitle, style: text.bodyLarge),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

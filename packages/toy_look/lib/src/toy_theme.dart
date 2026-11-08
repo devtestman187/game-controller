@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'look_choice.dart';
+import 'page_transitions.dart';
 import 'toy_look.dart';
 import 'toy_shape.dart';
 import 'toy_sizes.dart';
@@ -25,6 +26,9 @@ ThemeData toyTheme(ToyLook look) {
     scaffoldBackgroundColor: Colors.transparent,
     canvasColor: colors.background,
     textTheme: _textTheme(look),
+    // Every page carries its own sky, so a page sliding over another never
+    // shows the one below through it (section 5).
+    pageTransitionsTheme: _pageTransitions(),
     filledButtonTheme: FilledButtonThemeData(style: _buttonStyle(look)),
     elevatedButtonTheme: ElevatedButtonThemeData(style: _buttonStyle(look)),
     outlinedButtonTheme: OutlinedButtonThemeData(style: _buttonStyle(look)),
@@ -70,6 +74,12 @@ ThemeData toyTheme(ToyLook look) {
     ),
   );
 }
+
+/// Every page carries its own sky, on every platform, so a page sliding over
+/// another never shows the one below through it (section 5).
+PageTransitionsTheme _pageTransitions() => PageTransitionsTheme(
+  builders: {for (final platform in TargetPlatform.values) platform: const ToyPageTransitionsBuilder()},
+);
 
 /// The palette as a colour scheme, with ink on every fill (design D12).
 ColorScheme _scheme(ToyLook look) {

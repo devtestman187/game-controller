@@ -109,6 +109,24 @@ void main() {
       expect(app.prefs.getBool('stickFloating'), isFalse);
     });
 
+    testWidgets('Look and sound is a card of its own, above the stats, and its choice saves', (tester) async {
+      final app = await pumpApp(tester, paired: true);
+      await openSettings(tester);
+      await scrollTo(tester, find.byKey(const Key('lookEffects')));
+
+      // The card sits above "Control stats", as the design's list has it.
+      expect(find.text('Look and sound'), findsOneWidget);
+      expect(tester.getRect(find.text('Look and sound')).top, lessThan(tester.getRect(find.text('Control stats')).top));
+      // Its three choices, the line that says what Auto does, and the switch.
+      expect(find.byKey(const Key('lookChoice')), findsOneWidget);
+      expect(find.text('Auto: Sunny from 7:00 to 19:00, Night otherwise'), findsOneWidget);
+      expect(find.text('Effects'), findsOneWidget);
+
+      await tapVisible(tester, find.text('Night'));
+      expect(app.prefs.getString('look.choice'), 'night');
+      expect(app.prefs.getBool('look.effects'), isNull, reason: 'the switch is left alone');
+    });
+
     testWidgets('the settings screen fits a small phone', (tester) async {
       await pumpApp(tester, paired: true);
       tester.view.physicalSize = const Size(667, 375); // iPhone SE, landscape.

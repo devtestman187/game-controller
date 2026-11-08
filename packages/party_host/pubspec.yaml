@@ -36,6 +36,10 @@ dependencies:
   shared_preferences: ^2.5.6
   test_game:
     path: ../test_game
+  # The look (M13): the host screens read their colours, type and background
+  # from it, and its widgets are built from it.
+  toy_look:
+    path: ../toy_look
   wakelock_plus: ^1.8.2
 
 dev_dependencies:

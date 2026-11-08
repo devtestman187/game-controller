@@ -8,6 +8,8 @@
 library;
 
 export 'src/look_choice.dart';
+export 'src/page_transitions.dart';
+export 'src/route_observer.dart';
 export 'src/toy_background.dart';
 export 'src/toy_badge.dart';
 export 'src/toy_button.dart';

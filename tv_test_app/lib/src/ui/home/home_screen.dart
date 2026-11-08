@@ -110,13 +110,20 @@ class _NarrowHome extends StatelessWidget {
 class Header extends StatelessWidget {
   const Header({super.key, required this.state});
 
-  /// From this window width up, the buttons sit beside the title; below it
+  /// From this window width up, the buttons sit beside the title, wrapping
+  /// onto a second line inside their share of it when the window can't hold
+  /// them all (six of them on a 1080p TV, 960 logical pixels wide); below it
   /// they wrap underneath, where a narrow window has room.
   static const rowWidth = 760.0;
 
-  /// Below this window width the buttons are compact, so all five fit beside
-  /// the title on a 1080p TV (960 logical pixels wide).
+  /// Below this window width the buttons are compact, so all six fit beside
+  /// the title on a 1080p TV.
   static const compactWidth = 1100.0;
+
+  /// The most of the header the buttons take beside the title: six compact
+  /// buttons need more than a 960-pixel header leaves, so they run onto a
+  /// second line rather than off the screen.
+  static const _buttonsShare = 0.65;
 
   final HostViewState state;
 
@@ -130,7 +137,10 @@ class Header extends StatelessWidget {
             children: [
               Expanded(child: _HeaderTitle(state: state)),
               const SizedBox(width: 16),
-              _HeaderButtons(compact: compact, isRow: true),
+              ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: constraints.maxWidth * _buttonsShare),
+                child: _HeaderButtons(compact: compact),
+              ),
             ],
           );
         }
@@ -139,7 +149,7 @@ class Header extends StatelessWidget {
           children: [
             _HeaderTitle(state: state),
             const SizedBox(height: 8),
-            _HeaderButtons(compact: compact, isRow: false),
+            _HeaderButtons(compact: compact),
           ],
         );
       },
@@ -199,12 +209,9 @@ class _HeaderTitle extends StatelessWidget {
 
 /// The buttons to the other screens, and the first-launch consent prompt.
 class _HeaderButtons extends StatelessWidget {
-  const _HeaderButtons({required this.compact, required this.isRow});
+  const _HeaderButtons({required this.compact});
 
   final bool compact;
-
-  /// In a row beside the title ([isRow]), or wrapped under it.
-  final bool isRow;
 
   @override
   Widget build(BuildContext context) {
@@ -235,6 +242,13 @@ class _HeaderButtons extends StatelessWidget {
         onPressed: () => _open(context, const LatencyScreen()),
       ),
       HostButton(
+        key: const Key('openLookAndSound'),
+        label: 'Look and sound',
+        icon: Icons.brightness_6_outlined,
+        compact: compact,
+        onPressed: () => _open(context, const LookAndSoundScreen()),
+      ),
+      HostButton(
         label: 'Look test',
         icon: Icons.palette_outlined,
         compact: compact,
@@ -250,13 +264,7 @@ class _HeaderButtons extends StatelessWidget {
       // Asks the adult about sharing stats on the first launch (M9).
       const FirstLaunchConsent(),
     ];
-    if (!isRow) return Wrap(spacing: 8, runSpacing: 8, children: buttons);
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        for (final (i, b) in buttons.indexed) ...[if (i > 0) const SizedBox(width: 8), b],
-      ],
-    );
+    return Wrap(spacing: 8, runSpacing: 8, children: buttons);
   }
 }
 

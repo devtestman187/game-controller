@@ -17,9 +17,14 @@ late FakeSoundPlayer sounds;
 /// The fake screen-awake adapter the last [pumpHost] mounted.
 late FakeScreenAwake awake;
 
-/// Mounts [screen] the way a host app does: inside [ControllerMenus], with
-/// every platform input replaced by a fake. A host app's home screen comes
-/// from the app; the tests here start on [StubHome].
+/// The time the harness's clock says: midday, so the look is Sunny unless a
+/// test overrides [lookClockProvider] with a time of its own (M13).
+final harnessNow = DateTime(2026, 11, 8, 12);
+
+/// Mounts [screen] the way a host app does: inside the look and
+/// [ControllerMenus], with every platform input replaced by a fake. A host
+/// app's home screen comes from the app; the tests here start on [StubHome].
+/// [clock] is the device's time for Auto's palette, [harnessNow] by default.
 Future<FakeHostService> pumpHost(
   WidgetTester tester, {
   required Widget screen,
@@ -27,6 +32,7 @@ Future<FakeHostService> pumpHost(
   bool? consent = true,
   List<Map<String, Object?>> sessions = const [],
   List<Override> overrides = const [],
+  DateTime Function()? clock,
 }) async {
   sounds = FakeSoundPlayer();
   awake = FakeScreenAwake();
@@ -45,26 +51,45 @@ Future<FakeHostService> pumpHost(
         hostServiceProvider.overrideWithValue(fake),
         soundPlayerProvider.overrideWithValue(sounds),
         screenAwakeProvider.overrideWithValue(awake),
+        lookClockProvider.overrideWithValue(clock ?? () => harnessNow),
         ...overrides,
       ],
       child: Shortcuts(
         // The TV app's own keys, so the tests press what the remote presses.
         shortcuts: hostActivateShortcuts,
-        child: MaterialApp(
-          title: 'Thumb Party host',
-          theme: ThemeData(
-            colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF5AAAFF), brightness: Brightness.dark),
-          ),
-          // The phones work every screen like the remote (PRD v2 T21), and a
-          // touch-first host's thumbs take a focus look away (m12 bug 1107f).
-          builder: (context, child) => HostFocusScope(child: ControllerMenus(child: child!)),
-          home: screen,
-        ),
+        child: _HarnessApp(screen: screen),
       ),
     ),
   );
   await tester.pumpAndSettle();
   return fake;
+}
+
+/// The apps' root, as both of them build it (M13): the look over the
+/// MaterialApp, which takes the theme made from it, and the look's own route
+/// observer, so a page's push or pop works the palette out again. It's a phone
+/// look (the menu sizes and the phone's type).
+class _HarnessApp extends ConsumerWidget {
+  const _HarnessApp({required this.screen});
+
+  final Widget screen;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final look = ref.watch(toyLookProvider);
+    return ToyLookScope(
+      look: look,
+      child: MaterialApp(
+        title: 'Thumb Party host',
+        theme: toyTheme(look),
+        navigatorObservers: [ref.watch(toyLookRouteObserverProvider)],
+        // The phones work every screen like the remote (PRD v2 T21), and a
+        // touch-first host's thumbs take a focus look away (m12 bug 1107f).
+        builder: (context, child) => HostFocusScope(child: ControllerMenus(child: child!)),
+        home: screen,
+      ),
+    );
+  }
 }
 
 /// Stands in for a host app's home screen: one Play button that opens the

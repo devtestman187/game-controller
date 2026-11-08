@@ -59,7 +59,14 @@ void main() {
       // The game animates every frame, so pump through the page transition.
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 500));
-      for (final screen in [GamesScreen, HapticPanelScreen, LatencyScreen, ShaderSpikeScreen, StatsScreen]) {
+      for (final screen in [
+        GamesScreen,
+        HapticPanelScreen,
+        LatencyScreen,
+        LookAndSoundScreen,
+        ShaderSpikeScreen,
+        StatsScreen,
+      ]) {
         if (find.byType(screen).evaluate().isNotEmpty) {
           opened.add(screen);
           await tester.sendKeyEvent(LogicalKeyboardKey.escape);
@@ -109,11 +116,35 @@ void main() {
       'Play',
       'Haptic test',
       'Latency',
+      'Look and sound',
       'Look test',
       'Stats',
     });
     expect([fake.newCodes, fake.simAdds, fake.drops, fake.forgets, fake.exports], [1, 1, 1, 1, 1]);
-    expect(opened.toSet(), {GamesScreen, HapticPanelScreen, LatencyScreen, ShaderSpikeScreen, StatsScreen});
+    expect(opened.toSet(), {
+      GamesScreen,
+      HapticPanelScreen,
+      LatencyScreen,
+      LookAndSoundScreen,
+      ShaderSpikeScreen,
+      StatsScreen,
+    });
+  });
+
+  testWidgets('the header has a Look and sound button, which opens the Look and sound screen', (tester) async {
+    await pumpApp(tester);
+    // It sits with the other header buttons, before Look test.
+    final button = tester.widget<HostButton>(find.byKey(const Key('openLookAndSound')));
+    expect(button.label, 'Look and sound');
+    await tapVisible(tester, find.byKey(const Key('openLookAndSound')));
+    await tester.pumpAndSettle();
+    expect(find.byType(LookAndSoundScreen), findsOneWidget);
+    // The section, with its three choices and the effects switch.
+    expect(find.text('Look'), findsOneWidget);
+    expect(find.byKey(const Key('lookChoice')), findsOneWidget);
+    expect(find.text('Auto: Sunny from 7:00 to 19:00, Night otherwise'), findsOneWidget);
+    expect(find.byKey(const Key('lookEffects')), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('updates when the host state changes', (tester) async {

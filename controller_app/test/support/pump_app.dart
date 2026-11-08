@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:party_host/party_host.dart' as party;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'fakes.dart';
@@ -96,6 +97,9 @@ Future<void> pumpFaked(
   ProviderScope(
     overrides: [
       prefsProvider.overrideWithValue(app.prefs),
+      // The host layer's look settings are saved with this phone's other
+      // settings, as the app's root scope does while it hosts (m13 §3a).
+      party.lookPrefsProvider.overrideWith((ref) => ref.watch(prefsProvider)),
       // The TV client: while this phone hosts, the screens use its own
       // player's client instead (m12 §3).
       tvClientProvider.overrideWithValue(app.client),

@@ -6,13 +6,17 @@ import 'package:party_host/party_host.dart' as party;
 
 import 'support/host_app.dart';
 import 'support/pump_app.dart';
+import 'support/test_font.dart';
 
 /// m12 bug 1108a: "Show on this device" makes this phone the game's screen,
 /// like the TV, so it has no player of its own and everyone joins from another
 /// phone. "Play on this phone" keeps the player it always had.
 void main() {
-  // The puzzle files are read once, before any test runs (s9g).
+  // The puzzle files are read once, before any test runs (s9g), and the look's
+  // fonts are loaded: the join screen is laid out to fit a phone's height
+  // (m13 §3a).
   setUpAll(loadPuzzles);
+  setUpAll(loadHostFonts);
 
   testWidgets('"Show on this device" pairs no player of its own, and the first phone to join is P1', (tester) async {
     await pumpHostApp(tester);

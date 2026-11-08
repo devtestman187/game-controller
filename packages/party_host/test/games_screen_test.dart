@@ -25,4 +25,17 @@ void main() {
     await tester.pump(const Duration(milliseconds: 500));
     expect(find.byType(GameScreen), findsOneWidget);
   });
+
+  testWidgets('the picker\'s cards hold the look\'s type without spilling it', (tester) async {
+    // A card is 380 wide and 180 high in the look. The test bundle's own font
+    // draws every letter as a box, so the words need more than 180 at the
+    // look's title size: the card grows with them rather than clipping a line
+    // of the subtitle (m13 §3a; the restyle is 3b's).
+    await pumpHost(tester, screen: const StubHome());
+    await tapVisible(tester, find.byKey(const Key('openPlay')));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    expect(tester.getSize(find.byKey(const Key('pickShapeRace'))).width, 380);
+    expect(tester.getSize(find.byKey(const Key('pickArena'))).width, 380);
+  });
 }
