@@ -230,6 +230,9 @@ class _ControllerMenusState extends ConsumerState<ControllerMenus> {
   }
 
   void _press(_Key key) {
+    // A pad is working the menus, so this host shows the focus look until a
+    // thumb touches it (m12 bug 1107f rule A).
+    ref.read(hostFocusLookProvider.notifier).padUsed();
     final focus = FocusManager.instance.primaryFocus;
     switch (key) {
       case _Key.up || _Key.down || _Key.left || _Key.right:

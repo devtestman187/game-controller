@@ -55,8 +55,9 @@ Future<FakeHostService> pumpHost(
           theme: ThemeData(
             colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF5AAAFF), brightness: Brightness.dark),
           ),
-          // The phones work every screen like the remote (PRD v2 T21).
-          builder: (context, child) => ControllerMenus(child: child!),
+          // The phones work every screen like the remote (PRD v2 T21), and a
+          // touch-first host's thumbs take a focus look away (m12 bug 1107f).
+          builder: (context, child) => HostFocusScope(child: ControllerMenus(child: child!)),
           home: screen,
         ),
       ),

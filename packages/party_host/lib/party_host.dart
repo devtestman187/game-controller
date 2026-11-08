@@ -31,6 +31,8 @@ export 'src/ui/controller_menus.dart';
 export 'src/ui/game_screen.dart';
 export 'src/ui/games_screen.dart';
 export 'src/ui/host_button.dart';
+export 'src/ui/host_focus_scope.dart';
+export 'src/ui/host_screen.dart';
 export 'src/ui/host_shortcuts.dart';
 export 'src/ui/join_screen.dart';
 export 'src/ui/pause_menu.dart';

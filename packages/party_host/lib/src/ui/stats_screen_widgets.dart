@@ -124,7 +124,7 @@ class _SessionList extends StatelessWidget {
   );
 }
 
-class _SessionButton extends StatelessWidget {
+class _SessionButton extends ConsumerWidget {
   const _SessionButton({
     super.key,
     required this.label,
@@ -139,19 +139,22 @@ class _SessionButton extends StatelessWidget {
   final VoidCallback onPressed;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
     return FilledButton.tonal(
       onPressed: onPressed,
-      style: ButtonStyle(
-        alignment: Alignment.centerLeft,
-        padding: const WidgetStatePropertyAll(EdgeInsets.symmetric(horizontal: 14, vertical: 10)),
-        backgroundColor: WidgetStatePropertyAll(selected ? scheme.primaryContainer : scheme.surfaceContainerHigh),
-        side: WidgetStateProperty.resolveWith(
-          (s) => s.contains(WidgetState.focused) ? BorderSide(color: scheme.primary, width: 4) : BorderSide.none,
-        ),
-      ),
+      style:
+          ButtonStyle(
+            alignment: Alignment.centerLeft,
+            padding: const WidgetStatePropertyAll(EdgeInsets.symmetric(horizontal: 14, vertical: 10)),
+          ).merge(
+            hostButtonLook(
+              context,
+              showFocus: ref.watch(hostFocusLookProvider),
+              fill: selected ? scheme.primaryContainer : scheme.surfaceContainerHigh,
+            ),
+          ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

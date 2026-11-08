@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:party_host/party_host.dart' as party;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'src/host/host_overrides.dart';
@@ -39,6 +40,10 @@ class ControllerApp extends StatelessWidget {
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF5AAAFF), brightness: Brightness.dark),
       ),
+      // This phone is touch first, so nothing on its host's screens keeps a
+      // focus look a thumb can't take away (m12 bug 1107f rule A). Above every
+      // route, so the dialogs are covered too.
+      builder: (context, child) => party.HostFocusScope(child: child ?? const SizedBox.shrink()),
       home: const ControllerScreen(),
     );
   }

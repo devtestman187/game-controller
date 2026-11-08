@@ -6,6 +6,7 @@ import 'package:puzzle_game/puzzle_game.dart';
 import '../providers.dart';
 import 'game_screen.dart';
 import 'host_button.dart';
+import 'host_screen.dart';
 import 'join_screen.dart';
 import 'puzzle_screen.dart';
 import 'puzzle_settings_screen.dart';
@@ -24,8 +25,8 @@ class GamesScreen extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     return CallbackShortcuts(
       bindings: {const SingleActivator(LogicalKeyboardKey.escape): () => Navigator.of(context).maybePop()},
-      child: Scaffold(
-        appBar: AppBar(title: const Text('Play')),
+      child: HostScreen(
+        title: 'Play',
         body: SafeArea(
           child: ListView(
             padding: const EdgeInsets.all(24),
@@ -77,7 +78,7 @@ class GamesScreen extends StatelessWidget {
 void _open(BuildContext context, Widget screen) =>
     Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => screen));
 
-class _GameCard extends StatelessWidget {
+class _GameCard extends ConsumerWidget {
   const _GameCard({
     super.key,
     required this.title,
@@ -94,25 +95,25 @@ class _GameCard extends StatelessWidget {
   final bool autofocus;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final text = Theme.of(context).textTheme;
-    final scheme = Theme.of(context).colorScheme;
     return SizedBox(
       width: 380,
       height: 180,
       child: FilledButton.tonal(
         autofocus: autofocus,
         onPressed: onPressed,
-        style: ButtonStyle(
-          shape: WidgetStatePropertyAll(RoundedRectangleBorder(borderRadius: BorderRadius.circular(20))),
-          padding: const WidgetStatePropertyAll(EdgeInsets.all(20)),
-          side: WidgetStateProperty.resolveWith(
-            (s) => s.contains(WidgetState.focused) ? BorderSide(color: scheme.primary, width: 4) : BorderSide.none,
-          ),
-          backgroundColor: WidgetStateProperty.resolveWith(
-            (s) => s.contains(WidgetState.focused) ? scheme.primaryContainer : scheme.surfaceContainerHighest,
-          ),
-        ),
+        style:
+            ButtonStyle(
+              shape: WidgetStatePropertyAll(RoundedRectangleBorder(borderRadius: BorderRadius.circular(20))),
+              padding: const WidgetStatePropertyAll(EdgeInsets.all(20)),
+            ).merge(
+              hostButtonLook(
+                context,
+                showFocus: ref.watch(hostFocusLookProvider),
+                fill: Theme.of(context).colorScheme.surfaceContainerHighest,
+              ),
+            ),
         child: Row(
           children: [
             Icon(icon, size: 64),
@@ -145,8 +146,8 @@ class ShapeRaceScreen extends ConsumerWidget {
     final text = Theme.of(context).textTheme;
     return CallbackShortcuts(
       bindings: {const SingleActivator(LogicalKeyboardKey.escape): () => Navigator.of(context).maybePop()},
-      child: Scaffold(
-        appBar: AppBar(title: const Text('Shape Race')),
+      child: HostScreen(
+        title: 'Shape Race',
         body: SafeArea(
           child: switch (library) {
             AsyncData(:final value) => ListView(

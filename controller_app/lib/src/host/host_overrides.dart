@@ -6,6 +6,7 @@ import 'package:party_host/party_host.dart' as party;
 import '../gyro.dart';
 import '../providers.dart';
 import '../ui/joined_view.dart';
+import '../ui/top_bar_metrics.dart';
 import 'host_monitor.dart';
 import 'hosting.dart';
 import 'hosting_frame_rate.dart';
@@ -46,6 +47,15 @@ List<Override> phoneHostOverrides({required party.HostDirectories directories}) 
   // A tablet has the room for both sides, so the same screen draws the whole
   // match there (m12-phone-layout §0.6).
   party.wholeMatchProvider.overrideWith((ref) => ref.watch(isTabletProvider)),
+  // This phone is worked by touch (m12 bug 1107f rules A and B): its host's
+  // screens show no focus look until a joined phone's pad moves the focus, and
+  // a thumb hides it again. The TV and the Windows app keep the default, where
+  // the focus look shows from the start.
+  party.hostTouchFirstProvider.overrideWithValue(true),
+  // The bar this app draws over the host's screens is this high, so a host
+  // screen's title bar sits below it, never under it (rule C). The TV has no
+  // bar there.
+  party.hostBarHeightProvider.overrideWithValue(topBarHeightPx),
   // The pad this phone draws over the game it hosts, and its density, so a
   // round it plays keeps the other side's mirror clear of the thumb, as a
   // joined phone's game does (m12-opponent-mirror rules 3, 7 and 8). "Show on

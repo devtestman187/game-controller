@@ -12,6 +12,7 @@ import '../local_player_source.dart';
 import '../providers.dart';
 import 'controller_menus.dart';
 import 'host_button.dart';
+import 'host_screen.dart';
 import 'player_badge.dart';
 import 'puzzle_screen.dart';
 
@@ -301,10 +302,8 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
         autofocus: true,
         skipTraversal: true,
         onKeyEvent: _onKey,
-        child: Scaffold(
-          appBar: AppBar(
-            title: Text('Shape Race · ${_choiceName(widget.choice, ref.watch(puzzleLibraryProvider).value)}'),
-          ),
+        child: HostScreen(
+          title: 'Shape Race · ${_choiceName(widget.choice, ref.watch(puzzleLibraryProvider).value)}',
           body: SafeArea(
             child: Padding(
               padding: const EdgeInsets.all(24),

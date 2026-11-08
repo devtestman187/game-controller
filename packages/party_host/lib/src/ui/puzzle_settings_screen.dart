@@ -5,6 +5,7 @@ import 'package:puzzle_game/puzzle_game.dart';
 
 import '../providers.dart';
 import 'host_button.dart';
+import 'host_screen.dart';
 
 /// The puzzle's playtest settings (PRD v2 T16): every tuning value, saved on
 /// the host, with Reset to defaults. A change counts in the next frame, also
@@ -44,21 +45,19 @@ class PuzzleSettingsScreen extends ConsumerWidget {
     final text = Theme.of(context).textTheme;
     return CallbackShortcuts(
       bindings: {const SingleActivator(LogicalKeyboardKey.escape): () => Navigator.of(context).maybePop()},
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Puzzle settings'),
-          actions: [
-            Padding(
-              padding: const EdgeInsets.only(right: 16),
-              child: HostButton(
-                key: const Key('resetPuzzleSettings'),
-                label: 'Reset to defaults',
-                icon: Icons.restart_alt,
-                onPressed: notifier.reset,
-              ),
+      child: HostScreen(
+        title: 'Puzzle settings',
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: hostTitleBarPaddingPx),
+            child: HostButton(
+              key: const Key('resetPuzzleSettings'),
+              label: 'Reset to defaults',
+              icon: Icons.restart_alt,
+              onPressed: notifier.reset,
             ),
-          ],
-        ),
+          ),
+        ],
         body: SafeArea(
           child: ListView(
             padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
@@ -131,7 +130,7 @@ class _Row extends StatelessWidget {
   }
 }
 
-class _Step extends StatelessWidget {
+class _Step extends ConsumerWidget {
   const _Step({required this.label, required this.tooltip, required this.onPressed, this.autofocus = false});
 
   final String label;
@@ -140,8 +139,7 @@ class _Step extends StatelessWidget {
   final bool autofocus;
 
   @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+  Widget build(BuildContext context, WidgetRef ref) {
     return Tooltip(
       message: tooltip,
       child: FilledButton.tonal(
@@ -150,10 +148,7 @@ class _Step extends StatelessWidget {
         style: ButtonStyle(
           minimumSize: const WidgetStatePropertyAll(Size(56, 44)),
           textStyle: const WidgetStatePropertyAll(TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-          side: WidgetStateProperty.resolveWith(
-            (s) => s.contains(WidgetState.focused) ? BorderSide(color: scheme.primary, width: 4) : BorderSide.none,
-          ),
-        ),
+        ).merge(hostButtonLook(context, showFocus: ref.watch(hostFocusLookProvider))),
         child: Text(label),
       ),
     );

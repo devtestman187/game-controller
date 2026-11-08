@@ -100,6 +100,48 @@ final ownPlayerIdProvider = Provider<String?>((ref) => null);
 /// they always did.
 final wholeMatchProvider = Provider<bool>((ref) => false);
 
+/// Whether this host is worked touch first (m12 bug 1107f rules A and B): a
+/// phone in "Play on this phone" and "Show on this device" has no pad in its
+/// menus, so nothing on its screens lights up as focused until a pad moves the
+/// focus. False by default, so the TV, the Windows app and a host that has a
+/// pad show the focus look from the start; the phone app overrides it. Nothing
+/// reads the platform.
+final hostTouchFirstProvider = Provider<bool>((ref) => false);
+
+/// Whether the host's buttons show the focus look now (m12 bug 1107f rule A):
+/// on a touch-first host it is off until a joined phone's pad moves the focus,
+/// and off again on the next touch; on every other host it is always on, as
+/// the TV's focus look always was. [hostTouchFirstProvider] says which.
+final hostFocusLookProvider = NotifierProvider<HostFocusLookNotifier, bool>(HostFocusLookNotifier.new);
+
+/// Keeps [hostFocusLookProvider]: on for a host that isn't touch first, off for
+/// one that is, until a pad moves the focus.
+class HostFocusLookNotifier extends Notifier<bool> {
+  @override
+  bool build() => !ref.watch(hostTouchFirstProvider);
+
+  /// A pad moved the focus: a press through the host's controller menus. The
+  /// look shows from here until a thumb touches the screen.
+  void padUsed() {
+    if (!state) state = true;
+  }
+
+  /// A finger touched this phone: the focus look goes until a pad moves the
+  /// focus again. Nothing changes on a host that isn't touch first, so the TV
+  /// keeps the look its remote put there.
+  void touched() {
+    if (state && ref.read(hostTouchFirstProvider)) state = false;
+  }
+}
+
+/// How tall the phone's own bar is over a host screen (m12 bug 1107f rule C):
+/// the room a host screen's title bar leaves above itself, so its title and its
+/// back arrow sit below that bar rather than under it. Zero by default, so the
+/// TV and the Windows app draw their title bars at the top of the screen as
+/// their app bars did; the phone app overrides it with the height of the bar it
+/// draws there.
+final hostBarHeightProvider = Provider<double>((ref) => 0);
+
 /// Where this host draws its own pad over the game it shows, and the px per
 /// millimetre of its screen (m12-opponent-mirror rules 3, 7 and 8): the game a
 /// host phone plays keeps the other side's mirror clear of the thumb and its

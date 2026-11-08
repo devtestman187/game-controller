@@ -7,6 +7,7 @@ import '../providers.dart';
 import '../stats_service.dart';
 import '../stats_state.dart';
 import 'host_button.dart';
+import 'host_screen.dart';
 
 part 'stats_screen_widgets.dart';
 
@@ -65,14 +66,12 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
     ];
     return CallbackShortcuts(
       bindings: {const SingleActivator(LogicalKeyboardKey.escape): () => Navigator.of(context).maybePop()},
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Stats'),
-          actions: [
-            _SharingButton(consent: stats.consent),
-            _ExportButton(onPressed: _export),
-          ],
-        ),
+      child: HostScreen(
+        title: 'Stats',
+        actions: [
+          _SharingButton(consent: stats.consent),
+          _ExportButton(onPressed: _export),
+        ],
         body: SafeArea(
           child: Padding(
             padding: const EdgeInsets.all(16),
