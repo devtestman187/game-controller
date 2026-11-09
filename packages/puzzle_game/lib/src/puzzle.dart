@@ -129,10 +129,34 @@ final class PieceShape {
   /// within the radius for a circle, inside the polygon otherwise.
   bool contains(Offset point, Offset at, double angle, {double scale = 1}) {
     if (circle) return (point - at).distance <= radius * scale;
+    return _inside(point, _outline(at, angle, scale));
+  }
+
+  /// The distance from [point] to the shape's outline placed at [at], turned
+  /// by [angle] and drawn at [scale] of its size: 0 when the point is inside
+  /// it. The rules measure the pickup reach to this outline, so every shape is
+  /// picked up the same way (design 5a, device test 1).
+  double distanceTo(Offset point, Offset at, double angle, {double scale = 1}) {
+    if (circle) return max(0, (point - at).distance - radius * scale);
+    final ps = _outline(at, angle, scale);
+    if (_inside(point, ps)) return 0;
+    var nearest = double.infinity;
+    for (var i = 0; i < ps.length; i++) {
+      nearest = min(nearest, _toSegment(point, ps[i], ps[(i + 1) % ps.length]));
+    }
+    return nearest;
+  }
+
+  /// The corners placed at [at], turned by [angle] and drawn at [scale].
+  List<Offset> _outline(Offset at, double angle, double scale) {
     final a = angle * pi / 180;
     final c = cos(a);
     final s = sin(a);
-    final ps = [for (final p in points) at + Offset((p.dx * c - p.dy * s) * scale, (p.dx * s + p.dy * c) * scale)];
+    return [for (final p in points) at + Offset((p.dx * c - p.dy * s) * scale, (p.dx * s + p.dy * c) * scale)];
+  }
+
+  /// Whether [point] is inside the polygon whose corners are [ps].
+  static bool _inside(Offset point, List<Offset> ps) {
     var inside = false;
     for (var i = 0; i < ps.length; i++) {
       final a = ps[i];
@@ -196,6 +220,15 @@ final class PieceShape {
       'A shape is {"circle": r}, {"rect": [w, h]}, {"regular": [sides, r]} or {"polygon": [[x, y], ...]}',
     );
   }
+}
+
+/// The distance from [point] to the segment from [a] to [b].
+double _toSegment(Offset point, Offset a, Offset b) {
+  final ab = b - a;
+  final lengthSq = ab.dx * ab.dx + ab.dy * ab.dy;
+  if (lengthSq == 0) return (point - a).distance;
+  final t = (((point.dx - a.dx) * ab.dx + (point.dy - a.dy) * ab.dy) / lengthSq).clamp(0.0, 1.0);
+  return (point - (a + ab * t)).distance;
 }
 
 double _symmetry(List<Offset> points) {

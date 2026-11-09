@@ -21,14 +21,14 @@ PuzzleGame phonesGame(Puzzle puzzle, int seed) {
 /// A point of tray piece [index]'s drawn shape where the dot may stand and A
 /// takes that piece: the piece's drawn centre when nothing lies over it, else
 /// the nearest point of its shape with no later piece on top; inside the dot's
-/// clamp box and within the pickup reach. Null when the piece has no such
-/// point: the dot can't get to it.
+/// clamp box and within the pickup reach of its outline (design 5a, device
+/// test 1). Null when the piece has no such point: the dot can't get to it.
 Offset? spotOn(Puzzle puzzle, PuzzleGame game, int index) {
   final field = game.field;
   final piece = game.pieces[index];
   final shape = puzzle.pieces[index].shape;
   final scale = field.trayScale;
-  final reach = PuzzleGame.dotRadius + shape.radius * scale * game.settings.pickupRange;
+  final reach = PuzzleGame.pickupReach * game.settings.pickupRange;
 
   bool canStand(Offset at) =>
       at.dx >= PuzzleGame.dotRadius &&
@@ -45,7 +45,8 @@ Offset? spotOn(Puzzle puzzle, PuzzleGame game, int index) {
     return true;
   }
 
-  bool works(Offset at) => canStand(at) && onlyThisPiece(at) && (at - piece.pos).distance <= reach;
+  bool works(Offset at) =>
+      canStand(at) && onlyThisPiece(at) && shape.distanceTo(at, piece.pos, piece.angle, scale: scale) <= reach;
 
   if (works(piece.pos)) return piece.pos;
   final box = pieceBox(puzzle, game, piece);

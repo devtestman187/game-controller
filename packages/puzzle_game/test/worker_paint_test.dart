@@ -18,9 +18,10 @@ const unitsPx = 4.0 * ratio;
 
 /// The dot's and the worker's body's sizes (design 5a), in field units, and
 /// where the body's middle sits from the point the worker stands on: 1.35 body
-/// radii above it, so the ring at its feet shows.
+/// radii above it, so the ring at its feet shows. The body is the pickup reach
+/// the rules use, so the same numbers say both.
 const dotAcross = 2 * PuzzleGame.dotRadius;
-const bodyAcross = 1.3 * dotAcross;
+const bodyAcross = 2 * PuzzleGame.pickupReach;
 const standShare = 1.35;
 
 /// The crate's own colour, as the puzzle data gives it.
@@ -117,6 +118,17 @@ void main() {
       expect(2 * left, closeTo(drawn, 2), reason: "$name: the body's width");
       expect(2 * up, closeTo(drawn, 2), reason: "$name: the body's height");
     }
+  });
+
+  testWidgets("the body's radius is the pickup reach the rules use", (tester) async {
+    final (width, height, bytes) = await frame(tester, crateSnapshot(dot), look: sunny);
+    final middle = bodyMiddle(dot);
+    // Left: no arm crosses the body's middle there, and its shadow falls away.
+    final left = reach(bytes, width, height, middle, const Offset(-1, 0), argb(sunny.colors.board));
+    // Half the ink edge lies outside the body's radius: take it off, in image
+    // px, and the rest is the body's diameter in field units.
+    final radius = (2 * left - sunny.sizes.outlineWidth * ratio) / (2 * unitsPx);
+    expect(radius, closeTo(PuzzleGame.pickupReach, 0.15), reason: '$radius field units');
   });
 
   testWidgets("a worker's body is the player's colour", (tester) async {

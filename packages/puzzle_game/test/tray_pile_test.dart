@@ -124,16 +124,18 @@ void main() {
       expect(tapAGame(lower).map((e) => e.kind), contains(PuzzleEventKind.pickup));
       expect(lower.player('p1')!.held, 0);
 
-      // Inside neither but within reach of both: the nearest centre, as before.
+      // Inside neither but within reach of both, their outlines equally near
+      // (3 from each one's bottom side): the higher layer is taken (design 5a,
+      // device test 1).
       final neither = pile();
       const dot = Offset(41, 48);
       neither.player('p1')!.pos = dot;
       for (final i in [0, 1]) {
-        final near = PuzzleGame.dotRadius + neither.puzzle.pieces[i].shape.radius;
-        expect((dot - neither.pieces[i].pos).distance, lessThanOrEqualTo(near), reason: 'piece $i is in reach');
+        final d = neither.puzzle.pieces[i].shape.distanceTo(dot, neither.pieces[i].pos, 0);
+        expect(d, closeTo(3, 1e-9), reason: 'piece $i is in reach');
       }
       expect(tapAGame(neither).map((e) => e.kind), contains(PuzzleEventKind.pickup));
-      expect(neither.player('p1')!.held, 0, reason: 'the nearer centre wins');
+      expect(neither.player('p1')!.held, 1, reason: 'the higher layer');
 
       // A piece put down afterwards goes on top of every other.
       final dropped = pile();
@@ -154,42 +156,58 @@ void main() {
       ...m.update(0.016, const {'p1': none, 'p2': none}),
     ];
 
-    test('a piece still in the tray is picked up at 0.75 of its size; from its first pickup on it is full size', () {
-      final puzzle = onePiece();
-      final m = PuzzleMatch(puzzle, teams: const {'p1': PuzzleSide.left, 'p2': PuzzleSide.right}, random: Random(1));
-      m.update(0.016, const {'p1': none, 'p2': none}, numbers: const {'p1': 1, 'p2': 2});
-      final g = m.gameOf(PuzzleSide.left);
-      final p = g.player('p1')!;
-      final piece = g.pieces[0];
-      final shape = puzzle.pieces[0].shape;
-      // The split field draws a tray piece at 0.75 of its size, so its reach
-      // shrinks with it (pickupRange is 1).
-      final trayReach = PuzzleGame.dotRadius + shape.radius * g.field.trayScale;
-      final fullReach = PuzzleGame.dotRadius + shape.radius;
-      // Straight above the piece, where the small field has room.
-      Offset above(Offset from, double distance) => from - Offset(0, distance);
+    test(
+      'a tray piece is reached at the pickup reach from its drawn outline, and full size from its first pickup on',
+      () {
+        final puzzle = onePiece();
+        final m = PuzzleMatch(puzzle, teams: const {'p1': PuzzleSide.left, 'p2': PuzzleSide.right}, random: Random(1));
+        m.update(0.016, const {'p1': none, 'p2': none}, numbers: const {'p1': 1, 'p2': 2});
+        final g = m.gameOf(PuzzleSide.left);
+        final p = g.player('p1')!;
+        final piece = g.pieces[0];
+        final shape = puzzle.pieces[0].shape;
+        // The split field draws a tray piece at 0.75 of its size, and the reach
+        // is measured to that drawn outline (design 5a, device test 1), the same
+        // reach as for a full-size piece on the board.
+        final reach = PuzzleGame.pickupReach * g.settings.pickupRange;
+        final half = shape.bounds(0).height / 2;
+        final home = piece.pos;
+        // Straight above the piece, where the small field has room.
+        Offset above(double clearance) => home - Offset(0, clearance);
+        double outlineDistance(Offset at, double scale) => shape.distanceTo(at, home, 0, scale: scale);
 
-      // Half a unit past the smaller reach: nothing is picked up.
-      p.pos = above(piece.pos, trayReach + 0.5);
-      expect(tapP1(m).map((e) => e.event.kind), isNot(contains(PuzzleEventKind.pickup)));
-      expect(p.held, isNull);
+        // Half a unit past the reach from the smaller outline: nothing is taken.
+        final past = above(half * g.field.trayScale + reach + 0.5);
+        expect(outlineDistance(past, g.field.trayScale), closeTo(reach + 0.5, 1e-9));
+        p.pos = past;
+        expect(tapP1(m).map((e) => e.event.kind), isNot(contains(PuzzleEventKind.pickup)));
+        expect(p.held, isNull);
 
-      // Half a unit inside it: picked up, and full size from now on.
-      p.pos = above(piece.pos, trayReach - 0.5);
-      expect(tapP1(m).map((e) => e.event.kind), contains(PuzzleEventKind.pickup));
-      expect(p.held, 0);
-      expect(piece.state, PieceState.held);
+        // Half a unit inside it: picked up.
+        p.pos = above(half * g.field.trayScale + reach - 0.5);
+        expect(tapP1(m).map((e) => e.event.kind), contains(PuzzleEventKind.pickup));
+        expect(p.held, 0);
+        expect(piece.state, PieceState.held);
 
-      // Put it down off the board: it does not shrink back into the tray.
-      p.pos = const Offset(8, 80);
-      tapP1(m);
-      expect(piece.state, PieceState.loose);
+        // Put it down off the board: it does not shrink back into the tray.
+        p.pos = const Offset(8, 80);
+        tapP1(m);
+        expect(piece.state, PieceState.loose);
 
-      // A dot at the full reach, beyond the smaller tray reach, takes it.
-      expect(fullReach - 0.5, greaterThan(trayReach));
-      p.pos = above(piece.pos, fullReach - 0.5);
-      expect(tapP1(m).map((e) => e.event.kind), contains(PuzzleEventKind.pickup));
-      expect(p.held, 0);
-    });
+        // The spot that missed the smaller outline is inside the reach of the
+        // full-size one (full size from the first pickup on): the dot there
+        // takes the same piece when it lies at the same place, full size.
+        expect(outlineDistance(past, 1.0), closeTo(reach - half * (1 - g.field.trayScale) + 0.5, 1e-9));
+        expect(outlineDistance(past, 1.0), lessThan(reach));
+        final full = PuzzleGame(puzzle, field: g.field, angles: g.angles, random: Random(1));
+        full.update(0.016, const {'p1': none}, numbers: const {'p1': 1});
+        full.pieces[0]
+          ..pos = home
+          ..state = PieceState.loose;
+        full.player('p1')!.pos = past;
+        expect(tapAGame(full).map((e) => e.kind), contains(PuzzleEventKind.pickup));
+        expect(full.player('p1')!.held, 0);
+      },
+    );
   });
 }

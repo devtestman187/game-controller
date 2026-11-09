@@ -85,6 +85,12 @@ class PuzzleGame {
   /// The dot's radius.
   static const dotRadius = 2.6;
 
+  /// The worker's body radius, which the painter draws, and how many of them
+  /// its body stands above its grab ring. A piece is reached within
+  /// [pickupReach] of its outline, from the ring or the body (device test 1).
+  static const pickupReach = dotRadius * 1.3;
+  static const workerStandShare = 1.35;
+
   /// Pushed fully sideways, the right stick turns a held piece this many
   /// times as fast as X or Y.
   static const stickTurnFactor = 1.5;

@@ -27,7 +27,8 @@ final class PuzzleSettings {
   /// further, the faster.
   final double stickDeadZone;
 
-  /// In piece radii from the dot's edge.
+  /// How far beyond a piece's outline the dot still picks it up, in times the
+  /// pickup reach ([PuzzleGame.pickupReach], the worker's body radius).
   final double pickupRange;
 
   /// A big piece carried alone moves at this much of normal speed (M11).

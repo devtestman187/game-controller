@@ -63,6 +63,9 @@ void main() {
     expect(HostText.modeRow('sticks'), 'Sticks');
     expect(HostText.settingValue('angleToleranceDeg', 16), '±16°');
     expect(HostText.settingValue('timeLimitS', 90), '1:30');
+    // The reach is the worker's body against the piece's edge since device
+    // test 1, so the setting reads as a share of it, not of a piece's radius.
+    expect(HostText.settingValue('pickupRange', 1.25), "125% of the worker's reach");
     expect(HostText.lessOf('Angle tolerance'), 'Less Angle tolerance');
     expect(HostText.autoLine(7, 19), 'Auto: Sunny from 7:00 to 19:00, Night otherwise');
   });

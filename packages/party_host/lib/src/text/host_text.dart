@@ -228,7 +228,7 @@ abstract final class HostText {
     'positionTolerance' => '${(v * 100).round()}% of the piece',
     'rotationSpeedDegPerS' => '${v.round()}° a second',
     'stickDeadZone' => '${(v * 100).round()}% push',
-    'pickupRange' => '${v.toStringAsFixed(2)} piece radius',
+    'pickupRange' => "${(v * 100).round()}% of the worker's reach",
     'soloBigSpeed' => '${(v * 100).round()}% of normal',
     'timeLimitS' => '${v ~/ 60}:${(v.round() % 60).toString().padLeft(2, '0')}',
     _ => '${v % 1 == 0 ? v.round() : v.toStringAsFixed(1)} s',

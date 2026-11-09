@@ -1,16 +1,12 @@
 part of 'view.dart';
 
-/// The worker's body against today's dot (design 5a: 1.3 times), as a share of
-/// the dot's radius.
-const _bodyShare = 1.3;
-
 /// The smallest a worker's body is drawn across on a phone, in millimetres
 /// (design 5a), so its face reads at arm's length.
 const _minBodyMm = 7.0;
 
 /// Where the body's middle sits from the point it stands on, in body radii, so
 /// the ink ring of an empty-handed worker's grab point shows under its feet.
-const _standShare = 1.35;
+const _standShare = PuzzleGame.workerStandShare;
 
 /// How far a worker's ink can reach from its body's middle, in body radii: as
 /// tall as the tallest accessory (design 5b's cap, 1.9) stretched by the
@@ -56,11 +52,13 @@ const _handLighten = 0.35;
 const _sweatShare = 0.14;
 const _sweatAtShare = Offset(0.62, -0.72);
 
-/// The worker's body radius in the painter's units: 1.3 times the dot, or, on a
-/// phone that knows its [pxPerMm], as big as [_minBodyMm] across in that
-/// screen's pixels, whichever is bigger.
+/// The worker's body radius in the painter's units: [PuzzleGame.pickupReach]
+/// (design 5a: 1.3 times the dot), which the rules reach for a piece with, so
+/// the drawn body and the reach agree; or, on a phone that knows its
+/// [pxPerMm], as big as [_minBodyMm] across in that screen's pixels, whichever
+/// is bigger.
 double _workerRadius(double px, double? pxPerMm) {
-  final body = PuzzleGame.dotRadius * _bodyShare;
+  final body = PuzzleGame.pickupReach;
   if (pxPerMm == null || px <= 0) return body;
   return max(body, _minBodyMm / 2 * pxPerMm / px);
 }

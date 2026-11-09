@@ -1,36 +1,67 @@
 part of 'game.dart';
 
 extension _PuzzleDrop on PuzzleGame {
+  /// The scale [piece] is drawn at: a piece still in the tray is smaller on
+  /// the split screen, so it is drawn, packed and reached at
+  /// [PuzzleField.trayScale] of its size.
+  double _drawnScale(PieceRuntime piece) => piece.state == PieceState.tray ? field.trayScale : 1.0;
+
+  /// How far the worker at [at] is from [piece]'s outline: the pickup reach is
+  /// measured to it, the same for every shape (design 5a, device test 1), from
+  /// the grab point or from the middle of the body drawn standing above it,
+  /// whichever is nearer, so the body a player steers counts too.
+  double _outlineDistance(PieceRuntime piece, Offset at) {
+    final shape = puzzle.pieces[piece.index].shape;
+    final scale = _drawnScale(piece);
+    final body = at - const Offset(0, PuzzleGame.workerStandShare * PuzzleGame.pickupReach);
+    return min(
+      shape.distanceTo(at, piece.pos, piece.angle, scale: scale),
+      shape.distanceTo(body, piece.pos, piece.angle, scale: scale),
+    );
+  }
+
+  /// Whether the dot at [at] stands in [piece]'s drawn shape: the piece under
+  /// the dot is taken before a piece near it.
+  bool _isIn(PieceRuntime piece, Offset at) {
+    final shape = puzzle.pieces[piece.index].shape;
+    return shape.contains(at, piece.pos, piece.angle, scale: _drawnScale(piece));
+  }
+
+  /// The piece a dot at [at] takes, of those in [reachable]: the top piece it
+  /// stands in, otherwise the one whose outline is nearest it; ties go to the
+  /// higher layer (design 5a, device test 1).
+  PieceRuntime? _bestInReach(Offset at, List<({PieceRuntime piece, double distance})> reachable) {
+    PieceRuntime? best;
+    for (final r in reachable) {
+      if (!_isIn(r.piece, at)) continue;
+      if (best == null || r.piece.layer > best.layer) best = r.piece;
+    }
+    if (best != null) return best;
+    ({PieceRuntime piece, double distance})? nearest;
+    for (final r in reachable) {
+      final nearer =
+          nearest == null ||
+          r.distance < nearest.distance ||
+          (r.distance == nearest.distance && r.piece.layer > nearest.piece.layer);
+      if (nearer) nearest = r;
+    }
+    return nearest?.piece;
+  }
+
   void _pickUp(PuzzlePlayer p, List<PuzzleEvent> events) {
-    final reachable = <PieceRuntime>[];
+    // Every shape is reached the same way: from the worker out to the piece's
+    // outline (design 5a, device test 1).
+    final reach = PuzzleGame.pickupReach * settings.pickupRange;
+    final reachable = <({PieceRuntime piece, double distance})>[];
     for (final piece in pieces) {
       if (piece.state == PieceState.locked) continue;
       // A held piece can't be taken, but a teammate can take the other end
       // of a big one.
       if (piece.state == PieceState.held && !(_teamCarried(piece) && piece.carriers.length == 1)) continue;
-      // A piece still in the tray is smaller on the split screen, so it is
-      // drawn, packed and reached at [PuzzleField.trayScale] of its size.
-      final scale = piece.state == PieceState.tray ? field.trayScale : 1.0;
-      final reach = PuzzleGame.dotRadius + puzzle.pieces[piece.index].shape.radius * scale * settings.pickupRange;
-      if ((piece.pos - p.pos).distance <= reach) reachable.add(piece);
+      final distance = _outlineDistance(piece, p.pos);
+      if (distance <= reach) reachable.add((piece: piece, distance: distance));
     }
-    // The top piece under the dot if there is one, otherwise the nearest.
-    PieceRuntime? best;
-    for (final piece in reachable) {
-      final scale = piece.state == PieceState.tray ? field.trayScale : 1.0;
-      if (!puzzle.pieces[piece.index].shape.contains(p.pos, piece.pos, piece.angle, scale: scale)) continue;
-      if (best == null || piece.layer > best.layer) best = piece;
-    }
-    if (best == null) {
-      var bestDistance = double.infinity;
-      for (final piece in reachable) {
-        final d = (piece.pos - p.pos).distance;
-        if (d < bestDistance) {
-          best = piece;
-          bestDistance = d;
-        }
-      }
-    }
+    final best = _bestInReach(p.pos, reachable);
     if (best == null) return;
     final joining = best.state == PieceState.held;
     best
