@@ -10,20 +10,14 @@ import 'arena_painter.dart';
 import 'arena_roster.dart';
 import 'arena_snapshot.dart';
 
-/// The look an arena drawn with no [ToyLookScope] above it draws in: Sunny, on
-/// a phone, with the effects on. The apps put a scope above every screen;
-/// `game_kit`'s frame tests mount a module's viewer on its own, and a board
-/// drawn with no look at all would throw.
-final defaultArenaLook = ToyLook.build(palette: ToyPalette.sunny, tv: false);
-
 /// The arena as a view draws it: the counters bar over the field. The TV and a
 /// phone draw the same box from the same snapshot and roster; on a short box
 /// the bar folds to one line so the field keeps the room (m12-phone-layout
 /// §4).
 ///
-/// The whole board draws in the [ToyLookScope]'s look — or in
-/// [defaultArenaLook] when it is drawn alone — because the bar's pill and the
-/// winner's card read the scope themselves.
+/// The whole board draws in the [ToyLookScope]'s look, because the bar's pill
+/// and the winner's card read the scope themselves, and a board drawn with no
+/// scope above it throws, as the puzzle's views do (M13 9a review).
 class ArenaBoard extends StatelessWidget {
   const ArenaBoard({super.key, required this.snapshot, required this.roster, this.onResize});
 
@@ -36,7 +30,7 @@ class ArenaBoard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ToyLookScope(
-    look: context.dependOnInheritedWidgetOfExactType<ToyLookScope>()?.look ?? defaultArenaLook,
+    look: ToyLookScope.of(context),
     child: LayoutBuilder(
       builder: (context, constraints) => Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,

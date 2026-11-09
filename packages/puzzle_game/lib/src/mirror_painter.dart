@@ -83,9 +83,9 @@ class MirrorPainter {
       RRect.fromRectAndRadius(board, Radius.circular(ToySizes.cardCorner / px)),
       Paint()..color = _colours.board,
     );
-    _targets(canvas);
+    _targets(canvas, px);
     _placed(canvas, style);
-    _players(canvas, style);
+    _players(canvas, style, px);
     canvas.restore();
     _frame(canvas);
   }
@@ -109,8 +109,9 @@ class MirrorPainter {
   }
 
   /// Every outline of their picture, faint, so the mirror shows the picture
-  /// they're building even where nothing is placed yet.
-  void _targets(Canvas canvas) {
+  /// they're building even where nothing is placed yet. [px] is the canvas's
+  /// scale, read once by [paint].
+  void _targets(Canvas canvas, double px) {
     for (final spec in puzzle.pieces) {
       final path = _path(spec.shape, field.origin + spec.target, spec.targetAngle);
       final colour = puzzle.level.colouredOutlines ? Color(spec.color) : _colours.targetNeutral;
@@ -120,7 +121,7 @@ class MirrorPainter {
           path,
           Paint()
             ..style = PaintingStyle.stroke
-            ..strokeWidth = _targetPx / _pxPerUnit(canvas)
+            ..strokeWidth = _targetPx / px
             ..color = colour.withValues(alpha: _targetLine),
         );
     }
@@ -153,7 +154,7 @@ class MirrorPainter {
   /// piece the mirror draws (code-health N3), so it would hide the piece's
   /// whole fill if it were drawn over it, and the piece's ink edge and the
   /// dot's colour say whose it is anyway.
-  void _players(Canvas canvas, ToyShapeStyle style) {
+  void _players(Canvas canvas, ToyShapeStyle style, double px) {
     final r = mirrorDotRadius(puzzle);
     for (final p in theirs.players) {
       final at = Offset(p.x, p.y);
@@ -168,7 +169,7 @@ class MirrorPainter {
           r,
           Paint()
             ..style = PaintingStyle.stroke
-            ..strokeWidth = _targetPx / _pxPerUnit(canvas)
+            ..strokeWidth = _targetPx / px
             ..color = _colours.paper,
         );
       final held = p.held;

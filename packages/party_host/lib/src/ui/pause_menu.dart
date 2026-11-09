@@ -259,6 +259,8 @@ class _PausableState extends ConsumerState<Pausable> {
   /// rule 2).
   void _noteHostAway() {
     final away = _away.value;
+    // The countdown stops at once with the round, as the music does, not a tick later (M13 9 review).
+    if (away) _stopCountdown();
     if (_running) {
       _log(away ? 'Round paused: the host went away' : 'Round resumed: the host is back');
     } else {

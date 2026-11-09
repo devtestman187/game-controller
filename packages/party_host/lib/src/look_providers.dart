@@ -68,7 +68,8 @@ final lookClockProvider = Provider<DateTime Function()>((ref) => DateTime.now);
 ///
 /// It is worked out again at the set moments only — at start, when the Look
 /// setting changes, and when a page route is pushed or popped
-/// ([ToyLookRouteObserver]) — and never in the middle of a round.
+/// ([ToyLookRouteObserver]) — and never in the middle of a round
+/// ([roundHoldsProvider]).
 final lookPaletteProvider = NotifierProvider<LookPaletteNotifier, ToyPalette>(LookPaletteNotifier.new);
 
 /// Keeps the palette a screen draws, worked out at the set moments.
@@ -76,14 +77,48 @@ class LookPaletteNotifier extends Notifier<ToyPalette> {
   @override
   ToyPalette build() {
     final choice = ref.watch(lookSettingsProvider).choice;
+    // A Look change during a round (Settings opened over it) is saved, and
+    // shows from the first page after the round (design D1).
+    final current = stateOrNull;
+    if (current != null && ref.read(roundHoldsProvider).count > 0) return current;
     return paletteFor(choice, ref.read(lookClockProvider)());
   }
 
   /// Works the palette out again from the Look setting and the clock, for a
-  /// new page or a changed setting. A round never calls this.
+  /// new page or a changed setting. It does nothing while a round is on
+  /// ([roundHoldsProvider]): the palette never changes mid-round (design D1),
+  /// so a page pushed over a round keeps the palette the round started in.
   void refresh() {
+    if (ref.read(roundHoldsProvider).count > 0) return;
     final palette = paletteFor(ref.read(lookSettingsProvider).choice, ref.read(lookClockProvider)());
     if (palette != state) state = palette;
+  }
+}
+
+/// The rounds on this device (design D1: the palette never changes mid-round):
+/// a round's screen counts one while it is mounted ([RoundPaletteHold]), and a
+/// joined phone counts its view or its pad over a game.
+///
+/// A plain object rather than a provider's state, so a widget can hold it from
+/// its life-cycle, where Riverpod forbids changing a provider (as [LobbyMusic]
+/// does with its count). Only [LookPaletteNotifier.refresh] reads it.
+final roundHoldsProvider = Provider<RoundHolds>((ref) => RoundHolds());
+
+/// Counts the rounds on: [LookPaletteNotifier.refresh] leaves the palette alone
+/// while one is.
+class RoundHolds {
+  int _count = 0;
+
+  /// How many rounds are on now.
+  int get count => _count;
+
+  /// A round opened.
+  void hold() => _count++;
+
+  /// A round went: a hold released more often than taken is a waste, not an
+  /// error, so it stops at none.
+  void release() {
+    if (_count > 0) _count--;
   }
 }
 

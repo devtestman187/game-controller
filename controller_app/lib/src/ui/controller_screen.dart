@@ -189,12 +189,12 @@ class _ControllerScreenState extends ConsumerState<ControllerScreen> with Widget
     if (widget.controls) ref.watch(phoneMetricsProvider);
     _followTheGame(context);
 
-    // The pad and the joined view stand on a still sky (design section 6): a
-    // drifting background under a thumb only costs the phone its battery.
-    return party.ToyStillSky(
-      child: Scaffold(
-        body: SafeArea(child: LayoutBuilder(builder: (context, window) => _body(window, mode))),
-      ),
+    // Only the pad and the joined view stand on a still sky (design section 6,
+    // M13 9 review): a drifting background under a thumb only costs the phone
+    // its battery, while the Connect screen, the host's picker, join screens
+    // and stats are menus and drift as the TV's do.
+    return Scaffold(
+      body: SafeArea(child: LayoutBuilder(builder: (context, window) => _body(window, mode))),
     );
   }
 
@@ -209,7 +209,7 @@ class _ControllerScreenState extends ConsumerState<ControllerScreen> with Widget
         // The game fills the whole safe area, behind the top bar (m12 §5,
         // phone layout §0.7): the bar paints no background of its own, so the
         // game shows through it.
-        Positioned.fill(child: widget.background ?? const JoinedView()),
+        Positioned.fill(child: widget.background ?? const party.ToyStillSky(child: JoinedView())),
         Positioned.fill(
           child: Column(
             children: [

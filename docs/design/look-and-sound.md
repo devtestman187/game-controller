@@ -153,6 +153,9 @@ Decided at step 6 (Claude, Nov 8, 2026):
 - Both programs are drawn once offscreen at start (a warm-up), so the driver compiles them behind the splash.
 - What stays flat: menu badges and buttons, because text sits on them and the shade band would take ink-on-colour below 4.5:1 (D12); and the Arena's walls and goal pad, which are flat toy plates.
 
+Decided at step 9 (Claude, Nov 9, 2026):
+- Moments stay on the view's own clock: a boing or a sparkle under 0.5 s ages from the view's `Stopwatch`, so it finishes after the round's clock stops (the last piece, time up), and anything longer — M14's pop-ups included — ages from the snapshot the host sent, so two screens fed the same frame show it at the same moment.
+
 Fallback, and how the look is the same without the shader: the body is a `LinearGradient` from top-left to bottom-right with hard stops (highlight to 30%, base to 75%, shade after), and the glint is a small white oval. In the mock-ups, "effects on" and "effects off" can be compared.
 
 What the research found (docs/briefs/m13/research-flutter-shaders-report.md, the flash worker's first web research job, checked by Claude against docs.flutter.dev):

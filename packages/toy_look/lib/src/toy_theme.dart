@@ -26,6 +26,7 @@ ThemeData toyTheme(ToyLook look) {
     scaffoldBackgroundColor: Colors.transparent,
     canvasColor: colors.background,
     textTheme: _textTheme(look),
+    focusColor: _focusWash(look),
     // Every page carries its own sky, so a page sliding over another never
     // shows the one below through it (section 5).
     pageTransitionsTheme: _pageTransitions(),
@@ -48,9 +49,10 @@ ThemeData toyTheme(ToyLook look) {
     sliderTheme: SliderThemeData(
       activeTrackColor: colors.good,
       thumbColor: colors.good,
-      // Ink at the shadow's strength: a dark track without competing with the
-      // thumb's good.
+      // Ink at the shadow's strength: a dark track without competing with the thumb's good.
       inactiveTrackColor: colors.ink.withValues(alpha: toyShadowAlpha),
+      // A slider's focus halo is its overlay, not the theme's focusColor.
+      overlayColor: _focusWash(look),
     ),
     appBarTheme: AppBarTheme(
       backgroundColor: Colors.transparent,
@@ -75,6 +77,12 @@ ThemeData toyTheme(ToyLook look) {
     ),
   );
 }
+
+/// The look's focus token at the shadow's strength, for the Material controls
+/// the settings, stats and dialog screens use (a choice's segment, a switch, a
+/// slider, the back arrow): strong enough to read from the couch, where
+/// Material's own 12 % black was a grey haze (M13 9 review).
+Color _focusWash(ToyLook look) => look.colors.focus.withValues(alpha: toyShadowAlpha);
 
 /// Every page carries its own sky, on every platform, so a page sliding over
 /// another never shows the one below through it (section 5).

@@ -64,6 +64,18 @@ void main() {
     expect(plays(), 2, reason: 'the beat starts again from the top, and its countdown with it');
   });
 
+  testWidgets('a host-away hold stops the countdown at once, with no beat tick in between', (tester) async {
+    final appAway = ValueNotifier(false);
+    await startBeat(tester, appAway: appAway);
+    expect(plays(), 1);
+    expect(sounds.stopped, isNot(contains(SoundKey.countdown.eventName)));
+
+    // The away signal alone stops it: the beat's tick is 16 ms away, and no
+    // time passes here (M13 9 review).
+    appAway.value = true;
+    expect(sounds.stopped, contains(SoundKey.countdown.eventName), reason: 'no "go" over a held round');
+  });
+
   testWidgets('a round with no beat (the TV\'s) plays no countdown', (tester) async {
     final fake = await pumpHost(tester, screen: const StubHome());
     fake.gameHost.hasViewers = true;

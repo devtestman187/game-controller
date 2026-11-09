@@ -74,6 +74,33 @@ void main() {
     });
   }
 
+  testWidgets('the home fits a 1280 x 720 TV, with its tiles in view', (tester) async {
+    // A 720p box, the other size a TV reports (M13 9 review): the header keeps
+    // to two rows, the title is whole and both controllers are in view without
+    // scrolling.
+    const screen = Size(1280, 720);
+    await pumpApp(tester, size: screen);
+    expect(tester.takeException(), isNull, reason: 'nothing overflows at 720p');
+
+    final title = tester.renderObject<RenderParagraph>(find.text(TvText.name));
+    final words = TextPainter(text: title.text, textDirection: TextDirection.ltr, maxLines: 1)..layout();
+    expect(words.width, lessThanOrEqualTo(title.size.width + 0.5), reason: 'the title fits its box');
+
+    final view = Offset.zero & screen;
+    for (final name in sampleNames) {
+      final tile = find.text(name).hitTestable();
+      expect(tile, findsOneWidget, reason: '$name is in view, not scrolled to');
+      final rect = tester.getRect(tile);
+      expect(view.contains(rect.topLeft) && view.contains(rect.bottomRight), isTrue, reason: '$name is on the screen');
+    }
+
+    final buttons = find.descendant(of: find.byType(Header), matching: find.byType(HostButton));
+    final tops = <double>{
+      for (var i = 0; i < buttons.evaluate().length; i++) tester.getTopLeft(buttons.at(i)).dy.roundToDouble(),
+    };
+    expect(tops.length, lessThanOrEqualTo(2), reason: 'the header\'s buttons take at most two rows');
+  });
+
   testWidgets('the narrow home scrolls and fits at 700 x 500', (tester) async {
     await pumpApp(tester, size: const Size(700, 500));
     expect(tester.takeException(), isNull);

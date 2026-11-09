@@ -54,6 +54,7 @@ Future<TestApp> pumpApp(
   void Function()? click,
   List<Override> extra = const [],
   bool stillSky = true,
+  DateTime Function()? clock,
 }) async {
   // A landscape phone (iPhone 15-ish) unless the test picks another screen.
   // [padding] is its safe area: a notch, the home indicator.
@@ -81,6 +82,7 @@ Future<TestApp> pumpApp(
     click: click,
     extra: extra,
     stillSky: stillSky,
+    clock: clock,
   );
   await settle(tester);
   return app;
@@ -89,7 +91,7 @@ Future<TestApp> pumpApp(
 /// Pumps a widget of its own with the app's providers faked as [pumpApp]
 /// fakes them: for a test that gives a widget a child the app doesn't, such
 /// as the game behind [ControlsLayer]. It doesn't settle. [stillSky] is
-/// [pumpApp]'s.
+/// [pumpApp]'s, and [clock] is the device's clock Auto's palette reads.
 Future<void> pumpFaked(
   WidgetTester tester,
   Widget child, {
@@ -101,6 +103,7 @@ Future<void> pumpFaked(
   void Function()? click,
   List<Override> extra = const [],
   bool stillSky = true,
+  DateTime Function()? clock,
 }) => tester.pumpWidget(
   ProviderScope(
     overrides: [
@@ -109,8 +112,9 @@ Future<void> pumpFaked(
       // settings, as the app's root scope does while it hosts (m13 §3a).
       party.lookPrefsProvider.overrideWith((ref) => ref.watch(prefsProvider)),
       // Auto's palette at midday, so no test turns Night after 19:00 (Claude's
-      // 4a review: the TV's tests did).
-      party.lookClockProvider.overrideWithValue(() => DateTime(2026, 11, 8, 12)),
+      // 4a review: the TV's tests did). A test about the palette passes its
+      // own clock, [clock], rather than overriding this one twice.
+      party.lookClockProvider.overrideWithValue(clock ?? () => DateTime(2026, 11, 8, 12)),
       // The TV client: while this phone hosts, the screens use its own
       // player's client instead (m12 §3).
       tvClientProvider.overrideWithValue(app.client),

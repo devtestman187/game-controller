@@ -85,6 +85,61 @@ void main() {
     expect(container.read(lookPaletteProvider), ToyPalette.night);
   });
 
+  testWidgets('a round freezes the palette, and a page pushed after it turns Night', (tester) async {
+    var now = DateTime(2026, 11, 8, 18, 59);
+    await openRace(tester, clock: () => now);
+    final container = ProviderScope.containerOf(tester.element(find.byType(PuzzleScreen)));
+    // The host's games navigator, the one the round's pages are pushed on: the
+    // home under it is off stage now, so the round's screen is the way to it.
+    final navigator = Navigator.of(tester.element(find.byType(PuzzleScreen)));
+    expect(container.read(lookPaletteProvider), ToyPalette.sunny);
+
+    // 19:01, with a page pushed over the round: the palette stays where the
+    // round started it (design D1, M13 9 review).
+    now = DateTime(2026, 11, 8, 19, 1);
+    navigator.push(MaterialPageRoute<void>(builder: (_) => const Scaffold(body: Text('Settings'))));
+    await navigated(tester);
+    expect(find.text('Settings'), findsOneWidget);
+    expect(container.read(lookPaletteProvider), ToyPalette.sunny, reason: 'a round is on');
+    navigator.pop();
+    await navigated(tester);
+    expect(container.read(lookPaletteProvider), ToyPalette.sunny, reason: 'the round goes on');
+
+    // The round ends and Change teams brings back the join screen. No round is
+    // on any more, so the next page pushed works the palette out again.
+    lockEveryPiece(tester);
+    await endRound(tester);
+    await tester.tap(find.byKey(const Key('changeTeams')));
+    await navigated(tester);
+    expect(find.byType(JoinScreen), findsOneWidget);
+    navigator.push(MaterialPageRoute<void>(builder: (_) => const Scaffold(body: Text('Settings'))));
+    await navigated(tester);
+    expect(container.read(lookPaletteProvider), ToyPalette.night, reason: 'no round is on now');
+  });
+
+  // Claude's step 9 review: Settings opened over a round could change the Look
+  // setting itself, and the palette followed at once. The setting is saved, and
+  // it shows from the first page after the round.
+  testWidgets('a Look change during a round waits for the round to end', (tester) async {
+    await openRace(tester, clock: () => DateTime(2026, 11, 8, 12));
+    final container = ProviderScope.containerOf(tester.element(find.byType(PuzzleScreen)));
+    final navigator = Navigator.of(tester.element(find.byType(PuzzleScreen)));
+    expect(container.read(lookPaletteProvider), ToyPalette.sunny);
+
+    container.read(lookSettingsProvider.notifier).setChoice(LookChoice.night);
+    await tester.pump();
+    expect(container.read(lookSettingsProvider).choice, LookChoice.night, reason: 'the setting is saved');
+    expect(container.read(lookPaletteProvider), ToyPalette.sunny, reason: 'a round is on');
+
+    lockEveryPiece(tester);
+    await endRound(tester);
+    await tester.tap(find.byKey(const Key('changeTeams')));
+    await navigated(tester);
+    navigator.push(MaterialPageRoute<void>(builder: (_) => const Scaffold(body: Text('Settings'))));
+    await navigated(tester);
+    expect(container.read(lookPaletteProvider), ToyPalette.night, reason: 'the first page after the round');
+  });
+
   testWidgets('a dialog is not a page route: opening one leaves the palette alone', (tester) async {
     var now = DateTime(2026, 11, 8, 18, 59);
     await pumpHost(tester, screen: const _DialogHome(), clock: () => now);

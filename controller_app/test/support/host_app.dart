@@ -39,7 +39,8 @@ Future<void> loadPuzzles() async {
 /// fake advertising is recorded on, [sounds] the fake the sounds are counted
 /// on, [awake] the fake the screen-on calls are recorded on, [saved] the
 /// settings saved before the launch; [extra] overrides more, after these, so a
-/// test can replace the host's builder.
+/// test can replace the host's builder. [stillSky] is [pumpApp]'s: a test about
+/// the drift passes false.
 Future<TestApp> pumpHostApp(
   WidgetTester tester, {
   bool tablet = false,
@@ -49,6 +50,7 @@ Future<TestApp> pumpHostApp(
   party_test.FakeSoundPlayer? sounds,
   party_test.FakeScreenAwake? awake,
   List<Override> extra = const [],
+  bool stillSky = true,
 }) async {
   final dir = Directory.systemTemp.createTempSync('thumb-party-host-');
   addTearDown(() => dir.deleteSync(recursive: true));
@@ -72,6 +74,7 @@ Future<TestApp> pumpHostApp(
       party.puzzleLibraryProvider.overrideWith((ref) => puzzles),
       ...extra,
     ],
+    stillSky: stillSky,
   );
 }
 

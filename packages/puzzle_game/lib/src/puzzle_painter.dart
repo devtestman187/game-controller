@@ -206,31 +206,22 @@ class PuzzlePainter extends CustomPainter {
     }
     canvas.drawPath(path, Paint()..color = fill.withValues(alpha: ready ? _targetReadyFill : _targetFill));
     final width = look.sizes.outlineWidth / scale * (ready || hint ? _targetEdgeShare : 1);
-    canvas.drawPath(
-      ready || hint ? path : _dashed(path, _dashPx / scale, _dashGapPx / scale),
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = width
-        ..strokeJoin = StrokeJoin.round
-        ..strokeCap = StrokeCap.round
-        ..color = hint
-            ? _colours.focus
-            : ready
-            ? _colours.good
-            : _colours.ink,
-    );
-  }
-
-  /// [path] cut into dashes of [dash] with [gap] of air after each, in the
-  /// painter's units.
-  Path _dashed(Path path, double dash, double gap) {
-    final out = Path();
-    for (final metric in path.computeMetrics()) {
-      for (var at = 0.0; at < metric.length; at += dash + gap) {
-        out.addPath(metric.extractPath(at, min(at + dash, metric.length)), Offset.zero);
-      }
+    final edge = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = width
+      ..strokeJoin = StrokeJoin.round
+      ..strokeCap = StrokeCap.round
+      ..color = hint
+          ? _colours.focus
+          : ready
+          ? _colours.good
+          : _colours.ink;
+    if (ready || hint) {
+      canvas.drawPath(path, edge);
+    } else {
+      // The look's own dashed edge, in the painter's units.
+      paintDashedEdge(canvas, path, edge, on: _dashPx / scale, off: _dashGapPx / scale);
     }
-    return out;
   }
 
   /// The outline a locked piece sits in: the nearest of its kind.
@@ -337,8 +328,6 @@ class PuzzlePainter extends CustomPainter {
     return false;
   }
 
-  /// The ✓ and ✗ marks, in `good` and `bad` with an ink edge. A fresh ✓ grows
-  /// and fades over its sparkle.
   /// A right drop's ✓ or a wrong one's ✗, drawn as strokes in [colour] over a
   /// wider ink stroke, so it never depends on a font having the glyph (Claude's
   /// 4a review: the look's fonts have neither, and a TV box may have no symbol

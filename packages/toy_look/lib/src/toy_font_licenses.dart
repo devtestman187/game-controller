@@ -13,12 +13,11 @@ const _fontLicenses = [
 /// fonts.
 ///
 /// The apps call it once at start, so the licences page has both fonts when a
-/// player opens it. [load] is how the text is read: [rootBundle.loadString]
-/// unless a test hands in its own reader.
-Future<void> registerToyFontLicenses({Future<String> Function(String key)? load}) async {
-  final read = load ?? rootBundle.loadString;
+/// player opens it. The texts are read from the bundle the package ships them
+/// in, so a missing asset fails the test that registers them (M13 9 review).
+Future<void> registerToyFontLicenses() async {
   for (final license in _fontLicenses) {
-    final text = await read(license.asset);
+    final text = await rootBundle.loadString(license.asset);
     LicenseRegistry.addLicense(() => Stream.value(LicenseEntryWithLineBreaks([license.family], text)));
   }
 }

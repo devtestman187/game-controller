@@ -2,7 +2,6 @@ import 'dart:math' show min, pi;
 import 'dart:ui' show FragmentProgram;
 
 import 'package:flutter/material.dart';
-import 'package:protocol/protocol.dart' show playerColors;
 import 'package:toy_look/toy_look.dart';
 
 /// The shapes a row always shows: one in each of four player colours.
@@ -74,7 +73,10 @@ Path spikeShape(int index, double size) => switch (index % _basicCount) {
 /// With [shade] the bodies are the shader's, without it the Canvas fallback's:
 /// two painters of the same row are the two looks side by side.
 class ShaderSpikePainter extends CustomPainter {
-  const ShaderSpikePainter({required this.shade, required this.turn, required this.stress});
+  const ShaderSpikePainter({required this.look, required this.shade, required this.turn, required this.stress});
+
+  /// The look the shapes take their player colours from (M13 9a review).
+  final ToyLook look;
 
   final FragmentProgram? shade;
 
@@ -114,7 +116,8 @@ class ShaderSpikePainter extends CustomPainter {
     toyShape(
       canvas,
       spikeShape(index, size),
-      Color(playerColors[index % playerColors.length]),
+      // Player colours wrap round by themselves, so any index has one.
+      look.colors.player(index + 1),
       const ToyShapeStyle(),
       shade: shade,
     );
@@ -123,5 +126,8 @@ class ShaderSpikePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(ShaderSpikePainter oldDelegate) =>
-      oldDelegate.shade != shade || oldDelegate.turn != turn || oldDelegate.stress != stress;
+      oldDelegate.look != look ||
+      oldDelegate.shade != shade ||
+      oldDelegate.turn != turn ||
+      oldDelegate.stress != stress;
 }

@@ -76,6 +76,8 @@ So a party night is a new `party_host` state (a provider beside `puzzleSettingsP
 
 `SoundPlayer` does load / restart / play / dispose, starts a repeat over instead of layering, and has no loop, volume or mute (`sound.dart:32-56,144-156`). Ten keys exist, each one file in `assets/audio` (`assets/lib/asset_manifest.dart:16-26,42`). M13 step 7 adds `lobby`, `countdown`, `playerJoined`, `playLoop`/`stopLoop`, volume and mute, and the settings rows (`docs/design/look-and-sound.md:155-160`; not started yet, `m13/STATUS.md:28`).
 
+A scoreboard between rounds needs a lobby-music hold of its own: M13 stops the music while a `RoundHold` stands (`packages/party_host/lib/src/ui/lobby_music.dart`), and a scoreboard shown over no round would let the music play under it unless its screen opens a hold too.
+
 The meow, the points chime and the awards fanfare are three new `SoundKey`s with files and CREDITS rows. A game asks for them by name through `GameHost.playSound` (`packages/connection/lib/src/game_host.dart:60`); the host plays it (`providers.dart:222-226`) and it rides the next frame's `snd` to the phones (`game_session.dart:123-128`; `protocol.md:248`). Note `snd` only goes to viewers (`game_session.dart:337-342`), so a phone **not** drawing the game hears nothing; the haptic is the per-player channel.
 
 ## 9. Overlap with the PRD's current M14 (PRD-v2.md:713-725)

@@ -130,16 +130,12 @@ class _PlayerRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final look = ToyLookScope.of(context);
-    final colours = look.colors;
+    final colours = ToyLookScope.of(context).colors;
     final text = Theme.of(context).textTheme;
-    final p = view;
-    final title = text.titleSmall?.copyWith(color: colours.ink);
     final small = (oneLine ? text.bodySmall : text.bodyMedium)?.copyWith(
       fontFeatures: const [FontFeature.tabularFigures()],
       color: colours.ink,
     );
-    final ready = p.cooldown == 0;
     return Padding(
       padding: EdgeInsets.only(top: oneLine ? 0 : ArenaHud._runGap),
       child: Wrap(
@@ -148,54 +144,64 @@ class _PlayerRow extends StatelessWidget {
         runSpacing: ArenaHud._counterRunGap,
         crossAxisAlignment: WrapCrossAlignment.center,
         children: [
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.circle,
-                size: oneLine ? ArenaHud._oneLineDot : ArenaHud._dot,
-                color: colours.player(player.number),
-              ),
-              SizedBox(width: oneLine ? ArenaHud._oneLineDotGap : ArenaHud._dotGap),
-              Text('P${player.number} ${player.name}', style: oneLine ? small : title),
-            ],
-          ),
-          Text('Wins ${p.wins}', key: Key('wins-$id'), style: small),
-          Text('Hits ${p.hits}', key: Key('hits-$id'), style: small),
+          _name(colours, text, small),
+          Text('Wins ${view.wins}', key: Key('wins-$id'), style: small),
+          Text('Hits ${view.hits}', key: Key('hits-$id'), style: small),
           Text(
-            'Dashes ${p.dashes}${p.failedDashes == 0 ? '' : ' (${p.failedDashes} too soon)'}',
+            'Dashes ${view.dashes}${view.failedDashes == 0 ? '' : ' (${view.failedDashes} too soon)'}',
             key: Key('dashes-$id'),
             style: small,
           ),
-          // Ready is a `good` dot with the ink edge beside ink words, as the
-          // TV home's statuses are: text is never `good`, and a pill would
-          // grow the bar (Claude's step 5 review: 88 to 107 px).
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (ready) ...[
-                SizedBox.square(
-                  dimension: oneLine ? ArenaHud._oneLineDot : ArenaHud._dot,
-                  child: DecoratedBox(
-                    key: Key('dashReady-$id'),
-                    decoration: ShapeDecoration(
-                      color: colours.good,
-                      shape: CircleBorder(
-                        side: BorderSide(color: colours.ink, width: _dotEdge),
-                      ),
-                    ),
-                  ),
-                ),
-                SizedBox(width: oneLine ? ArenaHud._oneLineDotGap : ArenaHud._dotGap),
-              ],
-              Text(
-                ready ? _dashReady : 'Dash in ${(p.cooldown * ArenaGame.dashCooldownS).toStringAsFixed(1)} s',
-                style: small?.copyWith(color: ready ? colours.ink : colours.inkSoft),
-              ),
-            ],
-          ),
+          _dash(colours, small),
         ],
       ),
+    );
+  }
+
+  /// The player's colour dot and its number and name: small in the one-line
+  /// bar, and a title on a tall box.
+  Widget _name(ToyColors colours, TextTheme text, TextStyle? small) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(Icons.circle, size: oneLine ? ArenaHud._oneLineDot : ArenaHud._dot, color: colours.player(player.number)),
+        SizedBox(width: oneLine ? ArenaHud._oneLineDotGap : ArenaHud._dotGap),
+        Text(
+          'P${player.number} ${player.name}',
+          style: oneLine ? small : text.titleSmall?.copyWith(color: colours.ink),
+        ),
+      ],
+    );
+  }
+
+  /// Whether the dash is ready: a `good` dot with the ink edge beside ink
+  /// words, as the TV home's statuses are. Text is never `good`, and a pill
+  /// would grow the bar (Claude's step 5 review: 88 to 107 px).
+  Widget _dash(ToyColors colours, TextStyle? small) {
+    final ready = view.cooldown == 0;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (ready) ...[
+          SizedBox.square(
+            dimension: oneLine ? ArenaHud._oneLineDot : ArenaHud._dot,
+            child: DecoratedBox(
+              key: Key('dashReady-$id'),
+              decoration: ShapeDecoration(
+                color: colours.good,
+                shape: CircleBorder(
+                  side: BorderSide(color: colours.ink, width: _dotEdge),
+                ),
+              ),
+            ),
+          ),
+          SizedBox(width: oneLine ? ArenaHud._oneLineDotGap : ArenaHud._dotGap),
+        ],
+        Text(
+          ready ? _dashReady : 'Dash in ${(view.cooldown * ArenaGame.dashCooldownS).toStringAsFixed(1)} s',
+          style: small?.copyWith(color: ready ? colours.ink : colours.inkSoft),
+        ),
+      ],
     );
   }
 }

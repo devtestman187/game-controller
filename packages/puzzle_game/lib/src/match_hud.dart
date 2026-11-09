@@ -8,6 +8,35 @@ const _gapBar = 10.0;
 /// How much air a warning clock's pill leaves, as a share of its text's size.
 const _pillPadShare = 0.2;
 
+/// The clock's text size in world units, in the strip and in the gap.
+const _clockSize = 4.2;
+
+/// The strip's side counts: their text size in world units, the air they keep
+/// from their own edge, and how far in from the right the right one stops, so
+/// it stays over the right board on a narrow field.
+const _stripCountSize = 3.2;
+const _stripPad = 10.0;
+const _stripRightCap = 150.0;
+
+/// The divider between the strip's two halves: its ink's alpha and its width
+/// in world units.
+const _dividerAlpha = 0.25;
+const _dividerWidth = 0.4;
+
+/// The strip's time bar: how far below the top it sits, and how thick it is,
+/// in world units.
+const _stripBarTop = 5.4;
+const _stripBarHeight = 0.5;
+
+/// The gap's layout in world units: the clock's top, each count's top and
+/// size, and the bar's top and thickness.
+const _gapClockTop = 5.0;
+const _gapCountTop = 10.5;
+const _gapSecondCountTop = 14.5;
+const _gapCountSize = 2.8;
+const _gapBarTop = 17.0;
+const _gapBarHeight = 0.8;
+
 /// The split screen's clock and both sides' counts, in the strip along the top
 /// or in the gap between the boards, with the time bar (design section 5).
 extension _MatchStrip on MatchPainter {
@@ -29,27 +58,29 @@ extension _MatchStrip on MatchPainter {
       Offset(middle, SplitLayout.stripHeight),
       Offset(middle, fieldSize.height),
       Paint()
-        ..color = _colours.ink.withValues(alpha: 0.25)
-        ..strokeWidth = 0.4,
+        ..color = _colours.ink.withValues(alpha: _dividerAlpha)
+        ..strokeWidth = _dividerWidth,
     );
     _text(
       canvas,
       'LEFT  ${left.placed}/$total',
-      Offset(max(layout.leftBox.left + 10, 10), SplitLayout.stripHeight / 2),
-      3.2,
+      Offset(max(layout.leftBox.left + _stripPad, _stripPad), SplitLayout.stripHeight / 2),
+      _stripCountSize,
       _colours.onBackground,
       style: look.type.button,
     );
-    _clockText(canvas, clock, Offset(middle, SplitLayout.stripHeight / 2), 4.2, warn, barStyle);
+    _clockText(canvas, clock, Offset(middle, SplitLayout.stripHeight / 2), _clockSize, warn, barStyle);
     _text(
       canvas,
       'RIGHT  ${right.placed}/$total',
-      Offset(min(layout.rightBox.right - 10, 150), SplitLayout.stripHeight / 2),
-      3.2,
+      Offset(min(layout.rightBox.right - _stripPad, _stripRightCap), SplitLayout.stripHeight / 2),
+      _stripCountSize,
       _colours.onBackground,
       style: look.type.button,
     );
-    if (frac != null) _bar(canvas, Rect.fromLTWH(middle - _stripBar / 2, 5.4, _stripBar, 0.5), frac, warn);
+    if (frac != null) {
+      _bar(canvas, Rect.fromLTWH(middle - _stripBar / 2, _stripBarTop, _stripBar, _stripBarHeight), frac, warn);
+    }
   }
 
   /// A time bar in the strip or the gap: a `good` fill on a `paper` track,
@@ -85,16 +116,25 @@ extension _MatchStrip on MatchPainter {
     ToyShapeStyle barStyle,
   ) {
     final middle = fieldSize.width / 2;
-    _clockText(canvas, clock, Offset(middle, 5), 4.2, warn, barStyle);
-    _text(canvas, 'L ${left.placed}/$total', Offset(middle, 10.5), 2.8, _colours.onBackground, style: look.type.button);
+    _clockText(canvas, clock, Offset(middle, _gapClockTop), _clockSize, warn, barStyle);
     _text(
       canvas,
-      'R ${right.placed}/$total',
-      Offset(middle, 14.5),
-      2.8,
+      'L ${left.placed}/$total',
+      Offset(middle, _gapCountTop),
+      _gapCountSize,
       _colours.onBackground,
       style: look.type.button,
     );
-    if (frac != null) _bar(canvas, Rect.fromLTWH(middle - _gapBar / 2, 17, _gapBar, 0.8), frac, warn);
+    _text(
+      canvas,
+      'R ${right.placed}/$total',
+      Offset(middle, _gapSecondCountTop),
+      _gapCountSize,
+      _colours.onBackground,
+      style: look.type.button,
+    );
+    if (frac != null) {
+      _bar(canvas, Rect.fromLTWH(middle - _gapBar / 2, _gapBarTop, _gapBar, _gapBarHeight), frac, warn);
+    }
   }
 }

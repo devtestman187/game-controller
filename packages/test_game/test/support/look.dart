@@ -14,5 +14,5 @@ final night = ToyLook.build(palette: ToyPalette.night, tv: false);
 final sunnyStill = ToyLook.build(palette: ToyPalette.sunny, tv: false, effects: false);
 
 /// [child] under a [ToyLookScope] of [look], as both apps put one above every
-/// screen: a view drawn with none draws in the board's own default.
+/// screen: a view drawn with none throws (M13 9a review).
 Widget withLook(Widget child, {ToyLook? look}) => ToyLookScope(look: look ?? sunny, child: child);

@@ -1,9 +1,3 @@
-| `audio/snap.ogg` | Puzzle: a piece locked onto its matching outline | Generated for this project with `tools/audio/render.py` (numpy synthesis, no sampled material) | Project | CC0 1.0 |
-| `audio/wrong.ogg` | Puzzle: a piece dropped where it does not belong | Generated for this project with `tools/audio/render.py` (numpy synthesis, no sampled material) | Project | CC0 1.0 |
-| `audio/tick.ogg` | Puzzle: each of the last 15 seconds | Generated for this project with `tools/audio/render.py` (numpy synthesis, no sampled material) | Project | CC0 1.0 |
-| `audio/pickup.ogg` | Puzzle: picking up a piece | Generated for this project with `tools/audio/render.py` (numpy synthesis, no sampled material) | Project | CC0 1.0 |
-| `audio/time_up.ogg` | Puzzle: the clock reaches zero | Generated for this project with `tools/audio/render.py` (numpy synthesis, no sampled material) | Project | CC0 1.0 |
-| `audio/help.ogg` | Puzzle (M11): a big piece carried alone, calling a teammate | Generated for this project with `tools/audio/render.py` (numpy synthesis, no sampled material) | Project | CC0 1.0 |
 # Asset credits
 
 Every image and sound in `/assets` (and every platform icon or banner made from them), and every font, is listed here.
@@ -20,6 +14,12 @@ Update this file in the same commit that adds, replaces or removes an asset.
 | `audio/success.ogg` | TV sound for the **success** event (Arena: reaching the goal; Shape Race: all pieces matched) | Generated for this project with `tools/audio/render.py` (numpy synthesis, no sampled material) | Project | CC0 1.0 |
 | `audio/error.ogg` | TV sound for the **error** event (Arena: pressing A while the dash recharges) | Generated for this project with `tools/audio/render.py` (numpy synthesis, no sampled material) | Project | CC0 1.0 |
 | `audio/rumble.ogg` | TV sound for the **rumble** event (Arena: starting a dash) | Generated for this project with `tools/audio/render.py` (numpy synthesis, no sampled material) | Project | CC0 1.0 |
+| `audio/snap.ogg` | Puzzle: a piece locked onto its matching outline | Generated for this project with `tools/audio/render.py` (numpy synthesis, no sampled material) | Project | CC0 1.0 |
+| `audio/wrong.ogg` | Puzzle: a piece dropped where it does not belong | Generated for this project with `tools/audio/render.py` (numpy synthesis, no sampled material) | Project | CC0 1.0 |
+| `audio/tick.ogg` | Puzzle: each of the last 15 seconds | Generated for this project with `tools/audio/render.py` (numpy synthesis, no sampled material) | Project | CC0 1.0 |
+| `audio/pickup.ogg` | Puzzle: picking up a piece | Generated for this project with `tools/audio/render.py` (numpy synthesis, no sampled material) | Project | CC0 1.0 |
+| `audio/time_up.ogg` | Puzzle: the clock reaches zero | Generated for this project with `tools/audio/render.py` (numpy synthesis, no sampled material) | Project | CC0 1.0 |
+| `audio/help.ogg` | Puzzle (M11): a big piece carried alone, calling a teammate | Generated for this project with `tools/audio/render.py` (numpy synthesis, no sampled material) | Project | CC0 1.0 |
 | `audio/lobby.ogg` | Lobby music (M13): the host's game picker and join screen, looped | Generated for this project with `tools/audio/render.py` (numpy synthesis, no sampled material) | Project | CC0 1.0 |
 | `audio/countdown.ogg` | The 3-2-1 before a round (M13): beeps at 0, 1 and 2 s, then the "go" chord | Generated for this project with `tools/audio/render.py` (numpy synthesis, no sampled material) | Project | CC0 1.0 |
 | `audio/player_joined.ogg` | A phone joining the host (M13) | Generated for this project with `tools/audio/render.py` (numpy synthesis, no sampled material) | Project | CC0 1.0 |

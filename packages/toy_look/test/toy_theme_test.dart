@@ -100,6 +100,25 @@ void main() {
     expect(theme.appBarTheme.foregroundColor, ToyColors.night.onBackground);
   });
 
+  // Claude's 5 review: the Material controls (a choice's segment, the Effects
+  // and Music switches, the volume slider, the back arrow) took Material's
+  // 12 % black, a grey haze from the couch. They light in the look instead.
+  test("the Material controls' focus wash is the look's focus token, at the shadow's strength", () {
+    for (final look in [sunny, night]) {
+      final focus = toyTheme(look).focusColor;
+      expect(focus, look.colors.focus.withValues(alpha: toyShadowAlpha));
+      expect(focus.a, greaterThanOrEqualTo(toyShadowAlpha), reason: 'strong enough to read from the couch');
+    }
+  });
+
+  // Claude's Windows check (step 9): a slider draws its focus from its own
+  // overlay colour, so it kept Material's faint grey halo round the thumb.
+  test("a focused slider's halo is the look's focus wash, in both palettes", () {
+    for (final look in [sunny, night]) {
+      expect(toyTheme(look).sliderTheme.overlayColor, look.colors.focus.withValues(alpha: toyShadowAlpha));
+    }
+  });
+
   // Claude's step 6 review: the TV's Look test showed its unselected tab in
   // Material's dark default on the Night sky, unreadable. A tab sits on the
   // background, so both its labels are onBackground and the underline marks

@@ -26,13 +26,20 @@ class _Controls extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     if (!controls) return const SizedBox.shrink();
-    if (!hosting) return _Pad(mode: mode, body: body);
+    if (!hosting) return _stillPad();
     return ValueListenableBuilder<party.RoundPhase>(
       valueListenable: ref.watch(party.roundPhaseProvider),
-      builder: (context, phase, _) =>
-          phase == party.RoundPhase.none ? const SizedBox.shrink() : _Pad(mode: mode, body: body),
+      builder: (context, phase, _) => phase == party.RoundPhase.none ? const SizedBox.shrink() : _stillPad(),
     );
   }
+
+  /// The pad on a still sky (design section 6, M13 9 review): a drifting
+  /// background under a thumb only costs the phone its battery. The screens
+  /// that are menus — the Connect screen, the host's picker, the join screens
+  /// and the stats — drift, as the TV's do; the joined view holds its own.
+  Widget _stillPad() => party.ToyStillSky(
+    child: _Pad(mode: mode, body: body),
+  );
 }
 
 /// The touch metrics, the mode's controls over whatever this phone shows

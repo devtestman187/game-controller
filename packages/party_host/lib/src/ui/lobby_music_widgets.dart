@@ -33,7 +33,8 @@ class _LobbyHoldState extends ConsumerState<LobbyHold> {
 
 /// Holds a round open while it is mounted (M13 design section 8):
 /// `PuzzleScreen` and `GameScreen`, their results and pause included. The music
-/// stops while a round is on and comes back when it closes.
+/// stops while a round is on and comes back when it closes, and the palette
+/// stands still with it ([RoundPaletteHold], design D1).
 class RoundHold extends ConsumerStatefulWidget {
   const RoundHold({required this.child, super.key});
 
@@ -59,5 +60,5 @@ class _RoundHoldState extends ConsumerState<RoundHold> {
   }
 
   @override
-  Widget build(BuildContext context) => widget.child;
+  Widget build(BuildContext context) => RoundPaletteHold(child: widget.child);
 }

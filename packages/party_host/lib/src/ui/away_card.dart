@@ -16,7 +16,7 @@ import 'player_badge.dart';
 /// refuses the Back itself, so a stray press can't end everyone's round (m12
 /// code health N1).
 final awayLayout = GameLayoutMessage(
-  labels: {ControllerButton.a: 'OK'},
+  labels: {ControllerButton.a: HostText.ok},
   hidden: {
     ControllerButton.b,
     ControllerButton.x,

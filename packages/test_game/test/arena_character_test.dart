@@ -63,6 +63,76 @@ int count(Uint8List bytes, int width, Rect area, int colour, {int gap = 30}) {
   return n;
 }
 
+/// The pixels of [colour] inside [area], as one `y * width + x` index each.
+Set<int> mask(Uint8List bytes, int width, Rect area, int colour) => {
+  for (var y = area.top.round(); y < area.bottom.round(); y++)
+    for (var x = area.left.round(); x < area.right.round(); x++)
+      if (colourGap(pixel(bytes, width, x, y), colour) <= 30) y * width + x,
+};
+
+/// How much of the smaller of two masks the two share: 1 when one is inside
+/// the other, 0 when they are two different marks.
+double share(Set<int> a, Set<int> b) => a.intersection(b).length / (a.length < b.length ? a.length : b.length);
+
+/// Player [number]'s marble as the arena draws it, on the same screen: a
+/// reference to say which accessory was drawn, not only that some ink was
+/// (M13 9a review), as the look's own accessory test compares silhouettes.
+Future<Uint8List> referenceBytes(WidgetTester tester, ToyLook look, int number) async {
+  tester.view.physicalSize = screen;
+  tester.view.devicePixelRatio = 1;
+  addTearDown(tester.view.reset);
+  final key = GlobalKey();
+  await tester.pumpWidget(
+    MaterialApp(
+      home: withLook(
+        Center(
+          child: RepaintBoundary(
+            key: key,
+            child: SizedBox.fromSize(
+              size: screen,
+              child: CustomPaint(
+                painter: _Reference(look: look, number: number),
+              ),
+            ),
+          ),
+        ),
+        look: look,
+      ),
+    ),
+  );
+  final boundary = key.currentContext!.findRenderObject()! as RenderRepaintBoundary;
+  final image = (await tester.runAsync(() => boundary.toImage()))!;
+  final data = (await tester.runAsync(() => image.toByteData(format: ui.ImageByteFormat.rawRgba)))!;
+  return data.buffer.asUint8List();
+}
+
+/// One marble of the arena, drawn as [ArenaMarblePainter] draws it.
+class _Reference extends CustomPainter {
+  _Reference({required this.look, required this.number});
+
+  final ToyLook look;
+  final int number;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final character = ToyCharacter.forPlayer(number);
+    final colour = character.colourIn(look.colors);
+    final style = ToyShapeStyle(ink: look.colors.ink, outlineWidth: look.sizes.outlineWidth);
+    canvas.drawRect(Offset.zero & size, Paint()..color = look.colors.field);
+    toyShape(
+      canvas,
+      Path()..addOval(Rect.fromCircle(center: at(leftAt), radius: marbleRadius)),
+      colour,
+      style,
+      shade: look.shade,
+    );
+    paintAccessory(canvas, character.accessory, at(leftAt), marbleRadius, colour, look);
+  }
+
+  @override
+  bool shouldRepaint(_Reference old) => old.look != look || old.number != number;
+}
+
 /// The field drawn in [look], as the frame's bytes.
 Future<Uint8List> fieldBytes(WidgetTester tester, ToyLook look) async {
   tester.view.physicalSize = screen;
@@ -100,15 +170,19 @@ void main() {
       final bytes = await fieldBytes(tester, look);
       final width = screen.width.toInt();
       final centre = at(leftAt);
-      // Player 1's ears stand above its marble's top edge.
+      // Player 1's ears stand above its marble's top edge: the mark drawn there
+      // is the ears' own silhouette, not another accessory's.
       final above = Rect.fromLTRB(
         centre.dx - 2 * marbleRadius,
         centre.dy - 1.85 * marbleRadius,
         centre.dx + 2 * marbleRadius,
         centre.dy - 1.05 * marbleRadius,
       );
-      final ink = count(bytes, width, above, argb(look.colors.ink));
-      expect(ink, greaterThan(0), reason: '$name: the ears above the marble, $ink ink px');
+      final drawn = mask(bytes, width, above, argb(look.colors.ink));
+      final ears = mask(await referenceBytes(tester, look, 1), width, above, argb(look.colors.ink));
+      final antenna = mask(await referenceBytes(tester, look, 2), width, above, argb(look.colors.ink));
+      expect(share(drawn, ears), greaterThan(0.95), reason: '$name: P1 wears its character\'s ears');
+      expect(share(drawn, antenna), lessThan(0.5), reason: '$name: and not another player\'s accessory');
       // Player 2's lower half, where M12 drew the number with two players on
       // the roster, is its body's own colour now.
       final lower = at(rightAt);

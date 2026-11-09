@@ -61,9 +61,9 @@ final class ToyShapeStyle {
 ///
 /// With [shade] the body is that shader, clipped to [path]; without it the
 /// body is the Canvas fallback ([paintFallbackBody]), which looks the same.
-/// One `FragmentShader` is made per draw: a shader's uniforms are read when it
-/// draws, so a single one reused for two colours would paint both shapes the
-/// last colour set on it.
+/// One shape, one `FragmentShader`, its uniforms set just before its own draw:
+/// that is safe on every backend whenever uniforms are read, and Windows
+/// measured 1.2 ms frames with it (M13 9 review).
 ///
 /// The light stays at the screen's top-left however the canvas is turned (M13
 /// spike): the canvas's angle is read from its transform and the light is

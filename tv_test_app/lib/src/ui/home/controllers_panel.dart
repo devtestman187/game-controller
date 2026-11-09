@@ -83,6 +83,9 @@ class ControllerTile extends StatelessWidget {
     final look = ToyLookScope.of(context);
     final colors = look.colors;
     final live = info.state == ControllerState.connected;
+    // Every ToyType style sets its own size (toy_type.dart), so the body's is
+    // never null (M13 9a review).
+    final latencyWidth = look.type.body.fontSize! * _latencyWidthShare;
     return LayoutBuilder(
       builder: (context, constraints) => DecoratedBox(
         decoration: ShapeDecoration(
@@ -110,7 +113,7 @@ class ControllerTile extends StatelessWidget {
               ),
               const SizedBox(width: ToySizes.space8),
               SizedBox(
-                width: ToyLookScope.of(context).type.body.fontSize! * _latencyWidthShare,
+                width: latencyWidth,
                 child: _ControllerLatency(info: info),
               ),
             ],

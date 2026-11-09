@@ -27,3 +27,7 @@ dev_dependencies:
   # For the real-module test of FrameView: a real Arena module and its frame.
   test_game:
     path: ../test_game
+  # The look the real Arena draws in: the apps put a ToyLookScope above every
+  # screen, and the frame test gives it one too (M13 9 review).
+  toy_look:
+    path: ../toy_look

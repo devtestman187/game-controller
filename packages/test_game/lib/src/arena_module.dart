@@ -39,6 +39,8 @@ final class ArenaViewer implements GameViewer {
     if (snapshot is! ArenaSnapshot) {
       throw ArgumentError.value(snapshot, 'snapshot', 'The arena viewer draws ArenaSnapshot frames');
     }
+    // The look comes from the screen's ToyLookScope, which every app puts
+    // above its screens; a screen without one throws, as the puzzle's do.
     return ArenaBoard(snapshot: snapshot, roster: view.roster);
   }
 }

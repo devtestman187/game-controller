@@ -11,10 +11,9 @@ import 'arena_snapshot.dart';
 
 /// The mat's dot spacing as a share of the field's shorter side — the grid M12
 /// drew faint lines on, a tenth of the shorter side — and the dots' radius in
-/// px and how strongly they show in Sunny (rule 2).
+/// px. Their colour is the `matDot` token of [ToyColors] (rule 2).
 const matStepShare = 0.1;
 const matDotRadius = 3.0;
-const matDotAlpha = 0.12;
 
 /// How far a wall's top band is mixed to the palette's lightest colour (rule
 /// 2: 30 %), a wall's corner radius as a share of the shorter side, and the
@@ -90,8 +89,8 @@ class ArenaPainter extends CustomPainter {
     ArenaMarblePainter(snapshot: s, roster: roster, look: look, style: style, moments: moments).paint(canvas, size);
   }
 
-  /// The play mat: a small dot at each point of the old grid, ink in Sunny and
-  /// the background's own dots at night, so it reads in both palettes.
+  /// The play mat: a small dot at each point of the old grid, in the `matDot`
+  /// of [ToyColors], so it reads in both palettes.
   ///
   /// One `drawPoints` call for the whole mat (round caps make each point a
   /// dot) rather than one call per dot: a 960 × 540 field has 153 of them, and
@@ -103,9 +102,7 @@ class ArenaPainter extends CustomPainter {
         for (var x = step; x < size.width; x += step) Offset(x, y),
     ];
     final dot = Paint()
-      ..color = look.palette == ToyPalette.sunny
-          ? look.colors.ink.withValues(alpha: matDotAlpha)
-          : look.colors.onBackground.withValues(alpha: look.colors.dotAlpha)
+      ..color = look.colors.matDot
       ..strokeWidth = 2 * matDotRadius
       ..strokeCap = StrokeCap.round;
     canvas.drawPoints(PointMode.points, dots, dot);
@@ -115,13 +112,12 @@ class ArenaPainter extends CustomPainter {
   /// way out of the middle is marked without competing with the goal.
   void _start(Canvas canvas, Offset centre, double radius, double unit, ToyShapeStyle style) {
     canvas.drawCircle(centre, radius, Paint()..color = look.colors.paper.withValues(alpha: startFillAlpha));
-    canvas.drawPath(
-      _dashed(
-        Path()..addOval(Rect.fromCircle(center: centre, radius: radius)),
-        unit * startDashShare,
-        unit * startGapShare,
-      ),
+    paintDashedEdge(
+      canvas,
+      Path()..addOval(Rect.fromCircle(center: centre, radius: radius)),
       _stroke(style),
+      on: unit * startDashShare,
+      off: unit * startGapShare,
     );
   }
 
@@ -227,16 +223,4 @@ class ArenaPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(ArenaPainter old) => !identical(old.s, s) || old.look != look;
-}
-
-/// [path] in dashes of [dash] px with [gap] px between them, as the look's
-/// mock-up draws the start pad's edge.
-Path _dashed(Path path, double dash, double gap) {
-  final out = Path();
-  for (final metric in path.computeMetrics()) {
-    for (var at = 0.0; at < metric.length; at += dash + gap) {
-      out.addPath(metric.extractPath(at, min(at + dash, metric.length)), Offset.zero);
-    }
-  }
-  return out;
 }

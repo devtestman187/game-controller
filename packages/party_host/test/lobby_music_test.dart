@@ -131,6 +131,18 @@ void main() {
     expect(sounds.loop, 'lobby', reason: 'and showing it starts the music again');
   });
 
+  testWidgets('a scope disposed with the loop playing stops it', (tester) async {
+    await pumpHost(tester, screen: const StubHome());
+    await openPicker(tester);
+    expect(sounds.loop, 'lobby');
+
+    // The host's scope goes, as an app's teardown takes it: the loop stops
+    // here, rather than playing on until the engine's own teardown (M13 9
+    // review).
+    await tester.pumpWidget(const SizedBox.shrink());
+    expect(sounds.loop, isNull);
+  });
+
   testWidgets('two changes in one frame make no start', (tester) async {
     await pumpHost(tester, screen: const StubHome());
     await openPicker(tester);

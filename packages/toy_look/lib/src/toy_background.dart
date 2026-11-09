@@ -65,7 +65,9 @@ class _ToyBackgroundState extends State<ToyBackground> with SingleTickerProvider
   bool _stillAbove = false;
 
   /// The backdrop shader, one per sky: made once from the look's program and
-  /// reused for every frame, so one shape and one set of uniforms.
+  /// reused for every frame, because the sky has one draw per frame and its
+  /// uniforms are set just before it (as [toyShape] does per shape, M13 9
+  /// review).
   FragmentShader? _shader;
   FragmentProgram? _program;
 

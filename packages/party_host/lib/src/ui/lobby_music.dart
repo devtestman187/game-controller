@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:game_assets/asset_manifest.dart';
 
 import '../providers.dart';
+import '../sound.dart';
 import '../sound_settings.dart';
+import 'round_palette_hold.dart';
 
 part 'lobby_music_widgets.dart';
 
@@ -27,9 +29,9 @@ part 'lobby_music_widgets.dart';
 /// restarts the music. A hidden app draws no frame to settle in, so there the
 /// music stops at once instead of playing on in the background.
 ///
-/// It is a provider, disposed with the host's scope, so the TV app and the
-/// phone host share it. Joined phones never mount the picker, so they never
-/// play it.
+/// It is a provider, disposed with the host's scope, and a loop still playing
+/// stops with it, so the TV app and the phone host share it. Joined phones
+/// never mount the picker, so they never play it.
 class LobbyMusic {
   LobbyMusic(this._ref) {
     _shown = _isShown(WidgetsBinding.instance.lifecycleState);
@@ -52,6 +54,10 @@ class LobbyMusic {
 
   /// The scope is gone: a settle still on its way has nothing left to tell.
   bool _disposed = false;
+
+  /// The player the loop is playing on, so [dispose] can stop it: once the
+  /// scope is gone the provider may not be read.
+  SoundPlayer? _looping;
 
   /// A picker opened: the music may start.
   void openLobby() {
@@ -99,10 +105,13 @@ class LobbyMusic {
     WidgetsBinding.instance.ensureVisualUpdate();
   }
 
-  /// Disposed with the host's scope.
+  /// Disposed with the host's scope: a loop still playing stops with it, rather
+  /// than waiting on the engine's own teardown (M13 design section 8).
   void dispose() {
     _disposed = true;
     _lifecycle.dispose();
+    _looping?.stopLoop();
+    _looping = null;
   }
 
   /// Starts or stops the music now, if what is wanted changed.
@@ -114,8 +123,10 @@ class LobbyMusic {
     final player = _ref.read(soundPlayerProvider);
     if (wanted) {
       player.playLoop(SoundKey.lobby.eventName);
+      _looping = player;
     } else {
       player.stopLoop();
+      _looping = null;
     }
   }
 

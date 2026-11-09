@@ -40,11 +40,22 @@ void main() {
   float rim = smoothstep(0.72, 1.0, sqrt(r2)) * (1.0 - light);
   col = mix(col, mix(base, vec3(1.0), 0.2), rim * 0.55);
 
-  // Glint: a small tilted oval near the top-left.
-  vec2 g = p - vec2(-0.42, -0.48);
-  g = vec2(g.x * 0.87 + g.y * 0.5, -g.x * 0.5 + g.y * 0.87) * vec2(1.0, 1.7);
-  float glint = 1.0 - smoothstep(0.13, 0.19, length(g));
-  col = mix(col, vec3(1.0), glint * 0.9);
+  // Glint: the fallback's own (body_fallback.dart): an oval 8 % by 5 % of the
+  // bounds at its centre 27 % across and 24 % down them, turned -30 degrees,
+  // white at 75 %. Like the fallback's, it stays on the light's side when the
+  // shape turns: uLight comes turned back by the canvas's angle (toyLightIn),
+  // so the glint's place and tilt turn by the angle from the resting light
+  // (toyLight, -0.55, -0.65) to uLight (Claude's Windows check, Nov 9).
+  vec2 rest = normalize(vec2(-0.55, -0.65));
+  vec2 now = normalize(uLight);
+  float c = dot(rest, now);
+  float s = rest.x * now.y - rest.y * now.x;
+  vec2 at = vec2(-0.46, -0.52);
+  vec2 g = p - vec2(c * at.x - s * at.y, s * at.x + c * at.y);
+  g = vec2(c * g.x + s * g.y, -s * g.x + c * g.y);
+  g = vec2(g.x * 0.866 - g.y * 0.5, g.x * 0.5 + g.y * 0.866);
+  float glint = 1.0 - smoothstep(0.9, 1.0, length(vec2(g.x / 0.08, g.y / 0.05)));
+  col = mix(col, vec3(1.0), glint * 0.75);
 
   fragColor = vec4(col * uColor.a, uColor.a);
 }

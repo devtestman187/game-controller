@@ -24,24 +24,29 @@ Puzzle square({Level level = Level.easy}) => Puzzle.parse('''
 ]}''');
 
 /// The one piece in the tray, or locked in its outline, or out of time and
-/// warning.
-PuzzleSnapshot snapshot({PieceState state = PieceState.tray, bool warning = false, bool timeUp = false}) =>
-    PuzzleSnapshot(
-      puzzleId: 'look',
-      timeLeftMs: timeUp ? 0 : 5000,
-      warning: warning,
-      phase: timeUp ? PuzzlePhase.timeUp : PuzzlePhase.playing,
-      // Locked in its outline, else lying in the tray at its start position.
-      pieces: [
-        PieceView(
-          x: state == PieceState.locked ? 56 : 120,
-          y: state == PieceState.locked ? 63 : 25,
-          angle: 0,
-          state: state,
-        ),
-      ],
-      players: const [],
-    );
+/// warning. [hints] are the outlines a player is being shown.
+PuzzleSnapshot snapshot({
+  PieceState state = PieceState.tray,
+  bool warning = false,
+  bool timeUp = false,
+  Set<int> hints = const {},
+}) => PuzzleSnapshot(
+  puzzleId: 'look',
+  timeLeftMs: timeUp ? 0 : 5000,
+  warning: warning,
+  phase: timeUp ? PuzzlePhase.timeUp : PuzzlePhase.playing,
+  hintTargets: hints,
+  // Locked in its outline, else lying in the tray at its start position.
+  pieces: [
+    PieceView(
+      x: state == PieceState.locked ? 56 : 120,
+      y: state == PieceState.locked ? 63 : 25,
+      angle: 0,
+      state: state,
+    ),
+  ],
+  players: const [],
+);
 
 /// The colour at world point [at] of a 640 x 360 frame: 4 px a unit.
 int at(Uint8List bytes, int width, Offset world) => pixel(bytes, width, (world.dx * 4).round(), (world.dy * 4).round());
@@ -85,6 +90,40 @@ void main() {
     final fill = Color(colour).withValues(alpha: 0.25);
     final expected = Color.alphaBlend(fill, ToyColors.sunny.board).toARGB32() & 0xFFFFFF;
     expect(colourGap(at(bytes, width, const Offset(56, 63)), expected), lessThanOrEqualTo(4));
+  });
+
+  testWidgets('a hinted target glows in focus, and none does without the hint', (tester) async {
+    /// The pixel at [world] with the outline hinted or not.
+    Future<int> targetColour(bool hint) async {
+      final (width, _, bytes) = await capture(
+        tester,
+        PuzzleView(
+          puzzle: square(),
+          snapshot: snapshot(hints: hint ? const {0} : const {}),
+          timeLimitS: 120,
+        ),
+        window: box,
+        box: box,
+      );
+      // Inside the outline, clear of its edge and its glow's soft rim.
+      return at(bytes, width, const Offset(56, 59));
+    }
+
+    // The glow is a focus fill at 0.5 under the target's own faint fill
+    // (design section 5, T15): a hinted target is the focus colour, and the
+    // same target with no hint is only the piece's own colour.
+    final colours = ToyColors.sunny;
+    final glow = Color.alphaBlend(colours.focus.withValues(alpha: 0.5), colours.board);
+    final hintedFill = Color.alphaBlend(Color(colour).withValues(alpha: 0.25), glow);
+    final plainFill = Color.alphaBlend(Color(colour).withValues(alpha: 0.25), colours.board);
+    final hinted = await targetColour(true);
+    final plain = await targetColour(false);
+    expect(
+      colourGap(hinted, hintedFill.toARGB32() & 0xFFFFFF),
+      lessThanOrEqualTo(4),
+      reason: 'the hint glows in focus',
+    );
+    expect(colourGap(plain, plainFill.toARGB32() & 0xFFFFFF), lessThanOrEqualTo(4), reason: 'and no hint, no glow');
   });
 
   testWidgets('a locked piece is its own colour, shade allowed', (tester) async {

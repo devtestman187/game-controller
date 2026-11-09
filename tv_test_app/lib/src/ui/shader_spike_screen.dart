@@ -301,7 +301,7 @@ class _SpikeRow extends StatelessWidget {
             builder: (context, _) => CustomPaint(
               key: rowKey,
               size: Size.infinite,
-              painter: ShaderSpikePainter(shade: shade, turn: animation.value, stress: stress),
+              painter: ShaderSpikePainter(look: look, shade: shade, turn: animation.value, stress: stress),
             ),
           ),
         ),

@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:game_kit/game_kit.dart';
 import 'package:protocol/protocol.dart';
 import 'package:test_game/test_game.dart';
+import 'package:toy_look/toy_look.dart';
 
 import 'support/fake_view.dart';
 
@@ -372,7 +373,13 @@ void main() {
       hazards: const [],
       players: const [ArenaPlayerView(id: 'p1', x: 0.5, y: 0.5)],
     );
-    await mount(tester, registry: GameRegistry([arenaModule]));
+    // The apps put the look above every screen; the Arena needs one to draw.
+    await tester.pumpWidget(
+      ToyLookScope(
+        look: ToyLook.build(palette: ToyPalette.sunny, tv: false),
+        child: underTest(registry: GameRegistry([arenaModule])),
+      ),
+    );
     clock.nowMs = 1000;
     await send(
       tester,

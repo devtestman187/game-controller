@@ -55,6 +55,7 @@ export 'src/ui/player_badge.dart';
 export 'src/ui/puzzle_screen.dart';
 export 'src/ui/puzzle_settings_screen.dart';
 export 'src/ui/ready_card.dart';
+export 'src/ui/round_palette_hold.dart';
 export 'src/ui/round_phase.dart';
 export 'src/ui/stats_screen.dart';
 

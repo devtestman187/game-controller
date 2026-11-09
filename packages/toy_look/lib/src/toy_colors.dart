@@ -24,6 +24,7 @@ final class ToyColors {
     required this.tray,
     required this.targetNeutral,
     required this.field,
+    required this.matDot,
     required this.wall,
     required this.focus,
     required this.good,
@@ -47,6 +48,7 @@ final class ToyColors {
     tray: Color(0xFFF5D9A8),
     targetNeutral: Color(0xFFB3A285),
     field: Color(0xFFA9DCFB),
+    matDot: Color(0x1F1E1646),
     wall: Color(0xFF7F8FD1),
     focus: Color(0xFFFFD23F),
     good: Color(0xFF2FCB74),
@@ -71,6 +73,7 @@ final class ToyColors {
     tray: Color(0xFF3D3592),
     targetNeutral: Color(0xFF9289D6),
     field: Color(0xFF2A2270),
+    matDot: Color(0x12FFFFFF),
     wall: Color(0xFF8C9BD8),
     focus: Color(0xFFFFD23F),
     good: Color(0xFF2FCB74),
@@ -127,6 +130,12 @@ final class ToyColors {
 
   /// The Arena's floor.
   final Color field;
+
+  /// The dots of the Arena's play mat: [ink] at 12 % in Sunny, and
+  /// [onBackground] at the background's own faint [dotAlpha] at night, so the
+  /// mat reads in both palettes (the arena's painter used to choose between
+  /// the two, M13 9a review).
+  final Color matDot;
 
   /// The Arena's walls.
   final Color wall;
