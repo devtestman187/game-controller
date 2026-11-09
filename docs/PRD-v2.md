@@ -155,6 +155,8 @@ These apply to the TV app, the host phone and joined phones alike. The design is
 | L3 | Every menu, card and screen in the same look, on the TV and on phones, with an easy-to-see focus highlight for controller navigation | M13 |
 | L4 | A toon shader on game pieces and backgrounds, with a drawn fallback that looks right without it, and an effects setting (on or off) | M13 |
 | L5 | Lobby music (looping), countdown and player-joined sounds, a mute switch and a volume setting, saved with the other settings. Only the hosting device plays music: the TV or PC when phones join it, and a host phone only when no TV is used | M13 |
+| L6 | Characters: each player is shown by a colour and an accessory (round ears, an antenna, a bow, a cap, a tuft, a crown), so players tell each other apart without colour and no number is drawn on a body. The worker, the Arena's marbles and the menus' badges draw a character, given by one function from the player's number, so a later milestone can let players choose their own colour and accessory without changing any drawing (owner, Nov 8, 2026) | M13 |
+| L7 | Character customisation: a player picks their colour and accessory on their phone, saved with their nickname, and the host shows them on the TV and every phone | Later (not scheduled) |
 
 ## Party requirements
 

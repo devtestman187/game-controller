@@ -92,7 +92,7 @@ Every screen and card in look-inventory-report.md section 1 moves to the new loo
 
 ## 5a. The worker
 
-Owner, Nov 8, 2026: "Can the worker in the shape race game have eyes and arms? Can it also make faces that show it's making effort to push/pull pieces?" Yes: the player's dot becomes **the worker**, a round character in the player's colour with its number on its tummy (so players still tell each other apart without colour), two eyes and two noodle arms with mitten hands.
+Owner, Nov 8, 2026: "Can the worker in the shape race game have eyes and arms? Can it also make faces that show it's making effort to push/pull pieces?" Yes: the player's dot becomes **the worker**, a round character in the player's colour with its accessory on top (section 5b, which replaced the number on its tummy; so players still tell each other apart without colour), two eyes and two noodle arms with mitten hands.
 
 | Moment (from the game's state) | Face and body |
 | --- | --- |
@@ -116,6 +116,29 @@ Rules for it:
 - **Push or pull** compares the direction of travel with the side of the piece the worker holds; standing still while carrying uses the small-piece face.
 - The worker never covers a target the player is aiming at: when carrying, it sits on the edge of the piece it holds, not in the middle.
 - The faces are drawn with simple shapes (arcs, ovals, a few lines), so they read at a phone's size and cost little to draw with 4 players.
+
+## 5b. Characters: a colour and an accessory
+
+Owner, Nov 8, 2026, on the worker with its number on its tummy: "Having the player number in the face doesn't look very good. Would it make more sense to have a unique color per character instead of character number?", then "Let's do color and an accessory. But we need to ensure the accessory is customizable in the future along with character customizations."
+
+A player is shown as a **character**: a colour and an accessory. Colour alone isn't enough: about 1 in 12 boys is colour-blind, and for many of them blue and purple, or orange and pink, look alike. The accessory changes the silhouette, so players tell each other apart without colour, and no number is drawn on a body.
+
+| Player | Colour | Accessory (default) |
+| --- | --- | --- |
+| 1 | `player(1)` blue | round ears |
+| 2 | `player(2)` orange | an antenna with a ball |
+| 3 | `player(3)` purple | a bow |
+| 4 | `player(4)` teal | a cap |
+| 5 | `player(5)` pink | a tuft of hair |
+| 6 | `player(6)` yellow | a tiny crown |
+
+Rules, so customising them later is a change of data, not of drawing:
+- **One value.** `ToyCharacter` in toy_look holds the colour slot and the `ToyAccessory`. `ToyCharacter.forPlayer(number)` gives the defaults above, and it is the only place a player's number becomes a character.
+- **Painters draw a character, never a number.** The worker, the Arena's marble, the menus' badges and (step 8) the pad's badge take a `ToyCharacter`. When players can choose their own, the host will hand each player's choice to the views; only where the character comes from changes.
+- **Accessories are drawn in ink and paper only**, plus the body's own colour for the ears. So any accessory works on any colour, today's six and any added later, and in both palettes.
+- **Small and simple:** each accessory is a few shapes with the ink edge, readable on a worker 7 mm across, and sits on top of the body, never over the face.
+- **Where the number stays:** in words and on the menus' big badges ("P1", the join screen, results), which have room. The badges also show the accessory, so the join screen tells you which worker is yours.
+- **Customising** (choosing a colour and an accessory on your phone, more accessories, saved with your nickname) is planned for later, not M13. It will need the host to send each player's character to the phones, through an optional field, as M14's other new fields do.
 
 ## 6. The shaders
 

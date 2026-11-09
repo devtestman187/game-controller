@@ -63,7 +63,7 @@ A star now and then appears in a side's tray. Picking it up with A gives that si
 ## 4. Raised, not chosen
 
 - Mini-games between puzzles, built on the Arena's movement: grab the most coins, tag, stay in the circle.
-- Characters: each player picks an original animal avatar instead of a numbered dot.
+- Characters: each player picks an original animal avatar instead of a numbered dot. (Nov 8, 2026: M13 gives each player a colour and an accessory, designed so they can be chosen later; PRD L6 and L7.)
 - Reactions: tap an emoji on the phone and it pops up on the TV beside your dot.
 
 ## Possible placement (not decided)
