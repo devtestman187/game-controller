@@ -76,6 +76,27 @@ void main() {
     expect(sounds.stopped, contains(SoundKey.countdown.eventName), reason: 'no "go" over a held round');
   });
 
+  // Owner's test of m13.3 (Nov 9): "When trying a round again, the sound for
+  // 3 2 1 didn't play." Play again opens the new round before the old one's
+  // screen is disposed, and the old one, whose countdown had long finished,
+  // stopped the countdown by name, the new round's with it.
+  testWidgets('Play again plays the new round\'s countdown, and the old round does not stop it', (tester) async {
+    await startBeat(tester);
+    expect(plays(), 1);
+    for (var i = 0; i < 400 && find.byKey(const Key('getReady')).evaluate().isNotEmpty; i++) {
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    lockEveryPiece(tester);
+    await endRound(tester);
+    await navigated(tester);
+    // A race's Play again is Rematch: the same replacement of the screen.
+    await tester.tap(find.byKey(const Key('rematch')));
+    await navigated(tester);
+    expect(find.byKey(const Key('getReady')), findsOneWidget, reason: 'the new round has its own beat');
+    expect(plays(), 2, reason: 'the new round plays its countdown');
+    expect(sounds.stopped, isNot(contains(SoundKey.countdown.eventName)), reason: 'nothing stops it');
+  });
+
   testWidgets('a round with no beat (the TV\'s) plays no countdown', (tester) async {
     final fake = await pumpHost(tester, screen: const StubHome());
     fake.gameHost.hasViewers = true;

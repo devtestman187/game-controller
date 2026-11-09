@@ -211,6 +211,10 @@ class _PausableState extends ConsumerState<Pausable> {
     _startCountdown();
     final next = _readyMs - ControllerMenus.step.inMilliseconds;
     if (next != _readyMs) setState(() => _readyMs = next < 0 ? 0 : next);
+    // The beat ran out on its "go": the countdown is this round's no longer, so
+    // nothing later stops it by name, not even a Play again's new countdown as
+    // this screen is disposed (owner's test of m13.3).
+    if (next <= 0) _countdownOn = false;
   }
 
   /// Plays the 3-2-1 countdown when the beat is at its top, the moment the card
