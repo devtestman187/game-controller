@@ -44,6 +44,27 @@ Everything looks like a well-made plastic toy on a playroom table. Shapes are br
 | D12 | Text on a coloured fill (badges, buttons, face buttons) is always ink, never white. Player 3 is `#A66CFF`, not the mock-ups' `#9B5CFF` (Claude, Nov 8, 2026, at the start of step 2) | Ink passes 4.5:1 on every fill in both palettes once player 3 is lightened (lowest: player 3 at 4.94, `bad` at 5.15); white fails on most of them. The change is barely visible |
 | D13 | Font files are renamed `Fredoka-Variable.ttf` and `Nunito-Variable.ttf` (Google Fonts names them `Fredoka[wdth,wght].ttf` and `Nunito[wght].ttf`) and ship with their `OFL.txt`, which the apps add to their licence page | Square brackets in asset paths are fragile in YAML and URLs; the OFL requires its text to travel with the font, and renaming the file is allowed |
 
+## 2a. The twelve puzzles and their piece colours (M13)
+
+**Decided at device test 3** (owner, Nov 9, 2026): "More puzzles. Can we have 6 easy and 6 medium puzzles?" and "It's not easy to see if the rectangle in the rocket was placed. There's not much contrast between where to place the piece and the piece itself in some cases. We should aim for higher contrast so players know when the piece is down."
+
+Twelve pictures, in `packages/puzzle_game/puzzles`, Easy first and then Medium in this order:
+
+| Level | Puzzles |
+| --- | --- |
+| Easy | house, rocket, tree, sun, fish, snowman |
+| Medium | boat, car, robot, train, castle, butterfly |
+
+Each is a picture a child knows at a glance, made of the shapes the format has. Easy has 4–5 pieces, mostly different shapes, few turned, and never two pieces of the same shape and size. Medium has 6–8 pieces, one or two big (team) pieces, some turned, and at most one pair that shares a shape (the boat's two waves). D9 still holds: Easy outlines match their pieces, Medium and Hard outlines stay neutral.
+
+Three rules hold for every picture. A test in `packages/puzzle_game/test` fails if any piece breaks one, so a new puzzle is checked the moment it is added:
+
+- **A piece stands out on the board in both looks.** Its colour is at least **0.15 OKLab** from the board (Sunny `#FFEFD0`, Night `#30297A`). A piece that fails is recoloured from the toy palette, keeping the picture's meaning: the rocket's body became a stronger silver-blue rather than a pale grey, and the snowman is drawn in pale blues, since white on cream can't pass. The numbers for every piece are in the S17 report.
+- **Pieces in one puzzle are told apart by colour.** No two pieces of a puzzle are within **0.08 OKLab** of each other unless they share a shape (the boat's two waves). So the house's walls and door, and the castle's wall and door, can't be near-copies of each other.
+- **Every piece is held and turned by a point strictly inside it.** The shape's origin is never on or outside an edge, so the worker always has the piece under the thumb. The boat's sail and flag used to be held on their left edge; both were fixed. The sail now sits on its centroid; the flag keeps a point just inside its trailing edge, because on its centroid its size (twice the farthest point from the origin, which sets how big the piece is drawn) dropped by a third and fell under the 8.5 mm floor on the narrowest phone.
+
+`docs/design/m13-puzzles.png` and `m13-puzzles-night.png` show all twelve finished, in a grid with each picture's name and level, one per look.
+
 ## 3. Design tokens (in `toy_look`)
 
 Names are by meaning, not colour, so a later change moves every use at once. The tokens that differ between the palettes have two values; the rest are shared.

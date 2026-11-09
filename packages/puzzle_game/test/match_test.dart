@@ -56,7 +56,7 @@ void main() {
     });
 
     test('every puzzle fits each half: pieces start in the tray, outlines lie on the board', () {
-      for (final id in ['house', 'rocket', 'tree', 'boat']) {
+      for (final id in puzzleIds) {
         final puzzle = load(id);
         for (var seed = 0; seed < 20; seed++) {
           final layout = SplitLayout.of(puzzle, seed);

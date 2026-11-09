@@ -8,7 +8,7 @@ import 'support/match_helpers.dart';
 
 void main() {
   group('compact start angles', () {
-    const ids = ['house', 'rocket', 'tree', 'boat'];
+    const ids = puzzleIds;
 
     test('a turned piece starts at a whole degree that is at least 30° from correct and as flat (or narrow) as the '
         'allowed angles get; other pieces start at their target angle', () {
@@ -56,7 +56,7 @@ void main() {
   });
 
   group('tray packing', () {
-    const ids = ['house', 'rocket', 'tree', 'boat'];
+    const ids = puzzleIds;
 
     test('every packed piece keeps at least 55% of itself visible, each one covers at most half the box before it, the '
         'boxes stay in the tray and the height covers them all', () {

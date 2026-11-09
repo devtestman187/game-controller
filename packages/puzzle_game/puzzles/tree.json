@@ -5,7 +5,7 @@
   "pieces": [
     {"id": "trunk", "shape": {"rect": [8, 18]}, "color": "#8E5B3A", "at": [26, 61], "rotated": true},
     {"id": "crown", "shape": {"circle": 14}, "color": "#27AE60", "at": [26, 40], "big": true},
-    {"id": "sun", "shape": {"circle": 8}, "color": "#F4D03F", "at": [64, 15]},
+    {"id": "sun", "shape": {"circle": 8}, "color": "#F2C200", "at": [64, 15]},
     {"id": "mountain", "shape": {"polygon": [[-14, 10], [0, -10], [14, 10]]}, "color": "#7F8C8D", "at": [60, 60], "rotated": true}
   ]
 }

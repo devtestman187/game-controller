@@ -38,6 +38,7 @@ Future<FakeHostService> pumpHost(
   List<Override> overrides = const [],
   DateTime Function()? clock,
   bool stillSky = true,
+  PuzzleLibrary? library,
 }) async {
   sounds = FakeSoundPlayer();
   awake = FakeScreenAwake();
@@ -52,7 +53,7 @@ Future<FakeHostService> pumpHost(
     ProviderScope(
       overrides: [
         prefsProvider.overrideWithValue(prefs),
-        puzzleLibraryProvider.overrideWith((ref) => testPuzzles()),
+        puzzleLibraryProvider.overrideWith((ref) => library ?? testPuzzles()),
         hostServiceProvider.overrideWithValue(fake),
         soundPlayerProvider.overrideWithValue(sounds),
         screenAwakeProvider.overrideWithValue(awake),

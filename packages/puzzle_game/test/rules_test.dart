@@ -323,7 +323,20 @@ void main() {
       final ids = (RegExp(r'"(\w+)"').allMatches(File('puzzles/index.json').readAsStringSync()).map((m) => m[1]!))
           .where((s) => s != 'puzzles')
           .toList();
-      expect(ids, ['house', 'rocket', 'tree', 'boat']);
+      expect(ids, [
+        'house',
+        'rocket',
+        'tree',
+        'sun',
+        'fish',
+        'snowman',
+        'boat',
+        'car',
+        'robot',
+        'train',
+        'castle',
+        'butterfly',
+      ]);
       for (final id in ids) {
         final puzzle = load(id);
         final g = PuzzleGame(puzzle, random: Random(7));

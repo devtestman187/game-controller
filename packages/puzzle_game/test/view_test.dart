@@ -134,7 +134,7 @@ void main() {
 
   testWidgets('a 1 vs 1 match draws on the split screen at both TV sizes, for every puzzle', (tester) async {
     const still = GamepadState(mode: InputMode.dpad);
-    for (final id in ['house', 'rocket', 'tree', 'boat']) {
+    for (final id in helpers.puzzleIds) {
       final p = load(id);
       final match = PuzzleMatch(p, teams: const {'p1': PuzzleSide.left, 'p2': PuzzleSide.right}, random: Random(1));
       match.update(0.016, const {'p1': still, 'p2': still}, numbers: const {'p1': 1, 'p2': 2});

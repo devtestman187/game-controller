@@ -1,0 +1,12 @@
+{
+  "id": "fish",
+  "name": "Fish",
+  "level": "easy",
+  "pieces": [
+    {"id": "body", "shape": {"circle": 13}, "color": "#E9762B", "at": [34, 40], "big": true},
+    {"id": "tail", "shape": {"polygon": [[-4.6667, -8], [-4.6667, 8], [9.3333, 0]]}, "color": "#C0392B", "at": [51.6667, 40], "rotated": true},
+    {"id": "fin", "shape": {"polygon": [[-6, 4], [6, 4], [0, -8]]}, "color": "#2E86C1", "at": [34, 22], "rotated": true},
+    {"id": "eye", "shape": {"circle": 7}, "color": "#F2C200", "at": [28, 35]},
+    {"id": "bubble", "shape": {"polygon": [[0, -7], [7, 0], [0, 7], [-7, 0]]}, "color": "#5DADE2", "at": [18, 18]}
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "id": "snowman",
+  "name": "Snowman",
+  "level": "easy",
+  "pieces": [
+    {"id": "bottom", "shape": {"circle": 13}, "color": "#4F86B5", "at": [38, 55], "big": true},
+    {"id": "head", "shape": {"circle": 9}, "color": "#9CC3DD", "at": [38, 33]},
+    {"id": "hat", "shape": {"rect": [14, 4]}, "color": "#546E7A", "at": [38, 22], "rotated": true},
+    {"id": "scarf", "shape": {"rect": [16, 3]}, "color": "#D64545", "at": [38, 43], "rotated": true},
+    {"id": "nose", "shape": {"polygon": [[-3.3, -2.5], [6.6, 0], [-3.3, 2.5]]}, "color": "#F39C12", "at": [44.3, 33]}
+  ]
+}

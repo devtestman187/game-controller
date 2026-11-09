@@ -6,6 +6,6 @@
     {"id": "walls", "shape": {"rect": [30, 22]}, "color": "#E9A23B", "at": [40, 50], "big": true},
     {"id": "roof", "shape": {"polygon": [[-19, 9], [0, -9], [19, 9]]}, "color": "#C0392B", "at": [40, 30], "rotated": true},
     {"id": "door", "shape": {"rect": [8, 12]}, "color": "#6D4C41", "at": [40, 55], "rotated": true},
-    {"id": "sun", "shape": {"circle": 7}, "color": "#F4D03F", "at": [66, 14]}
+    {"id": "sun", "shape": {"circle": 7}, "color": "#F2C200", "at": [66, 14]}
   ]
 }

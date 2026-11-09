@@ -147,6 +147,21 @@ final class PieceShape {
     return nearest;
   }
 
+  /// How far the shape's origin — the point a piece is held and turned by —
+  /// lies inside its outline, in board units: the distance to the nearest
+  /// edge, or 0 when the origin is on the outline or outside it (m13 device
+  /// test 3: every piece is held by a point inside it, so the worker never
+  /// pushes from empty space).
+  double get originMargin {
+    if (circle) return radius;
+    if (!_inside(Offset.zero, points)) return 0;
+    var nearest = double.infinity;
+    for (var i = 0; i < points.length; i++) {
+      nearest = min(nearest, _toSegment(Offset.zero, points[i], points[(i + 1) % points.length]));
+    }
+    return nearest;
+  }
+
   /// The corners placed at [at], turned by [angle] and drawn at [scale].
   List<Offset> _outline(Offset at, double angle, double scale) {
     final a = angle * pi / 180;

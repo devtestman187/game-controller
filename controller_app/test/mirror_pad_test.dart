@@ -215,9 +215,12 @@ void main() {
     });
 
     test('which puzzles keep the mirror, phone by phone and mode by mode', () {
+      // The table s11 pinned is for the first four puzzles; the ones added
+      // since (s17) are held to the rules above, not to a table.
+      const pinned = ['house', 'rocket', 'tree', 'boat'];
       List<String> kept(Size box, PadMode mode) => [
-        for (final MapEntry(key: id, value: puzzle) in puzzles.entries)
-          if (mirrorOf(puzzle, box, mode) != null) id,
+        for (final id in pinned)
+          if (mirrorOf(puzzles[id]!, box, mode) != null) id,
       ];
       // The D-pad leaves the corner free, so the mirror is the board's top left
       // as it is with no pad, and the clock area's room decides the rest (the

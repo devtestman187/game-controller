@@ -5,8 +5,8 @@
   "pieces": [
     {"id": "hull", "shape": {"polygon": [[-22, -5], [22, -5], [15, 5], [-15, 5]]}, "color": "#8E5B3A", "at": [40, 56], "rotated": true, "big": true},
     {"id": "mast", "shape": {"rect": [3, 30]}, "color": "#5D4037", "at": [40, 36]},
-    {"id": "sail", "shape": {"polygon": [[0, -13], [14, 12], [0, 12]]}, "color": "#ECF0F1", "at": [43, 37], "rotated": true},
-    {"id": "flag", "shape": {"polygon": [[0, -3], [7, 0], [0, 3]]}, "color": "#E74C3C", "at": [42, 18], "rotated": true},
+    {"id": "sail", "shape": {"polygon": [[-4.6667, -16.6667], [9.3333, 8.3333], [-4.6667, 8.3333]]}, "color": "#9FB8CE", "at": [47.6667, 40.6667], "rotated": true},
+    {"id": "flag", "shape": {"polygon": [[-0.3, -3], [6.7, 0], [-0.3, 3]]}, "color": "#E74C3C", "at": [42.3, 18], "rotated": true},
     {"id": "wave 1", "kind": "wave", "shape": {"rect": [14, 4]}, "color": "#3498DB", "at": [14, 66]},
     {"id": "wave 2", "kind": "wave", "shape": {"rect": [14, 4]}, "color": "#3498DB", "at": [66, 66]}
   ]

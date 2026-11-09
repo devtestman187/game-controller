@@ -66,7 +66,7 @@ Offset? spotOn(Puzzle puzzle, PuzzleGame game, int index) {
 }
 
 void main() {
-  const ids = ['house', 'rocket', 'tree', 'boat'];
+  const ids = puzzleIds;
 
   group('phones tray reach', () {
     test('held up, the dot reaches the tray\'s bottom less its radius', () {

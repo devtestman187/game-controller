@@ -10,7 +10,7 @@ void main() {
     // The promise to the players: in a pile, every piece keeps at least half
     // of its own shape in view, so it can be recognised and picked up.
     test('every piece in a pile keeps at least half of its shape visible', () {
-      for (final id in ['house', 'rocket', 'tree', 'boat']) {
+      for (final id in puzzleIds) {
         final puzzle = load(id);
         for (var seed = 0; seed < 20; seed++) {
           final m = PuzzleMatch(
@@ -38,7 +38,7 @@ void main() {
       }
     });
 
-    const ids = ['house', 'rocket', 'tree', 'boat'];
+    const ids = puzzleIds;
 
     test('in a split match the pieces overlap in a pile, each one inside the tray and in its own row', () {
       for (final id in ids) {

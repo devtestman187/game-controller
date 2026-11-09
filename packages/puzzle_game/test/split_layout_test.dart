@@ -9,7 +9,7 @@ import 'support/match_helpers.dart';
 
 void main() {
   group('split layout', () {
-    const ids = ['house', 'rocket', 'tree', 'boat'];
+    const ids = puzzleIds;
 
     test('every puzzle draws its board bigger than the old half, and the layout is worked out once', () {
       for (final id in ids) {
@@ -110,8 +110,9 @@ void main() {
           if (layout.hudStrip) {
             // The clock strip along the top, the boards nearly touching in the
             // middle.
-            expect(layout.leftBox.top, greaterThanOrEqualTo(SplitLayout.stripHeight), reason: where);
-            expect(layout.rightBox.top, greaterThanOrEqualTo(SplitLayout.stripHeight), reason: where);
+            // A world that fits the strip exactly lands on it within rounding.
+            expect(layout.leftBox.top, greaterThanOrEqualTo(SplitLayout.stripHeight - 1e-9), reason: where);
+            expect(layout.rightBox.top, greaterThanOrEqualTo(SplitLayout.stripHeight - 1e-9), reason: where);
             expect(layout.rightBox.left - layout.leftBox.right, closeTo(2, 1e-9), reason: where);
             expect(layout.leftBox.right, closeTo(79, 1e-9), reason: where);
             expect(layout.rightBox.left, closeTo(81, 1e-9), reason: where);
@@ -226,17 +227,25 @@ void main() {
   });
 
   group('phones layout', () {
-    const ids = ['house', 'rocket', 'tree', 'boat'];
+    const ids = puzzleIds;
 
-    /// The tray row's overlap per puzzle (m12-phone-layout §0.7c): the boat's
-    /// six pieces are wider than 1.3:1 with none, so their row overlaps; the
-    /// others leave the clock its room beside the world with pieces side by
-    /// side. Checked for every seed below.
+    /// The tray row's overlap per puzzle (m12-phone-layout §0.7c): pieces wider
+    /// than 1.3:1 with none need no overlap; the boat's, car's, castle's and
+    /// butterfly's rows overlap, and so do the robot's and train's on the seeds
+    /// whose widest piece wants the room. Checked for every seed below.
     const overlaps = {
       'house': [0.0],
       'rocket': [0.0],
       'tree': [0.0],
+      'sun': [0.0],
+      'fish': [0.0],
+      'snowman': [0.0],
       'boat': [0.25, 0.5],
+      'car': [0.25, 0.5],
+      'robot': [0.0, 0.25],
+      'train': [0.0, 0.25],
+      'castle': [0.25],
+      'butterfly': [0.25],
     };
 
     /// The picture a phones board holds: every outline's box at its target

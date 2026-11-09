@@ -1,0 +1,14 @@
+{
+  "id": "train",
+  "name": "Train",
+  "level": "medium",
+  "pieces": [
+    {"id": "engine", "shape": {"rect": [26, 16]}, "color": "#C0392B", "at": [26, 48], "big": true},
+    {"id": "cab", "shape": {"rect": [14, 14]}, "color": "#2E86C1", "at": [18, 36], "rotated": true},
+    {"id": "window", "shape": {"rect": [10, 7]}, "color": "#85C1E9", "at": [18, 35]},
+    {"id": "chimney", "shape": {"rect": [6, 10]}, "color": "#546E7A", "at": [30, 30]},
+    {"id": "wheel front", "shape": {"circle": 6}, "color": "#8E5B3A", "at": [20, 60]},
+    {"id": "wheel back", "shape": {"circle": 6}, "color": "#8E5B3A", "at": [32, 60]},
+    {"id": "carriage", "shape": {"rect": [20, 12]}, "color": "#27AE60", "at": [57, 50], "rotated": true}
+  ]
+}

@@ -283,7 +283,7 @@ The rules are the same. Only the view changes, because a phone screen is small a
 | Medium | About 6 | About half | Grey | 1 |
 | Hard | About 8 | Most | Grey | 2 |
 
-- There are about 3 puzzles per level, 9 in total. Proposed themes: house, rocket, tree and sun (Easy); boat, car, robot (Medium); castle, cat face, flower garden (Hard).
+- Twelve puzzles ship in M13 (owner, Nov 9, 2026: "Can we have 6 easy and 6 medium puzzles?"): 6 Easy (house, rocket, tree, sun, fish, snowman) and 6 Medium (boat, car, robot, train, castle, butterfly). Hard's puzzles (for example a cat face or a flower garden) come later. Every piece stands out on the board in both looks, pieces of one puzzle are told apart by colour, and every piece is held by a point inside it (docs/design/look-and-sound.md, device test 3).
 - Rotated pieces start at random angles at least 30° from correct.
 - Each match picks a random puzzle from the chosen level, or a specific one from a menu.
 - Puzzles are data files (shapes as polygons or circles, colours, starting angles, big-piece flags), so more can be added without code changes.

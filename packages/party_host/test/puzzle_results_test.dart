@@ -344,8 +344,14 @@ void main() {
   });
 
   testWidgets('an any-puzzle round of a level with one puzzle says Play again', (tester) async {
-    expect(testPuzzles().ofLevel(Level.medium), hasLength(1), reason: 'the case needs a one-puzzle level');
-    final fake = await pumpHost(tester, screen: const StubHome());
+    // A library whose Medium level holds only the boat: the shipped one has six
+    // since s17, so the case is made here rather than found.
+    final oneMedium = PuzzleLibrary([
+      for (final p in testPuzzles().puzzles)
+        if (p.level != Level.medium || p.id == 'boat') p,
+    ]);
+    expect(oneMedium.ofLevel(Level.medium), hasLength(1), reason: 'the case needs a one-puzzle level');
+    final fake = await pumpHost(tester, screen: const StubHome(), library: oneMedium);
     await openAnyPuzzle(tester, fake, level: Level.medium);
     lockEveryPiece(tester);
     await endRound(tester);
