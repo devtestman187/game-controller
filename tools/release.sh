@@ -60,7 +60,7 @@ version_of() { grep -m1 '^version:' "$1" | sed 's/version: *//; s/+.*//' | tr -d
 # --- Report on a tag that's already pushed -------------------------------
 report() {
   local t="$1" ok=0 run sha conclusion jobs assets ios
-  sha="$(git rev-list -n1 "$t" 2>/dev/null)" || { echo "No tag $t here (git fetch --tags?)"; return 1; }
+  sha="$(git rev-list -n1 "refs/tags/$t" 2>/dev/null)" || { echo "No tag $t here (git fetch --tags?)"; return 1; }
   echo
   echo "Release $t (commit ${sha:0:7}):"
 
@@ -133,8 +133,10 @@ if [ $yes = 0 ]; then
 fi
 
 # --- Tag and push --------------------------------------------------------
+# The tag by its full name: a milestone's tag (m13) can share its name with the
+# milestone's branch, and a bare name then matches both.
 git tag -a "$tag" -m "$notes" || die "git tag failed"
-if ! git push origin "$tag"; then
+if ! git push origin "refs/tags/$tag:refs/tags/$tag"; then
   git tag -d "$tag" > /dev/null
   die "push failed; the local tag was removed again"
 fi
@@ -160,7 +162,7 @@ echo "Release run $run: https://github.com/$repo/actions/runs/$run (usually 15 t
 gh run watch "$run" --repo "$repo" --exit-status --interval 30 > /dev/null 2>&1
 
 echo "Waiting for Codemagic's TestFlight check..."
-sha="$(git rev-list -n1 "$tag")"
+sha="$(git rev-list -n1 "refs/tags/$tag")"
 waited=0
 while [ $waited -lt $testflight_timeout ]; do
   state="$(gh api "repos/$repo/commits/$sha/check-runs" -q '.check_runs[] | select(.name | test("TestFlight")) | .status' 2>/dev/null | head -1)"
