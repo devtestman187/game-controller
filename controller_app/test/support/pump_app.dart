@@ -35,6 +35,10 @@ class TestApp {
   final FakeMotionSensors motion;
 }
 
+/// Mounts the app with every platform input faked. [stillSky] puts a
+/// [party.ToyStillSky] above it, as every widget test that settles needs (the
+/// sky drifts for as long as a menu is open); a test about the drift itself
+/// passes false and settles by pumping instead.
 Future<TestApp> pumpApp(
   WidgetTester tester, {
   bool paired = false,
@@ -49,6 +53,7 @@ Future<TestApp> pumpApp(
   FakeViewPadding padding = const FakeViewPadding(),
   void Function()? click,
   List<Override> extra = const [],
+  bool stillSky = true,
 }) async {
   // A landscape phone (iPhone 15-ish) unless the test picks another screen.
   // [padding] is its safe area: a notch, the home indicator.
@@ -75,6 +80,7 @@ Future<TestApp> pumpApp(
     device: device,
     click: click,
     extra: extra,
+    stillSky: stillSky,
   );
   await settle(tester);
   return app;
@@ -82,7 +88,8 @@ Future<TestApp> pumpApp(
 
 /// Pumps a widget of its own with the app's providers faked as [pumpApp]
 /// fakes them: for a test that gives a widget a child the app doesn't, such
-/// as the game behind [ControlsLayer]. It doesn't settle.
+/// as the game behind [ControlsLayer]. It doesn't settle. [stillSky] is
+/// [pumpApp]'s.
 Future<void> pumpFaked(
   WidgetTester tester,
   Widget child, {
@@ -93,6 +100,7 @@ Future<void> pumpFaked(
   FakeDeviceStatus? device,
   void Function()? click,
   List<Override> extra = const [],
+  bool stillSky = true,
 }) => tester.pumpWidget(
   ProviderScope(
     overrides: [
@@ -116,7 +124,7 @@ Future<void> pumpFaked(
       if (log != null) logProvider.overrideWithValue(log),
       ...extra,
     ],
-    child: child,
+    child: stillSky ? party.ToyStillSky(child: child) : child,
   ),
 );
 

@@ -6,37 +6,39 @@ final _look = ToyLook.build(palette: ToyPalette.sunny, tv: false);
 
 /// The app both hosts run: the look above [MaterialApp], which takes the
 /// theme made from it, so a page's transition comes from the theme.
-Widget _app() => ToyLookScope(
-  look: _look,
-  child: MaterialApp(
-    theme: toyTheme(_look),
-    home: Scaffold(
-      body: Builder(
-        builder: (context) => Column(
-          children: [
-            const Text('first page'),
-            TextButton(
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (context) => Scaffold(
-                    body: Column(
-                      children: [
-                        const Text('second page'),
-                        TextButton(
-                          onPressed: () => showDialog<void>(
-                            context: context,
-                            builder: (_) => const AlertDialog(title: Text('a dialog')),
+Widget _app() => ToyStillSky(
+  child: ToyLookScope(
+    look: _look,
+    child: MaterialApp(
+      theme: toyTheme(_look),
+      home: Scaffold(
+        body: Builder(
+          builder: (context) => Column(
+            children: [
+              const Text('first page'),
+              TextButton(
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (context) => Scaffold(
+                      body: Column(
+                        children: [
+                          const Text('second page'),
+                          TextButton(
+                            onPressed: () => showDialog<void>(
+                              context: context,
+                              builder: (_) => const AlertDialog(title: Text('a dialog')),
+                            ),
+                            child: const Text('open dialog'),
                           ),
-                          child: const Text('open dialog'),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
+                child: const Text('push'),
               ),
-              child: const Text('push'),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     ),

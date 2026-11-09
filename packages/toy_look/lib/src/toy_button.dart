@@ -146,7 +146,7 @@ class _ToyButtonState extends State<ToyButton> with SingleTickerProviderStateMix
       _isFocused = focused;
       if (!focused) _release();
     });
-    if (focused && widget.showFocus && ToyLookScope.of(context).effects) {
+    if (focused && widget.showFocus && _motionOn(context)) {
       _bounce.forward(from: 0);
     }
   }
@@ -203,7 +203,7 @@ class _ToyButtonState extends State<ToyButton> with SingleTickerProviderStateMix
             onFocusChange: _handleFocusChange,
             child: AnimatedBuilder(
               animation: _bounce,
-              builder: (context, pill) => Transform.scale(scale: _scaleFor(look), child: pill),
+              builder: (context, pill) => Transform.scale(scale: _scaleFor(), child: pill),
               child: _buttonFace(look, enabled),
             ),
           ),
@@ -213,11 +213,16 @@ class _ToyButtonState extends State<ToyButton> with SingleTickerProviderStateMix
   }
 
   /// The scale the pill is drawn at: 1.0 unless the focus shows, then the
-  /// bounce's 1.0 → 1.06 → 1.04, or 1.04 at once with effects off.
-  double _scaleFor(ToyLook look) {
+  /// bounce's 1.0 → 1.06 → 1.04, or 1.04 at once with effects off or the
+  /// device asking for reduced motion (design D8).
+  double _scaleFor() {
     if (!widget.showFocus || !_isFocused) return 1;
-    return look.effects ? _bounceScale.value : _focusScale;
+    return _motionOn(context) ? _bounceScale.value : _focusScale;
   }
+
+  /// Whether the focus may animate: the look's effects are on (design D8) and
+  /// the device doesn't ask for reduced motion.
+  bool _motionOn(BuildContext context) => ToyLookScope.of(context).effects && !MediaQuery.disableAnimationsOf(context);
 
   /// The button itself: the pill, the pointer and the content, which moves
   /// with the pill while it is pressed.

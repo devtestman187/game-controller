@@ -10,12 +10,19 @@ final _night = ToyLook.build(palette: ToyPalette.night, tv: false);
 final _sunny = ToyLook.build(palette: ToyPalette.sunny, tv: false);
 final _noEffects = ToyLook.build(palette: ToyPalette.sunny, tv: false, effects: false);
 
-Widget _screen(ToyLook look, Widget child) => ToyLookScope(
-  look: look,
-  child: MaterialApp(
-    theme: toyTheme(look),
-    home: Scaffold(
-      body: Padding(padding: const EdgeInsets.all(ToySizes.space16), child: child),
+Widget _screen(ToyLook look, Widget child, {bool reduceMotion = false}) => ToyStillSky(
+  child: ToyLookScope(
+    look: look,
+    child: MaterialApp(
+      theme: toyTheme(look),
+      home: Builder(
+        builder: (context) => MediaQuery(
+          data: MediaQuery.of(context).copyWith(disableAnimations: reduceMotion),
+          child: Scaffold(
+            body: Padding(padding: const EdgeInsets.all(ToySizes.space16), child: child),
+          ),
+        ),
+      ),
     ),
   ),
 );
@@ -116,6 +123,13 @@ void main() {
     await tester.pumpWidget(_screen(_noEffects, _card()));
     expect(_scaleOf(tester), 1);
     await tester.pumpWidget(_screen(_sunny, _card(popIn: false)));
+    expect(_scaleOf(tester), 1);
+  });
+
+  testWidgets('with reduced motion asked for the card appears at 1.0 at once', (tester) async {
+    await tester.pumpWidget(_screen(_sunny, _card(), reduceMotion: true));
+    expect(_scaleOf(tester), 1);
+    await tester.pump(const Duration(milliseconds: 180));
     expect(_scaleOf(tester), 1);
   });
 }

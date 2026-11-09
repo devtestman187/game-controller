@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:party_host/party_host.dart' show ToyBackground;
+import 'package:tvtest/src/tv_text.dart';
 import 'package:tvtest/src/ui/shader_spike_rows.dart';
 import 'package:tvtest/src/ui/shader_spike_screen.dart';
 
@@ -23,16 +25,35 @@ ShaderSpikePainter painterOf(WidgetTester tester, String key) {
 }
 
 void main() {
-  testWidgets('the Look test button opens the spike, which says what the shader did', (tester) async {
+  testWidgets('the Look test button opens the spike, which says what each shader did', (tester) async {
     await openSpike(tester);
     expect(find.byType(ShaderSpikeScreen), findsOneWidget);
-    // Whatever this device can do, the line says it: on with a load time, or
-    // off with the reason. Under `flutter test` the shader asset isn't there,
-    // so this reads "Shader: off: ..." (see the spike's report).
-    final status = tester.widget<Text>(find.byKey(const Key('shaderStatus'))).data;
-    expect(status, isNotNull);
-    expect(status!.startsWith('Shader: on (loaded in ') || status.startsWith('Shader: off: '), isTrue, reason: status);
+    // Whatever this device can do, each line says it: on with its load and
+    // warm-up time, or off with the reason. Under `flutter test` the shader
+    // assets aren't there, so these read "Shade: off: ..." and "Backdrop:
+    // off: ..." (see the spike's report).
+    final shade = tester.widget<Text>(find.byKey(const Key('shadeStatus'))).data;
+    final backdrop = tester.widget<Text>(find.byKey(const Key('backdropStatus'))).data;
+    expect(shade, isNotNull);
+    expect(backdrop, isNotNull);
+    expect(shade!.startsWith('Shade: on (') || shade.startsWith('Shade: off: '), isTrue, reason: shade);
+    expect(backdrop!.startsWith('Backdrop: on (') || backdrop.startsWith('Backdrop: off: '), isTrue, reason: backdrop);
     expect(find.byKey(const Key('frameStats')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  // Claude's step 6 review: each palette with the shader and then without it,
+  // side by side, so a device shows whether the two fills draw the same sky.
+  testWidgets('the sky row shows Sunny and Night, each with the shader and with the fallback', (tester) async {
+    await openSpike(tester);
+    final shapes = find.descendant(of: find.byType(ListView), matching: find.byType(Scrollable)).first;
+    await tester.scrollUntilVisible(find.text(TvText.sky), 200, scrollable: shapes);
+    for (final palette in [TvText.skySunny, TvText.skyNight]) {
+      expect(find.text(palette), findsOneWidget);
+      expect(find.text('$palette, ${TvText.skyFallback}'), findsOneWidget);
+    }
+    // The four boxes' skies, and the screen's own.
+    expect(find.byType(ToyBackground), findsAtLeastNWidgets(5));
     expect(tester.takeException(), isNull);
   });
 

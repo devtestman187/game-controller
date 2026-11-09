@@ -25,6 +25,10 @@ final harnessNow = DateTime(2026, 11, 8, 12);
 /// [ControllerMenus], with every platform input replaced by a fake. A host
 /// app's home screen comes from the app; the tests here start on [StubHome].
 /// [clock] is the device's time for Auto's palette, [harnessNow] by default.
+///
+/// [stillSky] puts a [ToyStillSky] above the app, as every widget test that
+/// settles needs (the sky drifts for as long as a menu is open): a test about
+/// the drift itself passes false, and settles by pumping instead.
 Future<FakeHostService> pumpHost(
   WidgetTester tester, {
   required Widget screen,
@@ -33,6 +37,7 @@ Future<FakeHostService> pumpHost(
   List<Map<String, Object?>> sessions = const [],
   List<Override> overrides = const [],
   DateTime Function()? clock,
+  bool stillSky = true,
 }) async {
   sounds = FakeSoundPlayer();
   awake = FakeScreenAwake();
@@ -57,11 +62,16 @@ Future<FakeHostService> pumpHost(
       child: Shortcuts(
         // The TV app's own keys, so the tests press what the remote presses.
         shortcuts: hostActivateShortcuts,
-        child: _HarnessApp(screen: screen),
+        child: stillSky ? ToyStillSky(child: _HarnessApp(screen: screen)) : _HarnessApp(screen: screen),
       ),
     ),
   );
-  await tester.pumpAndSettle();
+  if (stillSky) {
+    await tester.pumpAndSettle();
+  } else {
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+  }
   return fake;
 }
 
@@ -254,8 +264,11 @@ bool focused(WidgetTester tester, String key) => Focus.of(tester.element(focusTe
 String? focusedTooltip() =>
     FocusManager.instance.primaryFocus?.context?.findAncestorWidgetOfExactType<Tooltip>()?.message;
 
-/// The puzzle data folder, relative to this package.
-const puzzleDataDir = '../puzzle_game/puzzles';
+/// The puzzle data folder, relative to this package, or to the repo root when
+/// a single test file is run from there.
+final puzzleDataDir = Directory.current.path.endsWith('party_host')
+    ? '../puzzle_game/puzzles'
+    : 'packages/puzzle_game/puzzles';
 
 /// A puzzle, read straight from the package's data files.
 Puzzle housePuzzle() => Puzzle.parse(File('$puzzleDataDir/house.json').readAsStringSync());

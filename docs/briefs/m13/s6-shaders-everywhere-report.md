@@ -1,178 +1,181 @@
-# M13 step 6: shaders everywhere (stopped before code: the brief's shader tests can't run)
+# M13 step 6: shaders everywhere (second run: the sky on every menu, still in a round)
 
-Job: `docs/briefs/m13/s6-shaders-everywhere.md`. Gate: G4, the whole step.
-**Status: stopped.** The brief's test list and the project's own record disagree on one fact, and
-that fact carries the whole job: **no `FragmentProgram` can be loaded under `flutter test`**, so the
-drifting sky, the two-program load and the same-picture check cannot be shown by a test here. Coding
-guidelines §11 ("if the brief's contract can't be met as written … stop and report it, never work
-around a design problem") and review-rules A5 say stop. No `lib/` file was changed; this report is
-the whole diff, plus one throwaway probe test listed for deletion.
+Job: `docs/briefs/m13/s6-shaders-everywhere.md`, following its section "Claude's answers to the
+first run's report (Nov 9, 2026)". Gate: G4, the whole step. **Status: done.** This report replaces
+the first run's (which stopped on the shader tests).
 
-## The blocker, in one line
+## What the step now does
 
-Rule 2 makes the sky drift only when `look.backdrop != null`, and the test list asks for that drift
-to be tested — but under `flutter test` `ToyShaders.load()` can never give a program, so **no
-`ToyLook` in any test can have `backdrop != null`** and the sky can never drift in a test.
+Option B, as answered: the drift follows `look.effects`, not the shader. `ToyBackground` is a
+`StatefulWidget` whose ticker runs while effects are on, the device doesn't ask for reduced motion
+and no `ToyStillSky` holds the sky. Each tick sets a `ValueNotifier<Offset>` of the shift, which the
+painter repaints from; the child isn't rebuilt. The fill is the backdrop shader when
+`look.backdrop != null`, the Canvas dots at the same shift otherwise, both reading `ToySky` for
+every number. A round's screens (`PuzzleScreen`, `GameScreen`, `ControllerScreen`) wrap themselves
+in `ToyStillSky`, through a counted hold below the sky and a mark above it for harnesses and for a
+`ToyBackground` under a still sky. `ToyShaders` loads the two programs independently, warms each up,
+and reports `loadMs`, `shadeMs` and `backdropMs`; the TV's Look test screen shows each program's
+state and gained a drifting sky row in Sunny and Night.
 
-## The evidence (probed on this machine, not from memory)
+## Files changed
 
-A throwaway probe in `packages/toy_look/test/probe_tmp_test.dart`, run with `flutter test`:
+New:
+- `packages/toy_look/lib/src/toy_sky.dart` — the sky's constants (spacing 32, radius 3, glow share 0.6, speed 6), `shiftAt`, and the shader's uniform values; both fills read it.
+- `packages/toy_look/lib/src/toy_still_sky.dart` — `ToySkyHolds`, `ToySkyHoldsScope`, `ToyStillSky` and the above-the-sky look-up.
+- `packages/party_host/test/sky_holds_test.dart` — the home, the picker and the join screen drift; the Shape Race round and the Arena screen hold still.
+- `controller_app/test/sky_holds_test.dart` — Connect drifts; the pad holds still.
+- `docs/briefs/m13/s6-shaders-everywhere-report.md` — this report.
 
-```
-OFL OK, 4481 chars                                    # ordinary assets are in the test bundle
-FONT OK, 159184 bytes
-FRAG SOURCE FAILED: Unable to load asset: "packages/toy_look/shaders/toy_backdrop.frag".
-  The asset does not exist or has empty data.         # the shaders/ entries aren't there at all
-BACKDROP FAILED: Exception: Asset 'packages/toy_look/shaders/toy_backdrop.frag' not found
-SHADE FAILED:    Exception: Asset 'packages/toy_look/shaders/toy_shade.frag' not found
-```
+Changed:
+- `packages/toy_look/lib/src/toy_background.dart` — stateful with a ticker, the hold, the shader/Canvas fills at one shift, repainting from the shift alone.
+- `packages/toy_look/lib/src/toy_shaders.dart` — a backdrop program, a per-program load and error with asset parameters, `shadeMs`/`backdropMs`, the warm-up kept.
+- `packages/toy_look/lib/src/toy_look.dart` — `backdrop`, gated by effects, in `==` and `hashCode`.
+- `packages/toy_look/lib/toy_look.dart` — exports the two new files.
+- `packages/toy_look/pubspec.yaml` — `shaders/toy_backdrop.frag` declared.
+- `packages/toy_look/lib/src/toy_button.dart` — the focus bounce also honours reduced motion.
+- `packages/toy_look/lib/src/toy_card.dart` — the pop-in also honours reduced motion.
+- `packages/party_host/lib/src/ui/ready_card.dart` — the count's pop also honours reduced motion.
+- `packages/party_host/lib/src/ui/puzzle_screen.dart` — the round wrapped in `ToyStillSky`.
+- `packages/party_host/lib/src/ui/game_screen.dart` — the Arena screen wrapped in `ToyStillSky`.
+- `packages/party_host/lib/src/text/host_text.dart` — `effectsLine` says what the setting now does.
+- `controller_app/lib/src/ui/controller_screen.dart` — the pad and joined view wrapped in `party.ToyStillSky`; the long `build` split into `_body`, no behaviour change.
+- `tv_test_app/lib/src/tv_text.dart` — the spike's sky labels and a per-shader state line.
+- `tv_test_app/lib/src/ui/shader_spike_screen.dart` — the sky row (Sunny and Night), the two shader state lines, the shapes tab extracted to `_shapesTab`.
+- `tv_test_app/test/shader_spike_screen_test.dart` — the new status prefixes and the sky-row test.
+- `tv_test_app/test/support/pump_app.dart` — a still sky above the app.
+- `tv_test_app/test/toy_gallery_test.dart` — a still sky.
+- `controller_app/test/support/pump_app.dart` — a `stillSky` flag, on by default, for `pumpApp` and `pumpFaked`.
+- `packages/party_host/test/support/host_harness.dart` — a `stillSky` flag; `puzzleDataDir` resolves from the package or the repo root, so a single host test file runs from either.
+- `packages/toy_look/test/toy_background_test.dart` — the `ToySky` values, the drift, the still cases, the holds, a covered page, repaint isolation, and the Canvas pixels.
+- `packages/toy_look/test/toy_shaders_test.dart` — the loading contract, a missing asset's own error, `none`.
+- `packages/toy_look/test/toy_look_test.dart` — no backdrop with effects off; equality covers it.
+- `packages/toy_look/test/toy_button_test.dart` — a reduced-motion bounce test; a still-sky root.
+- `packages/toy_look/test/toy_card_test.dart` — a reduced-motion pop test; a still-sky root.
+- `packages/toy_look/test/page_transitions_test.dart`, `packages/toy_look/test/toy_pill_test.dart` — a still-sky root (the pins of `ToyBackground` being stateless).
+- `packages/party_host/test/ready_card_test.dart` — a reduced-motion test; a still-sky root.
+- `packages/party_host/test/look_and_sound_test.dart` — the new `effectsLine`; no backdrop with effects off.
+- `packages/test_game/test/arena_paint_test.dart` — the goal glow's effects test.
 
-`flutter test` (3.47.8) builds a test bundle from `flutter: assets:` and `fonts:` only: it never runs
-impellerc, so there is no compiled `.frag` and not even the source under `shaders/`. `flutter test
---help` has no option that changes this, and `FragmentProgram` has no `fromBytes` to load a compiled
-blob by hand. This is already recorded as a lesson: `docs/project-notes.md:115` — "`flutter test`
-doesn't load fragment shaders … Shader code is tested through its Canvas fallback, and its real
-drawing is checked on a device (M13 spike)" — and in `docs/briefs/m13/s1-spike-report.md` ("It doesn't
-work, and it fails cleanly"), where the shader test asserts the contract instead.
+Not mine (in the working tree, outside `allow:`):
+- `docs/design/look-and-sound.md` — one line, already changed when this run started: your Nov 9 decision that the drift follows the setting, not the shader. I didn't edit it.
+- `tv_test_app/windows/flutter/generated_plugin_registrant.cc`, `generated_plugin_registrant.h`, `generated_plugins.cmake` — rewritten by the Flutter tool on `pub`/test runs; line endings only (no content diff). I didn't edit them.
 
-## Each brief test that cannot pass, and why (one cause)
+## Computed test values
 
-| Brief's test | Why it can't run |
-| --- | --- |
-| `ToyShaders.load()` loads both under `flutter test` | neither asset is in the test bundle |
-| "a missing backdrop asset leaves `backdrop` null, **keeps `shade`**, and its `error` names the backdrop" | with no loadable asset, `shade` is null too in every test, so "keeps shade" can't be shown |
-| "with a backdrop and effects on it ticks: … the shift moved by 6 px on each axis" | needs `look.backdrop != null`, impossible in a test |
-| "removing the `ToyStillSky` starts it again", "two holders: removing one keeps it still", "a page pushed over a drifting page: the one below stops ticking" | all three need a sky that drifts first |
-| "same picture: render the shader sky and the Canvas sky at the same shift … within 3 per channel" | needs a real program (and its "largest difference" for the report) |
-| "each shader's load and warm-up time under `flutter test` (the number `loadMs` gives)" | `loadMs` would only ever time a failure |
-| `ToyLook.build(effects: false)` has no backdrop, equality covers it | this one is fine; its "with a backdrop" counterpart is not buildable |
+- `ToySky.shiftAt(1 s)` = (6, 6); 10666 ms = 63.996, 10667 ms = 0.002 (wraps at 2 × 32).
+- Uniforms: Sunny dot alpha 0.22, Night 0.07; spacing 32, radius 3, glow share 0.6.
+- Canvas pixels, 300 × 300: glow centre (196, 234, 255) ±1; far corner (124, 200, 248); half-way red ≈ 160 ±3; a Sunny dot at (272, 288) is (153, 212, 250) ±2, Night's (51, 44, 105) ±2.
+- The same dot at shift (6, 6) is at (278, 294); its old centre is the plain background.
+- Ticks: after 1 s the shift is (6, 6), after 2 s (12, 12).
+- Only the sky repaints: the counted child builds once over ten 100 ms ticks.
+- A covered page stops the sky below within the 400 ms after a push (its 300 ms slide included).
+- Button: bounce peaks at 1.06 and rests at 1.04. Card pop: 0.9 → 1.0 in 180 ms. Ready count: 1.3 → 1.0 in 250 ms.
+- Goal glow: the sample at (815, 270) differs between t = 0 and t = 0.5 s and between t = 0.25 and t = 0.5 s with effects on, and is equal with them off.
 
-The negative cases (effects off, `disableAnimations`, a `ToyStillSky`) are testable, but they only
-prove the sky never drifts — which is the one thing a broken build also does, so they are no proof.
+## Test counts
 
-## What is not blocked (read-only survey, so the re-brief is cheap)
+| check | before | after |
+| --- | --- | --- |
+| kit | 48 | 48 |
+| look | 94 | 107 |
+| arena | 61 | 62 |
+| puzzle | 171 | 171 |
+| host | 203 | 206 |
+| phone | 403 | 405 |
+| tv | 50 passed, 1 skipped | 51 passed, 1 skipped |
 
-Everything else in the brief is reachable today, with the file each change lands in and what it does.
-I did **not** start it, because the shape of the sky's fill depends on the answer below.
+1030 → 1050 passed, 1 skipped. Twenty new tests: look 13, arena 1, host 3, phone 2, tv 1.
 
-| File | Change the brief asks for (not done) |
-| --- | --- |
-| `packages/toy_look/pubspec.yaml` | `- shaders/toy_backdrop.frag` under `flutter: shaders:` (only `toy_shade.frag` is declared today) |
-| `lib/src/toy_shaders.dart` | `backdrop` + `backdropAsset`, each program loaded on its own, `error` naming which failed, the warm-up draw, `loadMs` |
-| `lib/src/toy_look.dart` | `backdrop` field, null when effects are off, in `build`, `==` and `hashCode` |
-| `lib/src/toy_background.dart` (now 79 lines, stateless) | `StatefulWidget` + `SingleTickerProviderStateMixin`, the shift listenable, the shader or Canvas fill from one set of constants, one `FragmentShader` per painter |
-| `lib/src/toy_still_sky.dart` (new) | `ToyStillSky` and the inherited hold-counter controller (keeps `toy_background.dart` under 400 lines and one responsibility) |
-| `packages/party_host/lib/src/ui/puzzle_screen.dart`, `game_screen.dart` | wrap the round in `ToyStillSky` |
-| `packages/party_host/lib/src/text/host_text.dart:342` | `effectsLine` → e.g. "Moving backgrounds, shading and bounces. Turn off on a slow device." |
-| `controller_app/lib/src/ui/controller_screen.dart` | wrap the pad and the joined view in `ToyStillSky` |
-| `tv_test_app/lib/src/ui/shader_spike_screen.dart`, `src/tv_text.dart` | show each shader's state and its load time (`_status` at line 94 is the one-shader version) |
-| tests | `toy_background_test`, `toy_shaders_test`, `toy_look_test`, party_host screens, `controller_screen`, plus the effects-audit gaps below |
+## Shader load and warm-up under `flutter test`
 
-**Reduce-motion does not exist anywhere yet:** `MediaQuery.disableAnimationsOf` appears in no file in
-the repository, so the brief's "widgets also honour the OS's reduce-motion for the button bounce, the
-card pops and the drift" is new code in `toy_button.dart`, `toy_card.dart` and the sky. That part is
-fully testable under `flutter test` and is independent of the blocker.
+`ToyShaders.load()` gives `loadMs` 4, `shadeMs` 3, `backdropMs` 0 in the contract test. Under
+`flutter test` both keys are missing (`Asset '…toy_shade.frag' not found`), so these are the failed
+look-ups, not a real load and warm-up: the warm-up's cost can't be timed here. On a device the TV
+spike's "Shade: on (N ms)" and "Backdrop: on (N ms)" are that number. The contract test asserts each
+time is ≥ 0, the whole ≥ each part, and that neither throws.
 
-## The effects audit (brief rule 4), read from the code
+## The effects audit
 
-| Motion | Where | Honours `look.effects` | Honours reduce-motion | Test |
+| Motion | Where | Honours effects | Honours reduce-motion | Test |
 | --- | --- | --- | --- | --- |
-| button bounce | `toy_button.dart:149, 219` | yes | **no** (not implemented) | `toy_button_test.dart:143` |
-| card pop | `toy_card.dart:80` | yes | **no** (not implemented) | `toy_card_test.dart:115` |
-| ready card's pop | `ready_card.dart:94` | yes | **no** (AnimationController, no check) | `ready_card_test.dart:41` |
-| piece boing | `puzzle_painter.dart:261`, `mirror_painter.dart:137` → `PieceMoments` | yes | n/a (painter, no context — by design) | `piece_moments_test.dart:112` |
-| piece wobble | `puzzle_painter.dart:262` | yes | n/a | `piece_moments_test.dart:113` |
-| piece sparkle | `puzzle_painter.dart:349-350` | yes | n/a | `piece_moments_test.dart:114-115` |
-| worker's poses (blink, effort) | `worker_painter.dart:71` → `WorkerMoments` | yes | n/a | `worker_moments_test.dart:288-303` |
-| the goal's glow | `arena_painter.dart:140` | yes | n/a | **none** — the one motion with no effects test |
-| marble's recovering blink | `arena_marble_painter.dart:93` | yes | n/a | `arena_paint_test.dart:244` |
-| the sky's drift | new | — | — | — |
+| The sky's drift (new) | `ToyBackground`, every page | yes (`look.effects`) | yes | toy_background_test: "with effects on the sky ticks…"; "with the effects off the sky stays still"; "with reduced motion asked for the sky stays still" |
+| Button bounce | `ToyButton`'s focus scale | yes | yes (added) | toy_button_test: "with effects off the focus sits at 1.04 at once, with no bounce"; "with reduced motion asked for the focus sits at 1.04 at once, with no bounce" |
+| Card pop | `ToyCard`'s pop-in | yes | yes (added) | toy_card_test: "with effects off or popIn false it appears at 1.0 at once"; "with reduced motion asked for the card appears at 1.0 at once" |
+| Ready card's pop | `party_host`'s `ReadyCard` count | yes | yes (added) | ready_card_test: "with the effects off the count is still"; "with reduced motion asked for the count is still" |
+| Piece's boing | `PuzzlePainter`, `MirrorPainter` | yes | no (a painter has no context; as the brief says) | piece_moments_test: "with the effects off none of it moves" |
+| Piece's wobble | same | yes | no | same test |
+| Piece's ✓ sparkle | same | yes | no | same test |
+| Worker's poses (hop, shake, blink, lean) | `WorkerMoments`, `WorkerPainter` | yes | no | worker_moments_test: "with the effects off nothing hops, shakes, blinks or leans" |
+| Goal's glow | Arena's goal painter | yes | no | arena_paint_test: "the goal glow pulses with effects on and is still with them off" (new) |
+| Marble's recovering blink | Arena's marble painter | yes | no | arena_paint_test: "a recovering marble fades with effects on and is still with them off" |
 
-So the audit finds the code already honouring `effects` for all nine motions; what step 6 would add is
-the drift, reduce-motion for the three widgets, and the goal-glow test the brief asks for.
+## The same-picture check
 
-## Options for Claude (each is a design decision, so I took none)
+Not measurable under `flutter test`: the backdrop program never loads, so there is no shader
+picture to compare with the Canvas one, and no largest difference to report. What the tests pin is
+the Canvas side: `ToySky` is the only source of the numbers and the painter gives the shader
+`ToySky.uniforms`, so a device draws both fills from the same values. The device check is the TV
+Look test screen's sky row (Sunny and Night beside each other): you run it on Windows.
 
-- **A. Keep the rules, test what the format allows.** Contract tests for `load()` as in s1; unit-test
-  the drift's arithmetic (a pure `toyShift(elapsedS)`-style helper shared by both fills) and the
-  Canvas fill's pixels at two shifts; check the shader's drawing on a device through the TV's Look
-  test screen, with a backdrop row added. The "same picture" guarantee becomes a device check.
-- **B. Drift on `effects` alone, fill chosen by `backdrop`.** Then a widget test can see the sky tick
-  (effects on, `backdrop` null → Canvas dots drift). This reads as the intended look anyway ("turning
-  effects on or off never makes the sky jump", "one set of constants feeds both"), but the GLSL is
-  still untested.
-- **C. A seam for the fill.** A small `ToySkyFill` interface in `toy_look` (the shader's one, and the
-  Canvas one), with the painter taking one: tests can then exercise the drift and read the uniforms a
-  fake received, and the two implementations can be compared on a device. More API than the brief has.
-- **D. A device test.** `integration_test` on a real device would load the shader; no `flutter test`
-  check in `tools/check.sh` covers it.
+## `toy_backdrop.frag`
 
-**Suggestion (not acted on):** A plus the brief's own "one set of constants feeds both": a small pure
-`ToySky` value (spacing, radius, glow share, the shift from elapsed time, and the uniforms worked out
-from a look) that both fills read. Then every number in rule 2 — the 6 px per second, the
-`(d, d)` diagonal, the `% (2 × spacing)` wrap at 64, each uniform's value — is a plain test, the
-Canvas picture is a pixel test, and only the GLSL needs a device. That is one new file in `toy_look`
-and no new public behaviour.
+Unchanged — no compile errors were seen, and the painter's uniform names match it: `uSize`,
+`uBackground`, `uGlow`, `uGlowShare`, `uDotAlpha`, `uSpacing`, `uDotRadius`, `uShift`.
 
-## Self-check (review-rules.md part A, one line each)
+## Self-check: docs/review-rules.md part A
 
-1. **Every host setup.** Not affected: no behaviour changed (TV host, phone "Play on this phone",
-   phone "Show on this device", joined phone, older peer) — the only changed file is this report.
-2. **When kept state starts and ends.** Nothing is held: no ticker, timer or cache was added.
-3. **How a new state combines with the others.** No new state; pause, away, Get ready, results and
-   leaving are untouched.
-4. **Stay in the job's folder.** Only this report and one probe test under `packages/toy_look/test`
-   were written; the probe is listed under Delete.
-5. **Stop rather than overstep.** This report is that answer: the shader-load fact makes the brief's
-   contract unmeetable here, and the fix is a design decision for Claude, not a workaround by me.
+1. **Every host setup.** The change is in the look layer, which every setup draws through: TV/PC host, Play on this phone, Show on this device and a joined phone all get a `ToyBackground` page. Host screens and the pad are tested (party_host `sky_holds_test`, controller_app `sky_holds_test`); a build one older has no message change and keeps its own still sky.
+2. **When kept state starts and ends.** The ticker runs only while effects are on, motion isn't reduced and no hold stands; it stops on any of those, on an opaque page above (TickerMode) and on dispose. A hold is counted and released in `dispose`; a release with no hold asserts and is ignored. No round is needed for it to run, and none stops it early. Tested by the still cases and the holds test in toy_background_test (resuming where it stood is not asserted separately).
+3. **How a new state combines.** `ToyStillSky` wraps a whole round route, so the pause menu, the host away, a player away, Get ready and the results stay under the one hold while that route is up; leaving releases it (controller_app's pad test covers the pair Press/live and leave indirectly; the host round test covers the round's start). The pause and away overlays are not separately tested with the sky.
+4. **Stay in the job's folder.** All my writes are inside `allow:` (the files above). The working tree also shows `docs/design/look-and-sound.md` (your Nov 9 line) and three generated Windows plugin files — neither was edited by me (see "Not mine").
+5. **Stop rather than overstep.** Not needed this run: your answers resolved the shader-load blocker. The only deviation is the review tool's two long-`build` FAILs, fixed by extracting `_body` and `_shapesTab` (no behaviour change).
 
-## Checks run
+## Questions and suggestions
 
-- `tools/check.sh format analyze look puzzle arena host phone tv kit`: **all PASS** (109 s, run again
-  after the report was written) —
-  format, analyze, kit 48 tests, look 94, arena 61, puzzle 171, host 203, phone 403, tv (printed no
-  count because of its one skipped test; `flutter test` in `tv_test_app` says 50 passed, 1 skipped).
-  This is the before count; there is no after count, because no test was added.
-- The probe above, run with `flutter test test/probe_tmp_test.dart`; the file now holds no tests
-  (`look` still reports 94) and is listed for deletion.
+1. `docs/design/look-and-sound.md` and `tv_test_app/windows/flutter/generated_*` are modified in the
+   working tree though outside `allow:`. I left them alone — please confirm they're yours (the doc
+   line matches your answer 1).
+2. Under `flutter test` the shader times are failed look-ups (3 ms and 0 ms). If you want the warm-up
+   measured, the TV spike's lines are the place; a second's pause before the first menu would show a
+   warm-up that isn't working.
+3. `ToySky`'s four constants are literal design numbers in one place; `tools/review.sh` notes each as
+   a numeric literal (notes, not FAILs), as it does for other design constants.
+4. Every `ToyBackground` state makes its own `FragmentShader` from the shared program (one per page,
+   as briefed). If pages ever multiply, making one per program would save a little; not worth it now.
 
-## Not sure about, questions, suggestions
+## Claude's review (Nov 9, 2026)
 
-1. **Question:** which option (A, B, C or D) — and if A, may the pure `ToySky` helper land in
-   `lib/src/` as a small public value (it is what makes the brief's numbers testable)?
-2. **Question:** does the warm-up actually help? `research-flutter-shaders-report.md` §4 cites
-   flutter#193048 (awaiting `fromAsset` no longer warms a Windows shader; the first frame still froze
-   ~1.5 s) — so the brief's "draw each program once into an offscreen picture" may not remove the
-   stall on Windows. A device check is what settles it; a test here can only show the draw is made.
-3. **Not sure:** with two programs, is `loadMs` one number for the whole `load()` or one per program?
-   The brief says "it's timed in `loadMs`" and also asks for "each shader's load and warm-up time".
-4. **Not sure:** should `ToyStillSky` be its own file (`toy_still_sky.dart`) or stay inside
-   `toy_background.dart`? I would split, to keep one responsibility and the file small.
-5. **Suggestion:** the TV's Look test screen is the only place the backdrop shader is ever seen
-   drawing; adding a backdrop row there (Sunny and Night, drifting) would give the device check
-   something to look at, next to the shapes' row.
-6. **Not sure:** the goal glow has no effects test, and adding one (as the brief allows: "one test per
-   motion that had no effects test before") needs a pixel or painter probe in `arena_paint_test`;
-   say if that is wanted in the same step.
+Accepted, with these changes. Counts after them: look 108, tv 51 (+1 skipped); the rest as above.
+
+- **Answers to the questions:** the design doc line and the generated Windows files are mine (the generated ones are reset before every commit). The literal notes and one shader per page are fine.
+- **The sky no longer disposes its `FragmentShader`**, matching the warm-up: the research lists Mali-Vulkan crashes around disposing shader resources, and a retained layer may still hold it for a frame.
+- **The device check, on Windows** (profile build, Skia):
+  - Shade loaded in 3 ms and Backdrop in 0 ms.
+  - Frames averaged 1.2 ms (2.1 ms worst) with the shapes turning and four skies drifting.
+  - The dots moved about 14 px down and to the right in about 2.4 s, the 6 px a second planned.
+  - The new effects line reads as written.
+- **The sky row now shows each palette twice,** with the shader and then with the fallback, so a device shows the same-picture check side by side. On Windows the two are indistinguishable in Sunny and in Night: same glow, same dots.
+  - Its labels take the screen's text colour, not the box's: a Night label was white, unreadable on a Sunny screen.
+- **Tabs read on the background:** the TV Look test's unselected tab was Material's dark default on the Night sky. `toyTheme` now gives `TabBar` onBackground labels and underline, tested in both palettes.
+- **Still to check on devices (step 9):** the warm-up's effect on a cold first menu, and the sky on the Android TV, phones and iPhone.
 
 ## Commit message
 
-Add the M13 step 6 report: the shader tests can't run under flutter test
+M13 step 6: the sky drifts on menus and stands still in a round
 
-The step's plan is sound but its test list leans on a FragmentProgram
-under flutter test, and the test bundle has no compiled shaders at
-all: FragmentProgram.fromAsset fails for both keys on this machine,
-while ordinary assets load. Since the sky drifts only with a loaded
-backdrop and no test can have one, the drift, the load, the warm-up
-and the same-picture check cannot be shown here. This report records
-the evidence, the audit of the effects setting (all nine motions
-already honour it; reduce-motion exists nowhere yet, and the goal's
-glow has no test) and four options for the way on.
+ToyBackground ticks while effects are on and nothing holds it,
+painting the backdrop shader when it loaded and the Canvas dots
+at the same shift otherwise; every number comes from ToySky.
+ToyShaders loads and warms both programs independently, with a
+per-program error and time. PuzzleScreen, GameScreen and the
+pad wrap themselves in ToyStillSky. Button, card and ready-card
+motion also honours reduced motion; the TV Look test shows each
+shader's state and a drifting sky in both palettes.
 
 ## Status row
 
-M13 step 6 (shaders everywhere): stopped before code — `flutter test` cannot load a fragment shader, so the brief's drift, load, warm-up and same-picture tests cannot pass; open: Claude's choice of option A–D, then the whole step.
+M13 step 6 (shaders everywhere): done — the sky drifts on menus and holds still in a round with or without the shader, both programs load and warm up at start, the effects setting covers every motion, and the TV Look test shows each shader's state and a sky row for the device check.
 
 ## Delete
 
-- packages/toy_look/test/probe_tmp_test.dart
+- none

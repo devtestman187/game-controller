@@ -148,7 +148,7 @@ Two fragment shaders in `packages/toy_look/shaders/`, declared under `flutter: s
 2. **`toy_backdrop.frag`** (the background): the background colour, the centre glow, and polka dots on a slow diagonal drift (time uniform). Used on menus with effects on; in a game the background is drawn once into an image and reused.
 
 Decided at step 6 (Claude, Nov 8, 2026):
-- The dots drift down and to the right at 6 logical px a second: calm enough to go unnoticed after a moment. The shader and the Canvas fallback draw the same sky at the same drift, so switching effects never makes it jump.
+- The dots drift down and to the right at 6 logical px a second: calm enough to go unnoticed after a moment. The drift follows the effects setting, not the shader: a device without the shader drifts its Canvas dots the same way. The shader and the fallback draw the same sky at the same drift, so losing the shader never makes it jump.
 - The sky holds still in a round: on the host's Shape Race and Arena screens, and on a phone's pad and joined view, which saves a phone's battery. It also holds still when the device asks for reduced motion.
 - Both programs are drawn once offscreen at start (a warm-up), so the driver compiles them behind the splash.
 - What stays flat: menu badges and buttons, because text sits on them and the shade band would take ink-on-colour below 4.5:1 (D12); and the Arena's walls and goal pad, which are flat toy plates.

@@ -74,7 +74,9 @@ Future<FakeHostService> pumpApp(
         lookClockProvider.overrideWithValue(clock ?? () => DateTime(2026, 11, 8, 12)),
         if (localPlayer != null) localPlayerSourceProvider.overrideWithValue(localPlayer),
       ],
-      child: TvTestApp(game: game),
+      // A still sky above the app, as every widget test that settles needs
+      // (the sky drifts for as long as a menu is open).
+      child: ToyStillSky(child: TvTestApp(game: game)),
     ),
   );
   if (settle) {

@@ -1,4 +1,4 @@
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:toy_look/toy_look.dart';
 
@@ -10,17 +10,88 @@ const _size = Size(300, 300);
 
 final _sunny = ToyLook.build(palette: ToyPalette.sunny, tv: true);
 final _night = ToyLook.build(palette: ToyPalette.night, tv: true);
+final _noEffects = ToyLook.build(palette: ToyPalette.sunny, tv: true, effects: false);
 
-Future<Pixels> _painted(ToyLook look) =>
-    paintedPixels(_size, (canvas) => ToyBackgroundPainter(look).paint(canvas, _size));
+/// A sky over [look] on a still device, or one that drifts under the given
+/// conditions. The [child] sits on top of the sky.
+Widget _sky(ToyLook look, {bool still = false, bool reduceMotion = false, Widget child = const SizedBox.expand()}) {
+  Widget sky = ToyBackground(child: child);
+  if (still) sky = ToyStillSky(child: sky);
+  return ToyLookScope(
+    look: look,
+    child: MediaQuery(
+      data: MediaQueryData(disableAnimations: reduceMotion),
+      child: Directionality(textDirection: TextDirection.ltr, child: sky),
+    ),
+  );
+}
 
 /// The background's painter, as the widget last built it.
-CustomPainter _painterOf(WidgetTester tester) => tester
-    .widget<CustomPaint>(find.descendant(of: find.byType(ToyBackground), matching: find.byType(CustomPaint)))
-    .painter!;
+ToyBackgroundPainter _painterOf(WidgetTester tester) =>
+    tester
+            .widget<CustomPaint>(
+              find.descendant(of: find.byType(ToyBackground), matching: find.byType(CustomPaint)).first,
+            )
+            .painter!
+        as ToyBackgroundPainter;
+
+/// How far the sky has drifted, as the painter last read it.
+Offset _shiftOf(WidgetTester tester) => _painterOf(tester).shift.value;
+
+/// Counts how often the sky's child builds.
+int _childBuilds = 0;
+
+final class _Counted extends StatelessWidget {
+  const _Counted();
+
+  @override
+  Widget build(BuildContext context) {
+    _childBuilds++;
+    return const SizedBox.expand();
+  }
+}
+
+/// The sky's Canvas fill at [shift].
+Future<Pixels> _painted(ToyLook look, [Offset shift = Offset.zero]) => paintedPixels(
+  _size,
+  (canvas) => ToyBackgroundPainter(look, shift: ValueNotifier<Offset>(shift)).paint(canvas, _size),
+);
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  test('the sky\'s numbers are the design\'s, and a second is (6, 6)', () {
+    expect(ToySky.spacing, 32);
+    expect(ToySky.dotRadius, 3);
+    expect(ToySky.glowShare, 0.6);
+    expect(ToySky.driftSpeed, 6);
+    expect(ToySky.shiftAt(const Duration(seconds: 1)), const Offset(6, 6));
+  });
+
+  test('the shift wraps after 2 × spacing: 10.667 s is back at the start', () {
+    // 10.666 s × 6 = 63.996, a hair short of 64; a millisecond later it wraps.
+    expect(ToySky.shiftAt(const Duration(milliseconds: 10666)).dx, closeTo(63.996, 1e-6));
+    expect(ToySky.shiftAt(const Duration(milliseconds: 10667)).dx, closeTo(0.002, 1e-6));
+  });
+
+  test('the uniforms are the look\'s colours and the sky\'s numbers', () {
+    const size = Size(300, 200);
+    final sunny = ToySky.uniforms(_sunny, size, const Offset(6, 6));
+    expect(sunny.size, size);
+    expect(sunny.background, ToyColors.sunny.background);
+    expect(sunny.glow, ToyColors.sunny.backgroundGlow);
+    expect(sunny.dotAlpha, 0.22);
+    expect(sunny.spacing, 32);
+    expect(sunny.dotRadius, 3);
+    expect(sunny.glowShare, 0.6);
+    expect(sunny.shift, const Offset(6, 6));
+
+    final night = ToySky.uniforms(_night, size, Offset.zero);
+    expect(night.background, ToyColors.night.background);
+    expect(night.glow, ToyColors.night.backgroundGlow);
+    expect(night.dotAlpha, 0.07);
+    expect(night.shift, Offset.zero);
+  });
 
   test('the centre is the glow and the corner is the sky', () async {
     final pixels = await _painted(_sunny);
@@ -59,28 +130,136 @@ void main() {
     expect(nightDot.$3, closeTo(105, 2));
   });
 
-  testWidgets('the background repaints only when the look changes', (tester) async {
-    await tester.pumpWidget(
-      ToyLookScope(
-        look: _sunny,
-        child: const SizedBox.expand(child: ToyBackground()),
+  test('the dots move with the shift: (272, 288) is a dot, and (278, 294) is it after (6, 6)', () async {
+    final still = await _painted(_sunny);
+    final drifted = await _painted(_sunny, const Offset(6, 6));
+    expect(drifted.at(278, 294), still.at(272, 288));
+    // The old centre is 8.5 away from the moved dot (the dots are 3 across),
+    // so it is the plain background now.
+    expect(drifted.at(272, 288), (124, 200, 248));
+  });
+
+  testWidgets('with effects on the sky ticks: after 1 s its shift is (6, 6)', (tester) async {
+    await tester.pumpWidget(_sky(_sunny));
+    expect(_shiftOf(tester), Offset.zero);
+    await tester.pump(const Duration(seconds: 1));
+    expect(_shiftOf(tester), const Offset(6, 6));
+    await tester.pump(const Duration(seconds: 1));
+    expect(_shiftOf(tester), const Offset(12, 12));
+  });
+
+  testWidgets('with the effects off the sky stays still', (tester) async {
+    await tester.pumpWidget(_sky(_noEffects));
+    await tester.pump(const Duration(seconds: 1));
+    expect(_shiftOf(tester), Offset.zero);
+  });
+
+  testWidgets('with reduced motion asked for the sky stays still', (tester) async {
+    await tester.pumpWidget(_sky(_sunny, reduceMotion: true));
+    await tester.pump(const Duration(seconds: 1));
+    expect(_shiftOf(tester), Offset.zero);
+  });
+
+  testWidgets('under a ToyStillSky above it the sky stays still', (tester) async {
+    await tester.pumpWidget(_sky(_sunny, still: true));
+    await tester.pump(const Duration(seconds: 1));
+    expect(_shiftOf(tester), Offset.zero);
+  });
+
+  testWidgets('a ToyStillSky under the sky holds it; removing the last hold starts the drift', (tester) async {
+    Widget tree(int holds) => _sky(
+      _sunny,
+      child: Column(
+        children: [
+          const SizedBox(width: 8, height: 8),
+          for (var i = 0; i < holds; i++) const ToyStillSky(child: SizedBox(width: 8, height: 8)),
+        ],
       ),
     );
-    final sunny = _painterOf(tester);
-    await tester.pumpWidget(
-      ToyLookScope(
-        look: ToyLook.build(palette: ToyPalette.sunny, tv: true),
-        child: const SizedBox.expand(child: ToyBackground()),
+
+    await tester.pumpWidget(tree(1));
+    await tester.pump(const Duration(seconds: 1));
+    expect(_shiftOf(tester), Offset.zero, reason: 'one holder keeps it still');
+
+    // A second holder arrives; taking either away still leaves one.
+    await tester.pumpWidget(tree(2));
+    await tester.pump(const Duration(seconds: 1));
+    expect(_shiftOf(tester), Offset.zero);
+    await tester.pumpWidget(tree(1));
+    await tester.pump(const Duration(seconds: 1));
+    expect(_shiftOf(tester), Offset.zero, reason: 'the last holder was not the one removed');
+
+    // The last holder goes: the sky drifts from where it stood.
+    await tester.pumpWidget(tree(0));
+    await tester.pump(const Duration(seconds: 1));
+    expect(_shiftOf(tester), const Offset(6, 6));
+  });
+
+  testWidgets('a page pushed over a drifting page stops the one below ticking', (tester) async {
+    final app = ToyLookScope(
+      look: _sunny,
+      child: MaterialApp(
+        theme: toyTheme(_sunny),
+        home: Scaffold(
+          body: Column(
+            children: [
+              const Text('first page'),
+              Builder(
+                builder: (context) => TextButton(
+                  onPressed: () =>
+                      Navigator.of(context)
+                          .push(MaterialPageRoute<void>(builder: (_) => const Scaffold(body: Text('second page')))),
+                  child: const Text('push'),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
-    final same = _painterOf(tester);
-    expect(same.shouldRepaint(sunny), isFalse, reason: 'an equal look paints the same picture');
-    await tester.pumpWidget(
-      ToyLookScope(
-        look: _night,
-        child: const SizedBox.expand(child: ToyBackground()),
-      ),
+    await tester.pumpWidget(app);
+    await tester.pump(const Duration(seconds: 1));
+
+    final below = _painterOf(tester).shift;
+    expect(below.value, const Offset(6, 6));
+
+    await tester.tap(find.text('push'));
+    await tester.pump();
+    // The slide lasts 300 ms; until it ends the page below still ticks.
+    await tester.pump(const Duration(milliseconds: 400));
+    final stoppedAt = below.value;
+    await tester.pump(const Duration(seconds: 1));
+    expect(below.value, stoppedAt, reason: 'the opaque page above mutes the sky below it');
+  });
+
+  testWidgets('only the sky repaints as it drifts', (tester) async {
+    _childBuilds = 0;
+    await tester.pumpWidget(_sky(_sunny, child: const _Counted()));
+    expect(_childBuilds, 1);
+    for (var i = 0; i < 10; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+    expect(_shiftOf(tester), isNot(Offset.zero));
+    expect(_childBuilds, 1, reason: 'the painter repaints from the shift; nothing below is rebuilt');
+  });
+
+  test('the painter repaints for a new look or a new shift, not for an equal one', () {
+    final shift = ValueNotifier<Offset>(Offset.zero);
+    addTearDown(shift.dispose);
+    expect(
+      ToyBackgroundPainter(_sunny, shift: shift).shouldRepaint(ToyBackgroundPainter(_sunny, shift: shift)),
+      isFalse,
+      reason: 'an equal look paints the same picture',
     );
-    expect(_painterOf(tester).shouldRepaint(same), isTrue, reason: 'the other palette changes every colour');
+    expect(
+      ToyBackgroundPainter(_night, shift: shift).shouldRepaint(ToyBackgroundPainter(_sunny, shift: shift)),
+      isTrue,
+    );
+    final other = ValueNotifier<Offset>(Offset.zero);
+    addTearDown(other.dispose);
+    expect(
+      ToyBackgroundPainter(_sunny, shift: other).shouldRepaint(ToyBackgroundPainter(_sunny, shift: shift)),
+      isTrue,
+    );
   });
 }

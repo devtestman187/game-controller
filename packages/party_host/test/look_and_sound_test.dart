@@ -43,11 +43,12 @@ void main() {
     expect(Theme.of(tester.element(find.byType(LookAndSoundScreen))).canvasColor, ToyColors.sunny.background);
   });
 
-  testWidgets('the Effects switch saves, and the look drops its shader', (tester) async {
+  testWidgets('the Effects switch saves, and the look drops its shaders', (tester) async {
     await pumpHost(tester, screen: const LookAndSoundScreen());
     final container = _container(tester);
     expect(container.read(toyLookProvider).effects, isTrue);
-    expect(find.text('Shaders and menu motion. Turn off on an older device.'), findsOneWidget);
+    expect(find.text(HostText.effectsLine), findsOneWidget);
+    expect(find.text('Moving backgrounds, shading and bounces. Turn off on a slow device.'), findsOneWidget);
 
     await tester.tap(find.byKey(const Key('lookEffects')));
     await tester.pumpAndSettle();
@@ -55,5 +56,6 @@ void main() {
     expect(container.read(lookPrefsProvider).getBool('look.effects'), isFalse);
     expect(container.read(toyLookProvider).effects, isFalse);
     expect(container.read(toyLookProvider).shade, isNull);
+    expect(container.read(toyLookProvider).backdrop, isNull);
   });
 }

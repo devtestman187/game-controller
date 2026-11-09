@@ -20,6 +20,7 @@ final class ToyLook {
     required this.sizes,
     required this.type,
     required this.shade,
+    required this.backdrop,
     required this.effects,
   });
 
@@ -38,6 +39,7 @@ final class ToyLook {
       sizes: tv ? ToySizes.tv : ToySizes.menu,
       type: tv ? ToyType.tv : ToyType.phone,
       shade: effects ? shaders.shade : null,
+      backdrop: effects ? shaders.backdrop : null,
       effects: effects,
     );
   }
@@ -58,6 +60,11 @@ final class ToyLook {
   /// it; every caller then uses the Canvas fallback (design section 6).
   final FragmentProgram? shade;
 
+  /// The backdrop shader that fills the sky behind every page, or null when
+  /// effects are off or the device couldn't load it; the sky then draws its
+  /// Canvas dots at the same drift (design section 6).
+  final FragmentProgram? backdrop;
+
   /// Whether the device's effects setting is on (design D8).
   final bool effects;
 
@@ -71,8 +78,9 @@ final class ToyLook {
       other.sizes == sizes &&
       other.type == type &&
       other.shade == shade &&
+      other.backdrop == backdrop &&
       other.effects == effects;
 
   @override
-  int get hashCode => Object.hash(palette, colors, sizes, type, shade, effects);
+  int get hashCode => Object.hash(palette, colors, sizes, type, shade, backdrop, effects);
 }

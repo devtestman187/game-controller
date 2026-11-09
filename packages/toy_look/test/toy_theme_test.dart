@@ -100,6 +100,19 @@ void main() {
     expect(theme.appBarTheme.foregroundColor, ToyColors.night.onBackground);
   });
 
+  // Claude's step 6 review: the TV's Look test showed its unselected tab in
+  // Material's dark default on the Night sky, unreadable. A tab sits on the
+  // background, so both its labels are onBackground and the underline marks
+  // the one chosen.
+  test("a tab bar's labels are onBackground, chosen or not, in both palettes", () {
+    for (final look in [sunny, night]) {
+      final tabs = toyTheme(look).tabBarTheme;
+      expect(tabs.labelColor, look.colors.onBackground);
+      expect(tabs.unselectedLabelColor, look.colors.onBackground);
+      expect(tabs.indicatorColor, look.colors.onBackground);
+    }
+  });
+
   test('body text is Nunito, the titles Fredoka', () {
     final theme = toyTheme(sunny);
     expect(theme.textTheme.bodyMedium!.fontFamily, 'packages/toy_look/Nunito');

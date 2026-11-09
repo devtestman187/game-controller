@@ -25,7 +25,8 @@ dev_dependencies:
     sdk: flutter
 
 # The shaders are compiled by the build (impellerc) and ship as assets; the
-# key they load by is `packages/toy_look/shaders/toy_shade.frag`.
+# keys they load by are `packages/toy_look/shaders/toy_shade.frag` and
+# `packages/toy_look/shaders/toy_backdrop.frag`.
 flutter:
   fonts:
     - family: Fredoka
@@ -41,3 +42,4 @@ flutter:
     - fonts/nunito/OFL.txt
   shaders:
     - shaders/toy_shade.frag
+    - shaders/toy_backdrop.frag

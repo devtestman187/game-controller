@@ -24,5 +24,7 @@ export 'src/toy_pill.dart';
 export 'src/toy_shape.dart';
 export 'src/toy_shaders.dart';
 export 'src/toy_sizes.dart';
+export 'src/toy_sky.dart';
+export 'src/toy_still_sky.dart';
 export 'src/toy_theme.dart';
 export 'src/toy_type.dart';

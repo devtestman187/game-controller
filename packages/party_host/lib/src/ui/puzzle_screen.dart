@@ -186,24 +186,28 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
   Widget build(BuildContext context) {
     final puzzle = widget.match?.puzzle ?? ref.watch(puzzleLibraryProvider).whenOrNull(data: _pick);
     final result = _result;
-    return PopScope(
-      // Back on the results goes to the game picker, never one route short of
-      // it where the next A starts a game (m12 bug 1107e): the Back button,
-      // B on a phone and the system back all ask the route first.
-      canPop: result == null,
-      onPopInvokedWithResult: (didPop, _) => _leaveForGames(didPop),
-      child: ControlsClaim(
-        // The results are a menu like any other; while playing, the game reads
-        // the controllers.
-        controls: result == null ? const Controls.game() : const Controls.menus(),
-        child: Focus(
-          autofocus: true,
-          // Not a stop for arrow keys or the phone's stick: on the results an
-          // up or down push moved the focus here, off the buttons, and A then
-          // pressed nothing (m10.2 device test).
-          skipTraversal: true,
-          onKeyEvent: _onKey,
-          child: _screen(puzzle, result),
+    // The round's sky stands still (design section 6): a drifting background
+    // under a board only costs a phone its battery.
+    return ToyStillSky(
+      child: PopScope(
+        // Back on the results goes to the game picker, never one route short of
+        // it where the next A starts a game (m12 bug 1107e): the Back button,
+        // B on a phone and the system back all ask the route first.
+        canPop: result == null,
+        onPopInvokedWithResult: (didPop, _) => _leaveForGames(didPop),
+        child: ControlsClaim(
+          // The results are a menu like any other; while playing, the game reads
+          // the controllers.
+          controls: result == null ? const Controls.game() : const Controls.menus(),
+          child: Focus(
+            autofocus: true,
+            // Not a stop for arrow keys or the phone's stick: on the results an
+            // up or down push moved the focus here, off the buttons, and A then
+            // pressed nothing (m10.2 device test).
+            skipTraversal: true,
+            onKeyEvent: _onKey,
+            child: _screen(puzzle, result),
+          ),
         ),
       ),
     );

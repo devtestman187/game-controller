@@ -7,11 +7,18 @@ import 'package:party_host/party_host.dart';
 /// as it changes while the look's effects are on, and still when they are off.
 ToyLook _look({bool effects = true}) => ToyLook.build(palette: ToyPalette.sunny, tv: false, effects: effects);
 
-Widget _screen(ToyLook look, int seconds) => ToyLookScope(
-  look: look,
-  child: MaterialApp(
-    theme: toyTheme(look),
-    home: Scaffold(body: ReadyCard(seconds: seconds)),
+Widget _screen(ToyLook look, int seconds, {bool reduceMotion = false}) => ToyStillSky(
+  child: ToyLookScope(
+    look: look,
+    child: MaterialApp(
+      theme: toyTheme(look),
+      home: Builder(
+        builder: (context) => MediaQuery(
+          data: MediaQuery.of(context).copyWith(disableAnimations: reduceMotion),
+          child: Scaffold(body: ReadyCard(seconds: seconds)),
+        ),
+      ),
+    ),
   ),
 );
 
@@ -42,6 +49,13 @@ void main() {
     await tester.pumpWidget(_screen(_look(effects: false), 3));
     expect(_scaleOf(tester), readyPopTo);
     await tester.pumpWidget(_screen(_look(effects: false), 2));
+    expect(_scaleOf(tester), readyPopTo);
+  });
+
+  testWidgets('with reduced motion asked for the count is still', (tester) async {
+    await tester.pumpWidget(_screen(_look(), 3, reduceMotion: true));
+    expect(_scaleOf(tester), readyPopTo);
+    await tester.pumpWidget(_screen(_look(), 2, reduceMotion: true));
     expect(_scaleOf(tester), readyPopTo);
   });
 

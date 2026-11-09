@@ -339,7 +339,7 @@ abstract final class HostText {
   static const sunny = 'Sunny';
   static const night = 'Night';
   static const effects = 'Effects';
-  static const effectsLine = 'Shaders and menu motion. Turn off on an older device.';
+  static const effectsLine = 'Moving backgrounds, shading and bounces. Turn off on a slow device.';
 
   /// The Auto line, built from the setting's own hours.
   static String autoLine(int fromHour, int untilHour) =>

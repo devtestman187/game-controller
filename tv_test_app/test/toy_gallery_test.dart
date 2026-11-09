@@ -11,7 +11,11 @@ Future<void> _pumpGallery(WidgetTester tester) async {
   tester.view.physicalSize = const Size(960, 540);
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
-  await tester.pumpWidget(const MaterialApp(home: Scaffold(body: ToyGallery())));
+  await tester.pumpWidget(
+    const ToyStillSky(
+      child: MaterialApp(home: Scaffold(body: ToyGallery())),
+    ),
+  );
   await tester.pumpAndSettle();
 }
 

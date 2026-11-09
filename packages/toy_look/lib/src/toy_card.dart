@@ -7,7 +7,7 @@ import 'toy_sizes.dart';
 
 /// A card in the look (design section 4): cream paper with the ink edge, the
 /// hard shadow and 16 px corners, an optional coloured header band, and a
-/// pop-in when it first appears.
+/// pop-in when it first appears if effects are on and motion isn't reduced.
 ///
 /// What it holds is ink text, because paper is a screen of its own: the theme
 /// below it turns the text and the list tiles to ink, so a card on Night's
@@ -41,7 +41,7 @@ class ToyCard extends StatefulWidget {
   final EdgeInsets padding;
 
   /// Whether the card pops in when it first appears; the effects setting also
-  /// has to be on (design D8).
+  /// has to be on, and the device must not ask for reduced motion (design D8).
   final bool popIn;
 
   /// Whether [child] scrolls when the card is shorter than it is (M13 3b, the
@@ -77,7 +77,8 @@ class _ToyCardState extends State<ToyCard> with SingleTickerProviderStateMixin {
     super.didChangeDependencies();
     if (_isStarted) return;
     _isStarted = true;
-    if (widget.popIn && ToyLookScope.of(context).effects) {
+    final motion = ToyLookScope.of(context).effects && !MediaQuery.disableAnimationsOf(context);
+    if (widget.popIn && motion) {
       _pop.forward();
     } else {
       _pop.value = 1;

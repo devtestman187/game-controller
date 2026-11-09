@@ -54,7 +54,7 @@ class ReadyCard extends StatelessWidget {
 
 /// The count itself, in the look's clock family at [readyCountShare] times its
 /// size, popping from [readyPopFrom] to [readyPopTo] as [seconds] changes while
-/// the look's effects are on, and still when they are off.
+/// the look's effects are on, and still when they are off or motion is reduced.
 class _ReadyCount extends StatefulWidget {
   const _ReadyCount({required this.seconds});
 
@@ -89,9 +89,11 @@ class _ReadyCountState extends State<_ReadyCount> with SingleTickerProviderState
     if (widget.seconds != oldWidget.seconds) _start();
   }
 
-  /// Pops the new count in, or shows it at once when the effects are off.
+  /// Pops the new count in, or shows it at once when the effects are off or the
+  /// device asks for reduced motion (design D8).
   void _start() {
-    if (ToyLookScope.of(context).effects) {
+    final motion = ToyLookScope.of(context).effects && !MediaQuery.disableAnimationsOf(context);
+    if (motion) {
       _pop.forward(from: 0);
     } else {
       _pop.value = 1;

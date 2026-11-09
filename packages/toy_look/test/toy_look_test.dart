@@ -31,14 +31,17 @@ void main() {
     expect(look.sizes, same(ToySizes.menu));
   });
 
-  test('effects off drops the body shader', () {
+  test('effects off drops both the body shader and the backdrop', () {
     final look = ToyLook.build(palette: ToyPalette.sunny, tv: true, effects: false);
     expect(look.effects, isFalse);
     expect(look.shade, isNull);
+    expect(look.backdrop, isNull);
   });
 
   test('no shaders loaded is no shader, even with effects on', () {
-    expect(ToyLook.build(palette: ToyPalette.sunny, tv: true).shade, isNull);
+    final look = ToyLook.build(palette: ToyPalette.sunny, tv: true);
+    expect(look.shade, isNull);
+    expect(look.backdrop, isNull);
   });
 
   test('two looks built the same are equal, and differ by any field', () {

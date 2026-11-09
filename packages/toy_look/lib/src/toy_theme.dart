@@ -58,6 +58,15 @@ ThemeData toyTheme(ToyLook look) {
       elevation: 0,
       titleTextStyle: look.type.title.copyWith(color: colors.onBackground),
     ),
+    // A tab sits on the background: both labels are readable there, and the
+    // underline marks the chosen one.
+    tabBarTheme: TabBarThemeData(
+      labelColor: colors.onBackground,
+      unselectedLabelColor: colors.onBackground,
+      indicatorColor: colors.onBackground,
+      labelStyle: look.type.button,
+      unselectedLabelStyle: look.type.button,
+    ),
     snackBarTheme: SnackBarThemeData(
       backgroundColor: colors.paper,
       contentTextStyle: look.type.body.copyWith(color: colors.ink),

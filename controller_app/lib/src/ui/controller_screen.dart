@@ -189,44 +189,48 @@ class _ControllerScreenState extends ConsumerState<ControllerScreen> with Widget
     if (widget.controls) ref.watch(phoneMetricsProvider);
     _followTheGame(context);
 
-    return Scaffold(
-      body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, window) {
-            // Too narrow for even the top bar (a phone in split screen, a
-            // small window on a tablet): only the message (v2 C32).
-            if (window.maxWidth < minWindowWidth) return const TooSmallView();
-            return Stack(
-              children: [
-                // The game fills the whole safe area, behind the top bar (m12
-                // §5, phone layout §0.7): the bar paints no background of its
-                // own, so the game shows through it.
-                Positioned.fill(child: widget.background ?? const JoinedView()),
-                Positioned.fill(
-                  child: Column(
-                    children: [
-                      _TopBar(hosting: _hosting, controls: widget.controls),
-                      Expanded(
-                        child: LayoutBuilder(
-                          builder: (context, body) => body.maxHeight < minBodyHeight
-                              ? const TooSmallView()
-                              : _Controls(mode: mode, body: body.biggest, hosting: _hosting, controls: widget.controls),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                // The host was away too long (m12 §0.5): said over the
-                // controls for a moment, which stay usable under it.
-                const Positioned.fill(child: AbandonedNotice()),
-                // The host is away or the link dropped (m12-joined-view §0.3):
-                // the card sits over the game and the controls.
-                const Positioned.fill(child: _WaitingOverlay()),
-              ],
-            );
-          },
-        ),
+    // The pad and the joined view stand on a still sky (design section 6): a
+    // drifting background under a thumb only costs the phone its battery.
+    return party.ToyStillSky(
+      child: Scaffold(
+        body: SafeArea(child: LayoutBuilder(builder: (context, window) => _body(window, mode))),
       ),
+    );
+  }
+
+  /// The screen's contents in the pad's window: the game behind the top bar
+  /// and the controls, with the waiting cards over them.
+  Widget _body(BoxConstraints window, PadMode mode) {
+    // Too narrow for even the top bar (a phone in split screen, a small window
+    // on a tablet): only the message (v2 C32).
+    if (window.maxWidth < minWindowWidth) return const TooSmallView();
+    return Stack(
+      children: [
+        // The game fills the whole safe area, behind the top bar (m12 §5,
+        // phone layout §0.7): the bar paints no background of its own, so the
+        // game shows through it.
+        Positioned.fill(child: widget.background ?? const JoinedView()),
+        Positioned.fill(
+          child: Column(
+            children: [
+              _TopBar(hosting: _hosting, controls: widget.controls),
+              Expanded(
+                child: LayoutBuilder(
+                  builder: (context, body) => body.maxHeight < minBodyHeight
+                      ? const TooSmallView()
+                      : _Controls(mode: mode, body: body.biggest, hosting: _hosting, controls: widget.controls),
+                ),
+              ),
+            ],
+          ),
+        ),
+        // The host was away too long (m12 §0.5): said over the controls for a
+        // moment, which stay usable under it.
+        const Positioned.fill(child: AbandonedNotice()),
+        // The host is away or the link dropped (m12-joined-view §0.3): the
+        // card sits over the game and the controls.
+        const Positioned.fill(child: _WaitingOverlay()),
+      ],
     );
   }
 }

@@ -4,8 +4,8 @@ Resume here. Branch `m13` in the worktree `E:\AI\game-controller-m13`, cut from 
 
 ## Where M13 stands (Nov 8, 2026, at a session compaction)
 
-- Steps 1 to 5 and 4c are done and pushed (last commit 8bf6da7). Counts: look 94, puzzle 171, arena 61, host 203, phone 403, tv 50.
-- **Next:** write `s6-shaders-everywhere.md` (design section 6: shaders on pieces and backgrounds everywhere, the effects setting doing its full job, `toy_backdrop.frag`, the drifting dotted background), run it through the flash worker, then review it against renders in both palettes with the real fonts, as for 4a to 5.
+- Steps 1 to 6 and 4c are done and pushed. Counts: look 108, puzzle 171, arena 62, host 206, phone 405, tv 51, kit 48.
+- **Next:** step 7, sound (design section 8): write `s7-sound.md`, run it through the flash worker, review it.
 - The owner said "Keep moving forward in M13 unless you need a decision by me": go on through steps 6, 7 and 8 without asking; step 9's build waits for the owner's word.
 - Polish kept for step 9: the worker's tongue, determined and "o" faces; the 7 mm floor on "Show on this device"; check on a device that the remote reaches the TV home's manual address; the phone pad badge wears its accessory (step 8).
 - Nothing in M13 has been seen on a device yet.
@@ -36,7 +36,7 @@ Resume here. Branch `m13` in the worktree `E:\AI\game-controller-m13`, cut from 
 | 4b | The worker: the player's dot as a character with eyes, arms and effort faces, its pose worked out from the snapshots (s4b-worker.md) | **Done**: puzzle 170. Seen by Claude in six poses. Claude's review: a bigger tummy number. Polish for step 9: the tongue, determined and "o" faces; the 7 mm floor on "Show on this device". Not yet seen on a device |
 | 4c | Characters: a colour and an accessory per player instead of a number on the body (worker, marble, menu badges), one `ToyCharacter` value so players can choose later (design 5b, PRD L6; s4c-characters.md) | **Done**: look 94, host 203. Seen by Claude at TV size: workers, join badges, marble. Claude's review: four players fit the TV's join screen (the hint moved inline after the instructions). Not yet seen on a device |
 | 5 | The Arena in the look: glossy marbles with eyes (the shader's first use), toy-block walls, red bumpers, a goal pad with a flag, a dotted mat, the HUD and banner (s5-arena-look.md) | **Done**: arena 60. Seen by Claude at TV size in both palettes. Claude's review: the dash-ready pill became a dot, so the HUD keeps its height. Not yet seen on a device |
-| 6 | Shaders everywhere: the drifting sky (toy_backdrop.frag, by Claude) on menus and still in a round, both shaders loaded and warmed at start, the effects setting's whole job (s6-shaders-everywhere.md) | Running |
+| 6 | Shaders everywhere: the drifting sky (toy_backdrop.frag, by Claude) on menus and still in a round, both shaders loaded and warmed at start, the effects setting's whole job (s6-shaders-everywhere.md) | **Done**: look 108, arena 62, host 206, phone 405, tv 51. The first run stopped rightly (no shader loads under `flutter test`); the drift now follows the effects setting, so tests see it through the Canvas fill. Claude checked it on Windows: both shaders load, 1.2 ms frames, the 6 px/s drift, and the shader and fallback skies match in both palettes. Claude's review: no shader dispose; the sky row shows shader beside fallback; readable tabs. Step 9: the warm-up on a cold start, the sky on the TV box and phones |
 | 7 | Sound: lobby, countdown, player joined; looping; volume, music, mute | |
 | 8 | The pad restyled at its sizes | |
 | 9 | Full review, device tests, a build on the owner's word | |

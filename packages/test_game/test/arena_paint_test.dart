@@ -253,4 +253,19 @@ void main() {
     expect(await atTime(sunny, 0), isNot(await atTime(sunny, 0.1)), reason: 'the fade runs');
     expect(await atTime(sunnyStill, 0), await atTime(sunnyStill, 0.1), reason: 'nothing pulses with effects off');
   });
+
+  testWidgets('the goal glow pulses with effects on and is still with them off', (tester) async {
+    // Just past the goal pad's left edge (825.6): the glow reaches 16.2 px
+    // past it (0.03 of 540), drawn at 0.35 of its strength at t = 0, its
+    // full 0.45 at t = 0.5 s (one pulse every 2 s).
+    const sample = Offset(815, 270);
+    Future<int> glowAt(ToyLook look, double roundTimeS) async {
+      final bytes = await fieldBytes(tester, [arena(roundTimeS: roundTimeS)], look: look);
+      return pixel(bytes, screen.width.toInt(), sample.dx.round(), sample.dy.round());
+    }
+
+    expect(await glowAt(sunny, 0), isNot(await glowAt(sunny, 0.5)), reason: 'the glow pulses');
+    expect(await glowAt(sunny, 0.25), isNot(await glowAt(sunny, 0.5)), reason: 'it is fainter before the peak');
+    expect(await glowAt(sunnyStill, 0), await glowAt(sunnyStill, 0.5), reason: 'it is still with effects off');
+  });
 }

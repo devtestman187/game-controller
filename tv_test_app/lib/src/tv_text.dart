@@ -158,9 +158,11 @@ abstract final class TvText {
   static const duration = 'Duration';
 
   // The Look test.
-  static const shaderLoading = 'Shader: loading…';
-  static String shaderOn(int loadMs) => 'Shader: on (loaded in $loadMs ms)';
-  static String shaderOff(String error) => 'Shader: off: $error';
+  static const shadersLoading = 'Shaders: loading…';
+  static const shadeLabel = 'Shade';
+  static const backdropLabel = 'Backdrop';
+  static String shaderState(String label, int loadMs, String? error) =>
+      error == null ? '$label: on ($loadMs ms)' : '$label: off: $error';
   static const noFrames = 'Frame time: no frames yet';
   static String frameTime(int frames, String averageMs, String worstMs) =>
       'Frame time, last $frames frames: $averageMs ms average, $worstMs ms worst';
@@ -169,6 +171,10 @@ abstract final class TvText {
       'look the same. Stress adds $stressCount more shapes to each row.';
   static const withShader = 'With the shader';
   static const withoutShader = 'Without it (the fallback)';
+  static const sky = 'The sky, drifting: each palette with the shader, then without it';
+  static const skySunny = 'Sunny';
+  static const skyNight = 'Night';
+  static const skyFallback = 'fallback';
   static const stressOn = 'Stress: on';
   static const stressOff = 'Stress: off';
   static const shapes = 'Shapes';

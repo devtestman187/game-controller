@@ -18,11 +18,18 @@ const _tallCanvas = Size(160, 60);
 final _sunny = ToyLook.build(palette: ToyPalette.sunny, tv: false);
 final _noEffects = ToyLook.build(palette: ToyPalette.sunny, tv: false, effects: false);
 
-Widget _screen(ToyLook look, Widget child) => ToyLookScope(
-  look: look,
-  child: MaterialApp(
-    theme: toyTheme(look),
-    home: Scaffold(body: Center(child: child)),
+Widget _screen(ToyLook look, Widget child, {bool reduceMotion = false}) => ToyStillSky(
+  child: ToyLookScope(
+    look: look,
+    child: MaterialApp(
+      theme: toyTheme(look),
+      home: Builder(
+        builder: (context) => MediaQuery(
+          data: MediaQuery.of(context).copyWith(disableAnimations: reduceMotion),
+          child: Scaffold(body: Center(child: child)),
+        ),
+      ),
+    ),
   ),
 );
 
@@ -142,6 +149,15 @@ void main() {
 
   testWidgets('with effects off the focus sits at 1.04 at once, with no bounce', (tester) async {
     await tester.pumpWidget(_screen(_noEffects, ToyButton(label: 'Play', onPressed: () {}, autofocus: true)));
+    await tester.pump();
+    expect(_scaleOf(tester), closeTo(1.04, 1e-9));
+    expect(tester.binding.hasScheduledFrame, isFalse, reason: 'nothing animates');
+  });
+
+  testWidgets('with reduced motion asked for the focus sits at 1.04 at once, with no bounce', (tester) async {
+    await tester.pumpWidget(
+      _screen(_sunny, ToyButton(label: 'Play', onPressed: () {}, autofocus: true), reduceMotion: true),
+    );
     await tester.pump();
     expect(_scaleOf(tester), closeTo(1.04, 1e-9));
     expect(tester.binding.hasScheduledFrame, isFalse, reason: 'nothing animates');

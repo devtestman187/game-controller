@@ -8,11 +8,13 @@ import 'support/pixels.dart';
 final _phone = ToyLook.build(palette: ToyPalette.sunny, tv: false);
 final _tv = ToyLook.build(palette: ToyPalette.sunny, tv: true);
 
-Widget _screen(ToyLook look, Widget child) => ToyLookScope(
-  look: look,
-  child: MaterialApp(
-    theme: toyTheme(look),
-    home: Scaffold(body: Center(child: child)),
+Widget _screen(ToyLook look, Widget child) => ToyStillSky(
+  child: ToyLookScope(
+    look: look,
+    child: MaterialApp(
+      theme: toyTheme(look),
+      home: Scaffold(body: Center(child: child)),
+    ),
   ),
 );
 

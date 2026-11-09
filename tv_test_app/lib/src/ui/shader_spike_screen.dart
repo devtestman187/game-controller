@@ -90,12 +90,19 @@ class _ShaderSpikeScreenState extends State<ShaderSpikeScreen> with TickerProvid
     super.dispose();
   }
 
-  /// What the shader did, in the brief's two wordings.
-  String get _status {
+  /// What the body shader did, in the brief's wording: on with its load and
+  /// warm-up time, or off with the reason.
+  String get _shadeLine {
     final shaders = _shaders;
-    if (shaders == null) return TvText.shaderLoading;
-    if (shaders.shade != null) return TvText.shaderOn(shaders.loadMs);
-    return TvText.shaderOff('${shaders.error}');
+    if (shaders == null) return TvText.shadersLoading;
+    return TvText.shaderState(TvText.shadeLabel, shaders.shadeMs, shaders.shadeError);
+  }
+
+  /// What the backdrop shader did, in the same wording.
+  String get _backdropLine {
+    final shaders = _shaders;
+    if (shaders == null) return TvText.shadersLoading;
+    return TvText.shaderState(TvText.backdropLabel, shaders.backdropMs, shaders.backdropError);
   }
 
   /// The average and the worst frame time in the window.
@@ -126,43 +133,61 @@ class _ShaderSpikeScreenState extends State<ShaderSpikeScreen> with TickerProvid
           ),
         ),
         body: SafeArea(
-          child: TabBarView(
-            controller: _tabs,
+          child: TabBarView(controller: _tabs, children: [_shapesTab(look, onBackground), const ToyGallery()]),
+        ),
+      ),
+    );
+  }
+
+  /// The shapes tab: what the shaders did, what a frame costs, and the shapes
+  /// and skies drawn with and without them.
+  Widget _shapesTab(ToyLook look, TextStyle onBackground) {
+    return ListView(
+      padding: const EdgeInsets.all(ToySizes.space16),
+      children: [
+        Text(
+          _shadeLine,
+          key: const Key('shadeStatus'),
+          style: look.type.button.copyWith(color: look.colors.onBackground),
+        ),
+        Text(_backdropLine, key: const Key('backdropStatus'), style: onBackground),
+        Text(_frameText, key: const Key('frameStats'), style: onBackground),
+        const SizedBox(height: ToySizes.space8),
+        Text(TvText.rows(_stressCount), style: onBackground),
+        const SizedBox(height: ToySizes.space8),
+        _SpikeRow(
+          rowKey: const Key('lookRowShader'),
+          label: TvText.withShader,
+          shade: _shaders?.shade,
+          animation: _turn,
+          stress: _stress,
+        ),
+        const SizedBox(height: ToySizes.space12),
+        _SpikeRow(
+          rowKey: const Key('lookRowFallback'),
+          label: TvText.withoutShader,
+          shade: null,
+          animation: _turn,
+          stress: _stress,
+        ),
+        const SizedBox(height: ToySizes.space12),
+        Text(TvText.sky, style: onBackground),
+        const SizedBox(height: ToySizes.space4),
+        SizedBox(
+          height: _rowHeight,
+          child: Row(
             children: [
-              ListView(
-                padding: const EdgeInsets.all(ToySizes.space16),
-                children: [
-                  Text(
-                    _status,
-                    key: const Key('shaderStatus'),
-                    style: look.type.button.copyWith(color: look.colors.onBackground),
-                  ),
-                  Text(_frameText, key: const Key('frameStats'), style: onBackground),
-                  const SizedBox(height: ToySizes.space8),
-                  Text(TvText.rows(_stressCount), style: onBackground),
-                  const SizedBox(height: ToySizes.space8),
-                  _SpikeRow(
-                    rowKey: const Key('lookRowShader'),
-                    label: TvText.withShader,
-                    shade: _shaders?.shade,
-                    animation: _turn,
-                    stress: _stress,
-                  ),
-                  const SizedBox(height: ToySizes.space12),
-                  _SpikeRow(
-                    rowKey: const Key('lookRowFallback'),
-                    label: TvText.withoutShader,
-                    shade: null,
-                    animation: _turn,
-                    stress: _stress,
-                  ),
-                ],
-              ),
-              const ToyGallery(),
+              _SkyBox(palette: ToyPalette.sunny, shaders: _shaders),
+              const SizedBox(width: ToySizes.space8),
+              const _SkyBox(palette: ToyPalette.sunny, shaders: ToyShaders.none),
+              const SizedBox(width: ToySizes.space12),
+              _SkyBox(palette: ToyPalette.night, shaders: _shaders),
+              const SizedBox(width: ToySizes.space8),
+              const _SkyBox(palette: ToyPalette.night, shaders: ToyShaders.none),
             ],
           ),
         ),
-      ),
+      ],
     );
   }
 }
@@ -196,6 +221,50 @@ class _StressButton extends StatelessWidget {
           ),
         ),
         child: Text(stress ? TvText.stressOn : TvText.stressOff),
+      ),
+    );
+  }
+}
+
+/// One of the spike's four skies (design section 6): a `ToyBackground` in one
+/// palette, drifting as the menus draw it, with the backdrop shader when it
+/// loaded and the Canvas dots otherwise. Each palette is shown with the shader
+/// and then with [ToyShaders.none], side by side, so a device shows whether
+/// the two fills draw the same sky.
+class _SkyBox extends StatelessWidget {
+  const _SkyBox({required this.palette, required this.shaders});
+
+  /// The palette this sky is drawn in.
+  final ToyPalette palette;
+
+  /// The shaders the spike loaded, or null while they load.
+  final ToyShaders? shaders;
+
+  @override
+  Widget build(BuildContext context) {
+    final look = ToyLook.build(palette: palette, tv: true, shaders: shaders ?? ToyShaders.none);
+    // The label stands on the screen's own sky, so it takes the screen's text
+    // colour, not the box's: a Night label is white, unreadable on Sunny.
+    final screen = ToyLookScope.of(context);
+    return Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            [
+              palette == ToyPalette.sunny ? TvText.skySunny : TvText.skyNight,
+              if (identical(shaders, ToyShaders.none)) TvText.skyFallback,
+            ].join(', '),
+            style: screen.type.body.copyWith(color: screen.colors.onBackground),
+          ),
+          const SizedBox(height: ToySizes.space4),
+          Expanded(
+            child: ToyLookScope(
+              look: look,
+              child: const ClipRect(child: ToyBackground()),
+            ),
+          ),
+        ],
       ),
     );
   }
