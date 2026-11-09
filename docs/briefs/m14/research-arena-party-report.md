@@ -257,3 +257,20 @@ Effort: **S** ≤ 3 dev-days, **M** ~1–2 weeks, **L** 2+ weeks (my estimate, n
 - **S39** Wikipedia, "Dynamic game difficulty balancing", wiki — https://en.wikipedia.org/wiki/Dynamic_game_difficulty_balancing · **S40** AirConsole, "Technical Requirements", updated 24 Feb 2026 — https://developers2.airconsole.com/technical-requirements
 - **S41** AirConsole Guidelines, introduction, updated 28 May 2025 — https://developers2.airconsole.com/ · **S42** Pummel Party on Steam, store page, undated — https://store.steampowered.com/app/880940/Pummel_Party/
 - **S43** Super Mario Wiki, "Domination", wiki — https://www.mariowiki.com/Domination
+
+---
+
+## Claude's review
+
+Accepted as research: 43 sources, dated, wikis marked, a clear "Not confirmed" list. One limit: a web job sees only its brief, so the worker could not read the Arena's code, the PRD or the earlier M14 reports (next time, paste the context a web job needs into its brief). Where its proposals meet decisions already made, ours stand:
+- **Points.** M14's G1 gives points for things a side does (a snap +2, finishing first +5, ...), not a placement table. The Arena does the same: points for what a marble does in the round (finishing or winning the round, coins banked, time on the crown), on the one night scoreboard. Never negative, as the report says.
+- **The night.** G2's night is Shape Race rounds today. Proposal 1 means the host may also pick an Arena round in a night; the scoreboard, the start card and G4's awards then read both games. The cat stays in Shape Race.
+- **The countdown and the waiting card** are already planned for the Arena in M14 ("The Arena waits for its players"); the rule card and 5 s practice fold into that card.
+- **Families policy.** Marbles bumping marbles, no damage, no elimination (a 3 s bubble and back) is within it.
+- **Lag.** The host already owns the game and sends snapshots; contact is decided on the host with generous radii, no aiming, as proposed. No phone-side prediction.
+
+Claude's picks, for the owner:
+- **M14:** (1) the Arena joins the party night: rule card on the waiting card, its points on the scoreboard, its stats in the awards; (2) **Bumper Round**, the Arena's first mode where marbles touch: dash to shove, a shove into a wall or hazard drops a coin, 1 s safe after any hit, banked coins safe, a 3 s bubble instead of being knocked out, 60 s. Today's race stays as the other Arena mode.
+- **M15** (with power-ups and more chaos, if M14's night lands): Crown Keep, Rule of the Round modifiers, Last Dash, Head Start perks (only if the family playtest shows the child needs them: 1 s safety and safe coins may be enough), Coin Rush as a Bumper variant.
+- **Later:** Team Ferry (2v2 carry) and Rescue Run (co-op), which need a shared object and team plumbing in the Arena.
+- 1-vs-3 modes: never by default.
