@@ -30,22 +30,6 @@ String _endTime(MatchResult result) {
 /// How many players a round has, in words: `1 player`, `2 players`.
 String _playersLine(int count) => count == 1 ? '1 player' : '$count players';
 
-/// The line at the bottom right: how to pause and to leave, in the look's
-/// onBackground text on a pill of the background colour (M13 3b), with the
-/// words unchanged.
-class _PlayHint extends StatelessWidget {
-  const _PlayHint({required this.keyboard});
-
-  final LocalPlayerSource keyboard;
-
-  @override
-  Widget build(BuildContext context) => Positioned(
-    right: ToySizes.space12,
-    bottom: ToySizes.space4,
-    child: PlayHint(keyboard.available && !keyboard.hasPlayer ? HostText.playHintKeyboard : HostText.playHint),
-  );
-}
-
 /// The results' first button (T14): Rematch or Play again for one chosen
 /// puzzle, Next puzzle after a round that played `any <level> puzzle` (m12
 /// bug 1108e). The focus starts on it, so the remote's OK and a phone's A work

@@ -16,6 +16,7 @@ import '../providers.dart';
 import 'controller_menus.dart';
 import 'host_button.dart';
 import 'host_screen.dart';
+import 'play_hint.dart';
 import 'puzzle_screen.dart';
 
 part 'join_screen_widgets.dart';
@@ -304,6 +305,10 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
     return KeyEventResult.ignored;
   }
 
+  /// "Shape Race · House": the game and the puzzle picked.
+  String _title() =>
+      HostText.titled(HostText.shapeRace, _choiceName(widget.choice, ref.watch(puzzleLibraryProvider).value));
+
   @override
   Widget build(BuildContext context) {
     // A phone that is away isn't listed on this screen (m12 bug 1107d).
@@ -329,10 +334,7 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
         skipTraversal: true,
         onKeyEvent: _onKey,
         child: HostScreen(
-          title: HostText.titled(
-            HostText.shapeRace,
-            _choiceName(widget.choice, ref.watch(puzzleLibraryProvider).value),
-          ),
+          title: _title(),
           body: SafeArea(
             child: Padding(
               padding: hostMenuPadding(barHeight),
@@ -357,6 +359,7 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
                   if (watching.isNotEmpty) _NotJoined(watching: watching),
                   SizedBox(height: tight ? _tightGapPx : _gapPx),
                   _JoinButtons(teams: _teams, ownPlayerId: ownHere, startFocus: _startFocus, onStart: _start),
+                  if (!tight) _RoundHint(keyboard: _keyboard),
                 ],
               ),
             ),

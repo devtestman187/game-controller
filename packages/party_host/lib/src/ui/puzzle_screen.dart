@@ -19,7 +19,6 @@ import 'controller_menus.dart';
 import 'host_button.dart';
 import 'join_screen.dart';
 import 'pause_menu.dart';
-import 'play_hint.dart';
 
 part 'puzzle_screen_widgets.dart';
 
@@ -266,7 +265,6 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
                         onChangeTeams: _changeTeams,
                       ),
                     ),
-                  if (result == null) _PlayHint(keyboard: _keyboard),
                 ],
               ),
             ),

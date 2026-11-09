@@ -370,4 +370,22 @@ void main() {
       expect(room.style?.color, look.colors.inkSoft);
     }
   });
+
+  // Owner, Nov 8, 2026, on a picture of a race: "In the bottom right the text
+  // cuts off the shape box. That should not happen. Is that text necessary
+  // when a game is in progress?" It isn't: how to pause and leave is said on
+  // the join screen, before the round, and nothing is drawn over the boards.
+  testWidgets('how to pause and leave is on the join screen, and not over the round', (tester) async {
+    final fake = await pumpHost(tester, screen: const StubHome());
+    fake.state = withController(fake.state, phoneInfo('p2', 2));
+    fake.emit();
+    await neutral(tester, fake, ['p1', 'p2']);
+    await openJoin(tester);
+    expect(find.text(HostText.playHint), findsOneWidget, reason: 'said before the round');
+
+    await startRace(tester, fake);
+    expect(find.byType(PuzzleScreen), findsOneWidget);
+    expect(find.text(HostText.playHint), findsNothing, reason: 'nothing over the boards');
+    expect(find.text(HostText.playHintKeyboard), findsNothing);
+  });
 }

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:game_assets/asset_manifest.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -42,8 +44,17 @@ class GameScreen extends ConsumerStatefulWidget {
   ConsumerState<GameScreen> createState() => _GameScreenState();
 }
 
+/// How long the Arena's hint shows at the start of a round.
+const _hintShownFor = Duration(seconds: 5);
+
 class _GameScreenState extends ConsumerState<GameScreen> {
   bool _debug = false;
+
+  /// The hint shows for the round's first [_hintShownFor] and then goes, so
+  /// it is never over the arena in play (owner, Nov 8, 2026: text over a game
+  /// in progress "should not happen"). M14's waiting card takes it over.
+  bool _hintShown = true;
+  Timer? _hintTimer;
   late final LocalPlayerSource _keyboard;
 
   /// How this round runs (m12 §3): its frame rate, read when the round starts
@@ -54,6 +65,9 @@ class _GameScreenState extends ConsumerState<GameScreen> {
   void initState() {
     super.initState();
     _hosting = ref.read(hostingSettingsProvider);
+    _hintTimer = Timer(_hintShownFor, () {
+      if (mounted) setState(() => _hintShown = false);
+    });
     // Made here, not lazily: dispose() can't read providers any more.
     final log = ref.read(logProvider);
     _keyboard = ref.read(localPlayerSourceProvider)(
@@ -69,6 +83,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
 
   @override
   void dispose() {
+    _hintTimer?.cancel();
     _keyboard.dispose();
     super.dispose();
   }
@@ -135,7 +150,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
                       ),
                     ),
                   if (_debug) const Positioned(top: _debugTopPx, left: ToySizes.space12, child: DebugOverlay()),
-                  Positioned(right: ToySizes.space12, bottom: ToySizes.space8, child: PlayHint(hint)),
+                  if (_hintShown) Positioned(right: ToySizes.space12, bottom: ToySizes.space8, child: PlayHint(hint)),
                 ],
               ),
             ),

@@ -141,4 +141,17 @@ void main() {
     final start = fake.gameHost.records.firstWhere((r) => r.name == 'round_start');
     expect(start.data['hz'], 20);
   });
+
+  // The Arena has no join screen yet (M14 adds its waiting card), so its hint
+  // shows at the start and goes after 5 s, before it is in the way (owner,
+  // Nov 8, 2026: text over a game in progress "should not happen").
+  testWidgets("the Arena's hint shows at the start and is gone after 5 s", (tester) async {
+    await pumpHost(tester, screen: const StubHome());
+    await openArena(tester);
+    expect(find.textContaining('Back: leave'), findsOneWidget, reason: 'at the start');
+    for (var i = 0; i < 60; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+    expect(find.textContaining('Back: leave'), findsNothing, reason: 'after 5 s');
+  });
 }

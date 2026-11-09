@@ -274,3 +274,22 @@ class _JoinButtons extends ConsumerWidget {
     );
   }
 }
+
+/// How to pause and leave the round, said on the join screen so nothing is
+/// drawn over the boards in play (owner, Nov 8, 2026: "Is that text necessary
+/// when a game is in progress?"). Only on a TV or PC host: a phone host has its
+/// own pause button, and its join screen has no room to spare (bug 1107f).
+class _RoundHint extends StatelessWidget {
+  const _RoundHint({required this.keyboard});
+
+  final LocalPlayerSource keyboard;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(top: _gapPx),
+    child: Align(
+      alignment: Alignment.centerRight,
+      child: PlayHint(puzzlePlayHint(keyboardAvailable: keyboard.available, keyboardHasPlayer: keyboard.hasPlayer)),
+    ),
+  );
+}
