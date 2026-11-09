@@ -25,7 +25,9 @@ final class PuzzleCamera {
   const PuzzleCamera.whole() : side = null;
 
   /// One side's world, fitted to the box and aligned to its bottom, so the
-  /// spare height goes on top, away from the thumbs (m12-phone-layout §2).
+  /// spare height goes on top, away from the thumbs (m12-phone-layout §2);
+  /// in a portrait box it is aligned to the top instead, so the spare height
+  /// under it is the clock area's (device test 3).
   const PuzzleCamera.side(this.side);
 
   /// The side this camera shows, or null for the whole match.
@@ -66,10 +68,11 @@ final class PuzzleCamera {
   static ({double scale, Offset origin}) place(SplitLayout layout, PuzzleCamera camera, Size box, PuzzleSide side) {
     final world = layout.left.size;
     if (camera.side != null) {
-      // One world, fitted: the spare width is shared, the spare height is on
-      // top.
+      // One world, fitted: the spare width is shared, and a portrait box puts
+      // the spare height under the world (device test 3), else on top.
       final scale = min(box.width / world.width, box.height / world.height);
-      final origin = Offset((box.width - world.width * scale) / 2, box.height - world.height * scale);
+      final spare = box.height - world.height * scale;
+      final origin = Offset((box.width - world.width * scale) / 2, box.height > box.width ? 0 : spare);
       return (scale: scale, origin: origin);
     }
     // Both worlds, centred, side by side or stacked: the left one is the
@@ -84,28 +87,34 @@ final class PuzzleCamera {
     return (scale: scale, origin: side == PuzzleSide.left ? left : left + Offset(0, world.height * scale));
   }
 
-  /// Where a phone's clock area starts, as a fraction of the box height
-  /// (m12-phone-layout §0.7c): 0.14 of a 393 px phone is 55 px, just below the
-  /// 52 px top bar the phone app draws over the game.
+  /// The box's shorter side, in px: what every HUD size is a fraction of
+  /// (m12-phone-layout §0.7c, device test 3). A phone on its side is 393 px
+  /// tall — its shorter side — so its clock area is the size it was; a
+  /// portrait tablet's is its width's, not its height's.
+  static double hudUnit(Size box) => min(box.width, box.height);
+
+  /// Where a phone's clock area starts, as a fraction of the box's shorter
+  /// side ([hudUnit]) (m12-phone-layout §0.7c): 0.14 of a 393 px phone is
+  /// 55 px, just below the 52 px top bar the phone app draws over the game.
   static const hudTopFraction = 0.14;
 
-  /// The clock's text height, as a fraction of the box height (§0.7c), and
-  /// the score's: the clock is the one thing read from across the room.
+  /// The clock's text height, as a fraction of the box's shorter side (§0.7c),
+  /// and the score's: the clock is the one thing read from across the room.
   static const hudClockFraction = 0.08;
   static const hudScoreFraction = 0.04;
 
   /// The gap between the clock area's lines and above its bar, as a fraction
-  /// of the box height: half the score's height, so the lines read apart at
-  /// any size.
+  /// of the box's shorter side: half the score's height, so the lines read
+  /// apart at any size.
   static const hudLineGapFraction = 0.02;
 
-  /// The time bar's thickness, as a fraction of the box height: 4.7 px on a
-  /// 393 px phone, as thin as the clock's stroke.
+  /// The time bar's thickness, as a fraction of the box's shorter side: 4.7 px
+  /// on a 393 px phone, as thin as the clock's stroke.
   static const hudBarFraction = 0.012;
 
   /// The clock area's height in its one-line form (clock, gap, bar) and in its
-  /// two-line form (clock, gap, score, gap, bar), as fractions of the box
-  /// height.
+  /// two-line form (clock, gap, score, gap, bar), as fractions of the box's
+  /// shorter side.
   static const hudOneLineHeight = hudClockFraction + hudLineGapFraction + hudBarFraction;
   static const hudTwoLineHeight = hudClockFraction + 2 * hudLineGapFraction + hudScoreFraction + hudBarFraction;
 
@@ -119,15 +128,16 @@ final class PuzzleCamera {
   /// the clock area never changes form as the clock counts down.
   static const _clockChars = 5;
 
-  /// The width [text] takes at [hudScoreFraction], as a fraction of the box
-  /// height.
+  /// The width [text] takes at [hudScoreFraction], as a fraction of the box's
+  /// shorter side.
   static double _textWidth(String text) => text.length * glyphEm * hudScoreFraction;
 
-  /// The width and the height [form] needs for [text], as fractions of the box
-  /// height (m12-phone-layout §0.7c): one line is the clock and the score
-  /// beside each other, two lines put the score under the clock, and the short
-  /// form puts each of [text]'s short lines under the clock on a line of its
-  /// own, with [hudLineGapFraction] between lines and the bar under them all.
+  /// The width and the height [form] needs for [text], as fractions of the
+  /// box's shorter side (m12-phone-layout §0.7c): one line is the clock and
+  /// the score beside each other, two lines put the score under the clock, and
+  /// the short form puts each of [text]'s short lines under the clock on a
+  /// line of its own, with [hudLineGapFraction] between lines and the bar
+  /// under them all.
   static ({double width, double height}) _hudSize(HudForm form, ({String score, List<String> short}) text) {
     final clock = _clockChars * glyphEm * hudClockFraction;
     final lines = form == HudForm.oneLine || form == HudForm.twoLines ? [text.score] : text.short;
@@ -151,9 +161,9 @@ final class PuzzleCamera {
   /// px (m12-opponent-mirror rules 5 and 8): its own frame, with room round it.
   static const mirrorGapPx = 8.0;
 
-  /// The slack on the mirror's floor, so a board whose smallest piece draws
-  /// exactly at [mirrorMinPieceMm] keeps its mirror: floating point may put the
-  /// scale a hair under.
+  /// The slack on a fit: a board whose smallest piece draws exactly at
+  /// [mirrorMinPieceMm] keeps its mirror, and a form exactly as wide as the
+  /// room keeps its place, though floating point may put either a hair under.
   static const _floorSlack = 1e-9;
 
   /// The distance from the board's top-left corner to the clock area when it
@@ -218,17 +228,18 @@ final class PuzzleCamera {
     // What the mirror must not meet: their board and tray row, this phone's own
     // pad (rules 3 and 8), and the clock area.
     final boardAndTray = [onScreen(board), onScreen(layout.left.tray), ...padRects];
-    final hud = hudPlace(layout, camera, box, text);
+    final hud = hudPlace(layout, camera, box, text, padRects: padRects, split: split);
     // The corner, with the clock area to its right in its short form, clear of
     // the world: its left edge is where the mirror's right must stop.
+    final unit = hudUnit(box);
     final shortForm = _hudSize(HudForm.short, text);
     final besideHud = Rect.fromLTWH(
-      world.origin.dx - hudWorldGapPx - box.height * shortForm.width,
-      box.height * hudTopFraction,
-      box.height * shortForm.width,
-      box.height * shortForm.height,
+      world.origin.dx - hudWorldGapPx - unit * shortForm.width,
+      unit * hudTopFraction,
+      unit * shortForm.width,
+      unit * shortForm.height,
     );
-    final cornerTop = box.height * hudTopFraction;
+    final cornerTop = unit * hudTopFraction;
     final corner = _fitting(box, board.size, Offset(hudMarginPx, cornerTop), maxScale, floor, [
       ...boardAndTray,
       besideHud,
@@ -274,33 +285,54 @@ final class PuzzleCamera {
   }
 
   /// Where the clock area goes in [box] and which form it takes
-  /// (m12-phone-layout §0.7c): beside the world, at [hudTopFraction] of the
-  /// box's height, in the first of [HudForm]'s forms that the spare width fits
-  /// — one line, two lines, then [HudForm.short] — and otherwise over the
-  /// board's top-left corner on a panel the painter draws. [text] is what the
-  /// HUD may draw, so the form is picked by the real score; the clock counts
-  /// for "10:00" whatever it says now. [rect] is the area the texts and the
-  /// bar go in, in px.
+  /// (m12-phone-layout §0.7c, device test 3): beside the world, at
+  /// [hudTopFraction] of the box's shorter side, in the first of [HudForm]'s
+  /// forms that the spare width fits — one line, two lines, then
+  /// [HudForm.short] — then under the world in the first form that fits its
+  /// width, and otherwise over the board's top-left corner on a panel the
+  /// painter draws, the last resort. [text] is what the HUD may draw, so the
+  /// form is picked by the real score; the clock counts for "10:00" whatever
+  /// it says now. [rect] is the area the texts and the bar go in, in px.
   ///
   /// With a [mirror] to its left the area starts at the mirror's right edge
   /// and draws the short form (m12-opponent-mirror rule 5): the mirror takes
   /// the width one line needs, and the short form puts "You 2/4" and
   /// "Them 3/6" on a line each, which is what fits beside it.
+  ///
+  /// [padRects] are the controls the app draws under the game, in the box's
+  /// px, as [mirrorPlace] takes them: the clock area keeps clear of them like
+  /// the mirror does (device test 3). [split] says whether the camera draws
+  /// both sides of a whole match, which decides which world the area goes
+  /// under.
   static ({Rect rect, HudForm form}) hudPlace(
     SplitLayout layout,
     PuzzleCamera camera,
     Size box,
     ({String score, List<String> short}) text, {
     Rect? mirror,
+    List<Rect> padRects = const [],
+    bool split = false,
   }) {
+    final unit = hudUnit(box);
     final room = _hudRoom(layout, camera, box, mirror);
-    final top = box.height * hudTopFraction;
+    final top = unit * hudTopFraction;
     final forms = mirror == null ? const [HudForm.oneLine, HudForm.twoLines, HudForm.short] : const [HudForm.short];
     for (final form in forms) {
       final size = _hudSize(form, text);
-      if (room.spare >= box.height * size.width) {
-        return (rect: Rect.fromLTWH(room.left, top, box.height * size.width, box.height * size.height), form: form);
+      if (room.spare >= unit * size.width) {
+        return (rect: Rect.fromLTWH(room.left, top, unit * size.width, unit * size.height), form: form);
       }
+    }
+    if (mirror == null) {
+      // Under the world is the last place before the corner: the world drawn
+      // last, a side camera's only world or the lower one of a whole match.
+      final under = place(layout, camera, box, camera.side ?? (split ? PuzzleSide.right : PuzzleSide.left));
+      final fits = _hudUnder(box, text, (
+        left: under.origin.dx,
+        top: under.origin.dy + layout.left.size.height * under.scale + hudWorldGapPx,
+        room: layout.left.size.width * under.scale,
+      ), padRects);
+      if (fits != null) return fits;
     }
     final world = place(layout, camera, box, PuzzleSide.left);
     final board = Rect.fromLTWH(
@@ -310,16 +342,33 @@ final class PuzzleCamera {
       layout.left.board.height * world.scale,
     );
     final size = _hudSize(HudForm.corner, text);
-    final width = min(box.height * size.width, board.width - 2 * hudCornerMarginPx);
+    final width = min(unit * size.width, board.width - 2 * hudCornerMarginPx);
     return (
-      rect: Rect.fromLTWH(
-        board.left + hudCornerMarginPx,
-        board.top + hudCornerMarginPx,
-        width,
-        box.height * size.height,
-      ),
+      rect: Rect.fromLTWH(board.left + hudCornerMarginPx, board.top + hudCornerMarginPx, width, unit * size.height),
       form: HudForm.corner,
     );
+  }
+
+  /// The clock area under the world in [box] at [under], in the first of
+  /// [HudForm]'s forms that fits its width, or null where none does: the box
+  /// has no room under the world, or the pad is there (device test 3). The
+  /// area keeps [mirrorGapPx] of air from every one of [padRects].
+  static ({Rect rect, HudForm form})? _hudUnder(
+    Size box,
+    ({String score, List<String> short}) text,
+    ({double left, double top, double room}) under,
+    List<Rect> padRects,
+  ) {
+    final unit = hudUnit(box);
+    for (final form in const [HudForm.oneLine, HudForm.twoLines, HudForm.short]) {
+      final size = _hudSize(form, text);
+      final rect = Rect.fromLTWH(under.left, under.top, unit * size.width, unit * size.height);
+      final inside = rect.left >= 0 && rect.top >= 0 && rect.right <= box.width && rect.bottom <= box.height;
+      if (!inside || rect.width > under.room + _floorSlack) continue;
+      if (padRects.any((pad) => pad.inflate(mirrorGapPx).overlaps(rect))) continue;
+      return (rect: rect, form: form);
+    }
+    return null;
   }
 
   @override

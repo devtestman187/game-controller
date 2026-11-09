@@ -66,8 +66,9 @@ class MatchPainter extends CustomPainter {
   static const _barEdgePx = 2.0;
 
   /// The phone HUD is placed by [PuzzleCamera.hudPlace], and its text sizes
-  /// are fractions of the box height ([PuzzleCamera.hudClockFraction],
-  /// [PuzzleCamera.hudScoreFraction]) (m12-phone-layout §0.7c).
+  /// are fractions of the box's shorter side ([PuzzleCamera.hudUnit],
+  /// [PuzzleCamera.hudClockFraction], [PuzzleCamera.hudScoreFraction])
+  /// (m12-phone-layout §0.7c).
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -190,11 +191,13 @@ class MatchPainter extends CustomPainter {
     final shown = mirror == null ? text : phoneHud(s, camera.side, mirrored: true);
     // Measured on the sides' names, the widest the short form gets ("Right 3/6"
     // is longer than "Them 3/6"), so the area is the same either way.
-    final placement = mirror?.hud ?? PuzzleCamera.hudPlace(layout, camera, size, scores);
+    final placement =
+        mirror?.hud ?? PuzzleCamera.hudPlace(layout, camera, size, scores, padRects: padRects, split: s.split);
     final rect = placement.rect;
     final board = camera.side == null ? s.boards.first : _boardOf(s, camera.side!);
-    final gap = size.height * PuzzleCamera.hudLineGapFraction;
-    final bar = size.height * PuzzleCamera.hudBarFraction;
+    final unit = PuzzleCamera.hudUnit(size);
+    final gap = unit * PuzzleCamera.hudLineGapFraction;
+    final bar = unit * PuzzleCamera.hudBarFraction;
     final styles = _hudStyles(1);
     if (mirror != null) _mirror(canvas, layout, mirror);
     if (placement.form == HudForm.corner) {
@@ -257,9 +260,10 @@ class MatchPainter extends CustomPainter {
     bool mirrored = false,
   }) {
     final rect = placement.rect;
-    final clock = size.height * PuzzleCamera.hudClockFraction;
-    final score = size.height * PuzzleCamera.hudScoreFraction;
-    final gap = size.height * PuzzleCamera.hudLineGapFraction;
+    final unit = PuzzleCamera.hudUnit(size);
+    final clock = unit * PuzzleCamera.hudClockFraction;
+    final score = unit * PuzzleCamera.hudScoreFraction;
+    final gap = unit * PuzzleCamera.hudLineGapFraction;
     // On the panel the text is ink; on the sky it is the look's onBackground
     // (design section 5, rule 7). The mirror's other side keeps the same ink:
     // the mirror's frame and dot are where its colour shows.
