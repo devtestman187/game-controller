@@ -110,7 +110,7 @@ v2 adds these to v1's C1 to C13.
 | C17 | Touch metrics recorded on the phone for each input mode: presses per control, empty taps and their positions, near misses, slide-offs, rapid repeated taps, simultaneous touches, stick and tilt behaviour. Details are in Analytics requirements | M9 |
 | C18 | Metrics sent to the TV over the existing connection in small batches, and buffered on the phone while disconnected | M9 |
 | C19 | A "How did the controls feel?" prompt after a game: three faces plus optional tags (buttons too small, laggy, hard to steer, rotation hard). One tap, skippable, shown at most once every few games | M9 |
-| C20 | Optional player nickname (up to 10 characters) in settings, shown on the TV and on its best-times board. It never leaves the TV | M14 |
+| C20 | Optional player nickname (up to 10 characters) in settings, shown on the TV, its scoreboard, awards and best-times board. It never leaves the TV or host phone | M14 |
 | C21 | Haptic patterns for the new puzzle events (snap, wrong, help, tick, drop-ready), each with its own intensity setting like v1's four events | M10, M11 |
 | C22 | Store-ready builds: the new name (Thumb Party) and ID, release signing, version numbers from the tag, icon, privacy policy link in settings, and the "Allow apps from unknown sources" note removed from the docs | M8 |
 | C23 | "Try without a TV" demo screen that shows the controls responding with no host connected, for app reviewers and new testers checking their phone works | M8 |
@@ -136,7 +136,7 @@ v2 adds these to v1's T1 to T10.
 | T12 | Puzzle game for 1 player (M10), then 2, 3 and 4 players (M11), as described in Puzzle game design | M10, M11 |
 | T13 | Join screen: players press A to join and left or right to choose a side or team. Difficulty is chosen with the remote or Player 1's controller | M11 |
 | T14 | Results screen with winner, times, pieces placed, and Rematch, Change teams and Back options | M11 |
-| T15 | Countdown, celebration, last-15-seconds warning, hint glow, best-times board | M14 |
+| T15 | Countdown, celebration, last-15-seconds warning, hint glow, best-times board | M13 (countdown, warning, hint glow), M14 (celebration, best times) |
 | T16 | Playtest settings screen with every tuning value in the puzzle design (tolerances, speeds, delays, time limit), saved on the TV, with Reset to defaults | M10 |
 | T17 | Analytics collection: receives phone metrics, adds TV-side metrics (latency, game events), writes one summary per session | M9 |
 | T18 | Stats screen: summary per session and per input mode, and export of the session files | M9 |
@@ -155,6 +155,21 @@ These apply to the TV app, the host phone and joined phones alike. The design is
 | L3 | Every menu, card and screen in the same look, on the TV and on phones, with an easy-to-see focus highlight for controller navigation | M13 |
 | L4 | A toon shader on game pieces and backgrounds, with a drawn fallback that looks right without it, and an effects setting (on or off) | M13 |
 | L5 | Lobby music (looping), countdown and player-joined sounds, a mute switch and a volume setting, saved with the other settings. Only the hosting device plays music: the TV or PC when phones join it, and a host phone only when no TV is used | M13 |
+
+## Party requirements
+
+The party features from docs/party-ideas.md (owner, Nov 8, 2026: "Yes let's plan for this content in M14."). They apply to Shape Race on a TV host and a phone host alike, and a joined phone shows the same as the host. Research: docs/briefs/m14/research-party-design-report.md (fair catch-up, warnings, awards and comfort for children around 8) and docs/briefs/m14/scan-party-touchpoints-report.md (where each feature goes in the code).
+
+| ID | Requirement | Milestone |
+| --- | --- | --- |
+| G1 | Points in Shape Race, earned by a side and credited to every player on it, so two against one stays fair: a piece snapped on the first try +2, after a wrong drop +1, finishing first +5, a big piece carried home by two +1, shooing the cat +1. They pop up as big numbers with an icon beside the piece or the cat, on the host and on joined phones. Points live in the game rules and travel in the snapshot | M14 |
+| G2 | A party night: the host picks 3 or 5 rounds before the first one. Between rounds a scoreboard shows each player's nickname, badge and total with an icon, never a bare number, and the next round's number ("Round 2 of 3"); before the last round it says that round is worth double. Teams may change between rounds; each player keeps their own total. A night ends after its last round's awards, or when the host leaves it | M14 |
+| G3 | The cat, Shape Race's first chaos event, and a Chaos setting in Puzzle settings: Off, A little (the default) or Party. The cat is warned at least 2 seconds ahead, by a meow and a paw at the edge of the side it will visit. It walks in and bats one loose or tray piece to another free spot on that side, and never touches a locked piece or a filled outline. A player shoos it by moving their worker onto it and pressing A. It goes for the side that is ahead, and the night's start card says so. Never the same side twice in a row, none in a round's first 20 seconds, at most once a round on A little and twice on Party. The cat is drawn from the snapshot like everything else, and a phone too old to draw it asks for an update rather than showing a different game | M14 |
+| G4 | End-of-night awards: three drawn from a list at the start of the night and shown on its start card, so players know what they are playing for. After the last round they are revealed one at a time, each with its name, its picture, the player's nickname and badge, a one-line reason and +3 points. Every tied player gets it. The list: Sharpshooter (fewest wrong drops, with at least 3 snaps), Best Helper (most big pieces carried home together), Cat Catcher (most cats shooed), Speedy Snapper (most snaps) and Comeback (most points in the night's last round). At least one of each night's three is one a losing player can win (Best Helper, Cat Catcher or Comeback) | M14 |
+| G5 | Comfort: no party effect flashes, or changes the whole screen's brightness, more than 3 times a second. The cat's walk and the pop-ups follow the effects setting: with effects off they appear and go without motion, but the cat still comes. No information by colour alone or by sound alone, and the words a child reads are short and common | M14 |
+| G6 | Power-ups: a star now and then in a side's tray; picking it up with A gives a bonus, shown on the TV and on that player's phone with a buzz: magnet (the next drop snaps from twice as far), hint glow, send the cat to the other side, freeze (the other side's workers slow down for 3 seconds), +10 seconds. The odds are shown on the night's start card | M15 |
+| G7 | More chaos events, one at a time and warned like the cat: a gust of wind (loose pieces drift a little), lights out (the board dims around each worker, faded in and out, never a hard cut), a wobble (Medium and Hard), a tray shuffle and a floating piece | M15 |
+| G8 | A hall of fame on the host: all-time party wins and awards by nickname, beside the best times (T15). It never leaves the TV or host phone | M15 |
 
 ## Analytics requirements
 
@@ -364,13 +379,13 @@ The main limit on other TV platforms is that most of their apps can make outgoin
 
 | ID | Requirement | Milestone |
 | --- | --- | --- |
-| P1 | Protocol spec in docs/protocol.md, covering discovery and its TXT records, pairing, tokens, heartbeats, close codes, every message and field, timing and throttling rules, and versioning. It grows from today's docs/architecture.md, is updated in every milestone that touches the protocol, and is published with the tester guide in M14 | M9, M14 |
+| P1 | Protocol spec in docs/protocol.md, covering discovery and its TXT records, pairing, tokens, heartbeats, close codes, every message and field, timing and throttling rules, and versioning. It grows from today's docs/architecture.md, is updated in every milestone that touches the protocol, and is published with the tester guide in M15 | M9, M15 |
 | P2 | Capabilities: `hello` and `welcome` list what each side supports (for example `metrics`, `layout`, `status`, `haptics:snap`). New messages stay additive, because unknown types are already ignored. The version number only changes for a breaking change. A host never sends a controller a message it hasn't listed | M9 |
 | P3 | Game host interface: one pure-Dart interface in packages/connection that every game and TV screen uses for players joining and leaving (with number, colour and nickname), each player's gamepad state, haptics, layouts, the status panel and latency. Our games use nothing else, so the interface is the template for future engine kits | M9 (Arena), M10 (Puzzle) |
 | P4 | Standard gamepad mapping: every input mode maps to one Xbox-style gamepad state (A, B, X, Y, LB, RB, Select, Start, D-pad, two sticks), plus extras such as raw tilt. Gyro maps to the left stick, and D-pad mode's buttons map to the same names. Documented in the spec, so a bridge or engine kit can present the phone as a normal gamepad | M9 |
 | P5 | Game-defined controls: a `layout` message lets the game set, for each player, the modes allowed (with the default), the buttons used, a short label for each (for example A "Pick up", X "Rotate ⟲"), and the buttons hidden. The phone shows the labels and dims or hides unused buttons. The player still chooses among the allowed modes | M10 |
 | P6 | Phone status panel: a `status` message shows a small panel on the phone with a short text, one simple shape with a colour and angle, and a progress bar. It is limited in size and sent at most 10 times a second. In the puzzle it shows the held piece and the time left | M10 |
-| P7 | Conformance check: `sim_controller --check` runs the spec's required exchanges (pairing, heartbeats, input, haptics, capabilities, layout and status) against any host and prints pass or fail, so a future engine kit can test itself | M14 |
+| P7 | Conformance check: `sim_controller --check` runs the spec's required exchanges (pairing, heartbeats, input, haptics, capabilities, layout and status) against any host and prints pass or fail, so a future engine kit can test itself | M15 |
 
 **Keeping the host independent of the TV**
 
@@ -460,7 +475,8 @@ Numbering continues from v1, so tags stay unique (m7 and later). Each milestone 
 | M11 | Puzzle game, 2 to 4 players, and the whole TV app from a controller | Adds sides, teams, big pieces and win rules on top of a proven core. The pause menu and join screen need controller menus anyway, so every screen gets them |
 | M12 | Phone-hosted play | Lets testers without a TV or PC play, in time for the outside playtest, once the game rules are settled |
 | M13 | Look and sound | Gives Shape Race, the Arena and every menu the "Toy Box Toon" look, with music and volume, before outside testers' first impression |
-| M14 | Fun, content and the first outside playtest | Adds the extras, all 9 puzzles and tuning, and puts it in testers' hands |
+| M14 | Party night | Turns rounds into a party: points, a night of 3 or 5 rounds with a scoreboard, the cat, end-of-night awards, nicknames and best times. Built on M13's characters and sound, before outside testers judge it |
+| M15 | More party, content and the first outside playtest | Adds power-ups and more chaos if M14's night lands, all 9 puzzles and tuning, and puts it in testers' hands, who judge the party features too |
 
 The Apple and Google account sign-ups should start during M7, because verification can take several days.
 
@@ -701,38 +717,73 @@ Milestone 13 gives the games and menus a bright, cartoony "Toy Box Toon" look an
 - [ ] In Shape Race the worker shows its effort face when pushing or pulling, its happy face on a right drop and "oops" on a wrong one, the same on the host and on a joined phone.
 - [ ] No game rule changed: every rules test passes unchanged.
 
-## Milestone 14: Fun, content and the first outside playtest
+## Milestone 14: Party night
 
-Milestone 14 adds the touches that make the game fun, completes the puzzle set, and puts the game in outside testers' hands.
+**Draft for the owner's approval** (Nov 8, 2026). Milestone 14 turns Shape Race rounds into a family party night: points, a night of rounds with a scoreboard, the cat and end-of-night awards, with the nicknames and best times they need. The ideas are in docs/party-ideas.md sections 1 and 3 (owner, Nov 3 and Nov 8, 2026); the research is in docs/briefs/m14/.
 
 **Deployable builds**
 
-- Controller: tick haptic, nickname setting.
-- TV app: all 9 puzzles, countdown, celebration, last-15-seconds warning, hint glow, best-times board, released to every tester group.
+- Controller: nickname setting; the points, the cat and the scoreboard on a joined phone and on a phone host; results on joined phones.
+- TV app: points, party nights, the cat and the Chaos setting, awards, celebration and the best-times board.
 
 **Scope**
 
-- Countdown, celebration, last-15-seconds warning, hint glow, best-times board (T15).
-- Nicknames (C20).
-- Results on joined phones (owner, Nov 8, 2026, from the m12 build 5 test: "When the host wins a game, the remote doesn't see a win or lose screen"). When a phone-hosted round ends, each joined phone keeps the final board and shows a results card over it: the result from its own player's side ("You win!", "You lose", "Draw"; "Done!" with the time on one board), each side's time or pieces placed, and "Waiting for the host to pick what's next." The card goes when the host starts the next round or leaves the results. The host sends the result with `view_end` (an optional field, so a host one build older sends none and the phone goes back to its pad as in M12); docs/protocol.md lists the field.
-- The Arena waits for its players (owner, Nov 8, 2026, from the m12 build 5 test: on "Show on this device", picking the Arena went straight to the 3-2-1 countdown with nobody joined). The Arena has one side, so no two-sided lobby: a "Waiting for players" card over the Arena shows the pairing code and each phone that joins, and each player presses A to say they're ready (marked on the card). The countdown starts once at least one player has joined and every joined player is ready. On a TV and on a phone host alike.
+- First, the groundwork the scan found:
+  - Split Shape Race's rules file, so a points and chaos step fits beside it. It is at 365 of 400 lines, and its step function is 103 lines.
+  - Add the snapshot's new fields as top-level keys, with the version raised for the cat. docs/protocol.md is updated in the same change.
+- Points (G1) and the party night with its scoreboard (G2).
+- The cat and the Chaos setting (G3), with a meow sound.
+- End-of-night awards (G4), with a fanfare.
+- Comfort rules for all of it (G5).
+- Nicknames (C20), and the best-times board with a celebration and a new-record moment (T15), kept on the host.
+- **Results on joined phones** (owner, Nov 8, 2026, from the m12 build 5 test: "When the host wins a game, the remote doesn't see a win or lose screen").
+  - When a phone-hosted round ends, each joined phone keeps the final board and shows a results card over it. The card gives the result from its own player's side ("You win!", "You lose", "Draw"; "Done!" with the time on one board), each side's time or pieces placed, its points in a party night, and "Waiting for the host to pick what's next."
+  - The card goes when the host starts the next round or leaves the results.
+  - The host sends the result with `view_end`, as an optional field: a host one build older sends none, and the phone goes back to its pad as in M12. docs/protocol.md lists the field.
+- **The Arena waits for its players** (owner, Nov 8, 2026, from the m12 build 5 test: on "Show on this device", picking the Arena went straight to the 3-2-1 countdown with nobody joined).
+  - The Arena has one side, so there is no two-sided lobby. Instead, a "Waiting for players" card over the Arena shows the pairing code and each phone that joins.
+  - Each player presses A to say they're ready, which the card marks.
+  - The countdown starts once at least one player has joined and every joined player is ready. This works the same on a TV and on a phone host.
+- Sounds for the new moments (meow, points, fanfare, celebration, new record), free to ship and listed in CREDITS.md.
+
+**Acceptance tests**
+
+- [ ] A 3-round and a 5-round night play through on a TV host and on a phone host: the scoreboard shows between rounds and says when the last round is worth double, and the awards come one at a time after the last round.
+- [ ] Points pop up for each scoring action on the host and on every joined phone, and a side of two and a side of one earn the same for the same play.
+- [ ] On A little the cat comes at most once a round, always after its warning, never in the first 20 seconds and never twice in a row to one side. It never moves a locked piece, and it can be shooed. With Chaos off it never comes.
+- [ ] A joined phone one build older is asked to update instead of drawing a different game.
+- [ ] The night's start card names the three awards, and every tied player gets an award.
+- [ ] Nicknames show on the scoreboard, the awards and the best-times board, and the best times survive restarting the TV app or the host phone's app.
+- [ ] In a phone-hosted match, every joined phone shows its own results card when the round ends (win, lose, draw and a solo round), and it goes when the host picks what's next.
+- [ ] Picking the Arena with nobody joined shows the waiting card, not the countdown; the countdown starts only when every joined player has pressed A.
+- [ ] A 4-player round with the cat keeps its frame rate on the Android TV and a joined phone, and nothing flashes more than 3 times a second.
+- [ ] No existing Shape Race rule changed: with Chaos off and outside a night, every rules test passes unchanged.
+
+## Milestone 15: More party, content and the first outside playtest
+
+Milestone 15 adds the rest of the party ideas if M14's night lands with the owner's family. It also completes the puzzle set and puts the game in outside testers' hands, who judge the party features too: docs/party-ideas.md placed that playtest after the party milestone, and it is now M15.
+
+**Deployable builds**
+
+- Controller: tick haptic, power-up feedback with a buzz.
+- TV app: power-ups, more chaos events, the hall of fame, all 9 puzzles, released to every tester group.
+
+**Scope**
+
+- Power-ups (G6), more chaos events (G7) and the hall of fame (G8), each only if the owner keeps it after M14's night.
 - The remaining puzzles, for 9 in total (3 per level), with tuned starting angles.
-- Sounds for the new moments (celebration, last-15-seconds warning, new record), listed in CREDITS.md. Music and volume come in M13.
-- A playtest round with outside testers, including at least one child around 8 and at least one group playing on phones only, using a short observation sheet in /docs alongside the metrics.
+- A playtest round with outside testers, including at least one child around 8 and at least one group playing on phones only, using a short observation sheet in /docs alongside the metrics. It compares the three Chaos settings on the frustration signals the game already records.
 - Tuning: adjust defaults from the playtest and the metrics, and record the final values in docs/decisions.md.
-- Final README updates, tester guide, and manual checklists for M7 to M14 in /docs/checklists.
+- Final README updates, tester guide, and manual checklists for M7 to M15 in /docs/checklists.
 - Protocol spec finished and published with the tester guide (P1) under CC BY 4.0, and `sim_controller --check` (P7). Code published for others to build on is under Apache 2.0, with LICENSE files added.
 - A short v3 recommendation in /docs choosing the platform path, based on the playtest, the metrics and tester requests.
 
 **Acceptance tests**
 
 - [ ] Every puzzle on every level can be finished within 2 minutes by an adult, and the Easy ones by an 8-year-old after one practice round.
-- [ ] The countdown, celebration, warning, hint glow and new-record screen all appear at the right moments.
-- [ ] Picking the Arena with nobody joined shows the waiting card, not the countdown; the countdown starts only when every joined player has pressed A.
-- [ ] In a phone-hosted match, every joined phone shows its own results card when the round ends (win, lose, draw and a solo round), and it goes when the host picks what's next.
-- [ ] Best times survive restarting the TV app or the host phone's app, and show nicknames.
+- [ ] Each power-up and chaos event kept does what G6 and G7 say, on the host and on joined phones, and the night's start card states the odds.
 - [ ] At least 3 outside households install from the stores and play, at least one of them on phones only, and their sessions appear in the report.
-- [ ] The report compares the three modes on frustration signals, completion time and ratings, and compares TV play with phone play. The findings are written up in /docs.
+- [ ] The report compares the three modes and the three Chaos settings on frustration signals, completion time and ratings, and compares TV play with phone play. The findings are written up in /docs.
 - [ ] `sim_controller --check` passes against the Android TV, Windows and phone-host builds.
 - [ ] The v3 platform recommendation is written and reviewed.
 
@@ -753,8 +804,8 @@ v1's strategy still holds: logic is tested automatically, and anything about fee
 | 4-player layouts and load | Phones plus simulated controllers | M11 |
 | Snapshot encoding and size | Unit tests in each game package | M10 |
 | Phone hosting (cross-platform joins, delay, host drops, heat and battery) | Both test phones as hosts, with the other phone and simulated controllers joining | M12 |
-| Feel of rotation, carrying and haptics | Real phones, in all three modes | M10 to M14 |
-| Kid usability and fun | Playtests with an observation sheet, plus the metrics | M14 |
+| Feel of rotation, carrying and haptics | Real phones, in all three modes | M10 to M15 |
+| Kid usability and fun | Playtests with an observation sheet, plus the metrics | M15 |
 
 ## Risks, decisions, open questions and next steps
 
@@ -797,7 +848,7 @@ The largest new risk is store review and policy. Outside testing depends on two 
 - The time limit is 2 minutes on every level (a playtest setting). There are 3 levels with about 3 puzzles each.
 - v2 stays focused, but does the cheap platform groundwork: protocol spec, capabilities, game host interface, standard gamepad mapping, game-defined controls, status panel and a conformance check. v3 picks the platform path. Bluetooth gamepad mode stays a non-goal.
 - The preferred v3 direction is a framework for phone-hosted games that stream to a receiver on the TV, built for other developers to use. Receivers that can run our game code draw from snapshots, and the others get a low-latency video stream. Streaming stays out of v2 except for rules S1 to S9.
-- Phone-hosted play is in v2, as M12: one phone hosts, the others join, and every phone shows the game with see-through controls on top (opacity setting). Fun, content and the outside playtest move to M13, then to M14 when the look-and-sound milestone became M13 (owner, Nov 8, 2026).
+- Phone-hosted play is in v2, as M12: one phone hosts, the others join, and every phone shows the game with see-through controls on top (opacity setting). Fun, content and the outside playtest move to M13, then to M14 when the look-and-sound milestone became M13, then to M15 when the party night became M14 (owner, Nov 8, 2026).
 - The brand is Thumb Party: "Thumb Party" (`com.thumbparty.app`) for phones and tablets, "Thumb Party TV" (`com.thumbparty.tv`) for the TV and PC, renamed in M8. The puzzle game is Shape Race.
 - Tablets are supported in v2: iPad and Android tablets as controllers (M7), in the store builds (M8), and as hosts or a shared screen (M12). Test devices are an Android tablet on Android 15 and an iPad on iPadOS 26.
 - The controller's Android minimum drops from 16 to 12 (API 31), matching the TV app, for about four times the device reach. Android 12 is checked on an emulator, which found one Android 13 call to fix in M7.
@@ -805,7 +856,7 @@ The largest new risk is store review and policy. Outside testing depends on two 
 - The apps are for families with children aged 6 and up: on Google Play the target age groups are 6–8, 9–12, 13–15, 16–17 and 18+, so Google's Families policy applies (decided Oct 30, 2026, replacing "13 and over"). On the App Store the age rating is 4+ and the app stays outside the "Made for Kids" category, which would need a parental gate in front of every link out of the app.
 - The privacy policy and tester guide are published on GitHub Pages from this repository, which is already public.
 - The cloud store is Firebase Firestore on the free plan, owned by the same Google account as the Play developer account.
-- When the protocol spec is published (M14), it goes out under CC BY 4.0, and code for others to build on goes out under Apache 2.0.
+- When the protocol spec is published (M15), it goes out under CC BY 4.0, and code for others to build on goes out under Apache 2.0.
 - Any player can pause with Start. The player who paused, or Player 1, can resume, so Player 1 can always override a pause.
 - In Shape Race the first side to finish wins. At time-up, the side with more correct pieces wins, and equal counts (including none) are a draw.
 - When the host phone leaves, the round waits 30 seconds for it to come back.

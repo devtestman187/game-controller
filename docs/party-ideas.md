@@ -1,6 +1,6 @@
 # Party ideas (draft)
 
-Ideas to make Thumb Party feel like a family party game, in the spirit of Mario Party and Lego Party. **Status: the owner is still thinking. Nothing here is in the PRD or scheduled yet.**
+Ideas to make Thumb Party feel like a family party game, in the spirit of Mario Party and Lego Party. **Status: planned (Nov 8, 2026).** The owner: "Yes let's plan for this content in M14." The PRD's party requirements G1 to G8 and its M14 (Party night: points, party nights, the cat, awards) and M15 (power-ups, more chaos, the hall of fame) are a draft for the owner's approval. The sections below are the ideas as first written.
 
 The owner liked sections 1 to 3, including party nights and end-of-night awards (2026-11-03). Section 4 was raised but not chosen.
 
