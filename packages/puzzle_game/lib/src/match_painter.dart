@@ -12,6 +12,7 @@ class MatchPainter extends CustomPainter {
     this.s, {
     required this.look,
     this.moments,
+    this.workers,
     this.nowMs = 0,
     this.timeLimitS,
     this.target = LayoutTarget.screen,
@@ -30,6 +31,10 @@ class MatchPainter extends CustomPainter {
   /// When each piece turned locked or wrong, for the boing and the wobble;
   /// null: nothing moves (design section 5).
   final PieceMoments? moments;
+
+  /// What every player's worker is doing (design 5a), fed the snapshots as
+  /// [moments] are; null: every player stands empty-handed.
+  final WorkerMoments? workers;
 
   /// The time on the view's clock, which [moments] measure against.
   final int nowMs;
@@ -108,6 +113,7 @@ class MatchPainter extends CustomPainter {
         board,
         look: look,
         moments: moments,
+        workers: workers,
         nowMs: nowMs,
         board: i,
         field: field,
@@ -145,10 +151,13 @@ class MatchPainter extends CustomPainter {
         _boardOf(s, side),
         look: look,
         moments: moments,
+        workers: workers,
         nowMs: nowMs,
         board: s.split ? side.index : 0,
         field: layout.left,
         hud: false,
+        // The worker's smallest body is the phone's own measure (design 5a).
+        pxPerMm: pxPerMm,
       ).paint(canvas, layout.left.size);
       canvas.restore();
     }

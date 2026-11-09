@@ -49,11 +49,13 @@ class PuzzlePainter extends CustomPainter {
     this.s, {
     required this.look,
     this.moments,
+    this.workers,
     this.nowMs = 0,
     this.board = 0,
     this.timeLimitS,
     this.field = PuzzleField.single,
     this.hud = true,
+    this.pxPerMm,
   });
 
   final Puzzle puzzle;
@@ -66,6 +68,15 @@ class PuzzlePainter extends CustomPainter {
   /// When each piece turned locked or wrong, so a right drop boings and a
   /// wrong one wobbles (design section 5). Null: nothing moves.
   final PieceMoments? moments;
+
+  /// What every player's worker is doing (design 5a), fed the snapshots as
+  /// [moments] are. Null: every player stands empty-handed.
+  final WorkerMoments? workers;
+
+  /// This screen's px per millimetre, for the smallest a worker's body may be
+  /// on a phone (design 5a); null where the board is drawn on a TV or in a
+  /// window, whose worker is 1.3 times the dot whatever the screen.
+  final double? pxPerMm;
 
   /// The time on the view's clock, which [moments] measure against.
   final int nowMs;
@@ -125,9 +136,7 @@ class PuzzlePainter extends CustomPainter {
     for (final (i, p) in s.pieces.indexed) {
       if (p.state == PieceState.held) _piece(canvas, i, styles);
     }
-    for (final p in s.players) {
-      _dot(canvas, p, px);
-    }
+    _paintWorkers(canvas, s, px);
     if (hud) _hud(canvas, px, styles);
     canvas.restore();
   }
@@ -361,18 +370,6 @@ class PuzzlePainter extends CustomPainter {
     canvas
       ..drawPath(path, line(_colours.ink.withValues(alpha: colourAt.a), stroke + half * 2 * _markEdgeShare * 2))
       ..drawPath(path, line(colourAt, stroke));
-  }
-
-  /// A player's dot is a toy badge with their number, at M12's dot size.
-  void _dot(Canvas canvas, PlayerView p, double scale) {
-    // The badge's own sizes — its edge, its shadow, its number — are the
-    // look's pixels, so the world is scaled back for it.
-    canvas
-      ..save()
-      ..translate(p.x, p.y)
-      ..scale(1 / scale);
-    paintToyBadge(canvas, Offset.zero, PuzzleGame.dotRadius * 2 * scale, p.number, look);
-    canvas.restore();
   }
 
   @override

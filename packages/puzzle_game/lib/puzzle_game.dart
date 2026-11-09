@@ -22,3 +22,4 @@ export 'src/start_angles.dart';
 export 'src/play_view.dart';
 export 'src/tray.dart';
 export 'src/view.dart';
+export 'src/worker_moments.dart';

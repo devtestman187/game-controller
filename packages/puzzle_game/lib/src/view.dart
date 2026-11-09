@@ -14,6 +14,7 @@ import 'puzzle.dart';
 import 'puzzle_values.dart';
 import 'snapshot.dart';
 import 'split_layout.dart';
+import 'worker_moments.dart';
 
 part 'board_hud.dart';
 part 'match_hud.dart';
@@ -21,6 +22,7 @@ part 'match_painter.dart';
 part 'mirror_painter.dart';
 part 'puzzle_painter.dart';
 part 'text_paint.dart';
+part 'worker_painter.dart';
 
 /// Draws a puzzle from a [PuzzleSnapshot] (PRD v2 S8) into the box it's
 /// given, keeping the field's 16:9 shape and centring it (S4). It never
@@ -48,6 +50,7 @@ class PuzzleView extends StatefulWidget {
 
 class _PuzzleViewState extends State<PuzzleView> {
   final _moments = PieceMoments();
+  late final _workers = WorkerMoments(widget.puzzle);
   late final Stopwatch _clock = widget.clock ?? (Stopwatch()..start());
 
   /// The one board as the match the moments see it: they are kept per board,
@@ -59,13 +62,18 @@ class _PuzzleViewState extends State<PuzzleView> {
   @override
   void initState() {
     super.initState();
-    _moments.observe(_match, _nowMs);
+    _note(_match);
   }
 
   @override
   void didUpdateWidget(PuzzleView oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (!identical(oldWidget.snapshot, widget.snapshot)) _moments.observe(_match, _nowMs);
+    if (!identical(oldWidget.snapshot, widget.snapshot)) _note(_match);
+  }
+
+  void _note(MatchSnapshot match) {
+    _moments.observe(match, _nowMs);
+    _workers.observe(match, _nowMs);
   }
 
   @override
@@ -77,6 +85,7 @@ class _PuzzleViewState extends State<PuzzleView> {
       widget.snapshot,
       look: ToyLookScope.of(context),
       moments: _moments,
+      workers: _workers,
       nowMs: _nowMs,
       timeLimitS: widget.timeLimitS,
     ),
@@ -135,6 +144,7 @@ class MatchView extends StatefulWidget {
 
 class _MatchViewState extends State<MatchView> {
   final _moments = PieceMoments();
+  late final _workers = WorkerMoments(widget.puzzle);
   late final Stopwatch _clock = widget.clock ?? (Stopwatch()..start());
 
   int get _nowMs => _clock.elapsedMilliseconds;
@@ -142,13 +152,18 @@ class _MatchViewState extends State<MatchView> {
   @override
   void initState() {
     super.initState();
-    _moments.observe(widget.snapshot, _nowMs);
+    _note();
   }
 
   @override
   void didUpdateWidget(MatchView oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (!identical(oldWidget.snapshot, widget.snapshot)) _moments.observe(widget.snapshot, _nowMs);
+    if (!identical(oldWidget.snapshot, widget.snapshot)) _note();
+  }
+
+  void _note() {
+    _moments.observe(widget.snapshot, _nowMs);
+    _workers.observe(widget.snapshot, _nowMs);
   }
 
   @override
@@ -164,6 +179,7 @@ class _MatchViewState extends State<MatchView> {
               snapshot,
               look: look,
               moments: _moments,
+              workers: _workers,
               nowMs: _nowMs,
               timeLimitS: widget.timeLimitS,
               target: widget.target,
@@ -176,6 +192,7 @@ class _MatchViewState extends State<MatchView> {
               snapshot.boards.single,
               look: look,
               moments: _moments,
+              workers: _workers,
               nowMs: _nowMs,
               timeLimitS: widget.timeLimitS,
             ),
