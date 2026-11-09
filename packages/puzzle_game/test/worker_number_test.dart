@@ -20,13 +20,13 @@ void main() {
       final radius = bodyAcross / 2 * unitsPx;
       final middle = bodyMiddle(dot);
       // The tummy, where 4b drew the number: below the mouth's own stroke
-      // (0.28 radii, at this frame's 8 image px a unit) and inside the body's
-      // edge.
+      // (0.28 radii, at this frame's 8 image px a unit) and above the feet,
+      // whose tops tuck under the body from 0.78 radii (the run strip's look).
       final tummy = Rect.fromLTRB(
         middle.dx - 0.3 * radius,
         middle.dy + 0.35 * radius,
         middle.dx + 0.3 * radius,
-        middle.dy + 0.85 * radius,
+        middle.dy + 0.72 * radius,
       );
       final ink = count(bytes, width, tummy, argb(look.colors.ink));
       expect(ink, 0, reason: '$name: the tummy holds $ink ink pixels');

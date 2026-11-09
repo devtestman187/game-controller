@@ -84,17 +84,29 @@ typedef _Body = ({Offset centre, double radius, Color colour});
 /// palettes. The ink edge is the look's outline in pixels: [canvas]'s whole
 /// scale is taken out of it, as a game's painter divides its own outline by the
 /// board's scale, so the edge is the look's width on screen in a scaled canvas.
+///
+/// [tiltDeg] turns the whole accessory about the body's middle, for the flop
+/// that follows a walking worker's bob a little late (design 5a): every
+/// accessory takes it, and a crown simply tilts.
 void paintAccessory(
   Canvas canvas,
   ToyAccessory accessory,
   Offset bodyCentre,
   double bodyRadius,
   Color bodyColour,
-  ToyLook look,
-) {
+  ToyLook look, {
+  double tiltDeg = 0,
+}) {
   final colours = look.colors;
   final edge = look.sizes.outlineWidth / _pxPerUnit(canvas);
   final body = (centre: bodyCentre, radius: bodyRadius, colour: bodyColour);
+  if (tiltDeg != 0) {
+    canvas
+      ..save()
+      ..translate(bodyCentre.dx, bodyCentre.dy)
+      ..rotate(tiltDeg * math.pi / 180)
+      ..translate(-bodyCentre.dx, -bodyCentre.dy);
+  }
   switch (accessory) {
     case ToyAccessory.ears:
       _ears(canvas, body, colours, edge);
@@ -109,6 +121,7 @@ void paintAccessory(
     case ToyAccessory.crown:
       _crown(canvas, body, colours, edge);
   }
+  if (tiltDeg != 0) canvas.restore();
 }
 
 /// The two round ears, in the body's own colour with the ink edge on the half

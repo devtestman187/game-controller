@@ -63,13 +63,65 @@ final class _Frame {
   /// The pose of a worker standing [stand], from the moments in the design's
   /// order.
   WorkerPose _pose(_Stand stand, bool effects) {
+    final step = _step(effects);
     final happy = happyAgeMs;
-    if (_within(happy, happyMomentMs)) return _happy(stand, happy!);
-    if (_within(oopsAgeMs, oopsMomentMs)) return _oops(stand);
-    if (board.phase != PuzzlePhase.playing) return _roundEnd(stand);
-    if (piece == null || shape == null) return _empty(stand, effects);
-    return _holding(stand, effects);
+    if (_within(happy, happyMomentMs)) return _happy(stand, happy!, step);
+    if (_within(oopsAgeMs, oopsMomentMs)) return _oops(stand, step);
+    if (board.phase != PuzzlePhase.playing) return _roundEnd(stand, step);
+    if (piece == null || shape == null) return _empty(stand, effects, step);
+    return _holding(stand, effects, step);
   }
+
+  /// This frame's step cycle (design 5a): the stride the snapshots left, with
+  /// the feet, bob, contact squash, accessory flop and arm swing worked out from
+  /// it — or the still stand, with the feet side by side, when the effects are
+  /// off (design D8).
+  _Step _step(bool effects) {
+    final walk = seen?.walk;
+    if (walk == null) return const _Step.stand();
+    if (!effects || walk.ease <= 0) return _Step.stand(walk.phase);
+    return _Step.of(
+      phase: walk.phase,
+      ease: walk.ease,
+      travel: travel,
+      carrying: piece != null,
+      working: piece != null && work != _Work.none,
+    );
+  }
+
+  /// The way the dot travels, as a unit vector.
+  Offset get travel => seen?.travel ?? Offset.zero;
+
+  /// [stand]'s pose with the step cycle's feet, bob, squash and flop, and a
+  /// moment's own face, hands, look, lean and motion laid over them (design 5a):
+  /// a moment overrides the arms while the feet keep their last phase.
+  WorkerPose _posed(
+    _Stand stand,
+    _Step step, {
+    required WorkerFace face,
+    required WorkerHands hands,
+    Offset look = Offset.zero,
+    double leanDeg = 0,
+    ({double x, double y})? squash,
+    Offset? motion,
+    bool sweat = false,
+  }) => WorkerPose(
+    at: stand.at,
+    away: stand.away,
+    onDot: stand.onDot,
+    face: face,
+    hands: hands,
+    look: look,
+    leanDeg: leanDeg,
+    squash: squash ?? step.squash,
+    motion: motion ?? step.bob,
+    feet: step.feet,
+    stride: step.ease,
+    stridePhase: step.phase,
+    tiltDeg: step.tiltDeg,
+    walking: walking,
+    sweat: sweat,
+  );
 
   /// Whether [ageMs] is inside a moment that lasts [lengthMs]: it starts at
   /// once and is over at [lengthMs].
@@ -130,10 +182,9 @@ final class _Frame {
     return along < 0 ? _Work.push : _Work.pull;
   }
 
-  WorkerPose _happy(_Stand stand, int ageMs) => WorkerPose(
-    at: stand.at,
-    away: stand.away,
-    onDot: stand.onDot,
+  WorkerPose _happy(_Stand stand, int ageMs, _Step step) => _posed(
+    stand,
+    step,
     face: WorkerFace.happy,
     hands: handsUp,
     look: const Offset(0, -0.4),
@@ -142,80 +193,72 @@ final class _Frame {
   );
 
   /// A wrong drop: a wince, a hand up at its head and a sweat drop.
-  WorkerPose _oops(_Stand stand) => WorkerPose(
-    at: stand.at,
-    away: stand.away,
-    onDot: stand.onDot,
-    face: WorkerFace.oops,
-    hands: handsOops,
-    look: const Offset(0, 0.4),
-    sweat: true,
-  );
+  WorkerPose _oops(_Stand stand, _Step step) =>
+      _posed(stand, step, face: WorkerFace.oops, hands: handsOops, look: const Offset(0, 0.4), sweat: true);
 
   /// The round is over: a cheer when this board finished it, a shrug when it
   /// ran out of time or the other side finished first (a race's loser is
   /// `stopped`, not `timeUp`).
-  WorkerPose _roundEnd(_Stand stand) => board.phase == PuzzlePhase.finished
-      ? WorkerPose(
-          at: stand.at,
-          away: stand.away,
-          onDot: stand.onDot,
+  WorkerPose _roundEnd(_Stand stand, _Step step) => board.phase == PuzzlePhase.finished
+      ? _posed(
+          stand,
+          step,
           face: WorkerFace.happy,
           hands: handsUp,
           squash: (x: happyWide, y: happyTall),
           motion: Offset(0, -hopShare * sin(nowMs / 1000 * 2 * pi)),
         )
-      : WorkerPose(
-          at: stand.at,
-          away: stand.away,
-          onDot: stand.onDot,
-          face: WorkerFace.oops,
-          hands: handsShrug,
-          look: const Offset(0, 0.5),
-        );
+      : _posed(stand, step, face: WorkerFace.oops, hands: handsShrug, look: const Offset(0, 0.5));
 
-  /// Empty-handed: walking, or standing with a blink now and then.
-  WorkerPose _empty(_Stand stand, bool effects) => walking ? _walk(stand) : _standing(stand, effects);
+  /// Empty-handed: walking, or standing with a blink, a breath and a glance now
+  /// and then. The stride decides it rather than the speed, so a dot that has
+  /// just stopped still eases its walk out (design 5a's 200 ms).
+  WorkerPose _empty(_Stand stand, bool effects, _Step step) =>
+      step.ease > 0 ? _walk(stand, step) : _standing(stand, effects, step);
 
-  WorkerPose _walk(_Stand stand) => WorkerPose(
-    at: stand.at,
-    away: stand.away,
-    onDot: stand.onDot,
+  WorkerPose _walk(_Stand stand, _Step step) => _posed(
+    stand,
+    step,
     face: WorkerFace.smile,
-    hands: handsWalk,
-    look: seen?.travel ?? Offset.zero,
-    leanDeg: walkLeanDeg * (seen?.travel.dx ?? 0),
+    hands: swingingHands(phase: step.phase, ease: step.ease, travel: travel),
+    look: travel,
+    leanDeg: walkLeanDeg * travel.dx * step.ease,
   );
 
-  WorkerPose _standing(_Stand stand, bool effects) => WorkerPose(
-    at: stand.at,
-    away: stand.away,
-    onDot: stand.onDot,
-    face: effects && WorkerMoments.blinks(player.number, nowMs) ? WorkerFace.blink : WorkerFace.smile,
-    hands: handsDown,
-    look: const Offset(0, 0.3),
-  );
+  /// A standing worker breathes, and now and then looks left then right (design
+  /// 5a). Both are idle motion, so with the effects off it holds still (D8).
+  WorkerPose _standing(_Stand stand, bool effects, _Step step) {
+    final breath = effects ? breathAt(player.number, board.timeLeftMs) : 0.0;
+    final glance = effects ? glanceAt(player.number, board.timeLeftMs) : null;
+    return _posed(
+      stand,
+      step,
+      face: effects && WorkerMoments.blinks(player.number, nowMs) ? WorkerFace.blink : WorkerFace.smile,
+      hands: handsDown,
+      look: glance ?? const Offset(0, 0.3),
+      squash: (x: 1 - breathNarrowShare * breath, y: 1 + breathTallShare * breath),
+    );
+  }
 
   /// Holding a piece: the moments of carrying, in the design's order.
-  WorkerPose _holding(_Stand stand, bool effects) {
-    if (calling) return walking ? _strain(stand) : _call(stand, effects);
-    if (turned) return _turning(stand);
-    if (holders > 1) return _together(stand);
+  WorkerPose _holding(_Stand stand, bool effects, _Step step) {
+    if (calling) return walking ? _strain(stand, step) : _call(stand, effects, step);
+    if (turned) return _turning(stand, step);
+    if (holders > 1) return _together(stand, step);
     return switch (work) {
-      _Work.push => _shove(stand),
-      _Work.pull => _drag(stand),
-      _Work.none => _carry(stand),
+      _Work.push => _shove(stand, step),
+      _Work.pull => _drag(stand, step),
+      _Work.none => _carry(stand, step),
     };
   }
 
   /// A big piece carried alone, calling: one hand up and waving at the free
   /// teammate, the other on the piece.
-  WorkerPose _call(_Stand stand, bool effects) {
+  WorkerPose _call(_Stand stand, bool effects, _Step step) {
     final wave = effects ? sin(nowMs / 1000 * 2 * pi * callWavesPerS) : 0.0;
-    return WorkerPose(
-      at: stand.at,
-      away: stand.away,
-      onDot: stand.onDot,
+    return _posed(
+      stand,
+      step,
       face: WorkerFace.call,
       hands: (left: _handsOn(stand.away).left, right: Offset(callHandShare + callWaveShare * wave, -1.05)),
       look: -stand.away,
@@ -223,10 +266,9 @@ final class _Frame {
   }
 
   /// A big piece carried alone and moving: the effort of it, with a shake.
-  WorkerPose _strain(_Stand stand) => WorkerPose(
-    at: stand.at,
-    away: stand.away,
-    onDot: stand.onDot,
+  WorkerPose _strain(_Stand stand, _Step step) => _posed(
+    stand,
+    step,
     face: WorkerFace.effort,
     hands: _handsOn(stand.away),
     look: -stand.away,
@@ -236,10 +278,9 @@ final class _Frame {
   );
 
   /// Turning the piece it holds on the spot.
-  WorkerPose _turning(_Stand stand) => WorkerPose(
-    at: stand.at,
-    away: stand.away,
-    onDot: stand.onDot,
+  WorkerPose _turning(_Stand stand, _Step step) => _posed(
+    stand,
+    step,
     face: WorkerFace.effort,
     hands: _handsOn(stand.away),
     look: -stand.away,
@@ -247,24 +288,17 @@ final class _Frame {
   );
 
   /// A big piece with a teammate: the two of them carry it, both hands on it.
-  WorkerPose _together(_Stand stand) => WorkerPose(
-    at: stand.at,
-    away: stand.away,
-    onDot: stand.onDot,
-    face: WorkerFace.smile,
-    hands: _handsOn(stand.away),
-    look: -stand.away,
-  );
+  WorkerPose _together(_Stand stand, _Step step) =>
+      _posed(stand, step, face: WorkerFace.smile, hands: _handsOn(stand.away), look: -stand.away);
 
-  WorkerPose _shove(_Stand stand) => _working(stand, pushLeanDeg, stand.away * -1);
+  WorkerPose _shove(_Stand stand, _Step step) => _working(stand, step, pushLeanDeg, stand.away * -1);
 
-  WorkerPose _drag(_Stand stand) => _working(stand, pullLeanDeg, stand.away);
+  WorkerPose _drag(_Stand stand, _Step step) => _working(stand, step, pullLeanDeg, stand.away);
 
   /// Shoving or dragging: the effort of it, leaning [leanDeg] toward [toward].
-  WorkerPose _working(_Stand stand, double leanDeg, Offset toward) => WorkerPose(
-    at: stand.at,
-    away: stand.away,
-    onDot: stand.onDot,
+  WorkerPose _working(_Stand stand, _Step step, double leanDeg, Offset toward) => _posed(
+    stand,
+    step,
     face: WorkerFace.effort,
     hands: _handsOn(stand.away),
     look: -stand.away,
@@ -273,14 +307,8 @@ final class _Frame {
   );
 
   /// Carrying a piece along, neither shoving nor dragging it.
-  WorkerPose _carry(_Stand stand) => WorkerPose(
-    at: stand.at,
-    away: stand.away,
-    onDot: stand.onDot,
-    face: WorkerFace.smile,
-    hands: _handsOn(stand.away),
-    look: -stand.away,
-  );
+  WorkerPose _carry(_Stand stand, _Step step) =>
+      _posed(stand, step, face: WorkerFace.smile, hands: _handsOn(stand.away), look: -stand.away);
 }
 
 /// Both mitten hands reaching at the piece on [away]'s far side — the piece a

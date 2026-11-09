@@ -42,7 +42,11 @@ const _handInkShare = 0.6;
 const _armBowShare = 0.22;
 
 /// Where a shoulder sits on the body, in body radii from its middle.
-const _shoulderShare = Offset(0.62, 0.34);
+const _shoulderShare = workerShoulderShare;
+
+/// A foot's oval is [footWideShare] by [footTallShare] of the body's diameter
+/// (worker_pose.dart); this is how thick its ink edge is against the look's.
+const _footInkShare = 0.5;
 
 /// How far a mitten's colour is lightened toward the paper, so it reads as a
 /// mitten on the player's colour.
@@ -98,6 +102,7 @@ void _worker(
 }) {
   final colours = look.colors;
   final ink = look.sizes.outlineWidth / px;
+  final colour = character.colourIn(colours);
   if (pose.onDot) {
     canvas.drawCircle(pose.at, radius * _ringShare, _stroke(ink * _ringInkShare, colours.ink));
   }
@@ -107,9 +112,9 @@ void _worker(
     ..translate(pose.at.dx + pose.slide.dx, pose.at.dy + pose.slide.dy);
   if (pose.leanDeg != 0) canvas.rotate(pose.leanDeg * pi / 180);
   canvas
+    ..save()
     ..translate(motion.dx * radius, motion.dy * radius)
     ..scale(pose.squash.x, pose.squash.y);
-  final colour = character.colourIn(colours);
   _workerArms(canvas, pose.hands, radius, ink, colour, colours);
   toyShape(
     canvas,
@@ -120,15 +125,36 @@ void _worker(
   );
   _workerFace(canvas, pose, radius, ink, colours);
   // The accessory is drawn inside the body's own turn, squash and hop, so it
-  // moves with the body (design 5b).
-  paintAccessory(canvas, character.accessory, Offset.zero, radius, colour, look);
+  // moves with the body, and tilts with the bob it lags behind (design 5b, 5a).
+  paintAccessory(canvas, character.accessory, Offset.zero, radius, colour, look, tiltDeg: pose.tiltDeg);
   if (pose.sweat) {
     final at = _sweatAtShare * radius;
     canvas
       ..drawCircle(at, radius * _sweatShare, Paint()..color = colours.paper)
       ..drawCircle(at, radius * _sweatShare, _stroke(ink * _ringInkShare, colours.ink));
   }
+  // The feet are drawn after the body, and outside its bob and its squash: they
+  // are on the ground (design 5a), poking out below it, and out of its shadow.
   canvas.restore();
+  _workerFeet(canvas, pose, radius, ink, colour, colours);
+  canvas.restore();
+}
+
+/// The feet under the body (design 5a): two small ovals in the body's colour
+/// darkened by the shade mix, with the ink edge, where the pose puts them — side
+/// by side standing, the two swinging opposite ways and the one in the air
+/// lifted while it walks.
+void _workerFeet(Canvas canvas, WorkerPose pose, double radius, double ink, Color colour, ToyColors colours) {
+  final shade = toyShadeOf(colour);
+  final edge = _stroke(ink * _footInkShare, colours.ink);
+  final under = pose.away * _standShare;
+  for (final foot in [pose.feet.left, pose.feet.right]) {
+    final centre = (under + foot.at) * radius + Offset(0, -foot.lift * radius);
+    final oval = Rect.fromCenter(center: centre, width: radius * 2 * footWideShare, height: radius * 2 * footTallShare);
+    canvas
+      ..drawOval(oval, Paint()..color = shade)
+      ..drawOval(oval, edge);
+  }
 }
 
 /// The noodle arms from the body's shoulders to its mitten hands, and the hands

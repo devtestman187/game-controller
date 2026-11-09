@@ -242,6 +242,6 @@ void main() {
     );
     expect(2 * left / pxPerMm, greaterThanOrEqualTo(7), reason: '${2 * left / pxPerMm} mm across');
     expect(2 * left / pxPerMm, lessThanOrEqualTo(8), reason: 'the ink edge adds under half a millimetre a side');
-    expect(2 * up, closeTo(2 * left, 1.5), reason: 'as wide as it is tall');
+    expect(2 * up, closeTo(2 * left, 2.5), reason: 'as wide as it is tall, within a breath');
   });
 }

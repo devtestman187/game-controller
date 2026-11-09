@@ -55,6 +55,12 @@ final class ToyShapeStyle {
   final double shadowAlpha;
 }
 
+/// The colour of a body's darkest band (design section 6): [colour] mixed
+/// [shadeMix] toward black, as the fallback's shade band is. A small part drawn
+/// flat in a game — a worker's feet — takes it, so it reads as the body's own
+/// shade rather than a second colour.
+Color toyShadeOf(Color colour) => Color.lerp(colour, const Color(0xFF000000), shadeMix) ?? colour;
+
 /// Draws one game object (design section 4): its shadow, then its body, then
 /// its ink outline, in that order, so every piece, target, dot, sprite, wall
 /// and goal changes in one place.

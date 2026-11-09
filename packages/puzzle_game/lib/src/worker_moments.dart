@@ -10,6 +10,7 @@ import 'worker_pose.dart';
 export 'worker_pose.dart';
 
 part 'worker_frames.dart';
+part 'worker_stride.dart';
 
 /// How long a worker grins after its own right drop, in milliseconds (design
 /// 5a: 500), and how long it winces after a wrong one (600).
@@ -219,6 +220,10 @@ final class _SeenPlayer {
   /// way it moved, so a wobble doesn't swing the walk.
   Offset travel = Offset.zero;
 
+  /// The step cycle: where in the stride the feet are, and how much of it shows
+  /// (design 5a). It moves with the distance travelled, not with the time.
+  final walk = _Walk();
+
   /// The average [travel] is worked up from, in field units a second.
   Offset _velocity = Offset.zero;
 
@@ -243,7 +248,9 @@ final class _SeenPlayer {
     // again: a phone between two snapshots moves it under a clock that stood
     // still, and the next step has to be measured from where it is now.
     if (elapsedMs > 0) {
-      _noteWalking(now - Offset(x, y), elapsedMs);
+      final step = now - Offset(x, y);
+      _noteWalking(step, elapsedMs);
+      walk.note(step, elapsedMs);
       _noteHeld(p, board, now, elapsedMs);
     }
     x = now.dx;

@@ -219,7 +219,13 @@ void main() {
       final standing = watching(board([ball(10, 10), ball(20, 10)], [player(43, 45)])).poseOf(0, 1, 1100);
       expect(walking.face, WorkerFace.smile);
       expect(walking.onDot, isTrue, reason: 'empty-handed, on its grab point');
-      expect(walking.leanDeg, walkLeanDeg, reason: 'leaning into the walk, to its right');
+      // One snapshot in, the stride is part way through its 150 ms ease, so the
+      // lean into the travel is part way in too (worker_stride.dart).
+      expect(
+        walking.leanDeg,
+        closeTo(walkLeanDeg * walking.stride, 1e-9),
+        reason: 'leaning into the walk, to its right',
+      );
       expect(walking.hands, isNot(standing.hands), reason: 'the arms swing');
     });
 
@@ -427,9 +433,10 @@ void main() {
   });
 }
 
-/// Whether [pose] is the pose of a worker walking empty-handed: its arms swing
-/// (worker_pose.dart) instead of resting.
-bool _walking(WorkerPose pose) => pose.hands == handsWalk;
+/// Whether [pose] is the pose of a worker walking: the dot's speed has it
+/// walking, with the gap between the walk's speeds as hysteresis
+/// (worker_moments.dart).
+bool _walking(WorkerPose pose) => pose.walking;
 
 /// A dot on the fixture's board, fed to its moments as a view sees it: the
 /// game's clock losing the time between snapshots, and the view's clock
