@@ -719,7 +719,7 @@ Milestone 13 gives the games and menus a bright, cartoony "Toy Box Toon" look an
 
 ## Milestone 14: Party night
 
-**Draft for the owner's approval** (Nov 8, 2026). Milestone 14 turns Shape Race rounds into a family party night: points, a night of rounds with a scoreboard, the cat and end-of-night awards, with the nicknames and best times they need. The ideas are in docs/party-ideas.md sections 1 and 3 (owner, Nov 3 and Nov 8, 2026); the research is in docs/briefs/m14/.
+**Approved by the owner** (Nov 8, 2026: "Approve M14 with your latest rules"). Milestone 14 turns Shape Race rounds into a family party night: points, a night of rounds with a scoreboard, the cat and end-of-night awards, with the nicknames and best times they need. The ideas are in docs/party-ideas.md sections 1 and 3 (owner, Nov 3 and Nov 8, 2026); the research is in docs/briefs/m14/.
 
 **Deployable builds**
 
