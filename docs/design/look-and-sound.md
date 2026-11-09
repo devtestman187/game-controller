@@ -72,7 +72,8 @@ Names are by meaning, not colour, so a later change moves every use at once. The
 | Token | Sunny | Night | Used for |
 | --- | --- | --- | --- |
 | `ink` | `#1E1646` | `#120D2E` | Every outline, shadow colour (at 35%), text on paper |
-| `background` / `backgroundGlow` | `#7CC8F8` / `#C4EAFF` | `#241C5E` / `#3B2F8F` | The screen behind everything, with a soft lighter centre and faint dots |
+| `background` / `backgroundGlow` | `#7CC8F8` / `#C4EAFF` | `#241C5E` / `#3B2F8F` | The screen behind everything, with a soft lighter centre and faint dots (Sunny) or stars (Night) |
+| `star` | `#FFD23F` | `#FFD23F` | The four-pointed sparkles of a starry sky; the rest of the stars are white. Sunny draws none |
 | `onBackground` | ink | `#FFFFFF` | Text straight on the background |
 | `paper` | `#FFF6E3` | `#FFF6E3` | Cards, dialogs, side panels, the results card |
 | `board` / `tray` | `#FFEFD0` / `#F5D9A8` | `#30297A` / `#3D3592` | Shape Race's play mat and the tray strip |
@@ -95,7 +96,7 @@ Contrast: every text and background pair in the tokens is checked at 4.5:1 or be
 - **`ToyButton`**: replaces `hostButtonLook` (host_button.dart). A pill with fill, ink outline and hard shadow. Pressed: the shadow goes to 0 and the button moves down by the shadow's size (it is pushed in). Focused: a 4 px focus ring outside the ink edge and a quick 1.0 → 1.06 → 1.04 bounce. Disabled: paper colour with a dashed ink edge.
 - **`ToyCard`**: paper, ink edge, hard shadow, 16 px corners, an optional coloured header band (the results card's winner colour, the away card's caution colour). Cards pop in (scale 0.9 → 1.0 with a small overshoot, 180 ms).
 - **`ToyBadge`**: the player chip: the player's colour, ink edge, the number in Fredoka. Used on the join screen, the HUD, the top bar and the dots.
-- **`ToyBackground`**: the background colour with the glow and faint polka dots. With effects on, the dots drift slowly on menus (shader); in a game the background is still (drawn once and cached).
+- **`ToyBackground`**: the background colour with the glow and, over it, Sunny's faint polka dots or Night's scattered star field: white points of three sizes and pale yellow four-pointed sparkles that twinkle. With effects on, the dots or stars drift slowly on menus and the stars twinkle as they go (shader); in a game the background is still, and so are its stars (drawn once and cached).
 - **`toyShape(canvas, path, colour, look)`**: the one call that draws a game object: shadow, then the body (shader, or the hard-stop gradient), then the glint, then the ink outline. Every piece, target, dot, sprite, wall and goal goes through it, so the shader and the fallback are changed in one place.
 - **`toyTheme(look)`**: the Material `ThemeData` for both apps: the colour scheme from the tokens, the text theme from section 3, and the button, card, dialog, switch, slider, app bar and snack bar themes, so stock Material widgets (settings, stats, dialogs) also look right without each screen being rewritten.
 
@@ -170,7 +171,7 @@ Rules, so customising them later is a change of data, not of drawing:
 Two fragment shaders in `packages/toy_look/shaders/`, declared under `flutter: shaders:` and loaded once at start (`ToyShaders.load()`). If either fails to load or compile, `ToyLook.shaders` is null and every caller uses the Canvas fallback, the same as with effects off.
 
 1. **`toy_shade.frag`** (set as a `Paint`'s shader for one shape): uniforms are the shape's bounds, its base colour, the light direction (top-left), the band count (3) and the glint size. It builds a dome-shaped normal from the position inside the bounds, puts the light into 3 hard bands (highlight, base, shade), adds a soft rim light on the shaded side and a small white glint near the top-left. Ink outline and shadow stay Canvas strokes.
-2. **`toy_backdrop.frag`** (the background): the background colour, the centre glow, and polka dots on a slow diagonal drift (time uniform). Used on menus with effects on; in a game the background is drawn once into an image and reused.
+2. **`toy_backdrop.frag`** (the background): the background colour, the centre glow, and the sky's dots or stars on a slow diagonal drift (shift and time uniforms). Used on menus with effects on; in a game the background is drawn once into an image and reused. The star field costs one pass per pixel: the pixel's cell, one hash for the star's place in it, one for its size, then one shape test (a circle, or two ellipses for a sparkle) — no loop, no neighbours.
 
 Decided at step 6 (Claude, Nov 8, 2026):
 - The dots drift down and to the right at 6 logical px a second: calm enough to go unnoticed after a moment. The drift follows the effects setting, not the shader: a device without the shader drifts its Canvas dots the same way. The shader and the fallback draw the same sky at the same drift, so losing the shader never makes it jump.
@@ -180,6 +181,13 @@ Decided at step 6 (Claude, Nov 8, 2026):
 
 Decided at step 9 (Claude, Nov 9, 2026):
 - Moments stay on the view's own clock: a boing or a sparkle under 0.5 s ages from the view's `Stopwatch`, so it finishes after the round's clock stops (the last piece, time up), and anything longer — M14's pop-ups included — ages from the snapshot the host sent, so two screens fed the same frame show it at the same moment.
+
+Decided at step 12 (Claude, Nov 9, 2026): Night's sky is stars.
+- **The field**: a jittered grid of 32 px cells, one star to a cell (one per 1024 px², about as many as Sunny's dots), the pattern repeating every 32 cells — 1024 px — both ways. Each cell's star takes its place in the cell, its size and its twinkle from a hash of the cell's place in the tile, so the field is the same on every device, in every run, and a full tile of drift brings the same sky back. The drift's wrap is that tile (1024 px, 170.7 s at 6 px/s), so no star ever jumps.
+- **Three sizes**: a tiny white point (radius 0.9 px, at most 0.2 alpha) for most cells; a small white dot (1.7 px, 0.32) for one cell in five; and a pale yellow four-pointed sparkle (arms 3.2 px of length, 0.28 of that wide, 0.45 at its brightest) for one cell in forty — about one per 200 × 200 px, and the strongest star there is, inside rule 1's 0.5. No star has an ink edge: they are points of light, not shapes.
+- **The twinkle**: each small dot and sparkle has its own 2, 3, 4 or 5 s cycle and its own phase, so the field never pulses together. Over the cycle it dims to 60 % and grows 15 %, a soft rise and fall, and it only dims from its size's alpha, so no star is ever brighter than the numbers above. Tiny points don't twinkle: the field's faint body stays even. The clock is the drift's own, so a held or still sky holds every star still, and no star ever goes out — a still sky is never blank.
+- **The picture**: docs/design/m13-night-sky.png (Night alone, and behind the game picker's cards, drawn by the Canvas fallback at one moment of the drift).
+- **Shader and fallback**: `ToyStars` hashes a cell with the float recipe both sides run (Dave Hoskins' "hash without sine"); the shader draws the same field per pixel with the numbers `ToySky` hands it. SkSL forbids the integer bit operations that would make the two bit-identical, so they agree to float rounding: the same star within a thousandth of a pixel, and about one class seed in ten thousand could land either side of a size's boundary. Both draws are pinned: the fallback's frame by a checksum and its star counts, the shader's uniforms by a test that reads both sources.
 
 Fallback, and how the look is the same without the shader: the body is a `LinearGradient` from top-left to bottom-right with hard stops (highlight to 30%, base to 75%, shade after), and the glint is a small white oval. In the mock-ups, "effects on" and "effects off" can be compared.
 

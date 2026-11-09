@@ -6,7 +6,7 @@ const white = Color(0xFFFFFFFF);
 
 /// An image's pixels, as the tests read them back.
 final class Pixels {
-  const Pixels(this._bytes, this._width);
+  Pixels(this._bytes, this._width);
 
   final List<int> _bytes;
   final int _width;
@@ -17,6 +17,33 @@ final class Pixels {
     final i = (y * _width + x) * 4;
     return (_bytes[i], _bytes[i + 1], _bytes[i + 2]);
   }
+
+  /// How many pixels the image is across.
+  int get width => _width;
+
+  /// How many pixels the image is down.
+  int get height => _bytes.length ~/ 4 ~/ _width;
+
+  /// Every pixel's brightness, 0 to 255, by [y] × [width] + [x].
+  ///
+  /// The sky is a dark blue with faint light points on it, so its brightness is
+  /// what tells a star from the sky behind it, whatever colour the star is.
+  /// Weights are Rec. 709's, as [Color.computeLuminance] uses.
+  late final List<double> luminance = List<double>.generate(_bytes.length ~/ 4, (i) {
+    final r = _bytes[i * 4], g = _bytes[i * 4 + 1], b = _bytes[i * 4 + 2];
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  });
+
+  /// The image's signature: FNV-1a over every byte, so a test can pin a whole
+  /// frame without listing its pixels. Plain integer arithmetic, so the same
+  /// picture gives the same number in every run.
+  late final int checksum = () {
+    var hash = 0x811C9DC5;
+    for (final byte in _bytes) {
+      hash = ((hash ^ byte) * 0x01000193) & 0xFFFFFFFF;
+    }
+    return hash;
+  }();
 }
 
 /// Paints [paint] onto a [size] canvas over [white] and reads the pixels back,

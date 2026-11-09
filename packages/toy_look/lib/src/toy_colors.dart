@@ -18,6 +18,8 @@ final class ToyColors {
     required this.background,
     required this.backgroundGlow,
     required this.dotAlpha,
+    required this.hasStars,
+    required this.star,
     required this.onBackground,
     required this.paper,
     required this.board,
@@ -42,6 +44,8 @@ final class ToyColors {
     background: Color(0xFF7CC8F8),
     backgroundGlow: Color(0xFFC4EAFF),
     dotAlpha: 0.22,
+    hasStars: false,
+    star: Color(0xFFFFD23F),
     onBackground: Color(0xFF1E1646),
     paper: Color(0xFFFFF6E3),
     board: Color(0xFFFFEFD0),
@@ -67,6 +71,8 @@ final class ToyColors {
     background: Color(0xFF241C5E),
     backgroundGlow: Color(0xFF3B2F8F),
     dotAlpha: 0.07,
+    hasStars: true,
+    star: Color(0xFFFFD23F),
     onBackground: Color(0xFFFFFFFF),
     paper: Color(0xFFFFF6E3),
     board: Color(0xFF30297A),
@@ -110,8 +116,18 @@ final class ToyColors {
 
   /// How strongly the background's white polka dots show over [background]:
   /// faint in the sunlight (22 %) and fainter at night (7 %), where the dots
-  /// are a hint rather than a pattern (design section 4).
+  /// are a hint rather than a pattern (design section 4). A starry sky paints
+  /// no dots at all ([hasStars]).
   final double dotAlpha;
+
+  /// Whether the sky behind everything is a starry night rather than white
+  /// polka dots (design section 4; owner, Nov 9, 2026: "In night mode, have
+  /// the background look more like stars").
+  final bool hasStars;
+
+  /// The pale yellow of a starry sky's brightest points, beside the white of
+  /// the rest (design section 4). Only a starry sky draws with it.
+  final Color star;
 
   /// Text straight on the background.
   final Color onBackground;

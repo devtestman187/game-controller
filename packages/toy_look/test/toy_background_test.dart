@@ -38,6 +38,9 @@ ToyBackgroundPainter _painterOf(WidgetTester tester) =>
 /// How far the sky has drifted, as the painter last read it.
 Offset _shiftOf(WidgetTester tester) => _painterOf(tester).shift.value;
 
+/// How long the sky's stars have twinkled, as the painter last read it.
+Duration _timeOf(WidgetTester tester) => _painterOf(tester).time.value;
+
 /// Counts how often the sky's child builds.
 int _childBuilds = 0;
 
@@ -51,10 +54,14 @@ final class _Counted extends StatelessWidget {
   }
 }
 
-/// The sky's Canvas fill at [shift].
-Future<Pixels> _painted(ToyLook look, [Offset shift = Offset.zero]) => paintedPixels(
+/// The sky's Canvas fill at [shift], [time] after the drift started.
+Future<Pixels> _painted(ToyLook look, [Offset shift = Offset.zero, Duration time = Duration.zero]) => paintedPixels(
   _size,
-  (canvas) => ToyBackgroundPainter(look, shift: ValueNotifier<Offset>(shift)).paint(canvas, _size),
+  (canvas) => ToyBackgroundPainter(
+    look,
+    shift: ValueNotifier<Offset>(shift),
+    time: ValueNotifier<Duration>(time),
+  ).paint(canvas, _size),
 );
 
 void main() {
@@ -68,10 +75,11 @@ void main() {
     expect(ToySky.shiftAt(const Duration(seconds: 1)), const Offset(6, 6));
   });
 
-  test('the shift wraps after 2 × spacing: 10.667 s is back at the start', () {
-    // 10.666 s × 6 = 63.996, a hair short of 64; a millisecond later it wraps.
-    expect(ToySky.shiftAt(const Duration(milliseconds: 10666)).dx, closeTo(63.996, 1e-6));
-    expect(ToySky.shiftAt(const Duration(milliseconds: 10667)).dx, closeTo(0.002, 1e-6));
+  test('the shift wraps after a star tile, 1024 px: 170.667 s is back at the start', () {
+    expect(ToySky.wrapPx, 1024);
+    // 170.666 s × 6 = 1023.996, a hair short of 1024; a millisecond later it wraps.
+    expect(ToySky.shiftAt(const Duration(milliseconds: 170666)).dx, closeTo(1023.996, 1e-6));
+    expect(ToySky.shiftAt(const Duration(milliseconds: 170667)).dx, closeTo(0.002, 1e-6));
   });
 
   test('the uniforms are the look\'s colours and the sky\'s numbers', () {
@@ -89,7 +97,9 @@ void main() {
     final night = ToySky.uniforms(_night, size, Offset.zero);
     expect(night.background, ToyColors.night.background);
     expect(night.glow, ToyColors.night.backgroundGlow);
-    expect(night.dotAlpha, 0.07);
+    // Night's sky is stars, so it paints no polka dots (design section 4, M13
+    // 12); the palette keeps its dot strength for the Arena's mat.
+    expect(night.dotAlpha, 0);
     expect(night.shift, Offset.zero);
   });
 
@@ -122,12 +132,6 @@ void main() {
     expect(dot.$1, closeTo(153, 2));
     expect(dot.$2, closeTo(212, 2));
     expect(dot.$3, closeTo(250, 2));
-    // The Night palette's dots are weaker: 0.07 * 255 + 0.93 * (36, 28, 94) =
-    // (51.3, 43.9, 105.3), so the dot is barely lighter than the sky.
-    final nightDot = (await _painted(_night)).at(272, 288);
-    expect(nightDot.$1, closeTo(51, 2));
-    expect(nightDot.$2, closeTo(44, 2));
-    expect(nightDot.$3, closeTo(105, 2));
   });
 
   test('the dots move with the shift: (272, 288) is a dot, and (278, 294) is it after (6, 6)', () async {
@@ -139,31 +143,39 @@ void main() {
     expect(drifted.at(272, 288), (124, 200, 248));
   });
 
-  testWidgets('with effects on the sky ticks: after 1 s its shift is (6, 6)', (tester) async {
-    await tester.pumpWidget(_sky(_sunny));
+  testWidgets('with effects on the sky ticks: after 1 s its shift is (6, 6), and its stars\' clock 1 s', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_sky(_night));
     expect(_shiftOf(tester), Offset.zero);
+    expect(_timeOf(tester), Duration.zero);
     await tester.pump(const Duration(seconds: 1));
     expect(_shiftOf(tester), const Offset(6, 6));
+    expect(_timeOf(tester), const Duration(seconds: 1));
     await tester.pump(const Duration(seconds: 1));
     expect(_shiftOf(tester), const Offset(12, 12));
+    expect(_timeOf(tester), const Duration(seconds: 2));
   });
 
   testWidgets('with the effects off the sky stays still', (tester) async {
     await tester.pumpWidget(_sky(_noEffects));
     await tester.pump(const Duration(seconds: 1));
     expect(_shiftOf(tester), Offset.zero);
+    expect(_timeOf(tester), Duration.zero);
   });
 
   testWidgets('with reduced motion asked for the sky stays still', (tester) async {
-    await tester.pumpWidget(_sky(_sunny, reduceMotion: true));
+    await tester.pumpWidget(_sky(_night, reduceMotion: true));
     await tester.pump(const Duration(seconds: 1));
     expect(_shiftOf(tester), Offset.zero);
+    expect(_timeOf(tester), Duration.zero);
   });
 
   testWidgets('under a ToyStillSky above it the sky stays still', (tester) async {
-    await tester.pumpWidget(_sky(_sunny, still: true));
+    await tester.pumpWidget(_sky(_night, still: true));
     await tester.pump(const Duration(seconds: 1));
     expect(_shiftOf(tester), Offset.zero);
+    expect(_timeOf(tester), Duration.zero);
   });
 
   testWidgets('a ToyStillSky under the sky holds it; removing the last hold starts the drift', (tester) async {
@@ -243,23 +255,48 @@ void main() {
     expect(_childBuilds, 1, reason: 'the painter repaints from the shift; nothing below is rebuilt');
   });
 
-  test('the painter repaints for a new look or a new shift, not for an equal one', () {
+  test('the painter repaints for a new look, shift or time, not for an equal one', () {
     final shift = ValueNotifier<Offset>(Offset.zero);
     addTearDown(shift.dispose);
+    final time = ValueNotifier<Duration>(Duration.zero);
+    addTearDown(time.dispose);
     expect(
-      ToyBackgroundPainter(_sunny, shift: shift).shouldRepaint(ToyBackgroundPainter(_sunny, shift: shift)),
+      ToyBackgroundPainter(
+        _sunny,
+        shift: shift,
+        time: time,
+      ).shouldRepaint(ToyBackgroundPainter(_sunny, shift: shift, time: time)),
       isFalse,
       reason: 'an equal look paints the same picture',
     );
     expect(
-      ToyBackgroundPainter(_night, shift: shift).shouldRepaint(ToyBackgroundPainter(_sunny, shift: shift)),
+      ToyBackgroundPainter(
+        _night,
+        shift: shift,
+        time: time,
+      ).shouldRepaint(ToyBackgroundPainter(_sunny, shift: shift, time: time)),
       isTrue,
     );
     final other = ValueNotifier<Offset>(Offset.zero);
     addTearDown(other.dispose);
     expect(
-      ToyBackgroundPainter(_sunny, shift: other).shouldRepaint(ToyBackgroundPainter(_sunny, shift: shift)),
+      ToyBackgroundPainter(
+        _sunny,
+        shift: other,
+        time: time,
+      ).shouldRepaint(ToyBackgroundPainter(_sunny, shift: shift, time: time)),
       isTrue,
+    );
+    final later = ValueNotifier<Duration>(const Duration(seconds: 1));
+    addTearDown(later.dispose);
+    expect(
+      ToyBackgroundPainter(
+        _sunny,
+        shift: shift,
+        time: later,
+      ).shouldRepaint(ToyBackgroundPainter(_sunny, shift: shift, time: time)),
+      isTrue,
+      reason: 'the twinkle repaints the sky too',
     );
   });
 }

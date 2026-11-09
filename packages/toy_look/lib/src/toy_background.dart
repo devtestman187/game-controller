@@ -2,13 +2,14 @@ import 'dart:math' as math;
 import 'dart:ui' as ui show Gradient;
 import 'dart:ui' show FragmentProgram, FragmentShader;
 
-import 'package:flutter/foundation.dart' show ValueListenable;
+import 'package:flutter/foundation.dart' show Listenable, ValueListenable;
 import 'package:flutter/scheduler.dart' show Ticker;
 import 'package:flutter/widgets.dart';
 
 import 'toy_look.dart';
 import 'toy_look_scope.dart';
 import 'toy_sky.dart';
+import 'toy_stars.dart';
 import 'toy_still_sky.dart';
 
 /// The dots' white; the palette owns how strongly they show
@@ -16,13 +17,14 @@ import 'toy_still_sky.dart';
 const _dotColor = Color(0xFFFFFFFF);
 
 /// The screen behind everything in the look (design section 4): the palette's
-/// background with a soft lighter centre and faint white polka dots that drift
-/// slowly down and to the right (design section 6).
+/// background with a soft lighter centre. Sunny's sky has faint white polka
+/// dots and Night's a scattered field of stars, both drifting slowly down and to
+/// the right and, at night, twinkling as they go (design section 6).
 ///
 /// It drifts while the look's effects are on, the device doesn't ask for
 /// reduced motion and nothing holds it still (a [ToyStillSky] below or above
 /// it), whatever fills it: the backdrop shader when the device loaded it, the
-/// Canvas dots at the same drift otherwise (design section 6, step 6). A round's
+/// Canvas sky at the same drift otherwise (design section 6, step 6). A round's
 /// screens hold it still; a menu's sky drifts. Give it the box to fill, and its
 /// [child] sits on top.
 ///
@@ -39,9 +41,14 @@ class ToyBackground extends StatefulWidget {
 }
 
 class _ToyBackgroundState extends State<ToyBackground> with SingleTickerProviderStateMixin {
-  /// How far the dots have drifted, as the sky last painted it: the painter's
-  /// repaint signal and its one input.
+  /// How far the sky has drifted, as the sky last painted it: one of the
+  /// painter's repaint signals and inputs.
   final _shift = ValueNotifier<Offset>(Offset.zero);
+
+  /// How long the stars have twinkled, as the sky last painted it: the
+  /// painter's other repaint signal and input. It only runs while the sky
+  /// drifts, so a held sky is a still starry sky (design section 6).
+  final _time = ValueNotifier<Duration>(Duration.zero);
 
   /// The holds a [ToyStillSky] under this sky puts on it.
   final _holds = ToySkyHolds();
@@ -95,6 +102,7 @@ class _ToyBackgroundState extends State<ToyBackground> with SingleTickerProvider
     // the research lists Mali-Vulkan crashes around disposing shader resources,
     // and a retained layer may still hold this one for a frame.
     _shift.dispose();
+    _time.dispose();
     super.dispose();
   }
 
@@ -119,7 +127,13 @@ class _ToyBackgroundState extends State<ToyBackground> with SingleTickerProvider
     if (_ticker.isActive) _ticker.stop();
   }
 
-  void _onTick(Duration elapsed) => _shift.value = ToySky.shiftAt(_drift = _runStart + elapsed);
+  /// One tick of the drift: the shift and the stars' twinkle clock both move on,
+  /// so the two always describe the same moment of the sky.
+  void _onTick(Duration elapsed) {
+    _drift = _runStart + elapsed;
+    _shift.value = ToySky.shiftAt(_drift);
+    _time.value = _drift;
+  }
 
   /// The shader to paint with: the look's backdrop program, made into a
   /// [FragmentShader] once and kept while the program stays the same.
@@ -137,7 +151,7 @@ class _ToyBackgroundState extends State<ToyBackground> with SingleTickerProvider
       holds: _holds,
       child: RepaintBoundary(
         child: CustomPaint(
-          painter: ToyBackgroundPainter(look, shift: _shift, shader: _shaderFor(look)),
+          painter: ToyBackgroundPainter(look, shift: _shift, time: _time, shader: _shaderFor(look)),
           child: widget.child,
         ),
       ),
@@ -145,47 +159,57 @@ class _ToyBackgroundState extends State<ToyBackground> with SingleTickerProvider
   }
 }
 
-/// Paints [ToyBackground]'s sky: the background colour, the glow and the dots
-/// at [shift]. It's a painter of its own so a test can check its pixels, the
-/// drift and that only the sky repaints.
+/// Paints [ToyBackground]'s sky: the background colour, the glow and the dots or
+/// stars at [shift] and [time]. It's a painter of its own so a test can check
+/// its pixels, the drift and that only the sky repaints.
 ///
 /// With [shader] the whole box is one draw of the backdrop shader, its uniforms
-/// from [ToySky.uniforms]; without it the same dots are drawn on the Canvas at
-/// the same shift, so the two fill the sky alike and effects on or off never
-/// makes it jump.
+/// from [ToySky.uniforms] and [ToyStarUniforms.of]; without it the same dots or
+/// stars are drawn on the Canvas at the same shift and time, so the two fill the
+/// sky alike and effects on or off never makes it jump.
 class ToyBackgroundPainter extends CustomPainter {
-  ToyBackgroundPainter(this.look, {required this.shift, this.shader}) : super(repaint: shift);
+  ToyBackgroundPainter(this.look, {required this.shift, required this.time, this.shader})
+    : super(repaint: Listenable.merge([shift, time]));
 
-  /// The look whose colours and dot strength it paints.
+  /// The look whose colours, dot strength and stars it paints.
   final ToyLook look;
 
-  /// How far the dots have drifted: the painter reads it on every paint, and a
+  /// How far the sky has drifted: the painter reads it on every paint, and a
   /// change repaints the sky alone.
   final ValueListenable<Offset> shift;
 
-  /// The backdrop shader, or null for the Canvas dots.
+  /// How long the stars have twinkled: read like [shift], and the same kind of
+  /// repaint signal.
+  final ValueListenable<Duration> time;
+
+  /// The backdrop shader, or null for the Canvas sky.
   final FragmentShader? shader;
 
   @override
   void paint(Canvas canvas, Size size) {
     final drifted = shift.value;
+    final seconds = time.value;
     final shader = this.shader;
     if (shader == null) {
-      _paintCanvas(canvas, size, drifted);
+      _paintCanvas(canvas, size, drifted, seconds);
     } else {
-      _paintShader(canvas, size, drifted, shader);
+      _paintShader(canvas, size, drifted, seconds, shader);
     }
   }
 
-  /// The Canvas sky: the background, the radial glow and the dots.
-  void _paintCanvas(Canvas canvas, Size size, Offset drifted) {
+  /// The Canvas sky: the background, the radial glow and the dots or stars.
+  void _paintCanvas(Canvas canvas, Size size, Offset drifted, Duration seconds) {
     final colors = look.colors;
     final rect = Offset.zero & size;
     canvas.drawRect(rect, Paint()..color = colors.background);
     final radius = math.max(size.width, size.height) * ToySky.glowShare;
     final glow = ui.Gradient.radial(rect.center, radius, [colors.backgroundGlow, colors.background]);
     canvas.drawRect(rect, Paint()..shader = glow);
-    _paintDots(canvas, size, colors.dotAlpha, drifted);
+    if (colors.hasStars) {
+      ToyStars.paint(canvas, size, drifted, seconds, colors.star);
+    } else {
+      _paintDots(canvas, size, colors.dotAlpha, drifted);
+    }
   }
 
   /// The dots on their staggered grid, over everything, moved by [drifted].
@@ -211,7 +235,7 @@ class ToyBackgroundPainter extends CustomPainter {
   /// The shader sky: one full-box rectangle, every uniform set by name so the
   /// shader's source can be reordered without silently swapping a size for a
   /// colour (as [toyShape] does).
-  void _paintShader(Canvas canvas, Size size, Offset drifted, FragmentShader shader) {
+  void _paintShader(Canvas canvas, Size size, Offset drifted, Duration seconds, FragmentShader shader) {
     final uniforms = ToySky.uniforms(look, size, drifted);
     final background = uniforms.background;
     final glow = uniforms.glow;
@@ -223,10 +247,38 @@ class ToyBackgroundPainter extends CustomPainter {
     shader.getUniformFloat('uSpacing').set(uniforms.spacing);
     shader.getUniformFloat('uDotRadius').set(uniforms.dotRadius);
     shader.getUniformVec2('uShift').set(uniforms.shift.dx, uniforms.shift.dy);
+    _setStarUniforms(shader, ToyStarUniforms.of(look.colors, seconds));
     canvas.drawRect(Offset.zero & size, Paint()..shader = shader);
+  }
+
+  /// The star field's uniforms, by name: the shader draws the same field the
+  /// Canvas fallback does from the same numbers.
+  void _setStarUniforms(FragmentShader shader, ToyStarUniforms stars) {
+    final color = stars.color;
+    shader.getUniformVec4('uStarColor').set(color.r, color.g, color.b, color.a);
+    shader.getUniformFloat('uStarCell').set(stars.cellPx);
+    shader.getUniformFloat('uStarTileCells').set(stars.tileCells);
+    shader.getUniformFloat('uStarTinyRadius').set(stars.tinyRadiusPx);
+    shader.getUniformFloat('uStarSmallRadius').set(stars.smallRadiusPx);
+    shader.getUniformFloat('uStarSparkleRadius').set(stars.sparkleRadiusPx);
+    shader.getUniformFloat('uStarTinyAlpha').set(stars.tinyAlpha);
+    shader.getUniformFloat('uStarSmallAlpha').set(stars.smallAlpha);
+    shader.getUniformFloat('uStarSparkleAlpha').set(stars.sparkleAlpha);
+    shader.getUniformFloat('uStarSparkleEvery').set(stars.sparkleEvery);
+    shader.getUniformFloat('uStarSmallEvery').set(stars.smallEvery);
+    shader.getUniformFloat('uStarArmShare').set(stars.armShare);
+    shader.getUniformFloat('uStarTwinkleMinS').set(stars.twinkleMinS);
+    shader.getUniformFloat('uStarTwinkleStepS').set(stars.twinkleStepS);
+    shader.getUniformFloat('uStarTwinkleSteps').set(stars.twinkleSteps);
+    shader.getUniformFloat('uStarTwinkleFloor').set(stars.twinkleFloor);
+    shader.getUniformFloat('uStarTwinkleSize').set(stars.twinkleSizeShare);
+    shader.getUniformFloat('uStarTime').set(stars.timeS);
   }
 
   @override
   bool shouldRepaint(ToyBackgroundPainter oldDelegate) =>
-      oldDelegate.look != look || oldDelegate.shader != shader || oldDelegate.shift != shift;
+      oldDelegate.look != look ||
+      oldDelegate.shader != shader ||
+      oldDelegate.shift != shift ||
+      oldDelegate.time != time;
 }
