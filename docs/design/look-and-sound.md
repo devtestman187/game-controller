@@ -202,6 +202,13 @@ rules (puzzle_game rules, test_game rules, game_kit sessions) ── never impor
 - **Mute** silences both through their volumes and leaves the music running, so unmuting carries on where it is. Music at 0% stops it.
 - The keys are `sound.volume`, `sound.musicVolume` and `sound.muted`, each this device's own.
 
+**Decided at step 10b (Claude, Nov 9, 2026):**
+- **The round's music** (owner, Nov 9, 2026: "Yes I want music during rounds ... As the timer gets closer to running out the music's tempo should speed up."): one 16-bar piece in F major, rendered at three tempos — `round` at 120 BPM (31.997 s), `round_hurry` at 138 (27.823 s) and `round_final` at 156 (24.613 s) — the same key and the same bars, so speeding up never raises the pitch. `SoundKey`s `round`, `roundHurry` (`round_hurry`) and `roundFinal` (`round_final`), with CREDITS rows, mastered about 3 dB under the lobby loop so the game's sounds and the tick read over it.
+- It plays on the device that plays the lobby music (the TV or PC, or a host phone with no TV); joined phones never play it. It starts at the round's "go" — `RoundPhase.playing`, which `Pausable` publishes after the 3-2-1, or at once where there is no beat — on Shape Race and the Arena, and the results end it with a 300 ms fade out, so `time_up` and `success` are heard clearly.
+- **The speed-up** follows Shape Race's clock (the time left on the side nearest its end) and the puzzle's `warningS` (15 s by default): more than `warningS` left → `round`; `warningS` or less → `round_hurry`; `warningS / 3` or less (5 s by default) → `round_final`; a `warningS` of 0, or no clock at all (the Arena) → `round`. The new loop starts at the same share of its length as the old one had reached, and the two cross-fade over 120 ms, so it sounds like the band speeding up rather than a new song.
+- A round that stands still — the 3-2-1, the pause menu, the host-away card, a phone the round waits for — pauses the music where it is and resumes there; only the results end it. The lobby music and the round music never play together: a round still stops the lobby's the moment its screen opens, and Play again may start the round's from the top (a new round) but never stops and starts the lobby's.
+- One controller does both — `HostMusic`, in `ui/lobby_music.dart` — settling after the frame and stopping on a hidden app as the lobby music does, and following Mute and the Music volume the same way. The round's screen tells it the clock each frame (`PuzzlePlayView.onClock`) and its results.
+
 ## 9. Implementation order (after the owner's OK)
 
 Each step is a flash-worker job with a brief and a review gate, as in M12.

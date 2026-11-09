@@ -5,6 +5,7 @@ import 'package:flutter_soloud/flutter_soloud.dart';
 import 'package:game_assets/asset_manifest.dart';
 
 import 'host_start_log.dart';
+import 'sound_loop.dart';
 import 'sound_wish.dart';
 
 /// What the sound player has loaded, for the screen and the log.
@@ -52,15 +53,33 @@ abstract class SoundPlayer {
   /// events stay clear. An unknown name plays nothing.
   void play(String name);
 
-  /// Starts [name] looping until [stopLoop] (the lobby music, M13 section 8).
+  /// Starts [name] looping until [stopLoop] (the host's music, M13 section 8).
   /// There is one loop at a time: asking for the loop that is already playing
   /// does nothing, so the music never restarts, and another name stops the old
   /// loop first. A loop asked for before [load] finishes starts once the sounds
   /// are in, and one wanted across a [restart] starts again after it.
-  void playLoop(String name);
+  ///
+  /// [at] is the share of the loop (0 to 1) to start at, and [fade] how long to
+  /// fade in over, while the old loop fades out over it: a round's tempo
+  /// change keeps the place and cross-fades, so it sounds like the band
+  /// speeding up rather than a new song (design section 8, rule 3).
+  void playLoop(String name, {double at = 0, Duration fade = Duration.zero});
 
-  /// Stops the loop, if one is playing.
-  void stopLoop();
+  /// Pauses the loop where it is: a round that stands still keeps its music,
+  /// silent (M13 design section 8, rule 2). Nothing happens if none plays.
+  void pauseLoop();
+
+  /// Carries on from where [pauseLoop] paused the loop, if one is.
+  void resumeLoop();
+
+  /// Stops the loop, if one is playing, over [fade] when one is given: the
+  /// results' short fade, so `time_up` and `success` are heard clearly (M13
+  /// design section 8, rule 2).
+  void stopLoop({Duration fade = Duration.zero});
+
+  /// How far the loop has played, 0 to 1, or null when none plays: the share a
+  /// tempo change starts the new loop at.
+  double? get loopShare;
 
   /// Stops the sound for [name] if it is still playing: the 3-2-1 stops when a
   /// round stands still, so no "go" sounds over it.
@@ -71,9 +90,9 @@ abstract class SoundPlayer {
   double get volume;
   set volume(double value);
 
-  /// The volume the loop (the lobby music) plays at, apart from the sounds'
-  /// (owner, Nov 9, 2026: one volume for the music and one for the sounds). A
-  /// change reaches a loop already playing.
+  /// The volume the loop (the host's music, the lobby's or the round's) plays
+  /// at, apart from the sounds' (owner, Nov 9, 2026: one volume for the music
+  /// and one for the sounds). A change reaches a loop already playing.
   double get musicVolume;
   set musicVolume(double value);
 
@@ -109,9 +128,8 @@ class SoLoudSoundPlayer implements SoundPlayer {
   /// restart, so both are carried out once the engine is up.
   SoundWish _wish = const SoundWish();
 
-  /// The loop sounding now, and the name of it, or nulls when none plays.
-  SoundHandle? _loop;
-  String? _loopName;
+  /// The loop sounding now, if one is (the host's music, M13 section 8).
+  late final SoundLoop _loop = SoundLoop(sources: _sources, volume: () => _wish.musicVolume, log: _log);
 
   @override
   SoundStatus get status => _status;
@@ -175,8 +193,7 @@ class SoLoudSoundPlayer implements SoundPlayer {
     _playing.clear();
     // The engine's handles die with it; the wish below outlives them, so the
     // loop and the volume come back with the new engine.
-    _loop = null;
-    _loopName = null;
+    _loop.reset();
     _loading = null;
     await load();
     _log('Sound engine restarted (${_status.loaded} of ${SoundKey.values.length} sounds)');
@@ -198,16 +215,25 @@ class SoLoudSoundPlayer implements SoundPlayer {
   }
 
   @override
-  void playLoop(String name) {
+  void playLoop(String name, {double at = 0, Duration fade = Duration.zero}) {
     _wish = _wish.withLoop(name);
-    _applyLoop();
+    _applyLoop(at: at, fade: fade);
   }
 
   @override
-  void stopLoop() {
+  void pauseLoop() => _loop.pause();
+
+  @override
+  void resumeLoop() => _loop.resume();
+
+  @override
+  void stopLoop({Duration fade = Duration.zero}) {
     _wish = _wish.withLoop(null);
-    _applyLoop();
+    _applyLoop(fade: fade);
   }
+
+  @override
+  double? get loopShare => _loop.share;
 
   @override
   void stop(String name) {
@@ -234,52 +260,19 @@ class SoLoudSoundPlayer implements SoundPlayer {
   @override
   set musicVolume(double value) {
     _wish = _wish.withMusicVolume(value);
-    final handle = _loop;
-    if (handle == null) return;
-    final soloud = SoLoud.instance;
-    try {
-      if (soloud.getIsValidVoiceHandle(handle)) soloud.setVolume(handle, _wish.musicVolume);
-    } catch (e) {
-      _log('Could not set the music volume: $e');
-    }
+    _loop.setVolume(_wish.musicVolume);
   }
 
   /// Makes the engine play the loop this player has been asked for (M13 section
-  /// 8): the old loop stops first when it isn't the one wanted, and nothing
-  /// happens while no sounds are in, because the load applies the wish when it
-  /// ends.
-  void _applyLoop() {
+  /// 8): the old loop stops first when it isn't the one wanted, over the same
+  /// fade the new one fades in over, and nothing happens while no sounds are
+  /// in, because the load applies the wish when it ends.
+  void _applyLoop({double at = 0, Duration fade = Duration.zero}) {
     if (!_status.ready) return;
-    final sounding = _loopName;
-    if (_wish.stopsFrom(sounding)) _stopLoopNow();
+    final sounding = _loop.name;
+    if (_wish.stopsFrom(sounding)) _loop.stop(fade: fade);
     final start = _wish.startsFrom(sounding);
-    if (start != null) _startLoop(start);
-  }
-
-  void _stopLoopNow() {
-    final handle = _loop;
-    _loop = null;
-    _loopName = null;
-    if (handle == null) return;
-    final soloud = SoLoud.instance;
-    try {
-      if (soloud.getIsValidVoiceHandle(handle)) unawaited(soloud.stop(handle));
-    } catch (e) {
-      _log('Could not stop the loop: $e');
-    }
-  }
-
-  void _startLoop(String name) {
-    final key = SoundKey.byEventName(name);
-    final source = key == null ? null : _sources[key];
-    if (key == null || source == null) return;
-    final soloud = SoLoud.instance;
-    try {
-      _loop = soloud.play(source, looping: true, volume: _wish.musicVolume);
-      _loopName = name;
-    } catch (e) {
-      _log('Could not play the $name loop: $e');
-    }
+    if (start != null) _loop.play(start, at: at, fade: fade);
   }
 
   /// How far the latest [key] sound has played, or null if it isn't playing.
@@ -293,6 +286,7 @@ class SoLoudSoundPlayer implements SoundPlayer {
   @override
   Future<void> dispose() async {
     await _changes.close();
+    _loop.dispose();
     try {
       await _loading;
       if (SoLoud.instance.isInitialized) SoLoud.instance.deinit();

@@ -19,7 +19,7 @@ final class SoundWish {
   /// The volume the game's sounds play at, 0 (silence) to [fullVolume].
   final double volume;
 
-  /// The volume the loop (the lobby music) plays at, 0 to [fullVolume]: its
+  /// The volume the loop (the host's music) plays at, 0 to [fullVolume]: its
   /// own, so the music and the sounds are set apart (owner, Nov 9, 2026).
   final double musicVolume;
 

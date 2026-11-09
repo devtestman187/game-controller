@@ -72,6 +72,11 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
   /// Where the round's moments go (m12 bug 1107e): the Diagnostics screen
   /// reads them back.
   late final LogSink _log;
+
+  /// The host's music (M13 design section 8): this round reports its clock and
+  /// its end, so the music speeds up with the clock and fades out on the
+  /// results. Made here, not lazily: dispose() can't read providers any more.
+  late final HostMusic _music;
   final _againFocus = FocusNode(debugLabel: 'rematch');
 
   /// The screen's randomness, made once here at the edge: the puzzle to play
@@ -103,10 +108,12 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
         ref.read(localPlayerSourceProvider)(ref.read(gameHostProvider), onJoined: () => setState(() {}));
     final format = MatchFormat.of(widget.teams);
     _log('Round started: $puzzleGameName, ${format.label}, ${_playersLine(widget.teams.length)}');
+    _music = ref.read(lobbyMusicProvider)..roundScreenOpened(this);
   }
 
   @override
   void dispose() {
+    _music.roundScreenClosed(this);
     if (!_handedOver) _keyboard.dispose();
     _againFocus.dispose();
     super.dispose();
@@ -135,11 +142,19 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
   // would be ignored: move the focus there, for the remote's OK button.
   void _finished(MatchResult r) {
     setState(() => _result = r);
+    // The round's music fades out with the results, before the phase says the
+    // round stands still (M13 design section 8, rule 2).
+    _music.roundEnded(this);
     _log('Round ended: ${_resultsHead(ref.read(toyLookProvider), r).title}${_endTime(r)}');
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _againFocus.requestFocus();
     });
   }
+
+  /// Each frame of the round: its clock, for the music's tempo (M13 design
+  /// section 8, rule 3).
+  void _clocked(int timeLeftMs, int warningS) =>
+      _music.roundScreenClock(this, timeLeftMs: timeLeftMs, warningS: warningS);
 
   void _replaceWith(Widget screen) {
     _handedOver = true;
@@ -259,6 +274,7 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
                           abandon: ref.read(hostAbandonProvider),
                           settings: () => ref.read(puzzleSettingsProvider),
                           onFinished: _finished,
+                          onClock: _clocked,
                         );
                       },
                     ),

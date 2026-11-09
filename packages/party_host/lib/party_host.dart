@@ -22,6 +22,7 @@ export 'src/live_stats.dart';
 export 'src/local_player_source.dart';
 export 'src/look_providers.dart';
 export 'src/look_settings.dart';
+export 'src/music_loop.dart';
 export 'src/network_addresses.dart' show orderedAddresses;
 export 'src/players_away.dart';
 export 'src/prefs.dart';

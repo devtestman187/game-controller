@@ -62,20 +62,23 @@ void main() {
     await openJoin(tester);
     expect(sounds.loop, 'lobby');
 
+    // The round's own music takes over from the lobby's at its "go" (M13
+    // section 8, rule 1); this test is the lobby's, so it only checks that the
+    // lobby's is gone, not what the round plays.
     await startRound(tester, fake);
     expect(find.byType(PuzzleScreen), findsOneWidget);
-    expect(sounds.loop, isNull, reason: 'the round stops the music');
-    expect(sounds.loopStarts, ['lobby']);
+    expect(sounds.loopStarts, ['lobby', 'round'], reason: 'the round stops the lobby\'s music');
 
     // Play again replaces the round's screen with another in one frame: the
-    // music was off and stays off, with no stop and start in between.
+    // lobby's music was off and stays off, with no stop and start of it in
+    // between, and the new round's own music comes with the new round.
     lockEveryPiece(tester);
     await endRound(tester);
     await tester.tap(find.byKey(const Key('playAgain')));
     await navigated(tester);
     expect(find.byType(PuzzleScreen), findsOneWidget);
-    expect(sounds.loop, isNull, reason: 'Play again keeps it off');
-    expect(sounds.loopStarts, ['lobby']);
+    expect(sounds.loop, 'round', reason: 'the new round\'s music; the lobby\'s stays off');
+    expect(sounds.loopStarts, ['lobby', 'round', 'round'], reason: 'Play again never started the lobby\'s');
 
     // Back on the join screen, with the picker still under it, it comes back.
     lockEveryPiece(tester);
@@ -84,7 +87,7 @@ void main() {
     await navigated(tester);
     expect(find.byType(JoinScreen), findsOneWidget);
     expect(sounds.loop, 'lobby', reason: 'the join screen is a lobby again');
-    expect(sounds.loopStarts, ['lobby', 'lobby']);
+    expect(sounds.loopStarts, ['lobby', 'round', 'round', 'lobby']);
   });
 
   testWidgets(

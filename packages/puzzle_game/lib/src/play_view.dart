@@ -39,6 +39,7 @@ class PuzzlePlayView extends StatefulWidget {
     this.pxPerMm = phonePxPerMm,
     this.paused = false,
     this.onFinished,
+    this.onClock,
     this.match,
     this.abandon,
   });
@@ -78,6 +79,12 @@ class PuzzlePlayView extends StatefulWidget {
 
   /// The match ended: a side finished, or time ran out.
   final void Function(MatchResult result)? onFinished;
+
+  /// Every frame: the round's clock, in the ms left on the side nearest its
+  /// end (a race's two clocks, and the one that ends the round), and the
+  /// puzzle's warning in seconds. The host's round music times its tempo by
+  /// them (M13 design section 8, rule 3); it is no part of the game.
+  final void Function(int timeLeftMs, int warningS)? onClock;
 
   /// The match to run. Tests pass one in.
   final PuzzleMatch? match;
@@ -142,11 +149,16 @@ class PuzzlePlayViewState extends State<PuzzlePlayView> with SingleTickerProvide
 
   void _tick(Duration elapsed) {
     _session.advance(elapsed);
+    widget.onClock?.call(_timeLeftMs, match.sides.first.game.settings.warningS);
     if (widget.paused) return;
     setState(() {});
     // The frame was drawn: the inputs it carried are no longer waiting (S7).
     SchedulerBinding.instance.addPostFrameCallback((_) => _session.drawn());
   }
+
+  /// The ms left on the side nearest its end: the clock that ends the round.
+  int get _timeLeftMs =>
+      match.sides.map((side) => (side.game.timeLeftS * Duration.millisecondsPerSecond).round()).reduce(min);
 
   @override
   Widget build(BuildContext context) => MatchView(

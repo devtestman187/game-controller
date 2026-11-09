@@ -25,6 +25,21 @@ class FakeSoundPlayer implements SoundPlayer {
   /// The names of the sounds stopped while they played.
   final stopped = <String>[];
 
+  /// Every loop that started, with the share it began at (0 to 1) and the fade
+  /// it came in over: the round's tempo changes, in order (M13 section 8).
+  final loopSwitches = <({String name, double at, Duration fade})>[];
+
+  /// The fade each loop was stopped over, in order: zero at once, the results'
+  /// short fade at the end of a round.
+  final loopStops = <Duration>[];
+
+  /// Whether the loop is paused where it is: a round that stands still.
+  bool loopPaused = false;
+
+  /// How far the loop that plays has come, 0 to 1, or null when none plays: a
+  /// tempo change keeps it. The test sets it to say where the music is.
+  double? share;
+
   /// The sounds' volume last set, 0 to 1: 1 until something turns it down.
   @override
   double volume = 1;
@@ -34,14 +49,29 @@ class FakeSoundPlayer implements SoundPlayer {
   double musicVolume = 1;
 
   @override
-  void playLoop(String name) {
+  double? get loopShare => share;
+
+  @override
+  void playLoop(String name, {double at = 0, Duration fade = Duration.zero}) {
     if (loop == name) return;
     loop = name;
+    loopPaused = false;
     loopStarts.add(name);
+    loopSwitches.add((name: name, at: at, fade: fade));
   }
 
   @override
-  void stopLoop() => loop = null;
+  void pauseLoop() => loopPaused = true;
+
+  @override
+  void resumeLoop() => loopPaused = false;
+
+  @override
+  void stopLoop({Duration fade = Duration.zero}) {
+    loop = null;
+    loopPaused = false;
+    loopStops.add(fade);
+  }
 
   @override
   void stop(String name) => stopped.add(name);

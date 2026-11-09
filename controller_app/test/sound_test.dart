@@ -4,6 +4,7 @@ import 'package:party_host/party_host.dart' as party;
 import 'package:party_host/testing.dart' as party_test;
 
 import 'support/host_app.dart';
+import 'support/joined.dart';
 import 'support/pump_app.dart';
 
 /// This phone's sound (M13 design section 8): a phone that hosts plays the
@@ -35,6 +36,15 @@ void main() {
     await settle(tester);
     expect(sounds.loop, isNull, reason: 'the pad is no lobby');
     expect(sounds.loopStarts, isEmpty, reason: 'a joined phone never plays it');
+
+    // In a round the TV runs: the round's music is the TV's to play too (M13
+    // design section 8, rule 1).
+    app.client.viewStart(arenaStart());
+    await settle(tester);
+    app.client.viewFrame(arenaFrame(0));
+    await settle(tester);
+    expect(sounds.loop, isNull, reason: 'the TV plays the round\'s music, not its phones');
+    expect(sounds.loopStarts, isEmpty, reason: 'a joined phone plays no music at all');
   });
 
   testWidgets('the Settings screen shows the Mute, Sounds and Music rows', (tester) async {

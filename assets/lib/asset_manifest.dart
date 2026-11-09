@@ -14,9 +14,10 @@ const String assetPackage = 'game_assets';
 /// one per haptic event type that has a sound (M5, and the puzzle's in M10),
 /// plus sounds without a haptic (pickup, time-up), by [eventName].
 ///
-/// The last three are the host's own cues (M13 design section 8, L5), played by
+/// The last six are the host's own cues (M13 design section 8, L5), played by
 /// the screens rather than by a game: the lobby music (a seamless loop), the
-/// 3-2-1 before a round, and a phone joining the host.
+/// 3-2-1 before a round, a phone joining the host, and the round's music at its
+/// three tempos (the same piece at 120, 138 and 156 BPM).
 enum SoundKey {
   hit,
   success,
@@ -30,7 +31,10 @@ enum SoundKey {
   help,
   lobby,
   countdown,
-  playerJoined('player_joined');
+  playerJoined('player_joined'),
+  round,
+  roundHurry('round_hurry'),
+  roundFinal('round_final');
 
   const SoundKey([this._file]);
 

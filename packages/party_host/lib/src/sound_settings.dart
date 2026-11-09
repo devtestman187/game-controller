@@ -5,8 +5,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'look_providers.dart';
 
 /// This device's sound settings (M13 design section 8, L5; owner, Nov 9,
-/// 2026): a volume for the game's sounds, a volume for the lobby music, and
-/// Mute, which silences both ("a mute switch should mute volume and sound").
+/// 2026): a volume for the game's sounds, a volume for the music (the lobby's
+/// and the round's alike), and Mute, which silences both ("a mute switch should
+/// mute volume and sound").
 ///
 /// Like the look's settings they are this device's own: a joined phone's are
 /// its own, and a host's are the host's.
@@ -34,7 +35,7 @@ final class SoundSettings {
   /// The game's sounds, 0 (silence) to [maxVolume].
   final int soundVolume;
 
-  /// The lobby music, 0 (none) to [maxVolume]. At 0 the music doesn't play.
+  /// The music, 0 (none) to [maxVolume]. At 0 the music doesn't play.
   final int musicVolume;
 
   /// Whether this device is silent: the sounds and the music alike. Both

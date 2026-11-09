@@ -13,7 +13,7 @@ class LobbyHold extends ConsumerStatefulWidget {
 }
 
 class _LobbyHoldState extends ConsumerState<LobbyHold> {
-  late final LobbyMusic _music;
+  late final HostMusic _music;
 
   @override
   void initState() {
@@ -32,9 +32,11 @@ class _LobbyHoldState extends ConsumerState<LobbyHold> {
 }
 
 /// Holds a round open while it is mounted (M13 design section 8):
-/// `PuzzleScreen` and `GameScreen`, their results and pause included. The music
-/// stops while a round is on and comes back when it closes, and the palette
-/// stands still with it ([RoundPaletteHold], design D1).
+/// `PuzzleScreen` and `GameScreen`, their results and pause included. The
+/// lobby's music stops while a round is on and the round's own plays from its
+/// "go" (`PuzzleScreen` reports the clock), and the lobby's comes back when the
+/// round closes; the palette stands still with it ([RoundPaletteHold], design
+/// D1).
 class RoundHold extends ConsumerStatefulWidget {
   const RoundHold({required this.child, super.key});
 
@@ -45,7 +47,7 @@ class RoundHold extends ConsumerStatefulWidget {
 }
 
 class _RoundHoldState extends ConsumerState<RoundHold> {
-  late final LobbyMusic _music;
+  late final HostMusic _music;
 
   @override
   void initState() {
