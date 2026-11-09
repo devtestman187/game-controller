@@ -143,6 +143,21 @@ void main() {
     expect(clock.host.viewEnds, hasLength(1));
   });
 
+  group('the phones’ buttons', () {
+    test('the Arena labels A Dash and Start Pause', () {
+      expect(arenaLayout.labels, {ControllerButton.a: 'Dash', ControllerButton.start: 'Pause'});
+      expect(arenaLayout.labels[ControllerButton.a], arenaDashLabel);
+    });
+
+    test('the Arena hides every button its rules never read', () {
+      final read = buttonsTheRulesRead();
+      expect(read, {ControllerButton.a}, reason: 'the rules read A for a dash, and the sticks for moving and aiming');
+      // Start is the host's pause (M11), not the rules, so it stays visible.
+      expect(arenaLayout.hidden, ControllerButton.values.toSet()..removeAll({...read, ControllerButton.start}));
+      expect(arenaLayout.hidden.intersection(arenaLayout.labels.keys.toSet()), isEmpty, reason: 'a label shows');
+    });
+  });
+
   test('the session ends as quit, and a won round does not end it', () {
     final clock = Clock();
     clock.host
@@ -160,3 +175,19 @@ void main() {
     expect(clock.host.viewEnds, hasLength(1));
   });
 }
+
+/// The buttons the arena's rules read: one held on its own changes what
+/// [GameInput.fromGamepad] hands them, as A does for the dash. So a hidden
+/// button is one the rules read nowhere, and the test fails the day a rule
+/// starts reading a button the phones were told they don't need.
+Set<ControllerButton> buttonsTheRulesRead() => {
+  for (final b in ControllerButton.values)
+    if (!sameInput(
+      GameInput.fromGamepad(GamepadState.neutral),
+      GameInput.fromGamepad(GamepadState(buttons: {GamepadState.buttonOf(b)})),
+    ))
+      b,
+};
+
+/// Whether two inputs ask the rules for the same move, dash and aim.
+bool sameInput(GameInput a, GameInput b) => a.move == b.move && a.dash == b.dash && a.aim == b.aim;

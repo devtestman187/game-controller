@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
@@ -33,6 +34,10 @@ const goalRect = Rect.fromLTWH(0.86, 0.38, 0.11, 0.24);
 /// How far the marble travels between the two frames of the eyes' test, as a
 /// fraction of the field: well over a snapshot's rounding.
 const stepLeft = 0.02;
+
+/// The boxes the flag is drawn in: a landscape phone, as the view's tests use,
+/// and [screen], the TV, so it reads at both sizes.
+const flagBoxes = [Size(667, 375), screen];
 
 /// Where the one marble stands, in the frame's px, and how big it is drawn.
 final marbleCentre = at(marbleAt);
@@ -71,6 +76,51 @@ int atField(Uint8List bytes, int width, Offset field) {
 /// Whether [a] is lighter than [b]: its channels add up to more.
 bool lighter(int a, int b) => _sum(a) > _sum(b);
 
+/// The goal pad's rect for a frame of [box], in px.
+Rect padOf(Size box) => Rect.fromLTRB(
+  goalRect.left * box.width,
+  goalRect.top * box.height,
+  goalRect.right * box.width,
+  goalRect.bottom * box.height,
+);
+
+/// How far inside the pad's own ink edge the flag is measured, in px.
+const padScanInset = 2.0;
+
+/// How far from the pad's `good` a pixel may be and still count as the pad:
+/// the checks' ink and paper are far from it, as the look's tokens are apart.
+const padGreenGap = 8;
+
+/// The bounding box of the flag drawn in the goal pad of a frame of [box]:
+/// every pixel inside the pad, clear of its edge and corners, that is not the
+/// pad's `good`.
+Rect flagExtent(Uint8List bytes, int width, ToyLook look, Size box) {
+  final pad = padOf(box);
+  final inside = Path()
+    ..addRRect(
+      RRect.fromRectAndRadius(
+        pad,
+        const Radius.circular(ToySizes.cardCorner),
+      ).deflate(look.sizes.outlineWidth + padScanInset),
+    );
+  var left = pad.right;
+  var top = pad.bottom;
+  var right = pad.left;
+  var bottom = pad.top;
+  for (var y = pad.top.ceil(); y < pad.bottom.floor(); y++) {
+    for (var x = pad.left.ceil(); x < pad.right.floor(); x++) {
+      if (!inside.contains(Offset(x + 0.5, y + 0.5))) continue;
+      if (colourGap(pixel(bytes, width, x, y), argb(look.colors.good)) <= padGreenGap) continue;
+      left = min(left, x.toDouble());
+      top = min(top, y.toDouble());
+      right = max(right, x + 1.0);
+      bottom = max(bottom, y + 1.0);
+    }
+  }
+  expect(right, greaterThan(left), reason: 'the flag is drawn on the pad');
+  return Rect.fromLTRB(left, top, right, bottom);
+}
+
 int _sum(int colour) => (colour >> 16 & 0xFF) + (colour >> 8 & 0xFF) + (colour & 0xFF);
 
 /// The Canvas fallback's bands (design section 6), as `toy_look` draws them: the
@@ -90,9 +140,15 @@ bool inBands(int got, Color base) => [
 ].any((band) => colourGap(got, argb(band)) <= 8);
 
 /// The field drawn for each of [snapshots] in turn — so the marbles' moments
-/// see the moves between them — as the last one's pixels.
-Future<Uint8List> fieldBytes(WidgetTester tester, List<ArenaSnapshot> snapshots, {ToyLook? look}) async {
-  tester.view.physicalSize = screen;
+/// see the moves between them — as the last one's pixels, in a [box] as big as
+/// the device's screen (the TV's, unless a test asks for another).
+Future<Uint8List> fieldBytes(
+  WidgetTester tester,
+  List<ArenaSnapshot> snapshots, {
+  ToyLook? look,
+  Size box = screen,
+}) async {
+  tester.view.physicalSize = box;
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
   final key = GlobalKey();
@@ -104,7 +160,7 @@ Future<Uint8List> fieldBytes(WidgetTester tester, List<ArenaSnapshot> snapshots,
             child: RepaintBoundary(
               key: key,
               child: SizedBox.fromSize(
-                size: screen,
+                size: box,
                 child: ArenaField(snapshot: snapshot, roster: roster),
               ),
             ),
@@ -120,9 +176,20 @@ Future<Uint8List> fieldBytes(WidgetTester tester, List<ArenaSnapshot> snapshots,
   return data.buffer.asUint8List();
 }
 
-/// The one frame [arena] draws in [look].
-Future<Uint8List> drawField(WidgetTester tester, {ToyLook? look, bool recovering = false, double roundTimeS = 0}) =>
-    fieldBytes(tester, [arena(recovering: recovering, roundTimeS: roundTimeS)], look: look ?? sunny);
+/// The one frame [arena] draws in [look], in a [box] as big as the device's
+/// screen.
+Future<Uint8List> drawField(
+  WidgetTester tester, {
+  ToyLook? look,
+  bool recovering = false,
+  double roundTimeS = 0,
+  Size box = screen,
+}) => fieldBytes(
+  tester,
+  [arena(recovering: recovering, roundTimeS: roundTimeS)],
+  look: look ?? sunny,
+  box: box,
+);
 
 /// The mean x (image px) of the eye ink in the upper half of the marble
 /// centred on [centre]: the eyes' whites, their pupils and their ink edges,
@@ -196,14 +263,50 @@ void main() {
     }
   });
 
-  testWidgets("the goal's middle is good", (tester) async {
+  testWidgets('the goal pad is good inside its edge, below the flag', (tester) async {
     for (final (name, look) in [('Sunny', sunny), ('Night', night)]) {
       final bytes = await drawField(tester, look: look);
+      // 40 % of the pad's shorter side below its middle: under the flag's foot
+      // (30 %) and above the pad's own ink edge.
+      final pad = padOf(screen);
+      final sample = Offset(pad.center.dx, pad.center.dy + 0.4 * pad.shortestSide);
       expect(
-        colourGap(atField(bytes, screen.width.toInt(), goalRect.center), argb(look.colors.good)),
+        colourGap(pixel(bytes, screen.width.toInt(), sample.dx.round(), sample.dy.round()), argb(look.colors.good)),
         lessThanOrEqualTo(2),
         reason: name,
       );
+    }
+  });
+
+  testWidgets("the goal pad's middle holds the flag's ink, not its green", (tester) async {
+    for (final box in flagBoxes) {
+      for (final (name, look) in [('Sunny', sunny), ('Night', night)]) {
+        final bytes = await drawField(tester, look: look, box: box);
+        final middle = padOf(box).center;
+        final got = pixel(bytes, box.width.toInt(), middle.dx.floor(), middle.dy.floor());
+        expect(colourGap(got, argb(look.colors.good)), greaterThan(30), reason: '$name at $box: not the pad');
+        expect(
+          min(colourGap(got, argb(look.colors.ink)), colourGap(got, argb(look.colors.paper))),
+          lessThanOrEqualTo(30),
+          reason: '$name at $box: the flag (ink or a check)',
+        );
+      }
+    }
+  });
+
+  testWidgets('the flag is about 60 % of the pad tall and centred on it', (tester) async {
+    for (final box in flagBoxes) {
+      for (final (name, look) in [('Sunny', sunny), ('Night', night)]) {
+        final bytes = await drawField(tester, look: look, box: box);
+        final pad = padOf(box);
+        final flag = flagExtent(bytes, box.width.toInt(), look, box);
+        expect(flag.height / pad.shortestSide, inInclusiveRange(0.75, 0.85), reason: '$name at $box: its height');
+        // 5 % of the pad's shorter side of slack: 5.3 px on the TV, 3.7 on the
+        // phone.
+        final slack = 0.05 * pad.shortestSide;
+        expect((flag.center.dx - pad.center.dx).abs(), lessThanOrEqualTo(slack), reason: '$name at $box: across');
+        expect((flag.center.dy - pad.center.dy).abs(), lessThanOrEqualTo(slack), reason: '$name at $box: down');
+      }
     }
   });
 

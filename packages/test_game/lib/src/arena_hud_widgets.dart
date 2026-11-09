@@ -3,11 +3,13 @@ import 'package:toy_look/toy_look.dart';
 
 import 'arena.dart';
 import 'arena_roster.dart';
+import 'arena_session.dart';
 import 'arena_snapshot.dart';
 
 /// What the bar says when a player's dash has cooled down: in the pill on a
-/// tall box, in ink text on a phone's one-line bar.
-const _dashReady = 'Dash ready (A)';
+/// tall box, in ink text on a phone's one-line bar. The dash's name comes from
+/// the phone's A label, so the two always say the same word.
+const _dashReady = '$arenaDashLabel ready (A)';
 
 /// The ink edge round the dash-ready dot.
 const _dotEdge = 1.5;

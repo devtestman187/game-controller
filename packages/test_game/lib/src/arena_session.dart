@@ -19,8 +19,28 @@ List<PlayerFeed> feedsOf(GameHost host) => [
 /// The game's name in analytics records.
 const arenaGame = 'arena';
 
-/// The arena's buttons on the phone: the usual ones, with Start to pause (M11).
-final arenaLayout = GameLayoutMessage(labels: {ControllerButton.start: 'Pause'});
+/// The dash's one name, for the phone's A button (P5) and the TV's HUD, which
+/// says "Dash ready (A)" while a player can dash again.
+const arenaDashLabel = 'Dash';
+
+/// The buttons the Arena's rules read nowhere — a marble moves on the sticks or
+/// the D-pad and aims with the right stick, and A is the dash — so the phones
+/// show only A and Start (P5).
+const _unusedButtons = {
+  ControllerButton.b,
+  ControllerButton.x,
+  ControllerButton.y,
+  ControllerButton.lb,
+  ControllerButton.rb,
+  ControllerButton.select,
+};
+
+/// The arena's buttons on the phone (P5), labelled as Shape Race's are: A
+/// dashes and Start pauses (M11); the buttons the rules never read are hidden.
+final arenaLayout = GameLayoutMessage(
+  labels: {ControllerButton.a: arenaDashLabel, ControllerButton.start: 'Pause'},
+  hidden: _unusedButtons,
+);
 
 /// The Arena on the host (m12 §3): runs [ArenaGame] in fixed steps, gives each
 /// phone the arena's buttons, buzzes and plays its events, and records each
