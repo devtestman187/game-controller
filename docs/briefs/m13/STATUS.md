@@ -2,16 +2,23 @@
 
 Resume here. Branch `m13` in the worktree `E:\AI\game-controller-m13`, cut from `m12` at d06f88a on Nov 8, 2026. Design: docs/design/look-and-sound.md (approved by the owner, Nov 8). Mock-ups: docs/design/look-mockups/. PRD: M13 and L1 to L5.
 
-## Where M13 stands (Nov 9, 2026)
+## Where M13 stands (Nov 9, 2026, at a session compaction)
 
-- Steps 1 to 8 and 4c, and step 9's full review and fixes, are done and pushed. Counts: look 111, puzzle 172, arena 62, host 240, phone 433, tv 53, kit 48.
-- **Next:** a build with the device fixes (row D1) on the owner's word, then their device check; then the empty-rounds stats triage. `m13.1` stays internal until the owner says to promote.
-- The owner said "Keep moving forward in M13 unless you need a decision by me": go on through steps 6, 7 and 8 without asking; step 9's build waits for the owner's word.
-- Polish kept for step 9: the worker's tongue, determined and "o" faces; the 7 mm floor on "Show on this device"; check on a device that the remote reaches the TV home's manual address; the phone pad badge wears its accessory (done in step 8).
-- Nothing in M13 has been seen on a device yet.
-- M14 (Party night, the cat) is approved in docs/PRD-v2.md; it starts after M13. Its research is in docs/briefs/m14/.
-- M12: build 6 waits for the owner's "tag"; their test logs get reviewed when they arrive, with fixes on `m12`, merged into `m13`.
-- Housekeeping: remove the stale flash-worker job worktree folders later.
+- M13 steps 1–9 are done; the full review is done and fixed. `m13.1` (0.13.0, build 299) is on Play, TestFlight internal and Windows.
+- The owner's first device test of `m13.1` found five issues (row D1), all fixed and tagged as **`m13.2`** (build 305). Its release was still running at the compaction. **First thing next session:** run `tools/release.sh --status m13.2`, and tell the owner what reached TestFlight internal, Play and the Windows zip.
+- **Promotion to external `Testers`:** the owner said "Wait for promotion until I say so". Don't promote or ask until they raise it.
+- **Next work, unless the owner says otherwise:**
+  - wait for the owner's device test of `m13.2`;
+  - then a stats triage: the session summary records a round left without results as 0 players and 0 s (`session_recorder.dart` `round_end`, then `metrics/session.dart` `roundEnded`). m12's design says such a round is recorded as `abandoned`, with its players.
+- Counts: look 111, puzzle 211, arena 66, host 240, phone 433, tv 53, kit 48, protocol 107, connection 282, metrics 90.
+- **Notes for the next session:**
+  - `m13` and `main` are at the same commit after each tag. Keep them together for a release: `release.sh` needs HEAD = origin/main.
+  - `release.sh` refuses a tag named like a branch (Codemagic can't check it out); use `m13.N`.
+  - The puzzle tests rewrite `docs/design/m12-mirror-*.png`. They're deterministic, so commit them when the worker's drawing changes.
+  - Flash jobs: start each with run_in_background, never a shell `&`. flash.sh holds a job's changes back when a file outside `allow:` changed (the mirror PNGs, `tv_test_app/windows/flutter/generated_*`). Apply by hand with `git diff --binary HEAD` in the kept job folder, excluding those.
+  - Stale job folders in `E:\AI\game-controller-m13-jobs\` can be removed (housekeeping).
+- M14 (Party night, the cat) is approved in docs/PRD-v2.md and starts after M13. Its research is in docs/briefs/m14/; a scoreboard between rounds needs its own lobby-music hold (in the touchpoints report).
+- M12: nothing open; it's inside M13.
 
 ## Ground rules
 
@@ -40,4 +47,4 @@ Resume here. Branch `m13` in the worktree `E:\AI\game-controller-m13`, cut from 
 | 7 | Sound: the lobby music on the host's picker and join screen (still in a round, off when the app is hidden), the 3-2-1 countdown with the ready beat, the phone-joined cue, and the settings Mute, Sounds and Music (two volumes; Mute silences both, owner Nov 9) (s7-sound.md) | **Done**: host 236, phone 428, tv 52 (after Claude's Mute change). Claude's review: hiding stops the music at once (no frame runs while hidden); the TV has no beat, so no countdown there. Step 9: hear the loop's seam, the volume, the countdown against the card, and the music across a phone lock |
 | 8 | The pad in the look at its own sizes: face colours with ink edges and hard shadows, the paper D-pad, sticks and small buttons, a press squish, lit parts in the player's colour, and the bar's badge with its character (s8-pad-look.md) | **Done**: look 109, phone 428; no colour literal left in controller_app/lib; every size and hit-area test unchanged. Claude rendered it in both palettes. Claude's review: the hidden button's outline in the background's text colour (it vanished on Night). Step 9: the pad over a game at the lowest opacity, and the badge on a small phone |
 | 9 | Full review, device tests, a build on the owner's word (m13-review-r1..r3, s9-review-fixes.md) | **Review done**: r1 1 must + 6 should, r2 4 should, r3 1 must + 4 should, all fixed (s9-review-fixes-report.md), with Claude's additions: a Look change mid-round waits, no default Arena look, the slider's focus halo, the shader glint turning with the light. Counts: look 111, puzzle 172, arena 62, host 240, phone 433, tv 53, kit 48. Seen on Windows: the settings' focus, the glints, 1.2 ms frames. **Released on the owner's word ("Tag when ready"):** 0.13.0; `main` fast-forwarded. `m13` (build 298, `2e9d0c0`): Play and Windows, but no TestFlight (Codemagic can't check out a tag named like the `m13` branch, as with `m12`), and CI's flaky slot-order test. `m13.1` (build 299, `8b92054`): the test fixed, and `release.sh` now refuses a tag named like a branch; Play, Windows, TestFlight (internal) and every CI check succeeded. **Open:** the owner's device tests; external `Testers` only on the owner's word |
-| D1 | Owner's iPhone test of m13.1 (Nov 9): the worker's walk and its side round a piece (s10), the field edge (s10), the Arena's Dash label and flag (s11), the worker's run cycle (s12), pickup from any edge (s13) | **Done**, not yet in a build: `ec3ed70` (smooth walk, nothing cut at the edge), `856fa55` (A says Dash, unused buttons hidden, a big centred flag), `775d627` (pickup reach to the outline, from the ring or the body), `b05bf1a` (the run cycle; Claude enlarged the feet). Counts: puzzle 211, arena 66, look 111, host 240, phone 433. **Found, not fixed:** the session summary records a round left without results as 0 players and 0 s (7 of 10 rounds in the owner's log), where m12's design says "abandoned" with its players: a stats triage job |
+| D1 | Owner's iPhone test of m13.1 (Nov 9): the worker's walk and its side round a piece (s10), the field edge (s10), the Arena's Dash label and flag (s11), the worker's run cycle (s12), pickup from any edge (s13) | **Done; tagged `m13.2`** (build 305, `712f1f1`, Nov 9; owner: "Yes, tag it"; `main` fast-forwarded). The release was running at a session compaction: check it with `tools/release.sh --status m13.2` (Play, Windows zip, TestFlight internal), and if iOS fails, read the commit's check runs as for `m13`. Commits: `ec3ed70` (smooth walk, nothing cut at the edge), `856fa55` (A says Dash, unused buttons hidden, a big centred flag), `775d627` (pickup reach to the outline, from the ring or the body), `b05bf1a` (the run cycle; Claude enlarged the feet). Counts: puzzle 211, arena 66, look 111, host 240, phone 433. **Found, not fixed:** the session summary records a round left without results as 0 players and 0 s (7 of 10 rounds in the owner's log), where m12's design says "abandoned" with its players: a stats triage job |
