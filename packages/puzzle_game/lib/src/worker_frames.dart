@@ -1,8 +1,7 @@
 part of 'worker_moments.dart';
 
-/// Where one worker stands: the point, which way its body is from there, and
-/// whether that point is the grab point.
-typedef _Stand = ({Offset at, Offset away, bool onDot});
+/// Where one worker stands: the point, and which way its body is from there.
+typedef _Stand = ({Offset at, Offset away});
 
 /// How a worker is working the piece it holds: shoving it, dragging it, or
 /// just carrying it along.
@@ -108,7 +107,6 @@ final class _Frame {
   }) => WorkerPose(
     at: stand.at,
     away: stand.away,
-    onDot: stand.onDot,
     face: face,
     hands: hands,
     look: look,
@@ -150,13 +148,12 @@ final class _Frame {
   }
 
   /// Where the body stands: on the grab point holding nothing, else on the edge
-  /// of the piece it holds, on the ray from its middle along the side the
-  /// moments eased it onto — so a carrying worker never covers the piece's
-  /// middle.
+  /// of the piece it holds, on the ray from its middle along the side it took
+  /// the piece up on — so a carrying worker never covers the piece's middle.
   _Stand _stand() {
     final piece = this.piece;
     final shape = this.shape;
-    if (piece == null || shape == null) return (at: dot, away: const Offset(0, -1), onDot: true);
+    if (piece == null || shape == null) return (at: dot, away: const Offset(0, -1));
     return _edge(away: _side);
   }
 
@@ -164,7 +161,7 @@ final class _Frame {
   _Stand _edge({required Offset away}) {
     final piece = this.piece!;
     final middle = Offset(piece.x, piece.y);
-    return (at: middle + away * _outlineReach(shape!, piece.angle, middle, away), away: away, onDot: false);
+    return (at: middle + away * _outlineReach(shape!, piece.angle, middle, away), away: away);
   }
 
   /// Which way the body is from the middle of the piece it holds: the side it

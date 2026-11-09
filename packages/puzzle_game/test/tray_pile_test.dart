@@ -142,7 +142,7 @@ void main() {
       dropped.player('p1')!.pos = const Offset(37, 40);
       tapAGame(dropped);
       expect(dropped.player('p1')!.held, 0);
-      dropped.player('p1')!.pos = const Offset(8, 80); // off the board
+      dropped.pieces[0].pos = const Offset(8, 80); // off the board
       final events = tapAGame(dropped);
       expect(events.map((e) => e.kind), isNot(contains(PuzzleEventKind.snap)));
       expect(dropped.pieces[0].state, PieceState.loose);
@@ -190,7 +190,7 @@ void main() {
         expect(piece.state, PieceState.held);
 
         // Put it down off the board: it does not shrink back into the tray.
-        p.pos = const Offset(8, 80);
+        piece.pos = const Offset(8, 80);
         tapP1(m);
         expect(piece.state, PieceState.loose);
 

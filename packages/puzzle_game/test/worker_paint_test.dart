@@ -18,8 +18,8 @@ const unitsPx = 4.0 * ratio;
 
 /// The dot's and the worker's body's sizes (design 5a), in field units, and
 /// where the body's middle sits from the point the worker stands on: 1.35 body
-/// radii above it, so the ring at its feet shows. The body is the pickup reach
-/// the rules use, so the same numbers say both.
+/// radii above it. The body is the pickup reach the rules use, so the same
+/// numbers say both.
 const dotAcross = 2 * PuzzleGame.dotRadius;
 const bodyAcross = 2 * PuzzleGame.pickupReach;
 const standShare = 1.35;
@@ -145,22 +145,23 @@ void main() {
     }
   });
 
-  testWidgets('an empty-handed worker stands on its grab point, with a ring round it', (tester) async {
+  testWidgets('an empty-handed worker stands on its grab point, with no ring round it', (tester) async {
     for (final (name, look) in [('Sunny', sunny), ('Night', night)]) {
       final (width, _, bytes) = await frame(tester, crateSnapshot(dot), look: look);
       final grab = at(dot);
       expect(
         pixel(bytes, width, grab.dx.round(), grab.dy.round()),
         argb(look.colors.board),
-        reason: "$name: the ring is hollow — the grab point itself shows",
+        reason: '$name: nothing is drawn on the grab point itself',
       );
-      // The ring, a little out from the grab point: ink, right of it, under the
-      // body.
-      final ring = grab + Offset(0.32 * bodyAcross / 2 * unitsPx, 0);
+      // The stretch right of the grab point, under the body, where an ink ring
+      // used to run round it: no ink at all (s14).
+      final from = grab + const Offset(0.25, 0) * unitsPx;
+      final to = grab + const Offset(2, 0) * unitsPx;
       expect(
-        count(bytes, width, Rect.fromCenter(center: ring, width: 12, height: 12), argb(look.colors.ink)),
-        greaterThan(0),
-        reason: '$name: the ring marks the grab point',
+        count(bytes, width, Rect.fromLTRB(from.dx, grab.dy - 1, to.dx, grab.dy + 1), argb(look.colors.ink)),
+        0,
+        reason: '$name: no ring round the grab point',
       );
     }
   });
@@ -183,12 +184,13 @@ void main() {
         lessThanOrEqualTo(8),
         reason: '$name: the worker beside the piece',
       );
-      // No ring is drawn on the grab point of a piece it carries.
+      // Nothing is drawn on the dot it holds the piece by: the worker stands on
+      // the piece's edge.
       final grab = at(carriedDot);
       expect(
         colourGap(pixel(bytes, width, grab.dx.round(), grab.dy.round()), crateColour),
         lessThanOrEqualTo(8),
-        reason: '$name: no ring on a carried piece',
+        reason: '$name: no mark on a carried piece',
       );
     }
   });

@@ -5,7 +5,7 @@ part of 'view.dart';
 const _minBodyMm = 7.0;
 
 /// Where the body's middle sits from the point it stands on, in body radii, so
-/// the ink ring of an empty-handed worker's grab point shows under its feet.
+/// its feet show under it.
 const _standShare = PuzzleGame.workerStandShare;
 
 /// How far a worker's ink can reach from its body's middle, in body radii: as
@@ -16,10 +16,9 @@ const _standShare = PuzzleGame.workerStandShare;
 /// left edge is a little further in than its ink is wide.
 const _inkShare = 2.5;
 
-/// The ink ring at a worker's grab point, as a share of the body's radius, and
-/// how thick its stroke is against the look's ink.
-const _ringShare = 0.32;
-const _ringInkShare = 0.75;
+/// How thick a thin mark of a worker's is against the look's ink: the edge of a
+/// sweat drop and of the open mouth, which an outline's own width would swamp.
+const _thinInkShare = 0.75;
 
 /// The face's shares of the body's radius: where and how big its eyes are, its
 /// pupil and how far it looks, where its mouth is and how wide.
@@ -103,9 +102,6 @@ void _worker(
   final colours = look.colors;
   final ink = look.sizes.outlineWidth / px;
   final colour = character.colourIn(colours);
-  if (pose.onDot) {
-    canvas.drawCircle(pose.at, radius * _ringShare, _stroke(ink * _ringInkShare, colours.ink));
-  }
   final motion = pose.away * _standShare + pose.motion;
   canvas
     ..save()
@@ -131,7 +127,7 @@ void _worker(
     final at = _sweatAtShare * radius;
     canvas
       ..drawCircle(at, radius * _sweatShare, Paint()..color = colours.paper)
-      ..drawCircle(at, radius * _sweatShare, _stroke(ink * _ringInkShare, colours.ink));
+      ..drawCircle(at, radius * _sweatShare, _stroke(ink * _thinInkShare, colours.ink));
   }
   // The feet are drawn after the body, and outside its bob and its squash: they
   // are on the ground (design 5a), poking out below it, and out of its shadow.
@@ -270,7 +266,7 @@ void _workerCall(Canvas canvas, _Face face) {
   final mouth = Rect.fromCenter(center: Offset(0, face.mouth * 1.6), width: face.wide * 1.3, height: face.wide * 1.6);
   canvas
     ..drawOval(mouth, Paint()..color = face.colours.paper)
-    ..drawOval(mouth, _stroke(face.ink * _ringInkShare, face.colours.ink));
+    ..drawOval(mouth, _stroke(face.ink * _thinInkShare, face.colours.ink));
 }
 
 /// Eyes shut in a wince, curved down, and a small flat mouth.

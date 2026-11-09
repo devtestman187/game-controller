@@ -50,18 +50,19 @@ PuzzleSnapshot busySnapshot() {
 
   g.update(0.016, {'p1': still}, numbers: {'p1': 1});
   final p = g.player('p1')!;
-  // Walls into place, the door on a wrong spot, then hold the sun.
+  // Walls into place, the door on a wrong spot, then hold the sun: the dot
+  // pushes the piece it holds, so the piece is placed (s14).
   p.pos = g.pieces[0].pos;
   tap();
-  p.pos = g.targetAt(0);
+  g.pieces[0].pos = g.targetAt(0);
   tap();
   p.pos = g.pieces[2].pos;
   tap();
-  p.pos = g.targetAt(3);
+  g.pieces[2].pos = g.targetAt(3);
   tap();
   p.pos = g.pieces[3].pos;
   tap();
-  p.pos = const Offset(60, 40);
+  g.pieces[3].pos = const Offset(60, 40);
   g.update(0.016, {'p1': still});
   return g.snapshot();
 }
@@ -345,13 +346,13 @@ void main() {
       // The walls into place.
       g.player('p1')!.pos = g.pieces[0].pos;
       await press(tester, {GamepadButton.a});
-      g.player('p1')!.pos = g.targetAt(0);
+      g.pieces[0].pos = g.targetAt(0);
       await tester.pump(const Duration(milliseconds: 16));
       await press(tester, {GamepadButton.a});
       // The door onto the sun's outline: wrong.
       g.player('p1')!.pos = g.pieces[2].pos;
       await press(tester, {GamepadButton.a});
-      g.player('p1')!.pos = g.targetAt(3);
+      g.pieces[2].pos = g.targetAt(3);
       await tester.pump(const Duration(milliseconds: 16));
       await press(tester, {GamepadButton.a});
       final events = host.haptics.map((h) => h.$2.event).toList();
@@ -369,8 +370,9 @@ void main() {
       for (var i = 0; i < g.pieces.length; i++) {
         g.player('p1')!.pos = g.pieces[i].pos;
         await press(tester, {GamepadButton.a});
-        g.player('p1')!.pos = g.targetAt(i);
-        g.pieces[i].angle = g.puzzle.pieces[i].targetAngle;
+        g.pieces[i]
+          ..pos = g.targetAt(i)
+          ..angle = g.puzzle.pieces[i].targetAngle;
         await tester.pump(const Duration(milliseconds: 16));
         await press(tester, {GamepadButton.a});
       }

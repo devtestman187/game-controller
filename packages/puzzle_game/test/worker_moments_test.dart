@@ -208,7 +208,6 @@ void main() {
       final m = watching(board([crate(60, 45), ball(10, 10)], [player(55, 45, held: 0)]));
       final pose = m.poseOf(0, 1, 3000);
       expect(pose.face, WorkerFace.smile);
-      expect(pose.onDot, isFalse, reason: 'it is not empty-handed');
       expect(pose.hands.left.dx, greaterThan(0), reason: 'its hands are on the piece');
     });
 
@@ -218,7 +217,6 @@ void main() {
       final walking = m.poseOf(0, 1, 1100);
       final standing = watching(board([ball(10, 10), ball(20, 10)], [player(43, 45)])).poseOf(0, 1, 1100);
       expect(walking.face, WorkerFace.smile);
-      expect(walking.onDot, isTrue, reason: 'empty-handed, on its grab point');
       // One snapshot in, the stride is part way through its 150 ms ease, so the
       // lean into the travel is part way in too (worker_stride.dart).
       expect(
@@ -277,39 +275,17 @@ void main() {
   });
 
   group('where the body sits', () {
-    test('empty-handed: on the grab point, with the body above it so the ring shows', () {
+    test('empty-handed: on the grab point, the body above it', () {
       final pose = watching(board([ball(10, 10), ball(20, 10)], [player(40, 45)])).poseOf(0, 1, 1000);
       expect(pose.at, const Offset(40, 45));
       expect(pose.away, const Offset(0, -1));
-      expect(pose.onDot, isTrue);
     });
 
     test('carrying: on the piece\'s edge, on the ray from its middle through the dot', () {
       // The crate is 10 x 10 about (60, 45) and the dot is 3 from its middle,
       // so the body stands on its left edge.
       final pose = watching(board([crate(60, 45), ball(10, 10)], [player(57, 45, held: 0)])).poseOf(0, 1, 1000);
-      expect(pose.onDot, isFalse);
       expect(pose.at, const Offset(55, 45));
-      expect(pose.away, const Offset(-1, 0));
-    });
-
-    test('carrying a small piece: its dot is its middle, so the worker stands on the edge it set off from', () {
-      // The ball's dot is its middle, so the side comes from the way the
-      // worker walks: right, which leaves the body behind it, on the left. It
-      // turns there over a quarter of a second, so the walk is fed as the
-      // snapshots of a running game, a tenth of a second apart.
-      PieceView heldBall(double x) => ball(x, 45, state: PieceState.held, holders: const [1]);
-      PuzzleSnapshot at(double x, int ms) => board(
-        [crate(0, 0, state: PieceState.tray, holders: const []), heldBall(x)],
-        [player(x, 45, held: 1)],
-        timeLeftMs: ms,
-      );
-      final m = watching(at(40, 60000));
-      for (final (i, x) in [41.0, 42.0, 43.0].indexed) {
-        m.observe(boardOnly(at(x, 60000 - (i + 1) * aTenth)), 1100 + (i + 1) * aTenth);
-      }
-      final pose = m.poseOf(0, 1, 1100 + 3 * aTenth);
-      expect(pose.at, const Offset(38, 45), reason: 'the ball is 5 in radius, and the worker walked right');
       expect(pose.away, const Offset(-1, 0));
     });
   });
@@ -383,34 +359,6 @@ void main() {
         expect(slowMs, lessThanOrEqualTo(walkStopMs), reason: 'still walking $slowMs ms after the dot slowed down');
       }
       expect(slowMs, greaterThan(walkStopMs - 17), reason: 'it stands within one snapshot of walkStopMs');
-    });
-  });
-
-  group('the side the worker holds a piece from', () {
-    /// Where the body is round the piece it holds, in degrees.
-    double round(WorkerPose pose) => atan2(pose.away.dy, pose.away.dx) * 180 / pi;
-
-    test('a small piece carried in a straight line keeps the body on one side', () {
-      final walker = Walker(held: true);
-      var last = round(walker.pose);
-      expect(last, closeTo(-90, 1e-9), reason: 'it starts above the piece');
-      final angles = [last];
-      for (var frame = 0; frame < 120; frame++) {
-        final now = round(walker.step(0.5));
-        final turn = (now - last + 540) % 360 - 180;
-        expect(
-          turn.abs(),
-          lessThanOrEqualTo(sideTurnDegPerS * 17 / 1000 + 0.001),
-          reason: 'frame $frame turned ${turn.toStringAsFixed(2)}°',
-        );
-        angles.add(now);
-        last = now;
-      }
-      // The turn is over inside a quarter of a second: over the rest of two
-      // seconds of straight walking the body holds its side, behind the piece
-      // on its left.
-      expect((angles.last - angles[20]).abs(), lessThanOrEqualTo(3), reason: 'the body stayed on one side');
-      expect((angles[20] + 360) % 360, closeTo(180, 1), reason: 'behind the piece, on its left');
     });
   });
 

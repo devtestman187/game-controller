@@ -116,7 +116,6 @@ final class WorkerPose {
     required this.away,
     required this.face,
     required this.hands,
-    this.onDot = false,
     this.look = Offset.zero,
     this.leanDeg = 0,
     this.squash = (x: 1.0, y: 1.0),
@@ -139,12 +138,8 @@ final class WorkerPose {
   final Offset at;
 
   /// Which way its body is from [at], as a unit vector: up while it holds
-  /// nothing, so the ring at [at] shows under its feet, else away from the
-  /// piece's middle.
+  /// nothing, else away from the middle of the piece it holds.
   final Offset away;
-
-  /// Whether [at] is the grab point, which the view rings in ink (design 5a).
-  final bool onDot;
 
   final WorkerFace face;
 
@@ -200,7 +195,6 @@ final class WorkerPose {
   WorkerPose still() => WorkerPose(
     at: at,
     away: away,
-    onDot: onDot,
     face: face,
     look: look,
     squash: squash,
@@ -215,7 +209,6 @@ final class WorkerPose {
   WorkerPose slid(Offset by) => WorkerPose(
     at: at,
     away: away,
-    onDot: onDot,
     face: face,
     look: look,
     leanDeg: leanDeg,
@@ -232,5 +225,5 @@ final class WorkerPose {
   );
 
   @override
-  String toString() => 'WorkerPose(${face.name} at $at away $away onDot $onDot lean $leanDeg)';
+  String toString() => 'WorkerPose(${face.name} at $at away $away lean $leanDeg)';
 }

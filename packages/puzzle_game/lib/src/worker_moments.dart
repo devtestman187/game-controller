@@ -50,15 +50,10 @@ const walkStopMs = 120;
 /// enough that a wobble of a frame or two doesn't swing it.
 const travelAverageMs = 80;
 
-/// How fast a worker's place round the piece it holds turns toward the side it
-/// should be on, in degrees a second: an ease, so a side that is corrected —
-/// a grab that slips, a carrier that reaches the field's edge and is brought
-/// back — is followed round the piece instead of jumped.
-const sideTurnDegPerS = 360.0;
-
 /// How far the dot must sit from the middle of the piece it holds for that to
-/// give the worker a side to push or pull from, in field units: a small piece's
-/// dot is its middle (puzzle_carry.dart), a big one's grab holds the dot off it.
+/// give the worker a side to push or pull from, in field units: a piece taken
+/// up from its edge has its grab that far out, one taken up at its middle has
+/// none (s14).
 const sideUnits = 0.5;
 
 /// How near a right angle between the way the worker travels and the side of
@@ -192,8 +187,8 @@ final class _BoardWorkers {
 /// One player as last seen, and what it was doing then.
 final class _SeenPlayer {
   _SeenPlayer(PlayerView p, PuzzleSnapshot board, this.angle) : x = p.x, y = p.y, held = p.held {
-    // The side starts where the dot holds the piece from: a big piece's grab
-    // sets the dot off its middle, an ordinary piece's dot is its middle.
+    // The side starts where the dot holds the piece from: every grab, big or
+    // ordinary, holds the dot off the middle (s14).
     side = _raySide(p, board);
   }
 
@@ -231,9 +226,9 @@ final class _SeenPlayer {
   bool turned = false;
 
   /// Which side of the piece it holds it is on, as a unit vector away from the
-  /// piece's middle — taken from the dot while a big piece's grab holds it off
-  /// the middle, else behind the way it walks — eased toward that side by at
-  /// most [sideTurnDegPerS].
+  /// piece's middle, decided once when the piece was taken up and kept for the
+  /// whole carry: from the dot where its grab holds it off the middle, else
+  /// behind the way it walks (s14).
   Offset? side;
 
   /// When this player's own drop landed right or wrong, on the view's clock.
@@ -251,7 +246,11 @@ final class _SeenPlayer {
       final step = now - Offset(x, y);
       _noteWalking(step, elapsedMs);
       walk.note(step, elapsedMs);
-      _noteHeld(p, board, now, elapsedMs);
+      _noteHeld(p, board, now);
+    } else if (p.held != held) {
+      // A pickup or a drop under a clock that stood still: the side is decided
+      // once, here, or never (Claude's review of s14).
+      _noteHeld(p, board, now);
     }
     x = now.dx;
     y = now.dy;
@@ -295,8 +294,10 @@ final class _SeenPlayer {
     travel = speed > 1e-6 ? _velocity / speed : Offset.zero;
   }
 
-  /// Which side of the piece it holds it is on, and whether that piece turned.
-  void _noteHeld(PlayerView p, PuzzleSnapshot board, Offset now, int elapsedMs) {
+  /// Which side of the piece it holds it is on — decided once, when the piece
+  /// is taken up, and kept for the whole carry (s14) — and whether that piece
+  /// turned.
+  void _noteHeld(PlayerView p, PuzzleSnapshot board, Offset now) {
     final index = p.held;
     final piece = index != null && index < board.pieces.length ? board.pieces[index] : null;
     turned = false;
@@ -305,16 +306,7 @@ final class _SeenPlayer {
       side = null;
       return;
     }
-    final middle = Offset(piece.x, piece.y);
-    final ray = now - middle;
-    final fromDot = ray.distance > sideUnits;
-    // A piece taken up anew starts on the side the dot holds it from.
-    if (index != held) side = fromDot ? ray / ray.distance : null;
-    // The side it should be on: the dot's, where a big piece's grab holds the
-    // dot off its middle, else the edge behind the way it walks (a small
-    // piece's dot is its middle).
-    final target = fromDot ? ray / ray.distance : (walking ? -travel : null);
-    if (target != null) _noteSide(target, elapsedMs);
+    if (index != held) side = _takenSide(Offset(piece.x, piece.y), now);
     if (index == held && angle != null) {
       final turn = (piece.angle - angle! + 180) % 360 - 180;
       turned = turn.abs() > turnDeg;
@@ -322,14 +314,18 @@ final class _SeenPlayer {
     angle = piece.angle;
   }
 
-  /// Eases [side] toward [target] at no more than [sideTurnDegPerS] over the
-  /// game time [elapsedMs] that passed, so a side that is corrected goes round
-  /// the piece instead of jumping.
-  void _noteSide(Offset target, int elapsedMs) {
-    side = _turnToward(side ?? const Offset(0, -1), target, sideTurnDegPerS * elapsedMs / 1000);
+  /// The side a piece taken up at [middle], with the dot at [dot], gives the
+  /// worker: the dot's, where its grab holds the dot off the middle, else
+  /// behind the way it walks (s14).
+  Offset _takenSide(Offset middle, Offset dot) {
+    final ray = dot - middle;
+    if (ray.distance > sideUnits) return ray / ray.distance;
+    if (walking) return -travel;
+    return const Offset(0, -1);
   }
 
-  /// Which side of the piece it holds the dot is on, from the snapshot alone.
+  /// Which side of the piece it holds the dot is on, from the snapshot alone: a
+  /// view that first sees a player already holding has no pickup to see.
   static Offset? _raySide(PlayerView p, PuzzleSnapshot board) {
     final index = p.held;
     if (index == null || index >= board.pieces.length) return null;
@@ -337,15 +333,4 @@ final class _SeenPlayer {
     final ray = Offset(p.x, p.y) - Offset(piece.x, piece.y);
     return ray.distance > sideUnits ? ray / ray.distance : null;
   }
-}
-
-/// [from] turned toward [to] by at most [mostDeg] degrees, the shortest way
-/// round: both are unit vectors.
-Offset _turnToward(Offset from, Offset to, double mostDeg) {
-  final turn = (atan2(to.dy, to.dx) - atan2(from.dy, from.dx)) * 180 / pi;
-  final shortest = (turn + 540) % 360 - 180;
-  if (shortest.abs() <= mostDeg) return to;
-  final by = shortest.sign * mostDeg * pi / 180;
-  final (c, s) = (cos(by), sin(by));
-  return Offset(from.dx * c - from.dy * s, from.dx * s + from.dy * c);
 }

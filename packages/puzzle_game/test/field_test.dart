@@ -121,8 +121,9 @@ void main() {
     expect(box.top, closeTo(g.field.board.top, 1e-9), reason: 'and its top edge');
     g.player('p1')!.pos = g.pieces[1].pos;
     tapA(g, 'p1', const {});
-    g.player('p1')!.pos = target;
-    g.pieces[1].angle = g.puzzle.pieces[1].targetAngle;
+    g.pieces[1]
+      ..pos = target
+      ..angle = g.puzzle.pieces[1].targetAngle;
     drive(g, {'p1': none});
     expect(g.pieces[1].pos, target, reason: 'a target on the board is inside the field, so it stays put');
     drive(g, {'p1': pressA});

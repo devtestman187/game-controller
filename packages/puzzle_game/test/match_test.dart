@@ -336,8 +336,10 @@ void main() {
         final before = crate.pos;
         final events = drive(m, {'p1': pushRight}, frames: 10);
         expect(crate.pos.dx - before.dx, closeTo(24, 1e-6), reason: 'full speed alone in the game');
-        expect(crate.pos.dx, closeTo(game.player('p1')!.pos.dx, 1e-6));
-        expect(crate.pos.dy, closeTo(game.player('p1')!.pos.dy, 1e-6));
+        // Carried now as an ordinary piece, p1's dot keeps the grab it took its
+        // end by (s14).
+        expect(crate.pos.dx - game.player('p1')!.pos.dx, closeTo(3, 1e-6));
+        expect(crate.pos.dy - game.player('p1')!.pos.dy, closeTo(0, 1e-6));
         expect(crate.calling, isFalse);
         expect(events.where((e) => e.event.kind == PuzzleEventKind.help), isEmpty);
       },
@@ -408,7 +410,7 @@ void main() {
       left.player('p1')!.pos = left.pieces[0].pos;
       tap(m, 'p1', {'p2': none});
       expect(left.player('p1')!.held, 0);
-      left.player('p1')!.pos = left.field.tray.center;
+      left.pieces[0].pos = left.field.tray.center;
       tap(m, 'p1', {'p2': none});
       expect(left.pieces[0].state, PieceState.loose);
       expect(left.pieces[0].layer, greaterThan(left.pieces[1].layer));

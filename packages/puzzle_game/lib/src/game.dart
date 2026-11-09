@@ -27,7 +27,7 @@ class PuzzlePlayer {
   int? hintTarget;
   int _lastTurn = 0;
 
-  /// Where the dot holds a big piece shared with a teammate, from its centre.
+  /// Where the dot holds a piece it carries, from its middle, as it was when the piece was taken up (s14).
   Offset _grab = Offset.zero;
 
   /// Until the next help call while carrying a big piece alone.
@@ -86,8 +86,8 @@ class PuzzleGame {
   static const dotRadius = 2.6;
 
   /// The worker's body radius, which the painter draws, and how many of them
-  /// its body stands above its grab ring. A piece is reached within
-  /// [pickupReach] of its outline, from the ring or the body (device test 1).
+  /// its body stands above the point it stands on. A piece is reached within
+  /// [pickupReach] of its outline, from the dot or the body (device test 1).
   static const pickupReach = dotRadius * 1.3;
   static const workerStandShare = 1.35;
 
@@ -122,11 +122,10 @@ class PuzzleGame {
       ? null
       : PuzzleResult(finished: phase == PuzzlePhase.finished, placed: placed, total: pieces.length, timeS: finishTimeS);
 
-  /// Puts every piece in the tray, largest first, in rows. The [startAngles]
-  /// are the ones the tray was sized for when the split layout chose them
-  /// (one try); on one board it picks them itself, and since some angles make
-  /// a piece too tall for every row to fit, it tries again with new angles
-  /// (up to 60 times) and keeps the layout that sticks out least.
+  /// Puts every piece in the tray, largest first, in rows. [angles] are the
+  /// starts the split layout sized the tray for (one try); on one board it
+  /// picks them itself, trying up to 60 times when some angles make a piece
+  /// too tall for every row, and keeping the layout that sticks out least.
   void _layOutTray() {
     final ({Map<int, double> starts, Map<int, Offset> at, List<int> order, double overflow}) laidOut;
     if (angles case final given?) {
@@ -290,15 +289,19 @@ class PuzzleGame {
     return presses;
   }
 
-  /// Moving: a dot moves itself, and an ordinary piece follows its dot, the
-  /// whole of it inside the field. A big piece shared by a team moves itself,
-  /// and its carriers with it.
+  /// Moving: a dot moves itself, and pushes an ordinary piece it holds along —
+  /// the piece to where the push takes it, the dot to its grab from it, both
+  /// inside the field. A big piece shared by a team moves itself, with them.
   void _moveAll(Map<String, GamepadState> inputs, double dt, List<PuzzleEvent> events) {
     for (final p in _players.values) {
       final held = p.held;
       if (held != null && _teamCarried(pieces[held])) continue;
-      p.pos = _inField(p.pos + _move(inputs[p.id]!) * (speed * dt), dotRadius);
-      if (held != null) _carrySmall(p, pieces[held]);
+      final push = _move(inputs[p.id]!) * (speed * dt);
+      if (held != null) {
+        _carrySmall(p, pieces[held], push);
+      } else {
+        p.pos = _inField(p.pos + push, dotRadius);
+      }
     }
     for (final piece in pieces) {
       if (piece.state == PieceState.held && _teamCarried(piece)) {

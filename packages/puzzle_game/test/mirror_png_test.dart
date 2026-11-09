@@ -54,7 +54,7 @@ void main() {
       helpers.place(m, right, 'p2', 2, others: const {'p1': helpers.none});
       right.player('p2')!.pos = right.pieces[trunk].pos;
       helpers.tap(m, 'p2', const {'p1': helpers.none});
-      right.player('p2')!.pos = right.field.origin + const Offset(40, 70);
+      right.pieces[trunk].pos = right.field.origin + const Offset(40, 70);
       helpers.drive(
         m,
         {

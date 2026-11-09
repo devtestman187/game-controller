@@ -39,16 +39,18 @@ extension _PuzzleCarry on PuzzleGame {
     return at.clamp(low - near, high - far);
   }
 
-  /// An ordinary piece follows its dot, but the whole of its turned outline
-  /// stays inside the field, and the dot goes with it (design 5a rule 3).
-  void _carrySmall(PuzzlePlayer p, PieceRuntime piece) {
-    piece.pos = _insideField(piece, p.pos);
-    p.pos = piece.pos;
+  /// An ordinary piece goes where its dot pushes it from where it lies, and not
+  /// a step more: the whole of its turned outline stays inside the field, and
+  /// the dot holds its grab — the field's edge never holds a piece back (design
+  /// 5a rule 3, s14).
+  void _carrySmall(PuzzlePlayer p, PieceRuntime piece, Offset push) {
+    piece.pos = _insideField(piece, piece.pos + push);
+    p.pos = _inField(piece.pos + p._grab, PuzzleGame.dotRadius);
   }
 
   /// Every held piece, after a move or a turn: its turned outline back inside
-  /// the field, and the dots of whoever carries it with it — a team's carriers
-  /// each at their own grab, on its edge (design 5a rule 3).
+  /// the field, and every carrier's dot at its own grab from it (design 5a rule
+  /// 3).
   void _keepHeldInField() {
     for (final piece in pieces) {
       if (piece.state != PieceState.held) continue;
@@ -57,7 +59,7 @@ extension _PuzzleCarry on PuzzleGame {
       piece.pos = at;
       for (final id in piece.carriers) {
         final p = _players[id]!;
-        p.pos = _teamCarried(piece) ? _inField(at + p._grab, PuzzleGame.dotRadius) : at;
+        p.pos = _inField(at + p._grab, PuzzleGame.dotRadius);
       }
     }
   }

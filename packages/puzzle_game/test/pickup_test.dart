@@ -76,7 +76,7 @@ void main() {
       final g = start(squareAndWaves());
       pickUp(g, 0); // p1 holds the square, before p2 joins
       // p1 carries it to the middle of the board, away from the other pieces.
-      g.player('p1')!.pos = boardRect.center;
+      g.pieces[0].pos = boardRect.center;
       g.update(0.016, {'p1': none});
       expect(g.pieces[0].pos, boardRect.center);
       g.update(0.016, {'p1': none, 'p2': none}, numbers: {'p2': 2});

@@ -3,8 +3,8 @@ import 'dart:math';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:puzzle_game/puzzle_game.dart';
 
-/// A big crate and a small ball, as worker_moments_test's fixture: the ball's
-/// dot is its middle, the crate's grab holds the dot inside it.
+/// A big crate and a small ball, as worker_moments_test's fixture: the ball is
+/// carried by a dot it was taken by, the crate's grab holds the dot inside it.
 Puzzle fixture() => Puzzle.parse('''
 {"id": "work", "name": "Work", "level": "easy", "pieces": [
   {"id": "crate", "shape": {"rect": [10, 10]}, "color": "#AA7744", "at": [100, 40], "big": true},
@@ -27,14 +27,17 @@ PieceView ball(Offset at, {bool held = false}) => PieceView(
 PlayerView player(Offset at, {int number = 1, bool held = false}) =>
     PlayerView(number: number, x: at.dx, y: at.dy, held: held ? 1 : null);
 
-/// One board of the fixture at game time [timeLeftMs].
+/// One board of the fixture at game time [timeLeftMs]: the dot at [at] and,
+/// while it holds it, the ball's middle 6 to its right — taken from 1 outside
+/// its left side, within the pickup reach — so the worker stands on the ball's
+/// left and shoves it along as it walks.
 PuzzleSnapshot board(Offset at, {bool held = false, int number = 1, int timeLeftMs = 60000}) => PuzzleSnapshot(
   puzzleId: 'work',
   timeLeftMs: timeLeftMs,
   phase: PuzzlePhase.playing,
   pieces: [
     crate(),
-    ball(at, held: held),
+    ball(held ? at + const Offset(6, 0) : at, held: held),
   ],
   players: [player(at, number: number, held: held)],
 );

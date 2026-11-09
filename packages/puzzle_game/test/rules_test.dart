@@ -31,11 +31,13 @@ void pickUp(PuzzleGame g, int i) {
   expect(g.player('p1')!.held, i);
 }
 
-/// Carries the held piece to [at] at [angle] and presses A.
+/// Carries the held piece to [at] at [angle] and presses A: the dot pushes the
+/// piece, so the piece is placed and the dot holds its grab (s14).
 List<PuzzleEvent> dropAt(PuzzleGame g, Offset at, double angle) {
   final p = g.player('p1')!;
-  p.pos = at;
-  g.pieces[p.held!].angle = angle;
+  g.pieces[p.held!]
+    ..pos = at
+    ..angle = angle;
   return tapA(g);
 }
 
@@ -175,8 +177,9 @@ void main() {
       final g = start(squareAndWaves());
       pickUp(g, 0);
       final p = g.player('p1')!;
-      p.pos = g.puzzle.targetAt(0);
-      g.pieces[0].angle = 25;
+      g.pieces[0]
+        ..pos = g.puzzle.targetAt(0)
+        ..angle = 25;
       g.update(0.016, {'p1': none});
       expect(p.readyTarget, isNull, reason: '25° is outside ±15°');
       g.settings = g.settings.withValue('angleToleranceDeg', 30);
@@ -189,8 +192,9 @@ void main() {
       final g = start(squareAndWaves(), settings: const PuzzleSettings(dropReadyHighlight: false));
       pickUp(g, 0);
       final p = g.player('p1')!;
-      p.pos = g.puzzle.targetAt(0);
-      g.pieces[0].angle = 0;
+      g.pieces[0]
+        ..pos = g.puzzle.targetAt(0)
+        ..angle = 0;
       var events = g.update(0.016, {'p1': none});
       expect(events.map((e) => e.kind), isNot(contains(PuzzleEventKind.dropReady)));
       expect(p.readyTarget, isNull);
