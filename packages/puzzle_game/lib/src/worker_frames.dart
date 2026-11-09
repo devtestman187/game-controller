@@ -160,8 +160,12 @@ final class _Frame {
   /// Where the body stands on the piece it holds, on the side [away].
   _Stand _edge({required Offset away}) {
     final piece = this.piece!;
-    final middle = Offset(piece.x, piece.y);
-    return (at: middle + away * _outlineReach(shape!, piece.angle, middle, away), away: away);
+    final points = shape!.circle ? null : shape!.placed(Offset(piece.x, piece.y), piece.angle);
+    final centre = points == null ? Offset(piece.x, piece.y) : _centreOf(points);
+    final reach = points == null
+        ? shape!.radius
+        : _outlineReach(points, centre, away, PuzzleGame.pickupReach) ?? shape!.radius;
+    return (at: centre + away * reach, away: away);
   }
 
   /// Which way the body is from the middle of the piece it holds: the side it
@@ -316,27 +320,52 @@ WorkerHands _handsOn(Offset away, {double reach = 1.1, double spread = 0.55}) {
   return (left: toward * reach - across * spread, right: toward * reach + across * spread);
 }
 
-/// How far [shape]'s edge is from the piece's middle [at], turned [angle],
-/// going out along [dir]: a circle's radius, else where the ray leaves the
-/// polygon.
-double _outlineReach(PieceShape shape, double angle, Offset at, Offset dir) {
-  if (shape.circle) return shape.radius;
-  final points = shape.placed(at, angle);
-  var best = double.infinity;
+/// Where a polygon's [points] balance, its area's centroid: always inside a
+/// triangle, unlike the point the piece is held by, which a puzzle may put on
+/// an edge (the boat's sail and flag: owner's test of m13.3).
+Offset _centreOf(List<Offset> points) {
+  var area = 0.0;
+  var x = 0.0;
+  var y = 0.0;
   for (var i = 0; i < points.length; i++) {
-    final across = _rayHit(points[i] - at, points[(i + 1) % points.length] - at, dir);
-    if (across != null && across < best) best = across;
+    final (a, b) = (points[i], points[(i + 1) % points.length]);
+    final cross = a.dx * b.dy - b.dx * a.dy;
+    area += cross;
+    x += (a.dx + b.dx) * cross;
+    y += (a.dy + b.dy) * cross;
   }
-  return best.isFinite ? best : shape.radius;
+  if (area.abs() < 1e-9) return points.reduce((a, b) => a + b) / points.length.toDouble();
+  return Offset(x, y) / (3 * area);
 }
 
-/// How far along [dir] a ray from the origin meets the segment from [a] to [b],
-/// both as offsets from the origin, or null where it misses.
-double? _rayHit(Offset a, Offset b, Offset dir) {
-  final edge = b - a;
-  final below = dir.dx * edge.dy - dir.dy * edge.dx;
-  if (below.abs() < 1e-9) return null;
-  final along = (a.dx * edge.dy - a.dy * edge.dx) / below;
-  final onEdge = (a.dx * dir.dy - a.dy * dir.dx) / below;
-  return along > 0 && onEdge >= -1e-9 && onEdge <= 1 + 1e-9 ? along : null;
+/// How far out along [dir] from [from] a body [half] wide, sliding in from
+/// far away, first meets the polygon: the farthest the outline reaches along
+/// [dir] within [half] of the line through [from]. So the body touches the
+/// piece wherever it is widest there, and as the piece turns the place moves
+/// smoothly, where a single ray would jump past a sharp corner (owner's test
+/// of m13.3). Null where nothing of the outline is in that band.
+double? _outlineReach(List<Offset> points, Offset from, Offset dir, double half) {
+  final across = Offset(-dir.dy, dir.dx);
+  double along(Offset p) => (p - from).dx * dir.dx + (p - from).dy * dir.dy;
+  double side(Offset p) => (p - from).dx * across.dx + (p - from).dy * across.dy;
+  double? best;
+  for (var i = 0; i < points.length; i++) {
+    final (a, b) = (points[i], points[(i + 1) % points.length]);
+    final (sa, sb) = (side(a), side(b));
+    // The edge's part inside the band, as shares of it from a to b.
+    var (t0, t1) = (0.0, 1.0);
+    if ((sb - sa).abs() < 1e-12) {
+      if (sa.abs() > half) continue;
+    } else {
+      final (u, v) = ((-half - sa) / (sb - sa), (half - sa) / (sb - sa));
+      t0 = max(t0, min(u, v));
+      t1 = min(t1, max(u, v));
+      if (t0 > t1) continue;
+    }
+    for (final t in [t0, t1]) {
+      final reach = along(Offset.lerp(a, b, t)!);
+      if (best == null || reach > best) best = reach;
+    }
+  }
+  return best;
 }
