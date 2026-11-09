@@ -99,7 +99,10 @@ class MemoryGameHost implements GameHost {
   void publishFrame(FrameMessage frame) => frames.add(frame);
 
   @override
-  void endView(ViewEndMessage end) => viewEnds.add(end);
+  void endView(ViewEndMessage end, {ViewStartMessage? of}) {
+    // An end for a view a newer start replaced is ignored, as the real host does.
+    if (of == null || identical(of, viewStarts.lastOrNull)) viewEnds.add(end);
+  }
 
   @override
   void hostAway(int? secondsLeft) => hostAways.add(secondsLeft);

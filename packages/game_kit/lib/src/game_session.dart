@@ -33,7 +33,7 @@ abstract class GameSession {
     HostingSettings? settings,
   }) : settings = settings ?? HostingSettings.fromEnvironment() {
     host.startView(
-      ViewStartMessage(
+      _start = ViewStartMessage(
         game: module.id,
         snapshotVersion: module.snapshotVersion,
         setup: setup,
@@ -41,6 +41,10 @@ abstract class GameSession {
       ),
     );
   }
+
+  /// This round's view: its end is for it alone, so a rematch that started
+  /// its own view before this one is disposed keeps it (owner's test of m13.3).
+  late final ViewStartMessage _start;
 
   /// A frame that took longer than this was dropped: it missed the whole next
   /// frame (m12 §3, D3). A 60 Hz frame is 16.7 ms.
@@ -242,7 +246,7 @@ abstract class GameSession {
   void dispose({bool finished = false}) {
     if (_disposed) return;
     _disposed = true;
-    host.endView(ViewEndMessage(reason: finished ? ViewEndReason.finished : ViewEndReason.quit));
+    host.endView(ViewEndMessage(reason: finished ? ViewEndReason.finished : ViewEndReason.quit), of: _start);
   }
 
   /// Ends the view as abandoned (m12 §2.10) and stops: the host lost the
@@ -252,7 +256,7 @@ abstract class GameSession {
   void abandon() {
     if (_disposed) return;
     _disposed = true;
-    host.endView(const ViewEndMessage(reason: ViewEndReason.abandoned));
+    host.endView(const ViewEndMessage(reason: ViewEndReason.abandoned), of: _start);
   }
 
   /// Sends the round's first frame while no step has run (m12-host-touch rule

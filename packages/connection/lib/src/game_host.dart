@@ -87,8 +87,11 @@ abstract interface class GameHost {
   void publishFrame(FrameMessage frame);
 
   /// The game stopped being shown. Sent to every viewer; forgets the start
-  /// and the latest frame.
-  void endView(ViewEndMessage end);
+  /// and the latest frame. With [of], the start this end is for: an end for a
+  /// view a newer start has replaced is ignored, so a rematch's new view, which
+  /// starts before the old round's screen is gone, runs on (owner's test of
+  /// m13.3).
+  void endView(ViewEndMessage end, {ViewStartMessage? of});
 
   /// This host is away for a while, so the viewers it shows the game to can
   /// say "Waiting for the host" and count down (m12 §2.10). [secondsLeft] is

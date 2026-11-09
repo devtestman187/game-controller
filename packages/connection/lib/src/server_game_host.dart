@@ -83,19 +83,18 @@ class ServerGameHost implements GameHost {
   /// the viewers about them (m12 bug 1107d).
   late final AwaySlots _away;
 
-  /// Whether a round runs: from [startView] to [endView], shared or not. Only
-  /// then does a dropped player keep a slot; on the picker or the join screen
-  /// a phone that goes is simply gone, so the next round never starts waiting
-  /// for it (m12 bug 1107d).
+  /// Whether a round runs, [startView] to [endView], shared or not: only then
+  /// does a dropped player keep a slot (m12 bug 1107d).
   bool _roundRunning = false;
 
-  /// The view a game asked for, kept for viewers that pair mid-game (m12 §2).
+  /// The view a game asked for, kept for viewers that pair mid-game (m12 §2),
+  /// and the latest start, shared or not: an end for any other is stale.
   ViewStartMessage? _viewStart;
+  ViewStartMessage? _latestStart;
   FrameMessage? _viewFrame;
 
-  /// When the host's away grace runs out, on the host's clock, while the host
-  /// is away and a view runs: a viewer that pairs mid-away is told the time it
-  /// has left (m12 code health, R1 finding 9). Null while the host is here.
+  /// When the host's away grace runs out, on its clock: a viewer that pairs
+  /// mid-away is told the time it has left (m12 R1 finding 9). Null if here.
   int? _hostAwayEndsAtMs;
 
   /// Whether phones show this host's game at all (m12-joined-view §0.1): false when the
@@ -251,6 +250,7 @@ class ServerGameHost implements GameHost {
 
   @override
   void startView(ViewStartMessage start) {
+    _latestStart = start;
     _roundRunning = true;
     _hostAwayEndsAtMs = null;
     // A view that isn't shared is no view here: no start is kept, so no frame
@@ -271,7 +271,8 @@ class ServerGameHost implements GameHost {
   }
 
   @override
-  void endView(ViewEndMessage end) {
+  void endView(ViewEndMessage end, {ViewStartMessage? of}) {
+    if (of != null && !identical(of, _latestStart)) return;
     _roundRunning = false;
     final wasRunning = _viewStart != null;
     _viewStart = null;

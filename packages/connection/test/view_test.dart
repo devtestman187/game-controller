@@ -74,6 +74,50 @@ void main() {
         expect(server.snapshot.connected, hasLength(2), reason: 'both still connected');
       });
 
+      // Owner's test of m13.3 (Nov 9): after Play again a joined phone saw no
+      // game. The new round starts its view before the old round's screen is
+      // disposed, and the old round's end came after the new start.
+      test('an end for a view that a newer start replaced is ignored: the new view runs on', () async {
+        final server = await startHost(t);
+        final host = ServerGameHost(server);
+        addTearDown(host.dispose);
+        final viewer = await WirePhone.open(
+          server,
+          t,
+          controllerId: 'phone-1',
+          capabilities: _view,
+          code: server.pairingCode,
+        );
+        final again = ViewStartMessage(
+          game: 'shape_race',
+          snapshotVersion: 1,
+          setup: const {'puzzle': 'house'},
+          hz: 60,
+        );
+
+        host.startView(_start);
+        host.publishFrame(_frame(0));
+        host.startView(again);
+        host.endView(_end, of: _start);
+        host.publishFrame(_frame(1));
+
+        await viewer.drain();
+        expect(_views(viewer).map((m) => m.type), ['view_start', 'frame', 'view_start', 'frame']);
+        // A phone that pairs now gets the running view, and the end still ends it.
+        final late = await WirePhone.open(
+          server,
+          t,
+          controllerId: 'phone-2',
+          capabilities: _view,
+          code: server.pairingCode,
+        );
+        await late.drain();
+        expect(_views(late).map((m) => m.type), ['view_start', 'frame']);
+        host.endView(_end, of: again);
+        await viewer.drain();
+        expect(_views(viewer).last.type, 'view_end');
+      });
+
       test('a controller that listed view gets the start, the frames and the end, with every field', () async {
         final server = await startHost(t);
         final host = ServerGameHost(server);

@@ -268,6 +268,20 @@ void main() {
     expect(clock.host.viewEnds.last.reason, ViewEndReason.finished);
   });
 
+  // Owner's test of m13.3 (Nov 9): Play again builds the new round, and its
+  // view starts, before the old round's screen is disposed. The old round's
+  // end must not end the new view, or a joined phone loses the game.
+  test("a rematch's view survives the old round's dispose, and ends with its own", () {
+    final clock = Clock()..host.hasViewers = true;
+    final old = CounterSession(host: clock.host);
+    final again = CounterSession(host: clock.host);
+    old.dispose(finished: true);
+    old.abandon();
+    expect(clock.host.viewEnds, isEmpty, reason: 'the old round ends a view that is gone');
+    again.dispose(finished: true);
+    expect(clock.host.viewEnds.single.reason, ViewEndReason.finished);
+  });
+
   test('frames carry the acks and the roster', () {
     final clock = Clock()..host.hasViewers = true;
     clock.host
