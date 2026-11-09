@@ -36,7 +36,7 @@ Resume here. Branch `m13` in the worktree `E:\AI\game-controller-m13`, cut from 
 | 4b | The worker: the player's dot as a character with eyes, arms and effort faces, its pose worked out from the snapshots (s4b-worker.md) | **Done**: puzzle 170. Seen by Claude in six poses. Claude's review: a bigger tummy number. Polish for step 9: the tongue, determined and "o" faces; the 7 mm floor on "Show on this device". Not yet seen on a device |
 | 4c | Characters: a colour and an accessory per player instead of a number on the body (worker, marble, menu badges), one `ToyCharacter` value so players can choose later (design 5b, PRD L6; s4c-characters.md) | **Done**: look 94, host 203. Seen by Claude at TV size: workers, join badges, marble. Claude's review: four players fit the TV's join screen (the hint moved inline after the instructions). Not yet seen on a device |
 | 5 | The Arena in the look: glossy marbles with eyes (the shader's first use), toy-block walls, red bumpers, a goal pad with a flag, a dotted mat, the HUD and banner (s5-arena-look.md) | **Done**: arena 60. Seen by Claude at TV size in both palettes. Claude's review: the dash-ready pill became a dot, so the HUD keeps its height. Not yet seen on a device |
-| 6 | Shaders everywhere, the effects setting, toy_backdrop.frag | |
+| 6 | Shaders everywhere: the drifting sky (toy_backdrop.frag, by Claude) on menus and still in a round, both shaders loaded and warmed at start, the effects setting's whole job (s6-shaders-everywhere.md) | Running |
 | 7 | Sound: lobby, countdown, player joined; looping; volume, music, mute | |
 | 8 | The pad restyled at its sizes | |
 | 9 | Full review, device tests, a build on the owner's word | |
