@@ -1,0 +1,201 @@
+import 'package:flutter/material.dart';
+import 'package:toy_look/toy_look.dart';
+
+import 'arena.dart';
+import 'arena_roster.dart';
+import 'arena_snapshot.dart';
+
+/// What the bar says when a player's dash has cooled down: in the pill on a
+/// tall box, in ink text on a phone's one-line bar.
+const _dashReady = 'Dash ready (A)';
+
+/// The ink edge round the dash-ready dot.
+const _dotEdge = 1.5;
+
+/// The bar over the field: the round, its clock, the best round, and a row of
+/// counters for each player in the [roster]. It draws from an [ArenaSnapshot]
+/// only (S8). On a short box ([oneLine]) everything goes in one Wrap instead
+/// of a row per player, so the whole field still fits a phone (m12-phone-
+/// layout §4).
+class ArenaHud extends StatelessWidget {
+  const ArenaHud({super.key, required this.snapshot, required this.roster, this.oneLine = false});
+
+  /// The box height, in px, below which the bar folds to one line: landscape
+  /// phones are 375–393 high and the TV and tablets 540 and up, so a box
+  /// shorter than the phones' tallest is one where the field needs the room
+  /// more than the bar does (m12-phone-layout §4).
+  static const oneLineBelow = 480.0;
+
+  /// The bar's padding in px: roomy on a tall box, and tight in the one-line
+  /// form so its runs share a phone's height with the field.
+  static const _pad = EdgeInsets.symmetric(horizontal: 16, vertical: 8);
+  static const _oneLinePad = EdgeInsets.symmetric(horizontal: 12, vertical: 2);
+
+  /// The gap between the bar's items in px, and between the round's texts.
+  static const _itemGap = 24.0;
+  static const _oneLineItemGap = 12.0;
+  static const _runGap = 4.0;
+
+  /// A player's counters: the gap between them in px, the gap above its row,
+  /// and its colour dot's size and gap from the name.
+  static const _counterGap = 20.0;
+  static const _oneLineCounterGap = 10.0;
+  static const _counterRunGap = 2.0;
+  static const _dot = 14.0;
+  static const _oneLineDot = 10.0;
+  static const _dotGap = 6.0;
+  static const _oneLineDotGap = 4.0;
+
+  final ArenaSnapshot snapshot;
+  final ArenaRoster roster;
+
+  /// Everything in one Wrap rather than the round above each player.
+  final bool oneLine;
+
+  @override
+  Widget build(BuildContext context) {
+    final look = ToyLookScope.of(context);
+    final byNumber = roster.entries.toList()..sort((a, b) => a.value.number.compareTo(b.value.number));
+    final items = <Widget>[
+      _RoundRow(snapshot: snapshot, roster: roster, oneLine: oneLine),
+      for (final MapEntry(key: id, value: player) in byNumber)
+        if (snapshot.player(id) case final p?) _PlayerRow(id: id, player: player, view: p, oneLine: oneLine),
+    ];
+    // The paper strip of the look, with its ink line under it drawn as a
+    // foreground border so it takes no height from the field: a phone's bar
+    // height is pinned (m12-phone-layout §4).
+    return Container(
+      color: look.colors.paper,
+      foregroundDecoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(color: look.colors.ink, width: look.sizes.outlineWidth),
+        ),
+      ),
+      padding: oneLine ? _oneLinePad : _pad,
+      child: oneLine
+          ? Wrap(
+              spacing: _oneLineItemGap,
+              runSpacing: 0,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: items,
+            )
+          : Column(crossAxisAlignment: CrossAxisAlignment.start, children: items),
+    );
+  }
+}
+
+/// The round, its clock and the best round: in the one-line bar's small text,
+/// so the runs share a phone's height with the field.
+class _RoundRow extends StatelessWidget {
+  const _RoundRow({required this.snapshot, required this.roster, required this.oneLine});
+
+  final ArenaSnapshot snapshot;
+  final ArenaRoster roster;
+  final bool oneLine;
+
+  @override
+  Widget build(BuildContext context) {
+    final look = ToyLookScope.of(context);
+    final text = Theme.of(context).textTheme;
+    final style = (oneLine ? text.bodySmall : text.titleMedium)?.copyWith(color: look.colors.ink);
+    final tabular = style?.copyWith(fontFeatures: const [FontFeature.tabularFigures()]);
+    final best = snapshot.bestTimeS;
+    final bestId = snapshot.bestId;
+    final bestBy = roster.length > 1 && bestId != null ? roster[bestId]?.number : null;
+    return Wrap(
+      spacing: oneLine ? ArenaHud._oneLineItemGap : ArenaHud._itemGap,
+      runSpacing: oneLine ? 0 : ArenaHud._runGap,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        Text('Round ${snapshot.round}', style: style),
+        Text('${snapshot.roundTimeS.toStringAsFixed(1)} s', key: const Key('roundTime'), style: tabular),
+        Text(
+          'Best ${best == null ? '–' : '${best.toStringAsFixed(1)} s${bestBy == null ? '' : ' (P$bestBy)'}'}',
+          style: tabular,
+        ),
+      ],
+    );
+  }
+}
+
+/// One player's counters in the bar: colour dot, number and name, wins, hits,
+/// dashes and whether a dash is ready.
+class _PlayerRow extends StatelessWidget {
+  const _PlayerRow({required this.id, required this.player, required this.view, required this.oneLine});
+
+  final String id;
+  final ({int number, String name}) player;
+  final ArenaPlayerView view;
+  final bool oneLine;
+
+  @override
+  Widget build(BuildContext context) {
+    final look = ToyLookScope.of(context);
+    final colours = look.colors;
+    final text = Theme.of(context).textTheme;
+    final p = view;
+    final title = text.titleSmall?.copyWith(color: colours.ink);
+    final small = (oneLine ? text.bodySmall : text.bodyMedium)?.copyWith(
+      fontFeatures: const [FontFeature.tabularFigures()],
+      color: colours.ink,
+    );
+    final ready = p.cooldown == 0;
+    return Padding(
+      padding: EdgeInsets.only(top: oneLine ? 0 : ArenaHud._runGap),
+      child: Wrap(
+        key: Key('hud-$id'),
+        spacing: oneLine ? ArenaHud._oneLineCounterGap : ArenaHud._counterGap,
+        runSpacing: ArenaHud._counterRunGap,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.circle,
+                size: oneLine ? ArenaHud._oneLineDot : ArenaHud._dot,
+                color: colours.player(player.number),
+              ),
+              SizedBox(width: oneLine ? ArenaHud._oneLineDotGap : ArenaHud._dotGap),
+              Text('P${player.number} ${player.name}', style: oneLine ? small : title),
+            ],
+          ),
+          Text('Wins ${p.wins}', key: Key('wins-$id'), style: small),
+          Text('Hits ${p.hits}', key: Key('hits-$id'), style: small),
+          Text(
+            'Dashes ${p.dashes}${p.failedDashes == 0 ? '' : ' (${p.failedDashes} too soon)'}',
+            key: Key('dashes-$id'),
+            style: small,
+          ),
+          // Ready is a `good` dot with the ink edge beside ink words, as the
+          // TV home's statuses are: text is never `good`, and a pill would
+          // grow the bar (Claude's step 5 review: 88 to 107 px).
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (ready) ...[
+                SizedBox.square(
+                  dimension: oneLine ? ArenaHud._oneLineDot : ArenaHud._dot,
+                  child: DecoratedBox(
+                    key: Key('dashReady-$id'),
+                    decoration: ShapeDecoration(
+                      color: colours.good,
+                      shape: CircleBorder(
+                        side: BorderSide(color: colours.ink, width: _dotEdge),
+                      ),
+                    ),
+                  ),
+                ),
+                SizedBox(width: oneLine ? ArenaHud._oneLineDotGap : ArenaHud._dotGap),
+              ],
+              Text(
+                ready ? _dashReady : 'Dash in ${(p.cooldown * ArenaGame.dashCooldownS).toStringAsFixed(1)} s',
+                style: small?.copyWith(color: ready ? colours.ink : colours.inkSoft),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}

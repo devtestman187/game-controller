@@ -4,7 +4,11 @@
 library;
 
 export 'src/arena.dart';
+export 'src/arena_hud_widgets.dart';
 export 'src/arena_module.dart';
+export 'src/arena_moments.dart';
+export 'src/arena_roster.dart';
 export 'src/arena_session.dart';
 export 'src/arena_snapshot.dart';
 export 'src/arena_view.dart';
+export 'src/arena_view_widgets.dart';

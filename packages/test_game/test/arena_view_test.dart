@@ -4,6 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:protocol/protocol.dart';
 import 'package:test_game/test_game.dart';
 
+import 'support/look.dart';
+
 /// A host with phones [ids] (numbered in order), each holding [input].
 MemoryGameHost hostWith(Map<String, InputStateMessage?> players) {
   final host = MemoryGameHost();
@@ -27,8 +29,10 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: ThemeData(brightness: Brightness.dark),
-        home: Scaffold(
-          body: ArenaView(game: game, host: host, onEvent: events.add),
+        home: withLook(
+          Scaffold(
+            body: ArenaView(game: game, host: host, onEvent: events.add),
+          ),
         ),
       ),
     );
@@ -220,8 +224,10 @@ void snapshots() {
     addTearDown(tester.view.reset);
     await tester.pumpWidget(
       MaterialApp(
-        home: Scaffold(
-          body: ArenaView(host: host, onEvent: (_) {}),
+        home: withLook(
+          Scaffold(
+            body: ArenaView(host: host, onEvent: (_) {}),
+          ),
         ),
       ),
     );

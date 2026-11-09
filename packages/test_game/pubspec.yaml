@@ -21,6 +21,8 @@ dependencies:
     path: ../game_kit
   protocol:
     path: ../protocol
+  toy_look:
+    path: ../toy_look
 
 dev_dependencies:
   flutter_test:
