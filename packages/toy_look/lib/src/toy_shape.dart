@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'dart:ui' show Canvas, Color, FragmentProgram, Offset, Paint, PaintingStyle, Path, Rect, StrokeCap, StrokeJoin;
+import 'dart:ui' show BlurStyle, MaskFilter;
 
 import 'body_fallback.dart';
 import 'turn.dart';
@@ -100,6 +101,31 @@ void toyShape(Canvas canvas, Path path, Color color, ToyShapeStyle style, {Fragm
       ..strokeCap = StrokeCap.round
       ..color = style.ink,
   );
+}
+
+/// How thick a sunken slot's inner shadow is, as a share of the style's
+/// outline width — thick enough to see, thin enough to stay a soft band — and
+/// how far it blurs, the same way.
+const toySlotShadowShare = 1.6;
+const toySlotBlurShare = 0.6;
+
+/// Draws an empty target as a slot (design section 5, decided at device test
+/// 3): [path] filled with [fill], then the style's ink, blurred and shifted
+/// the way the shadow falls, clipped to the slot, so a soft band lies inside
+/// the edges the look's light comes from and the slot reads as a recess.
+void toySunkenSlot(Canvas canvas, Path path, Color fill, ToyShapeStyle style) {
+  canvas.drawPath(path, Paint()..color = fill);
+  final shade = Paint()
+    ..color = style.ink.withValues(alpha: style.shadowAlpha)
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = style.outlineWidth * toySlotShadowShare
+    ..strokeJoin = StrokeJoin.round
+    ..maskFilter = MaskFilter.blur(BlurStyle.normal, style.outlineWidth * toySlotBlurShare);
+  canvas
+    ..save()
+    ..clipPath(path)
+    ..drawPath(path.shift(style.shadowOffset), shade)
+    ..restore();
 }
 
 /// The body shader with this shape's bounds, colour and light set on it.

@@ -80,15 +80,35 @@ void main() {
     });
   }
 
-  testWidgets('an Easy outline is filled with its piece\'s colour at 0.25 over the board', (tester) async {
+  /// The slot's own colour at the square's middle, sampled from the same puzzle
+  /// at Medium, where no tint of the piece's colour is drawn (design section 5,
+  /// decided at device test 3): an Easy slot is this colour plus the piece's
+  /// own hint of itself.
+  Future<int> slotColour(WidgetTester tester) async {
+    final (width, _, bytes) = await capture(
+      tester,
+      PuzzleView(
+        puzzle: square(level: Level.medium),
+        snapshot: snapshot(),
+        timeLimitS: 120,
+      ),
+      window: box,
+      box: box,
+    );
+    return at(bytes, width, const Offset(56, 63));
+  }
+
+  testWidgets('an Easy slot is its slot\'s own colour with a hint of its piece', (tester) async {
+    // The pixel is 0xRRGGBB: opaque, as every pixel of a frame is.
+    final slot = Color(0xFF000000 | await slotColour(tester));
     final (width, _, bytes) = await capture(
       tester,
       PuzzleView(puzzle: square(), snapshot: snapshot(), timeLimitS: 120),
       window: box,
       box: box,
     );
-    final fill = Color(colour).withValues(alpha: 0.25);
-    final expected = Color.alphaBlend(fill, ToyColors.sunny.board).toARGB32() & 0xFFFFFF;
+    final tint = Color(colour).withValues(alpha: 0.1);
+    final expected = Color.alphaBlend(tint, slot).toARGB32() & 0xFFFFFF;
     expect(colourGap(at(bytes, width, const Offset(56, 63)), expected), lessThanOrEqualTo(4));
   });
 
@@ -109,13 +129,13 @@ void main() {
       return at(bytes, width, const Offset(56, 59));
     }
 
-    // The glow is a focus fill at 0.5 under the target's own faint fill
-    // (design section 5, T15): a hinted target is the focus colour, and the
-    // same target with no hint is only the piece's own colour.
+    // The glow is a focus fill at 0.5 over the slot (design section 5, T15): a
+    // hinted target is the focus colour over the piece's hint of itself, and
+    // the same target with no hint is only that hint.
     final colours = ToyColors.sunny;
-    final glow = Color.alphaBlend(colours.focus.withValues(alpha: 0.5), colours.board);
-    final hintedFill = Color.alphaBlend(Color(colour).withValues(alpha: 0.25), glow);
-    final plainFill = Color.alphaBlend(Color(colour).withValues(alpha: 0.25), colours.board);
+    final slot = Color(0xFF000000 | await slotColour(tester));
+    final plainFill = Color.alphaBlend(Color(colour).withValues(alpha: 0.1), slot);
+    final hintedFill = Color.alphaBlend(colours.focus.withValues(alpha: 0.5), plainFill);
     final hinted = await targetColour(true);
     final plain = await targetColour(false);
     expect(

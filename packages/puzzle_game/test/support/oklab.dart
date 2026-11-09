@@ -28,11 +28,12 @@ List<double> oklab(int argb) {
 
 /// How far apart two colours look, as the OKLab distance: 0 is the same
 /// colour; the design's floor for a piece on the board is [pieceBoardDistance].
-double oklabDistance(int a, int b) {
-  final p = oklab(a);
-  final q = oklab(b);
-  return sqrt(pow(p[0] - q[0], 2) + pow(p[1] - q[1], 2) + pow(p[2] - q[2], 2));
-}
+double oklabDistance(int a, int b) => labDistance(oklab(a), oklab(b));
+
+/// How far apart two OKLab colours are: the distance between their lightness
+/// and their two chroma axes, as [oklabDistance] measures two sRGB colours.
+double labDistance(List<double> p, List<double> q) =>
+    sqrt(pow(p[0] - q[0], 2) + pow(p[1] - q[1], 2) + pow(p[2] - q[2], 2));
 
 /// The board's colour in each look, which every piece must stand out from
 /// (m13 s17 rule 3).

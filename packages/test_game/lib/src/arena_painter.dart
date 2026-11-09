@@ -76,7 +76,7 @@ const startGapShare = 0.013;
 /// and a joined phone. The look comes in as a value (design D5), so a painter
 /// never reads a scope or a theme.
 class ArenaPainter extends CustomPainter {
-  ArenaPainter(this.s, this.roster, {required this.look, required this.moments});
+  ArenaPainter(this.s, this.roster, {required this.look, required this.moments, this.fillsBackground = true});
 
   final ArenaSnapshot s;
   final ArenaRoster roster;
@@ -88,12 +88,18 @@ class ArenaPainter extends CustomPainter {
   /// The way each marble last moved, for its eyes (rule 3).
   final ArenaMoments moments;
 
+  /// Whether the painter fills its box with the look's `field`, its play mat.
+  /// Off where a `ToyBackground` is behind the view, so the screen's sky shows
+  /// behind the arena as it does round a puzzle's board (design section 5,
+  /// decided at device test 3); on for a field drawn alone.
+  final bool fillsBackground;
+
   @override
   void paint(Canvas canvas, Size size) {
     final unit = size.shortestSide;
     final style = ToyShapeStyle(ink: look.colors.ink, outlineWidth: look.sizes.outlineWidth);
     Offset px(Offset f) => Offset(f.dx * size.width, f.dy * size.height);
-    canvas.drawRect(Offset.zero & size, Paint()..color = look.colors.field);
+    if (fillsBackground) canvas.drawRect(Offset.zero & size, Paint()..color = look.colors.field);
     _mat(canvas, size);
     _start(canvas, px(s.start), s.playerRadius * unit * startPadShare, unit, style);
     _goal(canvas, size, style);

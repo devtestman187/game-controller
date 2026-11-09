@@ -19,6 +19,7 @@ class MatchPainter extends CustomPainter {
     this.camera = const PuzzleCamera.whole(),
     this.padRects = const [],
     this.pxPerMm = phonePxPerMm,
+    this.fillsBackground = true,
   });
 
   final Puzzle puzzle;
@@ -58,6 +59,9 @@ class MatchPainter extends CustomPainter {
   /// its own floor.
   final double pxPerMm;
 
+  /// Whether the painter fills its box with the look's background, as the board's painter does.
+  final bool fillsBackground;
+
   /// The phone HUD's panel: how much of its paper shows through, so the board
   /// under it is still seen.
   static const _panelAlpha = 0.9;
@@ -72,7 +76,7 @@ class MatchPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    canvas.drawRect(Offset.zero & size, Paint()..color = _colours.background);
+    if (fillsBackground) canvas.drawRect(Offset.zero & size, Paint()..color = _colours.background);
     final layout = SplitLayout.of(puzzle, s.seed!, target: target);
     if (target == LayoutTarget.phones) {
       _phones(canvas, size, layout);
@@ -119,6 +123,7 @@ class MatchPainter extends CustomPainter {
         board: i,
         field: field,
         hud: false,
+        fillsBackground: fillsBackground,
       ).paint(canvas, box.size);
       canvas.restore();
     }
@@ -159,6 +164,7 @@ class MatchPainter extends CustomPainter {
         hud: false,
         // The worker's smallest body is the phone's own measure (design 5a).
         pxPerMm: pxPerMm,
+        fillsBackground: fillsBackground,
       ).paint(canvas, layout.left.size);
       canvas.restore();
     }

@@ -105,4 +105,21 @@ void main() {
     // Orange (255, 138, 31) at the same place in the second square.
     expect(pixels.at(140, 40), (255, 138, 31));
   });
+
+  test('a sunken slot is its fill, with a soft shadow along the edge the light reaches', () async {
+    // The Sunny palette's board, so an empty target is drawn the colour the
+    // mat told it to be (design section 5, decided at device test 3).
+    const fill = Color(0xFFFFEFD0);
+    final pixels = await paintedPixels(
+      const Size(100, 100),
+      (canvas) => toySunkenSlot(canvas, Path()..addRect(_square), fill, const ToyShapeStyle()),
+    );
+    expect(pixels.at(40, 45), (255, 239, 208), reason: "the slot's middle is its fill, flat");
+    // Two px inside the top edge the ink is laid: a shade, not a line.
+    final top = pixels.at(40, 22);
+    expect(top.$1, lessThan(255), reason: 'the top edge is shaded');
+    expect(top.$2, lessThan(239));
+    // The shadow is inside the slot: nothing falls outside it.
+    expect(pixels.at(40, 16), (255, 255, 255));
+  });
 }

@@ -88,6 +88,10 @@ class _PuzzleViewState extends State<PuzzleView> {
       workers: _workers,
       nowMs: _nowMs,
       timeLimitS: widget.timeLimitS,
+      // The screen's sky shows round the board and the tray where a
+      // `ToyBackground` is behind the view (design section 5, decided at
+      // device test 3); drawn alone, as the pictures are, the painter fills.
+      fillsBackground: !toyStillSkyAbove(context),
     ),
   );
 }
@@ -170,6 +174,8 @@ class _MatchViewState extends State<MatchView> {
   Widget build(BuildContext context) {
     final look = ToyLookScope.of(context);
     final snapshot = widget.snapshot;
+    // As [PuzzleView] does: the sky shows round the boards where there is one.
+    final fills = !toyStillSkyAbove(context);
     return CustomPaint(
       key: const Key('puzzleView'),
       size: Size.infinite,
@@ -186,6 +192,7 @@ class _MatchViewState extends State<MatchView> {
               camera: widget.camera,
               padRects: widget.padRects,
               pxPerMm: widget.pxPerMm,
+              fillsBackground: fills,
             )
           : PuzzlePainter(
               widget.puzzle,
@@ -195,6 +202,7 @@ class _MatchViewState extends State<MatchView> {
               workers: _workers,
               nowMs: _nowMs,
               timeLimitS: widget.timeLimitS,
+              fillsBackground: fills,
             ),
     );
   }
@@ -207,4 +215,100 @@ class _MatchViewState extends State<MatchView> {
   final scale = min(box.width / field.width, box.height / field.height);
   final origin = Offset((box.width - field.width * scale) / 2, (box.height - field.height * scale) / 2);
   return (scale: scale, origin: origin);
+}
+
+/// How far toward its corners, and how far round its radius, a placed piece's
+/// ✓ moves when an empty target drawn over it covers the piece's middle (design
+/// section 5, decided at device test 3).
+const _checkCornerShare = 0.55;
+const _checkRingShare = 0.5;
+
+/// The ✓ and ✗ marks' sizes, in world units, and how thick their ink edge is,
+/// as a share of the mark's size.
+const _markSize = 5.0;
+const _markSmallSize = 3.2;
+const _markEdgeShare = 0.12;
+
+/// How thick a mark's stroke is, as a share of half its size.
+const _markStrokeShare = 0.45;
+
+/// How much of a sparkle's fade the mark's own colour keeps, so it is still
+/// seen at the end of the sparkle.
+const _sparkleFloor = 0.2;
+
+/// What a piece shows over the picture once it is dropped: a locked piece's ✓,
+/// where it stays clear of the empty targets drawn over it, and a wrong drop's
+/// ✗ (design section 5). They are kept with the views rather than in the
+/// board's painter, as the HUD and the workers are.
+extension _Marks on PuzzlePainter {
+  /// Where a locked piece [piece]'s ✓ is drawn: its middle when nothing empty
+  /// is drawn over it, else the first place on the piece clear of every empty
+  /// target drawn over it — a door's slot over a wall — and its middle again
+  /// when every place is covered, so a ✓ is never dropped (design section 5,
+  /// decided at device test 3). Only a target later in the picture's order is
+  /// drawn over the piece: one under it, as a rocket's body is under its
+  /// window, never hides the ✓.
+  Offset _checkPlace(int piece, Offset at, Set<int> filled) {
+    final over = [
+      for (final (j, spec) in puzzle.pieces.indexed)
+        if (j > piece && !filled.contains(j)) _path(spec.shape, _targetAt(j), spec.targetAngle),
+    ];
+    bool covered(Offset place) => over.any((path) => path.contains(place));
+    if (!covered(at)) return at;
+    final shape = puzzle.pieces[piece].shape;
+    final angle = s.pieces[piece].angle;
+    for (final place in _checkPlaces(shape, at, angle)) {
+      if (shape.contains(place, at, angle) && !covered(place)) return place;
+    }
+    return at;
+  }
+
+  /// The places a ✓ may move to, in order: the piece's middle, then points
+  /// part way to each of its corners, or round half a circle's radius.
+  Iterable<Offset> _checkPlaces(PieceShape shape, Offset at, double angle) sync* {
+    yield at;
+    if (shape.circle) {
+      for (var k = 0; k < 8; k++) {
+        final turn = k * pi / 4;
+        yield at + Offset(cos(turn), sin(turn)) * (shape.radius * _checkRingShare);
+      }
+      return;
+    }
+    for (final corner in shape.placed(at, angle)) {
+      yield at + (corner - at) * _checkCornerShare;
+    }
+  }
+
+  /// A right drop's ✓ or a wrong one's ✗, drawn as strokes in [colour] over a
+  /// wider ink stroke, so it never depends on a font having the glyph (Claude's
+  /// 4a review: the look's fonts have neither, and a TV box may have no symbol
+  /// font to fall back on). A right drop's mark grows and fades as it
+  /// sparkles.
+  void _mark(Canvas canvas, Offset at, Color colour, {required bool right, bool small = false, int? ageMs}) {
+    final base = small ? _markSmallSize : _markSize;
+    final grow = ageMs == null ? 0.0 : PieceMoments.sparkleGrow(ageMs, effects: look.effects);
+    final left = ageMs == null ? 0.0 : PieceMoments.sparkleLeft(ageMs, effects: look.effects);
+    final half = base * (1 + grow) / 2;
+    final colourAt = left > 0 ? colour.withValues(alpha: 1 - left * (1 - _sparkleFloor)) : colour;
+    final path = right
+        ? (Path()
+            ..moveTo(at.dx - half * 0.8, at.dy)
+            ..lineTo(at.dx - half * 0.2, at.dy + half * 0.6)
+            ..lineTo(at.dx + half * 0.9, at.dy - half * 0.7))
+        : (Path()
+            ..moveTo(at.dx - half * 0.7, at.dy - half * 0.7)
+            ..lineTo(at.dx + half * 0.7, at.dy + half * 0.7)
+            ..moveTo(at.dx + half * 0.7, at.dy - half * 0.7)
+            ..lineTo(at.dx - half * 0.7, at.dy + half * 0.7));
+    final stroke = half * _markStrokeShare;
+    Paint line(Color c, double width) => Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round
+      ..strokeWidth = width
+      ..color = c;
+    canvas
+      ..drawPath(path, line(_colours.ink.withValues(alpha: colourAt.a), stroke + half * 2 * _markEdgeShare * 2))
+      ..drawPath(path, line(colourAt, stroke));
+  }
 }

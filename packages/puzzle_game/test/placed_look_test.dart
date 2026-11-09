@@ -8,6 +8,7 @@ import 'package:toy_look/toy_look.dart';
 import 'support/frames.dart';
 import 'support/look.dart';
 import 'support/mirror_helpers.dart' show colourGap, load;
+import 'support/oklab.dart';
 
 /// A 640 x 360 box, as `look_paint_test` draws: 4 px a field unit on the
 /// 160 x 90 field.
@@ -77,8 +78,10 @@ int runOf(Uint8List bytes, int width, int y, int left, int right, int colour) {
   return longest;
 }
 
-Puzzle slotPuzzle() => Puzzle.parse('''
-{"id": "slot", "name": "Slot", "level": "easy", "pieces": [
+/// One square piece to make a slot of, Easy unless [level] says otherwise: a
+/// Medium slot has no tint of its own piece, so only the mat's colour shows.
+Puzzle slotPuzzle({Level level = Level.easy}) => Puzzle.parse('''
+{"id": "slot", "name": "Slot", "level": "${level.name}", "pieces": [
   {"id": "square", "shape": {"rect": [20, 20]}, "color": "#E4572E", "at": [40, 50]}
 ]}''');
 
@@ -115,6 +118,46 @@ void main() {
       reason: "the wall's ✓ is still drawn on the wall",
     );
     expect(countOf(bytes, width, pieceBox(puzzle, door), good), 0, reason: "and not inside the empty door's outline");
+  });
+
+  // Device test 3 (owner, Nov 9, 2026): an empty target is a sunken slot, so
+  // it is a little darker than the cream mat and a little lighter than the
+  // grape one, whatever piece will sit in it.
+  for (final (name, look) in [('Sunny', sunny), ('Night', night)]) {
+    testWidgets('an empty slot is darker than the board in Sunny and lighter in Night ($name)', (tester) async {
+      final puzzle = slotPuzzle(level: Level.medium);
+      final (width, bytes) = await frame(tester, puzzle, halfDone(puzzle), look);
+      // The square's middle is board unit (40, 50); the board beside it is
+      // board unit (20, 70), clear of the tray and the HUD.
+      final slot = oklab(
+        pixel(bytes, width, ((boardRect.left + 40) * scale).round(), ((boardRect.top + 50) * scale).round()),
+      );
+      final board = oklab(
+        pixel(bytes, width, ((boardRect.left + 10) * scale).round(), ((boardRect.top + 70) * scale).round()),
+      );
+      expect(
+        slot[0] < board[0],
+        name == 'Sunny',
+        reason: name == 'Sunny' ? 'the slot is a recess in the cream mat' : 'and catches the light on the grape one',
+      );
+      expect(labDistance(slot, board), greaterThan(0.01), reason: 'and it is seen at all');
+    });
+  }
+
+  // The inner shadow falls on the edges the look's light comes from: inside
+  // the slot, along its top and left, the ink is laid under the fill's own
+  // colour, so a slot reads as a recess and not as a flat shape.
+  testWidgets("an empty slot's top-left inside is shaded, its middle is not", (tester) async {
+    final puzzle = slotPuzzle(level: Level.medium);
+    final (width, bytes) = await frame(tester, puzzle, halfDone(puzzle), sunny);
+    final middle = oklab(
+      pixel(bytes, width, ((boardRect.left + 40) * scale).round(), ((boardRect.top + 50) * scale).round()),
+    );
+    // Two pixels inside the slot's top edge (board unit y 40) at its middle x.
+    final top = oklab(
+      pixel(bytes, width, ((boardRect.left + 40) * scale).round(), ((boardRect.top + 40) * scale).round() + 2),
+    );
+    expect(top[0], lessThan(middle[0]), reason: "the shadow falls along the top edge the light reaches");
   });
 
   // An empty target is drawn as a slot (dashed), a placed piece as a piece

@@ -90,7 +90,16 @@ class _ArenaFieldState extends State<ArenaField> {
             children: [
               CustomPaint(
                 key: const Key('arena'),
-                painter: ArenaPainter(s, widget.roster, look: look, moments: _moments),
+                painter: ArenaPainter(
+                  s,
+                  widget.roster,
+                  look: look,
+                  moments: _moments,
+                  // The screen's sky shows behind the arena where a
+                  // `ToyBackground` is behind the view (design section 5,
+                  // decided at device test 3); drawn alone, the field fills.
+                  fillsBackground: !toyStillSkyAbove(context),
+                ),
               ),
               if (s.phase == ArenaPhase.won) Center(child: _winnerBanner(s, look)),
             ],

@@ -9,16 +9,15 @@ typedef _Styles = ({ToyShapeStyle rest, ToyShapeStyle held, ToyShapeStyle wrong,
 /// looks lifted (design section 5).
 const _heldShadowShare = 2.0;
 
-/// How faint a target's fill is (design section 5: 0.25), and how much
-/// stronger a ready target's is, so it reads as ready.
-const _targetFill = 0.25;
-const _targetReadyFill = 0.45;
+/// How far an empty slot is mixed from the board toward `onBackground` — ink
+/// in Sunny, white in Night — so it is a shade darker in one look and a shade
+/// lighter in the other (design section 5, decided at device test 3).
+const _slotMix = 0.04;
 
-/// How far toward its corners, and how far round its radius, a placed piece's
-/// ✓ moves when an empty target drawn over it covers the piece's middle (design
-/// section 5, decided at device test 3).
-const _checkCornerShare = 0.55;
-const _checkRingShare = 0.5;
+/// The most an empty slot on Easy is tinted with its own piece's colour, and
+/// how much stronger a ready target's fill is, so it reads as ready.
+const _slotEasyTint = 0.1;
+const _targetReadyFill = 0.45;
 
 /// How much wider a ready or hinted target's outline is than the look's.
 const _targetEdgeShare = 1.5;
@@ -30,19 +29,6 @@ const _hintGlowPx = 2.5;
 
 /// The bar under the board: how thick it is, in world units.
 const _barHeight = 0.8;
-
-/// The ✓ and ✗ marks' sizes, in world units, and how thick their ink edge is,
-/// as a share of the mark's size.
-const _markSize = 5.0;
-const _markSmallSize = 3.2;
-const _markEdgeShare = 0.12;
-
-/// How thick a mark's stroke is, as a share of half its size.
-const _markStrokeShare = 0.45;
-
-/// How much of a sparkle's fade the mark's own colour keeps, so it is still
-/// seen at the end of the sparkle.
-const _sparkleFloor = 0.2;
 
 class PuzzlePainter extends CustomPainter {
   PuzzlePainter(
@@ -57,6 +43,7 @@ class PuzzlePainter extends CustomPainter {
     this.field = PuzzleField.single,
     this.hud = true,
     this.pxPerMm,
+    this.fillsBackground = true,
   });
 
   final Puzzle puzzle;
@@ -94,6 +81,12 @@ class PuzzlePainter extends CustomPainter {
   /// The clock and the count along the top (the split screen draws its own).
   final bool hud;
 
+  /// Whether the painter fills its box with the look's background. Off where a
+  /// `ToyBackground` is behind the view, so the screen's sky shows round the
+  /// board and the tray (design section 5, decided at device test 3); on for a
+  /// view drawn alone, as the pictures the tests write are.
+  final bool fillsBackground;
+
   ToyColors get _colours => look.colors;
 
   Offset _targetAt(int i) => field.origin + puzzle.pieces[i].target;
@@ -104,7 +97,7 @@ class PuzzlePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    canvas.drawRect(Offset.zero & size, Paint()..color = _colours.background);
+    if (fillsBackground) canvas.drawRect(Offset.zero & size, Paint()..color = _colours.background);
     final f = fieldIn(size, field.size);
     canvas
       ..save()
@@ -118,16 +111,23 @@ class PuzzlePainter extends CustomPainter {
     final styles = _styles(px);
 
     _panels(canvas, px, styles.rest);
-    // The picture in its own order: each target shows the piece locked in
-    // it, or its outline, so a door's outline stays on top of a placed wall.
+    final targets = Iterable<int>.generate(puzzle.pieces.length);
     final lockedIn = {
       for (final (i, p) in s.pieces.indexed)
         if (p.state == PieceState.locked) _targetOf(s.pieces[i]): i,
     };
     final filled = lockedIn.keys.toSet();
-    for (final t in Iterable<int>.generate(puzzle.pieces.length)) {
+    // Every empty target's slot is drawn under the picture, so a piece placed
+    // in front of one stays raised and whole (design section 5, decided at
+    // device test 3).
+    for (final t in targets) {
+      if (!filled.contains(t)) _slot(canvas, t, px, styles.rest);
+    }
+    // Then the picture in its own order: each target shows the piece locked in
+    // it, or its outline, so a door's outline stays on top of a placed wall.
+    for (final t in targets) {
       final piece = lockedIn[t];
-      piece != null ? _piece(canvas, piece, styles, filled) : _outline(canvas, t, px);
+      piece != null ? _piece(canvas, piece, styles, filled) : _outline(canvas, t, px, styles.rest);
     }
     // Then loose pieces lowest layer first, so the pile looks as it lies,
     // carried pieces, and the dots on top of everything.
@@ -189,16 +189,25 @@ class PuzzlePainter extends CustomPainter {
     return Path()..addPolygon(scale == 1 ? points : [for (final p in points) at + (p - at) * scale], true);
   }
 
-  /// A target's dashed ink outline and its faint fill: the piece's own colour
-  /// on a level with coloured outlines (Easy), the neutral one otherwise. A
-  /// ready target and a hint keep their meaning, in `good` and `focus`.
-  void _outline(Canvas canvas, int i, double scale) {
+  /// The colour of an empty slot: the board's, a shade toward `onBackground`,
+  /// so a slot is a little darker than the cream mat and a little lighter than
+  /// the grape one (design section 5, decided at device test 3).
+  Color get _slotFill => Color.lerp(_colours.board, _colours.onBackground, _slotMix)!;
+
+  /// An empty target's slot: the recess in the mat, Easy's tint of the piece's
+  /// own colour, a ready target's stronger one and a hint's glow, all drawn
+  /// under the picture. A ready target and a hint keep their meaning, in `good`
+  /// and `focus`.
+  void _slot(Canvas canvas, int i, double scale, ToyShapeStyle style) {
     final spec = puzzle.pieces[i];
     final path = _path(spec.shape, _targetAt(i), spec.targetAngle);
+    toySunkenSlot(canvas, path, _slotFill, style);
     final ready = s.readyTargets.contains(i);
-    final hint = s.hintTargets.contains(i);
-    final fill = puzzle.level.colouredOutlines ? Color(spec.color) : _colours.targetNeutral;
-    if (hint) {
+    if (ready || puzzle.level.colouredOutlines) {
+      final fill = puzzle.level.colouredOutlines ? Color(spec.color) : _colours.targetNeutral;
+      canvas.drawPath(path, Paint()..color = fill.withValues(alpha: ready ? _targetReadyFill : _slotEasyTint));
+    }
+    if (s.hintTargets.contains(i)) {
       canvas.drawPath(
         path,
         Paint()
@@ -206,7 +215,15 @@ class PuzzlePainter extends CustomPainter {
           ..maskFilter = MaskFilter.blur(BlurStyle.normal, _hintGlowPx / scale),
       );
     }
-    canvas.drawPath(path, Paint()..color = fill.withValues(alpha: ready ? _targetReadyFill : _targetFill));
+  }
+
+  /// An empty target's edge: dashed in the ink while it waits, square-capped
+  /// and in `good` and wider when ready, in `focus` when hinted.
+  void _outline(Canvas canvas, int i, double scale, ToyShapeStyle style) {
+    final spec = puzzle.pieces[i];
+    final path = _path(spec.shape, _targetAt(i), spec.targetAngle);
+    final ready = s.readyTargets.contains(i);
+    final hint = s.hintTargets.contains(i);
     final width = look.sizes.outlineWidth / scale * (ready || hint ? _targetEdgeShare : 1);
     final edge = Paint()
       ..style = PaintingStyle.stroke
@@ -317,77 +334,6 @@ class PuzzlePainter extends CustomPainter {
       );
       canvas.restore();
     }
-  }
-
-  /// Where a locked piece [piece]'s ✓ is drawn: its middle when nothing empty
-  /// covers it, else the first place on the piece clear of every empty target
-  /// drawn over it — a door's slot over a wall — and its middle again when
-  /// every place is covered, so a ✓ is never dropped (design section 5,
-  /// decided at device test 3). Only a target later in the picture's order is
-  /// drawn over the piece: one under it, as a rocket's body is under its
-  /// window, never hides the ✓.
-  Offset _checkPlace(int piece, Offset at, Set<int> filled) {
-    final over = [
-      for (final (j, spec) in puzzle.pieces.indexed)
-        if (j > piece && !filled.contains(j)) _path(spec.shape, _targetAt(j), spec.targetAngle),
-    ];
-    bool covered(Offset place) => over.any((path) => path.contains(place));
-    if (!covered(at)) return at;
-    final shape = puzzle.pieces[piece].shape;
-    final angle = s.pieces[piece].angle;
-    for (final place in _checkPlaces(shape, at, angle)) {
-      if (shape.contains(place, at, angle) && !covered(place)) return place;
-    }
-    return at;
-  }
-
-  /// The places a ✓ may move to, in order: the piece's middle, then points
-  /// part way to each of its corners, or round half a circle's radius.
-  Iterable<Offset> _checkPlaces(PieceShape shape, Offset at, double angle) sync* {
-    yield at;
-    if (shape.circle) {
-      for (var k = 0; k < 8; k++) {
-        final turn = k * pi / 4;
-        yield at + Offset(cos(turn), sin(turn)) * (shape.radius * _checkRingShare);
-      }
-      return;
-    }
-    for (final corner in shape.placed(at, angle)) {
-      yield at + (corner - at) * _checkCornerShare;
-    }
-  }
-
-  /// A right drop's ✓ or a wrong one's ✗, drawn as strokes in [colour] over a
-  /// wider ink stroke, so it never depends on a font having the glyph (Claude's
-  /// 4a review: the look's fonts have neither, and a TV box may have no symbol
-  /// font to fall back on). A right drop's mark grows and fades as it
-  /// sparkles.
-  void _mark(Canvas canvas, Offset at, Color colour, {required bool right, bool small = false, int? ageMs}) {
-    final base = small ? _markSmallSize : _markSize;
-    final grow = ageMs == null ? 0.0 : PieceMoments.sparkleGrow(ageMs, effects: look.effects);
-    final left = ageMs == null ? 0.0 : PieceMoments.sparkleLeft(ageMs, effects: look.effects);
-    final half = base * (1 + grow) / 2;
-    final colourAt = left > 0 ? colour.withValues(alpha: 1 - left * (1 - _sparkleFloor)) : colour;
-    final path = right
-        ? (Path()
-            ..moveTo(at.dx - half * 0.8, at.dy)
-            ..lineTo(at.dx - half * 0.2, at.dy + half * 0.6)
-            ..lineTo(at.dx + half * 0.9, at.dy - half * 0.7))
-        : (Path()
-            ..moveTo(at.dx - half * 0.7, at.dy - half * 0.7)
-            ..lineTo(at.dx + half * 0.7, at.dy + half * 0.7)
-            ..moveTo(at.dx + half * 0.7, at.dy - half * 0.7)
-            ..lineTo(at.dx - half * 0.7, at.dy + half * 0.7));
-    final stroke = half * _markStrokeShare;
-    Paint line(Color c, double width) => Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round
-      ..strokeWidth = width
-      ..color = c;
-    canvas
-      ..drawPath(path, line(_colours.ink.withValues(alpha: colourAt.a), stroke + half * 2 * _markEdgeShare * 2))
-      ..drawPath(path, line(colourAt, stroke));
   }
 
   @override
