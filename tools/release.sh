@@ -100,6 +100,10 @@ fi
 [ -n "$notes" ] || die "give the tester notes as the second argument (they go to Play, TestFlight and GitHub)"
 
 git fetch --quiet --tags origin || die "git fetch failed"
+# Codemagic checks a tag out by its bare name, and fails when a branch has the
+# same one (m12 and m13 both did): such a tag builds Play and Windows but no
+# TestFlight. Take the next number instead.
+[ -z "$(git ls-remote --heads origin "$tag")" ] || die "a branch is also called $tag, so Codemagic can't check the tag out for TestFlight: tag $tag.1 instead"
 git rev-parse -q --verify "refs/tags/$tag" > /dev/null && die "tag $tag already exists"
 git diff --quiet && git diff --cached --quiet || die "tracked files have uncommitted changes: commit or stash them first"
 [ "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" ] ||

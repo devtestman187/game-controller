@@ -298,7 +298,9 @@ void main() {
 
       final ends = await ended.timeout(const Duration(seconds: 5));
       expect([for (final e in ends) e.reason], [AwayEnd.roundOver, AwayEnd.roundOver]);
-      expect([for (final e in ends) e.player.number], [1, 2]);
+      // Both slots end; which phone's drop the host saw first is the
+      // transport's race, so the order isn't part of the rule (CI, Nov 9).
+      expect([for (final e in ends) e.player.number], unorderedEquals([1, 2]));
     });
   });
 
