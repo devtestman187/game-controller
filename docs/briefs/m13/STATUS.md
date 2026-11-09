@@ -6,12 +6,11 @@ Resume here. Branch `m13` in the worktree `E:\AI\game-controller-m13`, cut from 
 
 - M13 steps 1–9 are done; the full review is done and fixed. `m13.1` (0.13.0, build 299) is on Play, TestFlight internal and Windows.
 - The owner's first device test of `m13.1` found five issues (row D1), all fixed and released as **`m13.2`** (build 305: Play, Windows zip and TestFlight internal all succeeded).
-- The owner's test of `m13.2` (row D2): the worker's side and the grab ring are fixed on `m13`, not yet tagged. The owner was asked whether rounds should get their own music (none exists; the design plays music in the lobby only).
-- **Promotion to external `Testers`:** the owner said "Wait for promotion until I say so". Don't promote or ask until they raise it.
-- **Next work, unless the owner says otherwise:**
-  - tag D2's fixes when the owner says so (`m13.3`);
-  - then a stats triage: the session summary records a round left without results as 0 players and 0 s (`session_recorder.dart` `round_end`, then `metrics/session.dart` `roundEnded`). m12's design says such a round is recorded as `abandoned`, with its players.
-- Counts: look 111, puzzle 218, arena 66, host 240, phone 433, tv 53, kit 48, protocol 107, connection 282, metrics 90.
+- `m13.3` (build 308, D2: the worker keeps its side, no grab ring) is on Play, Windows and TestFlight internal.
+- **Owner, Nov 9: "Hold off on new build until I report more bugs."** No tag until the owner says so. Since `m13.3`, on `m13`: Play again's 3-2-1 (df2eec9), a joined phone keeping the game on Play again (6717f14), the worker against the boat's sail (6357d37), the portrait iPad clock (s16, f710c51), round music rendered and playing with its speed-up (s15, s15b, f4db63f).
+- **Running at the time of writing** (flash jobs, each in its own job folder): s17 twelve puzzles and colour rules; s18 the board filling a tablet; s19 the ✓ on pieces over targets and sunken slots. Briefed, to start when s17 lands: s20 the puzzle kit (owner: "Yes for the puzzle kit").
+- **Next work, unless the owner says otherwise:** review and land s17–s20; then the stats triage: the session summary records a round left without results as 0 players and 0 s (`session_recorder.dart` `round_end`, then `metrics/session.dart` `roundEnded`). m12's design says such a round is recorded as `abandoned`, with its players.
+- Counts: look 111, puzzle 227, arena 66, host 254, phone 435, tv 53, kit 48, protocol 107, connection 284, metrics 90.
 - **Notes for the next session:**
   - `m13` and `main` are at the same commit after each tag. Keep them together for a release: `release.sh` needs HEAD = origin/main.
   - `release.sh` refuses a tag named like a branch (Codemagic can't check it out); use `m13.N`.
