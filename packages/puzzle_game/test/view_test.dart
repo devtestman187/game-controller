@@ -1,16 +1,42 @@
 import 'dart:io';
 import 'dart:math';
+import 'dart:typed_data';
 
 import 'package:connection/connection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:protocol/protocol.dart';
 import 'package:puzzle_game/puzzle_game.dart';
+import 'package:toy_look/toy_look.dart' show ToyColors;
 
 import 'support/frames.dart';
+import 'support/look.dart';
 import 'support/match_helpers.dart' as helpers;
 
 Puzzle load(String id) => Puzzle.parse(File('puzzles/$id.json').readAsStringSync());
+
+/// The flat sky the field is drawn on: the look's `background`.
+final sky = ToyColors.sunny.background.toARGB32() & 0xFFFFFF;
+
+/// Where the first pixel that is not the flat sky sits along row [y] of a
+/// frame, from the left or the right: the edge of the board or the tray.
+int edgeX((int, int, Uint8List) frame, int y, {bool fromLeft = true}) {
+  final (width, _, bytes) = frame;
+  for (var i = 0; i < width; i++) {
+    final x = fromLeft ? i : width - 1 - i;
+    if (pixel(bytes, width, x, y) != sky) return x;
+  }
+  return -1;
+}
+
+/// The same down column [x] of a frame, from the top: the edge of the time bar.
+int edgeY((int, int, Uint8List) frame, int x) {
+  final (width, height, bytes) = frame;
+  for (var y = 0; y < height; y++) {
+    if (pixel(bytes, width, x, y) != sky) return y;
+  }
+  return -1;
+}
 
 /// A game a moment in: one player holding a piece, one piece locked, one red.
 PuzzleSnapshot busySnapshot() {
@@ -58,7 +84,19 @@ void main() {
       colours.add(small.$3[i] << 16 | small.$3[i + 1] << 8 | small.$3[i + 2]);
     }
     expect(colours.length, greaterThan(8));
-    expect(difference(small.$3, tv.$3), lessThan(2.0));
+    // The look draws its outlines and shadows in screen px (design section 5,
+    // rule 2), so an edge is a third thinner in a frame captured at 2/3: the
+    // frames differ along every edge, though the layout is the same. So the
+    // edges are pinned where the world puts them, and the whole-frame
+    // difference is allowed the look's edges.
+    expect(edgeX(small, 120), closeTo(edgeX(tv, 120), 1), reason: "the board's left edge");
+    expect(
+      edgeX(small, 120, fromLeft: false),
+      closeTo(edgeX(tv, 120, fromLeft: false), 1),
+      reason: "the tray's right edge",
+    );
+    expect(edgeY(small, 280), closeTo(edgeY(tv, 280), 1), reason: "the time bar's top edge");
+    expect(difference(small.$3, tv.$3), lessThan(3.0));
     expect(tester.takeException(), isNull);
   });
 
@@ -212,12 +250,13 @@ void main() {
         // the clock area right (m12-opponent-mirror rule 5).
         final mirror = PuzzleCamera.mirrorPlace(puzzle, layout, camera, box, split: true, text: scores);
         final rect = PuzzleCamera.hudPlace(layout, camera, box, scores, mirror: mirror?.rect).rect;
-        // Just inside the bar's left end, halfway down its height.
+        // Inside the bar's left end, past its ink edge (the look's edge is 2 px
+        // wide), halfway down its height.
         final y = (rect.bottom - box.height * PuzzleCamera.hudBarFraction / 2).round();
-        return pixel(bytes, width, rect.left.round() + 1, y);
+        return pixel(bytes, width, rect.left.round() + 3, y);
       }
 
-      expect(await barColour(phonesMatch(), 65), 0x43D17A);
+      expect(await barColour(phonesMatch(), 65), ToyColors.sunny.good.toARGB32() & 0xFFFFFF);
       final warning = PuzzleMatch(
         puzzle,
         teams: const {'p1': PuzzleSide.left, 'p2': PuzzleSide.right},
@@ -225,7 +264,7 @@ void main() {
         random: Random(1),
         target: LayoutTarget.phones,
       )..update(0.016, const {'p1': helpers.none, 'p2': helpers.none}, numbers: const {'p1': 1, 'p2': 2});
-      expect(await barColour(warning, 10), 0xE53935);
+      expect(await barColour(warning, 10), ToyColors.sunny.bad.toARGB32() & 0xFFFFFF);
     });
   });
 
@@ -245,14 +284,16 @@ void main() {
       addTearDown(tester.view.reset);
       await tester.pumpWidget(
         MaterialApp(
-          home: PuzzlePlayView(
-            host: host,
-            puzzle: match?.puzzle ?? puzzle,
-            settings: () => PuzzleSettings.defaults,
-            teams: const {'p1': PuzzleSide.left},
-            random: Random(1),
-            match: match,
-            onFinished: done,
+          home: withLook(
+            PuzzlePlayView(
+              host: host,
+              puzzle: match?.puzzle ?? puzzle,
+              settings: () => PuzzleSettings.defaults,
+              teams: const {'p1': PuzzleSide.left},
+              random: Random(1),
+              match: match,
+              onFinished: done,
+            ),
           ),
         ),
       );

@@ -60,7 +60,9 @@ void main() {
         'house': Rect.fromLTWH(8, 55.02, 68.96, 71.26),
         'rocket': Rect.fromLTWH(8, 55.02, 51.18, 75.49),
         'tree': Rect.fromLTWH(8, 55.02, 69.81, 70.80),
-        'boat': Rect.fromLTWH(8, 55.02, 93.49, 77.06),
+        // The boat's is the room its short-form clock area leaves it, 0.7 px
+        // under the fraction (the text estimate's width sets it).
+        'boat': Rect.fromLTWH(8, 55.02, 92.60, 76.34),
       };
       for (final MapEntry(key: id, value: e) in expected.entries) {
         final puzzle = load(id);
@@ -74,9 +76,15 @@ void main() {
         expect(rect.width, closeTo(e.width, 0.01), reason: where);
         expect(rect.height, closeTo(e.height, 0.01), reason: where);
         // Their board's own shape at the mirror's scale, never stretched, and
-        // no bigger than the board fraction allows.
+        // no bigger than the board fraction allows: the boat's is the room its
+        // short-form clock area leaves, the others reach the fraction.
         final place = PuzzleCamera.place(l, sideLeft, iphone, PuzzleSide.left);
-        expect(mirror.scale, closeTo(place.scale * PuzzleCamera.mirrorFraction, 1e-9), reason: where);
+        final fraction = place.scale * PuzzleCamera.mirrorFraction;
+        if (id == 'boat') {
+          expect(mirror.scale, lessThanOrEqualTo(fraction + 1e-9), reason: where);
+        } else {
+          expect(mirror.scale, closeTo(fraction, 1e-9), reason: where);
+        }
         expect(rect.size.width, closeTo(l.left.board.width * mirror.scale, 1e-9), reason: where);
         // The clock area moved to its right, in the short form, clear of the
         // world (rule 5).

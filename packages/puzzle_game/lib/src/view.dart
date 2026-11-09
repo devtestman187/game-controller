@@ -1,28 +1,35 @@
 import 'dart:math';
+import 'dart:ui' show FragmentProgram;
 
 import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
-import 'package:protocol/protocol.dart' show playerColor, playerColors;
+import 'package:toy_look/toy_look.dart';
 
 import 'camera.dart';
 import 'game.dart';
 import 'match.dart';
+import 'piece_moments.dart';
 import 'piece_size.dart';
 import 'puzzle.dart';
 import 'puzzle_values.dart';
 import 'snapshot.dart';
 import 'split_layout.dart';
 
+part 'board_hud.dart';
+part 'match_hud.dart';
 part 'match_painter.dart';
 part 'mirror_painter.dart';
 part 'puzzle_painter.dart';
+part 'text_paint.dart';
 
 /// Draws a puzzle from a [PuzzleSnapshot] (PRD v2 S8) into the box it's
 /// given, keeping the field's 16:9 shape and centring it (S4). It never
 /// reads the screen size, so the same view works on a TV, in a window, or
-/// drawn off-screen for a stream.
-class PuzzleView extends StatelessWidget {
-  const PuzzleView({super.key, required this.puzzle, required this.snapshot, this.timeLimitS});
+/// drawn off-screen for a stream. It draws in the look of the [ToyLookScope]
+/// above it (M13), and the pieces' boing and wobble come from the snapshots
+/// it is given.
+class PuzzleView extends StatefulWidget {
+  const PuzzleView({super.key, required this.puzzle, required this.snapshot, this.timeLimitS, this.clock});
 
   final Puzzle puzzle;
   final PuzzleSnapshot snapshot;
@@ -30,11 +37,49 @@ class PuzzleView extends StatelessWidget {
   /// For the clock's bar. Null: no bar.
   final int? timeLimitS;
 
+  /// Where the view reads the time for the pieces' motion, in milliseconds.
+  /// Null: a [Stopwatch] started when the view is built. The game sends a
+  /// snapshot every frame, so the view needs no ticker of its own.
+  final Stopwatch? clock;
+
+  @override
+  State<PuzzleView> createState() => _PuzzleViewState();
+}
+
+class _PuzzleViewState extends State<PuzzleView> {
+  final _moments = PieceMoments();
+  late final Stopwatch _clock = widget.clock ?? (Stopwatch()..start());
+
+  /// The one board as the match the moments see it: they are kept per board,
+  /// as a match keeps its left and right.
+  MatchSnapshot get _match => MatchSnapshot(boards: [widget.snapshot]);
+
+  int get _nowMs => _clock.elapsedMilliseconds;
+
+  @override
+  void initState() {
+    super.initState();
+    _moments.observe(_match, _nowMs);
+  }
+
+  @override
+  void didUpdateWidget(PuzzleView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!identical(oldWidget.snapshot, widget.snapshot)) _moments.observe(_match, _nowMs);
+  }
+
   @override
   Widget build(BuildContext context) => CustomPaint(
     key: const Key('puzzleView'),
     size: Size.infinite,
-    painter: PuzzlePainter(puzzle, snapshot, timeLimitS: timeLimitS),
+    painter: PuzzlePainter(
+      widget.puzzle,
+      widget.snapshot,
+      look: ToyLookScope.of(context),
+      moments: _moments,
+      nowMs: _nowMs,
+      timeLimitS: widget.timeLimitS,
+    ),
   );
 }
 
@@ -42,8 +87,9 @@ class PuzzleView extends StatelessWidget {
 /// screen, with the clock and both sides' counts along the top and each
 /// side's board and tray in its own half, the trays at the outer edges. On
 /// phones it draws through [camera] (m12-phone-layout §2): one side's world,
-/// or the whole match, with the clock area beside the tray.
-class MatchView extends StatelessWidget {
+/// or the whole match, with the clock area beside the tray. It draws in the
+/// look of the [ToyLookScope] above it, as [PuzzleView] does.
+class MatchView extends StatefulWidget {
   const MatchView({
     super.key,
     required this.puzzle,
@@ -53,6 +99,7 @@ class MatchView extends StatelessWidget {
     this.camera = const PuzzleCamera.whole(),
     this.padRects = const [],
     this.pxPerMm = phonePxPerMm,
+    this.clock,
   });
 
   final Puzzle puzzle;
@@ -78,43 +125,60 @@ class MatchView extends StatelessWidget {
   /// own geometry.
   final double pxPerMm;
 
+  /// Where the view reads the time for the pieces' motion, in milliseconds.
+  /// Null: a [Stopwatch] started when the view is built.
+  final Stopwatch? clock;
+
   @override
-  Widget build(BuildContext context) => CustomPaint(
-    key: const Key('puzzleView'),
-    size: Size.infinite,
-    painter: snapshot.split || target == LayoutTarget.phones
-        ? MatchPainter(
-            puzzle,
-            snapshot,
-            timeLimitS: timeLimitS,
-            target: target,
-            camera: camera,
-            padRects: padRects,
-            pxPerMm: pxPerMm,
-          )
-        : PuzzlePainter(puzzle, snapshot.boards.single, timeLimitS: timeLimitS),
-  );
+  State<MatchView> createState() => _MatchViewState();
 }
 
-const _background = Color(0xFF14181F);
-const _wrong = Color(0xFFE53935);
+class _MatchViewState extends State<MatchView> {
+  final _moments = PieceMoments();
+  late final Stopwatch _clock = widget.clock ?? (Stopwatch()..start());
 
-/// A right answer's mark, and the phone HUD's time bar while the clock has
-/// time left (m12-phone-layout §0.7c).
-const _right = Color(0xFF43D17A);
+  int get _nowMs => _clock.elapsedMilliseconds;
 
-/// The panel a phone's HUD sits on when it has no room beside the world, over
-/// the board's top-left corner (m12-phone-layout §0.7c): 55% black, so the
-/// board stays visible behind the texts.
-const _hudPanel = Color(0x8C000000);
+  @override
+  void initState() {
+    super.initState();
+    _moments.observe(widget.snapshot, _nowMs);
+  }
 
-/// The board's panel, on the split screen and in the other side's mirror
-/// (m12-opponent-mirror rule 1).
-const _board = Color(0xFF242B36);
+  @override
+  void didUpdateWidget(MatchView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!identical(oldWidget.snapshot, widget.snapshot)) _moments.observe(widget.snapshot, _nowMs);
+  }
 
-/// The orange that marks the other side (m12-opponent-mirror rule 4): the
-/// mirror's frame, their dot and their count. Player 2's colour from the
-/// protocol's palette — [playerColors]' second entry — so a re-skin moves the
-/// mirror with the pads' badges, as the look-and-sound milestone will
-/// (code-health, the look row).
-final _them = Color(playerColors[1]);
+  @override
+  Widget build(BuildContext context) {
+    final look = ToyLookScope.of(context);
+    final snapshot = widget.snapshot;
+    return CustomPaint(
+      key: const Key('puzzleView'),
+      size: Size.infinite,
+      painter: snapshot.split || widget.target == LayoutTarget.phones
+          ? MatchPainter(
+              widget.puzzle,
+              snapshot,
+              look: look,
+              moments: _moments,
+              nowMs: _nowMs,
+              timeLimitS: widget.timeLimitS,
+              target: widget.target,
+              camera: widget.camera,
+              padRects: widget.padRects,
+              pxPerMm: widget.pxPerMm,
+            )
+          : PuzzlePainter(
+              widget.puzzle,
+              snapshot.boards.single,
+              look: look,
+              moments: _moments,
+              nowMs: _nowMs,
+              timeLimitS: widget.timeLimitS,
+            ),
+    );
+  }
+}

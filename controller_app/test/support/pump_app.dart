@@ -100,6 +100,9 @@ Future<void> pumpFaked(
       // The host layer's look settings are saved with this phone's other
       // settings, as the app's root scope does while it hosts (m13 §3a).
       party.lookPrefsProvider.overrideWith((ref) => ref.watch(prefsProvider)),
+      // Auto's palette at midday, so no test turns Night after 19:00 (Claude's
+      // 4a review: the TV's tests did).
+      party.lookClockProvider.overrideWithValue(() => DateTime(2026, 11, 8, 12)),
       // The TV client: while this phone hosts, the screens use its own
       // player's client instead (m12 §3).
       tvClientProvider.overrideWithValue(app.client),

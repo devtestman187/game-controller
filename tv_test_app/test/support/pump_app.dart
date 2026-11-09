@@ -34,6 +34,9 @@ Future<void> tapVisible(WidgetTester tester, Finder finder) async {
 /// as a plain build has) and [state] the host it shows (the sample host by
 /// default). [settle] waits until nothing is scheduled before returning; a
 /// game screen animates for as long as it runs, so its tests pass false.
+/// [clock] is the device's time for Auto's palette: midday unless a test says
+/// otherwise, so no test turns Night after 19:00 (Claude's 4a review: five
+/// home_look tests failed in the evening).
 Future<FakeHostService> pumpApp(
   WidgetTester tester, {
   Size size = const Size(960, 540),
@@ -68,7 +71,7 @@ Future<FakeHostService> pumpApp(
         // The TV app runs the TV look, as `main.dart` sets it: the TV's type
         // and sizes, measured as the TV draws them (M13 3d, rule 1).
         toyTvProvider.overrideWithValue(true),
-        if (clock != null) lookClockProvider.overrideWithValue(clock),
+        lookClockProvider.overrideWithValue(clock ?? () => DateTime(2026, 11, 8, 12)),
         if (localPlayer != null) localPlayerSourceProvider.overrideWithValue(localPlayer),
       ],
       child: TvTestApp(game: game),

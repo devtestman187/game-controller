@@ -8,6 +8,8 @@ import 'package:game_kit/game_kit.dart';
 import 'package:protocol/protocol.dart';
 import 'package:puzzle_game/puzzle_game.dart';
 
+import 'support/look.dart';
+
 Puzzle house() => Puzzle.parse(File('puzzles/house.json').readAsStringSync());
 
 const twoOnOneBoard = {'p1': PuzzleSide.left, 'p2': PuzzleSide.left};
@@ -191,13 +193,15 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
     Widget play(MemoryGameHost host, {PuzzleMatch? match}) => MaterialApp(
-      home: PuzzlePlayView(
-        host: host,
-        puzzle: match?.puzzle ?? house(),
-        settings: () => PuzzleSettings.defaults,
-        teams: const {'p1': PuzzleSide.left},
-        random: Random(1),
-        match: match,
+      home: withLook(
+        PuzzlePlayView(
+          host: host,
+          puzzle: match?.puzzle ?? house(),
+          settings: () => PuzzleSettings.defaults,
+          teams: const {'p1': PuzzleSide.left},
+          random: Random(1),
+          match: match,
+        ),
       ),
     );
     MemoryGameHost hostOf() => MemoryGameHost()

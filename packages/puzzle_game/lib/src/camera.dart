@@ -109,10 +109,11 @@ final class PuzzleCamera {
   static const hudOneLineHeight = hudClockFraction + hudLineGapFraction + hudBarFraction;
   static const hudTwoLineHeight = hudClockFraction + 2 * hudLineGapFraction + hudScoreFraction + hudBarFraction;
 
-  /// A character's width as a fraction of its text height. The app's font
-  /// draws most glyphs narrower than this, so a form chosen by it is never too
-  /// small for the texts; the test font's square glyphs are wider.
-  static const _glyphEm = 0.5;
+  /// A character's width as a fraction of its text height: the widest the
+  /// look's Fredoka 600 draws any of the HUD's texts, so a form chosen by it is
+  /// never too small for them (measured in `text_measure_test.dart`, which is
+  /// why the number is public).
+  static const glyphEm = 0.55;
 
   /// The characters the clock is measured for: "10:00", a 10 minute limit, so
   /// the clock area never changes form as the clock counts down.
@@ -120,7 +121,7 @@ final class PuzzleCamera {
 
   /// The width [text] takes at [hudScoreFraction], as a fraction of the box
   /// height.
-  static double _textWidth(String text) => text.length * _glyphEm * hudScoreFraction;
+  static double _textWidth(String text) => text.length * glyphEm * hudScoreFraction;
 
   /// The width and the height [form] needs for [text], as fractions of the box
   /// height (m12-phone-layout §0.7c): one line is the clock and the score
@@ -128,7 +129,7 @@ final class PuzzleCamera {
   /// form puts each of [text]'s short lines under the clock on a line of its
   /// own, with [hudLineGapFraction] between lines and the bar under them all.
   static ({double width, double height}) _hudSize(HudForm form, ({String score, List<String> short}) text) {
-    final clock = _clockChars * _glyphEm * hudClockFraction;
+    final clock = _clockChars * glyphEm * hudClockFraction;
     final lines = form == HudForm.oneLine || form == HudForm.twoLines ? [text.score] : text.short;
     final widest = [clock, ...lines.map(_textWidth)].reduce(max);
     return (

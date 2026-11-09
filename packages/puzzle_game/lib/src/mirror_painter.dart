@@ -3,16 +3,26 @@ part of 'view.dart';
 /// The other side's mirror on a phone (m12-opponent-mirror rules 1–4): their
 /// board alone — its panel, the targets faint, the pieces they've placed
 /// filled — with their dot on it at its place, and the piece they hold drawn
-/// where their dot carries it, turned as they turn it. Orange marks the other
-/// side: the frame, the dots and their count. Their dot is at least
-/// `mirrorMinPieceMm` across ([mirrorDotRadius]).
+/// where their dot carries it, turned as they turn it. The other side's colour
+/// marks the mirror: its frame and its dots are `player(2)`. Their dot is at
+/// least `mirrorMinPieceMm` across ([mirrorDotRadius]).
 ///
 /// While their dot is above the board (their tray row) it is pinned onto the
 /// mirror's top edge, at its place across their side, and the piece they hold
 /// moves with it. Their board is one panel, one pass over the targets, one over
 /// the pieces they placed: no more than one board draw a frame.
 class MirrorPainter {
-  const MirrorPainter(this.puzzle, this.theirs, this.field, {required this.rect, required this.scale});
+  const MirrorPainter(
+    this.puzzle,
+    this.theirs,
+    this.field, {
+    required this.look,
+    required this.rect,
+    required this.scale,
+    this.moments,
+    this.nowMs = 0,
+    this.board = 0,
+  });
 
   final Puzzle puzzle;
 
@@ -22,9 +32,23 @@ class MirrorPainter {
   /// Their side's world: the board the mirror shows, in world units.
   final PuzzleField field;
 
+  /// The colours, sizes and type the mirror is drawn in (design D5), the same
+  /// as their own board's.
+  final ToyLook look;
+
   /// Where the mirror is in the box, and the px per world unit it draws at.
   final Rect rect;
   final double scale;
+
+  /// When each piece of [board] turned locked or wrong, for the boing (design
+  /// section 5); null: nothing moves.
+  final PieceMoments? moments;
+  final int nowMs;
+
+  /// Which board of the match theirs is, for its pieces' moments.
+  final int board;
+
+  ToyColors get _colours => look.colors;
 
   /// The mirror's lines in screen px, so its outlines and its frame read at any
   /// size: its own texts are the HUD's, not the board's.
@@ -47,18 +71,35 @@ class MirrorPainter {
       ..translate(rect.left, rect.top)
       ..scale(scale)
       ..translate(-board.left, -board.top);
-    canvas.drawRect(board, Paint()..color = _board);
-    _targets(canvas);
-    _placed(canvas);
-    _players(canvas);
-    canvas.restore();
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(rect.deflate(_framePx / 2), _corner),
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = _framePx
-        ..color = _them,
+    // In the canvas's whole scale, as the boards are (Claude's 4a review).
+    final px = _pxPerUnit(canvas);
+    final style = ToyShapeStyle(
+      ink: _colours.ink,
+      outlineWidth: look.sizes.outlineWidth / px,
+      shadowOffset: ToySizes.shadowOffset / px,
     );
+    // The panel is flat: a miniature reads as a picture, not as a second board.
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(board, Radius.circular(ToySizes.cardCorner / px)),
+      Paint()..color = _colours.board,
+    );
+    _targets(canvas);
+    _placed(canvas, style);
+    _players(canvas, style);
+    canvas.restore();
+    _frame(canvas);
+  }
+
+  /// The mirror's frame: the ink edge, with the other side's colour as a band
+  /// inside it (m12-opponent-mirror rule 4, design section 5).
+  void _frame(Canvas canvas) {
+    Paint stroke(Color colour) => Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = _framePx
+      ..color = colour;
+    canvas
+      ..drawRRect(RRect.fromRectAndRadius(rect.deflate(_framePx / 2), _corner), stroke(_colours.ink))
+      ..drawRRect(RRect.fromRectAndRadius(rect.deflate(_framePx), _corner), stroke(_colours.player(2)));
   }
 
   /// Where a piece's outline goes: the shape at [at], turned by [angle].
@@ -70,31 +111,39 @@ class MirrorPainter {
   /// Every outline of their picture, faint, so the mirror shows the picture
   /// they're building even where nothing is placed yet.
   void _targets(Canvas canvas) {
-    final coloured = puzzle.level.colouredOutlines;
     for (final spec in puzzle.pieces) {
       final path = _path(spec.shape, field.origin + spec.target, spec.targetAngle);
-      final colour = coloured ? Color(spec.color) : PuzzlePainter._outlineGrey;
+      final colour = puzzle.level.colouredOutlines ? Color(spec.color) : _colours.targetNeutral;
       canvas
         ..drawPath(path, Paint()..color = colour.withValues(alpha: _targetFill))
         ..drawPath(
           path,
           Paint()
             ..style = PaintingStyle.stroke
-            ..strokeWidth = _targetPx / scale
+            ..strokeWidth = _targetPx / _pxPerUnit(canvas)
             ..color = colour.withValues(alpha: _targetLine),
         );
     }
   }
 
-  /// The pieces they've placed: filled in their colours, in the outlines they
-  /// snapped into.
-  void _placed(Canvas canvas) {
+  /// The pieces they've placed: drawn as their own board's are, smaller, in
+  /// the outlines they snapped into.
+  void _placed(Canvas canvas, ToyShapeStyle style) {
     for (final (i, p) in theirs.pieces.indexed) {
       if (p.state != PieceState.locked || i >= puzzle.pieces.length) continue;
-      canvas.drawPath(
-        _path(puzzle.pieces[i].shape, Offset(p.x, p.y), p.angle),
-        Paint()..color = Color(puzzle.pieces[i].color),
-      );
+      final spec = puzzle.pieces[i];
+      final at = Offset(p.x, p.y);
+      final age = moments?.ageMs(board, i, nowMs);
+      final boing = age == null ? 1.0 : PieceMoments.boingScale(age, effects: look.effects);
+      if (boing != 1) {
+        canvas
+          ..save()
+          ..translate(at.dx, at.dy)
+          ..scale(boing)
+          ..translate(-at.dx, -at.dy);
+      }
+      toyShape(canvas, _path(spec.shape, at, p.angle), Color(spec.color), style, shade: look.shade);
+      if (boing != 1) canvas.restore();
     }
   }
 
@@ -102,45 +151,39 @@ class MirrorPainter {
   ///
   /// The dot goes under the piece they hold: a dot is as big as the smallest
   /// piece the mirror draws (code-health N3), so it would hide the piece's
-  /// whole fill if it were drawn over it, and the piece's orange outline says
-  /// whose it is anyway.
-  void _players(Canvas canvas) {
+  /// whole fill if it were drawn over it, and the piece's ink edge and the
+  /// dot's colour say whose it is anyway.
+  void _players(Canvas canvas, ToyShapeStyle style) {
     final r = mirrorDotRadius(puzzle);
     for (final p in theirs.players) {
       final at = Offset(p.x, p.y);
       final pinned = _pinned(at);
+      // Every dot of the other side is the other side's colour, as M12 drew
+      // them in its orange: the mirror shows a side, not which of its players
+      // is which (m12-opponent-mirror rule 4).
       canvas
-        ..drawCircle(pinned, r, Paint()..color = _them)
+        ..drawCircle(pinned, r, Paint()..color = _colours.player(2))
         ..drawCircle(
           pinned,
           r,
           Paint()
             ..style = PaintingStyle.stroke
-            ..strokeWidth = _targetPx / scale
-            ..color = Colors.white,
+            ..strokeWidth = _targetPx / _pxPerUnit(canvas)
+            ..color = _colours.paper,
         );
       final held = p.held;
       if (held != null && held < theirs.pieces.length && held < puzzle.pieces.length) {
         final piece = theirs.pieces[held];
-        _held(canvas, Offset(piece.x, piece.y) + (pinned - at), held, piece.angle);
+        _held(canvas, Offset(piece.x, piece.y) + (pinned - at), held, piece.angle, style);
       }
     }
   }
 
   /// The piece they hold, at [at] in world units and turned as they turned it,
-  /// outlined in orange so it reads as theirs.
-  void _held(Canvas canvas, Offset at, int piece, double angle) {
+  /// drawn as the pieces they placed are.
+  void _held(Canvas canvas, Offset at, int piece, double angle, ToyShapeStyle style) {
     final spec = puzzle.pieces[piece];
-    final path = _path(spec.shape, at, angle);
-    canvas
-      ..drawPath(path, Paint()..color = Color(spec.color))
-      ..drawPath(
-        path,
-        Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = _targetPx / scale
-          ..color = _them,
-      );
+    toyShape(canvas, _path(spec.shape, at, angle), Color(spec.color), style, shade: look.shade);
   }
 
   /// Where a dot is drawn: at its place on their board, or — while it is above

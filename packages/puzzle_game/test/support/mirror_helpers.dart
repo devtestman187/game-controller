@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:protocol/protocol.dart' show playerColors;
 import 'package:puzzle_game/puzzle_game.dart';
+import 'package:toy_look/toy_look.dart' show ToyColors;
 
 import 'frames.dart';
 
@@ -23,9 +24,9 @@ const phone169 = Size(667, 375);
 /// 4), as the protocol's palette has player 2.
 final them = playerColors[1] & 0xFFFFFF;
 
-/// The board's panel, the dark behind the mirror's dot (`view.dart`'s
-/// `_board`), which a dot's ink differs from.
-const boardPanel = 0x242B36;
+/// The board's panel, the cream behind the mirror's dot (`view.dart`'s board
+/// token), which a dot's ink differs from.
+final boardPanel = ToyColors.sunny.board.toARGB32() & 0xFFFFFF;
 
 /// The camera a phone plays the left side with.
 const sideLeft = PuzzleCamera.side(PuzzleSide.left);
@@ -117,6 +118,10 @@ int colourGap(int a, int b) {
   return gap;
 }
 
+/// The ring round the mirror's dot: the look's paper (`MirrorPainter` draws it
+/// on the other side's colour).
+final dotRing = ToyColors.sunny.paper.toARGB32() & 0xFFFFFF;
+
 /// Whether [colour] is nearer to the dot's [ink] than to the board behind it:
 /// where the antialiased edge is half ink and half board, which is the edge a
 /// person sees the dot reach.
@@ -131,7 +136,7 @@ int dotRun(Uint8List bytes, int width, int height, Offset at, {double pixelRatio
   final cy = (at.dy * pixelRatio).round();
   bool isDot(int x, int y) {
     final colour = pixel(bytes, width, x, y);
-    return nearerInk(colour, them) || nearerInk(colour, 0xFFFFFF);
+    return nearerInk(colour, them) || nearerInk(colour, dotRing);
   }
 
   /// How far the dot reaches from its centre in ([dx], [dy]), its centre's own

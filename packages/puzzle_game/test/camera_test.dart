@@ -128,8 +128,8 @@ void main() {
           box: Size(852, 393),
           puzzles: {
             'house': (solo: HudForm.oneLine, race: HudForm.twoLines),
-            'rocket': (solo: HudForm.oneLine, race: HudForm.twoLines),
-            'tree': (solo: HudForm.oneLine, race: HudForm.oneLine),
+            'rocket': (solo: HudForm.twoLines, race: HudForm.twoLines),
+            'tree': (solo: HudForm.oneLine, race: HudForm.twoLines),
             'boat': (solo: HudForm.twoLines, race: HudForm.twoLines),
           },
         ),
@@ -137,9 +137,9 @@ void main() {
           box: Size(734, 370),
           puzzles: {
             'house': (solo: HudForm.twoLines, race: HudForm.twoLines),
-            'rocket': (solo: HudForm.twoLines, race: HudForm.twoLines),
+            'rocket': (solo: HudForm.twoLines, race: HudForm.short),
             'tree': (solo: HudForm.oneLine, race: HudForm.twoLines),
-            'boat': (solo: HudForm.twoLines, race: HudForm.twoLines),
+            'boat': (solo: HudForm.twoLines, race: HudForm.short),
           },
         ),
         (
@@ -148,7 +148,7 @@ void main() {
             'house': (solo: HudForm.twoLines, race: HudForm.short),
             'rocket': (solo: HudForm.twoLines, race: HudForm.short),
             'tree': (solo: HudForm.twoLines, race: HudForm.twoLines),
-            'boat': (solo: HudForm.twoLines, race: HudForm.short),
+            'boat': (solo: HudForm.short, race: HudForm.short),
           },
         ),
       ];
@@ -170,7 +170,7 @@ void main() {
       // names both sides ("Left 0/4 · Right 0/4", 19 characters).
       const tablet = Size(1024, 768);
       const wholeForms = {
-        'house': HudForm.twoLines,
+        'house': HudForm.short,
         'rocket': HudForm.short,
         'tree': HudForm.twoLines,
         'boat': HudForm.short,
@@ -192,9 +192,10 @@ void main() {
       expect(hud.rect.top, closeTo(55.02, 1e-9));
       expect(hud.rect.left, PuzzleCamera.hudMarginPx);
       // 5 clock characters at 0.08 of the height, the 0.02 gap and 13 score
-      // characters at 0.04, each glyph half its height: (0.2 + 0.02 + 0.26)
-      // x 393 = 188.64 px, not the 243.66 px a 20-character score would need.
-      expect(hud.rect.width, closeTo(188.64, 0.01));
+      // characters at 0.04, each glyph 0.55 of its height: (0.22 + 0.02 +
+      // 0.286) x 393 = 206.72 px, not the 271.57 px a 20-character score would
+      // need.
+      expect(hud.rect.width, closeTo(206.72, 0.01));
       expect(hud.rect.height, closeTo(44.02, 0.01), reason: '0.112 x 393: the clock, the gap and the bar');
       // The tree's 81.62-unit world at 393 / 102 = 3.8529 px/unit is 314.47 px
       // wide, centred: the HUD ends 8 px short of the world's left edge.

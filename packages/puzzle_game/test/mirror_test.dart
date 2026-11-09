@@ -55,9 +55,9 @@ void main() {
       expect(pixel(bytes, width, where.dx.round(), where.dy.round()), 0x27AE60, reason: 'the crown they placed');
       // The parts of their board with nothing in them show the panel: below
       // their dot, which is now as big as the smallest piece (N3) and covers
-      // the corner this used to read (18, 22).
+      // the corner this used to read (18, 22). It is the look's board colour.
       final empty = at(const Offset(18, 60));
-      expect(pixel(bytes, width, empty.dx.round(), empty.dy.round()), 0x242B36);
+      expect(pixel(bytes, width, empty.dx.round(), empty.dy.round()), boardPanel);
     });
 
     testWidgets('their dot is drawn in it at its place on the board', (tester) async {
@@ -205,10 +205,13 @@ void main() {
       }
 
       // The trunk is a 8 x 18 board-unit rectangle: 7 units from its centre is
-      // inside it upright and outside it on its side.
-      expect(await probe(0, const Offset(40, 47)), 0x8E5B3A, reason: 'upright: 7 down is still trunk');
+      // inside it upright and outside it on its side. The inside probes are 3
+      // units out, where the piece's body is its own colour: nearer its edge is
+      // the ink edge the look draws round every piece (M13 4a) and the shade
+      // band the fallback body shades it with.
+      expect(await probe(0, const Offset(40, 43)), 0x8E5B3A, reason: 'upright: 3 down is still trunk');
       expect(await probe(0, const Offset(47, 40)), isNot(0x8E5B3A), reason: 'upright: 7 across is past it');
-      expect(await probe(90, const Offset(47, 40)), 0x8E5B3A, reason: 'turned: 7 across is trunk');
+      expect(await probe(90, const Offset(43, 40)), 0x8E5B3A, reason: 'turned: 3 across is trunk');
       expect(await probe(90, const Offset(40, 47)), isNot(0x8E5B3A), reason: 'turned: 7 down is past it');
     });
 

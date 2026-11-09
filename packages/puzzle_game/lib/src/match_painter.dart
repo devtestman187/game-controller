@@ -10,6 +10,9 @@ class MatchPainter extends CustomPainter {
   MatchPainter(
     this.puzzle,
     this.s, {
+    required this.look,
+    this.moments,
+    this.nowMs = 0,
     this.timeLimitS,
     this.target = LayoutTarget.screen,
     this.camera = const PuzzleCamera.whole(),
@@ -19,7 +22,21 @@ class MatchPainter extends CustomPainter {
 
   final Puzzle puzzle;
   final MatchSnapshot s;
+
+  /// The colours, sizes and type both boards and the HUD are drawn in (design
+  /// D5).
+  final ToyLook look;
+
+  /// When each piece turned locked or wrong, for the boing and the wobble;
+  /// null: nothing moves (design section 5).
+  final PieceMoments? moments;
+
+  /// The time on the view's clock, which [moments] measure against.
+  final int nowMs;
+
   final int? timeLimitS;
+
+  ToyColors get _colours => look.colors;
 
   /// The world the match plays in, from the viewer's setup (m12 §0.4).
   final LayoutTarget target;
@@ -36,10 +53,12 @@ class MatchPainter extends CustomPainter {
   /// its own floor.
   final double pxPerMm;
 
-  /// The widest the clock's bar gets: under the clock in the strip, in the
-  /// gap between the boards.
-  static const _stripBar = 40.0;
-  static const _gapBar = 10.0;
+  /// The phone HUD's panel: how much of its paper shows through, so the board
+  /// under it is still seen.
+  static const _panelAlpha = 0.9;
+
+  /// The look's edge capped for a bar this thin, in px.
+  static const _barEdgePx = 2.0;
 
   /// The phone HUD is placed by [PuzzleCamera.hudPlace], and its text sizes
   /// are fractions of the box height ([PuzzleCamera.hudClockFraction],
@@ -47,7 +66,7 @@ class MatchPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    canvas.drawRect(Offset.zero & size, Paint()..color = _background);
+    canvas.drawRect(Offset.zero & size, Paint()..color = _colours.background);
     final layout = SplitLayout.of(puzzle, s.seed!, target: target);
     if (target == LayoutTarget.phones) {
       _phones(canvas, size, layout);
@@ -56,10 +75,20 @@ class MatchPainter extends CustomPainter {
     _screen(canvas, size, layout);
   }
 
+  /// The panel and the bar in the look's sizes, in [scale]'s units: the ink
+  /// edge with the card's corners and the hard shadow, and a thinner edge for
+  /// a bar, so the ink doesn't swallow it.
+  ({ToyShapeStyle panel, ToyShapeStyle bar}) _hudStyles(double scale) {
+    ToyShapeStyle style(double width) =>
+        ToyShapeStyle(ink: _colours.ink, outlineWidth: width / scale, shadowOffset: ToySizes.shadowOffset / scale);
+    return (panel: style(look.sizes.outlineWidth), bar: style(min(look.sizes.outlineWidth, _barEdgePx)));
+  }
+
   /// Today's split screen: each side's world in its box on the 160 x 90
   /// field, with the clock in a strip or between the boards.
   void _screen(Canvas canvas, Size size, SplitLayout layout) {
     final f = fieldIn(size);
+    final styles = _hudStyles(f.scale);
     canvas
       ..save()
       ..translate(f.origin.dx, f.origin.dy)
@@ -67,11 +96,23 @@ class MatchPainter extends CustomPainter {
     canvas.clipRect(Offset.zero & fieldSize);
     final left = s.boards[0];
     final right = s.boards[1];
-    for (final (box, board, field) in [(layout.leftBox, left, layout.left), (layout.rightBox, right, layout.right)]) {
+    for (final (i, (box, board, field)) in [
+      (layout.leftBox, left, layout.left),
+      (layout.rightBox, right, layout.right),
+    ].indexed) {
       canvas
         ..save()
         ..translate(box.left, box.top);
-      PuzzlePainter(puzzle, board, field: field, hud: false).paint(canvas, box.size);
+      PuzzlePainter(
+        puzzle,
+        board,
+        look: look,
+        moments: moments,
+        nowMs: nowMs,
+        board: i,
+        field: field,
+        hud: false,
+      ).paint(canvas, box.size);
       canvas.restore();
     }
 
@@ -80,9 +121,9 @@ class MatchPainter extends CustomPainter {
     final total = puzzle.pieces.length;
     final frac = _barFraction(left.timeLeftMs);
     if (layout.hudStrip) {
-      _stripHud(canvas, layout, left, right, clock, warn, total, frac);
+      _stripHud(canvas, layout, left, right, clock, warn, total, frac, styles.bar);
     } else {
-      _gapHud(canvas, left, right, clock, warn, total, frac);
+      _gapHud(canvas, left, right, clock, warn, total, frac, styles.bar);
     }
     canvas.restore();
   }
@@ -99,7 +140,16 @@ class MatchPainter extends CustomPainter {
         ..save()
         ..translate(place.origin.dx, place.origin.dy)
         ..scale(place.scale);
-      PuzzlePainter(puzzle, _boardOf(s, side), field: layout.left, hud: false).paint(canvas, layout.left.size);
+      PuzzlePainter(
+        puzzle,
+        _boardOf(s, side),
+        look: look,
+        moments: moments,
+        nowMs: nowMs,
+        board: s.split ? side.index : 0,
+        field: layout.left,
+        hud: false,
+      ).paint(canvas, layout.left.size);
       canvas.restore();
     }
     _hud(canvas, size, layout);
@@ -136,19 +186,39 @@ class MatchPainter extends CustomPainter {
     final board = camera.side == null ? s.boards.first : _boardOf(s, camera.side!);
     final gap = size.height * PuzzleCamera.hudLineGapFraction;
     final bar = size.height * PuzzleCamera.hudBarFraction;
+    final styles = _hudStyles(1);
     if (mirror != null) _mirror(canvas, layout, mirror);
     if (placement.form == HudForm.corner) {
-      final panel = rect.inflate(gap);
-      canvas.drawRRect(RRect.fromRectAndRadius(panel, Radius.circular(gap)), Paint()..color = _hudPanel);
+      final panel = RRect.fromRectAndRadius(rect.inflate(gap), const Radius.circular(ToySizes.cardCorner));
+      toyShape(
+        canvas,
+        Path()..addRRect(panel),
+        _colours.paper.withValues(alpha: _panelAlpha),
+        styles.panel,
+        shade: look.shade,
+      );
     }
     _hudTexts(canvas, placement, shown, size, mirrored: mirror != null);
     if (_barFraction(board.timeLeftMs) case final frac?) {
-      final warn = board.warning && board.phase == PuzzlePhase.playing;
-      canvas.drawRect(
-        Rect.fromLTWH(rect.left, rect.bottom - bar, rect.width * frac, bar),
-        Paint()..color = warn ? _wrong : _right,
-      );
+      _timeBar(canvas, Rect.fromLTWH(rect.left, rect.bottom - bar, rect.width, bar), frac, board, styles.bar);
     }
+  }
+
+  /// The time bar under the phone's HUD: a `good` fill on a `paper` track with
+  /// the ink edge, `bad` in the warning time (design section 5).
+  void _timeBar(Canvas canvas, Rect track, double frac, PuzzleSnapshot board, ToyShapeStyle style) {
+    final shape = RRect.fromRectAndRadius(track, Radius.circular(track.height / 2));
+    toyShape(canvas, Path()..addRRect(shape), _colours.paper, style, shade: look.shade);
+    if (frac <= 0) return;
+    final warn = board.warning && board.phase == PuzzlePhase.playing;
+    canvas
+      ..save()
+      ..clipRRect(shape.deflate(track.height / 4));
+    canvas.drawRect(
+      Rect.fromLTWH(track.left, track.top, track.width * frac, track.height),
+      Paint()..color = warn ? _colours.bad : _colours.good,
+    );
+    canvas.restore();
   }
 
   /// The other side's board, drawn small at the HUD's left (m12-opponent-
@@ -157,6 +227,10 @@ class MatchPainter extends CustomPainter {
     puzzle,
     _boardOf(s, _otherSide(camera.side!)),
     layout.left,
+    look: look,
+    moments: moments,
+    nowMs: nowMs,
+    board: s.split ? _otherSide(camera.side!).index : 0,
     rect: mirror.rect,
     scale: mirror.scale,
   ).paint(canvas);
@@ -164,7 +238,8 @@ class MatchPainter extends CustomPainter {
   /// The clock and the score in [placement]'s form: one line, or the clock
   /// above the score — in the short form, the score's short lines, one each
   /// (m12-phone-layout §0.7c). With [mirrored], the last short line is the
-  /// other side's count, drawn in their orange (m12-opponent-mirror rule 4).
+  /// other side's count (m12-opponent-mirror rule 4); the mirror's frame and
+  /// its dot carry that side's colour, its text the HUD's ink.
   void _hudTexts(
     Canvas canvas,
     ({Rect rect, HudForm form}) placement,
@@ -176,9 +251,14 @@ class MatchPainter extends CustomPainter {
     final clock = size.height * PuzzleCamera.hudClockFraction;
     final score = size.height * PuzzleCamera.hudScoreFraction;
     final gap = size.height * PuzzleCamera.hudLineGapFraction;
+    // On the panel the text is ink; on the sky it is the look's onBackground
+    // (design section 5, rule 7). The mirror's other side keeps the same ink:
+    // the mirror's frame and dot are where its colour shows.
+    final onPanel = placement.form == HudForm.corner;
+    final colour = onPanel ? _colours.ink : _colours.onBackground;
     if (placement.form == HudForm.oneLine) {
       final line = (clock: text.clock, score: text.score);
-      _hudLine(canvas, line, Offset(rect.left, rect.top + (clock + gap) / 2), clock, score);
+      _hudLine(canvas, line, Offset(rect.left, rect.top + (clock + gap) / 2), clock, score, colour);
       return;
     }
     _text(
@@ -186,8 +266,8 @@ class MatchPainter extends CustomPainter {
       text.clock,
       Offset(rect.left, rect.top + clock / 2),
       clock,
-      Colors.white,
-      bold: true,
+      colour,
+      style: look.type.clock,
       align: TextAlign.left,
     );
     // The one-line form has returned; the rest draw the score under the clock,
@@ -199,99 +279,40 @@ class MatchPainter extends CustomPainter {
         line,
         Offset(rect.left, rect.top + clock + (i + 1) * gap + (i + 0.5) * score),
         score,
-        mirrored && i == lines.length - 1 ? _them : Colors.white,
+        colour,
+        style: look.type.button,
         align: TextAlign.left,
       );
     }
   }
 
-  /// The clock, bold, with the score beside it on one line (m12-phone-layout
-  /// §0.7c), left-aligned at [at]'s left and centred on its y.
-  void _hudLine(Canvas canvas, ({String clock, String score}) text, Offset at, double clockSize, double scoreSize) {
+  /// The clock, in `type.clock`'s family, with the score beside it in
+  /// `type.button`'s on one line (m12-phone-layout §0.7c), left-aligned at
+  /// [at]'s left and centred on its y.
+  void _hudLine(
+    Canvas canvas,
+    ({String clock, String score}) text,
+    Offset at,
+    double clockSize,
+    double scoreSize,
+    Color colour,
+  ) {
     final painter = TextPainter(
       text: TextSpan(
         children: [
           TextSpan(
             text: text.clock,
-            style: TextStyle(fontSize: clockSize, color: Colors.white, fontWeight: FontWeight.bold, height: 1),
+            style: look.type.clock.copyWith(fontSize: clockSize, color: colour, height: 1),
           ),
           TextSpan(
             text: ' ${text.score}',
-            style: TextStyle(fontSize: scoreSize, color: Colors.white, fontWeight: FontWeight.w500, height: 1),
+            style: look.type.button.copyWith(fontSize: scoreSize, color: colour, height: 1),
           ),
         ],
       ),
       textDirection: TextDirection.ltr,
     )..layout();
     painter.paint(canvas, at + Offset(0, -painter.height / 2));
-  }
-
-  /// The clock and the counts in a strip along the top, with a divider
-  /// between the halves.
-  void _stripHud(
-    Canvas canvas,
-    SplitLayout layout,
-    PuzzleSnapshot left,
-    PuzzleSnapshot right,
-    String clock,
-    bool warn,
-    int total,
-    double? frac,
-  ) {
-    final middle = fieldSize.width / 2;
-    canvas.drawLine(
-      Offset(middle, SplitLayout.stripHeight),
-      Offset(middle, fieldSize.height),
-      Paint()
-        ..color = Colors.white24
-        ..strokeWidth = 0.4,
-    );
-    _text(
-      canvas,
-      'LEFT  ${left.placed}/$total',
-      Offset(max(layout.leftBox.left + 10, 10), SplitLayout.stripHeight / 2),
-      3.2,
-      Colors.white,
-    );
-    _text(canvas, clock, Offset(middle, SplitLayout.stripHeight / 2), 4.2, warn ? _wrong : Colors.white, bold: true);
-    _text(
-      canvas,
-      'RIGHT  ${right.placed}/$total',
-      Offset(min(layout.rightBox.right - 10, 150), SplitLayout.stripHeight / 2),
-      3.2,
-      Colors.white,
-    );
-    if (frac != null) {
-      final width = _stripBar * frac;
-      canvas.drawRect(
-        Rect.fromLTWH(middle - width / 2, 5.4, width, 0.5),
-        Paint()..color = warn ? _wrong : Colors.white24,
-      );
-    }
-  }
-
-  /// The clock and the counts between the two boards, stacked, so each world
-  /// can use the full height.
-  void _gapHud(
-    Canvas canvas,
-    PuzzleSnapshot left,
-    PuzzleSnapshot right,
-    String clock,
-    bool warn,
-    int total,
-    double? frac,
-  ) {
-    final middle = fieldSize.width / 2;
-    _text(canvas, clock, Offset(middle, 5), 4.2, warn ? _wrong : Colors.white, bold: true);
-    _text(canvas, 'L ${left.placed}/$total', Offset(middle, 10.5), 2.8, Colors.white);
-    _text(canvas, 'R ${right.placed}/$total', Offset(middle, 14.5), 2.8, Colors.white);
-    if (frac != null) {
-      final width = _gapBar * frac;
-      canvas.drawRect(
-        Rect.fromLTWH(middle - width / 2, 17, width, 0.8),
-        Paint()..color = warn ? _wrong : Colors.white24,
-      );
-    }
   }
 
   /// The share of the time bar's width filled: null without a time limit.
@@ -303,6 +324,7 @@ class MatchPainter extends CustomPainter {
   @override
   bool shouldRepaint(MatchPainter old) =>
       !identical(old.s, s) ||
+      old.nowMs != nowMs ||
       old.target != target ||
       old.camera != camera ||
       old.pxPerMm != pxPerMm ||

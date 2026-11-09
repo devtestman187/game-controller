@@ -21,6 +21,10 @@ dependencies:
     path: ../game_kit
   protocol:
     path: ../protocol
+  # The look (M13): the painters draw Shape Race in it, and the views read it
+  # from the scope above them (design D5).
+  toy_look:
+    path: ../toy_look
 
 dev_dependencies:
   flutter_test:

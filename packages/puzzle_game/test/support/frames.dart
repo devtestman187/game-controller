@@ -4,15 +4,19 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:toy_look/toy_look.dart';
+
+import 'look.dart';
 
 /// [child] drawn in a box of [box] inside a window of [window], as an image at
-/// [pixelRatio].
+/// [pixelRatio], in [look]'s colours.
 Future<ui.Image> captureImage(
   WidgetTester tester,
   Widget child, {
   required Size window,
   required Size box,
   double pixelRatio = 1,
+  ToyLook? look,
 }) async {
   tester.view.physicalSize = window;
   tester.view.devicePixelRatio = 1;
@@ -20,11 +24,14 @@ Future<ui.Image> captureImage(
   final key = GlobalKey();
   await tester.pumpWidget(
     MaterialApp(
-      home: Center(
-        child: RepaintBoundary(
-          key: key,
-          child: SizedBox.fromSize(size: box, child: child),
+      home: withLook(
+        Center(
+          child: RepaintBoundary(
+            key: key,
+            child: SizedBox.fromSize(size: box, child: child),
+          ),
         ),
+        look: look,
       ),
     ),
   );
@@ -41,15 +48,22 @@ Future<(int, int, Uint8List)> capture(
   required Size window,
   required Size box,
   double pixelRatio = 1,
+  ToyLook? look,
 }) async {
-  final image = await captureImage(tester, child, window: window, box: box, pixelRatio: pixelRatio);
+  final image = await captureImage(tester, child, window: window, box: box, pixelRatio: pixelRatio, look: look);
   final bytes = (await tester.runAsync(() => image.toByteData(format: ui.ImageByteFormat.rawRgba)))!;
   return (image.width, image.height, bytes.buffer.asUint8List());
 }
 
 /// The same frame as a PNG file's bytes.
-Future<Uint8List> capturePng(WidgetTester tester, Widget child, {required Size window, required Size box}) async {
-  final image = await captureImage(tester, child, window: window, box: box);
+Future<Uint8List> capturePng(
+  WidgetTester tester,
+  Widget child, {
+  required Size window,
+  required Size box,
+  ToyLook? look,
+}) async {
+  final image = await captureImage(tester, child, window: window, box: box, look: look);
   final bytes = (await tester.runAsync(() => image.toByteData(format: ui.ImageByteFormat.png)))!;
   return bytes.buffer.asUint8List();
 }

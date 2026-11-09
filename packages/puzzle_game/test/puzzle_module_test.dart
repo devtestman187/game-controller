@@ -8,6 +8,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:game_kit/game_kit.dart';
 import 'package:puzzle_game/puzzle_game.dart';
 
+import 'support/look.dart';
+
 Puzzle house() => Puzzle.parse(File('puzzles/house.json').readAsStringSync());
 
 const setup = <String, Object?>{
@@ -37,19 +39,21 @@ Widget draw(
   bool wholeMatch = false,
   List<Rect> padRects = const [],
   double pxPerMm = phonePxPerMm,
-}) => Directionality(
-  textDirection: TextDirection.ltr,
-  child: SizedBox(
-    width: 960,
-    height: 540,
-    child: Builder(
-      builder: (context) => viewer.build(context, snapshot, (
-        roster: const {},
-        playerId: playerId,
-        wholeMatch: wholeMatch,
-        padRects: padRects,
-        pxPerMm: pxPerMm,
-      )),
+}) => withLook(
+  Directionality(
+    textDirection: TextDirection.ltr,
+    child: SizedBox(
+      width: 960,
+      height: 540,
+      child: Builder(
+        builder: (context) => viewer.build(context, snapshot, (
+          roster: const {},
+          playerId: playerId,
+          wholeMatch: wholeMatch,
+          padRects: padRects,
+          pxPerMm: pxPerMm,
+        )),
+      ),
     ),
   ),
 );
