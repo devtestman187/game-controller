@@ -142,7 +142,7 @@ class MatchPainter extends CustomPainter {
     final whole = camera.side == null;
     final sides = [camera.side ?? PuzzleSide.left, if (whole && s.split) PuzzleSide.right];
     for (final side in sides) {
-      final place = PuzzleCamera.place(layout, camera, size, side);
+      final place = PuzzleCamera.place(layout, camera, size, side, split: s.split, padRects: padRects);
       canvas
         ..save()
         ..translate(place.origin.dx, place.origin.dy)

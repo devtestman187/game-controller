@@ -198,10 +198,12 @@ void main() {
   testWidgets('on the smallest phone a worker is at least 7 mm across', (tester) async {
     final puzzle = load('tree');
     final layout = SplitLayout.of(puzzle, 1, target: LayoutTarget.phones);
-    final place = PuzzleCamera.place(layout, const PuzzleCamera.whole(), phone169, PuzzleSide.left);
-    // Player 1 on the middle of its board: clear of the tray above it and of
-    // the clock area beside it.
-    final dot = layout.left.board.center;
+    // The view draws a one-board round's one world filling the box (m13 s18).
+    final place = PuzzleCamera.place(layout, const PuzzleCamera.whole(), phone169, PuzzleSide.left, split: false);
+    // Player 1 on the board's flat top left: clear of the tray above it, of
+    // the clock area beside it, and of the tree's faint target (the crown's
+    // fill would hide the board the walk looks for).
+    final dot = layout.left.board.topLeft + const Offset(14, 21);
     final snapshot = MatchSnapshot(
       seed: 1,
       boards: [

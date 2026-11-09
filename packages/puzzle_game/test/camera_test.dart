@@ -177,7 +177,13 @@ void main() {
       };
       for (final MapEntry(key: id, value: form) in wholeForms.entries) {
         final layout = SplitLayout.of(load(id), 1, target: LayoutTarget.phones);
-        final hud = PuzzleCamera.hudPlace(layout, const PuzzleCamera.whole(), tablet, scores(id, whole: true));
+        final hud = PuzzleCamera.hudPlace(
+          layout,
+          const PuzzleCamera.whole(),
+          tablet,
+          scores(id, whole: true),
+          split: true,
+        );
         expect(hud.form, form, reason: '$id whole at $tablet');
       }
     });
@@ -221,7 +227,7 @@ void main() {
       final layout = SplitLayout.of(load('tree'), 1, target: LayoutTarget.phones);
       const box = Size(1024, 768);
       const whole = PuzzleCamera.whole();
-      final hud = PuzzleCamera.hudPlace(layout, whole, box, scores('tree', whole: true));
+      final hud = PuzzleCamera.hudPlace(layout, whole, box, scores('tree', whole: true), split: true);
       final left = PuzzleCamera.place(layout, whole, box, PuzzleSide.left);
       final right = PuzzleCamera.place(layout, whole, box, PuzzleSide.right);
       expect(hud.form, HudForm.twoLines);

@@ -35,3 +35,44 @@ const phonePortraitPad = [
   Rect.fromLTRB(24.0, 650.1, 68.8, 680.5),
   Rect.fromLTRB(68.8, 650.1, 113.5, 680.5),
 ];
+
+/// The left hand's controls as the app draws them in stick mode, which a
+/// tablet starts in (a phone starts in the D-pad mode above): the left stick's
+/// disc, then the D-pad's four arms. A tablet's one-board round keeps its
+/// board clear of these (m13 s18); each iPad's three pads are the app's own
+/// geometry at its density, in its box.
+const iPadLandscapePad = [
+  Rect.fromLTRB(13.9, 758.2, 165.8, 910.0),
+  Rect.fromLTRB(240.0, 916.6, 275.1, 968.3),
+  Rect.fromLTRB(240.0, 968.3, 275.1, 1020.0),
+  Rect.fromLTRB(205.8, 950.7, 257.5, 985.9),
+  Rect.fromLTRB(257.5, 950.7, 309.2, 985.9),
+];
+
+/// The same pad on the smaller iPad in landscape, 1180 x 820.
+const iPadSmallLandscapePad = [
+  Rect.fromLTRB(13.9, 554.2, 165.8, 706.0),
+  Rect.fromLTRB(240.0, 712.6, 275.1, 764.3),
+  Rect.fromLTRB(240.0, 764.3, 275.1, 816.0),
+  Rect.fromLTRB(205.8, 746.7, 257.5, 781.9),
+  Rect.fromLTRB(257.5, 746.7, 309.2, 781.9),
+];
+
+/// The same pad on the owner's iPad in portrait, 1024 x 1366.
+const iPadPortraitStickPad = [
+  Rect.fromLTRB(13.9, 1100.2, 165.8, 1252.0),
+  Rect.fromLTRB(240.0, 1258.6, 275.1, 1310.3),
+  Rect.fromLTRB(240.0, 1310.3, 275.1, 1362.0),
+  Rect.fromLTRB(205.8, 1292.7, 257.5, 1327.9),
+  Rect.fromLTRB(257.5, 1292.7, 309.2, 1327.9),
+];
+
+/// The same pad on a phone held on its side, 852 x 393, at the phone's
+/// density: a phone keeps the picture it had (m13 s18).
+const phoneLandscapePad = [
+  Rect.fromLTRB(16.0, 108.0, 179.0, 271.0),
+  Rect.fromLTRB(274.3, 279.0, 311.7, 334.0),
+  Rect.fromLTRB(274.3, 334.0, 311.7, 389.0),
+  Rect.fromLTRB(238.0, 315.3, 293.0, 352.7),
+  Rect.fromLTRB(293.0, 315.3, 348.0, 352.7),
+];

@@ -199,3 +199,12 @@ class _MatchViewState extends State<MatchView> {
     );
   }
 }
+
+/// The field of size [field] in [box]: the scale and the offset of its top
+/// left. The painters fit the 160 x 90 picture with it, and
+/// [PuzzleCamera.scale] measures a screen box by it.
+({double scale, Offset origin}) fieldIn(Size box, [Size field = fieldSize]) {
+  final scale = min(box.width / field.width, box.height / field.height);
+  final origin = Offset((box.width - field.width * scale) / 2, (box.height - field.height * scale) / 2);
+  return (scale: scale, origin: origin);
+}

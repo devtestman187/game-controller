@@ -33,8 +33,15 @@ Puzzle loadHouse() => Puzzle.parse(File('../packages/puzzle_game/puzzles/house.j
 
 /// [camera]'s world, drawn in [box], in the box's px: where the board and tray
 /// the clock area must keep clear of sit.
-Rect worldOf(SplitLayout layout, PuzzleCamera camera, Size box) {
-  final place = PuzzleCamera.place(layout, camera, box, camera.side ?? PuzzleSide.left);
+Rect worldOf(SplitLayout layout, PuzzleCamera camera, Size box, {bool split = true, List<Rect> padRects = const []}) {
+  final place = PuzzleCamera.place(
+    layout,
+    camera,
+    box,
+    camera.side ?? PuzzleSide.left,
+    split: split,
+    padRects: padRects,
+  );
   return place.origin & (layout.left.size * place.scale);
 }
 
@@ -51,21 +58,23 @@ Rect onScreen(SplitLayout layout, PuzzleCamera camera, Size box, Rect rect) {
 
 void main() {
   test('a portrait tablet\'s clock area is under the world, clear of the pad, in every mode', () {
-    // The app's joined tablet draws the whole match with its pad over the
-    // game and passes the pad's rects (m12-opponent-mirror rule 3); the clock
-    // area goes under the board, where the owner's tablet had room and the
-    // corner over the board blocked the puzzle (device test 3).
+    // The app's joined tablet draws a solo round's one board with its pad over
+    // the game and passes the pad's rects (m12-opponent-mirror rule 3); the
+    // clock area goes under the board, where the owner's tablet had room and
+    // the corner over the board blocked the puzzle (device test 3). Since m13
+    // s18 the board fills the box, so the world is the one-board place; it
+    // starts right of the pad where the pad's band meets it, its air kept.
     final puzzle = loadHouse();
     final layout = SplitLayout.of(puzzle, 1, target: LayoutTarget.phones);
     const whole = PuzzleCamera.whole();
     final text = hudText(puzzle);
     for (final (box, mm) in const [(iPadPortrait, iPadPxPerMm), (iPadSmall, iPadPxPerMm)]) {
-      final world = worldOf(layout, whole, box);
       for (final mode in PadMode.values) {
         final where = '$mode at $box';
         final pad = leftPadRects(box, mode: mode, mm: mm);
+        final world = worldOf(layout, whole, box, split: false, padRects: pad);
         final hud = PuzzleCamera.hudPlace(layout, whole, box, text, padRects: pad).rect;
-        expect(hud.left, closeTo(world.left, 1e-9), reason: where);
+        expect(hud.left, greaterThanOrEqualTo(world.left), reason: where);
         expect(hud.top, closeTo(world.bottom + PuzzleCamera.hudWorldGapPx, 1e-9), reason: where);
         expect(hud.overlaps(world), isFalse, reason: where);
         for (final rect in pad) {
@@ -76,6 +85,7 @@ void main() {
             reason: '$where: the clock area has no air over $rect',
           );
         }
+        expect(hud.right, lessThanOrEqualTo(world.right + 1e-9), reason: where);
         expect(hud.right, lessThanOrEqualTo(box.width), reason: where);
         expect(hud.bottom, lessThanOrEqualTo(box.height), reason: where);
       }

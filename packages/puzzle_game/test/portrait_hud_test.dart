@@ -17,9 +17,22 @@ const sideLeft = PuzzleCamera.side(PuzzleSide.left);
 const whole = PuzzleCamera.whole();
 
 /// [puzzle]'s board and tray as [box] draws them with [camera], in the box's px.
-({Rect board, Rect tray, Rect world}) drawn(Puzzle puzzle, Size box, {PuzzleCamera camera = whole}) {
+({Rect board, Rect tray, Rect world}) drawn(
+  Puzzle puzzle,
+  Size box, {
+  PuzzleCamera camera = whole,
+  bool split = true,
+  List<Rect> padRects = const [],
+}) {
   final layout = SplitLayout.of(puzzle, 1, target: LayoutTarget.phones);
-  final place = PuzzleCamera.place(layout, camera, box, camera.side ?? PuzzleSide.left);
+  final place = PuzzleCamera.place(
+    layout,
+    camera,
+    box,
+    camera.side ?? PuzzleSide.left,
+    split: split,
+    padRects: padRects,
+  );
   Rect onScreen(Rect r) => Rect.fromLTWH(
     place.origin.dx + r.left * place.scale,
     place.origin.dy + r.top * place.scale,
@@ -72,13 +85,19 @@ void main() {
         final layout = SplitLayout.of(puzzle, 1, target: LayoutTarget.phones);
         final text = hudText(puzzle);
         final hud = PuzzleCamera.hudPlace(layout, whole, box, text, padRects: pad);
-        final world = drawn(puzzle, box).world;
-        // One line, 538.62 wide, fits the world's 651.8 px of width, so it is
-        // the form: 0.22 + 0.02 + 13 characters at 0.04 x 0.55 = 0.526 of the
-        // shorter side wide, and 0.08 + 0.02 + 0.012 = 0.112 high.
+        // Since m13 s18 a one-board round fills the box with one world, so the
+        // world is the camera's one-board place: the boat fills a portrait
+        // iPad's width, the house's taller board stops a little short of it,
+        // clear of the pad.
+        final world = drawn(puzzle, box, split: false, padRects: pad).world;
+        // One line, 538.62 wide, fits the world's width, so it is the form:
+        // 0.22 + 0.02 + 13 characters at 0.04 x 0.55 = 0.526 of the shorter
+        // side wide, and 0.08 + 0.02 + 0.012 = 0.112 high.
         expect(hud.form, HudForm.oneLine);
-        expect(hud.rect.left, closeTo(world.left, 1e-9));
         expect(hud.rect.top, closeTo(world.bottom + PuzzleCamera.hudWorldGapPx, 1e-9));
+        // It starts right of a pad whose band it meets, its air kept: the left
+        // stick's disc on the owner's iPad, the D-pad's arms on the smaller.
+        expect(hud.rect.left, greaterThanOrEqualTo(world.left));
         expect(hud.rect.width, closeTo(0.526 * box.width, 0.01));
         expect(hud.rect.height, closeTo(0.112 * box.width, 0.01));
         // Its clock is 0.08 of the shorter side, not of the height: 81.92 at
@@ -88,6 +107,7 @@ void main() {
           expect(hud.rect.overlaps(rect), isFalse, reason: 'the clock area meets $rect');
         }
         expect(pad.every((p) => !p.inflate(PuzzleCamera.mirrorGapPx).overlaps(hud.rect)), isTrue);
+        expect(hud.rect.right, lessThanOrEqualTo(world.right + 1e-9));
         expect(hud.rect.bottom, lessThan(box.height));
         expect(hud.rect.right, lessThanOrEqualTo(box.width));
       });
@@ -121,9 +141,10 @@ void main() {
       final puzzle = load('house');
       final layout = SplitLayout.of(puzzle, 1, target: LayoutTarget.phones);
       final world = drawn(puzzle, iPadSmall).world;
-      // The pad sits right under the world, across the box: no form fits there.
+      // The pad sits right under the top world of the race's two, across the
+      // box: no form fits there.
       final pad = [Rect.fromLTWH(0, world.bottom, iPadSmall.width, 500)];
-      final hud = PuzzleCamera.hudPlace(layout, whole, iPadSmall, hudText(puzzle), padRects: pad);
+      final hud = PuzzleCamera.hudPlace(layout, whole, iPadSmall, hudText(puzzle), padRects: pad, split: true);
       final board = drawn(puzzle, iPadSmall).board;
       expect(hud.form, HudForm.corner);
       expect(hud.rect.left, closeTo(board.left + PuzzleCamera.hudCornerMarginPx, 1e-9));
