@@ -8,7 +8,7 @@ import 'support/pump_app.dart';
 
 /// This phone's sound (M13 design section 8): a phone that hosts plays the
 /// lobby music on its own picker, a phone that joins a TV never plays it, and
-/// the Settings screen works the Sound volume and Music rows.
+/// the Settings screen works the Mute, Sounds and Music rows.
 void main() {
   setUpAll(loadPuzzles);
 
@@ -37,15 +37,18 @@ void main() {
     expect(sounds.loopStarts, isEmpty, reason: 'a joined phone never plays it');
   });
 
-  testWidgets('the Settings screen shows the Sound volume and Music rows', (tester) async {
+  testWidgets('the Settings screen shows the Mute, Sounds and Music rows', (tester) async {
     await pumpApp(tester, paired: true);
     await openSettings(tester);
-    await scrollTo(tester, find.byKey(const Key('soundMusic')));
+    await scrollTo(tester, find.byKey(const Key('musicVolume')));
 
     expect(find.byKey(const Key('soundVolume')), findsOneWidget);
-    expect(find.byKey(const Key('soundMusic')), findsOneWidget);
-    expect(find.text(party.HostText.soundVolume), findsOneWidget);
+    expect(find.byKey(const Key('musicVolume')), findsOneWidget);
+    expect(find.text(party.HostText.sounds), findsOneWidget);
     expect(find.text(party.HostText.music), findsOneWidget);
     expect(find.text(party.HostText.musicLine), findsOneWidget);
+    // Owner, Nov 9, 2026: Mute silences the music and every sound.
+    expect(find.byKey(const Key('soundMute')), findsOneWidget);
+    expect(find.text(party.HostText.mute), findsOneWidget);
   });
 }

@@ -87,21 +87,31 @@ void main() {
     expect(sounds.loopStarts, ['lobby', 'lobby']);
   });
 
-  testWidgets('Music off stops the loop on the picker, and on starts it again', (tester) async {
-    await pumpHost(tester, screen: const StubHome());
-    await openPicker(tester);
-    expect(sounds.loop, 'lobby');
-    final container = ProviderScope.containerOf(tester.element(find.byType(GamesScreen)));
+  testWidgets(
+    'Music at 0% stops the loop on the picker, turned up starts it again, and Mute leaves it running silent',
+    (tester) async {
+      await pumpHost(tester, screen: const StubHome());
+      await openPicker(tester);
+      expect(sounds.loop, 'lobby');
+      final container = ProviderScope.containerOf(tester.element(find.byType(GamesScreen)));
 
-    container.read(soundSettingsProvider.notifier).setMusic(false);
-    await tester.pump();
-    expect(sounds.loop, isNull, reason: 'Music off stops it');
+      container.read(soundSettingsProvider.notifier).setMusicVolume(0);
+      await tester.pump();
+      expect(sounds.loop, isNull, reason: 'Music at 0% stops it');
 
-    container.read(soundSettingsProvider.notifier).setMusic(true);
-    await tester.pump();
-    expect(sounds.loop, 'lobby', reason: 'and on starts it again');
-    expect(sounds.loopStarts, ['lobby', 'lobby']);
-  });
+      container.read(soundSettingsProvider.notifier).setMusicVolume(50);
+      await tester.pump();
+      expect(sounds.loop, 'lobby', reason: 'and turned up starts it again');
+      expect(sounds.loopStarts, ['lobby', 'lobby']);
+
+      // Mute silences it through the volume and leaves it running, so unmuting
+      // carries on where the music is rather than from its start.
+      container.read(soundSettingsProvider.notifier).setMuted(true);
+      await tester.pump();
+      expect(sounds.loop, 'lobby');
+      expect(sounds.loopStarts, ['lobby', 'lobby']);
+    },
+  );
 
   testWidgets('a hidden app stops the music, and it starts again when shown', (tester) async {
     await pumpHost(tester, screen: const StubHome());

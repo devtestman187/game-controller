@@ -60,14 +60,18 @@ void main() {
     expect(container.read(toyLookProvider).backdrop, isNull);
   });
 
-  testWidgets('the Sound volume and Music rows draw in Sunny and Night', (tester) async {
+  testWidgets('the Mute, Sounds and Music rows draw in Sunny and Night', (tester) async {
     await pumpHost(tester, screen: const LookAndSoundScreen());
     for (final palette in ['Sunny', 'Night']) {
       expect(find.byKey(const Key('soundVolume')), findsOneWidget, reason: palette);
-      expect(find.byKey(const Key('soundMusic')), findsOneWidget, reason: palette);
-      expect(find.text('Sound volume'), findsOneWidget);
+      expect(find.byKey(const Key('musicVolume')), findsOneWidget, reason: palette);
+      expect(find.byKey(const Key('soundMute')), findsOneWidget, reason: palette);
+      expect(find.text('Mute'), findsOneWidget);
+      expect(find.text('Silences the music and every sound on this device.'), findsOneWidget);
+      expect(find.text('Sounds'), findsOneWidget);
       expect(find.text('80%'), findsOneWidget);
       expect(find.text('Music'), findsOneWidget);
+      expect(find.text('60%'), findsOneWidget);
       expect(find.text('Plays on the game picker and join screen.'), findsOneWidget);
 
       await tester.tap(find.text(palette));
@@ -75,10 +79,10 @@ void main() {
     }
   });
 
-  testWidgets('the volume slider steps by 10 and saves, and Music saves', (tester) async {
+  testWidgets('the Sounds slider steps by 10 and saves, and the Music slider saves', (tester) async {
     await pumpHost(tester, screen: const LookAndSoundScreen());
     final container = _container(tester);
-    expect(container.read(soundSettingsProvider).volume, 80);
+    expect(container.read(soundSettingsProvider).soundVolume, 80);
 
     // The slider takes the focus like the rows beside it, and right steps it by
     // a tenth (the remote's and the phone's way to move it).
@@ -92,16 +96,30 @@ void main() {
 
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
     await tester.pump();
-    expect(container.read(soundSettingsProvider).volume, 90);
+    expect(container.read(soundSettingsProvider).soundVolume, 90);
     expect(container.read(lookPrefsProvider).getInt('sound.volume'), 90);
 
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
     await tester.pump();
-    expect(container.read(soundSettingsProvider).volume, 80, reason: 'left steps back by ten');
+    expect(container.read(soundSettingsProvider).soundVolume, 80, reason: 'left steps back by ten');
 
-    await tester.tap(find.byKey(const Key('soundMusic')));
+    final music = tester
+        .widgetList<Focus>(find.descendant(of: find.byKey(const Key('musicVolume')), matching: find.byType(Focus)))
+        .firstWhere((f) => f.focusNode != null);
+    music.focusNode!.requestFocus();
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+    await tester.pump();
+    expect(container.read(soundSettingsProvider).musicVolume, 50);
+    expect(container.read(lookPrefsProvider).getInt('sound.musicVolume'), 50);
+  });
+
+  testWidgets('Mute saves', (tester) async {
+    await pumpHost(tester, screen: const LookAndSoundScreen());
+    final container = _container(tester);
+    await tester.tap(find.byKey(const Key('soundMute')));
     await tester.pumpAndSettle();
-    expect(container.read(soundSettingsProvider).music, isFalse);
-    expect(container.read(lookPrefsProvider).getBool('sound.music'), isFalse);
+    expect(container.read(soundSettingsProvider).muted, isTrue);
+    expect(container.read(lookPrefsProvider).getBool('sound.muted'), isTrue);
   });
 }

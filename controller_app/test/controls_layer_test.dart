@@ -193,13 +193,23 @@ void main() {
       expect(find.text('Button visibility (opacity)'), findsOneWidget);
       expect(find.text('How much you can see the buttons when a game is behind them'), findsOneWidget);
       expect(tester.widget<Slider>(slider).value, ControlsSettings.defaultOpacity);
-      expect(find.text('60%'), findsOneWidget, reason: 'the section shows its value');
+      // The row's own value: the Look and sound section's Music volume also
+      // reads 60% (M13 step 7).
+      final row = find.ancestor(
+        of: slider,
+        matching: find.byWidgetPredicate((w) => '${w.runtimeType}' == '_SliderRow'),
+      );
+      expect(
+        find.descendant(of: row, matching: find.text('60%')),
+        findsOneWidget,
+        reason: 'the section shows its value',
+      );
 
       await slideTo(tester, slider, 0.3);
       // The division steps leave a last-digit rounding error (0.30000000000000004).
       expect(tester.widget<Slider>(slider).value, closeTo(0.3, 1e-9));
       expect(app.prefs.getDouble('controlsOpacity'), closeTo(0.3, 1e-9));
-      expect(find.text('30%'), findsOneWidget);
+      expect(find.descendant(of: row, matching: find.text('30%')), findsOneWidget);
     });
 
     testWidgets('a saved opacity comes back on the next launch', (tester) async {

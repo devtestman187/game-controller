@@ -25,9 +25,13 @@ class FakeSoundPlayer implements SoundPlayer {
   /// The names of the sounds stopped while they played.
   final stopped = <String>[];
 
-  /// The master volume last set, 0 to 1: 1 until something turns it down.
+  /// The sounds' volume last set, 0 to 1: 1 until something turns it down.
   @override
   double volume = 1;
+
+  /// The music's volume last set, 0 to 1: 1 until something turns it down.
+  @override
+  double musicVolume = 1;
 
   @override
   void playLoop(String name) {

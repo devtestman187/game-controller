@@ -66,10 +66,16 @@ abstract class SoundPlayer {
   /// round stands still, so no "go" sounds over it.
   void stop(String name);
 
-  /// The master volume every sound plays at: 0 is silence, 1 the files' own
+  /// The volume the game's sounds play at: 0 is silence, 1 the files' own
   /// loudness. It stays as it was set across a [load] and a [restart].
   double get volume;
   set volume(double value);
+
+  /// The volume the loop (the lobby music) plays at, apart from the sounds'
+  /// (owner, Nov 9, 2026: one volume for the music and one for the sounds). A
+  /// change reaches a loop already playing.
+  double get musicVolume;
+  set musicVolume(double value);
 
   /// Stops the engine and releases the sounds.
   Future<void> dispose();
@@ -149,8 +155,7 @@ class SoLoudSoundPlayer implements SoundPlayer {
     start?.step(HostStartStep.soundsLoaded);
     _set(SoundStatus(engine: 'flutter_soloud', ready: true, files: files));
     // What was asked for while the sounds were loading, or before a restart:
-    // the volume, and the loop that should be playing (M13 section 8).
-    _applyVolume();
+    // the loop that should be playing, at the music's volume (M13 section 8).
     _applyLoop();
   }
 
@@ -186,7 +191,7 @@ class SoLoudSoundPlayer implements SoundPlayer {
     try {
       final previous = _playing[key];
       if (previous != null && soloud.getIsValidVoiceHandle(previous)) unawaited(soloud.stop(previous));
-      _playing[key] = soloud.play(source);
+      _playing[key] = soloud.play(source, volume: _wish.volume);
     } catch (e) {
       _log('Could not play the $name sound: $e');
     }
@@ -221,9 +226,22 @@ class SoLoudSoundPlayer implements SoundPlayer {
   double get volume => _wish.volume;
 
   @override
-  set volume(double value) {
-    _wish = _wish.withVolume(value);
-    _applyVolume();
+  set volume(double value) => _wish = _wish.withVolume(value);
+
+  @override
+  double get musicVolume => _wish.musicVolume;
+
+  @override
+  set musicVolume(double value) {
+    _wish = _wish.withMusicVolume(value);
+    final handle = _loop;
+    if (handle == null) return;
+    final soloud = SoLoud.instance;
+    try {
+      if (soloud.getIsValidVoiceHandle(handle)) soloud.setVolume(handle, _wish.musicVolume);
+    } catch (e) {
+      _log('Could not set the music volume: $e');
+    }
   }
 
   /// Makes the engine play the loop this player has been asked for (M13 section
@@ -257,22 +275,10 @@ class SoLoudSoundPlayer implements SoundPlayer {
     if (key == null || source == null) return;
     final soloud = SoLoud.instance;
     try {
-      _loop = soloud.play(source, looping: true);
+      _loop = soloud.play(source, looping: true, volume: _wish.musicVolume);
       _loopName = name;
     } catch (e) {
       _log('Could not play the $name loop: $e');
-    }
-  }
-
-  /// Sets the engine's master volume to what this player has been asked for
-  /// (M13 section 8). Nothing happens before the engine is up: the load applies
-  /// it when it ends.
-  void _applyVolume() {
-    if (!_status.ready) return;
-    try {
-      SoLoud.instance.setGlobalVolume(_wish.volume);
-    } catch (e) {
-      _log('Could not set the sound volume: $e');
     }
   }
 

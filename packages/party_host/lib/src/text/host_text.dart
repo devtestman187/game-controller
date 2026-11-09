@@ -340,7 +340,8 @@ abstract final class HostText {
   static const night = 'Night';
   static const effects = 'Effects';
   static const effectsLine = 'Moving backgrounds, shading and bounces. Turn off on a slow device.';
-  static const soundVolume = 'Sound volume';
+  static const mute = 'Mute';
+  static const muteLine = 'Silences the music and every sound on this device.';
   static const music = 'Music';
   static const musicLine = 'Plays on the game picker and join screen.';
 

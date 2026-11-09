@@ -34,15 +34,25 @@ void main() {
     expect(wished.volume, 0.3);
   });
 
-  test('the volume is clamped to silence and to full', () {
+  test('both volumes are clamped to silence and to full', () {
     expect(const SoundWish().withVolume(1.4).volume, 1.0);
     expect(const SoundWish().withVolume(-0.2).volume, 0.0);
+    expect(const SoundWish().withMusicVolume(1.4).musicVolume, 1.0);
+    expect(const SoundWish().withMusicVolume(-0.2).musicVolume, 0.0);
+  });
+
+  test('the music volume is its own, and survives the loop changing', () {
+    final wish = const SoundWish().withVolume(0.8).withMusicVolume(0.4).withLoop('lobby').withLoop(null);
+    expect(wish.volume, 0.8);
+    expect(wish.musicVolume, 0.4);
   });
 
   test('the real player keeps what it is asked for without an engine', () async {
     final player = SoLoudSoundPlayer();
     player.volume = 0.3;
+    player.musicVolume = 0.2;
     expect(player.volume, 0.3, reason: 'kept before the sounds are in');
+    expect(player.musicVolume, 0.2);
     player.playLoop('lobby');
     player.stopLoop();
     await player.dispose();

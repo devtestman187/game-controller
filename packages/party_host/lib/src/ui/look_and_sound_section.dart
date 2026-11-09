@@ -8,7 +8,7 @@ import '../sound_settings.dart';
 
 /// The Look and sound settings (M13, docs/design/look-and-sound.md section 8):
 /// which palette this device shows, whether its effects are on, how loud its
-/// sounds play and whether the lobby music does.
+/// sounds and its lobby music play, and Mute, which silences both.
 ///
 /// It's the section only, with no card of its own: the phone's Settings screen
 /// puts it in a card like the sections beside it, and the TV's
@@ -79,8 +79,9 @@ class _LookRows extends ConsumerWidget {
   }
 }
 
-/// The sound's rows: the master volume, 0 to 100 in ten steps, and the Music
-/// switch for the lobby music.
+/// The sound's rows (owner, Nov 9, 2026): Mute, which silences the music and
+/// every sound, then a volume for the sounds and one for the music, each 0 to
+/// 100 in ten steps. Music at 0 doesn't play.
 class _SoundRows extends ConsumerWidget {
   const _SoundRows();
 
@@ -92,29 +93,66 @@ class _SoundRows extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Expanded(child: Text(HostText.soundVolume, style: type.body)),
-            Text(HostText.percent(sound.volume), style: type.body),
-          ],
-        ),
-        Slider(
-          key: const Key('soundVolume'),
-          value: sound.volume.toDouble(),
-          max: SoundSettings.maxVolume.toDouble(),
-          divisions: SoundSettings.maxVolume ~/ SoundSettings.stepPercent,
-          onChanged: (value) => notifier.setVolume(value.round()),
-        ),
         Material(
           type: MaterialType.transparency,
           child: SwitchListTile(
-            key: const Key('soundMusic'),
+            key: const Key('soundMute'),
             contentPadding: EdgeInsets.zero,
-            title: const Text(HostText.music),
-            subtitle: const Text(HostText.musicLine),
-            value: sound.music,
-            onChanged: notifier.setMusic,
+            title: const Text(HostText.mute),
+            subtitle: const Text(HostText.muteLine),
+            value: sound.muted,
+            onChanged: notifier.setMuted,
           ),
+        ),
+        _VolumeRow(
+          key: const Key('soundVolume'),
+          label: HostText.sounds,
+          percent: sound.soundVolume,
+          onChanged: notifier.setSoundVolume,
+        ),
+        _VolumeRow(
+          key: const Key('musicVolume'),
+          label: HostText.music,
+          percent: sound.musicVolume,
+          onChanged: notifier.setMusicVolume,
+        ),
+        Text(HostText.musicLine, style: type.body),
+      ],
+    );
+  }
+}
+
+/// One volume: its name and percentage on a line, and a slider, 0 to 100 in
+/// ten steps, below them. The slider takes the row's key, so a test or the
+/// remote finds it by it.
+class _VolumeRow extends StatelessWidget {
+  const _VolumeRow({required Key key, required this.label, required this.percent, required this.onChanged})
+    : _sliderKey = key,
+      super();
+
+  final Key _sliderKey;
+  final String label;
+  final int percent;
+  final ValueChanged<int> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final type = ToyLookScope.of(context).type;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(child: Text(label, style: type.body)),
+            Text(HostText.percent(percent), style: type.body),
+          ],
+        ),
+        Slider(
+          key: _sliderKey,
+          value: percent.toDouble(),
+          max: SoundSettings.maxVolume.toDouble(),
+          divisions: SoundSettings.maxVolume ~/ SoundSettings.stepPercent,
+          onChanged: (value) => onChanged(value.round()),
         ),
       ],
     );

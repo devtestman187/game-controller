@@ -280,17 +280,15 @@ final hostStartLogProvider = Provider<HostStartLog>((ref) => HostStartLog(ref.wa
 
 /// The host's sounds. Overridden in tests with a FakeSoundPlayer.
 ///
-/// It plays at this device's volume (M13 design section 8): the Sound volume
-/// setting is applied here, where the player lives, so it follows the TV, the
-/// Windows app, the host phone and a joined phone's game sounds alike.
+/// It plays at this device's Sounds and Music volumes, silent while muted (M13
+/// design section 8), applied here where the player lives: the TV, the Windows
+/// app, the host phone and a joined phone's game sounds alike.
 final soundPlayerProvider = Provider<SoundPlayer>((ref) {
   final player = SoLoudSoundPlayer(log: ref.watch(logProvider).sink('sound'), start: ref.watch(hostStartLogProvider));
   unawaited(player.load());
-  ref.listen(
-    soundSettingsProvider.select((s) => s.volume),
-    (_, percent) => player.volume = percent / SoundSettings.maxVolume,
-    fireImmediately: true,
-  );
+  final settings = soundSettingsProvider;
+  ref.listen(settings.select((s) => s.soundLevel), (_, level) => player.volume = level, fireImmediately: true);
+  ref.listen(settings.select((s) => s.musicLevel), (_, level) => player.musicVolume = level, fireImmediately: true);
   ref.onDispose(player.dispose);
   return player;
 });

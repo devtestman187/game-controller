@@ -7,7 +7,7 @@
 /// Flutter. One loop at a time: the same name again is no change, so the music
 /// never restarts.
 final class SoundWish {
-  const SoundWish({this.loop, this.volume = fullVolume});
+  const SoundWish({this.loop, this.volume = fullVolume, this.musicVolume = fullVolume});
 
   /// The volume of a player nothing has turned down: every sound at the
   /// loudness its file has.
@@ -16,14 +16,23 @@ final class SoundWish {
   /// The name of the loop that should be sounding, or null for none.
   final String? loop;
 
-  /// The master volume, 0 (silence) to [fullVolume].
+  /// The volume the game's sounds play at, 0 (silence) to [fullVolume].
   final double volume;
 
+  /// The volume the loop (the lobby music) plays at, 0 to [fullVolume]: its
+  /// own, so the music and the sounds are set apart (owner, Nov 9, 2026).
+  final double musicVolume;
+
   /// The same wish with [name] looping, or with no loop for null.
-  SoundWish withLoop(String? name) => SoundWish(loop: name, volume: volume);
+  SoundWish withLoop(String? name) => SoundWish(loop: name, volume: volume, musicVolume: musicVolume);
 
   /// The same wish at [value], clamped to 0..[fullVolume].
-  SoundWish withVolume(double value) => SoundWish(loop: loop, volume: value.clamp(0.0, fullVolume).toDouble());
+  SoundWish withVolume(double value) => SoundWish(loop: loop, volume: _clamp(value), musicVolume: musicVolume);
+
+  /// The same wish with the music at [value], clamped to 0..[fullVolume].
+  SoundWish withMusicVolume(double value) => SoundWish(loop: loop, volume: volume, musicVolume: _clamp(value));
+
+  static double _clamp(double value) => value.clamp(0.0, fullVolume).toDouble();
 
   /// Whether the loop [sounding] must stop before this wish is carried out: it
   /// must when a loop sounds and it isn't the one wanted.
@@ -34,8 +43,9 @@ final class SoundWish {
   String? startsFrom(String? sounding) => loop == sounding ? null : loop;
 
   @override
-  bool operator ==(Object other) => other is SoundWish && other.loop == loop && other.volume == volume;
+  bool operator ==(Object other) =>
+      other is SoundWish && other.loop == loop && other.volume == volume && other.musicVolume == musicVolume;
 
   @override
-  int get hashCode => Object.hash(loop, volume);
+  int get hashCode => Object.hash(loop, volume, musicVolume);
 }

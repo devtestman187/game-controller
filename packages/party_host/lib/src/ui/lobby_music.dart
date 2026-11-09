@@ -81,9 +81,10 @@ class LobbyMusic {
     settle();
   }
 
-  /// The music is wanted now: a lobby is open, no round is, the Music setting
-  /// is on, and the app is shown.
-  bool get isWanted => _lobbies > 0 && _rounds == 0 && _shown && _ref.read(soundSettingsProvider).music;
+  /// The music is wanted now: a lobby is open, no round is, the Music volume
+  /// isn't 0, and the app is shown. Mute doesn't stop it: it silences it
+  /// through the volume, so unmuting carries on where the music is.
+  bool get isWanted => _lobbies > 0 && _rounds == 0 && _shown && _ref.read(soundSettingsProvider).musicVolume > 0;
 
   /// Applies a change after the frame, once the whole frame has said what it
   /// wants: the music stops and starts only when what is wanted changed.
@@ -142,8 +143,8 @@ class LobbyMusic {
 /// it, and it is disposed with the host's scope.
 final lobbyMusicProvider = Provider<LobbyMusic>((ref) {
   final music = LobbyMusic(ref);
-  // Music off stops it on the picker, and on starts it again.
-  ref.listen(soundSettingsProvider.select((s) => s.music), (_, _) => music.settle());
+  // Music turned to 0 stops it on the picker, and turned up starts it again.
+  ref.listen(soundSettingsProvider.select((s) => s.musicVolume > 0), (_, _) => music.settle());
   ref.onDispose(music.dispose);
   return music;
 });
