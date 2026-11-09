@@ -6,6 +6,7 @@ import 'package:toy_look/toy_look.dart';
 
 import '../text/host_text.dart';
 import '../providers.dart';
+import 'host_focus_ring.dart';
 
 /// The room the title bar leaves around its title, and after its actions.
 const hostTitleBarPaddingPx = 16.0;
@@ -108,12 +109,14 @@ class _HostTitleBar extends StatelessWidget {
           key: const Key('hostTitleBar'),
           children: [
             if (Navigator.of(context).canPop())
-              IconButton(
-                key: const Key('hostTitleBarBack'),
-                tooltip: HostText.back,
-                color: colors.onBackground,
-                icon: const Icon(Icons.arrow_back),
-                onPressed: () => Navigator.of(context).maybePop(),
+              HostFocusRing(
+                child: IconButton(
+                  key: const Key('hostTitleBarBack'),
+                  tooltip: HostText.back,
+                  color: colors.onBackground,
+                  icon: const Icon(Icons.arrow_back),
+                  onPressed: () => Navigator.of(context).maybePop(),
+                ),
               ),
             Expanded(
               child: Padding(

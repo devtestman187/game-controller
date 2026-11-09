@@ -7,6 +7,7 @@ import 'package:toy_look/toy_look.dart';
 import '../text/host_text.dart';
 import '../providers.dart';
 import 'host_button.dart';
+import 'host_focus_ring.dart';
 import 'host_screen.dart';
 
 /// The puzzle's playtest settings (PRD v2 T16): every tuning value, saved on
@@ -90,14 +91,16 @@ class PuzzleSettingsScreen extends ConsumerWidget {
       // A tile paints its ink on the nearest Material, and a toy card's paper
       // is a ColoredBox: a Material of its own gives the tile somewhere to
       // paint (as the Look and sound section does).
-      child: Material(
-        type: MaterialType.transparency,
-        child: SwitchListTile(
-          key: const Key('setting-dropReadyHighlight'),
-          title: Text(HostText.dropReadyHighlight, style: look.type.button),
-          subtitle: Text(HostText.dropReadyLine, style: look.type.body),
-          value: s.dropReadyHighlight,
-          onChanged: (v) => notifier.set(s.withValue('dropReadyHighlight', v)),
+      child: HostFocusRing(
+        child: Material(
+          type: MaterialType.transparency,
+          child: SwitchListTile(
+            key: const Key('setting-dropReadyHighlight'),
+            title: Text(HostText.dropReadyHighlight, style: look.type.button),
+            subtitle: Text(HostText.dropReadyLine, style: look.type.body),
+            value: s.dropReadyHighlight,
+            onChanged: (v) => notifier.set(s.withValue('dropReadyHighlight', v)),
+          ),
         ),
       ),
     );

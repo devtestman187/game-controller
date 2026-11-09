@@ -44,6 +44,7 @@ export 'src/ui/game_screen.dart';
 export 'src/ui/games_screen.dart';
 export 'src/ui/host_button.dart';
 export 'src/ui/host_card_focus.dart';
+export 'src/ui/host_focus_ring.dart';
 export 'src/ui/host_focus_scope.dart';
 export 'src/ui/host_screen.dart';
 export 'src/ui/host_shortcuts.dart';

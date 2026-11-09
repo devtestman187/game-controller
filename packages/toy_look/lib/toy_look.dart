@@ -19,6 +19,7 @@ export 'src/toy_card.dart';
 export 'src/toy_character.dart';
 export 'src/toy_colors.dart';
 export 'src/toy_dash.dart';
+export 'src/toy_focus_ring.dart';
 export 'src/toy_font_licenses.dart';
 export 'src/toy_look.dart';
 export 'src/toy_look_scope.dart';

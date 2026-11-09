@@ -7,7 +7,9 @@ import 'package:toy_look/toy_look.dart';
 /// [ToyButton] does.
 ///
 /// The ring is drawn in the room this widget leaves round [child], so nothing of
-/// the card moves when the focus comes and goes.
+/// the card moves when the focus comes and goes. The painter sits outside that
+/// room, over the whole widget: inside it, it drew the ring under the card's
+/// own paper and ink edge and no part of it showed (m13 s21).
 class HostCardFocus extends StatelessWidget {
   const HostCardFocus({super.key, required this.isLit, required this.child});
 
@@ -21,12 +23,9 @@ class HostCardFocus extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final look = ToyLookScope.of(context);
-    return Padding(
-      padding: const EdgeInsets.all(ToySizes.focusRing),
-      child: CustomPaint(
-        painter: HostCardFocusPainter(look: look, isLit: isLit),
-        child: child,
-      ),
+    return CustomPaint(
+      painter: HostCardFocusPainter(look: look, isLit: isLit),
+      child: Padding(padding: const EdgeInsets.all(ToySizes.focusRing), child: child),
     );
   }
 }

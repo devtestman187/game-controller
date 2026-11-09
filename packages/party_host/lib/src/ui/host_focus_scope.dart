@@ -21,19 +21,24 @@ class HostFocusScope extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     if (!ref.watch(hostTouchFirstProvider)) return child;
     final showFocus = ref.watch(hostFocusLookProvider);
+    final theme = Theme.of(context);
     return Listener(
       // Any finger, on a button or not, counts; a translucent listener sees
       // those on empty space too and blocks nothing.
       behavior: HitTestBehavior.translucent,
       onPointerDown: (_) => ref.read(hostFocusLookProvider.notifier).touched(),
-      child: showFocus
-          ? child
-          : Theme(
-              // The look's own focus colour, drawn with no alpha at all, so no
-              // Material focus overlay shows while a thumb is on the screen.
-              data: Theme.of(context).copyWith(focusColor: ToyLookScope.of(context).colors.focus.withValues(alpha: 0)),
-              child: child,
-            ),
+      // The Theme is in the tree whether or not the look shows: swapping one in
+      // and out remounts everything below this widget, the menus included, and
+      // the menus then lose the buttons each phone held and throw away the next
+      // pad press (m13 s21).
+      child: Theme(
+        // The look's own focus colour, drawn with no alpha at all, so no
+        // Material focus overlay shows while a thumb is on the screen.
+        data: showFocus
+            ? theme
+            : theme.copyWith(focusColor: ToyLookScope.of(context).colors.focus.withValues(alpha: 0)),
+        child: child,
+      ),
     );
   }
 }

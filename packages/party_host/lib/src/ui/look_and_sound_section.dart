@@ -5,6 +5,7 @@ import 'package:toy_look/toy_look.dart';
 import '../text/host_text.dart';
 import '../look_providers.dart';
 import '../sound_settings.dart';
+import 'host_focus_ring.dart';
 
 /// The Look and sound settings (M13, docs/design/look-and-sound.md section 8):
 /// which palette this device shows, whether its effects are on, how loud its
@@ -45,16 +46,18 @@ class _LookRows extends ConsumerWidget {
       children: [
         Text(HostText.look, style: type.body),
         const SizedBox(height: ToySizes.space8),
-        SegmentedButton<LookChoice>(
-          key: const Key('lookChoice'),
-          segments: const [
-            ButtonSegment(value: LookChoice.auto, label: Text(HostText.auto)),
-            ButtonSegment(value: LookChoice.sunny, label: Text(HostText.sunny)),
-            ButtonSegment(value: LookChoice.night, label: Text(HostText.night)),
-          ],
-          selected: {settings.choice},
-          showSelectedIcon: false,
-          onSelectionChanged: (choices) => notifier.setChoice(choices.single),
+        HostFocusRing(
+          child: SegmentedButton<LookChoice>(
+            key: const Key('lookChoice'),
+            segments: const [
+              ButtonSegment(value: LookChoice.auto, label: Text(HostText.auto)),
+              ButtonSegment(value: LookChoice.sunny, label: Text(HostText.sunny)),
+              ButtonSegment(value: LookChoice.night, label: Text(HostText.night)),
+            ],
+            selected: {settings.choice},
+            showSelectedIcon: false,
+            onSelectionChanged: (choices) => notifier.setChoice(choices.single),
+          ),
         ),
         const SizedBox(height: ToySizes.space4),
         // The hours come from the setting's own rule, so the text and the
@@ -63,15 +66,17 @@ class _LookRows extends ConsumerWidget {
         // A tile paints its ink on the nearest Material, and a toy card's paper
         // is a ColoredBox: a Material of its own gives the tile somewhere to
         // paint, whichever card the section is put in.
-        Material(
-          type: MaterialType.transparency,
-          child: SwitchListTile(
-            key: const Key('lookEffects'),
-            contentPadding: EdgeInsets.zero,
-            title: const Text(HostText.effects),
-            subtitle: const Text(HostText.effectsLine),
-            value: settings.effects,
-            onChanged: notifier.setEffects,
+        HostFocusRing(
+          child: Material(
+            type: MaterialType.transparency,
+            child: SwitchListTile(
+              key: const Key('lookEffects'),
+              contentPadding: EdgeInsets.zero,
+              title: const Text(HostText.effects),
+              subtitle: const Text(HostText.effectsLine),
+              value: settings.effects,
+              onChanged: notifier.setEffects,
+            ),
           ),
         ),
       ],
@@ -93,15 +98,17 @@ class _SoundRows extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Material(
-          type: MaterialType.transparency,
-          child: SwitchListTile(
-            key: const Key('soundMute'),
-            contentPadding: EdgeInsets.zero,
-            title: const Text(HostText.mute),
-            subtitle: const Text(HostText.muteLine),
-            value: sound.muted,
-            onChanged: notifier.setMuted,
+        HostFocusRing(
+          child: Material(
+            type: MaterialType.transparency,
+            child: SwitchListTile(
+              key: const Key('soundMute'),
+              contentPadding: EdgeInsets.zero,
+              title: const Text(HostText.mute),
+              subtitle: const Text(HostText.muteLine),
+              value: sound.muted,
+              onChanged: notifier.setMuted,
+            ),
           ),
         ),
         _VolumeRow(
@@ -147,12 +154,14 @@ class _VolumeRow extends StatelessWidget {
             Text(HostText.percent(percent), style: type.body),
           ],
         ),
-        Slider(
-          key: _sliderKey,
-          value: percent.toDouble(),
-          max: SoundSettings.maxVolume.toDouble(),
-          divisions: SoundSettings.maxVolume ~/ SoundSettings.stepPercent,
-          onChanged: (value) => onChanged(value.round()),
+        HostFocusRing(
+          child: Slider(
+            key: _sliderKey,
+            value: percent.toDouble(),
+            max: SoundSettings.maxVolume.toDouble(),
+            divisions: SoundSettings.maxVolume ~/ SoundSettings.stepPercent,
+            onChanged: (value) => onChanged(value.round()),
+          ),
         ),
       ],
     );
