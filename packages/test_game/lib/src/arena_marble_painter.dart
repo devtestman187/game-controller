@@ -20,11 +20,6 @@ const pupilLookShare = 0.08;
 const pupilShare = 0.11;
 const eyeInkShare = 0.6;
 
-/// The player's number on the marble's lower half: its size and how far down
-/// it sits, as the worker's tummy number does (design 5a).
-const numberShare = 0.95;
-const numberDropShare = 0.56;
-
 /// A dashing marble's glow: how far it reaches and how strong it is (rule 2:
 /// 0.35 in `focus`).
 const dashGlowShare = 1.7;
@@ -43,11 +38,11 @@ const aimArmShare = 1.6;
 const aimInkShare = 1.0;
 const aimColourShare = 0.6;
 
-/// Draws the arena's marbles (rule 2): the glossy body in the player's colour
-/// through [toyShape], which is the look's shader and its first use — or the
-/// Canvas fallback — with two eyes that look the way the marble last moved
-/// (rule 3), the player's number on its lower half, the dash's glow and its
-/// cooldown ring, and the aim cursor.
+/// Draws the arena's marbles (rule 2): the glossy body in its character's
+/// colour through [toyShape], which is the look's shader and its first use — or
+/// the Canvas fallback — with two eyes that look the way the marble last moved
+/// (rule 3), its character's accessory on top (M13 design 5b), the dash's glow
+/// and its cooldown ring, and the aim cursor.
 ///
 /// A marble recovering from a hazard fades to [recoverFaintAlpha] and back,
 /// [recoverPulseHz] times a second, with effects on; with them off it is still
@@ -78,8 +73,10 @@ final class ArenaMarblePainter {
   /// One marble: its aim cursor, its glow, then its body and face (the fading
   /// ones inside a layer of their own alpha).
   void _paintOne(Canvas canvas, Size size, ArenaPlayerView player) {
-    final number = roster[player.id]?.number;
-    final colour = look.colors.player(number ?? 1);
+    // The player's number becomes a character in one place (design 5b), once a
+    // player a paint, and a later milestone hands a chosen character here.
+    final character = ToyCharacter.forPlayer(roster[player.id]?.number ?? 1);
+    final colour = character.colourIn(look.colors);
     final centre = Offset(player.x * size.width, player.y * size.height);
     final radius = snapshot.playerRadius * size.shortestSide;
     final aimX = player.aimX;
@@ -113,8 +110,7 @@ final class ArenaMarblePainter {
       shade: look.shade,
     );
     _eyes(canvas, centre, radius, moments.lookOf(player.id));
-    // The number only when there is another player to tell this one from.
-    if (number != null && roster.length > 1) _number(canvas, centre, radius, number);
+    paintAccessory(canvas, character.accessory, centre, radius, colour, look);
     if (player.cooldown > 0) _cooldown(canvas, centre, radius, player.cooldown);
     if (fades) canvas.restore();
   }
@@ -135,19 +131,6 @@ final class ArenaMarblePainter {
         ..drawOval(white, ring)
         ..drawCircle(at + glance, radius * pupilShare, pupil);
     }
-  }
-
-  /// The player's number on the marble's lower half, in the look's title
-  /// family and ink, as on the worker.
-  void _number(Canvas canvas, Offset centre, double radius, int number) {
-    final painter = TextPainter(
-      text: TextSpan(
-        text: '$number',
-        style: look.type.title.copyWith(fontSize: radius * numberShare, color: look.colors.ink, height: 1),
-      ),
-      textDirection: TextDirection.ltr,
-    )..layout();
-    painter.paint(canvas, centre + Offset(-painter.width / 2, radius * numberDropShare - painter.height / 2));
   }
 
   /// How much of the dash is left: a `focus` arc inside an ink one.

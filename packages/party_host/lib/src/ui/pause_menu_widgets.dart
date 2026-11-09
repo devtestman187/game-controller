@@ -1,8 +1,10 @@
 part of 'pause_menu.dart';
 
 /// The pause menu's card (M13 3b, mock-up `phone-paused`): a [ToyCard] headed
-/// `focus`, the badge of the player who paused beside who may resume, and Quit
-/// and Resume. It works the phones and the remote as it always did (m12).
+/// `focus`, the badge of the player who paused — wearing their character (M13
+/// 4c), in the room the card keeps above it for the accessory — beside who may
+/// resume, and Quit and Resume. It works the phones and the remote as it
+/// always did (m12).
 class _PauseMenu extends ConsumerWidget {
   const _PauseMenu({required this.pausedBy, required this.resumers});
 
@@ -27,21 +29,7 @@ class _PauseMenu extends ConsumerWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  ToyBadge(number: pausedBy.number, diameter: look.sizes.buttonHeight),
-                  const SizedBox(width: ToySizes.space12),
-                  Flexible(
-                    child: Text(
-                      only == null
-                          ? HostText.anyoneCanResume
-                          : HostText.resumers(HostText.resumerName(pausedBy.number)),
-                      style: look.type.body.copyWith(color: look.colors.ink),
-                    ),
-                  ),
-                ],
-              ),
+              _Pauser(number: pausedBy.number, anyone: only == null),
               const SizedBox(height: ToySizes.space16),
               Row(
                 mainAxisSize: MainAxisSize.min,
@@ -65,6 +53,39 @@ class _PauseMenu extends ConsumerWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Who paused: their badge, wearing their character (M13 4c), and who can
+/// resume. The accessory is drawn above the badge's box, so the row keeps room
+/// for it.
+class _Pauser extends StatelessWidget {
+  const _Pauser({required this.number, required this.anyone});
+
+  final int number;
+
+  /// Anyone can resume, not only the player who paused.
+  final bool anyone;
+
+  @override
+  Widget build(BuildContext context) {
+    final look = ToyLookScope.of(context);
+    return Padding(
+      padding: EdgeInsets.only(top: toyAccessoryHeadroom(look.sizes.buttonHeight)),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ToyBadge(number: number, diameter: look.sizes.buttonHeight, character: ToyCharacter.forPlayer(number)),
+          const SizedBox(width: ToySizes.space12),
+          Flexible(
+            child: Text(
+              anyone ? HostText.anyoneCanResume : HostText.resumers(HostText.resumerName(number)),
+              style: look.type.body.copyWith(color: look.colors.ink),
+            ),
+          ),
+        ],
       ),
     );
   }

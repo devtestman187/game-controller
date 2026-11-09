@@ -48,17 +48,24 @@ class _SidePanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final look = ToyLookScope.of(context);
+    final panelRoom = tight ? _tightPanelPaddingPx : _panelPaddingPx;
+    // Each row keeps the room its badge's accessory is drawn in (M13 4c); the
+    // panel's own padding is already above the first row, so that one keeps
+    // only what is left of it.
+    final headroom = rowBadgeHeadroom(look);
+    final firstRoom = math.max(0.0, headroom - panelRoom);
     final card = ToyCard(
       header: side == PuzzleSide.left ? HostText.leftSide : HostText.rightSide,
       headerColor: sideColor(look, side),
-      padding: EdgeInsets.all(tight ? _tightPanelPaddingPx : _panelPaddingPx),
+      padding: EdgeInsets.all(panelRoom),
       // Scrolls when the screen is too short for a full side (a landscape
       // phone hosting, with its own bar above): on a TV it always fits.
       scrollBody: true,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          for (final p in players) _PlayerRow(label: _label(p), number: p.number),
+          for (final (i, p) in players.indexed)
+            _PlayerRow(label: _label(p), number: p.number, roomAbove: i == 0 ? firstRoom : headroom),
           for (var i = players.length; i < maxPerSide; i++)
             _EmptySeat(roomLeft: i == players.length ? maxPerSide - players.length : null),
         ],
@@ -69,21 +76,30 @@ class _SidePanel extends StatelessWidget {
   }
 }
 
-/// One joined player's row: their badge and their name, on the paper.
+/// One joined player's row: their badge, wearing their character (M13 4c), and
+/// their name, on the paper. The row keeps [roomAbove] for the character's
+/// accessory, which is drawn above the badge's box.
 class _PlayerRow extends StatelessWidget {
-  const _PlayerRow({required this.label, required this.number});
+  const _PlayerRow({required this.label, required this.number, required this.roomAbove});
 
   final String label;
   final int number;
+
+  /// The room above the badge for its accessory, in pixels.
+  final double roomAbove;
 
   @override
   Widget build(BuildContext context) {
     final look = ToyLookScope.of(context);
     return Padding(
-      padding: const EdgeInsets.only(bottom: ToySizes.space4),
+      padding: EdgeInsets.only(top: roomAbove),
       child: Row(
         children: [
-          ToyBadge(number: number, diameter: look.sizes.buttonHeight * 0.75),
+          ToyBadge(
+            number: number,
+            diameter: look.sizes.buttonHeight * rowBadgeShare,
+            character: ToyCharacter.forPlayer(number),
+          ),
           const SizedBox(width: ToySizes.space12),
           Expanded(
             child: Text(
@@ -275,21 +291,37 @@ class _JoinButtons extends ConsumerWidget {
   }
 }
 
-/// How to pause and leave the round, said on the join screen so nothing is
-/// drawn over the boards in play (owner, Nov 8, 2026: "Is that text necessary
-/// when a game is in progress?"). Only on a TV or PC host: a phone host has its
-/// own pause button, and its join screen has no room to spare (bug 1107f).
-class _RoundHint extends StatelessWidget {
-  const _RoundHint({required this.keyboard});
+/// The join screen's instructions, and after them, on the same lines, how to
+/// pause and leave the round (owner, Nov 8, 2026: "Is that text necessary when
+/// a game is in progress?"): said here so nothing is drawn over the boards in
+/// play, and set inline after the instructions' last word, where the line has
+/// room, so the sides keep their height for four players and the title keeps
+/// its row (Claude's 4c review). [keyboard] is null on a phone host, which has
+/// its own pause button and no room to spare (bug 1107f): no hint there.
+class _JoinHint extends StatelessWidget {
+  const _JoinHint({required this.text, required this.keyboard});
 
-  final LocalPlayerSource keyboard;
+  final String text;
+  final LocalPlayerSource? keyboard;
 
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(top: _gapPx),
-    child: Align(
-      alignment: Alignment.centerRight,
-      child: PlayHint(puzzlePlayHint(keyboardAvailable: keyboard.available, keyboardHasPlayer: keyboard.hasPlayer)),
-    ),
-  );
+  Widget build(BuildContext context) {
+    final look = ToyLookScope.of(context);
+    final keys = keyboard;
+    return Text.rich(
+      TextSpan(
+        children: [
+          TextSpan(text: text),
+          if (keys != null) ...[
+            const TextSpan(text: '  '),
+            WidgetSpan(
+              alignment: PlaceholderAlignment.middle,
+              child: PlayHint(puzzlePlayHint(keyboardAvailable: keys.available, keyboardHasPlayer: keys.hasPlayer)),
+            ),
+          ],
+        ],
+      ),
+      style: look.type.button.copyWith(color: look.colors.onBackground),
+    );
+  }
 }

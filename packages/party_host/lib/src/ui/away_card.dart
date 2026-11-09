@@ -9,6 +9,7 @@ import '../players_away.dart';
 import '../providers.dart';
 import 'controller_menus.dart';
 import 'host_button.dart';
+import 'player_badge.dart';
 
 /// The buttons while the card is up: A "OK" and nothing else. The arrows still
 /// move the focus between the card's two buttons; B is hidden, and the card
@@ -153,11 +154,11 @@ class _AwayLine extends StatelessWidget {
     final look = ToyLookScope.of(context);
     final n = away.player.number;
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: ToySizes.space4),
+      padding: EdgeInsets.only(top: rowBadgeHeadroom(look), bottom: ToySizes.space4),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          ToyBadge(number: n, diameter: look.sizes.buttonHeight * 0.75),
+          ToyBadge(number: n, diameter: look.sizes.buttonHeight * rowBadgeShare, character: ToyCharacter.forPlayer(n)),
           const SizedBox(width: ToySizes.space12),
           Flexible(
             child: Column(

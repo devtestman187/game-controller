@@ -18,8 +18,7 @@ const _ringShare = 0.32;
 const _ringInkShare = 0.75;
 
 /// The face's shares of the body's radius: where and how big its eyes are, its
-/// pupil and how far it looks, where its mouth is and how wide, the number's
-/// size on its tummy and where it sits.
+/// pupil and how far it looks, where its mouth is and how wide.
 const _eyeOffsetShare = 0.34;
 const _eyeRiseShare = -0.3;
 const _eyeWideShare = 0.19;
@@ -28,8 +27,6 @@ const _pupilShare = 0.1;
 const _pupilLookShare = 0.07;
 const _mouthRiseShare = 0.12;
 const _mouthWideShare = 0.2;
-const _numberShare = 0.95;
-const _numberDropShare = 0.56;
 
 /// The arms' shares of the body's radius: how thick their ink edge is, how
 /// thick the player's colour inside it is, how big a mitten hand is, how far it
@@ -61,27 +58,30 @@ double _workerRadius(double px, double? pxPerMm) {
 }
 
 /// Draws every player of [snapshot] as the worker (design 5a), where M12 drew a
-/// dot: the pose the board's moments give it, its body in the player's colour
-/// with the number on its tummy, and its face. A view with no [workers] draws
-/// everyone standing empty-handed.
+/// dot: the pose the board's moments give it, its character's body colour and
+/// accessory (design 5b) and its face. A view with no [workers] draws everyone
+/// standing empty-handed.
 extension _WorkerPaint on PuzzlePainter {
   void _paintWorkers(Canvas canvas, PuzzleSnapshot snapshot, double px) {
     final radius = _workerRadius(px, pxPerMm);
     for (final p in snapshot.players) {
+      // The player's number becomes a character in one place (design 5b), once
+      // a player a paint, and a later milestone hands a chosen character here.
+      final character = ToyCharacter.forPlayer(p.number);
       final pose = workers?.poseOf(board, p.number, nowMs, effects: look.effects) ?? WorkerPose.on(Offset(p.x, p.y));
-      _worker(canvas, pose, number: p.number, radius: radius, px: px, look: look);
+      _worker(canvas, pose, character: character, radius: radius, px: px, look: look);
     }
   }
 }
 
 /// One worker (design 5a): its noodle arms and mitten hands, its round body in
-/// the player's colour with the number on its tummy, and its face — leaning
-/// about the point it stands on, squashed about its middle, and moved by the
-/// moment's hop or shake.
+/// its character's colour with its accessory on top (design 5b), and its face —
+/// leaning about the point it stands on, squashed about its middle, and moved
+/// by the moment's hop or shake.
 void _worker(
   Canvas canvas,
   WorkerPose pose, {
-  required int number,
+  required ToyCharacter character,
   required double radius,
   required double px,
   required ToyLook look,
@@ -99,7 +99,7 @@ void _worker(
   canvas
     ..translate(motion.dx * radius, motion.dy * radius)
     ..scale(pose.squash.x, pose.squash.y);
-  final colour = colours.player(number);
+  final colour = character.colourIn(colours);
   _workerArms(canvas, pose.hands, radius, ink, colour, colours);
   toyShape(
     canvas,
@@ -109,7 +109,9 @@ void _worker(
     shade: look.shade,
   );
   _workerFace(canvas, pose, radius, ink, colours);
-  _workerNumber(canvas, number, radius, look);
+  // The accessory is drawn inside the body's own turn, squash and hop, so it
+  // moves with the body (design 5b).
+  paintAccessory(canvas, character.accessory, Offset.zero, radius, colour, look);
   if (pose.sweat) {
     final at = _sweatAtShare * radius;
     canvas
@@ -274,19 +276,6 @@ void _workerEye(Canvas canvas, Offset at, double radius, Offset look, ToyColors 
   canvas
     ..drawOval(Rect.fromCenter(center: at, width: wide * 2, height: tall * 2), Paint()..color = colours.paper)
     ..drawCircle(at + pupil * radius * _pupilLookShare, radius * _pupilShare, Paint()..color = colours.ink);
-}
-
-/// The player's number on the worker's tummy, in the look's title type and its
-/// ink (design 5a).
-void _workerNumber(Canvas canvas, int number, double radius, ToyLook look) {
-  final painter = TextPainter(
-    text: TextSpan(
-      text: '$number',
-      style: look.type.title.copyWith(fontSize: radius * _numberShare, color: look.colors.ink, height: 1),
-    ),
-    textDirection: TextDirection.ltr,
-  )..layout();
-  painter.paint(canvas, Offset(-painter.width / 2, radius * _numberDropShare - painter.height / 2));
 }
 
 /// A stroke of [width] in [colour], its ends and corners round.

@@ -34,9 +34,9 @@ Puzzle cratePuzzle() => Puzzle.parse('''
   {"id": "crate", "shape": {"rect": [10, 10]}, "color": "#AA7744", "at": [10, 10], "big": true}
 ]}''');
 
-/// The crate in its tray at (10, 10), or held at (40, 50) by player 1 at
-/// [dot].
-PuzzleSnapshot crateSnapshot(Offset dot, {bool held = false}) => PuzzleSnapshot(
+/// The crate in its tray at (10, 10), or held at (40, 50) by player [number]
+/// at [dot].
+PuzzleSnapshot crateSnapshot(Offset dot, {bool held = false, int number = 1}) => PuzzleSnapshot(
   puzzleId: 'worker',
   timeLeftMs: 60000,
   phase: PuzzlePhase.playing,
@@ -49,7 +49,7 @@ PuzzleSnapshot crateSnapshot(Offset dot, {bool held = false}) => PuzzleSnapshot(
       holders: held ? const [1] : const [],
     ),
   ],
-  players: [PlayerView(number: 1, x: dot.dx, y: dot.dy, held: held ? 0 : null)],
+  players: [PlayerView(number: number, x: dot.dx, y: dot.dy, held: held ? 0 : null)],
 );
 
 /// A colour as the frames' pixels are: 0xRRGGBB.
@@ -119,25 +119,16 @@ void main() {
     }
   });
 
-  testWidgets("a worker's body is the player's colour, its number the ink", (tester) async {
+  testWidgets("a worker's body is the player's colour", (tester) async {
     for (final (name, look) in [('Sunny', sunny), ('Night', night)]) {
       final (width, height, bytes) = await frame(tester, crateSnapshot(dot), look: look);
       final middle = bodyMiddle(dot);
+      // Its number is gone from its tummy (M13 design 5b; the inverted test is
+      // worker_number_test).
       expect(
         colourGap(pixel(bytes, width, middle.dx.round(), middle.dy.round()), argb(look.colors.player(1))),
         lessThanOrEqualTo(8),
         reason: "$name: the body's middle is the player's colour",
-      );
-      // Its number on its tummy, below its mouth.
-      final tummy = Rect.fromCenter(
-        center: middle + Offset(0, 0.66 * bodyAcross / 2 * unitsPx),
-        width: bodyAcross * unitsPx * 0.5,
-        height: bodyAcross * unitsPx * 0.4,
-      );
-      expect(
-        count(bytes, width, tummy, argb(look.colors.ink)),
-        greaterThan(20),
-        reason: "$name: the number's ink on its tummy",
       );
     }
   });

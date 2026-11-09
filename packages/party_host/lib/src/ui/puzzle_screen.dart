@@ -19,6 +19,7 @@ import 'controller_menus.dart';
 import 'host_button.dart';
 import 'join_screen.dart';
 import 'pause_menu.dart';
+import 'player_badge.dart';
 
 part 'puzzle_screen_widgets.dart';
 

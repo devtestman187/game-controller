@@ -8,6 +8,7 @@ import 'package:protocol/protocol.dart';
 import 'package:puzzle_game/puzzle_game.dart';
 
 import 'support/host_harness.dart';
+import 'support/pixels.dart';
 
 /// A text inside one side's panel.
 Finder sideText(String side, String text) =>
@@ -143,7 +144,7 @@ void main() {
       expect(tester.widget<Text>(find.byKey(const Key('joinFormat'))).data, startsWith('1 player'));
       // The hint is the host phone's: tapping is the way in, and a phone that
       // joins uses A (rule 5).
-      expect(find.text('Tap a side to play; press A on a phone to join.'), findsOneWidget);
+      expect(find.textContaining('Tap a side to play; press A on a phone to join.'), findsOneWidget);
 
       await tester.tap(find.byKey(const Key('joinStart')));
       await navigated(tester);
@@ -233,7 +234,9 @@ void main() {
       await press(tester, fake, 'p1', GamepadButton.a);
       expect(sideText('left', 'P1 iPhone 3F1C'), findsOneWidget);
       expect(
-        find.text('Press A on your phone to join, then left or right to pick a side. Then A or Start begins.'),
+        find.textContaining(
+          'Press A on your phone to join, then left or right to pick a side. Then A or Start begins.',
+        ),
         findsOneWidget,
       );
 
@@ -369,6 +372,26 @@ void main() {
     for (final room in tester.widgetList<Text>(rooms)) {
       expect(room.style?.color, look.colors.inkSoft);
     }
+  });
+
+  testWidgets('each row wears its player\'s character, and has the room above it for the accessory', (tester) async {
+    final fake = await pumpHost(tester, screen: const StubHome());
+    fake.state = withController(fake.state, phoneInfo('p2', 2));
+    fake.emit();
+    await neutral(tester, fake, ['p1', 'p2']);
+    await openJoin(tester);
+    await press(tester, fake, 'p1', GamepadButton.a);
+    await press(tester, fake, 'p2', GamepadButton.a);
+
+    final look = ToyLookScope.of(tester.element(find.byType(JoinScreen)));
+    final right = find.descendant(of: find.byKey(const Key('side-right')), matching: find.byType(ToyBadge));
+    expect(tester.widget<ToyBadge>(right).character, ToyCharacter.forPlayer(2), reason: 'P2 wears the antenna');
+
+    // The antenna is drawn above the badge's box (design 5b), so the row keeps
+    // that room for it: ink above the disc, inside the card's paper.
+    final pixels = await screenPixels(tester);
+    final ink = accessoryInk(pixels, tester.getRect(right), argb(look.colors.ink), look.sizes.outlineWidth);
+    expect(ink, greaterThan(0), reason: 'the antenna is in the room the row keeps above the badge');
   });
 
   // Owner, Nov 8, 2026, on a picture of a race: "In the bottom right the text

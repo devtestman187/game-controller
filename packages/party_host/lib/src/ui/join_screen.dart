@@ -17,6 +17,7 @@ import 'controller_menus.dart';
 import 'host_button.dart';
 import 'host_screen.dart';
 import 'play_hint.dart';
+import 'player_badge.dart';
 import 'puzzle_screen.dart';
 
 part 'join_screen_widgets.dart';
@@ -316,7 +317,6 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
       for (final p in ref.watch(gamePlayersProvider))
         if (!p.away) p,
     ];
-    final look = ToyLookScope.of(context);
     final watching = [
       for (final p in players)
         if (!_teams.containsKey(p.id)) p,
@@ -341,9 +341,9 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text(
-                    _hint(hasOwnPlayer: ownHere != null, hasKeyboard: _keyboard.available),
-                    style: look.type.button.copyWith(color: look.colors.onBackground),
+                  _JoinHint(
+                    text: _hint(hasOwnPlayer: ownHere != null, hasKeyboard: _keyboard.available),
+                    keyboard: tight ? null : _keyboard,
                   ),
                   SizedBox(height: tight ? _tightGapPx : _hintGapPx),
                   Expanded(
@@ -359,7 +359,6 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
                   if (watching.isNotEmpty) _NotJoined(watching: watching),
                   SizedBox(height: tight ? _tightGapPx : _gapPx),
                   _JoinButtons(teams: _teams, ownPlayerId: ownHere, startFocus: _startFocus, onStart: _start),
-                  if (!tight) _RoundHint(keyboard: _keyboard),
                 ],
               ),
             ),

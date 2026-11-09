@@ -108,7 +108,7 @@ class _ResultSideRow extends StatelessWidget {
     final r = result.sides[side]!;
     final line = r.finished ? HostText.seconds(r.timeS!) : HostText.piecesPlaced(r.placed, total);
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: ToySizes.space4),
+      padding: EdgeInsets.only(top: rowBadgeHeadroom(look), bottom: ToySizes.space4),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -121,7 +121,11 @@ class _ResultSideRow extends StatelessWidget {
               ),
             ),
           for (final p in badges) ...[
-            ToyBadge(number: p.number, diameter: look.sizes.buttonHeight * 0.75),
+            ToyBadge(
+              number: p.number,
+              diameter: look.sizes.buttonHeight * rowBadgeShare,
+              character: ToyCharacter.forPlayer(p.number),
+            ),
             const SizedBox(width: ToySizes.space8),
           ],
           const SizedBox(width: ToySizes.space8),

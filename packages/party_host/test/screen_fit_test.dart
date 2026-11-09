@@ -142,4 +142,32 @@ void main() {
       expect(tester.takeException(), isNull);
     });
   }
+
+  // Claude's 4c review: with each badge's accessory given room above it, two
+  // players on a side no longer fitted a TV's side card, and the second row was
+  // cut in half. Four players must show whole on a TV, without scrolling.
+  testWidgets("four players show whole on a TV's join screen", (tester) async {
+    final fake = await pumpIn(tester, _tvSunny);
+    var state = fake.state;
+    for (final n in [2, 3, 4]) {
+      state = withController(state, phoneInfo('p$n', n));
+    }
+    fake.state = state;
+    fake.emit();
+    await neutral(tester, fake, ['p1', 'p2', 'p3', 'p4']);
+    await openJoin(tester);
+    for (final id in ['p1', 'p2', 'p3', 'p4']) {
+      await press(tester, fake, id, GamepadButton.a);
+    }
+    for (final side in ['left', 'right']) {
+      final card = tester.getRect(find.descendant(of: find.byKey(Key('side-$side')), matching: find.byType(ToyCard)));
+      final names = find.descendant(of: find.byKey(Key('side-$side')), matching: find.textContaining('Phone'));
+      expect(names, findsWidgets);
+      for (final name in tester.widgetList<Text>(names)) {
+        final rect = tester.getRect(find.text(name.data!));
+        expect(rect.bottom, lessThanOrEqualTo(card.bottom), reason: '${name.data} sits whole inside the $side card');
+      }
+    }
+    expect(tester.takeException(), isNull);
+  });
 }

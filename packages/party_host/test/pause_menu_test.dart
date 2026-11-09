@@ -9,6 +9,7 @@ import 'package:protocol/protocol.dart';
 import 'package:puzzle_game/puzzle_game.dart';
 
 import 'support/host_harness.dart';
+import 'support/pixels.dart';
 
 void main() {
   testWidgets('Start pauses for everyone; only the player who paused or Player 1 can resume; Quit goes to the '
@@ -300,5 +301,22 @@ void main() {
     await tester.pump();
     await tester.pump();
     expect(phase(), RoundPhase.playing);
+  });
+
+  testWidgets('the pause card wears the pauser\'s character, in the room the card keeps above it', (tester) async {
+    final fake = await openRace(tester);
+    await press(tester, fake, 'p2', GamepadButton.start);
+    await navigated(tester);
+    expect(find.byKey(const Key('pauseMenu')), findsOneWidget);
+
+    final look = ToyLookScope.of(tester.element(find.byKey(const Key('pauseMenu'))));
+    final badge = find.descendant(of: find.byKey(const Key('pauseMenu')), matching: find.byType(ToyBadge));
+    expect(tester.widget<ToyBadge>(badge).character, ToyCharacter.forPlayer(2), reason: 'P2 wears the antenna');
+
+    // The antenna is drawn above the badge's box (design 5b), so the card keeps
+    // that room for it under the header band.
+    final pixels = await screenPixels(tester);
+    final ink = accessoryInk(pixels, tester.getRect(badge), argb(look.colors.ink), look.sizes.outlineWidth);
+    expect(ink, greaterThan(0), reason: 'the antenna is in the room the card keeps above the badge');
   });
 }
