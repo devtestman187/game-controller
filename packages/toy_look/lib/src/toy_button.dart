@@ -1,20 +1,14 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'sticker_shadow.dart';
+import 'toy_dash.dart';
 import 'toy_look.dart';
 import 'toy_look_scope.dart';
 import 'toy_sizes.dart';
 
 /// The thin ink edge round the focus ring (design section 4).
 const _ringEdgeWidth = 1.5;
-
-/// The disabled pill's edge: 6 px of ink, then 4 px of paper (design section
-/// 4's dashed edge).
-const _dashOn = 6.0;
-const _dashOff = 4.0;
 
 /// How far inside the button's box the pill sits: the ink edge's outer half,
 /// the focus ring and half of its own edge, so the whole look stays in the
@@ -356,16 +350,8 @@ class ToyButtonPainter extends CustomPainter {
     );
   }
 
-  /// The disabled pill's dashed edge: [_dashOn] of ink, then [_dashOff] of gap,
-  /// round the pill.
-  void _paintDashed(Canvas canvas, Path pill) {
-    final paint = _edge();
-    for (final metric in pill.computeMetrics()) {
-      for (var start = 0.0; start < metric.length; start += _dashOn + _dashOff) {
-        canvas.drawPath(metric.extractPath(start, math.min(start + _dashOn, metric.length)), paint);
-      }
-    }
-  }
+  /// The disabled pill's dashed edge, round the pill (design section 4).
+  void _paintDashed(Canvas canvas, Path pill) => paintDashedEdge(canvas, pill, _edge());
 
   Paint _edge() => Paint()
     ..style = PaintingStyle.stroke

@@ -3,11 +3,14 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:party_host/party_host.dart'
+    show ToyColors, ToyLook, paintDashedEdge, paintStickerShadow, toyLookProvider;
 import 'package:protocol/protocol.dart';
 
 import '../layout.dart';
 import '../pad.dart';
 import '../providers.dart';
+import 'pad_drawing.dart';
 
 part 'face_buttons.dart';
 
@@ -48,6 +51,9 @@ class PressFlash<T> extends ConsumerStatefulWidget {
 
   static const duration = Duration(milliseconds: 180);
 
+  /// How strong the flash starts, before it fades out (today's 0.75).
+  static const alpha = 0.75;
+
   @override
   ConsumerState<PressFlash<T>> createState() => _PressFlashState<T>();
 }
@@ -75,29 +81,31 @@ class _PressFlashState<T> extends ConsumerState<PressFlash<T>> with SingleTicker
   @override
   Widget build(BuildContext context) => CustomPaint(
     key: const Key('pressFlash'),
-    foregroundPainter: _FlashPainter(_flash, () => _parts, widget.shapeOf),
+    // The flash is the look's paper, not white (M13 step 8, rule 3).
+    foregroundPainter: _FlashPainter(_flash, () => _parts, widget.shapeOf, ref.watch(toyLookProvider).colors.paper),
     child: widget.child,
   );
 }
 
 class _FlashPainter<T> extends CustomPainter {
-  _FlashPainter(this.flash, this.parts, this.shapeOf) : super(repaint: flash);
+  _FlashPainter(this.flash, this.parts, this.shapeOf, this.colour) : super(repaint: flash);
 
   final AnimationController flash;
   final Set<T> Function() parts;
   final Path Function(T part, Size size) shapeOf;
+  final Color colour;
 
   @override
   void paint(Canvas canvas, Size size) {
     if (flash.value >= 1) return;
-    final paint = Paint()..color = Colors.white.withValues(alpha: 0.75 * (1 - flash.value));
+    final paint = Paint()..color = colour.withValues(alpha: PressFlash.alpha * (1 - flash.value));
     for (final part in parts()) {
       canvas.drawPath(shapeOf(part, size), paint);
     }
   }
 
   @override
-  bool shouldRepaint(_FlashPainter<T> old) => false;
+  bool shouldRepaint(_FlashPainter<T> old) => old.colour != colour;
 }
 
 /// The D-pad's arms, for drawing and flashing: (direction, rectangle) in a
@@ -113,6 +121,22 @@ List<((int, int), Rect)> dpadArms(double s) {
   ];
 }
 
+/// How an arm's corners round, as a share of the square: today's 0.06.
+const _armRoundShare = 0.06;
+
+/// Where an arm's arrow points, how long it is and how wide, as shares of the
+/// square: today's 0.40, 0.30 and 0.06.
+const _arrowTipShare = 0.40;
+const _arrowBackShare = 0.30;
+const _arrowHalfShare = 0.06;
+
+/// An unlit arm's arrow is drawn at this alpha (today's 0.5).
+const _arrowOffAlpha = 0.5;
+
+/// The centre dot's radius as a share of the square: an arm's 0.28, with the
+/// arm at 0.34 of the square (today's).
+const _centreDotShare = 0.34 * 0.28;
+
 /// 8-way D-pad. Sliding the thumb changes direction without lifting.
 class DpadView extends ConsumerWidget {
   const DpadView({super.key});
@@ -121,7 +145,12 @@ class DpadView extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final input = ref.watch(padProvider);
     final pad = ref.read(padProvider.notifier);
-    final scheme = Theme.of(context).colorScheme;
+    // The pad is drawn from the look provider, not the scope: it is the look
+    // the app's scope is made of, and the controls layer is pumped on its own
+    // in a test with no scope above it.
+    final look = ref.watch(toyLookProvider);
+    // This phone's player colours a lit arm (player 1's before one is known).
+    final player = ref.watch(clientStateProvider.select((s) => s.player));
     // The lit arms (a diagonal lights two).
     final lit = {if (input.dx != 0) (input.dx, 0), if (input.dy != 0) (0, input.dy)};
     return LayoutBuilder(
@@ -137,17 +166,11 @@ class DpadView extends ConsumerWidget {
               pressed: lit,
               shapeOf: (dir, size) {
                 final rect = dpadArms(size.width).firstWhere((a) => a.$1 == dir).$2;
-                return Path()..addRRect(RRect.fromRectAndRadius(rect, Radius.circular(size.width * 0.06)));
+                return Path()..addRRect(RRect.fromRectAndRadius(rect, Radius.circular(size.width * _armRoundShare)));
               },
               child: CustomPaint(
                 size: Size.square(side),
-                painter: _DpadPainter(
-                  dx: input.dx,
-                  dy: input.dy,
-                  base: scheme.surfaceContainerHighest,
-                  lit: scheme.primary,
-                  arrow: scheme.onSurface,
-                ),
+                painter: DpadPainter(look: look, dx: input.dx, dy: input.dy, player: player),
               ),
             ),
           ),
@@ -157,42 +180,91 @@ class DpadView extends ConsumerWidget {
   }
 }
 
-class _DpadPainter extends CustomPainter {
-  _DpadPainter({required this.dx, required this.dy, required this.base, required this.lit, required this.arrow});
+/// The D-pad as one paper plus (M13 step 8, rule 4): the arms' union, so the
+/// centre has no seam, with one ink edge and one hard shadow under the whole
+/// shape; ink arrows on the arms, the lit arms filled in this phone's player
+/// colour and pushed in, and the centre dot ink at [toyShadowAlpha].
+class DpadPainter extends CustomPainter {
+  const DpadPainter({required this.look, required this.dx, required this.dy, this.player});
 
+  /// The look the pad is drawn in.
+  final ToyLook look;
+
+  /// The D-pad's direction: an arm pointing along it is lit (a diagonal's two).
   final int dx;
   final int dy;
-  final Color base;
-  final Color lit;
-  final Color arrow;
+
+  /// This phone's player, or null before the host gives them a number.
+  final int? player;
 
   @override
   void paint(Canvas canvas, Size size) {
     final s = size.width;
-    final arm = s * 0.34;
-    final c = s / 2;
-    final radius = Radius.circular(s * 0.06);
+    final plus = _plus(s);
+    // One shadow for the whole plus: a lit arm moves inside it rather than
+    // dropping the shadow the other arms still cast.
+    paintStickerShadow(canvas, plus, look.colors.ink);
+    canvas.drawPath(plus, Paint()..color = look.colors.paper);
+    _paintLitArms(canvas, plus, s);
+    _paintArrows(canvas, s);
+    // The edge goes on last, over the lit arms' moved fills, so they never
+    // show outside it.
+    canvas.drawPath(plus, padInkEdge(look));
+    canvas.drawCircle(Offset(s / 2, s / 2), s * _centreDotShare, Paint()..color = padFaintInk(look));
+  }
+
+  /// The four arms as one shape: their union, so the edges inside it are gone.
+  Path _plus(double s) {
+    final radius = Radius.circular(s * _armRoundShare);
+    Path? plus;
+    for (final (_, rect) in dpadArms(s)) {
+      final arm = Path()..addRRect(RRect.fromRectAndRadius(rect, radius));
+      plus = plus == null ? arm : Path.combine(PathOperation.union, plus, arm);
+    }
+    return plus!;
+  }
+
+  /// A lit arm's fill: the player's colour, moved by the squish and clipped to
+  /// the plus, so a moved fill never shows outside the plus's edge.
+  void _paintLitArms(Canvas canvas, Path plus, double s) {
+    final fill = Paint()..color = padPlayerColour(look.colors, player);
+    final shift = padSquish(true);
+    canvas
+      ..save()
+      ..clipPath(plus);
     for (final ((ax, ay), rect) in dpadArms(s)) {
-      // A diagonal lights both of its arms.
-      final on = (ax != 0 && ax == dx) || (ay != 0 && ay == dy);
-      canvas.drawRRect(RRect.fromRectAndRadius(rect, radius), Paint()..color = on ? lit : base);
-      final tip = Offset(c + ax * s * 0.40, c + ay * s * 0.40);
-      final back = Offset(c + ax * s * 0.30, c + ay * s * 0.30);
-      final side = Offset(-ay * s * 0.06, ax * s * 0.06);
+      if (!_lit(ax, ay)) continue;
+      canvas.drawRRect(RRect.fromRectAndRadius(rect.shift(shift), Radius.circular(s * _armRoundShare)), fill);
+    }
+    canvas.restore();
+  }
+
+  /// A diagonal lights both of its arms.
+  bool _lit(int ax, int ay) => (ax != 0 && ax == dx) || (ay != 0 && ay == dy);
+
+  /// The arms' arrows in ink, a lit one's moved with its arm.
+  void _paintArrows(Canvas canvas, double s) {
+    final c = s / 2;
+    for (final ((ax, ay), _) in dpadArms(s)) {
+      final on = _lit(ax, ay);
+      final shift = padSquish(on);
+      final tip = Offset(c + ax * s * _arrowTipShare, c + ay * s * _arrowTipShare) + shift;
+      final back = Offset(c + ax * s * _arrowBackShare, c + ay * s * _arrowBackShare) + shift;
+      final side = Offset(-ay * s * _arrowHalfShare, ax * s * _arrowHalfShare);
+      final ink = look.colors.ink.withValues(alpha: on ? 1 : _arrowOffAlpha);
       canvas.drawPath(
         Path()
           ..moveTo(tip.dx, tip.dy)
           ..lineTo(back.dx + side.dx, back.dy + side.dy)
           ..lineTo(back.dx - side.dx, back.dy - side.dy)
           ..close(),
-        Paint()..color = arrow.withValues(alpha: on ? 1 : 0.5),
+        Paint()..color = ink,
       );
     }
-    canvas.drawCircle(Offset(c, c), arm * 0.28, Paint()..color = arrow.withValues(alpha: 0.15));
   }
 
   @override
-  bool shouldRepaint(_DpadPainter old) => old.dx != dx || old.dy != dy || old.lit != lit || old.base != base;
+  bool shouldRepaint(DpadPainter old) => old.look != look || old.dx != dx || old.dy != dy || old.player != player;
 }
 
 /// Start, Select, LB and RB: pills. Sliding off releases.
@@ -209,7 +281,8 @@ class SmallButton extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final on = ref.watch(padProvider.select((p) => p.buttons.contains(button)));
     final pad = ref.read(padProvider.notifier);
-    final scheme = Theme.of(context).colorScheme;
+    final look = ref.watch(toyLookProvider);
+    final player = ref.watch(clientStateProvider.select((s) => s.player));
     // The game's label replaces the usual one; a hidden button leaves its
     // space empty (P5).
     final game = ref.watch(gameLayoutProvider);
@@ -223,19 +296,18 @@ class SmallButton extends ConsumerWidget {
         child: PressFlash<ControllerButton>(
           pressed: {if (on) button},
           shapeOf: (_, s) => Path()..addRRect(RRect.fromRectAndRadius(Offset.zero & s, Radius.circular(s.height / 2))),
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: on ? scheme.primary : scheme.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(size.height / 2),
-            ),
-            child: Center(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 6),
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    label,
-                    style: TextStyle(fontWeight: FontWeight.w600, color: on ? scheme.onPrimary : scheme.onSurface),
+          child: CustomPaint(
+            size: size,
+            painter: SmallButtonPainter(look: look, pressed: on, player: player),
+            // The label sits on the pill, so it goes where the pill did.
+            child: Transform.translate(
+              offset: padSquish(on),
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 6),
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(label, style: look.type.button.copyWith(color: look.colors.ink)),
                   ),
                 ),
               ),
@@ -245,4 +317,30 @@ class SmallButton extends ConsumerWidget {
       ),
     );
   }
+}
+
+/// A small button's pill (M13 step 8, rule 6): paper with an ink edge and the
+/// hard shadow, filled with this phone's player colour and pushed in while
+/// it's pressed. The label is a [Text] above it, so a tap still finds it.
+class SmallButtonPainter extends CustomPainter {
+  const SmallButtonPainter({required this.look, required this.pressed, this.player});
+
+  /// The look the pad is drawn in.
+  final ToyLook look;
+
+  /// Whether the button is held now.
+  final bool pressed;
+
+  /// This phone's player, or null before the host gives them a number.
+  final int? player;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final pill = Path()..addRRect(RRect.fromRectAndRadius(Offset.zero & size, Radius.circular(size.height / 2)));
+    final fill = pressed ? padPlayerColour(look.colors, player) : look.colors.paper;
+    paintPadPart(canvas, pill, look: look, fill: fill, pressed: pressed);
+  }
+
+  @override
+  bool shouldRepaint(SmallButtonPainter old) => old.look != look || old.pressed != pressed || old.player != player;
 }

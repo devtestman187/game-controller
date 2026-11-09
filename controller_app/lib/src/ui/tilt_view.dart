@@ -2,9 +2,11 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:party_host/party_host.dart' show toyLookProvider;
 
 import '../gyro.dart';
 import '../providers.dart';
+import 'pad_drawing.dart';
 
 /// Gyro mode's left side: where the tilt is (dot), the dead zone (inner
 /// ring), and a Calibrate button.
@@ -15,7 +17,11 @@ class TiltView extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final gyro = ref.watch(gyroProvider);
     final deadZone = ref.watch(gyroSettingsProvider.select((s) => s.deadZone));
-    final scheme = Theme.of(context).colorScheme;
+    final look = ref.watch(toyLookProvider);
+    // The pad's own colours, so gyro mode's circle sits on the pad like the
+    // rest (M13 step 8, rule 8): paper for the ring, this phone's player's
+    // colour for the dot.
+    final player = ref.watch(clientStateProvider.select((s) => s.player));
     final text = Theme.of(context).textTheme;
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -31,8 +37,8 @@ class TiltView extends ConsumerWidget {
                 x: gyro.x,
                 y: gyro.y,
                 deadZone: deadZone,
-                ring: scheme.surfaceContainerHighest,
-                dot: scheme.primary,
+                ring: look.colors.paper,
+                dot: padPlayerColour(look.colors, player),
               ),
             ),
             const SizedBox(height: 4),

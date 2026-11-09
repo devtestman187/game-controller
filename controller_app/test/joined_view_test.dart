@@ -175,7 +175,10 @@ void main() {
       // Over the game: the player's badge and the link's dot on the left, the
       // mode, Settings and Diagnostics as icons on the right.
       expect(find.byKey(const Key('playerBadge')), findsOneWidget);
-      expect(find.text('P1'), findsOneWidget);
+      // The look's badge, wearing player 1's character (M13 step 8, rule 7).
+      final badge = tester.widget<party.ToyBadge>(find.byType(party.ToyBadge));
+      expect(badge.number, 1);
+      expect(badge.character, party.ToyCharacter.forPlayer(1));
       expect(find.byKey(const Key('connectionDot')), findsOneWidget);
       expect(find.byKey(const Key('modeMenu')), findsOneWidget);
       expect(find.byTooltip('Settings'), findsOneWidget);

@@ -1,7 +1,8 @@
 import 'package:connection/connection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:party_host/party_host.dart' show PhoneText, ToyLook, ToyLookScope, ToySizes;
+import 'package:party_host/party_host.dart' as party show PlayerBadge;
+import 'package:party_host/party_host.dart' show PhoneText, ToyLook, ToyLookScope, ToySizes, toyAccessoryHeadroom;
 
 import '../providers.dart';
 import 'connect_screen.dart';
@@ -167,26 +168,34 @@ class LinkDotPainter extends CustomPainter {
   bool shouldRepaint(LinkDotPainter oldDelegate) => oldDelegate.look != look || oldDelegate.color != color;
 }
 
-/// "P1" in the player's colour, matching the sprite and the badge on the TV.
+/// The bar's badge diameter, in logical pixels: the disc plus the room its
+/// character's accessory needs above it ([toyAccessoryHeadroom]: 14.85 here)
+/// is 47.85, inside the bar's 48 px chip, so the bar's height doesn't change
+/// (M13 step 8, rule 7).
+const playerBadgeDiameter = 33.0;
+
+/// The player's own badge in the bar (M13 step 8, rule 7): the look's
+/// [party.PlayerBadge], a [party.ToyBadge] wearing the player's character as
+/// the TV's join badge does, in a box tall enough for the accessory to stand
+/// above the disc instead of being cut off by the bar's edge.
 class PlayerBadge extends StatelessWidget {
   const PlayerBadge({super.key, required this.number});
 
   final int number;
 
   @override
-  Widget build(BuildContext context) {
-    final look = ToyLookScope.of(context);
-    return Tooltip(
-      message: PhoneText.youArePlayer(number),
-      child: Container(
-        key: const Key('playerBadge'),
-        padding: const EdgeInsets.symmetric(horizontal: ToySizes.space8, vertical: ToySizes.space4),
-        decoration: BoxDecoration(
-          color: look.colors.player(number),
-          borderRadius: BorderRadius.circular(ToySizes.space12),
-        ),
-        child: Text(PhoneText.playerShort(number), style: look.type.body.copyWith(color: look.colors.ink)),
+  Widget build(BuildContext context) => Tooltip(
+    message: PhoneText.youArePlayer(number),
+    child: SizedBox(
+      key: const Key('playerBadge'),
+      width: playerBadgeDiameter,
+      height: playerBadgeDiameter + toyAccessoryHeadroom(playerBadgeDiameter),
+      // The disc sits at the bottom of the headroom's box, so the accessory
+      // draws above it and the number stays level with the bar's words.
+      child: Align(
+        alignment: Alignment.bottomCenter,
+        child: party.PlayerBadge(number: number, size: playerBadgeDiameter),
       ),
-    );
-  }
+    ),
+  );
 }

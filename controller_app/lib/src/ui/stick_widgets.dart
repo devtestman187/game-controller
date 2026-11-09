@@ -2,12 +2,14 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:party_host/party_host.dart' show ToyLook, paintStickerShadow, toyLookProvider;
 import 'package:protocol/protocol.dart';
 
 import '../gyro.dart';
 import '../layout.dart';
 import '../providers.dart';
 import '../sticks.dart';
+import 'pad_drawing.dart';
 import 'pad_widgets.dart';
 
 /// Stick mode (PRD C12, v2 C14 to C16): left stick and D-pad, Select and
@@ -128,7 +130,8 @@ class _AnalogStickViewState extends ConsumerState<AnalogStickView> {
   Widget build(BuildContext context) {
     final value = ref.watch(padProvider.select((p) => widget.side == StickSide.left ? p.left : p.right)) ?? stickCenter;
     final floating = ref.watch(stickSettingsProvider.select((s) => s.floating));
-    final scheme = Theme.of(context).colorScheme;
+    final look = ref.watch(toyLookProvider);
+    final player = ref.watch(clientStateProvider.select((s) => s.player));
     return Listener(
       behavior: HitTestBehavior.translucent,
       onPointerDown: _down,
@@ -139,65 +142,95 @@ class _AnalogStickViewState extends ConsumerState<AnalogStickView> {
       onPointerCancel: (e) => _up(e.pointer),
       child: CustomPaint(
         size: Size.infinite,
-        painter: _StickPainter(
+        painter: StickPainter(
+          look: look,
           center: _center ?? widget.home.center,
           radius: _radius,
           value: value,
           active: _pointer != null,
           // An idle floating stick is shown faintly where it will appear.
           faint: floating && _pointer == null,
-          base: scheme.surfaceContainerHighest,
-          knob: scheme.primary,
-          ring: scheme.outline,
+          player: player,
         ),
       ),
     );
   }
 }
 
-class _StickPainter extends CustomPainter {
-  _StickPainter({
+/// A stick in the look (M13 step 8, rule 5): the base a paper ring with an ink
+/// edge at today's alpha, the knob the player's colour with an ink edge and the
+/// hard shadow, pushed in while it's held, and not held at today's faded alpha.
+class StickPainter extends CustomPainter {
+  const StickPainter({
+    required this.look,
     required this.center,
     required this.radius,
     required this.value,
     required this.active,
     required this.faint,
-    required this.base,
-    required this.knob,
-    required this.ring,
+    this.player,
   });
+
+  /// The look the pad is drawn in.
+  final ToyLook look;
 
   final Offset center;
   final double radius;
   final Stick value;
+
+  /// Whether a thumb holds the stick now (the knob drawn full, and squished).
   final bool active;
+
+  /// Whether the stick is an idle floating one, drawn faintly where it appears.
   final bool faint;
-  final Color base;
-  final Color knob;
-  final Color ring;
+
+  /// This phone's player, or null before the host gives them a number.
+  final int? player;
+
+  /// The alpha everything takes when [faint] (today's 0.4), and the knob's
+  /// when it isn't held (today's 0.55).
+  static const faintAlpha = 0.4;
+  static const idleAlpha = 0.55;
 
   @override
   void paint(Canvas canvas, Size size) {
-    final alpha = faint ? 0.4 : 1.0;
-    canvas.drawCircle(center, radius, Paint()..color = base.withValues(alpha: alpha));
-    canvas.drawCircle(
-      center,
-      radius,
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.5
-        ..color = ring.withValues(alpha: 0.5 * alpha),
-    );
+    final alpha = faint ? faintAlpha : 1.0;
+    canvas.drawCircle(center, radius, Paint()..color = look.colors.paper.withValues(alpha: alpha));
+    canvas.drawCircle(center, radius, padInkEdge(look)..color = look.colors.ink.withValues(alpha: alpha));
     final knobRadius = max(14.0, radius * 0.42);
     final travel = radius - knobRadius * 0.5;
-    canvas.drawCircle(
-      center + Offset(value.x, value.y) * travel,
-      knobRadius,
-      Paint()..color = (active ? knob : knob.withValues(alpha: 0.55)).withValues(alpha: (active ? 1.0 : 0.55) * alpha),
-    );
+    final knob = Path()
+      ..addOval(Rect.fromCircle(center: center + Offset(value.x, value.y) * travel, radius: knobRadius));
+    _paintKnob(canvas, knob, alpha);
+  }
+
+  /// The knob: pushed in while it's held (no shadow, body moved), otherwise the
+  /// hard shadow under it and today's faded colour.
+  void _paintKnob(Canvas canvas, Path knob, double alpha) {
+    final fill = padPlayerColour(look.colors, player);
+    if (active) {
+      final body = knob.shift(padSquish(true));
+      canvas
+        ..drawPath(body, Paint()..color = fill.withValues(alpha: alpha))
+        ..drawPath(body, padInkEdge(look)..color = look.colors.ink.withValues(alpha: alpha));
+      return;
+    }
+    // The shadow keeps the look's own alpha: a faint stick is only a hint of
+    // where it appears, and it casts the same sticker shadow as the rest.
+    paintStickerShadow(canvas, knob, look.colors.ink);
+    final body = Paint()..color = fill.withValues(alpha: idleAlpha * alpha);
+    canvas
+      ..drawPath(knob, body)
+      ..drawPath(knob, padInkEdge(look)..color = look.colors.ink.withValues(alpha: idleAlpha * alpha));
   }
 
   @override
-  bool shouldRepaint(_StickPainter old) =>
-      old.center != center || old.value != value || old.active != active || old.faint != faint || old.radius != radius;
+  bool shouldRepaint(StickPainter old) =>
+      old.look != look ||
+      old.center != center ||
+      old.value != value ||
+      old.active != active ||
+      old.faint != faint ||
+      old.radius != radius ||
+      old.player != player;
 }

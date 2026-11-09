@@ -65,7 +65,8 @@ void main() {
     expect(controllers.single.isLocal, isTrue);
     expect(host.service.gameHost.players.single.number, 1);
     expect(find.byKey(const Key('playerBadge')), findsOneWidget);
-    expect(find.text('P1'), findsOneWidget);
+    // The look's badge, wearing player 1's character (M13 step 8, rule 7).
+    expect(tester.widget<party.ToyBadge>(find.byType(party.ToyBadge)).number, 1);
 
     // 5. A tap presses Shape Race's card, then its levels. The screens come up
     // after the host's menus read the tap and the puzzle library loads, which

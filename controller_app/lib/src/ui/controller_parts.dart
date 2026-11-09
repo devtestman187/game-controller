@@ -95,14 +95,16 @@ class DemoReadout extends ConsumerWidget {
     final connected = ref.watch(clientStateProvider.select((c) => c.isConnected));
     if (!demo || connected) return const SizedBox.shrink();
     final input = ref.watch(padProvider);
-    final scheme = Theme.of(context).colorScheme;
+    // The look's paper and ink, so the readout sits on the pad like the rest
+    // (M13 step 8, rule 8).
+    final look = party.ToyLookScope.of(context);
     return IgnorePointer(
       child: Container(
         key: const Key('demoReadout'),
         constraints: const BoxConstraints(maxWidth: 360),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: scheme.secondaryContainer.withValues(alpha: 0.9),
+          color: look.colors.paper.withValues(alpha: 0.9),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Text(
@@ -110,7 +112,7 @@ class DemoReadout extends ConsumerWidget {
           textAlign: TextAlign.center,
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
-          style: TextStyle(color: scheme.onSecondaryContainer, fontSize: 13),
+          style: TextStyle(color: look.colors.ink, fontSize: 13),
         ),
       ),
     );

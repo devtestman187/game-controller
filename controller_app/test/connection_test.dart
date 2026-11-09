@@ -1,7 +1,8 @@
 import 'package:connection/connection.dart';
+import 'package:controller/src/ui/bar_connection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:protocol/protocol.dart';
+import 'package:party_host/party_host.dart' show ToyBadge, ToyCharacter;
 
 import 'support/pump_app.dart';
 
@@ -27,9 +28,12 @@ void main() {
       final app = await pumpApp(tester, paired: true);
       app.client.emit(connected.copyWith(player: 2));
       await settle(tester);
-      expect(find.text('P2'), findsOneWidget);
-      final badge = tester.widget<Container>(find.byKey(const Key('playerBadge')));
-      expect((badge.decoration! as BoxDecoration).color, Color(playerColors[1]));
+      // The look's badge, wearing P2's character, as the TV's join badge does
+      // (M13 step 8, rule 7): no "P2" text any more, the disc says it.
+      final badge = tester.widget<ToyBadge>(find.byType(ToyBadge));
+      expect(badge.number, 2);
+      expect(badge.character, ToyCharacter.forPlayer(2));
+      expect(badge.diameter, playerBadgeDiameter);
       app.client.emit(connected.copyWith(status: ClientStatus.reconnecting, player: null));
       await settle(tester);
       expect(find.byKey(const Key('playerBadge')), findsNothing);
