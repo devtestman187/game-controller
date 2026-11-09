@@ -2,6 +2,17 @@
 
 Resume here. Branch `m13` in the worktree `E:\AI\game-controller-m13`, cut from `m12` at d06f88a on Nov 8, 2026. Design: docs/design/look-and-sound.md (approved by the owner, Nov 8). Mock-ups: docs/design/look-mockups/. PRD: M13 and L1 to L5.
 
+## Where M13 stands (Nov 8, 2026, at a session compaction)
+
+- Steps 1 to 5 and 4c are done and pushed (last commit 8bf6da7). Counts: look 94, puzzle 171, arena 61, host 203, phone 403, tv 50.
+- **Next:** write `s6-shaders-everywhere.md` (design section 6: shaders on pieces and backgrounds everywhere, the effects setting doing its full job, `toy_backdrop.frag`, the drifting dotted background), run it through the flash worker, then review it against renders in both palettes with the real fonts, as for 4a to 5.
+- The owner said "Keep moving forward in M13 unless you need a decision by me": go on through steps 6, 7 and 8 without asking; step 9's build waits for the owner's word.
+- Polish kept for step 9: the worker's tongue, determined and "o" faces; the 7 mm floor on "Show on this device"; check on a device that the remote reaches the TV home's manual address; the phone pad badge wears its accessory (step 8).
+- Nothing in M13 has been seen on a device yet.
+- M14 (Party night, the cat) is approved in docs/PRD-v2.md; it starts after M13. Its research is in docs/briefs/m14/.
+- M12: build 6 waits for the owner's "tag"; their test logs get reviewed when they arrive, with fixes on `m12`, merged into `m13`.
+- Housekeeping: remove the stale flash-worker job worktree folders later.
+
 ## Ground rules
 
 - M12's device-test fixes stay on `m12`; merge `m12` into `m13` when they land. A build from `m12` never carries M13 work.
