@@ -56,9 +56,11 @@ class _HostScreenState extends ConsumerState<HostScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // The games' sounds and the screen on: the TV's home screen does the same
-    // for a host, and the phone has no home screen (m12 §2.7).
+    // The games' sounds, the phone-joined cue (M13 section 8) and the screen
+    // on: the TV's home screen does the same for a host, and the phone has no
+    // home screen (m12 §2.7).
     ref.watch(party.gameSoundsProvider);
+    ref.watch(party.playerJoinedProvider);
     ref.watch(party.keepAwakeProvider);
     return PopScope(
       // A back press goes up inside the games first (m12 bug 1107e): the

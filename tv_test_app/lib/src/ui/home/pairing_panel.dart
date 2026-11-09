@@ -223,8 +223,8 @@ Color _clientStatusColor(ToyColors colors, ClientStatus status) => switch (statu
   ClientStatus.idle => colors.inkSoft,
 };
 
-/// Whether the four event sounds loaded (they play in the game and the
-/// haptic test).
+/// How many of the host's sounds loaded: the games' event sounds and the
+/// host's own cues (lobby music, countdown, a phone joining).
 class SoundLine extends ConsumerWidget {
   const SoundLine({super.key});
 

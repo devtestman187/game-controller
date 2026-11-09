@@ -26,8 +26,9 @@ class HomeScreen extends ConsumerWidget {
     final state = ref.watch(hostStateProvider);
     // Keeps the screen on while controllers are connected.
     ref.watch(keepAwakeProvider);
-    // Plays the games' sounds.
+    // Plays the games' sounds, and the phone-joined cue (M13 section 8).
     ref.watch(gameSoundsProvider);
+    ref.watch(playerJoinedProvider);
     return Scaffold(
       body: SafeArea(
         child: LayoutBuilder(

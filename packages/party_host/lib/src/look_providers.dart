@@ -5,7 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:toy_look/toy_look.dart';
 
 import 'look_settings.dart';
-import 'providers.dart';
+import 'prefs.dart';
 
 /// How long a start waits for the look's shader before the Canvas fallback
 /// takes over (design section 6): a slow TV box shows its splash a little

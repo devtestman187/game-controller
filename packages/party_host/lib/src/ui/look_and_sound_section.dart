@@ -4,18 +4,36 @@ import 'package:toy_look/toy_look.dart';
 
 import '../text/host_text.dart';
 import '../look_providers.dart';
+import '../sound_settings.dart';
 
 /// The Look and sound settings (M13, docs/design/look-and-sound.md section 8):
-/// which palette this device shows, and whether its effects are on. The sound
-/// rows join it in step 7.
+/// which palette this device shows, whether its effects are on, how loud its
+/// sounds play and whether the lobby music does.
 ///
 /// It's the section only, with no card of its own: the phone's Settings screen
 /// puts it in a card like the sections beside it, and the TV's
 /// LookAndSoundScreen on a page of its own. Both work it with the remote and
-/// the phones like every other host screen: the choices and the switch take
-/// the focus in the order they are drawn, and the remote's OK changes them.
+/// the phones like every other host screen: the choices, the switches and the
+/// slider take the focus in the order they are drawn, the remote's OK changes
+/// them and the slider's left and right move it.
 class LookAndSoundSection extends ConsumerWidget {
   const LookAndSoundSection({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) => const Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      _LookRows(),
+      SizedBox(height: ToySizes.space8),
+      _SoundRows(),
+    ],
+  );
+}
+
+/// The look's rows: the palette (Auto, Sunny, Night), the line saying what Auto
+/// does, and the effects switch.
+class _LookRows extends ConsumerWidget {
+  const _LookRows();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -54,6 +72,48 @@ class LookAndSoundSection extends ConsumerWidget {
             subtitle: const Text(HostText.effectsLine),
             value: settings.effects,
             onChanged: notifier.setEffects,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// The sound's rows: the master volume, 0 to 100 in ten steps, and the Music
+/// switch for the lobby music.
+class _SoundRows extends ConsumerWidget {
+  const _SoundRows();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final sound = ref.watch(soundSettingsProvider);
+    final notifier = ref.read(soundSettingsProvider.notifier);
+    final type = ToyLookScope.of(context).type;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(child: Text(HostText.soundVolume, style: type.body)),
+            Text(HostText.percent(sound.volume), style: type.body),
+          ],
+        ),
+        Slider(
+          key: const Key('soundVolume'),
+          value: sound.volume.toDouble(),
+          max: SoundSettings.maxVolume.toDouble(),
+          divisions: SoundSettings.maxVolume ~/ SoundSettings.stepPercent,
+          onChanged: (value) => notifier.setVolume(value.round()),
+        ),
+        Material(
+          type: MaterialType.transparency,
+          child: SwitchListTile(
+            key: const Key('soundMusic'),
+            contentPadding: EdgeInsets.zero,
+            title: const Text(HostText.music),
+            subtitle: const Text(HostText.musicLine),
+            value: sound.music,
+            onChanged: notifier.setMusic,
           ),
         ),
       ],

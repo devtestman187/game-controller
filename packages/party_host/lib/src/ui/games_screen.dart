@@ -13,6 +13,7 @@ import 'host_card_button.dart';
 import 'host_card_focus.dart';
 import 'host_screen.dart';
 import 'join_screen.dart';
+import 'lobby_music.dart';
 import 'puzzle_screen.dart';
 import 'puzzle_settings_screen.dart';
 
@@ -36,44 +37,46 @@ class GamesScreen extends ConsumerWidget {
       bindings: {const SingleActivator(LogicalKeyboardKey.escape): () => Navigator.of(context).maybePop()},
       child: HostScreen(
         title: HostText.playTitle,
-        body: SafeArea(
-          child: ListView(
-            padding: hostMenuPadding(ref.watch(hostBarHeightProvider)),
-            children: [
-              Wrap(
-                spacing: ToySizes.space24,
-                runSpacing: ToySizes.space24,
-                children: [
-                  _GameCard(
-                    key: const Key('pickShapeRace'),
-                    picture: GamePicture.shapeRace,
-                    title: HostText.shapeRace,
-                    line: HostText.shapeRaceLine,
-                    autofocus: true,
-                    onPressed: () => _open(context, const ShapeRaceScreen()),
-                  ),
-                  _GameCard(
-                    key: const Key('pickArena'),
-                    picture: GamePicture.arena,
-                    title: HostText.arena,
-                    line: HostText.arenaLine,
-                    onPressed: () => _open(context, const GameScreen()),
-                  ),
-                ],
-              ),
-              const SizedBox(height: ToySizes.space24),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: HostButton(
-                  key: const Key('openPuzzleSettings'),
-                  label: HostText.puzzleSettings,
-                  icon: Icons.tune,
-                  onPressed: () => _open(context, const PuzzleSettingsScreen()),
+        body: LobbyHold(
+          child: SafeArea(
+            child: ListView(
+              padding: hostMenuPadding(ref.watch(hostBarHeightProvider)),
+              children: [
+                Wrap(
+                  spacing: ToySizes.space24,
+                  runSpacing: ToySizes.space24,
+                  children: [
+                    _GameCard(
+                      key: const Key('pickShapeRace'),
+                      picture: GamePicture.shapeRace,
+                      title: HostText.shapeRace,
+                      line: HostText.shapeRaceLine,
+                      autofocus: true,
+                      onPressed: () => _open(context, const ShapeRaceScreen()),
+                    ),
+                    _GameCard(
+                      key: const Key('pickArena'),
+                      picture: GamePicture.arena,
+                      title: HostText.arena,
+                      line: HostText.arenaLine,
+                      onPressed: () => _open(context, const GameScreen()),
+                    ),
+                  ],
                 ),
-              ),
-              const SizedBox(height: ToySizes.space8),
-              Text(HostText.playtestLine, style: look.type.body.copyWith(color: look.colors.onBackground)),
-            ],
+                const SizedBox(height: ToySizes.space24),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: HostButton(
+                    key: const Key('openPuzzleSettings'),
+                    label: HostText.puzzleSettings,
+                    icon: Icons.tune,
+                    onPressed: () => _open(context, const PuzzleSettingsScreen()),
+                  ),
+                ),
+                const SizedBox(height: ToySizes.space8),
+                Text(HostText.playtestLine, style: look.type.body.copyWith(color: look.colors.onBackground)),
+              ],
+            ),
           ),
         ),
       ),

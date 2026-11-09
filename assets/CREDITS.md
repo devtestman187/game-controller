@@ -20,9 +20,12 @@ Update this file in the same commit that adds, replaces or removes an asset.
 | `audio/success.ogg` | TV sound for the **success** event (Arena: reaching the goal; Shape Race: all pieces matched) | Generated for this project with `tools/audio/render.py` (numpy synthesis, no sampled material) | Project | CC0 1.0 |
 | `audio/error.ogg` | TV sound for the **error** event (Arena: pressing A while the dash recharges) | Generated for this project with `tools/audio/render.py` (numpy synthesis, no sampled material) | Project | CC0 1.0 |
 | `audio/rumble.ogg` | TV sound for the **rumble** event (Arena: starting a dash) | Generated for this project with `tools/audio/render.py` (numpy synthesis, no sampled material) | Project | CC0 1.0 |
+| `audio/lobby.ogg` | Lobby music (M13): the host's game picker and join screen, looped | Generated for this project with `tools/audio/render.py` (numpy synthesis, no sampled material) | Project | CC0 1.0 |
+| `audio/countdown.ogg` | The 3-2-1 before a round (M13): beeps at 0, 1 and 2 s, then the "go" chord | Generated for this project with `tools/audio/render.py` (numpy synthesis, no sampled material) | Project | CC0 1.0 |
+| `audio/player_joined.ogg` | A phone joining the host (M13) | Generated for this project with `tools/audio/render.py` (numpy synthesis, no sampled material) | Project | CC0 1.0 |
 
 ## Audio
-The TV plays sounds by event name (M10: through the game host). The files live in `audio/`, named after the event: `hit`, `success`, `error`, `rumble`, and for the puzzle `snap`, `wrong`, `tick`, `pickup`, `time_up` and `help`, as `.ogg` or `.wav` (the TV app decodes both itself, so Windows needs no codecs). `lib/asset_manifest.dart` lists them. Replacing a file with one of the same name needs no code change; a missing file plays nothing.
+The TV and the host phone play sounds by event name (M10: through the game host). The files live in `audio/`, named after the event: `hit`, `success`, `error`, `rumble`, and for the puzzle `snap`, `wrong`, `tick`, `pickup`, `time_up` and `help`, as `.ogg` or `.wav` (the TV app decodes both itself, so Windows needs no codecs). The host's own cues (M13) are `lobby` (a seamless loop, played under the game picker and join screen), `countdown` (the 3-2-1 before a round) and `player_joined` (a phone joining). `lib/asset_manifest.dart` lists them. Replacing a file with one of the same name needs no code change; a missing file plays nothing.
 
 ## Planned sources
 - Kenney.nl packs (CC0): sprites, UI, input prompts/gamepad icons, interface sounds.

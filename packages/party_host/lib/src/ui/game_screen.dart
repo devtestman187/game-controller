@@ -14,6 +14,7 @@ import '../text/host_text.dart';
 import '../local_player_source.dart';
 import '../providers.dart';
 import 'controller_menus.dart';
+import 'lobby_music.dart';
 import 'pause_menu.dart';
 import 'play_hint.dart';
 
@@ -122,38 +123,41 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     final hint = _keyboard.available && !_keyboard.hasPlayer ? HostText.arenaHintKeyboard : HostText.arenaHint;
     // The game reads the controllers (no menus); Start pauses (M11). The sky
     // behind the arena stands still (design section 6).
-    return ToyStillSky(
-      child: ControlsClaim(
-        controls: const Controls.game(),
-        child: Focus(
-          autofocus: true,
-          onKeyEvent: _onKey,
-          child: Scaffold(
-            body: SafeArea(
-              child: Pausable(
-                enabled: true,
-                builder: (context, paused) => Stack(
-                  children: [
-                    ArenaView(
-                      game: widget.game,
-                      host: ref.read(gameHostProvider),
-                      settings: _hosting,
-                      onEvent: _onEvent,
-                      paused: paused,
-                      abandon: ref.read(hostAbandonProvider),
-                    ),
-                    if (nobody)
-                      Positioned(
-                        left: 0,
-                        right: 0,
-                        bottom: _noteBottomPx,
-                        child: Center(
-                          child: _Note(_keyboard.available ? HostText.noControllerKeys : HostText.noController),
-                        ),
+    return RoundHold(
+      child: ToyStillSky(
+        child: ControlsClaim(
+          controls: const Controls.game(),
+          child: Focus(
+            autofocus: true,
+            onKeyEvent: _onKey,
+            child: Scaffold(
+              body: SafeArea(
+                child: Pausable(
+                  enabled: true,
+                  builder: (context, paused) => Stack(
+                    children: [
+                      ArenaView(
+                        game: widget.game,
+                        host: ref.read(gameHostProvider),
+                        settings: _hosting,
+                        onEvent: _onEvent,
+                        paused: paused,
+                        abandon: ref.read(hostAbandonProvider),
                       ),
-                    if (_debug) const Positioned(top: _debugTopPx, left: ToySizes.space12, child: DebugOverlay()),
-                    if (_hintShown) Positioned(right: ToySizes.space12, bottom: ToySizes.space8, child: PlayHint(hint)),
-                  ],
+                      if (nobody)
+                        Positioned(
+                          left: 0,
+                          right: 0,
+                          bottom: _noteBottomPx,
+                          child: Center(
+                            child: _Note(_keyboard.available ? HostText.noControllerKeys : HostText.noController),
+                          ),
+                        ),
+                      if (_debug) const Positioned(top: _debugTopPx, left: ToySizes.space12, child: DebugOverlay()),
+                      if (_hintShown)
+                        Positioned(right: ToySizes.space12, bottom: ToySizes.space8, child: PlayHint(hint)),
+                    ],
+                  ),
                 ),
               ),
             ),

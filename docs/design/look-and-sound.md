@@ -188,6 +188,13 @@ rules (puzzle_game rules, test_game rules, game_kit sessions) ── never impor
 - Lobby music plays on the game picker and join screen of the device that hosts, and stops when a round starts. When phones join a TV or PC, only the TV or PC plays it; a host phone plays it only when no TV is used, which is always the case when a phone hosts. Joined phones never play it (owner, Nov 8, 2026: "Play music on host phone only if the TV is not used."). The countdown plays with every 3-2-1 (the Arena and the ready card). Player joined plays on the host when a phone joins.
 - Settings: **Sound volume** (0 to 100%, default 80%) and **Music** (on/off, default on) on the TV's settings and the phone's settings; each device's own, saved with its other settings. A new **Look and sound** settings section holds them with **Look** (Auto, Sunny, Night) and **Effects** (on/off).
 
+**Decided at step 7 (Claude, Nov 9, 2026):**
+- **"Picker and join screen"** means the whole lobby. The music plays from the game picker's opening to its closing, through everything pushed over it (the Shape Race list, puzzle settings, the join screen, stats, settings). It doesn't play while a round's screen is open, results and pause included. So it carries on unbroken from the picker to the join screen, and Play again keeps it off.
+- It stops at once when the app is hidden and comes back when it's shown again. The TV home (the pairing panel) isn't a lobby.
+- **The countdown goes with the "Get ready" beat:** it starts as the card shows 3, and stops if the beat is held, so no "go" sounds over a waiting round. The TV has no beat (m12-host-touch rule 6), so it has no countdown, and the Arena's 2 s break between rounds stays silent.
+- **Player joined** plays once per new phone in the host's list, not for a phone coming back from away, and not for the host's own player.
+- **The volume** is SoLoud's master volume, so it covers every sound on that device, a joined phone's game sounds included. Mute is volume 0.
+
 ## 9. Implementation order (after the owner's OK)
 
 Each step is a flash-worker job with a brief and a review gate, as in M12.

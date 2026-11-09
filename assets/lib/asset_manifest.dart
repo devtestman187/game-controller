@@ -13,6 +13,10 @@ const String assetPackage = 'game_assets';
 /// The game sounds, played by event name through the game host (PRD v2 S5):
 /// one per haptic event type that has a sound (M5, and the puzzle's in M10),
 /// plus sounds without a haptic (pickup, time-up), by [eventName].
+///
+/// The last three are the host's own cues (M13 design section 8, L5), played by
+/// the screens rather than by a game: the lobby music (a seamless loop), the
+/// 3-2-1 before a round, and a phone joining the host.
 enum SoundKey {
   hit,
   success,
@@ -23,7 +27,10 @@ enum SoundKey {
   tick,
   pickup,
   timeUp('time_up'),
-  help;
+  help,
+  lobby,
+  countdown,
+  playerJoined('player_joined');
 
   const SoundKey([this._file]);
 

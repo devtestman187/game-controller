@@ -104,13 +104,15 @@ class _HarnessApp extends ConsumerWidget {
 
 /// Stands in for a host app's home screen: one Play button that opens the
 /// game picker under its route name, as the TV app's main screen does. It
-/// watches the games' sounds, as every host app's main screen does.
+/// watches the games' sounds and the phone-joined cue, as every host app's
+/// main screen does.
 class StubHome extends ConsumerWidget {
   const StubHome({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     ref.watch(gameSoundsProvider);
+    ref.watch(playerJoinedProvider);
     return Scaffold(
       key: const Key('home'),
       body: Center(

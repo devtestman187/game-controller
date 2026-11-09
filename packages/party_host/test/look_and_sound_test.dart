@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:party_host/party_host.dart';
@@ -57,5 +58,50 @@ void main() {
     expect(container.read(toyLookProvider).effects, isFalse);
     expect(container.read(toyLookProvider).shade, isNull);
     expect(container.read(toyLookProvider).backdrop, isNull);
+  });
+
+  testWidgets('the Sound volume and Music rows draw in Sunny and Night', (tester) async {
+    await pumpHost(tester, screen: const LookAndSoundScreen());
+    for (final palette in ['Sunny', 'Night']) {
+      expect(find.byKey(const Key('soundVolume')), findsOneWidget, reason: palette);
+      expect(find.byKey(const Key('soundMusic')), findsOneWidget, reason: palette);
+      expect(find.text('Sound volume'), findsOneWidget);
+      expect(find.text('80%'), findsOneWidget);
+      expect(find.text('Music'), findsOneWidget);
+      expect(find.text('Plays on the game picker and join screen.'), findsOneWidget);
+
+      await tester.tap(find.text(palette));
+      await tester.pumpAndSettle();
+    }
+  });
+
+  testWidgets('the volume slider steps by 10 and saves, and Music saves', (tester) async {
+    await pumpHost(tester, screen: const LookAndSoundScreen());
+    final container = _container(tester);
+    expect(container.read(soundSettingsProvider).volume, 80);
+
+    // The slider takes the focus like the rows beside it, and right steps it by
+    // a tenth (the remote's and the phone's way to move it).
+    final slider = find.byKey(const Key('soundVolume'));
+    // The slider's own focus node: a tap or a Tab would take it the same way.
+    final focus = tester
+        .widgetList<Focus>(find.descendant(of: slider, matching: find.byType(Focus)))
+        .firstWhere((f) => f.focusNode != null);
+    focus.focusNode!.requestFocus();
+    await tester.pump();
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+    await tester.pump();
+    expect(container.read(soundSettingsProvider).volume, 90);
+    expect(container.read(lookPrefsProvider).getInt('sound.volume'), 90);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+    await tester.pump();
+    expect(container.read(soundSettingsProvider).volume, 80, reason: 'left steps back by ten');
+
+    await tester.tap(find.byKey(const Key('soundMusic')));
+    await tester.pumpAndSettle();
+    expect(container.read(soundSettingsProvider).music, isFalse);
+    expect(container.read(lookPrefsProvider).getBool('sound.music'), isFalse);
   });
 }

@@ -2,7 +2,7 @@
 
 The ten event sounds in `assets/audio` — `hit`, `success`, `error`, `rumble`, `snap`, `wrong`, `tick`, `pickup`, `time_up` and `help` — are the "Bubble Pop" set. They're synthesised by `render.py` (numpy, no samples, CC0) and credited in `assets/CREDITS.md`. m11.3 replaced the Kenney sounds with them.
 
-The extra cues (lobby, countdown, player_joined) aren't used yet; they wait for the look-and-sound milestone.
+The three cues beside them come from the same set and are played by the host screens since M13 step 7: `lobby` (19.20 s, a seamless loop under the game picker and the join screen), `countdown` (4.42 s: beeps at 0, 1 and 2 s, then the "go" chord at 3 s) and `player_joined` (1.02 s, a phone joining the host). They are listed in `assets/CREDITS.md` like the event sounds.
 
 ## How these were encoded
 
@@ -26,7 +26,7 @@ Check durations afterwards: each should match its WAV master to the millisecond 
 
 ```powershell
 cd assets\audio
-foreach ($n in 'tick','pickup','snap','error','hit','wrong','help','rumble','success','time_up') {
+foreach ($n in 'tick','pickup','snap','error','hit','wrong','help','rumble','success','time_up','lobby','countdown','player_joined') {
   "{0,-8} {1}" -f $n, (ffprobe -v error -show_entries format=duration -of csv=p=0 "$n.ogg")
 }
 ```

@@ -1,0 +1,51 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:party_host/party_host.dart' as party;
+import 'package:party_host/testing.dart' as party_test;
+
+import 'support/host_app.dart';
+import 'support/pump_app.dart';
+
+/// This phone's sound (M13 design section 8): a phone that hosts plays the
+/// lobby music on its own picker, a phone that joins a TV never plays it, and
+/// the Settings screen works the Sound volume and Music rows.
+void main() {
+  setUpAll(loadPuzzles);
+
+  testWidgets('the host phone\'s picker plays the lobby music', (tester) async {
+    final sounds = party_test.FakeSoundPlayer();
+    await pumpHostApp(tester, sounds: sounds);
+    final host = await enterHostMode(tester);
+    await settle(tester);
+
+    expect(find.byType(party.GamesScreen), findsOneWidget);
+    expect(sounds.loop, 'lobby');
+    expect(sounds.loopStarts, ['lobby'], reason: 'a host phone plays it once');
+    await tester.runAsync(host.dispose);
+  });
+
+  testWidgets('a joined phone\'s waiting and pad screens never play the lobby music', (tester) async {
+    final sounds = party_test.FakeSoundPlayer();
+    final app = await pumpApp(tester, paired: true, extra: [party.soundPlayerProvider.overrideWithValue(sounds)]);
+    expect(sounds.loop, isNull, reason: 'the waiting screen is no lobby');
+    expect(sounds.loopStarts, isEmpty);
+
+    // In play with a TV, and no game shown: the pad, which is no lobby either.
+    app.client.emit(connected);
+    await settle(tester);
+    expect(sounds.loop, isNull, reason: 'the pad is no lobby');
+    expect(sounds.loopStarts, isEmpty, reason: 'a joined phone never plays it');
+  });
+
+  testWidgets('the Settings screen shows the Sound volume and Music rows', (tester) async {
+    await pumpApp(tester, paired: true);
+    await openSettings(tester);
+    await scrollTo(tester, find.byKey(const Key('soundMusic')));
+
+    expect(find.byKey(const Key('soundVolume')), findsOneWidget);
+    expect(find.byKey(const Key('soundMusic')), findsOneWidget);
+    expect(find.text(party.HostText.soundVolume), findsOneWidget);
+    expect(find.text(party.HostText.music), findsOneWidget);
+    expect(find.text(party.HostText.musicLine), findsOneWidget);
+  });
+}

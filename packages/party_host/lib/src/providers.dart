@@ -5,10 +5,10 @@ import 'dart:ui' show Rect, Size;
 import 'package:connection/connection.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:game_assets/asset_manifest.dart';
 import 'package:game_kit/game_kit.dart';
 import 'package:protocol/protocol.dart';
 import 'package:puzzle_game/puzzle_game.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import 'advertiser.dart';
 import 'controls.dart';
@@ -19,8 +19,10 @@ import 'host_service.dart';
 import 'host_start_log.dart';
 import 'host_view_state.dart';
 import 'local_player_source.dart';
+import 'prefs.dart';
 import 'session_uploader.dart';
 import 'sound.dart';
+import 'sound_settings.dart';
 import 'stats_service.dart';
 import 'stats_state.dart';
 
@@ -36,11 +38,6 @@ final hostIdentityProvider = Provider<HostIdentity>(
 /// with its own folders.
 final hostDirectoriesProvider = Provider<HostDirectories>(
   (ref) => throw UnimplementedError('hostDirectoriesProvider must be overridden'),
-);
-
-/// Overridden in each app's `main()` with the loaded instance.
-final prefsProvider = Provider<SharedPreferences>(
-  (ref) => throw UnimplementedError('prefsProvider must be overridden'),
 );
 
 final logProvider = Provider<LogBuffer>(_logBuffer);
@@ -225,6 +222,26 @@ final gameSoundsProvider = Provider<void>((ref) {
   ref.onDispose(sub.cancel);
 });
 
+/// Plays a sound when a phone joins the host (M13 design section 8): once for
+/// each player that appears in [gamePlayersProvider] and wasn't there before.
+/// A phone back from away is the same player all along, so it plays nothing; a
+/// phone that left the list and joined again plays it again. The host's own
+/// player on this device ([GamePlayer.local]) is not a phone joining, so it
+/// plays nothing either.
+///
+/// The host screens keep it running, as they keep [gameSoundsProvider].
+final playerJoinedProvider = Provider<void>((ref) {
+  final player = ref.watch(soundPlayerProvider);
+  var seen = {for (final p in ref.read(gamePlayersProvider)) p.id};
+  ref.listen(gamePlayersProvider, (_, players) {
+    final now = {for (final p in players) p.id};
+    for (final p in players) {
+      if (!p.local && !seen.contains(p.id)) player.play(SoundKey.playerJoined.eventName);
+    }
+    seen = now;
+  });
+});
+
 /// Analytics (M9): the session files, consent and upload.
 final statsServiceProvider = Provider<StatsService>((ref) => ref.watch(hostServiceProvider).stats);
 
@@ -262,9 +279,18 @@ class LogLinesNotifier extends Notifier<List<LogLine>> {
 final hostStartLogProvider = Provider<HostStartLog>((ref) => HostStartLog(ref.watch(logProvider).sink('host')));
 
 /// The host's sounds. Overridden in tests with a FakeSoundPlayer.
+///
+/// It plays at this device's volume (M13 design section 8): the Sound volume
+/// setting is applied here, where the player lives, so it follows the TV, the
+/// Windows app, the host phone and a joined phone's game sounds alike.
 final soundPlayerProvider = Provider<SoundPlayer>((ref) {
   final player = SoLoudSoundPlayer(log: ref.watch(logProvider).sink('sound'), start: ref.watch(hostStartLogProvider));
   unawaited(player.load());
+  ref.listen(
+    soundSettingsProvider.select((s) => s.volume),
+    (_, percent) => player.volume = percent / SoundSettings.maxVolume,
+    fireImmediately: true,
+  );
   ref.onDispose(player.dispose);
   return player;
 });

@@ -15,6 +15,33 @@ class FakeSoundPlayer implements SoundPlayer {
   /// The sound names played, in order.
   final played = <String>[];
 
+  /// The name looping now, or null when no loop plays (M13 section 8).
+  String? loop;
+
+  /// Every loop that really started, in order: the same name asked for again is
+  /// not a start, so a test can see whether the music restarted.
+  final loopStarts = <String>[];
+
+  /// The names of the sounds stopped while they played.
+  final stopped = <String>[];
+
+  /// The master volume last set, 0 to 1: 1 until something turns it down.
+  @override
+  double volume = 1;
+
+  @override
+  void playLoop(String name) {
+    if (loop == name) return;
+    loop = name;
+    loopStarts.add(name);
+  }
+
+  @override
+  void stopLoop() => loop = null;
+
+  @override
+  void stop(String name) => stopped.add(name);
+
   final _changes = StreamController<SoundStatus>.broadcast();
 
   @override

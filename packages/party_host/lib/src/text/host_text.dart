@@ -340,8 +340,14 @@ abstract final class HostText {
   static const night = 'Night';
   static const effects = 'Effects';
   static const effectsLine = 'Moving backgrounds, shading and bounces. Turn off on a slow device.';
+  static const soundVolume = 'Sound volume';
+  static const music = 'Music';
+  static const musicLine = 'Plays on the game picker and join screen.';
 
   /// The Auto line, built from the setting's own hours.
   static String autoLine(int fromHour, int untilHour) =>
       'Auto: Sunny from $fromHour:00 to $untilHour:00, Night otherwise';
+
+  /// A percentage, as the Sound volume row shows it: "80%".
+  static String percent(int value) => '$value%';
 }

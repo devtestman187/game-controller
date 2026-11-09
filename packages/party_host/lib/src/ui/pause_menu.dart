@@ -4,6 +4,7 @@ import 'package:connection/connection.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:game_assets/asset_manifest.dart';
 import 'package:protocol/protocol.dart';
 import 'package:toy_look/toy_look.dart';
 
@@ -12,6 +13,7 @@ import '../away_log.dart';
 import '../controls.dart';
 import '../host_presence.dart';
 import '../players_away.dart';
+import '../sound.dart';
 import '../text/host_text.dart';
 import '../providers.dart';
 import 'away_card.dart';
@@ -62,6 +64,11 @@ final pauseLayout = GameLayoutMessage(labels: _pauseLabels, hidden: _pauseHidden
 /// ([readyCountdownProvider], m12-host-touch rule 3): the builder gets
 /// `paused == true` and [ReadyCard] counts the seconds down. The TV asks for no
 /// beat, so nothing of it shows there (rule 6).
+///
+/// The beat brings the 3-2-1 countdown sound with it (M13 design section 8):
+/// it plays as the beat starts from the top (the card's 3) and stops when the
+/// beat is held, so no "go" sounds over a round that waits. A round with no
+/// beat, the TV's, plays no countdown.
 ///
 /// It is the one place that is up exactly while a round is on, so it also
 /// writes the round's phase ([roundPhaseProvider], m12-host-touch): `none`
@@ -114,6 +121,13 @@ class _PausableState extends ConsumerState<Pausable> {
   int _readyTotalMs = 0;
   int _readyMs = 0;
 
+  /// Whether the 3-2-1 countdown is sounding (M13 design section 8): it plays
+  /// as the beat starts from the top and stops while the beat is held.
+  bool _countdownOn = false;
+
+  /// The host's sounds, once this round has asked for the countdown.
+  SoundPlayer? _sound;
+
   @override
   void initState() {
     super.initState();
@@ -130,6 +144,9 @@ class _PausableState extends ConsumerState<Pausable> {
     _readyMs = _readyTotalMs;
     _publish();
     _timer;
+    // The card shows 3 from the first frame, so the countdown plays with it,
+    // unless the round already stands still (the host app is away).
+    if (!_stopped) _startCountdown();
   }
 
   @override
@@ -144,6 +161,8 @@ class _PausableState extends ConsumerState<Pausable> {
     _away.removeListener(_awayChanged);
     unawaited(_awayEnds.cancel());
     _timer.cancel();
+    // A round that ends on its beat takes the countdown with it.
+    _stopCountdown();
     // The round is gone, and its phase with it: unless the screen that
     // replaced it (Play again) has said what its own round is (M10).
     _phase.release(this);
@@ -169,20 +188,48 @@ class _PausableState extends ConsumerState<Pausable> {
   /// with no step while the card counts down. A round that stands still holds
   /// the beat too, and it starts again from the top once nothing waits (§2.10,
   /// bug 1107d); the results end it.
+  ///
+  /// The countdown sound follows it (M13 design section 8): it plays as the
+  /// beat starts from the top, so its beeps land on 3, 2 and 1 and its chord on
+  /// the round's first step, and it stops while the beat is held or ends early.
   void _beat() {
     if (!_onBeat) return;
-    final int next;
     if (!widget.enabled) {
-      next = 0;
-    } else if (_stopped) {
-      // The host is away, or a phone the round waits for is: the beat waits
-      // with the round, and starts over from the top (bug 1107d).
-      next = _readyTotalMs;
-    } else {
-      next = _readyMs - ControllerMenus.step.inMilliseconds;
+      // The results ended the round before the beat did: no "go" over them.
+      _stopCountdown();
+      if (_readyMs != 0) setState(() => _readyMs = 0);
+      return;
     }
-    if (next == _readyMs) return;
-    setState(() => _readyMs = next < 0 ? 0 : next);
+    if (_stopped) {
+      // The host is away, or a phone the round waits for is: the beat waits
+      // with the round, and starts over from the top (bug 1107d). Its
+      // countdown stops with it and plays again from the top.
+      _stopCountdown();
+      if (_readyMs != _readyTotalMs) setState(() => _readyMs = _readyTotalMs);
+      return;
+    }
+    _startCountdown();
+    final next = _readyMs - ControllerMenus.step.inMilliseconds;
+    if (next != _readyMs) setState(() => _readyMs = next < 0 ? 0 : next);
+  }
+
+  /// Plays the 3-2-1 countdown when the beat is at its top, the moment the card
+  /// first shows 3 (M13 design section 8). A round with no beat, the TV's, has
+  /// none to play.
+  void _startCountdown() {
+    if (_countdownOn || _readyTotalMs == 0 || _readyMs != _readyTotalMs) return;
+    _countdownOn = true;
+    final SoundPlayer sound = _sound ?? ref.read(soundPlayerProvider);
+    _sound = sound;
+    sound.play(SoundKey.countdown.eventName);
+  }
+
+  /// Stops the countdown so no "go" sounds over a held round.
+  void _stopCountdown() {
+    if (!_countdownOn) return;
+    _countdownOn = false;
+    // Only a countdown this round played is stopped.
+    _sound?.stop(SoundKey.countdown.eventName);
   }
 
   /// What this round is doing now (m12-host-touch rules 1–3): still while it

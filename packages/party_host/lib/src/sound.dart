@@ -5,6 +5,7 @@ import 'package:flutter_soloud/flutter_soloud.dart';
 import 'package:game_assets/asset_manifest.dart';
 
 import 'host_start_log.dart';
+import 'sound_wish.dart';
 
 /// What the sound player has loaded, for the screen and the log.
 final class SoundStatus {
@@ -51,6 +52,25 @@ abstract class SoundPlayer {
   /// events stay clear. An unknown name plays nothing.
   void play(String name);
 
+  /// Starts [name] looping until [stopLoop] (the lobby music, M13 section 8).
+  /// There is one loop at a time: asking for the loop that is already playing
+  /// does nothing, so the music never restarts, and another name stops the old
+  /// loop first. A loop asked for before [load] finishes starts once the sounds
+  /// are in, and one wanted across a [restart] starts again after it.
+  void playLoop(String name);
+
+  /// Stops the loop, if one is playing.
+  void stopLoop();
+
+  /// Stops the sound for [name] if it is still playing: the 3-2-1 stops when a
+  /// round stands still, so no "go" sounds over it.
+  void stop(String name);
+
+  /// The master volume every sound plays at: 0 is silence, 1 the files' own
+  /// loudness. It stays as it was set across a [load] and a [restart].
+  double get volume;
+  set volume(double value);
+
   /// Stops the engine and releases the sounds.
   Future<void> dispose();
 }
@@ -77,6 +97,15 @@ class SoLoudSoundPlayer implements SoundPlayer {
   SoundStatus _status = const SoundStatus(engine: 'flutter_soloud');
   Future<void>? _loading;
   Future<void>? _restarting;
+
+  /// What this player has been asked for, whatever the engine can do now (M13
+  /// section 8): the loop wanted and the volume. It survives a load and a
+  /// restart, so both are carried out once the engine is up.
+  SoundWish _wish = const SoundWish();
+
+  /// The loop sounding now, and the name of it, or nulls when none plays.
+  SoundHandle? _loop;
+  String? _loopName;
 
   @override
   SoundStatus get status => _status;
@@ -119,6 +148,10 @@ class SoLoudSoundPlayer implements SoundPlayer {
     _log('Sounds: ${SoundKey.values.map((k) => '${k.eventName} ${files[k]}').join('; ')}');
     start?.step(HostStartStep.soundsLoaded);
     _set(SoundStatus(engine: 'flutter_soloud', ready: true, files: files));
+    // What was asked for while the sounds were loading, or before a restart:
+    // the volume, and the loop that should be playing (M13 section 8).
+    _applyVolume();
+    _applyLoop();
   }
 
   @override
@@ -135,6 +168,10 @@ class SoLoudSoundPlayer implements SoundPlayer {
     }
     _sources.clear();
     _playing.clear();
+    // The engine's handles die with it; the wish below outlives them, so the
+    // loop and the volume come back with the new engine.
+    _loop = null;
+    _loopName = null;
     _loading = null;
     await load();
     _log('Sound engine restarted (${_status.loaded} of ${SoundKey.values.length} sounds)');
@@ -152,6 +189,90 @@ class SoLoudSoundPlayer implements SoundPlayer {
       _playing[key] = soloud.play(source);
     } catch (e) {
       _log('Could not play the $name sound: $e');
+    }
+  }
+
+  @override
+  void playLoop(String name) {
+    _wish = _wish.withLoop(name);
+    _applyLoop();
+  }
+
+  @override
+  void stopLoop() {
+    _wish = _wish.withLoop(null);
+    _applyLoop();
+  }
+
+  @override
+  void stop(String name) {
+    final key = SoundKey.byEventName(name);
+    final handle = key == null ? null : _playing.remove(key);
+    if (handle == null) return;
+    final soloud = SoLoud.instance;
+    try {
+      if (soloud.getIsValidVoiceHandle(handle)) unawaited(soloud.stop(handle));
+    } catch (e) {
+      _log('Could not stop the $name sound: $e');
+    }
+  }
+
+  @override
+  double get volume => _wish.volume;
+
+  @override
+  set volume(double value) {
+    _wish = _wish.withVolume(value);
+    _applyVolume();
+  }
+
+  /// Makes the engine play the loop this player has been asked for (M13 section
+  /// 8): the old loop stops first when it isn't the one wanted, and nothing
+  /// happens while no sounds are in, because the load applies the wish when it
+  /// ends.
+  void _applyLoop() {
+    if (!_status.ready) return;
+    final sounding = _loopName;
+    if (_wish.stopsFrom(sounding)) _stopLoopNow();
+    final start = _wish.startsFrom(sounding);
+    if (start != null) _startLoop(start);
+  }
+
+  void _stopLoopNow() {
+    final handle = _loop;
+    _loop = null;
+    _loopName = null;
+    if (handle == null) return;
+    final soloud = SoLoud.instance;
+    try {
+      if (soloud.getIsValidVoiceHandle(handle)) unawaited(soloud.stop(handle));
+    } catch (e) {
+      _log('Could not stop the loop: $e');
+    }
+  }
+
+  void _startLoop(String name) {
+    final key = SoundKey.byEventName(name);
+    final source = key == null ? null : _sources[key];
+    if (key == null || source == null) return;
+    final soloud = SoLoud.instance;
+    try {
+      _loop = soloud.play(source, looping: true);
+      _loopName = name;
+    } catch (e) {
+      _log('Could not play the $name loop: $e');
+    }
+  }
+
+  /// Sets the engine's master volume to what this player has been asked for
+  /// (M13 section 8). Nothing happens before the engine is up: the load applies
+  /// it when it ends.
+  void _applyVolume() {
+    if (!_status.ready) return;
+    try {
+      SoLoud.instance.setGlobalVolume(_wish.volume);
+    } catch (e) {
+      _log('Could not set the sound volume: $e');
     }
   }
 
