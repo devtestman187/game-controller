@@ -61,6 +61,48 @@ tests (each failing first):
 - The effects audit: one test per motion that had no effects test before, if any.
 - All existing tests pass (look, puzzle, arena, host, phone, tv, kit). Change only pins of `ToyBackground` being stateless, and list each.
 
+## Claude's answers to the first run's report (Nov 9, 2026)
+
+The first run stopped, rightly: `flutter test` can't load a fragment shader (docs/project-notes.md:115; the s1 spike). These answers replace the rules and tests above where they differ.
+
+1. **Option B, with A's pure value.**
+   - **The drift follows the setting, not the shader.** The sky drifts when `look.effects` is on, reduce-motion is off and no `ToyStillSky` holds it, whatever fills it.
+   - **Fill:** the shader when `look.backdrop` isn't null, else the Canvas dots at the same shift. So a device without the shader drifts too, and "effects off" stays the switch for a slow device.
+   - Tests see the drift through the Canvas fill.
+2. **`ToySky`**, a small pure value in `lib/src/toy_sky.dart`, exported. It holds:
+   - the sky's constants: spacing 32, dot radius 3, glow share 0.6, drift speed 6 px/s;
+   - `Offset shiftAt(Duration elapsed)`: `(d, d)` with `d = (seconds × speed) % (2 × spacing)`;
+   - the uniform values for a look, a size and a shift, as named values the painter sets by name.
+
+   Both fills read it, so every number is a plain test.
+3. **Loading:**
+   - Contract tests as in s1: under `flutter test`, `load()` gives no programs, each with an error naming its own asset, and never throws.
+   - `load()` takes an asset parameter per program (`shadeAsset:`, `backdropAsset:`).
+   - "Keeps `shade` when the backdrop fails" is shown by the code's structure (two independent tries) and checked on a device, not in a test.
+   - Timing: `loadMs` stays the whole load's time, and `shadeMs` and `backdropMs` give each program's load plus warm-up.
+4. **The warm-up stays** (cheap, and a draw is what compiles on Skia). Whether it removes the Windows stall is my device check, not a test.
+5. **`ToyStillSky`** and its hold counter go in their own file, `toy_still_sky.dart`.
+6. **The goal glow's effects test** lands in this step, in `arena_paint_test`: with effects off the glow is the same at two round times; with effects on it differs.
+7. **The TV's Look test screen gets a sky row**: a `ToyBackground` box in Sunny and one in Night, drifting, beside the shapes' row. It shows whether the backdrop shader loaded. That is the device check for the GLSL and the same picture; Claude runs it on Windows.
+
+8. **Tests that settle.** A sky that ticks forever makes `pumpAndSettle` time out on every menu.
+   - So `ToyStillSky` also works from above: a `ToyBackground` with a `ToyStillSky` anywhere above it (an inherited look-up) holds still too. Same widget, same meaning: "the sky is still here".
+   - The test harnesses put one at their root: party_host's host harness, controller_app's `pumpApp`, tv_test_app's `pumpApp`, and any other test that pumps a `ToyBackground` and settles. Existing tests then keep settling unchanged.
+   - The sky's own tests, and the holds tests for the screens, don't add one. A screen test asserts the hold through the background's state, not through settling.
+   - The apps never put one at their root.
+
+Tests now, replacing the sky and loading tests above:
+- **ToySky:** `shiftAt(1 s)` is (6, 6); `shiftAt` wraps at 64; the uniform values for Sunny and Night (background, glow, dot alpha, spacing, radius, glow share, size, shift).
+- **The sky with effects on** (no shader in tests, so the Canvas fill) ticks: after 1 s the painter's shift is (6, 6).
+- **It doesn't tick** with effects off, with `disableAnimations`, or under a `ToyStillSky`.
+- **Holds:** removing the `ToyStillSky` starts it again; with two holders, removing one keeps it still.
+- **Covered pages:** a page pushed over a drifting page stops the one below ticking.
+- **The Canvas fill's pixels:** at shift (0, 0) and (6, 6), a dot's centre moves by (6, 6).
+- **Only the sky repaints:** a child counting its builds is built once over 10 ticks.
+- **Loading:** the contract tests above, and `ToyLook.build(effects: false)` has no backdrop, with equality covering it.
+- Reduce-motion for the button bounce and the card pops, and the goal glow's effects test.
+- party_host and controller_app: the holds, as above.
+
 in the report:
 - test counts before and after;
 - the files changed;

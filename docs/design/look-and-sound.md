@@ -147,6 +147,12 @@ Two fragment shaders in `packages/toy_look/shaders/`, declared under `flutter: s
 1. **`toy_shade.frag`** (set as a `Paint`'s shader for one shape): uniforms are the shape's bounds, its base colour, the light direction (top-left), the band count (3) and the glint size. It builds a dome-shaped normal from the position inside the bounds, puts the light into 3 hard bands (highlight, base, shade), adds a soft rim light on the shaded side and a small white glint near the top-left. Ink outline and shadow stay Canvas strokes.
 2. **`toy_backdrop.frag`** (the background): the background colour, the centre glow, and polka dots on a slow diagonal drift (time uniform). Used on menus with effects on; in a game the background is drawn once into an image and reused.
 
+Decided at step 6 (Claude, Nov 8, 2026):
+- The dots drift down and to the right at 6 logical px a second: calm enough to go unnoticed after a moment. The shader and the Canvas fallback draw the same sky at the same drift, so switching effects never makes it jump.
+- The sky holds still in a round: on the host's Shape Race and Arena screens, and on a phone's pad and joined view, which saves a phone's battery. It also holds still when the device asks for reduced motion.
+- Both programs are drawn once offscreen at start (a warm-up), so the driver compiles them behind the splash.
+- What stays flat: menu badges and buttons, because text sits on them and the shade band would take ink-on-colour below 4.5:1 (D12); and the Arena's walls and goal pad, which are flat toy plates.
+
 Fallback, and how the look is the same without the shader: the body is a `LinearGradient` from top-left to bottom-right with hard stops (highlight to 30%, base to 75%, shade after), and the glint is a small white oval. In the mock-ups, "effects on" and "effects off" can be compared.
 
 What the research found (docs/briefs/m13/research-flutter-shaders-report.md, the flash worker's first web research job, checked by Claude against docs.flutter.dev):
