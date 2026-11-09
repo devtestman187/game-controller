@@ -12,6 +12,14 @@ const _minBodyMm = 7.0;
 /// the ink ring of an empty-handed worker's grab point shows under its feet.
 const _standShare = 1.35;
 
+/// How far a worker's ink can reach from its body's middle, in body radii: as
+/// tall as the tallest accessory (design 5b's cap, 1.9) stretched by the
+/// largest squash (1.13), plus the hop (0.18), a lean's tilt and the look's
+/// ink. A body kept this far inside the field is drawn whole (design 5a rule
+/// 4); it is the body's largest reach all round, so a worker at the field's
+/// left edge is a little further in than its ink is wide.
+const _inkShare = 2.5;
+
 /// The ink ring at a worker's grab point, as a share of the body's radius, and
 /// how thick its stroke is against the look's ink.
 const _ringShare = 0.32;
@@ -64,11 +72,15 @@ double _workerRadius(double px, double? pxPerMm) {
 extension _WorkerPaint on PuzzlePainter {
   void _paintWorkers(Canvas canvas, PuzzleSnapshot snapshot, double px) {
     final radius = _workerRadius(px, pxPerMm);
+    // How a worker is drawn here, for keeping it inside the field (design 5a
+    // rule 4): the field it is clipped to, its stand, and its ink's reach.
+    final fit = (inside: Offset.zero & field.size, stand: _standShare * radius, ink: _inkShare * radius);
     for (final p in snapshot.players) {
       // The player's number becomes a character in one place (design 5b), once
       // a player a paint, and a later milestone hands a chosen character here.
       final character = ToyCharacter.forPlayer(p.number);
-      final pose = workers?.poseOf(board, p.number, nowMs, effects: look.effects) ?? WorkerPose.on(Offset(p.x, p.y));
+      final pose =
+          workers?.poseOf(board, p.number, nowMs, effects: look.effects, fit: fit) ?? WorkerPose.on(Offset(p.x, p.y));
       _worker(canvas, pose, character: character, radius: radius, px: px, look: look);
     }
   }
@@ -94,7 +106,7 @@ void _worker(
   final motion = pose.away * _standShare + pose.motion;
   canvas
     ..save()
-    ..translate(pose.at.dx, pose.at.dy);
+    ..translate(pose.at.dx + pose.slide.dx, pose.at.dy + pose.slide.dy);
   if (pose.leanDeg != 0) canvas.rotate(pose.leanDeg * pi / 180);
   canvas
     ..translate(motion.dx * radius, motion.dy * radius)

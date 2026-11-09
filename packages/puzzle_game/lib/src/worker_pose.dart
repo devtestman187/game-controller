@@ -61,6 +61,12 @@ const strainTall = 0.87;
 const happyWide = 0.94;
 const happyTall = 1.07;
 
+/// The room a worker is drawn in, for keeping its ink inside the field (design
+/// 5a rule 4): the field's rect, how far the body's middle sits from the point
+/// the worker stands on, and how far its ink reaches from that middle. The last
+/// two are the painter's own sizes, in the field's units.
+typedef WorkerFit = ({Rect inside, double stand, double ink});
+
 /// One worker's whole pose (design 5a): where its body stands, which way it
 /// leans, squashes, hops or shakes, where its hands reach, and what its face
 /// shows. The rules decide it here and the view draws it in the player's
@@ -76,6 +82,7 @@ final class WorkerPose {
     this.leanDeg = 0,
     this.squash = (x: 1.0, y: 1.0),
     this.motion = Offset.zero,
+    this.slide = Offset.zero,
     this.sweat = false,
   });
 
@@ -110,16 +117,47 @@ final class WorkerPose {
   /// shake. Zero with the effects off (design D8).
   final Offset motion;
 
+  /// How far the body is slid from where it stands, in the field's units, to
+  /// keep its ink inside the field (design 5a rule 4): the point the worker
+  /// stands on stays where the rules put it. Drawing only, so the effects
+  /// setting leaves it alone.
+  final Offset slide;
+
   final WorkerHands hands;
 
   /// Whether a sweat drop is drawn.
   final bool sweat;
 
   /// The pose with the motion the effects setting turns off (design D8) taken
-  /// out: no hop, no shake, no lean. The face, the squash and the arms stay, so
-  /// a worker with the effects off still says what it is doing.
-  WorkerPose still() =>
-      WorkerPose(at: at, away: away, onDot: onDot, face: face, look: look, squash: squash, hands: hands, sweat: sweat);
+  /// out: no hop, no shake, no lean. The face, the squash, the arms and the
+  /// slide stay, so a worker with the effects off still says what it is doing,
+  /// and where it is drawn.
+  WorkerPose still() => WorkerPose(
+    at: at,
+    away: away,
+    onDot: onDot,
+    face: face,
+    look: look,
+    squash: squash,
+    hands: hands,
+    slide: slide,
+    sweat: sweat,
+  );
+
+  /// This pose with its body slid [by] in the field's units (design 5a rule 4).
+  WorkerPose slid(Offset by) => WorkerPose(
+    at: at,
+    away: away,
+    onDot: onDot,
+    face: face,
+    look: look,
+    leanDeg: leanDeg,
+    squash: squash,
+    motion: motion,
+    slide: by,
+    hands: hands,
+    sweat: sweat,
+  );
 
   @override
   String toString() => 'WorkerPose(${face.name} at $at away $away onDot $onDot lean $leanDeg)';

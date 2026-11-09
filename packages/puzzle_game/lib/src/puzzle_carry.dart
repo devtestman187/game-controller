@@ -21,6 +21,47 @@ extension _PuzzleCarry on PuzzleGame {
     at.dy.clamp(field.top + margin, field.size.height - margin),
   );
 
+  /// Where a held piece's middle goes so its whole turned outline's bounds stay
+  /// inside the field, under the strip of clock (design 5a rule 3): [at] pushed
+  /// back in by however far it sticks out.
+  Offset _insideField(PieceRuntime piece, Offset at) {
+    final b = puzzle.pieces[piece.index].shape.bounds(piece.angle);
+    return Offset(
+      _fitBetween(at.dx, b.left, b.right, 0, field.size.width),
+      _fitBetween(at.dy, b.top, b.bottom, field.top, field.size.height),
+    );
+  }
+
+  /// [at] kept so an outline reaching from [near] to [far] around it stays
+  /// between [low] and [high]: centred where the outline doesn't fit at all.
+  double _fitBetween(double at, double near, double far, double low, double high) {
+    if (far - near >= high - low) return (low + high - far - near) / 2;
+    return at.clamp(low - near, high - far);
+  }
+
+  /// An ordinary piece follows its dot, but the whole of its turned outline
+  /// stays inside the field, and the dot goes with it (design 5a rule 3).
+  void _carrySmall(PuzzlePlayer p, PieceRuntime piece) {
+    piece.pos = _insideField(piece, p.pos);
+    p.pos = piece.pos;
+  }
+
+  /// Every held piece, after a move or a turn: its turned outline back inside
+  /// the field, and the dots of whoever carries it with it — a team's carriers
+  /// each at their own grab, on its edge (design 5a rule 3).
+  void _keepHeldInField() {
+    for (final piece in pieces) {
+      if (piece.state != PieceState.held) continue;
+      final at = _insideField(piece, piece.pos);
+      if (at == piece.pos) continue;
+      piece.pos = at;
+      for (final id in piece.carriers) {
+        final p = _players[id]!;
+        p.pos = _teamCarried(piece) ? _inField(at + p._grab, PuzzleGame.dotRadius) : at;
+      }
+    }
+  }
+
   /// Moves a big piece shared by a team. With both carriers on it, it follows
   /// the average of their two pushes at normal speed; with one, it moves at
   /// the solo big-piece speed and calls the free teammate (a help event at
@@ -34,7 +75,7 @@ extension _PuzzleCarry on PuzzleGame {
     push /= carriers.length.toDouble();
     final alone = carriers.length == 1;
     final factor = alone ? settings.soloBigSpeed : 1.0;
-    piece.pos = _inField(piece.pos + push * (PuzzleGame.speed * factor * dt), 0);
+    piece.pos = _insideField(piece, piece.pos + push * (PuzzleGame.speed * factor * dt));
     for (final c in carriers) {
       c.pos = _inField(piece.pos + c._grab, PuzzleGame.dotRadius);
     }

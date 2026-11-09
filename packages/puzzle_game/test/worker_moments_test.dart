@@ -30,9 +30,21 @@ PieceView ball(double x, double y, {PieceState state = PieceState.tray, List<int
 PlayerView player(double x, double y, {int number = 1, int? held}) =>
     PlayerView(number: number, x: x, y: y, held: held);
 
-/// One board of the fixture, with [pieces] and [players] as given.
-PuzzleSnapshot board(List<PieceView> pieces, List<PlayerView> players, {PuzzlePhase phase = PuzzlePhase.playing}) =>
-    PuzzleSnapshot(puzzleId: 'work', timeLeftMs: 60000, phase: phase, pieces: pieces, players: players);
+/// One board of the fixture, with [pieces] and [players] as given, at game time
+/// [timeLeftMs]: the moments work out a speed from the game's clock, so a
+/// second snapshot has to arrive at a later game time than the first.
+PuzzleSnapshot board(
+  List<PieceView> pieces,
+  List<PlayerView> players, {
+  PuzzlePhase phase = PuzzlePhase.playing,
+  int timeLeftMs = 60000,
+}) => PuzzleSnapshot(puzzleId: 'work', timeLeftMs: timeLeftMs, phase: phase, pieces: pieces, players: players);
+
+/// How much game time passes between two snapshots of a running game, in
+/// milliseconds: a tenth of a second, as a view at 10 frames a second would
+/// see it, so the angles and the speeds of these tests come out as round
+/// numbers.
+const aTenth = 100;
 
 MatchSnapshot boardOnly(PuzzleSnapshot b) => MatchSnapshot(boards: [b]);
 
@@ -93,7 +105,12 @@ void main() {
 
     test('turning the piece it holds: eyes screwed shut in effort', () {
       final m = watching(board([crate(60, 45), ball(10, 10)], [player(55, 45, held: 0)]));
-      m.observe(boardOnly(board([crate(60, 45, angle: 30), ball(10, 10)], [player(55, 45, held: 0)])), 1200);
+      m.observe(
+        boardOnly(
+          board([crate(60, 45, angle: 30), ball(10, 10)], [player(55, 45, held: 0)], timeLeftMs: 60000 - aTenth),
+        ),
+        1200,
+      );
       final pose = m.poseOf(0, 1, 1200);
       expect(pose.face, WorkerFace.effort);
       expect(pose.look.dx, greaterThan(0), reason: 'looking at the piece it turns');
@@ -101,7 +118,12 @@ void main() {
 
     test('a big piece carried alone and moving: a strain, with a shiver and a sweat drop', () {
       final m = watching(board([crate(60, 45, calling: true), ball(10, 10)], [player(55, 45, held: 0)]));
-      m.observe(boardOnly(board([crate(62, 45, calling: true), ball(10, 10)], [player(57, 45, held: 0)])), 1100);
+      m.observe(
+        boardOnly(
+          board([crate(62, 45, calling: true), ball(10, 10)], [player(57, 45, held: 0)], timeLeftMs: 60000 - aTenth),
+        ),
+        1100,
+      );
       final pose = m.poseOf(0, 1, 1100);
       expect(pose.face, WorkerFace.effort);
       expect(pose.sweat, isTrue);
@@ -127,6 +149,7 @@ void main() {
               ball(10, 10),
             ],
             [player(57, 45, held: 0), player(62, 45, number: 2, held: 0)],
+            timeLeftMs: 60000 - aTenth,
           ),
         ),
         1100,
@@ -139,7 +162,10 @@ void main() {
 
     test('pushing: walking into the piece, leaning into it', () {
       final m = watching(board([crate(60, 45), ball(10, 10)], [player(55, 45, held: 0)]));
-      m.observe(boardOnly(board([crate(62, 45), ball(10, 10)], [player(57, 45, held: 0)])), 1100);
+      m.observe(
+        boardOnly(board([crate(62, 45), ball(10, 10)], [player(57, 45, held: 0)], timeLeftMs: 60000 - aTenth)),
+        1100,
+      );
       final pose = m.poseOf(0, 1, 1100);
       expect(pose.face, WorkerFace.effort);
       expect(pose.leanDeg, greaterThan(0), reason: 'leaning toward the piece on its right');
@@ -147,7 +173,10 @@ void main() {
 
     test('pulling: walking away with the piece, leaning back from it', () {
       final m = watching(board([crate(60, 45), ball(10, 10)], [player(55, 45, held: 0)]));
-      m.observe(boardOnly(board([crate(58, 45), ball(10, 10)], [player(53, 45, held: 0)])), 1100);
+      m.observe(
+        boardOnly(board([crate(58, 45), ball(10, 10)], [player(53, 45, held: 0)], timeLeftMs: 60000 - aTenth)),
+        1100,
+      );
       final pose = m.poseOf(0, 1, 1100);
       expect(pose.face, WorkerFace.effort);
       expect(pose.leanDeg, lessThan(0), reason: 'leaning away from the piece it drags');
@@ -161,7 +190,11 @@ void main() {
         final m = watching(board([crate(60, 45), ball(10, 10)], [player(55, 45, held: 0)]));
         m.observe(
           boardOnly(
-            board([crate(60 + away.dx, 45 + away.dy), ball(10, 10)], [player(55 + away.dx, 45 + away.dy, held: 0)]),
+            board(
+              [crate(60 + away.dx, 45 + away.dy), ball(10, 10)],
+              [player(55 + away.dx, 45 + away.dy, held: 0)],
+              timeLeftMs: 60000 - aTenth,
+            ),
           ),
           1100,
         );
@@ -181,7 +214,7 @@ void main() {
 
     test('walking empty-handed: a smile and swinging arms', () {
       final m = watching(board([ball(10, 10), ball(20, 10)], [player(40, 45)]));
-      m.observe(boardOnly(board([ball(10, 10), ball(20, 10)], [player(43, 45)])), 1100);
+      m.observe(boardOnly(board([ball(10, 10), ball(20, 10)], [player(43, 45)], timeLeftMs: 60000 - aTenth)), 1100);
       final walking = m.poseOf(0, 1, 1100);
       final standing = watching(board([ball(10, 10), ball(20, 10)], [player(43, 45)])).poseOf(0, 1, 1100);
       expect(walking.face, WorkerFace.smile);
@@ -255,28 +288,21 @@ void main() {
     });
 
     test('carrying a small piece: its dot is its middle, so the worker stands on the edge it set off from', () {
-      final m = watching(
-        board(
-          [
-            crate(0, 0, state: PieceState.tray, holders: const []),
-            ball(40, 45, state: PieceState.held, holders: const [1]),
-          ],
-          [player(40, 45, held: 1)],
-        ),
+      // The ball's dot is its middle, so the side comes from the way the
+      // worker walks: right, which leaves the body behind it, on the left. It
+      // turns there over a quarter of a second, so the walk is fed as the
+      // snapshots of a running game, a tenth of a second apart.
+      PieceView heldBall(double x) => ball(x, 45, state: PieceState.held, holders: const [1]);
+      PuzzleSnapshot at(double x, int ms) => board(
+        [crate(0, 0, state: PieceState.tray, holders: const []), heldBall(x)],
+        [player(x, 45, held: 1)],
+        timeLeftMs: ms,
       );
-      m.observe(
-        boardOnly(
-          board(
-            [
-              crate(0, 0, state: PieceState.tray, holders: const []),
-              ball(43, 45, state: PieceState.held, holders: const [1]),
-            ],
-            [player(43, 45, held: 1)],
-          ),
-        ),
-        1100,
-      );
-      final pose = m.poseOf(0, 1, 1100);
+      final m = watching(at(40, 60000));
+      for (final (i, x) in [41.0, 42.0, 43.0].indexed) {
+        m.observe(boardOnly(at(x, 60000 - (i + 1) * aTenth)), 1100 + (i + 1) * aTenth);
+      }
+      final pose = m.poseOf(0, 1, 1100 + 3 * aTenth);
       expect(pose.at, const Offset(38, 45), reason: 'the ball is 5 in radius, and the worker walked right');
       expect(pose.away, const Offset(-1, 0));
     });
@@ -284,7 +310,10 @@ void main() {
 
   test('with the effects off nothing hops, shakes, blinks or leans', () {
     final m = watching(board([crate(60, 45), ball(10, 10)], [player(55, 45, held: 0)]));
-    m.observe(boardOnly(board([crate(62, 45), ball(10, 10)], [player(57, 45, held: 0)])), 1100);
+    m.observe(
+      boardOnly(board([crate(62, 45), ball(10, 10)], [player(57, 45, held: 0)], timeLeftMs: 60000 - aTenth)),
+      1100,
+    );
     final pushing = m.poseOf(0, 1, 1100, effects: false);
     expect(pushing.face, WorkerFace.effort, reason: 'the pose still says what the worker is doing');
     expect(pushing.leanDeg, 0);
@@ -292,7 +321,13 @@ void main() {
 
     final dropped = watching(board([crate(60, 45), ball(10, 10)], [player(60, 45, held: 0)]));
     dropped.observe(
-      boardOnly(board([crate(60, 45, state: PieceState.locked, holders: const []), ball(10, 10)], [player(60, 45)])),
+      boardOnly(
+        board(
+          [crate(60, 45, state: PieceState.locked, holders: const []), ball(10, 10)],
+          [player(60, 45)],
+          timeLeftMs: 60000 - aTenth,
+        ),
+      ),
       1200,
     );
     final happy = dropped.poseOf(0, 1, 1200, effects: false);
@@ -302,4 +337,156 @@ void main() {
     final still = watching(board([ball(10, 10), ball(20, 10)], [player(40, 45)]));
     expect(still.poseOf(0, 1, 2800, effects: false).face, WorkerFace.smile, reason: 'no blink');
   });
+
+  group("walking is a speed, on the game's clock", () {
+    test('half the top speed walks every frame after it starts, at 60 Hz and at 30 Hz', () {
+      for (final stepMs in [17, 33]) {
+        final walker = Walker(stepMs: stepMs);
+        for (var frame = 0; frame < 30; frame++) {
+          expect(_walking(walker.step(0.5)), isTrue, reason: '$stepMs ms a snapshot, frame $frame');
+        }
+      }
+    });
+
+    test('a snapshot repeated before the next one changes nothing at all', () {
+      final walker = Walker();
+      final moving = walker.step(0.5);
+      expect(_walking(moving), isTrue);
+      final again = walker.repeat();
+      expect(again.at, moving.at, reason: 'the same place');
+      expect(again.hands, moving.hands, reason: 'the same arms');
+      expect(again.leanDeg, moving.leanDeg, reason: 'the same lean');
+      expect(_walking(walker.step(0.5)), isTrue, reason: 'and the walk goes on after it');
+    });
+
+    test('a stick wobbling round the threshold walks on once it has started', () {
+      final walker = Walker();
+      expect(_walking(walker.step(0.5)), isTrue);
+      for (var frame = 0; frame < 40; frame++) {
+        final share = frame.isEven ? 0.12 : 0.09;
+        expect(_walking(walker.step(share)), isTrue, reason: 'frame $frame at ${share * 100} % of the top speed');
+      }
+    });
+
+    test('a dot slower than the walk-stop speed for walkStopMs makes the worker stand', () {
+      final walker = Walker();
+      expect(_walking(walker.step(0.5)), isTrue);
+      var slowMs = 0;
+      while (_walking(walker.step(0))) {
+        slowMs += 17;
+        expect(slowMs, lessThanOrEqualTo(walkStopMs), reason: 'still walking $slowMs ms after the dot slowed down');
+      }
+      expect(slowMs, greaterThan(walkStopMs - 17), reason: 'it stands within one snapshot of walkStopMs');
+    });
+  });
+
+  group('the side the worker holds a piece from', () {
+    /// Where the body is round the piece it holds, in degrees.
+    double round(WorkerPose pose) => atan2(pose.away.dy, pose.away.dx) * 180 / pi;
+
+    test('a small piece carried in a straight line keeps the body on one side', () {
+      final walker = Walker(held: true);
+      var last = round(walker.pose);
+      expect(last, closeTo(-90, 1e-9), reason: 'it starts above the piece');
+      final angles = [last];
+      for (var frame = 0; frame < 120; frame++) {
+        final now = round(walker.step(0.5));
+        final turn = (now - last + 540) % 360 - 180;
+        expect(
+          turn.abs(),
+          lessThanOrEqualTo(sideTurnDegPerS * 17 / 1000 + 0.001),
+          reason: 'frame $frame turned ${turn.toStringAsFixed(2)}°',
+        );
+        angles.add(now);
+        last = now;
+      }
+      // The turn is over inside a quarter of a second: over the rest of two
+      // seconds of straight walking the body holds its side, behind the piece
+      // on its left.
+      expect((angles.last - angles[20]).abs(), lessThanOrEqualTo(3), reason: 'the body stayed on one side');
+      expect((angles[20] + 360) % 360, closeTo(180, 1), reason: 'behind the piece, on its left');
+    });
+  });
+
+  test('at rest the drawn pose holds still, also with a repeated snapshot', () {
+    final walker = Walker(held: true);
+    final moving = walker.step(0.5);
+    // Two frames with no new snapshot between them: the same pose.
+    final later = walker.poseAfter(17);
+    expect(later.at, moving.at);
+    expect(later.away, moving.away);
+    expect(later.hands, moving.hands);
+    expect(later.leanDeg, moving.leanDeg);
+    expect(later.slide, moving.slide);
+    // And a snapshot that repeats the last one changes nothing either.
+    final repeated = walker.repeat();
+    expect(repeated.at, moving.at);
+    expect(repeated.away, moving.away);
+    expect(repeated.hands, moving.hands, reason: 'a repeat is not a stand');
+    expect(repeated.leanDeg, moving.leanDeg, reason: 'nor a shove');
+  });
+}
+
+/// Whether [pose] is the pose of a worker walking empty-handed: its arms swing
+/// (worker_pose.dart) instead of resting.
+bool _walking(WorkerPose pose) => pose.hands == handsWalk;
+
+/// A dot on the fixture's board, fed to its moments as a view sees it: the
+/// game's clock losing the time between snapshots, and the view's clock
+/// running on between them.
+final class Walker {
+  Walker({this.stepMs = 17, this.held = false, Offset from = const Offset(40, 45)}) : at = from {
+    _see();
+  }
+
+  /// How much game time passes between snapshots, in milliseconds.
+  final int stepMs;
+
+  /// Whether the dot carries the fixture's ball, an ordinary piece.
+  final bool held;
+
+  final WorkerMoments moments = WorkerMoments(fixture());
+
+  Offset at;
+
+  /// The game's clock, as the snapshot carries it.
+  int leftMs = 60000;
+
+  /// The view's clock.
+  int nowMs = 1000;
+
+  WorkerPose get pose => moments.poseOf(0, 1, nowMs);
+
+  /// The pose of a frame [ms] after the last snapshot, before the next arrives.
+  WorkerPose poseAfter(int ms) => moments.poseOf(0, 1, nowMs + ms);
+
+  /// Moves the dot [share] of the game's top speed for one snapshot's game
+  /// time, at [degrees] below the horizontal, and returns the pose after it.
+  WorkerPose step(double share, {double degrees = 0}) {
+    final way = Offset(cos(degrees * pi / 180), sin(degrees * pi / 180));
+    at += way * (PuzzleGame.speed * share * stepMs / 1000);
+    leftMs -= stepMs;
+    nowMs += stepMs;
+    return _see();
+  }
+
+  /// The same snapshot again: no game time has passed, and nothing moved.
+  WorkerPose repeat() => _see();
+
+  WorkerPose _see() {
+    moments.observe(
+      boardOnly(
+        board(
+          [
+            crate(0, 0, state: PieceState.tray, holders: const []),
+            held ? ball(at.dx, at.dy, state: PieceState.held, holders: const [1]) : ball(10, 10),
+          ],
+          [player(at.dx, at.dy, held: held ? 1 : null)],
+          timeLeftMs: leftMs,
+        ),
+      ),
+      nowMs,
+    );
+    return pose;
+  }
 }

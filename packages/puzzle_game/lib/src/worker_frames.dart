@@ -12,6 +12,12 @@ enum _Work { none, push, pull }
 /// piece's side below which it is a sideways shuffle.
 final _sideDeadZone = sin(sideDeadZoneDeg * pi / 180);
 
+/// How far a worker's body may be slid from where it stands before it reads as
+/// letting go of the piece it holds, as a share of its stand from the piece's
+/// edge: past this it goes round to the piece's other side instead (design 5a
+/// rule 4).
+const _sideSlideShare = 0.6;
+
 /// Everything one worker's pose is worked out from, gathered once.
 final class _Frame {
   _Frame(this.puzzle, this.board, this.player, this.seen, this.nowMs);
@@ -34,7 +40,7 @@ final class _Frame {
     return index != null && index < puzzle.pieces.length ? puzzle.pieces[index].shape : null;
   }
 
-  bool get moving => seen?.moved ?? false;
+  bool get walking => seen?.walking ?? false;
   bool get turned => seen?.turned ?? false;
   int get holders => piece?.holders.length ?? 0;
   bool get calling => piece?.calling ?? false;
@@ -46,9 +52,17 @@ final class _Frame {
   int? _age(int? atMs) => atMs == null ? null : nowMs - atMs;
 
   /// The pose this worker shows (design 5a), from the moments in the order the
-  /// design lists them.
-  WorkerPose pose({required bool effects}) {
-    final stand = _stand();
+  /// design lists them, with its body slid (or taken round the piece) to keep
+  /// its ink inside the field when the view says how it draws it ([fit]).
+  WorkerPose pose({required bool effects, WorkerFit? fit}) {
+    final (stand, slide) = _fitted(fit);
+    final pose = _pose(stand, effects);
+    return slide == Offset.zero ? pose : pose.slid(slide);
+  }
+
+  /// The pose of a worker standing [stand], from the moments in the design's
+  /// order.
+  WorkerPose _pose(_Stand stand, bool effects) {
     final happy = happyAgeMs;
     if (_within(happy, happyMomentMs)) return _happy(stand, happy!);
     if (_within(oopsAgeMs, oopsMomentMs)) return _oops(stand);
@@ -61,33 +75,56 @@ final class _Frame {
   /// once and is over at [lengthMs].
   static bool _within(int? ageMs, int lengthMs) => ageMs != null && ageMs >= 0 && ageMs < lengthMs;
 
+  /// Where the body stands, and how far it is slid from there to keep its ink
+  /// inside [fit]'s field (design 5a rule 4): in from the side its body would
+  /// cross, or, where that would take it off the piece it holds, round to that
+  /// piece's other side. Drawing only: the dot stays where the rules left it.
+  (_Stand, Offset) _fitted(WorkerFit? fit) {
+    final stand = _stand();
+    if (fit == null) return (stand, Offset.zero);
+    final body = stand.at + stand.away * fit.stand;
+    final slid = Offset(
+      body.dx.clamp(fit.inside.left + fit.ink, fit.inside.right - fit.ink),
+      body.dy.clamp(fit.inside.top + fit.ink, fit.inside.bottom - fit.ink),
+    );
+    final slide = slid - body;
+    if (slide == Offset.zero) return (stand, Offset.zero);
+    if (piece != null && slide.distance > _sideSlideShare * fit.stand) {
+      // Further in than the arms can stretch: the worker goes round the piece
+      // rather than let go of it.
+      return (_edge(away: -stand.away), Offset.zero);
+    }
+    return (stand, slide);
+  }
+
   /// Where the body stands: on the grab point holding nothing, else on the edge
-  /// of the piece it holds, on the ray from its middle through the dot — so a
-  /// carrying worker never covers the piece's middle.
+  /// of the piece it holds, on the ray from its middle along the side the
+  /// moments eased it onto — so a carrying worker never covers the piece's
+  /// middle.
   _Stand _stand() {
     final piece = this.piece;
     final shape = this.shape;
     if (piece == null || shape == null) return (at: dot, away: const Offset(0, -1), onDot: true);
-    final middle = Offset(piece.x, piece.y);
-    final away = _side(middle);
-    return (at: middle + away * _outlineReach(shape, piece.angle, middle, away), away: away, onDot: false);
+    return _edge(away: _side);
   }
 
-  /// Which way the body is from the middle of the piece it holds: from the dot
-  /// when the grab holds it off the middle, else the side it took up with the
-  /// piece, else in front of it.
-  Offset _side(Offset middle) {
-    final ray = dot - middle;
-    if (ray.distance > sideUnits) return ray / ray.distance;
-    return seen?.side ?? const Offset(0, -1);
+  /// Where the body stands on the piece it holds, on the side [away].
+  _Stand _edge({required Offset away}) {
+    final piece = this.piece!;
+    final middle = Offset(piece.x, piece.y);
+    return (at: middle + away * _outlineReach(shape!, piece.angle, middle, away), away: away, onDot: false);
   }
+
+  /// Which way the body is from the middle of the piece it holds: the side it
+  /// took up with the piece, else above it.
+  Offset get _side => seen?.side ?? const Offset(0, -1);
 
   /// Whether this worker is shoving or dragging: the way it travels against the
   /// side of the piece it is on. Sideways is neither, and standing is neither.
   _Work get work {
     final side = seen?.side;
     final travel = seen?.travel ?? Offset.zero;
-    if (!moving || side == null) return _Work.none;
+    if (!walking || side == null) return _Work.none;
     final along = travel.dx * side.dx + travel.dy * side.dy;
     if (along.abs() < _sideDeadZone) return _Work.none;
     return along < 0 ? _Work.push : _Work.pull;
@@ -138,7 +175,7 @@ final class _Frame {
         );
 
   /// Empty-handed: walking, or standing with a blink now and then.
-  WorkerPose _empty(_Stand stand, bool effects) => moving ? _walk(stand) : _standing(stand, effects);
+  WorkerPose _empty(_Stand stand, bool effects) => walking ? _walk(stand) : _standing(stand, effects);
 
   WorkerPose _walk(_Stand stand) => WorkerPose(
     at: stand.at,
@@ -161,7 +198,7 @@ final class _Frame {
 
   /// Holding a piece: the moments of carrying, in the design's order.
   WorkerPose _holding(_Stand stand, bool effects) {
-    if (calling) return moving ? _strain(stand) : _call(stand, effects);
+    if (calling) return walking ? _strain(stand) : _call(stand, effects);
     if (turned) return _turning(stand);
     if (holders > 1) return _together(stand);
     return switch (work) {

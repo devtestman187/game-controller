@@ -240,27 +240,59 @@ class PuzzleGame {
     dt = dt.clamp(0.0, 0.1);
     elapsedS += dt;
 
+    _noteTime(dt, events);
+    final presses = _presses(inputs);
+    _moveAll(inputs, dt, events);
+    _turnAll(inputs, dt);
+    // A turned outline is wider than the one before it: whatever is held is
+    // brought back inside the field, and the dots with it.
+    _keepHeldInField();
+    for (final p in _players.values) {
+      _highlight(p, dt, events);
+    }
+    _tapAll(presses, events);
+
+    if (placed == pieces.length) {
+      phase = PuzzlePhase.finished;
+      finishTimeS = elapsedS;
+      events.add(PuzzleEvent(PuzzleEventKind.finished, data: {'timeS': elapsedS}));
+    } else if (timeLeftS <= 0) {
+      phase = PuzzlePhase.timeUp;
+      _putEverythingDown();
+      events.add(PuzzleEvent(PuzzleEventKind.timeUp, data: {'placed': placed}));
+    }
+    return events;
+  }
+
+  /// The clock, and a tick for each whole second inside the warning time.
+  void _noteTime(double dt, List<PuzzleEvent> events) {
     final before = timeLeftS;
     timeLeftS = max(0, timeLeftS - dt);
     if (timeLeftS > 0 && timeLeftS < settings.warningS && before.ceil() != timeLeftS.ceil()) {
       events.add(PuzzleEvent(PuzzleEventKind.tick, data: {'secondsLeft': timeLeftS.ceil()}));
     }
+  }
 
-    // A presses, on the press only.
+  /// A presses, on the press only.
+  List<PuzzlePlayer> _presses(Map<String, GamepadState> inputs) {
     final presses = <PuzzlePlayer>[];
     for (final p in _players.values) {
       final a = inputs[p.id]!.pressed(GamepadButton.a);
       if (a && !p._aDown) presses.add(p);
       p._aDown = a;
     }
+    return presses;
+  }
 
-    // Moving: a dot moves itself, and an ordinary piece follows its dot. A
-    // big piece shared by a team moves itself, and its carriers with it.
+  /// Moving: a dot moves itself, and an ordinary piece follows its dot, the
+  /// whole of it inside the field. A big piece shared by a team moves itself,
+  /// and its carriers with it.
+  void _moveAll(Map<String, GamepadState> inputs, double dt, List<PuzzleEvent> events) {
     for (final p in _players.values) {
       final held = p.held;
       if (held != null && _teamCarried(pieces[held])) continue;
       p.pos = _inField(p.pos + _move(inputs[p.id]!) * (speed * dt), dotRadius);
-      if (held != null) pieces[held].pos = p.pos;
+      if (held != null) _carrySmall(p, pieces[held]);
     }
     for (final piece in pieces) {
       if (piece.state == PieceState.held && _teamCarried(piece)) {
@@ -269,9 +301,11 @@ class PuzzleGame {
         piece.calling = false;
       }
     }
+  }
 
-    // Turning: X and Y, or the right stick. Either carrier of a shared piece
-    // can turn it.
+  /// Turning: X and Y, or the right stick. Either carrier of a shared piece
+  /// can turn it.
+  void _turnAll(Map<String, GamepadState> inputs, double dt) {
     for (final piece in pieces) {
       if (piece.state != PieceState.held) continue;
       var turn = 0.0;
@@ -284,30 +318,32 @@ class PuzzleGame {
       }
       if (turn != 0) piece.angle = (piece.angle + turn) % 360;
     }
+  }
 
-    // The drop-ready highlight and the hint glow.
-    for (final p in _players.values) {
-      final held = p.held;
-      if (held == null) {
-        p
-          ..readyTarget = null
-          ..hintTarget = null
-          .._holdS = 0;
-        continue;
-      }
-      final piece = pieces[held];
-      p._holdS += dt;
-      final ready = _matchingTarget(piece);
-      if (ready != null && ready != p.readyTarget && settings.dropReadyHighlight) {
-        events.add(PuzzleEvent(PuzzleEventKind.dropReady, playerId: p.id));
-      }
-      p.readyTarget = settings.dropReadyHighlight ? ready : null;
-      p.hintTarget = p._holdS >= settings.hintDelayS ? _nearestFreeTarget(piece) : null;
+  /// The drop-ready highlight, and the hint glow.
+  void _highlight(PuzzlePlayer p, double dt, List<PuzzleEvent> events) {
+    final held = p.held;
+    if (held == null) {
+      p
+        ..readyTarget = null
+        ..hintTarget = null
+        .._holdS = 0;
+      return;
     }
+    final piece = pieces[held];
+    p._holdS += dt;
+    final ready = _matchingTarget(piece);
+    if (ready != null && ready != p.readyTarget && settings.dropReadyHighlight) {
+      events.add(PuzzleEvent(PuzzleEventKind.dropReady, playerId: p.id));
+    }
+    p.readyTarget = settings.dropReadyHighlight ? ready : null;
+    p.hintTarget = p._holdS >= settings.hintDelayS ? _nearestFreeTarget(piece) : null;
+  }
 
-    // A picks up (or takes the other end of a teammate's big piece), or
-    // drops. A teammate whose shared piece was just dropped doesn't pick up
-    // something else with the same press.
+  /// A picks up (or takes the other end of a teammate's big piece), or drops.
+  /// A teammate whose shared piece was just dropped doesn't pick up something
+  /// else with the same press.
+  void _tapAll(List<PuzzlePlayer> presses, List<PuzzleEvent> events) {
     final handled = <String>{};
     for (final p in presses) {
       if (!handled.add(p.id)) continue;
@@ -319,17 +355,6 @@ class PuzzleGame {
         _drop(p, pieces[held], events);
       }
     }
-
-    if (placed == pieces.length) {
-      phase = PuzzlePhase.finished;
-      finishTimeS = elapsedS;
-      events.add(PuzzleEvent(PuzzleEventKind.finished, data: {'timeS': elapsedS}));
-    } else if (timeLeftS <= 0) {
-      phase = PuzzlePhase.timeUp;
-      _putEverythingDown();
-      events.add(PuzzleEvent(PuzzleEventKind.timeUp, data: {'placed': placed}));
-    }
-    return events;
   }
 
   /// Everything the view needs, and nothing else (S8).
