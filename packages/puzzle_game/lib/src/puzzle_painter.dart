@@ -14,10 +14,11 @@ const _heldShadowShare = 2.0;
 const _targetFill = 0.25;
 const _targetReadyFill = 0.45;
 
-/// A target's dash and the air after it, in the look's pixels (design section
-/// 5: a dashed outline).
-const _dashPx = 2.0;
-const _dashGapPx = 1.6;
+/// How far toward its corners, and how far round its radius, a placed piece's
+/// ✓ moves when an empty target drawn over it covers the piece's middle (design
+/// section 5, decided at device test 3).
+const _checkCornerShare = 0.55;
+const _checkRingShare = 0.5;
 
 /// How much wider a ready or hinted target's outline is than the look's.
 const _targetEdgeShare = 1.5;
@@ -123,18 +124,19 @@ class PuzzlePainter extends CustomPainter {
       for (final (i, p) in s.pieces.indexed)
         if (p.state == PieceState.locked) _targetOf(s.pieces[i]): i,
     };
+    final filled = lockedIn.keys.toSet();
     for (final t in Iterable<int>.generate(puzzle.pieces.length)) {
       final piece = lockedIn[t];
-      piece != null ? _piece(canvas, piece, styles) : _outline(canvas, t, px);
+      piece != null ? _piece(canvas, piece, styles, filled) : _outline(canvas, t, px);
     }
     // Then loose pieces lowest layer first, so the pile looks as it lies,
     // carried pieces, and the dots on top of everything.
     for (final i in s.order) {
       final p = s.pieces[i];
-      if (p.state != PieceState.locked && p.state != PieceState.held) _piece(canvas, i, styles);
+      if (p.state != PieceState.locked && p.state != PieceState.held) _piece(canvas, i, styles, filled);
     }
     for (final (i, p) in s.pieces.indexed) {
-      if (p.state == PieceState.held) _piece(canvas, i, styles);
+      if (p.state == PieceState.held) _piece(canvas, i, styles, filled);
     }
     _paintWorkers(canvas, s, px);
     if (hud) _hud(canvas, px, styles);
@@ -210,7 +212,9 @@ class PuzzlePainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeWidth = width
       ..strokeJoin = StrokeJoin.round
-      ..strokeCap = StrokeCap.round
+      // The dashes end square: round caps would close their gaps and make the
+      // target's edge read as solid, as it did before device test 3.
+      ..strokeCap = ready || hint ? StrokeCap.round : StrokeCap.butt
       ..color = hint
           ? _colours.focus
           : ready
@@ -220,7 +224,7 @@ class PuzzlePainter extends CustomPainter {
       canvas.drawPath(path, edge);
     } else {
       // The look's own dashed edge, in the painter's units.
-      paintDashedEdge(canvas, path, edge, on: _dashPx / scale, off: _dashGapPx / scale);
+      paintDashedEdge(canvas, path, edge, on: toyDashOn / scale, off: toyDashOff / scale);
     }
   }
 
@@ -239,7 +243,7 @@ class PuzzlePainter extends CustomPainter {
     return best;
   }
 
-  void _piece(Canvas canvas, int i, _Styles styles) {
+  void _piece(Canvas canvas, int i, _Styles styles, Set<int> filled) {
     final p = s.pieces[i];
     final spec = puzzle.pieces[i];
     final at = Offset(p.x, p.y);
@@ -275,8 +279,8 @@ class PuzzlePainter extends CustomPainter {
     if (p.calling) _callFlash(canvas, path, at, p);
     // Right and wrong also show as a mark, not only a colour.
     if (wrong) _mark(canvas, at, right: false, _colours.bad);
-    if (p.state == PieceState.locked && !_insideOpenTarget(at)) {
-      _mark(canvas, at, right: true, _colours.good, small: true, ageMs: age);
+    if (p.state == PieceState.locked) {
+      _mark(canvas, _checkPlace(i, at, filled), right: true, _colours.good, small: true, ageMs: age);
     }
     if (moving) canvas.restore();
   }
@@ -315,17 +319,42 @@ class PuzzlePainter extends CustomPainter {
     }
   }
 
-  /// Whether [at] is inside the outline of a target nothing is locked in
-  /// yet (a wall's ✓ would otherwise sit in the empty door).
-  bool _insideOpenTarget(Offset at) {
-    final filled = {
-      for (final p in s.pieces)
-        if (p.state == PieceState.locked) _targetOf(p),
-    };
-    for (final (i, spec) in puzzle.pieces.indexed) {
-      if (!filled.contains(i) && _path(spec.shape, _targetAt(i), spec.targetAngle).contains(at)) return true;
+  /// Where a locked piece [piece]'s ✓ is drawn: its middle when nothing empty
+  /// covers it, else the first place on the piece clear of every empty target
+  /// drawn over it — a door's slot over a wall — and its middle again when
+  /// every place is covered, so a ✓ is never dropped (design section 5,
+  /// decided at device test 3). Only a target later in the picture's order is
+  /// drawn over the piece: one under it, as a rocket's body is under its
+  /// window, never hides the ✓.
+  Offset _checkPlace(int piece, Offset at, Set<int> filled) {
+    final over = [
+      for (final (j, spec) in puzzle.pieces.indexed)
+        if (j > piece && !filled.contains(j)) _path(spec.shape, _targetAt(j), spec.targetAngle),
+    ];
+    bool covered(Offset place) => over.any((path) => path.contains(place));
+    if (!covered(at)) return at;
+    final shape = puzzle.pieces[piece].shape;
+    final angle = s.pieces[piece].angle;
+    for (final place in _checkPlaces(shape, at, angle)) {
+      if (shape.contains(place, at, angle) && !covered(place)) return place;
     }
-    return false;
+    return at;
+  }
+
+  /// The places a ✓ may move to, in order: the piece's middle, then points
+  /// part way to each of its corners, or round half a circle's radius.
+  Iterable<Offset> _checkPlaces(PieceShape shape, Offset at, double angle) sync* {
+    yield at;
+    if (shape.circle) {
+      for (var k = 0; k < 8; k++) {
+        final turn = k * pi / 4;
+        yield at + Offset(cos(turn), sin(turn)) * (shape.radius * _checkRingShare);
+      }
+      return;
+    }
+    for (final corner in shape.placed(at, angle)) {
+      yield at + (corner - at) * _checkCornerShare;
+    }
   }
 
   /// A right drop's ✓ or a wrong one's ✗, drawn as strokes in [colour] over a
