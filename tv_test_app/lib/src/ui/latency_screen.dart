@@ -4,6 +4,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:party_host/party_host.dart';
 
+import '../tv_text.dart';
+import 'status_line.dart';
+
 /// The PRD's latency target: input should reach the TV in about this long.
 const latencyTargetMs = 50;
 
@@ -11,6 +14,10 @@ const latencyTargetMs = 50;
 /// round trip and the estimated one-way input delay, live and as rolling
 /// averages, against the ~50 ms target. "Save log" writes everything to a
 /// file.
+///
+/// Each controller's figures are a sheet of the look's paper with the ink edge
+/// (M13 3d); the verdict on the delay is a dot in the look's status colours
+/// beside ink words, never coloured words of its own.
 class LatencyScreen extends ConsumerWidget {
   const LatencyScreen({super.key});
 
@@ -21,18 +28,17 @@ class LatencyScreen extends ConsumerWidget {
     final host = ref.watch(gameHostProvider);
     // A phone that is away has no latency to show (m12 bug 1107d).
     final players = ref.watch(gamePlayersProvider).where((p) => !p.local && !p.away).toList();
-    final text = Theme.of(context).textTheme;
-    final scheme = Theme.of(context).colorScheme;
+    final look = ToyLookScope.of(context);
     return CallbackShortcuts(
       bindings: {const SingleActivator(LogicalKeyboardKey.escape): () => Navigator.of(context).maybePop()},
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Latency'),
+          title: const Text(TvText.latency),
           actions: [
             Padding(
-              padding: const EdgeInsets.only(right: 16),
+              padding: const EdgeInsets.only(right: ToySizes.space16),
               child: HostButton(
-                label: 'Save log',
+                label: TvText.saveLog,
                 icon: Icons.save_alt,
                 autofocus: true,
                 onPressed: () => saveLog(context, ref),
@@ -42,22 +48,28 @@ class LatencyScreen extends ConsumerWidget {
         ),
         body: SafeArea(
           child: ListView(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(ToySizes.space8),
             children: [
-              Text(
-                'Input delay is how long a press or a stick movement takes from the phone to this screen\'s '
-                'app, estimated from the heartbeats (one way, not counting the screen itself). The target is '
-                'about $latencyTargetMs ms on home Wi-Fi. Ping is the full round trip. The stages break the delay '
-                'down: phone to TV, then TV to the first frame drawn with that input (while a game runs).',
-                style: text.bodyLarge?.copyWith(color: scheme.onSurfaceVariant),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: ToySizes.space8, vertical: ToySizes.space8),
+                child: Text(
+                  TvText.latencyIntro(latencyTargetMs),
+                  style: look.type.body.copyWith(color: look.colors.onBackground),
+                ),
               ),
-              const SizedBox(height: 16),
               if (players.isEmpty)
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 48),
-                  child: Text('No controllers connected.', style: text.titleLarge, textAlign: TextAlign.center),
+                  child: Text(
+                    TvText.noControllersConnected,
+                    style: look.type.title.copyWith(color: look.colors.onBackground),
+                    textAlign: TextAlign.center,
+                  ),
                 ),
-              for (final p in players) ...[_ControllerLatency(player: p, host: host), const SizedBox(height: 12)],
+              for (final p in players) ...[
+                _ControllerLatency(player: p, host: host),
+                const SizedBox(height: ToySizes.space12),
+              ],
             ],
           ),
         ),
@@ -71,9 +83,9 @@ Future<void> saveLog(BuildContext context, WidgetRef ref) async {
   final messenger = ScaffoldMessenger.of(context);
   try {
     final path = await ref.read(hostServiceProvider).exportLog();
-    messenger.showSnackBar(SnackBar(content: Text('Log saved to $path'), duration: const Duration(seconds: 8)));
+    messenger.showSnackBar(SnackBar(content: Text(TvText.logSaved(path)), duration: const Duration(seconds: 8)));
   } catch (e) {
-    messenger.showSnackBar(SnackBar(content: Text('Could not save the log: $e')));
+    messenger.showSnackBar(SnackBar(content: Text(TvText.logSaveFailed(e))));
   }
 }
 
@@ -87,35 +99,35 @@ class _ControllerLatency extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+    final colors = ToyLookScope.of(context).colors;
     final input = host.latency(player.id)?.inputDelay;
     final id = player.id;
     final (verdict, color) = switch (input) {
-      null => ('Not measured yet', scheme.onSurfaceVariant),
-      final l when l.avgMs <= latencyTargetMs => ('Within the $latencyTargetMs ms target', Colors.greenAccent),
-      _ => ('Above the $latencyTargetMs ms target', Colors.amberAccent),
+      null => (TvText.notMeasured, colors.inkSoft),
+      final l when l.avgMs <= latencyTargetMs => (TvText.withinTarget(latencyTargetMs), colors.good),
+      _ => (TvText.aboveTarget(latencyTargetMs), colors.caution),
     };
-    return DecoratedBox(
+    return ToyCard(
       key: Key('latency-$id'),
-      decoration: BoxDecoration(color: scheme.surfaceContainer, borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _Header(player: player, verdict: verdict, verdictColor: color),
-            const SizedBox(height: 12),
-            _Figures(player: player, host: host),
-          ],
-        ),
+      padding: const EdgeInsets.all(ToySizes.space12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _Header(player: player, verdict: verdict, verdictColor: color),
+          const SizedBox(height: ToySizes.space8),
+          _Figures(player: player, host: host),
+        ],
       ),
     );
   }
 }
 
-/// The player's badge and name, with the verdict on the delay.
+/// The player's badge and name, with the verdict on the delay under them.
 class _Header extends StatelessWidget {
   const _Header({required this.player, required this.verdict, required this.verdictColor});
+
+  /// The player's badge: the look's own size, a row of figure labels deep.
+  static const _badgeDiameter = 40.0;
 
   final GamePlayer player;
   final String verdict;
@@ -123,15 +135,24 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
-    return Row(
+    final look = ToyLookScope.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        PlayerBadge(number: player.number),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Text(player.nickname ?? '', style: text.titleLarge, overflow: TextOverflow.ellipsis),
+        Row(
+          children: [
+            ToyBadge(number: player.number, diameter: _badgeDiameter),
+            const SizedBox(width: ToySizes.space12),
+            Expanded(
+              child: Text(
+                player.nickname ?? '',
+                style: look.type.button.copyWith(color: look.colors.ink),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
         ),
-        Text(verdict, style: text.titleMedium?.copyWith(color: verdictColor)),
+        StatusLine(label: verdict, color: verdictColor),
       ],
     );
   }
@@ -155,42 +176,42 @@ class _Figures extends StatelessWidget {
     final id = player.id;
     final figures = <(String, String, String, Key?)>[
       (
-        'Input delay, 30 s avg',
-        input == null ? '–' : '${input.avgMs} ms',
+        TvText.inputDelayAverage,
+        input == null ? HostText.dash : '${input.avgMs} ms',
         input == null
-            ? (l?.errorMs == null ? 'not measured (phone app older than 0.6.0?)' : 'waiting for input')
-            : 'p95 ${input.p95Ms} · max ${input.maxMs} ms · ± ${l?.errorMs} ms',
+            ? (l?.errorMs == null ? TvText.olderPhoneApp : TvText.waitingForInput)
+            : TvText.inputDelayDetail(input.p95Ms, input.maxMs, l?.errorMs),
         Key('inputDelay-$id'),
       ),
       (
-        'Input delay, whole session',
-        session == null ? '–' : '${session.avgMs} ms',
-        session == null ? '' : 'max ${session.maxMs} ms · ${session.samples} states',
+        TvText.inputDelaySession,
+        session == null ? HostText.dash : '${session.avgMs} ms',
+        session == null ? '' : TvText.sessionDetail(session.maxMs, session.samples),
         null,
       ),
-      ('Ping now', l?.pingNowMs == null ? '–' : '${l!.pingNowMs} ms', 'round trip', null),
+      (TvText.pingNow, l?.pingNowMs == null ? HostText.dash : '${l!.pingNowMs} ms', TvText.roundTrip, null),
       (
-        'Ping, 30 s avg',
-        rtt == null ? '–' : '${rtt.avgMs} ms',
-        rtt == null ? '' : 'min ${rtt.minMs} · p95 ${rtt.p95Ms} · max ${rtt.maxMs} ms',
+        TvText.pingAverageLabel,
+        rtt == null ? HostText.dash : '${rtt.avgMs} ms',
+        rtt == null ? '' : TvText.pingDetail(rtt.minMs, rtt.p95Ms, rtt.maxMs),
         null,
       ),
       (
-        'Stage: phone to TV',
-        input == null ? '–' : '${input.avgMs} ms',
-        'sent → received, 30 s avg',
+        TvText.stagePhoneToTv,
+        input == null ? HostText.dash : '${input.avgMs} ms',
+        TvText.sentToReceived,
         Key('stageSent-$id'),
       ),
       (
-        'Stage: TV to the screen',
-        drawn == null ? '–' : '${drawn.avgMs} ms',
-        drawn == null ? 'received → drawn, while a game runs' : 'received → drawn, p95 ${drawn.p95Ms} ms',
+        TvText.stageTvToScreen,
+        drawn == null ? HostText.dash : '${drawn.avgMs} ms',
+        drawn == null ? TvText.receivedToDrawn : TvText.receivedToDrawnP95(drawn.p95Ms),
         Key('stageDrawn-$id'),
       ),
     ];
     return Wrap(
-      spacing: 32,
-      runSpacing: 12,
+      spacing: ToySizes.space32,
+      runSpacing: ToySizes.space12,
       children: [for (final (label, value, detail, key) in figures) _Figure(label, value, detail, valueKey: key)],
     );
   }
@@ -199,6 +220,9 @@ class _Figures extends StatelessWidget {
 class _Figure extends StatelessWidget {
   const _Figure(this.label, this.value, this.detail, {this.valueKey});
 
+  /// A figure's width: room for a label's words at the TV's type.
+  static const width = 260.0;
+
   final String label;
   final String value;
   final String detail;
@@ -206,10 +230,10 @@ class _Figure extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
-    final muted = text.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant);
+    final look = ToyLookScope.of(context);
+    final muted = look.type.body.copyWith(color: look.colors.inkSoft);
     return SizedBox(
-      width: 260,
+      width: width,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -217,7 +241,10 @@ class _Figure extends StatelessWidget {
           Text(
             value,
             key: valueKey,
-            style: text.displaySmall?.copyWith(fontFeatures: const [FontFeature.tabularFigures()]),
+            style: look.type.button.copyWith(
+              color: look.colors.ink,
+              fontFeatures: const [FontFeature.tabularFigures()],
+            ),
           ),
           if (detail.isNotEmpty) Text(detail, style: muted),
         ],

@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:party_host/party_host.dart';
 
+import '../../tv_text.dart';
 import '../input_visualizer.dart';
+import '../status_line.dart';
 import 'panel.dart';
 
 /// The paired and connected phones, each with its state and live input, and
@@ -17,80 +19,100 @@ class ControllersPanel extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final controllers = state.host.controllers;
     final connected = state.host.connected.length;
-    final text = Theme.of(context).textTheme;
     final anyGone = controllers.any((c) => c.state != ControllerState.connected);
     return Panel(
-      title: 'Controllers · $connected connected',
+      title: TvText.controllers(connected),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           HostButton(
-            label: 'Forget phones',
+            label: TvText.forgetPhones,
             compact: true,
             onPressed: anyGone
                 ? () {
                     final n = ref.read(hostServiceProvider).forgetPairings();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Forgot $n phone${n == 1 ? '' : 's'}. They need the code again.')),
-                    );
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(TvText.forgot(n))));
                   }
                 : null,
           ),
         ],
       ),
       child: controllers.isEmpty
-          ? Center(
-              child: Text(
-                'No controllers yet. Open the controller app on the phone.',
-                style: text.bodyLarge,
-                textAlign: TextAlign.center,
-              ),
-            )
+          ? Center(child: Text(TvText.noControllers, textAlign: TextAlign.center))
           : ListView.separated(
               shrinkWrap: true,
               itemCount: controllers.length,
-              separatorBuilder: (_, _) => const SizedBox(height: 8),
+              separatorBuilder: (_, _) => const SizedBox(height: ToySizes.space8),
               itemBuilder: (context, i) => ControllerTile(info: controllers[i]),
             ),
     );
   }
 }
 
-/// One controller: who it is, what it does, and its ping.
+/// One controller: who it is, what it does, and its ping. It is a sheet of
+/// paper with the ink edge inside the panel's, so two of them read apart.
 class ControllerTile extends StatelessWidget {
   const ControllerTile({super.key, required this.info});
 
-  /// Below this width the input picture is smaller, so the name and the state
-  /// still fit on a 1080p TV (960 logical pixels wide).
-  static const narrowWidth = 560.0;
+  /// From this width up the input picture takes its larger size. The TV's own
+  /// tile (about 550 across at 960 x 540) keeps the smaller one, which is what
+  /// leaves the name and the state their room (M13 3d).
+  static const wideWidth = 640.0;
+
+  /// The smaller picture, sized for a tile in the TV's home.
+  static const pictureWidth = 150.0;
+
+  /// The larger picture, for a window with room to spare.
+  static const widePictureWidth = 210.0;
+
+  /// How wide the ping's column is, in the body type's size: room for "max
+  /// 140 ms" on one line at the look's type (a fixed 126 px broke it at the
+  /// TV's, Claude's 3d review).
+  static const _latencyWidthShare = 6.0;
+
+  /// The player's badge: smaller than the look's, so a tile keeps its height.
+  static const _badgeDiameter = 30.0;
+
+  /// The platform icon, for a controller that isn't a player yet.
+  static const _platformIconSize = 28.0;
 
   final ControllerInfo info;
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+    final look = ToyLookScope.of(context);
+    final colors = look.colors;
     final live = info.state == ControllerState.connected;
     return LayoutBuilder(
       builder: (context, constraints) => DecoratedBox(
-        decoration: BoxDecoration(color: scheme.surfaceContainerHigh, borderRadius: BorderRadius.circular(12)),
+        decoration: ShapeDecoration(
+          color: colors.paper,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(ToySizes.cardCorner),
+            side: BorderSide(color: colors.ink, width: look.sizes.outlineWidth),
+          ),
+        ),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: ToySizes.space8, vertical: ToySizes.space4),
           child: Row(
             children: [
               if (live && info.player != null)
-                PlayerBadge(key: Key('player-${info.controllerId}'), number: info.player!, size: 30)
+                ToyBadge(key: Key('player-${info.controllerId}'), number: info.player!, diameter: _badgeDiameter)
               else
-                Icon(_platformIcon(info.platform), size: 28),
-              const SizedBox(width: 12),
+                Icon(_platformIcon(info.platform), size: _platformIconSize, color: colors.ink),
+              const SizedBox(width: ToySizes.space8),
               Expanded(child: _ControllerDetails(info: info)),
-              const SizedBox(width: 8),
+              const SizedBox(width: ToySizes.space8),
               InputVisualizer(
                 key: Key('visualizer-${info.controllerId}'),
                 gamepad: live ? GamepadState.fromInput(info.input) : null,
-                width: constraints.maxWidth < narrowWidth ? 160 : 210,
+                width: constraints.maxWidth < wideWidth ? pictureWidth : widePictureWidth,
               ),
-              const SizedBox(width: 12),
-              SizedBox(width: 92, child: _ControllerLatency(info: info)),
+              const SizedBox(width: ToySizes.space8),
+              SizedBox(
+                width: ToyLookScope.of(context).type.body.fontSize! * _latencyWidthShare,
+                child: _ControllerLatency(info: info),
+              ),
             ],
           ),
         ),
@@ -116,45 +138,39 @@ class _ControllerDetails extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
-    final scheme = Theme.of(context).colorScheme;
+    final look = ToyLookScope.of(context);
+    final colors = look.colors;
     final (label, color) = switch (info.state) {
-      ControllerState.connected => ('Connected', Colors.greenAccent),
-      ControllerState.pairing => ('Waiting for code', Colors.amberAccent),
-      ControllerState.disconnected => ('Disconnected', scheme.onSurfaceVariant),
+      ControllerState.connected => (TvText.connected, colors.good),
+      ControllerState.pairing => (TvText.waitingForCode, colors.focus),
+      ControllerState.disconnected => (TvText.disconnected, colors.bad),
     };
     final live = info.state == ControllerState.connected;
-    final muted = text.bodySmall?.copyWith(color: scheme.onSurfaceVariant);
+    final gamepad = GamepadState.fromInput(info.input);
+    final soft = look.type.body.copyWith(color: colors.inkSoft);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(info.name, style: text.titleMedium, overflow: TextOverflow.ellipsis),
+        Text(
+          info.name,
+          style: look.type.body.copyWith(color: colors.ink),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
         // The host phone's own player has no address to show (M12).
         Text(
           [info.platform, info.appVersion, ?info.remoteAddress].join(' · '),
-          style: muted,
+          style: soft,
+          maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
-        Text(
-          label,
-          style: text.titleSmall?.copyWith(color: color),
-          maxLines: 1,
-          softWrap: false,
-          overflow: TextOverflow.fade,
-        ),
-        if (live && (info.input?.hasAnalog ?? false))
-          Text(
-            'Tilt x ${info.input!.ax!.toStringAsFixed(2)}  y ${info.input!.ay!.toStringAsFixed(2)}',
-            key: Key('tilt-${info.controllerId}'),
-            style: text.bodyMedium?.copyWith(fontFeatures: const [FontFeature.tabularFigures()]),
-          ),
-        if (live && (info.input?.hasSticks ?? false))
-          Text(
-            'L ${info.input!.lx!.toStringAsFixed(2)}, ${info.input!.ly!.toStringAsFixed(2)}   '
-            'R ${info.input!.rx!.toStringAsFixed(2)}, ${info.input!.ry!.toStringAsFixed(2)}',
-            key: Key('sticks-${info.controllerId}'),
-            style: text.bodyMedium?.copyWith(fontFeatures: const [FontFeature.tabularFigures()]),
-          ),
+        // The state is the dot's colour and the words are ink (M13 3d).
+        StatusLine(label: label, color: color),
+        // The values follow the phone's mode, as the host says them.
+        if (live && gamepad.mode == InputMode.gyro)
+          Text(HostText.gamepadValues(gamepad), key: Key('tilt-${info.controllerId}'), style: soft),
+        if (live && gamepad.mode == InputMode.sticks)
+          Text(HostText.gamepadValues(gamepad), key: Key('sticks-${info.controllerId}'), style: soft),
       ],
     );
   }
@@ -168,9 +184,9 @@ class _ControllerLatency extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
-    final scheme = Theme.of(context).colorScheme;
-    final muted = text.bodySmall?.copyWith(color: scheme.onSurfaceVariant);
+    final look = ToyLookScope.of(context);
+    final colors = look.colors;
+    final soft = look.type.body.copyWith(color: colors.inkSoft);
     final live = info.state == ControllerState.connected;
     final rtt = info.rttMs;
     final stats = info.rttStats;
@@ -178,15 +194,15 @@ class _ControllerLatency extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
         Text(
-          live && rtt != null ? '$rtt ms' : '–',
-          style: text.titleLarge?.copyWith(fontFeatures: const [FontFeature.tabularFigures()]),
+          live && rtt != null ? TvText.ping(rtt) : HostText.dash,
+          style: look.type.button.copyWith(color: colors.ink, fontFeatures: const [FontFeature.tabularFigures()]),
         ),
         if (live && stats != null) ...[
-          Text('avg ${stats.avgMs} ms', style: muted),
-          Text('max ${stats.maxMs} ms', style: muted),
+          Text(TvText.pingAverage(stats.avgMs), style: soft),
+          Text(TvText.pingWorst(stats.maxMs), style: soft),
         ],
         if (live && info.inputLatency != null)
-          Text('input ~${info.inputLatency!.avgMs} ms', key: Key('inputLatency-${info.controllerId}'), style: muted),
+          Text(TvText.inputDelay(info.inputLatency!.avgMs), key: Key('inputLatency-${info.controllerId}'), style: soft),
       ],
     );
   }

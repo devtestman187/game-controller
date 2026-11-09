@@ -5,9 +5,15 @@ import 'package:game_assets/asset_manifest.dart';
 import 'package:party_host/party_host.dart';
 import 'package:protocol/protocol.dart';
 
+import '../tv_text.dart';
+import 'status_line.dart';
+
 /// The haptic test panel (PRD T6): fires each haptic event on every connected
 /// controller, with its sound on the TV. Works with the remote (arrows and
 /// OK) and with a mouse or keyboard.
+///
+/// Its rows are in the look (M13 3d): a sheet of paper with the ink edge holds
+/// the events and the steppers, so everything a tester reads is ink on paper.
 class HapticPanelScreen extends ConsumerStatefulWidget {
   const HapticPanelScreen({super.key});
 
@@ -19,15 +25,15 @@ class HapticPanelScreen extends ConsumerStatefulWidget {
 const _durations = <int?>[null, 100, 200, 300, 500, 800, 1200, 2000];
 
 const _feel = {
-  HapticEvent.hit: ('Hit', Icons.sports_mma, 'One heavy thump'),
-  HapticEvent.success: ('Success', Icons.emoji_events_outlined, 'Three rising taps'),
-  HapticEvent.error: ('Error', Icons.block, 'Two sharp buzzes'),
-  HapticEvent.rumble: ('Rumble', Icons.graphic_eq, 'A low, wobbling buzz'),
-  HapticEvent.snap: ('Snap', Icons.lock_outline, 'A click and a firm lock'),
-  HapticEvent.wrong: ('Wrong', Icons.close, 'A low, falling uh-oh'),
-  HapticEvent.dropReady: ('Drop-ready', Icons.adjust, 'One light tap'),
-  HapticEvent.help: ('Help', Icons.front_hand_outlined, 'Two gentle knocks'),
-  HapticEvent.tick: ('Tick', Icons.timer_outlined, 'The lightest tap'),
+  HapticEvent.hit: (TvText.hit, Icons.sports_mma, TvText.hitLine),
+  HapticEvent.success: (TvText.success, Icons.emoji_events_outlined, TvText.successLine),
+  HapticEvent.error: (TvText.error, Icons.block, TvText.errorLine),
+  HapticEvent.rumble: (TvText.rumble, Icons.graphic_eq, TvText.rumbleLine),
+  HapticEvent.snap: (TvText.snap, Icons.lock_outline, TvText.snapLine),
+  HapticEvent.wrong: (TvText.wrong, Icons.close, TvText.wrongLine),
+  HapticEvent.dropReady: (TvText.dropReady, Icons.adjust, TvText.dropReadyLine),
+  HapticEvent.help: (TvText.help, Icons.front_hand_outlined, TvText.helpLine),
+  HapticEvent.tick: (TvText.tick, Icons.timer_outlined, TvText.tickLine),
 };
 
 /// The event's sound file, "none" for events without a sound.
@@ -52,45 +58,24 @@ class _HapticPanelScreenState extends ConsumerState<HapticPanelScreen> {
   Widget build(BuildContext context) {
     final sounds = ref.watch(soundStatusProvider);
     final last = ref.watch(tvEventsProvider);
-    final text = Theme.of(context).textTheme;
-    final scheme = Theme.of(context).colorScheme;
 
     return CallbackShortcuts(
       bindings: {const SingleActivator(LogicalKeyboardKey.escape): () => Navigator.of(context).maybePop()},
       child: Scaffold(
-        appBar: AppBar(title: const Text('Haptic test'), actions: [_Targets()]),
+        appBar: AppBar(title: const Text(TvText.hapticTest), actions: [_Targets()]),
         body: SafeArea(
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+            padding: const EdgeInsets.all(ToySizes.space8),
             children: [
-              _EventButtons(sounds: sounds, onFire: _fire),
-              const SizedBox(height: 24),
-              _Steppers(
+              _Sheet(
+                sounds: sounds,
+                last: last,
                 intensity: _intensity,
                 durationMs: _durations[_duration],
+                onFire: _fire,
                 onIntensity: (by) => setState(() => _intensity = _step(_intensity, by)),
                 onDuration: (by) => setState(() => _duration = (_duration + by).clamp(0, _durations.length - 1)),
               ),
-              const SizedBox(height: 8),
-              Text(
-                'Natural lengths: hit ${HapticEvent.hit.defaultDurationMs} ms, success '
-                '${HapticEvent.success.defaultDurationMs} ms, error ${HapticEvent.error.defaultDurationMs} ms, '
-                'rumble ${HapticEvent.rumble.defaultDurationMs} ms. A longer duration stretches the pattern; '
-                'for rumble it is simply how long it lasts.',
-                style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
-              ),
-              const SizedBox(height: 24),
-              Text(
-                last == null
-                    ? 'Nothing sent yet.'
-                    : 'Last: ${last.message.event.name}, ${(last.message.intensity * 100).round()}%, '
-                          '${last.message.durationMs} ms (${last.source}) → '
-                          '${last.reached == 0 ? 'no controller' : '${last.reached} controller${last.reached == 1 ? '' : 's'}'}',
-                key: const Key('lastSent'),
-                style: text.titleMedium,
-              ),
-              if (sounds.error != null)
-                Text('Sounds are off: ${sounds.error}', style: text.bodyMedium?.copyWith(color: scheme.error)),
             ],
           ),
         ),
@@ -99,7 +84,87 @@ class _HapticPanelScreenState extends ConsumerState<HapticPanelScreen> {
   }
 }
 
-/// Which controllers the presses go to.
+/// The panel's sheet of paper: the events, the steppers, and what the last
+/// press did.
+class _Sheet extends StatelessWidget {
+  const _Sheet({
+    required this.sounds,
+    required this.last,
+    required this.intensity,
+    required this.durationMs,
+    required this.onFire,
+    required this.onIntensity,
+    required this.onDuration,
+  });
+
+  final SoundStatus sounds;
+  final FiredEvent? last;
+  final double intensity;
+
+  /// The chosen duration, or null for each event's natural length.
+  final int? durationMs;
+
+  final void Function(HapticEvent event) onFire;
+  final void Function(double by) onIntensity;
+  final void Function(int by) onDuration;
+
+  @override
+  Widget build(BuildContext context) {
+    final look = ToyLookScope.of(context);
+    final last = this.last;
+    return ToyCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _EventButtons(sounds: sounds, onFire: onFire),
+          const SizedBox(height: ToySizes.space24),
+          _Steppers(intensity: intensity, durationMs: durationMs, onIntensity: onIntensity, onDuration: onDuration),
+          const SizedBox(height: ToySizes.space8),
+          Text(
+            TvText.naturalLengths(
+              HapticEvent.hit.defaultDurationMs,
+              HapticEvent.success.defaultDurationMs,
+              HapticEvent.error.defaultDurationMs,
+              HapticEvent.rumble.defaultDurationMs,
+            ),
+            style: _soft(context),
+          ),
+          const SizedBox(height: ToySizes.space24),
+          Text(
+            last == null
+                ? TvText.nothingSent
+                : TvText.lastSent(
+                    last.message.event.name,
+                    (last.message.intensity * 100).round(),
+                    last.message.durationMs,
+                    last.source,
+                    last.reached == 0 ? TvText.nothingReached : TvText.reachedControllers(last.reached),
+                  ),
+            key: const Key('lastSent'),
+            style: _ink(context, look: look.type.button),
+          ),
+          if (sounds.error != null) ...[
+            const SizedBox(height: ToySizes.space8),
+            StatusLine(label: TvText.soundsOff(sounds.error!), color: look.colors.bad),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// A secondary line: the ink, softened, on the card's paper.
+TextStyle _soft(BuildContext context) {
+  final look = ToyLookScope.of(context);
+  return look.type.body.copyWith(color: look.colors.inkSoft);
+}
+
+/// A line in the card's ink, at [look]'s style.
+TextStyle _ink(BuildContext context, {required TextStyle look}) =>
+    look.copyWith(color: ToyLookScope.of(context).colors.ink);
+
+/// Which controllers the presses go to. It sits in the app bar, on the
+/// background, so it is text on the background and not a paper status.
 class _Targets extends ConsumerWidget {
   const _Targets();
 
@@ -108,14 +173,11 @@ class _Targets extends ConsumerWidget {
     // A phone that is away wouldn't feel it (m12 bug 1107d).
     final players = ref.watch(gamePlayersProvider).where((p) => !p.local && !p.away).toList();
     return Padding(
-      padding: const EdgeInsets.only(right: 24),
+      padding: const EdgeInsets.only(right: ToySizes.space24),
       child: Center(
         child: Text(
-          players.isEmpty
-              ? 'No controller connected (sounds still play)'
-              : 'Sends to ${players.map((p) => p.label).join(', ')}',
+          players.isEmpty ? TvText.noTargets : TvText.sendsTo(players.map((p) => p.label).join(', ')),
           key: const Key('panelTargets'),
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(color: players.isEmpty ? Colors.amberAccent : null),
         ),
       ),
     );
@@ -126,25 +188,31 @@ class _Targets extends ConsumerWidget {
 class _EventButtons extends StatelessWidget {
   const _EventButtons({required this.sounds, required this.onFire});
 
+  /// A cell's width: wide enough for an event's words at the TV's type.
+  static const cellWidth = 200.0;
+
+  /// The button's height: the look's TV button, with room for the icon.
+  static const _buttonHeight = 72.0;
+
   final SoundStatus sounds;
   final void Function(HapticEvent event) onFire;
 
   @override
   Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
-    final scheme = Theme.of(context).colorScheme;
+    final ink = _ink(context, look: ToyLookScope.of(context).type.body);
+    final soft = _soft(context);
     return Wrap(
-      spacing: 16,
-      runSpacing: 16,
+      spacing: ToySizes.space16,
+      runSpacing: ToySizes.space16,
       children: [
         for (final (i, event) in HapticEvent.values.indexed)
           SizedBox(
-            width: 200,
+            width: cellWidth,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 SizedBox(
-                  height: 72,
+                  height: _buttonHeight,
                   child: HostButton(
                     key: Key('fire-${event.name}'),
                     label: _feel[event]!.$1,
@@ -153,12 +221,9 @@ class _EventButtons extends StatelessWidget {
                     onPressed: () => onFire(event),
                   ),
                 ),
-                const SizedBox(height: 6),
-                Text(_feel[event]!.$3, style: text.bodyMedium),
-                Text(
-                  'Sound: ${_soundOf(sounds, event)}',
-                  style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
-                ),
+                const SizedBox(height: ToySizes.space4),
+                Text(_feel[event]!.$3, style: ink),
+                Text(TvText.sound(_soundOf(sounds, event)), style: soft, maxLines: 1, overflow: TextOverflow.ellipsis),
               ],
             ),
           ),
@@ -189,20 +254,20 @@ class _Steppers extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Wrap(
-    spacing: 32,
-    runSpacing: 16,
+    spacing: ToySizes.space32,
+    runSpacing: ToySizes.space16,
     crossAxisAlignment: WrapCrossAlignment.center,
     children: [
       _Stepper(
-        label: 'Intensity',
-        value: '${(intensity * 100).round()}%',
+        label: TvText.intensity,
+        value: TvText.percent((intensity * 100).round()),
         valueKey: const Key('intensityValue'),
         onLess: () => onIntensity(-0.1),
         onMore: () => onIntensity(0.1),
       ),
       _Stepper(
-        label: 'Duration',
-        value: durationMs == null ? 'Natural' : '$durationMs ms',
+        label: TvText.duration,
+        value: durationMs == null ? TvText.natural : TvText.durationMs(durationMs!),
         valueKey: const Key('durationValue'),
         onLess: () => onDuration(-1),
         onMore: () => onDuration(1),
@@ -232,18 +297,23 @@ class _Stepper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
+    final look = ToyLookScope.of(context);
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(label, style: text.titleMedium),
-        const SizedBox(width: 12),
-        _SmallTvButton(label: '−', tooltip: 'Less $label', onPressed: onLess),
+        Text(label, style: look.type.button.copyWith(color: look.colors.ink)),
+        const SizedBox(width: ToySizes.space12),
+        _SmallTvButton(label: HostText.less, tooltip: HostText.lessOf(label), onPressed: onLess),
         SizedBox(
           width: 110,
-          child: Text(value, key: valueKey, style: text.titleLarge, textAlign: TextAlign.center),
+          child: Text(
+            value,
+            key: valueKey,
+            style: look.type.button.copyWith(color: look.colors.ink),
+            textAlign: TextAlign.center,
+          ),
         ),
-        _SmallTvButton(label: '+', tooltip: 'More $label', onPressed: onMore),
+        _SmallTvButton(label: HostText.more, tooltip: HostText.moreOf(label), onPressed: onMore),
       ],
     );
   }
@@ -258,16 +328,23 @@ class _SmallTvButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+    final look = ToyLookScope.of(context);
+    final colors = look.colors;
     return Tooltip(
       message: tooltip,
       child: FilledButton.tonal(
         onPressed: onPressed,
         style: ButtonStyle(
           minimumSize: const WidgetStatePropertyAll(Size(56, 48)),
-          textStyle: const WidgetStatePropertyAll(TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+          textStyle: WidgetStatePropertyAll(look.type.button.copyWith(fontSize: 24)),
+          foregroundColor: WidgetStatePropertyAll(colors.ink),
+          backgroundColor: WidgetStatePropertyAll(colors.paper),
+          // Lit shows as the look's focus colour round the button.
           side: WidgetStateProperty.resolveWith(
-            (s) => s.contains(WidgetState.focused) ? BorderSide(color: scheme.primary, width: 4) : BorderSide.none,
+            (states) => BorderSide(
+              color: states.contains(WidgetState.focused) ? colors.focus : colors.ink,
+              width: look.sizes.outlineWidth,
+            ),
           ),
         ),
         child: Text(label),

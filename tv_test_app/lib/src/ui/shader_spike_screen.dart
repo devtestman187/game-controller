@@ -4,13 +4,11 @@ import 'dart:ui' show FragmentProgram;
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
-import 'package:toy_look/toy_look.dart';
+import 'package:party_host/party_host.dart';
 
+import '../tv_text.dart';
 import 'shader_spike_rows.dart';
 import 'toy_gallery.dart';
-
-/// The Sunny background (design section 3): a light sky behind a screen.
-const _background = Color(0xFF7CC8F8);
 
 /// A row of shapes is this tall, in logical pixels.
 const _rowHeight = 180.0;
@@ -23,8 +21,9 @@ const _tabCount = 2;
 /// costs. Its Widgets tab shows the look's widgets as a TV draws them (step
 /// 2b).
 ///
-/// The look of this screen isn't the job: plain Material labels and buttons,
-/// a Shader line, two labelled rows and a frame time are all it needs. Back
+/// Its words are the look's (M13 3d): the screen is on the palette's
+/// background, so its labels and figures are text on the background. The
+/// shapes the rows draw are the spike's own test colours, and are kept. Back
 /// leaves, like the other test tools.
 class ShaderSpikeScreen extends StatefulWidget {
   const ShaderSpikeScreen({super.key});
@@ -39,6 +38,9 @@ class _ShaderSpikeScreenState extends State<ShaderSpikeScreen> with TickerProvid
 
   /// The frames the time is averaged and its worst taken over.
   static const _frameWindow = 120;
+
+  /// How many more shapes a row draws with Stress on.
+  static const _stressCount = 60;
 
   /// Which section is shown: the shader rows or the gallery.
   late final TabController _tabs = TabController(length: _tabCount, vsync: this);
@@ -91,35 +93,35 @@ class _ShaderSpikeScreenState extends State<ShaderSpikeScreen> with TickerProvid
   /// What the shader did, in the brief's two wordings.
   String get _status {
     final shaders = _shaders;
-    if (shaders == null) return 'Shader: loading…';
-    if (shaders.shade != null) return 'Shader: on (loaded in ${shaders.loadMs} ms)';
-    return 'Shader: off: ${shaders.error}';
+    if (shaders == null) return TvText.shaderLoading;
+    if (shaders.shade != null) return TvText.shaderOn(shaders.loadMs);
+    return TvText.shaderOff('${shaders.error}');
   }
 
   /// The average and the worst frame time in the window.
   String get _frameText {
-    if (_frameMs.isEmpty) return 'Frame time: no frames yet';
+    if (_frameMs.isEmpty) return TvText.noFrames;
     final sum = _frameMs.fold<double>(0, (total, ms) => total + ms);
     final worst = _frameMs.reduce(max);
-    return 'Frame time, last ${_frameMs.length} frames: ${(sum / _frameMs.length).toStringAsFixed(1)} ms average, '
-        '${worst.toStringAsFixed(1)} ms worst';
+    return TvText.frameTime(_frameMs.length, (sum / _frameMs.length).toStringAsFixed(1), worst.toStringAsFixed(1));
   }
 
   @override
   Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
+    final look = ToyLookScope.of(context);
+    final onBackground = look.type.body.copyWith(color: look.colors.onBackground);
     return CallbackShortcuts(
       bindings: {const SingleActivator(LogicalKeyboardKey.escape): () => Navigator.of(context).maybePop()},
       child: Scaffold(
-        backgroundColor: _background,
+        backgroundColor: look.colors.background,
         appBar: AppBar(
-          title: const Text('Look test'),
+          title: const Text(TvText.lookTest),
           actions: [_StressButton(stress: _stress, onChanged: (on) => setState(() => _stress = on))],
           bottom: TabBar(
             controller: _tabs,
             tabs: const [
-              Tab(text: 'Shapes'),
-              Tab(text: 'Widgets'),
+              Tab(text: TvText.shapes),
+              Tab(text: TvText.widgets),
             ],
           ),
         ),
@@ -128,28 +130,28 @@ class _ShaderSpikeScreenState extends State<ShaderSpikeScreen> with TickerProvid
             controller: _tabs,
             children: [
               ListView(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(ToySizes.space16),
                 children: [
-                  Text(_status, key: const Key('shaderStatus'), style: text.titleMedium),
-                  Text(_frameText, key: const Key('frameStats'), style: text.bodyMedium),
-                  const SizedBox(height: 8),
                   Text(
-                    'The top row uses the shader when it loaded and the bottom row always uses the fallback; '
-                    'they should look the same. Stress adds 60 more shapes to each row.',
-                    style: text.bodyMedium,
+                    _status,
+                    key: const Key('shaderStatus'),
+                    style: look.type.button.copyWith(color: look.colors.onBackground),
                   ),
-                  const SizedBox(height: 8),
+                  Text(_frameText, key: const Key('frameStats'), style: onBackground),
+                  const SizedBox(height: ToySizes.space8),
+                  Text(TvText.rows(_stressCount), style: onBackground),
+                  const SizedBox(height: ToySizes.space8),
                   _SpikeRow(
                     rowKey: const Key('lookRowShader'),
-                    label: 'With the shader',
+                    label: TvText.withShader,
                     shade: _shaders?.shade,
                     animation: _turn,
                     stress: _stress,
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: ToySizes.space12),
                   _SpikeRow(
                     rowKey: const Key('lookRowFallback'),
-                    label: 'Without it (the fallback)',
+                    label: TvText.withoutShader,
                     shade: null,
                     animation: _turn,
                     stress: _stress,
@@ -173,15 +175,30 @@ class _StressButton extends StatelessWidget {
   final ValueChanged<bool> onChanged;
 
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(right: 16),
-    child: FilledButton.tonal(
-      key: const Key('stressToggle'),
-      autofocus: true,
-      onPressed: () => onChanged(!stress),
-      child: Text(stress ? 'Stress: on' : 'Stress: off'),
-    ),
-  );
+  Widget build(BuildContext context) {
+    final look = ToyLookScope.of(context);
+    final colors = look.colors;
+    return Padding(
+      padding: const EdgeInsets.only(right: ToySizes.space16),
+      child: FilledButton.tonal(
+        key: const Key('stressToggle'),
+        autofocus: true,
+        onPressed: () => onChanged(!stress),
+        style: ButtonStyle(
+          foregroundColor: WidgetStatePropertyAll(colors.ink),
+          backgroundColor: WidgetStatePropertyAll(colors.paper),
+          // Lit shows as the look's focus colour round the button.
+          side: WidgetStateProperty.resolveWith(
+            (states) => BorderSide(
+              color: states.contains(WidgetState.focused) ? colors.focus : colors.ink,
+              width: look.sizes.outlineWidth,
+            ),
+          ),
+        ),
+        child: Text(stress ? TvText.stressOn : TvText.stressOff),
+      ),
+    );
+  }
 }
 
 /// One labelled row of shapes, redrawn while its [animation] runs.
@@ -201,22 +218,25 @@ class _SpikeRow extends StatelessWidget {
   final bool stress;
 
   @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    children: [
-      Text(label, style: Theme.of(context).textTheme.titleSmall),
-      const SizedBox(height: 4),
-      SizedBox(
-        height: _rowHeight,
-        child: AnimatedBuilder(
-          animation: animation,
-          builder: (context, _) => CustomPaint(
-            key: rowKey,
-            size: Size.infinite,
-            painter: ShaderSpikePainter(shade: shade, turn: animation.value, stress: stress),
+  Widget build(BuildContext context) {
+    final look = ToyLookScope.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(label, style: look.type.body.copyWith(color: look.colors.onBackground)),
+        const SizedBox(height: ToySizes.space4),
+        SizedBox(
+          height: _rowHeight,
+          child: AnimatedBuilder(
+            animation: animation,
+            builder: (context, _) => CustomPaint(
+              key: rowKey,
+              size: Size.infinite,
+              painter: ShaderSpikePainter(shade: shade, turn: animation.value, stress: stress),
+            ),
           ),
         ),
-      ),
-    ],
-  );
+      ],
+    );
+  }
 }

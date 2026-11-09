@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:party_host/party_host.dart';
 import 'package:puzzle_game/puzzle_game.dart';
 
+import 'tv_text.dart';
+
 /// The game a debug build starts in, from `--dart-define=START_GAME=…`:
 /// `arena` or `shape_race`. `tools/tv-dev.sh start --game` sets it, and its
 /// `--hz` sets the matching `FRAME_RATE_HZ` (M12 §6).
@@ -64,8 +66,11 @@ class _WaitingForController extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final look = ToyLookScope.of(context);
     return Scaffold(
-      body: Center(child: Text('Waiting for a controller…', style: Theme.of(context).textTheme.headlineSmall)),
+      body: Center(
+        child: Text(TvText.waitingForController, style: look.type.title.copyWith(color: look.colors.onBackground)),
+      ),
     );
   }
 }

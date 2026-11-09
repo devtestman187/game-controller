@@ -7,10 +7,14 @@ import 'package:game_assets/asset_manifest.dart';
 import 'package:party_host/party_host.dart';
 
 import '../../app_info.dart';
+import '../../tv_text.dart';
+import '../status_line.dart';
 import 'panel.dart';
 
 /// The code a phone types to pair, the addresses to type by hand, how network
-/// discovery stands, and the controls for the simulated controllers.
+/// discovery stands, and the controls for the simulated controllers. The
+/// build's version sits at its bottom (M13 3d): the header has no room for it
+/// at the TV's type, and a tester finds it here.
 class PairingPanel extends StatelessWidget {
   const PairingPanel({super.key, required this.state});
 
@@ -18,26 +22,33 @@ class PairingPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final advertisedName = state.advertisedName ?? 'Thumb Party TV (${state.hostName})';
+    final look = ToyLookScope.of(context);
+    final advertisedName = state.advertisedName ?? '${TvText.name} (${state.hostName})';
     return Panel(
-      title: 'Pairing code',
+      title: TvText.pairingCode,
       scrollable: true,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _PairingCode(state: state, advertisedName: advertisedName),
-          const SizedBox(height: 16),
+          const SizedBox(height: ToySizes.space12),
           _AddressList(state: state),
-          const SizedBox(height: 12),
+          const SizedBox(height: ToySizes.space8),
           AdvertiseStatus(state: state),
-          const SizedBox(height: 4),
+          const SizedBox(height: ToySizes.space4),
           const SoundLine(),
-          if (Platform.isWindows) ...[const SizedBox(height: 4), const _FirewallNote()],
-          const SizedBox(height: 4),
+          if (Platform.isWindows) ...[const SizedBox(height: ToySizes.space4), const _FirewallNote()],
+          const SizedBox(height: ToySizes.space4),
           const _SiteUrl(),
-          const SizedBox(height: 16),
+          const SizedBox(height: ToySizes.space12),
           _PairingButtons(state: state),
           _SimList(sims: state.sims),
+          const SizedBox(height: ToySizes.space8),
+          Text(
+            TvText.buildLine,
+            key: const Key('buildLine'),
+            style: look.type.body.copyWith(color: look.colors.inkSoft),
+          ),
         ],
       ),
     );
@@ -53,21 +64,18 @@ class _PairingCode extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
-    final scheme = Theme.of(context).colorScheme;
+    final look = ToyLookScope.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // The clock's own type (M13 3d): the code is the one thing a player
+        // reads from the couch.
         Text(
           state.host.pairingCode.split('').join(' '),
           key: const Key('pairingCode'),
-          style: text.displayLarge?.copyWith(
-            fontWeight: FontWeight.bold,
-            color: scheme.primary,
-            fontFeatures: const [FontFeature.tabularFigures()],
-          ),
+          style: look.type.clock.copyWith(color: look.colors.ink, fontFeatures: const [FontFeature.tabularFigures()]),
         ),
-        Text('On the phone, choose "$advertisedName" and enter this code.', style: text.bodyLarge),
+        Text(TvText.enterCode(advertisedName), style: look.type.body.copyWith(color: look.colors.ink)),
       ],
     );
   }
@@ -81,27 +89,26 @@ class _AddressList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
-    final scheme = Theme.of(context).colorScheme;
+    final look = ToyLookScope.of(context);
+    final colors = look.colors;
+    final ink = look.type.body.copyWith(color: colors.ink);
+    final soft = look.type.body.copyWith(color: colors.inkSoft);
     final port = state.host.port;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Address for manual entry', style: text.labelLarge?.copyWith(color: scheme.onSurfaceVariant)),
+        Text(TvText.manualAddress, style: soft),
         if (port == null)
-          Text('–', style: text.titleLarge)
+          Text(HostText.dash, style: ink)
         else if (state.addresses.isEmpty)
-          Text('No network connection', style: text.titleMedium?.copyWith(color: scheme.error))
+          StatusLine(label: TvText.noNetwork, color: colors.bad)
         else
           for (final a in state.addresses.take(3))
             Text.rich(
               TextSpan(
                 children: [
-                  TextSpan(text: '${a.address}:$port', style: text.titleLarge),
-                  TextSpan(
-                    text: '   ${a.interfaceName}',
-                    style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
-                  ),
+                  TextSpan(text: TvText.address(a.address, port), style: ink),
+                  TextSpan(text: '   ${a.interfaceName}', style: soft),
                 ],
               ),
             ),
@@ -116,13 +123,8 @@ class _FirewallNote extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
-    final scheme = Theme.of(context).colorScheme;
-    return Text(
-      'Phones can\'t connect? Allow Thumb Party TV through Windows Firewall on private networks '
-      '(see the tester guide).',
-      style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
-    );
+    final look = ToyLookScope.of(context);
+    return Text(TvText.firewall, style: look.type.body.copyWith(color: look.colors.inkSoft));
   }
 }
 
@@ -132,12 +134,11 @@ class _SiteUrl extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
-    final scheme = Theme.of(context).colorScheme;
+    final look = ToyLookScope.of(context);
     return Text(
-      'Tester guide and privacy policy: $siteUrl',
+      TvText.site(siteUrl),
       key: const Key('siteUrl'),
-      style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+      style: look.type.body.copyWith(color: look.colors.inkSoft),
     );
   }
 }
@@ -154,25 +155,25 @@ class _PairingButtons extends ConsumerWidget {
     final port = state.host.port;
     final sims = state.sims;
     return Wrap(
-      spacing: 12,
-      runSpacing: 12,
+      spacing: ToySizes.space8,
+      runSpacing: ToySizes.space8,
       children: [
-        HostButton(label: 'New code', icon: Icons.refresh, autofocus: true, onPressed: controller.newPairingCode),
+        HostButton(label: TvText.newCode, icon: Icons.refresh, autofocus: true, onPressed: controller.newPairingCode),
         HostButton(
           key: const Key('addSim'),
-          label: sims.isEmpty ? 'Simulate controller' : 'Add simulated controller',
+          label: sims.isEmpty ? TvText.simulateController : TvText.addSimulatedController,
           icon: Icons.smart_toy_outlined,
           onPressed: port == null || sims.length >= HostService.maxSims ? null : controller.addSimulatedController,
         ),
         if (sims.isNotEmpty)
           HostButton(
             key: const Key('stopSims'),
-            label: sims.length == 1 ? 'Stop simulation' : 'Stop simulations',
+            label: sims.length == 1 ? TvText.stopSimulation : TvText.stopSimulations,
             icon: Icons.stop_circle_outlined,
             onPressed: controller.stopSimulatedControllers,
           ),
         HostButton(
-          label: 'Drop connections',
+          label: TvText.dropConnections,
           icon: Icons.link_off,
           onPressed: state.host.controllers.isEmpty ? null : controller.dropAllConnections,
         ),
@@ -189,22 +190,38 @@ class _SimList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
+    final colors = ToyLookScope.of(context).colors;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         for (final (i, sim) in sims.indexed) ...[
-          const SizedBox(height: 8),
-          Text(
-            'Simulated controller${sims.length == 1 ? '' : ' ${i + 1}'}: ${_clientStatusLabel(sim)}'
-            '${sim.isConnected && sim.rttMs != null ? ' · ${sim.rttMs} ms' : ''}',
-            style: text.bodyMedium,
+          const SizedBox(height: ToySizes.space8),
+          // Its state is a dot in the look's status colours, never coloured
+          // words (M13 3d).
+          StatusLine(
+            label: TvText.simulatedController(
+              sims.length == 1 ? '' : ' ${i + 1}',
+              _clientStatusLabel(sim),
+              pingMs: sim.isConnected ? sim.rttMs : null,
+            ),
+            color: _clientStatusColor(colors, sim.status),
           ),
         ],
       ],
     );
   }
 }
+
+/// A simulated phone's state in the look's tokens: connected is good, a phone
+/// on its way in is the focus yellow, a reconnect is the caution amber, and a
+/// failure is bad. A stopped one is simply ink.
+Color _clientStatusColor(ToyColors colors, ClientStatus status) => switch (status) {
+  ClientStatus.connected => colors.good,
+  ClientStatus.connecting || ClientStatus.waitingForCode || ClientStatus.pairing => colors.focus,
+  ClientStatus.reconnecting => colors.caution,
+  ClientStatus.failed => colors.bad,
+  ClientStatus.idle => colors.inkSoft,
+};
 
 /// Whether the four event sounds loaded (they play in the game and the
 /// haptic test).
@@ -214,28 +231,14 @@ class SoundLine extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final s = ref.watch(soundStatusProvider);
-    final text = Theme.of(context).textTheme;
-    final scheme = Theme.of(context).colorScheme;
+    final colors = ToyLookScope.of(context).colors;
     final total = SoundKey.values.length;
-    final (icon, color, message) = s.error != null
-        ? (Icons.volume_off, scheme.error, 'Sounds are off: ${s.error}')
+    final (color, message) = s.error != null
+        ? (colors.bad, TvText.soundsOff(s.error!))
         : !s.ready
-        ? (Icons.volume_mute, scheme.onSurfaceVariant, 'Loading sounds…')
-        : (
-            s.loaded == total ? Icons.volume_up : Icons.volume_down,
-            s.loaded == total ? Colors.greenAccent : Colors.amberAccent,
-            '${s.loaded} of $total event sounds loaded (${s.engine})',
-          );
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, size: 20, color: color),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(message, key: const Key('soundStatus'), style: text.bodyMedium),
-        ),
-      ],
-    );
+        ? (colors.focus, TvText.soundsLoading)
+        : (s.loaded == total ? colors.good : colors.caution, TvText.soundsLoaded(s.loaded, total, s.engine));
+    return StatusLine(label: message, color: color, labelKey: const Key('soundStatus'));
   }
 }
 
@@ -247,34 +250,22 @@ class AdvertiseStatus extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
-    final scheme = Theme.of(context).colorScheme;
-    final (icon, color, message) = switch (state.advertise) {
-      AdvertiseState.starting => (Icons.wifi_find, scheme.onSurfaceVariant, 'Starting network discovery…'),
-      AdvertiseState.advertising => (Icons.wifi_tethering, Colors.greenAccent, 'Phones on this Wi-Fi can find this TV'),
-      AdvertiseState.failed => (
-        Icons.wifi_tethering_error,
-        scheme.error,
-        'Network discovery isn\'t working (${state.advertiseError}). Phones can still use the address above.',
-      ),
+    final colors = ToyLookScope.of(context).colors;
+    final (color, message) = switch (state.advertise) {
+      AdvertiseState.starting => (colors.focus, TvText.discovering),
+      AdvertiseState.advertising => (colors.good, TvText.discoverable),
+      AdvertiseState.failed => (colors.bad, TvText.discoveryFailed(state.advertiseError)),
     };
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, size: 20, color: color),
-        const SizedBox(width: 8),
-        Expanded(child: Text(message, style: text.bodyMedium)),
-      ],
-    );
+    return StatusLine(label: message, color: color);
   }
 }
 
 String _clientStatusLabel(ClientSnapshot s) => switch (s.status) {
-  ClientStatus.idle => 'Off',
-  ClientStatus.connecting => 'Connecting…',
-  ClientStatus.waitingForCode => 'Waiting for code',
-  ClientStatus.pairing => 'Pairing…',
-  ClientStatus.connected => 'Connected',
-  ClientStatus.reconnecting => 'Reconnecting (attempt ${s.attempt})…',
-  ClientStatus.failed => 'Failed (${s.problem?.name ?? 'unknown'})',
+  ClientStatus.idle => TvText.off,
+  ClientStatus.connecting => TvText.connecting,
+  ClientStatus.waitingForCode => TvText.waitingForCode,
+  ClientStatus.pairing => TvText.pairing,
+  ClientStatus.connected => TvText.connected,
+  ClientStatus.reconnecting => TvText.reconnecting(s.attempt),
+  ClientStatus.failed => TvText.failed(s.problem?.name ?? 'unknown'),
 };

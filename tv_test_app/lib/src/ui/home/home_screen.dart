@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:party_host/party_host.dart';
-import 'package:protocol/protocol.dart';
 
-import '../../app_info.dart';
+import '../../tv_text.dart';
 import '../haptic_panel_screen.dart';
 import '../latency_screen.dart';
 import '../shader_spike_screen.dart';
@@ -41,38 +40,59 @@ class HomeScreen extends ConsumerWidget {
   }
 }
 
-/// A TV or a large window: the header over the pairing panel and, beside it,
-/// the controllers and the log.
+/// A TV or a large window: the header over two columns, the pairing code and
+/// the log at the left and the controllers at the right.
+///
+/// The controllers take the wider column (M13 3d): a tile at the TV's type
+/// needs about 550 for the name, the state, the input picture and the ping,
+/// and the panel holds two of them in full at 960 x 540. The log moved under
+/// the pairing code, where its lines are a tester's footnote; the pairing
+/// code is what a player reads from the couch, so it keeps the left column's
+/// top.
 class _WideHome extends StatelessWidget {
   const _WideHome({required this.state});
+
+  /// How the row splits: the pairing panel's share, then the controllers'.
+  static const _pairingShare = 5;
+  static const _controllersShare = 8;
+
+  /// How the left column splits: the pairing panel, then the log.
+  static const _pairingHeightShare = 7;
+  static const _logHeightShare = 3;
 
   final HostViewState state;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
+      padding: const EdgeInsets.all(ToySizes.space8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Header(state: state),
-          const SizedBox(height: 12),
+          const SizedBox(height: ToySizes.space8),
           Expanded(
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Expanded(flex: 5, child: PairingPanel(state: state)),
-                const SizedBox(width: 16),
                 Expanded(
-                  flex: 6,
+                  flex: _pairingShare,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Expanded(flex: 7, child: ControllersPanel(state: state)),
-                      const SizedBox(height: 12),
-                      const Expanded(flex: 4, child: LogPanel()),
+                      Expanded(
+                        flex: _pairingHeightShare,
+                        child: PairingPanel(state: state),
+                      ),
+                      const SizedBox(height: ToySizes.space8),
+                      const Expanded(flex: _logHeightShare, child: LogPanel()),
                     ],
                   ),
+                ),
+                const SizedBox(width: ToySizes.space8),
+                Expanded(
+                  flex: _controllersShare,
+                  child: ControllersPanel(state: state),
                 ),
               ],
             ),
@@ -87,186 +107,162 @@ class _WideHome extends StatelessWidget {
 class _NarrowHome extends StatelessWidget {
   const _NarrowHome({required this.state});
 
+  /// The two lists' heights when the home scrolls: a controller's tile and a
+  /// few log lines at the TV's type (M13 3d).
+  static const _controllersHeight = 380.0;
+  static const _logHeight = 240.0;
+
   final HostViewState state;
 
   @override
   Widget build(BuildContext context) {
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(ToySizes.space8),
       children: [
         Header(state: state),
-        const SizedBox(height: 12),
+        const SizedBox(height: ToySizes.space8),
         PairingPanel(state: state),
-        const SizedBox(height: 12),
-        SizedBox(height: 320, child: ControllersPanel(state: state)),
-        const SizedBox(height: 12),
-        const SizedBox(height: 240, child: LogPanel()),
+        const SizedBox(height: ToySizes.space8),
+        SizedBox(
+          height: _controllersHeight,
+          child: ControllersPanel(state: state),
+        ),
+        const SizedBox(height: ToySizes.space8),
+        const SizedBox(height: _logHeight, child: LogPanel()),
       ],
     );
   }
 }
 
-/// The app's name, version and status, with the buttons to the other screens.
+/// The app's name and what the host is doing, with the buttons to the other
+/// screens.
+///
+/// It is one wrapping row (M13 3d): the title, the status, then the buttons in
+/// their order. The title is never cut — it takes the width it needs and the
+/// buttons run onto a second line when the window is 960 wide (on a TV they
+/// take two: the six of them need about 1055). The version and the protocol
+/// moved to the pairing panel: they don't fit beside the title at the TV's
+/// type.
 class Header extends StatelessWidget {
   const Header({super.key, required this.state});
 
-  /// From this window width up, the buttons sit beside the title, wrapping
-  /// onto a second line inside their share of it when the window can't hold
-  /// them all (six of them on a 1080p TV, 960 logical pixels wide); below it
-  /// they wrap underneath, where a narrow window has room.
-  static const rowWidth = 760.0;
-
-  /// Below this window width the buttons are compact, so all six fit beside
-  /// the title on a 1080p TV.
+  /// Below this window width the buttons are compact, so the header keeps to
+  /// two lines on a TV.
   static const compactWidth = 1100.0;
-
-  /// The most of the header the buttons take beside the title: six compact
-  /// buttons need more than a 960-pixel header leaves, so they run onto a
-  /// second line rather than off the screen.
-  static const _buttonsShare = 0.65;
 
   final HostViewState state;
 
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
-      builder: (context, constraints) {
-        final compact = constraints.maxWidth < compactWidth;
-        if (constraints.maxWidth >= rowWidth) {
-          return Row(
-            children: [
-              Expanded(child: _HeaderTitle(state: state)),
-              const SizedBox(width: 16),
-              ConstrainedBox(
-                constraints: BoxConstraints(maxWidth: constraints.maxWidth * _buttonsShare),
-                child: _HeaderButtons(compact: compact),
-              ),
-            ],
-          );
-        }
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _HeaderTitle(state: state),
-            const SizedBox(height: 8),
-            _HeaderButtons(compact: compact),
-          ],
-        );
-      },
+      builder: (context, constraints) => Wrap(
+        spacing: ToySizes.space8,
+        runSpacing: ToySizes.space8,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          const _HeaderTitle(),
+          _HostStatus(state: state),
+          ..._headerButtons(context, compact: constraints.maxWidth < compactWidth),
+        ],
+      ),
     );
   }
 }
 
-/// The title and version, with what the host is doing at the end.
+/// The app's name, with the TV's icon.
 class _HeaderTitle extends StatelessWidget {
-  const _HeaderTitle({required this.state});
+  const _HeaderTitle();
 
-  final HostViewState state;
+  /// The icon's size: the title's cap height, so the two line up.
+  static const _iconSize = 32.0;
 
   @override
   Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
-    final scheme = Theme.of(context).colorScheme;
-    final error = state.serverError;
-    final (status, statusColor) = error != null
-        ? (error, scheme.error)
-        : state.host.running
-        ? ('Listening on port ${state.host.port}', scheme.onSurface)
-        : ('Starting…', scheme.onSurface);
+    final look = ToyLookScope.of(context);
     return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(Icons.tv, size: 32, color: scheme.primary),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Text.rich(
-            TextSpan(
-              children: [
-                TextSpan(text: 'Thumb Party TV', style: text.headlineSmall),
-                TextSpan(
-                  text: '   Version $versionLabel · protocol v$protocolVersion',
-                  style: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
-                ),
-              ],
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Flexible(
-          child: Text(
-            status,
-            style: text.bodyMedium?.copyWith(color: statusColor),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.end,
-          ),
-        ),
+        Icon(Icons.tv, size: _iconSize, color: look.colors.onBackground),
+        const SizedBox(width: ToySizes.space8),
+        Text(TvText.name, style: look.type.title.copyWith(color: look.colors.onBackground)),
       ],
     );
   }
 }
 
-/// The buttons to the other screens, and the first-launch consent prompt.
-class _HeaderButtons extends StatelessWidget {
-  const _HeaderButtons({required this.compact});
+/// What the host is doing: listening, starting, or why it couldn't start. It
+/// sits on the background, so it is text on the background, never a status
+/// colour.
+class _HostStatus extends StatelessWidget {
+  const _HostStatus({required this.state});
 
-  final bool compact;
+  final HostViewState state;
 
   @override
   Widget build(BuildContext context) {
-    // Always in view at the top, so the remote reaches them with Up.
-    final buttons = <Widget>[
-      HostButton(
-        key: const Key('openPlay'),
-        label: 'Play',
-        icon: Icons.sports_esports_outlined,
-        compact: compact,
-        onPressed: () => Navigator.of(context).push(
-          MaterialPageRoute<void>(
-            settings: const RouteSettings(name: gamesRouteName),
-            builder: (_) => const GamesScreen(),
-          ),
-        ),
-      ),
-      HostButton(
-        label: 'Haptic test',
-        icon: Icons.vibration,
-        compact: compact,
-        onPressed: () => _open(context, const HapticPanelScreen()),
-      ),
-      HostButton(
-        label: 'Latency',
-        icon: Icons.speed,
-        compact: compact,
-        onPressed: () => _open(context, const LatencyScreen()),
-      ),
-      HostButton(
-        key: const Key('openLookAndSound'),
-        label: 'Look and sound',
-        icon: Icons.brightness_6_outlined,
-        compact: compact,
-        onPressed: () => _open(context, const LookAndSoundScreen()),
-      ),
-      HostButton(
-        label: 'Look test',
-        icon: Icons.palette_outlined,
-        compact: compact,
-        onPressed: () => _open(context, const ShaderSpikeScreen()),
-      ),
-      HostButton(
-        key: const Key('openStats'),
-        label: 'Stats',
-        icon: Icons.insights_outlined,
-        compact: compact,
-        onPressed: () => _open(context, const StatsScreen()),
-      ),
-      // Asks the adult about sharing stats on the first launch (M9).
-      const FirstLaunchConsent(),
-    ];
-    return Wrap(spacing: 8, runSpacing: 8, children: buttons);
+    final look = ToyLookScope.of(context);
+    final error = state.serverError;
+    final status = error ?? (state.host.running ? TvText.listeningOn(state.host.port) : TvText.starting);
+    return Text(
+      status,
+      style: look.type.body.copyWith(color: look.colors.onBackground),
+      maxLines: 2,
+      overflow: TextOverflow.ellipsis,
+      textAlign: TextAlign.end,
+    );
   }
 }
+
+/// The buttons to the other screens, and the first-launch consent prompt:
+/// always in view at the top, so the remote reaches them with Up.
+List<Widget> _headerButtons(BuildContext context, {required bool compact}) => [
+  HostButton(
+    key: const Key('openPlay'),
+    label: HostText.playTitle,
+    icon: Icons.sports_esports_outlined,
+    compact: compact,
+    onPressed: () => Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        settings: const RouteSettings(name: gamesRouteName),
+        builder: (_) => const GamesScreen(),
+      ),
+    ),
+  ),
+  HostButton(
+    label: TvText.hapticTest,
+    icon: Icons.vibration,
+    compact: compact,
+    onPressed: () => _open(context, const HapticPanelScreen()),
+  ),
+  HostButton(
+    label: TvText.latency,
+    icon: Icons.speed,
+    compact: compact,
+    onPressed: () => _open(context, const LatencyScreen()),
+  ),
+  HostButton(
+    key: const Key('openLookAndSound'),
+    label: HostText.lookAndSound,
+    icon: Icons.brightness_6_outlined,
+    compact: compact,
+    onPressed: () => _open(context, const LookAndSoundScreen()),
+  ),
+  HostButton(
+    label: TvText.lookTest,
+    icon: Icons.palette_outlined,
+    compact: compact,
+    onPressed: () => _open(context, const ShaderSpikeScreen()),
+  ),
+  HostButton(
+    key: const Key('openStats'),
+    label: HostText.stats,
+    icon: Icons.insights_outlined,
+    compact: compact,
+    onPressed: () => _open(context, const StatsScreen()),
+  ),
+  // Asks the adult about sharing stats on the first launch (M9).
+  const FirstLaunchConsent(),
+];
 
 void _open(BuildContext context, Widget screen) =>
     Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => screen));

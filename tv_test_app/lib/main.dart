@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'src/debug_start.dart';
 import 'src/keyboard_player.dart';
 import 'src/tv_host_setup.dart';
+import 'src/tv_text.dart';
 import 'src/ui/home/home_screen.dart';
 
 Future<void> main() async {
@@ -62,7 +63,7 @@ class TvTestApp extends ConsumerWidget {
         // The remote's OK button and the gamepad's A press what has the focus.
         shortcuts: hostActivateShortcuts,
         child: MaterialApp(
-          title: 'Thumb Party TV',
+          title: TvText.name,
           // The phones work every screen like the remote (PRD v2 T21).
           builder: (context, child) => ControllerMenus(child: child!),
           debugShowCheckedModeBanner: false,

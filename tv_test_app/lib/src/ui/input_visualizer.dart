@@ -1,5 +1,6 @@
 import 'package:connection/connection.dart';
 import 'package:flutter/material.dart';
+import 'package:toy_look/toy_look.dart';
 
 /// A small picture of a controller (PRD T5), lit while held. It follows the
 /// phone's mode: D-pad mode shows the D-pad, Select/Start and A/B/X/Y; gyro
@@ -8,6 +9,11 @@ import 'package:flutter/material.dart';
 /// Select/Start. It reads the standard gamepad (PRD v2 P4), so it shows any
 /// player the same way. A null [gamepad] (not connected) shows everything
 /// released.
+///
+/// It is drawn in the look (M13 3d): every control is a piece of paper with
+/// the ink edge, a held one takes the focus yellow, and the A, B, X and Y
+/// buttons take their own face tokens (design section 3), so the picture says
+/// which button is which without a legend.
 class InputVisualizer extends StatelessWidget {
   const InputVisualizer({super.key, required this.gamepad, this.width = 210});
 
@@ -16,37 +22,48 @@ class InputVisualizer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     final sticks = gamepad?.mode == InputMode.sticks;
     return SizedBox(
       width: width,
       // The stick layout needs more height for two rows of controls.
       height: sticks ? width / 2.2 : width / 3.2,
       child: CustomPaint(
-        painter: _ControllerPainter(
-          input: gamepad,
-          base: scheme.surfaceContainerHighest,
-          lit: scheme.primary,
-          label: scheme.onSurface,
-        ),
+        painter: InputVisualizerPainter(look: ToyLookScope.of(context), input: gamepad),
       ),
     );
   }
 }
 
-class _ControllerPainter extends CustomPainter {
-  _ControllerPainter({required this.input, required this.base, required this.lit, required this.label});
+/// Draws an [InputVisualizer] in a [ToyLook]: paper controls with the ink
+/// edge, the held ones filled (a face button in its token, anything else in
+/// the focus yellow), and every label in ink.
+class InputVisualizerPainter extends CustomPainter {
+  InputVisualizerPainter({required this.look, required this.input});
 
+  /// The look the picture is drawn in.
+  final ToyLook look;
+
+  /// The player's controls, or null for a phone that isn't connected.
   final GamepadState? input;
-  final Color base;
-  final Color lit;
-  final Color label;
 
-  static const _faceColors = {
-    GamepadButton.a: Color(0xFF4CAF50),
-    GamepadButton.b: Color(0xFFE53935),
-    GamepadButton.x: Color(0xFF1E88E5),
-    GamepadButton.y: Color(0xFFFDD835),
+  /// The fill of [button]'s face: its face token while it is held, paper
+  /// while it isn't. Only A, B, X and Y have one.
+  Color faceColor(GamepadButton button) => _buttons.contains(button) ? _faceToken(button) : _base;
+
+  Color get _base => look.colors.paper;
+
+  Color get _lit => look.colors.focus;
+
+  /// The ink edge's width in the picture: half the look's, because the
+  /// picture's controls are a third of a button's size.
+  double get _edge => look.sizes.outlineWidth / 2;
+
+  Color _faceToken(GamepadButton button) => switch (button) {
+    GamepadButton.a => look.colors.faceA,
+    GamepadButton.b => look.colors.faceB,
+    GamepadButton.x => look.colors.faceX,
+    GamepadButton.y => look.colors.faceY,
+    _ => _base,
   };
 
   Set<GamepadButton> get _buttons => input?.buttons ?? const {};
@@ -122,27 +139,27 @@ class _ControllerPainter extends CustomPainter {
     final dx = input?.dpadX ?? 0;
     final dy = input?.dpadY ?? 0;
     final origin = c - Offset(unit * 1.5, unit * 1.5);
-    for (final (ax, ay) in const [(0, -1), (0, 1), (-1, 0), (1, 0)]) {
+    for (final (ax, ay) in const [(0, 0), (0, -1), (0, 1), (-1, 0), (1, 0)]) {
       final on = (ax != 0 && ax == dx) || (ay != 0 && ay == dy);
       final rect = Rect.fromLTWH(origin.dx + (ax + 1) * unit, origin.dy + (ay + 1) * unit, unit, unit);
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(rect.deflate(1), Radius.circular(unit * 0.15)),
-        Paint()..color = on ? lit : base,
+      _piece(
+        canvas,
+        Path()..addRRect(RRect.fromRectAndRadius(rect.deflate(1), Radius.circular(unit * 0.15))),
+        on ? _lit : _base,
       );
     }
-    canvas.drawRect(Rect.fromLTWH(origin.dx + unit, origin.dy + unit, unit, unit).deflate(1), Paint()..color = base);
   }
 
   /// A stick: a circle with a cross and a dot at (x, y).
   void _stick(Canvas canvas, Offset c, double r, double x, double y) {
-    canvas.drawCircle(c, r, Paint()..color = base);
+    _piece(canvas, Path()..addOval(Rect.fromCircle(center: c, radius: r)), _base);
     final cross = Paint()
-      ..color = label.withValues(alpha: 0.2)
+      ..color = look.colors.ink.withValues(alpha: 0.2)
       ..strokeWidth = 1;
     canvas.drawLine(c - Offset(r, 0), c + Offset(r, 0), cross);
     canvas.drawLine(c - Offset(0, r), c + Offset(0, r), cross);
     final dot = r * 0.24;
-    canvas.drawCircle(c + Offset(x, y) * (r - dot), dot, Paint()..color = lit);
+    canvas.drawCircle(c + Offset(x, y) * (r - dot), dot, Paint()..color = _lit);
   }
 
   /// A/B/X/Y in a diamond around [c], [unit] apart.
@@ -154,17 +171,32 @@ class _ControllerPainter extends CustomPainter {
       GamepadButton.a: c + Offset(0, unit),
     };
     for (final MapEntry(key: button, value: p) in centers.entries) {
-      final on = _buttons.contains(button);
-      final color = _faceColors[button]!;
-      canvas.drawCircle(p, unit * 0.45, Paint()..color = on ? color : base);
-      _text(canvas, p, button.name.toUpperCase(), unit * 0.5, on ? Colors.black : color);
+      _piece(canvas, Path()..addOval(Rect.fromCircle(center: p, radius: unit * 0.45)), faceColor(button));
+      // Text on a coloured fill is always ink (design D12), and on paper too.
+      _text(canvas, p, button.name.toUpperCase(), unit * 0.5, look.colors.ink);
     }
   }
 
   void _pill(Canvas canvas, Rect rect, GamepadButton button, {String? text}) {
     final on = _buttons.contains(button);
-    canvas.drawRRect(RRect.fromRectAndRadius(rect, Radius.circular(rect.height / 2)), Paint()..color = on ? lit : base);
-    if (text != null) _text(canvas, rect.center, text, rect.height * 0.6, on ? Colors.black : label);
+    _piece(
+      canvas,
+      Path()..addRRect(RRect.fromRectAndRadius(rect, Radius.circular(rect.height / 2))),
+      on ? _lit : _base,
+    );
+    if (text != null) _text(canvas, rect.center, text, rect.height * 0.6, look.colors.ink);
+  }
+
+  /// [path] as one piece of the picture: its fill, then the ink edge.
+  void _piece(Canvas canvas, Path path, Color fill) {
+    canvas.drawPath(path, Paint()..color = fill);
+    canvas.drawPath(
+      path,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = _edge
+        ..color = look.colors.ink,
+    );
   }
 
   void _text(Canvas canvas, Offset center, String text, double fontSize, Color color) {
@@ -179,5 +211,5 @@ class _ControllerPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_ControllerPainter old) => old.input != input || old.lit != lit || old.base != base;
+  bool shouldRepaint(InputVisualizerPainter oldDelegate) => oldDelegate.input != input || oldDelegate.look != look;
 }

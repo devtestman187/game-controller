@@ -43,6 +43,7 @@ Future<FakeHostService> pumpApp(
   String game = '',
   HostViewState? state,
   bool settle = true,
+  DateTime Function()? clock,
 }) async {
   sounds = FakeSoundPlayer();
   awake = FakeScreenAwake();
@@ -64,6 +65,10 @@ Future<FakeHostService> pumpApp(
         hostIdentityProvider.overrideWithValue(tvHostIdentity()),
         hostDirectoriesProvider.overrideWithValue(const TvDirectories()),
         sessionUploaderProvider.overrideWith((ref) => tvUploader()),
+        // The TV app runs the TV look, as `main.dart` sets it: the TV's type
+        // and sizes, measured as the TV draws them (M13 3d, rule 1).
+        toyTvProvider.overrideWithValue(true),
+        if (clock != null) lookClockProvider.overrideWithValue(clock),
         if (localPlayer != null) localPlayerSourceProvider.overrideWithValue(localPlayer),
       ],
       child: TvTestApp(game: game),

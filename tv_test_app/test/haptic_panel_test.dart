@@ -33,13 +33,19 @@ void main() {
 
   testWidgets('intensity and duration steppers change what is sent', (tester) async {
     final fake = await openPanel(tester);
-    // Nine events: the steppers are further down, as on the TV.
-    await tester.scrollUntilVisible(find.byTooltip('More Duration'), 200);
-    await tester.tap(find.byTooltip('Less Intensity'));
-    await tester.tap(find.byTooltip('Less Intensity'));
-    await tester.tap(find.byTooltip('More Duration'));
-    await tester.tap(find.byTooltip('More Duration'));
-    await tester.pump();
+    // Nine events: the steppers are further down, as on the TV, so each press
+    // scrolls its button into view first.
+    Future<void> tapStepper(String tooltip) async {
+      await tester.ensureVisible(find.byTooltip(tooltip));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip(tooltip));
+      await tester.pump();
+    }
+
+    await tapStepper('Less Intensity');
+    await tapStepper('Less Intensity');
+    await tapStepper('More Duration');
+    await tapStepper('More Duration');
     expect(find.text('80%'), findsOneWidget);
     expect(find.text('200 ms'), findsOneWidget);
     await tapVisible(tester, find.byKey(const Key('fire-error')));
@@ -47,12 +53,10 @@ void main() {
     expect(fake.haptics.single.$1, HapticEventMessage(event: HapticEvent.error, intensity: 0.8, durationMs: 200));
 
     // The limits hold, and the buttons stay usable there.
-    await tester.scrollUntilVisible(find.byTooltip('More Duration'), 200);
     for (var i = 0; i < 12; i++) {
-      await tester.tap(find.byTooltip('More Intensity'));
-      await tester.tap(find.byTooltip('Less Duration'));
+      await tapStepper('More Intensity');
+      await tapStepper('Less Duration');
     }
-    await tester.pump();
     expect(find.text('100%'), findsOneWidget);
     expect(find.text('Natural'), findsOneWidget);
   });
