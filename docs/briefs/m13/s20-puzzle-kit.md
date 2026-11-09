@@ -16,6 +16,12 @@ Claude's design:
    Files starting with `_` (the template) are never puzzles.
 5. **The guide.** `docs/puzzles.md`, one page: the board's coordinate system and size (with a small diagram), the shapes, where `at` points, how turning and symmetry work, the level rules, the colour tokens with swatches, and the workflow (`new` → edit with the schema's help → `check` → `render` → look → commit). Link it from the README's development section.
 6. Keep it data-driven: no puzzle is named in code, and adding a puzzle is a file and an index line, as now.
+7. **Redraw four of s17's puzzles with the kit**, as its first real use (Claude's review of s17's `m13-puzzles.png`): each must read as one picture at a glance, and every picture should fill about two thirds of the board's width or height, not a corner of it.
+   - **sun** (Easy): one big sun, a round face with rays round it (triangles), not a sun beside a cloud and a bar.
+   - **fish** (Easy): a body with the tail behind it and the fins on it, touching, facing one way.
+   - **butterfly** (Medium): two big wings each side (upper and lower, triangles or circles), mirrored, on a long body.
+   - **train** (Medium): the engine and a carriage behind it, both on wheels, coupled.
+   Add a rule-book check that a puzzle's finished picture spans at least 60% of the board's width or height. Render all twelve again (`m13-puzzles.png`, `m13-puzzles-night.png`).
 
 tests (each failing first):
 - The schema validates every puzzle file and rejects a broken one (a missing `at`, a bad colour, an unknown shape). A small Dart validator for the schema subset you use is fine; install nothing.
@@ -24,11 +30,12 @@ tests (each failing first):
 - The rule book: one test per rule with a puzzle that breaks just that rule and the message it gives; and the whole library has no issues.
 - `new`: a new id appears with the template's content, in `index.json` after the last of its level, and passes `check` unchanged.
 - `render` writes a deterministic picture.
+- The span rule fails for today's sun, fish and butterfly, and the four redrawn puzzles pass every rule.
 - All existing tests pass (look, puzzle, arena, host, phone, tv, kit).
 
 in the report: test counts before and after; the files changed; the token table (name, hex, contrast in Sunny and Night); the rule list with an example message for each; a transcript of `new`, `check` and `render` on a scratch puzzle (then delete it).
 self-check: docs/review-rules.md part A, items 1–5, one line each with the test that shows it.
 rules: no lib file over 400 · no function over 60 lines · tests first, each failing for the missing behaviour · tools/review.sh: no FAIL on your lines · write only inside this job's folder · install nothing · don't touch packages/party_host, the painters, camera.dart or match_painter.dart (other jobs are working there) · the puzzle tests rewrite docs/design/m12-mirror-*.png: they should come out unchanged; if one changes, say why.
-allow: docs/briefs/m13/s20-puzzle-kit-report.md · docs/puzzles.md · docs/design/puzzles · README.md · tools/puzzle.sh · tools/puzzle_new.dart · packages/puzzle_game/puzzles · packages/puzzle_game/lib/src/puzzle.dart · packages/puzzle_game/lib/src/library.dart · packages/puzzle_game/lib/src/puzzle_rules.dart · packages/puzzle_game/lib/src/piece_colors.dart · packages/puzzle_game/lib/puzzle_game.dart · packages/puzzle_game/test
+allow: docs/briefs/m13/s20-puzzle-kit-report.md · docs/puzzles.md · docs/design/puzzles · docs/design/m13-puzzles.png · docs/design/m13-puzzles-night.png · README.md · tools/puzzle.sh · tools/puzzle_new.dart · packages/puzzle_game/puzzles · packages/puzzle_game/lib/src/puzzle.dart · packages/puzzle_game/lib/src/library.dart · packages/puzzle_game/lib/src/puzzle_rules.dart · packages/puzzle_game/lib/src/piece_colors.dart · packages/puzzle_game/lib/puzzle_game.dart · packages/puzzle_game/test
 check: format analyze look puzzle phone tv
 report: docs/briefs/m13/s20-puzzle-kit-report.md
