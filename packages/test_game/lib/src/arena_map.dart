@@ -98,11 +98,15 @@ final class ArenaMap {
     this.bumper,
   });
 
+  /// The id of the field every game plays on until the waiting card picks a
+  /// map (M14 b2), and the one a frame names when nothing says otherwise.
+  static const playroomId = 'playroom';
+
   /// Today's field, word for word (M14 k1b): `maps/playroom.json` parses to
   /// this, and a test keeps the two from drifting. A game built with no map
   /// plays on it, until the waiting card picks one (M14 b2).
   static const playroom = ArenaMap(
-    id: 'playroom',
+    id: playroomId,
     name: 'Playroom',
     line: 'The first arena: walls, four bumpers and a goal to race for.',
     walls: [

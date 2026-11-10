@@ -17,9 +17,6 @@ List<PlayerFeed> feedsOf(GameHost host) => [
     (id: p.id, number: p.number, name: p.nickname ?? '', color: Color(p.color), gamepad: host.gamepad(p.id)),
 ];
 
-/// The game's name in analytics records.
-const arenaGame = 'arena';
-
 /// The dash's one name, for the phone's A button (P5) and the TV's HUD, which
 /// says "Dash ready (A)" while a player can dash again.
 const arenaDashLabel = 'Dash';
@@ -96,21 +93,19 @@ class ArenaSession extends GameSession {
     final before = game.phase;
     final events = game.update(dt, {for (final id in ids) id: GameInput.fromGamepad(input(id))});
     for (final e in events) {
-      host.haptic(e.playerId, e.toMessage());
-      sound(e.event.name);
+      // A world event — a coin appearing — is for no controller and plays a
+      // sound only (N10).
+      if (e.hapticMessage case final message?) host.haptic(e.playerId!, message);
+      sound(e.soundName);
       onEvent(e);
       _record(_eventName(e.cause), playerId: e.playerId);
     }
-    if (before == ArenaPhase.playing && game.phase == ArenaPhase.won) {
+    if (before == ArenaPhase.playing && game.phase != ArenaPhase.playing) {
       _roundRunning = false;
       _record(
         'round_end',
         playerId: game.winnerId,
-        data: {
-          'timeS': game.lastTimeS,
-          'modes': {for (final id in ids) id: input(id).mode.name},
-          'winner': game.winnerId,
-        },
+        data: game.roundEndData({for (final id in ids) id: input(id).mode.name}),
       );
       _record('frames', data: {'drawn': frameCount, 'late': lateFrameCount});
       resetFrameCounts();
@@ -153,5 +148,9 @@ class ArenaSession extends GameSession {
     GameEventCause.goal => 'goal',
     GameEventCause.dash => 'dash',
     GameEventCause.cooldown => 'failed_dash',
+    GameEventCause.bump => 'bump',
+    GameEventCause.coin => 'coin',
+    GameEventCause.coinAppear => 'coin_appear',
+    GameEventCause.timeUp => 'time_up',
   };
 }

@@ -35,31 +35,37 @@ void _limits(ArenaMap map, List<LevelIssue> issues) {
   }
 }
 
-/// The frame a map's four marbles take must leave the Bumper Round's coins
-/// their part of the 2048-byte budget (S8): the walls go in every frame, so a
-/// busy map is a heavy one.
+/// The frame a map's four marbles and its coins take must fit the whole
+/// 2048-byte budget (S8, G9): the walls go in every frame, and so do the
+/// Bumper Round's three coins, so a busy map is a heavy one.
 void _size(ArenaMap map, List<LevelIssue> issues) {
   final bytes = _snapshotBytes(map);
-  final budget = arenaSnapshotBudgetBytes - arenaCoinBudgetBytes;
-  if (bytes <= budget) return;
+  if (bytes <= arenaSnapshotBudgetBytes) return;
   _issue(
     map,
     issues,
     MapRule.size,
     null,
-    'with four marbles its snapshot is $bytes bytes; a map may take $budget of the $arenaSnapshotBudgetBytes, so the '
-    "Bumper Round's coins keep their $arenaCoinBudgetBytes. Use fewer or shorter walls.",
+    'with four marbles and its coins its snapshot is $bytes bytes; a frame may take '
+    '$arenaSnapshotBudgetBytes. Use fewer or shorter walls.',
   );
 }
 
-/// One frame of [map] with four marbles, as the host sends it, in bytes: the
-/// field's walls, hazards and goal with the marbles standing still on it.
+/// One frame of [map] with four marbles and the three coins the Bumper Round
+/// has out, as the host sends it, in bytes: the field's walls, hazards, goal
+/// and coin zones with the marbles standing still on their starts.
 int _snapshotBytes(ArenaMap map) {
-  final field = ArenaFieldRules(map: map, size: mapFieldSize);
+  final bumper = map.bumper;
+  final field = ArenaFieldRules(map: map, mode: bumper == null ? ArenaMode.race : ArenaMode.bumper, size: mapFieldSize);
   final size = field.size;
   Offset fraction(Offset p) => Offset(p.dx / size.width, p.dy / size.height);
   Rect rectFraction(Rect r) =>
       Rect.fromLTRB(r.left / size.width, r.top / size.height, r.right / size.width, r.bottom / size.height);
+  final grid = bumper == null ? null : MapGrid(map: map);
+  final spots = [
+    for (final zone in bumper?.coins ?? const <Rect>[]) ...grid!.spotsIn(zone, apart: coinDiameter, most: coinsPerZone),
+  ];
+  final starts = bumper?.starts ?? [for (var slot = 0; slot < bumperStarts; slot++) map.race!.startOf(slot)];
   return ArenaSnapshot(
     round: 1,
     roundTimeS: 0,
@@ -67,7 +73,11 @@ int _snapshotBytes(ArenaMap map) {
     walls: [for (final wall in field.wallRects) rectFraction(wall)],
     goal: map.race == null ? Rect.zero : rectFraction(field.goalRect),
     hazards: [for (final hazard in field.hazardPositions) fraction(hazard)],
-    players: [for (var i = 0; i < 4; i++) ArenaPlayerView(id: 'player-$i', x: 0.5, y: 0.5)],
+    players: [for (final (i, at) in starts.indexed) ArenaPlayerView(id: 'player-$i', x: at.dx, y: at.dy)],
     start: map.race == null ? Offset.zero : fraction(field.startPx),
+    mapId: map.id,
+    mode: bumper == null ? ArenaMode.race : ArenaMode.bumper,
+    coins: [for (final spot in spots.take(ArenaCoin.coinsOut)) ArenaCoinView(x: spot.dx, y: spot.dy)],
+    timeLeftMs: bumper == null ? null : (bumperRoundS * 1000).round(),
   ).encode().length;
 }

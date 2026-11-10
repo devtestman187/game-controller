@@ -1,16 +1,38 @@
 import 'dart:math';
+import 'dart:ui';
 
+import 'package:game_kit/game_kit.dart';
 import 'package:protocol/protocol.dart';
 
+import 'arena_coin.dart';
 import 'arena_events.dart';
 import 'arena_field.dart';
+import 'arena_map.dart';
+import 'arena_mode.dart';
+import 'map_grid.dart';
+
+part 'arena_bumper.dart';
+
+/// The seed the Bumper Round's coins draw from when a game brings none: the
+/// same round plays the same way every time (rule 4).
+const defaultArenaSeed = 0;
+
+/// The game's name in analytics records and results (S7).
+const arenaGame = 'arena';
+
+/// The Bumper Round's clock, in seconds (party-night §7, G9).
+const double bumperRoundS = 60;
 
 enum ArenaPhase {
   playing,
 
-  /// Someone reached the goal. The next round starts after
+  /// Someone reached the goal (the race). The next round starts after
   /// [ArenaGame.roundBreakS].
   won,
+
+  /// The Bumper Round's clock ran out: the round is over and its result is
+  /// ready.
+  over,
 }
 
 /// The test game's rules (PRD "Test game design"): sprites cross a field of
@@ -20,18 +42,35 @@ enum ArenaPhase {
 /// mirrored, so the start and the goal swap sides.
 ///
 /// The field, the marbles and the movement they share are [ArenaFieldRules]'s
-/// (party-night §7); this adds the race's round on top: who reached the goal
-/// and the break before the next round. The map (M14 k1b) is the Playroom's
-/// until the waiting card picks one (M14 b2).
+/// (party-night §7); this adds a round on top, in one of two modes (G9): the
+/// race, as the game has played since M12, and the Bumper Round, where four
+/// marbles shove each other and pick up coins for 60 seconds. The race is the
+/// default, so every game built before the Bumper Round plays as it did. The
+/// map (M14 k1b) is the Playroom's until the waiting card picks one (M14 b2).
 ///
 /// The tuning values were tried on the devices in M5.
-class ArenaGame extends ArenaFieldRules {
-  /// The map to race on (M14 k1b), the Playroom's when none is given until the
-  /// waiting card picks one (M14 b2).
-  ArenaGame({super.map, super.size});
+abstract class ArenaGame extends ArenaFieldRules {
+  ArenaGame._base({super.map, super.mode, super.size, required this.random});
 
-  /// The break after a won round, in seconds: the winner's banner stays up
-  /// this long before the field mirrors and the next round starts.
+  /// A game playing [mode] on [map] (M14 k1b), the Playroom's until the
+  /// waiting card picks one (M14 b2), drawn in a window of [size]. [random]
+  /// seeds the Bumper Round's coins; it draws its own (always the same) when
+  /// none is given.
+  factory ArenaGame({
+    ArenaMap map = ArenaMap.playroom,
+    ArenaMode mode = ArenaMode.race,
+    Size size = ArenaFieldRules.defaultSize,
+    Random? random,
+  }) {
+    final seeded = random ?? Random(defaultArenaSeed);
+    return switch (mode) {
+      ArenaMode.race => _RaceGame(map: map, size: size, random: seeded),
+      ArenaMode.bumper => _BumperGame(map: map, size: size, random: seeded),
+    };
+  }
+
+  /// The break after a won race round, in seconds: the winner's banner stays
+  /// up this long before the field mirrors and the next round starts.
   static const double roundBreakS = 2.0;
 
   // The shared tuning's public names, from [ArenaFieldRules]: the snapshot,
@@ -42,8 +81,14 @@ class ArenaGame extends ArenaFieldRules {
   static const double dashS = ArenaFieldRules.dashS;
   static const double dashCooldownS = ArenaFieldRules.dashCooldownS;
 
+  /// The random the Bumper Round draws its coins' places from. The race never
+  /// uses it.
+  final Random random;
+
   double _roundTime = 0;
   double _breakLeft = 0;
+  bool _draw = false;
+  RoundResult? _result;
 
   ArenaPhase phase = ArenaPhase.playing;
 
@@ -57,11 +102,27 @@ class ArenaGame extends ArenaFieldRules {
   double? bestTimeS;
   String? bestId;
 
-  /// Seconds into the current round (frozen once won).
+  /// Seconds into the current round (frozen once it ends).
   double get roundTime => _roundTime;
 
   /// Seconds until the next round, while [phase] is won.
   double get breakLeft => _breakLeft;
+
+  /// Whether the round had no single winner (a tie on coins, G9).
+  bool get draw => _draw;
+
+  /// The Bumper Round's result once its clock runs out (G9): the coins as
+  /// points, the winners, the counters the awards need and each player's line.
+  /// Null while it plays, and always in the race, whose results card comes
+  /// with M14 b2.
+  RoundResult? get roundResult => _result;
+
+  /// Seconds left on the Bumper Round's clock, or null in the race.
+  double? get timeLeftS => null;
+
+  /// The coins on the field, in the order they came out: the Bumper Round's,
+  /// and none in the race.
+  List<ArenaCoin> get coins => const [];
 
   /// Advances the game by [dt] seconds with each player's input, and returns
   /// the events to play. Controllers missing from [inputs] leave the game,
@@ -72,12 +133,32 @@ class ArenaGame extends ArenaFieldRules {
     dt = dt.clamp(0.0, 0.1);
     final events = <GameEvent>[];
     advanceTime(dt);
+    stepRound(dt, inputs, events);
+    return events;
+  }
 
+  /// Plays one step of the mode's round: the race's goal, the Bumper Round's
+  /// contacts, coins and clock. Every event it causes goes into [events].
+  void stepRound(double dt, Map<String, GameInput> inputs, List<GameEvent> events);
+
+  /// The round's own counters for its `round_end` record (S7): the time the
+  /// round took and the winner, besides the players' control modes.
+  Map<String, Object?> roundEndData(Map<String, String> modes);
+}
+
+/// The race (PRD "Test game design", M12): hold a direction to walk, A to
+/// dash, and reach the goal pad first. Every round the field mirrors, so the
+/// start and the goal swap sides.
+final class _RaceGame extends ArenaGame {
+  _RaceGame({required super.map, required super.size, required super.random}) : super._base(mode: ArenaMode.race);
+
+  @override
+  void stepRound(double dt, Map<String, GameInput> inputs, List<GameEvent> events) {
     if (phase == ArenaPhase.won) {
       _breakLeft -= dt;
       if (_breakLeft <= 0) _newRound();
       noteDashHeld(inputs);
-      return events;
+      return;
     }
 
     _roundTime += dt;
@@ -85,7 +166,6 @@ class ArenaGame extends ArenaFieldRules {
       _updatePlayer(p, dt, inputs[p.id]!, events);
       if (phase == ArenaPhase.won) break; // The first one in wins.
     }
-    return events;
   }
 
   void _updatePlayer(ArenaPlayer p, double dt, GameInput input, List<GameEvent> events) {
@@ -101,7 +181,7 @@ class ArenaGame extends ArenaFieldRules {
         bestTimeS = _roundTime;
         bestId = p.id;
       }
-      _breakLeft = roundBreakS;
+      _breakLeft = ArenaGame.roundBreakS;
       stopDashes();
       events.add(GameEvent(p.id, HapticEvent.success, GameEventCause.goal));
     }
@@ -115,4 +195,11 @@ class ArenaGame extends ArenaFieldRules {
     _roundTime = 0;
     resetMarbles();
   }
+
+  @override
+  Map<String, Object?> roundEndData(Map<String, String> modes) => {
+    'timeS': lastTimeS,
+    'modes': modes,
+    'winner': winnerId,
+  };
 }

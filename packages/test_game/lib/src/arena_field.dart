@@ -5,6 +5,7 @@ import 'package:protocol/protocol.dart';
 
 import 'arena_events.dart';
 import 'arena_map.dart';
+import 'arena_mode.dart';
 import 'arena_specs.dart';
 
 part 'arena_player.dart';
@@ -18,7 +19,10 @@ part 'arena_player.dart';
 /// fractions, and speeds and sizes are fractions of the shorter side per
 /// second, so the game feels the same in any window and survives resizing.
 class ArenaFieldRules {
-  ArenaFieldRules({this.map = ArenaMap.playroom, this._size = const Size(960, 540)});
+  ArenaFieldRules({this.map = ArenaMap.playroom, this.mode = ArenaMode.race, this._size = defaultSize});
+
+  /// The size a field is given until the window says otherwise: a TV's.
+  static const defaultSize = Size(960, 540);
 
   // Sizes and speeds, as fractions of the field's shorter side.
   static const double playerRadius = 0.032;
@@ -34,6 +38,14 @@ class ArenaFieldRules {
   static const double hazardGraceS = 0.8;
   static const double hitGapS = 0.3;
 
+  /// How long after one marble touches another it can be felt again, so two
+  /// resting against each other don't buzz every step.
+  static const double contactGapS = 0.3;
+
+  /// How long a shove from another marble takes to fade: it pushes the marble
+  /// on for a moment, then it walks on as before.
+  static const double shoveS = 0.25;
+
   /// A wall bump below this speed (a fraction of [speed]) doesn't count, so
   /// resting a thumb against a wall doesn't buzz.
   static const double bumpThreshold = 0.25;
@@ -42,6 +54,10 @@ class ArenaFieldRules {
   /// race — its start and goal. With none, the Playroom's.
   final ArenaMap map;
 
+  /// The round this field plays (G9): the race, or the Bumper Round, which
+  /// starts its marbles on the map's bumper starts.
+  final ArenaMode mode;
+
   List<WallSpec> get walls => map.walls;
   List<HazardSpec> get hazards => map.hazards;
 
@@ -49,6 +65,10 @@ class ArenaFieldRules {
   /// Bumper Round, which brings its own starts (G9), so asking a field for
   /// these says which map and why.
   RaceSpec get race => map.race ?? (throw StateError('The map "${map.id}" has no race section.'));
+
+  /// The Bumper Round's starts and coin zones (G9), named the same way when a
+  /// map has none.
+  BumperSpec get bumper => map.bumper ?? (throw StateError('The map "${map.id}" has no bumper section.'));
 
   // The field itself, below.
 
@@ -72,7 +92,7 @@ class ArenaFieldRules {
 
   double get hazardRadiusPx => hazardRadius * _unit;
 
-  /// The middle start position, in pixels.
+  /// The first start position, in pixels.
   Offset get startPx => _px(_startFor(0));
 
   Rect get goalRect {
@@ -84,9 +104,14 @@ class ArenaFieldRules {
 
   List<Offset> get hazardPositions => [for (final h in hazards) _px(_mirror(h.at(_time, _size)))];
 
-  /// Slot 0 in the middle, then above, below, further above, …, kept inside
-  /// the field: the map's start, placed as [RaceSpec.startOf] says.
-  Offset _startFor(int slot) => _mirror(race.startOf(slot));
+  /// The pixels of a point [fraction] of the field.
+  Offset pixelOf(Offset fraction) => _px(fraction);
+
+  /// Where slot [slot] starts: in the race, slot 0 in the middle, then above,
+  /// below, further above, …, as [RaceSpec.startOf] says; in the Bumper Round,
+  /// the map's own bumper start for it (G9).
+  Offset _startFor(int slot) =>
+      _mirror(mode == ArenaMode.bumper ? bumper.starts[slot % bumper.starts.length] : race.startOf(slot));
 
   Rect get _goal {
     final g = race.goal;
@@ -143,9 +168,11 @@ class ArenaFieldRules {
     _time += dt;
     for (final p in _players.values) {
       p._sinceHit += dt;
+      p._sinceBump += dt;
       p._graceLeft = max(0, p._graceLeft - dt);
       p._cooldownLeft = max(0, p._cooldownLeft - dt);
       p._dashLeft = max(0, p._dashLeft - dt);
+      p._shove *= max(0.0, 1 - dt / shoveS);
     }
   }
 
@@ -174,7 +201,10 @@ class ArenaFieldRules {
       }
     }
 
-    final velocity = pl.dashing ? pl._facing * (dashSpeed * _unit) : input.move * (speed * _unit);
+    final walk = pl.dashing ? pl._facing * (dashSpeed * _unit) : input.move * (speed * _unit);
+    // Another marble's shove rides on top of the walk until it fades (G9).
+    final velocity = walk + pl._shove;
+    pl._velocity = velocity;
     moveMarble(pl, velocity * dt, velocity, events);
     checkHazards(pl, events);
   }

@@ -255,15 +255,16 @@ void main() {
         onlyMessage(map, MapRule.size),
         matches(
           RegExp(
-            r'^test: with four marbles its snapshot is \d+ bytes; a map may take 1748 of the 2048, so the '
-            r"Bumper Round's coins keep their 300\. Use fewer or shorter walls\.$",
+            r'^test: with four marbles and its coins its snapshot is \d+ bytes; a frame may take 2048\. '
+            r'Use fewer or shorter walls\.$',
           ),
         ),
       );
     },
     skip:
-        'a guard for k2a: no map inside 24 walls and 8 hazards fills the 1748-byte budget yet (the heaviest is '
-        '1197 bytes); k2a turns this on with a map its new pieces make heavy enough (Claude, k1b question 2)',
+        'a guard for k2a: no map inside 24 walls and 8 hazards fills the 2048-byte budget yet (the heaviest is '
+        '1217 bytes, its coins included); k2a turns this on with a map its new pieces make heavy enough '
+        '(Claude, k1b question 2)',
   );
 
   test('the index and the files name the same maps', () {

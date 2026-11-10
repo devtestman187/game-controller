@@ -5,11 +5,14 @@
 library;
 
 export 'src/arena.dart';
+export 'src/arena_coin.dart';
+export 'src/arena_coin_painter.dart';
 export 'src/arena_events.dart';
 export 'src/arena_field.dart';
 export 'src/arena_hud_widgets.dart';
 export 'src/arena_map.dart';
 export 'src/arena_map_library.dart';
+export 'src/arena_mode.dart';
 export 'src/arena_module.dart';
 export 'src/arena_moments.dart';
 export 'src/arena_painter.dart';

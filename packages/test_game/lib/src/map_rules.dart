@@ -3,8 +3,10 @@ import 'dart:ui';
 import 'package:game_kit/game_kit.dart';
 
 import 'arena.dart';
+import 'arena_coin.dart';
 import 'arena_field.dart';
 import 'arena_map.dart';
+import 'arena_mode.dart';
 import 'arena_snapshot.dart';
 import 'arena_specs.dart';
 import 'map_grid.dart';
@@ -67,12 +69,10 @@ const minStartDiameters = 3;
 /// The four spots the Bumper Round starts its marbles on.
 const bumperStarts = 4;
 
-/// The snapshot's budget for four marbles, in bytes (S8, as the puzzle's).
+/// The snapshot's budget for four marbles and the Bumper Round's coins, in
+/// bytes (S8, as the puzzle's). A frame carries the walls, the coins and each
+/// player's score, so the whole frame — not a part of it — must fit.
 const arenaSnapshotBudgetBytes = 2048;
-
-/// The part of it the Bumper Round's coins will need (G9, M14 k2): a map's
-/// race snapshot and its walls must leave this much for them.
-const arenaCoinBudgetBytes = 300;
 
 /// How many coins a coin zone must hold together: a zone that holds fewer
 /// leaves the round hunting for spots (party-night §7 has three field coins at

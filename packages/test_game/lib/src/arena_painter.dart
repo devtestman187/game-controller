@@ -4,8 +4,10 @@ import 'dart:ui' show PointMode;
 import 'package:flutter/material.dart';
 import 'package:toy_look/toy_look.dart';
 
+import 'arena_coin_painter.dart';
 import 'arena_marble_painter.dart';
 import 'arena_moments.dart';
+import 'arena_mode.dart';
 import 'arena_roster.dart';
 import 'arena_snapshot.dart';
 
@@ -67,9 +69,9 @@ const startDashShare = 0.015;
 const startGapShare = 0.013;
 
 /// Draws the arena in the look (rule 2) from a snapshot only (S8): the dotted
-/// play mat, the start pad, the goal pad with its glow and its flag, the
-/// toy-block walls, the red bumpers, and the marbles in
-/// [ArenaMarblePainter].
+/// play mat, the race's start pad and goal with its glow and its flag, the
+/// toy-block walls, the red bumpers, the Bumper Round's coins in
+/// [ArenaCoinPainter], and the marbles in [ArenaMarblePainter].
 ///
 /// Positions are fractions of the field and sizes fractions of its shorter
 /// side, so the same snapshot draws the same arena on the TV, the host phone
@@ -101,10 +103,16 @@ class ArenaPainter extends CustomPainter {
     Offset px(Offset f) => Offset(f.dx * size.width, f.dy * size.height);
     if (fillsBackground) canvas.drawRect(Offset.zero & size, Paint()..color = look.colors.field);
     _mat(canvas, size);
-    _start(canvas, px(s.start), s.playerRadius * unit * startPadShare, unit, style);
-    _goal(canvas, size, style);
+    // The race's start pad and goal pad are not on a Bumper Round's field
+    // (G9): its marbles start on the map's bumper starts and its coins are
+    // the mark to play for.
+    if (s.mode == ArenaMode.race) {
+      _start(canvas, px(s.start), s.playerRadius * unit * startPadShare, unit, style);
+      _goal(canvas, size, style);
+    }
     _walls(canvas, px, unit, style);
     _hazards(canvas, px, s.hazardRadius * unit, unit, style);
+    ArenaCoinPainter(coins: s.coins, radius: s.coinRadius * unit, look: look, style: style).paint(canvas, size);
     ArenaMarblePainter(snapshot: s, roster: roster, look: look, style: style, moments: moments).paint(canvas, size);
   }
 

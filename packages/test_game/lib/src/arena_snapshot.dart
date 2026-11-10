@@ -4,6 +4,9 @@ import 'dart:ui';
 import 'package:game_kit/game_kit.dart';
 
 import 'arena.dart';
+import 'arena_coin.dart';
+import 'arena_map.dart';
+import 'arena_mode.dart';
 
 /// One sprite as the view sees it, positions as fractions of the field.
 final class ArenaPlayerView {
@@ -20,6 +23,7 @@ final class ArenaPlayerView {
     this.hits = 0,
     this.dashes = 0,
     this.failedDashes = 0,
+    this.coins = 0,
   });
 
   final String id;
@@ -39,19 +43,23 @@ final class ArenaPlayerView {
   final int dashes;
   final int failedDashes;
 
+  /// Coins picked up this round (G9).
+  final int coins;
+
   Map<String, Object?> toJson() => {
     'id': id,
     'x': _r(x),
     'y': _r(y),
     if (dashing) 'd': 1,
     if (recovering) 'r': 1,
-    if (cooldown > 0) 'c': _r(cooldown),
+    if (cooldown > 0) 'cd': _r(cooldown),
     'ax': ?(aimX == null ? null : _r(aimX!)),
     'ay': ?(aimY == null ? null : _r(aimY!)),
     'w': wins,
     'h': hits,
     'ds': dashes,
     'fd': failedDashes,
+    if (coins > 0) 'c': coins,
   };
 
   static ArenaPlayerView fromJson(Map<String, Object?> j) => ArenaPlayerView(
@@ -60,13 +68,14 @@ final class ArenaPlayerView {
     y: (j['y'] as num).toDouble(),
     dashing: j['d'] == 1,
     recovering: j['r'] == 1,
-    cooldown: (j['c'] as num?)?.toDouble() ?? 0,
+    cooldown: (j['cd'] as num?)?.toDouble() ?? 0,
     aimX: (j['ax'] as num?)?.toDouble(),
     aimY: (j['ay'] as num?)?.toDouble(),
     wins: j['w'] as int,
     hits: j['h'] as int,
     dashes: j['ds'] as int,
     failedDashes: j['fd'] as int,
+    coins: j['c'] as int? ?? 0,
   );
 
   /// This sprite moved [t] of the way to [next] (m12 §4): its place, its
@@ -91,14 +100,40 @@ final class ArenaPlayerView {
       hits: hits,
       dashes: dashes,
       failedDashes: failedDashes,
+      coins: coins,
     );
   }
+}
+
+/// One coin as the view sees it (G9): its place as fractions of the field and
+/// how long it has been out, which its spin turns on. A frame carries the
+/// coins as `[x, y, age]` triples, so a few of them stay small.
+final class ArenaCoinView {
+  const ArenaCoinView({required this.x, required this.y, this.ageMs = 0});
+
+  final double x;
+  final double y;
+
+  /// Milliseconds since the coin appeared.
+  final int ageMs;
+
+  List<Object> toJson() => [_r(x), _r(y), ageMs];
+
+  static ArenaCoinView fromJson(List<Object?> j) =>
+      ArenaCoinView(x: (j[0] as num).toDouble(), y: (j[1] as num).toDouble(), ageMs: (j[2] as num).toInt());
+
+  @override
+  String toString() => 'ArenaCoinView($x, $y, ${ageMs}ms)';
 }
 
 /// The arena as one value the view draws from (PRD v2 S8). Positions and
 /// rectangles are fractions of the field (0..1), sizes fractions of its
 /// shorter side, so it draws the same in any box. Versioned JSON, so a host
 /// can send it to phones that show the game (M12).
+///
+/// Version 2 (party-night N11, M14 G9) names the map the round plays and its
+/// mode, and carries the Bumper Round's coins, each player's coins and the
+/// round's clock. The race's frame is the same frame, with those left out.
 final class ArenaSnapshot implements GameSnapshot {
   const ArenaSnapshot({
     required this.round,
@@ -116,19 +151,27 @@ final class ArenaSnapshot implements GameSnapshot {
     this.bestId,
     this.playerRadius = ArenaGame.playerRadius,
     this.hazardRadius = ArenaGame.hazardRadius,
+    this.mapId = ArenaMap.playroomId,
+    this.mode = ArenaMode.race,
+    this.coins = const [],
+    this.timeLeftMs,
+    this.coinRadius = ArenaCoin.radius,
   });
 
-  static const version = 1;
+  static const version = 2;
 
   final int round;
   final double roundTimeS;
   final ArenaPhase phase;
   final List<Rect> walls;
+
+  /// The goal pad, or [Rect.zero] in the Bumper Round, which has none.
   final Rect goal;
   final List<Offset> hazards;
   final List<ArenaPlayerView> players;
 
-  /// The middle start position (the start pad).
+  /// The start pad, or the field's corner in the Bumper Round, which starts
+  /// from the map's bumper starts instead.
   final Offset start;
   final String? winnerId;
   final double? lastTimeS;
@@ -138,26 +181,47 @@ final class ArenaSnapshot implements GameSnapshot {
   final double playerRadius;
   final double hazardRadius;
 
+  /// The map the round plays (M14 k1b), by id: a phone draws the field it has
+  /// for that id (M14 k2a).
+  final String mapId;
+
+  /// The round's mode (G9).
+  final ArenaMode mode;
+
+  /// The coins on the field, in the order they came out; none in the race.
+  final List<ArenaCoinView> coins;
+
+  /// The Bumper Round's clock in milliseconds, or null in the race.
+  final int? timeLeftMs;
+
+  /// A coin's radius as a fraction of the field's shorter side (G9).
+  final double coinRadius;
+
   ArenaPlayerView? player(String id) => players.where((p) => p.id == id).firstOrNull;
 
   @override
   Map<String, Object?> toJson() => {
     'v': version,
+    'mid': mapId,
+    if (mode != ArenaMode.race) 'md': mode.index,
     'rd': round,
     't': _r(roundTimeS),
     'ph': phase.index,
     'wl': [for (final w in walls) _rect(w)],
-    'g': _rect(goal),
+    if (mode == ArenaMode.race) 'g': _rect(goal),
     'hz': [
       for (final h in hazards) [_r(h.dx), _r(h.dy)],
     ],
     'pl': [for (final p in players) p.toJson()],
-    'st': [_r(start.dx), _r(start.dy)],
+    if (mode == ArenaMode.race) 'st': [_r(start.dx), _r(start.dy)],
     'win': ?winnerId,
     'last': ?(lastTimeS == null ? null : _r(lastTimeS!)),
     if (breakLeftS > 0) 'br': _r(breakLeftS),
     'best': ?(bestTimeS == null ? null : _r(bestTimeS!)),
     'bestId': ?bestId,
+    if (coins.isNotEmpty) 'co': [for (final c in coins) c.toJson()],
+    if (timeLeftMs != null) 'tl': timeLeftMs,
+    if (mode == ArenaMode.bumper) 'cr': _r(coinRadius),
   };
 
   String encode() => jsonEncode(toJson());
@@ -171,12 +235,17 @@ final class ArenaSnapshot implements GameSnapshot {
       return Rect.fromLTRB(l[0].toDouble(), l[1].toDouble(), l[2].toDouble(), l[3].toDouble());
     }
 
+    final mode = switch (j['md']) {
+      null => ArenaMode.race,
+      final num i when i >= 0 && i < ArenaMode.values.length => ArenaMode.values[i.toInt()],
+      final other => throw FormatException('Arena snapshot mode $other'),
+    };
     return ArenaSnapshot(
       round: j['rd'] as int,
       roundTimeS: (j['t'] as num).toDouble(),
       phase: ArenaPhase.values[j['ph'] as int],
       walls: [for (final w in j['wl'] as List) rect(w)],
-      goal: rect(j['g']),
+      goal: j['g'] == null ? Rect.zero : rect(j['g']),
       hazards: [
         for (final h in (j['hz'] as List).cast<List>()) Offset((h[0] as num).toDouble(), (h[1] as num).toDouble()),
       ],
@@ -190,14 +259,19 @@ final class ArenaSnapshot implements GameSnapshot {
       breakLeftS: (j['br'] as num?)?.toDouble() ?? 0,
       bestTimeS: (j['best'] as num?)?.toDouble(),
       bestId: j['bestId'] as String?,
+      mapId: j['mid'] as String? ?? ArenaMap.playroomId,
+      mode: mode,
+      coins: [for (final c in (j['co'] as List? ?? const [])) ArenaCoinView.fromJson((c as List).cast<Object?>())],
+      timeLeftMs: (j['tl'] as num?)?.toInt(),
+      coinRadius: (j['cr'] as num?)?.toDouble() ?? ArenaCoin.radius,
     );
   }
 
   /// The arena at [t] between this frame (0) and [next] (1), for a viewer
   /// drawing between two frames (m12 §4): the sprites, their cooldowns and
   /// aims, the round's clock, the break and the hazards move; the round, the
-  /// phase, the field, the winner and the counters stay this frame's. A
-  /// sprite only in [next] isn't drawn yet.
+  /// phase, the field, the map, the coins, the winner and the counters stay
+  /// this frame's. A sprite only in [next] isn't drawn yet.
   @override
   ArenaSnapshot lerpTo(GameSnapshot next, double t) {
     if (next is! ArenaSnapshot) {
@@ -227,6 +301,13 @@ final class ArenaSnapshot implements GameSnapshot {
       bestId: bestId,
       playerRadius: playerRadius,
       hazardRadius: hazardRadius,
+      mapId: mapId,
+      mode: mode,
+      coins: coins,
+      timeLeftMs: timeLeftMs == null || next.timeLeftMs == null
+          ? timeLeftMs
+          : lerp(timeLeftMs!.toDouble(), next.timeLeftMs!.toDouble()).round(),
+      coinRadius: coinRadius,
     );
   }
 }
@@ -239,6 +320,7 @@ extension ArenaSnapshots on ArenaGame {
   /// Everything the view needs, and nothing else (S8).
   ArenaSnapshot snapshot() {
     final s = size;
+    final bumper = mode == ArenaMode.bumper;
     Offset frac(Offset p) => Offset(p.dx / s.width, p.dy / s.height);
     Rect fracRect(Rect r) => Rect.fromPoints(frac(r.topLeft), frac(r.bottomRight));
     return ArenaSnapshot(
@@ -246,7 +328,7 @@ extension ArenaSnapshots on ArenaGame {
       roundTimeS: roundTime,
       phase: phase,
       walls: [for (final w in wallRects) fracRect(w)],
-      goal: fracRect(goalRect),
+      goal: bumper ? Rect.zero : fracRect(goalRect),
       hazards: [for (final h in hazardPositions) frac(h)],
       players: [
         for (final p in players)
@@ -263,14 +345,20 @@ extension ArenaSnapshots on ArenaGame {
             hits: p.hits,
             dashes: p.dashes,
             failedDashes: p.failedDashes,
+            coins: p.coins,
           ),
       ],
-      start: frac(startPx),
+      start: bumper ? Offset.zero : frac(startPx),
       winnerId: winnerId,
       lastTimeS: lastTimeS,
       breakLeftS: breakLeft,
       bestTimeS: bestTimeS,
       bestId: bestId,
+      mapId: map.id,
+      mode: mode,
+      coins: [for (final c in coins) ArenaCoinView(x: c.x, y: c.y, ageMs: (c.ageS * 1000).round())],
+      timeLeftMs: timeLeftS == null ? null : (timeLeftS! * 1000).round(),
+      coinRadius: ArenaCoin.radius,
     );
   }
 }
