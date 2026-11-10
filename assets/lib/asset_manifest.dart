@@ -21,6 +21,10 @@ const String assetPackage = 'game_assets';
 ///
 /// The ten before them are the Arena's (M14 design section 8): its seven
 /// one-shots and its own music at three tempos, which the Bumper Round plays.
+///
+/// The five before those are the party night's (M14 design section 11): the
+/// cat's warning, a soft pop under a points pop-up, an award, a won round or
+/// the night's winner, and a new best time.
 enum SoundKey {
   hit,
   success,
@@ -42,6 +46,11 @@ enum SoundKey {
   arena,
   arenaHurry('arena_hurry'),
   arenaFinal('arena_final'),
+  meow,
+  points,
+  fanfare,
+  celebration,
+  newRecord('new_record'),
   lobby,
   countdown,
   playerJoined('player_joined'),

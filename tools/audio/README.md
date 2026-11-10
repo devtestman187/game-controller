@@ -52,3 +52,15 @@ tools/audio/render-arena-sounds.sh
 ```
 
 It runs both renderers, then encodes every master with the same ffmpeg line as above and prints each file's length beside its master's, so a short encode shows up as a mismatch (VLC would make one).
+
+## The party night's five sounds (M14)
+
+The night's five cues — `meow` (the cat's warning before it swipes a piece), `points` (a soft pop under a points pop-up), `fanfare` (an award on the scoreboard), `celebration` (a won round and the night's winner) and `new_record` (a new best time) — are made like the Arena's: `party_sounds.dart` builds each from the kit's instruments, masters it with `render.py`'s event pass to its own loudness in the script's table, and seeds it, so the same WAV comes out every run. It writes its WAV masters to `tools/audio/final/party-wav/` (gitignored, as the others are), prints each file's length, RMS and peak, and fails if a part is cut off by its cue's end or a cue lands more than 1 dB under its target.
+
+Render and encode again, from the repository root (Git Bash, ffmpeg and ffprobe on the PATH):
+
+```bash
+tools/audio/render-party-sounds.sh
+```
+
+It encodes every master with the same ffmpeg line as above and prints each file's length beside its master's, as the Arena's script does.

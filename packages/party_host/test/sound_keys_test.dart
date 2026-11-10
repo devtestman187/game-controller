@@ -7,7 +7,8 @@ import 'package:party_host/party_host.dart';
 /// The cues M13 step 7 added (design section 8): the keys the host's screens
 /// play them by, and the files the player loads for them, beside the existing
 /// cues' files (assets has no test folder of its own). M13 10b adds the round
-/// music's three tempos to them, and M14 the Arena's ten sounds.
+/// music's three tempos to them, and M14 the Arena's ten sounds and the party
+/// night's five.
 void main() {
   test('the phone-joined cue is spelled as the host plays it', () {
     expect(SoundKey.byEventName('player_joined'), SoundKey.playerJoined);
@@ -71,6 +72,28 @@ void main() {
       SoundKey.arenaHurry,
       SoundKey.arenaFinal,
     ]) {
+      final file = File('../../assets/${soundFiles[key]}');
+      expect(file.existsSync(), isTrue, reason: '${soundFiles[key]} is the file the player loads');
+    }
+  });
+
+  // M14's party night sounds (design section 11): the night's own moments, and
+  // the five files job s1 makes, which the night's screens play by name.
+  test('the party night\'s five sounds are spelled as the host plays them', () {
+    for (final (name, key) in [
+      ('meow', SoundKey.meow),
+      ('points', SoundKey.points),
+      ('fanfare', SoundKey.fanfare),
+      ('celebration', SoundKey.celebration),
+      ('new_record', SoundKey.newRecord),
+    ]) {
+      expect(SoundKey.byEventName(name), key, reason: '$name is the name the night raises');
+      expect(key.eventName, name);
+    }
+  });
+
+  test('the party night\'s five files are bundled beside their manifest paths', () {
+    for (final key in [SoundKey.meow, SoundKey.points, SoundKey.fanfare, SoundKey.celebration, SoundKey.newRecord]) {
       final file = File('../../assets/${soundFiles[key]}');
       expect(file.existsSync(), isTrue, reason: '${soundFiles[key]} is the file the player loads');
     }
