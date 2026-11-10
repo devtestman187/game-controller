@@ -126,12 +126,11 @@ Before you commit, run the full puzzle and phone tests too:
 tools/check.sh puzzle phone
 ```
 
-Two rules aren't in `check` yet, so only these tests catch them:
+`check` is the whole rule book; the phone tests only make sure its numbers still match the phones. Three of its rules are the ones a new picture most often breaks:
 
-- **At least 2 turned pieces** (`packages/puzzle_game/test/rules_test.dart`, "Every puzzle needs some turning"). `check` caps an Easy puzzle at 2 and never asks for a minimum.
-- **Big enough to see on a phone:** every piece is at least 8.5 mm on the smallest phones, on every seed (`controller_app/test/puzzle_size_test.dart`). A thin bar is the usual failure; 14 × 4 passes where 12 × 3 doesn't.
-
-The tray, at every starting angle, is in `check`: over the starts 0 to 199, no two pieces' boxes overlap and none leaves the tray (`puzzle_rules.dart`).
+- **At least 2 turned pieces** (an Easy puzzle exactly 2; circles don't count).
+- **Big enough to see on a phone:** every piece is at least 8.5 mm across on the narrowest phone (`narrowestPhoneSafeArea`, 640 × 356 px), on either side and at every start from 1 to 21. A thin bar or a small dot is the usual failure; 14 × 4 passes where 12 × 3 doesn't. `controller_app/test/puzzle_size_test.dart` checks that no real phone draws smaller than that one.
+- **The tray at every start:** over the starts 0 to 199, no two pieces' boxes overlap and none leaves the tray.
 
 The puzzle tests also redraw `docs/design/m13-puzzles.png` and `m13-puzzles-night.png`, the sheets of every puzzle; commit them with the puzzle.
 

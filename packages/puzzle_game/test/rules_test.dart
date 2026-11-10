@@ -370,12 +370,8 @@ void main() {
         final issues = checkPuzzle(load(id));
         expect(issues, isEmpty, reason: '$id: ${issues.join('\n')}');
       }
-      // Every puzzle needs some turning: at least 2 pieces start turned
-      // (and can be: a circle can't).
-      for (final id in ids) {
-        final turned = load(id).pieces.where((p) => p.rotated && p.shape.symmetry != 0);
-        expect(turned.length, greaterThanOrEqualTo(2), reason: '$id has only ${turned.length} pieces to turn');
-      }
+      // Every puzzle needs some turning: the rule book's `turned` rule (M14
+      // g1b), run over the library by library_test.dart.
       expect(load('house').level, Level.easy);
       expect(load('boat').level, Level.medium);
       expect(load('boat').pieces.where((p) => p.kind == 'wave'), hasLength(2));

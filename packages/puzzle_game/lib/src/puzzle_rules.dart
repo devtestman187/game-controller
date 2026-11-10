@@ -1,8 +1,11 @@
 import 'dart:math';
 import 'dart:ui';
 
+import 'camera.dart';
 import 'game.dart';
+import 'match.dart';
 import 'piece_colors.dart';
+import 'piece_size.dart';
 import 'puzzle.dart';
 import 'split_layout.dart';
 
@@ -36,6 +39,12 @@ enum PuzzleRule {
 
   /// The finished picture fills too little of the board.
   span,
+
+  /// Too few pieces start turned (M14 g1b).
+  turned,
+
+  /// A piece is drawn too small on the narrowest phone (M14 g1b).
+  size,
 
   /// The index and the files disagree.
   listing,
@@ -71,9 +80,11 @@ List<PuzzleIssue> checkPuzzle(Puzzle puzzle, {List<Puzzle> library = const []}) 
   _held(puzzle, issues);
   _colours(puzzle, issues);
   _level(puzzle, issues);
+  _turned(puzzle, issues);
   _fit(puzzle, issues);
   _trayStarts(puzzle, issues);
   _span(puzzle, issues);
+  _phoneSize(puzzle, issues);
   return issues;
 }
 

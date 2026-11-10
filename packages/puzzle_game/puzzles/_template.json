@@ -8,7 +8,7 @@
   "pieces": [
     {"id": "base", "shape": {"rect": [40, 24]}, "color": "blue", "at": [40, 40], "big": true},
     {"id": "top", "shape": {"polygon": [[-20, 8], [20, 8], [0, -14]]}, "color": "red", "at": [40, 20], "rotated": true},
-    {"id": "dot left", "shape": {"circle": 6}, "color": "yellow", "at": [30, 40]},
-    {"id": "dot right", "shape": {"circle": 5}, "color": "green", "at": [50, 40]}
+    {"id": "window", "shape": {"rect": [10, 8]}, "color": "yellow", "at": [30, 40], "rotated": true},
+    {"id": "dot", "shape": {"circle": 7}, "color": "green", "at": [51, 40]}
   ]
 }

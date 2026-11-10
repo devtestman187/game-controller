@@ -112,6 +112,30 @@ void main() {
     }
   });
 
+  test('the narrowest phone in the rule book is a real phone, and no phone draws a piece smaller (M14 g1b)', () {
+    expect(
+      screens.values,
+      contains(narrowestPhoneSafeArea),
+      reason: 'narrowestPhoneSafeArea in puzzle_game must be a real phone safe area',
+    );
+    for (final MapEntry(key: id, value: puzzle) in puzzles.entries) {
+      if (puzzle.level == Level.hard) continue;
+      for (final side in PuzzleSide.values) {
+        for (final seed in seeds) {
+          final floor = smallestPieceMm(puzzle, narrowestPhoneSafeArea, seed, side);
+          for (final MapEntry(key: screen, value: safeArea) in screens.entries) {
+            expect(
+              smallestPieceMm(puzzle, safeArea, seed, side),
+              greaterThanOrEqualTo(floor - 1e-9),
+              reason:
+                  '$id on $screen (seed $seed, ${side.name}) draws smaller than on the narrowest phone in the rule book',
+            );
+          }
+        }
+      }
+    }
+  });
+
   test('prints the smallest piece per puzzle per phone screen, and any Hard puzzle\'s', () {
     final columns = [
       for (final MapEntry(key: name, value: safeArea) in screens.entries)

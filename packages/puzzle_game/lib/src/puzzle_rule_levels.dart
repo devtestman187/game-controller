@@ -6,6 +6,11 @@ const easyMinPieces = 4;
 const easyMaxPieces = 5;
 const easyMaxTurnedPieces = 2;
 
+/// Every puzzle starts at least this many pieces turned, so there is always
+/// some turning to do (m13 s17; in the rule book since M14 g1b). A circle
+/// looks the same at any angle, so it doesn't count.
+const minTurnedPieces = 2;
+
 /// A Medium puzzle's limits (m13 s17): 6 to 8 pieces, one or two of them big
 /// (carried by two players), and at most one pair of pieces that share a
 /// shape (the boat's waves).
@@ -89,4 +94,19 @@ void _repeatedShapes(Puzzle puzzle, List<PuzzleIssue> issues, String level, int 
       ),
     );
   }
+}
+
+void _turned(Puzzle puzzle, List<PuzzleIssue> issues) {
+  if (puzzle.level == Level.hard) return;
+  final turned = puzzle.pieces.where((spec) => spec.rotated && spec.shape.symmetry != 0).length;
+  if (turned >= minTurnedPieces) return;
+  issues.add(
+    PuzzleIssue(
+      puzzle: puzzle.id,
+      rule: PuzzleRule.turned,
+      message:
+          '${puzzle.id}: every puzzle starts at least $minTurnedPieces pieces turned, this one starts $turned '
+          '(a circle looks the same at any angle, so it never counts). Set "rotated" on a piece that is not a circle.',
+    ),
+  );
 }

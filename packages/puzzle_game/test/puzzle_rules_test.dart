@@ -160,4 +160,34 @@ void main() {
     expect(messages.join('\n'), contains('index.json lists "missing" but puzzles/missing.json is missing'));
     expect(messages.join('\n'), contains('puzzles/extra.json is not listed in index.json'));
   });
+
+  test('every puzzle starts at least two pieces turned, and a circle does not count (M14 g1b)', () {
+    String four({required bool second}) =>
+        '${rect('a', 8, 4, 10, 20, extra: ', "rotated": true')}, '
+        '${rect('b', 6, 4, 25, 20, extra: second ? ', "rotated": true' : '')}, '
+        '${rect('c', 4, 7, 40, 20)}, ${rect('d', 5, 3, 55, 20)}';
+    final one = messagesOf(puzzleOf(four(second: false)), PuzzleRule.turned);
+    expect(one.single, contains('x: every puzzle starts at least 2 pieces turned, this one starts 1'));
+    expect(messagesOf(puzzleOf(four(second: true)), PuzzleRule.turned), isEmpty);
+    final circle = messagesOf(
+      puzzleOf(
+        '${rect('a', 8, 4, 10, 20, extra: ', "rotated": true')}, '
+        '${piece('b', '{"circle": 5}', at: '[30, 20]', extra: ', "rotated": true')}',
+        level: 'medium',
+      ),
+      PuzzleRule.turned,
+    );
+    expect(circle.single, contains('starts 1'), reason: 'a circle looks the same at any angle');
+  });
+
+  test('every piece is at least minPieceMm across on the narrowest phone (M14 g1b)', () {
+    final messages = messagesOf(
+      puzzleOf('${rect('big', 30, 20, 30, 30)}, ${piece('dot', '{"circle": 1.5}', at: '[60, 30]')}'),
+      PuzzleRule.size,
+    );
+    expect(messages.single, contains('x/dot:'));
+    expect(messages.single, contains('mm across on the narrowest phone'));
+    expect(messages.single, contains('under $minPieceMm mm'));
+    expect(messagesOf(puzzleOf(rect('big', 30, 20, 30, 30)), PuzzleRule.size), isEmpty);
+  });
 }

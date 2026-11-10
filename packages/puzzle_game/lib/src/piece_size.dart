@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 /// The smallest a piece may be drawn on the board in a `phones` match
 /// (m12-phone-layout §0.3, §5), as its circumscribed diameter ([PieceShape.size])
 /// in millimetres on the smallest phone screen.
@@ -14,6 +16,12 @@
 /// `controller_app/test/puzzle_size_test.dart` fails when a puzzle or the
 /// layout shrinks a piece below the floor, so a regression can't go unnoticed.
 const double minPieceMm = 8.5;
+
+/// The narrowest phone's safe area in px (the "small 16:9" phone in
+/// `controller_app/test/layout_test.dart`), where the rule book measures
+/// [minPieceMm] (M14 g1b). `controller_app/test/puzzle_size_test.dart` pins
+/// that no phone draws a piece smaller than this one does.
+const narrowestPhoneSafeArea = Size(640, 356);
 
 /// The smallest a piece may be drawn in the other side's mirror, in mm
 /// (m12-opponent-mirror rules 1 and 5). The mirror shows where they are and

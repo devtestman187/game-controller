@@ -147,3 +147,36 @@ void _span(Puzzle puzzle, List<PuzzleIssue> issues) {
     ),
   );
 }
+
+/// The phone match's starts the size rule lays out, as
+/// `controller_app/test/puzzle_size_test.dart` does.
+const phoneSizeSeeds = 21;
+
+/// Every piece is drawn at least [minPieceMm] across on the narrowest phone
+/// ([narrowestPhoneSafeArea]), on either side and at any start from 1 to
+/// [phoneSizeSeeds] (M14 g1b).
+void _phoneSize(Puzzle puzzle, List<PuzzleIssue> issues) {
+  if (puzzle.level == Level.hard || puzzle.pieces.isEmpty) return;
+  final smallest = puzzle.pieces.reduce((a, b) => b.shape.size < a.shape.size ? b : a);
+  var lowest = double.infinity;
+  for (var seed = 1; seed <= phoneSizeSeeds; seed++) {
+    final layout = SplitLayout.of(puzzle, seed, target: LayoutTarget.phones);
+    for (final side in PuzzleSide.values) {
+      final pxPerUnit = PuzzleCamera.scale(layout, PuzzleCamera.side(side), narrowestPhoneSafeArea);
+      lowest = min(lowest, pxPerUnit * smallest.shape.size / phonePxPerMm);
+    }
+  }
+  if (lowest >= minPieceMm) return;
+  final area = narrowestPhoneSafeArea;
+  issues.add(
+    PuzzleIssue(
+      puzzle: puzzle.id,
+      piece: smallest.id,
+      rule: PuzzleRule.size,
+      message:
+          '${_prefix(puzzle.id, smallest.id)}: ${lowest.toStringAsFixed(2)} mm across on the narrowest phone '
+          '(${area.width.toStringAsFixed(0)} x ${area.height.toStringAsFixed(0)} px), under $minPieceMm mm. '
+          'Make it bigger, or the other pieces smaller.',
+    ),
+  );
+}
