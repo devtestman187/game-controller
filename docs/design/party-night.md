@@ -61,7 +61,7 @@ The PRD's rules stand as written. How it is built:
 - Revealed one at a time on the host after the last round's results: the award's picture and name, then the winners' badges and nicknames, a one-line reason ("Fewest wrong drops: 1") and "+3", with the `fanfare` cue. Every tied player gets it. An award nobody qualified for shows "Not won tonight" for 2 s.
 - Then the **final scoreboard**: the night's winner (or winners) on top with a crown, `celebration`, confetti (G5 limits), and "Back to games".
 - Qualifiers, from the night's counters: Sharpshooter (fewest wrong drops, at least 3 snaps), Best Helper (most carries home together), Cat Catcher (most cats shooed), Speedy Snapper (most snaps), Comeback (most points in the last round), Coin Collector (most coins picked up, at least 3). Zero never wins a "most" award.
-- **Proposed additions (Claude, Nov 9, 2026, for the owner's pick)**, each taken from a party game's end-of-game bonus and fitted to a family night (docs/briefs/m14/research-party-games-report.md §6, research-party-design-report.md §3, research-arena-party-report.md):
+- **Added awards (Claude's proposal, Nov 9, 2026; owner: "All 6 awards in the list.")**, each taken from a party game's end-of-game bonus and fitted to a family night (docs/briefs/m14/research-party-games-report.md §6, research-party-design-report.md §3, research-arena-party-report.md):
 
   | Award | Who gets it | Game | A losing player can win it? | Taken from |
   | --- | --- | --- | --- | --- |
@@ -80,7 +80,7 @@ The PRD's rules stand as written. How it is built:
 
 - **Rules file**: after `arena.dart` is split (groundwork), the Bumper Round is its own file on the shared marble movement; the race stays as it is. `ArenaMode { race, bumper }`; the mode is chosen before the round and never changes inside it.
 - **Contact**: one pass over the pairs each step, in roster order (fixed by player number) so it is deterministic: overlapping marbles are pushed apart and bounce. A dashing marble shoves the other hard. A marble that hits a wall within 0.5 s of being shoved by another counts as "shoved into a wall". A shove never pushes a marble through a wall (the move is sub-stepped as today).
-- **Coins**: three field coins at a time, each new one sparkling for 1 s (not takable), never placed under a marble, at seeded free spots. A hazard or a shove into a wall drops one coin (worth 1) beside the marble, takable at once by anyone but the dropper, who is dizzy for 1 s (no dash) and then safe for 1 s (drops nothing). A marble with no coins drops nothing but is still dizzy. Dropped coins are extra to the three. In the last 15 s new field coins are gold, worth 2.
+- **Coins**: three field coins at a time, each new one sparkling for 1 s (not takable), never placed under a marble, at seeded free spots in the map's coin zones (section 7b). A hazard or a shove into a wall drops one coin (worth 1) beside the marble, takable at once by anyone but the dropper, who is dizzy for 1 s (no dash) and then safe for 1 s (drops nothing). A marble with no coins drops nothing but is still dizzy. Dropped coins are extra to the three. In the last 15 s new field coins are gold, worth 2.
 - **Clock**: 60 s counting down; it stands still whenever the round stands still (`Pausable`'s holds). At 0 the round is over: the most coins wins, ties share the win, and the result has `winners` and `draw` like the puzzle's (scan question 2). Night points: +1 per coin, +5 to each winner, both × `pointsScale`.
 - **Snapshot (version 2)**: top-level `md` (mode), `tl` (time left, ms), `co` (coins: position, gold, sparkle age, dropper); per marble `c` (coins), `dz` (dizzy), `sf` (safe). The HUD shows each player's coins beside their badge with a coin icon, on the host and joined phones.
 - **Sounds** (the a1 files): `dash`, `bump`, `bump_big` (a dash that shoves), `coin`, `coin_gold`, `coin_lost`, `coin_appear`; the music `arena`, `arena_hurry`, `arena_final` following the clock at 15 s and 5 s (look-and-sound §8). `MusicLoop` gains the Arena's trio, chosen by the game; `GameScreen` reports its clock and its end to `HostMusic` as `PuzzleScreen` does. The race Arena stays on `arena`.
@@ -110,6 +110,41 @@ The PRD's rules stand as written. How it is built:
 - **The rules don't know Robo is a CPU**: the session adds Robo's input to the same map of inputs the players' phones fill (`arena_session.dart`), so contacts, coins and the clock are the same code.
 - **Shape Race**: no CPU in M14 (a worker that picks, carries, turns and drops is a bigger job); Claude suggests it for M15, beside power-ups.
 
+## 7b. Arena maps and the map kit (owner, Nov 9, 2026: "For arena, can we designed 4 unique maps and have a map kit for developers similar to shape race?")
+
+Today the Arena has one field, written as constants in `arena.dart`: line walls, two kinds of moving hazard (a slide between two points, an orbit round a centre), a start point and a goal, in fractions of a 16:9 field. A joined phone already draws walls and hazards from the snapshot (`wl`, `hz`, `g`), so a new map needs nothing new on the phone except the new pieces below.
+
+**The kit**, built like the puzzle kit (docs/puzzles.md, `tools/puzzle.sh`):
+- **One JSON file per map** in `packages/test_game/maps/`, listed in `index.json`, with `$schema` (`map.schema.json`, so an editor autocompletes and flags mistakes) and `format: 1`. Fields: `id`, `name`, a one-line `line` for the picker, `theme` (the floor's look), `walls` (from, to), `hazards` (slide or orbit, with period and phase), `springs` and `belts` (below), `race` (start, goal, whether rounds swap sides) and `bumper` (four start spots and the coin zones). A map may leave out `race` or `bumper`; the picker then only offers the other mode.
+- **Today's field becomes the first file, `playroom.json`**, and plays exactly as now: every existing arena test passes unchanged.
+- **A rule book** (`map_rules.dart`, a pure function from a map to a list of issues, each with a message a developer can act on), the whole check:
+  - inside the field; ids unique; every file listed and every listed id a file;
+  - every gap a marble must pass is at least 2.5 marbles wide, so two can pass and none gets stuck;
+  - the race: start and goal clear; a path from every start to the goal for a marble (a grid flood fill with the walls grown by a marble's radius), both ways when rounds swap sides; no hazard sweeps a start or the goal;
+  - the Bumper Round: four start spots, clear, at least 3 marbles apart, outside every hazard's sweep; coin zones reachable, clear of walls, big enough for the three coins and drops; no pocket a marble can't reach;
+  - limits for speed and a calm screen: at most 24 walls, 8 hazards, 8 springs, 6 belts; no hazard faster than one pass every 1.5 s;
+  - the map's snapshot with 4 marbles and 6 coins stays under the 2048-byte budget (walls go in every frame);
+  - its theme's floor keeps every player colour and hazard readable in Sunny and Night (the look's contrast rule).
+- **The tool**, `tools/arena.sh`: `new <id> [--name "Name"]` (from `_template.json`, added to the index), `check [id]`, `render <id>` (the field in Sunny and Night with the starts, goal, coin zones and each hazard's sweep drawn faintly, into `docs/design/arena-maps/<id>.png`).
+- **The guide**, `docs/arena-maps.md`: the field's coordinates with a diagram, each piece, the two modes' needs, the rules, and the workflow `new` → edit → `check` → `render` → look → commit. Linked from the README and `docs/dev-tools.md`.
+- **Robo finds its way with the kit's path grid**, so it can steer round any map's walls (section 7a).
+
+**Two new pieces**, so the maps feel different and not only rearranged (each in the rules, the painter, the snapshot and the rule book):
+- **Springs**: round toy bumpers fixed to the floor. A marble that hits one bounces off at 1.5× its speed with `bump`. Not a hazard: it drops nothing. Snapshot `sp` (positions; the radius is a constant).
+- **Belts**: rectangular conveyor strips with arrows that carry a marble along at half its speed while it is on them. Snapshot `bl` (rect and direction). Drawn with arrows moving along them, so the direction is never colour alone (G5); with effects off the arrows stand still.
+
+**Four new maps** (Claude, Nov 9, 2026), each with its own look and twist, all playing both modes. Today's Playroom stays as the fifth and the default. Exact shapes are drawn in the maps job with the kit and shown to the owner as renders before they land:
+
+| Map | Theme | Twist | The race | The Bumper Round |
+| --- | --- | --- | --- | --- |
+| **Pinball** | a toy pinball table, bright lane stripes | clusters of springs, few walls, two orbiting spinners | weave through the springs; a clean line beats a bouncy one | coins sit near the springs, so a grab risks a wild bounce |
+| **Toy Factory** | grey-blue workshop floor, yellow edges | belts in a loop, sliding crates (slide hazards) | ride the belts that help, cross the ones that don't | coins sit beside the belts (never on them), and a shove onto a belt carries you away |
+| **Spinning Tops** | round garden rug | everything round: a ring of orbiting tops round an open middle, a small walled island with four doors | the goal behind the island; time the doors | the open middle is the coin zone; the ring is the danger at the edge |
+| **Block Castle** | castle of toy blocks | short walls and doorways, a loose maze, hazards only in two courtyards | find the quick route through the doors | corridors make shoves into walls likely: risky, funny, short |
+
+- **Picking a map**: the waiting card shows the maps as small cards with their picture (the render), plus "Surprise me", which picks one not played last. Remembered on the host; Surprise me the first time. In a night, each Bumper Round starts on Surprise me, picking a map the night hasn't used yet; the host may change it on the waiting card.
+- **Snapshot**: `sp`, `bl` and `th` (the theme) are added in the Arena's version 2 (the Bumper Round's), so all of M14's Arena changes need one update on old phones.
+
 ## 8. The Arena's waiting card
 
 - Shown over the Arena when it opens, on a TV and a phone host alike: the pairing code, each joined phone's badge and nickname, and "Press A when you're ready" with a ✓ for each ready player. The mode buttons, Bumper and Race, are under it (in a night, Bumper only). With one player joined, Bumper brings in Robo (section 7a).
@@ -131,7 +166,7 @@ Drawn by docs/design/look-mockups.html, each in Sunny and Night, saved under doc
 3. Shape Race in a night: a "+2" pop-up and the cat's warning (paw, shadow)
 4. The scoreboard, round 2 of 3, and the same before the last round (double banner)
 5. An award reveal, and the final scoreboard with the crown
-6. The Arena's waiting card (code, three phones, two ready, mode buttons), and the same with one player and Robo, its level buttons showing
+6. The Arena's waiting card (code, three phones, two ready, mode buttons, the map cards with Surprise me), and the same with one player and Robo, its level buttons showing
 7. The Bumper Round: coins, a gold coin, a dizzy marble, the clock and the coin HUD
 8. A joined phone's results card in a night
 9. The best-times board and a "New record!" results card
@@ -143,10 +178,10 @@ One job, made like a1 (the "Bubble Pop" set, mastered like the event sounds, fre
 
 ## 12. Owner's answers and open questions
 
-Answered Nov 9, 2026: Q1 points only in a night ("Agree with default", N4); Q2 Coin Collector ("Yes to coin collector", N8); Q3 a CPU for one player ("Can we have a simple CPU player for a single player?", N7 and section 7a), with three levels ("Make 3 difficulty settings for CPU. Easy medium and hard.").
+Answered Nov 9, 2026: Q1 points only in a night ("Agree with default", N4); Q2 Coin Collector ("Yes to coin collector", N8); Q3 a CPU for one player ("Can we have a simple CPU player for a single player?", N7 and section 7a), with three levels ("Make 3 difficulty settings for CPU. Easy medium and hard."); all six proposed awards ("All 6 awards in the list."); four Arena maps and a map kit ("For arena, can we designed 4 unique maps and have a map kit for developers similar to shape race?", section 7b).
 
 Open (the work follows the default until answered):
-- **Q4**: Which of the six proposed awards (section 6) join the list? Default: all six.
+- **Q4**: answered: all six awards join the list (owner, Nov 9, 2026: "All 6 awards in the list.").
 - **Q5**: Robo in the Bumper Round only for M14, and a Shape Race CPU in M15? Default: yes.
 
 ## 13. Implementation order
@@ -158,12 +193,16 @@ Each step is a flash job with a brief and a review gate, at most three at once, 
 - **g2 Arena split** (`test_game`): `arena.dart` (487) split by a pure move into the marble movement, the race rules and the field; the size FAIL goes green.
 - **g3 host groundwork** (`party_host`, `game_kit`, `assets`): the empty-rounds record (an abandoned round's `round_end` adds no round to the stats); the round music resuming where it was after the app was hidden (R4 8); the a1 `SoundKey`s and CREDITS rows (playing nothing yet); the `RoundResult` type in `game_kit` with its test.
 
-**Wave 2**: **a1 points** (G1, `puzzle_game`, after g1), **b1 Bumper rules** (G9 rules, snapshot, events and sounds, `RoundResult`, `test_game`, after g2 and g3), **m1 mock-ups** (section 10, `docs/design`).
+The Arena's jobs run one after another, since each builds on the last: g2 → k1 → b1 → k2 → b2 → b3. The Shape Race and host jobs run beside them.
 
-**Wave 3**: **s1 sounds** (section 11, `tools/audio`, `assets`), **c1 the night** (N1–N7, `party_host`: `PartyNight`, the start card, the scoreboard, the picker card, `onFinished` from both games; after m1's OK), **a2 the cat** (G3, `puzzle_game` and Puzzle settings, after a1).
+**Wave 2**: **a1 points** (G1, `puzzle_game`, after g1), **k1 the map kit** (section 7b: the format, schema, parser, `playroom.json` playing as today, the rule book with its path grid, `tools/arena.sh`, `docs/arena-maps.md`; `test_game`, after g2), **m1 mock-ups** (section 10, `docs/design`).
 
-**Wave 4**: **b2 the Arena's screens** (the waiting card, the ready beat on the TV, the results card, the music's clock; after m1's OK), **c2 awards and best times** (G4 with the added awards, T15, after c1 and s1), **c3 the phone** (nicknames and results on joined phones, `controller_app`, `protocol`, after c1).
+**Wave 3**: **b1 Bumper rules** (G9 rules, contacts, coins in the map's zones, the clock, snapshot version 2, events and sounds, `RoundResult`; `test_game`, after k1 and g3), **c1 the night** (N1–N7, `party_host`: `PartyNight`, the start card, the scoreboard, the picker card, `onFinished` from both games; after m1's OK), **a2 the cat** (G3, `puzzle_game` and Puzzle settings, after a1).
 
-**Robo** is **b3** (section 7a: `CpuPilot`, its seat in the session and on the waiting card, its badge), after b1's rules and with b2's waiting card; it runs in wave 4 if b2 lands first, else right after it. The three levels' aims (section 7a) are checked in the device tests.
+**Wave 4**: **k2 the four maps** (section 7b: springs and belts in the rules, painter, snapshot and rule book; Pinball, Toy Factory, Spinning Tops, Block Castle, rendered for the owner; after b1), **s1 sounds** (section 11, `tools/audio`, `assets`), **c3 the phone** (nicknames and results on joined phones, `controller_app`, `protocol`, after c1).
+
+**Wave 5**: **b2 the Arena's screens** (the waiting card with modes, maps and Robo's levels, the ready beat on the TV, the results card, the music's clock; after m1's OK and k2), **c2 awards and best times** (G4 with the added awards, T15, after c1 and s1).
+
+**Wave 6**: **b3 Robo** (section 7a: `CpuPilot` steering with the kit's path grid on every map, its seat in the session and on the waiting card, its badge, the three levels; after b2). The three levels' aims are checked in the device tests.
 
 **Then**: the full review R5 (worker first, Claude verifies), the comfort check (G5) over every new effect, device tests on a TV host, a phone host and a joined phone, then a build on the owner's word.
