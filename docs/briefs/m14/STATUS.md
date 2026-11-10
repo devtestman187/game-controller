@@ -8,11 +8,13 @@ The design is written: **docs/design/party-night.md** (decisions N1–N15, the j
 
 Done: **g1** (493e359) and Claude's **g1b** (the turned and phone-size rules in `check`, cb5915a), **g2** (6f896af), **g3** (43d02cb).
 
-Owner's review of the mock-ups (Nov 9): the coin needs its own look and a spin; the four maps rethought as Bumper Round arenas that look like their names, with no finish; colour and accessory choice joins M14 (L7, in c3). All in the design (sections 7, 7b, 9); **m1c** redraws them. Then the mock-ups go back to the owner. Earlier: (m1 59b381e, m1b 1455bbb: 17 frames in Sunny and Night, docs/design/look-mockups/m14-*.png, sent Nov 9). The screen jobs (c1, b2, c2, c3, a3) wait for the OK.
+Owner's review of the mock-ups (Nov 9): the coin needs its own look and a spin; the four maps rethought as Bumper Round arenas that look like their names, with no finish; colour and accessory choice joins M14 (L7, in c3). All in the design (sections 7, 7b, 9); **m1c** redrew them (ab04218, 22 frames), sent to the owner Nov 9; the screen jobs wait for the OK. Earlier: (m1 59b381e, m1b 1455bbb: 17 frames in Sunny and Night, docs/design/look-mockups/m14-*.png, sent Nov 9). The screen jobs (c1, b2, c2, c3, a3) wait for the OK.
 
 Done since: **k1a** the level kit's shared core (8339db3: `tools/level.sh`, docs/levels.md, `LevelIssue` in game_kit).
 
-Running: **m1c** the mock-up changes, **a1** points (G1, snapshot version 2, `MatchResult.round`), **k1b** the Arena's maps in the kit (`playroom.json`, the map rules, `MapGrid`). Logs in the session scratchpad `flash-m14-<job>.log`. A job is done when its `docs/briefs/m14/<job>-report.md` exists here or in its job folder; if one is missing and no flash process runs, start it again with `tools/flash.sh --brief docs/briefs/m14/<brief>.md` (Bash `run_in_background`).
+Done since: **a1** points (37d366d; its Q1–Q3 go to a2: the phone host's panel points line, a board's side key, `pointsScale`/`night` in `ranges`).
+
+Running: **k1b** (second run, after Claude answered its three questions) the Arena's maps in the kit (`playroom.json`, the map rules, `MapGrid`). Logs in the session scratchpad `flash-m14-<job>.log`. A job is done when its `docs/briefs/m14/<job>-report.md` exists here or in its job folder; if one is missing and no flash process runs, start it again with `tools/flash.sh --brief docs/briefs/m14/<brief>.md` (Bash `run_in_background`).
 
 Device-test list (so far): hide a phone host mid-round and show it again: the round's music carries on from where it was (g3; SoLoud can't be unit-tested).
 
