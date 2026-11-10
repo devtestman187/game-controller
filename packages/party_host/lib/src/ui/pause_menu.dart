@@ -76,7 +76,7 @@ final pauseLayout = GameLayoutMessage(labels: _pauseLabels, hidden: _pauseHidden
 /// whenever the round stands still, `ready` while the beat holds it and
 /// `playing` while it runs. The host phone hides its own pad from it.
 class Pausable extends ConsumerStatefulWidget {
-  const Pausable({super.key, required this.enabled, required this.builder, this.players});
+  const Pausable({super.key, required this.enabled, required this.builder, this.players, this.beat});
 
   /// Start pauses only while this is true (not on the results).
   final bool enabled;
@@ -92,6 +92,12 @@ class Pausable extends ConsumerStatefulWidget {
   /// long enough for thumbs to find the pad before the clock runs. The TV asks
   /// for none (rule 6).
   static const ready = Duration(seconds: 3);
+
+  /// The beat this round is held for, over the host's own
+  /// ([readyCountdownProvider]): the Arena passes [Pausable.ready] so its 3-2-1
+  /// runs on the TV too (M14 design section 8). Null takes the host's.
+  final Duration? beat;
+
   final Widget Function(BuildContext context, bool paused) builder;
 
   @override
@@ -141,7 +147,10 @@ class _PausableState extends ConsumerState<Pausable> {
     _awayChanged = _noteHostAway;
     _away.addListener(_awayChanged);
     _phase = ref.read(roundPhaseProvider)..claim(this);
-    _readyTotalMs = ref.read(readyCountdownProvider).inMilliseconds;
+    // The round's own beat when it asks for one (the Arena's 3-2-1 runs on the
+    // TV too, M14 design section 8), the host's otherwise.
+    final Duration beat = widget.beat ?? ref.read(readyCountdownProvider);
+    _readyTotalMs = beat.inMilliseconds;
     _readyMs = _readyTotalMs;
     _publish();
     _timer;

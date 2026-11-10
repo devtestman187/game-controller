@@ -22,6 +22,7 @@ ArenaGame bumper({
   List<WallSpec> walls = const [],
   Size size = const Size(1000, 500),
   Random? random,
+  int pointsScale = 1,
 }) {
   final g = ArenaGame(
     map: testMap(
@@ -32,6 +33,7 @@ ArenaGame bumper({
     mode: ArenaMode.bumper,
     size: size,
     random: random,
+    pointsScale: pointsScale,
   );
   for (final id in ids) {
     g.join(id);
@@ -210,12 +212,23 @@ void main() {
       final result = g.roundResult!;
       expect(result.game, arenaGame);
       expect(result.winners, {'a'});
-      expect(result.points, {'a': 2, 'b': 1, 'c': 0, 'd': 0});
+      // Coins, and the winner's bonus (party-night section 7, N3).
+      expect(result.points, {'a': 2 + bumperWinBonus, 'b': 1, 'c': 0, 'd': 0});
       expect(result.lines['a']!.outcome, RoundOutcome.win);
       expect(result.lines['b']!.outcome, RoundOutcome.loss);
       expect(result.lines['a']!.count, 2);
       expect(result.lines['a']!.countOf, RoundCount.coins);
       expect(result.stats['a'], {'coins': 2, 'bumpsGiven': 0});
+    });
+
+    test('a night\'s last round doubles the points, bonus and coins alike', () {
+      final g = bumper(pointsScale: 2);
+      g.player('a')!.coins = 2;
+      g.player('b')!.coins = 1;
+      run(g, 60.1);
+
+      expect(g.roundResult!.points, {'a': (2 + bumperWinBonus) * 2, 'b': 2, 'c': 0, 'd': 0});
+      expect(g.roundResult!.lines['a']!.count, 2, reason: 'the card counts the coins as they were won');
     });
 
     test('a tie shares the win, and nobody scoring is a draw with no winners', () {

@@ -17,6 +17,10 @@ part 'arena_bumper.dart';
 /// same round plays the same way every time (rule 4).
 const defaultArenaSeed = 0;
 
+/// What a Bumper Round's winner scores beside its coins (party-night §7, N3):
+/// five, times the round's `pointsScale`.
+const bumperWinBonus = 5;
+
 /// The game's name in analytics records and results (S7).
 const arenaGame = 'arena';
 
@@ -50,22 +54,27 @@ enum ArenaPhase {
 ///
 /// The tuning values were tried on the devices in M5.
 abstract class ArenaGame extends ArenaFieldRules {
-  ArenaGame._base({super.map, super.mode, super.size, required this.random});
+  ArenaGame._base({super.map, super.mode, super.size, required this.random, required this.pointsScale});
 
   /// A game playing [mode] on [map] (M14 k1b), the Playroom's until the
   /// waiting card picks one (M14 b2), drawn in a window of [size]. [random]
   /// seeds the Bumper Round's coins; it draws its own (always the same) when
   /// none is given.
+  ///
+  /// [pointsScale] multiplies the round's night points (party-night §7, N3):
+  /// the host passes the night's last round's double, 1 otherwise.
   factory ArenaGame({
     ArenaMap map = ArenaMap.playroom,
     ArenaMode mode = ArenaMode.race,
     Size size = ArenaFieldRules.defaultSize,
     Random? random,
+    int pointsScale = 1,
   }) {
+    assert(pointsScale >= 1, 'a round scores at least its points');
     final seeded = random ?? Random(defaultArenaSeed);
     return switch (mode) {
-      ArenaMode.race => _RaceGame(map: map, size: size, random: seeded),
-      ArenaMode.bumper => _BumperGame(map: map, size: size, random: seeded),
+      ArenaMode.race => _RaceGame(map: map, size: size, random: seeded, pointsScale: pointsScale),
+      ArenaMode.bumper => _BumperGame(map: map, size: size, random: seeded, pointsScale: pointsScale),
     };
   }
 
@@ -84,6 +93,11 @@ abstract class ArenaGame extends ArenaFieldRules {
   /// The random the Bumper Round draws its coins' places from. The race never
   /// uses it.
   final Random random;
+
+  /// What the round's points score at (party-night §7, N3): 1 outside a night
+  /// and in its other rounds, and the night's last round's 2. It scales the
+  /// points only; the counters and the lines keep the coins as they were won.
+  final int pointsScale;
 
   double _roundTime = 0;
   double _breakLeft = 0;
@@ -111,10 +125,11 @@ abstract class ArenaGame extends ArenaFieldRules {
   /// Whether the round had no single winner (a tie on coins, G9).
   bool get draw => _draw;
 
-  /// The Bumper Round's result once its clock runs out (G9): the coins as
-  /// points, the winners, the counters the awards need and each player's line.
-  /// Null while it plays, and always in the race, whose results card comes
-  /// with M14 b2.
+  /// The Bumper Round's result once its clock runs out (G9): the night's
+  /// points (a coin for each coin, [bumperWinBonus] for each winner, times
+  /// [pointsScale]), the winners, the counters the awards need and each
+  /// player's line. Null while it plays, and always in the race, whose results
+  /// card comes with M14 b2.
   RoundResult? get roundResult => _result;
 
   /// Seconds left on the Bumper Round's clock, or null in the race.
@@ -150,7 +165,8 @@ abstract class ArenaGame extends ArenaFieldRules {
 /// dash, and reach the goal pad first. Every round the field mirrors, so the
 /// start and the goal swap sides.
 final class _RaceGame extends ArenaGame {
-  _RaceGame({required super.map, required super.size, required super.random}) : super._base(mode: ArenaMode.race);
+  _RaceGame({required super.map, required super.size, required super.random, required super.pointsScale})
+    : super._base(mode: ArenaMode.race);
 
   @override
   void stepRound(double dt, Map<String, GameInput> inputs, List<GameEvent> events) {

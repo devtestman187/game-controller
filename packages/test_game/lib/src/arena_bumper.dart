@@ -10,7 +10,7 @@ part of 'arena.dart';
 /// seconds the most coins wins; a tie shares the win. Coins come out of the
 /// game's seeded [ArenaGame.random], so a round plays the same way every time.
 final class _BumperGame extends ArenaGame {
-  _BumperGame({required super.map, required super.size, required super.random})
+  _BumperGame({required super.map, required super.size, required super.random, required super.pointsScale})
     : _grid = MapGrid(map: map),
       super._base(mode: ArenaMode.bumper) {
     _timeLeftS = bumperRoundS;
@@ -150,7 +150,7 @@ final class _BumperGame extends ArenaGame {
       game: arenaGame,
       winners: leaders,
       draw: _draw,
-      points: {for (final p in players) p.id: p.coins},
+      points: {for (final p in players) p.id: (p.coins + (leaders.contains(p.id) ? bumperWinBonus : 0)) * pointsScale},
       stats: {
         for (final p in players) p.id: {'coins': p.coins, 'bumpsGiven': p.shoves},
       },

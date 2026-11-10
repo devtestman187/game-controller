@@ -50,9 +50,13 @@ class _NightStartScreenState extends ConsumerState<NightStartScreen> {
     _open(const ShapeRaceScreen());
   }
 
-  /// Where the Bumper Round would go: the Arena's waiting card. Job b2 makes
-  /// the night's rounds Bumper Rounds there, and turns the button on.
-  void _startBumperRound() => _open(const GameScreen());
+  /// Starts the night and its first round, the Bumper Round: the Arena's
+  /// waiting card follows, as Shape Race's pick and join screens do (design
+  /// section 2 N6).
+  void _startBumperRound() {
+    ref.read(partyNightProvider.notifier).start(length: _length, awards: _awards);
+    _open(const GameScreen());
+  }
 
   void _open(Widget screen) => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => screen));
 

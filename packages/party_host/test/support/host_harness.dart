@@ -10,6 +10,7 @@ import 'package:party_host/party_host.dart';
 import 'package:party_host/testing.dart';
 import 'package:puzzle_game/puzzle_game.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:test_game/test_game.dart';
 
 /// The fake sound player the last [pumpHost] mounted.
 late FakeSoundPlayer sounds;
@@ -72,6 +73,8 @@ Future<FakeHostService> pumpHost(
       overrides: [
         prefsProvider.overrideWithValue(prefs),
         puzzleLibraryProvider.overrideWith((ref) => library ?? testPuzzles()),
+        // The Arena's maps, read from the files as its assets are.
+        arenaMapLibraryProvider.overrideWith((ref) => testMaps()),
         hostServiceProvider.overrideWithValue(fake),
         soundPlayerProvider.overrideWithValue(sounds),
         screenAwakeProvider.overrideWithValue(awake),
@@ -158,13 +161,67 @@ Future<void> tapVisible(WidgetTester tester, Finder finder) async {
   await tester.tap(finder);
 }
 
-/// Home → Play → Arena.
-Future<void> openArena(WidgetTester tester) async {
+/// Home → Play → Arena → the waiting card, with every joined phone ready and
+/// the round under way: the 3-2-1 beat and the pause's start grace are past
+/// when it returns (M14 b2, design section 8).
+Future<void> openArena(WidgetTester tester, FakeHostService fake) async {
+  await openArenaCard(tester);
+  await readyUp(tester, fake);
+  await roundStarted(tester);
+}
+
+/// Home → Play → Arena, stopping at the waiting card.
+Future<void> openArenaCard(WidgetTester tester) async {
   await tapVisible(tester, find.byKey(const Key('openPlay')));
   await tester.pumpAndSettle();
   await tester.tap(find.byKey(const Key('pickArena')));
   await tester.pump();
   await tester.pump(const Duration(milliseconds: 500));
+}
+
+/// The card's start, the 3-2-1 beat and the pause's start grace, in frames a
+/// real round gets them in: the field is in play when it returns.
+Future<void> roundStarted(WidgetTester tester) async {
+  for (var i = 0; i < 50; i++) {
+    await tester.pump(const Duration(milliseconds: 100));
+  }
+}
+
+/// Every joined phone presses A on the waiting card, as a player does: the
+/// round starts once all of them have. The A a phone already holds was pressed
+/// for another screen, so it is let go first: the card readies a phone on a
+/// press of its own. Every pad is left as it was found.
+Future<void> readyUp(WidgetTester tester, FakeHostService fake) async {
+  for (final p in fake.gameHost.players) {
+    if (p.simulated) continue;
+    final held = fake.gameHost.gamepad(p.id);
+    fake.gameHost.setGamepad(p.id, _letGoOfA(held));
+    await tester.pump(const Duration(milliseconds: 16));
+    fake.gameHost.setGamepad(p.id, held.withButtons({GamepadButton.a}));
+    await tester.pump(const Duration(milliseconds: 16));
+    await tester.pump(const Duration(milliseconds: 16));
+    fake.gameHost.setGamepad(p.id, held);
+    await tester.pump(const Duration(milliseconds: 16));
+  }
+}
+
+/// [held] with A let go, so the press after it is a press the card sees.
+GamepadState _letGoOfA(GamepadState held) => GamepadState(
+  buttons: {...held.buttons}..remove(GamepadButton.a),
+  leftX: held.leftX,
+  leftY: held.leftY,
+  rightX: held.rightX,
+  rightY: held.rightY,
+  tiltX: held.tiltX,
+  tiltY: held.tiltY,
+  mode: held.mode,
+);
+
+/// The snapshot the field is drawing now (M14 b2): its map, its mode and its
+/// clock, as the rules left them.
+ArenaSnapshot arenaSnapshot(WidgetTester tester) {
+  final paint = tester.widget<CustomPaint>(find.byKey(const Key('arena')));
+  return (paint.painter! as ArenaPainter).s;
 }
 
 /// Home → Play → Shape Race.
@@ -305,5 +362,19 @@ PuzzleLibrary testPuzzles() {
   return PuzzleLibrary([
     for (final id in (index['puzzles'] as List).cast<String>())
       Puzzle.parse(File('$puzzleDataDir/$id.json').readAsStringSync()),
+  ]);
+}
+
+/// The Arena's maps' data folder, relative to this package, or to the repo
+/// root when a single test file is run from there ([puzzleDataDir]'s shape).
+final mapDataDir = Directory.current.path.endsWith('party_host') ? '../test_game/maps' : 'packages/test_game/maps';
+
+/// The Arena's maps, read straight from the package's data files (the asset
+/// bundle loads them outside the test's clock), as the host's does.
+ArenaMapLibrary testMaps() {
+  final index = jsonDecode(File('$mapDataDir/index.json').readAsStringSync()) as Map<String, Object?>;
+  return ArenaMapLibrary([
+    for (final id in (index['maps'] as List).cast<String>())
+      ArenaMap.parse(File('$mapDataDir/$id.json').readAsStringSync()),
   ]);
 }

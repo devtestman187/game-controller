@@ -9,7 +9,7 @@ void main() {
   testWidgets('an abandoned round ends the game abandoned and goes back to the game picker', (tester) async {
     final fake = await pumpHost(tester, screen: const StubHome());
     await neutral(tester, fake, ['p1']);
-    await openArena(tester);
+    await openArena(tester, fake);
     expect(find.byType(GameScreen), findsOneWidget);
     // The round runs: a step has recorded its start.
     await tester.pump(const Duration(milliseconds: 16));
@@ -32,7 +32,7 @@ void main() {
   testWidgets('leaving with Quit ends the game quit, not abandoned', (tester) async {
     final fake = await pumpHost(tester, screen: const StubHome());
     await neutral(tester, fake, ['p1']);
-    await openArena(tester);
+    await openArena(tester, fake);
     await tester.pump(const Duration(milliseconds: 16));
 
     final context = tester.element(find.byType(GameScreen));

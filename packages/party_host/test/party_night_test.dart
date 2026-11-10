@@ -199,8 +199,8 @@ void main() {
       expect(last.timeLimitS, 90, reason: 'the rest is the host\'s own settings');
     });
 
-    test('a night has no Bumper Round until the Arena reports rounds', () {
-      expect(nightBumperRoundReady, isFalse);
+    test('a night can pick a Bumper Round now that the Arena reports rounds', () {
+      expect(nightBumperRoundReady, isTrue);
     });
   });
 }

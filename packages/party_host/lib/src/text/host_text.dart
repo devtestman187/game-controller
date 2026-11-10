@@ -138,8 +138,6 @@ abstract final class HostText {
   static String piecesPlaced(int placed, int total) => '$placed of $total pieces placed';
 
   // The Arena.
-  static const arenaHint = 'OK or D: debug info · Start on a phone: pause · Back: leave';
-  static const arenaHintKeyboard = 'Arrows and Space: play on the keyboard · D: debug info · Esc: leave';
   static const noController = 'No controller connected. Pair a phone on the main screen.';
   static const noControllerKeys = 'No controller connected. Pair a phone on the main screen, or press an arrow key.';
   static const noneConnected = 'none connected';

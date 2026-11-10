@@ -26,6 +26,9 @@ part 'lobby_music_widgets.dart';
 /// `Pausable` publishes after the 3-2-1, or at once where there is no beat) and
 /// follows the round's clock: `round`, then `round_hurry` at the puzzle's
 /// `warningS` left, then `round_final` at `warningS / 3` ([MusicLoop.forRound]).
+/// The Arena's rounds play their own piece instead: `arena`, then `arena_hurry`
+/// at 15 s left on the Bumper Round's clock, then `arena_final` at 5 s
+/// ([MusicLoop.forArena]); the race, with no clock, stays on `arena`.
 /// The round's screen reports its clock and its results ([roundScreenOpened]
 /// and the like); a tempo change starts the new loop at the same share and
 /// cross-fades, so it sounds like the band speeding up.
@@ -79,6 +82,11 @@ class HostMusic {
   int _warningS = 0;
   bool _roundEnded = false;
 
+  /// Whether the round that opened is the Arena's, whose clock is its own
+  /// (M14 design section 7): `arena`, `arena_hurry` at 15 s and `arena_final`
+  /// at 5 s, rather than the puzzle's warning.
+  bool _arena = false;
+
   /// Whether the app is shown.
   bool _shown = true;
 
@@ -128,13 +136,15 @@ class HostMusic {
 
   /// A round's screen opened: its clock and its end are [writer]'s to report
   /// from here. The round's music starts at the round's own "go", so a Play
-  /// again's round waits for its 3-2-1 like any other.
-  void roundScreenOpened(Object writer) {
+  /// again's round waits for its 3-2-1 like any other. [arena] says the round
+  /// is the Arena's, which has its own piece and clock (M14 design section 7).
+  void roundScreenOpened(Object writer, {bool arena = false}) {
     if (_disposed) return;
     _roundWriter = writer;
     _roundEnded = false;
     _timeLeftMs = null;
     _warningS = 0;
+    _arena = arena;
     settle();
   }
 
@@ -164,6 +174,7 @@ class HostMusic {
     _roundWriter = null;
     _timeLeftMs = null;
     _warningS = 0;
+    _arena = false;
     settle();
   }
 
@@ -195,9 +206,12 @@ class HostMusic {
   /// the music playing.
   bool get _musicOn => _ref.read(soundSettingsProvider).musicVolume > 0;
 
-  /// The round's loop for the clock as it stands: [MusicLoop.round] while the
-  /// round has no clock (the Arena) or no warning.
-  MusicLoop get _roundLoop => MusicLoop.forRound(timeLeftMs: _timeLeftMs, warningS: _warningS);
+  /// The round's loop for the clock as it stands: the Arena's own three by its
+  /// clock (M14 design section 7), else the puzzle's, which stay at
+  /// [MusicLoop.round] while the round has no clock or no warning.
+  MusicLoop get _roundLoop => _arena
+      ? MusicLoop.forArena(timeLeftMs: _timeLeftMs)
+      : MusicLoop.forRound(timeLeftMs: _timeLeftMs, warningS: _warningS);
 
   /// The loop wanted now, or null for no music: a round's while its round runs
   /// and isn't over, the lobby's while a lobby is open and no round is.
@@ -210,9 +224,13 @@ class HostMusic {
   /// countdown, a pause, a wait or the results stop it.
   bool get _isPlayingRound => _phase.value == RoundPhase.playing;
 
-  /// Whether [loop] is one of the round's three tempos.
-  static bool _isRoundLoop(MusicLoop? loop) =>
-      loop == MusicLoop.round || loop == MusicLoop.roundHurry || loop == MusicLoop.roundFinal;
+  /// Whether [loop] is one of a round's tempos: the puzzle's three or the
+  /// Arena's three (M14 design section 7).
+  static bool _isRoundLoop(MusicLoop? loop) => switch (loop) {
+    MusicLoop.round || MusicLoop.roundHurry || MusicLoop.roundFinal => true,
+    MusicLoop.arena || MusicLoop.arenaHurry || MusicLoop.arenaFinal => true,
+    _ => false,
+  };
 
   /// Starts, pauses, resumes, switches or stops the music now, if what is
   /// wanted changed.

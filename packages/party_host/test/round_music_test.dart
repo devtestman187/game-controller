@@ -6,6 +6,7 @@ import 'package:game_assets/asset_manifest.dart';
 import 'package:party_host/party_host.dart';
 import 'package:party_host/testing.dart';
 import 'package:puzzle_game/puzzle_game.dart';
+import 'package:test_game/test_game.dart';
 
 import 'support/host_harness.dart';
 
@@ -31,6 +32,15 @@ void main() {
   Future<void> setClock(WidgetTester tester, double seconds) async {
     match(tester).gameOf(PuzzleSide.left).timeLeftS = seconds;
     await tester.pump(const Duration(milliseconds: 16));
+  }
+
+  /// Runs the Arena's clock down to [toMs] left, a frame at a time: the rules
+  /// own the Bumper Round's clock, so a test plays it out rather than setting
+  /// it.
+  Future<void> runClockDown(WidgetTester tester, {required int toMs}) async {
+    while (arenaSnapshot(tester).timeLeftMs! > toMs) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
   }
 
   testWidgets('the lobby\'s music gives way to the round\'s at go', (tester) async {
@@ -74,18 +84,60 @@ void main() {
     expect(sounds.loopSwitches.last, (name: 'round', at: 0.2, fade: HostMusic.switchFade));
   });
 
-  testWidgets('the Arena has no clock, so its music stays at the first tempo', (tester) async {
-    await pumpHost(tester, screen: const StubHome());
-    await openArena(tester);
-    expect(sounds.loop, 'round', reason: 'the Arena\'s round plays the music too');
+  testWidgets('the Arena\'s race plays its own piece, with no clock to hurry it', (tester) async {
+    final fake = await pumpHost(tester, screen: const StubHome());
+    await neutral(tester, fake, ['p1']);
+    await openArenaCard(tester);
+    await tester.tap(find.byKey(const Key('arenaMode-race')));
+    await tester.pump();
+    await readyUp(tester, fake);
+    await roundStarted(tester);
+    expect(arenaSnapshot(tester).mode, ArenaMode.race);
+    expect(sounds.loop, 'arena', reason: 'the Arena\'s rounds play their own music (M14 design section 7)');
     final switches = sounds.loopSwitches.length;
 
     // Half a minute of the Arena: its fans, its dashing marbles, no clock.
     for (var i = 0; i < 60; i++) {
       await tester.pump(const Duration(milliseconds: 500));
     }
-    expect(sounds.loop, 'round');
+    expect(sounds.loop, 'arena');
     expect(sounds.loopSwitches, hasLength(switches), reason: 'one start, and no tempo change');
+  });
+
+  testWidgets('the Bumper Round\'s music hurries at 15 s and runs at 5 s', (tester) async {
+    final fake = await pumpHost(tester, screen: const StubHome());
+    await neutral(tester, fake, ['p1']);
+    await openArenaCard(tester);
+    await tester.tap(find.byKey(const Key('arenaMode-bumper')));
+    await tester.pump();
+    await readyUp(tester, fake);
+    await roundStarted(tester);
+    expect(arenaSnapshot(tester).mode, ArenaMode.bumper);
+    expect(sounds.loop, 'arena', reason: 'the Bumper Round starts on the Arena\'s first tempo');
+
+    await runClockDown(tester, toMs: 14900);
+    expect(sounds.loop, 'arena_hurry', reason: '15 s left');
+    expect(sounds.loopSwitches.last.fade, HostMusic.switchFade, reason: 'the band speeds up, cross-faded');
+
+    await runClockDown(tester, toMs: 4900);
+    expect(sounds.loop, 'arena_final', reason: '5 s left');
+  });
+
+  testWidgets('the Bumper Round\'s results end its music with a short fade', (tester) async {
+    final fake = await pumpHost(tester, screen: const StubHome());
+    await neutral(tester, fake, ['p1']);
+    await openArenaCard(tester);
+    await tester.tap(find.byKey(const Key('arenaMode-bumper')));
+    await tester.pump();
+    await readyUp(tester, fake);
+    await roundStarted(tester);
+    await runClockDown(tester, toMs: 0);
+    for (var i = 0; i < 5; i++) {
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    expect(find.byKey(const Key('arenaResults')), findsOneWidget);
+    expect(sounds.loop, isNull, reason: 'the results end it, so the fanfare is heard clearly');
+    expect(sounds.loopStops.last, HostMusic.resultsFade);
   });
 
   testWidgets('the results end the round\'s music with a short fade', (tester) async {

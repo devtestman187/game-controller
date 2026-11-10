@@ -29,10 +29,21 @@ class ArenaView extends StatefulWidget {
     this.settings,
     this.paused = false,
     this.abandon,
+    this.onClock,
+    this.onFinished,
   });
 
   final GameHost host;
   final void Function(GameEvent event) onEvent;
+
+  /// Every frame of a round with a clock: the Bumper Round's time left, in ms,
+  /// for the host's music (M14 design section 7, as Shape Race reports its
+  /// clock). The race has none, so nothing is reported.
+  final void Function(int timeLeftMs)? onClock;
+
+  /// The Bumper Round's result, once its clock runs out (G9): the host shows
+  /// its results card and records the round in a night. Called once.
+  final void Function(RoundResult result)? onFinished;
 
   /// The game to show. Tests pass one in to inspect it.
   final ArenaGame? game;
@@ -56,6 +67,9 @@ class _ArenaViewState extends State<ArenaView> with SingleTickerProviderStateMix
   late final ArenaSession _session;
   late final Ticker _ticker = createTicker(_tick);
   late ArenaSnapshot _snapshot;
+
+  /// Whether the round's result has been reported, so it is reported once.
+  bool _finished = false;
 
   @override
   void initState() {
@@ -89,6 +103,13 @@ class _ArenaViewState extends State<ArenaView> with SingleTickerProviderStateMix
     setState(() => _snapshot = _session.current);
     // The frame was drawn: the inputs it carried are no longer waiting (S7).
     SchedulerBinding.instance.addPostFrameCallback((_) => _session.drawn());
+    if (_snapshot.timeLeftMs case final left?) widget.onClock?.call(left);
+    if (widget.onFinished case final finished? when !_finished) {
+      if (_session.game.roundResult case final result?) {
+        _finished = true;
+        finished(result);
+      }
+    }
   }
 
   @override

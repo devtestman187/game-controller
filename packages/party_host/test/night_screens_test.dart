@@ -29,9 +29,10 @@ void main() {
     expect(find.text("The cat visits the side that's ahead."), findsOneWidget);
     expect(find.text('Pick round 1'), findsOneWidget);
     expect(find.text('Shape Race'), findsOneWidget);
+    // M14 b2 turned the Bumper Round on: the button starts one.
     expect(find.text('Bumper Round'), findsOneWidget);
-    expect(tester.widget<HostButton>(find.byKey(const Key('nightBumper'))).onPressed, isNull);
-    expect(find.text('Soon'), findsOneWidget);
+    expect(tester.widget<HostButton>(find.byKey(const Key('nightBumper'))).onPressed, isNotNull);
+    expect(find.text('Soon'), findsNothing);
   });
 
   testWidgets('the start card hides the cat\'s line while the host\'s Chaos is off', (tester) async {

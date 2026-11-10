@@ -129,7 +129,7 @@ void main() {
     // A viewer would get the round's frames: none come while it waits.
     host.hasViewers = true;
     await neutral(tester, fake, ['p1']);
-    await openArena(tester);
+    await openArena(tester, fake);
     for (var i = 0; i < 10; i++) {
       await tester.pump(const Duration(milliseconds: 16));
     }
@@ -215,7 +215,7 @@ void main() {
     final fake = await pumpHost(tester, screen: const StubHome());
     final host = fake.gameHost;
     await neutral(tester, fake, ['p1']);
-    await openArena(tester);
+    await openArena(tester, fake);
     expect(find.byType(GameScreen), findsOneWidget);
     expect(host.layouts['p1']!.labels[ControllerButton.start], 'Pause');
 

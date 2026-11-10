@@ -5,6 +5,7 @@ import 'package:protocol/protocol.dart';
 
 import 'arena.dart';
 import 'arena_events.dart';
+import 'arena_mode.dart';
 import 'arena_module.dart';
 import 'arena_snapshot.dart';
 
@@ -61,6 +62,24 @@ class ArenaSession extends GameSession {
   final _withLayout = <String>{};
   bool _roundRunning = false;
 
+  /// The players whose marbles the Bumper Round runs, fixed when its first
+  /// step runs: a player who joins during the round waits for the next one
+  /// (M14 b2, design section 8), so their input drives nothing and no marble
+  /// comes out for them. The race has no such wait: everyone joins at once, as
+  /// they always have. Null until the round's first step.
+  Set<String>? _bumperPlayers;
+
+  /// The players the rules step this frame.
+  Iterable<GamePlayer> get _stepping {
+    if (game.mode != ArenaMode.bumper) return players;
+    final ids = {for (final p in players) p.id};
+    final round = _bumperPlayers ??= ids;
+    return [
+      for (final p in players)
+        if (round.contains(p.id)) p,
+    ];
+  }
+
   /// The arena as the rules left it.
   @override
   ArenaSnapshot get current => game.snapshot();
@@ -78,20 +97,21 @@ class ArenaSession extends GameSession {
   @override
   void step(double dt) {
     final ids = {for (final p in players) p.id};
-    // The phones show the arena's buttons while it runs; afterwards they
-    // belong to the host again (the TV's menus).
+    // Every phone that is here gets the arena's buttons, a player waiting for
+    // the next round too: their pad still shows the round they watch.
     for (final id in ids) {
       if (_withLayout.add(id)) host.setLayout(id, arenaLayout);
     }
     _withLayout.removeWhere((id) => !ids.contains(id));
-    if (!_roundRunning && ids.isNotEmpty && game.phase == ArenaPhase.playing) {
+    final stepping = {for (final p in _stepping) p.id};
+    if (!_roundRunning && stepping.isNotEmpty && game.phase == ArenaPhase.playing) {
       _roundRunning = true;
       // The rate the round's frames go out at (m12 §0.4).
       _record('round_start', data: {'hz': settings.frameRateHz});
     }
 
     final before = game.phase;
-    final events = game.update(dt, {for (final id in ids) id: GameInput.fromGamepad(input(id))});
+    final events = game.update(dt, {for (final id in stepping) id: GameInput.fromGamepad(input(id))});
     for (final e in events) {
       // A world event — a coin appearing — is for no controller and plays a
       // sound only (N10).

@@ -12,11 +12,11 @@ import 'night_state.dart';
 const nightPointsScale = 1;
 const lastRoundPointsScale = 2;
 
-/// Whether a night can pick a Bumper Round (design section 2 N6): it can't
-/// yet, because the Arena has no round to report ([RoundResult]) until job b2
-/// gives it one, so the start card and the scoreboard show the button disabled
-/// and say "Soon". b2 turns this on and nothing else has to change.
-const nightBumperRoundReady = false;
+/// Whether a night can pick a Bumper Round (design section 2 N6): it can, now
+/// that the Arena reports its round ([RoundResult]) and its waiting card and
+/// results card are there (M14 b2). The start card and the scoreboard show the
+/// button live, and a round it starts records into the night as any other.
+const nightBumperRoundReady = true;
 
 /// The night's Chaos touches, in one place (design section 5, G3): the start
 /// card says the cat may visit while the host's Chaos setting is on, and the

@@ -29,6 +29,10 @@ import 'stats_state.dart';
 /// M14 a2 grew them; they are exported from here, where their readers look.
 export 'puzzle_settings_provider.dart';
 
+/// The Arena's settings and its maps (M14 b2) live in a file of their own,
+/// exported from here where the host's other providers are.
+export 'arena_settings_provider.dart';
+
 /// The host app's own identity (S-a). Overridden in each app's `main()`: the
 /// TV app builds it from `app_info.dart` and the platform, the phone app
 /// later from its own.

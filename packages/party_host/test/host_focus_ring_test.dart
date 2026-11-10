@@ -203,7 +203,7 @@ void main() {
   testWidgets('the pause menu\'s buttons show the ring when the pad reaches them', (tester) async {
     final fake = await pumpHost(tester, screen: const StubHome());
     await neutral(tester, fake, ['p1']);
-    await openArena(tester);
+    await openArena(tester, fake);
     await press(tester, fake, 'p1', GamepadButton.start);
     await navigated(tester);
     expect(find.byKey(const Key('pauseMenu')), findsOneWidget);

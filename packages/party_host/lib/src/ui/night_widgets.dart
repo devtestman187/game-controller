@@ -187,8 +187,9 @@ class NightLastRoundBanner extends StatelessWidget {
 }
 
 /// The two buttons that pick the next round (design section 2 N6): Shape Race,
-/// and the Bumper Round, which waits disabled with "Soon" until the Arena
-/// reports rounds ([nightBumperRoundReady]).
+/// and the Bumper Round, live now that the Arena reports its rounds (M14 b2).
+/// A build that turns [nightBumperRoundReady] off waits with "Soon" beside the
+/// disabled button, as the mock-up's frame 2 drew it.
 class NightGameButtons extends StatelessWidget {
   const NightGameButtons({super.key, required this.onShapeRace, required this.onBumperRound, this.autofocus = false});
 

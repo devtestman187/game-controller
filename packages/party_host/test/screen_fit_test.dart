@@ -113,8 +113,15 @@ void main() {
     });
 
     testWidgets('the Arena and its debug card fit at ${look.name}', (tester) async {
-      await pumpIn(tester, look);
-      await openArena(tester);
+      final fake = await pumpIn(tester, look);
+      // The waiting card first, with its maps and Robo's line (M14 b2). The
+      // sample phone holds A, which readies it at once, so it is quieted first.
+      await neutral(tester, fake, ['p1']);
+      await openArenaCard(tester);
+      expect(find.byKey(const Key('arenaWaitingCard')), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await readyUp(tester, fake);
+      await roundStarted(tester);
       expect(find.byType(GameScreen), findsOneWidget);
       expect(tester.takeException(), isNull);
 

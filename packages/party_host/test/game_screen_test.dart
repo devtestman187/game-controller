@@ -9,6 +9,7 @@ import 'package:party_host/testing.dart';
 import 'package:protocol/protocol.dart';
 
 import 'support/host_harness.dart';
+import 'support/night_harness.dart' show appContainer;
 
 void main() {
   Future<void> frames(WidgetTester tester, int n) async {
@@ -19,7 +20,10 @@ void main() {
 
   Future<FakeHostService> openGame(WidgetTester tester, {Size size = const Size(960, 540)}) async {
     final fake = await pumpHost(tester, screen: const StubHome(), size: size);
-    await openArena(tester);
+    // The Playroom picked on the card, so the sample controller's dash and wall
+    // hit land the same way on every run (Surprise me picks a map at random).
+    appContainer(tester).read(arenaSettingsProvider.notifier).setMap('playroom');
+    await openArena(tester, fake);
     return fake;
   }
 
@@ -31,7 +35,10 @@ void main() {
     final sent = fake.haptics.map((h) => (h.$1.event, h.$2)).toList();
     expect(sent.first, (HapticEvent.rumble, 'p1'));
     expect(sent, contains((HapticEvent.hit, 'p1')));
-    expect(sounds.played.take(2), ['rumble', 'hit']);
+    // The round's 3-2-1 plays first (M14 design section 8), then the events,
+    // with the field's coins sparkling among them.
+    final played = sounds.played.where((s) => s != 'countdown' && s != 'coin_appear');
+    expect(played.take(2), ['rumble', 'hit']);
     expect(find.text('Dashes 1'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
@@ -48,7 +55,9 @@ void main() {
     expect(find.text('~9 ms avg (± 4 ms)'), findsOneWidget);
     expect(find.text('D-pad'), findsOneWidget);
     expect(find.text('D-pad 1, 0'), findsOneWidget);
-    expect(find.textContaining('rumble (game: dash, P1)'), findsOneWidget);
+    // The last event the round sent: by now P1 has dashed and walked into the
+    // first wall (the round runs through its beat before the test starts it).
+    expect(find.textContaining('(game: wall, P1)'), findsOneWidget);
     expect(find.text('${SoundKey.values.length} of ${SoundKey.values.length} loaded'), findsOneWidget);
     await tester.sendKeyEvent(LogicalKeyboardKey.select);
     await frames(tester, 2);
@@ -105,7 +114,7 @@ void main() {
     fake.emit();
     await tester.pumpAndSettle();
     expect(fake.gameHost.players.map((p) => (p.id, p.number)), [('a', 1), ('b', 2)]);
-    await openArena(tester);
+    await openArena(tester, fake);
     expect(find.byKey(const Key('hud-a')), findsOneWidget);
     expect(find.byKey(const Key('hud-b')), findsOneWidget);
     for (var i = 0; i < 90; i++) {
@@ -122,7 +131,7 @@ void main() {
 
   testWidgets('the arena reports its rounds and events to the game host', (tester) async {
     final fake = await pumpHost(tester, screen: const StubHome());
-    await openArena(tester);
+    await openArena(tester, fake);
     for (var i = 0; i < 90; i++) {
       await tester.pump(const Duration(milliseconds: 16));
     }
@@ -136,22 +145,19 @@ void main() {
       screen: const StubHome(),
       overrides: [hostingSettingsProvider.overrideWithValue(const HostingSettings(frameRateHz: 20))],
     );
-    await openArena(tester);
+    await openArena(tester, fake);
     await frames(tester, 10);
     final start = fake.gameHost.records.firstWhere((r) => r.name == 'round_start');
     expect(start.data['hz'], 20);
   });
 
-  // The Arena has no join screen yet (M14 adds its waiting card), so its hint
-  // shows at the start and goes after 5 s, before it is in the way (owner,
-  // Nov 8, 2026: text over a game in progress "should not happen").
-  testWidgets("the Arena's hint shows at the start and is gone after 5 s", (tester) async {
-    await pumpHost(tester, screen: const StubHome());
-    await openArena(tester);
-    expect(find.textContaining('Back: leave'), findsOneWidget, reason: 'at the start');
-    for (var i = 0; i < 60; i++) {
-      await tester.pump(const Duration(milliseconds: 100));
-    }
-    expect(find.textContaining('Back: leave'), findsNothing, reason: 'after 5 s');
+  // M14 b2: the waiting card took the start hint's place, so nothing is drawn
+  // over a round in play (owner, Nov 8, 2026: text over a game in progress
+  // "should not happen").
+  testWidgets('nothing is drawn over the field in play', (tester) async {
+    await openGame(tester);
+    expect(find.textContaining('Back: leave'), findsNothing);
+    expect(find.byKey(const Key('arenaWaitingCard')), findsNothing);
+    expect(find.byKey(const Key('arena')), findsOneWidget);
   });
 }
