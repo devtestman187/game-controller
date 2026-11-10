@@ -4,7 +4,7 @@ Branch `m14`, worktree `E:\AI\game-controller-m14`, cut from `m13` at 77ccf09 on
 
 ## Resume here (Nov 9, 2026, night)
 
-The design is written: **docs/design/party-night.md** (decisions N1–N15, the jobs in four waves in its section 13, the owner's open questions Q1–Q3 in section 12; the work follows their defaults until answered).
+The design is written: **docs/design/party-night.md** (decisions N1–N15, the jobs in four waves in its section 13, the owner's answers and open questions Q4–Q5 in section 12; Robo the CPU marble with three levels is job b3).
 
 Running: **wave 1, the groundwork jobs** g1 (puzzle: split game.dart and puzzle_rules.dart, the three rules into `check`, `Level.hard`, the parser's casts), g2 (split arena.dart) and g3 (host: the empty-rounds record, the round music across a hidden app, the Arena's SoundKeys and CREDITS rows, `RoundResult` in game_kit). Briefs in this folder; logs in the session scratchpad `flash-m14-g1.log`, `-g2.log`, `-g3.log`. A job is done when its `docs/briefs/m14/g*-report.md` exists here or in its job folder; if one is missing and no flash process runs, start it again with `tools/flash.sh --brief docs/briefs/m14/<brief>.md` (Bash `run_in_background`).
 
