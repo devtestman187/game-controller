@@ -4,6 +4,7 @@ import 'package:game_kit/game_kit.dart';
 import 'package:protocol/protocol.dart';
 
 import 'arena.dart';
+import 'arena_events.dart';
 import 'arena_module.dart';
 import 'arena_snapshot.dart';
 

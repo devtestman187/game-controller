@@ -4,6 +4,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:game_kit/game_kit.dart';
 
 import 'arena.dart';
+import 'arena_events.dart';
 import 'arena_roster.dart';
 import 'arena_session.dart';
 import 'arena_snapshot.dart';

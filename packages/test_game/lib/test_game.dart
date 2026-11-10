@@ -4,6 +4,8 @@
 library;
 
 export 'src/arena.dart';
+export 'src/arena_events.dart';
+export 'src/arena_field.dart';
 export 'src/arena_hud_widgets.dart';
 export 'src/arena_module.dart';
 export 'src/arena_moments.dart';
