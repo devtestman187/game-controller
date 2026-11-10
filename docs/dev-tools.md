@@ -121,17 +121,18 @@ review: 2 fail, 1 note
   Run it before committing a pure move: what it prints is then the texts that really changed (a move that only renamed variables shows a few pairs, one that changed no text shows none). `--head` needs `--strings` and `--strings` can't be used with `--all`; a run is information, not a check, so it exits 0 (2 only for bad arguments, an unknown ref or a missing git).
 - **It doesn't replace the review, it finds the mechanical things first.** A design that won't hold, a name that lies, a test that checks the wrong thing and a race all pass it.
 
-## tools/puzzle.sh
+## tools/level.sh
 
-Makes, checks and draws a Shape Race puzzle. The full guide, with the file format and the rules, is [puzzles.md](puzzles.md).
+Makes, checks and draws a level of either game: a Shape Race puzzle today, the Arena's maps from M14 k1b. The full guide, with the file format and the rules, is [levels.md](levels.md).
 
 ```bash
-tools/puzzle.sh new <id> --level easy|medium [--name "Name"]   # a new file from _template.json, listed in index.json
-tools/puzzle.sh check [id]                                     # the rule book; no id checks the whole library; exit 1 on any issue
-tools/puzzle.sh render <id>                                    # docs/design/puzzles/<id>.png: start and finished, Sunny and Night
+tools/level.sh new puzzle <id> --level easy|medium [--name "Name"]   # a new file from _template.json, listed in index.json
+tools/level.sh check [id]                                            # the rule book; no id checks every kind's library; exit 1 on any issue
+tools/level.sh render <id>                                           # docs/design/puzzles/<id>.png: start and finished, Sunny and Night
+tools/level.sh --self-test                                           # the commands a run would use, nothing run
 ```
 
-`new` is plain Dart and instant; `check` and `render` run through `flutter test`, so they take a few seconds. Before committing a puzzle, also run `tools/check.sh puzzle phone`: three rules (2 turned pieces, the tray at every start angle, the size on the smallest phones) are only in those tests so far.
+An id finds its kind by where the file is, and an id used by two kinds is reported rather than guessed. `new` is plain Dart and instant; `check` and `render` run through `flutter test`, so they take a few seconds. `--self-test` reads the tool's table of kinds and checks each one's folder and tests, then prints what `new`, `check` and `render` would run for it, without running anything. Before committing a puzzle, also run `tools/check.sh puzzle phone`: three rules (2 turned pieces, the tray at every start angle, the size on the smallest phones) are only in those tests so far.
 
 ## tools/commit-job.sh
 

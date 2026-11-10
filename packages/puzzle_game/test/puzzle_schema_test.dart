@@ -2,13 +2,16 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:game_kit/game_kit.dart';
 import 'package:puzzle_game/puzzle_game.dart';
 
 import 'support/library_files.dart';
-import 'support/schema.dart';
 
-JsonSchema schema() =>
-    JsonSchema((jsonDecode(File('puzzles/puzzle.schema.json').readAsStringSync()) as Map<String, Object?>));
+JsonSchema puzzleSchema() =>
+    JsonSchema(jsonDecode(File('puzzles/puzzle.schema.json').readAsStringSync()) as Map<String, Object?>);
+
+/// Every place [value] breaks the puzzle's schema, named as a puzzle's line is.
+List<String> issuesOf(Object? value) => puzzleSchema().issues(value, root: 'the puzzle');
 
 /// [text] parsed and changed by [change], as the schema test's broken case.
 Map<String, Object?> changed(String text, void Function(Map<String, Object?> json) change) {
@@ -24,7 +27,7 @@ void main() {
       ..remove('puzzle.schema');
     expect(texts.keys, containsAll(['house', 'butterfly', 'train', '_template']));
     for (final MapEntry(key: id, value: text) in texts.entries) {
-      expect(schema().issues(jsonDecode(text)), isEmpty, reason: 'puzzles/$id.json');
+      expect(issuesOf(jsonDecode(text)), isEmpty, reason: 'puzzles/$id.json');
     }
   });
 
@@ -48,7 +51,7 @@ void main() {
       ('a misspelt puzzle field', changed(valid, (json) => json['levl'] = 'easy'), 'levl'),
     ];
     for (final (what, broken, message) in cases) {
-      final issues = schema().issues(broken);
+      final issues = issuesOf(broken);
       expect(issues, isNotEmpty, reason: what);
       expect(issues.join('\n'), contains(message), reason: what);
     }
@@ -56,6 +59,6 @@ void main() {
 
   test('a Hard puzzle is refused, in the words the parser and the rule book use', () {
     final hard = changed(File('puzzles/sun.json').readAsStringSync(), (json) => json['level'] = 'hard');
-    expect(schema().issues(hard), [notALevel('hard')]);
+    expect(issuesOf(hard), [notALevel('hard')]);
   });
 }

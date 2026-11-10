@@ -20,7 +20,7 @@ const mediumMinBigPieces = 1;
 const mediumMaxBigPieces = 2;
 const mediumMaxRepeatedPairs = 1;
 
-void _level(Puzzle puzzle, List<PuzzleIssue> issues) {
+void _level(Puzzle puzzle, List<LevelIssue> issues) {
   final pieces = puzzle.pieces.length;
   switch (puzzle.level) {
     case Level.easy:
@@ -69,13 +69,13 @@ void _level(Puzzle puzzle, List<PuzzleIssue> issues) {
   }
 }
 
-void _levelIssue(Puzzle puzzle, List<PuzzleIssue> issues, String message) {
-  issues.add(PuzzleIssue(puzzle: puzzle.id, rule: PuzzleRule.level, message: '${puzzle.id}: $message'));
+void _levelIssue(Puzzle puzzle, List<LevelIssue> issues, String message) {
+  issues.add(LevelIssue(level: puzzle.id, rule: PuzzleRule.level, message: '${puzzle.id}: $message'));
 }
 
 /// [allowed] pairs of pieces with the same shape and size are allowed; each
 /// pair after that is an issue.
-void _repeatedShapes(Puzzle puzzle, List<PuzzleIssue> issues, String level, int allowed) {
+void _repeatedShapes(Puzzle puzzle, List<LevelIssue> issues, String level, int allowed) {
   final pairs = <String, String>{}; // shape key → first piece's id
   var repeated = 0;
   for (final spec in puzzle.pieces) {
@@ -84,9 +84,9 @@ void _repeatedShapes(Puzzle puzzle, List<PuzzleIssue> issues, String level, int 
     repeated++;
     if (repeated <= allowed) continue;
     issues.add(
-      PuzzleIssue(
-        puzzle: puzzle.id,
-        piece: spec.id,
+      LevelIssue(
+        level: puzzle.id,
+        part: spec.id,
         rule: PuzzleRule.level,
         message:
             '${_prefix(puzzle.id, spec.id)}: "$first" and "${spec.id}" share a shape and size, and $level has at most '
@@ -96,13 +96,13 @@ void _repeatedShapes(Puzzle puzzle, List<PuzzleIssue> issues, String level, int 
   }
 }
 
-void _turned(Puzzle puzzle, List<PuzzleIssue> issues) {
+void _turned(Puzzle puzzle, List<LevelIssue> issues) {
   if (puzzle.level == Level.hard) return;
   final turned = puzzle.pieces.where((spec) => spec.rotated && spec.shape.symmetry != 0).length;
   if (turned >= minTurnedPieces) return;
   issues.add(
-    PuzzleIssue(
-      puzzle: puzzle.id,
+    LevelIssue(
+      level: puzzle.id,
       rule: PuzzleRule.turned,
       message:
           '${puzzle.id}: every puzzle starts at least $minTurnedPieces pieces turned, this one starts $turned '

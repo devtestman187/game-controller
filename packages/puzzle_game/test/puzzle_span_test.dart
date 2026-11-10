@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:game_kit/game_kit.dart';
 import 'package:puzzle_game/puzzle_game.dart';
 
 import 'support/library_files.dart';
@@ -7,7 +8,7 @@ import 'support/today_puzzles.dart';
 // The library's own check is in library_test.dart.
 
 /// The span rule's issues with [text]'s puzzle.
-List<PuzzleIssue> spanIssues(String text) => [
+List<LevelIssue> spanIssues(String text) => [
   for (final issue in checkPuzzle(Puzzle.parse(text)))
     if (issue.rule == PuzzleRule.span) issue,
 ];

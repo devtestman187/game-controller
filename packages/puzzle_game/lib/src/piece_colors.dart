@@ -40,7 +40,7 @@ abstract final class PiecePalette {
   static const steel = PieceColor('steel', 0xFF7EA6C9);
   static const sand = PieceColor('sand', 0xFFB3A285);
 
-  /// Every token, in the order docs/puzzles.md shows them.
+  /// Every token, in the order docs/levels.md shows them.
   static const all = [red, orange, yellow, green, sky, blue, purple, brown, slate, silver, steel, sand];
 
   /// The token called [name], or null.
@@ -64,7 +64,7 @@ abstract final class PiecePalette {
     if (token != null) return token.color;
     final hex = RegExp(r'^#?[0-9a-fA-F]{6}$').hasMatch(value) ? ' (write a hex colour as "#RRGGBB")' : '';
     throw FormatException(
-      'Unknown colour "$value"$hex: use a name from docs/puzzles.md '
+      'Unknown colour "$value"$hex: use a name from docs/levels.md '
       '(${all.map((token) => token.name).join(', ')}) or "#RRGGBB"',
     );
   }
@@ -99,7 +99,7 @@ abstract final class PiecePalette {
       for (final token in all)
         if (nearestBoard(token.color).distance >= pieceBoardDistance) token,
     ]..sort((a, b) => oklabDistance(color, a.color).compareTo(oklabDistance(color, b.color)));
-    if (safe.isEmpty) return 'another colour from docs/puzzles.md';
+    if (safe.isEmpty) return 'another colour from docs/levels.md';
     return safe.take(2).map((token) => '"${token.name}"').join(' or ');
   }
 }

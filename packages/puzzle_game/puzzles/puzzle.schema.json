@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://thumbparty.dev/puzzle.schema.json",
   "title": "Shape Race puzzle",
-  "description": "One Shape Race picture (m13 s20): the pieces a player fits into their outlines on the board. The guide is docs/puzzles.md; the rules a file must keep are in packages/puzzle_game/lib/src/puzzle_rules.dart, run by tools/puzzle.sh check.",
+  "description": "One Shape Race picture (m13 s20): the pieces a player fits into their outlines on the board. The guide is docs/levels.md; the rules a file must keep are in packages/puzzle_game/lib/src/puzzle_rules.dart, run by tools/level.sh check.",
   "type": "object",
   "required": ["id", "name", "level", "pieces"],
   "additionalProperties": false,
@@ -45,7 +45,7 @@
   "$defs": {
     "number": {
       "type": "number",
-      "description": "A board unit: the board is 80 wide and 72 high, with (0, 0) at its top left and y growing downwards (docs/puzzles.md)."
+      "description": "A board unit: the board is 80 wide and 72 high, with (0, 0) at its top left and y growing downwards (docs/levels.md)."
     },
     "pair": {
       "type": "array",
@@ -130,7 +130,7 @@
         "color": {
           "type": "string",
           "pattern": "^(#[0-9a-fA-F]{6}|red|orange|yellow|green|sky|blue|purple|brown|slate|silver|steel|sand)$",
-          "description": "A colour token from docs/puzzles.md (\"red\", \"sky\", \"silver\") or \"#RRGGBB\". A piece stands out from the board in both looks and from the puzzle's other pieces."
+          "description": "A colour token from docs/levels.md (\"red\", \"sky\", \"silver\") or \"#RRGGBB\". A piece stands out from the board in both looks and from the puzzle's other pieces."
         },
         "at": {
           "type": "array",

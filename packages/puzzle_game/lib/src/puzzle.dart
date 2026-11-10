@@ -2,11 +2,13 @@ import 'dart:convert';
 import 'dart:math';
 import 'dart:ui';
 
+import 'package:game_kit/game_kit.dart';
+
 import 'piece_colors.dart';
 
 part 'piece_shape.dart';
 
-/// The puzzle file format this build reads (m13 s20, docs/puzzles.md): files
+/// The puzzle file format this build reads (m13 s20, docs/levels.md): files
 /// say `"format": 1`, and one that says a higher number was written for a
 /// newer app and is refused with a message saying so.
 const puzzleFormat = 1;
@@ -91,7 +93,7 @@ enum Level {
 const puzzleLevels = ['easy', 'medium'];
 
 /// The refusal of a level this build does not have, in the same words in the
-/// schema, the parser, the rule book and `tools/puzzle.sh new`.
+/// schema, the parser, the rule book and `tools/level.sh new`.
 String notALevel(String level) => '"$level" is not a level: use ${puzzleLevels.join(' or ')}';
 
 /// One piece and its outline: where it belongs on the board.
@@ -132,7 +134,7 @@ final class PieceSpec {
 /// design"). Loaded from a data file, so more can be added without code.
 /// [checkPuzzle] in `puzzle_rules.dart` is the linter that holds the rules a
 /// puzzle file must keep (unique ids, pieces of a kind sharing a shape, and
-/// the rest), so a broken file is caught by `tools/puzzle.sh check`.
+/// the rest), so a broken file is caught by `tools/level.sh check`.
 final class Puzzle {
   Puzzle({required this.id, required this.name, required this.level, required List<PieceSpec> pieces})
     : pieces = List.unmodifiable(pieces);
@@ -151,16 +153,9 @@ final class Puzzle {
   /// of the wrong type is a [FormatException] naming it (and the puzzle or
   /// piece it is in), never a bare cast's error.
   static Puzzle fromJson(Map<String, Object?> json) {
-    if (json['format'] case final format?) {
-      if (format is! int) throw FormatException('"format" is a whole number, $puzzleFormat for this puzzle format');
-      if (format > puzzleFormat) {
-        throw FormatException(
-          'This puzzle is format $format; this build reads format $puzzleFormat. '
-          'Update the app, or save the puzzle in format $puzzleFormat.',
-        );
-      }
-      if (format < 1) throw FormatException('"format" starts at 1, got $format');
-    }
+    // The header every level file shares (M14 k1a): "$schema" is the editor's,
+    // and a format this build can't read is refused in the kit's words.
+    readLevelHeader(json, currentFormat: puzzleFormat, kind: 'puzzle');
     final rawPieces = json['pieces'];
     if (rawPieces is! List || rawPieces.isEmpty) throw const FormatException('A puzzle needs "pieces"');
     final id = _text(json, 'id');

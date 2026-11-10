@@ -1,17 +1,25 @@
-// Makes a new Shape Race puzzle from the template (m13 s20), so a developer
-// starts from a valid file with every field in place:
+// Makes a new level of a kind from its template (M14 k1a), so a developer
+// starts from a valid file with every field in place. A puzzle today:
 //
-//   dart tools/puzzle_new.dart new <id> --level easy|medium [--name "Name"]
+//   dart tools/level_new.dart new puzzle <id> --level easy|medium [--name "Name"]
 //
 // Copies packages/puzzle_game/puzzles/_template.json to <id>.json, fills in
 // the id, name and level, and adds the id to index.json after the last puzzle
-// of its level. Run it through tools/puzzle.sh, which also has `check` and
-// `render`. The guide is docs/puzzles.md.
+// of its level. A map waits for the Arena's map kit (M14 k1b). Run it through
+// tools/level.sh, which also has `check` and `render`. The guide is
+// docs/levels.md.
 import 'dart:convert';
 import 'dart:io';
 
 /// Where the puzzle files and the index live, under the repository root.
 const puzzleFolder = 'packages/puzzle_game/puzzles';
+
+/// The kinds `new` can make a file for: maps join in M14 k1b.
+const levelKinds = ['puzzle'];
+
+/// The refusal of a map until the Arena's map kit lands (M14 k1b), in the same
+/// words tools/level.sh gives.
+const mapsComingMessage = "Maps come with the Arena's map kit (M14 k1b).";
 
 /// The levels a new puzzle may have.
 const newPuzzleLevels = ['easy', 'medium'];
@@ -134,18 +142,50 @@ String createPuzzle(
   return file.path;
 }
 
+/// Why `new` can't make a file of [kind], or null for the kinds it can: a map
+/// waits for the Arena's map kit (M14 k1b).
+String? newKindRefusal(String kind) => switch (kind) {
+  'puzzle' => null,
+  'map' => mapsComingMessage,
+  _ => '"$kind" is not a kind of level: use ${levelKinds.join(' or ')}',
+};
+
+/// Writes a new level of [kind] into [folder] (one of the kind's own folders
+/// of files), returning the file's path. Throws a [FormatException] or
+/// [ArgumentError] with a message a developer can act on when the kind, the
+/// id, the level or the folder is wrong.
+String createLevel(
+  Directory folder, {
+  required String kind,
+  required String id,
+  required String name,
+  required String level,
+}) {
+  final refusal = newKindRefusal(kind);
+  if (refusal != null) throw FormatException(refusal);
+  return createPuzzle(folder, id: id, name: name, level: level);
+}
+
 void _usage() {
   stderr.writeln(
-    'usage: tools/puzzle.sh new <id> --level easy|medium [--name "Name"]',
+    'usage: tools/level.sh new <kind> <id> --level easy|medium [--name "Name"]',
   );
 }
 
 void main(List<String> args) {
-  if (args.isEmpty || args.first != 'new') {
+  if (args.isEmpty || args.first != 'new' || args.length < 2) {
     _usage();
     exit(64);
   }
-  final rest = args.sublist(1);
+  final kind = args[1];
+  // A kind `new` can't make a file for is refused before anything else, so
+  // `new map <id>` says why instead of asking for --level.
+  final refusal = newKindRefusal(kind);
+  if (refusal != null) {
+    stderr.writeln(refusal);
+    exit(2);
+  }
+  final rest = args.sublist(2);
   final id = rest.firstOrNull;
   if (id == null) {
     _usage();
@@ -178,8 +218,9 @@ void main(List<String> args) {
   }
   final root = File.fromUri(Platform.script).parent.parent;
   try {
-    final path = createPuzzle(
+    final path = createLevel(
       Directory('${root.path}/$puzzleFolder'),
+      kind: kind,
       id: id,
       name: name ?? nameFromId(id),
       level: level,
@@ -187,7 +228,7 @@ void main(List<String> args) {
     stdout.writeln(
       'Wrote $path and added "$id" after the last $level puzzle in index.json.',
     );
-    stdout.writeln('Edit its pieces, then run: tools/puzzle.sh check $id');
+    stdout.writeln('Edit its pieces, then run: tools/level.sh check $id');
   } on Object catch (error) {
     stderr.writeln(error is FormatException ? error.message : '$error');
     exit(1);

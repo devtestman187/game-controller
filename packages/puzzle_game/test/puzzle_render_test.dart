@@ -11,7 +11,7 @@ import 'support/library_files.dart';
 import 'support/look.dart' show night, sunny;
 import 'support/look_fonts.dart';
 
-/// The puzzle `tools/puzzle.sh render <id>` draws, or the sun for the test
+/// The puzzle `tools/level.sh render <id>` draws, or the sun for the test
 /// suite's own run (which then checks the picture without writing one).
 const puzzleId = String.fromEnvironment('puzzleId');
 

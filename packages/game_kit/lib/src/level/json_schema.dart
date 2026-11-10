@@ -1,18 +1,18 @@
 import 'dart:convert';
 
-/// A validator for the part of JSON Schema (2020-12) that
-/// `puzzles/puzzle.schema.json` uses (m13 s20), so a test checks the puzzle
-/// files against the schema itself rather than a second copy of its rules.
-/// Nothing is installed: this file is the validator.
+/// A validator for the part of JSON Schema (2020-12) that a level's schema
+/// file uses (m13 s20, shared by both games since M14 k1a), so a test checks a
+/// game's level files against the schema itself rather than a second copy of
+/// its rules. Nothing is installed: this file is the validator.
 final class JsonSchema {
   JsonSchema(this.schema);
 
   /// The parsed schema document.
   final Map<String, Object?> schema;
 
-  /// Every place [value] breaks the schema, one message each; empty when it
-  /// matches.
-  List<String> issues(Object? value) => _check(schema, value, 'the puzzle');
+  /// Every place [value] breaks the schema, one message each, each after
+  /// [root] (the thing being checked, "the puzzle"): empty when it matches.
+  List<String> issues(Object? value, {required String root}) => _check(schema, value, root);
 
   List<String> _check(Map<String, Object?> node, Object? value, String path) {
     if (node[r'$ref'] case final String ref) return _check(_resolve(ref), value, path);

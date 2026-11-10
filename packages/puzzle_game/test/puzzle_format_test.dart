@@ -23,7 +23,12 @@ void main() {
   });
 
   test('a newer format is refused with a message naming both formats', () {
-    expect(() => Puzzle.parse(text(r'"$schema": "puzzle.schema.json", "format": 2,')), refuses('format 2'));
+    expect(
+      () => Puzzle.parse(text(r'"$schema": "puzzle.schema.json", "format": 2,')),
+      refusesExactly(
+        'This puzzle is format 2; this build reads format 1. Update the app, or save the puzzle in format 1.',
+      ),
+    );
   });
 
   test('a format that is not a whole number, or below 1, is refused', () {
@@ -31,7 +36,7 @@ void main() {
     expect(() => Puzzle.parse(text('"format": 0,')), refuses('starts at 1'));
   });
 
-  test('"hard" is not a level, in the same words tools/puzzle.sh new uses', () {
+  test('"hard" is not a level, in the same words tools/level.sh new uses', () {
     expect(() => Puzzle.parse(text('', level: 'hard')), refusesExactly(notALevel('hard')));
   });
 

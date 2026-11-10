@@ -4,7 +4,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:puzzle_game/puzzle_game.dart';
 
-import '../../../tools/puzzle_new.dart';
+import '../../../tools/level_new.dart';
 import 'support/library_files.dart';
 
 /// A copy of the real puzzle folder, so `new` writes into it as it would into
@@ -31,7 +31,7 @@ void main() {
   tearDown(() => folder.deleteSync(recursive: true));
 
   test('a new puzzle has the template\'s content and its own id, name and level', () {
-    createPuzzle(folder, id: 'cat-face', name: 'Cat Face', level: 'easy');
+    createLevel(folder, kind: 'puzzle', id: 'cat-face', name: 'Cat Face', level: 'easy');
     final created = read(folder, 'cat-face');
     expect(created['id'], 'cat-face');
     expect(created['name'], 'Cat Face');
@@ -44,17 +44,17 @@ void main() {
   });
 
   test('the new id goes into index.json after the last puzzle of its level', () {
-    createPuzzle(folder, id: 'last-easy', name: 'Last Easy', level: 'easy');
+    createLevel(folder, kind: 'puzzle', id: 'last-easy', name: 'Last Easy', level: 'easy');
     var ids = idsOf(folder);
     expect(ids.indexOf('last-easy'), ids.indexOf('snowman') + 1, reason: 'after the Easy puzzles');
-    createPuzzle(folder, id: 'last-medium', name: 'Last Medium', level: 'medium');
+    createLevel(folder, kind: 'puzzle', id: 'last-medium', name: 'Last Medium', level: 'medium');
     ids = idsOf(folder);
     expect(ids.indexOf('last-medium'), ids.length - 1, reason: 'after the Medium puzzles');
     expect(ids.indexOf('last-easy'), ids.indexOf('snowman') + 1, reason: 'the first one stays put');
   });
 
   test('the new puzzle passes the rule book unchanged', () {
-    createPuzzle(folder, id: 'plain', name: 'Plain', level: 'easy');
+    createLevel(folder, kind: 'puzzle', id: 'plain', name: 'Plain', level: 'easy');
     final puzzle = Puzzle.parse(File('${folder.path}/plain.json').readAsStringSync());
     expect(puzzle.id, 'plain');
     expect(checkPuzzle(puzzle), isEmpty);
@@ -64,13 +64,25 @@ void main() {
   });
 
   test('a taken id, an id that is not a puzzle id or a level new does not add are refused', () {
-    expect(() => createPuzzle(folder, id: 'house', name: 'House', level: 'easy'), throwsArgumentError);
-    expect(() => createPuzzle(folder, id: 'Cat', name: 'Cat', level: 'easy'), throwsFormatException);
+    expect(() => createLevel(folder, kind: 'puzzle', id: 'house', name: 'House', level: 'easy'), throwsArgumentError);
+    expect(() => createLevel(folder, kind: 'puzzle', id: 'Cat', name: 'Cat', level: 'easy'), throwsFormatException);
     expect(
-      () => createPuzzle(folder, id: 'cat', name: 'Cat', level: 'hard'),
+      () => createLevel(folder, kind: 'puzzle', id: 'cat', name: 'Cat', level: 'hard'),
       throwsA(isA<FormatException>().having((error) => error.message, 'message', notALevel('hard'))),
       reason: 'the schema, the parser and the rule book refuse it in these words too',
     );
+    expect(idsOf(folder), indexIds(), reason: 'nothing was written');
+  });
+
+  test('new map is refused with the message that says when maps come (M14 k1a)', () {
+    expect(newKindRefusal('puzzle'), isNull, reason: 'the puzzle kind is the one this tool makes');
+    expect(newKindRefusal('map'), mapsComingMessage);
+    expect(
+      () => createLevel(folder, kind: 'map', id: 'arena', name: 'Arena', level: 'easy'),
+      throwsA(isA<FormatException>().having((error) => error.message, 'message', mapsComingMessage)),
+      reason: 'tools/level.sh new map says this and writes nothing',
+    );
+    expect(newKindRefusal('trophy'), '"trophy" is not a kind of level: use puzzle');
     expect(idsOf(folder), indexIds(), reason: 'nothing was written');
   });
 

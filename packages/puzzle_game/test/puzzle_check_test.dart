@@ -4,7 +4,7 @@ import 'package:puzzle_game/puzzle_game.dart';
 
 import 'support/library_files.dart';
 
-/// `tools/puzzle.sh check [id]`: the rule book over one puzzle, or every one.
+/// `tools/level.sh check [id]`: the rule book over one puzzle, or every one.
 const puzzleId = String.fromEnvironment('puzzleId');
 
 void main() {

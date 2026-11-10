@@ -24,7 +24,7 @@ Rect _picture(Puzzle puzzle) {
   return box;
 }
 
-void _fit(Puzzle puzzle, List<PuzzleIssue> issues) {
+void _fit(Puzzle puzzle, List<LevelIssue> issues) {
   final board = Rect.fromLTWH(0, 0, boardSize.width, boardSize.height);
   for (final spec in puzzle.pieces) {
     final box = spec.shape.bounds(spec.targetAngle).shift(spec.target);
@@ -36,9 +36,9 @@ void _fit(Puzzle puzzle, List<PuzzleIssue> issues) {
       if (box.bottom > boardSize.height + 0.01) '${(box.bottom - boardSize.height).toStringAsFixed(1)} down',
     ].join(', ');
     issues.add(
-      PuzzleIssue(
-        puzzle: puzzle.id,
-        piece: spec.id,
+      LevelIssue(
+        level: puzzle.id,
+        part: spec.id,
         rule: PuzzleRule.fit,
         message:
             '${_prefix(puzzle.id, spec.id)}: its outline goes $past past the board\'s edge. Move it inside, or '
@@ -58,8 +58,8 @@ void _fit(Puzzle puzzle, List<PuzzleIssue> issues) {
   }
   if (overflow > 0.01) {
     issues.add(
-      PuzzleIssue(
-        puzzle: puzzle.id,
+      LevelIssue(
+        level: puzzle.id,
         rule: PuzzleRule.fit,
         message:
             '${puzzle.id}: the pieces are ${overflow.toStringAsFixed(1)} units too big for the tray on one board. '
@@ -70,8 +70,8 @@ void _fit(Puzzle puzzle, List<PuzzleIssue> issues) {
   final split = SplitLayout.of(puzzle, 0);
   if (split.scale < splitMinScale) {
     issues.add(
-      PuzzleIssue(
-        puzzle: puzzle.id,
+      LevelIssue(
+        level: puzzle.id,
         rule: PuzzleRule.fit,
         message:
             '${puzzle.id}: the split screen draws it at ${split.scale.toStringAsFixed(2)} of the board\'s size, '
@@ -85,7 +85,7 @@ void _fit(Puzzle puzzle, List<PuzzleIssue> issues) {
 /// overlap. A seed picks the pieces' start angles, so a later start can crowd
 /// the tray where seed 1 didn't. Each piece and pair is reported once, at the
 /// first start that shows it.
-void _trayStarts(Puzzle puzzle, List<PuzzleIssue> issues) {
+void _trayStarts(Puzzle puzzle, List<LevelIssue> issues) {
   final overlapping = <String>{};
   final outside = <int>{};
   for (var seed = 0; seed < trayStartSeeds; seed++) {
@@ -100,9 +100,9 @@ void _trayStarts(Puzzle puzzle, List<PuzzleIssue> issues) {
         final one = puzzle.pieces[game.pieces[a].index];
         final other = puzzle.pieces[game.pieces[b].index];
         issues.add(
-          PuzzleIssue(
-            puzzle: puzzle.id,
-            piece: one.id,
+          LevelIssue(
+            level: puzzle.id,
+            part: one.id,
             rule: PuzzleRule.fit,
             message:
                 '${_prefix(puzzle.id, one.id)}: at start $seed its tray box overlaps "${other.id}"\'s, and two boxes '
@@ -118,9 +118,9 @@ void _trayStarts(Puzzle puzzle, List<PuzzleIssue> issues) {
       if (!outside.add(i)) continue;
       final spec = puzzle.pieces[game.pieces[i].index];
       issues.add(
-        PuzzleIssue(
-          puzzle: puzzle.id,
-          piece: spec.id,
+        LevelIssue(
+          level: puzzle.id,
+          part: spec.id,
           rule: PuzzleRule.fit,
           message:
               '${_prefix(puzzle.id, spec.id)}: at start $seed its tray box leaves the tray, and it must fit at '
@@ -131,14 +131,14 @@ void _trayStarts(Puzzle puzzle, List<PuzzleIssue> issues) {
   }
 }
 
-void _span(Puzzle puzzle, List<PuzzleIssue> issues) {
+void _span(Puzzle puzzle, List<LevelIssue> issues) {
   final picture = _picture(puzzle);
   final widthShare = picture.width / boardSize.width;
   final heightShare = picture.height / boardSize.height;
   if (widthShare >= pictureSpanShare || heightShare >= pictureSpanShare) return;
   issues.add(
-    PuzzleIssue(
-      puzzle: puzzle.id,
+    LevelIssue(
+      level: puzzle.id,
       rule: PuzzleRule.span,
       message:
           '${puzzle.id}: the finished picture spans ${(widthShare * 100).round()}% of the board\'s width and '
@@ -155,7 +155,7 @@ const phoneSizeSeeds = 21;
 /// Every piece is drawn at least [minPieceMm] across on the narrowest phone
 /// ([narrowestPhoneSafeArea]), on either side and at any start from 1 to
 /// [phoneSizeSeeds] (M14 g1b).
-void _phoneSize(Puzzle puzzle, List<PuzzleIssue> issues) {
+void _phoneSize(Puzzle puzzle, List<LevelIssue> issues) {
   if (puzzle.level == Level.hard || puzzle.pieces.isEmpty) return;
   final smallest = puzzle.pieces.reduce((a, b) => b.shape.size < a.shape.size ? b : a);
   var lowest = double.infinity;
@@ -169,9 +169,9 @@ void _phoneSize(Puzzle puzzle, List<PuzzleIssue> issues) {
   if (lowest >= minPieceMm) return;
   final area = narrowestPhoneSafeArea;
   issues.add(
-    PuzzleIssue(
-      puzzle: puzzle.id,
-      piece: smallest.id,
+    LevelIssue(
+      level: puzzle.id,
+      part: smallest.id,
       rule: PuzzleRule.size,
       message:
           '${_prefix(puzzle.id, smallest.id)}: ${lowest.toStringAsFixed(2)} mm across on the narrowest phone '

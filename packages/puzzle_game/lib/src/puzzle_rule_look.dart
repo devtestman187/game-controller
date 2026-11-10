@@ -1,13 +1,13 @@
 part of 'puzzle_rules.dart';
 
-void _colours(Puzzle puzzle, List<PuzzleIssue> issues) {
+void _colours(Puzzle puzzle, List<LevelIssue> issues) {
   for (final spec in puzzle.pieces) {
     final nearest = PiecePalette.nearestBoard(spec.color);
     if (nearest.distance >= pieceBoardDistance) continue;
     issues.add(
-      PuzzleIssue(
-        puzzle: puzzle.id,
-        piece: spec.id,
+      LevelIssue(
+        level: puzzle.id,
+        part: spec.id,
         rule: PuzzleRule.board,
         message:
             '${_prefix(puzzle.id, spec.id)}: ${PiecePalette.describe(spec.color)} is '
@@ -24,9 +24,9 @@ void _colours(Puzzle puzzle, List<PuzzleIssue> issues) {
       final distance = oklabDistance(a.color, b.color);
       if (distance >= piecePairDistance) continue;
       issues.add(
-        PuzzleIssue(
-          puzzle: puzzle.id,
-          piece: a.id,
+        LevelIssue(
+          level: puzzle.id,
+          part: a.id,
           rule: PuzzleRule.pair,
           message:
               '${_prefix(puzzle.id, a.id)}: ${PiecePalette.describe(a.color)} is ${distance.toStringAsFixed(2)} '

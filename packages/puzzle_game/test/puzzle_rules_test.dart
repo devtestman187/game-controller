@@ -150,15 +150,16 @@ void main() {
     expect(messagesOf(corner, PuzzleRule.span).single, contains('needs 60% of one side'));
   });
 
-  test('index.json and the files name the same puzzles', () {
+  test('index.json and the files name the same puzzles, in the kit\'s words, unchanged (M14 k1a)', () {
     final issues = checkLibrary([puzzleOf(row(4))], index: ['x', 'missing'], files: ['x', 'extra']);
     final messages = [
       for (final issue in issues)
         if (issue.rule == PuzzleRule.listing) issue.message,
     ];
-    expect(messages, hasLength(2));
-    expect(messages.join('\n'), contains('index.json lists "missing" but puzzles/missing.json is missing'));
-    expect(messages.join('\n'), contains('puzzles/extra.json is not listed in index.json'));
+    expect(messages, [
+      'index.json lists "missing" but puzzles/missing.json is missing. Add the file, or remove the id.',
+      'puzzles/extra.json is not listed in index.json. Add "extra" after the last puzzle of its level.',
+    ]);
   });
 
   test('every puzzle starts at least two pieces turned, and a circle does not count (M14 g1b)', () {
