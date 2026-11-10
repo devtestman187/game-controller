@@ -10,7 +10,7 @@ The owner, low on usage: "once the current tasks complete, stop work and save yo
 
 **Done and pushed**: g1 + g1b, g2, g3, k1a, a1, m1/m1b/m1c, **c1** the party night (595eb74; Claude's fix: Back on a night's results records the round), **k1b** the maps in the kit (218fcc1; Claude: gap floor 1.6 marbles between faces, new maps aim for 2.5; the size rule's message test waits for k2a).
 
-**a2 (the cat + Chaos) was still running at the pause**: log `flash-m14-a2.log` in the session scratchpad, job folder `E:/AI/game-controller-m14-jobs/flash-20261109-215355-31972`. On restart: if `docs/briefs/m14/a2-cat-report.md` is in this tree (result 0 applies it here, uncommitted) review it; if it is only in the job folder (result 4) apply by hand without the out-of-allow files; if neither and no flash process runs, start it again with `tools/flash.sh --brief docs/briefs/m14/a2-cat.md` (Bash `run_in_background`). Then run the gate (`tools/check.sh format analyze puzzle host phone tv`), append "Claude's review", commit, push.
+**a2 (the cat + Chaos) landed after the pause, not yet reviewed**: result 0, its own checks passed (puzzle 349, host 277, phone 439, tv), and its changes sit **uncommitted in this tree** (report `docs/briefs/m14/a2-cat-report.md`). On restart: run the gate on the combined tree (`tools/check.sh format analyze puzzle host phone tv`), review it, append "Claude's review", commit (`git checkout -- tv_test_app/windows/flutter/` first), push.
 
 **Next, in order** (at most three jobs at once):
 1. Connect c1's `NightChaos` (packages/party_host/lib/src/night/party_night.dart) to a2's `PuzzleSettings.chaos`: `catVisitsTonight` reads the host's setting, `settingsForRound` sets Chaos off in the last round; test-first, by hand.
