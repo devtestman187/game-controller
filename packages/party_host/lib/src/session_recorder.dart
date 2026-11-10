@@ -78,6 +78,9 @@ class SessionRecorder {
           // The puzzle (M11): a side or a team wins together, or a race is a draw.
           winnerIds: {...((r.data['winners'] as List?) ?? const []).whereType<String>()},
           draw: r.data['draw'] == true,
+          // The games write an abandoned round with nothing but its reason:
+          // nobody played it, so the stats get no round and no time (M14 N1).
+          abandoned: r.data['reason'] == ViewEndReason.abandoned,
         );
         // Rounds per format (solo, team, 1v1, 2v1, 2v2). The completion time and
         // pieces placed come with each player's result.

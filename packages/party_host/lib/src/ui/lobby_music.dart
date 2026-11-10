@@ -36,12 +36,14 @@ part 'lobby_music_widgets.dart';
 /// fade instead, so `time_up` and `success` are heard clearly.
 ///
 /// It is wanted when the Music setting isn't 0 and the app is shown: hidden or
-/// paused it stops at once (Android would play it in the background
-/// otherwise), and coming back may start it again. Mute doesn't stop it: it
-/// silences it through the volume, so unmuting carries on where the music is.
-/// Changes settle after the frame, and only a change of what is wanted reaches
-/// the player, so a route replaced in one frame (Play again, Change teams)
-/// never stops and restarts the music.
+/// paused it goes silent at once (Android would play it in the background
+/// otherwise). The round's keeps its place while hidden, so a shown app
+/// carries on from the same point as after the pause menu; the lobby's starts
+/// again from the top, as it always has (R4 finding 8). Mute doesn't stop it:
+/// it silences it through the volume, so unmuting carries on where the music
+/// is. Changes settle after the frame, and only a change of what is wanted
+/// reaches the player, so a route replaced in one frame (Play again, Change
+/// teams) never stops and restarts the music.
 ///
 /// It is a provider, disposed with the host's scope, and a loop still playing
 /// stops with it, so the TV app and the phone host share it. Joined phones
@@ -188,9 +190,10 @@ class HostMusic {
     _playingOn = null;
   }
 
-  /// Whether the device may hear music now: the Music setting isn't 0 and the
-  /// app is shown. Mute is the player's volume, so it leaves the music playing.
-  bool get _heard => _shown && _ref.read(soundSettingsProvider).musicVolume > 0;
+  /// Whether the Music setting lets the host play anything: at 0% no music
+  /// plays, in a lobby or in a round. Mute is the player's volume, so it leaves
+  /// the music playing.
+  bool get _musicOn => _ref.read(soundSettingsProvider).musicVolume > 0;
 
   /// The round's loop for the clock as it stands: [MusicLoop.round] while the
   /// round has no clock (the Arena) or no warning.
@@ -216,14 +219,24 @@ class HostMusic {
   void _apply() {
     if (_disposed) return;
     final player = _ref.read(soundPlayerProvider);
-    if (!_heard) return _stop(player, fade: Duration.zero);
+    if (!_musicOn) return _stop(player, fade: Duration.zero);
+    if (!_shown) return _hidden(player);
     if (_held(player)) return;
     final wanted = _wanted;
     if (wanted == _current) return _resume(player);
-    if (wanted == null) {
-      return _stop(player, fade: _roundEnded && _isRoundLoop(_current) ? resultsFade : Duration.zero);
-    }
+    if (wanted == null) return _stop(player, fade: _stopFade);
     _start(player, wanted);
+  }
+
+  /// The app is hidden: nothing is heard. A round keeps its place, so its loop
+  /// pauses where it is and a shown app carries on from there, as after the
+  /// pause menu (R4 finding 8). The lobby's stops, and starts again from the
+  /// top when shown. A round whose results are up ends here as it would shown.
+  void _hidden(SoundPlayer player) {
+    if (_rounds == 0 || _roundEnded || !_isRoundLoop(_current)) {
+      return _stop(player, fade: _stopFade);
+    }
+    _pause(player);
   }
 
   /// A round that stands still (the beat, a pause, a wait, the host away) keeps
@@ -232,12 +245,22 @@ class HostMusic {
   /// loop is not the round's to keep.
   bool _held(SoundPlayer player) {
     if (_rounds == 0 || _roundEnded || _isPlayingRound || !_isRoundLoop(_current)) return false;
-    if (_paused) return true;
+    _pause(player);
+    return true;
+  }
+
+  /// Pauses the loop where it is, unless it already is: the round's music keeps
+  /// its place for [_resume].
+  void _pause(SoundPlayer player) {
+    if (_paused) return;
     player.pauseLoop();
     _paused = true;
     _playingOn = player;
-    return true;
   }
+
+  /// The fade to stop the music over: the results' short one once the round is
+  /// over, at once otherwise.
+  Duration get _stopFade => _roundEnded && _isRoundLoop(_current) ? resultsFade : Duration.zero;
 
   /// The loop wanted is the one playing: a pause left it, so it carries on.
   void _resume(SoundPlayer player) {
@@ -283,9 +306,9 @@ class HostMusic {
       settle();
       return;
     }
-    // No frame is drawn while the app is hidden, so a stop left to the frame's
+    // No frame is drawn while the app is hidden, so a pause left to the frame's
     // end would never come and the music would play on in the background (M13
-    // section 8, Android): it stops at once.
+    // section 8, Android): it goes quiet at once.
     _apply();
   }
 

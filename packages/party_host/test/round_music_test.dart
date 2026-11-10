@@ -159,6 +159,55 @@ void main() {
     expect(sounds.loopStarts, ['lobby', 'round'], reason: 'the same loop carried on, never restarted');
   });
 
+  // R4 finding 8: a hidden app stops the round's music, and a shown one carries
+  // on from the same place, as it does after the pause menu.
+  testWidgets('a hidden app pauses the round\'s music where it is, and showing it carries on', (tester) async {
+    await openRound(tester);
+    restoreLifecycle(tester);
+    expect(sounds.loop, 'round');
+
+    final stops = sounds.loopStops.length;
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+    await tester.pump();
+    expect(sounds.loop, 'round', reason: 'the music stays, silent where it was');
+    expect(sounds.loopPaused, isTrue, reason: 'a hidden app is silent at once');
+    expect(sounds.loopStops, hasLength(stops), reason: 'hiding is not the end of the round');
+
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pump();
+    await tester.pump();
+    expect(sounds.loopPaused, isFalse);
+    expect(sounds.loop, 'round');
+    expect(sounds.loopStarts, ['lobby', 'round'], reason: 'the same loop carried on from where it was');
+  });
+
+  // The hidden app keeps the round's place only while the round goes on: a
+  // round whose results come up has no music to carry on to.
+  testWidgets('a round that ended while the app was hidden does not resume when it is shown', (tester) async {
+    await openRound(tester);
+    restoreLifecycle(tester);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+    await tester.pump();
+    expect(sounds.loopPaused, isTrue);
+
+    // No frame is drawn while the app is hidden, so the results never build:
+    // the screen's end is given to the music as its last frame would have.
+    final screen = tester.state(find.byType(PuzzleScreen));
+    ProviderScope.containerOf(tester.element(find.byType(PuzzleScreen))).read(lobbyMusicProvider).roundEnded(screen);
+    expect(sounds.loop, isNull, reason: 'a round that is over keeps no music, hidden or not');
+    expect(sounds.loopStops.last, HostMusic.resultsFade);
+
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pump();
+    await tester.pump();
+    expect(sounds.loop, isNull, reason: 'nothing of the round resumes');
+    expect(sounds.loopStarts, ['lobby', 'round'], reason: 'the ended round was never started again');
+  });
+
   testWidgets('Music at 0% stops the round\'s music, and turning it up starts it again', (tester) async {
     await openRound(tester);
     final container = ProviderScope.containerOf(tester.element(find.byType(PuzzleScreen)));

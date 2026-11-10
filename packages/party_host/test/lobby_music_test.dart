@@ -5,24 +5,6 @@ import 'package:party_host/party_host.dart';
 
 import 'support/host_harness.dart';
 
-/// Puts the app back to resumed once the test ends, however it left it: the
-/// music of a later test then starts where it should. The binding checks the
-/// system's moves in debug, so the walk is the one Android makes.
-void restoreLifecycle(WidgetTester tester) {
-  addTearDown(() {
-    final binding = tester.binding;
-    if (binding.lifecycleState == AppLifecycleState.paused) {
-      binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
-    }
-    if (binding.lifecycleState == AppLifecycleState.hidden) {
-      binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
-    }
-    if (binding.lifecycleState != AppLifecycleState.resumed) {
-      binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
-    }
-  });
-}
-
 /// The lobby music (M13 design section 8): the host plays it while the game
 /// picker is open and no round is, so it carries on unbroken to the join screen,
 /// a round stops it, and it comes back when the round's screens close. Music

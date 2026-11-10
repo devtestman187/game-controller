@@ -173,9 +173,15 @@ class SoLoudSoundPlayer implements SoundPlayer {
     start?.step(HostStartStep.soundsLoaded);
     _set(SoundStatus(engine: 'flutter_soloud', ready: true, files: files));
     // What was asked for while the sounds were loading, or before a restart:
-    // the loop that should be playing, at the music's volume (M13 section 8).
-    _applyLoop();
+    // the loop that should be playing, at the music's volume (M13 section 8),
+    // from where it was before a restart (M14 g3: a round's music keeps its
+    // place across a hidden app).
+    _applyLoop(at: _restartAt);
+    _restartAt = 0;
   }
+
+  /// The loop's share when a restart began, for the new engine to start at.
+  double _restartAt = 0;
 
   @override
   Future<void> restart() => _restarting ??= _restart().whenComplete(() => _restarting = null);
@@ -183,6 +189,7 @@ class SoLoudSoundPlayer implements SoundPlayer {
   Future<void> _restart() async {
     // A load still running would put back the sources this restart replaces.
     await _loading;
+    _restartAt = _loop.share ?? 0;
     try {
       if (SoLoud.instance.isInitialized) SoLoud.instance.deinit();
     } catch (e) {

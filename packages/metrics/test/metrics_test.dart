@@ -219,6 +219,30 @@ void main() {
       expect(late['frames'], {'drawn': 60, 'dropped': 1});
     });
 
+    // M14 groundwork (design section 2 N1): both games write a round_end with
+    // only a reason when the host abandons a round, and a round nobody played
+    // is no round.
+    test('a round nobody played adds no round and no count', () {
+      final c = SessionCollector(
+        id: 's',
+        hostType: HostType.androidTv,
+        hostApp: '0.13.0',
+        startedAt: DateTime.utc(2026),
+        startMs: 0,
+      );
+      c.joined('p', number: 1, atMs: 0);
+      c.roundStarted(hz: 60);
+      c.roundEnded('arena', timeS: 0, modes: const {}, abandoned: true);
+
+      final s = c.summary(1000);
+      expect(s['rounds'], isEmpty, reason: 'a round nobody played is no round');
+      expect(((s['players'] as List).single as Map)['games'], isEmpty);
+
+      // The round still ended: a player leaving now is not a quit mid-game.
+      c.left('p', 2000);
+      expect(((c.summary(3000)['players'] as List).single as Map).containsKey('quitsMidGame'), isFalse);
+    });
+
     // Review R1 finding 5 (code-health N7): the ratings are copied into a
     // summary like the rounds and the games, so a checkpoint keeps what it had.
     test('a summary taken before a rating doesn\'t change after it', () {

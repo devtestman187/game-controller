@@ -195,6 +195,10 @@ class SessionCollector {
   /// A round ended. [modes] is each player's mode; [winnerId] won, or
   /// [winnerIds] (a team) did; [draw]: a race nobody won. The round keeps the
   /// rate of the view it started at.
+  ///
+  /// [abandoned] is a round nobody played, which the games write when the host
+  /// abandons one (M14 design section 2 N1): it adds no round, no count and no
+  /// game time, but it still ends the game.
   void roundEnded(
     String game, {
     required double timeS,
@@ -202,9 +206,14 @@ class SessionCollector {
     String? winnerId,
     Set<String> winnerIds = const {},
     bool draw = false,
+    bool abandoned = false,
   }) {
     final winners = {...winnerIds, ?winnerId};
     _inGame = false;
+    if (abandoned) {
+      _roundHz = null;
+      return;
+    }
     if (_rounds.length < 1000) {
       _rounds.add({
         'game': game,

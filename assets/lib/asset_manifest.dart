@@ -18,6 +18,9 @@ const String assetPackage = 'game_assets';
 /// the screens rather than by a game: the lobby music (a seamless loop), the
 /// 3-2-1 before a round, a phone joining the host, and the round's music at its
 /// three tempos (the same piece at 120, 138 and 156 BPM).
+///
+/// The ten before them are the Arena's (M14 design section 8): its seven
+/// one-shots and its own music at three tempos, which the Bumper Round plays.
 enum SoundKey {
   hit,
   success,
@@ -29,6 +32,16 @@ enum SoundKey {
   pickup,
   timeUp('time_up'),
   help,
+  dash,
+  bump,
+  bumpBig('bump_big'),
+  coin,
+  coinGold('coin_gold'),
+  coinLost('coin_lost'),
+  coinAppear('coin_appear'),
+  arena,
+  arenaHurry('arena_hurry'),
+  arenaFinal('arena_final'),
   lobby,
   countdown,
   playerJoined('player_joined'),

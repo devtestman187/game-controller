@@ -77,6 +77,7 @@ class SoundLoop {
     _handle = null;
     _name = null;
     _paused = false;
+    _heldShare = null;
     if (handle == null) return;
     // A pause left the voice waiting: it carries on for the fade, so the
     // results hear the music go rather than silence (design section 8, rule 2).
@@ -85,7 +86,10 @@ class SoundLoop {
   }
 
   /// Pauses the loop where it is: a round that stands still keeps its music.
+  /// The place is kept too, so it survives an engine restart while paused
+  /// (iOS stops the engine while the app is hidden; M14 g3).
   void pause() {
+    _heldShare = share;
     _paused = true;
     _setPaused(true);
   }
@@ -93,8 +97,12 @@ class SoundLoop {
   /// Carries on where [pause] left the loop.
   void resume() {
     _paused = false;
+    _heldShare = null;
     _setPaused(false);
   }
+
+  /// Where [pause] left the loop, kept while it waits.
+  double? _heldShare;
 
   /// Sets the loop's volume now: a Music volume change reaches it as it plays.
   void setVolume(double value) {
@@ -111,6 +119,8 @@ class SoundLoop {
   /// How far the loop has played, 0 to 1, or null when none plays: the share a
   /// tempo change keeps.
   double? get share {
+    // A paused loop doesn't move, and its voice may be gone with the engine.
+    if (_paused && _heldShare != null) return _heldShare;
     final handle = _handle;
     final name = _name;
     if (handle == null || name == null) return null;

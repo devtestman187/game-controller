@@ -17,6 +17,24 @@ late FakeSoundPlayer sounds;
 /// The fake screen-awake adapter the last [pumpHost] mounted.
 late FakeScreenAwake awake;
 
+/// Puts the app back to resumed once the test ends, however it left it: the
+/// music of a later test then starts where it should. The binding checks the
+/// system's moves in debug, so the walk is the one Android makes.
+void restoreLifecycle(WidgetTester tester) {
+  addTearDown(() {
+    final binding = tester.binding;
+    if (binding.lifecycleState == AppLifecycleState.paused) {
+      binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+    }
+    if (binding.lifecycleState == AppLifecycleState.hidden) {
+      binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    }
+    if (binding.lifecycleState != AppLifecycleState.resumed) {
+      binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    }
+  });
+}
+
 /// The time the harness's clock says: midday, so the look is Sunny unless a
 /// test overrides [lookClockProvider] with a time of its own (M13).
 final harnessNow = DateTime(2026, 11, 8, 12);
