@@ -60,6 +60,29 @@ const shotGapPx = 56.0;
 /// The most one picture may take.
 const shotMaxBytes = 300 * 1024;
 
+/// The size the icon-font check draws a glyph at: big enough that the icon and
+/// the box a missing font draws can't land on the same pixels.
+const glyphShotPx = 64.0;
+
+/// A family no test registers: the engine's own font stands in for it, so a
+/// check can compare a drawn icon with the box a missing font would give.
+const noSuchFont = 'NoSuchFontInThisTest';
+
+/// The icons the six pictures show, one from each place they appear: the Start
+/// and Back buttons, the bar's Settings and Diagnostics (M13 3c), the pad's
+/// mode tab, the picker's Puzzle settings, the results' Rematch and a board's
+/// check. A picture whose icon font didn't load draws every one as a box.
+const pictureIcons = [
+  Icons.play_arrow,
+  Icons.arrow_back,
+  Icons.settings_outlined,
+  Icons.monitor_heart_outlined,
+  Icons.gamepad_outlined,
+  Icons.tune,
+  Icons.check,
+  Icons.replay,
+];
+
 /// Where the pictures go, from this package's folder (`flutter test` runs
 /// there; `site` is one above it), and the address the page uses for them.
 const shotDir = '../site/shots';
@@ -139,6 +162,9 @@ class _TvApp extends ConsumerWidget {
         child: MaterialApp(
           title: 'Thumb Party TV',
           theme: party.toyTheme(look),
+          // The TV app's own root turns it off (`tv_test_app/lib/main.dart`); a
+          // debug build would draw its red ribbon over the frame's top corner.
+          debugShowCheckedModeBanner: false,
           navigatorObservers: [ref.watch(party.toyLookRouteObserverProvider)],
           builder: (context, child) => party.HostFocusScope(child: party.ControllerMenus(child: child!)),
           home: const SizedBox.shrink(),
@@ -221,6 +247,37 @@ Future<TestApp> pumpPhone(
     await settle(tester);
   }
   return app;
+}
+
+/// [icon] drawn at [glyphShotPx] in its own family, or, when [fromFont] is
+/// false, the same character in [noSuchFont]: a check compares the two, so an
+/// icon that came out as the test's box shows at once.
+Future<ui.Image> glyphShot(WidgetTester tester, IconData icon, {required bool fromFont}) async {
+  tester.view.devicePixelRatio = 1;
+  addTearDown(tester.view.reset);
+  final key = GlobalKey();
+  await tester.pumpWidget(
+    RepaintBoundary(
+      key: key,
+      child: Directionality(
+        textDirection: TextDirection.ltr,
+        child: SizedBox.square(
+          dimension: glyphShotPx,
+          child: Text(
+            String.fromCharCode(icon.codePoint),
+            // The colour is the check's own: nothing else draws this glyph, so
+            // the default (white) would leave both pictures blank and equal.
+            style: TextStyle(
+              fontFamily: fromFont ? icon.fontFamily : noSuchFont,
+              fontSize: glyphShotPx,
+              color: Colors.black,
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+  return captureScreen(tester, key);
 }
 
 /// The screen in [shot]'s boundary as it is drawn now.

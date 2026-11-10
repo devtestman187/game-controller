@@ -21,6 +21,10 @@ import 'support/test_font.dart';
 void main() {
   setUpAll(loadHostFonts);
 
+  // The pictures show icons (the Start and Back buttons, the pad's mode tabs,
+  // the bar's own buttons), and the test bundle has no icon font of its own.
+  setUpAll(loadIconFont);
+
   const teams = {'p1': PuzzleSide.left, 'p2': PuzzleSide.right};
   const choice = party.PuzzleChoice(level: Level.medium, puzzleId: 'train');
 
@@ -69,6 +73,24 @@ void main() {
     place(match, PuzzleSide.right, right);
     return party.PuzzleScreen(choice: choice, teams: teams, match: match);
   }
+
+  testWidgets('the pictures draw their icons: each one has a glyph, not a box', (tester) async {
+    for (final icon in pictureIcons) {
+      final drawn = await glyphShot(tester, icon, fromFont: true);
+      final box = await glyphShot(tester, icon, fromFont: false);
+      final drawnBytes = await png(tester, drawn);
+      final boxBytes = await png(tester, box);
+      drawn.dispose();
+      box.dispose();
+      expect(
+        drawnBytes,
+        isNot(boxBytes),
+        reason:
+            '${icon.fontFamily} draws U+${icon.codePoint.toRadixString(16)} as its shape, '
+            'not as the box a font that has none gives',
+      );
+    }
+  });
 
   testWidgets('join.png: the TV asks for players and a phone types the code', (tester) async {
     final (tv, _) = await tvOf(tester, const party.JoinScreen(choice: choice, teams: teams));
