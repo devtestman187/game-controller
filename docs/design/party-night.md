@@ -36,6 +36,22 @@ The host picks **Party night** on the game picker, chooses 3 or 5 rounds and see
 - Pop-ups: a big "+2" in Fredoka with a star icon beside the piece, rising 24 px and fading over 1.2 s; with effects off it appears and goes without motion (G5). Never colour alone: the number and icon carry the meaning.
 - The counters the awards need go into `RoundResult.stats` per player: `snaps`, `wrongDrops`, `carries`, `catsShooed`.
 
+## 3a. The picture comes alive: the finish celebration (T15)
+
+Owner, Nov 9, 2026: "once a shape race puzzle is complete, can we show an animation or special effect around the puzzle showing that it's completed? Right now a card just covers the picture and it isn't very interesting." This is T15's "celebration", made concrete. Today the results card covers the picture the moment it is done; the finished picture is the players' work, so it gets a moment of its own and stays in view.
+
+- **When**: a board whose picture is complete, in every format (solo, team, either side of a race), in and out of a night. Not at time-up: an unfinished board just settles, and the card comes as today.
+- **The moment, about 2.5 s, on the finished board only:**
+  1. **The pieces pop** in the order they were placed, each a quick squash-and-stretch (to 110% and back, 120 ms apart), so the picture ripples like a toy being shaken happily.
+  2. **A ring of stars** bursts out from the board's edge and drifts outward, with **confetti** in the toy colours falling round the board, never across the picture.
+  3. **The picture glows**: its outline gets a soft warm rim that breathes once (a slow fade up and down, not a flash).
+  4. **The workers cheer**: arms up, the happy face (look-and-sound 5a), a little hop.
+  5. The `celebration` sound (job s1) plays with it; a race's losing side hears nothing extra, and its board dims gently.
+- **Then the card, without hiding the picture**: the finished picture shrinks into the results card as a framed photo (a cream frame with the ink edge and a small shadow, slightly tilted), so the card shows what was made beside the time, the pieces and the buttons. In a race each side's picture is its own photo; an unfinished one shows as it stood. A new record (T15) adds the "New record!" chip and the `new_record` sound.
+- **Comfort (G5)**: nothing flashes; the stars and confetti cover under a quarter of the screen; brightness changes at most once. With effects off: no pop, no motion; the stars and the frame appear and go, the glow is a still rim, and the photo appears in the card without the shrink.
+- **Everywhere the round is seen**: the snapshot already says when a side finished; its age drives the moment, so a joined phone plays the same celebration as the host, and its own results card (section 9) holds the same photo.
+- **Built** in Shape Race's painters (the pop, stars, confetti, glow and cheer, from the finish's age) and the results card in `party_host`, as job **a3** (after a1, beside c1's changes to `puzzle_screen.dart`, so it runs after c1). Mock-ups: two more frames, the burst mid-way and the card with the photo.
+
 ## 4. The night (G2)
 
 - **Start card** (Party night on the picker): "3 rounds" / "5 rounds" (3 is focused), the three awards drawn for the night, each with its picture and one line, and, when Chaos is on, "The cat visits the side that's ahead". Then "Pick round 1": Shape Race / Bumper Round.
@@ -142,7 +158,7 @@ What is in a map, and what its rules are:
 - **Robo finds its way with the kit's path grid**, so it can steer round any map's walls (section 7a).
 
 **Two new pieces**, so the maps feel different and not only rearranged (each in the rules, the painter, the snapshot and the rule book):
-- **Springs**: round toy bumpers fixed to the floor. A marble that hits one bounces off at 1.5× its speed with `bump`. Not a hazard: it drops nothing. Snapshot `sp` (positions; the radius is a constant).
+- **Springs**: round toy springs fixed to the floor: a yellow coil under a green cap, never red, because red already means a hazard in the Arena. A marble that hits one bounces off at 1.5× its speed with `bump`. Not a hazard: it drops nothing. Snapshot `sp` (positions; the radius is a constant).
 - **Belts**: rectangular conveyor strips with arrows that carry a marble along at half its speed while it is on them. Snapshot `bl` (rect and direction). Drawn with arrows moving along them, so the direction is never colour alone (G5); with effects off the arrows stand still.
 
 **Four new maps** (Claude, Nov 9, 2026), each with its own look and twist, all playing both modes. Today's Playroom stays as the fifth and the default. Exact shapes are drawn in the maps job with the kit and shown to the owner as renders before they land:
@@ -214,6 +230,8 @@ The Arena's jobs run one after another, since each builds on the last: g2 → k1
 **Wave 4**: **k2 the four maps** (section 7b: springs and belts in the rules, painter, snapshot and rule book; Pinball, Toy Factory, Spinning Tops, Block Castle, rendered for the owner; after b1), **s1 sounds** (section 11, `tools/audio`, `assets`), **c3 the phone** (nicknames and results on joined phones, `controller_app`, `protocol`, after c1).
 
 **Wave 5**: **b2 the Arena's screens** (the waiting card with modes, maps and Robo's levels, the ready beat on the TV, the results card, the music's clock; after m1's OK and k2), **c2 awards and best times** (G4 with the added awards, T15, after c1 and s1).
+
+**a3 the finish celebration** (section 3a; Shape Race's painters and the results card, after a1 and c1, beside the Arena jobs).
 
 **Wave 6**: **b3 Robo** (section 7a: `CpuPilot` steering with the kit's path grid on every map, its seat in the session and on the waiting card, its badge, the three levels; after b2). The three levels' aims are checked in the device tests.
 

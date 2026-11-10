@@ -740,6 +740,7 @@ Milestone 13 gives the games and menus a bright, cartoony "Toy Box Toon" look an
 - End-of-night awards (G4), with a fanfare.
 - Comfort rules for all of it (G5).
 - Nicknames (C20), and the best-times board with a celebration and a new-record moment (T15), kept on the host.
+- **The finish celebration** (T15; owner, Nov 9, 2026: "once a shape race puzzle is complete, can we show an animation or special effect around the puzzle showing that it's completed?"): the finished picture's pieces pop in the order they were placed, stars burst from the board's edge with confetti round it, the picture glows once and the workers cheer, with the celebration sound; then the picture shrinks into the results card as a framed photo, so the card no longer hides it. Within G5, and the same on joined phones (docs/design/party-night.md section 3a).
 - **Results on joined phones** (owner, Nov 8, 2026, from the m12 build 5 test: "When the host wins a game, the remote doesn't see a win or lose screen").
   - When a phone-hosted round ends, each joined phone keeps the final board and shows a results card over it. The card gives the result from its own player's side ("You win!", "You lose", "Draw"; "Done!" with the time on one board), each side's time or pieces placed, its points in a party night, and "Waiting for the host to pick what's next."
   - The card goes when the host starts the next round or leaves the results.
@@ -761,6 +762,7 @@ Milestone 13 gives the games and menus a bright, cartoony "Toy Box Toon" look an
 - [ ] A joined phone one build older is asked to update instead of drawing a different game.
 - [ ] The night's start card names the three awards, and every tied player gets an award.
 - [ ] Nicknames show on the scoreboard, the awards and the best-times board, and the best times survive restarting the TV app or the host phone's app.
+- [ ] A finished picture celebrates for about 2.5 s on its own board (solo, team and each side of a race) on the host and every joined phone, then shows as a framed photo on the results card; time-up has no celebration; with effects off nothing moves and nothing flashes.
 - [ ] In a phone-hosted match, every joined phone shows its own results card when the round ends (win, lose, draw and a solo round), and it goes when the host picks what's next.
 - [ ] Picking the Arena with nobody joined shows the waiting card, not the countdown; the countdown starts only when every joined player has pressed A.
 - [ ] A Bumper Round with 2, 3 and 4 players ends after 60 seconds with the most coins winning and a tie shared; a hazard or a shove into a wall drops exactly one coin, never two within the safe second; gold coins appear only in the last 15 seconds; with one player Robo plays the second marble at the level picked (Easy, Medium or Hard), and a second person joining takes its place; in a night its points reach the scoreboard.
