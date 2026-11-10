@@ -2,6 +2,8 @@
 
 Status: **written by Claude on Nov 9, 2026**, from the approved PRD (docs/PRD-v2.md "Party requirements" G1–G5, G9, C20, T15 and "Milestone 14"), the research in docs/briefs/m14/ and the refreshed scan (docs/briefs/m14/scan-m14-refresh-report.md). The PRD is approved, so the rules work starts now. The new screens get mock-ups first (section 10); a screen's job waits for the owner's OK on its mock-up. Open questions are in section 12, each with the default the work follows until the owner answers.
 
+**Mock-ups approved by the owner on Nov 9, 2026** ("Mockups look good."), after two rounds of changes (m1b, m1c): docs/design/look-mockups/m14-*.png, 22 frames in Sunny and Night, drawn by docs/design/party-mockups.html. They are the target for M14's new screens; a change to them goes back to the owner.
+
 M14 is built on the branch `m14` (worktree `E:\AI\game-controller-m14`), cut from `m13`. Device-test fixes for M13 land on `m13` and are merged in.
 
 ## 1. The night in one paragraph
