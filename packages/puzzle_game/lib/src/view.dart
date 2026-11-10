@@ -7,6 +7,7 @@ import 'package:toy_look/toy_look.dart';
 
 import 'camera.dart';
 import 'cat_view.dart';
+import 'celebration.dart';
 import 'game.dart';
 import 'piece_moments.dart';
 import 'piece_size.dart';
@@ -19,6 +20,7 @@ import 'worker_moments.dart';
 
 part 'board_hud.dart';
 part 'cat_paint.dart';
+part 'celebration_paint.dart';
 part 'match_hud.dart';
 part 'match_painter.dart';
 part 'mirror_painter.dart';

@@ -100,6 +100,20 @@ class PuzzlePainter extends CustomPainter {
   /// while this view watched.
   int? _age(int i) => moments?.ageMs(board, i, nowMs);
 
+  /// How long ago this board finished its picture, or null when it hasn't while
+  /// this view watched: the finish celebration is drawn from it (design 3a).
+  int? get _finishAge => moments?.finishAgeMs(board, nowMs);
+
+  /// The scale piece [i] is drawn at in the finish celebration: its pop, in the
+  /// order the pieces were placed (design 3a item 1), and 1 when it isn't
+  /// popping.
+  double _popScale(int i) {
+    final age = _finishAge;
+    if (age == null || !Celebration.isRunning(age)) return 1;
+    final place = moments?.placeOf(board, i);
+    return place == null ? 1 : Celebration.popScale(place, age, effects: look.effects);
+  }
+
   @override
   void paint(Canvas canvas, Size size) {
     if (fillsBackground) canvas.drawRect(Offset.zero & size, Paint()..color = _colours.background);
@@ -128,6 +142,9 @@ class PuzzlePainter extends CustomPainter {
     for (final t in targets) {
       if (!filled.contains(t)) _slot(canvas, t, px, styles.rest);
     }
+    // The finished picture's warm rim goes under it, so the pieces keep their
+    // own edges (design 3a item 3).
+    _paintGlow(canvas, px);
     // Then the picture in its own order: each target shows the piece locked in
     // it, or its outline, so a door's outline stays on top of a placed wall.
     for (final t in targets) {
@@ -145,6 +162,10 @@ class PuzzlePainter extends CustomPainter {
     }
     _paintWorkers(canvas, s, px);
     if (cat case final c?) paintCat(canvas, c, board: s, look: look, style: styles.rest);
+    // The burst and the confetti come over the field, round the board's edge
+    // and never over the picture (design 3a item 2).
+    _paintStars(canvas, px);
+    _paintConfetti(canvas, px);
     // The points and their pop-ups are a party night's, and nothing else's
     // (M14 a1, N4): outside a night the board is the picture it was.
     if (s.night) _popups(canvas, px);
@@ -286,14 +307,16 @@ class PuzzlePainter extends CustomPainter {
     final age = _age(i);
     final boing = age == null ? 1.0 : PieceMoments.boingScale(age, effects: look.effects);
     final wobble = age == null ? 0.0 : PieceMoments.wobbleDeg(age, effects: look.effects);
-    final moving = boing != 1 || wobble != 0;
+    // A placed piece also pops in the finish celebration (design 3a item 1).
+    final pop = p.state == PieceState.locked ? _popScale(i) : 1.0;
+    final moving = boing != 1 || wobble != 0 || pop != 1;
     if (moving) {
       // A boing and a wobble are both about the piece's own centre.
       canvas
         ..save()
         ..translate(at.dx, at.dy)
         ..rotate(wobble * pi / 180)
-        ..scale(boing)
+        ..scale(boing * pop)
         ..translate(-at.dx, -at.dy);
     }
     toyShape(

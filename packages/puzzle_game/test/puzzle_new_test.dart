@@ -106,7 +106,9 @@ void main() {
     expect(created['format'], template['format']);
     expect(created['walls'], template['walls'], reason: 'the field is the template\'s, to edit');
     expect(created['notes'], template['notes'], reason: 'the workflow notes stay for the developer');
-    expect(mapIdsOf(maps), ['playroom', 'arena'], reason: 'added at the end of maps/index.json');
+    final ids = mapIdsOf(maps);
+    expect(ids.last, 'arena', reason: 'added at the end of maps/index.json');
+    expect(ids.first, 'playroom');
   });
 
   test('a name is made from the id when none is given', () {

@@ -64,8 +64,7 @@ void main() {
         ..state = PieceState.locked
         ..pos = game.targetAt(i);
     }
-    await tester.pump(const Duration(milliseconds: 16));
-    await tester.pump(const Duration(milliseconds: 16));
+    await endRound(tester);
     expect(find.text('Done!'), findsOneWidget);
     expect(find.textContaining('seconds'), findsOneWidget);
     expect(find.text('Play again'), findsOneWidget, reason: 'a chosen puzzle plays again (m12 bug 1108e)');

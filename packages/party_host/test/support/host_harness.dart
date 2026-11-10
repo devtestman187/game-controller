@@ -244,11 +244,15 @@ PuzzleMatch lockEveryPiece(WidgetTester tester, {PuzzleSide side = PuzzleSide.le
 }
 
 /// The frames the rules need to see the end and show the results: a 16 ms
-/// frame can pass without one of their 1/60 s steps.
+/// frame can pass without one of their 1/60 s steps. A finished picture
+/// celebrates first, so the results card is up only after its 2.5 s (design
+/// 3a); a round that ran out of time has nothing to celebrate.
 Future<void> endRound(WidgetTester tester) async {
   for (var i = 0; i < 3; i++) {
     await tester.pump(const Duration(milliseconds: 16));
   }
+  await tester.pump(const Duration(milliseconds: Celebration.totalMs));
+  await tester.pump();
 }
 
 /// A phone's buttons, read by the menus two frames later.

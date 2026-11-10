@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:connection/connection.dart';
@@ -96,7 +97,18 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
   /// How this round runs (m12 §3): its frame rate, read when the round starts
   /// so a change of the setting waits for the next one.
   late final HostingSettings _hosting;
+
+  /// The play view, whose last snapshot the results show as photos (design
+  /// 3a): the picture as it was finished, or as it stood.
+  final _play = GlobalKey<PuzzlePlayViewState>();
+
   MatchResult? _result;
+
+  /// Whether the results card is up: it waits for the finish celebration
+  /// (design 3a: the card comes after it, never on top of it).
+  bool _cardShown = false;
+  Timer? _cardTimer;
+
   Puzzle? _puzzle;
   bool _handedOver = false;
 
@@ -117,6 +129,7 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
 
   @override
   void dispose() {
+    _cardTimer?.cancel();
     _music.roundScreenClosed(this);
     if (!_handedOver) _keyboard.dispose();
     _againFocus.dispose();
@@ -142,10 +155,16 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
     return _puzzle = from.isEmpty ? null : from[_random.nextInt(from.length)];
   }
 
-  // The screen's key handler holds the focus, so the button's autofocus
-  // would be ignored: move the focus there, for the remote's OK button.
   void _finished(MatchResult r) {
     setState(() => _result = r);
+    // A finished picture celebrates for a moment before the results card comes
+    // (design 3a); a round that ran out of time has nothing to celebrate, so
+    // its card comes at once, as it always did.
+    if (r.sides.values.any((side) => side.finished)) {
+      _cardTimer = Timer(const Duration(milliseconds: Celebration.totalMs), _showCard);
+    } else {
+      _showCard();
+    }
     // Each joined phone shows its own result over the last frame (M14 design
     // section 9), while this screen shows the results it always has.
     ref
@@ -157,6 +176,14 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
     // round stands still (M13 design section 8, rule 2).
     _music.roundEnded(this);
     _log('Round ended: ${_resultsHead(ref.read(toyLookProvider), r).title}${_endTime(r)}');
+  }
+
+  /// The results card comes up, after the finish celebration, if there was one.
+  /// The screen's key handler holds the focus, so the card's first button has
+  /// it moved here, for the remote's OK button.
+  void _showCard() {
+    if (!mounted || _cardShown) return;
+    setState(() => _cardShown = true);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _againFocus.requestFocus();
     });
@@ -303,6 +330,7 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
                         // rules 3, 7 and 8). A host with no pad passes none.
                         final pad = ref.watch(hostPadProvider);
                         return PuzzlePlayView(
+                          key: _play,
                           host: ref.read(gameHostProvider),
                           puzzle: puzzle,
                           teams: widget.teams,
@@ -322,7 +350,7 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
                       },
                     ),
                   ),
-                  if (result != null)
+                  if (_cardShown && result != null)
                     Center(
                       child: _Results(
                         result: result,
@@ -331,6 +359,8 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
                         again: _again,
                         onChangeTeams: _changeTeams,
                         night: ref.read(partyNightProvider) != null,
+                        puzzle: puzzle,
+                        match: _play.currentState?.match,
                       ),
                     ),
                 ],

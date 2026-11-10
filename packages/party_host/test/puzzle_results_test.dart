@@ -65,9 +65,7 @@ void main() {
         ..state = PieceState.locked
         ..pos = game.targetAt(i);
     }
-    await tester.pump(const Duration(milliseconds: 16));
-    await tester.pump(const Duration(milliseconds: 16));
-    await tester.pump(const Duration(milliseconds: 16));
+    await endRound(tester);
     expect(find.text('Done!'), findsOneWidget);
     // The phone now says A "OK", B "Back".
     final layout = host.layouts['p1']!;
@@ -94,6 +92,36 @@ void main() {
     expect(find.text('Done!'), findsNothing);
     expect(find.byType(PuzzleScreen), findsOneWidget);
     expect(host.layouts['p1']!.labels[ControllerButton.a], 'Pick up');
+  });
+
+  testWidgets('the results card waits for the finish celebration, then shows the picture as a photo', (tester) async {
+    final fake = await pumpHost(tester, screen: const StubHome());
+    await neutral(tester, fake, ['p1']);
+    await openJoin(tester);
+    await startRound(tester, fake);
+    lockEveryPiece(tester);
+    for (var i = 0; i < 3; i++) {
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    expect(tester.takeException(), isNull);
+    expect(
+      find.byKey(const Key('puzzleResults')),
+      findsNothing,
+      reason: 'the finished picture celebrates first (design 3a)',
+    );
+    // The moment is 2.5 s long, and the card never comes up over it.
+    await tester.pump(const Duration(milliseconds: Celebration.totalMs - 200));
+    expect(find.byKey(const Key('puzzleResults')), findsNothing, reason: 'the card waits for the whole celebration');
+    await tester.pump(const Duration(milliseconds: 200));
+    await tester.pump();
+    expect(find.byKey(const Key('puzzleResults')), findsOneWidget);
+    expect(
+      find.byKey(const Key('puzzlePhoto-left')),
+      findsOneWidget,
+      reason: 'the finished picture is the results card\'s photo',
+    );
+    expect(find.text('4 of 4 pieces placed'), findsNothing, reason: 'a finished board says its time');
+    expect(find.textContaining('seconds'), findsOneWidget);
   });
 
   // m10.2 device test: in stick mode, moving the stick lost the focus and
@@ -123,8 +151,7 @@ void main() {
         ..state = PieceState.locked
         ..pos = game.targetAt(i);
     }
-    await tester.pump(const Duration(milliseconds: 16));
-    await tester.pump(const Duration(milliseconds: 16));
+    await endRound(tester);
     expect(find.text('Done!'), findsOneWidget);
 
     Future<void> stick(GamepadState s) async {
@@ -181,9 +208,9 @@ void main() {
     await tester.pump(const Duration(milliseconds: 16));
     await tester.pump(const Duration(milliseconds: 16));
     // The rules run in 1/60 s steps, so a 16 ms frame can pass without one:
-    // a third frame makes sure the step that ends the match (and opens the
-    // results) has run before B is pressed.
-    await tester.pump(const Duration(milliseconds: 16));
+    // [endRound] makes sure the step that ends the match (and opens the
+    // results, after the finish celebration) has run before B is pressed.
+    await endRound(tester);
     expect(find.text('Done!'), findsOneWidget);
     fake.gameHost.setGamepad('p1', const GamepadState(buttons: {GamepadButton.b}, mode: InputMode.dpad));
     await tester.pump(const Duration(milliseconds: 16));
@@ -259,9 +286,7 @@ void main() {
           ..state = PieceState.locked
           ..pos = game.targetAt(i);
       }
-      for (var i = 0; i < 3; i++) {
-        await tester.pump(const Duration(milliseconds: 16));
-      }
+      await endRound(tester);
     }
 
     await finishedRace();

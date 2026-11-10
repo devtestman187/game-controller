@@ -379,7 +379,7 @@ void main() {
       expect(result?.format, MatchFormat.solo);
       expect(result?.sides[PuzzleSide.left]?.finished, isTrue);
       expect(result?.sides[PuzzleSide.left]?.timeS, isNotNull);
-      expect(host.sounds, contains('success'));
+      expect(host.sounds, contains('celebration'));
       expect(host.haptics.map((h) => h.$2.event), contains(HapticEvent.success));
       final end = host.records.firstWhere((r) => r.name == 'round_end');
       expect(end.data['format'], 'solo');

@@ -83,7 +83,7 @@ void main() {
     expect(end.data['puzzle'], 'house');
     expect(end.data['modes'], {'p1': 'dpad', 'p2': 'dpad'});
     expect(clock.host.records.firstWhere((r) => r.name == 'player_result').data['placed'], 4);
-    expect(clock.host.sounds.where((s) => s == 'success'), hasLength(1), reason: 'played once, not per side');
+    expect(clock.host.sounds.where((s) => s == 'celebration'), hasLength(1), reason: 'played once, not per side');
     expect(clock.host.haptics.map((h) => h.$2.event), contains(HapticEvent.success));
 
     // The clock stops at the result: 100 more advances move nothing.
@@ -94,6 +94,25 @@ void main() {
     expect(session.match.sides.first.game.timeLeftS, left);
     expect(clock.host.records.where((r) => r.name == 'player_result'), hasLength(2));
     expect(clock.host.records.where((r) => r.name == 'round_end'), hasLength(1));
+    session.dispose();
+  });
+
+  test('the celebration sound plays by name once, when the picture is finished', () {
+    final clock = Clock();
+    final session = sessionFor(clock);
+    clock.frame(session, 100);
+    expect(clock.host.sounds, isNot(contains('celebration')), reason: 'nothing before the picture is done');
+    placeEverything(session.match);
+    for (var i = 0; i < 10; i++) {
+      clock.frame(session, 16);
+    }
+    expect(clock.host.sounds.where((s) => s == 'celebration'), hasLength(1), reason: 'the finish celebration');
+    // The moment goes on for 2.5 s and the sound plays once: no further step
+    // plays it again.
+    for (var i = 0; i < 200; i++) {
+      clock.frame(session, 16);
+    }
+    expect(clock.host.sounds.where((s) => s == 'celebration'), hasLength(1));
     session.dispose();
   });
 

@@ -126,6 +126,7 @@ class MatchPainter extends CustomPainter {
         cat: s.cat?.side == PuzzleSide.values[i] ? s.cat : null,
         fillsBackground: fillsBackground,
       ).paint(canvas, box.size);
+      _dimming(canvas, box.size, i);
       canvas.restore();
     }
 
@@ -169,9 +170,21 @@ class MatchPainter extends CustomPainter {
         pxPerMm: pxPerMm,
         fillsBackground: fillsBackground,
       ).paint(canvas, layout.left.size);
+      _dimming(canvas, layout.left.size, s.split ? side.index : 0);
       canvas.restore();
     }
     _hud(canvas, size, layout);
+  }
+
+  /// Dims a board's world while the other side's picture is celebrated: a race's
+  /// losing side dims gently and hears nothing extra (design 3a). Nothing while
+  /// the board's own picture is the one being celebrated, and on one board.
+  void _dimming(Canvas canvas, Size size, int side) {
+    if (!s.split || s.boards[side].phase == PuzzlePhase.finished) return;
+    final age = moments?.finishAgeMs(1 - side, nowMs);
+    final alpha = age == null ? 0.0 : Celebration.dimAlpha(age);
+    if (alpha <= 0) return;
+    canvas.drawRect(Offset.zero & size, Paint()..color = _colours.ink.withValues(alpha: alpha));
   }
 
   /// The clock, the score and the time bar beside the world (m12-phone-layout

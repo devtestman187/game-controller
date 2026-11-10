@@ -49,8 +49,10 @@ final class PuzzleEffects {
         sound('tick');
       case PuzzleEventKind.timeUp:
         sound('time_up');
+      // The picture coming alive (M14 a3, design 3a): its own sound, job s1's,
+      // played with the finish celebration.
       case PuzzleEventKind.finished:
-        sound('success');
+        sound('celebration');
       // The cat (M14 a2, PRD v2 G3): its warning's meow at the side's edge,
       // the bump of the bat, and the dash of a shooed cat running off. The
       // meow is a name until a sound of that name is added to `assets/audio`.
