@@ -35,3 +35,20 @@ foreach ($n in 'tick','pickup','snap','error','hit','wrong','help','rumble','suc
 > encoder.** Its transcode pipeline silently drops the last 76–96 ms in either
 > direction — measured here, a 100 ms `tick` came out 4 ms long, and decoding a
 > 1.62 s file gave 1.54 s. ffmpeg wrote and read every file at its exact length.
+
+## The Arena's sounds and music (M14)
+
+The Bumper Round's seven one-shots — `dash`, `bump`, `bump_big`, `coin`, `coin_gold`, `coin_lost` and `coin_appear` — and its music — `arena`, `arena_hurry` and `arena_final` — are made by two Dart renderers, because the PC that made them has no numpy:
+
+- `arena_sounds.dart` builds each one-shot from the kit's instruments, masters it with `render.py`'s event pass (high-pass, RMS to the cue's own loudness in the script's table, soft-knee peak limit at −3 dB, 4 ms fades) and seeds it, so the same WAV comes out every run.
+- `arena_music.dart` plays one 16-bar piece in G major at three tempos — 128, 147.2 and 166.4 BPM, a whole number of samples per sixteenth — folds two seconds of ring-out back over the loop's start and masters it as `finish_loop` does, to RMS −23 dB and a peak under −3 dB. The run fails if a loop is not 16 bars or peaks above −3 dB.
+
+Both write their WAV masters to `tools/audio/final/arena-wav/` (gitignored, as `render.py`'s are) and print a table: each file's length, RMS and peak, and for each loop the size of the jump between its last and first sample against the mean sample-to-sample step.
+
+Render and encode again, from the repository root (Git Bash, ffmpeg and ffprobe on the PATH):
+
+```bash
+tools/audio/render-arena-sounds.sh
+```
+
+It runs both renderers, then encodes every master with the same ffmpeg line as above and prints each file's length beside its master's, so a short encode shows up as a mismatch (VLC would make one).

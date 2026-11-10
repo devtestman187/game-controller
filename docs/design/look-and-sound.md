@@ -240,6 +240,20 @@ rules (puzzle_game rules, test_game rules, game_kit sessions) ── never impor
 - A round that stands still — the 3-2-1, the pause menu, the host-away card, a phone the round waits for — pauses the music where it is and resumes there; only the results end it. The lobby music and the round music never play together: a round still stops the lobby's the moment its screen opens, and Play again may start the round's from the top (a new round) but never stops and starts the lobby's.
 - One controller does both — `HostMusic`, in `ui/lobby_music.dart` — settling after the frame and stopping on a hidden app as the lobby music does, and following Mute and the Music volume the same way. The round's screen tells it the clock each frame (`PuzzlePlayView.onClock`) and its results.
 
+**The Arena's sounds and music (M14)** (Claude, Nov 9, 2026, for G9's Bumper Round; job a1 makes the files, the Bumper Round's job plays them). Seven one-shots and one piece at three tempos, in the same "Bubble Pop" set, each mastered like `render.py`'s event sounds and told apart from every other cue by pitch shape and timbre, not loudness alone:
+
+| Cue | Length | Mastered | What it is | For |
+| --- | --- | --- | --- | --- |
+| `dash` | 0.18 s | −24 dB | band-noise swish sweeping up to 4.8 kHz, with a small pop on its end | every dash: soft and short, never tiring, quieter than `pickup` and brighter and shorter than today's dash sound, `rumble` |
+| `bump` | 0.25 s | −21 dB | a soft thump, a rubbery glide up and a mallet tick | two marbles meeting: friendly and low-mid, no noise, so not `hit` |
+| `bump_big` | 0.35 s | −19 dB | the same with more body, a tone lower, and a spring back up | a dash that shoves |
+| `coin` | 0.25 s | −19 dB | two mallet notes a fifth apart (G5, D6) | picking up a coin: the happiest short cue, not `success` |
+| `coin_gold` | 0.40 s | −18 dB | the coin's notes in a G-major rise (G5 B5 D6 G6) with two bell shimmers | a gold coin worth 2: sounds worth more |
+| `coin_lost` | 0.40 s | −20 dB | a mallet falling E5 to B4, a little thump, then two low bubbles a few Hz apart (the wobble) | dropping a coin: a "whoops", never sad, not `wrong` or `error` |
+| `coin_appear` | 0.30 s | −26 dB | three high bells (G6, D7, G7) over a breath of high noise | a new coin starting its 1 s sparkle, quiet because three come and go |
+
+The music is `arena`, `arena_hurry` and `arena_final`: one 16-bar piece in G major (the lobby is C, the round F), at 128 BPM, then ×1.15 (147.2) and ×1.3 (166.4), made and mastered as the round music is (RMS −23 dB, peak ≤ −3 dB, seamless, a whole number of samples per sixteenth). A funfair bumper-car bounce: a soft kick on every beat, a clap on 2 and 4, a shaker on every sixteenth, an octave-jumping bass, mallet stabs on the off-beats, and a short cheeky call on the `popNote` answered a little higher by the `whistle`. A (bars 1–8): G | D | Em | C | G | C | D | G; B (bars 9–16): C | D | Em | Am | C | D | G | D, turning round on the dominant. It is its own tune from the first bar, so a player knows which game is on, and it leaves room for the game's sounds: the stabs stay between D4 and D5, away from `coin`'s G5 and D6, the kick stays under 120 Hz, and nothing bright lands on a beat, where `tick` sits. The Bumper Round plays it as Shape Race plays its music, with the tempo following its 60 s clock so it hurries at 15 s left and again at 5 s; the race Arena still has no clock and stays on `arena`.
+
 ## 9. Implementation order (after the owner's OK)
 
 Each step is a flash-worker job with a brief and a review gate, as in M12.

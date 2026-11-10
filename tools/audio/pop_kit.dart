@@ -3,9 +3,11 @@
 /// relative level is the Python's, so the round music sits with the rest of the
 /// set and sounds like the same band.
 ///
-/// Only what the round music needs is here: the mallet, the popnote, the bass,
-/// the pluck, the whistle and the three percussion sounds, the room they play
-/// in, and the mastering pass of `render.py`.
+/// Only what the renderers in this folder need is here: the mallet and the
+/// bars, the bell, the bubble, the popnote, the bass, the pluck, the whistle,
+/// the swish and the four percussion sounds, the room they play in, the two
+/// mastering passes of `render.py` (one for a loop, one for a one-shot) and
+/// the WAV writer.
 library;
 
 import 'dart:io';
@@ -169,6 +171,49 @@ List<double> mallet(
   return [for (var i = 0; i < n; i++) out[i] * 0.45 * amp];
 }
 
+/// The same bar bending from [f0] to [f1] over [dur], as `render.py`'s
+/// `mallet_glide`: palette A's soft "nope" for `wrong`, and here the rubbery
+/// upward glide that makes a bump and a dropped coin sound like a toy, not a
+/// knock.
+List<double> malletGlide(double f0, double f1, {double dur = 0.35, double amp = 1, double decay = 0.30}) {
+  final n = (dur * sampleRate).round();
+  final out = Float64List(n);
+  var phase = 0.0;
+  for (var i = 0; i < n; i++) {
+    final t = i / _rate;
+    final f = f0 * pow(f1 / f0, t / dur);
+    phase += _tau * f / _rate;
+    final env = (t / 0.004).clamp(0.0, 1.0) * exp(-t / decay);
+    out[i] = (sin(phase) + 0.18 * sin(2 * phase) * exp(-t / (decay * 0.6))) * env;
+  }
+  return [for (var i = 0; i < n; i++) out[i] * 0.5 * amp];
+}
+
+/// Glockenspiel / soft chime: five inharmonic partials, as `render.py`'s
+/// `bell` — the coin's shimmer and `coin_appear`'s twinkle.
+List<double> bell(double f, {double dur = 1.0, double amp = 1}) {
+  final n = (dur * sampleRate).round();
+  final out = Float64List(n);
+  const partials = [
+    (1.0, 1.0, 0.55),
+    (2.0, 0.30, 0.40),
+    (2.76, 0.22, 0.30),
+    (5.4, 0.10, 0.18),
+    (8.93, 0.04, 0.10),
+  ];
+  for (final (ratio, level, k) in partials) {
+    final tau = dur * k + 1e-4;
+    for (var i = 0; i < n; i++) {
+      final t = i / _rate;
+      out[i] += level * exp(-t / tau) * sin(_tau * f * ratio * t);
+    }
+  }
+  for (var i = 0; i < n; i++) {
+    out[i] *= (i / (_rate * 0.001)).clamp(0.0, 1.0) * 0.35;
+  }
+  return [for (var i = 0; i < n; i++) out[i] * amp];
+}
+
 /// Rounded synth pluck: a sine plus a little odd-harmonic sparkle.
 List<double> popNote(double f, {double dur = 0.35, double amp = 1, double decay = 0.42}) {
   final n = (dur * sampleRate).round();
@@ -301,6 +346,21 @@ List<double> whistle(
   return [for (var i = 0; i < total; i++) sig[i] * amp];
 }
 
+/// Cartoon water-drop / bloop: a rising or falling sine chirp, as
+/// `render.py`'s `bubble` — the bounce of a bump and the fall of a coin.
+List<double> bubble(double f0, double f1, {double dur = 0.09, double amp = 1}) {
+  final n = (dur * sampleRate).round();
+  final out = Float64List(n);
+  var phase = 0.0;
+  for (var i = 0; i < n; i++) {
+    final t = i / _rate;
+    final f = f0 * pow(f1 / f0, t / dur);
+    phase += _tau * f / _rate;
+    out[i] = sin(phase) * (t / 0.003).clamp(0.0, 1.0) * exp(-t / (dur * 0.55));
+  }
+  return [for (var i = 0; i < n; i++) out[i] * amp];
+}
+
 /// Soft body hit: a fast downward sine sweep.
 List<double> thump(double f0, double f1, double dur, double amp) {
   final n = (dur * sampleRate).round();
@@ -357,6 +417,30 @@ List<double> shaker(Random rng, {double dur = 0.07, double amp = 1}) {
     out[i] = 0.7 * noise[i] * (t / 0.004).clamp(0.0, 1.0) * exp(-t / 0.013);
   }
   return [for (var i = 0; i < n; i++) out[i] * amp];
+}
+
+/// Noise swell with a band moving from [fromHz] to [toHz] over [dur], as
+/// `render.py`'s `whoosh`: six short bands in a row, each 0.6 to 1.5 times the
+/// moving centre, under a sine swell that rises and falls once. A rising one is
+/// the dash's "fwip"; `rumble` is the wider, lower one.
+List<double> swish(Random rng, double fromHz, double toHz, {double dur = 0.45, double amp = 1}) {
+  final n = (dur * sampleRate).round();
+  final out = Float64List(n);
+  const steps = 6;
+  final seg = n ~/ steps;
+  for (var i = 0; i < steps; i++) {
+    final a = i * seg;
+    final b = i < steps - 1 ? (i + 1) * seg : n;
+    final centre = fromHz * pow(toHz / fromHz, i / (steps - 1));
+    final band = bandNoise(rng, b - a, centre * 0.6, centre * 1.5);
+    for (var k = a; k < b; k++) {
+      out[k] = band[k - a];
+    }
+  }
+  for (var i = 0; i < n; i++) {
+    out[i] *= pow(sin(pi * (i / _rate / dur).clamp(0.0, 1.0)), 1.5);
+  }
+  return [for (var i = 0; i < n; i++) out[i] * 0.55 * amp];
 }
 
 /// The tiny early-reflection sheen every cue of the set sits in: [sig] plus
@@ -499,6 +583,41 @@ List<double> finishLoop(List<double> sig, double rmsDb, {double peakDb = -3}) {
   return out;
 }
 
+/// `render.py`'s `master`: `finishLoop`'s high-pass, loudness and soft-knee
+/// limit, then the 4 ms fade in at the start and out at the end that a
+/// one-shot has and a loop must not, so every cue starts and ends on silence.
+List<double> masterEvent(List<double> sig, double rmsDb, {double peakDb = -3}) {
+  final out = finishLoop(sig, rmsDb, peakDb: peakDb);
+  final fade = min(out.length ~/ 2, (0.004 * sampleRate).round());
+  for (var i = 0; i < fade; i++) {
+    final ramp = fade > 1 ? i / (fade - 1) : 1.0;
+    out[i] *= ramp;
+    out[out.length - fade + i] *= 1 - ramp;
+  }
+  return out;
+}
+
+/// The loudness of [sig] in dB over the same -45 dB gate the mastering uses.
+double rmsDb(List<double> sig) {
+  final peak = sig.fold<double>(0, (top, v) => max(top, v.abs()));
+  final gate = peak * pow(10, -45 / 20);
+  var sum = 0.0;
+  var count = 0;
+  for (final v in sig) {
+    if (v.abs() > gate) {
+      sum += v * v;
+      count++;
+    }
+  }
+  return count == 0 ? -180 : 20 * log(sqrt(sum / count)) / ln10;
+}
+
+/// The highest sample of [sig] in dB, or -180 dB for digital silence.
+double peakDb(List<double> sig) {
+  final peak = sig.isEmpty ? 0.0 : sig.fold<double>(0, (top, v) => max(top, v.abs()));
+  return 20 * log(max(peak, 1e-9)) / ln10;
+}
+
 /// The hyperbolic tangent, which dart:math does not have: (e²ˣ-1)/(e²ˣ+1),
 /// with [x] clamped so the exponential cannot run away.
 double _tanh(double x) {
@@ -533,4 +652,12 @@ void writeWav(String path, List<double> sig) {
     bytes.setInt16(44 + i * 2, (sig[i].clamp(-1.0, 1.0) * 32767).round(), Endian.little);
   }
   File(path).writeAsBytesSync(bytes.buffer.asUint8List());
+}
+
+/// The folder holding the running script, so the WAV masters land beside it as
+/// `render.py`'s do and never in the repository.
+Directory scriptDir() {
+  final script = File(Platform.script.toFilePath());
+  if (script.existsSync()) return script.parent;
+  return Directory('tools/audio');
 }
