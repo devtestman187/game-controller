@@ -97,6 +97,7 @@ The PRD's rules stand as written. How it is built:
 - **Rules file**: after `arena.dart` is split (groundwork), the Bumper Round is its own file on the shared marble movement; the race stays as it is. `ArenaMode { race, bumper }`; the mode is chosen before the round and never changes inside it.
 - **Contact**: one pass over the pairs each step, in roster order (fixed by player number) so it is deterministic: overlapping marbles are pushed apart and bounce. A dashing marble shoves the other hard. A marble that hits a wall within 0.5 s of being shoved by another counts as "shoved into a wall". A shove never pushes a marble through a wall (the move is sub-stepped as today).
 - **Coins**: three field coins at a time, each new one sparkling for 1 s (not takable), never placed under a marble, at seeded free spots in the map's coin zones (section 7b). A hazard or a shove into a wall drops one coin (worth 1) beside the marble, takable at once by anyone but the dropper, who is dizzy for 1 s (no dash) and then safe for 1 s (drops nothing). A marble with no coins drops nothing but is still dizzy. Dropped coins are extra to the three. In the last 15 s new field coins are gold, worth 2.
+- **How a coin looks** (owner, Nov 9, 2026, on mock-up 10: "the coins look very similar to the bumpers. Only the color looks different. Can the coin look a little more unique? Can it also spin?"): a chunky toy coin, not a ring. Yellow-gold with a thick darker rim, a star stamped in its face and a white glint. It **spins**: once every 1.2 s it turns on its upright axis, its width going from a full disc to a thin edge and back, the star flipping, each coin at its own phase so the field shimmers; the spin comes from the coin's age, so every screen shows the same turn. A coin still sparkling (not takable yet) spins faster and is half see-through. A **gold coin** (worth 2) is a third bigger, orange-gold, with a "2" stamped in place of the star and a small sparkle on its edge. Hazards keep their red-and-white rings, so a coin and a hazard differ in colour, shape and motion. With effects off a coin stands still, face-on. The spin is a turn, not a flash (G5).
 - **Clock**: 60 s counting down; it stands still whenever the round stands still (`Pausable`'s holds). At 0 the round is over: the most coins wins, ties share the win, and the result has `winners` and `draw` like the puzzle's (scan question 2). Night points: +1 per coin, +5 to each winner, both × `pointsScale`.
 - **Snapshot (version 2)**: top-level `md` (mode), `tl` (time left, ms), `co` (coins: position, gold, sparkle age, dropper); per marble `c` (coins), `dz` (dizzy), `sf` (safe). The HUD shows each player's coins beside their badge with a coin icon, on the host and joined phones.
 - **Sounds** (the a1 files): `dash`, `bump`, `bump_big` (a dash that shoves), `coin`, `coin_gold`, `coin_lost`, `coin_appear`; the music `arena`, `arena_hurry`, `arena_final` following the clock at 15 s and 5 s (look-and-sound §8). `MusicLoop` gains the Arena's trio, chosen by the game; `GameScreen` reports its clock and its end to `HostMusic` as `PuzzleScreen` does. The race Arena stays on `arena`.
@@ -157,21 +158,30 @@ What is in a map, and what its rules are:
 - **The guide's Arena part**: the field's coordinates with a diagram, each piece, the two modes' needs and the map rules. The workflow is the shared one: `new` → edit → `check` → `render` → look → commit.
 - **Robo finds its way with the kit's path grid**, so it can steer round any map's walls (section 7a).
 
-**Two new pieces**, so the maps feel different and not only rearranged (each in the rules, the painter, the snapshot and the rule book):
-- **Springs**: round toy springs fixed to the floor: a yellow coil under a green cap, never red, because red already means a hazard in the Arena. A marble that hits one bounces off at 1.5× its speed with `bump`. Not a hazard: it drops nothing. Snapshot `sp` (positions; the radius is a constant).
-- **Belts**: rectangular conveyor strips with arrows that carry a marble along at half its speed while it is on them. Snapshot `bl` (rect and direction). Drawn with arrows moving along them, so the direction is never colour alone (G5); with effects off the arrows stand still.
+**Rethought after the owner's review** (Nov 9, 2026, on mock-up 17: "Why is there still a finish area? Pinball and block castle don't really look like their names would imply. Can we rethink these maps?"). The first sketches had a finish because each map was meant to play both modes; a map built for a race is a corridor, and a corridor makes a dull bumper arena. So:
+- **The new maps are Bumper Round arenas, with no finish.** The race stays on the Playroom (the only map with a `race` section); the kit still allows race maps, for later.
+- **Each map looks like its name**: its own floor (`theme`), its own props drawn round the play (`decor`: flags, lights, gears; no collision), and pieces that belong there.
 
-**Four new maps** (Claude, Nov 9, 2026), each with its own look and twist, all playing both modes. Today's Playroom stays as the fifth and the default. Exact shapes are drawn in the maps job with the kit and shown to the owner as renders before they land:
+**The pieces** (each in the rules, the painter, the snapshot and the map rules):
+- **Springs**: round toy springs fixed to the floor, a yellow coil under a green cap, never red (red means a hazard). A marble that hits one bounces off at 1.5× its speed with `bump`. Not a hazard: it drops nothing.
+- **Bouncy walls**: a wall with `"bouncy": true` kicks like a spring (Pinball's slingshots).
+- **Posts**: round solid pillars (a castle's towers, a factory's columns).
+- **Movers**: walls that move on a timer: `swing` (about a pivot between two angles: flippers), `spin` (round a pivot, steadily: a carousel) and `slide` (between two places: a gate, a press). A moving wall pushes a marble out of its way and never through another wall; a mover that pins a marble against a wall stops for that step rather than crush it.
+- **Belts**: conveyor strips with arrows that carry a marble along at half its speed. The arrows move with effects on, stand still with effects off; the direction is never colour alone (G5).
+- **Still hazards**: a hazard that doesn't move (Pinball's drain), drawn like the moving ones.
 
-| Map | Theme | Twist | The race | The Bumper Round |
-| --- | --- | --- | --- | --- |
-| **Pinball** | a toy pinball table, bright lane stripes | clusters of springs, few walls, two orbiting spinners | weave through the springs; a clean line beats a bouncy one | coins sit near the springs, so a grab risks a wild bounce |
-| **Toy Factory** | grey-blue workshop floor, yellow edges | belts in a loop, sliding crates (slide hazards) | ride the belts that help, cross the ones that don't | coins sit beside the belts (never on them), and a shove onto a belt carries you away |
-| **Spinning Tops** | round garden rug | everything round: a ring of orbiting tops round an open middle, a small walled island with four doors | the goal behind the island; time the doors | the open middle is the coin zone; the ring is the danger at the edge |
-| **Block Castle** | castle of toy blocks | short walls and doorways, a loose maze, hazards only in two courtyards | find the quick route through the doors | corridors make shoves into walls likely: risky, funny, short |
+**The four maps** (Claude, Nov 9, 2026); exact shapes are drawn in the maps job with the kit and shown to the owner as renders before they land:
 
+| Map | It looks like | What happens in it |
+| --- | --- | --- |
+| **Pinball** | a toy pinball table seen from above: a deep-blue table with a rounded top, painted star lights and arrows, chrome rails | three **pop bumpers** (springs) in a triangle near the top; two **slingshots** (bouncy walls) above two **flippers** (swing movers) that flick up every 2 s and bat marbles back up the table; the **drain** between the flippers is a still hazard; three **top lanes** between short posts, where gold coins like to appear |
+| **Block Castle** | a castle built of toy blocks seen from above: crenellated outer walls in two-tone blocks, a round **tower** (post) at each corner with a flag, a lawn courtyard, a stone **keep** in the middle | the keep's four **gates** (slide movers) open and close in turn; **cannonballs** (slide hazards drawn as red-rimmed cannonballs) roll across the courtyard; coins in the courtyard corners, gold coins inside the keep, worth the risk of a closing gate |
+| **Toy Factory** | a workshop floor with yellow-and-black edges, painted gears, columns (posts) | a loop of **belts**; a **press** (slide mover) that stamps down and up; sliding **crates** (slide hazards with red warning stripes); coins beside the belts, never on them |
+| **Spinning Tops** | a round playroom rug with a pattern of rings | a ring of spinning **tops** (orbiting hazards) round the edge; in the middle a slow **carousel** (a spin mover: a cross of four walls) that sweeps marbles round; coins in the quarters between its arms |
+
+- **The snapshot names the map, and the phone draws it from its own copy**: what never moves (walls, posts, springs, belts' strips, decor, the theme) comes from the map file, which every build ships; each frame carries only what moves (marbles, coins, hazards, movers' ends, belts' arrows' phase). A map id a phone doesn't have shows the update text, like a version mismatch. This keeps busy maps inside the 2048-byte budget.
 - **Picking a map**: the waiting card shows the maps as small cards with their picture (the render), plus "Surprise me", which picks one not played last. Remembered on the host; Surprise me the first time. In a night, each Bumper Round starts on Surprise me, picking a map the night hasn't used yet; the host may change it on the waiting card.
-- **Snapshot**: `sp`, `bl` and `th` (the theme) are added in the Arena's version 2 (the Bumper Round's), so all of M14's Arena changes need one update on old phones.
+- **Snapshot**: the map id and the moving parts are added in the Arena's version 2 (the Bumper Round's), so all of M14's Arena changes need one update on old phones.
 
 ## 8. The Arena's waiting card
 
@@ -183,6 +193,11 @@ What is in a map, and what its rules are:
 ## 9. Nicknames, results on joined phones and best times
 
 - **Nicknames (C20)**: a "Nickname" field in the phone's settings (up to 10 characters, letters, numbers and spaces), saved beside the controller id; "Shows next time you join". Section 2 N13.
+- **Choosing your character (L7, moved to M14)** (owner, Nov 9, 2026: "Players should also be able to select a color in M14"): beside the nickname, the phone's settings show the six colours and the six accessories (round ears, an antenna, a bow, a cap, a tuft, a crown) as big round buttons, with a preview of your worker and marble wearing them. Saved on the phone with the nickname; the first time, the phone offers the defaults it would get as player 1.
+  - **Sent as an optional field** of the hello (`character`: colour slot and accessory), so a host one build older ignores it and players look as they do today. docs/protocol.md lists it.
+  - **No two players alike**: the host gives each player their colour and their accessory, first come first served. If someone already has your colour (or accessory), you get the nearest free one, and your phone says so in a line ("Blue is taken tonight, you're Teal"). So colour and accessory each stay unique in a game, and colour-blind players can still tell everyone apart by the accessory.
+  - **Everyone draws the host's choice**: the roster that rides beside each frame carries each player's character, so the TV, the host phone and every joined phone draw the same worker, marble and badge. `ToyCharacter.forPlayer(number)` stays as the default when no choice is sent (look-and-sound 5b already made this a change of data).
+  - The player's number stays (in words and on badges). Robo keeps its own robot look and takes a free colour.
 - **Results on joined phones**: when a round ends, the host sends each phone that draws the round a `view_end` with `result`: its own outcome (`win`, `loss`, `draw`, or `done` with the time on one board), its side's time or pieces (or coins), its points in a night, and in a night `{round, of, standings}`. The phone keeps the last frame and shows the card over it: "You win!", "You lose", "Draw", "Done! 1:42", then "Waiting for the host to pick what's next." The card goes on the next `view_start`, or on a second `view_end` without a result (the host left the results). A phone that gets no `result` (a host one build older) goes back to its pad as in M12. docs/protocol.md lists the field.
 - **Best times (T15)**: a "Best times" button on Shape Race's puzzle pick opens the board (per puzzle and level, the top 3, time and nicknames). A new record on the results card: "New record!", `new_record` cue and confetti.
 
@@ -198,7 +213,7 @@ Drawn by docs/design/look-mockups.html, each in Sunny and Night, saved under doc
 7. The Bumper Round: coins, a gold coin, a dizzy marble, the clock and the coin HUD
 8. A joined phone's results card in a night
 9. The best-times board and a "New record!" results card
-10. The phone's nickname field
+10. The phone's settings: the nickname field, and choosing a colour and an accessory with a preview
 
 ## 11. Sounds for the new moments
 
@@ -221,13 +236,13 @@ Each step is a flash job with a brief and a review gate, at most three at once, 
 - **g2 Arena split** (`test_game`): `arena.dart` (487) split by a pure move into the marble movement, the race rules and the field; the size FAIL goes green.
 - **g3 host groundwork** (`party_host`, `game_kit`, `assets`): the empty-rounds record (an abandoned round's `round_end` adds no round to the stats); the round music resuming where it was after the app was hidden (R4 8); the a1 `SoundKey`s and CREDITS rows (playing nothing yet); the `RoundResult` type in `game_kit` with its test.
 
-The Arena's jobs run one after another, since each builds on the last: g2 → k1a → k1b → b1 → k2 → b2 → b3. k1 is split in two: **k1a** makes the puzzle kit general (the shared core in `game_kit`, `tools/level.sh`, docs/levels.md), **k1b** adds the maps (the format, `playroom.json`, the map rules and their path grid, the map render; `arena_field.dart` under 300 lines). The Shape Race and host jobs run beside them.
+The Arena's jobs run one after another, since each builds on the last: g2 → k1a → k1b → b1 → k2a → k2b → b2 → b3. k1 is split in two: **k1a** makes the puzzle kit general (the shared core in `game_kit`, `tools/level.sh`, docs/levels.md), **k1b** adds the maps (the format, `playroom.json`, the map rules and their path grid, the map render; `arena_field.dart` under 300 lines). The Shape Race and host jobs run beside them.
 
 **Wave 2**: **a1 points** (G1, `puzzle_game`, after g1), **k1 the level kit** (section 7b: the puzzle kit becomes one kit for both games: the shared core in `game_kit`, `tools/level.sh`, docs/levels.md; then the map format, schema, parser, `playroom.json` playing as today, the map rules with their path grid; `test_game`, `puzzle_game`, `game_kit`, tools, docs; after g1 and g2), **m1 mock-ups** (section 10, `docs/design`).
 
 **Wave 3**: **b1 Bumper rules** (G9 rules, contacts, coins in the map's zones, the clock, snapshot version 2, events and sounds, `RoundResult`; `test_game`, after k1 and g3), **c1 the night** (N1–N7, `party_host`: `PartyNight`, the start card, the scoreboard, the picker card, `onFinished` from both games; after m1's OK), **a2 the cat** (G3, `puzzle_game` and Puzzle settings, after a1).
 
-**Wave 4**: **k2 the four maps** (section 7b: springs and belts in the rules, painter, snapshot and rule book; Pinball, Toy Factory, Spinning Tops, Block Castle, rendered for the owner; after b1), **s1 sounds** (section 11, `tools/audio`, `assets`), **c3 the phone** (nicknames and results on joined phones, `controller_app`, `protocol`, after c1).
+**Wave 4**: **k2a the map pieces** (section 7b: springs, bouncy walls, posts, movers, belts, still hazards, themes and decor in the rules, painter, map format and map rules; the snapshot naming the map; after b1), then **k2b the four maps** (Pinball, Block Castle, Toy Factory, Spinning Tops, rendered for the owner), **s1 sounds** (section 11, `tools/audio`, `assets`), **c3 the phone** (nicknames, choosing a character (L7) and results on joined phones, `controller_app`, `protocol`, after c1).
 
 **Wave 5**: **b2 the Arena's screens** (the waiting card with modes, maps and Robo's levels, the ready beat on the TV, the results card, the music's clock; after m1's OK and k2), **c2 awards and best times** (G4 with the added awards, T15, after c1 and s1).
 

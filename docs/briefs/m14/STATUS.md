@@ -8,11 +8,11 @@ The design is written: **docs/design/party-night.md** (decisions N1–N15, the j
 
 Done: **g1** (493e359) and Claude's **g1b** (the turned and phone-size rules in `check`, cb5915a), **g2** (6f896af), **g3** (43d02cb).
 
-Waiting on the owner: **the mock-ups** (m1 59b381e, m1b 1455bbb: 17 frames in Sunny and Night, docs/design/look-mockups/m14-*.png, sent Nov 9). The screen jobs (c1, b2, c2, c3, a3) wait for the OK.
+Owner's review of the mock-ups (Nov 9): the coin needs its own look and a spin; the four maps rethought as Bumper Round arenas that look like their names, with no finish; colour and accessory choice joins M14 (L7, in c3). All in the design (sections 7, 7b, 9); **m1c** redraws them. Then the mock-ups go back to the owner. Earlier: (m1 59b381e, m1b 1455bbb: 17 frames in Sunny and Night, docs/design/look-mockups/m14-*.png, sent Nov 9). The screen jobs (c1, b2, c2, c3, a3) wait for the OK.
 
 Done since: **k1a** the level kit's shared core (8339db3: `tools/level.sh`, docs/levels.md, `LevelIssue` in game_kit).
 
-Running: **a1** points (G1, snapshot version 2, `MatchResult.round`), **k1b** the Arena's maps in the kit (`playroom.json`, the map rules, `MapGrid`). Logs in the session scratchpad `flash-m14-<job>.log`. A job is done when its `docs/briefs/m14/<job>-report.md` exists here or in its job folder; if one is missing and no flash process runs, start it again with `tools/flash.sh --brief docs/briefs/m14/<brief>.md` (Bash `run_in_background`).
+Running: **m1c** the mock-up changes, **a1** points (G1, snapshot version 2, `MatchResult.round`), **k1b** the Arena's maps in the kit (`playroom.json`, the map rules, `MapGrid`). Logs in the session scratchpad `flash-m14-<job>.log`. A job is done when its `docs/briefs/m14/<job>-report.md` exists here or in its job folder; if one is missing and no flash process runs, start it again with `tools/flash.sh --brief docs/briefs/m14/<brief>.md` (Bash `run_in_background`).
 
 Device-test list (so far): hide a phone host mid-round and show it again: the round's music carries on from where it was (g3; SoLoud can't be unit-tested).
 
@@ -21,7 +21,7 @@ Then, in order:
 2. After m1b: save each of the 17 frames as a PNG with headless Chrome (`chrome --headless=new --screenshot=<file> --window-size=1280,720` or 816,384 for the phone frames, `party-mockups.html?frame=N&theme=sunny|night`; paths via `cygpath -m`) under docs/design/look-mockups/ as `m14-<theme>-NN-<name>.png`, re-check M13's 22 frames are byte-identical, look at every frame, commit, send to the owner. The screen jobs (c1, b2, c2, c3) wait for the OK.
 3. After k1b: b1 (the Bumper Round's rules). After a1: a2 (the cat). Then b1, c1 and the rest as the design's section 13 says.
 4. The finish celebration (owner, Nov 9) is design section 3a and job a3, after a1 and c1.
-5. Open owner question: avatars (PRD L7, "Later") were raised on Nov 9; Claude recommended picking an accessory with the nickname in c3.
+5. Avatars: answered, colour and accessory both, in M14 (L7, job c3).
 
 Housekeeping: one old job worktree, `E:\AI\game-controller-m13-jobs\flash-20261109-083539-456`, could not be removed (a file in use); try `git worktree remove --force` again later, from the m13 worktree.
 
