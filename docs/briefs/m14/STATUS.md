@@ -10,7 +10,7 @@ Running: **wave 1, the groundwork jobs** g1 (puzzle: split game.dart and puzzle_
 
 Then, in order:
 1. Review g1–g3 (renders, tests, `tools/review.sh --base 79ce8fb`), append "Claude's review", commit each.
-2. Wave 2: a1 points (G1), k1 the Arena map kit (G10, design section 7b), m1 mock-ups of the ten new screens (design section 10). The Arena lane runs g2 → k1 → b1 → k2 (the four maps) → b2 → b3 (Robo). Send the mock-ups to the owner; the screen jobs (c1, b2, c2, c3) wait for the OK.
+2. Wave 2: a1 points (G1), k1 the level kit (G10, design section 7b: the puzzle kit grown to take the Arena's maps; after g1 and g2), m1 mock-ups of the ten new screens (design section 10). The Arena lane runs g2 → k1 → b1 → k2 (the four maps) → b2 → b3 (Robo). Send the mock-ups to the owner; the screen jobs (c1, b2, c2, c3) wait for the OK.
 3. Waves 3 and 4 as the design's section 13 says, then the full review R5 and device tests. A build only on the owner's word.
 
 Housekeeping: one old job worktree, `E:\AI\game-controller-m13-jobs\flash-20261109-083539-456`, could not be removed (a file in use); try `git worktree remove --force` again later, from the m13 worktree.

@@ -110,23 +110,35 @@ The PRD's rules stand as written. How it is built:
 - **The rules don't know Robo is a CPU**: the session adds Robo's input to the same map of inputs the players' phones fill (`arena_session.dart`), so contacts, coins and the clock are the same code.
 - **Shape Race**: no CPU in M14 (a worker that picks, carries, turns and drops is a bigger job); Claude suggests it for M15, beside power-ups.
 
-## 7b. Arena maps and the map kit (owner, Nov 9, 2026: "For arena, can we designed 4 unique maps and have a map kit for developers similar to shape race?")
+## 7b. Arena maps in the level kit (owner, Nov 9, 2026: "For arena, can we designed 4 unique maps and have a map kit for developers similar to shape race?")
 
 Today the Arena has one field, written as constants in `arena.dart`: line walls, two kinds of moving hazard (a slide between two points, an orbit round a centre), a start point and a goal, in fractions of a 16:9 field. A joined phone already draws walls and hazards from the snapshot (`wl`, `hz`, `g`), so a new map needs nothing new on the phone except the new pieces below.
 
-**The kit**, built like the puzzle kit (docs/puzzles.md, `tools/puzzle.sh`):
+**One kit for both games** (owner, Nov 9, 2026: "Remember to leverage the existing kit for shape-race so developers do not need to learn multiple kits for this game"). The maps join Shape Race's puzzle kit, not a second kit: a developer learns one tool, one file layout, one workflow and one guide.
+
+| | Today (puzzles only) | After k1 (puzzles and maps) |
+| --- | --- | --- |
+| The tool | `tools/puzzle.sh new / check / render` | **`tools/level.sh`**, the same three verbs: `new puzzle <id> --level easy\|medium` or `new map <id>`, then `check [id]` and `render <id>` work on either, found by id (ids are unique across both games). `tools/puzzle.sh` goes; every mention is updated |
+| The guide | docs/puzzles.md | **docs/levels.md**: one shared part (the workflow, the file header, the index, the template, the colour tokens, reading a `check` message, `render`), then a Shape Race part (today's puzzles.md) and an Arena part (maps) |
+| The file header | `$schema`, `format`, `id`, `name`, `notes`; listed in `index.json`; `_template.json` | the same header and the same index and template rules for maps, in `packages/test_game/maps/` |
+| The rule book | `checkPuzzle` / `checkLibrary` return `PuzzleIssue {puzzle, piece?, rule, message}` | a shared core in `game_kit`: one `LevelIssue {level, part?, rule, message}`, the header and `format` checks, the index-and-files check and the schema check, written once; each game adds only its own rules (`puzzle_rules`, `map_rules`) |
+| The pictures | `docs/design/puzzles/<id>.png` | the same render harness; maps into `docs/design/maps/<id>.png` |
+
+Kept apart on purpose: each game's own fields and rules, and each game's schema file, since a puzzle and a map have nothing else in common.
+
+What is in a map, and what its rules are:
 - **One JSON file per map** in `packages/test_game/maps/`, listed in `index.json`, with `$schema` (`map.schema.json`, so an editor autocompletes and flags mistakes) and `format: 1`. Fields: `id`, `name`, a one-line `line` for the picker, `theme` (the floor's look), `walls` (from, to), `hazards` (slide or orbit, with period and phase), `springs` and `belts` (below), `race` (start, goal, whether rounds swap sides) and `bumper` (four start spots and the coin zones). A map may leave out `race` or `bumper`; the picker then only offers the other mode.
 - **Today's field becomes the first file, `playroom.json`**, and plays exactly as now: every existing arena test passes unchanged.
-- **A rule book** (`map_rules.dart`, a pure function from a map to a list of issues, each with a message a developer can act on), the whole check:
-  - inside the field; ids unique; every file listed and every listed id a file;
+- **The map rules** (`map_rules.dart`, on the shared core above, each issue with a message a developer can act on):
+  - inside the field (the header, ids and index come from the shared core);
   - every gap a marble must pass is at least 2.5 marbles wide, so two can pass and none gets stuck;
   - the race: start and goal clear; a path from every start to the goal for a marble (a grid flood fill with the walls grown by a marble's radius), both ways when rounds swap sides; no hazard sweeps a start or the goal;
   - the Bumper Round: four start spots, clear, at least 3 marbles apart, outside every hazard's sweep; coin zones reachable, clear of walls, big enough for the three coins and drops; no pocket a marble can't reach;
   - limits for speed and a calm screen: at most 24 walls, 8 hazards, 8 springs, 6 belts; no hazard faster than one pass every 1.5 s;
   - the map's snapshot with 4 marbles and 6 coins stays under the 2048-byte budget (walls go in every frame);
   - its theme's floor keeps every player colour and hazard readable in Sunny and Night (the look's contrast rule).
-- **The tool**, `tools/arena.sh`: `new <id> [--name "Name"]` (from `_template.json`, added to the index), `check [id]`, `render <id>` (the field in Sunny and Night with the starts, goal, coin zones and each hazard's sweep drawn faintly, into `docs/design/arena-maps/<id>.png`).
-- **The guide**, `docs/arena-maps.md`: the field's coordinates with a diagram, each piece, the two modes' needs, the rules, and the workflow `new` → edit → `check` → `render` → look → commit. Linked from the README and `docs/dev-tools.md`.
+- **A map's render** (`tools/level.sh render <id>`): the field in Sunny and Night with the starts, goal, coin zones and each hazard's sweep drawn faintly.
+- **The guide's Arena part**: the field's coordinates with a diagram, each piece, the two modes' needs and the map rules. The workflow is the shared one: `new` → edit → `check` → `render` → look → commit.
 - **Robo finds its way with the kit's path grid**, so it can steer round any map's walls (section 7a).
 
 **Two new pieces**, so the maps feel different and not only rearranged (each in the rules, the painter, the snapshot and the rule book):
@@ -195,7 +207,7 @@ Each step is a flash job with a brief and a review gate, at most three at once, 
 
 The Arena's jobs run one after another, since each builds on the last: g2 → k1 → b1 → k2 → b2 → b3. The Shape Race and host jobs run beside them.
 
-**Wave 2**: **a1 points** (G1, `puzzle_game`, after g1), **k1 the map kit** (section 7b: the format, schema, parser, `playroom.json` playing as today, the rule book with its path grid, `tools/arena.sh`, `docs/arena-maps.md`; `test_game`, after g2), **m1 mock-ups** (section 10, `docs/design`).
+**Wave 2**: **a1 points** (G1, `puzzle_game`, after g1), **k1 the level kit** (section 7b: the puzzle kit becomes one kit for both games: the shared core in `game_kit`, `tools/level.sh`, docs/levels.md; then the map format, schema, parser, `playroom.json` playing as today, the map rules with their path grid; `test_game`, `puzzle_game`, `game_kit`, tools, docs; after g1 and g2), **m1 mock-ups** (section 10, `docs/design`).
 
 **Wave 3**: **b1 Bumper rules** (G9 rules, contacts, coins in the map's zones, the clock, snapshot version 2, events and sounds, `RoundResult`; `test_game`, after k1 and g3), **c1 the night** (N1–N7, `party_host`: `PartyNight`, the start card, the scoreboard, the picker card, `onFinished` from both games; after m1's OK), **a2 the cat** (G3, `puzzle_game` and Puzzle settings, after a1).
 
