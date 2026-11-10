@@ -1,22 +1,23 @@
 #!/usr/bin/env bash
-# The level kit (M14 k1a): make, check and render one level, a puzzle or a map.
+# The level kit (M14 k1a, maps from k1b): make, check and render one level.
 #
 #   tools/level.sh new puzzle <id> --level easy|medium [--name "Name"]
+#   tools/level.sh new map <id> [--name "Name"]
 #   tools/level.sh check [id]      # every kind's rule book, or one level's
-#   tools/level.sh render <id>     # writes docs/design/puzzles/<id>.png
+#   tools/level.sh render <id>     # writes docs/design/puzzles/<id>.png, or maps/
 #   tools/level.sh --self-test     # print the commands a run would use
 #
-# Maps come with the Arena's map kit (M14 k1b). The guide is docs/levels.md.
-# Works in Git Bash on Windows and bash on macOS/Linux.
+# The guide is docs/levels.md. Works in Git Bash on Windows and bash on macOS/Linux.
 set -u
 
 cd "$(dirname "$0")/.." || exit 2
 root="$(pwd)"
 
 # kind | files folder | package | test define | check tests | render test
-# A kind joins this table when its game reads level files: maps in M14 k1b.
+# A kind joins this table when its game reads level files (M14 k1a).
 kinds=(
   "puzzle|packages/puzzle_game/puzzles|packages/puzzle_game|puzzleId|test/puzzle_check_test.dart test/puzzle_schema_test.dart|test/puzzle_render_test.dart"
+  "map|packages/test_game/maps|packages/test_game|mapId|test/map_check_test.dart test/map_schema_test.dart|test/map_render_test.dart"
 )
 
 usage() { sed -n '2,10p' "$0" | sed 's/^# \{0,1\}//'; }
@@ -26,7 +27,7 @@ no_level() {
   local row kind folder package define check_tests render_test
   for row in "${kinds[@]}"; do
     IFS='|' read -r kind folder package define check_tests render_test <<< "$row"
-    echo "No level at $folder/$1.json (see the list in index.json)." >&2
+    echo "No $kind at $folder/$1.json (see the list in $folder/index.json)." >&2
   done
 }
 
@@ -41,7 +42,11 @@ self_test() {
       echo "self-test: $kind: no index at $folder/index.json" >&2
       bad=1
     else
-      echo "new $kind: dart tools/level_new.dart new $kind <id> --level easy|medium [--name \"Name\"]"
+      if [ "$kind" = puzzle ]; then
+        echo "new $kind: dart tools/level_new.dart new $kind <id> --level easy|medium [--name \"Name\"]"
+      else
+        echo "new $kind: dart tools/level_new.dart new $kind <id> [--name \"Name\"]"
+      fi
       echo "check ($kind): cd $package && flutter test $check_tests"
       echo "check <id> ($kind): cd $package && flutter test --dart-define=$define=<id> $check_tests"
       echo "render <id> ($kind): cd $package && flutter test --dart-define=$define=<id> $render_test"

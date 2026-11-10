@@ -1,0 +1,25 @@
+{
+  "$schema": "map.schema.json",
+  "format": 1,
+  "id": "untitled",
+  "name": "Untitled",
+  "line": "One line about the map, for the picker's card.",
+  "notes": "Copy this file to <id>.json, edit it, then run tools/level.sh check <id> until it is quiet and tools/level.sh render <id> to look at it. Positions are fractions of the field (0..1 across, 0..1 down); sizes are fractions of its shorter side. There are rules docs/levels.md lists: everything inside the field, routes through gaps at least 1.6 marbles wide (aim for 2.5), starts and coin zones clear of walls and hazards, four bumper starts 3 marbles apart, and no free spot a marble can never reach.",
+  "theme": "playroom",
+  "walls": [
+    {"from": [0.30, 0.30], "to": [0.30, 0.70]},
+    {"from": [0.66, 0], "to": [0.66, 0.34]},
+    {"from": [0.66, 0.66], "to": [0.66, 1]}
+  ],
+  "hazards": [{"slide": {"from": [0.48, 0.10], "to": [0.48, 0.90]}, "periodS": 3.2}],
+  "race": {"start": [0.08, 0.50], "goal": [0.86, 0.38, 0.97, 0.62], "swapSides": true},
+  "bumper": {
+    "starts": [[0.08, 0.28], [0.08, 0.72], [0.92, 0.28], [0.92, 0.72]],
+    "coins": [
+      [0.05, 0.05, 0.20, 0.20],
+      [0.80, 0.05, 0.95, 0.20],
+      [0.05, 0.80, 0.20, 0.95],
+      [0.80, 0.80, 0.95, 0.95]
+    ]
+  }
+}

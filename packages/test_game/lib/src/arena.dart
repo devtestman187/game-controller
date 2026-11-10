@@ -21,11 +21,14 @@ enum ArenaPhase {
 ///
 /// The field, the marbles and the movement they share are [ArenaFieldRules]'s
 /// (party-night §7); this adds the race's round on top: who reached the goal
-/// and the break before the next round.
+/// and the break before the next round. The map (M14 k1b) is the Playroom's
+/// until the waiting card picks one (M14 b2).
 ///
 /// The tuning values were tried on the devices in M5.
 class ArenaGame extends ArenaFieldRules {
-  ArenaGame({super.walls, super.hazards, super.size});
+  /// The map to race on (M14 k1b), the Playroom's when none is given until the
+  /// waiting card picks one (M14 b2).
+  ArenaGame({super.map, super.size});
 
   /// The break after a won round, in seconds: the winner's banner stays up
   /// this long before the field mirrors and the next round starts.

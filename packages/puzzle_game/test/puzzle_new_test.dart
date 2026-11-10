@@ -17,11 +17,27 @@ Directory copyOfPuzzles() {
   return folder;
 }
 
+/// A copy of the real maps folder, so `new map` writes into it as it would
+/// into the repository and nothing is left behind.
+Directory copyOfMaps() {
+  final folder = Directory.systemTemp.createTempSync('map-new-');
+  for (final file in Directory('../test_game/maps').listSync().whereType<File>()) {
+    file.copySync('${folder.path}/${file.uri.pathSegments.last}');
+  }
+  return folder;
+}
+
 Map<String, Object?> read(Directory folder, String id) =>
     jsonDecode(File('${folder.path}/$id.json').readAsStringSync()) as Map<String, Object?>;
 
+/// The puzzle ids [folder]'s index.json lists.
 List<String> idsOf(Directory folder) =>
     ((jsonDecode(File('${folder.path}/index.json').readAsStringSync()) as Map<String, Object?>)['puzzles']! as List)
+        .cast<String>();
+
+/// The map ids [folder]'s index.json lists.
+List<String> mapIdsOf(Directory folder) =>
+    ((jsonDecode(File('${folder.path}/index.json').readAsStringSync()) as Map<String, Object?>)['maps']! as List)
         .cast<String>();
 
 void main() {
@@ -74,16 +90,23 @@ void main() {
     expect(idsOf(folder), indexIds(), reason: 'nothing was written');
   });
 
-  test('new map is refused with the message that says when maps come (M14 k1a)', () {
-    expect(newKindRefusal('puzzle'), isNull, reason: 'the puzzle kind is the one this tool makes');
-    expect(newKindRefusal('map'), mapsComingMessage);
-    expect(
-      () => createLevel(folder, kind: 'map', id: 'arena', name: 'Arena', level: 'easy'),
-      throwsA(isA<FormatException>().having((error) => error.message, 'message', mapsComingMessage)),
-      reason: 'tools/level.sh new map says this and writes nothing',
-    );
-    expect(newKindRefusal('trophy'), '"trophy" is not a kind of level: use puzzle');
-    expect(idsOf(folder), indexIds(), reason: 'nothing was written');
+  test('new map makes a map from its template, through the same createLevel (M14 k1b)', () {
+    expect(newKindRefusal('puzzle'), isNull);
+    expect(newKindRefusal('map'), isNull, reason: 'maps are the kit\'s second kind of level');
+    expect(newKindRefusal('trophy'), '"trophy" is not a kind of level: use puzzle or map');
+
+    final maps = copyOfMaps();
+    addTearDown(() => maps.deleteSync(recursive: true));
+    createLevel(maps, kind: 'map', id: 'arena', name: 'Arena');
+    final created = read(maps, 'arena');
+    final template = jsonDecode(File('../test_game/maps/_template.json').readAsStringSync()) as Map<String, Object?>;
+    expect(created['id'], 'arena');
+    expect(created['name'], 'Arena');
+    expect(created['\$schema'], 'map.schema.json');
+    expect(created['format'], template['format']);
+    expect(created['walls'], template['walls'], reason: 'the field is the template\'s, to edit');
+    expect(created['notes'], template['notes'], reason: 'the workflow notes stay for the developer');
+    expect(mapIdsOf(maps), ['playroom', 'arena'], reason: 'added at the end of maps/index.json');
   });
 
   test('a name is made from the id when none is given', () {

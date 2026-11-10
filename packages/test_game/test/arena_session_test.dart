@@ -6,6 +6,8 @@ import 'package:game_kit/game_kit.dart';
 import 'package:protocol/protocol.dart';
 import 'package:test_game/test_game.dart';
 
+import 'support/maps.dart';
+
 /// The host clock and the Ticker's elapsed time, both moved by the test.
 final class Clock {
   int nowMs = 0;
@@ -26,7 +28,7 @@ void main() {
     clock.host
       ..setPlayer(const GamePlayer(id: 'a', number: 1, nickname: 'Phone a'))
       ..setGamepad('a', GamepadState.fromInput(InputStateMessage(seq: 1, dx: 1)));
-    final game = ArenaGame(walls: const [], hazards: const []);
+    final game = ArenaGame(map: testMap());
     final session = ArenaSession(host: clock.host, game: game, onEvent: (_) {});
     for (var i = 0; i < 400 && game.phase == ArenaPhase.playing; i++) {
       clock.frame(session, 16);
@@ -59,7 +61,7 @@ void main() {
     clock.host
       ..setPlayer(const GamePlayer(id: 'a', number: 1))
       ..setGamepad('a', GamepadState.fromInput(InputStateMessage(seq: 1, dx: 1)));
-    final game = ArenaGame(walls: const [], hazards: const []);
+    final game = ArenaGame(map: testMap());
     final session = ArenaSession(
       host: clock.host,
       game: game,
@@ -78,7 +80,7 @@ void main() {
     clock.host
       ..setPlayer(const GamePlayer(id: 'a', number: 1))
       ..setGamepad('a', GamepadState.fromInput(InputStateMessage(seq: 1, dx: 1)));
-    final game = ArenaGame(walls: const [], hazards: const []);
+    final game = ArenaGame(map: testMap());
     final session = ArenaSession(host: clock.host, game: game, onEvent: (_) {});
     for (var i = 0; i < 1000 && game.round == 1; i++) {
       clock.frame(session, 16);
@@ -118,7 +120,7 @@ void main() {
     clock.host
       ..setPlayer(const GamePlayer(id: 'a', number: 1))
       ..setGamepad('a', GamepadState.fromInput(InputStateMessage(seq: 1, dx: 1)));
-    final game = ArenaGame(walls: const [], hazards: const []);
+    final game = ArenaGame(map: testMap());
     final session = ArenaSession(host: clock.host, game: game, onEvent: (_) {});
     for (var i = 0; i < 10; i++) {
       clock.frame(session, 16);
@@ -163,7 +165,7 @@ void main() {
     clock.host
       ..setPlayer(const GamePlayer(id: 'a', number: 1))
       ..setGamepad('a', GamepadState.fromInput(InputStateMessage(seq: 1, dx: 1)));
-    final game = ArenaGame(walls: const [], hazards: const []);
+    final game = ArenaGame(map: testMap());
     final session = ArenaSession(host: clock.host, game: game, onEvent: (_) {});
     for (var i = 0; i < 400 && game.phase == ArenaPhase.playing; i++) {
       clock.frame(session, 16);

@@ -1,0 +1,193 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://thumbparty.dev/map.schema.json",
+  "title": "Arena map",
+  "description": "One arena map (M14 k1b): the walls, hazards, start and goal a race is played on, and the starts and coin zones the Bumper Round uses. The guide is docs/levels.md; the rules a file must keep are in packages/test_game/lib/src/map_rules.dart, run by tools/level.sh check.",
+  "type": "object",
+  "required": ["id", "name", "line", "theme"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "The schema this file follows, so VS Code autocompletes the fields and marks mistakes as you type. Write \"map.schema.json\"."
+    },
+    "format": {
+      "type": "integer",
+      "const": 1,
+      "description": "The map format the file is written in (M14 k1b). Today it is 1; a file with a newer format is refused by an older app with a message saying so."
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*$",
+      "description": "The map's id, matching its file name (playroom.json has id \"playroom\") and the entry in index.json. Lower case letters, digits and hyphens."
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The name players see in the map picker: \"Playroom\"."
+    },
+    "line": {
+      "type": "string",
+      "minLength": 1,
+      "description": "One line about the map, for the picker's card: \"The first arena: walls, four bumpers and a goal to race for.\""
+    },
+    "notes": {
+      "type": "string",
+      "description": "A comment for the map's author. The app ignores it; the template's instructions are written here."
+    },
+    "theme": {
+      "enum": ["playroom"],
+      "errorMessage": "{value} is not a theme: use playroom",
+      "description": "The floor's look, which every map names. Only \"playroom\" today; the Bumper Round's own floors come with M14 k2."
+    },
+    "walls": {
+      "type": "array",
+      "maxItems": 24,
+      "description": "The field's walls, at most 24 of them: a wall is a straight segment a marble cannot pass through.",
+      "items": {"$ref": "#/$defs/wall"}
+    },
+    "hazards": {
+      "type": "array",
+      "maxItems": 8,
+      "description": "The moving hazards, at most 8, none faster than one pass every 1.5 s: a marble that touches one is sent back to a start.",
+      "items": {"$ref": "#/$defs/hazard"}
+    },
+    "race": {
+      "$ref": "#/$defs/race",
+      "description": "Where the race starts and the goal pad it races to. Leave it out for a map only the Bumper Round plays; a map needs at least one of race and bumper."
+    },
+    "bumper": {
+      "$ref": "#/$defs/bumper",
+      "description": "The Bumper Round's four start spots and the zones its coins appear in. Leave it out for a race-only map; a map needs at least one of race and bumper."
+    }
+  },
+  "$defs": {
+    "fraction": {
+      "type": "number",
+      "minimum": 0,
+      "description": "A fraction of the field: 0..1 across (x) or 0..1 down (y), so 0.5 is the middle and 1 the far edge."
+    },
+    "point": {
+      "type": "array",
+      "description": "A spot on the field: [x, y] in fractions of the field.",
+      "prefixItems": [{"$ref": "#/$defs/fraction"}, {"$ref": "#/$defs/fraction"}],
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "rect": {
+      "type": "array",
+      "description": "A rectangle on the field: [left, top, right, bottom] in fractions of the field.",
+      "prefixItems": [
+        {"$ref": "#/$defs/fraction"},
+        {"$ref": "#/$defs/fraction"},
+        {"$ref": "#/$defs/fraction"},
+        {"$ref": "#/$defs/fraction"}
+      ],
+      "minItems": 4,
+      "maxItems": 4
+    },
+    "wall": {
+      "type": "object",
+      "description": "One wall: a segment from one spot to another, drawn thick enough to bounce a marble off, 24 at most.",
+      "required": ["from", "to"],
+      "additionalProperties": false,
+      "properties": {
+        "from": {"$ref": "#/$defs/point", "description": "Where the wall starts, in fractions of the field."},
+        "to": {"$ref": "#/$defs/point", "description": "Where it ends: a zero-length wall is refused."}
+      }
+    },
+    "hazard": {
+      "description": "One moving hazard: a slide (a bar sweeping between two spots) or an orbit (a bar circling a centre), with how long one pass takes.",
+      "oneOf": [
+        {
+          "type": "object",
+          "description": "A slide: a bar sweeping from one spot to another and back.",
+          "required": ["slide", "periodS"],
+          "additionalProperties": false,
+          "properties": {
+            "slide": {
+              "type": "object",
+              "description": "The bar's two ends.",
+              "required": ["from", "to"],
+              "additionalProperties": false,
+              "properties": {
+                "from": {"$ref": "#/$defs/point", "description": "One end of the sweep, in fractions of the field."},
+                "to": {"$ref": "#/$defs/point", "description": "The other end."}
+              }
+            },
+            "periodS": {"$ref": "#/$defs/periodS"},
+            "phase": {"$ref": "#/$defs/phase"}
+          }
+        },
+        {
+          "type": "object",
+          "description": "An orbit: a bar circling a centre, its radius a fraction of the field's shorter side.",
+          "required": ["orbit", "periodS"],
+          "additionalProperties": false,
+          "properties": {
+            "orbit": {
+              "type": "object",
+              "description": "The circle the bar sweeps around.",
+              "required": ["centre", "radius"],
+              "additionalProperties": false,
+              "properties": {
+                "centre": {"$ref": "#/$defs/point", "description": "The circle's centre, in fractions of the field."},
+                "radius": {
+                  "type": "number",
+                  "minimum": 0,
+                  "description": "The distance from the centre to the bar, as a fraction of the field's shorter side."
+                }
+              }
+            },
+            "periodS": {"$ref": "#/$defs/periodS"},
+            "phase": {"$ref": "#/$defs/phase"}
+          }
+        }
+      ]
+    },
+    "periodS": {
+      "type": "number",
+      "description": "Seconds one pass takes: the time from where the hazard starts back to it. At least 1.5, or the hazard is too fast to dodge."
+    },
+    "phase": {
+      "type": "number",
+      "minimum": 0,
+      "description": "How far through its pass the hazard starts, 0..1 (the default 0), so two hazards on one period can set off apart."
+    },
+    "race": {
+      "type": "object",
+      "description": "Where the race sets off and the pad it races to.",
+      "required": ["start", "goal"],
+      "additionalProperties": false,
+      "properties": {
+        "start": {"$ref": "#/$defs/point", "description": "Where the first player starts, in fractions of the field; the other three start above and below it."},
+        "goal": {"$ref": "#/$defs/rect", "description": "The goal pad: a marble that is wholly inside it, and safe from hazards there, has finished."},
+        "swapSides": {
+          "type": "boolean",
+          "description": "Whether each round flips the field left to right, so the start and the goal swap sides (the default true, as the race does today)."
+        }
+      }
+    },
+    "bumper": {
+      "type": "object",
+      "description": "The Bumper Round's parts of the map.",
+      "required": ["starts", "coins"],
+      "additionalProperties": false,
+      "properties": {
+        "starts": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "description": "The four spots its marbles start on, in fractions of the field: 3 marble diameters apart or more, clear of walls and of every hazard's sweep.",
+          "items": {"$ref": "#/$defs/point"}
+        },
+        "coins": {
+          "type": "array",
+          "minItems": 1,
+          "description": "The zones a coin may appear in, one or more rects in fractions of the field: each clear of walls and big enough for three coins side by side.",
+          "items": {"$ref": "#/$defs/rect"}
+        }
+      }
+    }
+  }
+}

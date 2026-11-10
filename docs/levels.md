@@ -1,6 +1,6 @@
 # Making a level
 
-A level is data, not code: one file in its game's folder, listed in that folder's `index.json`. Both games use one level kit: `tools/level.sh` makes, checks and renders a level of any kind. This page has the parts every kind of level shares, then the guide to Shape Race puzzles.
+A level is data, not code: one file in its game's folder, listed in that folder's `index.json`. Both games use one level kit: `tools/level.sh` makes, checks and renders a level of any kind. This page has the parts every kind of level shares, then the guides to Shape Race puzzles and to the Arena's maps.
 
 ## The level file
 
@@ -8,18 +8,19 @@ A level file is JSON. Every kind of level starts with the same header:
 
 | Field | What it is |
 | --- | --- |
-| `$schema` | Points the editor at the kind's schema file next to the levels (`puzzle.schema.json`), so VS Code completes the fields and underlines a mistake as you type. The app ignores it. |
-| `format` | The file format's version, `1` today. A missing `format` means 1; a file with a higher number than the app knows is refused with a message saying to update the app, rather than loaded wrong: "This puzzle is format 2; this build reads format 1. Update the app, or save the puzzle in format 1." |
+| `$schema` | Points the editor at the kind's schema file next to the levels (`puzzle.schema.json` for a puzzle, `map.schema.json` for a map), so VS Code completes the fields and underlines a mistake as you type. The app ignores it. |
+| `format` | The file format's version, `1` today. A missing `format` means 1; a file with a higher number than the app knows is refused with a message saying to update the app, rather than loaded wrong: "This puzzle is format 2; this build reads format 1. Update the app, or save the puzzle in format 1." A map's file says the same with "map" in its place. |
 | `id` | The file's name without `.json`, and its line in `index.json`. |
 
-The rest of the fields belong to the kind: [below](#shape-race-puzzles) for a puzzle.
+The rest of the fields belong to the kind: [below](#shape-race-puzzles) for a puzzle, [further down](#arena-maps) for a map.
 
 ## The folder and index.json
 
-Each kind has a folder of level files (`packages/puzzle_game/puzzles` for puzzles). A file is a level when its name doesn't start with `_`: `_template.json` is what `new` copies, and the kind's schema file is not a level either. Every level is listed in `index.json`, in the order the players see them, and every line there has its file:
+Each kind has a folder of level files (`packages/puzzle_game/puzzles` for puzzles, `packages/test_game/maps` for maps). A file is a level when its name doesn't start with `_`: `_template.json` is what `new` copies, and the kind's schema file is not a level either. Every level is listed in `index.json`, in the order the players see them, and every line there has its file:
 
 ```json
 {"puzzles": ["house", "rocket", "tree", "sun"]}
+{"maps": ["playroom"]}
 ```
 
 An id is unique across kinds, so the two games can't both have a level called `sun`. `check` reports a listed id with no file, a file no line lists, and an id used by two kinds.
@@ -30,7 +31,7 @@ An id is unique across kinds, so the two games can't both have a level called `s
 
 ## Colours
 
-Where a kind gives pieces a `color`, it is a named token or `"#RRGGBB"`. A puzzle's tokens are [in its section](#colour-tokens).
+Where a kind gives pieces a `color`, it is a named token or `"#RRGGBB"`. A puzzle's tokens are [in its section](#colour-tokens). A map colours nothing itself: it names a `theme`, and the theme's look comes from the code.
 
 ## The workflow
 
@@ -43,7 +44,7 @@ tools/level.sh render cat-face       # writes docs/design/puzzles/cat-face.png
 # commit the level file, its line in index.json and its render
 ```
 
-`tools/level.sh check` with an id finds the kind by where the file is: the level's own folder says which game's rule book to run.
+`tools/level.sh check` with an id finds the kind by where the file is: the level's own folder says which game's rule book to run. A map's commands are the same, [below](#the-workflow-1).
 
 ## Reading a check message
 
@@ -184,6 +185,128 @@ The puzzle tests also redraw `docs/design/m13-puzzles.png` and `m13-puzzles-nigh
 
 Then commit the puzzle file, its line in `index.json`, its render and anything else the picture needed. `new` makes an Easy 4-piece picture that already passes `check`; edit it from there. Files whose names start with `_` are never puzzles (`_template.json` is what `new` copies), and `check` checks the whole library when given no id, so a broken neighbour is caught too.
 
-## Arena maps: coming in M14
+## Arena maps
 
-The Arena's maps join the kit with its own map kit in M14 k1b; until then `tools/level.sh new map` says "Maps come with the Arena's map kit (M14 k1b)."
+A map is one file in [`packages/test_game/maps/`](../packages/test_game/maps), listed in `index.json`: the field an Arena mode plays on. The app loads the whole library from those files (`ArenaMapLibrary.load`), so a new arena needs no Dart change. The Playroom, today's field, is the first map. This section has what a file's fields mean, the two modes' needs, the rules every map keeps, and the commands that carry a map from nothing to a picture to commit.
+
+### The field and its coordinates
+
+A map file writes **fractions of the field**: `0` to `1` across and down, `(0, 0)` at the top left, x to the right and y downwards. The field is 16:9 and 90 units high (160 wide) in the units the rules measure in, so a size is a fraction of the shorter side:
+
+```
+(0,0) 0 ─────────────────────▶ 1 across
+  ┌────────────────────────────────┐ 0
+  │                                │ │
+  │        160 × 90 field          │ │   a marble is 5.76 units across
+  │     (mapFieldSize, 16:9)       │ │   (0.064 of 90), a wall is
+  │                                │ │   3.15 units thick, a hazard
+  └────────────────────────────────┘ 1   3.42 units across
+```
+
+Positions are fractions, so the field plays the same in any window. Sizes and speeds are fractions of its shorter side, as the game measures everything (`ArenaFieldRules`).
+
+### The file
+
+```json
+{
+  "$schema": "map.schema.json",
+  "format": 1,
+  "id": "playroom",
+  "name": "Playroom",
+  "line": "The first arena: walls, four bumpers and a goal to race for.",
+  "notes": "Anything for the next developer; the app ignores it.",
+  "theme": "playroom",
+  "walls": [{"from": [0.24, 0], "to": [0.24, 0.56]}],
+  "hazards": [{"slide": {"from": [0.355, 0.08], "to": [0.355, 0.62]}, "periodS": 3.2}],
+  "race": {"start": [0.07, 0.5], "goal": [0.86, 0.38, 0.97, 0.62], "swapSides": true},
+  "bumper": {"starts": [[0.1, 0.2], [0.1, 0.8], [0.88, 0.18], [0.88, 0.82]], "coins": [[0.06, 0.06, 0.2, 0.26]]}
+}
+```
+
+`$schema`, `format` and `id` are [the header every level shares](#the-level-file). The map's own fields; `name` and `line` are read in every file, and everything else may be left out:
+
+| Field | What it is |
+| --- | --- |
+| `name` | What the players read in the map picker. |
+| `line` | One line about the map, for the picker's card. |
+| `notes` | Optional, free text, ignored by the app. |
+| `theme` | The floor's look, `"playroom"` when the file says none. The Bumper Round's own floors come with M14 k2, and the schema, the parser and `check` refuse a theme this build has not got. |
+| `walls` | The walls, each `{"from": [x, y], "to": [x, y]}`: an axis-aligned block `ArenaFieldRules.wallThickness` thick round the line between the two ends. A wall with both ends at one spot is not a wall. |
+| `hazards` | The moving hazards: `{"slide": {"from": …, "to": …}}` back and forth between two points, or `{"orbit": {"centre": …, "radius": …}}` round a circle (`radius` a fraction of the shorter side), each with `periodS` (one full cycle) and optional `phase` (where in the cycle it starts, 0 to 1). |
+| `race` | The Shape Race's part: `start` (where the first player starts), `goal` (the pad, `[left, top, right, bottom]`) and `swapSides` (whether every round flips the field left to right, as the race does today). The other three starts sit above and below `start` at `startSpacing` (0.14 of the height), so a map's start needs room for four. |
+| `bumper` | The Bumper Round's part: `starts` (four spots) and `coins` (one or more rects a coin may appear in). |
+
+A map needs `race`, or `bumper`, or both: a map with neither is refused with a message saying to add one, since no mode could play it. A map with only `bumper` is a Bumper Round arena with no finish (M14 k2's four). A game built with no map plays the Playroom, and `maps/playroom.json` parses to `ArenaMap.playroom` exactly, so the field in code and the file cannot drift.
+
+### The two modes' needs
+
+| | Shape Race | Bumper Round |
+| --- | --- | --- |
+| What it uses | `start` (four slots), `goal`, `swapSides` | `starts` (exactly four), `coins` |
+| The start | clear of walls: a marble begins on it, not touching one | the same, four of them, at least 3 marbles apart |
+| Getting there | a way from every start to the goal, and back the other way in a round that swaps sides | a way from every start to every coin zone |
+| Hazards | no hazard's whole path reaches a start, or the part of the goal a marble's centre must reach; a hazard guarding the goal's rim is good design, and the Playroom does it on purpose | no hazard's whole path reaches a start |
+| Coin zones | — | clear of walls, room for 3 coins together, and every start can get there |
+
+### The rules
+
+`check` runs the same rule book over a map, in `map_rules.dart` and its parts. Besides the two modes' needs, every map keeps these:
+
+- **Everything inside the field.** Every wall, hazard, start, goal and coin zone lies between 0 and 1, across and down.
+- **Every route a marble needs is wide enough.** Each start to the goal, and each start to each coin zone, passes only gaps at least **1.6 marbles** wide between the walls' faces (9.2 units), so none gets stuck: the Playroom's tightest gate is about 1.75. Aim for **2.5 marbles** (14.4 units) on a new map, so two can pass. `check` reads this on a path grid with the walls grown by 0.8 of a marble (`MapGrid`): a way that only the grown grid misses is a squeeze; a dead-end slit no route goes through is not a gap a marble must pass, so it is not an issue.
+- **No pocket.** No free spot a marble could stand on is cut off from every start.
+- **Limits.** At most **24 walls** and **8 hazards**, and no hazard faster than one pass every **1.5 s**.
+- **The snapshot's budget.** One frame of the map with four marbles stays inside 2048 bytes with 300 kept for the Bumper Round's coins, so a busy map never crowds the phone's frames.
+- **The listing.** Every map is in `index.json` and every line there has its file ([above](#the-folder-and-indexjson)).
+
+Each broken rule is one line from `check`, naming the map, the part and what to change:
+
+```
+playroom/start 0: a wall is in the way of the start, so a marble begins touching it. Move the start or the wall.
+playroom/start 1: the way from the start 1 to the goal passes a gap narrower than 1.6 marbles. Move the walls on the way apart, so a marble never has to squeeze through.
+playroom/race: wall 3 overlaps the goal pad. Move the wall, or the goal.
+playroom/hazard 2: its sweep crosses the goal, so a marble can be hit as it arrives. Move the hazard, or the goal.
+playroom/start 0: in a round that swaps sides no marble can get from the start to the goal. Move a wall, or the start or the goal.
+playroom/bumper: the Bumper Round starts 4 marbles, this map gives 3 spots. Give it 4 starts.
+playroom/bumper start 2: it is closer than 3 marbles to bumper start 3. Move one of them further away.
+playroom/bumper start 0: hazard 1 sweeps across the start, so a marble is hit as it sets off. Move the hazard, or the start.
+playroom/coin zone 0: a wall crosses the zone. Move the zone into open floor.
+playroom/coin zone 1: it has room for 1 of the 3 coins a zone needs together. Make it bigger, or move it into open floor.
+playroom/coin zone 2: no marble can get here from bumper start 0. Open a way, or move the zone.
+playroom: a marble can stand at 0.30 across and 0.10 down but no start can reach it. Open a gap into that corner, or fill it with a wall.
+playroom: it has 25 walls; a map has at most 24. Remove one, or join two into a longer wall.
+playroom: it has 9 hazards; a map has at most 8. Remove one, so the screen stays calm.
+playroom/hazard 0: it makes a pass every 1.2 s; the fastest is one every 1.5 s. Make its "periodS" bigger.
+playroom: with four marbles its snapshot is 1800 bytes; a map may take 1748 of the 2048, so the Bumper Round's coins keep their 300. Use fewer or shorter walls.
+```
+
+The rules are `MapRule`s on a `LevelIssue`, as the puzzles' are `PuzzleRule`s, so the app, the tests and `check` read one list.
+
+### The path grid
+
+`MapGrid` is the map's field in cells about a fifth of a marble across: a cell is free only where a marble's centre fits, with the walls (and the field's edges) grown by a marble's radius, or by whatever `grow` asks for. It flood-fills and finds the shortest way between two points, so a rule asks it a question and gets an answer in field fractions:
+
+| | |
+| --- | --- |
+| `isFree(point)` | whether a marble's centre may stand there |
+| `path(from, to)` | the shortest way, as the cells' centres, or null |
+| `hasPath(from, to)` | whether there is one |
+| `reachesZone(from, zone)` | whether a marble can get into a rect from a point |
+| `spotsIn(zone, apart:, most:)` | up to `most` free places in a rect, each `apart` from the others: where a coin may go |
+| `unreachableFrom(starts)` | a free cell no start reaches, or null |
+
+Robo uses it too (M14 b3), so it steers with the same reading of the field the rules check.
+
+### The workflow
+
+```bash
+tools/level.sh new map arena --name "Arena"    # file from _template.json, id in maps/index.json
+# edit packages/test_game/maps/arena.json
+tools/level.sh check arena                     # the rules; no id checks puzzles and maps
+tools/level.sh render arena                    # writes docs/design/maps/arena.png
+# look at the picture: the field in Sunny and Night, with the starts, the goal,
+# the coin zones and each hazard's sweep marked
+# commit the map file, its line in index.json and its render
+```
+
+`_template.json` is a field that already passes `check`: a wall down the middle with a gap at each end, one slide, a race and a Bumper Round. Edit it from there. Run `tools/check.sh arena` before committing; the map tests redraw `docs/design/maps/` too.

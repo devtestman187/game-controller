@@ -1,33 +1,37 @@
-// Makes a new level of a kind from its template (M14 k1a), so a developer
-// starts from a valid file with every field in place. A puzzle today:
+// Makes a new level of a kind from its template (M14 k1a; the Arena's maps
+// joined in M14 k1b), so a developer starts from a valid file with every field
+// in place:
 //
 //   dart tools/level_new.dart new puzzle <id> --level easy|medium [--name "Name"]
+//   dart tools/level_new.dart new map <id> [--name "Name"]
 //
-// Copies packages/puzzle_game/puzzles/_template.json to <id>.json, fills in
-// the id, name and level, and adds the id to index.json after the last puzzle
-// of its level. A map waits for the Arena's map kit (M14 k1b). Run it through
+// Copies the kind's `_template.json` to `<id>.json`, fills in the id and name
+// (and, for a puzzle, its level), and adds the id to `index.json`: a puzzle
+// after the last puzzle of its level, a map at the end. Run it through
 // tools/level.sh, which also has `check` and `render`. The guide is
 // docs/levels.md.
 import 'dart:convert';
 import 'dart:io';
 
-/// Where the puzzle files and the index live, under the repository root.
-const puzzleFolder = 'packages/puzzle_game/puzzles';
+/// Where each kind's files and index live, under the repository root.
+const levelFolders = {
+  'puzzle': 'packages/puzzle_game/puzzles',
+  'map': 'packages/test_game/maps',
+};
 
-/// The kinds `new` can make a file for: maps join in M14 k1b.
-const levelKinds = ['puzzle'];
+/// The name of each kind's list in its index.json.
+const indexKeys = {'puzzle': 'puzzles', 'map': 'maps'};
 
-/// The refusal of a map until the Arena's map kit lands (M14 k1b), in the same
-/// words tools/level.sh gives.
-const mapsComingMessage = "Maps come with the Arena's map kit (M14 k1b).";
+/// The kinds `new` can make a file for.
+const levelKinds = ['puzzle', 'map'];
 
-/// The levels a new puzzle may have.
+/// The levels a new puzzle may have (a map has none).
 const newPuzzleLevels = ['easy', 'medium'];
 
-/// A puzzle id is its file name: lower case letters, digits and hyphens.
-final puzzleIdPattern = RegExp(r'^[a-z0-9][a-z0-9-]*$');
+/// A level's id is its file name: lower case letters, digits and hyphens.
+final levelIdPattern = RegExp(r'^[a-z0-9][a-z0-9-]*$');
 
-/// "my new puzzle" from "my-new-puzzle": the name a new puzzle gets when
+/// "my new puzzle" from "my-new-puzzle": the name a new level gets when
 /// `--name` is not given.
 String nameFromId(String id) => id
     .split('-')
@@ -35,140 +39,111 @@ String nameFromId(String id) => id
     .map((word) => word[0].toUpperCase() + word.substring(1))
     .join(' ');
 
-/// The template's text as puzzle [id]'s file: the id, name and level
-/// replaced, every other line (and the notes) kept.
-String newPuzzleText(
+/// The template's text as [id]'s file: the id, name and (when [level] is
+/// given) the level replaced, every other line (and the notes) kept.
+String newLevelText(
   String template, {
   required String id,
   required String name,
-  required String level,
+  String? level,
 }) {
   final decoded = jsonDecode(template);
   if (decoded is! Map<String, Object?>)
-    throw const FormatException('The template is not a puzzle object');
-  for (final key in ['id', 'name', 'level']) {
+    throw const FormatException('The template is not an object');
+  final wanted = {'id': id, 'name': name, 'level': ?level};
+  for (final key in wanted.keys) {
     if (decoded[key] is! String)
       throw FormatException('The template has no "$key"');
+    final old = '"$key": ${jsonEncode(decoded[key])}';
+    if (!template.contains(old))
+      throw FormatException('The template\'s "$key" is not written as $old');
   }
   var text = template;
-  for (final key in ['id', 'name', 'level']) {
-    final value = {'id': id, 'name': name, 'level': level}[key]!;
-    final old = '"$key": ${jsonEncode(decoded[key])}';
-    if (!text.contains(old))
-      throw FormatException('The template\'s "$key" is not written as $old');
-    text = text.replaceFirst(old, '"$key": ${jsonEncode(value)}');
+  for (final MapEntry(key: key, value: value) in wanted.entries) {
+    text = text.replaceFirst(
+      '"$key": ${jsonEncode(decoded[key])}',
+      '"$key": ${jsonEncode(value)}',
+    );
   }
   return text;
 }
 
-/// [index]'s text with [id] added at the end of its [level]'s run. [levels]
-/// is every stated puzzle's level, by id.
+/// [index]'s text with [id] added to its [key] list: at the end of its
+/// [level]'s run when [level] and [levels] are given (a puzzle), else last.
 String addToIndex(
   String index, {
+  required String key,
   required String id,
-  required String level,
-  required Map<String, String> levels,
+  String? level,
+  Map<String, String> levels = const {},
 }) {
   final decoded = jsonDecode(index);
-  if (decoded is! Map<String, Object?> || decoded['puzzles'] is! List) {
-    throw const FormatException('index.json needs a "puzzles" list');
+  if (decoded is! Map<String, Object?> || decoded[key] is! List) {
+    throw FormatException('index.json needs a "$key" list');
   }
-  final ids = (decoded['puzzles'] as List).cast<String>();
+  final ids = (decoded[key] as List).cast<String>();
   if (ids.contains(id)) throw ArgumentError('index.json already lists "$id"');
   var at = ids.length;
   for (var i = 0; i < ids.length; i++) {
-    if (levels[ids[i]] == level) at = i + 1;
+    if (level != null && levels[ids[i]] == level) at = i + 1;
   }
   final updated = [...ids]..insert(at, id);
-  final line = '{"puzzles": [${updated.map((each) => '"$each"').join(', ')}]}';
+  final line = '{"$key": [${updated.map((each) => '"$each"').join(', ')}]}';
   return index.endsWith('\n') ? '$line\n' : line;
 }
 
-/// Writes [folder]/[id].json from the template and adds the id to
-/// [folder]/index.json, returning the puzzle file's path. Throws a
+/// Why `new` can't make a file of [kind], or null for the kinds it can.
+String? newKindRefusal(String kind) =>
+    levelKinds.contains(kind) ? null : '"$kind" is not a kind of level: use ${levelKinds.join(' or ')}';
+
+/// Writes [folder]/[id].json from the kind's template and adds the id to
+/// [folder]/index.json, returning the level file's path. Throws a
 /// [FormatException] or [ArgumentError] with a message a developer can act
-/// on when the id, level or folder is wrong.
-String createPuzzle(
-  Directory folder, {
-  required String id,
-  required String name,
-  required String level,
-}) {
-  if (!puzzleIdPattern.hasMatch(id)) {
-    throw FormatException(
-      '"$id" is not a puzzle id: use lower case letters, digits and hyphens, like "cat-face"',
-    );
-  }
-  if (!newPuzzleLevels.contains(level)) {
-    throw FormatException(
-      '"$level" is not a level: use ${newPuzzleLevels.join(' or ')}',
-    );
-  }
-  if (name.trim().isEmpty) throw const FormatException('A puzzle needs a name');
-  final file = File('${folder.path}/$id.json');
-  if (file.existsSync()) throw ArgumentError('puzzles/$id.json already exists');
-  final template = File('${folder.path}/_template.json');
-  if (!template.existsSync())
-    throw StateError('The template puzzles/_template.json is missing');
-  final indexFile = File('${folder.path}/index.json');
-  if (!indexFile.existsSync())
-    throw StateError('puzzles/index.json is missing');
-  final index = jsonDecode(indexFile.readAsStringSync());
-  final listed = index is Map<String, Object?> && index['puzzles'] is List
-      ? (index['puzzles'] as List).cast<String>()
-      : [];
-  final levels = <String, String>{
-    for (final other in listed)
-      if (File('${folder.path}/$other.json').existsSync())
-        other:
-            (jsonDecode(File('${folder.path}/$other.json').readAsStringSync())
-                    as Map<String, Object?>)['level']
-                as String,
-  };
-  final text = newPuzzleText(
-    template.readAsStringSync(),
-    id: id,
-    name: name,
-    level: level,
-  );
-  final updatedIndex = addToIndex(
-    indexFile.readAsStringSync(),
-    id: id,
-    level: level,
-    levels: levels,
-  );
-  file.writeAsStringSync(text);
-  indexFile.writeAsStringSync(updatedIndex);
-  return file.path;
-}
-
-/// Why `new` can't make a file of [kind], or null for the kinds it can: a map
-/// waits for the Arena's map kit (M14 k1b).
-String? newKindRefusal(String kind) => switch (kind) {
-  'puzzle' => null,
-  'map' => mapsComingMessage,
-  _ => '"$kind" is not a kind of level: use ${levelKinds.join(' or ')}',
-};
-
-/// Writes a new level of [kind] into [folder] (one of the kind's own folders
-/// of files), returning the file's path. Throws a [FormatException] or
-/// [ArgumentError] with a message a developer can act on when the kind, the
-/// id, the level or the folder is wrong.
+/// on when the kind, the id, the level or the folder is wrong.
 String createLevel(
   Directory folder, {
   required String kind,
   required String id,
   required String name,
-  required String level,
+  String? level,
 }) {
   final refusal = newKindRefusal(kind);
   if (refusal != null) throw FormatException(refusal);
-  return createPuzzle(folder, id: id, name: name, level: level);
+  if (!levelIdPattern.hasMatch(id)) {
+    throw FormatException('"$id" is not a $kind id: use lower case letters, digits and hyphens, like "cat-face"');
+  }
+  if (kind == 'puzzle' && !newPuzzleLevels.contains(level)) {
+    throw FormatException('"$level" is not a level: use ${newPuzzleLevels.join(' or ')}');
+  }
+  if (name.trim().isEmpty) throw FormatException('A $kind needs a name');
+  final file = File('${folder.path}/$id.json');
+  if (file.existsSync()) throw ArgumentError('$kind $id already exists: ${file.path}');
+  final template = File('${folder.path}/_template.json');
+  if (!template.existsSync()) throw StateError('The template ${folder.path}/_template.json is missing');
+  final indexFile = File('${folder.path}/index.json');
+  if (!indexFile.existsSync()) throw StateError('${folder.path}/index.json is missing');
+  final key = indexKeys[kind]!;
+  final index = jsonDecode(indexFile.readAsStringSync());
+  final listed = index is Map<String, Object?> && index[key] is List ? (index[key] as List).cast<String>() : [];
+  // Each listed level's level, when it has one: a puzzle does, a map does not.
+  final levels = <String, String>{};
+  for (final other in listed) {
+    final otherFile = File('${folder.path}/$other.json');
+    if (!otherFile.existsSync()) continue;
+    final otherLevel = (jsonDecode(otherFile.readAsStringSync()) as Map<String, Object?>)['level'];
+    if (otherLevel is String) levels[other] = otherLevel;
+  }
+  final text = newLevelText(template.readAsStringSync(), id: id, name: name, level: level);
+  final updatedIndex = addToIndex(indexFile.readAsStringSync(), key: key, id: id, level: level, levels: levels);
+  file.writeAsStringSync(text);
+  indexFile.writeAsStringSync(updatedIndex);
+  return file.path;
 }
 
 void _usage() {
   stderr.writeln(
-    'usage: tools/level.sh new <kind> <id> --level easy|medium [--name "Name"]',
+    'usage: tools/level.sh new puzzle <id> --level easy|medium [--name "Name"]\n'
+    '       tools/level.sh new map <id> [--name "Name"]',
   );
 }
 
@@ -178,8 +153,6 @@ void main(List<String> args) {
     exit(64);
   }
   final kind = args[1];
-  // A kind `new` can't make a file for is refused before anything else, so
-  // `new map <id>` says why instead of asking for --level.
   final refusal = newKindRefusal(kind);
   if (refusal != null) {
     stderr.writeln(refusal);
@@ -211,7 +184,7 @@ void main(List<String> args) {
       exit(64);
     }
   }
-  if (level == null) {
+  if (kind == 'puzzle' && level == null) {
     stderr.writeln('A new puzzle needs --level easy or --level medium.');
     _usage();
     exit(64);
@@ -219,16 +192,20 @@ void main(List<String> args) {
   final root = File.fromUri(Platform.script).parent.parent;
   try {
     final path = createLevel(
-      Directory('${root.path}/$puzzleFolder'),
+      Directory('${root.path}/${levelFolders[kind]}'),
       kind: kind,
       id: id,
       name: name ?? nameFromId(id),
       level: level,
     );
-    stdout.writeln(
-      'Wrote $path and added "$id" after the last $level puzzle in index.json.',
-    );
-    stdout.writeln('Edit its pieces, then run: tools/level.sh check $id');
+    stdout.writeln(switch (kind) {
+      'puzzle' => 'Wrote $path and added "$id" after the last $level puzzle in index.json.',
+      _ => 'Wrote $path and added "$id" to the end of maps/index.json.',
+    });
+    stdout.writeln(switch (kind) {
+      'puzzle' => 'Edit its pieces, then run: tools/level.sh check $id',
+      _ => 'Edit its walls, hazards and starts, then run: tools/level.sh check $id',
+    });
   } on Object catch (error) {
     stderr.writeln(error is FormatException ? error.message : '$error');
     exit(1);

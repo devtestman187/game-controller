@@ -150,7 +150,7 @@ What is in a map, and what its rules are:
 - **Today's field becomes the first file, `playroom.json`**, and plays exactly as now: every existing arena test passes unchanged.
 - **The map rules** (`map_rules.dart`, on the shared core above, each issue with a message a developer can act on):
   - inside the field (the header, ids and index come from the shared core);
-  - every gap a marble must pass is at least 2.5 marbles wide, so two can pass and none gets stuck;
+  - every gap a marble must pass is at least 1.6 marbles wide between the walls' faces (the Playroom's tightest gate is about 1.75, played since M12), and new maps aim for 2.5 so two can pass;
   - the race: start and goal clear; a path from every start to the goal for a marble (a grid flood fill with the walls grown by a marble's radius), both ways when rounds swap sides; no hazard sweeps a start or the goal;
   - the Bumper Round: four start spots, clear, at least 3 marbles apart, outside every hazard's sweep; coin zones reachable, clear of walls, big enough for the three coins and drops; no pocket a marble can't reach;
   - limits for speed and a calm screen: at most 24 walls, 8 hazards, 8 springs, 6 belts; no hazard faster than one pass every 1.5 s;

@@ -4,9 +4,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:protocol/protocol.dart';
 import 'package:test_game/test_game.dart';
 
+import 'support/maps.dart';
+
 /// An open field (no walls, no hazards) unless a test asks for them.
-ArenaGame open({List<WallSpec> walls = const [], List<HazardSpec> hazards = const []}) =>
-    ArenaGame(walls: walls, hazards: hazards, size: const Size(1000, 500))..join('a');
+ArenaGame open({List<WallSpec> walls = const [], List<HazardSpec> hazards = const []}) => ArenaGame(
+  map: testMap(walls: walls, hazards: hazards),
+  size: const Size(1000, 500),
+)..join('a');
 
 /// The one player in single-player tests.
 ArenaPlayer me(ArenaGame g) => g.player('a')!;
@@ -51,7 +55,7 @@ void main() {
   group('movement', () {
     test('full D-pad speed is the same fraction of the field in any window', () {
       for (final size in [const Size(1920, 1080), const Size(800, 600), const Size(600, 900)]) {
-        final g = ArenaGame(walls: const [], hazards: const [], size: size)..join('a');
+        final g = ArenaGame(map: testMap(), size: size)..join('a');
         final start = me(g).position;
         run(g, 0.5, right);
         expect(
@@ -191,7 +195,7 @@ void main() {
   });
 
   group('several players', () {
-    ArenaGame two() => ArenaGame(walls: const [], hazards: const [], size: const Size(1000, 500));
+    ArenaGame two() => ArenaGame(map: testMap(), size: const Size(1000, 500));
 
     test('each controller drives its own sprite, starting apart', () {
       final g = two();

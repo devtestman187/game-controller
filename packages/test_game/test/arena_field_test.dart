@@ -3,6 +3,8 @@ import 'dart:ui';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:test_game/test_game.dart';
 
+import 'support/maps.dart';
+
 /// One wall across the field, an open field either side and no hazards, so
 /// the run below is the same every time.
 const _size = Size(1000, 500);
@@ -18,8 +20,9 @@ Object _seen(GameEvent e) => (e.playerId, e.event, e.cause, e.intensity, e.durat
 
 void main() {
   test('the shared movement moves a marble the same on its own as in the race', () {
-    final field = ArenaFieldRules(walls: _walls, hazards: const [], size: _size)..join('a');
-    final game = ArenaGame(walls: _walls, hazards: const [], size: _size)..join('a');
+    final map = testMap(walls: _walls);
+    final field = ArenaFieldRules(map: map, size: _size)..join('a');
+    final game = ArenaGame(map: map, size: _size)..join('a');
     final seen = <GameEvent>[];
 
     for (final (frame, input) in _sequence.indexed) {

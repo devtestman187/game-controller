@@ -4,114 +4,21 @@ import 'dart:ui';
 import 'package:protocol/protocol.dart';
 
 import 'arena_events.dart';
+import 'arena_map.dart';
+import 'arena_specs.dart';
 
-/// An axis-aligned wall from [from] to [to], in fractions of the field
-/// (0..1 across, 0..1 down). Its thickness is [ArenaFieldRules.wallThickness].
-final class WallSpec {
-  const WallSpec(this.from, this.to);
-
-  final Offset from;
-  final Offset to;
-}
-
-/// A hazard sliding back and forth between [a] and [b] (fractions of the
-/// field), or circling [a] when [orbitRadius] is set (a fraction of the
-/// field's shorter side). [periodS] is one full cycle.
-final class HazardSpec {
-  const HazardSpec.slide(this.a, this.b, {required this.periodS, this.phase = 0}) : orbitRadius = null;
-
-  const HazardSpec.orbit(this.a, {required double radius, required this.periodS, this.phase = 0})
-    : b = a,
-      orbitRadius = radius;
-
-  final Offset a;
-  final Offset b;
-  final double? orbitRadius;
-  final double periodS;
-
-  /// Where in the cycle it starts, 0 to 1.
-  final double phase;
-
-  /// Position as a fraction of the field at time [t] (seconds), with the
-  /// orbit radius already scaled for [size].
-  Offset at(double t, Size size) {
-    final angle = 2 * pi * (t / periodS + phase);
-    final r = orbitRadius;
-    if (r != null) {
-      final px = r * size.shortestSide;
-      return a + Offset(cos(angle) * px / size.width, sin(angle) * px / size.height);
-    }
-    // Eases at the ends, like a pendulum.
-    final f = 0.5 - 0.5 * cos(angle);
-    return Offset.lerp(a, b, f)!;
-  }
-}
-
-/// One sprite, driven by one controller. Players don't collide with each
-/// other: each one races the field on its own.
-class ArenaPlayer {
-  ArenaPlayer._(this._field, this.id, this.slot) : _pos = _field._startFor(slot);
-
-  /// The field it plays on: its size, walls, hazards and start positions.
-  final ArenaFieldRules _field;
-
-  /// The controller ID that drives it.
-  final String id;
-
-  /// Which start position it uses (0 is the middle one).
-  final int slot;
-
-  Offset _pos; // Fraction of the field.
-  Offset _facing = const Offset(1, 0);
-  Offset _aim = Offset.zero;
-  bool _dashHeld = false;
-  bool _touchingWall = false;
-  double _dashLeft = 0;
-  double _cooldownLeft = 0;
-  double _graceLeft = 0;
-  double _sinceHit = double.infinity;
-
-  int wins = 0;
-  int hits = 0;
-  int dashes = 0;
-  int failedDashes = 0;
-  double? bestTimeS;
-
-  /// The sprite's center in pixels.
-  Offset get position => _field._px(_pos);
-
-  bool get dashing => _dashLeft > 0;
-
-  /// 0 when a dash is ready, up to 1 right after one starts.
-  double get cooldown => _cooldownLeft / ArenaFieldRules.dashCooldownS;
-
-  /// True while it can't be hit again (it blinks).
-  bool get recovering => _graceLeft > 0;
-
-  /// The aim cursor, or null when the right stick is centered.
-  Offset? get aimPoint =>
-      _aim.distance < 0.1 ? null : position + _aim * (ArenaFieldRules.aimRange * _field._size.shortestSide);
-
-  void _reset() {
-    _pos = _field._startFor(slot);
-    _facing = Offset(_field.mirrored ? -1 : 1, 0);
-    _dashLeft = 0;
-    _cooldownLeft = 0;
-    _graceLeft = 0;
-    _touchingWall = false;
-  }
-}
+part 'arena_player.dart';
 
 /// The field every Arena mode plays on (party-night §7): its size, the walls,
-/// hazards and goal, the marbles a round moves around it, and the movement
-/// they share. [ArenaGame] adds the race's rounds; the Bumper Round (G9) runs
-/// on the same field and marbles.
+/// hazards and goal its [map] gives it, the marbles a round moves around it,
+/// and the movement they share. [ArenaGame] adds the race's rounds; the Bumper
+/// Round (G9) runs on the same field and marbles.
 ///
 /// Everything is measured against the field's size: positions are stored as
 /// fractions, and speeds and sizes are fractions of the shorter side per
 /// second, so the game feels the same in any window and survives resizing.
 class ArenaFieldRules {
-  ArenaFieldRules({this.walls = defaultWalls, this.hazards = defaultHazards, this._size = const Size(960, 540)});
+  ArenaFieldRules({this.map = ArenaMap.playroom, this._size = const Size(960, 540)});
 
   // Sizes and speeds, as fractions of the field's shorter side.
   static const double playerRadius = 0.032;
@@ -131,29 +38,19 @@ class ArenaFieldRules {
   /// resting a thumb against a wall doesn't buzz.
   static const double bumpThreshold = 0.25;
 
-  /// Start and goal for an unmirrored round (left to right). Extra players
-  /// start above and below [startPoint], [startSpacing] apart.
-  static const Offset startPoint = Offset(0.07, 0.5);
-  static const double startSpacing = 0.14;
-  static const Rect goalArea = Rect.fromLTRB(0.86, 0.38, 0.97, 0.62);
+  /// The map this field plays (M14 k1b): its walls, hazards, and — for the
+  /// race — its start and goal. With none, the Playroom's.
+  final ArenaMap map;
 
-  static const defaultWalls = [
-    WallSpec(Offset(0.24, 0), Offset(0.24, 0.56)),
-    WallSpec(Offset(0.47, 0.44), Offset(0.47, 1)),
-    WallSpec(Offset(0.70, 0), Offset(0.70, 0.36)),
-    WallSpec(Offset(0.70, 0.64), Offset(0.70, 1)),
-    WallSpec(Offset(0.30, 0.72), Offset(0.40, 0.72)),
-  ];
+  List<WallSpec> get walls => map.walls;
+  List<HazardSpec> get hazards => map.hazards;
 
-  static const defaultHazards = [
-    HazardSpec.slide(Offset(0.355, 0.08), Offset(0.355, 0.62), periodS: 3.2),
-    HazardSpec.slide(Offset(0.585, 0.08), Offset(0.585, 0.92), periodS: 2.4, phase: 0.5),
-    HazardSpec.slide(Offset(0.05, 0.88), Offset(0.42, 0.88), periodS: 4.0, phase: 0.25),
-    HazardSpec.orbit(Offset(0.79, 0.5), radius: 0.11, periodS: 3.0),
-  ];
+  /// The race's start and goal. A map with no `race` section is for the
+  /// Bumper Round, which brings its own starts (G9), so asking a field for
+  /// these says which map and why.
+  RaceSpec get race => map.race ?? (throw StateError('The map "${map.id}" has no race section.'));
 
-  final List<WallSpec> walls;
-  final List<HazardSpec> hazards;
+  // The field itself, below.
 
   Size _size;
   final _players = <String, ArenaPlayer>{}; // In the order they joined.
@@ -188,14 +85,11 @@ class ArenaFieldRules {
   List<Offset> get hazardPositions => [for (final h in hazards) _px(_mirror(h.at(_time, _size)))];
 
   /// Slot 0 in the middle, then above, below, further above, …, kept inside
-  /// the field.
-  Offset _startFor(int slot) {
-    final step = (slot + 1) ~/ 2 * startSpacing * (slot.isOdd ? -1 : 1);
-    return _mirror(Offset(startPoint.dx, (startPoint.dy + step).clamp(0.08, 0.92)));
-  }
+  /// the field: the map's start, placed as [RaceSpec.startOf] says.
+  Offset _startFor(int slot) => _mirror(race.startOf(slot));
 
   Rect get _goal {
-    final g = goalArea;
+    final g = race.goal;
     return mirrored ? Rect.fromLTRB(1 - g.right, g.top, 1 - g.left, g.bottom) : g;
   }
 

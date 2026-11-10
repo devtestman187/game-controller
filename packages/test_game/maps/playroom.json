@@ -1,0 +1,32 @@
+{
+  "$schema": "map.schema.json",
+  "format": 1,
+  "id": "playroom",
+  "name": "Playroom",
+  "line": "The first arena: walls, four bumpers and a goal to race for.",
+  "notes": "Today's field, word for word (M14 k1b): the race plays on it as it always has, and its Bumper section is the first four-spot arena.",
+  "theme": "playroom",
+  "walls": [
+    {"from": [0.24, 0], "to": [0.24, 0.56]},
+    {"from": [0.47, 0.44], "to": [0.47, 1]},
+    {"from": [0.70, 0], "to": [0.70, 0.36]},
+    {"from": [0.70, 0.64], "to": [0.70, 1]},
+    {"from": [0.30, 0.72], "to": [0.40, 0.72]}
+  ],
+  "hazards": [
+    {"slide": {"from": [0.355, 0.08], "to": [0.355, 0.62]}, "periodS": 3.2},
+    {"slide": {"from": [0.585, 0.08], "to": [0.585, 0.92]}, "periodS": 2.4, "phase": 0.5},
+    {"slide": {"from": [0.05, 0.88], "to": [0.42, 0.88]}, "periodS": 4.0, "phase": 0.25},
+    {"orbit": {"centre": [0.79, 0.5], "radius": 0.11}, "periodS": 3.0}
+  ],
+  "race": {"start": [0.07, 0.5], "goal": [0.86, 0.38, 0.97, 0.62], "swapSides": true},
+  "bumper": {
+    "starts": [[0.10, 0.20], [0.10, 0.80], [0.88, 0.18], [0.88, 0.82]],
+    "coins": [
+      [0.06, 0.06, 0.20, 0.26],
+      [0.80, 0.06, 0.94, 0.26],
+      [0.06, 0.60, 0.20, 0.78],
+      [0.52, 0.74, 0.66, 0.92]
+    ]
+  }
+}
