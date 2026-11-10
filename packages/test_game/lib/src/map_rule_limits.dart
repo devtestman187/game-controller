@@ -1,17 +1,18 @@
 part of 'map_rules.dart';
 
-/// The limits for speed and a calm screen (M14 k1b): at most [maxMapWalls]
-/// walls and [maxMapHazards] hazards, and no hazard faster than one pass every
-/// [minHazardPeriodS] seconds.
+/// The limits for speed and a calm screen (M14 k1b, k2a): at most
+/// [maxMapWalls] walls and movers together, [maxMapHazards] hazards,
+/// [maxMapSprings] springs and [maxMapBelts] belts, and no hazard or mover
+/// faster than one pass every [minHazardPeriodS] seconds. A mover is a wall
+/// that moves, so it counts as one; a still hazard has no pass to make.
 void _limits(ArenaMap map, List<LevelIssue> issues) {
-  if (map.walls.length > maxMapWalls) {
-    _issue(
-      map,
-      issues,
-      MapRule.limit,
-      null,
-      'it has ${map.walls.length} walls; a map has at most $maxMapWalls. Remove one, or join two into a longer wall.',
-    );
+  final bars = map.walls.length + map.movers.length;
+  if (bars > maxMapWalls) {
+    final what = map.movers.isEmpty
+        ? 'it has ${map.walls.length} walls; a map has at most $maxMapWalls'
+        : 'it has ${map.walls.length} walls and ${map.movers.length} movers; a wall and a mover both count, '
+              'and a map has at most $maxMapWalls';
+    _issue(map, issues, MapRule.limit, null, '$what. Remove one, or join two into a longer wall.');
   }
   if (map.hazards.length > maxMapHazards) {
     _issue(
@@ -22,8 +23,26 @@ void _limits(ArenaMap map, List<LevelIssue> issues) {
       'it has ${map.hazards.length} hazards; a map has at most $maxMapHazards. Remove one, so the screen stays calm.',
     );
   }
+  if (map.springs.length > maxMapSprings) {
+    _issue(
+      map,
+      issues,
+      MapRule.limit,
+      null,
+      'it has ${map.springs.length} springs; a map has at most $maxMapSprings. Remove one.',
+    );
+  }
+  if (map.belts.length > maxMapBelts) {
+    _issue(
+      map,
+      issues,
+      MapRule.limit,
+      null,
+      'it has ${map.belts.length} belts; a map has at most $maxMapBelts. Remove one.',
+    );
+  }
   for (final (i, hazard) in map.hazards.indexed) {
-    if (hazard.periodS >= minHazardPeriodS) continue;
+    if (hazard.isStill || hazard.periodS >= minHazardPeriodS) continue;
     _issue(
       map,
       issues,
@@ -33,11 +52,22 @@ void _limits(ArenaMap map, List<LevelIssue> issues) {
           'bigger.',
     );
   }
+  for (final (i, mover) in map.movers.indexed) {
+    if (mover.periodS >= minHazardPeriodS) continue;
+    _issue(
+      map,
+      issues,
+      MapRule.limit,
+      'mover $i',
+      'it makes a pass every ${mover.periodS} s; the fastest is one every $minHazardPeriodS s. Make its "periodS" '
+          'bigger.',
+    );
+  }
 }
 
-/// The frame a map's four marbles and its coins take must fit the whole
-/// 2048-byte budget (S8, G9): the walls go in every frame, and so do the
-/// Bumper Round's three coins, so a busy map is a heavy one.
+/// The frame a map's four marbles, its coins and its pieces take must fit the
+/// whole 2048-byte budget (S8, G9, k2a): the walls, the pieces and the Bumper
+/// Round's three coins go in every frame, so a busy map is a heavy one.
 void _size(ArenaMap map, List<LevelIssue> issues) {
   final bytes = _snapshotBytes(map);
   if (bytes <= arenaSnapshotBudgetBytes) return;
@@ -47,13 +77,14 @@ void _size(ArenaMap map, List<LevelIssue> issues) {
     MapRule.size,
     null,
     'with four marbles and its coins its snapshot is $bytes bytes; a frame may take '
-    '$arenaSnapshotBudgetBytes. Use fewer or shorter walls.',
+    '$arenaSnapshotBudgetBytes. Use fewer pieces, or fewer or shorter walls.',
   );
 }
 
 /// One frame of [map] with four marbles and the three coins the Bumper Round
-/// has out, as the host sends it, in bytes: the field's walls, hazards, goal
-/// and coin zones with the marbles standing still on their starts.
+/// has out, as the host sends it, in bytes: the field's walls, hazards, pieces,
+/// theme, goal and coin zones, with the marbles standing still on their starts
+/// and the movers at the start of their sweep.
 int _snapshotBytes(ArenaMap map) {
   final bumper = map.bumper;
   final field = ArenaFieldRules(map: map, mode: bumper == null ? ArenaMode.race : ArenaMode.bumper, size: mapFieldSize);
@@ -79,5 +110,11 @@ int _snapshotBytes(ArenaMap map) {
     mode: bumper == null ? ArenaMode.race : ArenaMode.bumper,
     coins: [for (final spot in spots.take(ArenaCoin.coinsOut)) ArenaCoinView(x: spot.dx, y: spot.dy)],
     timeLeftMs: bumper == null ? null : (bumperRoundS * 1000).round(),
+    theme: map.theme,
+    springs: map.springs,
+    posts: map.posts,
+    belts: map.belts,
+    decor: map.decor,
+    movers: [for (final (a, b) in field.moverBars) (fraction(a), fraction(b))],
   ).encode().length;
 }

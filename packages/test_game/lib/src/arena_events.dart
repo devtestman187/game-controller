@@ -40,7 +40,7 @@ final class GameInput {
 Offset _unit(Offset v) => v.distance > 1 ? v / v.distance : v;
 
 /// Why a game event fired, for the log and the debug overlay.
-enum GameEventCause { wall, hazard, goal, dash, cooldown, bump, coin, coinAppear, timeUp }
+enum GameEventCause { wall, hazard, goal, dash, cooldown, bump, coin, coinAppear, timeUp, spring }
 
 /// The sound names the Arena's events play in the host's soundtrack (party-night
 /// N10, M14 G9): a host plays a sound by name, and each of these is a key in

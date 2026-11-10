@@ -14,6 +14,7 @@ import 'map_grid.dart';
 part 'map_rule_bumper.dart';
 part 'map_rule_field.dart';
 part 'map_rule_limits.dart';
+part 'map_rule_pieces.dart';
 part 'map_rule_race.dart';
 part 'map_rule_routes.dart';
 
@@ -32,10 +33,14 @@ enum MapRule {
   /// The Bumper Round's starts or coin zones break a rule.
   bumper,
 
+  /// A spring, post, belt or mover sits on a start or in a coin zone.
+  piece,
+
   /// A free spot a marble could stand on cannot be reached from a start.
   reach,
 
-  /// Too many walls or hazards, or a hazard too fast.
+  /// Too many walls, movers, hazards, springs or belts, or a hazard or mover
+  /// too fast.
   limit,
 
   /// The snapshot leaves too little of its 2048-byte budget.
@@ -52,8 +57,13 @@ const maxMapWalls = 24;
 /// The most hazards a map may have: as many as the screen stays calm with.
 const maxMapHazards = 8;
 
-/// The fastest a hazard may run: one pass every [minHazardPeriodS] seconds, so
-/// a marble can always cross behind it.
+/// The most springs a map may have (party-night §7b), and the most belts: as
+/// many as the field stays readable with.
+const maxMapSprings = 8;
+const maxMapBelts = 6;
+
+/// The fastest a hazard or a mover may run: one pass every [minHazardPeriodS]
+/// seconds, so a marble can always cross behind it.
 const minHazardPeriodS = 1.5;
 
 /// A route a marble must take passes only gaps this many marble diameters
@@ -92,6 +102,7 @@ List<LevelIssue> checkMap(ArenaMap map) {
   _gaps(map, issues);
   _race(map, issues);
   _bumper(map, issues);
+  _piece(map, issues);
   _reach(map, issues);
   _limits(map, issues);
   _size(map, issues);

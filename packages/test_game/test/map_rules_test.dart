@@ -6,22 +6,6 @@ import 'package:test_game/test_game.dart';
 import 'support/map_files.dart';
 import 'support/maps.dart';
 
-/// The rules [map] breaks, once each, in the order the rule book checks them.
-Set<MapRule> rulesOf(ArenaMap map) => {for (final issue in checkMap(map)) issue.rule as MapRule};
-
-/// The messages [map]'s issues of [rule] say.
-List<String> messagesOf(ArenaMap map, MapRule rule) => [
-  for (final issue in checkMap(map))
-    if (issue.rule == rule) issue.message,
-];
-
-/// The one message [map] breaks [rule] with, and nothing else: a map whose
-/// only fault is that rule's.
-String onlyMessage(ArenaMap map, MapRule rule) {
-  expect(rulesOf(map), {rule}, reason: (rulesOf(map)..remove(rule)).join(', '));
-  return messagesOf(map, rule).single;
-}
-
 void main() {
   test('the Playroom passes every map rule, and so does each map the index lists', () {
     for (final map in mapLibrary()) {
@@ -236,7 +220,7 @@ void main() {
     );
   });
 
-  test('the heaviest map the limits allow fits the frame budget', () {
+  test('a map at the wall and hazard limits, with its coins, fits the frame budget', () {
     final map = testMap(
       walls: [for (var i = 0; i < maxMapWalls; i++) longWall(i)],
       hazards: [
@@ -247,25 +231,51 @@ void main() {
     expect(checkMap(map), isEmpty);
   });
 
-  test(
-    'a map whose frame is too heavy says how to lighten it',
-    () {
-      final map = testMap(walls: [for (var i = 0; i < 24; i++) longWall(i)]);
-      expect(
-        onlyMessage(map, MapRule.size),
-        matches(
-          RegExp(
-            r'^test: with four marbles and its coins its snapshot is \d+ bytes; a frame may take 2048\. '
-            r'Use fewer or shorter walls\.$',
+  test('a map whose frame is too heavy says how to lighten it', () {
+    // A map at the limits, its pieces and decor counting too (M14 k2a): from
+    // the walls and hazards of the heaviest k1b map, with the springs, posts,
+    // belts, movers and decorations its theme brings.
+    final map = testMap(
+      theme: 'factory',
+      walls: [for (var i = 0; i < 16; i++) longWall(i)],
+      hazards: [
+        for (var i = 0; i < maxMapHazards; i++)
+          HazardSpec.orbit(Offset(0.4517 + i * 0.0103, 0.3127), radius: 0.03, periodS: 3, phase: 0.1 + i * 0.01),
+      ],
+      movers: [
+        for (var i = 0; i < 8; i++)
+          MoverSpec.slide(
+            Offset(0.3017 + i * 0.0611, 0.0623),
+            Offset(0.3419 + i * 0.0611, 0.0623),
+            length: 0.04,
+            deg: 90,
+            periodS: 3,
           ),
+      ],
+      springs: [for (var i = 0; i < maxMapSprings; i++) SpringSpec(Offset(0.3017 + i * 0.0503, 0.9407))],
+      posts: [for (var i = 0; i < 4; i++) PostSpec(Offset(0.6011 + i * 0.0517, 0.9013))],
+      belts: [
+        for (var i = 0; i < maxMapBelts; i++)
+          BeltSpec(Offset(0.3017 + i * 0.0811, 0.1207), Offset(0.3017 + i * 0.0811, 0.1807)),
+      ],
+      decor: [
+        for (var i = 0; i < 30; i++)
+          DecorSpec(
+            DecorKind.values[i % DecorKind.values.length],
+            Offset(0.0119 + i * 0.0323, i.isEven ? 0.9703 : 0.9433),
+          ),
+      ],
+    );
+    expect(
+      onlyMessage(map, MapRule.size),
+      matches(
+        RegExp(
+          r'^test: with four marbles and its coins its snapshot is \d+ bytes; a frame may take 2048\. '
+          r'Use fewer pieces, or fewer or shorter walls\.$',
         ),
-      );
-    },
-    skip:
-        'a guard for k2a: no map inside 24 walls and 8 hazards fills the 2048-byte budget yet (the heaviest is '
-        '1217 bytes, its coins included); k2a turns this on with a map its new pieces make heavy enough '
-        '(Claude, k1b question 2)',
-  );
+      ),
+    );
+  });
 
   test('the index and the files name the same maps', () {
     final map = testMap();
@@ -282,21 +292,3 @@ void main() {
     );
   });
 }
-
-/// The four spots a Bumper test starts from, in the field's corners.
-const fourStarts = [Offset(0.10, 0.20), Offset(0.10, 0.80), Offset(0.88, 0.20), Offset(0.88, 0.80)];
-
-/// A coin zone in the middle of the field, clear of walls and busy enough for
-/// three coins.
-const centerZone = Rect.fromLTRB(0.40, 0.40, 0.60, 0.60);
-
-/// A stub wall along the field's top edge, [i]th along: in the band no marble
-/// may stand in, so it changes nothing but the count.
-WallSpec topWall(int i) => WallSpec(Offset(0.02 + i * 0.038, 0), Offset(0.03 + i * 0.038, 0));
-
-/// A wall along the same edge whose numbers are long in a snapshot, so 24 of
-/// them fill it up.
-WallSpec longWall(int i) => WallSpec(
-  Offset(0.011111111111111111 + i * 0.0411111111111111, 0.011111111111111111),
-  Offset(0.021111111111111111 + i * 0.0411111111111111, 0.011111111111111111),
-);

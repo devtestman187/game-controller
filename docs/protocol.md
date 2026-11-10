@@ -77,12 +77,15 @@ controller                                   host
 | Field | Type | Required | Meaning |
 | --- | --- | --- | --- |
 | `controllerId` | string | yes | Stable random ID of the controller install (not tied to a person) |
-| `name` | string | yes | Label shown on the host, e.g. `iPhone 3F1C` (kept on the host, never recorded in analytics) |
+| `name` | string | yes | Label shown on the host, e.g. `iPhone 3F1C`: the player's nickname (M14 N13), or the phone's own `Phone 1A2B` when it has none. The host cuts it to 10 characters in its games; a blank one shows as `P1` |
 | `platform` | string | yes | `ios`, `android`, `sim`, … |
 | `appVersion` | string | yes | e.g. `0.10.0` |
 | `role` | string | no | `controller` (default). `display` is reserved for a v3 receiver |
 | `caps` | list of strings | no | Capabilities (§4) |
 | `device` | object | no | Device class for analytics, below |
+| `character` | object | no | The colour and accessory the player chose, below (M14 L7) |
+
+`character`: `c` (colour slot 1 to 6, the player colours below) and `a` (an accessory: `ears`, `antenna`, `bow`, `cap`, `tuft` or `crown`). A phone prefers one that no other player in the game wears, first come first served; when its own is taken the host gives the nearest free colour and the nearest free accessory, and tells the phone in the `player` message. A host one build older ignores the field and gives `ToyCharacter.forPlayer(number)`'s defaults, and so does the host for a player who sends none (an older phone, a local player).
 
 `device`: `kind` (`phone`, `tablet`, `foldable`, `desktop`, `sim`; required), and optional `model` (hardware model such as `iPhone15,2` or `Google Pixel 8`, never the user's own name for the device), `os` (e.g. `iOS 26.0`), `wMm` and `hMm` (physical screen size in mm, landscape: width is the long side), `haptics` (boolean).
 
@@ -113,7 +116,7 @@ Until a controller is paired the host accepts only `hello`, `pair`, `ping` and `
 
 ### `player` (host → controller)
 
-`{"n": 1}`: the controller's player number (from 1), sent after pairing and whenever it changes. Colours by number (ARGB): 1 `0xFF2E9BF0`, 2 `0xFFFF8A1F`, 3 `0xFFA66CFF`, 4 `0xFF14C8A0`, 5 `0xFFFF5C8A`, 6 `0xFFF2C200`, then repeating. A number stays reserved for a minute after its controller drops, so a short Wi-Fi drop doesn't swap players. Players on the host itself (a keyboard, or the host phone's own player) take numbers too.
+`{"n": 1, "character": {"c": 4, "a": "crown"}}`: the controller's player number (from 1), sent after pairing and whenever it changes, with the character the host gave it (M14 L7, the hello's `character` with the nearest free colour and accessory on a repeat). The two go together, so a `player` message carrying no `character` clears it. Colours by number (ARGB): 1 `0xFF2E9BF0`, 2 `0xFFFF8A1F`, 3 `0xFFA66CFF`, 4 `0xFF14C8A0`, 5 `0xFFFF5C8A`, 6 `0xFFF2C200`, then repeating. A `player` message from a host one build older carries no `character`, and the phone draws the number's default. A number stays reserved for a minute after its controller drops, so a short Wi-Fi drop doesn't swap players. Players on the host itself (a keyboard, or the host phone's own player) take numbers too.
 
 ## 6. Heartbeats and latency
 
@@ -235,11 +238,13 @@ A controller that lists `view` also shows the game itself: the host runs the gam
 | --- | --- | --- |
 | `view_start` | host → controller | `game`: module ID (`shape_race`, `arena`) · `sv`: the snapshot version the frames carry · `setup`: the module's setup JSON · `hz`: frames a second the host publishes |
 | `frame` | host → controller | `n`: step number: `-1` for the frame a host sends before the first step while the round is held (the "Get ready" beat), then from 0 · `at`: the host's clock in ms at that step · `s`: the module's snapshot JSON · `snd`: sound names since the last sent frame, left out when empty · `acks`: player ID → the last input seq the host applied (only players with one) · `pl`: player ID → `[number, name]`, the name `""` when the player has none |
-| `view_end` | host → controller | `reason`: `finished` (the game ended), `quit` (someone left) or `abandoned` (the game stopped without ending: the host closed, the connection dropped, a new game started) |
+| `view_end` | host → controller | `reason`: `finished` (the game ended), `quit` (someone left) or `abandoned` (the game stopped without ending: the host closed, the connection dropped, a new game started) · `result`: this phone's own result of the round, below, sent with `finished` (M14 design section 9) |
 | `host_away` | host → controller | `s`: whole seconds left before the round ends if the host stays away (0 or more) |
 | `host_back` | host → controller | no fields |
 | `player_away` | host → controller | `player`: player ID, as in a frame's `pl` · `n`: the player's number, from 1 · `s`: whole seconds left before the game goes on without them (0 or more) |
 | `player_back` | host → controller | `player`: player ID: the player is back, or the grace is over and the game went on without them |
+
+**`view_end`'s `result`** (M14 design section 9): `outcome` (`win`, `loss`, `draw`, or `done` for a board played alone), `time` (the round's seconds, when the card shows a time), `count` and `countOf` (`pieces` or `coins`, when the card counts what the player had), `points` (the player's points this round, in a night), `round` and `of` (the night's round and how many it has), `place` (their place in the night's standings), `winners` (the round's winners' names) and `standings`: a list of `{n, name, pts, character}`, one per player in total order, in a night. Every field but `outcome` is left out when it doesn't apply. The phone keeps its last frame and draws the card over it; the card goes on the next `view_start`, or on a later `view_end` without a `result` (the host left the results). A phone that gets no `result` — a host one build older, or a round outside the results card — goes back to its pad as in M12.
 
 `view_start` comes first, `view_end` last, and each `frame` between them carries one step of the game, sent `hz` times a second. Before the first step, a host that holds a round (the "Get ready" beat) sends one frame with `n` `-1`: the board at step 0, with the `s`, `pl` and `acks` a step's frame has and no `snd`. It goes out whether or not a viewer has paired yet, so a viewer that pairs during the beat gets it after `view_start` and draws the held board. No frame follows while a round is held or paused, and the next one carries step 0. An older viewer reads `-1` → `0` as no gap and draws that frame as it draws any other. The host encodes each frame once and sends every viewer the same text.
 
@@ -252,6 +257,8 @@ Beside the boards a frame carries `cat` while the cat is out (M14 a2), and no `c
 A phone one build older compares `sv` `2` with the version 1 it knows and shows "Update the app to see this game" rather than drawing a frame it would read wrongly.
 
 **The Arena's snapshots are version 2** (M14 b1, G9): the frame keeps its keys — `rd` the round, `t` its time in seconds, `ph` the phase (`0` playing, `1` won, `2` over), `wl` the walls, `g` the goal pad, `hz` the hazards, `pl` the marbles, `st` the start pad, `win`, `last`, `br`, `best` and `bestId` — and adds `mid` the map's ID, `md` the round's mode (`1` the Bumper Round, left out for the race), `co` the coins on the field, `tl` the clock's milliseconds left in the Bumper Round, and `cr` a coin's radius as a fraction of the field's shorter side. Each marble's `c` is now the coins it has, and its dash cooldown is `cd`. A coin is `[x, y, age ms]`: x and y fractions of the field to a ten-thousandth, and age the ms since it appeared, which its spin turns on. A Bumper Round leaves out `g` and `st`, which it has no use for; a race leaves out `md`, `co`, `tl` and `cr` and has no coins. A frame carries the round's three coins at most, and four marbles and those coins stay inside the frame's 2048-byte budget (S8).
+
+**The map's pieces travel in the frame** (M14 k2a): besides the walls and hazards it already had, a frame names the floor's look and the pieces fixed to it, each key left out when it has nothing to say — `th` the theme (`pinball`, `castle`, `factory` or `tops`; the Playroom's is left out), `sp` the springs, `po` the posts, `bl` the belts, `dc` the decorations, and `mi` `1` when the round flips the field left to right, as the walls and hazards in the frame already are. A spring and a post are `[x, y, radius]`, a belt `[x1, y1, x2, y2, width]` and a decoration `[kind, x, y, size]`, kind `0` a flag, `1` a light and `2` a gear; x and y are fractions of the field to a ten-thousandth and radius, width and size fractions of its shorter side, each left out where the piece has its usual one. `mv` carries the moving bars' two ends this frame, `[x1, y1, x2, y2]` each, worked out from the round's clock, so a phone draws every piece it meets without a copy of the map. The still pieces come from the frame too, until M14 b2's phone copy saves them their bytes. With effects off the frame's pieces are still, and the frame still names its map in `mid`.
 
 **Sounds.** `snd` lists the sound names a step played, and a phone plays them from its own copy when it draws the frame that carries them, so every phone hears the game. Haptics stay per-player messages (§8). The Bumper Round names its sounds `coin`, `coin_appear`, `bump`, `bump_big` and `time_up`; the race's keep their haptic names (`hit`, `success`, `error`, `rumble`).
 

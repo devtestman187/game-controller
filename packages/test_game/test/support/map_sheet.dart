@@ -21,8 +21,8 @@ const box = Size(gridGap + 320 + gridGap, gridGap + 2 * (180 + labelHeight + gri
 /// over it.
 const sweepAlpha = 0.18;
 
-/// [map]'s field as a frame with no marbles on it, its walls, hazards, start
-/// and goal, as the TV draws them.
+/// [map]'s field as a frame with no marbles on it, its walls, hazards, pieces,
+/// theme, start and goal, as the TV draws them.
 ArenaSnapshot mapSnapshot(ArenaMap map) {
   final field = ArenaFieldRules(map: map, size: mapFieldSize);
   final size = field.size;
@@ -38,6 +38,12 @@ ArenaSnapshot mapSnapshot(ArenaMap map) {
     hazards: [for (final hazard in field.hazardPositions) at(hazard)],
     players: const [],
     start: race == null ? const Offset(0.07, 0.5) : at(field.startPx),
+    theme: map.theme,
+    springs: map.springs,
+    posts: map.posts,
+    belts: map.belts,
+    decor: map.decor,
+    movers: [for (final (a, b) in field.moverBars) (at(a), at(b))],
   );
 }
 

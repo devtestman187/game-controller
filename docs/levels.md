@@ -230,9 +230,14 @@ Positions are fractions, so the field plays the same in any window. Sizes and sp
 | `name` | What the players read in the map picker. |
 | `line` | One line about the map, for the picker's card. |
 | `notes` | Optional, free text, ignored by the app. |
-| `theme` | The floor's look, `"playroom"` when the file says none. The Bumper Round's own floors come with M14 k2, and the schema, the parser and `check` refuse a theme this build has not got. |
-| `walls` | The walls, each `{"from": [x, y], "to": [x, y]}`: an axis-aligned block `ArenaFieldRules.wallThickness` thick round the line between the two ends. A wall with both ends at one spot is not a wall. |
-| `hazards` | The moving hazards: `{"slide": {"from": …, "to": …}}` back and forth between two points, or `{"orbit": {"centre": …, "radius": …}}` round a circle (`radius` a fraction of the shorter side), each with `periodS` (one full cycle) and optional `phase` (where in the cycle it starts, 0 to 1). |
+| `theme` | The floor's look, `"playroom"` when the file says none: `"playroom"`, `"pinball"`, `"castle"`, `"factory"` or `"tops"`. A theme only changes how the field is drawn; it never changes the play. The schema, the parser and `check` refuse a theme this build has not got. |
+| `walls` | The walls, each `{"from": [x, y], "to": [x, y], "bouncy": true}`: an axis-aligned block `ArenaFieldRules.wallThickness` thick round the line between the two ends. A wall with both ends at one spot is not a wall; a `bouncy` one (the default false) kicks a marble back at 1.5 times its speed, as a pinball table's slingshots do. |
+| `hazards` | The hazards: `{"slide": {"from": …, "to": …}}` back and forth between two points, `{"orbit": {"centre": …, "radius": …}}` round a circle (`radius` a fraction of the shorter side), each with `periodS` (one full cycle) and optional `phase` (where in the cycle it starts, 0 to 1); or `{"still": {"at": …}}` for a hazard that never moves (a drain), which sends a marble back to its start and has no period or phase. |
+| `springs` | The springs, each `{"at": [x, y], "radius": …}`: a green cap over a yellow coil, never red, since red means a hazard. A marble that hits one bounces off at 1.5 times its speed, with `bump`; it is not a hazard and drops nothing. `radius` (a fraction of the shorter side) is 0.05 when the file says none. |
+| `posts` | The posts, each `{"at": [x, y], "radius": …}`: a solid round pillar a marble bounces off, a castle's tower or a factory's column. `radius` is 0.055 when the file says none. |
+| `belts` | The belts, each `{"from": [x, y], "to": [x, y], "width": …}`: a strip a marble standing on is carried along at half its walking speed, towards the `to` end. `width` is 0.09 when the file says none, and a belt with both ends at one spot is not a belt. |
+| `movers` | The movers, walls that move on a timer: `{"swing": {"pivot": …, "length": …, "fromDeg": …, "toDeg": …}}` about a pivot between two angles (a flipper), `{"spin": {"pivot": …, "length": …}}` steadily round one (a carousel), or `{"slide": {"from": …, "to": …, "length": …, "deg": …}}` between two places (a gate, a press), each with `periodS` and optional `phase`. A mover pushes a marble out of its way and never through another wall; a mover that pins one against a wall stops for that step rather than crush it. |
+| `decor` | The scenery drawn round the play, each `{"kind": "flag", "at": [x, y], "size": …}`: a `"flag"`, a `"light"` or a `"gear"`, in the theme's own colours. It has no collision and no effect on play, and `size` is 0.09 when the file says none. |
 | `race` | The Shape Race's part: `start` (where the first player starts), `goal` (the pad, `[left, top, right, bottom]`) and `swapSides` (whether every round flips the field left to right, as the race does today). The other three starts sit above and below `start` at `startSpacing` (0.14 of the height), so a map's start needs room for four. |
 | `bumper` | The Bumper Round's part: `starts` (four spots) and `coins` (one or more rects a coin may appear in). |
 
@@ -252,11 +257,12 @@ A map needs `race`, or `bumper`, or both: a map with neither is refused with a m
 
 `check` runs the same rule book over a map, in `map_rules.dart` and its parts. Besides the two modes' needs, every map keeps these:
 
-- **Everything inside the field.** Every wall, hazard, start, goal and coin zone lies between 0 and 1, across and down.
+- **Everything inside the field.** Every wall, hazard, spring, post, belt, mover's sweep, decoration, start, goal and coin zone lies between 0 and 1, across and down. A belt with both ends at one spot, or a mover with no length, is no piece at all.
+- **The pieces keep clear of the starts and the coin zones.** A spring, a post or a belt never sits on a start, where a marble begins, or in a coin zone, where the Bumper Round's coins appear, and a mover's sweep never crosses either: a piece there would shove a marble as it set off or a coin as it came out, and these pieces have no hazard's grace.
 - **Every route a marble needs is wide enough.** Each start to the goal, and each start to each coin zone, passes only gaps at least **1.6 marbles** wide between the walls' faces (9.2 units), so none gets stuck: the Playroom's tightest gate is about 1.75. Aim for **2.5 marbles** (14.4 units) on a new map, so two can pass. `check` reads this on a path grid with the walls grown by 0.8 of a marble (`MapGrid`): a way that only the grown grid misses is a squeeze; a dead-end slit no route goes through is not a gap a marble must pass, so it is not an issue.
 - **No pocket.** No free spot a marble could stand on is cut off from every start.
-- **Limits.** At most **24 walls** and **8 hazards**, and no hazard faster than one pass every **1.5 s**.
-- **The snapshot's budget.** One frame of the map with four marbles stays inside 2048 bytes with 300 kept for the Bumper Round's coins, so a busy map never crowds the phone's frames.
+- **Limits.** At most **24 walls and movers together** (a mover is a wall that moves, so it counts with them), **8 hazards**, **8 springs** and **6 belts**, and neither a hazard nor a mover faster than one pass every **1.5 s**; a still hazard has no pass to make.
+- **The snapshot's budget.** One frame of the map with four marbles, its coins and its pieces stays inside 2048 bytes, so a busy map never crowds the phone's frames. The frame carries the floor's theme and the pieces fixed to it as well as the walls and the hazards, since a phone draws the field from the frame alone (the map id names it, and M14 b2's phone copy will save the pieces their bytes).
 - **The listing.** Every map is in `index.json` and every line there has its file ([above](#the-folder-and-indexjson)).
 
 Each broken rule is one line from `check`, naming the map, the part and what to change:
@@ -275,9 +281,22 @@ playroom/coin zone 1: it has room for 1 of the 3 coins a zone needs together. Ma
 playroom/coin zone 2: no marble can get here from bumper start 0. Open a way, or move the zone.
 playroom: a marble can stand at 0.30 across and 0.10 down but no start can reach it. Open a gap into that corner, or fill it with a wall.
 playroom: it has 25 walls; a map has at most 24. Remove one, or join two into a longer wall.
+playroom: it has 20 walls and 5 movers; a wall and a mover both count, and a map has at most 24. Remove one, or join two into a longer wall.
 playroom: it has 9 hazards; a map has at most 8. Remove one, so the screen stays calm.
+playroom: it has 9 springs; a map has at most 8. Remove one.
+playroom: it has 7 belts; a map has at most 6. Remove one.
 playroom/hazard 0: it makes a pass every 1.2 s; the fastest is one every 1.5 s. Make its "periodS" bigger.
-playroom: with four marbles its snapshot is 1800 bytes; a map may take 1748 of the 2048, so the Bumper Round's coins keep their 300. Use fewer or shorter walls.
+playroom/mover 1: it makes a pass every 1.2 s; the fastest is one every 1.5 s. Make its "periodS" bigger.
+playroom/spring 0: it sits on start 0, where a marble begins. Move it clear of every start.
+playroom/post 0: it sits on bumper start 0, where a marble begins. Move it clear of every start.
+playroom/belt 1: it crosses start 2, where a marble begins. Move it clear of every start.
+playroom/mover 0: its sweep crosses start 3, where a marble begins. Move it clear of every start.
+playroom/spring 0: it sits in coin zone 0, where coins appear. Move it clear of the coin zones.
+playroom/belt 1: it crosses coin zone 1, where coins appear. Move it clear of the coin zones.
+playroom/mover 0: its sweep crosses coin zone 1, where coins appear. Move it clear of the coin zones.
+playroom/spring 0: it reaches 1.23 across and 0.55 down, outside the field. Keep every part of the map between 0 and 1, across and down.
+playroom/mover 0: its sweep runs to 1.30 across and 0.50 down, outside the field. Keep every part of the map between 0 and 1, across and down.
+playroom: with four marbles and its coins its snapshot is 2163 bytes; a frame may take 2048. Use fewer pieces, or fewer or shorter walls.
 ```
 
 The rules are `MapRule`s on a `LevelIssue`, as the puzzles' are `PuzzleRule`s, so the app, the tests and `check` read one list.

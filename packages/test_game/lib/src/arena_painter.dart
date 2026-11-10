@@ -8,6 +8,7 @@ import 'arena_coin_painter.dart';
 import 'arena_marble_painter.dart';
 import 'arena_moments.dart';
 import 'arena_mode.dart';
+import 'arena_piece_painter.dart';
 import 'arena_roster.dart';
 import 'arena_snapshot.dart';
 
@@ -102,7 +103,12 @@ class ArenaPainter extends CustomPainter {
     final style = ToyShapeStyle(ink: look.colors.ink, outlineWidth: look.sizes.outlineWidth);
     Offset px(Offset f) => Offset(f.dx * size.width, f.dy * size.height);
     if (fillsBackground) canvas.drawRect(Offset.zero & size, Paint()..color = look.colors.field);
-    _mat(canvas, size);
+    final pieces = ArenaPiecePainter(s: s, look: look, style: style);
+    if (s.theme == 'playroom') {
+      _mat(canvas, size);
+    } else {
+      pieces.floor(canvas, size);
+    }
     // The race's start pad and goal pad are not on a Bumper Round's field
     // (G9): its marbles start on the map's bumper starts and its coins are
     // the mark to play for.
@@ -110,7 +116,9 @@ class ArenaPainter extends CustomPainter {
       _start(canvas, px(s.start), s.playerRadius * unit * startPadShare, unit, style);
       _goal(canvas, size, style);
     }
+    pieces.pieces(canvas, size);
     _walls(canvas, px, unit, style);
+    pieces.movers(canvas, size);
     _hazards(canvas, px, s.hazardRadius * unit, unit, style);
     ArenaCoinPainter(coins: s.coins, radius: s.coinRadius * unit, look: look, style: style).paint(canvas, size);
     ArenaMarblePainter(snapshot: s, roster: roster, look: look, style: style, moments: moments).paint(canvas, size);

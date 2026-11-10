@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://thumbparty.dev/map.schema.json",
   "title": "Arena map",
-  "description": "One arena map (M14 k1b): the walls, hazards, start and goal a race is played on, and the starts and coin zones the Bumper Round uses. The guide is docs/levels.md; the rules a file must keep are in packages/test_game/lib/src/map_rules.dart, run by tools/level.sh check.",
+  "description": "One arena map (M14 k1b, k2a): the walls, hazards and pieces (springs, posts, belts, movers, decor) of the field, the start and goal a race is played on, and the starts and coin zones the Bumper Round uses. The guide is docs/levels.md; the rules a file must keep are in packages/test_game/lib/src/map_rules.dart, run by tools/level.sh check.",
   "type": "object",
   "required": ["id", "name", "line", "theme"],
   "additionalProperties": false,
@@ -36,21 +36,49 @@
       "description": "A comment for the map's author. The app ignores it; the template's instructions are written here."
     },
     "theme": {
-      "enum": ["playroom"],
-      "errorMessage": "{value} is not a theme: use playroom",
-      "description": "The floor's look, which every map names. Only \"playroom\" today; the Bumper Round's own floors come with M14 k2."
+      "enum": ["playroom", "pinball", "castle", "factory", "tops"],
+      "errorMessage": "{value} is not a theme: use playroom, pinball, castle, factory or tops",
+      "description": "The floor's look, which every map names: the Playroom's mat, or the look of one of M14 k2's four maps (Pinball, Block Castle, Toy Factory, Spinning Tops). A theme only changes how the field is drawn; it never changes the play."
     },
     "walls": {
       "type": "array",
       "maxItems": 24,
-      "description": "The field's walls, at most 24 of them: a wall is a straight segment a marble cannot pass through.",
+      "description": "The field's walls, at most 24 with the movers together: a wall is a straight segment a marble cannot pass through, and a bouncy one throws it back like a spring.",
       "items": {"$ref": "#/$defs/wall"}
     },
     "hazards": {
       "type": "array",
       "maxItems": 8,
-      "description": "The moving hazards, at most 8, none faster than one pass every 1.5 s: a marble that touches one is sent back to a start.",
+      "description": "The hazards, at most 8, none moving faster than one pass every 1.5 s: a marble that touches one is knocked back, or sent to its start if the hazard stands still.",
       "items": {"$ref": "#/$defs/hazard"}
+    },
+    "springs": {
+      "type": "array",
+      "maxItems": 8,
+      "description": "The springs, at most 8: a marble that hits one bounces off at 1.5 times its speed, with a bump. A spring is not a hazard: it drops nothing.",
+      "items": {"$ref": "#/$defs/spring"}
+    },
+    "posts": {
+      "type": "array",
+      "description": "The posts, solid round blocks a marble bounces off and cannot pass: a tower, a column, a pop bumper's friend.",
+      "items": {"$ref": "#/$defs/post"}
+    },
+    "belts": {
+      "type": "array",
+      "maxItems": 6,
+      "description": "The belts, at most 6: a marble standing on one is carried along it at half its speed, towards the belt's `to` end.",
+      "items": {"$ref": "#/$defs/belt"}
+    },
+    "movers": {
+      "type": "array",
+      "maxItems": 24,
+      "description": "The movers, walls that move on a timer, at most 24 with the walls together, one pass taking 1.5 s or more: each swings, spins or slides, and a mover that pins a marble against a wall stops for that step rather than crush it.",
+      "items": {"$ref": "#/$defs/mover"}
+    },
+    "decor": {
+      "type": "array",
+      "description": "The scenery drawn round the play (flags, lights, gears) for the theme: it has no collision and no effect on play, and it never hides a marble, a wall or a hazard.",
+      "items": {"$ref": "#/$defs/decor"}
     },
     "race": {
       "$ref": "#/$defs/race",
@@ -93,11 +121,15 @@
       "additionalProperties": false,
       "properties": {
         "from": {"$ref": "#/$defs/point", "description": "Where the wall starts, in fractions of the field."},
-        "to": {"$ref": "#/$defs/point", "description": "Where it ends: a zero-length wall is refused."}
+        "to": {"$ref": "#/$defs/point", "description": "Where it ends: a zero-length wall is refused."},
+        "bouncy": {
+          "type": "boolean",
+          "description": "Whether the wall kicks like a spring (true), throwing a marble back at 1.5 times its speed, as a pinball table's slingshots do. The default false."
+        }
       }
     },
     "hazard": {
-      "description": "One moving hazard: a slide (a bar sweeping between two spots) or an orbit (a bar circling a centre), with how long one pass takes.",
+      "description": "One hazard: a slide (a bar sweeping between two spots) or an orbit (a bar circling a centre), with how long one pass takes, or a still one (a drain) that never moves.",
       "oneOf": [
         {
           "type": "object",
@@ -142,12 +174,157 @@
             "periodS": {"$ref": "#/$defs/periodS"},
             "phase": {"$ref": "#/$defs/phase"}
           }
+        },
+        {
+          "type": "object",
+          "description": "A still hazard: a drain that never moves, so a marble that touches it is sent back to its start at once, with no kick to recover from.",
+          "required": ["still"],
+          "additionalProperties": false,
+          "properties": {
+            "still": {
+              "type": "object",
+              "description": "Where it stands.",
+              "required": ["at"],
+              "additionalProperties": false,
+              "properties": {
+                "at": {"$ref": "#/$defs/point", "description": "The spot it fills, in fractions of the field."}
+              }
+            }
+          }
         }
       ]
     },
     "periodS": {
       "type": "number",
       "description": "Seconds one pass takes: the time from where the hazard starts back to it. At least 1.5, or the hazard is too fast to dodge."
+    },
+    "moverPeriodS": {
+      "type": "number",
+      "description": "Seconds one pass takes: the time from where the mover starts back to it. At least 1.5, or the mover is too fast to dodge."
+    },
+    "size": {
+      "type": "number",
+      "minimum": 0,
+      "description": "A size as a fraction of the field's shorter side, so it means the same across and down."
+    },
+    "degrees": {
+      "type": "number",
+      "description": "An angle in degrees, clockwise from across the field: 0 points right, 90 down."
+    },
+    "spring": {
+      "type": "object",
+      "description": "One spring: a green cap over a yellow coil, which throws a marble back at 1.5 times its speed. Never red, since red means a hazard.",
+      "required": ["at"],
+      "additionalProperties": false,
+      "properties": {
+        "at": {"$ref": "#/$defs/point", "description": "The spring's middle, in fractions of the field."},
+        "radius": {"$ref": "#/$defs/size", "description": "How wide it is; 0.05 when the file says none."}
+      }
+    },
+    "post": {
+      "type": "object",
+      "description": "One post: a solid round block a marble bounces off. It is not a spring and not a hazard.",
+      "required": ["at"],
+      "additionalProperties": false,
+      "properties": {
+        "at": {"$ref": "#/$defs/point", "description": "The post's middle, in fractions of the field."},
+        "radius": {"$ref": "#/$defs/size", "description": "How wide it is; 0.055 when the file says none."}
+      }
+    },
+    "belt": {
+      "type": "object",
+      "description": "One belt: a strip a marble standing on is carried along at half its speed, towards the `to` end.",
+      "required": ["from", "to"],
+      "additionalProperties": false,
+      "properties": {
+        "from": {"$ref": "#/$defs/point", "description": "Where the belt starts, in fractions of the field."},
+        "to": {"$ref": "#/$defs/point", "description": "Where it ends, the way it carries; a zero-length belt is refused."},
+        "width": {"$ref": "#/$defs/size", "description": "How wide the strip is; 0.09 when the file says none."}
+      }
+    },
+    "mover": {
+      "description": "One mover: a wall that moves, swinging about a pivot, spinning about one, or sliding between two places.",
+      "oneOf": [
+        {
+          "type": "object",
+          "description": "A swing: a bar turning about a pivot between two angles, like a flipper.",
+          "required": ["swing", "periodS"],
+          "additionalProperties": false,
+          "properties": {
+            "swing": {
+              "type": "object",
+              "description": "The bar and the two angles it turns between.",
+              "required": ["pivot", "length", "fromDeg", "toDeg"],
+              "additionalProperties": false,
+              "properties": {
+                "pivot": {"$ref": "#/$defs/point", "description": "The point it turns about, in fractions of the field."},
+                "length": {"$ref": "#/$defs/size", "description": "How long the bar is, out from the pivot."},
+                "fromDeg": {"$ref": "#/$defs/degrees", "description": "One angle it turns to."},
+                "toDeg": {"$ref": "#/$defs/degrees", "description": "The other angle."}
+              }
+            },
+            "periodS": {"$ref": "#/$defs/moverPeriodS"},
+            "phase": {"$ref": "#/$defs/phase"}
+          }
+        },
+        {
+          "type": "object",
+          "description": "A spin: a bar turning about a pivot at one steady speed, all the way round, like a carousel.",
+          "required": ["spin", "periodS"],
+          "additionalProperties": false,
+          "properties": {
+            "spin": {
+              "type": "object",
+              "description": "The bar and the pivot it turns about.",
+              "required": ["pivot", "length"],
+              "additionalProperties": false,
+              "properties": {
+                "pivot": {"$ref": "#/$defs/point", "description": "The point it turns about, in fractions of the field."},
+                "length": {"$ref": "#/$defs/size", "description": "How long the bar is; it is centred on the pivot."}
+              }
+            },
+            "periodS": {"$ref": "#/$defs/moverPeriodS"},
+            "phase": {"$ref": "#/$defs/phase"}
+          }
+        },
+        {
+          "type": "object",
+          "description": "A slide: a bar travelling between two places, like a gate or a press.",
+          "required": ["slide", "periodS"],
+          "additionalProperties": false,
+          "properties": {
+            "slide": {
+              "type": "object",
+              "description": "The two places it travels between, and the angle the bar lies at.",
+              "required": ["from", "to", "length", "deg"],
+              "additionalProperties": false,
+              "properties": {
+                "from": {"$ref": "#/$defs/point", "description": "One place the bar's middle reaches, in fractions of the field."},
+                "to": {"$ref": "#/$defs/point", "description": "The other place."},
+                "length": {"$ref": "#/$defs/size", "description": "How long the bar is; it is centred on its middle."},
+                "deg": {"$ref": "#/$defs/degrees", "description": "The angle the bar lies at."}
+              }
+            },
+            "periodS": {"$ref": "#/$defs/moverPeriodS"},
+            "phase": {"$ref": "#/$defs/phase"}
+          }
+        }
+      ]
+    },
+    "decor": {
+      "type": "object",
+      "description": "One piece of scenery: a flag, a light or a gear, drawn only.",
+      "required": ["kind", "at"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": ["flag", "light", "gear"],
+          "errorMessage": "{value} is not a decor kind: use flag, light, gear",
+          "description": "Which piece of scenery it is: a pennant, a lamp or a cog."
+        },
+        "at": {"$ref": "#/$defs/point", "description": "Where it stands, in fractions of the field."},
+        "size": {"$ref": "#/$defs/size", "description": "How big it is drawn; 0.09 when the file says none."}
+      }
     },
     "phase": {
       "type": "number",

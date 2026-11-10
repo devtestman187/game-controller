@@ -3,20 +3,28 @@ import 'dart:ui';
 
 import 'package:game_kit/game_kit.dart';
 
+import 'arena_pieces.dart';
 import 'arena_specs.dart';
+
+part 'arena_map_pieces.dart';
 
 /// The map file format this build reads (M14 k1b, docs/levels.md): files say
 /// `"format": 1`, and one that says a higher number was written for a newer
 /// app and is refused with a message saying so.
 const arenaMapFormat = 1;
 
-/// The floor looks a map may name (M14 k1b). The Playroom's today; the Bumper
-/// Round's own floors (party-night §7b) come with M14 k2.
-const mapThemes = ['playroom'];
+/// The floor looks a map may name (party-night §7b): the Playroom's dotted mat
+/// and the Bumper Round's four, each with its own floor and its own decor. A
+/// theme only changes how the field is drawn; it never changes the play.
+const mapThemes = ['playroom', 'pinball', 'castle', 'factory', 'tops'];
 
 /// The refusal of a theme this build has not got, in the same words in the
 /// schema and the parser.
-String notATheme(Object? theme) => '"$theme" is not a theme: use ${mapThemes.join(' or ')}';
+String notATheme(Object? theme) => '"$theme" is not a theme: use ${_oneOf(mapThemes)}';
+
+/// The names [names], as a sentence lists them: "a, b or c".
+String _oneOf(List<String> names) =>
+    names.length < 2 ? names.join() : '${names.sublist(0, names.length - 1).join(', ')} or ${names.last}';
 
 /// How far apart the four start spots are, down the field (a fraction of its
 /// height): each extra player starts above or below the first (party-night
@@ -94,6 +102,11 @@ final class ArenaMap {
     this.theme = 'playroom',
     this.walls = const [],
     this.hazards = const [],
+    this.springs = const [],
+    this.posts = const [],
+    this.belts = const [],
+    this.movers = const [],
+    this.decor = const [],
     this.race,
     this.bumper,
   });
@@ -142,11 +155,27 @@ final class ArenaMap {
   /// One line about the map, for the picker's card.
   final String line;
 
-  /// The floor's look. Only `playroom` today ([mapThemes]).
+  /// The floor's look ([mapThemes]). Drawn only: it never changes the play.
   final String theme;
 
   final List<WallSpec> walls;
   final List<HazardSpec> hazards;
+
+  /// The springs fixed to the floor (party-night §7b): a marble bounces off
+  /// one faster than it came.
+  final List<SpringSpec> springs;
+
+  /// The posts: round pillars a marble cannot pass.
+  final List<PostSpec> posts;
+
+  /// The conveyor strips, which carry a marble toward their end.
+  final List<BeltSpec> belts;
+
+  /// The walls that move on a timer: flippers, carousels, gates and presses.
+  final List<MoverSpec> movers;
+
+  /// The scenery round the play: drawn, and nothing more.
+  final List<DecorSpec> decor;
 
   /// The race's start and goal, when the map may be raced on.
   final RaceSpec? race;
@@ -181,6 +210,26 @@ final class ArenaMap {
       hazards: [
         for (final (i, raw) in _list(json['hazards'] ?? const [], '$where: "hazards"').indexed)
           _hazard(raw, '$where, hazard $i'),
+      ],
+      springs: [
+        for (final (i, raw) in _list(json['springs'] ?? const [], '$where: "springs"').indexed)
+          _spring(raw, '$where, spring $i'),
+      ],
+      posts: [
+        for (final (i, raw) in _list(json['posts'] ?? const [], '$where: "posts"').indexed)
+          _post(raw, '$where, post $i'),
+      ],
+      belts: [
+        for (final (i, raw) in _list(json['belts'] ?? const [], '$where: "belts"').indexed)
+          _belt(raw, '$where, belt $i'),
+      ],
+      movers: [
+        for (final (i, raw) in _list(json['movers'] ?? const [], '$where: "movers"').indexed)
+          _mover(raw, '$where, mover $i'),
+      ],
+      decor: [
+        for (final (i, raw) in _list(json['decor'] ?? const [], '$where: "decor"').indexed)
+          _decor(raw, '$where, decor $i'),
       ],
       race: race,
       bumper: bumper,
@@ -224,11 +273,21 @@ final class ArenaMap {
 
   static WallSpec _wall(Object? raw, String where) {
     if (raw is! Map<String, Object?>) throw FormatException('$where is not an object, got ${jsonEncode(raw)}');
-    return WallSpec(_point(raw['from'], where, 'from'), _point(raw['to'], where, 'to'));
+    final bouncy = raw['bouncy'];
+    if (bouncy != null && bouncy is! bool) {
+      throw FormatException('$where: "bouncy" must be true or false, got ${jsonEncode(bouncy)}');
+    }
+    return WallSpec(_point(raw['from'], where, 'from'), _point(raw['to'], where, 'to'), bouncy: bouncy == true);
   }
 
   static HazardSpec _hazard(Object? raw, String where) {
     if (raw is! Map<String, Object?>) throw FormatException('$where is not an object, got ${jsonEncode(raw)}');
+    if (raw['still'] != null) {
+      if (raw['still'] is! Map<String, Object?>) {
+        throw FormatException('$where: "still" is not an object, got ${jsonEncode(raw['still'])}');
+      }
+      return HazardSpec.still(_point((raw['still'] as Map<String, Object?>)['at'], where, 'at'));
+    }
     final period = _number(raw['periodS'], where, 'periodS');
     final phase = raw['phase'] == null ? 0.0 : _number(raw['phase'], where, 'phase');
     if (raw['slide'] != null) {
@@ -256,7 +315,8 @@ final class ArenaMap {
       );
     }
     throw FormatException(
-      '$where: needs a "slide" ({from, to}) or an "orbit" ({centre, radius}), got ${jsonEncode(raw)}',
+      '$where: needs a "slide" ({from, to}), an "orbit" ({centre, radius}) or a "still" ({at}), got '
+      '${jsonEncode(raw)}',
     );
   }
 
@@ -299,11 +359,30 @@ final class ArenaMap {
       other.theme == theme &&
       _sameList(other.walls, walls) &&
       _sameList(other.hazards, hazards) &&
+      _sameList(other.springs, springs) &&
+      _sameList(other.posts, posts) &&
+      _sameList(other.belts, belts) &&
+      _sameList(other.movers, movers) &&
+      _sameList(other.decor, decor) &&
       other.race == race &&
       other.bumper == bumper;
 
   @override
-  int get hashCode => Object.hash(id, name, line, theme, Object.hashAll(walls), Object.hashAll(hazards), race, bumper);
+  int get hashCode => Object.hash(
+    id,
+    name,
+    line,
+    theme,
+    Object.hashAll(walls),
+    Object.hashAll(hazards),
+    Object.hashAll(springs),
+    Object.hashAll(posts),
+    Object.hashAll(belts),
+    Object.hashAll(movers),
+    Object.hashAll(decor),
+    race,
+    bumper,
+  );
 }
 
 /// Whether [a] and [b] hold the same items in the same order.

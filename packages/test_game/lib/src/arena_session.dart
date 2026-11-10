@@ -152,5 +152,6 @@ class ArenaSession extends GameSession {
     GameEventCause.coin => 'coin',
     GameEventCause.coinAppear => 'coin_appear',
     GameEventCause.timeUp => 'time_up',
+    GameEventCause.spring => 'spring',
   };
 }

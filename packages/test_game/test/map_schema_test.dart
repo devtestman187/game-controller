@@ -67,6 +67,54 @@ void main() {
         changed(valid, (json) => (json['bumper']! as Map<String, Object?>)['coins'] = []),
         'coins',
       ),
+      (
+        'a bouncy that is not true or false',
+        changed(
+          valid,
+          (json) => (json['walls']! as List).first = {
+            'from': [0.30, 0.30],
+            'to': [0.30, 0.70],
+            'bouncy': 'yes',
+          },
+        ),
+        'bouncy',
+      ),
+      (
+        'a spring on the floor',
+        changed(
+          valid,
+          (json) => json['springs'] = [
+            for (var i = 0; i < 9; i++)
+              {
+                'at': [0.2 + i * 0.05, 0.9],
+              },
+          ],
+        ),
+        'at most 8 items',
+      ),
+      (
+        'a decor kind this build has not got',
+        changed(
+          valid,
+          (json) => json['decor'] = [
+            {
+              'kind': 'balloon',
+              'at': [0.5, 0.5],
+            },
+          ],
+        ),
+        notADecorKind('balloon'),
+      ),
+      (
+        'a mover with no shape',
+        changed(
+          valid,
+          (json) => json['movers'] = [
+            {'periodS': 3},
+          ],
+        ),
+        'matches none of the shapes',
+      ),
     ];
     for (final (what, broken, message) in cases) {
       final issues = issuesOf(broken);

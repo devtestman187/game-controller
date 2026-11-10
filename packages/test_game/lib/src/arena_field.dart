@@ -6,8 +6,10 @@ import 'package:protocol/protocol.dart';
 import 'arena_events.dart';
 import 'arena_map.dart';
 import 'arena_mode.dart';
+import 'arena_pieces.dart';
 import 'arena_specs.dart';
 
+part 'arena_field_pieces.dart';
 part 'arena_player.dart';
 
 /// The field every Arena mode plays on (party-night §7): its size, the walls,
@@ -60,6 +62,13 @@ class ArenaFieldRules {
 
   List<WallSpec> get walls => map.walls;
   List<HazardSpec> get hazards => map.hazards;
+
+  /// The map's pieces (M14 k2a): the springs, posts, belts and movers the
+  /// field plays with.
+  List<SpringSpec> get springs => map.springs;
+  List<PostSpec> get posts => map.posts;
+  List<BeltSpec> get belts => map.belts;
+  List<MoverSpec> get movers => map.movers;
 
   /// The race's start and goal. A map with no `race` section is for the
   /// Bumper Round, which brings its own starts (G9), so asking a field for
@@ -202,31 +211,46 @@ class ArenaFieldRules {
     }
 
     final walk = pl.dashing ? pl._facing * (dashSpeed * _unit) : input.move * (speed * _unit);
-    // Another marble's shove rides on top of the walk until it fades (G9).
-    final velocity = walk + pl._shove;
+    // Another marble's shove rides on top of the walk until it fades (G9),
+    // and a belt carries a marble along at half its speed (M14 k2a).
+    final velocity = walk + pl._shove + (beltCarry(pl.position) ?? Offset.zero);
     pl._velocity = velocity;
     moveMarble(pl, velocity * dt, velocity, events);
     checkHazards(pl, events);
   }
 
   /// Moves a marble by [delta] pixels this step, in small steps so a fast dash
-  /// can't pass through a thin wall, pushing out of walls and the field's
-  /// edges after each step. [velocity] says how fast it goes, so a bump only
-  /// buzzes above [bumpThreshold].
+  /// can't pass through a thin wall, pushing out of the walls, the pieces and
+  /// the field's edges after each step. [velocity] says how fast it goes, so a
+  /// bump only buzzes above [bumpThreshold], and a spring or a bouncy wall
+  /// throws it back faster than it came (M14 k2a).
   void moveMarble(ArenaPlayer pl, Offset delta, Offset velocity, List<GameEvent> events) {
     final r = playerRadiusPx;
     final steps = max(1, (delta.distance / (r / 2)).ceil());
+    final parts = obstacles();
     var p = pl.position;
     var touched = false;
+    Offset? kick;
     for (var i = 0; i < steps; i++) {
       p += delta / steps.toDouble();
-      final (next, hit) = resolvePoint(p, r);
+      final (next, touch) = resolve(p, r, parts);
       p = next;
-      touched |= hit;
+      touched |= touch.hit;
+      kick = touch.kick ?? kick;
     }
     pl._pos = _frac(p);
     final fastEnough = velocity.distance >= bumpThreshold * speed * _unit;
-    if (touched && !pl._touchingWall && fastEnough && pl._sinceHit >= hitGapS) {
+    final felt = fastEnough && pl._sinceHit >= hitGapS;
+    // A spring or a bouncy wall sends the marble back faster than it came.
+    // It is no hazard: it drops nothing and counts nothing but the bump.
+    if (kick != null) {
+      pl._shove = kick * (springKick * max(speed * _unit, velocity.distance));
+      if (felt) {
+        pl.hits++;
+        pl._sinceHit = 0;
+        events.add(GameEvent(pl.id, HapticEvent.hit, GameEventCause.spring, sound: ArenaSounds.bump));
+      }
+    } else if (touched && !pl._touchingWall && felt) {
       pl.hits++;
       pl._sinceHit = 0;
       events.add(GameEvent(pl.id, HapticEvent.hit, GameEventCause.wall, intensity: pl.dashing ? 1 : 0.7));
@@ -236,53 +260,29 @@ class ArenaFieldRules {
     pl._touchingWall = touched;
   }
 
-  /// Pushes a circle at [p] out of every wall and back inside the field.
-  /// Returns the new center and whether anything was in the way.
-  (Offset, bool) resolvePoint(Offset p, double r) {
-    var hit = false;
-    for (final rect in wallRects) {
-      final closest = Offset(p.dx.clamp(rect.left, rect.right), p.dy.clamp(rect.top, rect.bottom));
-      final away = p - closest;
-      final d = away.distance;
-      if (d >= r) continue;
-      hit = true;
-      if (d > 1e-6) {
-        p = closest + away / d * r;
-      } else {
-        // The center is inside the wall: leave by the nearest side.
-        final exits = [
-          (p.dx - rect.left + r, const Offset(-1, 0)),
-          (rect.right - p.dx + r, const Offset(1, 0)),
-          (p.dy - rect.top + r, const Offset(0, -1)),
-          (rect.bottom - p.dy + r, const Offset(0, 1)),
-        ]..sort((a, b) => a.$1.compareTo(b.$1));
-        p += exits.first.$2 * exits.first.$1;
-      }
-    }
-    final x = p.dx.clamp(r, _size.width - r);
-    final y = p.dy.clamp(r, _size.height - r);
-    if (x != p.dx || y != p.dy) hit = true;
-    return (Offset(x, y), hit);
-  }
-
   /// Knocks a marble back out of any hazard it touches, and gives it a short
-  /// grace so one hazard doesn't hit it every step.
+  /// grace so one hazard doesn't hit it every step. A still hazard — a drain,
+  /// a pit — sends it back to its start instead (party-night §7b).
   void checkHazards(ArenaPlayer pl, List<GameEvent> events) {
     if (pl.recovering) return;
     final p = pl.position;
     final reach = playerRadiusPx + hazardRadiusPx;
-    for (final h in hazardPositions) {
+    for (final (i, h) in hazardPositions.indexed) {
       final away = p - h;
       if (away.distance >= reach) continue;
       pl.hits++;
       pl._sinceHit = 0;
-      pl._graceLeft = hazardGraceS;
       pl._dashLeft = 0;
+      events.add(GameEvent(pl.id, HapticEvent.hit, GameEventCause.hazard));
+      if (hazards[i].isStill) {
+        pl._reset();
+        return;
+      }
+      pl._graceLeft = hazardGraceS;
       // Knocked back out of the hazard, then out of any wall.
       final dir = away.distance > 1e-6 ? away / away.distance : -pl._facing;
       final (pushed, _) = resolvePoint(h + dir * (reach + playerRadiusPx), playerRadiusPx);
       pl._pos = _frac(pushed);
-      events.add(GameEvent(pl.id, HapticEvent.hit, GameEventCause.hazard));
       return;
     }
   }

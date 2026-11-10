@@ -12,12 +12,16 @@ Offset mapUnits(Offset fraction, [Size field = mapFieldSize]) =>
     Offset(fraction.dx * field.width, fraction.dy * field.height);
 
 /// An axis-aligned wall from [from] to [to], in fractions of the field
-/// (0..1 across, 0..1 down). Its thickness is [ArenaFieldRules.wallThickness].
+/// (0..1 across, 0..1 down). Its thickness is `ArenaFieldRules.wallThickness`.
 final class WallSpec {
-  const WallSpec(this.from, this.to);
+  const WallSpec(this.from, this.to, {this.bouncy = false});
 
   final Offset from;
   final Offset to;
+
+  /// Whether the wall kicks a marble back like a spring (party-night §7b: a
+  /// pinball table's slingshots) instead of stopping it.
+  final bool bouncy;
 
   /// The rectangle the wall's block fills in [field]'s units: [thickness] (a
   /// fraction of the field's shorter side) across, centred on the line
@@ -26,21 +30,25 @@ final class WallSpec {
       Rect.fromPoints(mapUnits(from, field), mapUnits(to, field)).inflate(thickness * field.shortestSide / 2);
 
   @override
-  bool operator ==(Object other) => other is WallSpec && other.from == from && other.to == to;
+  bool operator ==(Object other) => other is WallSpec && other.from == from && other.to == to && other.bouncy == bouncy;
 
   @override
-  int get hashCode => Object.hash(from, to);
+  int get hashCode => Object.hash(from, to, bouncy);
 }
 
 /// A hazard sliding back and forth between [a] and [b] (fractions of the
-/// field), or circling [a] when [orbitRadius] is set (a fraction of the
-/// field's shorter side). [periodS] is one full cycle.
+/// field), circling [a] when [orbitRadius] is set (a fraction of the field's
+/// shorter side), or standing still at [a] when it is [isStill] (party-night
+/// §7b: a pinball table's drain). [periodS] is one full cycle, and 0 for a
+/// still hazard, which has none.
 final class HazardSpec {
   const HazardSpec.slide(this.a, this.b, {required this.periodS, this.phase = 0}) : orbitRadius = null;
 
   const HazardSpec.orbit(this.a, {required double radius, required this.periodS, this.phase = 0})
     : b = a,
       orbitRadius = radius;
+
+  const HazardSpec.still(this.a) : b = a, orbitRadius = null, periodS = 0, phase = 0;
 
   final Offset a;
   final Offset b;
@@ -50,9 +58,14 @@ final class HazardSpec {
   /// Where in the cycle it starts, 0 to 1.
   final double phase;
 
+  /// Whether it never moves, so a marble that meets it is sent back to its
+  /// start instead of knocked back (party-night §7b).
+  bool get isStill => periodS <= 0;
+
   /// Position as a fraction of the field at time [t] (seconds), with the
   /// orbit radius already scaled for [size].
   Offset at(double t, Size size) {
+    if (isStill) return a;
     final angle = 2 * pi * (t / periodS + phase);
     final r = orbitRadius;
     if (r != null) {
@@ -73,7 +86,7 @@ final class HazardSpec {
     final p = mapUnits(point, field);
     final radius = orbitRadius;
     if (radius != null) return (p - mapUnits(a, field)).distance <= radius * field.shortestSide + grow;
-    return (p - _nearestOnLine(p, mapUnits(a, field), mapUnits(b, field))).distance <= grow;
+    return (p - nearestOnLine(p, mapUnits(a, field), mapUnits(b, field))).distance <= grow;
   }
 
   /// Whether the hazard's whole path, grown by [reach], reaches [rect] (a rect
@@ -95,10 +108,10 @@ final class HazardSpec {
     }
     final from = centre;
     final to = mapUnits(b, field);
-    if (_meetsRect(from, to, box)) return true;
+    if (meetsRect(from, to, box)) return true;
     final corners = [box.topLeft, box.topRight, box.bottomRight, box.bottomLeft];
-    final toLine = corners.map((corner) => (corner - _nearestOnLine(corner, from, to)).distance).reduce(min);
-    final toBox = [_distanceToRect(from, box), _distanceToRect(to, box)].reduce(min);
+    final toLine = corners.map((corner) => (corner - nearestOnLine(corner, from, to)).distance).reduce(min);
+    final toBox = [distanceToRect(from, box), distanceToRect(to, box)].reduce(min);
     return min(toLine, toBox) <= grow;
   }
 
@@ -116,7 +129,7 @@ final class HazardSpec {
 }
 
 /// The point of the line from [a] to [b] nearest [p], in the same units.
-Offset _nearestOnLine(Offset p, Offset a, Offset b) {
+Offset nearestOnLine(Offset p, Offset a, Offset b) {
   final ab = b - a;
   final lengthSquared = ab.dx * ab.dx + ab.dy * ab.dy;
   if (lengthSquared < 1e-9) return a;
@@ -125,14 +138,14 @@ Offset _nearestOnLine(Offset p, Offset a, Offset b) {
 }
 
 /// How far [p] is outside [box], 0 when it is inside.
-double _distanceToRect(Offset p, Rect box) {
+double distanceToRect(Offset p, Rect box) {
   final dx = max(max(box.left - p.dx, p.dx - box.right), 0.0);
   final dy = max(max(box.top - p.dy, p.dy - box.bottom), 0.0);
   return sqrt(dx * dx + dy * dy);
 }
 
 /// Whether the line from [p] to [q] touches [box].
-bool _meetsRect(Offset p, Offset q, Rect box) {
+bool meetsRect(Offset p, Offset q, Rect box) {
   if (box.contains(p) || box.contains(q)) return true;
   final corners = [box.topLeft, box.topRight, box.bottomRight, box.bottomLeft];
   for (var i = 0; i < corners.length; i++) {

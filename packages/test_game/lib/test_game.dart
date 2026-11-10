@@ -15,6 +15,7 @@ export 'src/arena_map_library.dart';
 export 'src/arena_mode.dart';
 export 'src/arena_module.dart';
 export 'src/arena_moments.dart';
+export 'src/arena_pieces.dart';
 export 'src/arena_painter.dart';
 export 'src/arena_roster.dart';
 export 'src/arena_session.dart';
