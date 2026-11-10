@@ -117,6 +117,48 @@ void main() {
     expect(sounds.loopStarts, ['lobby', 'round'], reason: 'the same loop carried on, never restarted');
   });
 
+  // R4 finding 7: design section 8's other two holds, the host away and a
+  // phone the round waits for, pause the music in place as the menu does.
+  testWidgets('the host away pauses the round\'s music, and its return carries on where it was', (tester) async {
+    final away = ValueNotifier<bool>(false);
+    addTearDown(away.dispose);
+    final fake = await pumpHost(
+      tester,
+      screen: const StubHome(),
+      overrides: [hostAwayProvider.overrideWithValue(away)],
+    );
+    await neutral(tester, fake, ['p1']);
+    await openJoin(tester);
+    await startRound(tester, fake);
+    expect(sounds.loop, 'round');
+
+    away.value = true;
+    await tester.pump();
+    expect(sounds.loop, 'round', reason: 'the music stays, silent where it was');
+    expect(sounds.loopPaused, isTrue, reason: 'the host away holds the round');
+
+    away.value = false;
+    await tester.pump();
+    await tester.pump();
+    expect(sounds.loopPaused, isFalse);
+    expect(sounds.loopStarts, ['lobby', 'round'], reason: 'the same loop carried on, never restarted');
+  });
+
+  testWidgets('a phone the round waits for pauses its music, and its return carries on', (tester) async {
+    final fake = await openRound(tester);
+    fake.gameHost.setAway('p1', isAway: true);
+    await tester.pump();
+    expect(find.byKey(const Key('awayCard')), findsOneWidget);
+    expect(sounds.loopPaused, isTrue, reason: 'the round waits for Player 1, and so does its music');
+
+    fake.gameHost.setAway('p1', isAway: false);
+    await tester.pump();
+    await tester.pump();
+    expect(find.byKey(const Key('awayCard')), findsNothing);
+    expect(sounds.loopPaused, isFalse);
+    expect(sounds.loopStarts, ['lobby', 'round'], reason: 'the same loop carried on, never restarted');
+  });
+
   testWidgets('Music at 0% stops the round\'s music, and turning it up starts it again', (tester) async {
     await openRound(tester);
     final container = ProviderScope.containerOf(tester.element(find.byType(PuzzleScreen)));

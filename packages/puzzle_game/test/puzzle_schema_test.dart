@@ -37,6 +37,14 @@ void main() {
         changed(valid, (json) => ((json['pieces']! as List).first as Map)['shape'] = {'triangle': 3}),
         'shape',
       ),
+      // R4 finding 4: the typo the schema exists to catch, "rotate" for
+      // "rotated", which the parser would ignore without a word.
+      (
+        'a misspelt piece field',
+        changed(valid, (json) => ((json['pieces']! as List).first as Map)['rotate'] = true),
+        'rotate',
+      ),
+      ('a misspelt puzzle field', changed(valid, (json) => json['levl'] = 'easy'), 'levl'),
     ];
     for (final (what, broken, message) in cases) {
       final issues = schema().issues(broken);

@@ -8,7 +8,6 @@ import 'package:game_assets/asset_manifest.dart';
 import 'package:protocol/protocol.dart';
 import 'package:toy_look/toy_look.dart';
 
-import '../abandon_signal.dart';
 import '../away_log.dart';
 import '../controls.dart';
 import '../host_presence.dart';
@@ -18,10 +17,12 @@ import '../text/host_text.dart';
 import '../providers.dart';
 import 'away_card.dart';
 import 'controller_menus.dart';
-import 'games_screen.dart';
+import 'leave_round.dart';
 import 'host_button.dart';
 import 'ready_card.dart';
 import 'round_phase.dart';
+
+export 'leave_round.dart';
 
 part 'pause_menu_widgets.dart';
 
@@ -387,18 +388,4 @@ class _PausableState extends ConsumerState<Pausable> {
       ),
     );
   }
-}
-
-/// Goes back to the game picker (or the main screen, if the game was opened
-/// from somewhere else).
-void leaveForGamePicker(BuildContext context) =>
-    Navigator.of(context).popUntil((r) => r.settings.name == gamesRouteName || r.isFirst);
-
-/// Ends the round the host can't show any more (m12 §2.10): the session
-/// records it and ends its view `abandoned`, then this goes back to the game
-/// picker. Quit in the pause menu goes back the same way, but a quit round
-/// ends its view `quit`: the players chose to stop.
-void abandonRound(BuildContext context) {
-  ProviderScope.containerOf(context, listen: false).read(hostAbandonProvider).fire();
-  leaveForGamePicker(context);
 }

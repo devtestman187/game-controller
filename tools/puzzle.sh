@@ -45,9 +45,9 @@ case "$command" in
     fi
     cd "$root/packages/puzzle_game" || exit 2
     if [ -n "$id" ]; then
-      exec flutter test --dart-define="puzzleId=$id" test/puzzle_check_test.dart
+      exec flutter test --dart-define="puzzleId=$id" test/puzzle_check_test.dart test/puzzle_schema_test.dart
     else
-      exec flutter test test/puzzle_check_test.dart
+      exec flutter test test/puzzle_check_test.dart test/puzzle_schema_test.dart
     fi
     ;;
   render)

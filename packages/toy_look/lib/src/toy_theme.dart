@@ -35,25 +35,12 @@ ThemeData toyTheme(ToyLook look) {
     outlinedButtonTheme: OutlinedButtonThemeData(style: _buttonStyle(look)),
     textButtonTheme: TextButtonThemeData(style: _buttonStyle(look)),
     cardTheme: CardThemeData(color: colors.paper, elevation: 0, shape: paperShape),
-    dialogTheme: DialogThemeData(
-      backgroundColor: colors.paper,
-      elevation: 0,
-      shape: paperShape,
-      titleTextStyle: look.type.button.copyWith(color: colors.ink),
-      contentTextStyle: look.type.body.copyWith(color: colors.ink),
-    ),
+    dialogTheme: _dialogTheme(look, paperShape),
     inputDecorationTheme: _fieldTheme(look),
     textSelectionTheme: TextSelectionThemeData(cursorColor: colors.ink),
     listTileTheme: ListTileThemeData(textColor: colors.onBackground, iconColor: colors.onBackground),
     switchTheme: _switchTheme(look),
-    sliderTheme: SliderThemeData(
-      activeTrackColor: colors.good,
-      thumbColor: colors.good,
-      // Ink at the shadow's strength: a dark track without competing with the thumb's good.
-      inactiveTrackColor: colors.ink.withValues(alpha: toyShadowAlpha),
-      // A slider's focus halo is its overlay, not the theme's focusColor.
-      overlayColor: _focusWash(look),
-    ),
+    sliderTheme: _sliderTheme(look),
     appBarTheme: AppBarTheme(
       backgroundColor: Colors.transparent,
       foregroundColor: colors.onBackground,
@@ -77,6 +64,26 @@ ThemeData toyTheme(ToyLook look) {
     ),
   );
 }
+
+/// A dialog on the paper with the ink edge and no elevation, its title in the
+/// button face and its words in the body face.
+DialogThemeData _dialogTheme(ToyLook look, ShapeBorder paperShape) => DialogThemeData(
+  backgroundColor: look.colors.paper,
+  elevation: 0,
+  shape: paperShape,
+  titleTextStyle: look.type.button.copyWith(color: look.colors.ink),
+  contentTextStyle: look.type.body.copyWith(color: look.colors.ink),
+);
+
+/// A slider's track and thumb in `good`, the rest of the track in ink at the
+/// shadow's strength (dark without competing with the thumb), and its focus
+/// halo, which is its overlay rather than the theme's focusColor.
+SliderThemeData _sliderTheme(ToyLook look) => SliderThemeData(
+  activeTrackColor: look.colors.good,
+  thumbColor: look.colors.good,
+  inactiveTrackColor: look.colors.ink.withValues(alpha: toyShadowAlpha),
+  overlayColor: _focusWash(look),
+);
 
 /// The look's focus token at the shadow's strength, for the Material controls
 /// the settings, stats and dialog screens use (a choice's segment, a switch, a
