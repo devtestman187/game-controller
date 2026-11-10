@@ -13,10 +13,10 @@
     <img src="icon.png" alt="Thumb Party app icon">
     <h1>Thumb Party</h1>
   </header>
-  <section class="about">
-    <h2>About this project</h2>
+  <div class="card about">
+    <strong>About this project</strong>
     <p>Thumb Party turns the phones already in the room into game controllers for one shared screen. I'm a Product Manager: I wrote the product requirements and built the apps with Claude Code. The key design goal is zero-setup living-room play: open the app, type a four-digit code, and you're in, with no game pads, accounts or TV remote. A phone's press reaches the TV in about 6 ms on home Wi-Fi, against a 50 ms target.</p>
-  </section>
+  </div>
   <p class="lead"><strong>Thumb Party is a party game for the family room.</strong> Everyone plays on one big screen, and each player's phone is their controller: no game pads, no TV remote and no sign-in.</p>
   <ul class="lead">
     <li><strong>Two games:</strong> Shape Race, where two sides race to build a picture from shapes (twelve puzzles, Easy and Medium), and the Arena, where you roll a marble past walls and hazards to the goal.</li>
@@ -28,27 +28,27 @@
 
   <div class="shots">
     <figure>
-      <img src="shots/join.png" alt="The TV's Join screen with a Left and a Right side, beside a phone typing the TV's four-digit code.">
+      <a class="zoom" href="shots/join.png"><img src="shots/join.png" alt="The TV's Join screen with a Left and a Right side, beside a phone typing the TV's four-digit code."></a>
       <figcaption>Players join by pressing A, with no TV remote needed.</figcaption>
     </figure>
     <figure>
-      <img src="shots/dpad.png" alt="A two-player Shape Race on the TV, with the D-pad on the phone.">
+      <a class="zoom" href="shots/dpad.png"><img src="shots/dpad.png" alt="A two-player Shape Race on the TV, with the D-pad on the phone."></a>
       <figcaption>Shape Race on the TV, with the D-pad on the phone.</figcaption>
     </figure>
     <figure>
-      <img src="shots/tilt.png" alt="The same race on the TV, with the phone held up to steer by tilting it.">
+      <a class="zoom" href="shots/tilt.png"><img src="shots/tilt.png" alt="The same race on the TV, with the phone held up to steer by tilting it."></a>
       <figcaption>The same race, steered by tilting the phone (Gyro).</figcaption>
     </figure>
     <figure>
-      <img src="shots/sticks.png" alt="The same race on the TV, with two analog sticks on the phone.">
+      <a class="zoom" href="shots/sticks.png"><img src="shots/sticks.png" alt="The same race on the TV, with two analog sticks on the phone."></a>
       <figcaption>The same race again, with the two sticks.</figcaption>
     </figure>
     <figure>
-      <img src="shots/menus.png" alt="The TV's Play screen with a Shape Race card and an Arena card, while the phone above it shows OK and Back.">
+      <a class="zoom" href="shots/menus.png"><img src="shots/menus.png" alt="The TV's Play screen with a Shape Race card and an Arena card, while the phone above it shows OK and Back."></a>
       <figcaption>The TV's menus work from the phone: A says OK, B says Back.</figcaption>
     </figure>
     <figure>
-      <img src="shots/results.png" alt="The TV's results card with both sides' times and a Rematch button, beside the phone's controls.">
+      <a class="zoom" href="shots/results.png"><img src="shots/results.png" alt="The TV's results card with both sides' times and a Rematch button, beside the phone's controls."></a>
       <figcaption>When a round ends, the TV shows the times and a Rematch.</figcaption>
     </figure>
   </div>
@@ -168,5 +168,26 @@
     <a href="privacy.html">Privacy policy</a> · Thumb Party is a test version and changes often.
   </footer>
 </main>
+  <dialog id="viewer" aria-label="Larger picture">
+    <button type="button" class="close" aria-label="Close">×</button>
+    <img alt="">
+  </dialog>
+  <script>
+    (function () {
+      var d = document.getElementById('viewer');
+      if (!d || !d.showModal) return;
+      var big = d.querySelector('img');
+      document.querySelectorAll('a.zoom').forEach(function (a) {
+        a.addEventListener('click', function (e) {
+          e.preventDefault();
+          var small = a.querySelector('img');
+          big.src = a.href;
+          big.alt = small.alt;
+          d.showModal();
+        });
+      });
+      d.addEventListener('click', function () { d.close(); });
+    })();
+  </script>
 </body>
 </html>

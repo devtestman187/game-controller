@@ -53,3 +53,9 @@ kbd {
   font: 600 0.9em system-ui, sans-serif;
 }
 footer { margin-top: 48px; color: var(--muted); font-size: 0.9rem; }
+.card p { margin: 0.4em 0 0; }
+.shots a.zoom { display: block; cursor: zoom-in; }
+#viewer { border: 0; padding: 0; background: transparent; max-width: 96vw; max-height: 96vh; }
+#viewer::backdrop { background: rgba(5, 8, 16, 0.85); }
+#viewer img { display: block; max-width: 96vw; max-height: 92vh; width: auto; height: auto; border-radius: 10px; cursor: zoom-out; }
+#viewer .close { position: absolute; top: 8px; right: 8px; width: 40px; height: 40px; border: 0; border-radius: 50%; background: var(--card); color: var(--text); font-size: 24px; line-height: 40px; cursor: pointer; }
