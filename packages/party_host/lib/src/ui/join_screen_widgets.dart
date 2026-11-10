@@ -65,7 +65,12 @@ class _SidePanel extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           for (final (i, p) in players.indexed)
-            _PlayerRow(label: _label(p), number: p.number, roomAbove: i == 0 ? firstRoom : headroom),
+            _PlayerRow(
+              label: _label(p),
+              number: p.number,
+              character: p.character,
+              roomAbove: i == 0 ? firstRoom : headroom,
+            ),
           for (var i = players.length; i < maxPerSide; i++)
             _EmptySeat(roomLeft: i == players.length ? maxPerSide - players.length : null),
         ],
@@ -80,10 +85,13 @@ class _SidePanel extends StatelessWidget {
 /// their name, on the paper. The row keeps [roomAbove] for the character's
 /// accessory, which is drawn above the badge's box.
 class _PlayerRow extends StatelessWidget {
-  const _PlayerRow({required this.label, required this.number, required this.roomAbove});
+  const _PlayerRow({required this.label, required this.number, required this.roomAbove, this.character});
 
   final String label;
   final int number;
+
+  /// The character the host gave them (M14 L7), or null for the default.
+  final PlayerCharacter? character;
 
   /// The room above the badge for its accessory, in pixels.
   final double roomAbove;
@@ -98,7 +106,7 @@ class _PlayerRow extends StatelessWidget {
           ToyBadge(
             number: number,
             diameter: look.sizes.buttonHeight * rowBadgeShare,
-            character: ToyCharacter.forPlayer(number),
+            character: ToyCharacter.of(character, number),
           ),
           const SizedBox(width: ToySizes.space12),
           Expanded(

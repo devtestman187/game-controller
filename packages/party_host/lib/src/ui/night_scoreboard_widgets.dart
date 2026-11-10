@@ -53,7 +53,7 @@ class _ScoreRow extends StatelessWidget {
               ToyBadge(
                 number: row.number,
                 diameter: look.sizes.buttonHeight * rowBadgeShare,
-                character: ToyCharacter.forPlayer(row.number),
+                character: ToyCharacter.of(row.character, row.number),
               ),
             const SizedBox(width: ToySizes.space12),
             Expanded(

@@ -91,6 +91,31 @@ class _WaitingOverlay extends ConsumerWidget {
   }
 }
 
+/// The results card (M14 design section 9) while the host has just ended a
+/// round for this phone, and nothing otherwise: the game's last frame stays
+/// drawn under it, and the card takes the touches so the pad under it can't be
+/// pressed once the round is over.
+class _ResultOverlay extends ConsumerWidget {
+  const _ResultOverlay();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final result = ref.watch(viewResultProvider);
+    if (result == null) return const SizedBox.shrink();
+    // The frame behind the card is dimmed with the look's own ink, so the
+    // card's paper reads on either palette.
+    final look = party.ToyLookScope.of(context);
+    return Stack(
+      children: [
+        ModalBarrier(dismissible: false, color: look.colors.ink.withValues(alpha: _scrimAlpha)),
+        ResultCard(result: result),
+      ],
+    );
+  }
+
+  static const _scrimAlpha = 0.2;
+}
+
 /// "Try without a TV" (v2 C23): while no TV is connected, shows what a TV
 /// would receive, in every mode.
 class DemoReadout extends ConsumerWidget {

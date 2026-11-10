@@ -1,3 +1,5 @@
+import 'package:protocol/protocol.dart';
+
 import 'host_address.dart';
 import 'rtt.dart';
 
@@ -68,6 +70,7 @@ final class ClientSnapshot {
     this.osErrorCode,
     this.rttStats,
     this.player,
+    this.character,
     this.hostCapabilities = const [],
   });
 
@@ -102,6 +105,10 @@ final class ClientSnapshot {
   /// TV that sends one.
   final int? player;
 
+  /// The character the host gave this phone (M14 L7): its own choice, or the
+  /// nearest free one. Null from a host one build older, which sends none.
+  final PlayerCharacter? character;
+
   /// What the host supports ([Capability]), from its welcome (M9). Empty for
   /// TV apps older than M9.
   final List<String> hostCapabilities;
@@ -119,6 +126,7 @@ final class ClientSnapshot {
     rttMs: null,
     rttStats: null,
     player: null,
+    character: null,
     osErrorCode: osErrorCode,
   );
 
@@ -131,6 +139,7 @@ final class ClientSnapshot {
     rttMs: null,
     rttStats: null,
     player: null,
+    character: null,
   );
 
   /// The best name for the host: its own name, the advertised one, or its
@@ -148,6 +157,7 @@ final class ClientSnapshot {
     Object? osErrorCode = _keep,
     Object? rttStats = _keep,
     Object? player = _keep,
+    Object? character = _keep,
     List<String>? hostCapabilities,
   }) => ClientSnapshot(
     status: status ?? this.status,
@@ -160,6 +170,7 @@ final class ClientSnapshot {
     osErrorCode: identical(osErrorCode, _keep) ? this.osErrorCode : osErrorCode as int?,
     rttStats: identical(rttStats, _keep) ? this.rttStats : rttStats as RttSummary?,
     player: identical(player, _keep) ? this.player : player as int?,
+    character: identical(character, _keep) ? this.character : character as PlayerCharacter?,
     hostCapabilities: hostCapabilities ?? this.hostCapabilities,
   );
 

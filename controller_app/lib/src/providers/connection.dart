@@ -29,9 +29,13 @@ class DiscoveryStateNotifier extends Notifier<DiscoveryState> {
 }
 
 /// The client this phone pairs with a TV over the network.
+///
+/// The identity is read, not watched: a saved nickname or character (M14 N13)
+/// changes it in place ([ProfileNotifier]) rather than replacing the client the
+/// phone's link lives in.
 final tvClientProvider = Provider<ControllerClient>((ref) {
   final store = ref.watch(storeProvider);
-  final identity = ref.watch(identityProvider);
+  final identity = ref.read(identityProvider);
   final log = ref.watch(logProvider);
   log.add('app', 'Thumb Party $versionLabel on ${identity.platform}, ID ${identity.controllerId.substring(0, 6)}');
   final client = ControllerClient(

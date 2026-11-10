@@ -158,7 +158,11 @@ class _AwayLine extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          ToyBadge(number: n, diameter: look.sizes.buttonHeight * rowBadgeShare, character: ToyCharacter.forPlayer(n)),
+          ToyBadge(
+            number: n,
+            diameter: look.sizes.buttonHeight * rowBadgeShare,
+            character: ToyCharacter.of(away.player.character, n),
+          ),
           const SizedBox(width: ToySizes.space12),
           Flexible(
             child: Column(

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:party_host/party_host.dart';
 import 'package:party_host/testing.dart';
+import 'package:protocol/protocol.dart';
 import 'package:puzzle_game/puzzle_game.dart';
 
 import 'support/host_harness.dart';
@@ -110,6 +111,51 @@ void main() {
     expect(tester.widget<Text>(find.byKey(const Key('nightRoundPoints-p1'))).data, '+${night.lastRoundPoints['p1']}');
     // The round recorded the puzzle's counters for the night's awards (c2).
     expect(night.counters['p1'], isNotNull);
+  });
+
+  testWidgets('a night round\'s end sends every joined phone its own result', (tester) async {
+    final fake = await openNightRound(tester);
+    lockEveryPiece(tester);
+    await endRound(tester);
+
+    final sent = fake.gameHost.shownResults;
+    expect(sent, hasLength(1));
+    final result = sent.single['p1']!;
+    expect(result.outcome, ViewOutcome.done);
+    expect(result.timeS, isNotNull);
+    expect(result.points, greaterThan(0), reason: 'the round is a night round, so it carries points');
+    expect(result.round, 1);
+    expect(result.of, 3);
+    expect(result.place, 1);
+    expect(result.standings, hasLength(1));
+    final standing = result.standings.single;
+    expect(standing.number, 1);
+    expect(standing.points, result.points);
+    expect(standing.character, PlayerCharacter.forPlayer(1), reason: 'no choice, so the player\'s default');
+  });
+
+  testWidgets('a phone host\'s night results still offer Next, and Next records the round', (tester) async {
+    final fake = await pumpHost(tester, screen: const StubHome());
+    // The host phone shows the game too, and its own player is in this round.
+    fake.shareView = true;
+    appContainer(tester).read(puzzleSettingsProvider.notifier).set(withChaos(Chaos.little));
+    await neutral(tester, fake, ['p1']);
+    await openNight(tester);
+    await pickShapeRaceRound(tester);
+    await tester.tap(find.byKey(const Key('puzzle-house')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    await startRound(tester, fake);
+    lockEveryPiece(tester);
+    await endRound(tester);
+
+    expect(fake.shareView, isTrue);
+    expect(find.byKey(const Key('next')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('next')));
+    await navigated(tester);
+
+    expect(find.byType(NightScoreboardScreen), findsOneWidget);
+    expect(appContainer(tester).read(partyNightProvider)!.round, 1);
   });
 
   testWidgets('Back on a night round\'s results records the round like Next, so its points are never lost', (

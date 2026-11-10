@@ -119,7 +119,9 @@ class _JoinedViewState extends ConsumerState<JoinedView> {
               visible: drawn,
               maintainState: true,
               child: FrameView(
-                views: client.view,
+                // A result end is held back, so the last frame stays under the
+                // results card (M14 design section 9).
+                views: ref.watch(gameViewEventsProvider),
                 registry: ref.watch(gameRegistryProvider),
                 stats: stats,
                 // The client's clock is the one frame arrivals are taken on (D3).

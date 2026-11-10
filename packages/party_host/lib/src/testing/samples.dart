@@ -49,15 +49,22 @@ HostViewState sampleState() => HostViewState(
 
 /// A connected phone, like the sample state's first controller, without
 /// input.
-ControllerInfo phoneInfo(String id, int player, {String platform = 'android'}) => ControllerInfo(
+ControllerInfo phoneInfo(
+  String id,
+  int player, {
+  String platform = 'android',
+  String? name,
+  PlayerCharacter? character,
+}) => ControllerInfo(
   controllerId: id,
-  name: 'Phone $player',
+  name: name ?? 'Phone $player',
   platform: platform,
   appVersion: '0.1.0',
   remoteAddress: '192.168.1.2$player',
   state: ControllerState.connected,
   since: DateTime(2026),
   player: player,
+  character: character,
 );
 
 /// [s] with [c] added to its controllers, as the host reports a new phone.

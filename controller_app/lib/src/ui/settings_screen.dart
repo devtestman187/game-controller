@@ -1,7 +1,22 @@
+import 'package:connection/connection.dart' show maxNicknameLength;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:party_host/party_host.dart'
-    show HostText, LookAndSoundSection, PhoneText, SettingsText, ToyCard, ToyLookScope, ToySizes;
+    show
+        HostText,
+        LookAndSoundSection,
+        PhoneText,
+        SettingsText,
+        ToyAccessory,
+        ToyBadge,
+        ToyCard,
+        ToyCharacter,
+        ToyLook,
+        ToyLookScope,
+        ToySizes,
+        paintAccessory,
+        toyAccessoryHeadroom;
 import 'package:protocol/protocol.dart';
 
 import 'package:url_launcher/url_launcher.dart';
@@ -12,10 +27,12 @@ import '../feedback.dart';
 import '../gyro.dart';
 import '../haptics.dart';
 import '../host/hosting_frame_rate.dart';
+import '../profile.dart';
 import '../providers.dart';
 import '../sticks.dart';
 import '../tilt.dart';
 
+part 'settings_profile_section.dart';
 part 'settings_sections.dart';
 
 /// The width from which the sections sit in two columns: a tablet, never a
@@ -52,6 +69,8 @@ class SettingsScreen extends ConsumerWidget {
     const controls = Column(
       children: [
         _LookAndSoundSection(),
+        SizedBox(height: ToySizes.space12),
+        _PlayerSection(),
         SizedBox(height: ToySizes.space12),
         _HapticsSection(),
       ],

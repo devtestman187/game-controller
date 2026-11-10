@@ -29,7 +29,7 @@ class _PauseMenu extends ConsumerWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              _Pauser(number: pausedBy.number, anyone: only == null),
+              _Pauser(number: pausedBy.number, character: pausedBy.character, anyone: only == null),
               const SizedBox(height: ToySizes.space16),
               Row(
                 mainAxisSize: MainAxisSize.min,
@@ -62,9 +62,12 @@ class _PauseMenu extends ConsumerWidget {
 /// resume. The accessory is drawn above the badge's box, so the row keeps room
 /// for it.
 class _Pauser extends StatelessWidget {
-  const _Pauser({required this.number, required this.anyone});
+  const _Pauser({required this.number, required this.anyone, this.character});
 
   final int number;
+
+  /// The character the host gave the player (M14 L7), or null for the default.
+  final PlayerCharacter? character;
 
   /// Anyone can resume, not only the player who paused.
   final bool anyone;
@@ -77,7 +80,7 @@ class _Pauser extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          ToyBadge(number: number, diameter: look.sizes.buttonHeight, character: ToyCharacter.forPlayer(number)),
+          ToyBadge(number: number, diameter: look.sizes.buttonHeight, character: ToyCharacter.of(character, number)),
           const SizedBox(width: ToySizes.space12),
           Flexible(
             child: Text(

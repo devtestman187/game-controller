@@ -151,6 +151,10 @@ class FakeGameHost implements GameHost {
   final frames = <FrameMessage>[];
   final viewEnds = <ViewEndMessage>[];
 
+  /// Every [showResults] call, in order: each joined phone's own result (M14
+  /// design section 9).
+  final shownResults = <Map<String, ViewResult>>[];
+
   /// Every [hostAway] call, in order: the seconds left, or null for "back".
   final hostAways = <int?>[];
 
@@ -210,6 +214,7 @@ class FakeGameHost implements GameHost {
         id: c.controllerId,
         number: c.player ?? i + 1,
         nickname: c.name,
+        character: c.character,
         mode: InputMode.of(c.input),
         simulated: c.platform == 'sim',
         away: away.contains(c.controllerId),
@@ -245,6 +250,9 @@ class FakeGameHost implements GameHost {
     // An end for a view a newer start replaced is ignored, as the real host does.
     if (of == null || identical(of, viewStarts.lastOrNull)) viewEnds.add(end);
   }
+
+  @override
+  void showResults(Map<String, ViewResult> results) => shownResults.add(Map.unmodifiable(results));
 
   @override
   void hostAway(int? secondsLeft) => hostAways.add(secondsLeft);

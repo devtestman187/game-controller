@@ -93,6 +93,13 @@ abstract interface class GameHost {
   /// m13.3).
   void endView(ViewEndMessage end, {ViewStartMessage? of});
 
+  /// Each viewer whose id is in [results] gets its own result of the round
+  /// that just ended (M14 design section 9), as a `view_end` carrying it. The
+  /// view stays on, so the phone keeps the last frame and draws its card over
+  /// it; the round's later [endView] takes the card away. Ignored when no view
+  /// is running.
+  void showResults(Map<String, ViewResult> results);
+
   /// This host is away for a while, so the viewers it shows the game to can
   /// say "Waiting for the host" and count down (m12 §2.10). [secondsLeft] is
   /// how long the round still runs; null says the host is back. Ignored when

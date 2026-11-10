@@ -2,6 +2,23 @@ import 'package:protocol/protocol.dart';
 
 import 'rtt.dart';
 
+/// What a controller is told about its host in the welcome (internal).
+final class HostDetails {
+  const HostDetails({
+    required this.hostId,
+    required this.hostName,
+    required this.appVersion,
+    required this.capabilities,
+  });
+
+  final String hostId;
+  final String hostName;
+  final String appVersion;
+
+  /// What this host supports ([Capability]), sent in every welcome (M9).
+  final List<String> capabilities;
+}
+
 /// Where a controller is in its connection, as seen by the host.
 enum ControllerState {
   /// Connected but hasn't entered the right code yet. Its input is ignored.
@@ -38,6 +55,7 @@ final class ControllerInfo {
     this.device,
     this.role = DeviceRole.controller,
     this.inputAtMs,
+    this.character,
   });
 
   final String controllerId;
@@ -94,6 +112,10 @@ final class ControllerInfo {
 
   /// When [input] arrived, on [HostServer.nowMs]. For the latency stages.
   final int? inputAtMs;
+
+  /// The colour and accessory this player wears (M14 L7): the one it asked
+  /// for, or the nearest free one. Null while it isn't connected.
+  final PlayerCharacter? character;
 
   bool supports(String capability) => capabilities.contains(capability);
 }

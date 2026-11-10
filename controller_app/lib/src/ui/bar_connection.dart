@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:party_host/party_host.dart' as party show PlayerBadge;
 import 'package:party_host/party_host.dart' show PhoneText, ToyLook, ToyLookScope, ToySizes, toyAccessoryHeadroom;
+import 'package:protocol/protocol.dart' show PlayerCharacter;
 
 import '../providers.dart';
 import 'connect_screen.dart';
@@ -27,7 +28,7 @@ class BarConnection extends ConsumerWidget {
     return Row(
       children: [
         if (client.isConnected && client.player != null) ...[
-          PlayerBadge(number: client.player!),
+          PlayerBadge(number: client.player!, character: client.character),
           const SizedBox(width: ToySizes.space8),
         ],
         Flexible(
@@ -79,10 +80,14 @@ class CompactConnection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final player = ref.watch(clientStateProvider.select((s) => s.player));
+    final character = ref.watch(clientStateProvider.select((s) => s.character));
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (player != null) ...[PlayerBadge(number: player), const SizedBox(width: ToySizes.space8)],
+        if (player != null) ...[
+          PlayerBadge(number: player, character: character),
+          const SizedBox(width: ToySizes.space8),
+        ],
         IconButton(
           key: const Key('connectionButton'),
           tooltip: PhoneText.connection,
@@ -179,9 +184,13 @@ const playerBadgeDiameter = 33.0;
 /// the TV's join badge does, in a box tall enough for the accessory to stand
 /// above the disc instead of being cut off by the bar's edge.
 class PlayerBadge extends StatelessWidget {
-  const PlayerBadge({super.key, required this.number});
+  const PlayerBadge({super.key, required this.number, this.character});
 
   final int number;
+
+  /// The colour and accessory the host gave this player (M14 L7), or null for
+  /// their number's default.
+  final PlayerCharacter? character;
 
   @override
   Widget build(BuildContext context) => Tooltip(
@@ -194,7 +203,7 @@ class PlayerBadge extends StatelessWidget {
       // draws above it and the number stays level with the bar's words.
       child: Align(
         alignment: Alignment.bottomCenter,
-        child: party.PlayerBadge(number: number, size: playerBadgeDiameter),
+        child: party.PlayerBadge(number: number, size: playerBadgeDiameter, character: character),
       ),
     ),
   );

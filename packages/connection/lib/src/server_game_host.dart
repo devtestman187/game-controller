@@ -35,9 +35,8 @@ class ServerGameHost implements GameHost {
     });
   }
 
-  /// A button press counts as held for at least this long. Games read the
-  /// latest input once a frame, so a quick tap whose press and release
-  /// arrive between two frames (Wi-Fi often bunches them) would be lost.
+  /// A button press counts as held for at least this long: games read the
+  /// latest input once a frame, so a tap that arrives between two is not lost.
   static const minPressMs = 50;
 
   /// How many seconds a player whose phone dropped keeps their slot (m12 bug
@@ -48,8 +47,7 @@ class ServerGameHost implements GameHost {
   /// The default [awayGrace]: [hostGraceS].
   static const defaultAwayGrace = Duration(seconds: hostGraceS);
 
-  /// How long a dropped player keeps their slot: [defaultAwayGrace] unless
-  /// the caller says otherwise (a test runs with less).
+  /// How long a dropped player keeps their slot (a test runs with less).
   final Duration awayGrace;
 
   final _buttonsBefore = <String, Set<ControllerButton>>{};
@@ -79,41 +77,32 @@ class ServerGameHost implements GameHost {
   List<GamePlayer> _lastPlayers = const [];
   int _nextLocal = 1;
 
-  /// The dropped players who still hold their slot, and the messages that tell
-  /// the viewers about them (m12 bug 1107d).
+  /// The dropped players who still hold their slot (m12 bug 1107d).
   late final AwaySlots _away;
 
-  /// Whether a round runs, [startView] to [endView], shared or not: only then
-  /// does a dropped player keep a slot (m12 bug 1107d).
+  /// Whether a round runs, [startView] to [endView] (m12 bug 1107d).
   bool _roundRunning = false;
 
-  /// The view a game asked for, kept for viewers that pair mid-game (m12 §2),
-  /// and the latest start, shared or not: an end for any other is stale.
+  /// The view a game asked for, kept for viewers that pair mid-game (m12 §2).
   ViewStartMessage? _viewStart;
   ViewStartMessage? _latestStart;
   FrameMessage? _viewFrame;
 
-  /// When the host's away grace runs out, on its clock: a viewer that pairs
-  /// mid-away is told the time it has left (m12 R1 finding 9). Null if here.
+  /// When the host's away grace runs out, on its clock (m12 R1 finding 9).
   int? _hostAwayEndsAtMs;
 
-  /// Whether phones show this host's game at all (m12-joined-view §0.1): false when the
-  /// host's own screen is the one everyone watches. A change applies from the
-  /// next [startView], so a running view finishes as it began.
+  /// Whether phones show this host's game at all (m12-joined-view §0.1): a
+  /// change applies from the next [startView].
   bool shareView = true;
 
   /// The rate of the view a game is running, in frames a second (m12 §0.4):
-  /// the same rate the viewers were told in the view's start, so the analytics
-  /// file each player's samples under it. Null between games, and on a host
-  /// that keeps the game on its own screen.
+  /// the rate viewers were told. Null between games, and when not shared.
   int? get viewRateHz => _viewStart?.hz;
 
   /// Everything games report, for the analytics collector.
   Stream<GameRecord> get records => _records.stream;
 
-  /// Every away player's slot ending, with the reason (m12 bug 1108g): the
-  /// host's log says whether a phone came back, its grace ran out, or the round
-  /// went on without it.
+  /// Every away player's slot ending, with the reason (m12 bug 1108g).
   Stream<AwayEnded> get awayEnded => _away.ends;
 
   /// Sounds the games ask for, by event name (S5): the app plays them.
@@ -178,7 +167,8 @@ class ServerGameHost implements GameHost {
           GamePlayer(
             id: c.controllerId,
             number: c.player!,
-            nickname: c.name,
+            nickname: nicknameOf(c.name),
+            character: c.character,
             mode: InputMode.of(c.input),
             simulated: c.platform == 'sim',
             ownPlayer: c.isLocal,
@@ -268,6 +258,16 @@ class ServerGameHost implements GameHost {
     if (_viewStart == null) return;
     _viewFrame = frame;
     server.sendToAll(frame);
+  }
+
+  @override
+  void showResults(Map<String, ViewResult> results) {
+    // The view stays on: each phone keeps the last frame and draws its result
+    // over it, until the round's own end (M14 design section 9).
+    if (_viewStart == null) return;
+    for (final MapEntry(key: playerId, value: result) in results.entries) {
+      server.send(playerId, ViewEndMessage(reason: ViewEndReason.finished, result: result));
+    }
   }
 
   @override
@@ -362,8 +362,7 @@ class ServerGameHost implements GameHost {
   }
 
   /// A viewer that just (re)paired mid-game gets the view's start, its latest
-  /// frame, the players who are away and the host's own away, before any later
-  /// frame (m12 §2): it missed all of them.
+  /// frame and the aways before any later frame (m12 §2).
   void _sendView(String controllerId) {
     final start = _viewStart;
     if (start == null) return;

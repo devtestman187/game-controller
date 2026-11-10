@@ -41,15 +41,18 @@ final class WirePhone {
     List<String> capabilities = const [],
     String platform = 'test',
     String? code,
+    String? name,
+    PlayerCharacter? character,
   }) async {
     final phone = WirePhone._(await rawPeer(host, transport));
     await phone.ask<WelcomeMessage>(
       HelloMessage(
         controllerId: controllerId,
-        name: 'Phone $controllerId',
+        name: name ?? 'Phone $controllerId',
         platform: platform,
         appVersion: 'test',
         capabilities: capabilities,
+        character: character,
       ),
     );
     if (code != null) {

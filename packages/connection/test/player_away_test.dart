@@ -43,7 +43,8 @@ void main() {
       final player = away.single;
       expect(player.id, 'phone-1');
       expect(player.number, 1, reason: 'the number stays with the player');
-      expect(player.nickname, 'Phone phone-1');
+      // The host cuts a name to 10 characters (M14 design section 9).
+      expect(player.nickname, 'Phone phon');
       expect(player.away, isTrue);
       expect(player.local, isFalse);
       expect(host.gamepad('phone-1'), GamepadState.neutral, reason: 'a phone that is gone holds nothing down');

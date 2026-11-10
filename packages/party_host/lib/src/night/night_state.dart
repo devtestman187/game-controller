@@ -1,6 +1,7 @@
 import 'package:connection/connection.dart' show GamePlayer;
 import 'package:flutter/foundation.dart';
 import 'package:game_kit/game_kit.dart' show RoundResult;
+import 'package:protocol/protocol.dart' show PlayerCharacter;
 
 import 'night_awards.dart';
 
@@ -15,9 +16,10 @@ enum NightLength {
   final int rounds;
 }
 
-/// Who a player the night remembers is: their number and nickname, kept when
-/// they leave so their row stays on the scoreboard, greyed (design section 4).
-typedef NightPlayer = ({int number, String? nickname});
+/// Who a player the night remembers is: their number, nickname and character,
+/// kept when they leave so their row stays on the scoreboard, greyed (design
+/// section 4), wearing what the host gave them (M14 L7).
+typedef NightPlayer = ({int number, String? nickname, PlayerCharacter? character});
 
 /// One player's row on the scoreboard (design section 4): their place, badge,
 /// nickname, total and what the last round added.
@@ -32,6 +34,7 @@ final class NightRow {
     required this.place,
     required this.tied,
     required this.isHere,
+    this.character,
   });
 
   /// The player's controller id: the night's key for them (N2).
@@ -61,6 +64,10 @@ final class NightRow {
   /// Whether this player is on the roster now; a leaver's row stays, greyed,
   /// and stops being greyed if they come back (design section 4).
   final bool isHere;
+
+  /// The colour and accessory the host gave them (M14 L7), or null when the
+  /// night never saw one: the row then wears their number's default.
+  final PlayerCharacter? character;
 }
 
 /// The party night's state (design section 2 N5): its rounds, the round now,
@@ -108,7 +115,7 @@ final class NightState {
       roundsWon: const {},
       played: const {},
       lastRoundPoints: const {},
-      seen: {for (final p in players) p.id: (number: p.number, nickname: p.nickname)},
+      seen: {for (final p in players) p.id: (number: p.number, nickname: p.nickname, character: p.character)},
     );
   }
 
@@ -167,8 +174,9 @@ final class NightState {
 
   /// The night that has remembered [players]: the roster now, kept for the
   /// rows of players who leave it (design section 4).
-  NightState remember(Iterable<GamePlayer> players) =>
-      _copyWith(seen: {...seen, for (final p in players) p.id: (number: p.number, nickname: p.nickname)});
+  NightState remember(Iterable<GamePlayer> players) => _copyWith(
+    seen: {...seen, for (final p in players) p.id: (number: p.number, nickname: p.nickname, character: p.character)},
+  );
 
   /// The night with one more round played (design section 2 N5): its points
   /// added to each player's total, its counters summed, its winners counted.
@@ -218,6 +226,7 @@ final class NightState {
           id: entry.id,
           number: _numberOf(entry.id, here[entry.id]),
           nickname: _nicknameOf(entry.id, here[entry.id]),
+          character: _characterOf(entry.id, here[entry.id]),
           total: entry.total,
           roundPoints: lastRoundPoints[entry.id] ?? 0,
           place: _placeOf(entry, order),
@@ -235,6 +244,9 @@ final class NightState {
   int _numberOf(String id, GamePlayer? player) => player?.number ?? seen[id]?.number ?? 0;
 
   String? _nicknameOf(String id, GamePlayer? player) => player != null ? player.nickname : seen[id]?.nickname;
+
+  PlayerCharacter? _characterOf(String id, GamePlayer? player) =>
+      player != null ? player.character : seen[id]?.character;
 
   NightState _copyWith({
     int? round,

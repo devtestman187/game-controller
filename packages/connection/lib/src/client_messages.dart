@@ -49,9 +49,11 @@ final class ClientMessages {
         if (!_host.snapshot.isConnected) return;
         _controls.addHaptic(message);
       case PlayerMessage():
-        if (_host.snapshot.isConnected && _host.snapshot.player != message.number) {
+        final snapshot = _host.snapshot;
+        if (!snapshot.isConnected) return;
+        if (snapshot.player != message.number || snapshot.character != message.character) {
           _host.log('The TV made this phone player ${message.number}');
-          _host.setSnapshot(_host.snapshot.copyWith(player: message.number));
+          _host.setSnapshot(snapshot.copyWith(player: message.number, character: message.character));
         }
       case MetricsAckMessage():
         _metrics.acknowledge(message);

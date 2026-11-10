@@ -13,6 +13,7 @@ import '../controls.dart';
 import '../local_player_source.dart';
 import '../look_providers.dart';
 import '../night/party_night.dart';
+import '../night/round_results.dart';
 import '../players_away.dart';
 import '../providers.dart';
 import '../text/host_text.dart';
@@ -145,6 +146,13 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
   // would be ignored: move the focus there, for the remote's OK button.
   void _finished(MatchResult r) {
     setState(() => _result = r);
+    // Each joined phone shows its own result over the last frame (M14 design
+    // section 9), while this screen shows the results it always has.
+    ref
+        .read(gameHostProvider)
+        .showResults(
+          viewResultsFor(result: r.round, night: ref.read(partyNightProvider), players: ref.read(gamePlayersProvider)),
+        );
     // The round's music fades out with the results, before the phase says the
     // round stands still (M13 design section 8, rule 2).
     _music.roundEnded(this);

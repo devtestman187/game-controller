@@ -8,29 +8,43 @@ import 'package:protocol/protocol.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app_info.dart';
+import 'profile.dart';
 
 /// Loads this phone's identity, creating a random controller ID on first run.
 /// [screenMm] is the physical screen size, for analytics (M9). The model and
 /// OS version are added once the native side has answered
 /// ([withDeviceDetails]).
-ControllerIdentity loadIdentity(SharedPreferences prefs, {bool isTablet = false, Size? screenMm}) {
+///
+/// The hello's name is the player's saved [profile] nickname, or the phone's
+/// own "Phone 1A2B" when they saved none (M14 N13), and its `character` is
+/// their saved choice (design section 9).
+ControllerIdentity loadIdentity(
+  SharedPreferences prefs, {
+  bool isTablet = false,
+  Size? screenMm,
+  ControllerProfile? profile,
+}) {
   var id = prefs.getString(_controllerIdKey);
   if (id == null) {
     final r = Random.secure();
     id = List.generate(16, (_) => r.nextInt(256).toRadixString(16).padLeft(2, '0')).join();
     prefs.setString(_controllerIdKey, id);
   }
-  final (platform, base) = Platform.isIOS
-      ? ('ios', isTablet ? 'iPad' : 'iPhone')
+  final platform = Platform.isIOS
+      ? 'ios'
       : Platform.isAndroid
-      ? ('android', isTablet ? 'Android tablet' : 'Android phone')
-      : (Platform.operatingSystem, 'Controller');
-  // The short suffix tells two phones of the same kind apart on the TV.
+      ? 'android'
+      : Platform.operatingSystem;
+  final saved = profile ?? ControllerProfile.load(prefs);
+  // The short suffix tells two phones of the same kind apart on the TV, and
+  // the phone's own name is "Phone 1A2B" (M14 N13): ten characters, so the
+  // host's game roster keeps it whole.
   // Every phone lists `view`: it can show the game its host sends it (m12
   // §0.1). The host's own player takes it out again in `host/hosting.dart`.
   return ControllerIdentity(
     controllerId: id,
-    name: '$base ${id.substring(0, 4).toUpperCase()}',
+    name: phoneName(nickname: saved.nickname, controllerId: id),
+    character: saved.character,
     platform: platform,
     appVersion: appVersion,
     capabilities: const [Capability.metrics, Capability.rating, Capability.layout, Capability.status, Capability.view],

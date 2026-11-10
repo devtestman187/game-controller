@@ -32,8 +32,11 @@ class ViewActiveNotifier extends Notifier<bool> {
       switch (event) {
         case ViewStarted():
           state = true;
-        case ViewEnded():
-          state = false;
+        case ViewEnded(:final end):
+          // An end that carries the phone's own result keeps the last frame
+          // drawn: the results card sits over it (M14 design section 9). A
+          // second end, without a result, clears both.
+          if (end.result == null) state = false;
         case ViewFrame() || HostAway() || HostBack() || PlayerAway() || PlayerBack():
           // A frame is only drawn while a view is on, and the away messages
           // don't change whether there is one (m12 §0.3).
@@ -50,6 +53,56 @@ class ViewActiveNotifier extends Notifier<bool> {
       if (!next.isConnected) state = false;
     });
     return false;
+  }
+}
+
+/// The view events the phone's game draws (M14 design section 9): the
+/// client's, but a `view_end` that carries this phone's own result is held
+/// back, so the game keeps its last frame under the results card instead of
+/// clearing it. The card's own provider reads that end from the client's
+/// stream, and a later end without a result goes through and clears both.
+final gameViewEventsProvider = Provider<Stream<ViewEvent>>((ref) {
+  final client = ref.watch(clientProvider);
+  // Broadcast, as the client's own view stream is: a game behind the pad may
+  // come and go with the window's size, and each mount listens again.
+  final events = StreamController<ViewEvent>.broadcast();
+  final sub = client.view.listen((event) {
+    if (event is ViewEnded && event.end.result != null) return;
+    events.add(event);
+  });
+  ref.onDispose(() async {
+    await sub.cancel();
+    await events.close();
+  });
+  return events.stream;
+});
+
+/// This phone's own result of the round it just drew (M14 design section 9):
+/// the `result` a `view_end` carries, drawn as the card over the last frame.
+/// A new view clears it, and so does a later `view_end` without a result — the
+/// host left the results — while a phone sent no result at all keeps its pad,
+/// as in M12.
+final viewResultProvider = NotifierProvider<ViewResultNotifier, ViewResult?>(ViewResultNotifier.new);
+
+class ViewResultNotifier extends Notifier<ViewResult?> {
+  @override
+  ViewResult? build() {
+    final client = ref.watch(clientProvider);
+    final sub = client.view.listen((event) {
+      switch (event) {
+        case ViewStarted():
+          state = null;
+        case ViewEnded(:final end):
+          state = end.result;
+        case ViewFrame() || HostAway() || HostBack() || PlayerAway() || PlayerBack():
+          break;
+      }
+    });
+    ref.onDispose(sub.cancel);
+    ref.listen(clientStateProvider, (previous, next) {
+      if (!next.isConnected) state = null;
+    });
+    return null;
   }
 }
 

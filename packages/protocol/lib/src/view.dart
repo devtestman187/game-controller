@@ -126,26 +126,35 @@ abstract final class ViewEndReason {
 }
 
 /// Host → viewer (M12, needs [Capability.view]): the game stopped being shown.
+///
+/// From M14 a round's end may carry the viewer's own [result], and the viewer
+/// then keeps the last frame and shows a results card over it (design section
+/// 9). The card goes on the next [ViewStartMessage], or on a second end
+/// without a result (the host left the results).
 final class ViewEndMessage extends Message {
-  const ViewEndMessage({required this.reason});
+  const ViewEndMessage({required this.reason, this.result});
 
   static const String wireType = 'view_end';
 
   /// One of [ViewEndReason].
   final String reason;
 
+  /// This viewer's own result of the round that just ended, or null for a
+  /// plain end (an older host, or the round's results left).
+  final ViewResult? result;
+
   @override
   String get type => wireType;
 
   @override
-  Map<String, Object?> toPayload() => {'reason': reason};
+  Map<String, Object?> toPayload() => {'reason': reason, 'result': ?result?.toJson()};
 
   static ViewEndMessage fromPayload(Map<String, Object?> p) {
     final reason = requireString(p, 'reason');
     if (!ViewEndReason.all.contains(reason)) {
       throw FormatException('Field "reason" must be one of ${ViewEndReason.all.join(', ')}, got "$reason"');
     }
-    return ViewEndMessage(reason: reason);
+    return ViewEndMessage(reason: reason, result: p['result'] == null ? null : ViewResult.fromJson(p['result']));
   }
 }
 

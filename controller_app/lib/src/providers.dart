@@ -10,6 +10,7 @@ export 'providers/game_feedback.dart';
 export 'providers/haptics.dart';
 export 'providers/metrics.dart';
 export 'providers/pad.dart';
+export 'providers/profile.dart';
 export 'providers/view.dart';
 
 // The app's providers: each responsibility has a file of its own under

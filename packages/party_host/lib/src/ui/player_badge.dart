@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:protocol/protocol.dart' show PlayerCharacter;
 import 'package:toy_look/toy_look.dart';
 
 /// How wide a screen's row draws its badge, as a share of the look's button
@@ -18,14 +19,18 @@ double rowBadgeHeadroom(ToyLook look) => toyAccessoryHeadroom(look.sizes.buttonH
 /// the player's character (M13 4c): the disc in their colour with their
 /// accessory on top, the number kept for the panels' own count.
 class PlayerBadge extends StatelessWidget {
-  const PlayerBadge({super.key, required this.number, this.size = 32});
+  const PlayerBadge({super.key, required this.number, this.size = 32, this.character});
 
   final int number;
 
   /// How wide the disc is.
   final double size;
 
+  /// The colour and accessory the host gave the player (M14 L7), or null for
+  /// their number's default.
+  final PlayerCharacter? character;
+
   @override
   Widget build(BuildContext context) =>
-      ToyBadge(number: number, diameter: size, character: ToyCharacter.forPlayer(number));
+      ToyBadge(number: number, diameter: size, character: ToyCharacter.of(character, number));
 }

@@ -63,8 +63,7 @@ class HostServer {
   /// After this many wrong codes in a row, the code changes.
   final int maxWrongCodes;
 
-  /// How often each connected controller's ping and input delay go to the
-  /// log, so an exported log shows a whole session (PRD T8).
+  /// How often each controller's ping and input delay go to the log (PRD T8).
   final Duration latencyLogInterval;
 
   /// Called with every pairing whenever one is added or forgotten, so the
@@ -78,8 +77,7 @@ class HostServer {
   /// With [Capability.metrics] the server acknowledges each metrics batch.
   final List<String> capabilities;
 
-  /// The server's clock in ms, the one [ControllerInfo.inputAtMs] and
-  /// [ControllerMessage.receivedAtMs] use.
+  /// The server's clock in ms, the one [ControllerInfo.inputAtMs] uses.
   int get nowMs => _now;
 
   static const _codec = MessageCodec();
@@ -95,8 +93,7 @@ class HostServer {
   Timer? _heartbeat;
   int _lastLatencyLogMs = 0;
 
-  /// Fires a new snapshot after every visible change, including each new
-  /// round-trip time.
+  /// Fires a new snapshot after every visible change, including each new RTT.
   Stream<HostSnapshot> get changes => _changes.stream;
 
   /// Messages from paired controllers only.
@@ -269,6 +266,19 @@ class HostServer {
   /// lowest free one.
   int _reservePlayerNumber(int? previous) => _pairings.pickPlayer(previous, taken: _takenPlayerNumbers);
 
+  /// The character [session]'s controller wears (M14 L7): the one it asked
+  /// for, or the nearest free colour and accessory among the other paired
+  /// controllers. A phone that sends none gets its number's default, so it
+  /// still looks as it did before M14.
+  PlayerCharacter _reserveCharacter(HostConnection session, PlayerCharacter? wanted) {
+    final taken = [
+      for (final s in _sessions)
+        if (s != session && s.paired && s.character != null) s.character!,
+    ];
+    final number = session.player ?? 1;
+    return (wanted ?? PlayerCharacter.forPlayer(number)).nearestFreeIn(taken);
+  }
+
   /// Takes one new channel from a listener. The server owns it from here on.
   void _onChannel(MessageChannel channel) {
     if (!_running) {
@@ -376,6 +386,10 @@ final class _SessionHost implements HostSessionHost {
 
   @override
   Set<String> get pairedControllerIds => _server._liveIds;
+
+  @override
+  PlayerCharacter reserveCharacter(HostConnection session, PlayerCharacter? wanted) =>
+      _server._reserveCharacter(session, wanted);
 
   @override
   void sessionEnded(HostConnection session) => _server._sessions.remove(session);

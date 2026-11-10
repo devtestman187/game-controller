@@ -1,11 +1,13 @@
 import 'dart:convert';
 
 part 'capabilities.dart';
+part 'character.dart';
 part 'game_controls.dart';
 part 'haptic.dart';
 part 'input.dart';
 part 'metrics.dart';
 part 'view.dart';
+part 'view_result.dart';
 
 /// All protocol messages. New message types are added as subclasses of
 /// [Message] and registered in `codec.dart`.
@@ -58,6 +60,7 @@ final class HelloMessage extends Message {
     this.role = DeviceRole.controller,
     this.capabilities = const [],
     this.device,
+    this.character,
   });
 
   static const String wireType = 'hello';
@@ -84,6 +87,11 @@ final class HelloMessage extends Message {
   /// The kind of device (M9), for analytics. Null for older phones.
   final DeviceInfo? device;
 
+  /// The player's own choice of colour and accessory (M14 L7), or null for a
+  /// phone that sends none (an older build): the host gives out the nearest
+  /// free one then too, and its own defaults stay as they were.
+  final PlayerCharacter? character;
+
   bool supports(String capability) => capabilities.contains(capability);
 
   @override
@@ -98,6 +106,7 @@ final class HelloMessage extends Message {
     'role': role,
     'caps': capabilities,
     'device': ?device?.toJson(),
+    'character': ?character?.toJson(),
   };
 
   static HelloMessage fromPayload(Map<String, Object?> p) => HelloMessage(
@@ -108,6 +117,7 @@ final class HelloMessage extends Message {
     role: optionalString(p, 'role') ?? DeviceRole.controller,
     capabilities: stringList(p, 'caps'),
     device: p['device'] == null ? null : DeviceInfo.fromJson(p['device']),
+    character: p['character'] == null ? null : PlayerCharacter.fromJson(p['character']),
   );
 }
 
@@ -291,12 +301,17 @@ final class PongMessage extends Message {
 /// phone can show its number and colour ([playerColors]). Sent after pairing
 /// and again whenever it changes. Older phones ignore it.
 final class PlayerMessage extends Message {
-  const PlayerMessage({required this.number});
+  const PlayerMessage({required this.number, this.character});
 
   static const String wireType = 'player';
 
   /// 1 for the first controller, 2 for the second, and so on.
   final int number;
+
+  /// The character the host gave this player (M14 L7): the one the phone asked
+  /// for, or the nearest free one. Null from a host that gives none (an older
+  /// build).
+  final PlayerCharacter? character;
 
   /// This player's colour as 0xAARRGGBB.
   int get color => playerColor(number);
@@ -305,12 +320,15 @@ final class PlayerMessage extends Message {
   String get type => wireType;
 
   @override
-  Map<String, Object?> toPayload() => {'n': number};
+  Map<String, Object?> toPayload() => {'n': number, 'character': ?character?.toJson()};
 
   static PlayerMessage fromPayload(Map<String, Object?> p) {
     final n = requireInt(p, 'n');
     if (n < 1) throw const FormatException('Player numbers start at 1');
-    return PlayerMessage(number: n);
+    return PlayerMessage(
+      number: n,
+      character: p['character'] == null ? null : PlayerCharacter.fromJson(p['character']),
+    );
   }
 }
 

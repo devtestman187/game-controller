@@ -13,6 +13,7 @@ final class GamePlayer {
     this.simulated = false,
     this.away = false,
     this.ownPlayer = false,
+    this.character,
   });
 
   /// The controller ID (or a local player's own ID).
@@ -23,6 +24,12 @@ final class GamePlayer {
 
   /// A name to show, kept on the host only. Never recorded in analytics.
   final String? nickname;
+
+  /// The colour and accessory the host gave this player (M14 L7), or null for
+  /// a player with no choice (a local player, or a host that gives none):
+  /// the look then draws the player's default. Every screen draws this one, so
+  /// the TV and the phones agree.
+  final PlayerCharacter? character;
 
   /// True for a player whose input comes from this device (PRD v2 S2).
   final bool local;
@@ -60,10 +67,26 @@ final class GamePlayer {
       other.mode == mode &&
       other.simulated == simulated &&
       other.away == away &&
-      other.ownPlayer == ownPlayer;
+      other.ownPlayer == ownPlayer &&
+      other.character == character;
 
   @override
-  int get hashCode => Object.hash(id, number, nickname, local, mode, simulated, away, ownPlayer);
+  int get hashCode => Object.hash(id, number, nickname, local, mode, simulated, away, ownPlayer, character);
+}
+
+/// The most characters a nickname shows on the host (M14 design section 9):
+/// the phone takes 10, and a host one build older cuts to the same.
+const maxNicknameLength = 10;
+
+/// A controller's name as the host shows it (M14 design section 9): trimmed
+/// and cut to [maxNicknameLength], or null when it is blank, so the player
+/// falls back to `P1` and their number. The name itself stays as it came, for
+/// diagnostics.
+String? nicknameOf(String name) {
+  final trimmed = name.trim();
+  if (trimmed.isEmpty) return null;
+  if (trimmed.length <= maxNicknameLength) return trimmed;
+  return trimmed.substring(0, maxNicknameLength).trimRight();
 }
 
 /// Why a player's away slot ended (m12 bug 1108g): the round stopped waiting

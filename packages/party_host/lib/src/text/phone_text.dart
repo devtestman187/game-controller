@@ -1,4 +1,4 @@
-import 'package:connection/connection.dart' show ClientProblem, ClientSnapshot, ClientStatus;
+import 'package:connection/connection.dart' show ClientProblem, ClientSnapshot, ClientStatus, maxNicknameLength;
 import 'package:protocol/protocol.dart' show RatingTag;
 
 import 'host_text.dart';
@@ -150,6 +150,36 @@ abstract final class PhoneText {
   static const waitingForHost = 'Waiting for the host to come back';
   static const reconnectingToGame = 'Reconnecting to the game…';
   static const abandoned = 'The host was away too long, so the round ended.';
+
+  // The phone's player: nickname and character (M14 design section 9).
+  static const nickname = 'Nickname';
+  static const nicknameHint = 'Up to 10 characters: letters, numbers and spaces.';
+  static String nicknameCount(int length) => '$length / $maxNicknameLength';
+  static const colour = 'Colour';
+  static const accessory = 'Accessory';
+  static const you = 'You';
+  static const worker = 'worker';
+  static const marble = 'marble';
+  static const showsNextTime = 'Shows next time you join.';
+
+  /// What the phone says when the host gave it another colour (M14 design
+  /// section 9): "Blue is taken tonight, you're Teal".
+  static String takenTonight(String wanted, String given) => '$wanted is taken tonight, you\'re $given';
+
+  // The results card over the last frame (M14 design section 9).
+  static const youWin = 'You win!';
+  static const youLose = 'You lose';
+  static const draw = 'Draw';
+  static String doneIn(String time) => 'Done! $time';
+  static const done = 'Done!';
+  static String pointsEarned(int points) => '+$points points';
+  static String pieces(int count) => '$count pieces';
+  static String coins(int count) => '$count coins';
+  static const standings = 'Standings';
+  static const waitingForNext = 'Waiting for the host to pick what\'s next.';
+
+  /// A round's time as the results card and the game's clock say it: "1:42".
+  static String clock(int minutes, int seconds) => '$minutes:${seconds.toString().padLeft(2, '0')}';
 
   // The rating prompt.
   static const howDidItFeel = 'How did the controls feel?';

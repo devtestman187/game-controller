@@ -129,7 +129,7 @@ class _ResultSideRow extends StatelessWidget {
             ToyBadge(
               number: p.number,
               diameter: look.sizes.buttonHeight * rowBadgeShare,
-              character: ToyCharacter.forPlayer(p.number),
+              character: ToyCharacter.of(p.character, p.number),
             ),
             const SizedBox(width: ToySizes.space8),
           ],

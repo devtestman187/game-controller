@@ -20,7 +20,9 @@ import 'diagnostics_screen.dart';
 import 'host_chip.dart';
 import 'joined_view.dart';
 import 'rating_prompt.dart';
+import 'result_card.dart';
 import 'settings_screen.dart';
+import 'taken_notice.dart';
 import 'top_bar_metrics.dart';
 import 'waiting_card.dart';
 
@@ -230,6 +232,23 @@ class _ControllerScreenState extends ConsumerState<ControllerScreen> with Widget
         // The host is away or the link dropped (m12-joined-view §0.3): the
         // card sits over the game and the controls.
         const Positioned.fill(child: _WaitingOverlay()),
+        // The host gave this phone another colour than it picked (M14 design
+        // section 9, mock-up 18): said on a band under the bar, which takes no
+        // touch of its own.
+        const Positioned.fill(
+          child: IgnorePointer(
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: Padding(
+                padding: EdgeInsets.only(top: topBarHeightPx + party.ToySizes.space8),
+                child: TakenNotice(),
+              ),
+            ),
+          ),
+        ),
+        // This phone's own result of the round it just drew (M14 design
+        // section 9): the card over the last frame, and over the pad with it.
+        const Positioned.fill(child: _ResultOverlay()),
       ],
     );
   }

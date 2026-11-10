@@ -10,23 +10,6 @@ import 'transport/message_channel.dart';
 /// player (D1).
 const String localPeerLabel = 'the local player';
 
-/// What a controller is told about its host in the welcome (internal).
-final class HostDetails {
-  const HostDetails({
-    required this.hostId,
-    required this.hostName,
-    required this.appVersion,
-    required this.capabilities,
-  });
-
-  final String hostId;
-  final String hostName;
-  final String appVersion;
-
-  /// What this host supports ([Capability]), sent in every welcome (M9).
-  final List<String> capabilities;
-}
-
 /// What a [HostConnection] needs from the server that owns it (internal).
 ///
 /// Everything here is a call the session code made on [HostServer] before the
@@ -61,6 +44,10 @@ abstract interface class HostSessionHost {
 
   /// The controllers that are paired right now, in any order.
   Set<String> get pairedControllerIds;
+
+  /// The character [session]'s controller wears (M14 L7): [wanted], or the
+  /// nearest free colour and accessory among the other paired controllers.
+  PlayerCharacter reserveCharacter(HostConnection session, PlayerCharacter? wanted);
 
   /// [session] is gone; the server forgets it.
   void sessionEnded(HostConnection session);
@@ -97,6 +84,9 @@ final class HostConnection {
   int nextPingId = 0;
   DateTime since = DateTime.now();
   int? player;
+
+  /// The character the host gave this controller when it paired (M14 L7).
+  PlayerCharacter? character;
   final latency = InputLatency();
 
   /// The name for logs: the controller's own, or its address before hello.
@@ -192,6 +182,7 @@ final class HostConnection {
     device: hello!.device,
     role: hello!.role,
     inputAtMs: paired ? inputAtMs : null,
+    character: paired ? character : null,
   );
 
   /// The latency log line for this connection, or null before the first ping
@@ -356,6 +347,7 @@ final class HostConnection {
     paired = true;
     since = DateTime.now();
     player = number;
+    character = _host.reserveCharacter(this, hello.character);
     final changed = book.remember(
       hello,
       token,
@@ -364,7 +356,7 @@ final class HostConnection {
       live: _host.pairedControllerIds,
     );
     send(PairResultMessage.accepted(token: token));
-    send(PlayerMessage(number: number));
+    send(PlayerMessage(number: number, character: character));
     _host.log('${hello.name} connected ($how), player $player');
     if (changed) _host.pairingsChanged();
     _host.emit();
