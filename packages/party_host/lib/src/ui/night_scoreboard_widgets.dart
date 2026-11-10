@@ -35,6 +35,13 @@ class _ScoreCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = ToyLookScope.of(context).colors;
     final over = night.isOver;
+    final rows = night.rows(players);
+    // Robo can win a round and the night (party-night §7a): its row wears the
+    // robot disc in the free player colour the results card gives it.
+    final roboNumber = roboNumberFor([
+      for (final row in rows)
+        if (row.number > 0) row.number,
+    ]);
     return ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: nightScoreCardWidthPx),
       child: ToyCard(
@@ -53,7 +60,7 @@ class _ScoreCard extends StatelessWidget {
               Center(child: NightLastRoundBanner(key: const Key('nightLastRoundBanner'))),
               const SizedBox(height: ToySizes.space16),
             ],
-            for (final row in night.rows(players)) _ScoreRow(row: row, finalScores: over),
+            for (final row in rows) _ScoreRow(row: row, roboNumber: roboNumber, finalScores: over),
             const SizedBox(height: ToySizes.space24),
             if (over)
               Center(
@@ -81,11 +88,16 @@ class _ScoreCard extends StatelessWidget {
 /// their character, their nickname, a star and their total, and what the round
 /// gave them, "+7". On the final scores the winner's row leads with a crown
 /// (frame 7), and a player who left is drawn greyed until they come back
-/// (design section 4).
+/// (design section 4). Robo's row wears the robot disc and its name where a
+/// player's badge and number go (party-night §7a).
 class _ScoreRow extends StatelessWidget {
-  const _ScoreRow({required this.row, required this.finalScores});
+  const _ScoreRow({required this.row, required this.roboNumber, required this.finalScores});
 
   final NightRow row;
+
+  /// The free player colour Robo's disc takes, when this row is Robo's
+  /// (party-night §7a).
+  final int roboNumber;
 
   /// Whether this is the night's final scores.
   final bool finalScores;
@@ -96,6 +108,7 @@ class _ScoreRow extends StatelessWidget {
     final colors = look.colors;
     final style = look.type.button.copyWith(color: colors.ink);
     final won = finalScores && row.place == 1;
+    final robo = row.id == roboPlayerId;
     return Padding(
       padding: EdgeInsets.only(top: rowBadgeHeadroom(look), bottom: ToySizes.space4),
       child: Opacity(
@@ -116,7 +129,9 @@ class _ScoreRow extends StatelessWidget {
                 textAlign: TextAlign.center,
               ),
             ),
-            if (row.number > 0)
+            if (robo)
+              RoboBadge(number: roboNumber, size: look.sizes.buttonHeight * rowBadgeShare)
+            else if (row.number > 0)
               ToyBadge(
                 number: row.number,
                 diameter: look.sizes.buttonHeight * rowBadgeShare,
@@ -125,7 +140,7 @@ class _ScoreRow extends StatelessWidget {
             const SizedBox(width: ToySizes.space12),
             Expanded(
               child: Text(
-                NightText.playerName(row.nickname, row.number),
+                robo ? ArenaText.robo : NightText.playerName(row.nickname, row.number),
                 key: Key('nightName-${row.id}'),
                 style: style,
                 maxLines: 1,

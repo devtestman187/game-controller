@@ -25,5 +25,7 @@ export 'src/arena_snapshot.dart';
 export 'src/arena_specs.dart';
 export 'src/arena_view.dart';
 export 'src/arena_view_widgets.dart';
+export 'src/cpu_pilot.dart';
+export 'src/cpu_tuning.dart';
 export 'src/map_grid.dart';
 export 'src/map_rules.dart';

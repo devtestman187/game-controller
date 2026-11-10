@@ -1,6 +1,7 @@
 import 'package:connection/connection.dart' show GamePlayer;
 import 'package:game_kit/game_kit.dart' show RoundResult;
 import 'package:protocol/protocol.dart';
+import 'package:test_game/test_game.dart' show roboName, roboPlayerId;
 
 import 'night_state.dart';
 
@@ -20,7 +21,9 @@ Map<String, ViewResult> viewResultsFor({
   final after = night?.remember(players).record(result);
   final rows = after?.rows(players) ?? const <NightRow>[];
   final rowsById = {for (final row in rows) row.id: row};
-  String nameOf(String id) => _name(rowsById[id]) ?? id;
+  // Robo has no row of the roster's own but can win a round (party-night §7a),
+  // so a win it takes is named as the host names it.
+  String nameOf(String id) => id == roboPlayerId ? roboName : (_name(rowsById[id]) ?? id);
   final standings = [
     for (final row in rows)
       if (row.number > 0)

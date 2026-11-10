@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:connection/connection.dart';
 import 'package:flutter/material.dart';
 import 'package:game_kit/game_kit.dart';
@@ -7,7 +9,9 @@ import 'arena.dart';
 import 'arena_events.dart';
 import 'arena_mode.dart';
 import 'arena_module.dart';
+import 'arena_robo.dart';
 import 'arena_snapshot.dart';
+import 'cpu_pilot.dart';
 
 /// One player in the game, as the host sees it this frame.
 typedef PlayerFeed = ({String id, int number, String name, Color color, GamepadState gamepad});
@@ -48,12 +52,28 @@ class ArenaSession extends GameSession {
   /// [settings] is how the host runs the round (m12 §3): the frame rate it
   /// sends frames to the phones at, which the round records. Null takes this
   /// build's start option ([HostingSettings.fromEnvironment]).
-  ArenaSession({required super.host, required this.onEvent, ArenaGame? game, super.settings})
-    : game = game ?? ArenaGame(),
-      super(module: arenaModule, setup: arenaSetup);
+  ///
+  /// [roboLevel] is Robo's level from the waiting card (party-night §7a, M14
+  /// b3): a Bumper Round with one player gives it a seat, played by a
+  /// [CpuPilot] on the host. A race, or a round with two players or more,
+  /// never does.
+  ArenaSession({
+    required super.host,
+    required this.onEvent,
+    ArenaGame? game,
+    super.settings,
+    this.roboLevel = RoboLevel.medium,
+  }) : game = game ?? ArenaGame(),
+       super(module: arenaModule, setup: arenaSetup);
 
   /// The rules. Tests pass one in, to look at the game itself.
   final ArenaGame game;
+
+  /// The level Robo plays at when it has a seat.
+  final RoboLevel roboLevel;
+
+  /// Robo's hands, made when its seat is first stepped.
+  CpuPilot? _robo;
 
   /// Every game event, for the host app's log and debug overlay.
   final void Function(GameEvent event) onEvent;
@@ -68,6 +88,22 @@ class ArenaSession extends GameSession {
   /// comes out for them. The race has no such wait: everyone joins at once, as
   /// they always have. Null until the round's first step.
   Set<String>? _bumperPlayers;
+
+  /// Whether Robo has a seat this round: the Bumper Round with exactly one
+  /// player in it (party-night §7a). The round's players are fixed when it
+  /// starts (M14 b2), so a player who joins later does not take the seat away
+  /// mid-round and the next round is a round with two.
+  bool get _roboIn {
+    final round = _bumperPlayers;
+    return game.mode == ArenaMode.bumper && round != null && round.length == 1;
+  }
+
+  /// Robo's hands for this round, made once: a level's numbers, the map's grid
+  /// with its sliding movers in it, and a seed that repeats (party-night §7a).
+  CpuPilot? get _pilot {
+    if (!_roboIn) return null;
+    return _robo ??= CpuPilot(level: roboLevel, grid: cpuGrid(game.map), random: Random(roboSeed));
+  }
 
   /// The players the rules step this frame.
   Iterable<GamePlayer> get _stepping {
@@ -111,20 +147,25 @@ class ArenaSession extends GameSession {
     }
 
     final before = game.phase;
-    final events = game.update(dt, {for (final id in stepping) id: GameInput.fromGamepad(input(id))});
+    final inputs = {for (final id in stepping) id: GameInput.fromGamepad(input(id))};
+    if (_pilot case final pilot?) inputs[roboPlayerId] = pilot.step(game, dt);
+    final events = game.update(dt, inputs);
     for (final e in events) {
       // A world event — a coin appearing — is for no controller and plays a
-      // sound only (N10).
-      if (e.hapticMessage case final message?) host.haptic(e.playerId!, message);
+      // sound only (N10). Robo has no phone to buzz (party-night §7a).
+      if (e.hapticMessage case final message? when e.playerId != roboPlayerId) host.haptic(e.playerId!, message);
       sound(e.soundName);
       onEvent(e);
-      _record(_eventName(e.cause), playerId: e.playerId);
+      // Robo is no player of the night's: its events are recorded with no
+      // player, so no stats or ratings ever count it (party-night §7a).
+      _record(_eventName(e.cause), playerId: e.playerId == roboPlayerId ? null : e.playerId);
     }
     if (before == ArenaPhase.playing && game.phase != ArenaPhase.playing) {
       _roundRunning = false;
+      final winner = game.winnerId;
       _record(
         'round_end',
-        playerId: game.winnerId,
+        playerId: winner == roboPlayerId ? null : winner,
         data: game.roundEndData({for (final id in ids) id: input(id).mode.name}),
       );
       _record('frames', data: {'drawn': frameCount, 'late': lateFrameCount});

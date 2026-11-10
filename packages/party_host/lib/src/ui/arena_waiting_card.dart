@@ -227,7 +227,11 @@ class _ArenaWaitingCardState extends ConsumerState<ArenaWaitingCard> {
                   for (final p in players)
                     _PlayerRow(player: p, ready: _ready.contains(p.id), onTap: () => _toggle(p.id)),
                   if (_roboIn) ...[
-                    _RoboRow(level: _settings.roboLevel, onPick: _pickRoboLevel),
+                    _RoboRow(
+                      level: _settings.roboLevel,
+                      number: roboNumberFor(players.map((p) => p.number)),
+                      onPick: _pickRoboLevel,
+                    ),
                     const SizedBox(height: ToySizes.space8),
                   ],
                   const SizedBox(height: ToySizes.space8),

@@ -22,9 +22,6 @@ const _chosenShare = 0.45;
 /// map's card takes the next one, so neighbouring pictures differ.
 const _colourSlots = 6;
 
-/// How big Robo's robot icon is against its badge's disc, which fills a button.
-const _roboIconShare = 0.6;
-
 /// One joined phone on the waiting card (frame 8): its badge, its number and
 /// nickname, and a ✓ once it is ready or a ✗ until then. Tapping the row
 /// readies it, for a phone host's thumb.
@@ -93,9 +90,14 @@ class _ReadyMark extends StatelessWidget {
 /// Robo, the line that says it joins, and the three levels. Robo is always
 /// ready, so it wears a ✓. The round itself is job b3's.
 class _RoboRow extends StatelessWidget {
-  const _RoboRow({required this.level, required this.onPick});
+  const _RoboRow({required this.level, required this.number, required this.onPick});
 
   final RoboLevel level;
+
+  /// The free player colour Robo's disc takes (party-night §7a: the next free
+  /// player colour and no number).
+  final int number;
+
   final ValueChanged<RoboLevel> onPick;
 
   @override
@@ -109,19 +111,7 @@ class _RoboRow extends StatelessWidget {
           padding: EdgeInsets.only(top: rowBadgeHeadroom(look), bottom: ToySizes.space4),
           child: Row(
             children: [
-              SizedBox.square(
-                dimension: size,
-                child: DecoratedBox(
-                  key: const Key('roboBadge'),
-                  decoration: ShapeDecoration(
-                    color: look.colors.player(_colourSlots),
-                    shape: CircleBorder(
-                      side: BorderSide(color: look.colors.ink, width: look.sizes.outlineWidth),
-                    ),
-                  ),
-                  child: Icon(Icons.smart_toy, size: size * _roboIconShare, color: look.colors.paper),
-                ),
-              ),
+              RoboBadge(key: const Key('roboBadge'), number: number, size: size),
               const SizedBox(width: ToySizes.space8),
               Text(ArenaText.robo, style: look.type.button.copyWith(color: look.colors.ink)),
               const Spacer(),

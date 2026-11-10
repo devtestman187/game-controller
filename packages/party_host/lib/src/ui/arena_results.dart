@@ -2,6 +2,7 @@ import 'package:connection/connection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:game_kit/game_kit.dart';
+import 'package:test_game/test_game.dart' show roboNumberFor, roboPlayerId;
 import 'package:toy_look/toy_look.dart';
 
 import '../providers.dart';
@@ -69,8 +70,14 @@ class ArenaResults extends ConsumerWidget {
         if (result.lines.containsKey(p.id)) p,
     ];
     final winner = _winnerOf(rows);
-    final title = winner == null ? HostText.draw : ArenaText.wins(_labelOf(winner));
-    final colour = winner == null ? colors.focus : colors.player(winner.number);
+    // Robo is no host player but its line is in the round like any seat's
+    // (party-night §7a, M14 b3): its row says what it won, and a win is its.
+    final roboWon = result.winners.length == 1 && result.winners.single == roboPlayerId;
+    final roboNumber = roboNumberFor(players.map((p) => p.number));
+    final title = roboWon
+        ? ArenaText.wins(ArenaText.robo)
+        : (winner == null ? HostText.draw : ArenaText.wins(_labelOf(winner)));
+    final colour = roboWon ? colors.player(roboNumber) : (winner == null ? colors.focus : colors.player(winner.number));
     // A player who joined the round's field too late waits for the next one
     // (design section 8): the card says so.
     final waiting = [
@@ -94,6 +101,7 @@ class ArenaResults extends ConsumerWidget {
               result: result,
               rows: rows,
               waiting: waiting,
+              roboNumber: roboNumber,
               night: night,
               againFocus: againFocus,
               onAgain: onAgain,
@@ -129,6 +137,7 @@ class _ResultsBody extends StatelessWidget {
     required this.result,
     required this.rows,
     required this.waiting,
+    required this.roboNumber,
     required this.night,
     required this.againFocus,
     required this.onAgain,
@@ -139,6 +148,10 @@ class _ResultsBody extends StatelessWidget {
   final RoundResult result;
   final List<GamePlayer> rows;
   final List<GamePlayer> waiting;
+
+  /// The number Robo's colour comes from when its line is in the round.
+  final int roboNumber;
+
   final bool night;
   final FocusNode againFocus;
   final VoidCallback onAgain;
@@ -152,6 +165,8 @@ class _ResultsBody extends StatelessWidget {
     children: [
       for (final p in rows)
         _ResultRow(player: p, coins: result.lines[p.id]!.count ?? 0, won: result.winners.contains(p.id)),
+      if (result.lines[roboPlayerId] case final line?)
+        _RoboRow(number: roboNumber, coins: line.count ?? 0, won: result.winners.contains(roboPlayerId)),
       for (final p in waiting) _JoinsNextRound(player: p),
       const SizedBox(height: ToySizes.space16),
       // A wrap, so a narrow card drops a button to a line of its own rather
@@ -203,6 +218,48 @@ class _JoinsNextRound extends StatelessWidget {
         ArenaText.joinsNextRound(ArenaResults._labelOf(player)),
         key: Key('joinsNextRound-${player.id}'),
         style: look.type.body.copyWith(color: look.colors.inkSoft),
+      ),
+    );
+  }
+}
+
+/// Robo's row on the results (party-night §7a, M14 b3): no number badge but
+/// the robot's head in the colour it wore, its name, the winner's crown and
+/// its coins.
+class _RoboRow extends StatelessWidget {
+  const _RoboRow({required this.number, required this.coins, required this.won});
+
+  /// The number its colour comes from.
+  final int number;
+
+  final int coins;
+  final bool won;
+
+  @override
+  Widget build(BuildContext context) {
+    final look = ToyLookScope.of(context);
+    final colors = look.colors;
+    return Padding(
+      padding: const EdgeInsets.only(top: ToySizes.space4),
+      child: Row(
+        key: const Key('arenaResultRow-robo'),
+        children: [
+          RoboBadge(number: number, size: look.sizes.buttonHeight * rowBadgeShare),
+          const SizedBox(width: ToySizes.space8),
+          Text(ArenaText.robo, style: look.type.button.copyWith(color: colors.ink)),
+          if (won) ...[
+            const SizedBox(width: ToySizes.space8),
+            NightCrown(key: const Key('arenaCrown-robo'), size: look.sizes.buttonHeight * _crownShare),
+          ],
+          const Spacer(),
+          Icon(Icons.monetization_on, size: look.sizes.buttonHeight * _coinShare, color: colors.focus),
+          const SizedBox(width: ToySizes.space8),
+          Text(
+            ArenaText.coins(coins),
+            key: const Key('arenaResultCoins-robo'),
+            style: look.type.button.copyWith(color: colors.ink),
+          ),
+        ],
       ),
     );
   }

@@ -60,6 +60,20 @@ void main() {
     expect(find.text('Next round in 3…'), findsOneWidget);
   });
 
+  testWidgets("Robo's row is a robot head and its name, never a player number", (tester) async {
+    const roster = {'a': (number: 1, name: 'Ada'), roboPlayerId: (number: 2, name: roboName)};
+    await pumpBoard(tester, arena(ArenaPhase.playing, roster), roster: roster);
+    final row = find.byKey(const Key('hud-robo'));
+    expect(find.descendant(of: row, matching: find.text(roboName)), findsOneWidget);
+    expect(find.descendant(of: row, matching: find.byIcon(Icons.smart_toy)), findsOneWidget);
+    expect(
+      find.descendant(of: row, matching: find.textContaining('P2')),
+      findsNothing,
+      reason: 'no number',
+    );
+    expect(find.descendant(of: find.byKey(const Key('hud-a')), matching: find.text('P1 Ada')), findsOneWidget);
+  });
+
   testWidgets('a lone player who scores heads the banner in good', (tester) async {
     await pumpBoard(tester, arena(ArenaPhase.won, one), roster: one);
     final card = tester.widget<ToyCard>(find.byType(ToyCard));

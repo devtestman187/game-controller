@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:toy_look/toy_look.dart';
 
 import 'arena.dart';
+import 'arena_robo.dart';
 import 'arena_roster.dart';
 import 'arena_session.dart';
 import 'arena_snapshot.dart';
@@ -161,15 +162,21 @@ class _PlayerRow extends StatelessWidget {
   }
 
   /// The player's colour dot and its number and name: small in the one-line
-  /// bar, and a title on a tall box.
+  /// bar, and a title on a tall box. Robo has no number to wear (party-night
+  /// §7a): its dot is the robot's head and its name is its own.
   Widget _name(ToyColors colours, TextTheme text, TextStyle? small) {
+    final robo = id == roboPlayerId;
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(Icons.circle, size: oneLine ? ArenaHud._oneLineDot : ArenaHud._dot, color: colours.player(player.number)),
+        Icon(
+          robo ? Icons.smart_toy : Icons.circle,
+          size: oneLine ? ArenaHud._oneLineDot : ArenaHud._dot,
+          color: colours.player(player.number),
+        ),
         SizedBox(width: oneLine ? ArenaHud._oneLineDotGap : ArenaHud._dotGap),
         Text(
-          'P${player.number} ${player.name}',
+          robo ? roboName : 'P${player.number} ${player.name}',
           style: oneLine ? small : text.titleSmall?.copyWith(color: colours.ink),
         ),
       ],

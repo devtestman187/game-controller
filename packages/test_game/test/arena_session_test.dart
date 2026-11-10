@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'dart:ui';
 
 import 'package:connection/connection.dart';
@@ -157,6 +158,67 @@ void main() {
       // Start is the host's pause (M11), not the rules, so it stays visible.
       expect(arenaLayout.hidden, ControllerButton.values.toSet()..removeAll({...read, ControllerButton.start}));
       expect(arenaLayout.hidden.intersection(arenaLayout.labels.keys.toSet()), isEmpty, reason: 'a label shows');
+    });
+  });
+
+  group('Robo’s seat', () {
+    /// A Bumper Round's map: two starts either side of a coin zone.
+    ArenaMap bumperMap() => testMap(
+      race: null,
+      bumper: BumperSpec(starts: const [Offset(0.1, 0.3), Offset(0.9, 0.7)], coins: const [centerZone]),
+    );
+
+    /// [count] players joined to [clock]'s host, numbered in order.
+    void join(Clock clock, int count) {
+      for (var i = 1; i <= count; i++) {
+        clock.host.setPlayer(GamePlayer(id: 'p$i', number: i));
+      }
+    }
+
+    test('a lone player’s Bumper Round gives Robo a marble', () {
+      final clock = Clock();
+      join(clock, 1);
+      final game = ArenaGame(map: bumperMap(), mode: ArenaMode.bumper, random: Random(1));
+      final session = ArenaSession(host: clock.host, game: game, onEvent: (_) {});
+      clock.frame(session, 16);
+      clock.frame(session, 16);
+      expect(game.snapshot().players.map((p) => p.id), contains(roboPlayerId), reason: 'one player, so Robo plays');
+      session.dispose();
+    });
+
+    test('a race never gives Robo a seat', () {
+      final clock = Clock();
+      join(clock, 1);
+      final game = ArenaGame(map: testMap(), random: Random(1));
+      final session = ArenaSession(host: clock.host, game: game, onEvent: (_) {});
+      clock.frame(session, 16);
+      expect(game.snapshot().players.map((p) => p.id), isNot(contains(roboPlayerId)));
+      session.dispose();
+    });
+
+    test('two players leave Robo no seat', () {
+      final clock = Clock();
+      join(clock, 2);
+      final game = ArenaGame(map: bumperMap(), mode: ArenaMode.bumper, random: Random(1));
+      final session = ArenaSession(host: clock.host, game: game, onEvent: (_) {});
+      clock.frame(session, 16);
+      clock.frame(session, 16);
+      expect(game.snapshot().players.map((p) => p.id), isNot(contains(roboPlayerId)));
+      session.dispose();
+    });
+
+    test('Robo’s play is no player’s: no record and no haptic ever carries its id', () {
+      final clock = Clock();
+      join(clock, 1);
+      final game = ArenaGame(map: bumperMap(), mode: ArenaMode.bumper, random: Random(1));
+      final session = ArenaSession(host: clock.host, game: game, onEvent: (_) {});
+      for (var i = 0; i < 600; i++) {
+        clock.frame(session, 16);
+      }
+      expect(game.player(roboPlayerId)!.coins, greaterThan(0), reason: 'Robo played, and took coins');
+      expect(clock.host.records.every((r) => r.playerId != roboPlayerId), isTrue, reason: 'no stats of Robo’s');
+      expect(clock.host.haptics.where((haptic) => haptic.$1 == roboPlayerId), isEmpty, reason: 'Robo has no phone');
+      session.dispose();
     });
   });
 

@@ -3,6 +3,7 @@ import 'dart:ui';
 
 import 'arena_field.dart';
 import 'arena_map.dart';
+import 'arena_pieces.dart';
 import 'arena_specs.dart';
 
 /// A cell's side as a share of a marble's diameter (M14 k1b): a fifth, fine
@@ -16,7 +17,9 @@ const gridCellShare = 0.2;
 /// [reachesZone] flood fill from a point, [path] returns the shortest way
 /// between two, and [unreachableFrom] finds a pocket nothing reaches.
 ///
-/// The map rules use it, and Robo will steer with it (M14 b3). Points are
+/// The map rules use it, and Robo steers with it (M14 b3): with [blockMovers]
+/// it also treats the ground a sliding mover sweeps as taken, since a CPU that
+/// only knows the still walls would press at a shut gate all round. Points are
 /// fractions of the field, as a map file writes them.
 final class MapGrid {
   factory MapGrid({
@@ -24,12 +27,20 @@ final class MapGrid {
     double grow = ArenaFieldRules.playerRadius,
     Size field = mapFieldSize,
     double cellShare = gridCellShare,
+    bool blockMovers = false,
   }) {
     final cell = cellShare * 2 * ArenaFieldRules.playerRadius * field.shortestSide;
     final columns = (field.width / cell).ceil();
     final rows = (field.height / cell).ceil();
     final margin = grow * field.shortestSide;
-    final walls = [for (final wall in map.walls) wall.rectIn(field, ArenaFieldRules.wallThickness).inflate(margin)];
+    final walls = [
+      for (final wall in map.walls) wall.rectIn(field, ArenaFieldRules.wallThickness).inflate(margin),
+      if (blockMovers)
+        for (final mover in map.movers)
+          if (mover.kind == MoverKind.slide)
+            for (final (a, b) in mover.sweep(field: field))
+              WallSpec(a, b).rectIn(field, ArenaFieldRules.wallThickness).inflate(margin),
+    ];
     final free = Uint8List(columns * rows);
     for (var j = 0; j < rows; j++) {
       for (var i = 0; i < columns; i++) {

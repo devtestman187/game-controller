@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:game_kit/game_kit.dart';
 import 'package:party_host/party_host.dart';
+import 'package:test_game/test_game.dart' show roboPlayerId;
 
 import 'support/host_harness.dart';
 import 'support/night_harness.dart';
@@ -67,6 +68,29 @@ void main() {
     expect(find.byKey(const Key('arenaChangeMode')), findsOneWidget);
     expect(find.byKey(const Key('arenaResultsBack')), findsOneWidget);
     expect(find.byKey(const Key('next')), findsNothing, reason: 'Next is a night\'s button alone');
+  });
+
+  testWidgets('Robo’s row says what it won, and a round Robo wins is its banner', (tester) async {
+    await showResults(
+      tester,
+      players: [nightPlayer('p1', 1, 'Mia')],
+      result: RoundResult(
+        game: 'arena',
+        winners: {roboPlayerId},
+        points: {'p1': 2, roboPlayerId: 9},
+        lines: {'p1': coins(RoundOutcome.loss, 2), roboPlayerId: coins(RoundOutcome.win, 9)},
+      ),
+    );
+
+    expect(find.byKey(const Key('arenaResultRow-robo')), findsOneWidget, reason: 'Robo has a seat, so a row');
+    expect(
+      tester.widget<Text>(find.byKey(const Key('arenaResultTitle'))).data,
+      'Robo wins!',
+      reason: 'the band names the round’s winner, CPU or not',
+    );
+    expect(find.byKey(const Key('arenaCrown-robo')), findsOneWidget);
+    expect(find.byKey(const Key('arenaCrown-p1')), findsNothing);
+    expect(tester.widget<Text>(find.byKey(const Key('arenaResultCoins-robo'))).data, '9 coins');
   });
 
   testWidgets('a draw says so, and nobody wears a crown', (tester) async {

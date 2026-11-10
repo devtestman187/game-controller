@@ -74,8 +74,9 @@ final class ArenaMarblePainter {
   /// ones inside a layer of their own alpha).
   void _paintOne(Canvas canvas, Size size, ArenaPlayerView player) {
     // The player's number becomes a character in one place (design 5b), once a
-    // player a paint, and a later milestone hands a chosen character here.
-    final character = ToyCharacter.forPlayer(roster[player.id]?.number ?? 1);
+    // player a paint: Robo's is its number's colour and the antenna (party-night
+    // §7a).
+    final character = arenaCharacterFor(roster, player.id);
     final colour = character.colourIn(look.colors);
     final centre = Offset(player.x * size.width, player.y * size.height);
     final radius = snapshot.playerRadius * size.shortestSide;

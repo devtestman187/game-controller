@@ -17,6 +17,28 @@ enum RoboLevel {
   hard,
 }
 
+/// Robo's id in the round's inputs and snapshot (party-night §7a, M14 b3): the
+/// session adds a marble under this id from [CpuPilot], so the rules, the
+/// frames and every viewer treat Robo as a seat — and the host's player list
+/// never holds it, so awards and stats never count it.
+const roboPlayerId = 'robo';
+
+/// The name Robo wears on the host and on joined phones (design section 7a).
+const roboName = 'Robo';
+
+/// The player number Robo's colour comes from: the lowest number in [numbers]
+/// that no player has (design section 7a: Robo wears the next free player
+/// colour, and no number of its own). The host's cards and every viewer's
+/// roster ask this, so Robo's disc is one colour on every screen.
+int roboNumberFor(Iterable<int> numbers) {
+  final used = {for (final number in numbers) number};
+  var number = 1;
+  while (used.contains(number)) {
+    number++;
+  }
+  return number;
+}
+
 /// Robo's level with the name [json] holds, for the host's saved settings;
 /// null when it names none (the settings then keep their own default).
 RoboLevel? roboLevelOf(Object? json) => switch (json) {

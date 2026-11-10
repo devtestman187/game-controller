@@ -130,6 +130,11 @@ void main() {
   testWidgets('one player in the Bumper Round brings Robo, and his level is kept', (tester) async {
     await openCard(tester);
     expect(find.byKey(const Key('roboBadge')), findsOneWidget, reason: 'Robo joins a lone player in the Bumper Round');
+    expect(
+      tester.widget<RoboBadge>(find.byKey(const Key('roboBadge'))).number,
+      2,
+      reason: 'the next free player colour is P2’s, as the marble and the scoreboard wear it',
+    );
     expect(find.text('Robo'), findsOneWidget);
     expect(find.text('Robo joins you'), findsOneWidget);
     expect(find.text('Robo:'), findsOneWidget);

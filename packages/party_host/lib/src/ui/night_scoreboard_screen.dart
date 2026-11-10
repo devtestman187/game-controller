@@ -3,11 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:game_assets/asset_manifest.dart';
+import 'package:test_game/test_game.dart' show roboNumberFor, roboPlayerId;
 import 'package:toy_look/toy_look.dart';
 
 import '../night/night_state.dart';
 import '../night/party_night.dart';
 import '../providers.dart';
+import '../text/arena_text.dart';
 import '../text/night_text.dart';
 import 'game_screen.dart';
 import 'games_screen.dart';

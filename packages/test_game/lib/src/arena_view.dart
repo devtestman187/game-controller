@@ -5,6 +5,7 @@ import 'package:game_kit/game_kit.dart';
 
 import 'arena.dart';
 import 'arena_events.dart';
+import 'arena_robo.dart';
 import 'arena_roster.dart';
 import 'arena_session.dart';
 import 'arena_snapshot.dart';
@@ -27,6 +28,7 @@ class ArenaView extends StatefulWidget {
     required this.onEvent,
     this.game,
     this.settings,
+    this.roboLevel = RoboLevel.medium,
     this.paused = false,
     this.abandon,
     this.onClock,
@@ -35,6 +37,10 @@ class ArenaView extends StatefulWidget {
 
   final GameHost host;
   final void Function(GameEvent event) onEvent;
+
+  /// Robo's level, from the waiting card (party-night §7a): the session gives
+  /// Robo a seat at it in a Bumper Round with one player.
+  final RoboLevel roboLevel;
 
   /// Every frame of a round with a clock: the Bumper Round's time left, in ms,
   /// for the host's music (M14 design section 7, as Shape Race reports its
@@ -74,8 +80,13 @@ class _ArenaViewState extends State<ArenaView> with SingleTickerProviderStateMix
   @override
   void initState() {
     super.initState();
-    _session = ArenaSession(host: widget.host, game: widget.game, settings: widget.settings, onEvent: widget.onEvent)
-      ..paused = widget.paused;
+    _session = ArenaSession(
+      host: widget.host,
+      game: widget.game,
+      settings: widget.settings,
+      roboLevel: widget.roboLevel,
+      onEvent: widget.onEvent,
+    )..paused = widget.paused;
     _snapshot = _session.current;
     widget.abandon?.addListener(_abandoned);
     _ticker.start();
@@ -113,6 +124,9 @@ class _ArenaViewState extends State<ArenaView> with SingleTickerProviderStateMix
   }
 
   @override
-  Widget build(BuildContext context) =>
-      ArenaBoard(snapshot: _snapshot, roster: arenaRosterOf(widget.host.players), onResize: _session.resize);
+  Widget build(BuildContext context) => ArenaBoard(
+    snapshot: _snapshot,
+    roster: arenaRosterFor(_snapshot, arenaRosterOf(widget.host.players)),
+    onResize: _session.resize,
+  );
 }

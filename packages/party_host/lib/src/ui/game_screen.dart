@@ -365,6 +365,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
             game: game,
             host: ref.read(gameHostProvider),
             settings: _hosting,
+            roboLevel: ref.watch(arenaSettingsProvider.select((s) => s.roboLevel)),
             onEvent: _onEvent,
             onClock: _clocked,
             onFinished: _finished,

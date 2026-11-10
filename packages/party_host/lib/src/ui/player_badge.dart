@@ -34,3 +34,37 @@ class PlayerBadge extends StatelessWidget {
   Widget build(BuildContext context) =>
       ToyBadge(number: number, diameter: size, character: ToyCharacter.of(character, number));
 }
+
+/// How big Robo's robot head is against its disc, which fills a row's badge.
+const roboIconShare = 0.6;
+
+/// Robo's badge (design section 7a): the toy disc in the free player colour
+/// [number] gives, with a robot head instead of a number. The waiting card, the
+/// results and the scoreboard all draw this one, so Robo looks the same
+/// wherever a player's badge would be.
+class RoboBadge extends StatelessWidget {
+  const RoboBadge({super.key, required this.number, required this.size});
+
+  /// The player number whose colour the disc takes (see `roboNumberFor`).
+  final int number;
+
+  /// How wide the disc is.
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    final look = ToyLookScope.of(context);
+    return SizedBox.square(
+      dimension: size,
+      child: DecoratedBox(
+        decoration: ShapeDecoration(
+          color: look.colors.player(number),
+          shape: CircleBorder(
+            side: BorderSide(color: look.colors.ink, width: look.sizes.outlineWidth),
+          ),
+        ),
+        child: Icon(Icons.smart_toy, size: size * roboIconShare, color: look.colors.paper),
+      ),
+    );
+  }
+}

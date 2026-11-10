@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:game_kit/game_kit.dart';
 
+import 'arena_roster.dart';
 import 'arena_snapshot.dart';
 import 'arena_view_widgets.dart';
 
@@ -41,6 +42,6 @@ final class ArenaViewer implements GameViewer {
     }
     // The look comes from the screen's ToyLookScope, which every app puts
     // above its screens; a screen without one throws, as the puzzle's do.
-    return ArenaBoard(snapshot: snapshot, roster: view.roster);
+    return ArenaBoard(snapshot: snapshot, roster: arenaRosterFor(snapshot, view.roster));
   }
 }
