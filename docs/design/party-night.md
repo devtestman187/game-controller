@@ -15,11 +15,11 @@ The host picks **Party night** on the game picker, chooses 3 or 5 rounds and see
 | N1 | **One result seam.** Each game's screen hands a `RoundResult` (new, in `game_kit`) to its `onFinished`: the game's name, the winners (a set), draw, each player's points this round, each player's counters for the awards, and each player's line for the phone's results card. The night reads only this. The records (`round_end`, `player_result`) stay a metrics sink | Scan question 4: the games share no result today and the Arena has no `onFinished`. A typed value is testable and keeps the night out of both games |
 | N2 | **Points are per player.** A game credits a side's points to every player on it (G1), so a side of two and a side of one earn the same for the same play. The night keeps one total per player, keyed by controller id, so teams may change between rounds | G2: "each player keeps their own total"; the Arena has no sides |
 | N3 | **The game applies the double.** A night's last round tells the game "points ×2", so the pop-ups show the doubled number (+4 for a snap) and the result is already doubled. Award points (+3) are never doubled | A child sees why the last round matters; one place does the sum |
-| N4 | **Points show only in a night.** Outside a night the rules still count them (so tests cover them) but nothing is drawn | Keeps a single race calm and as it is today. Owner question Q1 |
+| N4 | **Points show only in a night.** Outside a night the rules still count them (so tests cover them) but nothing is drawn | Keeps a single race calm and as it is today. Owner, Nov 9, 2026 (Q1): "Agree with default" |
 | N5 | **The night is host state**: a `PartyNight` notifier in `party_host` (rounds, round index, totals, awards, counters, who has played). Nothing in a game imports it. It ends after the final scoreboard, or when the host leaves the night ("End the party night?"); nothing is saved (the hall of fame is M15, G8) | Scan §4: nothing above a round remembers one today |
 | N6 | **The host picks each round's game on the card before it**: the night's start card and the scoreboard both end in two big buttons, "Shape Race" and "Bumper Round". Shape Race then goes through its puzzle pick and join screen (teams may change there); the Bumper Round goes to the Arena's waiting card | PRD: "The design settles how the host picks each round's game". No extra screen between rounds |
-| N7 | **In a night the Arena is always the Bumper Round**, and its button needs 2 or more connected controllers ("Needs 2 players" otherwise). Outside a night the waiting card offers Bumper (with 2+ joined) or Race | G9 needs two players; a night round must end, and today's race has no end. Owner question Q3 |
-| N8 | **One Arena award is added: Coin Collector** (most coins picked up in the night's Bumper Rounds, at least 3). An award nobody qualifies for is skipped in the reveal with "Not won tonight" | PRD asks whether the list gains an Arena award; a night of mostly Bumper Rounds would otherwise have awards nobody can win. Owner question Q2 |
+| N7 | **In a night the Arena is always the Bumper Round.** With one player joined, a CPU marble, Robo, plays the second marble (section 7a), so a night and a Bumper Round work for one player. Outside a night the waiting card offers Bumper or Race | G9 needs two marbles; a night round must end, and today's race has no end. Owner, Nov 9, 2026 (Q3): "Can we have a simple CPU player for a single player?" |
+| N8 | **Arena awards are added, starting with Coin Collector** (most coins picked up in the night's Bumper Rounds, at least 3); more are proposed in section 6. An award nobody qualifies for is skipped in the reveal with "Not won tonight" | PRD asks whether the list gains an Arena award; a night of mostly Bumper Rounds would otherwise have awards nobody can win. Owner, Nov 9, 2026 (Q2): "Yes to coin collector" |
 | N9 | **Joined phones see the night through their results card.** `view_end` gains an optional `result`; it carries this player's outcome and, in a night, the standings. The scoreboard and awards themselves stay on the host's screen | A joined phone draws only from frames and messages (review-rules B5); the card is its window onto the screens between rounds |
 | N10 | **Sounds ride on the event.** The Arena's `GameEvent` gains a sound name, played in place of the haptic's name; its haptic becomes optional, and a world event (a coin appearing) has no player. Bumps and a lost coin buzz; a coin pickup gives a light tick; a coin appearing does not buzz | Scan question 3: coins are sound-first; new `HapticEvent`s cost a pattern and a duration case each |
 | N11 | **Snapshot versions.** Shape Race's snapshot goes to version 2 with the cat (PRD); its points keys are added in the same version. The Arena's goes to version 2 with the Bumper Round. A phone one build older asks for an update | The PRD's acceptance test; a v1 phone must not draw a different game |
@@ -61,6 +61,20 @@ The PRD's rules stand as written. How it is built:
 - Revealed one at a time on the host after the last round's results: the award's picture and name, then the winners' badges and nicknames, a one-line reason ("Fewest wrong drops: 1") and "+3", with the `fanfare` cue. Every tied player gets it. An award nobody qualified for shows "Not won tonight" for 2 s.
 - Then the **final scoreboard**: the night's winner (or winners) on top with a crown, `celebration`, confetti (G5 limits), and "Back to games".
 - Qualifiers, from the night's counters: Sharpshooter (fewest wrong drops, at least 3 snaps), Best Helper (most carries home together), Cat Catcher (most cats shooed), Speedy Snapper (most snaps), Comeback (most points in the last round), Coin Collector (most coins picked up, at least 3). Zero never wins a "most" award.
+- **Proposed additions (Claude, Nov 9, 2026, for the owner's pick)**, each taken from a party game's end-of-game bonus and fitted to a family night (docs/briefs/m14/research-party-games-report.md §6, research-party-design-report.md §3, research-arena-party-report.md):
+
+  | Award | Who gets it | Game | A losing player can win it? | Taken from |
+  | --- | --- | --- | --- | --- |
+  | **Round Winner** | most rounds won (at least 2) | both | no | Mario Party's Minigame Star; Pummel Party's "most minigames won" |
+  | **Try Again** | most pieces snapped after a wrong drop (at least 2) | Shape Race | yes | Mario Party's Misfortune Star, turned from bad luck into not giving up |
+  | **Big Bopper** | most shoves (a dash into another marble, at least 3) | Bumper | no | Pummel Party's "most damage dealt", with no damage |
+  | **Bounce House** | bumped the most times (at least 3) | Bumper | yes | Mario Party's Doormat Star, said as fun, not shame |
+  | **Gold Rush** | most gold coins picked up (at least 2) | Bumper | partly | Mario Party's Coin Star, for the last 15 seconds |
+  | **Steady Roller** | fewest coins dropped (with at least 5 picked up) | Bumper | partly | the Arena's Sharpshooter |
+
+  Held back: a fastest-snap award (it needs a new timer per snap) and "most dropped coins picked up" (too close to Coin Collector). With these the list has twelve; still three per night.
+- **The draw, with more awards**: of the night's three, at least one a losing player can win (Best Helper, Cat Catcher, Comeback, Try Again or Bounce House) and at least one either game can earn (Comeback or Round Winner), so the reveal never ends with nothing won. The start card names them, so nobody is surprised (LEGO Party cut random bonuses at launch for feeling unearned, then brought them back as an option; Mario Party's Pro Rules announce the bonus up front).
+- **Robo never gets an award**: awards are for people. It can win a round and the night, honestly, like any player; it plays only Bumper Rounds and its level is gentle (section 7a), so a lone player who also plays Shape Race rounds is well placed. Faking the result is the "participation trophy" the research warns against (research-arena-party-report.md).
 
 ## 7. The Bumper Round (G9)
 
@@ -72,9 +86,33 @@ The PRD's rules stand as written. How it is built:
 - **Sounds** (the a1 files): `dash`, `bump`, `bump_big` (a dash that shoves), `coin`, `coin_gold`, `coin_lost`, `coin_appear`; the music `arena`, `arena_hurry`, `arena_final` following the clock at 15 s and 5 s (look-and-sound §8). `MusicLoop` gains the Arena's trio, chosen by the game; `GameScreen` reports its clock and its end to `HostMusic` as `PuzzleScreen` does. The race Arena stays on `arena`.
 - **Results card** (like Shape Race's): the winners with a crown, each player's coins; Play again / Change mode / Back, or "Next" in a night.
 
+## 7a. Robo, the CPU marble (owner, Nov 9, 2026: "Can we have a simple CPU player for a single player?")
+
+- **When**: in the Bumper Round, when exactly one player is joined. The waiting card shows Robo as the second marble ("Robo joins you") and the round starts when the one player is ready. A second person joining takes Robo's place before the next round. Robo never plays when two or more people are in.
+- **Who it is**: a marble with the next free player colour, a small antenna as its accessory (look-and-sound §5b) and the name "Robo" with a robot icon instead of a number, on the host and on joined phones. It is never a controller: no phone, no haptics, no stats or ratings records (a CPU's numbers would spoil the play-testing figures).
+- **How it plays** (`CpuPilot` in `test_game`, one input per step from the game's own state, on the host, so nothing new goes over the network):
+  - rolls to the nearest coin it can take, gold first in the last 15 s, steering round hazards with a margin;
+  - dashes toward a far coin, and now and then at the player when they are close and have coins: at most one shove every 4 s, so it bumps but never bullies;
+  - its wobble comes from the round's seeded random, so a round can be replayed in a test.
+- **Three levels** (owner, Nov 9, 2026: "Make 3 difficulty settings for CPU. Easy medium and hard."), picked on the waiting card while Robo is in ("Robo: Easy / Medium / Hard"), remembered on the host, Easy the first time. One table of numbers in `CpuPilot`, so tuning is a data change:
+
+  | | Easy | Medium | Hard |
+  | --- | --- | --- | --- |
+  | Reacts | 0.5 s late | 0.3 s late | 0.15 s late |
+  | Top speed | 75% | 85% | 95% |
+  | Wobble | big | small | almost none |
+  | Coins it goes for | the nearest | gold first in the last 15 s | the best worth for the distance, and coins others drop |
+  | Shoves | never seeks one | at most one every 4 s, when the player is close and has coins | at most one every 2 s, aimed so the player goes toward a wall or hazard |
+  | Hazards | wide berth | some margin | tight lines |
+  | Aim (tuned on devices) | a child around 8 wins about 4 rounds in 5 | about even with a child | an adult has to try |
+
+  Every level plays by the same rules as a person: never faster than a marble may go, and it sees only what the game knows. Hard is better, never a cheat.
+- **The rules don't know Robo is a CPU**: the session adds Robo's input to the same map of inputs the players' phones fill (`arena_session.dart`), so contacts, coins and the clock are the same code.
+- **Shape Race**: no CPU in M14 (a worker that picks, carries, turns and drops is a bigger job); Claude suggests it for M15, beside power-ups.
+
 ## 8. The Arena's waiting card
 
-- Shown over the Arena when it opens, on a TV and a phone host alike: the pairing code, each joined phone's badge and nickname, and "Press A when you're ready" with a ✓ for each ready player. The mode buttons, Bumper and Race, are under it (Bumper only with 2+ joined; in a night, Bumper only).
+- Shown over the Arena when it opens, on a TV and a phone host alike: the pairing code, each joined phone's badge and nickname, and "Press A when you're ready" with a ✓ for each ready player. The mode buttons, Bumper and Race, are under it (in a night, Bumper only). With one player joined, Bumper brings in Robo (section 7a).
 - The 3-2-1 starts when at least one player has joined and every joined player is ready; on the TV too (today only the phone host has the ready beat).
 - A player who joins during a Bumper Round waits on the card's "Joins next round" line; in the race they join at once, as today.
 - `Pausable` keeps owning everything once the round runs (pause, the host away, a player away). The waiting card is before the round and the results after it: one owner each (review-rules A3).
@@ -93,7 +131,7 @@ Drawn by docs/design/look-mockups.html, each in Sunny and Night, saved under doc
 3. Shape Race in a night: a "+2" pop-up and the cat's warning (paw, shadow)
 4. The scoreboard, round 2 of 3, and the same before the last round (double banner)
 5. An award reveal, and the final scoreboard with the crown
-6. The Arena's waiting card (code, three phones, two ready, mode buttons)
+6. The Arena's waiting card (code, three phones, two ready, mode buttons), and the same with one player and Robo, its level buttons showing
 7. The Bumper Round: coins, a gold coin, a dizzy marble, the clock and the coin HUD
 8. A joined phone's results card in a night
 9. The best-times board and a "New record!" results card
@@ -103,11 +141,13 @@ Drawn by docs/design/look-mockups.html, each in Sunny and Night, saved under doc
 
 One job, made like a1 (the "Bubble Pop" set, mastered like the event sounds, free to ship, rows in CREDITS.md): `meow` (the cat's warning: short, friendly, clearly a cat), `points` (a soft pop under a pop-up, quieter than `coin`), `fanfare` (an award, about 2 s), `celebration` (the night's winner and a won round, about 2.5 s), `new_record` (about 1.5 s, brighter than `celebration`).
 
-## 12. Open questions for the owner (the work follows the default until answered)
+## 12. Owner's answers and open questions
 
-- **Q1**: Points pop-ups outside a party night? Default: no, only in a night (N4).
-- **Q2**: Add the Arena award, Coin Collector? Default: yes (N8).
-- **Q3**: In a night, is the Arena always the Bumper Round, needing 2 players? Default: yes (N7).
+Answered Nov 9, 2026: Q1 points only in a night ("Agree with default", N4); Q2 Coin Collector ("Yes to coin collector", N8); Q3 a CPU for one player ("Can we have a simple CPU player for a single player?", N7 and section 7a), with three levels ("Make 3 difficulty settings for CPU. Easy medium and hard.").
+
+Open (the work follows the default until answered):
+- **Q4**: Which of the six proposed awards (section 6) join the list? Default: all six.
+- **Q5**: Robo in the Bumper Round only for M14, and a Shape Race CPU in M15? Default: yes.
 
 ## 13. Implementation order
 
@@ -122,6 +162,8 @@ Each step is a flash job with a brief and a review gate, at most three at once, 
 
 **Wave 3**: **s1 sounds** (section 11, `tools/audio`, `assets`), **c1 the night** (N1–N7, `party_host`: `PartyNight`, the start card, the scoreboard, the picker card, `onFinished` from both games; after m1's OK), **a2 the cat** (G3, `puzzle_game` and Puzzle settings, after a1).
 
-**Wave 4**: **b2 the Arena's screens** (the waiting card, the ready beat on the TV, the results card, the music's clock; after m1's OK), **c2 awards and best times** (G4, T15, after c1 and s1), **c3 the phone** (nicknames and results on joined phones, `controller_app`, `protocol`, after c1).
+**Wave 4**: **b2 the Arena's screens** (the waiting card, the ready beat on the TV, the results card, the music's clock; after m1's OK), **c2 awards and best times** (G4 with the added awards, T15, after c1 and s1), **c3 the phone** (nicknames and results on joined phones, `controller_app`, `protocol`, after c1).
+
+**Robo** is **b3** (section 7a: `CpuPilot`, its seat in the session and on the waiting card, its badge), after b1's rules and with b2's waiting card; it runs in wave 4 if b2 lands first, else right after it. The three levels' aims (section 7a) are checked in the device tests.
 
 **Then**: the full review R5 (worker first, Claude verifies), the comfort check (G5) over every new effect, device tests on a TV host, a phone host and a joined phone, then a build on the owner's word.
