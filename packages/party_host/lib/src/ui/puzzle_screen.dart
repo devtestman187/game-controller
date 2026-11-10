@@ -5,11 +5,13 @@ import 'package:connection/connection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:game_assets/asset_manifest.dart';
 import 'package:game_kit/game_kit.dart';
 import 'package:puzzle_game/puzzle_game.dart';
 import 'package:toy_look/toy_look.dart';
 
 import '../abandon_signal.dart';
+import '../best_times.dart';
 import '../controls.dart';
 import '../local_player_source.dart';
 import '../look_providers.dart';
@@ -19,23 +21,20 @@ import '../players_away.dart';
 import '../providers.dart';
 import '../text/host_text.dart';
 import '../text/night_text.dart';
+import '../text/record_text.dart';
 import 'controller_menus.dart';
 import 'host_button.dart';
 import 'join_screen.dart';
 import 'lobby_music.dart';
+import 'night_reveal_screen.dart';
 import 'night_scoreboard_screen.dart';
 import 'pause_menu.dart';
 import 'player_badge.dart';
+import 'puzzle_best_times.dart';
+import 'puzzle_choice.dart';
 
+part 'puzzle_results_widgets.dart';
 part 'puzzle_screen_widgets.dart';
-
-/// Which puzzle to play: a specific one, or a random one of a level.
-final class PuzzleChoice {
-  const PuzzleChoice({required this.level, this.puzzleId});
-
-  final Level level;
-  final String? puzzleId;
-}
 
 /// Shape Race (PRD v2 M10, M11): the match, played through the game host,
 /// with Start to pause, then the results: the winner, each side's time or
@@ -104,6 +103,10 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
 
   MatchResult? _result;
 
+  /// What this round did to each finished side's best time (T15, design
+  /// section 9 N14): whether it was a new record, and the board's best now.
+  Map<PuzzleSide, BestTimeResult> _times = const {};
+
   /// Whether the results card is up: it waits for the finish celebration
   /// (design 3a: the card comes after it, never on top of it).
   bool _cardShown = false;
@@ -156,7 +159,22 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
   }
 
   void _finished(MatchResult r) {
-    setState(() => _result = r);
+    final times = recordBestTimes(
+      result: r,
+      puzzle: _puzzle,
+      teams: widget.teams,
+      players: ref.read(gamePlayersProvider),
+      times: ref.read(bestTimesProvider.notifier),
+    );
+    setState(() {
+      _result = r;
+      _times = times;
+    });
+    // A new best time is the results' moment (T15): its cue plays once, with
+    // the chip the results card wears.
+    if (times.values.any((time) => time.isRecord)) {
+      ref.read(soundPlayerProvider).play(SoundKey.newRecord.eventName);
+    }
     // A finished picture celebrates for a moment before the results card comes
     // (design 3a); a round that ran out of time has nothing to celebrate, so
     // its card comes at once, as it always did.
@@ -224,15 +242,20 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
   }
 
   /// A night's Next (M14 c1, design section 4): the round is recorded, and the
-  /// scoreboard follows. Everything above the game picker goes, so a night of
-  /// five rounds leaves a phone five routes, not fifteen.
+  /// scoreboard follows — or, after the night's last round, the awards' reveal,
+  /// whose final scores take the scoreboard's place (job c2). Everything above
+  /// the game picker goes, so a night of five rounds leaves a phone five routes,
+  /// not fifteen.
   void _next() {
     final result = _result;
     if (result == null) return;
     _log('Results: ${NightText.next}');
     ref.read(partyNightProvider.notifier).recordRound(result.round);
-    Navigator.of(context)
-        .pushAndRemoveUntil(MaterialPageRoute<void>(builder: (_) => const NightScoreboardScreen()), isGamePickerRoute);
+    final over = ref.read(partyNightProvider)?.isOver ?? false;
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute<void>(builder: (_) => over ? const NightRevealScreen() : const NightScoreboardScreen()),
+      isGamePickerRoute,
+    );
   }
 
   /// The settings this round plays with (M14 c1): a night's round counts its
@@ -361,6 +384,7 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
                         night: ref.read(partyNightProvider) != null,
                         puzzle: puzzle,
                         match: _play.currentState?.match,
+                        times: _times,
                       ),
                     ),
                 ],

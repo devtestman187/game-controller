@@ -20,7 +20,7 @@ import 'join_screen.dart';
 import 'lobby_music.dart';
 import 'night_scoreboard_screen.dart';
 import 'night_start_screen.dart';
-import 'puzzle_screen.dart';
+import 'puzzle_choice.dart';
 import 'puzzle_settings_screen.dart';
 
 part 'games_screen_widgets.dart';

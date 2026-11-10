@@ -1,6 +1,8 @@
+import 'package:connection/connection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:game_assets/asset_manifest.dart';
 import 'package:toy_look/toy_look.dart';
 
 import '../night/night_state.dart';
@@ -26,17 +28,44 @@ const nightScoreCardWidthPx = 900.0;
 /// section 4, mock-up frames 4, 5 and 7): the players in total order with the
 /// round's points beside their totals, the banner before the last round and the
 /// buttons that pick the next one; after the last round the winner wears a
-/// crown and the night's only button goes back to the games.
+/// crown, the celebration plays over confetti, and the night's only button goes
+/// back to the games.
 ///
 /// It is opened by the results' Next, which records the round first. Back here
 /// asks "End the party night?" before anything is thrown away (design section
 /// 4), so a stray B on a phone cannot end a night by mistake.
-class NightScoreboardScreen extends ConsumerWidget {
+class NightScoreboardScreen extends ConsumerStatefulWidget {
   const NightScoreboardScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<NightScoreboardScreen> createState() => _NightScoreboardScreenState();
+}
+
+class _NightScoreboardScreenState extends ConsumerState<NightScoreboardScreen> {
+  /// Whether the final scores' celebration has played: once a screen, not on
+  /// every rebuild.
+  bool _celebrated = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // The reveal hands over with the night already over.
+    if (ref.read(partyNightProvider)?.isOver ?? false) _celebrate();
+  }
+
+  /// The night is won: the celebration plays (design section 6, frame 7).
+  void _celebrate() {
+    if (_celebrated) return;
+    _celebrated = true;
+    ref.read(soundPlayerProvider).play(SoundKey.celebration.eventName);
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final night = ref.watch(partyNightProvider);
+    ref.listen(partyNightProvider, (_, next) {
+      if (next?.isOver ?? false) _celebrate();
+    });
     return CallbackShortcuts(
       bindings: {const SingleActivator(LogicalKeyboardKey.escape): () => Navigator.of(context).maybePop()},
       child: HostScreen(
@@ -47,7 +76,7 @@ class NightScoreboardScreen extends ConsumerWidget {
               // Back asks first: only its Yes clears the night.
               canPop: false,
               onPopInvokedWithResult: (didPop, _) {
-                if (!didPop) _askToEnd(context, ref);
+                if (!didPop) _askToEnd(context);
               },
               // A night that is ending draws nothing for the frame before the
               // picker is back.
@@ -61,7 +90,7 @@ class NightScoreboardScreen extends ConsumerWidget {
 
   /// "End the party night?" (design section 4): Yes clears the night and goes
   /// back to the games, No — or a tap outside — leaves it running.
-  Future<void> _askToEnd(BuildContext context, WidgetRef ref) async {
+  Future<void> _askToEnd(BuildContext context) async {
     final end = await showDialog<bool>(context: context, builder: (_) => const NightLeaveDialog());
     if (end != true || !context.mounted) return;
     ref.read(partyNightProvider.notifier).end();
@@ -78,55 +107,27 @@ class _Scoreboard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final colors = ToyLookScope.of(context).colors;
     final over = night.isOver;
     return ListView(
       padding: hostMenuPadding(ref.watch(hostBarHeightProvider)),
       children: [
-        Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: nightScoreCardWidthPx),
-            child: ToyCard(
-              key: const Key('nightScoreboard'),
-              header: over ? NightText.finalScores : NightText.roundOf(night.round, night.rounds),
-              headerKey: const Key('nightScoreHeader'),
-              headerColor: colors.player(4),
-              padding: const EdgeInsets.symmetric(horizontal: ToySizes.space24, vertical: ToySizes.space16),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // G2's last round is worth double: the scoreboard says so
-                  // before it is played (frame 5).
-                  if (!over && night.isNextRoundTheLast) ...[
-                    Center(child: NightLastRoundBanner(key: const Key('nightLastRoundBanner'))),
-                    const SizedBox(height: ToySizes.space16),
-                  ],
-                  for (final row in night.rows(ref.watch(gamePlayersProvider))) _ScoreRow(row: row, finalScores: over),
-                  const SizedBox(height: ToySizes.space24),
-                  if (over)
-                    Center(
-                      child: HostButton(
-                        key: const Key('nightBackToGames'),
-                        label: NightText.backToGames,
-                        icon: Icons.arrow_back,
-                        autofocus: true,
-                        onPressed: () => _backToGames(context, ref),
-                      ),
-                    )
-                  else
-                    // Job c2's awards' reveal comes after the last round and
-                    // before the final scores; the two game buttons stay under
-                    // the rows until then.
-                    NightGameButtons(
-                      autofocus: true,
-                      onShapeRace: () => _open(context, const ShapeRaceScreen()),
-                      onBumperRound: nightBumperRoundReady ? () => _open(context, const GameScreen()) : null,
-                    ),
-                ],
+        Stack(
+          children: [
+            // The night is won: confetti round the final scores (frame 7).
+            if (over)
+              Positioned.fill(
+                child: IgnorePointer(child: NightConfetti(key: const Key('nightConfetti'))),
+              ),
+            Center(
+              child: _ScoreCard(
+                night: night,
+                players: ref.watch(gamePlayersProvider),
+                onShapeRace: () => _open(context, const ShapeRaceScreen()),
+                onBumperRound: nightBumperRoundReady ? () => _open(context, const GameScreen()) : null,
+                onBackToGames: () => _backToGames(context, ref),
               ),
             ),
-          ),
+          ],
         ),
       ],
     );

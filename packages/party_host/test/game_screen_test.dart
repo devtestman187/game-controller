@@ -7,6 +7,7 @@ import 'package:game_kit/game_kit.dart';
 import 'package:party_host/party_host.dart';
 import 'package:party_host/testing.dart';
 import 'package:protocol/protocol.dart';
+import 'package:test_game/test_game.dart';
 
 import 'support/host_harness.dart';
 import 'support/night_harness.dart' show appContainer;
@@ -21,8 +22,12 @@ void main() {
   Future<FakeHostService> openGame(WidgetTester tester, {Size size = const Size(960, 540)}) async {
     final fake = await pumpHost(tester, screen: const StubHome(), size: size);
     // The Playroom picked on the card, so the sample controller's dash and wall
-    // hit land the same way on every run (Surprise me picks a map at random).
-    appContainer(tester).read(arenaSettingsProvider.notifier).setMap('playroom');
+    // hit land the same way on every run (Surprise me picks a map at random),
+    // and Race, the mode these tests drive the arena in since Bumper became the
+    // card's default (M14 b2).
+    appContainer(tester).read(arenaSettingsProvider.notifier)
+      ..setMap('playroom')
+      ..setMode(ArenaMode.race);
     await openArena(tester, fake);
     return fake;
   }

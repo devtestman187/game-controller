@@ -22,6 +22,7 @@ import 'arena_waiting_card.dart';
 import 'controller_menus.dart';
 import 'game_debug_overlay.dart';
 import 'lobby_music.dart';
+import 'night_reveal_screen.dart';
 import 'night_scoreboard_screen.dart';
 import 'pause_menu.dart';
 
@@ -269,15 +270,20 @@ class _GameScreenState extends ConsumerState<GameScreen> {
   }
 
   /// A night's Next (M14 c1, design section 4): the round is recorded, and the
-  /// scoreboard follows. Everything above the game picker goes, so a night of
-  /// five rounds leaves a phone five routes, not fifteen.
+  /// scoreboard follows — or, after the night's last round, the awards' reveal,
+  /// whose final scores take the scoreboard's place (job c2). Everything above
+  /// the game picker goes, so a night of five rounds leaves a phone five routes,
+  /// not fifteen.
   void _next() {
     final result = _result;
     if (result == null) return;
     _log('Results: ${NightText.next}');
     ref.read(partyNightProvider.notifier).recordRound(result);
-    Navigator.of(context)
-        .pushAndRemoveUntil(MaterialPageRoute<void>(builder: (_) => const NightScoreboardScreen()), isGamePickerRoute);
+    final over = ref.read(partyNightProvider)?.isOver ?? false;
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute<void>(builder: (_) => over ? const NightRevealScreen() : const NightScoreboardScreen()),
+      isGamePickerRoute,
+    );
   }
 
   /// The route asked to go: on the results the answer is the game picker, and

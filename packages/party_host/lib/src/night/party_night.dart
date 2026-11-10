@@ -3,6 +3,7 @@ import 'package:game_kit/game_kit.dart' show RoundResult;
 import 'package:puzzle_game/puzzle_game.dart' show Chaos, PuzzleSettings;
 
 import '../providers.dart';
+import 'night_award_results.dart';
 import 'night_awards.dart';
 import 'night_state.dart';
 
@@ -74,12 +75,24 @@ class PartyNight extends Notifier<NightState?> {
 
   /// Records a round played (N1, N5): its points, already scaled by the game
   /// (N3), and the counters the awards need. The final round's record leaves
-  /// the night over, so the final scores follow.
+  /// the night over and decides its three awards (G4), so the reveal and the
+  /// final scores follow.
   void recordRound(RoundResult result) {
     final night = state;
     if (night == null || night.isOver) return;
-    state = night.remember(ref.read(gamePlayersProvider)).record(result);
+    final recorded = night.remember(ref.read(gamePlayersProvider)).record(result);
+    state = recorded.isOver ? recorded.awarded(_decide(recorded)) : recorded;
   }
+
+  /// The night's three awards, from the counters it has summed: the players it
+  /// has met are the only ones who may win (so Robo never does).
+  List<NightAwardOutcome> _decide(NightState night) => decideAwards(
+    awards: night.awards,
+    counters: night.counters,
+    roundsWon: night.roundsWon,
+    lastRoundPoints: night.lastRoundPoints,
+    people: night.seen.keys.toSet(),
+  );
 
   /// Ends the night, clearing it: the final scores' "Back to games" and the
   /// scoreboard's "End the party night?" Yes both do this, so the picker's card

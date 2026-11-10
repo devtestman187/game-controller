@@ -44,6 +44,16 @@ abstract final class NightText {
   /// none ("P3"). A player the night never met has neither number nor name.
   static String playerName(String? nickname, int number) => nickname ?? 'P$number';
 
+  // The awards' reveal between the last results and the final scores (design
+  // section 6, frame 6).
+  static const notWon = 'Not won tonight';
+
+  /// How many players share an award: "One winner", "3 winners".
+  static String winners(int count) => count == 1 ? 'One winner' : '$count winners';
+
+  /// What an award adds to a winner's total: "+3 points".
+  static String awardPoints(int points) => '+$points points';
+
   // Leaving the night.
   static const endNight = 'End the party night?';
   static const yes = 'Yes';

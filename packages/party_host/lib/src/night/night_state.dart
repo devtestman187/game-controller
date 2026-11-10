@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:game_kit/game_kit.dart' show RoundResult;
 import 'package:protocol/protocol.dart' show PlayerCharacter;
 
+import 'night_award_results.dart';
 import 'night_awards.dart';
 
 /// How many rounds a night plays (design section 4: "3 rounds" / "5 rounds").
@@ -48,7 +49,8 @@ final class NightRow {
   /// Their nickname, when they have one.
   final String? nickname;
 
-  /// Every round's points added up.
+  /// Every round's points added up, plus the +3 each award gave them (G4): the
+  /// final scores' total, which crowns the night.
   final int total;
 
   /// What the last recorded round gave them: "+7" on the scoreboard (design
@@ -89,6 +91,7 @@ final class NightState {
     required Set<String> played,
     required Map<String, int> lastRoundPoints,
     required Map<String, NightPlayer> seen,
+    required List<NightAwardOutcome> outcomes,
   }) : totals = Map.unmodifiable(totals),
        counters = Map.unmodifiable({
          for (final MapEntry(:key, :value) in counters.entries) key: Map<String, int>.unmodifiable(value),
@@ -96,7 +99,8 @@ final class NightState {
        roundsWon = Map.unmodifiable(roundsWon),
        played = Set.unmodifiable(played),
        lastRoundPoints = Map.unmodifiable(lastRoundPoints),
-       seen = Map.unmodifiable(seen);
+       seen = Map.unmodifiable(seen),
+       outcomes = List.unmodifiable(outcomes);
 
   /// A night about to play its first round, with the awards drawn for it, and
   /// the players on the roster now remembered.
@@ -116,6 +120,7 @@ final class NightState {
       played: const {},
       lastRoundPoints: const {},
       seen: {for (final p in players) p.id: (number: p.number, nickname: p.nickname, character: p.character)},
+      outcomes: const [],
     );
   }
 
@@ -151,6 +156,11 @@ final class NightState {
   /// Everyone the night has met, so a leaver keeps their badge and nickname.
   final Map<String, NightPlayer> seen;
 
+  /// The night's three awards, decided from the counters when its last round is
+  /// recorded (G4, design section 6): empty until then, and in the night's own
+  /// order so the reveal follows it. Their +3 points are in [rows]' totals.
+  final List<NightAwardOutcome> outcomes;
+
   /// The night's rounds.
   int get rounds => length.rounds;
 
@@ -168,6 +178,13 @@ final class NightState {
 
   /// How many rounds [playerId] has won.
   int roundsWonBy(String playerId) => roundsWon[playerId] ?? 0;
+
+  /// How many of the night's awards [playerId] won, and the +3 each is worth.
+  int awardsWonBy(String playerId) => outcomes.where((outcome) => outcome.winners.contains(playerId)).length;
+
+  /// The night with its [outcomes] decided: every winner's award points are in
+  /// their row's total from now on (G4), and nothing else changes.
+  NightState awarded(List<NightAwardOutcome> outcomes) => _copyWith(outcomes: outcomes);
 
   /// One of [playerId]'s award counters, 0 when they have none.
   int counter(String playerId, String name) => counters[playerId]?[name] ?? 0;
@@ -215,7 +232,8 @@ final class NightState {
     final here = {for (final p in players) p.id: p};
     final order =
         [
-          for (final id in {...here.keys, ...totals.keys}) (id: id, total: totals[id] ?? 0),
+          for (final id in {...here.keys, ...totals.keys})
+            (id: id, total: (totals[id] ?? 0) + awardPoints * awardsWonBy(id)),
         ]..sort((a, b) {
           final byTotal = b.total.compareTo(a.total);
           return byTotal != 0 ? byTotal : _numberOf(a.id, here[a.id]).compareTo(_numberOf(b.id, here[b.id]));
@@ -256,6 +274,7 @@ final class NightState {
     Set<String>? played,
     Map<String, int>? lastRoundPoints,
     Map<String, NightPlayer>? seen,
+    List<NightAwardOutcome>? outcomes,
   }) => NightState._(
     length: length,
     round: round ?? this.round,
@@ -266,5 +285,6 @@ final class NightState {
     played: played ?? this.played,
     lastRoundPoints: lastRoundPoints ?? this.lastRoundPoints,
     seen: seen ?? this.seen,
+    outcomes: outcomes ?? this.outcomes,
   );
 }

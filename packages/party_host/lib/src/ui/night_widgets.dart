@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:toy_look/toy_look.dart';
 
@@ -236,6 +238,54 @@ class NightGameButtons extends StatelessWidget {
       ],
     );
   }
+}
+
+/// The confetti round the awards' reveal and the final scores (frames 6 and 7):
+/// small tilted pieces in the look's own colours, still, so a menu pays no
+/// frames for them, and drawn from a fixed seed so they never jump between
+/// frames. The reveal and the scoreboard put it behind their card.
+class NightConfetti extends StatelessWidget {
+  const NightConfetti({super.key});
+
+  @override
+  Widget build(BuildContext context) => CustomPaint(painter: _NightConfettiPainter(look: ToyLookScope.of(context)));
+}
+
+/// How many pieces the scatter draws, how big one is in logical pixels, the
+/// seed it scatters from, and how many of the look's player colours it uses.
+const _confettiPieces = 44;
+const _confettiWidthPx = 10.0;
+const _confettiHeightPx = 6.0;
+const _confettiSeed = 7;
+const _confettiColourSlots = 6;
+
+class _NightConfettiPainter extends CustomPainter {
+  const _NightConfettiPainter({required this.look});
+
+  final ToyLook look;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final random = Random(_confettiSeed);
+    final colours = [
+      for (var slot = 1; slot <= _confettiColourSlots; slot++) look.colors.player(slot),
+      look.colors.focus,
+    ];
+    final paint = Paint();
+    final piece = Rect.fromCenter(center: Offset.zero, width: _confettiWidthPx, height: _confettiHeightPx);
+    for (var i = 0; i < _confettiPieces; i++) {
+      final at = Offset(random.nextDouble() * size.width, random.nextDouble() * size.height);
+      canvas
+        ..save()
+        ..translate(at.dx, at.dy)
+        ..rotate(random.nextDouble() * 2 * pi)
+        ..drawRect(piece, paint..color = colours[i % colours.length])
+        ..restore();
+    }
+  }
+
+  @override
+  bool shouldRepaint(_NightConfettiPainter oldDelegate) => oldDelegate.look != look;
 }
 
 /// The question the scoreboard asks before a night is thrown away (design

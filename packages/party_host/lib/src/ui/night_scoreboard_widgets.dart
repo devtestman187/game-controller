@@ -10,6 +10,73 @@ const nightPlaceSlotPx = 52.0;
 /// The room a row gives the round's points at its end, "+7" (frame 4).
 const nightRoundPointsSlotPx = 80.0;
 
+/// The scoreboard's card (frames 4, 5 and 7): its header, the banner before the
+/// last round, a row for each player, and either the two game buttons or, on
+/// the final scores, "Back to games".
+class _ScoreCard extends StatelessWidget {
+  const _ScoreCard({
+    required this.night,
+    required this.players,
+    required this.onShapeRace,
+    required this.onBumperRound,
+    required this.onBackToGames,
+  });
+
+  final NightState night;
+
+  /// The roster now, for the rows: a player's badge and nickname, and whether
+  /// they are here (design section 4).
+  final List<GamePlayer> players;
+  final VoidCallback onShapeRace;
+  final VoidCallback? onBumperRound;
+  final VoidCallback onBackToGames;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = ToyLookScope.of(context).colors;
+    final over = night.isOver;
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: nightScoreCardWidthPx),
+      child: ToyCard(
+        key: const Key('nightScoreboard'),
+        header: over ? NightText.finalScores : NightText.roundOf(night.round, night.rounds),
+        headerKey: const Key('nightScoreHeader'),
+        headerColor: colors.player(4),
+        padding: const EdgeInsets.symmetric(horizontal: ToySizes.space24, vertical: ToySizes.space16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // G2's last round is worth double: the scoreboard says so before
+            // it is played (frame 5).
+            if (!over && night.isNextRoundTheLast) ...[
+              Center(child: NightLastRoundBanner(key: const Key('nightLastRoundBanner'))),
+              const SizedBox(height: ToySizes.space16),
+            ],
+            for (final row in night.rows(players)) _ScoreRow(row: row, finalScores: over),
+            const SizedBox(height: ToySizes.space24),
+            if (over)
+              Center(
+                child: HostButton(
+                  key: const Key('nightBackToGames'),
+                  label: NightText.backToGames,
+                  icon: Icons.arrow_back,
+                  autofocus: true,
+                  onPressed: onBackToGames,
+                ),
+              )
+            else
+              // The two game buttons stay under the rows between the rounds;
+              // the reveal comes after the last one, before these final scores
+              // (job c2).
+              NightGameButtons(autofocus: true, onShapeRace: onShapeRace, onBumperRound: onBumperRound),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 /// One player's row on the scoreboard (frame 4): their place, a badge with
 /// their character, their nickname, a star and their total, and what the round
 /// gave them, "+7". On the final scores the winner's row leads with a crown

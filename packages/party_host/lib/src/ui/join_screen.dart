@@ -18,6 +18,7 @@ import 'host_button.dart';
 import 'host_screen.dart';
 import 'play_hint.dart';
 import 'player_badge.dart';
+import 'puzzle_choice.dart';
 import 'puzzle_screen.dart';
 
 part 'join_screen_widgets.dart';
