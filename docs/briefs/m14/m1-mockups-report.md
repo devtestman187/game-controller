@@ -5,6 +5,8 @@ Job: `docs/briefs/m14/m1-mockups.md`. Gate: after it. **Status: done.**
 Three changes, all in `docs/design`: the look's parts moved into `mockup-parts.js` (loaded by both pages),
 `look-mockups.html` cut down to its frames and drawing exactly what it drew before, and a new
 `party-mockups.html` with fifteen frames of the party night's screens, for the owner's OK before c1, b2, c2 and c3.
+The page has seventeen frames since m1b (job `docs/briefs/m14/m1b-mockups.md`): two for the finish celebration,
+and frames 16 and 17 are m1's nickname and maps.
 
 ## Files changed
 
@@ -49,15 +51,16 @@ the same SVG text as before.
 ## The frames of `party-mockups.html`
 
 TV frames are 1280×720. Phone frames are 816×384 files holding a 780×360 screen, as M13's. The brief's ten items
-that say "and a second frame" become separate figures, so the page has fifteen; the brief's item 11 (the maps) is
-figure 15.
+that say "and a second frame" become separate figures, so the page had fifteen in m1. The brief's item 11 (the maps)
+was figure 15; m1b added the finish celebration as figures 14 and 15, so the maps are figure 17 and the nickname is
+16. For the numbering as it is now, read this table with m1b's report (`m1b-mockups-report.md`).
 
 | # | Size | What it shows |
 | --- | --- | --- |
 | 1 | TV | The game picker with three cards. **Party night** (crown, three award rosettes, "3 or 5 rounds, points, awards") has the focus ring; Shape Race and the Arena are unchanged. Stats and Back under them, the D-pad hint bottom right. |
 | 2 | TV | The night's **start card**: "Rounds" with **3 rounds** focused and "5 rounds"; "The night's three awards" as three cards — Sharpshooter (fewest wrong drops), Best Helper (most carries home together), Coin Collector (most coins picked up), each a rosette; "The cat visits the side that's ahead." with the cat's face; "Pick round 1" with two big buttons, Shape Race and Bumper Round. |
-| 3 | TV | **Shape Race in a night**, 1 vs 1: two boards; a "+2" pop-up and a star beside the piece just snapped; each side's points beside its badge with a star (Mia 7, Dad 5); on the right the cat has come — its ink shadow lies on the target triangle and its paw is clipped by the frame's edge, with "A: shoo the cat". |
-| 4 | TV | The **scoreboard**, "Round 2 of 3": four rows in total order, each with the place, the badge (colour and number), the nickname, a star and the total, and the round's "+7". Mia 21 (+7), Dad 18 (+5), Sam 14 (+4) and Ada 14 (+2) share third as "3=". The two game buttons under it. |
+| 3 | TV | **Shape Race in a night**, 1 vs 1: two boards; the "+2" pop-up and its star beside the sun just snapped on the left board; each side's points beside its badge with a star (Mia 7, Dad 5); on the right the cat has come — its ink shadow lies on the tray triangle it is going for (a loose piece, not the board) and its paw is clipped by the frame's edge, with "A: shoo the cat". |
+| 4 | TV | The **scoreboard**, "Round 2 of 3": four rows in total order, each with the place, the badge (colour, number and the player's accessory), the nickname, a star and the total, and the round's "+7". Mia 21 (+7), Dad 18 (+5), Sam 14 (+4) and Ada 14 (+2) share third as "3=". The two game buttons under it. |
 | 5 | TV | The **same before the last round**: the same rows with no round's points, and the focus-coloured banner "Last round: double points!" between the header and the rows. |
 | 6 | TV | An **award reveal**: Cat Catcher with the cat's face and two paw prints, "Two winners" (badges Dad 2 and Ada 4), "Shooed 3 cats", "Most cats shooed in the night", and "+3 points". Confetti at the edges. |
 | 7 | TV | The **final scoreboard**: "Final scores", the winner's row in the focus colour under a crown, totals 34 / 30 / 21 / 19, confetti, and a focused "Back to games". |
@@ -67,25 +70,29 @@ figure 15.
 | 11 | Phone | A **joined phone's result in a night**: the last board dimmed behind, "You win!", Mia and 0:58, "+12 points", the standings in short (Mia 12, Dad 9, Sam 5) and "Waiting for the host to pick what's next." |
 | 12 | TV | The **best times board**: "Best times", "Shape Race · Tree · Easy", the top three with a star on the first — 1 Mia 0:58 (focus colour), 2 Dad 1:06, 3 Sam 1:24 — and Back. |
 | 13 | TV | A **Shape Race results card with "New record!"**: the boards dimmed, "Left wins!", the "New record!" chip with sparkles, Left 0:58 4/4 and Right — 3/4, Rematch focused, Change teams, Back, confetti. |
-| 14 | Phone | The phone's **settings with the Nickname field**: "Nickname", "Mia" with a caret and "3 / 10", Save, "Up to 10 characters: letters, numbers and spaces.", "Shows next time you join.", and the preview row "Mia … on the TV". |
-| 15 | TV | The **four new maps as sketches**, 2×2: Pinball (lane stripes, spring clusters, two spinners), Toy Factory (three belts with arrows, crates, yellow edge), Spinning Tops (round rug, ring of tops, walled island with four doors, goal behind it), Block Castle (short walls and doorways, a loose maze). Springs are the red round bumpers; the race goal is drawn in each. |
+| 14 | TV | **Picture complete!** (m1b): one board, solo, Tree finished; a ring of stars bursting from the board's edge, confetti falling round the board (never over the picture), the picture's outline in a soft warm rim, two pieces mid-pop (the trunk at 110%, a branch at 105%), the worker cheering at the board's foot. No card. |
+| 15 | TV | **The results card with the photo** (m1b): the finished picture as a framed photo (cream frame, ink edge, small shadow, tilted about 3°) beside "Done! 0:58", the "New record!" chip, "4/4" and Play again (focused) / Back, over a dimmed, empty board area. |
+| 16 | Phone | The phone's **settings with the Nickname field**: "Nickname", "Mia" with a caret and "3 / 10", Save, "Up to 10 characters: letters, numbers and spaces.", "Shows next time you join.", and the preview row "Mia … on the TV". |
+| 17 | TV | The **four new maps as sketches**, 2×2: Pinball (lane stripes, spring clusters, two spinners), Toy Factory (three belts with arrows, crates, yellow edge), Spinning Tops (round rug, ring of tops, walled island with four doors, goal behind it), Block Castle (short walls and doorways, a loose maze). A spring is a yellow coil under a green cap and a hazard is the red round bumper; the race goal is drawn in each. |
 
 ## Decided while drawing (the brief left these open)
 
 - **Two frames for item 5** — the award reveal and the final scoreboard — so each is a whole TV picture; likewise the
-  second frames of items 4, 6 and 9. The frame count (15) and the maps as figure 15 follow from that.
+  second frames of items 4, 6 and 9. The frame count (15) and the maps as figure 15 follow from that; m1b's two
+  celebration frames make it 17, with the maps as figure 17.
 - **The focus** on the picker is on Party night, the card the owner is reviewing, not on Shape Race as in M13.
 - **The picker's buttons** are Stats and Back; Puzzle settings stays with the puzzle pick.
 - **Award lines** are the qualifiers of section 6, shortened to two short lines: "Fewest wrong drops", "Most carries
   home together" (kept on one line here), "Most coins picked up".
 - **The cat's colour** is not named by the design; I chose a soft grey-violet (`#9A8BB0`) so it reads in both palettes.
-  Its shadow is the ink at 30% over the target outline (a still picture can't put a shadow under a piece), and the paw
-  is drawn at the frame's edge, clipped, as if the cat were just out of sight.
+  Its shadow is the ink at 30% under the piece it goes for (a loose tray piece, not a placed one), and the paw is
+  drawn at the frame's edge, clipped, as if the cat were just out of sight. m1b moved the shadow from the board
+  outline to the right side's tray triangle.
 - **Robo** is drawn as a head with an antenna and eyes beside its name instead of a numbered badge, and its level
   buttons sit under its row; the design's 7a says no number for it.
 - **No meaning by colour alone**: the gold coin carries an inner star, the sparkling coin its sparkles, the dropped coin
   an arrow from the marble that dropped it, the ready row a ✓ (not a green dot), the tie a "3=", the crown the winner,
-  every belt its arrows, and every badge its number.
+  every belt its arrows, and every badge its number (and, since m1b, the player's accessory).
 - **The numbers are made up but consistent**: 21/18/14/14 after round 2, 34/30/21/19 at the end, 0:58 the record,
   4821 the code (as M13's pages). Totals and the round's points are separate columns so the scoreboard can show both.
 - **The Bumper field** uses Playroom's wall and spring positions (section 7b's first map) without a goal pad, since the

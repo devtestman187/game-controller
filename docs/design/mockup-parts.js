@@ -102,6 +102,30 @@ function badge(cx, cy, r, n, color) {
   return toy('circle', cx - r, cy - r, r * 2, r * 2, color, { ow: Math.max(2.5, r * .14), shadow: r * .18, glint: false }) +
     txt(cx, cy + r * .06, n, r * 1.15, { anchor: 'middle', base: 'middle', w: 700 });
 }
+// A character's accessory (look-and-sound 5b), on top of a body of radius `size` at (x, y):
+// ink and paper only, plus the body's own colour for the ears, so any accessory suits any
+// colour. The shares are toy_accessory.dart's, so a mock-up badge wears what the app's does.
+const accessoryEdge = size => Math.max(1.5, size * .16);
+const ACCESSORIES = {
+  ears: (x, y, s, c) => [-1, 1].map(d => {
+    const ex = x + d * .7 * s, ey = y - .9 * s, r = .34 * s, a = Math.atan2(-.9, d * .7);
+    const [ax, ay] = [ex + r * Math.cos(a - Math.PI / 2), ey + r * Math.sin(a - Math.PI / 2)];
+    const [bx, by] = [ex + r * Math.cos(a + Math.PI / 2), ey + r * Math.sin(a + Math.PI / 2)];
+    return `<circle cx="${ex}" cy="${ey}" r="${r}" fill="${c}"/><path d="M${ax} ${ay} A${r} ${r} 0 0 1 ${bx} ${by}" fill="none" stroke="${T.ink}" stroke-width="${accessoryEdge(s)}" stroke-linecap="round"/>`;
+  }).join(''),
+  antenna: (x, y, s) => `<path d="M${x} ${y - .95 * s} V${y - 1.55 * s}" stroke="${T.ink}" stroke-width="${Math.max(2, s * .12)}" stroke-linecap="round"/>` +
+    `<circle cx="${x}" cy="${y - 1.62 * s}" r="${.18 * s}" fill="${T.paper}" stroke="${T.ink}" stroke-width="${accessoryEdge(s)}"/>`,
+  bow: (x, y, s) => {
+    const loop = pts => `<polygon points="${pts.map(([a, b]) => `${x + a * s},${y + b * s}`).join(' ')}" fill="${T.paper}" stroke="${T.ink}" stroke-width="${accessoryEdge(s)}" stroke-linejoin="round"/>`;
+    return loop([[.55, -1], [.1, -1.25], [.25, -.8]]) + loop([[.55, -1], [1, -1.2], [1.05, -.78]]) +
+      `<circle cx="${x + .55 * s}" cy="${y - s}" r="${.1 * s}" fill="${T.paper}" stroke="${T.ink}" stroke-width="${accessoryEdge(s)}"/>`;
+  },
+  cap: (x, y, s) => `<path d="M${x - .85 * s} ${y - .55 * s} Q${x} ${y - 1.9 * s} ${x + .85 * s} ${y - .55 * s} Z" fill="${T.paper}" stroke="${T.ink}" stroke-width="${accessoryEdge(s)}" stroke-linejoin="round"/>` +
+    `<rect x="${x + .52 * s}" y="${y - .78 * s}" width="${.76 * s}" height="${.22 * s}" rx="${.1 * s}" fill="${T.paper}" stroke="${T.ink}" stroke-width="${accessoryEdge(s)}"/>`,
+};
+function accessory(kind, x, y, size, color = T.paper) {
+  return ACCESSORIES[kind](x, y, size, color);
+}
 function check(cx, cy, r, ok) {
   const c = ok ? C.good : C.bad;
   const mark = ok ? `<path d="M${cx - r * .45} ${cy} l${r * .3} ${r * .32} l${r * .6} ${-r * .62}" fill="none" stroke="${T.ink}" stroke-width="${r * .28}" stroke-linecap="round" stroke-linejoin="round"/>`
