@@ -25,6 +25,11 @@ void main() {
   // the bar's own buttons), and the test bundle has no icon font of its own.
   setUpAll(loadIconFont);
 
+  // The join screen's sides are headed `◀ Left` and `Right ▶`, which no font
+  // the apps bundle has: the machine's own symbol face fills the pictures'
+  // fallback, and a machine without one draws boxes and says so.
+  setUpAll(loadSymbolFont);
+
   const teams = {'p1': PuzzleSide.left, 'p2': PuzzleSide.right};
   const choice = party.PuzzleChoice(level: Level.medium, puzzleId: 'train');
 

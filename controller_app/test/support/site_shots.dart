@@ -31,6 +31,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'fakes.dart';
 import 'pump_app.dart';
+import 'test_font.dart';
 
 /// The TV's screen (the size the TV app's own screens are laid out at) and the
 /// phone's (the owner's iPhone in landscape).
@@ -147,6 +148,20 @@ Future<party_test.FakeHostService> pumpTv(WidgetTester tester, GlobalKey shot) a
   return fake;
 }
 
+/// The pictures' theme: the look's own, with [symbolFallbackFamily] after every
+/// style's family (M13.4). The join screen's sides are headed `◀ Left` and
+/// `Right ▶`, and no face either app bundles has those two symbols, so a device
+/// draws them from its system font and a test's font draws a box;
+/// [loadSymbolFont] puts the machine's face in that family for the pictures.
+///
+/// The card's header takes the look's button style rather than the theme's, so
+/// the fallback reaches it through the default text style `Material` sets from
+/// the theme, which the header's own style is merged over.
+ThemeData shotTheme(party.ToyLook look) {
+  final theme = party.toyTheme(look);
+  return theme.copyWith(textTheme: theme.textTheme.apply(fontFamilyFallback: const [symbolFallbackFamily]));
+}
+
 /// The TV app's root, as both host apps build it (M13): the look over the
 /// MaterialApp, whose theme comes from it, with the menus working every screen
 /// from the phones.
@@ -161,7 +176,7 @@ class _TvApp extends ConsumerWidget {
         look: look,
         child: MaterialApp(
           title: 'Thumb Party TV',
-          theme: party.toyTheme(look),
+          theme: shotTheme(look),
           // The TV app's own root turns it off (`tv_test_app/lib/main.dart`); a
           // debug build would draw its red ribbon over the frame's top corner.
           debugShowCheckedModeBanner: false,

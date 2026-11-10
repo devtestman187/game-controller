@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -67,6 +68,65 @@ File iconFont() {
 /// Windows can't tell that from the capitalised name older versions use.
 const String _iconFontInCache = 'artifacts/material_fonts';
 const List<String> _iconFaceNames = ['materialicons-regular.otf', 'MaterialIcons-Regular.otf'];
+
+/// The family the picture's theme falls back to for a symbol no font the apps
+/// bundle draws: the join screen's `◀` and `▶` (M13.4). A device draws them
+/// from its system font; a test's own font gives a box, as the look's Fredoka
+/// and Nunito do (neither has U+25C0 or U+25B6).
+const String symbolFallbackFamily = 'SymbolFallback';
+
+/// The package the look's fonts come from, as its styles name it. Flutter puts
+/// a style's package in front of every family it falls back to, not only the
+/// style's own, and the look's styles are the ones that draw the join screen's
+/// header: so the face is loaded under this package's [symbolFallbackFamily]
+/// as well, or the header finds no fallback at all.
+const String _lookPackage = 'toy_look';
+
+/// The families [loadSymbolFont] loads the machine's face as: the plain name
+/// the picture's theme lists, and the look's packaged spelling the engine
+/// resolves it to.
+const List<String> _symbolFamilies = [symbolFallbackFamily, 'packages/$_lookPackage/$symbolFallbackFamily'];
+
+/// Where a desktop machine keeps a face that has those symbols, the first one
+/// [loadSymbolFont] finds: Windows' Segoe UI Symbol, macOS' Apple Symbols, and
+/// DejaVu (Linux).
+const List<String> _symbolFontPaths = [
+  'C:/Windows/Fonts/seguisym.ttf',
+  '/System/Library/Fonts/Apple Symbols.ttf',
+  '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
+];
+
+/// Registers the machine's symbol face as [symbolFallbackFamily], for the
+/// pictures' theme to name as a fallback. Only a picture test loads it: a fit
+/// test measures the app's own text, and the face is the machine's, not the
+/// repo's (its licence is not one this project ships), so a machine without it
+/// still draws the pictures and says so.
+///
+/// Call it from `setUpAll`, after [loadHostFonts].
+Future<void> loadSymbolFont() async {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  final face = _symbolFont();
+  if (face == null) {
+    debugPrint(
+      'no symbol font on this machine (tried ${_symbolFontPaths.join(', ')}): '
+      'the join screen\'s ◀ ▶ are drawn as boxes',
+    );
+    return;
+  }
+  for (final family in _symbolFamilies) {
+    final loader = FontLoader(family)..addFont(Future.value(ByteData.sublistView(face.readAsBytesSync())));
+    await loader.load();
+  }
+}
+
+/// The first of [_symbolFontPaths] this machine has, or null.
+File? _symbolFont() {
+  for (final path in _symbolFontPaths) {
+    final font = File(path);
+    if (font.existsSync()) return font;
+  }
+  return null;
+}
 
 /// Registers [faces], kept in [dir], as the family [family].
 Future<void> _load(String family, String dir, List<String> faces) async {
