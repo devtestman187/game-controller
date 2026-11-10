@@ -748,7 +748,8 @@ Milestone 13 gives the games and menus a bright, cartoony "Toy Box Toon" look an
   - Each player presses A to say they're ready, which the card marks.
   - The countdown starts once at least one player has joined and every joined player is ready. This works the same on a TV and on a phone host.
 - **Bumper Round** (G9): the Arena's party mode, picked on the Arena's waiting card (Bumper or Race), and a game the host may pick for any round of a night, so the scoreboard and awards count Arena rounds too. The cat stays in Shape Race. The design settles how the host picks each round's game and whether the awards list gains an Arena award.
-- Sounds for the new moments (meow, points, fanfare, celebration, new record, a bump, a coin), free to ship and listed in CREDITS.md.
+- Sounds for the new moments (meow, points, fanfare, celebration, new record), free to ship and listed in CREDITS.md.
+- **The Arena's sounds and music** (owner, Nov 9, 2026: "We need sound effects for the various actions (bumping, dashing, loosing and gaining coins) and new music during the round"): dash, bump, a big bump, coin, gold coin, coin lost and coin appears, and the Arena's own round music at three tempos that speeds up at 15 and 5 seconds left like Shape Race's, all in the "Bubble Pop" set (docs/briefs/m14/a1-arena-sounds.md).
 
 **Acceptance tests**
 
