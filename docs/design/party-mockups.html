@@ -31,16 +31,17 @@
 </header>
 <main id="out"></main>
 <script src="mockup-parts.js"></script>
+<script src="mockup-maps.js"></script>
 <script>
-// ---- Party night's own parts: a star, a coin, a paw print, a crown, an award rosette,
-// a cat, a robot head, confetti and the Arena's maps, sketched small. The rest of the
-// look's parts (palettes, buttons, cards, badges, the worker, marbles, the accessory) are
-// in mockup-parts.js.
+// ---- Party night's own parts: a star, a paw print, a crown, an award rosette, a cat, a robot
+// head, confetti and the cards built from the look's parts. The look's shared parts (palettes,
+// buttons, cards, badges, the worker, marbles, the coin, the accessory) are in mockup-parts.js,
+// and the Arena's maps and their pieces in mockup-maps.js.
 
 // A player's badge wears the accessory of its character (look-and-sound 5b: 1 round ears,
-// 2 an antenna with a ball, 3 a bow, 4 a cap), and keeps its number, so colour and shape
-// both tell the players apart. Every badge on this page is one of these.
-const ACCESSORY = { 1: 'ears', 2: 'antenna', 3: 'bow', 4: 'cap' };
+// 2 an antenna with a ball, 3 a bow, 4 a cap, 5 a tuft of hair, 6 a tiny crown), and keeps its
+// number, so colour and shape both tell the players apart. Every badge on this page is one.
+const ACCESSORY = { 1: 'ears', 2: 'antenna', 3: 'bow', 4: 'cap', 5: 'tuft', 6: 'crown' };
 const playerBadge = (cx, cy, r, n, color) => badge(cx, cy, r, n, color) + accessory(ACCESSORY[n], cx, cy, r, color);
 
 function star(cx, cy, r, color = C.focus, o = {}) {
@@ -50,15 +51,6 @@ function star(cx, cy, r, color = C.focus, o = {}) {
     pts.push(`${(cx + Math.cos(a) * rr).toFixed(1)},${(cy + Math.sin(a) * rr).toFixed(1)}`);
   }
   return `<polygon points="${pts.join(' ')}" fill="${color}" stroke="${T.ink}" stroke-width="${o.ow ?? Math.max(1.8, r * .16)}" stroke-linejoin="round"/>`;
-}
-function coin(cx, cy, r, o = {}) {
-  let g = toy('circle', cx - r, cy - r, r * 2, r * 2, o.gold ? '#F2C200' : C.focus,
-    { ow: Math.max(2, r * .16), shadow: Math.max(2, r * .16), glint: false });
-  g += `<circle cx="${cx}" cy="${cy}" r="${r * .6}" fill="none" stroke="${T.ink}" stroke-width="${Math.max(1.2, r * .09)}" stroke-opacity=".4"/>`;
-  g += o.gold ? star(cx, cy + r * .04, r * .38, '#FFF6B0', { ow: Math.max(1.2, r * .09) })
-    : `<circle cx="${cx}" cy="${cy + r * .05}" r="${r * .16}" fill="#FFF6B0" stroke="${T.ink}" stroke-width="${Math.max(1, r * .07)}"/>`;
-  if (o.sparkle) g += sparkle(cx - r * 1.25, cy - r * .95, r * .5, '#FFF6B0') + sparkle(cx + r * 1.2, cy + r * .85, r * .38, '#FFF6B0');
-  return g;
 }
 function heart(cx, cy, r, color) {
   return `<path d="M${cx} ${cy + r * .8} C${cx - r * 1.3} ${cy - r * .1} ${cx - r * .62} ${cy - r * 1.1} ${cx} ${cy - r * .32} C${cx + r * .62} ${cy - r * 1.1} ${cx + r * 1.3} ${cy - r * .1} ${cx} ${cy + r * .8}Z" fill="${color}" stroke="${T.ink}" stroke-width="${Math.max(1.8, r * .16)}" stroke-linejoin="round"/>`;
@@ -119,99 +111,27 @@ function confetti(w, h) {
   }).join('');
 }
 
-// ---- The Arena's fields, drawn small for the waiting card and as sketches in section 7b
-function field(x, y, w, h, color, o = {}) {
-  const id = 'fl' + (++uid);
-  defs.push(`<pattern id="${id}" width="36" height="36" patternUnits="userSpaceOnUse"><circle cx="18" cy="18" r="2.4" fill="${T.ink}" fill-opacity=".12"/></pattern>`);
-  return `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${color}"/>` +
-    (o.dots === false ? '' : `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="url(#${id})"/>`);
+// ---- The Bumper Round's top bar and a map in play: the map frames share them, so every map is
+// drawn once (mockup-maps.js) and a round reads like frame 10's whatever the map.
+function bumperBar(name, clock, counts, warn) { // counts: [player, colour, coins], four at most
+  let g = `<rect x="0" y="0" width="1280" height="56" fill="${T.paper}"/><line x1="0" y1="56" x2="1280" y2="56" stroke="${T.ink}" stroke-width="3.5"/>`;
+  g += txt(22, 38, 'Bumper Round', 26) + txt(240, 36, name, 18, { font: 'Nunito', w: 800, fill: dark(T.paper, .45) });
+  g += clockChip(640, 7, clock, 28, warn);
+  counts.forEach(([n, color, k], i) => {
+    const x = 760 + i * 120;
+    g += playerBadge(x, 30, 15, n, color) + coin(x + 30, 30, 11) + txt(x + 48, 39, k, 24, { w: 700 });
+  });
+  return g + txt(1258, 36, 'A: dash', 17, { anchor: 'end', font: 'Nunito', w: 800, fill: dark(T.paper, .45) });
 }
-// The Arena's hazard: a red round bumper, its rings scaled with its size so it reads as well on
-// a small map card as in a round. Red always means a hazard (design 7b).
-function hazard(cx, cy, r) {
-  return toy('circle', cx - r, cy - r, r * 2, r * 2, C.bad, { ow: Math.max(1.5, r * .18), shadow: Math.max(2, r * .2), glint: false }) +
-    `<circle cx="${cx}" cy="${cy}" r="${r * .58}" fill="none" stroke="#fff" stroke-width="${Math.max(1.5, r * .2)}"/>` +
-    `<circle cx="${cx}" cy="${cy}" r="${r * .3}" fill="${dark(C.bad, .4)}" stroke="${T.ink}" stroke-width="${Math.max(1.2, r * .12)}"/>`;
-}
-// A spring (design 7b): a yellow coil under a green cap, seen from above, with two windings
-// showing below the cap. Never red: red is a hazard's colour.
-function spring(cx, cy, r) {
-  const ow = Math.max(1.5, r * .18), cap = r * .84;
-  let g = `<ellipse cx="${cx}" cy="${cy + r * .34}" rx="${r}" ry="${r * .62}" fill="${C.sun}" stroke="${T.ink}" stroke-width="${ow}"/>`;
-  g += `<path d="M${cx - r * .6} ${cy + r * .76} q${r * .3} ${r * .16} ${r * .6} 0" fill="none" stroke="${T.ink}" stroke-width="${ow * .9}" stroke-linecap="round"/>`;
-  g += `<path d="M${cx} ${cy + r * .82} q${r * .3} ${r * .1} ${r * .58} ${-r * .06}" fill="none" stroke="${T.ink}" stroke-width="${ow * .9}" stroke-linecap="round"/>`;
-  g += toy('circle', cx - cap, cy - r * .14 - cap, cap * 2, cap * 2, C.good, { ow: ow, shadow: Math.max(2, r * .18), glint: false });
-  return g;
-}
-function belt(x, y, w, h, dir = 1) {
-  let g = toy('rect', x, y, w, h, '#6E7C99', { glint: false, ow: Math.max(1.5, h * .12), shadow: h * .1 });
-  const n = Math.max(2, Math.round(w / (h * 2.6)));
-  for (let i = 0; i < n; i++) {
-    const cx = x + h * .9 + i * ((w - h * 1.8) / Math.max(1, n - 1));
-    g += `<path d="M${cx - h * .26 * dir} ${y + h * .26} L${cx + h * .06 * dir} ${y + h * .5} L${cx - h * .26 * dir} ${y + h * .74}" fill="none" stroke="#FFF6E3" stroke-width="${h * .16}" stroke-linecap="round" stroke-linejoin="round"/>`;
-  }
-  return g;
-}
-function goal(x, y, s) {
-  const ow = Math.max(1.5, s * .07);
-  return `<rect x="${x}" y="${y + s * .45}" width="${s}" height="${s * .6}" rx="${s * .12}" fill="${C.good}" stroke="${T.ink}" stroke-width="${ow}"/>` +
-    `<line x1="${x + s * .24}" y1="${y}" x2="${x + s * .24}" y2="${y + s * .7}" stroke="${T.ink}" stroke-width="${ow}"/>` +
-    `<path d="M${x + s * .24} ${y} l${s * .46} ${s * .14} l${-s * .46} ${s * .16}Z" fill="#fff" stroke="${T.ink}" stroke-width="${ow * .8}" stroke-linejoin="round"/>`;
-}
-function playroomField(x, y, w, h) {
-  const u = Math.min(w / 16, h / 9), ox = x + (w - 16 * u) / 2, oy = y + (h - 9 * u) / 2;
-  let g = field(x, y, w, h, T.field);
-  [[3.7, .7, .37, 4.8], [7.4, 4.2, .37, 5], [11.1, .7, .37, 3.2], [11.1, 5.8, .37, 3.3], [4.7, 6.5, 1.8, .37]]
-    .forEach(([a, b, c, d]) => g += toy('rect', ox + a * u, oy + b * u, c * u, d * u, T.wall, { glint: false, shadow: u * .14, ow: Math.max(1.5, u * .06) }));
-  [[5.6, 1.8], [9.3, 5.7], [11.8, 5.2], [5, 8]].forEach(([a, b]) => g += hazard(ox + a * u, oy + b * u, u * .45));
-  return g + goal(ox + 13.4 * u, oy + 3.4 * u, u * 1.5);
-}
-function pinballField(x, y, w, h) {
-  const u = Math.min(w / 16, h / 9), ox = x + (w - 16 * u) / 2, oy = y + (h - 9 * u) / 2;
-  let g = field(x, y, w, h, '#3E3A8C', { dots: false });
-  for (let i = 0; i < 8; i++) g += `<path d="M${x + i * w / 8} ${y} L${x + (i + 1) * w / 8} ${y} L${x + (i + .5) * w / 8} ${y + h} L${x + (i - .5) * w / 8} ${y + h}Z" fill="#5B55C4" fill-opacity=".5"/>`;
-  g += toy('rect', ox + 1.5 * u, oy + .2 * u, .3 * u, 8.6 * u, T.wall, { glint: false, shadow: u * .1, ow: Math.max(1.5, u * .06) });
-  g += toy('rect', ox + 14.2 * u, oy + .2 * u, .3 * u, 8.6 * u, T.wall, { glint: false, shadow: u * .1, ow: Math.max(1.5, u * .06) });
-  [[4, 2.2], [4.7, 2.9], [4, 3.6], [8, 1.5], [8.7, 2.2], [12, 5.6], [12.7, 6.3]].forEach(([a, b]) => g += spring(ox + a * u, oy + b * u, u * .42));
-  [[2.6, 6.6], [11.4, 2.3]].forEach(([a, b]) => g += `<circle cx="${ox + a * u}" cy="${oy + b * u}" r="${u * .95}" fill="none" stroke="${T.ink}" stroke-opacity=".5" stroke-width="${Math.max(1.2, u * .05)}" stroke-dasharray="${u * .25} ${u * .2}"/>` +
-    `<line x1="${ox + a * u}" y1="${oy + b * u}" x2="${ox + (a + .6) * u}" y2="${oy + b * u}" stroke="${T.ink}" stroke-width="${Math.max(2, u * .1)}" stroke-linecap="round"/>` +
-    hazard(ox + (a + .6) * u, oy + b * u, u * .28));
-  return g + goal(ox + 13.3 * u, oy + 2.6 * u, u * 1.4);
-}
-function factoryField(x, y, w, h) {
-  const u = Math.min(w / 16, h / 9), ox = x + (w - 16 * u) / 2, oy = y + (h - 9 * u) / 2;
-  let g = field(x, y, w, h, '#B7C2D4', { dots: false });
-  g += `<rect x="${x + 3}" y="${y + 3}" width="${w - 6}" height="${h - 6}" rx="8" fill="none" stroke="${C.sun}" stroke-width="${Math.max(2.5, u * .18)}"/>`;
-  g += belt(ox + 2.4 * u, oy + 1.6 * u, 7 * u, .9 * u, 1) + belt(ox + 6.6 * u, oy + 4.2 * u, 7 * u, .9 * u, -1) + belt(ox + 2.4 * u, oy + 6.6 * u, 5 * u, .9 * u, 1);
-  [[3.4, 3.4], [10.4, 2.9], [11.6, 6.4], [7.6, 8]].forEach(([a, b]) => g += toy('rect', ox + a * u, oy + b * u, u * .8, u * .8, '#C08A4A', { shadow: u * .1, ow: Math.max(1.5, u * .07) }));
-  return g + goal(ox + 13.5 * u, oy + 7.3 * u, u * 1.3);
-}
-function topsField(x, y, w, h) {
-  const u = Math.min(w / 16, h / 9), ox = x + (w - 16 * u) / 2, oy = y + (h - 9 * u) / 2;
-  const cx = ox + 7.6 * u, cy = oy + 4.5 * u, R = u * 4.1;
-  let g = field(x, y, w, h, '#DCE8D2', { dots: false });
-  g += `<circle cx="${cx}" cy="${cy}" r="${R}" fill="#BFE3C8" stroke="${T.ink}" stroke-width="${Math.max(2.5, u * .08)}"/>` +
-    `<circle cx="${cx}" cy="${cy}" r="${R * .88}" fill="none" stroke="${dark('#BFE3C8', .14)}" stroke-width="${Math.max(2, u * .06)}" stroke-dasharray="${u * .4} ${u * .3}"/>`;
-  for (let i = 0; i < 8; i++) {
-    const a = i * Math.PI / 4 + .2, tx = cx + Math.cos(a) * R * .64, ty = cy + Math.sin(a) * R * .64;
-    g += hazard(tx, ty, u * .32) + `<line x1="${tx}" y1="${ty}" x2="${tx + Math.cos(a) * u * .55}" y2="${ty + Math.sin(a) * u * .55}" stroke="${T.ink}" stroke-width="${Math.max(1.5, u * .06)}" stroke-linecap="round"/>`;
-  }
-  const iw = u * 2.4, ih = u * 1.7, t = Math.max(2.5, u * .16), gap = iw * .3;
-  [[cx - iw / 2, cy - ih / 2, iw / 2 - gap / 2, t], [cx + gap / 2, cy - ih / 2, iw / 2 - gap / 2, t],
-    [cx - iw / 2, cy + ih / 2 - t, iw / 2 - gap / 2, t], [cx + gap / 2, cy + ih / 2 - t, iw / 2 - gap / 2, t],
-    [cx - iw / 2, cy - ih / 2, t, ih / 2 - gap / 2], [cx - iw / 2, cy + gap / 2, t, ih / 2 - gap / 2],
-    [cx + iw / 2 - t, cy - ih / 2, t, ih / 2 - gap / 2], [cx + iw / 2 - t, cy + gap / 2, t, ih / 2 - gap / 2]]
-    .forEach(([a, b, c, d]) => g += toy('rect', a, b, c, d, T.wall, { glint: false, shadow: 2, ow: Math.max(1.5, u * .06) }));
-  return g + goal(cx + R + u * .3, cy - u * .8, u * 1.2);
-}
-function castleField(x, y, w, h) {
-  const u = Math.min(w / 16, h / 9), ox = x + (w - 16 * u) / 2, oy = y + (h - 9 * u) / 2;
-  let g = field(x, y, w, h, '#CBD1E2', { dots: false });
-  const blocks = [[.9, .6, 3.6, .35], [5.6, .6, 4.2, .35], [11, .6, 3.4, .35], [.9, 3.1, .35, 2.6], [3.2, 3.1, .35, 1.2],
-    [3.2, 5.2, .35, 2.6], [7.2, 2.6, 4, .35], [13.6, 2.6, .35, 3.4], [1.2, 7.9, 4.6, .35], [8, 6.6, .35, 1.6], [8, 7.9, 5.4, .35]];
-  blocks.forEach(([a, b, c, d]) => g += toy('rect', ox + a * u, oy + b * u, c * u, d * u, T.wall, { glint: false, shadow: u * .1, ow: Math.max(1.5, u * .06) }));
-  g += spring(ox + 6.2 * u, oy + 1.6 * u, u * .34) + spring(ox + 9.6 * u, oy + 6.4 * u, u * .34);
-  return g + goal(ox + 14 * u, oy + 1.2 * u, u * 1.2);
+function mapPlay(key, clock, warn) { // one map as a whole TV frame: its pieces, its coins, its marbles
+  const m = MAPS[key], b = arenaBox(0, 56, 1280, 664), u = b.u;
+  let g = m.draw(0, 56, 1280, 664);
+  m.spots.coins.forEach(([a, c, o]) => g += coin(...at(b, a, c), u * .32, o));
+  m.spots.marbles.forEach(([a, c, n]) => {
+    const p = at(b, a, c);
+    g += marble(p[0], p[1], u * .38, C.p[n - 1], n) + accessory(ACCESSORY[n], p[0], p[1], u * .38, C.p[n - 1]);
+  });
+  return g + bumperBar(m.name, clock, m.spots.marbles.map(([a, c, n, k]) => [n, C.p[n - 1], String(k)]), warn);
 }
 function mapCard(x, y, w, h, name, color, draw) {
   const hh = Math.round(h * .2), pad = 8;
@@ -372,24 +292,24 @@ F.push(['TV: the final scoreboard', 'The night ends: the winner on top with a cr
   g += btn(480, 558, 320, 76, 'Back to games', { color: C.good, state: 'focus' });
   return g;
 }]);
-F.push(["TV: the Arena's waiting card", 'Over the Arena before a round: the code, each joined phone with a tick when ready, the mode buttons, and the maps as small cards with "Surprise me".', 1280, 720, () => {
-  let g = playroomField(0, 0, 1280, 720) + `<rect width="1280" height="720" fill="${T.ink}" fill-opacity=".45"/>`;
+F.push(["TV: the Arena's waiting card", 'Over the Arena before a round: the code, each joined phone with a tick when ready, the mode buttons, and the maps as small cards with "Surprise me". With Bumper picked the cards are Playroom, Pinball, Block Castle, Toy Factory, Spinning Tops and Surprise me, each the new map\'s own picture (drawn once, scaled down).', 1280, 720, () => {
+  let g = playroomMap(0, 0, 1280, 720) + `<rect width="1280" height="720" fill="${T.ink}" fill-opacity=".45"/>`;
   g += card(180, 20, 920, 680, { header: 'Arena', hc: C.p[1], hh: 66, hs: 36 });
   g += btn(240, 100, 280, 62, 'Bumper', { color: light(C.p[1], .25), state: 'focus' }) + btn(540, 100, 280, 62, 'Race');
   g += card(850, 100, 220, 56, { ow: 3 }) + txt(868, 136, 'Code', 18, { font: 'Nunito', w: 700 }) + txt(1054, 138, '4821', 30, { anchor: 'end', w: 700 });
   g += txt(640, 212, "Press A when you're ready.", 24, { anchor: 'middle', font: 'Nunito', w: 800 });
   g += joinedRow(246, 1, 'Mia', C.p[0], true) + joinedRow(318, 2, 'Dad', C.p[1], true) + joinedRow(390, 3, 'Sam', C.p[2], false);
   g += txt(200, 440, 'Map', 24, { w: 700 });
-  g += mapCard(200, 458, 270, 112, 'Playroom', light(C.p[0], .3), playroomField);
-  g += mapCard(500, 458, 270, 112, 'Pinball', light(C.p[1], .3), pinballField);
-  g += mapCard(800, 458, 270, 112, 'Toy Factory', light(C.p[2], .3), factoryField);
-  g += mapCard(200, 578, 270, 112, 'Spinning Tops', light(C.p[3], .3), topsField);
-  g += mapCard(500, 578, 270, 112, 'Block Castle', light(C.p[4], .3), castleField);
+  g += mapCard(200, 458, 270, 112, 'Playroom', light(C.p[0], .3), MAPS.playroom.draw);
+  g += mapCard(500, 458, 270, 112, 'Pinball', light(C.p[1], .3), MAPS.pinball.draw);
+  g += mapCard(800, 458, 270, 112, 'Block Castle', light(C.p[2], .3), MAPS.castle.draw);
+  g += mapCard(200, 578, 270, 112, 'Toy Factory', light(C.p[3], .3), MAPS.factory.draw);
+  g += mapCard(500, 578, 270, 112, 'Spinning Tops', light(C.p[4], .3), MAPS.tops.draw);
   g += card(800, 578, 270, 112, { fill: C.focus, ow: 3 }) + txt(935, 624, 'Surprise me', 22, { anchor: 'middle', w: 700 }) + star(935, 658, 16);
   return g;
 }]);
-F.push(['TV: the Arena waiting card with Robo', 'One player joined: the Bumper Round brings in Robo (a marble with an antenna and a robot icon, no phone). Its level is picked here: Easy, Medium or Hard.', 1280, 720, () => {
-  let g = playroomField(0, 0, 1280, 720) + `<rect width="1280" height="720" fill="${T.ink}" fill-opacity=".45"/>`;
+F.push(['TV: the Arena waiting card with Robo', 'One player joined: the Bumper Round brings in Robo (a marble with an antenna and a robot icon, no phone). Its level is picked here: Easy, Medium or Hard. Robo\'s rows take the room, so two of the map cards show, the rest below.', 1280, 720, () => {
+  let g = playroomMap(0, 0, 1280, 720) + `<rect width="1280" height="720" fill="${T.ink}" fill-opacity=".45"/>`;
   g += card(180, 20, 920, 680, { header: 'Arena', hc: C.p[1], hh: 66, hs: 36 });
   g += btn(240, 100, 280, 62, 'Bumper', { color: light(C.p[1], .25), state: 'focus' }) + btn(540, 100, 280, 62, 'Race');
   g += card(850, 100, 220, 56, { ow: 3 }) + txt(868, 136, 'Code', 18, { font: 'Nunito', w: 700 }) + txt(1054, 138, '4821', 30, { anchor: 'end', w: 700 });
@@ -399,29 +319,34 @@ F.push(['TV: the Arena waiting card with Robo', 'One player joined: the Bumper R
   g += txt(240, 356, 'Robo joins you', 20, { font: 'Nunito', w: 800, fill: dark(T.paper, .5) });
   g += txt(240, 424, 'Robo:', 24, { w: 700 });
   g += btn(360, 398, 180, 58, 'Easy', { color: C.focus, state: 'focus' }) + btn(560, 398, 180, 58, 'Medium') + btn(760, 398, 180, 58, 'Hard');
-  g += mapCard(200, 486, 270, 112, 'Pinball', light(C.p[1], .3), pinballField);
-  g += mapCard(500, 486, 270, 112, 'Toy Factory', light(C.p[2], .3), factoryField);
+  g += mapCard(200, 486, 270, 112, 'Pinball', light(C.p[1], .3), MAPS.pinball.draw);
+  g += mapCard(500, 486, 270, 112, 'Block Castle', light(C.p[2], .3), MAPS.castle.draw);
   g += card(800, 486, 270, 112, { fill: C.focus, ow: 3 }) + txt(935, 532, 'Surprise me', 22, { anchor: 'middle', w: 700 }) + star(935, 566, 16);
   return g;
 }]);
-F.push(['TV: the Bumper Round', "Playroom, 60 s on the clock, now 0:14 so new coins are gold. Each player's coins sit beside their badge with a coin icon; a sparkling coin cannot be taken yet; a shove; and the dizzy marble that just dropped a coin.", 1280, 720, () => {
+F.push(['TV: the Bumper Round', "Playroom, 60 s on the clock, now 0:14 so new coins are gold. The coins are the new toy coin, each caught at a different point of its turn (a full face, a thin edge); a sparkling coin cannot be taken yet and is half see-through; a gold coin is bigger, orange and stamped \"2\". Each player's coins sit beside their badge with the coin icon; a shove; and the dizzy marble that just dropped a coin. Effects off: every coin stands still, face-on.", 1280, 720, () => {
   const u = 73.3, ox = 53, oy = 56;
   let g = field(0, 0, 1280, 720, T.field);
   [[3.7, .7, .37, 4.8], [7.4, 4.2, .37, 5], [11.1, .7, .37, 3.2], [11.1, 5.8, .37, 3.3], [4.7, 6.5, 1.8, .37]]
     .forEach(([a, b, c, d]) => g += toy('rect', ox + a * u, oy + b * u, c * u, d * u, T.wall, { glint: false, shadow: 4, ow: 2.5 }));
   [[5.6, 1.8], [9.3, 5.7], [11.8, 5.2], [5, 8]].forEach(([a, b]) => g += hazard(ox + a * u, oy + b * u, u * .45));
-  g += coin(250, 240, 26) + coin(820, 206, 26, { sparkle: true }) + coin(1080, 520, 26) + coin(790, 630, 26, { gold: true });
-  g += coin(1000, 360, 20) + arrow(1050, 350, 32, 12, -1);
+  g += coin(250, 240, 26, { spin: .08 }) + coin(820, 206, 26, { spin: .32, sparkling: true }) + coin(1080, 520, 26, { spin: .55 }) + coin(790, 630, 26, { gold: true, spin: .2 });
+  g += coin(1000, 360, 20, { spin: .42 }) + arrow(1050, 350, 32, 12, -1);
   g += `<path d="M850 392 h30 M842 424 h38 M850 456 h30" stroke="#fff" stroke-width="5" stroke-linecap="round"/>`;
   g += star(748, 420, 30, C.focus) + star(1080, 232, 12) + star(1038, 300, 9) + star(1122, 296, 9);
   g += marble(700, 410, 28, C.p[0], 1) + marble(795, 430, 28, C.p[1], 2) + marble(1080, 280, 28, C.p[2], 3);
-  g += `<rect x="0" y="0" width="1280" height="56" fill="${T.paper}"/><line x1="0" y1="56" x2="1280" y2="56" stroke="${T.ink}" stroke-width="3.5"/>`;
-  g += txt(22, 38, 'Bumper Round', 26) + txt(240, 36, 'Playroom', 18, { font: 'Nunito', w: 800, fill: dark(T.paper, .45) });
-  g += clockChip(640, 7, '0:14', 28, true);
-  g += playerBadge(760, 30, 15, 1, C.p[0]) + coin(786, 30, 11) + txt(804, 39, '4', 24, { w: 700 });
-  g += playerBadge(880, 30, 15, 2, C.p[1]) + coin(906, 30, 11) + txt(924, 39, '2', 24, { w: 700 });
-  g += playerBadge(1000, 30, 15, 3, C.p[2]) + coin(1026, 30, 11) + txt(1044, 39, '1', 24, { w: 700 });
-  g += txt(1258, 36, 'A: dash', 17, { anchor: 'end', font: 'Nunito', w: 800, fill: dark(T.paper, .45) });
+  g += accessory('ears', 700, 410, 28, C.p[0]) + accessory('antenna', 795, 430, 28, C.p[1]) + accessory('bow', 1080, 280, 28, C.p[2]);
+  return g + bumperBar('Playroom', '0:14', [[1, C.p[0], '4'], [2, C.p[1], '2'], [3, C.p[2], '1']], true);
+}]);
+F.push(['TV: coins spin', 'A new frame: the same coin at five points of its turn (0, 1/8, 1/4, 3/8, 1/2), above a gold coin at the same five, beside a hazard for comparison. The coin is yellow-gold with a thick darker rim, a stamped star and a white glint; the gold coin is a third bigger, orange-gold, stamped "2" with a small sparkle; the hazard keeps its red and white rings. A coin turns once every 1.2 s, each at its own phase; the frame shows a half turn, the back at 1/2. Effects off: every coin stands still, face-on.', 1280, 720, () => {
+  const SPINS = [0, .125, .25, .375, .5];
+  let g = bg(1280, 720);
+  g += card(90, 60, 1100, 600, { header: 'Coins spin', hc: light(C.p[5], .35), hh: 64, hs: 32 });
+  g += txt(140, 220, 'Coin', 28, { w: 700 });
+  SPINS.forEach((s, i) => g += coin(380 + i * 170, 210, 52, { spin: s }));
+  g += txt(140, 430, 'Gold coin, worth 2', 28, { w: 700 });
+  SPINS.forEach((s, i) => g += coin(380 + i * 170, 420, 52, { gold: true, spin: s }));
+  g += txt(140, 600, 'Hazard', 28, { w: 700 }) + hazard(380, 592, 52);
   return g;
 }]);
 F.push(["Phone: a round's result in a night", "A joined phone that drew the round keeps its last frame, dimmed, and shows the result card over it: the outcome, its side's time, its points, the standings in short, and the line waiting for the host.", 816, 384, () => {
@@ -493,30 +418,51 @@ F.push(['TV: the results card with the photo', 'The results card does not hide t
   g += btn(662, 505, 200, 56, 'Back');
   return g;
 }]);
-F.push(["Phone: the Nickname field", "The phone's settings gain a nickname: up to 10 characters, letters, numbers and spaces. It shows on the TV next time this phone joins.", 816, 384, () => {
+F.push(["Phone: nickname, colour and accessory", 'The phone\'s settings, in one place: the nickname (up to 10 characters, letters, numbers and spaces), then Colour — six big round buttons, the chosen one ringed — and Accessory — six round buttons showing ears, antenna, bow, cap, tuft and crown. The preview shows the worker and the marble you will be, and "Shows next time you join."', 816, 384, () => {
   const W = 780, H = 360;
   let g = bg(W, H);
   g += card(40, 18, 700, 324, { header: 'Settings', hc: light(C.p[0], .3), hh: 48, hs: 25 });
-  g += txt(70, 106, 'Nickname', 24, { w: 700 });
-  g += `<rect x="70" y="120" width="360" height="60" rx="12" fill="#FFFFFF" stroke="${T.ink}" stroke-width="3.5"/>`;
-  g += txt(92, 160, 'Mia', 27, { font: 'Nunito', w: 800 }) + `<rect x="146" y="132" width="3" height="34" fill="${T.ink}"/>`;
-  g += txt(446, 158, '3 / 10', 16, { font: 'Nunito', w: 700, fill: dark(T.paper, .5) });
-  g += btn(540, 120, 170, 60, 'Save', { color: C.good });
-  g += txt(70, 214, 'Up to 10 characters: letters, numbers and spaces.', 15, { font: 'Nunito', w: 700, fill: dark(T.paper, .55) });
-  g += txt(70, 238, 'Shows next time you join.', 15, { font: 'Nunito', w: 700, fill: dark(T.paper, .55) });
-  g += card(70, 266, 640, 54, { fill: T.board, ow: 3 }) + playerBadge(96, 293, 17, 1, C.p[0]) + txt(120, 302, 'Mia', 24, { font: 'Nunito', w: 800 });
-  g += txt(692, 300, 'on the TV', 15, { anchor: 'end', font: 'Nunito', w: 700, fill: dark(T.paper, .5) });
+  g += txt(70, 92, 'Nickname', 17, { w: 700 });
+  g += `<rect x="70" y="100" width="300" height="42" rx="12" fill="#FFFFFF" stroke="${T.ink}" stroke-width="3.5"/>`;
+  g += txt(88, 129, 'Mia', 22, { font: 'Nunito', w: 800 }) + `<rect x="138" y="110" width="3" height="24" fill="${T.ink}"/>`;
+  g += txt(386, 127, '3 / 10', 12, { font: 'Nunito', w: 700, fill: dark(T.paper, .5) });
+  g += btn(540, 100, 170, 42, 'Save', { color: C.good, size: 18 });
+  g += txt(70, 158, 'Up to 10 characters: letters, numbers and spaces.', 11, { font: 'Nunito', w: 700, fill: dark(T.paper, .55) });
+  g += txt(70, 184, 'Colour', 17, { w: 700 });
+  C.p.forEach((c, i) => {
+    const cx = 92 + i * 46;
+    if (i === 0) g += `<circle cx="${cx}" cy="224" r="25" fill="none" stroke="${T.ink}" stroke-width="6"/><circle cx="${cx}" cy="224" r="25" fill="none" stroke="${C.focus}" stroke-width="3.5"/>`;
+    g += toy('circle', cx - 19, 205, 38, 38, c, { ow: 3, shadow: 3 });
+  });
+  g += txt(70, 274, 'Accessory', 17, { w: 700 });
+  Object.values(ACCESSORY).forEach((kind, i) => {
+    const cx = 92 + i * 46;
+    if (i === 0) g += `<circle cx="${cx}" cy="310" r="22" fill="none" stroke="${T.ink}" stroke-width="5"/><circle cx="${cx}" cy="310" r="22" fill="none" stroke="${C.focus}" stroke-width="3"/>`;
+    g += toy('circle', cx - 17, 293, 34, 34, T.board, { ow: 2.5, shadow: 2, glint: false }) + accessory(kind, cx, 310, 13, T.ink);
+  });
+  g += card(430, 86, 290, 238, { header: 'You', hc: light(C.p[0], .3), hh: 34, hs: 17 });
+  g += worker(505, 186, 30, C.p[0], 1, 'happy') + accessory('ears', 505, 186, 30, C.p[0]);
+  g += marble(640, 186, 26, C.p[0], 1) + accessory('ears', 640, 186, 26, C.p[0]);
+  g += txt(505, 236, 'worker', 11, { anchor: 'middle', font: 'Nunito', w: 700, fill: dark(T.paper, .5) });
+  g += txt(640, 236, 'marble', 11, { anchor: 'middle', font: 'Nunito', w: 700, fill: dark(T.paper, .5) });
+  g += txt(575, 296, 'Shows next time you join.', 12, { anchor: 'middle', font: 'Nunito', w: 800, fill: dark(T.paper, .5) });
   return phone(W, H, g);
 }]);
-F.push(['TV: sketches of the four new maps', 'The four maps of section 7b, small: a spring is a yellow coil under a green cap, a hazard is the red round bumper, a belt is a strip with arrows. Playroom stays as the fifth map. The maps job draws them properly with the kit before they land.', 1280, 720, () => {
-  let g = bg(1280, 720);
-  g += txt(640, 72, 'New Arena maps', 48, { anchor: 'middle', fill: '#fff', stroke: T.ink, sw: 9 });
-  g += mapCard(60, 120, 560, 270, 'Pinball', light(C.p[0], .3), pinballField);
-  g += mapCard(660, 120, 560, 270, 'Toy Factory', light(C.p[1], .3), factoryField);
-  g += mapCard(60, 410, 560, 270, 'Spinning Tops', light(C.p[3], .3), topsField);
-  g += mapCard(660, 410, 560, 270, 'Block Castle', light(C.p[4], .3), castleField);
-  return g;
+F.push(["Phone: your colour is taken", 'The host keeps every colour and every accessory for one player only. If someone already has your colour, you get the nearest free one and your phone says so in one line over its pad; your number and your accessory stay yours.', 816, 384, () => {
+  const W = 780, H = 360;
+  let g = bg(W, H) + `<rect x="0" y="0" width="${W}" height="48" fill="${T.paper}"/><line x1="0" y1="48" x2="${W}" y2="48" stroke="${T.ink}" stroke-width="3"/>`;
+  g += playerBadge(196, 24, 14, 1, C.p[3]) + txt(218, 33, '1 / 4', 22, { w: 700 });
+  g += txt(390, 34, '0:42', 28, { anchor: 'middle', w: 700 });
+  g += txt(576, 33, '4 marbles', 18, { font: 'Nunito', w: 800 });
+  g += `<g opacity=".55">${pad(40, 198, 130)}${faces(700, 200, 26, 48)}${btn(300, 296, 90, 30, 'Select', { size: 13 })}${btn(410, 296, 90, 30, 'Start', { size: 13 })}</g>`;
+  g += card(120, 72, 540, 64, { fill: light(C.p[3], .3), ow: 3.5 });
+  g += toy('circle', 154, 104, 28, 28, C.p[3], { ow: 2.5, shadow: 2 }) + txt(182, 113, "Blue is taken tonight, you're Teal", 21, { w: 700 });
+  return phone(W, H, g);
 }]);
+F.push(['TV: Pinball in play', 'Pinball as a Bumper Round arena: a deep-blue table with a rounded top, star lights and arrows painted on it, chrome rails down the sides; three pop bumpers (springs) in a triangle; two slingshots (bouncy walls) above two flippers that flick up and bat marbles back; the drain between the flippers is a still hazard, red. Three top lanes between short posts, where gold coins like to appear. Three marbles wear their accessories, as on every map.', 1280, 720, () => mapPlay('pinball', '0:42', false)]);
+F.push(['TV: Block Castle in play', 'Block Castle: crenellated outer walls in two-tone blocks with a tower and a flag at each corner, a lawn courtyard, and a stone keep in the middle whose four gates slide open and shut in turn. Cannonballs (red-rimmed, so they read as hazards) roll across the courtyard on their tracks; coins sit in the courtyard corners and gold coins inside the keep, worth the risk of a closing gate.', 1280, 720, () => mapPlay('castle', '0:31', false)]);
+F.push(['TV: Toy Factory in play', 'Toy Factory: a workshop floor with a yellow-and-black striped edge and painted gears; a loop of four belts with their arrows; a press that stamps down and up between its rails; two sliding crates in red-and-white warning stripes; columns at the corners. Coins sit beside the belts, never on them.', 1280, 720, () => mapPlay('factory', '0:12', true)]);
+F.push(['TV: Spinning Tops in play', 'Spinning Tops: a round playroom rug with rings; a ring of spinning tops round the edge, each on its orbit; in the middle a slow carousel, a cross of four walls, sweeping marbles round; coins in the quarters between its arms, and a gold coin in one. Red is the tops\' colour, so they read as hazards.', 1280, 720, () => mapPlay('tops', '0:48', false)]);
 startPage(F);
 </script>
 </body>

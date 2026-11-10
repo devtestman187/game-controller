@@ -122,6 +122,13 @@ const ACCESSORIES = {
   },
   cap: (x, y, s) => `<path d="M${x - .85 * s} ${y - .55 * s} Q${x} ${y - 1.9 * s} ${x + .85 * s} ${y - .55 * s} Z" fill="${T.paper}" stroke="${T.ink}" stroke-width="${accessoryEdge(s)}" stroke-linejoin="round"/>` +
     `<rect x="${x + .52 * s}" y="${y - .78 * s}" width="${.76 * s}" height="${.22 * s}" rx="${.1 * s}" fill="${T.paper}" stroke="${T.ink}" stroke-width="${accessoryEdge(s)}"/>`,
+  tuft: (x, y, s) => `<path d="M${x - .5 * s} ${y - .9 * s} Q${x - .3 * s} ${y - 1.55 * s} ${x + .02 * s} ${y - 1.05 * s} Q${x + .34 * s} ${y - 1.66 * s} ${x + .52 * s} ${y - .88 * s} Z" fill="${T.paper}" stroke="${T.ink}" stroke-width="${accessoryEdge(s)}" stroke-linejoin="round"/>`,
+  crown: (x, y, s) => {
+    const w = 1.5 * s, h = .74 * s, x0 = x - w / 2, y0 = y - 1.16 * s;
+    const p = `M${x0} ${y0 + h} L${x0} ${y0 + h * .34} L${x0 + w * .25} ${y0 + h * .68} L${x0 + w * .5} ${y0} L${x0 + w * .75} ${y0 + h * .68} L${x0 + w} ${y0 + h * .34} L${x0 + w} ${y0 + h}Z`;
+    return `<path d="${p}" fill="${T.paper}" stroke="${T.ink}" stroke-width="${accessoryEdge(s)}" stroke-linejoin="round"/>` +
+      `<circle cx="${x}" cy="${y0 + h * .5}" r="${.09 * s}" fill="${T.ink}"/>`;
+  },
 };
 function accessory(kind, x, y, size, color = T.paper) {
   return ACCESSORIES[kind](x, y, size, color);
@@ -272,6 +279,44 @@ function flag(x, y, w, h) {
 function bumper(cx, cy, r) {
   return toy('circle', cx - r, cy - r, r * 2, r * 2, C.bad, { ow: 3.5, shadow: 5 }) +
     `<circle cx="${cx}" cy="${cy}" r="${r * .55}" fill="none" stroke="#fff" stroke-width="4"/><circle cx="${cx}" cy="${cy}" r="${r * .3}" fill="${dark(C.bad, .4)}" stroke="${T.ink}" stroke-width="2.5"/>`;
+}
+
+// ---- The Bumper Round's coin (design 7): a chunky toy coin, not a ring — yellow-gold with a
+// thick darker rim, a star stamped in its face and a white glint. It turns on its upright axis:
+// spin 0 shows the front, .5 the back, .25 and .75 a thin edge (the rim's thickness); in between
+// its width is scaled by |cos| and the stamp flips over. A gold coin (worth 2) is a third bigger,
+// orange-gold, stamped "2" instead of the star, with a small sparkle at its edge; a sparkling
+// coin is half see-through. With effects off a coin stands still, face-on. x, y: the centre;
+// size: a field coin's radius (a gold coin draws itself 4/3 of it). Every size scales with it.
+function coinStar(cx, cy, r) {
+  const pts = [];
+  for (let i = 0; i < 10; i++) {
+    const a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? r * .46 : r;
+    pts.push(`${(cx + Math.cos(a) * rr).toFixed(1)},${(cy + Math.sin(a) * rr).toFixed(1)}`);
+  }
+  return pts.join(' ');
+}
+function coin(x, y, size, o = {}) {
+  const gold = !!o.gold, r = size * (gold ? 4 / 3 : 1), face = gold ? '#F2A200' : C.focus, rim = dark(face, .3);
+  const ow = Math.max(1.5, size * .14), c = Math.cos((FX ? (o.spin ?? 0) : 0) * 2 * Math.PI), sx = Math.abs(c);
+  let g = '';
+  if (sx < .34) { // the edge, at spin .25 and .75: the rim's thickness seen side-on
+    const w = Math.max(r * .16, r * sx);
+    g += `<rect x="${x - w}" y="${y - r}" width="${w * 2}" height="${r * 2}" rx="${w}" fill="${rim}" stroke="${T.ink}" stroke-width="${ow}"/>` +
+      `<path d="M${x - w * .35} ${y - r * .5} v${r}" stroke="#fff" stroke-opacity=".65" stroke-width="${Math.max(1, w * .7)}" stroke-linecap="round"/>`;
+  } else {
+    const k = Math.max(.34, sx);
+    g += `<g transform="translate(${x} ${y}) scale(${k} 1) translate(${-x} ${-y})">`;
+    g += toy('circle', x - r, y - r, r * 2, r * 2, rim, { glint: false, ow: ow, shadow: Math.max(2, r * .14) });
+    g += `<circle cx="${x}" cy="${y}" r="${r * .74}" fill="${light(face, .1)}" stroke="${T.ink}" stroke-width="${Math.max(1.2, r * .08)}"/>`;
+    if (c < 0) g += `<circle cx="${x}" cy="${y}" r="${r * .3}" fill="none" stroke="${light(face, .42)}" stroke-width="${Math.max(1.2, r * .11)}"/>`;
+    else if (gold) g += txt(x, y + r * .04, '2', r * 1.05, { anchor: 'middle', base: 'middle', w: 700, fill: light(face, .55), stroke: dark(face, .34), sw: r * .13 });
+    else g += `<polygon points="${coinStar(x, y + r * .02, r * .46)}" fill="${light(face, .52)}" stroke="${dark(face, .3)}" stroke-width="${Math.max(1, r * .07)}" stroke-linejoin="round"/>`;
+    g += `<ellipse cx="${x - r * .3}" cy="${y - r * .42}" rx="${r * .22}" ry="${r * .1}" fill="#fff" fill-opacity=".9" transform="rotate(-34 ${x - r * .3} ${y - r * .42})"/>`;
+    g += '</g>';
+  }
+  if (gold) g += sparkle(x + r * .98, y - r * .78, Math.max(3, r * .32), '#FFF6B0');
+  return o.sparkling ? `<g opacity=".55">${g}</g>` : g;
 }
 
 // ---- The phone: its D-pad, its face buttons and the phone frame every phone frame is drawn in
