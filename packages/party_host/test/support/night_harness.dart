@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:game_kit/game_kit.dart';
 import 'package:party_host/party_host.dart';
+import 'package:puzzle_game/puzzle_game.dart';
 
 import 'host_harness.dart';
 
@@ -43,6 +44,10 @@ const threeAwards = [NightAward.bestHelper, NightAward.comeback, NightAward.shar
 /// The app's container, for a widget test that sets the night up by hand.
 ProviderContainer appContainer(WidgetTester tester) =>
     ProviderScope.containerOf(tester.element(find.byType(MaterialApp)));
+
+/// The host's puzzle settings with Chaos set to [chaos], as the Puzzle
+/// settings screen saves them.
+PuzzleSettings withChaos(Chaos chaos) => PuzzleSettings.defaults.withValue('chaos', chaos.name);
 
 /// Home → Play → Party night: the night's start card.
 Future<void> openNight(WidgetTester tester) async {

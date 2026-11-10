@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:party_host/party_host.dart';
+import 'package:puzzle_game/puzzle_game.dart' show Chaos;
 
 import 'support/host_harness.dart';
 import 'support/night_harness.dart';
@@ -31,6 +32,23 @@ void main() {
     expect(find.text('Bumper Round'), findsOneWidget);
     expect(tester.widget<HostButton>(find.byKey(const Key('nightBumper'))).onPressed, isNull);
     expect(find.text('Soon'), findsOneWidget);
+  });
+
+  testWidgets('the start card hides the cat\'s line while the host\'s Chaos is off', (tester) async {
+    await pumpHost(tester, screen: const StubHome());
+    appContainer(tester).read(puzzleSettingsProvider.notifier).set(withChaos(Chaos.off));
+    await openNight(tester);
+
+    expect(find.text('Rounds'), findsOneWidget);
+    expect(find.text("The cat visits the side that's ahead."), findsNothing);
+  });
+
+  testWidgets('the start card shows the cat\'s line with Chaos on A little', (tester) async {
+    await pumpHost(tester, screen: const StubHome());
+    appContainer(tester).read(puzzleSettingsProvider.notifier).set(withChaos(Chaos.little));
+    await openNight(tester);
+
+    expect(find.text("The cat visits the side that's ahead."), findsOneWidget);
   });
 
   testWidgets('the D-pad and a phone\'s A choose 5 rounds, and the night starts with it', (tester) async {

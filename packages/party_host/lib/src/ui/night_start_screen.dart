@@ -58,6 +58,7 @@ class _NightStartScreenState extends ConsumerState<NightStartScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final catVisits = NightChaos.catVisitsTonight(ref.watch(puzzleSettingsProvider));
     return CallbackShortcuts(
       bindings: {const SingleActivator(LogicalKeyboardKey.escape): () => Navigator.of(context).maybePop()},
       child: HostScreen(
@@ -73,6 +74,7 @@ class _NightStartScreenState extends ConsumerState<NightStartScreen> {
                     child: _StartCard(
                       length: _length,
                       awards: _awards,
+                      catVisits: catVisits,
                       onPick: _pick,
                       onShapeRace: _start,
                       onBumperRound: nightBumperRoundReady ? _startBumperRound : null,
@@ -94,6 +96,7 @@ class _StartCard extends StatelessWidget {
   const _StartCard({
     required this.length,
     required this.awards,
+    required this.catVisits,
     required this.onPick,
     required this.onShapeRace,
     required this.onBumperRound,
@@ -101,6 +104,10 @@ class _StartCard extends StatelessWidget {
 
   final NightLength length;
   final List<NightAward> awards;
+
+  /// Whether the cat may visit tonight, so the card says so (design section 4:
+  /// only while the host's Chaos setting isn't off).
+  final bool catVisits;
   final ValueChanged<NightLength> onPick;
   final VoidCallback onShapeRace;
   final VoidCallback? onBumperRound;
@@ -120,7 +127,7 @@ class _StartCard extends StatelessWidget {
           _RoundsRow(length: length, onPick: onPick, heading: heading),
           const SizedBox(height: ToySizes.space24),
           _AwardsRow(awards: awards, heading: heading),
-          if (NightChaos.catVisitsTonight()) ...[const SizedBox(height: ToySizes.space24), _CatLine(heading: heading)],
+          if (catVisits) ...[const SizedBox(height: ToySizes.space24), _CatLine(heading: heading)],
           const SizedBox(height: ToySizes.space24),
           Text(NightText.pickRound(1), style: heading),
           const SizedBox(height: ToySizes.space12),
@@ -199,7 +206,7 @@ class _AwardsRow extends StatelessWidget {
   }
 }
 
-/// The cat's line, shown while Chaos is on (a2's setting joins here).
+/// The cat's line, shown while the host's Chaos setting is on.
 class _CatLine extends StatelessWidget {
   const _CatLine({required this.heading});
 

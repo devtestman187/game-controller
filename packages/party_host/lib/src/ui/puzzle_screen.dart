@@ -201,8 +201,9 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
   }
 
   /// The settings this round plays with (M14 c1): a night's round counts its
-  /// points and doubles them in the night's last round (design section 2 N3).
-  /// Outside a night it is the host's own settings, as it always was.
+  /// points and doubles them in the night's last round (design section 2 N3),
+  /// where the cat also sits out (G3). Outside a night it is the host's own
+  /// settings, as it always was.
   PuzzleSettings _roundSettings() {
     final settings = ref.read(puzzleSettingsProvider);
     final night = ref.read(partyNightProvider);

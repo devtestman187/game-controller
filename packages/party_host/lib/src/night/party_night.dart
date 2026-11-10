@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:game_kit/game_kit.dart' show RoundResult;
-import 'package:puzzle_game/puzzle_game.dart' show PuzzleSettings;
+import 'package:puzzle_game/puzzle_game.dart' show Chaos, PuzzleSettings;
 
 import '../providers.dart';
 import 'night_awards.dart';
@@ -19,31 +19,28 @@ const lastRoundPointsScale = 2;
 const nightBumperRoundReady = false;
 
 /// The night's Chaos touches, in one place (design section 5, G3): the start
-/// card says the cat may visit, and the night's last round keeps it away.
+/// card says the cat may visit while the host's Chaos setting is on, and the
+/// night's last round keeps it away.
 ///
-/// Job a2 adds `PuzzleSettings.chaos` beside this job, so the host's Chaos
-/// setting is not in this tree: both answers below are where it lands. When
-/// both jobs are in, Claude makes [catVisitsTonight] read the setting (the
-/// start card's line shows only when Chaos isn't off) and gives the round a
-/// settings value whose Chaos is off when [catSitsOut] says so, in
-/// [settingsForRound], which is where the round already takes its night's
-/// scale from.
+/// Both read the host's saved [PuzzleSettings.chaos] (job a2): the night has no
+/// Chaos setting of its own.
 abstract final class NightChaos {
   /// Whether the cat may visit tonight, for the start card's line (design
-  /// section 4: it says so when Chaos isn't off). Until a2's setting lands the
-  /// host's default, A little, stands, so the cat does visit.
-  static bool catVisitsTonight() => true;
-
-  /// Whether the cat sits out a round: never in the night's last round (G3:
-  /// "none in a night's last round").
-  static bool catSitsOut({required bool lastRound}) => lastRound;
+  /// section 4: it says so when Chaos isn't off).
+  static bool catVisitsTonight(PuzzleSettings settings) => settings.chaos != Chaos.off;
 
   /// A night round's settings (design sections 4 and 5): the game counts points
   /// because it is a night, at the night's scale, doubled in the last round
-  /// (N3). Everything else is the host's own settings, so a round of a night
-  /// plays the game with the host's tolerances, speeds and time limit.
-  static PuzzleSettings settingsForRound(PuzzleSettings settings, {required bool lastRound}) =>
-      settings.withValue('night', true).withValue('pointsScale', lastRound ? lastRoundPointsScale : nightPointsScale);
+  /// (N3), and the last round has the cat sit it out (G3: "none in a night's
+  /// last round"). Everything else is the host's own settings, so a round of a
+  /// night plays the game with the host's tolerances, speeds, time limit and
+  /// Chaos.
+  static PuzzleSettings settingsForRound(PuzzleSettings settings, {required bool lastRound}) {
+    final night = settings
+        .withValue('night', true)
+        .withValue('pointsScale', lastRound ? lastRoundPointsScale : nightPointsScale);
+    return lastRound ? night.withValue('chaos', Chaos.off.name) : night;
+  }
 }
 
 /// The night running on this host (design section 2 N5), or null when no night

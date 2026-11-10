@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:party_host/party_host.dart';
-import 'package:puzzle_game/puzzle_game.dart' show PuzzleSettings;
+import 'package:puzzle_game/puzzle_game.dart' show Chaos, PuzzleSettings;
 
 import 'support/night_harness.dart';
 
@@ -179,23 +179,23 @@ void main() {
   });
 
   group('NightChaos', () {
-    test('the start card says the cat visits, until a2\'s Chaos setting says otherwise', () {
-      expect(NightChaos.catVisitsTonight(), isTrue);
-    });
-
-    test('the cat sits out the night\'s last round, and only that round', () {
-      expect(NightChaos.catSitsOut(lastRound: true), isTrue);
-      expect(NightChaos.catSitsOut(lastRound: false), isFalse);
+    test('the start card says the cat visits while the host\'s Chaos is on, and not when it is off', () {
+      const base = PuzzleSettings();
+      expect(NightChaos.catVisitsTonight(base), isFalse, reason: 'Chaos off: the line is hidden');
+      expect(NightChaos.catVisitsTonight(base.withValue('chaos', Chaos.little.name)), isTrue);
+      expect(NightChaos.catVisitsTonight(base.withValue('chaos', Chaos.party.name)), isTrue);
     });
 
     test('a night round plays at the night\'s scale, doubled in the last round', () {
-      const base = PuzzleSettings(timeLimitS: 90);
-      final first = NightChaos.settingsForRound(base, lastRound: false);
-      final last = NightChaos.settingsForRound(base, lastRound: true);
+      final host = PuzzleSettings(timeLimitS: 90).withValue('chaos', Chaos.party.name);
+      final first = NightChaos.settingsForRound(host, lastRound: false);
+      final last = NightChaos.settingsForRound(host, lastRound: true);
       expect(first.night, isTrue);
       expect(first.pointsScale, 1);
       expect(last.pointsScale, 2);
       expect(last.night, isTrue);
+      expect(first.chaos, Chaos.party, reason: 'the other rounds keep the host\'s Chaos setting');
+      expect(last.chaos, Chaos.off, reason: 'G3: never in a night\'s last round');
       expect(last.timeLimitS, 90, reason: 'the rest is the host\'s own settings');
     });
 

@@ -10,9 +10,11 @@ import 'support/night_harness.dart';
 
 void main() {
   /// A night's first Shape Race round, played solo by P1 from the start card:
-  /// the round is running when this returns.
-  Future<FakeHostService> openNightRound(WidgetTester tester) async {
+  /// the round is running when this returns. The host's Chaos setting is
+  /// [chaos] when the round starts.
+  Future<FakeHostService> openNightRound(WidgetTester tester, {Chaos chaos = Chaos.little}) async {
     final fake = await pumpHost(tester, screen: const StubHome());
+    appContainer(tester).read(puzzleSettingsProvider.notifier).set(withChaos(chaos));
     await neutral(tester, fake, ['p1']);
     await openNight(tester);
     await pickShapeRaceRound(tester);
@@ -29,6 +31,12 @@ void main() {
     expect(settings.night, isTrue);
     expect(settings.pointsScale, 1);
     expect(appContainer(tester).read(partyNightProvider)!.isNextRoundTheLast, isFalse);
+  });
+
+  testWidgets('a night\'s round 1 keeps the host\'s Chaos setting', (tester) async {
+    await openNightRound(tester, chaos: Chaos.party);
+    final settings = tester.widget<PuzzlePlayView>(find.byType(PuzzlePlayView)).settings();
+    expect(settings.chaos, Chaos.party);
   });
 
   testWidgets('the night\'s last round plays at scale 2, with the cat sitting out', (tester) async {
@@ -58,8 +66,22 @@ void main() {
     final settings = tester.widget<PuzzlePlayView>(find.byType(PuzzlePlayView)).settings();
     expect(settings.night, isTrue);
     expect(settings.pointsScale, 2);
-    // The chaos answer the round takes with it (a2's setting joins here).
-    expect(NightChaos.catSitsOut(lastRound: round.isNextRoundTheLast), isTrue);
+    // G3: the cat never comes in the night's last round, though the host's
+    // setting (A little by default) has it come in the others.
+    expect(settings.chaos, Chaos.off);
+  });
+
+  testWidgets('outside a night the round plays with the host\'s own settings', (tester) async {
+    final fake = await pumpHost(tester, screen: const StubHome());
+    appContainer(tester).read(puzzleSettingsProvider.notifier).set(withChaos(Chaos.party));
+    await neutral(tester, fake, ['p1']);
+    await openJoin(tester);
+    await startRound(tester, fake);
+
+    final settings = tester.widget<PuzzlePlayView>(find.byType(PuzzlePlayView)).settings();
+    expect(settings.night, isFalse);
+    expect(settings.chaos, Chaos.party);
+    expect(appContainer(tester).read(partyNightProvider), isNull);
   });
 
   testWidgets('a night round\'s results offer Next alone, and Next records the round and opens the scoreboard', (
