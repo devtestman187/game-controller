@@ -105,12 +105,18 @@ class HostButton extends ConsumerWidget {
     this.autofocus = false,
     this.compact = false,
     this.focusNode,
+    this.fill,
   });
 
   final String label;
   final VoidCallback? onPressed;
   final IconData? icon;
   final bool autofocus;
+
+  /// The pill's fill, or the look's good green: the party night's chosen "3
+  /// rounds" and "5 rounds" take the focus yellow, so the chosen one shows
+  /// even when the focus is elsewhere (M14 c1, mock-up frame 2).
+  final Color? fill;
 
   /// To move the focus here from code.
   final FocusNode? focusNode;
@@ -127,6 +133,7 @@ class HostButton extends ConsumerWidget {
       autofocus: autofocus,
       focusNode: focusNode,
       dense: compact,
+      color: fill,
       showFocus: ref.watch(hostFocusLookProvider),
     );
   }

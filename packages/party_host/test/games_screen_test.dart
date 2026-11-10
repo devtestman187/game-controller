@@ -27,11 +27,12 @@ void main() {
   });
 
   testWidgets('the picker\'s cards hold the look\'s type without spilling it', (tester) async {
-    // A card is 380 wide and four button heights high in the look (M13 3b).
-    // The test bundle's own font draws every letter as a box, so the words take
-    // more room than a device's: the card's line stops at two lines with an
-    // ellipsis rather than pushing the card's type out of it.
-    await pumpHost(tester, screen: const StubHome());
+    // A card is 380 wide where the screen has room for it, and four button
+    // heights high in the look (M13 3b); on a TV the three of them stand in one
+    // row (M14 c1). The test bundle's own font draws every letter as a box, so
+    // the words take more room than a device's: the card's line stops at two
+    // lines with an ellipsis rather than pushing the card's type out of it.
+    await pumpHost(tester, screen: const StubHome(), size: const Size(1280, 720));
     await tapVisible(tester, find.byKey(const Key('openPlay')));
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);

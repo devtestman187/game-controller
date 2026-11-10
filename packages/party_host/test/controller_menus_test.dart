@@ -27,7 +27,20 @@ void main() {
     expect(find.byType(GamesScreen), findsOneWidget);
     expect(find.byType(StubHome), findsNothing);
 
-    // Shape Race has the focus on the picker.
+    // The party night's card has the focus on the picker, so A opens the
+    // night's start card (M14 c1); B goes back.
+    await press(tester, fake, 'p1', GamepadButton.a);
+    await navigated(tester);
+    expect(find.byType(NightStartScreen), findsOneWidget);
+    await press(tester, fake, 'p1', GamepadButton.b);
+    await navigated(tester);
+    expect(find.byType(NightStartScreen), findsNothing);
+    expect(find.byType(GamesScreen), findsOneWidget);
+
+    // Left walks the cards from the night's to Shape Race: A opens it.
+    await press(tester, fake, 'p1', GamepadButton.dpadLeft);
+    await press(tester, fake, 'p1', GamepadButton.dpadLeft);
+    expect(focused(tester, 'pickShapeRace'), isTrue, reason: 'left reaches Shape Race\'s card');
     await press(tester, fake, 'p1', GamepadButton.a);
     await navigated(tester);
     expect(find.byType(ShapeRaceScreen), findsOneWidget);

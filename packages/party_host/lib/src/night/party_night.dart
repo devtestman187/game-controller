@@ -1,0 +1,94 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:game_kit/game_kit.dart' show RoundResult;
+import 'package:puzzle_game/puzzle_game.dart' show PuzzleSettings;
+
+import '../providers.dart';
+import 'night_awards.dart';
+import 'night_state.dart';
+
+/// What a night's round scores at (design section 2 N3): the game multiplies
+/// every award by this, so a night's rounds score as a plain one does and its
+/// last round scores double.
+const nightPointsScale = 1;
+const lastRoundPointsScale = 2;
+
+/// Whether a night can pick a Bumper Round (design section 2 N6): it can't
+/// yet, because the Arena has no round to report ([RoundResult]) until job b2
+/// gives it one, so the start card and the scoreboard show the button disabled
+/// and say "Soon". b2 turns this on and nothing else has to change.
+const nightBumperRoundReady = false;
+
+/// The night's Chaos touches, in one place (design section 5, G3): the start
+/// card says the cat may visit, and the night's last round keeps it away.
+///
+/// Job a2 adds `PuzzleSettings.chaos` beside this job, so the host's Chaos
+/// setting is not in this tree: both answers below are where it lands. When
+/// both jobs are in, Claude makes [catVisitsTonight] read the setting (the
+/// start card's line shows only when Chaos isn't off) and gives the round a
+/// settings value whose Chaos is off when [catSitsOut] says so, in
+/// [settingsForRound], which is where the round already takes its night's
+/// scale from.
+abstract final class NightChaos {
+  /// Whether the cat may visit tonight, for the start card's line (design
+  /// section 4: it says so when Chaos isn't off). Until a2's setting lands the
+  /// host's default, A little, stands, so the cat does visit.
+  static bool catVisitsTonight() => true;
+
+  /// Whether the cat sits out a round: never in the night's last round (G3:
+  /// "none in a night's last round").
+  static bool catSitsOut({required bool lastRound}) => lastRound;
+
+  /// A night round's settings (design sections 4 and 5): the game counts points
+  /// because it is a night, at the night's scale, doubled in the last round
+  /// (N3). Everything else is the host's own settings, so a round of a night
+  /// plays the game with the host's tolerances, speeds and time limit.
+  static PuzzleSettings settingsForRound(PuzzleSettings settings, {required bool lastRound}) =>
+      settings.withValue('night', true).withValue('pointsScale', lastRound ? lastRoundPointsScale : nightPointsScale);
+}
+
+/// The night running on this host (design section 2 N5), or null when no night
+/// is running: the picker's Party night card opens the start card then, and the
+/// scoreboard resumes a night that is still going.
+///
+/// A night starts on its start card's first game button, records each round on
+/// the results' Next, and ends after the final scores or when the host answers
+/// "End the party night?" with Yes. Nothing is saved: the hall of fame is M15.
+/// Nothing in a game imports it: a game only builds a [RoundResult].
+class PartyNight extends Notifier<NightState?> {
+  @override
+  NightState? build() {
+    // A player who leaves keeps their row (design section 4): the night
+    // remembers every player the roster shows while it runs, and the row goes
+    // greyed rather than away.
+    ref.listen(gamePlayersProvider, (_, players) {
+      final night = state;
+      if (night != null) state = night.remember(players);
+    });
+    return null;
+  }
+
+  /// Starts a night of [length] rounds playing for [awards], with the players
+  /// joined now (the rest join at 0, design section 4). A night already
+  /// running is left as it is.
+  void start({required NightLength length, required List<NightAward> awards}) {
+    if (state != null) return;
+    state = NightState.start(length: length, awards: awards, players: ref.read(gamePlayersProvider));
+  }
+
+  /// Records a round played (N1, N5): its points, already scaled by the game
+  /// (N3), and the counters the awards need. The final round's record leaves
+  /// the night over, so the final scores follow.
+  void recordRound(RoundResult result) {
+    final night = state;
+    if (night == null || night.isOver) return;
+    state = night.remember(ref.read(gamePlayersProvider)).record(result);
+  }
+
+  /// Ends the night, clearing it: the final scores' "Back to games" and the
+  /// scoreboard's "End the party night?" Yes both do this, so the picker's card
+  /// opens a fresh start card afterwards.
+  void end() => state = null;
+}
+
+/// The night running on this host, or null: see [PartyNight].
+final partyNightProvider = NotifierProvider<PartyNight, NightState?>(PartyNight.new);

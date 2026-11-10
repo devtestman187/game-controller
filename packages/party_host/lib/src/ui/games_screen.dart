@@ -1,11 +1,15 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:puzzle_game/puzzle_game.dart';
 import 'package:toy_look/toy_look.dart';
 
-import '../text/host_text.dart';
+import '../night/party_night.dart';
 import '../providers.dart';
+import '../text/host_text.dart';
+import '../text/night_text.dart';
 import 'game_picture.dart';
 import 'game_screen.dart';
 import 'host_button.dart';
@@ -14,6 +18,8 @@ import 'host_card_focus.dart';
 import 'host_screen.dart';
 import 'join_screen.dart';
 import 'lobby_music.dart';
+import 'night_scoreboard_screen.dart';
+import 'night_start_screen.dart';
 import 'puzzle_screen.dart';
 import 'puzzle_settings_screen.dart';
 
@@ -33,6 +39,12 @@ class GamesScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final look = ToyLookScope.of(context);
+    // Watching the night keeps it listening to the roster while the picker is
+    // on screen, so a player who leaves then keeps their row.
+    final night = ref.watch(partyNightProvider);
+    // A touch-first host shows no focus look, so its picker keeps Shape Race's
+    // focus as it always had it (the owner's joined-phone case, m12 bug 1107f).
+    final touchFirst = ref.watch(hostTouchFirstProvider);
     return CallbackShortcuts(
       bindings: {const SingleActivator(LogicalKeyboardKey.escape): () => Navigator.of(context).maybePop()},
       child: HostScreen(
@@ -42,26 +54,15 @@ class GamesScreen extends ConsumerWidget {
             child: ListView(
               padding: hostMenuPadding(ref.watch(hostBarHeightProvider)),
               children: [
-                Wrap(
-                  spacing: ToySizes.space24,
-                  runSpacing: ToySizes.space24,
-                  children: [
-                    _GameCard(
-                      key: const Key('pickShapeRace'),
-                      picture: GamePicture.shapeRace,
-                      title: HostText.shapeRace,
-                      line: HostText.shapeRaceLine,
-                      autofocus: true,
-                      onPressed: () => _open(context, const ShapeRaceScreen()),
-                    ),
-                    _GameCard(
-                      key: const Key('pickArena'),
-                      picture: GamePicture.arena,
-                      title: HostText.arena,
-                      line: HostText.arenaLine,
-                      onPressed: () => _open(context, const GameScreen()),
-                    ),
-                  ],
+                _GameRow(
+                  autofocusShapeRace: touchFirst,
+                  autofocusNight: !touchFirst,
+                  onShapeRace: () => _open(context, const ShapeRaceScreen()),
+                  onArena: () => _open(context, const GameScreen()),
+                  onNight: () => _open(
+                    context,
+                    night != null && night.round > 0 ? const NightScoreboardScreen() : const NightStartScreen(),
+                  ),
                 ),
                 const SizedBox(height: ToySizes.space24),
                 Align(

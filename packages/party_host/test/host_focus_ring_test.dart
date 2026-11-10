@@ -72,13 +72,14 @@ void main() {
     await tapVisible(tester, find.byKey(const Key('openPlay')));
     await tester.pumpAndSettle();
 
-    final card = tester.getRect(find.byKey(const Key('pickShapeRace')));
-    final focus = argb(ToyLookScope.of(tester.element(find.byKey(const Key('pickShapeRace')))).colors.focus);
+    final card = tester.getRect(find.byKey(const Key('pickPartyNight')));
+    final focus = argb(ToyLookScope.of(tester.element(find.byKey(const Key('pickPartyNight')))).colors.focus);
     final pixels = await screenPixels(tester);
     expect(edgeInk(pixels, card, focus), greaterThan(0), reason: 'the card has the focus, so its ring must paint');
 
-    // The ring moves with the focus.
-    await press(tester, fake, 'p1', GamepadButton.dpadRight);
+    // The ring moves with the focus: the night's card is the picker's last, so
+    // left walks to the Arena.
+    await press(tester, fake, 'p1', GamepadButton.dpadLeft);
     expect(_inside('pickArena'), isTrue);
     final arena = tester.getRect(find.byKey(const Key('pickArena')));
     final after = await screenPixels(tester);
@@ -159,12 +160,12 @@ void main() {
     await tapVisible(tester, find.byKey(const Key('openPlay')));
     await tester.pumpAndSettle();
 
-    final focus = argb(ToyLookScope.of(tester.element(find.byKey(const Key('pickShapeRace')))).colors.focus);
-    final card = tester.getRect(find.byKey(const Key('pickShapeRace')));
+    final focus = argb(ToyLookScope.of(tester.element(find.byKey(const Key('pickPartyNight')))).colors.focus);
+    final card = tester.getRect(find.byKey(const Key('pickPartyNight')));
     expect(
       edgeInk(await screenPixels(tester), card, focus),
       greaterThan(0),
-      reason: 'a TV rings its first screen at once',
+      reason: 'a TV rings its first screen at once, on the party night card',
     );
 
     // A pointer on a TV's screen is a mouse, not a thumb: the ring stays.

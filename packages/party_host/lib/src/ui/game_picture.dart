@@ -3,6 +3,8 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:toy_look/toy_look.dart';
 
+import 'night_widgets.dart';
+
 /// Which game's picture a picker card draws (M13 3b, mock-up `game-picker`).
 enum GamePicture {
   /// Shape Race: a triangle, a square and a circle in player colours,
@@ -11,6 +13,10 @@ enum GamePicture {
 
   /// The Arena: a player's marble beside the goal pad and its flag.
   arena,
+
+  /// Party night: a crown over three award rosettes in player colours, as the
+  /// picker draws it (M14 c1, mock-up frame 1).
+  partyNight,
 }
 
 /// How much of the picture's box the Shape Race pieces take, in shares of its
@@ -57,6 +63,8 @@ class GamePicturePainter extends CustomPainter {
         _paintShapeRace(canvas, size);
       case GamePicture.arena:
         _paintArena(canvas, size);
+      case GamePicture.partyNight:
+        _paintPartyNight(canvas, size);
     }
   }
 
@@ -107,6 +115,24 @@ class GamePicturePainter extends CustomPainter {
         ..strokeWidth = look.sizes.outlineWidth
         ..strokeCap = StrokeCap.round,
     );
+  }
+
+  /// Party night's picture (M14 c1, mock-up frame 1): a crown in the focus
+  /// yellow over three award rosettes in player colours.
+  void _paintPartyNight(Canvas canvas, Size size) {
+    final colors = look.colors;
+    final unit = math.min(size.width, size.height) * _piecesShare;
+    final left = size.width / 2 - unit / 2;
+    final top = size.height / 2 - unit / 2;
+    final crown = crownPath(Size(unit * 0.6, unit * 0.42)).shift(Offset(left + unit * 0.2, top));
+    toyShape(canvas, crown, colors.focus, _style, shade: look.shade);
+    for (final (i, colour) in [colors.player(1), colors.player(4), colors.player(6)].indexed) {
+      final disc = Path()
+        ..addOval(
+          Rect.fromCircle(center: Offset(left + unit * (0.22 + i * 0.28), top + unit * 0.7), radius: unit * 0.15),
+        );
+      toyShape(canvas, disc, colour, _style, shade: look.shade);
+    }
   }
 
   @override

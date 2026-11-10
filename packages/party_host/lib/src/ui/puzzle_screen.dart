@@ -10,15 +10,18 @@ import 'package:toy_look/toy_look.dart';
 
 import '../abandon_signal.dart';
 import '../controls.dart';
-import '../text/host_text.dart';
 import '../local_player_source.dart';
 import '../look_providers.dart';
+import '../night/party_night.dart';
 import '../players_away.dart';
 import '../providers.dart';
+import '../text/host_text.dart';
+import '../text/night_text.dart';
 import 'controller_menus.dart';
 import 'host_button.dart';
 import 'join_screen.dart';
 import 'lobby_music.dart';
+import 'night_scoreboard_screen.dart';
 import 'pause_menu.dart';
 import 'player_badge.dart';
 
@@ -166,7 +169,14 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
   /// another of the level, so its button says Next puzzle; a round of one
   /// chosen puzzle, or of a level that holds only this one, plays it again, as
   /// Rematch in a race and Play again on one board.
+  ///
+  /// A night's round has one button, Next (M14 c1, design section 4): the
+  /// round is over and the night goes on, so there is nothing to play again
+  /// and the teams are picked in the next round's join screen anyway.
   _AgainButton get _again {
+    if (ref.read(partyNightProvider) != null) {
+      return (label: NightText.next, icon: Icons.skip_next, key: 'next', focusNode: _againFocus, onPressed: _next);
+    }
     final race = _result?.format.split ?? false;
     final level = widget.choice.level;
     final another = (ref.read(puzzleLibraryProvider).whenOrNull(data: (l) => l.ofLevel(level).length) ?? 0) > 1;
@@ -176,6 +186,27 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
         ? (HostText.rematch, Icons.replay, 'rematch')
         : (HostText.playAgain, Icons.replay, 'playAgain');
     return (label: label, icon: icon, key: key, focusNode: _againFocus, onPressed: _rematch);
+  }
+
+  /// A night's Next (M14 c1, design section 4): the round is recorded, and the
+  /// scoreboard follows. Everything above the game picker goes, so a night of
+  /// five rounds leaves a phone five routes, not fifteen.
+  void _next() {
+    final result = _result;
+    if (result == null) return;
+    _log('Results: ${NightText.next}');
+    ref.read(partyNightProvider.notifier).recordRound(result.round);
+    Navigator.of(context)
+        .pushAndRemoveUntil(MaterialPageRoute<void>(builder: (_) => const NightScoreboardScreen()), isGamePickerRoute);
+  }
+
+  /// The settings this round plays with (M14 c1): a night's round counts its
+  /// points and doubles them in the night's last round (design section 2 N3).
+  /// Outside a night it is the host's own settings, as it always was.
+  PuzzleSettings _roundSettings() {
+    final settings = ref.read(puzzleSettingsProvider);
+    final night = ref.read(partyNightProvider);
+    return night == null ? settings : NightChaos.settingsForRound(settings, lastRound: night.isNextRoundTheLast);
   }
 
   /// The first button's press: the same teams; a random puzzle becomes
@@ -236,6 +267,9 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
   /// blocks the Back and is the way on (m12 code health N1).
   void _leaveForGames(bool didPop) {
     if (didPop || ref.read(playersAwayProvider).isNotEmpty) return;
+    // A night's round is played and scored: Back records it as Next does, and
+    // the scoreboard's Back is the one that asks to end the night.
+    if (ref.read(partyNightProvider) != null) return _next();
     _log('Results: back to the games');
     leaveForGamePicker(context);
   }
@@ -272,7 +306,7 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
                           match: widget.match,
                           paused: paused,
                           abandon: ref.read(hostAbandonProvider),
-                          settings: () => ref.read(puzzleSettingsProvider),
+                          settings: _roundSettings,
                           onFinished: _finished,
                           onClock: _clocked,
                         );
@@ -287,6 +321,7 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
                         total: puzzle.pieces.length,
                         again: _again,
                         onChangeTeams: _changeTeams,
+                        night: ref.read(partyNightProvider) != null,
                       ),
                     ),
                 ],

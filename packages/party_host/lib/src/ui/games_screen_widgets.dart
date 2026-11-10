@@ -1,8 +1,14 @@
 part of 'games_screen.dart';
 
-/// How wide a game's card is in the picker, in logical pixels: two fit side by
-/// side on a TV and on a phone's host screen, as the mock-up draws them.
+/// How wide a game's card is in the picker, in logical pixels, when the screen
+/// has room for it: three fit side by side on a TV, as the mock-up draws them,
+/// and the picker narrows them to share a phone's width (M14 c1).
 const gameCardWidthPx = 380.0;
+
+/// The narrowest a game's card goes when the picker shares the screen's width
+/// between the three of them: under it the card's own type would have no room,
+/// so the cards wrap into another row and the picker scrolls instead (M14 c1).
+const gameCardMinWidthPx = 240.0;
 
 /// How tall a game's card is, in shares of the look's button height: four
 /// leaves the picture, the title and the two lines their room, and keeps the
@@ -11,6 +17,71 @@ const gameCardHeightShare = 4.0;
 
 /// The picture's height, as a share of the card's (M13 3b).
 const gamePictureHeightShare = 0.4;
+
+/// The picker's row of games (M14 c1): Shape Race, the Arena and the party
+/// night. Three cards share the screen's width, so they stand in one row where
+/// it has room for them; where it hasn't, they stop at
+/// [gameCardMinWidthPx] and wrap, and the picker scrolls.
+class _GameRow extends StatelessWidget {
+  const _GameRow({
+    required this.autofocusShapeRace,
+    required this.autofocusNight,
+    required this.onShapeRace,
+    required this.onArena,
+    required this.onNight,
+  });
+
+  /// Which card takes the focus as the picker opens: Shape Race on a
+  /// touch-first host (where no ring shows and its pad walks the cards as it
+  /// always did), the party night's on a TV or with a remote (frame 1).
+  final bool autofocusShapeRace;
+  final bool autofocusNight;
+
+  final VoidCallback onShapeRace;
+  final VoidCallback onArena;
+  final VoidCallback onNight;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = min(gameCardWidthPx, max(gameCardMinWidthPx, (constraints.maxWidth - 2 * ToySizes.space24) / 3));
+        return Wrap(
+          spacing: ToySizes.space24,
+          runSpacing: ToySizes.space24,
+          children: [
+            _GameCard(
+              key: const Key('pickShapeRace'),
+              picture: GamePicture.shapeRace,
+              title: HostText.shapeRace,
+              line: HostText.shapeRaceLine,
+              width: width,
+              autofocus: autofocusShapeRace,
+              onPressed: onShapeRace,
+            ),
+            _GameCard(
+              key: const Key('pickArena'),
+              picture: GamePicture.arena,
+              title: HostText.arena,
+              line: HostText.arenaLine,
+              width: width,
+              onPressed: onArena,
+            ),
+            _GameCard(
+              key: const Key('pickPartyNight'),
+              picture: GamePicture.partyNight,
+              title: NightText.partyNight,
+              line: NightText.partyNightLine,
+              width: width,
+              autofocus: autofocusNight,
+              onPressed: onNight,
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
 
 /// One game in the picker (M13 3b): a [ToyCard] with the game's drawn picture,
 /// its title and a line, that takes the focus like a button and shows it with
@@ -22,6 +93,7 @@ class _GameCard extends StatelessWidget {
     required this.title,
     required this.line,
     required this.onPressed,
+    this.width = gameCardWidthPx,
     this.autofocus = false,
   });
 
@@ -34,6 +106,10 @@ class _GameCard extends StatelessWidget {
   /// The line under it, in the look's body type.
   final String line;
 
+  /// The card's width: the picker's share of the screen's width, so the three
+  /// cards stand in one row (M14 c1).
+  final double width;
+
   final VoidCallback onPressed;
   final bool autofocus;
 
@@ -43,7 +119,7 @@ class _GameCard extends StatelessWidget {
     final colors = look.colors;
     final height = look.sizes.buttonHeight * gameCardHeightShare;
     return SizedBox(
-      width: gameCardWidthPx,
+      width: width,
       height: height,
       child: HostCardButton(
         autofocus: autofocus,

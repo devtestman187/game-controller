@@ -70,12 +70,12 @@ void main() {
     await tapVisible(tester, find.byKey(const Key('openPlay')));
     await tester.pumpAndSettle();
 
-    expect(focused(tester, 'pickShapeRace'), isTrue);
-    expect(lit(tester, 'pickShapeRace'), isTrue);
+    expect(focused(tester, 'pickPartyNight'), isTrue);
+    expect(lit(tester, 'pickPartyNight'), isTrue);
 
     // A pointer on a TV's screen is a mouse, not a thumb: the look stays.
     await tester.tapAt(tester.getCenter(find.text('Play')));
     await tester.pump();
-    expect(lit(tester, 'pickShapeRace'), isTrue);
+    expect(lit(tester, 'pickPartyNight'), isTrue);
   });
 }

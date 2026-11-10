@@ -38,7 +38,7 @@ typedef _AgainButton = ({String label, IconData icon, String key, FocusNode focu
 
 /// The results over the board: the winner, each side's time or pieces
 /// placed, and the first button (Rematch, Play again or Next puzzle), Change
-/// teams and Back (T14).
+/// teams and Back (T14). A night's round keeps only its Next (M14 c1).
 class _Results extends ConsumerWidget {
   const _Results({
     required this.result,
@@ -46,6 +46,7 @@ class _Results extends ConsumerWidget {
     required this.total,
     required this.again,
     required this.onChangeTeams,
+    required this.night,
   });
 
   final MatchResult result;
@@ -53,6 +54,10 @@ class _Results extends ConsumerWidget {
   final int total;
   final _AgainButton again;
   final VoidCallback onChangeTeams;
+
+  /// Whether this round is a night's: its results offer Next alone (design
+  /// section 4), and the night's scoreboard follows it.
+  final bool night;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -72,7 +77,7 @@ class _Results extends ConsumerWidget {
           for (final side in result.sides.keys)
             _ResultSideRow(side: side, result: result, teams: teams, players: players, total: total),
           const SizedBox(height: ToySizes.space24),
-          _ResultButtons(again: again, onChangeTeams: onChangeTeams),
+          _ResultButtons(again: again, onChangeTeams: onChangeTeams, night: night),
         ],
       ),
     );
@@ -145,12 +150,13 @@ class _ResultSideRow extends StatelessWidget {
 }
 
 /// The first button (Rematch, Play again or Next puzzle), Change teams and
-/// Back.
+/// Back; a night's round has the first button alone, Next (M14 c1).
 class _ResultButtons extends StatelessWidget {
-  const _ResultButtons({required this.again, required this.onChangeTeams});
+  const _ResultButtons({required this.again, required this.onChangeTeams, required this.night});
 
   final _AgainButton again;
   final VoidCallback onChangeTeams;
+  final bool night;
 
   @override
   Widget build(BuildContext context) => Row(
@@ -163,20 +169,22 @@ class _ResultButtons extends StatelessWidget {
         focusNode: again.focusNode,
         onPressed: again.onPressed,
       ),
-      const SizedBox(width: ToySizes.space12),
-      HostButton(
-        key: const Key('changeTeams'),
-        label: HostText.changeTeams,
-        icon: Icons.group,
-        onPressed: onChangeTeams,
-      ),
-      const SizedBox(width: ToySizes.space12),
-      HostButton(
-        key: const Key('resultsBack'),
-        label: HostText.back,
-        icon: Icons.arrow_back,
-        onPressed: () => Navigator.of(context).maybePop(),
-      ),
+      if (!night) ...[
+        const SizedBox(width: ToySizes.space12),
+        HostButton(
+          key: const Key('changeTeams'),
+          label: HostText.changeTeams,
+          icon: Icons.group,
+          onPressed: onChangeTeams,
+        ),
+        const SizedBox(width: ToySizes.space12),
+        HostButton(
+          key: const Key('resultsBack'),
+          label: HostText.back,
+          icon: Icons.arrow_back,
+          onPressed: () => Navigator.of(context).maybePop(),
+        ),
+      ],
     ],
   );
 }
