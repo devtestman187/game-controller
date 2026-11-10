@@ -397,12 +397,17 @@ void main() {
     });
 
     test('pieces of one kind must have the same shape', () {
-      expect(
-        () => Puzzle.parse('''{"id": "x", "name": "x", "level": "easy", "pieces": [
-          {"id": "a", "kind": "k", "shape": {"rect": [2, 2]}, "color": "#000000", "at": [1, 1]},
-          {"id": "b", "kind": "k", "shape": {"rect": [3, 2]}, "color": "#000000", "at": [5, 5]}]}'''),
-        throwsFormatException,
-      );
+      // The rule is the rule book's (m13 s20): a file loads, and `check` names
+      // the pieces.
+      final puzzle = Puzzle.parse('''{"id": "x", "name": "x", "level": "easy", "pieces": [
+        {"id": "a", "kind": "k", "shape": {"rect": [2, 2]}, "color": "#000000", "at": [1, 1]},
+        {"id": "b", "kind": "k", "shape": {"rect": [3, 2]}, "color": "#000000", "at": [5, 5]}]}''');
+      final issues = [
+        for (final issue in checkPuzzle(puzzle))
+          if (issue.rule == PuzzleRule.kind) issue,
+      ];
+      expect(issues, hasLength(1));
+      expect(issues.single.message, contains('must have the same shape'));
     });
 
     test('a regular shape loads from a puzzle file, saves as a polygon, and bad sides or a bad radius are refused', () {

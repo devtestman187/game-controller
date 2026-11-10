@@ -1,0 +1,14 @@
+{
+  "$schema": "puzzle.schema.json",
+  "format": 1,
+  "id": "template",
+  "name": "Template",
+  "level": "easy",
+  "notes": "A new puzzle starts as this file (tools/puzzle.sh new <id> --level easy|medium). Edit the pieces, then run tools/puzzle.sh check <id>, then tools/puzzle.sh render <id> and look at docs/design/puzzles/<id>.png. The guide is docs/puzzles.md. Every piece's 'at' is its outline's centre on the 80 x 72 board, measured from the top left; a shape's points are in board units round its own centre (0, 0), so keep (0, 0) inside the shape.",
+  "pieces": [
+    {"id": "base", "shape": {"rect": [40, 24]}, "color": "blue", "at": [40, 40], "big": true},
+    {"id": "top", "shape": {"polygon": [[-20, 8], [20, 8], [0, -14]]}, "color": "red", "at": [40, 20], "rotated": true},
+    {"id": "dot left", "shape": {"circle": 6}, "color": "yellow", "at": [30, 40]},
+    {"id": "dot right", "shape": {"circle": 5}, "color": "green", "at": [50, 40]}
+  ]
+}

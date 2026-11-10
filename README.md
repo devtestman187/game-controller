@@ -13,7 +13,7 @@ A phone game controller (Android + iOS) and a TV test app it drives (Android TV 
 | [packages/puzzle_game/](packages/puzzle_game) | Shape Race, the puzzle game: data, rules, snapshots and view |
 | [tools/](docs/dev-tools.md) | `check.sh` (every check), `release.sh` (tag and release), `tv-dev.sh` and `tv-window.ps1` (the Windows TV app for checks), `emulator.sh` (the phone app on the Android emulator), release notes, signing and artwork scripts |
 | [assets/](assets/CREDITS.md) | Images, audio and their credits |
-| [docs/](docs) | PRD, [architecture](docs/architecture.md), [decisions](docs/decisions.md), [building](docs/building.md), [developer tools](docs/dev-tools.md), [project notes](docs/project-notes.md), [release](docs/release.md), [protocol](docs/protocol.md), [checklists](docs/checklists) |
+| [docs/](docs) | PRD, [architecture](docs/architecture.md), [decisions](docs/decisions.md), [building](docs/building.md), [developer tools](docs/dev-tools.md), [making a puzzle](docs/puzzles.md), [project notes](docs/project-notes.md), [release](docs/release.md), [protocol](docs/protocol.md), [checklists](docs/checklists) |
 
 ## Quick start (Windows, PowerShell)
 ```powershell

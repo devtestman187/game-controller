@@ -1,14 +1,15 @@
 {
+  "$schema": "puzzle.schema.json",
+  "format": 1,
   "id": "butterfly",
   "name": "Butterfly",
   "level": "medium",
   "pieces": [
-    {"id": "body", "shape": {"rect": [8, 24]}, "color": "#6D4C41", "at": [40, 41], "big": true},
-    {"id": "upper left", "shape": {"polygon": [[-10, -8], [6, -10], [12, 2], [-4, 10]]}, "color": "#A66CFF", "at": [27, 32], "rotated": true},
-    {"id": "upper right", "shape": {"polygon": [[-12, -2], [-6, -10], [10, -8], [4, 10]]}, "color": "#E9762B", "at": [53, 32], "rotated": true},
-    {"id": "lower left", "shape": {"polygon": [[-8, -6], [4, -8], [6, 6], [-6, 8]]}, "color": "#27AE60", "at": [28, 50]},
-    {"id": "lower right", "shape": {"polygon": [[-6, -6], [8, -4], [4, 8], [-8, 4]]}, "color": "#2E86C1", "at": [52, 50]},
-    {"id": "spot left", "shape": {"circle": 6}, "color": "#F2C200", "at": [27, 32]},
-    {"id": "spot right", "shape": {"circle": 6}, "color": "#F2C200", "at": [53, 32]}
+    {"id": "body", "shape": {"rect": [8, 24]}, "color": "brown", "at": [40, 38], "big": true},
+    {"id": "upper left", "shape": {"polygon": [[-13, -6], [11, -4], [3, 10]]}, "color": "purple", "at": [26, 30], "rotated": true},
+    {"id": "upper right", "shape": {"polygon": [[13, -6], [-11, -4], [-3, 10]]}, "color": "orange", "at": [54, 30], "rotated": true},
+    {"id": "lower left", "shape": {"polygon": [[-9, -4], [7, -2], [2, 8]]}, "color": "green", "at": [32, 45]},
+    {"id": "lower right", "shape": {"polygon": [[9, -4], [-7, -2], [-2, 8]]}, "color": "blue", "at": [48, 45]},
+    {"id": "head", "shape": {"circle": 7}, "color": "yellow", "at": [40, 21]}
   ]
 }

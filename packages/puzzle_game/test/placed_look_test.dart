@@ -8,7 +8,6 @@ import 'package:toy_look/toy_look.dart';
 import 'support/frames.dart';
 import 'support/look.dart';
 import 'support/mirror_helpers.dart' show colourGap, load;
-import 'support/oklab.dart';
 
 /// A 640 x 360 box, as `look_paint_test` draws: 4 px a field unit on the
 /// 160 x 90 field.
@@ -100,6 +99,27 @@ void main() {
       countOf(bytes, width, pieceBox(puzzle, window), good),
       greaterThan(10),
       reason: "the window's ✓ is drawn at its middle",
+    );
+  });
+
+  // s20's sun: its rays and its face share a centre, and a locked piece found
+  // its target by the nearest centre, so both took the rays' target and the
+  // rays were never drawn. A locked piece takes a target of its own kind.
+  testWidgets('two locked pieces of different kinds that share a centre are both drawn', (tester) async {
+    final puzzle = Puzzle.parse('''
+{"id": "shared", "name": "Shared", "level": "easy", "pieces": [
+  {"id": "back", "shape": {"rect": [30, 30]}, "color": "#E4572E", "at": [40, 50]},
+  {"id": "front", "shape": {"circle": 5}, "color": "#2E86E4", "at": [40, 50]}
+]}''');
+    final (width, bytes) = await frame(tester, puzzle, halfDone(puzzle, locked: {0, 1}), sunny);
+    // Board unit (30, 40) is inside the square and clear of the circle.
+    final corner = pixel(bytes, width, ((boardRect.left + 30) * scale).round(), ((boardRect.top + 40) * scale).round());
+    // Shaded, so not the flat colour: nearer the square's red than the board's
+    // cream, which is what shows there when the square isn't drawn.
+    expect(
+      colourGap(corner, 0xE4572E),
+      lessThan(colourGap(corner, sunny.colors.board.toARGB32() & 0xFFFFFF)),
+      reason: 'the square behind the circle is drawn',
     );
   });
 

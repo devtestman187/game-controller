@@ -1,12 +1,14 @@
 {
+  "$schema": "puzzle.schema.json",
+  "format": 1,
   "id": "fish",
   "name": "Fish",
   "level": "easy",
   "pieces": [
-    {"id": "body", "shape": {"circle": 13}, "color": "#E9762B", "at": [34, 40], "big": true},
-    {"id": "tail", "shape": {"polygon": [[-4.6667, -8], [-4.6667, 8], [9.3333, 0]]}, "color": "#C0392B", "at": [51.6667, 40], "rotated": true},
-    {"id": "fin", "shape": {"polygon": [[-6, 4], [6, 4], [0, -8]]}, "color": "#2E86C1", "at": [34, 22], "rotated": true},
-    {"id": "eye", "shape": {"circle": 7}, "color": "#F2C200", "at": [28, 35]},
-    {"id": "bubble", "shape": {"polygon": [[0, -7], [7, 0], [0, 7], [-7, 0]]}, "color": "#5DADE2", "at": [18, 18]}
+    {"id": "body", "shape": {"polygon": [[-20, -6], [-14, -11], [6, -12], [18, -5], [20, 3], [8, 11], [-12, 11], [-18, 5]]}, "color": "orange", "at": [44, 38], "big": true},
+    {"id": "tail", "shape": {"polygon": [[-10, -13], [10, 0], [-10, 13]]}, "color": "red", "at": [24, 38], "rotated": true},
+    {"id": "top fin", "shape": {"polygon": [[-7, 5], [7, 5], [0, -6]]}, "color": "blue", "at": [44, 23], "rotated": true},
+    {"id": "bottom fin", "shape": {"polygon": [[-6, -5], [6, -5], [0, 6]]}, "color": "sky", "at": [46, 52]},
+    {"id": "eye", "shape": {"circle": 7}, "color": "yellow", "at": [34, 35]}
   ]
 }

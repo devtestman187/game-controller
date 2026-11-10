@@ -1,14 +1,16 @@
 {
+  "$schema": "puzzle.schema.json",
+  "format": 1,
   "id": "castle",
   "name": "Castle",
   "level": "medium",
   "pieces": [
-    {"id": "wall", "shape": {"rect": [40, 24]}, "color": "#B3A285", "at": [40, 52], "big": true},
-    {"id": "tower left", "shape": {"rect": [12, 20]}, "color": "#8E5B3A", "at": [16, 42]},
-    {"id": "tower right", "shape": {"rect": [12, 20]}, "color": "#546E7A", "at": [64, 42]},
-    {"id": "roof left", "shape": {"polygon": [[-9, 4], [0, -9], [9, 4]]}, "color": "#C0392B", "at": [16, 29], "rotated": true},
-    {"id": "roof right", "shape": {"polygon": [[-7, 4], [0, -7], [7, 4]]}, "color": "#E9762B", "at": [64, 31], "rotated": true},
+    {"id": "wall", "shape": {"rect": [40, 24]}, "color": "sand", "at": [40, 52], "big": true},
+    {"id": "tower left", "shape": {"rect": [12, 20]}, "color": "brown", "at": [16, 42]},
+    {"id": "tower right", "shape": {"rect": [12, 20]}, "color": "slate", "at": [64, 42]},
+    {"id": "roof left", "shape": {"polygon": [[-9, 4], [0, -9], [9, 4]]}, "color": "red", "at": [16, 29], "rotated": true},
+    {"id": "roof right", "shape": {"polygon": [[-7, 4], [0, -7], [7, 4]]}, "color": "orange", "at": [64, 31], "rotated": true},
     {"id": "door", "shape": {"rect": [10, 14]}, "color": "#4E342E", "at": [40, 59], "rotated": true},
-    {"id": "window", "shape": {"rect": [10, 8]}, "color": "#85C1E9", "at": [40, 45]}
+    {"id": "window", "shape": {"rect": [10, 8]}, "color": "sky", "at": [40, 45]}
   ]
 }

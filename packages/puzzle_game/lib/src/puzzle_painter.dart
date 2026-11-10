@@ -114,7 +114,7 @@ class PuzzlePainter extends CustomPainter {
     final targets = Iterable<int>.generate(puzzle.pieces.length);
     final lockedIn = {
       for (final (i, p) in s.pieces.indexed)
-        if (p.state == PieceState.locked) _targetOf(s.pieces[i]): i,
+        if (p.state == PieceState.locked) _targetOf(i): i,
     };
     final filled = lockedIn.keys.toSet();
     // Every empty target's slot is drawn under the picture, so a piece placed
@@ -245,12 +245,17 @@ class PuzzlePainter extends CustomPainter {
     }
   }
 
-  /// The outline a locked piece sits in: the nearest of its kind.
-  int _targetOf(PieceView p) {
+  /// The outline locked piece [piece] sits in: the nearest of its kind. Only
+  /// its kind counts, so a piece whose centre is another's (the sun's face on
+  /// its rays) never takes that other's outline (m13 s20).
+  int _targetOf(int piece) {
+    final p = s.pieces[piece];
+    final kind = puzzle.pieces[piece].kind;
     final at = Offset(p.x, p.y);
-    var best = 0;
+    var best = piece;
     var bestDistance = double.infinity;
     for (final i in Iterable<int>.generate(puzzle.pieces.length)) {
+      if (puzzle.pieces[i].kind != kind) continue;
       final d = (_targetAt(i) - at).distance;
       if (d < bestDistance) {
         best = i;

@@ -5,6 +5,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:puzzle_game/puzzle_game.dart';
 
+import 'support/library_files.dart';
+
 /// The puzzle files as the app's asset bundle serves them, read from disk:
 /// the package's own tests run in the package's folder.
 final class _Files extends CachingAssetBundle {
@@ -28,5 +30,10 @@ void main() {
     }
     expect(library.byId('castle')!.name, 'Castle');
     expect(library.byId('nope'), isNull);
+  });
+
+  test('the whole library has no issues', () {
+    final issues = checkLibrary(puzzleLibrary(), index: indexIds(), files: puzzleFiles());
+    expect(issues, isEmpty, reason: issues.join('\n'));
   });
 }

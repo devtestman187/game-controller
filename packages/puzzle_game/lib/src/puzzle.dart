@@ -2,6 +2,13 @@ import 'dart:convert';
 import 'dart:math';
 import 'dart:ui';
 
+import 'piece_colors.dart';
+
+/// The puzzle file format this build reads (m13 s20, docs/puzzles.md): files
+/// say `"format": 1`, and one that says a higher number was written for a
+/// newer app and is refused with a message saying so.
+const puzzleFormat = 1;
+
 /// The field every puzzle is played on, in field units: 16:9 (PRD v2 S4),
 /// drawn scaled into whatever box the host gives.
 const fieldSize = Size(160, 90);
@@ -299,15 +306,12 @@ final class PieceSpec {
 
 /// A puzzle: a picture made of distinct shapes (PRD v2 "Puzzle game
 /// design"). Loaded from a data file, so more can be added without code.
+/// [checkPuzzle] in `puzzle_rules.dart` is the linter that holds the rules a
+/// puzzle file must keep (unique ids, pieces of a kind sharing a shape, and
+/// the rest), so a broken file is caught by `tools/puzzle.sh check`.
 final class Puzzle {
   Puzzle({required this.id, required this.name, required this.level, required List<PieceSpec> pieces})
-    : pieces = List.unmodifiable(pieces) {
-    final shapes = <String, String>{};
-    for (final p in pieces) {
-      final key = shapes.putIfAbsent(p.kind, () => p.shape.key);
-      if (key != p.shape.key) throw FormatException('Pieces of kind "${p.kind}" must have the same shape');
-    }
-  }
+    : pieces = List.unmodifiable(pieces);
 
   final String id;
   final String name;
@@ -317,8 +321,21 @@ final class Puzzle {
   /// A target's centre in field units.
   Offset targetAt(int i) => boardRect.topLeft + pieces[i].target;
 
+  /// The puzzle [json] holds. `$schema` is left to the editor; `format`
+  /// missing means [puzzleFormat] (files written before the format existed),
+  /// and a higher one is refused with a message naming the version.
   static Puzzle fromJson(Map<String, Object?> json) {
     String text(String key) => json[key] is String ? json[key] as String : throw FormatException('"$key" is missing');
+    if (json['format'] case final format?) {
+      if (format is! int) throw FormatException('"format" is a whole number, $puzzleFormat for this puzzle format');
+      if (format > puzzleFormat) {
+        throw FormatException(
+          'This puzzle is format $format; this build reads format $puzzleFormat. '
+          'Update the app, or save the puzzle in format $puzzleFormat.',
+        );
+      }
+      if (format < 1) throw FormatException('"format" starts at 1, got $format');
+    }
     final rawPieces = json['pieces'];
     if (rawPieces is! List || rawPieces.isEmpty) throw const FormatException('A puzzle needs "pieces"');
     return Puzzle(
@@ -332,7 +349,7 @@ final class Puzzle {
               id: raw['id'] as String,
               kind: raw['kind'] as String?,
               shape: PieceShape.fromJson(raw['shape']),
-              color: _color(raw['color']),
+              color: PiecePalette.parse(raw['color']),
               target: switch (raw['at']) {
                 [final num x, final num y] => Offset(x.toDouble(), y.toDouble()),
                 _ => throw FormatException('Piece "${raw['id']}" needs "at": [x, y]'),
@@ -346,13 +363,6 @@ final class Puzzle {
   }
 
   static Puzzle parse(String source) => fromJson(jsonDecode(source) as Map<String, Object?>);
-}
-
-int _color(Object? value) {
-  if (value is String && RegExp(r'^#[0-9a-fA-F]{6}$').hasMatch(value)) {
-    return 0xFF000000 | int.parse(value.substring(1), radix: 16);
-  }
-  throw FormatException('Colours are "#RRGGBB", got $value');
 }
 
 /// The angle difference to [target] for a shape with [symmetry] (see

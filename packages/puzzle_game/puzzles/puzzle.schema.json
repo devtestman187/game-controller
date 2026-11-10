@@ -1,0 +1,156 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://thumbparty.dev/puzzle.schema.json",
+  "title": "Shape Race puzzle",
+  "description": "One Shape Race picture (m13 s20): the pieces a player fits into their outlines on the board. The guide is docs/puzzles.md; the rules a file must keep are in packages/puzzle_game/lib/src/puzzle_rules.dart, run by tools/puzzle.sh check.",
+  "type": "object",
+  "required": ["id", "name", "level", "pieces"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "The schema this file follows, so VS Code autocompletes the fields and marks mistakes as you type. Write \"puzzle.schema.json\"."
+    },
+    "format": {
+      "type": "integer",
+      "const": 1,
+      "description": "The puzzle format the file is written in (m13 s20). Today it is 1; a file with a newer format is refused by an older app with a message saying so."
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*$",
+      "description": "The puzzle's id, matching its file name (sun.json has id \"sun\") and the line in index.json. Lower case letters, digits and hyphens."
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The name players see, in title case: \"Tree and sun\"."
+    },
+    "level": {
+      "enum": ["easy", "medium", "hard"],
+      "description": "Easy: 4-5 pieces, at most 2 turned, no two pieces of the same shape and size. Medium: 6-8 pieces, 1 or 2 big, at most one pair of the same shape. Hard is not used yet."
+    },
+    "notes": {
+      "type": "string",
+      "description": "A comment for the puzzle's author. The app ignores it; the template's instructions are written here."
+    },
+    "pieces": {
+      "type": "array",
+      "minItems": 1,
+      "description": "The picture's pieces, drawn in this order: a later piece is over an earlier one (a window over a wall).",
+      "items": {"$ref": "#/$defs/piece"}
+    }
+  },
+  "$defs": {
+    "number": {
+      "type": "number",
+      "description": "A board unit: the board is 80 wide and 72 high, with (0, 0) at its top left and y growing downwards (docs/puzzles.md)."
+    },
+    "pair": {
+      "type": "array",
+      "description": "Two numbers: [width, height] in board units.",
+      "prefixItems": [{"$ref": "#/$defs/number"}, {"$ref": "#/$defs/number"}],
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "piece": {
+      "type": "object",
+      "description": "One piece and its outline.",
+      "required": ["id", "shape", "color", "at"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The piece's id, unique in the puzzle: \"body\", \"wheel front\". Lower case, spaces allowed."
+        },
+        "kind": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Pieces of one kind are interchangeable and must have the same shape (the boat's two waves). Omit it: each piece is its own kind."
+        },
+        "shape": {
+          "description": "The piece's outline, around its centre (0, 0), in board units.",
+          "oneOf": [
+            {
+              "type": "object",
+              "description": "A circle: the radius in board units.",
+              "required": ["circle"],
+              "additionalProperties": false,
+              "properties": {"circle": {"type": "number", "exclusiveMinimum": 0, "description": "The radius, above 0."}}
+            },
+            {
+              "type": "object",
+              "description": "A rectangle: [width, height].",
+              "required": ["rect"],
+              "additionalProperties": false,
+              "properties": {"rect": {"$ref": "#/$defs/pair"}}
+            },
+            {
+              "type": "object",
+              "description": "A regular polygon: [corners, radius], the first corner straight up.",
+              "required": ["regular"],
+              "additionalProperties": false,
+              "properties": {
+                "regular": {
+                  "type": "array",
+                  "description": "[corners, radius]: at least 3 corners, a radius above 0.",
+                  "prefixItems": [
+                    {"type": "integer", "minimum": 3, "description": "How many corners: 3 or more."},
+                    {"type": "number", "exclusiveMinimum": 0, "description": "The distance from the centre to a corner."}
+                  ],
+                  "minItems": 2,
+                  "maxItems": 2
+                }
+              }
+            },
+            {
+              "type": "object",
+              "description": "A shape drawn corner by corner: [[x, y], ...], at least 3 corners.",
+              "required": ["polygon"],
+              "additionalProperties": false,
+              "properties": {
+                "polygon": {
+                  "type": "array",
+                  "description": "The corners, in order.",
+                  "minItems": 3,
+                  "items": {
+                    "type": "array",
+                    "description": "One corner: [x, y].",
+                    "prefixItems": [{"$ref": "#/$defs/number"}, {"$ref": "#/$defs/number"}],
+                    "minItems": 2,
+                    "maxItems": 2
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "color": {
+          "type": "string",
+          "pattern": "^(#[0-9a-fA-F]{6}|red|orange|yellow|green|sky|blue|purple|brown|slate|silver|steel|sand)$",
+          "description": "A colour token from docs/puzzles.md (\"red\", \"sky\", \"silver\") or \"#RRGGBB\". A piece stands out from the board in both looks and from the puzzle's other pieces."
+        },
+        "at": {
+          "type": "array",
+          "description": "Where the outline's centre lies on the board, in board units: [x, y].",
+          "prefixItems": [{"$ref": "#/$defs/number"}, {"$ref": "#/$defs/number"}],
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "angle": {
+          "type": "number",
+          "description": "The angle the piece belongs at, in degrees clockwise (the default 0). Only needed for a shape drawn sideways."
+        },
+        "rotated": {
+          "type": "boolean",
+          "description": "true: the piece may start at a random angle, so it must be turned. Easy allows at most 2 of them."
+        },
+        "big": {
+          "type": "boolean",
+          "description": "true: a big piece, which two players carry together. Medium has 1 or 2."
+        }
+      }
+    }
+  }
+}

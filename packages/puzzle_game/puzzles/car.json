@@ -1,14 +1,16 @@
 {
+  "$schema": "puzzle.schema.json",
+  "format": 1,
   "id": "car",
   "name": "Car",
   "level": "medium",
   "pieces": [
-    {"id": "body", "shape": {"rect": [34, 14]}, "color": "#C0392B", "at": [38, 50], "big": true},
-    {"id": "cabin", "shape": {"rect": [18, 10]}, "color": "#2E86C1", "at": [40, 38], "rotated": true},
-    {"id": "window", "shape": {"rect": [10, 5]}, "color": "#85C1E9", "at": [40, 37], "rotated": true},
-    {"id": "wheel front", "shape": {"circle": 7}, "color": "#8E5B3A", "at": [25, 58]},
-    {"id": "wheel back", "shape": {"circle": 7}, "color": "#8E5B3A", "at": [51, 58]},
-    {"id": "headlight", "shape": {"circle": 6}, "color": "#FFB020", "at": [57, 46]},
+    {"id": "body", "shape": {"rect": [34, 14]}, "color": "red", "at": [38, 50], "big": true},
+    {"id": "cabin", "shape": {"rect": [18, 10]}, "color": "blue", "at": [40, 38], "rotated": true},
+    {"id": "window", "shape": {"rect": [10, 5]}, "color": "sky", "at": [40, 37], "rotated": true},
+    {"id": "wheel front", "shape": {"circle": 7}, "color": "brown", "at": [25, 58]},
+    {"id": "wheel back", "shape": {"circle": 7}, "color": "brown", "at": [51, 58]},
+    {"id": "headlight", "shape": {"circle": 6}, "color": "#FFB020", "at": [61, 46]},
     {"id": "road", "shape": {"rect": [44, 4]}, "color": "#7F8C8D", "at": [40, 68]}
   ]
 }

@@ -192,7 +192,19 @@ void main() {
             expect(corner.hud.rect.left, closeTo(corner.rect.right + PuzzleCamera.mirrorGapPx, 1e-9), reason: where);
           }
           final stick = mirrorOf(puzzle, box, PadMode.sticks);
-          if (stick != null) {
+          final stickInCorner =
+              stick != null &&
+              stick.rect.left == PuzzleCamera.hudMarginPx &&
+              (stick.rect.top - box.height * PuzzleCamera.hudTopFraction).abs() < 1e-9;
+          if (stickInCorner) {
+            // The corner comes first (rule 8): a mirror small enough to read
+            // above the stick's disc (the redrawn sun's) takes it, with the
+            // clock area beside it as with the D-pad.
+            final disc = leftPadRects(box, mode: PadMode.sticks, mm: phonePxPerMm).first;
+            expect(stick.rect.overlaps(disc), isFalse, reason: '$where: the corner mirror is clear of the disc');
+            expect(stick.hud.form, HudForm.short, reason: where);
+            expect(stick.hud.rect.left, closeTo(stick.rect.right + PuzzleCamera.mirrorGapPx, 1e-9), reason: where);
+          } else if (stick != null) {
             final disc = leftPadRects(box, mode: PadMode.sticks, mm: phonePxPerMm).first;
             final alone = PuzzleCamera.hudPlace(layout, sideLeft, box, raceText(puzzle));
             // Under the clock, where the box without a mirror puts it, and to

@@ -1,31 +1,33 @@
 import 'dart:ui' show Rect;
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:puzzle_game/puzzle_game.dart';
 
-import 'support/match_helpers.dart';
+import 'support/library_files.dart';
 
 void main() {
   test('every piece is held by a point strictly inside it', () {
     // The point a piece turns about is its shape's origin: a drop while
     // turning, or a push, moves the piece about it. On the outline the worker
     // ends up pushing empty space (the boat's sail and flag did, m13 device
-    // test 3).
-    for (final id in puzzleIds) {
-      final puzzle = load(id);
-      for (final spec in puzzle.pieces) {
-        expect(
-          spec.shape.originMargin,
-          greaterThan(0),
-          reason: '$id ${spec.id}: its origin is on or outside its shape',
-        );
-      }
+    // test 3). The rule and its message are the rule book's (m13 s20); this
+    // holds the library to it.
+    for (final puzzle in puzzleLibrary()) {
+      expect(
+        [
+          for (final issue in checkPuzzle(puzzle))
+            if (issue.rule == PuzzleRule.held) issue,
+        ],
+        isEmpty,
+        reason: puzzle.id,
+      );
     }
   });
 
   test('the boat\'s sail and flag keep their picture, held about their middle', () {
     // Re-centred on their centroid while the picture stayed where it was: the
     // outline's box in board units is the one the old origin and points gave.
-    final boat = load('boat');
+    final boat = loadPuzzle('boat');
     Rect boxOf(String id) {
       final spec = boat.pieces.firstWhere((p) => p.id == id);
       return spec.shape.bounds(spec.targetAngle).shift(spec.target);
