@@ -205,7 +205,7 @@ Each step is a flash job with a brief and a review gate, at most three at once, 
 - **g2 Arena split** (`test_game`): `arena.dart` (487) split by a pure move into the marble movement, the race rules and the field; the size FAIL goes green.
 - **g3 host groundwork** (`party_host`, `game_kit`, `assets`): the empty-rounds record (an abandoned round's `round_end` adds no round to the stats); the round music resuming where it was after the app was hidden (R4 8); the a1 `SoundKey`s and CREDITS rows (playing nothing yet); the `RoundResult` type in `game_kit` with its test.
 
-The Arena's jobs run one after another, since each builds on the last: g2 → k1 → b1 → k2 → b2 → b3. The Shape Race and host jobs run beside them.
+The Arena's jobs run one after another, since each builds on the last: g2 → k1a → k1b → b1 → k2 → b2 → b3. k1 is split in two: **k1a** makes the puzzle kit general (the shared core in `game_kit`, `tools/level.sh`, docs/levels.md), **k1b** adds the maps (the format, `playroom.json`, the map rules and their path grid, the map render; `arena_field.dart` under 300 lines). The Shape Race and host jobs run beside them.
 
 **Wave 2**: **a1 points** (G1, `puzzle_game`, after g1), **k1 the level kit** (section 7b: the puzzle kit becomes one kit for both games: the shared core in `game_kit`, `tools/level.sh`, docs/levels.md; then the map format, schema, parser, `playroom.json` playing as today, the map rules with their path grid; `test_game`, `puzzle_game`, `game_kit`, tools, docs; after g1 and g2), **m1 mock-ups** (section 10, `docs/design`).
 

@@ -6,17 +6,17 @@ Branch `m14`, worktree `E:\AI\game-controller-m14`, cut from `m13` at 77ccf09 on
 
 The design is written: **docs/design/party-night.md** (decisions N1–N15, the jobs in four waves in its section 13, the owner's answers and open questions Q4–Q5 in section 12; Robo the CPU marble with three levels is job b3).
 
-Done: **g2** (arena.dart split, 6f896af) and **g3** (empty rounds, the round music across a hidden app with Claude's fix for the phone host's engine restart, the Arena's keys, `RoundResult`; 43d02cb).
+Done: **g1** (493e359) and Claude's **g1b** (the turned and phone-size rules in `check`, cb5915a), **g2** (6f896af), **g3** (43d02cb).
 
-Running: **g1** (puzzle: split game.dart and puzzle_rules.dart, the three rules into `check`, `Level.hard`, the parser's casts) and **m1** (mock-ups: `docs/design/party-mockups.html` on shared parts in `mockup-parts.js`). Logs in the session scratchpad `flash-m14-g1.log`, `flash-m14-m1.log`. A job is done when its `docs/briefs/m14/<job>-report.md` exists here or in its job folder; if one is missing and no flash process runs, start it again with `tools/flash.sh --brief docs/briefs/m14/<brief>.md` (Bash `run_in_background`).
+Running: **m1** mock-ups (`docs/design/party-mockups.html`), **a1** points (G1, snapshot version 2, `MatchResult.round`), **k1a** the level kit's shared core (`tools/level.sh`, docs/levels.md). Logs in the session scratchpad `flash-m14-<job>.log`. A job is done when its `docs/briefs/m14/<job>-report.md` exists here or in its job folder; if one is missing and no flash process runs, start it again with `tools/flash.sh --brief docs/briefs/m14/<brief>.md` (Bash `run_in_background`).
 
 Device-test list (so far): hide a phone host mid-round and show it again: the round's music carries on from where it was (g3; SoLoud can't be unit-tested).
 
 Then, in order:
-1. Review g1 (tests, `tools/review.sh --base 79ce8fb`), append "Claude's review", commit.
-2. Review m1; save each frame as a PNG (`party-mockups.html?frame=N&theme=sunny|night`) under docs/design/look-mockups/ with the prefix `m14-`, check `look-mockups.html` still draws M13's frames the same, send the PNGs to the owner. The screen jobs (c1, b2, c2, c3) wait for the OK.
-3. After g1: a1 points (G1) and k1 the level kit (G10, design section 7b; its brief must leave `arena_field.dart`, now 391 lines, under 300). The Arena lane runs k1 → b1 → k2 (the four maps) → b2 → b3 (Robo).
-3. Waves 3 and 4 as the design's section 13 says, then the full review R5 and device tests. A build only on the owner's word.
+1. Review each job as it lands, append "Claude's review", commit.
+2. m1: save each frame as a PNG (`party-mockups.html?frame=N&theme=sunny|night`) under docs/design/look-mockups/ with the prefix `m14-`, check `look-mockups.html` still draws M13's frames the same, send the PNGs to the owner. The screen jobs (c1, b2, c2, c3) wait for the OK.
+3. After k1a: k1b (maps in the kit). After a1: a2 (the cat). Then b1, c1 and the rest as the design's section 13 says.
+4. Open owner question: avatars (PRD L7, "Later") were raised on Nov 9; Claude recommended picking an accessory with the nickname in c3.
 
 Housekeeping: one old job worktree, `E:\AI\game-controller-m13-jobs\flash-20261109-083539-456`, could not be removed (a file in use); try `git worktree remove --force` again later, from the m13 worktree.
 
