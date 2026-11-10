@@ -8,7 +8,9 @@ The design is written: **docs/design/party-night.md** (decisions N1–N15, the j
 
 Done: **g1** (493e359) and Claude's **g1b** (the turned and phone-size rules in `check`, cb5915a), **g2** (6f896af), **g3** (43d02cb).
 
-Running: **m1b** mock-up fixes and the two finish-celebration frames (m1 is in, 59b381e), **a1** points (G1, snapshot version 2, `MatchResult.round`), **k1a** the level kit's shared core (`tools/level.sh`, docs/levels.md). Logs in the session scratchpad `flash-m14-<job>.log`. A job is done when its `docs/briefs/m14/<job>-report.md` exists here or in its job folder; if one is missing and no flash process runs, start it again with `tools/flash.sh --brief docs/briefs/m14/<brief>.md` (Bash `run_in_background`).
+Waiting on the owner: **the mock-ups** (m1 59b381e, m1b 1455bbb: 17 frames in Sunny and Night, docs/design/look-mockups/m14-*.png, sent Nov 9). The screen jobs (c1, b2, c2, c3, a3) wait for the OK.
+
+Running: **a1** points (G1, snapshot version 2, `MatchResult.round`), **k1a** the level kit's shared core (`tools/level.sh`, docs/levels.md). Logs in the session scratchpad `flash-m14-<job>.log`. A job is done when its `docs/briefs/m14/<job>-report.md` exists here or in its job folder; if one is missing and no flash process runs, start it again with `tools/flash.sh --brief docs/briefs/m14/<brief>.md` (Bash `run_in_background`).
 
 Device-test list (so far): hide a phone host mid-round and show it again: the round's music carries on from where it was (g3; SoLoud can't be unit-tested).
 
