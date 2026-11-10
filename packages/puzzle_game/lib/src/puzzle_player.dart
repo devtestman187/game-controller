@@ -27,6 +27,13 @@ class PuzzlePlayer {
   double rotatingS = 0;
   int overshoots = 0;
 
+  /// Big pieces this player brought home together with a teammate, snaps that
+  /// followed a wrong drop of that piece, and cats shooed (M14 a1: the Best
+  /// Helper, Try Again and Cat Catcher awards count these).
+  int carries = 0;
+  int tryAgains = 0;
+  int catsShooed = 0;
+
   /// Help calls made while carrying a big piece alone, how many such carries
   /// were started, and the time spent on them.
   int helpCalls = 0;

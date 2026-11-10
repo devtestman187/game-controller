@@ -1,5 +1,10 @@
 import 'dart:ui';
 
+/// A side of the split screen, chosen on the join screen (PRD v2 T13). The
+/// rules count each side's points, so a game knows the side its players play
+/// for (M14 a1).
+enum PuzzleSide { left, right }
+
 /// Where a piece is.
 enum PieceState {
   /// In the tray, never moved yet.
@@ -59,6 +64,10 @@ class PieceRuntime {
   /// A big piece carried alone calls the free teammate: its edge flashes
   /// toward them.
   bool calling = false;
+
+  /// It was dropped wrong once: its snap is a try again, worth
+  /// [PuzzlePoints.wrongSnap] instead of [PuzzlePoints.snap] (M14 a1).
+  bool wronged = false;
 
   /// The first carrier.
   String? get heldBy => carriers.firstOrNull;

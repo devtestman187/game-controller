@@ -86,6 +86,8 @@ extension _PuzzleDrop on PuzzleGame {
 
   void _drop(PuzzlePlayer p, PieceRuntime piece, List<PuzzleEvent> events) {
     final spec = puzzle.pieces[piece.index];
+    // Who carries it now, for the big piece two teammates bring home.
+    final carriers = [...piece.carriers];
     final nearest = _nearestFreeTarget(piece);
     final errors = nearest == null
         ? const <String, Object?>{}
@@ -108,9 +110,12 @@ extension _PuzzleDrop on PuzzleGame {
         ..angle = snapAngle(piece.angle, puzzle.pieces[target].targetAngle, spec.shape.symmetry);
       _filled[target] = piece.index;
       p.snaps++;
+      _awardSnap(p, piece, target: target, carriers: carriers);
       events.add(PuzzleEvent(PuzzleEventKind.snap, playerId: p.id, data: {'piece': spec.id, ...errors}));
     } else if (field.board.contains(piece.pos)) {
       _putDown(piece, PieceState.wrong);
+      // Its next snap is a try again (M14 a1).
+      piece.wronged = true;
       p.wrongDrops++;
       events.add(PuzzleEvent(PuzzleEventKind.wrong, playerId: p.id, data: {'piece': spec.id, ...errors}));
     } else {

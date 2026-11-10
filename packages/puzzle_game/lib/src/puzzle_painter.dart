@@ -139,6 +139,9 @@ class PuzzlePainter extends CustomPainter {
       if (p.state == PieceState.held) _piece(canvas, i, styles, filled);
     }
     _paintWorkers(canvas, s, px);
+    // The points and their pop-ups are a party night's, and nothing else's
+    // (M14 a1, N4): outside a night the board is the picture it was.
+    if (s.night) _popups(canvas, px);
     if (hud) _hud(canvas, px, styles);
     canvas.restore();
   }

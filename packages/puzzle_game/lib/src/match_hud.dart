@@ -37,6 +37,13 @@ const _gapCountSize = 2.8;
 const _gapBarTop = 17.0;
 const _gapBarHeight = 0.8;
 
+/// The gap's points: their mark's size, how far under its count it sits, and
+/// how far down the bar moves to make room for them, in world units. The gap
+/// is too narrow for them beside the counts (M14 a1).
+const _gapPointSize = 1.6;
+const _gapPointStep = 2.4;
+const _gapBarTopNight = 20.0;
+
 /// The split screen's clock and both sides' counts, in the strip along the top
 /// or in the gap between the boards, with the time bar (design section 5).
 extension _MatchStrip on MatchPainter {
@@ -61,22 +68,31 @@ extension _MatchStrip on MatchPainter {
         ..color = _colours.ink.withValues(alpha: _dividerAlpha)
         ..strokeWidth = _dividerWidth,
     );
-    _text(
+    // Each side's points, in a night, toward the clock from its count (M14
+    // a1): the left side's after it, the right side's before it.
+    _countWithPoints(
       canvas,
-      'LEFT  ${left.placed}/$total',
       Offset(max(layout.leftBox.left + _stripPad, _stripPad), SplitLayout.stripHeight / 2),
-      _stripCountSize,
-      _colours.onBackground,
+      'LEFT  ${left.placed}/$total',
+      points: left.points,
+      night: left.night,
+      size: _stripCountSize,
+      colour: _colours.onBackground,
       style: look.type.button,
+      colours: _colours,
     );
     _clockText(canvas, clock, Offset(middle, SplitLayout.stripHeight / 2), _clockSize, warn, barStyle);
-    _text(
+    _countWithPoints(
       canvas,
-      'RIGHT  ${right.placed}/$total',
       Offset(min(layout.rightBox.right - _stripPad, _stripRightCap), SplitLayout.stripHeight / 2),
-      _stripCountSize,
-      _colours.onBackground,
+      'RIGHT  ${right.placed}/$total',
+      points: right.points,
+      night: right.night,
+      size: _stripCountSize,
+      colour: _colours.onBackground,
       style: look.type.button,
+      colours: _colours,
+      markBefore: true,
     );
     if (frac != null) {
       _bar(canvas, Rect.fromLTWH(middle - _stripBar / 2, _stripBarTop, _stripBar, _stripBarHeight), frac, warn);
@@ -117,6 +133,9 @@ extension _MatchStrip on MatchPainter {
   ) {
     final middle = fieldSize.width / 2;
     _clockText(canvas, clock, Offset(middle, _gapClockTop), _clockSize, warn, barStyle);
+    // The gap is too narrow for a side's points beside its count, so in a
+    // night each side's points get a line of their own under it (M14 a1).
+    final night = left.night || right.night;
     _text(
       canvas,
       'L ${left.placed}/$total',
@@ -125,6 +144,7 @@ extension _MatchStrip on MatchPainter {
       _colours.onBackground,
       style: look.type.button,
     );
+    if (night) _gapPoints(canvas, middle, _gapCountTop + _gapPointStep, left.points);
     _text(
       canvas,
       'R ${right.placed}/$total',
@@ -133,8 +153,24 @@ extension _MatchStrip on MatchPainter {
       _colours.onBackground,
       style: look.type.button,
     );
+    if (night) _gapPoints(canvas, middle, _gapSecondCountTop + _gapPointStep, right.points);
     if (frac != null) {
-      _bar(canvas, Rect.fromLTWH(middle - _gapBar / 2, _gapBarTop, _gapBar, _gapBarHeight), frac, warn);
+      final top = night ? _gapBarTopNight : _gapBarTop;
+      _bar(canvas, Rect.fromLTWH(middle - _gapBar / 2, top, _gapBar, _gapBarHeight), frac, warn);
     }
+  }
+
+  /// A side's points on its own line in the gap, under its count: a star and
+  /// the number, small enough for the gap.
+  void _gapPoints(Canvas canvas, double middle, double y, int points) {
+    _pointsMark(
+      canvas,
+      Offset(middle, y),
+      '$points',
+      colour: _colours.onBackground,
+      colours: _colours,
+      size: _gapPointSize,
+      style: look.type.button,
+    );
   }
 }

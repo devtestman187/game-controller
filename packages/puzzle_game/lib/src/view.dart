@@ -7,9 +7,9 @@ import 'package:toy_look/toy_look.dart';
 
 import 'camera.dart';
 import 'game.dart';
-import 'match.dart';
 import 'piece_moments.dart';
 import 'piece_size.dart';
+import 'points.dart';
 import 'puzzle.dart';
 import 'puzzle_values.dart';
 import 'snapshot.dart';
@@ -20,6 +20,7 @@ part 'board_hud.dart';
 part 'match_hud.dart';
 part 'match_painter.dart';
 part 'mirror_painter.dart';
+part 'points_paint.dart';
 part 'puzzle_painter.dart';
 part 'text_paint.dart';
 part 'worker_painter.dart';

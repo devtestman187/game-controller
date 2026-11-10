@@ -32,14 +32,19 @@ extension _BoardHud on PuzzlePainter {
       align: TextAlign.left,
     );
     _clock(canvas, clock, warn, scale, styles);
-    _text(
+    // The side's points, in a night, beside its count (M14 a1).
+    _countWithPoints(
       canvas,
-      '${s.placed}/${s.pieces.length} placed',
       Offset(field.tray.right - 2, _hudY),
-      _hudNameSize,
-      text,
+      '${s.placed}/${s.pieces.length} placed',
+      points: s.points,
+      night: s.night,
+      size: _hudNameSize,
+      colour: text,
       style: look.type.button,
+      colours: _colours,
       align: TextAlign.right,
+      markBefore: true,
     );
     final limit = timeLimitS;
     if (limit == null || limit <= 0) return;

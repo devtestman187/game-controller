@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:connection/connection.dart';
+import 'package:game_kit/game_kit.dart';
 
 import 'game.dart';
 import 'puzzle.dart';
@@ -9,8 +10,9 @@ import 'settings.dart';
 import 'snapshot.dart';
 import 'split_layout.dart';
 
-/// A side of the split screen, chosen on the join screen (PRD v2 T13).
-enum PuzzleSide { left, right }
+// [PuzzleSide] lives with the piece values now that the rules count a side's
+// points (M14 a1); it is still imported from here by the match's callers.
+export 'puzzle_values.dart' show PuzzleSide;
 
 /// Who plays whom, from how many players joined each side (PRD v2 "Modes
 /// and layout"). [solo] and [team] play on one board; the others race on
@@ -42,7 +44,7 @@ enum MatchFormat {
 
 /// How a match ended.
 final class MatchResult {
-  const MatchResult({required this.format, required this.sides, this.winner});
+  const MatchResult({required this.format, required this.sides, this.winner, required this.round});
 
   final MatchFormat format;
 
@@ -51,6 +53,10 @@ final class MatchResult {
 
   /// The side that won the race, or null: a draw, or a one-board game.
   final PuzzleSide? winner;
+
+  /// The round as the party night reads it (M14 a1, N1): points, counters and
+  /// a line per player. Built here, so `party_host` needs nothing of ours.
+  final RoundResult round;
 
   /// A race that nobody won: equal pieces at time-up (including none), or
   /// both sides finishing in the same frame.
@@ -95,27 +101,39 @@ class PuzzleMatch {
     // layout picks the angles and sizes the tray for them. A one-board screen
     // match has no layout; one on phones shows the layout's left world.
     final layout = format.split || target == LayoutTarget.phones ? SplitLayout.of(puzzle, seed, target: target) : null;
+    // The side the one board plays for: every game counts its side's points
+    // (M14 a1).
+    final one = teams.values.firstOrNull ?? PuzzleSide.left;
     sides = switch (layout) {
-      null => [
-        MatchSide(
-          teams.values.firstOrNull ?? PuzzleSide.left,
-          PuzzleGame(puzzle, settings: settings, random: Random(seed)),
-        ),
-      ],
+      null => [MatchSide(one, PuzzleGame(puzzle, settings: settings, random: Random(seed), side: one))],
       final SplitLayout l when format.split => [
         MatchSide(
           PuzzleSide.left,
-          PuzzleGame(puzzle, settings: settings, random: Random(seed), field: l.left, angles: l.angles),
+          PuzzleGame(
+            puzzle,
+            settings: settings,
+            random: Random(seed),
+            field: l.left,
+            angles: l.angles,
+            side: PuzzleSide.left,
+          ),
         ),
         MatchSide(
           PuzzleSide.right,
-          PuzzleGame(puzzle, settings: settings, random: Random(seed), field: l.right, angles: l.angles),
+          PuzzleGame(
+            puzzle,
+            settings: settings,
+            random: Random(seed),
+            field: l.right,
+            angles: l.angles,
+            side: PuzzleSide.right,
+          ),
         ),
       ],
       final SplitLayout l => [
         MatchSide(
-          teams.values.firstOrNull ?? PuzzleSide.left,
-          PuzzleGame(puzzle, settings: settings, random: Random(seed), field: l.left, angles: l.angles),
+          one,
+          PuzzleGame(puzzle, settings: settings, random: Random(seed), field: l.left, angles: l.angles, side: one),
         ),
       ],
     };
@@ -205,7 +223,59 @@ class PuzzleMatch {
         if (left != right) winner = left > right ? PuzzleSide.left : PuzzleSide.right;
       }
     }
-    _result = MatchResult(format: format, sides: {for (final s in sides) s.side: s.game.result!}, winner: winner);
+    _result = MatchResult(
+      format: format,
+      sides: {for (final s in sides) s.side: s.game.result!},
+      winner: winner,
+      round: _roundResult(winner),
+    );
+  }
+
+  /// The round as the night reads it (M14 a1, N1): each player's side's points
+  /// credited to them, their counters for the awards, and their line: a race's
+  /// win, loss or draw with the pieces they placed, or `done` with the time on
+  /// one board. Nobody wins a board played alone, so it has no winners.
+  RoundResult _roundResult(PuzzleSide? winner) {
+    RoundLine lineFor(MatchSide s) {
+      final result = s.game.result!;
+      if (!format.split) return RoundLine(outcome: RoundOutcome.done, timeS: result.timeS ?? s.game.elapsedS);
+      final outcome = winner == null
+          ? RoundOutcome.draw
+          : winner == s.side
+          ? RoundOutcome.win
+          : RoundOutcome.loss;
+      return RoundLine(outcome: outcome, count: result.placed, countOf: RoundCount.pieces);
+    }
+
+    final players = [
+      for (final s in sides)
+        for (final MapEntry(:key, :value) in teams.entries)
+          if (value == s.side) (id: key, side: s),
+    ];
+    // A player who left mid-round keeps their line and their points, and has
+    // no counters left to count (the game has forgotten them).
+    Map<String, int> statsOf(PuzzleGame game, String id) {
+      final player = game.player(id);
+      return {
+        'snaps': player?.snaps ?? 0,
+        'wrongDrops': player?.wrongDrops ?? 0,
+        'carries': player?.carries ?? 0,
+        'catsShooed': player?.catsShooed ?? 0,
+        'tryAgains': player?.tryAgains ?? 0,
+      };
+    }
+
+    return RoundResult(
+      game: 'puzzle',
+      winners: {
+        for (final p in players)
+          if (winner != null && p.side.side == winner) p.id,
+      },
+      draw: format.split && winner == null,
+      points: {for (final p in players) p.id: p.side.game.points},
+      stats: {for (final p in players) p.id: statsOf(p.side.game, p.id)},
+      lines: {for (final p in players) p.id: lineFor(p.side)},
+    );
   }
 
   /// Everything the view needs (S8). The seed travels whenever the sides came

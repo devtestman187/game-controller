@@ -12,6 +12,7 @@ export 'src/match.dart';
 export 'src/piece_colors.dart';
 export 'src/piece_moments.dart';
 export 'src/piece_size.dart';
+export 'src/points.dart';
 export 'src/puzzle.dart';
 export 'src/puzzle_module.dart';
 export 'src/puzzle_rules.dart';

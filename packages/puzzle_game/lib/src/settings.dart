@@ -1,3 +1,5 @@
+import 'dart:math';
+
 /// The puzzle's tuning values (PRD v2 "Playtest settings"), changed on the
 /// host's playtest settings screen and saved there. The game reads them
 /// every frame, so a change counts straight away.
@@ -14,6 +16,8 @@ final class PuzzleSettings {
     this.dropReadyHighlight = true,
     this.timeLimitS = 120,
     this.warningS = 15,
+    this.pointsScale = 1,
+    this.night = false,
   });
 
   /// ± degrees.
@@ -38,6 +42,15 @@ final class PuzzleSettings {
   final bool dropReadyHighlight;
   final int timeLimitS;
   final int warningS;
+
+  /// Every award is multiplied by this (party-night N3): 2 for a night's last
+  /// round, 1 otherwise.
+  final int pointsScale;
+
+  /// A party night's round (party-night N4): the points are counted anyway,
+  /// but only a night round says so in its frames, and only then are the
+  /// pop-ups and the points drawn.
+  final bool night;
 
   static const defaults = PuzzleSettings();
 
@@ -67,6 +80,8 @@ final class PuzzleSettings {
     'dropReadyHighlight': dropReadyHighlight,
     'timeLimitS': timeLimitS,
     'warningS': warningS,
+    'pointsScale': pointsScale,
+    'night': night,
   };
 
   /// Unknown or broken values fall back to the defaults, clamped to range.
@@ -90,8 +105,13 @@ final class PuzzleSettings {
       dropReadyHighlight: m['dropReadyHighlight'] is bool ? m['dropReadyHighlight'] as bool : true,
       timeLimitS: d('timeLimitS', defaults.timeLimitS.toDouble()).round(),
       warningS: d('warningS', defaults.warningS.toDouble()).round(),
+      pointsScale: _scale(m['pointsScale']),
+      night: m['night'] is bool ? m['night'] as bool : defaults.night,
     );
   }
+
+  /// A round's points never go down: a scale below 1 is 1.
+  static int _scale(Object? value) => value is num && value.isFinite ? max(1, value.toInt()) : defaults.pointsScale;
 
   /// A copy with one setting changed (by its JSON name).
   PuzzleSettings withValue(String key, Object value) => fromJson({...toJson(), key: value});

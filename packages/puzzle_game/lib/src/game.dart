@@ -3,6 +3,7 @@ import 'dart:ui';
 
 import 'package:connection/connection.dart';
 
+import 'points.dart';
 import 'puzzle.dart';
 import 'puzzle_values.dart';
 import 'settings.dart';
@@ -13,6 +14,7 @@ import 'tray.dart';
 part 'puzzle_carry.dart';
 part 'puzzle_drop.dart';
 part 'puzzle_player.dart';
+part 'puzzle_points.dart';
 part 'puzzle_tick.dart';
 
 /// The puzzle's rules for one side (PRD v2 "Puzzle game design"): moving,
@@ -29,11 +31,16 @@ class PuzzleGame {
     required this._random,
     this.field = PuzzleField.single,
     this.angles,
+    this.side = PuzzleSide.left,
   }) : timeLeftS = settings.timeLimitS.toDouble() {
     _layOutTray();
   }
 
   final Puzzle puzzle;
+
+  /// The side its players play for: the match gives each of its games one
+  /// (M14 a1). The points and the pop-ups are that side's.
+  final PuzzleSide side;
 
   /// The side's world: the one-board layout, or a half of the split screen.
   final PuzzleField field;
@@ -65,6 +72,7 @@ class PuzzleGame {
 
   late final List<PieceRuntime> pieces;
   final _players = <String, PuzzlePlayer>{};
+  final _popups = <_Popup>[];
   final _filled = <int, int>{}; // target → piece
   double timeLeftS;
   double elapsedS = 0;
@@ -79,6 +87,15 @@ class PuzzleGame {
   PuzzlePlayer? player(String id) => _players[id];
 
   int get placed => pieces.where((p) => p.state == PieceState.locked).length;
+
+  /// What this side's play has earned this round (M14 a1), scaled for the
+  /// night. It never goes down.
+  int points = 0;
+
+  /// The pop-ups still alive, oldest first, in the order they were earned.
+  List<PuzzlePopup> get popups => [
+    for (final p in _popups) PuzzlePopup(side: p.side, place: p.place, amount: p.amount, ageMs: p.ageMs, icon: p.icon),
+  ];
 
   /// A target's centre in field units.
   Offset targetAt(int i) => field.origin + puzzle.pieces[i].target;
@@ -209,8 +226,12 @@ class PuzzleGame {
       join(id, numbers[id] ?? _players.length + 1);
     }
     final events = <PuzzleEvent>[];
-    if (phase != PuzzlePhase.playing) return events;
+    // The pop-ups age while the game is drawn, even once the round is over, so
+    // the last +5 goes and the picture is left as it was. A round that stands
+    // still (no steps) ages nothing.
     dt = dt.clamp(0.0, 0.1);
+    _agePopups(dt);
+    if (phase != PuzzlePhase.playing) return events;
     elapsedS += dt;
 
     _noteTime(dt, events);
@@ -228,6 +249,8 @@ class PuzzleGame {
     if (placed == pieces.length) {
       phase = PuzzlePhase.finished;
       finishTimeS = elapsedS;
+      // The picture is done: the finish's points, over its middle.
+      _award(PuzzlePoints.finish, field.board.center, PuzzleIcon.flag);
       events.add(PuzzleEvent(PuzzleEventKind.finished, data: {'timeS': elapsedS}));
     } else if (timeLeftS <= 0) {
       phase = PuzzlePhase.timeUp;
@@ -275,5 +298,8 @@ class PuzzleGame {
     readyTargets: {for (final p in _players.values) ?p.readyTarget},
     hintTargets: {for (final p in _players.values) ?p.hintTarget},
     finishTimeMs: finishTimeS == null ? null : (finishTimeS! * 1000).round(),
+    points: points,
+    night: settings.night,
+    popups: popups,
   );
 }
