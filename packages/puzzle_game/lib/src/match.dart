@@ -3,6 +3,8 @@ import 'dart:math';
 import 'package:connection/connection.dart';
 import 'package:game_kit/game_kit.dart';
 
+import 'cat_chaos.dart';
+import 'cat_view.dart';
 import 'game.dart';
 import 'puzzle.dart';
 import 'puzzle_values.dart';
@@ -137,6 +139,10 @@ class PuzzleMatch {
         ),
       ],
     };
+    _cat = CatChaos(games: [for (final s in sides) s.game], oneBoard: !format.split, seed: seed, settings: settings);
+    for (final s in sides) {
+      s.game.cat = _cat;
+    }
   }
 
   final Puzzle puzzle;
@@ -156,15 +162,23 @@ class PuzzleMatch {
   /// One side, or left then right.
   late final List<MatchSide> sides;
 
+  /// The cat both sides' games ask about a shoo (M14 a2).
+  late final CatChaos _cat;
+
   MatchResult? _result;
 
   /// Null until the match is over.
   MatchResult? get result => _result;
 
+  /// The cat while it is out (M14 a2), as the frame carries it; null while it
+  /// is away.
+  CatView? get cat => _cat.view;
+
   set settings(PuzzleSettings s) {
     for (final side in sides) {
       side.game.settings = s;
     }
+    _cat.settings = s;
   }
 
   /// The game a side plays (on one board, the only one).
@@ -194,6 +208,10 @@ class PuzzleMatch {
         events.add((side: s.side, event: e));
       }
     }
+    // The cat is stepped on the round's own clock, after the sides' ticks: it
+    // stands still whenever the round does, and once the round is over
+    // [_decide] sends it away.
+    if (_result == null) events.addAll(_cat.update(dt));
     if (_result == null) _decide();
     return events;
   }
@@ -229,6 +247,8 @@ class PuzzleMatch {
       winner: winner,
       round: _roundResult(winner),
     );
+    // The round is over: the cat goes, and comes no more (PRD v2 G3).
+    _cat.endRound();
   }
 
   /// The round as the night reads it (M14 a1, N1): each player's side's points
@@ -284,5 +304,6 @@ class PuzzleMatch {
   MatchSnapshot snapshot() => MatchSnapshot(
     boards: [for (final s in sides) s.game.snapshot()],
     seed: format.split || target == LayoutTarget.phones ? seed : null,
+    cat: _cat.view,
   );
 }

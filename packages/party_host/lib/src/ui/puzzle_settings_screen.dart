@@ -52,6 +52,8 @@ class PuzzleSettingsScreen extends ConsumerWidget {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(ToySizes.space24, ToySizes.space8, ToySizes.space24, ToySizes.space24),
             children: [
+              _chaosCard(context, s, notifier),
+              const SizedBox(height: ToySizes.space24),
               _settingsCard(s, notifier),
               const SizedBox(height: ToySizes.space24),
               _highlightCard(context, s, notifier),
@@ -79,6 +81,43 @@ class PuzzleSettingsScreen extends ConsumerWidget {
               onLess: () => notifier.set(_step(s, key, -1)),
               onMore: () => notifier.set(_step(s, key, 1)),
             ),
+        ],
+      ),
+    );
+  }
+
+  /// The Chaos setting (PRD v2 G3): three buttons, the chosen one ticked, and
+  /// a line saying what the cat does.
+  Widget _chaosCard(BuildContext context, PuzzleSettings s, PuzzleSettingsNotifier notifier) {
+    final look = ToyLookScope.of(context);
+    return ToyCard(
+      padding: const EdgeInsets.symmetric(horizontal: ToySizes.space24, vertical: ToySizes.space16),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(HostText.chaos, style: look.type.button),
+          const SizedBox(height: ToySizes.space8),
+          Row(
+            children: [
+              for (final (chaos, label) in const [
+                (Chaos.off, HostText.chaosOff),
+                (Chaos.little, HostText.chaosLittle),
+                (Chaos.party, HostText.chaosParty),
+              ])
+                Padding(
+                  padding: const EdgeInsets.only(right: ToySizes.space16),
+                  child: HostButton(
+                    key: Key('chaos-${chaos.name}'),
+                    label: label,
+                    icon: s.chaos == chaos ? Icons.check : null,
+                    onPressed: () => notifier.set(s.withValue('chaos', chaos.name)),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: ToySizes.space8),
+          Text(HostText.chaosLine, style: look.type.body),
         ],
       ),
     );

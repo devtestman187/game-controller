@@ -22,6 +22,7 @@ class MirrorPainter {
     this.moments,
     this.nowMs = 0,
     this.board = 0,
+    this.cat,
   });
 
   final Puzzle puzzle;
@@ -47,6 +48,10 @@ class MirrorPainter {
 
   /// Which board of the match theirs is, for its pieces' moments.
   final int board;
+
+  /// The cat, while it visits their board (M14 a2): the mirror shows it too,
+  /// so a player can see the cat coming on the other side.
+  final CatView? cat;
 
   ToyColors get _colours => look.colors;
 
@@ -85,6 +90,7 @@ class MirrorPainter {
     );
     _targets(canvas, px);
     _placed(canvas, style);
+    if (cat case final c?) paintCat(canvas, c, board: theirs, look: look, style: style);
     _players(canvas, style, px);
     canvas.restore();
     _frame(canvas);

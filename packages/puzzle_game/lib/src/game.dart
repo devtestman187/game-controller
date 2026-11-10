@@ -3,6 +3,7 @@ import 'dart:ui';
 
 import 'package:connection/connection.dart';
 
+import 'cat_view.dart';
 import 'points.dart';
 import 'puzzle.dart';
 import 'puzzle_values.dart';
@@ -12,6 +13,7 @@ import 'start_angles.dart';
 import 'tray.dart';
 
 part 'puzzle_carry.dart';
+part 'puzzle_cat.dart';
 part 'puzzle_drop.dart';
 part 'puzzle_player.dart';
 part 'puzzle_points.dart';
@@ -49,6 +51,10 @@ class PuzzleGame {
   PuzzleSettings settings;
   final Random _random;
 
+  /// The cat, when the side's match has one (M14 a2): a dot pressing A on it
+  /// shoos it instead of picking a piece up.
+  CatVisit? cat;
+
   /// The start angles the split layout sized the tray for; null on one board,
   /// where the game picks its own and retries until they fit.
   final Map<int, double>? angles;
@@ -81,6 +87,11 @@ class PuzzleGame {
 
   /// The layer the next piece put down gets: above every piece there is.
   int _nextLayer = 0;
+
+  /// The outline of a piece the cat knocked loose, glowing until the piece is
+  /// picked up again (PRD v2 G3, Party), and that piece.
+  int? _catGlow;
+  int? _catGlowPiece;
 
   List<PuzzlePlayer> get players => List.unmodifiable(_players.values);
 
@@ -126,7 +137,10 @@ class PuzzleGame {
     }
     final layers = <int, int>{for (final (layer, i) in laidOut.order.indexed) i: layer};
     pieces = [
-      for (var i = 0; i < puzzle.pieces.length; i++) PieceRuntime(i, laidOut.at[i]!, laidOut.starts[i]!, layers[i]!),
+      for (var i = 0; i < puzzle.pieces.length; i++)
+        PieceRuntime(i, laidOut.at[i]!, laidOut.starts[i]!, layers[i]!)
+          ..trayPos = laidOut.at[i]!
+          ..trayAngle = laidOut.starts[i]!,
     ];
     _nextLayer = pieces.length;
   }
@@ -296,7 +310,8 @@ class PuzzleGame {
     ],
     players: [for (final p in _players.values) PlayerView(number: p.number, x: p.pos.dx, y: p.pos.dy, held: p.held)],
     readyTargets: {for (final p in _players.values) ?p.readyTarget},
-    hintTargets: {for (final p in _players.values) ?p.hintTarget},
+    hintTargets: {for (final p in _players.values) ?p.hintTarget, ?_catGlow},
+    side: side,
     finishTimeMs: finishTimeS == null ? null : (finishTimeS! * 1000).round(),
     points: points,
     night: settings.night,

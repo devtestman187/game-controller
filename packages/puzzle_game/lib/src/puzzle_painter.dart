@@ -43,6 +43,7 @@ class PuzzlePainter extends CustomPainter {
     this.field = PuzzleField.single,
     this.hud = true,
     this.pxPerMm,
+    this.cat,
     this.fillsBackground = true,
   });
 
@@ -80,6 +81,10 @@ class PuzzlePainter extends CustomPainter {
 
   /// The clock and the count along the top (the split screen draws its own).
   final bool hud;
+
+  /// The cat, while it visits this board (M14 a2); null when it is away or on
+  /// the other side's board.
+  final CatView? cat;
 
   /// Whether the painter fills its box with the look's background. Off where a
   /// `ToyBackground` is behind the view, so the screen's sky shows round the
@@ -139,6 +144,7 @@ class PuzzlePainter extends CustomPainter {
       if (p.state == PieceState.held) _piece(canvas, i, styles, filled);
     }
     _paintWorkers(canvas, s, px);
+    if (cat case final c?) paintCat(canvas, c, board: s, look: look, style: styles.rest);
     // The points and their pop-ups are a party night's, and nothing else's
     // (M14 a1, N4): outside a night the board is the picture it was.
     if (s.night) _popups(canvas, px);

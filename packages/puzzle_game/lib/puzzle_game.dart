@@ -6,6 +6,7 @@
 library;
 
 export 'src/camera.dart';
+export 'src/cat_view.dart';
 export 'src/game.dart';
 export 'src/library.dart';
 export 'src/match.dart';

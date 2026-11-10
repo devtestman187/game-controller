@@ -1,4 +1,7 @@
-import 'dart:math';
+/// How much the cat comes (PRD v2 G3, M14 a2): not at all, once a round and
+/// only to bat a loose or tray piece, or twice and once a round a placed piece
+/// of the side ahead goes back to its tray.
+enum Chaos { off, little, party }
 
 /// The puzzle's tuning values (PRD v2 "Playtest settings"), changed on the
 /// host's playtest settings screen and saved there. The game reads them
@@ -18,6 +21,7 @@ final class PuzzleSettings {
     this.warningS = 15,
     this.pointsScale = 1,
     this.night = false,
+    this.chaos = Chaos.off,
   });
 
   /// ± degrees.
@@ -52,6 +56,11 @@ final class PuzzleSettings {
   /// pop-ups and the points drawn.
   final bool night;
 
+  /// The cat (PRD v2 G3). The library's default is [Chaos.off], so a build
+  /// without a night plays as it always did (party-night N12); the host saves
+  /// a night's own default, A little (job a2).
+  final Chaos chaos;
+
   static const defaults = PuzzleSettings();
 
   /// Each setting's range and step, for the settings screen.
@@ -66,6 +75,9 @@ final class PuzzleSettings {
     'hintDelayS': (min: 3.0, max: 60.0, step: 1.0),
     'timeLimitS': (min: 30.0, max: 600.0, step: 15.0),
     'warningS': (min: 0.0, max: 60.0, step: 5.0),
+    // A night's last round is worth double, the others once (N3): the most a
+    // round may be worth is kept in reach of a frame's points.
+    'pointsScale': (min: 1.0, max: 4.0, step: 1.0),
   };
 
   Map<String, Object> toJson() => {
@@ -82,6 +94,7 @@ final class PuzzleSettings {
     'warningS': warningS,
     'pointsScale': pointsScale,
     'night': night,
+    'chaos': chaos.name,
   };
 
   /// Unknown or broken values fall back to the defaults, clamped to range.
@@ -105,13 +118,18 @@ final class PuzzleSettings {
       dropReadyHighlight: m['dropReadyHighlight'] is bool ? m['dropReadyHighlight'] as bool : true,
       timeLimitS: d('timeLimitS', defaults.timeLimitS.toDouble()).round(),
       warningS: d('warningS', defaults.warningS.toDouble()).round(),
-      pointsScale: _scale(m['pointsScale']),
+      // A round's points never go down, and a frame's points stay small: the
+      // scale is clamped to its range like the clock is.
+      pointsScale: d('pointsScale', defaults.pointsScale.toDouble()).round(),
+      // Not a number, so not in [ranges]: a value that isn't a bool counts
+      // like a broken one (job a1's question 3).
       night: m['night'] is bool ? m['night'] as bool : defaults.night,
+      chaos: _chaos(m['chaos']),
     );
   }
 
-  /// A round's points never go down: a scale below 1 is 1.
-  static int _scale(Object? value) => value is num && value.isFinite ? max(1, value.toInt()) : defaults.pointsScale;
+  /// A chaos name this build knows; a name it doesn't counts like a broken one.
+  static Chaos _chaos(Object? value) => Chaos.values.where((c) => c.name == value).firstOrNull ?? defaults.chaos;
 
   /// A copy with one setting changed (by its JSON name).
   PuzzleSettings withValue(String key, Object value) => fromJson({...toJson(), key: value});

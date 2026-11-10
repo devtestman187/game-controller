@@ -51,6 +51,17 @@ final class PuzzleEffects {
         sound('time_up');
       case PuzzleEventKind.finished:
         sound('success');
+      // The cat (M14 a2, PRD v2 G3): its warning's meow at the side's edge,
+      // the bump of the bat, and the dash of a shooed cat running off. The
+      // meow is a name until a sound of that name is added to `assets/audio`.
+      case PuzzleEventKind.catWarning:
+        sound('meow');
+      case PuzzleEventKind.catBat:
+        sound('bump');
+      case PuzzleEventKind.catShooed:
+        _haptic(id!, HapticEvent.success, intensity: 0.6);
+        sound('dash');
+        _record('cat_shooed', playerId: id);
     }
   }
 

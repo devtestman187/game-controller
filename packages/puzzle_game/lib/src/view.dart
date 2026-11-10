@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:toy_look/toy_look.dart';
 
 import 'camera.dart';
+import 'cat_view.dart';
 import 'game.dart';
 import 'piece_moments.dart';
 import 'piece_size.dart';
@@ -17,9 +18,11 @@ import 'split_layout.dart';
 import 'worker_moments.dart';
 
 part 'board_hud.dart';
+part 'cat_paint.dart';
 part 'match_hud.dart';
 part 'match_painter.dart';
 part 'mirror_painter.dart';
+part 'phone_hud.dart';
 part 'points_paint.dart';
 part 'puzzle_painter.dart';
 part 'text_paint.dart';
@@ -203,6 +206,7 @@ class _MatchViewState extends State<MatchView> {
               workers: _workers,
               nowMs: _nowMs,
               timeLimitS: widget.timeLimitS,
+              cat: snapshot.cat,
               fillsBackground: fills,
             ),
     );

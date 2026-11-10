@@ -3,6 +3,7 @@ import 'dart:ui';
 
 import 'package:game_kit/game_kit.dart';
 
+import 'cat_view.dart';
 import 'points.dart';
 import 'puzzle_values.dart';
 
@@ -61,6 +62,7 @@ final class PuzzleSnapshot implements GameSnapshot {
     this.finishTimeMs,
     this.points = 0,
     this.night = false,
+    this.side,
     List<PuzzlePopup> popups = const [],
     List<int>? order,
   }) : order = List.unmodifiable(order ?? [for (var i = 0; i < pieces.length; i++) i]),
@@ -98,6 +100,10 @@ final class PuzzleSnapshot implements GameSnapshot {
   /// points are drawn. Outside a night they are counted but not drawn.
   final bool night;
 
+  /// The side that plays this board (M14 a2): a one-board match may play for
+  /// the right, and then its board says so. Null on a board built by hand.
+  final PuzzleSide? side;
+
   /// The pop-ups alive on this board, oldest first, each with its age in ms so
   /// a phone that joins mid-round draws the same rise and fade.
   final List<PuzzlePopup> popups;
@@ -116,6 +122,7 @@ final class PuzzleSnapshot implements GameSnapshot {
   Map<String, Object?> toJson() => {
     'v': version,
     'pz': puzzleId,
+    'sd': ?side?.index,
     't': timeLeftMs,
     if (warning) 'w': 1,
     'ph': phase.index,
@@ -175,6 +182,7 @@ final class PuzzleSnapshot implements GameSnapshot {
       finishTimeMs: j['ft'] as int?,
       points: j['pts'] as int? ?? 0,
       night: j['nt'] == 1,
+      side: j['sd'] == null ? null : PuzzleSide.values[j['sd'] as int],
       popups: [
         for (final p in (j['pop'] as List? ?? const []).cast<List>())
           PuzzlePopup(
@@ -223,6 +231,7 @@ final class PuzzleSnapshot implements GameSnapshot {
       finishTimeMs: finishTimeMs,
       points: points,
       night: night,
+      side: side,
       popups: popups,
       pieces: [for (final (i, a) in pieces.indexed) i < next.pieces.length ? piece(a, next.pieces[i]) : a],
       players: [for (final (i, a) in players.indexed) i < next.players.length ? player(a, next.players[i]) : a],
@@ -243,7 +252,7 @@ double _lerpAngleDeg(double from, double to, double t) {
 /// A whole match as the view sees it (S8): one board, or the left and right
 /// boards of the split screen.
 final class MatchSnapshot implements GameSnapshot {
-  const MatchSnapshot({required this.boards, this.seed});
+  const MatchSnapshot({required this.boards, this.seed, this.cat});
 
   static const version = 2;
 
@@ -255,12 +264,16 @@ final class MatchSnapshot implements GameSnapshot {
   /// board on the screen, which starts at its own angles.
   final int? seed;
 
+  /// The cat, while it is out (M14 a2, PRD v2 G3); null while it is away.
+  final CatView? cat;
+
   bool get split => boards.length == 2;
 
-  /// Each board's points by the side that plays it (M14 a1): the boards are
-  /// the sides' boards in order, left then right in a race, and a one-board
-  /// match's only board comes first.
-  Map<PuzzleSide, int> get points => {for (final (i, board) in boards.indexed) PuzzleSide.values[i]: board.points};
+  /// Each board's points by the side that plays it (M14 a1): the side its
+  /// board says (`sd`), or the board's place for a board built before a2.
+  Map<PuzzleSide, int> get points => {
+    for (final (i, board) in boards.indexed) (board.side ?? PuzzleSide.values[i]): board.points,
+  };
 
   /// This is a party night's round (N4): one of the boards says so, and the
   /// view draws the points and the pop-ups.
@@ -271,6 +284,7 @@ final class MatchSnapshot implements GameSnapshot {
     'v': version,
     'b': [for (final b in boards) b.toJson()],
     'sd': ?seed,
+    if (cat case final c?) 'cat': c.toJson(),
   };
 
   String encode() => jsonEncode(toJson());
@@ -282,12 +296,15 @@ final class MatchSnapshot implements GameSnapshot {
     return MatchSnapshot(
       boards: [for (final b in (j['b'] as List).cast<Map<String, Object?>>()) PuzzleSnapshot.fromJson(b)],
       seed: j['sd'] as int?,
+      cat: j['cat'] == null ? null : CatView.fromJson((j['cat'] as List).cast<Object?>()),
     );
   }
 
   /// The match at [t] between this snapshot (0) and [next] (1) (m12 §4): each
-  /// board moves towards the board of the same side, and the seed stays this
-  /// snapshot's. A board only in [next] isn't drawn yet.
+  /// board moves towards the board of the same side, the seed stays this
+  /// snapshot's, and the cat moves between the two frames' places. A board
+  /// only in [next] isn't drawn yet, and a cat that comes or goes is drawn as
+  /// the nearer frame has it.
   @override
   MatchSnapshot lerpTo(GameSnapshot next, double t) {
     if (next is! MatchSnapshot) {
@@ -295,9 +312,12 @@ final class MatchSnapshot implements GameSnapshot {
     }
     if (t <= 0) return this;
     if (t >= 1) return next;
+    final a = cat;
+    final b = next.cat;
     return MatchSnapshot(
       boards: [for (final (i, a) in boards.indexed) i < next.boards.length ? a.lerpTo(next.boards[i], t) : a],
       seed: seed,
+      cat: a != null && b != null ? a.lerpTo(b, t) : (t < 0.5 ? a : b),
     );
   }
 }

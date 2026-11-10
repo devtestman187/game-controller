@@ -63,6 +63,12 @@ extension _PuzzleDrop on PuzzleGame {
     }
     final best = _bestInReach(p.pos, reachable);
     if (best == null) return;
+    // The cat's knocked piece is out of its tray again: its outline stops
+    // glowing (M14 a2).
+    if (best.index == _catGlowPiece) {
+      _catGlow = null;
+      _catGlowPiece = null;
+    }
     final joining = best.state == PieceState.held;
     best
       ..state = PieceState.held
@@ -107,7 +113,8 @@ extension _PuzzleDrop on PuzzleGame {
       piece
         ..lockedTarget = target
         ..pos = targetAt(target)
-        ..angle = snapAngle(piece.angle, puzzle.pieces[target].targetAngle, spec.shape.symmetry);
+        ..angle = snapAngle(piece.angle, puzzle.pieces[target].targetAngle, spec.shape.symmetry)
+        ..placedAtS = elapsedS;
       _filled[target] = piece.index;
       p.snaps++;
       _awardSnap(p, piece, target: target, carriers: carriers);

@@ -205,6 +205,11 @@ abstract final class HostText {
 
   // The puzzle settings.
   static const resetToDefaults = 'Reset to defaults';
+  static const chaos = 'The cat';
+  static const chaosOff = 'Off';
+  static const chaosLittle = 'A little';
+  static const chaosParty = 'Party';
+  static const chaosLine = 'It bats a loose piece; on Party it also knocks one placed piece back to the tray';
   static const angleTolerance = 'Angle tolerance';
   static const positionTolerance = 'Position tolerance';
   static const rotationSpeed = 'Rotation speed (X and Y)';

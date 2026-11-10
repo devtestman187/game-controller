@@ -92,15 +92,17 @@ extension _PuzzleTick on PuzzleGame {
     p.hintTarget = p._holdS >= settings.hintDelayS ? _nearestFreeTarget(piece) : null;
   }
 
-  /// A picks up (or takes the other end of a teammate's big piece), or drops.
-  /// A teammate whose shared piece was just dropped doesn't pick up something
-  /// else with the same press.
+  /// A picks up (or takes the other end of a teammate's big piece), or drops —
+  /// or, with nothing in hand, shoos the cat standing on a piece (PRD v2 G3):
+  /// A on the cat shoos rather than picks up. A teammate whose shared piece
+  /// was just dropped doesn't pick up something else with the same press.
   void _tapAll(List<PuzzlePlayer> presses, List<PuzzleEvent> events) {
     final handled = <String>{};
     for (final p in presses) {
       if (!handled.add(p.id)) continue;
       final held = p.held;
       if (held == null) {
+        if (_shoo(p, events)) continue;
         _pickUp(p, events);
       } else {
         handled.addAll(pieces[held].carriers);

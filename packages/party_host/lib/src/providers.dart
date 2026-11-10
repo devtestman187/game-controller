@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:ui' show Rect, Size;
 
 import 'package:connection/connection.dart';
@@ -25,6 +24,10 @@ import 'sound.dart';
 import 'sound_settings.dart';
 import 'stats_service.dart';
 import 'stats_state.dart';
+
+/// The puzzle's playtest settings (PRD v2 T16) moved to a file of its own as
+/// M14 a2 grew them; they are exported from here, where their readers look.
+export 'puzzle_settings_provider.dart';
 
 /// The host app's own identity (S-a). Overridden in each app's `main()`: the
 /// TV app builds it from `app_info.dart` and the platform, the phone app
@@ -366,29 +369,3 @@ final localPlayerSourceProvider = Provider<LocalPlayerSourceFactory>(
 
 /// Every puzzle, from the puzzle package's data files.
 final puzzleLibraryProvider = FutureProvider<PuzzleLibrary>((ref) => PuzzleLibrary.load());
-
-/// The puzzle's playtest settings (PRD v2 T16), saved on the host.
-final puzzleSettingsProvider = NotifierProvider<PuzzleSettingsNotifier, PuzzleSettings>(PuzzleSettingsNotifier.new);
-
-/// Saves and resets the puzzle's playtest settings.
-class PuzzleSettingsNotifier extends Notifier<PuzzleSettings> {
-  static const _key = 'puzzleSettings';
-
-  @override
-  PuzzleSettings build() {
-    final raw = ref.watch(prefsProvider).getString(_key);
-    if (raw == null) return PuzzleSettings.defaults;
-    try {
-      return PuzzleSettings.fromJson(jsonDecode(raw));
-    } catch (_) {
-      return PuzzleSettings.defaults;
-    }
-  }
-
-  void set(PuzzleSettings settings) {
-    state = settings;
-    unawaited(ref.read(prefsProvider).setString(_key, jsonEncode(settings.toJson())));
-  }
-
-  void reset() => set(PuzzleSettings.defaults);
-}

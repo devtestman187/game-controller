@@ -26,7 +26,7 @@ enum PieceState {
 }
 
 /// What happened, for haptics, sounds and analytics.
-enum PuzzleEventKind { pickup, snap, wrong, dropReady, tick, timeUp, finished, help }
+enum PuzzleEventKind { pickup, snap, wrong, dropReady, tick, timeUp, finished, help, catWarning, catBat, catShooed }
 
 final class PuzzleEvent {
   const PuzzleEvent(this.kind, {this.playerId, this.data = const {}});
@@ -64,6 +64,15 @@ class PieceRuntime {
   /// A big piece carried alone calls the free teammate: its edge flashes
   /// toward them.
   bool calling = false;
+
+  /// Where the tray laid it out and at what angle: the cat knocks a placed
+  /// piece back to this spot (M14 a2).
+  Offset trayPos = Offset.zero;
+  double trayAngle = 0;
+
+  /// When it was snapped into its outline, in the round's seconds: the cat
+  /// leaves a piece placed a moment ago alone (M14 a2).
+  double placedAtS = 0;
 
   /// It was dropped wrong once: its snap is a try again, worth
   /// [PuzzlePoints.wrongSnap] instead of [PuzzlePoints.snap] (M14 a1).

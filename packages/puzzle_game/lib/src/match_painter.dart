@@ -123,6 +123,7 @@ class MatchPainter extends CustomPainter {
         board: i,
         field: field,
         hud: false,
+        cat: s.cat?.side == PuzzleSide.values[i] ? s.cat : null,
         fillsBackground: fillsBackground,
       ).paint(canvas, box.size);
       canvas.restore();
@@ -162,6 +163,8 @@ class MatchPainter extends CustomPainter {
         board: s.split ? side.index : 0,
         field: layout.left,
         hud: false,
+        // One board plays for one side: the cat on it is that side's.
+        cat: s.cat != null && (!s.split || s.cat!.side == side) ? s.cat : null,
         // The worker's smallest body is the phone's own measure (design 5a).
         pxPerMm: pxPerMm,
         fillsBackground: fillsBackground,
@@ -251,6 +254,7 @@ class MatchPainter extends CustomPainter {
     board: s.split ? _otherSide(camera.side!).index : 0,
     rect: mirror.rect,
     scale: mirror.scale,
+    cat: s.cat?.side == _otherSide(camera.side!) ? s.cat : null,
   ).paint(canvas);
 
   /// The clock and the score in [placement]'s form: one line, or the clock
@@ -348,53 +352,4 @@ class MatchPainter extends CustomPainter {
       old.camera != camera ||
       old.pxPerMm != pxPerMm ||
       !listEquals(old.padRects, padRects);
-}
-
-/// What a phone's clock area shows (m12-phone-layout §0.7c): the clock, one
-/// score line, and the short lines that score breaks into for [HudForm.short]
-/// (solo "0/4"; a race "You 2/4" and "Right 3/6"). With [side], the score
-/// speaks to that side's player and names the other side's count ("You 2/4 ·
-/// Right 3/6"), the camera's side first; a one-board match shows its count
-/// alone ("0 of 4 placed"); and a null [side] is the whole match, whose one
-/// HUD names both sides ("Left 2/4 · Right 3/6").
-///
-/// With [mirrored] the other side is the picture above the clock, so it is
-/// named "Them" ("You 2/4 · Them 3/6"), in the orange the mirror's frame and
-/// dot are drawn (m12-opponent-mirror rules 4 and 5).
-({String clock, String score, List<String> short}) phoneHud(
-  MatchSnapshot s,
-  PuzzleSide? side, {
-  bool mirrored = false,
-}) {
-  final left = s.boards.first;
-  final board = side == null ? left : _boardOf(s, side);
-  final right = s.split ? s.boards[1] : null;
-  String count(PuzzleSnapshot b) => '${b.placed}/${b.pieces.length}';
-  final List<String> short;
-  if (right == null) {
-    short = [count(left)];
-  } else if (side == null) {
-    short = ['${_sideName(PuzzleSide.left)} ${count(left)}', '${_sideName(PuzzleSide.right)} ${count(right)}'];
-  } else {
-    final other = _otherSide(side);
-    final name = mirrored ? 'Them' : _sideName(other);
-    short = ['You ${count(_boardOf(s, side))}', '$name ${count(_boardOf(s, other))}'];
-  }
-  final score = right == null ? '${left.placed} of ${left.pieces.length} placed' : short.join(' · ');
-  return (clock: _clock(board.timeLeftMs), score: score, short: short);
-}
-
-/// The board a [side] plays: left then right in a race, the one board
-/// otherwise.
-PuzzleSnapshot _boardOf(MatchSnapshot s, PuzzleSide side) =>
-    s.boards.length == 2 ? s.boards[side.index] : s.boards.single;
-
-PuzzleSide _otherSide(PuzzleSide side) => side == PuzzleSide.left ? PuzzleSide.right : PuzzleSide.left;
-
-String _sideName(PuzzleSide side) => side == PuzzleSide.left ? 'Left' : 'Right';
-
-/// The clock's text: the time left as M:SS, rounded up.
-String _clock(int timeLeftMs) {
-  final secondsLeft = (timeLeftMs / 1000).ceil();
-  return '${secondsLeft ~/ 60}:${(secondsLeft % 60).toString().padLeft(2, '0')}';
 }

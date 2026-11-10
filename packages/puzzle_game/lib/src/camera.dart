@@ -6,6 +6,8 @@ import 'piece_size.dart';
 import 'puzzle.dart';
 import 'split_layout.dart';
 
+part 'camera_fit.dart';
+
 /// What a phone draws of the other side (m12-opponent-mirror rules 1–8): its
 /// rect in the box's px, the px per board unit, and the clock area with it.
 typedef MirrorPlacement = ({Rect rect, double scale, ({Rect rect, HudForm form}) hud});
@@ -279,22 +281,6 @@ final class PuzzleCamera {
     return (rect: Rect.fromLTWH(left, top, board.width * gap, board.height * gap), scale: gap, hud: hud);
   }
 
-  /// The largest scale, up to [maxScale], at which [board]'s shape with its top
-  /// left at [at] fits [box] and meets none of [obstacles] — each with
-  /// [mirrorGapPx] of air round it — or null when that is under [floor], the
-  /// scale below which the mirror's smallest piece stops reading.
-  static double? _fitting(Size box, Size board, Offset at, double maxScale, double floor, List<Rect> obstacles) {
-    var scale = min(maxScale, min((box.width - at.dx) / board.width, (box.height - at.dy) / board.height));
-    for (final obstacle in obstacles) {
-      final r = obstacle.inflate(mirrorGapPx);
-      // A rect wholly up or left of the place can't be met however big the
-      // mirror gets.
-      if (r.right <= at.dx || r.bottom <= at.dy) continue;
-      scale = min(scale, max((r.left - at.dx) / board.width, (r.top - at.dy) / board.height));
-    }
-    return scale + _floorSlack >= floor ? scale : null;
-  }
-
   /// Where the clock area goes in [box] and which form it takes
   /// (m12-phone-layout §0.7c, device test 3): beside the world, at
   /// [hudTopFraction] of the box's shorter side, in the first of [HudForm]'s
@@ -353,35 +339,6 @@ final class PuzzleCamera {
     final width = min(unit * size.width, board.width - 2 * hudCornerMarginPx);
     final at = board.topLeft + const Offset(hudCornerMarginPx, hudCornerMarginPx);
     return (rect: at & Size(width, unit * size.height), form: HudForm.corner);
-  }
-
-  /// The clock area under the world in [box] at [under], in the first of
-  /// [HudForm]'s forms that fits its width, or null where none does (device
-  /// test 3). It starts right of a pad whose band it meets, and keeps
-  /// [mirrorGapPx] of air from every one of [padRects].
-  static ({Rect rect, HudForm form})? _hudUnder(
-    Size box,
-    ({String score, List<String> short}) text,
-    ({double left, double top, double room}) under,
-    List<Rect> padRects,
-  ) {
-    final unit = hudUnit(box);
-    for (final form in const [HudForm.oneLine, HudForm.twoLines, HudForm.short]) {
-      final size = _hudSize(form, text);
-      final width = unit * size.width;
-      var left = under.left;
-      for (final pad in padRects) {
-        final air = pad.inflate(mirrorGapPx);
-        final inBand = air.top < under.top + unit * size.height && air.bottom > under.top;
-        if (inBand && air.right > left && air.left < left + width) left = air.right;
-      }
-      final rect = Rect.fromLTWH(left, under.top, width, unit * size.height);
-      final inside = rect.left >= 0 && rect.top >= 0 && rect.right <= box.width && rect.bottom <= box.height;
-      final clear = padRects.every((pad) => !pad.inflate(mirrorGapPx).overlaps(rect));
-      if (!inside || !clear || rect.right > under.left + under.room + _floorSlack) continue;
-      return (rect: rect, form: form);
-    }
-    return null;
   }
 
   @override
