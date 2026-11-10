@@ -6,11 +6,16 @@ Branch `m14`, worktree `E:\AI\game-controller-m14`, cut from `m13` at 77ccf09 on
 
 The design is written: **docs/design/party-night.md** (decisions N1–N15, the jobs in four waves in its section 13, the owner's answers and open questions Q4–Q5 in section 12; Robo the CPU marble with three levels is job b3).
 
-Running: **wave 1, the groundwork jobs** g1 (puzzle: split game.dart and puzzle_rules.dart, the three rules into `check`, `Level.hard`, the parser's casts), g2 (split arena.dart) and g3 (host: the empty-rounds record, the round music across a hidden app, the Arena's SoundKeys and CREDITS rows, `RoundResult` in game_kit). Briefs in this folder; logs in the session scratchpad `flash-m14-g1.log`, `-g2.log`, `-g3.log`. A job is done when its `docs/briefs/m14/g*-report.md` exists here or in its job folder; if one is missing and no flash process runs, start it again with `tools/flash.sh --brief docs/briefs/m14/<brief>.md` (Bash `run_in_background`).
+Done: **g2** (arena.dart split, 6f896af) and **g3** (empty rounds, the round music across a hidden app with Claude's fix for the phone host's engine restart, the Arena's keys, `RoundResult`; 43d02cb).
+
+Running: **g1** (puzzle: split game.dart and puzzle_rules.dart, the three rules into `check`, `Level.hard`, the parser's casts) and **m1** (mock-ups: `docs/design/party-mockups.html` on shared parts in `mockup-parts.js`). Logs in the session scratchpad `flash-m14-g1.log`, `flash-m14-m1.log`. A job is done when its `docs/briefs/m14/<job>-report.md` exists here or in its job folder; if one is missing and no flash process runs, start it again with `tools/flash.sh --brief docs/briefs/m14/<brief>.md` (Bash `run_in_background`).
+
+Device-test list (so far): hide a phone host mid-round and show it again: the round's music carries on from where it was (g3; SoLoud can't be unit-tested).
 
 Then, in order:
-1. Review g1–g3 (renders, tests, `tools/review.sh --base 79ce8fb`), append "Claude's review", commit each.
-2. Wave 2: a1 points (G1), k1 the level kit (G10, design section 7b: the puzzle kit grown to take the Arena's maps; after g1 and g2), m1 mock-ups of the ten new screens (design section 10). The Arena lane runs g2 → k1 → b1 → k2 (the four maps) → b2 → b3 (Robo). Send the mock-ups to the owner; the screen jobs (c1, b2, c2, c3) wait for the OK.
+1. Review g1 (tests, `tools/review.sh --base 79ce8fb`), append "Claude's review", commit.
+2. Review m1; save each frame as a PNG (`party-mockups.html?frame=N&theme=sunny|night`) under docs/design/look-mockups/ with the prefix `m14-`, check `look-mockups.html` still draws M13's frames the same, send the PNGs to the owner. The screen jobs (c1, b2, c2, c3) wait for the OK.
+3. After g1: a1 points (G1) and k1 the level kit (G10, design section 7b; its brief must leave `arena_field.dart`, now 391 lines, under 300). The Arena lane runs k1 → b1 → k2 (the four maps) → b2 → b3 (Robo).
 3. Waves 3 and 4 as the design's section 13 says, then the full review R5 and device tests. A build only on the owner's word.
 
 Housekeeping: one old job worktree, `E:\AI\game-controller-m13-jobs\flash-20261109-083539-456`, could not be removed (a file in use); try `git worktree remove --force` again later, from the m13 worktree.
