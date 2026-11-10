@@ -1,0 +1,61 @@
+{
+  "$schema": "map.schema.json",
+  "format": 1,
+  "id": "block-castle",
+  "name": "Block Castle",
+  "line": "A castle of toy blocks: towers, a lawn courtyard and a keep with gates.",
+  "notes": "M14 k2b (party-night §7b): the mock-up's crenellated outer walls, four corner towers and central keep, with a gate in every side so a marble can always roll in; the keep's four gates are slide movers that open in turn, and three cannonballs roll across the courtyard. Coin zones sit in the courtyard corners and between the keep's gates. No race section.",
+  "theme": "castle",
+  "walls": [
+    {"from": [0.15, 0.2], "to": [0.425, 0.2]},
+    {"from": [0.575, 0.2], "to": [0.85, 0.2]},
+    {"from": [0.15, 0.8], "to": [0.425, 0.8]},
+    {"from": [0.575, 0.8], "to": [0.85, 0.8]},
+    {"from": [0.15, 0.2], "to": [0.15, 0.4111]},
+    {"from": [0.15, 0.5889], "to": [0.15, 0.8]},
+    {"from": [0.85, 0.2], "to": [0.85, 0.4111]},
+    {"from": [0.85, 0.5889], "to": [0.85, 0.8]},
+    {"from": [0.35, 0.3333], "to": [0.425, 0.3333]},
+    {"from": [0.575, 0.3333], "to": [0.65, 0.3333]},
+    {"from": [0.35, 0.6667], "to": [0.425, 0.6667]},
+    {"from": [0.575, 0.6667], "to": [0.65, 0.6667]},
+    {"from": [0.35, 0.3333], "to": [0.35, 0.4111]},
+    {"from": [0.35, 0.5889], "to": [0.35, 0.6667]},
+    {"from": [0.65, 0.3333], "to": [0.65, 0.4111]},
+    {"from": [0.65, 0.5889], "to": [0.65, 0.6667]}
+  ],
+  "hazards": [
+    {"slide": {"from": [0.2813, 0.2444], "to": [0.2813, 0.7778]}, "periodS": 3.5},
+    {"slide": {"from": [0.4, 0.2778], "to": [0.6, 0.2778]}, "periodS": 3.0},
+    {"slide": {"from": [0.43, 0.8], "to": [0.57, 0.8]}, "periodS": 3.4, "phase": 0.5}
+  ],
+  "posts": [
+    {"at": [0.15, 0.18], "radius": 0.04},
+    {"at": [0.85, 0.18], "radius": 0.04},
+    {"at": [0.15, 0.82], "radius": 0.04},
+    {"at": [0.85, 0.82], "radius": 0.04}
+  ],
+  "movers": [
+    {"slide": {"from": [0.5, 0.3333], "to": [0.575, 0.3333], "length": 0.2667, "deg": 0}, "periodS": 3.0},
+    {"slide": {"from": [0.5, 0.6667], "to": [0.425, 0.6667], "length": 0.2667, "deg": 0}, "periodS": 3.0, "phase": 0.5},
+    {"slide": {"from": [0.35, 0.5], "to": [0.35, 0.5889], "length": 0.1778, "deg": 90}, "periodS": 4.0},
+    {"slide": {"from": [0.65, 0.5], "to": [0.65, 0.4111], "length": 0.1778, "deg": 90}, "periodS": 4.0, "phase": 0.5}
+  ],
+  "decor": [
+    {"kind": "flag", "at": [0.15, 0.19]},
+    {"kind": "flag", "at": [0.85, 0.19]},
+    {"kind": "flag", "at": [0.15, 0.79]},
+    {"kind": "flag", "at": [0.85, 0.79]}
+  ],
+  "bumper": {
+    "starts": [[0.075, 0.1], [0.075, 0.9], [0.925, 0.1], [0.925, 0.9]],
+    "coins": [
+      [0.17, 0.28, 0.245, 0.39],
+      [0.755, 0.28, 0.83, 0.39],
+      [0.17, 0.61, 0.245, 0.72],
+      [0.755, 0.61, 0.83, 0.72],
+      [0.3875, 0.4, 0.4625, 0.6],
+      [0.5375, 0.4, 0.6125, 0.6]
+    ]
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "$schema": "map.schema.json",
+  "format": 1,
+  "id": "toy-factory",
+  "name": "Toy Factory",
+  "line": "A workshop floor: a belt loop, a stamping press and sliding crates.",
+  "notes": "M14 k2b (party-night §7b): the mock-up's four belts join into one loop around the floor, the press slides between its two columns, the sliding crates are hazards with red warning stripes, and the gears and columns are painted round the play. Coin zones sit beside the belts, never on them. No race section.",
+  "theme": "factory",
+  "walls": [
+    {"from": [0.66, 0.34], "to": [0.66, 0.66]},
+    {"from": [0.84, 0.34], "to": [0.84, 0.66]}
+  ],
+  "hazards": [
+    {"slide": {"from": [0.3, 0.5], "to": [0.46, 0.5]}, "periodS": 3.2},
+    {"slide": {"from": [0.66, 0.16], "to": [0.8, 0.16]}, "periodS": 3.8}
+  ],
+  "posts": [
+    {"at": [0.06, 0.1], "radius": 0.04},
+    {"at": [0.94, 0.1], "radius": 0.04},
+    {"at": [0.06, 0.9], "radius": 0.04},
+    {"at": [0.94, 0.9], "radius": 0.04}
+  ],
+  "belts": [
+    {"from": [0.16, 0.28], "to": [0.58, 0.28]},
+    {"from": [0.58, 0.28], "to": [0.58, 0.72]},
+    {"from": [0.58, 0.72], "to": [0.16, 0.72]},
+    {"from": [0.16, 0.72], "to": [0.16, 0.28]}
+  ],
+  "movers": [
+    {"slide": {"from": [0.75, 0.37], "to": [0.75, 0.63], "length": 0.18, "deg": 0}, "periodS": 2.5}
+  ],
+  "decor": [
+    {"kind": "gear", "at": [0.225, 0.256]},
+    {"kind": "gear", "at": [0.844, 0.267]},
+    {"kind": "gear", "at": [0.806, 0.778]}
+  ],
+  "bumper": {
+    "starts": [[0.1, 0.22], [0.1, 0.78], [0.9, 0.22], [0.9, 0.78]],
+    "coins": [
+      [0.16, 0.04, 0.28, 0.14],
+      [0.72, 0.04, 0.84, 0.14],
+      [0.16, 0.86, 0.28, 0.96],
+      [0.72, 0.86, 0.84, 0.96]
+    ]
+  }
+}

@@ -31,6 +31,13 @@ void main() {
       final picture = map.id == 'playroom'
           ? twice
           : await capturePng(tester, sheet(map), window: box, box: box, look: sunny);
+      // Every map draws its sheet the same way twice (M14 k2b): the render is
+      // a pure function of the map and the look.
+      expect(
+        map.id == 'playroom' ? twice : await capturePng(tester, sheet(map), window: box, box: box, look: sunny),
+        picture,
+        reason: 'the same map draws the same picture: ${map.id}',
+      );
       final file = File('../../docs/design/maps/${map.id}.png')..createSync(recursive: true);
       file.writeAsBytesSync(picture);
       debugPrint('wrote ${file.path} (${picture.length} bytes)');

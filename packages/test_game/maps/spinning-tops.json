@@ -1,0 +1,35 @@
+{
+  "$schema": "map.schema.json",
+  "format": 1,
+  "id": "spinning-tops",
+  "name": "Spinning Tops",
+  "line": "A round rug with a ring of spinning tops and a carousel in the middle.",
+  "notes": "M14 k2b (party-night §7b): the mock-up's rug, its dashed ring of eight tops (orbit hazards, set 22.5° apart) and the carousel in the middle, a cross of two spin movers round a post. Coin zones sit in the four quarters between the arms, just beyond their sweep. No race section.",
+  "theme": "tops",
+  "hazards": [
+    {"orbit": {"centre": [0.6486, 0.6094], "radius": 0.05}, "periodS": 3.0},
+    {"orbit": {"centre": [0.5615, 0.7641], "radius": 0.05}, "periodS": 3.0, "phase": 0.125},
+    {"orbit": {"centre": [0.4385, 0.7641], "radius": 0.05}, "periodS": 3.0, "phase": 0.25},
+    {"orbit": {"centre": [0.3514, 0.6094], "radius": 0.05}, "periodS": 3.0, "phase": 0.375},
+    {"orbit": {"centre": [0.3514, 0.3906], "radius": 0.05}, "periodS": 3.0, "phase": 0.5},
+    {"orbit": {"centre": [0.4385, 0.2359], "radius": 0.05}, "periodS": 3.0, "phase": 0.625},
+    {"orbit": {"centre": [0.5615, 0.2359], "radius": 0.05}, "periodS": 3.0, "phase": 0.75},
+    {"orbit": {"centre": [0.6486, 0.3906], "radius": 0.05}, "periodS": 3.0, "phase": 0.875}
+  ],
+  "posts": [
+    {"at": [0.5, 0.5], "radius": 0.055}
+  ],
+  "movers": [
+    {"spin": {"pivot": [0.5, 0.5], "length": 0.3556}, "periodS": 8.0},
+    {"spin": {"pivot": [0.5, 0.5], "length": 0.3556}, "periodS": 8.0, "phase": 0.25}
+  ],
+  "bumper": {
+    "starts": [[0.14, 0.22], [0.14, 0.78], [0.86, 0.22], [0.86, 0.78]],
+    "coins": [
+      [0.28, 0.22, 0.38, 0.32],
+      [0.62, 0.22, 0.72, 0.32],
+      [0.28, 0.68, 0.38, 0.78],
+      [0.62, 0.68, 0.72, 0.78]
+    ]
+  }
+}
