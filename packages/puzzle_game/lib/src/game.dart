@@ -12,40 +12,8 @@ import 'tray.dart';
 
 part 'puzzle_carry.dart';
 part 'puzzle_drop.dart';
-
-/// One player's dot and what it carries.
-class PuzzlePlayer {
-  PuzzlePlayer(this.id, this.number, this.pos);
-
-  final String id;
-  final int number;
-  Offset pos;
-  int? held;
-  bool _aDown = false;
-  double _holdS = 0;
-  int? readyTarget;
-  int? hintTarget;
-  int _lastTurn = 0;
-
-  /// Where the dot holds a piece it carries, from its middle, as it was when the piece was taken up (s14).
-  Offset _grab = Offset.zero;
-
-  /// Until the next help call while carrying a big piece alone.
-  double _helpS = 0;
-
-  // Metrics (PRD v2 "Puzzle results").
-  int pickups = 0;
-  int snaps = 0;
-  int wrongDrops = 0;
-  double rotatingS = 0;
-  int overshoots = 0;
-
-  /// Help calls made while carrying a big piece alone, how many such carries
-  /// were started, and the time spent on them.
-  int helpCalls = 0;
-  int soloBigCarries = 0;
-  double soloBigS = 0;
-}
+part 'puzzle_player.dart';
+part 'puzzle_tick.dart';
 
 /// The puzzle's rules for one side (PRD v2 "Puzzle game design"): moving,
 /// picking up, rotating, dropping, matching with symmetry and identical
@@ -275,94 +243,6 @@ class PuzzleGame {
     timeLeftS = max(0, timeLeftS - dt);
     if (timeLeftS > 0 && timeLeftS < settings.warningS && before.ceil() != timeLeftS.ceil()) {
       events.add(PuzzleEvent(PuzzleEventKind.tick, data: {'secondsLeft': timeLeftS.ceil()}));
-    }
-  }
-
-  /// A presses, on the press only.
-  List<PuzzlePlayer> _presses(Map<String, GamepadState> inputs) {
-    final presses = <PuzzlePlayer>[];
-    for (final p in _players.values) {
-      final a = inputs[p.id]!.pressed(GamepadButton.a);
-      if (a && !p._aDown) presses.add(p);
-      p._aDown = a;
-    }
-    return presses;
-  }
-
-  /// Moving: a dot moves itself, and pushes an ordinary piece it holds along —
-  /// the piece to where the push takes it, the dot to its grab from it, both
-  /// inside the field. A big piece shared by a team moves itself, with them.
-  void _moveAll(Map<String, GamepadState> inputs, double dt, List<PuzzleEvent> events) {
-    for (final p in _players.values) {
-      final held = p.held;
-      if (held != null && _teamCarried(pieces[held])) continue;
-      final push = _move(inputs[p.id]!) * (speed * dt);
-      if (held != null) {
-        _carrySmall(p, pieces[held], push);
-      } else {
-        p.pos = _inField(p.pos + push, dotRadius);
-      }
-    }
-    for (final piece in pieces) {
-      if (piece.state == PieceState.held && _teamCarried(piece)) {
-        _carryBig(piece, inputs, dt, events);
-      } else {
-        piece.calling = false;
-      }
-    }
-  }
-
-  /// Turning: X and Y, or the right stick. Either carrier of a shared piece
-  /// can turn it.
-  void _turnAll(Map<String, GamepadState> inputs, double dt) {
-    for (final piece in pieces) {
-      if (piece.state != PieceState.held) continue;
-      var turn = 0.0;
-      for (final id in piece.carriers) {
-        turn += _turn(_players[id]!, inputs[id]!, dt);
-      }
-      if (piece.carriers.length > 1) {
-        final most = settings.rotationSpeedDegPerS * stickTurnFactor * dt;
-        turn = turn.clamp(-most, most);
-      }
-      if (turn != 0) piece.angle = (piece.angle + turn) % 360;
-    }
-  }
-
-  /// The drop-ready highlight, and the hint glow.
-  void _highlight(PuzzlePlayer p, double dt, List<PuzzleEvent> events) {
-    final held = p.held;
-    if (held == null) {
-      p
-        ..readyTarget = null
-        ..hintTarget = null
-        .._holdS = 0;
-      return;
-    }
-    final piece = pieces[held];
-    p._holdS += dt;
-    final ready = _matchingTarget(piece);
-    if (ready != null && ready != p.readyTarget && settings.dropReadyHighlight) {
-      events.add(PuzzleEvent(PuzzleEventKind.dropReady, playerId: p.id));
-    }
-    p.readyTarget = settings.dropReadyHighlight ? ready : null;
-    p.hintTarget = p._holdS >= settings.hintDelayS ? _nearestFreeTarget(piece) : null;
-  }
-
-  /// A picks up (or takes the other end of a teammate's big piece), or drops.
-  /// A teammate whose shared piece was just dropped doesn't pick up something
-  /// else with the same press.
-  void _tapAll(List<PuzzlePlayer> presses, List<PuzzleEvent> events) {
-    final handled = <String>{};
-    for (final p in presses) {
-      if (!handled.add(p.id)) continue;
-      final held = p.held;
-      if (held == null) {
-        _pickUp(p, events);
-      } else {
-        handled.addAll(pieces[held].carriers);
-        _drop(p, pieces[held], events);
-      }
     }
   }
 

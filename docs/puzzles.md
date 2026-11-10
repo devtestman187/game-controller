@@ -38,7 +38,7 @@ A piece's `at` is where its outline's **origin** goes on the board. The origin i
 | `format` | The file format's version, `1` today. A missing `format` means 1; a file with a higher number than the app knows is refused with a message saying to update the app, rather than loaded wrong. |
 | `id` | The file's name without `.json`, and its line in `index.json`. |
 | `name` | What the players read in the puzzle list. |
-| `level` | `"easy"` or `"medium"`: which list it is in and which rules below it keeps. |
+| `level` | `"easy"` or `"medium"`: which list it is in and which rules below it keeps. Hard is not used yet, so a file may not say `"hard"`: the schema, the parser and `check` refuse it, as `tools/puzzle.sh new` does. |
 | `notes` | Optional, free text, ignored by the app. |
 | `pieces` | The pieces, in drawing order (below). |
 
@@ -63,7 +63,7 @@ Pieces are drawn in the order they are written: a later piece lies over an earli
 
 ### Turning and symmetry
 
-A piece needs turning when `rotated` is set. Every puzzle starts at least 2 pieces turned, and an Easy one no more than 2. A circle doesn't count, since it can't be turned. A square comes back onto itself every quarter turn, a rectangle every half turn, a regular polygon every `360° / corners`, a circle at any angle (so a circle can't be turned and must not be `rotated`). The app snaps a piece onto its outline by the nearest look-alike angle, so a circle with `rotated` would be unfair, and `check` says so.
+A piece needs turning when `rotated` is set. Every puzzle in the library starts at least 2 pieces turned, and an Easy one no more than 2. A circle doesn't count, since it can't be turned. A square comes back onto itself every quarter turn, a rectangle every half turn, a regular polygon every `360° / corners`, a circle at any angle (so a circle can't be turned and must not be `rotated`). The app snaps a piece onto its outline by the nearest look-alike angle, so a circle with `rotated` would be unfair, and `check` says so.
 
 ## Rules by level
 
@@ -74,7 +74,7 @@ A piece needs turning when `rotated` is set. Every puzzle starts at least 2 piec
 | Big pieces (`big`) | any | 1 or 2 |
 | Pieces of one shape and size | none | at most one pair |
 
-Every puzzle, whatever its level, also keeps these: each piece's outline lies on the board; the pieces fit the tray on one board and on the split screen; every piece stands out from the board in Sunny and Night; two pieces of one puzzle are told apart unless they share a shape; the finished picture spans at least 60% of the board's width or height, so it reads as one picture rather than a few pieces in a corner. `tools/puzzle.sh check` prints every rule the file breaks, one line each, with a message saying what to change. The rules themselves live in [`puzzle_rules.dart`](../packages/puzzle_game/lib/src/puzzle_rules.dart).
+Every puzzle, whatever its level, also keeps these: each piece's outline lies on the board; the pieces fit the tray on one board and on the split screen, at every one of the tray's starts (seeds 0 to 199), where no piece may leave the tray or overlap another; every piece stands out from the board in Sunny and Night; two pieces of one puzzle are told apart unless they share a shape; the finished picture spans at least 60% of the board's width or height, so it reads as one picture rather than a few pieces in a corner. `tools/puzzle.sh check` prints every rule the file breaks, one line each, with a message saying what to change. The rules themselves live in [`puzzle_rules.dart`](../packages/puzzle_game/lib/src/puzzle_rules.dart) and its parts.
 
 ### Fitting the tray
 
@@ -84,6 +84,8 @@ The tray beside the board is **54 wide and 72 high**. At the start the pieces ar
 - A turned piece takes the room of its widest angle, so a long bar that starts turned needs more room than one that doesn't.
 - Pieces may share a centre (the sun's face sits on its rays); the later one is drawn on top.
 - The picture must still span 60% of the board's width or height. If the tray and the span pull against each other, make the big piece wider and shorter rather than smaller.
+
+`check` lays the tray out at every start from seed 0 to 199, not just one: a turned piece's random angles decide its box, so a piece that fits at one start can crowd the tray at another. The message names the piece and the start that first shows it.
 
 ## Colour tokens
 
@@ -124,11 +126,12 @@ Before you commit, run the full puzzle and phone tests too:
 tools/check.sh puzzle phone
 ```
 
-Three rules aren't in `check` yet, so only these tests catch them:
+Two rules aren't in `check` yet, so only these tests catch them:
 
-- **At least 2 turned pieces** (`packages/puzzle_game/test/rules_test.dart`).
-- **The tray, at every starting angle:** over 200 random starts, no two pieces overlap in the tray and none leaves it (`rules_test.dart`). `check` only tests that the pieces' total size fits.
+- **At least 2 turned pieces** (`packages/puzzle_game/test/rules_test.dart`, "Every puzzle needs some turning"). `check` caps an Easy puzzle at 2 and never asks for a minimum.
 - **Big enough to see on a phone:** every piece is at least 8.5 mm on the smallest phones, on every seed (`controller_app/test/puzzle_size_test.dart`). A thin bar is the usual failure; 14 × 4 passes where 12 × 3 doesn't.
+
+The tray, at every starting angle, is in `check`: over the starts 0 to 199, no two pieces' boxes overlap and none leaves the tray (`puzzle_rules.dart`).
 
 The puzzle tests also redraw `docs/design/m13-puzzles.png` and `m13-puzzles-night.png`, the sheets of every puzzle; commit them with the puzzle.
 

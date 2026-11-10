@@ -48,22 +48,6 @@ extension _PuzzleCarry on PuzzleGame {
     p.pos = _inField(piece.pos + p._grab, PuzzleGame.dotRadius);
   }
 
-  /// Every held piece, after a move or a turn: its turned outline back inside
-  /// the field, and every carrier's dot at its own grab from it (design 5a rule
-  /// 3).
-  void _keepHeldInField() {
-    for (final piece in pieces) {
-      if (piece.state != PieceState.held) continue;
-      final at = _insideField(piece, piece.pos);
-      if (at == piece.pos) continue;
-      piece.pos = at;
-      for (final id in piece.carriers) {
-        final p = _players[id]!;
-        p.pos = _inField(at + p._grab, PuzzleGame.dotRadius);
-      }
-    }
-  }
-
   /// Moves a big piece shared by a team. With both carriers on it, it follows
   /// the average of their two pushes at normal speed; with one, it moves at
   /// the solo big-piece speed and calls the free teammate (a help event at

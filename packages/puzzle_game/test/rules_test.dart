@@ -363,27 +363,12 @@ void main() {
           );
         }
       }
-      // Whatever the random angles, every piece starts inside the tray
-      // (a tall roof once pushed the door off its bottom).
+      // Whatever the random angles, every piece starts inside the tray and
+      // no two overlap (a tall roof once pushed the door off its bottom): the
+      // rule book checks every start up to 199 (m14 g1).
       for (final id in ids) {
-        final puzzle = load(id);
-        for (var seed = 0; seed < 200; seed++) {
-          final g = PuzzleGame(puzzle, random: Random(seed));
-          final boxes = [for (final p in g.pieces) puzzle.pieces[p.index].shape.bounds(p.angle).shift(p.pos)];
-          for (var a = 0; a < boxes.length; a++) {
-            for (var b = a + 1; b < boxes.length; b++) {
-              expect(boxes[a].deflate(0.01).overlaps(boxes[b].deflate(0.01)), isFalse, reason: '$id seed $seed');
-            }
-          }
-          for (final p in g.pieces) {
-            final box = puzzle.pieces[p.index].shape.bounds(p.angle).shift(p.pos);
-            expect(
-              trayRect.inflate(0.01).contains(box.topLeft) && trayRect.inflate(0.01).contains(box.bottomRight),
-              isTrue,
-              reason: '$id seed $seed ${puzzle.pieces[p.index].id} leaves the tray: $box',
-            );
-          }
-        }
+        final issues = checkPuzzle(load(id));
+        expect(issues, isEmpty, reason: '$id: ${issues.join('\n')}');
       }
       // Every puzzle needs some turning: at least 2 pieces start turned
       // (and can be: a circle can't).

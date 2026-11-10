@@ -66,7 +66,11 @@ void main() {
   test('a taken id, an id that is not a puzzle id or a level new does not add are refused', () {
     expect(() => createPuzzle(folder, id: 'house', name: 'House', level: 'easy'), throwsArgumentError);
     expect(() => createPuzzle(folder, id: 'Cat', name: 'Cat', level: 'easy'), throwsFormatException);
-    expect(() => createPuzzle(folder, id: 'cat', name: 'Cat', level: 'hard'), throwsFormatException);
+    expect(
+      () => createPuzzle(folder, id: 'cat', name: 'Cat', level: 'hard'),
+      throwsA(isA<FormatException>().having((error) => error.message, 'message', notALevel('hard'))),
+      reason: 'the schema, the parser and the rule book refuse it in these words too',
+    );
     expect(idsOf(folder), indexIds(), reason: 'nothing was written');
   });
 

@@ -27,8 +27,9 @@
       "description": "The name players see, in title case: \"Tree and sun\"."
     },
     "level": {
-      "enum": ["easy", "medium", "hard"],
-      "description": "Easy: 4-5 pieces, at most 2 turned, no two pieces of the same shape and size. Medium: 6-8 pieces, 1 or 2 big, at most one pair of the same shape. Hard is not used yet."
+      "enum": ["easy", "medium"],
+      "errorMessage": "{value} is not a level: use easy or medium",
+      "description": "Easy: 4-5 pieces, at most 2 turned, no two pieces of the same shape and size. Medium: 6-8 pieces, 1 or 2 big, at most one pair of the same shape. Hard is not used yet: \"hard\" is not a level: use easy or medium."
     },
     "notes": {
       "type": "string",

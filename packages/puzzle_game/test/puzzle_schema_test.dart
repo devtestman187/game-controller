@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:puzzle_game/puzzle_game.dart';
 
 import 'support/library_files.dart';
 import 'support/schema.dart';
@@ -51,5 +52,10 @@ void main() {
       expect(issues, isNotEmpty, reason: what);
       expect(issues.join('\n'), contains(message), reason: what);
     }
+  });
+
+  test('a Hard puzzle is refused, in the words the parser and the rule book use', () {
+    final hard = changed(File('puzzles/sun.json').readAsStringSync(), (json) => json['level'] = 'hard');
+    expect(schema().issues(hard), [notALevel('hard')]);
   });
 }

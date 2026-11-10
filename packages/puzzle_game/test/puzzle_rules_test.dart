@@ -108,6 +108,41 @@ void main() {
     expect(messagesOf(crowded, PuzzleRule.fit).join('\n'), contains('too big for the tray on one board'));
   });
 
+  test('no two pieces\' tray boxes overlap at any start', () {
+    // Long pieces that are turned at random: each alone fits the tray, but a
+    // later start's angles put two in the same row's space.
+    final rods = puzzleOf(
+      [
+        piece('a', '{"rect": [6, 40]}', color: '"#D03030"', at: '[20, 30]', extra: ', "rotated": true'),
+        piece('b', '{"rect": [6, 36]}', color: '"#3050D0"', at: '[32, 28]', extra: ', "rotated": true'),
+        piece('c', '{"rect": [40, 6]}', color: '"#30A040"', at: '[38, 60]', extra: ', "rotated": true'),
+        piece('d', '{"circle": 8}', color: '"#E08020"', at: '[52, 30]'),
+        piece('e', '{"rect": [12, 10]}', color: '"#8040C0"', at: '[58, 42]', extra: ', "big": true'),
+        piece('f', '{"rect": [10, 12]}', color: '"#20A0A0"', at: '[14, 50]'),
+      ].join(', '),
+      level: 'medium',
+    );
+    final messages = messagesOf(rods, PuzzleRule.fit);
+    expect(messages, hasLength(7));
+    expect(
+      messages.first,
+      'x/a: at start 12 its tray box overlaps "d"\'s, and two boxes may not overlap at any start from 0 to 199. '
+      'Make one of them smaller, or fewer pieces big.',
+    );
+  });
+
+  test('a Hard puzzle is refused until it has rules, in the parser\'s words', () {
+    final hard = Puzzle(
+      id: 'x',
+      name: 'x',
+      level: Level.hard,
+      pieces: [
+        PieceSpec(id: 'a', shape: PieceShape.rect(4, 4), color: PiecePalette.red.color, target: const Offset(20, 20)),
+      ],
+    );
+    expect(messagesOf(hard, PuzzleRule.level).single, endsWith(notALevel('hard')));
+  });
+
   test('the finished picture spans at least 60% of the board\'s width or height', () {
     final corner = puzzleOf(
       '${rect('a', 8, 8, 12, 12)}, ${rect('b', 8, 8, 22, 12)}, ${rect('c', 8, 8, 12, 22)}, ${rect('d', 8, 8, 22, 22)}',

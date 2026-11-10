@@ -29,7 +29,13 @@ final class JsonSchema {
     }
     if (node['enum'] case final List<Object?> allowed) {
       if (!allowed.any((each) => jsonEncode(each) == jsonEncode(value))) {
-        issues.add('$path: must be one of ${allowed.map(_json).join(', ')}, got ${_json(value)}');
+        // A rule that needs its own words gives them in `errorMessage`, with
+        // {value} standing for the value written (the level's refusal, m14 g1).
+        if (node['errorMessage'] case final String message) {
+          issues.add(message.replaceAll('{value}', _json(value)));
+        } else {
+          issues.add('$path: must be one of ${allowed.map(_json).join(', ')}, got ${_json(value)}');
+        }
       }
     }
     if (node['pattern'] case final String pattern) {
