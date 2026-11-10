@@ -36,3 +36,4 @@ play-service-account*.json
 
 # Logs exported from apps
 *.log
+docs/briefs/m14/run-m14.log

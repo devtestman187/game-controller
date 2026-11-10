@@ -2,23 +2,15 @@
 
 Branch `m14`, worktree `E:\AI\game-controller-m14`, cut from `m13` at 77ccf09 on Nov 9, 2026, after M13's closing review R4 and its fixes. The plan is docs/PRD-v2.md "Milestone 14" (G1–G5, G9, C20, T15, results on joined phones, the Arena waits for its players).
 
-## Resume here (Nov 9, 2026, 22:50: paused on the owner's word)
+## Resume here (Nov 10, 2026: low-usage mode)
 
-The owner, low on usage: "once the current tasks complete, stop work and save your state ... I will tell you when to restart." **Start nothing until the owner says restart.**
+**Working mode: low-usage** (owner, Nov 10: write all remaining briefs at once, flash-worker decides safe things itself, Claude reviews once at the end, then one batch of fixes). Switch back to normal mode on the owner's word.
 
-**The plan**: docs/design/party-night.md (decisions N1–N15; job order in section 13; the owner's answers in section 12). **Mock-ups approved** (Nov 9: "Mockups look good."): docs/design/look-mockups/m14-*.png, drawn by docs/design/party-mockups.html (+ mockup-parts.js, mockup-maps.js).
+Done and pushed before the run: g1–g3, k1a, k1b, a1, m1–m1c, c1, **a2** (51adc35, committed after its checks, **not yet reviewed by Claude**: review it with the rest).
 
-**Done and pushed**: g1 + g1b, g2, g3, k1a, a1, m1/m1b/m1c, **c1** the party night (595eb74; Claude's fix: Back on a night's results records the round), **k1b** the maps in the kit (218fcc1; Claude: gap floor 1.6 marbles between faces, new maps aim for 2.5; the size rule's message test waits for k2a).
+**The run**: `docs/briefs/m14/run-m14.sh` runs every remaining brief in waves (x1 b1 s1 → k2a c3 → k2b a3 → b2 → c2 → b3 → r5), runs `tools/check.sh` after each wave and commits each job with `tools/commit-job.sh --push`. Its progress is in `docs/briefs/m14/run-m14.log` (not committed), job logs in the session scratchpad. If it stopped, the log says why: fix that, then run it again (it skips committed jobs).
 
-**a2 (the cat + Chaos) landed after the pause, not yet reviewed**: result 0, its own checks passed (puzzle 349, host 277, phone 439, tv), and its changes sit **uncommitted in this tree** (report `docs/briefs/m14/a2-cat-report.md`). On restart: run the gate on the combined tree (`tools/check.sh format analyze puzzle host phone tv`), review it, append "Claude's review", commit (`git checkout -- tv_test_app/windows/flutter/` first), push.
-
-**Next, in order** (at most three jobs at once):
-1. Connect c1's `NightChaos` (packages/party_host/lib/src/night/party_night.dart) to a2's `PuzzleSettings.chaos`: `catVisitsTonight` reads the host's setting, `settingsForRound` sets Chaos off in the last round; test-first, by hand.
-2. **b1** the Bumper Round's rules (k1b is in): contacts, coins in the map's zones with the spinning-coin look, 60 s clock, snapshot v2 with the map id, `GameEvent` sound names, `RoundResult` with winners/draw; it replaces k1b's 300-byte coin reserve with real coins.
-3. **s1** the new sounds (meow, points, fanfare, celebration, new_record).
-4. **c3** the phone (nicknames, colour + accessory choice unique per game, results on joined phones via `view_end.result`, a phone's own results in a night get Next) and **a3** the finish celebration (section 3a).
-5. k2a (map pieces; turns on the size rule's message test) → k2b (the four maps, renders to the owner for review) → b2 (Arena screens; flips `nightBumperRoundReady`) → c2 (awards reveal at the place `night_scoreboard_screen.dart` marks, best times) → b3 (Robo, steering with `MapGrid`).
-6. Review R5, the comfort check (G5), device tests, a build only on the owner's word.
+**At the end (Claude)**: read every report's "Decisions" and "Blocked", r5's review findings, the combined diff, render the new screens against the mock-ups, review a2; show the owner the four maps (docs/design/maps/*.png); write one fix brief with everything; run it; short final check; device tests; a build only on the owner's word.
 
 **Mock-up pictures**: saved with headless Chrome: `"/c/Program Files/Google/Chrome/Application/chrome.exe" --headless=new --disable-gpu --no-first-run --user-data-dir=<scratch>/prof --virtual-time-budget=8000 --hide-scrollbars --window-size=1280,720 --screenshot=<file> "file:///<cygpath -m page>?frame=N&theme=sunny|night"` (phone frames 816,384). Console errors: add `--enable-logging --v=0` and read `<profile>/chrome_debug.log`. Chrome writes nothing to stdout, so `--dump-dom` doesn't work here.
 
