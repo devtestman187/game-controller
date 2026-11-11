@@ -153,6 +153,10 @@ workflows:
           cd controller_app
           # The stats settings go in only when set: an empty --dart-define made
           # flutter read the next one as a target file (m14.1's first iOS build).
+          # Pasted values can carry a trailing line break, which flutter's
+          # option parser rejects (it then reads the define as a file name).
+          FIRESTORE_PROJECT=$(printf '%s' "${FIRESTORE_PROJECT:-}" | tr -d '[:space:]')
+          FIRESTORE_API_KEY=$(printf '%s' "${FIRESTORE_API_KEY:-}" | tr -d '[:space:]')
           DEFINES=(--dart-define=BUILD_NUMBER="$BUILD")
           if [ -n "${FIRESTORE_PROJECT:-}" ]; then DEFINES+=(--dart-define=FIRESTORE_PROJECT="$FIRESTORE_PROJECT"); fi
           if [ -n "${FIRESTORE_API_KEY:-}" ]; then DEFINES+=(--dart-define=FIRESTORE_API_KEY="$FIRESTORE_API_KEY"); fi
