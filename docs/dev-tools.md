@@ -12,6 +12,7 @@ Two scripts replace the most repeated manual steps:
 | [`tools/tv-window.ps1`](../tools/tv-window.ps1) | Screenshots, clicks and keys in that copy's window | instant |
 | [`tools/emulator.sh`](../tools/emulator.sh) | Runs the phone app on the Android emulator: install with cleared data, connect to a TV app, list what's on screen, tap, screenshot | about a minute to boot |
 | [`tools/smoke.sh`](../tools/smoke.sh) | Pairs a simulated controller (and with `--emulator` the phone app) with the development TV app and checks each step against the clients' and the app's own logs | about 30 seconds, a minute longer with the frames step (a few minutes with `--emulator`) |
+| [`tools/stream.sh`](../tools/stream.sh) | Builds the streaming session image and runs sessions on the Linux side of WSL: start, status, logs, address, stop | a few minutes for the image, about 5 seconds for a session to be ready |
 | [`tools/audio/`](../tools/audio/README.md) | `render.py`, which generates the game's sound effects, and how to encode them | a few seconds |
 
 They're plain bash (and one PowerShell script for the Windows window) with no paths tied to one computer. `check.sh`, `review.sh`, `commit-job.sh`, `release.sh` and `emulator.sh` work the same on Windows (Git Bash), macOS and Linux; `tv-dev.sh` and `tv-window.ps1` are for Windows, where the desktop TV app runs, and so is `smoke.sh`, which drives them. Each runs from any folder: the scripts move to the repository root themselves. They're written so a person, Claude Code or another AI agent can use them the same way.
@@ -195,6 +196,29 @@ All done.
 - **Exit code:** 0 when everything succeeded; 1 when a build or upload failed or didn't finish in time; 2 when a check before tagging failed (nothing was tagged).
 - **If the window closes while waiting,** nothing is lost: the builds run in the cloud. Run `tools/release.sh --status <tag>` later.
 - **What it doesn't do:** bump the version (edit the two `pubspec.yaml` and two `app_info.dart` files and commit first), or fix failed uploads. For those, see "If something goes wrong" in [release.md](release.md).
+
+## tools/stream.sh
+
+```bash
+tools/stream.sh build                        # build tp-session:latest from this checkout
+tools/stream.sh up                           # start session "party", wait until it is ready
+tools/stream.sh up --name kitchen --port-base 46000
+tools/stream.sh status                       # what runs, and its ready line
+tools/stream.sh logs --name party --follow
+tools/stream.sh url --name party             # the player URL and the controller address
+tools/stream.sh down --name kitchen          # stop one session
+tools/stream.sh down --all                   # stop every session
+```
+
+Runs the TV app as a streamed session: the app draws into a virtual screen inside a container, and a browser on the player page watches it. What the image holds, and what an owner has to do so a TV on the Wi-Fi can watch too, is in [streaming/README.md](../streaming/README.md).
+
+- **Where it runs:** inside the locked-down `tp-` WSL distro (`--distro`, or `$STREAM_DISTRO`, default `tp-stream`). It only ever calls `wsl -d <distro> ...` and [`wsl-sync.sh`](../tools/wsl-sync.sh) / [`wsl-fetch.sh`](../tools/wsl-fetch.sh); the distro cannot see the Windows files, so `build` copies the checkout in first.
+- **A distro name not starting with `tp-` is refused** (exit code 2, nothing else runs), so a command can't land in a distro that has the Windows side mounted.
+- **Ports:** a session takes three in a row from `--port-base` (default 45780): the controller the phones connect to, then WebRTC signalling, then the player page. Two sessions at once need different bases; `url` prints each one's addresses. The TV app has the last word on the controller port — it takes a free one when the one it was given is busy — so `url` and the session's `ready:` line report the port it got.
+- **Waiting for ready:** `up` waits for the session's own `ready:` line (the game's home screen is up, the pipeline is registered with the signalling server) for up to two minutes, and shows the container's log when it never comes or the container ended.
+- **It never keeps state on the Windows side:** sessions are containers in the distro, named `thumb-party-<name>` and labelled `thumb-party.session`, which is how `status` and `down` find them.
+- **Exit code:** 0 ok, 1 the step failed (with the log or the reason), 2 bad use (unknown command or option, a bad name, port base or distro).
+- **What it doesn't do:** create or stop sessions from the app (that is server work), delete the image (`docker rmi tp-session:latest` in the distro), or open the player in a browser. It prints the address; opening it is yours.
 
 ## Checking on screens: the TV app and the phone app
 
