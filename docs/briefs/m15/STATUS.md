@@ -34,12 +34,16 @@ Written Nov 11, 2026 so that any later session (any model) can pick this up cold
 - **Standing rules from the owner:** never modify `E:\AI\game-controller` (frozen checkout); never print or store the DeepSeek key; touch only processes you started; install nothing on Windows without asking; never `wsl --shutdown`; builds, tags and tester promotion only on the owner's word; downloads need permission.
 - **Memory notes** (in `C:\Users\mrman\.claude\projects\E--AI\memory\`): `m15-streaming`, `low-usage-mode`, `orchestrator-model`, `background-jobs`, `m14-progress`.
 
-## Next steps, when the owner says go
+## In progress (owner, Nov 11, 2026: "Get started on the M15 work. Use flash-worker as much as possible.")
 
-1. Cut branch `m15` from `m14` in a new worktree `E:\AI\game-controller-m15`; move this STATUS's "next steps" there as it progresses.
-2. Step 1 of streaming-custom.md §5 as flash-worker jobs (`wsl: tp-stream`), roughly: (a) the Linux runner and a session image built from the repo (Dockerfile from the capture probe's recipe); (b) the automation interface in shared host code (start a game, add a simulated or real player, report ready), replacing the debug-flag patch; (c) `webrtcsink` in the pipeline with its signalling server and a minimal web player page; (d) the controller port published so phones on the Wi-Fi can pair with the container; (e) a run script: one command starts a session and prints the player URL and the code.
-3. Then steps 2–3 (latency stages into the stats, tuning) to reach **gate 1** in the roadmap.
-4. Merge `m14` fixes into `m15` as they land.
+Branch **`m15`**, worktree **`E:\AI\game-controller-m15`**, cut from `m14` at 0a6e5ab. The owner also asked for measurements through the existing stats framework: "audio, video and controller latency, cpu/memory usage of the containers, and anything else you think will be useful".
+
+**The run**: `docs/briefs/m15/run-m15.sh <log-dir>` (same runner as M14: waves, full `tools/check.sh` after each wave, `tools/commit-job.sh --push`, stops with a reason in `docs/briefs/m15/run-m15.log`; safe to rerun, it skips committed jobs):
+1. **p1-stream-metrics** (the `stream` record, collector API and the report's "Streaming" section in packages/metrics) beside **c1-session-image** (`wsl:` job: the Linux runner, `streaming/` Dockerfile + entrypoint + web player, `tools/stream.sh build|up|down|url`, reachability notes);
+2. **a2-automation** (the automation interface in shared host code for every build, off by default; the latency test card and press probe; the `stats/stream` ingest endpoint);
+3. **c2-stream-stats** (`wsl:` job: player and container report into the stats; `tools/stream.sh bench` prints the Streaming report: one session, two sessions, 720p).
+
+**After the run (Claude):** review the reports' "Decisions"/"Blocked" and c2's numbers against gate 1 of docs/design/streaming-roadmap.md; one batch of fixes; then tuning (step 3) and a family test. **Needs the owner:** making the PC's stream reachable from other devices on the Wi-Fi will need a Windows-side change (c1's report says exactly what; likely WSL "mirrored" networking and a firewall rule). Merge `m14` fixes into `m15` as they land.
 
 ## Cleaning up, if this is abandoned
 
