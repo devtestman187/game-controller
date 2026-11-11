@@ -2,15 +2,13 @@
 
 Branch `m14`, worktree `E:\AI\game-controller-m14`, cut from `m13` at 77ccf09 on Nov 9, 2026, after M13's closing review R4 and its fixes. The plan is docs/PRD-v2.md "Milestone 14" (G1–G5, G9, C20, T15, results on joined phones, the Arena waits for its players).
 
-## Resume here (Nov 10, 2026: low-usage mode)
+## Resume here (Nov 10, 2026, evening: M14 built; device tests next)
 
-**Working mode: low-usage** (owner, Nov 10: write all remaining briefs at once, flash-worker decides safe things itself, Claude reviews once at the end, then one batch of fixes). Switch back to normal mode on the owner's word.
+**Working mode: low-usage** (owner, Nov 10). Every M14 job is committed (x1, b1, s1, k2a, c3, k2b, a3, b2, c2, b3), the worker's full review r5 (5915c53) and Claude's one fix batch **f1** (1303028: all 15 r5 findings, calmer map pictures, phone and tablet hosts upload stats with the TV's consent flow). Full `tools/check.sh` passes on 1303028 (host 376, phone 454, puzzle 360, arena 199).
 
-Done and pushed before the run: g1–g3, k1a, k1b, a1, m1–m1c, c1, **a2** (51adc35, committed after its checks, **not yet reviewed by Claude**: review it with the rest).
+**Next**: the owner's device tests (docs/briefs/m14/r5-review-report.md "Device-test list", plus: a phone host's round music after hiding the app; stats sharing on a phone host uploads a session); the owner looks at the four maps (docs/design/maps/*.png); for iOS uploads the owner adds `FIRESTORE_PROJECT` and `FIRESTORE_API_KEY` as environment variables in Codemagic (same values as the GitHub variables); a build only on the owner's word (merge m14 to main, `tools/release.sh m14.1`).
 
-**The run**: `docs/briefs/m14/run-m14.sh` runs every remaining brief in waves (x1 b1 s1 → k2a c3 → k2b a3 → b2 → c2 → b3 → r5), runs `tools/check.sh` after each wave and commits each job with `tools/commit-job.sh --push`. Its progress is in `docs/briefs/m14/run-m14.log` (not committed), job logs in the session scratchpad. If it stopped, the log says why: fix that, then run it again (it skips committed jobs).
-
-**At the end (Claude)**: read every report's "Decisions" and "Blocked", r5's review findings, the combined diff, render the new screens against the mock-ups, review a2; show the owner the four maps (docs/design/maps/*.png); write one fix brief with everything; run it; short final check; device tests; a build only on the owner's word.
+Not yet looked at by Claude: the new screens against the mock-ups by eye (reports say they match); listening to the five new sounds (owner, on device).
 
 **Mock-up pictures**: saved with headless Chrome: `"/c/Program Files/Google/Chrome/Application/chrome.exe" --headless=new --disable-gpu --no-first-run --user-data-dir=<scratch>/prof --virtual-time-budget=8000 --hide-scrollbars --window-size=1280,720 --screenshot=<file> "file:///<cygpath -m page>?frame=N&theme=sunny|night"` (phone frames 816,384). Console errors: add `--enable-logging --v=0` and read `<profile>/chrome_debug.log`. Chrome writes nothing to stdout, so `--dump-dom` doesn't work here.
 
