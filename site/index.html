@@ -3,17 +3,55 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Thumb Party tester guide</title>
+  <title>Thumb Party</title>
   <link rel="icon" href="icon.png">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <main>
   <header>
-    <img src="icon.png" alt="">
+    <img src="icon.png" alt="Thumb Party app icon">
     <h1>Thumb Party</h1>
   </header>
-  <p class="lead">Your phone is the controller and the TV is the screen. With no TV, a phone can host the game instead (see step 4). This page shows how to install the test version, connect, and tell us how it went.</p>
+  <div class="card about">
+    <strong>About this project</strong>
+    <p>Thumb Party turns the phones already in the room into game controllers for one shared screen. I'm a Product Manager: I wrote the product requirements and built the apps with Claude Code. The key design goal is zero-setup living-room play: open the app, type a four-digit code, and you're in, with no game pads, accounts or TV remote. A phone's press reaches the TV in about 6 ms on home Wi-Fi, against a 50 ms target.</p>
+  </div>
+  <p class="lead"><strong>Thumb Party is a party game for the family room.</strong> Everyone plays on one big screen, and each player's phone is their controller: no game pads, no TV remote and no sign-in.</p>
+  <ul class="lead">
+    <li><strong>Two games:</strong> Shape Race, where two sides race to build a picture from shapes (twelve puzzles, Easy and Medium), and the Arena, where you roll a marble past walls and hazards to the goal.</li>
+    <li><strong>Your phone, your way:</strong> play with a D-pad, by tilting the phone, or with two sticks, and move through the TV's menus from the phone too.</li>
+    <li><strong>Up to four players</strong> in Shape Race, solo, as a team or side against side.</li>
+    <li><strong>Plays anywhere:</strong> on an Android TV, Google TV or Windows PC, or with no TV at all, with a phone or tablet as the host.</li>
+  </ul>
+  <p class="lead">This page shows what the test version looks like, how to install it, how to join, and how to tell us how it went. The pictures are of <strong>0.13.0 (build 345)</strong>.</p>
+
+  <div class="shots">
+    <figure>
+      <a class="zoom" href="shots/join.png"><img src="shots/join.png" alt="The TV's Join screen with a Left and a Right side, beside a phone typing the TV's four-digit code."></a>
+      <figcaption>Players join by pressing A, with no TV remote needed.</figcaption>
+    </figure>
+    <figure>
+      <a class="zoom" href="shots/dpad.png"><img src="shots/dpad.png" alt="A two-player Shape Race on the TV, with the D-pad on the phone."></a>
+      <figcaption>Shape Race on the TV, with the D-pad on the phone.</figcaption>
+    </figure>
+    <figure>
+      <a class="zoom" href="shots/tilt.png"><img src="shots/tilt.png" alt="The same race on the TV, with the phone held up to steer by tilting it."></a>
+      <figcaption>The same race, steered by tilting the phone (Gyro).</figcaption>
+    </figure>
+    <figure>
+      <a class="zoom" href="shots/sticks.png"><img src="shots/sticks.png" alt="The same race on the TV, with two analog sticks on the phone."></a>
+      <figcaption>The same race again, with the two sticks.</figcaption>
+    </figure>
+    <figure>
+      <a class="zoom" href="shots/menus.png"><img src="shots/menus.png" alt="The TV's Play screen with a Shape Race card and an Arena card, while the phone above it shows OK and Back."></a>
+      <figcaption>The TV's menus work from the phone: A says OK, B says Back.</figcaption>
+    </figure>
+    <figure>
+      <a class="zoom" href="shots/results.png"><img src="shots/results.png" alt="The TV's results card with both sides' times and a Rematch button, beside the phone's controls."></a>
+      <figcaption>When a round ends, the TV shows the times and a Rematch.</figcaption>
+    </figure>
+  </div>
 
   <div class="card">
     <strong>You need</strong>
@@ -24,10 +62,20 @@
     </ul>
   </div>
 
+  <h2>What's in this build</h2>
+  <ul>
+    <li><strong>Shape Race</strong>: each side fills in a picture, piece by piece. There are twelve puzzles: six Easy and six Medium (boat, butterfly, car, castle, fish, house, robot, rocket, snowman, sun, train, and a tree with a sun). Easy puzzles show each piece's colour in its outline; the Medium ones only the shape. Pick one, or let the TV pick any puzzle of a level.</li>
+    <li><strong>The Arena</strong>: a run past walls and hazards to the goal. It needs a paired phone to steer it (or the arrow keys and Space on a Windows PC), and for now one person plays it.</li>
+    <li><strong>Music</strong>: a tune on the game picker and the join screen, and a round tune that speeds up near the end. It plays on the device that hosts the game, and its volume and <strong>Mute</strong> are in <strong>Look and sound</strong>.</li>
+    <li><strong>Two looks</strong>: <strong>Sunny</strong> and <strong>Night</strong>, or <strong>Auto</strong> to swap them by the time of day.</li>
+    <li><strong>Tablets</strong>: the whole game fills a tablet's screen, and the sticks are the first layout on a tablet.</li>
+    <li><strong>Buzzes</strong>: each phone buzzes on presses and when things happen in the game. iPads and some Android tablets have no vibration: their buttons flash instead.</li>
+  </ul>
+
   <h2>1. Install the controller on each phone or tablet</h2>
   <h3>iPhone and iPad</h3>
   <ol>
-    <li>Install <a href="https://apps.apple.com/app/testflight/id899247664">TestFlight</a> from the App Store.</li>
+    <li>Install <strong>TestFlight</strong> from the App Store.</li>
     <li>On the iPhone or iPad, open the invite link:
       <a class="button" href="https://testflight.apple.com/join/afaU2DHU">Join on TestFlight</a></li>
     <li>Tap <strong>Accept</strong>, then <strong>Install</strong>. Thumb Party appears on the home screen.</li>
@@ -62,11 +110,14 @@
 
   <h2>3. Connect and play</h2>
   <ol>
-    <li>Open <strong>Thumb Party TV</strong> on the TV or PC. It shows a 4-digit code.</li>
-    <li>Open <strong>Thumb Party</strong> on the phone. The TV appears under <strong>Games on this Wi-Fi</strong>. Tap it.</li>
-    <li>Type the code from the TV. The phone remembers the TV, so next time it reconnects by itself.</li>
-    <li>Pick a layout at the top of the phone: <strong>D-pad</strong>, <strong>Gyro</strong> (tilt the phone) or <strong>Sticks</strong>. On the TV, open <strong>Test game</strong>.</li>
+    <li>Open <strong>Thumb Party TV</strong> on the TV or PC. It shows a <strong>Pairing code</strong> of four digits.</li>
+    <li>Open <strong>Thumb Party</strong> on the phone. The TV appears under <strong>Games on this Wi-Fi</strong> (a TV, a PC, or a phone or tablet that hosts). Tap it.</li>
+    <li>Type the code. The phone remembers the TV, so next time it reconnects by itself. Each player does the same on their own phone.</li>
+    <li>Pick a layout at the top of the phone: <strong>D-pad</strong>, <strong>Gyro</strong> (tilt the phone to steer) or <strong>Sticks</strong>. Everyone can pick their own.</li>
+    <li>On the TV, open <strong>Play</strong> and pick <strong>Shape Race</strong> or <strong>Arena</strong>.</li>
+    <li>In a Shape Race, pick a level and a puzzle (or any puzzle of a level). On the join screen each player presses <strong>A</strong> on their phone to join and left or right to pick a side; <strong>A</strong> or <strong>Start</strong> begins.</li>
   </ol>
+  <p><strong>No TV remote?</strong> The phones work the TV's menus: the D-pad or the left stick moves, <strong>A</strong> presses the button and <strong>B</strong> goes back. The phone's buttons say what they do on each screen, like <strong>OK</strong> and <strong>Back</strong> on the game picker.</p>
   <p>No TV nearby? On the phone's connect screen, tap <strong>Try without a TV</strong> to check the controls work, or <strong>Host a game</strong> to play without a TV at all (step 4).</p>
 
   <h2>4. No TV? Host on a phone</h2>
@@ -75,14 +126,28 @@
     <li>On the Connect screen, tap <strong>Host a game</strong>.</li>
     <li>Pick one:
       <ul>
-        <li><strong>Play on this phone</strong>: every phone shows the game with the buttons on top. In a Shape Race, each player sees their own side.</li>
+        <li><strong>Play on this phone</strong>: every phone shows the game with the buttons on top. In a Shape Race, each player sees their own side (on a tablet, the whole match).</li>
         <li><strong>Show on this device</strong>: the host device (an iPad works well) shows the whole game, and everyone else uses their phone as a controller.</li>
       </ul>
     </li>
     <li>Ask the others to open Thumb Party and tap the host in their list. It shows as a <strong>Phone</strong> or a <strong>Tablet</strong>. They can also type the code the host shows.</li>
+    <li>Then it's the same as on a TV: open <strong>Play</strong> on the host's screen, and the other phones press <strong>A</strong> to join.</li>
   </ol>
   <p>Locking the host phone pauses the round for up to 30 seconds. The other phones say <strong>Waiting for the host to come back</strong> and count down; unlock in time and the game goes on. If the host stays locked for longer, the round ends and the other phones say why.</p>
-  <p>Sounds play on every phone, so turn the volume up on all of them.</p>
+  <p>In a round, the game's sounds play on every phone, so turn the volume up on all of them.</p>
+
+  <h2>Settings</h2>
+  <p><strong>On the phone</strong>, the gear at the top of the controller opens Settings:</p>
+  <ul>
+    <li><strong>Look and sound</strong>: the look (<strong>Auto</strong>, <strong>Sunny</strong> or <strong>Night</strong>), the moving background and bounces (<strong>Effects</strong>), the music's volume and <strong>Mute</strong>. A hosting phone plays the music, so this is where you turn it down.</li>
+    <li><strong>Haptics</strong>: the tick on every press, and how strong each thing in the game feels. <strong>Try</strong> plays one.</li>
+    <li><strong>Gyro</strong> and <strong>Sticks</strong>: how far you tilt or push, and how much the phone ignores small movements.</li>
+    <li><strong>Game on this phone</strong>: how much you can see the buttons when a game is behind them, and a frame rate setting for older phones.</li>
+    <li><strong>Control stats</strong>: the switch for the anonymous numbers about the controls. They are sent only if an adult allows it on the TV.</li>
+    <li><strong>About</strong>: the version, the privacy policy and this guide.</li>
+  </ul>
+  <p><strong>Defaults</strong> at the top of Settings puts them all back.</p>
+  <p><strong>On the TV</strong>, <strong>Look and sound</strong> has the same look and sound settings. The buttons beside it are test screens for the buzzes, the delay, the look and the stats: leave them alone unless we ask you to try something.</p>
 
   <h2>If something doesn't work</h2>
   <ul>
@@ -90,14 +155,39 @@
     <li><strong>iPhone or iPad</strong>: allow <strong>Local Network</strong> access when asked, or later in Settings → Thumb Party.</li>
     <li><strong>Windows</strong>: allow the app through the firewall for private networks (see above), and make sure Windows treats your Wi-Fi as a private network.</li>
     <li><strong>The connection drops</strong>: it reconnects by itself. If it keeps dropping, move closer to the Wi-Fi router.</li>
+    <li><strong>The tilt does nothing</strong>: not every phone has the motion sensor that <strong>Gyro</strong> needs. Pick <strong>D-pad</strong> or <strong>Sticks</strong> on that phone instead.</li>
   </ul>
 
   <h2>Tell us how it went</h2>
-  <p>Email <a href="mailto:mrman187@gmail.com?subject=Thumb%20Party%20test">mrman187@gmail.com</a>. Please say which version you have: on the phone it's in <strong>Settings → About</strong>, and on the TV it's at the top of the home screen. For a problem, the phone's <strong>Diagnostics</strong> screen has a <strong>Share</strong> button that puts the details in a message you can send. iPhone testers can also send feedback from TestFlight (take a screenshot and tap <strong>Share Beta Feedback</strong>).</p>
+  <p>Email <a href="mailto:manveerwasson@gmail.com?subject=Thumb%20Party%20test">manveerwasson@gmail.com</a>. Please say which version you have: on the phone it's in <strong>Settings → About</strong>, and on the TV it's under the pairing code on the home screen.</p>
+  <p>For a problem, open <strong>Diagnostics</strong> on the phone: tap the heart-with-a-pulse button at the top of the connect screen, or at the top of the controller. <strong>Copy report</strong> copies the details, and <strong>Share log</strong> (the share icon) puts them in a message you can send. Say what you did, what happened, and which game it was in.</p>
+  <p>iPhone testers can also send feedback from TestFlight: take a screenshot and tap <strong>Share Beta Feedback</strong>.</p>
+  <p>What we collect, and why, is in the <a href="privacy.html">privacy policy</a>.</p>
 
   <footer>
     <a href="privacy.html">Privacy policy</a> · Thumb Party is a test version and changes often.
   </footer>
 </main>
+  <dialog id="viewer" aria-label="Larger picture">
+    <button type="button" class="close" aria-label="Close">×</button>
+    <img alt="">
+  </dialog>
+  <script>
+    (function () {
+      var d = document.getElementById('viewer');
+      if (!d || !d.showModal) return;
+      var big = d.querySelector('img');
+      document.querySelectorAll('a.zoom').forEach(function (a) {
+        a.addEventListener('click', function (e) {
+          e.preventDefault();
+          var small = a.querySelector('img');
+          big.src = a.href;
+          big.alt = small.alt;
+          d.showModal();
+        });
+      });
+      d.addEventListener('click', function () { d.close(); });
+    })();
+  </script>
 </body>
 </html>
