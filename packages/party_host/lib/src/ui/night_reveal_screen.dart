@@ -117,25 +117,34 @@ class _NightRevealScreenState extends ConsumerState<NightRevealScreen> {
       }
     });
     final outcome = _started && _index < _outcomes.length ? _outcomes[_index] : null;
-    return CallbackShortcuts(
-      bindings: {const SingleActivator(LogicalKeyboardKey.escape): _finish},
-      // The reveal has no button to take the focus, so the screen's own node
-      // does, and Escape reaches the shortcut above (design section 6: the
-      // reveal is skipped, never waited on).
-      child: Focus(
-        autofocus: true,
-        child: HostScreen(
-          title: NightText.partyNight,
-          body: LobbyHold(
-            child: SafeArea(
-              child: outcome == null || night == null
-                  ? const SizedBox.shrink()
-                  : _RevealCard(
-                      outcome: outcome,
-                      colour: ToyLookScope.of(context).colors.player(_index + 1),
-                      night: night,
-                      players: ref.watch(gamePlayersProvider),
-                    ),
+    return PopScope(
+      // Back on the reveal finishes it, as Escape does (m14 r5 11): the final
+      // scores take its place, rather than the couch landing one route short
+      // of them.
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _finish();
+      },
+      child: CallbackShortcuts(
+        bindings: {const SingleActivator(LogicalKeyboardKey.escape): _finish},
+        // The reveal has no button to take the focus, so the screen's own node
+        // does, and Escape reaches the shortcut above (design section 6: the
+        // reveal is skipped, never waited on).
+        child: Focus(
+          autofocus: true,
+          child: HostScreen(
+            title: NightText.partyNight,
+            body: LobbyHold(
+              child: SafeArea(
+                child: outcome == null || night == null
+                    ? const SizedBox.shrink()
+                    : _RevealCard(
+                        outcome: outcome,
+                        colour: ToyLookScope.of(context).colors.player(_index + 1),
+                        night: night,
+                        players: ref.watch(gamePlayersProvider),
+                      ),
+              ),
             ),
           ),
         ),

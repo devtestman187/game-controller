@@ -3,12 +3,22 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:toy_look/toy_look.dart';
 
+import 'arena_coin.dart';
 import 'arena_snapshot.dart';
 
 /// How long a coin takes to turn once (design section 7): its spin winds on
 /// with its age, so a coin drawn from the same frame spins the same way
-/// everywhere. With effects off a coin stands still, face-on.
+/// everywhere. With effects off a coin stands still, face-on. A coin still
+/// sparkling turns faster, and is half see-through (M14 f1).
 const coinSpinS = 1.6;
+const coinSparkleSpinS = 0.8;
+const coinSparkleAlpha = 0.5;
+
+/// A gold coin is a third bigger than a field coin, and its face is the start
+/// coin mixed towards the caution colour (party-night §7): orange-gold, never
+/// the same yellow a hazard-free coin has.
+const coinGoldSizeShare = 4 / 3;
+const coinGoldMix = 0.55;
 
 /// How much of a coin's radius its ink edge takes (at least [coinOutlineMin]
 /// px), and the width below which a turn shows the coin's edge instead of its
@@ -23,7 +33,9 @@ const double coinLineMin = 1;
 /// The parts of the coin, as shares of its radius: the inner disc, the star's
 /// outer and inner radii and how far below the middle it sits, the ring the
 /// back shows, the bar the edge turns into, and the glint's place and size
-/// (mockup-parts.js `coin`).
+/// (mockup-parts.js `coin`). The stamp the gold coin wears, its "2", is sized
+/// between the star's points.
+const coinStampShare = 1.25;
 const coinInnerShare = 0.74;
 const coinInnerEdgeShare = 0.08;
 const coinStarShare = 0.46;
@@ -81,21 +93,51 @@ class ArenaCoinPainter {
   void paint(Canvas canvas, Size size) {
     for (final coin in coins) {
       final centre = Offset(coin.x * size.width, coin.y * size.height);
-      final turn = look.effects ? (coin.ageMs / 1000 / coinSpinS) % 1 : 0.0;
-      _coin(canvas, centre, cos(turn * 2 * pi));
+      final sparkling = coin.dropper == null && coin.ageMs < ArenaCoin.sparkleS * _msPerSecond;
+      final turn = look.effects ? (coin.ageMs / 1000 / (sparkling ? coinSparkleSpinS : coinSpinS)) % 1 : 0.0;
+      final gold = coin.gold;
+      _coin(
+        canvas,
+        centre,
+        cos(turn * 2 * pi),
+        radiusPx: gold ? radius * coinGoldSizeShare : radius,
+        face: gold ? Color.lerp(look.colors.focus, look.colors.caution, coinGoldMix)! : look.colors.focus,
+        alpha: sparkling ? coinSparkleAlpha : 1,
+        gold: gold,
+      );
     }
   }
 
+  static const _msPerSecond = Duration.millisecondsPerSecond;
+
   /// One coin at [centre], [c] being the cosine of its turn: 1 the face, 0 the
-  /// edge, -1 the back.
-  void _coin(Canvas canvas, Offset centre, double c) {
-    final face = look.colors.focus;
+  /// edge, -1 the back. [radiusPx] is its radius, [face] its colour, [alpha]
+  /// less than one while it still sparkles, and [gold] a coin that stamps a
+  /// "2" instead of a star.
+  void _coin(
+    Canvas canvas,
+    Offset centre,
+    double c, {
+    required double radiusPx,
+    required Color face,
+    required double alpha,
+    required bool gold,
+  }) {
     final rim = Color.lerp(face, _black, coinRimDarkMix)!;
-    final outline = max(coinOutlineMin, radius * coinOutlineShare);
+    final outline = max(coinOutlineMin, radiusPx * coinOutlineShare);
     final shadow = Paint()..color = style.ink.withValues(alpha: style.shadowAlpha);
     final across = c.abs();
+    // A sparkling coin reads half see-through, so it never passes for one that
+    // can be taken yet (party-night §7).
+    if (alpha < 1) {
+      canvas.saveLayer(
+        (centre & Size.square(radiusPx * 4)).inflate(outline),
+        Paint()..color = _white.withValues(alpha: alpha),
+      );
+    }
     if (across < coinEdgeShare) {
-      _edge(canvas, centre, max(radius * coinEdgeBarShare, radius * across), rim, outline, shadow);
+      _edge(canvas, centre, max(radiusPx * coinEdgeBarShare, radiusPx * across), rim, outline, shadow, radiusPx);
+      if (alpha < 1) canvas.restore();
       return;
     }
     canvas
@@ -103,28 +145,46 @@ class ArenaCoinPainter {
       ..translate(centre.dx, centre.dy)
       ..scale(max(coinEdgeShare, across), 1)
       ..translate(-centre.dx, -centre.dy);
+    final coinPaint = Paint()..color = rim;
     canvas
-      ..drawCircle(centre + style.shadowOffset, radius, shadow)
-      ..drawCircle(centre, radius, Paint()..color = rim)
-      ..drawCircle(centre, radius - outline / 2, _ink(outline));
-    final inner = radius * coinInnerShare;
+      ..drawCircle(centre + style.shadowOffset, radiusPx, shadow)
+      ..drawCircle(centre, radiusPx, coinPaint)
+      ..drawCircle(centre, radiusPx - outline / 2, _ink(outline));
+    final inner = radiusPx * coinInnerShare;
     canvas
       ..drawCircle(centre, inner, Paint()..color = Color.lerp(face, _white, coinFaceLightMix)!)
-      ..drawCircle(centre, inner, _ink(max(coinLineMin, radius * coinInnerEdgeShare)));
+      ..drawCircle(centre, inner, _ink(max(coinLineMin, radiusPx * coinInnerEdgeShare)));
     if (c < 0) {
-      _back(canvas, centre, face);
+      _back(canvas, centre, face, radiusPx);
+    } else if (gold) {
+      _stamp(canvas, centre, radiusPx, face);
     } else {
-      _star(canvas, centre, face);
+      _star(canvas, centre, face, radiusPx);
     }
-    _glint(canvas, centre);
+    _glint(canvas, centre, radiusPx);
     canvas.restore();
+    if (alpha < 1) canvas.restore();
+  }
+
+  /// The gold coin's "2", stamped where the star would be: two ink strokes, so
+  /// the coin is never read by its colour alone (G5).
+  void _stamp(Canvas canvas, Offset centre, double radiusPx, Color face) {
+    final dark = Color.lerp(face, _black, coinStampDarkMix)!;
+    final text = TextPainter(
+      text: TextSpan(
+        text: '2',
+        style: TextStyle(color: dark, fontSize: radiusPx * coinStampShare, fontWeight: FontWeight.w700, height: 1),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    text.paint(canvas, centre - Offset(text.width / 2, text.height / 2));
   }
 
   /// The coin seen side-on: the rim's thickness as a rounded bar with the ink
   /// edge, and a white glint down it.
-  void _edge(Canvas canvas, Offset centre, double width, Color rim, double outline, Paint shadow) {
+  void _edge(Canvas canvas, Offset centre, double width, Color rim, double outline, Paint shadow, double radiusPx) {
     final bar = RRect.fromRectAndRadius(
-      Rect.fromCenter(center: centre, width: 2 * width, height: 2 * radius),
+      Rect.fromCenter(center: centre, width: 2 * width, height: 2 * radiusPx),
       Radius.circular(width),
     );
     canvas
@@ -142,39 +202,39 @@ class ArenaCoinPainter {
   }
 
   /// The star stamped in the face, lit 52 %, with the mockup's darker edge.
-  void _star(Canvas canvas, Offset centre, Color face) {
-    final outer = radius * coinStarShare;
-    final star = Path()..addPolygon(_starPoints(centre + Offset(0, radius * coinStarDropShare), outer), true);
+  void _star(Canvas canvas, Offset centre, Color face, double radiusPx) {
+    final outer = radiusPx * coinStarShare;
+    final star = Path()..addPolygon(_starPoints(centre + Offset(0, radiusPx * coinStarDropShare), outer), true);
     canvas
       ..drawPath(star, Paint()..color = Color.lerp(face, _white, coinStarLightMix)!)
       ..drawPath(
         star,
         Paint()
           ..style = PaintingStyle.stroke
-          ..strokeWidth = max(coinLineMin, radius * coinStampEdgeShare)
+          ..strokeWidth = max(coinLineMin, radiusPx * coinStampEdgeShare)
           ..strokeJoin = StrokeJoin.round
           ..color = Color.lerp(face, _black, coinStampDarkMix)!,
       );
   }
 
   /// The back of the coin, as the mockup draws it: a ring instead of the star.
-  void _back(Canvas canvas, Offset centre, Color face) {
+  void _back(Canvas canvas, Offset centre, Color face, double radiusPx) {
     canvas.drawCircle(
       centre,
-      radius * coinBackShare,
+      radiusPx * coinBackShare,
       Paint()
         ..style = PaintingStyle.stroke
-        ..strokeWidth = max(coinLineMin, radius * coinBackEdgeShare)
+        ..strokeWidth = max(coinLineMin, radiusPx * coinBackEdgeShare)
         ..color = Color.lerp(face, _white, coinBackLightMix)!,
     );
   }
 
   /// The white glint up and left of the middle, as the light falls.
-  void _glint(Canvas canvas, Offset centre) {
+  void _glint(Canvas canvas, Offset centre, double radiusPx) {
     final glint = Rect.fromCenter(
-      center: centre - Offset(radius * coinGlintAcrossShare, radius * coinGlintDownShare),
-      width: 2 * radius * coinGlintHalfWidthShare,
-      height: 2 * radius * coinGlintHalfHeightShare,
+      center: centre - Offset(radiusPx * coinGlintAcrossShare, radiusPx * coinGlintDownShare),
+      width: 2 * radiusPx * coinGlintHalfWidthShare,
+      height: 2 * radiusPx * coinGlintHalfHeightShare,
     );
     canvas
       ..save()

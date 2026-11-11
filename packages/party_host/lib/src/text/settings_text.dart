@@ -47,11 +47,12 @@ abstract final class SettingsText {
   static const frameRate = 'Frame rate (test)';
   static const frameRateLine = 'For testing: fewer pictures a second saves battery but looks less smooth';
   static const controlStats = 'Control stats';
+  static const hostStatsLine = 'The sessions this phone hosted, and the sharing choice, as the TV shows them.';
   static const shareStats = 'Share control stats with the TV';
   static const shareStatsLine =
-      'The TV counts how the controls are used: presses, missed taps, timing and how each mode feels. '
+      'The host counts how the controls are used: presses, missed taps, timing and how each mode feels. '
       'Never names, contacts, location or a trace of your touches. '
-      'It sends them on to help improve Thumb Party only if an adult allows it on the TV.';
+      'It sends them on to help improve Thumb Party only if an adult allows it on the device that hosts.';
   static const about = 'About';
   static String aboutVersion(String version) => 'Thumb Party $version';
   static const privacyPolicy = 'Privacy policy';

@@ -36,9 +36,11 @@ extension PuzzlePointsRules on PuzzleGame {
 
   /// A snap's points: the first try's, or the try again's, and the big piece
   /// two teammates brought home ([carriers] are the players who were holding
-  /// it at the drop).
+  /// it at the drop). A piece the cat knocked out is a try again too: its
+  /// first place already paid (M14 r5 13).
   void _awardSnap(PuzzlePlayer p, PieceRuntime piece, {required int target, required List<String> carriers}) {
-    final again = piece.wronged;
+    final again = piece.wronged || piece.placedOnce;
+    piece.placedOnce = true;
     _award(again ? PuzzlePoints.wrongSnap : PuzzlePoints.snap, targetAt(target), PuzzleIcon.star);
     if (again) p.tryAgains++;
     if (!puzzle.pieces[piece.index].big || carriers.length < 2) return;

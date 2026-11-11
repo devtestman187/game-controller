@@ -67,6 +67,11 @@ class _JoinedViewState extends ConsumerState<JoinedView> {
   @override
   void initState() {
     super.initState();
+    // The results card's photo keeps the last frame drawn, with the start of
+    // the view that drew it: read it once here, so it hears that start when
+    // it arrives before any frame has drawn (M14 r5 5). It lives on in the
+    // scope from then, whether or not a card is up.
+    ref.read(viewDrawnProvider);
     // iOS stops the app's sound while it is hidden, when the phone locks or
     // another app takes it, and the engine doesn't come back by itself: start
     // it again when the app is shown, as the host route does (s5c). Only a
@@ -134,6 +139,9 @@ class _JoinedViewState extends ConsumerState<JoinedView> {
                 // The screen's own density: the game keeps the other side's
                 // mirror's marks at a physical size by it (rule 7).
                 pxPerMm: mm,
+                // The last frame drawn, so the results card can show the
+                // picture the round left (M14 r5 5).
+                onDrawn: (snapshot) => ref.read(viewDrawnProvider.notifier).drawn(snapshot),
                 onSounds: (names) => _play(ref, names),
               ),
             ),

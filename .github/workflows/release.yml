@@ -18,7 +18,7 @@
 #   PLAY_TRACK_APP   closed testing track for the phone app, e.g. alpha
 #   PLAY_TRACK_TV    closed testing track for the TV app, e.g. alpha (its own app, so no tv: prefix)
 #   FIRESTORE_PROJECT, FIRESTORE_API_KEY (M9, optional)
-#     The Firebase project the TV app uploads stats to (with consent). Without them the TV app
+#     The Firebase project the apps upload stats to (with consent). Without them an app
 #     keeps stats on the device only. docs/release.md step 7.
 
 name: Release
@@ -93,6 +93,8 @@ jobs:
           flutter build appbundle --release
           --build-number=${{ steps.version.outputs.build }}
           --dart-define=BUILD_NUMBER=${{ steps.version.outputs.build }}
+          --dart-define=FIRESTORE_PROJECT=${{ vars.FIRESTORE_PROJECT }}
+          --dart-define=FIRESTORE_API_KEY=${{ vars.FIRESTORE_API_KEY }}
       - name: Build the TV app bundle
         working-directory: tv_test_app
         run: >

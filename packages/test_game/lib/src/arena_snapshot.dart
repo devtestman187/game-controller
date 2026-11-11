@@ -289,6 +289,9 @@ extension ArenaSnapshots on ArenaGame {
     final bumper = mode == ArenaMode.bumper;
     Offset frac(Offset p) => Offset(p.dx / s.width, p.dy / s.height);
     Rect fracRect(Rect r) => Rect.fromPoints(frac(r.topLeft), frac(r.bottomRight));
+    // A dropped coin names its dropper by its place in the frame's `pl`, so a
+    // few coins keep the frame small (party-night §7).
+    final seats = [for (final p in players) p.id];
     return ArenaSnapshot(
       round: round,
       roundTimeS: roundTime,
@@ -296,24 +299,7 @@ extension ArenaSnapshots on ArenaGame {
       walls: [for (final w in wallRects) fracRect(w)],
       goal: bumper ? Rect.zero : fracRect(goalRect),
       hazards: [for (final h in hazardPositions) frac(h)],
-      players: [
-        for (final p in players)
-          ArenaPlayerView(
-            id: p.id,
-            x: frac(p.position).dx,
-            y: frac(p.position).dy,
-            dashing: p.dashing,
-            recovering: p.recovering,
-            cooldown: p.cooldown,
-            aimX: p.aimPoint == null ? null : frac(p.aimPoint!).dx,
-            aimY: p.aimPoint == null ? null : frac(p.aimPoint!).dy,
-            wins: p.wins,
-            hits: p.hits,
-            dashes: p.dashes,
-            failedDashes: p.failedDashes,
-            coins: p.coins,
-          ),
-      ],
+      players: [for (final p in players) _player(p, frac)],
       start: bumper ? Offset.zero : frac(startPx),
       winnerId: winnerId,
       lastTimeS: lastTimeS,
@@ -322,7 +308,7 @@ extension ArenaSnapshots on ArenaGame {
       bestId: bestId,
       mapId: map.id,
       mode: mode,
-      coins: [for (final c in coins) ArenaCoinView(x: c.x, y: c.y, ageMs: (c.ageS * 1000).round())],
+      coins: [for (final c in coins) _coin(c, seats)],
       timeLeftMs: timeLeftS == null ? null : (timeLeftS! * 1000).round(),
       coinRadius: ArenaCoin.radius,
       mirrored: mirrored,
@@ -335,3 +321,32 @@ extension ArenaSnapshots on ArenaGame {
     );
   }
 }
+
+ArenaPlayerView _player(ArenaPlayer p, Offset Function(Offset) frac) => ArenaPlayerView(
+  id: p.id,
+  x: frac(p.position).dx,
+  y: frac(p.position).dy,
+  dashing: p.dashing,
+  recovering: p.recovering,
+  cooldown: p.cooldown,
+  aimX: p.aimPoint == null ? null : frac(p.aimPoint!).dx,
+  aimY: p.aimPoint == null ? null : frac(p.aimPoint!).dy,
+  wins: p.wins,
+  hits: p.hits,
+  dashes: p.dashes,
+  failedDashes: p.failedDashes,
+  coins: p.coins,
+  dizzy: p.dizzy,
+  safe: p.safe,
+);
+
+ArenaCoinView _coin(ArenaCoin c, List<String> seats) => ArenaCoinView(
+  x: c.x,
+  y: c.y,
+  ageMs: (c.ageS * 1000).round(),
+  gold: c.gold,
+  dropper: switch (seats.indexOf(c.dropper ?? '')) {
+    -1 => null,
+    final seat => seat,
+  },
+);

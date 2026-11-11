@@ -212,6 +212,7 @@ class ArenaSession extends GameSession {
     GameEventCause.bump => 'bump',
     GameEventCause.coin => 'coin',
     GameEventCause.coinAppear => 'coin_appear',
+    GameEventCause.coinLost => 'coin_lost',
     GameEventCause.timeUp => 'time_up',
     GameEventCause.spring => 'spring',
   };

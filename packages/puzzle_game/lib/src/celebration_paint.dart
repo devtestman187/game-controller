@@ -21,23 +21,21 @@ const _confettoEdgeShare = 0.12;
 extension _FinishPaint on PuzzlePainter {
   /// The glow (design 3a item 3): a soft warm rim round every placed piece,
   /// under the picture, breathing once over the moment — a still rim with the
-  /// effects off (G5).
+  /// effects off (G5). Drawn by [paintFinishGlow], as the mirror draws it too
+  /// (M14 r5 15).
   void _paintGlow(Canvas canvas, double px) {
     final age = _finishAge;
     if (age == null) return;
-    final alpha = Celebration.glowAlpha(age, effects: look.effects);
-    if (alpha <= 0) return;
-    final blur = Celebration.glowBlur / px;
-    final paint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeJoin = StrokeJoin.round
-      ..strokeWidth = blur * _glowStrokeShare
-      ..color = _colours.star.withValues(alpha: alpha)
-      ..maskFilter = MaskFilter.blur(BlurStyle.normal, blur);
-    for (final (i, p) in s.pieces.indexed) {
-      if (p.state != PieceState.locked) continue;
-      canvas.drawPath(_path(puzzle.pieces[i].shape, Offset(p.x, p.y), p.angle), paint);
-    }
+    paintFinishGlow(
+      canvas,
+      placed: [
+        for (final (i, p) in s.pieces.indexed)
+          if (p.state == PieceState.locked) _path(puzzle.pieces[i].shape, Offset(p.x, p.y), p.angle),
+      ],
+      ageMs: age,
+      look: look,
+      px: px,
+    );
   }
 
   /// The ring of stars (design 3a item 2): a gold star round the board's edge,
@@ -90,5 +88,36 @@ extension _FinishPaint on PuzzlePainter {
         )
         ..restore();
     }
+  }
+}
+
+/// The finished picture's warm rim (design 3a item 3): [placed], the outlines of
+/// the pieces placed in it, glow once over the moment and stand still with the
+/// effects off. [ageMs] is the finish's age; nothing is drawn once it is over,
+/// or before the finish. [px] is the canvas's whole scale, so the rim is the
+/// look's width at any size.
+///
+/// It is drawn by every view that shows the finished picture inside its frame:
+/// the board's painter and a phone's mirror (M14 r5 15). The star ring and the
+/// confetti fall outside the picture, so only a view with room round the board
+/// draws them.
+void paintFinishGlow(
+  Canvas canvas, {
+  required Iterable<Path> placed,
+  required int ageMs,
+  required ToyLook look,
+  required double px,
+}) {
+  final alpha = Celebration.glowAlpha(ageMs, effects: look.effects);
+  if (alpha <= 0) return;
+  final blur = Celebration.glowBlur / px;
+  final paint = Paint()
+    ..style = PaintingStyle.stroke
+    ..strokeJoin = StrokeJoin.round
+    ..strokeWidth = blur * _glowStrokeShare
+    ..color = look.colors.star.withValues(alpha: alpha)
+    ..maskFilter = MaskFilter.blur(BlurStyle.normal, blur);
+  for (final path in placed) {
+    canvas.drawPath(path, paint);
   }
 }

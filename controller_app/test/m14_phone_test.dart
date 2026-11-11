@@ -2,6 +2,7 @@ import 'package:controller/src/profile.dart';
 import 'package:controller/src/storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:party_host/party_host.dart' show RoboBadge, ToyBadge;
 import 'package:protocol/protocol.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -124,6 +125,37 @@ void main() {
       await settle(tester);
       expect(find.byKey(const Key('resultDetail')), findsNothing);
       expect(find.byKey(const Key('arena')), findsNothing);
+    });
+
+    testWidgets('Robo\'s row in the standings is named, with the robot disc and no player badge', (tester) async {
+      final app = await joined(tester);
+      app.client.emit(connected.copyWith(player: 1, character: tealCrown));
+      await settle(tester);
+      app.client.viewEnd(
+        const ViewEndMessage(
+          reason: ViewEndReason.finished,
+          result: ViewResult(
+            outcome: ViewOutcome.loss,
+            standings: [
+              ViewStanding(number: 3, name: 'Robo', points: 11, character: tealCrown, isRobo: true),
+              ViewStanding(number: 1, name: 'Mia', points: 2, character: tealCrown),
+            ],
+          ),
+        ),
+      );
+      await settle(tester);
+
+      expect(find.byKey(const Key('standing-3')), findsOneWidget);
+      expect(find.text('Robo'), findsOneWidget, reason: 'Robo is shown by its name');
+      expect(tester.widget<Text>(find.byKey(const Key('standingPoints-3'))).data, '11');
+      expect(find.byType(RoboBadge), findsOneWidget, reason: 'the robot disc, as the TV draws it');
+
+      expect(
+        find.descendant(of: find.byKey(const Key('standing-3')), matching: find.byType(ToyBadge)),
+        findsNothing,
+        reason: 'Robo wears no player number badge',
+      );
+      expect(find.byKey(const Key('standing-1')), findsOneWidget, reason: 'a player\'s row keeps its badge');
     });
 
     testWidgets('a new view clears the card, and a phone sent no result keeps its pad', (tester) async {

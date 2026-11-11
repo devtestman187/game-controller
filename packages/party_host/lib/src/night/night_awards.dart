@@ -148,21 +148,30 @@ const nightAwardsPerNight = 3;
 /// either game can earn, so the start card can name them and the reveal has
 /// something to give.
 ///
+/// Only an award one of [games] — the games the night can play — can earn is
+/// drawn, and an either-game award always can, so a reveal never names an
+/// award its night could not have won (M14 f1, r5 finding 3).
+///
 /// The three are listed in the catalogue's order, not the order they were
 /// drawn, so a screen always shows them the same way round and a seed fixes
 /// the set: the same [random] state gives the same three.
-List<NightAward> drawAwards(Random random) {
-  final losable = [
+List<NightAward> drawAwards(Random random, {required Set<NightAwardGame> games}) {
+  bool earnable(NightAward award) => award.game == NightAwardGame.both || games.contains(award.game);
+  final pool = [
     for (final award in NightAward.values)
+      if (earnable(award)) award,
+  ];
+  final losable = [
+    for (final award in pool)
       if (award.losable) award,
   ];
   final either = [
-    for (final award in NightAward.values)
+    for (final award in pool)
       if (award.eitherGameCanEarnIt) award,
   ];
   final drawn = {losable[random.nextInt(losable.length)], either[random.nextInt(either.length)]};
   while (drawn.length < nightAwardsPerNight) {
-    drawn.add(NightAward.values[random.nextInt(NightAward.values.length)]);
+    drawn.add(pool[random.nextInt(pool.length)]);
   }
   return [
     for (final award in NightAward.values)

@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:connection/connection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -33,6 +35,30 @@ void main() {
     expect(find.text('Bumper Round'), findsOneWidget);
     expect(tester.widget<HostButton>(find.byKey(const Key('nightBumper'))).onPressed, isNotNull);
     expect(find.text('Soon'), findsNothing);
+  });
+
+  testWidgets('a seed fixes the start card\'s three awards', (tester) async {
+    await pumpHost(tester, screen: const NightStartScreen(seed: 7));
+    const games = {NightAwardGame.puzzle, NightAwardGame.bumper};
+    final shown = [for (final card in tester.widgetList<NightAwardCard>(find.byType(NightAwardCard))) card.award];
+    expect(shown, drawAwards(Random(7), games: games), reason: 'the card draws from its seed (design section 4)');
+  });
+
+  testWidgets('a night left before round 1 comes back showing its own awards and length', (tester) async {
+    await pumpHost(tester, screen: const StubHome());
+    // The host picked round 1 and backed out before it started: the night is
+    // set up with these, and its card must not name a new draw (M14 r5 12).
+    appContainer(tester).read(partyNightProvider.notifier).start(length: NightLength.five, awards: threeAwards);
+    await openNight(tester);
+
+    Color? fillOf(String key) => tester.widget<HostButton>(find.byKey(Key(key))).fill;
+    expect(fillOf('nightRounds-5'), isNotNull, reason: 'the running night\'s length is the one lit');
+    final shown = [for (final card in tester.widgetList<NightAwardCard>(find.byType(NightAwardCard))) card.award];
+    expect(shown, threeAwards, reason: 'the night\'s own three awards');
+    await tapVisible(tester, find.byKey(const Key('nightRounds-3')));
+    await tester.pumpAndSettle();
+    expect(fillOf('nightRounds-5'), isNotNull, reason: 'its length cannot be changed once it is set up');
+    expect(fillOf('nightRounds-3'), isNull);
   });
 
   testWidgets('the start card hides the cat\'s line while the host\'s Chaos is off', (tester) async {

@@ -10,6 +10,8 @@
 # (Team settings > Integrations > Developer Portal) under the name "Thumb Party", the app record
 # com.thumbparty.app in App Store Connect, and its signing certificate and profile in Codemagic
 # (Code signing identities). The build number is the commit count, the same as the Android builds.
+# Optional, and empty when unset: FIRESTORE_PROJECT and FIRESTORE_API_KEY, the Firebase project
+# the stats go to (docs/release.md step 7), as environment variables of the app in Codemagic.
 #
 # Free-minute guards: path filter (changeset), cancel superseded builds, 30 min cap, caches.
 # Syntax checked against docs.codemagic.io (Oct 2026): triggering events, branch_patterns
@@ -150,6 +152,8 @@ workflows:
           flutter build ipa --release \
             --build-number="$BUILD" \
             --dart-define=BUILD_NUMBER="$BUILD" \
+            --dart-define=FIRESTORE_PROJECT="${FIRESTORE_PROJECT:-}" \
+            --dart-define=FIRESTORE_API_KEY="${FIRESTORE_API_KEY:-}" \
             --export-options-plist=/Users/builder/export_options.plist
     artifacts:
       - controller_app/build/ios/ipa/*.ipa

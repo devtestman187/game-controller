@@ -22,30 +22,14 @@ const box = Size(gridGap + 320 + gridGap, gridGap + 2 * (180 + labelHeight + gri
 const sweepAlpha = 0.18;
 
 /// [map]'s field as a frame with no marbles on it, its walls, hazards, pieces,
-/// theme, start and goal, as the TV draws them.
-ArenaSnapshot mapSnapshot(ArenaMap map) {
-  final field = ArenaFieldRules(map: map, size: mapFieldSize);
-  final size = field.size;
-  Offset at(Offset px) => Offset(px.dx / size.width, px.dy / size.height);
-  Rect across(Rect px) => Rect.fromPoints(at(px.topLeft), at(px.bottomRight));
-  final race = map.race;
-  return ArenaSnapshot(
-    round: 0,
-    roundTimeS: 0,
-    phase: ArenaPhase.playing,
-    walls: [for (final wall in field.wallRects) across(wall)],
-    goal: race == null ? Rect.zero : across(field.goalRect),
-    hazards: [for (final hazard in field.hazardPositions) at(hazard)],
-    players: const [],
-    start: race == null ? const Offset(0.07, 0.5) : at(field.startPx),
-    theme: map.theme,
-    springs: map.springs,
-    posts: map.posts,
-    belts: map.belts,
-    decor: map.decor,
-    movers: [for (final (a, b) in field.moverBars) (at(a), at(b))],
-  );
-}
+/// theme, start and goal, as the TV draws them: the field a round of the map
+/// starts in, so the picture cannot drift from play.
+///
+/// It plays the map's main mode: the race when the map has one (the Playroom
+/// shows its start pad and goal), the Bumper Round otherwise, which has no
+/// race start pad or goal to draw (M14 r5 7).
+ArenaSnapshot mapSnapshot(ArenaMap map) =>
+    ArenaGame(map: map, mode: map.race == null ? ArenaMode.bumper : ArenaMode.race).snapshot();
 
 /// One panel of the design sheet: its name, then the field in [look] with the
 /// map's starts, goal, coin zones and hazard sweeps marked over it.

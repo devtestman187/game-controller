@@ -62,16 +62,17 @@ Create a Google Group (groups.google.com), for example `thumb-party-testers`, wi
 8. **External Testing → +** a group named `Testers` with **Public Link** on (done Nov 7, 2026: https://testflight.apple.com/join/afaU2DHU, in the tester guide). Builds are **not** sent to it automatically: the owner decided that every build goes to internal testing first, and is promoted to `Testers` only when the owner says so (see "Each release"). So `codemagic.yaml` has no `beta_groups`.
 
 ### 7. Firebase for the stats upload (you, M9, optional)
-The TV app keeps every session's stats on the device either way. With an adult's consent it also uploads them to Firestore, so testers' sessions reach you. Until this is done the Stats screen says "this build has no upload set up".
+Every host keeps its sessions' stats on the device either way: the TV app, and a phone or tablet that hosts a game. With an adult's consent it also uploads them to Firestore, so testers' sessions reach you. Until this is done the Stats screen says "this build has no upload set up".
 1. https://console.firebase.google.com → **Create a project** with the same Google account as the Play developer account. Name it e.g. `thumb-party-stats`. Turn **Google Analytics off** (the apps don't use it).
 2. **Build → Firestore Database → Create database**, production mode, a location near you (e.g. `us-central1`). The free Spark plan is enough.
-3. **Firestore → Rules**: paste `firebase/firestore.rules` from this repository and **Publish**. They let the TV app create session documents and nothing else.
+3. **Firestore → Rules**: paste `firebase/firestore.rules` from this repository and **Publish**. They let the apps create session documents and nothing else.
 4. **Project settings → General**: copy the **Project ID**. Optional: under "Your apps", add a **Web app** only to get its **Web API key** (no Firebase SDK is used).
-5. Set the GitHub variables:
+5. Set the GitHub variables (the Android builds read them):
    ```
    gh variable set FIRESTORE_PROJECT --body "<project ID>"
    gh variable set FIRESTORE_API_KEY --body "<web API key, or leave this one out>"
    ```
+   For the iOS build, set the same two names as **environment variables** of the app in Codemagic (**App settings → Environment variables**, group `firestore`, say): `ios-testflight` passes them to the build as `--dart-define`s, and an unset one simply leaves the iPhone build without an upload.
 6. Reading the data: `gcloud auth login`, then in `packages/metrics`: `dart run metrics:report --firestore <project ID> --token "$(gcloud auth print-access-token)" --csv sessions.csv`. Or Export on the TV's Stats screen and `dart run metrics:report <folder>`.
 7. The store forms change with M9: see "M9: stats" in [store-listing.md](store-listing.md) and the check in [families-check.md](families-check.md). Update them before the M9 builds go to testers.
 

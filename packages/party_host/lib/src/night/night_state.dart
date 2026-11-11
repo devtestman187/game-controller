@@ -1,6 +1,6 @@
 import 'package:connection/connection.dart' show GamePlayer;
 import 'package:flutter/foundation.dart';
-import 'package:game_kit/game_kit.dart' show RoundResult;
+import 'package:game_kit/game_kit.dart' show RoundOutcome, RoundResult;
 import 'package:protocol/protocol.dart' show PlayerCharacter;
 
 import 'night_award_results.dart';
@@ -92,6 +92,7 @@ final class NightState {
     required Map<String, int> lastRoundPoints,
     required Map<String, NightPlayer> seen,
     required List<NightAwardOutcome> outcomes,
+    required List<String> maps,
   }) : totals = Map.unmodifiable(totals),
        counters = Map.unmodifiable({
          for (final MapEntry(:key, :value) in counters.entries) key: Map<String, int>.unmodifiable(value),
@@ -100,7 +101,8 @@ final class NightState {
        played = Set.unmodifiable(played),
        lastRoundPoints = Map.unmodifiable(lastRoundPoints),
        seen = Map.unmodifiable(seen),
-       outcomes = List.unmodifiable(outcomes);
+       outcomes = List.unmodifiable(outcomes),
+       maps = List.unmodifiable(maps);
 
   /// A night about to play its first round, with the awards drawn for it, and
   /// the players on the roster now remembered.
@@ -121,6 +123,7 @@ final class NightState {
       lastRoundPoints: const {},
       seen: {for (final p in players) p.id: (number: p.number, nickname: p.nickname, character: p.character)},
       outcomes: const [],
+      maps: const [],
     );
   }
 
@@ -160,6 +163,16 @@ final class NightState {
   /// recorded (G4, design section 6): empty until then, and in the night's own
   /// order so the reveal follows it. Their +3 points are in [rows]' totals.
   final List<NightAwardOutcome> outcomes;
+
+  /// The Arena maps the night's rounds have played, in order (party-night
+  /// §7b): each Bumper Round starts on Surprise me, which picks a map the night
+  /// hasn't used yet.
+  final List<String> maps;
+
+  /// The night with a round played on [mapId]: Surprise me picks a map the
+  /// night hasn't used yet (party-night §7b). A map already played is not
+  /// counted twice.
+  NightState usedMap(String mapId) => maps.contains(mapId) ? this : _copyWith(maps: [...maps, mapId]);
 
   /// The night's rounds.
   int get rounds => length.rounds;
@@ -212,7 +225,7 @@ final class NightState {
       }
     }
     final roundsWon = {...this.roundsWon};
-    for (final id in result.winners) {
+    for (final id in _winnersOf(result)) {
       roundsWon[id] = (roundsWon[id] ?? 0) + 1;
     }
     return _copyWith(
@@ -224,6 +237,17 @@ final class NightState {
       lastRoundPoints: result.points,
     );
   }
+
+  /// The players whose round to count as won: the result's winners, or — a
+  /// board played alone has no winning side of its own, so its round has none
+  /// — the side that played it, whose lines say `done` (M14 f1, r5 finding 3).
+  /// A race with no winner keeps the result's empty set: nobody's round.
+  static Set<String> _winnersOf(RoundResult result) => result.winners.isNotEmpty
+      ? result.winners
+      : {
+          for (final MapEntry(:key, :value) in result.lines.entries)
+            if (value.outcome == RoundOutcome.done) key,
+        };
 
   /// The scoreboard's rows (design section 4): every player on the roster and
   /// every player with points, in total order, ties sharing a place. A player
@@ -275,6 +299,7 @@ final class NightState {
     Map<String, int>? lastRoundPoints,
     Map<String, NightPlayer>? seen,
     List<NightAwardOutcome>? outcomes,
+    List<String>? maps,
   }) => NightState._(
     length: length,
     round: round ?? this.round,
@@ -286,5 +311,6 @@ final class NightState {
     lastRoundPoints: lastRoundPoints ?? this.lastRoundPoints,
     seen: seen ?? this.seen,
     outcomes: outcomes ?? this.outcomes,
+    maps: maps ?? this.maps,
   );
 }

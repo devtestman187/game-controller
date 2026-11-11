@@ -73,6 +73,9 @@ PhoneHostInputs _inputs(Ref ref) => (
   advertiser: ref.read(party.advertiserProvider),
   controller: ownPlayerIdentity(ref.read(identityProvider)),
   monitor: ref.read(party.hostDeviceMonitorProvider),
+  // The store build's Firestore uploader, or null where the build has none
+  // (M14 r5 8): the sessions are kept on the phone either way.
+  uploader: ref.read(party.sessionUploaderProvider),
   start: ref.read(party.hostStartLogProvider),
 );
 

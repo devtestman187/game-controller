@@ -156,6 +156,26 @@ void main() {
     expect(start.data['hz'], 20);
   });
 
+  // M14 f1 (r5 finding 1): a joined phone keeps its Bumper result card, so the
+  // field and its session stay under the results, as Shape Race's board does.
+  testWidgets('the Bumper field stays under its results, so the view does not end', (tester) async {
+    final fake = await pumpHost(tester, screen: const StubHome());
+    appContainer(tester).read(arenaSettingsProvider.notifier)
+      ..setMap('playroom')
+      ..setMode(ArenaMode.bumper);
+    await openArena(tester, fake);
+    // The Bumper Round's whole 60 s clock, a frame at a time.
+    for (var i = 0; i < 620; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+    expect(find.byKey(const Key('arenaResults')), findsOneWidget, reason: 'the clock ran out');
+    expect(
+      find.byKey(const Key('arena')),
+      findsOneWidget,
+      reason: 'the field is still drawn under the results, as Shape Race\'s board is',
+    );
+  });
+
   // M14 b2: the waiting card took the start hint's place, so nothing is drawn
   // over a round in play (owner, Nov 8, 2026: text over a game in progress
   // "should not happen").

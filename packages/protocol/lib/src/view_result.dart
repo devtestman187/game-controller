@@ -32,9 +32,16 @@ abstract final class ViewCount {
 /// One row of a night's standings on a joined phone's results card (M14
 /// design section 9): who, their points, and the character their badge wears.
 final class ViewStanding {
-  const ViewStanding({required this.number, required this.name, required this.points, required this.character});
+  const ViewStanding({
+    required this.number,
+    required this.name,
+    required this.points,
+    required this.character,
+    this.isRobo = false,
+  });
 
-  /// The player's number, 1 to 6.
+  /// The player's number, 1 to 6. Robo has no player number of its own: it
+  /// carries the free colour its disc takes (see `roboNumberFor`).
   final int number;
 
   /// Their nickname, or their player label when they have none.
@@ -46,7 +53,17 @@ final class ViewStanding {
   /// The colour and accessory the host gave them.
   final PlayerCharacter character;
 
-  Map<String, Object?> toJson() => {'n': number, 'name': name, 'pts': points, 'character': character.toJson()};
+  /// Whether this row is Robo's (party-night §7a): the phone draws the robot
+  /// disc rather than a player's badge, so the row is named, never numbered.
+  final bool isRobo;
+
+  Map<String, Object?> toJson() => {
+    'n': number,
+    'name': name,
+    'pts': points,
+    'character': character.toJson(),
+    'robo': ?(isRobo ? true : null),
+  };
 
   static ViewStanding fromJson(Object? json) {
     if (json is! Map) {
@@ -64,11 +81,16 @@ final class ViewStanding {
     if (points is! int) {
       throw FormatException('Field "result.standings.pts" must be an integer, got ${points.runtimeType}');
     }
+    final robo = json['robo'] ?? false;
+    if (robo is! bool) {
+      throw FormatException('Field "result.standings.robo" must be true or false, got ${robo.runtimeType}');
+    }
     return ViewStanding(
       number: number,
       name: name,
       points: points,
       character: PlayerCharacter.fromJson(json['character']),
+      isRobo: robo,
     );
   }
 
@@ -78,10 +100,11 @@ final class ViewStanding {
       other.number == number &&
       other.name == name &&
       other.points == points &&
-      other.character == character;
+      other.character == character &&
+      other.isRobo == isRobo;
 
   @override
-  int get hashCode => Object.hash(number, name, points, character);
+  int get hashCode => Object.hash(number, name, points, character, isRobo);
 }
 
 /// A joined phone's own result, sent with the [ViewEndMessage] that ends a

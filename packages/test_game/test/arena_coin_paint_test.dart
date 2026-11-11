@@ -80,7 +80,9 @@ void main() {
     final centre = Offset(coinAt.dx * screen.width, coinAt.dy * screen.height);
     final r = testCoinRadius * screen.shortestSide;
     for (final (name, look) in [('Sunny', sunny), ('Night', night)]) {
-      final bytes = await drawCoin(tester, 0, look);
+      // A coin a second or more old, so it is no longer sparkling and shows
+      // its face fully lit (party-night section 7, M14 f1).
+      final bytes = await drawCoin(tester, 1600, look);
       final width = screen.width.toInt();
       int atShare(double share) => pixel(bytes, width, (centre.dx + share * r).round(), centre.dy.round());
 
@@ -117,8 +119,15 @@ void main() {
       return pixel(bytes, screen.width.toInt(), centre.dx.round(), centre.dy.round());
     }
 
-    expect(await middle(sunny, 0), isNot(await middle(sunny, 400)), reason: 'a quarter turn shows the edge');
-    expect(await middle(sunny, 0), isNot(await middle(sunny, 800)), reason: 'half a turn shows the back');
-    expect(await middle(sunnyStill, 0), await middle(sunnyStill, 400), reason: 'nothing spins with effects off');
+    // Ages past the coin's first second: a sparkling coin is half see-through,
+    // and its turn is the rules' own (party-night section 7, M14 f1).
+    expect(await middle(sunny, 1600), isNot(await middle(sunny, 2000)), reason: 'a quarter turn shows the edge');
+    expect(await middle(sunny, 1600), isNot(await middle(sunny, 2400)), reason: 'half a turn shows the back');
+    expect(await middle(sunnyStill, 1600), await middle(sunnyStill, 2000), reason: 'nothing spins with effects off');
+    expect(
+      await middle(sunny, 0),
+      isNot(await middle(sunny, 1600)),
+      reason: 'a coin still sparkling is half see-through',
+    );
   });
 }

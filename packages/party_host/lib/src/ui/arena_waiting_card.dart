@@ -37,8 +37,11 @@ part 'arena_waiting_widgets.dart';
 class ArenaWaitingCard extends ConsumerStatefulWidget {
   const ArenaWaitingCard({super.key, required this.onStart, this.bumperOnly = false, this.surpriseFirst = false});
 
-  /// Every joined player is ready: the round may start.
-  final VoidCallback onStart;
+  /// Every joined player is ready: the round may start on the map the card
+  /// shows chosen, or on Surprise me's when that is null. The card's own pick
+  /// rides with it, so a night's card that still shows Surprise me starts on a
+  /// map the night hasn't used rather than the one saved before it (m14 r5 7).
+  final void Function(String? mapId) onStart;
 
   /// Whether the card offers the Bumper Round alone, as a night's does (design
   /// section 8: in a night the mode button is Bumper's only).
@@ -136,7 +139,7 @@ class _ArenaWaitingCardState extends ConsumerState<ArenaWaitingCard> {
     }
     if (players.isNotEmpty && players.every((p) => _ready.contains(p.id))) {
       _started = true;
-      widget.onStart();
+      widget.onStart(_chosenId);
     } else if (changed && mounted) {
       setState(() {});
     }
@@ -197,8 +200,6 @@ class _ArenaWaitingCardState extends ConsumerState<ArenaWaitingCard> {
   @override
   Widget build(BuildContext context) {
     final look = ToyLookScope.of(context);
-    final players = _joined;
-    final maps = _maps;
     final code = ref.watch(hostStateProvider.select((s) => s.host.pairingCode));
     return ListView(
       key: const Key('arenaWaitingCard'),
@@ -212,49 +213,54 @@ class _ArenaWaitingCardState extends ConsumerState<ArenaWaitingCard> {
               headerKey: const Key('arenaWaitingHeader'),
               headerColor: look.colors.player(2),
               padding: const EdgeInsets.symmetric(horizontal: ToySizes.space24, vertical: ToySizes.space16),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _modeRow(context, code),
-                  const SizedBox(height: ToySizes.space16),
-                  Center(child: Text(ArenaText.ready, style: look.type.button)),
-                  const SizedBox(height: ToySizes.space8),
-                  if (players.isEmpty)
-                    Center(
-                      child: Text(HostText.noController, style: look.type.body, textAlign: TextAlign.center),
-                    ),
-                  for (final p in players)
-                    _PlayerRow(player: p, ready: _ready.contains(p.id), onTap: () => _toggle(p.id)),
-                  if (_roboIn) ...[
-                    _RoboRow(
-                      level: _settings.roboLevel,
-                      number: roboNumberFor(players.map((p) => p.number)),
-                      onPick: _pickRoboLevel,
-                    ),
-                    const SizedBox(height: ToySizes.space8),
-                  ],
-                  const SizedBox(height: ToySizes.space8),
-                  Text(ArenaText.map, style: look.type.button),
-                  const SizedBox(height: ToySizes.space8),
-                  Wrap(
-                    spacing: ToySizes.space12,
-                    runSpacing: ToySizes.space12,
-                    children: [
-                      for (final (i, map) in maps.indexed)
-                        _MapCard(
-                          map: map,
-                          colour: look.colors.player(i % _colourSlots + 1),
-                          chosen: _chosenId == map.id,
-                          onPressed: () => _pickMap(map.id),
-                        ),
-                      _SurpriseCard(chosen: _chosenId == null, onPressed: () => _pickMap(null)),
-                    ],
-                  ),
-                ],
-              ),
+              child: _cardBody(context, code, look),
             ),
           ),
+        ),
+      ],
+    );
+  }
+
+  /// The card's rows: the mode, who is ready, Robo's level and the map choice.
+  Widget _cardBody(BuildContext context, String code, ToyLook look) {
+    final players = _joined;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _modeRow(context, code),
+        const SizedBox(height: ToySizes.space16),
+        Center(child: Text(ArenaText.ready, style: look.type.button)),
+        const SizedBox(height: ToySizes.space8),
+        if (players.isEmpty)
+          Center(
+            child: Text(HostText.noController, style: look.type.body, textAlign: TextAlign.center),
+          ),
+        for (final p in players) _PlayerRow(player: p, ready: _ready.contains(p.id), onTap: () => _toggle(p.id)),
+        if (_roboIn) ...[
+          _RoboRow(
+            level: _settings.roboLevel,
+            number: roboNumberFor(players.map((p) => p.number)),
+            onPick: _pickRoboLevel,
+          ),
+          const SizedBox(height: ToySizes.space8),
+        ],
+        const SizedBox(height: ToySizes.space8),
+        Text(ArenaText.map, style: look.type.button),
+        const SizedBox(height: ToySizes.space8),
+        Wrap(
+          spacing: ToySizes.space12,
+          runSpacing: ToySizes.space12,
+          children: [
+            for (final (i, map) in _maps.indexed)
+              _MapCard(
+                map: map,
+                colour: look.colors.player(i % _colourSlots + 1),
+                chosen: _chosenId == map.id,
+                onPressed: () => _pickMap(map.id),
+              ),
+            _SurpriseCard(chosen: _chosenId == null, onPressed: () => _pickMap(null)),
+          ],
         ),
       ],
     );

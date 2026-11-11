@@ -72,6 +72,7 @@ void main() {
     double pxPerMm = testPxPerMm,
     GameRegistry? registry,
     void Function(List<String>)? onSounds,
+    void Function(GameSnapshot)? onDrawn,
   }) => Directionality(
     textDirection: TextDirection.ltr,
     child: FrameView(
@@ -84,6 +85,7 @@ void main() {
       padRects: padRects,
       pxPerMm: pxPerMm,
       onSounds: onSounds,
+      onDrawn: onDrawn,
     ),
   );
 
@@ -96,6 +98,7 @@ void main() {
     double pxPerMm = testPxPerMm,
     GameRegistry? registry,
     void Function(List<String>)? onSounds,
+    void Function(GameSnapshot)? onDrawn,
   }) => tester.pumpWidget(
     underTest(
       playerId: playerId,
@@ -104,6 +107,7 @@ void main() {
       pxPerMm: pxPerMm,
       registry: registry,
       onSounds: onSounds,
+      onDrawn: onDrawn,
     ),
   );
 
@@ -167,6 +171,39 @@ void main() {
     expect(find.byType(DotDraw), findsNothing, reason: 'nothing is drawn until the first frame');
     await send(tester, frameEvent(0, atMs: 1000, x: 0.5));
     expect(drawn(tester).snapshot.x, 0.5);
+
+    await unmount(tester);
+  });
+
+  testWidgets('a phone newer than its host says to update the TV, not the app', (tester) async {
+    await mount(tester);
+    await send(tester, startEvent(snapshotVersion: DotSnapshot.version - 1));
+    expect(find.text(updateHostText), findsOneWidget, reason: "the host's snapshots are older than this app's");
+    expect(find.text(updateAppText), findsNothing);
+
+    await send(tester, startEvent(snapshotVersion: DotSnapshot.version + 1));
+    expect(find.text(updateAppText), findsOneWidget, reason: "the host's snapshots are newer than this app's");
+    expect(find.text(updateHostText), findsNothing);
+
+    await send(tester, startEvent(game: 'puzzle'));
+    expect(find.text(updateAppText), findsOneWidget, reason: 'an unknown game says nothing about which side');
+
+    await unmount(tester);
+  });
+
+  testWidgets('each frame the view starts drawing is reported, so an app can keep the last one', (tester) async {
+    final reported = <double>[];
+    await mount(tester, onDrawn: (snapshot) => reported.add((snapshot as DotSnapshot).x));
+    clock.nowMs = 1000;
+    await send(tester, startEvent());
+    await send(tester, frameEvent(0, atMs: 1000, x: 0.25));
+    expect(reported, [0.25], reason: 'the frame it draws is reported once');
+
+    await tick(tester, 16);
+    expect(reported, [0.25], reason: 'a frame drawn again on later ticks is not reported again');
+
+    await send(tester, frameEvent(1, atMs: 1016, x: 0.75));
+    expect(reported, [0.25, 0.75], reason: 'and the next frame is, so the last draw is kept');
 
     await unmount(tester);
   });

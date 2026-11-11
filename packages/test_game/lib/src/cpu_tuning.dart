@@ -13,16 +13,43 @@ final class CpuTuning {
     required this.speedShare,
     required this.wobbleRad,
     required this.hazardMargin,
+    required this.shoveEveryS,
+    required this.shoveRange,
+    required this.shoveAimed,
   });
 
   /// A child around 8 wins about 4 rounds in 5 (design 7a).
-  static const easy = CpuTuning(reactionS: 0.5, speedShare: 0.75, wobbleRad: 0.45, hazardMargin: 0.13);
+  static const easy = CpuTuning(
+    reactionS: 0.5,
+    speedShare: 0.75,
+    wobbleRad: 0.45,
+    hazardMargin: 0.13,
+    shoveEveryS: null,
+    shoveRange: 0.4,
+    shoveAimed: false,
+  );
 
   /// About even with a child.
-  static const medium = CpuTuning(reactionS: 0.3, speedShare: 0.85, wobbleRad: 0.2, hazardMargin: 0.1);
+  static const medium = CpuTuning(
+    reactionS: 0.3,
+    speedShare: 0.85,
+    wobbleRad: 0.2,
+    hazardMargin: 0.1,
+    shoveEveryS: 4,
+    shoveRange: 0.4,
+    shoveAimed: false,
+  );
 
   /// An adult has to try.
-  static const hard = CpuTuning(reactionS: 0.15, speedShare: 0.95, wobbleRad: 0.05, hazardMargin: 0.075);
+  static const hard = CpuTuning(
+    reactionS: 0.15,
+    speedShare: 0.95,
+    wobbleRad: 0.05,
+    hazardMargin: 0.075,
+    shoveEveryS: 2,
+    shoveRange: 0.4,
+    shoveAimed: true,
+  );
 
   /// The level's row of numbers.
   static CpuTuning of(RoboLevel level) => switch (level) {
@@ -45,6 +72,21 @@ final class CpuTuning {
   /// The berth it gives a hazard, as a share of the field's shorter side: the
   /// design's "Hazards" column.
   final double hazardMargin;
+
+  /// The shortest wait between the shoves it starts, in seconds: null for a
+  /// level that never seeks one. The design's "Shoves" column, "at most one
+  /// every 4 s" on Medium and "every 2 s" on Hard; Easy's row is "never seeks
+  /// one", so it has no wait to keep.
+  final double? shoveEveryS;
+
+  /// How close a player with coins must be for it to shove them, as a share of
+  /// the field's shorter side: the "when the player is close" of the design's
+  /// "Shoves" column.
+  final double shoveRange;
+
+  /// Whether it shoves only when the push sends the player at a wall or a
+  /// hazard: Hard's "aimed so the player goes toward a wall or hazard".
+  final bool shoveAimed;
 }
 
 /// How hard a hazard's berth pushes the aim away, against the plan's pull: a
@@ -92,3 +134,15 @@ const cpuKeepShare = 1.3;
 /// berth: a marble against a wall is a cell the grid calls taken, and the free
 /// cell beside it is a cell or two off.
 const cpuFreeCells = 6;
+
+/// How far past a player, in cells, a Hard shove looks for the wall or hazard
+/// it aims them at (party-night §7a: "aimed so the player goes toward a wall
+/// or hazard"). A dash covers a marble's share of the field in a moment, so a
+/// few cells is what a shove can promise.
+const cpuShoveCells = 3.0;
+
+/// How far off a coin must be, in cells, before Robo dashes at it rather than
+/// walking (party-night §7a: "dashes toward a far coin"): a dash covers more
+/// than this in its third of a second, and one made at a coin nearer than that
+/// would carry a marble past it.
+const cpuDashCells = 25.0;

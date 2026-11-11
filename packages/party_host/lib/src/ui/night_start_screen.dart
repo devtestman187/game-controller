@@ -29,7 +29,12 @@ const nightStartCardWidthPx = 1040.0;
 /// goes through its puzzle pick and join screen as it does outside a night
 /// (design section 2 N6), so the teams may change there.
 class NightStartScreen extends ConsumerStatefulWidget {
-  const NightStartScreen({super.key});
+  const NightStartScreen({super.key, this.seed});
+
+  /// The seed the three awards are drawn from: a test fixes it to know the
+  /// card's draw (design section 4). A night opened from the picker leaves it
+  /// null, so its awards are fresh.
+  final int? seed;
 
   @override
   ConsumerState<NightStartScreen> createState() => _NightStartScreenState();
@@ -38,11 +43,24 @@ class NightStartScreen extends ConsumerStatefulWidget {
 class _NightStartScreenState extends ConsumerState<NightStartScreen> {
   /// The night's randomness, made once at the edge like a round's (S8): the
   /// three awards come from it, and a test can fix them by fixing the seed.
-  final _random = Random();
-  late final List<NightAward> _awards = drawAwards(_random);
+  late final _random = Random(widget.seed);
+
+  /// The games tonight may play: Shape Race always, and the Bumper Round while
+  /// the Arena can host one. The awards are drawn from these alone, so the
+  /// card never names an award the night can't win (M14 f1, r5 finding 3).
+  static const _games = {NightAwardGame.puzzle, if (nightBumperRoundReady) NightAwardGame.bumper};
+  late final List<NightAward> _awards = drawAwards(_random, games: _games);
   NightLength _length = NightLength.three;
 
-  void _pick(NightLength length) => setState(() => _length = length);
+  /// The night the host left before round 1, if there is one: its own length
+  /// and awards stand, so the card never names a draw the night isn't playing
+  /// for (M14 r5 12).
+  NightState? get _running => ref.read(partyNightProvider);
+
+  void _pick(NightLength length) {
+    if (_running != null) return;
+    setState(() => _length = length);
+  }
 
   /// Starts the night and its first round's Shape Race.
   void _start() {
@@ -63,6 +81,7 @@ class _NightStartScreenState extends ConsumerState<NightStartScreen> {
   @override
   Widget build(BuildContext context) {
     final catVisits = NightChaos.catVisitsTonight(ref.watch(puzzleSettingsProvider));
+    final running = ref.watch(partyNightProvider);
     return CallbackShortcuts(
       bindings: {const SingleActivator(LogicalKeyboardKey.escape): () => Navigator.of(context).maybePop()},
       child: HostScreen(
@@ -76,8 +95,8 @@ class _NightStartScreenState extends ConsumerState<NightStartScreen> {
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: nightStartCardWidthPx),
                     child: _StartCard(
-                      length: _length,
-                      awards: _awards,
+                      length: running?.length ?? _length,
+                      awards: running?.awards ?? _awards,
                       catVisits: catVisits,
                       onPick: _pick,
                       onShapeRace: _start,

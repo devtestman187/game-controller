@@ -5,11 +5,18 @@ import 'package:toy_look/toy_look.dart';
 
 import 'arena_snapshot.dart';
 
-/// Pinball's table: how far its floor is mixed towards ink, and the spacing of
-/// its painted star lights and their radius, as shares of the shorter side.
+/// Pinball's table: how far its floor is mixed towards ink, the spacing of its
+/// painted star lights and their radius, and the outline they are drawn with,
+/// as shares of the shorter side.
 const pinballFloorMix = 0.45;
 const pinballStarGapShare = 0.16;
 const pinballStarShare = 0.022;
+const pinballStarLineShare = 0.006;
+
+/// How far a theme's painted light is mixed towards ink (M14 r5 7): a light is
+/// scenery, so it never wears the coin's yellow, and it is drawn as an outline
+/// rather than a disc, so no light reads as a coin.
+const themeLightMix = 0.5;
 
 /// Block Castle's lawn: how far its floor is mixed towards good, and its brick
 /// rows' spacing and line width as shares of the shorter side.
@@ -23,11 +30,13 @@ const factoryFloorMix = 0.14;
 const factoryBandShare = 0.055;
 const factoryStripeShare = 0.035;
 
-/// Spinning Tops' rug: how far its floor is mixed towards focus, and the
-/// spacing of its rings and their width, as shares of the shorter side.
+/// Spinning Tops' rug: how far its floor is mixed towards focus, the spacing
+/// of its rings and their width as shares of the shorter side, and how strong
+/// a ring is drawn.
 const topsFloorMix = 0.14;
-const topsRingGapShare = 0.09;
+const topsRingGapShare = 0.18;
 const topsRingShare = 0.012;
+const topsRingAlpha = 0.4;
 
 /// A four-point star round [centre], its points [reach] out and its waist
 /// [waist] in.
@@ -54,10 +63,15 @@ class ArenaFloorPainter {
   final ArenaSnapshot s;
   final ToyLook look;
 
-  /// The theme's floor, under everything.
+  /// The theme's floor, under everything. Its pattern is the field's own, so it
+  /// is clipped to the field: a row of stars or a ring stops at the picture's
+  /// edge instead of running over its title or the next panel (M14 r5 7).
   void paint(Canvas canvas, Size size) {
     final unit = size.shortestSide;
     final field = look.colors.field;
+    canvas
+      ..save()
+      ..clipRect(Offset.zero & size);
     switch (s.theme) {
       case 'pinball':
         canvas.drawRect(Offset.zero & size, Paint()..color = Color.lerp(field, look.colors.ink, pinballFloorMix)!);
@@ -74,15 +88,22 @@ class ArenaFloorPainter {
       default:
         break;
     }
+    canvas.restore();
   }
 
   /// Pinball's painted star lights, on a grid a cell apart, every other row
-  /// nudged half a cell, so they read as a table's playfield.
+  /// nudged half a cell, so they read as a table's playfield. Each is a muted
+  /// outline rather than a bright disc (M14 r5 7): a coin is a gold disc with a
+  /// star stamped in its face, so the field's stars keep well clear of it.
   void _stars(Canvas canvas, Size size, double unit) {
     final gap = unit * pinballStarGapShare;
     final radius = unit * pinballStarShare;
     final reach = radius * (2 + 0.6 * (look.effects ? sin(2 * pi * s.roundTimeS) : 0));
-    final paint = Paint()..color = look.colors.star;
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = unit * pinballStarLineShare
+      ..strokeJoin = StrokeJoin.round
+      ..color = Color.lerp(look.colors.star, look.colors.ink, themeLightMix)!;
     for (var row = 0; row * gap < size.height + gap; row++) {
       for (var column = 0; column * gap < size.width + gap; column++) {
         final centre = Offset(column * gap + (row.isEven ? 0 : gap / 2) + gap / 2, row * gap + gap / 2);
@@ -143,11 +164,13 @@ class ArenaFloorPainter {
     canvas.restore();
   }
 
-  /// Spinning Tops' rug: rings round the field's middle, a step apart.
+  /// Spinning Tops' rug: a few faint rings round the field's middle, a wide
+  /// step apart, so the rug reads calmly under the tops (M14 r5 7: the old rug
+  /// had twice as many rings and each was too strong).
   void _rings(Canvas canvas, Size size, double unit) {
     final centre = Offset(size.width / 2, size.height / 2);
     final paint = Paint()
-      ..color = Color.lerp(look.colors.field, look.colors.ink, 0.16)!
+      ..color = Color.lerp(look.colors.field, look.colors.ink, 0.16)!.withValues(alpha: topsRingAlpha)
       ..style = PaintingStyle.stroke
       ..strokeWidth = unit * topsRingShare;
     final gap = unit * topsRingGapShare;

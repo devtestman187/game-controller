@@ -22,6 +22,12 @@ final class _BumperGame extends ArenaGame {
   static const double contactPush = 1.2;
   static const double contactShove = 3.0;
 
+  /// The last seconds of the round, in which new field coins are gold
+  /// (party-night §7), and how far a dropped coin lands beside its dropper, as
+  /// shares of a coin's radius.
+  static const double goldRushS = 15;
+  static const double dropGapShare = 1.6;
+
   final MapGrid _grid;
   var _list = <ArenaCoin>[];
   double _timeLeftS = 0;
@@ -90,39 +96,88 @@ final class _BumperGame extends ArenaGame {
     }
   }
 
-  /// Every coin a marble is touching is taken: one point, and it's gone.
+  /// Every coin a marble is touching is taken: a coin's worth (two for a gold
+  /// one), and it's gone. A coin still sparkling can't be taken, and a dropped
+  /// coin can't be taken back by its dropper (party-night §7).
   void _takeCoins(List<GameEvent> events) {
     final reach = playerRadiusPx + ArenaCoin.radius * size.shortestSide;
     for (final p in players) {
       for (final coin in List.of(_list)) {
+        if (coin.sparkling || coin.dropper == p.id) continue;
         if ((pixelOf(coin.position) - p.position).distance >= reach) continue;
         _list.remove(coin);
-        p.coins++;
-        events.add(GameEvent(p.id, HapticEvent.tick, GameEventCause.coin, sound: ArenaSounds.coin));
+        p.coins += coin.gold ? ArenaCoin.goldValue : 1;
+        if (coin.gold) p.goldCoins++;
+        events.add(
+          GameEvent(
+            p.id,
+            HapticEvent.tick,
+            GameEventCause.coin,
+            sound: coin.gold ? ArenaSounds.coinGold : ArenaSounds.coin,
+          ),
+        );
       }
     }
   }
 
   /// Brings out a new coin for each one taken, at a free spot of a coin zone,
-  /// never under a marble and never on a wall or another coin.
+  /// never under a marble and never on a wall or another coin. A coin out in
+  /// the last [goldRushS] seconds is gold (party-night §7).
   void _fillCoins(List<GameEvent> events) {
-    if (_list.length >= ArenaCoin.coinsOut) return;
+    int field() => _list.where((coin) => coin.isFieldCoin).length;
+    if (field() >= ArenaCoin.coinsOut) return;
     final spots = [
       for (final zone in bumper.coins) ..._grid.spotsIn(zone, apart: ArenaCoin.diameter, most: ArenaCoin.spotsPerZone),
     ];
     var added = false;
-    while (_list.length < ArenaCoin.coinsOut) {
+    while (field() < ArenaCoin.coinsOut) {
       final free = [
         for (final spot in spots)
           if (_clear(spot)) spot,
       ];
       if (free.isEmpty) break;
       final spot = free[random.nextInt(free.length)];
-      _list.add(ArenaCoin(x: spot.dx, y: spot.dy));
+      _list.add(ArenaCoin(x: spot.dx, y: spot.dy, gold: _goldRush));
       added = true;
     }
     if (added) events.add(const GameEvent.world(GameEventCause.coinAppear, sound: ArenaSounds.coinAppear));
   }
+
+  /// Whether new field coins are gold now: the round's last [goldRushS]
+  /// seconds (party-night §7).
+  bool get _goldRush => _timeLeftS > 0 && _timeLeftS <= goldRushS;
+
+  /// The Bumper Round plays its own dash cue (M14 f1, r5 finding 2).
+  @override
+  String? get dashSound => ArenaSounds.dash;
+
+  /// A hazard takes one coin (party-night §7).
+  @override
+  void hazardHit(ArenaPlayer pl, List<GameEvent> events) => _drop(pl, events);
+
+  /// A shove into a wall takes one coin (party-night §7).
+  @override
+  void shovedIntoWall(ArenaPlayer pl, List<GameEvent> events) => _drop(pl, events);
+
+  /// A hazard or a shove into a wall: the marble drops one coin beside it if it
+  /// has one, and is dizzy for a second and then safe for a second, so it
+  /// can't drop again right away (party-night §7). A marble with no coins drops
+  /// nothing and is dizzy all the same.
+  void _drop(ArenaPlayer p, List<GameEvent> events) {
+    if (p.safe) return;
+    final lost = p.coins > 0 ? 1 : 0;
+    if (lost > 0) {
+      final at = resolvePoint(p.position - p.facing * _dropGap, ArenaCoin.radius * size.shortestSide).$1;
+      _list.add(ArenaCoin(x: at.dx / size.width, y: at.dy / size.height, dropper: p.id));
+    }
+    p.dropCoins(lost);
+    if (lost > 0) {
+      events.add(GameEvent(p.id, HapticEvent.error, GameEventCause.coinLost, sound: ArenaSounds.coinLost));
+    }
+  }
+
+  /// How far beside the marble a dropped coin lands, in pixels.
+  double get _dropGap => dropGapShare * ArenaCoin.radius * size.shortestSide;
 
   /// Whether a coin may stand at [spot] (a fraction of the field).
   bool _clear(Offset spot) {
@@ -152,7 +207,14 @@ final class _BumperGame extends ArenaGame {
       draw: _draw,
       points: {for (final p in players) p.id: (p.coins + (leaders.contains(p.id) ? bumperWinBonus : 0)) * pointsScale},
       stats: {
-        for (final p in players) p.id: {'coins': p.coins, 'bumpsGiven': p.shoves},
+        for (final p in players)
+          p.id: {
+            'coins': p.coins,
+            'bumps': p.bumps,
+            'bumpsGiven': p.shoves,
+            'goldCoins': p.goldCoins,
+            'coinsDropped': p.coinsDropped,
+          },
       },
       lines: {
         for (final p in players)

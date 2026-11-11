@@ -77,6 +77,54 @@ final gameViewEventsProvider = Provider<Stream<ViewEvent>>((ref) {
   return events.stream;
 });
 
+/// The view the host started, and the last frame this phone drew of it (M14
+/// r5 5): a Shape Race round's results card draws this phone's side's picture
+/// from them, as the host's own card does. A new view clears it.
+final viewDrawnProvider = NotifierProvider<ViewDrawnNotifier, ({ViewStartMessage start, GameSnapshot frame})?>(
+  ViewDrawnNotifier.new,
+);
+
+class ViewDrawnNotifier extends Notifier<({ViewStartMessage start, GameSnapshot frame})?> {
+  ViewStartMessage? _start;
+
+  @override
+  ({ViewStartMessage start, GameSnapshot frame})? build() {
+    final client = ref.watch(clientProvider);
+    _start = null;
+    final sub = client.view.listen((event) {
+      switch (event) {
+        case ViewStarted(:final start):
+          _start = start;
+          state = null;
+        case ViewEnded() || ViewFrame() || HostAway() || HostBack() || PlayerAway() || PlayerBack():
+          // The end keeps the last frame: the results card sits over it. The
+          // frames themselves come from the view, which is the one that
+          // decodes them ([drawn]).
+          break;
+      }
+    });
+    ref.onDispose(sub.cancel);
+    ref.listen(clientStateProvider, (previous, next) {
+      if (!next.isConnected) {
+        _start = null;
+        state = null;
+      }
+    });
+    return null;
+  }
+
+  /// The frame the game view started drawing, kept with its view's start.
+  void drawn(GameSnapshot frame) {
+    final start = _start;
+    if (start == null) return;
+    state = (start: start, frame: frame);
+  }
+}
+
+/// The puzzle files this app can draw (M14 r5 5): loaded once for the results
+/// card's photo, from the same files the game view's own viewer reads.
+final puzzleLibraryProvider = FutureProvider<PuzzleLibrary>((ref) => PuzzleLibrary.load());
+
 /// This phone's own result of the round it just drew (M14 design section 9):
 /// the `result` a `view_end` carries, drawn as the card over the last frame.
 /// A new view clears it, and so does a later `view_end` without a result — the

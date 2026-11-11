@@ -246,7 +246,7 @@ abstract final class HostText {
   static const consentQuestion = 'Share anonymous gameplay stats?';
   static const consentBody =
       'For the adult in charge of this device.\n\n'
-      'Thumb Party TV can send anonymous stats to its developer: how the phone controls are used (presses, '
+      'Thumb Party can send anonymous stats to its developer: how the phone controls are used (presses, '
       'missed taps, timing, which mode), how quick the connection is, and how the games go. They help make '
       'the controls better.\n\n'
       'No names, accounts, contacts, location, advertising IDs or Wi-Fi details are ever sent. The stats are '

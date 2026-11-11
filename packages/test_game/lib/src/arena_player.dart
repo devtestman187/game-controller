@@ -40,6 +40,21 @@ class ArenaPlayer {
   int bumps = 0;
   int shoves = 0;
 
+  /// The coins it picked up that were gold, and the coins a hazard or a shove
+  /// into a wall made it drop (party-night §7, M14 f1).
+  int goldCoins = 0;
+  int coinsDropped = 0;
+
+  /// Dizzy and safe seconds left after a drop (party-night §7): dizzy, it
+  /// can't dash; safe, nothing can make it drop.
+  double _dizzyLeft = 0;
+  double _safeLeft = 0;
+
+  /// Seconds since another marble last shoved it, for "shoved into a wall"
+  /// (party-night §7): a wall hit within [shovedWindowS] of a shove drops a
+  /// coin.
+  double _sinceShove = double.infinity;
+
   /// The sprite's center in pixels.
   Offset get position => _field._px(_pos);
 
@@ -51,9 +66,22 @@ class ArenaPlayer {
   /// True while it can't be hit again (it blinks).
   bool get recovering => _graceLeft > 0;
 
+  /// True right after a drop: it can't dash (party-night §7).
+  bool get dizzy => _dizzyLeft > 0;
+
+  /// True right after a drop: nothing can make it drop again yet.
+  bool get safe => _safeLeft > 0;
+
+  /// Whether another marble shoved it within [ArenaFieldRules.shovedWallS],
+  /// so a wall it hits now is a wall it was shoved into.
+  bool get shovedRecently => _sinceShove < ArenaFieldRules.shovedWallS;
+
   /// The speed it moved at this step, in pixels per second, the shove
   /// included: a touch faster than a marble can walk is a shove.
   Offset get velocity => _velocity;
+
+  /// The way it last moved, a unit vector: a dropped coin lands behind it.
+  Offset get facing => _facing;
 
   /// The aim cursor, or null when the right stick is centered.
   Offset? get aimPoint =>
@@ -61,8 +89,23 @@ class ArenaPlayer {
 
   /// Pushes the marble with [velocity] (pixels per second), as another marble
   /// touching it does: it slides that way and the push fades over
-  /// [ArenaFieldRules.shoveS].
-  void shove(Offset velocity) => _shove = velocity;
+  /// [ArenaFieldRules.shoveS]. Another marble's shove is remembered, so a wall
+  /// hit soon after it is a shove into a wall (party-night §7).
+  void shove(Offset velocity) {
+    _shove = velocity;
+    _sinceShove = 0;
+  }
+
+  /// Loses [count] coins (one per drop, never more than it has) and starts the
+  /// drop's dizzy and safe seconds (party-night §7). A marble with no coins
+  /// drops nothing and is dizzy all the same.
+  void dropCoins(int count) {
+    final lost = count.clamp(0, coins);
+    coins -= lost;
+    coinsDropped += lost;
+    _dizzyLeft = ArenaFieldRules.dizzyS;
+    _safeLeft = ArenaFieldRules.dizzyS + ArenaFieldRules.safeS;
+  }
 
   /// Puts the marble's centre at [pixels], already clear of the walls.
   void place(Offset pixels) => _pos = _field._frac(pixels);
@@ -85,6 +128,9 @@ class ArenaPlayer {
     _dashLeft = 0;
     _cooldownLeft = 0;
     _graceLeft = 0;
+    // Dizzy and safe outlive a reset: a still hazard that sends a marble back
+    // to its start must not cost it the second a drop bought (party-night §7).
+    _sinceShove = double.infinity;
     _touchingWall = false;
   }
 }

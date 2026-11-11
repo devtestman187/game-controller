@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:party_host/party_host.dart' show PhoneText, ToyBadge, ToyCard, ToyCharacter, ToyLookScope, ToySizes;
+import 'package:party_host/party_host.dart'
+    show PhoneText, PuzzlePhoto, RoboBadge, ToyBadge, ToyCard, ToyCharacter, ToyLookScope, ToySizes;
 import 'package:protocol/protocol.dart';
+import 'package:puzzle_game/puzzle_game.dart';
 
 import '../providers.dart';
 
 /// This phone's own result of the round it just drew (M14 design section 9,
-/// mock-up 12): the card over the last frame, with the outcome and the time,
+/// mock-up 12): the card over the last frame, with the side's picture as the
+/// framed photo the host's card shows (design 3a), the outcome and the time,
 /// its points in a night, and the night's standings. "Waiting for the host to
 /// pick what's next." under it.
 ///
@@ -40,6 +43,7 @@ class ResultCard extends ConsumerWidget {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                const _Picture(),
                 _nameRow(context, name: name, number: own?.number ?? number ?? 1, toy: toy),
                 ..._night(context, number: number),
                 const SizedBox(height: ToySizes.space12),
@@ -146,6 +150,55 @@ class ResultCard extends ConsumerWidget {
   static const _secondsPerMinute = Duration.secondsPerMinute;
 }
 
+/// This phone's side's picture as the results' photo (design 3a, M14 r5 5): the
+/// board as the last frame drew it, in the field the round played it in, framed
+/// exactly as the host's own card frames it. Nothing for a game that has no
+/// picture, or one this app can't build yet.
+class _Picture extends ConsumerWidget {
+  const _Picture();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final drawn = ref.watch(viewDrawnProvider);
+    if (drawn == null || drawn.start.game != shapeRaceModule.id) return const SizedBox.shrink();
+    final frame = drawn.frame;
+    final puzzleId = drawn.start.setup['puzzle'];
+    if (frame is! MatchSnapshot || puzzleId is! String) return const SizedBox.shrink();
+    final puzzle = ref.watch(puzzleLibraryProvider).value?.byId(puzzleId);
+    if (puzzle == null) return const SizedBox.shrink();
+    final side = _sideOf(drawn.start.setup, ref.watch(identityProvider).controllerId);
+    final seed = frame.seed;
+    // A split round draws this phone's own board; a one-board `phones` round
+    // draws the one board both sides play. A board with no layout seed (a
+    // one-board screen match) has no field to draw here.
+    if (side == null || seed == null) return const SizedBox.shrink();
+    final target = drawn.start.setup['layout'] == phonesLayoutName ? LayoutTarget.phones : LayoutTarget.screen;
+    final index = frame.split ? side.index : 0;
+    if (index >= frame.boards.length) return const SizedBox.shrink();
+    final layout = SplitLayout.of(puzzle, seed, target: target);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: ToySizes.space12),
+      child: Center(
+        child: PuzzlePhoto(
+          key: const Key('resultPhoto'),
+          puzzle: puzzle,
+          board: frame.boards[index],
+          field: side == PuzzleSide.left ? layout.left : layout.right,
+        ),
+      ),
+    );
+  }
+
+  /// The side [playerId] plays, from the view setup's teams: null when this
+  /// phone plays none, so it has no own board to show.
+  static PuzzleSide? _sideOf(Map<String, Object?> setup, String playerId) =>
+      switch ((setup['teams'] as Map<String, Object?>?)?[playerId]) {
+        'left' => PuzzleSide.left,
+        'right' => PuzzleSide.right,
+        _ => null,
+      };
+}
+
 /// The player's own badge on the card: the look's toy disc, wearing the
 /// character the host gave them.
 class _Badge extends StatelessWidget {
@@ -179,11 +232,16 @@ class _StandingRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: Row(
         children: [
-          ToyBadge(
-            number: standing.number,
-            diameter: _diameter,
-            character: ToyCharacter.of(standing.character, standing.number),
-          ),
+          // Robo wears the robot disc the TV gives it, never a player's badge
+          // (m14 r5 9).
+          if (standing.isRobo)
+            RoboBadge(number: standing.number, size: _diameter)
+          else
+            ToyBadge(
+              number: standing.number,
+              diameter: _diameter,
+              character: ToyCharacter.of(standing.character, standing.number),
+            ),
           const SizedBox(width: ToySizes.space8),
           Expanded(
             child: Text(name, style: style, maxLines: 1, overflow: TextOverflow.ellipsis),

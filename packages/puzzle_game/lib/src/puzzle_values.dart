@@ -78,6 +78,10 @@ class PieceRuntime {
   /// [PuzzlePoints.wrongSnap] instead of [PuzzlePoints.snap] (M14 a1).
   bool wronged = false;
 
+  /// It was placed in its outline before, even if the cat knocked it back
+  /// out: only the first place earns the first try's points (M14 r5 13).
+  bool placedOnce = false;
+
   /// The first carrier.
   String? get heldBy => carriers.firstOrNull;
 }

@@ -123,6 +123,25 @@ void main() {
       expect(back.result!.standings.first.character.accessory, PlayerAccessory.crown);
     });
 
+    test('a standing can be Robo: its name and points go, and its flag says so', () {
+      const robo = ViewStanding(number: 3, name: 'Robo', points: 7, character: tealCrown, isRobo: true);
+      final back = roundTrip(
+        const ViewEndMessage(
+          reason: ViewEndReason.finished,
+          result: ViewResult(outcome: ViewOutcome.loss, standings: [robo]),
+        ),
+      ) as ViewEndMessage;
+      expect(back.result!.standings.single, robo);
+      expect(back.result!.standings.single.name, 'Robo');
+      expect(back.result!.standings.single.points, 7);
+      expect(back.result!.standings.single.toJson()['robo'], isTrue);
+      expect(
+        const ViewStanding(number: 1, name: 'Mia', points: 2, character: tealCrown).toJson().containsKey('robo'),
+        isFalse,
+        reason: 'a player\'s standing leaves the flag out',
+      );
+    });
+
     test('a view_end without a result still decodes, and a bad one is refused', () {
       final old = codec.decode(
         jsonEncode({'v': protocolVersion, 't': 'view_end', 'reason': ViewEndReason.quit}),

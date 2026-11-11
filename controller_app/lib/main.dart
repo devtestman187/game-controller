@@ -34,6 +34,10 @@ Future<void> main() async {
       overrides: [
         prefsProvider.overrideWithValue(prefs),
         party.toyShadersProvider.overrideWithValue(shaders),
+        // The sessions this phone hosts go to the stats store, with the adult's
+        // yes at the Stats screen, as the TV's do (M14 r5 8). A build with no
+        // Firestore project set has none, and the sessions stay on the phone.
+        party.sessionUploaderProvider.overrideWith((ref) => phoneUploader()),
         ...phoneHostOverrides(directories: const PhoneHostDirectories()),
       ],
       child: const ControllerApp(),

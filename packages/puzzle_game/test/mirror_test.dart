@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:puzzle_game/puzzle_game.dart';
 
 import 'support/frames.dart';
+import 'support/look.dart' show sunny;
 import 'support/mirror_helpers.dart';
 
 void main() {
@@ -215,6 +216,73 @@ void main() {
       expect(await probe(90, const Offset(40, 47)), isNot(0x8E5B3A), reason: 'turned: 7 down is past it');
     });
 
+    testWidgets('their finished picture glows while their own board celebrates', (tester) async {
+      // The crown placed, and their board seen finishing at 100 ms: the mirror
+      // draws the same warm rim their own board does (design 3a item 3, M14 r5
+      // 15). Its box is exactly the picture's, so the star ring and the
+      // confetti, which fall outside the picture, are the one part of the
+      // moment the mirror cannot show.
+      final crown = puzzle.pieces.indexWhere((p) => p.id == 'crown');
+      final placed = [
+        for (final (i, spec) in puzzle.pieces.indexed)
+          PieceView(
+            x: i == crown ? world(spec.target).dx : 10,
+            y: i == crown ? world(spec.target).dy : 10,
+            angle: i == crown ? spec.targetAngle : 0,
+            state: i == crown ? PieceState.locked : PieceState.tray,
+          ),
+      ];
+      PuzzleSnapshot board(PuzzlePhase phase) => PuzzleSnapshot(
+        puzzleId: puzzle.id,
+        timeLeftMs: 65000,
+        phase: phase,
+        pieces: placed,
+        players: const [PlayerView(number: 2, x: 30, y: 60)],
+      );
+      final moments = PieceMoments()
+        ..observe(MatchSnapshot(seed: 1, boards: [board(PuzzlePhase.playing), board(PuzzlePhase.playing)]), 0)
+        ..observe(MatchSnapshot(seed: 1, boards: [board(PuzzlePhase.playing), board(PuzzlePhase.finished)]), 100);
+      Future<Uint8List> frameAt(int nowMs) async {
+        final (_, _, bytes) = await capture(
+          tester,
+          CustomPaint(
+            size: iphone,
+            painter: _MirrorPaint(
+              MirrorPainter(
+                puzzle,
+                board(PuzzlePhase.finished),
+                layout.left,
+                look: sunny,
+                moments: moments,
+                nowMs: nowMs,
+                board: 1,
+                rect: mirror.rect,
+                scale: mirror.scale,
+              ),
+            ),
+          ),
+          window: iphone,
+          box: iphone,
+        );
+        return bytes;
+      }
+
+      /// The pixels two frames of the same size differ in.
+      int changed(Uint8List a, Uint8List b) {
+        var n = 0;
+        for (var i = 0; i < a.length; i += 4) {
+          if (a[i] != b[i] || a[i + 1] != b[i + 1] || a[i + 2] != b[i + 2] || a[i + 3] != b[i + 3]) n++;
+        }
+        return n;
+      }
+
+      final before = await frameAt(60);
+      final celebrating = await frameAt(500);
+      final over = await frameAt(100 + Celebration.totalMs + 100);
+      expect(changed(before, celebrating), greaterThan(10), reason: 'a warm rim round the piece they placed');
+      expect(changed(before, over), 0, reason: 'and nothing once the moment is over');
+    });
+
     testWidgets('a 2-v-1 draws every dot of the other side', (tester) async {
       const places = [Offset(26, 40), Offset(60, 60)];
       final (width, bytes) = await frame(
@@ -276,4 +344,18 @@ void main() {
       );
     });
   });
+}
+
+/// [MirrorPainter] draws into a canvas the match has placed it on, so a test
+/// draws it alone through this: its box and its rect are the same [Size].
+class _MirrorPaint extends CustomPainter {
+  const _MirrorPaint(this.painter);
+
+  final MirrorPainter painter;
+
+  @override
+  void paint(Canvas canvas, Size size) => painter.paint(canvas);
+
+  @override
+  bool shouldRepaint(_MirrorPaint oldDelegate) => true;
 }

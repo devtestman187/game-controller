@@ -105,63 +105,85 @@ class _ScoreRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final look = ToyLookScope.of(context);
-    final colors = look.colors;
-    final style = look.type.button.copyWith(color: colors.ink);
-    final won = finalScores && row.place == 1;
     final robo = row.id == roboPlayerId;
     return Padding(
       padding: EdgeInsets.only(top: rowBadgeHeadroom(look), bottom: ToySizes.space4),
       child: Opacity(
         key: Key('nightRow-${row.id}'),
-        opacity: row.isHere ? 1 : nightAwayOpacity,
+        // Robo is never away: it has no phone to leave with, so its row stays
+        // full (m14 r5 8).
+        opacity: row.isHere || robo ? 1 : nightAwayOpacity,
         child: Row(
           children: [
-            SizedBox(
-              width: nightCrownSlotPx,
-              child: won ? NightCrown(key: Key('nightCrown-${row.id}'), size: nightCrownSlotPx * 0.8) : null,
-            ),
-            SizedBox(
-              width: nightPlaceSlotPx,
-              child: Text(
-                NightText.place(row.place, tied: row.tied),
-                key: Key('nightPlace-${row.id}'),
-                style: style.copyWith(color: colors.inkSoft),
-                textAlign: TextAlign.center,
-              ),
-            ),
-            if (robo)
-              RoboBadge(number: roboNumber, size: look.sizes.buttonHeight * rowBadgeShare)
-            else if (row.number > 0)
-              ToyBadge(
-                number: row.number,
-                diameter: look.sizes.buttonHeight * rowBadgeShare,
-                character: ToyCharacter.of(row.character, row.number),
-              ),
-            const SizedBox(width: ToySizes.space12),
+            ..._who(look, robo: robo),
             Expanded(
               child: Text(
                 robo ? ArenaText.robo : NightText.playerName(row.nickname, row.number),
                 key: Key('nightName-${row.id}'),
-                style: style,
+                style: _style(look),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
             ),
-            Icon(Icons.star, size: style.fontSize, color: colors.star),
-            const SizedBox(width: ToySizes.space8),
-            Text('${row.total}', key: Key('nightTotal-${row.id}'), style: style),
-            SizedBox(
-              width: nightRoundPointsSlotPx,
-              child: Text(
-                row.roundPoints == 0 ? '' : NightText.roundPoints(row.roundPoints),
-                key: Key('nightRoundPoints-${row.id}'),
-                style: style.copyWith(color: colors.good),
-                textAlign: TextAlign.end,
-              ),
-            ),
+            ..._points(look),
           ],
         ),
       ),
     );
+  }
+
+  /// The row's style: the look's button type, in its ink.
+  TextStyle _style(ToyLook look) => look.type.button.copyWith(color: look.colors.ink);
+
+  /// The row's head: the winner's crown, the place, then who it is — a
+  /// player's badge and nickname, or Robo's disc and its name.
+  List<Widget> _who(ToyLook look, {required bool robo}) {
+    final colors = look.colors;
+    final style = _style(look);
+    return [
+      SizedBox(
+        width: nightCrownSlotPx,
+        child: finalScores && row.place == 1
+            ? NightCrown(key: Key('nightCrown-${row.id}'), size: nightCrownSlotPx * 0.8)
+            : null,
+      ),
+      SizedBox(
+        width: nightPlaceSlotPx,
+        child: Text(
+          NightText.place(row.place, tied: row.tied),
+          key: Key('nightPlace-${row.id}'),
+          style: style.copyWith(color: colors.inkSoft),
+          textAlign: TextAlign.center,
+        ),
+      ),
+      if (robo)
+        RoboBadge(number: roboNumber, size: look.sizes.buttonHeight * rowBadgeShare)
+      else if (row.number > 0)
+        ToyBadge(
+          number: row.number,
+          diameter: look.sizes.buttonHeight * rowBadgeShare,
+          character: ToyCharacter.of(row.character, row.number),
+        ),
+      const SizedBox(width: ToySizes.space12),
+    ];
+  }
+
+  /// The row's tail: a star and the night's total, then what the round gave.
+  List<Widget> _points(ToyLook look) {
+    final style = _style(look);
+    return [
+      Icon(Icons.star, size: style.fontSize, color: look.colors.star),
+      const SizedBox(width: ToySizes.space8),
+      Text('${row.total}', key: Key('nightTotal-${row.id}'), style: style),
+      SizedBox(
+        width: nightRoundPointsSlotPx,
+        child: Text(
+          row.roundPoints == 0 ? '' : NightText.roundPoints(row.roundPoints),
+          key: Key('nightRoundPoints-${row.id}'),
+          style: style.copyWith(color: look.colors.good),
+          textAlign: TextAlign.end,
+        ),
+      ),
+    ];
   }
 }

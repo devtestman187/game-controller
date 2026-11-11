@@ -40,17 +40,23 @@ final class GameInput {
 Offset _unit(Offset v) => v.distance > 1 ? v / v.distance : v;
 
 /// Why a game event fired, for the log and the debug overlay.
-enum GameEventCause { wall, hazard, goal, dash, cooldown, bump, coin, coinAppear, timeUp, spring }
+enum GameEventCause { wall, hazard, goal, dash, cooldown, bump, coin, coinAppear, coinLost, timeUp, spring }
 
 /// The sound names the Arena's events play in the host's soundtrack (party-night
 /// N10, M14 G9): a host plays a sound by name, and each of these is a key in
 /// the asset manifest's sound list.
 abstract final class ArenaSounds {
-  /// A coin picked up.
+  /// A coin picked up, a gold one picked up (worth two), and one dropped on a
+  /// hazard or a shove into a wall (party-night §7).
   static const coin = 'coin';
+  static const coinGold = 'coin_gold';
+  static const coinLost = 'coin_lost';
 
   /// A coin appearing on the field: a world event, for no player.
   static const coinAppear = 'coin_appear';
+
+  /// A marble's dash (party-night §7): the race keeps the haptic's `rumble`.
+  static const dash = 'dash';
 
   /// Two marbles touching, and the harder one of a dash.
   static const bump = 'bump';

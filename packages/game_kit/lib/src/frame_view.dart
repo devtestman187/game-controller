@@ -14,6 +14,11 @@ import 'hosting_settings.dart';
 /// says what to do next, in words an 8-year-old reads.
 const updateAppText = 'Update the app to see this game';
 
+/// What a phone shows when its app is newer than its host (m14 §5): the host
+/// sends snapshots this app has moved past, so the TV needs the update. An
+/// unknown game says [updateAppText]: the phone can't tell whose side is old.
+const updateHostText = 'Update the TV to see this game';
+
 /// One frame as the view keeps it: the host's message and its decoded
 /// snapshot.
 typedef _PlayedFrame = ({FrameMessage frame, GameSnapshot snapshot});
@@ -23,7 +28,9 @@ typedef _PlayedFrame = ({FrameMessage frame, GameSnapshot snapshot});
 ///
 /// It draws nothing before a [ViewStarted], and ignores frames then and after
 /// a [ViewEnded]. A game this app doesn't know, or one whose snapshots are a
-/// newer version, is shown as [updateAppText] until the next start. Otherwise
+/// newer version, is shown as [updateAppText] until the next start; one whose
+/// snapshots are an older version is shown as [updateHostText], so the phone
+/// says which side to update (m14 §5). Otherwise
 /// it waits for the first frame, then draws each Ticker frame with the playout
 /// delay the arrivals ask for: the older frame, lerped towards the newer one,
 /// never past the newest.
@@ -42,6 +49,7 @@ class FrameView extends StatefulWidget {
     required this.pxPerMm,
     this.settings = HostingSettings.defaults,
     this.onSounds,
+    this.onDrawn,
     super.key,
   });
 
@@ -89,6 +97,12 @@ class FrameView extends StatefulWidget {
   /// turn. Null plays nothing.
   final void Function(List<String> names)? onSounds;
 
+  /// Each frame the view starts drawing, as the snapshot it draws (M14 r5 5):
+  /// an app keeps the last one, so its results card can show the picture the
+  /// round left, as the host's own card does. Called once per frame, on the
+  /// tick that first draws it. Null reports nothing.
+  final void Function(GameSnapshot snapshot)? onDrawn;
+
   @override
   State<FrameView> createState() => _FrameViewState();
 }
@@ -101,6 +115,7 @@ class _FrameViewState extends State<FrameView> with SingleTickerProviderStateMix
   PlayoutBuffer<_PlayedFrame>? _buffer;
   GameViewer? _viewer;
   bool _needsUpdate = false;
+  String _updateText = updateAppText;
 
   // What the last tick picked: the frames to draw and how far between them.
   _PlayedFrame? _a;
@@ -166,6 +181,7 @@ class _FrameViewState extends State<FrameView> with SingleTickerProviderStateMix
     }
     _viewer = viewer;
     _needsUpdate = viewer == null;
+    _updateText = _updateTextFor(module, start);
     _timing = viewer == null ? null : ViewerTiming(hz: start.hz, maxPlayoutFrames: widget.settings.maxPlayoutFrames);
     _buffer = viewer == null ? null : PlayoutBuffer<_PlayedFrame>();
     if (viewer != null) {
@@ -204,6 +220,11 @@ class _FrameViewState extends State<FrameView> with SingleTickerProviderStateMix
     buffer.add((frame: frame, snapshot: snapshot), frame.atMs);
   }
 
+  /// The words for a start this app can't draw: which side is behind, when
+  /// the snapshot versions say so (m14 §5).
+  static String _updateTextFor(GameModule? module, ViewStartMessage start) =>
+      module != null && module.snapshotVersion > start.snapshotVersion ? updateHostText : updateAppText;
+
   /// Back to drawing nothing: the game ended, or the app couldn't show it.
   void _stop() {
     final wasActive = _viewer != null || _needsUpdate;
@@ -239,6 +260,7 @@ class _FrameViewState extends State<FrameView> with SingleTickerProviderStateMix
     _b = pick.b;
     _t = pick.t;
     if (isNewA) {
+      widget.onDrawn?.call(a.snapshot);
       // The draw time is the Flutter frame that shows it, not this tick.
       WidgetsBinding.instance.addPostFrameCallback((_) => _reportDrawn(a));
     }
@@ -272,7 +294,7 @@ class _FrameViewState extends State<FrameView> with SingleTickerProviderStateMix
   @override
   Widget build(BuildContext context) {
     final viewer = _viewer;
-    if (viewer == null) return _needsUpdate ? const Center(child: Text(updateAppText)) : const SizedBox.shrink();
+    if (viewer == null) return _needsUpdate ? Center(child: Text(_updateText)) : const SizedBox.shrink();
     final a = _a;
     if (a == null) return const SizedBox.shrink();
     final b = _b;

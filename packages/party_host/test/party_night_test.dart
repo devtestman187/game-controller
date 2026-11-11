@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:game_kit/game_kit.dart';
 import 'package:party_host/party_host.dart';
 import 'package:puzzle_game/puzzle_game.dart' show Chaos, PuzzleSettings;
 
@@ -59,6 +60,25 @@ void main() {
       expect(state.roundsWonBy('p3'), 1);
       expect(state.round, 2);
       expect(state.lastRoundPoints, {'p1': 2, 'p2': 5, 'p3': 5});
+    });
+
+    // M14 f1 (r5 finding 3): a board played alone has no winning side of its
+    // own, so Round Winner could never be won in a solo or team night.
+    test('a round played on one board counts as its side\'s round won', () {
+      final (:container, :roster) = nightContainer();
+      roster.put([nightPlayer('p1', 1, 'Mia')]);
+      final night = container.read(partyNightProvider.notifier)..start(length: NightLength.three, awards: threeAwards);
+      // One board, done: its line says `done` and no side won.
+      night.recordRound(
+        RoundResult(
+          game: 'puzzle',
+          points: {'p1': 3},
+          lines: {'p1': RoundLine(outcome: RoundOutcome.done, timeS: 40)},
+        ),
+      );
+      final state = container.read(partyNightProvider)!;
+      expect(state.roundsWonBy('p1'), 1, reason: 'the only side playing won the round');
+      expect(state.roundsWonBy('p2'), 0, reason: 'a player not in the round won nothing');
     });
 
     test('the counters a round reports add up over the night', () {

@@ -11,8 +11,10 @@ import '../host_grace.dart';
 /// What a [PhoneHost] is built from: the host's inputs, which the app's root
 /// scope supplies to `party_host`, this phone's own controller identity, and
 /// the log of the start it is part of (m12 bug 1108b). [monitor] reads this
-/// phone's battery and heat for the session summary: the host service it
-/// builds takes it from here, not from the provider graph (m12 §0.1).
+/// phone's battery and heat for the session summary, and [uploader] sends the
+/// finished sessions to the stats store (null in a build with no project): the
+/// host service it builds takes both from here, not from the provider graph
+/// (m12 §0.1, M14 r5 8).
 typedef PhoneHostInputs = ({
   SharedPreferences prefs,
   LogBuffer log,
@@ -21,6 +23,7 @@ typedef PhoneHostInputs = ({
   party.Advertiser advertiser,
   ControllerIdentity controller,
   party.HostDeviceMonitor monitor,
+  party.SessionUploader? uploader,
   party.HostStartLog start,
 });
 
@@ -51,6 +54,7 @@ class PhoneHost {
       advertiser: inputs.advertiser,
       inProcess: listener,
       monitor: inputs.monitor,
+      uploader: inputs.uploader,
     );
     final client = playsHere
         ? ControllerClient(

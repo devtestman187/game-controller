@@ -16,6 +16,8 @@ final class ArenaPlayerView {
     this.dashes = 0,
     this.failedDashes = 0,
     this.coins = 0,
+    this.dizzy = false,
+    this.safe = false,
   });
 
   final String id;
@@ -38,6 +40,11 @@ final class ArenaPlayerView {
   /// Coins picked up this round (G9).
   final int coins;
 
+  /// Dizzy after a drop (it can't dash), and safe after one (it drops
+  /// nothing): party-night §7, the frame's `dz` and `sf`.
+  final bool dizzy;
+  final bool safe;
+
   Map<String, Object?> toJson() => {
     'id': id,
     'x': _r(x),
@@ -52,6 +59,8 @@ final class ArenaPlayerView {
     'ds': dashes,
     'fd': failedDashes,
     if (coins > 0) 'c': coins,
+    if (dizzy) 'dz': 1,
+    if (safe) 'sf': 1,
   };
 
   static ArenaPlayerView fromJson(Map<String, Object?> j) => ArenaPlayerView(
@@ -68,6 +77,8 @@ final class ArenaPlayerView {
     dashes: j['ds'] as int,
     failedDashes: j['fd'] as int,
     coins: j['c'] as int? ?? 0,
+    dizzy: j['dz'] == 1,
+    safe: j['sf'] == 1,
   );
 
   /// This sprite moved [t] of the way to [next] (m12 §4): its place, its
@@ -93,6 +104,8 @@ final class ArenaPlayerView {
       dashes: dashes,
       failedDashes: failedDashes,
       coins: coins,
+      dizzy: dizzy,
+      safe: safe,
     );
   }
 }
@@ -101,19 +114,44 @@ final class ArenaPlayerView {
 /// how long it has been out, which its spin turns on. A frame carries the
 /// coins as `[x, y, age]` triples, so a few of them stay small.
 final class ArenaCoinView {
-  const ArenaCoinView({required this.x, required this.y, this.ageMs = 0});
+  const ArenaCoinView({required this.x, required this.y, this.ageMs = 0, this.gold = false, this.dropper});
 
   final double x;
   final double y;
 
-  /// Milliseconds since the coin appeared.
+  /// Milliseconds since the coin appeared: a field coin younger than
+  /// [ArenaCoin.sparkleS] still sparkles, and can't be taken yet.
   final int ageMs;
 
-  List<Object> toJson() => [_r(x), _r(y), ageMs];
+  /// A gold coin, worth two (party-night §7).
+  final bool gold;
 
-  static ArenaCoinView fromJson(List<Object?> j) =>
-      ArenaCoinView(x: (j[0] as num).toDouble(), y: (j[1] as num).toDouble(), ageMs: (j[2] as num).toInt());
+  /// The index in the frame's `pl` of the marble that dropped it, or null for
+  /// a coin that came out of a zone. A number, so a few coins keep the frame
+  /// small; the rules keep the id.
+  final int? dropper;
+
+  /// The frame's flags: bit 0 gold, bit 1 dropped.
+  static const _gold = 1;
+  static const _dropped = 2;
+
+  List<Object> toJson() {
+    final flags = (gold ? _gold : 0) | (dropper == null ? 0 : _dropped);
+    return [_r(x), _r(y), ageMs, if (flags != 0) flags, ?dropper];
+  }
+
+  static ArenaCoinView fromJson(List<Object?> j) {
+    final flags = j.length > 3 ? (j[3] as num).toInt() : 0;
+    return ArenaCoinView(
+      x: (j[0] as num).toDouble(),
+      y: (j[1] as num).toDouble(),
+      ageMs: (j[2] as num).toInt(),
+      gold: flags & _gold != 0,
+      dropper: j.length > 4 ? (j[4] as num).toInt() : null,
+    );
+  }
 
   @override
-  String toString() => 'ArenaCoinView($x, $y, ${ageMs}ms)';
+  String toString() =>
+      'ArenaCoinView($x, $y, ${ageMs}ms${gold ? ', gold' : ''}${dropper == null ? '' : ', $dropper'} )';
 }

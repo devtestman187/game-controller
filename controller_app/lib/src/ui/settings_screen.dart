@@ -8,6 +8,7 @@ import 'package:party_host/party_host.dart'
         LookAndSoundSection,
         PhoneText,
         SettingsText,
+        StatsScreen,
         ToyAccessory,
         ToyBadge,
         ToyCard,
@@ -15,7 +16,9 @@ import 'package:party_host/party_host.dart'
         ToyLook,
         ToyLookScope,
         ToySizes,
+        askConsent,
         paintAccessory,
+        statsStateProvider,
         toyAccessoryHeadroom;
 import 'package:protocol/protocol.dart';
 
@@ -26,6 +29,7 @@ import '../controls_settings.dart';
 import '../feedback.dart';
 import '../gyro.dart';
 import '../haptics.dart';
+import '../host/hosting.dart';
 import '../host/hosting_frame_rate.dart';
 import '../profile.dart';
 import '../providers.dart';
@@ -255,13 +259,18 @@ String eventFeel(HapticEvent e) => SettingsText.eventFeel(e);
 String eventLabel(HapticEvent e) => SettingsText.eventLabel(e);
 
 /// Control stats (PRD v2 privacy rules): every phone shows that the TV
-/// records how the controls are used, and can opt out.
+/// records how the controls are used, and can opt out. A phone that hosts keeps
+/// its own sessions, so it has the host's Stats screen too (M14 r5 8).
 class _StatsSection extends ConsumerWidget {
   const _StatsSection();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final on = ref.watch(shareStatsProvider);
+    // A host's sessions are kept on the phone and shown by its Stats screen,
+    // which the host service keeps: there is nothing to show before the first
+    // "Host a game".
+    final hosting = ref.watch(hostingProvider) != null;
     return _Section(
       title: SettingsText.controlStats,
       children: [
@@ -273,8 +282,26 @@ class _StatsSection extends ConsumerWidget {
           value: on,
           onChanged: ref.read(shareStatsProvider.notifier).set,
         ),
+        if (hosting)
+          ListTile(
+            key: const Key('settingsHostStats'),
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.bar_chart_outlined),
+            title: const Text(HostText.stats),
+            subtitle: const Text(SettingsText.hostStatsLine),
+            onTap: () => _openStats(context, ref),
+          ),
       ],
     );
+  }
+
+  /// The host's Stats screen, as the TV has it: the sessions this phone kept
+  /// and the sharing choice. The first time, the adult is asked first, and
+  /// nothing leaves the phone until the answer is yes (M14 r5 8).
+  Future<void> _openStats(BuildContext context, WidgetRef ref) async {
+    if (ref.read(statsStateProvider).consent == null) await askConsent(context, ref);
+    if (!context.mounted) return;
+    await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const StatsScreen()));
   }
 }
 

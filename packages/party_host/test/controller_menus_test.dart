@@ -125,6 +125,31 @@ void main() {
     }
   });
 
+  testWidgets('the D-pad reaches Shape Race\'s Best times button, and B comes back from the board', (tester) async {
+    final fake = await pumpHost(tester, screen: const StubHome());
+    await neutral(tester, fake, ['p1']);
+    await tapVisible(tester, find.byKey(const Key('openPlay')));
+    await tester.pumpAndSettle();
+    await tapVisible(tester, find.byKey(const Key('pickShapeRace')));
+    await tester.pumpAndSettle();
+    expect(find.byType(ShapeRaceScreen), findsOneWidget);
+
+    // The first level's button opens the pick, so down walks from it to the
+    // button under the levels (M14 f1, r5 finding 4).
+    for (var i = 0; i < 8 && !focused(tester, 'openBestTimes'); i++) {
+      await press(tester, fake, 'p1', GamepadButton.dpadDown);
+    }
+    expect(focused(tester, 'openBestTimes'), isTrue, reason: 'down reaches the Best times button');
+
+    await press(tester, fake, 'p1', GamepadButton.a);
+    await navigated(tester);
+    expect(find.byType(BestTimesScreen), findsOneWidget);
+    await press(tester, fake, 'p1', GamepadButton.b);
+    await navigated(tester);
+    expect(find.byType(BestTimesScreen), findsNothing);
+    expect(find.byType(ShapeRaceScreen), findsOneWidget);
+  });
+
   testWidgets('simulated controllers never work the menus', (tester) async {
     final fake = await pumpHost(tester, screen: const StubHome());
     final host = fake.gameHost;

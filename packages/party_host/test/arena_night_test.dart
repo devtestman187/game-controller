@@ -82,6 +82,53 @@ void main() {
     expect(appContainer(tester).read(partyNightProvider)!.round, 1, reason: 'the round is in the night now');
   });
 
+  testWidgets('a night\'s Bumper Round notes its map on the night, and the card\'s pick is the round\'s', (
+    tester,
+  ) async {
+    final fake = await openNightBumper(tester);
+    // The night's card opens on Surprise me; the host picks a map instead.
+    final card = find.byKey(const Key('arenaMap-pinball'));
+    await tester.ensureVisible(card);
+    await tester.pump();
+    await tester.tap(card);
+    await tester.pump();
+
+    await readyUp(tester, fake);
+    await roundStarted(tester);
+    expect(arenaSnapshot(tester).mapId, 'pinball', reason: 'the map picked on the night card reaches the round');
+    expect(appContainer(tester).read(partyNightProvider)!.maps, ['pinball'], reason: 'the night notes what it played');
+  });
+
+  testWidgets('a night\'s Surprise me picks a map the night hasn\'t used yet', (tester) async {
+    final fake = await pumpHost(tester, screen: const StubHome());
+    await neutral(tester, fake, ['p1']);
+    await openNight(tester);
+    final night = appContainer(tester).read(partyNightProvider.notifier)
+      ..start(length: NightLength.three, awards: threeAwards)
+      ..recordRound(roundResult(points: {'p1': 5}, winners: {'p1'}))
+      ..usedMap('pinball')
+      ..usedMap('block-castle')
+      ..usedMap('toy-factory')
+      ..usedMap('spinning-tops');
+    expect(night.state!.maps, hasLength(4));
+    // A map is saved from before the night: the card still shows Surprise me
+    // lit, so that saved map must not be the one that plays.
+    appContainer(tester).read(arenaSettingsProvider.notifier).setMap('pinball');
+    await tester.pump();
+    await tapVisible(tester, find.byKey(const Key('nightBumper')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+
+    await readyUp(tester, fake);
+    await roundStarted(tester);
+    expect(arenaSnapshot(tester).mapId, 'playroom', reason: 'the only map the night hasn\'t used');
+    expect(
+      appContainer(tester).read(partyNightProvider)!.maps,
+      hasLength(5),
+      reason: 'the night has used every map after this round, so Surprise me falls back to all of them',
+    );
+  });
+
   testWidgets('a round before the last plays at the night\'s own scale', (tester) async {
     final fake = await bumperFromScoreboard(tester, rounds: 1);
     await readyUp(tester, fake);

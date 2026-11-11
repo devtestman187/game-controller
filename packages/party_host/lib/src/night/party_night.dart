@@ -84,6 +84,13 @@ class PartyNight extends Notifier<NightState?> {
     state = recorded.isOver ? recorded.awarded(_decide(recorded)) : recorded;
   }
 
+  /// Notes the Arena map a round started on (party-night §7b): the night's
+  /// Bumper Rounds each start on Surprise me, which picks a map it hasn't used.
+  void usedMap(String mapId) {
+    final night = state;
+    if (night != null) state = night.usedMap(mapId);
+  }
+
   /// The night's three awards, from the counters it has summed: the players it
   /// has met are the only ones who may win (so Robo never does).
   List<NightAwardOutcome> _decide(NightState night) => decideAwards(

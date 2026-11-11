@@ -32,6 +32,7 @@ import 'pause_menu.dart';
 import 'player_badge.dart';
 import 'puzzle_best_times.dart';
 import 'puzzle_choice.dart';
+import 'puzzle_photo.dart';
 
 part 'puzzle_results_widgets.dart';
 part 'puzzle_screen_widgets.dart';

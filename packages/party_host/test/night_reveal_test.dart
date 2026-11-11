@@ -92,6 +92,26 @@ void main() {
     expect(find.text('Final scores'), findsOneWidget);
   });
 
+  testWidgets('Back on the reveal finishes it, opening the final scores', (tester) async {
+    await pumpHost(tester, screen: const StubHome());
+    final home = tester.element(find.byKey(const Key('home')));
+    Navigator.of(home).push(MaterialPageRoute<void>(builder: (_) => const NightRevealScreen()));
+    await tester.pumpAndSettle();
+    final night = appContainer(tester).read(partyNightProvider.notifier)
+      ..start(length: NightLength.three, awards: [NightAward.bestHelper, NightAward.comeback, NightAward.sharpshooter]);
+    for (var i = 0; i < 3; i++) {
+      night.recordRound(roundResult(points: {'p1': 5}));
+    }
+    await tester.pump();
+    expect(find.text('Best Helper'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('hostTitleBarBack')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('nightReveal')), findsNothing, reason: 'Back skips the rest, as Escape does');
+    expect(find.text('Final scores'), findsOneWidget, reason: 'it finishes the reveal rather than popping out of it');
+  });
+
   testWidgets('a night\'s last results lead to the reveal, and the reveal to the final scores', (tester) async {
     final fake = await pumpHost(tester, screen: const StubHome());
     await neutral(tester, fake, ['p1']);

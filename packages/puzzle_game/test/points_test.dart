@@ -49,6 +49,19 @@ void main() {
     expect(game.player('p1')!.tryAgains, 1);
   });
 
+  test('a piece the cat knocked earns only the try again\'s +1 when it is placed again', () {
+    final m = board(twoSquares());
+    final game = m.gameOf(PuzzleSide.left);
+    place(m, game, 'p1', 0);
+    expect(game.points, PuzzlePoints.snap, reason: 'the first try earns +2');
+    game.catKnocks(0);
+    expect(game.pieces[0].state, PieceState.tray, reason: 'the cat knocked it back to its tray');
+    place(m, game, 'p1', 0);
+    expect(game.pieces[0].state, PieceState.locked);
+    expect(game.points, PuzzlePoints.snap + PuzzlePoints.wrongSnap, reason: 'no second first-try bonus');
+    expect(game.player('p1')!.tryAgains, 1, reason: 'the second place is the try again');
+  });
+
   test('a big piece carried home by two earns +1 more, counted for both carriers', () {
     final m = board(crateAndBall(), ids: const ['p1', 'p2']);
     final game = m.gameOf(PuzzleSide.left);

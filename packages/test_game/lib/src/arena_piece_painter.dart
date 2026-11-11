@@ -205,9 +205,12 @@ class ArenaPiecePainter {
         _pennant(canvas, centre, reach);
       case DecorKind.light:
         final light = starPath(centre, reach * 0.35, reach * decorLightShare);
-        canvas
-          ..drawPath(light, Paint()..color = look.colors.star)
-          ..drawPath(light, _stroke());
+        canvas.drawPath(
+          light,
+          _stroke()
+            ..color = Color.lerp(look.colors.star, look.colors.ink, themeLightMix)!
+            ..strokeJoin = StrokeJoin.round,
+        );
       case DecorKind.gear:
         _gear(canvas, centre, reach);
     }

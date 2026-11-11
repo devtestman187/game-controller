@@ -17,6 +17,7 @@ import '../providers.dart';
 import '../text/arena_text.dart';
 import '../text/host_text.dart';
 import '../text/night_text.dart';
+import 'arena_map_choice.dart';
 import 'arena_results.dart';
 import 'arena_waiting_card.dart';
 import 'controller_menus.dart';
@@ -177,11 +178,11 @@ class _GameScreenState extends ConsumerState<GameScreen> {
   /// The card's players are all ready: the round starts (design section 8). A
   /// night plays the Bumper Round alone, and its points are doubled in the
   /// night's last round (party-night section 2 N3).
-  void _start() {
+  void _start(String? chosenMapId) {
     final night = ref.read(partyNightProvider);
     final settings = ref.read(arenaSettingsProvider);
     final mode = night == null ? settings.mode : ArenaMode.bumper;
-    final map = _mapFor(settings, mode);
+    final map = _mapFor(settings, mode, chosen: chosenMapId);
     final scale = night != null && night.isNextRoundTheLast ? lastRoundPointsScale : nightPointsScale;
     // A test's game plays the first round as it was given; every later round is
     // built from the card.
@@ -189,6 +190,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
         ? widget.game!
         : ArenaGame(map: map, mode: mode, random: _random, pointsScale: scale);
     ref.read(arenaSettingsProvider.notifier).playedMap(map.id);
+    if (night != null) ref.read(partyNightProvider.notifier).usedMap(map.id);
     _log('Round started: $arenaGame, ${mode.name}, ${map.name}');
     setState(() {
       _stage = _Stage.playing;
@@ -198,25 +200,13 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     _takeFocus();
   }
 
-  /// The map this round plays (party-night section 7b): the one the card
-  /// picked, or Surprise me's — one that plays the mode and wasn't played last,
-  /// if there is one.
-  ArenaMap _mapFor(ArenaSettings settings, ArenaMode mode) {
+  /// The map this round plays (party-night section 7b): the one the card shows
+  /// chosen ([chosen], null for Surprise me), or Surprise me's — one that plays
+  /// the mode and that neither the round before nor the night used (r5 7).
+  ArenaMap _mapFor(ArenaSettings settings, ArenaMode mode, {String? chosen}) {
     final maps = ref.read(arenaMapLibraryProvider).whenOrNull(data: (library) => library.maps) ?? const <ArenaMap>[];
-    final playable = [
-      for (final map in maps)
-        if (mode == ArenaMode.race ? map.race != null : map.bumper != null) map,
-    ];
-    final chosen = settings.mapId;
-    for (final map in playable) {
-      if (map.id == chosen) return map;
-    }
-    final fresh = [
-      for (final map in playable)
-        if (map.id != settings.lastMapId) map,
-    ];
-    final from = fresh.isEmpty ? playable : fresh;
-    return from.isEmpty ? ArenaMap.playroom : from[_random.nextInt(from.length)];
+    final used = {if (settings.lastMapId != null) settings.lastMapId!, ...?ref.read(partyNightProvider)?.maps};
+    return mapForRound(maps: maps, mode: mode, random: _random, chosen: chosen, used: used);
   }
 
   /// Play again: another round on the same map and mode, as Shape Race's
@@ -328,14 +318,22 @@ class _GameScreenState extends ConsumerState<GameScreen> {
                       surpriseFirst: night != null,
                       onStart: _start,
                     ),
-                    _Stage.playing => _field(),
-                    _Stage.results => ArenaResults(
-                      result: _result!,
-                      night: night != null,
-                      againFocus: _againFocus,
-                      onAgain: _again,
-                      onChangeMode: _changeMode,
-                      onNext: _next,
+                    // The results stand over the field, never in its place: a
+                    // joined phone keeps the round's last frame under its card,
+                    // so the session must not end (M14 f1, r5 finding 1).
+                    _Stage.playing || _Stage.results => Stack(
+                      children: [
+                        _field(),
+                        if (_stage == _Stage.results)
+                          ArenaResults(
+                            result: _result!,
+                            night: night != null,
+                            againFocus: _againFocus,
+                            onAgain: _again,
+                            onChangeMode: _changeMode,
+                            onNext: _next,
+                          ),
+                      ],
                     ),
                   },
                 ),
@@ -355,7 +353,9 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     final game = _game;
     if (game == null) return const SizedBox.shrink();
     return Pausable(
-      enabled: true,
+      // Start pauses a round that is on alone: the results are no round (m12
+      // §2.10), though the field stays drawn under them (M14 f1).
+      enabled: _stage == _Stage.playing,
       beat: Pausable.ready,
       builder: (context, paused) => Stack(
         children: [

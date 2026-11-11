@@ -6,6 +6,22 @@ abstract final class RecordText {
   /// The chip a finished board wears when it beat its best.
   static const newRecord = 'New record!';
 
+  /// The board's own name, on the picker's button and its title bar (M14 f1,
+  /// r5 finding 4).
+  static const bestTimesTitle = 'Best times';
+
+  /// The two boards a puzzle keeps times for (design section 9 N14): a board
+  /// played by one player, and one played by a side of two or more.
+  static const solo = 'Solo';
+  static const team = 'Team';
+
+  /// What the board says on a host that has played nothing yet.
+  static const noTimes = 'No times yet';
+
+  /// One kept time as the board lists it: "1:28 · Dad", or a side's names after
+  /// it, "1:50 · Mia, Dad".
+  static String entry(int timeMs, List<String> names) => '${clock(timeMs)} · ${names.join(', ')}';
+
   /// A board's best time: "Best 1:45".
   static String best(int timeMs) => 'Best ${clock(timeMs)}';
 

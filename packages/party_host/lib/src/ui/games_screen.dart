@@ -10,6 +10,8 @@ import '../night/party_night.dart';
 import '../providers.dart';
 import '../text/host_text.dart';
 import '../text/night_text.dart';
+import '../text/record_text.dart';
+import 'best_times_screen.dart';
 import 'game_picture.dart';
 import 'game_screen.dart';
 import 'host_button.dart';
@@ -114,6 +116,17 @@ class ShapeRaceScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: ToySizes.space24),
                   ],
+                // The board of kept times lives here, a press off the puzzles
+                // it belongs to (M14 f1, r5 finding 4; T15).
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: HostButton(
+                    key: const Key('openBestTimes'),
+                    label: RecordText.bestTimesTitle,
+                    icon: Icons.emoji_events,
+                    onPressed: () => _open(context, const BestTimesScreen()),
+                  ),
+                ),
               ],
             ),
             AsyncError(:final error) => Center(child: Text(HostText.puzzlesFailed('$error'))),

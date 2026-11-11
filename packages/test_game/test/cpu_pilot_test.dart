@@ -18,11 +18,13 @@ const seeds = [1, 2, 3];
 const roundSteps = 60 * 60;
 
 /// How long Robo may take to reach its first coin on a map, per level, in
-/// seconds: the slowest measured over the five maps and the three seeds (Easy
-/// 3.30 s on Block Castle, Medium 2.85 s, Hard 2.52 s) with room for a change
-/// of map or a slower machine. The design's levels are aims, not promises, so
-/// the test gives each one its own deadline rather than a single one.
-const firstCoinS = {RoboLevel.easy: 4.0, RoboLevel.medium: 3.5, RoboLevel.hard: 3.0};
+/// seconds: the slowest travel measured over the five maps and the three seeds
+/// (Easy 3.30 s on Block Castle, Medium 2.85 s, Hard 2.52 s) plus the two
+/// seconds the coin rules can cost it (M14 f1, r5 finding 2): a coin it stands
+/// on is not takable until it is a second old, and a hazard leaves it dizzy
+/// for a second, in which it can't dash. The design's levels are aims, not
+/// promises, so each level gets its own deadline.
+const firstCoinS = {RoboLevel.easy: 5.0, RoboLevel.medium: 4.5, RoboLevel.hard: 5.5};
 
 /// A Bumper Round and the pilot that plays one seat of it.
 typedef PilotRound = ({ArenaGame game, CpuPilot pilot});
@@ -160,6 +162,122 @@ void main() {
         final input = round.pilot.step(round.game, stepS);
         expect(input.move.distance, lessThanOrEqualTo(1.0), reason: '${level.name} step $i');
         round.game.update(stepS, {humanId: GameInput.none, roboPlayerId: input});
+      }
+    }
+  });
+
+  group('Robo shoves as the level table says (party-night §7a)', () {
+    /// [units] as a fraction of the field, as a map writes a point.
+    Offset fractionIn(Offset units) => Offset(units.dx / mapFieldSize.width, units.dy / mapFieldSize.height);
+
+    /// A spot in map units where a push along +x runs into a wall (or, with
+    /// [intoWall] false, stays in the open for a few cells), with no hazard
+    /// near it or the way, and free ground two cells behind for Robo; null
+    /// when the map has none.
+    Offset? spotWhere(ArenaGame game, MapGrid grid, {required bool intoWall}) {
+      final hazards = [
+        for (final hazard in game.hazardPositions)
+          mapUnits(Offset(hazard.dx / game.size.width, hazard.dy / game.size.height)),
+      ];
+      bool clear(Offset at) => hazards.every((hazard) => (hazard - at).distance >= grid.cell * 4);
+      for (var j = 0; j * grid.cell < mapFieldSize.height; j++) {
+        for (var i = 0; i * grid.cell < mapFieldSize.width; i++) {
+          final at = Offset((i + 0.5) * grid.cell, (j + 0.5) * grid.cell);
+          if (!grid.isFree(fractionIn(at)) || !clear(at)) continue;
+          final way = [for (var n = 1; n <= 12; n++) at + Offset(grid.cell * n / 4, 0)];
+          if (way.any((step) => !grid.isFree(fractionIn(step))) != intoWall) continue;
+          if (!clear(way.last)) continue;
+          final behind = at - Offset(grid.cell * 2, 0);
+          if (!grid.isFree(fractionIn(behind)) || !clear(behind)) continue;
+          return at;
+        }
+      }
+      return null;
+    }
+
+    /// A round on the first map with such a spot: Robo two cells behind the
+    /// player, the player at the spot.
+    ({PilotRound round, Offset robo, Offset player})? shoveSetUp(RoboLevel level, {required bool intoWall}) {
+      for (final map in mapLibrary()) {
+        final game = ArenaGame(map: map, mode: ArenaMode.bumper, random: Random(1));
+        final grid = cpuGrid(map);
+        final at = spotWhere(game, grid, intoWall: intoWall);
+        if (at == null) continue;
+        return (
+          round: (game: game, pilot: CpuPilot(level: level, grid: grid, random: Random(1))),
+          robo: at - Offset(grid.cell * 2, 0),
+          player: at,
+        );
+      }
+      return null;
+    }
+
+    /// The times, in seconds, that Robo shoves the player in a round where it
+    /// stands [robo] and a player holding two coins stands [player], both in
+    /// map units and both put back each step, so the table's shove rules move
+    /// the count rather than the chase for a coin. A shove is the arena's own
+    /// count of the marbles a dash pushed, so a dash at a coin that misses the
+    /// player is no shove.
+    List<double> shovesIn(({PilotRound round, Offset robo, Offset player}) setup, {double seconds = 10}) {
+      final game = setup.round.game;
+      advance(setup.round); // Robo's and the player's marbles come out with the first step.
+      final times = <double>[];
+      var shoves = 0;
+      for (var i = 1; i <= (seconds / stepS).round(); i++) {
+        game.player(roboPlayerId)!.place(game.pixelOf(fractionIn(setup.robo)));
+        game.player(humanId)!
+          ..place(game.pixelOf(fractionIn(setup.player)))
+          ..coins = 2;
+        game.update(stepS, {humanId: GameInput.none, roboPlayerId: setup.round.pilot.step(game, stepS)});
+        final now = game.player(roboPlayerId)!.shoves;
+        if (now > shoves) times.add(i * stepS);
+        shoves = now;
+      }
+      return times;
+    }
+
+    test('Easy never seeks a shove, even with a player beside it holding coins', () {
+      final setup = shoveSetUp(RoboLevel.easy, intoWall: false);
+      expect(setup, isNotNull, reason: 'one of the maps has open ground to stand on');
+      expect(shovesIn(setup!, seconds: 10), isEmpty);
+    });
+
+    test('Medium shoves a close player with coins, at most one every 4 s', () {
+      final setup = shoveSetUp(RoboLevel.medium, intoWall: false);
+      expect(setup, isNotNull, reason: 'one of the maps has open ground to stand on');
+      final times = shovesIn(setup!, seconds: 10);
+      expect(times, isNotEmpty, reason: 'Medium shoves a close player holding coins');
+      for (var i = 1; i < times.length; i++) {
+        expect(times[i] - times[i - 1], greaterThanOrEqualTo(4 - stepS), reason: 'shoves at $times');
+      }
+    });
+
+    test('Hard aims its shoves at a wall every 2 s, and leaves an open push be', () {
+      final wall = shoveSetUp(RoboLevel.hard, intoWall: true);
+      final open = shoveSetUp(RoboLevel.hard, intoWall: false);
+      expect(wall, isNotNull, reason: 'one of the maps has ground a shove sends a marble into a wall');
+      expect(open, isNotNull, reason: 'one of the maps has open ground to stand on');
+      final times = shovesIn(wall!, seconds: 10);
+      expect(times, isNotEmpty, reason: 'Hard shoves a player a wall is behind');
+      for (var i = 1; i < times.length; i++) {
+        expect(times[i] - times[i - 1], greaterThanOrEqualTo(2 - stepS), reason: 'shoves at $times');
+      }
+      expect(shovesIn(open!, seconds: 10), isEmpty, reason: 'a push with nothing behind it is not aimed at anything');
+    });
+  });
+
+  test('Robo dashes toward a far coin, at every level', () {
+    for (final map in mapLibrary()) {
+      for (final level in RoboLevel.values) {
+        final round = roundOf(map, level);
+        for (var i = 0; i < roundSteps && round.game.phase == ArenaPhase.playing; i++) {
+          advance(round);
+        }
+        expect(
+          round.game.player(roboPlayerId)!.dashes,
+          greaterThan(0),
+          reason: '${map.id} at ${level.name}: a dash toward a coin within reach of a walk',
+        );
       }
     }
   });

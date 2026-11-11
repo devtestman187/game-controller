@@ -1,4 +1,3 @@
-import 'dart:math';
 import 'dart:ui';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -6,55 +5,12 @@ import 'package:game_kit/game_kit.dart';
 import 'package:protocol/protocol.dart';
 import 'package:test_game/test_game.dart';
 
+import 'support/bumper.dart';
 import 'support/maps.dart';
-
-/// The four spots these tests start from, in the field's corners.
-const fourStarts = [Offset(0.10, 0.20), Offset(0.10, 0.80), Offset(0.88, 0.20), Offset(0.88, 0.80)];
-
-/// A coin zone in the middle of the field, clear of the starts.
-const centerZone = Rect.fromLTRB(0.40, 0.40, 0.60, 0.60);
-
-/// A Bumper Round on a wallless map with [starts] and [zones], played by [ids].
-ArenaGame bumper({
-  List<String> ids = const ['a', 'b', 'c', 'd'],
-  List<Offset> starts = fourStarts,
-  List<Rect> zones = const [centerZone],
-  List<WallSpec> walls = const [],
-  Size size = const Size(1000, 500),
-  Random? random,
-  int pointsScale = 1,
-}) {
-  final g = ArenaGame(
-    map: testMap(
-      walls: walls,
-      race: null,
-      bumper: BumperSpec(starts: starts, coins: zones),
-    ),
-    mode: ArenaMode.bumper,
-    size: size,
-    random: random,
-    pointsScale: pointsScale,
-  );
-  for (final id in ids) {
-    g.join(id);
-  }
-  return g;
-}
-
-/// One frame with every joined player holding [input].
-List<GameEvent> step(ArenaGame g, double dt, [GameInput input = GameInput.none]) =>
-    g.update(dt, {for (final p in g.players) p.id: input});
-
-/// [seconds] of 60 fps frames with everyone holding [input].
-List<GameEvent> run(ArenaGame g, double seconds, [GameInput input = GameInput.none]) => [
-  for (var i = 0; i < (seconds * 60).round(); i++) ...step(g, 1 / 60, input),
-];
 
 /// The coin nearest [at], in pixels.
 ArenaCoin nearestCoin(ArenaGame g, Offset at) =>
     g.coins.reduce((a, b) => (a.position - at).distance <= (b.position - at).distance ? a : b);
-
-const right = GameInput(move: Offset(1, 0));
 
 void main() {
   group('contacts', () {
@@ -218,7 +174,7 @@ void main() {
       expect(result.lines['b']!.outcome, RoundOutcome.loss);
       expect(result.lines['a']!.count, 2);
       expect(result.lines['a']!.countOf, RoundCount.coins);
-      expect(result.stats['a'], {'coins': 2, 'bumpsGiven': 0});
+      expect(result.stats['a'], {'coins': 2, 'bumps': 0, 'bumpsGiven': 0, 'goldCoins': 0, 'coinsDropped': 0});
     });
 
     test('a night\'s last round doubles the points, bonus and coins alike', () {

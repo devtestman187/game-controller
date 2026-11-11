@@ -9,6 +9,22 @@ import 'package:protocol/protocol.dart';
 
 import '../app_info.dart';
 
+/// The Firebase project the stats go to, set at build time
+/// (`--dart-define=FIRESTORE_PROJECT=...`, from the release workflow and
+/// Codemagic). Empty in local builds: then nothing can be uploaded.
+const firestoreProject = String.fromEnvironment('FIRESTORE_PROJECT');
+
+/// The project's web API key (optional for Firestore, which the security rules
+/// protect).
+const firestoreApiKey = String.fromEnvironment('FIRESTORE_API_KEY');
+
+/// Sends the sessions this phone hosts to Firestore, or null when this build
+/// has no project set (then the Stats screen says the upload isn't set up): the
+/// same uploader and consent the TV app has (M14 r5 8). [project] and [apiKey]
+/// are the build's own, and let a test see what a build with them makes.
+party.SessionUploader? phoneUploader({String project = firestoreProject, String apiKey = firestoreApiKey}) =>
+    project.isEmpty ? null : party.FirestoreUploader(project: project, apiKey: apiKey);
+
 /// This phone's host identity (S-a, m12 §2.9): the version the stats record,
 /// the kind phones see in the TXT record, and the name it advertises under —
 /// "Thumb Party on iPhone 3F2A".

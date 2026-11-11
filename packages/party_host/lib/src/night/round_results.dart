@@ -1,7 +1,7 @@
 import 'package:connection/connection.dart' show GamePlayer;
 import 'package:game_kit/game_kit.dart' show RoundResult;
 import 'package:protocol/protocol.dart';
-import 'package:test_game/test_game.dart' show roboName, roboPlayerId;
+import 'package:test_game/test_game.dart' show roboName, roboNumberFor, roboPlayerId;
 
 import 'night_state.dart';
 
@@ -24,9 +24,23 @@ Map<String, ViewResult> viewResultsFor({
   // Robo has no row of the roster's own but can win a round (party-night §7a),
   // so a win it takes is named as the host names it.
   String nameOf(String id) => id == roboPlayerId ? roboName : (_name(rowsById[id]) ?? id);
+  // Robo's disc takes a free player colour, as its row on the TV's scoreboard
+  // does (party-night §7a): the phone shows it by its name, not a number.
+  final roboNumber = roboNumberFor([
+    for (final row in rows)
+      if (row.number > 0 && row.id != roboPlayerId) row.number,
+  ]);
   final standings = [
     for (final row in rows)
-      if (row.number > 0)
+      if (row.id == roboPlayerId)
+        ViewStanding(
+          number: roboNumber,
+          name: roboName,
+          points: row.total,
+          character: PlayerCharacter.forPlayer(roboNumber),
+          isRobo: true,
+        )
+      else if (row.number > 0)
         ViewStanding(
           number: row.number,
           name: _name(row) ?? row.id,

@@ -40,6 +40,13 @@ class ArenaFieldRules {
   static const double hazardGraceS = 0.8;
   static const double hitGapS = 0.3;
 
+  /// How long after another marble's shove a wall hit counts as a shove into
+  /// a wall, and the drop's dizzy second and safe second (party-night §7, M14
+  /// f1).
+  static const double shovedWallS = 0.5;
+  static const double dizzyS = 1;
+  static const double safeS = 1;
+
   /// How long after one marble touches another it can be felt again, so two
   /// resting against each other don't buzz every step.
   static const double contactGapS = 0.3;
@@ -178,12 +185,28 @@ class ArenaFieldRules {
     for (final p in _players.values) {
       p._sinceHit += dt;
       p._sinceBump += dt;
+      p._sinceShove += dt;
       p._graceLeft = max(0, p._graceLeft - dt);
       p._cooldownLeft = max(0, p._cooldownLeft - dt);
       p._dashLeft = max(0, p._dashLeft - dt);
+      p._dizzyLeft = max(0, p._dizzyLeft - dt);
+      p._safeLeft = max(0, p._safeLeft - dt);
       p._shove *= max(0.0, 1 - dt / shoveS);
     }
   }
+
+  /// A hazard knocked [pl]: the Bumper Round takes a coin for it (party-night
+  /// §7). The race has nothing to drop, so it does nothing.
+  void hazardHit(ArenaPlayer pl, List<GameEvent> events) {}
+
+  /// A wall stopped [pl] soon after another marble shoved it: the Bumper Round
+  /// takes a coin for it (party-night §7).
+  void shovedIntoWall(ArenaPlayer pl, List<GameEvent> events) {}
+
+  /// The sound a dash plays, or null for the haptic's own name. The race has
+  /// played `rumble` since M12; the Bumper Round plays its own dash cue (M14
+  /// f1, r5 finding 2).
+  String? get dashSound => null;
 
   /// Moves one marble one step from its controller's [input]: the aim, a dash
   /// on the press, the walk or the dash, the walls and the hazards. Every
@@ -197,7 +220,8 @@ class ArenaFieldRules {
     final pressed = input.dash && !pl._dashHeld;
     pl._dashHeld = input.dash;
     if (pressed) {
-      if (pl._cooldownLeft > 0) {
+      // Dizzy after a drop, it can't dash for its second (party-night §7).
+      if (pl._cooldownLeft > 0 || pl.dizzy) {
         pl.failedDashes++;
         events.add(GameEvent(pl.id, HapticEvent.error, GameEventCause.cooldown));
       } else {
@@ -205,7 +229,14 @@ class ArenaFieldRules {
         pl._dashLeft = dashS;
         pl._cooldownLeft = dashCooldownS;
         events.add(
-          GameEvent(pl.id, HapticEvent.rumble, GameEventCause.dash, intensity: 0.8, durationMs: (dashS * 1000).round()),
+          GameEvent(
+            pl.id,
+            HapticEvent.rumble,
+            GameEventCause.dash,
+            sound: dashSound,
+            intensity: 0.8,
+            durationMs: (dashS * 1000).round(),
+          ),
         );
       }
     }
@@ -254,6 +285,9 @@ class ArenaFieldRules {
       pl.hits++;
       pl._sinceHit = 0;
       events.add(GameEvent(pl.id, HapticEvent.hit, GameEventCause.wall, intensity: pl.dashing ? 1 : 0.7));
+      // A wall hit within a moment of another marble's shove is a shove into a
+      // wall: the Bumper Round takes a coin for it (party-night §7).
+      if (pl.shovedRecently) shovedIntoWall(pl, events);
     }
     // Still pressing into a wall counts as touching, so sliding along it
     // doesn't fire again.
@@ -274,8 +308,12 @@ class ArenaFieldRules {
       pl._sinceHit = 0;
       pl._dashLeft = 0;
       events.add(GameEvent(pl.id, HapticEvent.hit, GameEventCause.hazard));
+      // A still hazard sends the marble back to its start, and the drop lands
+      // there: a marble safe after a drop keeps its safe second, though the
+      // reset moves it (party-night §7).
       if (hazards[i].isStill) {
         pl._reset();
+        hazardHit(pl, events);
         return;
       }
       pl._graceLeft = hazardGraceS;
@@ -283,6 +321,7 @@ class ArenaFieldRules {
       final dir = away.distance > 1e-6 ? away / away.distance : -pl._facing;
       final (pushed, _) = resolvePoint(h + dir * (reach + playerRadiusPx), playerRadiusPx);
       pl._pos = _frac(pushed);
+      hazardHit(pl, events);
       return;
     }
   }

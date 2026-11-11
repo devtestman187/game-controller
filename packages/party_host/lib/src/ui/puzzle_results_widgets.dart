@@ -86,10 +86,10 @@ class _Results extends ConsumerWidget {
       final index = result.format.split ? side.index : 0;
       if (index >= boards.length) continue;
       if (photos.isNotEmpty) photos.add(const SizedBox(width: ToySizes.space8));
+      // The same photo a joined phone's card shows (M14 r5 5).
       photos.add(
-        _Photo(
+        PuzzlePhoto(
           key: Key('puzzlePhoto-${side.name}'),
-          side: side,
           puzzle: puzzle,
           board: boards[index],
           field: round.gameOf(side).field,

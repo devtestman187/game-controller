@@ -89,6 +89,7 @@ class MirrorPainter {
       Paint()..color = _colours.board,
     );
     _targets(canvas, px);
+    _glow(canvas, px);
     _placed(canvas, style);
     if (cat case final c?) paintCat(canvas, c, board: theirs, look: look, style: style);
     _players(canvas, style, px);
@@ -131,6 +132,26 @@ class MirrorPainter {
             ..color = colour.withValues(alpha: _targetLine),
         );
     }
+  }
+
+  /// The warm rim round the picture they finished (design 3a item 3, M14 r5
+  /// 15), under the pieces, as their own board draws it. Its box is exactly the
+  /// picture's, so the star ring and the confetti, which fall outside it, are
+  /// left to the views that have the room.
+  void _glow(Canvas canvas, double px) {
+    final age = moments?.finishAgeMs(board, nowMs);
+    if (age == null) return;
+    paintFinishGlow(
+      canvas,
+      placed: [
+        for (final (i, p) in theirs.pieces.indexed)
+          if (p.state == PieceState.locked && i < puzzle.pieces.length)
+            _path(puzzle.pieces[i].shape, Offset(p.x, p.y), p.angle),
+      ],
+      ageMs: age,
+      look: look,
+      px: px,
+    );
   }
 
   /// The pieces they've placed: drawn as their own board's are, smaller, in
