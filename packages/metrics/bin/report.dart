@@ -7,6 +7,7 @@
 //   dart run metrics:report --paste diagnostics.txt           # a phone host's copied Diagnostics
 //   ... --csv sessions.csv                                    # also write one CSV row per player and mode
 //   ... --csv-rounds rounds.csv                               # also write one CSV row per round
+//   ... --csv-stream stream.csv                               # also write one CSV row per streaming viewer
 //
 // The TV app's Stats screen exports the session files (Export), and with
 // consent uploads them to Firestore, where only the developer can read them
@@ -27,17 +28,44 @@ Usage: dart run metrics:report [options] [folder or .json files ...]
   --paste <file>         Read the sessions in a pasted text, such as a phone host's Diagnostics
   --csv <file>           Also write one CSV row per player and input mode
   --csv-rounds <file>    Also write one CSV row per round
+  --csv-stream <file>    Also write one CSV row per streaming viewer
   --help                 This text
 
 The by-mode tables count a row per mode: a player's view counts (frames,
 gaps, late, touch ms) repeat on each of their mode rows. The tables after
-them count each player once, and the frame-rate table counts rounds.''';
+them count each player once, and the frame-rate table counts rounds.
+
+The Streaming section (M15) covers the sessions that streamed a game to a
+screen. Its stages are milliseconds, each as median/p95:
+  Streaming pipeline  input and host: the controller stages a summary already
+                      has; capture, encode, send, network, jitter, decode and
+                      display: the video's, in the order a frame goes through
+                      them; total: capture to shown; press>screen: a press to
+                      the frame that shows it; src: stages (added up from the
+                      stages), measured (a probe measured the total) or probe
+                      (the probe measured press to screen only).
+  Streaming quality   kbit/s sent and received, packet loss %, round trip and
+                      jitter in ms, frames a second delivered, frames sent,
+                      received, decoded, dropped and late, freezes (count and
+                      ms), the first frame's time in ms, reconnects, whether a
+                      relay was used, and the codec.
+  Streaming sound     the audio capture-to-play delay (median/p95), the
+                      audio/video sync offset in ms (signed, mean) and the
+                      share of concealed audio (mean %).
+  Streaming resources one container per session: CPU whole, game and encoder,
+                      memory in MB, GPU, its encoder and its memory, the game's
+                      frame rate and frame build and raster times, the
+                      encoder's frame rate and queue, the time to the first
+                      frame and the memory peak.
+  Streaming by sessions at once  the same sessions grouped by how many ran on
+                      the machine together, so capacity shows.''';
 
 Future<void> main(List<String> args) async {
   String? project;
   String? token;
   String? csvPath;
   String? roundsPath;
+  String? streamPath;
   String? pastePath;
   final paths = <String>[];
   for (var i = 0; i < args.length; i++) {
@@ -53,6 +81,8 @@ Future<void> main(List<String> args) async {
         csvPath = value();
       case '--csv-rounds':
         roundsPath = value();
+      case '--csv-stream':
+        streamPath = value();
       case '--help' || '-h':
         stdout.writeln(_usage);
         return;
@@ -100,6 +130,10 @@ Future<void> main(List<String> args) async {
   if (roundsPath != null) {
     await File(roundsPath).writeAsString('${csvRounds(unique)}\n');
     stdout.writeln('Round CSV written to $roundsPath');
+  }
+  if (streamPath != null) {
+    await File(streamPath).writeAsString('${streamCsv(unique)}\n');
+    stdout.writeln('Stream CSV written to $streamPath');
   }
   if (skipped > 0) stderr.writeln("Skipped $skipped summaries that couldn't be read");
 }

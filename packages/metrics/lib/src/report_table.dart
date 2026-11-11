@@ -3,6 +3,7 @@ import 'dart:math';
 import 'report.dart';
 import 'report_games.dart';
 import 'report_rounds.dart';
+import 'report_stream.dart';
 import 'report_watched.dart';
 
 /// Sums for a group of rows (one mode, or one device and mode).
@@ -200,6 +201,7 @@ String enjoyment(List<Map<String, Object?>> summaries) {
 /// The whole report for a set of session summaries.
 String report(List<Map<String, Object?>> summaries) {
   final rows = [for (final s in summaries) ...rowsOf(s)];
+  final streaming = streamReport(summaries);
   return [
     table('By input mode', groupBy(rows, (r) => r.mode)),
     table('By device and mode', groupBy(rows, (r) => '${r.deviceKind} ${r.mode}')),
@@ -207,6 +209,7 @@ String report(List<Map<String, Object?>> summaries) {
     partyNights(summaries),
     watchedTable(rows),
     frameRateTable(summaries),
+    if (streaming.isNotEmpty) streaming,
     enjoyment(summaries),
   ].join('\n');
 }

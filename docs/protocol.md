@@ -305,3 +305,93 @@ A host that receives a host-only message (or the reverse) closes with 4003; a co
 | Shortest press a game sees | 50 ms (the host keeps a quick tap held that long) |
 
 The game host interface (`GameHost` in `packages/connection`, PRD v2 P3) is the in-process side of this: games get players, gamepads, haptics, sounds, layouts, the status panel, rating prompts, latency and analytics records from it, and never touch the protocol directly. Games read each gamepad once a frame; so that a tap whose press and release arrive between two frames isn't lost, the host reports every press as held for at least 50 ms.
+
+## 13. Session analytics: the `stream` record (M15)
+
+A session summary is the JSON file the host writes after a session (PRD v2 "What it records"); it isn't sent on the wire. M15 adds one key to it, `stream`, left out until the session streams, so an older summary and an older report read a session that never streamed exactly as before. It holds one entry per **viewer** (a screen showing the stream) and one **host** entry for the machine that runs the game and the encoder. Nothing personal is kept: a viewer's platform is a short technical string cleaned as a device string is, with no address and no user agent.
+
+```json
+"stream": {
+  "viewers": [
+    {
+      "id": "v1", "kind": "browser", "platform": "chrome",
+      "stages": {
+        "sent_to_received": {"n": 240, "median": 14, "p95": 16, "max": 31},
+        "stream_capture": {"n": 240, "median": 4, "p95": 6, "max": 11},
+        "stream_encode": {"n": 240, "median": 10, "p95": 12, "max": 20},
+        "stream_total": {"n": 240, "median": 65, "p95": 86, "max": 140, "source": "stages"},
+        "press_to_screen": {"n": 240, "median": 86, "p95": 111, "max": 171, "source": "stages"}
+      },
+      "stagesByFps": {"60": {"stream_encode": {"n": 240, "median": 10, "p95": 12, "max": 20}}},
+      "gauges": {"bitrateSentKbps": {"n": 60, "mean": 6100.0, "p95": 6900.0, "max": 7400.0},
+                 "audioSyncMs": {"n": 60, "mean": -4.0, "p95": 2.0, "max": 9.0}},
+      "counters": {"framesSent": 1000, "framesReceived": 990, "freezes": 1, "freezeMs": 250},
+      "facts": {"codec": "h264", "encoder": "nvenc", "relay": "no"}
+    }
+  ],
+  "host": {
+    "samples": 80,
+    "gauges": {"cpuPct": {"n": 80, "mean": 50.0, "p95": 62.0, "max": 70.0}},
+    "memPeakMb": 950.0, "firstFrameMs": 800
+  }
+}
+```
+
+A stage is summarised as `n` (samples), `median`, `p95` and `max` in **ms**, as a phone's stages are today; a gauge keeps the first 256 samples and is summarised as `n`, `mean`, `p95` and `max` in the series' own unit; a counter is the newest total since the session started; a fact is a short technical string (at most 24 characters). Each name is at most 32 characters and each viewer or the host keeps at most 32 of them, as a stage is capped today; a summary holds at most 8 viewers.
+
+### Video stages (per viewer, ms)
+
+| Stage | From → to | Who measures it |
+| --- | --- | --- |
+| `stream_capture` | the game drew a frame → the virtual screen captured it | the container's pipeline (job c2) |
+| `stream_encode` | captured → the encoder's output packet | the container's pipeline (job c2) |
+| `stream_send` | encoded → handed to the network | the container's pipeline (job c2) |
+| `stream_network` | one way over the network | the viewer, from its round trip ÷ 2 (or from a capture timestamp carried with the frame) |
+| `stream_jitter_buffer` | arrived → taken for decoding | the viewer |
+| `stream_decode` | taken → decoded, ready to draw | the viewer |
+| `stream_display` | decoded → presented on the screen | the viewer |
+| `stream_total` | captured → presented (derived) | see below |
+| `press_to_screen` | a controller press → the frame that shows it on the viewer (derived) | see below |
+
+`stream_total` and `press_to_screen` carry a `source`, which says how the number was reached:
+
+- `measured` / `probe`: the automated probe (job c2) timed the whole path, so the stage is its own samples.
+- `stages`: `stream_total` adds the seven stages above (the p95 and max add each stage's own, an upper bound, and `n` is the fewest samples any stage had); `press_to_screen` adds that total to the controller's own stages, `sent_to_received` and `received_to_drawn`, and exists only when both are recorded.
+
+The controller's stages aren't measured again: a viewer entry may hold `sent_to_received` and `received_to_drawn` as the session already measures them (PRD v2 S7), copied in so one row reads input → host → capture → … → display, and so `press_to_screen` can be derived. They're optional: without both, there is no derived `press_to_screen`.
+
+### Viewer stages, gauges, counters and facts (per viewer)
+
+| Name | Kind | Unit |
+| --- | --- | --- |
+| `bitrateSentKbps`, `bitrateReceivedKbps` | gauge | kbit/s |
+| `lossPct`, `audioConcealedPct` | gauge | percent |
+| `rttMs`, `jitterMs` | gauge | ms |
+| `deliveredFps` | gauge | frames a second |
+| `audio_capture_to_play` | stage | ms (the viewer's own sound, captured → played) |
+| `audioSyncMs` | gauge | ms, signed: sound ahead of the picture is negative |
+| `framesSent`, `framesReceived`, `framesDecoded`, `framesDropped`, `framesLate` | counter | frames |
+| `keyframes`, `nacks`, `plis`, `firs` | counter | frames, feedback messages |
+| `freezes`, `freezeMs` | counter | freezes, and their total ms |
+| `firstFrameMs`, `reconnects` | counter | ms, times |
+| `codec`, `encoder`, `relay` | fact | a short technical string; `relay` is `yes` or `no` |
+
+Names outside these are kept as they come, so a newer client's series survive.
+
+### The host container (`host`)
+
+Sampled every few seconds while a session runs; each reading is a gauge in its own unit, summarised as mean, p95 and max. `samples` is how many readings there were. `memPeakMb` is the sampler's own memory peak, or the highest reading it gave, and `firstFrameMs` is the session's cold start to its first frame ready.
+
+| Gauge | Unit |
+| --- | --- |
+| `cpuPct` | percent of the machine, every process in the container |
+| `gameCpuPct`, `encoderCpuPct` | percent, the game and the encoder pipeline alone |
+| `memMb` | MB (RSS or the cgroup's current) |
+| `gpuPct`, `encoderPct` | percent |
+| `gpuMemMb` | MB |
+| `gameFps`, `encodedFps` | frames a second |
+| `frameBuildMs`, `frameRasterMs` | ms |
+| `encodeQueue` | frames waiting for the encoder |
+| `sessionsAtOnce` | sessions running on the machine at that moment |
+
+A client feeds these through `SessionCollector` in `packages/metrics` (`streamViewer`, `streamStage`, `streamGauge`, `streamCounter`, `streamFact`, `streamResource`); it never writes the summary itself. A session that records nothing stream-related leaves `stream` out, and the report skips it.

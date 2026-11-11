@@ -7,6 +7,8 @@ import 'segment.dart';
 import 'session_device.dart';
 import 'session_player.dart';
 import 'session_stats.dart';
+import 'stream_resource_sample.dart';
+import 'stream_stats.dart';
 
 /// What hosted the session (PRD v2 S6).
 abstract final class HostType {
@@ -50,6 +52,7 @@ class SessionCollector {
   final _players = <String, PlayerRecord>{};
   final _rounds = <Map<String, Object?>>[];
   final _device = HostDeviceTally();
+  final _stream = StreamTally();
   int? _roundHz;
   int _frames = 0;
   int _frameDrops = 0;
@@ -286,6 +289,33 @@ class SessionCollector {
     if (sample != null) _device.add(sample, forS: forS);
   }
 
+  /// Registers a screen showing the stream (M15) and returns its short id
+  /// (`v1`, `v2`, …), or '' when the session already has
+  /// [maxStreamViewers]. The caller keeps the id for the session; a client
+  /// that comes back is the same viewer, with a higher reconnect count.
+  String streamViewer({required String kind, String platform = ''}) => _stream.viewer(kind: kind, platform: platform);
+
+  /// A streaming stage sample in ms (M15, `StreamStage`): a video stage, a
+  /// sound stage, or a newer client's own. [fps] files it by the frame rate
+  /// the viewer ran at, as a phone's stages are filed (m12 §0.4).
+  void streamStage(String viewerId, String name, int ms, {int? fps}) => _stream.stage(viewerId, name, ms, fps: fps);
+
+  /// A gauge sample for a viewer (M15): a number read from time to time, such
+  /// as its bitrate, loss or round trip.
+  void streamGauge(String viewerId, String name, num value) => _stream.gauge(viewerId, name, value);
+
+  /// One of a viewer's counters (M15): a total since the session started, such
+  /// as the frames it sent or the freezes it counted.
+  void streamCounter(String viewerId, String name, num value) => _stream.counter(viewerId, name, value);
+
+  /// A fact about a viewer's stream (M15): its codec, its encoder's name, or
+  /// `yes` when it went through a relay.
+  void streamFact(String viewerId, String name, String value) => _stream.fact(viewerId, name, value);
+
+  /// A reading of the host container's resources while the session streams
+  /// (M15): CPU, memory, GPU and the game's and encoder's own numbers.
+  void streamResource(StreamResourceSample sample) => _stream.resource(sample);
+
   /// The session so far, as JSON (PRD v2 "What it records").
   Map<String, Object?> summary(int atMs) {
     final players = [for (final MapEntry(key: id, value: p) in _players.entries) playerJson(id, p, atMs)]
@@ -302,6 +332,9 @@ class SessionCollector {
       // the rounds recorded after it go in the next one (m12 bug 1107e).
       'rounds': [for (final round in _rounds) Map<String, Object?>.of(round)],
       'frames': {'drawn': _frames, 'dropped': _frameDrops},
+      // Left out until the session streams (M15), so an older summary reads
+      // exactly as it did.
+      'stream': ?(_stream.isEmpty ? null : _stream.toJson()),
     };
   }
 
