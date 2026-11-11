@@ -51,7 +51,7 @@ A custom server and client (not Sunshine), built to learn how production game st
 
 ## 3. Several households at once
 
-One container = one session = one household (their 2–4 phones and one screen). The session service starts a container per session and hands out a code. Limits: a GeForce card allows **8 video encodes at once** (NVIDIA's rule for consumer cards), so the 3080 hosts up to 8 sessions; data-centre cards (T4, L4, A10G) have no such cap. No media server (SFU) is needed: each session has one sender and one viewer.
+One container = one session = one household (their 2–4 phones and one screen). The session service starts a container per session and hands out a code. Limits: this PC's driver allows **12 video encodes at once** (measured Nov 11; NVIDIA's cap for consumer cards), so the 3080 hosts up to 12 sessions if drawing keeps up; data-centre cards (T4, L4, A10G) have no such cap. No media server (SFU) is needed: each session has one sender and one viewer.
 
 ## 4. The home PC problem
 
@@ -65,6 +65,19 @@ One container = one session = one household (their 2–4 phones and one screen).
 | D. Workaround inside WSL2 (mount the encoder files by hand) | Maybe | an afternoon to try | Unsupported; may break on driver updates. Worth one probe, not a foundation |
 
 **Update, Nov 11 (docs/briefs/m15/research-hyperv-gpu-report.md, 50 sources):** the owner asked about Hyper-V. Sharing the card with a VM (GPU-P) exists on Windows 11 Pro but Microsoft supports it only on Windows Server 2025 with data-centre cards; it works unofficially for Windows guests, and for a Linux guest it is a day of hand-copied drivers that break on every driver update, with no proven container path. Handing the whole card to a VM (DDA) is blocked on Windows 11. The promising find is option D done properly: **plain WSL2 Ubuntu with Docker Engine installed inside it** (not Docker Desktop) plus the NVIDIA Container Toolkit, asking for the `video` capability. Microsoft documents that setup, and the encoder libraries are present in WSL2. Unproven: whether our GPU-drawn app can render inside such a container (WSL2 has no NVIDIA display device; drawing goes through Mesa's D3D12 layer, and frames would pass through system memory before encoding). Worth a 1–2 hour probe before step 4. The two research reports disagree on the GeForce encode-session cap (8 or 12): check on the PC.
+
+**Measured on the PC, Nov 11 (docs/briefs/m15/wsl2-probe-report.md: commands, outputs, a copy-paste recipe, removal steps):** WSL 3.0.5, Ubuntu 24.04 in its own distro `tp-stream`, Docker Engine 29.9.3 inside it, NVIDIA Container Toolkit 1.20.2, driver 610.88.
+
+| Question | Result |
+| --- | --- |
+| NVENC in a container | **Works** with only `--gpus all -e NVIDIA_DRIVER_CAPABILITIES=all` (no library mounts). 1080p H.264 at about 476 frames a second unthrottled |
+| GStreamer encoder element | `nvh264enc` fails ("Selected preset not supported"); **use `nvautogpuh264enc` or `nvcudah264enc`** |
+| Encodes at once on the 3080 | **12** (the 13th fails with "incompatible client key"); 12 streams of 1080p60 each kept real time |
+| GPU drawing (OpenGL) | Works in WSL2 and in a container, but through Mesa's D3D12 translation layer (needs `GALLIUM_DRIVER=d3d12`, `/dev/dxg` and `/usr/lib/wsl` passed in). Vulkan is software only |
+| Draw + encode with no screen | Works: 1080p at **68 frames a second** with a trivial test pattern, frames copied through system memory. That is thin headroom over 60, before a real game |
+| A Wayland app drawing on a virtual screen | **Unproven**: the compositor starts on the GPU, but a test client drew nothing ("EGL Wayland extension: no"), so the zero-copy path gst-wayland-display relies on is probably unavailable in WSL2 |
+
+**What this means:** on this PC, WSL2 containers are good for building and testing everything **after** the picture exists: encoding, WebRTC sending, the relay, the session service and several sessions at once (up to 12). They are **not yet proven for drawing the game itself**: the drawing path is a translation layer with a memory copy, and the virtual-screen piece of the design may not work there. So the containerised game should be proven on real Linux (a rented cloud GPU, or dual boot), and WSL2 used as the everyday development bench. One cheap follow-up would settle the drawing question for WSL2: run the Flutter Linux build of the game in the `tp-stream` container.
 
 **Recommendation:** A now (learn and measure this week), then C for the container and multi-session work, with D tried once in passing. B only if you want the PC itself to be the multi-household server.
 
