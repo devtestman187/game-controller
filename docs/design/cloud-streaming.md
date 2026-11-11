@@ -1,5 +1,7 @@
 # Thumb Party streaming: proposal (M15 research)
 
+**Superseded Nov 11, 2026 by streaming-custom.md: the owner chose a custom stack. Kept for the comparison and the measuring ideas.**
+
 Status: proposal for the owner, Nov 11, 2026. Sources: docs/briefs/m15/scan-stream-touchpoints-report.md (the code and PRD scan, file:line evidence), docs/briefs/m15/research-stream-stack-report.md (tool notes, from memory: the worker had no web access), and Claude's own checks of the three facts the plan rests on (marked ✔ with a link).
 
 ## 1. The proposal in one paragraph
