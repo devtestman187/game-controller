@@ -1,0 +1,46 @@
+# M15 streaming: status and hand-over
+
+Written Nov 11, 2026 so that any later session (any model) can pick this up cold. Read this file first, then the two design files it names.
+
+## Where things stand
+
+- **Decided by the owner (Nov 11, 2026):** a **custom** streaming stack (not Sunshine + Moonlight), to learn how production game streaming works and to grow into a product; lowest latency; play across the internet; several households in separate sessions; the server in containers; open-source parts wherever they exist; home PC (RTX 3080) first, cloud GPU later; latency logged per stage (input, host, encode, network, decode, display). Automation features go in shared host code for every build. Milestones: **M14** testing and fixes (owner is testing; fixes land on `m14`), **M15** the streaming prototype (its own branch, not yet cut), **M16** the friendlier app start (11 UX suggestions, all approved; mock-ups before building).
+- **Done:** research and three hands-on probes. **Nothing of the product is built.** The owner said "Don't start yet" and has been asking questions; **wait for the owner's go-ahead before step 1.**
+- **Not yet created:** the `m15` branch and worktree. Everything so far is on branch `m14` (worktree `E:\AI\game-controller-m14`): documents and flash-worker tooling only, no app code.
+
+## Read in this order
+
+1. `docs/design/streaming-custom.md`: the stack, the measurements on the PC, the plan in steps (§5), latency stages (§6), automation rule (§6a), risks.
+2. `docs/design/streaming-roadmap.md`: prototype → production, with gates.
+3. `docs/briefs/m15/capture-probe-report.md`: **the working recipe** (compositor + game + NVENC + sound in a container), with scripts in `docs/briefs/m15/capture-probe/`.
+4. `docs/briefs/m15/linux-game-probe-report.md`: the Linux build of the TV app, the patches it needed in the test copy, plugin status.
+5. `docs/briefs/m15/wsl2-probe-report.md`: WSL2/Docker/NVENC setup recipe and limits (12 encode sessions).
+6. Background: `research-custom-stack-report.md` (48 sources), `research-hyperv-gpu-report.md` (50 sources), `scan-stream-touchpoints-report.md` (what our code already has), `docs/design/cloud-streaming.md` (the superseded Sunshine proposal; its measuring ideas still apply).
+
+## The facts that matter (all measured on this PC unless marked)
+
+- Windows 11 Pro build 26300, RTX 3080 10 GB, driver 610.88; WSL 3.0.5; distro **`tp-stream`** (Ubuntu 24.04): Docker Engine 29.9.3, NVIDIA Container Toolkit 1.20.2, Flutter 3.47.8 at `/opt/flutter`, GStreamer 1.24.2, gst-wayland-display built at commit `016b4fc` (needs libwayland 1.24 at `/opt/wayland124`), gst-plugins-rs 0.13.6 (`webrtcsink`), images `tp-test` and `tpapp-img`, the test build of the game under `/work/flash-20261111-141312-1826`.
+- NVENC in containers: `--gpus all -e NVIDIA_DRIVER_CAPABILITIES=all`. Use **`nvautogpuh264enc` or `nvcudah264enc`** (`nvh264enc` fails in WSL2). Cap: 12 encodes at once.
+- GPU drawing in WSL2 is Mesa's D3D12 layer (`GALLIUM_DRIVER=d3d12`, `--device /dev/dxg`, `/usr/lib/wsl` mounted); the compositor must use `render-node=software`; frames cross system memory (no zero-copy). One session: 1080p60. Two: about 45 fps each.
+- Docker **Desktop** cannot pass NVENC to containers; Docker Engine inside WSL2 can. Hyper-V GPU sharing is not a dependable route on Windows 11.
+- Open items for step 1: pin encoder settings (bitrate was ignored); the game was a patched profile build started by debug flags and a simulated controller (replace with the automation interface); discovery from a phone to a container untested (publish the controller port 45780); sound works through a PulseAudio null sink.
+
+## How the work is done (the process)
+
+- **Roles:** Claude designs, writes briefs, reviews and decides; **flash-worker** (`tools/flash.sh --brief <file>`, model deepseek-v4-flash, cheap) does the building, scanning and hands-on runs. For small tooling changes or hands-on work flash-worker can't do, a **Sonnet or Haiku subagent** is used. The owner is short on Claude usage: keep Claude's own reading and writing small. Details: `docs/dev-tools.md` (flash section) and the memory notes named below.
+- **Working mode:** low-usage (write briefs in batches, let jobs decide safe things and list them under "Decisions", review at the end, one batch of fixes). The owner can switch back to normal mode (review each job).
+- **flash-worker modes added on Nov 11:** `web: yes` (research with web access; the job may only write a report under `docs/`; it runs in an empty folder, so the brief must carry its own context) and `wsl: tp-stream` (commands inside a locked-down WSL distro whose name starts with `tp-`; helpers `tools/wsl-sync.sh`, `tools/wsl-fetch.sh`, `tools/wsl-lockcheck.sh`). The distro has no Windows drives and no Windows program launching; it still has internet. Known gaps are listed in the agent report summarised in docs/dev-tools.md.
+- **Running jobs:** start with Bash `run_in_background`; briefs must be committed first (job folders are cut from HEAD); result 0 = applied, 3 = protected files changed (review, apply by hand), 4 = files outside `allow:` (apply by hand without them), 5 = checks failed. Before commits: `git checkout -- tv_test_app/windows/flutter/ site/shots/` (generated churn; `site/shots` must keep the build-345 pictures). Commit with `tools/commit-job.sh <brief> --push` or by hand; push with `git push origin refs/heads/m14`.
+- **Standing rules from the owner:** never modify `E:\AI\game-controller` (frozen checkout); never print or store the DeepSeek key; touch only processes you started; install nothing on Windows without asking; never `wsl --shutdown`; builds, tags and tester promotion only on the owner's word; downloads need permission.
+- **Memory notes** (in `C:\Users\mrman\.claude\projects\E--AI\memory\`): `m15-streaming`, `low-usage-mode`, `orchestrator-model`, `background-jobs`, `m14-progress`.
+
+## Next steps, when the owner says go
+
+1. Cut branch `m15` from `m14` in a new worktree `E:\AI\game-controller-m15`; move this STATUS's "next steps" there as it progresses.
+2. Step 1 of streaming-custom.md §5 as flash-worker jobs (`wsl: tp-stream`), roughly: (a) the Linux runner and a session image built from the repo (Dockerfile from the capture probe's recipe); (b) the automation interface in shared host code (start a game, add a simulated or real player, report ready), replacing the debug-flag patch; (c) `webrtcsink` in the pipeline with its signalling server and a minimal web player page; (d) the controller port published so phones on the Wi-Fi can pair with the container; (e) a run script: one command starts a session and prints the player URL and the code.
+3. Then steps 2–3 (latency stages into the stats, tuning) to reach **gate 1** in the roadmap.
+4. Merge `m14` fixes into `m15` as they land.
+
+## Cleaning up, if this is abandoned
+
+`wsl --unregister tp-stream` removes the Linux install and everything in it (about 10 GB by now). The flash-worker modes are inert unless a brief asks for them.
