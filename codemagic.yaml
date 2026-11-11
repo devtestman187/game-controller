@@ -151,11 +151,16 @@ workflows:
           BUILD=$(git rev-list --count HEAD)
           echo "Build number $BUILD"
           cd controller_app
+          # The stats settings go in only when set: an empty --dart-define made
+          # flutter read the next one as a target file (m14.1's first iOS build).
+          DEFINES=(--dart-define=BUILD_NUMBER="$BUILD")
+          if [ -n "${FIRESTORE_PROJECT:-}" ]; then DEFINES+=(--dart-define=FIRESTORE_PROJECT="$FIRESTORE_PROJECT"); fi
+          if [ -n "${FIRESTORE_API_KEY:-}" ]; then DEFINES+=(--dart-define=FIRESTORE_API_KEY="$FIRESTORE_API_KEY"); fi
+          if [ -n "${FIRESTORE_API_KEY:-}" ]; then KEY_STATE=set; else KEY_STATE="not set"; fi
+          echo "Stats project: ${FIRESTORE_PROJECT:-not set}; API key: $KEY_STATE"
           flutter build ipa --release \
             --build-number="$BUILD" \
-            --dart-define=BUILD_NUMBER="$BUILD" \
-            --dart-define=FIRESTORE_PROJECT="${FIRESTORE_PROJECT:-}" \
-            --dart-define=FIRESTORE_API_KEY="${FIRESTORE_API_KEY:-}" \
+            "${DEFINES[@]}" \
             --export-options-plist=/Users/builder/export_options.plist
     artifacts:
       - controller_app/build/ios/ipa/*.ipa
