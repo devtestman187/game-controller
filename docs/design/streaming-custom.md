@@ -86,16 +86,28 @@ One container = one session = one household (their 2–4 phones and one screen).
 3. **Starting a game without a person** used debug-only flags and a simulated controller, patched in the test copy. The automation interface of section 6a replaces that.
 4. Discovery advertises on Linux but wasn't tried from a phone; a container needs its controller port published.
 
-**Recommendation:** A now (learn and measure this week), then C for the container and multi-session work, with D tried once in passing. B only if you want the PC itself to be the multi-household server.
+**Picture, sound and two sessions, measured Nov 11 (docs/briefs/m15/capture-probe-report.md; the recipe, scripts and a clip with sound are in docs/briefs/m15/capture-probe/):**
+
+| Question | Result |
+| --- | --- |
+| Getting the picture out | **Solved with the design's own piece**: gst-wayland-display's `waylanddisplaysrc` as the virtual screen and video source, the game as its client, `nvautogpuh264enc`. One session: the Arena at 1080p, game drawing 55–60 frames a second, **60 encoded frames a second for 42 s with no gap**, capture-to-encoded delay **8 ms mean, 9.3 ms at the 95th percentile**, GPU 45–47%, encoder 11–12% |
+| In a container | Works with the same flags |
+| Sound | Works: a PulseAudio null sink in the container, captured to Opus in the same stream; the clip is not silent |
+| Two sessions at once | **Partial**: about **45 encoded frames a second each** at 1080p (the games drew 28–31), GPU 75–78%, about 2 CPU cores per container |
+| WebRTC sender | `webrtcsink` (gst-plugins-rs 0.13.6) builds, starts and its signalling server listens |
+
+Catches: in WSL2 the compositor must run with `render-node=software` and every frame crosses system memory (no zero-copy), which is what limits two sessions, not the encoder; the capture plugin is hand-built at a pinned commit (`016b4fc`, against GStreamer 1.24 with a newer libwayland); the encoder ignored the requested bitrate, so its settings need pinning.
+
+**Recommendation (replaces the earlier one):** build the whole stack **in containers in WSL2 on this PC from the start**. Option A (plain Windows programs) is no longer needed, so nothing is thrown away. This PC is then a full development and demo bench: one household at 1080p60, two at reduced frame rate (or, untested, more at 720p). Real multi-household capacity needs real Linux with NVIDIA's own driver, where the zero-copy path exists: a rented cloud GPU (C) when we reach that step, or dual boot (B).
 
 ## 5. The plan, in steps you can test
 
 | Step | What you can test at the end | Where | Size |
 | --- | --- | --- | --- |
-| **1. First stream** | The game on the PC, video in a browser on a laptop, phone or TV on your Wi-Fi; phones control as today | Windows, option A | 1–2 days |
-| **2. Measure** | Encode, network, decode and display times in our stats report beside input and host; a latency test card to film | Windows | 2–3 days |
-| **3. Tune** | Lower delay: encoder settings, no client buffering, frame pacing; a target to beat | Windows | 2–3 days |
-| **4. Container** | The same stream from a Linux container (Flutter Linux build on the virtual screen) | Cloud GPU (C) or Linux (B) | about a week; the riskiest step |
+| **1. First stream** | The game in a container on the PC (compositor + game + NVENC + `webrtcsink`), video and sound in a browser on a laptop, phone or TV on your Wi-Fi; phones control as today | WSL2 containers | 2–3 days |
+| **2. Measure** | Encode, network, decode and display times in our stats report beside input and host; a latency test card to film | WSL2 containers | 2–3 days |
+| **3. Tune** | Lower delay: encoder settings, no client buffering, frame pacing; a target to beat | WSL2 containers | 2–3 days |
+| **4. Real Linux** | The same image on NVIDIA's own Linux driver with the zero-copy path; capacity per GPU measured | Cloud GPU (C) or Linux (B) | 2–3 days (the container itself was proven in WSL2 on Nov 11) |
 | **5. Sessions** | Two households at once, each with its own code, started by the session service | same | 3–5 days |
 | **6. Internet** | Play from outside your home: relay server, encryption for the control link, session tickets instead of only a 4-digit code | cloud | 3–5 days |
 | **7. Our own client** | Video inside the Thumb Party apps (Android TV, phones, tablets, iPhone, iPad) with the controls on top | apps | 1–2 weeks |

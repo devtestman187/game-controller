@@ -1,0 +1,25 @@
+[2m2026-11-11T20:56:39.834707Z[0m [32m INFO[0m [2mgstwaylanddisplaysrc::waylandsrc::imp[0m[2m:[0m Supported DMA formats: []
+[2m2026-11-11T20:56:39.834754Z[0m [32m INFO[0m [2mgstwaylanddisplaysrc::waylandsrc::imp[0m[2m:[0m Supported DMA formats: []
+[2m2026-11-11T20:56:39.835057Z[0m [32m INFO[0m [2mgstwaylanddisplaysrc::waylandsrc::imp[0m[2m:[0m Supported DMA formats: []
+[2m2026-11-11T20:56:39.835523Z[0m [32m INFO[0m [2mgstwaylanddisplaysrc::waylandsrc::imp[0m[2m:[0m Supported DMA formats: []
+[2m2026-11-11T20:56:39.835612Z[0m [32m INFO[0m [2mgstwaylanddisplaysrc::waylandsrc::imp[0m[2m:[0m Supported DMA formats: []
+[2m2026-11-11T20:56:39.850452Z[0m [32m INFO[0m [2mwaylanddisplaycore::utils::renderer[0m[2m:[0m EGL device seen: has render node = false, extension count = 2
+[2m2026-11-11T20:56:39.850457Z[0m [33m WARN[0m [2mwaylanddisplaycore::utils::renderer[0m[2m:[0m no EGL device for this render node; using the software device
+[2m2026-11-11T20:56:39.998267Z[0m [33m WARN[0m [2msmithay::backend::egl::display[0m[2m:[0m Dmabuf import extension not available
+[2m2026-11-11T20:56:40.020004Z[0m [32m INFO[0m [1megl[0m[1m{[0m[3mplatform[0m[2m=[0m"PLATFORM_DEVICE_EXT" [3mversion[0m[2m=[0m(1, 5)[1m}[0m[2m:[0m[1megl_context[0m[1m{[0m[3mptr[0m[2m=[0m130101
+[2m2026-11-11T20:56:40.037912Z[0m [32m INFO[0m [2mwaylanddisplaycore::comp[0m[2m:[0m Failed to initialize EGL hardware-acceleration [3merr[0m[2m=[0mEglExtensionNotSupported(["EGL_WL_bind_wayland_display"])
+[2m2026-11-11T20:56:40.040865Z[0m [32m INFO[0m [2mwaylanddisplaycore::comp[0m[2m:[0m Listening on wayland socket. [3msocket_name[0m[2m=[0m"wayland-1"
+[2m2026-11-11T20:56:40.194038Z[0m [33m WARN[0m [2mwaylanddisplaycore::comp[0m[2m:[0m Error during GetRenderDevice: No such file or directory (os error 2)
+[2m2026-11-11T20:56:40.194089Z[0m [32m INFO[0m [2mgstwaylanddisplaysrc::waylandsrc::imp[0m[2m:[0m Supported DMA formats: []
+[IMPORTANT:flutter/shell/platform/embedder/embedder_surface_gl_impeller.cc(126)] Using the Impeller rendering backend (OpenGLESSDF).
+FRAME_STATS on, 5000 ms window
+miniaudio: Linux audio backend set to Auto (ALSA -> PulseAudio -> JACK) (0)
+miniaudio_init: audio device initialized using Linux backend: ALSA
+FRAME_STATS fps=1.2 frames=6 buildAvgMs=1.96 rasterAvgMs=60.33
+FRAME_STATS fps=0.0 frames=0 (nothing drawn)
+FRAME_STATS fps=31.0 frames=155 buildAvgMs=1.03 rasterAvgMs=4.68
+FRAME_STATS fps=56.2 frames=281 buildAvgMs=1.39 rasterAvgMs=6.06
+FRAME_STATS fps=58.4 frames=292 buildAvgMs=1.49 rasterAvgMs=5.13
+FRAME_STATS fps=58.0 frames=290 buildAvgMs=1.25 rasterAvgMs=6.71
+FRAME_STATS fps=59.6 frames=298 buildAvgMs=1.37 rasterAvgMs=6.49
+FRAME_STATS fps=59.8 frames=299 buildAvgMs=1.46 rasterAvgMs=6.76
