@@ -79,6 +79,13 @@ One container = one session = one household (their 2–4 phones and one screen).
 
 **What this means:** on this PC, WSL2 containers are good for building and testing everything **after** the picture exists: encoding, WebRTC sending, the relay, the session service and several sessions at once (up to 12). They are **not yet proven for drawing the game itself**: the drawing path is a translation layer with a memory copy, and the virtual-screen piece of the design may not work there. So the containerised game should be proven on real Linux (a rented cloud GPU, or dual boot), and WSL2 used as the everyday development bench. One cheap follow-up would settle the drawing question for WSL2: run the Flutter Linux build of the game in the `tp-stream` container.
 
+**The real game, measured Nov 11 (docs/briefs/m15/linux-game-probe-report.md; run by flash-worker in its new `wsl:` mode):** the TV app **builds for Linux with no code changes to make it compile** (Flutter 3.47.8; every plugin builds) and, inside a GPU container in WSL2 on a headless Wayland compositor (weston), the Arena drew at **58–60 frames a second at 1920×1080** on the RTX 3080 (5 ms of each 16.7 ms frame, GPU 24%). Capture from an X screen plus NVENC ran at 57.5 frames a second. Open items it found:
+
+1. **Getting the picture out.** Weston's headless screen refuses capture by other programs, and on an X screen (where capture works) the app falls back to software drawing at about 10 frames a second. The design's own piece, gst-wayland-display (a compositor that is itself the video source), is the intended answer and is untested here; weston's PipeWire output is the fallback. **This is the one remaining unknown for running the whole stack in WSL2 containers.**
+2. **Sound is silent**: the sound library finds no audio device in the distro or container. Needs a virtual audio device (PulseAudio/PipeWire null sink), which the stream needs anyway.
+3. **Starting a game without a person** used debug-only flags and a simulated controller, patched in the test copy. The automation interface of section 6a replaces that.
+4. Discovery advertises on Linux but wasn't tried from a phone; a container needs its controller port published.
+
 **Recommendation:** A now (learn and measure this week), then C for the container and multi-session work, with D tried once in passing. B only if you want the PC itself to be the multi-household server.
 
 ## 5. The plan, in steps you can test
