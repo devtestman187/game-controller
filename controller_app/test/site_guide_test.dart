@@ -28,8 +28,8 @@ const knownLinks = <String, String>{
   'https://github.com/devtestman187/game-controller/releases/latest': 'docs/store-listing.md, the Windows zip',
 };
 
-/// Who testers write to (docs/decisions.md).
-const knownEmail = 'mrman187@gmail.com';
+/// Who testers write to (the owner, Nov 10, 2026: the tester guide's contact; the privacy page keeps the earlier address).
+const knownEmail = 'manveerwasson@gmail.com';
 
 /// The most a guide's picture row may hold, and the fewest.
 const shotCounts = (min: 4, max: 6);
