@@ -106,6 +106,12 @@ One container = one session = one household (their 2–4 phones and one screen).
 
 Every client reports its numbers to the host over our WebSocket, so all six stages land in one session record for every device, TVs included. That is the main measuring gain over Moonlight.
 
+## 6a. Automation: one control interface for every build (owner, Nov 11, 2026)
+
+The container work needs the host to be driven without a person: start a game, set options, add players, send inputs, read state, take a picture. The owner's rule: "If there are any remote control feature (eg making the Linux scriptable or remotely controllable via an api), make that available to other builds as well to help with automated testing or making demo videos."
+
+So any such feature is built **once, in the shared host code** (`party_host`/`game_kit`), not in the Linux build: the Windows, Android TV and phone hosts get it too. It stays off unless a build or launch flag turns it on, never ships enabled in store builds, and listens only on the local machine unless told otherwise. Before building, check what exists (the debug start flags `START_GAME`/`SHARE_VIEW`/`FRAME_RATE_HZ`, the keyboard player, `tools/smoke.sh`, `tools/tv-window.ps1` screenshots, the demo-video branch's tooling) and extend that rather than add a second mechanism. Uses: the session service's "ready" check, automated end-to-end tests, latency tests with scripted presses, and scripted demo videos.
+
 ## 7. Risks
 
 1. **The Flutter Linux build in a container on the virtual screen** (step 4) is new ground for us; plugins need checking on Linux (sound, discovery). Mitigation: steps 1–3 don't depend on it.
