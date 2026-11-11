@@ -173,9 +173,9 @@ void main() {
         ),
       ]);
       expect(text.split('\n'), [
-        'session,host,game,hz,time_s,battery_start,battery_end,thermal',
-        's1,phone,arena,60,90.0,0.8,0.79,fair',
-        's1,phone,arena,,12.0,,,',
+        'session,host,game,hz,time_s,battery_start,battery_end,thermal,tags',
+        's1,phone,arena,60,90.0,0.8,0.79,fair,',
+        's1,phone,arena,,12.0,,,,',
       ]);
     });
 

@@ -42,6 +42,7 @@ class PuzzlePlayView extends StatefulWidget {
     this.onClock,
     this.match,
     this.abandon,
+    this.roundTags = const [],
   });
 
   final GameHost host;
@@ -97,6 +98,10 @@ class PuzzlePlayView extends StatefulWidget {
   /// abandoned, and the view ends `abandoned`.
   final Listenable? abandon;
 
+  /// Tags the host adds to the round's summary (M14's "By game and feature"):
+  /// a party night's round, `night_2of3`, which no game can know.
+  final List<String> roundTags;
+
   @override
   State<PuzzlePlayView> createState() => PuzzlePlayViewState();
 }
@@ -114,17 +119,20 @@ class PuzzlePlayViewState extends State<PuzzlePlayView> with SingleTickerProvide
   @override
   void initState() {
     super.initState();
-    _session = PuzzleSession(
-      host: widget.host,
-      puzzle: widget.puzzle,
-      teams: widget.teams,
-      random: widget.random,
-      playtest: widget.settings,
-      target: widget.target,
-      settings: widget.hosting,
-      match: widget.match,
-      onFinished: widget.onFinished,
-    )..paused = widget.paused;
+    _session =
+        PuzzleSession(
+            host: widget.host,
+            puzzle: widget.puzzle,
+            teams: widget.teams,
+            random: widget.random,
+            playtest: widget.settings,
+            target: widget.target,
+            settings: widget.hosting,
+            match: widget.match,
+            onFinished: widget.onFinished,
+          )
+          ..paused = widget.paused
+          ..roundTags = widget.roundTags;
     widget.abandon?.addListener(_abandoned);
     _ticker.start();
   }
@@ -132,7 +140,9 @@ class PuzzlePlayViewState extends State<PuzzlePlayView> with SingleTickerProvide
   @override
   void didUpdateWidget(PuzzlePlayView oldWidget) {
     super.didUpdateWidget(oldWidget);
-    _session.paused = widget.paused;
+    _session
+      ..paused = widget.paused
+      ..roundTags = widget.roundTags;
   }
 
   @override

@@ -142,4 +142,13 @@ void main() {
     await roundStarted(tester);
     expect(pointsScale(tester), lastRoundPointsScale);
   });
+
+  testWidgets('a night\'s round says which of the night\'s it is, for the summary (M14)', (tester) async {
+    final fake = await bumperFromScoreboard(tester, rounds: 1);
+    await readyUp(tester, fake);
+    await roundStarted(tester);
+    // One round played, so this is the night's second of three: the tag its
+    // summary is filed under, alongside the game's own.
+    expect(tester.widget<ArenaView>(find.byType(ArenaView)).roundTags, ['night_2of3']);
+  });
 }

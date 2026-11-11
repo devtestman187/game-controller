@@ -152,9 +152,14 @@ class SessionCollector {
     }
   }
 
-  void rating(String id, RatingMessage r, {required String game}) {
+  /// A post-game rating. [roundTags] are the tags of the round it asked
+  /// about ([roundEnded]'s), so the report knows what the player was rating
+  /// (M14's "By game and feature"); an answer to a round with no tags has
+  /// none.
+  void rating(String id, RatingMessage r, {required String game, List<String> roundTags = const []}) {
     final p = _players[id];
     if (p == null || p.ratings.length >= 50) return;
+    final round = _roundTags(roundTags);
     p.ratings.add({
       'game': game,
       'face': ?r.face?.name,
@@ -164,6 +169,7 @@ class SessionCollector {
           if (t.length <= 32 && _tagPattern.hasMatch(t)) t,
       ],
       'mode': ?p.mode,
+      if (round.isNotEmpty) 'round': round,
     });
   }
 
@@ -199,6 +205,13 @@ class SessionCollector {
   /// [abandoned] is a round nobody played, which the games write when the host
   /// abandons one (M14 design section 2 N1): it adds no round, no count and no
   /// game time, but it still ends the game.
+  ///
+  /// [tags] say what the round was (M14's "By game and feature"): the game
+  /// and the host write short `kind_value` strings such as `mode_bumper`,
+  /// `map_playroom` or `night_2of3` ([RoundTag] names the kinds the report
+  /// reads). A string that isn't one of those is dropped, a tag a reader
+  /// doesn't know is ignored, and a round from before these tags has none: the
+  /// summary keeps its schema either way.
   void roundEnded(
     String game, {
     required double timeS,
@@ -207,6 +220,7 @@ class SessionCollector {
     Set<String> winnerIds = const {},
     bool draw = false,
     bool abandoned = false,
+    List<String> tags = const [],
   }) {
     final winners = {...winnerIds, ?winnerId};
     _inGame = false;
@@ -215,6 +229,7 @@ class SessionCollector {
       return;
     }
     if (_rounds.length < 1000) {
+      final roundTags = _roundTags(tags);
       _rounds.add({
         'game': game,
         'hz': ?_roundHz,
@@ -223,6 +238,7 @@ class SessionCollector {
         'winner': ?_players[winners.firstOrNull]?.number,
         if (winners.length > 1) 'winners': [for (final id in winners) ?_players[id]?.number],
         if (draw) 'draw': true,
+        if (roundTags.isNotEmpty) 'tags': roundTags,
       });
     }
     _roundHz = null;
@@ -295,6 +311,19 @@ class SessionCollector {
 /// Version of the session summary format.
 const summarySchema = 1;
 
+/// The most tags a round or a rating keeps: a game writes a handful, and a
+/// runaway one must not fill the summary.
+const maxRoundTags = 8;
+
+/// The tags of [tags] that look like a round's own (M14): short `kind_value`
+/// strings such as `mode_bumper`, `map_toy-factory` or `night_2of3`. Anything
+/// else — a name, a sentence — is dropped, so no tag can carry a person's
+/// words.
+List<String> _roundTags(List<String> tags) => [
+  for (final tag in tags.take(maxRoundTags))
+    if (_roundTagPattern.hasMatch(tag)) tag,
+];
+
 /// Keeps a short technical string (a version, a model like "Pixel 8" or
 /// "iPhone15,2"), or drops it if it looks like anything else.
 String? _clean(String? s, int maxLength) {
@@ -316,3 +345,7 @@ DeviceInfo _cleanDevice(DeviceInfo d) => DeviceInfo(
 final _technical = RegExp(r'^[A-Za-z0-9 ,._()+-]+$');
 
 final _tagPattern = RegExp(r'^[a-z0-9_]+$');
+
+/// A round's tag: lower case and digits, with `_` between a kind and its
+/// value and `-` inside a map's id (`map_toy-factory`).
+final _roundTagPattern = RegExp(r'^[a-z0-9_.-]{1,32}$');

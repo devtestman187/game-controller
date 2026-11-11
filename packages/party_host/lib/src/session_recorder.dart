@@ -34,6 +34,10 @@ class SessionRecorder {
   final _ratings = RatingScheduler();
   final _askedGames = <String, String>{};
 
+  /// The tags of the round each rating prompt asked about, so the answer says
+  /// what the player was rating (M14's "By game and feature").
+  final _askedRounds = <String, List<String>>{};
+
   /// Records a controller message: its input state, a metrics batch or an
   /// answer to a rating prompt.
   void onMessage(ControllerMessage m) {
@@ -49,7 +53,12 @@ class SessionRecorder {
         // under that view's rate, like its stage samples (m12 §0.4).
         s.metrics(m.controllerId, batch, hz: host.viewRateHz);
       case final RatingMessage r:
-        s.rating(m.controllerId, r, game: _askedGames.remove(r.id) ?? arenaGameName);
+        s.rating(
+          m.controllerId,
+          r,
+          game: _askedGames.remove(r.id) ?? arenaGameName,
+          roundTags: _askedRounds.remove(r.id) ?? const [],
+        );
       default:
     }
   }
@@ -69,6 +78,9 @@ class SessionRecorder {
           for (final MapEntry(:key, :value) in ((r.data['modes'] as Map?) ?? const {}).entries)
             if (key is String && value is String) key: value,
         };
+        // What the round was (M14's "By game and feature"): its game's own
+        // tags and the host's, which go into the round and its ratings.
+        final tags = [...((r.data['tags'] as List?) ?? const []).whereType<String>()];
         final time = r.data['timeS'];
         s.roundEnded(
           r.game,
@@ -81,6 +93,7 @@ class SessionRecorder {
           // The games write an abandoned round with nothing but its reason:
           // nobody played it, so the stats get no round and no time (M14 N1).
           abandoned: r.data['reason'] == ViewEndReason.abandoned,
+          tags: tags,
         );
         // Rounds per format (solo, team, 1v1, 2v1, 2v2). The completion time and
         // pieces placed come with each player's result.
@@ -89,7 +102,7 @@ class SessionRecorder {
             s.gameEvent(r.game, 'rounds_$format', id);
           }
         }
-        _maybeAskRatings(r.game, modes.keys);
+        _maybeAskRatings(r.game, modes.keys, tags);
       case 'frames':
         s.frames((r.data['drawn'] as num?)?.toInt() ?? 0, (r.data['late'] as num?)?.toInt() ?? 0);
       case 'player_result':
@@ -113,14 +126,15 @@ class SessionRecorder {
   }
 
   /// Asks each of [players] how the controls felt, when the rating schedule
-  /// says it is their turn (M9).
-  void _maybeAskRatings(String game, Iterable<String> players) {
+  /// says it is their turn (M9). [tags] are the round's, kept for the answer.
+  void _maybeAskRatings(String game, Iterable<String> players, List<String> tags) {
     for (final id in players) {
       if (!_ratings.gameEnded(id, host.nowMs)) continue;
       final askId = List.generate(6, (_) => _random.nextInt(256).toRadixString(16).padLeft(2, '0')).join();
       if (host.askRating(id, id: askId, game: game)) {
         _ratings.asked(id, host.nowMs);
         _askedGames[askId] = game;
+        _askedRounds[askId] = tags;
         _log('Stats: asked P${host.players.where((p) => p.id == id).firstOrNull?.number ?? '?'} how the controls felt');
       }
     }

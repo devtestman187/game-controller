@@ -110,6 +110,11 @@ class _GameScreenState extends ConsumerState<GameScreen> {
   /// The Bumper Round's result, while its card is up.
   RoundResult? _result;
 
+  /// The tags only the host knows for this round's summary (M14's "By game and
+  /// feature"): a night's round says which of the night's it is. Read when the
+  /// round starts, since the night counts the round only when it ends.
+  List<String> _roundTags = const [];
+
   @override
   void initState() {
     super.initState();
@@ -191,6 +196,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
         : ArenaGame(map: map, mode: mode, random: _random, pointsScale: scale);
     ref.read(arenaSettingsProvider.notifier).playedMap(map.id);
     if (night != null) ref.read(partyNightProvider.notifier).usedMap(map.id);
+    _roundTags = nightRoundTags(night);
     _log('Round started: $arenaGame, ${mode.name}, ${map.name}');
     setState(() {
       _stage = _Stage.playing;
@@ -366,6 +372,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
             host: ref.read(gameHostProvider),
             settings: _hosting,
             roboLevel: ref.watch(arenaSettingsProvider.select((s) => s.roboLevel)),
+            roundTags: _roundTags,
             onEvent: _onEvent,
             onClock: _clocked,
             onFinished: _finished,

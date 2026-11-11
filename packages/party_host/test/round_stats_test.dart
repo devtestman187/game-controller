@@ -79,4 +79,29 @@ void main() {
     ]);
     expect(gameCounts('puzzle'), {'wins': 1, 'rounds': 1, 'rounds_solo': 1});
   });
+
+  test('a round\'s tags go into its summary, for "By game and feature" (M14)', () {
+    recorder.onRecord(const GameRecord(game: 'arena', name: 'round_start', data: {'hz': 60}));
+    recorder.onRecord(
+      const GameRecord(
+        game: 'arena',
+        name: 'round_end',
+        data: {
+          'timeS': 60.0,
+          'modes': {'p1': 'dpad'},
+          'winner': 'p1',
+          'tags': ['mode_bumper', 'map_playroom', 'robo_easy', 'finished', 'night_1of3'],
+        },
+      ),
+    );
+
+    expect(rounds().single, {
+      'game': 'arena',
+      'hz': 60,
+      'timeS': 60.0,
+      'players': 1,
+      'winner': 1,
+      'tags': ['mode_bumper', 'map_playroom', 'robo_easy', 'finished', 'night_1of3'],
+    });
+  });
 }

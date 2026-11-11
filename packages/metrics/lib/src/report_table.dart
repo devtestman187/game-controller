@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'report.dart';
+import 'report_games.dart';
 import 'report_rounds.dart';
 import 'report_watched.dart';
 
@@ -202,6 +203,8 @@ String report(List<Map<String, Object?>> summaries) {
   return [
     table('By input mode', groupBy(rows, (r) => r.mode)),
     table('By device and mode', groupBy(rows, (r) => '${r.deviceKind} ${r.mode}')),
+    gameFeatureTable(summaries),
+    partyNights(summaries),
     watchedTable(rows),
     frameRateTable(summaries),
     enjoyment(summaries),

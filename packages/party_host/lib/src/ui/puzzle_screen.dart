@@ -368,6 +368,9 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
                           paused: paused,
                           abandon: ref.read(hostAbandonProvider),
                           settings: _roundSettings,
+                          // The host's tags (M14): a night's round number,
+                          // read as the round starts.
+                          roundTags: nightRoundTags(ref.read(partyNightProvider)),
                           onFinished: _finished,
                           onClock: _clocked,
                         );

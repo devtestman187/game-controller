@@ -34,6 +34,13 @@ void main() {
     expect(appContainer(tester).read(partyNightProvider)!.isNextRoundTheLast, isFalse);
   });
 
+  testWidgets('a night\'s round says which of the night\'s it is, for the summary (M14)', (tester) async {
+    await openNightRound(tester);
+    // Nothing played yet, so this is the night's first of three: the tag its
+    // summary is filed under, alongside the game's own.
+    expect(tester.widget<PuzzlePlayView>(find.byType(PuzzlePlayView)).roundTags, ['night_1of3']);
+  });
+
   testWidgets('a night\'s round 1 keeps the host\'s Chaos setting', (tester) async {
     await openNightRound(tester, chaos: Chaos.party);
     final settings = tester.widget<PuzzlePlayView>(find.byType(PuzzlePlayView)).settings();

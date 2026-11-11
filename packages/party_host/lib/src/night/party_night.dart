@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:game_kit/game_kit.dart' show RoundResult;
+import 'package:metrics/metrics.dart' show RoundTag;
 import 'package:puzzle_game/puzzle_game.dart' show Chaos, PuzzleSettings;
 
 import '../providers.dart';
@@ -109,3 +110,10 @@ class PartyNight extends Notifier<NightState?> {
 
 /// The night running on this host, or null: see [PartyNight].
 final partyNightProvider = NotifierProvider<PartyNight, NightState?>(PartyNight.new);
+
+/// The tags a round started while [night] runs puts on its summary (M14's "By
+/// game and feature"): `night_2of3` for the night's second round of three, or
+/// none outside a night. Both game screens read it when the round starts, since
+/// the night counts the round only when it ends.
+List<String> nightRoundTags(NightState? night) =>
+    night == null ? const [] : [RoundTag.of(RoundTag.night, '${night.round + 1}of${night.rounds}')];

@@ -19,8 +19,15 @@ final class PuzzleReport {
 
   /// Writes the match's records once, on the step it [result] ended:
   /// a `player_result` per player, then `round_end` and `frames`, for the
-  /// [players] here now.
-  void write(MatchResult result, {required List<GamePlayer> players, required int frames, required int late}) {
+  /// [players] here now. [tags] say what the round was (M14's "By game and
+  /// feature") and go into its `round_end`.
+  void write(
+    MatchResult result, {
+    required List<GamePlayer> players,
+    required int frames,
+    required int late,
+    List<String> tags = const [],
+  }) {
     final winners = <String>[];
     for (final s in match.sides) {
       final outcome = result.outcomeFor(s.side);
@@ -66,6 +73,7 @@ final class PuzzleReport {
         },
         'winners': winners,
         if (result.draw) 'draw': true,
+        if (tags.isNotEmpty) 'tags': tags,
       },
     );
     _record('frames', data: {'drawn': frames, 'late': late});

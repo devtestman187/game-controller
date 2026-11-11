@@ -29,6 +29,7 @@ class ArenaView extends StatefulWidget {
     this.game,
     this.settings,
     this.roboLevel = RoboLevel.medium,
+    this.roundTags = const [],
     this.paused = false,
     this.abandon,
     this.onClock,
@@ -41,6 +42,10 @@ class ArenaView extends StatefulWidget {
   /// Robo's level, from the waiting card (party-night §7a): the session gives
   /// Robo a seat at it in a Bumper Round with one player.
   final RoboLevel roboLevel;
+
+  /// Tags the host adds to the round's summary (M14's "By game and feature"):
+  /// a party night's round, `night_2of3`, which no game can know.
+  final List<String> roundTags;
 
   /// Every frame of a round with a clock: the Bumper Round's time left, in ms,
   /// for the host's music (M14 design section 7, as Shape Race reports its
@@ -85,6 +90,7 @@ class _ArenaViewState extends State<ArenaView> with SingleTickerProviderStateMix
       game: widget.game,
       settings: widget.settings,
       roboLevel: widget.roboLevel,
+      roundTags: widget.roundTags,
       onEvent: widget.onEvent,
     )..paused = widget.paused;
     _snapshot = _session.current;
@@ -95,7 +101,9 @@ class _ArenaViewState extends State<ArenaView> with SingleTickerProviderStateMix
   @override
   void didUpdateWidget(ArenaView oldWidget) {
     super.didUpdateWidget(oldWidget);
-    _session.paused = widget.paused;
+    _session
+      ..paused = widget.paused
+      ..roundTags = widget.roundTags;
   }
 
   @override

@@ -220,6 +220,54 @@ void main() {
       expect(clock.host.haptics.where((haptic) => haptic.$1 == roboPlayerId), isEmpty, reason: 'Robo has no phone');
       session.dispose();
     });
+
+    test('a Bumper Round with Robo on a map tags its round_end (M14)', () {
+      final clock = Clock();
+      join(clock, 1);
+      final game = ArenaGame(map: bumperMap(), mode: ArenaMode.bumper, random: Random(1));
+      final session = ArenaSession(
+        host: clock.host,
+        game: game,
+        roboLevel: RoboLevel.easy,
+        roundTags: const ['night_1of3'],
+        onEvent: (_) {},
+      );
+      // The Bumper Round's minute, advanced in steps of 100 ms: the session
+      // catches up at most maxCatchUpS a frame.
+      for (var i = 0; i < 700 && game.phase == ArenaPhase.playing; i++) {
+        clock.frame(session, 100);
+      }
+      expect(game.phase, ArenaPhase.over, reason: 'the clock ran out');
+      final end = clock.host.records.firstWhere((r) => r.name == 'round_end');
+      expect(end.data['tags'], ['mode_bumper', 'map_test', 'robo_easy', 'finished', 'night_1of3']);
+      session.dispose();
+    });
+
+    test('a round with two players names no Robo in its tags', () {
+      final clock = Clock();
+      join(clock, 2);
+      final game = ArenaGame(map: bumperMap(), mode: ArenaMode.bumper, random: Random(1));
+      final session = ArenaSession(host: clock.host, game: game, roboLevel: RoboLevel.hard, onEvent: (_) {});
+      for (var i = 0; i < 700 && game.phase == ArenaPhase.playing; i++) {
+        clock.frame(session, 100);
+      }
+      final end = clock.host.records.firstWhere((r) => r.name == 'round_end');
+      expect(end.data['tags'], ['mode_bumper', 'map_test', 'finished']);
+      session.dispose();
+    });
+
+    test('an abandoned round claims no finish in its tags', () {
+      final clock = Clock();
+      join(clock, 2);
+      final game = ArenaGame(map: bumperMap(), mode: ArenaMode.bumper, random: Random(1));
+      final session = ArenaSession(host: clock.host, game: game, onEvent: (_) {});
+      clock.frame(session, 100);
+      session.abandon();
+      final end = clock.host.records.firstWhere((r) => r.name == 'round_end');
+      expect(end.data['reason'], ViewEndReason.abandoned);
+      expect(end.data.containsKey('tags'), isFalse);
+      session.dispose();
+    });
   });
 
   test('the session ends as quit, and a won round does not end it', () {

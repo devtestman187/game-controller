@@ -28,8 +28,15 @@ final class Clock {
   }
 }
 
-/// A session with [twoOnOneBoard], both players here.
-PuzzleSession sessionFor(Clock clock, {Map<String, PuzzleSide> teams = twoOnOneBoard, HostingSettings? settings}) {
+/// A session with [twoOnOneBoard], both players here, playing with [playtest]
+/// and the host's [roundTags] (M14's "By game and feature").
+PuzzleSession sessionFor(
+  Clock clock, {
+  Map<String, PuzzleSide> teams = twoOnOneBoard,
+  HostingSettings? settings,
+  PuzzleSettings playtest = PuzzleSettings.defaults,
+  List<String> roundTags = const [],
+}) {
   clock.host
     ..setPlayer(const GamePlayer(id: 'p1', number: 1, nickname: 'Phone p1'))
     ..setPlayer(const GamePlayer(id: 'p2', number: 2))
@@ -40,9 +47,9 @@ PuzzleSession sessionFor(Clock clock, {Map<String, PuzzleSide> teams = twoOnOneB
     puzzle: house(),
     teams: teams,
     random: Random(1),
-    playtest: () => PuzzleSettings.defaults,
+    playtest: () => playtest,
     settings: settings,
-  );
+  )..roundTags = roundTags;
 }
 
 /// Every piece in its place, as the rules see it: the next step finishes.
@@ -177,6 +184,39 @@ void main() {
     session.dispose();
     expect(clock.host.viewEnds, hasLength(1));
     expect(clock.host.records.where((r) => r.name == 'round_end'), hasLength(1));
+  });
+
+  test('a picture finished at Chaos party tags its round_end (M14)', () {
+    final clock = Clock();
+    final session = sessionFor(
+      clock,
+      teams: const {'p1': PuzzleSide.left},
+      playtest: const PuzzleSettings(chaos: Chaos.party),
+      roundTags: const ['night_2of3'],
+    );
+    clock.frame(session, 100);
+    placeEverything(session.match);
+    for (var i = 0; i < 10; i++) {
+      clock.frame(session, 16);
+    }
+    expect(session.match.result, isNotNull, reason: 'the solo player finished the picture');
+    final end = clock.host.records.singleWhere((r) => r.name == 'round_end');
+    expect(end.data['tags'], ['chaos_party', 'finished', 'night_2of3']);
+    session.dispose();
+  });
+
+  test('a round that ran out of time says no finish in its tags (M14)', () {
+    final clock = Clock();
+    final session = sessionFor(clock, playtest: const PuzzleSettings(chaos: Chaos.little, timeLimitS: 2));
+    // The clock's two seconds, advanced in steps of 100 ms: a frame catches up
+    // at most maxCatchUpS.
+    for (var i = 0; i < 40 && session.match.result == null; i++) {
+      clock.frame(session, 100);
+    }
+    expect(session.match.result, isNotNull, reason: 'the time ran out');
+    final end = clock.host.records.singleWhere((r) => r.name == 'round_end');
+    expect(end.data['tags'], ['chaos_little']);
+    session.dispose();
   });
 
   test('abandoning after the match was reported records nothing new', () {

@@ -138,15 +138,15 @@ void main() {
 
     test('the round CSV has one row per round, with the battery and the heat', () {
       expect(csvRounds([tvSummary(), phoneSummary()]).split('\n'), [
-        'session,host,game,hz,time_s,battery_start,battery_end,thermal',
-        'tv-1,windows,arena,60,90.0,,,',
-        'tv-1,windows,arena,60,90.0,,,',
-        'ph-1,phone,arena,60,100.0,0.8,0.79,fair',
-        'ph-1,phone,arena,60,100.0,0.79,0.78,fair',
-        'ph-1,phone,arena,60,100.0,0.78,0.77,fair',
-        'ph-1,phone,arena,60,100.0,0.77,0.79,serious',
-        'ph-1,phone,arena,30,60.0,0.76,0.75,nominal',
-        'ph-1,phone,arena,30,60.0,0.76,0.75,nominal',
+        'session,host,game,hz,time_s,battery_start,battery_end,thermal,tags',
+        'tv-1,windows,arena,60,90.0,,,,',
+        'tv-1,windows,arena,60,90.0,,,,',
+        'ph-1,phone,arena,60,100.0,0.8,0.79,fair,',
+        'ph-1,phone,arena,60,100.0,0.79,0.78,fair,',
+        'ph-1,phone,arena,60,100.0,0.78,0.77,fair,',
+        'ph-1,phone,arena,60,100.0,0.77,0.79,serious,',
+        'ph-1,phone,arena,30,60.0,0.76,0.75,nominal,',
+        'ph-1,phone,arena,30,60.0,0.76,0.75,nominal,',
       ]);
     });
   });

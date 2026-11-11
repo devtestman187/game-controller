@@ -196,6 +196,16 @@ void main() {
       expect(container.read(partyNightProvider)!.length, NightLength.three);
       expect(container.read(partyNightProvider)!.round, 1);
     });
+
+    test('a round started during the night says which of the night\'s it is (M14)', () {
+      final (:container, :roster) = nightContainer();
+      expect(nightRoundTags(container.read(partyNightProvider)), isEmpty, reason: 'no night outside one');
+      roster.put([nightPlayer('p1', 1, 'Mia')]);
+      final night = container.read(partyNightProvider.notifier)..start(length: NightLength.five, awards: threeAwards);
+      expect(nightRoundTags(container.read(partyNightProvider)), ['night_1of5'], reason: 'the first round');
+      night.recordRound(roundResult(points: {'p1': 5}));
+      expect(nightRoundTags(container.read(partyNightProvider)), ['night_2of5']);
+    });
   });
 
   group('NightChaos', () {

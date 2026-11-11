@@ -63,6 +63,7 @@ class ArenaSession extends GameSession {
     ArenaGame? game,
     super.settings,
     this.roboLevel = RoboLevel.medium,
+    this.roundTags = const [],
   }) : game = game ?? ArenaGame(),
        super(module: arenaModule, setup: arenaSetup);
 
@@ -71,6 +72,12 @@ class ArenaSession extends GameSession {
 
   /// The level Robo plays at when it has a seat.
   final RoboLevel roboLevel;
+
+  /// Tags the host adds to the round's summary (M14's "By game and feature"):
+  /// a party night's round says which of the night's it is, `night_2of3`,
+  /// which no game can know. The game's own tags say its mode, map, Robo's
+  /// level and that the round finished.
+  List<String> roundTags;
 
   /// Robo's hands, made when its seat is first stepped.
   CpuPilot? _robo;
@@ -166,7 +173,10 @@ class ArenaSession extends GameSession {
       _record(
         'round_end',
         playerId: winner == roboPlayerId ? null : winner,
-        data: game.roundEndData({for (final id in ids) id: input(id).mode.name}),
+        data: {
+          ...game.roundEndData({for (final id in ids) id: input(id).mode.name}),
+          'tags': _tags(),
+        },
       );
       _record('frames', data: {'drawn': frameCount, 'late': lateFrameCount});
       resetFrameCounts();
@@ -199,6 +209,18 @@ class ArenaSession extends GameSession {
   void _recordFrames() {
     if (frameCount > 0) _record('frames', data: {'drawn': frameCount, 'late': lateFrameCount});
   }
+
+  /// The round's tags for its summary (M14's "By game and feature"): the mode
+  /// and the map, Robo's level when it had a seat, that the round finished —
+  /// a `round_end` is only written once the rules ended it — and the host's
+  /// own tags. The names are metrics' [RoundTag]s.
+  List<String> _tags() => [
+    'mode_${game.mode.name}',
+    'map_${game.map.id}',
+    if (_roboIn) 'robo_${roboLevel.name}',
+    'finished',
+    ...roundTags,
+  ];
 
   void _record(String name, {String? playerId, Map<String, Object?> data = const {}}) =>
       host.record(GameRecord(game: arenaGame, name: name, playerId: playerId, data: data));

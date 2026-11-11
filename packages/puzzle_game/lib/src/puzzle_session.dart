@@ -84,6 +84,13 @@ class PuzzleSession extends GameSession {
   /// The match ended: a side finished, or time ran out.
   final void Function(MatchResult result)? onFinished;
 
+  /// Tags the host adds to the round's summary (M14's "By game and feature"):
+  /// a party night's round says which of the night's it is, `night_2of3`,
+  /// which no game can know. The game's own tags say its Chaos level and that
+  /// a side finished the picture. The view sets them when it makes the session
+  /// and when they change ([PuzzlePlayView.roundTags]).
+  List<String> roundTags = const [];
+
   /// The players given the puzzle's buttons, so they get them once.
   final _withLayout = <String>{};
 
@@ -135,7 +142,7 @@ class PuzzleSession extends GameSession {
     final result = match.result;
     if (result != null && !_reported) {
       _reported = true;
-      _report.write(result, players: here, frames: frameCount, late: lateFrameCount);
+      _report.write(result, players: here, frames: frameCount, late: lateFrameCount, tags: _endTags(result));
       onFinished?.call(result);
     }
     for (final p in here) {
@@ -169,6 +176,18 @@ class PuzzleSession extends GameSession {
       host.setStatus(id, StatusMessage.hidden());
     }
   }
+
+  /// The round's tags for its summary (M14's "By game and feature"): the Chaos
+  /// level it played at, `finished` when a side completed the picture (the
+  /// celebration, T15; a round that ran out of time says nothing), and the
+  /// host's own tags. The names are metrics' [RoundTag]s.
+  List<String> _endTags(MatchResult result) => [
+    // The match hands every step's settings to its sides and its cat; a side's
+    // game holds the ones the round played at.
+    'chaos_${match.sides.first.game.settings.chaos.name}',
+    if (result.sides.values.any((side) => side.finished)) 'finished',
+    ...roundTags,
+  ];
 
   void _record(String name, {String? playerId, Map<String, Object?> data = const {}}) =>
       host.record(GameRecord(game: puzzleGameName, name: name, playerId: playerId, data: data));
