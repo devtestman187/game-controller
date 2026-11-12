@@ -1,7 +1,40 @@
+import 'dart:convert';
+
 import 'package:connection/connection.dart';
 import 'package:protocol/protocol.dart';
 
 import 'automation_api.dart';
+
+/// The most a request body may hold: a batch of stream samples is a few KB,
+/// and a runaway script can't grow the host's memory (M15 a2).
+const maxAutomationBodyBytes = 64 * 1024;
+
+/// Reads a request body as text, at most [limit] bytes. A longer body is
+/// refused, whether it declares its length or not: no more than the limit is
+/// ever buffered, whatever the caller sends.
+///
+/// A body that runs past the limit is read to its end and thrown away (up to
+/// the limit again, then the rest is left unread), so a script that sends a
+/// batch just over the cap hears the refusal instead of losing the answer to
+/// a closed connection.
+Future<String> readRequestBody(Stream<List<int>> body, {int? contentLength, int limit = maxAutomationBodyBytes}) async {
+  final bytes = <int>[];
+  var tooLong = contentLength != null && contentLength > limit;
+  var read = 0;
+  await for (final chunk in body) {
+    if (bytes.length + chunk.length <= limit) {
+      bytes.addAll(chunk);
+    } else {
+      tooLong = true;
+    }
+    read += chunk.length;
+    // Past twice the cap the rest is an attack, not a mistake: stop reading,
+    // and let the caller see a closed connection rather than wait forever.
+    if (read > limit * 2) break;
+  }
+  if (tooLong) throw const AutomationError('the body is too long');
+  return utf8.decode(bytes);
+}
 
 /// Reads the automation API's JSON bodies (M15 a2), one field at a time, and
 /// refuses a bad one with [AutomationError] and the field's name, so a script

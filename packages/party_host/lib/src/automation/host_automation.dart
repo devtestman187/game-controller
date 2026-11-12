@@ -1,9 +1,9 @@
 import 'dart:math';
 
 import 'package:connection/connection.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:game_kit/game_kit.dart';
-import 'package:metrics/metrics.dart';
 import 'package:protocol/protocol.dart';
 import 'package:puzzle_game/puzzle_game.dart';
 import 'package:test_game/test_game.dart';
@@ -171,6 +171,10 @@ final class HostAutomation implements AutomationApi {
     // moment the host had it: the next frame is the first that can show it.
     final atMs = _ref.read(gameHostProvider).nowMs;
     local.set(GamepadState(buttons: {button}, mode: InputMode.dpad));
+    // The button is let go on the frame after the press (M15 f1): a game holds
+    // a press until it is released, so a second probe of the same button must
+    // be a new press, as a thumb's second tap is.
+    SchedulerBinding.instance.addPostFrameCallback((_) => local.set(const GamepadState(mode: InputMode.dpad)));
     // The latency card flips on the press too (M15 c2), so a viewer that
     // watches the picture sees the press arrive as a colour change and times
     // it against [atMs]; the card's own 500 ms cadence keeps running.
@@ -180,7 +184,11 @@ final class HostAutomation implements AutomationApi {
 
   @override
   Map<String, Object?> ingestStream(Map<String, Object?> body) {
-    final session = _liveSession();
+    final session = _ref.read(statsServiceProvider).live;
+    // A player page posts while nobody is in a game (the home screen, between
+    // rounds): the batch is accepted and dropped, so the page isn't told it
+    // did something wrong (M15 f1).
+    if (session == null) return const {'accepted': false, 'reason': 'no session'};
     return {'viewer': ingest.ingestStream(session, body)};
   }
 
@@ -332,11 +340,6 @@ final class HostAutomation implements AutomationApi {
     }
     return teams;
   }
-
-  /// The session the host is recording now, or a refusal: a call that feeds
-  /// measurements has nowhere to put them between sessions.
-  SessionCollector _liveSession() =>
-      _ref.read(statsServiceProvider).live ?? (throw const AutomationError('no session is running'));
 
   static T? _named<T extends Enum>(List<T> values, String? name, String field) {
     if (name == null || name.isEmpty) return null;

@@ -8,6 +8,7 @@ library;
 export 'src/abandon_signal.dart';
 export 'src/advertiser.dart';
 export 'src/automation/automation_api.dart';
+export 'src/automation/automation_body.dart';
 export 'src/automation/automation_game_start.dart';
 export 'src/automation/automation_providers.dart';
 export 'src/automation/automation_server.dart';

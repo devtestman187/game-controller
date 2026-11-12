@@ -171,6 +171,7 @@ final class _Sampler {
 
   final _Options options;
   final PipelineWindow window;
+  final _cgroup = CgroupFiles(directory: _cgroupDir, warn: (message) => stderr.writeln(message));
   final _client = HttpClient()..connectionTimeout = const Duration(seconds: 2);
 
   int? _usageUsec;
@@ -184,7 +185,7 @@ final class _Sampler {
   /// Reads the counters once, so the first window has something to compare
   /// against; nothing is sent from here.
   Future<void> prime() async {
-    final usage = _readFile('$_cgroupDir/cpu.stat');
+    final usage = _cgroup.read('cpu.stat');
     _usageUsec = usage == null ? null : cgroupUsageUsec(usage);
     for (final process in _readProcesses()) {
       _previousTicks[process.pid] = process.ticks;
@@ -216,13 +217,13 @@ final class _Sampler {
 
   /// Every reading of the window, with whatever it couldn't read left out.
   Future<StreamResourceSample> _readResources(double seconds, List<_Process> processes) async {
-    final usage = _readFile('$_cgroupDir/cpu.stat');
+    final usage = _cgroup.read('cpu.stat');
     final usageUsec = usage == null ? null : cgroupUsageUsec(usage);
     final cpuPct = _share(_usageUsec, usageUsec, seconds);
     _usageUsec = usageUsec;
     final shares = _processShares(processes, seconds);
-    final memory = cgroupBytes(_readFile('$_cgroupDir/memory.current') ?? '');
-    final peak = cgroupBytes(_readFile('$_cgroupDir/memory.peak') ?? '');
+    final memory = cgroupBytes(_cgroup.read('memory.current') ?? '');
+    final peak = cgroupBytes(_cgroup.read('memory.peak') ?? '');
     final memMb = memory == null ? null : memory / _bytesPerMb;
     final peakMb = peak == null ? null : peak / _bytesPerMb;
     final highest = _highest(_peakMb, memMb);

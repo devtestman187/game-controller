@@ -11,44 +11,75 @@ import 'automation_body.dart';
 /// (a latency sample in ms, with the frame rate it was measured at), gauges
 /// (a reading in its unit), counters (a running total) and facts (a short
 /// technical string), plus the host container's own resource readings. The
-/// collector drops a series it has no room for; a body that is malformed is
-/// refused whole, so half a batch never lands.
+/// whole body is read before anything is applied: a body that is malformed is
+/// refused whole, so half a batch never lands, however far down the bad item
+/// is. The collector then drops a series it has no room for.
 String ingestStream(SessionCollector session, Map<String, Object?> body) {
   final viewer = body['viewer'];
   final hasSamples = ['stages', 'gauges', 'counters', 'facts'].any((key) => listOf(body, key).isNotEmpty);
   if (viewer == null && hasSamples) {
     throw const AutomationError('a sample needs a "viewer": {"kind": "browser"}');
   }
-  final id = viewer is String
-      ? _known(session, viewer)
-      : viewer is Map<String, Object?>
-      ? session.streamViewer(kind: requiredString(viewer, 'kind'), platform: stringOf(viewer, 'platform') ?? '')
-      : '';
-  if (viewer != null && id.isEmpty && viewer is! String) {
-    throw const AutomationError('the session has no room for another viewer');
+  if (viewer != null && viewer is! String && viewer is! Map<String, Object?>) {
+    throw const AutomationError('a viewer is {"kind": "browser"} or an id the host gave');
   }
-  for (final item in listOf(body, 'stages')) {
-    final stage = asObject(item, 'a stage');
-    final ms = intOf(stage, 'ms');
-    if (ms == null) throw const AutomationError('a stage needs "name" and "ms"');
-    session.streamStage(id, requiredString(stage, 'name'), ms, fps: intOf(stage, 'fps'));
+  final kinds = viewer is Map<String, Object?>;
+  // Read and check every item first: a malformed one later in the batch must
+  // leave the session's stream record exactly as it was (M15 f1).
+  final kind = kinds ? requiredString(viewer, 'kind') : '';
+  final platform = kinds ? stringOf(viewer, 'platform') ?? '' : '';
+  final stages = [for (final item in listOf(body, 'stages')) _stageOf(item)];
+  final gauges = [for (final item in listOf(body, 'gauges')) _sampleOf(item, 'a gauge')];
+  final counters = [for (final item in listOf(body, 'counters')) _sampleOf(item, 'a counter')];
+  final facts = [for (final item in listOf(body, 'facts')) _factOf(item)];
+  final resources = [for (final item in listOf(body, 'resources')) resourceOf(asObject(item, 'a resource'))];
+
+  final String id;
+  if (viewer is String) {
+    id = _known(session, viewer);
+  } else if (kinds) {
+    id = session.streamViewer(kind: kind, platform: platform);
+    if (id.isEmpty) throw const AutomationError('the session has no room for another viewer');
+  } else {
+    id = '';
   }
-  for (final item in listOf(body, 'gauges')) {
-    final gauge = asObject(item, 'a gauge');
-    session.streamGauge(id, requiredString(gauge, 'name'), _valueOf(gauge));
+  for (final stage in stages) {
+    session.streamStage(id, stage.name, stage.ms, fps: stage.fps);
   }
-  for (final item in listOf(body, 'counters')) {
-    final counter = asObject(item, 'a counter');
-    session.streamCounter(id, requiredString(counter, 'name'), _valueOf(counter));
+  for (final gauge in gauges) {
+    session.streamGauge(id, gauge.name, gauge.value);
   }
-  for (final item in listOf(body, 'facts')) {
-    final fact = asObject(item, 'a fact');
-    session.streamFact(id, requiredString(fact, 'name'), requiredString(fact, 'value'));
+  for (final counter in counters) {
+    session.streamCounter(id, counter.name, counter.value);
   }
-  for (final item in listOf(body, 'resources')) {
-    session.streamResource(resourceOf(asObject(item, 'a resource')));
+  for (final fact in facts) {
+    session.streamFact(id, fact.name, fact.value);
+  }
+  for (final resource in resources) {
+    session.streamResource(resource);
   }
   return id;
+}
+
+/// One stage of the body, checked: its name, its ms and the rate it was
+/// measured at.
+({String name, int ms, int? fps}) _stageOf(Object? item) {
+  final stage = asObject(item, 'a stage');
+  final ms = intOf(stage, 'ms');
+  if (ms == null) throw const AutomationError('a stage needs "name" and "ms"');
+  return (name: requiredString(stage, 'name'), ms: ms, fps: intOf(stage, 'fps'));
+}
+
+/// One gauge or counter of the body, checked: its name and its number.
+({String name, num value}) _sampleOf(Object? item, String what) {
+  final sample = asObject(item, what);
+  return (name: requiredString(sample, 'name'), value: _valueOf(sample));
+}
+
+/// One fact of the body, checked: its name and its short text.
+({String name, String value}) _factOf(Object? item) {
+  final fact = asObject(item, 'a fact');
+  return (name: requiredString(fact, 'name'), value: requiredString(fact, 'value'));
 }
 
 /// The id a body sends back for later batches (`"viewer": "v1"`), checked

@@ -117,6 +117,9 @@ abstract final class TvText {
   static const receivedToDrawn = 'received → drawn, while a game runs';
   static String receivedToDrawnP95(int? p95Ms) => 'received → drawn, p95 $p95Ms ms';
 
+  /// Why the automation interface did not start, one line above the figures.
+  static String automationNotStarted(String reason) => 'Automation could not start: $reason';
+
   // The haptic test.
   static const hit = 'Hit';
   static const hitLine = 'One heavy thump';
@@ -180,7 +183,4 @@ abstract final class TvText {
   static const stressOff = 'Stress: off';
   static const shapes = 'Shapes';
   static const widgets = 'Widgets';
-
-  // The screen a debug build shows until a phone joins.
-  static const waitingForController = 'Waiting for a controller…';
 }

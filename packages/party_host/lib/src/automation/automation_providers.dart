@@ -130,15 +130,35 @@ final automationConsentProvider = Provider<void>((ref) {
   Future.microtask(() => ref.read(statsServiceProvider).setConsent(answer));
 });
 
+/// Why the automation interface couldn't start (M15 f1), or null: a bind that
+/// failed while the host keeps hosting. The latency screen shows it as one
+/// line, so a run that can't reach the interface says why instead of waiting
+/// for a timeout.
+final automationStartErrorProvider = NotifierProvider<AutomationStartErrorNotifier, String?>(
+  AutomationStartErrorNotifier.new,
+);
+
+/// Keeps [automationStartErrorProvider]: the reason the server's bind failed.
+class AutomationStartErrorNotifier extends Notifier<String?> {
+  @override
+  String? build() => null;
+
+  /// Records the reason the interface couldn't listen; it stays for the
+  /// session, since nothing retries the bind.
+  void failed(String reason) => state = reason;
+}
+
 /// The automation interface's server (M15 a2). It listens while the app shows
 /// anything, since the automation gate watches this, and stops with the
 /// container; switched off ([AutomationSettings.enabled] false) it does
-/// nothing at all.
+/// nothing at all. A bind that fails is reported to
+/// [automationStartErrorProvider] as well as the log (M15 f1).
 final automationServerProvider = Provider<AutomationServer>((ref) {
   final server = AutomationServer(
     settings: ref.watch(automationSettingsProvider),
     api: HostAutomation(ref),
     log: ref.watch(logProvider).sink('automation'),
+    onStartError: (reason) => ref.read(automationStartErrorProvider.notifier).failed(reason),
   );
   ref.onDispose(server.stop);
   unawaited(server.start());

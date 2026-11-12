@@ -21,6 +21,18 @@ void main() {
       expect(cgroupBytes('536870912\n'), 536870912);
       expect(cgroupBytes(''), isNull, reason: 'memory.peak is missing on older kernels');
     });
+
+    test('a cgroup file that cannot be read warns once and reads null', () {
+      final warnings = <String>[];
+      // A container started with the wrong cgroup path: every window finds
+      // nothing, and the run says why once instead of reporting no CPU.
+      final files = CgroupFiles(directory: '/no such cgroup', warn: warnings.add);
+
+      expect(files.read('cpu.stat'), isNull);
+      expect(files.read('cpu.stat'), isNull);
+      expect(warnings, hasLength(1), reason: 'one line, not one every three seconds');
+      expect(warnings.single, contains('cpu.stat'));
+    });
   });
 
   group('processes', () {

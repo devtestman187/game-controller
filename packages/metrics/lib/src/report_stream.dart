@@ -132,7 +132,8 @@ const _qualityHeaders = [
 const _soundHeaders = ['session', 'viewer', 'audio ms', 'sync ms', 'concealed %'];
 
 /// The columns of "Streaming resources": one container, its sampler's count,
-/// and the mean of each reading.
+/// each reading as its mean and p95 (as a stage's cell is its median and p95),
+/// and its two single values.
 const _resourceHeaders = [
   'session',
   'samples',
@@ -228,8 +229,8 @@ List<String> _soundCells(StreamViewerRow row) => [
   _meanOf(row, 'audioConcealedPct'),
 ];
 
-/// One container's resources: its sampler's count, the mean of each gauge and
-/// its two single values.
+/// One container's resources: its sampler's count, each gauge's mean and p95
+/// and its two single values.
 List<String> _resourceCells(StreamHostRow host) => [
   host.session,
   '${host.samples}',
@@ -248,7 +249,7 @@ List<String> _resourceCells(StreamHostRow host) => [
     StreamResource.encodeQueue,
     StreamResource.pipelineMs,
   ])
-    _mean(host, name),
+    _meanAndP95(host, name),
   _whole(host.firstFrameMs),
   _numberText(host.memPeakMb),
 ];
@@ -296,8 +297,15 @@ String _meanOf(StreamViewerRow row, String name) => _numberText(row.gaugeField(n
 /// One of a viewer's counters, or a dash.
 String _countOf(StreamViewerRow row, String name) => _whole(row.counter(name));
 
-/// One of a container's gauges' means, to one decimal, or a dash.
-String _mean(StreamHostRow host, String name) => _numberText(host.gaugeField(name, 'mean'));
+/// One of a container's gauges as its mean and p95 (`50.0/55.0`), to one
+/// decimal as a stage's cell is its median and p95, or a dash when it had no
+/// sample.
+String _meanAndP95(StreamHostRow host, String name) {
+  final mean = host.gaugeField(name, 'mean');
+  if (mean == null) return '-';
+  final p95 = host.gaugeField(name, 'p95');
+  return p95 == null ? _numberText(mean) : '${_numberText(mean)}/${_numberText(p95)}';
+}
 
 /// The mean of the group's means for [name], or a dash when none has one.
 String _groupMean(List<StreamHostRow> group, String name) {

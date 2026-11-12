@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:connection/connection.dart';
 
 import 'automation_api.dart';
+import 'automation_body.dart';
 import 'automation_settings.dart';
 
 /// Where a server with no log of its own writes: nowhere.
@@ -20,8 +21,10 @@ void _silent(String _) {}
 /// tested apart.
 final class AutomationServer {
   /// [settings] decide whether, where and with what token it listens; [api]
-  /// does what each call asks; [log] gets its start, stop and refusals.
-  AutomationServer({required this.settings, required this.api, LogSink? log}) : _log = log ?? _silent;
+  /// does what each call asks; [log] gets its start, stop and refusals;
+  /// [onStartError] hears once why a bind failed, so a screen can show it.
+  AutomationServer({required this.settings, required this.api, LogSink? log, this.onStartError})
+    : _log = log ?? _silent;
 
   /// The path every call starts with. A version in the path lets a later
   /// build answer the same call differently.
@@ -32,7 +35,7 @@ final class AutomationServer {
 
   /// The most a request body may hold: a batch of stream samples is a few KB,
   /// and a runaway script can't grow the host's memory.
-  static const maxBodyBytes = 64 * 1024;
+  static const maxBodyBytes = maxAutomationBodyBytes;
 
   /// The settings it was started with.
   final AutomationSettings settings;
@@ -40,8 +43,13 @@ final class AutomationServer {
   /// What each call does.
   final AutomationApi api;
 
+  /// Hears the reason once when [start] couldn't listen, so the host's stats
+  /// screen can say so in one line; null when nothing listens for it.
+  final void Function(String reason)? onStartError;
+
   final LogSink _log;
   HttpServer? _http;
+  String? _startError;
 
   /// Whether it is listening now. False when it is off, refused, or stopped.
   bool get isListening => _http != null;
@@ -49,11 +57,17 @@ final class AutomationServer {
   /// The port it listens on, or null when it isn't listening.
   int? get port => _http?.port;
 
+  /// Why the interface couldn't start (a bind that failed), or null. The host
+  /// keeps hosting either way; this is the one line that says why nothing
+  /// answers on the port.
+  String? get startError => _startError;
+
   /// Starts listening, or does nothing when the settings leave it off. A bind
-  /// that fails is logged and counted as not listening, never thrown: a host
-  /// must still host when its automation port is taken.
+  /// that fails is kept in [startError], logged once and counted as not
+  /// listening, never thrown: a host must still host when its automation port
+  /// is taken.
   Future<void> start() async {
-    if (_http != null || !settings.enabled) return;
+    if (_http != null || _startError != null || !settings.enabled) return;
     final problem = settings.problem;
     if (problem != null) {
       _log('Automation is off: $problem');
@@ -65,9 +79,12 @@ final class AutomationServer {
       http.listen(_onRequest, onError: (Object e) => _log('Automation server error: $e'));
       _log('Automation listening on ${settings.bindAddress}:${http.port}');
     } on SocketException catch (e) {
-      _log(
-        'Automation could not listen on ${settings.bindAddress}:${settings.port}: ${e.osError?.message ?? e.message}',
-      );
+      final reason =
+          'could not listen on ${settings.bindAddress}:${settings.port}: '
+          '${e.osError?.message ?? e.message}';
+      _startError = reason;
+      _log('Automation could not start: $reason');
+      onStartError?.call(reason);
     }
   }
 
@@ -175,11 +192,8 @@ final class AutomationServer {
   }
 
   Future<Map<String, Object?>> _body(HttpRequest request, {bool mayBeEmpty = false}) async {
-    final length = request.contentLength;
-    if (length > maxBodyBytes) throw const AutomationError('the body is too long');
-    final text = await utf8.decoder.bind(request).join();
+    final text = await readRequestBody(request, contentLength: request.contentLength);
     if (text.trim().isEmpty && mayBeEmpty) return const {};
-    if (text.length > maxBodyBytes) throw const AutomationError('the body is too long');
     final decoded = jsonDecode(text);
     if (decoded is! Map<String, Object?>) throw const AutomationError('the body is a JSON object');
     return decoded;

@@ -130,7 +130,7 @@ void main() {
         code: server.pairingCode,
       );
       await until(p.changes, (s) => s.isConnected);
-      await waitFor(() => stats.session != null && host.players.isNotEmpty);
+      await waitFor(() => stats.live != null && host.players.isNotEmpty);
 
       // D-pad for 40 s with near misses next to B, then sticks.
       p.sendInput({ControllerButton.a}, dx: 1);
@@ -206,13 +206,13 @@ void main() {
       host.reportStage('phone-a', LatencyStage.receivedToDrawn, 7);
       await waitFor(
         () =>
-            (stats.session!.summary(host.nowMs)['players'] as List).isNotEmpty &&
-            ((stats.session!.summary(host.nowMs)['players'] as List).first as Map)['ratings'].isNotEmpty,
+            (stats.live!.summary(host.nowMs)['players'] as List).isNotEmpty &&
+            ((stats.live!.summary(host.nowMs)['players'] as List).first as Map)['ratings'].isNotEmpty,
       );
 
       // The phone leaves; the session ends after the gap and is saved.
       p.disconnect();
-      await waitFor(() => stats.session == null);
+      await waitFor(() => stats.live == null);
       final files = await stats.sessions();
       expect(files, hasLength(1));
       final s = files.single.summary;
@@ -269,10 +269,10 @@ void main() {
       code: server.pairingCode,
     );
     await until(p.changes, (s) => s.isConnected);
-    await waitFor(() => stats.session != null);
+    await waitFor(() => stats.live != null);
     uploader.failWith = 'offline';
     p.disconnect();
-    await waitFor(() => stats.session == null);
+    await waitFor(() => stats.live == null);
     await waitFor(() => stats.state.lastError != null);
     expect(uploader.uploaded, isEmpty);
     expect(stats.state.waiting, 1);
@@ -291,9 +291,9 @@ void main() {
       code: server.pairingCode,
     );
     await until(p.changes, (s) => s.isConnected);
-    await waitFor(() => stats.session != null);
+    await waitFor(() => stats.live != null);
     p.disconnect();
-    await waitFor(() => stats.session == null);
+    await waitFor(() => stats.live == null);
     await stats.uploadNow();
     expect(uploader.uploaded, isEmpty);
     expect((await stats.sessions()), hasLength(1), reason: 'still kept on the TV');
@@ -302,11 +302,11 @@ void main() {
   test('a session only the automation played is marked, kept and never uploaded', () async {
     final stats = await startStats(consent: true);
     final robo = host.addLocalPlayer(nickname: 'Robo', scripted: true);
-    await waitFor(() => stats.session != null);
-    expect(stats.session!.isSimulated, isTrue, reason: 'nobody held a controller');
+    await waitFor(() => stats.live != null);
+    expect(stats.live!.isSimulated, isTrue, reason: 'nobody held a controller');
 
     robo.remove();
-    await waitFor(() => stats.session == null, timeout: const Duration(seconds: 2));
+    await waitFor(() => stats.live == null, timeout: const Duration(seconds: 2));
     await stats.uploadNow();
     expect(uploader.uploaded, isEmpty, reason: 'a script\'s play is nobody\'s play, so it never leaves the host');
     expect(stats.state.waiting, 0, reason: 'and it waits in no queue');
@@ -324,7 +324,7 @@ void main() {
       code: server.pairingCode,
     );
     await until(old.changes, (s) => s.isConnected);
-    await waitFor(() => stats.session != null);
+    await waitFor(() => stats.live != null);
     void round() => host.record(
       const GameRecord(
         game: 'arena',
@@ -365,9 +365,9 @@ void main() {
       code: server.pairingCode,
     );
     await until(p.changes, (s) => s.isConnected);
-    await waitFor(() => stats.session != null && host.players.isNotEmpty);
+    await waitFor(() => stats.live != null && host.players.isNotEmpty);
 
-    Map? player() => (stats.session!.summary(host.nowMs)['players'] as List).cast<Map?>().firstOrNull;
+    Map? player() => (stats.live!.summary(host.nowMs)['players'] as List).cast<Map?>().firstOrNull;
     int samples() => (((player()?['stages'] as Map?)?['touch_to_frame'] as Map?)?['n'] as int?) ?? 0;
 
     // One sample with no view, one while a 60 Hz view runs, one after it. Each
@@ -402,14 +402,14 @@ void main() {
       code: server.pairingCode,
     );
     await until(p.changes, (s) => s.isConnected);
-    await waitFor(() => stats.session != null);
-    final running = stats.session!.id;
+    await waitFor(() => stats.live != null);
+    final running = stats.live!.id;
     expect(stats.state.lastSaved, isNull, reason: 'nothing is saved while the session runs');
 
     // The session ends a [sessionGap] after the last player leaves, and its
     // save is the one the phone's Diagnostics keeps (m12 §0.6).
     p.disconnect();
-    await waitFor(() => stats.session == null);
+    await waitFor(() => stats.live == null);
     expect(stats.state.current, isNull);
     expect(stats.state.lastSaved?['id'], running, reason: 'the Diagnostics report still shows it');
   });
@@ -422,9 +422,9 @@ void main() {
       code: server.pairingCode,
     );
     await until(p.changes, (s) => s.isConnected);
-    await waitFor(() => stats.session != null);
+    await waitFor(() => stats.live != null);
     p.disconnect();
-    await waitFor(() => stats.session == null);
+    await waitFor(() => stats.live == null);
     final path = await stats.exportAll();
     final copied = Directory(path).listSync().whereType<File>().toList();
     expect(copied, hasLength(1));

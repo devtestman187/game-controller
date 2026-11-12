@@ -29,6 +29,9 @@ class LatencyScreen extends ConsumerWidget {
     // A phone that is away has no latency to show (m12 bug 1107d).
     final players = ref.watch(gamePlayersProvider).where((p) => !p.local && !p.away).toList();
     final look = ToyLookScope.of(context);
+    // A bind that failed is said once here: a script that cannot reach the
+    // host is otherwise a guess (M15 fix1).
+    final startError = ref.watch(automationStartErrorProvider);
     return CallbackShortcuts(
       bindings: {const SingleActivator(LogicalKeyboardKey.escape): () => Navigator.of(context).maybePop()},
       child: Scaffold(
@@ -44,6 +47,14 @@ class LatencyScreen extends ConsumerWidget {
                   style: look.type.body.copyWith(color: look.colors.onBackground),
                 ),
               ),
+              if (startError != null)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: ToySizes.space8),
+                  child: Text(
+                    TvText.automationNotStarted(startError),
+                    style: look.type.body.copyWith(color: look.colors.caution),
+                  ),
+                ),
               if (players.isEmpty)
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 48),

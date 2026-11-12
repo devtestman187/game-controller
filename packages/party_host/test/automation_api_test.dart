@@ -187,6 +187,44 @@ void main() {
     expect(find.byType(LatencyTestCard), findsNothing);
   });
 
+  testWidgets('a probe press lets its button go on the next frame, so a second probe registers', (tester) async {
+    final fake = await pumpAutomation(tester);
+    final api = apiOf(tester);
+    final id = (api.players({})['player']! as Map<String, Object?>)['id']! as String;
+    api.flashProbe(on: true);
+    await tester.pump();
+
+    api.pressProbe({'player': id, 'button': 'a'});
+    expect(fake.gameHost.gamepad(id).buttons, {GamepadButton.a}, reason: 'the press is in the game host');
+    await tester.pump();
+    expect(fake.gameHost.gamepad(id).buttons, isEmpty, reason: 'the frame after the press lets it go');
+    expect(find.textContaining('flip 1'), findsOneWidget);
+
+    api.pressProbe({'player': id, 'button': 'a'});
+    expect(fake.gameHost.gamepad(id).buttons, {GamepadButton.a}, reason: 'the same button is a new press');
+    await tester.pump();
+    expect(fake.gameHost.gamepad(id).buttons, isEmpty);
+    expect(find.textContaining('flip 2'), findsOneWidget, reason: 'the second probe flips the card too');
+    api.flashProbe(on: false);
+    await tester.pump();
+  });
+
+  testWidgets('measurements posted with no session are accepted and dropped', (tester) async {
+    final fake = await pumpAutomation(tester);
+    fake.stats.live = null;
+    final api = apiOf(tester);
+
+    final answer = api.ingestStream({
+      'viewer': {'kind': StreamKind.browser},
+      'stages': [
+        {'name': StreamStage.decode, 'ms': 5},
+      ],
+    });
+
+    expect(answer, {'accepted': false, 'reason': 'no session'});
+    expect(fake.stats.live, isNull, reason: 'nothing started a session for it');
+  });
+
   testWidgets('stats/stream lands in the live session, and stats/session reads it back', (tester) async {
     final fake = await pumpAutomation(tester);
     final live = SessionCollector(

@@ -30,7 +30,8 @@ A build starts listening only once its settings say so, and logs `Automation lis
 - **Loopback only by default.** Nothing on the network can reach it unless a launch sets `THUMBPARTY_AUTOMATION_BIND`, and a bind beyond this machine without a token is refused rather than started weakly.
 - **A token when the launch sets one**, in `x-automation-token` or `Authorization: Bearer …`; a request without it gets a 401 before anything happens.
 - **No environment default answers the stats question "yes"**: `POST settings` answers it only when a script asks, and neither the interface nor the environment turns sharing on.
-- **A body is at most 64 KB**, and a bad one is refused whole with a 400 that says which field to fix; nothing is half applied.
+- **A body is at most 64 KB**, whether or not it declares its length; a bad one is refused whole with a 400 that says which field to fix, and nothing is half applied.
+- **The player page relay forwards what the page measures, and nothing else.** The session's relay (`streaming/player/serve.py`) posts the page's `stats/stream` batches and reads the host's clock from `GET status`, with the session's token; no other call is relayed, so anyone who can open the player page can write measurements into its session's stream record and nothing else — no input, no player, no setting, no game. The record holds technical numbers only (`docs/protocol.md` §13). A host that shouldn't be measured keeps the interface off.
 - **It is a development tool**: start it for a measuring run, a demo or a test, and leave it off otherwise.
 
 ## The calls
@@ -158,7 +159,7 @@ curl -s -X POST http://127.0.0.1:8787/automation/v1/probe/flash -d '{"on":false}
 
 ### POST probe/press
 
-Presses a button for a simulated player and returns the host's clock at that moment (`hostMs`). The press lands before the next frame, so a viewer times press → pixel change from that number: the frame counter beside the host clock flips when the press reaches the screen, and since job c2 the card's colour flips with it, so a viewer watching the picture sees the press arrive as a colour change.
+Presses a button for a simulated player and returns the host's clock at that moment (`hostMs`). The press lands before the next frame, so a viewer times press → pixel change from that number: the frame counter beside the host clock flips when the press reaches the screen, and since job c2 the card's colour flips with it, so a viewer watching the picture sees the press arrive as a colour change. The button is let go on the frame after the press, so two calls in a row are two presses, as two taps of a thumb are.
 
 ```bash
 curl -s -X POST http://127.0.0.1:8787/automation/v1/probe/press -d '{"player":"local-1","button":"a"}'
@@ -170,7 +171,7 @@ curl -s -X POST http://127.0.0.1:8787/automation/v1/probe/press -d '{"player":"l
 
 ### POST stats/stream
 
-The ingest end of job p1's measurements (`docs/protocol.md` §13): one batched body with a viewer and any mix of its stages, gauges, counters and facts, plus the container's own resource readings. It lands in the live session's summary — no upload, no consent needed — and answers the viewer id it went to. A malformed body is refused whole. The host must be recording a session (a player is in the game), or the call is a 400 saying so.
+The ingest end of job p1's measurements (`docs/protocol.md` §13): one batched body with a viewer and any mix of its stages, gauges, counters and facts, plus the container's own resource readings. It lands in the live session's summary — no upload, no consent needed — and answers the viewer id it went to. A malformed body is refused whole, however far down it the bad item is. When no session is running the batch is dropped and the answer says so without an error — `{"ok":true,"accepted":false,"reason":"no session"}` — so a sampler that starts before the first player joins keeps sending and needs no special case.
 
 ```bash
 curl -s -X POST http://127.0.0.1:8787/automation/v1/stats/stream -d '{

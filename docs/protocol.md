@@ -337,7 +337,7 @@ A session summary is the JSON file the host writes after a session (PRD v2 "What
 }
 ```
 
-A stage is summarised as `n` (samples), `median`, `p95` and `max` in **ms**, as a phone's stages are today; a gauge keeps the first 256 samples and is summarised as `n`, `mean`, `p95` and `max` in the series' own unit; a counter is the newest total since the session started; a fact is a short technical string (at most 24 characters). Each name is at most 32 characters and each viewer or the host keeps at most 16 of them (M15 a2 measured the summary at 89 KB with 32 and eight viewers full, over the PRD's 50 KB); a summary holds at most 8 viewers.
+A stage is summarised as `n` (samples), `median`, `p95` and `max` in **ms**, as a phone's stages are today; a gauge keeps the first 256 samples and is summarised as `n`, `mean`, `p95` and `max` in the series' own unit; a counter is the newest total since the session started; a fact is a short technical string (at most 24 characters). Each name is at most 32 characters, a summary holds at most 8 viewers, and each viewer or the host keeps at most 16 series of each kind. A full record at that cap — eight viewers, each with every series full at its longest name, and sixteen host readings — is **45,580 bytes** (44.5 KB), measured by `stream_budget_test.dart` in `packages/metrics`; the 32-series cap it replaced measured 89 KB with eight viewers full, over the PRD's 50 KB, which is why the cap was halved (M15 a2).
 
 ### Video stages (per viewer, ms)
 

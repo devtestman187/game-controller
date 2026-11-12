@@ -330,40 +330,43 @@ void main() {
     test('resources per session, and by how many sessions ran at once', () {
       final text = streamReport(sessions);
       final resources = tableOf(text, 'Streaming resources');
+      // Two readings: the mean and the p95 are the second of the two, as the
+      // gauge keeps `{n, mean, p95, max}` and p95 picks the larger of two.
       expect(cells(resources[2]), [
         'one',
         '2',
-        '50.0',
+        '50.0/55.0',
         '-',
         '-',
-        '925.0',
-        '45.0',
-        '12.0',
+        '925.0/950.0',
+        '45.0/50.0',
+        '12.0/14.0',
         '-',
-        '59.0',
+        '59.0/60.0',
         '-',
         '-',
-        '60.0',
+        '60.0/60.0',
         '-',
-        '32.0',
+        '32.0/34.0',
         '800',
         '950.0',
       ]);
+      // One reading: its mean and p95 are the same number.
       // The second session gave no peak of its own, so its highest reading is it.
       expect(cells(resources[3]), [
         'two',
         '1',
-        '70.0',
+        '70.0/70.0',
         '-',
         '-',
-        '1800.0',
-        '78.0',
-        '12.0',
+        '1800.0/1800.0',
+        '78.0/78.0',
+        '12.0/12.0',
         '-',
-        '30.0',
+        '30.0/30.0',
         '-',
         '-',
-        '45.0',
+        '45.0/45.0',
         '-',
         '-',
         '-',
@@ -409,6 +412,11 @@ void main() {
       expect(at('relay'), 'no');
       expect(at('sessions_at_once'), '1');
       expect(at('cpu_pct'), '50.0');
+      expect(at('cpu_pct_p95'), '55.0', reason: 'each resource reading has its p95 beside its mean');
+      expect(at('mem_mb_p95'), '950.0');
+      expect(at('gpu_pct_p95'), '50.0');
+      expect(at('pipeline_ms'), '32.0', reason: 'the tracer\'s whole host path has its own column');
+      expect(at('pipeline_ms_p95'), '34.0');
     });
   });
 }

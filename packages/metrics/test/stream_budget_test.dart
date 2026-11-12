@@ -16,23 +16,23 @@ SessionCollector fullStream() {
     startedAt: DateTime.utc(2026, 11, 11, 12),
     startMs: 0,
   );
-  // Eight viewers, each with every series full at its longest name: the caps
-  // the stream record enforces (M15 p1).
+  // Every viewer the session keeps, each with every series full at its
+  // longest name: the caps the stream record enforces (M15 p1).
   const name = 'abcdefghijklmnopqrstuvwxyzabcdef';
-  for (var v = 0; v < 8; v++) {
+  for (var v = 0; v < maxStreamViewers; v++) {
     final id = c.streamViewer(kind: 'browser', platform: 'chrome-1234567890');
-    for (var s = 0; s < 32; s++) {
-      for (var i = 0; i < 256; i++) {
+    for (var s = 0; s < maxStreamSeries; s++) {
+      for (var i = 0; i < maxStreamSamples; i++) {
         c.streamStage(id, '$s$name'.substring(0, 32), 1000 + i, fps: 60);
       }
-      for (var i = 0; i < 256; i++) {
+      for (var i = 0; i < maxStreamSamples; i++) {
         c.streamGauge(id, '${s}g$name'.substring(0, 32), 1000.5 + i);
       }
       c.streamCounter(id, '${s}c$name'.substring(0, 32), 1000000 + s);
       c.streamFact(id, '${s}f$name'.substring(0, 32), 'nvautogpuh264enc');
     }
   }
-  for (var s = 0; s < 32; s++) {
+  for (var s = 0; s < maxStreamSeries; s++) {
     c.streamResource(StreamResourceSample(cpuPct: 100, gameCpuPct: 90, encoderCpuPct: 80, memMb: 99999, gpuPct: 100));
   }
   return c;
@@ -45,7 +45,14 @@ void main() {
     // The record really is full: eight viewers, each with its caps used.
     final summary = jsonDecode(json) as Map<String, Object?>;
     final viewers = (summary['stream'] as Map<String, Object?>)['viewers']! as List<Object?>;
-    expect(viewers, hasLength(8));
+    expect(viewers, hasLength(maxStreamViewers));
+  });
+
+  test('a full record at the series cap is the size docs/protocol.md quotes', () {
+    final bytes = utf8.encode(jsonEncode(fullStream().summary(600000))).length;
+    // Quoted in docs/protocol.md §13 beside the series cap: a session that
+    // streams to every viewer it can, with every series full, is this big.
+    expect(bytes, 45580, reason: 'measured size of the full record');
   });
 
   test('a summary without a stream is far under the budget', () {

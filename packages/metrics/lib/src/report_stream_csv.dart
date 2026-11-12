@@ -3,8 +3,10 @@ import 'stream_names.dart';
 
 /// The stream CSV's columns (M15): one row per session and viewer, the stages
 /// in pipeline order, the totals, sound, quality, and the session's container
-/// readings repeated on each of its viewers' rows. An empty cell means the
-/// viewer gave no such number.
+/// readings repeated on each of its viewers' rows. Each container reading has
+/// its mean and its p95 (`cpu_pct`, `cpu_pct_p95`), as the report's table
+/// prints them, and `pipeline_ms` is the tracer's whole host path. An empty
+/// cell means the viewer or the container gave no such number.
 const streamCsvHeader =
     'session,viewer,kind,platform,'
     'input_median_ms,input_p95_ms,host_median_ms,host_p95_ms,'
@@ -18,8 +20,11 @@ const streamCsvHeader =
     'frames_sent,frames_recv,frames_decoded,frames_dropped,frames_late,'
     'keyframes,nacks,plis,firs,freezes,freeze_ms,first_frame_ms,reconnects,'
     'relay,codec,encoder,'
-    'sessions_at_once,cpu_pct,game_cpu_pct,enc_cpu_pct,mem_mb,gpu_pct,encoder_pct,'
-    'gpu_mem_mb,game_fps,encoded_fps,encode_queue,mem_peak_mb';
+    'sessions_at_once,cpu_pct,cpu_pct_p95,game_cpu_pct,game_cpu_pct_p95,'
+    'enc_cpu_pct,enc_cpu_pct_p95,mem_mb,mem_mb_p95,gpu_pct,gpu_pct_p95,'
+    'encoder_pct,encoder_pct_p95,gpu_mem_mb,gpu_mem_mb_p95,game_fps,game_fps_p95,'
+    'encoded_fps,encoded_fps_p95,encode_queue,encode_queue_p95,'
+    'pipeline_ms,pipeline_ms_p95,mem_peak_mb';
 
 /// The stream CSV: one row per session and viewer of every session that
 /// streamed (M15). A report whose sessions never streamed has only the header.
@@ -83,8 +88,9 @@ String _row(StreamViewerRow viewer, StreamHostRow? host) => [
     StreamResource.gameFps,
     StreamResource.encodedFps,
     StreamResource.encodeQueue,
+    StreamResource.pipelineMs,
   ])
-    _text(host?.gaugeField(name, 'mean')),
+    ..._resourcePair(host, name),
   _text(host?.memPeakMb),
 ].join(',');
 
@@ -96,6 +102,13 @@ List<String> _pair(StreamViewerRow viewer, String name) => [
 
 /// A gauge's mean, or an empty cell.
 String _mean(StreamViewerRow viewer, String name) => _text(viewer.gaugeField(name, 'mean'));
+
+/// A container gauge's mean and p95 as two cells (either empty when it has
+/// none), as the report's table prints them.
+List<String> _resourcePair(StreamHostRow? host, String name) => [
+  _text(host?.gaugeField(name, 'mean')),
+  _text(host?.gaugeField(name, 'p95')),
+];
 
 /// The source of a derived total (`stages`, `measured` or `probe`).
 String _source(StreamViewerRow viewer) {

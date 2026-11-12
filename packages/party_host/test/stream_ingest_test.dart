@@ -191,22 +191,23 @@ void main() {
 
     final resources = tableOf(text, 'Streaming resources');
     expect(resources[0], contains('pipeline ms'), reason: 'the tracer\'s whole host path has its own column');
+    // One reading, so each gauge's mean and p95 are the same number.
     expect(cells(resources[2]), [
       'fixture',
       '1',
-      '240.0',
-      '95.0',
-      '120.0',
-      '1040.0',
-      '46.0',
-      '6.0',
-      '1400.0',
-      '56.0',
-      '4.0',
-      '7.0',
-      '55.0',
-      '0.0',
-      '34.0',
+      '240.0/240.0',
+      '95.0/95.0',
+      '120.0/120.0',
+      '1040.0/1040.0',
+      '46.0/46.0',
+      '6.0/6.0',
+      '1400.0/1400.0',
+      '56.0/56.0',
+      '4.0/4.0',
+      '7.0/7.0',
+      '55.0/55.0',
+      '0.0/0.0',
+      '34.0/34.0',
       '1500',
       '1100.0',
     ]);
@@ -238,6 +239,29 @@ void main() {
       }),
       throwsA(isA<AutomationError>()),
     );
+  });
+
+  test('a batch whose last item is malformed leaves the stream record as it was', () {
+    final collector = session();
+
+    expect(
+      () => ingestStream(collector, {
+        'viewer': {'kind': 'browser'},
+        'stages': [
+          {'name': StreamStage.decode, 'ms': 5},
+        ],
+        'gauges': [
+          {'name': 'rttMs', 'value': 30},
+        ],
+        'facts': [
+          {'name': 'codec', 'value': 'h264'},
+          {'name': 'encoder'},
+        ],
+      }),
+      throwsA(isA<AutomationError>()),
+    );
+
+    expect(collector.summary(60000).containsKey('stream'), isFalse, reason: 'no viewer, no stage, no gauge landed');
   });
 
   test('a body with no viewer still lands as the container readings', () {

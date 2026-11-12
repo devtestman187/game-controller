@@ -152,6 +152,30 @@ Future<_Reply> _call(
   }
 }
 
+/// One request whose body has no declared length, so it goes out chunked and
+/// the server can only see its size as it reads.
+Future<_Reply> _callChunked(AutomationServer server, String call, String body) async {
+  final client = HttpClient();
+  try {
+    final request = await client.openUrl(
+      'POST',
+      Uri.parse('http://127.0.0.1:${server.port}${AutomationServer.prefix}$call'),
+    );
+    request.headers.contentType = ContentType.json;
+    request.add(utf8.encode(body));
+    final response = await request.close();
+    final bytes = await response.fold<List<int>>([], (all, chunk) => all..addAll(chunk));
+    return (
+      code: response.statusCode,
+      body: jsonDecode(utf8.decode(bytes)) as Map<String, Object?>,
+      bytes: bytes,
+      type: '',
+    );
+  } finally {
+    client.close(force: true);
+  }
+}
+
 void main() {
   test('off by default: nothing listens', () async {
     final api = _FakeApi();
@@ -259,6 +283,45 @@ void main() {
     final tooLong = await _call(server, 'POST', '/players', body: long);
     expect(tooLong.code, 400);
     expect(tooLong.body['error'], 'the body is too long');
+  });
+
+  test('a body with no length is refused at the cap, before it is all read', () async {
+    final api = _FakeApi();
+    final server = await _started(const AutomationSettings(enabled: true, port: 0), api);
+    final chunked = await _callChunked(server, '/players', 'x' * (AutomationServer.maxBodyBytes + 1));
+    expect(chunked.code, 400);
+    expect(chunked.body['error'], 'the body is too long');
+    expect(api.calls, isEmpty, reason: 'nothing reaches the host');
+
+    final read = <int>[];
+    Stream<List<int>> chunks() async* {
+      for (var i = 0; ; i++) {
+        read.add(i);
+        yield List<int>.filled(16 * 1024, 0x78);
+      }
+    }
+
+    await expectLater(readRequestBody(chunks()), throwsA(isA<AutomationError>()));
+    expect(read, hasLength(9), reason: 'it reads past the cap to refuse cleanly, and stops at twice it');
+  });
+
+  test('a port already in use is kept as an error and logged once', () async {
+    final taken = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);
+    addTearDown(taken.close);
+    final logged = <String>[];
+    final api = _FakeApi();
+    final server = AutomationServer(
+      settings: AutomationSettings(enabled: true, port: taken.port),
+      api: api,
+      log: logged.add,
+    );
+    addTearDown(server.stop);
+    await server.start();
+
+    expect(server.isListening, isFalse, reason: 'the host keeps hosting without it');
+    expect(server.startError, contains('${taken.port}'), reason: 'the reason a screen shows');
+    expect(logged, hasLength(1), reason: 'one line, not one per attempt');
+    expect(logged.single, startsWith('Automation could not start: '));
   });
 
   test('a screenshot is a PNG, or a clean refusal when the host has no frame', () async {

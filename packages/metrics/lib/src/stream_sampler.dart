@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'stream_names.dart';
 import 'stream_sampler_readings.dart';
 
@@ -110,6 +112,40 @@ final class PipelineWindow {
   /// `build_pipeline` in streaming/entrypoint.sh writes the caps filter first
   /// and the converter after it, and GStreamer numbers them from zero.
   static const _defaultCaptureElements = {'capsfilter0', 'videoconvert0'};
+}
+
+/// The container's own counter files (M15 c2): a cgroup v2 directory's
+/// `cpu.stat`, `memory.current` and `memory.peak`, read with one warning per
+/// file that can't be read. A container started with the wrong cgroup path
+/// would otherwise report a stream with no CPU or memory and say nothing;
+/// an older kernel's missing `memory.peak` is a file that can't be read too,
+/// and is reported once the same way (its reading is then simply absent).
+final class CgroupFiles {
+  /// [directory] is the cgroup to read (`/sys/fs/cgroup` in the session
+  /// image); [warn] takes one line per file that can't be read, at most once
+  /// for each.
+  CgroupFiles({required this.directory, required this.warn});
+
+  /// The cgroup directory the container's numbers are read from.
+  final String directory;
+
+  /// Where a file that can't be read is reported: the sampler writes it to
+  /// stderr, so a run's log says why a reading is missing.
+  final void Function(String message) warn;
+
+  final _reported = <String>{};
+
+  /// The text of [name] in the cgroup, or null when it can't be read; the
+  /// first failure for that file is reported through [warn].
+  String? read(String name) {
+    final path = '$directory/$name';
+    try {
+      return File(path).readAsStringSync();
+    } on FileSystemException catch (e) {
+      if (_reported.add(name)) warn('stream_sampler: cannot read $path: ${e.osError?.message ?? e.message}');
+      return null;
+    }
+  }
 }
 
 /// What the sampler writes for the player to add to its batch (M15 c2): the

@@ -133,9 +133,6 @@ class LiveStats implements StatsService {
   @override
   SessionCollector? get live => _session;
 
-  /// The live session's collector, for tests.
-  SessionCollector? get session => _session;
-
   /// Where session files are kept, once [start] has run.
   Directory? get directory => _directory;
   Directory? _directory;
