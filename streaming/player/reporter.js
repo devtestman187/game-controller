@@ -106,6 +106,8 @@ export class StreamReporter {
     this._canvas = null;
     this._timers = [];
     this._animationFrame = null;
+    this._videoFrame = null;
+    this._stopped = false;
   }
 
   /** Starts measuring: the frame callback, the batch timer and the press poll. */
@@ -119,6 +121,7 @@ export class StreamReporter {
 
   /** Stops every timer and the frame loop; a reconnect starts a new reporter. */
   stop() {
+    this._stopped = true;
     for (const timer of this._timers) window.clearInterval(timer);
     this._timers = [];
     // A browser without the frame callback is counted from animation frames,
@@ -129,6 +132,13 @@ export class StreamReporter {
       window.cancelAnimationFrame(this._animationFrame);
       this._animationFrame = null;
     }
+    // The frame callback's loop re-registers itself too; the handle from the
+    // last registration ends it where the browser has the cancel, and the
+    // stopped check in `onFrame` ends it there for one that has not (M15 fix3).
+    if (this._videoFrame !== null && typeof this._video.cancelVideoFrameCallback === "function") {
+      this._video.cancelVideoFrameCallback(this._videoFrame);
+    }
+    this._videoFrame = null;
   }
 
   /** Reads one frame's metadata and the patch of picture the card flips in. */
@@ -147,6 +157,9 @@ export class StreamReporter {
       return;
     }
     const onFrame = (nowMs, metadata) => {
+      // One frame may already be queued when `stop()` runs: it ends the loop
+      // rather than counting a frame for a reporter a reconnect replaced.
+      if (this._stopped) return;
       this._frames++;
       if (this._firstFrameMs === null) this._firstFrameMs = Math.round(nowMs);
       const delay = presentationDelayMs(metadata);
@@ -155,9 +168,9 @@ export class StreamReporter {
       const budget = 1000 / Math.max(this._deliveredFps(), 1);
       if (delay > budget * lateFrameFraction) this._late++;
       this._watchPatch(nowMs);
-      this._video.requestVideoFrameCallback(onFrame);
+      this._videoFrame = this._video.requestVideoFrameCallback(onFrame);
     };
-    this._video.requestVideoFrameCallback(onFrame);
+    this._videoFrame = this._video.requestVideoFrameCallback(onFrame);
   }
 
   /**

@@ -219,9 +219,7 @@ void main() {
     expect(tester.binding.hasScheduledFrame, isFalse, reason: 'nothing on this screen is drawing frames');
 
     api.pressProbe({'player': id, 'button': 'a'});
-    expect(tester.binding.hasScheduledFrame, isTrue, reason: 'the press asks for the frame of its release');
     api.pressProbe({'player': id, 'button': 'a'});
-    expect(tester.binding.hasScheduledFrame, isTrue, reason: 'and so does the second, with no frame in between');
     expect(fake.gameHost.gamepad(id).buttons, {GamepadButton.a}, reason: 'the press is held until that frame');
 
     await tester.pump();

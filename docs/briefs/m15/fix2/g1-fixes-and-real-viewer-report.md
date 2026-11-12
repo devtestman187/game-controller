@@ -167,7 +167,7 @@ table says external, median/p95 in ms. The noise is this PC's 36–44 ms (t1).
 | g1-vbv3 VBV 167 | chrome-headless | 198 / 214 | 223 / 305 | 163 / 179 | 2164 |
 | g1-vbvfec VBV 167, FEC off | chrome-headless | 190 / 220 | 240 / 315 | 155 / 184 | 1088 |
 | g1-ext0 external, unpinned | browser/chrome-headless | 197 / 227 | 246 / 311 | 162 / 192 | 2205 |
-| g1-ext1 external, viewer 12-15, session 0-11 | browser/chrome-headless | 181 / 214 | 257 / 308 | 146 / 179 | 2182 |
+| g1-ext1 external, viewer unpinned, session 0-11 | browser/chrome-headless | 181 / 214 | 257 / 308 | 146 / 179 | 2182 |
 
 Baseline mean 220 total / 243 press; one-frame VBV mean 195 / 242; VBV with FEC off 190 / 240. The one-frame
 buffer is 25 ms better on average and never outside the band: not a default. FEC off still saves ~1.1 Mbit/s
@@ -183,7 +183,7 @@ of the 2.2 sent and buys nothing measurable.
   first would wait forever.
 - **The error line lives in `StatsScreen`:** the brief says the shared one, and the line stays above an
   `Expanded` body so the screen's scroll still gets a bounded height.
-- **Pinning the session to four cores was abandoned:** `0-7` (eight cores) never became ready in 90 s, so the
+- **Pinning the session to eight cores (`0-7`) was abandoned:** it never became ready in 90 s, so the
   session got `0-11` (twelve).
 - **`--viewer-cpus` needs `--viewer chrome` (M15 fix2 review):** the bench can only pin the browser it starts, so
   the pair with `--viewer external` is refused with a line rather than accepted and ignored — which is what

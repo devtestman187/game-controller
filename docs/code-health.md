@@ -59,6 +59,15 @@ Every known code change that isn't a feature: review findings and tech debt, gro
 | `gyro.dart` 353 lines; `DiagnosticsScreen.build` long. (M12 debt) | Low | — | when touched |
 | `PhoneHost.dispose()` doesn't wait for a `start()` in flight: stopping within ms of hosting leaves the service's 10 s timer behind (tests wait on `host.started` instead). Make `dispose` await the start, then drop `started`. ([1108a Q3](briefs/m12/bug-1108a-fix-report.md)) | Low: the host's lifecycle, well tested | No leaked timer on a fast stop | when touched: `phone_host.dart` (likely the 1108b freeze fix) |
 
+### M15 streaming
+| What | Risk | Benefit | Rec. |
+| --- | --- | --- | --- |
+| Sizes against §3's 400 hard limit: `streaming/player/reporter.js` 473, `streaming/bench.sh` 572, `tools/stream.sh` 634 (after M15 fix4). Split one at a time along its seam: the reporter's helpers from `:445` into a module, each script's commands into files of their own. (fix3 REVIEW:33) | Low (moves), but the scripts run as root in the distro | Room for the next stage or flag without a tangle | when touched: split the one the next change grows |
+| `kindOf` (`entry.kind ?? entry.mediaType`) is defined twice, `reporter.js:320` and `stats.js:51`, each beside its own copy of the inbound-rtp parse. | Low: one helper, both pages' stats | Two copies of a parse that must agree become one | when touched: the stats parsing |
+| `automation_server.dart:84` calls `onStartState?.call(null)` after a successful bind, which can never clear anything (`start()` returns early while `_startError` is set) and no test fails without it. Delete it, or let `start()` retry after a failure. (fix2 findings, still open) | Low | One dead branch gone | when touched: the automation server |
+| The bench does not record the viewer's own CPU, so every h1-2 run's viewer column was sampled by hand (`utime+stime` of every Chrome pid over 2 s, in % of one core — `h1-2/evidence.txt`). That sampler belongs in `bench.sh` beside the session's `cpuPct`. | Low-medium: a new field in the summary | Both CPU columns from one file, and pinning runs readable without a second script | a small tool job, before more pinning runs |
+| One viewer row per run is what a report should read, but every h1-2 summary holds four `stream.viewers` entries (one with the page's numbers, three with the session-side stages only), and why is not known (h1-2 Observation 1). | Low: a report picks the wrong row | Numbers that say which viewer they came from | a job of its own before more pinning runs |
+
 ### tools and housekeeping
 | What | Risk | Benefit | Rec. |
 | --- | --- | --- | --- |

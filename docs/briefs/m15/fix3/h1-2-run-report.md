@@ -2,46 +2,47 @@
 
 ## Summary
 
-Five runs as the brief writes them, plus a probe pair for the press figure (a round never shows the card, so
-`press_to_screen` only exists in a `--probe` run — Decision 1). Both pinned runs prove their pinning
-(session `cpuset=0-11`, every Chrome process `12-15`; evidence below and in `h1-2/evidence.txt`).
+Five round runs as the brief writes them; the probe pair is a footnote (no game loop, Decision 1).
 
 | run | shape | jitter med/p95 | total med/p95 | press med/p95 | delivered fps | game fps | session CPU | viewer CPU |
 |---|---|---|---|---|---|---|---|---|
 | b1 | round 1080p60, unpinned | 226 / 260 | 262 / 297 | – | 58.7 | 45.4 | 251 % | 134 % |
 | b2 | round 1080p60, unpinned | 220 / 254 | 256 / 291 | – | 57.8 | 41.9 | 239 % | 132 % |
 | p1 | round 1080p60, session 0-11, viewer 12-15 | 193 / 233 | 229 / 269 | – | 58.2 | 51.2 | 249 % | 129 % |
-| p2 | round 1080p60, session 0-11, viewer 12-15 | 144 / 249 | 181 / 287 | – | 57.6 | 49.7 | 252 % | 128 % |
+| p2 | round 1080p60, session 0-11, viewer 12-15 | 144 / 249 | 181 / 287 (n = 4) | – | 57.6 | 49.7 | 252 % | 128 % |
 | l1 | round 720p30, unpinned | 200 / 232 | 218 / 250 | – | 29.7 | 60.0 | 160 % | 52 % |
-| q1 | probe 1080p60, unpinned | 193 / 236 | 227 / 272 | 218 / 359 (118) | 54.4 | – | 200 % | 126 % |
-| q2 | probe 1080p60, session 0-11, viewer 12-15 | 225 / 246 | 260 / 282 | 259 / 363 (119) | 56.8 | – | 193 % | 123 % |
 
-(Milliseconds; CPU as % of one core, mean for the session and median for the viewer; see Decision 3.)
+(Milliseconds; CPU as % of one core, mean for the session and median for the viewer; see Decision 3. Every cell
+but p2's total has n ≥ 8; p2's total rests on four samples and is marked, its jitter buffer on 21.)
 
-**Answer: the rig's share is not measurable on this PC — pinning moves the round's median by −55 ms (223 → 168.5)
-but the two pinned repeats are 49 ms apart, the pinned probe is 32 ms *above* its baseline, and the light 720p30
-run still sits at 200 ms with both CPUs halved; the buffer's ~190–230 ms floor is the browser's, and any rig
-share is at most ~25 ms — inside this machine's run-to-run noise, not the 16 ms the g1 run claimed.**
+Probe pair, no game loop: q1 unpinned 193 / 236 jitter, 227 / 272 total, press 218 / 359 (n = 118); q2 pinned
+225 / 246, 260 / 282, press 259 / 363 (n = 119).
 
-The jitter buffer is 85–88 % of `stream_total` in every round (b1: 226 of 262 ms), and the other stages are
-stable across all runs (encode 29, capture 2, network 1, decode 4, display 0 ms); only the buffer and the totals
-it carries move.
+**Answer: pinning may cut the buffer by up to about 76 ms (220 → 144), but this PC's run-to-run spread (49 ms) is
+too large to say; a real device must answer it.**
 
 ## The question, read out
 
-- **Baseline (b1, b2):** jitter 226 and 220 ms, total 262 and 256 ms; the game drew 45.4 and 41.9 fps.
+- **Baseline (b1, b2):** jitter 226 and 220 ms, total 262 and 256 ms; the game drew 45.4 and 41.9 fps. These
+  are the runs the pin's effect is read against.
 - **Pinned (p1, p2):** 193 and 144 ms. The 144 ms run is the lowest number this PC has produced, and its twin
-  (p1, same flags, three minutes later) is 49 ms higher: that spread is the noise of one run on this machine,
-  and it is larger than the effect being measured.
-- **Press pair:** 218 ms unpinned against 259 ms pinned — pinning *raised* the press figure by 41 ms, the
-  opposite of the round pair, which is what noise looks like at this size.
+  (p1, same flags, three minutes later) is 49 ms higher: that spread is the noise of one run on this machine.
+  Read against the better baseline (220 ms), the lowest pinned run is 76 ms lower (82 ms against 226 ms),
+  while the two pinned repeats themselves differ by 49 ms.
+- **Press pair (no game loop):** 218 ms unpinned against 259 ms pinned — pinning *raised* the press figure by
+  41 ms, the opposite of the round pair — and its buffer is 32 ms *above* its baseline (225 against 193 ms).
+  That is what noise looks like at this size.
 - **Light picture (l1):** 720p30 drops the session to 160 % and Chrome to 52 % of one core, and the game holds
-  60.0 fps — neither side is starved — yet the buffer is 200 ms, 23 ms under the baseline's mean. If the buffer
-  were the rig's CPU contention, halving both sides' CPU would have moved it much further.
-- **What is left:** the viewer's own playout delay (~2–3 frames of 30/60 fps plus Chrome's scheduling) is the
-  floor. On this PC that floor is 190–230 ms in a round, not the 110–160 ms an earlier phase reported, and the
-  16 ms "un-starved viewer" claim of g1 is not reproducible: g1's own pair (162 → 146) is the same size as
-  the noise measured here.
+  60.0 fps — neither side is starved — yet the buffer is 200 ms, 23 ms under the baseline's mean. Its encode fell
+  to 15 ms and its decode to 2 ms with the lower load (29 and 4 at 1080p60), so the stages around the buffer
+  follow what is drawn while the buffer moves far less.
+- **Where the time goes:** the jitter buffer is 80–92 % of `stream_total` in every round (b1 226 of 262 is 86 %,
+  p2 144 of 181 is 80 %, l1 200 of 218 is 92 %), and the other stages held at 1080p60 (encode 29, capture 2,
+  network 1, decode 4, display 0 ms); only the buffer and the totals it carries move.
+- **What is left:** the viewer's own playout delay (~2–3 frames of 30/60 fps plus Chrome's scheduling) is most
+  of what is measured. The 110–160 ms an earlier phase reported is not what a round shows here, and g1's 16 ms
+  (162 → 146) is inside the noise this PC measures (49 ms between repeats). A machine with a smaller spread, or
+  a real device, is what the rig's share needs.
 
 ## Commands as run
 
@@ -83,8 +84,11 @@ From `h1-2/evidence.txt` (the same lines are in each run's `chrome-cpu.log` in t
 == q2:  /thumb-party-h1q20 cpuset=0-11                  pid 14291 … affinity list: 12-15  (all 7 Chrome pids)
 ```
 
-An empty `cpuset` is docker's "no pinning", and `0-15` is the whole machine, so the pair really is pinned and
-the others really are not. Each viewer row in the table comes from that run's `v1` viewer
+An empty `cpuset` is docker's "no pinning", and `0-15` is the whole machine, so the two pinned runs really are
+pinned and b2 and l1 really are not. b1 has no `cpuset` line: its `docker inspect` named the wrong container
+(`thumb-party-h1b1` instead of `...h1b10`), so only its seven Chrome processes' `0-15` affinity was recorded
+(`h1-2/evidence.txt:14`) — that is what an unpinned run's Chrome shows, inheriting the container's set, but it
+does not prove the set was empty. Each viewer row in the table comes from that run's `v1` viewer
 (`browser/chrome-headless`, 20–23 samples per run).
 
 ## Decisions
@@ -148,24 +152,33 @@ where nothing was written. That is what turned Decision 5 up; nothing it did is 
 2. The page registers four viewers per run (Observation 1). Is that worth a job of its own before more
    pinning experiments, or is it already known?
 
+## Self-check (docs/review-rules.md part A)
+
+1. **Every host setup:** none changed; this is a measurement report, and only its words moved. Nothing ran.
+2. **When kept state starts and ends:** nothing kept; the runs are over and their summaries are in `h1-2/`.
+3. **How a new state combines:** no state, no round and no screen involved.
+4. **Stay in the job's folder:** only this file changed, and only the sections the review named.
+5. **Stop rather than overstep:** nothing was needed outside `allow:`; the four-viewer rows and the 42–51 fps
+   stay as open questions rather than being measured here.
+
 ## Commit message
 
-M15 h1-2: the pinned viewer rerun; the buffer's floor is the browser's
+M15 h1-2: the pinned viewer rerun; pinning may save up to 76 ms
 
 Five headless runs (arena 60 s, twice unpinned and twice with the session on
 0-11 and Chrome on 12-15, plus one at 720p30) and a probe pair, with the
 pinning shown by docker inspect and taskset. The jitter buffer is 220-226 ms
 unpinned, 193 and 144 pinned, and still 200 ms at 720p30 with both CPUs
 halved; the two pinned repeats differ by 49 ms and the pinned probe is 32 ms
-worse, so no rig share survives the noise and the 16 ms claim is withdrawn.
-Only docs; no code or default changed.
+worse, so a rig share of up to 76 ms cannot be told from this PC's noise, the
+16 ms claim is withdrawn, and a real device must answer. Only docs changed.
 
 ## Status row
 
 - **h1 phase 2 run (fix3):** measured with the headless viewer — jitter buffer 220/226 ms unpinned, 193/144
-  pinned, 200 ms at 720p30, press 218 → 259 ms in the probe pair; **open:** the rig's share is inside the
-  run-to-run noise (±30–50 ms) and the buffer's floor is the browser's; the four-viewer rows per summary and
-  the game's 42–51 fps at 1080p60 are recorded but not explained.
+  pinned, 200 ms at 720p30, press 218 → 259 ms in the probe pair (no game loop); **open:** pinning may save up
+  to 76 ms (220 → 144) but this PC's run-to-run spread (49 ms) is too large to say, so a real device must
+  answer; the four-viewer rows per summary and the game's 42–51 fps at 1080p60 are recorded but not explained.
 
 ## Delete
 

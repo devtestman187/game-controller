@@ -22,24 +22,26 @@ fails without `scheduleFrame()`) is done only in part, and says why under Decisi
 1. **The kbits reading stands (ruling 1):** no setting changed; fix1/REVIEW.md's `must` now carries its
    correction, so a later reader doesn't "fix" 167 into 167 000.
 2. **The pair is refused, not warned (ruling 4):** a warning is read and forgotten, and g1-ext1 is what that
-   looks like; `check_args` in `bench.sh` and `check_viewer` in `stream.sh` both exit 2/1 before anything runs.
+   looks like; `check_args` in `bench.sh` and `check_viewer` in `stream.sh` both exit 2 before anything runs.
 3. **The declared-too-long test sends the whole body.** The first attempt declared `maxBodyBytes + 1` on a raw
    socket and sent none of it: the server answered nothing and left the socket open, so "answers before it
    reads" cannot be seen from outside a Dart server (observed, three variants). The test therefore declares the
-   length and sends it, as the deleted test did, and asserts the 400 and the line; it does not fail without the
-   early `contentLength > limit` throw, and nothing can make it.
+   length and sends it, as the deleted test did, and asserts the 400 and the line. The early
+   `contentLength > limit` throw is covered at unit level (`automation_server_test.dart:324`, which fails the
+   moment it goes); only the server-level path is not.
 4. **The start-error test waits on the log, not on a bare notifier:** `AutomationShell`/`AutomationGate` have no
    event for "listening", and the provider's own clear runs before the bind (a microtask), so the two log lines
    are the only signals that say which bind ended. Both are the server's own report, delivered as a stream
    event: no delay, no poll.
 5. **No test can fail without `scheduleFrame()`:** measured, `hasScheduledFrame` is false after a settle, and a
    press turns it true even with the call removed, because the same press flips the latency card's provider,
-   which the harness has a listener for. The added test presses twice inside one frame and checks both releases
-   and the scheduled frame; it documents the rule but is not a regression test.
-6. **Coulds left alone on purpose:** `relay_test.py`'s `any(...)`/unused `body` (asking for both files adds a
-   seventeenth check and the docs' count is now sixteen), `automation_server.dart:84` (a deletion touching the
-   g1 report's wording, no defect), the `kindOf`/stats duplication, the two screens' bind line, the two bench
-   viewer-wait items, report:209's `screen_fit_test` claim, and the over-400-line files.
+   which the harness has a listener for. The added test presses twice inside one frame and checks both releases;
+   it documents the rule but is not a regression test, and the frame expectations it had proved nothing (dropped
+   in M15 fix4 i1).
+6. **Coulds left alone on purpose:** `automation_server.dart:84` (a deletion touching the g1 report's wording,
+   no defect), the `kindOf`/stats duplication, the two screens' bind line, the two bench viewer-wait items,
+   report:209's `screen_fit_test` claim, and the over-400-line files; the technical ones are in
+   `docs/code-health.md` ("M15 streaming"). `relay_test.py`'s `any(...)`/unused `body` was fixed in M15 fix4 i1.
 7. **One accidental bench run in the distro:** a `bash -c "source streaming/bench.sh"` (meant only to load the
    functions) ran a 60 s bench. Its containers were stopped by the script's own trap, no keep-alive was left,
    and its `/work/stream-bench/bench` output folder was removed; nothing of it is in this diff.

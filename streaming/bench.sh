@@ -76,6 +76,9 @@ declare -a viewer_pids=()
 
 say() { printf '%s\n' "$*"; }
 fail() { printf 'bench: %s\n' "$*" >&2; exit 1; }
+# Bad use: nothing ran, and the answer is the same as the outer tool's for the
+# pair both refuse (M15 fix3 review).
+refuse() { printf 'bench: %s\n' "$*" >&2; exit 2; }
 
 usage() {
   cat <<'EOF'
@@ -144,7 +147,7 @@ check_args() {
   # opens is pinned on that device, and `--viewer-cpus` beside it would be read
   # and do nothing (M15 g1 review).
   [[ "$viewer" == "chrome" || -z "$viewer_cpus" ]] \
-    || fail "--viewer-cpus needs --viewer chrome: a viewer you open yourself is pinned on that device"
+    || refuse "--viewer-cpus needs --viewer chrome: a viewer you open yourself is pinned on that device"
   if [[ "$game" == "arena" ]]; then mode="bumper"; fi
   out="${out:-/work/stream-bench/$label}"
 }

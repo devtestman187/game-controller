@@ -308,7 +308,7 @@ void main() {
     final api = _FakeApi();
     final server = await _started(const AutomationSettings(enabled: true, port: 0), api);
     // One byte over the cap, declared in the header: the answer comes from that
-    // number alone, so unlike the chunked body above the script hears the line.
+    // number alone, so unlike the chunked body below the script hears the line.
     final tooLong = await _callDeclaring(server, '/players', AutomationServer.maxBodyBytes + 1);
     expect(tooLong.code, 400);
     expect(tooLong.body, {'ok': false, 'error': 'the body is too long'});
