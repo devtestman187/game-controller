@@ -362,6 +362,8 @@ How they're used:
 
 ## DeepSeek Flash helper: set up, check, remove
 
+**How Claude and flash-worker share the work** (the two working modes, how to write a brief, the standing rules) is in [flash-framework.md](flash-framework.md). **`tools/run-jobs.sh <briefs-dir>`** is the unattended runner for a folder of briefs (`waves.txt` lists the waves): it starts the jobs, applies always-fine files outside a job's list, proves new tests fail on the old code, runs `tools/check.sh` (once more after fetching packages if it fails) and `tools/review.sh` (a FAIL or a touched lib file over 380 lines stops it), commits and pushes each job, has a second worker review each job from `docs/briefs/templates/job-review.md`, and ends with one worker review of the whole run in `<briefs-dir>/REVIEW.md`. Progress is in `<briefs-dir>/run.log`; `--dry-run` shows the plan, `--no-review` leaves the worker reviews out.
+
 `tools/flash.sh` sends pattern-copying work to DeepSeek Flash so it doesn't use the Claude subscription. The main Claude Code session stays on the subscription. Only the separate process that [`tools/flash.sh`](../tools/flash.sh) starts talks to DeepSeek, and only while it runs: nothing is installed, and Claude Code's sign-in and settings aren't changed.
 
 How it fits together: Claude Code (subscription) → `tools/flash.sh` (run directly; or through the `flash-worker` agent if asked by name) → `claude --bare -p` with `ANTHROPIC_BASE_URL=https://api.deepseek.com/anthropic` → DeepSeek Flash edits files in the working tree. `--bare` never reads the Claude sign-in, so this process can't use the subscription by mistake. What it may do is set in the script, and Claude Code enforces it rather than relying on the model to obey:
