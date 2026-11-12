@@ -1,0 +1,1 @@
+{"stages":[{"name":"stream_capture","ms":2},{"name":"stream_encode","ms":29},{"name":"host_tick","ms":20},{"name":"host_build","ms":0},{"name":"host_raster","ms":4}],"encodedFps":58.01933977992664}
