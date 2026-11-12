@@ -102,6 +102,10 @@ final class HostAutomation implements AutomationApi {
     final local = _players[id];
     if (local == null) throw _noPlayer;
     local.set(gamepadOf(body));
+    // A press takes effect in the next frame that can show it (M15 k3): the pad
+    // is set and a frame asked for here, as `probe/press` does, rather than the
+    // press waiting for whatever else would draw next.
+    SchedulerBinding.instance.scheduleFrame();
     return {'player': id, 'hostMs': _ref.read(gameHostProvider).nowMs};
   }
 

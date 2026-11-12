@@ -1,0 +1,62 @@
+1 session
+
+By input mode
+group  players  sessions  minutes  open min  presses/min  empty/min  near/min  slide/min  rapid/min  frustr/min  games  good  okay  bad  early sw  first pick  input ms  touch ms  jitter ms  frames/gaps/late
+-----  -------  --------  -------  --------  -----------  ---------  --------  ---------  ---------  ----------  -----  ----  ----  ---  --------  ----------  --------  --------  ---------  ----------------
+(no data)
+
+By device and mode
+group  players  sessions  minutes  open min  presses/min  empty/min  near/min  slide/min  rapid/min  frustr/min  games  good  okay  bad  early sw  first pick  input ms  touch ms  jitter ms  frames/gaps/late
+-----  -------  --------  -------  --------  -----------  ---------  --------  ---------  ---------  ----------  -----  ----  ----  ---  --------  ----------  --------  --------  ---------  ----------------
+(no data)
+
+By game and feature
+group  rounds  minutes  players  avg players  finished  good  okay  bad
+-----  ------  -------  -------  -----------  --------  ----  ----  ---
+(no data)
+
+Party nights: none
+
+By host and where they watched
+host  watched  players  input ms  touch ms  jitter ms
+----  -------  -------  --------  --------  ---------
+(no data)
+
+By frame rate
+host  hz  rounds  minutes  touch ms  late/min  gaps/min  battery %/h  thermal
+----  --  ------  -------  --------  --------  --------  -----------  -------
+(no data)
+
+Streaming pipeline
+session           viewer     kind         platform  input  host  capture  encode  send  network   jitter  decode  display    total  press>screen    src
+----------------  ------  -------  ---------------  -----  ----  -------  ------  ----  -------  -------  ------  -------  -------  ------------  -----
+124cd39c1e3d6d4e      v1  browser  chrome-headless      -     -      2/2   29/30     -      1/1  151/228     3/3      0/0  186/264       254/353  probe
+
+Streaming host legs
+session           viewer  press>tick  tick>built  built>raster  raster>capture*  press>screen  total
+----------------  ------  ----------  ----------  ------------  ---------------  ------------  -----
+124cd39c1e3d6d4e      v1          14           1             5               48           254    186
+* derived: press>screen minus the three host legs and total, the rest of the host
+
+Streaming quality
+session           viewer  sent kbps  recv kbps  loss %  rtt ms  jitter ms   fps  sent  recv  decoded  dropped  late  freezes  first frame ms  reconnects  relay  codec
+----------------  ------  ---------  ---------  ------  ------  ---------  ----  ----  ----  -------  -------  ----  -------  --------------  ----------  -----  -----
+124cd39c1e3d6d4e      v1          -     2098.1     0.0     0.6        0.9  57.9     -  2955     2947        8     0      0/0            1398           0     no   H264
+
+Streaming sound
+session           viewer  audio ms  sync ms  concealed %
+----------------  ------  --------  -------  -----------
+124cd39c1e3d6d4e      v1         -        -            -
+
+Streaming resources
+session           samples        cpu %  game cpu %  enc cpu %       mem MB      gpu %    enc %     gpu mem MB  game fps  build ms  raster ms   frame ms   slow %    enc fps  queue  pipeline ms  first frame ms  mem peak MB
+----------------  -------  -----------  ----------  ---------  -----------  ---------  -------  -------------  --------  --------  ---------  ---------  -------  ---------  -----  -----------  --------------  -----------
+124cd39c1e3d6d4e       16  179.3/184.2   83.0/87.7  86.8/89.0  831.0/850.9  48.8/51.0  6.2/7.0  1537.1/1545.0         -   0.5/0.6    5.5/5.8  18.4/19.2  0.0/0.0  57.5/59.0      -    33.9/34.0            2130        873.0
+
+Streaming by sessions at once
+sessions at once  sessions  cpu %  gpu %  enc %  game fps  enc fps  mem MB
+----------------  --------  -----  -----  -----  --------  -------  ------
+1                        1  179.3   48.8    6.2         -     57.5   831.0
+
+Enjoyment: 1 sessions, 0.8 min and 0.0 games on average, no ratings
+

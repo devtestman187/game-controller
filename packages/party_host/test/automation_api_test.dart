@@ -272,6 +272,29 @@ void main() {
     expect(fake.gameHost.gamepad(id).buttons, isEmpty, reason: 'both releases ran on the frame the presses asked for');
   });
 
+  testWidgets('a scripted press asks for the frame that can show it', (tester) async {
+    final fake = await pumpAutomation(tester);
+    final api = apiOf(tester);
+    final id = (api.players({})['player']! as Map<String, Object?>)['id']! as String;
+    // The round screen is not up and the card is off: nothing on this screen is
+    // drawing, so only the press itself can ask for the frame it lands in.
+    await tester.pumpAndSettle();
+    expect(tester.binding.hasScheduledFrame, isFalse, reason: 'nothing on this screen is drawing frames');
+
+    api.input({
+      'player': id,
+      'buttons': ['a'],
+    });
+    expect(fake.gameHost.gamepad(id).buttons, {GamepadButton.a}, reason: 'the press is in the game host');
+    expect(tester.binding.hasScheduledFrame, isTrue, reason: 'the press asked for the frame that can show it');
+
+    await tester.pump();
+    expect(fake.gameHost.gamepad(id).buttons, {GamepadButton.a}, reason: 'a frame holds the press until it is let go');
+    api.input({'player': id, 'buttons': const []});
+    await tester.pump();
+    expect(fake.gameHost.gamepad(id).buttons, isEmpty);
+  });
+
   testWidgets('measurements posted with no session are accepted and dropped', (tester) async {
     final fake = await pumpAutomation(tester);
     fake.stats.live = null;

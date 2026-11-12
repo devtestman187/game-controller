@@ -1,0 +1,62 @@
+1 session
+
+By input mode
+group  players  sessions  minutes  open min  presses/min  empty/min  near/min  slide/min  rapid/min  frustr/min  games  good  okay  bad  early sw  first pick  input ms  touch ms  jitter ms  frames/gaps/late
+-----  -------  --------  -------  --------  -----------  ---------  --------  ---------  ---------  ----------  -----  ----  ----  ---  --------  ----------  --------  --------  ---------  ----------------
+(no data)
+
+By device and mode
+group  players  sessions  minutes  open min  presses/min  empty/min  near/min  slide/min  rapid/min  frustr/min  games  good  okay  bad  early sw  first pick  input ms  touch ms  jitter ms  frames/gaps/late
+-----  -------  --------  -------  --------  -----------  ---------  --------  ---------  ---------  ----------  -----  ----  ----  ---  --------  ----------  --------  --------  ---------  ----------------
+(no data)
+
+By game and feature
+group  rounds  minutes  players  avg players  finished  good  okay  bad
+-----  ------  -------  -------  -----------  --------  ----  ----  ---
+(no data)
+
+Party nights: none
+
+By host and where they watched
+host  watched  players  input ms  touch ms  jitter ms
+----  -------  -------  --------  --------  ---------
+(no data)
+
+By frame rate
+host  hz  rounds  minutes  touch ms  late/min  gaps/min  battery %/h  thermal
+----  --  ------  -------  --------  --------  --------  -----------  -------
+(no data)
+
+Streaming pipeline
+session           viewer     kind         platform  input  host  capture  encode  send  network   jitter  decode  display    total  press>screen    src
+----------------  ------  -------  ---------------  -----  ----  -------  ------  ----  -------  -------  ------  -------  -------  ------------  -----
+b9995a90557eca6d      v1  browser  chrome-headless      -     -      2/2   30/30     -      1/1  235/398     3/3      0/0  271/434       282/394  probe
+
+Streaming host legs
+session           viewer  press>tick  tick>built  built>raster  raster>capture*  press>screen  total
+----------------  ------  ----------  ----------  ------------  ---------------  ------------  -----
+b9995a90557eca6d      v1          22           1             4              -16           282    271
+* derived: press>screen minus the three host legs and total, the rest of the host
+
+Streaming quality
+session           viewer  sent kbps  recv kbps  loss %  rtt ms  jitter ms   fps  sent  recv  decoded  dropped  late  freezes  first frame ms  reconnects  relay  codec
+----------------  ------  ---------  ---------  ------  ------  ---------  ----  ----  ----  -------  -------  ----  -------  --------------  ----------  -----  -----
+b9995a90557eca6d      v1          -     2076.8     0.0     0.6        0.9  59.7     -  3050     3041        9     0      0/0            1374           0     no   H264
+
+Streaming sound
+session           viewer  audio ms  sync ms  concealed %
+----------------  ------  --------  -------  -----------
+b9995a90557eca6d      v1         -        -            -
+
+Streaming resources
+session           samples        cpu %  game cpu %  enc cpu %         mem MB      gpu %      enc %     gpu mem MB  game fps  build ms  raster ms   frame ms   slow %    enc fps  queue  pipeline ms  first frame ms  mem peak MB
+----------------  -------  -----------  ----------  ---------  -------------  ---------  ---------  -------------  --------  --------  ---------  ---------  -------  ---------  -----  -----------  --------------  -----------
+b9995a90557eca6d       16  180.8/185.9   80.8/85.0  90.4/93.0  1064.7/1088.3  51.6/55.0  18.3/27.0  1570.1/1577.0         -   0.6/0.6    5.4/5.7  20.9/22.2  0.0/0.0  60.0/60.0      -    34.3/34.4            2494       1109.7
+
+Streaming by sessions at once
+sessions at once  sessions  cpu %  gpu %  enc %  game fps  enc fps  mem MB
+----------------  --------  -----  -----  -----  --------  -------  ------
+1                        1  180.8   51.6   18.3         -     60.0  1064.7
+
+Enjoyment: 1 sessions, 0.8 min and 0.0 games on average, no ratings
+

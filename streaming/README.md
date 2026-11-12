@@ -193,7 +193,13 @@ nothing about the game's. The line ends with the game's own drawing when the
 sampler read it (M15 k1): `game 48.2 fps, 20.8 ms/frame, build 5.1 + raster
 12.3 ms, 62% slow`. A run that timed presses prints the host leg table as well
 (`press>tick`, `tick>built`, `built>raster`, the derived `raster>capture*`,
-`press>screen` and `total`), with no extra flag.
+`press>screen` and `total`), with no extra flag. The derived cell is a
+subtraction, not a measurement: `press>screen` less the three stages and
+`total`, and both of those are end-to-end numbers taken different ways (the
+viewer finds the flip in the picture, the relay adds up the player's stages and
+its clock offset). Four 45 s probe runs read 11, 48, 48 and 51 ms there and one
+queue run read −16 ms, so the cell says how far the two ends disagreed on that
+run, not what the compositor and the capture cost (M15 k3).
 
 `--viewer external` (M15 g1) opens no browser: the bench starts the session and
 the round (or the card) first, because the host only accepts a viewer's batch

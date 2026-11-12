@@ -1,0 +1,62 @@
+1 session
+
+By input mode
+group  players  sessions  minutes  open min  presses/min  empty/min  near/min  slide/min  rapid/min  frustr/min  games  good  okay  bad  early sw  first pick  input ms  touch ms  jitter ms  frames/gaps/late
+-----  -------  --------  -------  --------  -----------  ---------  --------  ---------  ---------  ----------  -----  ----  ----  ---  --------  ----------  --------  --------  ---------  ----------------
+(no data)
+
+By device and mode
+group  players  sessions  minutes  open min  presses/min  empty/min  near/min  slide/min  rapid/min  frustr/min  games  good  okay  bad  early sw  first pick  input ms  touch ms  jitter ms  frames/gaps/late
+-----  -------  --------  -------  --------  -----------  ---------  --------  ---------  ---------  ----------  -----  ----  ----  ---  --------  ----------  --------  --------  ---------  ----------------
+(no data)
+
+By game and feature
+group  rounds  minutes  players  avg players  finished  good  okay  bad
+-----  ------  -------  -------  -----------  --------  ----  ----  ---
+(no data)
+
+Party nights: none
+
+By host and where they watched
+host  watched  players  input ms  touch ms  jitter ms
+----  -------  -------  --------  --------  ---------
+(no data)
+
+By frame rate
+host  hz  rounds  minutes  touch ms  late/min  gaps/min  battery %/h  thermal
+----  --  ------  -------  --------  --------  --------  -----------  -------
+(no data)
+
+Streaming pipeline
+session           viewer     kind         platform  input  host  capture  encode  send  network   jitter  decode  display    total  press>screen    src
+----------------  ------  -------  ---------------  -----  ----  -------  ------  ----  -------  -------  ------  -------  -------  ------------  -----
+2e995990774c37c0      v1  browser  chrome-headless      -     -      2/2   29/29     -      1/1  188/205     3/3      0/0  223/240       258/325  probe
+
+Streaming host legs
+session           viewer  press>tick  tick>built  built>raster  raster>capture*  press>screen  total
+----------------  ------  ----------  ----------  ------------  ---------------  ------------  -----
+2e995990774c37c0      v1          19           0             5               11           258    223
+* derived: press>screen minus the three host legs and total, the rest of the host
+
+Streaming quality
+session           viewer  sent kbps  recv kbps  loss %  rtt ms  jitter ms   fps  sent  recv  decoded  dropped  late  freezes  first frame ms  reconnects  relay  codec
+----------------  ------  ---------  ---------  ------  ------  ---------  ----  ----  ----  -------  -------  ----  -------  --------------  ----------  -----  -----
+2e995990774c37c0      v1          -     2106.8     0.0     0.6        0.8  57.8     -  2930     2921        9     0      0/0            1421           0     no   H264
+
+Streaming sound
+session           viewer  audio ms  sync ms  concealed %
+----------------  ------  --------  -------  -----------
+2e995990774c37c0      v1         -        -            -
+
+Streaming resources
+session           samples        cpu %  game cpu %  enc cpu %         mem MB      gpu %    enc %     gpu mem MB  game fps  build ms  raster ms   frame ms   slow %    enc fps  queue  pipeline ms  first frame ms  mem peak MB
+----------------  -------  -----------  ----------  ---------  -------------  ---------  -------  -------------  --------  --------  ---------  ---------  -------  ---------  -----  -----------  --------------  -----------
+2e995990774c37c0       16  178.5/182.9   82.4/84.7  86.6/88.7  1046.4/1068.3  49.6/51.0  6.6/7.0  1567.0/1574.0         -   0.5/0.5    5.3/5.6  18.5/19.2  0.0/0.0  57.2/58.0      -    33.8/34.0            2389       1091.2
+
+Streaming by sessions at once
+sessions at once  sessions  cpu %  gpu %  enc %  game fps  enc fps  mem MB
+----------------  --------  -----  -----  -----  --------  -------  ------
+1                        1  178.5   49.6    6.6         -     57.2  1046.4
+
+Enjoyment: 1 sessions, 0.8 min and 0.0 games on average, no ratings
+

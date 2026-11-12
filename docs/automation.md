@@ -208,6 +208,10 @@ curl -s http://127.0.0.1:8787/automation/v1/stats/session
 
 A session only simulated players joined carries `"simulated": true` in its summary and is never uploaded, with or without consent. The summary keeps at most 8 viewers and 16 series per viewer, which a full summary with a stream record stays under the PRD's 50 KB budget with.
 
+## A press's way through the host
+
+Whatever sets a player's pad, the game reads it on the next frame it draws and can show it on that same frame. A scripted press (`input`, `probe/press`) sets the pad and asks for that frame itself, so it lands in the first frame the screen can show it, also on a screen that would otherwise draw nothing (M15 g1, k3). A phone's press arrives at the host's connection, becomes a host-state change, and is drawn by the next frame the game or the menus draw, which a round's view does every frame. The host's own view paints the session's current snapshot right after the game's `advance` read the pads; the playout buffer that holds frames back belongs to the phone, not the host.
+
 ## What it replaces
 
 The debug-only start flags are now thin wrappers over the same code paths, and keep working for the existing tools:
