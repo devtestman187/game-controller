@@ -1,0 +1,7 @@
+switches: SESSION_CONGESTION=disabled, player-query none, player-options none
+switches: SESSION_CONGESTION=gcc, player-query none, player-options none
+switches: SESSION_CONGESTION=homegrown, player-query none, player-options none
+---
+thread '<unnamed>' (251) panicked at net/webrtc/src/webrtcsink/homegrown_cc.rs:386:13:
+attempt to divide by zero
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace

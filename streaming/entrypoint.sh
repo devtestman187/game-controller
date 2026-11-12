@@ -49,6 +49,19 @@ vbv_kbits="${SESSION_VBV_KBITS:-0}"
 # bandwidth instead.
 do_fec="${SESSION_FEC:-true}"
 do_retransmission="${SESSION_RETRANSMISSION:-true}"
+# How webrtcsink controls congestion, on both of the session's sinks (M15 fix7,
+# technique 3). `disabled` is the pipeline as it was: with congestion control
+# off the element gives the encoder `max-bitrate` itself and keeps it there.
+# `gcc` is the element's own Google Congestion Control: `max-bitrate` is then
+# the ceiling the estimate may not cross and `start-bitrate` the bitrate a
+# consumer starts at, so the video still lands under the wire ceiling but can
+# run below it. The element's third value `homegrown` is refused: on an
+# already-encoded stream webrtcsink 0.13.6 has no encoder of its own and the
+# heuristic divides by that count, so the pipeline aborts (panic, divide by
+# zero, homegrown_cc.rs:386; docs/briefs/m15/fix7/n3-1-sender-build-report.md).
+# No other webrtcsink property names the ~25 ms wait in the send path (same
+# report), so this is the batch's one sender switch.
+congestion_control="${SESSION_CONGESTION:-disabled}"
 # Whether the player page plays the picture and the sound on two media elements
 # instead of one, so Chrome's audio/video sync does not hold the picture back.
 # Off: M15 t1 measured it *worse* (42 delivered fps against 53, press 246 ms
@@ -306,7 +319,7 @@ sound_branch() {
         pulsesrc device=party.monitor '!' queue '!' audioconvert '!' audioresample '!' \
         audio/x-raw,rate=48000,channels=2 '!' opusenc "bitrate=$audio_bitrate_bps" '!' \
         webrtcsink "name=$sound_sink_name" "signaller::uri=ws://127.0.0.1:$signal_port" \
-        congestion-control=disabled "max-bitrate=$audio_bitrate_bps" \
+        "congestion-control=$congestion_control" "max-bitrate=$audio_bitrate_bps" \
         "start-bitrate=$audio_bitrate_bps" "do-retransmission=$do_retransmission" \
         "$sound_producer_meta"
       ;;
@@ -343,7 +356,7 @@ build_pipeline() {
   )
   if [[ "$audio_mode" == separate ]]; then cmd+=("$picture_producer_meta"); fi
   cmd+=(
-    congestion-control=disabled
+    "congestion-control=$congestion_control"
     "max-bitrate=$video_bps" "start-bitrate=$video_bps"
     "do-fec=$do_fec" "do-retransmission=$do_retransmission"
   )
@@ -494,6 +507,9 @@ wait_ready() {
   }
   say "ready: session=$session_name player=http://localhost:$player_port/ controller=localhost:$controller_port automation=127.0.0.1:$automation_port ${width}x${height}@${frame_rate} ${bitrate_kbps}kbit/s (video ${video_kbps}) ${gop_frames}f gop audio=$audio_mode"
   say "pipeline registered: $(printf '%s' "$producers" | paste -sd ';' -)"
+  # The sink properties the session actually runs with (M15 fix7), so a run's
+  # log says which sender settings its numbers belong to.
+  say "sink ws: congestion-control=$congestion_control max-bitrate=$video_bps start-bitrate=$video_bps do-fec=$do_fec do-retransmission=$do_retransmission"
 }
 
 main() {
@@ -517,6 +533,17 @@ main() {
     *)
       say "warning: SESSION_AUDIO=$audio_mode is not joined, off or separate; running joined"
       audio_mode=joined
+      ;;
+  esac
+  case "$congestion_control" in
+    disabled | gcc) ;;
+    homegrown)
+      say "warning: SESSION_CONGESTION=homegrown aborts this pipeline (webrtcsink 0.13.6 divides by its own encoder count, which is zero for an encoded stream); running disabled"
+      congestion_control=disabled
+      ;;
+    *)
+      say "warning: SESSION_CONGESTION=$congestion_control is not disabled or gcc; running disabled"
+      congestion_control=disabled
       ;;
   esac
 

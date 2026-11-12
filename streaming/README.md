@@ -89,6 +89,18 @@ there is no session switch for it (evidence in
 The headless Chrome is not Safari: a headless run says whether a switch works and
 what it does to the host side and to Chrome, and the phone decides.
 
+Technique 3 of the batch, the sender's own switches, is `SESSION_CONGESTION`
+below. Probing `gst-inspect-1.0 webrtcsink` and the 0.13.6 source for what could
+hold a frame in the send path found nothing a property can reach: every element
+`webrtcsink` adds to an already-encoded stream measured under 0.5 ms in a 45 s
+run (`h264parse` 0.29, the payloader 0.06, FEC and RED 0.02–0.03), the payloader
+already runs `aggregate-mode=zero-latency`, the consumer `h264parse` does not
+wait for the next access unit, and there is no queue and no receive-side `rtpbin`
+latency on the send path — the wait sits in the sink pad's hand-off to the
+consumer (`appsink` → `appsrc`), which has no property. So the ~25 ms the encode
+stage shows is not something a sink switch shortens, and this is the batch's one
+sender switch. Evidence and lines: [fix7/n3-1-sender-build-report.md](../docs/briefs/m15/fix7/n3-1-sender-build-report.md).
+
 ## The picture's settings (M15 t1)
 
 Each is one `-e KEY=VALUE` on `docker run`; `tools/stream.sh bench --set
@@ -103,6 +115,7 @@ default.
 | `SESSION_VBV_KBITS` | 0 (NVENC's default, a second's worth) | The encoder's VBV/HRD buffer, in kbits: `gst-inspect-1.0 nvautogpuh264enc` says "VBV(HRD) Buffer Size in kbits (0 = NVENC default)". One frame's worth (167 at 10 Mbit/s and 60 fps) has measured 144–205 ms total and 213–253 press over six runs; the baseline runs beside them were 161–223 and 230–266, so it never left the 44 ms noise. Off |
 | `SESSION_FEC` | true | Forward error correction. No lower delay with it off, and it is what a viewer counts above the video: off, an Arena round measured 9693 kbit/s at a 10000 ceiling, and on 20353 (M15 fix5), so the encoder is given 4716 kbit/s when it is on |
 | `SESSION_RETRANSMISSION` | true | Resend lost packets; no delay difference either way |
+| `SESSION_CONGESTION` | `disabled` (the switch is off) | `webrtcsink`'s `congestion-control` on both sinks (M15 fix7, technique 3). `disabled`: with congestion control off the element gives the encoder `max-bitrate` itself and holds it there, the pipeline as it was. `gcc` (Google Congestion Control) is the element's own algorithm: `max-bitrate` is then the ceiling the estimate may not cross and `start-bitrate` where a consumer starts, so the video can run *below* the wire ceiling — the ceiling is still honoured, the bitrate is no longer fixed. The element's third value `homegrown` is refused with a warning and the session runs `disabled`: on an already-encoded stream `webrtcsink` 0.13.6 has no encoder of its own and the heuristic divides by that count, so the pipeline aborts (panic, divide by zero, `homegrown_cc.rs:386`; measured, see [fix7/n3-1-sender-build-report.md](../docs/briefs/m15/fix7/n3-1-sender-build-report.md)). The ready line's `sink ws:` line prints the value a session ran with; headless Chrome says whether the algorithm engages here, and the phone decides |
 | `SESSION_SPLIT_TRACKS` | false | Play picture and sound on two media elements so the browser stops syncing them. Worse: 42 delivered fps against 53, press 246 ms against 230, so one element stays |
 | `SESSION_AUDIO` | `joined` (the switch is off) | `joined`: the pipeline as it was, one `webrtcsink`, one peer connection and one stream id for picture and sound. `off`: no sound in the stream at all (no `pulsesrc`/`opusenc` branch and no audio caps), so a viewer shows the picture only. `separate`: the sound is recorded into a second `webrtcsink` (`ws-audio`, producer meta `TP-Sound`) with its own peer connection and stream id, so the browser cannot hold the picture back to lip-sync it; the player picks the two producers by their meta (`TP-Picture`, `TP-Sound`), plays the sound on its own element and keeps one viewer row. A player follows what the stream carries, so it needs no setting of its own; headless Chrome says whether a value works here, and the phone decides whether it helps |
 | `SESSION_PLAYER_OPTIONS` | empty (the page as it was) | The player page's own switches (M15 fix7), a comma list such as `lowdelay=1` that the entrypoint writes into `config.js`; the page's URL query overrides them key by key, and `tools/stream.sh bench --player-query lowdelay=1` puts one on the viewer's URL. `lowdelay=1` is technique 2's page half: the per-receiver and per-element zero-delay settings put back every second and after each stream change, with an overlay line reading them back (see "Switches") |
