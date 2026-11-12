@@ -29,9 +29,9 @@
 # Exit code: 0 done, 1 stopped, 2 bad use.
 set -u
 cd "$(dirname "$0")/.." || exit 2
-SAFE_OUTSIDE='^(site/shots/.*|([^/]+/)*analysis_options\.yaml|\.gitignore|\.gitattributes|([^/]+/)*pubspec\.lock|.*/flutter/generated_plugin[^/]*)$'
+SAFE_OUTSIDE='^(site/shots/.*|docs/design/puzzles/.*.png|docs/design/m13-placed-look.png|([^/]+/)*analysis_options\.yaml|\.gitignore|\.gitattributes|([^/]+/)*pubspec\.lock|.*/flutter/generated_plugin[^/]*)$'
 SIZE_STOP=380
-CHURN=(tv_test_app/windows/flutter/ site/shots/)
+CHURN=(tv_test_app/windows/flutter/ site/shots/ docs/design/puzzles/ docs/design/m13-placed-look.png)
 
 B="" LOGS="" review=1 dry=0
 while [ $# -gt 0 ]; do
@@ -54,7 +54,7 @@ finding() { echo "- $*" >> "$B/run-findings.md"; note "finding: $*"; }
 usage() { # usage <brief path>: the job's turns and minutes, from the flash usage log
   awk -F'	' -v b="$1" 'index($10, b){t=$3; m=$4/60} END{if(t) printf "%d turns, %.0f min", t, m}' "${FLASH_USAGE_LOG:-$HOME/.thumbparty/flash-usage.tsv}" 2>/dev/null
 }
-committed() { git ls-files --error-unmatch "$1" >/dev/null 2>&1; }
+committed() { git cat-file -e "HEAD:$1" 2>/dev/null; }
 unchurn() { git checkout -- "${CHURN[@]}" 2>/dev/null; }
 save() { # save <message> <path>...: commit and push just these paths
   local msg=$1; shift
