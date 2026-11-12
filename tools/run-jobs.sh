@@ -29,7 +29,7 @@
 # Exit code: 0 done, 1 stopped, 2 bad use.
 set -u
 cd "$(dirname "$0")/.." || exit 2
-SAFE_OUTSIDE='^(([^/]+/)*analysis_options\.yaml|\.gitignore|\.gitattributes|([^/]+/)*pubspec\.lock|.*/flutter/generated_plugin[^/]*)$'
+SAFE_OUTSIDE='^(site/shots/.*|([^/]+/)*analysis_options\.yaml|\.gitignore|\.gitattributes|([^/]+/)*pubspec\.lock|.*/flutter/generated_plugin[^/]*)$'
 SIZE_STOP=380
 CHURN=(tv_test_app/windows/flutter/ site/shots/)
 
@@ -83,7 +83,7 @@ apply_safe() { # apply_safe <job> <flash-log>; prints the outside files when app
   [ -n "$files" ] && [ -d "$tree" ] || return 1
   echo "$files" | grep -Evq "$SAFE_OUTSIDE" && return 1
   ( cd "$tree" && git ls-files --others --exclude-standard | xargs -r git add -N &&
-    git diff --binary HEAD -- . ':!tv_test_app/windows/flutter' ':!site' ) > "$LOGS/run-$1.patch" || return 1
+    git diff --binary HEAD -- . ':!tv_test_app/windows/flutter' ':!site' ':!docs/briefs/**/run-base' ) > "$LOGS/run-$1.patch" || return 1
   git apply --3way "$LOGS/run-$1.patch" >/dev/null 2>&1 || return 1
   git reset -q; git worktree remove --force "$tree" 2>/dev/null
   echo "$files" | tr '\n' ' '
@@ -157,18 +157,19 @@ note "start at $(git rev-parse --short HEAD) on $branch"
 
 for wave in "${WAVES[@]}"; do
   [ "$(wc -w <<< "$wave")" -le 3 ] || stop "a wave has more than 3 jobs: $wave"
-  started=() pids=()
+  started=() pids=() resumed=()
   for j in $wave; do
     [ -f "$B/$j.md" ] || stop "no brief $B/$j.md"
     committed "$B/$j.md" || stop "the brief $B/$j.md is not committed (job folders are cut from the last commit)"
     if committed "$B/$j-report.md"; then note "skip $j (already committed)"; continue; fi
+    if [ -f "$B/$j-report.md" ]; then note "resume $j (applied by hand, not committed yet)"; resumed+=("$j"); continue; fi
     [ ${#started[@]} -gt 0 ] && sleep 25
     note "start $j"
     tools/flash.sh --brief "$B/$j.md" > "$LOGS/flash-$j.log" 2>&1 &
     pids+=($!) started+=("$j")
   done
-  [ ${#started[@]} -eq 0 ] && continue
-  ok=() failed=() extra=()
+  [ ${#started[@]} -eq 0 ] && [ ${#resumed[@]} -eq 0 ] && continue
+  ok=("${resumed[@]}") failed=() extra=()
   for i in "${!started[@]}"; do
     j=${started[$i]}
     wait "${pids[$i]}"; rc=$?
