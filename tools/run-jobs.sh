@@ -210,4 +210,5 @@ if [ $review -eq 1 ] && ! committed "$B/REVIEW.md"; then
   if [ -f "$B/REVIEW.md" ]; then unchurn; save "the run's review (worker)" "$B/REVIEW.md"; else finding "the run's review wrote no REVIEW.md (see $LOGS/flash-run-review.log)"; fi
 fi
 note "DONE: every job is committed. Claude reads the Summary of $B/REVIEW.md, verifies its findings and writes one fix brief"
-save "runner: log at the end of the run" "$B/run.log" "$B/run-findings.md"
+paths=("$B/run.log"); [ -f "$B/run-findings.md" ] && paths+=("$B/run-findings.md")
+save "runner: log at the end of the run" "${paths[@]}"
