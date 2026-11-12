@@ -22,7 +22,7 @@ definitions:
   environment: &environment
     groups:
       - firestore # FIRESTORE_PROJECT and FIRESTORE_API_KEY, added in Codemagic's Environment variables (docs/release.md step 7)
-    flutter: stable
+    flutter: 3.47.8 # pinned to the GitHub builds' FLUTTER_VERSION: "stable" moved on Nov 12, 2026 and its new deprecations failed Analyze (m14.2)
     xcode: latest # latest stable Xcode on the image ("edge" would be the newest beta)
   cache: &cache
     cache_paths:
