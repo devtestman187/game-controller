@@ -182,6 +182,10 @@ final class _Sampler {
   bool _wroteFirstFrame = false;
   final _previousTicks = <int, int>{};
 
+  /// The number of the last probe press the player was given (M15 k1): the app
+  /// keeps the last 32, so the next window takes the presses above it.
+  int _legsN = 0;
+
   /// Reads the counters once, so the first window has something to compare
   /// against; nothing is sent from here.
   Future<void> prime() async {
@@ -190,7 +194,7 @@ final class _Sampler {
     for (final process in _readProcesses()) {
       _previousTicks[process.pid] = process.ticks;
     }
-    _drawn = await _readDrawn();
+    _drawn = _drawnOf(await _readStatus());
     _logOffset = options.pipelineLog.existsSync() ? options.pipelineLog.lengthSync() : 0;
     _previousAt = DateTime.now();
   }
@@ -202,21 +206,26 @@ final class _Sampler {
     final seconds = _secondsSince(now);
     _readTracer();
     final processes = _readProcesses();
-    final resources = await _readResources(seconds, processes);
+    final status = await _readStatus();
+    final resources = await _readResources(seconds, processes, status);
     final firstFrame = _wroteFirstFrame ? null : window.firstEncodedMs;
     if (resources.toJson().isNotEmpty) {
       await _post({
         'resources': [resources.toJson()],
       });
     }
-    _write(pipelineJson(window, seconds: seconds, includeFirstFrame: firstFrame != null));
+    final legs = probeLegsOf(status ?? '', afterN: _legsN);
+    if (legs.isNotEmpty) _legsN = legs.last.n;
+    final hostLegs = hostLegStages(legs);
+    _write(pipelineJson(window, seconds: seconds, includeFirstFrame: firstFrame != null, hostLegs: hostLegs));
     if (firstFrame != null) _wroteFirstFrame = true;
     window.clear();
     _previousAt = now;
   }
 
   /// Every reading of the window, with whatever it couldn't read left out.
-  Future<StreamResourceSample> _readResources(double seconds, List<_Process> processes) async {
+  /// [status] is the host's own answer, which carries the game's frame times.
+  Future<StreamResourceSample> _readResources(double seconds, List<_Process> processes, String? status) async {
     final usage = _cgroup.read('cpu.stat');
     final usageUsec = usage == null ? null : cgroupUsageUsec(usage);
     final cpuPct = _share(_usageUsec, usageUsec, seconds);
@@ -229,7 +238,8 @@ final class _Sampler {
     final highest = _highest(_peakMb, memMb);
     _peakMb = highest;
     final gpu = _readGpu([for (final process in processes) process.pid]);
-    final drawn = await _readDrawn();
+    final drawn = _drawnOf(status);
+    final frames = frameWindowOf(status ?? '');
     return StreamResourceSample(
       cpuPct: cpuPct,
       gameCpuPct: shares.gamePct,
@@ -240,6 +250,10 @@ final class _Sampler {
       encoderPct: gpu?.encoderPct,
       gpuMemMb: gpu?.memUsedMb,
       gameFps: _gameFps(drawn, seconds),
+      frameBuildMs: frames?.buildMs,
+      frameRasterMs: frames?.rasterMs,
+      gameFrameMs: frames?.gameFrameMs,
+      slowFramePct: frames?.slowFramePct,
       encodedFps: _round(window.encodedFps(seconds)),
       pipelineMs: _round(window.pipelineMs),
       sessionsAtOnce: options.sessions,
@@ -309,13 +323,13 @@ final class _Sampler {
     return GpuReading(utilPct: reading.utilPct, encoderPct: reading.encoderPct, memUsedMb: mine ?? reading.memUsedMb);
   }
 
-  /// The frames the host app has drawn, from its automation interface: null
-  /// while the host is home, since a frame rate means nothing without a round.
-  Future<int?> _readDrawn() async {
-    final body = await _request('GET', '/automation/v1/status');
-    if (body == null || !roundRunningIn(body)) return null;
-    return drawnFramesOf(body);
-  }
+  /// The host's own answer to `GET status`, or null when it didn't answer: it
+  /// carries the drawn frames, the press legs and the game's frame times.
+  Future<String?> _readStatus() => _request('GET', '/automation/v1/status');
+
+  /// The frames the host app has drawn, from [status]: null while the host is
+  /// home, since a frame rate means nothing without a round.
+  int? _drawnOf(String? status) => status == null || !roundRunningIn(status) ? null : drawnFramesOf(status);
 
   /// Reads the tracer's new lines out of the pipeline's log and takes them
   /// into the window; a log that shrank starts over.

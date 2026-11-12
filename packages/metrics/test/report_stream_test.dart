@@ -393,6 +393,10 @@ void main() {
         '59.0/60.0',
         '-',
         '-',
+        // The game's frame interval and its slow share sit beside its build and
+        // raster times (M15 k1); these readings gave neither.
+        '-',
+        '-',
         '60.0/60.0',
         '-',
         '32.0/34.0',
@@ -412,6 +416,8 @@ void main() {
         '12.0/12.0',
         '-',
         '30.0/30.0',
+        '-',
+        '-',
         '-',
         '-',
         '45.0/45.0',

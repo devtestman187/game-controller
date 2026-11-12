@@ -34,8 +34,31 @@ abstract final class StreamStage {
   /// [controller] otherwise: the summary says which with `source`.
   static const pressToScreen = 'press_to_screen';
 
+  /// A press reached the host → the first frame that could use it started
+  /// (M15 k1): that frame's `beginFrame` is where the game runs `advance`, so
+  /// it is the first moment the press can move anything.
+  static const hostTick = 'host_tick';
+
+  /// The frame started → the game had built, laid out and painted it (M15 k1).
+  static const hostBuild = 'host_build';
+
+  /// The frame was built → the engine had finished rasterising it (M15 k1).
+  static const hostRaster = 'host_raster';
+
   /// The seven video stages, in the order a frame goes through them.
   static const pipeline = [capture, encode, send, network, jitterBuffer, decode, display];
+
+  /// A press's way through the host, in order (M15 k1): the three stages a
+  /// press waits for inside the host before [capture] sees a frame that uses
+  /// it. The app measures them per press and the sampler writes their means
+  /// beside the pipeline's stages.
+  static const hostLegs = [hostTick, hostBuild, hostRaster];
+
+  /// The stages only the host writes (M15 fix5, k1): its own pipeline and the
+  /// host legs. A page copies them into its batch from the session's sampler,
+  /// so a row that holds them and nothing else says nothing about what a
+  /// viewer received.
+  static const hostOnly = [capture, encode, send, total, hostTick, hostBuild, hostRaster];
 
   /// The controller stages a summary already has from before streaming (PRD
   /// S7), used to estimate [pressToScreen] when no probe measured it.
@@ -65,6 +88,14 @@ abstract final class StreamResource {
   static const gameFps = 'gameFps';
   static const frameBuildMs = 'frameBuildMs';
   static const frameRasterMs = 'frameRasterMs';
+
+  /// The mean time between two of the game's frames starting, in ms (M15 k1):
+  /// the frame rate's own period, which a frame that missed its slot lengthens.
+  static const gameFrameMs = 'gameFrameMs';
+
+  /// The share of the game's frames whose build and raster together went over
+  /// one 60 Hz frame, 0 to 100 % (M15 k1).
+  static const slowFramePct = 'slowFramePct';
   static const encodedFps = 'encodedFps';
   static const encodeQueue = 'encodeQueue';
 

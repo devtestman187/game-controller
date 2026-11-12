@@ -149,11 +149,17 @@ final class CgroupFiles {
 }
 
 /// What the sampler writes for the player to add to its batch (M15 c2): the
-/// host pipeline's stage means and the numbers the player can't see. The
-/// player owns the viewer id, so the host's stages land on the same row.
-Map<String, Object?> pipelineJson(PipelineWindow window, {required double seconds, bool includeFirstFrame = false}) => {
+/// host pipeline's stage means, the press's way through the host ([hostLegs],
+/// M15 k1) and the numbers the player can't see. The player owns the viewer id,
+/// so the host's stages land on the same row.
+Map<String, Object?> pipelineJson(
+  PipelineWindow window, {
+  required double seconds,
+  bool includeFirstFrame = false,
+  Map<String, int> hostLegs = const {},
+}) => {
   'stages': [
-    for (final MapEntry(key: name, value: ms) in window.stages().entries) {'name': name, 'ms': ms},
+    for (final MapEntry(key: name, value: ms) in {...window.stages(), ...hostLegs}.entries) {'name': name, 'ms': ms},
   ],
   'encodedFps': ?window.encodedFps(seconds),
   'firstFrameMs': ?(includeFirstFrame ? window.firstEncodedMs : null),

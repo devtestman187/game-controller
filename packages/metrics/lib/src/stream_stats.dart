@@ -202,6 +202,8 @@ class _HostTally {
     _gauge(StreamResource.gameFps, sample.gameFps);
     _gauge(StreamResource.frameBuildMs, sample.frameBuildMs);
     _gauge(StreamResource.frameRasterMs, sample.frameRasterMs);
+    _gauge(StreamResource.gameFrameMs, sample.gameFrameMs);
+    _gauge(StreamResource.slowFramePct, sample.slowFramePct);
     _gauge(StreamResource.encodedFps, sample.encodedFps);
     _gauge(StreamResource.encodeQueue, sample.encodeQueue);
     _gauge(StreamResource.pipelineMs, sample.pipelineMs);

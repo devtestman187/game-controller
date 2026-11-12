@@ -99,7 +99,7 @@ num _valueOf(Map<String, Object?> sample) {
 }
 
 /// One container reading (job p1's `StreamResourceSample`): any subset of its
-/// sixteen numbers, and nothing else is read.
+/// eighteen numbers, and nothing else is read.
 StreamResourceSample resourceOf(Map<String, Object?> body) => StreamResourceSample(
   cpuPct: doubleOf(body, 'cpuPct'),
   gameCpuPct: doubleOf(body, 'gameCpuPct'),
@@ -112,6 +112,8 @@ StreamResourceSample resourceOf(Map<String, Object?> body) => StreamResourceSamp
   gameFps: doubleOf(body, 'gameFps'),
   frameBuildMs: doubleOf(body, 'frameBuildMs'),
   frameRasterMs: doubleOf(body, 'frameRasterMs'),
+  gameFrameMs: doubleOf(body, 'gameFrameMs'),
+  slowFramePct: doubleOf(body, 'slowFramePct'),
   encodedFps: doubleOf(body, 'encodedFps'),
   encodeQueue: doubleOf(body, 'encodeQueue'),
   pipelineMs: doubleOf(body, 'pipelineMs'),

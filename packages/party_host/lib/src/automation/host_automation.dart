@@ -19,6 +19,8 @@ import 'automation_api.dart';
 import 'automation_body.dart';
 import 'automation_game_start.dart';
 import 'automation_providers.dart';
+import 'frame_timing.dart';
+import 'probe_leg.dart';
 import 'stream_ingest.dart' as ingest;
 
 /// The host's automation interface (M15 a2): what each HTTP call does, over
@@ -48,6 +50,7 @@ final class HostAutomation implements AutomationApi {
     final state = service.state;
     final identity = _ref.read(hostIdentityProvider);
     final start = _ref.read(automationLaunchProvider);
+    final legs = _ref.read(probeLegRecorderProvider).samplesSince(0);
     return {
       'version': identity.appVersion,
       'app': identity.versionLabel,
@@ -65,8 +68,15 @@ final class HostAutomation implements AutomationApi {
       'hostMs': _ref.read(gameHostProvider).nowMs,
       // The host app's own drawing (M15 c2): a sampler reads the count to know
       // the game's frame rate, which a round with no phone watching never
-      // publishes as frames.
-      'frames': {'drawn': _ref.read(automationDrawnProvider).frames},
+      // publishes as frames. Beside it are the game's frame times over the
+      // window since the last reading (M15 k1), which that reading takes.
+      'frames': {'drawn': _ref.read(automationDrawnProvider).frames, ..._ref.read(frameTimingProvider).take()},
+      // The presses' way through the host (M15 k1), newest 32: a sampler takes
+      // the ones above the number it read last.
+      if (legs.isNotEmpty)
+        'probe': {
+          'legs': [for (final leg in legs) leg.toJson()],
+        },
       'players': [for (final p in _ref.read(gameHostProvider).players) _playerJson(p)],
     };
   }
@@ -171,6 +181,9 @@ final class HostAutomation implements AutomationApi {
     // moment the host had it: the next frame is the first that can show it.
     final atMs = _ref.read(gameHostProvider).nowMs;
     local.set(GamepadState(buttons: {button}, mode: InputMode.dpad));
+    // The press's way through the host starts here (M15 k1): the frames that
+    // follow say when the game could first use it and how long it took to draw.
+    _ref.read(probeLegRecorderProvider).press(atMs);
     // The button is let go on the frame after the press (M15 f1): a game holds
     // a press until it is released, so a second probe of the same button must
     // be a new press, as a thumb's second tap is.

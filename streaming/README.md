@@ -138,11 +138,16 @@ whole stream without a person watching it:
   flips, the page sees the flip in a small patch of the picture and sends the
   host-clock time it was presented.
 - **The sampler** (`stream-sampler`, started by the entrypoint) reads the
-  container's cgroup counters (CPU split by process, memory) and `nvidia-smi`
-  (GPU, encoder, memory) every `SAMPLER_INTERVAL_S` seconds, tails the pipeline
-  log for the tracer's records, and leaves the latest resource reading in
-  `/run/thumb-party/pipeline.json`. `SESSIONS_AT_ONCE` says how many sessions
-  the machine runs, so the GPU's numbers can be read per session.
+  container's cgroup counters (CPU split by process, memory), `nvidia-smi`
+  (GPU, encoder, memory) and the host's own `GET status` every
+  `SAMPLER_INTERVAL_S` seconds, tails the pipeline log for the tracer's records,
+  and leaves the latest resource reading in `/run/thumb-party/pipeline.json`.
+  `SESSIONS_AT_ONCE` says how many sessions the machine runs, so the GPU's
+  numbers can be read per session. From the status answer it also takes the
+  game's frame times (`frameBuildMs`, `frameRasterMs`, `gameFrameMs`,
+  `slowFramePct`) and each probe press's way through the host, which it writes
+  as the `host_tick`, `host_build` and `host_raster` stages beside the
+  pipeline's (M15 k1).
 - **The tracer**: the pipeline runs with
   `GST_TRACERS="latency(flags=pipeline+element)"`, which writes one record per
   element per frame into `pipeline.log`; the sampler turns those into the
@@ -183,7 +188,11 @@ only listed when it reported a gauge, a counter or a stage of its own; a page
 that connected and never showed a picture holds only the host's stages, and the
 section ends with `N viewer row(s) with no receive data left out` when there
 were any (M15 fix5). The probe's card is nearly still, so its received rate says
-nothing about the game's.
+nothing about the game's. The line ends with the game's own drawing when the
+sampler read it (M15 k1): `game 48.2 fps, 20.8 ms/frame, build 5.1 + raster
+12.3 ms, 62% slow`. A run that timed presses prints the host leg table as well
+(`press>tick`, `tick>built`, `built>raster`, the derived `raster>capture*`,
+`press>screen` and `total`), with no extra flag.
 
 `--viewer external` (M15 g1) opens no browser: the bench starts the session and
 the round (or the card) first, because the host only accepts a viewer's batch

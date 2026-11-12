@@ -569,6 +569,48 @@ for viewer in viewers or []:
 PY
 }
 
+# The game's own drawing, from a session's resource readings (M15 k1): its frame
+# rate, the mean frame interval, what a frame's build and raster cost and the
+# share of frames over one 60 Hz frame, or nothing when the sampler read none.
+# The file may be a session's summary or the stats answer that carries it.
+game_frames() {
+  python3 - "$1" <<'PY' 2> /dev/null
+import json, sys
+
+try:
+    doc = json.load(open(sys.argv[1], encoding="utf-8"))
+except (OSError, ValueError):
+    sys.exit(0)
+if isinstance(doc, dict) and isinstance(doc.get("session"), dict):
+    doc = doc["session"]
+stream = doc.get("stream") if isinstance(doc, dict) else None
+host = stream.get("host") if isinstance(stream, dict) else None
+gauges = host.get("gauges") if isinstance(host, dict) else None
+
+def mean(name):
+    gauge = (gauges or {}).get(name)
+    return gauge.get("mean") if isinstance(gauge, dict) else None
+
+fps = mean("gameFps")
+frame = mean("gameFrameMs")
+build = mean("frameBuildMs")
+raster = mean("frameRasterMs")
+slow = mean("slowFramePct")
+if fps is None and frame is None:
+    sys.exit(0)
+parts = []
+if fps is not None:
+    parts.append("%.1f fps" % fps)
+if frame is not None:
+    parts.append("%.1f ms/frame" % frame)
+if build is not None and raster is not None:
+    parts.append("build %.1f + raster %.1f ms" % (build, raster))
+if slow is not None:
+    parts.append("%.0f%% slow" % slow)
+print("game " + ", ".join(parts))
+PY
+}
+
 # Each viewer that reported numbers, as "kind/platform" (M15 g1): who was timed,
 # with the host's cleaned strings and no user agent kept. A row that holds only
 # the host's own stages is left out, as the report leaves it out (M15 fix5). The
@@ -577,7 +619,10 @@ viewer_kinds() {
   python3 - "$1" <<'PY' 2> /dev/null
 import json, sys
 
-HOST_STAGES = {"stream_capture", "stream_encode", "stream_send", "stream_total"}
+# The stages only the host writes: its pipeline and the press's way through it
+# (M15 fix5, k1), which a page copies into its batch.
+HOST_STAGES = {"stream_capture", "stream_encode", "stream_send", "stream_total",
+               "host_tick", "host_build", "host_raster"}
 
 def receive_data(viewer):
     if viewer.get("gauges") or viewer.get("counters"):
@@ -600,11 +645,11 @@ PY
 
 # Prints what the run produced, so the log of a benchmark says its numbers: the
 # viewers that reported numbers and who they were, the bitrate the session kept
-# against the ceiling it was given, and where the evidence is. In a run with a
-# press phase the bitrate comes from the round's own snapshot: the card's nearly
-# still picture would dilute it (M15 fix5).
+# against the ceiling it was given, the game's own frame stats (M15 k1) and where
+# the evidence is. In a run with a press phase the bitrate comes from the round's
+# own snapshot: the card's nearly still picture would dilute it (M15 fix5).
 report_run() {
-  local index name summary counted ceiling received who
+  local index name summary counted ceiling received who frames
   for (( index = 0; index < sessions; index++ )); do
     name="$(name_of "$index")"
     summary="$out/summaries/$name.json"
@@ -617,7 +662,8 @@ report_run() {
     received="$(received_kbps "$summary")"
     who="$(viewer_kinds "$summary" | paste -sd, -)"
     counted="$(viewer_kinds "$summary" | grep -c . || true)"
-    say "$name: $counted viewer(s) ${who:-(none)}, ${received:--} kbit/s received against the ${ceiling:--} kbit/s ceiling, summary $(wc -c < "$summary") bytes"
+    frames="$(game_frames "$summary")"
+    say "$name: $counted viewer(s) ${who:-(none)}, ${received:--} kbit/s received against the ${ceiling:--} kbit/s ceiling, summary $(wc -c < "$summary") bytes${frames:+, $frames}"
   done
   say "results in $out"
 }

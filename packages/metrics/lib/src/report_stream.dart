@@ -1,3 +1,4 @@
+import 'report_stream_hostleg.dart';
 import 'report_table.dart';
 import 'stream_names.dart';
 
@@ -67,7 +68,7 @@ final class StreamHostRow {
 /// viewer with no receive data is left out (see [_hasReceiveData]).
 List<StreamViewerRow> streamViewers(List<Map<String, Object?>> summaries) => [
   for (final row in _allViewerRows(summaries))
-    if (_hasReceiveData(row)) row,
+    if (hasReceiveData(row)) row,
 ];
 
 /// Every viewer row of every summary, reporting or not, in order (M15).
@@ -76,17 +77,6 @@ List<StreamViewerRow> _allViewerRows(List<Map<String, Object?>> summaries) => [
     for (final viewer in ((summary['stream'] as Map?)?['viewers'] as List?) ?? const [])
       if (viewer is Map) StreamViewerRow(_sessionOf(summary), viewer),
 ];
-
-/// The stages only the host's own pipeline writes (M15 fix5): a page copies
-/// them into its batch from the session's sampler, so a row that holds them and
-/// nothing else says nothing about what a viewer received.
-const _hostStages = {StreamStage.capture, StreamStage.encode, StreamStage.send, StreamStage.total};
-
-/// Whether [row] holds a number a viewer measured: a gauge, a counter, or a
-/// stage of its own. A page that connected and never showed a picture sends
-/// only the host's stages, which used to list it as a viewer (M15 fix5).
-bool _hasReceiveData(StreamViewerRow row) =>
-    row.gauges.isNotEmpty || row.counters.isNotEmpty || row.stages.keys.any((name) => !_hostStages.contains(name));
 
 /// One row per session that recorded its host container's resources (M15).
 List<StreamHostRow> streamHosts(List<Map<String, Object?>> summaries) {
@@ -165,6 +155,8 @@ const _resourceHeaders = [
   'game fps',
   'build ms',
   'raster ms',
+  'frame ms',
+  'slow %',
   'enc fps',
   'queue',
   'pipeline ms',
@@ -184,9 +176,11 @@ String streamReport(List<Map<String, Object?>> summaries) {
   final viewers = streamViewers(summaries);
   final leftOut = _allViewerRows(summaries).length - viewers.length;
   final hosts = streamHosts(summaries);
+  final hostLegs = hostLegReport(summaries);
   return [
     if (viewers.isNotEmpty) ...[
       plainTable('Streaming pipeline', _pipelineHeaders, [for (final row in viewers) _pipelineCells(row)]),
+      if (hostLegs.isNotEmpty) hostLegs,
       plainTable('Streaming quality', _qualityHeaders, [for (final row in viewers) _qualityCells(row)]),
       plainTable('Streaming sound', _soundHeaders, [for (final row in viewers) _soundCells(row)]),
     ],
@@ -266,6 +260,8 @@ List<String> _resourceCells(StreamHostRow host) => [
     StreamResource.gameFps,
     StreamResource.frameBuildMs,
     StreamResource.frameRasterMs,
+    StreamResource.gameFrameMs,
+    StreamResource.slowFramePct,
     StreamResource.encodedFps,
     StreamResource.encodeQueue,
     StreamResource.pipelineMs,

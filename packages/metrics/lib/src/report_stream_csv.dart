@@ -10,6 +10,8 @@ import 'stream_names.dart';
 const streamCsvHeader =
     'session,viewer,kind,platform,'
     'input_median_ms,input_p95_ms,host_median_ms,host_p95_ms,'
+    'host_tick_median_ms,host_tick_p95_ms,host_build_median_ms,host_build_p95_ms,'
+    'host_raster_median_ms,host_raster_p95_ms,'
     'capture_median_ms,capture_p95_ms,encode_median_ms,encode_p95_ms,'
     'send_median_ms,send_p95_ms,network_median_ms,network_p95_ms,'
     'jitter_median_ms,jitter_p95_ms,decode_median_ms,decode_p95_ms,'
@@ -23,6 +25,8 @@ const streamCsvHeader =
     'sessions_at_once,cpu_pct,cpu_pct_p95,game_cpu_pct,game_cpu_pct_p95,'
     'enc_cpu_pct,enc_cpu_pct_p95,mem_mb,mem_mb_p95,gpu_pct,gpu_pct_p95,'
     'encoder_pct,encoder_pct_p95,gpu_mem_mb,gpu_mem_mb_p95,game_fps,game_fps_p95,'
+    'frame_build_ms,frame_build_ms_p95,frame_raster_ms,frame_raster_ms_p95,'
+    'game_frame_ms,game_frame_ms_p95,slow_frame_pct,slow_frame_pct_p95,'
     'encoded_fps,encoded_fps_p95,encode_queue,encode_queue_p95,'
     'pipeline_ms,pipeline_ms_p95,mem_peak_mb';
 
@@ -43,7 +47,12 @@ String _row(StreamViewerRow viewer, StreamHostRow? host) => [
   _csv(viewer.id),
   _csv(viewer.kind),
   _csv(viewer.platform),
-  for (final name in [StreamStage.controller[0], StreamStage.controller[1], ...StreamStage.pipeline])
+  for (final name in [
+    StreamStage.controller[0],
+    StreamStage.controller[1],
+    ...StreamStage.hostLegs,
+    ...StreamStage.pipeline,
+  ])
     ..._pair(viewer, name),
   ..._pair(viewer, StreamStage.total),
   ..._pair(viewer, StreamStage.pressToScreen),
@@ -86,6 +95,10 @@ String _row(StreamViewerRow viewer, StreamHostRow? host) => [
     StreamResource.encoderPct,
     StreamResource.gpuMemMb,
     StreamResource.gameFps,
+    StreamResource.frameBuildMs,
+    StreamResource.frameRasterMs,
+    StreamResource.gameFrameMs,
+    StreamResource.slowFramePct,
     StreamResource.encodedFps,
     StreamResource.encodeQueue,
     StreamResource.pipelineMs,

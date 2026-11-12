@@ -1,0 +1,66 @@
+   Woah! You appear to be trying to run flutter as root.
+   We strongly recommend running the flutter tool without superuser privileges.
+  /
+📎
+1 session
+
+By input mode
+group  players  sessions  minutes  open min  presses/min  empty/min  near/min  slide/min  rapid/min  frustr/min  games  good  okay  bad  early sw  first pick  input ms  touch ms  jitter ms  frames/gaps/late
+-----  -------  --------  -------  --------  -----------  ---------  --------  ---------  ---------  ----------  -----  ----  ----  ---  --------  ----------  --------  --------  ---------  ----------------
+(no data)
+
+By device and mode
+group  players  sessions  minutes  open min  presses/min  empty/min  near/min  slide/min  rapid/min  frustr/min  games  good  okay  bad  early sw  first pick  input ms  touch ms  jitter ms  frames/gaps/late
+-----  -------  --------  -------  --------  -----------  ---------  --------  ---------  ---------  ----------  -----  ----  ----  ---  --------  ----------  --------  --------  ---------  ----------------
+(no data)
+
+By game and feature
+group  rounds  minutes  players  avg players  finished  good  okay  bad
+-----  ------  -------  -------  -----------  --------  ----  ----  ---
+(no data)
+
+Party nights: none
+
+By host and where they watched
+host  watched  players  input ms  touch ms  jitter ms
+----  -------  -------  --------  --------  ---------
+(no data)
+
+By frame rate
+host  hz  rounds  minutes  touch ms  late/min  gaps/min  battery %/h  thermal
+----  --  ------  -------  --------  --------  --------  -----------  -------
+(no data)
+
+Streaming pipeline
+session           viewer     kind         platform  input  host  capture  encode  send  network   jitter  decode  display    total  press>screen    src
+----------------  ------  -------  ---------------  -----  ----  -------  ------  ----  -------  -------  ------  -------  -------  ------------  -----
+72f31210bfa528d5      v1  browser  chrome-headless      -     -      2/2   29/29     -      1/1  173/388     3/3      0/0  208/423       250/414  probe
+
+Streaming host legs
+session           viewer  press>tick  tick>built  built>raster  raster>capture*  press>screen  total
+----------------  ------  ----------  ----------  ------------  ---------------  ------------  -----
+72f31210bfa528d5      v1          17           0             5               20           250    208
+* derived: press>screen minus the three host legs and total, the rest of the host
+
+Streaming quality
+session           viewer  sent kbps  recv kbps  loss %  rtt ms  jitter ms   fps  sent  recv  decoded  dropped  late  freezes  first frame ms  reconnects  relay  codec
+----------------  ------  ---------  ---------  ------  ------  ---------  ----  ----  ----  -------  -------  ----  -------  --------------  ----------  -----  -----
+72f31210bfa528d5      v1          -     2075.5     0.0     0.8        0.9  57.4     -  3777     3769        8     0      0/0            1446           0     no   H264
+
+Streaming sound
+session           viewer  audio ms  sync ms  concealed %
+----------------  ------  --------  -------  -----------
+72f31210bfa528d5      v1         -        -            -
+
+Streaming resources
+session           samples        cpu %  game cpu %  enc cpu %         mem MB      gpu %    enc %     gpu mem MB  game fps  build ms  raster ms   frame ms   slow %    enc fps  queue  pipeline ms  first frame ms  mem peak MB
+----------------  -------  -----------  ----------  ---------  -------------  ---------  -------  -------------  --------  --------  ---------  ---------  -------  ---------  -----  -----------  --------------  -----------
+72f31210bfa528d5       21  182.8/187.1   87.0/90.4  86.5/88.7  1056.1/1083.4  49.8/52.0  6.1/7.0  1567.2/1575.0         -   0.5/0.6    5.4/5.7  18.3/18.8  0.0/0.0  57.0/58.0      -    33.7/33.9            2345       1105.3
+
+Streaming by sessions at once
+sessions at once  sessions  cpu %  gpu %  enc %  game fps  enc fps  mem MB
+----------------  --------  -----  -----  -----  --------  -------  ------
+1                        1  182.8   49.8    6.1         -     57.0  1056.1
+
+Enjoyment: 1 sessions, 1.1 min and 0.0 games on average, no ratings
+

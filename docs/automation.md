@@ -43,6 +43,8 @@ Every call starts with `/automation/v1`; the examples use the default `http://12
 
 The app's version, host type, the screen now, whether a round runs, the players, the pairing code, the controller port and whether the host is ready. The host's clock (`hostMs`, the number `probe/press` answers and a viewer's times are kept on) and the frames it has drawn (`frames.drawn`, a counter since the app started) come with it, so a sampler can read the game's own frame rate between two calls.
 
+A reading also carries the game's own frame times since the previous reading (`frames.buildMs`, `frames.rasterMs`, `frames.vsyncMs`, `frames.slow` of `frames.count`, M15 k1): taking them empties the window, so a sampler reads them once per window and nobody else does. A press through `probe/press` leaves its way through the host behind (`probe.legs`): the newest 32 presses, each with its number `n` and the stamps `pressMs`, `tickMs`, `builtMs` and `rasterMs` of its arrival, of the frame that could first use it and of that frame being built and rasterised. The sampler takes the presses above the last `n` it read and writes them as the `host_tick`, `host_build` and `host_raster` stages beside the pipeline's own.
+
 ```bash
 curl -s http://127.0.0.1:8787/automation/v1/status
 ```
@@ -241,6 +243,8 @@ dart tools/automation.dart stop
 | The start a call asks for, shared with the debug flags | `packages/party_host/lib/src/automation/automation_game_start.dart` |
 | The frame a screenshot captures | `packages/party_host/lib/src/automation/screen_frames.dart` |
 | The ingest reader for `stats/stream` | `packages/party_host/lib/src/automation/stream_ingest.dart` |
+| A press's way through the host (`probe.legs`) | `packages/party_host/lib/src/automation/probe_leg.dart` |
+| The game's frame times (`frames.*`) | `packages/party_host/lib/src/automation/frame_timing.dart` |
 | The shell: the boundary, the card, pushing a round | `packages/party_host/lib/src/ui/automation_gate.dart` |
 | The card | `packages/party_host/lib/src/ui/latency_test_card.dart` |
 

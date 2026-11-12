@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:metrics/metrics.dart';
 import 'package:party_host/party_host.dart';
+import 'package:party_host/src/automation/frame_timing.dart';
+import 'package:party_host/src/automation/probe_leg.dart';
 import 'package:party_host/testing.dart';
 import 'package:protocol/protocol.dart';
 
@@ -87,6 +89,50 @@ void main() {
     expect(players, hasLength(2));
     expect(players.last, containsPair('nickname', 'Robo'));
     expect(players.last, containsPair('simulated', true), reason: 'a script drives it, not a person');
+
+    // The press's way through the host and the game's frame times (M15 k1):
+    // a press, the frame that follows it and that frame's own timings, which
+    // the engine reports through the frame callback; the test gives them here.
+    final legs = containerOf(tester).read(probeLegRecorderProvider);
+    final added = players.last! as Map<String, Object?>;
+    final press = api.pressProbe({'player': added['id']! as String, 'button': 'a'});
+    await tester.pump(const Duration(milliseconds: 16));
+    legs.frameDrawn(buildMs: 4, rasterMs: 30);
+    final frames = containerOf(tester).read(frameTimingProvider);
+    frames.add(buildMs: 4, rasterMs: 9, startUs: 0);
+    frames.add(buildMs: 12, rasterMs: 9, startUs: 16000);
+
+    final timed = api.status();
+    final frameTimes = timed['frames']! as Map<String, Object?>;
+    // Two frames: builds 4 and 12 (mean 8), raster 9 ms each, 16 ms between
+    // their starts, and the second one's 12 + 9 = 21 ms is over the 16.7 ms
+    // budget.
+    expect(frameTimes, containsPair('buildMs', 8.0));
+    expect(frameTimes, containsPair('rasterMs', 9.0));
+    expect(frameTimes, containsPair('slow', 1));
+    expect(frameTimes, containsPair('count', 2));
+    expect(frameTimes, containsPair('vsyncMs', 16.0));
+    expect(
+      frameTimes.containsKey('drawn'),
+      isTrue,
+      reason: 'the counter the sampler reads the frame rate from is still there',
+    );
+
+    final probe = timed['probe']! as Map<String, Object?>;
+    final leg = (probe['legs']! as List<Object?>).single as Map<String, Object?>;
+    final tick = leg['tickMs']! as int;
+    expect(leg, containsPair('n', 1));
+    expect(tick, greaterThanOrEqualTo((press['hostMs']! as num).round()));
+    expect(leg, containsPair('builtMs', tick + 4));
+    expect(leg, containsPair('rasterMs', tick + 30));
+
+    final again = api.status();
+    expect((again['frames']! as Map<String, Object?>).keys, ['drawn'], reason: 'a reading covers the window since it');
+    expect(
+      (again['probe']! as Map<String, Object?>)['legs'],
+      hasLength(1),
+      reason: 'a leg stays until the ring drops it',
+    );
   });
 
   testWidgets('an added player is the menus\' kind of player, and a script drives it', (tester) async {

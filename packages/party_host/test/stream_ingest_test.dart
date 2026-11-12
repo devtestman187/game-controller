@@ -88,6 +88,8 @@ void main() {
         'gameFps': 56,
         'frameBuildMs': 4,
         'frameRasterMs': 7,
+        'gameFrameMs': 18.5,
+        'slowFramePct': 25,
         'encodedFps': 55,
         'encodeQueue': 0,
         'pipelineMs': 34,
@@ -205,6 +207,9 @@ void main() {
       '56.0/56.0',
       '4.0/4.0',
       '7.0/7.0',
+      // The game's frame interval and its share of slow frames (M15 k1).
+      '18.5/18.5',
+      '25.0/25.0',
       '55.0/55.0',
       '0.0/0.0',
       '34.0/34.0',

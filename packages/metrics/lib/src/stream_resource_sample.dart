@@ -18,6 +18,8 @@ final class StreamResourceSample {
     this.gameFps,
     this.frameBuildMs,
     this.frameRasterMs,
+    this.gameFrameMs,
+    this.slowFramePct,
     this.encodedFps,
     this.encodeQueue,
     this.pipelineMs,
@@ -58,6 +60,13 @@ final class StreamResourceSample {
   /// Time the game spent drawing a frame, in ms.
   final num? frameRasterMs;
 
+  /// The mean time between two of the game's frames starting, in ms.
+  final num? gameFrameMs;
+
+  /// The share of the game's frames that went over one 60 Hz frame, 0 to
+  /// 100 %.
+  final num? slowFramePct;
+
   /// Frames the encoder produced, a second.
   final num? encodedFps;
 
@@ -90,6 +99,8 @@ final class StreamResourceSample {
     StreamResource.gameFps: ?gameFps,
     StreamResource.frameBuildMs: ?frameBuildMs,
     StreamResource.frameRasterMs: ?frameRasterMs,
+    StreamResource.gameFrameMs: ?gameFrameMs,
+    StreamResource.slowFramePct: ?slowFramePct,
     StreamResource.encodedFps: ?encodedFps,
     StreamResource.encodeQueue: ?encodeQueue,
     StreamResource.pipelineMs: ?pipelineMs,
