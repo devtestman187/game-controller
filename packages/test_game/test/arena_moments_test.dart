@@ -3,15 +3,21 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:test_game/test_game.dart';
 
 /// The arena at [round] with one marble per (id, x, y), the rest of the field
-/// clear: these tests read the way the marbles look and nothing else.
-ArenaSnapshot arena(int round, List<(String, double, double)> players) => ArenaSnapshot(
+/// clear: these tests read the way the marbles look, and how their coin counts
+/// pop, and nothing else.
+ArenaSnapshot arena(
+  int round,
+  List<(String, double, double)> players, {
+  Map<String, int> coins = const {},
+  double roundTimeS = 0,
+}) => ArenaSnapshot(
   round: round,
-  roundTimeS: 0,
+  roundTimeS: roundTimeS,
   phase: ArenaPhase.playing,
   walls: const [],
   goal: const Rect.fromLTRB(0.86, 0.38, 0.97, 0.62),
   hazards: const [],
-  players: [for (final (id, x, y) in players) ArenaPlayerView(id: id, x: x, y: y)],
+  players: [for (final (id, x, y) in players) ArenaPlayerView(id: id, x: x, y: y, coins: coins[id] ?? 0)],
 );
 
 /// The steps of such a snapshot play: round 1, one marble.
@@ -100,5 +106,28 @@ void main() {
     expect(dipsIn(10), 25, reason: 'a dip every 0.4 s');
     expect(dipsIn(10) / 10, lessThan(3), reason: 'under 3 changes a second');
     expect(recoverStillAlpha, closeTo((recoverFullAlpha + recoverFaintAlpha) / 2, 1e-9));
+  });
+
+  // Claude's design for M14 b2: a marble's coin count pops when it changes, up
+  // on a pick-up and down on a drop.
+  test("a coin count pops when it changes, and settles after a moment", () {
+    final moments = ArenaMoments()..observe(arena(1, [('a', 0.5, 0.5)]));
+    expect(moments.coinPopOf('a', 0), 0, reason: 'a count nothing changed is still');
+
+    moments.observe(arena(1, [('a', 0.5, 0.5)], coins: const {'a': 1}, roundTimeS: 2));
+    expect(moments.coinPopOf('a', 2), 1, reason: 'a pick-up pops at once');
+    expect(moments.coinPopOf('a', 2 + coinPopS / 2), closeTo(0.5, 1e-9), reason: 'and fades halfway');
+    expect(moments.coinPopOf('a', 2 + coinPopS), closeTo(0, 1e-9), reason: 'and settles after its moment');
+    expect(moments.coinPopOf('a', 3), 0);
+
+    moments.observe(arena(1, [('a', 0.5, 0.5)], roundTimeS: 3));
+    expect(moments.coinPopOf('a', 3), 1, reason: 'a drop pops the same way');
+  });
+
+  test('a new round clears the counts, so nothing pops at its start', () {
+    final moments = ArenaMoments()..observe(arena(1, [('a', 0.5, 0.5)], coins: const {'a': 3}, roundTimeS: 1));
+    moments.observe(arena(2, [('a', 0.07, 0.5)], roundTimeS: 0));
+    expect(moments.coinPopOf('a', 0), 0);
+    expect(moments.coinPopOf('a', coinPopS), 0);
   });
 }

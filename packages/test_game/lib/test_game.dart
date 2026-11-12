@@ -6,6 +6,7 @@ library;
 
 export 'src/arena.dart';
 export 'src/arena_coin.dart';
+export 'src/arena_coin_icon_widgets.dart';
 export 'src/arena_coin_painter.dart';
 export 'src/arena_events.dart';
 export 'src/arena_field.dart';

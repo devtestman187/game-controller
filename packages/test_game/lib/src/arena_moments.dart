@@ -37,6 +37,11 @@ double recoveringAlpha(double roundTimeS) {
   return middle + sway * cos(2 * pi * recoverPulseHz * roundTimeS);
 }
 
+/// How long a marble's coin count pops after it changes, in seconds (M14 b2):
+/// long enough to see a pick-up or a drop, short enough not to hide the count
+/// it brings.
+const coinPopS = 0.4;
+
 /// Where every marble last moved, worked out from the snapshots as the view
 /// saw them (rule 3): the eyes look that way, and a marble that stops keeps
 /// looking the way it went.
@@ -58,13 +63,20 @@ final class ArenaMoments {
   /// Where each player's marble stood in the snapshot before.
   final Map<String, Offset> _places = {};
 
-  /// Notes where every marble of [snapshot] is, and the way it moved since the
-  /// snapshot before.
+  /// Each player's coin count as the snapshot before had it, and the round's
+  /// clock when it last changed, so a count that changes pops once (M14 b2).
+  final Map<String, int> _coins = {};
+  final Map<String, double> _coinChangedAt = {};
+
+  /// Notes where every marble of [snapshot] is, the way it moved since the
+  /// snapshot before, and whether its coin count changed.
   void observe(ArenaSnapshot snapshot) {
     if (snapshot.round != _round) {
       _round = snapshot.round;
       _looks.clear();
       _places.clear();
+      _coins.clear();
+      _coinChangedAt.clear();
     }
     for (final player in snapshot.players) {
       final place = Offset(player.x, player.y);
@@ -77,9 +89,23 @@ final class ArenaMoments {
         if (travel.distance > stillShare) _looks[player.id] = travel / travel.distance;
       }
       _places[player.id] = place;
+      final coins = _coins[player.id];
+      if (coins != null && coins != player.coins) _coinChangedAt[player.id] = snapshot.roundTimeS;
+      _coins[player.id] = player.coins;
     }
   }
 
   /// The way player [id]'s marble looks: the way it last moved, or right.
   Offset lookOf(String id) => _looks[id] ?? lookRight;
+
+  /// How much player [id]'s coin count is popping at [atTimeS] of the round
+  /// (M14 b2): 1 at the change, fading to 0 over [coinPopS]. Worked out from
+  /// the round's own clock, so every screen shows the same pop.
+  double coinPopOf(String id, double atTimeS) {
+    final changedAt = _coinChangedAt[id];
+    if (changedAt == null) return 0;
+    final elapsed = atTimeS - changedAt;
+    if (elapsed < 0 || elapsed >= coinPopS) return 0;
+    return (1 - elapsed / coinPopS).clamp(0.0, 1.0);
+  }
 }

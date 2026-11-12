@@ -1,8 +1,10 @@
-import 'dart:math' show pi;
+import 'dart:math' show max, pi;
 
 import 'package:flutter/material.dart';
 import 'package:toy_look/toy_look.dart';
 
+import 'arena_coin_painter.dart';
+import 'arena_mode.dart';
 import 'arena_moments.dart';
 import 'arena_roster.dart';
 import 'arena_snapshot.dart';
@@ -37,6 +39,16 @@ const aimRingShare = 0.7;
 const aimArmShare = 1.6;
 const aimInkShare = 1.0;
 const aimColourShare = 0.6;
+
+/// The coin count a marble wears above its head in the Bumper Round (M14 b2):
+/// the gap between its pill and the marble's edge, the coin's radius and the
+/// count's font size, and the pill's padding and inner gap, all as shares of
+/// the marble's radius; and how much the pill grows at its pop's peak.
+const coinBadgeGapShare = 0.15;
+const coinBadgeCoinShare = 0.42;
+const coinBadgeFontShare = 0.95;
+const coinBadgePadShare = 0.18;
+const coinBadgePopShare = 0.3;
 
 /// Draws the arena's marbles (rule 2): the glossy body in its character's
 /// colour through [toyShape], which is the look's shader and its first use — or
@@ -114,6 +126,56 @@ final class ArenaMarblePainter {
     paintAccessory(canvas, character.accessory, centre, radius, colour, look);
     if (player.cooldown > 0) _cooldown(canvas, centre, radius, player.cooldown);
     if (fades) canvas.restore();
+    // Above the fading layer, whose box is too small for a badge over the
+    // head: the count must stay as readable as the marble's own face.
+    if (snapshot.mode == ArenaMode.bumper) _coinCount(canvas, size, player, radius);
+  }
+
+  /// The coins a marble holds, in a paper pill above its head (party-night §7,
+  /// M14 b2): the game's own coin, then the count in ink, popping for a moment
+  /// when the count changes — up on a pick-up, down on a drop.
+  void _coinCount(Canvas canvas, Size size, ArenaPlayerView player, double radius) {
+    final pop = moments.coinPopOf(player.id, snapshot.roundTimeS);
+    final count = TextPainter(
+      text: TextSpan(
+        text: '${player.coins}',
+        style: TextStyle(
+          color: look.colors.ink,
+          fontSize: radius * coinBadgeFontShare,
+          fontWeight: FontWeight.w700,
+          height: 1,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    final coinRadius = radius * coinBadgeCoinShare;
+    final pad = radius * coinBadgePadShare;
+    final gap = radius * coinBadgeGapShare;
+    final height = max(2 * coinRadius, count.height) + 2 * pad;
+    final width = 2 * coinRadius + gap + count.width + 2 * pad;
+    final bottom = player.y * size.height - radius - gap;
+    final centre = Offset(player.x * size.width, bottom - height / 2);
+    final pill = RRect.fromRectAndRadius(
+      Rect.fromCenter(center: centre, width: width, height: height),
+      Radius.circular(height / 2),
+    );
+    final scale = 1 + pop * coinBadgePopShare;
+    canvas
+      ..save()
+      ..translate(centre.dx, centre.dy)
+      ..scale(scale)
+      ..translate(-centre.dx, -centre.dy)
+      ..drawRRect(pill, Paint()..color = look.colors.paper)
+      ..drawRRect(pill.deflate(style.outlineWidth / 2), _stroke(style.outlineWidth, look.colors.ink));
+    final coin = Offset(pill.left + style.outlineWidth + pad + coinRadius, centre.dy);
+    ArenaCoinPainter(
+      coins: [ArenaCoinView(x: coin.dx / size.width, y: coin.dy / size.height, ageMs: coinFaceAgeMs.round())],
+      radius: coinRadius,
+      look: look,
+      style: style,
+    ).paint(canvas, size);
+    count.paint(canvas, Offset(coin.dx + coinRadius + gap, centre.dy - count.height / 2));
+    canvas.restore();
   }
 
   /// The two eyes: paper whites with ink pupils, both shifted the way the

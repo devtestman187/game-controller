@@ -14,6 +14,12 @@ const coinSpinS = 1.6;
 const coinSparkleSpinS = 0.8;
 const coinSparkleAlpha = 0.5;
 
+/// The age a coin is drawn at where it is a picture rather than a coin in play
+/// — the bar's icon and a marble's count (M14 b2): past a field coin's
+/// sparkling second and a whole number of turns, so it never blinks and always
+/// shows its star, in either look.
+const coinFaceAgeMs = coinSpinS * Duration.millisecondsPerSecond;
+
 /// A gold coin is a third bigger than a field coin, and its face is the start
 /// coin mixed towards the caution colour (party-night §7): orange-gold, never
 /// the same yellow a hazard-free coin has.
