@@ -48,6 +48,31 @@ Branch **`m15`**, worktree **`E:\AI\game-controller-m15`**, cut from `m14` at 0a
 
 **After the run (Claude):** review the reports' "Decisions"/"Blocked" and c2's numbers against gate 1 of docs/design/streaming-roadmap.md; one batch of fixes; then tuning (step 3) and a family test. **Needs the owner:** making the PC's stream reachable from other devices on the Wi-Fi will need a Windows-side change (c1's report says exactly what; likely WSL "mirrored" networking and a firewall rule). Merge `m14` fixes into `m15` as they land.
 
+## fix7: phone runs
+
+Written Nov 12, 2026, after the fix7 wrap-up
+([fix7/n4-matrix-report.md](fix7/n4-matrix-report.md)): the three techniques are
+built, each behind its own switch, default off. The headless Chrome in the distro is
+not Safari, so a headless run only says whether a switch works and what it does to
+the host and to Chrome — **the phone runs below decide**. One 60 s round with a 30 s
+press phase each, in this order; type one at a time, open the URL it prints on the
+iPhone, and stay on the page until it ends.
+
+```bash
+bash tools/stream.sh bench --viewer external --seconds 60 --press-seconds 30 --label phone-base
+bash tools/stream.sh bench --viewer external --seconds 60 --press-seconds 30 --label phone-audio-off --set SESSION_AUDIO=off
+bash tools/stream.sh bench --viewer external --seconds 60 --press-seconds 30 --label phone-audio-sep --set SESSION_AUDIO=separate
+bash tools/stream.sh bench --viewer external --seconds 60 --press-seconds 30 --label phone-lowdelay --player-query lowdelay=1
+bash tools/stream.sh bench --viewer external --seconds 60 --press-seconds 30 --label phone-nofec --set SESSION_FEC=false
+bash tools/stream.sh bench --viewer external --seconds 60 --press-seconds 30 --label phone-noretx --set SESSION_RETRANSMISSION=false
+bash tools/stream.sh bench --viewer external --seconds 60 --press-seconds 30 --label phone-gcc --set SESSION_CONGESTION=gcc
+bash tools/stream.sh bench --viewer external --seconds 60 --press-seconds 30 --label phone-all --set SESSION_AUDIO=separate --set SESSION_FEC=false --set SESSION_RETRANSMISSION=false --set SESSION_CONGESTION=gcc --player-query lowdelay=1
+```
+
+There is no command for the host playout delay: it does not exist (n2-1). Compare
+with the `bash tools/stream.sh stats --results …` line each run prints, and read
+press-to-screen median first, then the jitter buffer; anything inside ~40 ms is noise.
+
 ## Cleaning up, if this is abandoned
 
 `wsl --unregister tp-stream` removes the Linux install and everything in it (about 10 GB by now). The flash-worker modes are inert unless a brief asks for them.

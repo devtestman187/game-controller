@@ -1,0 +1,1 @@
+switches: SESSION_AUDIO=separate, SESSION_FEC=false, SESSION_RETRANSMISSION=false, SESSION_CONGESTION=gcc, player-query lowdelay=1, player-options none
