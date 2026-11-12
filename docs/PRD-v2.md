@@ -887,3 +887,9 @@ The largest new risk is store review and policy. Outside testing depends on two 
 - [ ] Give Claude Code the Milestone 7 section, and move on only after its acceptance tests pass.
 
 Sources checked on Oct 29, 2026 for the store constraints: Google's [developer verification timeline](https://www.androidauthority.com/android-sideloading-changes-timeline-3679204/), Play Console Help on [internal testing](https://support.google.com/googleplay/android-developer/answer/9845334) and [Android TV distribution](https://support.google.com/googleplay/android-developer/answer/9844679?hl=en), and Apple's [TestFlight overview](https://developer.apple.com/testflight/). For the platform direction: the [ViGEmBus repository](https://github.com/nefarius/ViGEmBus) (retired Nov 2023) and [AirConsole's Unity plugin](https://developers.airconsole.com/airconsole-unity-plugin).
+
+## Tooling upkeep: move to the newest Flutter (candidate for M17)
+
+Noted by the owner on Nov 12, 2026 ("move to the newest flutter and perform the deprecation work. Maybe M17?"). Every build is pinned to Flutter 3.47.8 (`FLUTTER_VERSION` in the GitHub workflows, `flutter:` in codemagic.yaml) since m14.3: the m14.2 iOS build failed because Codemagic followed the stable channel, and the newer Flutter deprecates `package:flutter/material.dart` (it names `package:material_ui/material_ui.dart` as the replacement), which fails Analyze across the whole app.
+
+The work: raise the pinned version in all three places and on the development PC together; replace the deprecated import in every app and package and fix whatever else the new analyzer reports; run every suite; one tester build on Android, iOS and Windows to confirm. Do it as its own change, not mixed with feature work.
