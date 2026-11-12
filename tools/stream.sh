@@ -9,6 +9,7 @@
 #   tools/stream.sh bench [--sessions N] [--seconds S] [--game arena|shape_race]
 #   tools/stream.sh stats [--results DIR]
 #   tools/stream.sh status
+#   tools/stream.sh keep-alive [--stop]
 #   tools/stream.sh logs [--name N] [--follow]
 #   tools/stream.sh url [--name N]
 #   tools/stream.sh down [--name N | --all]
@@ -31,6 +32,12 @@ readonly default_port_base=45780
 readonly ready_wait_s=120
 # The label every session container carries, so status and down find them.
 readonly session_label="thumb-party.session"
+# The keep-alive (M15 t1): WSL stops a distro a few seconds after the last
+# Windows process attached to it ends, which kills every session running in it.
+# A detached `wsl ... sleep infinity` keeps it up; its pid lives in this file
+# under the user's temp folder, so `status` and `down` find it again and only
+# that one process is ever ended. STREAM_KEEPALIVE_FILE lets a test use its own.
+readonly keepalive_file="${STREAM_KEEPALIVE_FILE:-${TEMP:-${TMPDIR:-/tmp}}/tp-stream-keepalive.pid}"
 
 distro="${STREAM_DISTRO:-tp-stream}"
 command=""
@@ -48,6 +55,12 @@ players=1
 label="bench"
 probe="no"
 keep="no"
+# Extra session settings for an experiment (M15 t1): each `--set KEY=VALUE`
+# reaches the container's `docker run` as one `-e`, so a tuning change needs no
+# rebuild. The image's entrypoint reads them (streaming/README.md).
+declare -a settings=()
+# Whether `keep-alive` was asked to end the keep-alive instead of showing it.
+keep_alive_stop="no"
 # Where the fetched summaries live, under docs/ so they stay with the reports.
 readonly results_root="docs/briefs/m15/c2/results"
 results="$results_root"
@@ -65,6 +78,8 @@ The Thumb Party streaming session (M15).
                                                    stats ingest, and print the Streaming report
   tools/stream.sh stats [--results DIR]            the Streaming report for the summaries a bench fetched
   tools/stream.sh status                           what runs, and whether it is ready
+  tools/stream.sh keep-alive [--stop]              the detached process that keeps the distro
+                                                   (and its sessions) up; --stop ends it
   tools/stream.sh logs [--name N] [--follow]       a session's log
   tools/stream.sh url [--name N]                   the player URL and the controller address
   tools/stream.sh down [--name N | --all]          stop a session, or every session
@@ -88,11 +103,14 @@ Bench options:
                     press-to-screen is measured this way, as its own series
   --label <name>    the run's name: its containers and its results folder
   --keep            leave the sessions running afterwards
-  --results <dir>   for stats: the folder of summaries (default docs/briefs/m15/c2/results)
+  --set K=V         one more setting for the session container (streaming/README.md);
+                    a bench experiment needs this rather than an image rebuild
+  --results <dir>   the folder of summaries: for stats it is what to read (default
+                    docs/briefs/m15/c2/results), for bench where to write them
 
 The bench copies this checkout into the distro, starts the sessions there,
 plays through a headless Chrome viewer, fetches each session's summary into
-docs/briefs/m15/c2/results/<label>/ and runs the report over it.
+<results>/<label>/ and runs the report over it.
 
 Exit codes: 0 ok, 1 the step failed, 2 bad use.
 EOF
@@ -115,6 +133,18 @@ check_name() {
   fi
 }
 
+# Every `--set` is one environment setting for a session container: an upper-case
+# name, then a value with no spaces, so it reaches `docker run` as one word.
+check_settings() {
+  local setting
+  for setting in "${settings[@]}"; do
+    if [[ ! "$setting" =~ ^[A-Z][A-Z0-9_]*=[A-Za-z0-9._-]+$ ]]; then
+      printf 'stream: a setting is KEY=VALUE (upper-case name, a plain value), got "%s"\n' "$setting" >&2
+      exit 2
+    fi
+  done
+}
+
 check_port_base() {
   if [[ ! "$port_base" =~ ^[0-9]+$ ]] || (( port_base < 1024 || port_base > 65000 )); then
     printf 'stream: the port base must be a number from 1024 to 65000, got "%s"\n' "$port_base" >&2
@@ -124,6 +154,58 @@ check_port_base() {
 
 # Runs one command as root inside the distro.
 wsl_run() { wsl -d "$distro" -u root -- bash -lc "$1"; }
+
+# The keep-alive's pid, when the process the pid file names still is it. The
+# command line has to be the keep-alive's `sleep infinity`: a pid Windows has
+# reused for something else must never be killed. `ps` is old in some Git Bash
+# installs, so the command line comes from /proc when ps prints nothing.
+keepalive_pid() {
+  local pid args
+  [[ -r "$keepalive_file" ]] || return 1
+  pid="$(tr -cd '0-9' < "$keepalive_file")"
+  [[ -n "$pid" ]] || return 1
+  kill -0 "$pid" 2> /dev/null || return 1
+  args="$(ps -p "$pid" -o args= 2> /dev/null)"
+  if [[ -z "$args" ]]; then
+    args="$(tr '\0' ' ' < "/proc/$pid/cmdline" 2> /dev/null)"
+  fi
+  [[ "$args" == *"sleep infinity"* ]] || return 1
+  printf '%s' "$pid"
+}
+
+# Leaves one detached `wsl ... sleep infinity` attached to the distro, so WSL
+# keeps it up after this script ends. Starts nothing when one already runs.
+start_keepalive() {
+  local pid
+  if pid="$(keepalive_pid)"; then
+    return 0
+  fi
+  nohup wsl -d "$distro" -u root -- sleep infinity > /dev/null 2>&1 &
+  printf '%s\n' "$!" > "$keepalive_file"
+  say "keep-alive: started (pid $!)"
+}
+
+# Ends the keep-alive this session started, and nothing else.
+stop_keepalive() {
+  local pid
+  if pid="$(keepalive_pid)"; then
+    kill -TERM "$pid" 2> /dev/null || true
+    say "keep-alive: stopped (pid $pid)"
+  fi
+  rm -f "$keepalive_file"
+}
+
+# One line saying what the keep-alive is doing, for `status` and `keep-alive`.
+keepalive_state() {
+  local pid
+  if pid="$(keepalive_pid)"; then
+    printf 'keep-alive: running (pid %s)\n' "$pid"
+  elif [[ -e "$keepalive_file" ]]; then
+    printf 'keep-alive: not running (a stale pid file: %s)\n' "$keepalive_file"
+  else
+    printf 'keep-alive: not running\n'
+  fi
+}
 
 container_name() { printf '%s%s' "$container_prefix" "$name"; }
 
@@ -188,10 +270,15 @@ cmd_build() {
 }
 
 cmd_up() {
-  local container controller signal player automation gpu_flags ready
+  local container controller signal player automation gpu_flags ready extra=""
   check_name
   check_port_base
+  check_settings
   container="$(container_name)"
+  # Before the container starts: without an attached Windows process the distro
+  # ends a few seconds after this script does, and the session with it.
+  start_keepalive
+  for setting in "${settings[@]}"; do extra="$extra -e $setting"; done
   controller="$port_base"
   signal=$((port_base + 1))
   player=$((port_base + 2))
@@ -215,7 +302,7 @@ cmd_up() {
     --gpus all -e NVIDIA_DRIVER_CAPABILITIES=all $gpu_flags --network host \
     -e GALLIUM_DRIVER=d3d12 -e MESA_D3D12_DEFAULT_ADAPTER_NAME=NVIDIA \
     -e CONTROLLER_PORT=$controller -e SIGNAL_PORT=$signal -e PLAYER_PORT=$player \
-    -e AUTOMATION_PORT=$automation -e SESSION_NAME=$name $image" > /dev/null \
+    -e AUTOMATION_PORT=$automation -e SESSION_NAME=$name $extra $image" > /dev/null \
     || fail "the session did not start (docker run failed)"
 
   say "started $container: signaller $signal, player $player, controller $controller, automation $automation"
@@ -229,6 +316,7 @@ cmd_up() {
 
 cmd_status() {
   local names container state
+  keepalive_state
   names="$(wsl_run "docker ps -a --filter label=$session_label --format {{.Names}}")" || fail "cannot ask $distro for its containers"
   if [[ -z "$names" ]]; then
     say "no sessions"
@@ -254,6 +342,10 @@ cmd_logs() {
   fi
 }
 
+# What a person opens, and from where. WSL is in mirrored networking mode (the
+# owner's .wslconfig, Nov 11 2026), so the distro's own addresses are this PC's
+# LAN address and another device on the Wi-Fi reaches the session there; a
+# browser on this PC uses localhost, where the media does not flow (README).
 cmd_url() {
   local container controller signal player automation address
   check_name
@@ -271,10 +363,20 @@ cmd_url() {
     fail "no session named $name"
   fi
   address="$(wsl_run "hostname -I" | awk '{print $1}')"
-  say "player:     http://localhost:$player/"
-  say "controller: localhost:$controller   (other devices on the Wi-Fi use $address:$controller)"
+  say "player:     http://localhost:$player/   on this PC"
+  say "            http://$address:$player/   from another device on the Wi-Fi"
+  say "controller: localhost:$controller   from a phone on the Wi-Fi $address:$controller"
   say "signalling: $address:$signal"
   say "automation: 127.0.0.1:$automation in $distro (the token is /run/thumb-party/automation.token)"
+}
+
+# The keep-alive on its own: whether it runs, and --stop to end it. It never
+# needs the distro to answer, so it works while the distro is asleep.
+cmd_keep_alive() {
+  if [[ "$keep_alive_stop" == "yes" ]]; then
+    stop_keepalive
+  fi
+  keepalive_state
 }
 
 # Runs the analytics report over a folder of summaries on this machine: the
@@ -286,17 +388,20 @@ print_report() {
 # One benchmark (M15 c2): the sessions run inside the distro, the summaries
 # come back into docs/, and the Streaming report is printed here.
 cmd_bench() {
-  local dest remote files file extra=""
+  local dest remote files file extra="" setting target
+  target="$results/$label"
   if [[ ! "$label" =~ ^[a-z0-9][a-z0-9-]*$ ]]; then
     fail "the label is lower-case letters, digits and dashes, got \"$label\""
   fi
+  check_settings
+  for setting in "${settings[@]}"; do extra="$extra --set $setting"; done
+  if [[ "$probe" == "yes" ]]; then extra="$extra --probe"; fi
+  if [[ "$keep" == "yes" ]]; then extra="$extra --keep"; fi
   if ! wsl_run "docker image inspect $image > /dev/null 2>&1"; then
     fail "the image $image isn't in $distro yet: run tools/stream.sh build"
   fi
   dest="$(sync_repo)" || fail "the copy into $distro failed"
   remote="/work/stream-bench/$label"
-  if [[ "$probe" == "yes" ]]; then extra="$extra --probe"; fi
-  if [[ "$keep" == "yes" ]]; then extra="$extra --keep"; fi
   say "benching $sessions session(s) for ${seconds}s in $distro …"
   wsl_run "bash $dest/streaming/bench.sh --sessions $sessions --seconds $seconds --game $game \
     --size $size --players $players --label $label --out $remote$extra" \
@@ -306,11 +411,16 @@ cmd_bench() {
     fail "the benchmark left no summaries in $remote"
   fi
   for file in $files; do
-    tools/wsl-fetch.sh "$distro" "$remote/summaries/$file" "$results_root/$label/$file" \
+    tools/wsl-fetch.sh "$distro" "$remote/summaries/$file" "$target/$file" \
       || fail "could not copy $file out of $distro"
   done
-  say "summaries copied to $results_root/$label"
-  print_report "$results_root/$label"
+  say "summaries copied to $target"
+  # A bench that leaves its sessions running leaves the distro needing the
+  # keep-alive too.
+  if [[ "$keep" == "yes" ]]; then
+    start_keepalive
+  fi
+  print_report "$target"
 }
 
 cmd_stats() {
@@ -326,6 +436,7 @@ cmd_down() {
     containers="$(wsl_run "docker ps -a --filter label=$session_label --format {{.Names}}")" || fail "cannot ask $distro for its containers"
     if [[ -z "$containers" ]]; then
       say "no sessions to stop"
+      stop_keepalive
       return 0
     fi
   else
@@ -336,13 +447,22 @@ cmd_down() {
     wsl_run "docker rm -f $container" > /dev/null || fail "could not stop $container"
     say "stopped $container"
   done
+  # The last session's end ends the keep-alive: nothing is left to hold the
+  # distro up for, and a distro nobody uses should be allowed to sleep.
+  if [[ -z "$(wsl_run "docker ps --filter label=$session_label --format {{.Names}}")" ]]; then
+    stop_keepalive
+  fi
 }
 
 while (( $# > 0 )); do
   case "$1" in
-    build | up | bench | stats | status | logs | url | down)
+    build | up | bench | stats | status | keep-alive | logs | url | down)
       command="$1"
       shift
+      ;;
+    --set)
+      settings+=("${2:-}")
+      shift 2 || { printf 'stream: --set needs KEY=VALUE\n' >&2; usage; exit 2; }
       ;;
     --distro)
       distro="${2:-}"
@@ -400,6 +520,10 @@ while (( $# > 0 )); do
       all="yes"
       shift
       ;;
+    --stop)
+      keep_alive_stop="yes"
+      shift
+      ;;
     --help | -h)
       usage
       exit 0
@@ -426,6 +550,7 @@ case "$command" in
   bench) cmd_bench ;;
   stats) cmd_stats ;;
   status) cmd_status ;;
+  keep-alive) cmd_keep_alive ;;
   logs) cmd_logs ;;
   url) cmd_url ;;
   down) cmd_down ;;

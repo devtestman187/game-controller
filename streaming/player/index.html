@@ -95,6 +95,9 @@
 
 <body>
   <video id="screen" autoplay muted playsinline disablepictureinpicture></video>
+  <!-- The sound, on its own element when the session splits the two tracks
+       (M15 t1): a video element held back to match its audio buffers less. -->
+  <audio id="sound-track" autoplay></audio>
   <div id="stats"></div>
   <div id="status">connecting…</div>
   <button id="toggle" title="Show statistics (S)">i</button>

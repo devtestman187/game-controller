@@ -20,10 +20,43 @@ width="${SESSION_WIDTH:-1920}"
 height="${SESSION_HEIGHT:-1080}"
 frame_rate="${SESSION_FRAME_RATE:-60}"
 # 10 Mbit/s is the starting point the design names for 1080p60 at low delay.
+# This is the ceiling the video keeps: webrtcsink runs its own bitrate control
+# and sets the encoder's bitrate itself, so the number goes to the element as
+# well as to the encoder. What a viewer receives is this plus FEC and the sound,
+# and FEC is the larger part of it: a 1080p Arena round carried 11.6 Mbit/s at
+# 10 Mbit/s set (M15 t1) and 7.2 Mbit/s with `SESSION_FEC=false`, because the
+# encoder sends what the picture needs up to the ceiling, not the ceiling.
 bitrate_kbps="${SESSION_BITRATE_KBPS:-10000}"
+bitrate_bps=$((bitrate_kbps * 1000))
 # A keyframe a second, so a player that joins or reconnects sees a picture at
-# once and a lost packet costs at most one second.
+# once and a lost packet costs at most one second. -1 is no periodic keyframe at
+# all, only the ones a receiver asks for (PLI/FIR, which webrtcsink forwards).
+# The default stays one a second: M15 t1 measured that removing them made the
+# receiver's buffer worse rather than better (262 ms against 127-170, see
+# streaming/README.md).
 gop_frames="${SESSION_GOP_FRAMES:-${frame_rate}}"
+# The encoder's VBV/HRD buffer in kbits, which bounds how far one frame may run
+# over the bitrate (0 = NVENC's own default, a second's worth). One frame's
+# worth, bitrate / frame rate, made every frame cost about the same and looked
+# like the best of M15 t1's tuning: two runs had stream_total 144-145 ms against
+# the baseline's 161-205, press-to-screen 213-223 ms against 230-266, and the
+# receiver's jitter buffer 110 ms against 127-170. Three more runs with it on by
+# default came out at 145-182 and 220-250, so the gain is inside this PC's
+# run-to-run noise (44 ms) and it stays a switch, off by default.
+vbv_kbits="${SESSION_VBV_KBITS:-0}"
+# Forward error correction and retransmission, both on: a home Wi-Fi drops the
+# odd packet, and a retransmitted frame costs less than a concealed one. M15 t1
+# measured no lower delay with them off, and turning FEC off only saves the
+# bandwidth it adds (7.2 Mbit/s without it against 11.6 with it, the same Arena
+# round), so both stay on and the pair is a switch for a network that needs the
+# bandwidth instead.
+do_fec="${SESSION_FEC:-true}"
+do_retransmission="${SESSION_RETRANSMISSION:-true}"
+# Whether the player page plays the picture and the sound on two media elements
+# instead of one, so Chrome's audio/video sync does not hold the picture back.
+# Off: M15 t1 measured it *worse* (42 delivered fps against 53, press 246 ms
+# against 230, see streaming/README.md), so one element stays.
+split_tracks="${SESSION_SPLIT_TRACKS:-false}"
 # nvh264enc is broken on this driver (M15 wsl2 probe); the auto and cuda
 # elements both work. The image carries gst-plugins-rs and NVENC only.
 encoder="${SESSION_ENCODER:-nvautogpuh264enc}"
@@ -170,9 +203,13 @@ start_signalling() {
 start_player() {
   mkdir -p "$run_dir/player"
   cp -r "$player_src/." "$run_dir/player/"
-  # The page learns the signalling port from this file, so the same page works
-  # for every session and for a player that is not on this machine.
-  printf 'window.THUMB_PARTY = { signalingPort: %s };\n' "$signal_port" > "$run_dir/player/config.js"
+  # The page learns the signalling port and the two player settings from this
+  # file, so the same page works for every session and for a player that is not
+  # on this machine. `splitTracks` plays the picture and the sound on separate
+  # media elements (M15 t1 experiment 1): off unless SESSION_SPLIT_TRACKS says
+  # on, because it measured no gain on this pipeline (streaming/README.md).
+  printf 'window.THUMB_PARTY = { signalingPort: %s, splitTracks: %s };\n' \
+    "$signal_port" "$split_tracks" > "$run_dir/player/config.js"
   start_logged "$player_log" \
     python3 "$run_dir/player/serve.py" --port "$player_port" --directory "$run_dir/player" \
       --automation-port "$automation_port" --token "$automation_token" --state "$run_dir"
@@ -214,6 +251,9 @@ build_pipeline() {
     # and no lookahead, so a frame leaves as soon as it is encoded.
     cmd+=("$encoder" "bitrate=$bitrate_kbps" rate-control=cbr
       "gop-size=$gop_frames" b-frames=0 zero-reorder-delay=true preset=p1 tune=ultra-low-latency rc-lookahead=0)
+    if (( vbv_kbits > 0 )); then
+      cmd+=("vbv-buffer-size=$vbv_kbits" strict-gop=true)
+    fi
   else
     cmd+=("$encoder" "bitrate=$bitrate_kbps")
   fi
@@ -221,6 +261,8 @@ build_pipeline() {
     '!' h264parse config-interval=-1
     '!' webrtcsink name=ws "signaller::uri=ws://127.0.0.1:$signal_port"
     video-caps=video/x-h264 audio-caps=audio/x-opus congestion-control=disabled
+    "max-bitrate=$bitrate_bps" "start-bitrate=$bitrate_bps"
+    "do-fec=$do_fec" "do-retransmission=$do_retransmission"
     pulsesrc device=party.monitor '!' queue '!' audioconvert '!' audioresample '!'
     audio/x-raw,rate=48000,channels=2 '!' opusenc "bitrate=$audio_bitrate_bps" '!' 'ws.'
   )
@@ -329,7 +371,7 @@ wait_ready() {
     say "$(tail -n 20 "$pipe_log" 2>/dev/null)"
     return 1
   }
-  say "ready: session=$session_name player=http://localhost:$player_port/ controller=localhost:$controller_port automation=127.0.0.1:$automation_port ${width}x${height}@${frame_rate} ${bitrate_kbps}kbit/s"
+  say "ready: session=$session_name player=http://localhost:$player_port/ controller=localhost:$controller_port automation=127.0.0.1:$automation_port ${width}x${height}@${frame_rate} ${bitrate_kbps}kbit/s ${gop_frames}f gop"
   say "pipeline registered: $producer"
 }
 

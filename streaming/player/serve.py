@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""The session's player page and its small relay (M15 c2).
+"""The session's player page and its small relay (M15 c2, t1).
 
 One Python process serves the player page and passes the page's measurements
 to the host's automation interface with the session's token, so the browser
@@ -10,9 +10,9 @@ presses the benchmark wants timed.
     serve.py --port 45782 --directory /run/thumb-party/player \
         --automation-port 45783 --token <token> --state /run/thumb-party
 
-Every call starts with `/`, and the paths the page (and the benchmark) use are:
+The page talks to this process on these paths, and nothing else answers:
 
-    GET  /                 the player page and its files
+    GET  /                 the player page and the files it loads
     GET  /clock            {"ok": true, "hostMs": <the host's clock>}
     GET  /pipeline         the host's stages the sampler left (pipeline.json)
     GET  /presses?since=N  the presses with an id above N
@@ -23,13 +23,25 @@ Every call starts with `/`, and the paths the page (and the benchmark) use are:
     POST /player           {"state": "...", ...}
     POST /stats/stream     one batch of measurements, sent to the host as it is
 
-Only the loopback address is used for the automation interface, so a browser
-elsewhere can measure a session but never reach the host's own API.
+Of those, exactly two reach the host's automation interface, with the session's
+token and no other credentials: `GET /status`, asked for `/clock`, because the
+press probe needs the host's own clock; and `POST /stats/stream`, the
+measurements the stats framework keeps. Nothing else of the host's API is
+reachable through this process — a path it does not list above answers 404,
+and its own API (`/players`, `game/start`, `probe/press`, …) has no route here.
+A browser on the network can therefore measure a session and nothing more; the
+measurements it sends are trusted, because anyone who can open the page can
+send them (docs/automation.md).
+
+The body of a POST is one small JSON object: at most `max_body_bytes` (64 KB),
+which is a whole batch of a viewer's numbers with room to spare. A longer one
+is refused before it is read.
 """
 
 import argparse
 import json
 import os
+import re
 import sys
 import threading
 import urllib.error
@@ -45,9 +57,42 @@ host_timeout_s = 5
 # The path every automation call starts with.
 automation_prefix = "/automation/v1"
 
+# The most a POST body may be: one batch of a viewer's measurements is about
+# 2 KB and a press is a few dozen bytes, so 64 KB is room and no more. The
+# relay is reachable from anywhere the page is, and the host's ingest keeps what
+# it is given, so an open body would be an open memory hole.
+max_body_bytes = 64 * 1024
+
+# The files the page loads, which are the only things it can fetch from here.
+page_files = frozenset(("index.html", "config.js", "player.js", "metrics.js", "reporter.js", "stats.js"))
+
+# The folder the page's one library is served from (gstwebrtc-api, written by
+# the Dockerfile); a name in it is letters, digits, dots and dashes only.
+library_dir = "lib/"
+
+# What a file name may look like: no slashes, no dots leading out of the folder.
+plain_name = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
+
+
+def is_page_file(path):
+    """Whether `path` is one of the page's own files, which it may fetch."""
+    name = path.lstrip("/")
+    # `/` is the page itself: http.server answers it with index.html.
+    if name == "" or name in page_files:
+        return True
+    if name.startswith(library_dir):
+        return plain_name.match(name[len(library_dir):]) is not None
+    return False
+
 
 class Relay:
     """What the page and the benchmark send each other, and the host's address."""
+
+    # The only two calls this process makes to the host, with the session's
+    # token: its status (for `/clock`) and the measurements (`/stats/stream`).
+    # Every other path is answered here or refused, so the relay cannot be
+    # turned into a door to the host's own API.
+    host_paths = frozenset(("/status", "/stats/stream"))
 
     def __init__(self, automation_port, token, state_dir):
         self.automation_url = "http://127.0.0.1:%d" % automation_port
@@ -71,6 +116,8 @@ class Relay:
 
     def call(self, method, path, body=None):
         """One automation call, answering (status, decoded body or text)."""
+        if path not in self.host_paths:
+            return 404, {"ok": False, "error": "the relay makes no call at %s" % path}
         data = None if body is None else json.dumps(body).encode("utf-8")
         request = urllib.request.Request(self.automation_url + automation_prefix + path, data=data, method=method)
         request.add_header("x-automation-token", self.token)
@@ -106,6 +153,10 @@ class Handler(SimpleHTTPRequestHandler):
 
     relay = None
 
+    # The paths a POST may go to; anything else is refused before its body is
+    # read, so an unlisted path never gets as far as the host.
+    post_paths = frozenset(("/stats/stream", "/presses", "/flips", "/player"))
+
     def do_GET(self):  # noqa: N802 - the name http.server asks for
         path, _, query = self.path.partition("?")
         if path == "/clock":
@@ -118,13 +169,19 @@ class Handler(SimpleHTTPRequestHandler):
             return self._json(200, {"ok": True, "flips": self.relay.since(self.relay.flips, _since(query))})
         if path == "/player":
             return self._json(200, {"ok": True, "player": self.relay.player})
-        return super().do_GET()
+        if is_page_file(path):
+            return super().do_GET()
+        return self._json(404, {"ok": False, "error": "no file at %s" % path})
 
     def do_POST(self):  # noqa: N802 - the name http.server asks for
         path = self.path.partition("?")[0]
-        body = self._body()
-        if body is None:
-            return self._json(400, {"ok": False, "error": "the body is a JSON object"})
+        if path not in self.post_paths:
+            return self._json(404, {"ok": False, "error": "no call at %s" % path})
+        body, refused = self._body()
+        if refused is not None:
+            return self._json(refused, {"ok": False, "error": _refusal_text(refused)})
+        if not isinstance(body, dict):
+            return self._json(400, {"ok": False, "error": _refusal_text(400)})
         if path == "/stats/stream":
             status, answer = self.relay.call("POST", "/stats/stream", body)
             return self._json(status, answer)
@@ -134,18 +191,23 @@ class Handler(SimpleHTTPRequestHandler):
         if path == "/flips":
             ident = self.relay.add(self.relay.flips, body)
             return self._json(200, {"ok": True, "id": ident})
-        if path == "/player":
-            with self.relay.lock:
-                self.relay.player = body
-            return self._json(200, {"ok": True})
-        return self._json(404, {"ok": False, "error": "no call at %s" % path})
+        # The guard above leaves only `/player` by the time it gets here.
+        with self.relay.lock:
+            self.relay.player = body
+        return self._json(200, {"ok": True})
 
     def _body(self):
+        """The POST's JSON object, or (None, the status to refuse it with)."""
         try:
             length = int(self.headers.get("content-length", "0"))
-            return json.loads(self.rfile.read(length).decode("utf-8"))
+        except ValueError:
+            return None, 400
+        if length > max_body_bytes:
+            return None, 413
+        try:
+            return json.loads(self.rfile.read(length).decode("utf-8")), None
         except (ValueError, OSError):
-            return None
+            return None, 400
 
     def _json(self, status, body):
         text = json.dumps(body).encode("utf-8")
@@ -171,6 +233,13 @@ def _since(query):
             except ValueError:
                 return 0
     return 0
+
+
+def _refusal_text(status):
+    """The one line the page shows for a body it cannot take."""
+    if status == 413:
+        return "the body is over %d bytes" % max_body_bytes
+    return "the body is a JSON object"
 
 
 def main():

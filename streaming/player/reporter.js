@@ -76,13 +76,17 @@ export class StreamReporter {
    * @param {object} parts
    * @param {HTMLVideoElement} parts.video - the element the stream plays in
    * @param {RTCPeerConnection} parts.peerConnection - the connection to the TV
-   * @param {(text: string) => void} parts.onStatus - where a refusal is shown
+   * @param {(text: string) => void} parts.onProblem - where a measurement
+   *   problem goes: the console and the stats overlay, never the picture
    * @param {number} [parts.reconnects] - reconnects this page has had already
    */
-  constructor({ video, peerConnection, onStatus, reconnects = 0 }) {
+  constructor({ video, peerConnection, onProblem, reconnects = 0 }) {
     this._video = video;
     this._peerConnection = peerConnection;
-    this._onStatus = onStatus;
+    this._onProblem = onProblem;
+    // A batch of measurements is worth showing once: the same failure every
+    // 3 s would bury the numbers in the overlay.
+    this._lastProblem = "";
     this._viewerId = "";
     this._offsets = [];
     this._previous = { video: null, audio: null, pair: null };
@@ -133,6 +137,18 @@ export class StreamReporter {
     this._video.requestVideoFrameCallback(onFrame);
   }
 
+  /**
+   * Notes a measurement problem where the viewer is not looking: the console,
+   * and the stats overlay the "i" key opens. Watching the picture is what a
+   * viewer is here for, so a failed measurement never covers it (M15 t1).
+   */
+  _problem(text) {
+    if (text === this._lastProblem) return;
+    this._lastProblem = text;
+    console.warn(`player: ${text}`);
+    this._onProblem(text);
+  }
+
   /** The delivered frame rate the last statistics sample saw. */
   _deliveredFps() {
     return this._previous.video?.framesPerSecond || defaultFps;
@@ -172,7 +188,7 @@ export class StreamReporter {
       const pixel = context.getImageData(0, 0, 1, 1).data;
       return luminanceOf(pixel[0], pixel[1], pixel[2]);
     } catch (error) {
-      this._onStatus(`cannot watch the picture: ${error.message}`);
+      this._problem(`cannot watch the picture: ${error.message}`);
       return null;
     }
   }
@@ -219,7 +235,7 @@ export class StreamReporter {
         this._presses.push({ hostMs: press.hostMs, receivedAtMs: performance.now(), seen: false, expired: false });
       }
     } catch (error) {
-      this._onStatus(`cannot read the press probe: ${error.message}`);
+      this._problem(`cannot read the press probe: ${error.message}`);
     }
     const deadline = performance.now() - pressTimeoutMs;
     this._presses = this._presses.filter((press) => {
@@ -260,7 +276,7 @@ export class StreamReporter {
     try {
       report = await this._peerConnection.getStats();
     } catch (error) {
-      this._onStatus(`statistics stopped: ${error.message}`);
+      this._problem(`statistics stopped: ${error.message}`);
       return;
     }
     const current = { video: null, audio: null, pair: null, codec: null, relay: null };
@@ -364,16 +380,19 @@ export class StreamReporter {
       });
       const body = await response.json();
       if (!response.ok || body.ok !== true) {
-        this._onStatus(`the host did not take the measurements: ${body.error ?? response.status}`);
+        this._problem(`the host did not take the measurements: ${body.error ?? response.status}`);
         return;
       }
-      if (this._viewerId === "") this._viewerId = body.viewer;
+      // `accepted: false` is the host saying no game session is running yet, so
+      // there is nothing to keep the numbers for: the home screen, which is a
+      // normal state and not a failure (M15 f1).
+      if (this._viewerId === "" && typeof body.viewer === "string") this._viewerId = body.viewer;
       this._presses = this._presses.filter((press) => !press.sent);
       this._late = 0;
       this._displayMs = 0;
       this._displayFrames = 0;
     } catch (error) {
-      this._onStatus(`cannot send the measurements: ${error.message}`);
+      this._problem(`cannot send the measurements: ${error.message}`);
     }
   }
 }

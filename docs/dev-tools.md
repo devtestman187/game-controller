@@ -205,7 +205,8 @@ All done.
 tools/stream.sh build                        # build tp-session:latest from this checkout
 tools/stream.sh up                           # start session "party", wait until it is ready
 tools/stream.sh up --name kitchen --port-base 46000
-tools/stream.sh status                       # what runs, and its ready line
+tools/stream.sh status                       # what runs, its ready line, and the keep-alive
+tools/stream.sh keep-alive --stop            # end the keep-alive by hand (down does it)
 tools/stream.sh logs --name party --follow
 tools/stream.sh url --name party             # the player URL and the controller address
 tools/stream.sh down --name kitchen          # stop one session
@@ -214,6 +215,7 @@ tools/stream.sh bench                        # 60 s Arena through a session and 
 tools/stream.sh bench --sessions 2 --seconds 60 --label two60
 tools/stream.sh bench --probe --seconds 60   # time presses against the latency card instead of a round
 tools/stream.sh bench --size 1280x720        # the same machine at 720p
+tools/stream.sh bench --set SESSION_FEC=false  # one more setting for the session container, no rebuild
 tools/stream.sh stats                        # the Streaming report for the summaries the last bench fetched
 ```
 
@@ -221,8 +223,9 @@ Runs the TV app as a streamed session: the app draws into a virtual screen insid
 
 - **Where it runs:** inside the locked-down `tp-` WSL distro (`--distro`, or `$STREAM_DISTRO`, default `tp-stream`). It only ever calls `wsl -d <distro> ...` and [`wsl-sync.sh`](../tools/wsl-sync.sh) / [`wsl-fetch.sh`](../tools/wsl-fetch.sh); the distro cannot see the Windows files, so `build` copies the checkout in first.
 - **A distro name not starting with `tp-` is refused** (exit code 2, nothing else runs), so a command can't land in a distro that has the Windows side mounted.
-- **Ports:** a session takes three in a row from `--port-base` (default 45780): the controller the phones connect to, then WebRTC signalling, then the player page. Two sessions at once need different bases; `url` prints each one's addresses. The TV app has the last word on the controller port — it takes a free one when the one it was given is busy — so `url` and the session's `ready:` line report the port it got.
+- **Ports:** a session takes three in a row from `--port-base` (default 45780): the controller the phones connect to, then WebRTC signalling, then the player page. Two sessions at once need different bases; `url` prints each one's addresses, both `localhost:<port>` and the one the distro holds on the network (the PC's own LAN address in WSL2's mirrored networking). The TV app has the last word on the controller port — it takes a free one when the one it was given is busy — so `url` and the session's `ready:` line report the port it got.
 - **Waiting for ready:** `up` waits for the session's own `ready:` line (the game's home screen is up, the pipeline is registered with the signalling server) for up to two minutes, and shows the container's log when it never comes or the container ended.
+- **The keep-alive (M15 t1):** WSL stops the distro a few seconds after the last Windows command attached to it ends, and that kills every session in it. `up` (and `bench --keep`) therefore leaves a detached `wsl -d <distro> -u root -- sleep infinity` running, with its pid in `%TEMP%\tp-stream-keepalive.pid` (`STREAM_KEEPALIVE_FILE` points it elsewhere, which is how the tests run it), and `down` of the last session ends it. `status` prints whether it is alive; `keep-alive --stop` ends it by hand. Only that pid is ever ended, and only after its command line is checked to be that `sleep infinity`.
 - **It never keeps state on the Windows side:** sessions are containers in the distro, named `thumb-party-<name>` and labelled `thumb-party.session`, which is how `status` and `down` find them.
 - **Exit code:** 0 ok, 1 the step failed (with the log or the reason), 2 bad use (unknown command or option, a bad name, port base or distro).
 - **What it doesn't do:** create or stop sessions from the app (that is server work), delete the image (`docker rmi tp-session:latest` in the distro), or open the player in a browser. It prints the address; opening it is yours.
@@ -232,6 +235,8 @@ Runs the TV app as a streamed session: the app draws into a virtual screen insid
 `bench` runs the same image without a person in front of it: it starts one or more sessions, adds a simulated player, opens the player page in headless Chrome and lets a round (or, with `--probe`, the latency test card) run for `--seconds`. The container's sampler feeds the host's automation interface while the round runs, and when it ends the session's summary — with its whole `stream` record — is copied out to `docs/briefs/m15/c2/results/<label>/` and the Streaming report for it is printed. `--keep` leaves the containers up for a look; a run without it removes them.
 
 `stats` prints the same report for summaries already fetched (`--results <dir>`, default `docs/briefs/m15/c2/results`), so a run can be re-read without the distro. A label is lower-case letters, digits and dashes: it names the folder under `docs/`, and a bad one is refused before anything starts.
+
+A tuning experiment needs no rebuild: `bench --set KEY=VALUE` (repeated) adds one `-e` to the session containers, and `streaming/README.md` lists the settings the entrypoint reads (bitrate, GOP, VBV, FEC, retransmission, split tracks, encoder, size). The run line ends with the bitrate the viewers received against the ceiling the video asks for — received is the video, FEC and the sound together, so it sits above that ceiling when the picture fills it.
 
 A round the app does not show within a few seconds is started again: a `game/start` sent while the session is still warming up is dropped, and the app stays on its home screen. The bench waits for `GET status` to say the game screen and checks it is still there a few seconds later; a session that never gets there fails the run instead of measuring the home screen.
 

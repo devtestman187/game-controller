@@ -20,7 +20,14 @@ const statsIntervalMs = 1000;
 
 const signalPort = (window.THUMB_PARTY && window.THUMB_PARTY.signalingPort) || 8443;
 
+// Whether the picture and the sound play from two separate media elements.
+// Chrome holds video back to stay in sync with the audio's larger buffer; each
+// element with its own track keeps its own (M15 t1 experiment 1, off unless
+// `SESSION_SPLIT_TRACKS` is on: see streaming/README.md).
+const splitTracks = Boolean(window.THUMB_PARTY && window.THUMB_PARTY.splitTracks);
+
 const screen = document.getElementById("screen");
+const soundTrack = document.getElementById("sound-track");
 const statsBox = document.getElementById("stats");
 const statusBox = document.getElementById("status");
 const toggleButton = document.getElementById("toggle");
@@ -38,9 +45,21 @@ let reconnectTimer = null;
 // wait is a start, not a reconnect.
 let reconnects = 0;
 let hasPlayed = false;
+// The stream the two elements are playing, so the same one is not set twice.
+let playingStream = null;
+// The last measurement problem, shown in the stats overlay only. Watching the
+// picture is what a viewer is here for, so a failed measurement never covers
+// it (M15 t1: the owner saw "the host did not take the measurements" across
+// the picture on a phone).
+let problem = "";
 
 function setStatus(text) {
   statusBox.textContent = text;
+}
+
+// Where the reporter's problems go: the console always, the stats overlay too.
+function noteProblem(text) {
+  problem = text;
 }
 
 function signallingUrl() {
@@ -61,20 +80,41 @@ function tuneForLowDelay(peerConnection) {
   }
 }
 
+// The stream's picture on its own when the tracks are split, so the video
+// element's buffer holds no audio to wait for.
+function pictureOf(stream) {
+  if (!splitTracks) return stream;
+  const tracks = stream.getVideoTracks();
+  return tracks.length === 0 ? stream : new MediaStream(tracks);
+}
+
+// The stream's sound on its own, or null when one element plays both.
+function soundOf(stream) {
+  if (!splitTracks) return null;
+  const tracks = stream.getAudioTracks();
+  return tracks.length === 0 ? null : new MediaStream(tracks);
+}
+
 // Starts the picture, then tries to start the sound with it. Browsers that
 // only start sound after a tap show the button instead.
 async function startPlayback() {
   screen.muted = true;
+  soundTrack.muted = true;
   try {
     await screen.play();
     hasPlayed = true;
     reportPlayerState("playing");
   } catch (error) {
     setStatus(`cannot start the picture: ${error.message}`);
+    // The benchmark is waiting for "playing" and would only see "streaming":
+    // say why the picture did not start, so a run's failure has a reason.
+    reportPlayerState("cannot play", { reason: error.message });
     return;
   }
   try {
     screen.muted = false;
+    soundTrack.muted = false;
+    if (splitTracks) await soundTrack.play();
     await screen.play();
     soundButton.classList.remove("visible");
     setStatus("playing");
@@ -85,12 +125,14 @@ async function startPlayback() {
 }
 
 function showStats(stats) {
-  statsBox.textContent = [
+  const lines = [
     `picture   ${stats.widthPx}x${stats.heightPx} at ${stats.framesPerSecond.toFixed(0)} fps`,
     `video     ${stats.videoKbitPerS} kbit/s   sound ${stats.audioKbitPerS} kbit/s`,
     `round trip ${stats.roundTripMs} ms   jitter buffer ${stats.jitterBufferMs} ms`,
     `decode    ${stats.decodeMsPerFrame} ms a frame   dropped ${stats.droppedFrames}`,
-  ].join("\n");
+  ];
+  if (problem !== "") lines.push(`measurement: ${problem}`);
+  statsBox.textContent = lines.join("\n");
 }
 
 function stopStats() {
@@ -108,7 +150,8 @@ function startStats(peerConnection) {
     try {
       showStats(await meter.sample());
     } catch (error) {
-      setStatus(`statistics stopped: ${error.message}`);
+      noteProblem(`statistics stopped: ${error.message}`);
+      console.warn(`player: statistics stopped: ${error.message}`);
       stopStats();
     }
   };
@@ -129,7 +172,7 @@ function reportPlayerState(state, extra = {}) {
 // reads the same connection's numbers and the frame times the browser gives.
 function startReporting(peerConnection) {
   stopReporting();
-  reporter = new StreamReporter({ video: screen, peerConnection, onStatus: setStatus, reconnects });
+  reporter = new StreamReporter({ video: screen, peerConnection, onProblem: noteProblem, reconnects });
   reporter.start();
 }
 
@@ -144,6 +187,7 @@ function closeConsumer() {
   stopStats();
   stopReporting();
   reportPlayerState("closed");
+  playingStream = null;
   if (consumer !== null) {
     const closing = consumer;
     consumer = null;
@@ -151,6 +195,8 @@ function closeConsumer() {
   }
   screen.pause();
   screen.srcObject = null;
+  soundTrack.pause();
+  soundTrack.srcObject = null;
 }
 
 function scheduleReconnect() {
@@ -191,10 +237,15 @@ function connectTo(producerId) {
   });
   session.addEventListener("streamsChanged", () => {
     const streams = session.streams;
-    if (consumer === session && streams.length > 0 && screen.srcObject !== streams[0]) {
-      screen.srcObject = streams[0];
-      startPlayback();
+    if (consumer === session && streams.length > 0 && playingStream !== streams[0]) {
+      playingStream = streams[0];
+      screen.srcObject = pictureOf(streams[0]);
+      soundTrack.srcObject = soundOf(streams[0]);
+      // "streaming" goes first and "playing" lands when the picture starts, so
+      // a benchmark that waits for either sees them in that order however fast
+      // the browser's play() answers (M15 t1: the two raced).
       reportPlayerState("streaming");
+      startPlayback();
     }
   });
   session.addEventListener("stateChanged", () => {
@@ -266,7 +317,9 @@ soundButton.addEventListener("click", async (event) => {
   event.preventDefault();
   soundButton.classList.remove("visible");
   screen.muted = false;
+  soundTrack.muted = false;
   try {
+    if (splitTracks) await soundTrack.play();
     await screen.play();
   } catch (error) {
     setStatus(`cannot start the sound: ${error.message}`);

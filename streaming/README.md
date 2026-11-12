@@ -18,7 +18,7 @@ what is in the image and what the owner has to do outside it.
 | PulseAudio | One null sink (`party`); the app's sound goes there because `/etc/asound.conf` points ALSA at Pulse, and the pipeline records its monitor |
 | `webrtcsink` (gst-plugins-rs) | NVENC H.264 and Opus into one WebRTC stream, one consumer per connected player |
 | `gst-webrtc-signalling-server` | Tells the player and the pipeline how to find each other (it has to be its own process) |
-| `python3 -m http.server` | Serves the player page and the built `gstwebrtc-api` bundle |
+| [`player/serve.py`](player/serve.py) | Serves the player page and the built `gstwebrtc-api` bundle, and is the page's only way to the host (see "The relay" below) |
 | [`entrypoint.sh`](entrypoint.sh) | Starts all of the above in order, waits until the game's home screen is up and the pipeline has registered, then prints the `ready:` line and supervises them: anything ending ends the session |
 
 The session runs as the unprivileged user `party`. In a WSL2 GPU container
@@ -51,18 +51,45 @@ port …"). Pinning it is a change to the app, not to this image.
 The defaults (`8080`, `8443`, `45780`) are what `docker run` without settings
 gives, so the image is usable by hand too.
 
+## The picture's settings (M15 t1)
+
+Each is one `-e KEY=VALUE` on `docker run`; `tools/stream.sh bench --set
+KEY=VALUE` passes them without a rebuild, which is how the tuning was measured.
+The comments in [`entrypoint.sh`](entrypoint.sh) carry the numbers behind each
+default.
+
+| Setting | Default | What it does, and what M15 t1 measured |
+| --- | --- | --- |
+| `SESSION_BITRATE_KBPS` | 10000 | The video's ceiling: `webrtcsink`'s `max-bitrate` and `start-bitrate` and NVENC's own bitrate. A 1080p Arena round carried 11.6 Mbit/s with FEC on, 7.2 without |
+| `SESSION_GOP_FRAMES` | the frame rate (a keyframe a second) | `-1` is keyframes on request only. Worse: the receiver's jitter buffer 262 ms against 127–170. Left at one a second so a joining player sees a picture at once |
+| `SESSION_VBV_KBITS` | 0 (NVENC's default, a second's worth) | The encoder's VBV/HRD buffer, in kbits. One frame's worth (167 at 10 Mbit/s and 60 fps) looked better twice (total 144–145 ms, press 213–223), then three runs of it came out inside the run-to-run noise (145–182, 220–250), so it is off |
+| `SESSION_FEC` | true | Forward error correction. No lower delay with it off, and it is the larger part of what is received above the ceiling (11.6 Mbit/s against 7.2) |
+| `SESSION_RETRANSMISSION` | true | Resend lost packets; no delay difference either way |
+| `SESSION_SPLIT_TRACKS` | false | Play picture and sound on two media elements so the browser stops syncing them. Worse: 42 delivered fps against 53, press 246 ms against 230, so one element stays |
+| `SESSION_ENCODER` | `nvautogpuh264enc` | `nvcudah264enc` also works and was no better (press 261 ms against the baseline's 230–266) |
+| `SESSION_WIDTH`, `SESSION_HEIGHT`, `SESSION_FRAME_RATE` | 1920, 1080, 60 | The window and the encoder size. 720p was worse (total 186 ms, jitter 151) |
+
 ## Building and running it
 
 ```bash
 tools/stream.sh build                     # copy this checkout into the distro, build tp-session:latest there
 tools/stream.sh up                        # start session "party" and wait for its ready line
-tools/stream.sh status                    # what runs, and its ready line
+tools/stream.sh status                    # what runs, its ready line, and the keep-alive
 tools/stream.sh logs --name party --follow
-tools/stream.sh url                       # the player URL and the controller address
+tools/stream.sh url                       # the player URL (localhost and LAN) and the controller address
 tools/stream.sh up --name kitchen --port-base 46000
 tools/stream.sh down --name kitchen       # stop one session
 tools/stream.sh down --all                # stop every session
+tools/stream.sh keep-alive --stop         # end the keep-alive by hand (down of the last session does)
 ```
+
+`up` leaves a detached `wsl -d tp-stream -u root -- sleep infinity` running,
+because WSL stops the distro a few seconds after the last Windows command
+attached to it ends, and that would kill the session with it. The process's pid
+is kept in `%TEMP%\tp-stream-keepalive.pid` (`STREAM_KEEPALIVE_FILE` moves it),
+`status` prints whether it is alive, and `down` of the last session ends it.
+Only that one process is ever ended, and only after its command line is checked
+to be that `sleep infinity`.
 
 The image is built inside the locked-down `tp-` WSL distro (see
 [wsl-sync.sh](../tools/wsl-sync.sh)), never on the Windows side, and it builds
@@ -120,10 +147,16 @@ whole stream without a person watching it:
   `GST_TRACERS="latency(flags=pipeline+element)"`, which writes one record per
   element per frame into `pipeline.log`; the sampler turns those into the
   capture, encode and pipeline times.
-- **The relay**: the player page's web server (`serve.py`) passes the page's
-  calls to the host's automation interface with the session's token, so the
-  browser needs none: `/stats/stream`, `/player`, `/clock`, `/presses`,
-  `/flips` and `/pipeline`.
+- **The relay**: the player page's web server (`serve.py`) answers the page
+  itself for `/player`, `/presses`, `/flips` and `/pipeline` (the queue of
+  presses and flips, and the sampler's latest reading), and makes exactly two
+  calls to the host's automation interface with the session's token: `GET
+  /status`, for `/clock` (the press probe needs the host's own clock), and
+  `POST /stats/stream`, the measurements. Every other path — the host's
+  `/players`, `game/start`, `probe/press` and the rest — answers 404, so the
+  page can measure a session and nothing more. A POST body over 64 KB is
+  refused with 413 before it is read; that is room for a whole batch of a
+  viewer's numbers.
 
 The token is the session's own, in `/run/thumb-party/automation.token`, unless
 `AUTOMATION_TOKEN` gave it one; the automation interface listens on loopback
@@ -132,27 +165,37 @@ adds a simulated player and lets a round run; in the `tp-stream` distro on WSL2
 the whole run has to happen inside one `wsl` call, because the distro's VM stops
 when no command is running in it and takes the session with it.
 
+The bench's run line reads what the viewers received against the ceiling the
+video asks for, for example `1 viewer(s), 11580 kbit/s received against the
+10000 kbit/s ceiling`. Received is the whole wire: video up to
+`SESSION_BITRATE_KBPS`, FEC on top of it, and the 96 kbit/s sound, so it sits
+above the ceiling whenever the picture fills it (M15 t1 measured 11.6 Mbit/s
+with FEC and 7.2 without, same round). The probe's card is nearly still, so its
+received rate says nothing about the game's.
+
 ## Watching from another device on the Wi-Fi
 
-A browser on this PC needs nothing: Windows forwards `localhost` to the distro.
-A TV, tablet or phone on the Wi-Fi needs the steps below, because WSL2 keeps the
-distro on a private network of its own and WebRTC media is UDP, which published
-ports do not carry.
+The distro runs in WSL2's **mirrored networking** (the owner's
+`%USERPROFILE%\.wslconfig`), so it holds this PC's own LAN address: the address
+`tools/stream.sh url` prints, the one `ipconfig` shows, and the one the other
+device types. What still has to let the traffic in is Windows' firewall, which
+the owner adds once (step 2). A phone or tablet on the Wi-Fi then plays the
+session; **a browser on this PC does not**, at `localhost` or at the LAN
+address — it gets the page and its numbers, but no picture and no sound
+(measured Nov 11). Use a device on the Wi-Fi, or the TV app itself.
 
-1. **Give the distro the LAN's network.** In Windows 11 (22H2 or newer), put
-   this in `%USERPROFILE%\.wslconfig`:
+1. **Mirrored networking is already on.** A fresh PC needs this in
+   `%USERPROFILE%\.wslconfig`, then one restart of WSL from PowerShell:
 
    ```ini
    [wsl2]
    networkingMode=mirrored
    ```
 
-   Then run `wsl --shutdown` in PowerShell and start the session again. In
-   mirrored mode the distro answers on this PC's LAN address, so the other
-   device can reach it. (Alternative, if the PC can't use mirrored mode: forward
-   the ports by hand with `netsh interface portproxy` plus a firewall rule. That
-   carries TCP only, which the player page and signalling need, and WebRTC may
-   not connect without it — mirrored mode is the one that works for both.)
+   In this mode the distro answers on the PC's LAN address instead of a private
+   one, which is what the other device can reach. (Without it, `netsh interface
+   portproxy` carries TCP only — the page and signalling — and WebRTC, which is
+   UDP, does not connect: mirrored mode is the one that works for both.)
 2. **Let the firewall through**, in an Administrator PowerShell (adjust the
    subnet to yours; the ports are the three above plus UDP for the media):
 
@@ -163,9 +206,11 @@ ports do not carry.
 
    WebRTC picks its UDP ports when it starts, so the rule names the program, not
    a port. If Windows 11 warns that a rule for `wslrelay.exe` is unusual, the
-   narrower version is a `-RemoteAddress <your subnet>` on the same rule.
+   narrower version is a `-RemoteAddress <your subnet>` on the same rule. With
+   these two rules an iPhone's Safari on the home network played picture and
+   sound from the PC's LAN address (Nov 11).
 3. **Open the player on the other device:** `http://<this PC's LAN address>:45782/`.
-   `tools/stream.sh url` prints the address the distro sees; the PC's own Wi-Fi
+   `tools/stream.sh url` prints that address (and `localhost`); the PC's Wi-Fi
    address and the distro's are the same in mirrored mode. If media still does
    not flow (the picture stays black, the numbers show 0 frames), the two devices
    are on different networks or the network blocks the traffic: the next rung is
@@ -201,7 +246,12 @@ docker rmi tp-session:latest          # in the distro; the image is 1.6 GB
   the media all sit on the distro's network, one rule for all of them.
 - **`congestion-control=disabled`**: the design asks for a bitrate that is held,
   not negotiated, so a busy network shows as dropped frames in the player's
-  numbers rather than as a resolution that quietly falls.
+  numbers rather than as a resolution that quietly falls. The number has to
+  reach `webrtcsink` too (`max-bitrate`, `start-bitrate`) and not only the
+  encoder: webrtcsink sets the encoder's bitrate itself, so c2 measured 19.9
+  Mbit/s on the wire with 10 000 kbit/s asked of the encoder alone, while the
+  same number on the element carried 11.6 Mbit/s of video and FEC for a busy
+  Arena round (7.2 with FEC off).
 - **A new session opens on the app's first-run consent dialog.** The app has no
   settings stored yet, so "Share anonymous gameplay stats?" is up over the home
   screen with the pairing code beside it; nothing carries a click or a key from

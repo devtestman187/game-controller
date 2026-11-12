@@ -7,7 +7,10 @@
 #
 #   bash streaming/bench.sh [--sessions N] [--seconds S] [--game arena|shape_race]
 #     [--size 1920x1080] [--probe] [--players N] [--port-base P] [--label L]
-#     [--out /work/dir] [--keep]
+#     [--out /work/dir] [--keep] [--set KEY=VALUE]
+#
+# `--set` gives the session containers one more environment setting, which is
+# how a tuning experiment runs without building the image again (M15 t1).
 #
 # `--probe` shows the latency test card instead of a round and times presses
 # against the card's flips: press-to-screen is measured there, as its own
@@ -42,6 +45,8 @@ probe="no"
 keep="no"
 out=""
 chrome="$chrome_default"
+# Extra settings for the session containers, each one word of `-e KEY=VALUE`.
+declare -a settings=()
 
 # The viewer browsers this run started; the simulated players of each session
 # are kept in the output folder, one id a line.
@@ -65,6 +70,7 @@ One streaming benchmark (M15 c2), inside the distro.
   --label L        the run's name: the containers and the output folder's name
   --out DIR        where the results go (default /work/stream-bench/L)
   --keep           leave the sessions running when the run ends
+  --set K=V        one more setting for the session containers, repeated
   --help           this text
 EOF
 }
@@ -80,6 +86,7 @@ parse_args() {
       --port-base) port_base="${2:-}"; shift 2 || { usage; exit 2; } ;;
       --label) label="${2:-}"; shift 2 || { usage; exit 2; } ;;
       --out) out="${2:-}"; shift 2 || { usage; exit 2; } ;;
+      --set) settings+=("${2:-}"); shift 2 || { usage; exit 2; } ;;
       --probe) probe="yes"; shift ;;
       --keep) keep="yes"; shift ;;
       --help | -h) usage; exit 0 ;;
@@ -90,6 +97,11 @@ parse_args() {
 
 check_args() {
   [[ "$label" =~ ^[a-z0-9][a-z0-9-]*$ ]] || fail "the label is lower-case letters, digits and dashes"
+  local setting
+  for setting in "${settings[@]}"; do
+    [[ "$setting" =~ ^[A-Z][A-Z0-9_]*=[A-Za-z0-9._-]+$ ]] \
+      || fail "a setting is KEY=VALUE (upper-case name, a plain value), got \"$setting\""
+  done
   [[ "$sessions" =~ ^[0-9]+$ ]] && (( sessions >= 1 && sessions <= 4 )) || fail "--sessions is 1 to 4"
   [[ "$seconds" =~ ^[0-9]+$ ]] && (( seconds >= 5 )) || fail "--seconds is 5 or more"
   [[ "$width" =~ ^[0-9]+$ && "$height" =~ ^[0-9]+$ ]] || fail "--size is like 1920x1080"
@@ -136,8 +148,9 @@ gpu_flags() {
 }
 
 start_session() {
-  local index="$1" container
+  local index="$1" container extra="" setting
   container="$(container_of "$index")"
+  for setting in "${settings[@]}"; do extra="$extra -e $setting"; done
   docker rm -f "$container" > /dev/null 2>&1 || true
   # --network host: the media is UDP to the viewer, and the benchmark talks to
   # the automation port from this same machine (streaming/README.md).
@@ -147,7 +160,7 @@ start_session() {
     -e CONTROLLER_PORT="$(controller_of "$index")" -e SIGNAL_PORT="$(signal_of "$index")" \
     -e PLAYER_PORT="$(player_of "$index")" -e AUTOMATION_PORT="$(automation_of "$index")" \
     -e SESSION_NAME="$(name_of "$index")" -e SESSIONS_AT_ONCE="$sessions" \
-    -e SESSION_WIDTH="$width" -e SESSION_HEIGHT="$height" \
+    -e SESSION_WIDTH="$width" -e SESSION_HEIGHT="$height" $extra \
     "$image" > /dev/null || fail "session $index did not start"
 }
 
@@ -350,17 +363,36 @@ stop_all() {
   done
 }
 
-# Prints what the run produced, so the log of a benchmark says its numbers.
+# The bitrate the session was told to keep, from the ready line it printed (the
+# entrypoint's defaults included): the number the received bitrate is checked
+# against (M15 t1).
+bitrate_ceiling() {
+  docker logs "$(container_of "$1")" 2>&1 | grep -m1 -o ' [0-9]*kbit/s' | grep -o '[0-9]*' | head -1
+}
+
+# The received bitrate a summary carries, in kbit/s, or nothing: the mean of
+# the viewer's `recv kbit/s` readings, which is the first `bitrateReceivedKbps`
+# gauge in the file (the viewer's own, before the session's).
+received_kbps() {
+  awk '/"bitrateReceivedKbps"/ { found = 1; next }
+    found && /"mean"/ { gsub(/[^0-9.]/, "", $0); printf "%.0f", $0; exit }' "$1" 2> /dev/null
+}
+
+# Prints what the run produced, so the log of a benchmark says its numbers: the
+# viewers, the bitrate the session kept against the ceiling it was given, and
+# where the evidence is.
 report_run() {
-  local index name summary
+  local index name summary ceiling received
   for (( index = 0; index < sessions; index++ )); do
     name="$(name_of "$index")"
     summary="$out/summaries/$name.json"
-    if [[ -f "$summary" ]]; then
-      say "$name: $(grep -c '"kind": "browser"' "$summary") viewer(s), summary $(wc -c < "$summary") bytes"
-    else
+    if [[ ! -f "$summary" ]]; then
       say "$name: no summary"
+      continue
     fi
+    ceiling="$(bitrate_ceiling "$index")"
+    received="$(received_kbps "$summary")"
+    say "$name: $(grep -c '"kind": "browser"' "$summary") viewer(s), ${received:--} kbit/s received against the ${ceiling:--} kbit/s ceiling, summary $(wc -c < "$summary") bytes"
   done
   say "results in $out"
 }
