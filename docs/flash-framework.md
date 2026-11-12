@@ -48,6 +48,21 @@ The header and body follow the existing briefs (see any file in `docs/briefs/m15
 - **Self-contained context.** A worker cannot ask; a `web: yes` job cannot even read the repository. Quote the owner's words and the decisions the job needs.
 - Two jobs in one wave never share a file in `allow:`.
 
+### Keep jobs short: phases (owner, Nov 11, 2026)
+
+Measured over 193 jobs: a job of 80–149 turns (about 12 minutes) ended badly 3% of the time; 150–249 turns 10%; 250–399 turns 16%; 400 and more (about an hour) 31%. Long jobs wander outside their file list, fail checks and write reports with claims that are not true. They also cost more per turn, because the whole conversation is sent again each turn. So:
+
+- **Aim for 80–150 turns, 10–20 minutes, per job.** If a job needs more, split it into **phases**, each its own brief in its own wave of `waves.txt` (waves run in order, and each job folder is cut from the last commit, so a later phase sees the earlier one's work):
+  1. **build**: code and tests from the design; ends when the checks pass.
+  2. **run** (hands-on jobs): builds, experiments, measurements; changes only what the runs need.
+  3. **report / wrap-up**: documents, tables, corrections; no new behaviour.
+- **Hand-over between phases is a file, not memory.** Each phase's report ends with `## Hand-over` (at most 20 lines: what exists now, exact commands that worked, what the next phase must not redo, open problems). The next phase's `read:` starts with that report and tells the worker to read only its Summary and Hand-over.
+- **Split by kind of work, not by size**, and only where the pieces are separable: a phase that needs to re-derive what the last one knew saves nothing.
+- Name phases `<job>-1-build`, `<job>-2-run`, `<job>-3-wrap` so the log reads in order. Each phase is checked, committed and reviewed like any job; the reviews are smaller too.
+- One experiment series per run phase: at most about 6 bench runs in a phase; more experiments mean another phase.
+
+`tools/flash.sh` also gives every worker a short list of **work rules** (read files once and in ranges, batch reads, run a test suite once per change with a quiet reporter, keep thinking and answers short) and caps what one command or file read can add to the conversation (`BASH_MAX_OUTPUT_LENGTH`, `CLAUDE_CODE_FILE_READ_MAX_OUTPUT_TOKENS`). The runner logs each job's turns and minutes in `run.log`, so the effect can be seen. Background and the cost arithmetic: `docs/briefs/tools/research-lean-agents-report.md` (the re-sent conversation is 99% of input tokens but a third of the bill; never put a context-pruning proxy in front of the worker: it would hold the key and turn cache hits into misses).
+
 Workers cannot run `tools/review.sh` or some shell commands in their sandbox; the runner runs the checker for them, so a brief should not ask for its output.
 
 ## What Claude still owns in low-usage mode

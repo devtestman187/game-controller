@@ -1,0 +1,22 @@
+job: M14 bug c1: a bigger, clearer cat in Shape Race: its head peeks in from the top of the screen and a paw swats the piece (owner's device test, Nov 12, 2026)
+pub: no
+stop: after it.
+read: docs/coding-guidelines.md · docs/review-rules.md part A · docs/design/party-night.md (the cat / chaos section) · docs/briefs/m14/x1-chaos-night-report.md (Summary) · docs/briefs/m14/bugs1/p1-puzzle-twins-report.md and t1-look-midgame-report.md (Summaries only) · packages/puzzle_game/lib/src: cat_chaos.dart, cat_paint.dart, cat_view.dart, puzzle_cat.dart, puzzle_drop.dart, camera.dart, camera_fit.dart, split_layout.dart, mirror_painter.dart, puzzle_painter.dart · the cat's settings in packages/party_host/lib/src/puzzle_settings_provider.dart and ui/puzzle_settings_screen.dart
+decide: low-usage mode: never stop for a question. Make the safest choice that fits the design and list each under "Decisions" with one line of why. Stop only if the job truly cannot be done; then say why under "Blocked".
+
+The owner's report, in their words: "The cat should be more prominent. Maybe show its heat poking out from the top of the screen and then a paw comes out to swat the piece. Current design is quite small." ("heat" is "head".)
+
+Claude's design (drawing only: the cat's rules, timing, which piece it picks, sounds, points and the snapshot's meaning do not change):
+1. **The head peeks in.** When the cat's visit begins, its head slides down from the top edge of that player's board area, peeking over the edge: ears, eyes and nose visible, about a quarter of the board area's width, centred above the piece it has chosen (clamped so it stays fully on screen and clear of the HUD's text). The eyes follow the chosen piece. This is the warning the player gets, so it lasts as long as the cat's existing warning time.
+2. **The paw swats.** A paw and foreleg reach down from beside the head to the piece (long enough to reach any piece on the board; it stretches, cartoon style), draw back a little, then swat: the piece moves by the existing rule at the moment of contact, with a small impact burst at the piece. Then the paw withdraws and the head slides back up.
+3. **Size and look.** Outlines, colours and line weights from the toy look, both sunny and night, at the same thickness as the pieces' outlines, and following a look change mid-game (job t1). Readable on a phone host in landscape and on a TV; in a split screen each side's cat stays inside its own half, and the mirror view shows the opponent's cat small but recognisable. Honour the reduced-motion setting if the game has one (head appears, piece moves, no stretch animation).
+4. The old small cat drawing is removed, not left beside the new one. Keep each painter small: head, paw and motion curve in their own files.
+5. Save pictures for the owner: with whatever way the tests already render a painter or widget to an image (look for existing PNG-writing tests or tools; do not add a package), write the peeking head and the mid-swat frame in the sunny and the night look to docs/design/m14-cat-peek-sunny.png, m14-cat-peek-night.png, m14-cat-swat-sunny.png, m14-cat-swat-night.png. If the repository has no such way, say so and skip this item.
+
+tests (each failing first): the head's size and position for a piece at the left edge, the centre and the right edge, in full and split screen (inside its area, clear of the HUD); the paw's tip reaches the piece at the contact moment and the piece moves on that tick as before; the cat's rules and snapshot bytes are unchanged (existing tests untouched and passing); both looks paint without error. All existing suites pass.
+
+in the report: start with `## Summary` (at most 20 lines): what a player now sees, the files changed, the pictures saved, decisions, anything not done, and what the owner should try on a device (one line each). Then Self-check: docs/review-rules.md part A, items 1–5, one line each.
+rules: aim for under 150 turns · no lib file you touch may end over 380 lines: split it (the runner stops the run otherwise) · no function over 60 lines · tests first: each new test file must fail on the code as it was (the runner checks this) · write only inside this job's folder · leave no scratch file behind in the repository
+allow: docs/briefs/m14/bugs1/c1-big-cat-report.md · packages/puzzle_game · packages/toy_look · docs/design
+check: format analyze puzzle host phone
+report: docs/briefs/m14/bugs1/c1-big-cat-report.md

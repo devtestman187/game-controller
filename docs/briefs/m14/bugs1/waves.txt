@@ -1,0 +1,4 @@
+p1-puzzle-twins b1-bumper-start
+b2-bumper-coins
+t1-look-midgame
+c1-big-cat

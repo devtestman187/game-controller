@@ -29,7 +29,7 @@
 # Exit code: 0 done, 1 stopped, 2 bad use.
 set -u
 cd "$(dirname "$0")/.." || exit 2
-SAFE_OUTSIDE='^(([^/]+/)*analysis_options\.yaml|\.gitignore|\.gitattributes|([^/]+/)*pubspec\.lock|.*/flutter/generated_plugin[^/]*)$'
+SAFE_OUTSIDE='^(site/shots/.*|([^/]+/)*analysis_options\.yaml|\.gitignore|\.gitattributes|([^/]+/)*pubspec\.lock|.*/flutter/generated_plugin[^/]*)$'
 SIZE_STOP=380
 CHURN=(tv_test_app/windows/flutter/ site/shots/)
 
@@ -51,6 +51,9 @@ mapfile -t WAVES < <(sed 's/#.*//' "$B/waves.txt" | awk 'NF')
 note() { echo "$(date '+%F %T') $*" | tee -a "$B/run.log"; }
 stop() { note "STOPPED: $*"; exit 1; }
 finding() { echo "- $*" >> "$B/run-findings.md"; note "finding: $*"; }
+usage() { # usage <brief path>: the job's turns and minutes, from the flash usage log
+  awk -F'	' -v b="$1" 'index($10, b){t=$3; m=$4/60} END{if(t) printf "%d turns, %.0f min", t, m}' "${FLASH_USAGE_LOG:-$HOME/.thumbparty/flash-usage.tsv}" 2>/dev/null
+}
 committed() { git ls-files --error-unmatch "$1" >/dev/null 2>&1; }
 unchurn() { git checkout -- "${CHURN[@]}" 2>/dev/null; }
 save() { # save <message> <path>...: commit and push just these paths
@@ -80,7 +83,7 @@ apply_safe() { # apply_safe <job> <flash-log>; prints the outside files when app
   [ -n "$files" ] && [ -d "$tree" ] || return 1
   echo "$files" | grep -Evq "$SAFE_OUTSIDE" && return 1
   ( cd "$tree" && git ls-files --others --exclude-standard | xargs -r git add -N &&
-    git diff --binary HEAD -- . ':!tv_test_app/windows/flutter' ':!site' ) > "$LOGS/run-$1.patch" || return 1
+    git diff --binary HEAD -- . ':!tv_test_app/windows/flutter' ':!site' ':!docs/briefs/**/run-base' ) > "$LOGS/run-$1.patch" || return 1
   git apply --3way "$LOGS/run-$1.patch" >/dev/null 2>&1 || return 1
   git reset -q; git worktree remove --force "$tree" 2>/dev/null
   echo "$files" | tr '\n' ' '
@@ -154,22 +157,23 @@ note "start at $(git rev-parse --short HEAD) on $branch"
 
 for wave in "${WAVES[@]}"; do
   [ "$(wc -w <<< "$wave")" -le 3 ] || stop "a wave has more than 3 jobs: $wave"
-  started=() pids=()
+  started=() pids=() resumed=()
   for j in $wave; do
     [ -f "$B/$j.md" ] || stop "no brief $B/$j.md"
     committed "$B/$j.md" || stop "the brief $B/$j.md is not committed (job folders are cut from the last commit)"
     if committed "$B/$j-report.md"; then note "skip $j (already committed)"; continue; fi
+    if [ -f "$B/$j-report.md" ]; then note "resume $j (applied by hand, not committed yet)"; resumed+=("$j"); continue; fi
     [ ${#started[@]} -gt 0 ] && sleep 25
     note "start $j"
     tools/flash.sh --brief "$B/$j.md" > "$LOGS/flash-$j.log" 2>&1 &
     pids+=($!) started+=("$j")
   done
-  [ ${#started[@]} -eq 0 ] && continue
-  ok=() failed=() extra=()
+  [ ${#started[@]} -eq 0 ] && [ ${#resumed[@]} -eq 0 ] && continue
+  ok=("${resumed[@]}") failed=() extra=()
   for i in "${!started[@]}"; do
     j=${started[$i]}
     wait "${pids[$i]}"; rc=$?
-    note "$j finished: result $rc"
+    note "$j finished: result $rc ($(usage "$B/$j.md"))"
     if [ $rc -eq 4 ] && outside=$(apply_safe "$j" "$LOGS/flash-$j.log"); then
       note "$j: applied with harmless files outside its list: $outside"
       extra+=($outside); rc=0
@@ -210,4 +214,5 @@ if [ $review -eq 1 ] && ! committed "$B/REVIEW.md"; then
   if [ -f "$B/REVIEW.md" ]; then unchurn; save "the run's review (worker)" "$B/REVIEW.md"; else finding "the run's review wrote no REVIEW.md (see $LOGS/flash-run-review.log)"; fi
 fi
 note "DONE: every job is committed. Claude reads the Summary of $B/REVIEW.md, verifies its findings and writes one fix brief"
-save "runner: log at the end of the run" "$B/run.log" "$B/run-findings.md"
+paths=("$B/run.log"); [ -f "$B/run-findings.md" ] && paths+=("$B/run-findings.md")
+save "runner: log at the end of the run" "${paths[@]}"
