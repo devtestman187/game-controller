@@ -62,13 +62,31 @@ final class StreamHostRow {
   int? get sessionsAtOnce => _int(gaugeField(StreamResource.sessionsAtOnce, 'max'));
 }
 
-/// One row per viewer of every session that streamed, in the summaries' order
-/// (M15). A session with no stream record has none.
+/// One row per viewer that reported numbers, of every session that streamed, in
+/// the summaries' order (M15). A session with no stream record has none, and a
+/// viewer with no receive data is left out (see [_hasReceiveData]).
 List<StreamViewerRow> streamViewers(List<Map<String, Object?>> summaries) => [
+  for (final row in _allViewerRows(summaries))
+    if (_hasReceiveData(row)) row,
+];
+
+/// Every viewer row of every summary, reporting or not, in order (M15).
+List<StreamViewerRow> _allViewerRows(List<Map<String, Object?>> summaries) => [
   for (final summary in summaries)
     for (final viewer in ((summary['stream'] as Map?)?['viewers'] as List?) ?? const [])
       if (viewer is Map) StreamViewerRow(_sessionOf(summary), viewer),
 ];
+
+/// The stages only the host's own pipeline writes (M15 fix5): a page copies
+/// them into its batch from the session's sampler, so a row that holds them and
+/// nothing else says nothing about what a viewer received.
+const _hostStages = {StreamStage.capture, StreamStage.encode, StreamStage.send, StreamStage.total};
+
+/// Whether [row] holds a number a viewer measured: a gauge, a counter, or a
+/// stage of its own. A page that connected and never showed a picture sends
+/// only the host's stages, which used to list it as a viewer (M15 fix5).
+bool _hasReceiveData(StreamViewerRow row) =>
+    row.gauges.isNotEmpty || row.counters.isNotEmpty || row.stages.keys.any((name) => !_hostStages.contains(name));
 
 /// One row per session that recorded its host container's resources (M15).
 List<StreamHostRow> streamHosts(List<Map<String, Object?>> summaries) {
@@ -159,10 +177,12 @@ const _resourceHeaders = [
 const _sessionsHeaders = ['sessions at once', 'sessions', 'cpu %', 'gpu %', 'enc %', 'game fps', 'enc fps', 'mem MB'];
 
 /// The report's Streaming section (M15): the pipeline, quality, sound and
-/// container tables, then the same resources by how many sessions ran at once.
-/// A report whose sessions never streamed has no section.
+/// container tables, then the same resources by how many sessions ran at once,
+/// and one line saying how many viewer rows had no receive data to show (M15
+/// fix5). A report whose sessions never streamed has no section.
 String streamReport(List<Map<String, Object?>> summaries) {
   final viewers = streamViewers(summaries);
+  final leftOut = _allViewerRows(summaries).length - viewers.length;
   final hosts = streamHosts(summaries);
   return [
     if (viewers.isNotEmpty) ...[
@@ -174,6 +194,7 @@ String streamReport(List<Map<String, Object?>> summaries) {
       plainTable('Streaming resources', _resourceHeaders, [for (final host in hosts) _resourceCells(host)]),
       _bySessionsAtOnce(hosts),
     ],
+    if (leftOut > 0) '$leftOut viewer row(s) with no receive data left out',
   ].join('\n');
 }
 

@@ -58,8 +58,13 @@ players=1
 label="bench"
 probe="no"
 keep="no"
+# How long a bench's press phase runs after the round, in seconds (M15 fix5), or
+# empty to leave it to the bench: it gives an external viewer 30 s, since a
+# person is there to press, and any other run none.
+press_seconds=""
 # Who watches the session a bench measures (M15 g1): a headless Chrome on this
-# machine, or a person's own browser on the Wi-Fi, whose URL the bench prints.
+# machine, or a person's own browser on the home network, whose URL the bench
+# prints.
 viewer="chrome"
 # The cores a bench pins the viewer and the session to, or empty for none: a
 # viewer on its own cores has the CPU to decode with (M15 g1).
@@ -72,8 +77,15 @@ declare -a settings=()
 # Whether `keep-alive` was asked to end the keep-alive instead of showing it.
 keep_alive_stop="no"
 # Where the fetched summaries live, under docs/ so they stay with the reports.
+# A bench writes its own folder under bench_results_root, named for the minute
+# it starts, so runs never overwrite each other; stats reads the newest of those
+# and falls back to the job folder that came before (M15 fix5).
 readonly results_root="docs/briefs/m15/c2/results"
-results="$results_root"
+readonly bench_results_root="docs/briefs/m15/bench-results"
+# The longest press phase a bench may be given, in seconds.
+readonly press_max_s=600
+# The folder a command reads or writes; empty means the rule above picks it.
+results=""
 
 say() { printf '%s\n' "$*"; }
 fail() { printf 'stream: %s\n' "$*" >&2; exit 1; }
@@ -112,10 +124,14 @@ Bench options:
   --players <n>     simulated players a session (default 1)
   --probe           show the latency card and time presses instead of a round:
                     press-to-screen is measured this way, as its own series
+  --press-seconds <n>  after the round, show the latency card and time the presses
+                    for n seconds on the same session and viewer (0 is none; the
+                    default is 30 with --viewer external, 0 otherwise)
   --viewer <kind>   chrome (default): a headless Chrome on this machine watches;
                     external: no browser is opened, the bench prints the player
                     URL and waits for a real viewer (a phone, tablet or TV on
-                    the Wi-Fi) to register before it measures
+                    the home network) to register before it measures; a phone run
+                    ends with a press phase
   --viewer-cpus L   the cores the viewer's Chrome runs on (taskset's list, e.g. 8-15);
                     with --viewer chrome only, since a device you open is pinned there
   --session-cpus L  the cores the session container runs on (docker --cpuset-cpus)
@@ -124,12 +140,15 @@ Bench options:
   --set K=V         one more setting for the session container (streaming/README.md);
                     a bench experiment needs this rather than an image rebuild
   --results <dir>   the folder of summaries: for stats it is what to read (default
+                    the newest run under docs/briefs/m15/bench-results, else
                     docs/briefs/m15/c2/results), for bench where to write them
+                    (default docs/briefs/m15/bench-results/<start time>)
 
 The bench copies this checkout into the distro, starts the sessions there,
 plays through a headless Chrome viewer (or, with --viewer external, through a
-browser a person opens on the Wi-Fi), fetches each session's summary into
-<results>/<label>/ and runs the report over it.
+browser a person opens on the home network), fetches each session's summary into
+<results>/<label>/ and runs the report over it. It ends by printing the folder
+and the stats command that reads it again.
 
 Exit codes: 0 ok, 1 the step failed, 2 bad use.
 EOF
@@ -164,8 +183,20 @@ check_settings() {
   done
 }
 
+# The press phase's length for a bench: empty leaves it to the bench, anything
+# else is a whole number of seconds up to press_max_s (M15 fix5).
+check_press_seconds() {
+  if [[ -z "$press_seconds" ]]; then
+    return 0
+  fi
+  if [[ ! "$press_seconds" =~ ^[0-9]+$ ]] || (( press_seconds > press_max_s )); then
+    printf 'stream: --press-seconds is a whole number of seconds 0 to %s, got "%s"\n' "$press_max_s" "$press_seconds" >&2
+    exit 2
+  fi
+}
+
 # Who watches a bench: a headless Chrome here, or a person's own browser on the
-# Wi-Fi (M15 g1). Anything else is refused before a session starts.
+# home network (M15 g1). Anything else is refused before a session starts.
 check_viewer() {
   if [[ "$viewer" != "chrome" && "$viewer" != "external" ]]; then
     printf 'stream: --viewer is chrome or external, got "%s"\n' "$viewer" >&2
@@ -389,8 +420,8 @@ cmd_logs() {
 
 # What a person opens, and from where. WSL is in mirrored networking mode (the
 # owner's .wslconfig, Nov 11 2026), so the distro's own addresses are this PC's
-# LAN address and another device on the Wi-Fi reaches the session there; a
-# browser on this PC uses localhost, where the media does not flow (README).
+# LAN address and another device on the home network reaches the session there;
+# a browser on this PC uses localhost, where the media does not flow (README).
 cmd_url() {
   local container controller signal player automation address
   check_name
@@ -411,9 +442,9 @@ cmd_url() {
   # The picture only flows to another device (M15 g1): a browser on this same
   # PC opens the page and its numbers but gets no media, at either address, so
   # the LAN address is the one to use, from a phone, tablet or TV.
-  say "player:     http://$address:$player/   watch here, from a phone, tablet or TV on the Wi-Fi"
+  say "player:     http://$address:$player/   watch here, from a phone, tablet or TV on the home network"
   say "            (http://localhost:$player/ on this PC has the page but no picture or sound)"
-  say "controller: $address:$controller   from a phone on the Wi-Fi (localhost:$controller on this PC)"
+  say "controller: $address:$controller   from a phone on the home network (localhost:$controller on this PC)"
   say "signalling: $address:$signal"
   say "automation: 127.0.0.1:$automation in $distro (the token is /run/thumb-party/automation.token)"
 }
@@ -437,7 +468,6 @@ print_report() {
 # come back into docs/, and the Streaming report is printed here.
 cmd_bench() {
   local dest remote files file extra="" setting target
-  target="$results/$label"
   if [[ ! "$label" =~ ^[a-z0-9][a-z0-9-]*$ ]]; then
     fail "the label is lower-case letters, digits and dashes, got \"$label\""
   fi
@@ -445,7 +475,14 @@ cmd_bench() {
   check_viewer
   check_cpus "--viewer-cpus" "$viewer_cpus"
   check_cpus "--session-cpus" "$session_cpus"
+  check_press_seconds
+  # A run's own folder, named for the minute it starts: the label folder goes
+  # inside it, and a later run never lands on an earlier one's summaries (M15
+  # fix5). `--results` still says exactly where.
+  if [[ -z "$results" ]]; then results="$bench_results_root/$(date +%Y%m%d-%H%M%S)"; fi
+  target="$results/$label"
   for setting in "${settings[@]}"; do extra="$extra --set $setting"; done
+  if [[ -n "$press_seconds" ]]; then extra="$extra --press-seconds $press_seconds"; fi
   if [[ "$probe" == "yes" ]]; then extra="$extra --probe"; fi
   if [[ "$keep" == "yes" ]]; then extra="$extra --keep"; fi
   if [[ "$viewer" == "external" ]]; then extra="$extra --viewer external"; fi
@@ -475,6 +512,8 @@ cmd_bench() {
     start_keepalive
   fi
   print_report "$target"
+  say "results: $target"
+  say "report again with: bash tools/stream.sh stats --results $target"
 }
 
 # The player relay's own tests (M15 g1): a script beside the code it checks,
@@ -487,7 +526,23 @@ cmd_selftest() {
   wsl_run "cd $dest && timeout 120 python3 streaming/player/relay_test.py" || fail "the relay's tests failed"
 }
 
+# The newest bench run under docs/, or nothing: a run's folder is named for the
+# minute it started, so sorting the names puts the last run last (M15 fix5).
+newest_results() {
+  local name
+  if [[ -d "$bench_results_root" ]]; then
+    name="$(ls -1 "$bench_results_root" 2> /dev/null | sort | tail -1)"
+  fi
+  if [[ -n "${name:-}" ]]; then
+    printf '%s/%s' "$bench_results_root" "$name"
+  fi
+}
+
 cmd_stats() {
+  if [[ -z "$results" ]]; then
+    results="$(newest_results)"
+    if [[ -z "$results" ]]; then results="$results_root"; fi
+  fi
   if [[ ! -d "$results" ]]; then
     fail "no results at $results; run tools/stream.sh bench first"
   fi
@@ -571,6 +626,10 @@ while (( $# > 0 )); do
     --probe)
       probe="yes"
       shift
+      ;;
+    --press-seconds)
+      press_seconds="${2:-}"
+      shift 2 || { printf 'stream: --press-seconds needs a number of seconds\n' >&2; usage; exit 2; }
       ;;
     --viewer)
       viewer="${2:-}"

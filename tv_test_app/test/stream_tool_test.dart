@@ -39,6 +39,24 @@ void main() {
     expect(result.stdout, contains('external: no browser is opened'));
   });
 
+  test('the usage says a phone run ends with a press phase, on the home network', () async {
+    final result = await run([]);
+
+    expect(result.stdout, contains('--press-seconds <n>'), reason: 'the round can be followed by presses');
+    expect(result.stdout, contains('ends with a press phase'), reason: 'a phone run measures press-to-screen too');
+    expect(result.stdout, contains('home network'), reason: 'the viewer is on the same network, whatever it is');
+    expect(result.stdout, isNot(contains('Wi-Fi')), reason: 'the wording the owner asked for');
+  });
+
+  test('a benchmark refuses a press phase that is not a whole number of seconds', () async {
+    for (final value in ['abc', '601']) {
+      final result = await run(['bench', '--press-seconds', value]);
+
+      expect(result.exitCode, 2, reason: '"$value" would become the press phase\'s length');
+      expect(result.stderr, contains('--press-seconds is a whole number of seconds 0 to 600, got "$value"'));
+    }
+  });
+
   test('a benchmark refuses a viewer it does not know', () async {
     final result = await run(['bench', '--viewer', 'nope']);
 

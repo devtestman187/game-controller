@@ -115,8 +115,9 @@ Map<String, Object?> streamedSession() {
 
 /// A phone host that streamed to two viewers at once (M15): an app that
 /// measured only capture and encode (total 12+8 = 20 at the median, 14+10 = 24
-/// at the p95), and a browser that measured press_to_screen itself (80 at the
-/// median, 90 at the p95) and has no video stage.
+/// at the p95) and counted 1200 received frames, and a browser that measured
+/// press_to_screen itself (80 at the median, 90 at the p95) and has no video
+/// stage.
 Map<String, Object?> twoViewerSession() {
   final c = SessionCollector(
     id: 'two',
@@ -134,6 +135,9 @@ Map<String, Object?> twoViewerSession() {
       c.streamStage(app, name, ms);
     }
   }
+  // A viewer with no gauge and no counter is left out of the report, so the
+  // app reports the one number an app always has (M15 fix5).
+  c.streamCounter(app, 'framesReceived', 1200);
   final browser = c.streamViewer(kind: StreamKind.browser, platform: 'firefox');
   for (final ms in [70, 80, 90]) {
     c.streamStage(browser, StreamStage.pressToScreen, ms);
@@ -161,6 +165,30 @@ Map<String, Object?> twoViewerSession() {
         sessionsAtOnce: 2,
       ),
     );
+  return c.summary(600000);
+}
+
+/// The row a page that connected and never showed a picture used to add (M15
+/// fix5): the host's own stages, capture 2 and encode 9, and the total derived
+/// from them (11), with no gauge and no counter — a stale tab on the player URL
+/// reconnecting to every new session.
+Map<String, Object?> phantomViewerSession() {
+  final c = SessionCollector(
+    id: 'three',
+    hostType: HostType.windows,
+    hostApp: '0.15.0',
+    startedAt: DateTime.utc(2026, 11, 12, 10),
+    startMs: 0,
+  );
+  final viewer = c.streamViewer(kind: StreamKind.browser, platform: 'chrome');
+  for (final (name, samples) in const [
+    (StreamStage.capture, [2, 2]),
+    (StreamStage.encode, [9, 9]),
+  ]) {
+    for (final ms in samples) {
+      c.streamStage(viewer, name, ms);
+    }
+  }
   return c.summary(600000);
 }
 
@@ -297,7 +325,27 @@ void main() {
         'no',
         'h264',
       ]);
-      expect(cells(table[3]).skip(2), everyElement('-'), reason: 'the app sent no quality numbers');
+      // The app sent one count and no gauge, so only its receive column is filled.
+      expect(cells(table[3]), [
+        'two',
+        'v1',
+        '-',
+        '-',
+        '-',
+        '-',
+        '-',
+        '-',
+        '-',
+        '1200',
+        '-',
+        '-',
+        '-',
+        '-',
+        '-',
+        '-',
+        '-',
+        '-',
+      ]);
       expect(cells(table[4]), [
         'two',
         'v2',
@@ -377,6 +425,21 @@ void main() {
       expect(atOnce[0].trim(), startsWith('sessions at once'));
       expect(cells(atOnce[2]), ['1', '1', '50.0', '45.0', '12.0', '59.0', '60.0', '925.0']);
       expect(cells(atOnce[3]), ['2', '1', '70.0', '78.0', '12.0', '30.0', '45.0', '1800.0']);
+    });
+
+    test('a viewer with no receive data is left out, and one line says how many', () {
+      final summaries = [streamedSession(), phantomViewerSession()];
+      final text = streamReport(summaries);
+      final table = tableOf(text, 'Streaming pipeline');
+      expect(table, hasLength(3), reason: 'the header, the rule and the one viewer that reported numbers');
+      expect(cells(table[2]).take(4), ['one', 'v1', 'browser', 'chrome']);
+      expect(text, contains('1 viewer row(s) with no receive data left out'));
+      expect(streamCsv(summaries).split('\n'), hasLength(2), reason: 'the CSV follows the same rows');
+      expect(streamReport([phantomViewerSession()]), isNot(contains('Streaming pipeline')));
+    });
+
+    test('a run whose viewers all reported numbers has no "left out" line', () {
+      expect(streamReport(sessions), isNot(contains('left out')));
     });
 
     test('the whole report shows the section between the frame rates and enjoyment', () {

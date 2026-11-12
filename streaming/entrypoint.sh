@@ -20,14 +20,11 @@ width="${SESSION_WIDTH:-1920}"
 height="${SESSION_HEIGHT:-1080}"
 frame_rate="${SESSION_FRAME_RATE:-60}"
 # 10 Mbit/s is the starting point the design names for 1080p60 at low delay.
-# This is the ceiling the video keeps: webrtcsink runs its own bitrate control
-# and sets the encoder's bitrate itself, so the number goes to the element as
-# well as to the encoder. What a viewer receives is this plus FEC and the sound,
-# and FEC is the larger part of it: a 1080p Arena round carried 11.6 Mbit/s at
-# 10 Mbit/s set (M15 t1) and 7.2 Mbit/s with `SESSION_FEC=false`, because the
-# encoder sends what the picture needs up to the ceiling, not the ceiling.
+# This is the ceiling a viewer's whole stream keeps: the video, the sound and
+# the FEC and RED on top of them, which is what the player's own byte counter
+# reads and what the home network carries. The encoder therefore gets less than
+# the ceiling — see `video_kbps` below — and the ready line prints both.
 bitrate_kbps="${SESSION_BITRATE_KBPS:-10000}"
-bitrate_bps=$((bitrate_kbps * 1000))
 # A keyframe a second, so a player that joins or reconnects sees a picture at
 # once and a lost packet costs at most one second. -1 is no periodic keyframe at
 # all, only the ones a receiver asks for (PLI/FIR, which webrtcsink forwards).
@@ -62,6 +59,20 @@ split_tracks="${SESSION_SPLIT_TRACKS:-false}"
 encoder="${SESSION_ENCODER:-nvautogpuh264enc}"
 # Opus at 96 kbit/s carries the game's music and effects with room to spare.
 audio_bitrate_bps="${SESSION_AUDIO_BITRATE_BPS:-96000}"
+# What the encoder is given, in kbit/s: the ceiling less the sound, divided by
+# what FEC and RED add on top. webrtcsink 0.13.6 has no `fec-percentage`
+# property to set (gst-inspect shows only `do-fec`): with congestion control
+# disabled it gives the encoder `max-bitrate` itself and pins the transceiver's
+# FEC at its own 50 % (gst-plugins-rs imp.rs, `set_bitrate`), so the overhead is
+# measured rather than chosen. M15 fix5 measured it on Nov 12, 2026, two 1080p
+# Arena rounds of 30 s: the same viewer counted 20353 kbit/s at 10000 set and
+# 9693 kbit/s with `SESSION_FEC=false`, so FEC and RED carry 110 % of the video.
+# The field is the wire ceiling, so the encoder gets (ceiling - total audio) /
+# (1 + 110/100) and the viewer's stream lands under the ceiling.
+fec_overhead_percent=0
+if [[ "$do_fec" == "true" ]]; then fec_overhead_percent=110; fi
+video_kbps=$(( (bitrate_kbps - audio_bitrate_bps / 1000) * 100 / (100 + fec_overhead_percent) ))
+video_bps=$((video_kbps * 1000))
 
 # The ports inside the session. tools/stream.sh gives each session its own.
 # The controller port is pinned (THUMBPARTY_PORT, job a2), so the app listens
@@ -249,19 +260,19 @@ build_pipeline() {
   if [[ "$encoder" == nv* ]]; then
     # `bitrate` is kbit/s; CBR holds it and ignores `max-bitrate`. No B-frames
     # and no lookahead, so a frame leaves as soon as it is encoded.
-    cmd+=("$encoder" "bitrate=$bitrate_kbps" rate-control=cbr
+    cmd+=("$encoder" "bitrate=$video_kbps" rate-control=cbr
       "gop-size=$gop_frames" b-frames=0 zero-reorder-delay=true preset=p1 tune=ultra-low-latency rc-lookahead=0)
     if (( vbv_kbits > 0 )); then
       cmd+=("vbv-buffer-size=$vbv_kbits" strict-gop=true)
     fi
   else
-    cmd+=("$encoder" "bitrate=$bitrate_kbps")
+    cmd+=("$encoder" "bitrate=$video_kbps")
   fi
   cmd+=(
     '!' h264parse config-interval=-1
     '!' webrtcsink name=ws "signaller::uri=ws://127.0.0.1:$signal_port"
     video-caps=video/x-h264 audio-caps=audio/x-opus congestion-control=disabled
-    "max-bitrate=$bitrate_bps" "start-bitrate=$bitrate_bps"
+    "max-bitrate=$video_bps" "start-bitrate=$video_bps"
     "do-fec=$do_fec" "do-retransmission=$do_retransmission"
     pulsesrc device=party.monitor '!' queue '!' audioconvert '!' audioresample '!'
     audio/x-raw,rate=48000,channels=2 '!' opusenc "bitrate=$audio_bitrate_bps" '!' 'ws.'
@@ -371,7 +382,7 @@ wait_ready() {
     say "$(tail -n 20 "$pipe_log" 2>/dev/null)"
     return 1
   }
-  say "ready: session=$session_name player=http://localhost:$player_port/ controller=localhost:$controller_port automation=127.0.0.1:$automation_port ${width}x${height}@${frame_rate} ${bitrate_kbps}kbit/s ${gop_frames}f gop"
+  say "ready: session=$session_name player=http://localhost:$player_port/ controller=localhost:$controller_port automation=127.0.0.1:$automation_port ${width}x${height}@${frame_rate} ${bitrate_kbps}kbit/s (video ${video_kbps}) ${gop_frames}f gop"
   say "pipeline registered: $producer"
 }
 
@@ -389,7 +400,7 @@ main() {
 
   trap 'say "stopping"; stop_all; exit 143' TERM INT
 
-  say "starting a session: ${width}x${height}@${frame_rate} ${bitrate_kbps}kbit/s $encoder, controller port $controller_port"
+  say "starting a session: ${width}x${height}@${frame_rate} ${bitrate_kbps}kbit/s (video ${video_kbps}) $encoder, controller port $controller_port"
   make_token
   # The token file is how a script outside this container drives the session
   # (tools/stream.sh bench reads it with docker exec); umask 077 keeps it 0600.

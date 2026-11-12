@@ -7,7 +7,7 @@
 #
 #   bash streaming/bench.sh [--sessions N] [--seconds S] [--game arena|shape_race]
 #     [--size 1920x1080] [--probe] [--players N] [--port-base P] [--label L]
-#     [--out /work/dir] [--keep] [--set KEY=VALUE]
+#     [--out /work/dir] [--keep] [--set KEY=VALUE] [--press-seconds N]
 #     [--viewer chrome|external] [--viewer-cpus L] [--session-cpus L]
 #
 # `--set` gives the session containers one more environment setting, which is
@@ -20,7 +20,11 @@
 #
 # `--viewer external` opens no browser (M15 g1): it prints the player's LAN
 # address, waits for a real viewer to register, then measures against that
-# viewer, so a phone, tablet or TV on the Wi-Fi is the one being timed.
+# viewer, so a phone, tablet or TV on the home network is the one being timed.
+# A run with a press phase (M15 fix5) plays the round and then shows the latency
+# card on the same session and the same viewer for `--press-seconds`, so one
+# phone run gives the round's numbers and a measured press-to-screen; it is the
+# default for `--viewer external`, where a person is there to press anyway.
 # `--viewer-cpus` and `--session-cpus` pin the viewer's Chrome and the session
 # container to different cores, so a run can say how much of the viewer's
 # jitter buffer is its own CPU being shared with the session (M15 g1).
@@ -46,6 +50,11 @@ readonly settle_s=4
 readonly viewer_timeout_s=180
 # How often the wait for that viewer says it is still waiting, in seconds.
 readonly viewer_report_s=10
+# The press phase's default length after a round, in seconds, and the longest a
+# run may ask for (M15 fix5): an external viewer is there to press, so the same
+# run measures press-to-screen; ten minutes is the whole bench's patience.
+readonly press_default_s=30
+readonly press_max_s=600
 
 label="bench"
 sessions=1
@@ -59,9 +68,12 @@ port_base=45780
 probe="no"
 keep="no"
 out=""
+# How long the press phase runs after the round, in seconds (M15 fix5): empty
+# until the arguments are read, so a run can tell "not given" from "0".
+press_seconds=""
 # Who watches the session (M15 g1): a headless Chrome here, or a person's own
-# browser on the Wi-Fi, whose URL this run prints and whose registration it
-# waits for.
+# browser on the home network, whose URL this run prints and whose
+# registration it waits for.
 viewer="chrome"
 # The cores a run pins the viewer and the session to, or empty for no pinning.
 viewer_cpus=""
@@ -88,6 +100,9 @@ One streaming benchmark (M15 c2), inside the distro.
   --seconds S      how long the round (or the probe) runs (default 60)
   --game G         arena (bumper round) or shape_race (default arena)
   --probe          show the latency card and time presses instead of a round
+  --press-seconds N  after the round, show the latency card and time the presses
+                   for N seconds on the same session and viewer (0 is none; the
+                   default is 30 with --viewer external and 0 otherwise)
   --size WxH       the screen and encoder size (default 1920x1080)
   --players N      simulated players per session (default 1)
   --port-base P    the first session's controller port; each session takes a
@@ -117,6 +132,7 @@ parse_args() {
       --label) label="${2:-}"; shift 2 || { usage; exit 2; } ;;
       --out) out="${2:-}"; shift 2 || { usage; exit 2; } ;;
       --set) settings+=("${2:-}"); shift 2 || { usage; exit 2; } ;;
+      --press-seconds) press_seconds="${2:-}"; shift 2 || { usage; exit 2; } ;;
       --viewer) viewer="${2:-}"; shift 2 || { usage; exit 2; } ;;
       --viewer-cpus) viewer_cpus="${2:-}"; shift 2 || { usage; exit 2; } ;;
       --session-cpus) session_cpus="${2:-}"; shift 2 || { usage; exit 2; } ;;
@@ -141,6 +157,7 @@ check_args() {
   [[ "$players" =~ ^[0-9]+$ ]] && (( players >= 1 )) || fail "--players is 1 or more"
   [[ "$game" == "arena" || "$game" == "shape_race" ]] || fail "--game is arena or shape_race"
   [[ "$viewer" == "chrome" || "$viewer" == "external" ]] || fail "--viewer is chrome or external"
+  check_press_seconds
   check_cpus "--viewer-cpus" "$viewer_cpus"
   check_cpus "--session-cpus" "$session_cpus"
   # Only the Chrome this script starts can be pinned from here; a viewer a person
@@ -150,6 +167,19 @@ check_args() {
     || refuse "--viewer-cpus needs --viewer chrome: a viewer you open yourself is pinned on that device"
   if [[ "$game" == "arena" ]]; then mode="bumper"; fi
   out="${out:-/work/stream-bench/$label}"
+}
+
+# The press phase's length: a whole number of seconds up to [press_max_s]. Not
+# given, an external viewer gets [press_default_s] after the round — the person
+# watching is there to press, and the card covers the picture, so its presses
+# cannot share the round's window — and any other run gets none (M15 fix5).
+check_press_seconds() {
+  if [[ -z "$press_seconds" ]]; then
+    press_seconds=0
+    if [[ "$viewer" == "external" && "$probe" == "no" ]]; then press_seconds="$press_default_s"; fi
+  fi
+  [[ "$press_seconds" =~ ^[0-9]+$ ]] && (( press_seconds <= press_max_s )) \
+    || fail "--press-seconds is a whole number of seconds 0 to $press_max_s"
 }
 
 # A core list as taskset and docker take one: "3", "0-7", "0-3,8-11", or empty.
@@ -170,9 +200,9 @@ container_of() { printf '%s%s' "$container_prefix" "$(name_of "$1")"; }
 automation_url() { printf 'http://127.0.0.1:%s' "$(automation_of "$1")"; }
 relay_url() { printf 'http://127.0.0.1:%s' "$(player_of "$1")"; }
 
-# This machine's LAN address, as the next device on the Wi-Fi sees it (mirrored
-# networking, streaming/README.md): a viewer's own browser must use this one,
-# because this PC's loopback gets the page but no media (M15 g1).
+# This machine's LAN address, as the next device on the home network sees it
+# (mirrored networking, streaming/README.md): a viewer's own browser must use
+# this one, because this PC's loopback gets the page but no media (M15 g1).
 lan_address() { hostname -I | awk '{print $1}'; }
 
 # One automation call, with the session's token, answering the body's text.
@@ -279,21 +309,30 @@ print_viewer_url() {
   local index address
   address="$(lan_address)"
   for (( index = 0; index < sessions; index++ )); do
-    say "$(name_of "$index"): open http://$address:$(player_of "$index")/ on a phone, tablet or TV on the Wi-Fi"
+    say "$(name_of "$index"): open http://$address:$(player_of "$index")/ on a phone, tablet or TV on the home network"
   done
   say "the session is playing; waiting up to ${viewer_timeout_s}s for a viewer, a line every ${viewer_report_s}s"
 }
 
-# Waits until a session's stats name a viewer, which is what the page sends once
-# it plays (M15 g1): the real device is then the one being timed. It says so
+# Whether a stats answer holds a viewer with receive data: a received bitrate
+# gauge, or a stage only a decoded picture produces. A page that connected and
+# stayed black sends neither (M15 fix5).
+has_receive_data() {
+  local text="$1"
+  [[ "$text" == *'"bitrateReceivedKbps"'* ]] || [[ "$text" == *'"stream_display"'* ]] \
+    || [[ "$text" == *'"stream_decode"'* ]]
+}
+
+# Waits until a session's stats name a viewer with receive data, which is what a
+# page sends once it plays (M15 g1): the real device is then the one being timed.
+# A page that connected and showed no picture also registers a row, with the
+# host's stages only, so it must not satisfy this wait (M15 fix5). It says so
 # every [viewer_report_s] seconds, and gives up after [viewer_timeout_s].
 wait_viewer() {
   local index="$1" waited=0 since_report=0 body
   while (( waited < viewer_timeout_s )); do
     body="$(aut "$index" GET /stats/session)"
-    # The session's viewer ids are "v1", "v2", …: one of them is a viewer that
-    # registered (the answer is one line, so the space may be absent).
-    if [[ "$body" =~ \"id\":[[:space:]]*\"v[0-9] ]]; then
+    if has_receive_data "$body"; then
       say "$(name_of "$index"): a viewer registered after ${waited}s"
       return 0
     fi
@@ -388,6 +427,9 @@ press_loop() {
     press_ms="$(json_number "$press" hostMs)"
     if [[ -z "$press_ms" ]]; then
       printf 'bench: session %s refused a press: %s\n' "$index" "$press" >&2
+      # Kept for the line a press phase that measured nothing prints: the loop
+      # runs in its own process, so the count cannot be a variable here.
+      printf '%s\n' "$press" >> "$out/refused-$index"
       sleep 1
       continue
     fi
@@ -398,11 +440,12 @@ press_loop() {
   done
 }
 
-# The probe window: one press loop a session, all running together.
+# The probe window: one press loop a session for the seconds given, all running
+# together.
 run_probe_window() {
-  local index pids=()
+  local window_s="$1" index pids=()
   for (( index = 0; index < sessions; index++ )); do
-    press_loop "$index" "$(head -1 "$out/player-$index")" "$seconds" &
+    press_loop "$index" "$(head -1 "$out/player-$index")" "$window_s" &
     pids+=("$!")
   done
   if (( ${#pids[@]} > 0 )); then
@@ -410,11 +453,18 @@ run_probe_window() {
   fi
 }
 
+# One session's stats answer, written to [file]: the session's summary is inside
+# it, and so is every viewer's record. `collect_session` keeps it as the run's
+# evidence, and a press phase keeps the round's own copy before the card goes up.
+fetch_session() {
+  printf '%s' "$(aut "$1" GET /stats/session)" > "$2"
+}
+
 # After the round: the session's summary with its stream record, and the logs
 # that say where each number came from. The summary file is what the report
 # reads, so a run's evidence is one JSON per session.
 collect_session() {
-  local index="$1" container name body
+  local index="$1" container name
   container="$(container_of "$index")"
   name="$(name_of "$index")"
   if [[ "$probe" == "no" ]]; then
@@ -422,8 +472,7 @@ collect_session() {
   fi
   # The player's last batch is up to one interval away; wait for one more.
   sleep "$settle_s"
-  body="$(aut "$index" GET /stats/session)"
-  printf '%s' "$body" > "$out/session-$index.json"
+  fetch_session "$index" "$out/session-$index.json"
   if ! python3 - "$out/session-$index.json" "$out/summaries/$name.json" <<'PY'
 import json, sys
 doc = json.load(open(sys.argv[1], encoding="utf-8"))
@@ -433,12 +482,46 @@ if not isinstance(session, dict):
 json.dump(session, open(sys.argv[2], "w", encoding="utf-8"), indent=1)
 PY
   then
-    printf 'bench: session %s has no summary yet: %s\n' "$index" "$body" >&2
+    printf 'bench: session %s has no summary yet, see %s\n' "$index" "$out/session-$index.json" >&2
   fi
   docker cp "$container:/run/thumb-party/pipeline.json" "$out/pipeline-$name.json" > /dev/null 2>&1 || true
   docker cp "$container:/run/thumb-party/sampler.log" "$out/sampler-$name.log" > /dev/null 2>&1 || true
   docker cp "$container:/run/thumb-party/app.log" "$out/app-$name.log" > /dev/null 2>&1 || true
   docker logs "$container" > "$out/container-$name.log" 2>&1 || true
+}
+
+# The press phase (M15 fix5): the round's own numbers are kept first, then the
+# latency card goes up over the same session and the same viewer for
+# [press_seconds], so one phone run gives a round and a measured press-to-screen.
+# The game keeps running throughout: the host drops a viewer's batch when no
+# session is live, so the round is stopped only after the presses.
+start_press_phase() {
+  local index
+  for (( index = 0; index < sessions; index++ )); do
+    fetch_session "$index" "$out/session-$index-round.json"
+    aut "$index" POST /probe/flash '{"on": true}' > /dev/null
+  done
+  # The card covers the picture: one second for the change to reach the viewer,
+  # then the presses start from a card the page already sees.
+  sleep 1
+  say "measuring ${press_seconds}s of presses"
+  run_probe_window "$press_seconds"
+}
+
+# One line per session whose press phase measured nothing (M15 fix5): the run
+# says what it saw rather than ending silently. A press the session refused, or
+# a flip the page never found in the picture, leaves no press stage behind.
+check_presses() {
+  local index name flips refused
+  for (( index = 0; index < sessions; index++ )); do
+    name="$(name_of "$index")"
+    if grep -q '"press_to_screen"' "$out/summaries/$name.json" 2>/dev/null; then
+      continue
+    fi
+    flips="$(curl -s --max-time 2 "$(relay_url "$index")/flips?since=0" | grep -c '"id"')"
+    refused="$(wc -l < "$out/refused-$index" 2>/dev/null || echo 0)"
+    say "$name: no press_to_screen after the press phase: the relay saw $flips flip(s), $refused press(es) refused"
+  done
 }
 
 # Stops every session this run started and every viewer it opened.
@@ -463,35 +546,65 @@ bitrate_ceiling() {
   docker logs "$(container_of "$1")" 2>&1 | grep -m1 -o ' [0-9]*kbit/s' | grep -o '[0-9]*' | head -1
 }
 
-# The received bitrate a summary carries, in kbit/s, or nothing: the mean of
-# the viewer's `recv kbit/s` readings, which is the first `bitrateReceivedKbps`
-# gauge in the file (the viewer's own, before the session's).
+# The received bitrate a viewer counted, in kbit/s, or nothing: the mean of the
+# first viewer's `bitrateReceivedKbps` gauge. The file may be a session's summary
+# or the stats answer that carries it, whose keys share one line.
 received_kbps() {
-  awk '/"bitrateReceivedKbps"/ { found = 1; next }
-    found && /"mean"/ { gsub(/[^0-9.]/, "", $0); printf "%.0f", $0; exit }' "$1" 2> /dev/null
-}
-
-# Each viewer a summary records, as "kind/platform" (M15 g1): who was timed,
-# with the host's cleaned strings and no user agent kept.
-viewer_kinds() {
   python3 - "$1" <<'PY' 2> /dev/null
 import json, sys
+
 try:
     doc = json.load(open(sys.argv[1], encoding="utf-8"))
 except (OSError, ValueError):
     sys.exit(0)
+if isinstance(doc, dict) and isinstance(doc.get("session"), dict):
+    doc = doc["session"]
 stream = doc.get("stream") if isinstance(doc, dict) else None
 viewers = stream.get("viewers") if isinstance(stream, dict) else None
 for viewer in viewers or []:
-    print("%s/%s" % (viewer.get("kind") or "?", viewer.get("platform") or "?"))
+    gauge = (viewer.get("gauges") or {}).get("bitrateReceivedKbps")
+    if gauge and gauge.get("mean") is not None:
+        print("%.0f" % gauge["mean"])
+        break
+PY
+}
+
+# Each viewer that reported numbers, as "kind/platform" (M15 g1): who was timed,
+# with the host's cleaned strings and no user agent kept. A row that holds only
+# the host's own stages is left out, as the report leaves it out (M15 fix5). The
+# file may be a session's summary or the stats answer that carries it.
+viewer_kinds() {
+  python3 - "$1" <<'PY' 2> /dev/null
+import json, sys
+
+HOST_STAGES = {"stream_capture", "stream_encode", "stream_send", "stream_total"}
+
+def receive_data(viewer):
+    if viewer.get("gauges") or viewer.get("counters"):
+        return True
+    return any(stage.get("name") not in HOST_STAGES for stage in viewer.get("stages") or [])
+
+try:
+    doc = json.load(open(sys.argv[1], encoding="utf-8"))
+except (OSError, ValueError):
+    sys.exit(0)
+if isinstance(doc, dict) and isinstance(doc.get("session"), dict):
+    doc = doc["session"]
+stream = doc.get("stream") if isinstance(doc, dict) else None
+viewers = stream.get("viewers") if isinstance(stream, dict) else None
+for viewer in viewers or []:
+    if receive_data(viewer):
+        print("%s/%s" % (viewer.get("kind") or "?", viewer.get("platform") or "?"))
 PY
 }
 
 # Prints what the run produced, so the log of a benchmark says its numbers: the
-# viewers and who they were, the bitrate the session kept against the ceiling
-# it was given, and where the evidence is.
+# viewers that reported numbers and who they were, the bitrate the session kept
+# against the ceiling it was given, and where the evidence is. In a run with a
+# press phase the bitrate comes from the round's own snapshot: the card's nearly
+# still picture would dilute it (M15 fix5).
 report_run() {
-  local index name summary ceiling received who
+  local index name summary counted ceiling received who
   for (( index = 0; index < sessions; index++ )); do
     name="$(name_of "$index")"
     summary="$out/summaries/$name.json"
@@ -499,10 +612,12 @@ report_run() {
       say "$name: no summary"
       continue
     fi
+    if [[ -f "$out/session-$index-round.json" ]]; then summary="$out/session-$index-round.json"; fi
     ceiling="$(bitrate_ceiling "$index")"
     received="$(received_kbps "$summary")"
     who="$(viewer_kinds "$summary" | paste -sd, -)"
-    say "$name: $(grep -c '"id": "v[0-9]' "$summary") viewer(s) ${who:-(none)}, ${received:--} kbit/s received against the ${ceiling:--} kbit/s ceiling, summary $(wc -c < "$summary") bytes"
+    counted="$(viewer_kinds "$summary" | grep -c . || true)"
+    say "$name: $counted viewer(s) ${who:-(none)}, ${received:--} kbit/s received against the ${ceiling:--} kbit/s ceiling, summary $(wc -c < "$summary") bytes"
   done
   say "results in $out"
 }
@@ -555,15 +670,23 @@ main() {
   # sessions are measured together, so "sessions at once" is what they saw.
   say "measuring ${seconds}s on $sessions session(s), ${width}x${height}, $game$( [[ "$probe" == "yes" ]] && printf ' (probe)' || true)"
   if [[ "$probe" == "yes" ]]; then
-    run_probe_window
+    run_probe_window "$seconds"
   else
     sleep "$seconds"
   fi
   say "the window ended after $((SECONDS - started_s))s"
 
+  # A round run with a press phase measures the presses after it, on the same
+  # session and viewer, before anything is stopped (M15 fix5).
+  if (( press_seconds > 0 )); then
+    start_press_phase
+  fi
   for (( index = 0; index < sessions; index++ )); do
     collect_session "$index"
   done
+  if (( press_seconds > 0 )); then
+    check_presses
+  fi
   report_run
   stop_all
 }

@@ -60,10 +60,10 @@ default.
 
 | Setting | Default | What it does, and what M15 t1 measured |
 | --- | --- | --- |
-| `SESSION_BITRATE_KBPS` | 10000 | The video's ceiling: `webrtcsink`'s `max-bitrate` and `start-bitrate` and NVENC's own bitrate. A 1080p Arena round carried 11.6 Mbit/s with FEC on, 7.2 without |
+| `SESSION_BITRATE_KBPS` | 10000 | The ceiling a viewer's whole stream keeps: video, sound, FEC and RED together, which is what its byte counter reads. The encoder gets less — `(ceiling − 96) / (1 + FEC/100)` — and the ready line prints both (`10000kbit/s (video 4716)`); with FEC off the video gets the ceiling less the sound |
 | `SESSION_GOP_FRAMES` | the frame rate (a keyframe a second) | `-1` is keyframes on request only. Worse: the receiver's jitter buffer 262 ms against 127–170. Left at one a second so a joining player sees a picture at once |
 | `SESSION_VBV_KBITS` | 0 (NVENC's default, a second's worth) | The encoder's VBV/HRD buffer, in kbits: `gst-inspect-1.0 nvautogpuh264enc` says "VBV(HRD) Buffer Size in kbits (0 = NVENC default)". One frame's worth (167 at 10 Mbit/s and 60 fps) has measured 144–205 ms total and 213–253 press over six runs; the baseline runs beside them were 161–223 and 230–266, so it never left the 44 ms noise. Off |
-| `SESSION_FEC` | true | Forward error correction. No lower delay with it off, and it is the larger part of what is received above the ceiling (11.6 Mbit/s against 7.2) |
+| `SESSION_FEC` | true | Forward error correction. No lower delay with it off, and it is what a viewer counts above the video: off, an Arena round measured 9693 kbit/s at a 10000 ceiling, and on 20353 (M15 fix5), so the encoder is given 4716 kbit/s when it is on |
 | `SESSION_RETRANSMISSION` | true | Resend lost packets; no delay difference either way |
 | `SESSION_SPLIT_TRACKS` | false | Play picture and sound on two media elements so the browser stops syncing them. Worse: 42 delivered fps against 53, press 246 ms against 230, so one element stays |
 | `SESSION_ENCODER` | `nvautogpuh264enc` | `nvcudah264enc` also works and was no better (press 261 ms against the baseline's 230–266) |
@@ -174,46 +174,62 @@ and checks the page's files, the four POST paths, the 404 for everything else
 cap — sixteen checks, and it exits 1 at the first that does not hold.
 
 The bench's run line reads what the viewers received against the ceiling the
-video asks for, and who they were (the ingest keeps a viewer's kind and platform
-and no user agent), for example `1 viewer(s) browser/chrome-headless, 2205 kbit/s
-received against the 10000 kbit/s ceiling`. Received is the whole wire: video up
-to `SESSION_BITRATE_KBPS`, FEC on top of it, and the 96 kbit/s sound, so it sits
-above the ceiling whenever the picture fills it (M15 t1 measured 11.6 Mbit/s
-with FEC and 7.2 without, same round). The probe's card is nearly still, so its
-received rate says nothing about the game's.
+session was given, and who they were (the ingest keeps a viewer's kind and
+platform and no user agent), for example `1 viewer(s) browser/chrome-headless,
+9850 kbit/s received against the 10000 kbit/s ceiling`. Received is the whole
+wire: the video `SESSION_BITRATE_KBPS` less the sound and FEC leaves for the
+encoder, FEC and RED on top of it, and the 96 kbit/s sound. A viewer's row is
+only listed when it reported a gauge, a counter or a stage of its own; a page
+that connected and never showed a picture holds only the host's stages, and the
+section ends with `N viewer row(s) with no receive data left out` when there
+were any (M15 fix5). The probe's card is nearly still, so its received rate says
+nothing about the game's.
 
 `--viewer external` (M15 g1) opens no browser: the bench starts the session and
 the round (or the card) first, because the host only accepts a viewer's batch
 while a session is playing, then prints the LAN address to open and waits up to
-three minutes, a line every ten seconds, until a viewer registers. From then on
-it measures that viewer. `--viewer-cpus L` runs the headless Chrome on the cores
-in `L` (`taskset`), `--session-cpus L` runs the session container on the cores in
-`L` (`docker --cpuset-cpus`): pinning the two apart is how a run asks whether the
-viewer's own CPU was starving it. In the g1 runs a session pinned to `0-7` (eight
-cores) never became ready and `0-11` (twelve) did. `--viewer-cpus` is refused
-with `--viewer external`: the bench can pin only the browser it starts, so a
-viewer a person opens is pinned on that device.
+three minutes, a line every ten seconds, until a viewer with receive data
+registers. From then on it measures that viewer. A phone run then ends with a
+press phase: the round's numbers are kept, the latency card goes up over the
+same session and viewer for `--press-seconds` (30 by default), and the presses
+are timed against the card. `--viewer-cpus L` runs the headless Chrome on the
+cores in `L` (`taskset`), `--session-cpus L` runs the session container on the
+cores in `L` (`docker --cpuset-cpus`): pinning the two apart is how a run asks
+whether the viewer's own CPU was starving it. In the g1 runs a session pinned to
+`0-7` (eight cores) never became ready and `0-11` (twelve) did. `--viewer-cpus`
+is refused with `--viewer external`: the bench can pin only the browser it
+starts, so a viewer a person opens is pinned on that device.
 
-## Watching from another device on the Wi-Fi
+## Watching from another device on the home network
 
 The distro runs in WSL2's **mirrored networking** (the owner's
 `%USERPROFILE%\.wslconfig`), so it holds this PC's own LAN address: the address
 `tools/stream.sh url` prints, the one `ipconfig` shows, and the one the other
 device types. What still has to let the traffic in is Windows' firewall, which
-the owner adds once (step 2). A phone or tablet on the Wi-Fi then plays the
-session; **a browser on this PC does not**, at `localhost` or at the LAN
+the owner adds once (step 2). A phone or tablet on the home network then plays
+the session; **a browser on this PC does not**, at `localhost` or at the LAN
 address — it gets the page and its numbers, but no picture and no sound
-(measured Nov 11). Use a device on the Wi-Fi, or the TV app itself.
+(measured Nov 11). Use a device on the home network, or the TV app itself.
 
 To time that device rather than the headless Chrome, a bench can wait for it:
 
 ```bash
-tools/stream.sh bench --viewer external --probe --seconds 60 --label phone
+tools/stream.sh bench --viewer external --seconds 60 --label phone     # a round, then 30 s of presses
+tools/stream.sh bench --viewer external --probe --seconds 60 --label card  # presses only
 ```
 
-It plays the latency card, prints `http://<this PC's LAN address>:<player port>/`,
-waits up to three minutes for a viewer to register, and then times the presses
-against that viewer; the report's rows say the viewer's kind and platform.
+It starts the round (or the card), prints `http://<this PC's LAN address>:<player
+port>/`, waits up to three minutes for a viewer with receive data to register,
+and then measures that viewer; the report's rows say its kind and platform. A
+round run then flips the latency card up for `--press-seconds` (30 s by default;
+0 skips it) on the same session and viewer, so one phone run gives the round's
+numbers and a measured press-to-screen, and the run line's bitrate comes from
+the round's own snapshot.
+
+A stale browser tab left open on a session's player URL on this PC (localhost)
+reconnects to every new session and used to show up as a viewer; it no longer
+does. A page that never shows a picture reports nothing, and a row that holds
+only the host's pipeline stages is left out of the report.
 
 1. **Mirrored networking is already on.** A fresh PC needs this in
    `%USERPROFILE%\.wslconfig`, then one restart of WSL from PowerShell:

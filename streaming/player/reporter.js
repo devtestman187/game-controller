@@ -334,6 +334,13 @@ export class StreamReporter {
     this._previous = current;
     this._previousAtMs = nowMs;
     if (Object.keys(batch).length === 0) return;
+    // A page that connected but never showed a picture — a background tab, or a
+    // browser that got the page and no media — has decoded nothing, so its batch
+    // holds only the host's stages. Sending it would register the page as a
+    // viewer and list another viewer's pipeline under it (M15 fix5). The
+    // bookkeeping above still runs, so the first batch with a picture is a rate
+    // over the window before it.
+    if (!((current.video?.framesDecoded ?? 0) > 0)) return;
     await this._send(batch);
   }
 
