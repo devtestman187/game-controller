@@ -35,8 +35,7 @@ class _LobbyHoldState extends ConsumerState<LobbyHold> {
 /// `PuzzleScreen` and `GameScreen`, their results and pause included. The
 /// lobby's music stops while a round is on and the round's own plays from its
 /// "go" (`PuzzleScreen` reports the clock), and the lobby's comes back when the
-/// round closes; the palette stands still with it ([RoundPaletteHold], design
-/// D1).
+/// round closes.
 class RoundHold extends ConsumerStatefulWidget {
   const RoundHold({required this.child, super.key});
 
@@ -62,5 +61,5 @@ class _RoundHoldState extends ConsumerState<RoundHold> {
   }
 
   @override
-  Widget build(BuildContext context) => RoundPaletteHold(child: widget.child);
+  Widget build(BuildContext context) => widget.child;
 }

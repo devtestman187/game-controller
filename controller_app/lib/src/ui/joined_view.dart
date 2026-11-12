@@ -106,47 +106,39 @@ class _JoinedViewState extends ConsumerState<JoinedView> {
     // The whole safe area, which is the box the game draws in: the pad's
     // controls are measured in the same box, so the game keeps clear of where
     // they are (m12-opponent-mirror rule 3).
-    //
-    // A game on this phone holds the palette still (design D1, M13 9 review):
-    // this view stays mounted between games, so the hold follows
-    // [showsGameProvider] rather than the widget's life, and releases the
-    // moment the game ends — the next page works the palette out again.
-    return party.RoundPaletteHold(
-      held: ref.watch(showsGameProvider),
-      child: LayoutBuilder(
-        builder: (context, window) => Stack(
-          fit: StackFit.expand,
-          children: [
-            // The view stays mounted while none is on, so it hears the start
-            // that turns one on: it draws nothing itself until then. Keeping it
-            // off the screen and its ticker quiet is all this does.
-            Visibility(
-              visible: drawn,
-              maintainState: true,
-              child: FrameView(
-                // A result end is held back, so the last frame stays under the
-                // results card (M14 design section 9).
-                views: ref.watch(gameViewEventsProvider),
-                registry: ref.watch(gameRegistryProvider),
-                stats: stats,
-                // The client's clock is the one frame arrivals are taken on (D3).
-                nowMs: () => client.nowMs,
-                playerId: ref.watch(identityProvider).controllerId,
-                // A tablet has the room for both sides of a phones match (m12-
-                // phone-layout §0.6); a phone draws its own.
-                wholeMatch: ref.watch(isTabletProvider),
-                padRects: leftPadRects(window.biggest, mode: mode, mm: mm, sticks: sticks),
-                // The screen's own density: the game keeps the other side's
-                // mirror's marks at a physical size by it (rule 7).
-                pxPerMm: mm,
-                // The last frame drawn, so the results card can show the
-                // picture the round left (M14 r5 5).
-                onDrawn: (snapshot) => ref.read(viewDrawnProvider.notifier).drawn(snapshot),
-                onSounds: (names) => _play(ref, names),
-              ),
+    return LayoutBuilder(
+      builder: (context, window) => Stack(
+        fit: StackFit.expand,
+        children: [
+          // The view stays mounted while none is on, so it hears the start
+          // that turns one on: it draws nothing itself until then. Keeping it
+          // off the screen and its ticker quiet is all this does.
+          Visibility(
+            visible: drawn,
+            maintainState: true,
+            child: FrameView(
+              // A result end is held back, so the last frame stays under the
+              // results card (M14 design section 9).
+              views: ref.watch(gameViewEventsProvider),
+              registry: ref.watch(gameRegistryProvider),
+              stats: stats,
+              // The client's clock is the one frame arrivals are taken on (D3).
+              nowMs: () => client.nowMs,
+              playerId: ref.watch(identityProvider).controllerId,
+              // A tablet has the room for both sides of a phones match (m12-
+              // phone-layout §0.6); a phone draws its own.
+              wholeMatch: ref.watch(isTabletProvider),
+              padRects: leftPadRects(window.biggest, mode: mode, mm: mm, sticks: sticks),
+              // The screen's own density: the game keeps the other side's
+              // mirror's marks at a physical size by it (rule 7).
+              pxPerMm: mm,
+              // The last frame drawn, so the results card can show the
+              // picture the round left (M14 r5 5).
+              onDrawn: (snapshot) => ref.read(viewDrawnProvider.notifier).drawn(snapshot),
+              onSounds: (names) => _play(ref, names),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

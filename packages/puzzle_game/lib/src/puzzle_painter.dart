@@ -301,5 +301,5 @@ class PuzzlePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(PuzzlePainter old) => !identical(old.s, s) || old.nowMs != nowMs;
+  bool shouldRepaint(PuzzlePainter old) => !identical(old.s, s) || old.nowMs != nowMs || old.look != look;
 }

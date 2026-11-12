@@ -361,6 +361,7 @@ class MatchPainter extends CustomPainter {
   bool shouldRepaint(MatchPainter old) =>
       !identical(old.s, s) ||
       old.nowMs != nowMs ||
+      old.look != look ||
       old.target != target ||
       old.camera != camera ||
       old.pxPerMm != pxPerMm ||

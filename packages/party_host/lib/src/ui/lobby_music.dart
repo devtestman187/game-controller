@@ -5,7 +5,6 @@ import '../music_loop.dart';
 import '../providers.dart';
 import '../sound.dart';
 import '../sound_settings.dart';
-import 'round_palette_hold.dart';
 import 'round_phase.dart';
 
 part 'lobby_music_widgets.dart';

@@ -34,8 +34,8 @@ void main() {
     final container = _container(tester);
     expect(container.read(lookPaletteProvider), ToyPalette.sunny);
 
-    // The evening comes while the screen stays put: nothing is worked out
-    // again, because a round never changes its palette half-way (design D1).
+    // The evening comes while the screen stays put: the clock is read at the
+    // set moments, not watched, so nothing is worked out again on its own.
     now = DateTime(2026, 11, 8, 19, 1);
     await tester.pump();
     expect(container.read(lookPaletteProvider), ToyPalette.sunny);
@@ -85,7 +85,7 @@ void main() {
     expect(container.read(lookPaletteProvider), ToyPalette.night);
   });
 
-  testWidgets('a round freezes the palette, and a page pushed after it turns Night', (tester) async {
+  testWidgets('a page pushed over a round works the palette out again', (tester) async {
     var now = DateTime(2026, 11, 8, 18, 59);
     await openRace(tester, clock: () => now);
     final container = ProviderScope.containerOf(tester.element(find.byType(PuzzleScreen)));
@@ -94,50 +94,30 @@ void main() {
     final navigator = Navigator.of(tester.element(find.byType(PuzzleScreen)));
     expect(container.read(lookPaletteProvider), ToyPalette.sunny);
 
-    // 19:01, with a page pushed over the round: the palette stays where the
-    // round started it (design D1, M13 9 review).
+    // 19:01, with a page pushed over the round: the look is worked out again
+    // for the new page, the round under it included (M14 bug t1).
     now = DateTime(2026, 11, 8, 19, 1);
     navigator.push(MaterialPageRoute<void>(builder: (_) => const Scaffold(body: Text('Settings'))));
     await navigated(tester);
     expect(find.text('Settings'), findsOneWidget);
-    expect(container.read(lookPaletteProvider), ToyPalette.sunny, reason: 'a round is on');
+    expect(container.read(lookPaletteProvider), ToyPalette.night, reason: 'the round is on, and the look changed');
     navigator.pop();
     await navigated(tester);
-    expect(container.read(lookPaletteProvider), ToyPalette.sunny, reason: 'the round goes on');
-
-    // The round ends and Change teams brings back the join screen. No round is
-    // on any more, so the next page pushed works the palette out again.
-    lockEveryPiece(tester);
-    await endRound(tester);
-    await tester.tap(find.byKey(const Key('changeTeams')));
-    await navigated(tester);
-    expect(find.byType(JoinScreen), findsOneWidget);
-    navigator.push(MaterialPageRoute<void>(builder: (_) => const Scaffold(body: Text('Settings'))));
-    await navigated(tester);
-    expect(container.read(lookPaletteProvider), ToyPalette.night, reason: 'no round is on now');
+    expect(container.read(lookPaletteProvider), ToyPalette.night, reason: 'the round goes on in the same look');
   });
 
-  // Claude's step 9 review: Settings opened over a round could change the Look
-  // setting itself, and the palette followed at once. The setting is saved, and
-  // it shows from the first page after the round.
-  testWidgets('a Look change during a round waits for the round to end', (tester) async {
+  // The owner's report, Nov 12, 2026: a Look change made in the Settings
+  // opened over a round did nothing until the round ended.
+  testWidgets('a Look change during a round shows at once', (tester) async {
     await openRace(tester, clock: () => DateTime(2026, 11, 8, 12));
     final container = ProviderScope.containerOf(tester.element(find.byType(PuzzleScreen)));
-    final navigator = Navigator.of(tester.element(find.byType(PuzzleScreen)));
     expect(container.read(lookPaletteProvider), ToyPalette.sunny);
 
     container.read(lookSettingsProvider.notifier).setChoice(LookChoice.night);
     await tester.pump();
     expect(container.read(lookSettingsProvider).choice, LookChoice.night, reason: 'the setting is saved');
-    expect(container.read(lookPaletteProvider), ToyPalette.sunny, reason: 'a round is on');
-
-    lockEveryPiece(tester);
-    await endRound(tester);
-    await tester.tap(find.byKey(const Key('changeTeams')));
-    await navigated(tester);
-    navigator.push(MaterialPageRoute<void>(builder: (_) => const Scaffold(body: Text('Settings'))));
-    await navigated(tester);
-    expect(container.read(lookPaletteProvider), ToyPalette.night, reason: 'the first page after the round');
+    expect(container.read(lookPaletteProvider), ToyPalette.night, reason: 'the round in progress follows it');
+    expect(find.byType(PuzzleScreen), findsOneWidget, reason: 'the round plays on');
   });
 
   testWidgets('a dialog is not a page route: opening one leaves the palette alone', (tester) async {
