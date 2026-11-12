@@ -4,7 +4,7 @@ Research date 2026-11-12. Web pages read with WebFetch/WebSearch only. Confidenc
 
 ## Summary
 
-Ranked by expected gain for effort. F1 = encoder waits on webrtcsink, F2 = browser jitter buffer, F3 = game draws 48-52 fps, F4 = host leg.
+Ranked by expected gain for effort (unchanged after the owner's three papers: none measured F1-F3 or Safari, so no re-ranking is justified). F1 = encoder waits on webrtcsink, F2 = browser jitter buffer, F3 = game draws 48-52 fps, F4 = host leg.
 
 1. **Split audio and video so the browser does not lip-sync them (F2).** Chromium raises video delay once an audio sender report arrives when both share one MediaStream/msid; separate streams removed it (discuss-webrtc thread, an engineer's report). A Neko/Selkies thread claims 150-200 ms down to 10-20 ms with a separate webrtcbin per media (claimed, not verified). Bilibili says Safari keeps independent jitter buffers per track when attached separately. Cost: a stream-id/SDP change on the host. Safari: only Bilibili's claim; test it. Gain: up to the whole 50-100 ms if A/V sync is the cause; nothing if we send video only.
 2. **Playout-delay RTP header extension min=max=0 from the sender (F2).** The libwebrtc spec describes this for exactly our case; Neko contributors call it key. Safari support unconfirmed: a 2019 Firefox bug comment says it works in Chrome and Safari (secondhand); Firefox has an open bug where 0/0 freezes video. Cheap to try. Our earlier playoutDelayHint/jitterBufferTarget tries did nothing on Safari, which fits "WebKit ignores these". Gain unknown.
@@ -16,13 +16,33 @@ Ranked by expected gain for effort. F1 = encoder waits on webrtcsink, F2 = brows
 
 **Is 80 ms press-to-screen in a phone browser realistic?** Published figures: GeForce Now about 56 ms click-to-draw (Nvidia, Destiny 2), 97.8 ms default and 69 ms competitive mode (GameStar via PCWorld), Parsec LAN pipeline 4-8 ms at 240 fps (native), Bilibili about 50 ms local playback in Chrome after tuning (100 ms on 2.4 GHz Wi-Fi). I found no published press-to-screen figure for iPhone Safari. 80 ms looks reachable in Chrome and plausible on Safari only if the jitter buffer can be bypassed (items 1, 2 or 6); with Safari's 50-100 ms buffer left alone it is not.
 
+## Latency compensation
+
+Searched the three papers for local prediction or echo of input, speculative or extrapolated frames, time warp and mechanics adjustment. None reports a measured effect. The only related item is the dissertation's server-side frame interpolation (above), which fills frame rate and does not hide input delay. Thresholds the papers cite: about 50 ms acceptable (Akraino, claimed), 100 ms for fast genres and 150 ms for others (dissertation, citing others). Inference for us, not from the papers: with a phone controller, the cheapest masking is an immediate local response on the phone (vibration, button highlight, sound) at press time, and designing party-game mechanics that tolerate 100-150 ms; both need the owner's judgment and a test, not a paper.
+
 ## Sources
 
 ### The three owner documents
 
-- https://etda.libraries.psu.edu/files/final_submissions/30084 — HTTP 403 on fetch; catalog URL 404; search did not identify the thesis. Nothing read. Confidence: none. Owner should open it by hand or paste text.
-- https://lfedge.org/wp-content/uploads/sites/24/2023/08/Akraino-White-Paper-Edge-Cloud-Game-based-on-Arm-architecture-high-performance-CPU-1.pdf — PDF returned as binary; text could not be extracted (no PDF renderer installed). From the LF Edge listing only: a joint paper (Akraino, Arm, Tencent, Zenlayer and others) on edge cloud gaming architecture, cost and operations. Looks like a deployment paper, not latency engineering (inference from the abstract). Nothing pertinent confirmed.
-- https://web.cs.wpi.edu/~claypool/papers/game-stream-nossdav-22/paper.pdf — PDF unreadable (same reason). From the landing page: Xu and Claypool, NOSSDAV 2022, measure how Stadia, GeForce Now and Luna react to a congested link shared with TCP (bitrate, loss, latency). About congestion response, not per-stage or browser latency. Nothing pertinent to our 80 ms goal beyond "services adapt bitrate differently". Confidence: abstract only.
+Read from text extracts (pdftotext) the owner supplied; figures are missing from the extracts, so figure-only numbers are not used.
+
+**Optimizing emerging game streaming applications for mobile platforms** (dissertation), S. Bhuyan, Penn State, 2024. Mostly energy and bandwidth work (5G/WiFi power, super-resolution upscaling on phones, game-aware motion estimation); little for our four findings.
+- Latency: cloud-gaming input-to-screen "can tolerate" up to 150 ms, as low as 100 ms for shooter/action/racing (sec 4.5.2, citing two other papers; claimed). The owner's own pipeline: below 70 ms end to end for all tested games with their upscaler (measured, Moonlight/GameStream client on Pixel 7 Pro and Galaxy S8 Tab, sec 4.5.2).
+- F4/F1 context: a render queue added about 10 ms in one inefficient engine (AoE-II, sec 3.4.1.1; measured). Encode time follows resolution, not scene (sec 3.4.1.1). Hardware encode at 4K high quality exceeds 16.66 ms; at 1080p it fits. Our small-resolution stream sits well inside this (inference).
+- F2-adjacent, decode side: client decode averaged 7.49 ms at 1080p vs 15.23 ms at 4K, both 10 Mbps; decode time rose as bitrate fell (sec 3.4.1.1; measured, native Android decoder, not Safari). Suggests no gain from cutting bitrate for latency, and a low-res stream is cheap to decode.
+- GeForce Experience fills a sub-60 fps render rate with "smart motion interpolation" before sending (sec 3.4.1.1; stated, not measured). Frame-rate fill, not input compensation; it adds a frame of delay by nature (inference).
+- Nothing on jitter buffers, WebRTC, browsers, Safari or local input prediction. Confidence: measured for the numbers above, in a native-client setting.
+
+**Edge Cloud Game based on Arm architecture high performance CPU**, Akraino / LF Edge (Y-semi, Tencent, Arm, Genmotion, Zenlayer and others), 1st edition, Nov 2022. A deployment and business paper (Android cloud games on Arm servers, k8s, container density). Nothing useful for F1-F4.
+- States about 50 ms as the real-time level acceptable to players (p. 4; claimed, no source).
+- Test table lists touch-screen response delay of 411 ms (cloud phone, 1080x1920) and frame interval 40 ms (30 fps) and a cloud-phone score of 33.1; the extract is garbled so the row-to-value mapping is uncertain (p. 15; measured in source, mapping uncertain). Android cloud phone over the internet, not comparable to a LAN.
+- Rule of thumb: network bandwidth 1.6x average bitrate for a stable picture (p. 4; claimed). Irrelevant on our LAN.
+- Confidence: claimed. No change to the ranking.
+
+**Measurement of the Responses of Cloud-based Game Streaming to Network Congestion**, X. Xu and M. Claypool, NOSSDAV 2022 (WPI). Black-box measurement of Stadia, GeForce Now and Luna in Chrome against TCP cross traffic; bitrate, loss, RTT only (no input or screen latency).
+- Without competing traffic the services add almost no queueing: RTT 16-22 ms vs a 16 ms floor, loss at most 0.1% (Tables 2 and 4; measured). With a competing bulk TCP flow RTT is set by the queue: about 40 ms at 2x BDP and about 110 ms at 7x BDP, bufferbloat (Table 3; measured). Our LAN risk: a household Wi-Fi with another download running; worth one sentence in the party-night checklist (inference).
+- Services settle near the capacity limit when constrained; Stadia more variable in bitrate and probes upward periodically (Sec 4.1; measured). Says delay "degrades player performance" citing earlier work, no number.
+- Nothing on F1-F4, browsers or compensation. Confidence: measured, but a different problem from ours.
 
 ### Other sources
 
@@ -57,7 +77,7 @@ Ranked by expected gain for effort. F1 = encoder waits on webrtcsink, F2 = brows
 
 ## Not found / uncertain
 
-- Contents of the three owner documents beyond abstracts: PSU file gave 403; the two PDFs were binary and no PDF renderer is installed. Needs the owner or a text copy.
+- The owner's three papers were read in text form (see their entries); none measured jitter-buffer, webrtcsink or Safari behaviour, so F1-F3 stay unanswered by published work.
 - Whether iOS Safari honours the playout-delay extension, `jitterBufferTarget` or `playoutDelayHint`. Evidence conflicts: MDN data snapshot (2025, via search) shows Safari "No"; Chromium Intent to Ship (2024) shows WebKit "no signal"; the live MDN page claims Baseline 2026 but its table did not render. Our own earlier tests found no effect. Check on the phone with `'jitterBufferTarget' in RTCRtpReceiver.prototype`.
 - Whether Safari keeps a separate jitter buffer per track (Bilibili claim only), and whether our stream has an audio track at all.
 - Why webrtcsink holds encoder output about 25 ms: no source found. Needs gst-plugins-rs source reading or the GStreamer latency tracer.
