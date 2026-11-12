@@ -2,7 +2,11 @@
 
 Branch `m14`, worktree `E:\AI\game-controller-m14`, cut from `m13` at 77ccf09 on Nov 9, 2026, after M13's closing review R4 and its fixes. The plan is docs/PRD-v2.md "Milestone 14" (G1–G5, G9, C20, T15, results on joined phones, the Arena waits for its players).
 
-## Resume here (Nov 10, 2026, evening: M14 built; device tests next)
+## Resume here (Nov 12, 2026: m14.2 tagged for the owner's device test)
+
+The owner's five device-test bugs (look-alike puzzle pieces, the look changing mid-game, starting the Bumper Round on a phone host, coins shown in a Bumper Round, a bigger cat hanging from the top of the screen) are fixed in docs/briefs/m14/bugs1 (five jobs, worker review REVIEW.md) and bugs2 (one fix job, ab06be1). Claude read the rule-side changes before the tag; the 19 minor findings are in docs/code-health.md. Owner, Nov 12: "Yes build it and tag it so I can test" -> `m14.2`. iOS stays internal until the owner says otherwise. Open for the owner: is the cat right hanging over the status strip; the Auto look can now also change during a round.
+
+## Earlier: resume notes of Nov 10 (Nov 10, 2026, evening: M14 built; device tests next)
 
 **Working mode: low-usage** (owner, Nov 10). Every M14 job is committed (x1, b1, s1, k2a, c3, k2b, a3, b2, c2, b3), the worker's full review r5 (5915c53) and Claude's one fix batch **f1** (1303028: all 15 r5 findings, calmer map pictures, phone and tablet hosts upload stats with the TV's consent flow). Full `tools/check.sh` passes on 1303028 (host 376, phone 454, puzzle 360, arena 199).
 
