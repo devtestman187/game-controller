@@ -13,35 +13,38 @@ const arenaMapCardWidthPx = 260.0;
 /// render tool draws it.
 const arenaMapPictureShare = 9 / 16;
 
-/// How round the ready marks' discs are against a button's height, and how big
-/// a map's chosen tick is.
-const _markShare = 0.8;
+/// How big a map's chosen tick is against a button's height (frame 8).
 const _chosenShare = 0.45;
 
 /// How many player colours the palette has (the protocol's `playerColors`): a
 /// map's card takes the next one, so neighbouring pictures differ.
 const _colourSlots = 6;
 
-/// One joined phone on the waiting card (frame 8): its badge, its number and
-/// nickname, and a ✓ once it is ready or a ✗ until then. Tapping the row
-/// readies it, for a phone host's thumb.
+/// One joined phone on the waiting card (frame 8, M14 b1): its badge, its
+/// number and nickname, and the word that says whether it is ready, as the
+/// host's other player rows say it. Tapping the row readies it, for a touch
+/// host's thumb.
 class _PlayerRow extends StatelessWidget {
-  const _PlayerRow({required this.player, required this.ready, required this.onTap});
+  const _PlayerRow({required this.player, required this.ready, required this.own, required this.onTap});
 
   final GamePlayer player;
   final bool ready;
+
+  /// Whether this is the host device's own player (M14 b1): its name then says
+  /// "(you)", so the player who can tap the card knows which row is theirs.
+  final bool own;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final look = ToyLookScope.of(context);
-    final name = player.nickname;
     return Padding(
       padding: EdgeInsets.only(top: rowBadgeHeadroom(look), bottom: ToySizes.space4),
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: onTap,
         child: Row(
+          key: Key('arenaPlayer-${player.id}'),
           children: [
             PlayerBadge(
               number: player.number,
@@ -49,12 +52,16 @@ class _PlayerRow extends StatelessWidget {
               character: player.character,
             ),
             const SizedBox(width: ToySizes.space8),
-            Text(
-              name == null || name.isEmpty ? 'P${player.number}' : 'P${player.number} $name',
-              style: look.type.button.copyWith(color: look.colors.ink),
+            Expanded(
+              child: Text(
+                HostText.playerLabel(player.label, simulated: player.simulated, own: own),
+                style: look.type.button.copyWith(color: look.colors.ink),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
-            const Spacer(),
-            _ReadyMark(ready: ready, id: player.id),
+            const SizedBox(width: ToySizes.space8),
+            _ReadyLabel(ready: ready, id: player.id),
           ],
         ),
       ),
@@ -62,25 +69,66 @@ class _PlayerRow extends StatelessWidget {
   }
 }
 
-/// The ✓ a ready player wears, and the ✗ one who isn't yet (frame 8): a toy
-/// disc in `good` or `caution`, with the ink edge.
-class _ReadyMark extends StatelessWidget {
-  const _ReadyMark({required this.ready, required this.id});
+/// A player's readiness in words (M14 b1): "Ready" in the look's good green,
+/// or "Not ready yet" in its soft ink until they are. It takes the place of
+/// the ✓ and ✗ discs, so a player's row reads as the host's other rows do —
+/// the badge, the name, and a small word — and the words carry it, never the
+/// colour alone (G5).
+class _ReadyLabel extends StatelessWidget {
+  const _ReadyLabel({required this.ready, required this.id});
 
   final bool ready;
 
-  /// The player the mark belongs to, for the card's own tests.
+  /// The player the label belongs to, for the card's own tests.
   final String id;
 
   @override
   Widget build(BuildContext context) {
     final look = ToyLookScope.of(context);
-    final size = look.sizes.buttonHeight * _markShare;
-    return Icon(
-      ready ? Icons.check_circle : Icons.cancel,
+    return Text(
+      ready ? ArenaText.readyLabel : ArenaText.notReadyLabel,
       key: Key('${ready ? 'ready' : 'notReady'}-$id'),
-      size: size,
-      color: ready ? look.colors.good : look.colors.caution,
+      style: look.type.body.copyWith(color: ready ? look.colors.good : look.colors.inkSoft),
+    );
+  }
+}
+
+/// What starts the round, beside the button that readies the host device's own
+/// player (M14 b1): on a touch host that player has no pad over this card, so
+/// the tap is its A. The button stands where Shape Race's Start does, beside
+/// its line of words, and is null on a TV and on a phone that only shows the
+/// game, where the line alone stays centred.
+class _ReadyRow extends StatelessWidget {
+  const _ReadyRow({required this.line, required this.ready, this.onReady});
+
+  final String line;
+
+  /// Whether the host device's own player is already ready: the button then
+  /// wears the focus fill, and a second tap takes it back, as that player's A
+  /// does.
+  final bool ready;
+
+  /// The tap that readies the own player; null where there is no own player.
+  final VoidCallback? onReady;
+
+  @override
+  Widget build(BuildContext context) {
+    final look = ToyLookScope.of(context);
+    final style = look.type.button;
+    final tap = onReady;
+    if (tap == null) return Center(child: Text(line, style: style));
+    return Row(
+      children: [
+        HostButton(
+          key: const Key('arenaReady'),
+          label: ArenaText.readyButton,
+          icon: Icons.check,
+          fill: ready ? look.colors.focus : null,
+          onPressed: tap,
+        ),
+        const SizedBox(width: ToySizes.space12),
+        Expanded(child: Text(line, style: style)),
+      ],
     );
   }
 }
@@ -115,7 +163,7 @@ class _RoboRow extends StatelessWidget {
               const SizedBox(width: ToySizes.space8),
               Text(ArenaText.robo, style: look.type.button.copyWith(color: look.colors.ink)),
               const Spacer(),
-              const _ReadyMark(ready: true, id: 'robo'),
+              const _ReadyLabel(ready: true, id: 'robo'),
             ],
           ),
         ),

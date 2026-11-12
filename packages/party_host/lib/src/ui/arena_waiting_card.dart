@@ -34,6 +34,13 @@ part 'arena_waiting_widgets.dart';
 /// player is ready. A simulated controller is ready from the start: nobody can
 /// press for it. The host's own player is not: a keyboard draws its marble and
 /// a thumb on the host presses A, so it readies like any other.
+///
+/// A host device that plays here (a phone or tablet host) has no pad over this
+/// card — a hosting phone's pad is built only while a round runs
+/// (m12-host-touch rules 1 and 2) — so the card shows that player a Ready
+/// button beside its line, which does what its A does, ready and un-ready
+/// (M14 b1). The line then says "Tap Ready"; a TV and a phone that only shows
+/// the game keep "Press A", for the joined phones.
 class ArenaWaitingCard extends ConsumerStatefulWidget {
   const ArenaWaitingCard({super.key, required this.onStart, this.bumperOnly = false, this.surpriseFirst = false});
 
@@ -145,8 +152,8 @@ class _ArenaWaitingCardState extends ConsumerState<ArenaWaitingCard> {
     }
   }
 
-  /// Readies or un-readies [id] from a tap on its row: a phone host's thumb,
-  /// or a screen a player touches.
+  /// Readies or un-readies [id] from a tap on its row or on the card's ready
+  /// button: what that player's A does, and a second tap takes it back.
   void _toggle(String id) => setState(() {
     if (!_ready.remove(id)) _ready.add(id);
   });
@@ -188,6 +195,16 @@ class _ArenaWaitingCardState extends ConsumerState<ArenaWaitingCard> {
       if (!p.away) p,
   ];
 
+  /// The host device's own player while it is in this round (M14 b1): a phone
+  /// or a tablet that hosts and plays here. Its pad is not built over the host's
+  /// menus, so the card readies it with a button of its own. Null on a TV, and
+  /// on a phone that only shows the game, which has no own player
+  /// ([ownPlayerIdProvider]).
+  String? get _ownPlayerId {
+    final own = ref.watch(ownPlayerIdProvider);
+    return own != null && _joined.any((p) => p.id == own) ? own : null;
+  }
+
   void _pickMode(ArenaMode mode) => ref.read(arenaSettingsProvider.notifier).setMode(mode);
 
   void _pickMap(String? mapId) {
@@ -224,19 +241,28 @@ class _ArenaWaitingCardState extends ConsumerState<ArenaWaitingCard> {
   /// The card's rows: the mode, who is ready, Robo's level and the map choice.
   Widget _cardBody(BuildContext context, String code, ToyLook look) {
     final players = _joined;
+    final own = _ownPlayerId;
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _modeRow(context, code),
         const SizedBox(height: ToySizes.space16),
-        Center(child: Text(ArenaText.ready, style: look.type.button)),
+        // The line and the own player's button sit under the mode row, above
+        // the players and the maps, so a phone in landscape shows them without
+        // scrolling (M14 b1).
+        _ReadyRow(
+          line: own == null ? ArenaText.ready : ArenaText.tapReady,
+          ready: own != null && _ready.contains(own),
+          onReady: own == null ? null : () => _toggle(own),
+        ),
         const SizedBox(height: ToySizes.space8),
         if (players.isEmpty)
           Center(
             child: Text(HostText.noController, style: look.type.body, textAlign: TextAlign.center),
           ),
-        for (final p in players) _PlayerRow(player: p, ready: _ready.contains(p.id), onTap: () => _toggle(p.id)),
+        for (final p in players)
+          _PlayerRow(player: p, ready: _ready.contains(p.id), own: p.id == own, onTap: () => _toggle(p.id)),
         if (_roboIn) ...[
           _RoboRow(
             level: _settings.roboLevel,

@@ -13,7 +13,24 @@ abstract final class ArenaText {
   static const bumper = 'Bumper';
   static const race = 'Race';
   static const code = 'Code';
+
+  /// What starts the round on a TV, and on a phone that only shows the game:
+  /// a player's A (M14 b1).
   static const ready = "Press A when you're ready.";
+
+  /// The same where the host device's own player taps [readyButton] beside it
+  /// (M14 b1): that player has no pad over this card.
+  static const tapReady = "Tap Ready when you're ready.";
+
+  /// The button that readies the host device's own player, and takes it back
+  /// (M14 b1): it does what that player's A does.
+  static const readyButton = 'Ready';
+
+  /// How a player's row marks readiness (M14 b1), in the words the host's rows
+  /// use rather than a ✓ or a ✗ disc.
+  static const readyLabel = 'Ready';
+  static const notReadyLabel = 'Not ready yet';
+
   static const map = 'Map';
   static const surpriseMe = 'Surprise me';
 
