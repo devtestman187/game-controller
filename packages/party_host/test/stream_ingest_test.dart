@@ -189,7 +189,7 @@ void main() {
     ]);
 
     final sound = tableOf(text, 'Streaming sound');
-    expect(cells(sound[2]), ['fixture', 'v1', '20/20', '42.0', '42.0']);
+    expect(cells(sound[2]), ['fixture', 'v1', '20/20', '42.0', '42.0', '-']);
 
     final resources = tableOf(text, 'Streaming resources');
     expect(resources[0], contains('pipeline ms'), reason: 'the tracer\'s whole host path has its own column');
