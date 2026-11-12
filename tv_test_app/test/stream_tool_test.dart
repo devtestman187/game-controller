@@ -95,7 +95,12 @@ void main() {
   });
 
   test('the streaming scripts are valid bash', () async {
-    for (final file in ['../streaming/entrypoint.sh', '../streaming/bench.sh', '../tools/stream.sh']) {
+    for (final file in [
+      '../streaming/entrypoint.sh',
+      '../streaming/bench.sh',
+      '../streaming/encoder-bench.sh',
+      '../tools/stream.sh',
+    ]) {
       final result = await Process.run('bash', ['-n', file]);
 
       expect(result.exitCode, 0, reason: '$file: ${result.stderr}');
@@ -138,5 +143,56 @@ void main() {
       expect(result.exitCode, 2, reason: '"$setting" would reach docker run as -e');
       expect(result.stderr, contains('a setting is KEY=VALUE (upper-case name, a plain value)'));
     }
+  });
+
+  group('the encoder bench', () {
+    const encoderBench = '../streaming/encoder-bench.sh';
+
+    Future<ProcessResult> runBench(List<String> arguments) => Process.run('bash', [encoderBench, ...arguments]);
+
+    /// The table `--list` prints: one line per variant, the name first and the
+    /// whole property string last.
+    Future<Map<String, String>> listedVariants() async {
+      final result = await runBench(['--list']);
+
+      expect(result.exitCode, 0, reason: '--list runs nothing, so it needs no GStreamer: ${result.stderr}');
+      return {for (final line in (result.stdout as String).trim().split('\n')) line.split(RegExp(r'\s+'))[0]: line};
+    }
+
+    test('the session variant comes first and carries the session\'s properties', () async {
+      final variants = await listedVariants();
+
+      expect(variants.keys.first, 'session');
+      expect(
+        variants['session'],
+        contains('rate-control=cbr gop-size=60 b-frames=0 zero-reorder-delay=true preset=p1'),
+        reason: 'the first line is build_pipeline\'s own settings, the others compare with it',
+      );
+      expect(variants, hasLength(lessThanOrEqualTo(12)), reason: 'a variant is a 20 s run: twelve is the budget');
+    });
+
+    test('a variant replaces one property where the session sets it', () async {
+      final variants = await listedVariants();
+      final p4 = variants['preset-p4']!;
+
+      expect(p4, contains('preset=p4'));
+      expect(p4, isNot(contains('preset=p1')), reason: 'the last preset on a gst-launch line wins, so one only');
+      expect(p4, contains('tune=ultra-low-latency'), reason: 'the other properties stay as the session has them');
+      expect(p4, contains('zero-reorder-delay=true'));
+    });
+
+    test('a variant starts from the properties given on the command line', () async {
+      final result = await runBench(['--list', '--props', 'bitrate=1000 rate-control=vbr']);
+
+      expect(result.stdout, contains('bitrate=1000 rate-control=vbr'));
+      expect(result.stdout, isNot(contains('preset=p1')), reason: 'the override is the whole session property string');
+    });
+
+    test('a variant name it does not know is refused before anything runs', () async {
+      final result = await runBench(['--only', 'session,nope']);
+
+      expect(result.exitCode, 2);
+      expect(result.stderr, contains('no variant called "nope"'));
+    });
   });
 }

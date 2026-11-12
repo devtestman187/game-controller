@@ -249,6 +249,21 @@ A tuning experiment needs no rebuild: `bench --set KEY=VALUE` (repeated) adds on
 
 A round the app does not show within a few seconds is started again: a `game/start` sent while the session is still warming up is dropped, and the app stays on its home screen. The bench waits for `GET status` to say the game screen and checks it is still there a few seconds later; a session that never gets there fails the run instead of measuring the home screen.
 
+### streaming/encoder-bench.sh (M15 k1-4)
+
+The encode stage is the tracer's record of the encoder element: the time a frame spent between the element's sink pad and its src pad, which includes its own work, its internal queue and the time its src-pad push waits for the elements after it. This bench times that number on the session's own encoder settings, with nothing else in the pipeline that could wait (a `videotestsrc` at 1080p60, no game, no viewer, `fakesink sync=false`), one change per variant:
+
+```bash
+tools/wsl-sync.sh tp-stream                  # from the repo, then in the distro:
+bash /work/<job>/streaming/encoder-bench.sh --list                      # the variants and the properties each runs
+bash /work/<job>/streaming/encoder-bench.sh                             # 20 s each, the table on stdout
+bash /work/<job>/streaming/encoder-bench.sh --only session,queue1 --seconds 5
+bash /work/<job>/streaming/encoder-bench.sh --props "bitrate=4716 rate-control=vbr"   # your own properties
+bash /work/<job>/streaming/encoder-bench.sh --log /work/encoder-bench/k4b-pipeline.log  # a session's own log
+```
+
+It prints per variant the encoder element's mean and p95 latency in ms, the frames it delivered per second (from the tracer's own stamps) and the gst-launch process's CPU, plus the other elements' means, so a wait before the encoder shows in the element it happened in. It runs on the distro's own GStreamer, which is the same Ubuntu 24.04 nvcodec plugin the image has; `--after "identity sleep-time=20000"` puts a delay after the encoder (what the number counts), and `--fps 30` halves the source's rate (whether the number is work or pacing). A session's log is at `/run/thumb-party/pipeline.log` in the container (`docker cp <container>:/run/thumb-party/pipeline.log …`), and `--log` prints the same row for it.
+
 ## The automation interface: tools/automation.dart
 
 Every host build has one small HTTP API, off unless a launch switches it on (M15 a2). [docs/automation.md](automation.md) has the calls, a curl example for each and how each host type switches it on; these are the scripts:

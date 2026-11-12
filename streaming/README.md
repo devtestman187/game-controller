@@ -70,6 +70,30 @@ default.
 | `SESSION_WIDTH`, `SESSION_HEIGHT`, `SESSION_FRAME_RATE` | 1920, 1080, 60 | The window and the encoder size. 720p was worse (total 186 ms, jitter 151) |
 | `THUMB_PARTY_IMPELLER` (M15 k1-2) | unset: Impeller | The renderer the app draws with; `0` or `false` draws with Skia. Skia halved an Arena frame's raster (4.6 ms against 9.9) and drew 52.1–55.3 fps against the baselines' 48.5–51.9, two runs each: the frame cost is outside the run-to-run noise, the frame rate at its edge (3.5 fps against a 3.4 spread), so it waits for the next phase's pairs before it becomes the default |
 
+## What the encode stage is (M15 k1-4)
+
+The `stream_encode` stage is the latency tracer's `element-latency` record of
+the encoder: the time a frame spent between the encoder's sink pad and its src
+pad. It is the element's own work plus its internal queue plus whatever its
+src-pad push waits for downstream; a wait in a `queue` **before** the encoder is
+not in it (that shows in the queue's own record). The whole host path is the
+tracer's `pipelineMs`, from `waylanddisplaysrc`'s output to `webrtcsink`'s input.
+
+Measured with [`encoder-bench.sh`](encoder-bench.sh), the session's own
+settings on a 1080p60 test source and nothing else in the pipeline (no game, no
+viewer): NVENC holds a frame **9.2-11.3 ms** whatever its settings say (nine
+changes measured one at a time: `preset` p1/p4, `tune` ultra-low/low/hq,
+`zero-reorder-delay`, `rate-control` cbr/vbr/cbr-ld-hq, a one-frame VBV with
+`strict-gop`, `nvcudah264enc`, and a one-buffer queue in front; the spread is
+2 ms), at 30 fps input as at 60, and inside the image as on the distro. In the session the same
+element reads **29-34 ms**. A two-frame queue between the encoder and the parser
+dropped the stage to 3 ms while `pipelineMs` stayed at 33 and the delivered fps
+at 56, and `webrtcsink`'s internal queues then read 27 ms: the stage is the
+encoder waiting for `webrtcsink` to take its output, not the encoder working
+(`encoderPct` 6 %). No setting in this file halves it; the queue moved the wait
+out of the reported stage without moving the frame any faster, so it is not in
+the image. `docs/briefs/m15/fix6/k1-4-encoder-report.md` has the table.
+
 ## Building and running it
 
 ```bash
