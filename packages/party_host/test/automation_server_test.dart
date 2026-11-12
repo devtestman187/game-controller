@@ -279,30 +279,41 @@ void main() {
 
     expect((await _call(server, 'POST', '/players', raw: 'not json')).code, 400);
     expect((await _call(server, 'POST', '/players', raw: '[1, 2]')).code, 400);
-    final long = {'nickname': 'x' * (AutomationServer.maxBodyBytes + 1)};
-    final tooLong = await _call(server, 'POST', '/players', body: long);
-    expect(tooLong.code, 400);
-    expect(tooLong.body['error'], 'the body is too long');
   });
 
-  test('a body with no length is refused at the cap, before it is all read', () async {
+  test('a body with no length stops being read at the cap, and is refused', () async {
     final api = _FakeApi();
     final server = await _started(const AutomationSettings(enabled: true, port: 0), api);
-    final chunked = await _callChunked(server, '/players', 'x' * (AutomationServer.maxBodyBytes + 1));
-    expect(chunked.code, 400);
-    expect(chunked.body['error'], 'the body is too long');
-    expect(api.calls, isEmpty, reason: 'nothing reaches the host');
+    // A body that says it is over the cap is refused from that number alone: no
+    // chunk is read.
+    await expectLater(
+      readRequestBody(const Stream<List<int>>.empty(), contentLength: AutomationServer.maxBodyBytes + 1),
+      throwsA(isA<AutomationError>()),
+    );
+    // A chunked body has no length to read: the server stops at the cap, answers
+    // and closes, so a client already writing past the cap may see the close
+    // instead of the line (the body is not read further to hand it over). The
+    // host is never asked either way.
+    await expectLater(
+      _callChunked(server, '/players', 'x' * (AutomationServer.maxBodyBytes + 1)),
+      throwsA(isA<HttpException>()),
+      reason: 'the connection closes rather than reading the rest',
+    );
+    expect(api.calls, isEmpty, reason: 'the host was never asked');
 
+    const chunkBytes = 16 * 1024;
     final read = <int>[];
     Stream<List<int>> chunks() async* {
       for (var i = 0; ; i++) {
         read.add(i);
-        yield List<int>.filled(16 * 1024, 0x78);
+        yield List<int>.filled(chunkBytes, 0x78);
       }
     }
 
     await expectLater(readRequestBody(chunks()), throwsA(isA<AutomationError>()));
-    expect(read, hasLength(9), reason: 'it reads past the cap to refuse cleanly, and stops at twice it');
+    // 64 KB is four 16 KB chunks; the fifth is the one that crosses the cap.
+    expect(read, hasLength(5), reason: 'the chunk that would pass the cap is the last one read');
+    expect(read.length * chunkBytes, lessThanOrEqualTo(maxAutomationBodyBytes + chunkBytes));
   });
 
   test('a port already in use is kept as an error and logged once', () async {

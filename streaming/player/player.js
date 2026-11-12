@@ -58,6 +58,7 @@ function setStatus(text) {
 }
 
 // Where the reporter's problems go: the console always, the stats overlay too.
+// An empty text is the reporter saying nothing is wrong any more (M15 g1).
 function noteProblem(text) {
   problem = text;
 }
@@ -151,6 +152,9 @@ function startStats(peerConnection) {
       showStats(await meter.sample());
     } catch (error) {
       noteProblem(`statistics stopped: ${error.message}`);
+      // The timer stops here, so the next tick that would draw the line never
+      // comes: add it once to what the overlay already says (M15 g1).
+      statsBox.textContent += `\nmeasurement: ${problem}`;
       console.warn(`player: statistics stopped: ${error.message}`);
       stopStats();
     }
@@ -188,6 +192,9 @@ function closeConsumer() {
   stopReporting();
   reportPlayerState("closed");
   playingStream = null;
+  // A problem belongs to the stream that had it: the next one starts clean
+  // (M15 g1, as `playingStream` does).
+  problem = "";
   if (consumer !== null) {
     const closing = consumer;
     consumer = null;

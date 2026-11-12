@@ -47,10 +47,12 @@ export class StatsMeter {
     const nowMs = performance.now();
     const elapsedS = this._previousAtMs === 0 ? 0 : (nowMs - this._previousAtMs) / msPerS;
     const current = { video: null, audio: null, pair: null };
+    // `mediaType` is what Safari and older browsers call the track's `kind`.
+    const kindOf = (entry) => entry.kind ?? entry.mediaType;
     report.forEach((entry) => {
-      if (entry.type === "inbound-rtp" && entry.kind === "video") {
+      if (entry.type === "inbound-rtp" && kindOf(entry) === "video") {
         current.video = entry;
-      } else if (entry.type === "inbound-rtp" && entry.kind === "audio") {
+      } else if (entry.type === "inbound-rtp" && kindOf(entry) === "audio") {
         current.audio = entry;
       } else if (entry.type === "candidate-pair" && entry.state === "succeeded" && entry.nominated) {
         current.pair = entry;

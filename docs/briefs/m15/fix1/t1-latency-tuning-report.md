@@ -47,11 +47,11 @@ The PC was shared with another flash job's test runs. A change was kept only if 
    exists *and* its command line contains `sleep infinity` (`ps -p … -o args=`, with `/proc/<pid>/cmdline` as
    the fallback for old Git Bash `ps`). Nothing else is ever signalled. Tests: a stale pid file is reported
    and cleared, and a live process that is not the keep-alive is neither printed as one nor ended (the test
-   process itself is the pid). Hands-on: a session started by `bench --keep` was still `Up 5 minutes` after
-   five minutes in which this job ran no WSL command at all (only a Windows `sleep`), which is the case the
-   keep-alive exists for. Limitation: the detached process itself could not be started by hand in this
-   session — background launches (`&`, `cmd /c start`) are denied and `tools/stream.sh` needed approval — so
-   the start/stop behaviour is proven by the tests and the survival check, not by a `nohup` I ran myself.
+   process itself is the pid). Limitation: the detached process could not be started by hand in this session
+   — background launches (`&`, `cmd /c start`) are denied and `tools/stream.sh` needed approval — so this
+   entry originally claimed a five-minute hands-on survival run that this job could not reproduce; the next
+   job (M15 g1) withdrew that claim and shows instead that a session left with no attached WSL command stops
+   with the distro (see its report). What stands is the start/stop behaviour proven by the two tests.
 2. **The relay** (`streaming/player/serve.py`). The docstring now says which paths the page has and that
    exactly two calls reach the host (`GET /status` for `/clock`, `POST /stats/stream`); everything else is
    answered locally or 404, and a POST to a path outside the four the page uses is refused *before* its body
@@ -121,8 +121,9 @@ Notes on the ones worth a sentence:
   receiver's buffer grows to absorb the motion, and a joining viewer waits for a request/response keyframe.
   One a second stays.
 - **Split tracks made it worse**, not better (42 delivered fps against 53, jitter 174): two elements spend
-  the browser's decode budget twice over, and the audio/video sync offset the run measured was 0 ms, so the
-  sync was never the cost here. The switch stays, off.
+  the browser's decode budget twice over. The sync offset was **not measured**: the summary has two readings
+  (`n=2`, mean 0, p95 and max 1000 ms), too few and too wild to say anything, so the loss is the picture rate.
+  The switch stays, off.
 - **One-frame VBV was the only repeatable-looking win, and it did not repeat:** 144 and 145 in two probe runs,
   then 172, 182 and 145 with it as the default — the same spread as three runs of nothing.
 - **FEC and retransmission** changed no delay; turning FEC off is a bandwidth trade (11.6 → 7.2 Mbit/s) for
@@ -265,7 +266,7 @@ buffer and the app's own ~73 ms leg.
 
 ## Status row
 
-t1 done: keep-alive, relay (two host paths, 404 elsewhere before the body, 64 KB), bitrate ceiling honoured (4 000 asked / 3 736 received with FEC off; 19 131 before), mirrored-networking wording, measurement errors never over the picture; settings tuned one at a time (22 runs behind the results): baseline 183/248 ms → final 161 total (p95 161) / 234 press (p95 273), best 144–145 / 213–223, every change inside the 36–44 ms noise, so the one-frame VBV stays a switch and FEC/retransmission stay on; infinite GOP (296), split tracks (201, 42 fps), 720p (186) and nvcudah264enc (181) worse; gate 1 still 154 ms away (Chrome's jitter buffer 110–142 + encoder 29 + host leg ~73); open: playout-delay has no webrtcsink property, frame pacing and the app's fps and host leg need app code, detached keep-alive proven by test and a five-minute survival run only.
+t1 done: keep-alive, relay (two host paths, 404 elsewhere before the body, 64 KB), bitrate ceiling honoured (4 000 asked / 3 736 received with FEC off; 19 131 before), mirrored-networking wording, measurement errors never over the picture; settings tuned one at a time (22 runs behind the results): baseline 183/248 ms → final 161 total (p95 161) / 234 press (p95 273), best 144–145 / 213–223, every change inside the 36–44 ms noise, so the one-frame VBV stays a switch and FEC/retransmission stay on; infinite GOP (296), split tracks (201, 42 fps), 720p (186) and nvcudah264enc (181) worse; gate 1 still 154 ms away (Chrome's jitter buffer 110–142 + encoder 29 + host leg ~73); open: playout-delay has no webrtcsink property, frame pacing and the app's fps and host leg need app code, detached keep-alive proven by its two tests only (the five-minute hands-on claim is withdrawn in M15 g1's report).
 
 ## Delete
 

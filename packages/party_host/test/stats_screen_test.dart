@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:party_host/party_host.dart';
 import 'package:party_host/testing.dart';
@@ -7,6 +8,20 @@ import 'package:party_host/testing.dart';
 import 'support/host_harness.dart';
 
 void main() {
+  testWidgets('a bind that failed is one line on the shared Stats screen, and goes when it clears', (tester) async {
+    await pumpHost(tester, screen: const StatsScreen(), sessions: [sampleSession()]);
+    final container = ProviderScope.containerOf(tester.element(find.byType(StatsScreen)));
+
+    container.read(automationStartErrorProvider.notifier).failed('port 45783 is in use');
+    await tester.pump();
+    expect(find.text(HostText.automationNotStarted('port 45783 is in use')), findsOneWidget);
+    expect(find.byKey(const Key('automationStartError')), findsOneWidget);
+
+    container.read(automationStartErrorProvider.notifier).clear();
+    await tester.pump();
+    expect(find.byKey(const Key('automationStartError')), findsNothing, reason: 'a line never outlives its failure');
+    expect(tester.takeException(), isNull);
+  });
   testWidgets('the Stats screen shows each mode with presses, empty taps, near misses and input delay', (tester) async {
     await pumpHost(tester, screen: const StatsScreen(), sessions: [sampleSession()]);
     expect(find.byType(StatsScreen), findsOneWidget);

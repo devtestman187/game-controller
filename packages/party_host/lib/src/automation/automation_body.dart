@@ -13,26 +13,17 @@ const maxAutomationBodyBytes = 64 * 1024;
 /// refused, whether it declares its length or not: no more than the limit is
 /// ever buffered, whatever the caller sends.
 ///
-/// A body that runs past the limit is read to its end and thrown away (up to
-/// the limit again, then the rest is left unread), so a script that sends a
-/// batch just over the cap hears the refusal instead of losing the answer to
-/// a closed connection.
+/// The read stops the moment a chunk would pass the limit: the caller answers
+/// and closes, and the rest of the body is never read (M15 g1). A script that
+/// sends a batch just over the cap still hears the refusal, because the answer
+/// goes out with the connection closing after it.
 Future<String> readRequestBody(Stream<List<int>> body, {int? contentLength, int limit = maxAutomationBodyBytes}) async {
   final bytes = <int>[];
-  var tooLong = contentLength != null && contentLength > limit;
-  var read = 0;
+  if (contentLength != null && contentLength > limit) throw const AutomationError('the body is too long');
   await for (final chunk in body) {
-    if (bytes.length + chunk.length <= limit) {
-      bytes.addAll(chunk);
-    } else {
-      tooLong = true;
-    }
-    read += chunk.length;
-    // Past twice the cap the rest is an attack, not a mistake: stop reading,
-    // and let the caller see a closed connection rather than wait forever.
-    if (read > limit * 2) break;
+    if (bytes.length + chunk.length > limit) throw const AutomationError('the body is too long');
+    bytes.addAll(chunk);
   }
-  if (tooLong) throw const AutomationError('the body is too long');
   return utf8.decode(bytes);
 }
 

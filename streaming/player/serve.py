@@ -60,7 +60,10 @@ automation_prefix = "/automation/v1"
 # The most a POST body may be: one batch of a viewer's measurements is about
 # 2 KB and a press is a few dozen bytes, so 64 KB is room and no more. The
 # relay is reachable from anywhere the page is, and the host's ingest keeps what
-# it is given, so an open body would be an open memory hole.
+# it is given, so an open body would be an open memory hole. Keep this in step
+# with the host's own cap, `maxAutomationBodyBytes` in
+# packages/party_host/lib/src/automation/automation_body.dart: a batch the relay
+# lets through is one the host must also take.
 max_body_bytes = 64 * 1024
 
 # The files the page loads, which are the only things it can fetch from here.

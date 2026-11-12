@@ -175,6 +175,10 @@ final class HostAutomation implements AutomationApi {
     // a press until it is released, so a second probe of the same button must
     // be a new press, as a thumb's second tap is.
     SchedulerBinding.instance.addPostFrameCallback((_) => local.set(const GamepadState(mode: InputMode.dpad)));
+    // A post-frame callback runs on the next frame, and only if one is asked
+    // for: on a screen that draws nothing the release would never run and the
+    // button would stay held (M15 g1).
+    SchedulerBinding.instance.scheduleFrame();
     // The latency card flips on the press too (M15 c2), so a viewer that
     // watches the picture sees the press arrive as a colour change and times
     // it against [atMs]; the card's own 500 ms cadence keeps running.

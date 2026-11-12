@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -6,8 +5,8 @@ import 'package:flutter_test/flutter_test.dart';
 /// The streaming session tool (M15) is a developer script, but it is the only
 /// way a person starts a stream, and it runs commands as root inside a Linux
 /// distro: its guard rails are tested here like any other rule. The player's
-/// relay (M15 t1) is the session's one door to the host's API, so the paths it
-/// answers, and the size it refuses, are tested here too.
+/// relay has its own test in the distro (`streaming/player/relay_test.py`,
+/// run by `tools/stream.sh selftest`), because Python is what serves it.
 void main() {
   // `flutter test` runs in tv_test_app, where the tests live.
   const script = '../tools/stream.sh';
@@ -30,6 +29,30 @@ void main() {
     expect(result.stdout, contains('tools/stream.sh up'));
     expect(result.stdout, contains('tools/stream.sh bench'), reason: 'the benchmark is one of its commands');
     expect(result.stdout, contains('tools/stream.sh stats'), reason: 'and the report it prints');
+    expect(result.stdout, contains('tools/stream.sh selftest'), reason: 'and the relay test that runs in the distro');
+  });
+
+  test('the usage says a bench can wait for a viewer a person opens', () async {
+    final result = await run([]);
+
+    expect(result.stdout, contains('--viewer <kind>'));
+    expect(result.stdout, contains('external: no browser is opened'));
+  });
+
+  test('a benchmark refuses a viewer it does not know', () async {
+    final result = await run(['bench', '--viewer', 'nope']);
+
+    expect(result.exitCode, 2, reason: 'a viewer is picked before any session starts');
+    expect(result.stderr, contains('--viewer is chrome or external, got "nope"'));
+  });
+
+  test('a benchmark refuses a core list that is not one', () async {
+    for (final (option, value) in [('--viewer-cpus', 'x'), ('--session-cpus', '8-')]) {
+      final result = await run(['bench', option, value]);
+
+      expect(result.exitCode, 2, reason: '"$value" would reach taskset or docker as a core list');
+      expect(result.stderr, contains('$option is a core list like 0-7 or 8-15, got "$value"'));
+    }
   });
 
   test('a benchmark refuses a label that is not lower-case', () async {
@@ -91,146 +114,4 @@ void main() {
       expect(result.stderr, contains('a setting is KEY=VALUE (upper-case name, a plain value)'));
     }
   });
-
-  final python = findPython();
-
-  group('the player relay', () {
-    late Process server;
-    late int port;
-    late int hostPort;
-
-    setUpAll(() async {
-      port = await freePort();
-      hostPort = await freePort();
-      server = await Process.start(python!, [
-        '../streaming/player/serve.py',
-        '--port',
-        '$port',
-        '--directory',
-        Directory('../streaming/player').absolute.path,
-        '--automation-port',
-        '$hostPort',
-        '--state',
-        Directory.systemTemp.path,
-      ]);
-      // The relay says little, but an undrained pipe would hold it up.
-      server.stdout.listen((_) {});
-      server.stderr.listen((_) {});
-      await waitForRelay(port);
-    });
-
-    tearDownAll(() async {
-      server.kill();
-      await server.exitCode.timeout(const Duration(seconds: 5), onTimeout: () => -1);
-    });
-
-    test('serves the page and the files it loads', () async {
-      final page = await get(port, '/');
-      expect(page.$1, 200, reason: 'the page itself is `/`');
-      expect(page.$2.toLowerCase(), contains('<!doctype html'));
-
-      final player = await get(port, '/player.js');
-      expect(player.$1, 200, reason: 'the page loads it');
-    });
-
-    test('answers 404 for every path it does not list, the host\'s own included', () async {
-      final automation = await get(port, '/automation/v1/status');
-      expect(automation.$1, 404, reason: 'the relay is not a door to the automation interface');
-      expect(automation.$2, contains('no file at /automation/v1/status'));
-
-      final players = await post(port, '/players', '{}');
-      expect(players.$1, 404, reason: 'a POST may only go to the four calls the page makes');
-      expect(players.$2, contains('no call at /players'));
-    });
-
-    test('forwards a measurement to the host, and says so when it cannot', () async {
-      final answer = await post(port, '/stats/stream', '{"viewers": [], "host": {}}');
-
-      expect(answer.$1, 502, reason: 'nothing listens on the automation port in this test');
-      expect(answer.$2, contains('the host is not answering'));
-    });
-
-    test('refuses a body over 64 KB before it reads it', () async {
-      // A body promised but not sent: the relay checks the length first, so it
-      // answers without waiting for it (and the socket is never reset).
-      final socket = await Socket.connect(InternetAddress.loopbackIPv4, port);
-      socket.write(
-        'POST /stats/stream HTTP/1.1\r\nHost: 127.0.0.1\r\n'
-        'Content-Type: application/json\r\nContent-Length: 65537\r\nConnection: close\r\n\r\n',
-      );
-      await socket.flush();
-      final answer = await utf8.decoder.bind(socket).join().timeout(const Duration(seconds: 10));
-      socket.destroy();
-
-      expect(answer, contains('413'));
-      expect(answer, contains('over 65536 bytes'));
-    });
-  }, skip: python == null ? 'no python to run the relay' : false);
-}
-
-/// The Python that can run `serve.py`: `python` on Windows, `python3` (or
-/// `python`) elsewhere. Null when there is none, which skips the relay's tests.
-String? findPython() {
-  for (final candidate in Platform.isWindows ? ['python'] : ['python3', 'python']) {
-    try {
-      if (Process.runSync(candidate, ['--version']).exitCode == 0) {
-        return candidate;
-      }
-    } on ProcessException {
-      continue;
-    }
-  }
-  return null;
-}
-
-/// One port nothing is listening on: bound, read, and given back.
-Future<int> freePort() async {
-  final socket = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);
-  final port = socket.port;
-  await socket.close();
-  return port;
-}
-
-/// GETs `path` from the relay, answering (status, body).
-///
-/// A raw socket, not `HttpClient`: a widget test replaces every HTTP request
-/// with a 400 and never lets one out, and this one has to reach a real process.
-Future<(int, String)> get(int port, String path) => exchange(port, 'GET', path);
-
-/// POSTs one JSON `body` to the relay, answering (status, body).
-Future<(int, String)> post(int port, String path, String body) => exchange(port, 'POST', path, body: body);
-
-/// One request to the relay over a socket of its own, answering (status, body).
-Future<(int, String)> exchange(int port, String method, String path, {String? body}) async {
-  final socket = await Socket.connect(InternetAddress.loopbackIPv4, port);
-  final payload = utf8.encode(body ?? '');
-  final head = StringBuffer('$method $path HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: close\r\n');
-  if (body != null) {
-    head.write('Content-Type: application/json\r\nContent-Length: ${payload.length}\r\n');
-  }
-  head.write('\r\n');
-  socket.add(utf8.encode(head.toString()));
-  socket.add(payload);
-  await socket.flush();
-  final raw = await utf8.decoder.bind(socket).join().timeout(const Duration(seconds: 10));
-  socket.destroy();
-  final status = int.parse(raw.split(' ')[1]);
-  final bodyStart = raw.indexOf('\r\n\r\n');
-  return (status, bodyStart < 0 ? raw : raw.substring(bodyStart + 4));
-}
-
-/// Waits until the relay answers on `port`, up to ten seconds.
-Future<void> waitForRelay(int port) async {
-  for (var attempt = 0; attempt < 100; attempt++) {
-    try {
-      final answer = await exchange(port, 'GET', '/player');
-      if (answer.$1 == 200) {
-        return;
-      }
-    } on SocketException {
-      // Not listening yet.
-    }
-    await Future<void>.delayed(const Duration(milliseconds: 100));
-  }
-  throw StateError('the relay did not answer within ten seconds');
 }

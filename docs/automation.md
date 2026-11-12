@@ -27,7 +27,8 @@ A build starts listening only once its settings say so, and logs `Automation lis
 
 ## Security
 
-- **Loopback only by default.** Nothing on the network can reach it unless a launch sets `THUMBPARTY_AUTOMATION_BIND`, and a bind beyond this machine without a token is refused rather than started weakly.
+- **Loopback only by default.** Nothing on the network can reach it unless a launch sets `THUMBPARTY_AUTOMATION_BIND`, and a bind beyond this machine without a token is refused rather than started weakly. A streamed session is the exception: its entrypoint asks for `0.0.0.0` (the player page's relay and the bench both call it from the session's own network), so inside a session the token and the owner's firewall are what keep it closed (`streaming/README.md`).
+- **A failed bind is said on screen.** The host's Stats screen shows one line, `Automation could not start: <reason>`, and it goes when a later bind succeeds, when the server stops or when its provider is rebuilt (M15 g1).
 - **A token when the launch sets one**, in `x-automation-token` or `Authorization: Bearer …`; a request without it gets a 401 before anything happens.
 - **No environment default answers the stats question "yes"**: `POST settings` answers it only when a script asks, and neither the interface nor the environment turns sharing on.
 - **A body is at most 64 KB**, whether or not it declares its length; a bad one is refused whole with a 400 that says which field to fix, and nothing is half applied.
@@ -159,7 +160,7 @@ curl -s -X POST http://127.0.0.1:8787/automation/v1/probe/flash -d '{"on":false}
 
 ### POST probe/press
 
-Presses a button for a simulated player and returns the host's clock at that moment (`hostMs`). The press lands before the next frame, so a viewer times press → pixel change from that number: the frame counter beside the host clock flips when the press reaches the screen, and since job c2 the card's colour flips with it, so a viewer watching the picture sees the press arrive as a colour change. The button is let go on the frame after the press, so two calls in a row are two presses, as two taps of a thumb are.
+Presses a button for a simulated player and returns the host's clock at that moment (`hostMs`). The press lands before the next frame, so a viewer times press → pixel change from that number: the frame counter beside the host clock flips when the press reaches the screen, and since job c2 the card's colour flips with it, so a viewer watching the picture sees the press arrive as a colour change. The button is let go on the frame after the press, so two calls a frame apart are two presses, as two taps of a thumb are (two inside one frame are one press: the release has not happened yet). The release clears the player's whole pad, so a stick or button another `input` call set just before a probe press is dropped a frame later.
 
 ```bash
 curl -s -X POST http://127.0.0.1:8787/automation/v1/probe/press -d '{"player":"local-1","button":"a"}'

@@ -22,8 +22,9 @@ void _silent(String _) {}
 final class AutomationServer {
   /// [settings] decide whether, where and with what token it listens; [api]
   /// does what each call asks; [log] gets its start, stop and refusals;
-  /// [onStartError] hears once why a bind failed, so a screen can show it.
-  AutomationServer({required this.settings, required this.api, LogSink? log, this.onStartError})
+  /// [onStartState] hears why a bind failed, and null once it listens or stops,
+  /// so a screen's one line never outlives the failure (M15 g1).
+  AutomationServer({required this.settings, required this.api, LogSink? log, this.onStartState})
     : _log = log ?? _silent;
 
   /// The path every call starts with. A version in the path lets a later
@@ -43,9 +44,10 @@ final class AutomationServer {
   /// What each call does.
   final AutomationApi api;
 
-  /// Hears the reason once when [start] couldn't listen, so the host's stats
-  /// screen can say so in one line; null when nothing listens for it.
-  final void Function(String reason)? onStartError;
+  /// Hears the reason when [start] couldn't listen, so the host's stats screen
+  /// can say so in one line, and null when it listens after all or [stop] ends
+  /// it; null when nothing listens for it.
+  final void Function(String? reason)? onStartState;
 
   final LogSink _log;
   HttpServer? _http;
@@ -65,7 +67,7 @@ final class AutomationServer {
   /// Starts listening, or does nothing when the settings leave it off. A bind
   /// that fails is kept in [startError], logged once and counted as not
   /// listening, never thrown: a host must still host when its automation port
-  /// is taken.
+  /// is taken. A bind that works clears a failure a rebuild carried over.
   Future<void> start() async {
     if (_http != null || _startError != null || !settings.enabled) return;
     final problem = settings.problem;
@@ -76,23 +78,31 @@ final class AutomationServer {
     try {
       final http = await HttpServer.bind(settings.bindAddress, settings.port);
       _http = http;
+      _startError = null;
       http.listen(_onRequest, onError: (Object e) => _log('Automation server error: $e'));
       _log('Automation listening on ${settings.bindAddress}:${http.port}');
+      onStartState?.call(null);
     } on SocketException catch (e) {
       final reason =
           'could not listen on ${settings.bindAddress}:${settings.port}: '
           '${e.osError?.message ?? e.message}';
       _startError = reason;
       _log('Automation could not start: $reason');
-      onStartError?.call(reason);
+      onStartState?.call(reason);
     }
   }
 
-  /// Stops listening and lets the connections go.
+  /// Stops listening and lets the connections go. A reason a failed bind left
+  /// is forgotten with it: the line a screen shows describes an interface that
+  /// is there (M15 g1).
   Future<void> stop() async {
     final http = _http;
     _http = null;
     await http?.close(force: true);
+    if (_startError != null) {
+      _startError = null;
+      onStartState?.call(null);
+    }
   }
 
   Future<void> _onRequest(HttpRequest request) async {

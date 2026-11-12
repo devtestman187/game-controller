@@ -35,7 +35,7 @@ container is run with `--network host`, so these are the host's ports too.
 | `CONTROLLER_PORT` | 45780 | 45780 | The TV app: phones connect here to play |
 | `SIGNAL_PORT` | 8443 | 45781 | WebRTC signalling, player and pipeline |
 | `PLAYER_PORT` | 8080 | 45782 | The player page over HTTP, and its relay |
-| `AUTOMATION_PORT` | 8787 | 45783 | The host's automation interface (M15 a2); loopback only |
+| `AUTOMATION_PORT` | 8787 | 45783 | The host's automation interface (M15 a2); the entrypoint asks for `0.0.0.0`, so beside `--network host` it is on the LAN and its token and the owner's firewall keep it closed |
 
 `--port-base P` moves the whole block: the controller is `P`, signalling `P+1`,
 player `P+2`, automation `P+3`. Two sessions at once need different bases (or
@@ -62,7 +62,7 @@ default.
 | --- | --- | --- |
 | `SESSION_BITRATE_KBPS` | 10000 | The video's ceiling: `webrtcsink`'s `max-bitrate` and `start-bitrate` and NVENC's own bitrate. A 1080p Arena round carried 11.6 Mbit/s with FEC on, 7.2 without |
 | `SESSION_GOP_FRAMES` | the frame rate (a keyframe a second) | `-1` is keyframes on request only. Worse: the receiver's jitter buffer 262 ms against 127–170. Left at one a second so a joining player sees a picture at once |
-| `SESSION_VBV_KBITS` | 0 (NVENC's default, a second's worth) | The encoder's VBV/HRD buffer, in kbits. One frame's worth (167 at 10 Mbit/s and 60 fps) looked better twice (total 144–145 ms, press 213–223), then three runs of it came out inside the run-to-run noise (145–182, 220–250), so it is off |
+| `SESSION_VBV_KBITS` | 0 (NVENC's default, a second's worth) | The encoder's VBV/HRD buffer, in kbits: `gst-inspect-1.0 nvautogpuh264enc` says "VBV(HRD) Buffer Size in kbits (0 = NVENC default)". One frame's worth (167 at 10 Mbit/s and 60 fps) has measured 144–205 ms total and 213–253 press over six runs; the baseline runs beside them were 161–223 and 230–266, so it never left the 44 ms noise. Off |
 | `SESSION_FEC` | true | Forward error correction. No lower delay with it off, and it is the larger part of what is received above the ceiling (11.6 Mbit/s against 7.2) |
 | `SESSION_RETRANSMISSION` | true | Resend lost packets; no delay difference either way |
 | `SESSION_SPLIT_TRACKS` | false | Play picture and sound on two media elements so the browser stops syncing them. Worse: 42 delivered fps against 53, press 246 ms against 230, so one element stays |
@@ -159,19 +159,38 @@ whole stream without a person watching it:
   viewer's numbers.
 
 The token is the session's own, in `/run/thumb-party/automation.token`, unless
-`AUTOMATION_TOKEN` gave it one; the automation interface listens on loopback
-inside the container only. `tools/stream.sh bench` starts a session headless,
+`AUTOMATION_TOKEN` gave it one. The interface is not loopback-only inside a
+session: the entrypoint asks for `0.0.0.0`, so with `--network host` it is
+reachable on this PC's LAN address, and the token (every call needs it) and the
+owner's firewall rules are what keep it closed. `tools/stream.sh bench` starts a session headless,
 adds a simulated player and lets a round run; in the `tp-stream` distro on WSL2
 the whole run has to happen inside one `wsl` call, because the distro's VM stops
 when no command is running in it and takes the session with it.
 
+The relay has its own test, `streaming/player/relay_test.py`, run inside the
+distro by `tools/stream.sh selftest`: it starts `serve.py` with no host behind it
+and checks the page's files, the four POST paths, the 404 for everything else
+(before the body is read), the 502 with no host, the press queue and the 64 KB
+cap — fifteen checks, and it exits 1 at the first that does not hold.
+
 The bench's run line reads what the viewers received against the ceiling the
-video asks for, for example `1 viewer(s), 11580 kbit/s received against the
-10000 kbit/s ceiling`. Received is the whole wire: video up to
-`SESSION_BITRATE_KBPS`, FEC on top of it, and the 96 kbit/s sound, so it sits
+video asks for, and who they were (the ingest keeps a viewer's kind and platform
+and no user agent), for example `1 viewer(s) browser/chrome-headless, 2205 kbit/s
+received against the 10000 kbit/s ceiling`. Received is the whole wire: video up
+to `SESSION_BITRATE_KBPS`, FEC on top of it, and the 96 kbit/s sound, so it sits
 above the ceiling whenever the picture fills it (M15 t1 measured 11.6 Mbit/s
 with FEC and 7.2 without, same round). The probe's card is nearly still, so its
 received rate says nothing about the game's.
+
+`--viewer external` (M15 g1) opens no browser: the bench starts the session and
+the round (or the card) first, because the host only accepts a viewer's batch
+while a session is playing, then prints the LAN address to open and waits up to
+three minutes, a line every ten seconds, until a viewer registers. From then on
+it measures that viewer. `--viewer-cpus L` runs the headless Chrome on the cores
+in `L` (`taskset`), `--session-cpus L` runs the session container on the cores in
+`L` (`docker --cpuset-cpus`): pinning the two apart is how a run asks whether the
+viewer's own CPU was starving it. A session pinned to four cores never became
+ready in the g1 runs; eight did.
 
 ## Watching from another device on the Wi-Fi
 
@@ -183,6 +202,16 @@ the owner adds once (step 2). A phone or tablet on the Wi-Fi then plays the
 session; **a browser on this PC does not**, at `localhost` or at the LAN
 address — it gets the page and its numbers, but no picture and no sound
 (measured Nov 11). Use a device on the Wi-Fi, or the TV app itself.
+
+To time that device rather than the headless Chrome, a bench can wait for it:
+
+```bash
+tools/stream.sh bench --viewer external --probe --seconds 60 --label phone
+```
+
+It plays the latency card, prints `http://<this PC's LAN address>:<player port>/`,
+waits up to three minutes for a viewer to register, and then times the presses
+against that viewer; the report's rows say the viewer's kind and platform.
 
 1. **Mirrored networking is already on.** A fresh PC needs this in
    `%USERPROFILE%\.wslconfig`, then one restart of WSL from PowerShell:

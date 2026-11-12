@@ -130,10 +130,10 @@ final automationConsentProvider = Provider<void>((ref) {
   Future.microtask(() => ref.read(statsServiceProvider).setConsent(answer));
 });
 
-/// Why the automation interface couldn't start (M15 f1), or null: a bind that
-/// failed while the host keeps hosting. The latency screen shows it as one
-/// line, so a run that can't reach the interface says why instead of waiting
-/// for a timeout.
+/// Why the automation interface couldn't start (M15 f1, g1), or null: a bind
+/// that failed while the host keeps hosting. The shared `StatsScreen` shows it
+/// as one line, so a run that can't reach the interface says why instead of
+/// waiting for a timeout; it clears once an interface listens again, or stops.
 final automationStartErrorProvider = NotifierProvider<AutomationStartErrorNotifier, String?>(
   AutomationStartErrorNotifier.new,
 );
@@ -143,24 +143,49 @@ class AutomationStartErrorNotifier extends Notifier<String?> {
   @override
   String? build() => null;
 
-  /// Records the reason the interface couldn't listen; it stays for the
-  /// session, since nothing retries the bind.
+  /// Records the reason the interface couldn't listen; it stays until a start
+  /// succeeds, the server stops, or a rebuilt server replaces it (M15 g1).
   void failed(String reason) => state = reason;
+
+  /// Forgets the reason: the interface listens now, or nothing is left to say.
+  void clear() {
+    if (state != null) state = null;
+  }
 }
 
 /// The automation interface's server (M15 a2). It listens while the app shows
 /// anything, since the automation gate watches this, and stops with the
 /// container; switched off ([AutomationSettings.enabled] false) it does
 /// nothing at all. A bind that fails is reported to
-/// [automationStartErrorProvider] as well as the log (M15 f1).
+/// [automationStartErrorProvider] as well as the log, and so is a bind that
+/// works afterwards, so the one line never outlives its failure (M15 f1, g1).
 final automationServerProvider = Provider<AutomationServer>((ref) {
+  var disposed = false;
+  void report(String? reason) {
+    // A stop during the provider's own disposal must not touch providers.
+    if (disposed) return;
+    final errors = ref.read(automationStartErrorProvider.notifier);
+    if (reason == null) {
+      errors.clear();
+    } else {
+      errors.failed(reason);
+    }
+  }
+
   final server = AutomationServer(
     settings: ref.watch(automationSettingsProvider),
     api: HostAutomation(ref),
     log: ref.watch(logProvider).sink('automation'),
-    onStartError: (reason) => ref.read(automationStartErrorProvider.notifier).failed(reason),
+    onStartState: report,
   );
-  ref.onDispose(server.stop);
+  // A rebuilt server starts from no failure: the line says what the interface
+  // does now, not what a server before it could not do. Deferred, because this
+  // is read inside a build.
+  Future.microtask(() => report(null));
+  ref.onDispose(() {
+    disposed = true;
+    unawaited(server.stop());
+  });
   unawaited(server.start());
   return server;
 });

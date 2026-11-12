@@ -7,12 +7,15 @@
 #   tools/stream.sh build
 #   tools/stream.sh up [--name N] [--port-base P]
 #   tools/stream.sh bench [--sessions N] [--seconds S] [--game arena|shape_race]
+#                          [--viewer chrome|external] [--viewer-cpus L]
+#                          [--session-cpus L]
 #   tools/stream.sh stats [--results DIR]
 #   tools/stream.sh status
 #   tools/stream.sh keep-alive [--stop]
 #   tools/stream.sh logs [--name N] [--follow]
 #   tools/stream.sh url [--name N]
 #   tools/stream.sh down [--name N | --all]
+#   tools/stream.sh selftest
 #
 # The distro must be a locked-down `tp-` one (tools/wsl-lockcheck.sh), because
 # nothing here may reach the Windows side.
@@ -55,6 +58,13 @@ players=1
 label="bench"
 probe="no"
 keep="no"
+# Who watches the session a bench measures (M15 g1): a headless Chrome on this
+# machine, or a person's own browser on the Wi-Fi, whose URL the bench prints.
+viewer="chrome"
+# The cores a bench pins the viewer and the session to, or empty for none: a
+# viewer on its own cores has the CPU to decode with (M15 g1).
+viewer_cpus=""
+session_cpus=""
 # Extra session settings for an experiment (M15 t1): each `--set KEY=VALUE`
 # reaches the container's `docker run` as one `-e`, so a tuning change needs no
 # rebuild. The image's entrypoint reads them (streaming/README.md).
@@ -83,6 +93,7 @@ The Thumb Party streaming session (M15).
   tools/stream.sh logs [--name N] [--follow]       a session's log
   tools/stream.sh url [--name N]                   the player URL and the controller address
   tools/stream.sh down [--name N | --all]          stop a session, or every session
+  tools/stream.sh selftest                         the player relay's own tests, in the distro
 
 Options:
   --distro <name>   the WSL distro to use (default: tp-stream, or $STREAM_DISTRO);
@@ -101,6 +112,12 @@ Bench options:
   --players <n>     simulated players a session (default 1)
   --probe           show the latency card and time presses instead of a round:
                     press-to-screen is measured this way, as its own series
+  --viewer <kind>   chrome (default): a headless Chrome on this machine watches;
+                    external: no browser is opened, the bench prints the player
+                    URL and waits for a real viewer (a phone, tablet or TV on
+                    the Wi-Fi) to register before it measures
+  --viewer-cpus L   the cores the viewer's Chrome runs on (taskset's list, e.g. 8-15)
+  --session-cpus L  the cores the session container runs on (docker --cpuset-cpus)
   --label <name>    the run's name: its containers and its results folder
   --keep            leave the sessions running afterwards
   --set K=V         one more setting for the session container (streaming/README.md);
@@ -109,7 +126,8 @@ Bench options:
                     docs/briefs/m15/c2/results), for bench where to write them
 
 The bench copies this checkout into the distro, starts the sessions there,
-plays through a headless Chrome viewer, fetches each session's summary into
+plays through a headless Chrome viewer (or, with --viewer external, through a
+browser a person opens on the Wi-Fi), fetches each session's summary into
 <results>/<label>/ and runs the report over it.
 
 Exit codes: 0 ok, 1 the step failed, 2 bad use.
@@ -143,6 +161,24 @@ check_settings() {
       exit 2
     fi
   done
+}
+
+# Who watches a bench: a headless Chrome here, or a person's own browser on the
+# Wi-Fi (M15 g1). Anything else is refused before a session starts.
+check_viewer() {
+  if [[ "$viewer" != "chrome" && "$viewer" != "external" ]]; then
+    printf 'stream: --viewer is chrome or external, got "%s"\n' "$viewer" >&2
+    exit 2
+  fi
+}
+
+# A core list as taskset and docker take one ("3", "0-7", "0-3,8-11"), or empty.
+check_cpus() {
+  local option="$1" cpus="$2"
+  if [[ -n "$cpus" && ! "$cpus" =~ ^[0-9]+(-[0-9]+)?(,[0-9]+(-[0-9]+)?)*$ ]]; then
+    printf 'stream: %s is a core list like 0-7 or 8-15, got "%s"\n' "$option" "$cpus" >&2
+    exit 2
+  fi
 }
 
 check_port_base() {
@@ -275,9 +311,6 @@ cmd_up() {
   check_port_base
   check_settings
   container="$(container_name)"
-  # Before the container starts: without an attached Windows process the distro
-  # ends a few seconds after this script does, and the session with it.
-  start_keepalive
   for setting in "${settings[@]}"; do extra="$extra -e $setting"; done
   controller="$port_base"
   signal=$((port_base + 1))
@@ -305,6 +338,10 @@ cmd_up() {
     -e AUTOMATION_PORT=$automation -e SESSION_NAME=$name $extra $image" > /dev/null \
     || fail "the session did not start (docker run failed)"
 
+  # Once the session is up: without an attached Windows process the distro ends
+  # a few seconds after this script does, and the session with it. Nothing that
+  # failed before this point leaves a keep-alive holding the distro up (M15 g1).
+  start_keepalive
   say "started $container: signaller $signal, player $player, controller $controller, automation $automation"
   if ready="$(wait_ready "$container")"; then
     say "$ready"
@@ -363,9 +400,12 @@ cmd_url() {
     fail "no session named $name"
   fi
   address="$(wsl_run "hostname -I" | awk '{print $1}')"
-  say "player:     http://localhost:$player/   on this PC"
-  say "            http://$address:$player/   from another device on the Wi-Fi"
-  say "controller: localhost:$controller   from a phone on the Wi-Fi $address:$controller"
+  # The picture only flows to another device (M15 g1): a browser on this same
+  # PC opens the page and its numbers but gets no media, at either address, so
+  # the LAN address is the one to use, from a phone, tablet or TV.
+  say "player:     http://$address:$player/   watch here, from a phone, tablet or TV on the Wi-Fi"
+  say "            (http://localhost:$player/ on this PC has the page but no picture or sound)"
+  say "controller: $address:$controller   from a phone on the Wi-Fi (localhost:$controller on this PC)"
   say "signalling: $address:$signal"
   say "automation: 127.0.0.1:$automation in $distro (the token is /run/thumb-party/automation.token)"
 }
@@ -394,9 +434,15 @@ cmd_bench() {
     fail "the label is lower-case letters, digits and dashes, got \"$label\""
   fi
   check_settings
+  check_viewer
+  check_cpus "--viewer-cpus" "$viewer_cpus"
+  check_cpus "--session-cpus" "$session_cpus"
   for setting in "${settings[@]}"; do extra="$extra --set $setting"; done
   if [[ "$probe" == "yes" ]]; then extra="$extra --probe"; fi
   if [[ "$keep" == "yes" ]]; then extra="$extra --keep"; fi
+  if [[ "$viewer" == "external" ]]; then extra="$extra --viewer external"; fi
+  if [[ -n "$viewer_cpus" ]]; then extra="$extra --viewer-cpus $viewer_cpus"; fi
+  if [[ -n "$session_cpus" ]]; then extra="$extra --session-cpus $session_cpus"; fi
   if ! wsl_run "docker image inspect $image > /dev/null 2>&1"; then
     fail "the image $image isn't in $distro yet: run tools/stream.sh build"
   fi
@@ -421,6 +467,16 @@ cmd_bench() {
     start_keepalive
   fi
   print_report "$target"
+}
+
+# The player relay's own tests (M15 g1): a script beside the code it checks,
+# run where the relay runs, in the distro. It starts serve.py on free loopback
+# ports and asks it the page's calls; nothing outside the distro is touched.
+cmd_selftest() {
+  local dest
+  dest="$(sync_repo)" || fail "the copy into $distro failed"
+  say "testing the player relay in $distro …"
+  wsl_run "cd $dest && timeout 120 python3 streaming/player/relay_test.py" || fail "the relay's tests failed"
 }
 
 cmd_stats() {
@@ -456,7 +512,7 @@ cmd_down() {
 
 while (( $# > 0 )); do
   case "$1" in
-    build | up | bench | stats | status | keep-alive | logs | url | down)
+    build | up | bench | stats | status | keep-alive | logs | url | down | selftest)
       command="$1"
       shift
       ;;
@@ -508,6 +564,18 @@ while (( $# > 0 )); do
       probe="yes"
       shift
       ;;
+    --viewer)
+      viewer="${2:-}"
+      shift 2 || { printf 'stream: --viewer needs chrome or external\n' >&2; usage; exit 2; }
+      ;;
+    --viewer-cpus)
+      viewer_cpus="${2:-}"
+      shift 2 || { printf 'stream: %s needs a core list\n' "$1" >&2; usage; exit 2; }
+      ;;
+    --session-cpus)
+      session_cpus="${2:-}"
+      shift 2 || { printf 'stream: %s needs a core list\n' "$1" >&2; usage; exit 2; }
+      ;;
     --keep)
       keep="yes"
       shift
@@ -554,4 +622,5 @@ case "$command" in
   logs) cmd_logs ;;
   url) cmd_url ;;
   down) cmd_down ;;
+  selftest) cmd_selftest ;;
 esac

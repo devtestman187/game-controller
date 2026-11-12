@@ -77,7 +77,8 @@ export class StreamReporter {
    * @param {HTMLVideoElement} parts.video - the element the stream plays in
    * @param {RTCPeerConnection} parts.peerConnection - the connection to the TV
    * @param {(text: string) => void} parts.onProblem - where a measurement
-   *   problem goes: the console and the stats overlay, never the picture
+   *   problem goes: the console and the stats overlay, never the picture. An
+   *   empty text means the measurements are going through again (M15 g1).
    * @param {number} [parts.reconnects] - reconnects this page has had already
    */
   constructor({ video, peerConnection, onProblem, reconnects = 0 }) {
@@ -123,6 +124,19 @@ export class StreamReporter {
 
   /** Reads one frame's metadata and the patch of picture the card flips in. */
   _watchFrames() {
+    // Safari has this too; a TV's browser or an old WebView may not. The frame
+    // count and the press probe then come from the animation frames, and the
+    // display stage is reported as missing rather than as 0 (M15 g1).
+    if (typeof this._video.requestVideoFrameCallback !== "function") {
+      const onAnimationFrame = (nowMs) => {
+        this._frames++;
+        if (this._firstFrameMs === null) this._firstFrameMs = Math.round(nowMs);
+        this._watchPatch(nowMs);
+        window.requestAnimationFrame(onAnimationFrame);
+      };
+      window.requestAnimationFrame(onAnimationFrame);
+      return;
+    }
     const onFrame = (nowMs, metadata) => {
       this._frames++;
       if (this._firstFrameMs === null) this._firstFrameMs = Math.round(nowMs);
@@ -280,9 +294,11 @@ export class StreamReporter {
       return;
     }
     const current = { video: null, audio: null, pair: null, codec: null, relay: null };
+    // `mediaType` is what Safari and older browsers call the track's `kind`.
+    const kindOf = (entry) => entry.kind ?? entry.mediaType;
     report.forEach((entry) => {
-      if (entry.type === "inbound-rtp" && entry.kind === "video") current.video = entry;
-      else if (entry.type === "inbound-rtp" && entry.kind === "audio") current.audio = entry;
+      if (entry.type === "inbound-rtp" && kindOf(entry) === "video") current.video = entry;
+      else if (entry.type === "inbound-rtp" && kindOf(entry) === "audio") current.audio = entry;
       else if (entry.type === "candidate-pair" && entry.state === "succeeded" && entry.nominated) current.pair = entry;
       else if (entry.type === "codec" && entry.mimeType?.startsWith("video/")) current.codec = entry;
     });
@@ -391,6 +407,12 @@ export class StreamReporter {
       this._late = 0;
       this._displayMs = 0;
       this._displayFrames = 0;
+      // A batch the host took says the measurements work again, so the overlay
+      // stops showing the last failure (M15 g1).
+      if (this._lastProblem !== "") {
+        this._lastProblem = "";
+        this._onProblem("");
+      }
     } catch (error) {
       this._problem(`cannot send the measurements: ${error.message}`);
     }

@@ -8,6 +8,7 @@
 #   bash streaming/bench.sh [--sessions N] [--seconds S] [--game arena|shape_race]
 #     [--size 1920x1080] [--probe] [--players N] [--port-base P] [--label L]
 #     [--out /work/dir] [--keep] [--set KEY=VALUE]
+#     [--viewer chrome|external] [--viewer-cpus L] [--session-cpus L]
 #
 # `--set` gives the session containers one more environment setting, which is
 # how a tuning experiment runs without building the image again (M15 t1).
@@ -16,6 +17,13 @@
 # against the card's flips: press-to-screen is measured there, as its own
 # series, because the card covers the picture (so the round's bitrate would not
 # be the game's).
+#
+# `--viewer external` opens no browser (M15 g1): it prints the player's LAN
+# address, waits for a real viewer to register, then measures against that
+# viewer, so a phone, tablet or TV on the Wi-Fi is the one being timed.
+# `--viewer-cpus` and `--session-cpus` pin the viewer's Chrome and the session
+# container to different cores, so a run can say how much of the viewer's
+# jitter buffer is its own CPU being shared with the session (M15 g1).
 #
 # It needs docker, curl and python3 (for reading the summaries' JSON), which
 # the session image's host has; nothing here reaches outside the distro.
@@ -31,6 +39,11 @@ readonly ready_timeout_s=120
 # How long a session gets after its last frame to send a last batch, in
 # seconds: the player's batch is 3 s, so one and a bit.
 readonly settle_s=4
+# How long an external viewer has to open the page and register, in seconds:
+# a person has to find the address, type it and let the picture start.
+readonly viewer_timeout_s=180
+# How often the wait for that viewer says it is still waiting, in seconds.
+readonly viewer_report_s=10
 
 label="bench"
 sessions=1
@@ -44,6 +57,13 @@ port_base=45780
 probe="no"
 keep="no"
 out=""
+# Who watches the session (M15 g1): a headless Chrome here, or a person's own
+# browser on the Wi-Fi, whose URL this run prints and whose registration it
+# waits for.
+viewer="chrome"
+# The cores a run pins the viewer and the session to, or empty for no pinning.
+viewer_cpus=""
+session_cpus=""
 chrome="$chrome_default"
 # Extra settings for the session containers, each one word of `-e KEY=VALUE`.
 declare -a settings=()
@@ -71,6 +91,10 @@ One streaming benchmark (M15 c2), inside the distro.
   --out DIR        where the results go (default /work/stream-bench/L)
   --keep           leave the sessions running when the run ends
   --set K=V        one more setting for the session containers, repeated
+  --viewer K       chrome (default) opens a headless Chrome; external opens
+                   nothing, prints the LAN address and waits for a real viewer
+  --viewer-cpus L  the cores the viewer's Chrome runs on, as taskset takes them
+  --session-cpus L the cores the session containers run on (docker --cpuset-cpus)
   --help           this text
 EOF
 }
@@ -87,6 +111,9 @@ parse_args() {
       --label) label="${2:-}"; shift 2 || { usage; exit 2; } ;;
       --out) out="${2:-}"; shift 2 || { usage; exit 2; } ;;
       --set) settings+=("${2:-}"); shift 2 || { usage; exit 2; } ;;
+      --viewer) viewer="${2:-}"; shift 2 || { usage; exit 2; } ;;
+      --viewer-cpus) viewer_cpus="${2:-}"; shift 2 || { usage; exit 2; } ;;
+      --session-cpus) session_cpus="${2:-}"; shift 2 || { usage; exit 2; } ;;
       --probe) probe="yes"; shift ;;
       --keep) keep="yes"; shift ;;
       --help | -h) usage; exit 0 ;;
@@ -107,8 +134,19 @@ check_args() {
   [[ "$width" =~ ^[0-9]+$ && "$height" =~ ^[0-9]+$ ]] || fail "--size is like 1920x1080"
   [[ "$players" =~ ^[0-9]+$ ]] && (( players >= 1 )) || fail "--players is 1 or more"
   [[ "$game" == "arena" || "$game" == "shape_race" ]] || fail "--game is arena or shape_race"
+  [[ "$viewer" == "chrome" || "$viewer" == "external" ]] || fail "--viewer is chrome or external"
+  check_cpus "--viewer-cpus" "$viewer_cpus"
+  check_cpus "--session-cpus" "$session_cpus"
   if [[ "$game" == "arena" ]]; then mode="bumper"; fi
   out="${out:-/work/stream-bench/$label}"
+}
+
+# A core list as taskset and docker take one: "3", "0-7", "0-3,8-11", or empty.
+check_cpus() {
+  local option="$1" cpus="$2"
+  if [[ -n "$cpus" && ! "$cpus" =~ ^[0-9]+(-[0-9]+)?(,[0-9]+(-[0-9]+)?)*$ ]]; then
+    fail "$option is a core list like 0-7 or 8-15, got \"$cpus\""
+  fi
 }
 
 # --- per-session settings ---------------------------------------------------
@@ -120,6 +158,11 @@ automation_of() { printf '%s' "$((port_base + $1 * 10 + 3))"; }
 container_of() { printf '%s%s' "$container_prefix" "$(name_of "$1")"; }
 automation_url() { printf 'http://127.0.0.1:%s' "$(automation_of "$1")"; }
 relay_url() { printf 'http://127.0.0.1:%s' "$(player_of "$1")"; }
+
+# This machine's LAN address, as the next device on the Wi-Fi sees it (mirrored
+# networking, streaming/README.md): a viewer's own browser must use this one,
+# because this PC's loopback gets the page but no media (M15 g1).
+lan_address() { hostname -I | awk '{print $1}'; }
 
 # One automation call, with the session's token, answering the body's text.
 aut() {
@@ -148,14 +191,15 @@ gpu_flags() {
 }
 
 start_session() {
-  local index="$1" container extra="" setting
+  local index="$1" container extra="" setting cpuset=""
   container="$(container_of "$index")"
   for setting in "${settings[@]}"; do extra="$extra -e $setting"; done
+  if [[ -n "$session_cpus" ]]; then cpuset="--cpuset-cpus $session_cpus"; fi
   docker rm -f "$container" > /dev/null 2>&1 || true
   # --network host: the media is UDP to the viewer, and the benchmark talks to
   # the automation port from this same machine (streaming/README.md).
   docker run -d --name "$container" --label "$session_label=$(name_of "$index")" \
-    --gpus all -e NVIDIA_DRIVER_CAPABILITIES=all $(gpu_flags) --network host \
+    --gpus all -e NVIDIA_DRIVER_CAPABILITIES=all $(gpu_flags) --network host $cpuset \
     -e GALLIUM_DRIVER=d3d12 -e MESA_D3D12_DEFAULT_ADAPTER_NAME=NVIDIA \
     -e CONTROLLER_PORT="$(controller_of "$index")" -e SIGNAL_PORT="$(signal_of "$index")" \
     -e PLAYER_PORT="$(player_of "$index")" -e AUTOMATION_PORT="$(automation_of "$index")" \
@@ -192,8 +236,11 @@ read_token() {
 }
 
 start_viewer() {
-  local index="$1"
-  "$chrome" --no-sandbox --disable-gpu --mute-audio \
+  local index="$1" pinned=()
+  if [[ -n "$viewer_cpus" ]]; then pinned=(taskset -c "$viewer_cpus"); fi
+  # A viewer on its own cores shows what the session can do when the viewer's
+  # decoding is not competing with it (M15 g1).
+  "${pinned[@]}" "$chrome" --no-sandbox --disable-gpu --mute-audio \
     --autoplay-policy=no-user-gesture-required \
     --user-data-dir="$out/chrome-$index-profile" \
     "http://127.0.0.1:$(player_of "$index")/" > "$out/chrome-$index.log" 2>&1 &
@@ -212,6 +259,41 @@ wait_playing() {
     waited=$((waited + 2))
   done
   printf 'bench: session %s never played: %s\n' "$index" "$state" >&2
+  return 1
+}
+
+# The address a person opens on their own device, one a session (M15 g1): the
+# LAN one, because this PC's loopback gets the page but no picture or sound.
+print_viewer_url() {
+  local index address
+  address="$(lan_address)"
+  for (( index = 0; index < sessions; index++ )); do
+    say "$(name_of "$index"): open http://$address:$(player_of "$index")/ on a phone, tablet or TV on the Wi-Fi"
+  done
+  say "the session is playing; waiting up to ${viewer_timeout_s}s for a viewer, a line every ${viewer_report_s}s"
+}
+
+# Waits until a session's stats name a viewer, which is what the page sends once
+# it plays (M15 g1): the real device is then the one being timed. It says so
+# every [viewer_report_s] seconds, and gives up after [viewer_timeout_s].
+wait_viewer() {
+  local index="$1" waited=0 since_report=0 body
+  while (( waited < viewer_timeout_s )); do
+    body="$(aut "$index" GET /stats/session)"
+    # The session's viewer ids are "v1", "v2", …: one of them is a viewer that
+    # registered (the answer is one line, so the space may be absent).
+    if [[ "$body" =~ \"id\":[[:space:]]*\"v[0-9] ]]; then
+      say "$(name_of "$index"): a viewer registered after ${waited}s"
+      return 0
+    fi
+    if (( since_report == 0 )); then
+      say "$(name_of "$index"): still no viewer after ${waited}s"
+    fi
+    sleep 2
+    waited=$((waited + 2))
+    since_report=$(((since_report + 2) % viewer_report_s))
+  done
+  printf 'bench: session %s had no viewer in %ss\n' "$index" "$viewer_timeout_s" >&2
   return 1
 }
 
@@ -378,11 +460,27 @@ received_kbps() {
     found && /"mean"/ { gsub(/[^0-9.]/, "", $0); printf "%.0f", $0; exit }' "$1" 2> /dev/null
 }
 
+# Each viewer a summary records, as "kind/platform" (M15 g1): who was timed,
+# with the host's cleaned strings and no user agent kept.
+viewer_kinds() {
+  python3 - "$1" <<'PY' 2> /dev/null
+import json, sys
+try:
+    doc = json.load(open(sys.argv[1], encoding="utf-8"))
+except (OSError, ValueError):
+    sys.exit(0)
+stream = doc.get("stream") if isinstance(doc, dict) else None
+viewers = stream.get("viewers") if isinstance(stream, dict) else None
+for viewer in viewers or []:
+    print("%s/%s" % (viewer.get("kind") or "?", viewer.get("platform") or "?"))
+PY
+}
+
 # Prints what the run produced, so the log of a benchmark says its numbers: the
-# viewers, the bitrate the session kept against the ceiling it was given, and
-# where the evidence is.
+# viewers and who they were, the bitrate the session kept against the ceiling
+# it was given, and where the evidence is.
 report_run() {
-  local index name summary ceiling received
+  local index name summary ceiling received who
   for (( index = 0; index < sessions; index++ )); do
     name="$(name_of "$index")"
     summary="$out/summaries/$name.json"
@@ -392,7 +490,8 @@ report_run() {
     fi
     ceiling="$(bitrate_ceiling "$index")"
     received="$(received_kbps "$summary")"
-    say "$name: $(grep -c '"kind": "browser"' "$summary") viewer(s), ${received:--} kbit/s received against the ${ceiling:--} kbit/s ceiling, summary $(wc -c < "$summary") bytes"
+    who="$(viewer_kinds "$summary" | paste -sd, -)"
+    say "$name: $(grep -c '"id": "v[0-9]' "$summary") viewer(s) ${who:-(none)}, ${received:--} kbit/s received against the ${ceiling:--} kbit/s ceiling, summary $(wc -c < "$summary") bytes"
   done
   say "results in $out"
 }
@@ -405,7 +504,9 @@ main() {
   # their viewers are stopped, so a repeat run starts from nothing.
   trap stop_all EXIT
   command -v docker > /dev/null || fail "docker is not here"
-  command -v "$chrome" > /dev/null || fail "no headless Chrome at $chrome"
+  if [[ "$viewer" == "chrome" ]]; then
+    command -v "$chrome" > /dev/null || fail "no headless Chrome at $chrome"
+  fi
 
   local index ready started_s
   started_s=$SECONDS
@@ -416,15 +517,28 @@ main() {
     ready="$(wait_ready "$index")" || fail "session $index was not ready in ${ready_timeout_s}s"
     read_token "$index"
     say "$(name_of "$index"): ready after ${ready}s"
-    start_viewer "$index"
+    if [[ "$viewer" == "chrome" ]]; then start_viewer "$index"; fi
   done
-  for (( index = 0; index < sessions; index++ )); do
-    wait_playing "$index" 60 || fail "the viewer of session $index did not play"
-  done
+  # The viewer is in place before anything is measured: a headless Chrome that
+  # has started playing, or a person's own device that has registered. Only a
+  # session that is playing accepts a viewer's batch (the host drops one that
+  # arrives on the home screen), so the external viewer waits here, after the
+  # round or the card has started.
+  if [[ "$viewer" == "chrome" ]]; then
+    for (( index = 0; index < sessions; index++ )); do
+      wait_playing "$index" 60 || fail "the viewer of session $index did not play"
+    done
+  fi
   for (( index = 0; index < sessions; index++ )); do
     add_players "$index" "$players" || fail "session $index has no player"
     start_activity "$index" || fail "session $index did not start its round"
   done
+  if [[ "$viewer" == "external" ]]; then
+    print_viewer_url
+    for (( index = 0; index < sessions; index++ )); do
+      wait_viewer "$index" || fail "session $index had no viewer"
+    done
+  fi
 
   # The measured window: a round of play, or the card and its presses. Both
   # sessions are measured together, so "sessions at once" is what they saw.

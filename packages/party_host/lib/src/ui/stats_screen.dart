@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:metrics/metrics.dart';
 import 'package:toy_look/toy_look.dart';
 
+import '../automation/automation_providers.dart';
 import '../text/host_text.dart';
 import '../providers.dart';
 import '../stats_service.dart';
@@ -58,6 +59,10 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
   @override
   Widget build(BuildContext context) {
     final stats = ref.watch(statsStateProvider);
+    final look = ToyLookScope.of(context);
+    // A bind that failed is said once here, on every host's Stats screen (M15
+    // g1): a script that cannot reach the host is otherwise a guess.
+    final startError = ref.watch(automationStartErrorProvider);
     // The live session first, then the saved ones (newest first).
     final current = stats.current;
     final entries = [
@@ -74,15 +79,34 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
           _ExportButton(onPressed: _export),
         ],
         body: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(ToySizes.space16),
-            child: _StatsBody(
-              stats: stats,
-              loading: _loading,
-              entries: entries,
-              selected: _selected,
-              onSelect: (i) => setState(() => _selected = i),
-            ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (startError != null)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(ToySizes.space16, ToySizes.space16, ToySizes.space16, 0),
+                  child: Text(
+                    HostText.automationNotStarted(startError),
+                    key: const Key('automationStartError'),
+                    style: look.type.body.copyWith(color: look.colors.caution),
+                  ),
+                ),
+              // The body takes what the line above leaves: it scrolls, so it
+              // needs the room it has and not a share of a Column's unbounded
+              // height (which it would not have).
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.all(ToySizes.space16),
+                  child: _StatsBody(
+                    stats: stats,
+                    loading: _loading,
+                    entries: entries,
+                    selected: _selected,
+                    onSelect: (i) => setState(() => _selected = i),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),

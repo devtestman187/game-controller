@@ -274,6 +274,10 @@ abstract final class HostText {
       'Input delay is the median for the whole session. Near misses are taps within about 8 mm of a control '
       'that missed it; empty taps landed on no control.';
 
+  /// The automation interface's one line when it could not take its port
+  /// (M15 a2, g1): a script that cannot reach the host says why here.
+  static String automationNotStarted(String reason) => 'Automation could not start: $reason';
+
   /// Where the export went.
   static String savedTo(String path) => 'Session files saved to $path';
 
