@@ -71,6 +71,21 @@ it to `<out>/switches.txt`, which `tools/stream.sh bench` fetches beside the
 summaries and `stats` prints again. A run with nothing set says `switches: none`,
 and the page then behaves exactly as it did before the batch.
 
+`lowdelay=1` is the page's zero-delay option (technique 2 of the batch; off
+unless asked for). Besides the one-time `tuneForLowDelay` every page already
+does, it puts the receiver hints back every second and after each stream change
+(`jitterBufferTarget` and `playoutDelayHint` on every receiver of both
+connections, the sound's included), sets the video element's
+`disableRemotePlayback` on and its `playbackRate` to 1, and sets a latency hint
+on the element when the browser has one. The overlay gains a line reading the
+values back, `lowdelay: rate=1 drp=on latency=missing video jbt=0 pdh=0, audio
+jbt=0 pdh=0`, with `missing` for a property this browser does not have — the
+headless Chrome is not Safari, and only the phone says which of these it has.
+The host-side half of technique 2, the playout-delay RTP header extension in the
+stream itself, is not in the image: no GStreamer element implements it here, so
+there is no session switch for it (evidence in
+[fix7/n2-1-delay-build-report.md](../docs/briefs/m15/fix7/n2-1-delay-build-report.md)).
+
 The headless Chrome is not Safari: a headless run says whether a switch works and
 what it does to the host side and to Chrome, and the phone decides.
 
@@ -90,6 +105,7 @@ default.
 | `SESSION_RETRANSMISSION` | true | Resend lost packets; no delay difference either way |
 | `SESSION_SPLIT_TRACKS` | false | Play picture and sound on two media elements so the browser stops syncing them. Worse: 42 delivered fps against 53, press 246 ms against 230, so one element stays |
 | `SESSION_AUDIO` | `joined` (the switch is off) | `joined`: the pipeline as it was, one `webrtcsink`, one peer connection and one stream id for picture and sound. `off`: no sound in the stream at all (no `pulsesrc`/`opusenc` branch and no audio caps), so a viewer shows the picture only. `separate`: the sound is recorded into a second `webrtcsink` (`ws-audio`, producer meta `TP-Sound`) with its own peer connection and stream id, so the browser cannot hold the picture back to lip-sync it; the player picks the two producers by their meta (`TP-Picture`, `TP-Sound`), plays the sound on its own element and keeps one viewer row. A player follows what the stream carries, so it needs no setting of its own; headless Chrome says whether a value works here, and the phone decides whether it helps |
+| `SESSION_PLAYER_OPTIONS` | empty (the page as it was) | The player page's own switches (M15 fix7), a comma list such as `lowdelay=1` that the entrypoint writes into `config.js`; the page's URL query overrides them key by key, and `tools/stream.sh bench --player-query lowdelay=1` puts one on the viewer's URL. `lowdelay=1` is technique 2's page half: the per-receiver and per-element zero-delay settings put back every second and after each stream change, with an overlay line reading them back (see "Switches") |
 | `SESSION_ENCODER` | `nvautogpuh264enc` | `nvcudah264enc` also works and was no better (press 261 ms against the baseline's 230–266) |
 | `SESSION_WIDTH`, `SESSION_HEIGHT`, `SESSION_FRAME_RATE` | 1920, 1080, 60 | The window and the encoder size. 720p was worse (total 186 ms, jitter 151) |
 | `THUMB_PARTY_IMPELLER` (M15 k1-2) | unset: Impeller | The renderer the app draws with; `0` or `false` draws with Skia. Skia halved an Arena frame's raster (4.6 ms against 9.9) and drew 52.1–55.3 fps against the baselines' 48.5–51.9, two runs each: the frame cost is outside the run-to-run noise, the frame rate at its edge (3.5 fps against a 3.4 spread), so it waits for the next phase's pairs before it becomes the default |

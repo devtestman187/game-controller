@@ -76,6 +76,7 @@ page_files = frozenset(
         "playback.js",
         "streams.js",
         "options.js",
+        "low_delay.js",
         "latency_probe.js",
         "metrics.js",
         "reporter.js",

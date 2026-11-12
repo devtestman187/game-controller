@@ -6,6 +6,7 @@
  */
 
 import { parseOptions, optionsLine } from "./options.js";
+import { LowDelay, lowDelayEnabled } from "./low_delay.js";
 import { audioMode, msidsOf, reportPlayerState } from "./page_state.js";
 import { Playback, pictureOf, soundOf } from "./playback.js";
 import { StreamReporter } from "./reporter.js";
@@ -39,6 +40,8 @@ const statsBox = document.getElementById("stats");
 const statusBox = document.getElementById("status");
 const toggleButton = document.getElementById("toggle");
 const soundButton = document.getElementById("sound");
+// The zero-delay option (M15 fix7, technique 2), null unless `lowdelay=1`.
+const lowDelay = lowDelayEnabled(options) ? new LowDelay({ screen }) : null;
 
 // The overlay carries the switches from the start, so a look at the page — or a
 // DOM dump of it — shows what it runs with even before a stream arrives.
@@ -149,6 +152,7 @@ function showStats(stats, soundStats) {
     `decode    ${stats.decodeMsPerFrame} ms a frame   dropped ${stats.droppedFrames}`,
   ];
   if (switchesLine !== "") lines.push(switchesLine);
+  if (lowDelay !== null) lines.push(lowDelay.line());
   if (problem !== "") lines.push(`measurement: ${problem}`);
   statsBox.textContent = lines.join("\n");
 }
@@ -239,6 +243,7 @@ function sendSoundJitter(soundStats) {
 function connectionClosed() {
   stopStats();
   stopReporting();
+  lowDelay?.stop();
   playback.clear();
   playingStream = null;
   playingPicture = null;
@@ -259,6 +264,7 @@ function showSound(stream) {
   }
   if (playingPicture === null) return;
   playback.show(playingPicture, soundOf(playingStream, splitTracks, soundStream));
+  lowDelay?.watch(pictureConnection, soundConnection);
   reportPlayerState(hasPlayed ? "playing" : "streaming", {
     audio: audioModeNow(),
     ...msidFacts("soundMsids", soundConnection),
@@ -274,6 +280,7 @@ function showPicture(stream) {
   pictureHasAudio = stream.getAudioTracks().length > 0;
   playingPicture = pictureOf(stream, splitTracks);
   playback.show(playingPicture, soundOf(stream, splitTracks, soundStream));
+  lowDelay?.watch(pictureConnection, soundConnection);
   // "streaming" goes first and "playing" lands when the picture starts, so
   // a benchmark that waits for either sees them in that order however fast
   // the browser's play() answers (M15 t1: the two raced).
