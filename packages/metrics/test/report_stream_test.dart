@@ -370,9 +370,11 @@ void main() {
 
     test('sound: the capture-to-play delay, the sync offset and the concealed share', () {
       final table = tableOf(streamReport(sessions), 'Streaming sound');
-      expect(cells(table[2]), ['one', 'v1', '50/60', '-4.0', '2.0']);
-      expect(cells(table[3]), ['two', 'v1', '-', '-', '-']);
-      expect(cells(table[4]), ['two', 'v2', '-', '-', '-']);
+      // The last column is the sound's own jitter buffer (M15 fix7), which
+      // only a session that sends the sound on its own connection reports.
+      expect(cells(table[2]), ['one', 'v1', '50/60', '-4.0', '2.0', '-']);
+      expect(cells(table[3]), ['two', 'v1', '-', '-', '-', '-']);
+      expect(cells(table[4]), ['two', 'v2', '-', '-', '-', '-']);
     });
 
     test('resources per session, and by how many sessions ran at once', () {

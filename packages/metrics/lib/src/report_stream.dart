@@ -136,8 +136,10 @@ const _qualityHeaders = [
 ];
 
 /// The columns of "Streaming sound": the capture-to-play delay, the signed
-/// audio/video offset and the share of concealed audio.
-const _soundHeaders = ['session', 'viewer', 'audio ms', 'sync ms', 'concealed %'];
+/// audio/video offset, the share of concealed audio and the sound's own jitter
+/// buffer (the sound's own connection, when a session sends it apart: M15
+/// fix7).
+const _soundHeaders = ['session', 'viewer', 'audio ms', 'sync ms', 'concealed %', 'jitter ms'];
 
 /// The columns of "Streaming resources": one container, its sampler's count,
 /// each reading as its mean and p95 (as a stage's cell is its median and p95),
@@ -235,13 +237,15 @@ List<String> _qualityCells(StreamViewerRow row) {
 }
 
 /// One viewer's sound: its capture-to-play median and p95, the mean of the
-/// signed sync offset and the mean share of concealed audio.
+/// signed sync offset, the mean share of concealed audio and the mean of the
+/// sound's own jitter buffer (M15 fix7).
 List<String> _soundCells(StreamViewerRow row) => [
   row.session,
   row.id,
   _pairOf(row, 'audio_capture_to_play'),
   _meanOf(row, 'audioSyncMs'),
   _meanOf(row, 'audioConcealedPct'),
+  _meanOf(row, 'audioJitterMs'),
 ];
 
 /// One container's resources: its sampler's count, each gauge's mean and p95

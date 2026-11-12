@@ -68,7 +68,19 @@ max_body_bytes = 64 * 1024
 
 # The files the page loads, which are the only things it can fetch from here.
 page_files = frozenset(
-    ("index.html", "config.js", "player.js", "options.js", "metrics.js", "reporter.js", "stats.js")
+    (
+        "index.html",
+        "config.js",
+        "player.js",
+        "page_state.js",
+        "playback.js",
+        "streams.js",
+        "options.js",
+        "latency_probe.js",
+        "metrics.js",
+        "reporter.js",
+        "stats.js",
+    )
 )
 
 # The folder the page's one library is served from (gstwebrtc-api, written by

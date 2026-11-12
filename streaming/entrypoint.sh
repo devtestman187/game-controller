@@ -58,6 +58,30 @@ split_tracks="${SESSION_SPLIT_TRACKS:-false}"
 # which start_player writes into config.js as the page's default options; the
 # page's URL query overrides them key by key. Empty: the page runs as it did.
 player_options="${SESSION_PLAYER_OPTIONS:-}"
+# Whether the sound travels with the picture or apart from it (M15 fix7, one of
+# the batch's three techniques). `joined` is the pipeline exactly as it was:
+# one webrtcsink, one peer connection, the picture and the sound under one
+# stream id, which is what a browser lip-syncs. `off` sends no sound at all (no
+# pulsesrc branch and no audio-caps), so a viewer shows the picture only.
+# `separate` records the sound into a second webrtcsink (`ws-audio`) with its
+# own producer meta and its own peer connection, so no stream id is shared and
+# the browser has nothing to hold the picture back for. The player follows
+# whatever the stream carries, so it needs no switch of its own; the ready line
+# says which mode the session runs. The phone decides whether it helps.
+audio_mode="${SESSION_AUDIO:-joined}"
+# The meta the session gives the two producers when the sound is separate: the
+# player tells them apart by these names, not by their order (streaming/player/
+# player.js, `pictureProducerName` and `soundProducerName`). A GstStructure
+# string needs a structure name before its fields (`TP-Picture,name=TP-Picture`;
+# gst-launch refuses `name=TP-Picture`), and the signaller sends only the
+# fields, so the page reads `meta.name`.
+picture_producer_meta="meta=TP-Picture,name=TP-Picture"
+sound_producer_meta="meta=TP-Sound,name=TP-Sound"
+# The sound's own webrtcsink in the session pipeline. It is deliberately not
+# named `ws` and does not start with `webrtcsink`, so the sampler's stage
+# lookup (packages/metrics/lib/src/stream_sampler.dart) keeps reading only the
+# picture's path.
+sound_sink_name="ws-audio"
 # nvh264enc is broken on this driver (M15 wsl2 probe); the auto and cuda
 # elements both work. The image carries gst-plugins-rs and NVENC only.
 encoder="${SESSION_ENCODER:-nvautogpuh264enc}"
@@ -265,6 +289,30 @@ start_sampler() {
       --interval-s "$sampler_interval_s" --sessions "$sessions_at_once" --encoder "$encoder"
 }
 
+# The sound's way into the stream, one gst-launch argument per line: `joined`
+# records it into the picture's own webrtcsink (the pipeline as it was),
+# `separate` gives it a webrtcsink of its own with its own producer meta, and
+# `off` has no sound path at all. `mapfile` reads the lines back as words, so
+# every argument stays one token.
+sound_branch() {
+  case "$audio_mode" in
+    joined)
+      printf '%s\n' \
+        pulsesrc device=party.monitor '!' queue '!' audioconvert '!' audioresample '!' \
+        audio/x-raw,rate=48000,channels=2 '!' opusenc "bitrate=$audio_bitrate_bps" '!' 'ws.'
+      ;;
+    separate)
+      printf '%s\n' \
+        pulsesrc device=party.monitor '!' queue '!' audioconvert '!' audioresample '!' \
+        audio/x-raw,rate=48000,channels=2 '!' opusenc "bitrate=$audio_bitrate_bps" '!' \
+        webrtcsink "name=$sound_sink_name" "signaller::uri=ws://127.0.0.1:$signal_port" \
+        congestion-control=disabled "max-bitrate=$audio_bitrate_bps" \
+        "start-bitrate=$audio_bitrate_bps" "do-retransmission=$do_retransmission" \
+        "$sound_producer_meta"
+      ;;
+  esac
+}
+
 # The compositor and encoder. `waylanddisplaysrc` needs render-node=software on
 # WSL's EGL (no DRM node, no dmabuf: capture probe section 3.2); NVENC gets the
 # low-delay settings the design pins, and the bitrate is set through CBR
@@ -292,12 +340,16 @@ build_pipeline() {
   cmd+=(
     '!' h264parse config-interval=-1
     '!' webrtcsink name=ws "signaller::uri=ws://127.0.0.1:$signal_port"
-    video-caps=video/x-h264 audio-caps=audio/x-opus congestion-control=disabled
+  )
+  if [[ "$audio_mode" == separate ]]; then cmd+=("$picture_producer_meta"); fi
+  cmd+=(
+    congestion-control=disabled
     "max-bitrate=$video_bps" "start-bitrate=$video_bps"
     "do-fec=$do_fec" "do-retransmission=$do_retransmission"
-    pulsesrc device=party.monitor '!' queue '!' audioconvert '!' audioresample '!'
-    audio/x-raw,rate=48000,channels=2 '!' opusenc "bitrate=$audio_bitrate_bps" '!' 'ws.'
   )
+  local -a sound=()
+  mapfile -t sound < <(sound_branch)
+  cmd+=("${sound[@]}")
   # The latency tracer writes one record per element per frame into the
   # pipeline's log, which the sampler reads (M15 c2): how long a buffer spent
   # in the compositor, the converter and the encoder, and in webrtcsink.
@@ -382,12 +434,46 @@ wait_for_host_ready() {
   return 1
 }
 
+# The lines where a peer announces itself as a producer. The server logs the
+# same "registered as a producer" for a player that says `listener` on the same
+# line, so the role in the announcement is what counts, not the server's words.
+producer_lines() {
+  # The server logs the message's bytes, so its quotes are escaped with `\`.
+  plain_log "$signal_log" | grep -F '\"roles\":[\"producer\"]'
+}
+
+# What a producer line says, for the ready line: its meta name with its peer id
+# when the session gives the sink one, the peer id alone when it does not.
+producer_notes() {
+  sed -e 's/\\"/"/g' \
+    -e 's/.*"name":"\([^"]*\)".*"peerId":"\([^"]*\)".*/\1 (\2)/' \
+    -e 's/.*"peerId":"\([^"]*\)".*/\1/'
+}
+
+# Waits until the signalling log holds [count] producer registrations, up to
+# the seconds given, and prints them one per line. A session whose sound has
+# its own stream registers two producers, and a player needs both.
+wait_for_producers() {
+  local count="$1" timeout_s="$2"
+  # On its own line: bash expands a whole `local` before assigning any of it.
+  local deadline=$((SECONDS + timeout_s)) lines
+  while (( SECONDS < deadline )); do
+    lines="$(producer_lines | grep -c . || true)"
+    if (( lines >= count )); then
+      producer_lines | producer_notes
+      return 0
+    fi
+    sleep 1
+  done
+  return 1
+}
+
 # The session is ready when the app listens for phones, its automation
 # interface answers ready, and the pipeline is PLAYING, which is when
 # webrtcsink has registered with the signalling server (and so has a picture
 # to send).
 wait_ready() {
-  local producer
+  local producers
   wait_for_app_port "$ready_timeout_s" || {
     say "error: the app is not listening on $controller_port after ${ready_timeout_s}s, see $app_log"
     say "$(tail -n 20 "$app_log" 2>/dev/null)"
@@ -398,13 +484,16 @@ wait_ready() {
     say "$(tail -n 20 "$app_log" 2>/dev/null)"
     return 1
   }
-  producer="$(wait_for_line "$signal_log" 'registered as a producer' "$ready_timeout_s")" || {
-    say "error: the pipeline did not register with the signalling server within ${ready_timeout_s}s, see $pipe_log"
+  # The picture's producer, and the sound's when it has one of its own.
+  local needed=1
+  if [[ "$audio_mode" == separate ]]; then needed=2; fi
+  producers="$(wait_for_producers "$needed" "$ready_timeout_s")" || {
+    say "error: the pipeline did not register $needed producer(s) with the signalling server within ${ready_timeout_s}s, see $pipe_log"
     say "$(tail -n 20 "$pipe_log" 2>/dev/null)"
     return 1
   }
-  say "ready: session=$session_name player=http://localhost:$player_port/ controller=localhost:$controller_port automation=127.0.0.1:$automation_port ${width}x${height}@${frame_rate} ${bitrate_kbps}kbit/s (video ${video_kbps}) ${gop_frames}f gop"
-  say "pipeline registered: $producer"
+  say "ready: session=$session_name player=http://localhost:$player_port/ controller=localhost:$controller_port automation=127.0.0.1:$automation_port ${width}x${height}@${frame_rate} ${bitrate_kbps}kbit/s (video ${video_kbps}) ${gop_frames}f gop audio=$audio_mode"
+  say "pipeline registered: $(printf '%s' "$producers" | paste -sd ';' -)"
 }
 
 main() {
@@ -421,7 +510,17 @@ main() {
 
   trap 'say "stopping"; stop_all; exit 143' TERM INT
 
-  say "starting a session: ${width}x${height}@${frame_rate} ${bitrate_kbps}kbit/s (video ${video_kbps}) $encoder, controller port $controller_port"
+  # A mode this session does not know is the pipeline as it always was: a typo
+  # must not leave a run with no picture or no sound and no line saying why.
+  case "$audio_mode" in
+    joined | off | separate) ;;
+    *)
+      say "warning: SESSION_AUDIO=$audio_mode is not joined, off or separate; running joined"
+      audio_mode=joined
+      ;;
+  esac
+
+  say "starting a session: ${width}x${height}@${frame_rate} ${bitrate_kbps}kbit/s (video ${video_kbps}) $encoder, audio $audio_mode, controller port $controller_port"
   make_token
   # The token file is how a script outside this container drives the session
   # (tools/stream.sh bench reads it with docker exec); umask 077 keeps it 0600.

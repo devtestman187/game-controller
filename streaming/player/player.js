@@ -6,15 +6,13 @@
  */
 
 import { parseOptions, optionsLine } from "./options.js";
+import { audioMode, msidsOf, reportPlayerState } from "./page_state.js";
+import { Playback, pictureOf, soundOf } from "./playback.js";
 import { StreamReporter } from "./reporter.js";
 import { StatsMeter } from "./stats.js";
+import { StreamLinks } from "./streams.js";
 
 const GstWebRTCAPI = window.GstWebRTCAPI;
-
-// How long to wait before asking for the stream again after it or the
-// signalling server dropped: short enough that a person sees a blink, long
-// enough that a server still starting up is not hammered.
-const reconnectDelayMs = 1000;
 
 // How often the overlay and the status line are refreshed.
 const statsIntervalMs = 1000;
@@ -36,6 +34,7 @@ const switchesLine = optionsLine(options);
 
 const screen = document.getElementById("screen");
 const soundTrack = document.getElementById("sound-track");
+const playback = new Playback({ screen, sound: soundTrack });
 const statsBox = document.getElementById("stats");
 const statusBox = document.getElementById("status");
 const toggleButton = document.getElementById("toggle");
@@ -45,20 +44,30 @@ const soundButton = document.getElementById("sound");
 // DOM dump of it — shows what it runs with even before a stream arrives.
 if (switchesLine !== "") statsBox.textContent = switchesLine;
 
-let api = null;
-let consumer = null;
 let meter = null;
 let reporter = null;
 let statsTimer = null;
-let reconnectTimer = null;
+// The two peer connections, for the streams their SDPs name.
+let pictureConnection = null;
+let soundConnection = null;
+// The sound's own connection, when the session sends one (SESSION_AUDIO=
+// separate): it has a meter of its own, and its loss never touches the
+// picture's.
+let soundMeter = null;
 // How many times this page asked for the stream again (M15 c2's quality
 // table), counted across connections. Only a drop after the picture has played
 // counts: a page that opens before the TV has a producer waits once, and that
 // wait is a start, not a reconnect.
 let reconnects = 0;
 let hasPlayed = false;
-// The stream the two elements are playing, so the same one is not set twice.
+// The picture's stream from the TV, what the video element was given
+// (`pictureOf` may copy it), and the sound producer's stream when there is one.
 let playingStream = null;
+let playingPicture = null;
+let soundStream = null;
+// Whether the picture's own stream carries sound (the modes that send one
+// stream), which the overlay needs to tell "sound none" from a number.
+let pictureHasAudio = false;
 // The last measurement problem, shown in the stats overlay only. Watching the
 // picture is what a viewer is here for, so a failed measurement never covers
 // it (M15 t1: the owner saw "the host did not take the measurements" across
@@ -93,28 +102,12 @@ function tuneForLowDelay(peerConnection) {
   }
 }
 
-// The stream's picture on its own when the tracks are split, so the video
-// element's buffer holds no audio to wait for.
-function pictureOf(stream) {
-  if (!splitTracks) return stream;
-  const tracks = stream.getVideoTracks();
-  return tracks.length === 0 ? stream : new MediaStream(tracks);
-}
-
-// The stream's sound on its own, or null when one element plays both.
-function soundOf(stream) {
-  if (!splitTracks) return null;
-  const tracks = stream.getAudioTracks();
-  return tracks.length === 0 ? null : new MediaStream(tracks);
-}
-
 // Starts the picture, then tries to start the sound with it. Browsers that
 // only start sound after a tap show the button instead.
 async function startPlayback() {
-  screen.muted = true;
-  soundTrack.muted = true;
+  soundButton.classList.remove("visible");
   try {
-    await screen.play();
+    await playback.startMuted();
     hasPlayed = true;
     reportPlayerState("playing");
   } catch (error) {
@@ -124,11 +117,14 @@ async function startPlayback() {
     reportPlayerState("cannot play", { reason: error.message });
     return;
   }
+  await startSound();
+}
+
+// Unmutes the picture and starts the sound, which a late or reconnected sound
+// stream needs again. A stream without sound needs no tap, so no button.
+async function startSound() {
   try {
-    screen.muted = false;
-    soundTrack.muted = false;
-    if (splitTracks) await soundTrack.play();
-    await screen.play();
+    await playback.unmute();
     soundButton.classList.remove("visible");
     setStatus("playing");
   } catch {
@@ -137,11 +133,19 @@ async function startPlayback() {
   }
 }
 
-function showStats(stats) {
+// The overlay's sound: the bitrate of the connection it arrives on, or "none"
+// for a session that sends no sound at all (SESSION_AUDIO=off).
+function soundText(stats, soundStats) {
+  if (soundStream !== null) return soundStats === null ? "sound none" : `sound ${soundStats.audioKbitPerS} kbit/s`;
+  return pictureHasAudio ? `sound ${stats.audioKbitPerS} kbit/s` : "sound none";
+}
+
+function showStats(stats, soundStats) {
+  const soundJitter = soundStats === null ? "" : `  sound jitter ${soundStats.audioJitterBufferMs} ms`;
   const lines = [
     `picture   ${stats.widthPx}x${stats.heightPx} at ${stats.framesPerSecond.toFixed(0)} fps`,
-    `video     ${stats.videoKbitPerS} kbit/s   sound ${stats.audioKbitPerS} kbit/s`,
-    `round trip ${stats.roundTripMs} ms   jitter buffer ${stats.jitterBufferMs} ms`,
+    `video     ${stats.videoKbitPerS} kbit/s   ${soundText(stats, soundStats)}`,
+    `round trip ${stats.roundTripMs} ms   jitter buffer ${stats.jitterBufferMs} ms${soundJitter}`,
     `decode    ${stats.decodeMsPerFrame} ms a frame   dropped ${stats.droppedFrames}`,
   ];
   if (switchesLine !== "") lines.push(switchesLine);
@@ -157,12 +161,28 @@ function stopStats() {
   meter = null;
 }
 
+// The sound's own numbers, or null when it has no connection. A reconnect
+// replaces the sound's connection under this timer, and a sample of the old
+// one failing is a missing number for that second, never a reason to stop the
+// picture's numbers with it.
+async function sampleSound() {
+  if (soundMeter === null) return null;
+  try {
+    return await soundMeter.sample();
+  } catch (error) {
+    console.warn(`player: the sound's statistics stopped: ${error.message}`);
+    return null;
+  }
+}
+
 function startStats(peerConnection) {
   stopStats();
   meter = new StatsMeter(peerConnection);
   const tick = async () => {
     try {
-      showStats(await meter.sample());
+      const soundStats = await sampleSound();
+      showStats(await meter.sample(), soundStats);
+      sendSoundJitter(soundStats);
     } catch (error) {
       noteProblem(`statistics stopped: ${error.message}`);
       // The timer stops here, so the next tick that would draw the line never
@@ -175,14 +195,18 @@ function startStats(peerConnection) {
   statsTimer = window.setInterval(tick, statsIntervalMs);
 }
 
-// Tells the session's web server what this page is doing, so a benchmark can
-// wait for the picture instead of guessing (M15 c2).
-function reportPlayerState(state, extra = {}) {
-  fetch("/player", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ state, ...extra }),
-  }).catch(() => {});
+// What the page is playing, for the state it reports.
+function audioModeNow() {
+  return audioMode(soundStream !== null, pictureHasAudio);
+}
+
+// The stream ids a connection's SDP names, for the state the page reports: a
+// run reads them to see whether the sound arrived on a stream of its own. No
+// ids yet means the connection has not answered, so nothing is reported and a
+// later report keeps whatever an earlier one found.
+function msidFacts(key, peerConnection) {
+  const ids = msidsOf(peerConnection);
+  return ids.length === 0 ? {} : { [key]: ids };
 }
 
 // Starts sending the measurements the host's stats record keeps; the reporter
@@ -200,126 +224,119 @@ function stopReporting() {
   }
 }
 
-function closeConsumer() {
+// The sound connection's own jitter buffer, on the page's row in the host's
+// record (`audioJitterMs`): with the sound on its own connection the row's
+// `stream_jitter_buffer` stage is the picture's, so this is the only place the
+// sound's wait is written down (M15 fix7, phase 2 reads it).
+function sendSoundJitter(soundStats) {
+  if (reporter === null || soundStats === null) return;
+  reporter.setSoundGauges([{ name: "audioJitterMs", value: soundStats.audioJitterBufferMs }]);
+}
+
+// A closed connection takes everything with it: the numbers, the overlay's
+// problem and both elements. The next stream starts clean (M15 g1: a problem
+// belongs to the stream that had it).
+function connectionClosed() {
   stopStats();
   stopReporting();
-  reportPlayerState("closed");
+  playback.clear();
   playingStream = null;
-  // A problem belongs to the stream that had it: the next one starts clean
-  // (M15 g1, as `playingStream` does).
+  playingPicture = null;
+  pictureConnection = null;
+  soundConnection = null;
+  soundMeter = null;
   problem = "";
-  if (consumer !== null) {
-    const closing = consumer;
-    consumer = null;
-    closing.close();
-  }
-  screen.pause();
-  screen.srcObject = null;
-  soundTrack.pause();
-  soundTrack.srcObject = null;
+  reportPlayerState("closed");
 }
 
-function scheduleReconnect() {
-  if (reconnectTimer !== null) {
-    return;
+// A stream arrived on the sound's own connection, or null when it is gone:
+// the picture is already playing and is not touched (SESSION_AUDIO=separate).
+function showSound(stream) {
+  soundStream = stream;
+  if (stream === null) {
+    soundMeter = null;
+    soundConnection = null;
   }
-  closeConsumer();
-  if (hasPlayed) {
-    reconnects++;
-  }
-  reportPlayerState("reconnecting", { reconnects });
-  reconnectTimer = window.setTimeout(() => {
-    reconnectTimer = null;
-    connectToFirstProducer();
-  }, reconnectDelayMs);
+  if (playingPicture === null) return;
+  playback.show(playingPicture, soundOf(playingStream, splitTracks, soundStream));
+  reportPlayerState(hasPlayed ? "playing" : "streaming", {
+    audio: audioModeNow(),
+    ...msidFacts("soundMsids", soundConnection),
+  });
+  if (hasPlayed) startSound();
 }
 
-function connectTo(producerId) {
-  closeConsumer();
-  const session = api.createConsumerSession(producerId);
-  if (session === null) {
-    scheduleReconnect();
-    return;
-  }
-  consumer = session;
+// Plays the picture's stream; a repeated `streamsChanged` for the same stream
+// must not restart it.
+function showPicture(stream) {
+  if (playingStream === stream) return;
+  playingStream = stream;
+  pictureHasAudio = stream.getAudioTracks().length > 0;
+  playingPicture = pictureOf(stream, splitTracks);
+  playback.show(playingPicture, soundOf(stream, splitTracks, soundStream));
+  // "streaming" goes first and "playing" lands when the picture starts, so
+  // a benchmark that waits for either sees them in that order however fast
+  // the browser's play() answers (M15 t1: the two raced).
+  reportPlayerState("streaming", { audio: audioModeNow(), ...msidFacts("msids", pictureConnection) });
+  startPlayback();
+}
 
-  session.addEventListener("error", (event) => {
-    if (consumer === session) {
-      setStatus(`error: ${event.message}`);
-      scheduleReconnect();
-    }
-  });
-  session.addEventListener("closed", () => {
-    if (consumer === session) {
-      setStatus("the session closed");
-      scheduleReconnect();
-    }
-  });
-  session.addEventListener("streamsChanged", () => {
-    const streams = session.streams;
-    if (consumer === session && streams.length > 0 && playingStream !== streams[0]) {
-      playingStream = streams[0];
-      screen.srcObject = pictureOf(streams[0]);
-      soundTrack.srcObject = soundOf(streams[0]);
-      // "streaming" goes first and "playing" lands when the picture starts, so
-      // a benchmark that waits for either sees them in that order however fast
-      // the browser's play() answers (M15 t1: the two raced).
-      reportPlayerState("streaming");
-      startPlayback();
-    }
-  });
-  session.addEventListener("stateChanged", () => {
-    const peerConnection = session.rtcPeerConnection;
-    if (consumer !== session || peerConnection === null) {
-      return;
-    }
+// What the two connections call; the picture's numbers are the viewer's, and
+// the sound's own connection only feeds the overlay and one gauge.
+const linkHandlers = {
+  pictureStream: showPicture,
+  soundStream: showSound,
+  pictureReady: (peerConnection) => {
+    pictureConnection = peerConnection;
+    // The ids the SDP names only exist once the connection has answered, so
+    // they are reported here too, not only when a stream arrives.
+    reportPlayerState(hasPlayed ? "playing" : "streaming", msidFacts("msids", peerConnection));
     if (meter === null) {
       tuneForLowDelay(peerConnection);
       startStats(peerConnection);
     }
     if (reporter === null) startReporting(peerConnection);
-  });
-
-  setStatus("connecting to the TV…");
-  session.connect();
-}
-
-function connectToFirstProducer() {
-  if (api === null) {
-    return;
-  }
-  const producers = api.getAvailableProducers();
-  if (producers.length === 0) {
-    setStatus("waiting for the TV…");
-    scheduleReconnect();
-    return;
-  }
-  connectTo(producers[0].id);
-}
+  },
+  soundReady: (peerConnection) => {
+    soundConnection = peerConnection;
+    reportPlayerState(hasPlayed ? "playing" : "streaming", msidFacts("soundMsids", peerConnection));
+    if (soundMeter !== null) return;
+    tuneForLowDelay(peerConnection);
+    soundMeter = new StatsMeter(peerConnection);
+  },
+  status: setStatus,
+  problem: noteProblem,
+  reconnecting: () => {
+    if (hasPlayed) reconnects++;
+    reportPlayerState("reconnecting", { reconnects });
+  },
+  closed: connectionClosed,
+};
 
 function start() {
-  api = new GstWebRTCAPI({
+  const api = new GstWebRTCAPI({
     meta: { name: `ThumbPartyPlayer-${Date.now()}` },
     signalingServerUrl: signallingUrl(),
     // No STUN here: a session on the same machine or the same Wi-Fi needs none,
     // and asking an outside server would only add delay.
     webrtcConfig: { iceServers: [] },
   });
+  const links = new StreamLinks({ api, handlers: linkHandlers });
 
   api.registerConnectionListener({
     connected: () => {
       setStatus("connected to the TV");
-      connectToFirstProducer();
+      links.connect();
     },
     disconnected: () => {
       setStatus("lost the TV, reconnecting…");
-      scheduleReconnect();
+      links.reconnect();
     },
   });
 
   api.registerProducersListener({
-    producerAdded: () => connectToFirstProducer(),
-    producerRemoved: () => scheduleReconnect(),
+    producerAdded: () => links.connect(),
+    producerRemoved: () => links.reconnect(),
   });
 }
 
@@ -336,11 +353,8 @@ toggleButton.addEventListener("click", (event) => {
 soundButton.addEventListener("click", async (event) => {
   event.preventDefault();
   soundButton.classList.remove("visible");
-  screen.muted = false;
-  soundTrack.muted = false;
   try {
-    if (splitTracks) await soundTrack.play();
-    await screen.play();
+    await playback.unmute();
   } catch (error) {
     setStatus(`cannot start the sound: ${error.message}`);
   }

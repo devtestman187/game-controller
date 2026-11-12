@@ -17,7 +17,7 @@ const streamCsvHeader =
     'jitter_median_ms,jitter_p95_ms,decode_median_ms,decode_p95_ms,'
     'display_median_ms,display_p95_ms,total_median_ms,total_p95_ms,'
     'press_median_ms,press_p95_ms,press_source,'
-    'audio_median_ms,audio_p95_ms,sync_mean_ms,concealed_mean_pct,'
+    'audio_median_ms,audio_p95_ms,sync_mean_ms,concealed_mean_pct,audio_jitter_ms,'
     'bitrate_sent_kbps,bitrate_recv_kbps,loss_pct,rtt_ms,jitter_ms,fps,'
     'frames_sent,frames_recv,frames_decoded,frames_dropped,frames_late,'
     'keyframes,nacks,plis,firs,freezes,freeze_ms,first_frame_ms,reconnects,'
@@ -60,6 +60,7 @@ String _row(StreamViewerRow viewer, StreamHostRow? host) => [
   ..._pair(viewer, 'audio_capture_to_play'),
   _mean(viewer, 'audioSyncMs'),
   _mean(viewer, 'audioConcealedPct'),
+  _mean(viewer, 'audioJitterMs'),
   _mean(viewer, 'bitrateSentKbps'),
   _mean(viewer, 'bitrateReceivedKbps'),
   _mean(viewer, 'lossPct'),

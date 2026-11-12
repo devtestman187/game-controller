@@ -14,6 +14,8 @@
  * @property {number} audioKbitPerS - sound bits received a second
  * @property {number} roundTripMs - the connection's round trip, in milliseconds
  * @property {number} jitterBufferMs - mean time a frame waits in the jitter buffer
+ * @property {number} audioJitterBufferMs - the same for the sound, when the
+ *   connection carries it (0 on a connection that carries the picture only)
  * @property {number} decodeMsPerFrame - mean time to decode a frame
  * @property {number} droppedFrames - frames the browser threw away since it started
  */
@@ -68,6 +70,7 @@ export class StatsMeter {
       audioKbitPerS: rateKbitPerS(current.audio, before?.audio, elapsedS) ?? 0,
       roundTripMs: Math.round((current.pair?.currentRoundTripTime ?? 0) * msPerS),
       jitterBufferMs: jitterBufferMs(current.video, before?.video) ?? 0,
+      audioJitterBufferMs: jitterBufferMs(current.audio, before?.audio) ?? 0,
       decodeMsPerFrame: decodeMsPerFrame(current.video, before?.video) ?? 0,
       droppedFrames: current.video?.framesDropped ?? 0,
     };
