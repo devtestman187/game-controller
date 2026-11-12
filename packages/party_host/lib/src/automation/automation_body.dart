@@ -14,9 +14,11 @@ const maxAutomationBodyBytes = 64 * 1024;
 /// ever buffered, whatever the caller sends.
 ///
 /// The read stops the moment a chunk would pass the limit: the caller answers
-/// and closes, and the rest of the body is never read (M15 g1). A script that
-/// sends a batch just over the cap still hears the refusal, because the answer
-/// goes out with the connection closing after it.
+/// and closes, and the rest of the body is never read (M15 g1). A body that
+/// declares a longer length is refused from that number alone, so a script
+/// sending one hears the refusal; a chunked body that passes the cap may lose
+/// the answer to the close instead, because the rest is not read to hand it
+/// over (`docs/automation.md`).
 Future<String> readRequestBody(Stream<List<int>> body, {int? contentLength, int limit = maxAutomationBodyBytes}) async {
   final bytes = <int>[];
   if (contentLength != null && contentLength > limit) throw const AutomationError('the body is too long');

@@ -171,7 +171,7 @@ The relay has its own test, `streaming/player/relay_test.py`, run inside the
 distro by `tools/stream.sh selftest`: it starts `serve.py` with no host behind it
 and checks the page's files, the four POST paths, the 404 for everything else
 (before the body is read), the 502 with no host, the press queue and the 64 KB
-cap — fifteen checks, and it exits 1 at the first that does not hold.
+cap — sixteen checks, and it exits 1 at the first that does not hold.
 
 The bench's run line reads what the viewers received against the ceiling the
 video asks for, and who they were (the ingest keeps a viewer's kind and platform
@@ -189,8 +189,10 @@ three minutes, a line every ten seconds, until a viewer registers. From then on
 it measures that viewer. `--viewer-cpus L` runs the headless Chrome on the cores
 in `L` (`taskset`), `--session-cpus L` runs the session container on the cores in
 `L` (`docker --cpuset-cpus`): pinning the two apart is how a run asks whether the
-viewer's own CPU was starving it. A session pinned to four cores never became
-ready in the g1 runs; eight did.
+viewer's own CPU was starving it. In the g1 runs a session pinned to `0-7` (eight
+cores) never became ready and `0-11` (twelve) did. `--viewer-cpus` is refused
+with `--viewer external`: the bench can pin only the browser it starts, so a
+viewer a person opens is pinned on that device.
 
 ## Watching from another device on the Wi-Fi
 

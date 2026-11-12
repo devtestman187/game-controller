@@ -13,8 +13,12 @@ The eight findings of `docs/briefs/m15/fix1/REVIEW.md` are fixed, each with a te
 one-frame VBV 205, 183, 198 (press 250, 253, 223), VBV with FEC off 190 (240). The 25 ms mean is inside the
 36–44 ms noise, so a one-frame buffer does **not** beat it and is **not** a default.
 
-**Un-starved viewer:** viewer on 12–15, session on 0–11: jitter buffer 162 → 146 ms median (p95 192 → 179), total
-197 → 181, decode 3 ms and 58 fps either way — ~16 ms of the buffer is the rig, the rest is Chrome.
+**Un-starved viewer — withdrawn: the pinned run had no pinning.** `g1-ext1` ran with `--viewer external`, and
+`--viewer-cpus` was read only where the bench starts its own Chrome, so the 12–15 list was accepted and did
+nothing: the viewer was the Chrome a person opened, on whatever cores it got. Only the session was pinned
+(`--session-cpus 0-11`). Its 162 → 146 ms jitter buffer and 197 → 181 ms total are one pair of runs against
+`g1-ext0`, inside the 36–44 ms noise, and say nothing about the rig's CPU. Phase 2 reruns it with
+`--viewer chrome`.
 
 **The owner's run:** `tools/stream.sh bench --viewer external`, then open the printed `http://<LAN>:<player>/` on
 the phone, tablet or TV. It waits up to 3 minutes (a line every 10 s), then times the round and the presses.
@@ -27,6 +31,10 @@ device was available to this job.
 **Decisions:** the property's unit beats the review's ×1000 (167 000 kbits is no bound at all); a refused body is
 not drained (Dart's server closes instead); the external bench starts the round before it waits, since a batch
 with no live session is dropped.
+
+**Corrected after the fix2 review (Nov 11, 2026):** the received-kbit/s column (2237 belongs to vbv1, 2201 to
+vbv2); the kind/platform example (`browser/safari`, with no OS); the session core lists (`0-7` never became
+ready, `0-11` did); and the un-starved viewer, withdrawn above.
 
 **Not done:** a real phone/tablet/TV run; splitting the two big scripts (no function over 60 lines); the profile
 `repaint` bits.
@@ -109,22 +117,28 @@ batch with `accepted: false` while no session is live, so a waiting loop before 
 Two other faults found by running it: the automation JSON is compact, so the viewer check had to allow no space
 after the colon; and a background viewer started in a subshell ran outside the bench's `cd`.
 
-### 2. A viewer that is not starved
+### 2. A viewer that is not starved — **withdrawn: the pinned run had no pinning**
 
 The distro's headless Chrome had no hardware decode to switch on (its decoder stayed at 3 ms a frame either
 way), so the second lever was pinning: `--viewer-cpus 12-15`
-puts the headless Chrome under `taskset`, `--session-cpus 0-11` gives the container a cpuset. Pinning the
-session to four cores (0-7) kept it from ever answering ready, so the session got twelve. Result: jitter buffer
-162 → 146 ms median (p95 192 → 179), total 197 → 181, press 246 → 257 (inside the noise), decode 3 ms and
-58–59 fps both ways. So the rig's CPU pressure accounts for about 16 ms of Chrome's buffer; the other ~130 ms
-is Chrome's own choice.
+was meant to put the headless Chrome under `taskset`, `--session-cpus 0-11` gives the container a cpuset. The
+`g1-ext1` run was `--viewer external`, though, and only the bench's own Chrome is started under `taskset`, so
+its `--viewer-cpus` pinned nothing: the only pin in it is the session's twelve cores. Result: jitter buffer
+162 → 146 ms median (p95 192 → 179), total 197 → 181, press 246 → 257, decode 3 ms and 58–59 fps both ways —
+one pair of runs, inside the 36–44 ms noise, with no mechanism behind the buffer change. Phase 2 reruns it with
+`--viewer chrome` (the pair is now refused with `--viewer external`).
+
+The session core lists: pinning it to `0-7` (eight cores) kept it from ever answering ready, so the g1 runs used
+`0-11` (twelve).
 
 ### 3. `viewer.kind` and platform
 
 The reporter sends `kind` and `platform` from `platformOf()`, which turns the user agent into a short technical
-string (`browser/chrome-headless`, a phone would be `phone/safari-ios` and so on) and sends no UA string; an
-unknown kind is recorded as `other`. Both external runs have `"kind": "browser", "platform":
-"chrome-headless"`, and the run table prints `1 viewer(s) browser/chrome-headless, 2205 kbit/s received …`.
+string and sends no UA string; an unknown kind is recorded as `other`. Every viewer is a browser today
+(`reporter.js` hard-codes `kind: "browser"`, and `platformOf` names the browser only: `safari`, `chrome-headless`
+and so on), so a phone's Safari would arrive as `browser/safari` with no OS in it — a family/OS split is not
+there yet. Both external runs have `"kind": "browser", "platform": "chrome-headless"`, and the run table prints
+`1 viewer(s) browser/chrome-headless, 2205 kbit/s received …`.
 
 ### 4. The docs
 
@@ -148,8 +162,8 @@ table says external, median/p95 in ms. The noise is this PC's 36–44 ms (t1).
 | --- | --- | --- | --- | --- | --- |
 | g1-b0 baseline | chrome-headless | 223 / 239 | 235 / 328 | 188 / 204 | 2122 |
 | g1-b0b baseline | chrome-headless | 217 / 232 | 251 / 335 | 182 / 196 | 2122 |
-| g1-vbv1 VBV 167 | chrome-headless | 205 / 212 | 250 / 309 | 170 / 177 | — |
-| g1-vbv2 VBV 167 | chrome-headless | 183 / 199 | 253 / 292 | 148 / 163 | 2237 |
+| g1-vbv1 VBV 167 | chrome-headless | 205 / 212 | 250 / 309 | 170 / 177 | 2237 |
+| g1-vbv2 VBV 167 | chrome-headless | 183 / 199 | 253 / 292 | 148 / 163 | 2201 |
 | g1-vbv3 VBV 167 | chrome-headless | 198 / 214 | 223 / 305 | 163 / 179 | 2164 |
 | g1-vbvfec VBV 167, FEC off | chrome-headless | 190 / 220 | 240 / 315 | 155 / 184 | 1088 |
 | g1-ext0 external, unpinned | browser/chrome-headless | 197 / 227 | 246 / 311 | 162 / 192 | 2205 |
@@ -169,8 +183,14 @@ of the 2.2 sent and buys nothing measurable.
   first would wait forever.
 - **The error line lives in `StatsScreen`:** the brief says the shared one, and the line stays above an
   `Expanded` body so the screen's scroll still gets a bounded height.
-- **Pinning the session to four cores was abandoned:** it never became ready in 90 s; twelve cores and four for
-  the viewer is the rig's honest split.
+- **Pinning the session to four cores was abandoned:** `0-7` (eight cores) never became ready in 90 s, so the
+  session got `0-11` (twelve).
+- **`--viewer-cpus` needs `--viewer chrome` (M15 fix2 review):** the bench can only pin the browser it starts, so
+  the pair with `--viewer external` is refused with a line rather than accepted and ignored — which is what
+  `g1-ext1` ran into.
+- **A viewer that is neither a word nor an object is refused:** `POST stats/stream` answers 400 with
+  `a viewer is {"kind": "browser"} or an id the host gave`, so a batch never reaches the collector in a shape it
+  cannot name (M15 fix1 review).
 
 ## Not done
 
@@ -193,7 +213,9 @@ of the 2.2 sent and buys nothing measurable.
 - The tuning runs: `tools/stream.sh bench --set SESSION_VBV_KBITS=167 --label vbv`.
 - The external viewer: `tools/stream.sh bench --viewer external --seconds 60 --label phone`, then open the
   printed URL on the device and leave it in front for the run.
-- The un-starved rig: the same with `--viewer-cpus 12-15 --session-cpus 0-11`.
+- The un-starved rig: `tools/stream.sh bench --viewer-cpus 12-15 --session-cpus 0-11 --label pinned`, with
+  `--viewer chrome` only (the bench now refuses `--viewer-cpus` beside `--viewer external`: it cannot pin a
+  device it does not start) — the run this report could not make.
 - The report from stored runs: `tools/stream.sh stats`.
 
 ## Self-check (docs/review-rules.md part A)

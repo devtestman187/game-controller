@@ -217,7 +217,7 @@ tools/stream.sh bench --probe --seconds 60   # time presses against the latency 
 tools/stream.sh bench --size 1280x720        # the same machine at 720p
 tools/stream.sh bench --set SESSION_FEC=false  # one more setting for the session container, no rebuild
 tools/stream.sh bench --viewer external --probe  # wait for a real device on the Wi-Fi, then time it
-tools/stream.sh bench --viewer external --viewer-cpus 12-15 --session-cpus 0-11  # viewer and session apart
+tools/stream.sh bench --viewer-cpus 12-15 --session-cpus 0-11  # Chrome and the session on separate cores
 tools/stream.sh stats                        # the Streaming report for the summaries the last bench fetched
 tools/stream.sh selftest                     # the player relay's own tests, in the distro
 ```
@@ -241,9 +241,9 @@ Runs the TV app as a streamed session: the app draws into a virtual screen insid
 
 A tuning experiment needs no rebuild: `bench --set KEY=VALUE` (repeated) adds one `-e` to the session containers, and `streaming/README.md` lists the settings the entrypoint reads (bitrate, GOP, VBV, FEC, retransmission, split tracks, encoder, size). The run line names the viewers (`browser/chrome-headless`: kind and platform as the host cleaned them, no user agent) and ends with the bitrate they received against the ceiling the video asks for — received is the video, FEC and the sound together, so it sits above that ceiling when the picture fills it.
 
-`--viewer external` (M15 g1) opens no browser. It starts the session and then the round or the card, because the host only accepts a viewer's numbers while a session plays, then prints the LAN address to open and waits up to three minutes — a line every ten seconds — for a viewer to register through the stats relay; from then on it measures that viewer. The rows of the report say who it was. `--viewer-cpus L` and `--session-cpus L` pin the headless Chrome (`taskset`) and the session container (`docker --cpuset-cpus`) to the cores in `L`, so a run can ask whether the viewer's own CPU was starving it: in the g1 runs a session pinned to four cores never became ready, eight did.
+`--viewer external` (M15 g1) opens no browser. It starts the session and then the round or the card, because the host only accepts a viewer's numbers while a session plays, then prints the LAN address to open and waits up to three minutes — a line every ten seconds — for a viewer to register through the stats relay; from then on it measures that viewer. The rows of the report say who it was. `--viewer-cpus L` and `--session-cpus L` pin the headless Chrome (`taskset`) and the session container (`docker --cpuset-cpus`) to the cores in `L`, so a run can ask whether the viewer's own CPU was starving it: in the g1 runs a session pinned to `0-7` (eight cores) never became ready and `0-11` (twelve) did. `--viewer-cpus` is refused with `--viewer external`: it can only pin a browser the bench starts, and a device a person opens is pinned on that device.
 
-`selftest` copies the checkout into the distro and runs `streaming/player/relay_test.py` there, because Python is what serves the player page: fifteen checks over the page's files, its four POST paths, the 404 everything else gets before a body is read, the 502 with no host, the press queue and the 64 KB cap.
+`selftest` copies the checkout into the distro and runs `streaming/player/relay_test.py` there, because Python is what serves the player page: sixteen checks over the page's files, its four POST paths, the 404 everything else gets before a body is read, the 502 with no host, the press queue and the 64 KB cap.
 
 A round the app does not show within a few seconds is started again: a `game/start` sent while the session is still warming up is dropped, and the app stays on its home screen. The bench waits for `GET status` to say the game screen and checks it is still there a few seconds later; a session that never gets there fails the run instead of measuring the home screen.
 

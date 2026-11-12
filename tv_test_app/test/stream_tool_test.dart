@@ -46,6 +46,13 @@ void main() {
     expect(result.stderr, contains('--viewer is chrome or external, got "nope"'));
   });
 
+  test('a benchmark refuses cores for a viewer it does not start', () async {
+    final result = await run(['bench', '--viewer', 'external', '--viewer-cpus', '12-15']);
+
+    expect(result.exitCode, 2, reason: 'a device a person opens is pinned on that device, not from here');
+    expect(result.stderr, contains('--viewer-cpus needs --viewer chrome'));
+  });
+
   test('a benchmark refuses a core list that is not one', () async {
     for (final (option, value) in [('--viewer-cpus', 'x'), ('--session-cpus', '8-')]) {
       final result = await run(['bench', option, value]);

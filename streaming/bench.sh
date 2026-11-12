@@ -24,6 +24,8 @@
 # `--viewer-cpus` and `--session-cpus` pin the viewer's Chrome and the session
 # container to different cores, so a run can say how much of the viewer's
 # jitter buffer is its own CPU being shared with the session (M15 g1).
+# `--viewer-cpus` needs `--viewer chrome`: a viewer a person opens is pinned on
+# that device, not from here, so the pair is refused.
 #
 # It needs docker, curl and python3 (for reading the summaries' JSON), which
 # the session image's host has; nothing here reaches outside the distro.
@@ -94,6 +96,7 @@ One streaming benchmark (M15 c2), inside the distro.
   --viewer K       chrome (default) opens a headless Chrome; external opens
                    nothing, prints the LAN address and waits for a real viewer
   --viewer-cpus L  the cores the viewer's Chrome runs on, as taskset takes them
+                   (with --viewer chrome only: a device you open is pinned there)
   --session-cpus L the cores the session containers run on (docker --cpuset-cpus)
   --help           this text
 EOF
@@ -137,6 +140,11 @@ check_args() {
   [[ "$viewer" == "chrome" || "$viewer" == "external" ]] || fail "--viewer is chrome or external"
   check_cpus "--viewer-cpus" "$viewer_cpus"
   check_cpus "--session-cpus" "$session_cpus"
+  # Only the Chrome this script starts can be pinned from here; a viewer a person
+  # opens is pinned on that device, and `--viewer-cpus` beside it would be read
+  # and do nothing (M15 g1 review).
+  [[ "$viewer" == "chrome" || -z "$viewer_cpus" ]] \
+    || fail "--viewer-cpus needs --viewer chrome: a viewer you open yourself is pinned on that device"
   if [[ "$game" == "arena" ]]; then mode="bumper"; fi
   out="${out:-/work/stream-bench/$label}"
 }

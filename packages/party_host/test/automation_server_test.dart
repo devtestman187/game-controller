@@ -152,6 +152,29 @@ Future<_Reply> _call(
   }
 }
 
+/// One request that declares [length] bytes of body, as a script sending a
+/// `Content-Length` does: unlike [_callChunked] the server is told the size in
+/// the header, so it can refuse from that number.
+Future<_Reply> _callDeclaring(AutomationServer server, String call, int length) async {
+  final client = HttpClient();
+  try {
+    final request = await client.openUrl(
+      'POST',
+      Uri.parse('http://127.0.0.1:${server.port}${AutomationServer.prefix}$call'),
+    );
+    request.headers.contentType = ContentType.json;
+    request.contentLength = length;
+    request.add(List<int>.filled(length, 0x78));
+    final response = await request.close();
+    final bytes = await response.fold<List<int>>([], (all, chunk) => all..addAll(chunk));
+    final type = response.headers.contentType?.mimeType ?? '';
+    final decoded = jsonDecode(utf8.decode(bytes)) as Map<String, Object?>;
+    return (code: response.statusCode, body: decoded, bytes: bytes, type: type);
+  } finally {
+    client.close(force: true);
+  }
+}
+
 /// One request whose body has no declared length, so it goes out chunked and
 /// the server can only see its size as it reads.
 Future<_Reply> _callChunked(AutomationServer server, String call, String body) async {
@@ -279,6 +302,17 @@ void main() {
 
     expect((await _call(server, 'POST', '/players', raw: 'not json')).code, 400);
     expect((await _call(server, 'POST', '/players', raw: '[1, 2]')).code, 400);
+  });
+
+  test('a body that declares more than the cap is refused whole, with a 400', () async {
+    final api = _FakeApi();
+    final server = await _started(const AutomationSettings(enabled: true, port: 0), api);
+    // One byte over the cap, declared in the header: the answer comes from that
+    // number alone, so unlike the chunked body above the script hears the line.
+    final tooLong = await _callDeclaring(server, '/players', AutomationServer.maxBodyBytes + 1);
+    expect(tooLong.code, 400);
+    expect(tooLong.body, {'ok': false, 'error': 'the body is too long'});
+    expect(api.calls, isEmpty, reason: 'nothing reaches the host');
   });
 
   test('a body with no length stops being read at the cap, and is refused', () async {

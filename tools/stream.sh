@@ -116,7 +116,8 @@ Bench options:
                     external: no browser is opened, the bench prints the player
                     URL and waits for a real viewer (a phone, tablet or TV on
                     the Wi-Fi) to register before it measures
-  --viewer-cpus L   the cores the viewer's Chrome runs on (taskset's list, e.g. 8-15)
+  --viewer-cpus L   the cores the viewer's Chrome runs on (taskset's list, e.g. 8-15);
+                    with --viewer chrome only, since a device you open is pinned there
   --session-cpus L  the cores the session container runs on (docker --cpuset-cpus)
   --label <name>    the run's name: its containers and its results folder
   --keep            leave the sessions running afterwards
@@ -168,6 +169,13 @@ check_settings() {
 check_viewer() {
   if [[ "$viewer" != "chrome" && "$viewer" != "external" ]]; then
     printf 'stream: --viewer is chrome or external, got "%s"\n' "$viewer" >&2
+    exit 2
+  fi
+  # Only the Chrome the bench starts can be pinned from here: a device a person
+  # opens is pinned on that device, so the pair is refused rather than ignored
+  # (M15 g1 review).
+  if [[ "$viewer" != "chrome" && -n "$viewer_cpus" ]]; then
+    printf 'stream: --viewer-cpus needs --viewer chrome: a viewer you open yourself is pinned on that device\n' >&2
     exit 2
   fi
 }

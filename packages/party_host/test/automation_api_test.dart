@@ -209,6 +209,25 @@ void main() {
     await tester.pump();
   });
 
+  testWidgets('two presses inside one frame are both let go on the next frame', (tester) async {
+    final fake = await pumpAutomation(tester);
+    final api = apiOf(tester);
+    final id = (api.players({})['player']! as Map<String, Object?>)['id']! as String;
+    // The card is off: this screen draws nothing of its own, so a press is the
+    // only thing that can ask for the frame its release runs on (M15 g1).
+    await tester.pumpAndSettle();
+    expect(tester.binding.hasScheduledFrame, isFalse, reason: 'nothing on this screen is drawing frames');
+
+    api.pressProbe({'player': id, 'button': 'a'});
+    expect(tester.binding.hasScheduledFrame, isTrue, reason: 'the press asks for the frame of its release');
+    api.pressProbe({'player': id, 'button': 'a'});
+    expect(tester.binding.hasScheduledFrame, isTrue, reason: 'and so does the second, with no frame in between');
+    expect(fake.gameHost.gamepad(id).buttons, {GamepadButton.a}, reason: 'the press is held until that frame');
+
+    await tester.pump();
+    expect(fake.gameHost.gamepad(id).buttons, isEmpty, reason: 'both releases ran on the frame the presses asked for');
+  });
+
   testWidgets('measurements posted with no session are accepted and dropped', (tester) async {
     final fake = await pumpAutomation(tester);
     fake.stats.live = null;

@@ -105,6 +105,7 @@ export class StreamReporter {
     this._watcher = new FlipWatcher({ lightAbove, darkBelow });
     this._canvas = null;
     this._timers = [];
+    this._animationFrame = null;
   }
 
   /** Starts measuring: the frame callback, the batch timer and the press poll. */
@@ -116,10 +117,18 @@ export class StreamReporter {
     this._pingClock();
   }
 
-  /** Stops every timer; a reconnect starts a new reporter. */
+  /** Stops every timer and the frame loop; a reconnect starts a new reporter. */
   stop() {
     for (const timer of this._timers) window.clearInterval(timer);
     this._timers = [];
+    // A browser without the frame callback is counted from animation frames,
+    // and that loop asks for the next frame by itself: left alone it keeps
+    // running (and reading the picture) after a reconnect replaced this
+    // reporter, one loop per reconnect (M15 g1).
+    if (this._animationFrame !== null) {
+      window.cancelAnimationFrame(this._animationFrame);
+      this._animationFrame = null;
+    }
   }
 
   /** Reads one frame's metadata and the patch of picture the card flips in. */
@@ -132,9 +141,9 @@ export class StreamReporter {
         this._frames++;
         if (this._firstFrameMs === null) this._firstFrameMs = Math.round(nowMs);
         this._watchPatch(nowMs);
-        window.requestAnimationFrame(onAnimationFrame);
+        this._animationFrame = window.requestAnimationFrame(onAnimationFrame);
       };
-      window.requestAnimationFrame(onAnimationFrame);
+      this._animationFrame = window.requestAnimationFrame(onAnimationFrame);
       return;
     }
     const onFrame = (nowMs, metadata) => {
