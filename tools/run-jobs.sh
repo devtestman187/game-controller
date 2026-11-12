@@ -54,7 +54,7 @@ finding() { echo "- $*" >> "$B/run-findings.md"; note "finding: $*"; }
 usage() { # usage <brief path>: the job's turns and minutes, from the flash usage log
   awk -F'	' -v b="$1" 'index($10, b){t=$3; m=$4/60} END{if(t) printf "%d turns, %.0f min", t, m}' "${FLASH_USAGE_LOG:-$HOME/.thumbparty/flash-usage.tsv}" 2>/dev/null
 }
-committed() { git ls-files --error-unmatch "$1" >/dev/null 2>&1; }
+committed() { git cat-file -e "HEAD:$1" 2>/dev/null; }
 unchurn() { git checkout -- "${CHURN[@]}" 2>/dev/null; }
 save() { # save <message> <path>...: commit and push just these paths
   local msg=$1; shift
