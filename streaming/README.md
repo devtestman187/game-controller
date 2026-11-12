@@ -68,6 +68,7 @@ default.
 | `SESSION_SPLIT_TRACKS` | false | Play picture and sound on two media elements so the browser stops syncing them. Worse: 42 delivered fps against 53, press 246 ms against 230, so one element stays |
 | `SESSION_ENCODER` | `nvautogpuh264enc` | `nvcudah264enc` also works and was no better (press 261 ms against the baseline's 230–266) |
 | `SESSION_WIDTH`, `SESSION_HEIGHT`, `SESSION_FRAME_RATE` | 1920, 1080, 60 | The window and the encoder size. 720p was worse (total 186 ms, jitter 151) |
+| `THUMB_PARTY_IMPELLER` (M15 k1-2) | unset: Impeller | The renderer the app draws with; `0` or `false` draws with Skia. Skia halved an Arena frame's raster (4.6 ms against 9.9) and drew 52.1–55.3 fps against the baselines' 48.5–51.9, two runs each: the frame cost is outside the run-to-run noise, the frame rate at its edge (3.5 fps against a 3.4 spread), so it waits for the next phase's pairs before it becomes the default |
 
 ## Building and running it
 

@@ -1,0 +1,235 @@
+{
+ "schema": 1,
+ "id": "5a8488d195fba2aa",
+ "host": {
+  "type": "other",
+  "app": "0.14.0",
+  "os": "linux"
+ },
+ "date": "2026-11-12",
+ "durationS": 52,
+ "players": [
+  {
+   "install": "local-1",
+   "player": 1,
+   "local": true,
+   "platform": "linux",
+   "app": "",
+   "connectedS": 52,
+   "disconnects": 0,
+   "inputs": 0,
+   "inputsPerS": 0.0,
+   "stages": {},
+   "watched": "host_screen",
+   "modes": {},
+   "switches": [],
+   "segments": [],
+   "ratings": [],
+   "games": {}
+  }
+ ],
+ "rounds": [],
+ "frames": {
+  "drawn": 2566,
+  "dropped": 152
+ },
+ "stream": {
+  "viewers": [
+   {
+    "id": "v1",
+    "kind": "browser",
+    "platform": "chrome-headless",
+    "stages": {
+     "stream_display": {
+      "n": 18,
+      "median": 0,
+      "p95": 0,
+      "max": 0
+     },
+     "stream_network": {
+      "n": 7,
+      "median": 1,
+      "p95": 1,
+      "max": 1
+     },
+     "stream_capture": {
+      "n": 18,
+      "median": 2,
+      "p95": 2,
+      "max": 2
+     },
+     "stream_encode": {
+      "n": 18,
+      "median": 29,
+      "p95": 30,
+      "max": 30
+     },
+     "stream_jitter_buffer": {
+      "n": 17,
+      "median": 119,
+      "p95": 120,
+      "max": 120
+     },
+     "stream_decode": {
+      "n": 17,
+      "median": 4,
+      "p95": 4,
+      "max": 4
+     },
+     "stream_total": {
+      "n": 7,
+      "median": 155,
+      "p95": 157,
+      "max": 157,
+      "source": "stages"
+     }
+    },
+    "gauges": {
+     "lossPct": {
+      "n": 18,
+      "mean": 0.0,
+      "p95": 0.0,
+      "max": 0.0
+     },
+     "rttMs": {
+      "n": 18,
+      "mean": 0.39,
+      "p95": 1.0,
+      "max": 1.0
+     },
+     "jitterMs": {
+      "n": 18,
+      "mean": 3.89,
+      "p95": 5.0,
+      "max": 5.0
+     },
+     "deliveredFps": {
+      "n": 18,
+      "mean": 57.89,
+      "p95": 59.0,
+      "max": 59.0
+     },
+     "bitrateReceivedKbps": {
+      "n": 17,
+      "mean": 9389.18,
+      "p95": 10143.0,
+      "max": 10341.0
+     }
+    },
+    "counters": {
+     "framesReceived": 3135,
+     "framesDecoded": 3127,
+     "framesDropped": 8,
+     "framesLate": 0,
+     "freezes": 0,
+     "freezeMs": 0,
+     "reconnects": 0,
+     "firstFrameMs": 1444
+    },
+    "facts": {
+     "codec": "H264",
+     "relay": "no",
+     "resolution": "1920x1080"
+    }
+   }
+  ],
+  "host": {
+   "samples": 17,
+   "gauges": {
+    "cpuPct": {
+     "n": 17,
+     "mean": 197.49,
+     "p95": 207.06,
+     "max": 209.49
+    },
+    "gameCpuPct": {
+     "n": 17,
+     "mean": 79.16,
+     "p95": 84.36,
+     "max": 85.7
+    },
+    "encoderCpuPct": {
+     "n": 17,
+     "mean": 104.8,
+     "p95": 109.04,
+     "max": 110.04
+    },
+    "memMb": {
+     "n": 17,
+     "mean": 1046.97,
+     "p95": 1103.24,
+     "max": 1107.22
+    },
+    "gpuPct": {
+     "n": 17,
+     "mean": 47.47,
+     "p95": 49.0,
+     "max": 50.0
+    },
+    "encoderPct": {
+     "n": 17,
+     "mean": 6.24,
+     "p95": 7.0,
+     "max": 7.0
+    },
+    "gpuMemMb": {
+     "n": 17,
+     "mean": 1431.71,
+     "p95": 1436.0,
+     "max": 1437.0
+    },
+    "frameBuildMs": {
+     "n": 15,
+     "mean": 1.08,
+     "p95": 1.29,
+     "max": 1.36
+    },
+    "frameRasterMs": {
+     "n": 15,
+     "mean": 4.35,
+     "p95": 5.38,
+     "max": 6.67
+    },
+    "gameFrameMs": {
+     "n": 15,
+     "mean": 17.81,
+     "p95": 19.3,
+     "max": 19.89
+    },
+    "slowFramePct": {
+     "n": 15,
+     "mean": 0.6,
+     "p95": 1.89,
+     "max": 5.88
+    },
+    "encodedFps": {
+     "n": 17,
+     "mean": 57.1,
+     "p95": 59.02,
+     "max": 60.02
+    },
+    "pipelineMs": {
+     "n": 17,
+     "mean": 33.89,
+     "p95": 34.06,
+     "max": 34.1
+    },
+    "sessionsAtOnce": {
+     "n": 17,
+     "mean": 1.0,
+     "p95": 1.0,
+     "max": 1.0
+    },
+    "gameFps": {
+     "n": 15,
+     "mean": 55.32,
+     "p95": 58.69,
+     "max": 60.02
+    }
+   },
+   "memPeakMb": 1125.73,
+   "firstFrameMs": 2353
+  }
+ },
+ "simulated": true
+}

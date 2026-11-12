@@ -27,6 +27,15 @@ static const char kWindowHeightEnv[] = "THUMB_PARTY_WINDOW_HEIGHT";
 static const long kMinWindowSize = 320;
 static const long kMaxWindowSize = 16384;
 
+// Which renderer Flutter draws with (M15 k1-2): Impeller, the engine's own
+// default, or Skia when this variable says `0` or `false`. The streaming
+// container has no engine-switch variable to do this, so the comparison runs
+// through here. Skia measured a 1080p frame's raster at 4.6 ms against
+// Impeller's 9.9 and drew 52-55 fps against 48.5-51.9 in the Arena round
+// (two runs each, streaming/README.md), so it is a switch for the next phase
+// rather than the default.
+static const char kImpellerEnv[] = "THUMB_PARTY_IMPELLER";
+
 // Reads a wanted window size from the environment, or returns `fallback` when
 // the variable is unset or is not a number in range.
 static int window_size_from_env(const char* name, int fallback) {
@@ -43,6 +52,16 @@ static int window_size_from_env(const char* name, int fallback) {
   }
 
   return static_cast<int>(size);
+}
+
+// Whether the renderer is Impeller: on unless the environment says `0` or
+// `false`, so a launch that says nothing gets the engine's own default.
+static gboolean impeller_from_env() {
+  const char* value = g_getenv(kImpellerEnv);
+  if (value == nullptr || *value == '\0') {
+    return TRUE;
+  }
+  return g_strcmp0(value, "0") != 0 && g_ascii_strcasecmp(value, "false") != 0;
 }
 
 struct _MyApplication {
@@ -95,6 +114,7 @@ static void my_application_activate(GApplication* application) {
       window_size_from_env(kWindowHeightEnv, kDefaultWindowHeight));
 
   g_autoptr(FlDartProject) project = fl_dart_project_new();
+  fl_dart_project_set_enable_impeller(project, impeller_from_env());
   fl_dart_project_set_dart_entrypoint_arguments(
       project, self->dart_entrypoint_arguments);
 
