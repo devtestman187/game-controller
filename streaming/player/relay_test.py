@@ -109,8 +109,8 @@ def wait_until_listening(port):
 def test_page(port):
     status, _ = call(port, "GET", "/")
     check(status == 200, "the page itself is served at /")
-    served = [call(port, "GET", name)[0] for name in ("/player.js", "/metrics.js")]
-    check(served == [200, 200], "the page's own files are served")
+    served = [call(port, "GET", name)[0] for name in ("/player.js", "/options.js", "/metrics.js")]
+    check(served == [200, 200, 200], "the page's own files are served")
 
 
 def test_unlisted_paths(port):

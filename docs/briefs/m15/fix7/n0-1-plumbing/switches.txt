@@ -1,0 +1,1 @@
+switches: SESSION_FEC=true, player-query x=1, player-options none

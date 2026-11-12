@@ -67,7 +67,9 @@ automation_prefix = "/automation/v1"
 max_body_bytes = 64 * 1024
 
 # The files the page loads, which are the only things it can fetch from here.
-page_files = frozenset(("index.html", "config.js", "player.js", "metrics.js", "reporter.js", "stats.js"))
+page_files = frozenset(
+    ("index.html", "config.js", "player.js", "options.js", "metrics.js", "reporter.js", "stats.js")
+)
 
 # The folder the page's one library is served from (gstwebrtc-api, written by
 # the Dockerfile); a name in it is letters, digits, dots and dashes only.

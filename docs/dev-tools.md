@@ -216,6 +216,7 @@ tools/stream.sh bench --sessions 2 --seconds 60 --label two60
 tools/stream.sh bench --probe --seconds 60   # time presses against the latency card instead of a round
 tools/stream.sh bench --size 1280x720        # the same machine at 720p
 tools/stream.sh bench --set SESSION_FEC=false  # one more setting for the session container, no rebuild
+tools/stream.sh bench --player-query x=1     # a player page switch on the viewer's URL; the run's switches line names it
 tools/stream.sh bench --viewer external --seconds 60  # a real device on the home network: a round, then 30 s of presses
 tools/stream.sh bench --press-seconds 0      # a round only, no press phase
 tools/stream.sh bench --viewer external --probe  # wait for a real device, then time the card's presses only

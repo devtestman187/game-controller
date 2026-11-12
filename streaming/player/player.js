@@ -5,6 +5,7 @@
  * browser allows, and reconnects when the stream drops.
  */
 
+import { parseOptions, optionsLine } from "./options.js";
 import { StreamReporter } from "./reporter.js";
 import { StatsMeter } from "./stats.js";
 
@@ -26,12 +27,23 @@ const signalPort = (window.THUMB_PARTY && window.THUMB_PARTY.signalingPort) || 8
 // `SESSION_SPLIT_TRACKS` is on: see streaming/README.md).
 const splitTracks = Boolean(window.THUMB_PARTY && window.THUMB_PARTY.splitTracks);
 
+// The switches this page runs with (M15 fix7), read once: the session's defaults
+// from config.js, overridden key by key by this page's own URL query. Exposed on
+// the window so a run can see what the page saw, and shown in the overlay.
+const options = parseOptions(window.location.search, (window.THUMB_PARTY && window.THUMB_PARTY.options) || {});
+window.THUMB_PARTY_OPTIONS = options;
+const switchesLine = optionsLine(options);
+
 const screen = document.getElementById("screen");
 const soundTrack = document.getElementById("sound-track");
 const statsBox = document.getElementById("stats");
 const statusBox = document.getElementById("status");
 const toggleButton = document.getElementById("toggle");
 const soundButton = document.getElementById("sound");
+
+// The overlay carries the switches from the start, so a look at the page — or a
+// DOM dump of it — shows what it runs with even before a stream arrives.
+if (switchesLine !== "") statsBox.textContent = switchesLine;
 
 let api = null;
 let consumer = null;
@@ -132,6 +144,7 @@ function showStats(stats) {
     `round trip ${stats.roundTripMs} ms   jitter buffer ${stats.jitterBufferMs} ms`,
     `decode    ${stats.decodeMsPerFrame} ms a frame   dropped ${stats.droppedFrames}`,
   ];
+  if (switchesLine !== "") lines.push(switchesLine);
   if (problem !== "") lines.push(`measurement: ${problem}`);
   statsBox.textContent = lines.join("\n");
 }

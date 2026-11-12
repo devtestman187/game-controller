@@ -1,0 +1,19 @@
+The page seeing its switch, from a one-off DOM dump of the smoke run's session
+(thumb-party-n010 still up after the bench, player on port 45782):
+
+  /opt/chrome-headless-shell/chrome-headless-shell-linux64/chrome-headless-shell \
+    --no-sandbox --disable-gpu --mute-audio --virtual-time-budget=3000 \
+    --dump-dom "http://127.0.0.1:45782/?x=1" > /work/n01-dom.html
+  grep -o "options: [^<\"]*" /work/n01-dom.html
+
+  options: x=1
+
+That is the stats overlay's first line (player.js writes it before any stream,
+so a dump finds it without waiting for a sample); window.THUMB_PARTY_OPTIONS
+holds the same object the page parses. The bench itself opened the same URL,
+?x=1, on its own headless viewer.
+
+The session's own environment gave the page no defaults: config.js read
+`window.THUMB_PARTY = { signalingPort: 45781, splitTracks: false, options: {} };`.
+A second session, started by hand with SESSION_PLAYER_OPTIONS=a=1,b=x, wrote
+`options: {"a": "1", "b": "x"}` there (then stopped).

@@ -9,9 +9,14 @@
 #     [--size 1920x1080] [--probe] [--players N] [--port-base P] [--label L]
 #     [--out /work/dir] [--keep] [--set KEY=VALUE] [--press-seconds N]
 #     [--viewer chrome|external] [--viewer-cpus L] [--session-cpus L]
+#     [--player-query Q]
 #
 # `--set` gives the session containers one more environment setting, which is
 # how a tuning experiment runs without building the image again (M15 t1).
+# `--player-query` puts a player page switch on the viewer's URL (`x=1`), the
+# same one for the headless Chrome and for the address printed to a person
+# (M15 fix7). The run opens with one `switches:` line naming everything it was
+# given, and writes it to `<out>/switches.txt`.
 #
 # `--probe` shows the latency test card instead of a round and times presses
 # against the card's flips: press-to-screen is measured there, as its own
@@ -81,6 +86,9 @@ session_cpus=""
 chrome="$chrome_default"
 # Extra settings for the session containers, each one word of `-e KEY=VALUE`.
 declare -a settings=()
+# The player page's own switches (M15 fix7): the query string the viewer opens,
+# empty when the page runs with its defaults.
+player_query=""
 
 # The viewer browsers this run started; the simulated players of each session
 # are kept in the output folder, one id a line.
@@ -111,6 +119,9 @@ One streaming benchmark (M15 c2), inside the distro.
   --out DIR        where the results go (default /work/stream-bench/L)
   --keep           leave the sessions running when the run ends
   --set K=V        one more setting for the session containers, repeated
+  --player-query Q key=value pairs joined by & (letters, digits and = & _ . , -),
+                   appended to the viewer's URL and to the one printed for
+                   --viewer external
   --viewer K       chrome (default) opens a headless Chrome; external opens
                    nothing, prints the LAN address and waits for a real viewer
   --viewer-cpus L  the cores the viewer's Chrome runs on, as taskset takes them
@@ -132,6 +143,7 @@ parse_args() {
       --label) label="${2:-}"; shift 2 || { usage; exit 2; } ;;
       --out) out="${2:-}"; shift 2 || { usage; exit 2; } ;;
       --set) settings+=("${2:-}"); shift 2 || { usage; exit 2; } ;;
+      --player-query) player_query="${2:-}"; shift 2 || { usage; exit 2; } ;;
       --press-seconds) press_seconds="${2:-}"; shift 2 || { usage; exit 2; } ;;
       --viewer) viewer="${2:-}"; shift 2 || { usage; exit 2; } ;;
       --viewer-cpus) viewer_cpus="${2:-}"; shift 2 || { usage; exit 2; } ;;
@@ -148,9 +160,10 @@ check_args() {
   [[ "$label" =~ ^[a-z0-9][a-z0-9-]*$ ]] || fail "the label is lower-case letters, digits and dashes"
   local setting
   for setting in "${settings[@]}"; do
-    [[ "$setting" =~ ^[A-Z][A-Z0-9_]*=[A-Za-z0-9._-]+$ ]] \
+    [[ "$setting" =~ ^[A-Z][A-Z0-9_]*=[A-Za-z0-9._=,-]+$ ]] \
       || fail "a setting is KEY=VALUE (upper-case name, a plain value), got \"$setting\""
   done
+  check_player_query
   [[ "$sessions" =~ ^[0-9]+$ ]] && (( sessions >= 1 && sessions <= 4 )) || fail "--sessions is 1 to 4"
   [[ "$seconds" =~ ^[0-9]+$ ]] && (( seconds >= 5 )) || fail "--seconds is 5 or more"
   [[ "$width" =~ ^[0-9]+$ && "$height" =~ ^[0-9]+$ ]] || fail "--size is like 1920x1080"
@@ -167,6 +180,34 @@ check_args() {
     || refuse "--viewer-cpus needs --viewer chrome: a viewer you open yourself is pinned on that device"
   if [[ "$game" == "arena" ]]; then mode="bumper"; fi
   out="${out:-/work/stream-bench/$label}"
+}
+
+# The player query a run puts on the viewer's URL (M15 fix7): `key=value` pairs
+# joined by `&`, in the characters a query uses and nothing that needs quoting,
+# so the same string reaches Chrome's command line and the URL a person types.
+check_player_query() {
+  if [[ -z "$player_query" ]]; then
+    return 0
+  fi
+  [[ "$player_query" =~ ^[A-Za-z0-9=_.,\&-]+$ ]] \
+    || fail "the player query is key=value pairs joined by & (letters, digits and = & _ . , -), got \"$player_query\""
+}
+
+# The switches a run was given, as its one `switches:` line (M15 fix7): every
+# `--set`, the player query and the player options the session's environment
+# gives the page. Nothing set is "switches: none".
+switches_line() {
+  local setting list="" player_options="none" query="none"
+  for setting in "${settings[@]}"; do
+    list="${list:+$list, }$setting"
+    if [[ "$setting" == SESSION_PLAYER_OPTIONS=* ]]; then player_options="${setting#SESSION_PLAYER_OPTIONS=}"; fi
+  done
+  if [[ -n "$player_query" ]]; then query="$player_query"; fi
+  if [[ -z "$list" && "$query" == "none" ]]; then
+    printf 'switches: none\n'
+    return 0
+  fi
+  printf 'switches: %splayer-query %s, player-options %s\n' "${list:+$list, }" "$query" "$player_options"
 }
 
 # The press phase's length: a whole number of seconds up to [press_max_s]. Not
@@ -284,7 +325,7 @@ start_viewer() {
   "${pinned[@]}" "$chrome" --no-sandbox --disable-gpu --mute-audio \
     --autoplay-policy=no-user-gesture-required \
     --user-data-dir="$out/chrome-$index-profile" \
-    "http://127.0.0.1:$(player_of "$index")/" > "$out/chrome-$index.log" 2>&1 &
+    "http://127.0.0.1:$(player_of "$index")/${player_query:+?$player_query}" > "$out/chrome-$index.log" 2>&1 &
   viewer_pids+=("$!")
 }
 
@@ -309,7 +350,7 @@ print_viewer_url() {
   local index address
   address="$(lan_address)"
   for (( index = 0; index < sessions; index++ )); do
-    say "$(name_of "$index"): open http://$address:$(player_of "$index")/ on a phone, tablet or TV on the home network"
+    say "$(name_of "$index"): open http://$address:$(player_of "$index")/${player_query:+?$player_query} on a phone, tablet or TV on the home network"
   done
   say "the session is playing; waiting up to ${viewer_timeout_s}s for a viewer, a line every ${viewer_report_s}s"
 }
@@ -672,6 +713,10 @@ main() {
   parse_args "$@"
   check_args
   mkdir -p "$out/summaries"
+  # The run says up front what was switched on, and keeps the line with its
+  # results, so its numbers are read against the right settings (M15 fix7).
+  switches_line > "$out/switches.txt"
+  say "$(cat "$out/switches.txt")"
   # Whatever ends the run — the window, a failure, Ctrl-C — the sessions and
   # their viewers are stopped, so a repeat run starts from nothing.
   trap stop_all EXIT

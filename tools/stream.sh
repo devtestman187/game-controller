@@ -74,6 +74,10 @@ session_cpus=""
 # reaches the container's `docker run` as one `-e`, so a tuning change needs no
 # rebuild. The image's entrypoint reads them (streaming/README.md).
 declare -a settings=()
+# The player page's own switches for a bench (M15 fix7), as the query string the
+# viewer opens (`audio=separate&lowdelay=1`): one URL works for the headless
+# Chrome and for the owner's phone, so a page switch is measured the same way.
+player_query=""
 # Whether `keep-alive` was asked to end the keep-alive instead of showing it.
 keep_alive_stop="no"
 # Where the fetched summaries live, under docs/ so they stay with the reports.
@@ -139,6 +143,10 @@ Bench options:
   --keep            leave the sessions running afterwards
   --set K=V         one more setting for the session container (streaming/README.md);
                     a bench experiment needs this rather than an image rebuild
+  --player-query <q>  a player page switch, as key=value pairs joined by & (letters,
+                    digits and = & _ . , - only): appended to the URL the viewer
+                    opens and to the one printed for --viewer external, so a phone
+                    opens the same switches the headless Chrome does
   --results <dir>   the folder of summaries: for stats it is what to read (default
                     the newest run under docs/briefs/m15/bench-results, else
                     docs/briefs/m15/c2/results), for bench where to write them
@@ -172,15 +180,30 @@ check_name() {
 }
 
 # Every `--set` is one environment setting for a session container: an upper-case
-# name, then a value with no spaces, so it reaches `docker run` as one word.
+# name, then a value with no spaces, so it reaches `docker run` as one word. A
+# list setting keeps its `=` and `,` (SESSION_PLAYER_OPTIONS=a=1,b=x, M15 fix7).
 check_settings() {
   local setting
   for setting in "${settings[@]}"; do
-    if [[ ! "$setting" =~ ^[A-Z][A-Z0-9_]*=[A-Za-z0-9._-]+$ ]]; then
+    if [[ ! "$setting" =~ ^[A-Z][A-Z0-9_]*=[A-Za-z0-9._=,-]+$ ]]; then
       printf 'stream: a setting is KEY=VALUE (upper-case name, a plain value), got "%s"\n' "$setting" >&2
       exit 2
     fi
   done
+}
+
+# The player query a bench puts on the viewer's URL (M15 fix7): `key=value` pairs
+# joined by `&`, in the characters a query uses and nothing that needs quoting,
+# so the same string reaches Chrome's command line and the URL a person types.
+check_player_query() {
+  if [[ -z "$player_query" ]]; then
+    return 0
+  fi
+  if [[ ! "$player_query" =~ ^[A-Za-z0-9=_.,\&-]+$ ]]; then
+    printf 'stream: the player query is key=value pairs joined by & (letters, digits and = & _ . , -), got "%s"\n' \
+      "$player_query" >&2
+    exit 2
+  fi
 }
 
 # The press phase's length for a bench: empty leaves it to the bench, anything
@@ -464,6 +487,30 @@ print_report() {
   dart run packages/metrics/bin/report.dart "$1"
 }
 
+# The switches line a bench wrote into its results folder (M15 fix7), fetched
+# beside the summaries: what was on when the numbers were taken. A run from
+# before the line existed has no file, and the report says nothing about it.
+fetch_switches() {
+  local remote="$1" target="$2"
+  if wsl_run "test -f $remote/switches.txt"; then
+    tools/wsl-fetch.sh "$distro" "$remote/switches.txt" "$target/switches.txt" > /dev/null \
+      || fail "could not copy switches.txt out of $distro"
+  fi
+}
+
+# Prints that line if the folder has it, or one label folder inside it (a bench
+# leaves the run folder with the label folder inside, M15 fix7).
+print_switches() {
+  local folder="$1" file
+  file="$folder/switches.txt"
+  if [[ ! -f "$file" ]]; then
+    file="$(ls -1 "$folder"/*/switches.txt 2> /dev/null | head -1)"
+  fi
+  if [[ -n "$file" && -f "$file" ]]; then
+    say "$(cat "$file")"
+  fi
+}
+
 # One benchmark (M15 c2): the sessions run inside the distro, the summaries
 # come back into docs/, and the Streaming report is printed here.
 cmd_bench() {
@@ -472,6 +519,7 @@ cmd_bench() {
     fail "the label is lower-case letters, digits and dashes, got \"$label\""
   fi
   check_settings
+  check_player_query
   check_viewer
   check_cpus "--viewer-cpus" "$viewer_cpus"
   check_cpus "--session-cpus" "$session_cpus"
@@ -482,6 +530,7 @@ cmd_bench() {
   if [[ -z "$results" ]]; then results="$bench_results_root/$(date +%Y%m%d-%H%M%S)"; fi
   target="$results/$label"
   for setting in "${settings[@]}"; do extra="$extra --set $setting"; done
+  if [[ -n "$player_query" ]]; then extra="$extra --player-query $player_query"; fi
   if [[ -n "$press_seconds" ]]; then extra="$extra --press-seconds $press_seconds"; fi
   if [[ "$probe" == "yes" ]]; then extra="$extra --probe"; fi
   if [[ "$keep" == "yes" ]]; then extra="$extra --keep"; fi
@@ -506,12 +555,14 @@ cmd_bench() {
       || fail "could not copy $file out of $distro"
   done
   say "summaries copied to $target"
+  fetch_switches "$remote" "$target"
   # A bench that leaves its sessions running leaves the distro needing the
   # keep-alive too.
   if [[ "$keep" == "yes" ]]; then
     start_keepalive
   fi
   print_report "$target"
+  print_switches "$target"
   say "results: $target"
   say "report again with: bash tools/stream.sh stats --results $target"
 }
@@ -547,6 +598,7 @@ cmd_stats() {
     fail "no results at $results; run tools/stream.sh bench first"
   fi
   print_report "$results"
+  print_switches "$results"
 }
 
 cmd_down() {
@@ -582,6 +634,10 @@ while (( $# > 0 )); do
     --set)
       settings+=("${2:-}")
       shift 2 || { printf 'stream: --set needs KEY=VALUE\n' >&2; usage; exit 2; }
+      ;;
+    --player-query)
+      player_query="${2:-}"
+      shift 2 || { printf 'stream: --player-query needs key=value pairs\n' >&2; usage; exit 2; }
       ;;
     --distro)
       distro="${2:-}"

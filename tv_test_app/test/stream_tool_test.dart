@@ -57,6 +57,32 @@ void main() {
     }
   });
 
+  test('the usage says a player query turns a player switch on for the viewer', () async {
+    final result = await run([]);
+
+    expect(result.stdout, contains('--player-query <q>'), reason: 'a player switch rides on the page\'s URL');
+    expect(result.stdout, contains('key=value pairs joined by &'), reason: 'the query is what a page\'s URL carries');
+  });
+
+  test('a benchmark refuses a player query that is not key=value pairs', () async {
+    for (final query in ['a b', 'x=1;y=2', '?x=1']) {
+      final result = await run(['bench', '--player-query', query]);
+
+      expect(result.exitCode, 2, reason: '"$query" would reach the viewer as part of its URL');
+      expect(
+        result.stderr,
+        contains('the player query is key=value pairs joined by & (letters, digits and = & _ . , -), got "$query"'),
+      );
+    }
+  });
+
+  test('the bench itself refuses the same player query, before any session starts', () async {
+    final result = await Process.run('bash', ['../streaming/bench.sh', '--player-query', 'a b']);
+
+    expect(result.exitCode, 1);
+    expect(result.stderr, contains('the player query is key=value pairs joined by &'));
+  });
+
   test('a benchmark refuses a viewer it does not know', () async {
     final result = await run(['bench', '--viewer', 'nope']);
 

@@ -51,6 +51,29 @@ port …"). Pinning it is a change to the app, not to this image.
 The defaults (`8080`, `8443`, `45780`) are what `docker run` without settings
 gives, so the image is usable by hand too.
 
+## Switches (M15 fix7)
+
+Each new latency technique in the fix7 batch sits behind a switch of its own, off
+until a run asks for it, so the owner can compare phone runs. A session switch is
+one `-e KEY=VALUE` on `docker run`, which `tools/stream.sh bench --set KEY=VALUE`
+passes (`SESSION_FEC=false`); a player page switch is a `key=value` pair on the
+page's URL, which `--player-query x=1` puts on the viewer's URL — the headless
+Chrome's, and the one printed for `--viewer external`, so the owner copies one
+URL for the phone. `SESSION_PLAYER_OPTIONS=a=1,b=x` gives the page defaults from
+the session's environment (entrypoint.sh writes them into `config.js` as
+`THUMB_PARTY.options`); the URL query overrides them key by key, and an unknown
+key is kept for a later switch. The page exposes what it runs with as
+`window.THUMB_PARTY_OPTIONS` and as an `options: x=1` line in the stats overlay.
+
+A bench run opens with one line naming what it was given —
+`switches: SESSION_FEC=true, player-query x=1, player-options none` — and writes
+it to `<out>/switches.txt`, which `tools/stream.sh bench` fetches beside the
+summaries and `stats` prints again. A run with nothing set says `switches: none`,
+and the page then behaves exactly as it did before the batch.
+
+The headless Chrome is not Safari: a headless run says whether a switch works and
+what it does to the host side and to Chrome, and the phone decides.
+
 ## The picture's settings (M15 t1)
 
 Each is one `-e KEY=VALUE` on `docker run`; `tools/stream.sh bench --set

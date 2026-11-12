@@ -54,6 +54,10 @@ do_retransmission="${SESSION_RETRANSMISSION:-true}"
 # Off: M15 t1 measured it *worse* (42 delivered fps against 53, press 246 ms
 # against 230, see streaming/README.md), so one element stays.
 split_tracks="${SESSION_SPLIT_TRACKS:-false}"
+# The player page's own switches (M15 fix7), a comma list such as `a=1,b=x`,
+# which start_player writes into config.js as the page's default options; the
+# page's URL query overrides them key by key. Empty: the page runs as it did.
+player_options="${SESSION_PLAYER_OPTIONS:-}"
 # nvh264enc is broken on this driver (M15 wsl2 probe); the auto and cuda
 # elements both work. The image carries gst-plugins-rs and NVENC only.
 encoder="${SESSION_ENCODER:-nvautogpuh264enc}"
@@ -209,6 +213,21 @@ start_signalling() {
   start_logged "$signal_log" gst-webrtc-signalling-server --host 0.0.0.0 --port "$signal_port"
 }
 
+# One comma list of player options as the JS object config.js carries (M15
+# fix7). An entry that is not a plain KEY=VALUE is left out, so one bad word
+# cannot break the page; keys are kept as given, because later jobs add them.
+player_options_json() {
+  local list="$1" item out="" sep=""
+  local -a entries=()
+  IFS=',' read -r -a entries <<< "$list"
+  for item in "${entries[@]}"; do
+    [[ "$item" =~ ^([A-Za-z0-9_.-]+)=([A-Za-z0-9_.-]*)$ ]] || continue
+    out+="$sep\"${BASH_REMATCH[1]}\": \"${BASH_REMATCH[2]}\""
+    sep=", "
+  done
+  printf '{%s}' "$out"
+}
+
 # The player page and its relay: one Python server that serves the page and
 # passes its measurements to the app with the session's token (M15 c2).
 start_player() {
@@ -219,8 +238,10 @@ start_player() {
   # on this machine. `splitTracks` plays the picture and the sound on separate
   # media elements (M15 t1 experiment 1): off unless SESSION_SPLIT_TRACKS says
   # on, because it measured no gain on this pipeline (streaming/README.md).
-  printf 'window.THUMB_PARTY = { signalingPort: %s, splitTracks: %s };\n' \
-    "$signal_port" "$split_tracks" > "$run_dir/player/config.js"
+  # `options` is the page's default switches (M15 fix7), which its URL's query
+  # overrides key by key.
+  printf 'window.THUMB_PARTY = { signalingPort: %s, splitTracks: %s, options: %s };\n' \
+    "$signal_port" "$split_tracks" "$(player_options_json "$player_options")" > "$run_dir/player/config.js"
   start_logged "$player_log" \
     python3 "$run_dir/player/serve.py" --port "$player_port" --directory "$run_dir/player" \
       --automation-port "$automation_port" --token "$automation_token" --state "$run_dir"
