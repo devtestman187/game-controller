@@ -51,6 +51,9 @@ mapfile -t WAVES < <(sed 's/#.*//' "$B/waves.txt" | awk 'NF')
 note() { echo "$(date '+%F %T') $*" | tee -a "$B/run.log"; }
 stop() { note "STOPPED: $*"; exit 1; }
 finding() { echo "- $*" >> "$B/run-findings.md"; note "finding: $*"; }
+usage() { # usage <brief path>: the job's turns and minutes, from the flash usage log
+  awk -F'	' -v b="$1" 'index($10, b){t=$3; m=$4/60} END{if(t) printf "%d turns, %.0f min", t, m}' "${FLASH_USAGE_LOG:-$HOME/.thumbparty/flash-usage.tsv}" 2>/dev/null
+}
 committed() { git ls-files --error-unmatch "$1" >/dev/null 2>&1; }
 unchurn() { git checkout -- "${CHURN[@]}" 2>/dev/null; }
 save() { # save <message> <path>...: commit and push just these paths
@@ -169,7 +172,7 @@ for wave in "${WAVES[@]}"; do
   for i in "${!started[@]}"; do
     j=${started[$i]}
     wait "${pids[$i]}"; rc=$?
-    note "$j finished: result $rc"
+    note "$j finished: result $rc ($(usage "$B/$j.md"))"
     if [ $rc -eq 4 ] && outside=$(apply_safe "$j" "$LOGS/flash-$j.log"); then
       note "$j: applied with harmless files outside its list: $outside"
       extra+=($outside); rc=0

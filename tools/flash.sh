@@ -230,6 +230,7 @@ Read docs/coding-guidelines.md before every job and follow it: a diff that break
 Claude, who wrote this task, is the source of truth. Suggestions and questions go in your report; don't act on them.
 The task names a review gate (G0 survey, G1 plan, G2 contract and tests, G3 first slice, G4 complete, or a review). Stop at that gate, even if more looks easy.
 If the task needs a design decision, is unclear, or turns out bigger than described, stop and say so instead of guessing.
+Work rules (they keep the job short, and short jobs go wrong less): read a file once, and only the part you need (use line ranges for files over 300 lines); never re-read a file you have not changed; ask for several files or greps in one step when you know you need them; run a test suite once per change, on the smallest package that covers it, and read only the failures; do not print long command output (pipe through tail or grep); keep your thinking to the decision at hand and your messages to a few lines; write the report once, at the end.
 Finish with: the files you changed (one line each, what changed), the checks you ran and their result, and anything you weren't sure about."
 
 # --bare offers only Read, Edit (which also creates files) and Bash, so
@@ -330,6 +331,10 @@ export ANTHROPIC_API_KEY="$DEEPSEEK_API_KEY"
 unset ANTHROPIC_AUTH_TOKEN
 export ANTHROPIC_DEFAULT_HAIKU_MODEL="$model" ANTHROPIC_DEFAULT_SONNET_MODEL="$model" ANTHROPIC_DEFAULT_OPUS_MODEL="$model"
 export CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1
+# Caps on what one command or one file read can add to the conversation, which
+# is sent again on every later turn (docs/flash-framework.md, "Keep jobs short").
+export BASH_MAX_OUTPUT_LENGTH="${FLASH_BASH_MAX_OUTPUT:-10000}"
+export CLAUDE_CODE_FILE_READ_MAX_OUTPUT_TOKENS="${FLASH_READ_MAX_TOKENS:-12000}"
 # A distro job must not carry Windows variables (the key among them) into WSL.
 unset WSLENV
 
