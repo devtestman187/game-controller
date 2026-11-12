@@ -12,6 +12,7 @@ export 'src/automation/automation_game_start.dart';
 export 'src/automation/automation_providers.dart';
 export 'src/automation/automation_server.dart';
 export 'src/automation/automation_settings.dart';
+export 'src/automation/stream_ingest.dart' show ingestStream;
 export 'src/automation/screen_frames.dart';
 export 'src/best_times.dart';
 export 'src/controls.dart' show Controls, ControlsClaims;

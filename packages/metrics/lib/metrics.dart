@@ -21,4 +21,6 @@ export 'src/session.dart';
 export 'src/session_stats.dart';
 export 'src/stream_names.dart';
 export 'src/stream_resource_sample.dart';
+export 'src/stream_sampler.dart';
+export 'src/stream_sampler_readings.dart';
 export 'src/stream_stats.dart';

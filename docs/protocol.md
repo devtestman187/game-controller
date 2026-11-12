@@ -343,15 +343,17 @@ A stage is summarised as `n` (samples), `median`, `p95` and `max` in **ms**, as 
 
 | Stage | From → to | Who measures it |
 | --- | --- | --- |
-| `stream_capture` | the game drew a frame → the virtual screen captured it | the container's pipeline (job c2) |
-| `stream_encode` | captured → the encoder's output packet | the container's pipeline (job c2) |
-| `stream_send` | encoded → handed to the network | the container's pipeline (job c2) |
-| `stream_network` | one way over the network | the viewer, from its round trip ÷ 2 (or from a capture timestamp carried with the frame) |
+| `stream_capture` | the frame the compositor captured → the encoder's input (the pipeline's caps filter and `videoconvert`) | the container's pipeline (job c2): the latency tracer's `element-latency` of those two elements |
+| `stream_encode` | in the encoder → the encoded packet, including the wait for a free encoder slot | the container's pipeline (job c2): the tracer's `element-latency` of the encoder |
+| `stream_send` | encoded → handed to the network | **not measured**: the tracer writes no record for a sink element, so what `webrtcsink` does after its input is only visible to the viewer as `stream_network` |
+| `stream_network` | one way over the network | the viewer, from its round trip ÷ 2 (no RTP capture-time header extension is negotiated) |
 | `stream_jitter_buffer` | arrived → taken for decoding | the viewer |
 | `stream_decode` | taken → decoded, ready to draw | the viewer |
 | `stream_display` | decoded → presented on the screen | the viewer |
 | `stream_total` | captured → presented (derived) | see below |
 | `press_to_screen` | a controller press → the frame that shows it on the viewer (derived) | see below |
+
+What the container's stages include and leave out is the tracer's doing (job c2's report, `docs/briefs/m15/c2-stream-stats-report.md`): it times a buffer inside one element, so the capture plugin's own hold and the game's draw are not in `stream_capture`, and the elements between the encoder and `webrtcsink` (`h264parse`, the payloaders) are under a millisecond each. The sampler reports the tracer's whole-pipeline record as the host gauge `pipelineMs`, which covers capture, convert, encode and parse in one number, so the two stages can be checked against it. What the report leaves out is listed in the same report, and `press_to_screen` carries its own exclusions there: a flip a whole card cadence (500 ms) or more after the press could be the card's own cadence and is dropped.
 
 `stream_total` and `press_to_screen` carry a `source`, which says how the number was reached:
 
@@ -392,6 +394,7 @@ Sampled every few seconds while a session runs; each reading is a gauge in its o
 | `gameFps`, `encodedFps` | frames a second |
 | `frameBuildMs`, `frameRasterMs` | ms |
 | `encodeQueue` | frames waiting for the encoder |
+| `pipelineMs` | ms: the tracer's pipeline record, a captured frame's whole way to `webrtcsink` (M15 c2) |
 | `sessionsAtOnce` | sessions running on the machine at that moment |
 
 A client feeds these through `SessionCollector` in `packages/metrics` (`streamViewer`, `streamStage`, `streamGauge`, `streamCounter`, `streamFact`, `streamResource`); it never writes the summary itself. A session that records nothing stream-related leaves `stream` out, and the report skips it.

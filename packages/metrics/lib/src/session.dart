@@ -303,6 +303,11 @@ class SessionCollector {
   /// that comes back is the same viewer, with a higher reconnect count.
   String streamViewer({required String kind, String platform = ''}) => _stream.viewer(kind: kind, platform: platform);
 
+  /// Whether [viewerId] is a viewer this session registered (M15): a client
+  /// that keeps reporting sends its id back, and an ingest refuses an id the
+  /// session never answered rather than dropping its samples unread.
+  bool hasStreamViewer(String viewerId) => _stream.hasViewer(viewerId);
+
   /// A streaming stage sample in ms (M15, `StreamStage`): a video stage, a
   /// sound stage, or a newer client's own. [fps] files it by the frame rate
   /// the viewer ran at, as a phone's stages are filed (m12 §0.4).

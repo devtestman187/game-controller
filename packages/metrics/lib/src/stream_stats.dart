@@ -54,6 +54,9 @@ class StreamTally {
     return id;
   }
 
+  /// Whether [id] is one of the viewers `viewer` answered.
+  bool hasViewer(String id) => _viewers.containsKey(id);
+
   /// A latency stage sample for [id], in ms. [name] is one of [StreamStage] or
   /// a newer client's; an unknown name is kept. [fps] files the sample by the
   /// frame rate the viewer was running, as a phone's stages are filed today
@@ -201,6 +204,7 @@ class _HostTally {
     _gauge(StreamResource.frameRasterMs, sample.frameRasterMs);
     _gauge(StreamResource.encodedFps, sample.encodedFps);
     _gauge(StreamResource.encodeQueue, sample.encodeQueue);
+    _gauge(StreamResource.pipelineMs, sample.pipelineMs);
     _gauge(StreamResource.sessionsAtOnce, sample.sessionsAtOnce);
     _peak(sample.memPeakMb);
     _peak(sample.memMb);

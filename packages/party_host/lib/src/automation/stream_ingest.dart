@@ -14,15 +14,19 @@ import 'automation_body.dart';
 /// collector drops a series it has no room for; a body that is malformed is
 /// refused whole, so half a batch never lands.
 String ingestStream(SessionCollector session, Map<String, Object?> body) {
-  final viewer = objectOf(body, 'viewer');
+  final viewer = body['viewer'];
   final hasSamples = ['stages', 'gauges', 'counters', 'facts'].any((key) => listOf(body, key).isNotEmpty);
   if (viewer == null && hasSamples) {
     throw const AutomationError('a sample needs a "viewer": {"kind": "browser"}');
   }
-  final id = viewer == null
-      ? ''
-      : session.streamViewer(kind: requiredString(viewer, 'kind'), platform: stringOf(viewer, 'platform') ?? '');
-  if (viewer != null && id.isEmpty) throw const AutomationError('the session has no room for another viewer');
+  final id = viewer is String
+      ? _known(session, viewer)
+      : viewer is Map<String, Object?>
+      ? session.streamViewer(kind: requiredString(viewer, 'kind'), platform: stringOf(viewer, 'platform') ?? '')
+      : '';
+  if (viewer != null && id.isEmpty && viewer is! String) {
+    throw const AutomationError('the session has no room for another viewer');
+  }
   for (final item in listOf(body, 'stages')) {
     final stage = asObject(item, 'a stage');
     final ms = intOf(stage, 'ms');
@@ -47,6 +51,16 @@ String ingestStream(SessionCollector session, Map<String, Object?> body) {
   return id;
 }
 
+/// The id a body sends back for later batches (`"viewer": "v1"`), checked
+/// against the session's own viewers so a typo is refused instead of lost.
+String _known(SessionCollector session, String id) {
+  final text = id.trim();
+  if (!session.hasStreamViewer(text)) {
+    throw const AutomationError('there is no viewer with that id: send "viewer" once as {"kind": "browser"}');
+  }
+  return text;
+}
+
 num _valueOf(Map<String, Object?> sample) {
   final value = sample['value'];
   if (value is! num) throw const AutomationError('a gauge and a counter need a number in "value"');
@@ -54,7 +68,7 @@ num _valueOf(Map<String, Object?> sample) {
 }
 
 /// One container reading (job p1's `StreamResourceSample`): any subset of its
-/// fifteen numbers, and nothing else is read.
+/// sixteen numbers, and nothing else is read.
 StreamResourceSample resourceOf(Map<String, Object?> body) => StreamResourceSample(
   cpuPct: doubleOf(body, 'cpuPct'),
   gameCpuPct: doubleOf(body, 'gameCpuPct'),
@@ -69,6 +83,7 @@ StreamResourceSample resourceOf(Map<String, Object?> body) => StreamResourceSamp
   frameRasterMs: doubleOf(body, 'frameRasterMs'),
   encodedFps: doubleOf(body, 'encodedFps'),
   encodeQueue: doubleOf(body, 'encodeQueue'),
+  pipelineMs: doubleOf(body, 'pipelineMs'),
   sessionsAtOnce: doubleOf(body, 'sessionsAtOnce'),
   firstFrameMs: doubleOf(body, 'firstFrameMs'),
 );

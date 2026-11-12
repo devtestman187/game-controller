@@ -1,3 +1,5 @@
+import 'stream_names.dart';
+
 /// One reading of the host container's resources while a session streams (M15,
 /// the sampler of job c2): plain numbers with their units, so `metrics` stays
 /// free of Flutter and the platform, as [HostDeviceSample] does for the host
@@ -18,6 +20,7 @@ final class StreamResourceSample {
     this.frameRasterMs,
     this.encodedFps,
     this.encodeQueue,
+    this.pipelineMs,
     this.sessionsAtOnce,
     this.firstFrameMs,
   });
@@ -61,10 +64,36 @@ final class StreamResourceSample {
   /// Frames waiting in the encoder's queue.
   final num? encodeQueue;
 
+  /// Time a captured frame took to reach `webrtcsink`, in ms: the tracer's
+  /// pipeline record, which covers capture, convert, encode and parse in one
+  /// number where the stage records only see their own element.
+  final num? pipelineMs;
+
   /// Sessions running on this machine when the sample was taken (M15's
   /// capacity figure: 1, 2, 3 …).
   final num? sessionsAtOnce;
 
   /// Time from the session starting to its first encoded frame, in ms.
   final num? firstFrameMs;
+
+  /// The reading as the `stats/stream` ingest reads it (`StreamResource`'s
+  /// names), leaving out what the sampler didn't measure.
+  Map<String, Object?> toJson() => {
+    StreamResource.cpuPct: ?cpuPct,
+    StreamResource.gameCpuPct: ?gameCpuPct,
+    StreamResource.encoderCpuPct: ?encoderCpuPct,
+    StreamResource.memMb: ?memMb,
+    StreamResource.memPeakMb: ?memPeakMb,
+    StreamResource.gpuPct: ?gpuPct,
+    StreamResource.encoderPct: ?encoderPct,
+    StreamResource.gpuMemMb: ?gpuMemMb,
+    StreamResource.gameFps: ?gameFps,
+    StreamResource.frameBuildMs: ?frameBuildMs,
+    StreamResource.frameRasterMs: ?frameRasterMs,
+    StreamResource.encodedFps: ?encodedFps,
+    StreamResource.encodeQueue: ?encodeQueue,
+    StreamResource.pipelineMs: ?pipelineMs,
+    StreamResource.sessionsAtOnce: ?sessionsAtOnce,
+    StreamResource.firstFrameMs: ?firstFrameMs,
+  };
 }

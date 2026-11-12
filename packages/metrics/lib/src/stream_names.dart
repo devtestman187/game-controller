@@ -67,6 +67,10 @@ abstract final class StreamResource {
   static const frameRasterMs = 'frameRasterMs';
   static const encodedFps = 'encodedFps';
   static const encodeQueue = 'encodeQueue';
+
+  /// A captured frame's whole time through the host pipeline, in ms: the
+  /// tracer's pipeline record, where the stage gauges only see their element.
+  static const pipelineMs = 'pipelineMs';
   static const sessionsAtOnce = 'sessionsAtOnce';
   static const memPeakMb = 'memPeakMb';
   static const firstFrameMs = 'firstFrameMs';

@@ -5,6 +5,7 @@
  * browser allows, and reconnects when the stream drops.
  */
 
+import { StreamReporter } from "./reporter.js";
 import { StatsMeter } from "./stats.js";
 
 const GstWebRTCAPI = window.GstWebRTCAPI;
@@ -28,8 +29,15 @@ const soundButton = document.getElementById("sound");
 let api = null;
 let consumer = null;
 let meter = null;
+let reporter = null;
 let statsTimer = null;
 let reconnectTimer = null;
+// How many times this page asked for the stream again (M15 c2's quality
+// table), counted across connections. Only a drop after the picture has played
+// counts: a page that opens before the TV has a producer waits once, and that
+// wait is a start, not a reconnect.
+let reconnects = 0;
+let hasPlayed = false;
 
 function setStatus(text) {
   statusBox.textContent = text;
@@ -59,6 +67,8 @@ async function startPlayback() {
   screen.muted = true;
   try {
     await screen.play();
+    hasPlayed = true;
+    reportPlayerState("playing");
   } catch (error) {
     setStatus(`cannot start the picture: ${error.message}`);
     return;
@@ -105,8 +115,35 @@ function startStats(peerConnection) {
   statsTimer = window.setInterval(tick, statsIntervalMs);
 }
 
+// Tells the session's web server what this page is doing, so a benchmark can
+// wait for the picture instead of guessing (M15 c2).
+function reportPlayerState(state, extra = {}) {
+  fetch("/player", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ state, ...extra }),
+  }).catch(() => {});
+}
+
+// Starts sending the measurements the host's stats record keeps; the reporter
+// reads the same connection's numbers and the frame times the browser gives.
+function startReporting(peerConnection) {
+  stopReporting();
+  reporter = new StreamReporter({ video: screen, peerConnection, onStatus: setStatus, reconnects });
+  reporter.start();
+}
+
+function stopReporting() {
+  if (reporter !== null) {
+    reporter.stop();
+    reporter = null;
+  }
+}
+
 function closeConsumer() {
   stopStats();
+  stopReporting();
+  reportPlayerState("closed");
   if (consumer !== null) {
     const closing = consumer;
     consumer = null;
@@ -121,6 +158,10 @@ function scheduleReconnect() {
     return;
   }
   closeConsumer();
+  if (hasPlayed) {
+    reconnects++;
+  }
+  reportPlayerState("reconnecting", { reconnects });
   reconnectTimer = window.setTimeout(() => {
     reconnectTimer = null;
     connectToFirstProducer();
@@ -153,14 +194,19 @@ function connectTo(producerId) {
     if (consumer === session && streams.length > 0 && screen.srcObject !== streams[0]) {
       screen.srcObject = streams[0];
       startPlayback();
+      reportPlayerState("streaming");
     }
   });
   session.addEventListener("stateChanged", () => {
     const peerConnection = session.rtcPeerConnection;
-    if (consumer === session && peerConnection !== null && meter === null) {
+    if (consumer !== session || peerConnection === null) {
+      return;
+    }
+    if (meter === null) {
       tuneForLowDelay(peerConnection);
       startStats(peerConnection);
     }
+    if (reporter === null) startReporting(peerConnection);
   });
 
   setStatus("connecting to the TV…");

@@ -59,6 +59,14 @@ final class HostAutomation implements AutomationApi {
       'ready': state.host.running && start == null,
       'pairingCode': state.host.pairingCode,
       'port': state.host.port,
+      // The host's own clock (M15 c2), the one `probe/press` answers in: a
+      // viewer ping-pongs this call to keep its offset from the host, so its
+      // frame times and a press's host time are on one scale.
+      'hostMs': _ref.read(gameHostProvider).nowMs,
+      // The host app's own drawing (M15 c2): a sampler reads the count to know
+      // the game's frame rate, which a round with no phone watching never
+      // publishes as frames.
+      'frames': {'drawn': _ref.read(automationDrawnProvider).frames},
       'players': [for (final p in _ref.read(gameHostProvider).players) _playerJson(p)],
     };
   }
@@ -163,6 +171,10 @@ final class HostAutomation implements AutomationApi {
     // moment the host had it: the next frame is the first that can show it.
     final atMs = _ref.read(gameHostProvider).nowMs;
     local.set(GamepadState(buttons: {button}, mode: InputMode.dpad));
+    // The latency card flips on the press too (M15 c2), so a viewer that
+    // watches the picture sees the press arrive as a colour change and times
+    // it against [atMs]; the card's own 500 ms cadence keeps running.
+    _ref.read(automationProbeFlipProvider.notifier).flip();
     return {'player': id, 'button': button.name, 'hostMs': atMs};
   }
 

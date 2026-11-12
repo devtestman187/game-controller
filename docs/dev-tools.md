@@ -210,6 +210,11 @@ tools/stream.sh logs --name party --follow
 tools/stream.sh url --name party             # the player URL and the controller address
 tools/stream.sh down --name kitchen          # stop one session
 tools/stream.sh down --all                   # stop every session
+tools/stream.sh bench                        # 60 s Arena through a session and a viewer, then the Streaming report
+tools/stream.sh bench --sessions 2 --seconds 60 --label two60
+tools/stream.sh bench --probe --seconds 60   # time presses against the latency card instead of a round
+tools/stream.sh bench --size 1280x720        # the same machine at 720p
+tools/stream.sh stats                        # the Streaming report for the summaries the last bench fetched
 ```
 
 Runs the TV app as a streamed session: the app draws into a virtual screen inside a container, and a browser on the player page watches it. What the image holds, and what an owner has to do so a TV on the Wi-Fi can watch too, is in [streaming/README.md](../streaming/README.md).
@@ -221,6 +226,14 @@ Runs the TV app as a streamed session: the app draws into a virtual screen insid
 - **It never keeps state on the Windows side:** sessions are containers in the distro, named `thumb-party-<name>` and labelled `thumb-party.session`, which is how `status` and `down` find them.
 - **Exit code:** 0 ok, 1 the step failed (with the log or the reason), 2 bad use (unknown command or option, a bad name, port base or distro).
 - **What it doesn't do:** create or stop sessions from the app (that is server work), delete the image (`docker rmi tp-session:latest` in the distro), or open the player in a browser. It prints the address; opening it is yours.
+
+### tools/stream.sh bench and stats (M15 c2)
+
+`bench` runs the same image without a person in front of it: it starts one or more sessions, adds a simulated player, opens the player page in headless Chrome and lets a round (or, with `--probe`, the latency test card) run for `--seconds`. The container's sampler feeds the host's automation interface while the round runs, and when it ends the session's summary — with its whole `stream` record — is copied out to `docs/briefs/m15/c2/results/<label>/` and the Streaming report for it is printed. `--keep` leaves the containers up for a look; a run without it removes them.
+
+`stats` prints the same report for summaries already fetched (`--results <dir>`, default `docs/briefs/m15/c2/results`), so a run can be re-read without the distro. A label is lower-case letters, digits and dashes: it names the folder under `docs/`, and a bad one is refused before anything starts.
+
+A round the app does not show within a few seconds is started again: a `game/start` sent while the session is still warming up is dropped, and the app stays on its home screen. The bench waits for `GET status` to say the game screen and checks it is still there a few seconds later; a session that never gets there fails the run instead of measuring the home screen.
 
 ## The automation interface: tools/automation.dart
 

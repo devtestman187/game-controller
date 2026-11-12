@@ -178,8 +178,10 @@ void main() {
     expect(press['button'], 'a');
     expect(fake.gameHost.gamepad(id).buttons, {GamepadButton.a}, reason: 'the press is in the game host');
 
+    await tester.pump();
+    expect(find.textContaining('flip 1'), findsOneWidget, reason: 'the press flips the card (M15 c2)');
     await tester.pump(const Duration(milliseconds: LatencyTestCard.flipMs));
-    expect(find.textContaining('flip 1'), findsOneWidget, reason: 'the next frame the viewer can see is the flip');
+    expect(find.textContaining('flip 2'), findsOneWidget, reason: 'and the card keeps its own cadence');
     api.flashProbe(on: false);
     await tester.pump();
     expect(find.byType(LatencyTestCard), findsNothing);

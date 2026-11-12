@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/scheduler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:game_kit/game_kit.dart';
 
@@ -55,6 +56,47 @@ class AutomationProbeNotifier extends Notifier<bool> {
   void show({required bool on}) {
     if (state != on) state = on;
   }
+}
+
+/// How many times `POST probe/press` asked the latency card to flip (M15 c2):
+/// a press is a flip the viewer can time, so `press_to_screen` is measured
+/// from the host's clock at the press to the frame that shows the new colour.
+final automationProbeFlipProvider = NotifierProvider<AutomationProbeFlipNotifier, int>(AutomationProbeFlipNotifier.new);
+
+/// Keeps [automationProbeFlipProvider]: counts up once per press.
+class AutomationProbeFlipNotifier extends Notifier<int> {
+  @override
+  int build() => 0;
+
+  /// Asks the card for one more flip.
+  void flip() => state = state + 1;
+}
+
+/// The host app's own drawn frames (M15 c2): the sampler reads the count
+/// twice and tells the game's frame rate from it. A session with no phone
+/// watching never publishes game frames (a frame goes out only to a viewer),
+/// so the app's own drawing is what says how fast the game runs.
+final automationDrawnProvider = Provider<AutomationDrawn>((ref) {
+  final drawn = AutomationDrawn();
+  SchedulerBinding.instance.addPersistentFrameCallback((_) => drawn.count());
+  ref.onDispose(drawn.stop);
+  return drawn;
+});
+
+/// A count of the frames the host app drew since it started.
+final class AutomationDrawn {
+  /// The frames drawn so far; one is added each time the app draws.
+  int frames = 0;
+
+  bool _stopped = false;
+
+  /// Adds one frame, unless the counter was let go (its callback outlives it).
+  void count() {
+    if (!_stopped) frames++;
+  }
+
+  /// Stops counting.
+  void stop() => _stopped = true;
 }
 
 /// The result of the round that ended last, as `GET state` reports it (M15

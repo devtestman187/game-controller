@@ -24,10 +24,26 @@ void main() {
     expect(result.exitCode, 2);
     expect(result.stdout, contains('tools/stream.sh build'));
     expect(result.stdout, contains('tools/stream.sh up'));
+    expect(result.stdout, contains('tools/stream.sh bench'), reason: 'the benchmark is one of its commands');
+    expect(result.stdout, contains('tools/stream.sh stats'), reason: 'and the report it prints');
+  });
+
+  test('a benchmark refuses a label that is not lower-case', () async {
+    final result = await run(['bench', '--label', 'BAD']);
+
+    expect(result.exitCode, 1, reason: 'the label names files in docs/, so it is checked first');
+    expect(result.stderr, contains('the label is lower-case letters, digits and dashes'));
+  });
+
+  test('the report refuses a folder that is not there', () async {
+    final result = await run(['stats', '--results', 'docs/nope']);
+
+    expect(result.exitCode, 1);
+    expect(result.stderr, contains('no results at docs/nope'));
   });
 
   test('the streaming scripts are valid bash', () async {
-    for (final file in ['../streaming/entrypoint.sh', '../tools/stream.sh']) {
+    for (final file in ['../streaming/entrypoint.sh', '../streaming/bench.sh', '../tools/stream.sh']) {
       final result = await Process.run('bash', ['-n', file]);
 
       expect(result.exitCode, 0, reason: '$file: ${result.stderr}');

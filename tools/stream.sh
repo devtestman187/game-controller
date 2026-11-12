@@ -6,6 +6,8 @@
 #
 #   tools/stream.sh build
 #   tools/stream.sh up [--name N] [--port-base P]
+#   tools/stream.sh bench [--sessions N] [--seconds S] [--game arena|shape_race]
+#   tools/stream.sh stats [--results DIR]
 #   tools/stream.sh status
 #   tools/stream.sh logs [--name N] [--follow]
 #   tools/stream.sh url [--name N]
@@ -21,10 +23,9 @@ cd "$(dirname "$0")/.." || exit 2
 readonly image="tp-session:latest"
 # Container names are this prefix plus the session name.
 readonly container_prefix="thumb-party-"
-# The controller port the TV app asks for, and the base of a session's block:
-# the signalling port is the next one and the player port the one after. The app
-# moves to a free port when that one is busy and says so in its ready line, so
-# `url` reports what it got rather than what it was asked for.
+# The controller port a session starts from, and the base of its block of
+# four: signalling, player and automation take the next three. The app is
+# pinned to its controller port (job a2), so `url` reads that one back.
 readonly default_port_base=45780
 # How long `up` waits for the session's own ready line before it says so.
 readonly ready_wait_s=120
@@ -37,6 +38,19 @@ name="party"
 port_base="$default_port_base"
 follow="no"
 all="no"
+# The benchmark's settings (M15 c2): how many sessions run at once, for how
+# long, which game, at what size, and where the summaries land.
+sessions=1
+seconds=60
+game="arena"
+size="1920x1080"
+players=1
+label="bench"
+probe="no"
+keep="no"
+# Where the fetched summaries live, under docs/ so they stay with the reports.
+readonly results_root="docs/briefs/m15/c2/results"
+results="$results_root"
 
 say() { printf '%s\n' "$*"; }
 fail() { printf 'stream: %s\n' "$*" >&2; exit 1; }
@@ -47,6 +61,9 @@ The Thumb Party streaming session (M15).
 
   tools/stream.sh build                            build the session image from this checkout
   tools/stream.sh up [--name N] [--port-base P]    start a session (default: party, ports from 45780)
+  tools/stream.sh bench [options]                  play a round through a session, a viewer and the
+                                                   stats ingest, and print the Streaming report
+  tools/stream.sh stats [--results DIR]            the Streaming report for the summaries a bench fetched
   tools/stream.sh status                           what runs, and whether it is ready
   tools/stream.sh logs [--name N] [--follow]       a session's log
   tools/stream.sh url [--name N]                   the player URL and the controller address
@@ -56,10 +73,26 @@ Options:
   --distro <name>   the WSL distro to use (default: tp-stream, or $STREAM_DISTRO);
                     its name must start with "tp-"
   --name <name>     the session's name: its container and the ports it takes
-  --port-base <n>   the session's first port; signalling and player take the
-                    next two, so two sessions need different bases
+  --port-base <n>   the session's first port; signalling, player and automation
+                    take the next three, so two sessions need different bases
   --follow          keep printing the log until interrupted
   --all             every session, for down
+
+Bench options:
+  --sessions <n>    sessions at once (default 1)
+  --seconds <n>     how long the round runs (default 60)
+  --game <name>     arena (a bumper round) or shape_race (default arena)
+  --size <WxH>      the screen and encoder size (default 1920x1080)
+  --players <n>     simulated players a session (default 1)
+  --probe           show the latency card and time presses instead of a round:
+                    press-to-screen is measured this way, as its own series
+  --label <name>    the run's name: its containers and its results folder
+  --keep            leave the sessions running afterwards
+  --results <dir>   for stats: the folder of summaries (default docs/briefs/m15/c2/results)
+
+The bench copies this checkout into the distro, starts the sessions there,
+plays through a headless Chrome viewer, fetches each session's summary into
+docs/briefs/m15/c2/results/<label>/ and runs the report over it.
 
 Exit codes: 0 ok, 1 the step failed, 2 bad use.
 EOF
@@ -155,13 +188,14 @@ cmd_build() {
 }
 
 cmd_up() {
-  local container controller signal player gpu_flags ready
+  local container controller signal player automation gpu_flags ready
   check_name
   check_port_base
   container="$(container_name)"
   controller="$port_base"
   signal=$((port_base + 1))
   player=$((port_base + 2))
+  automation=$((port_base + 3))
 
   if wsl_run "docker inspect $container > /dev/null 2>&1"; then
     fail "a session named $name already runs; stop it first: tools/stream.sh down --name $name"
@@ -181,10 +215,10 @@ cmd_up() {
     --gpus all -e NVIDIA_DRIVER_CAPABILITIES=all $gpu_flags --network host \
     -e GALLIUM_DRIVER=d3d12 -e MESA_D3D12_DEFAULT_ADAPTER_NAME=NVIDIA \
     -e CONTROLLER_PORT=$controller -e SIGNAL_PORT=$signal -e PLAYER_PORT=$player \
-    -e SESSION_NAME=$name $image" > /dev/null \
+    -e AUTOMATION_PORT=$automation -e SESSION_NAME=$name $image" > /dev/null \
     || fail "the session did not start (docker run failed)"
 
-  say "started $container: signaller $signal, player $player, controller port from $controller"
+  say "started $container: signaller $signal, player $player, controller $controller, automation $automation"
   if ready="$(wait_ready "$container")"; then
     say "$ready"
     cmd_url
@@ -221,13 +255,14 @@ cmd_logs() {
 }
 
 cmd_url() {
-  local container controller signal player address
+  local container controller signal player automation address
   check_name
   container="$(container_name)"
   signal="$(container_env "$container" SIGNAL_PORT)"
   player="$(container_env "$container" PLAYER_PORT)"
-  # The app takes the port it was given or a free one when that is busy; the
-  # ready line carries the one it got.
+  automation="$(container_env "$container" AUTOMATION_PORT)"
+  # The app is pinned to the controller port it was given; the ready line
+  # carries the one it got.
   controller="$(container_log "$container" 200 | grep -m1 -oE 'controller=localhost:[0-9]+' | cut -d: -f2)"
   if [[ -z "$controller" ]]; then
     controller="$(container_env "$container" CONTROLLER_PORT)"
@@ -239,6 +274,50 @@ cmd_url() {
   say "player:     http://localhost:$player/"
   say "controller: localhost:$controller   (other devices on the Wi-Fi use $address:$controller)"
   say "signalling: $address:$signal"
+  say "automation: 127.0.0.1:$automation in $distro (the token is /run/thumb-party/automation.token)"
+}
+
+# Runs the analytics report over a folder of summaries on this machine: the
+# report is Dart and the checkout's workspace is already resolved.
+print_report() {
+  dart run packages/metrics/bin/report.dart "$1"
+}
+
+# One benchmark (M15 c2): the sessions run inside the distro, the summaries
+# come back into docs/, and the Streaming report is printed here.
+cmd_bench() {
+  local dest remote files file extra=""
+  if [[ ! "$label" =~ ^[a-z0-9][a-z0-9-]*$ ]]; then
+    fail "the label is lower-case letters, digits and dashes, got \"$label\""
+  fi
+  if ! wsl_run "docker image inspect $image > /dev/null 2>&1"; then
+    fail "the image $image isn't in $distro yet: run tools/stream.sh build"
+  fi
+  dest="$(sync_repo)" || fail "the copy into $distro failed"
+  remote="/work/stream-bench/$label"
+  if [[ "$probe" == "yes" ]]; then extra="$extra --probe"; fi
+  if [[ "$keep" == "yes" ]]; then extra="$extra --keep"; fi
+  say "benching $sessions session(s) for ${seconds}s in $distro …"
+  wsl_run "bash $dest/streaming/bench.sh --sessions $sessions --seconds $seconds --game $game \
+    --size $size --players $players --label $label --out $remote$extra" \
+    || fail "the benchmark failed"
+  files="$(wsl_run "ls $remote/summaries 2>/dev/null" | tr -d '\r')"
+  if [[ -z "$files" ]]; then
+    fail "the benchmark left no summaries in $remote"
+  fi
+  for file in $files; do
+    tools/wsl-fetch.sh "$distro" "$remote/summaries/$file" "$results_root/$label/$file" \
+      || fail "could not copy $file out of $distro"
+  done
+  say "summaries copied to $results_root/$label"
+  print_report "$results_root/$label"
+}
+
+cmd_stats() {
+  if [[ ! -d "$results" ]]; then
+    fail "no results at $results; run tools/stream.sh bench first"
+  fi
+  print_report "$results"
 }
 
 cmd_down() {
@@ -261,7 +340,7 @@ cmd_down() {
 
 while (( $# > 0 )); do
   case "$1" in
-    build | up | status | logs | url | down)
+    build | up | bench | stats | status | logs | url | down)
       command="$1"
       shift
       ;;
@@ -276,6 +355,42 @@ while (( $# > 0 )); do
     --port-base)
       port_base="${2:-}"
       shift 2 || { printf 'stream: %s needs a value\n' "$1" >&2; usage; exit 2; }
+      ;;
+    --sessions)
+      sessions="${2:-}"
+      shift 2 || { printf 'stream: %s needs a value\n' "$1" >&2; usage; exit 2; }
+      ;;
+    --seconds)
+      seconds="${2:-}"
+      shift 2 || { printf 'stream: %s needs a value\n' "$1" >&2; usage; exit 2; }
+      ;;
+    --game)
+      game="${2:-}"
+      shift 2 || { printf 'stream: %s needs a value\n' "$1" >&2; usage; exit 2; }
+      ;;
+    --size)
+      size="${2:-}"
+      shift 2 || { printf 'stream: %s needs a value\n' "$1" >&2; usage; exit 2; }
+      ;;
+    --players)
+      players="${2:-}"
+      shift 2 || { printf 'stream: %s needs a value\n' "$1" >&2; usage; exit 2; }
+      ;;
+    --label)
+      label="${2:-}"
+      shift 2 || { printf 'stream: %s needs a value\n' "$1" >&2; usage; exit 2; }
+      ;;
+    --results)
+      results="${2:-}"
+      shift 2 || { printf 'stream: %s needs a value\n' "$1" >&2; usage; exit 2; }
+      ;;
+    --probe)
+      probe="yes"
+      shift
+      ;;
+    --keep)
+      keep="yes"
+      shift
       ;;
     --follow)
       follow="yes"
@@ -308,6 +423,8 @@ fi
 case "$command" in
   build) cmd_build ;;
   up) cmd_up ;;
+  bench) cmd_bench ;;
+  stats) cmd_stats ;;
   status) cmd_status ;;
   logs) cmd_logs ;;
   url) cmd_url ;;

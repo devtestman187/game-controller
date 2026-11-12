@@ -31,11 +31,27 @@ encoder="${SESSION_ENCODER:-nvautogpuh264enc}"
 audio_bitrate_bps="${SESSION_AUDIO_BITRATE_BPS:-96000}"
 
 # The ports inside the session. tools/stream.sh gives each session its own.
-# The app has the last word on the controller port: it tries this one and takes
-# any free port when it is busy, and wait_ready reports the one it got.
+# The controller port is pinned (THUMBPARTY_PORT, job a2), so the app listens
+# on exactly this one and fails loudly instead of moving to a free port.
 controller_port="${CONTROLLER_PORT:-45780}"
 signal_port="${SIGNAL_PORT:-8443}"
 player_port="${PLAYER_PORT:-8080}"
+# The host's automation interface (M15 a2), which the sampler and the player's
+# relay reach inside the container; tools/stream.sh gives each session its own
+# so two sessions don't fight for one port.
+automation_port="${AUTOMATION_PORT:-8787}"
+
+# The token every automation call carries (M15 a2 requires one when the bind
+# isn't loopback). A session makes its own unless the launch gives it one.
+automation_token="${AUTOMATION_TOKEN:-}"
+
+# How many sessions this machine runs at once, for the resource table's
+# grouping (M15 c2). tools/stream.sh bench sets it; a session started by hand
+# is 1, and two started by hand are two sessions that each say 1.
+sessions_at_once="${SESSIONS_AT_ONCE:-1}"
+
+# How often the sampler reads the container's counters (M15 c2), in seconds.
+sampler_interval_s="${SAMPLER_INTERVAL_S:-3}"
 
 # How long to wait for a picture and a registered producer before giving up.
 ready_timeout_s="${READY_TIMEOUT_S:-90}"
@@ -94,23 +110,18 @@ wait_for_line() {
   return 1
 }
 
-# Which TCP port a process listens on. The TV app asks for 45780 and takes any
-# free port when that is busy (packages/connection web_socket_listener.dart), so
-# a second session on one host ends up somewhere else and only the app knows
-# where. Its own sockets are the ones in /proc/<pid>/fd; /proc/net/tcp lists
-# every socket with its port in hex, in state 0A when it listens, so the image
-# needs no `ss` or `netstat` for this.
-app_listen_port() {
-  local pid="$1" inodes entry port
-  inodes="$(ls -l "/proc/$pid/fd" 2>/dev/null | sed -n 's/.*socket:\[\([0-9]*\)\].*/ \1 /p' | tr -d '\n')"
-  [[ -n "$inodes" ]] || return 1
+# Whether a TCP port is listening in this container. The app is pinned to its
+# controller port (THUMBPARTY_PORT), so waiting for the pinned port is enough;
+# /proc/net/tcp lists every socket with its port in hex, in state 0A when it
+# listens, so the image needs no `ss` or `netstat` for this.
+port_listening() {
+  local port="$1" entry
+  local hex
+  hex="$(printf '%04X' "$port")"
   for entry in /proc/net/tcp /proc/net/tcp6; do
     [[ -r "$entry" ]] || continue
-    port="$(awk -v found="$inodes" '$4 == "0A" && index(found, " " $10 " ") {
-      split($2, addr, ":"); printf "%d\n", "0x" addr[2]; exit
-    }' "$entry")"
-    if [[ -n "$port" ]]; then
-      printf '%s\n' "$port"
+    if awk -v want=":$hex" '$4 == "0A" && index($2, want) == length($2) - length(want) + 1 { found = 1 }
+      END { exit !found }' "$entry"; then
       return 0
     fi
   done
@@ -154,14 +165,35 @@ start_signalling() {
   start_logged "$signal_log" gst-webrtc-signalling-server --host 0.0.0.0 --port "$signal_port"
 }
 
-# The static web server for the player page.
+# The player page and its relay: one Python server that serves the page and
+# passes its measurements to the app with the session's token (M15 c2).
 start_player() {
   mkdir -p "$run_dir/player"
   cp -r "$player_src/." "$run_dir/player/"
   # The page learns the signalling port from this file, so the same page works
   # for every session and for a player that is not on this machine.
   printf 'window.THUMB_PARTY = { signalingPort: %s };\n' "$signal_port" > "$run_dir/player/config.js"
-  start_logged "$player_log" python3 -m http.server "$player_port" --bind 0.0.0.0 --directory "$run_dir/player"
+  start_logged "$player_log" \
+    python3 "$run_dir/player/serve.py" --port "$player_port" --directory "$run_dir/player" \
+      --automation-port "$automation_port" --token "$automation_token" --state "$run_dir"
+}
+
+# The session's own token, made once and readable by this container only, so a
+# script (tools/stream.sh bench) can drive the same session the player does.
+make_token() {
+  if [[ -n "$automation_token" ]]; then
+    return 0
+  fi
+  automation_token="$(head -c 16 /dev/urandom | od -An -tx1 | tr -d ' \n')"
+}
+
+# The sampler: the container's CPU, memory, GPU and encoder numbers, and the
+# pipeline's stages, sent to the host every few seconds (M15 c2).
+start_sampler() {
+  start_logged "$run_dir/sampler.log" \
+    stream-sampler --automation-url "http://127.0.0.1:$automation_port" --token "$automation_token" \
+      --pipeline-log "$pipe_log" --out "$run_dir/pipeline.json" \
+      --interval-s "$sampler_interval_s" --sessions "$sessions_at_once" --encoder "$encoder"
 }
 
 # The compositor and encoder. `waylanddisplaysrc` needs render-node=software on
@@ -192,7 +224,11 @@ build_pipeline() {
     pulsesrc device=party.monitor '!' queue '!' audioconvert '!' audioresample '!'
     audio/x-raw,rate=48000,channels=2 '!' opusenc "bitrate=$audio_bitrate_bps" '!' 'ws.'
   )
-  "${cmd[@]}" > "$pipe_log" 2>&1 &
+  # The latency tracer writes one record per element per frame into the
+  # pipeline's log, which the sampler reads (M15 c2): how long a buffer spent
+  # in the compositor, the converter and the encoder, and in webrtcsink.
+  GST_TRACERS="latency(flags=pipeline+element)" GST_DEBUG="GST_TRACER:7" GST_DEBUG_NO_COLOR=1 \
+    "${cmd[@]}" > "$pipe_log" 2>&1 &
   pipeline_pid=$!
   child_pids+=("$pipeline_pid")
 }
@@ -214,26 +250,35 @@ wait_for_wayland_socket() {
   return 1
 }
 
-# The app, as a client of the session's own compositor.
+# The app, as a client of the session's own compositor and with the automation
+# interface on (M15 a2): the sampler and the player's relay reach it on the
+# session's own automation port, the controller port is pinned, and the
+# first-run stats question is answered so a session with nobody at the screen
+# has a clear home screen.
 start_game() {
   local socket="$1"
   (
     cd "$app_dir" || exit 1
     WAYLAND_DISPLAY="$socket" GDK_BACKEND=wayland \
     THUMB_PARTY_WINDOW_WIDTH="$width" THUMB_PARTY_WINDOW_HEIGHT="$height" \
+    THUMBPARTY_AUTOMATION=1 \
+    THUMBPARTY_AUTOMATION_BIND=0.0.0.0 \
+    THUMBPARTY_AUTOMATION_PORT="$automation_port" \
+    THUMBPARTY_AUTOMATION_TOKEN="$automation_token" \
+    THUMBPARTY_PORT="$controller_port" \
+    THUMBPARTY_STATS_CONSENT=no \
       exec ./tvtest
   ) > "$app_log" 2>&1 &
   game_pid=$!
   child_pids+=("$game_pid")
 }
 
-# Waits until the app listens and takes its port for the ready line, up to the
-# number of seconds given.
+# Waits until the app listens on its pinned controller port, up to the number
+# of seconds given.
 wait_for_app_port() {
-  local deadline=$((SECONDS + $1)) port
+  local deadline=$((SECONDS + $1))
   while (( SECONDS < deadline )); do
-    if port="$(app_listen_port "$game_pid")"; then
-      controller_port="$port"
+    if port_listening "$controller_port"; then
       return 0
     fi
     kill -0 "$game_pid" 2>/dev/null || return 1
@@ -242,13 +287,40 @@ wait_for_app_port() {
   return 1
 }
 
-# The session is ready when the app listens for phones and the pipeline is
-# PLAYING, which is when webrtcsink has registered with the signalling server
-# (and so has a picture to send).
+# The automation interface's status, as the app answers it, or nothing.
+automation_status() {
+  curl -s --max-time 2 -H "x-automation-token: $automation_token" \
+    "http://127.0.0.1:$automation_port/automation/v1/status" 2>/dev/null
+}
+
+# Waits until the app's automation interface says the host is ready to be
+# played on, which is what a viewer's session starts from.
+wait_for_host_ready() {
+  local deadline=$((SECONDS + $1)) status
+  while (( SECONDS < deadline )); do
+    status="$(automation_status)"
+    if [[ "$status" == *'"ready":true'* ]]; then
+      return 0
+    fi
+    kill -0 "$game_pid" 2>/dev/null || return 1
+    sleep 0.5
+  done
+  return 1
+}
+
+# The session is ready when the app listens for phones, its automation
+# interface answers ready, and the pipeline is PLAYING, which is when
+# webrtcsink has registered with the signalling server (and so has a picture
+# to send).
 wait_ready() {
   local producer
   wait_for_app_port "$ready_timeout_s" || {
-    say "error: the app is not listening after ${ready_timeout_s}s, see $app_log"
+    say "error: the app is not listening on $controller_port after ${ready_timeout_s}s, see $app_log"
+    say "$(tail -n 20 "$app_log" 2>/dev/null)"
+    return 1
+  }
+  wait_for_host_ready "$ready_timeout_s" || {
+    say "error: the app's automation interface did not answer ready after ${ready_timeout_s}s, see $app_log"
     say "$(tail -n 20 "$app_log" 2>/dev/null)"
     return 1
   }
@@ -257,7 +329,7 @@ wait_ready() {
     say "$(tail -n 20 "$pipe_log" 2>/dev/null)"
     return 1
   }
-  say "ready: session=$session_name player=http://localhost:$player_port/ controller=localhost:$controller_port ${width}x${height}@${frame_rate} ${bitrate_kbps}kbit/s"
+  say "ready: session=$session_name player=http://localhost:$player_port/ controller=localhost:$controller_port automation=127.0.0.1:$automation_port ${width}x${height}@${frame_rate} ${bitrate_kbps}kbit/s"
   say "pipeline registered: $producer"
 }
 
@@ -276,10 +348,15 @@ main() {
   trap 'say "stopping"; stop_all; exit 143' TERM INT
 
   say "starting a session: ${width}x${height}@${frame_rate} ${bitrate_kbps}kbit/s $encoder, controller port $controller_port"
+  make_token
+  # The token file is how a script outside this container drives the session
+  # (tools/stream.sh bench reads it with docker exec); umask 077 keeps it 0600.
+  printf '%s\n' "$automation_token" > "$run_dir/automation.token"
   start_sound || true
   start_signalling
   start_player
   build_pipeline
+  start_sampler
   local socket
   socket="$(wait_for_wayland_socket)" || {
     say "error: the virtual screen did not come up, see $pipe_log"

@@ -18,13 +18,15 @@
  * @property {number} droppedFrames - frames the browser threw away since it started
  */
 
+import { decodeMsPerFrame, jitterBufferMs, rateKbitPerS } from "./metrics.js";
+
 const msPerS = 1000;
-const bitsPerKbit = 1000;
 
 /**
  * Reads the WebRTC statistics of one connection and turns them into the
- * numbers the player shows. Rates are worked out from the previous sample, so
- * the first sample reports 0 for them.
+ * numbers the player shows; the reporter measures the same window for the
+ * host (`reporter.js`), with the same functions. Rates are worked out from the
+ * previous sample, so the first sample reports 0 for them.
  */
 export class StatsMeter {
   /**
@@ -60,11 +62,11 @@ export class StatsMeter {
       widthPx: current.video?.frameWidth ?? 0,
       heightPx: current.video?.frameHeight ?? 0,
       framesPerSecond: current.video?.framesPerSecond ?? 0,
-      videoKbitPerS: rateKbitPerS(current.video, before?.video, elapsedS),
-      audioKbitPerS: rateKbitPerS(current.audio, before?.audio, elapsedS),
+      videoKbitPerS: rateKbitPerS(current.video, before?.video, elapsedS) ?? 0,
+      audioKbitPerS: rateKbitPerS(current.audio, before?.audio, elapsedS) ?? 0,
       roundTripMs: Math.round((current.pair?.currentRoundTripTime ?? 0) * msPerS),
-      jitterBufferMs: jitterBufferMs(current.video, before?.video),
-      decodeMsPerFrame: decodeMsPerFrame(current.video, before?.video),
+      jitterBufferMs: jitterBufferMs(current.video, before?.video) ?? 0,
+      decodeMsPerFrame: decodeMsPerFrame(current.video, before?.video) ?? 0,
       droppedFrames: current.video?.framesDropped ?? 0,
     };
 
@@ -72,39 +74,4 @@ export class StatsMeter {
     this._previousAtMs = nowMs;
     return stats;
   }
-}
-
-// The bits a second the stream carried since the previous sample.
-function rateKbitPerS(entry, before, elapsedS) {
-  if (!entry || !before || elapsedS <= 0) {
-    return 0;
-  }
-  const bits = (entry.bytesReceived - before.bytesReceived) * 8;
-  return Math.round(bits / bitsPerKbit / elapsedS);
-}
-
-// jitterBufferDelay / jitterBufferEmittedCount is the mean wait of one frame.
-function jitterBufferMs(entry, before) {
-  if (!entry || !before) {
-    return 0;
-  }
-  const frames = (entry.jitterBufferEmittedCount ?? 0) - (before.jitterBufferEmittedCount ?? 0);
-  if (frames <= 0) {
-    return 0;
-  }
-  const delayS = (entry.jitterBufferDelay ?? 0) - (before.jitterBufferDelay ?? 0);
-  return Math.round((delayS / frames) * msPerS);
-}
-
-// totalDecodeTime / framesDecoded is the mean time one frame took to decode.
-function decodeMsPerFrame(entry, before) {
-  if (!entry || !before) {
-    return 0;
-  }
-  const frames = (entry.framesDecoded ?? 0) - (before.framesDecoded ?? 0);
-  if (frames <= 0) {
-    return 0;
-  }
-  const decodeS = (entry.totalDecodeTime ?? 0) - (before.totalDecodeTime ?? 0);
-  return Math.round((decodeS / frames) * msPerS);
 }

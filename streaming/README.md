@@ -34,11 +34,13 @@ container is run with `--network host`, so these are the host's ports too.
 | --- | --- | --- | --- |
 | `CONTROLLER_PORT` | 45780 | 45780 | The TV app: phones connect here to play |
 | `SIGNAL_PORT` | 8443 | 45781 | WebRTC signalling, player and pipeline |
-| `PLAYER_PORT` | 8080 | 45782 | The player page over HTTP |
+| `PLAYER_PORT` | 8080 | 45782 | The player page over HTTP, and its relay |
+| `AUTOMATION_PORT` | 8787 | 45783 | The host's automation interface (M15 a2); loopback only |
 
 `--port-base P` moves the whole block: the controller is `P`, signalling `P+1`,
-player `P+2`. Two sessions at once need different bases (or `--name` plus a
-base), and `tools/stream.sh url --name <n>` prints each one's addresses.
+player `P+2`, automation `P+3`. Two sessions at once need different bases (or
+`--name` plus a base), and `tools/stream.sh url --name <n>` prints each one's
+addresses.
 
 The app has the last word on the controller port: it asks for the one it is
 given (45780 without settings) and takes any free port when that is busy, so a
@@ -96,6 +98,39 @@ reconnects on its own.
 The page learns its signalling port from `config.js`, which the entrypoint
 writes next to it, and loads the `gstwebrtc-api` bundle the image builds from the
 same gst-plugins-rs release as `webrtcsink`.
+
+## What the session measures (M15 c2)
+
+The session reports into the host's stats framework, so a benchmark can time a
+whole stream without a person watching it:
+
+- **The player page** sends one batch every two seconds: WebRTC's own inbound
+  numbers (jitter buffer, decode, frames, freezes, bitrate, loss, jitter, round
+  trip, NACK/PLI, codec, relay), what `requestVideoFrameCallback` adds, and the
+  audio's concealed samples. It also times a press: the latency card's colour
+  flips, the page sees the flip in a small patch of the picture and sends the
+  host-clock time it was presented.
+- **The sampler** (`stream-sampler`, started by the entrypoint) reads the
+  container's cgroup counters (CPU split by process, memory) and `nvidia-smi`
+  (GPU, encoder, memory) every `SAMPLER_INTERVAL_S` seconds, tails the pipeline
+  log for the tracer's records, and leaves the latest resource reading in
+  `/run/thumb-party/pipeline.json`. `SESSIONS_AT_ONCE` says how many sessions
+  the machine runs, so the GPU's numbers can be read per session.
+- **The tracer**: the pipeline runs with
+  `GST_TRACERS="latency(flags=pipeline+element)"`, which writes one record per
+  element per frame into `pipeline.log`; the sampler turns those into the
+  capture, encode and pipeline times.
+- **The relay**: the player page's web server (`serve.py`) passes the page's
+  calls to the host's automation interface with the session's token, so the
+  browser needs none: `/stats/stream`, `/player`, `/clock`, `/presses`,
+  `/flips` and `/pipeline`.
+
+The token is the session's own, in `/run/thumb-party/automation.token`, unless
+`AUTOMATION_TOKEN` gave it one; the automation interface listens on loopback
+inside the container only. `tools/stream.sh bench` starts a session headless,
+adds a simulated player and lets a round run; in the `tp-stream` distro on WSL2
+the whole run has to happen inside one `wsl` call, because the distro's VM stops
+when no command is running in it and takes the session with it.
 
 ## Watching from another device on the Wi-Fi
 

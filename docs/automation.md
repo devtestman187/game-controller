@@ -39,7 +39,7 @@ Every call starts with `/automation/v1`; the examples use the default `http://12
 
 ### GET status
 
-The app's version, host type, the screen now, whether a round runs, the players, the pairing code, the controller port and whether the host is ready.
+The app's version, host type, the screen now, whether a round runs, the players, the pairing code, the controller port and whether the host is ready. The host's clock (`hostMs`, the number `probe/press` answers and a viewer's times are kept on) and the frames it has drawn (`frames.drawn`, a counter since the app started) come with it, so a sampler can read the game's own frame rate between two calls.
 
 ```bash
 curl -s http://127.0.0.1:8787/automation/v1/status
@@ -47,8 +47,8 @@ curl -s http://127.0.0.1:8787/automation/v1/status
 
 ```json
 {"ok":true,"version":"0.14.0","app":"0.14.0 (37)","hostType":"windows","hostName":"Living room",
- "screen":"home","round":false,"ready":true,"pairingCode":"481204","port":45780,
- "players":[{"id":"p1","number":1,"nickname":"Ada","simulated":false,"mode":"dpad"}]}
+ "screen":"home","round":false,"ready":true,"pairingCode":"481204","port":45780,"hostMs":412345,
+ "frames":{"drawn":850},"players":[{"id":"p1","number":1,"nickname":"Ada","simulated":false,"mode":"dpad"}]}
 ```
 
 ### POST players
@@ -158,7 +158,7 @@ curl -s -X POST http://127.0.0.1:8787/automation/v1/probe/flash -d '{"on":false}
 
 ### POST probe/press
 
-Presses a button for a simulated player and returns the host's clock at that moment (`hostMs`). The press lands before the next frame, so a viewer times press → pixel change from that number: the frame counter beside the host clock flips when the press reaches the screen.
+Presses a button for a simulated player and returns the host's clock at that moment (`hostMs`). The press lands before the next frame, so a viewer times press → pixel change from that number: the frame counter beside the host clock flips when the press reaches the screen, and since job c2 the card's colour flips with it, so a viewer watching the picture sees the press arrive as a colour change.
 
 ```bash
 curl -s -X POST http://127.0.0.1:8787/automation/v1/probe/press -d '{"player":"local-1","button":"a"}'
@@ -186,6 +186,8 @@ curl -s -X POST http://127.0.0.1:8787/automation/v1/stats/stream -d '{
 ```json
 {"ok":true,"viewer":"v1"}
 ```
+
+A viewer that keeps reporting sends its id back (`"viewer":"v1"`) instead of the object, so the player that sent the first batch and the sampler beside it keep writing to one row; an id the session never gave out is refused rather than landing nowhere.
 
 ### GET stats/session
 

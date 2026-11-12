@@ -98,6 +98,11 @@ RUN git config --global --add safe.directory /opt/flutter \
  && cd tv_test_app \
  && { flutter build linux --release || flutter build linux --release; }
 
+# The container's sampler (M15 c2) is a pure-Dart program from this workspace,
+# so it is compiled where the SDK is and the runtime image carries one binary
+# instead of a Dart SDK.
+RUN cd /src && dart compile exe packages/metrics/bin/stream_sampler.dart -o /src/stream-sampler
+
 # --- the virtual screen and the WebRTC sender ------------------------------
 # Three hand-built pieces from the capture probe:
 #  - libwayland 1.24.0, because gst-wayland-display calls
@@ -165,7 +170,7 @@ FROM ${UBUNTU_IMAGE} AS runtime
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
-      ca-certificates python3 \
+      ca-certificates python3 curl \
       gstreamer1.0-tools gstreamer1.0-plugins-base gstreamer1.0-plugins-good \
       gstreamer1.0-plugins-bad gstreamer1.0-nice \
       pulseaudio alsa-utils \
@@ -188,7 +193,8 @@ COPY --from=flutter-bundle /src/tv_test_app/build/linux/x64/release/bundle /app
 COPY --from=player-api /src/net/webrtc/gstwebrtc-api/dist/gstwebrtc-api-2.0.0.min.js /usr/share/thumb-party/player/lib/
 COPY streaming/player/ /usr/share/thumb-party/player/
 COPY streaming/entrypoint.sh /usr/local/bin/entrypoint.sh
-RUN chmod 0755 /usr/local/bin/entrypoint.sh
+COPY --from=flutter-bundle /src/stream-sampler /usr/local/bin/stream-sampler
+RUN chmod 0755 /usr/local/bin/entrypoint.sh /usr/local/bin/stream-sampler
 
 # The game's sound goes to PulseAudio: miniaudio reaches it through ALSA
 # (capture probe 3.5).
@@ -205,8 +211,8 @@ RUN useradd --user-group --create-home --shell /usr/sbin/nologin party \
 USER party
 WORKDIR /app
 
-# The controller and the signalling and player ports are the defaults here;
-# tools/stream.sh gives each session its own.
-EXPOSE 45780 8443 8080
+# The controller, the signalling, the player and the automation ports are the
+# defaults here; tools/stream.sh gives each session its own.
+EXPOSE 45780 8443 8080 8787
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

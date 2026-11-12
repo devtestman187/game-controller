@@ -84,7 +84,7 @@ Map<String, Object?> streamedSession() {
     ..streamFact(viewer, 'relay', 'no')
     // Two readings: cpu 45 and 55 (mean 50), gpu 40 and 50 (45), encoder 10
     // and 14 (12), game 60 then 58 fps (59), encoded 60 (60), memory 900 and
-    // 950 MB (925, peak 950).
+    // 950 MB (925, peak 950), the host path 30 and 34 ms (32).
     ..streamResource(
       const StreamResourceSample(
         cpuPct: 45,
@@ -93,6 +93,7 @@ Map<String, Object?> streamedSession() {
         encoderPct: 10,
         gameFps: 60,
         encodedFps: 60,
+        pipelineMs: 30,
         sessionsAtOnce: 1,
         firstFrameMs: 800,
       ),
@@ -105,6 +106,7 @@ Map<String, Object?> streamedSession() {
         encoderPct: 14,
         gameFps: 58,
         encodedFps: 60,
+        pipelineMs: 34,
         sessionsAtOnce: 1,
       ),
     );
@@ -343,6 +345,7 @@ void main() {
         '-',
         '60.0',
         '-',
+        '32.0',
         '800',
         '950.0',
       ]);
@@ -361,6 +364,7 @@ void main() {
         '-',
         '-',
         '45.0',
+        '-',
         '-',
         '-',
         '1800.0',

@@ -148,6 +148,7 @@ const _resourceHeaders = [
   'raster ms',
   'enc fps',
   'queue',
+  'pipeline ms',
   'first frame ms',
   'mem peak MB',
 ];
@@ -245,6 +246,7 @@ List<String> _resourceCells(StreamHostRow host) => [
     StreamResource.frameRasterMs,
     StreamResource.encodedFps,
     StreamResource.encodeQueue,
+    StreamResource.pipelineMs,
   ])
     _mean(host, name),
   _whole(host.firstFrameMs),
