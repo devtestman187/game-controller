@@ -98,8 +98,8 @@ extension _PuzzleDrop on PuzzleGame {
     final errors = nearest == null
         ? const <String, Object?>{}
         : {
-            'angleErrorDeg': _round(angleError(piece.angle, puzzle.pieces[nearest].targetAngle, spec.shape.symmetry)),
-            'positionError': _round((piece.pos - targetAt(nearest)).distance / spec.shape.size),
+            'angleErrorDeg': _round(angleError(piece.angle, nearest.angle, spec.shape.symmetry)),
+            'positionError': _round((piece.pos - targetAt(nearest.slot)).distance / spec.shape.size),
           };
     for (final id in piece.carriers) {
       _players[id]
@@ -107,17 +107,17 @@ extension _PuzzleDrop on PuzzleGame {
         ..readyTarget = null
         ..hintTarget = null;
     }
-    final target = _matchingTarget(piece);
-    if (target != null) {
+    final match = _matchingTarget(piece);
+    if (match != null) {
       _putDown(piece, PieceState.locked);
       piece
-        ..lockedTarget = target
-        ..pos = targetAt(target)
-        ..angle = snapAngle(piece.angle, puzzle.pieces[target].targetAngle, spec.shape.symmetry)
+        ..lockedTarget = match.slot
+        ..pos = targetAt(match.slot)
+        ..angle = snapAngle(piece.angle, match.angle, spec.shape.symmetry)
         ..placedAtS = elapsedS;
-      _filled[target] = piece.index;
+      _filled[match.slot] = piece.index;
       p.snaps++;
-      _awardSnap(p, piece, target: target, carriers: carriers);
+      _awardSnap(p, piece, target: match.slot, carriers: carriers);
       events.add(PuzzleEvent(PuzzleEventKind.snap, playerId: p.id, data: {'piece': spec.id, ...errors}));
     } else if (field.board.contains(piece.pos)) {
       _putDown(piece, PieceState.wrong);
@@ -153,34 +153,48 @@ extension _PuzzleDrop on PuzzleGame {
       ..layer = _nextLayer++;
   }
 
-  /// A free outline the piece would snap into if dropped now: the same kind,
-  /// within the position and angle tolerances (with symmetry).
-  int? _matchingTarget(PieceRuntime piece) {
+  /// The angle [piece] fills target [slot] at: the slot's own angle plus the
+  /// turn that lays the piece's outline on it, or null when the two are not
+  /// twins (M14 p1).
+  double? _fitAngle(int piece, int slot) {
+    final turn = puzzle.twins.rotation(piece, slot);
+    return turn == null ? null : puzzle.pieces[slot].targetAngle + turn;
+  }
+
+  /// The free outline the piece would snap into if dropped now: one it is a
+  /// twin of, within the position and angle tolerances (with symmetry), and
+  /// the angle it snaps at (M14 p1).
+  ({int slot, double angle})? _matchingTarget(PieceRuntime piece) {
     final spec = puzzle.pieces[piece.index];
-    int? best;
+    ({int slot, double angle})? best;
     var bestDistance = double.infinity;
-    for (final (i, t) in puzzle.pieces.indexed) {
-      if (t.kind != spec.kind || _filled.containsKey(i)) continue;
+    for (final i in Iterable<int>.generate(puzzle.pieces.length)) {
+      if (_filled.containsKey(i)) continue;
+      final angle = _fitAngle(piece.index, i);
+      if (angle == null) continue;
       final d = (piece.pos - targetAt(i)).distance;
       if (d > settings.positionTolerance * spec.shape.size) continue;
-      if (angleError(piece.angle, t.targetAngle, spec.shape.symmetry) > settings.angleToleranceDeg) continue;
+      if (angleError(piece.angle, angle, spec.shape.symmetry) > settings.angleToleranceDeg) continue;
       if (d < bestDistance) {
-        best = i;
+        best = (slot: i, angle: angle);
         bestDistance = d;
       }
     }
     return best;
   }
 
-  int? _nearestFreeTarget(PieceRuntime piece) {
-    final spec = puzzle.pieces[piece.index];
-    int? best;
+  /// The nearest free outline the piece fits at all, for the hint glow and the
+  /// drop's error figures.
+  ({int slot, double angle})? _nearestFreeTarget(PieceRuntime piece) {
+    ({int slot, double angle})? best;
     var bestDistance = double.infinity;
-    for (final (i, t) in puzzle.pieces.indexed) {
-      if (t.kind != spec.kind || _filled.containsKey(i)) continue;
+    for (final i in Iterable<int>.generate(puzzle.pieces.length)) {
+      if (_filled.containsKey(i)) continue;
+      final angle = _fitAngle(piece.index, i);
+      if (angle == null) continue;
       final d = (piece.pos - targetAt(i)).distance;
       if (d < bestDistance) {
-        best = i;
+        best = (slot: i, angle: angle);
         bestDistance = d;
       }
     }

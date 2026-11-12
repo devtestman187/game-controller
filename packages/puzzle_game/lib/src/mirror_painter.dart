@@ -116,12 +116,14 @@ class MirrorPainter {
   }
 
   /// Every outline of their picture, faint, so the mirror shows the picture
-  /// they're building even where nothing is placed yet. [px] is the canvas's
-  /// scale, read once by [paint].
+  /// they're building even where nothing is placed yet. A look-alike's outline
+  /// is in its own colour, as their board's slot is (M14 p1). [px] is the
+  /// canvas's scale, read once by [paint].
   void _targets(Canvas canvas, double px) {
-    for (final spec in puzzle.pieces) {
+    for (final (i, spec) in puzzle.pieces.indexed) {
       final path = _path(spec.shape, field.origin + spec.target, spec.targetAngle);
-      final colour = puzzle.level.colouredOutlines ? Color(spec.color) : _colours.targetNeutral;
+      final coloured = puzzle.level.colouredOutlines || puzzle.twins.lookAlikes.contains(i);
+      final colour = coloured ? Color(spec.color) : _colours.targetNeutral;
       canvas
         ..drawPath(path, Paint()..color = colour.withValues(alpha: _targetFill))
         ..drawPath(

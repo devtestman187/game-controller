@@ -27,6 +27,7 @@ part 'mirror_painter.dart';
 part 'phone_hud.dart';
 part 'points_paint.dart';
 part 'puzzle_painter.dart';
+part 'slot_paint.dart';
 part 'text_paint.dart';
 part 'worker_painter.dart';
 

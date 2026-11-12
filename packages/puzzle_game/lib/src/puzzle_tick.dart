@@ -84,12 +84,12 @@ extension _PuzzleTick on PuzzleGame {
     }
     final piece = pieces[held];
     p._holdS += dt;
-    final ready = _matchingTarget(piece);
+    final ready = _matchingTarget(piece)?.slot;
     if (ready != null && ready != p.readyTarget && settings.dropReadyHighlight) {
       events.add(PuzzleEvent(PuzzleEventKind.dropReady, playerId: p.id));
     }
     p.readyTarget = settings.dropReadyHighlight ? ready : null;
-    p.hintTarget = p._holdS >= settings.hintDelayS ? _nearestFreeTarget(piece) : null;
+    p.hintTarget = p._holdS >= settings.hintDelayS ? _nearestFreeTarget(piece)?.slot : null;
   }
 
   /// A picks up (or takes the other end of a teammate's big piece), or drops —

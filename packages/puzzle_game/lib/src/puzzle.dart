@@ -7,6 +7,7 @@ import 'package:game_kit/game_kit.dart';
 import 'piece_colors.dart';
 
 part 'piece_shape.dart';
+part 'piece_twins.dart';
 
 /// The puzzle file format this build reads (m13 s20, docs/levels.md): files
 /// say `"format": 1`, and one that says a higher number was written for a
@@ -137,12 +138,17 @@ final class PieceSpec {
 /// the rest), so a broken file is caught by `tools/level.sh check`.
 final class Puzzle {
   Puzzle({required this.id, required this.name, required this.level, required List<PieceSpec> pieces})
-    : pieces = List.unmodifiable(pieces);
+    : pieces = List.unmodifiable(pieces),
+      twins = PuzzleTwins.of(pieces);
 
   final String id;
   final String name;
   final Level level;
   final List<PieceSpec> pieces;
+
+  /// Which pieces fit each other's slots and which look alike (M14 p1),
+  /// worked out from the outlines when the puzzle loads.
+  final PuzzleTwins twins;
 
   /// A target's centre in field units.
   Offset targetAt(int i) => boardRect.topLeft + pieces[i].target;
