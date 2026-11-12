@@ -20,6 +20,7 @@ class MirrorPainter {
     required this.rect,
     required this.scale,
     this.moments,
+    this.catMoments,
     this.nowMs = 0,
     this.board = 0,
     this.cat,
@@ -44,6 +45,11 @@ class MirrorPainter {
   /// When each piece of [board] turned locked or wrong, for the boing (design
   /// section 5); null: nothing moves.
   final PieceMoments? moments;
+
+  /// When the cat came out in the state it is in, for its head's and paw's
+  /// motion (M14 bug c1); null: the state is drawn at its end.
+  final CatMoments? catMoments;
+
   final int nowMs;
 
   /// Which board of the match theirs is, for its pieces' moments.
@@ -91,7 +97,17 @@ class MirrorPainter {
     _targets(canvas, px);
     _glow(canvas, px);
     _placed(canvas, style);
-    if (cat case final c?) paintCat(canvas, c, board: theirs, look: look, style: style);
+    if (cat case final c?) {
+      paintCat(
+        canvas,
+        c,
+        board: theirs,
+        field: field,
+        look: look,
+        style: style,
+        share: catMoments?.progress(c.state, nowMs) ?? 1,
+      );
+    }
     _players(canvas, style, px);
     canvas.restore();
     _frame(canvas);

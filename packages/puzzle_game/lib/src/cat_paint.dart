@@ -6,105 +6,52 @@ part of 'view.dart';
 /// shadow are the look's too.
 Color _catColour(ToyLook look) => look.colors.wall;
 
-/// The cat's sizes in world units: the paw it leaves at the side's edge, the
-/// shadow it casts on the piece it wants, and the face it walks in with.
-const _catPawSize = 6.5;
+/// The shadow the cat casts on the piece it is after, in world units, how much
+/// of the ink it keeps, and how far its ears and tail reach, as shares of the
+/// patch it darkens (design mockup: `catShadow`).
 const _catShadowWidth = 6.0;
 const _catShadowHeight = 3.0;
-const _catFaceSize = 8.0;
-
-/// How much of the ink a shadow keeps, and how far its ears and tail reach, as
-/// shares of the patch it darkens (design mockup: `catShadow`).
 const _catShadowAlpha = 0.3;
 const _catEarShare = 0.26;
 const _catTailShare = 0.55;
 
-/// How thick a face's smile is, as a share of the face's size.
-const _catSmileShare = 0.05;
-
-/// The cat drawn over the board it visits (PRD v2 G3, M14 a2): the paw at the
-/// side's edge while it warns, the shadow on the exact piece it is after, the
-/// face as it walks, bats and runs off. With the effects off the walk is not
-/// drawn — the cat appears at the piece and goes from there (G5) — and
-/// nothing flashes at any time.
+/// The cat drawn over the board it visits (PRD v2 G3, M14 a2 and bug c1): the
+/// shadow on the exact piece it is after while it warns and walks, the head
+/// peeking in over the board area's top edge above that piece, and the paw
+/// reaching out of it and swatting, with the swat's burst where it lands.
+///
+/// [share] is how far through its state the cat is ([CatMoments]), so the head
+/// slides in and out and the paw stretches; with the effects off it comes and
+/// swats without the stretch (G5): the head is drawn at rest, no paw, no burst,
+/// and nothing at all as it leaves.
 void paintCat(
   Canvas canvas,
   CatView cat, {
   required PuzzleSnapshot board,
+  required PuzzleField field,
   required ToyLook look,
   required ToyShapeStyle style,
+  double share = 1,
 }) {
   final target = cat.target;
   final piece = target != null && target < board.pieces.length ? board.pieces[target] : null;
   if (piece != null && (cat.state == CatState.warning || cat.state == CatState.walk)) {
     _catShadow(canvas, Offset(piece.x, piece.y), look.colors.ink);
   }
-  switch (cat.state) {
-    case CatState.warning:
-      _catPaw(canvas, cat.at, look, style);
-    case CatState.walk:
-      // With the effects off it is already at the piece: it appears there and
-      // goes from there (G5).
-      _catFace(canvas, look.effects || piece == null ? cat.at : Offset(piece.x, piece.y), look, style);
-    case CatState.bat:
-      _catFace(canvas, cat.at, look, style);
-    case CatState.leave:
-      if (look.effects) _catFace(canvas, cat.at, look, style);
-  }
-}
-
-/// The paw at the side's edge: four toes over a pad, in the cat's colour with
-/// the look's ink edge (design mockup, `paw`).
-void _catPaw(Canvas canvas, Offset at, ToyLook look, ToyShapeStyle style) {
-  const size = _catPawSize;
-  final path = Path();
-  for (final (dx, dy, r) in const [
-    (-0.30, -0.20, 0.13),
-    (-0.10, -0.32, 0.14),
-    (0.12, -0.32, 0.14),
-    (0.32, -0.16, 0.12),
-  ]) {
-    path.addOval(Rect.fromCircle(center: at + Offset(dx * size, dy * size), radius: r * size));
-  }
-  path.addOval(Rect.fromCenter(center: at + Offset(0, 0.14 * size), width: 0.58 * size, height: 0.52 * size));
-  toyShape(canvas, path, _catColour(look), style, shade: look.shade);
-}
-
-/// The cat's face: a round head with two ears, in the cat's colour, and its
-/// eyes and smile in the ink, so it reads without a colour (design mockup,
-/// `catFace`).
-void _catFace(Canvas canvas, Offset at, ToyLook look, ToyShapeStyle style) {
-  const size = _catFaceSize;
-  final head = Offset(0, 0.06 * size);
-  final path = Path()
-    ..addOval(Rect.fromCenter(center: at + head, width: 0.84 * size, height: 0.78 * size))
-    ..addPolygon([
-      at + Offset(-0.40 * size, -0.14 * size),
-      at + Offset(-0.34 * size, -0.54 * size),
-      at + Offset(-0.04 * size, -0.26 * size),
-    ], true)
-    ..addPolygon([
-      at + Offset(0.40 * size, -0.14 * size),
-      at + Offset(0.34 * size, -0.54 * size),
-      at + Offset(0.04 * size, -0.26 * size),
-    ], true);
-  toyShape(canvas, path, _catColour(look), style, shade: look.shade);
-  final ink = look.colors.ink;
-  final eye = 0.08 * size;
+  if (!look.effects && cat.state == CatState.leave) return;
+  final pose = CatPose.of(cat, board: board, field: field, share: look.effects ? share : 1);
+  if (look.effects) paintCatPaw(canvas, pose, look, style);
+  // The head stays in the board area — the part still above its top edge, as
+  // the cat slides in, is not seen there — while the paw reaches past it, to a
+  // piece still in the tray.
   canvas
-    ..drawCircle(at + Offset(-0.17 * size, -0.02 * size), eye, Paint()..color = ink)
-    ..drawCircle(at + Offset(0.17 * size, -0.02 * size), eye, Paint()..color = ink);
-  final smile = Path()
-    ..moveTo(at.dx - 0.13 * size, at.dy + 0.17 * size)
-    ..quadraticBezierTo(at.dx, at.dy + 0.30 * size, at.dx + 0.13 * size, at.dy + 0.17 * size);
-  canvas.drawPath(
-    smile,
-    Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = _catSmileShare * size
-      ..strokeCap = StrokeCap.round
-      ..color = ink,
-  );
+    ..save()
+    ..clipRect(field.board);
+  paintCatHead(canvas, pose, look, style);
+  canvas.restore();
+  if (look.effects) {
+    if (pose.swat case final swat?) paintCatSwat(canvas, pose.aim, swat, pose.head.width, look.colors);
+  }
 }
 
 /// The cat's shadow on the piece it wants: a patch with its ears and a curled

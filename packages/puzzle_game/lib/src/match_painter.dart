@@ -12,6 +12,7 @@ class MatchPainter extends CustomPainter {
     this.s, {
     required this.look,
     this.moments,
+    this.catMoments,
     this.workers,
     this.nowMs = 0,
     this.timeLimitS,
@@ -32,6 +33,10 @@ class MatchPainter extends CustomPainter {
   /// When each piece turned locked or wrong, for the boing and the wobble;
   /// null: nothing moves (design section 5).
   final PieceMoments? moments;
+
+  /// When the cat came out in the state it is in, for its head's slide-in and
+  /// its paw's reach (M14 bug c1); null: its states are drawn at their end.
+  final CatMoments? catMoments;
 
   /// What every player's worker is doing (design 5a), fed the snapshots as
   /// [moments] are; null: every player stands empty-handed.
@@ -118,6 +123,7 @@ class MatchPainter extends CustomPainter {
         board,
         look: look,
         moments: moments,
+        catMoments: catMoments,
         workers: workers,
         nowMs: nowMs,
         board: i,
@@ -159,6 +165,7 @@ class MatchPainter extends CustomPainter {
         _boardOf(s, side),
         look: look,
         moments: moments,
+        catMoments: catMoments,
         workers: workers,
         nowMs: nowMs,
         board: s.split ? side.index : 0,
@@ -263,6 +270,7 @@ class MatchPainter extends CustomPainter {
     layout.left,
     look: look,
     moments: moments,
+    catMoments: catMoments,
     nowMs: nowMs,
     board: s.split ? _otherSide(camera.side!).index : 0,
     rect: mirror.rect,

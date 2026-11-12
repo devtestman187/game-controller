@@ -29,6 +29,18 @@ abstract final class CatRules {
   /// How far in from the side's edge the paw sits, in field units: half the
   /// paw it leaves there.
   static const edgeInset = 3.5;
+
+  /// How long [state] lasts, in milliseconds: the view times the head's and the
+  /// paw's motion against that state's own span (M14 bug c1).
+  static int spanMs(CatState state) => switch (state) {
+    CatState.warning => (warningS * msPerS).round(),
+    CatState.walk => (walkS * msPerS).round(),
+    CatState.bat => (batS * msPerS).round(),
+    CatState.leave => (leaveS * msPerS).round(),
+  };
+
+  /// The milliseconds in a second, for the spans above.
+  static const msPerS = 1000;
 }
 
 /// Where the cat is in its visit (PRD v2 G3): it warns at the side's edge,

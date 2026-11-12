@@ -18,6 +18,7 @@ class PuzzlePainter extends CustomPainter {
     this.s, {
     required this.look,
     this.moments,
+    this.catMoments,
     this.workers,
     this.nowMs = 0,
     this.board = 0,
@@ -39,6 +40,10 @@ class PuzzlePainter extends CustomPainter {
   /// When each piece turned locked or wrong, so a right drop boings and a
   /// wrong one wobbles (design section 5). Null: nothing moves.
   final PieceMoments? moments;
+
+  /// When the cat came out in the state it is in, for its head's slide-in and
+  /// its paw's reach (M14 bug c1); null: its state is drawn at its end.
+  final CatMoments? catMoments;
 
   /// What every player's worker is doing (design 5a), fed the snapshots as
   /// [moments] are. Null: every player stands empty-handed.
@@ -112,6 +117,33 @@ class PuzzlePainter extends CustomPainter {
     final styles = _styles(px);
 
     _panels(canvas, px, styles.rest);
+    _picture(canvas, px, styles);
+    _paintWorkers(canvas, s, px);
+    if (cat case final c?) {
+      paintCat(
+        canvas,
+        c,
+        board: s,
+        field: field,
+        look: look,
+        style: styles.rest,
+        share: catMoments?.progress(c.state, nowMs) ?? 1,
+      );
+    }
+    // The burst and the confetti come over the field, round the board's edge
+    // and never over the picture (design 3a item 2).
+    _paintStars(canvas, px);
+    _paintConfetti(canvas, px);
+    // The points and their pop-ups are a party night's, and nothing else's
+    // (M14 a1, N4): outside a night the board is the picture it was.
+    if (s.night) _popups(canvas, px);
+    if (hud) _hud(canvas, px, styles);
+    canvas.restore();
+  }
+
+  /// The slots, the placed picture and the loose and carried pieces, in the
+  /// order they lie.
+  void _picture(Canvas canvas, double px, _Styles styles) {
     final targets = Iterable<int>.generate(puzzle.pieces.length);
     final lockedIn = {
       for (final (i, p) in s.pieces.indexed)
@@ -142,17 +174,6 @@ class PuzzlePainter extends CustomPainter {
     for (final (i, p) in s.pieces.indexed) {
       if (p.state == PieceState.held) _piece(canvas, i, styles, filled);
     }
-    _paintWorkers(canvas, s, px);
-    if (cat case final c?) paintCat(canvas, c, board: s, look: look, style: styles.rest);
-    // The burst and the confetti come over the field, round the board's edge
-    // and never over the picture (design 3a item 2).
-    _paintStars(canvas, px);
-    _paintConfetti(canvas, px);
-    // The points and their pop-ups are a party night's, and nothing else's
-    // (M14 a1, N4): outside a night the board is the picture it was.
-    if (s.night) _popups(canvas, px);
-    if (hud) _hud(canvas, px, styles);
-    canvas.restore();
   }
 
   /// The look's styles in the world's units: its outline and its shadow are

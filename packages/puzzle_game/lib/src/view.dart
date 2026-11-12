@@ -6,6 +6,8 @@ import 'package:flutter/material.dart';
 import 'package:toy_look/toy_look.dart';
 
 import 'camera.dart';
+import 'cat_moments.dart';
+import 'cat_pose.dart';
 import 'cat_view.dart';
 import 'celebration.dart';
 import 'game.dart';
@@ -19,7 +21,9 @@ import 'split_layout.dart';
 import 'worker_moments.dart';
 
 part 'board_hud.dart';
+part 'cat_head.dart';
 part 'cat_paint.dart';
+part 'cat_paw.dart';
 part 'celebration_paint.dart';
 part 'match_hud.dart';
 part 'match_painter.dart';
@@ -155,6 +159,7 @@ class MatchView extends StatefulWidget {
 
 class _MatchViewState extends State<MatchView> {
   final _moments = PieceMoments();
+  final _catMoments = CatMoments();
   late final _workers = WorkerMoments(widget.puzzle);
   late final Stopwatch _clock = widget.clock ?? (Stopwatch()..start());
 
@@ -175,6 +180,7 @@ class _MatchViewState extends State<MatchView> {
   void _note() {
     _moments.observe(widget.snapshot, _nowMs);
     _workers.observe(widget.snapshot, _nowMs);
+    _catMoments.observe(widget.snapshot.cat, _nowMs);
   }
 
   @override
@@ -192,6 +198,7 @@ class _MatchViewState extends State<MatchView> {
               snapshot,
               look: look,
               moments: _moments,
+              catMoments: _catMoments,
               workers: _workers,
               nowMs: _nowMs,
               timeLimitS: widget.timeLimitS,
@@ -206,6 +213,7 @@ class _MatchViewState extends State<MatchView> {
               snapshot.boards.single,
               look: look,
               moments: _moments,
+              catMoments: _catMoments,
               workers: _workers,
               nowMs: _nowMs,
               timeLimitS: widget.timeLimitS,
