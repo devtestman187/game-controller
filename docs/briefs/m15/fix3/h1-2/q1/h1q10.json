@@ -1,0 +1,290 @@
+{
+ "schema": 1,
+ "id": "85bb49a82740ea97",
+ "host": {
+  "type": "other",
+  "app": "0.14.0",
+  "os": "linux"
+ },
+ "date": "2026-11-12",
+ "durationS": 65,
+ "players": [
+  {
+   "install": "local-1",
+   "player": 1,
+   "local": true,
+   "platform": "linux",
+   "app": "",
+   "connectedS": 65,
+   "disconnects": 0,
+   "inputs": 0,
+   "inputsPerS": 0.0,
+   "stages": {},
+   "watched": "host_screen",
+   "modes": {},
+   "switches": [],
+   "segments": [],
+   "ratings": [],
+   "games": {}
+  }
+ ],
+ "rounds": [],
+ "frames": {
+  "drawn": 0,
+  "dropped": 0
+ },
+ "stream": {
+  "viewers": [
+   {
+    "id": "v1",
+    "kind": "browser",
+    "platform": "chrome-headless",
+    "stages": {
+     "stream_display": {
+      "n": 21,
+      "median": 0,
+      "p95": 1,
+      "max": 1
+     },
+     "press_to_screen": {
+      "n": 118,
+      "median": 218,
+      "p95": 359,
+      "max": 387,
+      "source": "probe"
+     },
+     "stream_encode": {
+      "n": 21,
+      "median": 28,
+      "p95": 29,
+      "max": 151
+     },
+     "stream_capture": {
+      "n": 21,
+      "median": 2,
+      "p95": 2,
+      "max": 2
+     },
+     "stream_jitter_buffer": {
+      "n": 20,
+      "median": 193,
+      "p95": 236,
+      "max": 236
+     },
+     "stream_decode": {
+      "n": 20,
+      "median": 3,
+      "p95": 3,
+      "max": 3
+     },
+     "stream_network": {
+      "n": 8,
+      "median": 1,
+      "p95": 1,
+      "max": 1
+     },
+     "stream_total": {
+      "n": 8,
+      "median": 227,
+      "p95": 272,
+      "max": 394,
+      "source": "stages"
+     }
+    },
+    "gauges": {
+     "lossPct": {
+      "n": 21,
+      "mean": 0.0,
+      "p95": 0.0,
+      "max": 0.0
+     },
+     "rttMs": {
+      "n": 21,
+      "mean": 0.38,
+      "p95": 1.0,
+      "max": 1.0
+     },
+     "jitterMs": {
+      "n": 21,
+      "mean": 3.71,
+      "p95": 5.0,
+      "max": 5.0
+     },
+     "deliveredFps": {
+      "n": 21,
+      "mean": 54.38,
+      "p95": 56.0,
+      "max": 56.0
+     },
+     "bitrateReceivedKbps": {
+      "n": 20,
+      "mean": 6771.25,
+      "p95": 7469.0,
+      "max": 7571.0
+     }
+    },
+    "counters": {
+     "framesReceived": 3426,
+     "framesDecoded": 3413,
+     "framesDropped": 13,
+     "framesLate": 0,
+     "freezes": 0,
+     "freezeMs": 0,
+     "reconnects": 0,
+     "firstFrameMs": 1390
+    },
+    "facts": {
+     "codec": "H264",
+     "relay": "no",
+     "resolution": "1920x1080"
+    }
+   },
+   {
+    "id": "v2",
+    "kind": "browser",
+    "platform": "chrome",
+    "stages": {
+     "stream_encode": {
+      "n": 7,
+      "median": 29,
+      "p95": 151,
+      "max": 151
+     },
+     "stream_capture": {
+      "n": 7,
+      "median": 2,
+      "p95": 2,
+      "max": 2
+     },
+     "stream_total": {
+      "n": 7,
+      "median": 31,
+      "p95": 153,
+      "max": 153,
+      "source": "stages"
+     }
+    }
+   },
+   {
+    "id": "v3",
+    "kind": "browser",
+    "platform": "chrome",
+    "stages": {
+     "stream_encode": {
+      "n": 7,
+      "median": 28,
+      "p95": 28,
+      "max": 28
+     },
+     "stream_capture": {
+      "n": 7,
+      "median": 2,
+      "p95": 2,
+      "max": 2
+     },
+     "stream_total": {
+      "n": 7,
+      "median": 30,
+      "p95": 30,
+      "max": 30,
+      "source": "stages"
+     }
+    }
+   },
+   {
+    "id": "v4",
+    "kind": "browser",
+    "platform": "chrome",
+    "stages": {
+     "stream_capture": {
+      "n": 5,
+      "median": 2,
+      "p95": 2,
+      "max": 2
+     },
+     "stream_encode": {
+      "n": 5,
+      "median": 28,
+      "p95": 28,
+      "max": 28
+     },
+     "stream_total": {
+      "n": 5,
+      "median": 30,
+      "p95": 30,
+      "max": 30,
+      "source": "stages"
+     }
+    }
+   }
+  ],
+  "host": {
+   "samples": 22,
+   "gauges": {
+    "cpuPct": {
+     "n": 22,
+     "mean": 200.24,
+     "p95": 210.69,
+     "max": 213.07
+    },
+    "gameCpuPct": {
+     "n": 22,
+     "mean": 88.53,
+     "p95": 94.33,
+     "max": 95.37
+    },
+    "encoderCpuPct": {
+     "n": 22,
+     "mean": 98.9,
+     "p95": 103.7,
+     "max": 104.37
+    },
+    "memMb": {
+     "n": 22,
+     "mean": 543.5,
+     "p95": 603.5,
+     "max": 608.69
+    },
+    "gpuPct": {
+     "n": 22,
+     "mean": 52.0,
+     "p95": 54.0,
+     "max": 54.0
+    },
+    "encoderPct": {
+     "n": 22,
+     "mean": 6.18,
+     "p95": 7.0,
+     "max": 7.0
+    },
+    "gpuMemMb": {
+     "n": 22,
+     "mean": 1560.68,
+     "p95": 1568.0,
+     "max": 1569.0
+    },
+    "encodedFps": {
+     "n": 22,
+     "mean": 53.77,
+     "p95": 56.0,
+     "max": 56.02
+    },
+    "pipelineMs": {
+     "n": 22,
+     "mean": 38.68,
+     "p95": 33.43,
+     "max": 155.87
+    },
+    "sessionsAtOnce": {
+     "n": 22,
+     "mean": 1.0,
+     "p95": 1.0,
+     "max": 1.0
+    }
+   },
+   "memPeakMb": 625.34,
+   "firstFrameMs": 1672
+  }
+ },
+ "simulated": true
+}

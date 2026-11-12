@@ -1,0 +1,89 @@
+h1 phase 2 (M15 fix3): the pinning proof and the viewer Chrome CPU of each run.
+Each block: the session container cpuset (docker inspect), the Chrome processes affinity
+(taskset -cp), then the Chrome CPU samples: every chrome-headless process utime+stime over
+2 s, summed, in % of one core (the summary stream.host cpuPct uses the same unit).
+
+== b1 (/work/stream-bench/h1b1, summary h1b10.json) ==
+  pid 1412's current affinity list: 0-15
+  pid 1429's current affinity list: 0-15
+  pid 1434's current affinity list: 0-15
+  pid 1457's current affinity list: 0-15
+  pid 1484's current affinity list: 0-15
+  pid 1491's current affinity list: 0-15
+  pid 1537's current affinity list: 0-15
+  note: b1 was unpinned: its docker inspect named the wrong container (thumb-party-h1b1 instead of ...h1b10), so it printed only the Chrome affinity
+  chrome cpu: n=31 min=113 median=134 max=142
+  samples: 131 132 131 130 134 128 134 113 126 135 139 136 141 139 132 135 137 141 135 131 139 134 132 138 139 142 142 133 129 138 127
+
+== b2 (/work/stream-bench/h1b2, summary h1b20.json) ==
+  /thumb-party-h1b20 cpuset=
+  pid 3116's current affinity list: 0-15
+  pid 3124's current affinity list: 0-15
+  pid 3125's current affinity list: 0-15
+  pid 3151's current affinity list: 0-15
+  pid 3153's current affinity list: 0-15
+  pid 3154's current affinity list: 0-15
+  pid 3222's current affinity list: 0-15
+  chrome cpu: n=31 min=114 median=132 max=140
+  samples: 124 129 119 130 131 125 133 129 124 133 132 136 129 133 125 129 129 124 133 114 126 138 135 139 133 140 134 139 139 140 0
+
+== p1 (/work/stream-bench/h1p1, summary h1p10.json) ==
+  /thumb-party-h1p10 cpuset=0-11
+  pid 4727's current affinity list: 12-15
+  pid 4735's current affinity list: 12-15
+  pid 4736's current affinity list: 12-15
+  pid 4760's current affinity list: 12-15
+  pid 4762's current affinity list: 12-15
+  pid 4763's current affinity list: 12-15
+  pid 4832's current affinity list: 12-15
+  chrome cpu: n=31 min=121 median=129 max=138
+  samples: 129 129 127 134 126 130 133 124 131 133 130 126 128 131 138 128 124 122 131 122 138 130 129 121 130 128 125 128 127 135 0
+
+== p2 (/work/stream-bench/h1p2, summary h1p20.json) ==
+  /thumb-party-h1p20 cpuset=0-11
+  pid 6334's current affinity list: 12-15
+  pid 6342's current affinity list: 12-15
+  pid 6343's current affinity list: 12-15
+  pid 6369's current affinity list: 12-15
+  pid 6371's current affinity list: 12-15
+  pid 6372's current affinity list: 12-15
+  pid 6438's current affinity list: 12-15
+  chrome cpu: n=32 min=121 median=128 max=138
+  samples: 121 128 125 126 130 130 123 130 125 122 133 126 126 126 128 132 134 128 130 134 134 132 130 133 123 133 128 138 121 130 128 0
+
+== l1 (/work/stream-bench/h1l1, summary h1l10.json) ==
+  /thumb-party-h1l10 cpuset=
+  pid 7940's current affinity list: 0-15
+  pid 7948's current affinity list: 0-15
+  pid 7949's current affinity list: 0-15
+  pid 7974's current affinity list: 0-15
+  pid 7976's current affinity list: 0-15
+  pid 7977's current affinity list: 0-15
+  pid 8046's current affinity list: 0-15
+  chrome cpu: n=32 min=48 median=52 max=57
+  samples: 52 48 53 51 51 52 55 49 51 53 51 52 52 51 52 52 52 54 53 52 51 55 52 53 53 52 53 52 52 53 57 0
+
+== q1 (/work/stream-bench/h1q1, summary h1q10.json) ==
+  /thumb-party-h1q10 cpuset=
+  pid 9559's current affinity list: 0-15
+  pid 9567's current affinity list: 0-15
+  pid 9568's current affinity list: 0-15
+  pid 9593's current affinity list: 0-15
+  pid 9595's current affinity list: 0-15
+  pid 9596's current affinity list: 0-15
+  pid 9671's current affinity list: 0-15
+  chrome cpu: n=31 min=110 median=126 max=143
+  samples: 126 135 112 132 116 115 125 124 119 113 129 141 127 136 121 126 140 125 138 119 122 124 125 131 143 128 137 132 120 110 0
+
+== q2 (/work/stream-bench/h1q2, summary h1q20.json) ==
+  /thumb-party-h1q20 cpuset=0-11
+  pid 14291's current affinity list: 12-15
+  pid 14299's current affinity list: 12-15
+  pid 14300's current affinity list: 12-15
+  pid 14326's current affinity list: 12-15
+  pid 14328's current affinity list: 12-15
+  pid 14329's current affinity list: 12-15
+  pid 14398's current affinity list: 12-15
+  chrome cpu: n=31 min=102 median=123 max=147
+  samples: 102 134 118 107 123 115 127 132 115 122 129 127 147 123 128 133 120 127 123 118 130 115 126 119 123 126 120 137 126 112 104
+
