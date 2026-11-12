@@ -66,7 +66,7 @@ Owner, Nov 9, 2026: "once a shape race puzzle is complete, can we show an animat
 ## 5. The cat (G3)
 
 The PRD's rules stand as written. How it is built:
-- `CatChaos`, its own file in `puzzle_game`, stepped by the match after each side's tick. States: away → warning (2 s: meow, a paw at the edge of that side, the shadow on the target piece) → walk → bat → leave. Shooed (a worker on the cat and A, during the warning or the walk): it runs off and stays away for the round, +1 to the shooer's side.
+- `CatChaos`, its own file in `puzzle_game`, stepped by the match after each side's tick. States: away → warning (2 s: meow, the cat's head peeks from the top edge of that player's own area, over the bar, and its paw swats down at the target piece over the shadow) → walk → bat → leave. Shooed (a worker on the cat and A, during the warning or the walk): it runs off and stays away for the round, +1 to the shooer's side.
 - Its random comes from the match's seed (the host's), so a test can replay it.
 - Targeting: the side ahead in pieces placed; in a draw either, never the same side twice in a row; none in the first 20 s or the last 10 s, none in a night's last round. On one board (solo or team) it visits that board and never knocks a placed piece.
 - A little: at most once a round, only a loose or tray piece, batted to another free spot on that side. Party: at most twice, and once it may knock a placed piece loose (only on a side ahead by at least one piece, never the picture's last piece or one placed in the last 3 s): the piece bounces to that side's tray with its outline glowing, and the side keeps its points.
@@ -187,7 +187,7 @@ What is in a map, and what its rules are:
 
 ## 8. The Arena's waiting card
 
-- Shown over the Arena when it opens, on a TV and a phone host alike: the pairing code, each joined phone's badge and nickname, and "Press A when you're ready" with a ✓ for each ready player. The mode buttons, Bumper and Race, are under it (in a night, Bumper only). With one player joined, Bumper brings in Robo (section 7a).
+- Shown over the Arena when it opens, on a TV and a phone host alike: the pairing code, each joined phone's badge and nickname, and "Press A when you're ready", which a touch host taps and a controller presses, with a ✓ for each ready player on every screen. The mode buttons, Bumper and Race, are under it (in a night, Bumper only). With one player joined, Bumper brings in Robo (section 7a).
 - The 3-2-1 starts when at least one player has joined and every joined player is ready; on the TV too (today only the phone host has the ready beat).
 - A player who joins during a Bumper Round waits on the card's "Joins next round" line; in the race they join at once, as today.
 - `Pausable` keeps owning everything once the round runs (pause, the host away, a player away). The waiting card is before the round and the results after it: one owner each (review-rules A3).
@@ -208,7 +208,7 @@ What is in a map, and what its rules are:
 Drawn by docs/design/look-mockups.html, each in Sunny and Night, saved under docs/design/look-mockups/ with the prefix `m14-`:
 1. The game picker with the Party night card
 2. The night's start card (rounds, the three awards)
-3. Shape Race in a night: a "+2" pop-up and the cat's warning (paw, shadow)
+3. Shape Race in a night: a "+2" pop-up and the cat's warning (head peeking from the top, paw swatting, shadow)
 4. The scoreboard, round 2 of 3, and the same before the last round (double banner)
 5. An award reveal, and the final scoreboard with the crown
 6. The Arena's waiting card (code, three phones, two ready, mode buttons, the map cards with Surprise me), and the same with one player and Robo, its level buttons showing

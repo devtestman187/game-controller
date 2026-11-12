@@ -186,7 +186,7 @@ F.push(['Shape Race: the worker', 'The player\'s dot becomes the worker: eyes, a
   g += txt(480, 500, 'Faces also show while rotating (tongue out), and a cheer or a shrug at the end of the round.', 16, { anchor: 'middle', font: 'Nunito', w: 700, fill: T.onBg });
   return g;
 }]);
-F.push(['TV: Look and sound settings', 'A new settings section, on the TV and on phones. Look: Auto follows the device\'s clock (Sunny from 7 am to 7 pm, Night after), or pick one. The palette only changes between screens, never mid-round.', 960, 540, () => {
+F.push(['TV: Look and sound settings', 'A new settings section, on the TV and on phones. Look: Auto follows the device\'s clock (Sunny from 7 am to 7 pm, Night after), or pick one. A Look change shows at once, a round in progress included.', 960, 540, () => {
   let g = bg(960, 540);
   g += txt(40, 66, 'Settings', 46, { fill: '#fff', stroke: T.ink, sw: 8 });
   ['Controllers', 'Look and sound', 'Stats', 'About'].forEach((s, i) => g += btn(40, 110 + i * 82, 240, 58, s, { color: i === 1 ? light(C.p[0], .35) : T.paper, size: 22 }));

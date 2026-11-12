@@ -17,13 +17,18 @@ const _catTailShare = 0.55;
 
 /// The cat drawn over the board it visits (PRD v2 G3, M14 a2 and bug c1): the
 /// shadow on the exact piece it is after while it warns and walks, the head
-/// peeking in over the board area's top edge above that piece, and the paw
-/// reaching out of it and swatting, with the swat's burst where it lands.
+/// peeking in over the top edge of the box the player sees above that piece, and
+/// the paw reaching out of it and swatting, with the swat's burst where it lands.
 ///
 /// [share] is how far through its state the cat is ([CatMoments]), so the head
 /// slides in and out and the paw stretches; with the effects off it comes and
 /// swats without the stretch (G5): the head is drawn at rest, no paw, no burst,
 /// and nothing at all as it leaves.
+///
+/// [area] is the box the player sees, which the head hangs from (M14 bugs2 1):
+/// the field's own box for a board, the mirror's board for the mirror. Null: the
+/// field's own box. Nothing is drawn once the head has slid out of that box, so
+/// a leave never leaves a paw behind without its head.
 void paintCat(
   Canvas canvas,
   CatView cat, {
@@ -32,6 +37,7 @@ void paintCat(
   required ToyLook look,
   required ToyShapeStyle style,
   double share = 1,
+  Rect? area,
 }) {
   final target = cat.target;
   final piece = target != null && target < board.pieces.length ? board.pieces[target] : null;
@@ -39,14 +45,17 @@ void paintCat(
     _catShadow(canvas, Offset(piece.x, piece.y), look.colors.ink);
   }
   if (!look.effects && cat.state == CatState.leave) return;
-  final pose = CatPose.of(cat, board: board, field: field, share: look.effects ? share : 1);
+  final pose = CatPose.of(cat, board: board, field: field, area: area, share: look.effects ? share : 1);
+  // The head is out of sight: the paw went up with it, so neither is drawn (the
+  // bugs1 review's must).
+  if (pose.head.bottom <= pose.area.top) return;
   if (look.effects) paintCatPaw(canvas, pose, look, style);
-  // The head stays in the board area — the part still above its top edge, as
-  // the cat slides in, is not seen there — while the paw reaches past it, to a
-  // piece still in the tray.
+  // The head stays in the box the player sees — the part still above its top
+  // edge, as the cat slides in, is not seen there — while the paw reaches past
+  // it, to a piece still in the tray.
   canvas
     ..save()
-    ..clipRect(field.board);
+    ..clipRect(pose.area);
   paintCatHead(canvas, pose, look, style);
   canvas.restore();
   if (look.effects) {

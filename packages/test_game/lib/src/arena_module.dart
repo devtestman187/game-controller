@@ -42,6 +42,8 @@ final class ArenaViewer implements GameViewer {
     }
     // The look comes from the screen's ToyLookScope, which every app puts
     // above its screens; a screen without one throws, as the puzzle's do.
-    return ArenaBoard(snapshot: snapshot, roster: arenaRosterFor(snapshot, view.roster));
+    // The phone's own player is marked in the bar, so a joined player can tell
+    // their counters from everyone else's (M14 bugs2 7).
+    return ArenaBoard(snapshot: snapshot, roster: arenaRosterFor(snapshot, view.roster), ownId: view.playerId);
   }
 }

@@ -66,6 +66,30 @@ Every known code change that isn't a feature: review findings and tech debt, gro
 | `tv_test_app/flutter_*.log` crash files pile up (git-ignored); a leftover job folder `E:\AI\game-controller-m12-jobs\flash-20261107-090106-3357`; one stray `E:\game-controller-m12-jobs`. | None | Tidy disk | leave until a cleanup |
 | The PRD M12 acceptance tests aren't copied into the checklist. | None | One list for the owner | before M12 closes |
 
+### M14 bugs1
+
+The "could" findings of [bugs1's review](briefs/m14/bugs1/REVIEW.md) that the fix batch left, one line each; its must and should findings are fixed, and the `cat_paint_test` rename and `PuzzleView` drawing its frame's cat were done there.
+
+| What | Risk | Benefit | Rec. |
+| --- | --- | --- | --- |
+| `cat_head.dart:49` draws the pupil at the full gaze, 0.2 units out of the eye. | None | A round pupil | when touched |
+| `bugs1/c1-big-cat-report.md:16` says 7 files changed in `lib` where 11 did, and misses `cat_view.dart`. | None | A true record | when next read |
+| `puzzle_twins_test.dart:245` changes only the right wing's colour, so it passes whether the mirror marks look-alike targets only or all. | Low: the look-alike hint | A test that could fail | when touched |
+| `twins_library_test.dart:67` calls every pair in a twin group a direct twin, though groups are chains of turns. | Low | A test that matches decision 3 | when touched |
+| `twins_library_test.dart:34`'s second reading borrows the rule's own thresholds, so a wrong one is not caught. | Low | A real second opinion | when touched |
+| `twins_library_test.dart:76` asserts two facts that cannot fail (`rotation` null, `containsAll`). | None | Fewer hollow lines | when touched |
+| `mirror_painter.dart:134` draws a look-alike's target at 0.5/0.18 alpha; check the two wings read apart in Night on a device. | Low | A verified decision 5 | when a device is free |
+| `arena_waiting_card.dart:22`'s doc still promises "Press A when you're ready" and "a ✓ once they are ready". | None | A doc that matches the card | when touched |
+| `arena_touch_ready_test.dart:82` taps Ready with one player joined and passes only because no time advances between taps. | Low | A test that cannot hang on a tick | when touched |
+| `arena_waiting_widgets.dart:59`'s `maxLines: 1` and ellipsis were an unlisted display change. | None | A listed change | when touched |
+| `arena_text.dart:27`'s `readyButton` and `readyLabel` are both "Ready", so they can drift. | None | One word | when touched |
+| `bugs1/t1-look-midgame-report.md:54` lists `round_palette_hold.dart` under Delete, though the commit deletes it from the tree. | None | Correct steps | when next read |
+| `look_midgame_test.dart:84` checks no clock or coins survive the look change in the Bumper Round. | Low | The brief's promise proven | when touched |
+| `look_midgame_test.dart:35` checks the painter's palette, not a colour drawn. | Low | The look shown, not handed | when touched |
+| `round_palette_test.dart:17` ends while the view still runs, so no palette check follows a joined game's end. | Low: the palette | A closed loop | when touched |
+| `arena_hud_coins_test.dart:124` draws four players only in the one-line bar, never the tall bar's second line. | Low | The case the brief names | when touched |
+| Sizes: `match_painter.dart` 377, `lobby_music.dart` 348, `arena_waiting_widgets.dart` 343, `view.dart` 330, `puzzle_painter.dart` 326, `arena_waiting_card.dart` 324. | Low | Room under the 380 stop | split `match_painter` at the HUD seam; others when touched |
+
 ## Before a milestone
 
 | Before | What | Risk | Benefit of doing it first | Rec. |

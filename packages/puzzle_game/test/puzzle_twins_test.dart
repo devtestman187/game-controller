@@ -37,6 +37,22 @@ const mirroredWing = [
   [-3, 10],
 ];
 
+/// [wing] a tenth bigger: a same shape 5% of its size further out at the
+/// corners, past the 3% twin tolerance and inside the 15% look-alike share.
+const bigWing = [
+  [-14, -7],
+  [12, -4],
+  [3, 11],
+];
+
+/// [mirroredWing] a tenth bigger: a mirrored pair 8.5% apart in size, which the
+/// twin turn alone would miss (M14 bugs2 4).
+const bigMirroredWing = [
+  [14, -7],
+  [-12, -4],
+  [-3, 11],
+];
+
 String _point(List<int> p) => '[${p[0]}, ${p[1]}]';
 
 /// One puzzle of three pieces: [left] and [right] outlines in [rightColour]'s
@@ -56,6 +72,13 @@ Puzzle turnedPuzzle() => _puzzle(wing, turnedWing);
 
 /// The outline and its mirror image: look-alikes that do not fit each other.
 Puzzle mirrorPuzzle({String rightColour = 'blue'}) => _puzzle(wing, mirroredWing, rightColour: rightColour);
+
+/// The outline and its mirror image a tenth bigger: look-alikes at the size
+/// share, which the twin turn alone cannot see (M14 bugs2 4).
+Puzzle bigMirrorPuzzle() => _puzzle(wing, bigMirroredWing);
+
+/// The outline and the same outline a tenth bigger: no twins, look-alikes.
+Puzzle bigPuzzle() => _puzzle(wing, bigWing);
 
 /// A game with p1 joined and standing still.
 PuzzleGame started(Puzzle puzzle) {
@@ -213,6 +236,43 @@ void main() {
     expect(game.placed, 0);
   });
 
+  test('a mirrored pair a tenth bigger is still a look-alike at the 15% share', () {
+    final puzzle = bigMirrorPuzzle();
+    // The outlines are 8.5% apart in size: past the 3% twin turn, inside the
+    // 15% look-alike share (M14 bugs2 4).
+    expect(puzzle.pieces[0].shape.radius, closeTo(14.32, 0.01));
+    expect(puzzle.pieces[1].shape.radius, closeTo(15.65, 0.01));
+    expect(puzzle.twins.rotation(0, 1), isNull, reason: 'no turn lays one outline on the other');
+    expect(puzzle.twins.rotation(1, 0), isNull);
+    expect(
+      puzzle.twins.lookAlikePairs,
+      contains((0, 1)),
+      reason: 'a mirrored outline at the size share is a look-alike',
+    );
+    expect(puzzle.twins.lookAlikes, containsAll([0, 1]), reason: 'so both slots carry their own colour');
+  });
+
+  test('a same-shape pair 5% of its size apart is no twin: both slots are hinted and a drop is wrong', () {
+    final puzzle = bigPuzzle();
+    // A tenth bigger in its outline is 5% of the piece's size at its corners:
+    // past 3% and inside 15% (M14 bugs2 5).
+    expect(puzzle.twins.rotation(0, 1), isNull, reason: 'a tenth bigger is no twin');
+    expect(puzzle.twins.rotation(1, 0), isNull);
+    expect(puzzle.twins.lookAlikePairs, contains((0, 1)));
+    expect(puzzle.twins.lookAlikes, containsAll([0, 1]), reason: 'both slots are hinted in their own colour');
+    final game = started(puzzle);
+    final p = game.player('p1')!;
+    p.pos = game.pieces[0].pos;
+    tapAGame(game);
+    game.pieces[0]
+      ..pos = game.targetAt(1)
+      ..angle = 0;
+    p.pos = game.targetAt(1);
+    tapAGame(game);
+    expect(game.pieces[0].state, PieceState.wrong, reason: 'a same shape a tenth bigger does not fit');
+    expect(game.placed, 0);
+  });
+
   for (final (name, look) in [('Sunny', sunny), ('Night', night)]) {
     testWidgets('a look-alike\'s slot is dashed in its own colour in $name, and another slot is not', (tester) async {
       final puzzle = mirrorPuzzle();
@@ -252,6 +312,52 @@ void main() {
       }
     });
   }
+
+  testWidgets('a twin locked in its twin\'s slot fills that slot, so no hint is drawn there', (tester) async {
+    final puzzle = twinPuzzle();
+    // Piece 0 (purple) sits locked on slot 1's own place: the painter maps it to
+    // that slot from the outlines, not to its own (M14 bugs2 5).
+    final at = boardRect.topLeft + puzzle.pieces[1].target;
+    final locked = PuzzleSnapshot(
+      puzzleId: puzzle.id,
+      timeLeftMs: 60000,
+      phase: PuzzlePhase.playing,
+      pieces: [
+        PieceView(x: at.dx, y: at.dy, angle: 0, state: PieceState.locked),
+        const PieceView(x: 120, y: 25, angle: 0, state: PieceState.tray),
+        const PieceView(x: 120, y: 25, angle: 0, state: PieceState.tray),
+      ],
+      players: const [],
+      hintTargets: const {0, 1},
+    );
+    final (width, height, bytes) = await capture(
+      tester,
+      PuzzleView(puzzle: puzzle, snapshot: locked),
+      window: box,
+      box: box,
+      look: sunny,
+    );
+    final focus = sunny.colors.focus.toARGB32() & 0xFFFFFF;
+    debugPrint(
+      'locked twin: slot 1 hint ${nearSlot(bytes, width, height, puzzle, 1, scale, boardRect.topLeft, focus)} px, '
+      'slot 0 hint ${nearSlot(bytes, width, height, puzzle, 0, scale, boardRect.topLeft, focus)} px',
+    );
+    expect(
+      nearSlot(bytes, width, height, puzzle, 1, scale, boardRect.topLeft, focus),
+      0,
+      reason: 'slot 1 is filled, so its hint is not drawn over the piece',
+    );
+    expect(
+      nearSlot(bytes, width, height, puzzle, 0, scale, boardRect.topLeft, focus),
+      greaterThan(0),
+      reason: 'slot 0 is still empty and keeps its hint',
+    );
+    expect(
+      nearSlot(bytes, width, height, puzzle, 1, scale, boardRect.topLeft, puzzle.pieces[0].color),
+      greaterThan(0),
+      reason: 'piece 0 is drawn in slot 1',
+    );
+  });
 
   test('Robo plays a twin puzzle to the end, choosing a piece for each slot that fits it', () {
     final puzzle = turnedPuzzle();

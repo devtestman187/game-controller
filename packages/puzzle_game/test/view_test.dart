@@ -398,4 +398,101 @@ void main() {
       expect(host.statuses['p1']!.isHidden, isTrue);
     });
   });
+
+  testWidgets('a pause leaves the cat\'s motion clock still, so its motion does not jump on the way back', (
+    tester,
+  ) async {
+    final clock = FakeStopwatch();
+    const cat = CatView(state: CatState.warning, side: PuzzleSide.left, at: Offset(3.5, 40), target: 0);
+    MatchSnapshot frame() => MatchSnapshot(
+      boards: [
+        PuzzleSnapshot(
+          puzzleId: puzzle.id,
+          timeLeftMs: 60000,
+          phase: PuzzlePhase.playing,
+          pieces: [
+            for (var i = 0; i < puzzle.pieces.length; i++)
+              const PieceView(x: 120, y: 25, angle: 0, state: PieceState.tray),
+          ],
+          players: const [],
+          side: PuzzleSide.left,
+        ),
+      ],
+      cat: cat,
+    );
+    var paused = false;
+    late StateSetter redraw;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: withLook(
+          StatefulBuilder(
+            builder: (context, setState) {
+              redraw = setState;
+              return MatchView(puzzle: puzzle, snapshot: frame(), timeLimitS: 120, paused: paused, clock: clock);
+            },
+          ),
+        ),
+      ),
+    );
+    PuzzlePainter painter() =>
+        (tester.widget<CustomPaint>(find.byKey(const Key('puzzleView'))).painter! as PuzzlePainter);
+    Future<void> rebuild() async {
+      redraw(() {});
+      await tester.pump();
+    }
+
+    Future<void> at(int ms) async {
+      clock.ms = ms;
+      await rebuild();
+    }
+
+    await at(500);
+    expect(painter().catMoments!.progress(CatState.warning, painter().nowMs), closeTo(0.25, 0.001));
+    // The pause menu stands the round still for 5 s, then play comes back.
+    paused = true;
+    await rebuild();
+    await at(5500);
+    expect(painter().nowMs, 500, reason: 'the motion clock does not run while paused');
+    expect(painter().catMoments!.progress(CatState.warning, painter().nowMs), closeTo(0.25, 0.001));
+    paused = false;
+    await rebuild();
+    expect(painter().nowMs, 500, reason: 'the paused time is left out of the clock');
+    expect(painter().catMoments!.progress(CatState.warning, painter().nowMs), closeTo(0.25, 0.001));
+    await at(6000);
+    expect(painter().nowMs, 1000, reason: 'the clock runs again from where it stopped');
+    expect(painter().catMoments!.progress(CatState.warning, painter().nowMs), closeTo(0.5, 0.001));
+  });
+}
+
+/// A [Stopwatch] a test can set: the view's motion clock, wound by hand.
+class FakeStopwatch implements Stopwatch {
+  /// The milliseconds this watch reads.
+  int ms = 0;
+
+  @override
+  int get elapsedMilliseconds => ms;
+
+  @override
+  int get elapsedMicroseconds => ms * 1000;
+
+  @override
+  int get elapsedTicks => ms * 1000;
+
+  @override
+  int get frequency => 1000000;
+
+  @override
+  Duration get elapsed => Duration(milliseconds: ms);
+
+  @override
+  bool get isRunning => true;
+
+  @override
+  void reset() => ms = 0;
+
+  @override
+  void start() {}
+
+  @override
+  void stop() {}
 }

@@ -5,10 +5,10 @@ import 'puzzle.dart';
 import 'snapshot.dart';
 
 /// The cat's motion, and where its head and paw are drawn in one frame (M14 bug
-/// c1, PRD v2 G3), in field units of the world it visits: its head peeking in
-/// over the top edge of the board area, centred above the piece it is after,
-/// and its paw reaching out of the head, drawing back, swatting and drawing
-/// back in.
+/// c1, PRD v2 G3; M14 bugs2 1), in field units of the world it visits: its head
+/// hanging from the top edge of that player's own area, centred above the piece
+/// it is after, and its paw reaching out of the head, drawing back, swatting and
+/// drawing back in with the head it came out of.
 ///
 /// A frame carries the cat where the rules put it ([CatView.at]) and not how
 /// far into its visit it is, so the view times that itself ([CatMoments]) and
@@ -17,6 +17,7 @@ import 'snapshot.dart';
 /// and the mirror draw the same cat (S8).
 final class CatPose {
   const CatPose._({
+    required this.area,
     required this.head,
     required this.shoulder,
     required this.gaze,
@@ -28,32 +29,57 @@ final class CatPose {
   /// [cat]'s pose on [board] in [field], [share] of the way through its state:
   /// 0 at that state's first frame and 1 at its last, so a still frame passes 1.
   ///
-  /// The head slides down over the first 40% of the warning and back up over
-  /// the last 60% of the leave, and stays at rest in between.
-  factory CatPose.of(CatView cat, {required PuzzleSnapshot board, required PuzzleField field, double share = 1}) {
-    final area = field.board;
-    final width = area.width * headWidthShare;
-    final height = width * _headHeightShare;
+  /// The head hangs from the top edge of [area], the box the player sees, and
+  /// slides down over the first 40% of the warning and back up over the last
+  /// 60% of the leave, staying at rest in between. Its bottom is kept above the
+  /// piece it is after, so it never covers that piece; where the room above the
+  /// piece is under [_minHeadShare] of the head's size, it stops shrinking there
+  /// and the head overlaps the board's top edge instead (M14 bugs2 1).
+  factory CatPose.of(
+    CatView cat, {
+    required PuzzleSnapshot board,
+    required PuzzleField field,
+    Rect? area,
+    double share = 1,
+  }) {
+    final own = area ?? (Offset.zero & field.size);
+    final column = field.board;
+    final width = column.width * headWidthShare;
+    final full = width * _headHeightShare;
     final aim = _aimAt(cat, board);
-    final centre = Offset(aim.dx.clamp(area.left + width / 2, area.right - width / 2), area.top + height / 2);
+    // The head shrunk to the room between the area's top and the piece, but
+    // never under [_minHeadShare] of its size, so its face stays readable.
+    final shrink = ((aim.dy - own.top) / full).clamp(_minHeadShare, 1.0);
+    final headWidth = width * shrink;
+    final height = full * shrink;
+    final centre = Offset(
+      aim.dx.clamp(column.left + headWidth / 2, column.right - headWidth / 2),
+      own.top + height / 2,
+    );
     final peek = switch (cat.state) {
       CatState.warning => _ease((share / _peekShare).clamp(0.0, 1.0)),
       CatState.leave => 1 - _ease((share / _leaveShare).clamp(0.0, 1.0)),
       _ => 1.0,
     };
-    final head = Rect.fromCenter(center: centre + Offset(0, (peek - 1) * height), width: width, height: height);
+    final head = Rect.fromCenter(center: centre + Offset(0, (peek - 1) * height), width: headWidth, height: height);
     final side = aim.dx < centre.dx ? -1.0 : 1.0;
-    final shoulder = Offset(centre.dx + side * width * _shoulderSideShare, centre.dy + height * _shoulderDownShare);
+    // The shoulder is part of the head, so the paw goes up with it as it leaves
+    // (the bugs1 review's must): the last of the leave draws no paw on the board.
+    final shoulder = Offset(
+      head.center.dx + side * headWidth * _shoulderSideShare,
+      head.center.dy + height * _shoulderDownShare,
+    );
     final tip = switch (cat.state) {
       CatState.warning => null,
-      CatState.walk => _reach(shoulder, aim, width, share),
+      CatState.walk => _reach(shoulder, aim, headWidth, share),
       CatState.bat => aim,
       CatState.leave => Offset.lerp(cat.at, shoulder, _ease(share)),
     };
     return CatPose._(
+      area: own,
       head: head,
       shoulder: shoulder,
-      gaze: _gaze(aim, centre, width),
+      gaze: _gaze(aim, centre, headWidth),
       aim: aim,
       tip: tip,
       swat: cat.state == CatState.bat ? share : null,
@@ -67,6 +93,10 @@ final class CatPose {
 
   /// How tall the head is against its width, ears and all.
   static const _headHeightShare = 0.92;
+
+  /// The smallest the head shrinks to, as a share of that size, where the piece
+  /// it is after sits high: below it the face stops reading (M14 bugs2 1).
+  static const _minHeadShare = 0.8;
 
   /// The share of the warning the head spends sliding in, and of the leave it
   /// spends sliding back up.
@@ -87,9 +117,14 @@ final class CatPose {
   /// How far the pupils turn toward the piece, as a share of the head's width.
   static const _gazeShare = 0.06;
 
-  /// The head's box, ears and all: [headWidthShare] of the board area's width,
-  /// kept inside the area and hung from its top edge, less the part still above
-  /// it as the cat slides in or out.
+  /// The box the player sees the cat in, in field units: the whole world of one
+  /// board, a split screen's half, or the mirror's own box. The head hangs from
+  /// its top edge and the head and the paw are drawn only inside it.
+  final Rect area;
+
+  /// The head's box, ears and all: up to [headWidthShare] of the board area's
+  /// width, kept over the board's columns and hung from [area]'s top edge, less
+  /// the part still above it as the cat slides in or out.
   final Rect head;
 
   /// Where the paw comes out of the head: under its lower edge, on the side the

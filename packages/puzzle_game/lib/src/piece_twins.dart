@@ -114,16 +114,21 @@ double _degrees(double radians) => (radians * 180 / pi) % 360;
 /// Whether [a] and [b] are look-alikes: no twins, but the same shape mirrored
 /// or at nearly the same size, which a player holding one cannot tell from the
 /// other.
+///
+/// The size rule comes first and one outline is scaled onto the other's size
+/// before the turn is tried, so a mirrored pair within [lookAlikeSizeShare] is a
+/// look-alike however its two sizes differ (M14 bugs2 4): the twin turn's 3%
+/// tolerance would miss a mirrored pair 4–15% apart.
 bool _lookAlike(PieceShape a, PieceShape b) {
   if (a.circle || b.circle) {
     return a.circle && b.circle && (a.radius - b.radius).abs() <= lookAlikeSizeShare * max(a.radius, b.radius);
   }
   if (a.points.length != b.points.length) return false;
+  if ((a.size - b.size).abs() > lookAlikeSizeShare * max(a.size, b.size)) return false;
+  final atA = PieceShape.polygon([for (final p in b.points) p * (a.radius / b.radius)]);
   // Mirror images: the same outline flipped, which no turn can make it.
   final mirrored = PieceShape.polygon([for (final p in a.points) Offset(-p.dx, p.dy)]);
-  if (_turnOnto(mirrored, b) != null) return true;
+  if (_turnOnto(mirrored, atA) != null) return true;
   // The same shape at nearly the same size.
-  if ((a.size - b.size).abs() > lookAlikeSizeShare * max(a.size, b.size)) return false;
-  final scaled = PieceShape.polygon([for (final p in b.points) p * (a.radius / b.radius)]);
-  return _turnOnto(a, scaled) != null;
+  return _turnOnto(a, atA) != null;
 }

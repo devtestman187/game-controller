@@ -21,11 +21,11 @@ const _noseWidthShare = 0.10;
 const _noseDown = 0.17;
 const _nosePointDown = 0.25;
 
-/// The cat's head peeking in over the board area's top edge (M14 bug c1): a
-/// round head with two ears in the cat's colour, outlined in the pieces' ink,
+/// The cat's head peeking in over the top edge of the player's box (M14 bug c1):
+/// a round head with two ears in the cat's colour, outlined in the pieces' ink,
 /// with its eyes and nose in the ink and its pupils turned toward the piece
 /// [pose] aims at, so the eyes follow it (the owner asked for ears, eyes and a
-/// nose). The caller has clipped the board area, so the part still above its
+/// nose). The caller has clipped to [CatPose.area], so the part still above its
 /// top edge as the cat slides in is not seen.
 void paintCatHead(Canvas canvas, CatPose pose, ToyLook look, ToyShapeStyle style) {
   final head = pose.head;

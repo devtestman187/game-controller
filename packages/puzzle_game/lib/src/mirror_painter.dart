@@ -103,6 +103,9 @@ class MirrorPainter {
         c,
         board: theirs,
         field: field,
+        // The mirror shows their board alone, so the head hangs from its top
+        // edge rather than from above the board (M14 bugs2 1).
+        area: board,
         look: look,
         style: style,
         share: catMoments?.progress(c.state, nowMs) ?? 1,

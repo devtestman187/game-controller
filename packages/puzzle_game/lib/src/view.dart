@@ -42,10 +42,15 @@ part 'worker_painter.dart';
 /// above it (M13), and the pieces' boing and wobble come from the snapshots
 /// it is given.
 class PuzzleView extends StatefulWidget {
-  const PuzzleView({super.key, required this.puzzle, required this.snapshot, this.timeLimitS, this.clock});
+  const PuzzleView({super.key, required this.puzzle, required this.snapshot, this.cat, this.timeLimitS, this.clock});
 
   final Puzzle puzzle;
   final PuzzleSnapshot snapshot;
+
+  /// The cat, while it visits this board (M14 a2); null when it is away. The
+  /// view times its motion itself, so this one-board widget draws the cat as
+  /// the match view does (M14 bugs2 3).
+  final CatView? cat;
 
   /// For the clock's bar. Null: no bar.
   final int? timeLimitS;
@@ -61,12 +66,13 @@ class PuzzleView extends StatefulWidget {
 
 class _PuzzleViewState extends State<PuzzleView> {
   final _moments = PieceMoments();
+  final _catMoments = CatMoments();
   late final _workers = WorkerMoments(widget.puzzle);
   late final Stopwatch _clock = widget.clock ?? (Stopwatch()..start());
 
   /// The one board as the match the moments see it: they are kept per board,
   /// as a match keeps its left and right.
-  MatchSnapshot get _match => MatchSnapshot(boards: [widget.snapshot]);
+  MatchSnapshot get _match => MatchSnapshot(boards: [widget.snapshot], cat: widget.cat);
 
   int get _nowMs => _clock.elapsedMilliseconds;
 
@@ -79,12 +85,13 @@ class _PuzzleViewState extends State<PuzzleView> {
   @override
   void didUpdateWidget(PuzzleView oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (!identical(oldWidget.snapshot, widget.snapshot)) _note(_match);
+    if (!identical(oldWidget.snapshot, widget.snapshot) || oldWidget.cat != widget.cat) _note(_match);
   }
 
   void _note(MatchSnapshot match) {
     _moments.observe(match, _nowMs);
     _workers.observe(match, _nowMs);
+    _catMoments.observe(match.cat, _nowMs);
   }
 
   @override
@@ -96,9 +103,11 @@ class _PuzzleViewState extends State<PuzzleView> {
       widget.snapshot,
       look: ToyLookScope.of(context),
       moments: _moments,
+      catMoments: _catMoments,
       workers: _workers,
       nowMs: _nowMs,
       timeLimitS: widget.timeLimitS,
+      cat: widget.cat,
       // The screen's sky shows round the board and the tray where a
       // `ToyBackground` is behind the view (design section 5, decided at
       // device test 3); drawn alone, as the pictures are, the painter fills.
@@ -123,6 +132,7 @@ class MatchView extends StatefulWidget {
     this.camera = const PuzzleCamera.whole(),
     this.padRects = const [],
     this.pxPerMm = phonePxPerMm,
+    this.paused = false,
     this.clock,
   });
 
@@ -149,6 +159,11 @@ class MatchView extends StatefulWidget {
   /// own geometry.
   final double pxPerMm;
 
+  /// Whether the round is paused (the pause menu is open): its motion clock
+  /// leaves the pause out, so the cat does not jump when play comes back (M14
+  /// bugs2 2).
+  final bool paused;
+
   /// Where the view reads the time for the pieces' motion, in milliseconds.
   /// Null: a [Stopwatch] started when the view is built.
   final Stopwatch? clock;
@@ -163,7 +178,17 @@ class _MatchViewState extends State<MatchView> {
   late final _workers = WorkerMoments(widget.puzzle);
   late final Stopwatch _clock = widget.clock ?? (Stopwatch()..start());
 
-  int get _nowMs => _clock.elapsedMilliseconds;
+  /// How long the round has spent paused, and since when it has been paused, in
+  /// ms on [_clock]: a pause leaves the clock running, so the motion clock takes
+  /// the paused time out or the cat's slide-in and reach jump on the first frame
+  /// back (M14 bugs2 2).
+  int _pausedMs = 0;
+  int _pausedFromMs = 0;
+
+  int get _nowMs {
+    final clockMs = _clock.elapsedMilliseconds;
+    return clockMs - _pausedMs - (widget.paused ? clockMs - _pausedFromMs : 0);
+  }
 
   @override
   void initState() {
@@ -174,6 +199,13 @@ class _MatchViewState extends State<MatchView> {
   @override
   void didUpdateWidget(MatchView oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (widget.paused != oldWidget.paused) {
+      if (widget.paused) {
+        _pausedFromMs = _clock.elapsedMilliseconds;
+      } else {
+        _pausedMs += _clock.elapsedMilliseconds - _pausedFromMs;
+      }
+    }
     if (!identical(oldWidget.snapshot, widget.snapshot)) _note();
   }
 

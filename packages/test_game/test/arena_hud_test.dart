@@ -33,6 +33,7 @@ Future<void> pumpBoard(
   WidgetTester tester,
   ArenaSnapshot snapshot, {
   required ArenaRoster roster,
+  String? ownId,
   Size box = const Size(960, 540),
   ToyLook? look,
 }) async {
@@ -43,7 +44,7 @@ Future<void> pumpBoard(
     MaterialApp(
       home: withLook(
         Scaffold(
-          body: ArenaBoard(snapshot: snapshot, roster: roster),
+          body: ArenaBoard(snapshot: snapshot, roster: roster, ownId: ownId),
         ),
         look: look ?? sunny,
       ),
@@ -72,6 +73,20 @@ void main() {
       reason: 'no number',
     );
     expect(find.descendant(of: find.byKey(const Key('hud-a')), matching: find.text('P1 Ada')), findsOneWidget);
+  });
+
+  // M14 bugs2 7: a phone's bar must say which of the players is the one
+  // holding it, or its owner cannot tell their counters from the rest.
+  testWidgets('a joined phone marks its own player "(you)", and only on that phone', (tester) async {
+    for (final box in [const Size(960, 540), const Size(667, 375)]) {
+      await pumpBoard(tester, arena(ArenaPhase.playing, two), roster: two, ownId: 'b', box: box);
+      expect(find.text('P2 Bo (you)'), findsOneWidget, reason: 'at $box');
+      expect(find.text('P1 Ada'), findsOneWidget, reason: 'the other phone is unmarked');
+      expect(find.textContaining('(you)'), findsOneWidget, reason: 'only one player is the phone\'s own');
+
+      await pumpBoard(tester, arena(ArenaPhase.playing, two), roster: two, box: box);
+      expect(find.textContaining('(you)'), findsNothing, reason: 'a TV marks nobody, at $box');
+    }
   });
 
   testWidgets('a lone player who scores heads the banner in good', (tester) async {

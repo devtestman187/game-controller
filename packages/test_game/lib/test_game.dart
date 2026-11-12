@@ -24,6 +24,7 @@ export 'src/arena_roster.dart';
 export 'src/arena_session.dart';
 export 'src/arena_snapshot.dart';
 export 'src/arena_specs.dart';
+export 'src/arena_text.dart';
 export 'src/arena_view.dart';
 export 'src/arena_view_widgets.dart';
 export 'src/cpu_pilot.dart';

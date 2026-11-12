@@ -179,5 +179,6 @@ class PuzzlePlayViewState extends State<PuzzlePlayView> with SingleTickerProvide
     camera: widget.camera,
     padRects: widget.padRects,
     pxPerMm: widget.pxPerMm,
+    paused: widget.paused,
   );
 }

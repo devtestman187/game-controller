@@ -8,6 +8,7 @@ import 'arena_robo.dart';
 import 'arena_roster.dart';
 import 'arena_session.dart';
 import 'arena_snapshot.dart';
+import 'arena_text.dart';
 
 /// What the bar says when a player's dash has cooled down: in the pill on a
 /// tall box, in ink text on a phone's one-line bar. The dash's name comes from
@@ -34,7 +35,7 @@ const _bumperNameShare = 0.24;
 /// race's wins, hits and dashes stay out of it and live in the results and the
 /// stats. The race's bar is as it has always been.
 class ArenaHud extends StatelessWidget {
-  const ArenaHud({super.key, required this.snapshot, required this.roster, this.oneLine = false});
+  const ArenaHud({super.key, required this.snapshot, required this.roster, this.ownId, this.oneLine = false});
 
   /// The box height, in px, below which the bar folds to one line: landscape
   /// phones are 375–393 high and the TV and tablets 540 and up, so a box
@@ -67,6 +68,10 @@ class ArenaHud extends StatelessWidget {
 
   final ArenaSnapshot snapshot;
   final ArenaRoster roster;
+
+  /// The player of the phone this bar is drawn on, whose name it marks "(you)";
+  /// null where every player is alike, as on a TV (M14 bugs2 7).
+  final String? ownId;
 
   /// Everything in one Wrap rather than the round above each player.
   final bool oneLine;
@@ -115,6 +120,7 @@ class ArenaHud extends StatelessWidget {
           id: id,
           player: player,
           view: p,
+          own: id == ownId,
           oneLine: oneLine,
           bumper: bumper,
           nameMaxWidth: bumper ? width * _bumperNameShare : null,
@@ -173,6 +179,7 @@ class _PlayerRow extends StatelessWidget {
     required this.id,
     required this.player,
     required this.view,
+    required this.own,
     required this.oneLine,
     required this.bumper,
     this.nameMaxWidth,
@@ -181,6 +188,9 @@ class _PlayerRow extends StatelessWidget {
   final String id;
   final ({int number, String name}) player;
   final ArenaPlayerView view;
+
+  /// Whether this is the phone's own player, whose name is marked "(you)".
+  final bool own;
   final bool oneLine;
   final bool bumper;
 
@@ -236,12 +246,14 @@ class _PlayerRow extends StatelessWidget {
   /// The player's colour dot and its number and name: small in the one-line
   /// bar, and a title on a tall box. Robo has no number to wear (party-night
   /// §7a): its dot is the robot's head and its name is its own. A name wider
-  /// than [nameMaxWidth] is cut with an ellipsis, never the count.
+  /// than [nameMaxWidth] is cut with an ellipsis, never the count. The phone's
+  /// own player is marked "(you)" (M14 bugs2 7).
   Widget _name(ToyColors colours, TextTheme text, TextStyle? small) {
     final robo = id == roboPlayerId;
     final width = nameMaxWidth;
+    final named = robo ? roboName : 'P${player.number} ${player.name}';
     final name = Text(
-      robo ? roboName : 'P${player.number} ${player.name}',
+      own ? ArenaBarText.own(named) : named,
       style: oneLine ? small : text.titleSmall?.copyWith(color: colours.ink),
       maxLines: width == null ? null : 1,
       overflow: width == null ? null : TextOverflow.ellipsis,

@@ -19,10 +19,15 @@ import 'arena_snapshot.dart';
 /// and the winner's card read the scope themselves, and a board drawn with no
 /// scope above it throws, as the puzzle's views do (M13 9a review).
 class ArenaBoard extends StatelessWidget {
-  const ArenaBoard({super.key, required this.snapshot, required this.roster, this.onResize});
+  const ArenaBoard({super.key, required this.snapshot, required this.roster, this.ownId, this.onResize});
 
   final ArenaSnapshot snapshot;
   final ArenaRoster roster;
+
+  /// The player of the phone this board is drawn on, marked "(you)" in the bar;
+  /// null on a TV or the host's own screen, where every player is alike (M14
+  /// bugs2 7).
+  final String? ownId;
 
   /// Called with the field's size every time it is drawn, so the host's rules
   /// can move in it. A viewer has no rules and passes none.
@@ -35,7 +40,12 @@ class ArenaBoard extends StatelessWidget {
       builder: (context, constraints) => Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          ArenaHud(snapshot: snapshot, roster: roster, oneLine: constraints.maxHeight < ArenaHud.oneLineBelow),
+          ArenaHud(
+            snapshot: snapshot,
+            roster: roster,
+            ownId: ownId,
+            oneLine: constraints.maxHeight < ArenaHud.oneLineBelow,
+          ),
           Expanded(
             child: ArenaField(snapshot: snapshot, roster: roster, onResize: onResize),
           ),

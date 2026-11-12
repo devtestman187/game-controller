@@ -9,6 +9,7 @@ import 'support/cat_run.dart';
 import 'support/frames.dart';
 import 'support/look.dart';
 import 'support/match_helpers.dart';
+import 'support/mirror_helpers.dart' show colourGap;
 
 /// The cat's paw (M14 bug c1): it reaches from beside the head to the piece,
 /// draws back a little, and lands on it at the moment the piece moves — which
@@ -52,7 +53,8 @@ void main() {
     );
     expect(swat.tip, piece, reason: 'the tip is on the piece when it moves');
     expect(swat.swat, isNotNull, reason: 'the burst is drawn in the bat');
-    expect(swat.head.top, closeTo(field.board.top, 0.01), reason: 'the head stays at rest over the piece');
+    expect(swat.head.top, closeTo(0, 0.01), reason: 'the head hangs from the top of the screen');
+    expect(swat.head.bottom, lessThanOrEqualTo(piece.dy), reason: 'and stays above the piece it swats');
   });
 
   test('the piece moves on the tick the paw lands, as the rule always did', () {
@@ -84,6 +86,20 @@ void main() {
       for (var x = (rect.left * scale).round(); x < (rect.right * scale).round(); x++) {
         final at = 4 * (y * box.width.toInt() + x);
         if (plain[at] != bytes[at] || plain[at + 1] != bytes[at + 1] || plain[at + 2] != bytes[at + 2]) count++;
+      }
+    }
+    return count;
+  }
+
+  /// The pixels of [bytes] inside [rect] that are within [gap] of [colour]
+  /// (0xRRGGBB): the swat's burst is drawn in the look's `caution`.
+  int colouredInside(Uint8List bytes, Rect rect, int colour, {int gap = 40}) {
+    var count = 0;
+    for (var y = (rect.top * scale).round(); y < (rect.bottom * scale).round(); y++) {
+      for (var x = (rect.left * scale).round(); x < (rect.right * scale).round(); x++) {
+        final at = 4 * (y * box.width.toInt() + x);
+        final pixel = bytes[at] << 16 | bytes[at + 1] << 8 | bytes[at + 2];
+        if (colourGap(pixel, colour) <= gap) count++;
       }
     }
     return count;
@@ -125,12 +141,23 @@ void main() {
         (const CatView(state: CatState.bat, side: PuzzleSide.left, at: Offset(56, 49), target: 0), 100),
       ]) {
         final bytes = await drawn(tester, look, cat, nowMs);
-        final head = CatPose.of(cat, board: boardAt(const Offset(56, 49)), field: PuzzleField.single).head;
+        final pose = CatPose.of(cat, board: boardAt(const Offset(56, 49)), field: PuzzleField.single);
         expect(
-          changedInside(plain, bytes, head),
+          changedInside(plain, bytes, pose.head),
           greaterThan(0),
           reason: 'the head is drawn in $name, ${cat.state.name}',
         );
+        if (cat.state == CatState.bat) {
+          // The paw lands on the piece and the burst flies out of it, in the
+          // look's `caution`: a box round the aim holds both (M14 bugs2 5).
+          final at = Rect.fromCenter(center: pose.aim, width: 16, height: 16);
+          expect(changedInside(plain, bytes, at), greaterThan(0), reason: 'the paw lands on the piece in $name');
+          expect(
+            colouredInside(bytes, at, look.colors.caution.toARGB32() & 0xFFFFFF),
+            greaterThan(0),
+            reason: 'the swat\'s burst is drawn in $name',
+          );
+        }
       }
     }
   });
