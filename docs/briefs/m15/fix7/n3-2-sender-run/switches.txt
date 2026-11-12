@@ -1,0 +1,9 @@
+n3nofec0: switches: SESSION_FEC=false, player-query none, player-options none
+n3nofec1: switches: SESSION_FEC=false, player-query none, player-options none
+n3nofec2: switches: SESSION_FEC=false, player-query none, player-options none
+n3noretx0: switches: SESSION_RETRANSMISSION=false, player-query none, player-options none
+n3noretx1: switches: SESSION_RETRANSMISSION=false, player-query none, player-options none
+n3noretx2: switches: SESSION_RETRANSMISSION=false, player-query none, player-options none
+n3x0: switches: SESSION_CONGESTION=gcc, player-query none, player-options none
+n3x1: switches: SESSION_CONGESTION=gcc, player-query none, player-options none
+n3x2: switches: SESSION_CONGESTION=gcc, player-query none, player-options none
