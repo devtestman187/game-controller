@@ -45,7 +45,10 @@ abstract interface class GameHost {
 
   /// Adds a player whose input comes from this device (S2), with the lowest
   /// free number. The game sets its controls with [LocalPlayer.set].
-  LocalPlayer addLocalPlayer({String? nickname});
+  /// [scripted] marks one the automation interface drives (M15 a2): the menus
+  /// work its input as they do a phone's. [character] is what it wears, when
+  /// the caller chooses one (M14 L7).
+  LocalPlayer addLocalPlayer({String? nickname, PlayerCharacter? character, bool scripted = false});
 
   /// Reports something for analytics.
   void record(GameRecord record);

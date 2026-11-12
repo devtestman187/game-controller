@@ -129,6 +129,10 @@ class LiveStats implements StatsService {
   bool _uploading = false;
   Timer? _retry;
 
+  /// The live session's collector, for tests and the automation interface.
+  @override
+  SessionCollector? get live => _session;
+
   /// The live session's collector, for tests.
   SessionCollector? get session => _session;
 
@@ -169,6 +173,9 @@ class LiveStats implements StatsService {
     if (here.isNotEmpty && _session == null) _startSession();
     final s = _session;
     if (s == null) return;
+    // A session only simulated or automated players joined is marked, so it
+    // never counts as somebody's play and is never uploaded (M15 a2).
+    if (!s.isSimulated && nobodyReal) s.simulatedOnly();
     for (final id in here.difference(_present)) {
       final c = connected[id];
       if (c != null) {
@@ -199,6 +206,13 @@ class LiveStats implements StatsService {
       _endTimer?.cancel();
       _endTimer = null;
     }
+  }
+
+  /// Whether every player in the game is one nobody is holding: a built-in
+  /// simulated controller, or one the automation interface drives (M15 a2).
+  bool get nobodyReal {
+    final players = host.players;
+    return players.isNotEmpty && players.every((p) => p.simulated || p.scripted);
   }
 
   void _startSession() {
@@ -277,7 +291,11 @@ class LiveStats implements StatsService {
     _retry?.cancel();
     try {
       final done = _uploadedIds;
-      final pending = (await sessions()).where((f) => !done.contains(f.id) && f.path != _sessionPath).toList();
+      // A session nobody held a controller in never leaves this device, even
+      // with sharing on (M15 a2).
+      final pending = (await sessions())
+          .where((f) => !done.contains(f.id) && f.path != _sessionPath && f.summary['simulated'] != true)
+          .toList();
       for (final f in pending) {
         if (_state.consent != true) break;
         final error = await up.upload(f.summary);
@@ -301,7 +319,7 @@ class LiveStats implements StatsService {
     final files = await sessions();
     final done = _uploadedIds;
     final waiting = _state.consent == true
-        ? files.where((f) => !done.contains(f.id) && f.path != _sessionPath).length
+        ? files.where((f) => !done.contains(f.id) && f.path != _sessionPath && f.summary['simulated'] != true).length
         : 0;
     _set(_state.copyWith(saved: files.length, waiting: waiting, uploaded: done.length));
   }

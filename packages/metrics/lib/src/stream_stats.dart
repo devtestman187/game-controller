@@ -11,8 +11,10 @@ const maxStreamViewers = 8;
 
 /// The most series (stages, gauges, counters or facts) one viewer, and the
 /// host, keep: the pipeline and its quality numbers fit with room for a newer
-/// client's, and a bug can't grow the summary without bound.
-const maxStreamSeries = 32;
+/// client's, and a bug can't grow the summary without bound. Sixteen, not 32:
+/// with eight viewers the summary must stay under the PRD's 50 KB (M15 a2
+/// measured 89 KB at 32), and the pipeline's own series number fifteen.
+const maxStreamSeries = 16;
 
 /// The longest name a streaming series may have, as a stage name may be 32
 /// characters today.

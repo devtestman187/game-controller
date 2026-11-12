@@ -337,7 +337,7 @@ A session summary is the JSON file the host writes after a session (PRD v2 "What
 }
 ```
 
-A stage is summarised as `n` (samples), `median`, `p95` and `max` in **ms**, as a phone's stages are today; a gauge keeps the first 256 samples and is summarised as `n`, `mean`, `p95` and `max` in the series' own unit; a counter is the newest total since the session started; a fact is a short technical string (at most 24 characters). Each name is at most 32 characters and each viewer or the host keeps at most 32 of them, as a stage is capped today; a summary holds at most 8 viewers.
+A stage is summarised as `n` (samples), `median`, `p95` and `max` in **ms**, as a phone's stages are today; a gauge keeps the first 256 samples and is summarised as `n`, `mean`, `p95` and `max` in the series' own unit; a counter is the newest total since the session started; a fact is a short technical string (at most 24 characters). Each name is at most 32 characters and each viewer or the host keeps at most 16 of them (M15 a2 measured the summary at 89 KB with 32 and eight viewers full, over the PRD's 50 KB); a summary holds at most 8 viewers.
 
 ### Video stages (per viewer, ms)
 
@@ -395,3 +395,7 @@ Sampled every few seconds while a session runs; each reading is a gauge in its o
 | `sessionsAtOnce` | sessions running on the machine at that moment |
 
 A client feeds these through `SessionCollector` in `packages/metrics` (`streamViewer`, `streamStage`, `streamGauge`, `streamCounter`, `streamFact`, `streamResource`); it never writes the summary itself. A session that records nothing stream-related leaves `stream` out, and the report skips it.
+
+A viewer or the container's sampler sends them over the host's automation interface, `POST stats/stream` (M15 a2): one batched JSON body with `viewer`, `stages`, `gauges`, `counters`, `facts` and `resources`, landing in the live session's summary without an upload. [docs/automation.md](automation.md) has the body and a curl example. The call is off unless the host's automation interface is switched on.
+
+A session only simulated players joined — the automation interface's players, or a built-in simulated controller — carries `"simulated": true` in its summary, so it never counts as somebody's play, and the host never uploads it, with or without consent.

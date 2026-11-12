@@ -12,12 +12,20 @@ import 'web_socket_channel.dart';
 /// A [ChannelListener] for phones on the LAN: the WebSocket endpoint, and a
 /// plain page so a browser can check the firewall.
 final class WebSocketListener implements ChannelListener {
-  /// [preferredPort] is tried first, then any free port (0 asks for one).
-  /// [hostName] goes on the status page.
-  WebSocketListener({this.preferredPort = defaultPort, required this.hostName, LogSink? log}) : _log = log ?? noLog;
+  /// [preferredPort] is tried first, then any free port (0 asks for one),
+  /// unless [pinned] says this port or none (M15 a2: a script that needs the
+  /// port fails loudly instead of listening somewhere else). [hostName] goes
+  /// on the status page.
+  WebSocketListener({this.preferredPort = defaultPort, this.pinned = false, required this.hostName, LogSink? log})
+    : _log = log ?? noLog;
 
-  /// Port to try first. If it's taken, any free port is used.
+  /// Port to try first. If it's taken, any free port is used — unless
+  /// [pinned].
   final int preferredPort;
+
+  /// Whether [preferredPort] is the only port tried: a taken port fails the
+  /// start, so a launch that named a port hears about it.
+  final bool pinned;
 
   /// The host's name, as the status page shows it.
   final String hostName;
@@ -48,7 +56,7 @@ final class WebSocketListener implements ChannelListener {
     final attempts = <(InternetAddress, int)>[
       (InternetAddress.anyIPv6, preferredPort),
       (InternetAddress.anyIPv4, preferredPort),
-      if (preferredPort != 0) ...[(InternetAddress.anyIPv6, 0), (InternetAddress.anyIPv4, 0)],
+      if (!pinned && preferredPort != 0) ...[(InternetAddress.anyIPv6, 0), (InternetAddress.anyIPv4, 0)],
     ];
     Object? lastError;
     for (final (address, port) in attempts) {

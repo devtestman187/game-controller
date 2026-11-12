@@ -11,6 +11,7 @@ final class GamePlayer {
     this.local = false,
     this.mode = InputMode.none,
     this.simulated = false,
+    this.scripted = false,
     this.away = false,
     this.ownPlayer = false,
     this.character,
@@ -40,6 +41,10 @@ final class GamePlayer {
   /// input presses every button, so menus and pausing ignore it.
   final bool simulated;
 
+  /// A local player the automation interface drives (M15 a2): menus read it
+  /// as they read a phone's input, so a script can work every screen.
+  final bool scripted;
+
   /// True while this phone has dropped and the round still holds its slot
   /// (m12 bug 1107d): the rules keep its place and its held piece, but no
   /// input comes and the round waits for it for the host's grace. A player
@@ -66,12 +71,13 @@ final class GamePlayer {
       other.local == local &&
       other.mode == mode &&
       other.simulated == simulated &&
+      other.scripted == scripted &&
       other.away == away &&
       other.ownPlayer == ownPlayer &&
       other.character == character;
 
   @override
-  int get hashCode => Object.hash(id, number, nickname, local, mode, simulated, away, ownPlayer, character);
+  int get hashCode => Object.hash(id, number, nickname, local, mode, simulated, scripted, away, ownPlayer, character);
 }
 
 /// The most characters a nickname shows on the host (M14 design section 9):

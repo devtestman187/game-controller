@@ -32,8 +32,12 @@ List<Override> phoneHostOverrides({required party.HostDirectories directories}) 
   // there is no round to pause.
   party.hostAwayProvider.overrideWith((ref) => ref.watch(hostingProvider)?.away ?? const party.NeverAway()),
   // How this phone runs a game: the rate "Frame rate (test)" saves in Settings,
-  // which the host screens read when a round starts (m12 §0.5).
-  party.hostingSettingsProvider.overrideWith((ref) => hostingSettingsAt(ref.watch(hostingFrameRateProvider))),
+  // which the host screens read when a round starts (m12 §0.5). A rate the
+  // automation interface set comes first (M15 a2), as it does on the TV.
+  party.hostingSettingsProvider.overrideWith((ref) {
+    final automation = ref.watch(party.frameRateOverrideProvider);
+    return hostingSettingsAt(automation ?? ref.watch(hostingFrameRateProvider));
+  }),
   // A round on this phone starts with the "Get ready" beat, so thumbs find the
   // pad before the clock runs (m12-host-touch rule 3). The TV asks for none
   // (rule 6).

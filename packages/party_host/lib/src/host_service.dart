@@ -70,6 +70,10 @@ abstract class HostService {
   /// Analytics collection, the session files, consent and upload (M9).
   StatsService get stats;
 
+  /// The newest frame the running game published, as a viewer draws it, or
+  /// null between games (M15 a2: the automation interface's `GET state`).
+  FrameMessage? get latestFrame;
+
   /// Sounds the games ask for by name (PRD v2 S5), for the sound player.
   Stream<String> get gameSounds;
 
@@ -103,7 +107,9 @@ class LiveHostService implements HostService {
   /// [shareView] is false by default: this host's own screen shows the game
   /// unless the shell says the phones do (m12-joined-view §0.1).
   /// [monitor] reads the device's battery and heat (m12 §0.8); without one
-  /// the summary records neither.
+  /// the summary records neither. [pinnedPort] is the controller port a
+  /// launch named (`THUMBPARTY_PORT`, M15 a2): the host listens there or
+  /// fails loudly, never on another port.
   LiveHostService({
     required SharedPreferences prefs,
     required LogBuffer log,
@@ -114,6 +120,7 @@ class LiveHostService implements HostService {
     SessionUploader? uploader,
     HostDeviceMonitor? monitor,
     bool shareView = false,
+    int? pinnedPort,
   }) : _log = log.sink('host'),
        _logBuffer = log,
        _identity = identity,
@@ -132,7 +139,7 @@ class LiveHostService implements HostService {
       appVersion: identity.appVersion,
       // Phones reach this host on the LAN, and a phone its own player here (D1).
       listeners: [
-        LanListener(hostName: identity.defaultHostName, log: log.sink('host')),
+        LanListener(hostName: identity.defaultHostName, log: log.sink('host'), pinnedPort: pinnedPort),
         ?inProcess,
       ],
       // Saved, so phones reconnect without a code after the app restarts.
@@ -295,6 +302,9 @@ class LiveHostService implements HostService {
 
   @override
   StatsService get stats => _stats;
+
+  @override
+  FrameMessage? get latestFrame => _gameHost.latestFrame;
 
   @override
   Stream<String> get gameSounds => _gameHost.sounds;

@@ -10,6 +10,7 @@ import 'host_server.dart';
 import 'host_types.dart';
 import 'local_player.dart';
 import 'rtt.dart';
+import 'status_throttle.dart';
 
 /// The [GameHost] of the TV and Windows apps: the phones connected to a
 /// [HostServer], plus local players.
@@ -71,9 +72,7 @@ class ServerGameHost implements GameHost {
   final _stageWindows = <(String, String), RttWindow>{};
   final _sounds = StreamController<String>.broadcast();
   final _layouts = <String, GameLayoutMessage>{};
-  final _statuses = <String, StatusMessage>{};
-  final _statusSentMs = <String, int>{};
-  final _statusTimers = <String, Timer>{};
+  late final _statuses = StatusThrottle(nowMs: () => nowMs, send: server.send);
   List<GamePlayer> _lastPlayers = const [];
   int _nextLocal = 1;
 
@@ -98,6 +97,9 @@ class ServerGameHost implements GameHost {
   /// The rate of the view a game is running, in frames a second (m12 §0.4):
   /// the rate viewers were told. Null between games, and when not shared.
   int? get viewRateHz => _viewStart?.hz;
+
+  /// The newest frame a game published for viewers, or null between games (M15 a2).
+  FrameMessage? get latestFrame => _viewFrame;
 
   /// Everything games report, for the analytics collector.
   Stream<GameRecord> get records => _records.stream;
@@ -130,27 +132,7 @@ class ServerGameHost implements GameHost {
   @override
   void setStatus(String playerId, StatusMessage status) {
     if (_locals.containsKey(playerId)) return;
-    if (status.isHidden) {
-      _statuses.remove(playerId);
-    } else {
-      _statuses[playerId] = status;
-    }
-    final gap = 1000 ~/ StatusMessage.maxPerSecond;
-    final since = nowMs - (_statusSentMs[playerId] ?? -gap);
-    if (since >= gap) {
-      _sendStatus(playerId, status);
-    } else {
-      // Too soon: the newest one goes when the gap is up.
-      _statusTimers[playerId] ??= Timer(Duration(milliseconds: gap - since), () {
-        _statusTimers.remove(playerId);
-        _sendStatus(playerId, _statuses[playerId] ?? StatusMessage.hidden());
-      });
-    }
-  }
-
-  void _sendStatus(String playerId, StatusMessage status) {
-    _statusSentMs[playerId] = nowMs;
-    server.send(playerId, status);
+    _statuses.set(playerId, status);
   }
 
   /// Every delay sample, for the analytics collector.
@@ -174,7 +156,15 @@ class ServerGameHost implements GameHost {
             ownPlayer: c.isLocal,
           ),
       for (final l in _locals.values)
-        GamePlayer(id: l.id, number: l.number, nickname: l.nickname, local: true, mode: InputMode.keyboard),
+        GamePlayer(
+          id: l.id,
+          number: l.number,
+          nickname: l.nickname,
+          character: l.character,
+          local: true,
+          scripted: l.scripted,
+          mode: InputMode.keyboard,
+        ),
       ..._away.players,
     ]..sort((a, b) => a.number.compareTo(b.number));
     return list;
@@ -320,9 +310,16 @@ class ServerGameHost implements GameHost {
   }
 
   @override
-  LocalPlayer addLocalPlayer({String? nickname}) {
+  LocalPlayer addLocalPlayer({String? nickname, PlayerCharacter? character, bool scripted = false}) {
     final number = server.reserveLocalPlayer();
-    final player = LocalPlayer('local-${_nextLocal++}', number, nickname: nickname, onRemove: _removeLocal);
+    final player = LocalPlayer(
+      'local-${_nextLocal++}',
+      number,
+      nickname: nickname,
+      character: character,
+      scripted: scripted,
+      onRemove: _removeLocal,
+    );
     _locals[player.id] = player;
     _checkPlayers();
     return player;
@@ -349,7 +346,7 @@ class ServerGameHost implements GameHost {
     for (final p in now) {
       if (p.local || p.away || before.contains(p.id)) continue;
       if (_layouts[p.id] case final layout?) server.send(p.id, layout);
-      if (_statuses[p.id] case final status?) _sendStatus(p.id, status);
+      if (_statuses.statusOf(p.id) case final status?) _statuses.sendNow(p.id, status);
       _sendView(p.id);
     }
     _lastPlayers = now;
@@ -361,8 +358,7 @@ class ServerGameHost implements GameHost {
     if (_away.end(playerId, AwayEnd.wentOnWithout)) _checkPlayers();
   }
 
-  /// A viewer that just (re)paired mid-game gets the view's start, its latest
-  /// frame and the aways before any later frame (m12 §2).
+  /// A viewer that just (re)paired gets the start, the latest frame and the aways (m12 §2).
   void _sendView(String controllerId) {
     final start = _viewStart;
     if (start == null) return;
@@ -374,17 +370,14 @@ class ServerGameHost implements GameHost {
     }
   }
 
-  /// The whole seconds left of the host's away grace at [endsAtMs], rounded up
-  /// like the wait's own count, and 0 once it is over.
+  /// The whole seconds left of the host's away grace at [endsAtMs], rounded up like the wait's own count.
   int _secondsToGo(int endsAtMs) {
     final ms = endsAtMs - nowMs;
     return ms <= 0 ? 0 : (ms / Duration.millisecondsPerSecond).ceil();
   }
 
   Future<void> dispose() async {
-    for (final t in _statusTimers.values) {
-      t.cancel();
-    }
+    _statuses.dispose();
     _away.dispose();
     await _serverSub.cancel();
     await _messagesSub.cancel();

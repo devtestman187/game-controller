@@ -13,6 +13,8 @@ Two scripts replace the most repeated manual steps:
 | [`tools/emulator.sh`](../tools/emulator.sh) | Runs the phone app on the Android emulator: install with cleared data, connect to a TV app, list what's on screen, tap, screenshot | about a minute to boot |
 | [`tools/smoke.sh`](../tools/smoke.sh) | Pairs a simulated controller (and with `--emulator` the phone app) with the development TV app and checks each step against the clients' and the app's own logs | about 30 seconds, a minute longer with the frames step (a few minutes with `--emulator`) |
 | [`tools/stream.sh`](../tools/stream.sh) | Builds the streaming session image and runs sessions on the Linux side of WSL: start, status, logs, address, stop | a few minutes for the image, about 5 seconds for a session to be ready |
+| [`tools/automation.dart`](../tools/automation.dart) | Calls a host's automation interface from a script: status, players, input, start and stop a game, settings, state, screenshot, the latency card, the stream measurements | instant |
+| [`tools/demo-run.sh`](../tools/demo-run.sh) | The worked example: a Bumper Round with two simulated players, a screenshot and the session summary | a few seconds |
 | [`tools/audio/`](../tools/audio/README.md) | `render.py`, which generates the game's sound effects, and how to encode them | a few seconds |
 
 They're plain bash (and one PowerShell script for the Windows window) with no paths tied to one computer. `check.sh`, `review.sh`, `commit-job.sh`, `release.sh` and `emulator.sh` work the same on Windows (Git Bash), macOS and Linux; `tv-dev.sh` and `tv-window.ps1` are for Windows, where the desktop TV app runs, and so is `smoke.sh`, which drives them. Each runs from any folder: the scripts move to the repository root themselves. They're written so a person, Claude Code or another AI agent can use them the same way.
@@ -220,6 +222,28 @@ Runs the TV app as a streamed session: the app draws into a virtual screen insid
 - **Exit code:** 0 ok, 1 the step failed (with the log or the reason), 2 bad use (unknown command or option, a bad name, port base or distro).
 - **What it doesn't do:** create or stop sessions from the app (that is server work), delete the image (`docker rmi tp-session:latest` in the distro), or open the player in a browser. It prints the address; opening it is yours.
 
+## The automation interface: tools/automation.dart
+
+Every host build has one small HTTP API, off unless a launch switches it on (M15 a2). [docs/automation.md](automation.md) has the calls, a curl example for each and how each host type switches it on; these are the scripts:
+
+```bash
+tools/tv-dev.sh start --automation   # a dev TV app with the interface on (loopback only)
+dart tools/automation.dart status
+dart tools/automation.dart players --nickname Ann
+dart tools/automation.dart input --player local-1 --buttons a
+dart tools/automation.dart start --game arena --mode bumper
+dart tools/automation.dart screenshot --out shot.png
+dart tools/automation.dart stop
+tools/demo-run.sh                    # all of it, against a host with it switched on
+```
+
+- **Off by default**: `THUMBPARTY_AUTOMATION=1` in a desktop host's environment, or `--dart-define=AUTOMATION=true` for any build (the phone has only the define). A store build never turns it on.
+- **Loopback only** unless `THUMBPARTY_AUTOMATION_BIND` says otherwise, and a bind beyond this machine needs `THUMBPARTY_AUTOMATION_TOKEN`; the token goes in `x-automation-token` (or `Authorization: Bearer …`).
+- **`--url` and `--token`**, or `THUMBPARTY_AUTOMATION_URL` and `THUMBPARTY_AUTOMATION_TOKEN`, point the client at another address (a container, another PC). `--help` lists the calls.
+- **Simulated players** are local players the interface adds: they work the menus and the games as a phone does, and a session only they played is marked and never uploaded.
+- **The debug start flags are deprecated, not gone**: `START_GAME` and `FRAME_RATE_HZ` now go through the same code paths as `POST game/start` and `POST settings` (its `frameRateHz`); `tools/tv-dev.sh start --game|--hz` still passes them, and `SHARE_VIEW` is still a build define.
+- **Exit code**: 0 the host answered ok, 1 it refused (the refusal is printed), 2 bad use.
+
 ## Checking on screens: the TV app and the phone app
 
 Automated tests can't tell whether something looks right or feels right. These scripts make the hands-on check quick: the development TV app on Windows, the phone app on the Android emulator, connected to each other, with screenshots of both.
@@ -235,6 +259,7 @@ Automated tests can't tell whether something looks right or feels right. These s
 ```bash
 tools/tv-dev.sh start                 # build and start; prints port and code
 tools/tv-dev.sh start --game arena --hz 30   # start straight in a game, at 30 frames a second
+tools/tv-dev.sh start --automation   # and switch the automation interface on (loopback only)
 tools/tv-dev.sh status
 tools/tv-dev.sh window click 707,67   # Play (positions as in a screenshot of the 1280x720 window)
 tools/tv-dev.sh window key space      # keys: left right up down space enter esc tab backspace a-z 0-9
@@ -258,7 +283,8 @@ Log:     C:\Users\...\Temp\thumbparty-dev\tv.log
 - `window ...` passes everything on to `tools/tv-window.ps1`, which can also be run from PowerShell: `powershell -NoProfile -ExecutionPolicy Bypass -File tools\tv-window.ps1 shot tv.png`.
 - On Windows the keyboard plays as another player: arrows to move, Space for A, X and Z to rotate.
 - Debug runs save stats to a `sessions-debug` folder, so test sessions don't mix with real ones.
-- `start --game arena|shape_race --hz 20|30|60` starts the app in a game instead of on the home screen, at that frame rate (M12's measuring runs; `tools/tv-dev.sh status` still prints the code and port). Debug builds only: a release build ignores both. They apply to a new start, so when a copy is already running `start` says to stop it first.
+- `start --game arena|shape_race --hz 20|30|60` starts the app in a game instead of on the home screen, at that frame rate (M12's measuring runs; `tools/tv-dev.sh status` still prints the code and port). Debug builds only: a release build ignores both. They apply to a new start, so when a copy is already running `start` says to stop it first. Both flags are deprecated in favour of the automation interface's `POST game/start` and `POST settings` (M15 a2), which open the same screen and use the same settings path.
+- `start --automation` passes `--dart-define=AUTOMATION=true`, switching the automation interface on for that run; it listens on `127.0.0.1:8787` unless the environment says otherwise. [docs/automation.md](automation.md) has the calls.
 - Exit codes: 0 ok, 1 not running or didn't start (the end of the log is printed), 2 bad use.
 
 ### The phone app on the Android emulator: tools/emulator.sh

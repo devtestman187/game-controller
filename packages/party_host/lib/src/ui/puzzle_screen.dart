@@ -16,6 +16,7 @@ import '../controls.dart';
 import '../local_player_source.dart';
 import '../look_providers.dart';
 import '../night/party_night.dart';
+import '../automation/automation_providers.dart';
 import '../night/round_results.dart';
 import '../players_away.dart';
 import '../providers.dart';
@@ -171,14 +172,14 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
       _result = r;
       _times = times;
     });
+    ref.read(automationResultProvider.notifier).record(r.round);
     // A new best time is the results' moment (T15): its cue plays once, with
     // the chip the results card wears.
     if (times.values.any((time) => time.isRecord)) {
       ref.read(soundPlayerProvider).play(SoundKey.newRecord.eventName);
     }
     // A finished picture celebrates for a moment before the results card comes
-    // (design 3a); a round that ran out of time has nothing to celebrate, so
-    // its card comes at once, as it always did.
+    // (design 3a); a round that ran out of time has nothing to celebrate, so its card comes at once.
     if (r.sides.values.any((side) => side.finished)) {
       _cardTimer = Timer(const Duration(milliseconds: Celebration.totalMs), _showCard);
     } else {

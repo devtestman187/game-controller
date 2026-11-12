@@ -75,10 +75,28 @@ final sessionUploaderProvider = Provider<SessionUploader?>((ref) => null);
 /// the smoke check keep their viewers.
 final shareViewProvider = Provider<bool>((ref) => false);
 
+/// The frame rate the automation interface set for this run, or null when it didn't (M15 a2).
+final frameRateOverrideProvider = NotifierProvider<FrameRateOverrideNotifier, int?>(FrameRateOverrideNotifier.new);
+
+/// Keeps [frameRateOverrideProvider]: null until automation sets a rate.
+class FrameRateOverrideNotifier extends Notifier<int?> {
+  @override
+  int? build() => null;
+
+  /// Runs the next round at [hz] frames a second.
+  void set(int hz) => state = hz;
+}
+
 /// How this host runs a game (m12 §3): the frame rate its rounds send frames
-/// at. A debug build's start option decides it; the phone app overrides it
+/// at. The automation interface's rate decides it when it set one (M15 a2);
+/// otherwise a debug build's start option does; the phone app overrides it
 /// with its saved "Frame rate (test)" setting.
-final hostingSettingsProvider = Provider<HostingSettings>((ref) => HostingSettings.fromEnvironment());
+final hostingSettingsProvider = Provider<HostingSettings>(
+  (ref) => switch (ref.watch(frameRateOverrideProvider)) {
+    final hz? => HostingSettings.fromFrameRate(hz),
+    null => HostingSettings.fromEnvironment(),
+  },
+);
 
 /// How long a round is held for the "Get ready" beat before its first step
 /// (m12-host-touch rule 3): the rules and the round's clock stand still while
@@ -164,6 +182,11 @@ final hostPadProvider = Provider<HostPad>((ref) => (pxPerMm: phonePxPerMm, rects
 /// which the game must not meet.
 typedef HostPad = ({double pxPerMm, List<Rect> Function(Size box) rects});
 
+/// The controller port a launch pins, or null for any free one (M15 a2: the
+/// `THUMBPARTY_PORT` variable). The shell overrides it; a test host keeps the
+/// free port it always had.
+final controllerPortProvider = Provider<int?>((ref) => null);
+
 /// The host service and everything it runs, built from the providers above so
 /// an app only supplies its own inputs.
 final hostServiceProvider = Provider<HostService>((ref) {
@@ -176,6 +199,7 @@ final hostServiceProvider = Provider<HostService>((ref) {
     uploader: ref.watch(sessionUploaderProvider),
     shareView: ref.watch(shareViewProvider),
     monitor: ref.watch(hostDeviceMonitorProvider),
+    pinnedPort: ref.watch(controllerPortProvider),
   );
   unawaited(service.start());
   ref.onDispose(service.dispose);

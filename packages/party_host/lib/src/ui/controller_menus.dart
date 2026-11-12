@@ -144,10 +144,13 @@ class _ControllerMenusState extends ConsumerState<ControllerMenus> {
     }
     final host = ref.read(gameHostProvider);
     // A phone that is away keeps no menu layout (m12 bug 1107d): it would be
-    // sent again on rejoin, over the game's own.
+    // sent again on rejoin, over the game's own. A local player works the
+    // menus only when the automation interface drives it (M15 a2); a
+    // keyboard or touch player is the screens' own business, and a demo
+    // simulated controller presses everything at once.
     final players = [
       for (final p in host.players)
-        if (!p.simulated && !p.local && !p.away) p,
+        if (!p.simulated && !p.away && (!p.local || p.scripted)) p,
     ];
     _showLayout(host, players, controls.layout ?? menuLayout);
     for (final p in players) {

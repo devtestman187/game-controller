@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:metrics/metrics.dart';
+
 import '../session_uploader.dart';
 import '../stats_service.dart';
 import '../stats_state.dart';
@@ -20,6 +22,11 @@ class FakeStats implements StatsService {
 
   /// How many times the sessions were exported.
   int exports = 0;
+
+  /// The running session the automation's stats calls go to, or null when
+  /// the test didn't give one (M15 a2).
+  @override
+  SessionCollector? live;
 
   /// Replaces the state and tells the listeners.
   void emit(StatsState s) {

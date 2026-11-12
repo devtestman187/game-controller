@@ -20,6 +20,9 @@ Future<void> main() async {
   final shaders = await ToyShaders.load().timeout(toyShaderLoadTimeout, onTimeout: () => ToyShaders.none);
   // The fonts' licences, for the licence page only, so nothing waits for them.
   unawaited(registerToyFontLicenses());
+  // What this launch asked automation for (M15 a2): its environment, and this
+  // build's `AUTOMATION` define. Off unless one of them says so.
+  final automation = tvAutomationSettings();
   // The shell's own inputs for the host: its identity, its folders and its
   // uploader come from `tv_host_setup.dart`, its local player from the
   // keyboard player on a desktop (M12 design §2.6).
@@ -35,6 +38,9 @@ Future<void> main() async {
         // it, so a measuring run needs only the TV and a joined phone (m12
         // §2.9).
         shareViewProvider.overrideWithValue(shareViewEnabled()),
+        // The automation interface's switch and its pinned controller port.
+        automationSettingsProvider.overrideWithValue(automation),
+        controllerPortProvider.overrideWithValue(automation.controllerPort),
         // This is the TV (M13): the TV's type and sizes, and the shader it
         // just loaded.
         toyTvProvider.overrideWithValue(true),
@@ -64,14 +70,18 @@ class TvTestApp extends ConsumerWidget {
         shortcuts: hostActivateShortcuts,
         child: MaterialApp(
           title: TvText.name,
-          // The phones work every screen like the remote (PRD v2 T21).
-          builder: (context, child) => ControllerMenus(child: child!),
+          // The phones work every screen like the remote (PRD v2 T21), and the
+          // automation shell takes the frame a screenshot captures and draws
+          // the latency card over every route (M15 a2).
+          builder: (context, child) => AutomationShell(child: ControllerMenus(child: child!)),
           debugShowCheckedModeBanner: false,
           theme: toyTheme(look),
           // A page's push or pop works the palette out again (design D1),
           // never a dialog's.
           navigatorObservers: [ref.watch(toyLookRouteObserverProvider)],
-          home: debugStartScreen(game) ?? const HomeScreen(),
+          // A script's `POST game/start` pushes the round here (M15 a2); a
+          // debug start flag shows its game as the home, as it always did.
+          home: AutomationGate(child: debugStartScreen(game) ?? const HomeScreen()),
         ),
       ),
     );

@@ -1,0 +1,104 @@
+import 'dart:async';
+
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:game_kit/game_kit.dart';
+
+import '../providers.dart';
+import 'automation_game_start.dart';
+import 'automation_server.dart';
+import 'automation_settings.dart';
+import 'host_automation.dart';
+import 'screen_frames.dart';
+
+/// How the automation interface is switched on (M15 a2): the launch's
+/// settings, from the shell that reads its environment or its build define.
+/// Off by default, and inert until a launch says otherwise, so a store build
+/// carries the code and never runs it.
+final automationSettingsProvider = Provider<AutomationSettings>((ref) => const AutomationSettings());
+
+/// The host's own frame, for `GET screenshot` (M15 a2): the shell wraps its
+/// app in [ScreenFrames.boundary], and the automation reads the picture here.
+final screenFramesProvider = Provider<ScreenFrames>((ref) => ScreenFrames());
+
+/// The round a script asked for, or null when the host is home (M15 a2). The
+/// automation gate watches it: a value opens the round, as the menus would,
+/// and clearing it comes home.
+final automationLaunchProvider = NotifierProvider<AutomationLaunchNotifier, AutomationGameStart?>(
+  AutomationLaunchNotifier.new,
+);
+
+/// Keeps [automationLaunchProvider]: set by `POST game/start`, cleared by
+/// `POST game/stop` or by the round's own way out.
+class AutomationLaunchNotifier extends Notifier<AutomationGameStart?> {
+  @override
+  AutomationGameStart? build() => null;
+
+  /// Sends the host to [start]'s round.
+  void start(AutomationGameStart start) => state = start;
+
+  /// Brings the host home.
+  void stop() {
+    if (state != null) state = null;
+  }
+}
+
+/// Whether the latency test card covers the screen (M15 a2): `POST
+/// probe/flash` shows it, and a press times from its next flip.
+final automationProbeProvider = NotifierProvider<AutomationProbeNotifier, bool>(AutomationProbeNotifier.new);
+
+/// Keeps [automationProbeProvider]: off until a script flashes the card.
+class AutomationProbeNotifier extends Notifier<bool> {
+  @override
+  bool build() => false;
+
+  /// Shows the card, or hides it.
+  void show({required bool on}) {
+    if (state != on) state = on;
+  }
+}
+
+/// The result of the round that ended last, as `GET state` reports it (M15
+/// a2). The games record it here when their result card comes up; it clears
+/// when the next round starts.
+final automationResultProvider = NotifierProvider<AutomationResultNotifier, RoundResult?>(AutomationResultNotifier.new);
+
+/// Keeps [automationResultProvider]: the last round's result, or null.
+class AutomationResultNotifier extends Notifier<RoundResult?> {
+  @override
+  RoundResult? build() => null;
+
+  /// Records the round that just ended.
+  void record(RoundResult result) => state = result;
+
+  /// Forgets the last round's result as a new round starts.
+  void clear() {
+    if (state != null) state = null;
+  }
+}
+
+/// Answers the first-run stats question when the launch did (M15 a2): a run
+/// with `THUMBPARTY_STATS_CONSENT=no` has no prompt over its screen, and the
+/// session is still recorded on the host. Nothing here answers yes: sharing
+/// stays a person's choice, so a launch only ever says no.
+final automationConsentProvider = Provider<void>((ref) {
+  final answer = ref.watch(automationSettingsProvider).statsConsent;
+  if (answer == null) return;
+  // After the frame that reads this: the answer is a change to another
+  // provider, and the shell is built inside a build.
+  Future.microtask(() => ref.read(statsServiceProvider).setConsent(answer));
+});
+
+/// The automation interface's server (M15 a2). It listens while the app shows
+/// anything, since the automation gate watches this, and stops with the
+/// container; switched off ([AutomationSettings.enabled] false) it does
+/// nothing at all.
+final automationServerProvider = Provider<AutomationServer>((ref) {
+  final server = AutomationServer(
+    settings: ref.watch(automationSettingsProvider),
+    api: HostAutomation(ref),
+    log: ref.watch(logProvider).sink('automation'),
+  );
+  ref.onDispose(server.stop);
+  unawaited(server.start());
+  return server;
+});

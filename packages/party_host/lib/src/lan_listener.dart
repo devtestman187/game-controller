@@ -11,14 +11,19 @@ import 'package:protocol/protocol.dart';
 /// pointed at another port.
 class LanListener implements ChannelListener {
   /// [hostName] goes on the listener's status page, and [log] gets its
-  /// bind failures, as before (PRD T6).
-  LanListener({required this.hostName, this.log});
+  /// bind failures, as before (PRD T6). [pinnedPort] is the port a launch
+  /// named (`THUMBPARTY_PORT`, M15 a2): it listens there or fails loudly,
+  /// never on another.
+  LanListener({required this.hostName, this.log, this.pinnedPort});
 
   /// The host's name, as the status page shows it.
   final String hostName;
 
   /// Where each listener's lines go; null logs nothing.
   final LogSink? log;
+
+  /// The port to listen on and no other, or null to take any free one.
+  final int? pinnedPort;
 
   WebSocketListener? _inner;
   int? _lastPort;
@@ -28,7 +33,13 @@ class LanListener implements ChannelListener {
 
   @override
   Future<void> start(void Function(MessageChannel channel) onChannel) async {
-    final inner = WebSocketListener(preferredPort: _lastPort ?? defaultPort, hostName: hostName, log: log);
+    final pinned = pinnedPort;
+    final inner = WebSocketListener(
+      preferredPort: pinned ?? _lastPort ?? defaultPort,
+      pinned: pinned != null,
+      hostName: hostName,
+      log: log,
+    );
     _inner = inner;
     try {
       await inner.start(onChannel);

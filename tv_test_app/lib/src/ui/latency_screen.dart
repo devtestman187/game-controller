@@ -32,20 +32,7 @@ class LatencyScreen extends ConsumerWidget {
     return CallbackShortcuts(
       bindings: {const SingleActivator(LogicalKeyboardKey.escape): () => Navigator.of(context).maybePop()},
       child: Scaffold(
-        appBar: AppBar(
-          title: const Text(TvText.latency),
-          actions: [
-            Padding(
-              padding: const EdgeInsets.only(right: ToySizes.space16),
-              child: HostButton(
-                label: TvText.saveLog,
-                icon: Icons.save_alt,
-                autofocus: true,
-                onPressed: () => saveLog(context, ref),
-              ),
-            ),
-          ],
-        ),
+        appBar: AppBar(title: const Text(TvText.latency), actions: _actions(context, ref)),
         body: SafeArea(
           child: ListView(
             padding: const EdgeInsets.all(ToySizes.space8),
@@ -76,6 +63,28 @@ class LatencyScreen extends ConsumerWidget {
       ),
     );
   }
+
+  /// The bar's buttons: the automation interface's test card (M15 a2: it
+  /// covers the screen, and a tap hides it again) and the log's own file.
+  List<Widget> _actions(BuildContext context, WidgetRef ref) => [
+    Padding(
+      padding: const EdgeInsets.only(right: ToySizes.space16),
+      child: HostButton(
+        label: TvText.testCard,
+        icon: Icons.flash_on,
+        onPressed: () => ref.read(automationProbeProvider.notifier).show(on: true),
+      ),
+    ),
+    Padding(
+      padding: const EdgeInsets.only(right: ToySizes.space16),
+      child: HostButton(
+        label: TvText.saveLog,
+        icon: Icons.save_alt,
+        autofocus: true,
+        onPressed: () => saveLog(context, ref),
+      ),
+    ),
+  ];
 }
 
 /// Saves the log and says where it went.

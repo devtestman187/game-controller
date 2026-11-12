@@ -17,6 +17,9 @@ abstract final class HostText {
   // The title bar.
   static const back = 'Back';
 
+  // A game started without a phone (M15 a2).
+  static const waitingForController = 'Waiting for a controller…';
+
   // The game picker.
   static const playTitle = 'Play';
   static const shapeRace = 'Shape Race';

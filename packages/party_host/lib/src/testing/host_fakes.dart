@@ -60,6 +60,10 @@ class FakeHostService implements HostService {
   @override
   bool shareView = false;
 
+  /// The newest frame a game published, read from the fake game host (M15 a2).
+  @override
+  FrameMessage? get latestFrame => gameHost.frames.lastOrNull;
+
   /// Haptic events the game host sent: (event, player ID).
   final haptics = <(HapticEventMessage, String?)>[];
 
@@ -220,7 +224,15 @@ class FakeGameHost implements GameHost {
         away: away.contains(c.controllerId),
       ),
     for (final l in locals.values)
-      GamePlayer(id: l.id, number: l.number, nickname: l.nickname, local: true, mode: InputMode.keyboard),
+      GamePlayer(
+        id: l.id,
+        number: l.number,
+        nickname: l.nickname,
+        character: l.character,
+        local: true,
+        scripted: l.scripted,
+        mode: InputMode.keyboard,
+      ),
   ]..sort((a, b) => a.number.compareTo(b.number));
 
   @override
@@ -341,12 +353,14 @@ class FakeGameHost implements GameHost {
   void setStatus(String playerId, StatusMessage status) => statuses[playerId] = status;
 
   @override
-  LocalPlayer addLocalPlayer({String? nickname}) {
+  LocalPlayer addLocalPlayer({String? nickname, PlayerCharacter? character, bool scripted = false}) {
     final n = players.fold(0, (a, p) => p.number > a ? p.number : a) + 1;
     final p = LocalPlayer(
       'local-$n',
       n,
       nickname: nickname,
+      character: character,
+      scripted: scripted,
       onRemove: (p) {
         locals.remove(p.id);
         _changes.add(players);

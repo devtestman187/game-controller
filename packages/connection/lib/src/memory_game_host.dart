@@ -155,7 +155,7 @@ class MemoryGameHost implements GameHost {
   void setStatus(String playerId, StatusMessage status) => statuses[playerId] = status;
 
   @override
-  LocalPlayer addLocalPlayer({String? nickname}) {
+  LocalPlayer addLocalPlayer({String? nickname, PlayerCharacter? character, bool scripted = false}) {
     final used = {for (final p in _players.values) p.number};
     var n = 1;
     while (used.contains(n)) {
@@ -165,13 +165,25 @@ class MemoryGameHost implements GameHost {
       'local-${_nextLocal++}',
       n,
       nickname: nickname,
+      character: character,
+      scripted: scripted,
       onRemove: (p) {
         _locals.remove(p.id);
         removePlayer(p.id);
       },
     );
     _locals[player.id] = player;
-    setPlayer(GamePlayer(id: player.id, number: n, nickname: nickname, local: true, mode: InputMode.keyboard));
+    setPlayer(
+      GamePlayer(
+        id: player.id,
+        number: n,
+        nickname: nickname,
+        character: character,
+        local: true,
+        scripted: scripted,
+        mode: InputMode.keyboard,
+      ),
+    );
     return player;
   }
 }

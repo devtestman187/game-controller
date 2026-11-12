@@ -8,7 +8,7 @@ import 'package:game_kit/game_kit.dart';
 import 'package:test_game/test_game.dart';
 import 'package:toy_look/toy_look.dart';
 
-import '../abandon_signal.dart';
+import '../automation/automation_providers.dart';
 import '../controls.dart';
 import '../local_player_source.dart';
 import '../night/party_night.dart';
@@ -19,9 +19,9 @@ import '../text/host_text.dart';
 import '../text/night_text.dart';
 import 'arena_map_choice.dart';
 import 'arena_results.dart';
+import 'arena_round_field.dart';
 import 'arena_waiting_card.dart';
 import 'controller_menus.dart';
-import 'game_debug_overlay.dart';
 import 'lobby_music.dart';
 import 'night_reveal_screen.dart';
 import 'night_scoreboard_screen.dart';
@@ -49,10 +49,13 @@ final _debugKeys = {
 /// card (codes, the modes, the maps and Robo's level, and each phone's ready),
 /// the field under [Pausable] with its 3-2-1, and the Bumper Round's results.
 class GameScreen extends ConsumerStatefulWidget {
-  const GameScreen({super.key, this.game});
+  const GameScreen({super.key, this.game, this.autoStart = false});
 
   /// The game to run. Tests pass one in.
   final ArenaGame? game;
+
+  /// Whether the round starts at once, without a press on the card (M15 a2).
+  final bool autoStart;
 
   @override
   ConsumerState<GameScreen> createState() => _GameScreenState();
@@ -115,6 +118,9 @@ class _GameScreenState extends ConsumerState<GameScreen> {
   /// round starts, since the night counts the round only when it ends.
   List<String> _roundTags = const [];
 
+  /// Waits for the maps before an automatic start (M15 a2).
+  ProviderSubscription<AsyncValue<ArenaMapLibrary>>? _mapsSub;
+
   @override
   void initState() {
     super.initState();
@@ -132,10 +138,30 @@ class _GameScreenState extends ConsumerState<GameScreen> {
       },
     );
     _music = ref.read(lobbyMusicProvider)..roundScreenOpened(this, arena: true);
+    if (widget.autoStart) _autoStart();
+  }
+
+  /// Starts the round once its map library is there (M15 a2), on the map the host's settings picked.
+  void _autoStart() {
+    void start() {
+      if (mounted && _stage == _Stage.waiting) _start(ref.read(arenaSettingsProvider).mapId);
+    }
+
+    if (ref.read(arenaMapLibraryProvider).hasValue) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => start());
+      return;
+    }
+    _mapsSub = ref.listenManual(arenaMapLibraryProvider, (_, next) {
+      if (!next.hasValue) return;
+      _mapsSub?.close();
+      _mapsSub = null;
+      start();
+    });
   }
 
   @override
   void dispose() {
+    _mapsSub?.close();
     _music.roundScreenClosed(this);
     _keyboard.dispose();
     _againFocus.dispose();
@@ -198,6 +224,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     if (night != null) ref.read(partyNightProvider.notifier).usedMap(map.id);
     _roundTags = nightRoundTags(night);
     _log('Round started: $arenaGame, ${mode.name}, ${map.name}');
+    ref.read(automationResultProvider.notifier).clear();
     setState(() {
       _stage = _Stage.playing;
       _result = null;
@@ -223,6 +250,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     if (last == null) return;
     _log('Results: ${HostText.playAgain}');
     final game = ArenaGame(map: last.map, mode: last.mode, random: _random, pointsScale: last.pointsScale);
+    ref.read(automationResultProvider.notifier).clear();
     setState(() {
       _stage = _Stage.playing;
       _result = null;
@@ -250,6 +278,8 @@ class _GameScreenState extends ConsumerState<GameScreen> {
       _stage = _Stage.results;
       _result = result;
     });
+    // The automation interface reports the round it started (M15 a2).
+    ref.read(automationResultProvider.notifier).record(result);
     ref
         .read(gameHostProvider)
         .showResults(
@@ -316,34 +346,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
               // (m10.2 device test).
               skipTraversal: true,
               onKeyEvent: _onKey,
-              child: Scaffold(
-                body: SafeArea(
-                  child: switch (_stage) {
-                    _Stage.waiting => ArenaWaitingCard(
-                      bumperOnly: night != null,
-                      surpriseFirst: night != null,
-                      onStart: _start,
-                    ),
-                    // The results stand over the field, never in its place: a
-                    // joined phone keeps the round's last frame under its card,
-                    // so the session must not end (M14 f1, r5 finding 1).
-                    _Stage.playing || _Stage.results => Stack(
-                      children: [
-                        _field(),
-                        if (_stage == _Stage.results)
-                          ArenaResults(
-                            result: _result!,
-                            night: night != null,
-                            againFocus: _againFocus,
-                            onAgain: _again,
-                            onChangeMode: _changeMode,
-                            onNext: _next,
-                          ),
-                      ],
-                    ),
-                  },
-                ),
-              ),
+              child: Scaffold(body: SafeArea(child: _body(night != null))),
             ),
           ),
         ),
@@ -351,46 +354,37 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     );
   }
 
-  /// The field, under [Pausable]: Start pauses, the host's going away and a
-  /// phone the round waits for hold it, and its 3-2-1 runs on the TV too
-  /// (design section 8).
-  Widget _field() {
-    final nobody = ref.watch(gamePlayersProvider.select((p) => p.isEmpty));
-    final game = _game;
-    if (game == null) return const SizedBox.shrink();
-    return Pausable(
-      // Start pauses a round that is on alone: the results are no round (m12
-      // §2.10), though the field stays drawn under them (M14 f1).
-      enabled: _stage == _Stage.playing,
-      beat: Pausable.ready,
-      builder: (context, paused) => Stack(
-        children: [
-          ArenaView(
-            // A new round is a new field: Play again starts from the top.
-            key: ObjectKey(game),
+  /// The screen's stage ([night] tells the cards a night is on).
+  Widget _body(bool night) => switch (_stage) {
+    _Stage.waiting => ArenaWaitingCard(bumperOnly: night, surpriseFirst: night, onStart: _start),
+    // The results stand over the field, never in its place: a joined phone
+    // keeps the round's last frame under its card, so the session must not end (M14 f1, r5 finding 1).
+    _Stage.playing || _Stage.results => Stack(
+      children: [
+        if (_game case final game?)
+          ArenaRoundField(
             game: game,
-            host: ref.read(gameHostProvider),
-            settings: _hosting,
-            roboLevel: ref.watch(arenaSettingsProvider.select((s) => s.roboLevel)),
+            playing: _stage == _Stage.playing,
+            debug: _debug,
+            hosting: _hosting,
             roundTags: _roundTags,
+            keyboardAvailable: _keyboard.available,
             onEvent: _onEvent,
             onClock: _clocked,
             onFinished: _finished,
-            paused: paused,
-            abandon: ref.read(hostAbandonProvider),
           ),
-          if (nobody)
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: arenaNoteBottomPx,
-              child: Center(child: ArenaNote(_keyboard.available ? HostText.noControllerKeys : HostText.noController)),
-            ),
-          if (_debug) const Positioned(top: debugOverlayTopPx, left: ToySizes.space12, child: DebugOverlay()),
-        ],
-      ),
-    );
-  }
+        if (_stage == _Stage.results)
+          ArenaResults(
+            result: _result!,
+            night: night,
+            againFocus: _againFocus,
+            onAgain: _again,
+            onChangeMode: _changeMode,
+            onNext: _next,
+          ),
+      ],
+    ),
+  };
 
   /// Each frame of the Bumper Round: its clock, for the music's tempo (M14
   /// design section 7). The race has no clock, so it says nothing and its

@@ -299,6 +299,22 @@ void main() {
     expect((await stats.sessions()), hasLength(1), reason: 'still kept on the TV');
   });
 
+  test('a session only the automation played is marked, kept and never uploaded', () async {
+    final stats = await startStats(consent: true);
+    final robo = host.addLocalPlayer(nickname: 'Robo', scripted: true);
+    await waitFor(() => stats.session != null);
+    expect(stats.session!.isSimulated, isTrue, reason: 'nobody held a controller');
+
+    robo.remove();
+    await waitFor(() => stats.session == null, timeout: const Duration(seconds: 2));
+    await stats.uploadNow();
+    expect(uploader.uploaded, isEmpty, reason: 'a script\'s play is nobody\'s play, so it never leaves the host');
+    expect(stats.state.waiting, 0, reason: 'and it waits in no queue');
+    final saved = await stats.sessions();
+    expect(saved, hasLength(1), reason: 'the measurements are still kept, as the brief asks');
+    expect(saved.single.summary['simulated'], isTrue, reason: 'the summary says why it is not uploaded');
+  });
+
   test('rounds on an old phone that cannot show the prompt do not delay it on the updated phone', () async {
     // The M9 device test: the same iPhone on 0.8.0 for 6 rounds, then on 0.9.0.
     final stats = await startStats(consent: false);

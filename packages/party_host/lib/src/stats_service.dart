@@ -1,3 +1,5 @@
+import 'package:metrics/metrics.dart';
+
 import 'stats_state.dart';
 
 /// A saved session summary: one JSON file on the host (PRD v2 T17).
@@ -23,6 +25,10 @@ abstract class StatsService {
 
   /// Fires on every change to [state].
   Stream<StatsState> get changes;
+
+  /// The running session's collector, or null when no session is running
+  /// (M15 a2: the automation interface's stats ingest and `stats/session`).
+  SessionCollector? get live;
 
   /// Saved sessions, newest first (PRD v2 T18).
   Future<List<SessionFile>> sessions();

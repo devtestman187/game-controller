@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:party_host/party_host.dart' as party;
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'src/host/automation_build.dart';
 import 'src/host/host_overrides.dart';
 import 'src/host/phone_host_setup.dart';
 import 'src/providers.dart';
@@ -38,6 +39,10 @@ Future<void> main() async {
         // yes at the Stats screen, as the TV's do (M14 r5 8). A build with no
         // Firestore project set has none, and the sessions stay on the phone.
         party.sessionUploaderProvider.overrideWith((ref) => phoneUploader()),
+        // The automation interface is compiled in and off unless the build's
+        // `--dart-define=AUTOMATION=true` says so (M15 a2): a phone has no
+        // environment to launch it from.
+        party.automationSettingsProvider.overrideWithValue(phoneAutomationSettings()),
         ...phoneHostOverrides(directories: const PhoneHostDirectories()),
       ],
       child: const ControllerApp(),
@@ -64,9 +69,13 @@ class ControllerApp extends ConsumerWidget {
         navigatorObservers: [ref.watch(party.toyLookRouteObserverProvider)],
         // This phone is touch first, so nothing on its host's screens keeps a
         // focus look a thumb can't take away (m12 bug 1107f rule A). Above every
-        // route, so the dialogs are covered too.
-        builder: (context, child) => party.HostFocusScope(child: child ?? const SizedBox.shrink()),
-        home: const ControllerScreen(),
+        // route, so the dialogs are covered too. The automation shell takes the
+        // frame a screenshot captures and draws the latency card over every
+        // route (M15 a2).
+        builder: (context, child) =>
+            party.AutomationShell(child: party.HostFocusScope(child: child ?? const SizedBox.shrink())),
+        // A script's `POST game/start` pushes the round here (M15 a2).
+        home: const party.AutomationGate(child: ControllerScreen()),
       ),
     );
   }

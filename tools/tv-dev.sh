@@ -8,6 +8,10 @@
 #                             # phones joined to it show the games it hosts, M12)
 #   tools/tv-dev.sh start --hz 20|30|60 --game arena|shape_race
 #                             # start straight into a game, for measuring runs (M12)
+#                             # (--game is deprecated: POST game/start does the same, M15 a2)
+#   tools/tv-dev.sh start --automation
+#                             # also switch the automation interface on (loopback
+#                             # only): dart tools/automation.dart, docs/automation.md
 #   tools/tv-dev.sh status    # running? port, pairing code, log file
 #   tools/tv-dev.sh stop      # stops only this repository's debug build
 #   tools/tv-dev.sh log       # the last 40 log lines
@@ -63,8 +67,14 @@ case "${1:-}" in
     shift
     # A dev TV always shares its game with the phones that join it (m12-joined-view §0.1).
     defines=(--dart-define=SHARE_VIEW=true)
+    automation=""
     while [ $# -gt 0 ]; do
       case "$1" in
+        --automation)
+          defines+=("--dart-define=AUTOMATION=true")
+          automation=1
+          shift
+          ;;
         --hz | --game)
           [ $# -ge 2 ] || { echo "$1 needs a value." >&2; usage >&2; exit 2; }
           if [ "$1" = --hz ]; then
@@ -108,6 +118,7 @@ case "${1:-}" in
     for _ in $(seq 1 600); do
       if [ -n "$(port_and_code)" ]; then
         status
+        [ -n "$automation" ] && echo "Automation: dart tools/automation.dart status   (http://127.0.0.1:8787/automation/v1)"
         exit 0
       fi
       if grep -aqE 'Error: |BUILD FAILED|Exception:|Lost connection to device' "$log" 2> /dev/null; then

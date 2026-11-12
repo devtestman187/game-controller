@@ -57,10 +57,18 @@ class SessionCollector {
   int _frames = 0;
   int _frameDrops = 0;
   bool _inGame = false;
+  bool _simulated = false;
 
   bool get isEmpty => _players.isEmpty;
 
+  /// True once [simulatedOnly] marked the session: nobody real played in it.
+  bool get isSimulated => _simulated;
+
   Iterable<String> get playerIds => _players.keys;
+
+  /// Marks the session as one only simulated players joined (M15 a2), so the
+  /// report can set it apart and the host never uploads it.
+  void simulatedOnly() => _simulated = true;
 
   /// A player joined, or came back after a drop. [inProcess] is the host
   /// device's own player, over its in-process link (m12 §1): it watched on
@@ -335,6 +343,9 @@ class SessionCollector {
       // Left out until the session streams (M15), so an older summary reads
       // exactly as it did.
       'stream': ?(_stream.isEmpty ? null : _stream.toJson()),
+      // Left out of a session with real players, so an ordinary summary reads
+      // exactly as it did.
+      'simulated': ?(_simulated ? true : null),
     };
   }
 

@@ -87,6 +87,7 @@ abstract final class TvText {
   // The log.
   static const log = 'Log';
   static const saveLog = 'Save log';
+  static const testCard = 'Test card';
   static String logSaved(String path) => 'Log saved to $path';
   static String logSaveFailed(Object error) => 'Could not save the log: $error';
 
