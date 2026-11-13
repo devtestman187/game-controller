@@ -10,7 +10,7 @@
  */
 
 import { annexbToAvcc, parseHeader } from "./wc_annexb.js";
-import { bytesOf, emptyCounters, FrameCanvas, FrameStages, frameTimestampUs } from "./wc_counters.js";
+import { bytesOf, emptyCounters, FrameCanvas, FrameStages, frameTimestampUs, noteDrawnAt } from "./wc_counters.js";
 import { WcDecoder } from "./wc_decoder.js";
 
 /** The most frames the decoder may hold queued: more is backlog, not saved delay. */
@@ -116,6 +116,8 @@ export class WcPlayer {
       return;
     }
     this._stopped = false;
+    // The first frame is timed from here, the moment the page asked for the picture.
+    this._counters.startedAtMs = this._now();
     this._decoder.start();
     this._openSocket();
   }
@@ -304,6 +306,9 @@ export class WcPlayer {
       if (problem !== "") throw new Error(problem);
       this._counters.framesDrawn++;
       const drawnAtMs = this._now();
+      noteDrawnAt(this._counters, drawnAtMs);
+      this._counters.frameWidthPx = Math.round(frame.displayWidth);
+      this._counters.frameHeightPx = Math.round(frame.displayHeight);
       if (stage !== undefined) stage.drawnAt = drawnAtMs;
       this._onDrawn(frameNo, drawnAtMs);
       // A frame drawn after a decoder error ends that error's message: an empty

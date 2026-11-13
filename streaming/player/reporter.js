@@ -111,7 +111,7 @@ export class StreamReporter {
     this._soundGauges = gauges;
   }
 
-  /** Sets the provider of extra gauges and facts a batch adds (M15 opt1b), or nothing. */
+  /** Sets the provider of extra stages, gauges, facts and a video entry a batch adds (M15 opt1b), or nothing. */
   setExtraSeries(provider) {
     this._extras = provider;
   }
@@ -247,12 +247,12 @@ export class StreamReporter {
    * `stats/stream` reads, with whatever this browser doesn't report left out.
    */
   _batch(current, before, elapsedS) {
-    const video = current.video;
-    const audio = current.audio;
-    const pair = current.pair;
     // An extra series' stages go first and keep a name they share: with
-    // `player=wc` they are the batch's only decode and display stages (M15 opt2b).
+    // `player=wc` they are the batch's only decode and display stages, and its
+    // counters come as the video entry, since the page has no track (M15 opt2b-6).
     const extras = this._extras?.() ?? null;
+    const video = current.video ?? extras?.video ?? null;
+    const audio = current.audio; const pair = current.pair;
     const stages = [...(extras?.stages ?? [])];
     const gauges = [];
     const counters = [];
@@ -291,7 +291,7 @@ export class StreamReporter {
     const sent = viewerCounters(video, {
       lateFrames: this._late,
       reconnects: this._reconnects,
-      firstFrameMs: this._firstFrameMs,
+      firstFrameMs: video?.firstFrameMs ?? this._firstFrameMs,
     });
     for (const [name, value] of Object.entries(sent)) counters.push({ name, value });
     if (current.codec?.mimeType) facts.push({ name: "codec", value: current.codec.mimeType.split("/").pop() });

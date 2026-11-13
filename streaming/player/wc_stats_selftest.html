@@ -9,18 +9,16 @@
 
 <body>
   <pre id="result">SELFTEST RUNNING</pre>
-  <!-- The custom player's measurements (M15 opt2) and its decoder (M15 opt2b-3),
-       in the headless Chrome the bench already has: wc_stats.js's figures from
-       fake samples, wc_decoder.js's rebuilds from a fake VideoDecoder, the
-       marker's strip and the card's flip read from a painted canvas in the
-       video element's place, and the facts inside the host's limits. The
-       decoder's checks are here, not in wc_selftest.html, because that page is
-       at its 500-line cap. bench.sh --selftest serves the player folder and
-       reads the one line below back out of the DOM. -->
+  <!-- The custom player's figures, counters and decoder (M15 opt2, opt2b) in
+       the headless Chrome the bench already has: wc_stats.js's figures from fake
+       samples, wc_counters.js's freeze and first-frame rule, wc_decoder.js's
+       rebuilds and the marker's strip. This page is at its 500-line cap, so
+       these checks live here, not in wc_selftest.html. -->
   <script type="module">
     import { LatencyProbe } from "./latency_probe.js";
     import { canvasPicture, MarkerReader } from "./marker_reader.js";
     import { StreamReporter } from "./reporter.js";
+    import { emptyCounters, noteDrawnAt } from "./wc_counters.js";
     import { WcDecoder, decoderErrorText } from "./wc_decoder.js";
     import { WcPlayer } from "./wc_player.js";
     import {
@@ -69,20 +67,9 @@
     /** The counters a player keeps, as wc_stats.js reads them. */
     function countersOf() {
       return {
-        framesReceived: 12,
-        framesDecoded: 9,
-        framesDrawn: 9,
-        dropsQueue: 2,
-        dropsGap: 1,
-        keyRequests: 3,
-        decoderErrors: 0,
-        decoderRebuilds: 0,
-        lastDecoderError: "",
-        reconnects: 0,
-        queueMax: 4,
-        lastFrame: 11,
-        bytesReceived: 0,
-        decodeConfig: "avc1.640028 hardware",
+        framesReceived: 12, framesDecoded: 9, framesDrawn: 9, dropsQueue: 2, dropsGap: 1, keyRequests: 3,
+        decoderErrors: 0, decoderRebuilds: 0, lastDecoderError: "", reconnects: 0, queueMax: 4, lastFrame: 11,
+        bytesReceived: 0, decodeConfig: "avc1.640028 hardware",
       };
     }
 
@@ -143,6 +130,12 @@
         [3, 3, 3, 4, 0, 0],
       );
     });
+    await check("a gap over 150 ms between two draws is a freeze, and the first frame is not one", () => {
+      const counters = { ...emptyCounters(), startedAtMs: 1000 };
+      for (const drawnAtMs of [1250, 1350, 1501, 1901]) noteDrawnAt(counters, drawnAtMs);
+      // Gaps of 100, 151 and 400 ms: the two over 150 are freezes, 551 ms in all.
+      return same([counters.firstFrameMs, counters.freezeCount, counters.freezeMs], [250, 2, 551]);
+    });
     await check("the fact says which decoder was configured and that a frame was drawn", () => {
       return same(item(first.facts, wcNames.fact), { name: "wc", value: "cfg hw dec ok" });
     });
@@ -179,9 +172,9 @@
     });
     await check("no custom player option, no figures and no extra series", () => {
       return same([wcStatsOf({ player: "webrtc" }, fakePlayer()), wcStatsOf({}, fakePlayer()), combinedSeries(null)()],
-        [null, null, { stages: [], gauges: [], facts: [] }]);
+        [null, null, { stages: [], gauges: [], facts: [], video: null }]);
     });
-    await check("the reporter's batch carries the rate and both stages with no connection and no marker", () => {
+    await check("the reporter's batch carries the rate, both stages and the player's counters with no connection", () => {
       const counters = countersOf();
       const rateClock = { nowMs: 0 };
       const wc = new WcStats({ player: fakePlayer(counters), now: () => rateClock.nowMs });
@@ -194,16 +187,25 @@
       reporter.setExtraSeries(combinedSeries(() => wc.batch()));
       counters.bytesReceived = 37500;
       rateClock.nowMs = 3000;
+      Object.assign(counters, {
+        framesReceived: 182, framesDecoded: 180, framesDrawn: 179, freezeCount: 2, freezeMs: 551,
+        firstFrameMs: 250, frameWidthPx: 1920, frameHeightPx: 1080,
+      });
       // The reporter's own batch builder: a page test has no other way to read a batch.
       const batch = reporter._batch(
         { video: null, audio: null, pair: null, codec: null, relay: null },
         { video: null, audio: null, pair: null },
         3,
       );
+      const counter = (name) => item(batch.counters, name)?.value ?? null;
+      // 179 frames over the 3 s interval are 59.7 fps; received 182 − decoded 180 = 2 dropped.
       return same([batch.stages.filter((stage) => stage.name.startsWith("stream_")),
-        item(batch.gauges, wcHostNames.bitrate)],
+        item(batch.gauges, wcHostNames.bitrate), gaugeValue(batch, "deliveredFps"), counter("framesReceived"),
+        counter("framesDecoded"), counter("framesDropped"), counter("freezes"), counter("freezeMs"),
+        counter("firstFrameMs"), item(batch.facts, "resolution")],
         [[{ name: "stream_decode", ms: 23 }, { name: "stream_display", ms: 4 }],
-          { name: "bitrateReceivedKbps", value: 100 }]);
+          { name: "bitrateReceivedKbps", value: 100 }, 59.7, 182, 180, 2, 2, 551, 250,
+          { name: "resolution", value: "1920x1080" }]);
     });
 
     // The custom player's decoder (M15 opt2b-3): a real 1080p High-profile SPS
@@ -378,9 +380,7 @@
       const { FakeDecoder, FakeChunk } = videoFakes(log, supports, false);
       class FakeSocket {
         constructor() { this.readyState = 1; log.sockets.push(this); }
-
         send(data) { log.sent.push(data); }
-
         close() { this.readyState = 3; }
       }
       const player = new WcPlayer({

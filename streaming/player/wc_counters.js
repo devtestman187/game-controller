@@ -11,6 +11,9 @@ const stageSampleCount = 256;
 /** The chunk timestamp one frame number is worth, in microseconds: unique and always rising. */
 export const frameTimestampUs = 1000;
 
+/** A gap between two draws longer than this is a freeze, in ms (M15 opt2b-6). */
+export const freezeGapMs = 150;
+
 /**
  * One socket read's size, in bytes: the payload's own length, or a text
  * message's characters, which is what the tap sends besides frames.
@@ -26,12 +29,35 @@ export function bytesOf(data) {
  * The player's own counters at zero: one plain number each, for the overlay and
  * a run's report. The decoder's numbers — its errors, its rebuilds, its last
  * error and the configuration it ran — come from wc_decoder.js and join these.
+ * The draw figures (when the player started, its first frame, its freezes and
+ * the drawn size) are filled in by noteDrawnAt (M15 opt2b-6).
  */
 export function emptyCounters() {
   return {
     framesReceived: 0, framesDecoded: 0, framesDrawn: 0, dropsQueue: 0, dropsGap: 0, keyRequests: 0,
     reconnects: 0, queueMax: 0, lastFrame: -1, bytesReceived: 0,
+    freezeCount: 0, freezeMs: 0, firstFrameMs: null, lastDrawnAtMs: null, startedAtMs: null,
+    frameWidthPx: 0, frameHeightPx: 0,
   };
+}
+
+/**
+ * Notes one frame on the canvas: the first draw's time from the player's start
+ * (`firstFrameMs`), and each gap between two draws longer than `freezeGapMs` as
+ * one freeze with its length in ms. The first frame is never a freeze (M15 opt2b-6).
+ * @param {object} counters - the player's counters, as emptyCounters makes them
+ * @param {number} drawnAtMs - the page time the frame reached the canvas
+ */
+export function noteDrawnAt(counters, drawnAtMs) {
+  if (counters.firstFrameMs === null && counters.startedAtMs !== null) {
+    counters.firstFrameMs = Math.round(drawnAtMs - counters.startedAtMs);
+  }
+  const previous = counters.lastDrawnAtMs;
+  if (previous !== null && drawnAtMs - previous > freezeGapMs) {
+    counters.freezeCount++;
+    counters.freezeMs += Math.round(drawnAtMs - previous);
+  }
+  counters.lastDrawnAtMs = drawnAtMs;
 }
 
 /**

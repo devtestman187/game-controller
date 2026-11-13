@@ -3,9 +3,11 @@
  * and draw times say over each reporting interval, plus the counters the
  * player keeps (drops, keyframe requests, the socket's backlog, the decoder's
  * queue, and its errors and rebuilds with the last error's text, M15 opt2b-3).
+ * Its counters also go as a plain `inbound-rtp` video entry (M15 opt2b-6), which
+ * is what fills the host's "Streaming quality" row without a peer connection.
  * Pure and small: one player's `counters()` and `stageSamples()` in, a
- * reporter batch's gauges and two facts out, the way jb_target.js gives the
- * jitter buffer target's. Nothing runs unless the page plays `player=wc`.
+ * reporter batch's gauges, facts and video entry out, the way jb_target.js
+ * gives the jitter buffer target's. Nothing runs unless the page plays `player=wc`.
  */
 
 import { medianOf } from "./metrics.js";
@@ -126,9 +128,11 @@ export class WcStats {
     this._receiveGapMaxMs = 0;
     this._recvToDecodeMs = null;
     this._decodeToDrawMs = null;
-    // The socket's bytes at the last batch and when it was: the rate's interval
-    // starts with the player, so even the first batch carries one (M15 opt2b).
+    // The socket's bytes and the frames on the canvas at the last batch, and
+    // when it was: the interval starts with the player, so even the first batch
+    // carries a rate and a frame rate (M15 opt2b).
     this._bytesBefore = 0;
+    this._drawnBefore = 0;
     this._batchAtMs = now();
   }
 
@@ -145,13 +149,19 @@ export class WcStats {
   }
 
   /**
-   * The stages, gauges and the fact one reporter batch adds. A figure with no
-   * sample is left out, never sent as a 0.
-   * @returns {{stages: object[], gauges: object[], facts: object[]}}
+   * The stages, gauges, facts and the video entry one reporter batch adds. A
+   * figure with no sample is left out, never sent as a 0.
+   * @returns {{stages: object[], gauges: object[], facts: object[], video: object|null}}
    */
   batch() {
+    const elapsedMs = this._intervalMs();
     const fresh = this._freshSamples();
     const counters = this._player.counters();
+    // The frames on the canvas over the interval's seconds, to a tenth: the
+    // picture this page actually showed (M15 opt2b-6).
+    const drawn = counters.framesDrawn - this._drawnBefore;
+    this._drawnBefore = counters.framesDrawn;
+    const deliveredFps = elapsedMs > 0 && drawn > 0 ? Math.round(drawn * msPerS * 10 / elapsedMs) / 10 : null;
     const recvToDecodeMs = medianOf(fresh.map((stage) => stage.decodeOutputAt - stage.receiveAt));
     const decodeToDrawMs = medianOf(fresh.map((stage) => stage.drawnAt - stage.decodeOutputAt));
     // The overlay keeps the last interval that had a finished frame: an empty
@@ -166,7 +176,7 @@ export class WcStats {
       { name: wcHostNames.display, ms: Math.round(decodeToDrawMs) },
     ];
     const gauges = [
-      { name: wcHostNames.bitrate, value: this._rateKbitPerS(counters) },
+      { name: wcHostNames.bitrate, value: this._rateKbitPerS(counters, elapsedMs) },
       { name: wcNames.recvToDecode, value: recvToDecodeMs },
       { name: wcNames.decodeToDraw, value: decodeToDrawMs },
       { name: wcNames.dropped, value: counters.dropsQueue + counters.dropsGap },
@@ -186,7 +196,7 @@ export class WcStats {
       gauges.push({ name: wcNames.soundPlaying, value: state === wcSoundStates.playing ? 1 : 0 });
       facts.push({ name: wcNames.soundFact, value: wcSoundFactText(state) });
     }
-    return { stages, gauges, facts };
+    return { stages, gauges, facts, video: wcVideoEntry(counters, deliveredFps) };
   }
 
   /** The overlay's one line, shown only with `player=wc` (M15 opt2). */
@@ -208,18 +218,23 @@ export class WcStats {
     return fresh;
   }
 
+  /** The time since the last batch in ms, which this batch's figures are over; starts the next one. */
+  _intervalMs() {
+    const nowMs = this._now();
+    const elapsedMs = nowMs - this._batchAtMs;
+    this._batchAtMs = nowMs;
+    return elapsedMs;
+  }
+
   /**
-   * The bits a second the tap socket took since the last batch, in kbit/s: the
+   * The bits a second the tap socket took over [elapsedMs], in kbit/s: the
    * gauge the host counts a viewer by, from the bytes the player counted. Null
    * until something arrived, so an idle socket never reads as a viewer.
    */
-  _rateKbitPerS(counters) {
-    const nowMs = this._now();
+  _rateKbitPerS(counters, elapsedMs) {
     const bytes = counters.bytesReceived;
     const before = this._bytesBefore;
-    const elapsedMs = nowMs - this._batchAtMs;
     this._bytesBefore = bytes;
-    this._batchAtMs = nowMs;
     const fresh = bytes - before;
     if (!(elapsedMs > 0) || !(fresh > 0)) return null;
     return Math.round((fresh * 8) / (bitsPerKbit * elapsedMs / msPerS));
@@ -234,11 +249,37 @@ export class WcStats {
 }
 
 /**
+ * The player's counters as the `inbound-rtp` video entry the host's own names
+ * come from (M15 opt2b-6): one plain object with the fields a WebRTC track
+ * gives, so the reporter's viewerCounters fills framesReceived, framesDecoded,
+ * framesDropped, freezes, freezeMs and firstFrameMs, and deliveredFps and the
+ * resolution fact come with them. Null until a frame arrived: a page that got
+ * no picture sends no counters, not zeros.
+ * @param {object} counters - the player's counters()
+ * @param {number|null} framesPerSecond - the frames drawn over the interval, one decimal
+ * @returns {object|null}
+ */
+export function wcVideoEntry(counters, framesPerSecond) {
+  if (!(counters.framesReceived > 0)) return null;
+  return {
+    framesReceived: counters.framesReceived,
+    framesDecoded: counters.framesDecoded,
+    framesPerSecond,
+    freezeCount: counters.freezeCount,
+    totalFreezesDuration: counters.freezeMs / msPerS,
+    frameWidth: counters.frameWidthPx,
+    frameHeight: counters.frameHeightPx,
+    firstFrameMs: counters.firstFrameMs,
+  };
+}
+
+/**
  * Several extra-series providers as one, which is what the reporter takes: the
  * jitter buffer target's and the custom player's stages, gauges and facts add
- * up. A provider without stages (the jitter buffer target's) adds none.
- * @param {...(null|(() => ({stages?: object[], gauges: object[], facts: object[]})))} providers
- * @returns {() => ({stages: object[], gauges: object[], facts: object[]})}
+ * up, and the first video entry one of them has is the batch's. A provider
+ * without stages (the jitter buffer target's) adds none.
+ * @param {...(null|(() => ({stages?: object[], gauges: object[], facts: object[], video?: object|null})))} providers
+ * @returns {() => ({stages: object[], gauges: object[], facts: object[], video: object|null})}
  */
 export function combinedSeries(...providers) {
   return () => {
@@ -247,6 +288,7 @@ export function combinedSeries(...providers) {
       stages: batches.flatMap((batch) => batch.stages ?? []),
       gauges: batches.flatMap((batch) => batch.gauges ?? []),
       facts: batches.flatMap((batch) => batch.facts ?? []),
+      video: batches.find((batch) => batch.video)?.video ?? null,
     };
   };
 }

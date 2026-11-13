@@ -10,10 +10,9 @@
 <body>
   <pre id="result">SELFTEST RUNNING</pre>
   <!-- The custom player's tests (M15 opt2), in the headless Chrome the bench
-       already has, as jbtarget_selftest.html's are: the Annex B helpers on
-       hand-made byte samples and PROTOCOL.md's header, and the player driven by
-       a fake socket, decoder, chunk and clock. bench.sh --selftest serves the
-       player folder and reads the one line below back out of the DOM. -->
+       already has: the Annex B helpers on hand-made byte samples and
+       PROTOCOL.md's header, and the player driven by a fake socket, decoder,
+       chunk and clock. bench.sh --selftest reads the one line below back out. -->
   <script type="module">
     import { installErrorTrap, maxReports } from "./error_trap.js";
     import { playerKindOf } from "./options.js";
@@ -92,7 +91,6 @@
         }
 
         send(data) { this.sent.push(data); }
-
         close() { this.readyState = 3; }
       }
       class FakeDecoder {
@@ -112,7 +110,6 @@
         }
 
         configure(config) { this.configs.push(config); this.state = "configured"; }
-
         decode(chunk) { this.chunks.push(chunk); log.chunks.push(chunk); }
 
         close() { this.closes++; this.state = "closed"; }
@@ -311,9 +308,11 @@
       h.log.decoders[0].init.output(h.frameOf(0));
       const stage = h.player.stageSamples()[0];
       const counters = h.player.counters();
-      return same([h.log.framesClosed, h.canvas.width, h.canvas.height, h.log.draws.length, stage.frame,
-        stage.receiveAt, stage.decodeOutputAt, stage.drawnAt, h.log.drawn[0], counters.framesDrawn, counters.framesDecoded],
-        [1, 1920, 1080, 1, 0, 10, 25, 25, [0, 25], 1, 1]);
+      // The first frame came 25 ms after start() and gave the page its size.
+      return same([counters.firstFrameMs, counters.frameWidthPx, counters.frameHeightPx, h.log.framesClosed,
+        h.canvas.width, h.canvas.height, h.log.draws.length, stage.frame, stage.receiveAt, stage.decodeOutputAt,
+        stage.drawnAt, h.log.drawn[0], counters.framesDrawn, counters.framesDecoded],
+        [25, 1920, 1080, 1, 1920, 1080, 1, 0, 10, 25, 25, [0, 25], 1, 1]);
     });
     await check("a frame the draw cannot read is still closed and is reported, not thrown", async () => {
       const h = harness();
