@@ -1,3 +1,4 @@
 f1-register f2-nv12
 f3-decoder f5-proof-tools
 f4-sound
+f6-figures
