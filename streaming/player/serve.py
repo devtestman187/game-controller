@@ -96,7 +96,8 @@ page_files = frozenset(
         "metrics.js", "reporter.js", "session_end.js", "overlay.js", "stats.js",
         # The page's error trap (M15 opt2b), the capability probe (M15 opt1,
         # a page of its own), and the custom player's files (M15 opt2).
-        "error_trap.js", "probe.html", "wc_annexb.js", "wc_counters.js", "wc_player.js", "wc_stats.js",
+        "error_trap.js", "probe.html", "wc_annexb.js", "wc_counters.js", "wc_decoder.js", "wc_player.js",
+        "wc_sound.js", "wc_stats.js",
     )
 )
 

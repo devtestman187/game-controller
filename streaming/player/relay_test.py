@@ -14,6 +14,7 @@ page's calls, and exits 1 at the first thing that does not hold.
 import http.client
 import json
 import os
+import re
 import socket
 import subprocess
 import sys
@@ -202,6 +203,18 @@ def test_page(port):
         )
     ]
     check(served == [200] * len(served), "the page's own files are served")
+    # Every local file a page script imports or the page loads is served: one
+    # missing from the relay's list kills the whole page (M15 opt2b).
+    base = os.path.dirname(os.path.abspath(__file__))
+    wanted = set()
+    for name in os.listdir(base):
+        if name.endswith(".js"):
+            with open(os.path.join(base, name), encoding="utf-8") as handle:
+                wanted.update(re.findall(r"from\s+[\"']\./([\w.]+\.js)[\"']", handle.read()))
+    with open(os.path.join(base, "index.html"), encoding="utf-8") as handle:
+        wanted.update(re.findall(r"src=[\"']\.?/?([\w.]+\.js)[\"']", handle.read()))
+    missing = sorted(n for n in wanted if os.path.exists(os.path.join(base, n)) and call(port, "GET", "/" + n)[0] != 200)
+    check(not missing, "every imported local file is served (missing: %s)" % ", ".join(missing))
 
 
 def test_probe_page(port):

@@ -69,6 +69,9 @@ viewer="chrome"
 # The cores a bench pins the viewer and the session to, or empty for none: a
 # viewer on its own cores has the CPU to decode with (M15 g1).
 viewer_cpus=""
+# A plain-http LAN address for the headless viewer to load, and whether Chrome may treat it as secure (bench.sh).
+viewer_host=""
+viewer_insecure="no"
 session_cpus=""
 # Extra session settings for an experiment (M15 t1): each `--set KEY=VALUE`
 # reaches the container's `docker run` as one `-e`, so a tuning change needs no
@@ -136,6 +139,8 @@ Bench options:
                     URL and waits for a real viewer (a phone, tablet or TV on
                     the home network) to register before it measures; a phone run
                     ends with a press phase
+  --viewer-host A   load the page over plain http at address A (headless viewer; see streaming/bench.sh)
+  --viewer-insecure-ok  let that Chrome treat the address as secure (it lacks VideoDecoder otherwise)
   --viewer-cpus L   the cores the viewer's Chrome runs on (taskset's list, e.g. 8-15);
                     with --viewer chrome only, since a device you open is pinned there
   --session-cpus L  the cores the session container runs on (docker --cpuset-cpus)
@@ -536,6 +541,8 @@ cmd_bench() {
   if [[ "$keep" == "yes" ]]; then extra="$extra --keep"; fi
   if [[ "$viewer" == "external" ]]; then extra="$extra --viewer external"; fi
   if [[ -n "$viewer_cpus" ]]; then extra="$extra --viewer-cpus $viewer_cpus"; fi
+  if [[ -n "$viewer_host" ]]; then extra="$extra --viewer-host $viewer_host"; fi
+  if [[ "$viewer_insecure" == "yes" ]]; then extra="$extra --viewer-insecure-ok"; fi
   if [[ -n "$session_cpus" ]]; then extra="$extra --session-cpus $session_cpus"; fi
   if ! wsl_run "docker image inspect $image > /dev/null 2>&1"; then
     fail "the image $image isn't in $distro yet: run tools/stream.sh build"
@@ -698,6 +705,15 @@ while (( $# > 0 )); do
     --viewer)
       viewer="${2:-}"
       shift 2 || { printf 'stream: --viewer needs chrome or external\n' >&2; usage; exit 2; }
+      ;;
+    --viewer-host)
+      viewer_host="${2:-}"
+      shift 2 || { printf 'stream: --viewer-host needs an address
+' >&2; usage; exit 2; }
+      ;;
+    --viewer-insecure-ok)
+      viewer_insecure="yes"
+      shift
       ;;
     --viewer-cpus)
       viewer_cpus="${2:-}"
