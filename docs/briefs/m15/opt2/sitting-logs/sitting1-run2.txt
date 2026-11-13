@@ -1,0 +1,105 @@
+benching 1 session(s) for 60s in tp-stream …
+switches: SESSION_MARKER=on, player-query marker=1, player-options none
+opt2-cur-20: ready after 4s
+opt2-cur-20: open http://192.168.1.124:45782/?marker=1 on a phone, tablet or TV on the home network
+the session is playing; waiting up to 180s for a viewer, a line every 10s
+opt2-cur-20: still no viewer after 0s
+opt2-cur-20: still no viewer after 10s
+opt2-cur-20: still no viewer after 20s
+opt2-cur-20: a viewer registered after 22s
+measuring 60s on 1 session(s), 1920x1080, arena
+the window ended after 90s
+measuring 30s of presses
+opt2-cur-20: 1 viewer(s) browser/safari, 9132 kbit/s received against the 10000 kbit/s ceiling, summary 3671 bytes, game 51.5 fps, 19.4 ms/frame, build 1.1 + raster 10.3 ms, 1% slow
+results in /work/stream-bench/opt2-cur-2
+docs/briefs/m15/bench-results/20261113-122145/opt2-cur-2/opt2-cur-20.json (6278 bytes)
+summaries copied to docs/briefs/m15/bench-results/20261113-122145/opt2-cur-2
+1 session
+
+By input mode
+group     players  sessions  minutes  open min  presses/min  empty/min  near/min  slide/min  rapid/min  frustr/min  games  good  okay  bad  early sw  first pick  input ms  touch ms  jitter ms  frames/gaps/late
+--------  -------  --------  -------  --------  -----------  ---------  --------  ---------  ---------  ----------  -----  ----  ----  ---  --------  ----------  --------  --------  ---------  ----------------
+keyboard        1         1      0.0       0.0          0.0       0.00      0.00       0.00       0.00        0.00      1     0     0    0         0           0         -         -          -                 -
+
+By device and mode
+group              players  sessions  minutes  open min  presses/min  empty/min  near/min  slide/min  rapid/min  frustr/min  games  good  okay  bad  early sw  first pick  input ms  touch ms  jitter ms  frames/gaps/late
+-----------------  -------  --------  -------  --------  -----------  ---------  --------  ---------  ---------  ----------  -----  ----  ----  ---  --------  ----------  --------  --------  ---------  ----------------
+keyboard keyboard        1         1      0.0       0.0          0.0       0.00      0.00       0.00       0.00        0.00      1     0     0    0         0           0         -         -          -                 -
+
+By game and feature
+group             rounds  minutes  players  avg players  finished  good  okay  bad
+----------------  ------  -------  -------  -----------  --------  ----  ----  ---
+arena bumper           1      1.0        1          1.0         1     -     -    -
+map block-castle       1      1.0        1          1.0         1     -     -    -
+robo easy              1      1.0        1          1.0         1     -     -    -
+
+Party nights: none
+
+By host and where they watched
+host       watched  players  input ms  touch ms  jitter ms
+-----  -----------  -------  --------  --------  ---------
+other  host_screen        1         -         -          -
+
+By frame rate
+host   hz  rounds  minutes  touch ms  late/min  gaps/min  battery %/h  thermal
+-----  --  ------  -------  --------  --------  --------  -----------  -------
+other  60       1      1.0         -       0.0       0.0            -        -
+
+Streaming pipeline
+session           viewer     kind  platform  input  host  capture  encode  send  network  jitter  decode  display    total  press>screen    src
+----------------  ------  -------  --------  -----  ----  -------  ------  ----  -------  ------  ------  -------  -------  ------------  -----
+4e4d32f1d3118e2d      v1  browser    safari      -     -      2/2   30/30     -      2/3  67/289     4/4   68/312  173/640       176/262  probe
+
+Streaming host legs
+session           viewer  press>tick  tick>built  built>raster  raster>capture*  press>screen  total
+----------------  ------  ----------  ----------  ------------  ---------------  ------------  -----
+4e4d32f1d3118e2d      v1          19           1             9              -26           176    173
+* derived: press>screen minus the three host legs and total, the rest of the host
+
+Independent check
+session           viewer                 check    value      p95   n
+----------------  ------  --------------------  -------  -------  --
+4e4d32f1d3118e2d      v1          marker glass      177      429  32
+4e4d32f1d3118e2d      v1   marker press>screen      176      188  56
+4e4d32f1d3118e2d      v1   press>screen (card)      176      262  54
+4e4d32f1d3118e2d      v1          stream total      173      640  31
+4e4d32f1d3118e2d      v1        presses differ        0        -   -
+4e4d32f1d3118e2d      v1         glass - total        4        -   -
+4e4d32f1d3118e2d      v1          clock offset  16826.3  16828.5  33
+4e4d32f1d3118e2d      v1    offset uncertainty      8.5     10.5  33
+4e4d32f1d3118e2d      v1    decoded to display    103.0    312.0  32
+4e4d32f1d3118e2d      v1           frames read     5383        -   -
+4e4d32f1d3118e2d      v1       frames readable     5383        -   -
+4e4d32f1d3118e2d      v1  unreadable: checksum        0        -   -
+4e4d32f1d3118e2d      v1      unreadable: sync        0        -   -
+4e4d32f1d3118e2d      v1    unreadable: canvas        0        -   -
+4e4d32f1d3118e2d      v1     unreadable: other        0        -   -
+* presses differ is the marker's press less the card's; glass - total is the marker's row age less the chain's total, which starts at capture where the marker starts at the host's paint, so the difference carries the host's raster and capture legs.
+independent check 4e4d32f1d3118e2d/v1: agree (0 ms apart, 25.0 ms allowed)
+4e4d32f1d3118e2d/v1 rVFC: expected-receive; provided presentationTime, expectedDisplayTime, receiveTime, processingDuration, presentedFrames, width, height, mediaTime, rtpTimestamp; not provided captureTime
+
+Streaming quality
+session           viewer  sent kbps  recv kbps  loss %  rtt ms  jitter ms   fps  sent  recv  decoded  dropped  late  freezes  first frame ms  reconnects  relay  codec  jbtarget
+----------------  ------  ---------  ---------  ------  ------  ---------  ----  ----  ----  -------  -------  ----  -------  --------------  ----------  -----  -----  --------
+4e4d32f1d3118e2d      v1          -     6976.6     0.0     3.5        5.8  59.6     -  6056     5860      196     0   3/3641            9416           0     no   H264         -
+
+Streaming sound
+session           viewer  audio ms  sync ms  concealed %  jitter ms
+----------------  ------  --------  -------  -----------  ---------
+4e4d32f1d3118e2d      v1         -        -            -          -
+
+Streaming resources
+session           samples        cpu %   game cpu %  enc cpu %       mem MB      gpu %    enc %     gpu mem MB   game fps  build ms  raster ms   frame ms   slow %    enc fps  queue  pipeline ms  first frame ms  mem peak MB
+----------------  -------  -----------  -----------  ---------  -----------  ---------  -------  -------------  ---------  --------  ---------  ---------  -------  ---------  -----  -----------  --------------  -----------
+4e4d32f1d3118e2d       40  192.2/209.5  100.6/108.7  81.4/92.7  575.6/680.8  49.4/51.0  7.0/7.0  1544.3/1547.0  51.7/53.7   1.1/1.4  10.3/11.4  19.3/20.8  1.2/4.0  59.3/60.0      -    37.3/34.2            1806        704.9
+
+Streaming by sessions at once
+sessions at once  sessions  cpu %  gpu %  enc %  game fps  enc fps  mem MB
+----------------  --------  -----  -----  -----  --------  -------  ------
+1                        1  192.2   49.4    7.0      51.7     59.3   575.6
+
+Enjoyment: 1 sessions, 2.0 min and 1.0 games on average, no ratings
+
+switches: SESSION_MARKER=on, player-query marker=1, player-options none
+results: docs/briefs/m15/bench-results/20261113-122145/opt2-cur-2
+report again with: bash tools/stream.sh stats --results docs/briefs/m15/bench-results/20261113-122145/opt2-cur-2

@@ -1,0 +1,26 @@
+benching 1 session(s) for 60s in tp-stream …
+switches: SESSION_MARKER=on, SESSION_TAP=on, player-query marker=1&player=wc, player-options none, player wc
+opt2-wc-10: ready after 4s
+opt2-wc-10: open http://192.168.1.124:45782/?marker=1&player=wc on a phone, tablet or TV on the home network
+the session is playing; waiting up to 180s for a viewer, a line every 10s
+opt2-wc-10: still no viewer after 0s
+opt2-wc-10: still no viewer after 10s
+opt2-wc-10: still no viewer after 20s
+opt2-wc-10: still no viewer after 30s
+opt2-wc-10: still no viewer after 40s
+opt2-wc-10: still no viewer after 50s
+opt2-wc-10: still no viewer after 60s
+opt2-wc-10: still no viewer after 70s
+opt2-wc-10: still no viewer after 80s
+opt2-wc-10: still no viewer after 90s
+opt2-wc-10: still no viewer after 100s
+opt2-wc-10: still no viewer after 110s
+opt2-wc-10: still no viewer after 120s
+opt2-wc-10: still no viewer after 130s
+opt2-wc-10: still no viewer after 140s
+opt2-wc-10: still no viewer after 150s
+opt2-wc-10: still no viewer after 160s
+opt2-wc-10: still no viewer after 170s
+bench: session 0 had no viewer in 180s
+bench: session 0 had no viewer
+stream: the benchmark failed
