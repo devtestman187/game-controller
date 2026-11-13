@@ -109,7 +109,7 @@ The Thumb Party streaming session (M15).
   tools/stream.sh logs [--name N] [--follow]       a session's log
   tools/stream.sh url [--name N]                   the player URL and the controller address
   tools/stream.sh down [--name N | --all]          stop a session, or every session
-  tools/stream.sh selftest                         the player relay's own tests, in the distro
+  tools/stream.sh selftest                         the player relay's and the tap server's tests, in the distro
 
 Options:
   --distro <name>   the WSL distro to use (default: tp-stream, or $STREAM_DISTRO);
@@ -567,16 +567,20 @@ cmd_bench() {
   say "report again with: bash tools/stream.sh stats --results $target"
 }
 
-# The player relay's own tests (M15 g1) and the player page's (M15 fix8): the
-# relay's script beside the code it checks, and the page's tests run by the
-# headless Chrome, both where they run, in the distro. The relay's starts
-# serve.py on free loopback ports and asks it the page's calls; the page's is
-# bench.sh's own --selftest, so one command checks the page's scripts.
+# The player relay's own tests (M15 g1), the tap server's (M15 opt2-2) and the
+# player page's (M15 fix8): the scripts beside the code they check, and the
+# page's tests run by the headless Chrome, all where they run, in the distro.
+# The relay's starts serve.py on free loopback ports and asks it the page's
+# calls; the tap server's starts it on a free port and speaks WebSocket to it;
+# the page's is bench.sh's own --selftest, so one command checks the page's
+# scripts.
 cmd_selftest() {
   local dest
   dest="$(sync_repo)" || fail "the copy into $distro failed"
   say "testing the player relay in $distro …"
   wsl_run "cd $dest && timeout 120 python3 streaming/player/relay_test.py" || fail "the relay's tests failed"
+  say "testing the tap server in $distro …"
+  wsl_run "cd $dest && timeout 120 python3 streaming/tap/tap_server_test.py" || fail "the tap server's tests failed"
   say "testing the player page in $distro …"
   wsl_run "cd $dest && timeout 120 bash streaming/bench.sh --selftest" || fail "the player page's tests failed"
 }

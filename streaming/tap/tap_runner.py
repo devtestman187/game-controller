@@ -4,8 +4,9 @@
 With SESSION_TAP=on the entrypoint starts this instead of gst-launch-1.0: the
 same words go to Gst.parse_launchv (so each word means what gst-launch made of
 it), the pipeline lives in this process, and the appsink the entrypoint's tap
-branch ends in hands every access unit to the callbacks in `frame_callbacks`.
-The tap server of opt2-2 plugs in there; this job proves the frame path.
+branch ends in hands every access unit to the callbacks in `frame_callbacks`
+and to the tap server (tap_server.py), whose clients are the pages the player
+relay tunnels here (PROTOCOL.md).
 
 Like `gst-launch-1.0 -e`, a stop signal sends EOS, waits up to EOS_WAIT_MS for
 the pipeline to finish and then sets it to NULL. GStreamer's own logging and
@@ -26,6 +27,7 @@ gi.require_version("GstVideo", "1.0")
 from gi.repository import GLib, Gst, GstApp, GstVideo
 
 import tap_frames
+import tap_server
 
 # The appsink the entrypoint's tap branch ends in (streaming/entrypoint.sh).
 TAP_SINK_NAME = "tap"
@@ -45,8 +47,8 @@ class TapRunner:
 
     def __init__(self, pipeline, port):
         self.pipeline = pipeline
-        # The tap server's port (PROTOCOL.md): opt2-2 listens on it, this job
-        # only names it so a run's log says which session owns which port.
+        # The tap server's port (PROTOCOL.md): the server listens on it, and a
+        # run's log says which session owns which port.
         self.port = port
         self.tap = pipeline.get_by_name(TAP_SINK_NAME)
         if self.tap is None:
@@ -54,10 +56,12 @@ class TapRunner:
         self.frame_callbacks = []
         self.frames_seen = 0
         self.keyframes_seen = 0
-        # What PROTOCOL.md's hello tells a client; None until the first SPS.
+        # What PROTOCOL.md's hello tells a client; None until the first SPS and
+        # the first buffer that carries the frame rate in its caps.
         self.profile = None
         self.width = None
         self.height = None
+        self.fps = None
         self.every_keyframe_has_parameters = None
         # Whether any buffer arrived out of order (DTS != PTS), which a player
         # with no reordering buffer cannot decode as it comes.
@@ -69,6 +73,10 @@ class TapRunner:
         self.finished = False
         self.loop = GLib.MainLoop()
         self.tap.connect("new-sample", self._on_new_sample)
+        # The WebSocket server a page reaches through the relay's /tap: it is
+        # given frames by _on_new_sample and asks for a keyframe through
+        # request_key_unit (PROTOCOL.md).
+        self.server = tap_server.TapServer(port, self.request_key_unit, self.info)
 
     def add_frame_callback(self, callback):
         """Calls `callback(frame_no, pts_us, is_key, data)` for every access unit."""
@@ -80,6 +88,7 @@ class TapRunner:
             "profile": self.profile,
             "width": self.width,
             "height": self.height,
+            "fps": self.fps,
             "sps_pps_on_every_keyframe": self.every_keyframe_has_parameters,
             "has_reordering": self.has_reordering,
             "frames": self.frames_seen,
@@ -114,8 +123,12 @@ class TapRunner:
         bus.connect("message", self._on_bus_message)
         for signum in (signal.SIGTERM, signal.SIGINT):
             GLib.unix_signal_add(GLib.PRIORITY_HIGH, signum, self._on_signal, signum)
+        # The server listens before the first frame, so a page that is already
+        # open gets its hello and a keyframe as soon as one can be made.
+        self.server.start()
         if self.pipeline.set_state(Gst.State.PLAYING) == Gst.StateChangeReturn.FAILURE:
             print("tap: the pipeline would not start", file=sys.stderr)
+            self.server.stop()
             return 1
         print("tap: playing, the tap server's port is %d" % self.port, file=sys.stderr)
         self.loop.run()
@@ -158,8 +171,11 @@ class TapRunner:
         is_key = tap_frames.is_keyframe(data)
         if is_key:
             self._learn_from_keyframe(data)
+        if self.fps is None:
+            self.fps = _frame_rate(sample)
         for callback in self.frame_callbacks:
             callback(frame_no, pts_us, is_key, data)
+        self.server.publish(frame_no, pts_us, is_key, data)
         return Gst.FlowReturn.OK
 
     def _push_key_unit_event(self):
@@ -270,8 +286,31 @@ class TapRunner:
         if self.eos_timer_id is not None:
             GLib.source_remove(self.eos_timer_id)
             self.eos_timer_id = None
+        # The clients get PROTOCOL.md's `end` and the port is given back before
+        # the pipeline goes to NULL, so the session's log ends with the counters.
+        self.server.log_stats()
+        self.server.stop()
         self.pipeline.set_state(Gst.State.NULL)
         self.loop.quit()
+
+
+def _frame_rate(sample):
+    """The frame rate the encoder's caps carry, or None when they carry none.
+
+    PROTOCOL.md's hello names the stream's rate as its frame rate; the encoder
+    keeps the rate it was given in its output caps, so the tap reads it there
+    rather than being told a second time.
+    """
+    caps = sample.get_caps()
+    structure = caps.get_structure(0) if caps is not None else None
+    if structure is None or not structure.has_field("framerate"):
+        return None
+    # `get_value` cannot hand a GstFraction to Python (it raises TypeError), so
+    # the field is read as the three parts pygobject does convert.
+    found, numerator, denominator = structure.get_fraction("framerate")
+    if not found or denominator == 0:
+        return None
+    return int(numerator) if denominator == 1 else numerator / denominator
 
 
 def parse_args(argv):

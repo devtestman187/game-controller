@@ -305,10 +305,15 @@ start_player() {
   printf 'window.THUMB_PARTY = { signalingPort: %s, splitTracks: %s, sessionId: "%s", options: %s };\n' \
     "$signal_port" "$split_tracks" "$session_id" "$(player_options_json "$player_options")" \
     > "$run_dir/player/config.js"
+  # With the tap on, the relay tunnels a page's WebSocket upgrade on /tap to
+  # the tap server on loopback (PROTOCOL.md); off, it is passed no port at all
+  # and /tap answers 404 as every unlisted path does.
+  local -a tap_args=()
+  if [[ "$tap" == "on" ]]; then tap_args=(--tap-port "$tap_port"); fi
   start_logged "$player_log" \
     python3 "$run_dir/player/serve.py" --port "$player_port" --directory "$run_dir/player" \
       --automation-port "$automation_port" --token "$automation_token" --state "$run_dir" \
-      --session-id "$session_id"
+      --session-id "$session_id" "${tap_args[@]}"
 }
 
 # The session's own token, made once and readable by this container only, so a

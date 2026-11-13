@@ -24,32 +24,36 @@ The page talks to this process on these paths, and nothing else answers:
                            pages of earlier sessions it has been told about
     POST /player           {"state": "...", "sessionId": "...", "pageId": "..."}
     POST /stats/stream     one batch of measurements, sent to the host as it is
+    GET  /tap              a WebSocket upgrade, passed to the tap server (opt2-2)
 
 Every report and batch names the session its page loaded (`config.js` gives it
 to the page), and one from an earlier session is not this session's (M15 fix8):
-its report is answered `stale` and named in `GET /player` for the bench to say
-so, it never becomes this page's state, and the measurements it sends are
-refused instead of reaching the host, so its numbers are not counted.
+its report is answered `stale` and named in `GET /player`, it never becomes
+this page's state, and its measurements are refused rather than counted.
 
 Of those, exactly two reach the host's automation interface, with the session's
 token and no other credentials: `GET /status`, asked for `/clock`, because the
 press probe needs the host's own clock; and `POST /stats/stream`, the
 measurements the stats framework keeps. Nothing else of the host's API is
-reachable through this process — a path it does not list above answers 404,
-and its own API (`/players`, `game/start`, `probe/press`, …) has no route here.
-A browser on the network can therefore measure a session and nothing more; the
-measurements it sends are trusted, because anyone who can open the page can
-send them (docs/automation.md).
+reachable here — a path it does not list above answers 404, and its own API
+(`/players`, `game/start`, `probe/press`, …) has no route. A browser on the
+network can therefore measure a session and nothing more; what it sends is
+trusted, because anyone who can open the page can send it (docs/automation.md).
 
-The body of a POST is one small JSON object: at most `max_body_bytes` (64 KB),
-which is a whole batch of a viewer's numbers with room to spare. A longer one
-is refused before it is read.
+The tap rides on this port too (PROTOCOL.md): a GET for exactly `/tap` that
+asks for `Upgrade: websocket` is passed, byte for byte both ways, to the
+session's tap server on loopback at `--tap-port` — and nothing else ever is.
+With `--tap-port 0` (its default, off) `/tap` answers 404 like any unlisted path.
+
+The body of a POST is one small JSON object, at most `max_body_bytes` (64 KB); a
+longer one is refused before it is read.
 """
 
 import argparse
 import json
 import os
 import re
+import socket
 import sys
 import threading
 import urllib.error
@@ -69,41 +73,30 @@ automation_prefix = "/automation/v1"
 # two, and `GET /player` carries the list (M15 fix8).
 max_stale_pages = 10
 
-# The most a POST body may be: one batch of a viewer's measurements is about
-# 2 KB and a press is a few dozen bytes, so 64 KB is room and no more. The
-# relay is reachable from anywhere the page is, and the host's ingest keeps what
-# it is given, so an open body would be an open memory hole. Keep this in step
-# with the host's own cap, `maxAutomationBodyBytes` in
-# packages/party_host/lib/src/automation/automation_body.dart: a batch the relay
-# lets through is one the host must also take.
+# The most a POST body may be: a batch of measurements is about 2 KB, so 64 KB
+# is room and no more — the relay is reachable from anywhere the page is, and an
+# open body would be an open memory hole. Keep it in step with the host's own
+# cap, `maxAutomationBodyBytes` in
+# packages/party_host/lib/src/automation/automation_body.dart.
 max_body_bytes = 64 * 1024
+
+# Where the tap server listens, the most of a tunnelled stream this process
+# holds at once (one socket read, never inside a frame), and its connect wait.
+tap_address = "127.0.0.1"
+tunnel_read_bytes = 64 * 1024
+tunnel_connect_timeout_s = 2
 
 # The files the page loads, which are the only things it can fetch from here.
 page_files = frozenset(
     (
-        "index.html",
-        "config.js",
-        "player.js",
-        "page_state.js",
-        "playback.js",
-        "streams.js",
-        "options.js",
-        "jb_target.js",
-        "low_delay.js",
-        "latency_probe.js",
-        "marker_batch.js",
-        "marker_decode.js",
-        "marker_reader.js",
-        "clock_sync.js",
-        "metrics.js",
-        "reporter.js",
-        "session_end.js",
-        "overlay.js",
-        "stats.js",
-        # The capability probe (M15 opt1 o1-3): a page of its own that the phone
-        # opens to report what it can do. Nothing links to it, and it loads
-        # nothing from here, so it changes no default behaviour.
-        "probe.html",
+        "index.html", "config.js", "player.js", "page_state.js", "playback.js",
+        "streams.js", "options.js", "jb_target.js", "low_delay.js", "latency_probe.js",
+        "marker_batch.js", "marker_decode.js", "marker_reader.js", "clock_sync.js",
+        "metrics.js", "reporter.js", "session_end.js", "overlay.js", "stats.js",
+        # The capability probe (M15 opt1 o1-3), a page of its own that nothing
+        # links to; and the custom player's files (M15 opt2), left 404 until the
+        # job that writes each one has.
+        "probe.html", "wc_annexb.js", "wc_player.js", "wc_stats.js",
     )
 )
 
@@ -121,9 +114,7 @@ def is_page_file(path):
     # `/` is the page itself: http.server answers it with index.html.
     if name == "" or name in page_files:
         return True
-    if name.startswith(library_dir):
-        return plain_name.match(name[len(library_dir):]) is not None
-    return False
+    return name.startswith(library_dir) and plain_name.match(name[len(library_dir):]) is not None
 
 
 class Relay:
@@ -131,8 +122,8 @@ class Relay:
 
     # The only two calls this process makes to the host, with the session's
     # token: its status (for `/clock`) and the measurements (`/stats/stream`).
-    # Every other path is answered here or refused, so the relay cannot be
-    # turned into a door to the host's own API.
+    # Every other path is answered here or refused, so this is no door to the
+    # host's own API.
     host_paths = frozenset(("/status", "/stats/stream"))
 
     def __init__(self, automation_port, token, state_dir, session_id=""):
@@ -220,8 +211,16 @@ class Handler(SimpleHTTPRequestHandler):
     # read, so an unlisted path never gets as far as the host.
     post_paths = frozenset(("/stats/stream", "/presses", "/flips", "/player"))
 
+    # The tap server's port from `--tap-port`; 0 (its default, the tap off) leaves
+    # /tap answering like any path this process does not serve.
+    tap_port = 0
+
     def do_GET(self):  # noqa: N802 - the name http.server asks for
         path, _, query = self.path.partition("?")
+        if path == "/tap" and self.tap_port:
+            if "websocket" not in self.headers.get("upgrade", "").lower():
+                return self._json(400, {"ok": False, "error": "/tap is a WebSocket upgrade"})
+            return self._tunnel()
         if path == "/clock":
             return self._json(200, {"ok": True, "hostMs": self.relay.host_clock_ms()})
         if path == "/pipeline":
@@ -274,6 +273,29 @@ class Handler(SimpleHTTPRequestHandler):
             self.relay.note_stale_page(body.get("pageId"))
         return self._json(200, {"ok": True, "stale": True})
 
+    def _tunnel(self):
+        """Passes this connection to the tap server, byte for byte both ways (PROTOCOL.md).
+
+        The relay never looks into a WebSocket frame and holds one read of it at most.
+        """
+        try:
+            tap = socket.create_connection((tap_address, self.tap_port), timeout=tunnel_connect_timeout_s)
+        except OSError as error:
+            return self._json(502, {"ok": False, "error": "the tap server is not answering: %s" % error})
+        tap.settimeout(None)
+        for sock in (tap, self.connection):
+            sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+        # The head as the page sent it: the tap server does the handshake.
+        head = self.requestline + "\r\n" + "".join("%s: %s\r\n" % item for item in self.headers.items()) + "\r\n"
+        self.close_connection = True
+        threading.Thread(target=_copy, args=(tap.recv, self.connection.sendall), daemon=True).start()
+        try:
+            tap.sendall(head.encode("latin-1"))
+            _copy(self.rfile.read1, tap.sendall)
+        finally:
+            _shut(tap)
+            _shut(self.connection)
+
     def _body(self):
         """The POST's JSON object, or (None, the status to refuse it with)."""
         try:
@@ -296,28 +318,43 @@ class Handler(SimpleHTTPRequestHandler):
         self.wfile.write(text)
 
     def log_message(self, message, *args):
-        # Only a refused call is worth a line: the page asks for its presses
-        # five times a second, and that would fill the session's log.
+        # Only a measurement or a clock ping is worth a line; the page's press
+        # polls five times a second would fill the session's log.
         if self.path.startswith("/stats") or self.path.startswith("/clock"):
             sys.stderr.write("relay: %s\n" % (message % args))
+
+
+def _copy(read, write):
+    """Copies one side of a tunnel to the other until a side closes."""
+    try:
+        while True:
+            data = read(tunnel_read_bytes)
+            if not data:
+                return
+            write(data)
+    except OSError:
+        pass  # a socket closed under the copy, which is how a tunnel ends
+
+
+def _shut(sock):
+    """Ends a tunnel socket both ways, so a thread blocked on it returns."""
+    try:
+        sock.shutdown(socket.SHUT_RDWR)
+    except OSError:
+        pass
 
 
 def _since(query):
     for part in query.split("&"):
         key, _, value = part.partition("=")
-        if key == "since":
-            try:
-                return int(value)
-            except ValueError:
-                return 0
+        if key == "since" and value.isdigit():
+            return int(value)
     return 0
 
 
 def _refusal_text(status):
     """The one line the page shows for a body it cannot take."""
-    if status == 413:
-        return "the body is over %d bytes" % max_body_bytes
-    return "the body is a JSON object"
+    return "the body is over %d bytes" % max_body_bytes if status == 413 else "the body is a JSON object"
 
 
 def main():
@@ -328,9 +365,11 @@ def main():
     parser.add_argument("--token", default="")
     parser.add_argument("--state", default="/run/thumb-party")
     parser.add_argument("--session-id", default="")
+    parser.add_argument("--tap-port", type=int, default=0)
     options = parser.parse_args()
 
     Handler.relay = Relay(options.automation_port, options.token, options.state, options.session_id)
+    Handler.tap_port = options.tap_port
     handler = lambda *args, **kwargs: Handler(*args, directory=options.directory, **kwargs)  # noqa: E731
     server = ThreadingHTTPServer(("0.0.0.0", options.port), handler)
     sys.stderr.write("relay: the player page on %d, the host on %d\n" % (options.port, options.automation_port))
