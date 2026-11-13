@@ -9,17 +9,23 @@
 
 <body>
   <pre id="result">SELFTEST RUNNING</pre>
-  <!-- The custom player's measurements (M15 opt2), in the headless Chrome the
-       bench already has: wc_stats.js's figures from fake samples, the marker's
-       strip and the card's flip read from a painted canvas in the video
-       element's place, and the fact inside the host's limits. bench.sh
-       --selftest serves the player folder and reads the one line below back
-       out of the DOM. -->
+  <!-- The custom player's measurements (M15 opt2) and its decoder (M15 opt2b-3),
+       in the headless Chrome the bench already has: wc_stats.js's figures from
+       fake samples, wc_decoder.js's rebuilds from a fake VideoDecoder, the
+       marker's strip and the card's flip read from a painted canvas in the
+       video element's place, and the facts inside the host's limits. The
+       decoder's checks are here, not in wc_selftest.html, because that page is
+       at its 500-line cap. bench.sh --selftest serves the player folder and
+       reads the one line below back out of the DOM. -->
   <script type="module">
     import { LatencyProbe } from "./latency_probe.js";
     import { canvasPicture, MarkerReader } from "./marker_reader.js";
     import { StreamReporter } from "./reporter.js";
-    import { combinedSeries, WcStats, wcFactText, wcHostNames, wcNames, wcStatsOf } from "./wc_stats.js";
+    import { WcDecoder, decoderErrorText } from "./wc_decoder.js";
+    import { WcPlayer } from "./wc_player.js";
+    import {
+      combinedSeries, WcStats, wcErrorFactText, wcFactText, wcHostNames, wcNames, wcStatsOf,
+    } from "./wc_stats.js";
 
     // The spec's first two rows (docs/streaming-marker.md): counter 0 without a
     // press, and counter 1 with one, whose flip cell is turned.
@@ -35,14 +41,23 @@
     const failures = [];
     let checks = 0;
 
-    function check(name, run) {
+    async function check(name, run) {
       checks++;
       try {
-        const problem = run();
+        const problem = await run();
         if (problem) failures.push(`${name}: ${problem}`);
       } catch (error) {
         failures.push(`${name}: threw ${error.message}`);
       }
+    }
+
+    /** Lets the player's promise chain run to its end: every step is a microtask. */
+    async function flushed() {
+      for (let step = 0; step < 20; step++) await Promise.resolve();
+    }
+
+    function bytesOfHex(hex) {
+      return new Uint8Array(hex.match(/../g).map((pair) => Number.parseInt(pair, 16)));
     }
 
     function same(actual, expected) {
@@ -61,6 +76,8 @@
         dropsGap: 1,
         keyRequests: 3,
         decoderErrors: 0,
+        decoderRebuilds: 0,
+        lastDecoderError: "",
         reconnects: 0,
         queueMax: 4,
         lastFrame: 11,
@@ -110,32 +127,36 @@
     const stats = new WcStats({ player: fakePlayer(), now: () => clock.nowMs });
     const first = stats.batch();
 
-    check("the stage figures are the medians of the frames the batch finished", () => {
+    await check("the stage figures are the medians of the frames the batch finished", () => {
       return same([gaugeValue(first, wcNames.recvToDecode), gaugeValue(first, wcNames.decodeToDraw)], [16, 4]);
     });
-    check("the host's decode and display stages come from the frames alone, no marker needed", () => {
+    await check("the host's decode and display stages come from the frames alone, no marker needed", () => {
       return same(first.stages, [
         { name: wcHostNames.decode, ms: 23 },
         { name: wcHostNames.display, ms: 4 },
       ]);
     });
-    check("the counters ride as the player keeps them", () => {
-      return same(["dropped", "backlog", "keyRequests", "queueMax"].map((key) => gaugeValue(first, wcNames[key])),
-        [3, 3, 3, 4]);
+    await check("the counters ride as the player keeps them", () => {
+      return same(
+        ["dropped", "backlog", "keyRequests", "queueMax", "decoderErrors", "decoderRebuilds"]
+          .map((key) => gaugeValue(first, wcNames[key])),
+        [3, 3, 3, 4, 0, 0],
+      );
     });
-    check("the fact says which decoder was configured and that a frame was drawn", () => {
+    await check("the fact says which decoder was configured and that a frame was drawn", () => {
       return same(item(first.facts, wcNames.fact), { name: "wc", value: "cfg hw dec ok" });
     });
-    check("the fact fits the host's length and its characters", () => {
+    await check("the fact fits the host's length and its characters", () => {
       const fact = item(first.facts, wcNames.fact).value;
       return fact.length <= factLengthLimit && factPattern.test(fact) ? "" : `"${fact}" would be dropped`;
     });
-    check("a batch of no finished frame keeps the counters and sends no stage figure", () => {
+    await check("a batch of no finished frame keeps the counters and sends no stage figure", () => {
       const second = stats.batch();
       return same([second.stages, second.gauges.map((gauge) => gauge.name)],
-        [[], [wcNames.dropped, wcNames.backlog, wcNames.keyRequests, wcNames.queueMax]]);
+        [[], [wcNames.dropped, wcNames.backlog, wcNames.keyRequests, wcNames.queueMax, wcNames.decoderErrors,
+          wcNames.decoderRebuilds]]);
     });
-    check("the socket's bytes over the interval are the rate, and none before any arrive", () => {
+    await check("the socket's bytes over the interval are the rate, and none before any arrive", () => {
       const counters = countersOf();
       const rateClock = { nowMs: 0 };
       const rateStats = new WcStats({ player: fakePlayer(counters), now: () => rateClock.nowMs });
@@ -146,21 +167,21 @@
       // 37 500 bytes × 8 = 300 000 bits = 300 kbit over 3 s = 100 kbit/s.
       return same([gaugeValue(atStart, wcHostNames.bitrate), gaugeValue(after, wcHostNames.bitrate)], [null, 100]);
     });
-    check("the overlay's one line carries the figures, the backlog's age and the fact", () => {
+    await check("the overlay's one line carries the figures, the backlog's age and the fact", () => {
       stats.noteDrawn(360);
       return same(stats.line(), "wc recv-dec 16 ms dec-draw 4 ms drop 3 backlog 3 age 60 ms keys 3 q 4 cfg hw dec ok");
     });
-    check("a fact that cannot fit is the fallback, never a long one", () => {
+    await check("a fact that cannot fit is the fallback, never a long one", () => {
       return same(wcFactText({ decodeConfig: "avc1.640028 hardware", framesDrawn: 1 }, 8), "cfg none dec no");
     });
-    check("a player that never drew says so", () => {
+    await check("a player that never drew says so", () => {
       return same(wcFactText({ decodeConfig: "none", framesDrawn: 0 }), "cfg none dec no");
     });
-    check("no custom player option, no figures and no extra series", () => {
+    await check("no custom player option, no figures and no extra series", () => {
       return same([wcStatsOf({ player: "webrtc" }, fakePlayer()), wcStatsOf({}, fakePlayer()), combinedSeries(null)()],
         [null, null, { stages: [], gauges: [], facts: [] }]);
     });
-    check("the reporter's batch carries the rate and both stages with no connection and no marker", () => {
+    await check("the reporter's batch carries the rate and both stages with no connection and no marker", () => {
       const counters = countersOf();
       const rateClock = { nowMs: 0 };
       const wc = new WcStats({ player: fakePlayer(counters), now: () => rateClock.nowMs });
@@ -185,7 +206,224 @@
           { name: "bitrateReceivedKbps", value: 100 }]);
     });
 
-    check("the marker's strip is read from a canvas right after a draw", () => {
+    // The custom player's decoder (M15 opt2b-3): a real 1080p High-profile SPS
+    // and its PPS (profile 0x64, level 0x28, as wc_selftest.html's), the same
+    // SPS as profile 0xF4 level 0x2A (244, High 4:4:4 Predictive: the tap
+    // stream's avc1.F4002A), and one access unit built from each.
+    const wcSpsHex = "67640028acd940780227e5c044000003000400000301e03c60c658";
+    const wcPpsHex = "68ebe3cb22c0";
+    const wcAudHex = "0000000109f0"; const wcIdrHex = "0000000165888421";
+    const wcDeltaHex = "0000000109f000000001419aa0";
+    const wcKeyPayload = bytesOfHex(`${wcAudHex}000001${wcSpsHex}000001${wcPpsHex}${wcIdrHex}`);
+    const wc444SpsHex = `67f4002a${wcSpsHex.slice(6)}`;
+    const wc444Payload = bytesOfHex(`${wcAudHex}000001${wc444SpsHex}000001${wcPpsHex}${wcIdrHex}`);
+    const wcDeltaPayload = bytesOfHex(wcDeltaHex);
+
+    /** One access unit behind the tap socket's 24-byte header (PROTOCOL.md). */
+    function wcMessage(payload, frame, keyframe = false) {
+      const buffer = new ArrayBuffer(24 + payload.length);
+      const view = new DataView(buffer);
+      view.setUint8(0, 0x54);
+      view.setUint8(1, 1);
+      view.setUint8(2, keyframe ? 1 : 0);
+      view.setUint32(4, frame);
+      new Uint8Array(buffer, 24).set(payload);
+      return buffer;
+    }
+
+    /** The browsers' VideoDecoder and EncodedVideoChunk, faked, recording into `log`. */
+    function videoFakes(log, supports, configureThrows) {
+      class FakeDecoder {
+        static isConfigSupported(config) {
+          log.support.push(config);
+          return supports(config);
+        }
+
+        constructor(init) {
+          this.init = init;
+          this.state = "unconfigured"; this.decodeQueueSize = 0;
+          this.configs = [];
+          this.closes = 0;
+          log.decoders.push(this);
+        }
+
+        configure(config) {
+          if (configureThrows) throw new Error("no configuration");
+          this.configs.push(config);
+          this.state = "configured";
+        }
+
+        decode(chunk) { log.chunks.push(chunk); }
+
+        close() { this.closes++; this.state = "closed"; }
+      }
+      class FakeChunk {
+        constructor(init) { this.type = init.type; this.timestamp = init.timestamp; this.data = init.data; }
+      }
+      return { FakeDecoder, FakeChunk };
+    }
+
+    /** A decoder on those fakes and a clock: what it was given, said and asked for. */
+    function decoderHarness({ supports = () => Promise.resolve({ supported: true }), configureThrows = false } = {}) {
+      const log = { decoders: [], chunks: [], support: [], status: [], keys: [] };
+      const clock = { nowMs: 0 }, timers = [];
+      const { FakeDecoder, FakeChunk } = videoFakes(log, supports, configureThrows);
+      const decoder = new WcDecoder({
+        decoderClass: FakeDecoder,
+        chunkClass: FakeChunk,
+        now: () => clock.nowMs,
+        setTimeoutImpl: (run, delayMs) => {
+          timers.push({ run, delayMs });
+          return timers.length;
+        },
+        onFrame: () => {},
+        onStatus: (text) => log.status.push(text),
+        onNeedsKey: () => log.keys.push(clock.nowMs),
+      });
+      decoder.start();
+      return { decoder, log, clock, timers, current: () => log.decoders[log.decoders.length - 1] };
+    }
+
+    await check("a decoder error closes it, and the next keyframe is the new decoder's first sample", async () => {
+      const h = decoderHarness();
+      await h.decoder.configureFor(wcKeyPayload);
+      const first = h.current();
+      first.init.error({ name: "EncodingError", message: "boom" });
+      const after = [first.closes, h.log.decoders.length, h.current().state, h.log.status];
+      const counters = h.decoder.counters();
+      await h.decoder.configureFor(wcKeyPayload);
+      return same([after, counters.decoderErrors, counters.decoderRebuilds, counters.lastDecoderError,
+        h.decoder.decode(wcDeltaPayload, "delta", 4), h.decoder.decode(wcKeyPayload, "key", 5),
+        h.log.chunks.map((chunk) => chunk.type), h.current().configs.length],
+        [[1, 2, "unconfigured", ["decoder error, restarting"]], 1, 1, "EncodingError boom", false, true,
+          ["key"], 1]);
+    });
+    await check("a second error within half a second waits out the gap: one rebuild per 500 ms", () => {
+      const h = decoderHarness();
+      h.clock.nowMs = 1000;
+      h.current().init.error({ message: "boom" });
+      h.clock.nowMs = 1100;
+      h.current().init.error({ message: "boom" });
+      const waiting = [h.log.decoders.length, h.timers.length, h.timers[0].delayMs];
+      h.clock.nowMs = 1500;
+      h.timers[0].run();
+      return same([waiting, h.log.decoders.length, h.decoder.counters().decoderErrors], [[2, 1, 400], 3, 2]);
+    });
+    await check("after five rebuilds in ten seconds the retries slow to one a second", () => {
+      const h = decoderHarness();
+      for (let step = 0; step < 5; step++) {
+        h.current().init.error({ message: "boom" });
+        h.clock.nowMs += 500;
+      }
+      h.current().init.error({ message: "boom" });
+      const waiting = [h.log.decoders.length, h.decoder.counters().decoderRebuilds, h.timers.length,
+        h.timers[0].delayMs];
+      h.timers[0].run();
+      return same([waiting, h.log.decoders.length], [[6, 5, 1, 500], 7]);
+    });
+    await check("a configuration that throws is a decoder error like any other", async () => {
+      const h = decoderHarness({ configureThrows: true });
+      const configured = await h.decoder.configureFor(wcKeyPayload);
+      const counters = h.decoder.counters();
+      return same([configured, h.log.decoders[0].closes, h.log.decoders.length, counters.decoderErrors,
+        counters.decoderRebuilds, h.log.status], [false, 1, 2, 1, 1, ["decoder error, restarting"]]);
+    });
+    await check("a static check that rejects is a decoder error too", async () => {
+      const h = decoderHarness({ supports: () => Promise.reject(new Error("no check")) });
+      const configured = await h.decoder.configureFor(wcKeyPayload);
+      const counters = h.decoder.counters();
+      return same([configured, counters.decoderErrors, counters.lastDecoderError, h.log.decoders[0].closes],
+        [false, 1, "Error no check", 1]);
+    });
+    await check("a 4:4:4 stream the browser refuses is said once and nothing is asked for again", async () => {
+      const h = decoderHarness({ supports: () => Promise.resolve({ supported: false }) });
+      const first = await h.decoder.configureFor(wc444Payload);
+      const askedOnce = h.log.keys.length;
+      const second = await h.decoder.configureFor(wc444Payload);
+      const counters = h.decoder.counters();
+      return same([first, second, askedOnce, h.log.keys.length, h.log.status, h.log.support.length,
+        counters.decodeConfig, wcFactText(counters)],
+        [false, false, 0, 0, ["the host sends 4:4:4; Safari cannot decode it"], 2, "444 avc1.F4002A",
+          "cfg 444 dec no"]);
+    });
+    await check("a delta is never the first sample after a configuration", async () => {
+      const h = decoderHarness();
+      await h.decoder.configureFor(wcKeyPayload);
+      return same([h.decoder.decode(wcDeltaPayload, "delta", 9), h.decoder.decode(wcKeyPayload, "key", 10),
+        h.decoder.decode(wcDeltaPayload, "delta", 11), h.log.chunks.map((chunk) => chunk.type)],
+        [false, true, true, ["key", "delta"]]);
+    });
+    await check("the error text keeps the name first and only the host's characters, 60 at most", () => {
+      const short = decoderErrorText({ name: "EncodingError", message: "Cannot <decode> #12" });
+      const long = decoderErrorText({ name: "EncodingError", message: "x".repeat(80) });
+      return same([short, long.length, long.startsWith("EncodingError ")],
+        ["EncodingError Cannot decode 12", 60, true]);
+    });
+    await check("the decoder's errors and rebuilds ride as counters and its error as a second fact", () => {
+      const counters = { ...countersOf(), decoderErrors: 3, decoderRebuilds: 2,
+        lastDecoderError: "EncodingError boom" };
+      const batch = new WcStats({ player: fakePlayer(counters), now: () => clock.nowMs }).batch();
+      return same([gaugeValue(batch, wcNames.decoderErrors), gaugeValue(batch, wcNames.decoderRebuilds),
+        item(batch.facts, wcNames.errorFact)], [3, 2, { name: "wcerr", value: "EncodingError boom" }]);
+    });
+    await check("the error fact is cut to the host's 24 characters and keeps its rule", () => {
+      const text = wcErrorFactText("EncodingError Cannot decode this frame");
+      return same([text, text.length, factPattern.test(text), wcErrorFactText("")],
+        ["EncodingError Cannot dec", 24, true, ""]);
+    });
+    /** The whole player on those fakes, a socket and a canvas: its events and its messages. */
+    function playerHarness(supports) {
+      const log = { decoders: [], chunks: [], support: [], status: [], sockets: [], events: [], sent: [] };
+      const timers = [];
+      const { FakeDecoder, FakeChunk } = videoFakes(log, supports, false);
+      class FakeSocket {
+        constructor() { this.readyState = 1; log.sockets.push(this); }
+
+        send(data) { log.sent.push(data); }
+
+        close() { this.readyState = 3; }
+      }
+      const player = new WcPlayer({
+        url: "ws://test/tap",
+        canvas: { width: 0, height: 0, getContext: () => ({ drawImage: () => {} }) },
+        onEvent: (event) => log.events.push(event),
+        now: () => 0,
+        WebSocketImpl: FakeSocket,
+        VideoDecoderImpl: FakeDecoder,
+        EncodedVideoChunkImpl: FakeChunk,
+        setTimeoutImpl: (run, delayMs) => {
+          timers.push({ run, delayMs });
+          return timers.length;
+        },
+      });
+      player.start();
+      return { player, log, timers };
+    }
+
+    await check("a frame on the canvas takes the decoder's message with it", async () => {
+      const h = playerHarness(() => Promise.resolve({ supported: true }));
+      h.log.sockets[0].onmessage({ data: wcMessage(wcKeyPayload, 0, true) });
+      await flushed();
+      h.log.decoders[0].init.error({ name: "EncodingError", message: "boom" });
+      const shown = h.log.events.map((event) => event.text);
+      h.log.decoders[1].init.output({ timestamp: 0, displayWidth: 1920, displayHeight: 1080, close: () => {} });
+      return same([shown, h.log.events[h.log.events.length - 1], h.player.counters().decoderErrors],
+        [["decoder error, restarting"], { type: "status", text: "" }, 1]);
+    });
+    await check("a 4:4:4 stream the browser refuses is asked for no more keyframes", async () => {
+      const h = playerHarness(() => Promise.resolve({ supported: false }));
+      const socket = h.log.sockets[0];
+      socket.onmessage({ data: wcMessage(wc444Payload, 0, true) });
+      await flushed();
+      socket.onmessage({ data: wcMessage(wcDeltaPayload, 1) });
+      await flushed();
+      socket.onmessage({ data: wcMessage(wc444Payload, 2, true) });
+      await flushed();
+      return same([h.log.sent, h.log.chunks.length, h.log.support.length,
+        h.log.events.map((event) => event.text)], [[], 0, 2, ["the host sends 4:4:4; Safari cannot decode it"]]);
+    });
+
+    await check("the marker's strip is read from a canvas right after a draw", () => {
       const canvas = stripCanvas(plainCells);
       const problems = [];
       const reader = new MarkerReader({
@@ -198,7 +436,7 @@
       const summary = reader.summary();
       return same([summary.frames, summary.readable, summary.glassMs[0], problems], [1, 1, 1000, []]);
     });
-    check("a press's flip is timed from the canvas, a frame apart from the one before", () => {
+    await check("a press's flip is timed from the canvas, a frame apart from the one before", () => {
       const canvas = stripCanvas(plainCells);
       const presses = [{ hostMs: 1000 }];
       const reader = new MarkerReader({
@@ -215,7 +453,7 @@
       return same(reader.summary().pressesMs, [8]);
     });
 
-    check("the card's flip is read from the canvas and times a waiting press", () => {
+    await check("the card's flip is read from the canvas and times a waiting press", () => {
       const canvas = document.createElement("canvas");
       canvas.width = 1920;
       canvas.height = 1080;
@@ -239,7 +477,7 @@
       const press = probe.presses[0];
       return same([press.seen, press.sampleMs, probe.flipsSeen, problems], [true, 8, 1, []]);
     });
-    check("a picture with no size yet is a problem, not a reading", () => {
+    await check("a picture with no size yet is a problem, not a reading", () => {
       const canvas = document.createElement("canvas");
       const problems = [];
       const reader = new MarkerReader({

@@ -7,7 +7,9 @@ import 'package:test/test.dart';
 ///
 /// * receive → decode 10 and 12 ms (mean 11), decode → draw 2 and 4 (mean 3);
 /// * dropped 3 then 5 (max 5), backlog 1 then 3 (max 3);
-/// * key requests 2 (max 2), the decoder's queue 1 then 2 (max 2).
+/// * key requests 2 (max 2), the decoder's queue 1 then 2 (max 2);
+/// * decoder errors 1 then 2 (max 2) and rebuilds 1 then 2 (max 2), with its
+///   last error as the `wcerr` fact (M15 opt2b-3).
 Map<String, Object?> wcSession() {
   final c = SessionCollector(
     id: 'wc',
@@ -32,8 +34,35 @@ Map<String, Object?> wcSession() {
   for (final value in const [1, 2]) {
     c.streamGauge(viewer, StreamWc.queueMax, value);
   }
+  // The names the page sends (streaming/player/wc_stats.js): the decoder's
+  // errors and rebuilds as gauges, its last error as the second fact.
+  for (final value in const [1, 2]) {
+    c.streamGauge(viewer, 'wcDecoderErrors', value);
+  }
+  for (final value in const [1, 2]) {
+    c.streamGauge(viewer, 'wcDecoderRebuilds', value);
+  }
   c
     ..streamGauge(viewer, StreamWc.keyRequests, 2)
+    ..streamFact(viewer, StreamWc.fact, 'cfg hw dec ok')
+    ..streamFact(viewer, 'wcerr', 'EncodingError boom');
+  return c.summary(600000);
+}
+
+/// A custom-player page that sent the fact but no decoder numbers, as one
+/// built before M15 opt2b-3 did: its row keeps those columns empty.
+Map<String, Object?> wcSessionNoDecoder() {
+  final c = SessionCollector(
+    id: 'old',
+    hostType: HostType.windows,
+    hostApp: '0.15.0',
+    startedAt: DateTime.utc(2026, 11, 13, 12),
+    startMs: 0,
+  );
+  final viewer = c.streamViewer(kind: StreamKind.browser, platform: 'safari');
+  // The rate a custom-player page always sends, so the row is a viewer's.
+  c
+    ..streamGauge(viewer, 'bitrateReceivedKbps', 2400)
     ..streamFact(viewer, StreamWc.fact, 'cfg hw dec ok');
   return c.summary(600000);
 }
@@ -70,9 +99,13 @@ List<String> tableOf(String text, String title) {
 /// One line's cells, the padding collapsed.
 List<String> cells(String line) => line.trim().split(RegExp(r'\s+'));
 
+/// One line's cells where a cell itself holds a space (the facts): the column
+/// padding is two spaces or more, a fact's own words are set off by one.
+List<String> wideCells(String line) => line.trim().split(RegExp(r'\s{2,}'));
+
 void main() {
   group('the Custom player (wc) table (M15 opt2)', () {
-    test('a viewer that sent the wc fact: the stage medians\' means, the totals\' maxima and the fact', () {
+    test('a viewer that sent the wc fact: the stage medians\' means, the totals\' maxima and the facts', () {
       final table = tableOf(streamReport([wcSession()]), 'Custom player (wc)');
       expect(cells(table[0]), [
         'session',
@@ -88,10 +121,29 @@ void main() {
         'queue',
         'max',
         'decode',
+        'errors',
+        'rebuilds',
+        'error',
       ]);
-      // The fact carries spaces, so the row's last column is the row's end.
-      expect(table[2].trimRight(), endsWith('cfg hw dec ok'));
-      expect(cells(table[2]).take(8).toList(), ['wc', 'v1', '11.0', '3.0', '5', '3', '2', '2']);
+      expect(wideCells(table[2]), [
+        'wc',
+        'v1',
+        '11.0',
+        '3.0',
+        '5',
+        '3',
+        '2',
+        '2',
+        'cfg hw dec ok',
+        '2',
+        '2',
+        'EncodingError boom',
+      ]);
+    });
+
+    test('a viewer whose page kept no decoder numbers shows a dash for each', () {
+      final table = tableOf(streamReport([wcSessionNoDecoder()]), 'Custom player (wc)');
+      expect(wideCells(table[2]), ['old', 'v1', '-', '-', '-', '-', '-', '-', 'cfg hw dec ok', '-', '-', '-']);
     });
 
     test('a run played the WebRTC way has no custom player table', () {

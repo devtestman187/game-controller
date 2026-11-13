@@ -22,11 +22,15 @@ export function bytesOf(data) {
   return typeof data?.byteLength === "number" ? data.byteLength : 0;
 }
 
-/** The player's counters at zero: one plain number each, for the overlay and a run's report. */
+/**
+ * The player's own counters at zero: one plain number each, for the overlay and
+ * a run's report. The decoder's numbers — its errors, its rebuilds, its last
+ * error and the configuration it ran — come from wc_decoder.js and join these.
+ */
 export function emptyCounters() {
   return {
     framesReceived: 0, framesDecoded: 0, framesDrawn: 0, dropsQueue: 0, dropsGap: 0, keyRequests: 0,
-    decoderErrors: 0, reconnects: 0, queueMax: 0, lastFrame: -1, bytesReceived: 0, decodeConfig: "none",
+    reconnects: 0, queueMax: 0, lastFrame: -1, bytesReceived: 0,
   };
 }
 

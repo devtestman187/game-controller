@@ -115,6 +115,21 @@ export function codecString(sps) {
   return `avc1.${hexByte(sps[1])}${hexByte(sps[2])}${hexByte(sps[3])}`;
 }
 
+/** The H.264 profiles with 4:4:4 chroma or its intra forms (ITU-T H.264 table A-1). */
+const profiles444 = [44, 110, 122, 244];
+
+/**
+ * Whether an SPS names one of the 4:4:4 profiles, which Safari's decoders do
+ * not take: High 4:4:4 Predictive (244), High 10 Intra (110), High 4:2:2 Intra
+ * (122) and CAVLC 4:4:4 Intra (44). The tap stream today is avc1.F4002A,
+ * profile 244 (M15 opt2b-3).
+ * @param {Uint8Array} sps - the SPS's NAL unit, header included
+ * @returns {boolean}
+ */
+export function isFourFourFour(sps) {
+  return sps.length > 1 && profiles444.includes(sps[1]);
+}
+
 /**
  * The AVCDecoderConfigurationRecord for one SPS and PPS: what a decoder given
  * AVCC needs to know the codec, and where the sample's NAL lengths are 4 bytes.

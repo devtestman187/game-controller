@@ -1,11 +1,11 @@
 /*
  * The custom player's own figures (M15 opt2): what the frames' arrival, decode
  * and draw times say over each reporting interval, plus the counters the
- * player keeps (drops, keyframe requests, the socket's backlog and the
- * decoder's queue). Pure and small: one player's `counters()` and
- * `stageSamples()` in, a reporter batch's gauges and one fact out, the way
- * jb_target.js gives the jitter buffer target's. Nothing runs unless the page
- * plays `player=wc`.
+ * player keeps (drops, keyframe requests, the socket's backlog, the decoder's
+ * queue, and its errors and rebuilds with the last error's text, M15 opt2b-3).
+ * Pure and small: one player's `counters()` and `stageSamples()` in, a
+ * reporter batch's gauges and two facts out, the way jb_target.js gives the
+ * jitter buffer target's. Nothing runs unless the page plays `player=wc`.
  */
 
 import { medianOf } from "./metrics.js";
@@ -44,12 +44,16 @@ export const wcNames = {
   backlog: "wcBacklog",
   keyRequests: "wcKeyRequests",
   queueMax: "wcQueueMax",
+  decoderErrors: "wcDecoderErrors",
+  decoderRebuilds: "wcDecoderRebuilds",
   fact: "wc",
+  errorFact: "wcerr",
 };
 
 /** The decoder's configuration as one short word from the player's own text. */
 function configWord(decodeConfig) {
   const text = String(decodeConfig ?? "none");
+  if (text.startsWith("444 ")) return "444";
   if (text.endsWith(" hardware")) return "hw";
   if (text.endsWith(" no hint")) return "nohint";
   return text.startsWith("unsupported") ? "bad" : "none";
@@ -69,6 +73,21 @@ export function wcFactText(counters, limit = factLengthLimit) {
   const drawn = counters.framesDrawn > 0 ? "ok" : "no";
   const text = `cfg ${config} dec ${drawn}`;
   return text.length <= limit && factPattern.test(text) ? text : unknownFact;
+}
+
+/**
+ * The decoder's last error as its own fact, inside the host's limits: the error
+ * name first, cut at [factLengthLimit] (`EncodingError Cannot dec`), because the
+ * name says more than a message's first words. Empty before the first error and
+ * for a text the host would drop: the host keeps the last fact it was sent, so
+ * a page with no error says nothing (M15 opt2b-3).
+ * @param {string} lastDecoderError - the player's own error text (wc_decoder.js)
+ * @param {number} [limit] - the host's longest fact, in characters
+ * @returns {string}
+ */
+export function wcErrorFactText(lastDecoderError, limit = factLengthLimit) {
+  const text = String(lastDecoderError ?? "").slice(0, limit);
+  return factPattern.test(text) ? text : "";
 }
 
 /** A millisecond figure for the overlay, to a tenth, or `-` with no sample. */
@@ -148,8 +167,13 @@ export class WcStats {
       { name: wcNames.backlog, value: Math.max(0, counters.framesReceived - counters.framesDrawn) },
       { name: wcNames.keyRequests, value: counters.keyRequests },
       { name: wcNames.queueMax, value: counters.queueMax },
+      { name: wcNames.decoderErrors, value: counters.decoderErrors },
+      { name: wcNames.decoderRebuilds, value: counters.decoderRebuilds },
     ].filter((gauge) => typeof gauge.value === "number" && Number.isFinite(gauge.value));
-    return { stages, gauges, facts: [{ name: wcNames.fact, value: wcFactText(counters) }] };
+    const facts = [{ name: wcNames.fact, value: wcFactText(counters) }];
+    const errorText = wcErrorFactText(counters.lastDecoderError);
+    if (errorText !== "") facts.push({ name: wcNames.errorFact, value: errorText });
+    return { stages, gauges, facts };
   }
 
   /** The overlay's one line, shown only with `player=wc` (M15 opt2). */
