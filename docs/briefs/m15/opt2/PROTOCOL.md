@@ -1,0 +1,16 @@
+# opt2 tap protocol (v1), the contract between host jobs and the page jobs
+
+Owner decisions (Nov 13, 2026): build the custom WebCodecs player's first slice plus a host sound fix in one batch, one phone sitting; gate is now "150 ms or less press-to-screen and it feels fine"; 150 or less adopts the custom player, otherwise it is dropped. Everything is behind switches that default OFF.
+
+## Switches and names
+- Host: `SESSION_TAP=on|off` (default off). When on, the session's pipeline runs inside `streaming/tap/tap_runner.py` (GStreamer in Python, `Gst.parse_launchv` of the same argument list gst-launch got, plus a `tee` after the encoder) instead of the `gst-launch-1.0` process. The tap branch is `queue leaky=downstream max-size-buffers=2 ! h264parse config-interval=-1 ! video/x-h264,stream-format=byte-stream,alignment=au ! appsink name=tap drop=true max-buffers=2 sync=false emit-signals=true`. The WebRTC branch hangs on the tee directly, with no queue added.
+- Tap server port `TAP_PORT` (default automation port + 1; loopback only). The phone never connects to it: the player relay (`serve.py`, the player port that already reaches phones) tunnels a WebSocket upgrade on path `/tap` to it. No new port, no firewall rule.
+- Page: `?player=wc` (also via `--player-query "marker=1&player=wc"`).
+- Files: `streaming/tap/tap_frames.py` (pure: access-unit helpers, header pack), `streaming/tap/tap_runner.py` (pipeline + appsink + signals), `streaming/tap/tap_server.py` (WebSocket server, client queues), page: `streaming/player/wc_annexb.js` (pure helpers), `wc_player.js` (the player class), `wc_stats.js` (stage figures).
+
+## Messages (WebSocket, path `/tap`)
+Server to client, binary: 24-byte big-endian header, then one access unit in Annex B (start codes, an AUD first, SPS+PPS before every IDR):
+`u8 magic=0x54 ('T')`, `u8 version=1`, `u8 flags` (bit0 = keyframe/IDR, bit1 = discontinuity: frames were dropped before this one, so it is the first after a drop and is a keyframe), `u8 reserved=0`, `u32 frame number` (counts every frame the encoder produced, so gaps show drops), `u64 pts_us` (pipeline running time of the encoder output, microseconds), `u64 sent_us` (host wall clock, microseconds since the epoch, taken when the sender wrote it to the socket).
+Server to client, text JSON: `{"type":"hello","version":1,"width":W,"height":H,"fps":F,"profile":"avc1.XXXXXX"}` on connect (profile may be missing until the first SPS), and `{"type":"end"}` before closing when the pipeline ends.
+Client to server, text JSON: `{"type":"key"}` asks for a keyframe now (the server forces one with an upstream force-key-unit event and sends nothing but frames from it on, to that client). `{"type":"stats","queue":N}` is optional and ignored.
+A new client gets frames from the next keyframe on (the server requests one at connect). Backlog rule: each client has a bounded queue (at most 4 frames and a socket that accepts writes); when it overflows the server clears that client's queue, marks it "needs keyframe", requests a keyframe, and sends nothing to it until one arrives; that frame carries the discontinuity flag. Delay can never pile up.

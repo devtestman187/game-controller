@@ -1,0 +1,4 @@
+opt2-1-tap opt2-3-page
+opt2-2-transport opt2-4-measure
+opt2-5-sound
+opt2-6-proof opt2-7-readme
