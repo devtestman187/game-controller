@@ -15,6 +15,7 @@ final class AutomationSettings {
     this.token = '',
     this.controllerPort,
     this.statsConsent,
+    this.marker = false,
   });
 
   /// The address the interface listens on unless told otherwise: this machine
@@ -45,6 +46,13 @@ final class AutomationSettings {
   static const envStatsConsent = 'THUMBPARTY_STATS_CONSENT';
   static const statsConsentNo = 'no';
 
+  /// Whether the app draws the marker row into its picture (M15 fix8), from
+  /// `THUMBPARTY_MARKER=1`, which a session's `SESSION_MARKER=on` passes. A
+  /// bench measurement of the stream's own latency (docs/streaming-marker.md);
+  /// off in every other launch, and a phone's build has no environment to say
+  /// otherwise.
+  static const envMarker = 'THUMBPARTY_MARKER';
+
   /// Whether the interface runs at all.
   final bool enabled;
 
@@ -66,6 +74,11 @@ final class AutomationSettings {
   /// leave it to the person at the host.
   final bool? statsConsent;
 
+  /// Whether the app draws the marker row over its picture (M15 fix8), so a
+  /// player can read frames and the host's clock out of the video. False in
+  /// every ordinary launch.
+  final bool marker;
+
   /// The settings a launch asks for, from its environment and its build.
   ///
   /// [env] reads a variable, and the shell passes the platform's environment
@@ -85,6 +98,7 @@ final class AutomationSettings {
         statsConsentNo => false,
         _ => null,
       },
+      marker: env(envMarker)?.trim() == enabledValue,
     );
   }
 
@@ -115,6 +129,7 @@ final class AutomationSettings {
     'token': token.isEmpty ? 'none' : 'set',
     if (controllerPort != null) 'controllerPort': controllerPort,
     if (statsConsent != null) 'statsConsent': statsConsent,
+    'marker': marker,
   };
 
   /// A whole port number from [raw], or null when it isn't one.

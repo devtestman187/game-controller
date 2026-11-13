@@ -7,6 +7,7 @@ import '../automation/automation_game_start.dart';
 import '../automation/automation_providers.dart';
 import 'automation_game_screen.dart';
 import 'latency_test_card.dart';
+import 'marker_strip.dart';
 
 /// The app's frame and the automation's overlay (M15 a2): the picture `GET
 /// screenshot` takes, and the latency card `POST probe/flash` shows. Put it in
@@ -26,6 +27,10 @@ class AutomationShell extends ConsumerWidget {
     ref.watch(automationConsentProvider);
     ref.watch(automationServerProvider);
     final probe = ref.watch(automationProbeProvider);
+    // The marker row is the bench's own second measurement (M15 fix8): only a
+    // launch that said `THUMBPARTY_MARKER=1` draws it, above the card as well
+    // as the game, so a probe run's picture carries it too.
+    final marker = ref.watch(automationSettingsProvider).marker;
     return ref
         .watch(screenFramesProvider)
         .boundary(
@@ -40,6 +45,7 @@ class AutomationShell extends ConsumerWidget {
                     onTap: () => ref.read(automationProbeProvider.notifier).show(on: false),
                     child: const LatencyTestCard(),
                   ),
+                if (marker) const MarkerStrip(),
               ],
             ),
           ),

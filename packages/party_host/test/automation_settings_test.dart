@@ -76,6 +76,17 @@ void main() {
     expect(fromEnv({AutomationSettings.envPort: '0'}).port, 0, reason: '0 asks the system, as a test does');
   });
 
+  test('the marker row is off unless THUMBPARTY_MARKER=1', () {
+    expect(const AutomationSettings().marker, isFalse, reason: 'every ordinary launch and every phone build');
+    expect(fromEnv({}).marker, isFalse);
+    expect(fromEnv({AutomationSettings.envMarker: '1'}).marker, isTrue);
+    for (final value in ['', '0', 'on', 'true', 'yes']) {
+      expect(fromEnv({AutomationSettings.envMarker: value}).marker, isFalse, reason: '"$value" is not the one value');
+    }
+    expect(fromEnv({AutomationSettings.envMarker: '1'}).describe()['marker'], isTrue);
+    expect(fromEnv({}).describe()['marker'], isFalse, reason: 'the read-back says the row is off');
+  });
+
   test('the stats question is only ever answered no by a launch', () {
     expect(fromEnv({AutomationSettings.envStatsConsent: 'no'}).statsConsent, isFalse);
     expect(fromEnv({AutomationSettings.envStatsConsent: 'NO'}).statsConsent, isFalse);

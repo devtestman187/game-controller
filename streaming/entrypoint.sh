@@ -144,6 +144,12 @@ ready_timeout_s="${READY_TIMEOUT_S:-90}"
 # The name this session reports to the signalling server and the player.
 session_name="${SESSION_NAME:-Thumb Party TV}"
 
+# Whether the app draws the marker row into its picture (M15 fix8): a bench
+# measurement the player reads a frame's number and the host's clock back from
+# (docs/streaming-marker.md). `off` is the picture as it always was; `on` passes
+# THUMBPARTY_MARKER=1 to the app, which draws the row in the top-left corner.
+marker="${SESSION_MARKER:-off}"
+
 # --- paths ------------------------------------------------------------------
 readonly run_dir="/run/thumb-party"
 readonly app_dir="/app"
@@ -406,6 +412,7 @@ start_game() {
     THUMBPARTY_AUTOMATION_TOKEN="$automation_token" \
     THUMBPARTY_PORT="$controller_port" \
     THUMBPARTY_STATS_CONSENT=no \
+    THUMBPARTY_MARKER="$marker_value" \
       exec ./tvtest
   ) > "$app_log" 2>&1 &
   game_pid=$!
@@ -505,7 +512,9 @@ wait_ready() {
     say "$(tail -n 20 "$pipe_log" 2>/dev/null)"
     return 1
   }
-  say "ready: session=$session_name player=http://localhost:$player_port/ controller=localhost:$controller_port automation=127.0.0.1:$automation_port ${width}x${height}@${frame_rate} ${bitrate_kbps}kbit/s (video ${video_kbps}) ${gop_frames}f gop audio=$audio_mode"
+  local marker_note=""
+  if [[ -n "$marker_value" ]]; then marker_note=" marker=$marker"; fi
+  say "ready: session=$session_name player=http://localhost:$player_port/ controller=localhost:$controller_port automation=127.0.0.1:$automation_port ${width}x${height}@${frame_rate} ${bitrate_kbps}kbit/s (video ${video_kbps}) ${gop_frames}f gop audio=$audio_mode$marker_note"
   say "pipeline registered: $(printf '%s' "$producers" | paste -sd ';' -)"
   # The sink properties the session actually runs with (M15 fix7), so a run's
   # log says which sender settings its numbers belong to.
@@ -535,6 +544,17 @@ main() {
       audio_mode=joined
       ;;
   esac
+  case "$marker" in
+    on | off) ;;
+    *)
+      say "warning: SESSION_MARKER=$marker is not on or off; the picture stays the game's own"
+      marker=off
+      ;;
+  esac
+  # The app reads only `1` as on (AutomationSettings, M15 fix8), so off passes
+  # an empty value: an ordinary launch's environment stays as it was.
+  marker_value=""
+  if [[ "$marker" == "on" ]]; then marker_value=1; fi
   case "$congestion_control" in
     disabled | gcc) ;;
     homegrown)
