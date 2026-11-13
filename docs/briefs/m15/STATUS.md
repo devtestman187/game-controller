@@ -2,6 +2,13 @@
 
 Written Nov 11, 2026 so that any later session (any model) can pick this up cold. Read this file first, then the two design files it names.
 
+## Paused here (Nov 12, 2026, late evening) — read this first
+
+- Owner paused in the middle of the marker phone runs (fix8). Done: baseline with marker (20261112-231305: press 205 ms, marker agrees, Safari decode-to-display 62 ms) and sound on its own connection (20261112-231546: press 141 ms, buffer 11, display 14, marker DISAGREES by 50 ms). Not done: the no-sound run (started, stopped on the owner's word).
+- Next, in order: (1) no-sound marker run; (2) repeat baseline and separate-sound twice each to learn the phone's noise; (3) a small flash job on why "marker glass" (141) and "marker press>screen" (91) disagree with separate sound; (4) bring the owner the decision: make `SESSION_AUDIO=separate` the default if it holds up, then the 30 ms host wait (sound sets the pipeline-wide latency; try sound in its own pipeline), then whether 80 ms is the right gate.
+- Phone-run routine (owner asked for it): the owner closes every stream tab and says "ready"; only then start ONE run in the background, wait for the printed URL (it carries `?marker=1`), give it to the owner; when the run ends, confirm `tools/stream.sh status` shows no sessions and tell the owner "Run N is done". Commands are in the "fix8: phone runs" block below.
+- Working mode: low-usage; batches, research, documents and routine work go to Sonnet agents, flash-worker implements, Claude designs, decides and checks reports. Append dated notes to docs/streaming-latency-journey.md "Running notes" after every result, decision or obstacle.
+
 ## Resume here (updated Nov 12, 2026, night)
 
 - Branch m15, worktree E:/AI/game-controller-m15. Batches since Nov 11: fix5 (phone-run mode), fix6 (host-leg and encoder measuring), a research report (docs/briefs/m15/research/latency-prior-art.md), fix7 (audio apart from video, sender switches; none made default), the story so far in docs/streaming-latency-journey.md (Running notes, newest last), and fix8 (the independent latency check, below). Working mode: low-usage, with Sonnet agents writing briefs and running batches, flash-worker implementing.
