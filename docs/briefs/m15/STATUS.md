@@ -2,6 +2,25 @@
 
 Written Nov 11, 2026 so that any later session (any model) can pick this up cold. Read this file first, then the two design files it names.
 
+## Resume here (updated Nov 12, 2026, night)
+
+- Branch m15, worktree E:/AI/game-controller-m15. Batches since Nov 11: fix5 (phone-run mode), fix6 (host-leg and encoder measuring), a research report (docs/briefs/m15/research/latency-prior-art.md), fix7 (audio apart from video, sender switches; none made default), the story so far in docs/streaming-latency-journey.md (Running notes, newest last), and fix8 (the independent latency check, below). Working mode: low-usage, with Sonnet agents writing briefs and running batches, flash-worker implementing.
+- **The open problem:** on the iPhone the stream chain total (30-130 ms) does not follow press-to-screen (169-223 ms); the audit (docs/briefs/m15/fix8/f8-1-audit-report.md) found no single definite fault. No phone figure is trusted until the marker runs below are done. Reports: docs/briefs/m15/fix8/f8-*-report.md; spec docs/streaming-marker.md.
+- **Next, needs the owner:** the three phone runs below. Then read the Independent check table: if the marker's press-to-screen and the card's agree, the press figure is right and the chain is a partial view; if not, the press timing is suspect (first suspects in the audit). After that decide whether any fix7 switch helps on Safari. No defaults changed anywhere.
+- Stale parts of this file below (the Nov 11 "In progress" and the fix7 block) are history; the fix7 phone-run list is superseded by the block here.
+
+## fix8: phone runs (marker on)
+
+Routine, per run: the owner closes ALL stream tabs on the phone and says ready; only then is the run started; then the owner opens the URL the command prints (it already carries `?marker=1`) in a fresh page and stays on it until the run ends. One at a time:
+
+```bash
+bash tools/stream.sh bench --viewer external --seconds 60 --press-seconds 30 --label phone-marker-base --set SESSION_MARKER=on --player-query marker=1
+bash tools/stream.sh bench --viewer external --seconds 60 --press-seconds 30 --label phone-marker-audio-sep --set SESSION_MARKER=on --set SESSION_AUDIO=separate --player-query marker=1
+bash tools/stream.sh bench --viewer external --seconds 60 --press-seconds 30 --label phone-marker-audio-off --set SESSION_MARKER=on --set SESSION_AUDIO=off --player-query marker=1
+```
+
+Read first: the "Independent check" table and its verdict line (agree / DISAGREE by N ms), then marker press>screen, press>screen (card) and stream total. Details: docs/briefs/m15/fix8/f8-6-proof-run-report.md.
+
 ## Where things stand
 
 - **Decided by the owner (Nov 11, 2026):** a **custom** streaming stack (not Sunshine + Moonlight), to learn how production game streaming works and to grow into a product; lowest latency; play across the internet; several households in separate sessions; the server in containers; open-source parts wherever they exist; home PC (RTX 3080) first, cloud GPU later; latency logged per stage (input, host, encode, network, decode, display). Automation features go in shared host code for every build. Milestones: **M14** testing and fixes (owner is testing; fixes land on `m14`), **M15** the streaming prototype (branch `m15`, cut from `m14` on Nov 11), **M16** the friendlier app start (11 UX suggestions, all approved; mock-ups before building).
