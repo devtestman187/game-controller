@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Thumb Party plain-http page self-test</title>
+  <style>body { background: #000; color: #eee; font: 14px/1.5 ui-monospace, monospace; padding: 12px; }</style>
+</head>
+
+<body>
+  <pre id="result">SELFTEST RUNNING</pre>
+  <!-- The custom player on a plain-http page (M15 opt2b), in the headless Chrome
+       the bench already has: a phone on the home network loads the page over
+       plain http, which is no secure context, so crypto.subtle, randomUUID,
+       navigator.clipboard, mediaDevices, serviceWorker, storage and Notification
+       are absent there. This page installs throwing, recording getters for all
+       seven before it loads the player's modules, drives WcPlayer and WcStats
+       through their paths, and fails if any getter was read. A second case reads
+       the modules' own source and fails on a name that would need one of them.
+       bench.sh --selftest serves the player folder and reads the one line below
+       back out of the DOM. -->
+  <script type="module">
+    // The modules the custom player runs with, loaded before the guards below
+    // are in place, exactly as the real page loads them: wc_player.js brings
+    // wc_annexb.js and wc_counters.js with it, and error_trap.js is the page's
+    // own. A name that needs a secure-context API is caught by the source scan
+    // at the end, whatever path would reach it.
+    import "./error_trap.js";
+    import { WcPlayer } from "./wc_player.js";
+    import { WcStats, wcStatsOf } from "./wc_stats.js";
+
+    const failures = [];
+    let checks = 0;
+
+    async function check(name, run) {
+      checks++;
+      try {
+        const problem = await run();
+        if (problem) failures.push(`${name}: ${problem}`);
+      } catch (error) {
+        failures.push(`${name}: threw ${error.message}`);
+      }
+    }
+
+    function same(actual, expected) {
+      return JSON.stringify(actual) === JSON.stringify(expected)
+        ? ""
+        : `expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`;
+    }
+
+    /** Lets the player's promise chain run to its end: every step is a microtask. */
+    async function flushed() {
+      for (let step = 0; step < 20; step++) await Promise.resolve();
+    }
+
+    // What a page on plain http does not have, as its owner object and the
+    // member's name: the player must reach none of them on any of its paths.
+    const guarded = [
+      ["crypto.subtle", crypto, "subtle"],
+      ["crypto.randomUUID", crypto, "randomUUID"],
+      ["navigator.clipboard", navigator, "clipboard"],
+      ["navigator.mediaDevices", navigator, "mediaDevices"],
+      ["navigator.serviceWorker", navigator, "serviceWorker"],
+      ["navigator.storage", navigator, "storage"],
+      ["Notification", window, "Notification"],
+    ];
+    const touches = [];
+
+    /** Makes a member absent the way plain http does: a read records it and throws. */
+    function block(target, name) {
+      let lastError = null;
+      for (const place of [target, Object.getPrototypeOf(target)]) {
+        if (!place) continue;
+        try {
+          Object.defineProperty(place, name, {
+            configurable: true,
+            get() {
+              touches.push(name);
+              throw new Error(`${name} is not on this page`);
+            },
+          });
+          return;
+        } catch (error) {
+          lastError = error;
+        }
+      }
+      throw new Error(`cannot block ${name}: ${lastError?.message}`);
+    }
+
+    await check("the page can block every secure-context API the player must not touch", () => {
+      for (const [, target, name] of guarded) block(target, name);
+      return "";
+    });
+    await check("each blocked API throws and is named when it is read", () => {
+      const read = [];
+      for (const [label, target, name] of guarded) {
+        try {
+          void target[name];
+          read.push(`${label}: no throw`);
+        } catch (error) {
+          read.push(`${label}: ${error.message}`);
+        }
+      }
+      return same(read, guarded.map(([label, , name]) => `${label}: ${name} is not on this page`));
+    });
+
+    // A real 1080p High-profile SPS and its PPS, written out by x264 (profile
+    // 0x64, level 0x28): the keyframe below is what the host's first access unit
+    // carries, so the player configures its decoder and decodes one frame.
+    const spsHex = "67640028acd940780227e5c044000003000400000301e03c60c658";
+    const ppsHex = "68ebe3cb22c0";
+    const keyAuHex = `0000000109f0` + `000001${spsHex}` + `000001${ppsHex}` + `0000000165888421`;
+    const deltaAuHex = "0000000109f000000001419aa0";
+
+    function bytesOf(hex) {
+      return new Uint8Array(hex.match(/../g).map((pair) => Number.parseInt(pair, 16)));
+    }
+
+    function messageOf({ flags = 0, frame = 0, payloadHex = deltaAuHex }) {
+      const payload = bytesOf(payloadHex);
+      const buffer = new ArrayBuffer(24 + payload.length);
+      const view = new DataView(buffer);
+      view.setUint8(0, 0x54);
+      view.setUint8(1, 1);
+      view.setUint8(2, flags);
+      view.setUint32(4, frame);
+      view.setBigUint64(8, BigInt(0));
+      view.setBigUint64(16, BigInt(0));
+      new Uint8Array(buffer, 24).set(payload);
+      return buffer;
+    }
+
+    const keyMessage = (frame) => messageOf({ flags: 1, frame, payloadHex: keyAuHex });
+    const deltaMessage = (frame) => messageOf({ frame, payloadHex: deltaAuHex });
+
+    /** The fakes the player is given — a socket, a decoder, a chunk — each writing into `log`. */
+    function fakes(log) {
+      class FakeSocket {
+        constructor(url) {
+          this.url = url;
+          this.readyState = 1;
+          this.sent = [];
+          log.sockets.push(this);
+        }
+
+        send(data) { this.sent.push(data); }
+
+        close() { this.readyState = 3; }
+      }
+      class FakeDecoder {
+        static isConfigSupported(config) {
+          return Promise.resolve({ supported: true, config });
+        }
+
+        constructor(init) {
+          this.init = init;
+          this.state = "unconfigured";
+          this.decodeQueueSize = 0;
+          this.configs = [];
+          this.chunks = [];
+          log.decoders.push(this);
+        }
+
+        configure(config) { this.configs.push(config); this.state = "configured"; }
+
+        decode(chunk) { this.chunks.push(chunk); log.chunks.push(chunk); }
+
+        close() { this.state = "closed"; }
+      }
+      class FakeChunk {
+        constructor(init) { this.type = init.type; this.timestamp = init.timestamp; this.data = init.data; }
+      }
+      return { FakeSocket, FakeDecoder, FakeChunk };
+    }
+
+    /** A player on those fakes and a clock, and the things a test reads back. */
+    function harness() {
+      const log = { sockets: [], decoders: [], chunks: [], draws: [], closes: 0 };
+      const clock = { nowMs: 0 }, timers = [];
+      const { FakeSocket, FakeDecoder, FakeChunk } = fakes(log);
+      const canvas = { width: 0, height: 0, getContext: () => ({ drawImage: (frame) => log.draws.push(frame) }) };
+      const player = new WcPlayer({
+        url: "ws://test/tap",
+        canvas,
+        now: () => clock.nowMs,
+        WebSocketImpl: FakeSocket,
+        VideoDecoderImpl: FakeDecoder,
+        EncodedVideoChunkImpl: FakeChunk,
+        setTimeoutImpl: (run, delayMs) => {
+          timers.push({ run, delayMs });
+          return timers.length;
+        },
+      });
+      const socket = () => log.sockets[log.sockets.length - 1];
+      const frameOf = (timestamp) => ({
+        timestamp, displayWidth: 1920, displayHeight: 1080, close: () => { log.closes++; },
+      });
+      return { player, log, clock, timers, canvas, socket, frameOf };
+    }
+
+    touches.length = 0;
+    const started = harness();
+    await check("start() opens the tap socket without a secure-context API", () => {
+      started.player.start();
+      return same([touches, started.log.sockets.length], [[], 1]);
+    });
+    await check("a keyframe and its drawn frame use none", async () => {
+      started.clock.nowMs = 10;
+      started.socket().onmessage({ data: keyMessage(0) });
+      await flushed();
+      started.clock.nowMs = 25;
+      started.log.decoders[0].init.output(started.frameOf(0));
+      started.socket().onmessage({ data: deltaMessage(1) });
+      await flushed();
+      return same([touches, started.log.chunks.length, started.canvas.width, started.log.draws.length,
+        started.log.closes], [[], 2, 1920, 1, 1]);
+    });
+    await check("a decoder error, a keyframe request and a lost socket use none", async () => {
+      started.log.decoders[0].init.error({ message: "boom" });
+      started.clock.nowMs = 600;
+      started.socket().onmessage({ data: deltaMessage(2) });
+      await flushed();
+      started.socket().onclose();
+      started.timers[0].run();
+      await flushed();
+      return same([touches, started.log.decoders.length, started.player.counters().decoderErrors], [[], 2, 1]);
+    });
+    await check("the stats the page sends and the counters it reads use none", async () => {
+      const stats = wcStatsOf({ player: "wc" }, started.player);
+      const batch = stats.batch();
+      const counters = started.player.counters();
+      const stages = started.player.stageSamples();
+      return same([touches, stats instanceof WcStats, batch.gauges.length > 0, typeof counters.framesDrawn,
+        Array.isArray(stages)], [[], true, true, "number", true]);
+    });
+    await check("stop() leaves nothing running and uses none", () => {
+      started.player.stop();
+      return same([touches, started.socket().readyState, started.timers.length], [[], 3, 1]);
+    });
+
+    // The source of every wc_ module, as plain text: a name that would need a
+    // secure-context API never belongs in one, whatever path would reach it.
+    // The read is synchronous so the page is finished before it loads, which is
+    // when the bench reads the line below out of the DOM.
+    function sourceOf(name) {
+      const request = new XMLHttpRequest();
+      request.open("GET", `./${name}`, false);
+      request.send();
+      return request.status === 200 ? request.responseText : null;
+    }
+
+    const scanned = ["wc_annexb.js", "wc_counters.js", "wc_player.js", "wc_stats.js", "wc_decoder.js"];
+    const forbidden = ["randomUUID", "crypto.subtle", "clipboard", "mediaDevices", "serviceWorker"];
+    await check("no custom-player source names a secure-context API", () => {
+      const hits = [];
+      for (const name of scanned) {
+        const source = sourceOf(name);
+        // wc_decoder.js is a later module: absent today, and its absence is no failure.
+        if (source === null) {
+          if (name !== "wc_decoder.js") hits.push(`${name}: not served`);
+          continue;
+        }
+        for (const word of forbidden) {
+          if (source.includes(word)) hits.push(`${name}: ${word}`);
+        }
+      }
+      return same(hits, []);
+    });
+
+    const result = document.getElementById("result");
+    result.textContent = failures.length === 0
+      ? `SELFTEST PASS ${checks}/${checks}`
+      : `SELFTEST FAIL ${failures.length}/${checks}\n${failures.join("\n")}`;
+  </script>
+</body>
+
+</html>

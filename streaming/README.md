@@ -478,6 +478,19 @@ whether the viewer's own CPU was starving it. In the g1 runs a session pinned to
 is refused with `--viewer external`: the bench can pin only the browser it
 starts, so a viewer a person opens is pinned on that device.
 
+`--viewer-host ADDR` (M15 opt2b) has the headless viewer load the page at
+`http://ADDR:<player port>/` instead of `127.0.0.1`, so a proof runs the page the
+way a phone gets it: plain http on a LAN address, which is no secure context.
+Chrome then has no `VideoDecoder` unless the run also gives
+`--viewer-insecure-ok`, which passes `--unsafely-treat-insecure-origin-as-secure`
+for that origin — the stand-in for a phone that offers `VideoDecoder` on the
+plain-http page anyway. The run logs which page and which of the two it used, and
+the session needs no publish change: it runs with `--network host`, so its player
+port answers on every interface. Both switches are refused with
+`--viewer external` (only the Chrome this run starts can be told), and
+`--viewer-insecure-ok` alone is refused: the loopback page is a secure origin
+already.
+
 A page loaded before the session started — a tab left open from an earlier one —
 reconnects to the signalling server like a fresh one, but it is not this
 session's viewer: the relay names it and the bench says so once, `ignored a

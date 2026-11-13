@@ -9,7 +9,7 @@
 #     [--size 1920x1080] [--probe] [--players N] [--port-base P] [--label L]
 #     [--out /work/dir] [--keep] [--set KEY=VALUE] [--press-seconds N]
 #     [--viewer chrome|external] [--viewer-cpus L] [--session-cpus L]
-#     [--player-query Q] [--selftest]
+#     [--viewer-host ADDR] [--viewer-insecure-ok] [--player-query Q] [--selftest]
 #
 # `--set` gives the session containers one more environment setting, which is
 # how a tuning experiment runs without building the image again (M15 t1).
@@ -47,6 +47,14 @@
 # jitter buffer is its own CPU being shared with the session (M15 g1).
 # `--viewer-cpus` needs `--viewer chrome`: a viewer a person opens is pinned on
 # that device, not from here, so the pair is refused.
+#
+# `--viewer-host ADDR` (M15 opt2b) has the headless Chrome load the page at
+# `http://ADDR:<player port>/` instead of 127.0.0.1, so a proof runs the page the
+# way a phone gets it: plain http on a LAN address, which is no secure context.
+# Chrome keeps VideoDecoder there only with `--viewer-insecure-ok`, which adds
+# `--unsafely-treat-insecure-origin-as-secure` for that origin — the stand-in for
+# a phone that offers VideoDecoder on the plain-http page anyway. The run says in
+# its log which page and which of the two it used.
 #
 # It needs docker, curl and python3 (for reading the summaries' JSON), which
 # the session image's host has; nothing here reaches outside the distro.
@@ -105,6 +113,12 @@ press_seconds=""
 # browser on the home network, whose URL this run prints and whose
 # registration it waits for.
 viewer="chrome"
+# The address that Chrome loads the page on (M15 opt2b): empty is this PC's
+# loopback, an IPv4 address is the page as a device on the home network gets it.
+viewer_host=""
+# Whether that page is treated as a secure origin (M15 opt2b): the loopback one
+# already is, so this only matters beside `--viewer-host`.
+viewer_insecure_ok="no"
 # The cores a run pins the viewer and the session to, or empty for no pinning.
 viewer_cpus=""
 session_cpus=""
@@ -161,6 +175,10 @@ One streaming benchmark (M15 c2), inside the distro.
                    nothing, prints the LAN address and waits for a real viewer
   --viewer-cpus L  the cores the viewer's Chrome runs on, as taskset takes them
                    (with --viewer chrome only: a device you open is pinned there)
+  --viewer-host A  the address the viewer's Chrome loads the page on, an IPv4
+                   address (default 127.0.0.1; with --viewer chrome only)
+  --viewer-insecure-ok  treat that page's origin as secure, which is what gives
+                   Chrome VideoDecoder on plain http (needs --viewer-host)
   --session-cpus L the cores the session containers run on (docker --cpuset-cpus)
   --selftest       run the player page's tests and stop (no session, no image)
   --end-check      stop the sessions at the end and read the page's ended line
@@ -185,6 +203,8 @@ parse_args() {
       --press-seconds) press_seconds="${2:-}"; shift 2 || { usage; exit 2; } ;;
       --viewer) viewer="${2:-}"; shift 2 || { usage; exit 2; } ;;
       --viewer-cpus) viewer_cpus="${2:-}"; shift 2 || { usage; exit 2; } ;;
+      --viewer-host) viewer_host="${2:-}"; shift 2 || { usage; exit 2; } ;;
+      --viewer-insecure-ok) viewer_insecure_ok="yes"; shift ;;
       --session-cpus) session_cpus="${2:-}"; shift 2 || { usage; exit 2; } ;;
       --probe) probe="yes"; shift ;;
       --keep) keep="yes"; shift ;;
@@ -210,6 +230,7 @@ check_args() {
   [[ "$players" =~ ^[0-9]+$ ]] && (( players >= 1 )) || fail "--players is 1 or more"
   [[ "$game" == "arena" || "$game" == "shape_race" ]] || fail "--game is arena or shape_race"
   [[ "$viewer" == "chrome" || "$viewer" == "external" ]] || fail "--viewer is chrome or external"
+  check_viewer_host
   check_press_seconds
   check_cpus "--viewer-cpus" "$viewer_cpus"
   check_cpus "--session-cpus" "$session_cpus"
@@ -283,6 +304,22 @@ check_cpus() {
   fi
 }
 
+# The address the viewer's Chrome loads the page on (M15 opt2b): empty is the
+# loopback, anything else has four groups of digits and dots. The secure-origin
+# switch is only meaningful beside it, and only the Chrome this script starts can
+# be told a page is secure, so each half alone is refused.
+check_viewer_host() {
+  if [[ -z "$viewer_host" ]]; then
+    [[ "$viewer_insecure_ok" == "no" ]] \
+      || refuse "--viewer-insecure-ok needs --viewer-host: the loopback page is a secure origin already"
+    return 0
+  fi
+  [[ "$viewer_host" =~ ^[0-9]{1,3}(\.[0-9]{1,3}){3}$ ]] \
+    || fail "--viewer-host is an IPv4 address like 172.28.1.5, got \"$viewer_host\""
+  [[ "$viewer" == "chrome" ]] \
+    || refuse "--viewer-host needs --viewer chrome: it is the address the Chrome this run opens loads"
+}
+
 # --- per-session settings ---------------------------------------------------
 name_of() { printf '%s%d' "$label" "$1"; }
 controller_of() { printf '%s' "$((port_base + $1 * 10))"; }
@@ -292,6 +329,27 @@ automation_of() { printf '%s' "$((port_base + $1 * 10 + 3))"; }
 container_of() { printf '%s%s' "$container_prefix" "$(name_of "$1")"; }
 automation_url() { printf 'http://127.0.0.1:%s' "$(automation_of "$1")"; }
 relay_url() { printf 'http://127.0.0.1:%s' "$(player_of "$1")"; }
+
+# The page this run's headless viewer loads (M15 opt2b): the loopback one, unless
+# the run named an address — then the page a device on the home network gets.
+viewer_url() { printf 'http://%s:%s' "${viewer_host:-127.0.0.1}" "$(player_of "$1")"; }
+
+# Chrome's stand-in for a phone that offers VideoDecoder on a plain-http page
+# (M15 opt2b): the page's origin is treated as secure, and only when the run
+# asked for both switches. Nothing is printed otherwise.
+secure_origin_flag() {
+  if [[ -z "$viewer_host" || "$viewer_insecure_ok" == "no" ]]; then return 0; fi
+  printf -- '--unsafely-treat-insecure-origin-as-secure=%s' "$(viewer_url "$1")"
+}
+
+# What the viewer's page is, in the log's words (M15 opt2b): the loopback page is
+# a secure origin by itself, a LAN address is plain http, and whether that counts
+# as secure is exactly what `--viewer-insecure-ok` decided.
+viewer_origin_text() {
+  if [[ -z "$viewer_host" ]]; then printf 'loopback, a secure origin already'; return 0; fi
+  if [[ "$viewer_insecure_ok" == "yes" ]]; then printf 'plain http, origin treated as secure'; return 0; fi
+  printf 'plain http, not a secure origin'
+}
 
 # This machine's LAN address, as the next device on the home network sees it
 # (mirrored networking, streaming/README.md): a viewer's own browser must use
@@ -370,17 +428,22 @@ read_token() {
 }
 
 start_viewer() {
-  local index="$1" pinned=() debug=()
+  local index="$1" pinned=() debug=() secure=() flag
   if [[ -n "$viewer_cpus" ]]; then pinned=(taskset -c "$viewer_cpus"); fi
   # An end-check run reads the page's tab title on Chrome's debugging port once
   # the session is stopped (M15 fix8).
   if [[ "$end_check" == "yes" ]]; then debug=(--remote-debugging-port="${debug_ports[index]}"); fi
+  # A page on a LAN address is no secure context, so Chrome has no VideoDecoder
+  # there unless the run asked for the secure-origin switch (M15 opt2b).
+  flag="$(secure_origin_flag "$index")"
+  if [[ -n "$flag" ]]; then secure=("$flag"); fi
+  say "$(name_of "$index"): viewer opens $(viewer_url "$index") ($(viewer_origin_text))"
   # A viewer on its own cores shows what the session can do when the viewer's
   # decoding is not competing with it (M15 g1).
-  "${pinned[@]}" "$chrome" --no-sandbox --disable-gpu --mute-audio "${debug[@]}" \
+  "${pinned[@]}" "$chrome" --no-sandbox --disable-gpu --mute-audio "${debug[@]}" "${secure[@]}" \
     --autoplay-policy=no-user-gesture-required \
     --user-data-dir="$out/chrome-$index-profile" \
-    "http://127.0.0.1:$(player_of "$index")/${player_query:+?$player_query}" > "$out/chrome-$index.log" 2>&1 &
+    "$(viewer_url "$index")/${player_query:+?$player_query}" > "$out/chrome-$index.log" 2>&1 &
   viewer_pids+=("$!")
 }
 
@@ -834,7 +897,9 @@ check_ended_line() {
 
 # The player page's tests (M15 fix8): the marker's decoder, the page's options
 # and the clock estimate, then the jitter buffer target's own page (M15 opt1b),
-# run by the headless Chrome a bench already has. The distro has no node, so the
+# the custom player's, and the one that blocks every secure-context API the
+# custom player must do without (M15 opt2b), run by the headless Chrome a bench
+# already has. The distro has no node, so the
 # page is the runner: python3 serves the player folder on a free loopback port,
 # Chrome loads each test page and the one line it writes is read back out of the
 # DOM. Two processes it starts, both stopped here.
@@ -857,7 +922,8 @@ run_page_selftest() {
     sleep 0.1
     waited=$((waited + 1))
   done
-  for page in marker_selftest.html jbtarget_selftest.html wc_selftest.html wc_stats_selftest.html; do
+  for page in marker_selftest.html jbtarget_selftest.html wc_selftest.html wc_stats_selftest.html \
+    secure_selftest.html; do
     url="http://127.0.0.1:$port/$page"
     dump="$("$chrome" --no-sandbox --disable-gpu --dump-dom "$url" 2>/dev/null)"
     # The count is part of the match: the page's own script carries the words
