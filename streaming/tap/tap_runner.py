@@ -59,6 +59,9 @@ class TapRunner:
         # What PROTOCOL.md's hello tells a client; None until the first SPS and
         # the first buffer that carries the frame rate in its caps.
         self.profile = None
+        # Whether that SPS says 4:2:0; None until one arrives. A browser
+        # decoder refuses anything else (the opt2-1 report's avc1.F4002A).
+        self.is_chroma_420 = None
         self.width = None
         self.height = None
         self.fps = None
@@ -86,6 +89,7 @@ class TapRunner:
         """What the tap knows about the stream so far, as PROTOCOL.md's hello has it."""
         return {
             "profile": self.profile,
+            "chroma420": self.is_chroma_420,
             "width": self.width,
             "height": self.height,
             "fps": self.fps,
@@ -234,11 +238,14 @@ class TapRunner:
             return
         sps, _ = tap_frames.extract_sps_pps(annexb)
         self.profile = tap_frames.profile_string(sps)
+        self.is_chroma_420 = tap_frames.is_chroma_420(sps)
         self.width, self.height = tap_frames.frame_size(sps)
         print(
             "tap: stream is %s %dx%d" % (self.profile, self.width, self.height),
             file=sys.stderr,
         )
+        if not self.is_chroma_420:
+            print("tap: stream is not 4:2:0 (%s)" % self.profile, file=sys.stderr)
 
     def _on_signal(self, signum):
         print("tap: signal %d, sending EOS" % signum, file=sys.stderr)

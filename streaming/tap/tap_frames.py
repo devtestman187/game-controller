@@ -131,6 +131,16 @@ def profile_string(sps):
     return "avc1.%02X%02X%02X" % (sps[1], sps[2], sps[3])
 
 
+def is_chroma_420(sps):
+    """Whether the SPS says 4:2:0, the only chroma format a browser decoder takes.
+
+    NVENC encoded whatever chroma format the capture handed it, 4:4:4 among
+    them (avc1.F4002A, opt2-1 report), so the tap reads the format back from
+    the SPS and says when the stream is one Safari will refuse.
+    """
+    return _sps_fields(sps)["chroma_format_idc"] == 1
+
+
 def frame_size(sps):
     """The encoded picture's size in pixels, cropping included (H.264 7.4.2.1).
 

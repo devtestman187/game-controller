@@ -73,6 +73,9 @@ WORDS
 # One of a run's words, as a whole line.
 has_word() { printf '%s\n' "$1" | grep -qxF -- "$2"; }
 
+# The caps filter that makes NVENC encode 4:2:0 (M15 opt2b-2).
+nv12="video/x-raw,format=NV12"
+
 off="$(words SESSION_TAP=off)"
 if [[ "$off" != "$(expected_off)" ]]; then
   fail "SESSION_TAP=off no longer prints the command line the session ran before the tap"
@@ -98,22 +101,45 @@ for word in "${on_pipeline[@]}"; do [[ "$word" == h264parse ]] && parsers=$((par
 if (( parsers != 2 )); then fail "SESSION_TAP=on has $parsers h264parse, not one per branch"; fi
 
 # The tee comes right after the encoder, so the words before it are the old
-# command's own: the encoder's settings did not move.
+# command's own, plus the NV12 caps the tap adds: the encoder's settings did
+# not move.
 mapfile -t off_words < <(expected_off)
 tee_at=-1
+nv12_at=-1
 for index in "${!on_pipeline[@]}"; do
-  if [[ "${on_pipeline[index]}" == tee ]]; then tee_at=$index; break; fi
+  if [[ "${on_pipeline[index]}" == tee ]] && (( tee_at < 0 )); then tee_at=$index; fi
+  if [[ "${on_pipeline[index]}" == "$nv12" ]] && (( nv12_at < 0 )); then nv12_at=$index; fi
 done
 if (( tee_at < 1 )); then
   fail "SESSION_TAP=on has no tee"
 else
   [[ "${on_pipeline[tee_at - 1]}" == '!' ]] || fail "the tee does not follow the encoder's link"
+  # NVENC encodes what videoconvert hands it: the converter chose Y444 for it,
+  # so the stream was High 4:4:4 Predictive (avc1.F4002A), which Safari will
+  # not decode. The tap pins the encoder's input to NV12, right after the
+  # converter and linked to the encoder, so the stream is 4:2:0 (M15 opt2b-2).
+  if (( nv12_at < 2 )); then
+    fail "SESSION_TAP=on does not pin the encoder's input to NV12"
+  else
+    [[ "${on_pipeline[nv12_at - 1]}" == '!' && "${on_pipeline[nv12_at - 2]}" == videoconvert ]] ||
+      fail "the NV12 caps do not follow videoconvert"
+    [[ "${on_pipeline[nv12_at + 1]}" == '!' && "${on_pipeline[nv12_at + 2]}" == nvautogpuh264enc ]] ||
+      fail "the NV12 caps do not come right before the encoder"
+  fi
+  inserted=0
+  if (( nv12_at >= 2 )); then inserted=2; fi
+  kept=()
   for (( i = 0; i < tee_at - 1; i++ )); do
-    if [[ "${on_pipeline[i]}" != "${off_words[i + 2]}" ]]; then
-      fail "word $((i + 1)) changed with the tap on: '${on_pipeline[i]}'"
+    if (( nv12_at >= 2 && i >= nv12_at && i < nv12_at + inserted )); then continue; fi
+    kept+=("${on_pipeline[i]}")
+  done
+  for (( i = 0; i < ${#kept[@]}; i++ )); do
+    if [[ "${kept[i]}" != "${off_words[i + 2]}" ]]; then
+      fail "word $((i + 1)) changed with the tap on: '${kept[i]}'"
       break
     fi
   done
+  if (( ${#kept[@]} != tee_at - 1 - inserted )); then fail "the words before the tee moved"; fi
 fi
 
 # The sound's words are the ones they were in all three SESSION_AUDIO modes.

@@ -188,7 +188,7 @@ class TapServer:
             # SEND_TIMEOUT_S drops the client to its next keyframe, and a read
             # only ever happens when select says there is something to read.
             client.sock.settimeout(SEND_TIMEOUT_S)
-            if not self._write(client, tap_ws.OPCODE_TEXT, tap_queue.hello_message(self._info()).encode("utf-8"), is_frame=False):
+            if not self._write(client, tap_ws.OPCODE_TEXT, self._hello_text().encode("utf-8"), is_frame=False):
                 return
             # PROTOCOL.md: a new client starts on the next keyframe, so one is
             # asked for here, before the first frame it could be sent.
@@ -196,6 +196,18 @@ class TapServer:
             self._loop(client, leftover)
         finally:
             self._remove(client)
+
+    def _hello_text(self):
+        """PROTOCOL.md's hello with `chroma420` beside its fields (M15 opt2b-2).
+
+        The field is extra to v1, which has no name for it: a page that does
+        not know it ignores it, and one that does can say why a Safari decoder
+        refuses a stream that is not 4:2:0.
+        """
+        info = self._info()
+        hello = json.loads(tap_queue.hello_message(info))
+        hello["chroma420"] = info.get("chroma420")
+        return json.dumps(hello)
 
     def _handshake(self, client):
         """Answers RFC 6455's upgrade; the bytes received after the head, or None.

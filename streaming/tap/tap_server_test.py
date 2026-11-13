@@ -290,7 +290,7 @@ class LoopbackTest(unittest.TestCase):
 
     @staticmethod
     def info():
-        return {"width": 1920, "height": 1080, "fps": 60, "profile": "avc1.F4002A"}
+        return {"width": 1920, "height": 1080, "fps": 60, "profile": "avc1.F4002A", "chroma420": True}
 
     def client(self, **kwargs):
         client = TestClient(self.server.port, **kwargs)
@@ -325,6 +325,21 @@ class LoopbackTest(unittest.TestCase):
         self.assertEqual(struct.unpack(">Q", first[1][8:16])[0], 1000)
         self.assertEqual(first[1][2], 0x01)
         self.assertEqual(second[1][2], 0x00)
+
+    def test_the_hello_says_whether_the_stream_is_4_2_0(self):
+        # Extra to PROTOCOL.md v1's fields: a page that knows it can say why a
+        # 4:4:4 stream will not decode, and one that does not ignores it.
+        self.assertIs(self.client().hello()["chroma420"], True)
+
+    def test_the_hello_leaves_the_chroma_format_open_until_the_sps_comes(self):
+        # None is what the tap knows before its first SPS, like profile.
+        server = tap_server.TapServer(0, lambda: None, lambda: {"chroma420": None})
+        server.start()
+        self.addCleanup(server.stop)
+        client = TestClient(server.port)
+        self.addCleanup(client.close)
+        client.connect()
+        self.assertIsNone(client.hello()["chroma420"])
 
     def test_a_client_is_asked_for_a_keyframe_when_it_connects(self):
         self.client()

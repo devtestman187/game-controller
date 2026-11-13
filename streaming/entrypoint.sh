@@ -382,6 +382,15 @@ capture_words() {
     waylanddisplaysrc render-node=software '!' \
     "video/x-raw,width=$width,height=$height,framerate=$frame_rate/1" '!' \
     videoconvert '!'
+  if [[ "$tap" == "on" ]]; then
+    # The encoder takes NV12 or Y444 and NVENC makes the format it is handed:
+    # videoconvert chose Y444, so the stream was High 4:4:4 Predictive
+    # (avc1.F4002A), which Safari's decoders refuse. Pinning the input to NV12
+    # makes the encode 4:2:0 at no extra CPU cost (the converter converts once
+    # either way), and only the tap needs it, so the words stay as they were
+    # with SESSION_TAP off (M15 opt2b-2).
+    printf '%s\n' "video/x-raw,format=NV12" '!'
+  fi
   if [[ "$encoder" == nv* ]]; then
     # `bitrate` is kbit/s; CBR holds it and ignores `max-bitrate`. No B-frames
     # and no lookahead, so a frame leaves as soon as it is encoded.

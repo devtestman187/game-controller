@@ -145,5 +145,36 @@ class SpsTest(unittest.TestCase):
             tap_frames.frame_size(b"\x67\x42")
 
 
+class ChromaTest(unittest.TestCase):
+    """Whether the SPS says the encoder made 4:2:0 (M15 opt2b-2)."""
+
+    # Written by hand in H.264 7.3.2.1.1's order: profile 244, level 42, then
+    # chroma_format_idc 3 with no separate colour plane, 8-bit depths, no
+    # scaling list, four reference frames, 120x68 macroblocks (1920x1088) and
+    # eight cropped lines, which is the 4:4:4 avc1.F4002A the encoder made
+    # before the tap pinned its input to NV12.
+    SPS_444 = bytes.fromhex("67f4002a919b280f0044fc4a")
+    # The same fields with chroma_format_idc 2, profile 122 (4:2:2).
+    SPS_422 = bytes.fromhex("677a002abcd940780227e250")
+    # x264's 1080p High SPS, the sample the player's own tests use
+    # (streaming/player/wc_selftest.html): profile 100, level 40, 4:2:0.
+    SPS_420 = bytes.fromhex("67640028acd940780227e5c044000003000400000301e03c60c658")
+
+    def test_the_hand_made_sps_is_the_stream_the_encoder_made_before(self):
+        self.assertEqual(tap_frames.profile_string(self.SPS_444), "avc1.F4002A")
+        self.assertEqual(tap_frames.frame_size(self.SPS_444), (1920, 1080))
+
+    def test_a_4_4_4_sps_is_not_4_2_0(self):
+        self.assertFalse(tap_frames.is_chroma_420(self.SPS_444))
+
+    def test_a_4_2_2_sps_is_not_4_2_0(self):
+        self.assertFalse(tap_frames.is_chroma_420(self.SPS_422))
+
+    def test_the_high_profile_4_2_0_sps_is_4_2_0(self):
+        self.assertEqual(tap_frames.profile_string(self.SPS_420), "avc1.640028")
+        self.assertEqual(tap_frames.frame_size(self.SPS_420), (1920, 1080))
+        self.assertTrue(tap_frames.is_chroma_420(self.SPS_420))
+
+
 if __name__ == "__main__":
     unittest.main()
