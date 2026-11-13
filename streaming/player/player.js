@@ -5,16 +5,17 @@
  * browser allows, and reconnects when the stream drops.
  */
 
-import { markerEnabled, parseOptions, optionsLine } from "./options.js";
+import { markerEnabled, parseOptions, optionsLine, playerKindOf } from "./options.js";
 import { JbTarget, jbTargetOf } from "./jb_target.js";
 import { LowDelay, lowDelayEnabled } from "./low_delay.js";
 import { Overlay } from "./overlay.js";
-import { audioMode, identifyPlayer, msidsOf, reportPlayerState, setStaleHandler } from "./page_state.js";
+import { audioMode, identifyPlayer, msidFacts, reportPlayerState, setStaleHandler } from "./page_state.js";
 import { Playback, pictureOf, soundOf } from "./playback.js";
 import { StreamReporter } from "./reporter.js";
 import { createSessionWatch, endedText } from "./session_end.js";
 import { StatsMeter } from "./stats.js";
-import { StreamLinks } from "./streams.js";
+import { signallingUrl, StreamLinks, tuneForLowDelay } from "./streams.js";
+import { WcPlayer } from "./wc_player.js";
 
 const GstWebRTCAPI = window.GstWebRTCAPI;
 
@@ -45,6 +46,14 @@ identifyPlayer({ pageId: playerName, sessionId: joinedSession });
 setStaleHandler(endSession);
 
 const screen = document.getElementById("screen");
+// The custom player's picture (M15 opt2): with `player=wc` the canvas takes the
+// video element's place, decoded by the browser's WebCodecs, and the WebRTC
+// connection carries the sound only (SESSION_AUDIO=separate's TP-Sound).
+const wcMode = playerKindOf(options) === "wc";
+// `wcmode=annexb`: the decoder reads Annex B in band instead of AVCC (M15 opt2).
+const wcAnnexb = options.wcmode === "annexb";
+const wcCanvas = document.getElementById("wc-canvas");
+let wcPlayer = null;
 const soundTrack = document.getElementById("sound-track");
 const playback = new Playback({ screen, sound: soundTrack });
 const statsBox = document.getElementById("stats");
@@ -86,11 +95,6 @@ let soundStream = null;
 // Whether the picture's own stream carries sound (the modes that send one
 // stream), which the overlay needs to tell "sound none" from a number.
 let pictureHasAudio = false;
-// The last measurement problem, shown in the stats overlay only. Watching the
-// picture is what a viewer is here for, so a failed measurement never covers
-// it (M15 t1: the owner saw "the host did not take the measurements" across
-// the picture on a phone).
-let problem = "";
 
 // The page's own text: its status line, the tab's title that carries the same
 // line (how the bench reads a state off a page a run left open, M15 fix8), and
@@ -101,10 +105,10 @@ const overlay = new Overlay({
   switchesLine,
   lowDelayLine: () => (lowDelay === null ? "" : lowDelay.line()),
   jbTargetLine: () => (jbTarget === null ? "" : jbTarget.line()),
-  facts: () => ({ hasSoundStream: soundStream !== null, pictureHasAudio, problem }),
-  soundSample: sampleSound,
+  facts: () => ({ hasSoundStream: soundStream !== null, pictureHasAudio }),
+  soundMeter: () => soundMeter,
   onSoundSample: sendSoundJitter,
-  onProblem: noteProblem,
+  onProblem: (text) => overlay.noteProblem(text),
 });
 
 // The session is over: say so plainly and stop asking for anything, so a tab
@@ -116,6 +120,7 @@ function endSession() {
   overlay.stop();
   stopReporting();
   links?.stop();
+  wcPlayer?.stop();
   playback.clear();
   overlay.show(endedText);
 }
@@ -124,28 +129,32 @@ function endSession() {
 // longer than a hiccup means the session ended.
 const sessionWatch = createSessionWatch({ nowMs: () => performance.now(), onEnded: endSession });
 
-// Where the reporter's problems go: the console always, the stats overlay too.
-// An empty text is the reporter saying nothing is wrong any more (M15 g1).
-function noteProblem(text) {
-  problem = text;
+// The custom player's page (M15 opt2): the canvas takes the video element's
+// place, with the sound still on the WebRTC path.
+function startWcPlayer() {
+  screen.hidden = true;
+  wcCanvas.classList.add("visible");
+  wcPlayer = new WcPlayer({ canvas: wcCanvas, onEvent: wcEvent, onDrawn: wcPlaying, annexb: wcAnnexb });
+  wcPlayer.start();
+  reportPlayerState("streaming");
 }
 
-function signallingUrl() {
-  const scheme = window.location.protocol === "https:" ? "wss" : "ws";
-  return `${scheme}://${window.location.hostname}:${signalPort}`;
+// What the player's events mean to the page: its end is the session's end, and
+// its lost socket is the session watch's lost picture.
+function wcEvent(event) {
+  if (event.type === "end") return endSession();
+  if (event.type !== "lost") return overlay.show(event.text);
+  sessionWatch.pictureLost();
+  overlay.show("lost the TV, reconnecting…");
 }
 
-// The lowest delay the browser offers: no growable jitter buffer and no
-// playout delay on top of it (WebRTC buffers by default; M15 step 3 tunes it).
-function tuneForLowDelay(peerConnection) {
-  for (const receiver of peerConnection.getReceivers()) {
-    if ("jitterBufferTarget" in receiver) {
-      receiver.jitterBufferTarget = 0;
-    }
-    if ("playoutDelayHint" in receiver) {
-      receiver.playoutDelayHint = 0;
-    }
-  }
+// The first frame on the canvas is the picture playing: the state a benchmark
+// waits for, and the start of the session watch (M15 fix8).
+function wcPlaying() {
+  if (hasPlayed) return;
+  hasPlayed = true;
+  sessionWatch.picturePlaying();
+  reportPlayerState("playing");
 }
 
 // Starts the picture, then tries to start the sound with it. Browsers that
@@ -179,32 +188,9 @@ async function startSound() {
   }
 }
 
-// The sound's own numbers, or null when it has no connection. A reconnect
-// replaces the sound's connection under this timer, and a sample of the old
-// one failing is a missing number for that second, never a reason to stop the
-// picture's numbers with it.
-async function sampleSound() {
-  if (soundMeter === null) return null;
-  try {
-    return await soundMeter.sample();
-  } catch (error) {
-    console.warn(`player: the sound's statistics stopped: ${error.message}`);
-    return null;
-  }
-}
-
 // What the page is playing, for the state it reports.
 function audioModeNow() {
   return audioMode(soundStream !== null, pictureHasAudio);
-}
-
-// The stream ids a connection's SDP names, for the state the page reports: a
-// run reads them to see whether the sound arrived on a stream of its own. No
-// ids yet means the connection has not answered, so nothing is reported and a
-// later report keeps whatever an earlier one found.
-function msidFacts(key, peerConnection) {
-  const ids = msidsOf(peerConnection);
-  return ids.length === 0 ? {} : { [key]: ids };
 }
 
 // Starts sending the measurements the host's stats record keeps; the reporter
@@ -214,7 +200,7 @@ function startReporting(peerConnection) {
   reporter = new StreamReporter({
     video: screen,
     peerConnection,
-    onProblem: noteProblem,
+    onProblem: (text) => overlay.noteProblem(text),
     reconnects,
     marker: markerEnabled(options),
   });
@@ -253,8 +239,22 @@ function connectionClosed() {
   pictureConnection = null;
   soundConnection = null;
   soundMeter = null;
-  problem = "";
+  overlay.noteProblem("");
   reportPlayerState("closed");
+}
+
+// With the picture on the canvas the session's sound is the only WebRTC media
+// the page plays (M15 opt2), on the audio element by itself; the picture's own
+// stream is never attached.
+function playSoundOnly(stream) {
+  soundTrack.srcObject = stream;
+  soundTrack.muted = false;
+  if (stream === null) return;
+  soundTrack.play().catch(() => {
+    soundButton.classList.add("visible");
+    overlay.show("tap the screen to start the sound");
+  });
+  reportPlayerState(hasPlayed ? "playing" : "streaming", { audio: audioModeNow() });
 }
 
 // A stream arrived on the sound's own connection, or null when it is gone:
@@ -265,6 +265,7 @@ function showSound(stream) {
     soundMeter = null;
     soundConnection = null;
   }
+  if (wcMode) return playSoundOnly(stream);
   if (playingPicture === null) return;
   playback.show(playingPicture, soundOf(playingStream, splitTracks, soundStream));
   lowDelay?.watch(pictureConnection, soundConnection);
@@ -322,7 +323,7 @@ const linkHandlers = {
     jbTarget?.watchConnection(peerConnection, pictureConnection, soundConnection);
   },
   status: (text) => overlay.show(text),
-  problem: noteProblem,
+  problem: (text) => overlay.noteProblem(text),
   reconnecting: () => {
     if (hasPlayed) reconnects++;
     reportPlayerState("reconnecting", { reconnects });
@@ -331,14 +332,17 @@ const linkHandlers = {
 };
 
 function start() {
+  if (wcMode) startWcPlayer();
   const api = new GstWebRTCAPI({
     meta: { name: playerName },
-    signalingServerUrl: signallingUrl(),
+    signalingServerUrl: signallingUrl(signalPort),
     // No STUN here: a session on the same machine or the same Wi-Fi needs none,
     // and asking an outside server would only add delay.
     webrtcConfig: { iceServers: [] },
   });
-  links = new StreamLinks({ api, handlers: linkHandlers });
+  // The custom player's page leaves the picture's consumer unattached: the
+  // connection it keeps is the sound's (M15 opt2).
+  links = new StreamLinks({ api, handlers: linkHandlers, picture: !wcMode });
 
   // An ended page listens but no longer asks: a producer of the next session
   // must not bring it back (M15 fix8).
@@ -367,32 +371,9 @@ function start() {
   sessionWatch.start();
 }
 
-// The button and the keyboard both show or hide the numbers.
-function toggleStats() {
-  statsBox.classList.toggle("visible");
-}
-
-toggleButton.addEventListener("click", (event) => {
-  event.preventDefault();
-  toggleStats();
-});
-
-soundButton.addEventListener("click", async (event) => {
-  event.preventDefault();
-  soundButton.classList.remove("visible");
-  try {
-    await playback.unmute();
-  } catch (error) {
-    overlay.show(`cannot start the sound: ${error.message}`);
-  }
-  // A tap is the one moment a browser allows full screen.
-  document.documentElement.requestFullscreen?.().catch(() => {});
-});
-
-window.addEventListener("keydown", (event) => {
-  if (event.key === "s" || event.key === "i") {
-    toggleStats();
-  }
-});
+// The button and the keyboard show or hide the numbers; the sound's button
+// starts the sound after the tap a browser wants.
+overlay.wireToggle(toggleButton);
+overlay.wireSoundButton(soundButton, () => playback.unmute());
 
 start();

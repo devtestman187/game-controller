@@ -28,6 +28,22 @@
       background: #000;
     }
 
+    /* The custom player's canvas (M15 opt2, `player=wc`): the video element's
+       own size and placement, shown in its place and hidden until then. */
+    #wc-canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      background: #000;
+      display: none;
+    }
+
+    #wc-canvas.visible {
+      display: block;
+    }
+
     /* A small button in the corner and the keyboard's "s" show the numbers. */
     #stats {
       position: absolute;
@@ -95,6 +111,9 @@
 
 <body>
   <video id="screen" autoplay muted playsinline disablepictureinpicture></video>
+  <!-- The custom player's picture (M15 opt2): the same place as the video
+       element, which stays hidden behind it when `player=wc` is on. -->
+  <canvas id="wc-canvas"></canvas>
   <!-- The sound, on its own element when the session splits the two tracks
        (M15 t1): a video element held back to match its audio buffers less. -->
   <audio id="sound-track" autoplay></audio>

@@ -43,6 +43,24 @@ export function optionsLine(options) {
 // becomes "1", and a person may write the word.
 const onValues = ["1", "true", "on", "yes"];
 
+// The two picture paths the page can play (M15 opt2): "wc" is the custom
+// WebCodecs player, and everything else is the WebRTC player it has always had.
+const wcKind = "wc";
+const webrtcKind = "webrtc";
+
+/**
+ * Which picture path the page is asked to play (M15 opt2): "wc" only when the
+ * `player` option is exactly "wc" (`?player=wc` or SESSION_PLAYER_OPTIONS), and
+ * "webrtc" for every other value and for none at all, so a page that says
+ * nothing plays exactly as it did.
+ * @param {object|null|undefined} options
+ * @returns {string} "wc" or "webrtc"
+ */
+export function playerKindOf(options) {
+  const value = options === null || options === undefined ? "" : String(options.player ?? "");
+  return value === wcKind ? wcKind : webrtcKind;
+}
+
 // Whether the page is asked to read the host's marker row out of the picture
 // (M15 fix8): `marker=1` on the page's URL or in SESSION_PLAYER_OPTIONS. Off,
 // no strip is read and none of its numbers is sent.

@@ -24,25 +24,30 @@ export class Overlay {
    * @param {() => string} parts.lowDelayLine - the zero-delay option's line, or ""
    * @param {() => string} parts.jbTargetLine - the jitter buffer target option's
    *   line (M15 opt1b), or ""
-   * @param {() => object} parts.facts - what the page knows: `hasSoundStream`,
-   *   `pictureHasAudio` and the last measurement `problem`
-   * @param {() => Promise<object|null>} parts.soundSample - the sound's own
-   *   connection's numbers, or null when it has no connection
+   * @param {() => object} parts.facts - what the page knows: `hasSoundStream`
+   *   and `pictureHasAudio`
+   * @param {() => object|null} parts.soundMeter - the sound's own connection's
+   *   meter, or null when it has no connection
    * @param {(sample: object|null) => void} parts.onSoundSample - what the page
    *   keeps of that sample (the sound's jitter gauge)
    * @param {(text: string) => void} parts.onProblem - where a measurement
    *   problem goes
    */
-  constructor({ line, box, switchesLine, lowDelayLine, jbTargetLine, facts, soundSample, onSoundSample, onProblem }) {
+  constructor({ line, box, switchesLine, lowDelayLine, jbTargetLine, facts, soundMeter, onSoundSample, onProblem }) {
     this._line = line;
     this._box = box;
     this._switchesLine = switchesLine;
     this._lowDelayLine = lowDelayLine;
     this._jbTargetLine = jbTargetLine;
     this._facts = facts;
-    this._soundSample = soundSample;
+    this._soundMeter = soundMeter;
     this._onSoundSample = onSoundSample;
     this._onProblem = onProblem;
+    // The last measurement problem: watching the picture is what a viewer is
+    // here for, so a failed measurement goes in the numbers only, never across
+    // the picture (M15 t1: the owner saw it on a phone). An empty text is the
+    // reporter saying nothing is wrong any more (M15 g1).
+    this._problem = "";
     this._meter = null;
     this._timer = null;
     // The overlay carries the switches from the start, so a look at the page —
@@ -53,6 +58,50 @@ export class Overlay {
   /** Whether the numbers are being sampled. */
   get isSampling() {
     return this._meter !== null;
+  }
+
+  /**
+   * Makes [button] and the keyboard's "s" and "i" show or hide the numbers, as
+   * the page always has: the box is this overlay's, so its switch is too.
+   * @param {HTMLButtonElement} button
+   */
+  wireToggle(button) {
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      this._box.classList.toggle("visible");
+    });
+    window.addEventListener("keydown", (event) => {
+      if (event.key === "s" || event.key === "i") this._box.classList.toggle("visible");
+    });
+  }
+
+  /**
+   * Makes [button] start the sound after the tap browsers want first, and ask
+   * for full screen with it (the one moment a browser allows full screen). A
+   * start the browser still refuses is the overlay's own line to show.
+   * @param {HTMLButtonElement} button - the page's "tap to start sound" button
+   * @param {() => Promise<void>} unmute - the page's unmute action
+   */
+  wireSoundButton(button, unmute) {
+    button.addEventListener("click", async (event) => {
+      event.preventDefault();
+      button.classList.remove("visible");
+      try {
+        await unmute();
+      } catch (error) {
+        this.show(`cannot start the sound: ${error.message}`);
+      }
+      document.documentElement.requestFullscreen?.().catch(() => {});
+    });
+  }
+
+  /**
+   * Notes the last measurement problem, shown in the numbers only: an empty
+   * text says the measurements are going through again.
+   * @param {string} text
+   */
+  noteProblem(text) {
+    this._problem = text;
   }
 
   /** Shows one status line, in the box at the bottom and in the tab's title. */
@@ -77,18 +126,32 @@ export class Overlay {
     this._meter = null;
   }
 
+  // The sound connection's own numbers, or null. A reconnect replaces the
+  // sound's connection under this timer, and a sample of the old one failing is
+  // a missing number for that second, never a reason to stop the picture's.
+  async _sampleSound() {
+    const meter = this._soundMeter();
+    if (meter === null) return null;
+    try {
+      return await meter.sample();
+    } catch (error) {
+      console.warn(`player: the sound's statistics stopped: ${error.message}`);
+      return null;
+    }
+  }
+
   // One second of the numbers: the picture's, the sound's when it has its own
   // connection, and the page's own facts round them.
   async _sample() {
     try {
-      const soundStats = await this._soundSample();
+      const soundStats = await this._sampleSound();
       this._showNumbers(await this._meter.sample(), soundStats);
       this._onSoundSample(soundStats);
     } catch (error) {
       this._onProblem(`statistics stopped: ${error.message}`);
       // The timer stops here, so the next tick that would draw the line never
       // comes: add it once to what the overlay already says (M15 g1).
-      this._box.textContent += `\nmeasurement: ${this._facts().problem}`;
+      this._box.textContent += `\nmeasurement: ${this._problem}`;
       console.warn(`player: statistics stopped: ${error.message}`);
       this.stop();
     }
@@ -114,8 +177,7 @@ export class Overlay {
     if (this._switchesLine !== "") lines.push(this._switchesLine);
     if (this._lowDelayLine() !== "") lines.push(this._lowDelayLine());
     if (this._jbTargetLine() !== "") lines.push(this._jbTargetLine());
-    const { problem } = this._facts();
-    if (problem !== "") lines.push(`measurement: ${problem}`);
+    if (this._problem !== "") lines.push(`measurement: ${this._problem}`);
     this._box.textContent = lines.join("\n");
   }
 }

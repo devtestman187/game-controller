@@ -36,6 +36,30 @@ function producersNow(api) {
   return { picture, sound };
 }
 
+/**
+ * The lowest delay the browser offers on a connection: no growable jitter
+ * buffer and no playout delay on top of it (WebRTC buffers by default; M15
+ * step 3 tunes it, and the page's jitter buffer target option wins over it).
+ * @param {RTCPeerConnection} peerConnection
+ */
+export function tuneForLowDelay(peerConnection) {
+  for (const receiver of peerConnection.getReceivers()) {
+    if ("jitterBufferTarget" in receiver) receiver.jitterBufferTarget = 0;
+    if ("playoutDelayHint" in receiver) receiver.playoutDelayHint = 0;
+  }
+}
+
+/**
+ * The signalling server's url on the page's own host, at [port]: wss on a page
+ * the browser calls secure, ws on a plain one, as the api it is given to wants.
+ * @param {number} port
+ * @returns {string}
+ */
+export function signallingUrl(port) {
+  const scheme = window.location.protocol === "https:" ? "wss" : "ws";
+  return `${scheme}://${window.location.hostname}:${port}`;
+}
+
 /** The page's two connections, kept together so one can drop without the other. */
 export class StreamLinks {
   /**
@@ -45,10 +69,14 @@ export class StreamLinks {
    *   `pictureStream` and `soundStream` (a stream, and null when the sound is
    *   gone), `pictureReady` and `soundReady` (each with a peer connection),
    *   `status` and `problem` (a text), `reconnecting`, and `closed`
+   * @param {boolean} [parts.picture] - whether the page plays the picture's own
+   *   stream: off, it asks for the sound's producer only (M15 opt2's custom
+   *   player draws the picture itself)
    */
-  constructor({ api, handlers }) {
+  constructor({ api, handlers, picture = true }) {
     this._api = api;
     this._handlers = handlers;
+    this._withPicture = picture;
     this._picture = null;
     this._sound = null;
     this._reconnectTimer = null;
@@ -60,13 +88,22 @@ export class StreamLinks {
   connect() {
     if (this._stopped) return;
     const { picture, sound } = producersNow(this._api);
-    if (picture === null) {
-      this._handlers.status("waiting for the TV…");
-      this.reconnect();
-      return;
+    if (this._withPicture) {
+      if (picture === null) {
+        this._handlers.status("waiting for the TV…");
+        this.reconnect();
+        return;
+      }
+      this._connectPicture(picture.id);
     }
-    this._connectPicture(picture.id);
-    if (sound !== null) this._connectSound(sound.id);
+    if (sound !== null) {
+      this._connectSound(sound.id);
+    } else if (!this._withPicture) {
+      // A page that leaves the picture to the custom player has sound only on
+      // a stream of the session's own (SESSION_AUDIO=separate's TP-Sound): a
+      // session that sends one stream gives it nothing to play yet.
+      this._handlers.status("sound: this session sends no sound stream");
+    }
   }
 
   /** Asks for the picture again after a drop, and for the sound with it. */
@@ -108,7 +145,8 @@ export class StreamLinks {
       this._picture = null;
       closing.close();
     }
-    this._handlers.closed();
+    // A page without the picture's connection has no lost picture to report.
+    if (this._withPicture) this._handlers.closed();
   }
 
   _closeSound() {

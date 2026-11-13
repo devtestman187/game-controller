@@ -1,0 +1,380 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Thumb Party custom player self-test</title>
+  <style>body { background: #000; color: #eee; font: 14px/1.5 ui-monospace, monospace; padding: 12px; }</style>
+</head>
+
+<body>
+  <pre id="result">SELFTEST RUNNING</pre>
+  <!-- The custom player's tests (M15 opt2), in the headless Chrome the bench
+       already has, as jbtarget_selftest.html's are: the Annex B helpers on
+       hand-made byte samples and PROTOCOL.md's header, and the player driven by
+       a fake socket, decoder, chunk and clock. bench.sh --selftest serves the
+       player folder and reads the one line below back out of the DOM. -->
+  <script type="module">
+    import { playerKindOf } from "./options.js";
+    import {
+      annexbToAvcc, buildAvcc, codecString, isKeyframe, nalType, parseHeader, splitNalus,
+    } from "./wc_annexb.js";
+    import { WcPlayer } from "./wc_player.js";
+
+    const failures = [];
+    let checks = 0;
+
+    async function check(name, run) {
+      checks++;
+      try {
+        const problem = await run();
+        if (problem) failures.push(`${name}: ${problem}`);
+      } catch (error) {
+        failures.push(`${name}: threw ${error.message}`);
+      }
+    }
+
+    function same(actual, expected) {
+      return JSON.stringify(actual) === JSON.stringify(expected)
+        ? ""
+        : `expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`;
+    }
+
+    function hexOf(bytes) {
+      return Array.from(bytes).map((byte) => byte.toString(16).padStart(2, "0")).join("");
+    }
+
+    function bytesOf(hex) {
+      return new Uint8Array(hex.match(/../g).map((pair) => Number.parseInt(pair, 16)));
+    }
+
+    // A real 1080p High-profile SPS and its PPS, written out by x264 (profile
+    // 0x64, level 0x28, 1920x1080): the expected codec string and avcC below are
+    // computed from these bytes by hand.
+    const spsHex = "67640028acd940780227e5c044000003000400000301e03c60c658";
+    const ppsHex = "68ebe3cb22c0";
+    // One access unit as the host sends it: an AUD, the SPS and PPS, then an IDR slice.
+    const keyAuHex = `0000000109f0` + `000001${spsHex}` + `000001${ppsHex}` + `0000000165888421`;
+    // A delta: an AUD and one non-IDR slice (type 1).
+    const deltaAuHex = "0000000109f000000001419aa0";
+    // avcC for the SPS and PPS above: 01, profile, constraints, level, FF,
+    // E1, the SPS with its 16-bit length, 01, the PPS with its length.
+    const avcCHex = `01640028ffe1001b${spsHex}010006${ppsHex}`;
+    // The IDR sample with the AUD, SPS and PPS dropped and a 4-byte length in front.
+    const idrSampleHex = "0000000465888421";
+
+    function messageOf({ flags = 0, frame = 0, ptsUs = 0, sentUs = 0, payloadHex = deltaAuHex }) {
+      const payload = bytesOf(payloadHex);
+      const buffer = new ArrayBuffer(24 + payload.length);
+      const view = new DataView(buffer);
+      view.setUint8(0, 0x54);
+      view.setUint8(1, 1);
+      view.setUint8(2, flags);
+      view.setUint32(4, frame);
+      view.setBigUint64(8, BigInt(ptsUs));
+      view.setBigUint64(16, BigInt(sentUs));
+      new Uint8Array(buffer, 24).set(payload);
+      return buffer;
+    }
+
+    const keyMessage = (frame) => messageOf({ flags: 1, frame, payloadHex: keyAuHex });
+    const deltaMessage = (frame) => messageOf({ frame, payloadHex: deltaAuHex });
+
+    /** The fakes the player is given — a socket, a decoder, a chunk — each writing into `log`. */
+    function fakes(log, supports) {
+      class FakeSocket {
+        constructor(url) {
+          this.url = url;
+          this.readyState = 1;
+          this.sent = [];
+          log.sockets.push(this);
+        }
+
+        send(data) { this.sent.push(data); }
+
+        close() { this.readyState = 3; }
+      }
+      class FakeDecoder {
+        static isConfigSupported(config) {
+          log.support.push(config);
+          return Promise.resolve({ supported: supports(config), config });
+        }
+
+        constructor(init) {
+          this.init = init;
+          this.state = "unconfigured";
+          this.decodeQueueSize = 0;
+          this.configs = [];
+          this.chunks = [];
+          this.closes = 0;
+          log.decoders.push(this);
+        }
+
+        configure(config) { this.configs.push(config); this.state = "configured"; }
+
+        decode(chunk) { this.chunks.push(chunk); log.chunks.push(chunk); }
+
+        close() { this.closes++; this.state = "closed"; }
+      }
+      class FakeChunk {
+        constructor(init) { this.type = init.type; this.timestamp = init.timestamp; this.data = init.data; }
+      }
+      return { FakeSocket, FakeDecoder, FakeChunk };
+    }
+
+    /** A player with those fakes and a clock, and the things a test reads back. */
+    function harness({ supports = () => true, annexb = false } = {}) {
+      const log = {
+        sockets: [], decoders: [], chunks: [], support: [], framesClosed: 0, draws: [], events: [], drawn: [],
+      };
+      const clock = { nowMs: 0 }, timers = [];
+      const { FakeSocket, FakeDecoder, FakeChunk } = fakes(log, supports);
+      const canvas = { width: 0, height: 0, getContext: () => ({ drawImage: (frame) => log.draws.push(frame) }) };
+      const player = new WcPlayer({
+        url: "ws://test/tap",
+        canvas,
+        annexb,
+        onEvent: (event) => log.events.push(event),
+        onDrawn: (frameNo, drawnAtMs) => log.drawn.push([frameNo, drawnAtMs]),
+        now: () => clock.nowMs,
+        WebSocketImpl: FakeSocket,
+        VideoDecoderImpl: FakeDecoder,
+        EncodedVideoChunkImpl: FakeChunk,
+        setTimeoutImpl: (run, delayMs) => {
+          timers.push({ run, delayMs });
+          return timers.length;
+        },
+      });
+      const socket = () => log.sockets[log.sockets.length - 1];
+      const frameOf = (timestamp) => ({
+        timestamp, displayWidth: 1920, displayHeight: 1080, close: () => { log.framesClosed++; },
+      });
+      return { player, log, clock, timers, canvas, socket, frameOf };
+    }
+
+    /** Lets the player's promise chain run to its end: every step is a microtask. */
+    async function flushed() {
+      for (let step = 0; step < 20; step++) await Promise.resolve();
+    }
+
+    await check("only player=wc is the custom player; every other value is the WebRTC one", () => {
+      return same(
+        [playerKindOf({ player: "wc" }), playerKindOf({ player: "WC" }), playerKindOf({ player: "wc1" }),
+          playerKindOf({ player: "1" }), playerKindOf({}), playerKindOf(null), playerKindOf(undefined)],
+        ["wc", "webrtc", "webrtc", "webrtc", "webrtc", "webrtc", "webrtc"],
+      );
+    });
+    await check("splitNalus finds one access unit's four units and bounds a 4-byte start code", () => {
+      const units = splitNalus(bytesOf(keyAuHex));
+      const pair = splitNalus(bytesOf("0000000109f000000001419aa0"));
+      return same([units.map(nalType), units.map((unit) => unit.length), pair.map(nalType), hexOf(pair[0])],
+        [[9, 7, 8, 5], [2, 27, 6, 4], [9, 1], "09f0"]);
+    });
+    await check("an IDR unit is a keyframe, a plain slice is not, and the SPS says avc1.640028", () => {
+      return same([isKeyframe(bytesOf(keyAuHex)), isKeyframe(bytesOf(deltaAuHex)), codecString(bytesOf(spsHex))],
+        [true, false, "avc1.640028"]);
+    });
+    await check("the avcC record holds the profile, a 4-byte NAL length and both parameter sets", () => {
+      const record = buildAvcc(bytesOf(spsHex), bytesOf(ppsHex));
+      return same([hexOf(record), record.length], [avcCHex, 44]);
+    });
+    await check("annexbToAvcc keeps the slice with a 4-byte length and drops the AUD, SPS and PPS", () => {
+      return same(hexOf(annexbToAvcc(bytesOf(keyAuHex))), idrSampleHex);
+    });
+
+    await check("parseHeader reads the 24-byte header and hands back the payload", () => {
+      const message = messageOf({ flags: 3, frame: 42, ptsUs: 1234567890, sentUs: 1750000000000000 });
+      const parsed = parseHeader(message);
+      return same([parsed.flags, parsed.keyframe, parsed.discontinuity, parsed.frame, parsed.ptsUs, parsed.sentUs,
+        parsed.payload.length, hexOf(parsed.payload)],
+        [3, true, true, 42, 1234567890, 1750000000000000, 13, deltaAuHex]);
+    });
+    await check("the header's fields are big-endian: frame 42 is the last of its four bytes", () => {
+      return same(Array.from(new Uint8Array(messageOf({ frame: 42 })).subarray(0, 8)), [0x54, 1, 0, 0, 0, 0, 0, 42]);
+    });
+    await check("a header this page does not know, or one too short, is no message at all", () => {
+      const wrongMagic = new Uint8Array(messageOf({}));
+      wrongMagic[0] = 0x55;
+      const wrongVersion = new Uint8Array(messageOf({}));
+      wrongVersion[1] = 2;
+      return same([parseHeader(wrongMagic.buffer), parseHeader(wrongVersion.buffer), parseHeader(new ArrayBuffer(20)),
+        parseHeader(new Uint8Array(messageOf({})).slice(0, 23).buffer)], [null, null, null, null]);
+    });
+    await check("the first keyframe configures the decoder with the avcC and low latency", async () => {
+      const h = harness();
+      h.player.start();
+      h.socket().onmessage({ data: keyMessage(0) });
+      await flushed();
+      const decoder = h.log.decoders[0];
+      const config = decoder.configs[0];
+      return same([config.codec, hexOf(config.description), config.optimizeForLatency, config.hardwareAcceleration,
+        h.log.chunks.length, h.log.chunks[0].type, hexOf(h.log.chunks[0].data), h.log.chunks[0].timestamp],
+        ["avc1.640028", avcCHex, true, "prefer-hardware", 1, "key", idrSampleHex, 0]);
+    });
+    await check("a second keyframe with the same SPS is not configured again", async () => {
+      const h = harness();
+      h.player.start();
+      const socket = h.socket();
+      socket.onmessage({ data: keyMessage(0) });
+      await flushed();
+      h.clock.nowMs = 600;
+      socket.onmessage({ data: keyMessage(2) });
+      await flushed();
+      return same([h.log.decoders[0].configs.length, h.log.chunks.length, h.log.chunks[1].timestamp], [1, 2, 2000]);
+    });
+    await check("the hardware hint is tried first, dropped if refused, and a refusal is said", async () => {
+      const hinted = harness({ supports: (config) => config.hardwareAcceleration === undefined });
+      hinted.player.start();
+      hinted.socket().onmessage({ data: keyMessage(0) });
+      await flushed();
+      const refused = harness({ supports: () => false });
+      refused.player.start();
+      refused.socket().onmessage({ data: keyMessage(0) });
+      await flushed();
+      return same([hinted.log.decoders[0].configs[0].hardwareAcceleration, hinted.player.counters().decodeConfig,
+        refused.log.decoders[0].configs.length, refused.log.chunks.length, refused.player.counters().decodeConfig],
+        [undefined, "avc1.640028 no hint", 0, 0, "unsupported avc1.640028"]);
+    });
+    await check("wcmode=annexb asks for no description and decodes the host's bytes unchanged", async () => {
+      const h = harness({ annexb: true });
+      h.player.start();
+      h.socket().onmessage({ data: keyMessage(0) });
+      await flushed();
+      const config = h.log.decoders[0].configs[0];
+      return same([config.codec, config.description, h.log.chunks[0].type, hexOf(h.log.chunks[0].data)],
+        ["avc1.640028", undefined, "key", keyAuHex]);
+    });
+    await check("deltas before a keyframe or after a gap are dropped and a keyframe is asked", async () => {
+      const h = harness();
+      h.player.start();
+      const socket = h.socket();
+      socket.onmessage({ data: deltaMessage(0) });
+      socket.onmessage({ data: deltaMessage(1) });
+      await flushed();
+      const early = [h.log.chunks.length, socket.sent, h.player.counters().dropsGap, h.player.counters().keyRequests];
+      socket.onmessage({ data: keyMessage(2) });
+      await flushed();
+      socket.onmessage({ data: deltaMessage(3) });
+      socket.onmessage({ data: deltaMessage(5) });
+      await flushed();
+      return same([early, h.log.chunks.length, h.log.chunks[1].type, h.player.counters().dropsGap],
+        [[0, [JSON.stringify({ type: "key" })], 2, 1], 2, "delta", 3]);
+    });
+    await check("a frame arriving with the decoder 3 frames behind is dropped and a keyframe asked", async () => {
+      const h = harness();
+      h.player.start();
+      const socket = h.socket();
+      h.clock.nowMs = 600;
+      socket.onmessage({ data: keyMessage(0) });
+      await flushed();
+      h.log.decoders[0].decodeQueueSize = 3;
+      socket.onmessage({ data: deltaMessage(1) });
+      await flushed();
+      const counters = h.player.counters();
+      return same([h.log.chunks.length, counters.dropsQueue, counters.queueMax], [1, 1, 3]);
+    });
+    await check("a drawn frame sizes the canvas, closes its frame and keeps its three times", async () => {
+      const h = harness();
+      h.player.start();
+      h.clock.nowMs = 10;
+      h.socket().onmessage({ data: keyMessage(0) });
+      await flushed();
+      h.clock.nowMs = 25;
+      h.log.decoders[0].init.output(h.frameOf(0));
+      const stage = h.player.stageSamples()[0];
+      const counters = h.player.counters();
+      return same([h.log.framesClosed, h.canvas.width, h.canvas.height, h.log.draws.length, stage.frame,
+        stage.receiveAt, stage.decodeOutputAt, stage.drawnAt, h.log.drawn[0], counters.framesDrawn, counters.framesDecoded],
+        [1, 1920, 1080, 1, 0, 10, 25, 25, [0, 25], 1, 1]);
+    });
+    await check("a frame the draw cannot read is still closed and is reported, not thrown", async () => {
+      const h = harness();
+      h.player.start();
+      h.socket().onmessage({ data: keyMessage(0) });
+      await flushed();
+      const decoder = h.log.decoders[0];
+      const frame = h.frameOf(0);
+      frame.displayWidth = 0;
+      let threw = false;
+      h.canvas.getContext = () => {
+        throw new Error("no canvas here");
+      };
+      try {
+        decoder.init.output(frame);
+      } catch (error) {
+        threw = true;
+      }
+      return same([threw, h.log.framesClosed, h.log.events[0].type], [false, 1, "status"]);
+    });
+    await check("a decoder error closes it, makes a new one and asks for a keyframe", async () => {
+      const h = harness();
+      h.player.start();
+      const socket = h.socket();
+      socket.onmessage({ data: keyMessage(0) });
+      await flushed();
+      const first = h.log.decoders[0];
+      first.init.error({ message: "boom" });
+      const counters = h.player.counters();
+      h.clock.nowMs = 600;
+      socket.onmessage({ data: keyMessage(2) });
+      await flushed();
+      return same([counters.decoderErrors, first.closes, h.log.decoders.length, h.log.decoders[1].configs.length,
+        h.log.chunks.length, counters.keyRequests], [1, 1, 2, 1, 2, 1]);
+    });
+    await check("a lost socket is opened again after 200 ms, then after 400 ms", async () => {
+      const h = harness();
+      h.player.start();
+      h.socket().onclose();
+      const firstMs = h.timers[0].delayMs;
+      h.timers[0].run();
+      const openedAfterOne = h.log.sockets.length;
+      h.socket().onclose();
+      const secondMs = h.timers[1].delayMs;
+      return same([firstMs, openedAfterOne, secondMs, h.player.counters().reconnects], [200, 2, 400, 2]);
+    });
+    await check("an error and a close are one reconnect, and an open puts the delay back", async () => {
+      const h = harness();
+      h.player.start();
+      const socket = h.socket();
+      socket.onerror();
+      socket.onclose();
+      const one = [h.timers.length, h.player.counters().reconnects];
+      h.timers[0].run();
+      h.socket().onopen();
+      h.socket().onclose();
+      return same([one, h.timers[1].delayMs], [[1, 1], 200]);
+    });
+    await check("the host's end message closes the page's player and reconnects nothing", async () => {
+      const h = harness();
+      h.player.start();
+      const socket = h.socket();
+      socket.onmessage({ data: JSON.stringify({ type: "end" }) });
+      return same([h.log.events.map((event) => event.type), socket.readyState, socket.onclose, h.timers.length],
+        [["end"], 3, null, 0]);
+    });
+    await check("stop() leaves no socket and no timer behind", async () => {
+      const h = harness();
+      h.player.start();
+      h.player.stop();
+      return same([h.log.sockets[0].readyState, h.timers.length, h.player.counters().reconnects], [3, 0, 0]);
+    });
+    await check("the counters are plain numbers and the stage keeps the last 256 frames", async () => {
+      const h = harness();
+      h.player.start();
+      const socket = h.socket();
+      for (let frame = 0; frame < 300; frame++) socket.onmessage({ data: deltaMessage(frame) });
+      const counters = h.player.counters();
+      const numeric = ["framesReceived", "framesDecoded", "framesDrawn", "dropsQueue", "dropsGap", "keyRequests",
+        "decoderErrors", "reconnects", "queueMax", "lastFrame"].filter((name) => typeof counters[name] !== "number");
+      return same([numeric, counters.framesReceived, counters.lastFrame, h.player.stageSamples().length,
+        h.player.stageSamples()[255].frame], [[], 300, 299, 256, 299]);
+    });
+
+    const result = document.getElementById("result");
+    result.textContent = failures.length === 0
+      ? `SELFTEST PASS ${checks}/${checks}`
+      : `SELFTEST FAIL ${failures.length}/${checks}\n${failures.join("\n")}`;
+  </script>
+</body>
+
+</html>

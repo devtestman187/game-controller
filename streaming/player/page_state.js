@@ -89,6 +89,20 @@ export function msidsOf(peerConnection) {
 }
 
 /**
+ * The ids a connection's SDP names, as one field of a report: a run reads them
+ * to see whether the sound arrived on a stream of its own. A connection that
+ * has not answered yet names none, so nothing is reported and a later report
+ * keeps whatever an earlier one found.
+ * @param {string} key - the field's name in the report ("msids", "soundMsids")
+ * @param {RTCPeerConnection|null} peerConnection
+ * @returns {object}
+ */
+export function msidFacts(key, peerConnection) {
+  const ids = msidsOf(peerConnection);
+  return ids.length === 0 ? {} : { [key]: ids };
+}
+
+/**
  * What the page is playing: "own" when the sound came on its own connection,
  * "joined" when it is the picture's own track, and "none" for a session that
  * sends no sound (`SESSION_AUDIO=off`).
