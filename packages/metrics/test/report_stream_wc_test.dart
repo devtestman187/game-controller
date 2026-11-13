@@ -9,7 +9,9 @@ import 'package:test/test.dart';
 /// * dropped 3 then 5 (max 5), backlog 1 then 3 (max 3);
 /// * key requests 2 (max 2), the decoder's queue 1 then 2 (max 2);
 /// * decoder errors 1 then 2 (max 2) and rebuilds 1 then 2 (max 2), with its
-///   last error as the `wcerr` fact (M15 opt2b-3).
+///   last error as the `wcerr` fact (M15 opt2b-3);
+/// * the sound playing 0 then 1 (max 1) with its word as the `wcsnd` fact
+///   (M15 opt2b-4).
 Map<String, Object?> wcSession() {
   final c = SessionCollector(
     id: 'wc',
@@ -42,10 +44,15 @@ Map<String, Object?> wcSession() {
   for (final value in const [1, 2]) {
     c.streamGauge(viewer, 'wcDecoderRebuilds', value);
   }
+  for (final value in const [0, 1]) {
+    c.streamGauge(viewer, 'wcSoundPlaying', value);
+  }
   c
     ..streamGauge(viewer, StreamWc.keyRequests, 2)
     ..streamFact(viewer, StreamWc.fact, 'cfg hw dec ok')
-    ..streamFact(viewer, 'wcerr', 'EncodingError boom');
+    ..streamFact(viewer, 'wcerr', 'EncodingError boom')
+    // The sound's word, as the page sends it (`wcsnd`, M15 opt2b-4).
+    ..streamFact(viewer, 'wcsnd', 'playing');
   return c.summary(600000);
 }
 
@@ -124,6 +131,9 @@ void main() {
         'errors',
         'rebuilds',
         'error',
+        'sound',
+        'snd',
+        'playing',
       ]);
       expect(wideCells(table[2]), [
         'wc',
@@ -138,12 +148,47 @@ void main() {
         '2',
         '2',
         'EncodingError boom',
+        'playing',
+        '1',
       ]);
     });
 
     test('a viewer whose page kept no decoder numbers shows a dash for each', () {
       final table = tableOf(streamReport([wcSessionNoDecoder()]), 'Custom player (wc)');
-      expect(wideCells(table[2]), ['old', 'v1', '-', '-', '-', '-', '-', '-', 'cfg hw dec ok', '-', '-', '-']);
+      expect(wideCells(table[2]), [
+        'old',
+        'v1',
+        '-',
+        '-',
+        '-',
+        '-',
+        '-',
+        '-',
+        'cfg hw dec ok',
+        '-',
+        '-',
+        '-',
+        '-',
+        '-',
+      ]);
+    });
+
+    test('a page that needed a tap shows it: the sound blocked and not playing', () {
+      final c = SessionCollector(
+        id: 'tap',
+        hostType: HostType.windows,
+        hostApp: '0.15.0',
+        startedAt: DateTime.utc(2026, 11, 13, 13),
+        startMs: 0,
+      );
+      final viewer = c.streamViewer(kind: StreamKind.browser, platform: 'safari');
+      c
+        ..streamGauge(viewer, 'bitrateReceivedKbps', 2400)
+        ..streamGauge(viewer, 'wcSoundPlaying', 0)
+        ..streamFact(viewer, StreamWc.fact, 'cfg hw dec ok')
+        ..streamFact(viewer, 'wcsnd', 'blocked');
+      final table = tableOf(streamReport([c.summary(600000)]), 'Custom player (wc)');
+      expect(wideCells(table[2]).sublist(8), ['cfg hw dec ok', '-', '-', '-', 'blocked', '0']);
     });
 
     test('a run played the WebRTC way has no custom player table', () {

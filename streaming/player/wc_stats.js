@@ -10,6 +10,7 @@
 
 import { medianOf } from "./metrics.js";
 import { playerKindOf } from "./options.js";
+import { wcSoundFactText, wcSoundStates } from "./wc_sound.js";
 
 // The host's fact rules (stream_stats.dart's maxStreamFactLength and
 // _technicalPattern): a fact over 24 characters or with a character outside
@@ -46,8 +47,10 @@ export const wcNames = {
   queueMax: "wcQueueMax",
   decoderErrors: "wcDecoderErrors",
   decoderRebuilds: "wcDecoderRebuilds",
+  soundPlaying: "wcSoundPlaying",
   fact: "wc",
   errorFact: "wcerr",
+  soundFact: "wcsnd",
 };
 
 /** The decoder's configuration as one short word from the player's own text. */
@@ -112,10 +115,13 @@ export class WcStats {
    *   `stageSamples()`
    * @param {() => number} [parts.now] - the page's clock, in ms: the interval
    *   the socket's rate is measured over
+   * @param {() => string} [parts.soundState] - the page's wc sound state (M15
+   *   opt2b-4), or null for a page whose sound is not measured
    */
-  constructor({ player, now = () => performance.now() }) {
+  constructor({ player, now = () => performance.now(), soundState = null }) {
     this._player = player;
     this._now = now;
+    this._soundState = soundState;
     this._lastFrame = -1;
     this._receiveGapMaxMs = 0;
     this._recvToDecodeMs = null;
@@ -173,6 +179,13 @@ export class WcStats {
     const facts = [{ name: wcNames.fact, value: wcFactText(counters) }];
     const errorText = wcErrorFactText(counters.lastDecoderError);
     if (errorText !== "") facts.push({ name: wcNames.errorFact, value: errorText });
+    // The sound's own state (M15 opt2b-4): a gauge a run summarises, and the
+    // word a person reads. A page that measures no sound sends neither.
+    if (this._soundState !== null) {
+      const state = this._soundState();
+      gauges.push({ name: wcNames.soundPlaying, value: state === wcSoundStates.playing ? 1 : 0 });
+      facts.push({ name: wcNames.soundFact, value: wcSoundFactText(state) });
+    }
     return { stages, gauges, facts };
   }
 
@@ -183,7 +196,8 @@ export class WcStats {
     const times = `recv-dec ${msText(this._recvToDecodeMs)} ms dec-draw ${msText(this._decodeToDrawMs)} ms`;
     const frames = `drop ${counters.dropsQueue + counters.dropsGap} backlog ${backlog}`;
     const socket = `age ${Math.round(this._receiveGapMaxMs)} ms keys ${counters.keyRequests} q ${counters.queueMax}`;
-    return `wc ${times} ${frames} ${socket} ${wcFactText(counters)}`;
+    const sound = this._soundState === null ? "" : ` snd ${wcSoundFactText(this._soundState())}`;
+    return `wc ${times} ${frames} ${socket}${sound} ${wcFactText(counters)}`;
   }
 
   /** The frames that finished since the last batch: received, decoded and drawn. */
@@ -242,9 +256,10 @@ export function combinedSeries(...providers) {
  * any other value none of them is made and no number is sent on (M15 opt2).
  * @param {object|null|undefined} options - the page's options
  * @param {object|null|undefined} player - the page's WcPlayer
+ * @param {(() => string)|null} [soundState] - the page's wc sound state (M15 opt2b-4)
  * @returns {WcStats|null}
  */
-export function wcStatsOf(options, player) {
+export function wcStatsOf(options, player, soundState = null) {
   if (playerKindOf(options) !== "wc" || !player) return null;
-  return new WcStats({ player });
+  return new WcStats({ player, soundState });
 }

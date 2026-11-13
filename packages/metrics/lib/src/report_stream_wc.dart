@@ -13,10 +13,21 @@ const _decoderRebuilds = 'wcDecoderRebuilds';
 /// first and cut short, and none before the first error (M15 opt2b-3).
 const _errorFact = 'wcerr';
 
+/// The sound's state as the custom player's page sends it (M15 opt2b-4,
+/// `wcNames.soundPlaying` in streaming/player/wc_stats.js): 1 while the audio
+/// element plays, 0 while it waits for a tap or has no stream.
+const _soundPlaying = 'wcSoundPlaying';
+
+/// The fact the page sends the sound's own word under (`wcsnd`): `none` for a
+/// session that sends no sound stream, `blocked` while a tap is needed, and
+/// `playing` (M15 opt2b-4).
+const _soundFact = 'wcsnd';
+
 /// The columns of "Custom player (wc)" (M15 opt2): the two parts of a frame's
 /// time the custom player measures itself, the frames it dropped and asked
 /// for, the backlog it held, the decoder's deepest queue, the configuration it
-/// decoded with, and what its decoder's errors cost (M15 opt2b-3).
+/// decoded with, what its decoder's errors cost (M15 opt2b-3), and whether the
+/// sound played or waited for a tap (M15 opt2b-4).
 const _wcHeaders = [
   'session',
   'viewer',
@@ -30,6 +41,8 @@ const _wcHeaders = [
   'errors',
   'rebuilds',
   'error',
+  'sound',
+  'snd playing',
 ];
 
 /// The custom player's own numbers (M15 opt2), one row per viewer whose page
@@ -64,4 +77,6 @@ List<String> _wcCells(StreamViewerRow row) => [
   countText(row.gaugeField(_decoderErrors, 'max')),
   countText(row.gaugeField(_decoderRebuilds, 'max')),
   row.facts[_errorFact] ?? '-',
+  row.facts[_soundFact] ?? '-',
+  countText(row.gaugeField(_soundPlaying, 'max')),
 ];

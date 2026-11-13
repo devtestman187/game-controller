@@ -18,6 +18,7 @@ import { createSessionWatch, endedText } from "./session_end.js";
 import { StatsMeter } from "./stats.js";
 import { signallingUrl, StreamLinks, tuneForLowDelay } from "./streams.js";
 import { WcPlayer } from "./wc_player.js";
+import { WcSound } from "./wc_sound.js";
 import { combinedSeries, wcStatsOf } from "./wc_stats.js";
 
 const GstWebRTCAPI = window.GstWebRTCAPI;
@@ -109,6 +110,11 @@ const overlay = new Overlay({
   onProblem: (text) => overlay.noteProblem(text),
 });
 
+// The custom player's sound (M15 opt2b-4): the sound-only stream, a tap starts it.
+const wcSound = wcMode
+  ? new WcSound({ element: soundTrack, button: soundButton, onStatus: (text) => overlay.show(text) })
+  : null;
+
 // The session is over: say so plainly and stop asking for anything, so a tab
 // left open never joins the next session by itself (M15 fix8).
 function endSession() {
@@ -118,6 +124,7 @@ function endSession() {
   stopReporting();
   links?.stop();
   wcPlayer?.stop();
+  wcSound?.stop();
   playback.clear();
   overlay.show(endedText);
 }
@@ -134,7 +141,7 @@ function startWcPlayer() {
     // A browser class the player lacks goes the page errors' way (M15 opt2b).
     onMissing: (text) => sendPageError({ message: text, site: "wc_player.js" }),
   });
-  wcStats = wcStatsOf(options, wcPlayer);
+  wcStats = wcStatsOf(options, wcPlayer, () => wcSound.state);
   // The measurements are in place before the first frame, so none is missed.
   overlay.start(null);
   startReporting(null, wcPicture);
@@ -249,20 +256,6 @@ function connectionClosed() {
   reportPlayerState("closed");
 }
 
-// With the picture on the canvas the session's sound is the only WebRTC media
-// the page plays (M15 opt2), on the audio element by itself; the picture's own
-// stream is never attached.
-function playSoundOnly(stream) {
-  soundTrack.srcObject = stream;
-  soundTrack.muted = false;
-  if (stream === null) return;
-  soundTrack.play().catch(() => {
-    soundButton.classList.add("visible");
-    overlay.show("tap the screen to start the sound");
-  });
-  reportPlayerState(hasPlayed ? "playing" : "streaming", { audio: audioModeNow() });
-}
-
 // A stream arrived on the sound's own connection, or null when it is gone; the
 // picture is already playing and is not touched (SESSION_AUDIO=separate).
 function showSound(stream) {
@@ -271,7 +264,13 @@ function showSound(stream) {
     soundMeter = null;
     soundConnection = null;
   }
-  if (wcMode) return playSoundOnly(stream);
+  // With the picture on the canvas the sound is the only WebRTC media the page
+  // plays (M15 opt2): it goes on the audio element by itself, and a tap starts
+  // it where the browser wants one first (M15 opt2b-4).
+  if (wcMode) {
+    wcSound?.play(stream);
+    return reportPlayerState(hasPlayed ? "playing" : "streaming", { audio: audioModeNow() });
+  }
   if (playingPicture === null) return;
   playback.show(playingPicture, soundOf(playingStream, splitTracks, soundStream));
   lowDelay?.watch(pictureConnection, soundConnection);
@@ -373,8 +372,9 @@ function start() {
 
   sessionWatch.start();
 }
-// The button and the keyboard show the numbers; the sound's button unmutes it.
+// The button and the keyboard show the numbers; the sound's button unmutes it —
+// or, with the custom player, starts the sound's own element (M15 opt2b-4).
 overlay.wireToggle(toggleButton);
-overlay.wireSoundButton(soundButton, () => playback.unmute());
+overlay.wireSoundButton(soundButton, wcMode ? () => wcSound?.tap() : () => playback.unmute());
 
 start();

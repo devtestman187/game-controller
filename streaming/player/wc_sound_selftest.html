@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Thumb Party custom player sound self-test</title>
+  <style>body { background: #000; color: #eee; font: 14px/1.5 ui-monospace, monospace; padding: 12px; }</style>
+</head>
+
+<body>
+  <pre id="result">SELFTEST RUNNING</pre>
+  <!-- The custom player's sound (M15 opt2b-4), in the headless Chrome the bench
+       already has, as the other pages here: wc_sound.js driven by a fake audio
+       element and a fake tap target (one whose play() a browser refuses until a
+       tap, as Safari does on a plain page), and the `wcsnd` fact and
+       `wcSoundPlaying` gauge it puts in wc_stats.js's batch. bench.sh serves the
+       player folder and reads the one line below back out of the DOM. -->
+  <script type="module">
+    import { WcSound, wcSoundFactText, wcSoundStates } from "./wc_sound.js";
+    import { WcStats, wcNames } from "./wc_stats.js";
+
+    const failures = [];
+    let checks = 0;
+
+    async function check(name, run) {
+      checks++;
+      try {
+        const problem = await run();
+        if (problem) failures.push(`${name}: ${problem}`);
+      } catch (error) {
+        failures.push(`${name}: threw ${error.message}`);
+      }
+    }
+
+    function same(actual, expected) {
+      return JSON.stringify(actual) === JSON.stringify(expected)
+        ? ""
+        : `expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`;
+    }
+
+    /** Lets the sound's promise chain run to its end: every step is a microtask. */
+    async function flushed() {
+      for (let step = 0; step < 20; step++) await Promise.resolve();
+    }
+
+    /**
+     * The audio element as wc_sound.js uses it. The browser refuses the first
+     * [refuses] plays with NotAllowedError, as Safari does without a tap, and a
+     * [starts] of false is a browser that answers play() but never unpauses.
+     */
+    function fakeElement({ refuses = 0, starts = true } = {}) {
+      const element = {
+        muted: true,
+        srcObject: null,
+        paused: true,
+        plays: 0,
+        play() {
+          element.plays++;
+          if (element.plays <= refuses) return Promise.reject(new Error("NotAllowedError"));
+          if (starts) element.paused = false;
+          return Promise.resolve();
+        },
+        pause() {
+          element.paused = true;
+        },
+      };
+      return element;
+    }
+
+    /** The page's "tap to start sound" button, and whether it is showing. */
+    function fakeButton() {
+      const button = { visible: false };
+      button.classList = { toggle: (name, on) => (button.visible = on) };
+      return button;
+    }
+
+    /** The sound with a fake element, button and page, and the lines it showed. */
+    function soundHarness(options = {}) {
+      const log = { status: [] };
+      const element = fakeElement(options);
+      const button = fakeButton();
+      const taps = new EventTarget();
+      const sound = new WcSound({
+        element,
+        tapTarget: taps,
+        button,
+        onStatus: (text) => log.status.push(text),
+      });
+      return { sound, element, button, taps, log };
+    }
+
+    /** What one tap on the page does, in the tick after it. */
+    async function tap(taps, type = "pointerdown") {
+      taps.dispatchEvent(new Event(type));
+      await flushed();
+    }
+
+    function countersOf() {
+      return {
+        framesReceived: 12,
+        framesDecoded: 9,
+        framesDrawn: 9,
+        dropsQueue: 2,
+        dropsGap: 1,
+        keyRequests: 3,
+        decoderErrors: 0,
+        decoderRebuilds: 0,
+        lastDecoderError: "",
+        queueMax: 0,
+        lastFrame: 11,
+        bytesReceived: 0,
+        decodeConfig: "avc1.640028 hardware",
+      };
+    }
+
+    /** A player as wc_stats.js reads one: the counters it keeps and no finished frame. */
+    function fakePlayer(counters = countersOf()) {
+      return { counters: () => ({ ...counters }), stageSamples: () => [] };
+    }
+
+    const item = (list, name) => list.find((entry) => entry.name === name);
+    const gaugeValue = (batch, name) => item(batch.gauges, name)?.value ?? null;
+
+    await check("a play the browser allows is the sound playing, and no button shows", async () => {
+      const harness = soundHarness();
+      harness.sound.play({ id: "sound-stream" });
+      await flushed();
+      return same(
+        [harness.sound.state, harness.element.muted, harness.element.srcObject.id, harness.button.visible,
+          harness.log.status],
+        [wcSoundStates.playing, false, "sound-stream", false, []],
+      );
+    });
+    await check("a refused play is blocked: the button shows and the line says what to do", async () => {
+      const harness = soundHarness({ refuses: 1 });
+      harness.sound.play({ id: "sound-stream" });
+      await flushed();
+      return same([harness.sound.state, harness.button.visible, harness.log.status],
+        [wcSoundStates.blocked, true, ["tap the screen to start the sound"]]);
+    });
+    await check("a play that answers but never unpauses is blocked too", async () => {
+      const harness = soundHarness({ starts: false });
+      harness.sound.play({ id: "sound-stream" });
+      await flushed();
+      return same([harness.sound.state, harness.element.paused, harness.button.visible],
+        [wcSoundStates.blocked, true, true]);
+    });
+    await check("a tap on the page starts the sound inside the gesture and takes the button away", async () => {
+      const harness = soundHarness({ refuses: 1 });
+      harness.sound.play({ id: "sound-stream" });
+      await flushed();
+      await tap(harness.taps);
+      return same(
+        [harness.sound.state, harness.element.plays, harness.element.muted, harness.element.paused,
+          harness.button.visible, harness.log.status],
+        [wcSoundStates.playing, 2, false, false, false, ["tap the screen to start the sound", "playing"]],
+      );
+    });
+    await check("the touch's end is a tap too, and it is needed once only", async () => {
+      const harness = soundHarness({ refuses: 1 });
+      harness.sound.play({ id: "sound-stream" });
+      await flushed();
+      await tap(harness.taps, "touchend");
+      const afterFirst = harness.element.plays;
+      await tap(harness.taps);
+      await tap(harness.taps, "touchend");
+      return same([harness.sound.state, afterFirst, harness.element.plays], [wcSoundStates.playing, 2, 2]);
+    });
+    await check("the page's own button starts the sound the same way", async () => {
+      const harness = soundHarness({ refuses: 1 });
+      harness.sound.play({ id: "sound-stream" });
+      await flushed();
+      harness.sound.tap();
+      await flushed();
+      return same([harness.sound.state, harness.element.plays, harness.button.visible],
+        [wcSoundStates.playing, 2, false]);
+    });
+    await check("a stream that reconnects asks for the tap again", async () => {
+      const harness = soundHarness({ refuses: 2 });
+      harness.sound.play({ id: "first" });
+      await flushed();
+      harness.sound.play(null);
+      await flushed();
+      const gone = [harness.sound.state, harness.element.srcObject];
+      harness.sound.play({ id: "second" });
+      await flushed();
+      await tap(harness.taps);
+      return same([gone, harness.sound.state, harness.element.srcObject.id, harness.element.plays],
+        [[wcSoundStates.none, null], wcSoundStates.playing, "second", 3]);
+    });
+    await check("no sound stream is no sound, and the tap does nothing", async () => {
+      const harness = soundHarness();
+      harness.sound.play(null);
+      await flushed();
+      await tap(harness.taps);
+      return same([harness.sound.state, harness.element.plays, harness.button.visible, harness.log.status],
+        [wcSoundStates.none, 0, false, []]);
+    });
+    await check("stopping the sound empties the element, hides the button and ends the taps", async () => {
+      const harness = soundHarness({ refuses: 1 });
+      harness.sound.play({ id: "sound-stream" });
+      await flushed();
+      harness.sound.stop();
+      await tap(harness.taps);
+      return same(
+        [harness.sound.state, harness.element.srcObject, harness.element.paused, harness.element.plays,
+          harness.button.visible],
+        [wcSoundStates.none, null, true, 1, false],
+      );
+    });
+    await check("the fact is one of the three words, and none for anything else", () => {
+      return same(
+        [wcSoundFactText("none"), wcSoundFactText("blocked"), wcSoundFactText("playing"),
+          wcSoundFactText(undefined), wcSoundFactText("wat")],
+        ["none", "blocked", "playing", "none", "none"],
+      );
+    });
+    await check("a playing sound rides the batch as the gauge 1 and the fact, and says so on the line", () => {
+      const stats = new WcStats({ player: fakePlayer(), soundState: () => wcSoundStates.playing });
+      const batch = stats.batch();
+      return same(
+        [gaugeValue(batch, wcNames.soundPlaying), item(batch.facts, wcNames.soundFact), stats.line().includes("snd playing")],
+        [1, { name: "wcsnd", value: "playing" }, true],
+      );
+    });
+    await check("a blocked sound is the gauge 0 and the fact blocked", () => {
+      const batch = new WcStats({ player: fakePlayer(), soundState: () => wcSoundStates.blocked }).batch();
+      return same([gaugeValue(batch, wcNames.soundPlaying), item(batch.facts, wcNames.soundFact)],
+        [0, { name: "wcsnd", value: "blocked" }]);
+    });
+    await check("a report with no sound state of its own sends neither the gauge nor the fact", () => {
+      const batch = new WcStats({ player: fakePlayer() }).batch();
+      return same([gaugeValue(batch, wcNames.soundPlaying), item(batch.facts, wcNames.soundFact)], [null, undefined]);
+    });
+
+    const result = document.getElementById("result");
+    result.textContent = failures.length === 0
+      ? `SELFTEST PASS ${checks}/${checks}`
+      : `SELFTEST FAIL ${failures.length}/${checks}\n${failures.join("\n")}`;
+  </script>
+</body>
+
+</html>
