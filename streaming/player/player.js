@@ -9,7 +9,7 @@ import { sendPageError } from "./error_trap.js";
 import { markerEnabled, parseOptions, optionsLine, playerKindOf } from "./options.js";
 import { JbTarget, jbTargetOf } from "./jb_target.js";
 import { LowDelay, lowDelayEnabled } from "./low_delay.js";
-import { canvasPicture } from "./marker_reader.js";
+import { canvasPicture, sharedReadback } from "./marker_reader.js";
 import { Overlay } from "./overlay.js";
 import { audioMode, identifyPlayer, msidFacts, reportPlayerState, setStaleHandler } from "./page_state.js";
 import { Playback, pictureOf, soundOf } from "./playback.js";
@@ -141,7 +141,7 @@ function startWcPlayer() {
     // A browser class the player lacks goes the page errors' way (M15 opt2b).
     onMissing: (text) => sendPageError({ message: text, site: "wc_player.js" }),
   });
-  wcStats = wcStatsOf(options, wcPlayer, () => wcSound.state);
+  wcStats = wcStatsOf(options, wcPlayer, () => wcSound.state, () => sharedReadback(wcPicture).totals());
   // The measurements are in place before the first frame, so none is missed.
   overlay.start(null);
   startReporting(null, wcPicture);

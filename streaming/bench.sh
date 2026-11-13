@@ -977,7 +977,8 @@ run_page_selftest() {
     waited=$((waited + 1))
   done
   for page in marker_selftest.html jbtarget_selftest.html wc_selftest.html wc_stats_selftest.html \
-    wc_diag_selftest.html wc_keys_selftest.html secure_selftest.html wc_sound_selftest.html; do
+    wc_diag_selftest.html wc_keys_selftest.html secure_selftest.html wc_sound_selftest.html \
+    wc_card_selftest.html; do
     url="http://127.0.0.1:$port/$page"
     dump="$("$chrome" --no-sandbox --disable-gpu --dump-dom "$url" 2>/dev/null)"
     # The count is part of the match: the page's own script carries the words

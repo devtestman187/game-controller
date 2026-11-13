@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Thumb Party card and marker self-test</title>
+  <style>body { background: #000; color: #eee; font: 14px/1.5 ui-monospace, monospace; padding: 12px; }</style>
+</head>
+
+<body>
+  <pre id="result">SELFTEST RUNNING</pre>
+  <pre id="cost"></pre>
+  <!-- The card and the marker read the same drawn frame (M15 opt2c-5): a press
+       at host 1000 whose frame is drawn at 1150 is timed from the drawn frame
+       by both readers, whatever the press poll's cadence. The picture is a real
+       1920x1080 canvas painted with the row's cells and the card's patch, so
+       the readback's drawImage and getImageData run as they do in the page.
+       bench.sh --selftest reads the one line below back out. -->
+  <script type="module">
+    import { canvasPicture, MarkerReader, sharedReadback } from "./marker_reader.js";
+    import { LatencyProbe } from "./latency_probe.js";
+    import { decodeMarker, markerCellCount, markerChecksum } from "./marker_decode.js";
+    import { ReadCost, readCostNames } from "./wc_counters.js";
+
+    /** The picture these tests paint, as the host captures it. */
+    const pictureWidthPx = 1920;
+    const pictureHeightPx = 1080;
+
+    /** One cell's side in the picture, px (docs/streaming-marker.md at 1080p). */
+    const cellPx = 16;
+
+    /** The card's patch: 8 px a quarter into the picture, as the host draws it. */
+    const patchPx = 8;
+
+    const failures = [];
+    let checks = 0;
+
+    function check(name, run) {
+      checks++;
+      try {
+        const problem = run();
+        if (problem) failures.push(`${name}: ${problem}`);
+      } catch (error) {
+        failures.push(`${name}: threw ${error.message}`);
+      }
+    }
+
+    function same(actual, expected) {
+      return JSON.stringify(actual) === JSON.stringify(expected)
+        ? ""
+        : `expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`;
+    }
+
+    /** The row's 57 cells for one frame: the light borders and the 55 content cells. */
+    function cellsOf({ counter, hostMs, pressFlip }) {
+      const bits = [];
+      const push = (value, count) => {
+        for (let bit = count - 1; bit >= 0; bit--) bits.push(Math.floor(value / 2 ** bit) % 2 === 1);
+      };
+      bits.push(true, false);
+      push(counter, 16);
+      push(hostMs, 32);
+      bits.push(pressFlip);
+      push(markerChecksum({ counter, hostMs, pressFlip }), 4);
+      return [true, ...bits, true];
+    }
+
+    /** Paints one frame: the row at the picture's top-left and the card's patch a quarter in. */
+    function paint(canvas, { counter = 0, hostMs = 0, pressFlip = false, cardLight = false } = {}) {
+      const context = canvas.getContext("2d");
+      cellsOf({ counter, hostMs, pressFlip }).forEach((light, cell) => {
+        context.fillStyle = light ? "#fff" : "#000";
+        context.fillRect(cell * cellPx, 0, cellPx, cellPx);
+      });
+      context.fillStyle = cardLight ? "#fff" : "#000";
+      context.fillRect(canvas.width / 4, canvas.height / 4, patchPx, patchPx);
+    }
+
+    /** The two readers on one picture, read the way the reporter reads a frame (reporter.js). */
+    function page() {
+      const canvas = document.createElement("canvas");
+      canvas.width = pictureWidthPx;
+      canvas.height = pictureHeightPx;
+      const picture = canvasPicture(canvas);
+      const problems = [];
+      const probe = new LatencyProbe({ picture, onProblem: (text) => problems.push(text), toHostMs: (ms) => ms });
+      const marker = new MarkerReader({
+        picture, toHostMs: (ms) => ms, onProblem: (text) => problems.push(text), presses: () => probe.presses,
+      });
+      const state = { frames: 0 };
+      const drawn = (nowMs) => {
+        state.frames++;
+        probe.watch(nowMs, state.frames);
+        marker.readFrame(nowMs, null);
+      };
+      return { canvas, picture, probe, marker, problems, drawn };
+    }
+
+    /** One press as the poll leaves it in the probe's list: the host's time, then when it was read. */
+    function press(hostMs, receivedAtMs) {
+      return { hostMs, receivedAtMs, seen: false, expired: false };
+    }
+
+    check("a press the poll brings after its own flip was drawn is still timed from that frame", () => {
+      const h = page();
+      paint(h.canvas, { counter: 5, hostMs: 5000, cardLight: false });
+      h.drawn(900);
+      // The press was at host 1000 and its frame is drawn at 1150; the 200 ms
+      // press poll only tells the page at 1200.
+      paint(h.canvas, { counter: 6, hostMs: 5150, pressFlip: true, cardLight: true });
+      h.drawn(1150);
+      h.probe.presses.push(press(1000, 1200));
+      h.drawn(1216);
+      const timed = h.probe.presses[0].sampleMs;
+      return same([timed, h.marker.summary().pressesMs], [150, [150]]);
+    });
+
+    check("a flip is timed from the frame it was drawn in, not from a later sample", () => {
+      const h = page();
+      paint(h.canvas, { counter: 1, hostMs: 1000, cardLight: false });
+      h.drawn(1000);
+      paint(h.canvas, { counter: 2, hostMs: 1030, pressFlip: true, cardLight: true });
+      for (let step = 0; step < 8; step++) h.drawn(1030 + step * 30);
+      h.probe.presses.push(press(1000, 9000));
+      h.drawn(1300);
+      return same(h.probe.presses[0].sampleMs, 30);
+    });
+
+    check("a flip a whole cadence after the press is the card's own, not the press's", () => {
+      const h = page();
+      paint(h.canvas, { counter: 1, hostMs: 1000, cardLight: false });
+      h.drawn(1000);
+      paint(h.canvas, { counter: 2, hostMs: 1510, cardLight: true });
+      h.drawn(1510);
+      h.probe.presses.push(press(1000, 1600));
+      h.drawn(1530);
+      const timed = h.probe.presses[0];
+      return same([timed.sampleMs ?? null, timed.expired, h.probe.flipsSeen], [null, true, 1]);
+    });
+
+    check("the card's own cadence flip between a press and its flip: the card is pinned lower, the marker exact", () => {
+      const h = page();
+      paint(h.canvas, { counter: 1, hostMs: 1000, cardLight: false });
+      h.drawn(1000);
+      // The card's own 500 ms cadence changes it at 1100, before the press's
+      // own flip at 1300: the card cannot tell the two changes apart, while the
+      // marker's flip cell changes on the press alone.
+      paint(h.canvas, { counter: 2, hostMs: 1100, cardLight: true });
+      h.drawn(1100);
+      paint(h.canvas, { counter: 3, hostMs: 1300, pressFlip: true, cardLight: false });
+      h.drawn(1300);
+      h.probe.presses.push(press(1000, 1500));
+      h.drawn(1316);
+      return same([h.probe.presses[0].sampleMs, h.marker.summary().pressesMs], [100, [300]]);
+    });
+
+    check("a picture with no size is no reading for either reader", () => {
+      const picture = { image: () => null, widthPx: () => 0, heightPx: () => 0 };
+      const probe = new LatencyProbe({ picture, onProblem: () => {}, toHostMs: (ms) => ms });
+      const marker = new MarkerReader({ picture, toHostMs: (ms) => ms, onProblem: () => {}, presses: () => [] });
+      probe.watch(1000, 1);
+      marker.readFrame(1000, null);
+      return same([marker.summary().reasons.crop, probe.flipsSeen, probe.presses.length], [1, 0, 0]);
+    });
+
+    check("the strip read still decodes a row", () => {
+      const h = page();
+      paint(h.canvas, { counter: 0xabcd, hostMs: 0x01234567, cardLight: false });
+      h.drawn(1000);
+      const summary = h.marker.summary();
+      return same([summary.frames, summary.readable, summary.reasons.checksum], [1, 1, 0]);
+    });
+
+    check("both readers read one readback of the frame that was drawn", () => {
+      const h = page();
+      paint(h.canvas, { counter: 6, hostMs: 5150, pressFlip: true, cardLight: true });
+      h.drawn(1150);
+      const readback = sharedReadback(h.picture);
+      const frame = readback.read(1150);
+      const decoded = decodeMarker(frame.rows);
+      const stripWidthPx = cellPx * markerCellCount;
+      return same(
+        [readback.totals().reads, readback.read(1150) === frame, frame.stampMs, frame.rows.length,
+          frame.rows[0].length, stripWidthPx, decoded.counter, decoded.hostMs, Math.round(frame.card)],
+        [1, true, 1150, 3, stripWidthPx, stripWidthPx, 6, 5150, 255],
+      );
+    });
+
+    check("the read cost is sent as stages, and no read sends none", () => {
+      let totals = { reads: 0, sumMs: 0, maxMs: 0 };
+      const cost = new ReadCost(() => totals);
+      totals = { reads: 4, sumMs: 10, maxMs: 6 };
+      const first = cost.stages(3.4);
+      const second = cost.stages(null);
+      return same(
+        [first.map((stage) => stage.name), first.map((stage) => stage.ms), second,
+          readCostNames.mean, readCostNames.max, readCostNames.draw],
+        [["wcReadMeanMs", "wcReadMaxMs", "wcDrawMeanMs"], [3, 6, 3], [], "wcReadMeanMs", "wcReadMaxMs",
+          "wcDrawMeanMs"],
+      );
+    });
+
+    /**
+     * The page's own reading cost, measured on the fake picture: the shared
+     * readback's reads (the strip's middle rows and the card's patch in one
+     * getImageData) against the older way's full-height strip read plus a
+     * separate 1x1 card read. Timing, not a check: bench.sh reads the line.
+     */
+    function measureCost() {
+      const canvas = document.createElement("canvas");
+      canvas.width = pictureWidthPx;
+      canvas.height = pictureHeightPx;
+      paint(canvas, { counter: 1, hostMs: 1000, cardLight: true });
+      const readback = sharedReadback(canvasPicture(canvas));
+      readback.watchStrip();
+      readback.watchCard();
+      const stripWidthPx = cellPx * markerCellCount;
+      const strip = document.createElement("canvas");
+      strip.width = stripWidthPx;
+      strip.height = cellPx;
+      const stripContext = strip.getContext("2d", { willReadFrequently: true });
+      const card = document.createElement("canvas");
+      card.width = 1;
+      card.height = 1;
+      const cardContext = card.getContext("2d", { willReadFrequently: true });
+      const frames = 40;
+      // One warm-up read each, so a first context's cost is not in the mean.
+      readback.read(0);
+      stripContext.drawImage(canvas, 0, 0, stripWidthPx, cellPx, 0, 0, stripWidthPx, cellPx);
+      stripContext.getImageData(0, 0, stripWidthPx, cellPx);
+      const before = readback.totals();
+      for (let frame = 1; frame <= frames; frame++) readback.read(frame);
+      const after = readback.totals();
+      const startedAtMs = performance.now();
+      for (let frame = 0; frame < frames; frame++) {
+        // A quarter in, where the card's block has no text over it.
+        stripContext.drawImage(canvas, 0, 0, stripWidthPx, cellPx, 0, 0, stripWidthPx, cellPx);
+        stripContext.getImageData(0, 0, stripWidthPx, cellPx);
+        cardContext.drawImage(canvas, pictureWidthPx / 4, pictureHeightPx / 4, patchPx, patchPx, 0, 0, 1, 1);
+        cardContext.getImageData(0, 0, 1, 1);
+      }
+      const oldMeanMs = (performance.now() - startedAtMs) / frames;
+      const reads = after.reads - before.reads;
+      const readMeanMs = (after.sumMs - before.sumMs) / reads;
+      return `COST frames=${frames} readMeanMs=${readMeanMs.toFixed(2)} readMaxMs=${after.maxMs.toFixed(2)} ` +
+        `oldMeanMs=${oldMeanMs.toFixed(2)}`;
+    }
+
+    const cost = document.getElementById("cost");
+    try {
+      cost.textContent = measureCost();
+    } catch (error) {
+      cost.textContent = `COST failed ${error.message}`;
+    }
+    const result = document.getElementById("result");
+    result.textContent = failures.length === 0
+      ? `SELFTEST PASS ${checks}/${checks}`
+      : `SELFTEST FAIL ${failures.length}/${checks}\n${failures.join("\n")}`;
+  </script>
+</body>
+
+</html>

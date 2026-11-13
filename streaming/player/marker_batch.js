@@ -33,6 +33,26 @@ export const markerNames = {
 };
 
 /**
+ * Every requestVideoFrameCallback metadata field the page records, raw, by the
+ * name the browser gives it. A field this browser does not fill in is recorded
+ * as missing — the batch then has no fact for it — never as a 0. They are the
+ * browser's whole statement about a frame's timing, and only the phone's Safari
+ * says which of them it fills in.
+ */
+export const metadataFields = [
+  "presentationTime",
+  "expectedDisplayTime",
+  "captureTime",
+  "receiveTime",
+  "processingDuration",
+  "presentedFrames",
+  "width",
+  "height",
+  "mediaTime",
+  "rtpTimestamp",
+];
+
+/**
  * The unit each raw metadata field is written in, as "min median max" in one
  * fact, and why: seconds with two decimals for a timestamp (the longest this
  * may grow is a run of hours), milliseconds to a tenth for a duration, whole

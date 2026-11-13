@@ -1,11 +1,15 @@
 /*
  * The page's latency probe (M15 c2, split out in fix7): it watches the small
  * patch of picture the latency card flips in and times the presses the
- * benchmark sends against the flip it sees, so a press has a number that ends
- * on the screen. The reporter keeps the numbers; this keeps the watch.
+ * benchmark sends against the flip that frame carried, so a press has a number
+ * that ends on the screen. The reporter keeps the numbers; this keeps the
+ * watch. The patch is read out of the picture's one readback, in the same turn
+ * as the marker's strip, so the two figures are of the same drawn frame
+ * (M15 opt2c-5).
  */
 
-import { FlipWatcher, luminanceOf } from "./metrics.js";
+import { sharedReadback } from "./marker_reader.js";
+import { FlipWatcher } from "./metrics.js";
 
 /**
  * How long the latency card holds a colour (`LatencyTestCard.flipMs`): it
@@ -14,20 +18,17 @@ import { FlipWatcher, luminanceOf } from "./metrics.js";
  */
 const cardFlipMs = 500;
 
-/** Pixels the flip is watched at, in the picture's own coordinates. */
-const patchSizePx = 8;
-
 /** The brightness the light and dark card are (the look's paper and ink). */
 const lightAbove = 120;
 
 /** The brightness below which the card is the dark one. */
 const darkBelow = 80;
 
-/** Sample the patch every frame while a press waits, and less often after. */
-const patchEveryNthFrame = 8;
-
 /** Give up on a press whose flip was not seen in this long. */
 const pressTimeoutMs = 2000;
+
+/** The flips kept for a press the poll brings late: about a minute and a half of them. */
+const maxFlipSamples = 200;
 
 /**
  * Watches for the card's flips and times the presses waiting for one. The
@@ -44,32 +45,33 @@ export class LatencyProbe {
    * @param {(nowMs: number) => (number|null)} parts.toHostMs - page to host time
    */
   constructor({ picture, onProblem, toHostMs }) {
-    this._picture = picture;
     this._onProblem = onProblem;
     this._toHostMs = toHostMs;
-    this._canvas = null;
+    // The patch is read from the frame the marker's strip is read from, in the
+    // same turn, so both figures are of one drawn frame (M15 opt2c-5).
+    this._readback = sharedReadback(picture);
+    this._readback.watchCard();
     this._watcher = new FlipWatcher({ lightAbove, darkBelow });
     /** The presses still worth timing, and how many the host has sent. */
     this.pressesSeen = 0;
     this.presses = [];
     /** How many flips the page saw, for a run to read afterwards. */
     this.flipsSeen = 0;
+    // The flips read, with the host time of the frame that carried each: the
+    // press poll is slower than a frame, so a press is usually timed against a
+    // flip that was already read when the poll brought it (M15 opt2c-5).
+    this._flipsMs = [];
   }
 
   /**
-   * Reads the patch and, on a flip, sends the time it was presented on the
-   * host's clock so the benchmark can time a press. [frames] is how many the
-   * page has shown: with no press waiting, the patch is read now and then.
+   * Reads the card's patch of the frame just drawn — [nowMs] is that frame's
+   * own page time — and, on a flip, sends the time it was presented on the
+   * host's clock so the benchmark can time a press.
    */
-  watch(nowMs, frames) {
-    const waiting = this.presses.some((press) => !press.seen && !press.expired);
-    if (!waiting && frames % patchEveryNthFrame !== 0) return;
-    const luminance = this._patchLuminance();
-    if (luminance === null) return;
-    const flip = this._watcher.observe(luminance);
-    if (flip === null) return;
-    this._noteFlip(nowMs);
-    this._matchPresses(nowMs);
+  watch(nowMs) {
+    this._readFrame(nowMs);
+    // A press the poll brought after its own flip was read is timed here.
+    this._matchPresses();
   }
 
   /** Forgets the presses already sent, which the reporter calls after a batch. */
@@ -95,53 +97,40 @@ export class LatencyProbe {
       if (press.sent || press.expired) return false;
       return press.seen || press.receivedAtMs >= deadline;
     });
+    // The poll brings a press after its own frame was drawn: it is timed now.
+    this._matchPresses();
   }
 
-  /** The mean brightness of a small patch of the picture, or null. */
-  _patchLuminance() {
-    const width = this._picture.widthPx();
-    const height = this._picture.heightPx();
-    if (!width || !height) return null;
-    this._canvas ??= document.createElement("canvas");
-    const canvas = this._canvas;
-    canvas.width = 1;
-    canvas.height = 1;
-    const context = canvas.getContext("2d", { willReadFrequently: true });
-    if (!context) return null;
-    // A quarter in, where the card's block has no text over it.
-    const x = Math.floor(width / 4);
-    const y = Math.floor(height / 4);
-    try {
-      context.drawImage(this._picture.image(), x, y, patchSizePx, patchSizePx, 0, 0, 1, 1);
-      const pixel = context.getImageData(0, 0, 1, 1).data;
-      return luminanceOf(pixel[0], pixel[1], pixel[2]);
-    } catch (error) {
-      this._onProblem(`cannot watch the picture: ${error.message}`);
-      return null;
+  /** Reads the patch of the frame just drawn and notes a flip in it. */
+  _readFrame(stampMs) {
+    const frame = this._readback.read(stampMs);
+    if (frame.card === null) {
+      if (frame.kind === "canvas") this._onProblem(`cannot watch the picture: ${frame.problem}`);
+      return;
     }
-  }
-
-  /** Sends one flip's host time so the benchmark can time its presses. */
-  _noteFlip(nowMs) {
-    const hostMs = this._toHostMs(nowMs);
+    if (this._watcher.observe(frame.card) === null) return;
+    const hostMs = this._toHostMs(frame.stampMs);
     if (hostMs === null) return;
     this.flipsSeen++;
+    this._flipsMs.push(hostMs);
+    if (this._flipsMs.length > maxFlipSamples) this._flipsMs.shift();
     postJson("/flips", { hostMs }).catch(() => {});
   }
 
-  /** Times every waiting press against the first flip after it. */
-  _matchPresses(nowMs) {
-    const hostAtFlip = this._toHostMs(nowMs);
-    if (hostAtFlip === null) return;
+  /**
+   * Times every waiting press against the first flip at or after it — the
+   * same rule the marker reader times presses by, so the card and the marker
+   * agree on which drawn frame a press belongs to.
+   */
+  _matchPresses() {
     for (const press of this.presses) {
       if (press.seen) continue;
-      // A press whose flip came before the card could show it belongs to the
-      // card's own 500 ms cadence, not to the press.
-      if (hostAtFlip < press.hostMs) continue;
-      const sampleMs = Math.round(hostAtFlip - press.hostMs);
-      press.seen = true;
+      const hostAtFlip = this._flipsMs.find((atMs) => atMs >= press.hostMs);
       // A whole cadence after the press, the change could be the card's own
       // flip rather than the press's: it is dropped, not counted as slow.
+      if (hostAtFlip === undefined) continue;
+      const sampleMs = Math.round(hostAtFlip - press.hostMs);
+      press.seen = true;
       if (sampleMs >= cardFlipMs) {
         press.expired = true;
         continue;

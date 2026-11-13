@@ -99,6 +99,53 @@ export function noteDrawnAt(counters, drawnAtMs) {
   counters.lastDrawnAtMs = drawnAtMs;
 }
 
+/** The host's names for what reading the drawn frame costs (M15 opt2c-5). */
+export const readCostNames = {
+  mean: "wcReadMeanMs",
+  max: "wcReadMaxMs",
+  draw: "wcDrawMeanMs",
+};
+
+/**
+ * What reading the drawn frame costs (M15 opt2c-5): the mean and the longest
+ * of the shared readback's reads over one interval, taken from the running
+ * totals the readback keeps, so the read's own timing is what is sent. The
+ * draw beside it is the interval's mean decode-output to drawn, so a run can
+ * read the two together with the readback on and off.
+ */
+export class ReadCost {
+  /** @param {() => ({reads: number, sumMs: number, maxMs: number})} totals - the picture's running read totals */
+  constructor(totals) {
+    this._totals = totals;
+    this._readsBefore = 0;
+    this._sumMsBefore = 0;
+  }
+
+  /**
+   * The stages one reporter batch adds: a figure with no sample is left out,
+   * never sent as a 0. The max is the readback's own largest read so far, so
+   * the host's max of it is the run's longest read.
+   * @param {number|null} drawMeanMs - the interval's mean decode-output to drawn
+   * @returns {{name: string, ms: number}[]}
+   */
+  stages(drawMeanMs) {
+    const totals = this._totals();
+    const reads = totals.reads - this._readsBefore;
+    const sumMs = totals.sumMs - this._sumMsBefore;
+    this._readsBefore = totals.reads;
+    this._sumMsBefore = totals.sumMs;
+    const stages = [];
+    if (reads > 0) {
+      stages.push({ name: readCostNames.mean, ms: Math.round(sumMs / reads) });
+      stages.push({ name: readCostNames.max, ms: Math.round(totals.maxMs) });
+    }
+    if (typeof drawMeanMs === "number" && Number.isFinite(drawMeanMs)) {
+      stages.push({ name: readCostNames.draw, ms: Math.round(drawMeanMs) });
+    }
+    return stages;
+  }
+}
+
 /**
  * The stage times of the frames that arrived (M15 opt2 job 4): one record each,
  * filled in as the decoder and the canvas report, the oldest dropped past the

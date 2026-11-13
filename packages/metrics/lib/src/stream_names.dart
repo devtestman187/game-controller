@@ -185,6 +185,13 @@ abstract final class StreamWc {
 
   /// The most bytes the socket took in one second: a burst, not an average.
   static const bytesPerSecMax = 'wcBytesPerSecMax';
+
+  /// What reading the drawn frame costs (M15 opt2c-5): the mean and the longest
+  /// of the page's reads in ms, and the mean decode-output → drawn beside them.
+  /// Stages, not gauges: a custom-player viewer's gauge slots are all taken.
+  static const readMeanMs = 'wcReadMeanMs';
+  static const readMaxMs = 'wcReadMaxMs';
+  static const drawMeanMs = 'wcDrawMeanMs';
 }
 
 /// What showed a stream to a viewer (M15): a browser page, one of our apps, or

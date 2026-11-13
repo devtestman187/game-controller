@@ -14,6 +14,7 @@
 
 import { medianOf } from "./metrics.js";
 import { playerKindOf } from "./options.js";
+import { ReadCost, readCostNames } from "./wc_counters.js";
 import { wcSoundFactText, wcSoundStates } from "./wc_sound.js";
 
 // The host's fact rules (stream_stats.dart's maxStreamFactLength and
@@ -72,6 +73,8 @@ export const wcNames = {
   longTasks: "wcLongTasks",
   handlerMax: "wcHandlerMaxMs",
   bytesPerSecMax: "wcBytesPerSecMax",
+  // What reading the drawn frame costs (M15 opt2c-5), as stages: the gauge slots are taken.
+  readMean: readCostNames.mean, readMax: readCostNames.max, drawMean: readCostNames.draw,
   fact: "wc",
   errorFact: "wcerr",
   soundFact: "wcsnd",
@@ -174,12 +177,14 @@ export class WcStats {
    *   opt2b-4), or null for a page whose sound is not measured
    * @param {(() => object)|null} [parts.diag] - the page's own diagnostics
    *   (M15 opt2c-1), or null for a page that measures none
+   * @param {(() => object)|null} [parts.reads] - the picture's readback totals (M15 opt2c-5)
    */
-  constructor({ player, now = () => performance.now(), soundState = null, diag = null }) {
+  constructor({ player, now = () => performance.now(), soundState = null, diag = null, reads = null }) {
     this._player = player;
     this._now = now;
     this._soundState = soundState;
     this._diag = diag;
+    this._cost = reads === null ? null : new ReadCost(reads);
     this._lastFrame = -1;
     this._receiveGapMaxMs = 0;
     this._recvToDecodeMs = null;
@@ -227,10 +232,13 @@ export class WcStats {
       this._decodeToDrawMs = decodeToDrawMs;
     }
     const decodeMs = Math.round(meanOf(fresh.map((stage) => stage.decodeOutputAt - stage.receiveAt)));
+    const drawMeanMs = fresh.length === 0 ? null : meanOf(fresh.map((stage) => stage.drawnAt - stage.decodeOutputAt));
     const stages = fresh.length === 0 ? [] : [
       { name: wcHostNames.decode, ms: decodeMs },
       { name: wcHostNames.display, ms: Math.round(decodeToDrawMs) },
     ];
+    // What the readback cost and the draw it came from (M15 opt2c-5).
+    stages.push(...(this._cost?.stages(drawMeanMs) ?? []));
     const gauges = [
       { name: wcHostNames.bitrate, value: this._rateKbitPerS(counters, elapsedMs) },
       { name: wcNames.recvToDecode, value: recvToDecodeMs },
@@ -365,7 +373,7 @@ export function combinedSeries(...providers) {
  * @param {(() => string)|null} [soundState] - the page's wc sound state (M15 opt2b-4)
  * @returns {WcStats|null}
  */
-export function wcStatsOf(options, player, soundState = null) {
+export function wcStatsOf(options, player, soundState = null, reads = null) {
   if (playerKindOf(options) !== "wc" || !player) return null;
-  return new WcStats({ player, soundState, diag: () => player.diagSnapshot() });
+  return new WcStats({ player, soundState, reads, diag: () => player.diagSnapshot() });
 }

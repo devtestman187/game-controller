@@ -4,14 +4,18 @@
  * age, the raw video-frame metadata and the press flips a probe press makes.
  * Nothing here runs unless the page's options say `marker=1`.
  *
- * The read is one small canvas draw of the strip's own region of the picture —
- * never the whole picture — and one getImageData for it, so a frame costs the
- * strip and no more. The picture is the video element, or the custom player's
- * canvas with `player=wc` (M15 opt2). A canvas the browser will not let the
- * page read (a tainted one on some Safari builds) is counted, not thrown.
+ * The read is one small canvas draw of the strip's middle rows — never the
+ * whole picture — and one getImageData for it, so a frame costs the strip and
+ * no more. The latencies probe's card patch is read from the same canvas in the
+ * same turn (FrameReadback, M15 opt2c-5), so the card and the marker read one
+ * drawn frame for one readback. The picture is the video element, or the custom
+ * player's canvas with `player=wc` (M15 opt2). A canvas the browser will not
+ * let the page read (a tainted one on some Safari builds) is counted, not
+ * thrown.
  */
 
-import { decodeMarker, markerCellCount, markerGapMs } from "./marker_decode.js";
+import { decodeMarker, luminanceRows, markerCellCount, markerGapMs } from "./marker_decode.js";
+import { metadataFields } from "./marker_batch.js";
 import { luminanceOf, medianOf } from "./metrics.js";
 
 /** One cell's side at the reference picture width, in px. */
@@ -23,25 +27,14 @@ const referenceWidthPx = 1920;
 /** The most samples one figure keeps between two batches: a 3 s batch is ~180 frames. */
 const maxSamples = 2000;
 
-/**
- * Every requestVideoFrameCallback metadata field the page records, raw, by the
- * name the browser gives it. A field this browser does not fill in is recorded
- * as missing — the batch then has no fact for it — never as a 0. They are the
- * browser's whole statement about a frame's timing, and only the phone's Safari
- * says which of them it fills in.
- */
-export const metadataFields = [
-  "presentationTime",
-  "expectedDisplayTime",
-  "captureTime",
-  "receiveTime",
-  "processingDuration",
-  "presentedFrames",
-  "width",
-  "height",
-  "mediaTime",
-  "rtpTimestamp",
-];
+/** The latency card's patch, as the host draws it: 8 px square, a quarter into the picture. */
+export const cardPatchPx = 8;
+
+/** The rows of a cell the decoder reads: the middle ones of its 3x3 centre mean. */
+const cellRowsRead = 3;
+
+/** The page's readbacks, one per picture: the card and the marker share the one of their picture. */
+const readbacks = new WeakMap();
 
 /** The pair decoded-to-display is read from: the plan minus the frame's arrival. */
 const displayFromExpected = "expected-receive";
@@ -66,6 +59,141 @@ export function canvasPicture(canvas) {
 }
 
 /**
+ * The page's one readback for [picture] (M15 opt2c-5): the card and the marker
+ * both read the frame the page has just drawn, and share it.
+ * @param {{image: () => (HTMLVideoElement|HTMLCanvasElement), widthPx: () => number,
+ *   heightPx: () => number}} picture
+ * @returns {FrameReadback}
+ */
+export function sharedReadback(picture) {
+  let readback = readbacks.get(picture);
+  if (readback === undefined) {
+    readback = new FrameReadback(picture);
+    readbacks.set(picture, readback);
+  }
+  return readback;
+}
+
+/**
+ * One picture's readback: the frame the page has just drawn, read once for
+ * every reader that asks for it (M15 opt2c-5). A reader says at its making
+ * which part it reads (`watchStrip`, `watchCard`); the first of them to read a
+ * frame does the work and the rest share its answer. It also counts what
+ * reading costs (the wc batch's `wcReadMeanMs` and `wcReadMaxMs`).
+ */
+export class FrameReadback {
+  /** @param {{image: () => (HTMLVideoElement|HTMLCanvasElement), widthPx: () => number,
+   *   heightPx: () => number}} picture */
+  constructor(picture) {
+    this._picture = picture;
+    this._strip = false;
+    this._card = false;
+    this._canvas = null;
+    this._context = null;
+    this._rows = [];
+    this._frame = null;
+    this._reads = 0;
+    this._sumMs = 0;
+    this._maxMs = 0;
+  }
+
+  /** Says a marker reader reads the strip out of this picture. */
+  watchStrip() {
+    this._strip = true;
+  }
+
+  /** Says the card's patch is read out of this picture too. */
+  watchCard() {
+    this._card = true;
+  }
+
+  /**
+   * The frame drawn at [stampMs], the draw's own time and the frame's name
+   * here: `{stampMs, rows, card, kind, problem, readMs}`, [rows] the strip's
+   * luminance rows and [card] the patch's brightness, null for a part the
+   * readback was not asked for. The same [stampMs] twice is one read; [kind]
+   * and [problem] say why a part could not be read (`crop` for a picture with
+   * no size, `canvas` for one the browser will not read).
+   * @param {number} stampMs
+   */
+  read(stampMs) {
+    if (this._frame !== null && this._frame.stampMs === stampMs) return this._frame;
+    const startedAtMs = performance.now();
+    const frame = this._readFrame(stampMs);
+    const readMs = performance.now() - startedAtMs;
+    frame.readMs = readMs;
+    this._reads++;
+    this._sumMs += readMs;
+    this._maxMs = Math.max(this._maxMs, readMs);
+    this._frame = frame;
+    return frame;
+  }
+
+  /** What reading has cost so far: the reads made, their total and their longest, in ms. */
+  totals() {
+    return { reads: this._reads, sumMs: this._sumMs, maxMs: this._maxMs };
+  }
+
+  /** One frame's regions drawn into the scratch canvas and read back. */
+  _readFrame(stampMs) {
+    const widthPx = this._picture.widthPx();
+    const heightPx = this._picture.heightPx();
+    if (!widthPx || !heightPx) return unreadable(stampMs, "crop", "the picture has no size yet");
+    // A cell is 16 px at a 1920 px picture, and the row is 57 of them wide.
+    const cellPx = Math.max(1, Math.round(referenceCellPx * widthPx / referenceWidthPx));
+    const stripWidthPx = cellPx * markerCellCount;
+    // The decoder reads a cell's centre 3x3, so three of its rows are drawn and
+    // read: 3 of 16 rows at 1080p, and the middle ones, where it looks.
+    const firstRowY = Math.max(0, Math.floor(cellPx / 2) - 1);
+    const rowsRead = Math.min(cellRowsRead, cellPx);
+    const cardRow = this._strip ? rowsRead : 0;
+    const canvasWidthPx = this._strip ? stripWidthPx : 1;
+    const canvasHeightPx = cardRow + (this._card ? 1 : 0);
+    const canvas = (this._canvas ??= document.createElement("canvas"));
+    if (canvas.width !== canvasWidthPx || canvas.height !== canvasHeightPx) {
+      canvas.width = canvasWidthPx;
+      canvas.height = canvasHeightPx;
+    }
+    const context = (this._context ??= canvas.getContext("2d", { willReadFrequently: true }));
+    if (context === null) return unreadable(stampMs, "canvas", "the page has no 2D canvas");
+    const image = this._picture.image();
+    try {
+      // Both regions in one turn, then one getImageData for the two of them.
+      if (this._strip) context.drawImage(image, 0, firstRowY, stripWidthPx, rowsRead, 0, 0, stripWidthPx, rowsRead);
+      if (this._card) {
+        const patchX = Math.floor(widthPx / 4);
+        const patchY = Math.floor(heightPx / 4);
+        context.drawImage(image, patchX, patchY, cardPatchPx, cardPatchPx, 0, cardRow, 1, 1);
+      }
+      const pixels = context.getImageData(0, 0, canvasWidthPx, canvasHeightPx).data;
+      const cardAt = (cardRow * canvasWidthPx) * 4;
+      return {
+        stampMs,
+        rows: this._strip ? this._stripRows(pixels, stripWidthPx, rowsRead) : null,
+        card: this._card ? luminanceOf(pixels[cardAt], pixels[cardAt + 1], pixels[cardAt + 2]) : null,
+        kind: "",
+        problem: "",
+        readMs: 0,
+      };
+    } catch (error) {
+      return unreadable(stampMs, "canvas", `cannot read the picture: ${error.message}`);
+    }
+  }
+
+  /** The strip's pixels as luminance rows, in the rows kept between frames. */
+  _stripRows(pixels, widthPx, heightPx) {
+    const fresh = this._rows.length !== heightPx || this._rows[0].length !== widthPx;
+    if (fresh) this._rows = Array.from({ length: heightPx }, () => new Float64Array(widthPx));
+    return luminanceRows(pixels, widthPx, heightPx, this._rows);
+  }
+}
+
+/** One frame with nothing in it but the reason. */
+function unreadable(stampMs, kind, problem) {
+  return { stampMs, rows: null, card: null, kind, problem, readMs: 0 };
+}
+
+/**
  * Reads the marker row and times the frames it is in. The reporter creates it
  * with the page's helpers: where a problem goes, how a page time becomes a host
  * time, and the probe's press list.
@@ -80,13 +208,13 @@ export class MarkerReader {
    * @param {() => {hostMs: number}[]} parts.presses - the probe's presses still worth timing
    */
   constructor({ picture, toHostMs, onProblem, presses }) {
-    this._picture = picture;
+    // The strip is read from the picture's one readback, in the same turn the
+    // latency probe reads the card's patch from it (M15 opt2c-5).
+    this._readback = sharedReadback(picture);
+    this._readback.watchStrip();
     this._toHostMs = toHostMs;
     this._onProblem = onProblem;
     this._presses = presses;
-    this._canvas = null;
-    this._context = null;
-    this._rows = [];
     this._lastProblem = "";
     // Totals since the reader started, which the batch sends as counters.
     this._frames = 0;
@@ -111,13 +239,13 @@ export class MarkerReader {
    * Reads one frame: the strip, the frame's age against its stamp, the frame
    * metadata within [metadata], and the press flip. [callbackMs] is when the
    * callback ran — on Safari the moment the browser called back, not the
-   * picture's display time — converted to the host's clock with the offset.
-   * The animation-frame fallback passes no metadata.
+   * picture's display time — converted to the host's clock with the offset; it
+   * is also the frame's name in the picture's readback, so the card reads the
+   * same drawn frame. The animation-frame fallback passes no metadata.
    */
   readFrame(callbackMs, metadata) {
-    const startedAtMs = performance.now();
-    const reading = this._readStrip();
-    this._readMs.push(performance.now() - startedAtMs);
+    const reading = this._readStrip(callbackMs);
+    this._readMs.push(reading.readMs);
     this._frames++;
     if (!reading.ok) {
       this._reasons[reading.kind] = (this._reasons[reading.kind] ?? 0) + 1;
@@ -231,45 +359,12 @@ export class MarkerReader {
   }
 
   /** The strip's crop of the picture, decoded: the row or why it could not be read. */
-  _readStrip() {
-    const widthPx = this._picture.widthPx();
-    const heightPx = this._picture.heightPx();
-    if (!widthPx || !heightPx) return { ok: false, kind: "crop", reason: "the picture has no size yet" };
-    // A cell is 16 px at a 1920 px picture, and the row is 57 of them wide and
-    // one tall: the crop is the strip, never the whole picture.
-    const cellPx = Math.max(1, Math.round(referenceCellPx * widthPx / referenceWidthPx));
-    const stripWidthPx = cellPx * markerCellCount;
-    const canvas = (this._canvas ??= document.createElement("canvas"));
-    if (canvas.width !== stripWidthPx || canvas.height !== cellPx) {
-      canvas.width = stripWidthPx;
-      canvas.height = cellPx;
-    }
-    const context = (this._context ??= canvas.getContext("2d", { willReadFrequently: true }));
-    if (context === null) return { ok: false, kind: "canvas", reason: "the page has no 2D canvas" };
-    try {
-      context.drawImage(this._picture.image(), 0, 0, stripWidthPx, cellPx, 0, 0, stripWidthPx, cellPx);
-      const pixels = context.getImageData(0, 0, stripWidthPx, cellPx).data;
-      return decodeMarker(this._luminances(pixels, stripWidthPx, cellPx));
-    } catch (error) {
-      return { ok: false, kind: "canvas", reason: `cannot read the picture: ${error.message}` };
-    }
-  }
-
-  /**
-   * The pixels as rows of luminance, 0–255. The rows are kept between frames
-   * and refilled: a read every frame must not make garbage.
-   */
-  _luminances(pixels, widthPx, heightPx) {
-    const fresh = this._rows.length !== heightPx || this._rows[0].length !== widthPx;
-    if (fresh) this._rows = Array.from({ length: heightPx }, () => new Float64Array(widthPx));
-    for (let y = 0; y < heightPx; y++) {
-      const row = this._rows[y];
-      for (let x = 0; x < widthPx; x++) {
-        const at = (y * widthPx + x) * 4;
-        row[x] = luminanceOf(pixels[at], pixels[at + 1], pixels[at + 2]);
-      }
-    }
-    return this._rows;
+  _readStrip(stampMs) {
+    const frame = this._readback.read(stampMs);
+    if (frame.rows === null) return { ok: false, kind: frame.kind, reason: frame.problem, readMs: frame.readMs };
+    const startedAtMs = performance.now();
+    const reading = decodeMarker(frame.rows);
+    return { ...reading, readMs: frame.readMs + (performance.now() - startedAtMs) };
   }
 
   /** Notes an unreadable strip where the viewer is not looking, once per text. */

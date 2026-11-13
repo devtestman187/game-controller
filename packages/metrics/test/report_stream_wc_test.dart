@@ -11,7 +11,9 @@ import 'package:test/test.dart';
 /// * decoder errors 1 then 2 (max 2) and rebuilds 1 then 2 (max 2), with its
 ///   last error as the `wcerr` fact (M15 opt2b-3);
 /// * the sound playing 0 then 1 (max 1) with its word as the `wcsnd` fact
-///   (M15 opt2b-4).
+///   (M15 opt2b-4);
+/// * what reading the drawn frame cost (M15 opt2c-5): the read 4 then 8 ms
+///   (median 8), its longest 5 then 9 (max 9), and the draw 2 then 4 (median 4).
 Map<String, Object?> wcSession() {
   final c = SessionCollector(
     id: 'wc',
@@ -46,6 +48,16 @@ Map<String, Object?> wcSession() {
   }
   for (final value in const [0, 1]) {
     c.streamGauge(viewer, 'wcSoundPlaying', value);
+  }
+  // The reading cost, as stages: a wc viewer's gauge slots are all taken.
+  for (final value in const [4, 8]) {
+    c.streamStage(viewer, StreamWc.readMeanMs, value);
+  }
+  for (final value in const [5, 9]) {
+    c.streamStage(viewer, StreamWc.readMaxMs, value);
+  }
+  for (final value in const [2, 4]) {
+    c.streamStage(viewer, StreamWc.drawMeanMs, value);
   }
   c
     ..streamGauge(viewer, StreamWc.keyRequests, 2)
@@ -177,6 +189,13 @@ void main() {
         'sound',
         'snd',
         'playing',
+        'read',
+        'ms',
+        'read',
+        'max',
+        'ms',
+        'draw',
+        'ms',
       ]);
       expect(wideCells(table[2]), [
         'wc',
@@ -193,6 +212,9 @@ void main() {
         'EncodingError boom',
         'playing',
         '1',
+        '8.0',
+        '9.0',
+        '4.0',
       ]);
     });
 
@@ -208,6 +230,9 @@ void main() {
         '-',
         '-',
         'cfg hw dec ok',
+        '-',
+        '-',
+        '-',
         '-',
         '-',
         '-',
@@ -231,7 +256,7 @@ void main() {
         ..streamFact(viewer, StreamWc.fact, 'cfg hw dec ok')
         ..streamFact(viewer, 'wcsnd', 'blocked');
       final table = tableOf(streamReport([c.summary(600000)]), 'Custom player (wc)');
-      expect(wideCells(table[2]).sublist(8), ['cfg hw dec ok', '-', '-', '-', 'blocked', '0']);
+      expect(wideCells(table[2]).sublist(8, 14), ['cfg hw dec ok', '-', '-', '-', 'blocked', '0']);
     });
 
     test('a run played the WebRTC way has no custom player table', () {

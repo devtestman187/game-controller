@@ -43,6 +43,9 @@ const _wcHeaders = [
   'error',
   'sound',
   'snd playing',
+  'read ms',
+  'read max ms',
+  'draw ms',
 ];
 
 /// The custom player's own numbers (M15 opt2), one row per viewer whose page
@@ -79,7 +82,16 @@ List<String> _wcCells(StreamViewerRow row) => [
   row.facts[_errorFact] ?? '-',
   row.facts[_soundFact] ?? '-',
   countText(row.gaugeField(_soundPlaying, 'max')),
+  numberText(row.stageMedian(StreamWc.readMeanMs)),
+  _stageNumber(row, StreamWc.readMaxMs, 'max'),
+  numberText(row.stageMedian(StreamWc.drawMeanMs)),
 ];
+
+/// One stage's number field, as the table prints a number; a dash for none.
+String _stageNumber(StreamViewerRow row, String name, String field) {
+  final value = row.stageField(name, field);
+  return value is num ? numberText(value) : '-';
+}
 
 /// The bytes a kB, an MB and an Mbit/s are, decimal as network sizes are: a
 /// run's own numbers read as a person reads a link's speed.

@@ -8,6 +8,8 @@
  * rule as the host's reference decoder (marker_decoder.dart) and its tests.
  */
 
+import { luminanceOf } from "./metrics.js";
+
 /** The luminance below which a cell reads as dark, after its 3x3 centre mean. */
 export const markerDarkBelow = 80;
 
@@ -145,6 +147,28 @@ export function markerGapMs(hostAtMs, markerHostMs) {
   let gap = (hostAtMs - markerHostMs) % markerHostMsWrap;
   if (gap < 0) gap += markerHostMsWrap;
   return gap > half ? gap - markerHostMsWrap : gap;
+}
+
+/**
+ * [pixels], red first in four bytes a pixel and [widthPx] by [heightPx] of
+ * them, as rows of luminance 0–255 in [rows] — which the caller keeps between
+ * frames, one array of [widthPx] per row, so a read every frame makes no
+ * garbage.
+ * @param {Uint8ClampedArray} pixels
+ * @param {number} widthPx
+ * @param {number} heightPx
+ * @param {Float64Array[]} rows
+ * @returns {Float64Array[]}
+ */
+export function luminanceRows(pixels, widthPx, heightPx, rows) {
+  for (let y = 0; y < heightPx; y++) {
+    const row = rows[y];
+    for (let x = 0; x < widthPx; x++) {
+      const at = (y * widthPx + x) * 4;
+      row[x] = luminanceOf(pixels[at], pixels[at + 1], pixels[at + 2]);
+    }
+  }
+  return rows;
 }
 
 /** The mean luminance of the 3x3 pixels centred on [x], [y], over what the crop has. */

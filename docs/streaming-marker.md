@@ -75,13 +75,17 @@ raster and the capture sit inside every marker reading.
 
 `marker=1` on the page's URL (`--player-query marker=1`, or in
 `SESSION_PLAYER_OPTIONS`) switches the reader on; off, nothing is read and no new
-number is sent. The reader takes the strip's region only — `57 × cellPx` wide at
-the element's own width — one `getImageData` per frame inside
+number is sent. The reader takes the strip's region — `57 × cellPx` wide at
+the element's own width, its middle three rows — plus the latency card's patch
+in the same read (below), one `getImageData` per frame inside
 `requestVideoFrameCallback` (an animation frame on a browser without it), and
 decodes it with the rule above. A frame it cannot read is counted by reason:
 checksum, sync, level, border, or a canvas the browser refuses; a guess is never
-a reading. The read costs ~5 ms a frame in the headless Chrome (measured in the
-[f8-3 report](briefs/m15/fix8/f8-3-marker-player-report.md)).
+a reading. The read cost ~5 ms a frame in the headless Chrome when it was
+measured (the [f8-3 report](briefs/m15/fix8/f8-3-marker-player-report.md)); the
+fewer rows and the one shared read below cut it, and the page now sends what its
+own reads cost (`wcReadMeanMs`, `wcReadMaxMs`) beside the draw they were taken
+from, which is the figure that says whether reading slows the draw.
 
 The callback's time is on the page's clock, so the reader converts it with a
 NTP-style offset: it sends the `/clock` request the reporter always sent, keeps
@@ -109,10 +113,45 @@ time, is a second gauge (`markerCallbackLateMs`).
 The press's own measurement comes from the flip cell: on a change between
 readable frames the reader records that frame's converted host time, so
 `press_to_marker` is that time less the `probe/press` host time the reporter
-already fetches — the card's flip is not read at all, and the two figures then
-check each other. It uses the same converted time as `marker_glass`, so it
+already fetches. It uses the same converted time as `marker_glass`, so it
 carries the same offset uncertainty; the flip frame's own stamp lands a few ms
 after the press, and is the difference between the two figures.
+
+## The card and the marker on one frame (opt2c-5)
+
+Both readers read the picture through one `FrameReadback` per picture
+(`sharedReadback()` in `marker_reader.js`), called from the same `drawnFrame`
+callback, with the draw's own timestamp. One `willReadFrequently` scratch
+canvas takes two `drawImage`s — the strip's middle three rows and the card's
+8 px patch — and then one `getImageData`; the result is cached by the frame's
+stamp, so the second reader in a frame costs nothing and both figures are of the
+frame that was just drawn.
+
+The middle three rows hold the centre of every cell at any `cellPx` (the same
+3x3 the decoder averages), so the strip's cells read exactly as they did from
+all its rows; the card's pixel is the one the old separate 1x1 read took.
+
+The card flips are kept with the host time of the frame that carried each, and a
+press is timed against the first flip at or after it — the marker's rule — because
+the 200 ms press poll usually arrives after the frame carrying the press's flip
+was drawn. A flip a whole cadence (500 ms) after the press is still dropped as
+the card's own, not counted as slow. A press at t whose frame is drawn at t+X
+now reads the same sample from both readers; `wc_card_selftest.html` pins it.
+One difference is left and pinned too: the card's own cadence flip can be the
+first change after a press, so the card times that change while the marker's
+flip cell still gives the press's own flip — a two-state card cannot tell them
+apart, and the press-to-screen row's two columns show the gap.
+
+What the reads cost is sent beside the draw they were taken from: `wcReadMeanMs`
+and `wcReadMaxMs` (the readback's own timer) and `wcDrawMeanMs` (decode output →
+drawn), all stages because a custom-player viewer's gauge slots are full, shown
+in "Custom player (wc)". On the fake-canvas page test the shared read's mean is
+0.04 ms and its longest 0.20 ms, against 0.09 ms for the old full-height strip
+read plus a separate card read. Reading every drawn frame instead of every 8th
+also makes `wcReadMeanMs` the frame's whole read, not a sample of it: a run with
+reading on and off is what shows what it costs the draw. The read runs after the
+frame's drawn time, so a read that slows the page shows in the next frames'
+lateness and the frame rate rather than inside `wcDrawMeanMs`.
 
 ## The switch
 
