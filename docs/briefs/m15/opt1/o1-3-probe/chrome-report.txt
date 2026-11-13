@@ -1,0 +1,56 @@
+user agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.8103.50 Safari/537.36
+navigator.platform: Linux x86_64
+iOS/Safari version (parsed): not an iOS or Safari user agent
+secure context: true
+protocol and host: http://127.0.0.1:45901
+device pixel ratio: 1
+screen: 800 x 600 CSS px
+viewport: 800 x 600 CSS px
+VideoDecoder: function
+AudioDecoder: function
+VideoEncoder: function
+EncodedVideoChunk: function
+VideoFrame: function
+WebTransport: function
+RTCRtpScriptTransform: function
+RTCPeerConnection: function
+RTCDataChannel: function
+MediaStreamTrackProcessor: function
+AudioWorklet (AudioContext.prototype.audioWorklet): in (present)
+OffscreenCanvas: function
+createImageBitmap: function
+HTMLVideoElement.prototype.requestVideoFrameCallback: in (present)
+RTCRtpReceiver.prototype.jitterBufferTarget: in (present)
+RTCRtpReceiver.prototype.playoutDelayHint: in (present)
+WebSocket: function
+avc1.42E01F 1920x1080 60fps: supported: true · config {"codec":"avc1.42E01F","codedHeight":1080,"codedWidth":1920,"flip":false,"hardwareAcceleration":"no-preference","rotation":0}
+avc1.42E01F 1920x1080 60fps +optimizeForLatency: supported: true · config {"codec":"avc1.42E01F","codedHeight":1080,"codedWidth":1920,"flip":false,"hardwareAcceleration":"no-preference","optimizeForLatency":true,"rotation":0}
+avc1.42E01F 1920x1080 60fps +prefer-hardware: supported: false
+avc1.42E01F 1920x1080 60fps +optimizeForLatency +prefer-hardware: supported: false
+avc1.42E028 1920x1080 60fps: supported: true · config {"codec":"avc1.42E028","codedHeight":1080,"codedWidth":1920,"flip":false,"hardwareAcceleration":"no-preference","rotation":0}
+avc1.42E028 1920x1080 60fps +optimizeForLatency: supported: true · config {"codec":"avc1.42E028","codedHeight":1080,"codedWidth":1920,"flip":false,"hardwareAcceleration":"no-preference","optimizeForLatency":true,"rotation":0}
+avc1.42E028 1920x1080 60fps +prefer-hardware: supported: false
+avc1.42E028 1920x1080 60fps +optimizeForLatency +prefer-hardware: supported: false
+avc1.4D0028 1920x1080 60fps: supported: true · config {"codec":"avc1.4D0028","codedHeight":1080,"codedWidth":1920,"flip":false,"hardwareAcceleration":"no-preference","rotation":0}
+avc1.4D0028 1920x1080 60fps +optimizeForLatency: supported: true · config {"codec":"avc1.4D0028","codedHeight":1080,"codedWidth":1920,"flip":false,"hardwareAcceleration":"no-preference","optimizeForLatency":true,"rotation":0}
+avc1.4D0028 1920x1080 60fps +prefer-hardware: supported: false
+avc1.4D0028 1920x1080 60fps +optimizeForLatency +prefer-hardware: supported: false
+avc1.640028 1920x1080 60fps: supported: true · config {"codec":"avc1.640028","codedHeight":1080,"codedWidth":1920,"flip":false,"hardwareAcceleration":"no-preference","rotation":0}
+avc1.640028 1920x1080 60fps +optimizeForLatency: supported: true · config {"codec":"avc1.640028","codedHeight":1080,"codedWidth":1920,"flip":false,"hardwareAcceleration":"no-preference","optimizeForLatency":true,"rotation":0}
+avc1.640028 1920x1080 60fps +prefer-hardware: supported: false
+avc1.640028 1920x1080 60fps +optimizeForLatency +prefer-hardware: supported: false
+avc1.64002A 1920x1080 60fps: supported: true · config {"codec":"avc1.64002A","codedHeight":1080,"codedWidth":1920,"flip":false,"hardwareAcceleration":"no-preference","rotation":0}
+avc1.64002A 1920x1080 60fps +optimizeForLatency: supported: true · config {"codec":"avc1.64002A","codedHeight":1080,"codedWidth":1920,"flip":false,"hardwareAcceleration":"no-preference","optimizeForLatency":true,"rotation":0}
+avc1.64002A 1920x1080 60fps +prefer-hardware: supported: false
+avc1.64002A 1920x1080 60fps +optimizeForLatency +prefer-hardware: supported: false
+avc1.42E028 1920x1080 60fps +prefer-software: supported: true · config {"codec":"avc1.42E028","codedHeight":1080,"codedWidth":1920,"flip":false,"hardwareAcceleration":"prefer-software","rotation":0}
+vp8 1920x1080 60fps +optimizeForLatency: supported: true · config {"codec":"vp8","codedHeight":1080,"codedWidth":1920,"flip":false,"hardwareAcceleration":"no-preference","optimizeForLatency":true,"rotation":0}
+vp09.00.10.08 1920x1080 60fps +optimizeForLatency: supported: true · config {"codec":"vp09.00.10.08","codedHeight":1080,"codedWidth":1920,"flip":false,"hardwareAcceleration":"no-preference","optimizeForLatency":true,"rotation":0}
+av01.0.08M.08 1920x1080 60fps +optimizeForLatency: supported: true · config {"codec":"av01.0.08M.08","codedHeight":1080,"codedWidth":1920,"flip":false,"hardwareAcceleration":"no-preference","optimizeForLatency":true,"rotation":0}
+AudioDecoder opus 48000 Hz 2 channels: supported: true · config {"codec":"opus","numberOfChannels":2,"sampleRate":48000}
+AudioDecoder mp4a.40.2 (AAC-LC) 48000 Hz 2 channels: supported: true · config {"codec":"mp4a.40.2","numberOfChannels":2,"sampleRate":48000}
+decode self-test: not included: no valid H.264 keyframe is embedded, and none was invented
+RTCPeerConnection data channel (ordered:false, maxRetransmits:0): created; readyState connecting
+offer has a video m-line: yes
+offer video m-line lists H264: yes
+pc.sctp.maxMessageSize: Infinity bytes

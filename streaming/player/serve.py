@@ -13,6 +13,7 @@ presses the benchmark wants timed.
 The page talks to this process on these paths, and nothing else answers:
 
     GET  /                 the player page and the files it loads
+    GET  /probe.html       the capability probe, a page of its own (M15 opt1)
     GET  /clock            {"ok": true, "hostMs": <the host's clock>}
     GET  /pipeline         the host's stages the sampler left (pipeline.json)
     GET  /presses?since=N  the presses with an id above N
@@ -98,6 +99,10 @@ page_files = frozenset(
         "session_end.js",
         "overlay.js",
         "stats.js",
+        # The capability probe (M15 opt1 o1-3): a page of its own that the phone
+        # opens to report what it can do. Nothing links to it, and it loads
+        # nothing from here, so it changes no default behaviour.
+        "probe.html",
     )
 )
 

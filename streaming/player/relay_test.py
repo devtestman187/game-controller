@@ -133,6 +133,19 @@ def test_page(port):
     check(served == [200] * len(served), "the page's own files are served")
 
 
+def test_probe_page(port):
+    """The capability probe (M15 opt1 o1-3) rides on the same server, alone.
+
+    It is a page of its own, so the player page's files are beside it and
+    unchanged; a file in the same folder that is not the page's is still 404.
+    """
+    status, body = call(port, "GET", "/probe.html")
+    check(status == 200, "the capability probe is served at /probe.html")
+    check(isinstance(body, str) and "Copy report" in body, "and is the probe page, not a file it found")
+    status, body = call(port, "GET", "/serve.py")
+    check(status == 404, "a file beside the page that the page does not load is still 404")
+
+
 def test_unlisted_paths(port):
     status, body = call(port, "GET", "/automation/v1/status")
     check(status == 404, "a GET outside the page's calls is 404")
@@ -240,6 +253,7 @@ def main():
         try:
             wait_until_listening(port)
             test_page(port)
+            test_probe_page(port)
             test_unlisted_paths(port)
             test_measurements(port)
             test_page_calls(port)

@@ -247,6 +247,53 @@ The page learns its signalling port from `config.js`, which the entrypoint
 writes next to it, and loads the `gstwebrtc-api` bundle the image builds from the
 same gst-plugins-rs release as `webrtcsink`.
 
+## The capability probe (M15 opt1)
+
+[`player/probe.html`](player/probe.html) is a page of its own that answers one
+question before any player is designed: what can this phone do? It lists the user
+agent and the iOS/Safari version parsed from it, the secure context and the page's
+address, `typeof` of the WebCodecs and WebRTC pieces (VideoDecoder, AudioDecoder,
+VideoEncoder, EncodedVideoChunk, VideoFrame, WebTransport, AudioWorklet,
+OffscreenCanvas, `requestVideoFrameCallback`, `jitterBufferTarget`,
+`playoutDelayHint`, …), `VideoDecoder.isConfigSupported` for the H.264 configs at
+1920x1080 60 fps (avc1.42E01F, avc1.42E028, avc1.4D0028, avc1.640028,
+avc1.64002A) each with `optimizeForLatency`, `prefer-hardware` and both, plus VP8,
+VP9 and AV1 for information, the two audio configs (Opus, AAC-LC), and a
+data-channel test that also reads the offer's video m-line. It makes no network
+call of its own, starts no stream, and nothing links to it: the player page,
+`index.html`, `player.js` and the options are untouched. There is no decode
+self-test, because no valid H.264 keyframe is embedded in it.
+
+**On the phone, during a session:** open
+`http://<this PC's LAN address>:45782/probe.html` — the same player server and
+port as the page, since `serve.py` lists it (`page_files`) — wait for the list to
+fill, tap **Test audio**, then **Copy report** and paste the text back. A phone
+that opened it over plain HTTP is not a secure context, so WebCodecs is absent and
+the page says so: that is the finding, not a fault in the page.
+
+**Without a session**, from this checkout (one line, spare port 45900):
+
+```bash
+dest="$(tools/wsl-sync.sh tp-stream)" && MSYS_NO_PATHCONV=1 wsl -d tp-stream -u root -- bash -lc "cd $dest/streaming/player && python3 -m http.server 45900 --bind 0.0.0.0"
+```
+
+then open `http://<this PC's LAN address>:45900/probe.html`. The Windows firewall
+rules above cover TCP 45780-45782 and UDP only, so it may refuse 45900 until the
+owner adds a rule for it; **nothing here adds or changes a firewall rule**.
+
+**Getting the file into a session:** the Dockerfile's `COPY streaming/player/`
+carries it into the image and the entrypoint's `cp -r "$player_src/."` copies it
+into the run folder at each session start, so neither needed a change — but an
+image built before the file existed does not have it, and there is no mount from
+this checkout. Rebuild and start again:
+
+```bash
+tools/stream.sh build && tools/stream.sh up
+```
+
+`tools/stream.sh selftest` runs the relay's tests (including that `/probe.html` is
+served) from the synced checkout and needs no image.
+
 ## What the session measures (M15 c2)
 
 The session reports into the host's stats framework, so a benchmark can time a

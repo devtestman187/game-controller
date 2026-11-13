@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<!--
+  The capability probe (M15 opt1 o1-3): what one phone can do, before any design.
+  A page of its own: no library, no network call of any kind, no stream and no
+  session. It is opened on the player server (GET /probe.html) or by a plain
+  `python3 -m http.server` in the player folder; everything it reports is
+  measured in the page. Over plain HTTP on the home network the page is not a
+  secure context and WebCodecs does not exist: a real finding, not a page bug.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>Thumb Party capability probe</title>
+<style>
+  body { background: #111; color: #e8e8e8; font: 18px/1.45 system-ui, -apple-system, sans-serif;
+         margin: 0; padding: 16px 14px 40px; }
+  h1 { font-size: 22px; margin: 0 0 8px; }
+  h2 { font-size: 19px; margin: 26px 0 8px; color: #a9b4c0; }
+  p { margin: 8px 0; }
+  .note { color: #bbb; font-size: 15px; }
+  button { font: inherit; background: #2b6cb0; color: #fff; border: 0; border-radius: 10px;
+           padding: 12px 16px; margin: 8px 8px 8px 0; }
+  ul { list-style: none; margin: 0; padding: 0; }
+  li { border-bottom: 1px solid #2a2a2a; padding: 7px 0; }
+  li .name { display: block; color: #a9b4c0; font-size: 15px; }
+  li .value { display: block; font: 15px/1.4 ui-monospace, Menlo, Consolas, monospace;
+              word-break: break-word; }
+  li.ok .value { color: #7ee787; }
+  li.fail .value { color: #ff9a8b; }
+  li.info .value { color: #d6d6d6; }
+  .legend li { color: #d6d6d6; font-size: 16px; }
+  textarea { width: 100%; min-height: 220px; background: #000; color: #eee; border: 1px solid #444;
+             font: 14px/1.35 ui-monospace, Menlo, Consolas, monospace; }
+  #copy-status { color: #7ee787; font-size: 15px; min-height: 20px; }
+</style>
+</head>
+<body>
+<h1>Thumb Party capability probe</h1>
+<p class="note">This page makes no network calls and starts no stream. It only asks this
+device what it can do. Tap <strong>Copy report</strong> at the end and paste the text back.</p>
+
+<button id="copy" type="button">Copy report</button>
+<button id="audio" type="button">Test audio</button>
+<p class="note">Sound is tested only after the tap, because a phone gives no page sound
+without one. Everything else runs on its own when the page opens.</p>
+<p id="copy-status"></p>
+
+<div id="report"></div>
+
+<h2>What a good result looks like</h2>
+<ul class="legend">
+  <li>Secure context: <strong>true</strong>. Over plain HTTP on the home network it is false,
+      and then WebCodecs does not exist on the phone at all — that is the finding, not a bug.</li>
+  <li><strong>VideoDecoder</strong> present in section 2.</li>
+  <li><strong>avc1.42E028</strong> or <strong>avc1.64002A</strong> at 1920x1080 60 fps
+      supported with optimizeForLatency and prefer-hardware.</li>
+  <li>The data channel is created and the offer's video line lists <strong>H264</strong>.</li>
+</ul>
+
+<pre id="report-text" hidden></pre>
+<textarea id="fallback" hidden aria-label="the report to copy"></textarea>
+
+<script>
+"use strict";
+
+// The longest any one feature test may take before it is reported as hung.
+const timeoutMs = 3000;
+// The picture the custom player would decode: 1080p60.
+const targetWidth = 1920;
+const targetHeight = 1080;
+const targetFramerate = 60;
+const msPerSecond = 1000;
+
+const rows = [];
+const report = document.getElementById("report");
+const reportText = document.getElementById("report-text");
+let currentList = null;
+
+// A heading and the list its lines go under, in the order the report reads.
+function section(title) {
+  const heading = document.createElement("h2");
+  heading.textContent = title;
+  currentList = document.createElement("ul");
+  report.append(heading, currentList);
+}
+
+// One line of the report: the name, the value and ok, fail or info.
+function add(name, value, state) {
+  const row = { name: name, value: String(value), state: state || "info" };
+  rows.push(row);
+  if (!currentList) section("Report");
+  const item = document.createElement("li");
+  item.className = row.state;
+  const key = document.createElement("span");
+  key.className = "name";
+  key.textContent = row.name;
+  const val = document.createElement("span");
+  val.className = "value";
+  val.textContent = row.value;
+  item.append(key, val);
+  currentList.append(item);
+  reportText.textContent = rows.map((r) => r.name + ": " + r.value).join("\n");
+}
+
+// A promise that fails after [ms], so one stuck call does not stop the report.
+function withTimeout(promise, ms, what) {
+  return Promise.race([
+    promise,
+    new Promise((resolve, reject) => {
+      setTimeout(() => reject(new Error(what + " took over " + ms + " ms")), ms);
+    }),
+  ]);
+}
+
+// The version a person reads out of the user agent, named as parsed.
+function platformLabel() {
+  const ua = navigator.userAgent;
+  const ios = ua.match(/OS (\d+[_.]\d+)(?:[_.](\d+))? like Mac OS X/);
+  const safari = ua.match(/Version\/(\d+(?:\.\d+)*)/);
+  const chrome = ua.match(/CriOS\/(\d+(?:\.\d+)*)/);
+  const firefox = ua.match(/FxiOS\/(\d+(?:\.\d+)*)/);
+  const parts = [];
+  if (ios) parts.push("iOS " + ios[1].replace(/_/g, ".") + (ios[2] ? "." + ios[2] : ""));
+  if (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1) {
+    parts.push("iPadOS (a tablet says Macintosh)");
+  }
+  if (chrome) parts.push("Chrome iOS " + chrome[1]);
+  else if (firefox) parts.push("Firefox iOS " + firefox[1]);
+  else if (safari) parts.push("Safari " + safari[1]);
+  if (parts.length === 0) parts.push("not an iOS or Safari user agent");
+  return parts.join(" · ");
+}
+
+function environmentRows() {
+  add("user agent", navigator.userAgent);
+  add("navigator.platform", navigator.platform || "(empty)");
+  add("iOS/Safari version (parsed)", platformLabel());
+  add(
+    "secure context",
+    window.isSecureContext ? "true" : "false — the page was not opened over HTTPS or localhost",
+    window.isSecureContext ? "ok" : "fail"
+  );
+  add("protocol and host", location.protocol + "//" + location.host);
+  add("device pixel ratio", window.devicePixelRatio);
+  add("screen", screen.width + " x " + screen.height + " CSS px");
+  add("viewport", window.innerWidth + " x " + window.innerHeight + " CSS px");
+}
+
+// The feature table: name, probe, whether a secure context is what it needs.
+function typeofText(value) {
+  const kind = typeof value;
+  return [kind, kind !== "undefined"];
+}
+
+function inText(holder, member) {
+  if (!holder) return ["not in", false];
+  return member in holder.prototype ? ["in (present)", true] : ["not in", false];
+}
+
+function audioContextClass() {
+  return window.AudioContext || window.webkitAudioContext;
+}
+
+const features = [
+  ["VideoDecoder", () => typeofText(window.VideoDecoder), true],
+  ["AudioDecoder", () => typeofText(window.AudioDecoder), true],
+  ["VideoEncoder", () => typeofText(window.VideoEncoder), true],
+  ["EncodedVideoChunk", () => typeofText(window.EncodedVideoChunk), true],
+  ["VideoFrame", () => typeofText(window.VideoFrame), true],
+  ["WebTransport", () => typeofText(window.WebTransport), true],
+  ["RTCRtpScriptTransform", () => typeofText(window.RTCRtpScriptTransform), false],
+  ["RTCPeerConnection", () => typeofText(window.RTCPeerConnection), false],
+  ["RTCDataChannel", () => typeofText(window.RTCDataChannel), false],
+  ["MediaStreamTrackProcessor", () => typeofText(window.MediaStreamTrackProcessor), true],
+  ["AudioWorklet (AudioContext.prototype.audioWorklet)", () => inText(audioContextClass(), "audioWorklet"), false],
+  ["OffscreenCanvas", () => typeofText(window.OffscreenCanvas), false],
+  ["createImageBitmap", () => typeofText(window.createImageBitmap), false],
+  ["HTMLVideoElement.prototype.requestVideoFrameCallback", () => inText(window.HTMLVideoElement, "requestVideoFrameCallback"), false],
+  ["RTCRtpReceiver.prototype.jitterBufferTarget", () => inText(window.RTCRtpReceiver, "jitterBufferTarget"), false],
+  ["RTCRtpReceiver.prototype.playoutDelayHint", () => inText(window.RTCRtpReceiver, "playoutDelayHint"), false],
+  ["WebSocket", () => typeofText(window.WebSocket), false],
+];
+
+function presenceRows() {
+  const insecure = " — absent; the page is not a secure context";
+  for (const [name, probe, needsSecure] of features) {
+    const [text, present] = probe();
+    let value = text;
+    if (!present && needsSecure && !window.isSecureContext) value = text + insecure;
+    add(name, value, present ? "ok" : "fail");
+  }
+}
+
+// The video configs asked of VideoDecoder: one codec, one variant of settings.
+const avcCodecs = ["avc1.42E01F", "avc1.42E028", "avc1.4D0028", "avc1.640028", "avc1.64002A"];
+const softwareCodec = "avc1.42E028";
+const variants = [
+  ["", {}],
+  [" +optimizeForLatency", { optimizeForLatency: true }],
+  [" +prefer-hardware", { hardwareAcceleration: "prefer-hardware" }],
+  [" +optimizeForLatency +prefer-hardware", { optimizeForLatency: true, hardwareAcceleration: "prefer-hardware" }],
+];
+const otherCodecs = ["vp8", "vp09.00.10.08", "av01.0.08M.08"];
+
+function videoConfig(codec, extra) {
+  return Object.assign(
+    { codec: codec, codedWidth: targetWidth, codedHeight: targetHeight, framerate: targetFramerate },
+    extra
+  );
+}
+
+function answerText(answer) {
+  if (answer.supported !== true) return "supported: false";
+  const config = answer.config === undefined ? "(none given back)" : JSON.stringify(answer.config);
+  return "supported: true · config " + config;
+}
+
+async function checkVideoConfig(codec, label, extra, informational) {
+  const name = codec + " " + targetWidth + "x" + targetHeight + " " + targetFramerate + "fps" + label;
+  if (!window.VideoDecoder) {
+    add(name, "not tested: no VideoDecoder", "fail");
+    return;
+  }
+  try {
+    const answer = await withTimeout(VideoDecoder.isConfigSupported(videoConfig(codec, extra)), timeoutMs, "isConfigSupported");
+    add(name, answerText(answer), informational ? "info" : answer.supported === true ? "ok" : "fail");
+  } catch (error) {
+    add(name, "threw: " + error, "fail");
+  }
+}
+
+async function configRows() {
+  for (const codec of avcCodecs) {
+    for (const [label, extra] of variants) await checkVideoConfig(codec, label, extra, false);
+  }
+  await checkVideoConfig(softwareCodec, " +prefer-software", { hardwareAcceleration: "prefer-software" }, false);
+  for (const codec of otherCodecs) {
+    await checkVideoConfig(codec, " +optimizeForLatency", { optimizeForLatency: true }, true);
+  }
+}
+
+const audioConfigs = [
+  ["AudioDecoder opus 48000 Hz 2 channels", { codec: "opus", sampleRate: 48000, numberOfChannels: 2 }],
+  ["AudioDecoder mp4a.40.2 (AAC-LC) 48000 Hz 2 channels", { codec: "mp4a.40.2", sampleRate: 48000, numberOfChannels: 2 }],
+];
+
+async function audioDecoderRows() {
+  if (!window.AudioDecoder) {
+    add("AudioDecoder configs", "not tested: no AudioDecoder", "fail");
+    return;
+  }
+  for (const [name, config] of audioConfigs) {
+    try {
+      const answer = await withTimeout(AudioDecoder.isConfigSupported(config), timeoutMs, "isConfigSupported");
+      add(name, answerText(answer), answer.supported === true ? "ok" : "fail");
+    } catch (error) {
+      add(name, "threw: " + error, "fail");
+    }
+  }
+}
+
+// The video section of an SDP, as the lines after its m= line.
+function videoSection(sdp) {
+  const lines = sdp.split(/\r\n/);
+  const video = [];
+  let inside = false;
+  for (const line of lines) {
+    if (line.startsWith("m=")) inside = line.startsWith("m=video ");
+    else if (inside) video.push(line);
+  }
+  return video;
+}
+
+function listsH264(sdp) {
+  return videoSection(sdp).some((line) => /^a=rtpmap:\d+ H264\/90000$/i.test(line));
+}
+
+async function dataChannelRows() {
+  const name = "RTCPeerConnection data channel (ordered:false, maxRetransmits:0)";
+  if (!window.RTCPeerConnection) {
+    add(name, "not tested: no RTCPeerConnection", "fail");
+    return;
+  }
+  const connection = new RTCPeerConnection({ iceServers: [] });
+  try {
+    const channel = connection.createDataChannel("probe", { ordered: false, maxRetransmits: 0 });
+    add(name, "created; readyState " + channel.readyState, "ok");
+    // A browser lists codecs only for the media lines the page asks for, and a
+    // data channel alone makes none; this receiver sends and receives nothing.
+    connection.addTransceiver("video", { direction: "recvonly" });
+    const offer = await withTimeout(connection.createOffer(), timeoutMs, "createOffer");
+    await withTimeout(connection.setLocalDescription(offer), timeoutMs, "setLocalDescription");
+    const video = videoSection(offer.sdp || "");
+    add("offer has a video m-line", video.length > 0 ? "yes" : "no", video.length > 0 ? "ok" : "fail");
+    const h264 = listsH264(offer.sdp || "");
+    add("offer video m-line lists H264", h264 ? "yes" : "no", h264 ? "ok" : "fail");
+    const maxMessageSize = connection.sctp && connection.sctp.maxMessageSize;
+    add("pc.sctp.maxMessageSize", maxMessageSize ? maxMessageSize + " bytes" : "not present", maxMessageSize ? "ok" : "info");
+  } catch (error) {
+    add(name, "threw: " + error, "fail");
+  } finally {
+    connection.close();
+  }
+}
+
+// One context, made on the first tap and kept: a phone gives a page sound only
+// on a tap, and a second context would need another one.
+let audioContext = null;
+let audioList = null;
+
+function latency(seconds) {
+  return typeof seconds === "number" ? Math.round(seconds * msPerSecond) + " ms" : "not present";
+}
+
+function audioRows() {
+  const Context = audioContextClass();
+  if (!Context) {
+    add("AudioContext (after a tap)", "not available", "fail");
+    return;
+  }
+  if (!audioContext) audioContext = new Context();
+  // Its own list, whether the tap comes during the probe or minutes later.
+  if (!audioList) {
+    section("AudioContext (after a tap)");
+    audioList = currentList;
+  }
+  currentList = audioList;
+  add("AudioContext state (after a tap)", audioContext.state, audioContext.state === "running" ? "ok" : "info");
+  add("AudioContext sampleRate", audioContext.sampleRate + " Hz", "info");
+  add("AudioContext baseLatency", latency(audioContext.baseLatency), "info");
+  add("AudioContext outputLatency", latency(audioContext.outputLatency), "info");
+}
+
+function copyReport() {
+  const status = document.getElementById("copy-status");
+  const body = reportText.textContent;
+  const fallback = () => {
+    const area = document.getElementById("fallback");
+    area.value = body;
+    area.hidden = false;
+    area.focus();
+    area.select();
+    status.textContent = "The page cannot use the clipboard here: select all and copy.";
+  };
+  if (window.isSecureContext && navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(body).then(() => {
+      status.textContent = "Report copied.";
+    }, fallback);
+    return;
+  }
+  fallback();
+}
+
+document.getElementById("copy").addEventListener("click", copyReport);
+document.getElementById("audio").addEventListener("click", audioRows);
+
+async function probe() {
+  section("1. This device and this page");
+  environmentRows();
+  section("2. Features present");
+  presenceRows();
+  section("3. VideoDecoder.isConfigSupported (1920x1080, 60 fps)");
+  await configRows();
+  await audioDecoderRows();
+  section("4. Decode self-test");
+  add("decode self-test", "not included: no valid H.264 keyframe is embedded, and none was invented", "info");
+  section("5. Safe feature tests (3 s timeout each, no prompts)");
+  await dataChannelRows();
+}
+
+probe();
+</script>
+</body>
+</html>
