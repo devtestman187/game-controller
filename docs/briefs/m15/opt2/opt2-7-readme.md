@@ -2,13 +2,14 @@ job: M15 opt2-7 (wrap-up): README section for the new switches and page option, 
 pub: no
 stop: after it.
 read: docs/briefs/m15/opt2/PROTOCOL.md · the Summary and Hand-over of every docs/briefs/m15/opt2/opt2-*-report.md that exists · streaming/README.md (the switch tables and the page options section: jbtarget, marker, lowdelay) · streaming/entrypoint.sh (switch names only) · docs/flash-framework.md
-@@DEC
+decide: low-usage mode: never stop for a question. Make the safest choice that fits the design and list each under "Decisions" with one line of why. Stop only if the job truly cannot be done; then say why under "Blocked".
 
 No behaviour change in this job: documents only (plus the line-limit audit below).
 1. streaming/README.md: add a section "Custom player (WebCodecs), off by default" with: `SESSION_TAP=on` (what it changes: the session pipeline runs in streaming/tap/tap_runner.py with a tee after the encoder, encode shared, leaky tap branch), the tap server and the relay's /tap WebSocket tunnel on the existing player port (no new port, no firewall rule), the message format in two lines (pointing to docs/briefs/m15/opt2/PROTOCOL.md), the page option `?player=wc` (and `wcmode=annexb`), `--player-query "marker=1&player=wc"`, sound in this mode (as the page report says), `SESSION_AUDIO=separate` now meaning sound in its own process (per the sound report), what the bench summary shows (the Custom player table), the image's new apt packages, and the known limits (video only, TCP head-of-line, https needed for Chrome on a phone/other host, headless proof only). Match the README's existing table/paragraph style; use only facts the reports state.
 2. Audit (read-only counting, report only): list any file this batch touched that now ends over 380 lines, and any function over 60 lines in the new files (a quick `awk` count is fine). Put the list in the report under Summary; fix only README.
-@@REP
-@@RULES
+in the report: start with `## Summary` (at most 25 lines, within its first 40 lines): what was added (files), tests and results, decisions, anything not done, numbers, obstacles met (one line each: these are recorded for a write-up), turns used if known. End with `## Hand-over` (at most 20 lines: what exists, exact commands that worked, what the next phase must not redo, open problems).
+self-check: docs/review-rules.md part A, items 1-5, one line each.
+rules: aim to finish within about 120 turns (hard target 150) · no lib or script file you touch may end over 380 lines: split it · no function over 60 lines · tests first: each new test file must fail on the code as it was (the runner checks new test files) · scripts pass `bash -n`, python passes `python3 -m py_compile` · install nothing, download nothing (the one allowed exception is named in the job) · never run `wsl --shutdown` · touch only processes you started, by PID · wrap long commands in `timeout` · leave no scratch file behind · every new switch defaults OFF and behaviour with it off stays identical · never touch E:\AI\game-controller · never print the DeepSeek key · do not run `tools/stream.sh up`, `build` or a phone bench; in-distro headless runs only where the job says so
 allow: docs/briefs/m15/opt2/opt2-7-readme-report.md · docs/briefs/m15/opt2/opt2-7-readme · streaming/README.md
 check: format
 report: docs/briefs/m15/opt2/opt2-7-readme-report.md

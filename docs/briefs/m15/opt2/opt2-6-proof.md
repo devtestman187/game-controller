@@ -3,9 +3,9 @@ pub: no
 wsl: tp-stream
 stop: after it.
 read: docs/briefs/m15/opt2/PROTOCOL.md · the Hand-over of docs/briefs/m15/opt2/opt2-1-tap-report.md, opt2-2-transport-report.md, opt2-3-page-report.md, opt2-4-measure-report.md, opt2-5-sound-report.md · docs/briefs/m15/fix8/f8-6-proof-run-report.md and f8-6-proof-run.md (the same kind of run) · streaming/bench.sh (usage) · docs/flash-framework.md (Keep jobs short) 
-@@DEC
+decide: low-usage mode: never stop for a question. Make the safest choice that fits the design and list each under "Decisions" with one line of why. Stop only if the job truly cannot be done; then say why under "Blocked".
 
-@@CTX
+Context (self-contained): game-streaming project. A Linux session image (WSL2 distro tp-stream, docker) captures a game, encodes H.264 1080p60 with nvautogpuh264enc and sends it with webrtcsink to a browser page (streaming/player). Owner, Nov 13, 2026: build a custom WebCodecs player's first slice (video over a WebSocket, decoded with VideoDecoder, drawn on a canvas) plus a host sound fix, all behind switches that default OFF, one phone sitting after. Gate is now "150 ms or less press-to-screen and feels fine to the owner". Read docs/briefs/m15/opt2/PROTOCOL.md first: it fixes the switches, names, ports and the message format all jobs share. Background (Summary and sections 1, 6, 7 only): docs/briefs/m15/research/custom-player-feasibility.md and docs/briefs/m15/opt1/o1-4-host-read-report.md.
 
 This is the RUN phase: change only what the runs need (small fixes found by the runs are allowed in the files listed in allow:; list each under Decisions). At most about 6 bench runs in all.
 Steps:
@@ -14,8 +14,9 @@ Steps:
 3. If wc cannot decode in this Chrome: prove as much as possible another way: capture a recorded sample from the live tap with a stdlib client through the relay port (a few seconds), and confirm in the page selftests (extend wc_selftest.html only if needed) that the recorded bytes parse, the avcC/codec string are as the SPS says and annexbToAvcc output has valid lengths; report that clearly as the fallback proof, and what remains unverified.
 4. Do not commit bench result folders (they live under docs/ somewhere: leave them untracked and name the path in the report); remove copies you created.
 5. Report any new port or firewall need (expected: none; the page, WebSocket and relay all use the player port).
-@@REP
-@@RULES
+in the report: start with `## Summary` (at most 25 lines, within its first 40 lines): what was added (files), tests and results, decisions, anything not done, numbers, obstacles met (one line each: these are recorded for a write-up), turns used if known. End with `## Hand-over` (at most 20 lines: what exists, exact commands that worked, what the next phase must not redo, open problems).
+self-check: docs/review-rules.md part A, items 1-5, one line each.
+rules: aim to finish within about 120 turns (hard target 150) · no lib or script file you touch may end over 380 lines: split it · no function over 60 lines · tests first: each new test file must fail on the code as it was (the runner checks new test files) · scripts pass `bash -n`, python passes `python3 -m py_compile` · install nothing, download nothing (the one allowed exception is named in the job) · never run `wsl --shutdown` · touch only processes you started, by PID · wrap long commands in `timeout` · leave no scratch file behind · every new switch defaults OFF and behaviour with it off stays identical · never touch E:\AI\game-controller · never print the DeepSeek key · do not run `tools/stream.sh up`, `build` or a phone bench; in-distro headless runs only where the job says so
 allow: docs/briefs/m15/opt2/opt2-6-proof-report.md · docs/briefs/m15/opt2/opt2-6-proof · streaming/tap · streaming/player · streaming/bench.sh · streaming/entrypoint.sh
 check: format
 report: docs/briefs/m15/opt2/opt2-6-proof-report.md

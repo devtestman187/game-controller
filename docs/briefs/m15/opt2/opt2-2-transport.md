@@ -3,9 +3,9 @@ pub: no
 wsl: tp-stream
 stop: after it.
 read: docs/briefs/m15/opt2/PROTOCOL.md · docs/briefs/m15/opt2/opt2-1-tap-report.md (Summary and Hand-over only) · streaming/tap/tap_runner.py · streaming/tap/tap_frames.py · streaming/player/serve.py (Handler, page_files, main, the module docstring) · streaming/player/relay_test.py (how it starts serve.py on loopback ports) · streaming/entrypoint.sh (where serve.py and the tap runner start) · docs/flash-framework.md (Keep jobs short) · docs/coding-guidelines.md
-@@DEC
+decide: low-usage mode: never stop for a question. Make the safest choice that fits the design and list each under "Decisions" with one line of why. Stop only if the job truly cannot be done; then say why under "Blocked".
 
-@@CTX
+Context (self-contained): game-streaming project. A Linux session image (WSL2 distro tp-stream, docker) captures a game, encodes H.264 1080p60 with nvautogpuh264enc and sends it with webrtcsink to a browser page (streaming/player). Owner, Nov 13, 2026: build a custom WebCodecs player's first slice (video over a WebSocket, decoded with VideoDecoder, drawn on a canvas) plus a host sound fix, all behind switches that default OFF, one phone sitting after. Gate is now "150 ms or less press-to-screen and feels fine to the owner". Read docs/briefs/m15/opt2/PROTOCOL.md first: it fixes the switches, names, ports and the message format all jobs share. Background (Summary and sections 1, 6, 7 only): docs/briefs/m15/research/custom-player-feasibility.md and docs/briefs/m15/opt1/o1-4-host-read-report.md.
 
 Design:
 1. streaming/tap/tap_server.py (stdlib only: socket, threading, hashlib, base64, struct; no new package): a WebSocket server on 127.0.0.1:TAP_PORT. RFC 6455 server side: handshake (Sec-WebSocket-Accept), read masked client frames (text, ping, pong, close, fragmented text allowed), write unmasked binary/text/ping/close frames, TCP_NODELAY. One thread per client plus the producer calling `publish(frame_no, pts_us, is_key, data)` from the appsink callback (non-blocking: it only appends to each client's bounded queue and notifies). The messages are exactly PROTOCOL.md (hello on connect, binary frames, `{"type":"end"}`, client `{"type":"key"}`).
@@ -18,8 +18,9 @@ Tests FIRST (each fails on the old code):
 - relay_test.py gets cases: with --tap-port pointing at a small fake WebSocket echo server, a client doing the upgrade on /tap through serve.py receives and sends frames; without --tap-port /tap is 404; a plain GET /tap without Upgrade is not tunnelled (404 or 400); other paths unchanged (the existing 27 checks pass).
 - `tools/stream.sh selftest` runs relay_test.py; make tap_server_test.py run from there too (edit cmd_selftest in tools/stream.sh by adding one line, and the docs line next to it).
 Also run a live check in the distro: tap_runner with a videotestsrc pipeline, tap_server on a free port, serve.py with --tap-port, and a stdlib client through the relay port: frames arrive, the keyframe request works, frame numbers increase, and report received rate and header sent_us spread; no session, no GPU needed.
-@@REP
-@@RULES
+in the report: start with `## Summary` (at most 25 lines, within its first 40 lines): what was added (files), tests and results, decisions, anything not done, numbers, obstacles met (one line each: these are recorded for a write-up), turns used if known. End with `## Hand-over` (at most 20 lines: what exists, exact commands that worked, what the next phase must not redo, open problems).
+self-check: docs/review-rules.md part A, items 1-5, one line each.
+rules: aim to finish within about 120 turns (hard target 150) · no lib or script file you touch may end over 380 lines: split it · no function over 60 lines · tests first: each new test file must fail on the code as it was (the runner checks new test files) · scripts pass `bash -n`, python passes `python3 -m py_compile` · install nothing, download nothing (the one allowed exception is named in the job) · never run `wsl --shutdown` · touch only processes you started, by PID · wrap long commands in `timeout` · leave no scratch file behind · every new switch defaults OFF and behaviour with it off stays identical · never touch E:\AI\game-controller · never print the DeepSeek key · do not run `tools/stream.sh up`, `build` or a phone bench; in-distro headless runs only where the job says so
 allow: docs/briefs/m15/opt2/opt2-2-transport-report.md · docs/briefs/m15/opt2/opt2-2-transport · streaming/tap · streaming/player/serve.py · streaming/player/relay_test.py · streaming/entrypoint.sh · tools/stream.sh
 check: format
 report: docs/briefs/m15/opt2/opt2-2-transport-report.md
