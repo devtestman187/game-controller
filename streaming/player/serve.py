@@ -23,30 +23,29 @@ The page talks to this process on these paths, and nothing else answers:
     GET  /player           what the page is doing (playing, closed, …), and the
                            pages of earlier sessions it has been told about
     POST /player           {"state": "...", "sessionId": "...", "pageId": "..."}
+    POST /page/error       {"message": "...", "site": "file.js:12"}: one uncaught
+                           page error, written to this process's log (M15 opt2b)
     POST /stats/stream     one batch of measurements, sent to the host as it is
     GET  /tap              a WebSocket upgrade, passed to the tap server (opt2-2)
 
 Every report and batch names the session its page loaded (`config.js` gives it
 to the page), and one from an earlier session is not this session's (M15 fix8):
-its report is answered `stale` and named in `GET /player`, it never becomes
-this page's state, and its measurements are refused rather than counted.
+its report is answered `stale` and named in `GET /player`, it never becomes this
+page's state, and its measurements are refused rather than counted.
 
 Of those, exactly two reach the host's automation interface, with the session's
 token and no other credentials: `GET /status`, asked for `/clock`, because the
-press probe needs the host's own clock; and `POST /stats/stream`, the
-measurements the stats framework keeps. Nothing else of the host's API is
-reachable here — a path it does not list above answers 404, and its own API
-(`/players`, `game/start`, `probe/press`, …) has no route. A browser on the
-network can therefore measure a session and nothing more; what it sends is
-trusted, because anyone who can open the page can send it (docs/automation.md).
+press probe needs the host's own clock; and `POST /stats/stream`. Nothing else
+of the host's API is reachable here — a path it does not list above answers 404
+— so a browser on the network can measure a session and nothing more; what it
+sends is trusted, because anyone who can open the page can send it
+(docs/automation.md).
 
-The tap rides on this port too (PROTOCOL.md): a GET for exactly `/tap` that
-asks for `Upgrade: websocket` is passed, byte for byte both ways, to the
-session's tap server on loopback at `--tap-port` — and nothing else ever is.
-With `--tap-port 0` (its default, off) `/tap` answers 404 like any unlisted path.
+The tap rides on this port too (PROTOCOL.md): a GET for exactly `/tap` that asks
+for `Upgrade: websocket` is passed, byte for byte both ways, to the session's tap
+server on loopback at `--tap-port` — and nothing else ever is.
 
-The body of a POST is one small JSON object, at most `max_body_bytes` (64 KB); a
-longer one is refused before it is read.
+The body of a POST is one small JSON object, at most `max_body_bytes` (64 KB).
 """
 
 import argparse
@@ -73,6 +72,9 @@ automation_prefix = "/automation/v1"
 # two, and `GET /player` carries the list (M15 fix8).
 max_stale_pages = 10
 
+# The most of a page error's text one log line carries (M15 opt2b).
+max_error_chars = 200
+
 # The most a POST body may be: a batch of measurements is about 2 KB, so 64 KB
 # is room and no more — the relay is reachable from anywhere the page is, and an
 # open body would be an open memory hole. Keep it in step with the host's own
@@ -80,8 +82,7 @@ max_stale_pages = 10
 # packages/party_host/lib/src/automation/automation_body.dart.
 max_body_bytes = 64 * 1024
 
-# Where the tap server listens, the most of a tunnelled stream this process
-# holds at once (one socket read, never inside a frame), and its connect wait.
+# Where the tap server listens, the most of a tunnelled stream one read holds, and its wait.
 tap_address = "127.0.0.1"
 tunnel_read_bytes = 64 * 1024
 tunnel_connect_timeout_s = 2
@@ -93,15 +94,13 @@ page_files = frozenset(
         "streams.js", "options.js", "jb_target.js", "low_delay.js", "latency_probe.js",
         "marker_batch.js", "marker_decode.js", "marker_reader.js", "clock_sync.js",
         "metrics.js", "reporter.js", "session_end.js", "overlay.js", "stats.js",
-        # The capability probe (M15 opt1 o1-3), a page of its own that nothing
-        # links to; and the custom player's files (M15 opt2), left 404 until the
-        # job that writes each one has.
-        "probe.html", "wc_annexb.js", "wc_player.js", "wc_stats.js",
+        # The page's error trap (M15 opt2b), the capability probe (M15 opt1,
+        # a page of its own), and the custom player's files (M15 opt2).
+        "error_trap.js", "probe.html", "wc_annexb.js", "wc_counters.js", "wc_player.js", "wc_stats.js",
     )
 )
 
-# The folder the page's one library is served from (gstwebrtc-api, written by
-# the Dockerfile); a name in it is letters, digits, dots and dashes only.
+# The folder the page's one library is served from (gstwebrtc-api, by the Dockerfile).
 library_dir = "lib/"
 
 # What a file name may look like: no slashes, no dots leading out of the folder.
@@ -109,9 +108,8 @@ plain_name = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 
 
 def is_page_file(path):
-    """Whether `path` is one of the page's own files, which it may fetch."""
+    """Whether `path` is one of the page's own files, which it may fetch; `/` is the page."""
     name = path.lstrip("/")
-    # `/` is the page itself: http.server answers it with index.html.
     if name == "" or name in page_files:
         return True
     return name.startswith(library_dir) and plain_name.match(name[len(library_dir):]) is not None
@@ -120,10 +118,9 @@ def is_page_file(path):
 class Relay:
     """What the page and the benchmark send each other, and the host's address."""
 
-    # The only two calls this process makes to the host, with the session's
-    # token: its status (for `/clock`) and the measurements (`/stats/stream`).
-    # Every other path is answered here or refused, so this is no door to the
-    # host's own API.
+    # The only two calls this process makes to the host, with the session's token:
+    # its status (for `/clock`) and the measurements (`/stats/stream`). Every other
+    # path is answered here or refused, so this is no door to the host's own API.
     host_paths = frozenset(("/status", "/stats/stream"))
 
     def __init__(self, automation_port, token, state_dir, session_id=""):
@@ -136,15 +133,14 @@ class Relay:
         self.presses = []
         self.flips = []
         self.player = {}
-        # The pages of earlier sessions the relay has been told about, by their
-        # own id, newest last (M15 fix8).
+        # The pages of earlier sessions the relay was told about, newest last (M15 fix8).
         self.stale_pages = []
 
     def claims_this_session(self, claimed):
         """Whether a page that names session [claimed] was served by this one.
 
-        A page left open from an earlier session names that session; a page that
-        names none was served before sessions named one, and is this one's own.
+        A page left open from an earlier session names that session; a page that names
+        none was served before sessions named one, and is this one's own.
         """
         if self.session_id == "" or claimed == "":
             return True
@@ -194,6 +190,11 @@ class Relay:
             return None
         return body.get("hostMs")
 
+    def note_page_error(self, body):
+        """Writes one page error to this process's log, where a run reads it (M15 opt2b)."""
+        fields = (str(body.get(key) or "")[:max_error_chars] for key in ("sessionId", "site", "message"))
+        sys.stderr.write("relay: page error: %s\n" % " ".join(fields))
+
     def pipeline(self):
         try:
             with open(os.path.join(self.state_dir, "pipeline.json"), encoding="utf-8") as handle:
@@ -209,10 +210,9 @@ class Handler(SimpleHTTPRequestHandler):
 
     # The paths a POST may go to; anything else is refused before its body is
     # read, so an unlisted path never gets as far as the host.
-    post_paths = frozenset(("/stats/stream", "/presses", "/flips", "/player"))
+    post_paths = frozenset(("/stats/stream", "/presses", "/flips", "/player", "/page/error"))
 
-    # The tap server's port from `--tap-port`; 0 (its default, the tap off) leaves
-    # /tap answering like any path this process does not serve.
+    # The tap server's port from `--tap-port`; 0 (its default, off) is no /tap path.
     tap_port = 0
 
     def do_GET(self):  # noqa: N802 - the name http.server asks for
@@ -225,10 +225,9 @@ class Handler(SimpleHTTPRequestHandler):
             return self._json(200, {"ok": True, "hostMs": self.relay.host_clock_ms()})
         if path == "/pipeline":
             return self._json(200, self.relay.pipeline())
-        if path == "/presses":
-            return self._json(200, {"ok": True, "presses": self.relay.since(self.relay.presses, _since(query))})
-        if path == "/flips":
-            return self._json(200, {"ok": True, "flips": self.relay.since(self.relay.flips, _since(query))})
+        if path in ("/presses", "/flips"):
+            events = self.relay.presses if path == "/presses" else self.relay.flips
+            return self._json(200, {"ok": True, path[1:]: self.relay.since(events, _since(query))})
         if path == "/player":
             return self._json(
                 200,
@@ -254,12 +253,13 @@ class Handler(SimpleHTTPRequestHandler):
                 return self._json(403, {"ok": False, "error": "this page belongs to an earlier session"})
             status, answer = self.relay.call("POST", "/stats/stream", body)
             return self._json(status, answer)
-        if path == "/presses":
-            ident = self.relay.add(self.relay.presses, body)
-            return self._json(200, {"ok": True, "id": ident})
-        if path == "/flips":
-            ident = self.relay.add(self.relay.flips, body)
-            return self._json(200, {"ok": True, "id": ident})
+        if path in ("/presses", "/flips"):
+            events = self.relay.presses if path == "/presses" else self.relay.flips
+            return self._json(200, {"ok": True, "id": self.relay.add(events, body)})
+        if path == "/page/error":
+            # A page's own failure is one log line, never this session's state.
+            self.relay.note_page_error(body)
+            return self._json(200, {"ok": True})
         # The guard above leaves only `/player` by the time it gets here.
         return self._player(body)
 
@@ -276,7 +276,7 @@ class Handler(SimpleHTTPRequestHandler):
     def _tunnel(self):
         """Passes this connection to the tap server, byte for byte both ways (PROTOCOL.md).
 
-        The relay never looks into a WebSocket frame and holds one read of it at most.
+        The relay never looks into a frame and holds one read of it at most.
         """
         try:
             tap = socket.create_connection((tap_address, self.tap_port), timeout=tunnel_connect_timeout_s)

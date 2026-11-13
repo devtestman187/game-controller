@@ -50,9 +50,9 @@ export class StreamReporter {
    * @param {HTMLVideoElement} parts.video - the element the stream plays in
    * @param {RTCPeerConnection|null} [parts.peerConnection] - the TV connection,
    *   null with the custom player, whose picture has its own socket (M15 opt2)
-   * @param {(text: string) => void} parts.onProblem - where a measurement
-   *   problem goes: the console and the stats overlay, never the picture. An
-   *   empty text means the measurements are going through again (M15 g1).
+   * @param {(text: string) => void} parts.onProblem - where a measurement problem
+   *   goes: the console and the overlay, never the picture (an empty text says
+   *   the measurements go through again, M15 g1)
    * @param {number} [parts.reconnects] - reconnects this page has had already
    * @param {boolean} [parts.marker] - whether the page reads the host's marker
    *   row (`marker=1`); off, no strip is read and none of its numbers is sent
@@ -194,9 +194,8 @@ export class StreamReporter {
   }
 
   /**
-   * Notes a measurement problem where the viewer is not looking: the console,
-   * and the stats overlay the "i" key opens. Watching the picture is what a
-   * viewer is here for, so a failed measurement never covers it (M15 t1).
+   * Notes a measurement problem where the viewer is not looking: the console and
+   * the overlay. Watching the picture matters more, so it never covers it (M15 t1).
    */
   _problem(text) {
     if (text === this._lastProblem) return;
@@ -211,8 +210,7 @@ export class StreamReporter {
     const elapsedS = this._previousAtMs === 0 ? 0 : (nowMs - this._previousAtMs) / 1000;
     let report = null;
     try {
-      // The custom player has no picture connection: its batch carries what its
-      // own figures and the marker give (M15 opt2).
+      // The custom player has no picture connection: its own figures fill the batch.
       report = this._peerConnection === null ? null : await this._peerConnection.getStats();
     } catch (error) {
       this._problem(`statistics stopped: ${error.message}`);
@@ -252,12 +250,15 @@ export class StreamReporter {
     const video = current.video;
     const audio = current.audio;
     const pair = current.pair;
-    const stages = [];
+    // An extra series' stages go first and keep a name they share: with
+    // `player=wc` they are the batch's only decode and display stages (M15 opt2b).
+    const extras = this._extras?.() ?? null;
+    const stages = [...(extras?.stages ?? [])];
     const gauges = [];
     const counters = [];
     const facts = [];
     const addStage = (name, ms) => {
-      if (ms !== null) stages.push({ name, ms: Math.round(ms) });
+      if (ms !== null && !stages.some((stage) => stage.name === name)) stages.push({ name, ms: Math.round(ms) });
     };
     addStage("stream_jitter_buffer", jitterBufferMs(video, before.video));
     addStage("stream_decode", decodeMsPerFrame(video, before.video));
@@ -274,7 +275,8 @@ export class StreamReporter {
       }
     }
     const addGauge = (name, value) => {
-      if (typeof value === "number" && Number.isFinite(value)) gauges.push({ name, value });
+      if (typeof value !== "number" || !Number.isFinite(value) || gauges.some((gauge) => gauge.name === name)) return;
+      gauges.push({ name, value });
     };
     addGauge("bitrateReceivedKbps", rateKbitPerS(video, before.video, elapsedS));
     addGauge("lossPct", lossPct(video));
@@ -284,9 +286,8 @@ export class StreamReporter {
     addGauge("audioSyncMs", audioSyncMs(audio, video));
     addGauge("audioConcealedPct", concealedPct(audio));
     for (const gauge of this._soundGauges) addGauge(gauge.name, gauge.value);
-    const extras = this._extras?.() ?? null;
     for (const gauge of extras?.gauges ?? []) addGauge(gauge.name, gauge.value);
-    if (extras !== null) facts.push(...extras.facts);
+    if (extras !== null) facts.push(...extras.facts ?? []);
     const sent = viewerCounters(video, {
       lateFrames: this._late,
       reconnects: this._reconnects,
@@ -298,8 +299,7 @@ export class StreamReporter {
     if (video?.frameWidth && video?.frameHeight) {
       facts.push({ name: "resolution", value: `${video.frameWidth}x${video.frameHeight}` });
     }
-    // The host's pipeline stages come from the container's own tracer, and land
-    // on this row because the player owns the viewer id.
+    // The host's pipeline stages come from the container's tracer, on this row.
     const host = this._hostStages ?? {};
     for (const stage of host.stages ?? []) stages.push({ name: stage.name, ms: stage.ms });
     // The marker's numbers ride the same four containers under their own names

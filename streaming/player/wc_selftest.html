@@ -15,6 +15,7 @@
        a fake socket, decoder, chunk and clock. bench.sh --selftest serves the
        player folder and reads the one line below back out of the DOM. -->
   <script type="module">
+    import { installErrorTrap, maxReports } from "./error_trap.js";
     import { playerKindOf } from "./options.js";
     import {
       annexbToAvcc, buildAvcc, codecString, isKeyframe, nalType, parseHeader, splitNalus,
@@ -123,19 +124,22 @@
     }
 
     /** A player with those fakes and a clock, and the things a test reads back. */
-    function harness({ supports = () => true, annexb = false } = {}) {
+    function harness({ supports = () => true, annexb = false, canvas = null, parts = {} } = {}) {
       const log = {
-        sockets: [], decoders: [], chunks: [], support: [], framesClosed: 0, draws: [], events: [], drawn: [],
+        sockets: [], decoders: [], chunks: [], support: [], framesClosed: 0, draws: [], events: [], drawn: [], missing: [],
       };
       const clock = { nowMs: 0 }, timers = [];
       const { FakeSocket, FakeDecoder, FakeChunk } = fakes(log, supports);
-      const canvas = { width: 0, height: 0, getContext: () => ({ drawImage: (frame) => log.draws.push(frame) }) };
+      const target = canvas ?? {
+        width: 0, height: 0, getContext: () => ({ drawImage: (frame) => log.draws.push(frame) }),
+      };
       const player = new WcPlayer({
         url: "ws://test/tap",
-        canvas,
+        canvas: target,
         annexb,
         onEvent: (event) => log.events.push(event),
         onDrawn: (frameNo, drawnAtMs) => log.drawn.push([frameNo, drawnAtMs]),
+        onMissing: (text) => log.missing.push(text),
         now: () => clock.nowMs,
         WebSocketImpl: FakeSocket,
         VideoDecoderImpl: FakeDecoder,
@@ -144,12 +148,36 @@
           timers.push({ run, delayMs });
           return timers.length;
         },
+        ...parts,
       });
       const socket = () => log.sockets[log.sockets.length - 1];
       const frameOf = (timestamp) => ({
         timestamp, displayWidth: 1920, displayHeight: 1080, close: () => { log.framesClosed++; },
       });
-      return { player, log, clock, timers, canvas, socket, frameOf };
+      return { player, log, clock, timers, canvas: target, socket, frameOf };
+    }
+
+    /** A window that keeps what was registered, so a test fires the events itself. */
+    function fakeWindow() {
+      const handlers = {};
+      return {
+        handlers,
+        addEventListener: (type, handler) => { handlers[type] = handler; },
+        removeEventListener: (type) => { delete handlers[type]; },
+      };
+    }
+
+    /** The page's error trap on a fake window, with what it showed and sent. */
+    function trapWith({ send = () => {} } = {}) {
+      const target = fakeWindow();
+      const shown = { textContent: "" };
+      const titles = [];
+      const sent = [];
+      const trap = installErrorTrap({
+        target, statusLine: shown, setTitle: (text) => titles.push(text),
+        send: (body) => { send(body); sent.push(body); },
+      });
+      return { target, shown, titles, sent, trap };
     }
 
     /** Lets the player's promise chain run to its end: every step is a microtask. */
@@ -368,6 +396,98 @@
         "decoderErrors", "reconnects", "queueMax", "lastFrame"].filter((name) => typeof counters[name] !== "number");
       return same([numeric, counters.framesReceived, counters.lastFrame, h.player.stageSamples().length,
         h.player.stageSamples()[255].frame], [[], 300, 299, 256, 299]);
+    });
+
+    await check("the bytes the socket took are counted, a text message by its characters", async () => {
+      const h = harness();
+      h.player.start();
+      const socket = h.socket();
+      socket.onmessage({ data: keyMessage(0) });
+      socket.onmessage({ data: deltaMessage(1) });
+      socket.onmessage({ data: JSON.stringify({ type: "hello" }) });
+      await flushed();
+      // The 24-byte header plus each payload: 53-byte key unit, 13-byte delta, then 16 characters.
+      return same(h.player.counters().bytesReceived,
+        keyMessage(0).byteLength + deltaMessage(1).byteLength + 16);
+    });
+    await check("a browser with no WebSocket is told at once and opens nothing", () => {
+      const h = harness({ parts: { WebSocketImpl: null } });
+      h.player.start();
+      const text = "this browser cannot play the video: no WebSocket";
+      return same([h.log.events.map((event) => event.text), h.log.missing, h.log.sockets.length, h.timers.length],
+        [[text], [text], 0, 0]);
+    });
+    await check("a browser with no WebCodecs is told which classes are missing", () => {
+      const h = harness({ parts: { VideoDecoderImpl: null, EncodedVideoChunkImpl: null } });
+      h.player.start();
+      return same([h.log.events[0].type, h.log.events[0].text, h.log.sockets.length],
+        ["status", "this browser cannot play the video: no VideoDecoder, EncodedVideoChunk", 0]);
+    });
+    await check("a canvas that refuses the low-latency context still gets the plain one", async () => {
+      const draws = [];
+      const canvas = {
+        width: 0,
+        height: 0,
+        getContext: (type, options) => {
+          if (options !== undefined) throw new Error("no desynchronized here");
+          return { drawImage: (frame) => draws.push(frame) };
+        },
+      };
+      const h = harness({ canvas });
+      h.player.start();
+      h.socket().onmessage({ data: keyMessage(0) });
+      await flushed();
+      h.log.decoders[0].init.output(h.frameOf(0));
+      return same([draws.length, h.player.counters().framesDrawn, h.canvas.width, h.log.framesClosed], [1, 1, 1920, 1]);
+    });
+    await check("a canvas with no 2D context is a problem with a plain reason, and the frame is closed", async () => {
+      const h = harness({ canvas: { width: 0, height: 0, getContext: () => null } });
+      h.player.start();
+      h.socket().onmessage({ data: keyMessage(0) });
+      await flushed();
+      let threw = false;
+      try {
+        h.log.decoders[0].init.output(h.frameOf(0));
+      } catch (error) {
+        threw = true;
+      }
+      return same([threw, h.log.framesClosed, h.log.events[0].text],
+        [false, 1, "cannot draw the picture: the page has no 2D canvas"]);
+    });
+
+    check("a page error shows its message with the file and line, and is sent to the relay", () => {
+      const t = trapWith();
+      t.target.handlers.error(
+        { message: "boom is not defined", filename: "http://127.0.0.1:45782/wc_player.js", lineno: 12 },
+      );
+      t.trap.stop();
+      const line = "page error: boom is not defined (wc_player.js:12)";
+      return same([t.shown.textContent, t.titles, t.sent],
+        [line, [line], [{ message: "boom is not defined", site: "wc_player.js:12" }]]);
+    });
+    check("a promise nobody caught is shown and sent with the line it came from", () => {
+      const t = trapWith();
+      const reason = new Error("the socket is gone");
+      reason.stack = "Error: the socket is gone\n    at draw (http://127.0.0.1/wc_player.js:120:7)";
+      t.target.handlers.unhandledrejection({ reason });
+      t.trap.stop();
+      return same([t.shown.textContent, t.sent], [
+        "page error: the socket is gone (wc_player.js:120)",
+        [{ message: "the socket is gone", site: "wc_player.js:120" }],
+      ]);
+    });
+    check("five errors are one page load's most, and the trap never throws", () => {
+      const t = trapWith({ send: () => { throw new Error("no relay"); } });
+      let threw = false;
+      try {
+        for (let index = 0; index < 8; index++) {
+          t.target.handlers.error({ message: `e${index}`, filename: "p.js", lineno: index });
+        }
+      } catch (error) {
+        threw = true;
+      }
+      t.trap.stop();
+      return same([threw, t.shown.textContent, maxReports], [false, "page error: e4 (p.js:4)", 5]);
     });
 
     const result = document.getElementById("result");

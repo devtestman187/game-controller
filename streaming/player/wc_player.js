@@ -9,6 +9,7 @@
  */
 
 import { annexbToAvcc, buildAvcc, codecString, parameterSets, parseHeader } from "./wc_annexb.js";
+import { bytesOf, emptyCounters, FrameCanvas, FrameStages, frameTimestampUs } from "./wc_counters.js";
 
 /** The most frames the decoder may hold queued: more is backlog, not saved delay. */
 const maxQueueDepth = 2;
@@ -19,12 +20,6 @@ const keyRequestMinMs = 500;
 /** How long after a loss the socket is opened again, in ms: 200 at first, doubling to 2000. */
 const reconnectMinMs = 200;
 const reconnectMaxMs = 2000;
-
-/** How many frames' stage times are kept for the figures (job 4): about four seconds at 60 fps. */
-const stageSampleCount = 256;
-
-/** The chunk timestamp one frame number is worth, in microseconds: unique and always rising. */
-const frameTimestampUs = 1000;
 
 /** A WebSocket whose readyState is this accepts a send (the WebSocket.OPEN value). */
 const socketOpen = 1;
@@ -49,6 +44,8 @@ export class WcPlayer {
    *   page's events: "status" with a text, "lost" when the socket dropped, "end"
    * @param {(frameNo: number, drawnAtMs: number) => void} [parts.onDrawn] - after
    *   each frame is on the canvas
+   * @param {(text: string) => void} [parts.onMissing] - where a browser class
+   *   the player cannot run without is reported to the host (M15 opt2b)
    * @param {boolean} [parts.annexb] - ask the decoder for Annex B in band
    *   (`wcmode=annexb`) instead of AVCC with a description
    * @param {() => number} [parts.now] - the page's clock, in ms
@@ -59,23 +56,23 @@ export class WcPlayer {
    * @param {(run: () => void, delayMs: number) => number} [parts.setTimeoutImpl]
    */
   constructor({
-    url = defaultTapUrl(), canvas, onEvent = () => {}, onDrawn = () => {}, annexb = false,
+    url = defaultTapUrl(), canvas, onEvent = () => {}, onDrawn = () => {}, onMissing = () => {}, annexb = false,
     now = () => performance.now(),
     WebSocketImpl = globalThis.WebSocket, VideoDecoderImpl = globalThis.VideoDecoder,
     EncodedVideoChunkImpl = globalThis.EncodedVideoChunk,
     setTimeoutImpl = (run, delayMs) => globalThis.setTimeout(run, delayMs),
   }) {
     this._url = url;
-    this._canvas = canvas;
+    this._picture = new FrameCanvas(canvas);
     this._onEvent = onEvent;
     this._onDrawn = onDrawn;
+    this._onMissing = onMissing;
     this._annexb = annexb;
     this._now = now;
     this._WebSocket = WebSocketImpl;
     this._Decoder = VideoDecoderImpl;
     this._Chunk = EncodedVideoChunkImpl;
     this._setTimeout = setTimeoutImpl;
-    this._context = null;
     this._socket = null;
     this._decoder = null;
     this._stopped = false;
@@ -89,17 +86,22 @@ export class WcPlayer {
     this._needKey = true;
     this._lastFrame = null;
     this._lastKeyRequestAtMs = -Infinity;
-    this._stages = new Map();
-    this._counters = {
-      framesReceived: 0, framesDecoded: 0, framesDrawn: 0, dropsQueue: 0, dropsGap: 0, keyRequests: 0,
-      decoderErrors: 0, reconnects: 0, queueMax: 0, lastFrame: -1, decodeConfig: "none",
-    };
+    this._stages = new FrameStages();
+    this._counters = emptyCounters();
   }
 
-  /** Opens the tap socket and starts decoding. A browser without WebCodecs is told. */
+  /**
+   * Opens the tap socket and starts decoding. A browser without WebCodecs or
+   * WebSocket is told which class it lacks, on the page and to the host (M15 opt2b).
+   */
   start() {
-    if (this._Decoder === undefined || this._Decoder === null) {
-      this._onEvent({ type: "status", text: "this browser cannot decode video: no WebCodecs" });
+    const missing = [
+      ["WebSocket", this._WebSocket], ["VideoDecoder", this._Decoder], ["EncodedVideoChunk", this._Chunk],
+    ].filter((part) => typeof part[1] !== "function").map((part) => part[0]);
+    if (missing.length > 0) {
+      const text = `this browser cannot play the video: no ${missing.join(", ")}`;
+      this._onEvent({ type: "status", text });
+      this._onMissing(text);
       return;
     }
     this._stopped = false;
@@ -122,7 +124,7 @@ export class WcPlayer {
 
   /** The last frames' stage times, in arrival order, for the figures (job 4). */
   stageSamples() {
-    return [...this._stages.values()];
+    return this._stages.samples();
   }
 
   _openSocket() {
@@ -191,11 +193,18 @@ export class WcPlayer {
 
   _receive(data) {
     if (this._stopped) return;
+    this._counters.bytesReceived += bytesOf(data);
     if (typeof data === "string") return this._receiveText(data);
+    // A browser that hands a Blob over instead of bytes (a socket whose
+    // binaryType it ignored) would throw in the header read (M15 opt2b).
+    if (!(data instanceof ArrayBuffer) && !ArrayBuffer.isView(data)) {
+      this._onEvent({ type: "status", text: "the TV sent a message this page cannot read" });
+      return;
+    }
     const receivedAtMs = this._now();
     const message = parseHeader(data);
     if (message === null) return;
-    const stage = this._noteStage(message.frame, receivedAtMs);
+    const stage = this._stages.note(message.frame, receivedAtMs);
     this._counters.framesReceived++;
     this._counters.lastFrame = message.frame;
     this._chain = this._chain
@@ -304,6 +313,9 @@ export class WcPlayer {
   }
 
   async _isSupported(config) {
+    // A WebCodecs implementation without the static check (some builds) takes
+    // the configuration as it is: a decoder that refuses it says so itself.
+    if (typeof this._Decoder.isConfigSupported !== "function") return true;
     try {
       const answer = await this._Decoder.isConfigSupported(config);
       return answer !== null && answer.supported === true;
@@ -345,13 +357,6 @@ export class WcPlayer {
     this._send({ type: "key" });
   }
 
-  _noteStage(frameNo, receivedAtMs) {
-    const stage = { frame: frameNo, receiveAt: receivedAtMs, decodeOutputAt: null, drawnAt: null };
-    this._stages.set(frameNo, stage);
-    if (this._stages.size > stageSampleCount) this._stages.delete(this._stages.keys().next().value);
-    return stage;
-  }
-
   // The decoder's output: one frame on the canvas, then closed whatever the
   // draw did — an open VideoFrame holds a decoder buffer back.
   _drew(frame) {
@@ -360,13 +365,8 @@ export class WcPlayer {
     const stage = this._stages.get(frameNo);
     if (stage !== undefined) stage.decodeOutputAt = this._now();
     try {
-      const widthPx = frame.displayWidth, heightPx = frame.displayHeight;
-      if (this._canvas.width !== widthPx || this._canvas.height !== heightPx) {
-        this._canvas.width = widthPx;
-        this._canvas.height = heightPx;
-      }
-      this._context ??= this._canvas.getContext("2d", { desynchronized: true });
-      this._context.drawImage(frame, 0, 0, widthPx, heightPx);
+      const problem = this._picture.draw(frame);
+      if (problem !== "") throw new Error(problem);
       this._counters.framesDrawn++;
       const drawnAtMs = this._now();
       if (stage !== undefined) stage.drawnAt = drawnAtMs;

@@ -127,6 +127,12 @@
   <script src="lib/gstwebrtc-api-2.0.0.min.js"></script>
   <!-- entrypoint.sh writes this next to the page: the session's signalling port. -->
   <script src="config.js"></script>
+  <!-- The error trap first (M15 opt2b): a page whose modules throw says so on
+       the status line and in the session's log, before the player runs. -->
+  <script type="module">
+    import { installErrorTrap } from "./error_trap.js";
+    installErrorTrap();
+  </script>
   <script type="module" src="player.js"></script>
 </body>
 

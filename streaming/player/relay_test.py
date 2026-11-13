@@ -197,6 +197,8 @@ def test_page(port):
             "/marker_reader.js",
             "/session_end.js",
             "/overlay.js",
+            "/error_trap.js",
+            "/wc_counters.js",
         )
     ]
     check(served == [200] * len(served), "the page's own files are served")
@@ -221,7 +223,7 @@ def test_unlisted_paths(port):
     check("no file at /automation/v1/status" in body.get("error", ""), "and says which path it does not serve")
 
     status, body = call(port, "POST", "/players", {})
-    check(status == 404, "a POST outside the four the page makes is 404")
+    check(status == 404, "a POST outside the calls the page makes is 404")
     check("no call at /players" in body.get("error", ""), "and is refused before its body is read")
 
     # The proof of "before its body": a body promised and never sent still gets
@@ -252,6 +254,16 @@ def test_page_calls(port):
 
     status, body = call(port, "GET", "/clock")
     check(status == 200 and body.get("hostMs") is None, "the clock is null while no host answers, not an error")
+
+
+def test_page_error(port):
+    """A page's own error is one log line and nothing the host is asked (M15 opt2b)."""
+    status, body = call(
+        port, "POST", "/page/error", {"sessionId": "test-session", "site": "wc_player.js:12", "message": "boom"}
+    )
+    check(status == 200 and body.get("ok") is True, "a page error is taken by the relay")
+    status, body = call(port, "POST", "/page/error", ["not", "an", "object"])
+    check(status == 400, "a page error that is not a JSON object is refused")
 
 
 def test_oversized_body(port):
@@ -362,6 +374,7 @@ def main():
             test_unlisted_paths(port)
             test_measurements(port)
             test_page_calls(port)
+            test_page_error(port)
             test_oversized_body(port)
             test_session_identity(port)
             test_tap_tunnel(port, tap)

@@ -18,7 +18,8 @@
   <script type="module">
     import { LatencyProbe } from "./latency_probe.js";
     import { canvasPicture, MarkerReader } from "./marker_reader.js";
-    import { combinedSeries, wcFactText, wcNames, wcStatsOf } from "./wc_stats.js";
+    import { StreamReporter } from "./reporter.js";
+    import { combinedSeries, WcStats, wcFactText, wcHostNames, wcNames, wcStatsOf } from "./wc_stats.js";
 
     // The spec's first two rows (docs/streaming-marker.md): counter 0 without a
     // press, and counter 1 with one, whose flip cell is turned.
@@ -50,9 +51,9 @@
         : `expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`;
     }
 
-    /** A player as wc_stats.js reads one: the counters it keeps and the frames it finished. */
-    function fakePlayer() {
-      const counters = {
+    /** The counters a player keeps, as wc_stats.js reads them. */
+    function countersOf() {
+      return {
         framesReceived: 12,
         framesDecoded: 9,
         framesDrawn: 9,
@@ -62,13 +63,19 @@
         decoderErrors: 0,
         reconnects: 0,
         queueMax: 4,
-        lastFrame: 10,
+        lastFrame: 11,
+        bytesReceived: 0,
         decodeConfig: "avc1.640028 hardware",
       };
+    }
+
+    /** A player as wc_stats.js reads one: the counters it keeps and the frames it finished. */
+    function fakePlayer(counters = countersOf()) {
       const samples = [
         { frame: 8, receiveAt: 0, decodeOutputAt: 12, drawnAt: 14 },
         { frame: 9, receiveAt: 100, decodeOutputAt: 116, drawnAt: 120 },
         { frame: 10, receiveAt: 200, decodeOutputAt: null, drawnAt: null },
+        { frame: 11, receiveAt: 300, decodeOutputAt: 340, drawnAt: 350 },
       ];
       return { counters: () => ({ ...counters }), stageSamples: () => samples.map((sample) => ({ ...sample })) };
     }
@@ -99,11 +106,18 @@
     }
 
     /** One frame's arrival, decode and draw times, as the player's stage keeps them. */
-    const stats = wcStatsOf({ player: "wc" }, fakePlayer());
+    const clock = { nowMs: 0 };
+    const stats = new WcStats({ player: fakePlayer(), now: () => clock.nowMs });
     const first = stats.batch();
 
     check("the stage figures are the medians of the frames the batch finished", () => {
-      return same([gaugeValue(first, wcNames.recvToDecode), gaugeValue(first, wcNames.decodeToDraw)], [14, 3]);
+      return same([gaugeValue(first, wcNames.recvToDecode), gaugeValue(first, wcNames.decodeToDraw)], [16, 4]);
+    });
+    check("the host's decode and display stages come from the frames alone, no marker needed", () => {
+      return same(first.stages, [
+        { name: wcHostNames.decode, ms: 23 },
+        { name: wcHostNames.display, ms: 4 },
+      ]);
     });
     check("the counters ride as the player keeps them", () => {
       return same(["dropped", "backlog", "keyRequests", "queueMax"].map((key) => gaugeValue(first, wcNames[key])),
@@ -118,11 +132,23 @@
     });
     check("a batch of no finished frame keeps the counters and sends no stage figure", () => {
       const second = stats.batch();
-      return same(first.gauges.length - second.gauges.length, 2);
+      return same([second.stages, second.gauges.map((gauge) => gauge.name)],
+        [[], [wcNames.dropped, wcNames.backlog, wcNames.keyRequests, wcNames.queueMax]]);
+    });
+    check("the socket's bytes over the interval are the rate, and none before any arrive", () => {
+      const counters = countersOf();
+      const rateClock = { nowMs: 0 };
+      const rateStats = new WcStats({ player: fakePlayer(counters), now: () => rateClock.nowMs });
+      const atStart = rateStats.batch();
+      counters.bytesReceived = 37500;
+      rateClock.nowMs = 3000;
+      const after = rateStats.batch();
+      // 37 500 bytes × 8 = 300 000 bits = 300 kbit over 3 s = 100 kbit/s.
+      return same([gaugeValue(atStart, wcHostNames.bitrate), gaugeValue(after, wcHostNames.bitrate)], [null, 100]);
     });
     check("the overlay's one line carries the figures, the backlog's age and the fact", () => {
-      stats.noteDrawn(260);
-      return same(stats.line(), "wc recv-dec 14 ms dec-draw 3 ms drop 3 backlog 3 age 60 ms keys 3 q 4 cfg hw dec ok");
+      stats.noteDrawn(360);
+      return same(stats.line(), "wc recv-dec 16 ms dec-draw 4 ms drop 3 backlog 3 age 60 ms keys 3 q 4 cfg hw dec ok");
     });
     check("a fact that cannot fit is the fallback, never a long one", () => {
       return same(wcFactText({ decodeConfig: "avc1.640028 hardware", framesDrawn: 1 }, 8), "cfg none dec no");
@@ -132,7 +158,31 @@
     });
     check("no custom player option, no figures and no extra series", () => {
       return same([wcStatsOf({ player: "webrtc" }, fakePlayer()), wcStatsOf({}, fakePlayer()), combinedSeries(null)()],
-        [null, null, { gauges: [], facts: [] }]);
+        [null, null, { stages: [], gauges: [], facts: [] }]);
+    });
+    check("the reporter's batch carries the rate and both stages with no connection and no marker", () => {
+      const counters = countersOf();
+      const rateClock = { nowMs: 0 };
+      const wc = new WcStats({ player: fakePlayer(counters), now: () => rateClock.nowMs });
+      const reporter = new StreamReporter({
+        video: document.createElement("video"),
+        peerConnection: null,
+        onProblem: () => {},
+        picture: canvasPicture(document.createElement("canvas")),
+      });
+      reporter.setExtraSeries(combinedSeries(() => wc.batch()));
+      counters.bytesReceived = 37500;
+      rateClock.nowMs = 3000;
+      // The reporter's own batch builder: a page test has no other way to read a batch.
+      const batch = reporter._batch(
+        { video: null, audio: null, pair: null, codec: null, relay: null },
+        { video: null, audio: null, pair: null },
+        3,
+      );
+      return same([batch.stages.filter((stage) => stage.name.startsWith("stream_")),
+        item(batch.gauges, wcHostNames.bitrate)],
+        [[{ name: "stream_decode", ms: 23 }, { name: "stream_display", ms: 4 }],
+          { name: "bitrateReceivedKbps", value: 100 }]);
     });
 
     check("the marker's strip is read from a canvas right after a draw", () => {

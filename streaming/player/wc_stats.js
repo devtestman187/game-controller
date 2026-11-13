@@ -21,6 +21,21 @@ const factPattern = /^[A-Za-z0-9 ,._()+-]+$/;
 // What the fact says when its built text could not fit the host's limits.
 const unknownFact = "cfg none dec no";
 
+const bitsPerKbit = 1000;
+const msPerS = 1000;
+
+/**
+ * The host's own names for the number and the two stages the custom player
+ * fills without a picture connection (M15 opt2b): a bench reads a viewer from
+ * them, so they are sent from the frames and the socket alone, never from the
+ * marker, which a browser may fail to read.
+ */
+export const wcHostNames = {
+  bitrate: "bitrateReceivedKbps",
+  decode: "stream_decode",
+  display: "stream_display",
+};
+
 /** The names every number and the fact are sent under, so a report and a test share one list. */
 export const wcNames = {
   recvToDecode: "wcRecvToDecodeMs",
@@ -61,6 +76,11 @@ function msText(value) {
   return value === null ? "-" : String(Math.round(value * 10) / 10);
 }
 
+/** The mean of [values], or null when there is none. */
+function meanOf(values) {
+  return values.length === 0 ? null : values.reduce((sum, value) => sum + value, 0) / values.length;
+}
+
 /**
  * The custom player's figures (M15 opt2): the stage times of the frames it
  * finished since the last batch, and the counters it keeps. The page makes one
@@ -71,13 +91,20 @@ export class WcStats {
    * @param {object} parts
    * @param {object} parts.player - the page's WcPlayer: its `counters()` and
    *   `stageSamples()`
+   * @param {() => number} [parts.now] - the page's clock, in ms: the interval
+   *   the socket's rate is measured over
    */
-  constructor({ player }) {
+  constructor({ player, now = () => performance.now() }) {
     this._player = player;
+    this._now = now;
     this._lastFrame = -1;
     this._receiveGapMaxMs = 0;
     this._recvToDecodeMs = null;
     this._decodeToDrawMs = null;
+    // The socket's bytes at the last batch and when it was: the rate's interval
+    // starts with the player, so even the first batch carries one (M15 opt2b).
+    this._bytesBefore = 0;
+    this._batchAtMs = now();
   }
 
   /**
@@ -93,9 +120,9 @@ export class WcStats {
   }
 
   /**
-   * The gauges and the fact one reporter batch adds. A figure with no sample
-   * is left out, never sent as a 0.
-   * @returns {{gauges: object[], facts: object[]}}
+   * The stages, gauges and the fact one reporter batch adds. A figure with no
+   * sample is left out, never sent as a 0.
+   * @returns {{stages: object[], gauges: object[], facts: object[]}}
    */
   batch() {
     const fresh = this._freshSamples();
@@ -108,7 +135,13 @@ export class WcStats {
       this._recvToDecodeMs = recvToDecodeMs;
       this._decodeToDrawMs = decodeToDrawMs;
     }
+    const decodeMs = Math.round(meanOf(fresh.map((stage) => stage.decodeOutputAt - stage.receiveAt)));
+    const stages = fresh.length === 0 ? [] : [
+      { name: wcHostNames.decode, ms: decodeMs },
+      { name: wcHostNames.display, ms: Math.round(decodeToDrawMs) },
+    ];
     const gauges = [
+      { name: wcHostNames.bitrate, value: this._rateKbitPerS(counters) },
       { name: wcNames.recvToDecode, value: recvToDecodeMs },
       { name: wcNames.decodeToDraw, value: decodeToDrawMs },
       { name: wcNames.dropped, value: counters.dropsQueue + counters.dropsGap },
@@ -116,7 +149,7 @@ export class WcStats {
       { name: wcNames.keyRequests, value: counters.keyRequests },
       { name: wcNames.queueMax, value: counters.queueMax },
     ].filter((gauge) => typeof gauge.value === "number" && Number.isFinite(gauge.value));
-    return { gauges, facts: [{ name: wcNames.fact, value: wcFactText(counters) }] };
+    return { stages, gauges, facts: [{ name: wcNames.fact, value: wcFactText(counters) }] };
   }
 
   /** The overlay's one line, shown only with `player=wc` (M15 opt2). */
@@ -137,6 +170,23 @@ export class WcStats {
     return fresh;
   }
 
+  /**
+   * The bits a second the tap socket took since the last batch, in kbit/s: the
+   * gauge the host counts a viewer by, from the bytes the player counted. Null
+   * until something arrived, so an idle socket never reads as a viewer.
+   */
+  _rateKbitPerS(counters) {
+    const nowMs = this._now();
+    const bytes = counters.bytesReceived;
+    const before = this._bytesBefore;
+    const elapsedMs = nowMs - this._batchAtMs;
+    this._bytesBefore = bytes;
+    this._batchAtMs = nowMs;
+    const fresh = bytes - before;
+    if (!(elapsedMs > 0) || !(fresh > 0)) return null;
+    return Math.round((fresh * 8) / (bitsPerKbit * elapsedMs / msPerS));
+  }
+
   /** The newest arrival's page time, or null before one. */
   _lastReceiveAt() {
     const samples = this._player.stageSamples();
@@ -147,14 +197,19 @@ export class WcStats {
 
 /**
  * Several extra-series providers as one, which is what the reporter takes: the
- * jitter buffer target's and the custom player's gauges and facts add up.
- * @param {...(null|(() => ({gauges: object[], facts: object[]})))} providers
- * @returns {() => ({gauges: object[], facts: object[]})}
+ * jitter buffer target's and the custom player's stages, gauges and facts add
+ * up. A provider without stages (the jitter buffer target's) adds none.
+ * @param {...(null|(() => ({stages?: object[], gauges: object[], facts: object[]})))} providers
+ * @returns {() => ({stages: object[], gauges: object[], facts: object[]})}
  */
 export function combinedSeries(...providers) {
   return () => {
-    const batches = providers.map((provider) => provider?.() ?? { gauges: [], facts: [] });
-    return { gauges: batches.flatMap((batch) => batch.gauges), facts: batches.flatMap((batch) => batch.facts) };
+    const batches = providers.map((provider) => provider?.() ?? {});
+    return {
+      stages: batches.flatMap((batch) => batch.stages ?? []),
+      gauges: batches.flatMap((batch) => batch.gauges ?? []),
+      facts: batches.flatMap((batch) => batch.facts ?? []),
+    };
   };
 }
 

@@ -5,6 +5,7 @@
  * browser allows, and reconnects when the stream drops.
  */
 
+import { sendPageError } from "./error_trap.js";
 import { markerEnabled, parseOptions, optionsLine, playerKindOf } from "./options.js";
 import { JbTarget, jbTargetOf } from "./jb_target.js";
 import { LowDelay, lowDelayEnabled } from "./low_delay.js";
@@ -23,23 +24,20 @@ const GstWebRTCAPI = window.GstWebRTCAPI;
 
 const signalPort = (window.THUMB_PARTY && window.THUMB_PARTY.signalingPort) || 8443;
 
-// Whether the picture and the sound play from two separate media elements.
-// Chrome holds video back to stay in sync with the audio's larger buffer; each
-// element with its own track keeps its own (M15 t1 experiment 1, off unless
-// `SESSION_SPLIT_TRACKS` is on: see streaming/README.md).
+// Whether the picture and the sound play from two separate media elements:
+// Chrome holds video back to stay in sync with the audio's larger buffer, and
+// each element with its own track keeps its own (M15 t1; `SESSION_SPLIT_TRACKS`).
 const splitTracks = Boolean(window.THUMB_PARTY && window.THUMB_PARTY.splitTracks);
 
 // The switches this page runs with (M15 fix7), read once: the session's defaults
-// from config.js, overridden key by key by this page's own URL query. Exposed on
-// the window so a run can see what the page saw, and shown in the overlay.
+// from config.js, overridden key by key by the URL query, exposed on the window.
 const options = parseOptions(window.location.search, (window.THUMB_PARTY && window.THUMB_PARTY.options) || {});
 window.THUMB_PARTY_OPTIONS = options;
 const switchesLine = optionsLine(options);
 
 // Who this page tells the relay it is (M15 fix8): the name it reports as, and
 // the session whose page it loaded. A page left open from an earlier session
-// keeps that session's id, so the next session's relay can tell it apart and
-// ignore it instead of counting it as a viewer.
+// keeps that id, so the next relay tells it apart instead of counting it.
 const playerName = `ThumbPartyPlayer-${Date.now()}`;
 const joinedSession = (window.THUMB_PARTY && window.THUMB_PARTY.sessionId) || "";
 identifyPlayer({ pageId: playerName, sessionId: joinedSession });
@@ -55,8 +53,7 @@ const wcMode = playerKindOf(options) === "wc";
 // `wcmode=annexb`: the decoder reads Annex B in band instead of AVCC (M15 opt2).
 const wcAnnexb = options.wcmode === "annexb";
 const wcCanvas = document.getElementById("wc-canvas");
-// Where the marker's strip and the card's patch are read with `player=wc`: the
-// canvas, in the video element's place (M15 opt2).
+// Where the marker's strip and the card's patch are read with `player=wc` (M15 opt2).
 const wcPicture = canvasPicture(wcCanvas);
 let wcPlayer = null;
 // The custom player's figures, null unless the page plays it (M15 opt2).
@@ -128,12 +125,15 @@ function endSession() {
 // The page's session, timed (M15 fix8): a picture gone past a hiccup ends it.
 const sessionWatch = createSessionWatch({ nowMs: () => performance.now(), onEnded: endSession });
 
-// The custom player's page (M15 opt2): the canvas takes the video element's
-// place, and its numbers and the marker's strip are read from the canvas.
+// The custom player's page (M15 opt2): the canvas takes the video element's place.
 function startWcPlayer() {
   screen.hidden = true;
   wcCanvas.classList.add("visible");
-  wcPlayer = new WcPlayer({ canvas: wcCanvas, onEvent: wcEvent, onDrawn: wcDrawn, annexb: wcAnnexb });
+  wcPlayer = new WcPlayer({
+    canvas: wcCanvas, onEvent: wcEvent, onDrawn: wcDrawn, annexb: wcAnnexb,
+    // A browser class the player lacks goes the page errors' way (M15 opt2b).
+    onMissing: (text) => sendPageError({ message: text, site: "wc_player.js" }),
+  });
   wcStats = wcStatsOf(options, wcPlayer);
   // The measurements are in place before the first frame, so none is missed.
   overlay.start(null);
