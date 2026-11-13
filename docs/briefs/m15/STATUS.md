@@ -2,6 +2,12 @@
 
 Written Nov 11, 2026 so that any later session (any model) can pick this up cold. Read this file first, then the two design files it names.
 
+## Where it stands (Nov 13, 2026, evening) — read this first
+
+- **State:** the first phone sitting (six runs) measured only the current player (162 and 176 ms card); the four `player=wc` runs failed (viewer never registered, 4:4:4 stream, no sound). Batch docs/briefs/m15/opt2b/ (reports f1-f6) fixed it: registration without the marker, encoder pinned to NV12 when the tap is on (avc1.42C02A), decoder rebuild, sound after a tap, page errors visible, missing figures, and a relay 404 on two new files. Headless proof on plain http (127.0.0.2): wc card 125-139 ms, with sound apart 116-125 ms. Image rebuilt; `tools/stream.sh selftest` green (the tap test test_a_slow_client_falls_to_a_keyframe_while_a_fast_one_gets_every_frame is timing-flaky: failed 2 of 4 runs, passes on rerun).
+- **Next, needs the owner:** the second sitting, four runs, in docs/briefs/m15/opt2/PHONE-RUNS.md ("Second sitting"). Gate and stop rule unchanged (150 ms and feels fine). Nothing has run on the phone with these fixes; Safari decoding the 4:2:0 stream is unverified.
+- Superseded notes follow.
+
 ## Where it stands (Nov 13, 2026, afternoon) — read this first
 
 - **State:** opt2 batch built and committed (docs/briefs/m15/opt2/, reports opt2-1 to opt2-7): host tap (`SESSION_TAP=on`), WebSocket `/tap` through the player port (no new port, no firewall rule), page option `player=wc`, its measurement (marker and card read from the canvas, "Custom player (wc)" table), and `SESSION_AUDIO=separate` as sound in its own process (host pipeline time 8 ms against 33-42 ms joined). Everything defaults off. Headless Chrome proof: current player 259 ms card, `player=wc` 137-153 ms (software decode). Not run on the phone.

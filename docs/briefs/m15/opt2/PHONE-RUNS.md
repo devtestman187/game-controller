@@ -37,3 +37,26 @@ grep -n -A14 -E "^(switches:|Streaming quality|Independent check|Custom player \
 Order of reading: the "Independent check" verdict line (agree / DISAGREE by N ms); card press-to-screen median and p95; "Custom player (wc)" (recv -> decode, decode -> draw, drops, backlog, key requests, queue max, decode config); `jbtarget` is not used here. Then ask the owner how it feels.
 
 Headless proof (no phone, Chrome, software decode, game at 41-48 fps), for comparison: current 259 ms card; wc 137, 141, 142, 153 ms; host pipeline time with sound apart 8 ms against 33-37 ms joined. These prove the path, not the phone.
+
+---
+
+# Second sitting (after the Nov 13 faults): four runs
+
+First sitting (Nov 13): runs 1-2 (current player) measured 162 / 176 ms card (marker 159 / 176); runs 3-6 gave no measurement (the `player=wc` page never registered; see docs/briefs/m15/opt2b/CONTEXT.md and the journey notes). Baseline for the gate stays those two figures.
+
+Fixed since: the page died on a 404 (two new files not on the relay's list), the wc batch now registers without the marker, the tap encodes 4:2:0 (avc1.42C02A) so Safari should decode it, decoder errors rebuild and are counted, a tap anywhere starts the sound, page errors show on the overlay and in the session log. Run `bash tools/stream.sh build` first (done after the last fix), then the same routine as above (owner closes all stream tabs and says ready; one run at a time; I give the URL).
+
+| # | Label | Extra part of the command (after `bash tools/stream.sh bench --viewer external --seconds 60 --press-seconds 30 --set SESSION_MARKER=on --set SESSION_TAP=on`) | URL |
+|---|---|---|---|
+| 1 | wc, run 1 | `--label wc2-1 --player-query "marker=1&player=wc"` | `http://<PC address>:45782/?marker=1&player=wc` |
+| 2 | wc, run 2 | `--label wc2-2 ...` as 1 | same |
+| 3 | wc + sound apart, run 1 | `--label wc2-sep-1 --set SESSION_AUDIO=separate --player-query "marker=1&player=wc"` | same |
+| 4 | wc + sound apart, run 2 | `--label wc2-sep-2 ...` as 3 | same |
+
+What the owner does for sound (runs 3-4 only; runs 1-2 have no sound by design): after the page opens, **tap the picture once** (anywhere), with the phone's mute switch off and the volume up. A "tap for sound" button shows if the browser has blocked it. Say whether you hear it; the bench table's `sound` column should read `playing` (`blocked` means no tap reached the page).
+
+If a run still shows "no viewer" after 30 s, the phone's page is showing an error: it is printed on the page's top line and in the session log (`relay: page error ...`). Read it out or screenshot it; do not wait the 180 s. A page that says VideoDecoder is missing, or "the host sends 4:4:4", names its own cause.
+
+Reading the logs: same grep as above. New columns in "Custom player (wc)": errors, rebuilds, error, sound, snd playing. The "Streaming quality" row now has fps, recv, decoded, dropped and freezes for the wc page too. The gate: card median 150 ms or less, marker within 25 ms, feels fine.
+
+Headless proof of the fixed build (plain http on 127.0.0.2, Chrome, software decode): wc 139 ms card (marker 129); wc + sound apart 116 and 125 ms card (marker 102, 103); the table and the row render; sound `playing`. Not Safari.
