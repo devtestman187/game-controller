@@ -13,7 +13,7 @@ Steps 1–3 of streaming-custom.md §5, all in WSL2 containers on the PC.
 - **Gate 1:**
   1. A family plays Shape Race and a Bumper Round on a TV browser and on a laptop, with phones as controllers, on home Wi-Fi.
   2. All six latency stages appear in one report for that session.
-  3. A press reaches the screen in **150 ms or less** on the home network (filmed and from the stats), and play feels good to the owner's family. *(Changed Nov 13, 2026 from "under 80 ms": the owner, citing published thresholds of 100-150 ms for casual games and that a browser on a phone cannot reach 80 ms. If the custom player (opt2) does not reach 150 ms on the phone it is dropped and the current player stays; latency work ends after that round.)*
+  3. A press reaches the screen in **150 ms or less** on the home network (filmed and from the stats), and play feels good to the owner's family. *(Changed Nov 13, 2026 from "under 80 ms": the owner, citing published thresholds of 100-150 ms for casual games and that a browser on a phone cannot reach 80 ms. Tried and dropped Nov 13, 2026: the custom player (opt2) missed 150 ms in 3 of 4 phone runs and froze in 3 of 4, so the current player stays. If the custom player (opt2) does not reach 150 ms on the phone it is dropped and the current player stays; latency work ends after that round.)*
   4. Thirty minutes of play with no stall, no drift between sound and picture.
 - **If not:** if the delay is the problem, tune (phase 1 step 3) and, failing that, compare with a Sunshine + Moonlight baseline (cloud-streaming.md) to learn whether the limit is our stack or the idea. If the feel is wrong even at low delay, stop: streaming video is not right for these games, and the snapshot path (below) becomes the product.
 
