@@ -45,15 +45,21 @@ class FakeClock:
 
 
 class FakeQueue:
-    """One client's queue counters, as tap_queue.ClientQueue.level() gives them."""
+    """One client's queue counters and its sender's wait, as the diag reads them."""
 
     def __init__(self):
         self.depth = 0
         self.dropped = 0
         self.key_requests = 0
+        self.aged = 0
+        self.blocked = 0.0
 
     def level(self):
-        return self.depth, self.dropped, self.key_requests
+        return self.depth, self.dropped, self.key_requests, self.aged
+
+    def blocked_s(self):
+        """What tap_sender.MessageSender.blocked_s() gives the diag (M15 opt2c-4)."""
+        return self.blocked
 
 
 class FakeSock:
@@ -61,37 +67,6 @@ class FakeSock:
 
     def __init__(self, outq=0):
         self.outq = outq
-
-
-class ReadySocket:
-    """A socket that takes every byte of a message in one send."""
-
-    def __init__(self):
-        self.bytes = 0
-
-    def send(self, data):
-        self.bytes += len(data)
-        return len(data)
-
-
-class StalledSocket:
-    """A socket whose send times out without taking a byte."""
-
-    def send(self, data):
-        raise socket.timeout()
-
-
-class HalfSocket:
-    """A socket that takes half of a message and then times out."""
-
-    def __init__(self):
-        self.taken = 0
-
-    def send(self, data):
-        if self.taken:
-            raise socket.timeout()
-        self.taken = len(data) // 2
-        return self.taken
 
 
 class WindowTest(unittest.TestCase):
@@ -102,9 +77,9 @@ class WindowTest(unittest.TestCase):
         self.diag = tap_diag.TapDiag(clock=self.clock, send_queue_bytes=lambda sock: sock.outq)
 
     def client(self, name="phone", outq=0):
-        """Tracks one client in the window; answers its fake queue."""
+        """Tracks one client in the window; answers its fake queue and sender."""
         queue = FakeQueue()
-        self.diag.client_added(name, FakeSock(outq), queue.level)
+        self.diag.client_added(name, FakeSock(outq), queue.level, queue.blocked_s)
         return queue
 
     def test_a_window_of_frames_is_one_line_with_the_encoder_s_numbers(self):
@@ -193,12 +168,26 @@ class WindowTest(unittest.TestCase):
         self.client()
         self.diag.send("phone", 2 * KIB, 0.020)
         self.diag.send("phone", KIB, 0.002)
-        self.diag.send("phone", 0, 0.001, timed_out=True)
-        self.diag.send("phone", KIB // 2, 0.030, partial=True)
+        self.diag.send("phone", 0, 0.001)
+        self.diag.send("phone", KIB // 2, 0.030)
         fields = fields_of(self.diag.line())
         self.assertEqual((fields["sent"], fields["sendmax"], fields["slow"]), (3, 30, 2))
-        window = self.diag.window()
-        self.assertEqual((window["partial"], window["timeouts"]), (1, 1))
+
+    def test_aged_frames_and_blocked_time_count_only_what_the_window_added(self):
+        queue = self.client()
+        queue.aged, queue.blocked = 3, 0.25
+        self.diag.queued("phone")
+        queue.aged, queue.blocked = 5, 0.25
+        fields = fields_of(self.diag.line())
+        self.assertEqual((fields["aged"], fields["blocked"]), (2, 0))
+
+    def test_the_blocked_time_of_a_message_still_waiting_is_in_its_window(self):
+        queue = self.client()
+        self.diag.queued("phone")
+        queue.blocked = 0.040
+        self.assertEqual(fields_of(self.diag.line())["blocked"], 40)
+        queue.blocked = 0.140
+        self.assertEqual(fields_of(self.diag.line())["blocked"], 100)
 
     def test_several_clients_are_summed_or_maxed_as_the_names_say(self):
         first = self.client("a", outq=4 * KIB)
@@ -206,10 +195,12 @@ class WindowTest(unittest.TestCase):
         first.depth, second.depth = 4, 2
         self.diag.queued("a")
         self.diag.queued("b")
+        first.blocked, second.blocked = 0.020, 0.030
         self.diag.send("a", KIB, 0.020)
         self.diag.send("b", 2 * KIB, 0.050)
         fields = fields_of(self.diag.line())
         self.assertEqual((fields["q"], fields["sent"], fields["sendmax"], fields["outq"]), (4, 3, 50, 8))
+        self.assertEqual(fields["blocked"], 50)
 
     def test_outq_is_minus_one_when_the_kernel_will_not_say(self):
         self.client(outq=-1)
@@ -220,36 +211,8 @@ class WindowTest(unittest.TestCase):
         self.assertRegex(
             self.diag.line(),
             r"^tapdiag: t=1000 fr=\d+ kb=\d+ key=\d+ keymax=\d+ dmax=\d+ q=\d+ drop=\d+ "
-            r"kreq=\d+ sent=\d+ sendmax=\d+ slow=\d+ outq=-?\d+$",
+            r"kreq=\d+ sent=\d+ sendmax=\d+ slow=\d+ blocked=\d+ aged=\d+ outq=-?\d+$",
         )
-
-
-class SendMessageTest(unittest.TestCase):
-    """One message to a client, measured and reported as its end."""
-
-    def setUp(self):
-        self.clock = FakeClock()
-        self.diag = tap_diag.TapDiag(clock=self.clock, send_queue_bytes=lambda sock: 0)
-        self.diag.client_added("phone", FakeSock(), lambda: (0, 0, 0))
-
-    def test_a_message_a_socket_takes_whole_is_ok_and_counted(self):
-        sock = ReadySocket()
-        self.assertEqual(tap_diag.send_message(self.diag, "phone", sock, b"x" * (2 * KIB)), tap_diag.SEND_OK)
-        self.assertEqual(sock.bytes, 2 * KIB)
-        self.diag.line()
-        self.assertEqual(self.diag.window()["sent_kb"], 2)
-
-    def test_a_socket_that_times_out_at_once_is_blocked_not_broken(self):
-        message = b"x" * (2 * KIB)
-        self.assertEqual(tap_diag.send_message(self.diag, "phone", StalledSocket(), message), tap_diag.SEND_BLOCKED)
-        self.diag.line()
-        self.assertEqual(self.diag.window()["timeouts"], 1)
-
-    def test_a_message_half_sent_leaves_the_client_broken(self):
-        sock = HalfSocket()
-        self.assertEqual(tap_diag.send_message(self.diag, "phone", sock, b"x" * (4 * KIB)), tap_diag.SEND_BROKEN)
-        self.diag.line()
-        self.assertEqual((self.diag.window()["partial"], self.diag.window()["sent_kb"]), (1, 2))
 
 
 class SendQueueTest(unittest.TestCase):

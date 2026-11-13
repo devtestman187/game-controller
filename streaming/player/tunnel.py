@@ -13,6 +13,12 @@ write are what the line reports, one line a second while a tunnel is open:
 sent toward the page, both in the window; `sendmax` is the longest write toward
 the phone and `slow` how many took over slow_write_s; `outq` is the larger of
 the two sockets' unsent bytes, -1 when the kernel will not say.
+
+Both of its sockets are tuned before a byte moves (M15 opt2c-4): no Nagle
+delay, and small buffers, so a phone that stops reading blocks this copy and
+the tap server behind it instead of being absorbed by the kernel. The sizes are
+the tap server's own (TAP_SNDBUF_BYTES there): the two run in separate
+processes and folders, so each keeps its copy, as it does for TIOCOUTQ.
 """
 
 import fcntl
@@ -27,6 +33,18 @@ import time
 tap_address = "127.0.0.1"
 tunnel_read_bytes = 64 * 1024
 tunnel_connect_timeout_s = 2
+
+# The phone-facing send buffer: about six delta frames at 1080p60, so a stalled
+# page fills it in tens of milliseconds and the tap server's own send blocks
+# within a frame or two (M15 opt2c-4). The same size as tap_server's.
+TAP_SNDBUF_BYTES = 96 * 1024
+
+# The tap-facing socket's two buffers: the page's messages are a few dozen
+# bytes and the tap server's answer to an upgrade a few hundred, so 64 KiB is
+# already generous, and it is what keeps the tap server from pushing a backlog
+# into this process unseen.
+TAP_RCVBUF_BYTES = 64 * 1024
+TAP_UP_SNDBUF_BYTES = 64 * 1024
 
 # How often a line goes to the log while the tunnel is open.
 log_interval_s = 1.0
@@ -68,8 +86,6 @@ def relay(tap_port, phone, phone_read, requestline, headers):
     """
     tap = socket.create_connection((tap_address, tap_port), timeout=tunnel_connect_timeout_s)
     tap.settimeout(None)
-    for sock in (tap, phone):
-        sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
     head = requestline + "\r\n" + "".join("%s: %s\r\n" % item for item in headers.items()) + "\r\n"
     Tunnel(phone, tap).run(head.encode("latin-1"), phone_read)
 
@@ -100,13 +116,20 @@ def _kb(size_bytes):
 
 
 class Tunnel:
-    """One tunnel's counters and the thread that writes its line a second.
+    """One tunnel's two sockets, its counters and the thread that writes its line.
 
     Each direction is copied by one thread, so the lock only keeps the line's
-    reads and the copies' additions apart.
+    reads and the copies' additions apart. The sockets are tuned here, before
+    run() moves a byte: no Nagle delay, and buffers small enough that a phone
+    which stops reading is felt by this process and by the tap server.
     """
 
     def __init__(self, phone, tap, clock=time.time, send_queue_bytes=socket_send_queue):
+        for sock in (phone, tap):
+            sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+        phone.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, TAP_SNDBUF_BYTES)
+        tap.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, TAP_RCVBUF_BYTES)
+        tap.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, TAP_UP_SNDBUF_BYTES)
         self._phone = phone
         self._tap = tap
         self._clock = clock

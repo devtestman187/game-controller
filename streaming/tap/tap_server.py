@@ -9,12 +9,14 @@ no new port and no firewall rule is needed.
 
 Delay can never pile up: each client's queue is bounded, and one that falls
 behind has its backlog dropped and waits for the next keyframe, which carries
-FLAG_DISCONTINUITY (PROTOCOL.md, backlog rule).
+FLAG_DISCONTINUITY (PROTOCOL.md, backlog rule). The writes are tap_sender's: a
+message is finished when the socket allows, never abandoned, and the small send
+buffer below makes a stalled phone block the sender (M15 opt2c-4).
 
 One thread accepts, one logs the counters every STATS_LOG_INTERVAL_S, and one
-serves each client: it waits on the client's socket and on a wake pipe that
-publish() writes one byte to, so the pipeline's thread never blocks and the
-client's thread never polls.
+serves each client: it waits on the client's socket, on writability while a
+message waits, and on a wake pipe that publish() writes one byte to, so the
+pipeline's thread never blocks and the client's thread never polls.
 """
 
 import json
@@ -26,35 +28,36 @@ import time
 
 import tap_diag
 import tap_queue
+import tap_sender
 import tap_ws
 
 # Where the server listens: the session's own machine only, because the relay
 # is the only thing that may reach it (PROTOCOL.md).
 LISTEN_ADDRESS = "127.0.0.1"
 
-# What one socket read takes: a handshake head, a client's message, or what the
-# tap server has sent so far (PROTOCOL.md's tunnel rule).
+# What one socket read takes: a handshake head or a client's message (PROTOCOL.md).
 SOCKET_READ_BYTES = 64 * 1024
 
-# How long a write to a client may block before that client is dropped to its
-# next keyframe: on a LAN page, 50 ms of a stalled socket is already late.
-SEND_TIMEOUT_S = 0.05
+# The send buffer a client's socket gets, at accept: about six delta frames at
+# 1080p60, so a phone that stops reading fills it in tens of milliseconds and
+# the sender sees the stall. The kernel would auto-tune it to megabytes, which
+# is where the Nov 13 runs' first backlog hid (M15 opt2c-4). The relay's
+# phone-facing socket gets the same size from its own copy (another process).
+TAP_SNDBUF_BYTES = 96 * 1024
 
 # How often the listener looks up, so stop() can end the accept loop; no client
 # ever waits on it.
 ACCEPT_TIMEOUT_S = 0.2
 
-# How long a new connection gets to send its upgrade head: the relay forwards
-# a head it has already read, so this only catches a connection that never
-# speaks.
+# How long a new connection gets to send its upgrade head: the relay forwards a
+# head it has already read, so this only catches one that never speaks.
 HANDSHAKE_TIMEOUT_S = 2.0
 
 # How often the counters go to the session's log (PROTOCOL.md's line).
 STATS_LOG_INTERVAL_S = 5.0
 
 # How often the diagnostics line goes there: one window a second, so a stall of
-# three seconds is three lines (M15 opt2c). PROTOCOL.md's counters keep their
-# STATS_LOG_INTERVAL_S, counted in these ticks.
+# three seconds is three lines (M15 opt2c). PROTOCOL.md's counters keep theirs.
 DIAG_LOG_INTERVAL_S = 1.0
 STATS_LOG_TICKS = int(STATS_LOG_INTERVAL_S / DIAG_LOG_INTERVAL_S)
 
@@ -80,6 +83,13 @@ class _Client:
         self.wake, self.wake_sender = socket.socketpair()
         self.wake.setblocking(False)
         self.wake_sender.setblocking(False)
+        # The sender waits for the handshake, which is where the hello's fps
+        # comes from; until then nothing can be pending.
+        self.sender = None
+
+    def blocked_s(self):
+        """Seconds this client's messages have waited for its socket (M15 opt2c-4)."""
+        return 0.0 if self.sender is None else self.sender.blocked_s()
 
 
 class TapServer:
@@ -149,6 +159,15 @@ class TapServer:
             queues = [client.queue for client in self._clients]
         return tap_queue.totals(queues)
 
+    def client_sockets(self):
+        """The sockets it serves, in the order the clients connected.
+
+        A socket's options are its owner's, so the test of how each is tuned
+        (M15 opt2c-4) reads them here, not from the other end.
+        """
+        with self._lock:
+            return [client.sock for client in self._clients]
+
     def log_stats(self):
         """One line to stderr, as PROTOCOL.md has it: the session's log reads it."""
         stats = self.stats()
@@ -184,9 +203,10 @@ class TapServer:
     def _add(self, sock):
         """Starts the thread that serves one freshly accepted connection."""
         sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, TAP_SNDBUF_BYTES)
         sock.settimeout(HANDSHAKE_TIMEOUT_S)
         client = _Client(sock, self._request_key, self._clock)
-        self.diag.client_added(client, sock, client.queue.level)
+        self.diag.client_added(client, sock, client.queue.level, client.blocked_s)
         with self._lock:
             self._clients.append(client)
             thread = threading.Thread(target=self._serve, args=(client,), daemon=True)
@@ -198,27 +218,29 @@ class TapServer:
             leftover = self._handshake(client)
             if leftover is None:
                 return
-            # Both directions time out from here: a write that blocks past
-            # SEND_TIMEOUT_S drops the client to its next keyframe, and a read
-            # only ever happens when select says there is something to read.
-            client.sock.settimeout(SEND_TIMEOUT_S)
-            if not self._write(client, tap_ws.OPCODE_TEXT, self._hello_text().encode("utf-8"), is_frame=False):
+            # From here a read only follows select and every send is
+            # non-blocking (tap_sender): the socket needs no timeout of its own.
+            client.sock.settimeout(None)
+            info = self._info()
+            client.sender = tap_sender.MessageSender(client.sock, self.diag, client, info.get("fps"), self._clock)
+            sender = client.sender
+            sender.send_control(tap_ws.OPCODE_TEXT, self._hello_text(info).encode("utf-8"))
+            if not sender.pump(client.queue):
                 return
             # PROTOCOL.md: a new client starts on the next keyframe, so one is
             # asked for here, before the first frame it could be sent.
             client.queue.request_keyframe()
-            self._loop(client, leftover)
+            self._loop(client, leftover, sender)
         finally:
             self._remove(client)
 
-    def _hello_text(self):
+    def _hello_text(self, info):
         """PROTOCOL.md's hello with `chroma420` beside its fields (M15 opt2b-2).
 
         The field is extra to v1, which has no name for it: a page that does
         not know it ignores it, and one that does can say why a Safari decoder
         refuses a stream that is not 4:2:0.
         """
-        info = self._info()
         hello = json.loads(tap_queue.hello_message(info))
         hello["chroma420"] = info.get("chroma420")
         return json.dumps(hello)
@@ -257,13 +279,17 @@ class TapServer:
             return None
         return leftover
 
-    def _loop(self, client, buffer):
-        """Serves one client: reads its messages and writes its queued frames."""
+    def _loop(self, client, buffer, sender):
+        """Serves one client: reads its messages and writes what the socket takes."""
         fragments = bytearray()
         while True:
-            readable, _, _ = select.select([client.sock, client.wake], [], [])
+            now_s = self._clock()
+            readable, _, _ = select.select(
+                [client.sock, client.wake], sender.write_sockets(), [], sender.wait_s(now_s)
+            )
             if self._closed.is_set():
-                self._write(client, tap_ws.OPCODE_TEXT, tap_queue.END_MESSAGE, is_frame=False)
+                sender.send_control(tap_ws.OPCODE_TEXT, tap_queue.END_MESSAGE)
+                sender.pump(None)
                 return
             if client.wake in readable:
                 self._wake_drained(client)
@@ -275,13 +301,15 @@ class TapServer:
                 if not data:
                     return
                 buffer += data
-                buffer, fragments = self._read_frames(client, buffer, fragments)
+                buffer, fragments = self._read_frames(client, buffer, fragments, sender)
                 if buffer is None:
                     return
-            if not self._write_queued(client):
+            if sender.has_stalled(self._clock()):
+                return
+            if not sender.pump(client.queue):
                 return
 
-    def _read_frames(self, client, buffer, fragments):
+    def _read_frames(self, client, buffer, fragments, sender):
         """Every whole frame in `buffer`; a None buffer means the client must go."""
         while True:
             wire = tap_ws.decode_frame(buffer)
@@ -291,11 +319,10 @@ class TapServer:
             if not wire.masked or len(wire.payload) > CLIENT_MESSAGE_MAX_BYTES:
                 return None, fragments
             if wire.opcode == tap_ws.OPCODE_CLOSE:
-                self._write(client, tap_ws.OPCODE_CLOSE, wire.payload, is_frame=False)
+                sender.send_control(tap_ws.OPCODE_CLOSE, wire.payload)
                 return None, fragments
             if wire.opcode == tap_ws.OPCODE_PING:
-                if not self._write(client, tap_ws.OPCODE_PONG, wire.payload, is_frame=False):
-                    return None, fragments
+                sender.send_control(tap_ws.OPCODE_PONG, wire.payload)
                 continue
             if wire.opcode not in (tap_ws.OPCODE_TEXT, tap_ws.OPCODE_CONTINUATION):
                 continue
@@ -319,34 +346,6 @@ class TapServer:
             return
         if isinstance(message, dict) and message.get("type") == tap_queue.KEY_MESSAGE_TYPE:
             client.queue.request_keyframe()
-
-    def _write_queued(self, client):
-        """Writes every frame queued for this client; False when the client must go."""
-        while True:
-            frame = client.queue.take(0)
-            if frame is None:
-                return True
-            if not self._write(client, tap_ws.OPCODE_BINARY, tap_queue.frame_message(frame, int(time.time() * 1e6))):
-                return False
-
-    def _write(self, client, opcode, payload, is_frame=True):
-        """Writes one frame; False when the connection can never be in step again.
-
-        A send that blocks past the socket's timeout drops the client to its
-        next keyframe while nothing of the frame has gone out; after a partial
-        send the frame is half on the wire, so that client is closed instead of
-        being sent a stream no browser could parse. tap_diag sends and measures
-        it, so every call's time and outcome reach the diag line.
-        """
-        outcome = tap_diag.send_message(self.diag, client, client.sock, tap_ws.encode_frame(opcode, payload))
-        if outcome == tap_diag.SEND_BROKEN:
-            return False
-        if outcome == tap_diag.SEND_BLOCKED:
-            client.queue.drop_to_keyframe()
-            return True
-        if is_frame:
-            client.queue.note_sent(len(payload))
-        return True
 
     def _wake(self, client):
         """Notes that a frame is queued; a full pipe already has a wake pending."""

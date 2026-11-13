@@ -21,6 +21,7 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+import tap_diag
 import tap_queue
 import tap_server
 import tap_ws
@@ -33,10 +34,17 @@ RFC_ACCEPT = "s3pPLMBiTxaQ9kYGzzhZRbK+xOo="
 # How long a socket test waits for one answer before it fails.
 WAIT_S = 5
 
-# What a slow-client test sends per frame and how many frames it takes: enough
-# bytes that a client which never reads fills its socket buffers and stalls.
-SLOW_FRAME_BYTES = 256 * 1024
-SLOW_TEST_FRAMES = 64
+# What a slow-client test sends per frame, the most frames it publishes and the
+# receive buffer it gives a client that never reads. The server's 96 KiB send
+# buffer and this 4 KiB receive buffer are full within a handful of 64 KiB
+# frames, so the sender sees the stall long before a megabyte has been
+# published (M15 opt2c-4).
+SLOW_FRAME_BYTES = 64 * 1024
+SLOW_TEST_FRAMES = 16
+SLOW_RCVBUF_BYTES = 4096
+
+# An age limit no frame in these tests reaches, where ageing is not the subject.
+AGE_NEVER_S = 3600.0
 
 # The client frame opcodes RFC 6455 5.2 names.
 OPCODE_CONTINUATION = 0x0
@@ -187,7 +195,7 @@ class FrameMessageTest(unittest.TestCase):
     """PROTOCOL.md's 24-byte header before every access unit."""
 
     def test_a_keyframe_with_a_discontinuity_sets_both_flags(self):
-        frame = tap_queue.Frame(7, 1200, True, True, b"\x00\x00\x00\x01\x65")
+        frame = tap_queue.Frame(7, 1200, True, True, b"\x00\x00\x00\x01\x65", 0.0)
         message = tap_queue.frame_message(frame, 999)
         magic, version, flags, reserved, number, pts, sent = struct.unpack(">BBBBIQQ", message[:24])
         self.assertEqual((magic, version, flags, reserved), (0x54, 1, 0x03, 0))
@@ -195,7 +203,7 @@ class FrameMessageTest(unittest.TestCase):
         self.assertEqual(message[24:], b"\x00\x00\x00\x01\x65")
 
     def test_a_delta_frame_sets_no_flag(self):
-        message = tap_queue.frame_message(tap_queue.Frame(8, 0, False, False, b"p"), 1)
+        message = tap_queue.frame_message(tap_queue.Frame(8, 0, False, False, b"p", 0.0), 1)
         self.assertEqual(message[2], 0x00)
         self.assertEqual(len(message), tap_queue.HEADER_BYTES + 1)
 
@@ -218,7 +226,7 @@ class ClientQueueTest(unittest.TestCase):
     def fill(self):
         """A client started on a keyframe with four delta frames behind it."""
         self.queue.offer(0, 0, True, b"k")
-        self.queue.take(0)
+        self.queue.take_for_send(AGE_NEVER_S)
         self.offer_frames(1, tap_queue.QUEUE_FRAMES)
 
     def test_a_new_client_waits_for_a_keyframe(self):
@@ -228,14 +236,14 @@ class ClientQueueTest(unittest.TestCase):
 
     def test_a_keyframe_starts_the_client_without_the_flag(self):
         self.assertTrue(self.queue.offer(1, 0, True, b"k"))
-        frame = self.queue.take(0)
+        frame = self.queue.take_for_send(AGE_NEVER_S)
         self.assertEqual((frame.frame_no, frame.is_key, frame.discontinuity), (1, True, False))
         self.assertFalse(self.queue.needs_keyframe)
 
     def test_the_queue_holds_four_frames(self):
         self.fill()
         self.assertEqual(self.queue.stats()["high_water"], tap_queue.QUEUE_FRAMES)
-        frame = self.queue.take(0)
+        frame = self.queue.take_for_send(AGE_NEVER_S)
         self.assertEqual(frame.frame_no, 1)
 
     def test_an_overflow_drops_the_backlog_and_asks_for_a_key(self):
@@ -245,7 +253,7 @@ class ClientQueueTest(unittest.TestCase):
         self.assertEqual(self.key_requests, 1)
         # The four queued frames and the one that found the queue full.
         self.assertEqual(self.queue.stats()["dropped"], tap_queue.QUEUE_FRAMES + 1)
-        self.assertIsNone(self.queue.take(0))
+        self.assertIsNone(self.queue.take_for_send(AGE_NEVER_S))
 
     def test_delta_frames_are_ignored_until_a_keyframe(self):
         self.fill()
@@ -253,13 +261,13 @@ class ClientQueueTest(unittest.TestCase):
         for number in range(6, 10):
             self.assertFalse(self.queue.offer(number, 0, False, b"p"))
         self.assertEqual(self.key_requests, 1)
-        self.assertIsNone(self.queue.take(0))
+        self.assertIsNone(self.queue.take_for_send(AGE_NEVER_S))
 
     def test_the_first_frame_after_a_drop_is_a_flagged_keyframe(self):
         self.fill()
         self.queue.offer(5, 0, False, b"p")
         self.assertTrue(self.queue.offer(6, 0, True, b"k"))
-        frame = self.queue.take(0)
+        frame = self.queue.take_for_send(AGE_NEVER_S)
         self.assertEqual((frame.frame_no, frame.is_key, frame.discontinuity), (6, True, True))
         self.assertEqual(self.key_requests, 1)
 
@@ -271,17 +279,10 @@ class ClientQueueTest(unittest.TestCase):
 
     def test_the_counters_follow_what_was_sent(self):
         self.queue.offer(0, 0, True, b"key")
-        frame = self.queue.take(0)
+        frame = self.queue.take_for_send(AGE_NEVER_S)
         self.queue.note_sent(len(frame.data))
         stats = self.queue.stats()
         self.assertEqual((stats["sent"], stats["bytes"], stats["dropped"]), (1, 3, 0))
-
-    def test_a_blocked_write_drops_to_a_keyframe_and_counts_the_frame(self):
-        self.fill()
-        self.queue.drop_to_keyframe()
-        self.assertTrue(self.queue.needs_keyframe)
-        self.assertEqual(self.key_requests, 1)
-        self.assertEqual(self.queue.stats()["dropped"], tap_queue.QUEUE_FRAMES + 1)
 
 
 class FakeClock:
@@ -411,21 +412,51 @@ class LoopbackTest(unittest.TestCase):
         self.wait_for(lambda: self.server.stats()["clients"] == 0, "the client to go")
 
     def test_a_slow_client_falls_to_a_keyframe_while_a_fast_one_gets_every_frame(self):
+        """Deterministic: only the client that never reads can lose a frame.
+
+        The fast client reads every frame before the next is published, so its
+        queue never fills; the slow one's socket fills and its queue overflows.
+        The loop stops at the first drop, within SLOW_TEST_FRAMES frames.
+        """
         fast = self.client()
         fast.hello()
-        slow = self.client(rcvbuf_bytes=4096)
+        slow = self.client(rcvbuf_bytes=SLOW_RCVBUF_BYTES)
         slow.hello()
         self.wait_for(lambda: self.server.stats()["clients"] == 2, "both clients")
         frame = bytes(SLOW_FRAME_BYTES)
         self.server.publish(0, 0, True, frame)
         self.assertEqual(fast.message()[0], tap_ws.OPCODE_BINARY)
+        published = 0
         for number in range(1, SLOW_TEST_FRAMES + 1):
             self.server.publish(number, number * 1000, False, frame)
+            published = number
             _, payload = fast.message()
             self.assertEqual(struct.unpack(">I", payload[4:8])[0], number)
-        stats = self.server.stats()
-        self.assertGreater(stats["dropped"], 0)
-        self.assertGreaterEqual(self.key_requests, 2)
+            if self.server.stats()["dropped"] > 0:
+                break
+        self.wait_for(lambda: self.server.stats()["per_client"][0]["sent"] == published + 1, "the fast client")
+        # The fast client first, then the slow one (the order they connected).
+        fast_stats, slow_stats = self.server.stats()["per_client"]
+        self.assertEqual(fast_stats["dropped"], 0)
+        self.assertGreater(slow_stats["dropped"], 0)
+        # The sender saw the stall: the slow client's socket holds unsent bytes,
+        # and no more of them than twice its small send buffer.
+        unsent = tap_diag.socket_send_queue(self.server.client_sockets()[1])
+        self.assertGreater(unsent, 0)
+        self.assertLessEqual(unsent, 2 * tap_server.TAP_SNDBUF_BYTES)
+
+    def test_the_socket_to_a_client_has_no_nagle_and_a_small_send_buffer(self):
+        """The tap's own hop is tuned, read back from the socket it accepted (M15 opt2c-4).
+
+        A socket's options are its owner's, so only the server's own socket can
+        say; Linux answers a requested buffer with twice what was asked for.
+        """
+        client = self.client()
+        client.hello()
+        self.wait_for(lambda: len(self.server.client_sockets()) == 1, "the accepted socket")
+        sock = self.server.client_sockets()[0]
+        self.assertNotEqual(sock.getsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY), 0)
+        self.assertLessEqual(sock.getsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF), 2 * tap_server.TAP_SNDBUF_BYTES)
 
     def test_end_is_sent_when_the_server_stops(self):
         client = self.client()

@@ -591,18 +591,31 @@ With the tap on, two more lines go there once a second while a client or a
 tunnel is open (M15 opt2c):
 
 ```
-tapdiag: t=<unix s> fr=<n> kb=<n> key=<n> keymax=<KB> dmax=<KB> q=<max depth> drop=<n> kreq=<n> sent=<KB> sendmax=<ms> slow=<n> outq=<KB max>
+tapdiag: t=<unix s> fr=<n> kb=<n> key=<n> keymax=<KB> dmax=<KB> q=<max depth> drop=<n> kreq=<n> sent=<KB> sendmax=<ms> slow=<n> blocked=<ms> aged=<n> outq=<KB max>
 tunnel: t=<unix s> up=<KB> down=<KB> sendmax=<ms> slow=<n> outq=<KB max>
 ```
 
 `tapdiag:` is the tap server's own view — the encoder's frames and bytes, each
 client's queue depth, drops and keyframe requests, and the bytes still unsent in
 its socket — and `tunnel:` the relay's — bytes both ways and the unsent bytes of
-the phone-facing socket. `sendmax` and `slow` time the writes toward the phone;
-a backlog that only `outq` shows is in the kernel's buffer, not the encoder,
-which is where a phone that stops reading hides it. A bench keeps both kinds of
-line in `<results>/<label>-tapdiag.log` and says one `tap diagnostics:` line
-with their worst second.
+the phone-facing socket. `sendmax` and `slow` time the writes toward the phone,
+`blocked` the milliseconds a message waited for its socket to allow more in the
+window, and `aged` the queued frames dropped for being older than two frame
+times. A backlog that only `outq` shows is in the kernel's buffer, not the
+encoder, which is where a phone that stops reading hides it. A bench keeps both
+kinds of line in `<results>/<label>-tapdiag.log` and says one
+`tap diagnostics:` line with their worst second.
+
+A message is never abandoned half-way (M15 opt2c-4): a frame or a control
+message the socket will not take waits in the sender and is finished when the
+socket allows, and a phone that takes nothing for 5 s is closed rather than
+written to forever. Frames older than two frame times (`AGE_LIMIT`, 34 ms at
+60 fps) are dropped before a message starts; if the oldest one left is a delta
+whose predecessor went that way, the queue jumps to its newest keyframe — or
+clears and waits for the next one under the key rule above. Both ends keep
+their send buffers small (96 KiB toward the phone, 64 KiB in the tunnel) so a
+stalled phone shows as `blocked` and `outq` in tens of milliseconds, not in
+megabytes the kernel would otherwise absorb.
 
 A keyframe request is one at a time on both sides (M15 opt2c-3): a client's
 raise stays outstanding until a keyframe is queued for it or 2.5 s pass, two

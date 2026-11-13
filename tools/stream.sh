@@ -592,6 +592,8 @@ cmd_selftest() {
   wsl_run "cd $dest && timeout 120 python3 streaming/tap/tap_diag_test.py" || fail "the tap's diagnostics tests failed"
   say "testing the tap's keyframe rule in $distro …"
   wsl_run "cd $dest && timeout 120 python3 streaming/tap/tap_queue_test.py" || fail "the tap queue's tests failed"
+  say "testing the tap's sender in $distro …"
+  wsl_run "cd $dest && timeout 120 python3 streaming/tap/tap_sender_test.py" || fail "the tap sender's tests failed"
   say "testing the tap runner in $distro …"
   wsl_run "cd $dest && timeout 120 python3 streaming/tap/tap_runner_test.py" || fail "the tap runner's tests failed"
   say "testing the tap server in $distro …"

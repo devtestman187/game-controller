@@ -5,25 +5,26 @@ the encoder's output, each client's queue and each client's socket apart, in
 windows of one second, and render one line per window for the session's log:
 
     tapdiag: t=<unix s> fr=<n> kb=<n> key=<n> keymax=<KB> dmax=<KB> q=<max depth>
-        drop=<n> kreq=<n> sent=<KB> sendmax=<ms> slow=<n> outq=<KB max>
+        drop=<n> kreq=<n> sent=<KB> sendmax=<ms> slow=<n> blocked=<ms> aged=<n>
+        outq=<KB max>
 
 `fr` is the encoder's frames in the window and `kb` their kilobytes, `key` the
 keyframes and `keymax` the largest of them, `dmax` the largest delta frame (the
 deltas' average is kept too, see window()). `q` is the deepest any client's
 queue was, `drop` the frames clients lost and `kreq` the keyframes they asked
-for, `sent` the bytes written to their sockets and `sendmax` the longest one
-send() call took, `slow` how many took over SLOW_SEND_S, and `outq` the bytes
-still unsent in a kernel send buffer. With several clients `q`, `sendmax` and
-`outq` are the largest any of them saw; `drop`, `kreq` and `sent` are sums;
-partial sends and timeouts are counted too and read through window(). `outq` is
--1 when the kernel will not say.
+for, `aged` the frames dropped for being too old to send, `sent` the bytes
+written to their sockets and `sendmax` the longest one send() call took, `slow`
+how many took over SLOW_SEND_S, `blocked` the time any client's message spent
+waiting for its socket (M15 opt2c-4), and `outq` the bytes still unsent in a
+kernel send buffer. With several clients `q`, `sendmax` and `outq` are the
+largest any of them saw; `drop`, `kreq`, `aged`, `sent`, `slow` and `blocked`
+are sums. `outq` is -1 when the kernel will not say.
 
 Each method takes one lock and touches a few integers, so the pipeline's thread
 pays almost nothing for a frame.
 """
 
 import fcntl
-import socket
 import struct
 import threading
 import time
@@ -35,12 +36,6 @@ SLOW_SEND_S = 0.01
 # How long after the last client was seen a window with frames in it still gets
 # a line: those frames may still be on their way to that client.
 CLIENT_RECENT_S = 10.0
-
-# What one message's send came to: all of it, nothing of it (the client falls to
-# its next keyframe) or part of it (the client can never be in step again).
-SEND_OK = "ok"
-SEND_BLOCKED = "blocked"
-SEND_BROKEN = "broken"
 
 # The line's own units: whole kilobytes, whole milliseconds.
 KB_BYTES = 1024
@@ -65,79 +60,63 @@ def socket_send_queue(sock):
     return struct.unpack("i", unsent)[0]
 
 
-def send_message(diag, client, sock, message):
-    """Sends one whole message, measuring every send() call; answers a SEND_ value.
-
-    A call that times out with nothing of the message sent leaves the client
-    able to start again at its next keyframe; one that times out after part of
-    it has gone out leaves a stream no browser could parse, and the client is
-    closed instead.
-    """
-    sent = 0
-    while sent < len(message):
-        chunk = message[sent:]
-        started = time.monotonic()
-        try:
-            count = sock.send(chunk)
-        except socket.timeout:
-            diag.send(client, 0, time.monotonic() - started, timed_out=True)
-            return SEND_BROKEN if sent else SEND_BLOCKED
-        except OSError:
-            # A closed or reset connection: the client goes either way.
-            return SEND_BROKEN
-        sent += count
-        diag.send(client, count, time.monotonic() - started, partial=count < len(chunk))
-    return SEND_OK
-
-
 def _kb(size_bytes):
     """Bytes as the line counts them: whole kilobytes, -1 kept as it is."""
     return -1 if size_bytes < 0 else size_bytes // KB_BYTES
 
 
 class _ClientWindow:
-    """One client's part of a window: its queue's counters and its socket's sends.
+    """One client's part of a window: its queue's counters and its sender's waits.
 
     The queue's counters are totals that both threads move, so what this window
-    counts is what they did since the diag last looked.
+    counts is what they did since the diag last looked; the sender's blocked
+    time is a total too, so a message still waiting is in the window it waits in.
     """
 
-    def __init__(self, sock, level):
+    def __init__(self, sock, level, blocked_s):
         self.sock = sock
         self.level = level
+        self.blocked = blocked_s
         self.closed = False
         self.depth_max = 0
         self.dropped = 0
         self.key_requests = 0
+        self.aged = 0
+        self.blocked_s = 0.0
         self.dropped_total = None
         self.key_total = None
+        self.aged_total = None
+        self.blocked_total = None
         self.sent_bytes = 0
         self.send_max_s = 0.0
         self.slow = 0
-        self.timeouts = 0
-        self.partial = 0
         self.outq = -1
 
     def look(self):
-        """Adds what the queue's counters did since the last look, and its depth."""
-        depth, dropped, key_requests = self.level()
+        """Adds what the queue's and the sender's totals did since the last look."""
+        depth, dropped, key_requests, aged = self.level()
+        blocked_s = self.blocked()
         self.depth_max = max(self.depth_max, depth)
         if self.dropped_total is not None:
             self.dropped += max(0, dropped - self.dropped_total)
             self.key_requests += max(0, key_requests - self.key_total)
+            self.aged += max(0, aged - self.aged_total)
+            self.blocked_s += max(0.0, blocked_s - self.blocked_total)
         self.dropped_total = dropped
         self.key_total = key_requests
+        self.aged_total = aged
+        self.blocked_total = blocked_s
 
     def reset(self):
         """Starts a window: what this client did is the last line's, not the next one's."""
         self.depth_max = 0
         self.dropped = 0
         self.key_requests = 0
+        self.aged = 0
+        self.blocked_s = 0.0
         self.sent_bytes = 0
         self.send_max_s = 0.0
         self.slow = 0
-        self.timeouts = 0
-        self.partial = 0
         self.outq = -1
 
 
@@ -171,14 +150,16 @@ class TapDiag:
                 self._delta_bytes += size_bytes
                 self._delta_max = max(self._delta_max, size_bytes)
 
-    def client_added(self, client, sock, level):
-        """Tracks one client: the key the other calls use, its socket, its queue's level().
+    def client_added(self, client, sock, level, blocked_s):
+        """Tracks one client: the key the other calls use, its socket, its totals.
 
-        `level()` answers the queue's depth and its totals of dropped frames and
-        keyframe requests, as tap_queue.ClientQueue.level() does.
+        `level()` answers the queue's depth and its totals of dropped, aged and
+        asked frames, as tap_queue.ClientQueue.level() does; `blocked_s()`
+        answers the seconds its sender's messages have waited, as
+        tap_sender.MessageSender.blocked_s() does.
         """
         with self._lock:
-            self._clients[client] = _ClientWindow(sock, level)
+            self._clients[client] = _ClientWindow(sock, level, blocked_s)
             self._last_client_s = self._clock()
 
     def client_removed(self, client):
@@ -199,8 +180,8 @@ class TapDiag:
             window.look()
             self._last_client_s = self._clock()
 
-    def send(self, client, size_bytes, seconds, timed_out=False, partial=False):
-        """Counts one send() call: its bytes, how long it took and how it ended."""
+    def send(self, client, size_bytes, seconds):
+        """Counts one send() call: its bytes, how long it took and what is left in the socket."""
         with self._lock:
             window = self._clients.get(client)
             if window is None:
@@ -209,10 +190,6 @@ class TapDiag:
             window.send_max_s = max(window.send_max_s, seconds)
             if seconds > SLOW_SEND_S:
                 window.slow += 1
-            if timed_out:
-                window.timeouts += 1
-            if partial:
-                window.partial += 1
             window.outq = max(window.outq, self._send_queue_bytes(window.sock))
             self._last_client_s = self._clock()
 
@@ -232,7 +209,7 @@ class TapDiag:
             return None
         return (
             "tapdiag: t=%d fr=%d kb=%d key=%d keymax=%d dmax=%d q=%d drop=%d kreq=%d "
-            "sent=%d sendmax=%d slow=%d outq=%d"
+            "sent=%d sendmax=%d slow=%d blocked=%d aged=%d outq=%d"
             % (
                 numbers["t"],
                 numbers["frames"],
@@ -246,6 +223,8 @@ class TapDiag:
                 numbers["sent_kb"],
                 numbers["send_max_ms"],
                 numbers["slow"],
+                numbers["blocked_ms"],
+                numbers["aged"],
                 numbers["outq_kb"],
             )
         )
@@ -258,11 +237,11 @@ class TapDiag:
                 "depth_max": 0,
                 "dropped": 0,
                 "key_requests": 0,
+                "aged": 0,
+                "blocked_s": 0.0,
                 "sent_bytes": 0,
                 "send_max_s": 0.0,
                 "slow": 0,
-                "timeouts": 0,
-                "partial": 0,
                 "outq": -1,
             }
             for key, window in list(self._clients.items()):
@@ -284,11 +263,11 @@ class TapDiag:
                 "depth_max": clients["depth_max"],
                 "dropped": clients["dropped"],
                 "key_requests": clients["key_requests"],
+                "aged": clients["aged"],
+                "blocked_ms": int(round(clients["blocked_s"] * MS_PER_S)),
                 "sent_kb": _kb(clients["sent_bytes"]),
                 "send_max_ms": int(round(clients["send_max_s"] * MS_PER_S)),
                 "slow": clients["slow"],
-                "timeouts": clients["timeouts"],
-                "partial": clients["partial"],
                 "outq_kb": _kb(clients["outq"]),
                 "wanted": clients["connected"] or (self._frames > 0 and recent),
             }
@@ -304,11 +283,11 @@ class TapDiag:
         clients["depth_max"] = max(clients["depth_max"], window.depth_max)
         clients["dropped"] += window.dropped
         clients["key_requests"] += window.key_requests
+        clients["aged"] += window.aged
+        clients["blocked_s"] += window.blocked_s
         clients["sent_bytes"] += window.sent_bytes
         clients["send_max_s"] = max(clients["send_max_s"], window.send_max_s)
         clients["slow"] += window.slow
-        clients["timeouts"] += window.timeouts
-        clients["partial"] += window.partial
         clients["outq"] = max(clients["outq"], window.outq)
 
     def _reset(self):

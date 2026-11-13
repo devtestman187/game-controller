@@ -22,6 +22,10 @@ import tempfile
 import threading
 import time
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+import tunnel
+
 # The relay's own cap: a body at this size is refused before it is read.
 max_body_bytes = 64 * 1024
 
@@ -400,6 +404,31 @@ def test_tunnel_line(port, log_path):
         raw.close()
 
 
+def test_tunnel_socket_tuning():
+    """The tunnel's sockets are tuned before a byte moves; it is built here, since
+    only its owner can read a socket's options (M15 opt2c-4)."""
+    phone, phone_peer = tcp_pair()
+    tap, tap_peer = tcp_pair()
+    tunnel.Tunnel(phone, tap)
+    no_nagle = (socket.IPPROTO_TCP, socket.TCP_NODELAY)
+    check(phone.getsockopt(*no_nagle) != 0, "the tunnel's phone socket has no Nagle delay")
+    check(tap.getsockopt(*no_nagle) != 0, "and neither has its tap socket")
+    check(phone.getsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF) <= 2 * tunnel.TAP_SNDBUF_BYTES, "the phone side sends small")
+    check(tap.getsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF) <= 2 * tunnel.TAP_RCVBUF_BYTES, "the tap side receives small")
+    check(tap.getsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF) <= 2 * tunnel.TAP_UP_SNDBUF_BYTES, "and sends small too")
+    for sock in (phone, phone_peer, tap, tap_peer):
+        sock.close()
+
+
+def tcp_pair():
+    """Two connected loopback sockets: the options above are TCP's, not a pair's."""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as listener:
+        listener.bind(("127.0.0.1", 0))
+        listener.listen(1)
+        client = socket.create_connection(listener.getsockname(), timeout=answer_timeout_s)
+        return client, listener.accept()[0]
+
+
 def test_tap_without_a_port():
     """With no --tap-port (the session's tap off) /tap is not a path at all."""
     player_dir = os.path.dirname(os.path.abspath(__file__))
@@ -458,6 +487,7 @@ def main():
             test_session_identity(port)
             test_tap_tunnel(port, tap)
             test_tunnel_line(port, log_path)
+            test_tunnel_socket_tuning()
         finally:
             server.terminate()
             server.wait(timeout=answer_timeout_s)
