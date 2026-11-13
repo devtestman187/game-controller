@@ -120,20 +120,15 @@ export function wcErrorFactText(lastDecoderError, limit = factLengthLimit) {
  * @returns {object[]}
  */
 function diagGauges(diag) {
+  // Five of the thirteen figures: the host keeps at most 16 gauges per viewer
+  // (maxStreamSeries; the PRD size budget stops it growing), and the page has
+  // 11 others. The rest stay in diagSnapshot() for the page.
   return [
     { name: wcNames.gapMax, value: diag.gapMaxMs },
-    { name: wcNames.gaps100, value: diag.gapsOver100 },
     { name: wcNames.gaps250, value: diag.gapsOver250 },
-    { name: wcNames.recvBytes, value: diag.recvBytes },
     { name: wcNames.keyBytesMax, value: diag.keyBytesMax },
-    { name: wcNames.keyBytesAvg, value: diag.keyBytesAvg },
-    { name: wcNames.deltaBytesAvg, value: diag.deltaBytesAvg },
     { name: wcNames.decQueueMax, value: diag.decQueueMax },
     { name: wcNames.lagMax, value: diag.mainLagMaxMs },
-    { name: wcNames.lag50, value: diag.mainLagOver50 },
-    { name: wcNames.longTasks, value: diag.longTasks },
-    { name: wcNames.handlerMax, value: diag.msgHandlerMaxMs },
-    { name: wcNames.bytesPerSecMax, value: diag.bytesPerSecMax },
   ];
 }
 

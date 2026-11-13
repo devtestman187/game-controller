@@ -671,6 +671,15 @@ PY
   docker cp "$container:/run/thumb-party/sampler.log" "$out/sampler-$name.log" > /dev/null 2>&1 || true
   docker cp "$container:/run/thumb-party/app.log" "$out/app-$name.log" > /dev/null 2>&1 || true
   docker logs "$container" > "$out/container-$name.log" 2>&1 || true
+  # The tap's and the tunnel's one-second lines are in the session's own logs,
+  # not the container's output (M15 opt2c).
+  local piece
+  for piece in pipeline.log player.log; do
+    if docker cp "$container:/run/thumb-party/$piece" "$out/.diag-$piece" > /dev/null 2>&1; then
+      grep -E '^(tapdiag|tunnel): ' "$out/.diag-$piece" >> "$out/container-$name.log" || true
+    fi
+    rm -f "$out/.diag-$piece"
+  done
 }
 
 # The diagnostics the session's log carries (M15 opt2c): the tap's own line and

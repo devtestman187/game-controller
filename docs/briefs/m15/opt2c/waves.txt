@@ -1,1 +1,3 @@
 g1-pagediag g2-hostdiag
+g3-storm
+g4-sender g5-cardmarker

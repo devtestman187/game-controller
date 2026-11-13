@@ -276,9 +276,7 @@
         || gauge.name.startsWith("wcRecvBytes") || gauge.name.startsWith("wcKeyBytes")
         || gauge.name.startsWith("wcDeltaBytes") || gauge.name.startsWith("wcDecQueue")
         || gauge.name.startsWith("wcBytesPerSec")).map((gauge) => [gauge.name, gauge.value]),
-      [["wcGapMaxMs", 480], ["wcGaps100", 4], ["wcGaps250", 2], ["wcRecvBytes", 3500000], ["wcKeyBytesMax", 120000],
-        ["wcKeyBytesAvg", 96400], ["wcDeltaBytesAvg", 3240], ["wcDecQueueMax", 5], ["wcLagMaxMs", 220],
-        ["wcLag50", 3], ["wcLongTasks", 7], ["wcHandlerMaxMs", 41], ["wcBytesPerSecMax", 1800000]]);
+      [["wcGapMaxMs", 480], ["wcGaps250", 2], ["wcKeyBytesMax", 120000], ["wcDecQueueMax", 5], ["wcLagMaxMs", 220]]);
     });
     await check("a page with no diagnostics sends none of them", () => {
       const player = { counters: countersOf, stageSamples: () => [] };

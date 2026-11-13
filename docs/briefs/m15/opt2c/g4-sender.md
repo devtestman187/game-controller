@@ -1,0 +1,23 @@
+job: M15 opt2c-4 (sender): back-pressure is visible to the sender, frames older than two frame times are never sent, the flaky test is fixed
+pub: no
+wsl: tp-stream
+stop: after it.
+read: docs/briefs/m15/opt2c/CONTEXT.md (whole, first) · docs/briefs/m15/opt2c/g2-hostdiag-report.md (Summary, Hand-over) · docs/briefs/m15/opt2c/g3-storm-report.md (Summary, Hand-over) · docs/briefs/m15/opt2c/EVIDENCE.md (whole: where the proof found the backlog) · streaming/tap/tap_server.py (_loop, _write_queued, _write, SEND_TIMEOUT_S) · tap_queue.py · streaming/player/tunnel.py · streaming/tap/tap_server_test.py (the slow-client test and its helpers)
+decide: low-usage mode: never stop for a question; safest choice, list each under "Decisions"; stop only if truly impossible ("Blocked").
+
+Problem: the tunnel's phone-side socket has an auto-tuned send buffer (megabytes) and the tap server's socket to the tunnel is on loopback, so a stalled phone link does not push back to the tap server: it keeps sending, delay grows, nothing is dropped until the page does it. Also `_write` closes the client after a PARTIAL send that times out (50 ms), which a large keyframe over a small buffer will hit.
+
+Design (tests first; new test files allowed):
+1. TCP_NODELAY on every hop: tap server's accepted sockets (already), tunnel's two sockets (already), assert all three with getsockopt in tests.
+2. Small send buffers so back-pressure is visible: SO_SNDBUF = TAP_SNDBUF_BYTES (96 KiB, a named constant, set right after accept/connect, before data flows) on the tap server's client socket and on the tunnel's phone-facing socket; SO_RCVBUF 64 KiB on the tunnel's tap-facing socket and 64 KiB SO_SNDBUF on the tunnel's tap-facing one. Test with a client that does not read: after the buffers fill, the tap server's send reports blocked within N frames (no megabytes absorbed).
+3. A sender with message boundaries (new file streaming/tap/tap_sender.py; tap_server.py stays under 380 lines): per client, an outgoing message buffer: the message being written is finished when the socket allows (select for writability, non-blocking send), never abandoned half-way and never closes the client for being slow; frames arriving meanwhile wait in the queue (QUEUE_FRAMES stays 4). AGE rule: each queued frame carries its enqueue time; before the sender starts a message it drops frames older than AGE_LIMIT = 2 frame times (2 / fps, 34 ms at 60 fps, from the hello's fps, default 60); if the oldest queued frame is a delta whose predecessor was dropped, skip forward to the newest keyframe in the queue if any (the frame carries the discontinuity flag) else clear and wait for the next keyframe under g3's key rule (no extra ask). A client whose socket accepts nothing for 5 s is closed. Counters for the diag line: `aged` (frames dropped for age), `blocked_ms` (time with a message pending).
+4. The tunnel hop: decision recorded under Decisions: it stays (the relay owns the only port; passing the accepted socket across processes would need fd passing and a new moving part), hardened by items 1-2 and with its copy threads unchanged; if the evidence file shows the tunnel itself (Python copy loop, send-call durations) is a bottleneck, say so and what you changed.
+5. The flaky test `test_a_slow_client_falls_to_a_keyframe_while_a_fast_one_gets_every_frame`: make it deterministic (condition waits, not sleeps; the slow client's buffer is filled by publishing until stats show a drop, with a bounded number of frames) and run it 20 times in a row green (`for i in $(seq 20)`); if it cannot be made deterministic, quarantine with `@unittest.skip(reason)` naming the cause and add an equivalent deterministic test on tap_queue/tap_sender alone.
+6. Transport decision to record in the report: WebSocket stays. An unordered/unreliable WebRTC DataChannel sender is NOT buildable here: the image has no GstWebRTC typelib (checked: `gi.require_version("GstWebRTC","1.0")` fails, GstSdp is there) and adding one is a new package, not approved.
+
+in the report: Summary first, Hand-over last.
+self-check: docs/review-rules.md part A, items 1-5, one line each.
+rules: as CONTEXT.md; tests first.
+allow: streaming/tap/tap_sender.py · streaming/tap/tap_sender_test.py · streaming/tap/tap_server.py · streaming/tap/tap_server_test.py · streaming/tap/tap_queue.py · streaming/tap/tap_queue_test.py · streaming/tap/tap_diag.py · streaming/tap/tap_diag_test.py · streaming/tap/tap_runner.py · streaming/player/tunnel.py · streaming/player/serve.py · streaming/player/relay_test.py · tools/stream.sh · streaming/README.md · docs/briefs/m15/opt2/PROTOCOL.md · docs/briefs/m15/opt2c/g4-sender-report.md · docs/briefs/m15/opt2c/g4-sender
+check: format
+report: docs/briefs/m15/opt2c/g4-sender-report.md
