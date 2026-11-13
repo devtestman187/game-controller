@@ -2,12 +2,13 @@
 
 Written Nov 11, 2026 so that any later session (any model) can pick this up cold. Read this file first, then the two design files it names.
 
-## Paused here (Nov 12, 2026, late evening) — read this first
+## Where it stands (Nov 13, 2026, morning) — read this first
 
-- Owner paused in the middle of the marker phone runs (fix8). Done: baseline with marker (20261112-231305: press 205 ms, marker agrees, Safari decode-to-display 62 ms) and sound on its own connection (20261112-231546: press 141 ms, buffer 11, display 14, marker DISAGREES by 50 ms). Not done: the no-sound run (started, stopped on the owner's word).
-- Next, in order: (1) no-sound marker run; (2) repeat baseline and separate-sound twice each to learn the phone's noise; (3) a small flash job on why "marker glass" (141) and "marker press>screen" (91) disagree with separate sound; (4) bring the owner the decision: make `SESSION_AUDIO=separate` the default if it holds up, then the 30 ms host wait (sound sets the pipeline-wide latency; try sound in its own pipeline), then whether 80 ms is the right gate.
-- Phone-run routine (owner asked for it): the owner closes every stream tab and says "ready"; only then start ONE run in the background, wait for the printed URL (it carries `?marker=1`), give it to the owner; when the run ends, confirm `tools/stream.sh status` shows no sessions and tell the owner "Run N is done". Commands are in the "fix8: phone runs" block below.
-- Working mode: low-usage; batches, research, documents and routine work go to Sonnet agents, flash-worker implements, Claude designs, decides and checks reports. Append dated notes to docs/streaming-latency-journey.md "Running notes" after every result, decision or obstacle.
+- All marker phone runs are done (see the Nov 13 lines in docs/streaming-latency-journey.md "Running notes"). The press measurement is validated by the marker; baseline press-to-screen on iPhone Safari is 197-225 ms; `SESSION_AUDIO=separate` gives no dependable gain (141, 235 with freezes, 197); `SESSION_AUDIO=off` gives about 30 ms (166-181). No defaults changed.
+- Waiting on the owner's decision: custom player (WebCodecs), a native viewer, or accept about 170-200 ms and add instant feedback on the controller; and whether the 80 ms gate stands. Do not start a batch before that decision.
+- Smaller open items: sound sets a pipeline-wide wait of about 27 ms on the host (try sound in its own pipeline); the marker's two figures disagree when sound is separate; the marker raises slow frames to 12-13% (measuring tool only).
+- Phone-run routine: the owner closes every stream tab and says "ready"; then start ONE run in the background, give the printed URL, and after it ends confirm `tools/stream.sh status` shows no sessions and say "Run N is done".
+- Working mode: low-usage; batches, research, documents and routine work go to Sonnet agents, flash-worker implements, Claude designs, decides and checks reports. Append dated notes to the journey document after every result, decision or obstacle.
 
 ## Resume here (updated Nov 12, 2026, night)
 
