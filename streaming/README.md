@@ -42,6 +42,11 @@ player `P+2`, automation `P+3`. Two sessions at once need different bases (or
 `--name` plus a base), and `tools/stream.sh url --name <n>` prints each one's
 addresses.
 
+The custom player's tap server (M15 opt2) is the one port outside that block:
+`TAP_PORT` defaults to the automation port plus one and listens on loopback
+only, and the player relay tunnels to it on the player port, so a session opens
+nothing new and needs no firewall rule (see "Custom player" below).
+
 The app has the last word on the controller port: it asks for the one it is
 given (45780 without settings) and takes any free port when that is busy, so a
 second session's phones connect somewhere else. The ready line and `url` say
@@ -167,7 +172,7 @@ default.
 | `SESSION_RETRANSMISSION` | true | Resend lost packets; no delay difference either way |
 | `SESSION_CONGESTION` | `disabled` (the switch is off) | `webrtcsink`'s `congestion-control` on both sinks (M15 fix7, technique 3). `disabled`: with congestion control off the element gives the encoder `max-bitrate` itself and holds it there, the pipeline as it was. `gcc` (Google Congestion Control) is the element's own algorithm: `max-bitrate` is then the ceiling the estimate may not cross and `start-bitrate` where a consumer starts, so the video can run *below* the wire ceiling — the ceiling is still honoured, the bitrate is no longer fixed. The element's third value `homegrown` is refused with a warning and the session runs `disabled`: on an already-encoded stream `webrtcsink` 0.13.6 has no encoder of its own and the heuristic divides by that count, so the pipeline aborts (panic, divide by zero, `homegrown_cc.rs:386`; measured, see [fix7/n3-1-sender-build-report.md](../docs/briefs/m15/fix7/n3-1-sender-build-report.md)). The ready line's `sink ws:` line prints the value a session ran with; headless Chrome says whether the algorithm engages here, and the phone decides |
 | `SESSION_SPLIT_TRACKS` | false | Play picture and sound on two media elements so the browser stops syncing them. Worse: 42 delivered fps against 53, press 246 ms against 230, so one element stays |
-| `SESSION_AUDIO` | `joined` (the switch is off) | `joined`: the pipeline as it was, one `webrtcsink`, one peer connection and one stream id for picture and sound. `off`: no sound in the stream at all (no `pulsesrc`/`opusenc` branch and no audio caps), so a viewer shows the picture only. `separate`: the sound is recorded into a second `webrtcsink` (`ws-audio`, producer meta `TP-Sound`) with its own peer connection and stream id, so the browser cannot hold the picture back to lip-sync it; the player picks the two producers by their meta (`TP-Picture`, `TP-Sound`), plays the sound on its own element and keeps one viewer row. A player follows what the stream carries, so it needs no setting of its own; headless Chrome says whether a value works here, and the phone decides whether it helps |
+| `SESSION_AUDIO` | `joined` (the switch is off) | `joined`: the pipeline as it was, one `webrtcsink`, one peer connection and one stream id for picture and sound. `off`: no sound in the stream at all (no `pulsesrc`/`opusenc` branch and no audio caps), so a viewer shows the picture only. `separate`: the sound runs in a second `gst-launch-1.0` process of its own (M15 opt2-5) — its own `webrtcsink` (`ws-audio`, producer meta `TP-Sound`), its own peer connection and stream id, and its own log `/run/thumb-party/sound-pipeline.log` — so the browser cannot hold the picture back to lip-sync it and the picture pipeline's latency query never sees the sound: host pipeline time 8.0 ms against `joined`'s 41.6, and 7.95 with no sound at all. `joined` and `off` are byte for byte what they were, `--print-sound-pipeline` is the sound's dry run, and the player picks the two producers by their meta (`TP-Picture`, `TP-Sound`), plays the sound on its own element and keeps one viewer row. A player follows what the stream carries, so it needs no setting of its own; headless Chrome says whether a value works here, and the phone decides whether it helps |
 | `SESSION_PLAYER_OPTIONS` | empty (the page as it was) | The player page's own switches (M15 fix7), a comma list such as `lowdelay=1` that the entrypoint writes into `config.js`; the page's URL query overrides them key by key, and `tools/stream.sh bench --player-query lowdelay=1` puts one on the viewer's URL. `lowdelay=1` is technique 2's page half: the per-receiver and per-element zero-delay settings put back every second and after each stream change, with an overlay line reading them back (see "Switches") |
 | `SESSION_MARKER` | `off` (the switch is off) | `on` makes the app draw the marker row in the top-left corner of its picture — a frame counter, the host's clock and a probe-press flip — so the player reads them out of the video itself (M15 fix8, [docs/streaming-marker.md](../docs/streaming-marker.md)). The entrypoint passes `THUMBPARTY_MARKER=1` to the app and its ready line says `marker=on`; a phone's build has no environment to switch it on, and a run with the row on costs the app its own repaint of 57 cells a frame (measured in the fix8 f8-2 report) |
 | `SESSION_ENCODER` | `nvautogpuh264enc` | `nvcudah264enc` also works and was no better (press 261 ms against the baseline's 230–266) |
@@ -312,6 +317,75 @@ tools/stream.sh build && tools/stream.sh up
 
 `tools/stream.sh selftest` runs the relay's tests (including that `/probe.html` is
 served) from the synced checkout and needs no image.
+
+## Custom player (WebCodecs), off by default
+
+M15 opt2 is a second way to play the picture: the session hands the encoder's own
+output to a WebSocket, and the page decodes it with the browser's `VideoDecoder`
+and draws it on a canvas in the video element's place. Every part sits behind a
+switch, and with nothing set the session and the page run exactly as before.
+
+| Setting | Default | What it does |
+| --- | --- | --- |
+| `SESSION_TAP` | `off` | `on` runs the session's pipeline inside [`tap/tap_runner.py`](tap/tap_runner.py) instead of `gst-launch-1.0`: GStreamer in the session's own Python process, given the same argument list, with a `tee` right after the encoder. The picture goes on to `webrtcsink` unchanged, and a leaky branch after the tee (`queue leaky=downstream max-size-buffers=2 ! h264parse config-interval=-1 ! appsink name=tap drop=true max-buffers=2 sync=false emit-signals=true async=false`) gives Python the encoded access units. The encode is shared, so the tap costs no second encode, and the branch drops rather than waits, so a reader that falls behind can never hold the encoder back. The ready line says `tap=on:<port>`; a value that is not `on` or `off` warns and runs `gst-launch` as always |
+| `TAP_PORT` | the automation port + 1 (`8788` at the defaults) | The tap server's port. It listens on loopback only, and nothing outside the session connects to it |
+| `player=wc` | absent (today's page) | The page option that plays the tap's picture (below); every other value, or none, is the WebRTC page |
+| `wcmode=annexb` | AVCC, with an `avcC` description | Hands the decoder in-band Annex B bytes instead of the converted AVCC |
+
+**The tunnel.** The phone never connects to `TAP_PORT`: the relay that already
+serves the page ([`player/serve.py`](player/serve.py)) upgrades a WebSocket on
+path `/tap` and forwards it to the tap server on loopback, so the page reaches
+the tap on the player port it already uses. Nothing new is opened and no
+firewall rule is added; a plain GET on `/tap` is answered 400, and a relay
+started without a tap port answers 404.
+
+**The message.** One binary message is a 24-byte big-endian header (magic `T`,
+version, flags with the keyframe and discontinuity bits, the frame number, the
+pipeline's `pts` and the host's send time) and then one access unit in Annex B;
+the server also sends a `hello` and an `end` as JSON text, and a client may ask
+for a keyframe. The two formats and the backlog rule are in
+[`docs/briefs/m15/opt2/PROTOCOL.md`](../docs/briefs/m15/opt2/PROTOCOL.md).
+
+**The page.** `?player=wc` plays that way; `tools/stream.sh bench --player-query
+"marker=1&player=wc"` puts it and the marker on the viewer's URL, and with both
+the page reads the marker row out of the canvas rather than the video element.
+The decoder is configured from the stream's own SPS and PPS on a keyframe; a gap
+in the frame numbers, or a decoder queue deeper than two frames, drops what was
+waiting and asks for a keyframe (at most once every 500 ms), so delay cannot
+pile up, and a lost socket reconnects on its own. `wcmode=annexb` is for in-band
+bytes; the default is AVCC with an `avcC` description.
+
+**Sound in this mode** stays the page's existing sound-only WebRTC link: the
+picture consumer is left unattached, so the sound arrives as it does today and
+the tap carries the picture alone. `SESSION_AUDIO=separate` is how that sound
+comes from its own process (the row in "The picture's settings" above); with a
+stream that carries no sound, the overlay says `sound: this session sends no
+sound stream`.
+
+**What a bench run shows.** A viewer whose page played this way sends one `wc`
+fact and six gauges, and the report prints a "Custom player (wc)" table under
+the stream's own: `session viewer recv-dec ms dec-draw ms dropped backlog max
+keys queue max decode`, one row per such viewer, with the two medians' means,
+the maxima of what it dropped, held and asked for, and the decoder's
+configuration (`cfg hw dec ok`). A run whose page played the WebRTC way prints
+exactly the report it always did.
+
+**The image** carries what `tap_runner.py` needs: `python3-gi`,
+`gir1.2-gstreamer-1.0` and `gir1.2-gst-plugins-base-1.0` in its apt group, and
+`streaming/tap/` copied to `/usr/local/bin/tap/`.
+
+**What it does not do yet:**
+
+- Video only: the tap carries the encoded picture, and the sound stays on
+  WebRTC. There is no sound in the WebSocket.
+- One TCP socket: a lost packet holds every frame behind it (head-of-line), so
+  a bad link is worse here than over WebRTC's UDP.
+- WebCodecs needs a secure context, and a phone opening the page at this PC's
+  LAN address over plain HTTP has none: the decoder is then absent, exactly as
+  the capability probe above reports.
+- Proven headless so far: the page's own tests pass in the distro's headless
+  Chrome, and that Chrome is not Safari. A phone run is what says whether the
+  mode is kept, against the 150 ms or less gate.
 
 ## What the session measures (M15 c2)
 
