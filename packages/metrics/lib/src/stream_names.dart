@@ -157,6 +157,34 @@ abstract final class StreamWc {
   /// (`cfg hw`, `cfg nohint`, `cfg bad` or `cfg none`) and whether it drew a
   /// frame (`dec ok`, `dec no`). It claims nothing beyond that text.
   static const fact = 'wc';
+
+  /// Where the page itself backed up (M15 opt2c-1, streaming/player/wc_diag.js):
+  /// the longest gap between two frames off its socket in ms, and how many gaps
+  /// went over 100 and over 250 ms. The network's stalls, not the decoder's.
+  static const gapMaxMs = 'wcGapMaxMs';
+  static const gapsOver100 = 'wcGaps100';
+  static const gapsOver250 = 'wcGaps250';
+
+  /// The frames' bytes off the socket: the total received, the largest and the
+  /// mean keyframe, and the mean delta.
+  static const recvBytes = 'wcRecvBytes';
+  static const keyBytesMax = 'wcKeyBytesMax';
+  static const keyBytesAvg = 'wcKeyBytesAvg';
+  static const deltaBytesAvg = 'wcDeltaBytesAvg';
+
+  /// The decoder's deepest queue at a decode call, in frames.
+  static const decQueueMax = 'wcDecQueueMax';
+
+  /// The page's own thread: the worst lateness of its 20 ms timer in ms, how
+  /// many of those went over 50 ms, the long tasks it saw, and the longest it
+  /// spent in its socket's onmessage, in ms.
+  static const lagMaxMs = 'wcLagMaxMs';
+  static const lagOver50 = 'wcLag50';
+  static const longTasks = 'wcLongTasks';
+  static const handlerMaxMs = 'wcHandlerMaxMs';
+
+  /// The most bytes the socket took in one second: a burst, not an average.
+  static const bytesPerSecMax = 'wcBytesPerSecMax';
 }
 
 /// What showed a stream to a viewer (M15): a browser page, one of our apps, or

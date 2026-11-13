@@ -126,6 +126,7 @@ String streamReport(List<Map<String, Object?>> summaries) {
   final hostLegs = hostLegReport(summaries);
   final marker = markerReport(summaries);
   final wc = wcReport(summaries);
+  final wcDiag = wcDiagReport(summaries);
   return [
     if (viewers.isNotEmpty) ...[
       plainTable('Streaming pipeline', _pipelineHeaders, [for (final row in viewers) _pipelineCells(row)]),
@@ -133,6 +134,7 @@ String streamReport(List<Map<String, Object?>> summaries) {
       if (marker.isNotEmpty) marker,
       plainTable('Streaming quality', _qualityHeaders, [for (final row in viewers) _qualityCells(row)]),
       if (wc.isNotEmpty) wc,
+      if (wcDiag.isNotEmpty) wcDiag,
       plainTable('Streaming sound', _soundHeaders, [for (final row in viewers) _soundCells(row)]),
     ],
     if (hosts.isNotEmpty) ...[

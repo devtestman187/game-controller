@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Thumb Party custom player diagnostics self-test</title>
+  <style>body { background: #000; color: #eee; font: 14px/1.5 ui-monospace, monospace; padding: 12px; }</style>
+</head>
+
+<body>
+  <pre id="result">SELFTEST RUNNING</pre>
+  <!-- The custom player's own diagnostics (M15 opt2c-1) in the headless Chrome
+       the bench already has: wc_diag.js's gaps, byte sizes, decoder queue,
+       main-thread lateness and handler time on a fake clock, the player that
+       feeds them, and the gauges wc_stats.js sends them as. bench.sh
+       --selftest reads the one line below back out. -->
+  <script type="module">
+    import { WcPlayer } from "./wc_player.js";
+    import { diagTickMs, WcDiag } from "./wc_diag.js";
+    import { WcStats } from "./wc_stats.js";
+
+    const failures = [];
+    let checks = 0;
+
+    async function check(name, run) {
+      checks++;
+      try {
+        const problem = await run();
+        if (problem) failures.push(`${name}: ${problem}`);
+      } catch (error) {
+        failures.push(`${name}: threw ${error.message}`);
+      }
+    }
+
+    function same(actual, expected) {
+      return JSON.stringify(actual) === JSON.stringify(expected)
+        ? ""
+        : `expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`;
+    }
+
+    function bytesOf(hex) {
+      return new Uint8Array(hex.match(/../g).map((pair) => Number.parseInt(pair, 16)));
+    }
+
+    // One access unit as the host sends it (wc_selftest.html's samples): an
+    // AUD, the SPS and PPS, then an IDR slice, and a delta's AUD and slice.
+    const spsHex = "67640028acd940780227e5c044000003000400000301e03c60c658";
+    const ppsHex = "68ebe3cb22c0";
+    const keyAuHex = `0000000109f0` + `000001${spsHex}` + `000001${ppsHex}` + `0000000165888421`;
+    const deltaAuHex = "0000000109f000000001419aa0";
+
+    function messageOf({ flags = 0, frame = 0, payloadHex = deltaAuHex }) {
+      const payload = bytesOf(payloadHex);
+      const buffer = new ArrayBuffer(24 + payload.length);
+      const view = new DataView(buffer);
+      view.setUint8(0, 0x54);
+      view.setUint8(1, 1);
+      view.setUint8(2, flags);
+      view.setUint32(4, frame);
+      new Uint8Array(buffer, 24).set(payload);
+      return buffer;
+    }
+
+    const keyMessage = (frame) => messageOf({ flags: 1, frame, payloadHex: keyAuHex });
+    const deltaMessage = (frame) => messageOf({ frame, payloadHex: deltaAuHex });
+
+    /** Lets the player's promise chain run to its end: every step is a microtask. */
+    async function flushed() {
+      for (let step = 0; step < 20; step++) await Promise.resolve();
+    }
+
+    /** A player on fake browser classes, a fake clock and fake timers, and what a test reads back. */
+    function harness() {
+      const log = { sockets: [], decoders: [], chunks: [] };
+      const clock = { nowMs: 0 };
+      const timers = [];
+      const intervals = [];
+      const cleared = [];
+      class FakeSocket {
+        constructor(url) {
+          this.url = url;
+          this.readyState = 1;
+          this.sent = [];
+          log.sockets.push(this);
+        }
+
+        send(data) { this.sent.push(data); }
+        close() { this.readyState = 3; }
+      }
+      class FakeDecoder {
+        static isConfigSupported(config) {
+          return Promise.resolve({ supported: true, config });
+        }
+
+        constructor(init) {
+          this.init = init;
+          this.state = "unconfigured";
+          this.decodeQueueSize = 0;
+          log.decoders.push(this);
+        }
+
+        configure() { this.state = "configured"; }
+        decode(chunk) { log.chunks.push(chunk); }
+        close() { this.state = "closed"; }
+      }
+      class FakeChunk {
+        constructor(init) { this.type = init.type; this.timestamp = init.timestamp; this.data = init.data; }
+      }
+      const canvas = { width: 0, height: 0, getContext: () => ({ drawImage: () => {} }) };
+      const player = new WcPlayer({
+        url: "ws://test/tap",
+        canvas,
+        now: () => clock.nowMs,
+        WebSocketImpl: FakeSocket,
+        VideoDecoderImpl: FakeDecoder,
+        EncodedVideoChunkImpl: FakeChunk,
+        setTimeoutImpl: (run, delayMs) => {
+          timers.push({ run, delayMs });
+          return timers.length;
+        },
+        setIntervalImpl: (run, delayMs) => {
+          intervals.push({ run, delayMs, id: intervals.length + 1 });
+          return intervals.length;
+        },
+        clearIntervalImpl: (id) => { cleared.push(id); },
+        longTaskObserver: null,
+      });
+      const socket = () => log.sockets[log.sockets.length - 1];
+      return { player, log, clock, timers, intervals, cleared, socket };
+    }
+
+    /** The counters a custom-player page keeps, as wc_stats.js reads them. */
+    function countersOf() {
+      return {
+        framesReceived: 12, framesDecoded: 9, framesDrawn: 9, dropsQueue: 2, dropsGap: 1, keyRequests: 3,
+        reconnects: 0, queueMax: 2, lastFrame: 11, bytesReceived: 20000, freezeCount: 0, freezeMs: 0,
+        firstFrameMs: 12, lastDrawnAtMs: 900, startedAtMs: 0, frameWidthPx: 1920, frameHeightPx: 1080,
+        decoderErrors: 0, decoderRebuilds: 0, lastDecoderError: "", decodeConfig: "avc1.640028 hardware",
+      };
+    }
+
+    await check("the longest gap between two messages, and the ones over 100 and 250 ms", () => {
+      const diag = new WcDiag({ observerClass: null });
+      for (const atMs of [0, 40, 200, 560, 600]) diag.noteMessage(atMs, 100, false);
+      return same([diag.snapshot().gapMaxMs, diag.snapshot().gapsOver100, diag.snapshot().gapsOver250],
+        [360, 2, 1]);
+    });
+    await check("before the first frame no gap is counted, and a reconnect starts them again", () => {
+      const diag = new WcDiag({ observerClass: null });
+      diag.noteMessage(0, 100, true);
+      diag.noteMessage(700, 100, false);
+      const before = diag.snapshot();
+      diag.noteReconnect();
+      diag.noteMessage(4000, 100, false);
+      const after = diag.snapshot();
+      return same([before.gapMaxMs, before.gapsOver250, after.gapMaxMs, after.gapsOver250, after.recvBytes],
+        [700, 1, 700, 1, 300]);
+    });
+    await check("the bytes received, the largest keyframe and the means of both kinds", () => {
+      const diag = new WcDiag({ observerClass: null });
+      diag.noteMessage(0, 120000, true);
+      diag.noteMessage(16, 80000, true);
+      diag.noteMessage(32, 3000, false);
+      diag.noteMessage(48, 3240, false);
+      return same(diag.snapshot(), {
+        gapMaxMs: 16, gapsOver100: 0, gapsOver250: 0, recvBytes: 206240, keyBytesMax: 120000,
+        keyBytesAvg: 100000, deltaBytesAvg: 3120, deltaBytesMax: 3240, decQueueMax: 0, mainLagMaxMs: 0,
+        mainLagOver50: 0, longTasks: 0, msgHandlerMaxMs: 0, bytesPerSecMax: 206240,
+      });
+    });
+    await check("the largest second of bytes is kept, the window pruned as each message comes", () => {
+      const diag = new WcDiag({ observerClass: null });
+      for (const [atMs, bytes] of [[0, 1000], [500, 2000], [1000, 500]]) diag.noteMessage(atMs, bytes, false);
+      return same(diag.snapshot().bytesPerSecMax, 3000);
+    });
+    await check("the decoder's deepest queue and the page's longest onmessage are kept", () => {
+      const diag = new WcDiag({ observerClass: null });
+      for (const size of [2, 5, 3]) diag.noteDecoderQueue(size);
+      for (const ms of [4, 41, 7]) diag.noteHandlerMs(ms);
+      return same([diag.snapshot().decQueueMax, diag.snapshot().msgHandlerMaxMs], [5, 41]);
+    });
+    await check("a tick 30 ms late is no lag, 31 is, and only over 50 is it counted", () => {
+      const diag = new WcDiag({ observerClass: null });
+      for (const atMs of [0, 50, 101]) diag.tick(atMs);
+      const thirty = diag.snapshot();
+      for (const atMs of [181, 281]) diag.tick(atMs);
+      const later = diag.snapshot();
+      return same([thirty.mainLagMaxMs, thirty.mainLagOver50, later.mainLagMaxMs, later.mainLagOver50],
+        [31, 0, 80, 2]);
+    });
+    await check("long tasks are counted where the browser has the observer", () => {
+      const seen = [];
+      class FakeObserver {
+        constructor(callback) { seen.push(callback); }
+
+        observe(options) { this.options = options; }
+
+        disconnect() { this.stopped = true; }
+      }
+      const diag = new WcDiag({ observerClass: FakeObserver });
+      diag.start();
+      seen[0]({ getEntries: () => [{}, {}] });
+      seen[0]({ getEntries: () => [{}] });
+      const counted = diag.snapshot().longTasks;
+      diag.stop();
+      return same([counted, diag.snapshot().longTasks], [3, 3]);
+    });
+    await check("a browser without the observer, or one that throws, counts no long task", () => {
+      class BrokenObserver {
+        observe() { throw new Error("no longtask here"); }
+      }
+      const none = new WcDiag({ observerClass: null });
+      none.start();
+      const broken = new WcDiag({ observerClass: BrokenObserver });
+      broken.start();
+      return same([none.snapshot().longTasks, broken.snapshot().longTasks], [0, 0]);
+    });
+    await check("each frame off the socket reaches the diagnostics: its bytes, its kind and its arrival", async () => {
+      const h = harness();
+      h.player.start();
+      h.socket().onmessage({ data: keyMessage(0) });
+      await flushed();
+      h.clock.nowMs = 110;
+      h.socket().onmessage({ data: deltaMessage(1) });
+      await flushed();
+      const keyBytes = keyMessage(0).byteLength;
+      const deltaBytes = deltaMessage(1).byteLength;
+      return same(h.player.diagSnapshot(), {
+        gapMaxMs: 110, gapsOver100: 1, gapsOver250: 0, recvBytes: keyBytes + deltaBytes, keyBytesMax: keyBytes,
+        keyBytesAvg: keyBytes, deltaBytesAvg: deltaBytes, deltaBytesMax: deltaBytes, decQueueMax: 0,
+        mainLagMaxMs: 0, mainLagOver50: 0, longTasks: 0, msgHandlerMaxMs: 0, bytesPerSecMax: keyBytes + deltaBytes,
+      });
+    });
+    await check("a lost socket starts the gaps again and leaves the decoder's queue noted", async () => {
+      const h = harness();
+      h.player.start();
+      const socket = h.socket();
+      socket.onmessage({ data: keyMessage(0) });
+      await flushed();
+      h.clock.nowMs = 700;
+      socket.onmessage({ data: deltaMessage(1) });
+      await flushed();
+      socket.onclose();
+      h.timers[0].run();
+      h.clock.nowMs = 4000;
+      h.socket().onmessage({ data: deltaMessage(2) });
+      await flushed();
+      h.log.decoders[0].decodeQueueSize = 2;
+      h.clock.nowMs = 4016;
+      h.socket().onmessage({ data: keyMessage(4) });
+      await flushed();
+      return same([h.player.diagSnapshot().gapMaxMs, h.player.diagSnapshot().decQueueMax], [700, 2]);
+    });
+    await check("the player runs the diagnostics' 20 ms tick and stops it with the page", () => {
+      const h = harness();
+      h.player.start();
+      const tick = h.intervals[0].run;
+      const id = h.intervals[0].id;
+      tick();
+      h.clock.nowMs = 120;
+      tick();
+      const lagMs = h.player.diagSnapshot().mainLagMaxMs;
+      h.player.stop();
+      return same([h.intervals.length, h.intervals[0].delayMs, lagMs, h.cleared], [1, diagTickMs, 100, [id]]);
+    });
+    await check("the diagnostics go into the batch as gauges under the wc names", () => {
+      const snapshot = {
+        gapMaxMs: 480, gapsOver100: 4, gapsOver250: 2, recvBytes: 3500000, keyBytesMax: 120000, keyBytesAvg: 96400,
+        deltaBytesAvg: 3240, deltaBytesMax: 5000, decQueueMax: 5, mainLagMaxMs: 220, mainLagOver50: 3, longTasks: 7,
+        msgHandlerMaxMs: 41, bytesPerSecMax: 1800000,
+      };
+      const player = { counters: countersOf, stageSamples: () => [] };
+      const gauges = new WcStats({ player, now: () => 1000, diag: () => snapshot }).batch().gauges;
+      return same(gauges.filter((gauge) => gauge.name.startsWith("wcGap") || gauge.name.startsWith("wcLag")
+        || gauge.name.startsWith("wcLong") || gauge.name.startsWith("wcHandler")
+        || gauge.name.startsWith("wcRecvBytes") || gauge.name.startsWith("wcKeyBytes")
+        || gauge.name.startsWith("wcDeltaBytes") || gauge.name.startsWith("wcDecQueue")
+        || gauge.name.startsWith("wcBytesPerSec")).map((gauge) => [gauge.name, gauge.value]),
+      [["wcGapMaxMs", 480], ["wcGaps100", 4], ["wcGaps250", 2], ["wcRecvBytes", 3500000], ["wcKeyBytesMax", 120000],
+        ["wcKeyBytesAvg", 96400], ["wcDeltaBytesAvg", 3240], ["wcDecQueueMax", 5], ["wcLagMaxMs", 220],
+        ["wcLag50", 3], ["wcLongTasks", 7], ["wcHandlerMaxMs", 41], ["wcBytesPerSecMax", 1800000]]);
+    });
+    await check("a page with no diagnostics sends none of them", () => {
+      const player = { counters: countersOf, stageSamples: () => [] };
+      const gauges = new WcStats({ player, now: () => 1000 }).batch().gauges;
+      return same(gauges.filter((gauge) => gauge.name.startsWith("wcGap")).length, 0);
+    });
+
+    const result = document.getElementById("result");
+    result.textContent = failures.length === 0
+      ? `SELFTEST PASS ${checks}/${checks}`
+      : `SELFTEST FAIL ${failures.length}/${checks}\n${failures.join("\n")}`;
+  </script>
+</body>
+
+</html>

@@ -80,3 +80,74 @@ List<String> _wcCells(StreamViewerRow row) => [
   row.facts[_soundFact] ?? '-',
   countText(row.gaugeField(_soundPlaying, 'max')),
 ];
+
+/// The bytes a kB, an MB and an Mbit/s are, decimal as network sizes are: a
+/// run's own numbers read as a person reads a link's speed.
+const _bytesPerKb = 1000;
+const _bytesPerMb = 1000000;
+const _bytesPerMbitPerS = 125000;
+
+/// The columns of "Custom player diagnostics (wc)" (M15 opt2c-1): where the
+/// page itself backed up. Its socket's gaps and bytes, the peak rate one second
+/// took, the decoder's deepest queue, and its own thread's lag, long tasks and
+/// longest onmessage.
+const _wcDiagHeaders = [
+  'session',
+  'viewer',
+  'gap max ms',
+  'gaps >100',
+  'gaps >250',
+  'recv MB',
+  'key KB max/avg',
+  'delta KB avg',
+  'peak Mbit/s',
+  'dec queue max',
+  'lag max ms',
+  'lag >50',
+  'long tasks',
+  'handler max ms',
+];
+
+/// The custom player's own diagnostics (M15 opt2c-1), one row per viewer whose
+/// page sent them: a page built before them has no row, and the report is what
+/// it was. Every figure is the most the page saw over the run.
+String wcDiagReport(List<Map<String, Object?>> summaries) {
+  final rows = [
+    for (final viewer in streamViewers(summaries))
+      if (viewer.gaugeField(StreamWc.gapMaxMs, 'max') != null) viewer,
+  ];
+  if (rows.isEmpty) return '';
+  return plainTable('Custom player diagnostics (wc)', _wcDiagHeaders, [for (final row in rows) _wcDiagCells(row)]);
+}
+
+/// One viewer's diagnostics: the counts as the page saw them, its sizes in kB
+/// and MB and its peak rate in Mbit/s, or a dash where it sent none.
+List<String> _wcDiagCells(StreamViewerRow row) => [
+  row.session,
+  row.id,
+  _diagCount(row, StreamWc.gapMaxMs),
+  _diagCount(row, StreamWc.gapsOver100),
+  _diagCount(row, StreamWc.gapsOver250),
+  numberText(_scaled(row, StreamWc.recvBytes, _bytesPerMb)),
+  _pairText(_scaled(row, StreamWc.keyBytesMax, _bytesPerKb), _scaled(row, StreamWc.keyBytesAvg, _bytesPerKb)),
+  countText(_scaled(row, StreamWc.deltaBytesAvg, _bytesPerKb)),
+  numberText(_scaled(row, StreamWc.bytesPerSecMax, _bytesPerMbitPerS)),
+  _diagCount(row, StreamWc.decQueueMax),
+  _diagCount(row, StreamWc.lagMaxMs),
+  _diagCount(row, StreamWc.lagOver50),
+  _diagCount(row, StreamWc.longTasks),
+  _diagCount(row, StreamWc.handlerMaxMs),
+];
+
+/// One of a viewer's diagnostics as a whole count, or a dash.
+String _diagCount(StreamViewerRow row, String name) => countText(row.gaugeField(name, 'max'));
+
+/// One of a viewer's diagnostics in another unit, or null where it sent none.
+num? _scaled(StreamViewerRow row, String name, num per) {
+  final value = row.gaugeField(name, 'max');
+  return value == null ? null : value / per;
+}
+
+/// Two figures as `max/avg`, or a dash when either is missing.
+String _pairText(num? maximum, num? mean) =>
+    maximum == null || mean == null ? '-' : '${countText(maximum)}/${countText(mean)}';

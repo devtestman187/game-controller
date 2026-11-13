@@ -12,6 +12,7 @@
 import { annexbToAvcc, parseHeader } from "./wc_annexb.js";
 import { bytesOf, emptyCounters, FrameCanvas, FrameStages, frameTimestampUs, noteDrawnAt } from "./wc_counters.js";
 import { WcDecoder } from "./wc_decoder.js";
+import { diagTickMs, WcDiag } from "./wc_diag.js";
 
 /** The most frames the decoder may hold queued: more is backlog, not saved delay. */
 const maxQueueDepth = 2;
@@ -56,6 +57,11 @@ export class WcPlayer {
    * @param {Function} [parts.VideoDecoderImpl]
    * @param {Function} [parts.EncodedVideoChunkImpl]
    * @param {(run: () => void, delayMs: number) => number} [parts.setTimeoutImpl]
+   * @param {(run: () => void, delayMs: number) => number} [parts.setIntervalImpl] - the
+   *   20 ms timer the diagnostics are ticked by (wc_diag.js)
+   * @param {(id: number) => void} [parts.clearIntervalImpl]
+   * @param {Function|null} [parts.longTaskObserver] - the browser's PerformanceObserver,
+   *   or null where no long task is counted (M15 opt2c-1)
    */
   constructor({
     url = defaultTapUrl(), canvas, onEvent = () => {}, onDrawn = () => {}, onMissing = () => {}, annexb = false,
@@ -63,6 +69,9 @@ export class WcPlayer {
     WebSocketImpl = globalThis.WebSocket, VideoDecoderImpl = globalThis.VideoDecoder,
     EncodedVideoChunkImpl = globalThis.EncodedVideoChunk,
     setTimeoutImpl = (run, delayMs) => globalThis.setTimeout(run, delayMs),
+    setIntervalImpl = (run, delayMs) => globalThis.setInterval(run, delayMs),
+    clearIntervalImpl = (id) => globalThis.clearInterval(id),
+    longTaskObserver = globalThis.PerformanceObserver,
   }) {
     this._url = url;
     this._picture = new FrameCanvas(canvas);
@@ -75,6 +84,11 @@ export class WcPlayer {
     this._Decoder = VideoDecoderImpl;
     this._Chunk = EncodedVideoChunkImpl;
     this._setTimeout = setTimeoutImpl;
+    this._setInterval = setIntervalImpl;
+    this._clearInterval = clearIntervalImpl;
+    // Where this page's own side backs up (M15 opt2c-1): measured, never acted on.
+    this._diag = new WcDiag({ observerClass: longTaskObserver });
+    this._tickTimer = null;
     this._socket = null;
     this._stopped = false;
     this._timer = null;
@@ -119,20 +133,28 @@ export class WcPlayer {
     // The first frame is timed from here, the moment the page asked for the picture.
     this._counters.startedAtMs = this._now();
     this._decoder.start();
+    this._diag.start();
+    this._tickTimer = this._setInterval(() => this._diag.tick(this._now()), diagTickMs);
     this._openSocket();
   }
 
-  /** Ends the socket, the timer and the decoder: nothing is left running. */
+  /** Ends the socket, the timer, the decoder and the diagnostics: nothing is left running. */
   stop() {
     this._stopped = true;
     this._clearTimer();
     this._closeSocket();
     this._decoder.close();
+    this._stopDiag();
   }
 
   /** The player's plain numbers, for the page's overlay and a run's report. */
   counters() {
     return { ...this._counters, ...this._decoder.counters() };
+  }
+
+  /** Where this page itself backed up (M15 opt2c-1), for the figures. */
+  diagSnapshot() {
+    return this._diag.snapshot();
   }
 
   /** The last frames' stage times, in arrival order, for the figures (job 4). */
@@ -179,6 +201,7 @@ export class WcPlayer {
     this._counters.reconnects++;
     this._needKey = true;
     this._lastFrame = null;
+    this._diag.noteReconnect();
     this._onEvent({ type: "lost" });
     this._scheduleReconnect();
   }
@@ -199,6 +222,15 @@ export class WcPlayer {
     this._timer = null;
   }
 
+  // The diagnostics' own tick and long task observer stop with the page (M15 opt2c-1).
+  _stopDiag() {
+    if (this._tickTimer !== null) {
+      this._clearInterval(this._tickTimer);
+      this._tickTimer = null;
+    }
+    this._diag.stop();
+  }
+
   _send(message) {
     if (this._socket === null || this._socket.readyState !== socketOpen) return;
     this._socket.send(JSON.stringify(message));
@@ -206,7 +238,8 @@ export class WcPlayer {
 
   _receive(data) {
     if (this._stopped) return;
-    this._counters.bytesReceived += bytesOf(data);
+    const bytes = bytesOf(data);
+    this._counters.bytesReceived += bytes;
     if (typeof data === "string") return this._receiveText(data);
     // A browser that hands a Blob over instead of bytes (a socket whose
     // binaryType it ignored) would throw in the header read (M15 opt2b).
@@ -217,12 +250,15 @@ export class WcPlayer {
     const receivedAtMs = this._now();
     const message = parseHeader(data);
     if (message === null) return;
+    this._diag.noteMessage(receivedAtMs, bytes, message.keyframe);
     const stage = this._stages.note(message.frame, receivedAtMs);
     this._counters.framesReceived++;
     this._counters.lastFrame = message.frame;
     this._chain = this._chain
       .then(() => this._handleFrame(message, stage))
       .catch((error) => this._decoder.failed(error));
+    // The page's own cost, from the socket's read to handing the frame on (M15 opt2c-1).
+    this._diag.noteHandlerMs(this._now() - receivedAtMs);
   }
 
   _receiveText(text) {
@@ -240,6 +276,7 @@ export class WcPlayer {
     this._stopped = true;
     this._clearTimer();
     this._closeSocket();
+    this._stopDiag();
     this._onEvent({ type: "end" });
   }
 
@@ -273,6 +310,7 @@ export class WcPlayer {
     }
     const data = this._annexb ? message.payload : annexbToAvcc(message.payload);
     const type = message.keyframe ? "key" : "delta";
+    this._diag.noteDecoderQueue(this._decoder.queueSize);
     if (!this._decoder.decode(data, type, message.frame)) return;
     this._lastFrame = message.frame;
     this._needKey = false;

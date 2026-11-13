@@ -52,12 +52,13 @@ import argparse
 import json
 import os
 import re
-import socket
 import sys
 import threading
 import urllib.error
 import urllib.request
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
+
+import tunnel
 
 # The most presses or flips one session keeps: a benchmark sends a few dozen.
 max_events = 1000
@@ -82,11 +83,6 @@ max_error_chars = 200
 # packages/party_host/lib/src/automation/automation_body.dart.
 max_body_bytes = 64 * 1024
 
-# Where the tap server listens, the most of a tunnelled stream one read holds, and its wait.
-tap_address = "127.0.0.1"
-tunnel_read_bytes = 64 * 1024
-tunnel_connect_timeout_s = 2
-
 # The files the page loads, which are the only things it can fetch from here.
 page_files = frozenset(
     (
@@ -96,8 +92,8 @@ page_files = frozenset(
         "metrics.js", "reporter.js", "session_end.js", "overlay.js", "stats.js",
         # The page's error trap (M15 opt2b), the capability probe (M15 opt1,
         # a page of its own), and the custom player's files (M15 opt2).
-        "error_trap.js", "probe.html", "wc_annexb.js", "wc_counters.js", "wc_decoder.js", "wc_player.js",
-        "wc_sound.js", "wc_stats.js",
+        "error_trap.js", "probe.html", "wc_annexb.js", "wc_counters.js", "wc_decoder.js", "wc_diag.js",
+        "wc_player.js", "wc_sound.js", "wc_stats.js",
     )
 )
 
@@ -277,25 +273,14 @@ class Handler(SimpleHTTPRequestHandler):
     def _tunnel(self):
         """Passes this connection to the tap server, byte for byte both ways (PROTOCOL.md).
 
-        The relay never looks into a frame and holds one read of it at most.
+        The relay never looks into a frame and holds one read of it at most;
+        tunnel.py does the passing and counts what it moves (M15 opt2c).
         """
+        self.close_connection = True
         try:
-            tap = socket.create_connection((tap_address, self.tap_port), timeout=tunnel_connect_timeout_s)
+            tunnel.relay(self.tap_port, self.connection, self.rfile.read1, self.requestline, self.headers)
         except OSError as error:
             return self._json(502, {"ok": False, "error": "the tap server is not answering: %s" % error})
-        tap.settimeout(None)
-        for sock in (tap, self.connection):
-            sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-        # The head as the page sent it: the tap server does the handshake.
-        head = self.requestline + "\r\n" + "".join("%s: %s\r\n" % item for item in self.headers.items()) + "\r\n"
-        self.close_connection = True
-        threading.Thread(target=_copy, args=(tap.recv, self.connection.sendall), daemon=True).start()
-        try:
-            tap.sendall(head.encode("latin-1"))
-            _copy(self.rfile.read1, tap.sendall)
-        finally:
-            _shut(tap)
-            _shut(self.connection)
 
     def _body(self):
         """The POST's JSON object, or (None, the status to refuse it with)."""
@@ -323,26 +308,6 @@ class Handler(SimpleHTTPRequestHandler):
         # polls five times a second would fill the session's log.
         if self.path.startswith("/stats") or self.path.startswith("/clock"):
             sys.stderr.write("relay: %s\n" % (message % args))
-
-
-def _copy(read, write):
-    """Copies one side of a tunnel to the other until a side closes."""
-    try:
-        while True:
-            data = read(tunnel_read_bytes)
-            if not data:
-                return
-            write(data)
-    except OSError:
-        pass  # a socket closed under the copy, which is how a tunnel ends
-
-
-def _shut(sock):
-    """Ends a tunnel socket both ways, so a thread blocked on it returns."""
-    try:
-        sock.shutdown(socket.SHUT_RDWR)
-    except OSError:
-        pass
 
 
 def _since(query):

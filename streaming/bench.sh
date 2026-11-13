@@ -673,6 +673,51 @@ PY
   docker logs "$container" > "$out/container-$name.log" 2>&1 || true
 }
 
+# The diagnostics the session's log carries (M15 opt2c): the tap's own line and
+# the tunnel's, one a second each, in one file beside the run's other evidence,
+# so the place a backlog started can be read back from the run itself.
+collect_tap_diag() {
+  local index name file="$out/$label-tapdiag.log"
+  : > "$file"
+  for (( index = 0; index < sessions; index++ )); do
+    name="$(name_of "$index")"
+    if [[ -f "$out/container-$name.log" ]]; then
+      grep -E '^(tapdiag|tunnel): ' "$out/container-$name.log" >> "$file" || true
+    fi
+  done
+  say "tap diagnostics: $file: $(tap_diag_summary "$file")"
+}
+
+# What that file says in one line: the worst second the logs hold, so a run
+# shows at a glance which side backed up. `-` for a line the log does not hold.
+tap_diag_summary() {
+  awk '
+    BEGIN { outq = -1; tunnel_outq = -1 }
+    $1 == "tapdiag:" || $1 == "tunnel:" {
+      if ($1 == "tapdiag:") { tap_seconds++ } else { tunnel_seconds++ }
+      for (field = 2; field <= NF; field++) {
+        split($field, pair, "=")
+        value = pair[2] + 0
+        if (pair[1] == "fr" && $1 == "tapdiag:" && value > frames) { frames = value }
+        else if (pair[1] == "keymax" && value > key_kb) { key_kb = value }
+        else if (pair[1] == "q" && value > queue) { queue = value }
+        else if (pair[1] == "drop") { drops += value }
+        else if (pair[1] == "kreq") { keyreq += value }
+        else if (pair[1] == "outq" && $1 == "tapdiag:" && value > outq) { outq = value }
+        else if (pair[1] == "outq" && $1 == "tunnel:" && value > tunnel_outq) { tunnel_outq = value }
+        else if (pair[1] == "sendmax" && value > send_ms) { send_ms = value }
+      }
+    }
+    END {
+      printf "seconds=%s frames/s max=%s key KB max=%s queue max=%s drops=%s keyreq=%s outq KB max=%s tunnel outq KB max=%s send ms max=%s\n",
+        (tap_seconds ? tap_seconds : "-"), (tap_seconds ? frames : "-"), (tap_seconds ? key_kb : "-"),
+        (tap_seconds ? queue : "-"), (tap_seconds ? drops : "-"), (tap_seconds ? keyreq : "-"),
+        (tap_seconds ? outq : "-"), (tunnel_seconds ? tunnel_outq : "-"),
+        (tap_seconds + tunnel_seconds ? send_ms : "-")
+    }
+  ' "$1"
+}
+
 # The press phase (M15 fix5): the round's own numbers are kept first, then the
 # latency card goes up over the same session and the same viewer for
 # [press_seconds], so one phone run gives a round and a measured press-to-screen.
@@ -923,7 +968,7 @@ run_page_selftest() {
     waited=$((waited + 1))
   done
   for page in marker_selftest.html jbtarget_selftest.html wc_selftest.html wc_stats_selftest.html \
-    secure_selftest.html wc_sound_selftest.html; do
+    wc_diag_selftest.html secure_selftest.html wc_sound_selftest.html; do
     url="http://127.0.0.1:$port/$page"
     dump="$("$chrome" --no-sandbox --disable-gpu --dump-dom "$url" 2>/dev/null)"
     # The count is part of the match: the page's own script carries the words
@@ -1020,6 +1065,7 @@ main() {
     check_presses
   fi
   report_run
+  collect_tap_diag
   # The ended line is read after the summaries, because stopping a session ends
   # the relay the page is read through, and after the report, because a stopped
   # container has no log left to read the ceiling from (M15 fix8).

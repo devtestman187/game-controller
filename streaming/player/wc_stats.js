@@ -2,7 +2,9 @@
  * The custom player's own figures (M15 opt2): what the frames' arrival, decode
  * and draw times say over each reporting interval, plus the counters the
  * player keeps (drops, keyframe requests, the socket's backlog, the decoder's
- * queue, and its errors and rebuilds with the last error's text, M15 opt2b-3).
+ * queue, and its errors and rebuilds with the last error's text, M15 opt2b-3),
+ * and where the page itself backed up (its socket's gaps, the decoder's queue
+ * and its own thread's lag, from wc_diag.js: M15 opt2c-1).
  * Its counters also go as a plain `inbound-rtp` video entry (M15 opt2b-6), which
  * is what fills the host's "Streaming quality" row without a peer connection.
  * Pure and small: one player's `counters()` and `stageSamples()` in, a
@@ -50,6 +52,21 @@ export const wcNames = {
   decoderErrors: "wcDecoderErrors",
   decoderRebuilds: "wcDecoderRebuilds",
   soundPlaying: "wcSoundPlaying",
+  // Where the page itself backed up (M15 opt2c-1, wc_diag.js): its socket's
+  // gaps and bytes, the decoder's queue and its own thread.
+  gapMax: "wcGapMaxMs",
+  gaps100: "wcGaps100",
+  gaps250: "wcGaps250",
+  recvBytes: "wcRecvBytes",
+  keyBytesMax: "wcKeyBytesMax",
+  keyBytesAvg: "wcKeyBytesAvg",
+  deltaBytesAvg: "wcDeltaBytesAvg",
+  decQueueMax: "wcDecQueueMax",
+  lagMax: "wcLagMaxMs",
+  lag50: "wcLag50",
+  longTasks: "wcLongTasks",
+  handlerMax: "wcHandlerMaxMs",
+  bytesPerSecMax: "wcBytesPerSecMax",
   fact: "wc",
   errorFact: "wcerr",
   soundFact: "wcsnd",
@@ -95,6 +112,31 @@ export function wcErrorFactText(lastDecoderError, limit = factLengthLimit) {
   return factPattern.test(text) ? text : "";
 }
 
+/**
+ * Where the page itself backed up, as the gauges a run reads (M15 opt2c-1):
+ * the socket's gaps and bytes, the decoder's queue and the page's own thread,
+ * each a running figure so its gauge's max is the run's worst.
+ * @param {object} diag - the player's `diagSnapshot()`
+ * @returns {object[]}
+ */
+function diagGauges(diag) {
+  return [
+    { name: wcNames.gapMax, value: diag.gapMaxMs },
+    { name: wcNames.gaps100, value: diag.gapsOver100 },
+    { name: wcNames.gaps250, value: diag.gapsOver250 },
+    { name: wcNames.recvBytes, value: diag.recvBytes },
+    { name: wcNames.keyBytesMax, value: diag.keyBytesMax },
+    { name: wcNames.keyBytesAvg, value: diag.keyBytesAvg },
+    { name: wcNames.deltaBytesAvg, value: diag.deltaBytesAvg },
+    { name: wcNames.decQueueMax, value: diag.decQueueMax },
+    { name: wcNames.lagMax, value: diag.mainLagMaxMs },
+    { name: wcNames.lag50, value: diag.mainLagOver50 },
+    { name: wcNames.longTasks, value: diag.longTasks },
+    { name: wcNames.handlerMax, value: diag.msgHandlerMaxMs },
+    { name: wcNames.bytesPerSecMax, value: diag.bytesPerSecMax },
+  ];
+}
+
 /** A millisecond figure for the overlay, to a tenth, or `-` with no sample. */
 function msText(value) {
   return value === null ? "-" : String(Math.round(value * 10) / 10);
@@ -107,8 +149,9 @@ function meanOf(values) {
 
 /**
  * The custom player's figures (M15 opt2): the stage times of the frames it
- * finished since the last batch, and the counters it keeps. The page makes one
- * with [wcStatsOf] and gives its `batch` to the reporter's extra series.
+ * finished since the last batch, the counters it keeps and, when the page
+ * measures them, its own diagnostics (M15 opt2c-1). The page makes one with
+ * [wcStatsOf] and gives its `batch` to the reporter's extra series.
  */
 export class WcStats {
   /**
@@ -119,11 +162,14 @@ export class WcStats {
    *   the socket's rate is measured over
    * @param {() => string} [parts.soundState] - the page's wc sound state (M15
    *   opt2b-4), or null for a page whose sound is not measured
+   * @param {(() => object)|null} [parts.diag] - the page's own diagnostics
+   *   (M15 opt2c-1), or null for a page that measures none
    */
-  constructor({ player, now = () => performance.now(), soundState = null }) {
+  constructor({ player, now = () => performance.now(), soundState = null, diag = null }) {
     this._player = player;
     this._now = now;
     this._soundState = soundState;
+    this._diag = diag;
     this._lastFrame = -1;
     this._receiveGapMaxMs = 0;
     this._recvToDecodeMs = null;
@@ -185,7 +231,9 @@ export class WcStats {
       { name: wcNames.queueMax, value: counters.queueMax },
       { name: wcNames.decoderErrors, value: counters.decoderErrors },
       { name: wcNames.decoderRebuilds, value: counters.decoderRebuilds },
-    ].filter((gauge) => typeof gauge.value === "number" && Number.isFinite(gauge.value));
+    ];
+    // The page's own side of a stall (M15 opt2c-1), when it measures one.
+    if (this._diag !== null) gauges.push(...diagGauges(this._diag()));
     const facts = [{ name: wcNames.fact, value: wcFactText(counters) }];
     const errorText = wcErrorFactText(counters.lastDecoderError);
     if (errorText !== "") facts.push({ name: wcNames.errorFact, value: errorText });
@@ -196,7 +244,8 @@ export class WcStats {
       gauges.push({ name: wcNames.soundPlaying, value: state === wcSoundStates.playing ? 1 : 0 });
       facts.push({ name: wcNames.soundFact, value: wcSoundFactText(state) });
     }
-    return { stages, gauges, facts, video: wcVideoEntry(counters, deliveredFps) };
+    const numbers = gauges.filter((gauge) => typeof gauge.value === "number" && Number.isFinite(gauge.value));
+    return { stages, gauges: numbers, facts, video: wcVideoEntry(counters, deliveredFps) };
   }
 
   /** The overlay's one line, shown only with `player=wc` (M15 opt2). */
@@ -303,5 +352,5 @@ export function combinedSeries(...providers) {
  */
 export function wcStatsOf(options, player, soundState = null) {
   if (playerKindOf(options) !== "wc" || !player) return null;
-  return new WcStats({ player, soundState });
+  return new WcStats({ player, soundState, diag: () => player.diagSnapshot() });
 }

@@ -32,6 +32,10 @@ websocket_accept = "s3pPLMBiTxaQ9kYGzzhZRbK+xOo="
 # How long the relay gets to answer its first request.
 start_timeout_s = 10
 
+# The bytes the tunnel's line test sends both ways: enough that a whole number
+# of kilobytes reaches the line, which counts whole ones (M15 opt2c).
+tunnel_probe_bytes = 8 * 1024
+
 # The most a call may take: the relay is on this machine.
 answer_timeout_s = 10
 
@@ -101,27 +105,33 @@ def promised_body(port, path, length):
 
 
 class FakeTap:
-    """A stand-in tap server: answers the upgrade and echoes every byte back.
+    """A stand-in tap server: answers each upgrade and echoes every byte back.
 
     Not the tap server (see `streaming/tap/tap_server_test.py`): what this test
-    needs is a loopback socket that shows the relay passes bytes through.
+    needs is a loopback socket that shows the relay passes bytes through. Each
+    tunnel gets a thread of its own, so several can be open in a run.
     """
 
     def __init__(self):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.sock.bind(("127.0.0.1", 0))
-        self.sock.listen(1)
+        self.sock.listen()
         self.port = self.sock.getsockname()[1]
-        # The request head it was tunnelled, once it has one.
+        # The request head the last tunnel carried, once it had one.
         self.head = ""
         threading.Thread(target=self._serve, daemon=True).start()
 
     def _serve(self):
-        try:
-            connection, _ = self.sock.accept()
-        except OSError:
-            return
+        while True:
+            try:
+                connection, _ = self.sock.accept()
+            except OSError:
+                return
+            threading.Thread(target=self._serve_one, args=(connection,), daemon=True).start()
+
+    def _serve_one(self, connection):
+        """Answers one tunnel's upgrade and echoes its bytes back."""
         with connection:
             connection.sendall(self._answer(connection))
             for data in iter(lambda: connection.recv(4096), b""):
@@ -175,6 +185,23 @@ def wait_until_listening(port):
             pass
         time.sleep(0.1)
     raise SystemExit("relay test: the relay did not answer within %ds" % start_timeout_s)
+
+
+def wait_tunnel_line(log_path):
+    """The first `tunnel: ` line the relay's log holds, waiting for its next tick, or None."""
+    deadline = time.monotonic() + answer_timeout_s
+    while time.monotonic() < deadline:
+        with open(log_path, encoding="utf-8", errors="replace") as handle:
+            for line in handle:
+                if line.startswith("tunnel: "):
+                    return line.strip()
+        time.sleep(0.1)
+    return None
+
+
+def tunnel_fields(line):
+    """The line's `name=value` pairs as integers, `tunnel:` left out."""
+    return {name: int(value) for name, value in (item.split("=") for item in line.split()[1:])}
 
 
 def test_page(port):
@@ -341,12 +368,44 @@ def test_tap_tunnel(port, tap):
     check("WebSocket" in body.get("error", ""), "and says /tap is a WebSocket upgrade")
 
 
+def test_tunnel_line(port, log_path):
+    """The tunnel says once a second what it moved, so a run can read it (M15 opt2c).
+
+    A phone that reads slowly shows as a growing outq and long writes; the line
+    must carry the numbers the relay measured, not zeros the test cannot tell
+    from a tunnel that said nothing.
+    """
+    raw, _ = upgrade(port)
+    try:
+        raw.sendall(b"x" * tunnel_probe_bytes)
+        echoed = b""
+        while len(echoed) < tunnel_probe_bytes:
+            data = raw.recv(4096)
+            if not data:
+                break
+            echoed += data
+        check(echoed == b"x" * tunnel_probe_bytes, "the tunnel echoes a block before its line is read")
+        line = wait_tunnel_line(log_path)
+        if line is None:
+            raise SystemExit("relay test: the tunnel wrote no line within %ds" % answer_timeout_s)
+        check(
+            re.match(r"^tunnel: t=\d+ up=\d+ down=\d+ sendmax=\d+ slow=\d+ outq=-?\d+$", line) is not None,
+            "the tunnel writes its documented line once a second",
+        )
+        fields = tunnel_fields(line)
+        check(fields["up"] >= tunnel_probe_bytes // 1024, "up counts the bytes the page sent")
+        check(fields["down"] >= tunnel_probe_bytes // 1024, "down counts the bytes the tap server sent back")
+        check(fields["outq"] >= 0, "outq is the kernel's own reading, not the unknown value")
+    finally:
+        raw.close()
+
+
 def test_tap_without_a_port():
     """With no --tap-port (the session's tap off) /tap is not a path at all."""
     player_dir = os.path.dirname(os.path.abspath(__file__))
     port = free_port()
     with tempfile.TemporaryDirectory(prefix="relay-test-") as state:
-        server = start_relay(player_dir, state, port, tap_port=None)
+        server, _ = start_relay(player_dir, state, port, tap_port=None)
         try:
             wait_until_listening(port)
             status, body = call(port, "GET", "/tap")
@@ -358,7 +417,11 @@ def test_tap_without_a_port():
 
 
 def start_relay(player_dir, state, port, tap_port):
-    """Starts serve.py on [port] with no host behind it; [tap_port] None leaves it off."""
+    """Starts serve.py on [port] with no host behind it; [tap_port] None leaves it off.
+
+    Answers the process and the file its stderr goes to, where the tunnel's own
+    line is read from (M15 opt2c).
+    """
     args = [
         sys.executable or "python3",
         os.path.join(player_dir, "serve.py"),
@@ -371,7 +434,10 @@ def start_relay(player_dir, state, port, tap_port):
     ]
     if tap_port is not None:
         args += ["--tap-port", str(tap_port)]
-    return subprocess.Popen(args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    log_path = os.path.join(state, "relay-%d.log" % port)
+    with open(log_path, "wb") as log:
+        server = subprocess.Popen(args, stdout=subprocess.DEVNULL, stderr=log)
+    return server, log_path
 
 
 def main():
@@ -379,7 +445,7 @@ def main():
     port = free_port()
     with tempfile.TemporaryDirectory(prefix="relay-test-") as state:
         tap = FakeTap()
-        server = start_relay(player_dir, state, port, tap_port=tap.port)
+        server, log_path = start_relay(player_dir, state, port, tap_port=tap.port)
         try:
             wait_until_listening(port)
             test_page(port)
@@ -391,6 +457,7 @@ def main():
             test_oversized_body(port)
             test_session_identity(port)
             test_tap_tunnel(port, tap)
+            test_tunnel_line(port, log_path)
         finally:
             server.terminate()
             server.wait(timeout=answer_timeout_s)

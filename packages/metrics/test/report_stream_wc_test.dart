@@ -74,6 +74,49 @@ Map<String, Object?> wcSessionNoDecoder() {
   return c.summary(600000);
 }
 
+/// A custom-player page that sent its own diagnostics (M15 opt2c-1): the
+/// figures a run reads when it collapses, under the names streaming/player/
+/// wc_stats.js sends. The values are the test's worked-out numbers:
+///
+/// * the longest gap 480 ms, with 4 gaps over 100 and 2 over 250;
+/// * 3500000 bytes received (3.5 MB), the largest keyframe 120000 bytes and
+///   the mean 96400 (120/96 kB), the mean delta 3240 (3 kB), and the most
+///   bytes in one second 1800000 (14.4 Mbit/s);
+/// * the decoder's queue 5 frames, the page's worst lag 220 ms with 3 over
+///   50, 7 long tasks, and the longest onmessage 41 ms.
+Map<String, Object?> wcDiagSession() {
+  final c = SessionCollector(
+    id: 'diag',
+    hostType: HostType.windows,
+    hostApp: '0.16.0',
+    startedAt: DateTime.utc(2026, 11, 13, 14),
+    startMs: 0,
+  );
+  final viewer = c.streamViewer(kind: StreamKind.browser, platform: 'safari');
+  // The rate a custom-player page always sends, so the row is a viewer's.
+  c.streamGauge(viewer, 'bitrateReceivedKbps', 2400);
+  const values = {
+    'wcGapMaxMs': 480,
+    'wcGaps100': 4,
+    'wcGaps250': 2,
+    'wcRecvBytes': 3500000,
+    'wcKeyBytesMax': 120000,
+    'wcKeyBytesAvg': 96400,
+    'wcDeltaBytesAvg': 3240,
+    'wcDecQueueMax': 5,
+    'wcLagMaxMs': 220,
+    'wcLag50': 3,
+    'wcLongTasks': 7,
+    'wcHandlerMaxMs': 41,
+    'wcBytesPerSecMax': 1800000,
+  };
+  for (final entry in values.entries) {
+    c.streamGauge(viewer, entry.key, entry.value);
+  }
+  c.streamFact(viewer, StreamWc.fact, 'cfg hw dec ok');
+  return c.summary(600000);
+}
+
 /// A browser viewer whose page played the stream the WebRTC way (M15): a
 /// received frame count and the codec, and none of the custom player's names.
 Map<String, Object?> webRtcSession() {
@@ -202,6 +245,56 @@ void main() {
       final table = tableOf(text, 'Custom player (wc)');
       expect(table.where((line) => line.contains('web')), isEmpty);
       expect(table.where((line) => line.contains('wc')), hasLength(1));
+    });
+  });
+
+  group('the Custom player diagnostics (wc) table (M15 opt2c-1)', () {
+    test('a page that sent them: its gaps, sizes, rate, queue and thread figures', () {
+      final table = tableOf(streamReport([wcDiagSession()]), 'Custom player diagnostics (wc)');
+      expect(wideCells(table[0]), [
+        'session',
+        'viewer',
+        'gap max ms',
+        'gaps >100',
+        'gaps >250',
+        'recv MB',
+        'key KB max/avg',
+        'delta KB avg',
+        'peak Mbit/s',
+        'dec queue max',
+        'lag max ms',
+        'lag >50',
+        'long tasks',
+        'handler max ms',
+      ]);
+      expect(wideCells(table[2]), [
+        'diag',
+        'v1',
+        '480',
+        '4',
+        '2',
+        '3.5',
+        '120/96',
+        '3',
+        '14.4',
+        '5',
+        '220',
+        '3',
+        '7',
+        '41',
+      ]);
+    });
+
+    test('a page built before the diagnostics has no diagnostics table', () {
+      final text = streamReport([wcSession()]);
+      expect(text, isNot(contains('Custom player diagnostics')));
+      expect(tableOf(text, 'Custom player (wc)'), isNotEmpty);
+    });
+
+    test('only the viewers that sent the diagnostics are rows of the table', () {
+      final table = tableOf(streamReport([wcDiagSession(), wcSession()]), 'Custom player diagnostics (wc)');
+      expect(table.where((line) => line.contains('diag')), hasLength(1));
+      expect(table.where((line) => line.trimLeft().startsWith('wc ')), isEmpty);
     });
   });
 }
