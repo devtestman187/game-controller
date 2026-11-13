@@ -2,7 +2,13 @@
 
 Written Nov 11, 2026 so that any later session (any model) can pick this up cold. Read this file first, then the two design files it names.
 
-## Where it stands (Nov 13, 2026, evening) — read this first
+## Where it stands (Nov 13, 2026, night) — read this first
+
+- **State:** batch opt2c done (docs/briefs/m15/opt2c/REPORT.md): g1-g2 diagnostics, g3 storm fix (page draws newest frame, one spaced keyframe request on both sides, encoder rate cap), g4 sender (small send buffers, whole messages, frames older than two frame times dropped, flaky tap test fixed), g5 card and marker read one drawn frame. Headless after-proof under 200-500 ms stalls: 1 dropped, 0 key requests (before 196, 9); clean runs 101-112 ms card, marker within 2 ms. Image rebuilt, `tools/stream.sh selftest` green.
+- **Next, needs the owner:** the third sitting, one smoke run then four, in docs/briefs/m15/opt2/PHONE-RUNS.md ("Third sitting"). Acceptance: all four at 150 ms or less and no more freezes than the current player, else the custom player is dropped. Nothing has run on the phone with these fixes. No tag, no build for release.
+- Superseded notes follow.
+
+## Where it stands (Nov 13, 2026, evening)
 
 - **State:** the first phone sitting (six runs) measured only the current player (162 and 176 ms card); the four `player=wc` runs failed (viewer never registered, 4:4:4 stream, no sound). Batch docs/briefs/m15/opt2b/ (reports f1-f6) fixed it: registration without the marker, encoder pinned to NV12 when the tap is on (avc1.42C02A), decoder rebuild, sound after a tap, page errors visible, missing figures, and a relay 404 on two new files. Headless proof on plain http (127.0.0.2): wc card 125-139 ms, with sound apart 116-125 ms. Image rebuilt; `tools/stream.sh selftest` green (the tap test test_a_slow_client_falls_to_a_keyframe_while_a_fast_one_gets_every_frame is timing-flaky: failed 2 of 4 runs, passes on rerun).
 - **Next, needs the owner:** the second sitting, four runs, in docs/briefs/m15/opt2/PHONE-RUNS.md ("Second sitting"). Gate and stop rule unchanged (150 ms and feels fine). Nothing has run on the phone with these fixes; Safari decoding the 4:2:0 stream is unverified.

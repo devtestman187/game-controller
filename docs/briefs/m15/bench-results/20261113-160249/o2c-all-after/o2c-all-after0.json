@@ -1,0 +1,351 @@
+{
+ "schema": 1,
+ "id": "5b0576bae74f318b",
+ "host": {
+  "type": "other",
+  "app": "0.14.0",
+  "os": "linux"
+ },
+ "date": "2026-11-13",
+ "durationS": 67,
+ "players": [
+  {
+   "install": "local-1",
+   "player": 1,
+   "local": true,
+   "platform": "linux",
+   "app": "",
+   "connectedS": 67,
+   "disconnects": 0,
+   "inputs": 0,
+   "inputsPerS": 0.0,
+   "stages": {},
+   "watched": "host_screen",
+   "modes": {
+    "keyboard": {
+     "ms": 0,
+     "activeMs": 0,
+     "games": 1,
+     "wins": 0
+    }
+   },
+   "switches": [],
+   "segments": [],
+   "ratings": [],
+   "games": {
+    "arena": {
+     "bump": 1,
+     "wall_hit": 1,
+     "rounds": 1
+    }
+   }
+  }
+ ],
+ "rounds": [
+  {
+   "game": "arena",
+   "hz": 60,
+   "timeS": 60.0,
+   "players": 1,
+   "tags": [
+    "mode_bumper",
+    "map_pinball",
+    "robo_easy",
+    "finished"
+   ]
+  }
+ ],
+ "frames": {
+  "drawn": 2370,
+  "dropped": 1195
+ },
+ "stream": {
+  "viewers": [
+   {
+    "id": "v1",
+    "kind": "browser",
+    "platform": "chrome-headless",
+    "stages": {
+     "stream_decode": {
+      "n": 22,
+      "median": 3,
+      "p95": 4,
+      "max": 4
+     },
+     "stream_display": {
+      "n": 22,
+      "median": 11,
+      "p95": 13,
+      "max": 13
+     },
+     "wcReadMeanMs": {
+      "n": 22,
+      "median": 0,
+      "p95": 0,
+      "max": 0
+     },
+     "wcReadMaxMs": {
+      "n": 22,
+      "median": 2,
+      "p95": 2,
+      "max": 2
+     },
+     "wcDrawMeanMs": {
+      "n": 22,
+      "median": 11,
+      "p95": 12,
+      "max": 13
+     },
+     "stream_capture": {
+      "n": 22,
+      "median": 2,
+      "p95": 3,
+      "max": 3
+     },
+     "stream_encode": {
+      "n": 22,
+      "median": 3,
+      "p95": 4,
+      "max": 4
+     },
+     "marker_glass": {
+      "n": 22,
+      "median": 97,
+      "p95": 101,
+      "max": 107
+     },
+     "marker_glass_p95": {
+      "n": 22,
+      "median": 118,
+      "p95": 126,
+      "max": 130
+     },
+     "stream_total": {
+      "n": 22,
+      "median": 19,
+      "p95": 24,
+      "max": 24,
+      "source": "stages"
+     }
+    },
+    "gauges": {
+     "deliveredFps": {
+      "n": 22,
+      "mean": 53.06,
+      "p95": 57.0,
+      "max": 57.0
+     },
+     "audioJitterMs": {
+      "n": 22,
+      "mean": 57.39,
+      "p95": 58.4,
+      "max": 59.4
+     },
+     "bitrateReceivedKbps": {
+      "n": 22,
+      "mean": 3709.77,
+      "p95": 4084.0,
+      "max": 4237.0
+     },
+     "wcRecvToDecodeMs": {
+      "n": 22,
+      "mean": 3.07,
+      "p95": 3.4,
+      "max": 3.4
+     },
+     "wcDecodeToDrawMs": {
+      "n": 22,
+      "mean": 10.8,
+      "p95": 12.5,
+      "max": 12.5
+     },
+     "wcDropped": {
+      "n": 22,
+      "mean": 0.0,
+      "p95": 0.0,
+      "max": 0.0
+     },
+     "wcBacklog": {
+      "n": 22,
+      "mean": 0.45,
+      "p95": 1.0,
+      "max": 1.0
+     },
+     "wcKeyRequests": {
+      "n": 22,
+      "mean": 0.0,
+      "p95": 0.0,
+      "max": 0.0
+     },
+     "wcQueueMax": {
+      "n": 22,
+      "mean": 20.95,
+      "p95": 27.0,
+      "max": 27.0
+     },
+     "wcDecoderErrors": {
+      "n": 22,
+      "mean": 0.0,
+      "p95": 0.0,
+      "max": 0.0
+     },
+     "wcDecoderRebuilds": {
+      "n": 22,
+      "mean": 0.0,
+      "p95": 0.0,
+      "max": 0.0
+     },
+     "wcGapMaxMs": {
+      "n": 22,
+      "mean": 384.27,
+      "p95": 476.0,
+      "max": 476.0
+     },
+     "wcGaps250": {
+      "n": 22,
+      "mean": 3.45,
+      "p95": 6.0,
+      "max": 6.0
+     },
+     "wcKeyBytesMax": {
+      "n": 22,
+      "mean": 30989.0,
+      "p95": 31024.0,
+      "max": 31024.0
+     },
+     "wcDecQueueMax": {
+      "n": 22,
+      "mean": 19.95,
+      "p95": 26.0,
+      "max": 26.0
+     },
+     "wcLagMaxMs": {
+      "n": 22,
+      "mean": 43.0,
+      "p95": 43.0,
+      "max": 43.0
+     }
+    },
+    "counters": {
+     "framesReceived": 3715,
+     "framesDecoded": 3714,
+     "framesDropped": 1,
+     "framesLate": 0,
+     "freezes": 6,
+     "freezeMs": 3344,
+     "reconnects": 0,
+     "firstFrameMs": 80,
+     "markerFrames": 3502,
+     "markerReadable": 3502,
+     "markerChecksumBad": 0,
+     "markerSyncBad": 0,
+     "markerCanvasBad": 0,
+     "markerOtherBad": 0
+    },
+    "facts": {
+     "wc": "cfg nohint dec ok",
+     "wcsnd": "playing",
+     "resolution": "1920x1080"
+    }
+   }
+  ],
+  "host": {
+   "samples": 23,
+   "gauges": {
+    "cpuPct": {
+     "n": 23,
+     "mean": 179.14,
+     "p95": 185.01,
+     "max": 185.5
+    },
+    "gameCpuPct": {
+     "n": 23,
+     "mean": 89.12,
+     "p95": 91.36,
+     "max": 91.7
+    },
+    "encoderCpuPct": {
+     "n": 23,
+     "mean": 13.77,
+     "p95": 15.33,
+     "max": 18.67
+    },
+    "memMb": {
+     "n": 23,
+     "mean": 456.66,
+     "p95": 485.86,
+     "max": 487.4
+    },
+    "gpuPct": {
+     "n": 23,
+     "mean": 47.52,
+     "p95": 50.0,
+     "max": 50.0
+    },
+    "encoderPct": {
+     "n": 23,
+     "mean": 6.39,
+     "p95": 7.0,
+     "max": 7.0
+    },
+    "gpuMemMb": {
+     "n": 23,
+     "mean": 1521.35,
+     "p95": 1532.0,
+     "max": 1532.0
+    },
+    "encodedFps": {
+     "n": 23,
+     "mean": 56.27,
+     "p95": 57.35,
+     "max": 57.69
+    },
+    "pipelineMs": {
+     "n": 23,
+     "mean": 8.41,
+     "p95": 8.9,
+     "max": 8.94
+    },
+    "sessionsAtOnce": {
+     "n": 23,
+     "mean": 1.0,
+     "p95": 1.0,
+     "max": 1.0
+    },
+    "gameFps": {
+     "n": 20,
+     "mean": 39.53,
+     "p95": 41.35,
+     "max": 41.35
+    },
+    "frameBuildMs": {
+     "n": 20,
+     "mean": 1.79,
+     "p95": 2.0,
+     "max": 2.22
+    },
+    "frameRasterMs": {
+     "n": 20,
+     "mean": 9.93,
+     "p95": 12.55,
+     "max": 12.71
+    },
+    "gameFrameMs": {
+     "n": 20,
+     "mean": 25.01,
+     "p95": 26.54,
+     "max": 26.82
+    },
+    "slowFramePct": {
+     "n": 20,
+     "mean": 6.71,
+     "p95": 23.33,
+     "max": 26.09
+    }
+   },
+   "memPeakMb": 507.03,
+   "firstFrameMs": 2174
+  }
+ },
+ "simulated": true
+}

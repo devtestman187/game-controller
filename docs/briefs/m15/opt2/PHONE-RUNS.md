@@ -60,3 +60,39 @@ If a run still shows "no viewer" after 30 s, the phone's page is showing an erro
 Reading the logs: same grep as above. New columns in "Custom player (wc)": errors, rebuilds, error, sound, snd playing. The "Streaming quality" row now has fps, recv, decoded, dropped and freezes for the wc page too. The gate: card median 150 ms or less, marker within 25 ms, feels fine.
 
 Headless proof of the fixed build (plain http on 127.0.0.2, Chrome, software decode): wc 139 ms card (marker 129); wc + sound apart 116 and 125 ms card (marker 102, 103); the table and the row render; sound `playing`. Not Safari.
+
+---
+
+# Third sitting (after opt2c: storm fixes): one smoke run, then four
+
+Fixed since the second sitting (batch docs/briefs/m15/opt2c/, REPORT.md): the page decodes a burst and draws only the newest frame (no drop-until-keyframe), one spaced keyframe request on both sides, a send buffer small enough that a stalled link shows on the host (`blocked`, `outq`), frames older than two frame times are never sent, and the card and the marker read the same drawn frame. Run `bash tools/stream.sh build` first (done after the last change). Same routine as before: the owner closes all stream tabs and says ready; one run at a time; the URL is `http://<PC address>:45782/?marker=1&player=wc`. No new switch is needed.
+
+Common part of every command: `bash tools/stream.sh bench --viewer external --seconds 60 --press-seconds 30 --set SESSION_MARKER=on --set SESSION_TAP=on --set SESSION_AUDIO=separate --player-query "marker=1&player=wc"` plus the label:
+
+| # | Label | Added to the common part |
+|---|---|---|
+| 0 (smoke) | wc3-smoke | `--label wc3-smoke` (check the page registers, picture, sound after one tap; then continue) |
+| 1 | wc3-1 | `--label wc3-1` |
+| 2 | wc3-2 | `--label wc3-2` |
+| 3 | wc3-3 | `--label wc3-3` |
+| 4 | wc3-4 | `--label wc3-4` |
+
+Smoke run, exact command:
+
+```bash
+bash tools/stream.sh bench --viewer external --seconds 60 --press-seconds 30 --label wc3-smoke --set SESSION_MARKER=on --set SESSION_TAP=on --set SESSION_AUDIO=separate --player-query "marker=1&player=wc" 2>&1 | tee /tmp/wc3-smoke.log
+```
+
+Acceptance (owner, Nov 13): all four runs at 150 ms or less press-to-screen (card median, marker within 25 ms) and no more freezes than the current player; otherwise the custom player is dropped.
+
+Tables to read from each run's log (the same line pulls them all):
+
+```bash
+grep -n -A8 -E "^(switches:|Streaming quality|Independent check|Custom player \(wc\)|Custom player diagnostics \(wc\)|tap diagnostics)|press>screen|press-to-screen" /tmp/wc3-1.log | head -120
+```
+
+That gives the press-to-screen table, the quality table, "Custom player (wc)", "Custom player diagnostics (wc)" and the `tap diagnostics:` line (drops, key requests, queue, outq, send ms). After each run copy its console log: `mkdir -p docs/briefs/m15/opt2/sitting-logs && cp /tmp/wc3-1.log docs/briefs/m15/opt2/sitting-logs/wc3-1.txt` (the label's `-tapdiag.log` is already in the run's results folder).
+
+What to look for: dropped near 0, keys 0-1, `dec queue max` that rises after a stall and returns (a burst is decoded, not dropped), `gaps >250` as the link's own stalls, freezes only where the link stalled.
+
+Headless proof of this build (127.0.0.2, software decode): 200-500 ms stalls every 3 s for 30 s: 1 dropped, 0 key requests, 9 freezes (the stalls themselves); clean runs: 101-112 ms card, marker within 2 ms, 0-1 dropped, 0 freezes. Not Safari.

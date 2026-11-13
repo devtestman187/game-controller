@@ -563,6 +563,11 @@ cmd_bench() {
   done
   say "summaries copied to $target"
   fetch_switches "$remote" "$target"
+  # The tap and tunnel one-second lines the bench collected (M15 opt2c).
+  if wsl_run "test -s $remote/$label-tapdiag.log"; then
+    tools/wsl-fetch.sh "$distro" "$remote/$label-tapdiag.log" "$target/$label-tapdiag.log" > /dev/null \
+      || fail "could not copy the tap diagnostics out of $distro"
+  fi
   # A bench that leaves its sessions running leaves the distro needing the
   # keep-alive too.
   if [[ "$keep" == "yes" ]]; then

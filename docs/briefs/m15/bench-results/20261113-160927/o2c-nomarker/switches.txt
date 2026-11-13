@@ -1,0 +1,1 @@
+switches: SESSION_TAP=on, SESSION_AUDIO=separate, player-query player=wc, player-options none, player wc
