@@ -5,7 +5,7 @@
  * browser allows, and reconnects when the stream drops.
  */
 
-import { parseOptions, optionsLine } from "./options.js";
+import { markerEnabled, parseOptions, optionsLine } from "./options.js";
 import { LowDelay, lowDelayEnabled } from "./low_delay.js";
 import { audioMode, msidsOf, reportPlayerState } from "./page_state.js";
 import { Playback, pictureOf, soundOf } from "./playback.js";
@@ -217,7 +217,13 @@ function msidFacts(key, peerConnection) {
 // reads the same connection's numbers and the frame times the browser gives.
 function startReporting(peerConnection) {
   stopReporting();
-  reporter = new StreamReporter({ video: screen, peerConnection, onProblem: noteProblem, reconnects });
+  reporter = new StreamReporter({
+    video: screen,
+    peerConnection,
+    onProblem: noteProblem,
+    reconnects,
+    marker: markerEnabled(options),
+  });
   reporter.start();
 }
 

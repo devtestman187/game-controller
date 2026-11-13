@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Thumb Party marker self-test</title>
+  <style>
+    body {
+      background: #000;
+      color: #eee;
+      font: 14px/1.5 ui-monospace, monospace;
+      padding: 12px;
+    }
+  </style>
+</head>
+
+<body>
+  <pre id="result">SELFTEST RUNNING</pre>
+
+  <!-- The page's own tests (M15 fix8), in the headless Chrome the bench already
+       has: this distro has no node, so the pure modules are checked here, in
+       the browser that runs them. bench.sh --selftest serves this folder and
+       reads the one line below back out of the DOM. Not served by the session:
+       serve.py's file list does not name this page. -->
+  <script type="module">
+    import { markerCellCount, decodeMarker, markerGapMs } from "./marker_decode.js";
+    import { markerEnabled, parseOptions } from "./options.js";
+    import { chooseSample, lowestRttOffset, medianOffset, parseClockAnswer } from "./clock_sync.js";
+    import { markerBatch, markerNames, tripleText } from "./marker_batch.js";
+    import { medianOf, percentileOf } from "./metrics.js";
+
+    // The spec's test vectors (docs/streaming-marker.md): the value, then its
+    // 55 content cells as a string of 0 and 1.
+    const vectors = [
+      { counter: 0, hostMs: 0, pressFlip: false, cells: "1000000000000000000000000000000000000000000000000000000" },
+      { counter: 1, hostMs: 1, pressFlip: true, cells: "1000000000000000010000000000000000000000000000000110001" },
+      { counter: 0xabcd, hostMs: 0x01234567, pressFlip: false, cells: "1010101011110011010000000100100011010001010110011100000" },
+      { counter: 0xffff, hostMs: 0xffffffff, pressFlip: true, cells: "1011111111111111111111111111111111111111111111111110001" },
+      { counter: 1, hostMs: 2, pressFlip: false, cells: "1000000000000000010000000000000000000000000000001000011" },
+      { counter: 12345, hostMs: 987654321, pressFlip: true, cells: "1000110000001110010011101011011110011010001011000110110" },
+    ];
+
+    // The host's fact limit and character set (stream_stats.dart's maxStreamFactLength and pattern):
+    // a fact beyond either is dropped, so a value that does not fit is a lost number.
+    const factLengthLimit = 24;
+    const factPattern = /^[A-Za-z0-9 ,._()+-]+$/;
+
+    const failures = [];
+    let checks = 0;
+
+    function check(name, run) {
+      checks++;
+      try {
+        const problem = run();
+        if (problem) failures.push(`${name}: ${problem}`);
+      } catch (error) {
+        failures.push(`${name}: threw ${error.message}`);
+      }
+    }
+
+    function same(actual, expected) {
+      return JSON.stringify(actual) === JSON.stringify(expected)
+        ? ""
+        : `expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`;
+    }
+
+    /** The row's crop of a picture: the light borders and [cells], one colour a cell. */
+    function cropOf(cellBits, { cellPx = 16, heightPx = 16 } = {}) {
+      const cells = [true, ...Array.from(cellBits, (bit) => bit === "1"), true];
+      const rows = [];
+      for (let y = 0; y < heightPx; y++) {
+        const row = [];
+        for (const light of cells) for (let step = 0; step < cellPx; step++) row.push(light ? 255 : 0);
+        rows.push(row);
+      }
+      return rows;
+    }
+
+    /** Paints the whole 3x3 mean a cell is read from, so the cell reads [value]. */
+    function paintCentre(rows, cell, value) {
+      const cellPx = rows[0].length / markerCellCount;
+      const x = cell * cellPx + Math.floor(cellPx / 2);
+      const y = Math.floor(rows.length / 2);
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) rows[y + dy][x + dx] = value;
+    }
+
+    /** The same crop through a 3x3 box blur, a +-25 noise with a fixed seed, and 16 levels. */
+    function degradedCrop(cellBits) {
+      const rows = cropOf(cellBits);
+      const blurred = rows.map((row, y) => row.map((_, x) => {
+        let sum = 0;
+        let count = 0;
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            const value = rows[y + dy]?.[x + dx];
+            if (value === undefined) continue;
+            sum += value;
+            count++;
+          }
+        }
+        return sum / count;
+      }));
+      let seed = 12345;
+      const noise = () => {
+        seed = (seed * 1103515245 + 12345) % 2147483648;
+        return (seed / 2147483648 * 2 - 1) * 25;
+      };
+      return blurred.map((row) => row.map((value) => {
+        const noisy = Math.max(0, Math.min(255, value + noise()));
+        return Math.round(noisy / 16) * 16;
+      }));
+    }
+
+    check("the row is 57 cells", () => same(markerCellCount, 57));
+    for (const vector of vectors) {
+      check(`the row is 55 content cells for ${vector.counter}`, () => same(vector.cells.length, 55));
+      check(`the spec vector ${vector.counter}/${vector.hostMs} decodes`, () => {
+        const reading = decodeMarker(cropOf(vector.cells));
+        if (!reading.ok) return `unreadable: ${reading.reason}`;
+        return same(
+          [reading.counter, reading.hostMs, reading.pressFlip],
+          [vector.counter, vector.hostMs, vector.pressFlip],
+        );
+      });
+      check(`the spec vector ${vector.counter}/${vector.hostMs} survives blur, noise and 16 levels`, () => {
+        const reading = decodeMarker(degradedCrop(vector.cells));
+        if (!reading.ok) return `unreadable: ${reading.reason}`;
+        return same(
+          [reading.counter, reading.hostMs, reading.pressFlip],
+          [vector.counter, vector.hostMs, vector.pressFlip],
+        );
+      });
+    }
+    check("a taller crop reads its middle row", () => {
+      const reading = decodeMarker(cropOf(vectors[2].cells, { heightPx: 32 }));
+      return reading.ok ? same(reading.counter, 0xabcd) : `unreadable: ${reading.reason}`;
+    });
+    check("a small crop still reads", () => {
+      const reading = decodeMarker(cropOf(vectors[5].cells, { cellPx: 4, heightPx: 4 }));
+      return reading.ok ? same(reading.hostMs, 987654321) : `unreadable: ${reading.reason}`;
+    });
+    check("a cell between the two levels is unreadable, not a guess", () => {
+      const rows = cropOf(vectors[1].cells);
+      paintCentre(rows, 5, 120);
+      const reading = decodeMarker(rows);
+      return reading.ok ? "read a mid-grey cell" : same(reading.kind, "level");
+    });
+    check("a dark border cell is unreadable", () => {
+      const rows = cropOf(vectors[1].cells);
+      paintCentre(rows, 0, 0);
+      const reading = decodeMarker(rows);
+      return reading.ok ? "read a dark border" : same(reading.kind, "border");
+    });
+    check("wrong sync cells are unreadable", () => {
+      const bits = `0${vectors[1].cells.slice(1)}`;
+      const reading = decodeMarker(cropOf(bits));
+      return reading.ok ? "read the wrong sync cells" : same(reading.kind, "sync");
+    });
+    check("a flipped counter bit fails the checksum", () => {
+      const flipped = vectors[1].cells.split("");
+      flipped[2] = flipped[2] === "1" ? "0" : "1";
+      const reading = decodeMarker(cropOf(flipped.join("")));
+      return reading.ok ? "read a wrong checksum" : same(reading.kind, "checksum");
+    });
+    check("a crop too narrow for 57 cells is unreadable", () => {
+      const reading = decodeMarker([[255, 0, 255]]);
+      return reading.ok ? "read a 3 px crop" : same(reading.kind, "crop");
+    });
+    check("an empty crop is unreadable", () => same(decodeMarker([]).kind, "crop"));
+    check("the age of a frame after its stamp", () => same(markerGapMs(5000, 4700), 300));
+    check("the age across the clock's wrap", () => same(markerGapMs(1000, 4294967000), 1296));
+    check("a page before the stamp is a negative age", () => same(markerGapMs(4700, 5000), -300));
+
+    check("marker=1 turns the reader on", () => same(markerEnabled(parseOptions("marker=1")), true));
+    check("a bare marker switches it on", () => same(markerEnabled(parseOptions("marker")), true));
+    check("no marker leaves it off", () => same(markerEnabled(parseOptions("")), false));
+    check("marker=0 leaves it off", () => same(markerEnabled(parseOptions("marker=0")), false));
+    check("the query overrides the session's defaults", () => {
+      return same(parseOptions("marker=0", { marker: "1" }).marker, "0");
+    });
+
+    check("one ping's offset, round trip and uncertainty", () => {
+      return same(parseClockAnswer({ hostMs: 10000 }, 1000, 1100), {
+        offsetMs: 8950,
+        rttMs: 100,
+        uncertaintyMs: 50,
+      });
+    });
+    check("a ping with no host clock has no sample", () => same(parseClockAnswer({ hostMs: null }, 0, 10), null));
+    check("the lowest round trip's offset is the one kept", () => {
+      const samples = [
+        { offsetMs: 10, rttMs: 80, uncertaintyMs: 40 },
+        { offsetMs: 30, rttMs: 20, uncertaintyMs: 10 },
+        { offsetMs: 50, rttMs: 40, uncertaintyMs: 20 },
+      ];
+      return same(chooseSample(samples, lowestRttOffset), { offsetMs: 30, rttMs: 20, uncertaintyMs: 10 });
+    });
+    check("the median mode keeps the page's old choice", () => {
+      const samples = [
+        { offsetMs: 10, rttMs: 80, uncertaintyMs: 40 },
+        { offsetMs: 30, rttMs: 20, uncertaintyMs: 10 },
+        { offsetMs: 50, rttMs: 40, uncertaintyMs: 20 },
+      ];
+      return same(chooseSample(samples, medianOffset), { offsetMs: 30, rttMs: 40, uncertaintyMs: 20 });
+    });
+    check("no sample is no offset", () => same(chooseSample([], lowestRttOffset), null));
+
+    check("the median of a count's values", () => {
+      return same([medianOf([3, 1, 2]), medianOf([1, 2, 3, 4]), medianOf([])], [2, 2.5, null]);
+    });
+    check("the 95th percentile", () => same(percentileOf([100, 200, 300], 0.95), 300));
+    check("a raw field's triple", () => {
+      return same(tripleText([60000, 60040, 60020], { scale: 1 / 1000, decimals: 2 }), "60.00 60.02 60.04");
+    });
+    check("an RTP timestamp's triple is relative", () => {
+      return same(tripleText([100, 11602, 23202], { scale: 1, decimals: 0, relative: true }), "0 11502 23102");
+    });
+
+    // One batch of a run with the marker on: two frames unreadable by checksum,
+    // one by sync and one by a mid-grey cell, and one press timed.
+    const summary = {
+      frames: 180,
+      readable: 176,
+      reasons: { checksum: 2, sync: 1, level: 1, border: 0, crop: 0, canvas: 0 },
+      glassMs: [100, 200, 300],
+      decodedDisplayMs: [40, 50, 60],
+      callbackLateMs: [-15, -5, 5],
+      readMs: [0.2, 0.4],
+      raw: { presentationTime: [60000, 60020, 60040], width: [1920, 1920, 1920] },
+      displayFrom: "expected-receive",
+      pressesMs: [250],
+    };
+    const clock = { offsetMs: 1234.5, rttMs: 2, uncertaintyMs: 1 };
+    const batch = markerBatch(summary, clock);
+    const item = (list, name) => list.find((entry) => entry.name === name);
+
+    check("one batch's stages", () => {
+      return same(
+        [item(batch.stages, markerNames.glass), item(batch.stages, markerNames.glassP95),
+          item(batch.stages, markerNames.press)],
+        [{ name: "marker_glass", ms: 200 }, { name: "marker_glass_p95", ms: 300 },
+          { name: "press_to_marker", ms: 250 }],
+      );
+    });
+    check("one batch's gauges", () => {
+      return same(
+        [item(batch.gauges, markerNames.offset), item(batch.gauges, markerNames.offsetRtt),
+          item(batch.gauges, markerNames.offsetUncertainty), item(batch.gauges, markerNames.callbackLate),
+          item(batch.gauges, markerNames.decodedDisplay), item(batch.gauges, markerNames.read)],
+        [{ name: "markerOffsetMs", value: 1234.5 }, { name: "markerOffsetRttMs", value: 2 },
+          { name: "markerOffsetUncertaintyMs", value: 1 }, { name: "markerCallbackLateMs", value: -5 },
+          { name: "markerDecodeDisplayMs", value: 50 }, { name: "markerReadMs", value: 0.3 }],
+      );
+    });
+    check("one batch's counters count unreadable frames by reason", () => {
+      return same(
+        [item(batch.counters, markerNames.frames), item(batch.counters, markerNames.readable),
+          item(batch.counters, markerNames.checksumBad), item(batch.counters, markerNames.syncBad),
+          item(batch.counters, markerNames.canvasBad), item(batch.counters, markerNames.otherBad)],
+        [{ name: "markerFrames", value: 180 }, { name: "markerReadable", value: 176 },
+          { name: "markerChecksumBad", value: 2 }, { name: "markerSyncBad", value: 1 },
+          { name: "markerCanvasBad", value: 0 }, { name: "markerOtherBad", value: 1 }],
+      );
+    });
+    check("one batch's raw field facts", () => {
+      return same(
+        [item(batch.facts, "rvfc.presentationTime"), item(batch.facts, "rvfc.width"),
+          item(batch.facts, markerNames.displayFrom)],
+        [{ name: "rvfc.presentationTime", value: "60.00 60.02 60.04" },
+          { name: "rvfc.width", value: "1920 1920 1920" },
+          { name: "markerDisplayFrom", value: "expected-receive" }],
+      );
+    });
+    check("every fact fits the host's length and its characters", () => {
+      const bad = batch.facts.filter((fact) => fact.value.length > factLengthLimit || !factPattern.test(fact.value));
+      return bad.length === 0 ? "" : `these would be dropped: ${JSON.stringify(bad)}`;
+    });
+    check("a batch with no samples sends no stage and no fact", () => {
+      const empty = markerBatch(
+        { frames: 0, readable: 0, reasons: {}, glassMs: [], decodedDisplayMs: [], callbackLateMs: [],
+          readMs: [], raw: {}, displayFrom: "", pressesMs: [] },
+        null,
+      );
+      return same([empty.stages.length, empty.gauges.length, empty.facts.length], [0, 0, 0]);
+    });
+
+    const result = document.getElementById("result");
+    result.textContent = failures.length === 0
+      ? `SELFTEST PASS ${checks}/${checks}`
+      : `SELFTEST FAIL ${failures.length}/${checks}\n${failures.join("\n")}`;
+  </script>
+</body>
+
+</html>

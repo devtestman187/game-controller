@@ -9,7 +9,7 @@
 #     [--size 1920x1080] [--probe] [--players N] [--port-base P] [--label L]
 #     [--out /work/dir] [--keep] [--set KEY=VALUE] [--press-seconds N]
 #     [--viewer chrome|external] [--viewer-cpus L] [--session-cpus L]
-#     [--player-query Q]
+#     [--player-query Q] [--selftest]
 #
 # `--set` gives the session containers one more environment setting, which is
 # how a tuning experiment runs without building the image again (M15 t1).
@@ -17,6 +17,11 @@
 # same one for the headless Chrome and for the address printed to a person
 # (M15 fix7). The run opens with one `switches:` line naming everything it was
 # given, and writes it to `<out>/switches.txt`.
+#
+# `--selftest` runs the player page's own tests and stops: the distro has no
+# node, so the page is its own runner, loaded by the same headless Chrome a
+# bench uses from a python3 server over the streaming/player folder. It prints
+# one `SELFTEST PASS n/n` line, or the failing checks (M15 fix8).
 #
 # `--probe` shows the latency test card instead of a round and times presses
 # against the card's flips: press-to-screen is measured there, as its own
@@ -72,6 +77,8 @@ players=1
 port_base=45780
 probe="no"
 keep="no"
+# Whether this run is the player page's own tests instead of a session (M15 fix8).
+selftest="no"
 out=""
 # How long the press phase runs after the round, in seconds (M15 fix5): empty
 # until the arguments are read, so a run can tell "not given" from "0".
@@ -127,6 +134,7 @@ One streaming benchmark (M15 c2), inside the distro.
   --viewer-cpus L  the cores the viewer's Chrome runs on, as taskset takes them
                    (with --viewer chrome only: a device you open is pinned there)
   --session-cpus L the cores the session containers run on (docker --cpuset-cpus)
+  --selftest       run the player page's tests and stop (no session, no image)
   --help           this text
 EOF
 }
@@ -150,6 +158,7 @@ parse_args() {
       --session-cpus) session_cpus="${2:-}"; shift 2 || { usage; exit 2; } ;;
       --probe) probe="yes"; shift ;;
       --keep) keep="yes"; shift ;;
+      --selftest) selftest="yes"; shift ;;
       --help | -h) usage; exit 0 ;;
       *) printf 'bench: unknown option "%s"\n' "$1" >&2; usage; exit 2 ;;
     esac
@@ -709,9 +718,51 @@ report_run() {
   say "results in $out"
 }
 
+# The player page's tests (M15 fix8): the marker's decoder, the page's options
+# and the clock estimate, run by the headless Chrome a bench already has. The
+# distro has no node, so the page is the runner: python3 serves the player
+# folder on a free loopback port, Chrome loads the page and the one line it
+# writes is read back out of the DOM. Two processes it starts, both stopped here.
+run_page_selftest() {
+  local directory port url dump server_pid waited=0
+  directory="$(cd "$(dirname "$0")/player" && pwd)" || fail "the player folder is not beside the bench"
+  command -v python3 > /dev/null || fail "python3 is not here to serve the test page"
+  command -v "$chrome" > /dev/null || fail "no headless Chrome at $chrome"
+  port="$(python3 -c 'import socket; s = socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1])')" \
+    || fail "no free loopback port for the test page"
+  python3 -m http.server "$port" --bind 127.0.0.1 --directory "$directory" > /dev/null 2>&1 &
+  server_pid="$!"
+  url="http://127.0.0.1:$port/marker_selftest.html"
+  # A page fetched before the server listens would test nothing, so the port is
+  # tried until it answers, and given up on after five seconds.
+  until curl -s --max-time 1 -o /dev/null "$url"; do
+    if (( waited >= 50 )); then
+      kill "$server_pid" 2>/dev/null
+      fail "the test page's server did not start"
+    fi
+    sleep 0.1
+    waited=$((waited + 1))
+  done
+  dump="$("$chrome" --no-sandbox --disable-gpu --dump-dom "$url" 2>/dev/null)"
+  kill "$server_pid" 2>/dev/null
+  wait "$server_pid" 2>/dev/null
+  if printf '%s' "$dump" | grep -q "SELFTEST PASS"; then
+    say "$(printf '%s' "$dump" | grep -o 'SELFTEST PASS [0-9]*/[0-9]*' | head -1)"
+    return 0
+  fi
+  printf '%s\n' "$dump" | sed -n '/SELFTEST/,$p'
+  return 1
+}
+
 main() {
   parse_args "$@"
   check_args
+  # The page's tests need no session, no image and no output folder: they answer
+  # and the run ends here (M15 fix8).
+  if [[ "$selftest" == "yes" ]]; then
+    run_page_selftest || fail "the player page's tests failed"
+    exit 0
+  fi
   mkdir -p "$out/summaries"
   # The run says up front what was switched on, and keeps the line with its
   # results, so its numbers are read against the right settings (M15 fix7).

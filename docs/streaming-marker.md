@@ -8,7 +8,9 @@ the picture, and the player reads it back out of the video element. This file is
 the spec both sides follow; the host's half is
 `packages/party_host/lib/src/automation/marker_code.dart` (encoder),
 `marker_decoder.dart` (the reference decoder) and `src/ui/marker_strip.dart`
-(the widget); the player's half is the next phase.
+(the widget); the player's half is `streaming/player/marker_decode.js` (the
+reader's decoder), `marker_reader.js` (sampling and the times) and
+`clock_sync.js` (the page-to-host offset).
 
 ## The row
 
@@ -69,6 +71,49 @@ provider), it is stamped on the clock `probe/press` answers in
 The weakness is the one above: it stamps paint start, not capture, so the
 raster and the capture sit inside every marker reading.
 
+## The player's half
+
+`marker=1` on the page's URL (`--player-query marker=1`, or in
+`SESSION_PLAYER_OPTIONS`) switches the reader on; off, nothing is read and no new
+number is sent. The reader takes the strip's region only — `57 × cellPx` wide at
+the element's own width — one `getImageData` per frame inside
+`requestVideoFrameCallback` (an animation frame on a browser without it), and
+decodes it with the rule above. A frame it cannot read is counted by reason:
+checksum, sync, level, border, or a canvas the browser refuses; a guess is never
+a reading. The read costs ~5 ms a frame in the headless Chrome (measured in the
+[f8-3 report](briefs/m15/fix8/f8-3-marker-player-report.md)).
+
+The callback's time is on the page's clock, so the reader converts it with a
+NTP-style offset: it sends the `/clock` request the reporter always sent, keeps
+the last five round trips, and markers use the one with the smallest RTT (the
+reporter's own numbers keep the middle sample, so an off run is unchanged);
+offset = host clock − page clock, uncertainty = half the RTT, measured again
+every 10 s through the run. A row's age at the callback is that converted time
+less the row's stamped host clock (`marker_glass`), so it carries the offset's
+uncertainty.
+
+Every frame's `requestVideoFrameCallback` metadata is recorded raw, one fact per
+field: `rvfc.presentationTime`, `rvfc.expectedDisplayTime`, `rvfc.captureTime`,
+`rvfc.receiveTime`, `rvfc.processingDuration`, `rvfc.presentedFrames`,
+`rvfc.width`, `rvfc.height`, `rvfc.mediaTime` and `rvfc.rtpTimestamp`, each as
+min median max in the field's own unit (seconds, ms, pixels, frames, 90 kHz
+ticks). A field the browser leaves out is missing from the batch, never 0: this
+headless Chrome has no `captureTime`.
+
+Decoded to display is `expectedDisplayTime − receiveTime` when the browser has
+both, else `presentationTime − receiveTime`, and `markerDisplayFrom` says which
+was used; `stream_display` carries it when the fields exist and keeps the old
+figure otherwise. The callback's own lateness, callback time − expected display
+time, is a second gauge (`markerCallbackLateMs`).
+
+The press's own measurement comes from the flip cell: on a change between
+readable frames the reader records that frame's converted host time, so
+`press_to_marker` is that time less the `probe/press` host time the reporter
+already fetches — the card's flip is not read at all, and the two figures then
+check each other. It uses the same converted time as `marker_glass`, so it
+carries the same offset uncertainty; the flip frame's own stamp lands a few ms
+after the press, and is the difference between the two figures.
+
 ## The switch
 
 `SESSION_MARKER=on` on the session (§ "Switches" in
@@ -77,6 +122,10 @@ raster and the capture sit inside every marker reading.
 `AutomationSettings.marker`, and `AutomationShell` mounts the strip above
 everything else. Off — the default — no strip exists in the widget tree, and a
 phone's build has no environment to switch it on.
+
+The page's reader is a switch of its own, `marker=1` on the page's URL (see
+[streaming/README.md](streaming/README.md)), off by default: with the row off it
+reads nothing but the strip's region and counts every frame unreadable.
 
 ## Test vectors
 

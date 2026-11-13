@@ -14,7 +14,10 @@
  * this page never sees it.
  */
 
+import { ClockSync, clockIntervalMs, lowestRttOffset, medianOffset } from "./clock_sync.js";
 import { LatencyProbe } from "./latency_probe.js";
+import { markerBatch } from "./marker_batch.js";
+import { MarkerReader } from "./marker_reader.js";
 import {
   audioSyncMs,
   concealedPct,
@@ -24,6 +27,7 @@ import {
   networkMs,
   presentationDelayMs,
   rateKbitPerS,
+  viewerCounters,
 } from "./metrics.js";
 
 /** How often a batch of measurements goes to the host. */
@@ -31,12 +35,6 @@ const reportIntervalMs = 3000;
 
 /** How often the page asks for presses it has to time. */
 const pressPollMs = 200;
-
-/** How often the clock offset is re-measured. */
-const clockIntervalMs = 10000;
-
-/** How many clock offsets are kept; the median of them is used. */
-const clockPings = 5;
 
 /** A frame this late behind its expected display is counted as late. */
 const lateFrameFraction = 1;
@@ -57,8 +55,10 @@ export class StreamReporter {
    *   problem goes: the console and the stats overlay, never the picture. An
    *   empty text means the measurements are going through again (M15 g1).
    * @param {number} [parts.reconnects] - reconnects this page has had already
+   * @param {boolean} [parts.marker] - whether the page reads the host's marker
+   *   row (`marker=1`); off, no strip is read and none of its numbers is sent
    */
-  constructor({ video, peerConnection, onProblem, reconnects = 0 }) {
+  constructor({ video, peerConnection, onProblem, reconnects = 0, marker = false }) {
     this._video = video;
     this._peerConnection = peerConnection;
     this._onProblem = onProblem;
@@ -66,7 +66,9 @@ export class StreamReporter {
     // 3 s would bury the numbers in the overlay.
     this._lastProblem = "";
     this._viewerId = "";
-    this._offsets = [];
+    // The marker's age needs the truest offset, which is the shortest round
+    // trip's; a page without the marker keeps the median it always used.
+    this._clock = new ClockSync({ mode: marker ? lowestRttOffset : medianOffset });
     this._previous = { video: null, audio: null, pair: null };
     this._previousAtMs = 0;
     this._frames = 0;
@@ -80,8 +82,18 @@ export class StreamReporter {
     this._probe = new LatencyProbe({
       video: this._video,
       onProblem: (text) => this._problem(text),
-      toHostMs: (nowMs) => this._toHostMs(nowMs),
+      toHostMs: (nowMs) => this._clock.toHostMs(nowMs),
     });
+    // The marker's reader rides the same frame callback the probe does, so a
+    // frame is read once and the strip costs one canvas read.
+    this._marker = marker
+      ? new MarkerReader({
+          video: this._video,
+          toHostMs: (nowMs) => this._clock.toHostMs(nowMs),
+          onProblem: (text) => this._problem(text),
+          presses: () => this._probe.presses,
+        })
+      : null;
     this._timers = [];
     this._animationFrame = null;
     this._videoFrame = null;
@@ -103,8 +115,8 @@ export class StreamReporter {
     this._watchFrames();
     this._timers.push(window.setInterval(() => this._report(), reportIntervalMs));
     this._timers.push(window.setInterval(() => this._probe.poll(), pressPollMs));
-    this._timers.push(window.setInterval(() => this._pingClock(), clockIntervalMs));
-    this._pingClock();
+    this._timers.push(window.setInterval(() => this._clock.ping(), clockIntervalMs));
+    this._clock.ping();
   }
 
   /** Stops every timer and the frame loop; a reconnect starts a new reporter. */
@@ -139,6 +151,9 @@ export class StreamReporter {
         this._frames++;
         if (this._firstFrameMs === null) this._firstFrameMs = Math.round(nowMs);
         this._probe.watch(nowMs, this._frames);
+        // No metadata without the frame callback: the marker's raw fields are
+        // then recorded as missing, which is what this browser says.
+        this._marker?.readFrame(nowMs, null);
         this._animationFrame = window.requestAnimationFrame(onAnimationFrame);
       };
       this._animationFrame = window.requestAnimationFrame(onAnimationFrame);
@@ -156,6 +171,7 @@ export class StreamReporter {
       const budget = 1000 / Math.max(this._deliveredFps(), 1);
       if (delay > budget * lateFrameFraction) this._late++;
       this._probe.watch(nowMs, this._frames);
+      this._marker?.readFrame(nowMs, metadata);
       this._videoFrame = this._video.requestVideoFrameCallback(onFrame);
     };
     this._videoFrame = this._video.requestVideoFrameCallback(onFrame);
@@ -176,30 +192,6 @@ export class StreamReporter {
   /** The delivered frame rate the last statistics sample saw. */
   _deliveredFps() {
     return this._previous.video?.framesPerSecond || defaultFps;
-  }
-
-  /** Measures the offset between this page's clock and the host's, and keeps it. */
-  async _pingClock() {
-    const sentAtMs = performance.now();
-    try {
-      const response = await fetch("/clock");
-      if (!response.ok) return;
-      const body = await response.json();
-      if (typeof body.hostMs !== "number") return;
-      const receivedAtMs = performance.now();
-      const offset = body.hostMs - (sentAtMs + receivedAtMs) / 2;
-      this._offsets.push(offset);
-      if (this._offsets.length > clockPings) this._offsets.shift();
-    } catch {
-      // A host that isn't up yet answers nothing; the next ping tries again.
-    }
-  }
-
-  /** This page's clock as the host's, or null before the first ping answered. */
-  _toHostMs(localMs) {
-    if (this._offsets.length === 0) return null;
-    const sorted = [...this._offsets].sort((a, b) => a - b);
-    return localMs + sorted[Math.floor(sorted.length / 2)];
   }
 
   /** Builds one batch and sends it to the session's ingest. */
@@ -259,7 +251,12 @@ export class StreamReporter {
     };
     addStage("stream_jitter_buffer", jitterBufferMs(video, before.video));
     addStage("stream_decode", decodeMsPerFrame(video, before.video));
-    addStage("stream_display", this._displayFrames === 0 ? null : this._displayMs / this._displayFrames);
+    // Decoded to display, when the browser says when the frame arrived and when
+    // it plans to show it: that is the stage the chain could never measure. A
+    // browser without those fields keeps the older lateness reading.
+    const decodedDisplayMs = this._marker === null ? null : this._marker.decodedDisplayMs();
+    const latenessMs = this._displayFrames === 0 ? null : this._displayMs / this._displayFrames;
+    addStage("stream_display", decodedDisplayMs ?? latenessMs);
     addStage("stream_network", networkMs(pair));
     for (const press of this._probe.presses) {
       if (press.seen && press.sampleMs !== undefined && !press.sent) {
@@ -278,7 +275,11 @@ export class StreamReporter {
     addGauge("audioSyncMs", audioSyncMs(audio, video));
     addGauge("audioConcealedPct", concealedPct(audio));
     for (const gauge of this._soundGauges) addGauge(gauge.name, gauge.value);
-    const sent = this._sentCounters(video);
+    const sent = viewerCounters(video, {
+      lateFrames: this._late,
+      reconnects: this._reconnects,
+      firstFrameMs: this._firstFrameMs,
+    });
     for (const [name, value] of Object.entries(sent)) counters.push({ name, value });
     if (current.codec?.mimeType) facts.push({ name: "codec", value: current.codec.mimeType.split("/").pop() });
     if (current.relay) facts.push({ name: "relay", value: current.relay });
@@ -289,6 +290,16 @@ export class StreamReporter {
     // player owns the viewer id, so they land on this row.
     const host = this._hostStages ?? {};
     for (const stage of host.stages ?? []) stages.push({ name: stage.name, ms: stage.ms });
+    // The marker's numbers ride the same four containers, under their own
+    // names (marker_batch.js), so the session's summary carries them as it
+    // carries the rest.
+    if (this._marker !== null) {
+      const marker = markerBatch(this._marker.summary(), this._clock.state());
+      stages.push(...marker.stages);
+      gauges.push(...marker.gauges);
+      counters.push(...marker.counters);
+      facts.push(...marker.facts);
+    }
     return {
       ...(this._viewerId === "" ? { viewer: { kind: "browser", platform: platformOf() } } : { viewer: this._viewerId }),
       stages,
@@ -296,22 +307,6 @@ export class StreamReporter {
       counters,
       facts,
     };
-  }
-
-  /** The counters a viewer keeps: totals since it started. */
-  _sentCounters(video) {
-    if (!video) return {};
-    const counters = {
-      framesReceived: video.framesReceived ?? 0,
-      framesDecoded: video.framesDecoded ?? 0,
-      framesDropped: Math.max(0, (video.framesReceived ?? 0) - (video.framesDecoded ?? 0)),
-      framesLate: this._late,
-      freezes: video.freezeCount ?? 0,
-      freezeMs: Math.round((video.totalFreezesDuration ?? 0) * 1000),
-      reconnects: this._reconnects,
-    };
-    if (this._firstFrameMs !== null) counters.firstFrameMs = this._firstFrameMs;
-    return counters;
   }
 
   /** Sends one batch, remembering the viewer id the host answered. */
@@ -332,6 +327,7 @@ export class StreamReporter {
       // normal state and not a failure (M15 f1).
       if (this._viewerId === "" && typeof body.viewer === "string") this._viewerId = body.viewer;
       this._probe.forgetSent();
+      this._marker?.clear();
       this._late = 0;
       this._displayMs = 0;
       this._displayFrames = 0;

@@ -567,14 +567,18 @@ cmd_bench() {
   say "report again with: bash tools/stream.sh stats --results $target"
 }
 
-# The player relay's own tests (M15 g1): a script beside the code it checks,
-# run where the relay runs, in the distro. It starts serve.py on free loopback
-# ports and asks it the page's calls; nothing outside the distro is touched.
+# The player relay's own tests (M15 g1) and the player page's (M15 fix8): the
+# relay's script beside the code it checks, and the page's tests run by the
+# headless Chrome, both where they run, in the distro. The relay's starts
+# serve.py on free loopback ports and asks it the page's calls; the page's is
+# bench.sh's own --selftest, so one command checks the page's scripts.
 cmd_selftest() {
   local dest
   dest="$(sync_repo)" || fail "the copy into $distro failed"
   say "testing the player relay in $distro …"
   wsl_run "cd $dest && timeout 120 python3 streaming/player/relay_test.py" || fail "the relay's tests failed"
+  say "testing the player page in $distro …"
+  wsl_run "cd $dest && timeout 120 bash streaming/bench.sh --selftest" || fail "the player page's tests failed"
 }
 
 # The newest bench run under docs/, or nothing: a run's folder is named for the

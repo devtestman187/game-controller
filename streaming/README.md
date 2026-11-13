@@ -86,6 +86,27 @@ stream itself, is not in the image: no GStreamer element implements it here, so
 there is no session switch for it (evidence in
 [fix7/n2-1-delay-build-report.md](../docs/briefs/m15/fix7/n2-1-delay-build-report.md)).
 
+`marker=1` is the page's half of the streaming marker (M15 fix8, technique in
+[docs/streaming-marker.md](../docs/streaming-marker.md); off unless asked for,
+and it needs the session's row, `SESSION_MARKER=on`). Every frame it reads only
+the row's strip out of the video element, one `getImageData` in the element's
+`requestVideoFrameCallback`, decodes it (`marker_decode.js`) and times the
+callback on the host's clock through an offset it measures against `/clock`
+every 10 s, keeping the shortest round trip (`clock_sync.js`: offset, RTT and
+RTT/2 as the uncertainty). A batch then carries, as the sampler's own keys, the
+stages `marker_glass` and `marker_glass_p95` (the row's age at the callback), the
+press stage `press_to_marker` (the flip cell's frame, less the `probe/press` host
+time: an independent press-to-screen that needs no card) and `stream_display`
+(decoded to display, `expectedDisplayTime − receiveTime`), the gauges
+`markerOffsetMs`, `markerOffsetRttMs`, `markerOffsetUncertaintyMs`,
+`markerCallbackLateMs`, `markerDecodeDisplayMs` and `markerReadMs`, the counters
+`markerFrames`, `markerReadable`, `markerChecksumBad`, `markerSyncBad`,
+`markerCanvasBad` and `markerOtherBad`, and one `rvfc.<field>` fact per
+`requestVideoFrameCallback` metadata field (min median max in the field's unit; a
+field the browser does not give is absent, not 0). With the switch off the page
+sends nothing new. The read costs ~5 ms a frame in headless Chrome (measured in
+the [fix8 f8-3 report](../docs/briefs/m15/fix8/f8-3-marker-player-report.md)).
+
 The headless Chrome is not Safari: a headless run says whether a switch works and
 what it does to the host side and to Chrome, and the phone decides.
 

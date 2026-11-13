@@ -120,6 +120,10 @@ def test_page(port):
             "/streams.js",
             "/page_state.js",
             "/latency_probe.js",
+            "/clock_sync.js",
+            "/marker_batch.js",
+            "/marker_decode.js",
+            "/marker_reader.js",
         )
     ]
     check(served == [200] * len(served), "the page's own files are served")

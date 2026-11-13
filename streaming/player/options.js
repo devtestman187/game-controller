@@ -38,3 +38,15 @@ export function optionsLine(options) {
   if (keys.length === 0) return "";
   return `options: ${keys.map((key) => `${key}=${options[key]}`).join(" ")}`;
 }
+
+// The values of a switch that mean on, as `lowdelay=1` reads them: a bare key
+// becomes "1", and a person may write the word.
+const onValues = ["1", "true", "on", "yes"];
+
+// Whether the page is asked to read the host's marker row out of the picture
+// (M15 fix8): `marker=1` on the page's URL or in SESSION_PLAYER_OPTIONS. Off,
+// no strip is read and none of its numbers is sent.
+export function markerEnabled(options) {
+  const value = options === null || options === undefined ? "" : String(options.marker ?? "");
+  return onValues.includes(value.toLowerCase());
+}

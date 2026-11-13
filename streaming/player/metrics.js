@@ -134,6 +134,30 @@ export function concealedPct(audio) {
 }
 
 /**
+ * The counters a viewer keeps on its row: totals since it started. A count the
+ * track does not give is 0, because a counter is a total and not a reading
+ * (M15 c2); frames dropped are what arrived and never decoded.
+ * @param {{framesReceived?: number, framesDecoded?: number, freezeCount?: number,
+ *   totalFreezesDuration?: number}|null} video - the inbound-rtp entry
+ * @param {{lateFrames: number, reconnects: number, firstFrameMs: number|null}} viewer
+ * @returns {object}
+ */
+export function viewerCounters(video, { lateFrames, reconnects, firstFrameMs }) {
+  if (!video) return {};
+  const counters = {
+    framesReceived: video.framesReceived ?? 0,
+    framesDecoded: video.framesDecoded ?? 0,
+    framesDropped: Math.max(0, (video.framesReceived ?? 0) - (video.framesDecoded ?? 0)),
+    framesLate: lateFrames,
+    freezes: video.freezeCount ?? 0,
+    freezeMs: Math.round((video.totalFreezesDuration ?? 0) * msPerS),
+    reconnects,
+  };
+  if (firstFrameMs !== null) counters.firstFrameMs = firstFrameMs;
+  return counters;
+}
+
+/**
  * One pixel's brightness, 0–255, as the flip watcher reads the picture:
  * Rec. 709's weights, which is what a display's own luminance follows.
  * @param {number} r - red, 0–255
@@ -186,3 +210,18 @@ export class FlipWatcher {
 
 const round1 = (value) => Math.round(value * 10) / 10;
 const round2 = (value) => Math.round(value * 100) / 100;
+
+/** The median of [values] (the middle one, or the mean of the middle two), or null when empty. */
+export function medianOf(values) {
+  if (values.length === 0) return null;
+  const sorted = [...values].sort((a, b) => a - b);
+  const middle = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 0 ? (sorted[middle - 1] + sorted[middle]) / 2 : sorted[middle];
+}
+
+/** The value at fraction [q] of [values] (0.95 = p95), or null when empty. */
+export function percentileOf(values, q) {
+  if (values.length === 0) return null;
+  const sorted = [...values].sort((a, b) => a - b);
+  return sorted[Math.round(q * (sorted.length - 1))];
+}
