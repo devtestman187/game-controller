@@ -1,0 +1,1 @@
+switches: SESSION_MARKER=on, player-query marker=1&jbtarget=0, player-options none

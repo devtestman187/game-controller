@@ -530,7 +530,7 @@ cmd_bench() {
   if [[ -z "$results" ]]; then results="$bench_results_root/$(date +%Y%m%d-%H%M%S)"; fi
   target="$results/$label"
   for setting in "${settings[@]}"; do extra="$extra --set $setting"; done
-  if [[ -n "$player_query" ]]; then extra="$extra --player-query $player_query"; fi
+  if [[ -n "$player_query" ]]; then extra="$extra --player-query '$player_query'"; fi
   if [[ -n "$press_seconds" ]]; then extra="$extra --press-seconds $press_seconds"; fi
   if [[ "$probe" == "yes" ]]; then extra="$extra --probe"; fi
   if [[ "$keep" == "yes" ]]; then extra="$extra --keep"; fi
