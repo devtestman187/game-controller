@@ -155,10 +155,22 @@ session_id="${SESSION_ID:-$(date +%Y%m%d%H%M%S)-$$}"
 # THUMBPARTY_MARKER=1 to the app, which draws the row in the top-left corner.
 marker="${SESSION_MARKER:-off}"
 
+# Whether the encoded video is also handed to Python (M15 opt2): `on` runs the
+# session pipeline inside streaming/tap/tap_runner.py instead of gst-launch, so
+# a tap branch after the encoder gives every access unit to the WebCodecs
+# player's server and a keyframe request can reach the encoder. `off` is the
+# gst-launch-1.0 process the session has always run.
+tap="${SESSION_TAP:-off}"
+# The loopback port the tap server listens on (PROTOCOL.md): one above the
+# automation port unless a session gives it its own. The phone never connects
+# here; the player's relay tunnels the page's WebSocket upgrade to it.
+tap_port="${TAP_PORT:-$((automation_port + 1))}"
+
 # --- paths ------------------------------------------------------------------
 readonly run_dir="/run/thumb-party"
 readonly app_dir="/app"
 readonly player_src="/usr/share/thumb-party/player"
+readonly tap_runner="/usr/local/bin/tap/tap_runner.py"
 readonly xdg_dir="$run_dir/xdg"
 readonly pulse_socket="$run_dir/pulse/native"
 readonly signal_log="$run_dir/signalling.log"
@@ -341,43 +353,94 @@ sound_branch() {
   esac
 }
 
-# The compositor and encoder. `waylanddisplaysrc` needs render-node=software on
-# WSL's EGL (no DRM node, no dmabuf: capture probe section 3.2); NVENC gets the
-# low-delay settings the design pins, and the bitrate is set through CBR
-# because the probe saw the element ignore a bare `bitrate`.
-build_pipeline() {
-  # One argument per word of the pipeline: gst-launch reads each of these as one
-  # token, the way the capture probe ran it.
-  local -a cmd=(
-    gst-launch-1.0 -e
-    waylanddisplaysrc render-node=software '!'
-    "video/x-raw,width=$width,height=$height,framerate=$frame_rate/1" '!'
+# The compositor and encoder, one gst-launch argument per line.
+# `waylanddisplaysrc` needs render-node=software on WSL's EGL (no DRM node, no
+# dmabuf: capture probe section 3.2); NVENC gets the low-delay settings the
+# design pins, and the bitrate is set through CBR because the probe saw the
+# element ignore a bare `bitrate`.
+capture_words() {
+  printf '%s\n' \
+    waylanddisplaysrc render-node=software '!' \
+    "video/x-raw,width=$width,height=$height,framerate=$frame_rate/1" '!' \
     videoconvert '!'
-  )
   if [[ "$encoder" == nv* ]]; then
     # `bitrate` is kbit/s; CBR holds it and ignores `max-bitrate`. No B-frames
     # and no lookahead, so a frame leaves as soon as it is encoded.
-    cmd+=("$encoder" "bitrate=$video_kbps" rate-control=cbr
-      "gop-size=$gop_frames" b-frames=0 zero-reorder-delay=true preset=p1 tune=ultra-low-latency rc-lookahead=0)
+    printf '%s\n' "$encoder" "bitrate=$video_kbps" rate-control=cbr \
+      "gop-size=$gop_frames" b-frames=0 zero-reorder-delay=true preset=p1 tune=ultra-low-latency rc-lookahead=0
     if (( vbv_kbits > 0 )); then
-      cmd+=("vbv-buffer-size=$vbv_kbits" strict-gop=true)
+      printf '%s\n' "vbv-buffer-size=$vbv_kbits" strict-gop=true
     fi
   else
-    cmd+=("$encoder" "bitrate=$video_kbps")
+    printf '%s\n' "$encoder" "bitrate=$video_kbps"
   fi
-  cmd+=(
-    '!' h264parse config-interval=-1
-    '!' webrtcsink name=ws "signaller::uri=ws://127.0.0.1:$signal_port"
-  )
-  if [[ "$audio_mode" == separate ]]; then cmd+=("$picture_producer_meta"); fi
-  cmd+=(
-    "congestion-control=$congestion_control"
-    "max-bitrate=$video_bps" "start-bitrate=$video_bps"
+}
+
+# The WebRTC branch: the parser that repeats the SPS/PPS before every IDR, so a
+# receiver that joined late can decode at once, and the sink that sends the
+# picture with the sound settings the session chose (M15 fix7).
+webrtc_branch() {
+  printf '%s\n' h264parse config-interval=-1 '!' \
+    webrtcsink name=ws "signaller::uri=ws://127.0.0.1:$signal_port"
+  if [[ "$audio_mode" == separate ]]; then printf '%s\n' "$picture_producer_meta"; fi
+  printf '%s\n' \
+    "congestion-control=$congestion_control" \
+    "max-bitrate=$video_bps" "start-bitrate=$video_bps" \
     "do-fec=$do_fec" "do-retransmission=$do_retransmission"
-  )
+}
+
+# The tap's branch (M15 opt2): the same parser, so the SPS and PPS repeat before
+# every IDR, into an appsink tap_runner.py reads. The queue is leaky and shallow
+# and the appsink drops, so a reader that falls behind loses frames instead of
+# holding the encoder back, which is the backlog rule PROTOCOL.md fixes.
+# `async=false` is load-bearing: an async appsink behind the parser holds the
+# session's preroll and the pipeline never leaves PAUSED. The byte-stream caps
+# filter PROTOCOL.md names stalls it the same way on this driver, so the parser
+# keeps the encoder's own AVC and tap_runner.py converts each access unit to
+# Annex B (measured in tp-stream; docs/briefs/m15/opt2/opt2-1-tap-report.md).
+tap_branch() {
+  printf '%s\n' \
+    queue leaky=downstream max-size-buffers=2 max-size-time=0 '!' \
+    h264parse config-interval=-1 '!' \
+    appsink name=tap drop=true max-buffers=2 sync=false emit-signals=true async=false
+}
+
+# The whole pipeline as words. With the tap on, a tee right after the encoder
+# feeds today's branch and the tap's branch, which is how the encoder's own
+# output reaches Python without a second encode.
+pipeline_words() {
   local -a sound=()
+  capture_words
+  printf '%s\n' '!'
+  if [[ "$tap" == "on" ]]; then printf '%s\n' tee name=t 't.' '!'; fi
+  webrtc_branch
+  if [[ "$tap" == "on" ]]; then printf '%s\n' 't.' '!'; tap_branch; fi
+  # The sound's way into the stream last: `ws.` and `ws-audio` are elements the
+  # branches above made.
   mapfile -t sound < <(sound_branch)
-  cmd+=("${sound[@]}")
+  # `SESSION_AUDIO=off` has no sound words at all.
+  if (( ${#sound[@]} > 0 )); then printf '%s\n' "${sound[@]}"; fi
+}
+
+# The program that runs the pipeline, then its words one per line: gst-launch
+# runs them itself; with the tap on they go to tap_runner.py, which parses the
+# same words with Gst.parse_launchv and runs them in its own process so the
+# tap's appsink can be read from Python.
+pipeline_command() {
+  local -a words=()
+  mapfile -t words < <(pipeline_words)
+  if [[ "$tap" == "on" ]]; then
+    printf '%s\n' python3 "$tap_runner" --port "$tap_port" -- "${words[@]}"
+  else
+    printf '%s\n' gst-launch-1.0 -e "${words[@]}"
+  fi
+}
+
+build_pipeline() {
+  # One argument per word of the pipeline: both programs read each of these as
+  # one token, the way the capture probe ran it.
+  local -a cmd=()
+  mapfile -t cmd < <(pipeline_command)
   # The latency tracer writes one record per element per frame into the
   # pipeline's log, which the sampler reads (M15 c2): how long a buffer spent
   # in the compositor, the converter and the encoder, and in webrtcsink.
@@ -521,9 +584,10 @@ wait_ready() {
     say "$(tail -n 20 "$pipe_log" 2>/dev/null)"
     return 1
   }
-  local marker_note=""
+  local marker_note="" tap_note=""
   if [[ -n "$marker_value" ]]; then marker_note=" marker=$marker"; fi
-  say "ready: session=$session_name player=http://localhost:$player_port/ controller=localhost:$controller_port automation=127.0.0.1:$automation_port ${width}x${height}@${frame_rate} ${bitrate_kbps}kbit/s (video ${video_kbps}) ${gop_frames}f gop audio=$audio_mode$marker_note"
+  if [[ "$tap" == "on" ]]; then tap_note=" tap=on:$tap_port"; fi
+  say "ready: session=$session_name player=http://localhost:$player_port/ controller=localhost:$controller_port automation=127.0.0.1:$automation_port ${width}x${height}@${frame_rate} ${bitrate_kbps}kbit/s (video ${video_kbps}) ${gop_frames}f gop audio=$audio_mode$tap_note$marker_note"
   say "pipeline registered: $(printf '%s' "$producers" | paste -sd ';' -)"
   # The sink properties the session actually runs with (M15 fix7), so a run's
   # log says which sender settings its numbers belong to.
@@ -560,6 +624,19 @@ main() {
       marker=off
       ;;
   esac
+  case "$tap" in
+    on | off) ;;
+    *)
+      say "warning: SESSION_TAP=$tap is not on or off; the pipeline runs in gst-launch as it always did"
+      tap=off
+      ;;
+  esac
+  # A tap port that is not a number would only fail inside the runner, so the
+  # session takes the port PROTOCOL.md names instead.
+  if [[ "$tap" == "on" && ! "$tap_port" =~ ^[0-9]+$ ]]; then
+    say "warning: TAP_PORT=$tap_port is not a port number; the tap server takes $((automation_port + 1))"
+    tap_port=$((automation_port + 1))
+  fi
   # The app reads only `1` as on (AutomationSettings, M15 fix8), so off passes
   # an empty value: an ordinary launch's environment stays as it was.
   marker_value=""
@@ -608,5 +685,12 @@ main() {
   stop_all
   exit "$status"
 }
+
+# A dry run for the tests (streaming/tap/entrypoint_pipeline_test.sh): print the
+# pipeline's command and words as a real start would, and start nothing.
+if [[ "${1:-}" == "--print-pipeline" ]]; then
+  pipeline_command
+  exit 0
+fi
 
 main "$@"

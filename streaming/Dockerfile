@@ -174,6 +174,7 @@ RUN apt-get update \
       gstreamer1.0-tools gstreamer1.0-plugins-base gstreamer1.0-plugins-good \
       gstreamer1.0-plugins-bad gstreamer1.0-nice \
       pulseaudio alsa-utils \
+      python3-gi gir1.2-gstreamer-1.0 gir1.2-gst-plugins-base-1.0 \
       libgtk-3-0t64 libasound2t64 libpulse0 libsecret-1-0 libjsoncpp25 \
       libavahi-compat-libdnssd1 liblzma5 \
       libdrm2 libgbm1 libxkbcommon0 libinput10 \
@@ -192,6 +193,9 @@ ENV GST_PLUGIN_PATH=/usr/local/lib/gstreamer-1.0
 COPY --from=flutter-bundle /src/tv_test_app/build/linux/x64/release/bundle /app
 COPY --from=player-api /src/net/webrtc/gstwebrtc-api/dist/gstwebrtc-api-2.0.0.min.js /usr/share/thumb-party/player/lib/
 COPY streaming/player/ /usr/share/thumb-party/player/
+# The tap's runner and its access-unit helpers (M15 opt2), run by python3-gi:
+# python3-gi and the two typelibs above are what it needs beyond the plugins.
+COPY streaming/tap/ /usr/local/bin/tap/
 COPY streaming/entrypoint.sh /usr/local/bin/entrypoint.sh
 COPY --from=flutter-bundle /src/stream-sampler /usr/local/bin/stream-sampler
 RUN chmod 0755 /usr/local/bin/entrypoint.sh /usr/local/bin/stream-sampler
