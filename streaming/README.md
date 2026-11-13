@@ -586,6 +586,23 @@ its own lines in memory, so the pairing code is on the screen, not in a file),
 docker exec thumb-party-party tail -n 50 /run/thumb-party/pipeline.log
 ```
 
+With the tap on, two more lines go there once a second while a client or a
+tunnel is open (M15 opt2c):
+
+```
+tapdiag: t=<unix s> fr=<n> kb=<n> key=<n> keymax=<KB> dmax=<KB> q=<max depth> drop=<n> kreq=<n> sent=<KB> sendmax=<ms> slow=<n> outq=<KB max>
+tunnel: t=<unix s> up=<KB> down=<KB> sendmax=<ms> slow=<n> outq=<KB max>
+```
+
+`tapdiag:` is the tap server's own view — the encoder's frames and bytes, each
+client's queue depth, drops and keyframe requests, and the bytes still unsent in
+its socket — and `tunnel:` the relay's — bytes both ways and the unsent bytes of
+the phone-facing socket. `sendmax` and `slow` time the writes toward the phone;
+a backlog that only `outq` shows is in the kernel's buffer, not the encoder,
+which is where a phone that stops reading hides it. A bench keeps both kinds of
+line in `<results>/<label>-tapdiag.log` and says one `tap diagnostics:` line
+with their worst second.
+
 ## Cleaning up
 
 ```bash

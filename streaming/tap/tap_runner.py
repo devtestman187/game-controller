@@ -179,6 +179,9 @@ class TapRunner:
             self.fps = _frame_rate(sample)
         for callback in self.frame_callbacks:
             callback(frame_no, pts_us, is_key, data)
+        # The encoder's own output for the once-a-second diag line (M15 opt2c):
+        # two counters under a lock, so the pipeline's thread hardly notices it.
+        self.server.diag.frame(is_key, len(data))
         self.server.publish(frame_no, pts_us, is_key, data)
         return Gst.FlowReturn.OK
 

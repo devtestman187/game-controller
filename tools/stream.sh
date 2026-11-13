@@ -574,18 +574,21 @@ cmd_bench() {
   say "report again with: bash tools/stream.sh stats --results $target"
 }
 
-# The player relay's own tests (M15 g1), the tap server's (M15 opt2-2) and the
-# player page's (M15 fix8): the scripts beside the code they check, and the
-# page's tests run by the headless Chrome, all where they run, in the distro.
-# The relay's starts serve.py on free loopback ports and asks it the page's
-# calls; the tap server's starts it on a free port and speaks WebSocket to it;
-# the page's is bench.sh's own --selftest, so one command checks the page's
-# scripts.
+# The player relay's own tests (M15 g1), the tap's diagnostics' (M15 opt2c), the
+# tap server's (M15 opt2-2) and the player page's (M15 fix8): the scripts beside
+# the code they check, and the page's tests run by the headless Chrome, all
+# where they run, in the distro. The relay's starts serve.py on free loopback
+# ports and asks it the page's calls, its tunnel's line included; the tap's
+# diagnostics are a fake clock and a fake socket; the tap server's starts it on
+# a free port and speaks WebSocket to it; the page's is bench.sh's own
+# --selftest, so one command checks the page's scripts.
 cmd_selftest() {
   local dest
   dest="$(sync_repo)" || fail "the copy into $distro failed"
   say "testing the player relay in $distro …"
   wsl_run "cd $dest && timeout 120 python3 streaming/player/relay_test.py" || fail "the relay's tests failed"
+  say "testing the tap's diagnostics in $distro …"
+  wsl_run "cd $dest && timeout 120 python3 streaming/tap/tap_diag_test.py" || fail "the tap's diagnostics tests failed"
   say "testing the tap server in $distro …"
   wsl_run "cd $dest && timeout 120 python3 streaming/tap/tap_server_test.py" || fail "the tap server's tests failed"
   say "testing the player page in $distro …"

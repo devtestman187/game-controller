@@ -59,6 +59,15 @@ def masked_frame(opcode, payload, fin=True, mask=b"\x01\x02\x03\x04"):
     return head + mask + bytes(byte ^ mask[index % 4] for index, byte in enumerate(payload))
 
 
+def diag_field(line, name):
+    """One integer field of a diag line, by its name (M15 opt2c)."""
+    for item in line.split()[1:]:
+        field, _, value = item.partition("=")
+        if field == name:
+            return int(value)
+    raise AssertionError("the diag line has no %s: %r" % (name, line))
+
+
 class TestClient:
     """A browser's side of the tap: the upgrade, then masked client frames."""
 
@@ -406,6 +415,22 @@ class LoopbackTest(unittest.TestCase):
         self.assertEqual((opcode, json.loads(payload.decode("utf-8"))), (tap_ws.OPCODE_TEXT, {"type": "end"}))
         self.assertEqual(client.message(), (None, b""))
         self.assertEqual(self.server.stats()["clients"], 0)
+
+    def test_the_diag_line_counts_the_encoder_and_what_was_sent(self):
+        """The hooks the tap's line needs: the encoder's frame and a client's socket."""
+        client = self.client()
+        client.hello()
+        self.server.diag.frame(True, tap_queue.HEADER_BYTES + 3)
+        self.server.publish(0, 0, True, b"key")
+        client.message()
+        self.wait_for(lambda: self.server.stats()["sent"] == 1, "the frame to be counted")
+        line = self.server.diag.line()
+        self.assertEqual((diag_field(line, "fr"), diag_field(line, "key")), (1, 1))
+        self.assertEqual(diag_field(line, "q"), 1)
+        self.assertGreaterEqual(diag_field(line, "outq"), 0)
+
+    def test_a_window_with_no_client_is_no_diag_line(self):
+        self.assertIsNone(self.server.diag.line())
 
     def test_the_stats_name_what_was_sent_and_dropped(self):
         client = self.client()

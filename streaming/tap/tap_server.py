@@ -24,6 +24,7 @@ import sys
 import threading
 import time
 
+import tap_diag
 import tap_queue
 import tap_ws
 
@@ -50,6 +51,12 @@ HANDSHAKE_TIMEOUT_S = 2.0
 
 # How often the counters go to the session's log (PROTOCOL.md's line).
 STATS_LOG_INTERVAL_S = 5.0
+
+# How often the diagnostics line goes there: one window a second, so a stall of
+# three seconds is three lines (M15 opt2c). PROTOCOL.md's counters keep their
+# STATS_LOG_INTERVAL_S, counted in these ticks.
+DIAG_LOG_INTERVAL_S = 1.0
+STATS_LOG_TICKS = int(STATS_LOG_INTERVAL_S / DIAG_LOG_INTERVAL_S)
 
 # How long stop() gives a client thread to send `end` and close.
 SHUTDOWN_WAIT_S = 1.0
@@ -88,6 +95,10 @@ class TapServer:
         self._threads = []
         self._listener = None
         self._closed = threading.Event()
+        # The once-a-second counters that say where a backlog grows (M15 opt2c):
+        # the pipeline's thread offers frames to it, the client threads report
+        # their sends, and the stats thread writes its line.
+        self.diag = tap_diag.TapDiag()
 
     def start(self):
         """Listens on loopback and serves clients until stop()."""
@@ -111,6 +122,9 @@ class TapServer:
         for client in clients:
             if client.queue.offer(frame_no, pts_us, is_key, data):
                 self._wake(client)
+            # The diag reads the queue's depth and its counters after the offer,
+            # so a drop or a lost frame is in the second it happened.
+            self.diag.queued(client)
 
     def stop(self):
         """Sends PROTOCOL.md's `end` to every client and closes the server."""
@@ -132,16 +146,7 @@ class TapServer:
         """The counters PROTOCOL.md's log line reports: per client and in total."""
         with self._lock:
             queues = [client.queue for client in self._clients]
-        per_client = [queue.stats() for queue in queues]
-        return {
-            "clients": len(per_client),
-            "sent": sum(stats["sent"] for stats in per_client),
-            "dropped": sum(stats["dropped"] for stats in per_client),
-            "keyreq": sum(stats["keyreq"] for stats in per_client),
-            "high_water": max((stats["high_water"] for stats in per_client), default=0),
-            "bytes": sum(stats["bytes"] for stats in per_client),
-            "per_client": per_client,
-        }
+        return tap_queue.totals(queues)
 
     def log_stats(self):
         """One line to stderr, as PROTOCOL.md has it: the session's log reads it."""
@@ -164,15 +169,23 @@ class TapServer:
 
     def _stats_loop(self):
         # wait() returns at once when stop() sets the event, so the thread ends
-        # with the server.
-        while not self._closed.wait(STATS_LOG_INTERVAL_S):
-            self.log_stats()
+        # with the server. Each tick closes a diag window; every STATS_LOG_TICKS
+        # of them PROTOCOL.md's own counters go out.
+        ticks = 0
+        while not self._closed.wait(DIAG_LOG_INTERVAL_S):
+            line = self.diag.line()
+            if line is not None:
+                sys.stderr.write(line + "\n")
+            ticks += 1
+            if ticks % STATS_LOG_TICKS == 0:
+                self.log_stats()
 
     def _add(self, sock):
         """Starts the thread that serves one freshly accepted connection."""
         sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
         sock.settimeout(HANDSHAKE_TIMEOUT_S)
         client = _Client(sock, self._request_key)
+        self.diag.client_added(client, sock, client.queue.level)
         with self._lock:
             self._clients.append(client)
             thread = threading.Thread(target=self._serve, args=(client,), daemon=True)
@@ -321,20 +334,15 @@ class TapServer:
         A send that blocks past the socket's timeout drops the client to its
         next keyframe while nothing of the frame has gone out; after a partial
         send the frame is half on the wire, so that client is closed instead of
-        being sent a stream no browser could parse.
+        being sent a stream no browser could parse. tap_diag sends and measures
+        it, so every call's time and outcome reach the diag line.
         """
-        message = tap_ws.encode_frame(opcode, payload)
-        sent = 0
-        while sent < len(message):
-            try:
-                sent += client.sock.send(message[sent:])
-            except socket.timeout:
-                if sent:
-                    return False
-                client.queue.drop_to_keyframe()
-                return True
-            except OSError:
-                return False
+        outcome = tap_diag.send_message(self.diag, client, client.sock, tap_ws.encode_frame(opcode, payload))
+        if outcome == tap_diag.SEND_BROKEN:
+            return False
+        if outcome == tap_diag.SEND_BLOCKED:
+            client.queue.drop_to_keyframe()
+            return True
         if is_frame:
             client.queue.note_sent(len(payload))
         return True
@@ -360,6 +368,7 @@ class TapServer:
             pass
 
     def _remove(self, client):
+        self.diag.client_removed(client)
         with self._lock:
             if client in self._clients:
                 self._clients.remove(client)

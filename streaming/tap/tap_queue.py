@@ -55,6 +55,20 @@ def hello_message(info):
     return json.dumps(hello)
 
 
+def totals(queues):
+    """PROTOCOL.md's counters over every client's queue, each and in total."""
+    per_client = [queue.stats() for queue in queues]
+    return {
+        "clients": len(per_client),
+        "sent": sum(stats["sent"] for stats in per_client),
+        "dropped": sum(stats["dropped"] for stats in per_client),
+        "keyreq": sum(stats["keyreq"] for stats in per_client),
+        "high_water": max((stats["high_water"] for stats in per_client), default=0),
+        "bytes": sum(stats["bytes"] for stats in per_client),
+        "per_client": per_client,
+    }
+
+
 class ClientQueue:
     """One client's bounded frame queue and the counters its stats report.
 
@@ -122,6 +136,11 @@ class ClientQueue:
         with self._condition:
             self.sent += 1
             self.bytes += size_bytes
+
+    def level(self):
+        """The depth of the backlog and the totals a diag window reads (M15 opt2c)."""
+        with self._condition:
+            return len(self._frames), self.dropped, self.key_requests
 
     def stats(self):
         """What this client has been sent and has lost."""
