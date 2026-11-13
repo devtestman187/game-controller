@@ -107,6 +107,16 @@ field the browser does not give is absent, not 0). With the switch off the page
 sends nothing new. The read costs ~5 ms a frame in headless Chrome (measured in
 the [fix8 f8-3 report](../docs/briefs/m15/fix8/f8-3-marker-player-report.md)).
 
+When a summary carries the page's marker keys, the Analytics report's Streaming
+section prints an Independent check table under the pipeline: the marker's glass
+time and its own press figure beside the card's press and the chain's total,
+their differences, a one-line verdict (agree while the two presses differ by
+less than max(25 ms, twice the offset's uncertainty), else `DISAGREE by N ms`),
+the clock offset and its uncertainty, the frames read and the ones unreadable by
+reason, and the rVFC fields the browser gave. A run whose page read no marker
+row prints the report it always did (`tools/stream.sh stats --results <dir>`
+shows either).
+
 The headless Chrome is not Safari: a headless run says whether a switch works and
 what it does to the host side and to Chrome, and the phone decides.
 

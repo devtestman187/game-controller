@@ -1,4 +1,5 @@
 import 'report_stream.dart';
+import 'report_stream_rows.dart';
 import 'report_table.dart';
 import 'stream_names.dart';
 
@@ -38,7 +39,7 @@ const _derivedNote = '* derived: press>screen minus the three host legs and tota
 String hostLegReport(List<Map<String, Object?>> summaries) {
   final rows = [
     for (final viewer in streamViewers(summaries))
-      if (_medianOf(viewer, StreamStage.pressToScreen) != null) _hostLegCells(viewer),
+      if (viewer.stageMedian(StreamStage.pressToScreen) != null) _hostLegCells(viewer),
   ];
   if (rows.isEmpty) return '';
   return '${plainTable('Streaming host legs', _hostLegHeaders, rows)}$_derivedNote\n';
@@ -49,10 +50,10 @@ String hostLegReport(List<Map<String, Object?>> summaries) {
 List<String> _hostLegCells(StreamViewerRow row) => [
   row.session,
   row.id,
-  for (final name in StreamStage.hostLegs) _medianCell(_medianOf(row, name)),
+  for (final name in StreamStage.hostLegs) _medianCell(row.stageMedian(name)),
   _medianCell(_rasterToCapture(row)),
-  _medianCell(_medianOf(row, StreamStage.pressToScreen)),
-  _medianCell(_medianOf(row, StreamStage.total)),
+  _medianCell(row.stageMedian(StreamStage.pressToScreen)),
+  _medianCell(row.stageMedian(StreamStage.total)),
 ];
 
 /// The press's median minus the three host legs' medians and the stream's: the
@@ -61,22 +62,16 @@ List<String> _hostLegCells(StreamViewerRow row) => [
 /// k1). Null when the viewer timed no press or not all four of them, since a
 /// sum of some of them would read as a measurement.
 num? _rasterToCapture(StreamViewerRow row) {
-  final press = _medianOf(row, StreamStage.pressToScreen);
-  final total = _medianOf(row, StreamStage.total);
+  final press = row.stageMedian(StreamStage.pressToScreen);
+  final total = row.stageMedian(StreamStage.total);
   if (press == null || total == null) return null;
   var hostMs = 0.0;
   for (final name in StreamStage.hostLegs) {
-    final ms = _medianOf(row, name);
+    final ms = row.stageMedian(name);
     if (ms == null) return null;
     hostMs += ms.toDouble();
   }
   return press - hostMs - total;
-}
-
-/// A stage's median, or null when the viewer measured no such stage.
-num? _medianOf(StreamViewerRow row, String name) {
-  final value = row.stageField(name, 'median');
-  return value is num ? value : null;
 }
 
 /// One stage's median as a cell, whole as the pipeline table prints it, or a

@@ -1,4 +1,5 @@
 import 'report_stream.dart';
+import 'report_stream_rows.dart';
 import 'stream_names.dart';
 
 /// The stream CSV's columns (M15): one row per session and viewer, the stages

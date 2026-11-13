@@ -175,6 +175,13 @@ String plainTable(String title, List<String> headers, List<List<String>> rows) {
 /// The comparison table of [groups]: the columns above, one row per group.
 String table(String title, List<GroupStats> groups) => plainTable(title, _headers, [for (final g in groups) _cells(g)]);
 
+/// A number as a table prints it, to one decimal so the columns line up; a
+/// dash for no number.
+String numberText(num? value) => value == null ? '-' : value.toStringAsFixed(1);
+
+/// A count as a table prints it, whole; a dash for no count.
+String countText(num? value) => value == null ? '-' : '${value.round()}';
+
 /// Enjoyment signals per session: length, games played and good ratings.
 String enjoyment(List<Map<String, Object?>> summaries) {
   if (summaries.isEmpty) return 'Enjoyment: no sessions\n';

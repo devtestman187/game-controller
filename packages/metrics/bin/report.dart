@@ -44,6 +44,13 @@ screen. Its stages are milliseconds, each as median/p95:
                       the frame that shows it; src: stages (added up from the
                       stages), measured (a probe measured the total) or probe
                       (the probe measured press to screen only).
+  Independent check   the player's own read of the host's marker row (M15
+                      fix8): the marker's glass time and its own press beside
+                      the card's press and the chain's total, the two presses'
+                      difference and a one-line verdict, the clock offset and
+                      its uncertainty, the frames read and unreadable by
+                      reason, and the rVFC fields the browser gave. A run
+                      whose page read no marker row has no such table.
   Streaming quality   kbit/s sent and received, packet loss %, round trip and
                       jitter in ms, frames a second delivered, frames sent,
                       received, decoded, dropped and late, freezes (count and

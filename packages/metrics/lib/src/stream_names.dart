@@ -65,6 +65,70 @@ abstract final class StreamStage {
   static const controller = ['sent_to_received', 'received_to_drawn'];
 }
 
+/// The marker's numbers (M15 fix8): the page's own read of the host's row,
+/// sent in a batch as the sampler's keys (the spec is
+/// docs/streaming-marker.md). A run whose page read no row has none of them,
+/// so its report has no independent check.
+abstract final class StreamMarker {
+  /// The row's age at the frame callback, offset-corrected, in ms.
+  static const glass = 'marker_glass';
+
+  /// A probe press → the callback that first read the flipped cell, in ms.
+  static const press = 'press_to_marker';
+
+  /// The page-to-host clock offset the marker's times are converted with, in
+  /// ms, and half the round trip that kept it.
+  static const offset = 'markerOffsetMs';
+  static const offsetUncertainty = 'markerOffsetUncertaintyMs';
+
+  /// Decoded to display from the callback's own fields, in ms, and the field
+  /// pair it was taken from.
+  static const decodedDisplay = 'markerDecodeDisplayMs';
+  static const displayFrom = 'markerDisplayFrom';
+
+  /// The frames the reader looked at, the ones it could read, and the ones it
+  /// could not, by reason.
+  static const frames = 'markerFrames';
+  static const readable = 'markerReadable';
+  static const checksumBad = 'markerChecksumBad';
+  static const syncBad = 'markerSyncBad';
+  static const canvasBad = 'markerCanvasBad';
+  static const otherBad = 'markerOtherBad';
+
+  /// The prefix of the fact that carries one `requestVideoFrameCallback`
+  /// field, and the fields the spec lists, in the order the page records them.
+  static const rawField = 'rvfc.';
+  static const rvfcFields = [
+    'presentationTime',
+    'expectedDisplayTime',
+    'captureTime',
+    'receiveTime',
+    'processingDuration',
+    'presentedFrames',
+    'width',
+    'height',
+    'mediaTime',
+    'rtpTimestamp',
+  ];
+
+  /// Every name above but the rVFC facts' prefix: one of them in a viewer's
+  /// record is what says its page read the row.
+  static const names = [
+    glass,
+    press,
+    offset,
+    offsetUncertainty,
+    decodedDisplay,
+    displayFrom,
+    frames,
+    readable,
+    checksumBad,
+    syncBad,
+    canvasBad,
+    otherBad,
+  ];
+}
+
 /// What showed a stream to a viewer (M15): a browser page, one of our apps, or
 /// anything else a later client reports. A kind outside these counts as
 /// [other], as an unknown input mode does today.

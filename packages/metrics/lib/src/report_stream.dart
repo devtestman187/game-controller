@@ -1,67 +1,8 @@
 import 'report_stream_hostleg.dart';
+import 'report_stream_marker.dart';
+import 'report_stream_rows.dart';
 import 'report_table.dart';
 import 'stream_names.dart';
-
-/// One viewer of one session's stream record (M15), read from a summary's
-/// JSON. The stage and gauge numbers are the summary's own: this class only
-/// places them in the report's columns.
-final class StreamViewerRow {
-  StreamViewerRow(this.session, Map viewer)
-    : id = _text(viewer['id']),
-      kind = _text(viewer['kind']),
-      platform = _text(viewer['platform']),
-      stages = _mapOf(viewer['stages']),
-      gauges = _mapOf(viewer['gauges']),
-      counters = _numbersOf(viewer['counters']),
-      facts = _textsOf(viewer['facts']);
-
-  final String session;
-  final String id;
-  final String kind;
-  final String platform;
-
-  /// The viewer's stages, and its gauges, keyed by name, as the summary wrote
-  /// them (`{n, median, p95, max}` and `{n, mean, p95, max}`).
-  final Map stages;
-  final Map gauges;
-
-  /// Its counters (a total) and facts (a short technical string).
-  final Map<String, num> counters;
-  final Map<String, String> facts;
-
-  /// A stage's [field]: `n`, `median`, `p95`, `max` or `source`.
-  Object? stageField(String name, String field) => stages[name]?[field];
-
-  /// A gauge's [field]: `n`, `mean`, `p95` or `max`.
-  num? gaugeField(String name, String field) => _number(gauges[name]?[field]);
-
-  /// One of the viewer's counters, or null when it never sent one.
-  num? counter(String name) => counters[name];
-}
-
-/// One session's host container (M15): the resource gauges its sampler sent,
-/// the memory peak and the time to the first frame.
-final class StreamHostRow {
-  StreamHostRow(this.session, Map host)
-    : samples = _int(host['samples']) ?? 0,
-      gauges = _mapOf(host['gauges']),
-      memPeakMb = _number(host[StreamResource.memPeakMb]),
-      firstFrameMs = _number(host[StreamResource.firstFrameMs]);
-
-  final String session;
-
-  /// How many resource readings the session has.
-  final int samples;
-  final Map gauges;
-  final num? memPeakMb;
-  final num? firstFrameMs;
-
-  /// A gauge's [field]: `n`, `mean`, `p95` or `max`.
-  num? gaugeField(String name, String field) => _number(gauges[name]?[field]);
-
-  /// The most sessions the machine ran at once, the table's group key.
-  int? get sessionsAtOnce => _int(gaugeField(StreamResource.sessionsAtOnce, 'max'));
-}
 
 /// One row per viewer that reported numbers, of every session that streamed, in
 /// the summaries' order (M15). A session with no stream record has none, and a
@@ -179,10 +120,12 @@ String streamReport(List<Map<String, Object?>> summaries) {
   final leftOut = _allViewerRows(summaries).length - viewers.length;
   final hosts = streamHosts(summaries);
   final hostLegs = hostLegReport(summaries);
+  final marker = markerReport(summaries);
   return [
     if (viewers.isNotEmpty) ...[
       plainTable('Streaming pipeline', _pipelineHeaders, [for (final row in viewers) _pipelineCells(row)]),
       if (hostLegs.isNotEmpty) hostLegs,
+      if (marker.isNotEmpty) marker,
       plainTable('Streaming quality', _qualityHeaders, [for (final row in viewers) _qualityCells(row)]),
       plainTable('Streaming sound', _soundHeaders, [for (final row in viewers) _soundCells(row)]),
     ],
@@ -228,7 +171,7 @@ List<String> _qualityCells(StreamViewerRow row) {
     _countOf(row, 'framesDecoded'),
     _countOf(row, 'framesDropped'),
     _countOf(row, 'framesLate'),
-    freezes == null || freezeMs == null ? '-' : '${_whole(freezes)}/${_whole(freezeMs)}',
+    freezes == null || freezeMs == null ? '-' : '${countText(freezes)}/${countText(freezeMs)}',
     _countOf(row, 'firstFrameMs'),
     _countOf(row, 'reconnects'),
     _orDash(row.facts['relay']),
@@ -271,8 +214,8 @@ List<String> _resourceCells(StreamHostRow host) => [
     StreamResource.pipelineMs,
   ])
     _meanAndP95(host, name),
-  _whole(host.firstFrameMs),
-  _numberText(host.memPeakMb),
+  countText(host.firstFrameMs),
+  numberText(host.memPeakMb),
 ];
 
 /// The resources of the sessions that ran with 1, 2, 3 … sessions at once, so
@@ -313,10 +256,10 @@ String _pairOf(StreamViewerRow row, String name) {
 }
 
 /// One of a viewer's gauges' means, to one decimal, or a dash.
-String _meanOf(StreamViewerRow row, String name) => _numberText(row.gaugeField(name, 'mean'));
+String _meanOf(StreamViewerRow row, String name) => numberText(row.gaugeField(name, 'mean'));
 
 /// One of a viewer's counters, or a dash.
-String _countOf(StreamViewerRow row, String name) => _whole(row.counter(name));
+String _countOf(StreamViewerRow row, String name) => countText(row.counter(name));
 
 /// One of a container's gauges as its mean and p95 (`50.0/55.0`), to one
 /// decimal as a stage's cell is its median and p95, or a dash when it had no
@@ -325,7 +268,7 @@ String _meanAndP95(StreamHostRow host, String name) {
   final mean = host.gaugeField(name, 'mean');
   if (mean == null) return '-';
   final p95 = host.gaugeField(name, 'p95');
-  return p95 == null ? _numberText(mean) : '${_numberText(mean)}/${_numberText(p95)}';
+  return p95 == null ? numberText(mean) : '${numberText(mean)}/${numberText(p95)}';
 }
 
 /// The mean of the group's means for [name], or a dash when none has one.
@@ -347,34 +290,7 @@ String _stageText(StreamViewerRow row, String name, String field) {
   return value is String ? value : '';
 }
 
-/// A gauge's mean: one decimal, so a table's columns line up.
-String _numberText(num? value) => value == null ? '-' : value.toStringAsFixed(1);
-
-/// A count, whole; a dash when it never came.
-String _whole(num? value) => value == null ? '-' : '${value.round()}';
-
 String _orDash(String? value) => value == null || value.isEmpty ? '-' : value;
 
 /// The session a summary belongs to, or the empty string when it names none.
 String _sessionOf(Map<String, Object?> summary) => summary['id'] as String? ?? '';
-
-/// [value] as a map, whatever the summary's JSON held.
-Map _mapOf(Object? value) => value is Map ? value : const {};
-
-/// The numbers in [value], a summary's counters.
-Map<String, num> _numbersOf(Object? value) => {
-  for (final MapEntry(:key, :value) in _mapOf(value).entries)
-    if (key is String && value is num) key: value,
-};
-
-/// The strings in [value], a summary's facts.
-Map<String, String> _textsOf(Object? value) => {
-  for (final MapEntry(:key, :value) in _mapOf(value).entries)
-    if (key is String && value is String) key: value,
-};
-
-String _text(Object? value) => value is String ? value : '';
-
-num? _number(Object? value) => value is num ? value : null;
-
-int? _int(Object? value) => value is num ? value.round() : null;
