@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Thumb Party keyframe self-test</title>
+  <style>body { background: #000; color: #eee; font: 14px/1.5 ui-monospace, monospace; padding: 12px; }</style>
+</head>
+
+<body>
+  <pre id="result">SELFTEST RUNNING</pre>
+  <!-- The custom player's keyframe rule (M15 opt2c-3), in the headless Chrome
+       the bench already has: one request outstanding, 1.5 s between two asks,
+       and the catch-up that decodes a burst after a stall and draws only its
+       newest frame. A fake socket, decoder, chunk and clock drive the player;
+       bench.sh --selftest reads the one line below back out. -->
+  <script type="module">
+    import { frameTimestampUs } from "./wc_counters.js";
+    import { WcPlayer } from "./wc_player.js";
+
+    const failures = [];
+    let checks = 0;
+
+    async function check(name, run) {
+      checks++;
+      try {
+        const problem = await run();
+        if (problem) failures.push(`${name}: ${problem}`);
+      } catch (error) {
+        failures.push(`${name}: threw ${error.message}`);
+      }
+    }
+
+    function same(actual, expected) {
+      return JSON.stringify(actual) === JSON.stringify(expected)
+        ? ""
+        : `expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`;
+    }
+
+    function bytesOf(hex) {
+      return new Uint8Array(hex.match(/../g).map((pair) => Number.parseInt(pair, 16)));
+    }
+
+    // The access units of wc_selftest.html: a keyframe with an AUD, SPS, PPS and
+    // an IDR slice, and a delta with an AUD and a non-IDR slice.
+    const keyAuHex = "0000000109f0" + "00000167640028acd940780227e5c044000003000400000301e03c60c658"
+      + "00000168ebe3cb22c0" + "0000000165888421";
+    const deltaAuHex = "0000000109f000000001419aa0";
+
+    function messageOf({ flags = 0, frame = 0, payloadHex = deltaAuHex }) {
+      const payload = bytesOf(payloadHex);
+      const buffer = new ArrayBuffer(24 + payload.length);
+      const view = new DataView(buffer);
+      view.setUint8(0, 0x54);
+      view.setUint8(1, 1);
+      view.setUint8(2, flags);
+      view.setUint32(4, frame);
+      new Uint8Array(buffer, 24).set(payload);
+      return buffer;
+    }
+
+    const keyMessage = (frame) => messageOf({ flags: 1, frame, payloadHex: keyAuHex });
+    const deltaMessage = (frame) => messageOf({ frame, payloadHex: deltaAuHex });
+
+    /** A player with a fake socket, decoder, chunk, canvas and clock, and what a test reads back. */
+    function harness() {
+      const log = { sockets: [], decoders: [], chunks: [], draws: [], framesClosed: 0 };
+      const clock = { nowMs: 0 };
+      class FakeSocket {
+        constructor(url) {
+          this.url = url;
+          this.readyState = 1;
+          this.sent = [];
+          log.sockets.push(this);
+        }
+
+        send(data) { this.sent.push(data); }
+        close() { this.readyState = 3; }
+      }
+      class FakeDecoder {
+        static isConfigSupported(config) { return Promise.resolve({ supported: true, config }); }
+
+        constructor(init) {
+          this.init = init;
+          this.state = "unconfigured";
+          this.decodeQueueSize = 0;
+          this.closes = 0;
+          log.decoders.push(this);
+        }
+
+        configure() { this.state = "configured"; }
+        decode(chunk) { log.chunks.push(chunk); }
+        close() { this.closes++; this.state = "closed"; }
+      }
+      class FakeChunk {
+        constructor(init) { this.type = init.type; this.timestamp = init.timestamp; }
+      }
+      const canvas = { width: 0, height: 0, getContext: () => ({ drawImage: (frame) => log.draws.push(frame) }) };
+      const player = new WcPlayer({
+        url: "ws://test/tap",
+        canvas,
+        onEvent: () => {},
+        now: () => clock.nowMs,
+        WebSocketImpl: FakeSocket,
+        VideoDecoderImpl: FakeDecoder,
+        EncodedVideoChunkImpl: FakeChunk,
+        setTimeoutImpl: () => 0,
+        setIntervalImpl: () => 0,
+        clearIntervalImpl: () => {},
+        longTaskObserver: null,
+      });
+      const socket = () => log.sockets[log.sockets.length - 1];
+      const frameOf = (frameNo) => ({
+        timestamp: frameNo * frameTimestampUs, displayWidth: 1920, displayHeight: 1080,
+        close: () => { log.framesClosed++; },
+      });
+      return { player, log, clock, canvas, socket, frameOf };
+    }
+
+    /** Lets the player's promise chain run to its end: every frame is two microtasks, and a test sends 25. */
+    async function flushed() {
+      for (let step = 0; step < 120; step++) await Promise.resolve();
+    }
+
+    /** A player started on one keyframe, which the fake decoder takes. */
+    async function started() {
+      const h = harness();
+      h.player.start();
+      h.socket().onmessage({ data: keyMessage(0) });
+      await flushed();
+      return h;
+    }
+
+    await check("20 dropped deltas in one second send one keyframe request", async () => {
+      const h = await started();
+      for (let step = 0; step < 20; step++) {
+        h.clock.nowMs = step * 50;
+        h.socket().onmessage({ data: deltaMessage(step * 2) });
+      }
+      await flushed();
+      const counters = h.player.counters();
+      return same([h.socket().sent.length, counters.keyRequests, counters.keyRequestsSuppressed, counters.dropsGap],
+        [1, 1, 19, 20]);
+    });
+    await check("a keyframe frees the next request once the 1.5 s spacing is over", async () => {
+      const h = await started();
+      h.clock.nowMs = 0;
+      h.socket().onmessage({ data: deltaMessage(4) });
+      await flushed();
+      // The keyframe ends the wait, but the spacing still runs from the ask.
+      h.clock.nowMs = 1000;
+      h.socket().onmessage({ data: keyMessage(6) });
+      await flushed();
+      h.socket().onmessage({ data: deltaMessage(8) });
+      await flushed();
+      const early = h.player.counters().keyRequests;
+      h.clock.nowMs = 1500;
+      h.socket().onmessage({ data: deltaMessage(10) });
+      await flushed();
+      return same([early, h.player.counters().keyRequests, h.player.counters().keyRequestsSuppressed], [1, 2, 1]);
+    });
+    await check("a request no keyframe answers is repeated only after 2.5 s", async () => {
+      const h = await started();
+      h.socket().onmessage({ data: deltaMessage(4) });
+      await flushed();
+      h.clock.nowMs = 2400;
+      h.socket().onmessage({ data: deltaMessage(8) });
+      await flushed();
+      const waiting = h.player.counters().keyRequests;
+      h.clock.nowMs = 2600;
+      h.socket().onmessage({ data: deltaMessage(12) });
+      await flushed();
+      return same([waiting, h.player.counters().keyRequests], [1, 2]);
+    });
+    await check("a 400 ms gap is caught up: 25 deltas decode, the newest draws, no keyframe is asked", async () => {
+      const h = await started();
+      const decoder = h.log.decoders[0];
+      // A decoder five frames behind is no reason to drop: the chain is intact.
+      decoder.decodeQueueSize = 5;
+      h.clock.nowMs = 400;
+      for (let frame = 1; frame <= 25; frame++) h.socket().onmessage({ data: deltaMessage(frame) });
+      await flushed();
+      for (let index = 0; index < 25; index++) {
+        decoder.decodeQueueSize = 24 - index;
+        decoder.init.output(h.frameOf(index + 1));
+      }
+      await flushed();
+      const counters = h.player.counters();
+      return same([h.log.chunks.length, h.log.chunks[1].type, h.log.draws.length, counters.framesDrawn,
+        counters.skippedDraws, counters.dropsQueue, counters.dropsGap, counters.keyRequests, h.socket().sent.length],
+        [26, "delta", 1, 1, 24, 0, 0, 0, 0]);
+    });
+    await check("a decoder queue over 40 drops the frame and asks once", async () => {
+      const h = await started();
+      const decoder = h.log.decoders[0];
+      decoder.decodeQueueSize = 41;
+      h.socket().onmessage({ data: deltaMessage(1) });
+      await flushed();
+      h.clock.nowMs = 100;
+      h.socket().onmessage({ data: deltaMessage(2) });
+      await flushed();
+      const counters = h.player.counters();
+      return same([h.log.chunks.length, counters.dropsQueue, counters.keyRequests, counters.keyRequestsSuppressed],
+        [1, 2, 1, 1]);
+    });
+    await check("a decoder error asks through the same rule", async () => {
+      const h = await started();
+      const decoder = h.log.decoders[0];
+      h.clock.nowMs = 100;
+      decoder.init.error({ message: "boom" });
+      h.clock.nowMs = 200;
+      decoder.init.error({ message: "boom again" });
+      await flushed();
+      const counters = h.player.counters();
+      // The first error asks and its rebuild's own ask is held back; the second
+      // error's ask is held back too, so one request goes out for both.
+      return same([counters.keyRequests, counters.keyRequestsSuppressed, counters.decoderErrors], [1, 2, 2]);
+    });
+
+    const result = document.getElementById("result");
+    result.textContent = failures.length === 0
+      ? `SELFTEST PASS ${checks}/${checks}`
+      : `SELFTEST FAIL ${failures.length}/${checks}\n${failures.join("\n")}`;
+  </script>
+</body>
+
+</html>

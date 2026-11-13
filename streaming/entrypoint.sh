@@ -9,6 +9,8 @@
 # runs any number of sessions side by side; tools/stream.sh sets the ports per
 # session. The design and the measurements behind this pipeline are in
 # docs/design/streaming-custom.md and docs/briefs/m15/capture-probe-report.md.
+# With SESSION_TAP=on the encoder also gets a VBV buffer of about three frames
+# (SESSION_TAP_VBV_KBITS overrides it), which caps an IDR's size (M15 opt2c-3).
 #
 # It writes one `ready: ...` line to its log when the game window is up, the
 # pipeline is PLAYING and a player can connect; tools/stream.sh up waits for it.
@@ -41,6 +43,13 @@ gop_frames="${SESSION_GOP_FRAMES:-${frame_rate}}"
 # default came out at 145-182 and 220-250, so the gain is inside this PC's
 # run-to-run noise (44 ms) and it stays a switch, off by default.
 vbv_kbits="${SESSION_VBV_KBITS:-0}"
+# The tap session's own VBV buffer, in kbits, when `vbv_kbits` is 0: about
+# three frames' worth of the video's rate, which the encoder spreads an IDR
+# over instead of letting one frame take a second's budget and flood a slow
+# link (M15 opt2c-3). 0 computes it; SESSION_TAP_VBV_KBITS overrides. With
+# SESSION_TAP off it is unused and the encoder's words are exactly as before.
+tap_vbv_kbits="${SESSION_TAP_VBV_KBITS:-0}"
+tap_vbv_frames=3
 # Forward error correction and retransmission, both on: a home Wi-Fi drops the
 # odd packet, and a retransmitted frame costs less than a concealed one. M15 t1
 # measured no lower delay with them off, and turning FEC off only saves the
@@ -117,6 +126,9 @@ fec_overhead_percent=0
 if [[ "$do_fec" == "true" ]]; then fec_overhead_percent=110; fi
 video_kbps=$(( (bitrate_kbps - audio_bitrate_bps / 1000) * 100 / (100 + fec_overhead_percent) ))
 video_bps=$((video_kbps * 1000))
+if (( tap_vbv_kbits == 0 )); then
+  tap_vbv_kbits=$(( video_kbps * tap_vbv_frames / frame_rate ))
+fi
 
 # The ports inside the session. tools/stream.sh gives each session its own.
 # The controller port is pinned (THUMBPARTY_PORT, job a2), so the app listens
@@ -398,6 +410,10 @@ capture_words() {
       "gop-size=$gop_frames" b-frames=0 zero-reorder-delay=true preset=p1 tune=ultra-low-latency rc-lookahead=0
     if (( vbv_kbits > 0 )); then
       printf '%s\n' "vbv-buffer-size=$vbv_kbits" strict-gop=true
+    elif [[ "$tap" == "on" ]]; then
+      # The tap's own cap on an IDR's size (M15 opt2c-3): only its stream gets
+      # it, so a session without the tap keeps the encoder's words as they were.
+      printf '%s\n' "vbv-buffer-size=$tap_vbv_kbits" strict-gop=true
     fi
   else
     printf '%s\n' "$encoder" "bitrate=$video_kbps"

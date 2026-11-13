@@ -168,6 +168,7 @@ default.
 | `SESSION_BITRATE_KBPS` | 10000 | The ceiling a viewer's whole stream keeps: video, sound, FEC and RED together, which is what its byte counter reads. The encoder gets less — `(ceiling − 96) / (1 + FEC/100)` — and the ready line prints both (`10000kbit/s (video 4716)`); with FEC off the video gets the ceiling less the sound |
 | `SESSION_GOP_FRAMES` | the frame rate (a keyframe a second) | `-1` is keyframes on request only. Worse: the receiver's jitter buffer 262 ms against 127–170. Left at one a second so a joining player sees a picture at once |
 | `SESSION_VBV_KBITS` | 0 (NVENC's default, a second's worth) | The encoder's VBV/HRD buffer, in kbits: `gst-inspect-1.0 nvautogpuh264enc` says "VBV(HRD) Buffer Size in kbits (0 = NVENC default)". One frame's worth (167 at 10 Mbit/s and 60 fps) has measured 144–205 ms total and 213–253 press over six runs; the baseline runs beside them were 161–223 and 230–266, so it never left the 44 ms noise. Off |
+| `SESSION_TAP_VBV_KBITS` | 0 (computed) | With `SESSION_TAP=on` and `SESSION_VBV_KBITS` 0, the encoder's VBV/HRD buffer in kbits, so an IDR cannot take a second's budget and flood a slow link (M15 opt2c-3). 0 is about three frames' worth, `video_kbps × 3 / frame_rate` (235 at the default 4716 kbit/s video and 60 fps, 495 with FEC off at 9904), and `strict-gop=true` goes with it as in the `SESSION_VBV_KBITS` branch; `SESSION_VBV_KBITS` wins over it, and with the tap off the encoder's words are exactly as they were. Measured in tp-stream with 180 frames of `videotestsrc`: the biggest IDR 61.9 KB without it and 28.2 KB with it (mean 36.9 → 24.4 KB; the file 1995 → 1753 KB) |
 | `SESSION_FEC` | true | Forward error correction. No lower delay with it off, and it is what a viewer counts above the video: off, an Arena round measured 9693 kbit/s at a 10000 ceiling, and on 20353 (M15 fix5), so the encoder is given 4716 kbit/s when it is on |
 | `SESSION_RETRANSMISSION` | true | Resend lost packets; no delay difference either way |
 | `SESSION_CONGESTION` | `disabled` (the switch is off) | `webrtcsink`'s `congestion-control` on both sinks (M15 fix7, technique 3). `disabled`: with congestion control off the element gives the encoder `max-bitrate` itself and holds it there, the pipeline as it was. `gcc` (Google Congestion Control) is the element's own algorithm: `max-bitrate` is then the ceiling the estimate may not cross and `start-bitrate` where a consumer starts, so the video can run *below* the wire ceiling — the ceiling is still honoured, the bitrate is no longer fixed. The element's third value `homegrown` is refused with a warning and the session runs `disabled`: on an already-encoded stream `webrtcsink` 0.13.6 has no encoder of its own and the heuristic divides by that count, so the pipeline aborts (panic, divide by zero, `homegrown_cc.rs:386`; measured, see [fix7/n3-1-sender-build-report.md](../docs/briefs/m15/fix7/n3-1-sender-build-report.md)). The ready line's `sink ws:` line prints the value a session ran with; headless Chrome says whether the algorithm engages here, and the phone decides |
@@ -602,6 +603,14 @@ a backlog that only `outq` shows is in the kernel's buffer, not the encoder,
 which is where a phone that stops reading hides it. A bench keeps both kinds of
 line in `<results>/<label>-tapdiag.log` and says one `tap diagnostics:` line
 with their worst second.
+
+A keyframe request is one at a time on both sides (M15 opt2c-3): a client's
+raise stays outstanding until a keyframe is queued for it or 2.5 s pass, two
+asks from one client are at least 1.5 s apart, and the runner holds the whole
+pipeline to the same rule until an IDR leaves the encoder (`kreq` counts the
+asks that went out; held-back asks are counted in the queue's `keyreq_suppressed`
+counter). The page asks no sooner than 1.5 s apart either, and decodes a burst
+after a stall, drawing only its newest frame.
 
 ## Cleaning up
 

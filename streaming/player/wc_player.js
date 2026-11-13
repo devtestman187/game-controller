@@ -5,20 +5,20 @@
  * page's second picture path, behind `player=wc`, and only the phone sitting
  * keeps it.
  *
- * Delay is the whole point, so nothing here queues: frames after a gap, or
- * while the decoder is behind, are dropped and a keyframe is asked for.
+ * Delay is the whole point, so nothing here queues: a frame after a gap is
+ * dropped and a keyframe is asked for, sparingly; a burst after a stall is
+ * decoded and only its newest frame is drawn (M15 opt2c-3).
  */
 
 import { annexbToAvcc, parseHeader } from "./wc_annexb.js";
-import { bytesOf, emptyCounters, FrameCanvas, FrameStages, frameTimestampUs, noteDrawnAt } from "./wc_counters.js";
+import {
+  bytesOf, emptyCounters, FrameCanvas, FrameStages, frameTimestampUs, KeyRequests, noteDrawnAt,
+} from "./wc_counters.js";
 import { WcDecoder } from "./wc_decoder.js";
 import { diagTickMs, WcDiag } from "./wc_diag.js";
 
-/** The most frames the decoder may hold queued: more is backlog, not saved delay. */
-const maxQueueDepth = 2;
-
-/** The shortest gap between two keyframe requests, in ms (PROTOCOL.md: at most one per 500 ms). */
-const keyRequestMinMs = 500;
+/** The queue depth a decoder must pass before the page gives up on it, in frames: 40 is true overload. */
+const hardQueueFrames = 40;
 
 /** How long after a loss the socket is opened again, in ms: 200 at first, doubling to 2000. */
 const reconnectMinMs = 200;
@@ -98,7 +98,8 @@ export class WcPlayer {
     this._chain = Promise.resolve();
     this._needKey = true;
     this._lastFrame = null;
-    this._lastKeyRequestAtMs = -Infinity;
+    // The page's keyframe requests, one outstanding and 1.5 s apart (M15 opt2c-3).
+    this._keyRequests = new KeyRequests(now);
     this._stages = new FrameStages();
     this._counters = emptyCounters();
     // The decoder keeps its own errors and rebuilds (wc_decoder.js), and says
@@ -250,6 +251,8 @@ export class WcPlayer {
     const receivedAtMs = this._now();
     const message = parseHeader(data);
     if (message === null) return;
+    // The keyframe the page asked for has arrived, so the next ask may go.
+    if (message.keyframe) this._keyRequests.noteKeyframe();
     this._diag.noteMessage(receivedAtMs, bytes, message.keyframe);
     const stage = this._stages.note(message.frame, receivedAtMs);
     this._counters.framesReceived++;
@@ -287,7 +290,10 @@ export class WcPlayer {
     if (this._decoder.refused) return;
     const queue = this._decoder.queueSize;
     this._counters.queueMax = Math.max(this._counters.queueMax, queue);
-    if (queue > maxQueueDepth) {
+    // Only a decoder truly behind drops a frame now: an intact chain is decoded
+    // however deep the queue is, and the newest frame is the one drawn
+    // (M15 opt2c-3).
+    if (queue > hardQueueFrames) {
       this._counters.dropsQueue++;
       this._needsKeyframe();
       return;
@@ -324,21 +330,30 @@ export class WcPlayer {
     this._requestKeyframe();
   }
 
+  // One request outstanding, and 1.5 s between two: a gap, a lost frame and a
+  // decoder error in the same second are one ask, not three (M15 opt2c-3).
   _requestKeyframe() {
-    const nowMs = this._now();
-    if (nowMs - this._lastKeyRequestAtMs < keyRequestMinMs) return;
-    this._lastKeyRequestAtMs = nowMs;
+    if (!this._keyRequests.allows()) {
+      this._counters.keyRequestsSuppressed++;
+      return;
+    }
     this._counters.keyRequests++;
     this._send({ type: "key" });
   }
 
-  // The decoder's output: one frame on the canvas, then closed whatever the
-  // draw did — an open VideoFrame holds a decoder buffer back.
+  // The decoder's output: the newest frame on the canvas, any older one closed
+  // without a draw — an open VideoFrame holds a decoder buffer back.
   _drew(frame) {
     const frameNo = Math.round(frame.timestamp / frameTimestampUs);
     this._counters.framesDecoded++;
     const stage = this._stages.get(frameNo);
     if (stage !== undefined) stage.decodeOutputAt = this._now();
+    // A frame the decoder has already moved past would only show old video.
+    if (this._decoder.queueSize > 0) {
+      this._counters.skippedDraws++;
+      frame.close();
+      return;
+    }
     try {
       const problem = this._picture.draw(frame);
       if (problem !== "") throw new Error(problem);

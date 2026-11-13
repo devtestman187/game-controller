@@ -27,6 +27,7 @@ gi.require_version("GstVideo", "1.0")
 from gi.repository import GLib, Gst, GstApp, GstVideo
 
 import tap_frames
+import tap_queue
 import tap_server
 
 # The appsink the entrypoint's tap branch ends in (streaming/entrypoint.sh).
@@ -34,9 +35,6 @@ TAP_SINK_NAME = "tap"
 # How long a stop may take before the pipeline is set to NULL anyway: the grace
 # `gst-launch -e` gives the end of a stream.
 EOS_WAIT_MS = 5000
-# At most one force-key-unit request per this many microseconds, so a client
-# that asks over and over cannot turn every frame into an IDR.
-KEY_UNIT_MIN_INTERVAL_US = 200000
 # How many of the first keyframes must carry their SPS and PPS before the tap
 # tells a client that a keyframe is always a place to start decoding.
 PARAMETER_SET_KEYFRAMES = 5
@@ -45,7 +43,7 @@ PARAMETER_SET_KEYFRAMES = 5
 class TapRunner:
     """The session pipeline in this process, with the tap branch read from Python."""
 
-    def __init__(self, pipeline, port):
+    def __init__(self, pipeline, port, clock=time.monotonic):
         self.pipeline = pipeline
         # The tap server's port (PROTOCOL.md): the server listens on it, and a
         # run's log says which session owns which port.
@@ -69,7 +67,9 @@ class TapRunner:
         # Whether any buffer arrived out of order (DTS != PTS), which a player
         # with no reordering buffer cannot decode as it comes.
         self.has_reordering = False
-        self.last_key_request_us = None
+        # The pipeline's one keyframe rule, shared by every client's ask
+        # (M15 opt2c-3): an ask is outstanding until an IDR leaves the encoder.
+        self._key_gate = tap_queue.KeyRequestGate(clock)
         self.key_request_pending = False
         self.exit_status = 0
         self.eos_timer_id = None
@@ -108,15 +108,13 @@ class TapRunner:
         is a serialised event,
         so GStreamer only lets it upstream from the streaming thread: the
         sample callback pushes it, with the next frame, and a request taken
-        while frames are flowing is answered about 1/60 s later.
+        while frames are flowing is answered about 1/60 s later. Every client's
+        ask comes through the one gate: an event is outstanding until an IDR
+        leaves the encoder, and two are never closer than the spacing
+        (M15 opt2c-3).
         """
-        now_us = time.monotonic_ns() // 1000
-        if (
-            self.last_key_request_us is not None
-            and now_us - self.last_key_request_us < KEY_UNIT_MIN_INTERVAL_US
-        ):
+        if not self._key_gate.allows():
             return False
-        self.last_key_request_us = now_us
         self.key_request_pending = True
         return True
 
@@ -174,6 +172,7 @@ class TapRunner:
             self._push_key_unit_event()
         is_key = tap_frames.is_keyframe(data)
         if is_key:
+            self._key_gate.note_keyframe()
             self._learn_from_keyframe(data)
         if self.fps is None:
             self.fps = _frame_rate(sample)

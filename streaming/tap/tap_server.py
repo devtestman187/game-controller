@@ -74,9 +74,9 @@ LISTEN_BACKLOG = 8
 class _Client:
     """One client's socket, queue and the pipe a publish wakes its thread on."""
 
-    def __init__(self, sock, request_key):
+    def __init__(self, sock, request_key, clock):
         self.sock = sock
-        self.queue = tap_queue.ClientQueue(request_key)
+        self.queue = tap_queue.ClientQueue(request_key, clock=clock)
         self.wake, self.wake_sender = socket.socketpair()
         self.wake.setblocking(False)
         self.wake_sender.setblocking(False)
@@ -85,10 +85,11 @@ class _Client:
 class TapServer:
     """The tap's server on loopback: a thread per client, a queue each."""
 
-    def __init__(self, port, request_key, info):
+    def __init__(self, port, request_key, info, clock=time.monotonic):
         self.port = port
         self._request_key = request_key
         self._info = info
+        self._clock = clock
         self._lock = threading.Lock()
         self._clients = []
         self._client_threads = []
@@ -184,7 +185,7 @@ class TapServer:
         """Starts the thread that serves one freshly accepted connection."""
         sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
         sock.settimeout(HANDSHAKE_TIMEOUT_S)
-        client = _Client(sock, self._request_key)
+        client = _Client(sock, self._request_key, self._clock)
         self.diag.client_added(client, sock, client.queue.level)
         with self._lock:
             self._clients.append(client)
@@ -302,10 +303,10 @@ class TapServer:
             if len(fragments) > CLIENT_MESSAGE_MAX_BYTES:
                 return None, fragments
             if wire.fin:
-                self._message(bytes(fragments))
+                self._message(client, bytes(fragments))
                 fragments = bytearray()
 
-    def _message(self, payload):
+    def _message(self, client, payload):
         """PROTOCOL.md's client text: a key request is the only one acted on.
 
         `{"type":"stats",...}` is optional and ignored, and so is anything this
@@ -317,7 +318,7 @@ class TapServer:
         except ValueError:
             return
         if isinstance(message, dict) and message.get("type") == tap_queue.KEY_MESSAGE_TYPE:
-            self._request_key()
+            client.queue.request_keyframe()
 
     def _write_queued(self, client):
         """Writes every frame queued for this client; False when the client must go."""

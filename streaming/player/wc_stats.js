@@ -29,6 +29,10 @@ const unknownFact = "cfg none dec no";
 const bitsPerKbit = 1000;
 const msPerS = 1000;
 
+// The host's gauges per viewer (stream_stats.dart's maxStreamSeries): the page
+// sends at most this many, so a new figure rides only on a free slot (M15 opt2c-3).
+const maxViewerGauges = 16;
+
 /**
  * The host's own names for the number and the two stages the custom player
  * fills without a picture connection (M15 opt2b): a bench reads a viewer from
@@ -48,6 +52,7 @@ export const wcNames = {
   dropped: "wcDropped",
   backlog: "wcBacklog",
   keyRequests: "wcKeyRequests",
+  skippedDraws: "wcSkippedDraws",
   queueMax: "wcQueueMax",
   decoderErrors: "wcDecoderErrors",
   decoderRebuilds: "wcDecoderRebuilds",
@@ -143,6 +148,16 @@ function meanOf(values) {
 }
 
 /**
+ * The frames the picture is behind: what arrived, less what is on the canvas
+ * and what a newer frame overtook in the catch-up (M15 opt2c-3).
+ * @param {object} counters - the player's counters()
+ * @returns {number}
+ */
+function backlogOf(counters) {
+  return Math.max(0, counters.framesReceived - counters.framesDrawn - (counters.skippedDraws ?? 0));
+}
+
+/**
  * The custom player's figures (M15 opt2): the stage times of the frames it
  * finished since the last batch, the counters it keeps and, when the page
  * measures them, its own diagnostics (M15 opt2c-1). The page makes one with
@@ -221,7 +236,7 @@ export class WcStats {
       { name: wcNames.recvToDecode, value: recvToDecodeMs },
       { name: wcNames.decodeToDraw, value: decodeToDrawMs },
       { name: wcNames.dropped, value: counters.dropsQueue + counters.dropsGap },
-      { name: wcNames.backlog, value: Math.max(0, counters.framesReceived - counters.framesDrawn) },
+      { name: wcNames.backlog, value: backlogOf(counters) },
       { name: wcNames.keyRequests, value: counters.keyRequests },
       { name: wcNames.queueMax, value: counters.queueMax },
       { name: wcNames.decoderErrors, value: counters.decoderErrors },
@@ -239,6 +254,11 @@ export class WcStats {
       gauges.push({ name: wcNames.soundPlaying, value: state === wcSoundStates.playing ? 1 : 0 });
       facts.push({ name: wcNames.soundFact, value: wcSoundFactText(state) });
     }
+    // The catch-up's skipped frames (M15 opt2c-3) ride only when the host has a
+    // free gauge slot for this viewer; the counters always keep them.
+    if (typeof counters.skippedDraws === "number" && gauges.length < maxViewerGauges) {
+      gauges.push({ name: wcNames.skippedDraws, value: counters.skippedDraws });
+    }
     const numbers = gauges.filter((gauge) => typeof gauge.value === "number" && Number.isFinite(gauge.value));
     return { stages, gauges: numbers, facts, video: wcVideoEntry(counters, deliveredFps) };
   }
@@ -246,7 +266,7 @@ export class WcStats {
   /** The overlay's one line, shown only with `player=wc` (M15 opt2). */
   line() {
     const counters = this._player.counters();
-    const backlog = Math.max(0, counters.framesReceived - counters.framesDrawn);
+    const backlog = backlogOf(counters);
     const times = `recv-dec ${msText(this._recvToDecodeMs)} ms dec-draw ${msText(this._decodeToDrawMs)} ms`;
     const frames = `drop ${counters.dropsQueue + counters.dropsGap} backlog ${backlog}`;
     const socket = `age ${Math.round(this._receiveGapMaxMs)} ms keys ${counters.keyRequests} q ${counters.queueMax}`;

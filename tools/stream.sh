@@ -575,6 +575,7 @@ cmd_bench() {
 }
 
 # The player relay's own tests (M15 g1), the tap's diagnostics' (M15 opt2c), the
+# tap's keyframe rule and runner (opt2c-3), the
 # tap server's (M15 opt2-2) and the player page's (M15 fix8): the scripts beside
 # the code they check, and the page's tests run by the headless Chrome, all
 # where they run, in the distro. The relay's starts serve.py on free loopback
@@ -589,6 +590,10 @@ cmd_selftest() {
   wsl_run "cd $dest && timeout 120 python3 streaming/player/relay_test.py" || fail "the relay's tests failed"
   say "testing the tap's diagnostics in $distro …"
   wsl_run "cd $dest && timeout 120 python3 streaming/tap/tap_diag_test.py" || fail "the tap's diagnostics tests failed"
+  say "testing the tap's keyframe rule in $distro …"
+  wsl_run "cd $dest && timeout 120 python3 streaming/tap/tap_queue_test.py" || fail "the tap queue's tests failed"
+  say "testing the tap runner in $distro …"
+  wsl_run "cd $dest && timeout 120 python3 streaming/tap/tap_runner_test.py" || fail "the tap runner's tests failed"
   say "testing the tap server in $distro …"
   wsl_run "cd $dest && timeout 120 python3 streaming/tap/tap_server_test.py" || fail "the tap server's tests failed"
   say "testing the player page in $distro …"

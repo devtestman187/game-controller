@@ -14,6 +14,44 @@ export const frameTimestampUs = 1000;
 /** A gap between two draws longer than this is a freeze, in ms (M15 opt2b-6). */
 export const freezeGapMs = 150;
 
+/** The shortest gap between two keyframe requests, in ms: one at a time, 1.5 s apart (M15 opt2c-3). */
+const keyRequestMinMs = 1500;
+
+/** How long a keyframe request stays outstanding before another may go, in ms (M15 opt2c-3). */
+const keyOutstandingTimeoutMs = 2500;
+
+/**
+ * The page's keyframe requests, one at a time (M15 opt2c-3): an ask is
+ * outstanding until a keyframe message arrives or 2.5 s pass, and two asks are
+ * never closer than 1.5 s. The player asks through `allows()` and tells the
+ * rule of every keyframe it receives, so a burst of gaps is one request.
+ */
+export class KeyRequests {
+  /** @param {() => number} now - the page's clock, in ms */
+  constructor(now) {
+    this._now = now;
+    this._lastAskMs = -Infinity;
+    this._outstandingSinceMs = null;
+  }
+
+  /** True when an ask may go now; it counts as made, starting the spacing and the wait. */
+  allows() {
+    const nowMs = this._now();
+    if (this._outstandingSinceMs !== null && nowMs - this._outstandingSinceMs < keyOutstandingTimeoutMs) {
+      return false;
+    }
+    if (nowMs - this._lastAskMs < keyRequestMinMs) return false;
+    this._lastAskMs = nowMs;
+    this._outstandingSinceMs = nowMs;
+    return true;
+  }
+
+  /** A keyframe arrived: the request that asked for it is answered. */
+  noteKeyframe() {
+    this._outstandingSinceMs = null;
+  }
+}
+
 /**
  * One socket read's size, in bytes: the payload's own length, or a text
  * message's characters, which is what the tap sends besides frames.
@@ -35,6 +73,7 @@ export function bytesOf(data) {
 export function emptyCounters() {
   return {
     framesReceived: 0, framesDecoded: 0, framesDrawn: 0, dropsQueue: 0, dropsGap: 0, keyRequests: 0,
+    keyRequestsSuppressed: 0, skippedDraws: 0,
     reconnects: 0, queueMax: 0, lastFrame: -1, bytesReceived: 0,
     freezeCount: 0, freezeMs: 0, firstFrameMs: null, lastDrawnAtMs: null, startedAtMs: null,
     frameWidthPx: 0, frameHeightPx: 0,

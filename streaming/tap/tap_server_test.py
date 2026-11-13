@@ -284,6 +284,16 @@ class ClientQueueTest(unittest.TestCase):
         self.assertEqual(self.queue.stats()["dropped"], tap_queue.QUEUE_FRAMES + 1)
 
 
+class FakeClock:
+    """The clients' clock, moved by hand so a keyframe rule is exact (M15 opt2c-3)."""
+
+    def __init__(self):
+        self.now_s = 1000.0
+
+    def __call__(self):
+        return self.now_s
+
+
 class LoopbackTest(unittest.TestCase):
     """The server over a real loopback socket, with a client built here."""
 
@@ -293,7 +303,8 @@ class LoopbackTest(unittest.TestCase):
         def request_key():
             self.key_requests += 1
 
-        self.server = tap_server.TapServer(0, request_key, self.info)
+        self.clock = FakeClock()
+        self.server = tap_server.TapServer(0, request_key, self.info, clock=self.clock)
         self.server.start()
         self.addCleanup(self.server.stop)
 
@@ -357,8 +368,18 @@ class LoopbackTest(unittest.TestCase):
     def test_a_key_message_asks_the_encoder(self):
         client = self.client()
         self.wait_for(lambda: self.key_requests == 1, "keyframe request at connect")
+        # The connect's own ask is still outstanding: the client's message may
+        # ask again only once it has expired (PROTOCOL.md's key rule).
+        self.clock.now_s += 2.6
         client.send(OPCODE_TEXT, b'{"type":"key"}')
         self.wait_for(lambda: self.key_requests == 2, "keyframe request from the client")
+
+    def test_a_key_message_inside_the_outstanding_request_asks_nothing(self):
+        client = self.client()
+        self.wait_for(lambda: self.key_requests == 1, "keyframe request at connect")
+        client.send(OPCODE_TEXT, b'{"type":"key"}')
+        self.wait_for(lambda: self.server.stats()["keyreq_suppressed"] == 1, "the ask to be held back")
+        self.assertEqual(self.key_requests, 1)
 
     def test_a_ping_is_answered_with_its_own_payload(self):
         client = self.client()
@@ -370,6 +391,7 @@ class LoopbackTest(unittest.TestCase):
     def test_a_fragmented_key_message_asks_the_encoder(self):
         client = self.client()
         self.wait_for(lambda: self.key_requests == 1, "keyframe request at connect")
+        self.clock.now_s += 2.6
         client.send(OPCODE_TEXT, b'{"type":', fin=False)
         client.send(OPCODE_CONTINUATION, b'"key"}')
         self.wait_for(lambda: self.key_requests == 2, "keyframe request from the fragments")

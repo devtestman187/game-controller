@@ -9,12 +9,23 @@ a page configures its decoder with.
 
 import json
 import threading
+import time
 from collections import deque, namedtuple
 
 import tap_frames
 
 # The frames one client may have waiting: PROTOCOL.md's four.
 QUEUE_FRAMES = 4
+
+# How long one keyframe request may be outstanding before another may go: a
+# keyframe leaves the encoder within this, the natural IDR being at most a
+# second away, and a request whose keyframe never comes must not hold a client
+# back for good (M15 opt2c-3).
+KEY_OUTSTANDING_TIMEOUT_S = 2.5
+
+# The shortest gap between two keyframe requests, from anyone: a client that
+# asks over and over cannot turn the stream into a keyframe storm (M15 opt2c-3).
+KEY_MIN_SPACING_S = 1.5
 
 # The header tap_frames packs before every access unit; the page reads it first.
 HEADER_BYTES = tap_frames.HEADER_BYTES
@@ -63,10 +74,47 @@ def totals(queues):
         "sent": sum(stats["sent"] for stats in per_client),
         "dropped": sum(stats["dropped"] for stats in per_client),
         "keyreq": sum(stats["keyreq"] for stats in per_client),
+        "keyreq_suppressed": sum(stats["keyreq_suppressed"] for stats in per_client),
         "high_water": max((stats["high_water"] for stats in per_client), default=0),
         "bytes": sum(stats["bytes"] for stats in per_client),
         "per_client": per_client,
     }
+
+
+class KeyRequestGate:
+    """At most one keyframe request outstanding, and a gap between two asks.
+
+    The one rule both sides of the tap use (M15 opt2c-3): a client's queue
+    holds an ask until a keyframe is queued for it or the wait expires, and
+    the runner holds the pipeline's force-key-unit event until a keyframe
+    leaves the encoder or the wait expires. `allows()` says whether an ask may
+    go now and starts its wait; `note_keyframe()` ends one that a keyframe
+    answered. A clock is injected so a test can move time.
+    """
+
+    def __init__(self, clock=time.monotonic):
+        self._clock = clock
+        self._last_ask_s = None
+        self._outstanding_since_s = None
+
+    def allows(self):
+        """True when a request may go now; False when it is held back.
+
+        A true answer counts as the ask: the spacing runs from it and the
+        outstanding wait starts.
+        """
+        now_s = self._clock()
+        if self._outstanding_since_s is not None and now_s - self._outstanding_since_s < KEY_OUTSTANDING_TIMEOUT_S:
+            return False
+        if self._last_ask_s is not None and now_s - self._last_ask_s < KEY_MIN_SPACING_S:
+            return False
+        self._last_ask_s = now_s
+        self._outstanding_since_s = now_s
+        return True
+
+    def note_keyframe(self):
+        """A keyframe answered the outstanding ask, if there was one."""
+        self._outstanding_since_s = None
 
 
 class ClientQueue:
@@ -78,9 +126,10 @@ class ClientQueue:
     backlog rule). No socket and no clock: every rule here is testable alone.
     """
 
-    def __init__(self, request_key, frame_limit=QUEUE_FRAMES):
+    def __init__(self, request_key, frame_limit=QUEUE_FRAMES, clock=time.monotonic):
         self._request_key = request_key
         self._limit = frame_limit
+        self._key_gate = KeyRequestGate(clock)
         self._frames = deque()
         self._condition = threading.Condition()
         self.needs_keyframe = True
@@ -88,6 +137,7 @@ class ClientQueue:
         self.sent = 0
         self.dropped = 0
         self.key_requests = 0
+        self.keyreq_suppressed = 0
         self.high_water = 0
         self.bytes = 0
 
@@ -105,6 +155,8 @@ class ClientQueue:
             self.needs_keyframe = False
             frame = Frame(frame_no, pts_us, is_key, self.pending_discontinuity, data)
             self.pending_discontinuity = False
+            if is_key:
+                self._key_gate.note_keyframe()
             self._frames.append(frame)
             self.high_water = max(self.high_water, len(self._frames))
             self._condition.notify()
@@ -120,10 +172,23 @@ class ClientQueue:
             return self._frames.popleft()
 
     def request_keyframe(self):
-        """Asks the encoder for the keyframe this client is waiting for."""
+        """Asks the encoder for the keyframe this client is waiting for.
+
+        Through the client's own rule: one ask outstanding, and 1.5 s between
+        two of them, so a page that asks over and over is held back here
+        (M15 opt2c-3). A held-back ask is counted, never sent.
+        """
         with self._condition:
-            self.key_requests += 1
-            self._request_key()
+            self._ask_for_key()
+
+    def _ask_for_key(self):
+        """One ask through the gate; False when it was held back."""
+        if not self._key_gate.allows():
+            self.keyreq_suppressed += 1
+            return False
+        self.key_requests += 1
+        self._request_key()
+        return True
 
     def drop_to_keyframe(self):
         """Clears the backlog after a write the socket would not take."""
@@ -149,15 +214,23 @@ class ClientQueue:
                 "sent": self.sent,
                 "dropped": self.dropped,
                 "keyreq": self.key_requests,
+                "keyreq_suppressed": self.keyreq_suppressed,
                 "high_water": self.high_water,
                 "bytes": self.bytes,
             }
 
     def _clear_to_keyframe(self):
-        """The next frame must be a keyframe, flagged as the first after a gap."""
+        """The next frame must be a keyframe, flagged as the first after a gap.
+
+        A client that already waits for one has already asked: nothing goes to
+        the encoder again, or every dropped frame would ask (M15 opt2c-3).
+        """
+        waiting = self.needs_keyframe
         self.dropped += len(self._frames)
         self._frames.clear()
         self.needs_keyframe = True
         self.pending_discontinuity = True
-        self.key_requests += 1
-        self._request_key()
+        if waiting:
+            self.keyreq_suppressed += 1
+        else:
+            self._ask_for_key()
