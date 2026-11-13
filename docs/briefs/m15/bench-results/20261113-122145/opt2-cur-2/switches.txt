@@ -1,0 +1,1 @@
+switches: SESSION_MARKER=on, player-query marker=1, player-options none
