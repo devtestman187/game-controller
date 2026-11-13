@@ -2,6 +2,13 @@
 
 Written Nov 11, 2026 so that any later session (any model) can pick this up cold. Read this file first, then the two design files it names.
 
+## Where it stands (Nov 13, 2026, afternoon) — read this first
+
+- **State:** opt2 batch built and committed (docs/briefs/m15/opt2/, reports opt2-1 to opt2-7): host tap (`SESSION_TAP=on`), WebSocket `/tap` through the player port (no new port, no firewall rule), page option `player=wc`, its measurement (marker and card read from the canvas, "Custom player (wc)" table), and `SESSION_AUDIO=separate` as sound in its own process (host pipeline time 8 ms against 33-42 ms joined). Everything defaults off. Headless Chrome proof: current player 259 ms card, `player=wc` 137-153 ms (software decode). Not run on the phone.
+- **Gate and stop rule (owner, Nov 13, 2026):** 150 ms or less press-to-screen on the iPhone AND it feels fine to the owner (replaces 80 ms; published casual-game thresholds are 100-150 ms and a phone browser cannot reach 80). 150 or less adopts the custom player; otherwise it is dropped and the current WebRTC player stays. Latency work ends after this round either way.
+- **Next, needs the owner:** one phone sitting, six runs in order, exact commands and URLs in docs/briefs/m15/opt2/PHONE-RUNS.md (current x2, `player=wc` x2, `player=wc` + `SESSION_AUDIO=separate` x2). Then decide by the stop rule. Nothing else is open on latency; the earlier "waiting on the owner's decision" below is answered (custom player, one batch).
+- Superseded notes from the morning follow.
+
 ## Where it stands (Nov 13, 2026, morning) — read this first
 
 - All marker phone runs are done (see the Nov 13 lines in docs/streaming-latency-journey.md "Running notes"). The press measurement is validated by the marker; baseline press-to-screen on iPhone Safari is 197-225 ms; `SESSION_AUDIO=separate` gives no dependable gain (141, 235 with freezes, 197); `SESSION_AUDIO=off` gives about 30 ms (166-181). No defaults changed.
