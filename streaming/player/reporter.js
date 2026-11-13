@@ -15,6 +15,7 @@
  */
 
 import { ClockSync, clockIntervalMs, lowestRttOffset, medianOffset } from "./clock_sync.js";
+import { sessionIdOf } from "./page_state.js";
 import { LatencyProbe } from "./latency_probe.js";
 import { markerBatch } from "./marker_batch.js";
 import { MarkerReader } from "./marker_reader.js";
@@ -312,9 +313,12 @@ export class StreamReporter {
   /** Sends one batch, remembering the viewer id the host answered. */
   async _send(batch) {
     try {
+      // The session this page loaded travels in a header, never in the batch:
+      // the relay refuses a batch a page from an earlier session sends, so its
+      // numbers are not counted (M15 fix8).
       const response = await fetch("/stats/stream", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: { "content-type": "application/json", "x-player-session": sessionIdOf() },
         body: JSON.stringify(batch),
       });
       const body = await response.json();

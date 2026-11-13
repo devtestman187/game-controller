@@ -28,6 +28,7 @@
     import { chooseSample, lowestRttOffset, medianOffset, parseClockAnswer } from "./clock_sync.js";
     import { markerBatch, markerNames, tripleText } from "./marker_batch.js";
     import { medianOf, percentileOf } from "./metrics.js";
+    import { createSessionWatch, endedText, hiccupMaxMs, sessionPhase } from "./session_end.js";
 
     // The spec's test vectors (docs/streaming-marker.md): the value, then its
     // 55 content cells as a string of 0 and 1.
@@ -282,6 +283,71 @@
         null,
       );
       return same([empty.stages.length, empty.gauges.length, empty.facts.length], [0, 0, 0]);
+    });
+
+    // The session's end (M15 fix8): a picture that played and stays away longer
+    // than a hiccup is an ended session; a page that never played keeps waiting.
+    check("a page that never played waits, however long the wait", () => {
+      return same(sessionPhase({ hasPlayed: false, isPlaying: false, lostMs: 600000 }), "waiting");
+    });
+    check("a picture that is there is playing", () => {
+      return same(sessionPhase({ hasPlayed: true, isPlaying: true, lostMs: 0 }), "playing");
+    });
+    check("a drop under the hiccup is a reconnect, not an end", () => {
+      return same(sessionPhase({ hasPlayed: true, isPlaying: false, lostMs: 1000 }), "reconnecting");
+    });
+    check("the longest hiccup is 15 s and its edge still reconnects", () => {
+      const atEdge = sessionPhase({ hasPlayed: true, isPlaying: false, lostMs: hiccupMaxMs });
+      return same([hiccupMaxMs, atEdge], [15000, "reconnecting"]);
+    });
+    check("a millisecond past the hiccup is ended", () => {
+      return same(sessionPhase({ hasPlayed: true, isPlaying: false, lostMs: hiccupMaxMs + 1 }), "ended");
+    });
+    check("the ended line tells the viewer what to do", () => {
+      return same(endedText, "The stream has ended. Reload this page to join the next session.");
+    });
+
+    // The watch around the rule, on a clock the test moves itself: no timer runs.
+    function watchOf() {
+      const state = { nowMs: 0, ended: 0 };
+      const watch = createSessionWatch({ nowMs: () => state.nowMs, onEnded: () => { state.ended++; } });
+      return { state, watch };
+    }
+    check("a watch times the drop from the moment the picture goes", () => {
+      const { state, watch } = watchOf();
+      watch.picturePlaying();
+      state.nowMs = 1000;
+      watch.pictureLost();
+      state.nowMs = 1000 + hiccupMaxMs;
+      watch.check();
+      return same(state.ended, 0);
+    });
+    check("a watch ends the page past the hiccup, and says it once", () => {
+      const { state, watch } = watchOf();
+      watch.picturePlaying();
+      state.nowMs = 1000;
+      watch.pictureLost();
+      state.nowMs = 1000 + hiccupMaxMs + 1;
+      watch.check();
+      watch.check();
+      return same(state.ended, 1);
+    });
+    check("a picture that comes back clears the drop", () => {
+      const { state, watch } = watchOf();
+      watch.picturePlaying();
+      state.nowMs = 1000;
+      watch.pictureLost();
+      state.nowMs = 20000;
+      watch.picturePlaying();
+      state.nowMs = 60000;
+      watch.check();
+      return same(state.ended, 0);
+    });
+    check("a watch never ends a page that has not played", () => {
+      const { state, watch } = watchOf();
+      state.nowMs = 600000;
+      watch.check();
+      return same(state.ended, 0);
     });
 
     const result = document.getElementById("result");

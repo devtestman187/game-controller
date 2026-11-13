@@ -7,16 +7,15 @@
 
 import { markerEnabled, parseOptions, optionsLine } from "./options.js";
 import { LowDelay, lowDelayEnabled } from "./low_delay.js";
-import { audioMode, msidsOf, reportPlayerState } from "./page_state.js";
+import { Overlay } from "./overlay.js";
+import { audioMode, identifyPlayer, msidsOf, reportPlayerState, setStaleHandler } from "./page_state.js";
 import { Playback, pictureOf, soundOf } from "./playback.js";
 import { StreamReporter } from "./reporter.js";
+import { createSessionWatch, endedText } from "./session_end.js";
 import { StatsMeter } from "./stats.js";
 import { StreamLinks } from "./streams.js";
 
 const GstWebRTCAPI = window.GstWebRTCAPI;
-
-// How often the overlay and the status line are refreshed.
-const statsIntervalMs = 1000;
 
 const signalPort = (window.THUMB_PARTY && window.THUMB_PARTY.signalingPort) || 8443;
 
@@ -33,6 +32,17 @@ const options = parseOptions(window.location.search, (window.THUMB_PARTY && wind
 window.THUMB_PARTY_OPTIONS = options;
 const switchesLine = optionsLine(options);
 
+// Who this page tells the relay it is (M15 fix8): the name it reports as, and
+// the session whose page it loaded. A page left open from an earlier session
+// keeps that session's id, so the next session's relay can tell it apart and
+// ignore it instead of counting it as a viewer.
+const playerName = `ThumbPartyPlayer-${Date.now()}`;
+const joinedSession = (window.THUMB_PARTY && window.THUMB_PARTY.sessionId) || "";
+identifyPlayer({ pageId: playerName, sessionId: joinedSession });
+// The relay saying this page belongs to an earlier session ends it, as its own
+// session ending does: it never joins a session it was not served by.
+setStaleHandler(endSession);
+
 const screen = document.getElementById("screen");
 const soundTrack = document.getElementById("sound-track");
 const playback = new Playback({ screen, sound: soundTrack });
@@ -43,13 +53,12 @@ const soundButton = document.getElementById("sound");
 // The zero-delay option (M15 fix7, technique 2), null unless `lowdelay=1`.
 const lowDelay = lowDelayEnabled(options) ? new LowDelay({ screen }) : null;
 
-// The overlay carries the switches from the start, so a look at the page — or a
-// DOM dump of it — shows what it runs with even before a stream arrives.
-if (switchesLine !== "") statsBox.textContent = switchesLine;
-
-let meter = null;
 let reporter = null;
-let statsTimer = null;
+// The page's connections, kept so an ended session can stop them, and whether
+// it has ended: an ended page asks for nothing more and joins nothing until it
+// is reloaded (M15 fix8).
+let links = null;
+let ended = false;
 // The two peer connections, for the streams their SDPs name.
 let pictureConnection = null;
 let soundConnection = null;
@@ -77,9 +86,36 @@ let pictureHasAudio = false;
 // the picture on a phone).
 let problem = "";
 
-function setStatus(text) {
-  statusBox.textContent = text;
+// The page's own text: its status line, the tab's title that carries the same
+// line (how the bench reads a state off a page a run left open, M15 fix8), and
+// the numbers the "i" key opens.
+const overlay = new Overlay({
+  line: statusBox,
+  box: statsBox,
+  switchesLine,
+  lowDelayLine: () => (lowDelay === null ? "" : lowDelay.line()),
+  facts: () => ({ hasSoundStream: soundStream !== null, pictureHasAudio, problem }),
+  soundSample: sampleSound,
+  onSoundSample: sendSoundJitter,
+  onProblem: noteProblem,
+});
+
+// The session is over: say so plainly and stop asking for anything, so a tab
+// left open never joins the next session by itself — only a reload does
+// (M15 fix8).
+function endSession() {
+  if (ended) return;
+  ended = true;
+  overlay.stop();
+  stopReporting();
+  links?.stop();
+  playback.clear();
+  overlay.show(endedText);
 }
+
+// The page's session, timed (M15 fix8): a picture that played and has been gone
+// longer than a hiccup means the session ended.
+const sessionWatch = createSessionWatch({ nowMs: () => performance.now(), onEnded: endSession });
 
 // Where the reporter's problems go: the console always, the stats overlay too.
 // An empty text is the reporter saying nothing is wrong any more (M15 g1).
@@ -114,7 +150,7 @@ async function startPlayback() {
     hasPlayed = true;
     reportPlayerState("playing");
   } catch (error) {
-    setStatus(`cannot start the picture: ${error.message}`);
+    overlay.show(`cannot start the picture: ${error.message}`);
     // The benchmark is waiting for "playing" and would only see "streaming":
     // say why the picture did not start, so a run's failure has a reason.
     reportPlayerState("cannot play", { reason: error.message });
@@ -129,40 +165,11 @@ async function startSound() {
   try {
     await playback.unmute();
     soundButton.classList.remove("visible");
-    setStatus("playing");
+    overlay.show("playing");
   } catch {
     soundButton.classList.add("visible");
-    setStatus("tap the screen to start the sound");
+    overlay.show("tap the screen to start the sound");
   }
-}
-
-// The overlay's sound: the bitrate of the connection it arrives on, or "none"
-// for a session that sends no sound at all (SESSION_AUDIO=off).
-function soundText(stats, soundStats) {
-  if (soundStream !== null) return soundStats === null ? "sound none" : `sound ${soundStats.audioKbitPerS} kbit/s`;
-  return pictureHasAudio ? `sound ${stats.audioKbitPerS} kbit/s` : "sound none";
-}
-
-function showStats(stats, soundStats) {
-  const soundJitter = soundStats === null ? "" : `  sound jitter ${soundStats.audioJitterBufferMs} ms`;
-  const lines = [
-    `picture   ${stats.widthPx}x${stats.heightPx} at ${stats.framesPerSecond.toFixed(0)} fps`,
-    `video     ${stats.videoKbitPerS} kbit/s   ${soundText(stats, soundStats)}`,
-    `round trip ${stats.roundTripMs} ms   jitter buffer ${stats.jitterBufferMs} ms${soundJitter}`,
-    `decode    ${stats.decodeMsPerFrame} ms a frame   dropped ${stats.droppedFrames}`,
-  ];
-  if (switchesLine !== "") lines.push(switchesLine);
-  if (lowDelay !== null) lines.push(lowDelay.line());
-  if (problem !== "") lines.push(`measurement: ${problem}`);
-  statsBox.textContent = lines.join("\n");
-}
-
-function stopStats() {
-  if (statsTimer !== null) {
-    window.clearInterval(statsTimer);
-    statsTimer = null;
-  }
-  meter = null;
 }
 
 // The sound's own numbers, or null when it has no connection. A reconnect
@@ -177,26 +184,6 @@ async function sampleSound() {
     console.warn(`player: the sound's statistics stopped: ${error.message}`);
     return null;
   }
-}
-
-function startStats(peerConnection) {
-  stopStats();
-  meter = new StatsMeter(peerConnection);
-  const tick = async () => {
-    try {
-      const soundStats = await sampleSound();
-      showStats(await meter.sample(), soundStats);
-      sendSoundJitter(soundStats);
-    } catch (error) {
-      noteProblem(`statistics stopped: ${error.message}`);
-      // The timer stops here, so the next tick that would draw the line never
-      // comes: add it once to what the overlay already says (M15 g1).
-      statsBox.textContent += `\nmeasurement: ${problem}`;
-      console.warn(`player: statistics stopped: ${error.message}`);
-      stopStats();
-    }
-  };
-  statsTimer = window.setInterval(tick, statsIntervalMs);
 }
 
 // What the page is playing, for the state it reports.
@@ -247,7 +234,8 @@ function sendSoundJitter(soundStats) {
 // problem and both elements. The next stream starts clean (M15 g1: a problem
 // belongs to the stream that had it).
 function connectionClosed() {
-  stopStats();
+  sessionWatch.pictureLost();
+  overlay.stop();
   stopReporting();
   lowDelay?.stop();
   playback.clear();
@@ -286,6 +274,7 @@ function showPicture(stream) {
   pictureHasAudio = stream.getAudioTracks().length > 0;
   playingPicture = pictureOf(stream, splitTracks);
   playback.show(playingPicture, soundOf(stream, splitTracks, soundStream));
+  sessionWatch.picturePlaying();
   lowDelay?.watch(pictureConnection, soundConnection);
   // "streaming" goes first and "playing" lands when the picture starts, so
   // a benchmark that waits for either sees them in that order however fast
@@ -304,9 +293,9 @@ const linkHandlers = {
     // The ids the SDP names only exist once the connection has answered, so
     // they are reported here too, not only when a stream arrives.
     reportPlayerState(hasPlayed ? "playing" : "streaming", msidFacts("msids", peerConnection));
-    if (meter === null) {
+    if (!overlay.isSampling) {
       tuneForLowDelay(peerConnection);
-      startStats(peerConnection);
+      overlay.start(peerConnection);
     }
     if (reporter === null) startReporting(peerConnection);
   },
@@ -317,7 +306,7 @@ const linkHandlers = {
     tuneForLowDelay(peerConnection);
     soundMeter = new StatsMeter(peerConnection);
   },
-  status: setStatus,
+  status: (text) => overlay.show(text),
   problem: noteProblem,
   reconnecting: () => {
     if (hasPlayed) reconnects++;
@@ -328,29 +317,39 @@ const linkHandlers = {
 
 function start() {
   const api = new GstWebRTCAPI({
-    meta: { name: `ThumbPartyPlayer-${Date.now()}` },
+    meta: { name: playerName },
     signalingServerUrl: signallingUrl(),
     // No STUN here: a session on the same machine or the same Wi-Fi needs none,
     // and asking an outside server would only add delay.
     webrtcConfig: { iceServers: [] },
   });
-  const links = new StreamLinks({ api, handlers: linkHandlers });
+  links = new StreamLinks({ api, handlers: linkHandlers });
 
+  // An ended page listens but no longer asks: a producer of the next session
+  // must not bring it back (M15 fix8).
   api.registerConnectionListener({
     connected: () => {
-      setStatus("connected to the TV");
+      if (ended) return;
+      overlay.show("connected to the TV");
       links.connect();
     },
     disconnected: () => {
-      setStatus("lost the TV, reconnecting…");
+      if (ended) return;
+      overlay.show("lost the TV, reconnecting…");
       links.reconnect();
     },
   });
 
   api.registerProducersListener({
-    producerAdded: () => links.connect(),
-    producerRemoved: () => links.reconnect(),
+    producerAdded: () => {
+      if (!ended) links.connect();
+    },
+    producerRemoved: () => {
+      if (!ended) links.reconnect();
+    },
   });
+
+  sessionWatch.start();
 }
 
 // The button and the keyboard both show or hide the numbers.
@@ -369,7 +368,7 @@ soundButton.addEventListener("click", async (event) => {
   try {
     await playback.unmute();
   } catch (error) {
-    setStatus(`cannot start the sound: ${error.message}`);
+    overlay.show(`cannot start the sound: ${error.message}`);
   }
   // A tap is the one moment a browser allows full screen.
   document.documentElement.requestFullscreen?.().catch(() => {});

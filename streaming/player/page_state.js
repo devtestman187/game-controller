@@ -10,19 +10,61 @@
 // reads the last body.
 const reported = {};
 
+// Who is reporting: this page's own name and the session whose page it loaded,
+// carried in every report (M15 fix8).
+let identity = {};
+
+// What the page does when the relay says it belongs to an earlier session.
+let onStale = () => {};
+
+/**
+ * Sets what every report says about this page: its own id and the session it
+ * was served by. A page left open from an earlier session keeps that session's
+ * id, which is how the next session's relay tells it apart (M15 fix8).
+ * @param {object} parts
+ * @param {string} parts.pageId - this page's id, one per load
+ * @param {string} parts.sessionId - the session whose page this is
+ */
+export function identifyPlayer({ pageId, sessionId }) {
+  identity = { pageId, sessionId };
+}
+
+/**
+ * Sets the one action a report from an earlier session causes: the page ends,
+ * as it does when its own session ends (M15 fix8).
+ * @param {() => void} handler
+ */
+export function setStaleHandler(handler) {
+  onStale = handler;
+}
+
+/**
+ * The session this page was served by, for the measurements' identity.
+ * @returns {string}
+ */
+export function sessionIdOf() {
+  return identity.sessionId ?? "";
+}
+
 /**
  * Sends the page's state, and whatever else the page knows with it, to the
  * relay this page came from.
- * @param {string} state - "streaming", "playing", "reconnecting", "closed"
+ * @param {string} state - "streaming", "playing", "reconnecting", "closed", "ended"
  * @param {object} [extra] - more facts for the body, such as the stream ids
  */
 export function reportPlayerState(state, extra = {}) {
-  Object.assign(reported, { state, ...extra });
+  Object.assign(reported, identity, { state, ...extra });
   fetch("/player", {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(reported),
-  }).catch(() => {});
+  })
+    .then((response) => response.json())
+    .then((body) => {
+      // A relay of the next session says `stale` to a page it did not serve.
+      if (body !== null && body.stale === true) onStale();
+    })
+    .catch(() => {});
 }
 
 /**

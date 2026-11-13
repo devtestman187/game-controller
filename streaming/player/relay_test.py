@@ -49,13 +49,15 @@ def free_port():
         return probe.getsockname()[1]
 
 
-def call(port, method, path, body=None):
+def call(port, method, path, body=None, headers=None):
     """One HTTP call to the relay, answering (status, decoded body or text)."""
     connection = http.client.HTTPConnection("127.0.0.1", port, timeout=answer_timeout_s)
     try:
         payload = None if body is None else json.dumps(body).encode("utf-8")
-        headers = {} if payload is None else {"content-type": "application/json"}
-        connection.request(method, path, body=payload, headers=headers)
+        sent = dict(headers or {})
+        if payload is not None:
+            sent["content-type"] = "application/json"
+        connection.request(method, path, body=payload, headers=sent)
         answer = connection.getresponse()
         text = answer.read().decode("utf-8")
         try:
@@ -124,6 +126,8 @@ def test_page(port):
             "/marker_batch.js",
             "/marker_decode.js",
             "/marker_reader.js",
+            "/session_end.js",
+            "/overlay.js",
         )
     ]
     check(served == [200] * len(served), "the page's own files are served")
@@ -174,6 +178,40 @@ def test_oversized_body(port):
     check("over %d bytes" % max_body_bytes in body, "and the answer says the size")
 
 
+def test_session_identity(port):
+    """A page an earlier session served is told apart from this one's (M15 fix8).
+
+    This relay runs as the session `test-session`. A page answers the session it
+    first joined, so a page still open from an earlier one names that: its report
+    is not this session's state, it is named in the relay's answer for the bench
+    to say so, and the measurements it sends are refused rather than counted.
+    """
+    status, body = call(port, "POST", "/player", {"state": "playing"})
+    check(status == 200 and body.get("stale") is not True, "a page that names no session is this session's")
+
+    status, body = call(port, "POST", "/player", {"state": "streaming", "sessionId": "earlier", "pageId": "p1"})
+    check(status == 200 and body.get("stale") is True, "a page from an earlier session is answered stale")
+
+    status, body = call(port, "GET", "/player")
+    check(body.get("player", {}).get("state") == "playing", "and what it says is not this session's page")
+    check(body.get("stalePages") == ["p1"], "the ignored page is named in the relay's answer")
+
+    call(port, "POST", "/player", {"state": "playing", "sessionId": "earlier", "pageId": "p1"})
+    status, body = call(port, "GET", "/player")
+    check(body.get("stalePages") == ["p1"], "the same page is named once")
+
+    status, body = call(
+        port, "POST", "/stats/stream", {"stages": [], "gauges": []}, {"x-player-session": "earlier"}
+    )
+    check(status == 403, "an earlier session's batch is refused")
+    check("earlier session" in body.get("error", ""), "and says the page belongs to an earlier session")
+
+    status, body = call(
+        port, "POST", "/stats/stream", {"stages": [], "gauges": []}, {"x-player-session": "test-session"}
+    )
+    check(status == 502, "this session's batch goes on to the host")
+
+
 def main():
     player_dir = os.path.dirname(os.path.abspath(__file__))
     port = free_port()
@@ -191,6 +229,10 @@ def main():
                 str(host_port),
                 "--state",
                 state,
+                # The relay's own session, so a page's claim can be told apart
+                # from it (M15 fix8).
+                "--session-id",
+                "test-session",
             ],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
@@ -202,6 +244,7 @@ def main():
             test_measurements(port)
             test_page_calls(port)
             test_oversized_body(port)
+            test_session_identity(port)
         finally:
             server.terminate()
             server.wait(timeout=answer_timeout_s)

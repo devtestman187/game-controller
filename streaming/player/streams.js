@@ -53,10 +53,12 @@ export class StreamLinks {
     this._sound = null;
     this._reconnectTimer = null;
     this._soundTimer = null;
+    this._stopped = false;
   }
 
   /** Connects to the picture's producer and, when there is one, the sound's. */
   connect() {
+    if (this._stopped) return;
     const { picture, sound } = producersNow(this._api);
     if (picture === null) {
       this._handlers.status("waiting for the TV…");
@@ -69,7 +71,7 @@ export class StreamLinks {
 
   /** Asks for the picture again after a drop, and for the sound with it. */
   reconnect() {
-    if (this._reconnectTimer !== null) {
+    if (this._reconnectTimer !== null || this._stopped) {
       return;
     }
     this.close();
@@ -78,6 +80,20 @@ export class StreamLinks {
       this._reconnectTimer = null;
       this.connect();
     }, reconnectDelayMs);
+  }
+
+  /**
+   * Ends both sessions and every wait for a new one, and asks for nothing
+   * again: a session that has ended stays ended until the page is reloaded, so
+   * a tab left open never joins the next one by itself (M15 fix8).
+   */
+  stop() {
+    this._stopped = true;
+    if (this._reconnectTimer !== null) {
+      window.clearTimeout(this._reconnectTimer);
+      this._reconnectTimer = null;
+    }
+    this.close();
   }
 
   /** Ends both sessions and tells the page its streams are gone. */
@@ -108,7 +124,7 @@ export class StreamLinks {
   // is left as it is, so a lost sound costs the viewer a second of sound only.
   _soundReconnect() {
     this._closeSound();
-    if (this._soundTimer !== null) {
+    if (this._soundTimer !== null || this._stopped) {
       return;
     }
     this._soundTimer = window.setTimeout(() => {

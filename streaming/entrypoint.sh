@@ -143,6 +143,11 @@ ready_timeout_s="${READY_TIMEOUT_S:-90}"
 
 # The name this session reports to the signalling server and the player.
 session_name="${SESSION_NAME:-Thumb Party TV}"
+# This session's own id, made at start and kept while the container runs: the
+# player page carries it in everything it tells the relay, so a page an earlier
+# session served is told apart from this one's and never counted as its viewer
+# (M15 fix8). A new container is a new id, even on the same ports.
+session_id="${SESSION_ID:-$(date +%Y%m%d%H%M%S)-$$}"
 
 # Whether the app draws the marker row into its picture (M15 fix8): a bench
 # measurement the player reads a frame's number and the host's clock back from
@@ -282,12 +287,16 @@ start_player() {
   # media elements (M15 t1 experiment 1): off unless SESSION_SPLIT_TRACKS says
   # on, because it measured no gain on this pipeline (streaming/README.md).
   # `options` is the page's default switches (M15 fix7), which its URL's query
-  # overrides key by key.
-  printf 'window.THUMB_PARTY = { signalingPort: %s, splitTracks: %s, options: %s };\n' \
-    "$signal_port" "$split_tracks" "$(player_options_json "$player_options")" > "$run_dir/player/config.js"
+  # overrides key by key. `sessionId` is this container's own (M15 fix8): the
+  # page keeps it and the relay compares it with its own, so a page an earlier
+  # session served is ignored rather than counted.
+  printf 'window.THUMB_PARTY = { signalingPort: %s, splitTracks: %s, sessionId: "%s", options: %s };\n' \
+    "$signal_port" "$split_tracks" "$session_id" "$(player_options_json "$player_options")" \
+    > "$run_dir/player/config.js"
   start_logged "$player_log" \
     python3 "$run_dir/player/serve.py" --port "$player_port" --directory "$run_dir/player" \
-      --automation-port "$automation_port" --token "$automation_token" --state "$run_dir"
+      --automation-port "$automation_port" --token "$automation_token" --state "$run_dir" \
+      --session-id "$session_id"
 }
 
 # The session's own token, made once and readable by this container only, so a

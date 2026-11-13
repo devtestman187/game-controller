@@ -19,9 +19,16 @@ The page talks to this process on these paths, and nothing else answers:
     POST /presses          {"hostMs": <the host's clock at the press>}
     GET  /flips?since=N    the flips the page saw, with the host's clock
     POST /flips            {"hostMs": <the host's clock at the flip>}
-    GET  /player           what the page is doing (playing, closed, …)
-    POST /player           {"state": "...", ...}
+    GET  /player           what the page is doing (playing, closed, …), and the
+                           pages of earlier sessions it has been told about
+    POST /player           {"state": "...", "sessionId": "...", "pageId": "..."}
     POST /stats/stream     one batch of measurements, sent to the host as it is
+
+Every report and batch names the session its page loaded (`config.js` gives it
+to the page), and one from an earlier session is not this session's (M15 fix8):
+its report is answered `stale` and named in `GET /player` for the bench to say
+so, it never becomes this page's state, and the measurements it sends are
+refused instead of reaching the host, so its numbers are not counted.
 
 Of those, exactly two reach the host's automation interface, with the session's
 token and no other credentials: `GET /status`, asked for `/clock`, because the
@@ -57,6 +64,10 @@ host_timeout_s = 5
 # The path every automation call starts with.
 automation_prefix = "/automation/v1"
 
+# The most pages of earlier sessions one relay remembers: a run leaves one or
+# two, and `GET /player` carries the list (M15 fix8).
+max_stale_pages = 10
+
 # The most a POST body may be: one batch of a viewer's measurements is about
 # 2 KB and a press is a few dozen bytes, so 64 KB is room and no more. The
 # relay is reachable from anywhere the page is, and the host's ingest keeps what
@@ -84,6 +95,8 @@ page_files = frozenset(
         "clock_sync.js",
         "metrics.js",
         "reporter.js",
+        "session_end.js",
+        "overlay.js",
         "stats.js",
     )
 )
@@ -116,14 +129,36 @@ class Relay:
     # turned into a door to the host's own API.
     host_paths = frozenset(("/status", "/stats/stream"))
 
-    def __init__(self, automation_port, token, state_dir):
+    def __init__(self, automation_port, token, state_dir, session_id=""):
         self.automation_url = "http://127.0.0.1:%d" % automation_port
         self.token = token
         self.state_dir = state_dir
+        # The session this relay serves, as its `config.js` gives it (M15 fix8).
+        self.session_id = session_id
         self.lock = threading.Lock()
         self.presses = []
         self.flips = []
         self.player = {}
+        # The pages of earlier sessions the relay has been told about, by their
+        # own id, newest last (M15 fix8).
+        self.stale_pages = []
+
+    def claims_this_session(self, claimed):
+        """Whether a page that names session [claimed] was served by this one.
+
+        A page left open from an earlier session names that session; a page that
+        names none was served before sessions named one, and is this one's own.
+        """
+        if self.session_id == "" or claimed == "":
+            return True
+        return isinstance(claimed, str) and claimed == self.session_id
+
+    def note_stale_page(self, page_id):
+        """Keeps a page of an earlier session, once, for the bench to name."""
+        if not isinstance(page_id, str) or page_id == "" or page_id in self.stale_pages:
+            return
+        self.stale_pages.append(page_id)
+        del self.stale_pages[:-max_stale_pages]
 
     def add(self, events, body):
         with self.lock:
@@ -190,7 +225,10 @@ class Handler(SimpleHTTPRequestHandler):
         if path == "/flips":
             return self._json(200, {"ok": True, "flips": self.relay.since(self.relay.flips, _since(query))})
         if path == "/player":
-            return self._json(200, {"ok": True, "player": self.relay.player})
+            return self._json(
+                200,
+                {"ok": True, "player": self.relay.player, "stalePages": list(self.relay.stale_pages)},
+            )
         if is_page_file(path):
             return super().do_GET()
         return self._json(404, {"ok": False, "error": "no file at %s" % path})
@@ -205,6 +243,10 @@ class Handler(SimpleHTTPRequestHandler):
         if not isinstance(body, dict):
             return self._json(400, {"ok": False, "error": _refusal_text(400)})
         if path == "/stats/stream":
+            # An earlier session's page is not a viewer of this one, so its
+            # numbers never reach the host (M15 fix8).
+            if not self.relay.claims_this_session(self.headers.get("x-player-session", "")):
+                return self._json(403, {"ok": False, "error": "this page belongs to an earlier session"})
             status, answer = self.relay.call("POST", "/stats/stream", body)
             return self._json(status, answer)
         if path == "/presses":
@@ -214,9 +256,17 @@ class Handler(SimpleHTTPRequestHandler):
             ident = self.relay.add(self.relay.flips, body)
             return self._json(200, {"ok": True, "id": ident})
         # The guard above leaves only `/player` by the time it gets here.
+        return self._player(body)
+
+    def _player(self, body):
+        """Records what this session's page is doing, and names the others."""
+        if self.relay.claims_this_session(body.get("sessionId", "")):
+            with self.relay.lock:
+                self.relay.player = body
+            return self._json(200, {"ok": True})
         with self.relay.lock:
-            self.relay.player = body
-        return self._json(200, {"ok": True})
+            self.relay.note_stale_page(body.get("pageId"))
+        return self._json(200, {"ok": True, "stale": True})
 
     def _body(self):
         """The POST's JSON object, or (None, the status to refuse it with)."""
@@ -271,9 +321,10 @@ def main():
     parser.add_argument("--automation-port", type=int, default=8787)
     parser.add_argument("--token", default="")
     parser.add_argument("--state", default="/run/thumb-party")
+    parser.add_argument("--session-id", default="")
     options = parser.parse_args()
 
-    Handler.relay = Relay(options.automation_port, options.token, options.state)
+    Handler.relay = Relay(options.automation_port, options.token, options.state, options.session_id)
     handler = lambda *args, **kwargs: Handler(*args, directory=options.directory, **kwargs)  # noqa: E731
     server = ThreadingHTTPServer(("0.0.0.0", options.port), handler)
     sys.stderr.write("relay: the player page on %d, the host on %d\n" % (options.port, options.automation_port))

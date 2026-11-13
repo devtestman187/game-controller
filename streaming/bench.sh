@@ -23,6 +23,13 @@
 # bench uses from a python3 server over the streaming/player folder. It prints
 # one `SELFTEST PASS n/n` line, or the failing checks (M15 fix8).
 #
+# `--end-check` stops the sessions at the end of the run and reads the line the
+# page it opened shows: a page whose stream is gone for longer than a hiccup
+# says the stream has ended and stops reconnecting (M15 fix8). The line is the
+# page's tab title, which Chrome lists on the viewer's debugging port. A viewer
+# the relay names as a page of an earlier session is said in one line and not
+# counted, in either viewer mode.
+#
 # `--probe` shows the latency test card instead of a round and times presses
 # against the card's flips: press-to-screen is measured there, as its own
 # series, because the card covers the picture (so the round's bitrate would not
@@ -65,6 +72,14 @@ readonly viewer_report_s=10
 # run measures press-to-screen; ten minutes is the whole bench's patience.
 readonly press_default_s=30
 readonly press_max_s=600
+# How long a page gets to say its session ended, in seconds, and how often the
+# end check asks: the page calls a drop a hiccup for fifteen seconds and then
+# says so (session_end.js), so forty-five is room to spare (M15 fix8).
+readonly ended_timeout_s=45
+readonly ended_report_s=2
+# The start of the line session_end.js shows once a session has ended: the end
+# check reads it off the page's tab title (M15 fix8).
+readonly ended_title="The stream has ended"
 
 label="bench"
 sessions=1
@@ -79,6 +94,9 @@ probe="no"
 keep="no"
 # Whether this run is the player page's own tests instead of a session (M15 fix8).
 selftest="no"
+# Whether the run ends by stopping its sessions and reading the page's ended
+# line off the viewer it opened (M15 fix8).
+end_check="no"
 out=""
 # How long the press phase runs after the round, in seconds (M15 fix5): empty
 # until the arguments are read, so a run can tell "not given" from "0".
@@ -100,12 +118,22 @@ player_query=""
 # The viewer browsers this run started; the simulated players of each session
 # are kept in the output folder, one id a line.
 declare -a viewer_pids=()
+# Each viewer's Chrome debugging port on an `--end-check` run, empty otherwise;
+# the served pages' titles are listed there (M15 fix8).
+declare -a debug_ports=()
+# The pages of earlier sessions the relays have named, so each is said once.
+declare -a stale_pages=()
 
 say() { printf '%s\n' "$*"; }
 fail() { printf 'bench: %s\n' "$*" >&2; exit 1; }
 # Bad use: nothing ran, and the answer is the same as the outer tool's for the
 # pair both refuse (M15 fix3 review).
 refuse() { printf 'bench: %s\n' "$*" >&2; exit 2; }
+
+# A loopback port nothing listens on: bound, read, and given back (M15 fix8).
+free_port() {
+  python3 -c 'import socket; s = socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1])'
+}
 
 usage() {
   cat <<'EOF'
@@ -135,6 +163,8 @@ One streaming benchmark (M15 c2), inside the distro.
                    (with --viewer chrome only: a device you open is pinned there)
   --session-cpus L the cores the session containers run on (docker --cpuset-cpus)
   --selftest       run the player page's tests and stop (no session, no image)
+  --end-check      stop the sessions at the end and read the page's ended line
+                   off the viewer this run opened (with --viewer chrome only)
   --help           this text
 EOF
 }
@@ -159,6 +189,7 @@ parse_args() {
       --probe) probe="yes"; shift ;;
       --keep) keep="yes"; shift ;;
       --selftest) selftest="yes"; shift ;;
+      --end-check) end_check="yes"; shift ;;
       --help | -h) usage; exit 0 ;;
       *) printf 'bench: unknown option "%s"\n' "$1" >&2; usage; exit 2 ;;
     esac
@@ -167,7 +198,7 @@ parse_args() {
 
 check_args() {
   [[ "$label" =~ ^[a-z0-9][a-z0-9-]*$ ]] || fail "the label is lower-case letters, digits and dashes"
-  local setting
+  local setting index
   for setting in "${settings[@]}"; do
     [[ "$setting" =~ ^[A-Z][A-Z0-9_]*=[A-Za-z0-9._=,-]+$ ]] \
       || fail "a setting is KEY=VALUE (upper-case name, a plain value), got \"$setting\""
@@ -187,8 +218,18 @@ check_args() {
   # and do nothing (M15 g1 review).
   [[ "$viewer" == "chrome" || -z "$viewer_cpus" ]] \
     || refuse "--viewer-cpus needs --viewer chrome: a viewer you open yourself is pinned on that device"
+  # The end check reads the page this run opened and stops the sessions itself,
+  # so it needs a Chrome of ours and no --keep beside it (M15 fix8).
+  [[ "$end_check" == "no" || "$viewer" == "chrome" ]] \
+    || refuse "--end-check needs --viewer chrome: it reads the line off the Chrome this run opens"
+  [[ "$end_check" == "no" || "$keep" == "no" ]] \
+    || refuse "--end-check stops the sessions at the end, so it cannot run with --keep"
   if [[ "$game" == "arena" ]]; then mode="bumper"; fi
   out="${out:-/work/stream-bench/$label}"
+  if [[ "$end_check" == "yes" ]]; then
+    command -v python3 > /dev/null || fail "python3 is not here to pick the viewer's debugging ports"
+    for (( index = 0; index < sessions; index++ )); do debug_ports+=("$(free_port)"); done
+  fi
 }
 
 # The player query a run puts on the viewer's URL (M15 fix7): `key=value` pairs
@@ -327,21 +368,47 @@ read_token() {
 }
 
 start_viewer() {
-  local index="$1" pinned=()
+  local index="$1" pinned=() debug=()
   if [[ -n "$viewer_cpus" ]]; then pinned=(taskset -c "$viewer_cpus"); fi
+  # An end-check run reads the page's tab title on Chrome's debugging port once
+  # the session is stopped (M15 fix8).
+  if [[ "$end_check" == "yes" ]]; then debug=(--remote-debugging-port="${debug_ports[index]}"); fi
   # A viewer on its own cores shows what the session can do when the viewer's
   # decoding is not competing with it (M15 g1).
-  "${pinned[@]}" "$chrome" --no-sandbox --disable-gpu --mute-audio \
+  "${pinned[@]}" "$chrome" --no-sandbox --disable-gpu --mute-audio "${debug[@]}" \
     --autoplay-policy=no-user-gesture-required \
     --user-data-dir="$out/chrome-$index-profile" \
     "http://127.0.0.1:$(player_of "$index")/${player_query:+?$player_query}" > "$out/chrome-$index.log" 2>&1 &
   viewer_pids+=("$!")
 }
 
+# The pages of earlier sessions a relay has been told about (M15 fix8): one line
+# each, once. A page loaded before this session started reconnects to it, and its
+# numbers are not counted; the wait for a viewer goes on beside it.
+note_stale_pages() {
+  local index="$1" body id
+  body="$(curl -s --max-time 2 "$(relay_url "$index")/player")"
+  for id in $(printf '%s' "$body" | grep -o '"stalePages": \[[^]]*\]' \
+    | grep -o '"[^"]*"' | tail -n +2 | tr -d '"'); do
+    if [[ " ${stale_pages[*]-} " != *" $id "* ]]; then
+      stale_pages+=("$id")
+      say "$(name_of "$index"): ignored a viewer loaded before this session: $id; waiting for a fresh page"
+    fi
+  done
+}
+
+# Every relay's pages of earlier sessions, said once each: a page that reached a
+# session after the wait spoke to it is still named (M15 fix8).
+note_all_stale_pages() {
+  local index
+  for (( index = 0; index < sessions; index++ )); do note_stale_pages "$index"; done
+}
+
 # Waits until a session's page says it plays, up to [timeout] seconds.
 wait_playing() {
   local index="$1" timeout="$2" waited=0 state
   while (( waited < timeout )); do
+    note_stale_pages "$index"
     state="$(curl -s --max-time 2 "$(relay_url "$index")/player")"
     if [[ "$state" == *'"state": "playing"'* ]]; then
       return 0
@@ -381,6 +448,7 @@ has_receive_data() {
 wait_viewer() {
   local index="$1" waited=0 since_report=0 body
   while (( waited < viewer_timeout_s )); do
+    note_stale_pages "$index"
     body="$(aut "$index" GET /stats/session)"
     if has_receive_data "$body"; then
       say "$(name_of "$index"): a viewer registered after ${waited}s"
@@ -718,6 +786,50 @@ report_run() {
   say "results in $out"
 }
 
+# What a viewer's page says now, from its tab's title: Chrome lists its pages,
+# and their titles, on the debugging port it was given (M15 fix8), or nothing
+# when the port does not answer.
+page_title() {
+  curl -s --max-time 2 "http://127.0.0.1:${debug_ports[$1]}/json" 2>/dev/null \
+    | grep -o '"title": *"[^"]*"' | head -1 | sed 's/.*: *"//; s/"$//'
+}
+
+# Waits for a viewer's page to say its session ended, up to [ended_timeout_s],
+# answering that line or nothing. A page calls a drop a hiccup for fifteen
+# seconds (session_end.js) and says the stream ended after it, so this is the
+# page's own line read back, not a line the bench writes (M15 fix8).
+wait_ended_title() {
+  local index="$1" deadline=$((SECONDS + ended_timeout_s)) title=""
+  while (( SECONDS < deadline )); do
+    title="$(page_title "$index")"
+    if [[ "$title" == *"$ended_title"* ]]; then
+      printf '%s' "$title"
+      return 0
+    fi
+    sleep "$ended_report_s"
+  done
+  printf '%s' ""
+}
+
+# The end check: every session is stopped, and the page each run opened is asked
+# what it says. It runs after the summaries are collected, because a session's
+# relay goes with it (M15 fix8).
+check_ended_line() {
+  local index name title
+  for (( index = 0; index < sessions; index++ )); do
+    docker rm -f "$(container_of "$index")" > /dev/null 2>&1 || true
+  done
+  for (( index = 0; index < sessions; index++ )); do
+    name="$(name_of "$index")"
+    title="$(wait_ended_title "$index")"
+    if [[ -n "$title" ]]; then
+      say "$name: the page says \"$title\""
+    else
+      say "$name: the page did not say the stream ended in ${ended_timeout_s}s"
+    fi
+  done
+}
+
 # The player page's tests (M15 fix8): the marker's decoder, the page's options
 # and the clock estimate, run by the headless Chrome a bench already has. The
 # distro has no node, so the page is the runner: python3 serves the player
@@ -728,8 +840,7 @@ run_page_selftest() {
   directory="$(cd "$(dirname "$0")/player" && pwd)" || fail "the player folder is not beside the bench"
   command -v python3 > /dev/null || fail "python3 is not here to serve the test page"
   command -v "$chrome" > /dev/null || fail "no headless Chrome at $chrome"
-  port="$(python3 -c 'import socket; s = socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1])')" \
-    || fail "no free loopback port for the test page"
+  port="$(free_port)" || fail "no free loopback port for the test page"
   python3 -m http.server "$port" --bind 127.0.0.1 --directory "$directory" > /dev/null 2>&1 &
   server_pid="$!"
   url="http://127.0.0.1:$port/marker_selftest.html"
@@ -746,7 +857,10 @@ run_page_selftest() {
   dump="$("$chrome" --no-sandbox --disable-gpu --dump-dom "$url" 2>/dev/null)"
   kill "$server_pid" 2>/dev/null
   wait "$server_pid" 2>/dev/null
-  if printf '%s' "$dump" | grep -q "SELFTEST PASS"; then
+  # The count is part of the match: the page's own script carries the words
+  # "SELFTEST PASS", so a page whose module never ran would match the words
+  # alone (M15 fix8).
+  if printf '%s' "$dump" | grep -q 'SELFTEST PASS [0-9]*/[0-9]*'; then
     say "$(printf '%s' "$dump" | grep -o 'SELFTEST PASS [0-9]*/[0-9]*' | head -1)"
     return 0
   fi
@@ -817,6 +931,7 @@ main() {
     sleep "$seconds"
   fi
   say "the window ended after $((SECONDS - started_s))s"
+  note_all_stale_pages
 
   # A round run with a press phase measures the presses after it, on the same
   # session and viewer, before anything is stopped (M15 fix5).
@@ -830,6 +945,10 @@ main() {
     check_presses
   fi
   report_run
+  # The ended line is read after the summaries, because stopping a session ends
+  # the relay the page is read through, and after the report, because a stopped
+  # container has no log left to read the ceiling from (M15 fix8).
+  if [[ "$end_check" == "yes" ]]; then check_ended_line; fi
   stop_all
 }
 

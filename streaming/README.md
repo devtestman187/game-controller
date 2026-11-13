@@ -230,7 +230,18 @@ decode time, dropped frames — read from WebRTC's own `getStats` in
 [`player/stats.js`](player/stats.js). Sound starts with the picture where the
 browser allows it; otherwise a "Tap to start sound" screen takes the click,
 because browsers only give sound to a page the viewer touched. A lost connection
-reconnects on its own.
+reconnects on its own, and a drop the page cannot recover from is told apart from
+a hiccup: once a picture that played has been gone for 15 seconds, the page says
+"The stream has ended. Reload this page to join the next session." and stops
+asking for anything, so a tab left open never joins the next session by itself —
+only a reload does (M15 fix8). A page that never played keeps waiting, however
+long the TV takes: that wait is a start, not an end.
+
+The page also learns the session's own id from `config.js` and sends it with
+everything it tells the relay, so a page an earlier session served is told apart
+from this one's (M15 fix8): the relay answers it `stale` and names it in
+`GET /player`, and its measurements are refused rather than counted as this
+session's.
 
 The page learns its signalling port from `config.js`, which the entrypoint
 writes next to it, and loads the `gstwebrtc-api` bundle the image builds from the
@@ -285,8 +296,10 @@ when no command is running in it and takes the session with it.
 The relay has its own test, `streaming/player/relay_test.py`, run inside the
 distro by `tools/stream.sh selftest`: it starts `serve.py` with no host behind it
 and checks the page's files, the four POST paths, the 404 for everything else
-(before the body is read), the 502 with no host, the press queue and the 64 KB
-cap — sixteen checks, and it exits 1 at the first that does not hold.
+(before the body is read), the 502 with no host, the press queue, the 64 KB cap
+and a page's session (`--session-id`, M15 fix8): a page of an earlier session is
+answered `stale`, named once in `GET /player`, and its batch refused with 403 —
+twenty-four checks, and it exits 1 at the first that does not hold.
 
 The bench's run line reads what the viewers received against the ceiling the
 session was given, and who they were (the ingest keeps a viewer's kind and
@@ -325,6 +338,21 @@ whether the viewer's own CPU was starving it. In the g1 runs a session pinned to
 is refused with `--viewer external`: the bench can pin only the browser it
 starts, so a viewer a person opens is pinned on that device.
 
+A page loaded before the session started — a tab left open from an earlier one —
+reconnects to the signalling server like a fresh one, but it is not this
+session's viewer: the relay names it and the bench says so once, `ignored a
+viewer loaded before this session: <id>; waiting for a fresh page`, then goes on
+waiting for a page this session served. Its measurements never reach the host,
+so its numbers are not counted (M15 fix8). In either viewer mode the line comes
+from `GET /player`; the wait that printed it carries on.
+
+`--end-check` ends a run by stopping its sessions and reading the line the page
+it opened shows: a page whose stream has been gone for 15 seconds says "The
+stream has ended. Reload this page to join the next session.". The bench reads
+it off the page's tab title, which Chrome lists on the viewer's debugging port,
+and prints `the page says "<line>"`. It needs `--viewer chrome` — the port is
+Chrome's own — and is refused with `--keep`, whose kept session it would stop.
+
 ## Watching from another device on the home network
 
 The distro runs in WSL2's **mirrored networking** (the owner's
@@ -352,9 +380,11 @@ numbers and a measured press-to-screen, and the run line's bitrate comes from
 the round's own snapshot.
 
 A stale browser tab left open on a session's player URL on this PC (localhost)
-reconnects to every new session and used to show up as a viewer; it no longer
-does. A page that never shows a picture reports nothing, and a row that holds
-only the host's pipeline stages is left out of the report.
+used to reconnect to every new session and show up as a viewer; it no longer
+does (M15 fix8): a page whose session ended says so and stops asking, and a page
+that reconnects anyway is named by the relay and ignored by the bench, its
+measurements refused. A page that never shows a picture reports nothing either,
+and a row that holds only the host's pipeline stages is left out of the report.
 
 1. **Mirrored networking is already on.** A fresh PC needs this in
    `%USERPROFILE%\.wslconfig`, then one restart of WSL from PowerShell:
