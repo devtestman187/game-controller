@@ -76,11 +76,14 @@ player_options="${SESSION_PLAYER_OPTIONS:-}"
 # one webrtcsink, one peer connection, the picture and the sound under one
 # stream id, which is what a browser lip-syncs. `off` sends no sound at all (no
 # pulsesrc branch and no audio-caps), so a viewer shows the picture only.
-# `separate` records the sound into a second webrtcsink (`ws-audio`) with its
-# own producer meta and its own peer connection, so no stream id is shared and
-# the browser has nothing to hold the picture back for. The player follows
-# whatever the stream carries, so it needs no switch of its own; the ready line
-# says which mode the session runs. The phone decides whether it helps.
+# `separate` gives the sound its own process and its own pipeline — a second
+# gst-launch with its own webrtcsink (`ws-audio`), its own producer meta and its
+# own peer connection — so no stream id is shared, the browser has nothing to
+# hold the picture back for, and the picture pipeline does not inherit the
+# sound's latency the way one pipeline shares one latency query (M15 opt2-5).
+# The player follows whatever the stream carries, so it needs no switch of its
+# own; the ready line says which mode the session runs. The phone decides
+# whether it helps.
 audio_mode="${SESSION_AUDIO:-joined}"
 # The meta the session gives the two producers when the sound is separate: the
 # player tells them apart by these names, not by their order (streaming/player/
@@ -90,10 +93,10 @@ audio_mode="${SESSION_AUDIO:-joined}"
 # fields, so the page reads `meta.name`.
 picture_producer_meta="meta=TP-Picture,name=TP-Picture"
 sound_producer_meta="meta=TP-Sound,name=TP-Sound"
-# The sound's own webrtcsink in the session pipeline. It is deliberately not
-# named `ws` and does not start with `webrtcsink`, so the sampler's stage
-# lookup (packages/metrics/lib/src/stream_sampler.dart) keeps reading only the
-# picture's path.
+# The sound's own webrtcsink, in the sound's own process in `separate` mode. It
+# is deliberately not named `ws` and does not start with `webrtcsink`, so the
+# sampler's stage lookup (packages/metrics/lib/src/stream_sampler.dart) keeps
+# reading only the picture's path, whatever log it is given.
 sound_sink_name="ws-audio"
 # nvh264enc is broken on this driver (M15 wsl2 probe); the auto and cuda
 # elements both work. The image carries gst-plugins-rs and NVENC only.
@@ -176,6 +179,9 @@ readonly pulse_socket="$run_dir/pulse/native"
 readonly signal_log="$run_dir/signalling.log"
 readonly player_log="$run_dir/player.log"
 readonly pipe_log="$run_dir/pipeline.log"
+# The separate sound pipeline's own log (M15 opt2-5). `sound.log` is PulseAudio's
+# already, so this file can only be the sound's gst-launch.
+readonly sound_pipe_log="$run_dir/sound-pipeline.log"
 readonly app_log="$run_dir/app.log"
 
 # Process ids of everything this session starts, oldest first.
@@ -334,10 +340,11 @@ start_sampler() {
       --interval-s "$sampler_interval_s" --sessions "$sessions_at_once" --encoder "$encoder"
 }
 
-# The sound's way into the stream, one gst-launch argument per line: `joined`
-# records it into the picture's own webrtcsink (the pipeline as it was),
-# `separate` gives it a webrtcsink of its own with its own producer meta, and
-# `off` has no sound path at all. `mapfile` reads the lines back as words, so
+# The sound's way into the stream when it shares the picture pipeline, one
+# gst-launch argument per line: `joined` records it into the picture's own
+# webrtcsink (the pipeline as it was); `separate` and `off` contribute no words
+# here, because `separate` runs the sound in its own process (`sound_command`)
+# and `off` has no sound path at all. `mapfile` reads the lines back as words, so
 # every argument stays one token.
 sound_branch() {
   case "$audio_mode" in
@@ -346,16 +353,23 @@ sound_branch() {
         pulsesrc device=party.monitor '!' queue '!' audioconvert '!' audioresample '!' \
         audio/x-raw,rate=48000,channels=2 '!' opusenc "bitrate=$audio_bitrate_bps" '!' 'ws.'
       ;;
-    separate)
-      printf '%s\n' \
-        pulsesrc device=party.monitor '!' queue '!' audioconvert '!' audioresample '!' \
-        audio/x-raw,rate=48000,channels=2 '!' opusenc "bitrate=$audio_bitrate_bps" '!' \
-        webrtcsink "name=$sound_sink_name" "signaller::uri=ws://127.0.0.1:$signal_port" \
-        "congestion-control=$congestion_control" "max-bitrate=$audio_bitrate_bps" \
-        "start-bitrate=$audio_bitrate_bps" "do-retransmission=$do_retransmission" \
-        "$sound_producer_meta"
-      ;;
   esac
+}
+
+# The sound's own pipeline for `separate` (M15 opt2-5): the sound's branch as it
+# was, with its own webrtcsink, its own producer meta and its own peer
+# connection, run by a second gst-launch so the picture pipeline's latency query
+# never sees the sound's. Printed as the program first, then one word per line,
+# like the picture's command; no words at all in the other two modes.
+sound_command() {
+  if [[ "$audio_mode" != separate ]]; then return 0; fi
+  printf '%s\n' gst-launch-1.0 -e \
+    pulsesrc device=party.monitor '!' queue '!' audioconvert '!' audioresample '!' \
+    audio/x-raw,rate=48000,channels=2 '!' opusenc "bitrate=$audio_bitrate_bps" '!' \
+    webrtcsink "name=$sound_sink_name" "signaller::uri=ws://127.0.0.1:$signal_port" \
+    "congestion-control=$congestion_control" "max-bitrate=$audio_bitrate_bps" \
+    "start-bitrate=$audio_bitrate_bps" "do-retransmission=$do_retransmission" \
+    "$sound_producer_meta"
 }
 
 # The compositor and encoder, one gst-launch argument per line.
@@ -420,10 +434,10 @@ pipeline_words() {
   if [[ "$tap" == "on" ]]; then printf '%s\n' tee name=t 't.' '!'; fi
   webrtc_branch
   if [[ "$tap" == "on" ]]; then printf '%s\n' 't.' '!'; tap_branch; fi
-  # The sound's way into the stream last: `ws.` and `ws-audio` are elements the
-  # branches above made.
+  # The sound's branch last, when it shares this pipeline: `ws.` is the picture
+  # sink's own element, and `separate` runs its sound in another process.
   mapfile -t sound < <(sound_branch)
-  # `SESSION_AUDIO=off` has no sound words at all.
+  # `SESSION_AUDIO=off` and `separate` have no sound words here.
   if (( ${#sound[@]} > 0 )); then printf '%s\n' "${sound[@]}"; fi
 }
 
@@ -453,6 +467,19 @@ build_pipeline() {
     "${cmd[@]}" > "$pipe_log" 2>&1 &
   pipeline_pid=$!
   child_pids+=("$pipeline_pid")
+}
+
+# The sound's own pipeline, in `separate` mode only (M15 opt2-5): its own
+# gst-launch, started and stopped like the other children and logged to its own
+# file, so the picture pipeline carries the picture and nothing else. The tracer
+# is set the same way as the picture's, so its log says what the sound cost.
+build_sound_pipeline() {
+  if [[ "$audio_mode" != separate ]]; then return 0; fi
+  local -a cmd=()
+  mapfile -t cmd < <(sound_command)
+  GST_TRACERS="latency(flags=pipeline+element)" GST_DEBUG="GST_TRACER:7" GST_DEBUG_NO_COLOR=1 \
+    "${cmd[@]}" > "$sound_pipe_log" 2>&1 &
+  child_pids+=("$!")
 }
 
 # `waylanddisplaysrc` picks the socket name itself, so the app reads it back
@@ -587,6 +614,9 @@ wait_ready() {
   producers="$(wait_for_producers "$needed" "$ready_timeout_s")" || {
     say "error: the pipeline did not register $needed producer(s) with the signalling server within ${ready_timeout_s}s, see $pipe_log"
     say "$(tail -n 20 "$pipe_log" 2>/dev/null)"
+    # In `separate` mode the sound's producer comes from another process, whose
+    # log says why when it never registers.
+    if [[ "$audio_mode" == separate ]]; then say "$(tail -n 20 "$sound_pipe_log" 2>/dev/null)"; fi
     return 1
   }
   local marker_note="" tap_note=""
@@ -597,6 +627,19 @@ wait_ready() {
   # The sink properties the session actually runs with (M15 fix7), so a run's
   # log says which sender settings its numbers belong to.
   say "sink ws: congestion-control=$congestion_control max-bitrate=$video_bps start-bitrate=$video_bps do-fec=$do_fec do-retransmission=$do_retransmission"
+}
+
+# A mode this session does not know is the pipeline as it always was: a typo
+# must not leave a run with no picture or no sound and no line saying why. The
+# dry run below resolves it too, so a test sees the fallback without a session.
+resolve_audio_mode() {
+  case "$audio_mode" in
+    joined | off | separate) ;;
+    *)
+      say "warning: SESSION_AUDIO=$audio_mode is not joined, off or separate; running joined"
+      audio_mode=joined
+      ;;
+  esac
 }
 
 main() {
@@ -613,15 +656,7 @@ main() {
 
   trap 'say "stopping"; stop_all; exit 143' TERM INT
 
-  # A mode this session does not know is the pipeline as it always was: a typo
-  # must not leave a run with no picture or no sound and no line saying why.
-  case "$audio_mode" in
-    joined | off | separate) ;;
-    *)
-      say "warning: SESSION_AUDIO=$audio_mode is not joined, off or separate; running joined"
-      audio_mode=joined
-      ;;
-  esac
+  resolve_audio_mode
   case "$marker" in
     on | off) ;;
     *)
@@ -667,6 +702,7 @@ main() {
   start_signalling
   start_player
   build_pipeline
+  build_sound_pipeline
   start_sampler
   local socket
   socket="$(wait_for_wayland_socket)" || {
@@ -691,11 +727,21 @@ main() {
   exit "$status"
 }
 
-# A dry run for the tests (streaming/tap/entrypoint_pipeline_test.sh): print the
-# pipeline's command and words as a real start would, and start nothing.
-if [[ "${1:-}" == "--print-pipeline" ]]; then
-  pipeline_command
-  exit 0
-fi
+# A dry run for the tests (streaming/tap/entrypoint_pipeline_test.sh and
+# streaming/tap/entrypoint_audio_test.sh): print the picture pipeline's command
+# and words, or the separate sound pipeline's, as a real start would, resolve a
+# bad SESSION_AUDIO the way a start does, and start nothing.
+case "${1:-}" in
+  --print-pipeline)
+    resolve_audio_mode
+    pipeline_command
+    exit 0
+    ;;
+  --print-sound-pipeline)
+    resolve_audio_mode
+    sound_command
+    exit 0
+    ;;
+esac
 
 main "$@"

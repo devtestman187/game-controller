@@ -121,7 +121,9 @@ on_sound="$(printf '%s\n' "${on_pipeline[@]}" | sed -n '/^pulsesrc$/,$p')"
 off_sound="$(printf '%s\n' "${off_words[@]:2}" | sed -n '/^pulsesrc$/,$p')"
 if [[ "$on_sound" != "$off_sound" ]]; then fail "the joined sound's words changed with the tap on"; fi
 separate="$(words SESSION_TAP=on SESSION_AUDIO=separate)"
-has_word "$separate" name=ws-audio || fail "SESSION_AUDIO=separate lost its own sink with the tap on"
+if has_word "$separate" pulsesrc; then
+  fail "SESSION_AUDIO=separate still has the sound in the picture pipeline with the tap on"
+fi
 has_word "$separate" 'meta=TP-Picture,name=TP-Picture' ||
   fail "SESSION_AUDIO=separate lost the picture's producer meta with the tap on"
 quiet="$(words SESSION_TAP=on SESSION_AUDIO=off)"
