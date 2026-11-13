@@ -116,6 +116,7 @@ def test_page(port):
         for name in (
             "/player.js",
             "/options.js",
+            "/jb_target.js",
             "/low_delay.js",
             "/metrics.js",
             "/playback.js",

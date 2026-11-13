@@ -53,8 +53,9 @@ const _pipelineHeaders = [
   'src',
 ];
 
-/// The columns of "Streaming quality": what the viewer got, how it went and
-/// what it cost.
+/// The columns of "Streaming quality": what the viewer got, how it went, what
+/// it cost and the jitter buffer target it was given (`jbtarget=<ms>`, M15
+/// opt1b).
 const _qualityHeaders = [
   'session',
   'viewer',
@@ -74,6 +75,7 @@ const _qualityHeaders = [
   'reconnects',
   'relay',
   'codec',
+  'jbtarget',
 ];
 
 /// The columns of "Streaming sound": the capture-to-play delay, the signed
@@ -176,6 +178,7 @@ List<String> _qualityCells(StreamViewerRow row) {
     _countOf(row, 'reconnects'),
     _orDash(row.facts['relay']),
     _orDash(row.facts['codec']),
+    _orDash(row.facts['jbtarget']),
   ];
 }
 

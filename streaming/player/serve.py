@@ -88,6 +88,7 @@ page_files = frozenset(
         "playback.js",
         "streams.js",
         "options.js",
+        "jb_target.js",
         "low_delay.js",
         "latency_probe.js",
         "marker_batch.js",

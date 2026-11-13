@@ -6,6 +6,7 @@
  */
 
 import { markerEnabled, parseOptions, optionsLine } from "./options.js";
+import { JbTarget, jbTargetOf } from "./jb_target.js";
 import { LowDelay, lowDelayEnabled } from "./low_delay.js";
 import { Overlay } from "./overlay.js";
 import { audioMode, identifyPlayer, msidsOf, reportPlayerState, setStaleHandler } from "./page_state.js";
@@ -50,8 +51,13 @@ const statsBox = document.getElementById("stats");
 const statusBox = document.getElementById("status");
 const toggleButton = document.getElementById("toggle");
 const soundButton = document.getElementById("sound");
+// The jitter buffer target option (M15 opt1b), null unless `jbtarget=<ms>`: it
+// sets the receiver's target and reads it back. It is built before LowDelay,
+// which leaves that one property to it when both options are on.
+const jbTargetMs = jbTargetOf(options);
+const jbTarget = jbTargetMs === null ? null : new JbTarget({ requested: jbTargetMs });
 // The zero-delay option (M15 fix7, technique 2), null unless `lowdelay=1`.
-const lowDelay = lowDelayEnabled(options) ? new LowDelay({ screen }) : null;
+const lowDelay = lowDelayEnabled(options) ? new LowDelay({ screen, jitterBuffer: jbTarget === null }) : null;
 
 let reporter = null;
 // The page's connections, kept so an ended session can stop them, and whether
@@ -94,6 +100,7 @@ const overlay = new Overlay({
   box: statsBox,
   switchesLine,
   lowDelayLine: () => (lowDelay === null ? "" : lowDelay.line()),
+  jbTargetLine: () => (jbTarget === null ? "" : jbTarget.line()),
   facts: () => ({ hasSoundStream: soundStream !== null, pictureHasAudio, problem }),
   soundSample: sampleSound,
   onSoundSample: sendSoundJitter,
@@ -211,6 +218,7 @@ function startReporting(peerConnection) {
     reconnects,
     marker: markerEnabled(options),
   });
+  if (jbTarget !== null) reporter.setExtraSeries(() => jbTarget.batch());
   reporter.start();
 }
 
@@ -238,6 +246,7 @@ function connectionClosed() {
   overlay.stop();
   stopReporting();
   lowDelay?.stop();
+  jbTarget?.stop();
   playback.clear();
   playingStream = null;
   playingPicture = null;
@@ -259,6 +268,7 @@ function showSound(stream) {
   if (playingPicture === null) return;
   playback.show(playingPicture, soundOf(playingStream, splitTracks, soundStream));
   lowDelay?.watch(pictureConnection, soundConnection);
+  jbTarget?.watch(pictureConnection, soundConnection);
   reportPlayerState(hasPlayed ? "playing" : "streaming", {
     audio: audioModeNow(),
     ...msidFacts("soundMsids", soundConnection),
@@ -276,6 +286,7 @@ function showPicture(stream) {
   playback.show(playingPicture, soundOf(stream, splitTracks, soundStream));
   sessionWatch.picturePlaying();
   lowDelay?.watch(pictureConnection, soundConnection);
+  jbTarget?.watch(pictureConnection, soundConnection);
   // "streaming" goes first and "playing" lands when the picture starts, so
   // a benchmark that waits for either sees them in that order however fast
   // the browser's play() answers (M15 t1: the two raced).
@@ -297,14 +308,18 @@ const linkHandlers = {
       tuneForLowDelay(peerConnection);
       overlay.start(peerConnection);
     }
+    // After tuneForLowDelay, whose 0 this option's value must win over (M15 opt1b).
+    jbTarget?.watchConnection(peerConnection, pictureConnection, soundConnection);
     if (reporter === null) startReporting(peerConnection);
   },
   soundReady: (peerConnection) => {
     soundConnection = peerConnection;
     reportPlayerState(hasPlayed ? "playing" : "streaming", msidFacts("soundMsids", peerConnection));
-    if (soundMeter !== null) return;
-    tuneForLowDelay(peerConnection);
-    soundMeter = new StatsMeter(peerConnection);
+    if (soundMeter === null) {
+      tuneForLowDelay(peerConnection);
+      soundMeter = new StatsMeter(peerConnection);
+    }
+    jbTarget?.watchConnection(peerConnection, pictureConnection, soundConnection);
   },
   status: (text) => overlay.show(text),
   problem: noteProblem,

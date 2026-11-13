@@ -4,9 +4,9 @@ session  viewer     kind  platform  input  host  capture  encode  send  network 
 plain        v1  browser    chrome      -     -      2/4   10/12     -        -       -       -        -  32/46             -    -
 
 Streaming quality
-session  viewer  sent kbps  recv kbps  loss %  rtt ms  jitter ms  fps  sent  recv  decoded  dropped  late  freezes  first frame ms  reconnects  relay  codec
--------  ------  ---------  ---------  ------  ------  ---------  ---  ----  ----  -------  -------  ----  -------  --------------  ----------  -----  -----
-plain        v1          -          -     0.5       -          -    -     -   900        -        -     -        -               -           -      -      -
+session  viewer  sent kbps  recv kbps  loss %  rtt ms  jitter ms  fps  sent  recv  decoded  dropped  late  freezes  first frame ms  reconnects  relay  codec  jbtarget
+-------  ------  ---------  ---------  ------  ------  ---------  ---  ----  ----  -------  -------  ----  -------  --------------  ----------  -----  -----  --------
+plain        v1          -          -     0.5       -          -    -     -   900        -        -     -        -               -           -      -      -         -
 
 Streaming sound
 session  viewer  audio ms  sync ms  concealed %  jitter ms

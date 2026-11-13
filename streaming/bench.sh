@@ -831,12 +831,13 @@ check_ended_line() {
 }
 
 # The player page's tests (M15 fix8): the marker's decoder, the page's options
-# and the clock estimate, run by the headless Chrome a bench already has. The
-# distro has no node, so the page is the runner: python3 serves the player
-# folder on a free loopback port, Chrome loads the page and the one line it
-# writes is read back out of the DOM. Two processes it starts, both stopped here.
+# and the clock estimate, then the jitter buffer target's own page (M15 opt1b),
+# run by the headless Chrome a bench already has. The distro has no node, so the
+# page is the runner: python3 serves the player folder on a free loopback port,
+# Chrome loads each test page and the one line it writes is read back out of the
+# DOM. Two processes it starts, both stopped here.
 run_page_selftest() {
-  local directory port url dump server_pid waited=0
+  local directory port server_pid waited=0 page url dump
   directory="$(cd "$(dirname "$0")/player" && pwd)" || fail "the player folder is not beside the bench"
   command -v python3 > /dev/null || fail "python3 is not here to serve the test page"
   command -v "$chrome" > /dev/null || fail "no headless Chrome at $chrome"
@@ -854,18 +855,24 @@ run_page_selftest() {
     sleep 0.1
     waited=$((waited + 1))
   done
-  dump="$("$chrome" --no-sandbox --disable-gpu --dump-dom "$url" 2>/dev/null)"
+  for page in marker_selftest.html jbtarget_selftest.html; do
+    url="http://127.0.0.1:$port/$page"
+    dump="$("$chrome" --no-sandbox --disable-gpu --dump-dom "$url" 2>/dev/null)"
+    # The count is part of the match: the page's own script carries the words
+    # "SELFTEST PASS", so a page whose module never ran would match the words
+    # alone (M15 fix8).
+    if printf '%s' "$dump" | grep -q 'SELFTEST PASS [0-9]*/[0-9]*'; then
+      say "$page: $(printf '%s' "$dump" | grep -o 'SELFTEST PASS [0-9]*/[0-9]*' | head -1)"
+      continue
+    fi
+    kill "$server_pid" 2>/dev/null
+    wait "$server_pid" 2>/dev/null
+    printf '%s\n' "$dump" | sed -n '/SELFTEST/,$p'
+    return 1
+  done
   kill "$server_pid" 2>/dev/null
   wait "$server_pid" 2>/dev/null
-  # The count is part of the match: the page's own script carries the words
-  # "SELFTEST PASS", so a page whose module never ran would match the words
-  # alone (M15 fix8).
-  if printf '%s' "$dump" | grep -q 'SELFTEST PASS [0-9]*/[0-9]*'; then
-    say "$(printf '%s' "$dump" | grep -o 'SELFTEST PASS [0-9]*/[0-9]*' | head -1)"
-    return 0
-  fi
-  printf '%s\n' "$dump" | sed -n '/SELFTEST/,$p'
-  return 1
+  return 0
 }
 
 main() {

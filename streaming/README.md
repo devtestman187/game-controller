@@ -86,6 +86,25 @@ stream itself, is not in the image: no GStreamer element implements it here, so
 there is no session switch for it (evidence in
 [fix7/n2-1-delay-build-report.md](../docs/briefs/m15/fix7/n2-1-delay-build-report.md)).
 
+`jbtarget=<ms>` sets the receiver's jitter buffer target where the browser has
+the property (M15 opt1b; off unless asked for, and it combines with
+`lowdelay=1` and `marker=1`: `?jbtarget=0`, `?marker=1&jbtarget=0`, or
+`tools/stream.sh bench --player-query "marker=1&jbtarget=0"`). The value is a
+whole number from 0 to 4000 ms — anything else is ignored and the page behaves
+as without the option, and a bare `?jbtarget` asks for 1 ms, the value
+options.js gives every bare key. Every receiver of both connections (video and
+audio) is set at once and again every second and after each stream change,
+read back after every apply, and when `lowdelay=1` is on too this option's
+value wins over that switch's `jitterBufferTarget = 0` (its
+`playoutDelayHint` stays 0). Where the result shows: the Streaming quality
+table's last column `jbtarget`, the gauges `jbTargetRequestedMs` and
+`jbTargetAppliedMs` (the read-back, only when the receivers agree) in the
+summary JSON, and the overlay's line `jbtarget: req 0 has yes read 0` (its
+`has` says whether the receivers have the property: yes, no, partial or
+`none yet`; pairs are separated by a space because `=` is not a fact
+character). A browser may clamp or ignore the value — Safari in particular —
+so the read-back, not the request, is the proof that it arrived and stayed.
+
 `marker=1` is the page's half of the streaming marker (M15 fix8, technique in
 [docs/streaming-marker.md](../docs/streaming-marker.md); off unless asked for,
 and it needs the session's row, `SESSION_MARKER=on`). Every frame it reads only

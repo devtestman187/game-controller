@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Thumb Party jitter buffer target self-test</title>
+  <style>
+    body {
+      background: #000;
+      color: #eee;
+      font: 14px/1.5 ui-monospace, monospace;
+      padding: 12px;
+    }
+  </style>
+</head>
+
+<body>
+  <pre id="result">SELFTEST RUNNING</pre>
+
+  <!-- The jitter buffer target option's tests (M15 opt1b), in the headless
+       Chrome the bench already has, as marker_selftest.html's are. bench.sh
+       --selftest serves the player folder and reads the one line below back out
+       of the DOM. Not served by the session: serve.py's file list does not name
+       this page. -->
+  <script type="module">
+    import { JbTarget, jbTargetOf, jbTargetText } from "./jb_target.js";
+    import { LowDelay } from "./low_delay.js";
+    import { markerEnabled, parseOptions } from "./options.js";
+
+    // The host's fact limit and character set (stream_stats.dart's maxStreamFactLength and pattern):
+    // a fact beyond either is dropped, so a text that does not fit is a lost number.
+    const factLengthLimit = 24;
+    const factPattern = /^[A-Za-z0-9 ,._()+-]+$/;
+
+    const failures = [];
+    let checks = 0;
+
+    function check(name, run) {
+      checks++;
+      try {
+        const problem = run();
+        if (problem) failures.push(`${name}: ${problem}`);
+      } catch (error) {
+        failures.push(`${name}: threw ${error.message}`);
+      }
+    }
+
+    function same(actual, expected) {
+      return JSON.stringify(actual) === JSON.stringify(expected)
+        ? ""
+        : `expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`;
+    }
+
+    /** A receiver the test controls: its hints, or a setter that throws. */
+    function receiverOf(options = {}) {
+      const receiver = { track: { kind: options.kind ?? "video" } };
+      if (options.hasTarget !== false) receiver.jitterBufferTarget = options.target ?? 0;
+      if (options.hasHint !== false) receiver.playoutDelayHint = options.hint ?? 0;
+      if (options.throwing !== undefined) {
+        Object.defineProperty(receiver, "jitterBufferTarget", {
+          get: () => options.target ?? 0,
+          set: () => {
+            throw new Error(options.throwing);
+          },
+        });
+      }
+      return receiver;
+    }
+
+    /** A connection holding [receivers]; the test may add one to the same list later. */
+    function connectionOf(receivers) {
+      return { getReceivers: () => receivers };
+    }
+
+    /** A target that asks for [requested]; every test stops it. */
+    function targetOf(requested = 100) {
+      return new JbTarget({ requested });
+    }
+
+    const item = (list, name) => list.find((entry) => entry.name === name);
+
+    check("0, 20 and 4000 ms are whole decimal numbers", () => {
+      return same(["0", "20", "4000"].map((value) => jbTargetOf({ jbtarget: value })), [0, 20, 4000]);
+    });
+    check("4001, -1, empty, a word, a decimal and an exponent are ignored", () => {
+      return same(
+        ["4001", "-1", "", "abc", "1.5", "1e2"].map((value) => jbTargetOf({ jbtarget: value })),
+        [null, null, null, null, null, null],
+      );
+    });
+    check("no jbtarget key, no options and null options are ignored", () => {
+      return same([jbTargetOf({}), jbTargetOf(undefined), jbTargetOf(null)], [null, null, null]);
+    });
+    check("a bare ?jbtarget is the number 1, as options.js makes every bare key", () => {
+      const options = parseOptions("?jbtarget");
+      return same([options.jbtarget, jbTargetOf(options)], ["1", 1]);
+    });
+    check("?marker=1&jbtarget=0 gives both switches", () => {
+      const options = parseOptions("?marker=1&jbtarget=0");
+      return same([markerEnabled(options), jbTargetOf(options)], [true, 0]);
+    });
+    check("the query's jbtarget overrides the session's default", () => {
+      return same(jbTargetOf(parseOptions("jbtarget=20", { jbtarget: "0" })), 20);
+    });
+
+    check("a target is set on every receiver of both connections", () => {
+      const video = receiverOf({ kind: "video" });
+      const audio = receiverOf({ kind: "audio" });
+      const target = targetOf();
+      target.watch(connectionOf([video]), connectionOf([audio]));
+      target.stop();
+      return same([video.jitterBufferTarget, audio.jitterBufferTarget], [100, 100]);
+    });
+    check("a receiver without the property is skipped and the state says partial", () => {
+      const withTarget = receiverOf();
+      const without = receiverOf({ hasTarget: false });
+      const target = targetOf();
+      target.watch(connectionOf([withTarget, without]), null);
+      target.stop();
+      const state = target.state();
+      return same([state.supported, state.applied], ["partial", "100/missing"]);
+    });
+    check("a state where no receiver has the property says no", () => {
+      const target = targetOf();
+      target.watch(connectionOf([receiverOf({ hasTarget: false })]), null);
+      target.stop();
+      return same(target.state().supported, "no");
+    });
+    check("a throwing setter is recorded and never thrown", () => {
+      const target = targetOf();
+      try {
+        target.watch(connectionOf([receiverOf({ throwing: "setter threw" })]), null);
+      } catch (error) {
+        return `watch threw ${error.message}`;
+      }
+      target.stop();
+      return same(target.state().error, "setter threw");
+    });
+    check("a value the browser resets is read back as it is and put back on the next tick", () => {
+      const receiver = receiverOf();
+      const target = targetOf();
+      target.watch(connectionOf([receiver]), null);
+      target.stop();
+      receiver.jitterBufferTarget = 0;
+      const afterReset = target.state().applied;
+      target.tick();
+      return same([afterReset, target.state().applied], [0, 100]);
+    });
+    check("a receiver that appears later is set on the next watch", () => {
+      const receivers = [receiverOf()];
+      const connection = connectionOf(receivers);
+      const target = targetOf();
+      target.watch(connection, null);
+      const later = receiverOf({ target: 0 });
+      receivers.push(later);
+      const before = later.jitterBufferTarget;
+      target.watch(connection, null);
+      target.stop();
+      return same([before, later.jitterBufferTarget], [0, 100]);
+    });
+    check("a track event sets the receiver the connection adds with it", () => {
+      const listeners = [];
+      const receivers = [];
+      const connection = {
+        getReceivers: () => receivers,
+        addEventListener: (name, run) => {
+          if (name === "track") listeners.push(run);
+        },
+      };
+      const target = targetOf();
+      target.watchConnection(connection, connection, null);
+      const later = receiverOf({ target: 0 });
+      receivers.push(later);
+      const before = later.jitterBufferTarget;
+      for (const run of listeners) run();
+      target.stop();
+      return same([before, later.jitterBufferTarget], [0, 100]);
+    });
+    check("before any receiver exists the state is none yet", () => {
+      const target = targetOf(20);
+      target.watch(null, connectionOf([]));
+      target.stop();
+      return same(target.state(), { requested: 20, supported: "none yet", applied: "missing", error: "" });
+    });
+    check("receivers that disagree are read back one by one", () => {
+      const first = receiverOf();
+      const second = receiverOf();
+      const target = targetOf();
+      target.watch(connectionOf([first, second]), null);
+      second.jitterBufferTarget = 5;
+      const applied = target.state().applied;
+      target.stop();
+      return same(applied, "100/5");
+    });
+
+    check("lowdelay with jbtarget on leaves the target alone and still zeroes the playout hint", () => {
+      const receiver = receiverOf({ target: 5, hint: 3 });
+      const low = new LowDelay({ screen: { playbackRate: 0 }, jitterBuffer: false });
+      low.watch(connectionOf([receiver]), null);
+      low.stop();
+      return same([receiver.jitterBufferTarget, receiver.playoutDelayHint], [5, 0]);
+    });
+    check("lowdelay without jbtarget zeroes both, as before", () => {
+      const receiver = receiverOf({ target: 5, hint: 3 });
+      const low = new LowDelay({ screen: { playbackRate: 0 } });
+      low.watch(connectionOf([receiver]), null);
+      low.stop();
+      return same([receiver.jitterBufferTarget, receiver.playoutDelayHint], [0, 0]);
+    });
+
+    check("one batch carries the requested and the read-back value and the fact", () => {
+      const target = targetOf(0);
+      target.watch(connectionOf([receiverOf()]), null);
+      target.stop();
+      const batch = target.batch();
+      return same(
+        [item(batch.gauges, "jbTargetRequestedMs"), item(batch.gauges, "jbTargetAppliedMs"), batch.facts[0]],
+        [{ name: "jbTargetRequestedMs", value: 0 }, { name: "jbTargetAppliedMs", value: 0 },
+          { name: "jbtarget", value: "req 0 has yes read 0" }],
+      );
+    });
+    check("a read back that is not one number gets no gauge", () => {
+      const first = receiverOf();
+      const second = receiverOf();
+      const target = targetOf();
+      target.watch(connectionOf([first, second]), null);
+      second.jitterBufferTarget = 0;
+      target.stop();
+      const batch = target.batch();
+      return same(
+        [item(batch.gauges, "jbTargetRequestedMs"), item(batch.gauges, "jbTargetAppliedMs"), batch.facts[0].value],
+        [{ name: "jbTargetRequestedMs", value: 100 }, undefined, "req 100 read 100,0"],
+      );
+    });
+    check("a state with no receiver sends the requested value and none yet", () => {
+      // " read missing" would push the line past the host's 24 characters, so
+      // the read is left out; the gauges still carry the value asked for.
+      const batch = targetOf(4000).batch();
+      return same([batch.gauges, batch.facts], [
+        [{ name: "jbTargetRequestedMs", value: 4000 }],
+        [{ name: "jbtarget", value: "req 4000 has none yet" }],
+      ]);
+    });
+    check("the overlay's line carries the same text", () => {
+      const target = targetOf(0);
+      target.watch(connectionOf([receiverOf()]), null);
+      target.stop();
+      return same(target.line(), "jbtarget: req 0 has yes read 0");
+    });
+    check("every text fits the host's length and characters, the worst case too", () => {
+      const states = [
+        { requested: 0, supported: "yes", applied: 0, error: "" },
+        { requested: 4000, supported: "partial", applied: "4000/4000/4000", error: "NotSupportedError: no" },
+        { requested: 20, supported: "none yet", applied: "missing", error: "" },
+        { requested: 1000, supported: "yes", applied: "1000/1000/500", error: "" },
+        { requested: 0, supported: "yes", applied: 0, error: "setter threw" },
+      ];
+      const bad = states.map((state) => jbTargetText(state))
+        .filter((text) => text.length > factLengthLimit || !factPattern.test(text));
+      return bad.length === 0 ? "" : `these would be dropped: ${JSON.stringify(bad)}`;
+    });
+    check("the error is kept when the read cannot fit beside it", () => {
+      return same(jbTargetText({ requested: 0, supported: "yes", applied: 0, error: "setter threw" }),
+        "req 0 has yes err setter");
+    });
+    check("the worst case keeps the requested value and the support", () => {
+      return same(
+        jbTargetText({ requested: 4000, supported: "partial", applied: "4000/4000/4000", error: "NotSupportedError" }),
+        "req 4000 has partial",
+      );
+    });
+
+    const result = document.getElementById("result");
+    result.textContent = failures.length === 0
+      ? `SELFTEST PASS ${checks}/${checks}`
+      : `SELFTEST FAIL ${failures.length}/${checks}\n${failures.join("\n")}`;
+  </script>
+</body>
+
+</html>

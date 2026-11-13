@@ -324,6 +324,7 @@ void main() {
         '1',
         'no',
         'h264',
+        '-',
       ]);
       // The app sent one count and no gauge, so only its receive column is filled.
       expect(cells(table[3]), [
@@ -337,6 +338,7 @@ void main() {
         '-',
         '-',
         '1200',
+        '-',
         '-',
         '-',
         '-',
@@ -365,7 +367,30 @@ void main() {
         '-',
         'yes',
         'h264',
+        '-',
       ]);
+    });
+
+    test('quality: the jitter buffer target a viewer asked for, or a dash', () {
+      final c = SessionCollector(
+        id: 'jb',
+        hostType: HostType.windows,
+        hostApp: '0.15.0',
+        startedAt: DateTime.utc(2026, 11, 13, 9),
+        startMs: 0,
+      );
+      final toggled = c.streamViewer(kind: StreamKind.browser, platform: 'safari');
+      final plain = c.streamViewer(kind: StreamKind.browser, platform: 'chrome');
+      c
+        ..streamCounter(toggled, 'framesReceived', 100)
+        ..streamFact(toggled, 'jbtarget', 'req 0 has yes read 0')
+        ..streamCounter(plain, 'framesReceived', 100);
+      final text = streamReport([c.summary(600000)]);
+      final table = tableOf(text, 'Streaming quality');
+      expect(cells(table[0]).last, 'jbtarget');
+      // The value carries spaces, so the row's last column is the row's end.
+      expect(table[2].trimRight(), endsWith('req 0 has yes read 0'));
+      expect(cells(table[3]).last, '-');
     });
 
     test('sound: the capture-to-play delay, the sync offset and the concealed share', () {

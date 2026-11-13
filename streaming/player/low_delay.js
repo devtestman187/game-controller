@@ -37,8 +37,8 @@ function receiverFacts(receiver) {
 }
 
 /** Puts one receiver's hints at zero, where the browser has them. */
-function zeroReceiver(receiver) {
-  if ("jitterBufferTarget" in receiver) receiver.jitterBufferTarget = 0;
+function zeroReceiver(receiver, jitterBuffer) {
+  if (jitterBuffer && "jitterBufferTarget" in receiver) receiver.jitterBufferTarget = 0;
   if ("playoutDelayHint" in receiver) receiver.playoutDelayHint = 0;
 }
 
@@ -51,9 +51,13 @@ export class LowDelay {
   /**
    * @param {object} parts
    * @param {HTMLVideoElement} parts.screen - the element the picture plays in
+   * @param {boolean} [parts.jitterBuffer] - whether this sets
+   *   `jitterBufferTarget` too: false leaves that one property to the page's
+   *   `jbtarget` option, whose value wins when both are on (M15 opt1b)
    */
-  constructor({ screen }) {
+  constructor({ screen, jitterBuffer = true }) {
     this._screen = screen;
+    this._jitterBuffer = jitterBuffer;
     this._picture = null;
     this._sound = null;
     this._timer = null;
@@ -106,7 +110,7 @@ export class LowDelay {
     if ("latencyHint" in screen) screen.latencyHint = latencyHintLow;
     for (const connection of [this._picture, this._sound]) {
       if (connection === null) continue;
-      for (const receiver of connection.getReceivers()) zeroReceiver(receiver);
+      for (const receiver of connection.getReceivers()) zeroReceiver(receiver, this._jitterBuffer);
     }
   }
 }

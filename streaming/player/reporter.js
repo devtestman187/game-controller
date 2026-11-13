@@ -111,6 +111,11 @@ export class StreamReporter {
     this._soundGauges = gauges;
   }
 
+  /** Sets the provider of extra gauges and facts a batch adds (M15 opt1b), or nothing. */
+  setExtraSeries(provider) {
+    this._extras = provider;
+  }
+
   /** Starts measuring: the frame callback, the batch timer and the press poll. */
   start() {
     this._watchFrames();
@@ -276,6 +281,9 @@ export class StreamReporter {
     addGauge("audioSyncMs", audioSyncMs(audio, video));
     addGauge("audioConcealedPct", concealedPct(audio));
     for (const gauge of this._soundGauges) addGauge(gauge.name, gauge.value);
+    const extras = this._extras?.() ?? null;
+    for (const gauge of extras?.gauges ?? []) addGauge(gauge.name, gauge.value);
+    if (extras !== null) facts.push(...extras.facts);
     const sent = viewerCounters(video, {
       lateFrames: this._late,
       reconnects: this._reconnects,

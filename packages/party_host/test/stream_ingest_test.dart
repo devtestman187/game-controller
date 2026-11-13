@@ -186,6 +186,7 @@ void main() {
       '7',
       'no',
       'h264',
+      '-',
     ]);
 
     final sound = tableOf(text, 'Streaming sound');

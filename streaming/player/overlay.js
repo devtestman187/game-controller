@@ -22,6 +22,8 @@ export class Overlay {
    * @param {HTMLElement} parts.box - where the numbers are shown
    * @param {string} parts.switchesLine - the switches this page runs with, or ""
    * @param {() => string} parts.lowDelayLine - the zero-delay option's line, or ""
+   * @param {() => string} parts.jbTargetLine - the jitter buffer target option's
+   *   line (M15 opt1b), or ""
    * @param {() => object} parts.facts - what the page knows: `hasSoundStream`,
    *   `pictureHasAudio` and the last measurement `problem`
    * @param {() => Promise<object|null>} parts.soundSample - the sound's own
@@ -31,11 +33,12 @@ export class Overlay {
    * @param {(text: string) => void} parts.onProblem - where a measurement
    *   problem goes
    */
-  constructor({ line, box, switchesLine, lowDelayLine, facts, soundSample, onSoundSample, onProblem }) {
+  constructor({ line, box, switchesLine, lowDelayLine, jbTargetLine, facts, soundSample, onSoundSample, onProblem }) {
     this._line = line;
     this._box = box;
     this._switchesLine = switchesLine;
     this._lowDelayLine = lowDelayLine;
+    this._jbTargetLine = jbTargetLine;
     this._facts = facts;
     this._soundSample = soundSample;
     this._onSoundSample = onSoundSample;
@@ -110,6 +113,7 @@ export class Overlay {
     ];
     if (this._switchesLine !== "") lines.push(this._switchesLine);
     if (this._lowDelayLine() !== "") lines.push(this._lowDelayLine());
+    if (this._jbTargetLine() !== "") lines.push(this._jbTargetLine());
     const { problem } = this._facts();
     if (problem !== "") lines.push(`measurement: ${problem}`);
     this._box.textContent = lines.join("\n");
