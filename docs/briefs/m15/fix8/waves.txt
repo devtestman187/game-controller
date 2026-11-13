@@ -1,1 +1,6 @@
 f8-1-audit
+f8-2-marker-host
+f8-3-marker-player
+f8-4-marker-report
+f8-5-page-fixes
+f8-6-proof-run
