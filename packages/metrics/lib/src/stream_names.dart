@@ -129,6 +129,36 @@ abstract final class StreamMarker {
   ];
 }
 
+/// The custom player's own numbers (M15 opt2): what a page that decodes with
+/// WebCodecs and draws on a canvas measures itself, sent as the sampler's
+/// gauges. Its `wc` fact is what says the picture came from that player, so a
+/// run played the page's usual way has none of them.
+abstract final class StreamWc {
+  /// A frame's arrival → the decoder's output, in ms: the median of each
+  /// reporting interval.
+  static const recvToDecode = 'wcRecvToDecodeMs';
+
+  /// The decoder's output → the canvas, in ms: the same interval's median.
+  static const decodeToDraw = 'wcDecodeToDrawMs';
+
+  /// Frames dropped before decoding (a gap or a full queue), as a total.
+  static const dropped = 'wcDropped';
+
+  /// Frames received but not yet drawn: the backlog the socket left.
+  static const backlog = 'wcBacklog';
+
+  /// Keyframes the page asked the host for, as a total.
+  static const keyRequests = 'wcKeyRequests';
+
+  /// The deepest the decoder's queue got, in frames.
+  static const queueMax = 'wcQueueMax';
+
+  /// The fact a custom-player page sends: the decoder configuration it ran
+  /// (`cfg hw`, `cfg nohint`, `cfg bad` or `cfg none`) and whether it drew a
+  /// frame (`dec ok`, `dec no`). It claims nothing beyond that text.
+  static const fact = 'wc';
+}
+
 /// What showed a stream to a viewer (M15): a browser page, one of our apps, or
 /// anything else a later client reports. A kind outside these counts as
 /// [other], as an unknown input mode does today.

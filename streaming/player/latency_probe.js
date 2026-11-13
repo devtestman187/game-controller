@@ -37,12 +37,14 @@ const pressTimeoutMs = 2000;
 export class LatencyProbe {
   /**
    * @param {object} parts
-   * @param {HTMLVideoElement} parts.video - the element the stream plays in
+   * @param {{image: () => (HTMLVideoElement|HTMLCanvasElement), widthPx: () => number,
+   *   heightPx: () => number}} parts.picture - the picture the card is watched in:
+   *   the video element, or the custom player's canvas (M15 opt2)
    * @param {(text: string) => void} parts.onProblem - where a problem goes
    * @param {(nowMs: number) => (number|null)} parts.toHostMs - page to host time
    */
-  constructor({ video, onProblem, toHostMs }) {
-    this._video = video;
+  constructor({ picture, onProblem, toHostMs }) {
+    this._picture = picture;
     this._onProblem = onProblem;
     this._toHostMs = toHostMs;
     this._canvas = null;
@@ -97,8 +99,8 @@ export class LatencyProbe {
 
   /** The mean brightness of a small patch of the picture, or null. */
   _patchLuminance() {
-    const width = this._video.videoWidth;
-    const height = this._video.videoHeight;
+    const width = this._picture.widthPx();
+    const height = this._picture.heightPx();
     if (!width || !height) return null;
     this._canvas ??= document.createElement("canvas");
     const canvas = this._canvas;
@@ -110,7 +112,7 @@ export class LatencyProbe {
     const x = Math.floor(width / 4);
     const y = Math.floor(height / 4);
     try {
-      context.drawImage(this._video, x, y, patchSizePx, patchSizePx, 0, 0, 1, 1);
+      context.drawImage(this._picture.image(), x, y, patchSizePx, patchSizePx, 0, 0, 1, 1);
       const pixel = context.getImageData(0, 0, 1, 1).data;
       return luminanceOf(pixel[0], pixel[1], pixel[2]);
     } catch (error) {

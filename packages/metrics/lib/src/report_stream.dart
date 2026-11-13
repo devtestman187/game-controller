@@ -1,6 +1,7 @@
 import 'report_stream_hostleg.dart';
 import 'report_stream_marker.dart';
 import 'report_stream_rows.dart';
+import 'report_stream_wc.dart';
 import 'report_table.dart';
 import 'stream_names.dart';
 
@@ -114,7 +115,8 @@ const _resourceHeaders = [
 const _sessionsHeaders = ['sessions at once', 'sessions', 'cpu %', 'gpu %', 'enc %', 'game fps', 'enc fps', 'mem MB'];
 
 /// The report's Streaming section (M15): the pipeline, quality, sound and
-/// container tables, then the same resources by how many sessions ran at once,
+/// container tables, the custom player's own table when a page sent its `wc`
+/// fact (M15 opt2), then the same resources by how many sessions ran at once,
 /// and one line saying how many viewer rows had no receive data to show (M15
 /// fix5). A report whose sessions never streamed has no section.
 String streamReport(List<Map<String, Object?>> summaries) {
@@ -123,12 +125,14 @@ String streamReport(List<Map<String, Object?>> summaries) {
   final hosts = streamHosts(summaries);
   final hostLegs = hostLegReport(summaries);
   final marker = markerReport(summaries);
+  final wc = wcReport(summaries);
   return [
     if (viewers.isNotEmpty) ...[
       plainTable('Streaming pipeline', _pipelineHeaders, [for (final row in viewers) _pipelineCells(row)]),
       if (hostLegs.isNotEmpty) hostLegs,
       if (marker.isNotEmpty) marker,
       plainTable('Streaming quality', _qualityHeaders, [for (final row in viewers) _qualityCells(row)]),
+      if (wc.isNotEmpty) wc,
       plainTable('Streaming sound', _soundHeaders, [for (final row in viewers) _soundCells(row)]),
     ],
     if (hosts.isNotEmpty) ...[

@@ -245,19 +245,21 @@ check_player_query() {
 
 # The switches a run was given, as its one `switches:` line (M15 fix7): every
 # `--set`, the player query and the player options the session's environment
-# gives the page. Nothing set is "switches: none".
+# gives the page. A `player=wc` query also says so as `player wc` (M15 opt2).
+# Nothing set is "switches: none".
 switches_line() {
-  local setting list="" player_options="none" query="none"
+  local setting list="" player_options="none" query="none" player=""
   for setting in "${settings[@]}"; do
     list="${list:+$list, }$setting"
     if [[ "$setting" == SESSION_PLAYER_OPTIONS=* ]]; then player_options="${setting#SESSION_PLAYER_OPTIONS=}"; fi
   done
-  if [[ -n "$player_query" ]]; then query="$player_query"; fi
-  if [[ -z "$list" && "$query" == "none" ]]; then
+  if [[ -z "$player_query" ]]; then query="none"; else query="$player_query"; fi
+  if [[ "&$player_query&" == *"&player=wc&"* ]]; then player=", player wc"; fi
+  if [[ -z "$list" && "$query" == "none" && -z "$player" ]]; then
     printf 'switches: none\n'
     return 0
   fi
-  printf 'switches: %splayer-query %s, player-options %s\n' "${list:+$list, }" "$query" "$player_options"
+  printf 'switches: %splayer-query %s, player-options %s%s\n' "${list:+$list, }" "$query" "$player_options" "$player"
 }
 
 # The press phase's length: a whole number of seconds up to [press_max_s]. Not
@@ -855,7 +857,7 @@ run_page_selftest() {
     sleep 0.1
     waited=$((waited + 1))
   done
-  for page in marker_selftest.html jbtarget_selftest.html wc_selftest.html; do
+  for page in marker_selftest.html jbtarget_selftest.html wc_selftest.html wc_stats_selftest.html; do
     url="http://127.0.0.1:$port/$page"
     dump="$("$chrome" --no-sandbox --disable-gpu --dump-dom "$url" 2>/dev/null)"
     # The count is part of the match: the page's own script carries the words

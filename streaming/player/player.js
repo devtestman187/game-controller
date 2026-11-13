@@ -8,6 +8,7 @@
 import { markerEnabled, parseOptions, optionsLine, playerKindOf } from "./options.js";
 import { JbTarget, jbTargetOf } from "./jb_target.js";
 import { LowDelay, lowDelayEnabled } from "./low_delay.js";
+import { canvasPicture } from "./marker_reader.js";
 import { Overlay } from "./overlay.js";
 import { audioMode, identifyPlayer, msidFacts, reportPlayerState, setStaleHandler } from "./page_state.js";
 import { Playback, pictureOf, soundOf } from "./playback.js";
@@ -16,6 +17,7 @@ import { createSessionWatch, endedText } from "./session_end.js";
 import { StatsMeter } from "./stats.js";
 import { signallingUrl, StreamLinks, tuneForLowDelay } from "./streams.js";
 import { WcPlayer } from "./wc_player.js";
+import { combinedSeries, wcStatsOf } from "./wc_stats.js";
 
 const GstWebRTCAPI = window.GstWebRTCAPI;
 
@@ -53,16 +55,20 @@ const wcMode = playerKindOf(options) === "wc";
 // `wcmode=annexb`: the decoder reads Annex B in band instead of AVCC (M15 opt2).
 const wcAnnexb = options.wcmode === "annexb";
 const wcCanvas = document.getElementById("wc-canvas");
+// Where the marker's strip and the card's patch are read with `player=wc`: the
+// canvas, in the video element's place (M15 opt2).
+const wcPicture = canvasPicture(wcCanvas);
 let wcPlayer = null;
+// The custom player's figures, null unless the page plays it (M15 opt2).
+let wcStats = null;
 const soundTrack = document.getElementById("sound-track");
 const playback = new Playback({ screen, sound: soundTrack });
 const statsBox = document.getElementById("stats");
 const statusBox = document.getElementById("status");
 const toggleButton = document.getElementById("toggle");
 const soundButton = document.getElementById("sound");
-// The jitter buffer target option (M15 opt1b), null unless `jbtarget=<ms>`: it
-// sets the receiver's target and reads it back. It is built before LowDelay,
-// which leaves that one property to it when both options are on.
+// The jitter buffer target option (M15 opt1b), null unless `jbtarget=<ms>`. It
+// is built before LowDelay, which leaves that one property to it.
 const jbTargetMs = jbTargetOf(options);
 const jbTarget = jbTargetMs === null ? null : new JbTarget({ requested: jbTargetMs });
 // The zero-delay option (M15 fix7, technique 2), null unless `lowdelay=1`.
@@ -70,21 +76,17 @@ const lowDelay = lowDelayEnabled(options) ? new LowDelay({ screen, jitterBuffer:
 
 let reporter = null;
 // The page's connections, kept so an ended session can stop them, and whether
-// it has ended: an ended page asks for nothing more and joins nothing until it
-// is reloaded (M15 fix8).
+// it has ended (M15 fix8): an ended page asks for nothing more.
 let links = null;
 let ended = false;
 // The two peer connections, for the streams their SDPs name.
 let pictureConnection = null;
 let soundConnection = null;
 // The sound's own connection, when the session sends one (SESSION_AUDIO=
-// separate): it has a meter of its own, and its loss never touches the
-// picture's.
+// separate): it has a meter and its loss never touches the picture's.
 let soundMeter = null;
-// How many times this page asked for the stream again (M15 c2's quality
-// table), counted across connections. Only a drop after the picture has played
-// counts: a page that opens before the TV has a producer waits once, and that
-// wait is a start, not a reconnect.
+// How many times this page asked for the stream again (M15 c2's quality table);
+// only a drop after the picture played counts, a start is not a reconnect.
 let reconnects = 0;
 let hasPlayed = false;
 // The picture's stream from the TV, what the video element was given
@@ -92,19 +94,18 @@ let hasPlayed = false;
 let playingStream = null;
 let playingPicture = null;
 let soundStream = null;
-// Whether the picture's own stream carries sound (the modes that send one
-// stream), which the overlay needs to tell "sound none" from a number.
+// Whether the picture's own stream carries sound (the one-stream modes): the
+// overlay needs it to tell "sound none" from a number.
 let pictureHasAudio = false;
 
-// The page's own text: its status line, the tab's title that carries the same
-// line (how the bench reads a state off a page a run left open, M15 fix8), and
-// the numbers the "i" key opens.
+// The page's own text: the status line, the tab's title that carries it (M15 fix8) and the numbers.
 const overlay = new Overlay({
   line: statusBox,
   box: statsBox,
   switchesLine,
   lowDelayLine: () => (lowDelay === null ? "" : lowDelay.line()),
   jbTargetLine: () => (jbTarget === null ? "" : jbTarget.line()),
+  wcLine: () => (wcStats === null ? "" : wcStats.line()),
   facts: () => ({ hasSoundStream: soundStream !== null, pictureHasAudio }),
   soundMeter: () => soundMeter,
   onSoundSample: sendSoundJitter,
@@ -112,8 +113,7 @@ const overlay = new Overlay({
 });
 
 // The session is over: say so plainly and stop asking for anything, so a tab
-// left open never joins the next session by itself — only a reload does
-// (M15 fix8).
+// left open never joins the next session by itself (M15 fix8).
 function endSession() {
   if (ended) return;
   ended = true;
@@ -125,16 +125,19 @@ function endSession() {
   overlay.show(endedText);
 }
 
-// The page's session, timed (M15 fix8): a picture that played and has been gone
-// longer than a hiccup means the session ended.
+// The page's session, timed (M15 fix8): a picture gone past a hiccup ends it.
 const sessionWatch = createSessionWatch({ nowMs: () => performance.now(), onEnded: endSession });
 
 // The custom player's page (M15 opt2): the canvas takes the video element's
-// place, with the sound still on the WebRTC path.
+// place, and its numbers and the marker's strip are read from the canvas.
 function startWcPlayer() {
   screen.hidden = true;
   wcCanvas.classList.add("visible");
-  wcPlayer = new WcPlayer({ canvas: wcCanvas, onEvent: wcEvent, onDrawn: wcPlaying, annexb: wcAnnexb });
+  wcPlayer = new WcPlayer({ canvas: wcCanvas, onEvent: wcEvent, onDrawn: wcDrawn, annexb: wcAnnexb });
+  wcStats = wcStatsOf(options, wcPlayer);
+  // The measurements are in place before the first frame, so none is missed.
+  overlay.start(null);
+  startReporting(null, wcPicture);
   wcPlayer.start();
   reportPlayerState("streaming");
 }
@@ -148,17 +151,21 @@ function wcEvent(event) {
   overlay.show("lost the TV, reconnecting…");
 }
 
-// The first frame on the canvas is the picture playing: the state a benchmark
-// waits for, and the start of the session watch (M15 fix8).
-function wcPlaying() {
+// One frame drawn on the canvas: the reporter reads it and the marker's strip
+// in the same tick, so the strip is never a frame behind (M15 opt2).
+function wcDrawn(frameNo, drawnAtMs) {
+  wcStats?.noteDrawn(drawnAtMs);
+  reporter?.drawnFrame(drawnAtMs);
+  // The first frame is the picture playing: the state a benchmark waits for,
+  // and the session watch's start (M15 fix8).
   if (hasPlayed) return;
   hasPlayed = true;
   sessionWatch.picturePlaying();
   reportPlayerState("playing");
 }
 
-// Starts the picture, then tries to start the sound with it. Browsers that
-// only start sound after a tap show the button instead.
+// Starts the picture, then the sound with it; a browser that wants a tap shows
+// the button instead.
 async function startPlayback() {
   soundButton.classList.remove("visible");
   try {
@@ -167,16 +174,15 @@ async function startPlayback() {
     reportPlayerState("playing");
   } catch (error) {
     overlay.show(`cannot start the picture: ${error.message}`);
-    // The benchmark is waiting for "playing" and would only see "streaming":
-    // say why the picture did not start, so a run's failure has a reason.
+    // The benchmark waits for "playing": say why the picture did not start.
     reportPlayerState("cannot play", { reason: error.message });
     return;
   }
   await startSound();
 }
 
-// Unmutes the picture and starts the sound, which a late or reconnected sound
-// stream needs again. A stream without sound needs no tap, so no button.
+// Unmutes the picture and starts the sound, which a late or reconnected one
+// needs again; a stream without sound needs no tap.
 async function startSound() {
   try {
     await playback.unmute();
@@ -193,9 +199,9 @@ function audioModeNow() {
   return audioMode(soundStream !== null, pictureHasAudio);
 }
 
-// Starts sending the measurements the host's stats record keeps; the reporter
-// reads the same connection's numbers and the frame times the browser gives.
-function startReporting(peerConnection) {
+// Starts sending the measurements the host's stats record keeps: the
+// connection's numbers, or with `player=wc` the canvas's own (M15 opt2).
+function startReporting(peerConnection, picture = null) {
   stopReporting();
   reporter = new StreamReporter({
     video: screen,
@@ -203,8 +209,10 @@ function startReporting(peerConnection) {
     onProblem: (text) => overlay.noteProblem(text),
     reconnects,
     marker: markerEnabled(options),
+    picture,
   });
-  if (jbTarget !== null) reporter.setExtraSeries(() => jbTarget.batch());
+  const extras = [jbTarget, wcStats].filter((part) => part !== null).map((part) => () => part.batch());
+  if (extras.length > 0) reporter.setExtraSeries(combinedSeries(...extras));
   reporter.start();
 }
 
@@ -216,17 +224,15 @@ function stopReporting() {
 }
 
 // The sound connection's own jitter buffer, on the page's row in the host's
-// record (`audioJitterMs`): with the sound on its own connection the row's
-// `stream_jitter_buffer` stage is the picture's, so this is the only place the
-// sound's wait is written down (M15 fix7, phase 2 reads it).
+// record (`audioJitterMs`): the row's `stream_jitter_buffer` stage is the
+// picture's, so this is the only place the sound's wait is written (M15 fix7).
 function sendSoundJitter(soundStats) {
   if (reporter === null || soundStats === null) return;
   reporter.setSoundGauges([{ name: "audioJitterMs", value: soundStats.audioJitterBufferMs }]);
 }
 
 // A closed connection takes everything with it: the numbers, the overlay's
-// problem and both elements. The next stream starts clean (M15 g1: a problem
-// belongs to the stream that had it).
+// problem and both elements (M15 g1: a problem belongs to the stream that had it).
 function connectionClosed() {
   sessionWatch.pictureLost();
   overlay.stop();
@@ -257,8 +263,8 @@ function playSoundOnly(stream) {
   reportPlayerState(hasPlayed ? "playing" : "streaming", { audio: audioModeNow() });
 }
 
-// A stream arrived on the sound's own connection, or null when it is gone:
-// the picture is already playing and is not touched (SESSION_AUDIO=separate).
+// A stream arrived on the sound's own connection, or null when it is gone; the
+// picture is already playing and is not touched (SESSION_AUDIO=separate).
 function showSound(stream) {
   soundStream = stream;
   if (stream === null) {
@@ -277,8 +283,7 @@ function showSound(stream) {
   if (hasPlayed) startSound();
 }
 
-// Plays the picture's stream; a repeated `streamsChanged` for the same stream
-// must not restart it.
+// Plays the picture's stream; the same stream reported again is not restarted.
 function showPicture(stream) {
   if (playingStream === stream) return;
   playingStream = stream;
@@ -288,15 +293,14 @@ function showPicture(stream) {
   sessionWatch.picturePlaying();
   lowDelay?.watch(pictureConnection, soundConnection);
   jbTarget?.watch(pictureConnection, soundConnection);
-  // "streaming" goes first and "playing" lands when the picture starts, so
-  // a benchmark that waits for either sees them in that order however fast
-  // the browser's play() answers (M15 t1: the two raced).
+  // "streaming" goes first and "playing" lands when the picture starts, so a
+  // benchmark sees them in that order however fast play() answers (M15 t1).
   reportPlayerState("streaming", { audio: audioModeNow(), ...msidFacts("msids", pictureConnection) });
   startPlayback();
 }
 
-// What the two connections call; the picture's numbers are the viewer's, and
-// the sound's own connection only feeds the overlay and one gauge.
+// What the two connections call: the picture's numbers are the viewer's, the
+// sound's own connection only feeds the overlay and one gauge.
 const linkHandlers = {
   pictureStream: showPicture,
   soundStream: showSound,
@@ -340,12 +344,11 @@ function start() {
     // and asking an outside server would only add delay.
     webrtcConfig: { iceServers: [] },
   });
-  // The custom player's page leaves the picture's consumer unattached: the
-  // connection it keeps is the sound's (M15 opt2).
+  // The custom player's page leaves the picture's consumer unattached (M15 opt2).
   links = new StreamLinks({ api, handlers: linkHandlers, picture: !wcMode });
 
-  // An ended page listens but no longer asks: a producer of the next session
-  // must not bring it back (M15 fix8).
+  // An ended page listens but no longer asks (M15 fix8): the next session's
+  // producer must not bring it back.
   api.registerConnectionListener({
     connected: () => {
       if (ended) return;
@@ -370,9 +373,7 @@ function start() {
 
   sessionWatch.start();
 }
-
-// The button and the keyboard show or hide the numbers; the sound's button
-// starts the sound after the tap a browser wants.
+// The button and the keyboard show the numbers; the sound's button unmutes it.
 overlay.wireToggle(toggleButton);
 overlay.wireSoundButton(soundButton, () => playback.unmute());
 

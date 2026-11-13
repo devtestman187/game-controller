@@ -24,6 +24,8 @@ export class Overlay {
    * @param {() => string} parts.lowDelayLine - the zero-delay option's line, or ""
    * @param {() => string} parts.jbTargetLine - the jitter buffer target option's
    *   line (M15 opt1b), or ""
+   * @param {() => string} [parts.wcLine] - the custom player's one line (M15
+   *   opt2), or "" with the WebRTC picture
    * @param {() => object} parts.facts - what the page knows: `hasSoundStream`
    *   and `pictureHasAudio`
    * @param {() => object|null} parts.soundMeter - the sound's own connection's
@@ -33,12 +35,15 @@ export class Overlay {
    * @param {(text: string) => void} parts.onProblem - where a measurement
    *   problem goes
    */
-  constructor({ line, box, switchesLine, lowDelayLine, jbTargetLine, facts, soundMeter, onSoundSample, onProblem }) {
+  constructor({
+    line, box, switchesLine, lowDelayLine, jbTargetLine, wcLine = () => "", facts, soundMeter, onSoundSample, onProblem,
+  }) {
     this._line = line;
     this._box = box;
     this._switchesLine = switchesLine;
     this._lowDelayLine = lowDelayLine;
     this._jbTargetLine = jbTargetLine;
+    this._wcLine = wcLine;
     this._facts = facts;
     this._soundMeter = soundMeter;
     this._onSoundSample = onSoundSample;
@@ -57,7 +62,7 @@ export class Overlay {
 
   /** Whether the numbers are being sampled. */
   get isSampling() {
-    return this._meter !== null;
+    return this._timer !== null;
   }
 
   /**
@@ -110,10 +115,14 @@ export class Overlay {
     document.title = text;
   }
 
-  /** Starts sampling a connection's numbers every second. */
+  /**
+   * Starts sampling one connection's numbers every second. The custom player
+   * has no picture connection: null gives it the page's own lines only (M15
+   * opt2).
+   */
   start(peerConnection) {
     this.stop();
-    this._meter = new StatsMeter(peerConnection);
+    this._meter = peerConnection === null ? null : new StatsMeter(peerConnection);
     this._timer = window.setInterval(() => this._sample(), sampleIntervalMs);
   }
 
@@ -145,7 +154,7 @@ export class Overlay {
   async _sample() {
     try {
       const soundStats = await this._sampleSound();
-      this._showNumbers(await this._meter.sample(), soundStats);
+      this._showNumbers(this._meter === null ? null : await this._meter.sample(), soundStats);
       this._onSoundSample(soundStats);
     } catch (error) {
       this._onProblem(`statistics stopped: ${error.message}`);
@@ -167,13 +176,18 @@ export class Overlay {
   }
 
   _showNumbers(stats, soundStats) {
-    const soundJitter = soundStats === null ? "" : `  sound jitter ${soundStats.audioJitterBufferMs} ms`;
-    const lines = [
-      `picture   ${stats.widthPx}x${stats.heightPx} at ${stats.framesPerSecond.toFixed(0)} fps`,
-      `video     ${stats.videoKbitPerS} kbit/s   ${this._soundText(stats, soundStats)}`,
-      `round trip ${stats.roundTripMs} ms   jitter buffer ${stats.jitterBufferMs} ms${soundJitter}`,
-      `decode    ${stats.decodeMsPerFrame} ms a frame   dropped ${stats.droppedFrames}`,
-    ];
+    const lines = [];
+    if (stats !== null) {
+      const soundJitter = soundStats === null ? "" : `  sound jitter ${soundStats.audioJitterBufferMs} ms`;
+      lines.push(
+        `picture   ${stats.widthPx}x${stats.heightPx} at ${stats.framesPerSecond.toFixed(0)} fps`,
+        `video     ${stats.videoKbitPerS} kbit/s   ${this._soundText(stats, soundStats)}`,
+        `round trip ${stats.roundTripMs} ms   jitter buffer ${stats.jitterBufferMs} ms${soundJitter}`,
+        `decode    ${stats.decodeMsPerFrame} ms a frame   dropped ${stats.droppedFrames}`,
+      );
+    }
+    const wc = this._wcLine();
+    if (wc !== "") lines.push(wc);
     if (this._switchesLine !== "") lines.push(this._switchesLine);
     if (this._lowDelayLine() !== "") lines.push(this._lowDelayLine());
     if (this._jbTargetLine() !== "") lines.push(this._jbTargetLine());

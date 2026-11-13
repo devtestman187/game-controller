@@ -3,22 +3,19 @@
  * sends it to the session's own stats ingest every few seconds, so a stream is
  * compared on the same tables as everything else.
  *
- * What it measures: the browser's own WebRTC statistics (jitter buffer, decode,
- * bitrate, loss, round trip, jitter, frames, freezes, codec, relay), the
- * per-frame times requestVideoFrameCallback gives, a clock offset against the
- * host's clock (a small ping through the same web server, as the controller
- * protocol keeps one), and — for the latency probe — the frame at which the
- * test card's colour changed, timed against the press's host time.
+ * What it measures: the browser's WebRTC statistics, the per-frame times
+ * requestVideoFrameCallback gives, a clock offset against the host's clock, and
+ * the frame at which the test card's colour changed (M15 opt2: now from the
+ * custom player's canvas, which reports each draw).
  *
- * Everything goes through the session's web server, which holds the token;
- * this page never sees it.
+ * Everything goes through the session's web server, which holds the token.
  */
 
 import { ClockSync, clockIntervalMs, lowestRttOffset, medianOffset } from "./clock_sync.js";
 import { sessionIdOf } from "./page_state.js";
 import { LatencyProbe } from "./latency_probe.js";
 import { markerBatch } from "./marker_batch.js";
-import { MarkerReader } from "./marker_reader.js";
+import { MarkerReader, videoPicture } from "./marker_reader.js";
 import {
   audioSyncMs,
   concealedPct,
@@ -51,24 +48,29 @@ export class StreamReporter {
   /**
    * @param {object} parts
    * @param {HTMLVideoElement} parts.video - the element the stream plays in
-   * @param {RTCPeerConnection} parts.peerConnection - the connection to the TV
+   * @param {RTCPeerConnection|null} [parts.peerConnection] - the TV connection,
+   *   null with the custom player, whose picture has its own socket (M15 opt2)
    * @param {(text: string) => void} parts.onProblem - where a measurement
    *   problem goes: the console and the stats overlay, never the picture. An
    *   empty text means the measurements are going through again (M15 g1).
    * @param {number} [parts.reconnects] - reconnects this page has had already
    * @param {boolean} [parts.marker] - whether the page reads the host's marker
    *   row (`marker=1`); off, no strip is read and none of its numbers is sent
+   * @param {{image: () => (HTMLVideoElement|HTMLCanvasElement), widthPx: () => number,
+   *   heightPx: () => number}|null} [parts.picture] - where the marker's strip and the
+   *   card's patch are read: the video element by default, or the canvas (M15 opt2)
    */
-  constructor({ video, peerConnection, onProblem, reconnects = 0, marker = false }) {
+  constructor({ video, peerConnection = null, onProblem, reconnects = 0, marker = false, picture = null }) {
     this._video = video;
     this._peerConnection = peerConnection;
+    this._picture = picture ?? videoPicture(video);
     this._onProblem = onProblem;
-    // A batch of measurements is worth showing once: the same failure every
-    // 3 s would bury the numbers in the overlay.
+    // A failure is worth showing once: the same text every 3 s would bury the
+    // numbers in the overlay.
     this._lastProblem = "";
     this._viewerId = "";
-    // The marker's age needs the truest offset, which is the shortest round
-    // trip's; a page without the marker keeps the median it always used.
+    // The marker's age needs the shortest round trip's offset; a page without
+    // the marker keeps the median it always used.
     this._clock = new ClockSync({ mode: marker ? lowestRttOffset : medianOffset });
     this._previous = { video: null, audio: null, pair: null };
     this._previousAtMs = 0;
@@ -81,7 +83,7 @@ export class StreamReporter {
     this._hostStages = {};
     this._soundGauges = [];
     this._probe = new LatencyProbe({
-      video: this._video,
+      picture: this._picture,
       onProblem: (text) => this._problem(text),
       toHostMs: (nowMs) => this._clock.toHostMs(nowMs),
     });
@@ -89,7 +91,7 @@ export class StreamReporter {
     // frame is read once and the strip costs one canvas read.
     this._marker = marker
       ? new MarkerReader({
-          video: this._video,
+          picture: this._picture,
           toHostMs: (nowMs) => this._clock.toHostMs(nowMs),
           onProblem: (text) => this._problem(text),
           presses: () => this._probe.presses,
@@ -103,9 +105,7 @@ export class StreamReporter {
 
   /**
    * Sets the gauges the page reads from the sound's own connection (M15
-   * fix7): with the sound on a stream of its own, the batch's sound numbers
-   * come from that connection and are named so a report can tell them from
-   * the picture's (`audioJitterMs`).
+   * fix7), whose numbers a report tells from the picture's (`audioJitterMs`).
    */
   setSoundGauges(gauges) {
     this._soundGauges = gauges;
@@ -116,9 +116,12 @@ export class StreamReporter {
     this._extras = provider;
   }
 
-  /** Starts measuring: the frame callback, the batch timer and the press poll. */
+  /**
+   * Starts measuring: the frame callback, the batch timer and the press poll.
+   * The custom player's page calls [drawnFrame] itself, as it has no connection.
+   */
   start() {
-    this._watchFrames();
+    if (this._peerConnection !== null) this._watchFrames();
     this._timers.push(window.setInterval(() => this._report(), reportIntervalMs));
     this._timers.push(window.setInterval(() => this._probe.poll(), pressPollMs));
     this._timers.push(window.setInterval(() => this._clock.ping(), clockIntervalMs));
@@ -132,8 +135,7 @@ export class StreamReporter {
     this._timers = [];
     // A browser without the frame callback is counted from animation frames,
     // and that loop asks for the next frame by itself: left alone it keeps
-    // running (and reading the picture) after a reconnect replaced this
-    // reporter, one loop per reconnect (M15 g1).
+    // running after a reconnect replaced this reporter, one loop per reconnect.
     if (this._animationFrame !== null) {
       window.cancelAnimationFrame(this._animationFrame);
       this._animationFrame = null;
@@ -147,19 +149,30 @@ export class StreamReporter {
     this._videoFrame = null;
   }
 
+  /**
+   * One frame as this page saw it: counted, given to the press probe and read
+   * for the marker (the custom player calls it after each draw, M15 opt2).
+   * @param {number} drawnAtMs - the page time the frame reached the screen
+   * @param {object|null} [metadata] - requestVideoFrameCallback's fields, if any
+   */
+  drawnFrame(drawnAtMs, metadata = null) {
+    if (this._stopped) return;
+    this._frames++;
+    if (this._firstFrameMs === null) this._firstFrameMs = Math.round(drawnAtMs);
+    this._probe.watch(drawnAtMs, this._frames);
+    this._marker?.readFrame(drawnAtMs, metadata);
+  }
+
   /** Reads one frame's metadata and the patch of picture the card flips in. */
   _watchFrames() {
     // Safari has this too; a TV's browser or an old WebView may not. The frame
-    // count and the press probe then come from the animation frames, and the
-    // display stage is reported as missing rather than as 0 (M15 g1).
+    // count and the probe then come from animation frames, with the display
+    // stage reported as missing rather than as 0 (M15 g1).
     if (typeof this._video.requestVideoFrameCallback !== "function") {
+      // No metadata without the frame callback: the marker's raw fields are
+      // then recorded as missing, which is what this browser says.
       const onAnimationFrame = (nowMs) => {
-        this._frames++;
-        if (this._firstFrameMs === null) this._firstFrameMs = Math.round(nowMs);
-        this._probe.watch(nowMs, this._frames);
-        // No metadata without the frame callback: the marker's raw fields are
-        // then recorded as missing, which is what this browser says.
-        this._marker?.readFrame(nowMs, null);
+        this.drawnFrame(nowMs);
         this._animationFrame = window.requestAnimationFrame(onAnimationFrame);
       };
       this._animationFrame = window.requestAnimationFrame(onAnimationFrame);
@@ -169,15 +182,12 @@ export class StreamReporter {
       // One frame may already be queued when `stop()` runs: it ends the loop
       // rather than counting a frame for a reporter a reconnect replaced.
       if (this._stopped) return;
-      this._frames++;
-      if (this._firstFrameMs === null) this._firstFrameMs = Math.round(nowMs);
       const delay = presentationDelayMs(metadata);
       this._displayMs += delay;
       this._displayFrames++;
-      const budget = 1000 / Math.max(this._deliveredFps(), 1);
+      const budget = 1000 / Math.max(this._previous.video?.framesPerSecond || defaultFps, 1);
       if (delay > budget * lateFrameFraction) this._late++;
-      this._probe.watch(nowMs, this._frames);
-      this._marker?.readFrame(nowMs, metadata);
+      this.drawnFrame(nowMs, metadata);
       this._videoFrame = this._video.requestVideoFrameCallback(onFrame);
     };
     this._videoFrame = this._video.requestVideoFrameCallback(onFrame);
@@ -195,18 +205,15 @@ export class StreamReporter {
     this._onProblem(text);
   }
 
-  /** The delivered frame rate the last statistics sample saw. */
-  _deliveredFps() {
-    return this._previous.video?.framesPerSecond || defaultFps;
-  }
-
   /** Builds one batch and sends it to the session's ingest. */
   async _report() {
     const nowMs = performance.now();
     const elapsedS = this._previousAtMs === 0 ? 0 : (nowMs - this._previousAtMs) / 1000;
-    let report;
+    let report = null;
     try {
-      report = await this._peerConnection.getStats();
+      // The custom player has no picture connection: its batch carries what its
+      // own figures and the marker give (M15 opt2).
+      report = this._peerConnection === null ? null : await this._peerConnection.getStats();
     } catch (error) {
       this._problem(`statistics stopped: ${error.message}`);
       return;
@@ -214,14 +221,14 @@ export class StreamReporter {
     const current = { video: null, audio: null, pair: null, codec: null, relay: null };
     // `mediaType` is what Safari and older browsers call the track's `kind`.
     const kindOf = (entry) => entry.kind ?? entry.mediaType;
-    report.forEach((entry) => {
+    report?.forEach((entry) => {
       if (entry.type === "inbound-rtp" && kindOf(entry) === "video") current.video = entry;
       else if (entry.type === "inbound-rtp" && kindOf(entry) === "audio") current.audio = entry;
       else if (entry.type === "candidate-pair" && entry.state === "succeeded" && entry.nominated) current.pair = entry;
       else if (entry.type === "codec" && entry.mimeType?.startsWith("video/")) current.codec = entry;
     });
     if (current.codec === null && current.video?.codecId) current.codec = report.get(current.video.codecId) ?? null;
-    const local = report.get(current.pair?.localCandidateId ?? "");
+    const local = report?.get(current.pair?.localCandidateId ?? "");
     if (local) current.relay = local.candidateType === "relay" ? "yes" : "no";
     this._hostStages = await readHostStages();
 
@@ -230,13 +237,10 @@ export class StreamReporter {
     this._previous = current;
     this._previousAtMs = nowMs;
     if (Object.keys(batch).length === 0) return;
-    // A page that connected but never showed a picture — a background tab, or a
-    // browser that got the page and no media — has decoded nothing, so its batch
-    // holds only the host's stages. Sending it would register the page as a
-    // viewer and list another viewer's pipeline under it (M15 fix5). The
-    // bookkeeping above still runs, so the first batch with a picture is a rate
-    // over the window before it.
-    if (!((current.video?.framesDecoded ?? 0) > 0)) return;
+    // A page that got a connection but no picture has decoded nothing, and its
+    // batch would only list the host's stages (M15 fix5). The custom player has
+    // no connection, so its batch always goes.
+    if (this._peerConnection !== null && !((current.video?.framesDecoded ?? 0) > 0)) return;
     await this._send(batch);
   }
 
@@ -257,9 +261,8 @@ export class StreamReporter {
     };
     addStage("stream_jitter_buffer", jitterBufferMs(video, before.video));
     addStage("stream_decode", decodeMsPerFrame(video, before.video));
-    // Decoded to display, when the browser says when the frame arrived and when
-    // it plans to show it: that is the stage the chain could never measure. A
-    // browser without those fields keeps the older lateness reading.
+    // Decoded to display, when the browser says when the frame arrived and will
+    // show it; one without those fields keeps the older lateness reading.
     const decodedDisplayMs = this._marker === null ? null : this._marker.decodedDisplayMs();
     const latenessMs = this._displayFrames === 0 ? null : this._displayMs / this._displayFrames;
     addStage("stream_display", decodedDisplayMs ?? latenessMs);
@@ -295,13 +298,12 @@ export class StreamReporter {
     if (video?.frameWidth && video?.frameHeight) {
       facts.push({ name: "resolution", value: `${video.frameWidth}x${video.frameHeight}` });
     }
-    // The host's pipeline stages come from the container's own tracer, and the
-    // player owns the viewer id, so they land on this row.
+    // The host's pipeline stages come from the container's own tracer, and land
+    // on this row because the player owns the viewer id.
     const host = this._hostStages ?? {};
     for (const stage of host.stages ?? []) stages.push({ name: stage.name, ms: stage.ms });
-    // The marker's numbers ride the same four containers, under their own
-    // names (marker_batch.js), so the session's summary carries them as it
-    // carries the rest.
+    // The marker's numbers ride the same four containers under their own names
+    // (marker_batch.js), so a summary carries them as it carries the rest.
     if (this._marker !== null) {
       const marker = markerBatch(this._marker.summary(), this._clock.state());
       stages.push(...marker.stages);

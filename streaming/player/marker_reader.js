@@ -4,10 +4,11 @@
  * age, the raw video-frame metadata and the press flips a probe press makes.
  * Nothing here runs unless the page's options say `marker=1`.
  *
- * The read is one small canvas draw of the strip's own region of the video
- * element — never the whole picture — and one getImageData for it, so a frame
- * costs the strip and no more. A canvas the browser will not let the page read
- * (a tainted one on some Safari builds) is counted, not thrown.
+ * The read is one small canvas draw of the strip's own region of the picture —
+ * never the whole picture — and one getImageData for it, so a frame costs the
+ * strip and no more. The picture is the video element, or the custom player's
+ * canvas with `player=wc` (M15 opt2). A canvas the browser will not let the
+ * page read (a tainted one on some Safari builds) is counted, not thrown.
  */
 
 import { decodeMarker, markerCellCount, markerGapMs } from "./marker_decode.js";
@@ -49,6 +50,22 @@ const displayFromExpected = "expected-receive";
 const displayFromPresentation = "presentation-receive";
 
 /**
+ * The picture a crop is read from, as the three readings the video element
+ * gives: the video element itself (the page's usual picture), or the canvas
+ * the custom player draws on (`player=wc`, M15 opt2).
+ * @param {HTMLVideoElement} video
+ * @returns {{image: () => HTMLVideoElement, widthPx: () => number, heightPx: () => number}}
+ */
+export function videoPicture(video) {
+  return { image: () => video, widthPx: () => video.videoWidth, heightPx: () => video.videoHeight };
+}
+
+/** The same shape for a canvas the page draws on (M15 opt2). */
+export function canvasPicture(canvas) {
+  return { image: () => canvas, widthPx: () => canvas.width, heightPx: () => canvas.height };
+}
+
+/**
  * Reads the marker row and times the frames it is in. The reporter creates it
  * with the page's helpers: where a problem goes, how a page time becomes a host
  * time, and the probe's press list.
@@ -56,13 +73,14 @@ const displayFromPresentation = "presentation-receive";
 export class MarkerReader {
   /**
    * @param {object} parts
-   * @param {HTMLVideoElement} parts.video - the element the stream plays in
+   * @param {{image: () => (HTMLVideoElement|HTMLCanvasElement), widthPx: () => number,
+   *   heightPx: () => number}} parts.picture - the picture the strip is read from
    * @param {(nowMs: number) => (number|null)} parts.toHostMs - page to host time
    * @param {(text: string) => void} parts.onProblem - where an unreadable strip goes
    * @param {() => {hostMs: number}[]} parts.presses - the probe's presses still worth timing
    */
-  constructor({ video, toHostMs, onProblem, presses }) {
-    this._video = video;
+  constructor({ picture, toHostMs, onProblem, presses }) {
+    this._picture = picture;
     this._toHostMs = toHostMs;
     this._onProblem = onProblem;
     this._presses = presses;
@@ -214,8 +232,8 @@ export class MarkerReader {
 
   /** The strip's crop of the picture, decoded: the row or why it could not be read. */
   _readStrip() {
-    const widthPx = this._video.videoWidth;
-    const heightPx = this._video.videoHeight;
+    const widthPx = this._picture.widthPx();
+    const heightPx = this._picture.heightPx();
     if (!widthPx || !heightPx) return { ok: false, kind: "crop", reason: "the picture has no size yet" };
     // A cell is 16 px at a 1920 px picture, and the row is 57 of them wide and
     // one tall: the crop is the strip, never the whole picture.
@@ -229,7 +247,7 @@ export class MarkerReader {
     const context = (this._context ??= canvas.getContext("2d", { willReadFrequently: true }));
     if (context === null) return { ok: false, kind: "canvas", reason: "the page has no 2D canvas" };
     try {
-      context.drawImage(this._video, 0, 0, stripWidthPx, cellPx, 0, 0, stripWidthPx, cellPx);
+      context.drawImage(this._picture.image(), 0, 0, stripWidthPx, cellPx, 0, 0, stripWidthPx, cellPx);
       const pixels = context.getImageData(0, 0, stripWidthPx, cellPx).data;
       return decodeMarker(this._luminances(pixels, stripWidthPx, cellPx));
     } catch (error) {

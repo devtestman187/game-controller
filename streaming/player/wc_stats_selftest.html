@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Thumb Party custom player measurement self-test</title>
+  <style>body { background: #000; color: #eee; font: 14px/1.5 ui-monospace, monospace; padding: 12px; }</style>
+</head>
+
+<body>
+  <pre id="result">SELFTEST RUNNING</pre>
+  <!-- The custom player's measurements (M15 opt2), in the headless Chrome the
+       bench already has: wc_stats.js's figures from fake samples, the marker's
+       strip and the card's flip read from a painted canvas in the video
+       element's place, and the fact inside the host's limits. bench.sh
+       --selftest serves the player folder and reads the one line below back
+       out of the DOM. -->
+  <script type="module">
+    import { LatencyProbe } from "./latency_probe.js";
+    import { canvasPicture, MarkerReader } from "./marker_reader.js";
+    import { combinedSeries, wcFactText, wcNames, wcStatsOf } from "./wc_stats.js";
+
+    // The spec's first two rows (docs/streaming-marker.md): counter 0 without a
+    // press, and counter 1 with one, whose flip cell is turned.
+    const plainCells = "1000000000000000000000000000000000000000000000000000000";
+    const flippedCells = "1000000000000000010000000000000000000000000000000110001";
+
+    // The host's fact rules (stream_stats.dart's maxStreamFactLength and its
+    // pattern): a fact beyond either is dropped, so a value that does not fit
+    // is a lost number.
+    const factLengthLimit = 24;
+    const factPattern = /^[A-Za-z0-9 ,._()+-]+$/;
+
+    const failures = [];
+    let checks = 0;
+
+    function check(name, run) {
+      checks++;
+      try {
+        const problem = run();
+        if (problem) failures.push(`${name}: ${problem}`);
+      } catch (error) {
+        failures.push(`${name}: threw ${error.message}`);
+      }
+    }
+
+    function same(actual, expected) {
+      return JSON.stringify(actual) === JSON.stringify(expected)
+        ? ""
+        : `expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`;
+    }
+
+    /** A player as wc_stats.js reads one: the counters it keeps and the frames it finished. */
+    function fakePlayer() {
+      const counters = {
+        framesReceived: 12,
+        framesDecoded: 9,
+        framesDrawn: 9,
+        dropsQueue: 2,
+        dropsGap: 1,
+        keyRequests: 3,
+        decoderErrors: 0,
+        reconnects: 0,
+        queueMax: 4,
+        lastFrame: 10,
+        decodeConfig: "avc1.640028 hardware",
+      };
+      const samples = [
+        { frame: 8, receiveAt: 0, decodeOutputAt: 12, drawnAt: 14 },
+        { frame: 9, receiveAt: 100, decodeOutputAt: 116, drawnAt: 120 },
+        { frame: 10, receiveAt: 200, decodeOutputAt: null, drawnAt: null },
+      ];
+      return { counters: () => ({ ...counters }), stageSamples: () => samples.map((sample) => ({ ...sample })) };
+    }
+
+    const item = (list, name) => list.find((entry) => entry.name === name);
+    const gaugeValue = (batch, name) => item(batch.gauges, name)?.value ?? null;
+
+    /** The canvas the custom player draws on, painted with one row of the strip. */
+    function stripCanvas(cellBits, heightPx = 64) {
+      const canvas = document.createElement("canvas");
+      canvas.width = 1920;
+      canvas.height = heightPx;
+      const context = canvas.getContext("2d", { willReadFrequently: true });
+      const cells = [true, ...Array.from(cellBits, (bit) => bit === "1"), true];
+      cells.forEach((light, cell) => {
+        context.fillStyle = light ? "#fff" : "#000";
+        context.fillRect(cell * 16, 0, 16, 16);
+      });
+      // Noise under the strip, as a picture has: a reader that took more than
+      // the strip's own rows would misread the row.
+      for (let y = 16; y < heightPx; y += 4) {
+        for (let x = 0; x < 912; x += 4) {
+          context.fillStyle = (x + y) % 8 === 0 ? "#fff" : "#000";
+          context.fillRect(x, y, 4, 4);
+        }
+      }
+      return canvas;
+    }
+
+    /** One frame's arrival, decode and draw times, as the player's stage keeps them. */
+    const stats = wcStatsOf({ player: "wc" }, fakePlayer());
+    const first = stats.batch();
+
+    check("the stage figures are the medians of the frames the batch finished", () => {
+      return same([gaugeValue(first, wcNames.recvToDecode), gaugeValue(first, wcNames.decodeToDraw)], [14, 3]);
+    });
+    check("the counters ride as the player keeps them", () => {
+      return same(["dropped", "backlog", "keyRequests", "queueMax"].map((key) => gaugeValue(first, wcNames[key])),
+        [3, 3, 3, 4]);
+    });
+    check("the fact says which decoder was configured and that a frame was drawn", () => {
+      return same(item(first.facts, wcNames.fact), { name: "wc", value: "cfg hw dec ok" });
+    });
+    check("the fact fits the host's length and its characters", () => {
+      const fact = item(first.facts, wcNames.fact).value;
+      return fact.length <= factLengthLimit && factPattern.test(fact) ? "" : `"${fact}" would be dropped`;
+    });
+    check("a batch of no finished frame keeps the counters and sends no stage figure", () => {
+      const second = stats.batch();
+      return same(first.gauges.length - second.gauges.length, 2);
+    });
+    check("the overlay's one line carries the figures, the backlog's age and the fact", () => {
+      stats.noteDrawn(260);
+      return same(stats.line(), "wc recv-dec 14 ms dec-draw 3 ms drop 3 backlog 3 age 60 ms keys 3 q 4 cfg hw dec ok");
+    });
+    check("a fact that cannot fit is the fallback, never a long one", () => {
+      return same(wcFactText({ decodeConfig: "avc1.640028 hardware", framesDrawn: 1 }, 8), "cfg none dec no");
+    });
+    check("a player that never drew says so", () => {
+      return same(wcFactText({ decodeConfig: "none", framesDrawn: 0 }), "cfg none dec no");
+    });
+    check("no custom player option, no figures and no extra series", () => {
+      return same([wcStatsOf({ player: "webrtc" }, fakePlayer()), wcStatsOf({}, fakePlayer()), combinedSeries(null)()],
+        [null, null, { gauges: [], facts: [] }]);
+    });
+
+    check("the marker's strip is read from a canvas right after a draw", () => {
+      const canvas = stripCanvas(plainCells);
+      const problems = [];
+      const reader = new MarkerReader({
+        picture: canvasPicture(canvas),
+        toHostMs: (nowMs) => nowMs + 1000,
+        onProblem: (text) => problems.push(text),
+        presses: () => [],
+      });
+      reader.readFrame(0, null);
+      const summary = reader.summary();
+      return same([summary.frames, summary.readable, summary.glassMs[0], problems], [1, 1, 1000, []]);
+    });
+    check("a press's flip is timed from the canvas, a frame apart from the one before", () => {
+      const canvas = stripCanvas(plainCells);
+      const presses = [{ hostMs: 1000 }];
+      const reader = new MarkerReader({
+        picture: canvasPicture(canvas),
+        toHostMs: (nowMs) => nowMs + 1000,
+        onProblem: () => {},
+        presses: () => presses,
+      });
+      reader.readFrame(0, null);
+      // The strip repainted with its flip cell turned: the press's frame.
+      const flipped = stripCanvas(flippedCells);
+      canvas.getContext("2d").drawImage(flipped, 0, 0);
+      reader.readFrame(8, null);
+      return same(reader.summary().pressesMs, [8]);
+    });
+
+    check("the card's flip is read from the canvas and times a waiting press", () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = 1920;
+      canvas.height = 1080;
+      const context = canvas.getContext("2d", { willReadFrequently: true });
+      const problems = [];
+      const probe = new LatencyProbe({
+        picture: canvasPicture(canvas),
+        onProblem: (text) => problems.push(text),
+        toHostMs: (nowMs) => nowMs,
+      });
+      const inside = (colour) => {
+        context.fillStyle = colour;
+        context.fillRect(480, 270, 8, 8);
+      };
+      // A quarter in, where the probe watches: light first, the card coming up.
+      inside("#fff");
+      probe.watch(0, 0);
+      probe.presses.push({ hostMs: 0, receivedAtMs: 0, seen: false, expired: false });
+      inside("#000");
+      probe.watch(8, 8);
+      const press = probe.presses[0];
+      return same([press.seen, press.sampleMs, probe.flipsSeen, problems], [true, 8, 1, []]);
+    });
+    check("a picture with no size yet is a problem, not a reading", () => {
+      const canvas = document.createElement("canvas");
+      const problems = [];
+      const reader = new MarkerReader({
+        picture: canvasPicture(canvas),
+        toHostMs: (nowMs) => nowMs,
+        onProblem: (text) => problems.push(text),
+        presses: () => [],
+      });
+      reader.readFrame(0, null);
+      return same([reader.summary().readable, problems.length], [0, 1]);
+    });
+
+    const result = document.getElementById("result");
+    result.textContent = failures.length === 0
+      ? `SELFTEST PASS ${checks}/${checks}`
+      : `SELFTEST FAIL ${failures.length}/${checks}\n${failures.join("\n")}`;
+  </script>
+</body>
+
+</html>
