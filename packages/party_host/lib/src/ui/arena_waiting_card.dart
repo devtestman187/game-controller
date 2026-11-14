@@ -24,11 +24,17 @@ part 'arena_waiting_widgets.dart';
 /// while one player is in the Bumper Round, and the map picker.
 ///
 /// It owns the card alone: the round begins on [onStart] and [Pausable] owns
-/// everything from there (design section 8: one owner each). A phone's D-pad
-/// and A go to the card, which reads them itself — A readies its player, and
-/// the phone shows no menu — and its B leaves the Arena, as the join screen's
-/// B does for a player who hasn't joined. The remote works the card's buttons
-/// with the arrows and OK, and Escape leaves.
+/// everything from there (design section 8: one owner each). Every phone works
+/// the card's buttons the way it works every other menu (M14 bugs B-013): its
+/// directions move the focus over the rows and its A presses them, through
+/// [ControllerMenus], and its B leaves the Arena as the join screen's B does
+/// for a player who hasn't joined. A player's own row is the card's Start: A on
+/// it readies that player, and the round starts once every joined player has.
+/// The remote works the same rows with its arrows and OK, and Escape leaves.
+///
+/// The menus leave local players alone (a hosting phone's own player, a
+/// keyboard player), so the card reads their pads itself: A readies the local
+/// player and B leaves.
 ///
 /// The round starts when at least one player has joined and every joined
 /// player is ready. A simulated controller is ready from the start: nobody can
@@ -63,7 +69,8 @@ class ArenaWaitingCard extends ConsumerStatefulWidget {
   ConsumerState<ArenaWaitingCard> createState() => _ArenaWaitingCardState();
 }
 
-/// The two buttons a phone works the card with: A readies its player, B leaves.
+/// The two buttons a local player's pad works the card with: A readies it, B
+/// leaves. A joined phone's buttons come through the menus instead.
 enum _Key { a, b }
 
 class _ArenaWaitingCardState extends ConsumerState<ArenaWaitingCard> {
@@ -75,11 +82,11 @@ class _ArenaWaitingCardState extends ConsumerState<ArenaWaitingCard> {
   /// one once its first frame is drawn, as the results card does.
   final _modeFocus = FocusNode(debugLabel: 'arena waiting mode');
 
-  /// What each phone held last time. A phone seen for the first time counts as
-  /// holding what it holds now: the A that joined the phone to the host was
+  /// What each local player held last time. One seen for the first time counts
+  /// as holding what it holds now: the A that joined the player to the host was
   /// pressed for the join screen, not for this card, so a player readies with a
   /// press of its own — nobody is started into a round by a finger that was
-  /// already down.
+  /// already down. The menus keep the same record for the joined phones.
   final _before = <String, Set<_Key>>{};
 
   /// The players who have pressed A since the card opened.
@@ -129,6 +136,10 @@ class _ArenaWaitingCardState extends ConsumerState<ArenaWaitingCard> {
         changed = _ready.add(p.id) || changed;
         continue;
       }
+      // A joined phone's A presses the card's rows through the menus (M14 bugs
+      // B-013); those leave local players alone, so the host device's own pad is
+      // the one read here.
+      if (!p.local) continue;
       final now = _keysOf(host.gamepad(p.id));
       final before = _before[p.id];
       _before[p.id] = now;
@@ -152,8 +163,9 @@ class _ArenaWaitingCardState extends ConsumerState<ArenaWaitingCard> {
     }
   }
 
-  /// Readies or un-readies [id] from a tap on its row or on the card's ready
-  /// button: what that player's A does, and a second tap takes it back.
+  /// Readies or un-readies [id] from a press of its row — a tap, the remote's
+  /// OK or a phone's A — or from the card's ready button: what a local
+  /// player's A does, and a second press takes it back.
   void _toggle(String id) => setState(() {
     if (!_ready.remove(id)) _ready.add(id);
   });

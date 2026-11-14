@@ -259,9 +259,16 @@ class _ControllerMenusState extends ConsumerState<ControllerMenus> {
           _focusSomethingPressable();
           return;
         }
-        // The key goes up before it goes down again, like a remote's.
+        // The key goes up before it goes down again, like a remote's, and again
+        // after the press: the button the press reached holds the OK until it
+        // comes up, so a press that changes the screen leaves it latched (M14
+        // bugs B-008: the next remote OK on it was swallowed).
         _liftOk(focus!);
-        Actions.maybeInvoke(focus.context!, const ActivateIntent());
+        try {
+          Actions.maybeInvoke(focus.context!, const ActivateIntent());
+        } finally {
+          _liftOk(focus);
+        }
       case _Key.b:
         // The navigator of whatever has the focus: the screen or a dialog.
         final context = focus?.context;
@@ -270,12 +277,14 @@ class _ControllerMenusState extends ConsumerState<ControllerMenus> {
   }
 
   /// Lets the OK go up around [focus], the way the remote's key does after a
-  /// press, so the next A press starts from nothing held.
+  /// press, so the next press starts from nothing held.
   ///
   /// A host button presses once and then waits for its key to come back up, so
   /// a held key's auto-repeat doesn't press it again; a phone's A brings no key
   /// events of its own, so without this a button worked on the first press only
-  /// while the remote's kept working (M14 bugs B-008 and B-013).
+  /// while the remote's kept working (M14 bugs B-008 and B-013). It is sent
+  /// before the press and again after it: nothing a press path does leaves a
+  /// button holding the OK.
   static void _liftOk(FocusNode focus) {
     const up = KeyUpEvent(
       timeStamp: Duration.zero,

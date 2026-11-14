@@ -97,6 +97,8 @@ void main() {
     expect(labelOf(tester, 'ready-p1'), ArenaText.readyLabel);
     expect(labelOf(tester, 'notReady-p2'), ArenaText.notReadyLabel, reason: 'P2 hasn\'t pressed yet');
 
+    // A phone readies itself with A on its own row, the card's Start.
+    await focusRow(tester, 'p2');
     await press(tester, fake, 'p2', GamepadButton.a);
     await tester.pump();
     expect(find.byKey(const Key('arenaWaitingCard')), findsNothing, reason: 'all ready: the round starts');
@@ -166,6 +168,7 @@ void main() {
     expect(labelOf(tester, 'notReady-p1'), ArenaText.notReadyLabel);
     expect(find.byIcon(Icons.cancel), findsNothing, reason: 'the orange X disc is gone');
 
+    await focusRow(tester, 'p1');
     await press(tester, fake, 'p1', GamepadButton.a);
     expect(labelOf(tester, 'ready-p1'), ArenaText.readyLabel, reason: 'a ready player says "Ready"');
   });

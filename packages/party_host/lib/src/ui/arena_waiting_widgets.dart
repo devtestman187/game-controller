@@ -22,8 +22,9 @@ const _colourSlots = 6;
 
 /// One joined phone on the waiting card (frame 8, M14 b1): its badge, its
 /// number and nickname, and the word that says whether it is ready, as the
-/// host's other player rows say it. Tapping the row readies it, for a touch
-/// host's thumb.
+/// host's other player rows say it. The row is the card's Start button (M14
+/// bugs B-013): a tap on it readies the player, and so does the remote's OK or a
+/// phone's A with the focus on it.
 class _PlayerRow extends StatelessWidget {
   const _PlayerRow({required this.player, required this.ready, required this.own, required this.onTap});
 
@@ -40,9 +41,8 @@ class _PlayerRow extends StatelessWidget {
     final look = ToyLookScope.of(context);
     return Padding(
       padding: EdgeInsets.only(top: rowBadgeHeadroom(look), bottom: ToySizes.space4),
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: onTap,
+      child: HostCardButton(
+        onPressed: onTap,
         child: Row(
           key: Key('arenaPlayer-${player.id}'),
           children: [

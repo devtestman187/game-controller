@@ -187,13 +187,17 @@ Future<void> roundStarted(WidgetTester tester) async {
   }
 }
 
-/// Every joined phone presses A on the waiting card, as a player does: the
-/// round starts once all of them have. The A a phone already holds was pressed
-/// for another screen, so it is let go first: the card readies a phone on a
-/// press of its own. Every pad is left as it was found.
+/// Every joined phone readies itself on the waiting card, as a player does: the
+/// round starts once all of them have. A phone works the card through the menus
+/// (M14 bugs B-013), so its own row — the card's Start button — takes the focus
+/// before its A; the host device's own player, which the menus leave alone, has
+/// its pad read by the card. The A a phone already holds was pressed for
+/// another screen, so it is let go first: the card readies a phone on a press of
+/// its own. Every pad is left as it was found.
 Future<void> readyUp(WidgetTester tester, FakeHostService fake) async {
   for (final p in fake.gameHost.players) {
     if (p.simulated) continue;
+    if (!p.local) await focusRow(tester, p.id);
     final held = fake.gameHost.gamepad(p.id);
     fake.gameHost.setGamepad(p.id, _letGoOfA(held));
     await tester.pump(const Duration(milliseconds: 16));
@@ -203,6 +207,15 @@ Future<void> readyUp(WidgetTester tester, FakeHostService fake) async {
     fake.gameHost.setGamepad(p.id, held);
     await tester.pump(const Duration(milliseconds: 16));
   }
+}
+
+/// Puts the focus on [id]'s row on the Arena's waiting card, the button that
+/// readies that player, as the directions would.
+Future<void> focusRow(WidgetTester tester, String id) async {
+  final row = find.byKey(Key('arenaPlayer-$id'));
+  if (row.evaluate().isEmpty) return;
+  Focus.of(tester.element(focusText('arenaPlayer-$id'))).requestFocus();
+  await tester.pump();
 }
 
 /// [held] with A let go, so the press after it is a press the card sees.

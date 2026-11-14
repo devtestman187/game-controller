@@ -68,10 +68,12 @@ void main() {
     expect(find.byKey(const Key('arenaMap-surprise')), findsOneWidget);
   });
 
-  testWidgets('a phone\'s A readies it, and the round starts when every phone is ready', (tester) async {
+  testWidgets('a phone\'s A on its row readies it, and the round starts when every phone is ready', (tester) async {
     final fake = await openCard(tester, phones: ['p2']);
     expect(find.text('P2 Phone 2'), findsOneWidget);
 
+    // The row is the card's Start: the phone's A presses it, as on every menu.
+    await focusRow(tester, 'p1');
     await press(tester, fake, 'p1', GamepadButton.a);
     expect(find.byKey(const Key('ready-p1')), findsOneWidget);
     expect(find.byKey(const Key('notReady-p2')), findsOneWidget, reason: 'P2 hasn\'t pressed yet');
@@ -80,6 +82,7 @@ void main() {
     await press(tester, fake, 'p1', GamepadButton.a);
     expect(find.byKey(const Key('notReady-p1')), findsOneWidget);
     await press(tester, fake, 'p1', GamepadButton.a);
+    await focusRow(tester, 'p2');
     await press(tester, fake, 'p2', GamepadButton.a);
     await tester.pump();
     expect(find.byKey(const Key('arenaWaitingCard')), findsNothing, reason: 'all ready: the round starts');

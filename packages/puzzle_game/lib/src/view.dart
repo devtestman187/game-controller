@@ -90,6 +90,9 @@ class _PuzzleViewState extends State<PuzzleView> {
   @override
   void didUpdateWidget(PuzzleView oldWidget) {
     super.didUpdateWidget(oldWidget);
+    // Another puzzle's board has other slots and pieces: the cache's pictures
+    // are this one's (M14 bugs3's still-key finding).
+    if (!identical(oldWidget.puzzle, widget.puzzle)) _cache.clear();
     if (!identical(oldWidget.snapshot, widget.snapshot) || oldWidget.cat != widget.cat) _note(_match);
   }
 
@@ -208,6 +211,9 @@ class _MatchViewState extends State<MatchView> {
   @override
   void didUpdateWidget(MatchView oldWidget) {
     super.didUpdateWidget(oldWidget);
+    // Another puzzle's board has other slots and pieces: the cache's pictures
+    // are this one's (M14 bugs3's still-key finding).
+    if (!identical(oldWidget.puzzle, widget.puzzle)) _cache.clear();
     if (widget.paused != oldWidget.paused) {
       if (widget.paused) {
         _pausedFromMs = _clock.elapsedMilliseconds;

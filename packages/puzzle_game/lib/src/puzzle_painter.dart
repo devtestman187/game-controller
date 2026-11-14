@@ -155,7 +155,7 @@ class PuzzlePainter extends CustomPainter {
   void _stillParts(Canvas canvas, Size size, double px) {
     final cache = this.cache;
     if (cache == null) return _recordStill(canvas, px);
-    canvas.drawPicture(cache.stillParts(stillKey(size), (still) => _recordStill(still, px)));
+    canvas.drawPicture(cache.stillParts(stillKey(size, px), (still) => _recordStill(still, px)));
   }
 
   /// The still parts in the field's own units, on a canvas at its top left.

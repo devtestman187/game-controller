@@ -8,7 +8,6 @@ import 'package:game_kit/game_kit.dart';
 import 'package:test_game/test_game.dart';
 import 'package:toy_look/toy_look.dart';
 
-import '../abandon_signal.dart';
 import '../controls.dart';
 import '../local_player_source.dart';
 import '../night/party_night.dart';
@@ -21,7 +20,7 @@ import 'arena_map_choice.dart';
 import 'arena_results.dart';
 import 'arena_waiting_card.dart';
 import 'controller_menus.dart';
-import 'game_debug_overlay.dart';
+import 'game_field.dart';
 import 'lobby_music.dart';
 import 'night_reveal_screen.dart';
 import 'night_scoreboard_screen.dart';
@@ -47,7 +46,7 @@ final _debugKeys = {
 ///
 /// A round has three stages, one owner each (M14 design section 8): the waiting
 /// card (codes, the modes, the maps and Robo's level, and each phone's ready),
-/// the field under [Pausable] with its 3-2-1, and the Bumper Round's results.
+/// the field ([GameField]) with its 3-2-1, and the Bumper Round's results.
 class GameScreen extends ConsumerStatefulWidget {
   const GameScreen({super.key, this.game});
 
@@ -63,7 +62,7 @@ enum _Stage {
   /// The waiting card, before the round.
   waiting,
 
-  /// The field, under [Pausable].
+  /// The field, under the pause.
   playing,
 
   /// The Bumper Round's results card.
@@ -305,9 +304,11 @@ class _GameScreenState extends ConsumerState<GameScreen> {
           canPop: _stage != _Stage.results,
           onPopInvokedWithResult: (didPop, _) => _leave(didPop),
           child: ControlsClaim(
-            // The results are a menu like any other. The waiting card reads the
-            // pads itself (A readies a phone), so they are the game's there.
-            controls: _stage == _Stage.results ? const Controls.menus() : const Controls.game(),
+            // The results and the waiting card are menus like any other: a
+            // phone's directions move the focus over their buttons and its A
+            // presses the focused one (M14 bugs B-013). The card reads only a
+            // local player's pad itself, which the menus leave alone.
+            controls: _stage == _Stage.playing ? const Controls.game() : const Controls.menus(),
             child: Focus(
               focusNode: _screenFocus,
               autofocus: true,
@@ -316,34 +317,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
               // (m10.2 device test).
               skipTraversal: true,
               onKeyEvent: _onKey,
-              child: Scaffold(
-                body: SafeArea(
-                  child: switch (_stage) {
-                    _Stage.waiting => ArenaWaitingCard(
-                      bumperOnly: night != null,
-                      surpriseFirst: night != null,
-                      onStart: _start,
-                    ),
-                    // The results stand over the field, never in its place: a
-                    // joined phone keeps the round's last frame under its card,
-                    // so the session must not end (M14 f1, r5 finding 1).
-                    _Stage.playing || _Stage.results => Stack(
-                      children: [
-                        _field(),
-                        if (_stage == _Stage.results)
-                          ArenaResults(
-                            result: _result!,
-                            night: night != null,
-                            againFocus: _againFocus,
-                            onAgain: _again,
-                            onChangeMode: _changeMode,
-                            onNext: _next,
-                          ),
-                      ],
-                    ),
-                  },
-                ),
-              ),
+              child: Scaffold(body: SafeArea(child: _stageBody(night))),
             ),
           ),
         ),
@@ -351,45 +325,37 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     );
   }
 
-  /// The field, under [Pausable]: Start pauses, the host's going away and a
-  /// phone the round waits for hold it, and its 3-2-1 runs on the TV too
-  /// (design section 8).
-  Widget _field() {
-    final nobody = ref.watch(gamePlayersProvider.select((p) => p.isEmpty));
-    final game = _game;
-    if (game == null) return const SizedBox.shrink();
-    return Pausable(
-      // Start pauses a round that is on alone: the results are no round (m12
-      // §2.10), though the field stays drawn under them (M14 f1).
-      enabled: _stage == _Stage.playing,
-      beat: Pausable.ready,
-      builder: (context, paused) => Stack(
+  Widget _stageBody(Object? night) {
+    return switch (_stage) {
+      _Stage.waiting => ArenaWaitingCard(bumperOnly: night != null, surpriseFirst: night != null, onStart: _start),
+      // The results stand over the field, never in its place: a
+      // joined phone keeps the round's last frame under its card,
+      // so the session must not end (M14 f1, r5 finding 1).
+      _Stage.playing || _Stage.results => Stack(
         children: [
-          ArenaView(
-            // A new round is a new field: Play again starts from the top.
-            key: ObjectKey(game),
-            game: game,
-            host: ref.read(gameHostProvider),
-            settings: _hosting,
-            roboLevel: ref.watch(arenaSettingsProvider.select((s) => s.roboLevel)),
+          GameField(
+            game: _game!,
+            playing: _stage == _Stage.playing,
+            debug: _debug,
+            hosting: _hosting,
+            keyboard: _keyboard.available,
             roundTags: _roundTags,
             onEvent: _onEvent,
             onClock: _clocked,
             onFinished: _finished,
-            paused: paused,
-            abandon: ref.read(hostAbandonProvider),
           ),
-          if (nobody)
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: arenaNoteBottomPx,
-              child: Center(child: ArenaNote(_keyboard.available ? HostText.noControllerKeys : HostText.noController)),
+          if (_stage == _Stage.results)
+            ArenaResults(
+              result: _result!,
+              night: night != null,
+              againFocus: _againFocus,
+              onAgain: _again,
+              onChangeMode: _changeMode,
+              onNext: _next,
             ),
-          if (_debug) const Positioned(top: debugOverlayTopPx, left: ToySizes.space12, child: DebugOverlay()),
         ],
       ),
-    );
+    };
   }
 
   /// Each frame of the Bumper Round: its clock, for the music's tempo (M14
