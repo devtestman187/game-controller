@@ -201,7 +201,7 @@ void main() {
     }
     expect(session.match.result, isNotNull, reason: 'the solo player finished the picture');
     final end = clock.host.records.singleWhere((r) => r.name == 'round_end');
-    expect(end.data['tags'], ['chaos_party', 'finished', 'night_2of3']);
+    expect(end.data['tags'], ['level_easy', 'chaos_party', 'finished', 'night_2of3']);
     session.dispose();
   });
 
@@ -215,7 +215,7 @@ void main() {
     }
     expect(session.match.result, isNotNull, reason: 'the time ran out');
     final end = clock.host.records.singleWhere((r) => r.name == 'round_end');
-    expect(end.data['tags'], ['chaos_little']);
+    expect(end.data['tags'], ['level_easy', 'chaos_little']);
     session.dispose();
   });
 

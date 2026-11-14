@@ -1,7 +1,7 @@
 job: M14 bugs6 b012b-2-medium: a harder Medium: new limits and the six Medium puzzles redone (B-012b, phase 2 of 3)
 pub: no
 stop: after it. Hard puzzles are phase 3.
-read: docs/briefs/m14/bugs6/b012b-1-rules-report.md (Summary and Hand-over only) · packages/puzzle_game/lib/src/puzzle_rule_levels.dart · docs/levels.md · tools/level.sh · the six Medium files in packages/puzzle_game/puzzles (find them in index.json) · puzzle.schema.json
+read: docs/briefs/m14/bugs6/b012b-1b-rules-rest-report.md (Summary and Hand-over only) · packages/puzzle_game/lib/src/puzzle_rule_levels.dart · docs/levels.md · tools/level.sh · the six Medium files in packages/puzzle_game/puzzles (find them in index.json) · puzzle.schema.json
 decide: low-usage mode: never stop for a question. Make the safest choice that fits the design and list each under "Decisions" with one line of why. Stop only if the job truly cannot be done; then say why under "Blocked".
 
 Owner: "The puzzles themselves are very easy. Medium should be harder ... by having more pieces, more rotations, etc." Answered: redo the Medium puzzles; 6 Medium puzzles; the clock does not change.

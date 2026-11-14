@@ -200,7 +200,7 @@ The aim is to explain why a control type feels good or bad, not just to count us
 | Gyro | Recalibrations, time at full tilt, steering oscillation (left-right reversals while aiming), time to settle on a target | Whether gyro steering is controllable or twitchy |
 | Responsiveness | Estimated one-way input delay (median, 95th percentile, max), ping, jitter, input messages per second, disconnects and time to reconnect, frame drops on the host and on every phone showing the game, snapshot delay and gaps on joined phones, host phone temperature state and battery drop | Ties a bad experience to the network or the device instead of the controls |
 | Haptics | Events sent per type, haptics on or off, intensity | Whether haptics change outcomes or ratings |
-| Puzzle results | Completion time, pieces placed, wrong drops, pickups, time carrying each piece, time rotating each piece, rotation overshoots (reversing to correct), angle and position error at drop, hint glows shown, help calls, solo big-piece carries, win, loss or draw | How hard each mode makes the precise parts of play: steering, picking up and rotating |
+| Puzzle results | Completion time, pieces placed, wrong drops, pickups, time spent moving and time spent placing (measured per player, M14), time rotating each piece, rotation overshoots (reversing to correct), angle and position error at drop, hint glows shown, help calls, solo big-piece carries, win, loss or draw | How hard each mode makes the precise parts of play: steering, picking up and rotating |
 | Arena results | Wall hits, hazard hits, goals, round time, failed dashes | A second game to compare modes with |
 | Rating | The post-game face rating (good, okay, bad) and tags | What players say, set against what the metrics show |
 

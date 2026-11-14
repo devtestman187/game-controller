@@ -2,5 +2,6 @@ b009-bag b005-coin b015-routes
 b011-continue b002-solo-skip
 b006-cat
 b012a-measure b012b-1-rules
+b012b-1b-rules-rest b011b-continue
 b012b-2-medium
 b012b-3-hard
