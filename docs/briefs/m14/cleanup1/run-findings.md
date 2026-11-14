@@ -1,1 +1,2 @@
 - tests-first: packages/puzzle_game/test/board_cache_state_test.dart passes on the old code, so it does not prove new behaviour
+- the review of c4-nits wrote no report (see docs/briefs/m14/cleanup1/flash-c4-nits-review.log)
