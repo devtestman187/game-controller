@@ -1,0 +1,30 @@
+import 'package:flutter_test/flutter_test.dart';
+import 'package:puzzle_game/puzzle_game.dart';
+
+/// The playtest settings as a host saves them (PRD v2 T16): the Cat setting
+/// among them (M14 bug b006), saved by name like Chaos, with a name this build
+/// doesn't know falling back to Lively.
+void main() {
+  test('the Cat setting is saved and read back by name', () {
+    for (final preset in CatPreset.values) {
+      final saved = PuzzleSettings(catPreset: preset).toJson();
+      expect(saved['catPreset'], preset.name);
+      expect(PuzzleSettings.fromJson(saved).catPreset, preset);
+    }
+  });
+
+  test('a Cat setting this build doesn\'t know falls back to Lively', () {
+    for (final broken in ['furious', '', 3, null]) {
+      expect(PuzzleSettings.fromJson({'catPreset': broken}).catPreset, CatPreset.lively, reason: '$broken');
+    }
+    expect(PuzzleSettings.defaults.catPreset, CatPreset.lively, reason: 'the library\'s default (b006)');
+  });
+
+  test('the Cat setting changes on its own, as the settings screen sets it', () {
+    final wild = PuzzleSettings.defaults.withValue('catPreset', CatPreset.wild.name);
+    expect(wild.catPreset, CatPreset.wild);
+    expect(wild.chaos, PuzzleSettings.defaults.chaos, reason: 'the cat\'s other setting is left as it was');
+    expect(PuzzleSettings.fromJson(wild.toJson()).toJson(), wild.toJson(), reason: 'the whole settings come back');
+    expect(PuzzleSettings.fromJson({...wild.toJson(), 'chaos': Chaos.party.name}).catPreset, CatPreset.wild);
+  });
+}

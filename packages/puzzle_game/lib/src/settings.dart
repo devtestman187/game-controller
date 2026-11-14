@@ -1,7 +1,12 @@
-/// How much the cat comes (PRD v2 G3, M14 a2): not at all, once a round and
-/// only to bat a loose or tray piece, or twice and once a round a placed piece
-/// of the side ahead goes back to its tray.
+/// What the cat does (PRD v2 G3, M14 a2): not at all, only bat a loose or tray
+/// piece, or also knock a placed piece of the side ahead back to its tray. How
+/// many times it comes is the round's own, from the Cat setting below.
 enum Chaos { off, little, party }
+
+/// How often the cat comes (PRD v2 G3, M14 bug b006): the pace of the intervals
+/// in `cat_tuning.dart`, from Calm to Wild. [lively] is the default, in the
+/// library and on a new host.
+enum CatPreset { calm, lively, wild }
 
 /// The puzzle's tuning values (PRD v2 "Playtest settings"), changed on the
 /// host's playtest settings screen and saved there. The game reads them
@@ -22,6 +27,7 @@ final class PuzzleSettings {
     this.pointsScale = 1,
     this.night = false,
     this.chaos = Chaos.off,
+    this.catPreset = CatPreset.lively,
   });
 
   /// ± degrees.
@@ -61,6 +67,10 @@ final class PuzzleSettings {
   /// a night's own default, A little (job a2).
   final Chaos chaos;
 
+  /// How often the cat comes, as a share of the round's length (PRD v2 G3,
+  /// b006): the intervals `CatTuning` counts the visits and knocks off.
+  final CatPreset catPreset;
+
   static const defaults = PuzzleSettings();
 
   /// Each setting's range and step, for the settings screen.
@@ -95,6 +105,7 @@ final class PuzzleSettings {
     'pointsScale': pointsScale,
     'night': night,
     'chaos': chaos.name,
+    'catPreset': catPreset.name,
   };
 
   /// Unknown or broken values fall back to the defaults, clamped to range.
@@ -125,11 +136,17 @@ final class PuzzleSettings {
       // like a broken one (job a1's question 3).
       night: m['night'] is bool ? m['night'] as bool : defaults.night,
       chaos: _chaos(m['chaos']),
+      catPreset: _preset(m['catPreset']),
     );
   }
 
   /// A chaos name this build knows; a name it doesn't counts like a broken one.
   static Chaos _chaos(Object? value) => Chaos.values.where((c) => c.name == value).firstOrNull ?? defaults.chaos;
+
+  /// A Cat setting this build knows; a name it doesn't counts as Lively, the
+  /// default (b006).
+  static CatPreset _preset(Object? value) =>
+      CatPreset.values.where((p) => p.name == value).firstOrNull ?? defaults.catPreset;
 
   /// A copy with one setting changed (by its JSON name).
   PuzzleSettings withValue(String key, Object value) => fromJson({...toJson(), key: value});

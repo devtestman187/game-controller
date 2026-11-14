@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'dart:ui';
 
+import 'cat_tuning.dart';
 import 'cat_view.dart';
 import 'game.dart';
 import 'puzzle_values.dart';
@@ -12,10 +13,11 @@ import 'settings.dart';
 /// ticks, and stops stepping it once the round is over).
 ///
 /// It comes with a warning at the side's edge, walks to a piece, bats it,
-/// and runs off. With the `little` chaos it comes once a round and only moves
-/// a loose or tray piece; with `party` it comes twice, and once a round it may
-/// knock a placed piece of a side that is ahead back into its tray. A dot
-/// that presses A on it during the warning or the walk shoos it off for good.
+/// and runs off. How many times it comes is counted from the round's length
+/// and the Cat setting ([CatTuning], b006): with the `little` chaos it only
+/// moves a loose or tray piece; with `party` some of its visits may knock a
+/// placed piece of a side that is ahead back into its tray. A dot that presses
+/// A on it during the warning or the walk shoos it off for good.
 ///
 /// A party night's last round has no cat because the night sets the chaos off
 /// for that round (party-night N3, job c1): the cat needs no rule for it.
@@ -54,8 +56,8 @@ final class CatChaos implements CatVisit {
 
   /// When each visit of the round starts, in elapsed seconds, none of them in
   /// the first [CatRules.graceS] and none running into the last
-  /// [CatRules.tailS]: one for `little`, two for `party`, spread over the time
-  /// there is, each placed by the seeded random inside its share of it.
+  /// [CatRules.tailS]: as many as the round's window holds ([_plan]), spread
+  /// over it, each placed by the seeded random inside its share of it.
   final _planned = <double>[];
 
   /// The visit that comes next, and for the one out: its side and game, the
@@ -73,7 +75,10 @@ final class CatChaos implements CatVisit {
 
   /// The side it visited last, which it never visits twice in a row.
   PuzzleSide? _lastSide;
-  bool _knocked = false;
+
+  /// The knocks the round allows, and how many it has used (PRD v2 G3).
+  int _knockBudget = 0;
+  int _knocksUsed = 0;
   bool _shooed = false;
 
   /// The cat as the view draws it, or null while it is away.
@@ -167,21 +172,17 @@ final class CatChaos implements CatVisit {
     return game.pieces[target];
   }
 
-  /// When the round's visits come: one for [Chaos.little], two for
-  /// [Chaos.party], each inside its share of the time between the grace and
-  /// the tail, and early enough in it to be gone before the next share's
-  /// visit is due: a short round's two visits then come one after the other
-  /// rather than the second being lost.
+  /// When the round's visits come: as many as the round's window holds for the
+  /// Cat setting ([CatTuning.visits], b006), each inside its share of the time
+  /// between the grace and the tail, and early enough in it to be gone before
+  /// the next share's visit is due. The knocks a Party round allows are counted
+  /// here too.
   void _plan() {
-    final visits = switch (settings.chaos) {
-      Chaos.off => 0,
-      Chaos.little => 1,
-      Chaos.party => 2,
-    };
-    final last = settings.timeLimitS - CatRules.tailS - CatRules.visitS;
-    final window = last - CatRules.graceS;
-    if (visits == 0 || window < 0) return;
-    final share = window / visits;
+    final tuning = CatTuning.of(settings.catPreset);
+    _knockBudget = tuning.knocks(settings.chaos, settings.timeLimitS);
+    final visits = tuning.visits(settings.chaos, settings.timeLimitS);
+    if (visits == 0) return;
+    final share = CatTuning.windowS(settings.timeLimitS) / visits;
     final room = max(0.0, share - CatRules.visitS);
     for (var k = 0; k < visits; k++) {
       _planned.add(CatRules.graceS + share * k + _random.nextDouble() * room);
@@ -253,13 +254,13 @@ final class CatChaos implements CatVisit {
   }
 
   /// Whether the cat may knock a placed piece loose (PRD v2 G3, Party): never
-  /// on one board, once a round, on a side ahead by at least one piece, and
-  /// never the picture's last piece — knocking one of a side's placed pieces
-  /// while only the last one is left would take the round from it.
+  /// on one board, only while the round's knocks last ([CatTuning.knocks]), on
+  /// a side ahead by at least one piece, and never the picture's last piece —
+  /// knocking one of a side's placed pieces while only the last one is left
+  /// would take the round from it.
   bool _mayKnock(PuzzleGame game) =>
       !oneBoard &&
-      settings.chaos == Chaos.party &&
-      !_knocked &&
+      _knocksUsed < _knockBudget &&
       game.placed <= game.pieces.length - 2 &&
       games.every((g) => g == game || g.placed < game.placed);
 
@@ -274,7 +275,7 @@ final class CatChaos implements CatVisit {
       if (piece.state == PieceState.locked) {
         game.catKnocks(piece.index);
         knocked = true;
-        _knocked = true;
+        _knocksUsed++;
       }
     } else if (piece.state == PieceState.tray || piece.state == PieceState.loose) {
       final spot = _freeSpot(game, piece);

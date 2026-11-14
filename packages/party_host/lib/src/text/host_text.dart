@@ -207,7 +207,12 @@ abstract final class HostText {
   static const chaosOff = 'Off';
   static const chaosLittle = 'A little';
   static const chaosParty = 'Party';
-  static const chaosLine = 'It bats a loose piece; on Party it also knocks one placed piece back to the tray';
+  static const chaosLine = 'It bats a loose piece; on Party it also knocks placed pieces back to the tray';
+  static const catPace = 'The cat\'s pace';
+  static const catCalm = 'Calm';
+  static const catLively = 'Lively';
+  static const catWild = 'Wild';
+  static const catPaceLine = 'A longer round and a wilder cat bring it more often';
   static const angleTolerance = 'Angle tolerance';
   static const positionTolerance = 'Position tolerance';
   static const rotationSpeed = 'Rotation speed (X and Y)';

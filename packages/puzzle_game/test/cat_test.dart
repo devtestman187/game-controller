@@ -48,20 +48,54 @@ void main() {
   });
 
   test('on a draw the cat may go either way, and never the same side twice in a row', () {
-    final w = Watch(catRace(flatWorld()));
-    w.toTheEnd();
-    expect(w.starts, hasLength(2), reason: 'Party comes twice in a 40 s round');
+    final w = Watch(catRace(flatWorld(), timeLimitS: 120));
+    for (var i = 0; i < 3; i++) {
+      expect(w.catComes(), isTrue, reason: 'visit ${i + 1} of a 2 minute Party round on Lively');
+    }
+    expect(w.starts, hasLength(3), reason: 'a 2 minute Party round on Lively plans 3 visits');
     expect(w.starts.map((s) => s.side).toSet(), hasLength(2), reason: 'a draw leaves both sides, and it never repeats');
+    for (var i = 1; i < w.starts.length; i++) {
+      expect(w.starts[i].side, isNot(w.starts[i - 1].side), reason: 'visit ${i + 1} is not on visit $i\'s side');
+    }
   });
 
   test('the cat never comes in the first 20 s or the last 10 s', () {
-    final w = Watch(catRace(flatWorld()));
-    w.toTheEnd();
-    expect(w.starts, isNotEmpty);
+    final w = Watch(catRace(flatWorld(), timeLimitS: 120));
+    for (var i = 0; i < 3; i++) {
+      expect(w.catComes(), isTrue);
+    }
+    expect(w.starts, hasLength(3));
     for (final start in w.starts) {
       expect(start.at, greaterThanOrEqualTo(CatRules.graceS));
-      expect(start.at + CatRules.visitS, lessThanOrEqualTo(40 - CatRules.tailS + Watch.dt));
+      expect(start.at + CatRules.visitS, lessThanOrEqualTo(120 - CatRules.tailS + Watch.dt));
     }
+  });
+
+  test('a 2 minute Party round on Lively knocks two placed pieces loose', () {
+    // Left leads 2-1, so the first visit knocks one of its pieces: 1-1, and the
+    // second visit goes to the right (never the same side twice in a row). The
+    // left places its piece again while the cat is on the right, so the round's
+    // third visit finds it ahead and knocks its second piece: the 2 knocks a
+    // 90 s window allows on Lively.
+    final m = catRace(flatWorld(), timeLimitS: 120);
+    final left = m.gameOf(PuzzleSide.left);
+    put(m, left, 'p1', 0);
+    put(m, left, 'p1', 1);
+    put(m, m.gameOf(PuzzleSide.right), 'p2', 0);
+    final w = Watch(m);
+    expect(w.catComes(), isTrue, reason: 'the first of the round\'s 3 visits');
+    expect(w.batsOne(), isTrue);
+    expect(w.bats.single.knocked, isTrue, reason: 'it knocks the side ahead');
+    expect(left.placed, 1);
+    expect(w.catComes(), isTrue, reason: 'the second visit');
+    expect(w.starts.last.side, PuzzleSide.right, reason: 'the draw leaves the right side, not the one it just left');
+    put(m, left, 'p1', 1);
+    expect(
+      w.until(() => w.bats.where((b) => b.knocked).length == 2, maxFrames: 2400),
+      isTrue,
+      reason: 'the third visit knocks the left side\'s second piece',
+    );
+    expect(left.placed, 1, reason: 'one piece of each side is back in its tray');
   });
 
   test('A little comes once a round, bats a loose or tray piece, and never a placed one', () {
@@ -108,7 +142,7 @@ void main() {
     expect(left.points, points, reason: 'the side keeps the points it placed');
     expect(left.snapshot().hintTargets, contains(outline), reason: 'its outline glows in the tray');
     w.toTheEnd();
-    expect(w.bats.where((b) => b.knocked), hasLength(1), reason: 'it knocks a piece loose once a round');
+    expect(w.bats.where((b) => b.knocked), hasLength(1), reason: 'a 40 s round\'s window allows one knock');
   });
 
   test('Party leaves the picture\'s last piece alone', () {
@@ -183,7 +217,7 @@ void main() {
     expect(w.cat!.at, offsetMoreOrLessEquals(at, epsilon: 0.2), reason: 'it runs off from where it stood');
     expect(w.batsOne(), isFalse);
     expect(w.match.cat, isNull, reason: 'no visit is left to come');
-    expect(w.starts, hasLength(1), reason: 'Party\'s second visit never comes');
+    expect(w.starts, hasLength(1), reason: 'a shoo ends the round\'s visits, and a 40 s round plans one');
   });
 
   test('a shoo during the walk works too', () {

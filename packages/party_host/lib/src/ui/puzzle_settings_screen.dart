@@ -86,8 +86,8 @@ class PuzzleSettingsScreen extends ConsumerWidget {
     );
   }
 
-  /// The Chaos setting (PRD v2 G3): three buttons, the chosen one ticked, and
-  /// a line saying what the cat does.
+  /// The cat's two settings (PRD v2 G3): what it does (Chaos) and how often it
+  /// comes (the Cat setting, b006), each with a line under it.
   Widget _chaosCard(BuildContext context, PuzzleSettings s, PuzzleSettingsNotifier notifier) {
     final look = ToyLookScope.of(context);
     return ToyCard(
@@ -98,26 +98,45 @@ class PuzzleSettingsScreen extends ConsumerWidget {
         children: [
           Text(HostText.chaos, style: look.type.button),
           const SizedBox(height: ToySizes.space8),
-          Row(
-            children: [
-              for (final (chaos, label) in const [
-                (Chaos.off, HostText.chaosOff),
-                (Chaos.little, HostText.chaosLittle),
-                (Chaos.party, HostText.chaosParty),
-              ])
-                Padding(
-                  padding: const EdgeInsets.only(right: ToySizes.space16),
-                  child: HostButton(
-                    key: Key('chaos-${chaos.name}'),
-                    label: label,
-                    icon: s.chaos == chaos ? Icons.check : null,
-                    onPressed: () => notifier.set(s.withValue('chaos', chaos.name)),
-                  ),
+          _ChoiceRow(
+            keyPrefix: 'chaos',
+            choices: [
+              for (final chaos in Chaos.values)
+                (
+                  name: chaos.name,
+                  label: switch (chaos) {
+                    Chaos.off => HostText.chaosOff,
+                    Chaos.little => HostText.chaosLittle,
+                    Chaos.party => HostText.chaosParty,
+                  },
                 ),
             ],
+            selected: s.chaos.name,
+            onPick: (name) => notifier.set(s.withValue('chaos', name)),
           ),
           const SizedBox(height: ToySizes.space8),
           Text(HostText.chaosLine, style: look.type.body),
+          const SizedBox(height: ToySizes.space24),
+          Text(HostText.catPace, style: look.type.button),
+          const SizedBox(height: ToySizes.space8),
+          _ChoiceRow(
+            keyPrefix: 'catPreset',
+            choices: [
+              for (final preset in CatPreset.values)
+                (
+                  name: preset.name,
+                  label: switch (preset) {
+                    CatPreset.calm => HostText.catCalm,
+                    CatPreset.lively => HostText.catLively,
+                    CatPreset.wild => HostText.catWild,
+                  },
+                ),
+            ],
+            selected: s.catPreset.name,
+            onPick: (name) => notifier.set(s.withValue('catPreset', name)),
+          ),
+          const SizedBox(height: ToySizes.space8),
+          Text(HostText.catPaceLine, style: look.type.body),
         ],
       ),
     );
@@ -192,6 +211,39 @@ class _Row extends StatelessWidget {
       ),
     );
   }
+}
+
+/// One row of choices (a setting with a few named values): a button for each,
+/// the chosen one ticked, and the tests' key on each button.
+class _ChoiceRow extends StatelessWidget {
+  const _ChoiceRow({required this.keyPrefix, required this.choices, required this.selected, required this.onPick});
+
+  /// The first half of each button's key: `prefix-name`.
+  final String keyPrefix;
+
+  /// Each choice's saved name, and the words its button shows.
+  final List<({String name, String label})> choices;
+
+  /// The name of the choice that is set.
+  final String selected;
+
+  final ValueChanged<String> onPick;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    children: [
+      for (final choice in choices)
+        Padding(
+          padding: const EdgeInsets.only(right: ToySizes.space16),
+          child: HostButton(
+            key: Key('$keyPrefix-${choice.name}'),
+            label: choice.label,
+            icon: choice.name == selected ? Icons.check : null,
+            onPressed: () => onPick(choice.name),
+          ),
+        ),
+    ],
+  );
 }
 
 /// One step button, with the tooltip the remote's focus reads.
