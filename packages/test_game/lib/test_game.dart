@@ -18,6 +18,7 @@ export 'src/arena_mode.dart';
 export 'src/arena_module.dart';
 export 'src/arena_moments.dart';
 export 'src/arena_pieces.dart';
+export 'src/arena_player_scale_painter.dart';
 export 'src/arena_painter.dart';
 export 'src/arena_robo.dart';
 export 'src/arena_roster.dart';

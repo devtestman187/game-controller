@@ -39,6 +39,10 @@ const stepLeft = 0.02;
 /// and [screen], the TV, so it reads at both sizes.
 const flagBoxes = [Size(667, 375), screen];
 
+/// The TV's look: Sunny with the sizes and outlines for reading from three
+/// metres, as the TV app builds it (M13).
+final tvLook = ToyLook.build(palette: ToyPalette.sunny, tv: true);
+
 /// Where the one marble stands, in the frame's px, and how big it is drawn.
 final marbleCentre = at(marbleAt);
 final marbleRadius = testRadius * screen.shortestSide;
@@ -209,6 +213,22 @@ double eyeInkMeanX(Uint8List bytes, int width, Offset centre, double radius, Col
   return sum / n;
 }
 
+/// How wide the marble at [centre] is drawn, in px: the run of its body's
+/// colour along the row 0.4 × [radius] below its middle, under the eyes, where
+/// a chord of the body is 2 × [radius] × √(1 − 0.16) = 1.83 × [radius] wide.
+int bodyWidth(Uint8List bytes, int width, ToyLook look, Offset centre, double radius) {
+  final y = (centre.dy + 0.4 * radius).round();
+  var left = width;
+  var right = -1;
+  for (var x = (centre.dx - 2 * radius).round(); x <= (centre.dx + 2 * radius).round(); x++) {
+    if (!inBands(pixel(bytes, width, x, y), look.colors.player(1))) continue;
+    left = min(left, x);
+    right = max(right, x);
+  }
+  expect(right, greaterThan(left), reason: 'the marble is drawn');
+  return right - left + 1;
+}
+
 void main() {
   // Drawn in the look's own fonts, as a device draws them: the marble's number
   // is text, and the test font's box for every letter is not Fredoka's.
@@ -321,6 +341,20 @@ void main() {
         reason: "$name: the marble's middle",
       );
     }
+  });
+
+  testWidgets("a TV's look draws the marbles half again as big as a phone's", (tester) async {
+    final phone = await drawField(tester);
+    final tv = await drawField(tester, look: tvLook);
+    final width = screen.width.toInt();
+    // The body's chord below the eyes is 1.83 × radius: 49 px on a phone
+    // (radius 27 px) and 74 px on a TV (27 × 1.5 = 40.5 px), less the ink edge
+    // and the shading at its rim, about 5 px on the phone and 8 on the TV.
+    final phoneWidth = bodyWidth(phone, width, sunny, marbleCentre, marbleRadius);
+    final tvWidth = bodyWidth(tv, width, tvLook, marbleCentre, marbleRadius);
+    expect(phoneWidth, inInclusiveRange(41, 47), reason: "the phone's marble");
+    expect(tvWidth, inInclusiveRange(68, 75), reason: "the TV's marble");
+    expect(tvWidth, greaterThan(phoneWidth + 20), reason: 'the TV draws it larger');
   });
 
   testWidgets('the eyes look the way the marble last moved', (tester) async {

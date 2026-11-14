@@ -6,6 +6,7 @@ import 'package:toy_look/toy_look.dart';
 import 'arena_coin_painter.dart';
 import 'arena_mode.dart';
 import 'arena_moments.dart';
+import 'arena_player_scale_painter.dart';
 import 'arena_roster.dart';
 import 'arena_snapshot.dart';
 
@@ -59,6 +60,11 @@ const coinBadgePopShare = 0.3;
 /// A marble recovering from a hazard fades to [recoverFaintAlpha] and back,
 /// [recoverPulseHz] times a second, with effects on; with them off it is still
 /// at [recoverStillAlpha] (design D8).
+///
+/// In the TV's look the whole picture — the body, the face, the accessory, the
+/// coin count — is drawn [tvPlayerScale] times as large ([arenaPlayerScale],
+/// M14 bugs3 B-014); the rules' radius, its collisions and every speed don't
+/// change.
 final class ArenaMarblePainter {
   ArenaMarblePainter({
     required this.snapshot,
@@ -91,7 +97,7 @@ final class ArenaMarblePainter {
     final character = arenaCharacterFor(roster, player.id);
     final colour = character.colourIn(look.colors);
     final centre = Offset(player.x * size.width, player.y * size.height);
-    final radius = snapshot.playerRadius * size.shortestSide;
+    final radius = snapshot.playerRadius * size.shortestSide * arenaPlayerScale(look);
     final aimX = player.aimX;
     final aimY = player.aimY;
     if (aimX != null && aimY != null) _aim(canvas, Offset(aimX * size.width, aimY * size.height), radius, colour);
