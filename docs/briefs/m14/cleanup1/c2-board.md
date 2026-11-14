@@ -1,5 +1,6 @@
 job: M14 cleanup1 c2: a real test of the board cache's hint, ready and glow keys, and three nits
 pub: no
+tests-first: exempt test-only hardening of the already-fixed 95da0ac cache (HEAD has the fix, so the test cannot fail on it); Claude re-ran it with the key fields removed and it failed
 stop: after it.
 decide: low-usage mode: never stop for a question. Make the safest choice that fits the design and list each under "Decisions" with one line of why. Stop only if the job truly cannot be done; then say why under "Blocked".
 read: packages/puzzle_game/lib/src/board_cache.dart · packages/puzzle_game/test/board_cache_test.dart (the last testWidgets, "a board drawn from its cache is the board drawn without one, byte for byte") · `git show 95da0ac` (the commit that added the cache; the old code is its parent) · packages/puzzle_game/lib/src/phone_hud.dart around line 139 · packages/puzzle_game/lib/src/board_hud.dart around line 23 · docs/coding-guidelines.md
