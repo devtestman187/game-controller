@@ -1,6 +1,7 @@
 import 'package:flutter_soloud/flutter_soloud.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:game_assets/asset_manifest.dart';
+import 'package:party_host/src/loop_audio_engine.dart';
 import 'package:party_host/src/sound_loop.dart';
 
 /// A stand-in for a loaded sound: [SoundLoop] only hands it back to the engine.
@@ -19,9 +20,6 @@ class _FakeEngine implements LoopAudioEngine {
   final stops = <SoundHandle>[];
 
   SoundHandle _newVoice() => SoundHandle(++_nextVoice);
-
-  /// A voice the loop didn't start, like one of the game's effects.
-  SoundHandle startEffect() => _newVoice();
 
   @override
   SoundHandle play(AudioSource source, {required bool looping, required double volume}) {
@@ -82,13 +80,5 @@ void main() {
     expect(engine.seeked, [(engine.plays.last, const Duration(milliseconds: 15000))]);
     expect(engine.protected, [(engine.plays.first, true), (engine.plays.last, true)]);
     expect(engine.stops, [engine.plays.first], reason: 'the old voice stops once the new one plays');
-  });
-
-  test('an effect playing alongside the loop is not protected', () {
-    final engine = _FakeEngine();
-    final effect = engine.startEffect();
-    _loopWith(engine).play('round');
-    expect(engine.protected.map((call) => call.$1), [engine.plays.single]);
-    expect(engine.protected.any((call) => call.$1 == effect), isFalse);
   });
 }

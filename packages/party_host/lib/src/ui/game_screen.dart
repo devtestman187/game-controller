@@ -336,6 +336,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
       case _Stage.playing || _Stage.results:
         final game = _game;
         if (game == null) return const SizedBox.shrink();
+        final result = _result;
         return Stack(
           children: [
             GameField(
@@ -349,9 +350,9 @@ class _GameScreenState extends ConsumerState<GameScreen> {
               onClock: _clocked,
               onFinished: _finished,
             ),
-            if (_stage == _Stage.results)
+            if (_stage == _Stage.results && result != null)
               ArenaResults(
-                result: _result!,
+                result: result,
                 night: night != null,
                 againFocus: _againFocus,
                 onAgain: _again,

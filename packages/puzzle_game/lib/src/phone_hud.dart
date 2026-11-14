@@ -62,7 +62,7 @@ String _sideName(PuzzleSide side) => side == PuzzleSide.left ? 'Left' : 'Right';
 
 /// The clock's text: the time left as M:SS, rounded up.
 String _clock(int timeLeftMs) {
-  final secondsLeft = (timeLeftMs / 1000).ceil();
+  final secondsLeft = (timeLeftMs / _msPerSecond).ceil();
   return '${secondsLeft ~/ 60}:${(secondsLeft % 60).toString().padLeft(2, '0')}';
 }
 

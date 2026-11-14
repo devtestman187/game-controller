@@ -33,6 +33,30 @@ PuzzleSnapshot board({Set<int> hints = const {}, Set<int> ready = const {}, Puzz
       players: const [],
     );
 
+/// One frame of the view: [snapshot] noted for the pieces' and the finish's
+/// ages as the view notes it, then painted into [box] through [cache].
+void drawFrame(
+  Puzzle puzzle,
+  PuzzleSnapshot snapshot, {
+  required PieceMoments moments,
+  required BoardCache cache,
+  int nowMs = 0,
+}) {
+  moments.observe(MatchSnapshot(boards: [snapshot]), nowMs);
+  final painter = PuzzlePainter(
+    puzzle,
+    snapshot,
+    look: sunny,
+    moments: moments,
+    cache: cache,
+    nowMs: nowMs,
+    timeLimitS: 120,
+  );
+  final recorder = ui.PictureRecorder();
+  painter.paint(Canvas(recorder), box);
+  recorder.endRecording().dispose();
+}
+
 void main() {
   test('a hint, a ready target or a glow each makes the cache record the board again', () {
     final puzzle = pair();
@@ -42,59 +66,41 @@ void main() {
     final cache = BoardCache(onRecord: recorded.add);
     final moments = PieceMoments();
 
-    // One frame of the view: the snapshot it is given, noted for the pieces'
-    // and the finish's ages as the view notes it, then painted into the box.
-    void draw(PuzzleSnapshot snapshot, {int nowMs = 0}) {
-      moments.observe(MatchSnapshot(boards: [snapshot]), nowMs);
-      final painter = PuzzlePainter(
-        puzzle,
-        snapshot,
-        look: sunny,
-        moments: moments,
-        cache: cache,
-        nowMs: nowMs,
-        timeLimitS: 120,
-      );
-      final recorder = ui.PictureRecorder();
-      painter.paint(Canvas(recorder), box);
-      recorder.endRecording().dispose();
-    }
-
     final plain = board();
-    draw(plain);
+    drawFrame(puzzle, plain, moments: moments, cache: cache);
     expect(recorded, hasLength(1), reason: 'the first frame records the board');
 
     // The next frame draws the same board: its picture is replayed, not
     // recorded again.
-    draw(plain);
+    drawFrame(puzzle, plain, moments: moments, cache: cache);
     expect(recorded, hasLength(1), reason: 'nothing in the key changed');
 
     // A hinted target's slot and edge are drawn differently, so the picture is
     // recorded again; the frame after it replays it.
     final hinted = board(hints: const {1});
-    draw(hinted);
+    drawFrame(puzzle, hinted, moments: moments, cache: cache);
     expect(recorded, hasLength(2), reason: 'a hinted target changes the still parts');
     expect(recorded.last.hints, [1]);
-    draw(hinted);
+    drawFrame(puzzle, hinted, moments: moments, cache: cache);
     expect(recorded, hasLength(2));
 
     // A target ready for a drop is drawn differently again.
     final ready = board(ready: const {1});
-    draw(ready);
+    drawFrame(puzzle, ready, moments: moments, cache: cache);
     expect(recorded, hasLength(3), reason: 'a ready target changes the still parts');
     expect(recorded.last.ready, [1]);
-    draw(ready);
+    drawFrame(puzzle, ready, moments: moments, cache: cache);
     expect(recorded, hasLength(3));
 
     // The finish's glow lies under the picture, so it is part of the still
     // parts, and it moves with its age: the frame after the finish's first is
     // another picture.
     final finished = board(ready: const {1}, phase: PuzzlePhase.finished);
-    draw(finished);
+    drawFrame(puzzle, finished, moments: moments, cache: cache);
     expect(recorded, hasLength(4), reason: 'the glow changes the still parts');
     expect(recorded.last.glowAgeMs, 0);
 
-    draw(finished, nowMs: 100);
+    drawFrame(puzzle, finished, moments: moments, cache: cache, nowMs: 100);
     expect(recorded, hasLength(5), reason: 'the glow at another age is another picture');
     expect(recorded.last.glowAgeMs, 100);
   });

@@ -82,7 +82,7 @@ extension _BoardHud on PuzzlePainter {
     if (left <= 0) return;
     canvas
       ..save()
-      ..clipRRect(shape.deflate(_barHeight / 4));
+      ..clipRRect(shape.deflate(_barHeight * _barFillInsetShare));
     canvas.drawRect(Rect.fromLTWH(track.left, track.top, track.width * left, track.height), Paint()..color = fill);
     canvas.restore();
   }
