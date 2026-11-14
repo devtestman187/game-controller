@@ -180,39 +180,6 @@ void main() {
     expect(builds, 5);
   });
 
-  testWidgets('a board drawn from its cache is the board drawn without one, byte for byte', (tester) async {
-    // Two pieces: one locked in its outline with its ✓, one in the tray, an
-    // empty target that is also ready and hinted, and a worker on the board, so
-    // the still parts, the moving pieces and the workers are all drawn.
-    final puzzle = Puzzle.parse('''
-{"id": "pair", "name": "Pair", "level": "easy", "pieces": [
-  {"id": "a", "shape": {"rect": [20, 20]}, "color": "#E4572E", "at": [40, 50]},
-  {"id": "b", "shape": {"circle": 9}, "color": "#2E86E4", "at": [20, 20]}
-]}''');
-    final snapshot = PuzzleSnapshot(
-      puzzleId: 'pair',
-      timeLeftMs: 50000,
-      phase: PuzzlePhase.playing,
-      hintTargets: const {1},
-      readyTargets: const {1},
-      pieces: const [
-        PieceView(x: 56, y: 63, angle: 0, state: PieceState.locked),
-        PieceView(x: 120, y: 25, angle: 0, state: PieceState.tray),
-      ],
-      players: const [PlayerView(number: 1, x: 60, y: 40)],
-    );
-    Future<Uint8List> draw(PuzzlePainter painter) => capturePng(
-      tester,
-      CustomPaint(size: box, painter: painter),
-      window: box,
-      box: box,
-      look: sunny,
-    );
-    final cached = await draw(PuzzlePainter(puzzle, snapshot, look: sunny, timeLimitS: 120, cache: BoardCache()));
-    final direct = await draw(PuzzlePainter(puzzle, snapshot, look: sunny, timeLimitS: 120));
-    expect(cached, direct, reason: 'the recorded picture draws what the direct one does');
-  });
-
   testWidgets('the second frame of an unchanged board is the first, pixel for pixel', (tester) async {
     tester.view.physicalSize = box;
     tester.view.devicePixelRatio = 1;

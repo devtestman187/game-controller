@@ -1,7 +1,7 @@
 import 'dart:math';
 import 'dart:ui' show FragmentProgram, Picture, PictureRecorder;
 
-import 'package:flutter/foundation.dart' show listEquals;
+import 'package:flutter/foundation.dart' show listEquals, visibleForTesting;
 import 'package:flutter/material.dart';
 import 'package:toy_look/toy_look.dart';
 

@@ -70,6 +70,11 @@ String _clock(int timeLeftMs) {
 /// under it is still seen.
 const _panelAlpha = 0.9;
 
+/// How far the time bar's fill is inset from the bar's rounded ends, in shares
+/// of the bar's height: an end's radius is half the height, so a quarter keeps
+/// the fill inside the ends' curve.
+const _barFillInsetShare = 0.25;
+
 /// How a phone's clock area is drawn (m12-phone-layout §0.7c): its clock, its
 /// score and its time bar, beside the world, and the other side's mirror with
 /// it where the box has room for it.
@@ -136,7 +141,7 @@ extension _PhoneHudPaint on MatchPainter {
     final warn = board.warning && board.phase == PuzzlePhase.playing;
     canvas
       ..save()
-      ..clipRRect(shape.deflate(track.height / 4));
+      ..clipRRect(shape.deflate(track.height * _barFillInsetShare));
     canvas.drawRect(
       Rect.fromLTWH(track.left, track.top, track.width * frac, track.height),
       Paint()..color = warn ? _colours.bad : _colours.good,

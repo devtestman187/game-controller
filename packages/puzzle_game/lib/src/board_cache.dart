@@ -97,6 +97,7 @@ final class BoardCache {
 
   /// Called after each recording, with the key it was recorded from: a view
   /// hands none, and a test counts the recordings to see when a key changed.
+  @visibleForTesting
   final void Function(StaticBoardKey key)? onRecord;
 
   /// The still parts kept: a match draws its two boards a frame, and a phone's

@@ -13,6 +13,9 @@ const _pillPad = 1.0;
 /// world units.
 const _barTop = 1.2;
 
+/// The milliseconds in a second, for the ms a snapshot times in.
+const _msPerSecond = 1000;
+
 /// The share of a time bar's width filled: all of it when [done] (the picture
 /// is complete, so the bar is full the frame the last piece goes in and stays
 /// full on the win screen, B-001), else the share of the time limit the board
@@ -20,7 +23,7 @@ const _barTop = 1.2;
 double? _barFill(PuzzleSnapshot board, bool done, int? timeLimitS) {
   final limit = timeLimitS;
   if (limit == null || limit <= 0) return null;
-  return done ? 1 : (board.timeLeftMs / 1000 / limit).clamp(0.0, 1.0);
+  return done ? 1 : (board.timeLeftMs / _msPerSecond / limit).clamp(0.0, 1.0);
 }
 
 /// One board's clock and count along the top of its field, and the time bar
@@ -28,7 +31,7 @@ double? _barFill(PuzzleSnapshot board, bool done, int? timeLimitS) {
 /// the bar a `good` fill that turns `bad`.
 extension _BoardHud on PuzzlePainter {
   void _hud(Canvas canvas, double scale, _Styles styles) {
-    final secondsLeft = (s.timeLeftMs / 1000).ceil();
+    final secondsLeft = (s.timeLeftMs / _msPerSecond).ceil();
     final clock = '${secondsLeft ~/ 60}:${(secondsLeft % 60).toString().padLeft(2, '0')}';
     final warn = s.warning && s.phase == PuzzlePhase.playing;
     final text = _colours.onBackground;
