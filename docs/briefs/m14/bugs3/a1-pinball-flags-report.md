@@ -18,6 +18,9 @@ steals the oldest voice when its 16 are full, the music is the oldest, and a sto
 - `packages/party_host/lib/src/sound_loop.dart`: the loop's voice is protected, so effects are stolen first. Not
   unit-testable: the tests' `FakeSoundPlayer` sits above SoLoud, which needs a device.
 - `packages/party_host/test/round_music_test.dart`: one test per kit map, that its Bumper Round plays `arena`.
+  These 16 lines are **not in this job's commit**: they landed in i1's commit `c4e4e00`, whose report does not
+  mention them. So no commit in the run matches this line, and B-004's tests belong to i1's commit (corrected
+  here rather than moved, as the run's review asks).
 
 **Decisions:** draw flags after the walls instead of moving map data (the walls are the map's look and play);
 flags before movers and hazards (those must still read over them); sample the pole 0.75 of the piece's size above
@@ -39,6 +42,10 @@ Castle's two bottom corners (poles and cloth whole, in front of walls and posts)
 4. **In the job's folder** — all edits are in `packages/test_game`, `packages/party_host` and this report.
 5. **Stop rather than overstep** — nothing outside `allow:` was needed; B-004 is reported as unreproduced instead of
    guessed at further than the one engine hardening.
+
+**Checks** (the brief's `check: format analyze arena host phone tv`, all six pass; re-run on the bugs3 tree, since
+this report gave only "the arena + phone suites pass"): `format` pass · `analyze` pass · `arena` pass · `host` pass ·
+`phone` pass · `tv` pass.
 
 ## Commit message
 

@@ -31,6 +31,9 @@ Claude; a time-up loss still leaves the bar empty, which is right.
 **On a device.** Play a solo Shape Race, place the last piece: the bar under the clock full at once and on
 the win screen. Same in a 1v1 race, and on a joined phone: HUD bar and panel bar full, text still the time.
 
+**Checks.** `tools/check.sh format analyze puzzle host` — PASS (format; analyze clean; 403 puzzle tests,
+399 host tests).
+
 ## Self-check (docs/review-rules.md part A)
 
 1. **Every host setup.** The bar is drawn from the snapshot in every setup the code has (TV/PC host, host

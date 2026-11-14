@@ -10,8 +10,9 @@ the view knew which screen it was drawing on.
 
 **What changed, by file.**
 
-- `packages/test_game/lib/src/arena_player_scale.dart` (new): `tvPlayerScale` (1.5) and
-  `arenaPlayerScale(ToyLook look)` — 1.5 for the TV's look, 1 for a phone's.
+- `packages/test_game/lib/src/arena_player_scale_painter.dart` (new): `tvPlayerScale`
+  (1.5) and `arenaPlayerScale(ToyLook look)` — 1.5 for the TV's look, 1 for a phone's.
+  (The report first named it `arena_player_scale.dart`; the commit's file is this one.)
 - `packages/test_game/lib/test_game.dart`: exports the new file.
 - `packages/test_game/lib/src/arena_marble_painter.dart`: the marble's radius times
   `arenaPlayerScale(look)`; one doc paragraph. Everything the painter derives from that
@@ -73,7 +74,10 @@ TV before the change (same as the phone).
    look, so the scale is the same in each and touches no state. Not tested separately:
    there is no state to combine.
 4. **Folder.** Wrote only `docs/briefs/m14/bugs3/a2-arena-size-report.md` and files
-   under `packages/test_game/` — the job's allow list. No other file changed.
+   under `packages/test_game/` — the job's allow list. The tree also shows three
+   modified `tv_test_app/windows/flutter/generated_plugin_*` files: this job did not
+   touch them — the suites rewrite them, as s1's report says (`s1-progress-bar-report.md`
+   lines 46 and 74) — and they are still modified, so a `git add -A` carries them.
 5. **Stop rather than overstep.** Not needed: the factor comes from data the painter
    already had, so no file outside `allow:` was required.
 

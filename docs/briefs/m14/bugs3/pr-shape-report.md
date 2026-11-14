@@ -7,15 +7,19 @@ Read for it: docs/design/party-night.md §2 and §13; docs/PRD-v2.md "Milestone 
 ## Summary
 
 - **B-009 (repeats):** today the next-puzzle pick (`puzzle_screen.dart:152-160`) draws from the
-  level's puzzles with an unseeded `Random()` and excludes only the puzzle just played, so with the
-  6 Medium puzzles a repeat by the third round is 20% and by the fourth 36%. **Pick:** a shuffled
+  level's puzzles with an unseeded `Random()` and excludes the puzzle just played only after a
+  rematch (`avoidPuzzleId`, `puzzle_screen.dart:277`), so with the 6 Medium puzzles a repeat by the
+  third round is 20% and by the fourth 36% on that path, and 1/6 a round on the join path, which
+  passes no guard (`join_screen.dart:293`). **Pick:** a shuffled
   bag per level, kept in the host's prefs (`puzzleBag`), so a level plays every puzzle once before
   any repeats, across app restarts, and a new puzzle joins the bag as soon as a build adds it.
   Risk: with 6 puzzles a level becomes recognisable after a full cycle (the same 6, reshuffled).
 - **B-012a (metrics):** nothing measures moving vs placing today; the PRD's "time carrying each
   piece" was never built. **Pick:** two new per-player numbers in `player_result`, `moveS` and
-  `placeS`, split by the drop's position tolerance, plus a `level_…` round tag; both reach the
-  report through `gameStats` with no report change. Risk: the split is a proxy — turning a piece
+  `placeS`, split by the drop's position tolerance, plus a `level_…` round tag; both arrive in the
+  uploaded summary's `gameStats` with no report change, but the per-player table needs adding work —
+  "moving", "placing" and a derived share (B-012a below), as nothing in `packages/metrics` reads
+  `gameStats` keys today. Risk: the split is a proxy — turning a piece
   in mid-board counts as moving, so a careful child who lines up away from the outline is
   undercounted; `rotatingS` already separates turning.
 - **B-012b (harder):** **Pick:** a real **Hard** level (10–12 pieces, 3–4 big, every non-circle
@@ -32,13 +36,17 @@ Read for it: docs/design/party-night.md §2 and §13; docs/PRD-v2.md "Milestone 
   clock, not one per level (B-012b keeps the host's setting and only makes it a value per level).
 - Computed values used below: 20% / 36% repeat odds; 6 rounds per bag of 6; 1.0 s and 0.5 s from
   60 and 30 steps of 1/60 s; clocks 120 / 150 / 210 s; the 8.5 mm piece floor.
+- Checks: `tools/check.sh format` — PASS (report only; no Dart changed).
 
 ## Decisions (low-usage mode)
 
 - B-009: the bag lives in the host's prefs, not in memory, because the TV app is closed between
   games far more often than between rounds, and the prefs pattern already exists (`best_times.dart`).
-- B-009: a hand-picked puzzle does not draw from the bag; an explicit choice is a repeat by intent,
-  and the existing "not the one just played" guard still covers the round straight after it.
+- B-009: a hand-picked puzzle does not draw from the bag; an explicit choice is a repeat by intent.
+  The "not the one just played" guard reaches only the rematch button (`puzzle_screen.dart:277`), and
+  a hand-picked choice keeps its `puzzleId` so it never re-draws: the bag's rule that the id just
+  played moves to the end is what keeps it out of the next random pick, on the join path too, which
+  passes no guard.
 - B-012a: two raw seconds rather than one "share", so the report can compare levels and modes
   without dividing per round, and a round that ends early still contributes a readable pair.
 - B-012b: leave Medium's piece counts alone and add Hard, because retuning Medium means growing all
@@ -51,8 +59,11 @@ Read for it: docs/design/party-night.md §2 and §13; docs/PRD-v2.md "Milestone 
 
 **Today:** `PuzzleScreen._pick` (`party_host/lib/src/ui/puzzle_screen.dart:152-160`) draws from
 `library.ofLevel(level)` minus the round just played (line 277) with an unseeded `Random()` (line 89),
-so only the previous puzzle is excluded: with the 6 Medium puzzles round 3 repeats round 1's puzzle
-20% of the time, and four rounds hold a repeat 36% of the time (all-new = 0.2·0.8 + 0.8·0.6 = 0.64).
+so the previous puzzle is excluded only after a rematch (`_rematch`, line 277, is the one caller that
+passes `avoidPuzzleId`): with the 6 Medium puzzles round 3 repeats round 1's puzzle 20% of the time,
+and four rematched rounds hold a repeat 36% (all-new = 0.2·0.8 + 0.8·0.6 = 0.64). The join path
+(`join_screen.dart:293`, and every night round that comes back from the scoreboard) passes no guard,
+so there a repeat is 1/6 a round and four rounds hold one 42% of the time (1 − (5/6)³ = 0.42).
 **Change:** a shuffled bag per level: a draw pops the next id; an empty bag refills with every id of
 the level, reshuffled and the id just played moved to the end, so no cycle opens with the puzzle just
 finished. The bag is saved on the host in the prefs (`puzzleBag`, `{level: [id, …]}`) beside
@@ -116,8 +127,9 @@ pieces start at least 30° off (`start_angles.dart:15`).
    five-year-old has slack past today's 120 s limit), Hard **210 s** (12 pieces is 1.5× today's largest
    Medium of 8; at 15–20 s a piece that is 180–240 s). The Puzzle settings screen shows three Time
    limit rows (30–600 s, 15 s steps) and the round takes its level's value.
-**What does not change:** Easy's and Medium's limits and every existing puzzle file — the six Medium
-puzzles play as they do, which is what "Medium should be easy" asks for. **Files:** `puzzle.dart`,
+**What does not change:** Medium's pieces, turn rules and files stay — the six Medium puzzles play as
+they do, which is what "Medium should be easy" asks for; only its default clock moves from 120 s to
+150 s (Easy's 120 s and every existing file are untouched). **Files:** `puzzle.dart`,
 `puzzle_rule_levels.dart`, the schema, `tools/level.sh`, `docs/levels.md`, `start_angles.dart`,
 `settings.dart` (or a per-level map in `puzzle_settings_provider.dart`), `puzzle_settings_screen.dart`,
 `host_text.dart`, new Hard files (a content job), tests.
