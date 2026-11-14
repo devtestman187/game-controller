@@ -15,8 +15,13 @@ import 'package:game_assets/asset_manifest.dart';
 class SoundLoop {
   /// [sources] is where the player keeps the sounds it loaded, [volume] the
   /// music volume to start and fade to (read each time), and [log] where
-  /// engine trouble goes.
-  SoundLoop({required this.sources, required this.volume, required this.log});
+  /// engine trouble goes. [engine] is the audio engine, the app's own unless a
+  /// test stands in for it.
+  SoundLoop({required this.sources, required this.volume, required this.log, LoopAudioEngine? engine})
+    : _engine = engine ?? const SoLoudLoopEngine();
+
+  /// The audio engine the loop drives.
+  final LoopAudioEngine _engine;
 
   /// Where each sound is loaded, or missing if it isn't.
   final Map<SoundKey, AudioSource> sources;
@@ -53,7 +58,7 @@ class SoundLoop {
   void play(String name, {double at = 0, Duration fade = Duration.zero}) {
     final source = _source(name);
     if (source == null) return;
-    final soloud = SoLoud.instance;
+    final soloud = _engine;
     try {
       final old = _handle;
       final fades = fade > Duration.zero;
@@ -112,7 +117,7 @@ class SoundLoop {
   void setVolume(double value) {
     final handle = _handle;
     if (handle == null) return;
-    final soloud = SoLoud.instance;
+    final soloud = _engine;
     try {
       if (soloud.getIsValidVoiceHandle(handle)) soloud.setVolume(handle, value);
     } catch (e) {
@@ -130,7 +135,7 @@ class SoundLoop {
     if (handle == null || name == null) return null;
     final source = _source(name);
     if (source == null) return null;
-    final soloud = SoLoud.instance;
+    final soloud = _engine;
     try {
       if (!soloud.getIsValidVoiceHandle(handle)) return null;
       final lengthMs = soloud.getLength(source).inMilliseconds;
@@ -165,7 +170,7 @@ class SoundLoop {
   void _seek(SoundHandle handle, AudioSource source, double at) {
     final share = at.clamp(0.0, 1.0).toDouble();
     if (share <= 0) return;
-    final soloud = SoLoud.instance;
+    final soloud = _engine;
     try {
       soloud.seek(handle, soloud.getLength(source) * share);
     } catch (e) {
@@ -176,7 +181,7 @@ class SoundLoop {
   /// Fades [handle] to silence over [fade] and stops it when it is there; with
   /// no fade it stops at once.
   void _fadeOut(SoundHandle handle, Duration fade) {
-    final soloud = SoLoud.instance;
+    final soloud = _engine;
     try {
       if (!soloud.getIsValidVoiceHandle(handle)) return;
       if (fade <= Duration.zero) {
@@ -194,7 +199,7 @@ class SoundLoop {
   }
 
   void _stopVoice(SoundHandle handle) {
-    final soloud = SoLoud.instance;
+    final soloud = _engine;
     try {
       if (soloud.getIsValidVoiceHandle(handle)) unawaited(soloud.stop(handle));
     } catch (e) {
@@ -208,11 +213,86 @@ class SoundLoop {
   }
 
   void _pauseVoice(SoundHandle handle, bool paused) {
-    final soloud = SoLoud.instance;
+    final soloud = _engine;
     try {
       if (soloud.getIsValidVoiceHandle(handle)) soloud.setPause(handle, paused);
     } catch (e) {
       log('Could not ${paused ? 'pause' : 'resume'} the music: $e');
     }
   }
+}
+
+/// The engine calls [SoundLoop] makes, named as flutter_soloud names them, so
+/// a test can stand in for the audio engine and watch them (M14 B-004).
+abstract interface class LoopAudioEngine {
+  /// Starts [source] and returns the voice it sounds in.
+  SoundHandle play(AudioSource source, {required bool looping, required double volume});
+
+  /// Marks [handle] as one the engine must not steal while a busier voice
+  /// wants its slot (M14 B-004).
+  void setProtectVoice(SoundHandle handle, bool protect);
+
+  /// Whether [handle] is still a voice the engine knows.
+  bool getIsValidVoiceHandle(SoundHandle handle);
+
+  /// Moves [handle] to [position].
+  void seek(SoundHandle handle, Duration position);
+
+  /// How long [source] sounds.
+  Duration getLength(AudioSource source);
+
+  /// How far [handle] has played.
+  Duration getPosition(SoundHandle handle);
+
+  /// Moves [handle] to [to] of its volume over [time].
+  void fadeVolume(SoundHandle handle, double to, Duration time);
+
+  /// Stops [handle] at once.
+  Future<void> stop(SoundHandle handle);
+
+  /// Holds [handle] where it is, or lets it carry on.
+  void setPause(SoundHandle handle, bool pause);
+
+  /// Sets how loud [handle] sounds now.
+  void setVolume(SoundHandle handle, double volume);
+}
+
+/// [LoopAudioEngine] on the one engine the app runs (flutter_soloud).
+class SoLoudLoopEngine implements LoopAudioEngine {
+  const SoLoudLoopEngine();
+
+  // Read at each call, not kept: the engine starts, restarts and stops while
+  // the loop lives (M14 g3).
+  SoLoud get _soloud => SoLoud.instance;
+
+  @override
+  SoundHandle play(AudioSource source, {required bool looping, required double volume}) =>
+      _soloud.play(source, looping: looping, volume: volume);
+
+  @override
+  void setProtectVoice(SoundHandle handle, bool protect) => _soloud.setProtectVoice(handle, protect);
+
+  @override
+  bool getIsValidVoiceHandle(SoundHandle handle) => _soloud.getIsValidVoiceHandle(handle);
+
+  @override
+  void seek(SoundHandle handle, Duration position) => _soloud.seek(handle, position);
+
+  @override
+  Duration getLength(AudioSource source) => _soloud.getLength(source);
+
+  @override
+  Duration getPosition(SoundHandle handle) => _soloud.getPosition(handle);
+
+  @override
+  void fadeVolume(SoundHandle handle, double to, Duration time) => _soloud.fadeVolume(handle, to, time);
+
+  @override
+  Future<void> stop(SoundHandle handle) => _soloud.stop(handle);
+
+  @override
+  void setPause(SoundHandle handle, bool pause) => _soloud.setPause(handle, pause);
+
+  @override
+  void setVolume(SoundHandle handle, double volume) => _soloud.setVolume(handle, volume);
 }
