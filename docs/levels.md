@@ -95,7 +95,7 @@ A piece's `at` is where its outline's **origin** goes on the board. The origin i
 | Field | What it is |
 | --- | --- |
 | `name` | What the players read in the puzzle list. |
-| `level` | `"easy"` or `"medium"`: which list it is in and which rules below it keeps. Hard is not used yet, so a file may not say `"hard"`: the schema, the parser and `check` refuse it, as `tools/level.sh new puzzle` does. |
+| `level` | `"easy"` or `"medium"`: which list it is in and which rules below it keeps. Hard has its rules ([below](#rules-by-level)) since B-012b, but no file may say `"hard"` yet: the schema, the parser and `tools/level.sh new puzzle` still refuse it, and take it in the job that updates the tests saying so. |
 | `notes` | Optional, free text, ignored by the app. |
 | `pieces` | The pieces, in drawing order (below). |
 
@@ -120,16 +120,18 @@ Pieces are drawn in the order they are written: a later piece lies over an earli
 
 #### Turning and symmetry
 
-A piece needs turning when `rotated` is set. Every puzzle in the library starts at least 2 pieces turned, and an Easy one no more than 2. A circle doesn't count, since it can't be turned. A square comes back onto itself every quarter turn, a rectangle every half turn, a regular polygon every `360° / corners`, a circle at any angle (so a circle can't be turned and must not be `rotated`). The app snaps a piece onto its outline by the nearest look-alike angle, so a circle with `rotated` would be unfair, and `check` says so.
+A piece needs turning when `rotated` is set, and it then starts at a random angle at least **30°** from any correct one. Every puzzle in the library starts at least 2 pieces turned, an Easy one no more than 2 and a Hard one every piece that is not a circle. A circle doesn't count, since it can't be turned. A square comes back onto itself every quarter turn, a rectangle every half turn, a regular polygon every `360° / corners`, a circle at any angle (so a circle can't be turned and must not be `rotated`). The app snaps a piece onto its outline by the nearest look-alike angle, so a circle with `rotated` would be unfair, and `check` says so.
 
 ### Rules by level
 
-| | Easy | Medium |
-| --- | --- | --- |
-| Pieces | 4 to 5 | 6 to 8 |
-| Turned pieces (`rotated`, not circles) | exactly 2 | at least 2 |
-| Big pieces (`big`) | any | 1 or 2 |
-| Pieces of one shape and size | none | at most one pair |
+| | Easy | Medium | Hard |
+| --- | --- | --- | --- |
+| Pieces | 4 to 5 | 6 to 8 | 10 to 12 |
+| Turned pieces (`rotated`, not circles) | exactly 2 | at least 2 | every one, at least 6 |
+| Big pieces (`big`) | any | 1 or 2 | 3 or 4 |
+| Pieces of one shape and size | none | at most one pair | at most two pairs |
+
+A Hard puzzle is harder by its pieces, not by its clock: every piece that is not a circle starts turned, so there are at least six to turn back, and three or four of them are big, carried by two players together. The 10 to 12 above is a ceiling the picture still has to earn: the **8.5 mm floor** and the tray rules decide the real count, and a picture whose smallest piece is under the floor is refused whatever its level. The numbers are `hardMinPieces` and its neighbours in [`puzzle_rule_levels.dart`](../packages/puzzle_game/lib/src/puzzle_rule_levels.dart).
 
 Every puzzle, whatever its level, also keeps these: each piece's outline lies on the board; the pieces fit the tray on one board and on the split screen, at every one of the tray's starts (seeds 0 to 199), where no piece may leave the tray or overlap another; every piece stands out from the board in Sunny and Night; two pieces of one puzzle are told apart unless they share a shape; the finished picture spans at least 60% of the board's width or height, so it reads as one picture rather than a few pieces in a corner. `tools/level.sh check` prints every rule the file breaks, one line each, with a message saying what to change. The rules themselves live in [`puzzle_rules.dart`](../packages/puzzle_game/lib/src/puzzle_rules.dart) and its parts.
 

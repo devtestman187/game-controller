@@ -89,8 +89,10 @@ enum Level {
   bool get colouredOutlines => this == easy;
 }
 
-/// The levels a puzzle file may say (m14 g1): [Level.hard] is in the enum for
-/// the difficulty to come, but has no rules yet, so a file may not use it.
+/// The levels a puzzle file may say (m14 g1): Easy and Medium. [Level.hard]
+/// has its rules since B-012b (`puzzle_rule_levels.dart`), but no file may say
+/// "hard" until this parser, the schema and the tests that assert the refusal
+/// take it, which is a job of its own.
 const puzzleLevels = ['easy', 'medium'];
 
 /// The refusal of a level this build does not have, in the same words in the
@@ -124,7 +126,8 @@ final class PieceSpec {
   final Offset target;
   final double targetAngle;
 
-  /// Starts at a random angle at least 30° from correct.
+  /// Starts at a random angle at least `minStartDeg` from correct (30° today,
+  /// at every level; `start_angles.dart`).
   final bool rotated;
 
   /// A big piece (teams carry it together, M11).

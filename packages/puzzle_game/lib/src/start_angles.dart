@@ -2,9 +2,14 @@ import 'dart:math';
 
 import 'puzzle.dart';
 
+/// The least a turned piece starts away from any correct angle, in degrees: a
+/// piece that started closer would look almost right, so there would be
+/// nothing to turn. Every level's turned pieces start at least this far off.
+const minStartDeg = 30.0;
+
 /// Each piece's start angle: a turned piece (rotated, and not a circle) at a
-/// random angle at least 30° from any correct one (up to 50 tries, as now),
-/// the others at their target angle. In degrees, 0 to 360.
+/// random angle at least [minStartDeg] from any correct one (up to 50 tries, as
+/// now), the others at their target angle. In degrees, 0 to 360.
 Map<int, double> startAngles(Puzzle puzzle, Random random) {
   final starts = <int, double>{};
   for (final (i, spec) in puzzle.pieces.indexed) {
@@ -12,7 +17,7 @@ Map<int, double> startAngles(Puzzle puzzle, Random random) {
     if (spec.rotated && spec.shape.symmetry != 0) {
       for (var tries = 0; tries < 50; tries++) {
         angle = spec.targetAngle + random.nextDouble() * 360;
-        if (angleError(angle, spec.targetAngle, spec.shape.symmetry) >= 30) break;
+        if (angleError(angle, spec.targetAngle, spec.shape.symmetry) >= minStartDeg) break;
       }
     }
     starts[i] = angle % 360;
@@ -21,7 +26,7 @@ Map<int, double> startAngles(Puzzle puzzle, Random random) {
 }
 
 /// Start angles for a split-screen tray: each turned piece (rotated, not a
-/// circle) at an allowed angle (at least 30° from any correct one, by
+/// circle) at an allowed angle (at least [minStartDeg] from any correct one, by
 /// [angleError] with the shape's symmetry) whose box is within 10% of the
 /// smallest allowed box height ([flat] true: for a tray below the board) or
 /// width ([flat] false: for a tray beside it), chosen at random among those,
@@ -42,7 +47,7 @@ Map<int, double> compactStartAngles(Puzzle puzzle, Random random, {required bool
       final sizes = <int, double>{};
       var smallest = double.infinity;
       for (var a = 0; a < 360; a++) {
-        if (angleError(a.toDouble(), spec.targetAngle, shape.symmetry) < 30) continue;
+        if (angleError(a.toDouble(), spec.targetAngle, shape.symmetry) < minStartDeg) continue;
         final box = shape.bounds(a.toDouble());
         allowed.add(a);
         sizes[a] = flat ? box.height : box.width;

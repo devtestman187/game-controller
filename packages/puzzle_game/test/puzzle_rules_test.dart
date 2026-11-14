@@ -131,18 +131,6 @@ void main() {
     );
   });
 
-  test('a Hard puzzle is refused until it has rules, in the parser\'s words', () {
-    final hard = Puzzle(
-      id: 'x',
-      name: 'x',
-      level: Level.hard,
-      pieces: [
-        PieceSpec(id: 'a', shape: PieceShape.rect(4, 4), color: PiecePalette.red.color, target: const Offset(20, 20)),
-      ],
-    );
-    expect(messagesOf(hard, PuzzleRule.level).single, endsWith(notALevel('hard')));
-  });
-
   test('the finished picture spans at least 60% of the board\'s width or height', () {
     final corner = puzzleOf(
       '${rect('a', 8, 8, 12, 12)}, ${rect('b', 8, 8, 22, 12)}, ${rect('c', 8, 8, 12, 22)}, ${rect('d', 8, 8, 22, 22)}',
