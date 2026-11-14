@@ -5,13 +5,15 @@ import 'package:party_host/party_host.dart';
 import 'package:party_host/testing.dart';
 import 'package:protocol/protocol.dart';
 import 'package:puzzle_game/puzzle_game.dart';
+import 'package:test_game/test_game.dart';
 
 import 'support/host_harness.dart';
 import 'support/night_harness.dart';
 
 void main() {
   /// A night's first Shape Race round, played solo by P1 from the start card:
-  /// the round is running when this returns. The host's Chaos setting is
+  /// the card starts the round itself (B-002), so no join screen is pressed on,
+  /// and the round is running when this returns. The host's Chaos setting is
   /// [chaos] when the round starts.
   Future<FakeHostService> openNightRound(WidgetTester tester, {Chaos chaos = Chaos.little}) async {
     final fake = await pumpHost(tester, screen: const StubHome());
@@ -22,7 +24,6 @@ void main() {
     await tester.tap(find.byKey(const Key('puzzle-house')));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
-    await startRound(tester, fake);
     return fake;
   }
 
@@ -67,7 +68,6 @@ void main() {
     await tester.tap(find.byKey(const Key('puzzle-house')));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
-    await startRound(tester, fake);
 
     final round = appContainer(tester).read(partyNightProvider)!;
     expect(round.isNextRoundTheLast, isTrue);
@@ -90,6 +90,108 @@ void main() {
     expect(settings.night, isFalse);
     expect(settings.chaos, Chaos.party);
     expect(appContainer(tester).read(partyNightProvider), isNull);
+  });
+
+  testWidgets('a one-player night round skips the join screen and starts solo', (tester) async {
+    final fake = await pumpHost(tester, screen: const StubHome());
+    await neutral(tester, fake, ['p1']);
+    await openNight(tester);
+    await pickShapeRaceRound(tester);
+    await tester.tap(find.byKey(const Key('puzzle-house')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+
+    expect(find.byType(JoinScreen), findsNothing, reason: 'nobody to wait for, no sides to pick (B-002)');
+    expect(find.byType(PuzzleScreen), findsOneWidget);
+    final view = tester.widget<PuzzlePlayView>(find.byType(PuzzlePlayView));
+    final match = tester.state<PuzzlePlayViewState>(find.byType(PuzzlePlayView)).match;
+    expect(match.teams, {'p1': PuzzleSide.left}, reason: 'the only player takes the one board');
+    expect(match.format, MatchFormat.solo);
+    expect(view.settings().night, isTrue);
+  });
+
+  testWidgets('a night round with two players still gets the join screen', (tester) async {
+    final fake = await pumpHost(tester, screen: const StubHome());
+    fake.state = withController(fake.state, phoneInfo('p2', 2));
+    fake.emit();
+    await neutral(tester, fake, ['p1', 'p2']);
+    await openNight(tester);
+    await pickShapeRaceRound(tester);
+    await tester.tap(find.byKey(const Key('puzzle-house')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+
+    expect(find.byType(JoinScreen), findsOneWidget, reason: 'teams may change between rounds');
+    expect(find.byType(PuzzleScreen), findsNothing);
+
+    await startRace(tester, fake);
+    final match = tester.state<PuzzlePlayViewState>(find.byType(PuzzlePlayView)).match;
+    expect(match.teams, {'p1': PuzzleSide.left, 'p2': PuzzleSide.right});
+    expect(match.format, MatchFormat.oneVsOne);
+  });
+
+  testWidgets('a phone joining a solo night round waits for the next round, which gets the join screen', (
+    tester,
+  ) async {
+    final fake = await openNightRound(tester);
+    final teams = tester.state<PuzzlePlayViewState>(find.byType(PuzzlePlayView)).match.teams;
+    expect(teams, {'p1': PuzzleSide.left});
+
+    // P2 joins while the round runs: a running round's teams never change.
+    fake.state = withController(fake.state, phoneInfo('p2', 2));
+    fake.emit();
+    await tester.pump();
+    final running = tester.state<PuzzlePlayViewState>(find.byType(PuzzlePlayView)).match;
+    expect(running.teams, {'p1': PuzzleSide.left}, reason: 'the newcomer waits for the next round');
+
+    // The next round's pick has two players, so its join screen is back.
+    lockEveryPiece(tester);
+    await endRound(tester);
+    await tester.tap(find.byKey(const Key('next')));
+    await navigated(tester);
+    await pickShapeRaceRound(tester);
+    await tester.tap(find.byKey(const Key('puzzle-house')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.byType(JoinScreen), findsOneWidget);
+  });
+
+  testWidgets('a one-player night Bumper round skips the waiting card and starts at once', (tester) async {
+    final fake = await pumpHost(tester, screen: const StubHome());
+    await neutral(tester, fake, ['p1']);
+    await openNight(tester);
+    await tapVisible(tester, find.byKey(const Key('nightBumper')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    // The round starts after its first frame, once the maps are in.
+    await roundStarted(tester);
+
+    expect(find.byKey(const Key('arenaWaitingCard')), findsNothing, reason: 'nobody to ready (B-002)');
+    expect(arenaSnapshot(tester).mode, ArenaMode.bumper);
+    expect(tester.widget<ArenaView>(find.byType(ArenaView)).roundTags, ['night_1of3']);
+  });
+
+  testWidgets('a night Bumper round with two players still gets the waiting card', (tester) async {
+    final fake = await pumpHost(tester, screen: const StubHome());
+    fake.state = withController(fake.state, phoneInfo('p2', 2));
+    fake.emit();
+    await neutral(tester, fake, ['p1', 'p2']);
+    await openNight(tester);
+    await tapVisible(tester, find.byKey(const Key('nightBumper')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+
+    expect(find.byKey(const Key('arenaWaitingCard')), findsOneWidget, reason: 'two players ready up');
+    expect(find.byKey(const Key('arena')), findsNothing);
+  });
+
+  testWidgets('outside a night the Arena keeps its waiting card for one player', (tester) async {
+    final fake = await pumpHost(tester, screen: const StubHome());
+    await neutral(tester, fake, ['p1']);
+    await openArenaCard(tester);
+
+    expect(find.byKey(const Key('arenaWaitingCard')), findsOneWidget, reason: 'the map choice matters here');
+    expect(find.byKey(const Key('arena')), findsNothing);
   });
 
   testWidgets('a night round\'s results offer Next alone, and Next records the round and opens the scoreboard', (
@@ -152,7 +254,6 @@ void main() {
     await tester.tap(find.byKey(const Key('puzzle-house')));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
-    await startRound(tester, fake);
     lockEveryPiece(tester);
     await endRound(tester);
 

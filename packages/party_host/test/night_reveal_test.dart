@@ -131,7 +131,7 @@ void main() {
     await tester.tap(find.byKey(const Key('puzzle-house')));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
-    await startRound(tester, fake);
+    // One player: the pick starts the round itself (B-002), so no A presses.
     lockEveryPiece(tester);
     await endRound(tester);
 

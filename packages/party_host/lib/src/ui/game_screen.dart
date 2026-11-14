@@ -26,6 +26,7 @@ import 'lobby_music.dart';
 import 'night_reveal_screen.dart';
 import 'night_scoreboard_screen.dart';
 import 'pause_menu.dart';
+import 'solo_skip.dart';
 
 /// Keys that show or hide the debug overlay: OK on the remote (and Enter),
 /// the remote's Info or Menu key if it has one, and D or F3 on a keyboard.
@@ -47,7 +48,8 @@ final _debugKeys = {
 ///
 /// A round has three stages, one owner each (M14 design section 8): the waiting
 /// card (codes, the modes, the maps and Robo's level, and each phone's ready),
-/// the field ([GameField]) with its 3-2-1, and the Bumper Round's results.
+/// the field ([GameField]) with its 3-2-1, and the Bumper Round's results. A
+/// night with one player skips the card (B-002): the round starts at once.
 class GameScreen extends ConsumerStatefulWidget {
   const GameScreen({super.key, this.game});
 
@@ -75,8 +77,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
 
   late final LocalPlayerSource _keyboard;
 
-  /// Where the round's moments go (m12 bug 1107e): the Diagnostics screen reads
-  /// them back.
+  /// Where the round's moments go (m12 bug 1107e): Diagnostics reads them back.
   late final LogSink _log;
 
   /// The host's music (M13 design section 8): this round reports its clock and
@@ -85,13 +86,12 @@ class _GameScreenState extends ConsumerState<GameScreen> {
   /// providers any more.
   late final HostMusic _music;
 
-  /// The results' first button takes the focus, for the remote's OK and a
-  /// phone's A.
+  /// The results' first button takes the focus, for the remote's OK and a phone's A.
   final _againFocus = FocusNode(debugLabel: 'arenaAgain');
 
-  /// The screen's own focus: the waiting card's buttons take it while the card
-  /// is up, and the round takes it back as it starts, so the keyboard and the
-  /// remote's Escape reach the round.
+  /// The screen's own focus: the waiting card's buttons take it while it is up,
+  /// and the round takes it back as it starts, so the keyboard and the remote's
+  /// Escape reach the round.
   final _screenFocus = FocusNode(debugLabel: 'arenaScreen');
 
   /// The screen's randomness, made once here at the edge: Surprise me's map and
@@ -101,6 +101,12 @@ class _GameScreenState extends ConsumerState<GameScreen> {
   /// How this round runs (m12 §3): its frame rate, read when the round starts
   /// so a change of the setting waits for the next one.
   late final HostingSettings _hosting;
+
+  /// Whether this round skips the waiting card: a night's one player (B-002).
+  late final bool _alone = skipsLobby(
+    inNight: ref.read(partyNightProvider) != null,
+    players: ref.read(gamePlayersProvider).where((p) => !p.away).length,
+  );
 
   _Stage _stage = _Stage.waiting;
 
@@ -328,6 +334,8 @@ class _GameScreenState extends ConsumerState<GameScreen> {
 
   Widget _stageBody(NightState? night) {
     switch (_stage) {
+      case _Stage.waiting when _alone:
+        return SoloRoundStart(onStart: _start);
       case _Stage.waiting:
         return ArenaWaitingCard(bumperOnly: night != null, surpriseFirst: night != null, onStart: _start);
       // The results stand over the field, never in its place: a

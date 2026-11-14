@@ -26,8 +26,9 @@ const nightStartCardWidthPx = 1040.0;
 /// line when Chaos isn't off, and the two buttons that pick round 1.
 ///
 /// The night starts on the first game's press and the round follows: Shape Race
-/// goes through its puzzle pick and join screen as it does outside a night
-/// (design section 2 N6), so the teams may change there.
+/// goes through its puzzle pick as it does outside a night (design section 2
+/// N6), and its join screen when two or more players are in, so the teams may
+/// change there; a night's one player starts the round on its own board (B-002).
 class NightStartScreen extends ConsumerStatefulWidget {
   const NightStartScreen({super.key, this.seed});
 
@@ -69,8 +70,8 @@ class _NightStartScreenState extends ConsumerState<NightStartScreen> {
   }
 
   /// Starts the night and its first round, the Bumper Round: the Arena's
-  /// waiting card follows, as Shape Race's pick and join screens do (design
-  /// section 2 N6).
+  /// waiting card follows, as Shape Race's join screen does (design section 2
+  /// N6), unless the night's one player has nobody to ready (B-002).
   void _startBumperRound() {
     ref.read(partyNightProvider.notifier).start(length: _length, awards: _awards);
     _open(const GameScreen());
