@@ -140,6 +140,22 @@ void main() {
     expect(sounds.loopStops.last, HostMusic.resultsFade);
   });
 
+  // M14 B-004: the round's piece is the mode's, never the map's. Every map the
+  // kit ships puts a Bumper Round on the Arena's piece, so a map can't be left
+  // silent by a picker, a table or a start that knows some maps and not others.
+  for (final map in testMaps().maps.where((map) => map.bumper != null)) {
+    testWidgets('${map.name}: its Bumper Round plays the Arena\'s piece', (tester) async {
+      final fake = await pumpHost(tester, screen: const StubHome());
+      await neutral(tester, fake, ['p1']);
+      await openArenaCard(tester);
+      await tapVisible(tester, find.byKey(Key('arenaMap-${map.id}')));
+      await readyUp(tester, fake);
+      await roundStarted(tester);
+      expect(sounds.loop, 'arena', reason: 'the map picks the field, and the round picks the music');
+      expect(sounds.loopStarts, ['lobby', 'arena'], reason: 'the lobby gives way to the Arena\'s piece');
+    });
+  }
+
   testWidgets('the results end the round\'s music with a short fade', (tester) async {
     await openRound(tester);
     expect(sounds.loop, 'round');

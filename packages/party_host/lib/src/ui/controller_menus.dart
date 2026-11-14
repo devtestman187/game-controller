@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:connection/connection.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:protocol/protocol.dart';
 
@@ -85,6 +86,10 @@ class ControllerMenus extends ConsumerStatefulWidget {
   /// A held direction repeats after this, then every [repeatEvery].
   static const repeatAfter = Duration(milliseconds: 450);
   static const repeatEvery = Duration(milliseconds: 150);
+
+  /// The key a phone's A stands for: the remote's OK, which
+  /// [hostActivateShortcuts] maps to [ActivateIntent] like the gamepad's A.
+  static const okKey = LogicalKeyboardKey.gameButtonA;
 
   @override
   ConsumerState<ControllerMenus> createState() => _ControllerMenusState();
@@ -254,11 +259,31 @@ class _ControllerMenusState extends ConsumerState<ControllerMenus> {
           _focusSomethingPressable();
           return;
         }
-        Actions.maybeInvoke(focus!.context!, const ActivateIntent());
+        // The key goes up before it goes down again, like a remote's.
+        _liftOk(focus!);
+        Actions.maybeInvoke(focus.context!, const ActivateIntent());
       case _Key.b:
         // The navigator of whatever has the focus: the screen or a dialog.
         final context = focus?.context;
         if (context != null) Navigator.maybeOf(context)?.maybePop();
+    }
+  }
+
+  /// Lets the OK go up around [focus], the way the remote's key does after a
+  /// press, so the next A press starts from nothing held.
+  ///
+  /// A host button presses once and then waits for its key to come back up, so
+  /// a held key's auto-repeat doesn't press it again; a phone's A brings no key
+  /// events of its own, so without this a button worked on the first press only
+  /// while the remote's kept working (M14 bugs B-008 and B-013).
+  static void _liftOk(FocusNode focus) {
+    const up = KeyUpEvent(
+      timeStamp: Duration.zero,
+      physicalKey: PhysicalKeyboardKey.gameButtonA,
+      logicalKey: ControllerMenus.okKey,
+    );
+    for (final node in [focus, ...focus.ancestors]) {
+      if (node.onKeyEvent?.call(node, up) == KeyEventResult.handled) return;
     }
   }
 
