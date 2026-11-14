@@ -1,5 +1,5 @@
 import 'dart:math';
-import 'dart:ui' show FragmentProgram;
+import 'dart:ui' show FragmentProgram, Picture, PictureRecorder;
 
 import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
@@ -20,6 +20,7 @@ import 'snapshot.dart';
 import 'split_layout.dart';
 import 'worker_moments.dart';
 
+part 'board_cache.dart';
 part 'board_hud.dart';
 part 'cat_head.dart';
 part 'cat_paint.dart';
@@ -68,6 +69,10 @@ class _PuzzleViewState extends State<PuzzleView> {
   final _moments = PieceMoments();
   final _catMoments = CatMoments();
   late final _workers = WorkerMoments(widget.puzzle);
+
+  /// What the board draws the same way from frame to frame (M14 bugs3 B-016).
+  final _cache = BoardCache();
+
   late final Stopwatch _clock = widget.clock ?? (Stopwatch()..start());
 
   /// The one board as the match the moments see it: they are kept per board,
@@ -105,6 +110,7 @@ class _PuzzleViewState extends State<PuzzleView> {
       moments: _moments,
       catMoments: _catMoments,
       workers: _workers,
+      cache: _cache,
       nowMs: _nowMs,
       timeLimitS: widget.timeLimitS,
       cat: widget.cat,
@@ -176,6 +182,9 @@ class _MatchViewState extends State<MatchView> {
   final _moments = PieceMoments();
   final _catMoments = CatMoments();
   late final _workers = WorkerMoments(widget.puzzle);
+
+  /// What the boards draw the same way from frame to frame (M14 bugs3 B-016).
+  final _cache = BoardCache();
   late final Stopwatch _clock = widget.clock ?? (Stopwatch()..start());
 
   /// How long the round has spent paused, and since when it has been paused, in
@@ -232,6 +241,7 @@ class _MatchViewState extends State<MatchView> {
               moments: _moments,
               catMoments: _catMoments,
               workers: _workers,
+              cache: _cache,
               nowMs: _nowMs,
               timeLimitS: widget.timeLimitS,
               target: widget.target,
@@ -247,6 +257,7 @@ class _MatchViewState extends State<MatchView> {
               moments: _moments,
               catMoments: _catMoments,
               workers: _workers,
+              cache: _cache,
               nowMs: _nowMs,
               timeLimitS: widget.timeLimitS,
               cat: snapshot.cat,

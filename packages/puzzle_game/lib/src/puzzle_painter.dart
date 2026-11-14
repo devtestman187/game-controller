@@ -20,6 +20,7 @@ class PuzzlePainter extends CustomPainter {
     this.moments,
     this.catMoments,
     this.workers,
+    this.cache,
     this.nowMs = 0,
     this.board = 0,
     this.timeLimitS,
@@ -48,6 +49,11 @@ class PuzzlePainter extends CustomPainter {
   /// What every player's worker is doing (design 5a), fed the snapshots as
   /// [moments] are. Null: every player stands empty-handed.
   final WorkerMoments? workers;
+
+  /// What this board draws the same way from frame to frame (M14 bugs3
+  /// B-016), kept by the view between frames: its still parts and each piece's
+  /// path while the piece lies where it did. Null: each frame records its own.
+  final BoardCache? cache;
 
   /// This screen's px per millimetre, for the smallest a worker's body may be
   /// on a phone (design 5a); null where the board is drawn on a TV or in a
@@ -116,8 +122,8 @@ class PuzzlePainter extends CustomPainter {
     final px = _pxPerUnit(canvas);
     final styles = _styles(px);
 
-    _panels(canvas, px, styles.rest);
-    _picture(canvas, px, styles);
+    _stillParts(canvas, size, px);
+    _movingPieces(canvas, px, styles);
     _paintWorkers(canvas, s, px);
     if (cat case final c?) {
       paintCat(
@@ -141,19 +147,30 @@ class PuzzlePainter extends CustomPainter {
     canvas.restore();
   }
 
-  /// The slots, the placed picture and the loose and carried pieces, in the
-  /// order they lie.
-  void _picture(Canvas canvas, double px, _Styles styles) {
-    final targets = Iterable<int>.generate(puzzle.pieces.length);
+  /// The board's still parts — the mat and the tray, the empty slots, the
+  /// finish's glow and the pieces locked in place — drawn from the picture the
+  /// [cache] recorded while nothing in its [StaticBoardKey] changed (M14 bugs3
+  /// B-016: with two players the TV's frame rate was choppy, and these were
+  /// built again every frame, shaders, blurs and dashes and all).
+  void _stillParts(Canvas canvas, Size size, double px) {
+    final cache = this.cache;
+    if (cache == null) return _recordStill(canvas, px);
+    canvas.drawPicture(cache.stillParts(stillKey(size), (still) => _recordStill(still, px)));
+  }
+
+  /// The still parts in the field's own units, on a canvas at its top left.
+  void _recordStill(Canvas canvas, double px) {
+    final styles = _styles(px);
     final lockedIn = {
       for (final (i, p) in s.pieces.indexed)
         if (p.state == PieceState.locked) _targetOf(i): i,
     };
     final filled = lockedIn.keys.toSet();
+    _panels(canvas, px, styles.rest);
     // Every empty target's slot is drawn under the picture, so a piece placed
     // in front of one stays raised and whole (design section 5, decided at
     // device test 3).
-    for (final t in targets) {
+    for (var t = 0; t < puzzle.pieces.length; t++) {
       if (!filled.contains(t)) _slot(canvas, t, px, styles.rest);
     }
     // The finished picture's warm rim goes under it, so the pieces keep their
@@ -161,18 +178,22 @@ class PuzzlePainter extends CustomPainter {
     _paintGlow(canvas, px);
     // Then the picture in its own order: each target shows the piece locked in
     // it, or its outline, so a door's outline stays on top of a placed wall.
-    for (final t in targets) {
+    for (var t = 0; t < puzzle.pieces.length; t++) {
       final piece = lockedIn[t];
-      piece != null ? _piece(canvas, piece, styles, filled) : _outline(canvas, t, px, styles.rest);
+      piece != null ? _piece(canvas, piece, styles, filled: filled) : _outline(canvas, t, px, styles.rest);
     }
-    // Then loose pieces lowest layer first, so the pile looks as it lies,
-    // carried pieces, and the dots on top of everything.
+  }
+
+  /// The pieces that move frame to frame: the loose ones lowest layer first, so
+  /// the pile looks as it lies, then the carried ones and their dots on top of
+  /// everything.
+  void _movingPieces(Canvas canvas, double px, _Styles styles) {
     for (final i in s.order) {
       final p = s.pieces[i];
-      if (p.state != PieceState.locked && p.state != PieceState.held) _piece(canvas, i, styles, filled);
+      if (p.state != PieceState.locked && p.state != PieceState.held) _piece(canvas, i, styles);
     }
     for (final (i, p) in s.pieces.indexed) {
-      if (p.state == PieceState.held) _piece(canvas, i, styles, filled);
+      if (p.state == PieceState.held) _piece(canvas, i, styles);
     }
   }
 
@@ -243,14 +264,17 @@ class PuzzlePainter extends CustomPainter {
     return best;
   }
 
-  void _piece(Canvas canvas, int i, _Styles styles, Set<int> filled) {
+  void _piece(Canvas canvas, int i, _Styles styles, {Set<int> filled = const {}}) {
     final p = s.pieces[i];
     final spec = puzzle.pieces[i];
     final at = Offset(p.x, p.y);
     // A piece still in the tray is smaller on the split screen; from its
     // first pickup on it is full size.
     final scale = p.state == PieceState.tray ? field.trayScale : 1.0;
-    final path = _path(spec.shape, at, p.angle, scale: scale);
+    // A piece that hasn't moved since the last frame keeps the path it had
+    // (M14 bugs3 B-016), so a tray's pieces cost their shape once.
+    Path shape() => _path(spec.shape, at, p.angle, scale: scale);
+    final path = cache?.pathOf(board, i, at, p.angle, scale, shape) ?? shape();
     final wrong = p.state == PieceState.wrong;
     final age = _age(i);
     final boing = age == null ? 1.0 : PieceMoments.boingScale(age, effects: look.effects);
