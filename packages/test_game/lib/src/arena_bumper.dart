@@ -1,5 +1,11 @@
 part of 'arena.dart';
 
+/// How long a dropped coin is out of its dropper's reach, in seconds: the
+/// dropper's dizzy second and then its safe second, after which it may take
+/// the coin back (party-night §7, B-005). Anyone else may take it from the
+/// drop, so the scatter stays fair; 0 lets a marble take its coin back at once.
+const double dropLockS = ArenaFieldRules.dizzyS + ArenaFieldRules.safeS;
+
 /// The Bumper Round (party-night §7, M14 G9): four marbles on the map's
 /// bumper starts, shoving each other for coins.
 ///
@@ -97,13 +103,14 @@ final class _BumperGame extends ArenaGame {
   }
 
   /// Every coin a marble is touching is taken: a coin's worth (two for a gold
-  /// one), and it's gone. A coin still sparkling can't be taken, and a dropped
-  /// coin can't be taken back by its dropper (party-night §7).
+  /// one), and it's gone. A coin still sparkling can't be taken, and a coin
+  /// its dropper dropped is the dropper's again once it has lain for
+  /// [dropLockS] (party-night §7).
   void _takeCoins(List<GameEvent> events) {
     final reach = playerRadiusPx + ArenaCoin.radius * size.shortestSide;
     for (final p in players) {
       for (final coin in List.of(_list)) {
-        if (coin.sparkling || coin.dropper == p.id) continue;
+        if (coin.sparkling || _outOfReach(coin, p)) continue;
         if ((pixelOf(coin.position) - p.position).distance >= reach) continue;
         _list.remove(coin);
         p.coins += coin.gold ? ArenaCoin.goldValue : 1;
@@ -119,6 +126,11 @@ final class _BumperGame extends ArenaGame {
       }
     }
   }
+
+  /// Whether [coin] is still out of [p]'s reach: a coin [p] dropped and that
+  /// has not yet lain for [dropLockS] is anyone's but its dropper's
+  /// (party-night §7).
+  static bool _outOfReach(ArenaCoin coin, ArenaPlayer p) => coin.dropper == p.id && coin.ageS < dropLockS;
 
   /// Brings out a new coin for each one taken, at a free spot of a coin zone,
   /// never under a marble and never on a wall or another coin. A coin out in

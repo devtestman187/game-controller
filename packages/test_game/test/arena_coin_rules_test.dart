@@ -31,6 +31,21 @@ void main() {
       return events;
     }
 
+    /// Shoves [who] into the field's right wall until it drops a coin, adding
+    /// the way's events to [events], and returns the coin: it lands within
+    /// its dropper's reach.
+    ArenaCoin shoveIntoWall(ArenaGame g, ArenaPlayer who, List<GameEvent> events) {
+      who.shove(const Offset(600, 0));
+      for (var i = 0; i < 120 && who.coinsDropped == 0; i++) {
+        events.addAll(g.update(1 / 60, {for (final p in g.players) p.id: p.id == who.id ? right : GameInput.none}));
+      }
+      return g.coins.where((c) => c.dropper == who.id).single;
+    }
+
+    /// The four starts of the shove tests: b by the field's right edge, which
+    /// is the wall it is shoved into.
+    const wallStarts = [Offset(0.30, 0.50), Offset(0.90, 0.50), Offset(0.88, 0.20), Offset(0.88, 0.80)];
+
     test('a coin that just came out sparkles for a second and can\'t be taken', () {
       final g = bumper(ids: const ['a'], starts: const [Offset(0.20, 0.50), ...fourStarts]);
       step(g, 1 / 60);
@@ -107,32 +122,64 @@ void main() {
       expect([me.dizzy, me.safe], [true, true], reason: 'it still pays the drop');
     });
 
-    test('a shove into a wall drops one coin, and the dropper can\'t take it back', () {
-      // b starts by the field's right edge, which is the wall it is shoved into.
-      final g = bumper(
-        ids: const ['a', 'b'],
-        starts: const [Offset(0.30, 0.50), Offset(0.90, 0.50), Offset(0.88, 0.20), Offset(0.88, 0.80)],
-      );
+    test('a shove into a wall drops one coin, and its dropper waits to take it back', () {
+      final g = bumper(ids: const ['a', 'b'], starts: wallStarts);
       final b = g.player('b')!..coins = 2;
-      // The shove another marble's bump leaves (party-night section 7).
-      b.shove(const Offset(600, 0));
       final events = <GameEvent>[];
-      for (var i = 0; i < 120 && b.coinsDropped == 0; i++) {
-        events.addAll(g.update(1 / 60, {'a': GameInput.none, 'b': right}));
-      }
+      final dropped = shoveIntoWall(g, b, events);
       expect(b.coinsDropped, 1, reason: 'shoved into the wall, one coin');
+      expect(b.coins, 1);
       expect(events.where((e) => e.cause == GameEventCause.coinLost).single.sound, ArenaSounds.coinLost);
-      final dropped = g.coins.where((c) => c.dropper == 'b').single;
 
-      // The dropper can't take it back; anyone else takes it at once.
-      standOn(g, b, dropped);
-      step(g, 1 / 60);
-      expect(b.coins, 1, reason: 'the dropped coin isn\'t its dropper\'s to take');
+      // It lands within its dropper's reach, and is out of it all the same:
+      // at 1.9 s, a tenth short of the wait, the marble has its old count.
+      run(g, dropLockS - 0.1);
+      final waiting = g.coins.singleWhere((c) => c.position == dropped.position);
+      expect(waiting.ageS, greaterThan(dropLockS - 0.2), reason: 'most of the wait is over');
+      expect(waiting.ageS, lessThan(dropLockS), reason: 'but not all of it');
+      expect(b.coins, 1, reason: 'a dropped coin is anyone\'s but its dropper\'s for the wait');
+
+      // The wait runs out and the dropper takes it back.
+      run(g, 0.2);
+      expect(b.coins, 2, reason: 'after the wait the coin is its dropper\'s again');
+      expect(stillThere(g, dropped), isFalse);
+    });
+
+    test('another marble takes a dropped coin at once', () {
+      final g = bumper(ids: const ['a', 'b'], starts: wallStarts);
+      final b = g.player('b')!..coins = 2;
+      final dropped = shoveIntoWall(g, b, []);
       final a = g.player('a')!;
       standOn(g, a, dropped);
-      step(g, 1 / 60);
-      expect(a.coins, 1);
+      final events = step(g, 1 / 60);
+      expect(a.coins, 1, reason: 'the drop is anyone\'s at once');
       expect(stillThere(g, dropped), isFalse);
+      expect(b.coins, 1, reason: 'while its dropper is still shut out');
+      expect(events.where((e) => e.cause == GameEventCause.coin).single.sound, ArenaSounds.coin);
+    });
+
+    test('a coin its dropper took back can be dropped again', () {
+      final g = bumper(
+        ids: const ['a'],
+        starts: const [Offset(0.20, 0.50), ...fourStarts],
+        hazards: const [HazardSpec.still(Offset(0.50, 0.50))],
+      );
+      final me = g.player('a')!..coins = 2;
+      walkIntoHazard(g, me, 1);
+      expect([me.coinsDropped, me.coins], [1, 1], reason: 'the drain takes one coin');
+      expect(g.coins.where((c) => c.dropper == 'a'), hasLength(1));
+
+      // The drain sent it back to its start, its coin lying on the way in.
+      // Past the wait it takes the coin back on its way in, and the drain
+      // takes that same coin again.
+      run(g, dropLockS);
+      walkIntoHazard(g, me, 2);
+      expect([me.coinsDropped, me.coins], [2, 1], reason: 'the coin it took back is dropped again');
+      expect(g.coins.where((c) => c.dropper == 'a'), hasLength(1), reason: 'one drop lies on the field');
+    });
+
+    test('a dropped coin is out of its dropper\'s reach for 2 s', () {
+      expect(dropLockS, 2.0, reason: 'the shortest wait the owner offered; play test tunes it');
     });
 
     test('a shove that runs into no wall drops nothing', () {
