@@ -73,6 +73,16 @@ Workers cannot run `tools/review.sh` or some shell commands in their sandbox; th
 - Result 3 (a protected file changed) and any file outside `allow:` that is not on the always-fine list.
 - Anything touching security, the owner's accounts, releases or the standing rules below.
 
+## Batch rules (owner, Nov 14, 2026: so these slips do not happen again)
+
+1. **Tests-first is a gate.** A brief is done only when the runner's evidence (`run.log`, `run-findings.md`) shows each new test failing on the old code; a worker's claim in its report does not count. Put a new test in a new file, so the runner can check it.
+2. **Nothing is left open.** Every finding in `REVIEW.md` and every runner warning is closed before the batch is reported: fixed, or written to `docs/code-health.md` (code debt) or to the tracker row (owner decision), with a reason.
+3. **Unmeasured causes are not "Fixed".** A fix whose cause was not measured or reproduced says so in its report Summary; its tracker row gets status Fixed plus the agent note "Fixed, unverified: needs device check", and the batch report lists it. When the cause is unknown, prefer a measuring or logging step first.
+4. **Hand-copying from a kept worktree** after a stop is allowed only if `tools/review.sh` and the job's tests are re-run on the copied tree before the commit, and it is logged in `run.log`.
+5. **Verify before reporting.** The batch agent runs the full `tools/check.sh` on the final tip, and checks claims (tests-first, fixed counts) against `run.log` and `REVIEW.md`, not the reports.
+6. **Never `git add -A` or `git add .`**: stage named paths only (line-ending noise in generated plugin files and PNGs).
+7. **`allow:` separator is ` · `** (space, middle dot, space), never a plain space: a space-separated list is read as one path and every file is "outside".
+
 ## Before a build
 
 Before any tag or tester build, Claude does one review of its own of the milestone's whole change, however the work was done. The worker reviews narrow where to look; they do not replace it.

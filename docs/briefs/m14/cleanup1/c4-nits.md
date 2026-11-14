@@ -12,6 +12,6 @@ No code change except item 1's comment.
 
 in the report: start with `## Summary` (at most 30 lines, in its first 40 lines): each item done / not done, decisions. Then Self-check: docs/review-rules.md part A, items 1-5, one line each.
 rules: aim for under 100 turns · no lib file you touch may end over 380 lines: split it (the runner stops the run otherwise) · no function over 60 lines · every text a player sees goes through the text files · write only inside this job's folder and the allow: paths · leave no scratch file behind in the repository · never touch tv_test_app/windows/flutter/generated_plugin* or PNG files
-allow: docs/briefs/m14/cleanup1 docs/code-health.md packages/test_game/lib/src/arena_piece_painter.dart
+allow: docs/briefs/m14/cleanup1 · docs/code-health.md · packages/test_game/lib/src/arena_piece_painter.dart
 check: format analyze arena
 report: docs/briefs/m14/cleanup1/c4-nits-report.md

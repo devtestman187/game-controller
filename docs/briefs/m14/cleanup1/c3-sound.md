@@ -10,7 +10,7 @@ The five existing SoundLoop tests pass on the code before B-004's fix, so none p
 If SoLoud cannot be faked without much change, say so under Blocked and do not hack the engine.
 
 in the report: start with `## Summary` (at most 30 lines, in its first 40 lines): each item done / not done, decisions. Then Self-check: docs/review-rules.md part A, items 1-5, one line each.
-rules: aim for under 100 turns · no lib file you touch may end over 380 lines: split it (the runner stops the run otherwise) · no function over 60 lines · every text a player sees goes through the text files · write only inside this job's folder and the allow: paths · leave no scratch file behind in the repository · never touch tv_test_app/windows/flutter/generated_plugin* or PNG files
-allow: docs/briefs/m14/cleanup1 packages/party_host/lib/src/sound_loop.dart packages/party_host/test
+rules: leave no probe or scratch test file (zz_*) behind · aim for under 100 turns · no lib file you touch may end over 380 lines: split it (the runner stops the run otherwise) · no function over 60 lines · every text a player sees goes through the text files · write only inside this job's folder and the allow: paths · leave no scratch file behind in the repository · never touch tv_test_app/windows/flutter/generated_plugin* or PNG files
+allow: docs/briefs/m14/cleanup1 · packages/party_host/lib/src/sound_loop.dart · packages/party_host/lib/src/sound.dart · packages/party_host/test
 check: format analyze host
 report: docs/briefs/m14/cleanup1/c3-sound-report.md

@@ -11,7 +11,8 @@ do:
 3 Report: <anything Claude needs to check: line counts, a move map, computed values>
 self-check: docs/review-rules.md part A, items 1–5, one line each in the report with the test that shows it.
 
+tests: each new test goes in a NEW test file and must fail on the code as it was (the runner proves it and stops otherwise); for a pure refactor or docs job write `tests-first: exempt <reason>` as a header line. A fix whose cause is not measured says so in the Summary ("Fixed, unverified: needs device check").
 rules: <limits beyond the guidelines: sizes, no behaviour or text changes, …> · tools/review.sh: no FAIL on your lines.
-allow: <path> · <path>
+allow: <path> · <path>   (separator is space, middle dot, space)
 check: <check names: format analyze <packages>>
 report: docs/briefs/<milestone>/s<N>-g<gate>-report.md
