@@ -1,2 +1,3 @@
 - tests-first: packages/puzzle_game/test/board_cache_state_test.dart passes on the old code, so it does not prove new behaviour
 - the review of c4-nits wrote no report (see docs/briefs/m14/cleanup1/flash-c4-nits-review.log)
+- Closed by Claude: c2 board_cache_state_test is exempt (test-only hardening; key-removal mutation re-run by Claude, it failed); f1 report wording, c2 dispose claim, doc link fixed; c4's review wrote no report: accepted on the run review's own read; the generated run patch is untracked.

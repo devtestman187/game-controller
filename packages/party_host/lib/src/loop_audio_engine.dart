@@ -1,6 +1,6 @@
 import 'package:flutter_soloud/flutter_soloud.dart';
 
-/// The engine calls [SoundLoop] makes, named as flutter_soloud names them, so
+/// The engine calls the loop (`SoundLoop`) makes, named as flutter_soloud names them, so
 /// a test can stand in for the audio engine and watch them (M14 B-004).
 abstract interface class LoopAudioEngine {
   /// Starts [source] and returns the voice it sounds in.
