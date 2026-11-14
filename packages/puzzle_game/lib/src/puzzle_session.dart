@@ -177,11 +177,13 @@ class PuzzleSession extends GameSession {
     }
   }
 
-  /// The round's tags for its summary (M14's "By game and feature"): the Chaos
-  /// level it played at, `finished` when a side completed the picture (the
-  /// celebration, T15; a round that ran out of time says nothing), and the
-  /// host's own tags. The names are metrics' [RoundTag]s.
+  /// The round's tags for its summary (M14's "By game and feature"): the
+  /// puzzle's level (B-012a), the Chaos level it played at, `finished` when a
+  /// side completed the picture (the celebration, T15; a round that ran out of
+  /// time says nothing), and the host's own tags. The names are metrics'
+  /// [RoundTag]s.
   List<String> _endTags(MatchResult result) => [
+    'level_${match.puzzle.level.name}',
     // The match hands every step's settings to its sides and its cat; a side's
     // game holds the ones the round played at.
     'chaos_${match.sides.first.game.settings.chaos.name}',

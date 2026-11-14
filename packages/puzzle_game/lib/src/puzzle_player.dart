@@ -27,6 +27,17 @@ class PuzzlePlayer {
   double rotatingS = 0;
   int overshoots = 0;
 
+  /// The seconds spent holding a piece near an outline it could fill
+  /// (B-012a): aiming, turning and the drop, whether the angle is right or
+  /// not. [rotatingS] counts the turning of it again; [moveS] is the rest.
+  double placeS = 0;
+
+  /// The seconds this player moved in a round whose clock is [clockS]
+  /// (B-012a): everything but [placeS], so a held piece away from every
+  /// outline and walking with empty hands are both here, and the two add up
+  /// to the clock.
+  double moveS(double clockS) => clockS - placeS;
+
   /// Big pieces this player brought home together with a teammate, snaps that
   /// followed a wrong drop of that piece, and cats shooed (M14 a1: the Best
   /// Helper, Try Again and Cat Catcher awards count these).

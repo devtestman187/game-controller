@@ -43,6 +43,10 @@ final class PuzzleReport {
             'wrongDrops': p.wrongDrops,
             'rotatingS': (p.rotatingS * 10).round() / 10,
             'overshoots': p.overshoots,
+            // Moving against placing (B-012a): the two add up to the side's
+            // clock, which is this player's round.
+            'moveS': (p.moveS(s.game.elapsedS) * 10).round() / 10,
+            'placeS': (p.placeS * 10).round() / 10,
             'placed': sideResult.placed,
             'completionS': ?sideResult.timeS,
             if (s.game.team) ...{

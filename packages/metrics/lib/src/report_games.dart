@@ -22,6 +22,10 @@ abstract final class RoundTag {
   /// The Arena's map, by id: `map_playroom`, `map_toy-factory` (M14 k1b).
   static const map = 'map';
 
+  /// Shape Race's level: `level_easy`, `level_medium`, `level_hard`
+  /// (B-012a), so the report compares levels the way it compares maps.
+  static const level = 'level';
+
   /// Robo's level, on the rounds Robo had a seat in: `robo_easy`,
   /// `robo_medium`, `robo_hard` (party-night §7a).
   static const robo = 'robo';
@@ -49,9 +53,10 @@ const _minuteS = 60.0;
 abstract final class _Group {
   static const game = '0';
   static const map = '1';
-  static const robo = '2';
-  static const chaos = '3';
-  static const night = '4';
+  static const level = '2';
+  static const robo = '3';
+  static const chaos = '4';
+  static const night = '5';
   static const unknown = '9';
 }
 
@@ -66,7 +71,8 @@ const _headers = ['group', 'rounds', 'minutes', 'players', 'avg players', 'finis
 final class FeatureRow {
   FeatureRow({required this.label, required this.sortKey});
 
-  /// The row's first cell: `arena bumper`, `map playroom`, `robo easy`, ….
+  /// The row's first cell: `arena bumper`, `map playroom`, `level medium`,
+  /// `robo easy`, ….
   final String label;
 
   /// Where the row sits in the table ([_Group] and its name).
@@ -144,8 +150,9 @@ Map<String, FeatureRow> gameFeatureRows(List<Map<String, Object?>> summaries) {
 }
 
 /// The report's "By game and feature" table (M14): one row per game and mode,
-/// then rows per map, Robo's level, Chaos level and night round, and the rounds
-/// an older session recorded before these tags, which count as `unknown`.
+/// then rows per map, Shape Race level, Robo's level, Chaos level and night
+/// round, and the rounds an older session recorded before these tags, which
+/// count as `unknown`.
 String gameFeatureTable(List<Map<String, Object?>> summaries) {
   final rows = gameFeatureRows(summaries).values.toList()..sort((a, b) => a.sortKey.compareTo(b.sortKey));
   return plainTable('By game and feature', _headers, [for (final row in rows) _cells(row)]);
@@ -213,6 +220,9 @@ void _addRows(Map<String, FeatureRow> rows, _Features features, void Function(Fe
   add(_rowAt(rows, _Group.game, '${features.game} ${mode ?? ''}', _gameLabel(features.game, mode)));
   for (final id in _valuesOf(features.tags, RoundTag.map)) {
     add(_rowAt(rows, _Group.map, id, 'map $id'));
+  }
+  for (final level in _valuesOf(features.tags, RoundTag.level)) {
+    add(_rowAt(rows, _Group.level, level, 'level $level'));
   }
   for (final level in _valuesOf(features.tags, RoundTag.robo)) {
     add(_rowAt(rows, _Group.robo, level, 'robo $level'));

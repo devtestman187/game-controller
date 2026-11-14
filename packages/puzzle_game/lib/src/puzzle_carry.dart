@@ -85,9 +85,26 @@ extension _PuzzleCarry on PuzzleGame {
     }
   }
 
-  /// How far the player turns their piece this frame, and the rotation
-  /// metrics.
+  /// Whether [p]'s held piece is within [PuzzleSettings.positionTolerance] of
+  /// a free outline it could fill, which is where a drop is measured from
+  /// (B-012a): the angle may still be wrong. A step of holding it there is a
+  /// step of placing, the rest of the round is moving.
+  bool _isPlacing(PuzzlePlayer p) {
+    final held = p.held;
+    if (held == null) return false;
+    final reach = settings.positionTolerance * puzzle.pieces[held].shape.size;
+    for (final i in Iterable<int>.generate(puzzle.pieces.length)) {
+      if (_filled.containsKey(i) || _fitAngle(held, i) == null) continue;
+      if ((pieces[held].pos - targetAt(i)).distance <= reach) return true;
+    }
+    return false;
+  }
+
+  /// How far the player turns their piece this frame, and the rotation and
+  /// placing metrics. It runs once for every player carrying a piece each
+  /// step, which is where a step's placing time is counted (B-012a).
   double _turn(PuzzlePlayer p, GamepadState g, double dt) {
+    if (_isPlacing(p)) p.placeS += dt;
     var turn = 0.0;
     if (g.pressed(GamepadButton.x)) turn += settings.rotationSpeedDegPerS * dt;
     if (g.pressed(GamepadButton.y)) turn -= settings.rotationSpeedDegPerS * dt;

@@ -137,6 +137,28 @@ void main() {
       ]);
     });
 
+    test('a Shape Race level has a row of its own, after the maps and before Robo', () {
+      // Two Shape Race rounds on the playroom map, one at Medium and one at
+      // Hard with Robo in it: the level rows sit beside the map's (B-012a).
+      final text = gameFeatureTable([
+        summary(
+          rounds: [
+            round('puzzle', 60, 60, 1, ['level_medium', 'map_playroom']),
+            round('puzzle', 60, 120, 1, ['level_hard', 'map_playroom', 'robo_easy']),
+          ],
+        ),
+      ]);
+      expect(dataLines(text).map((cells) => cells.first), [
+        'puzzle',
+        'map playroom',
+        'level hard',
+        'level medium',
+        'robo easy',
+      ]);
+      expect(rowOf(text, 'level medium'), ['level medium', '1', '1.0', '1', '1.0', '0', '-', '-', '-']);
+      expect(rowOf(text, 'level hard'), ['level hard', '1', '2.0', '1', '1.0', '0', '-', '-', '-']);
+    });
+
     test('a round without tags counts as unknown rather than disappearing', () {
       // A session from before M14 wrote tags: its rounds and its ratings are
       // all the report can place.
