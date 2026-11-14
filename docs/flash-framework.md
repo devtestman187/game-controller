@@ -29,7 +29,7 @@ Between these, Claude stays silent: no progress messages, no reading of logs or 
 
 1. starts the jobs, skipping any whose report is committed;
 2. applies a job that only strayed into **always-fine files** (an `analysis_options.yaml`, `.gitignore`, `.gitattributes`, a `pubspec.lock`, Flutter's generated plugin files) and names them in the log; any other file outside `allow:` is a stop;
-3. **proves tests-first:** every new test file is run against the code as it was; one that passes there goes into `run-findings.md`;
+3. **proves tests-first:** every new test file is run against the code as it was; one that passes there **stops the run** (like a review FAIL), unless the job's brief has a line `tests-first: exempt <reason>` (pure refactors, docs; the exemption covers only test files under that brief's `allow:` paths and is logged);
 4. runs `tools/check.sh` on the combined tree (on a failure it fetches packages and tries once more), then `tools/review.sh`: a FAIL, or a touched `lib` file over **380 lines**, stops the run;
 5. commits and pushes each job (`tools/commit-job.sh --push`);
 6. has **a second worker review each job** (brief made from `docs/briefs/templates/job-review.md`), which writes `<job>-review-report.md`.
@@ -44,6 +44,7 @@ The header and body follow the existing briefs (see any file in `docs/briefs/m15
 
 - **`decide:`** "low-usage mode: never stop for a question. Make the safest choice that fits the design and list each under 'Decisions' with one line of why. Stop only if the job truly cannot be done; then say why under 'Blocked'."
 - **The report starts with `## Summary`** (at most 30 lines, in its first 40 lines): what was built, the numbers that matter, the decisions, the questions, anything not done. Claude and the reviewers read this block first.
+- **`tests-first: exempt <reason>`** only for jobs that add no behaviour (refactor, docs, test-only hardening of existing code); the runner stops on any other new test that passes on the old code.
 - **In `rules:`** "no lib file you touch may end over 380 lines: split it (the runner stops the run otherwise) · tests first: each new test file must fail on the code as it was (the runner checks this)".
 - **Self-contained context.** A worker cannot ask; a `web: yes` job cannot even read the repository. Quote the owner's words and the decisions the job needs.
 - Two jobs in one wave never share a file in `allow:`.

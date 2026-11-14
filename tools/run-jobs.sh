@@ -16,7 +16,9 @@
 #   2. a job that only changed "always fine" files outside its allow: list
 #      (SAFE_OUTSIDE below) is applied anyway and the files are named in the log;
 #   3. new test files are run against the old code: one that passes there was
-#      not written test-first, and is written to <briefs-dir>/run-findings.md;
+#      not written test-first and STOPS the run, unless the job's brief has a
+#      line `tests-first: exempt <reason>` (pure refactors, docs) and the test
+#      lies under one of its allow: paths;
 #   4. tools/check.sh on the combined tree (packages are fetched and the check
 #      is tried once more before giving up), then tools/review.sh: any FAIL, or
 #      a touched lib file over SIZE_STOP lines, stops the run;
@@ -91,8 +93,12 @@ apply_safe() { # apply_safe <job> <flash-log>; prints the outside files when app
 }
 
 # 3. New test files must fail on the code as it was.
-tests_first() {
-  local tests t pkg cmd tmp=$LOGS/run-old-$$
+tests_first() { # tests_first <job>...
+  local tests t pkg cmd tmp=$LOGS/run-old-$$ j a ex=() bad=()
+  for j in "$@"; do
+    grep -qE '^tests-first: *exempt +[^ ]' "$B/$j.md" || continue
+    for a in $(sed -n 's/^allow: *//p' "$B/$j.md" | tr '·' ' '); do ex+=("$a"); done
+  done
   tests=$(git ls-files --others --exclude-standard -- '*_test.dart')
   [ -n "$tests" ] || return 0
   git worktree add --detach -q "$tmp" HEAD 2>/dev/null || { finding "tests-first could not be checked (no temporary folder)"; return 0; }
@@ -102,10 +108,14 @@ tests_first() {
     mkdir -p "$tmp/$(dirname "$t")" && cp "$t" "$tmp/$t"
     cmd="dart test"; grep -q 'sdk: flutter' "$pkg/pubspec.yaml" 2>/dev/null && cmd="flutter test"
     if ( cd "$tmp/$pkg" && timeout 300 $cmd "${t#"$pkg"/}" >/dev/null 2>&1 ); then
-      finding "tests-first: $t passes on the old code, so it does not prove new behaviour"
+      exempt=0
+      for a in "${ex[@]}"; do case "$t" in "$a"*) exempt=1 ;; esac; done
+      if [ $exempt -eq 1 ]; then note "tests-first: $t passes on the old code, exempt by its brief"
+      else bad+=("$t"); finding "tests-first: $t passes on the old code, so it does not prove new behaviour"; fi
     fi
   done
   git worktree remove --force "$tmp" 2>/dev/null
+  [ ${#bad[@]} -eq 0 ] || stop "tests-first: ${bad[*]} pass on the old code (write them to fail first, or add 'tests-first: exempt <reason>' to the brief for a pure refactor); nothing of this wave is committed"
 }
 
 # 4. The checks, with one self-repair, then the guideline checker.
@@ -183,7 +193,7 @@ for wave in "${WAVES[@]}"; do
   done
   if [ ${#ok[@]} -gt 0 ]; then
     unchurn
-    tests_first
+    tests_first "${ok[@]}"
     checks "${ok[*]}"
     reviewed=()
     for j in "${ok[@]}"; do
