@@ -1,0 +1,3 @@
+i1-ok-presses s1-progress-bar a1-pinball-flags
+a2-arena-size p2-coop-fps pr-arena
+pr-shape pr-party

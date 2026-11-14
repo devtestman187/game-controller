@@ -26,6 +26,7 @@
 # and writes <briefs-dir>/REVIEW.md; Claude reads its Summary and writes one
 # fix brief. Progress and stops: <briefs-dir>/run.log (a STOPPED line with no
 # later `start at` line needs attention).
+# NO_PUSH=1 in the environment commits without pushing.
 # Exit code: 0 done, 1 stopped, 2 bad use.
 set -u
 cd "$(dirname "$0")/.." || exit 2
@@ -60,7 +61,7 @@ save() { # save <message> <path>...: commit and push just these paths
   local msg=$1; shift
   git reset -q; git add -- "$@" 2>/dev/null
   git diff --cached --quiet && return 0
-  git commit -q -m "$msg" && git push -q origin "HEAD:refs/heads/$(git rev-parse --abbrev-ref HEAD)"
+  git commit -q -m "$msg" && { [ -n "${NO_PUSH:-}" ] || git push -q origin "HEAD:refs/heads/$(git rev-parse --abbrev-ref HEAD)"; }
 }
 
 if [ $dry -eq 1 ]; then
@@ -188,7 +189,7 @@ for wave in "${WAVES[@]}"; do
     for j in "${ok[@]}"; do
       head -n 40 "$B/$j-report.md" | grep -q '^## Summary' || finding "$j's report has no Summary block in its first 40 lines"
       from=$(git rev-parse HEAD)
-      tools/commit-job.sh "$B/$j.md" --push >> "$LOGS/run-commit.log" 2>&1 || stop "commit of $j refused (see $LOGS/run-commit.log)"
+      tools/commit-job.sh "$B/$j.md" $([ -n "${NO_PUSH:-}" ] || echo --push) >> "$LOGS/run-commit.log" 2>&1 || stop "commit of $j refused (see $LOGS/run-commit.log)"
       note "committed $j: $(git log --oneline -1)"
       if [ $review -eq 1 ] && ! committed "$B/$j-review-report.md"; then
         review_brief "$j" "$from" "$(git rev-parse HEAD)"; reviewed+=("$j")
