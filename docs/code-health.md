@@ -44,6 +44,8 @@ Every known code change that isn't a feature: review findings and tech debt, gro
 | The beat counts 16 ms ticks, not the host's clock (3008 ms; a stall stretches it). (R2 should) | Low | An exact beat; the same clock as the rest | when touched: `Pausable` |
 | The away log lines remember numbers forever, so a reused number logs wrong. (R2 should) | Very low | Correct logs | when touched |
 | Sizes: `server_game_host.dart` 399 (split before it grows: the away slots' wiring could go with `away_slots.dart`), `pause_menu.dart` 385, `host_fakes.dart` 382, `join_screen.dart` 363, `providers.dart` 389 (the next host provider wants its own file), `host_service.dart` 361; `games_screen.dart` holds two screens (picker, level list). (1107f Q5) | Low | Room for M13's round moments | when touched; `pause_menu` and `providers` before M13 |
+| `GameField` takes 9 constructor parameters (`game`, `playing`, `debug`, `hosting`, `keyboard`, `roundTags`, `onEvent`, `onClock`, `onFinished`; `game_field.dart:18-29`), where a parameter object is due past 5. | Low: the round's wiring, a test at the call site | A new field joins one object | when touched: a parameter object |
+| The local-pad filter is written in two places, in opposite senses: `arena_waiting_card.dart:142` reads only local pads, `controller_menus.dart:155` addresses only phones (the same split in `pause_menu.dart:313`, `pause_menu_widgets.dart:18`). | Low: which pad each screen reads | One rule for local against a phone's pad | when touched: one shared helper |
 
 ### puzzle_game
 | What | Risk | Benefit | Rec. |

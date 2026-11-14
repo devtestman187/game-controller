@@ -10,10 +10,11 @@ import 'arena_snapshot.dart';
 
 /// The pieces a map puts on its floor, drawn from a snapshot only (M14 k2a):
 /// the theme's floor, the belts with their arrows, the springs, the posts, the
-/// decor, the flags over the walls (M14 B-007) and the movers' bars. The shapes follow the mock-ups in
-/// `docs/design/mockup-maps.js`; every colour is a token of [ToyColors] or a
-/// mix of two, so a theme never breaks the look's contrast, and red (`bad`) is
-/// a hazard's alone: a spring is a yellow coil under a green cap.
+/// decor, the flags over the walls (M14 B-007) and the movers' bars. The
+/// shapes follow the mock-ups in `docs/design/mockup-maps.js`; every colour is
+/// a token of [ToyColors] or a mix of two, so a theme never breaks the look's
+/// contrast, and red (`bad`) is a hazard's alone: a spring is a yellow coil
+/// under a green cap.
 ///
 /// Positions are fractions of the field and sizes fractions of its shorter
 /// side, as the snapshot has them, so the same frame draws the same field on
