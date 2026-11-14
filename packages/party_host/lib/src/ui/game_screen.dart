@@ -10,6 +10,7 @@ import 'package:toy_look/toy_look.dart';
 
 import '../controls.dart';
 import '../local_player_source.dart';
+import '../night/night_state.dart';
 import '../night/party_night.dart';
 import '../night/round_results.dart';
 import '../providers.dart';
@@ -325,37 +326,41 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     );
   }
 
-  Widget _stageBody(Object? night) {
-    return switch (_stage) {
-      _Stage.waiting => ArenaWaitingCard(bumperOnly: night != null, surpriseFirst: night != null, onStart: _start),
+  Widget _stageBody(NightState? night) {
+    switch (_stage) {
+      case _Stage.waiting:
+        return ArenaWaitingCard(bumperOnly: night != null, surpriseFirst: night != null, onStart: _start);
       // The results stand over the field, never in its place: a
       // joined phone keeps the round's last frame under its card,
       // so the session must not end (M14 f1, r5 finding 1).
-      _Stage.playing || _Stage.results => Stack(
-        children: [
-          GameField(
-            game: _game!,
-            playing: _stage == _Stage.playing,
-            debug: _debug,
-            hosting: _hosting,
-            keyboard: _keyboard.available,
-            roundTags: _roundTags,
-            onEvent: _onEvent,
-            onClock: _clocked,
-            onFinished: _finished,
-          ),
-          if (_stage == _Stage.results)
-            ArenaResults(
-              result: _result!,
-              night: night != null,
-              againFocus: _againFocus,
-              onAgain: _again,
-              onChangeMode: _changeMode,
-              onNext: _next,
+      case _Stage.playing || _Stage.results:
+        final game = _game;
+        if (game == null) return const SizedBox.shrink();
+        return Stack(
+          children: [
+            GameField(
+              game: game,
+              playing: _stage == _Stage.playing,
+              debug: _debug,
+              hosting: _hosting,
+              keyboard: _keyboard.available,
+              roundTags: _roundTags,
+              onEvent: _onEvent,
+              onClock: _clocked,
+              onFinished: _finished,
             ),
-        ],
-      ),
-    };
+            if (_stage == _Stage.results)
+              ArenaResults(
+                result: _result!,
+                night: night != null,
+                againFocus: _againFocus,
+                onAgain: _again,
+                onChangeMode: _changeMode,
+                onNext: _next,
+              ),
+          ],
+        );
+    }
   }
 
   /// Each frame of the Bumper Round: its clock, for the music's tempo (M14
