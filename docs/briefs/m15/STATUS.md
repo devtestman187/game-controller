@@ -7,6 +7,7 @@ Written Nov 11, 2026 so that any later session (any model) can pick this up cold
 - **State:** the third phone sitting is done and the custom player is DROPPED. Result (wc + tap + separate sound, iPhone): smoke 203 ms, runs 186 / 167 / 159 / 105 ms; freezes in 3 of 4 runs (worst 6 freezes, 4.7 s, one decoder error, one 2.3 s gap). Rule was all four at 150 ms or less and no more freezes than the current player (162/159 and 176/176 ms, 0 freezes): not met. Details: docs/briefs/m15/opt2c/REPORT.md ("Third sitting: result"), journey notes of the same date.
 - **What stays in the tree:** the wc player, tap server and SESSION_AUDIO=separate, all behind default-off switches (`player=wc`, SESSION_TAP, SESSION_AUDIO). The current WebRTC player is the default. Nothing to remove.
 - **Next:** latency work on the stream ends. Next is instant controller feedback (the controller reacts at once, without waiting for the stream). A native viewer stays a later option. No tag, no build for release without the owner's word.
+- **Native viewer plan (Nov 13, 2026):** the owner chose to stop Safari work. Brief and phased roadmap: docs/design/native-viewer-brief.md (Phase 0 spike needs the owner's approval of flutter_webrtc in a throwaway app).
 - **Left as they are (small open items):** receive-to-decode 35-40 ms in wc after the fixes (not investigated); the marker raises slow frames to 12-13% (measuring tool only); card and marker can disagree when sound is separate (reduced by opt2c g5).
 - Superseded notes follow.
 

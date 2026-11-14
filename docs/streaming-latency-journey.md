@@ -187,3 +187,4 @@ Short dated notes of key data, decisions and challenges, appended as the work go
 - Nov 13, 2026 — finding: the opt2c fix worked on the phone: 0 key requests in 4 of 5 runs, 3 in the worst; the keyframe storm is gone.
 - Nov 13, 2026 — finding: receive-to-decode rose from about 5 ms (second sitting, healthy run) to 35-40 ms in every run after the fixes, about two frames. Likely a cost of the new catch-up and newest-frame drawing; not investigated.
 - Nov 13, 2026 — challenge: the phone path is not stable. Press-to-screen ranged 105-203 ms across five runs, and one run still hit a 2.3 s gap with a decoder error and a rebuild. A fast best case (105 ms) did not make up for the spread, which is why the rule asked for every run.
+- Nov 13, 2026 — decision: the owner chose to stop Safari work and asked for a native viewer plan; brief and phased roadmap at docs/design/native-viewer-brief.md (research in docs/briefs/m15/research/native-viewer/).

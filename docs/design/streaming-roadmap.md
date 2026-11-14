@@ -58,3 +58,7 @@ For screens that can run our game code (Android TV, phones, tablets, Windows), t
 ## What stays true throughout
 
 Local play never depends on the server ("local first, online when needed"). Automation and control features are built once in the shared host code for every build (design §6a). Builds, tags and tester promotion happen only on the owner's word. Each phase gets its own milestone, branch and STATUS file; M14-style bug fixes on older branches are merged forward.
+
+## Native viewer (plan, Nov 13, 2026)
+
+A native viewer app for phones and TVs, with its own phased roadmap, is scoped in docs/design/native-viewer-brief.md. It would replace the browser player where that is too slow; nothing is built yet.
