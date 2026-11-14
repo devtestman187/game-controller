@@ -19,6 +19,7 @@ import '../night/party_night.dart';
 import '../night/round_results.dart';
 import '../players_away.dart';
 import '../providers.dart';
+import '../puzzle_bag.dart';
 import '../text/host_text.dart';
 import '../text/night_text.dart';
 import '../text/record_text.dart';
@@ -34,6 +35,7 @@ import 'puzzle_best_times.dart';
 import 'puzzle_choice.dart';
 import 'puzzle_photo.dart';
 
+part 'puzzle_pick.dart';
 part 'puzzle_results_widgets.dart';
 part 'puzzle_screen_widgets.dart';
 
@@ -113,6 +115,8 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
   bool _cardShown = false;
   Timer? _cardTimer;
 
+  /// The puzzle this round plays (B-009): the one the caller's match holds, or
+  /// the one the level's bag drew as the screen opened.
   Puzzle? _puzzle;
   bool _handedOver = false;
 
@@ -129,6 +133,15 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
     final format = MatchFormat.of(widget.teams);
     _log('Round started: $puzzleGameName, ${format.label}, ${_playersLine(widget.teams.length)}');
     _music = ref.read(lobbyMusicProvider)..roundScreenOpened(this);
+    unawaited(_pickedPuzzle().then(_showPuzzle));
+  }
+
+  /// Shows the puzzle this round plays (B-009), once the library has answered
+  /// and the bag has drawn. Called here, not from the part, because
+  /// [setState] is the state's own to call.
+  void _showPuzzle(Puzzle? picked) {
+    if (!mounted || picked == null) return;
+    setState(() => _puzzle = picked);
   }
 
   @override
@@ -147,16 +160,6 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
       return KeyEventResult.handled;
     }
     return KeyEventResult.ignored;
-  }
-
-  Puzzle? _pick(PuzzleLibrary library) {
-    final id = widget.choice.puzzleId;
-    if (id != null) return _puzzle ??= library.byId(id);
-    if (_puzzle != null) return _puzzle;
-    final all = library.ofLevel(widget.choice.level);
-    final others = all.where((p) => p.id != widget.avoidPuzzleId).toList();
-    final from = others.isEmpty ? all : others;
-    return _puzzle = from.isEmpty ? null : from[_random.nextInt(from.length)];
   }
 
   void _finished(MatchResult r) {
@@ -218,30 +221,6 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
     Navigator.of(context).pushReplacement(MaterialPageRoute<void>(builder: (_) => screen));
   }
 
-  /// The first button on the results (m12 bug 1108e), by what this round
-  /// played: a round that found its puzzle from `any <level> puzzle` plays
-  /// another of the level, so its button says Next puzzle; a round of one
-  /// chosen puzzle, or of a level that holds only this one, plays it again, as
-  /// Rematch in a race and Play again on one board.
-  ///
-  /// A night's round has one button, Next (M14 c1, design section 4): the
-  /// round is over and the night goes on, so there is nothing to play again
-  /// and the teams are picked in the next round's join screen anyway.
-  _AgainButton get _again {
-    if (ref.read(partyNightProvider) != null) {
-      return (label: NightText.next, icon: Icons.skip_next, key: 'next', focusNode: _againFocus, onPressed: _next);
-    }
-    final race = _result?.format.split ?? false;
-    final level = widget.choice.level;
-    final another = (ref.read(puzzleLibraryProvider).whenOrNull(data: (l) => l.ofLevel(level).length) ?? 0) > 1;
-    final (label, icon, key) = widget.choice.puzzleId == null && another
-        ? (HostText.nextPuzzle, Icons.skip_next, 'nextPuzzle')
-        : race
-        ? (HostText.rematch, Icons.replay, 'rematch')
-        : (HostText.playAgain, Icons.replay, 'playAgain');
-    return (label: label, icon: icon, key: key, focusNode: _againFocus, onPressed: _rematch);
-  }
-
   /// A night's Next (M14 c1, design section 4): the round is recorded, and the
   /// scoreboard follows — or, after the night's last round, the awards' reveal,
   /// whose final scores take the scoreboard's place (job c2). Everything above
@@ -269,17 +248,6 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
     return night == null ? settings : NightChaos.settingsForRound(settings, lastRound: night.isNextRoundTheLast);
   }
 
-  /// The first button's press: the same teams; a random puzzle becomes
-  /// another one of the level.
-  void _rematch() {
-    _log('Results: ${_again.label}');
-    _replaceWith(
-      PuzzleScreen(choice: widget.choice, teams: widget.teams, keyboard: _keyboard, avoidPuzzleId: _puzzle?.id),
-    );
-  }
-
-  void _changeTeams() => _replaceWith(JoinScreen(choice: widget.choice, teams: widget.teams, keyboard: _keyboard));
-
   /// The same camera rule as a viewer's (m12-phone-layout §3): this phone's
   /// own side of a phones match, the whole match otherwise or on a tablet.
   PuzzleCamera get _camera => PuzzleCamera.forPlayer(
@@ -291,7 +259,7 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final puzzle = widget.match?.puzzle ?? ref.watch(puzzleLibraryProvider).whenOrNull(data: _pick);
+    final puzzle = widget.match?.puzzle ?? _puzzle;
     final result = _result;
     // The round's sky stands still (design section 6): a drifting background
     // under a board only costs a phone its battery.

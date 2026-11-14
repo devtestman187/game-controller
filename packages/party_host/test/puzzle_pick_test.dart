@@ -1,0 +1,96 @@
+import 'dart:convert';
+
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:party_host/party_host.dart';
+import 'package:party_host/src/puzzle_bag.dart';
+import 'package:puzzle_game/puzzle_game.dart';
+
+import 'support/host_harness.dart';
+import 'support/night_harness.dart';
+
+/// Which puzzle a round plays (B-009, design section 2): the next id of its
+/// level's bag, drawn once, and a puzzle chosen by hand leaving the bag without
+/// a draw.
+void main() {
+  /// The puzzle the round on the screen plays.
+  String? playedPuzzle(WidgetTester tester) => tester.widget<PuzzlePlayView>(find.byType(PuzzlePlayView)).puzzle.id;
+
+  /// The bag the host holds, as it reads when the next round draws.
+  Object? savedBag(WidgetTester tester) {
+    final raw = appContainer(tester).read(prefsProvider).getString('puzzleBag');
+    return raw == null ? null : jsonDecode(raw);
+  }
+
+  /// Puts [bag] in the host's prefs, as an earlier round would have left it.
+  Future<void> saveBag(WidgetTester tester, Map<String, Object> bag) async {
+    await appContainer(tester).read(prefsProvider).setString('puzzleBag', jsonEncode(bag));
+  }
+
+  /// Opens a round on the host, as the join screen does, for [choice].
+  Future<void> openRound(WidgetTester tester, PuzzleChoice choice) async {
+    tester
+        .state<NavigatorState>(find.byType(Navigator))
+        .push(
+          MaterialPageRoute<void>(
+            builder: (_) => PuzzleScreen(choice: choice, teams: const {'p1': PuzzleSide.left}),
+          ),
+        );
+    await navigated(tester);
+  }
+
+  // Every id of a level, in the bag's order: a bag that held fewer would be a
+  // build that ships more, and those ids join the cycle shuffled (B-009).
+  const easy = ['house', 'rocket', 'tree', 'sun', 'fish', 'snowman'];
+  const medium = ['boat', 'car', 'robot', 'train', 'castle', 'butterfly'];
+
+  testWidgets('an any-puzzle round plays its level\'s next id from the bag, and the bag moves on', (tester) async {
+    await pumpHost(tester, screen: const StubHome());
+    await saveBag(tester, {'easy': easy});
+    await openRound(tester, const PuzzleChoice(level: Level.easy));
+
+    expect(playedPuzzle(tester), 'house', reason: 'the bag\'s first id is the next puzzle');
+    expect(savedBag(tester), {
+      'easy': ['rocket', 'tree', 'sun', 'fish', 'snowman'],
+    }, reason: 'the drawn id leaves the bag, and nothing else moves');
+  });
+
+  testWidgets('an any-puzzle round draws from its own level\'s bag', (tester) async {
+    await pumpHost(tester, screen: const StubHome());
+    await saveBag(tester, {'easy': easy, 'medium': medium});
+    await openRound(tester, const PuzzleChoice(level: Level.medium));
+
+    expect(playedPuzzle(tester), 'boat');
+    expect(savedBag(tester), {
+      'easy': easy,
+      'medium': ['car', 'robot', 'train', 'castle', 'butterfly'],
+    }, reason: 'only the medium bag moved');
+  });
+
+  testWidgets('a chosen puzzle leaves the bag without a draw; the next any-puzzle round plays on', (tester) async {
+    await pumpHost(tester, screen: const StubHome());
+    await saveBag(tester, {'easy': easy});
+    await openRound(tester, const PuzzleChoice(level: Level.easy, puzzleId: 'house'));
+
+    expect(playedPuzzle(tester), 'house');
+    expect(savedBag(tester), {
+      'easy': ['rocket', 'tree', 'sun', 'fish', 'snowman'],
+    }, reason: 'the chosen puzzle leaves the bag, and nothing else moves');
+
+    tester.state<NavigatorState>(find.byType(Navigator)).pop();
+    await navigated(tester);
+    expect(appContainer(tester).read(puzzleBagProvider).waitingFor(Level.easy), [
+      'rocket',
+      'tree',
+      'sun',
+      'fish',
+      'snowman',
+    ]);
+    await openRound(tester, const PuzzleChoice(level: Level.easy));
+    expect(
+      playedPuzzle(tester),
+      'rocket',
+      reason: 'the next any-puzzle round plays the bag\'s next id, not the choice again',
+    );
+  });
+}
