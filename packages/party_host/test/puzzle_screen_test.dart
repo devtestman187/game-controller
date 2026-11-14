@@ -38,7 +38,7 @@ Future<void> openRound(
 }
 
 void main() {
-  testWidgets('a finished puzzle shows the time; Play again starts another', (tester) async {
+  testWidgets('a finished puzzle shows the time; Next puzzle leads to another of the series', (tester) async {
     final match = PuzzleMatch(housePuzzle(), teams: const {'p1': PuzzleSide.left}, random: Random(1));
     final game = match.sides.single.game;
     await pumpHost(tester, screen: const StubHome());
@@ -47,8 +47,8 @@ void main() {
         .push(
           MaterialPageRoute<void>(
             builder: (_) => PuzzleScreen(
-              // The house puzzle, chosen: its results say Play again (m12
-              // bug 1108e); an "any puzzle" round says Next puzzle.
+              // The house puzzle, chosen: a series starts (B-011), so its
+              // results say Next puzzle, with Play again beside it.
               choice: PuzzleChoice(level: Level.easy, puzzleId: housePuzzle().id),
               teams: const {'p1': PuzzleSide.left},
               match: match,
@@ -67,12 +67,13 @@ void main() {
     await endRound(tester);
     expect(find.text('Done!'), findsOneWidget);
     expect(find.textContaining('seconds'), findsOneWidget);
-    expect(find.text('Play again'), findsOneWidget, reason: 'a chosen puzzle plays again (m12 bug 1108e)');
-    expect(find.byKey(const Key('playAgain')), findsOneWidget);
+    expect(find.text('Next puzzle'), findsOneWidget, reason: 'a chosen puzzle starts a series (B-011)');
+    expect(find.byKey(const Key('nextPuzzle')), findsOneWidget);
+    expect(find.byKey(const Key('playAgain')), findsOneWidget, reason: 'the series can play this puzzle again');
     expect(sounds.played, contains('success'));
-    // The remote's OK button works at once: Play again has the focus.
+    // The remote's OK button works at once: Next puzzle has the focus.
     await tester.pump();
-    final again = find.descendant(of: find.byKey(const Key('playAgain')), matching: find.byType(Focus)).first;
+    final again = find.descendant(of: find.byKey(const Key('nextPuzzle')), matching: find.byType(Focus)).first;
     expect(Focus.of(tester.element(find.descendant(of: again, matching: find.byType(Text)).first)).hasFocus, isTrue);
   });
 

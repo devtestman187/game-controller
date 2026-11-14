@@ -33,6 +33,10 @@ void main() {
     expect(HostText.seconds(105.94), '105.9 seconds');
     expect(HostText.piecesPlaced(3, 4), '3 of 4 pieces placed');
     expect(HostText.resumerName(2), 'P2 or P1');
+    // A series round's results (B-011).
+    expect(HostText.shuffle, 'Shuffle');
+    expect(HostText.playedEvery('Easy'), 'You have played every Easy puzzle');
+    expect(HostText.continueTo('Medium'), 'Continue to Medium');
     expect(HostText.resumers('P2 or P1'), 'P2 or P1 can resume, with Start or Resume.');
   });
 

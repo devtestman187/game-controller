@@ -128,6 +128,7 @@ abstract final class HostText {
   static const nextPuzzle = 'Next puzzle';
   static const rematch = 'Rematch';
   static const playAgain = 'Play again';
+  static const shuffle = 'Shuffle';
   static const playHint = 'Start on a phone: pause · Back: leave';
   static const playHintKeyboard = 'Arrows, Space, X and Z: play on the keyboard · Start on a phone: pause · Esc: leave';
 
@@ -136,6 +137,14 @@ abstract final class HostText {
 
   /// A side's pieces on the results: "3 of 4 pieces placed".
   static String piecesPlaced(int placed, int total) => '$placed of $total pieces placed';
+
+  /// The line over a series round's results once every puzzle of the level has
+  /// played (B-011): "You have played every Easy puzzle".
+  static String playedEvery(String levelName) => 'You have played every $levelName puzzle';
+
+  /// The button that takes a series on to [levelName] (B-011): "Continue to
+  /// Medium".
+  static String continueTo(String levelName) => 'Continue to $levelName';
 
   // The Arena.
   static const noController = 'No controller connected. Pair a phone on the main screen.';

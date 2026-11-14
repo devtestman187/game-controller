@@ -35,6 +35,7 @@ import 'puzzle_best_times.dart';
 import 'puzzle_choice.dart';
 import 'puzzle_photo.dart';
 
+part 'puzzle_continue.dart';
 part 'puzzle_pick.dart';
 part 'puzzle_results_widgets.dart';
 part 'puzzle_screen_widgets.dart';
@@ -53,6 +54,7 @@ class PuzzleScreen extends ConsumerStatefulWidget {
     this.keyboard,
     this.match,
     this.avoidPuzzleId,
+    this.series,
   });
 
   final PuzzleChoice choice;
@@ -68,6 +70,10 @@ class PuzzleScreen extends ConsumerStatefulWidget {
 
   /// A rematch of a random puzzle picks another one than this, if it can.
   final String? avoidPuzzleId;
+
+  /// The series this round goes on with (B-011): the results' Next puzzle
+  /// carries it. Null for an `any <level> puzzle` round and for a night's.
+  final PuzzleSeries? series;
 
   @override
   ConsumerState<PuzzleScreen> createState() => _PuzzleScreenState();
@@ -120,6 +126,11 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
   Puzzle? _puzzle;
   bool _handedOver = false;
 
+  /// The run of rounds this one belongs to (B-011): carried from the results'
+  /// Next puzzle, or started here by a hand-picked puzzle. A night's rounds
+  /// keep their own card (design section 4), so no series runs through them.
+  PuzzleSeries? _series;
+
   @override
   void initState() {
     super.initState();
@@ -133,15 +144,27 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
     final format = MatchFormat.of(widget.teams);
     _log('Round started: $puzzleGameName, ${format.label}, ${_playersLine(widget.teams.length)}');
     _music = ref.read(lobbyMusicProvider)..roundScreenOpened(this);
+    _series = ref.read(partyNightProvider) == null ? widget.series ?? _startedSeries() : null;
     unawaited(_pickedPuzzle().then(_showPuzzle));
   }
 
   /// Shows the puzzle this round plays (B-009), once the library has answered
-  /// and the bag has drawn. Called here, not from the part, because
-  /// [setState] is the state's own to call.
+  /// and the bag has drawn; the round's id joins the series (B-011), so Next
+  /// never plays it again. Here, not in the part: [setState] is the state's own.
   void _showPuzzle(Puzzle? picked) {
     if (!mounted || picked == null) return;
-    setState(() => _puzzle = picked);
+    setState(() {
+      _puzzle = picked;
+      _series = _series?.withPlayed(picked.id);
+    });
+  }
+
+  /// The results' Shuffle switch (B-011): the series remembers it for the
+  /// rounds that follow. Here, like [_showPuzzle], for [setState]'s sake.
+  void _shuffle(bool isOn) {
+    final series = _series;
+    if (series == null) return;
+    setState(() => _series = series.withShuffled(isOn));
   }
 
   @override
@@ -219,23 +242,6 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
   void _replaceWith(Widget screen) {
     _handedOver = true;
     Navigator.of(context).pushReplacement(MaterialPageRoute<void>(builder: (_) => screen));
-  }
-
-  /// A night's Next (M14 c1, design section 4): the round is recorded, and the
-  /// scoreboard follows — or, after the night's last round, the awards' reveal,
-  /// whose final scores take the scoreboard's place (job c2). Everything above
-  /// the game picker goes, so a night of five rounds leaves a phone five routes,
-  /// not fifteen.
-  void _next() {
-    final result = _result;
-    if (result == null) return;
-    _log('Results: ${NightText.next}');
-    ref.read(partyNightProvider.notifier).recordRound(result.round);
-    final over = ref.read(partyNightProvider)?.isOver ?? false;
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute<void>(builder: (_) => over ? const NightRevealScreen() : const NightScoreboardScreen()),
-      isGamePickerRoute,
-    );
   }
 
   /// The settings this round plays with (M14 c1): a night's round counts its
@@ -346,17 +352,24 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
                     ),
                   ),
                   if (_cardShown && result != null)
+                    // A phone host's screen is short, and a series' card is
+                    // taller than the round's own (B-011's prompt and its
+                    // buttons): the card scrolls rather than losing a button.
                     Center(
-                      child: _Results(
-                        result: result,
-                        teams: widget.teams,
-                        total: puzzle.pieces.length,
-                        again: _again,
-                        onChangeTeams: _changeTeams,
-                        night: ref.read(partyNightProvider) != null,
-                        puzzle: puzzle,
-                        match: _play.currentState?.match,
-                        times: _times,
+                      child: SingleChildScrollView(
+                        child: Center(
+                          child: _Results(
+                            result: result,
+                            teams: widget.teams,
+                            total: puzzle.pieces.length,
+                            menu: _menu,
+                            onChangeTeams: _changeTeams,
+                            night: ref.read(partyNightProvider) != null,
+                            puzzle: puzzle,
+                            match: _play.currentState?.match,
+                            times: _times,
+                          ),
+                        ),
                       ),
                     ),
                 ],

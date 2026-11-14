@@ -226,19 +226,26 @@ void main() {
     expect(find.byKey(const Key('puzzleResults')), findsOneWidget);
 
     final focus = argb(ToyLookScope.of(tester.element(find.byKey(const Key('puzzleResults')))).colors.focus);
-    expect(
-      edgeInk(await screenPixels(tester), _focusedRect(tester), focus),
-      greaterThan(0),
-      reason: 'Play again is ringed',
-    );
-    for (final key in ['changeTeams', 'resultsBack']) {
-      await press(tester, fake, 'p1', GamepadButton.dpadRight);
-      expect(_inside(key), isTrue, reason: 'right reaches $key');
+    Future<void> ringed(String key) async {
+      expect(_inside(key), isTrue, reason: 'the pad reached $key');
       expect(
         edgeInk(await screenPixels(tester), _focusedRect(tester), focus),
         greaterThan(0),
         reason: '$key is ringed',
       );
+    }
+
+    await ringed('nextPuzzle');
+    // The series' buttons take two rows on a host's screen (B-011): right along
+    // the first, then down to Back and left to Change teams.
+    for (final (direction, key) in [
+      (GamepadButton.dpadRight, 'shuffle'),
+      (GamepadButton.dpadRight, 'rematch'),
+      (GamepadButton.dpadDown, 'resultsBack'),
+      (GamepadButton.dpadLeft, 'changeTeams'),
+    ]) {
+      await press(tester, fake, 'p1', direction);
+      await ringed(key);
     }
   });
 

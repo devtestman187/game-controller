@@ -3,13 +3,14 @@ part of 'puzzle_screen.dart';
 /// The results over the board: the winner, each side's finished picture as a
 /// photo (design 3a), its time or pieces placed, its best time and any new
 /// record (T15), and the first button (Rematch, Play again or Next puzzle),
-/// Change teams and Back (T14). A night's round keeps only its Next (M14 c1).
+/// Change teams and Back (T14). A night's round keeps only its Next (M14 c1);
+/// a round of a series adds Next puzzle and the Shuffle switch (B-011).
 class _Results extends ConsumerWidget {
   const _Results({
     required this.result,
     required this.teams,
     required this.total,
-    required this.again,
+    required this.menu,
     required this.onChangeTeams,
     required this.night,
     required this.puzzle,
@@ -20,7 +21,10 @@ class _Results extends ConsumerWidget {
   final MatchResult result;
   final Map<String, PuzzleSide> teams;
   final int total;
-  final _AgainButton again;
+
+  /// What this round's results offer (B-011): its first button, its Play again
+  /// and, in a series, the Shuffle switch and the level-done prompt.
+  final _ResultMenu menu;
   final VoidCallback onChangeTeams;
 
   /// The puzzle played, and the round as it left it, for the photos (design
@@ -69,10 +73,18 @@ class _Results extends ConsumerWidget {
               isRecord: times[side]?.isRecord ?? false,
             ),
           const SizedBox(height: ToySizes.space24),
-          _ResultButtons(again: again, onChangeTeams: onChangeTeams, night: night),
+          _buttons(),
         ],
       ),
     );
+  }
+
+  /// The card's buttons: a series round's Wrap (B-011), else the row a night's
+  /// round and an `any <level>` round have always had (T14, M14 c1).
+  Widget _buttons() {
+    final series = menu.series;
+    if (series == null) return _ResultButtons(again: menu.again, onChangeTeams: onChangeTeams, night: night);
+    return _SeriesButtons(again: menu.again, replay: menu.replay, options: series, onChangeTeams: onChangeTeams);
   }
 
   /// Each side's picture as the round left it, side by side under the header

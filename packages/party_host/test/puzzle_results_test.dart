@@ -47,8 +47,9 @@ void main() {
         .push(
           MaterialPageRoute<void>(
             builder: (_) => PuzzleScreen(
-              // The house puzzle, chosen: the first button is Play again, the
-              // board these two tests work through the phone (m12 bug 1108e).
+              // The house puzzle, chosen: a series starts (B-011), so the first
+              // button is Next puzzle, the board these two tests work through
+              // the phone.
               choice: PuzzleChoice(level: Level.easy, puzzleId: housePuzzle().id),
               teams: const {'p1': PuzzleSide.left},
               match: match,
@@ -77,16 +78,24 @@ void main() {
     await phone(tester, fake, 'p1', {GamepadButton.a});
     await phone(tester, fake, 'p1', {});
     expect(find.text('Done!'), findsOneWidget);
-    expect(focused(tester, 'playAgain'), isTrue);
-    // Right moves to Change teams, then Back; left comes back.
-    await press(tester, fake, 'p1', GamepadButton.dpadRight);
-    expect(focused(tester, 'changeTeams'), isTrue);
-    await press(tester, fake, 'p1', GamepadButton.dpadRight);
-    expect(focused(tester, 'resultsBack'), isTrue);
+    expect(focused(tester, 'nextPuzzle'), isTrue);
+    // Right moves along the series' buttons — Shuffle, then Play again — and
+    // the card's second row is reached from there: down to Back, left to
+    // Change teams (B-011's five buttons take two rows on a host's screen).
+    for (final (direction, key) in [
+      (GamepadButton.dpadRight, 'shuffle'),
+      (GamepadButton.dpadRight, 'playAgain'),
+      (GamepadButton.dpadDown, 'resultsBack'),
+      (GamepadButton.dpadLeft, 'changeTeams'),
+    ]) {
+      await press(tester, fake, 'p1', direction);
+      expect(focused(tester, key), isTrue, reason: 'the pad reaches $key');
+    }
+    // Up and left come back to Next puzzle.
+    await press(tester, fake, 'p1', GamepadButton.dpadUp);
     await press(tester, fake, 'p1', GamepadButton.dpadLeft);
-    await press(tester, fake, 'p1', GamepadButton.dpadLeft);
-    expect(focused(tester, 'playAgain'), isTrue);
-    // A presses Play again: a new puzzle starts.
+    expect(focused(tester, 'nextPuzzle'), isTrue);
+    // A presses Next puzzle: a new puzzle starts.
     await press(tester, fake, 'p1', GamepadButton.a);
     await tester.pump(const Duration(milliseconds: 500));
     expect(find.text('Done!'), findsNothing);
@@ -136,8 +145,9 @@ void main() {
         .push(
           MaterialPageRoute<void>(
             builder: (_) => PuzzleScreen(
-              // The house puzzle, chosen: the first button is Play again, the
-              // board these two tests work through the phone (m12 bug 1108e).
+              // The house puzzle, chosen: a series starts (B-011), so the first
+              // button is Next puzzle, the board these two tests work through
+              // the phone.
               choice: PuzzleChoice(level: Level.easy, puzzleId: housePuzzle().id),
               teams: const {'p1': PuzzleSide.left},
               match: match,
@@ -162,21 +172,21 @@ void main() {
 
     await stick(const GamepadState(mode: InputMode.sticks));
     const pushes = [(0.0, -1.0), (0.0, 1.0), (1.0, 0.0), (-1.0, 0.0), (0.8, -0.8), (-0.8, 0.8), (0.8, 0.8)];
+    const buttons = ['nextPuzzle', 'shuffle', 'playAgain', 'changeTeams', 'resultsBack'];
     for (final (x, y) in pushes) {
       await stick(GamepadState(leftX: x, leftY: y, mode: InputMode.sticks));
       await stick(const GamepadState(mode: InputMode.sticks));
-      expect(
-        focused(tester, 'playAgain') || focused(tester, 'changeTeams') || focused(tester, 'resultsBack'),
-        isTrue,
-        reason: 'after a push to ($x, $y)',
-      );
+      expect(buttons.any((key) => focused(tester, key)), isTrue, reason: 'after a push to ($x, $y)');
     }
-    // Back on Play again with the stick, A starts a new puzzle.
-    for (var i = 0; i < 2; i++) {
+    // Back on Next puzzle with the stick, A starts a new puzzle: up returns to
+    // the buttons' first row (B-011) and left to the first button.
+    await stick(const GamepadState(leftY: -1, mode: InputMode.sticks));
+    await stick(const GamepadState(mode: InputMode.sticks));
+    for (var i = 0; i < 4; i++) {
       await stick(const GamepadState(leftX: -1, mode: InputMode.sticks));
       await stick(const GamepadState(mode: InputMode.sticks));
     }
-    expect(focused(tester, 'playAgain'), isTrue);
+    expect(focused(tester, 'nextPuzzle'), isTrue);
     await stick(const GamepadState(buttons: {GamepadButton.a}, mode: InputMode.sticks));
     await stick(const GamepadState(mode: InputMode.sticks));
     await tester.pump(const Duration(milliseconds: 500));
@@ -271,8 +281,8 @@ void main() {
           .push(
             MaterialPageRoute<void>(
               builder: (_) => PuzzleScreen(
-                // The house puzzle, chosen: a chosen race rematches (m12
-                // bug 1108e).
+                // The house puzzle, chosen: a series starts (B-011), with Next
+                // puzzle first and Rematch beside it.
                 choice: PuzzleChoice(level: Level.easy, puzzleId: housePuzzle().id),
                 teams: teams,
                 match: match,
@@ -305,8 +315,8 @@ void main() {
       look.colors.ink,
     );
     expect(tester.widget<Text>(find.byKey(const Key('puzzleResultLine-right'))).data, '0 of 4 pieces placed');
-    expect(find.text('Rematch'), findsOneWidget, reason: 'a chosen race rematches (m12 bug 1108e)');
-    expect(focused(tester, 'rematch'), isTrue, reason: 'Rematch has the focus for the phone and the remote');
+    expect(find.text('Rematch'), findsOneWidget, reason: 'the series can replay the race');
+    expect(focused(tester, 'nextPuzzle'), isTrue, reason: 'Next puzzle has the focus for the phone and the remote');
 
     // Rematch starts another race with the same teams.
     await tester.tap(find.byKey(const Key('rematch')));
