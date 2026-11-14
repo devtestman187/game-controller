@@ -2,7 +2,13 @@
 
 Branch `m14`, worktree `E:\AI\game-controller-m14`, cut from `m13` at 77ccf09 on Nov 9, 2026, after M13's closing review R4 and its fixes. The plan is docs/PRD-v2.md "Milestone 14" (G1–G5, G9, C20, T15, results on joined phones, the Arena waits for its players).
 
-## Resume here (Nov 12, 2026: m14.2 tagged for the owner's device test)
+## Resume here (Nov 14, 2026: the m14.3 device-test bug batch, bugs3, is committed, unpushed)
+
+Owner's bug tracker (artifact 8vDcqYR8QghaGfVPdQDvQR) rows B-001..B-016 worked in low-usage mode: **fixed** B-001 (ab1410e), B-004 and B-007 (2a6e868), B-008 and B-013 (c4e4e00 + 55aa6a1: the phone's OK on every press, the Arena waiting card works from a phone), B-014 (055c81c), B-016 (95da0ac: still-parts cache; not measured on a TV); briefs docs/briefs/m14/bugs3 (run, REVIEW.md), bugs4 (one fix job f3), bugs5 (B-011 proposal). **Proposals ready** (owner confirms or rejects in the tracker): B-002, B-005, B-006, B-009, B-011, B-012, B-015. B-003 and B-010 are Ideas the owner put off to M16. Nothing is pushed (the runner now honours `NO_PUSH=1`), nothing built or tagged. Open for the owner: B-004's fix changes how every sound loop keeps its voice (cause not measured on a device), and device checks of B-008/B-013/B-014/B-016. A tag only on the owner's word; Claude must do its own review of the m14 change before a tag.
+
+## Earlier: m14.2
+
+(Nov 12, 2026: m14.2 tagged for the owner's device test)
 
 The owner's five device-test bugs (look-alike puzzle pieces, the look changing mid-game, starting the Bumper Round on a phone host, coins shown in a Bumper Round, a bigger cat hanging from the top of the screen) are fixed in docs/briefs/m14/bugs1 (five jobs, worker review REVIEW.md) and bugs2 (one fix job, ab06be1). Claude read the rule-side changes before the tag; the 19 minor findings are in docs/code-health.md. Owner, Nov 12: "Yes build it and tag it so I can test" -> `m14.2`. iOS stays internal until the owner says otherwise. Open for the owner: is the cat right hanging over the status strip; the Auto look can now also change during a round.
 
