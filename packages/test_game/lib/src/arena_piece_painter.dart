@@ -10,7 +10,7 @@ import 'arena_snapshot.dart';
 
 /// The pieces a map puts on its floor, drawn from a snapshot only (M14 k2a):
 /// the theme's floor, the belts with their arrows, the springs, the posts, the
-/// decor and the movers' bars. The shapes follow the mock-ups in
+/// decor, the flags over the walls (M14 B-007) and the movers' bars. The shapes follow the mock-ups in
 /// `docs/design/mockup-maps.js`; every colour is a token of [ToyColors] or a
 /// mix of two, so a theme never breaks the look's contrast, and red (`bad`) is
 /// a hazard's alone: a spring is a yellow coil under a green cap.
@@ -72,11 +72,12 @@ class ArenaPiecePainter {
   /// Playroom keeps its dotted mat, which [ArenaPainter] draws.
   void floor(Canvas canvas, Size size) => ArenaFloorPainter(s: s, look: look).paint(canvas, size);
 
-  /// The pieces fixed to the floor: the decor under everything, then the
-  /// belts, the springs and the posts, in the order a marble meets them.
+  /// The pieces fixed to the floor: the floor decor under everything, then the
+  /// belts, the springs and the posts, in the order a marble meets them. The
+  /// flags are not drawn here but in [pennants], over the walls (M14 B-007).
   void pieces(Canvas canvas, Size size) {
     for (final piece in s.decor) {
-      _decor(canvas, piece, size);
+      if (piece.kind != DecorKind.flag) _decor(canvas, piece, size);
     }
     for (final belt in s.belts) {
       _belt(canvas, size, belt);
@@ -86,6 +87,15 @@ class ArenaPiecePainter {
     }
     for (final post in s.posts) {
       _post(canvas, _px(post.at, size), _reach(post.radius, size));
+    }
+  }
+
+  /// The map's flags, over the walls and posts (M14 B-007): a pennant whose
+  /// foot stands at a wall, or on a post, must stand in front of it, or its
+  /// pole and cloth vanish behind it, as Block Castle's two bottom flags did.
+  void pennants(Canvas canvas, Size size) {
+    for (final piece in s.decor) {
+      if (piece.kind == DecorKind.flag) _decor(canvas, piece, size);
     }
   }
 

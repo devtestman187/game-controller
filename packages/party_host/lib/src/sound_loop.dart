@@ -60,6 +60,10 @@ class SoundLoop {
       final handle = soloud.play(source, looping: true, volume: fades ? 0 : volume());
       _handle = handle;
       _name = name;
+      // The music is the oldest voice, so a busy map that fills the engine
+      // (Pinball's bumpers) would have it stolen first, and a stolen loop never
+      // comes back (M14 B-004): it is protected, so effects go before it does.
+      soloud.setProtectVoice(handle, true);
       _seek(handle, source, at);
       if (old != null) _fadeOut(old, Duration.zero);
       if (fades) soloud.fadeVolume(handle, volume(), fade);

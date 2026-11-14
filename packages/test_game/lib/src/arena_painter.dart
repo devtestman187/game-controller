@@ -118,6 +118,7 @@ class ArenaPainter extends CustomPainter {
     }
     pieces.pieces(canvas, size);
     _walls(canvas, px, unit, style);
+    pieces.pennants(canvas, size);
     pieces.movers(canvas, size);
     _hazards(canvas, px, s.hazardRadius * unit, unit, style);
     ArenaCoinPainter(coins: s.coins, radius: s.coinRadius * unit, look: look, style: style).paint(canvas, size);
