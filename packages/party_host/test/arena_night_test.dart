@@ -16,7 +16,9 @@ void main() {
   /// on the button, and the Arena's waiting card waits for the phones.
   Future<FakeHostService> openNightBumper(WidgetTester tester) async {
     final fake = await pumpHost(tester, screen: const StubHome());
-    await neutral(tester, fake, ['p1']);
+    fake.state = withController(fake.state, phoneInfo('p2', 2)); // two players: one alone skips the card (B-002)
+    fake.emit();
+    await neutral(tester, fake, ['p1', 'p2']);
     await openNight(tester);
     await tapVisible(tester, find.byKey(const Key('nightBumper')));
     await tester.pump();
@@ -28,7 +30,9 @@ void main() {
   /// Bumper Round opened from there.
   Future<FakeHostService> bumperFromScoreboard(WidgetTester tester, {required int rounds}) async {
     final fake = await pumpHost(tester, screen: const StubHome());
-    await neutral(tester, fake, ['p1']);
+    fake.state = withController(fake.state, phoneInfo('p2', 2));
+    fake.emit();
+    await neutral(tester, fake, ['p1', 'p2']);
     await openNight(tester);
     final night = appContainer(tester).read(partyNightProvider.notifier)
       ..start(length: NightLength.three, awards: threeAwards);

@@ -53,7 +53,9 @@ void main() {
       size: const Size(852, 393),
       overrides: ownPhoneOverrides('p1'),
     );
-    await neutral(tester, fake, ['p1']);
+    fake.state = withController(fake.state, phoneInfo('p2', 2)); // two players: one alone skips the card (B-002)
+    fake.emit();
+    await neutral(tester, fake, ['p1', 'p2']);
     await openNight(tester);
     await tapVisible(tester, find.byKey(const Key('nightBumper')));
     await tester.pump();
@@ -112,8 +114,9 @@ void main() {
     expect(find.text("Tap Ready when you're ready."), findsOneWidget);
 
     await tester.tap(find.byKey(const Key('arenaReady')));
-    await roundStarted(tester);
-    expect(find.byKey(const Key('arena')), findsOneWidget, reason: 'the one player is ready: the night\'s round runs');
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(labelOf(tester, 'ready-p1'), ArenaText.readyLabel, reason: "the tap is that player's A");
+    expect(find.byKey(const Key('arenaWaitingCard')), findsOneWidget, reason: 'the second player is not ready yet');
   });
 
   testWidgets('a TV\'s card has no Ready button, keeps the Press A line, and opens on its chosen mode', (tester) async {
