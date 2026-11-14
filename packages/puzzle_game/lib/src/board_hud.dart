@@ -13,6 +13,16 @@ const _pillPad = 1.0;
 /// world units.
 const _barTop = 1.2;
 
+/// The share of a time bar's width filled: all of it when [done] (the picture
+/// is complete, so the bar is full the frame the last piece goes in and stays
+/// full on the win screen, B-001), else the share of the time limit the board
+/// has left. Null without a time limit.
+double? _barFill(PuzzleSnapshot board, bool done, int? timeLimitS) {
+  final limit = timeLimitS;
+  if (limit == null || limit <= 0) return null;
+  return done ? 1 : (board.timeLeftMs / 1000 / limit).clamp(0.0, 1.0);
+}
+
 /// One board's clock and count along the top of its field, and the time bar
 /// under it (design section 5): the clock on a `bad` pill in the warning time,
 /// the bar a `good` fill that turns `bad`.
@@ -46,9 +56,9 @@ extension _BoardHud on PuzzlePainter {
       align: TextAlign.right,
       markBefore: true,
     );
-    final limit = timeLimitS;
-    if (limit == null || limit <= 0) return;
-    _bar(canvas, (s.timeLeftMs / 1000 / limit).clamp(0.0, 1.0), warn ? _colours.bad : _colours.good, styles);
+    if (_barFill(s, s.isComplete, timeLimitS) case final fill?) {
+      _bar(canvas, fill, warn ? _colours.bad : _colours.good, styles);
+    }
   }
 
   /// The clock, on a `bad` pill with ink text in the warning time: `bad` text

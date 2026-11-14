@@ -10,7 +10,14 @@ StatusMessage puzzleStatusFor(PuzzleMatch match, Puzzle puzzle, String id) {
   final game = match.gameFor(id);
   if (game == null) return StatusMessage(text: 'Watching');
   final limit = game.settings.timeLimitS;
-  final progress = limit == 0 ? null : game.timeLeftS / limit;
+  // The bar says how far the round has gone: all of it once the picture is
+  // done, whatever the clock has left (B-001).
+  final done = game.placed == game.pieces.length;
+  final progress = limit == 0
+      ? null
+      : done
+      ? 1.0
+      : game.timeLeftS / limit;
   final warning = game.timeLeftS < game.settings.warningS;
   final left = game.timeLeftS.ceil();
   final result = match.result;

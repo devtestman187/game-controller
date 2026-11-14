@@ -110,6 +110,10 @@ final class PuzzleSnapshot implements GameSnapshot {
 
   int get placed => pieces.where((p) => p.state == PieceState.locked).length;
 
+  /// Every piece is placed: the picture is done, whatever the clock has left
+  /// (B-001: the bar fills then, and stays full on the win screen).
+  bool get isComplete => placed == pieces.length;
+
   /// 0, 1, 2, …: the order nothing moved yet leaves them in.
   bool get _identityOrder {
     for (var i = 0; i < order.length; i++) {

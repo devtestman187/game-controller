@@ -139,7 +139,9 @@ class MatchPainter extends CustomPainter {
     final clock = _clock(left.timeLeftMs);
     final warn = left.warning && left.phase == PuzzlePhase.playing;
     final total = puzzle.pieces.length;
-    final frac = _barFraction(left.timeLeftMs);
+    // The strip and the gap are the round's, not one side's: they are full
+    // once either side's picture is done, since the race is then decided.
+    final frac = _barFill(left, left.isComplete || right.isComplete, timeLimitS);
     if (layout.hudStrip) {
       _stripHud(canvas, layout, left, right, clock, warn, total, frac, styles.bar);
     } else {
@@ -240,7 +242,9 @@ class MatchPainter extends CustomPainter {
       );
     }
     _hudTexts(canvas, placement, shown, size, mirrored: mirror != null);
-    if (_barFraction(board.timeLeftMs) case final frac?) {
+    // Whole, the phone's bar is the round's, as the split screen's strip is.
+    final done = camera.side == null ? s.boards.any((b) => b.isComplete) : board.isComplete;
+    if (_barFill(board, done, timeLimitS) case final frac?) {
       _timeBar(canvas, Rect.fromLTWH(rect.left, rect.bottom - bar, rect.width, bar), frac, board, styles.bar);
     }
   }
@@ -357,12 +361,6 @@ class MatchPainter extends CustomPainter {
       textDirection: TextDirection.ltr,
     )..layout();
     painter.paint(canvas, at + Offset(0, -painter.height / 2));
-  }
-
-  /// The share of the time bar's width filled: null without a time limit.
-  double? _barFraction(int timeLeftMs) {
-    final limit = timeLimitS;
-    return limit != null && limit > 0 ? (timeLeftMs / 1000 / limit).clamp(0.0, 1.0) : null;
   }
 
   @override
