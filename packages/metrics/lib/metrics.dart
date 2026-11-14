@@ -11,6 +11,7 @@ export 'src/host_device_sample.dart';
 export 'src/paste.dart';
 export 'src/report.dart';
 export 'src/report_games.dart';
+export 'src/report_players.dart';
 export 'src/report_rounds.dart';
 export 'src/report_table.dart';
 export 'src/report_watched.dart';

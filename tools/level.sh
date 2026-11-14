@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # The level kit (M14 k1a, maps from k1b): make, check and render one level.
 #
-#   tools/level.sh new puzzle <id> --level easy|medium [--name "Name"]
+#   tools/level.sh new puzzle <id> --level easy|medium|hard [--name "Name"]
 #   tools/level.sh new map <id> [--name "Name"]
 #   tools/level.sh check [id]      # every kind's rule book, or one level's
 #   tools/level.sh render <id>     # writes docs/design/puzzles/<id>.png, or maps/
@@ -43,7 +43,7 @@ self_test() {
       bad=1
     else
       if [ "$kind" = puzzle ]; then
-        echo "new $kind: dart tools/level_new.dart new $kind <id> --level easy|medium [--name \"Name\"]"
+        echo "new $kind: dart tools/level_new.dart new $kind <id> --level easy|medium|hard [--name \"Name\"]"
       else
         echo "new $kind: dart tools/level_new.dart new $kind <id> [--name \"Name\"]"
       fi
