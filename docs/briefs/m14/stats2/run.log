@@ -35,3 +35,9 @@
 2026-11-15 16:52:00 start fix4-docs
 2026-11-15 16:54:46 fix4-docs finished: result 0 (34 turns, 2 min)
 2026-11-15 16:59:43 committed fix4-docs: b55e3fe docs: close the stats2 review's docs findings (4, 6, 11-14)
+2026-11-15 16:59:44 reviewed fix1-tests: 2 finding(s)
+2026-11-15 16:59:44 reviewed fix2-session: 4 finding(s)
+2026-11-15 17:04:30 fix3-apps-review: dropped generated churn outside its list: site/shots/dpad.png site/shots/menus.png site/shots/results.png site/shots/sticks.png site/shots/tilt.png (report kept)
+2026-11-15 17:04:30 reviewed fix3-apps: 2 finding(s)
+2026-11-15 17:04:30 reviewed fix4-docs: 4 finding(s)
+2026-11-15 17:04:30 DONE: every job is committed. Claude reads the Summary of docs/briefs/m14/stats2/REVIEW.md, verifies its findings and writes one fix brief
