@@ -1,0 +1,11 @@
+2026-11-15 16:02:24 start at 8720fd9 on m14-stats2
+2026-11-15 16:02:24 run-base 8720fd949bf4bd70568b9be4aa1f54d902b780ef
+2026-11-15 16:02:25 fetching packages (new folder)
+2026-11-15 16:02:32 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-15 16:02:32 start c1-build-metrics
+2026-11-15 16:02:57 start c2-build-wiring
+2026-11-15 16:09:05 c1-build-metrics finished: result 0 (97 turns, 6 min)
+2026-11-15 16:12:42 c2-build-wiring finished: result 4 (47 turns, 7 min)
+2026-11-15 16:12:43 c2-build-wiring: dropped generated churn outside its list: site/shots/dpad.png site/shots/menus.png site/shots/results.png site/shots/sticks.png site/shots/tilt.png 
+2026-11-15 16:21:31 committed c1-build-metrics: 2c14961 stats: record the app build number in the session summary and CSVs
+2026-11-15 16:21:32 committed c2-build-wiring: cf0522e Send "version+build" as the stats app string
