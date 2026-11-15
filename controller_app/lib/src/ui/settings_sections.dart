@@ -318,3 +318,29 @@ class _FrameRateRow extends ConsumerWidget {
     );
   }
 }
+
+/// The host Stats row's second line (B-023): what sharing is doing with the
+/// sessions this phone kept, and, before the adult has answered, the hint that
+/// the row opens a screen where they choose.
+class _HostStatsStatus extends StatelessWidget {
+  const _HostStatsStatus({required this.state});
+
+  final StatsState state;
+
+  @override
+  Widget build(BuildContext context) {
+    final look = ToyLookScope.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(SettingsText.hostShareLine(state)),
+        if (state.consent == null)
+          Text(
+            SettingsText.hostShareChoose,
+            style: look.type.body.copyWith(color: look.colors.ink, fontWeight: FontWeight.bold),
+          ),
+      ],
+    );
+  }
+}

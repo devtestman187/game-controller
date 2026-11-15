@@ -1,5 +1,6 @@
 import 'package:protocol/protocol.dart' show HapticEvent;
 
+import '../stats_state.dart';
 import 'host_text.dart';
 import 'phone_text.dart';
 
@@ -47,7 +48,24 @@ abstract final class SettingsText {
   static const frameRate = 'Frame rate (test)';
   static const frameRateLine = 'For testing: fewer pictures a second saves battery but looks less smooth';
   static const controlStats = 'Control stats';
-  static const hostStatsLine = 'The sessions this phone hosted, and the sharing choice, as the TV shows them.';
+
+  /// The host Stats row's hint while the adult hasn't answered (B-023): the row
+  /// opens another screen, and that is where they choose.
+  static const hostShareChoose = 'Tap to choose';
+
+  /// The host Stats row's status (B-023), in [HostText.statusLine]'s states:
+  /// whether an adult has answered, and what the sessions this phone kept are
+  /// doing. No new state logic: the same fields as the Stats screen's line.
+  static String hostShareLine(StatsState s) {
+    if (s.consent == null) return '${_hostShare}not answered';
+    if (s.consent != true) return '${_hostShare}off';
+    if (!s.uploadConfigured) return '${_hostShare}no upload set up';
+    if (s.lastError != null) return '${_hostShare}last try failed';
+    return '${_hostShare}on, ${s.uploaded} uploaded, ${s.waiting} waiting';
+  }
+
+  /// What [hostShareLine]'s statuses have in common.
+  static const _hostShare = 'Sharing hosted sessions: ';
   static const shareStats = 'Share control stats with the TV';
   static const shareStatsLine =
       'The host counts how the controls are used: presses, missed taps, timing and how each mode feels. '

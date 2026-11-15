@@ -4,3 +4,4 @@
 2026-11-15 15:45:29 start b023-stats-card
 2026-11-15 15:55:59 b023-stats-card finished: result 4 (75 turns, 7 min)
 2026-11-15 15:55:59 STOPPED: jobs that failed or need applying by hand: b023-stats-card:4 (their logs: docs/briefs/m14/bugs12/flash-<job>.log)
+2026-11-15 15:57:08 HAND-FIX b023-stats-card: applied the job's change by hand (it also edited controller_app/lib/src/ui/settings_sections.dart, outside allow:); review.sh 0 fail, targeted test passes
