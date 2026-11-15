@@ -147,10 +147,15 @@ final class ModeRow {
     viewFrames ?? '',
     viewGaps ?? '',
     viewLate ?? '',
-    hostApp,
-    app,
+    appCell(hostApp),
+    appCell(app),
   ].join(',');
 }
+
+/// An app version as a CSV cell (M14): the session keeps a comma in one (a
+/// model such as "iPhone15,2" has it), but a comma here would shift the row's
+/// fields, so the cell reads it as a semicolon.
+String appCell(String app) => app.replaceAll(',', ';');
 
 String _csv(String s) => s.contains(',') || s.contains('"') ? '"${s.replaceAll('"', '""')}"' : s;
 

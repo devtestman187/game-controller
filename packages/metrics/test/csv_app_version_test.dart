@@ -43,7 +43,13 @@ void main() {
     test('the header ends with host_app and app, so old columns keep their place', () {
       expect(ModeRow.csvHeader, endsWith(',host_app,app'));
       expect(ModeRow.csvHeader.split(','), hasLength(35)); // The 33 before, plus the two.
-      expect(csv([summary()]).split('\n').first, ModeRow.csvHeader);
+      expect(
+        csv([summary()]).split('\n').first,
+        'session,date,host,install,device,model,platform,mode,minutes,touches,presses,empty,near,slide,'
+        'rapid,games,wins,good,okay,bad,early_switch,first_mode,input_median_ms,input_p95_ms,'
+        'frustration_per_min,open_minutes,touch_median_ms,touch_p95_ms,jitter_median_ms,jitter_p95_ms,'
+        'view_frames,view_gaps,view_late,host_app,app',
+      );
     });
 
     test('a row ends with the host app and the player app', () {
@@ -68,7 +74,11 @@ void main() {
 
     test('a round row carries the host app', () {
       final lines = csvRounds([summary()]).split('\n');
-      expect(lines.first, roundsCsvHeader);
+      expect(
+        lines.first,
+        'session,host,game,hz,time_s,battery_start,battery_end,thermal,tags,host_app,winner,'
+        'draw,players,frames_drawn,frames_late,fps',
+      );
       // 60 s at 60 Hz, with no battery reading, no tags and no winner (M14 a2).
       expect(lines.last, 'a1,windows,arena,60,60.0,,,,,0.12.0,,,,,,');
     });

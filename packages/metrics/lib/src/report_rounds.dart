@@ -1,3 +1,4 @@
+import 'report.dart';
 import 'report_table.dart';
 import 'session_player.dart';
 
@@ -187,7 +188,7 @@ String _roundCsv(Map<String, Object?> summary, Map round) {
     round['thermal'] ?? '',
     // A tag holds no comma, so the cells stay lined up.
     tags.join(' '),
-    host['app'] as String? ?? '',
+    appCell(host['app'] as String? ?? ''),
     _winner(round),
     round['draw'] == true ? '1' : '',
     round['players'] ?? '',
