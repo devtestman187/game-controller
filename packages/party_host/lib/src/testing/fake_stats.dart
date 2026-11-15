@@ -21,6 +21,12 @@ class FakeStats implements StatsService {
   /// How many times the sessions were exported.
   int exports = 0;
 
+  /// How many times the host app paused, which ends the session in the app.
+  int pauses = 0;
+
+  /// How many times the host app came back, which retries the upload queue.
+  int resumes = 0;
+
   /// Replaces the state and tells the listeners.
   void emit(StatsState s) {
     _state = s;
@@ -52,6 +58,16 @@ class FakeStats implements StatsService {
 
   @override
   Future<void> uploadNow() async {}
+
+  @override
+  Future<void> pause() async {
+    pauses++;
+  }
+
+  @override
+  Future<void> resume() async {
+    resumes++;
+  }
 }
 
 /// An uploader that keeps what it was given and can be told to fail.

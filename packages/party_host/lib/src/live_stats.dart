@@ -22,8 +22,9 @@ import 'stats_state.dart';
 /// sessions, queued while offline.
 ///
 /// A session starts when the first player joins and ends after [sessionGap]
-/// with nobody connected. The record translation (messages, rounds, ratings)
-/// lives in `src/session_recorder.dart`.
+/// with nobody connected, or when the host app pauses ([pause]). The record
+/// translation (messages, rounds, ratings) lives in
+/// `src/session_recorder.dart`.
 class LiveStats implements StatsService {
   /// Everything it needs is supplied by the host service; [exportDirectory]
   /// and [uploader] come from the shell's storage and build constants, so
@@ -122,6 +123,10 @@ class LiveStats implements StatsService {
   late final HostDeviceSampler _deviceSampler;
   late final SessionStore _files;
   SessionCollector? _session;
+
+  /// The session endSession is saving: it has left _session, but [session]
+  /// still shows it until its file is written.
+  SessionCollector? _ending;
   String? _sessionPath;
   Timer? _endTimer;
   Timer? _checkpointTimer;
@@ -130,7 +135,7 @@ class LiveStats implements StatsService {
   Timer? _retry;
 
   /// The live session's collector, for tests.
-  SessionCollector? get session => _session;
+  SessionCollector? get session => _session ?? _ending;
 
   /// Where session files are kept, once [start] has run.
   Directory? get directory => _directory;
@@ -224,6 +229,14 @@ class LiveStats implements StatsService {
   Future<void> endSession() async {
     final s = _session;
     if (s == null) return;
+    final path = _sessionPath;
+    // The session leaves the field before the first await: a player who is
+    // still here, or who joins while the file is written, starts a new
+    // session then (B-019), instead of being remembered as present in one
+    // that is already saved.
+    _ending = s;
+    _session = null;
+    _sessionPath = null;
     _endTimer?.cancel();
     _endTimer = null;
     _checkpointTimer?.cancel();
@@ -232,23 +245,41 @@ class LiveStats implements StatsService {
       s.left(id, host.nowMs);
     }
     _present.clear();
-    await _save();
+    await _saveSession(s, path);
     _log('Stats: session ${s.id} saved (${(s.summary(host.nowMs)['durationS'])} s)');
-    _session = null;
-    _sessionPath = null;
+    _ending = null;
     _set(_state.copyWith(current: null));
     await _refreshCounts();
     unawaited(uploadNow());
   }
 
+  /// The host app went to the background: ends the session now, so the file
+  /// is saved and queued (B-019). The app's timers stop while it is hidden,
+  /// so the session gap would never run out and the record would wait on disk
+  /// until the next start.
+  @override
+  Future<void> pause() => endSession();
+
+  /// The host app is back in front: retries the sessions [pause] left queued
+  /// (B-019).
+  @override
+  Future<void> resume() => uploadNow();
+
   Future<void> _save() async {
     final s = _session;
     if (s == null) return;
+    await _saveSession(s, _sessionPath);
+  }
+
+  /// Shows [s] as the running summary and writes it to [path]. An ending
+  /// session passes its own path, since [endSession] clears [_sessionPath]
+  /// before the file is written.
+  Future<void> _saveSession(SessionCollector s, String? path) async {
     final summary = s.summary(host.nowMs);
     // The last saved summary stays in the state after the session ends, so
     // the phone's Diagnostics can show it until the app closes (m12 §0.6).
     _set(_state.copyWith(current: summary, lastSaved: summary));
-    await _files.save(_sessionPath, summary);
+    await _files.save(path, summary);
   }
 
   void _samplePings() {
@@ -314,13 +345,16 @@ class LiveStats implements StatsService {
   /// Ends the session, stops the timers and the device readings, and closes
   /// the streams.
   Future<void> dispose() async {
+    // The listeners go first: a session that ends here must not be replaced
+    // by a new one from a change that arrives while its file is written
+    // (B-019), since nothing would end that one.
+    for (final s in _subs) {
+      await s.cancel();
+    }
     await endSession();
     await _deviceSampler.dispose();
     _pingTimer.cancel();
     _retry?.cancel();
-    for (final s in _subs) {
-      await s.cancel();
-    }
     await _changes.close();
   }
 }

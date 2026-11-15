@@ -36,4 +36,12 @@ abstract class StatsService {
 
   /// Tries the upload queue now (PRD v2 T19).
   Future<void> uploadNow();
+
+  /// The host app is no longer in front, so the session ends now and its file
+  /// is saved and queued (B-019): a hidden app's timers stop, and waiting out
+  /// the session gap would leave the record on disk until the next start.
+  Future<void> pause();
+
+  /// The host app is in front again (B-019): retries the queue [pause] left.
+  Future<void> resume();
 }
