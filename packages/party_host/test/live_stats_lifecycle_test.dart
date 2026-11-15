@@ -9,6 +9,8 @@ import 'package:party_host/testing.dart';
 import 'package:protocol/protocol.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'stats_test_support.dart';
+
 const _caps = [Capability.metrics, Capability.rating];
 
 /// The gap these tests wait out: short, so a session that should end ends
@@ -26,20 +28,6 @@ Future<void> waitFor(bool Function() test, {Duration timeout = const Duration(se
   while (!test()) {
     if (DateTime.now().isAfter(end)) throw TimeoutException('condition not met');
     await Future<void>.delayed(const Duration(milliseconds: 20));
-  }
-}
-
-/// Deletes a test's temp folder, waiting out Windows' late release of the
-/// session file the last save wrote.
-Future<void> deleteTempFolder(Directory folder) async {
-  for (var tries = 0; ; tries++) {
-    try {
-      await folder.delete(recursive: true);
-      return;
-    } on FileSystemException {
-      if (tries >= 20) rethrow;
-      await Future<void>.delayed(const Duration(milliseconds: 25));
-    }
   }
 }
 
@@ -96,6 +84,7 @@ void main() {
       await stats.dispose();
       await host.dispose();
       await server.dispose();
+      await settleUploads(stats);
     });
     return stats;
   }

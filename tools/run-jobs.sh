@@ -47,6 +47,9 @@
 # The patch taken from a result-4 job's kept folder holds only the brief's allow:
 # and report: paths plus the always-fine files (a folder cut from a dirty tree
 # also carries stray edits, which made `git apply` fail on a fix job).
+# Before the first wave a preflight (tools/flash.sh --preflight, a tiny real worker call) must show the
+# worker can run flutter and tools/check.sh; PREFLIGHT_SKIP=1 skips it. A suite that fails with
+# PathNotFoundException (temp-folder race) is retried once, logged as "check retry".
 # NO_PUSH=1 in the environment commits without pushing.
 # Exit code: 0 done, 1 stopped, 2 bad use.
 set -u
@@ -163,9 +166,16 @@ tests_first() { # tests_first <job>...
 checks() {
   unchurn
   if ! tools/check.sh > "$WORK/run-check.log" 2>&1; then
-    note "checks failed; fetching packages and trying once more"
-    flutter pub get > "$WORK/run-pub.log" 2>&1; unchurn
-    tools/check.sh > "$WORK/run-check.log" 2>&1 || stop "checks failed twice on the combined tree after $* (see $WORK/run-check.log); nothing of this wave is committed"
+    # A temp-folder race in a test (PathNotFoundException) is retried once, and only that.
+    if grep -q PathNotFoundException "$WORK/run-check.log"; then
+      note "check retry: PathNotFoundException in the failed suite (temp-folder race); running the checks once more"
+      cp "$WORK/run-check.log" "$WORK/run-check-first.log"; unchurn
+      tools/check.sh > "$WORK/run-check.log" 2>&1 || stop "checks failed after the PathNotFoundException retry on the combined tree after $* (see $WORK/run-check.log); nothing of this wave is committed"
+    else
+      note "checks failed; fetching packages and trying once more"
+      flutter pub get > "$WORK/run-pub.log" 2>&1; unchurn
+      tools/check.sh > "$WORK/run-check.log" 2>&1 || stop "checks failed twice on the combined tree after $* (see $WORK/run-check.log); nothing of this wave is committed"
+    fi
   fi
   unchurn
   git ls-files --others --exclude-standard | xargs -r git add -N
@@ -260,6 +270,13 @@ fi
 for r in "$B"/*-review-report.md; do # reports of an earlier run that stopped before it could commit them
   [ -f "$r" ] && ! committed "$r" && { save "review report left by an earlier run: $(basename "$r")" "$r"; note "committed the left-over $(basename "$r")"; }
 done
+
+# Preflight: a worker that cannot run flutter and tools/check.sh would run blind (bugs10 job 1),
+# so one tiny real worker call proves it before any job starts. PREFLIGHT_SKIP=1 skips it.
+if [ -z "${PREFLIGHT_SKIP:-}" ]; then
+  if tools/flash.sh --preflight > "$WORK/run-preflight.log" 2>&1; then note "preflight ok: the worker ran flutter --version and tools/check.sh --list"
+  else stop "preflight failed: the worker cannot run flutter or tools/check.sh in its sandbox, so no job would run tests (see $WORK/run-preflight.log); nothing was started"; fi
+fi
 
 for wave in "${WAVES[@]}"; do
   [ "$(wc -w <<< "$wave")" -le 3 ] || stop "a wave has more than 3 jobs: $wave"

@@ -10,6 +10,8 @@ import 'package:party_host/testing.dart';
 import 'package:protocol/protocol.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'stats_test_support.dart';
+
 const _caps = [Capability.metrics, Capability.rating];
 
 Future<T> until<T>(Stream<T> s, bool Function(T) test) => s.firstWhere(test).timeout(const Duration(seconds: 5));
@@ -19,21 +21,6 @@ Future<void> waitFor(bool Function() test, {Duration timeout = const Duration(se
   while (!test()) {
     if (DateTime.now().isAfter(end)) throw TimeoutException('condition not met');
     await Future<void>.delayed(const Duration(milliseconds: 20));
-  }
-}
-
-/// Deletes a test's temp folder, waiting out Windows' late release of the
-/// session file the last save wrote: under a full run the delete can come
-/// before the file's handle is gone (errno 32), and a moment later it goes.
-Future<void> deleteTempFolder(Directory folder) async {
-  for (var tries = 0; ; tries++) {
-    try {
-      await folder.delete(recursive: true);
-      return;
-    } on FileSystemException {
-      if (tries >= 20) rethrow;
-      await Future<void>.delayed(const Duration(milliseconds: 25));
-    }
   }
 }
 
@@ -77,6 +64,7 @@ void main() {
       await stats.dispose();
       await host.dispose();
       await server.dispose();
+      await settleUploads(stats);
     });
     return stats;
   }

@@ -75,6 +75,8 @@ Measured over 193 jobs: a job of 80–149 turns (about 12 minutes) ended badly 3
 - **Review-fix jobs carry 3 findings or fewer.** Split more findings into several jobs in one wave when their files do not overlap (measured: 6-9 findings ran 194-258 turns).
 - **Brief bodies stay near the 214-word template, about 350 words at most**; longer context goes in a referenced file the brief names in `read:`.
 
+Workers get the sandbox preflight and the test rules in Batch rules 12-14.
+
 `tools/flash.sh` also gives every worker a short list of **work rules** (read files once and in ranges, batch reads, run a test suite once per change with a quiet reporter, keep thinking and answers short) and caps what one command or file read can add to the conversation (`BASH_MAX_OUTPUT_LENGTH`, `CLAUDE_CODE_FILE_READ_MAX_OUTPUT_TOKENS`). The runner logs each job's turns and minutes in `run.log`, so the effect can be seen. Background and the cost arithmetic: `docs/briefs/tools/research-lean-agents-report.md` (the re-sent conversation is 99% of input tokens but a third of the bill; never put a context-pruning proxy in front of the worker: it would hold the key and turn cache hits into misses).
 
 Workers cannot run `tools/review.sh` or some shell commands in their sandbox; the runner runs the checker for them, so a brief should not ask for its output.
@@ -99,6 +101,10 @@ Workers cannot run `tools/review.sh` or some shell commands in their sandbox; th
 9. **Phone suite in `check:`.** A brief that changes behaviour pinned by `controller_app` (phone) tests puts `phone` in its `check:` line, so the worker fixes the pins itself instead of the runner's check failing twice.
 10. **Name the tests that could break.** A job's brief lists, in `read:`, the existing test files its change could break (callers' tests, pinned strings, phone tests), so the worker reads them before editing and fixes the pins itself.
 11. **Fix jobs: 3 findings or fewer** (see "Keep jobs short"); more findings become several jobs in one wave.
+
+12. **Targeted test runs (owner, Nov 15, 2026).** While working, a job runs only `flutter test <its own test files>` plus the test files named in the brief's `read:` slot, never the whole suite. It runs the full `tools/check.sh <suite>` **once, at the end**. A job's `allow:` may include sibling test files in the same package that the change can break, so the job fixes them itself.
+13. **Tests await their async side effects before teardown.** A test that starts an unawaited upload, save or timer waits for it (or disposes it) before the temp folder is deleted: in `party_host` use `settleUploads(stats)` from `test/stats_test_support.dart` after `dispose()`, and its `deleteTempFolder`. The runner retries a failed suite once, and only when the failure output contains `PathNotFoundException`, and logs it as `check retry`.
+14. **The worker must be able to run tests.** The runner starts with a preflight (`tools/flash.sh --preflight`: a tiny real worker call that runs `flutter --version` and `tools/check.sh --list` under the job's exact permissions) and stops with `preflight failed` otherwise. The worker's Bash allow-list is by command prefix: plain `tools/check.sh <suite>`, `flutter test <file>`, `dart format`, `dart analyze`, `cd <dir> && ...`, `tail`/`head` are allowed; an absolute-path command or `bash -c` is not.
 
 ## Before a build
 

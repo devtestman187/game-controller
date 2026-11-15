@@ -75,6 +75,7 @@ cd "$(dirname "$0")/.." || exit 2
 repo="$(pwd)"
 
 dry=0
+pre=0
 here=0
 pub=0
 web=0
@@ -87,6 +88,7 @@ checks=()
 while [ $# -gt 0 ]; do
   case "$1" in
     --dry-run) dry=1; shift ;;
+    --preflight) pre=1; shift ;;
     --here) here=1; shift ;;
     --pub) pub=1; shift ;;
     --web) web=1; shift ;;
@@ -132,6 +134,7 @@ if [ -n "$brief" ]; then
   task="Your brief is $brief: read it first, then do the job it describes."
   [ -n "$extra" ] && task+=$'\n'"$extra"
 fi
+[ "$pre" = 1 ] && [ -z "$task" ] && task="preflight"
 if [ -z "$task" ]; then
   echo "flash: give a task, or a brief with --brief" >&2
   exit 2
@@ -230,7 +233,7 @@ Read docs/coding-guidelines.md before every job and follow it: a diff that break
 Claude, who wrote this task, is the source of truth. Suggestions and questions go in your report; don't act on them.
 The task names a review gate (G0 survey, G1 plan, G2 contract and tests, G3 first slice, G4 complete, or a review). Stop at that gate, even if more looks easy.
 If the task needs a design decision, is unclear, or turns out bigger than described, stop and say so instead of guessing.
-Work rules (they keep the job short, and short jobs go wrong less): read a file once, and only the part you need (use line ranges for files over 300 lines); never re-read a file you have not changed; ask for several files or greps in one step when you know you need them; run a test suite once per change, on the smallest package that covers it, and read only the failures; do not print long command output (pipe through tail or grep); keep your thinking to the decision at hand and your messages to a few lines; write the report once, at the end.
+Work rules (they keep the job short, and short jobs go wrong less): read a file once, and only the part you need (use line ranges for files over 300 lines); never re-read a file you have not changed; ask for several files or greps in one step when you know you need them; run a test suite once per change, on the smallest package that covers it, and read only the failures; do not print long command output (pipe through tail or grep); run commands as plain commands from the repository root (tools/check.sh <suite>, flutter test <file>, dart format <files>, dart analyze), with no absolute path in front; cd <dir> && cmd is allowed too; keep your thinking to the decision at hand and your messages to a few lines; write the report once, at the end.
 Finish with: the files you changed (one line each, what changed), the checks you ran and their result, and anything you weren't sure about."
 
 # --bare offers only Read, Edit (which also creates files) and Bash, so
@@ -239,6 +242,7 @@ allowed=(
   "Read(./**)" "Edit" "Bash(git grep:*)" "Bash(git ls-files:*)"
   "Bash(dart format:*)" "Bash(dart analyze:*)" "Bash(dart test:*)" "Bash(flutter test:*)" "Bash(flutter analyze:*)"
   "Bash(tools/check.sh:*)" "Bash(tools/review.sh:*)" "Bash(bash tools/review.sh:*)" "Bash(bash -n:*)"
+  "Bash(cd:*)" "Bash(bash tools/check.sh:*)" "Bash(./tools/check.sh:*)" "Bash(sh tools/check.sh:*)" "Bash(flutter --version:*)" "Bash(dart --version:*)" "Bash(tail:*)" "Bash(head:*)"
   "Bash(git status:*)" "Bash(git log:*)" "Bash(git diff:*)" "Bash(git show:*)" "Bash(git merge-base:*)" "Bash(ls:*)" "Bash(wc:*)"
 )
 [ "$pub" = 1 ] && allowed+=("Bash(flutter pub get:*)" "Bash(dart pub get:*)")
@@ -337,6 +341,25 @@ export BASH_MAX_OUTPUT_LENGTH="${FLASH_BASH_MAX_OUTPUT:-10000}"
 export CLAUDE_CODE_FILE_READ_MAX_OUTPUT_TOKENS="${FLASH_READ_MAX_TOKENS:-12000}"
 # A distro job must not carry Windows variables (the key among them) into WSL.
 unset WSLENV
+
+# --preflight: a tiny real worker call with this job type's exact permissions. It must run
+# `flutter --version` and `tools/check.sh --list` without a permission denial, or the job
+# would run blind (bugs10: a worker that could not run any test). Exit 7 if it cannot.
+if [ "$pre" = 1 ]; then
+  pcmd=("${cmd[@]}")
+  pcmd[3]="Preflight, nothing else: run the command flutter --version, then the command tools/check.sh --list, then answer PREFLIGHT-DONE. Change no file."
+  pcmd+=(--max-turns 8)
+  plog="${TMPDIR:-/tmp}/flash-preflight-$$.log"
+  "${pcmd[@]}" < /dev/null > "$plog" 2> "$plog.err"
+  prc=$?
+  if [ "$prc" != 0 ] || ! grep -qF '"permission_denials":[]' "$plog" || ! grep -q PREFLIGHT-DONE "$plog"; then
+    echo "flash: PREFLIGHT FAILED (exit $prc): the worker cannot run flutter and tools/check.sh in its sandbox (denials: $(grep -oE '"permission_denials":.{0,300}' "$plog" | head -c 300)); log $plog"
+    exit 7
+  fi
+  echo "flash: preflight ok (flutter --version and tools/check.sh --list ran in the worker's sandbox)"
+  rm -f "$plog" "$plog.err"
+  exit 0
+fi
 
 if [ "$web" = 1 ]; then
   # The worker's shell can fetch URLs, so the key stays out of its
