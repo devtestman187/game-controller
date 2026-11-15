@@ -1,0 +1,20 @@
+{
+  "$schema": "puzzle.schema.json",
+  "format": 1,
+  "id": "lighthouse",
+  "name": "Lighthouse",
+  "level": "hard",
+  "pieces": [
+    {"id": "tower", "shape": {"rect": [17, 20]}, "color": "red", "at": [38, 50], "rotated": true, "big": true},
+    {"id": "tower top", "shape": {"rect": [13, 12]}, "color": "blue", "at": [38, 33], "rotated": true, "big": true},
+    {"id": "stripe", "shape": {"rect": [17, 7]}, "color": "sand", "at": [38, 44], "rotated": true},
+    {"id": "gallery", "shape": {"rect": [14, 7]}, "color": "orange", "at": [38, 26], "rotated": true},
+    {"id": "lamp", "shape": {"rect": [12, 11]}, "color": "yellow", "at": [38, 20], "rotated": true},
+    {"id": "roof", "shape": {"regular": [3, 8]}, "color": "slate", "at": [38, 10], "rotated": true},
+    {"id": "base", "shape": {"rect": [20, 12]}, "color": "brown", "at": [38, 64], "rotated": true, "big": true},
+    {"id": "door", "shape": {"rect": [9, 13]}, "color": "purple", "at": [38, 58], "rotated": true},
+    {"id": "sea left", "shape": {"rect": [15, 8]}, "color": "green", "at": [16, 66], "rotated": true},
+    {"id": "sea right", "shape": {"rect": [15, 8]}, "color": "#00897B", "at": [58, 66], "rotated": true},
+    {"id": "sun", "shape": {"circle": 9}, "color": "#E91E63", "at": [68, 14]}
+  ]
+}

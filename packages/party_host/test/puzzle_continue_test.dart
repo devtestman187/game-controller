@@ -89,11 +89,11 @@ void main() {
     expect(moved.isShuffled, isTrue, reason: 'the switch is the player\'s, not the level\'s');
   });
 
-  test('the level after Easy is Medium, and Medium is the last', () {
+  test('the level after Easy is Medium, after Medium is Hard, and Hard is the last', () {
     final library = testPuzzles();
     expect(PuzzleSeries.levelAfter(library, Level.easy), Level.medium);
-    expect(PuzzleSeries.levelAfter(library, Level.medium), isNull, reason: 'Hard has no puzzles yet');
-    expect(PuzzleSeries.levelAfter(library, Level.hard), isNull);
+    expect(PuzzleSeries.levelAfter(library, Level.medium), Level.hard);
+    expect(PuzzleSeries.levelAfter(library, Level.hard), isNull, reason: 'Hard is the last level');
   });
 
   // The screen (B-011): a hand-picked puzzle starts a series, and its results

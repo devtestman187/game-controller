@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:party_host/party_host.dart';
 
@@ -18,8 +17,7 @@ void main() {
       ..record(puzzleId: 'house', team: false, timeMs: 120000, names: ['Nobody'])
       ..record(puzzleId: 'house', team: true, timeMs: 110000, names: ['Mia', 'Dad']);
     await openShapeRace(tester);
-    await tapVisible(tester, find.byKey(const Key('openBestTimes')));
-    await tester.pumpAndSettle();
+    await openBestTimes(tester);
 
     expect(find.byType(BestTimesScreen), findsOneWidget);
     // The fastest three of the solo board, fastest first.
@@ -39,8 +37,7 @@ void main() {
   testWidgets('a host that has played nothing says so, and back returns to the pick', (tester) async {
     await pumpHost(tester, screen: const StubHome());
     await openShapeRace(tester);
-    await tapVisible(tester, find.byKey(const Key('openBestTimes')));
-    await tester.pumpAndSettle();
+    await openBestTimes(tester);
     expect(find.byType(BestTimesScreen), findsOneWidget);
     expect(find.text('No times yet'), findsOneWidget);
 

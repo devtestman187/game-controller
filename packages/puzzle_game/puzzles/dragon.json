@@ -1,0 +1,20 @@
+{
+  "$schema": "puzzle.schema.json",
+  "format": 1,
+  "id": "dragon",
+  "name": "Dragon",
+  "level": "hard",
+  "pieces": [
+    {"id": "body", "shape": {"rect": [18, 15]}, "color": "green", "at": [34, 44], "rotated": true, "big": true},
+    {"id": "head", "shape": {"rect": [15, 13]}, "color": "blue", "at": [56, 34], "rotated": true, "big": true},
+    {"id": "wing", "shape": {"regular": [3, 9]}, "color": "purple", "at": [32, 28], "rotated": true, "big": true},
+    {"id": "neck", "shape": {"rect": [12, 10]}, "color": "slate", "at": [46, 38], "rotated": true},
+    {"id": "tail", "shape": {"rect": [16, 8]}, "color": "brown", "at": [15, 46], "rotated": true},
+    {"id": "front leg", "shape": {"rect": [9, 14]}, "color": "silver", "at": [42, 58], "rotated": true},
+    {"id": "back leg", "shape": {"rect": [9, 14]}, "color": "steel", "at": [26, 58], "rotated": true},
+    {"id": "spike", "shape": {"rect": [11, 9]}, "color": "orange", "at": [44, 31], "rotated": true},
+    {"id": "horn", "shape": {"regular": [3, 7]}, "color": "yellow", "at": [58, 25], "rotated": true},
+    {"id": "fire", "shape": {"regular": [3, 7]}, "color": "red", "at": [70, 36], "angle": 90, "rotated": true},
+    {"id": "belly", "shape": {"rect": [13, 8]}, "color": "sand", "at": [33, 50], "rotated": true}
+  ]
+}

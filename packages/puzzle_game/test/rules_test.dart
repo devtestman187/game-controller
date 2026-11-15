@@ -336,6 +336,12 @@ void main() {
         'train',
         'castle',
         'butterfly',
+        'dragon',
+        'windmill',
+        'lighthouse',
+        'dinosaur',
+        'tractor',
+        'tower',
       ]);
       for (final id in ids) {
         final puzzle = load(id);

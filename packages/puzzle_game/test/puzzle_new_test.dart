@@ -65,7 +65,10 @@ void main() {
     expect(ids.indexOf('last-easy'), ids.indexOf('snowman') + 1, reason: 'after the Easy puzzles');
     createLevel(folder, kind: 'puzzle', id: 'last-medium', name: 'Last Medium', level: 'medium');
     ids = idsOf(folder);
-    expect(ids.indexOf('last-medium'), ids.length - 1, reason: 'after the Medium puzzles');
+    expect(ids.indexOf('last-medium'), ids.indexOf('butterfly') + 1, reason: 'after the Medium puzzles');
+    createLevel(folder, kind: 'puzzle', id: 'last-hard', name: 'Last Hard', level: 'hard');
+    ids = idsOf(folder);
+    expect(ids.indexOf('last-hard'), ids.length - 1, reason: 'Hard is the last level, so it goes last');
     expect(ids.indexOf('last-easy'), ids.indexOf('snowman') + 1, reason: 'the first one stays put');
   });
 

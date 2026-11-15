@@ -1,0 +1,20 @@
+{
+  "$schema": "puzzle.schema.json",
+  "format": 1,
+  "id": "tractor",
+  "name": "Tractor",
+  "level": "hard",
+  "pieces": [
+    {"id": "engine", "shape": {"rect": [16, 15]}, "color": "red", "at": [38, 49], "rotated": true, "big": true},
+    {"id": "cab", "shape": {"rect": [12, 14]}, "color": "blue", "at": [50, 46], "rotated": true, "big": true},
+    {"id": "big wheel", "shape": {"circle": 9}, "color": "slate", "at": [52, 60], "big": true},
+    {"id": "small wheel", "shape": {"circle": 7.5}, "color": "brown", "at": [24, 61]},
+    {"id": "roof", "shape": {"rect": [13, 9]}, "color": "orange", "at": [50, 37], "rotated": true},
+    {"id": "window", "shape": {"rect": [13, 10]}, "color": "#E91E63", "at": [50, 46], "rotated": true},
+    {"id": "bonnet", "shape": {"rect": [11, 11]}, "color": "green", "at": [27, 51], "rotated": true},
+    {"id": "exhaust", "shape": {"rect": [10, 12]}, "color": "#00897B", "at": [44, 40], "rotated": true},
+    {"id": "ground left", "shape": {"rect": [14, 8]}, "color": "sand", "at": [18, 68], "rotated": true},
+    {"id": "ground right", "shape": {"rect": [14, 8]}, "color": "purple", "at": [46, 68], "rotated": true},
+    {"id": "sun", "shape": {"circle": 9}, "color": "yellow", "at": [68, 22]}
+  ]
+}

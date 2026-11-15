@@ -161,6 +161,17 @@ Future<void> tapVisible(WidgetTester tester, Finder finder) async {
   await tester.tap(finder);
 }
 
+/// Shape Race's pick → the best-times board (M14 f1). The pick's list scrolls
+/// once every level has puzzles, and a list builds only what it shows, so the
+/// button under the levels is scrolled to before it is tapped.
+Future<void> openBestTimes(WidgetTester tester) async {
+  final button = find.byKey(const Key('openBestTimes'));
+  await tester.scrollUntilVisible(button, 200);
+  await tester.pumpAndSettle();
+  await tester.tap(button);
+  await tester.pumpAndSettle();
+}
+
 /// Home → Play → Arena → the waiting card, with every joined phone ready and
 /// the round under way: the 3-2-1 beat and the pause's start grace are past
 /// when it returns (M14 b2, design section 8).

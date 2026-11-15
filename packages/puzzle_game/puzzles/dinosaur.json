@@ -1,0 +1,19 @@
+{
+  "$schema": "puzzle.schema.json",
+  "format": 1,
+  "id": "dinosaur",
+  "name": "Dinosaur",
+  "level": "hard",
+  "pieces": [
+    {"id": "body", "shape": {"rect": [18, 16]}, "color": "green", "at": [34, 44], "rotated": true, "big": true},
+    {"id": "head", "shape": {"rect": [14, 12]}, "color": "blue", "at": [56, 30], "rotated": true, "big": true},
+    {"id": "neck", "shape": {"rect": [10, 13]}, "color": "slate", "at": [47, 34], "rotated": true, "big": true},
+    {"id": "tail", "shape": {"rect": [16, 8]}, "color": "brown", "at": [14, 46], "rotated": true},
+    {"id": "front leg", "shape": {"rect": [9, 14]}, "color": "silver", "at": [40, 57], "rotated": true},
+    {"id": "back leg", "shape": {"rect": [9, 14]}, "color": "steel", "at": [26, 57], "rotated": true},
+    {"id": "belly", "shape": {"rect": [12, 9]}, "color": "sand", "at": [33, 50], "rotated": true},
+    {"id": "plate front", "shape": {"regular": [3, 7]}, "color": "purple", "at": [32, 33], "rotated": true},
+    {"id": "plate back", "shape": {"regular": [3, 8]}, "color": "red", "at": [43, 32], "rotated": true},
+    {"id": "snout", "shape": {"rect": [12, 8]}, "color": "yellow", "at": [62, 34], "rotated": true}
+  ]
+}

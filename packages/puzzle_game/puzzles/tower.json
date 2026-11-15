@@ -1,0 +1,20 @@
+{
+  "$schema": "puzzle.schema.json",
+  "format": 1,
+  "id": "tower",
+  "name": "Tower",
+  "level": "hard",
+  "pieces": [
+    {"id": "shaft", "shape": {"rect": [16, 19]}, "color": "red", "at": [38, 50], "rotated": true, "big": true},
+    {"id": "top room", "shape": {"rect": [14, 12]}, "color": "sand", "at": [38, 32], "rotated": true, "big": true},
+    {"id": "roof", "shape": {"regular": [3, 8]}, "color": "purple", "at": [38, 20], "rotated": true},
+    {"id": "flag", "shape": {"rect": [9, 13]}, "color": "blue", "at": [46, 14], "rotated": true},
+    {"id": "door", "shape": {"rect": [9, 13]}, "color": "brown", "at": [38, 60], "rotated": true},
+    {"id": "window left", "shape": {"circle": 7.5}, "color": "sky", "at": [34, 32]},
+    {"id": "window right", "shape": {"circle": 7.5}, "color": "yellow", "at": [42, 32]},
+    {"id": "block left", "shape": {"rect": [12, 10]}, "color": "green", "at": [28, 26], "rotated": true},
+    {"id": "block right", "shape": {"rect": [14, 10]}, "color": "orange", "at": [48, 26], "rotated": true},
+    {"id": "ground", "shape": {"rect": [16, 9]}, "color": "#E91E63", "at": [38, 67], "rotated": true, "big": true},
+    {"id": "sun", "shape": {"circle": 9}, "color": "#00897B", "at": [15, 18]}
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "$schema": "puzzle.schema.json",
+  "format": 1,
+  "id": "windmill",
+  "name": "Windmill",
+  "level": "hard",
+  "pieces": [
+    {"id": "tower", "shape": {"rect": [18, 20]}, "color": "sand", "at": [38, 46], "rotated": true, "big": true},
+    {"id": "cap", "shape": {"regular": [3, 10]}, "color": "red", "at": [38, 31], "rotated": true, "big": true},
+    {"id": "sail up", "shape": {"rect": [8, 16]}, "color": "yellow", "at": [38, 10], "rotated": true, "big": true},
+    {"id": "sail down", "shape": {"rect": [8, 15]}, "color": "#E91E63", "at": [38, 32], "rotated": true},
+    {"id": "sail right", "shape": {"rect": [8, 17]}, "color": "#00897B", "at": [49, 21], "angle": 90, "rotated": true},
+    {"id": "sail left", "shape": {"rect": [8, 14]}, "color": "slate", "at": [27, 21], "angle": 90, "rotated": true},
+    {"id": "hub", "shape": {"circle": 8}, "color": "brown", "at": [38, 21]},
+    {"id": "door", "shape": {"rect": [9, 13]}, "color": "blue", "at": [38, 53], "rotated": true},
+    {"id": "sun", "shape": {"circle": 8}, "color": "orange", "at": [66, 12]},
+    {"id": "meadow left", "shape": {"rect": [16, 8]}, "color": "green", "at": [24, 60], "rotated": true},
+    {"id": "meadow right", "shape": {"rect": [16, 8]}, "color": "purple", "at": [46, 60], "rotated": true}
+  ]
+}
