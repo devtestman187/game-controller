@@ -241,10 +241,11 @@ void main() {
 
     test('the round CSV carries the tags, space separated', () {
       expect(csvRounds([nightSummary()]).split('\n'), [
-        'session,host,game,hz,time_s,battery_start,battery_end,thermal,tags,host_app,winner,draw,players',
-        'a1,phone,arena,60,60.0,,,,mode_bumper map_playroom robo_hard finished night_1of3,0.13.0,,,2',
-        'a1,phone,arena,60,60.0,,,,mode_bumper map_playroom robo_easy finished night_2of3,0.13.0,,,2',
-        'a1,phone,arena,60,30.0,,,,mode_race map_toy-factory finished night_3of3,0.13.0,,,2',
+        'session,host,game,hz,time_s,battery_start,battery_end,thermal,tags,host_app,winner,draw,players,'
+            'frames_drawn,frames_late,fps',
+        'a1,phone,arena,60,60.0,,,,mode_bumper map_playroom robo_hard finished night_1of3,0.13.0,,,2,,,',
+        'a1,phone,arena,60,60.0,,,,mode_bumper map_playroom robo_easy finished night_2of3,0.13.0,,,2,,,',
+        'a1,phone,arena,60,30.0,,,,mode_race map_toy-factory finished night_3of3,0.13.0,,,2,,,',
       ]);
     });
 

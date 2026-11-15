@@ -70,11 +70,11 @@ void main() {
       final lines = csvRounds([summary()]).split('\n');
       expect(lines.first, roundsCsvHeader);
       // 60 s at 60 Hz, with no battery reading, no tags and no winner (M14 a2).
-      expect(lines.last, 'a1,windows,arena,60,60.0,,,,,0.12.0,,,');
+      expect(lines.last, 'a1,windows,arena,60,60.0,,,,,0.12.0,,,,,,');
     });
 
     test('a summary with no app leaves the cell empty', () {
-      expect(csvRounds([summary(hostApp: null)]).split('\n').last, 'a1,windows,arena,60,60.0,,,,,,,,');
+      expect(csvRounds([summary(hostApp: null)]).split('\n').last, 'a1,windows,arena,60,60.0,,,,,,,,,,,');
     });
   });
 }

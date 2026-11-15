@@ -153,9 +153,11 @@ List<String> _rateCells(RateRow r) => [
 
 /// The report's round CSV (m12 §1, M14): one row per round, the numbers the
 /// tables above sum and the round's tags, space separated, then the host's app
-/// version (M14) and who won the round (M14 a2) at the end.
+/// version (M14), who won the round (M14 a2) and its frames and fps (M14 a3) at
+/// the end.
 const roundsCsvHeader =
-    'session,host,game,hz,time_s,battery_start,battery_end,thermal,tags,host_app,winner,draw,players';
+    'session,host,game,hz,time_s,battery_start,battery_end,thermal,tags,host_app,winner,draw,players,'
+    'frames_drawn,frames_late,fps';
 
 /// One CSV row per round of each summary. A round with no rate or no battery
 /// reading leaves those cells empty, so the columns always line up.
@@ -173,12 +175,13 @@ String _roundCsv(Map<String, Object?> summary, Map round) {
     for (final tag in (round['tags'] as List?) ?? const [])
       if (tag is String) tag,
   ];
+  final timeS = _seconds(round['timeS']);
   return [
     summary['id'] as String? ?? '',
     host['type'] as String? ?? '',
     round['game'] as String? ?? '',
     round['hz'] ?? '',
-    _seconds(round['timeS']).toStringAsFixed(1),
+    timeS.toStringAsFixed(1),
     battery['start'] ?? '',
     battery['end'] ?? '',
     round['thermal'] ?? '',
@@ -188,7 +191,17 @@ String _roundCsv(Map<String, Object?> summary, Map round) {
     _winner(round),
     round['draw'] == true ? '1' : '',
     round['players'] ?? '',
+    round['framesDrawn'] ?? '',
+    round['framesLate'] ?? '',
+    _fps(round['framesDrawn'], timeS),
   ].join(',');
+}
+
+/// The frames a round drew in a second (M14 a3), to one decimal: blank while
+/// the round kept no frames or took no time to divide by.
+String _fps(Object? drawn, double timeS) {
+  if (drawn is! num || timeS <= 0) return '';
+  return (drawn / timeS).toStringAsFixed(1);
 }
 
 /// A round's winner as the CSV names it (M14 a2): the winning player's number,

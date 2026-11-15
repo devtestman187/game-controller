@@ -26,27 +26,26 @@ Map roundOf(SessionCollector c) => (c.summary(1000)['rounds'] as List).single as
 String rowOf(SessionCollector c) => csvRounds([c.summary(1000)]).split('\n').last;
 
 void main() {
-  test('the rounds CSV ends with winner, draw and players, after host_app', () {
-    expect(roundsCsvHeader, endsWith(',host_app,winner,draw,players'));
-    expect(roundsCsvHeader.split(','), hasLength(13)); // The ten a1 left, plus the three.
+  test('the rounds CSV has winner, draw and players after host_app', () {
+    expect(roundsCsvHeader, contains(',host_app,winner,draw,players,'));
   });
 
   test('a round names its winner by player number, never a name or an id', () {
     final c = round({'phone-a': 'dpad', 'phone-b': 'dpad'}, winnerId: 'phone-b');
     expect(roundOf(c)['winner'], 2, reason: 'phone-b is player 2');
-    expect(rowOf(c), 's1,windows,arena,60,60.0,,,,,0.14.0,2,,2');
+    expect(rowOf(c), 's1,windows,arena,60,60.0,,,,,0.14.0,2,,2,,,');
   });
 
   test('a robot win is written as a robot, and counts for no player', () {
     final c = round({'phone-a': 'dpad'}, robotWin: true);
     expect(roundOf(c), {'game': 'arena', 'hz': 60, 'timeS': 60.0, 'players': 1, 'robot': true});
-    expect(rowOf(c), 's1,windows,arena,60,60.0,,,,,0.14.0,robot,,1');
+    expect(rowOf(c), 's1,windows,arena,60,60.0,,,,,0.14.0,robot,,1,,,');
   });
 
   test('a draw says so, and its winner cell stays empty', () {
     final c = round({'phone-a': 'dpad', 'phone-b': 'dpad'}, draw: true);
     expect(roundOf(c), {'game': 'arena', 'hz': 60, 'timeS': 60.0, 'players': 2, 'draw': true});
-    expect(rowOf(c), 's1,windows,arena,60,60.0,,,,,0.14.0,,1,2');
+    expect(rowOf(c), 's1,windows,arena,60,60.0,,,,,0.14.0,,1,2,,,');
   });
 
   test('a team win lists each winner number, space separated, since a cell holds no comma', () {
@@ -59,10 +58,10 @@ void main() {
         winnerIds: {'phone-a', 'phone-b'},
       );
     expect(roundOf(c)['winners'], [1, 2]);
-    expect(rowOf(c), 's1,windows,arena,60,60.0,,,,,0.14.0,1 2,,2');
+    expect(rowOf(c), 's1,windows,arena,60,60.0,,,,,0.14.0,1 2,,2,,,');
   });
 
-  test('a round from before M14 leaves the three cells empty, as it has them', () {
+  test('a round from before M14 leaves its cells empty, as it has them', () {
     final old = <String, Object?>{
       'id': 's1',
       'host': {'type': 'windows', 'app': '0.13.0'},
@@ -70,6 +69,6 @@ void main() {
         {'game': 'arena', 'hz': 60, 'timeS': 12.5},
       ],
     };
-    expect(csvRounds([old]).split('\n').last, 's1,windows,arena,60,12.5,,,,,0.13.0,,,');
+    expect(csvRounds([old]).split('\n').last, 's1,windows,arena,60,12.5,,,,,0.13.0,,,,,,');
   });
 }

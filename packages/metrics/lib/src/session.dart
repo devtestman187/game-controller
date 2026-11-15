@@ -55,6 +55,10 @@ class SessionCollector {
   int _frameDrops = 0;
   bool _inGame = false;
 
+  /// Whether the frames record that follows the last [roundEnded] is still to
+  /// come: the games write it just after a round's end (M14 a3).
+  bool _roundWaitsForFrames = false;
+
   bool get isEmpty => _players.isEmpty;
 
   Iterable<String> get playerIds => _players.keys;
@@ -228,6 +232,7 @@ class SessionCollector {
   }) {
     final winners = {...winnerIds, ?winnerId};
     _inGame = false;
+    _roundWaitsForFrames = false;
     if (abandoned) {
       _roundHz = null;
       return;
@@ -247,6 +252,7 @@ class SessionCollector {
         if (robotWin) 'robot': true,
         if (roundTags.isNotEmpty) 'tags': roundTags,
       });
+      _roundWaitsForFrames = true;
     }
     _roundHz = null;
     for (final MapEntry(key: id, value: mode) in modes.entries) {
@@ -255,20 +261,27 @@ class SessionCollector {
       final m = _mode(mode);
       p.modeGames[m] = (p.modeGames[m] ?? 0) + 1;
       if (draw) p.modeDraws[m] = (p.modeDraws[m] ?? 0) + 1;
+      final counts = p.games[game] ??= {};
       if (winners.contains(id)) {
         p.modeWins[m] = (p.modeWins[m] ?? 0) + 1;
-        final counts = p.games[game] ??= {};
         counts['wins'] = (counts['wins'] ?? 0) + 1;
       }
-      final counts = p.games[game] ??= {};
       counts['rounds'] = (counts['rounds'] ?? 0) + 1;
     }
   }
 
-  /// Frames the host drew, and how many took too long (dropped).
+  /// Frames the host drew, and how many took too long (dropped). The record
+  /// that follows a round's end is the round's too (M14 a3): its counts go in
+  /// the round and in the session's either way.
   void frames(int frames, int drops) {
-    _frames += max(0, frames);
-    _frameDrops += max(0, drops);
+    final drawn = max(0, frames);
+    final late = max(0, drops);
+    _frames += drawn;
+    _frameDrops += late;
+    if (!_roundWaitsForFrames) return;
+    _roundWaitsForFrames = false;
+    _rounds.last['framesDrawn'] = drawn;
+    _rounds.last['framesLate'] = late;
   }
 
   /// Gives the round that just ended its battery and heat (m12 §0.8): [start]
