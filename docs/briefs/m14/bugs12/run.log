@@ -31,3 +31,4 @@
 2026-11-15 17:04:03 reviewed f1: 8 finding(s)
 2026-11-15 17:04:03 DONE: every job is committed. Claude reads the Summary of docs/briefs/m14/bugs12/REVIEW.md, verifies its findings and writes one fix brief
 2026-11-15 17:10:00 HAND-FIX bugs12-wrap2: answerConsent's mayBeAbsent now expects no prompt (findsNothing) instead of tapping one; review.sh 0 fail, host_mode, host_own_player, host_stats, settings_stats_row tests pass; f1 proof run by hand: first_host_consent_link_test fails at line 57 on 568bd0b lib, passes on the tip
+2026-11-15 17:30:00 check: tools/check.sh all passed on the tip before the runner/doc commits (364 s)
