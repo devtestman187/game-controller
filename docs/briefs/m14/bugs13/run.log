@@ -1,0 +1,8 @@
+2026-11-15 17:14:45 start at 75c8865 on m14
+2026-11-15 17:14:45 run-base 75c886518b4e90c35b524f4975b5143000e28bb8
+2026-11-15 17:14:51 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-15 17:14:51 start arena-waiting
+2026-11-15 17:30:35 arena-waiting finished: result 0 (66 turns, 13 min)
+2026-11-15 17:31:40 tests-first ok: packages/party_host/test/arena_back_test.dart fails on the old code
+2026-11-15 17:31:47 tests-first ok: packages/party_host/test/arena_row_touch_test.dart fails on the old code
+2026-11-15 17:36:21 committed arena-waiting: c6d18ce Arena waiting card: a Back button, and the own row is a label for touch
