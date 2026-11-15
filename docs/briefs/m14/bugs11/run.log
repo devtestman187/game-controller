@@ -12,3 +12,13 @@
 2026-11-15 10:12:19 reviewed b020-next-map: 10 finding(s)
 2026-11-15 10:12:19 start the run's review
 2026-11-15 10:17:31 DONE: every job is committed. Claude reads the Summary of docs/briefs/m14/bugs11/REVIEW.md, verifies its findings and writes one fix brief
+2026-11-15 10:19:34 start at 9f53b33 on m14
+2026-11-15 10:19:40 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-15 10:19:40 skip b020-solo-card (already committed)
+2026-11-15 10:19:41 skip b020-next-map (already committed)
+2026-11-15 10:19:41 start b020-solo-both
+2026-11-15 10:20:06 start b020-health-docs
+2026-11-15 10:30:31 b020-solo-both finished: result 0 (83 turns, 8 min)
+2026-11-15 10:30:31 b020-health-docs finished: result 0 (45 turns, 3 min)
+2026-11-15 10:37:11 committed b020-solo-both: 4440477 Solo night's Arena card offers Race and Bumper
+2026-11-15 10:37:13 committed b020-health-docs: e50cd4a docs/code-health: drop two stale bullets, add bugs11 leftovers
