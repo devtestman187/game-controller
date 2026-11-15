@@ -4,20 +4,12 @@ import 'package:protocol/protocol.dart';
 
 import 'host_device_sample.dart';
 import 'segment.dart';
+import 'session_clean.dart';
 import 'session_device.dart';
 import 'session_player.dart';
 import 'session_stats.dart';
 
-/// What hosted the session (PRD v2 S6).
-abstract final class HostType {
-  static const androidTv = 'android_tv';
-  static const windows = 'windows';
-  static const phone = 'phone';
-
-  /// A tablet hosting its own game (M12 host mode, design §0).
-  static const tablet = 'tablet';
-  static const other = 'other';
-}
+export 'session_clean.dart' show HostType, maxRoundTags;
 
 /// Joins everything the host learns in one play session into one summary
 /// (PRD v2 T17): each phone's mode segments, ratings, latency, connection
@@ -76,9 +68,9 @@ class SessionCollector {
     String app = '',
     DeviceInfo? device,
   }) {
-    app = _clean(app, 24) ?? '';
-    platform = _clean(platform, 16) ?? '';
-    device = device == null ? null : _cleanDevice(device);
+    app = cleanText(app, 24) ?? '';
+    platform = cleanText(platform, 16) ?? '';
+    device = device == null ? null : cleanDevice(device);
     final p = _players[id] ??= PlayerRecord(number: number, local: local, platform: platform, app: app, device: device);
     p.number = number;
     if (inProcess) p.inProcess = true;
@@ -163,14 +155,14 @@ class SessionCollector {
   void rating(String id, RatingMessage r, {required String game, List<String> roundTags = const []}) {
     final p = _players[id];
     if (p == null || p.ratings.length >= 50) return;
-    final round = _roundTags(roundTags);
+    final round = roundTagsOf(roundTags);
     p.ratings.add({
       'game': game,
       'face': ?r.face?.name,
       if (r.skipped) 'skipped': true,
       'tags': [
         for (final t in r.tags.take(8))
-          if (t.length <= 32 && _tagPattern.hasMatch(t)) t,
+          if (t.length <= 32 && tagPattern.hasMatch(t)) t,
       ],
       'mode': ?p.mode,
       if (round.isNotEmpty) 'round': round,
@@ -238,7 +230,7 @@ class SessionCollector {
       return;
     }
     if (_rounds.length < 1000) {
-      final roundTags = _roundTags(tags);
+      final roundTags = roundTagsOf(tags);
       _rounds.add({
         'game': game,
         'hz': ?_roundHz,
@@ -330,42 +322,3 @@ class SessionCollector {
 
 /// Version of the session summary format.
 const summarySchema = 1;
-
-/// The most tags a round or a rating keeps: a game writes a handful, and a
-/// runaway one must not fill the summary.
-const maxRoundTags = 8;
-
-/// The tags of [tags] that look like a round's own (M14): short `kind_value`
-/// strings such as `mode_bumper`, `map_toy-factory` or `night_2of3`. Anything
-/// else — a name, a sentence — is dropped, so no tag can carry a person's
-/// words.
-List<String> _roundTags(List<String> tags) => [
-  for (final tag in tags.take(maxRoundTags))
-    if (_roundTagPattern.hasMatch(tag)) tag,
-];
-
-/// Keeps a short technical string (a version, a model like "Pixel 8" or
-/// "iPhone15,2"), or drops it if it looks like anything else.
-String? _clean(String? s, int maxLength) {
-  if (s == null) return null;
-  final t = s.trim();
-  if (t.isEmpty || t.length > maxLength || !_technical.hasMatch(t) || t.contains("'")) return null;
-  return t;
-}
-
-DeviceInfo _cleanDevice(DeviceInfo d) => DeviceInfo(
-  kind: _clean(d.kind, 16) ?? 'other',
-  model: _clean(d.model, 40),
-  os: _clean(d.os, 40),
-  widthMm: d.widthMm == null || d.widthMm! < 0 || d.widthMm! > 2000 ? null : d.widthMm,
-  heightMm: d.heightMm == null || d.heightMm! < 0 || d.heightMm! > 2000 ? null : d.heightMm,
-  haptics: d.haptics,
-);
-
-final _technical = RegExp(r'^[A-Za-z0-9 ,._()+-]+$');
-
-final _tagPattern = RegExp(r'^[a-z0-9_]+$');
-
-/// A round's tag: lower case and digits, with `_` between a kind and its
-/// value and `-` inside a map's id (`map_toy-factory`).
-final _roundTagPattern = RegExp(r'^[a-z0-9_.-]{1,32}$');
