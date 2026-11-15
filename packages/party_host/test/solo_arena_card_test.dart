@@ -13,9 +13,15 @@ import 'support/night_harness.dart';
 /// could not pick a map at all, so the owner asked for the choice back.
 void main() {
   /// Home → Play → Party night → its Bumper Round, stopping at the card.
-  /// [phones] adds a second phone to the sample roster first.
-  Future<FakeHostService> openNightBumperCard(WidgetTester tester, {List<String> phones = const []}) async {
+  /// [phones] adds a second phone to the sample roster first, and [setMap]
+  /// saves a map before the night, as an earlier session would have.
+  Future<FakeHostService> openNightBumperCard(
+    WidgetTester tester, {
+    List<String> phones = const [],
+    String? setMap,
+  }) async {
     final fake = await pumpHost(tester, screen: const StubHome());
+    if (setMap != null) appContainer(tester).read(arenaSettingsProvider.notifier).setMap(setMap);
     for (final id in phones) {
       fake.state = withController(fake.state, phoneInfo(id, 2));
     }
@@ -31,15 +37,9 @@ void main() {
   testWidgets('a night\'s one player gets the Arena\'s card, on Surprise me, and the round waits for Start', (
     tester,
   ) async {
-    final fake = await pumpHost(tester, screen: const StubHome());
     // A map saved before the night: the night's card still opens on Surprise me,
     // so the night plays a map it hasn't used (design section 7b).
-    appContainer(tester).read(arenaSettingsProvider.notifier).setMap('pinball');
-    await neutral(tester, fake, ['p1']);
-    await openNight(tester);
-    await tapVisible(tester, find.byKey(const Key('nightBumper')));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 500));
+    final fake = await openNightBumperCard(tester, setMap: 'pinball');
 
     expect(
       find.byKey(const Key('arenaWaitingCard')),
@@ -60,7 +60,9 @@ void main() {
     await readyUp(tester, fake);
     await roundStarted(tester);
     expect(find.byKey(const Key('arenaWaitingCard')), findsNothing, reason: 'all ready: the round starts');
-    expect(arenaSnapshot(tester).mode, ArenaMode.bumper);
+    final snapshot = arenaSnapshot(tester);
+    expect(snapshot.mode, ArenaMode.bumper);
+    expect(snapshot.mapId, isNot('pinball'), reason: 'the night plays a map it hasn\'t used');
   });
 
   testWidgets('a night\'s card is the same for two players as before', (tester) async {
