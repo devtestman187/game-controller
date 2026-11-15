@@ -59,12 +59,14 @@ void main() {
     }
     expect(find.byKey(const Key('arenaMap-surprise')), findsOneWidget);
 
-    // The race is the Playroom's alone: the four new maps are Bumper arenas
-    // with no finish, so the picker offers the other mode's maps alone (design
-    // section 7b).
+    // The race plays the Playroom and the two maps that landed one (M14 bugs7
+    // b015); the Bumper arenas with no finish are left out (design section 7b).
     await tapCard(tester, 'arenaMode-race');
     expect(find.byKey(const Key('arenaMap-playroom')), findsOneWidget);
+    expect(find.byKey(const Key('arenaMap-block-castle')), findsOneWidget, reason: 'Block Castle has a race');
+    expect(find.byKey(const Key('arenaMap-toy-factory')), findsOneWidget, reason: 'Toy Factory has a race');
     expect(find.byKey(const Key('arenaMap-pinball')), findsNothing, reason: 'Pinball has no race');
+    expect(find.byKey(const Key('arenaMap-spinning-tops')), findsNothing, reason: 'Spinning Tops has no race');
     expect(find.byKey(const Key('arenaMap-surprise')), findsOneWidget);
   });
 

@@ -71,11 +71,17 @@ void main() {
     }
   });
 
-  test('each new map plays the Bumper Round only: no race section, four mirror-image starts', () {
+  test('each new map plays the Bumper Round, and only pinball and spinning-tops have no race', () {
     for (final id in fourMapIds) {
-      final map = loadMap(id);
-      expect(map.race, isNull, reason: '$id is a Bumper Round arena (party-night §7b)');
-      expect(map.bumper, isNotNull, reason: '$id plays the Bumper Round');
+      expect(loadMap(id).bumper, isNotNull, reason: '$id plays the Bumper Round');
     }
+    expect(
+      [
+        for (final id in fourMapIds)
+          if (loadMap(id).race == null) id,
+      ],
+      ['pinball', 'spinning-tops'],
+      reason: 'Block Castle and Toy Factory landed a race too (M14 bugs7 b015)',
+    );
   });
 }

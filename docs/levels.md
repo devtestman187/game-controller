@@ -243,7 +243,7 @@ Positions are fractions, so the field plays the same in any window. Sizes and sp
 | `race` | The Shape Race's part: `start` (where the first player starts), `goal` (the pad, `[left, top, right, bottom]`) and `swapSides` (whether every round flips the field left to right, as the race does today). The other three starts sit above and below `start` at `startSpacing` (0.14 of the height), so a map's start needs room for four. |
 | `bumper` | The Bumper Round's part: `starts` (four spots) and `coins` (one or more rects a coin may appear in). |
 
-A map needs `race`, or `bumper`, or both: a map with neither is refused with a message saying to add one, since no mode could play it. A map with only `bumper` is a Bumper Round arena with no finish (M14 k2's four). A game built with no map plays the Playroom, and `maps/playroom.json` parses to `ArenaMap.playroom` exactly, so the field in code and the file cannot drift.
+A map needs `race`, or `bumper`, or both: a map with neither is refused with a message saying to add one, since no mode could play it. A map with only `bumper` is a Bumper Round arena with no finish (Pinball and Spinning Tops); one with both plays either mode (the Playroom, Block Castle and Toy Factory). A game built with no map plays the Playroom, and `maps/playroom.json` parses to `ArenaMap.playroom` exactly, so the field in code and the file cannot drift.
 
 ### The two modes' needs
 

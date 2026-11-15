@@ -46,8 +46,11 @@ void main() {
     await press(tester, fake, 'p1', GamepadButton.a);
     expect(appContainer(tester).read(arenaSettingsProvider).mode, ArenaMode.race, reason: 'the next press works too');
 
-    // Down the card to the maps: the race plays the Playroom alone.
-    await walkTo(tester, fake, 'arenaMap-playroom', GamepadButton.dpadDown);
+    // Down the card to the map row — the race plays three maps since M14 bugs7
+    // b015, so the arrow lands on the card under the player rows — then left
+    // along the row to the Playroom.
+    await walkTo(tester, fake, 'arenaMap-block-castle', GamepadButton.dpadDown);
+    await walkTo(tester, fake, 'arenaMap-playroom', GamepadButton.dpadLeft);
     await press(tester, fake, 'p1', GamepadButton.a);
     expect(find.byKey(const Key('chosenMap-playroom')), findsOneWidget, reason: 'A presses the map row');
 
