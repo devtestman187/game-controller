@@ -139,6 +139,12 @@ The "could" findings of [bugs1's review](briefs/m14/bugs1/REVIEW.md) that the fi
 - **Host disposed under the prompt (f1 review, 4)**: `HostScreen`'s "host disposed" pop pops the top route, which would be the dialog; pop the host route itself. Needs the host to die while the prompt is up (Stop is behind the dialog), so very unlikely.
 - **`joinPhone` helper copied** in `first_host_consent_link_test.dart` and `host_focus_pad_test.dart`: move it to `test/support/host_app.dart`. The link test also repeats `first_host_consent_test.dart`'s assertions, and joins over a real socket like the focus-pad test (guidelines section 9 allows that only for connection tests): write the exception down there.
 
+### M14 bugs13 leftovers (arena-waiting review of Nov 15, 2026)
+
+- **Arena card split**: `_cardBody` is 56 lines and `_tick` 43 (guidelines: about 40); `arena_waiting_card.dart` (365) and `arena_waiting_widgets.dart` (354) grew for B-013, B-024 and B-025. Split the ready row, roster and maps into their own widgets in the next card job (*before a milestone* that touches the card).
+- **Doubled pins**: `arena_row_touch_test.dart` re-pins three paths (Ready button, a joined phone's A, remote OK/Enter on the focused row) that `arena_touch_ready_test.dart`, `arena_phone_card_test.dart` and `arena_waiting_test.dart` already pin; move them back when those files are next edited. The run is not broken by it (the file as a whole fails on the old code).
+- **Narrow touch card**: an own player's Ready line beside Back below 852 px wide (the 600 px window) is untested.
+
 ## Before a milestone
 
 | Before | What | Risk | Benefit of doing it first | Rec. |

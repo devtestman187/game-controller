@@ -28,7 +28,7 @@ lines, and both files' sizes, each over the 300-line aim and inside the 400 limi
 ### B-024: the Back button (`arena_waiting_card.dart`)
 
 `_cardBody` builds a `Row` of the Back button, a `space12` gap, and the existing `_ReadyRow` in an `Expanded`. On a
-TV (`onReady == null`) `_ReadyRow` still centres its line inside that `Expanded`, so the TV card reads as before.
+TV (`onReady == null`) `_ReadyRow` still centres its line inside that `Expanded`, so the TV line moves about 62 px right of the card's centre.
 
 Why not the mode row: with Back there, the card at 600x800 (a small laptop window, pinned by
 `game_screen_test.dart`'s "fills a small laptop window without overflow") overflowed by 112 px on the right —
@@ -97,7 +97,7 @@ A, and a local player by its pad.
 
 1. **Back sits under the mode row, not in it**: the mode row overflows a 600-wide window by 112 px with a 112 px
    button added, and the row under it has an `Expanded` line that absorbs the width.
-2. **Back is leftmost in that row, before the Ready button**: it mirrors the join screen (Start, then Back) and the
+2. **Back is leftmost in that row, before the Ready button**: Back left of Ready keeps the Ready button where a thumb expects it (the join screen puts Start first), and the
    line keeps `_ReadyRow`'s own layout.
 3. **Back is shown on every host, not only touch hosts**: the brief asks for it on a TV card too, and one card that
    reads the same on a TV and a phone is the guideline's rule 6.
@@ -115,7 +115,7 @@ A, and a local player by its pad.
    (`arena_back_test.dart` tests 1–2, `arena_row_touch_test.dart` test 1's P2 half on a phone); phone "Play on this
    phone": own row is a label, Ready button and Back work (`arena_row_touch_test.dart` 1–2,
    `arena_back_test.dart` 3); phone "Show on this device": no own player, no Ready button, Back shown
-   (`arena_touch_ready_test.dart` "a phone that only shows the game has no Ready button"); joined phone: its A still
+   (`arena_back_test.dart:40-52`, which renders the card with no own player); joined phone: its A still
    readies the focused own row (`arena_row_touch_test.dart` 3); one build older: no protocol, storage or route change.
 2. **When kept state starts and ends** — no new state: `_ready`, `_before`, `_picked`, `_started` and the 16 ms timer
    are unchanged and end in `dispose` as before; Back pops the card and `dispose` cancels the timer

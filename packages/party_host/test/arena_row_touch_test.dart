@@ -7,12 +7,15 @@ import 'package:party_host/party_host.dart';
 import 'package:party_host/testing.dart';
 
 import 'support/host_harness.dart';
+import 'support/toy_fonts.dart';
 
 /// The Arena's waiting card: the own player's row is a label for a thumb (M14
 /// bugs B-025, the owner's option A). A tap on it does nothing; the card's
 /// Ready button readies that player and takes it back, and a joined phone's A,
 /// the remote's OK and Enter on the focused row still do too (B-013).
 void main() {
+  setUpAll(loadLookFonts);
+
   /// What a phone host that plays here supplies: this phone's own player is in
   /// the round, and the host is worked by touch (m12-host-touch rules A and B).
   List<Override> ownPhoneOverrides(String id) => [

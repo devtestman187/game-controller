@@ -107,7 +107,8 @@ class _ReadyLabel extends StatelessWidget {
 /// player (M14 b1): on a touch host that player has no pad over this card, so
 /// the tap is its A. The button stands where Shape Race's Start does, beside
 /// its line of words, and is null on a TV and on a phone that only shows the
-/// game, where the line alone stays centred.
+/// game, where the line alone is centred in the space right of the card's
+/// Back button (about 62 px right of the card's centre).
 class _ReadyRow extends StatelessWidget {
   const _ReadyRow({required this.line, required this.ready, this.onReady});
 

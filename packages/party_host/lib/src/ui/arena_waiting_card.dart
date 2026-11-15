@@ -270,9 +270,9 @@ class _ArenaWaitingCardState extends ConsumerState<ArenaWaitingCard> {
         const SizedBox(height: ToySizes.space16),
         // The line, the own player's button and the card's Back sit under the
         // mode row, above the players and the maps, so a phone in landscape
-        // shows them without scrolling (M14 b1). Back stands first, as the join
-        // screen's does before its Start, and leaves the Arena as that one
-        // leaves its screen: a thumb has no B and the card has no title bar
+        // shows them without scrolling (M14 b1). Back stands left of Ready,
+        // which keeps the Ready button where a thumb expects it, and leaves
+        // the Arena as the join screen's Back leaves its screen: a thumb has no B and the card has no title bar
         // (M14 bugs B-024). The mode row keeps its width for the modes and the
         // code, which a small window already fills.
         Row(

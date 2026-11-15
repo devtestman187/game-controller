@@ -79,3 +79,14 @@ Run review of bugs13 (one job, arena-waiting c6d18ce) written: 0 must, 3 should,
 ## Delete
 
 - none
+
+## Claude's verdicts (Nov 15, 2026)
+
+1. Doubled pins (arena_row_touch_test.dart:73/84/94): real, minor (a doubled pin, no broken rule) -> docs/code-health.md.
+2. Comment and decision 2 give the join screen's order backwards: real (join_screen_widgets.dart:271-288 puts Start first) -> fixed by hand.
+3. TV ready line shifted 62 px, doc says "stays centred": real -> doc and report corrected by hand; no x-pin (no owner statement on the place).
+4. No loadLookFonts in arena_row_touch_test.dart: real -> fixed by hand (setUpAll added, 7/7 pass).
+5. `_cardBody` 56 lines: real, minor -> code-health.md (card split).
+6. Report line 118 cites a test that never looks at arenaBack: real -> citation corrected (arena_back_test.dart:40-52).
+Open questions: kept as the review proposes; the Back look on a TV is for the owner's eyes. No code-sized finding: the fix brief f1 carries only the owner's consent decision.
+Not touched: the review's "could not check" items (device only).

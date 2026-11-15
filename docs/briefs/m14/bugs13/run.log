@@ -9,3 +9,4 @@
 2026-11-15 17:42:16 reviewed arena-waiting: 8 finding(s)
 2026-11-15 17:42:17 start the run's review
 2026-11-15 17:46:43 DONE: every job is committed. Claude reads the Summary of docs/briefs/m14/bugs13/REVIEW.md, verifies its findings and writes one fix brief
+2026-11-15 17:48:43 HAND-FIX arena-waiting: comment and doc wording for Back's place and the TV line, loadLookFonts in the row-touch test, report citations (review.sh 0 fail, host tests 7/7)
