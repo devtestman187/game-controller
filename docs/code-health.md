@@ -108,6 +108,10 @@ The "could" findings of [bugs1's review](briefs/m14/bugs1/REVIEW.md) that the fi
 - **puzzle_pick.dart (Back during load)**: `_picked` has no `mounted` check after `await puzzleLibraryProvider.future`, so pressing Back while the library loads can throw. Rec.: `if (!mounted) return;` after the await, with a test.
 - **game_screen.dart (late-joining phone)**: `_alone` is `late final`, so a phone joining a night's Arena mid-solo is not offered the waiting card; the Arena has no comment recording this. Rec.: decide whether a late phone should get the card (make `_alone` live) or add the comment.
 
+- **toy_look ListTile colour (B-017)**: `toy_theme.dart:41` gives every ListTile `colors.onBackground` (white at night), so a tile on paper is only ink where something puts it back: `ToyCard` and `controller_app/lib/src/ui/paper_tiles.dart` (two copies of the rule). Rec.: make `toyTheme` take `colors.ink` only for tiles on paper (the TV app too), then delete `paperTileTheme` and ToyCard's copy in the same job.
+- **Contrast helper twice**: the WCAG ratio maths sits in `packages/toy_look/test/contrast_test.dart` and `controller_app/test/stick_text_contrast_test.dart`. Rec.: one helper in `toy_look`'s testing library.
+- **Tests rewrite tracked pictures**: a full suite run rewrites `docs/design/maps/*.png` (map_render_test) and `site/shots/*.png` (site_shots.dart). Rec.: write them to a temp dir unless a flag is set.
+
 ## Before a milestone
 
 | Before | What | Risk | Benefit of doing it first | Rec. |
