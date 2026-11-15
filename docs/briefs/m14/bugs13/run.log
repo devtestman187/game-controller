@@ -6,3 +6,4 @@
 2026-11-15 17:31:40 tests-first ok: packages/party_host/test/arena_back_test.dart fails on the old code
 2026-11-15 17:31:47 tests-first ok: packages/party_host/test/arena_row_touch_test.dart fails on the old code
 2026-11-15 17:36:21 committed arena-waiting: c6d18ce Arena waiting card: a Back button, and the own row is a label for touch
+2026-11-15 17:42:16 reviewed arena-waiting: 8 finding(s)
