@@ -3,8 +3,9 @@ part of 'puzzle_screen.dart';
 /// The results over the board: the winner, each side's finished picture as a
 /// photo (design 3a), its time or pieces placed, its best time and any new
 /// record (T15), and the first button (Rematch, Play again or Next puzzle),
-/// Change teams and Back (T14). A night's round keeps only its Next (M14 c1);
-/// a round of a series adds Next puzzle and the Shuffle switch (B-011).
+/// Change teams and Back (T14). A night's round keeps its Next and, before the
+/// night's last round, End night beside it (M14 c1, B-021); a round of a series
+/// adds Next puzzle and the Shuffle switch (B-011).
 class _Results extends ConsumerWidget {
   const _Results({
     required this.result,
@@ -13,6 +14,8 @@ class _Results extends ConsumerWidget {
     required this.menu,
     required this.onChangeTeams,
     required this.night,
+    required this.lastRound,
+    required this.onEndNight,
     required this.puzzle,
     required this.match,
     required this.times,
@@ -36,6 +39,14 @@ class _Results extends ConsumerWidget {
   /// Whether this round is a night's: its results offer Next alone (design
   /// section 4), and the night's scoreboard follows it.
   final bool night;
+
+  /// Whether the round on the card is the night's last: Next ends the night
+  /// then, so End night has nothing left to end (B-021).
+  final bool lastRound;
+
+  /// A night's End night: the host ends the night on the round just played
+  /// (B-021), before the night's last round.
+  final VoidCallback onEndNight;
 
   /// What this round did to each finished side's best time (T15): the chip
   /// says which boards beat theirs.
@@ -80,11 +91,24 @@ class _Results extends ConsumerWidget {
   }
 
   /// The card's buttons: a series round's Wrap (B-011), else the row a night's
-  /// round and an `any <level>` round have always had (T14, M14 c1).
+  /// round and an `any <level>` round have always had (T14, M14 c1). A night's
+  /// round before its last adds End night beside Next (B-021), both in one Row
+  /// so the remote's Right walks from one to the other.
   Widget _buttons() {
     final series = menu.series;
-    if (series == null) return _ResultButtons(again: menu.again, onChangeTeams: onChangeTeams, night: night);
-    return _SeriesButtons(again: menu.again, replay: menu.replay, options: series, onChangeTeams: onChangeTeams);
+    if (series != null) {
+      return _SeriesButtons(again: menu.again, replay: menu.replay, options: series, onChangeTeams: onChangeTeams);
+    }
+    final next = _ResultButtons(again: menu.again, onChangeTeams: onChangeTeams, night: night);
+    if (!night || lastRound) return next;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        next,
+        const SizedBox(width: ToySizes.space12),
+        HostButton(key: const Key('endNight'), label: NightText.endNightNow, icon: Icons.flag, onPressed: onEndNight),
+      ],
+    );
   }
 
   /// Each side's picture as the round left it, side by side under the header

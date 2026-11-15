@@ -38,6 +38,7 @@ import 'puzzle_photo.dart';
 part 'puzzle_continue.dart';
 part 'puzzle_pick.dart';
 part 'puzzle_results_widgets.dart';
+part 'puzzle_screen_results.dart';
 part 'puzzle_screen_widgets.dart';
 
 /// Shape Race (PRD v2 M10, M11): the match, played through the game host,
@@ -296,18 +297,6 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
     );
   }
 
-  /// The route asked: on the results the answer is the game picker. A round
-  /// that waits for a phone that dropped stays where it is: the away card
-  /// blocks the Back and is the way on (m12 code health N1).
-  void _leaveForGames(bool didPop) {
-    if (didPop || ref.read(playersAwayProvider).isNotEmpty) return;
-    // A night's round is played and scored: Back records it as Next does, and
-    // the scoreboard's Back is the one that asks to end the night.
-    if (ref.read(partyNightProvider) != null) return _next();
-    _log('Results: back to the games');
-    leaveForGamePicker(context);
-  }
-
   /// The board, the results over it, and the play hint.
   Widget _screen(Puzzle? puzzle, MatchResult? result) => Scaffold(
     body: SafeArea(
@@ -365,6 +354,8 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
                             menu: _menu,
                             onChangeTeams: _changeTeams,
                             night: ref.read(partyNightProvider) != null,
+                            lastRound: ref.read(partyNightProvider)?.isNextRoundTheLast ?? false,
+                            onEndNight: _endNight,
                             puzzle: puzzle,
                             match: _play.currentState?.match,
                             times: _times,
