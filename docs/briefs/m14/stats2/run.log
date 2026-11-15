@@ -15,3 +15,5 @@
 2026-11-15 16:27:38 reviewed c1-build-metrics: 8 finding(s)
 2026-11-15 16:30:38 reviewed c2-build-wiring: 5 finding(s)
 2026-11-15 16:30:39 reviewed c3-docs: 2 finding(s)
+2026-11-15 16:30:39 start the run's review
+2026-11-15 16:34:24 DONE: every job is committed. Claude reads the Summary of docs/briefs/m14/stats2/REVIEW.md, verifies its findings and writes one fix brief
