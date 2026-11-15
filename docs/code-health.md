@@ -102,3 +102,5 @@ The "could" findings of [bugs1's review](briefs/m14/bugs1/REVIEW.md) that the fi
 
 ## Done
 - (none yet)
+
+- (M14 bugs6, b012b-2) The redone Medium car (9 pieces) has no opponent mirror on an iPhone-sized phone with the D-pad (the mirror exists with no pad). The mirror rule allows "absent or clear", so `controller_app/test/mirror_pad_test.dart` now lets a mirror be absent but never moved. A device look at Medium car on a D-pad phone is worth a minute.

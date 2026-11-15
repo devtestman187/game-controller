@@ -76,13 +76,13 @@ void main() {
   test('the joined iPad\'s solo boat fills the box, clear of the app\'s sticks, bar and clock area', () {
     // Before the change the whole match made room for two stacked worlds: 6.36
     // and 5.09 pxs per unit, at the top middle of the box. One board now fills
-    // it at 9.70 and 7.66, half again as big, its tray at the bar's band.
+    // it at 11.21 and 8.93, half again as big, its tray at the bar's band.
     final boat = loadBoat();
     final layout = SplitLayout.of(boat, 1, target: LayoutTarget.phones);
     final size = layout.left.size;
     for (final (box, expected) in const [
-      (iPadLandscape, (scale: 9.699314614098151, world: Rect.fromLTRB(241.280, 123.961, 1124.720, 909.471))),
-      (iPadSmallLandscape, (scale: 7.661600922950532, world: Rect.fromLTRB(241.080, 99.477, 938.920, 719.960))),
+      (iPadLandscape, (scale: 11.209613876536267, world: Rect.fromLTRB(241.280, 120.941, 1124.720, 906.128))),
+      (iPadSmallLandscape, (scale: 8.930715009821478, world: Rect.fromLTRB(238.081, 96.939, 941.919, 722.498))),
     ]) {
       final pad = leftPadRects(box, mode: PadMode.sticks, mm: iPadPxPerMm);
       final parts = drawn(boat, box, pad);

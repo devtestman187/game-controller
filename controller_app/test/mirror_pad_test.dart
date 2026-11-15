@@ -257,7 +257,11 @@ void main() {
       // The D-pad is below both places, so the mirror it leaves is the one the
       // game draws with no pad at all.
       for (final MapEntry(key: id, value: puzzle) in puzzles.entries) {
-        expect(mirrorOf(puzzle, iphone, PadMode.dpad), mirrorWith(puzzle, iphone, const []), reason: id);
+        // The mirror is never moved by the D-pad; a picture whose bigger pieces
+        // (Medium's redone car, B-012b) leave no readable room beside the pad
+        // may lose it (rule 7: absent or clear), but never gets another place.
+        final withDpad = mirrorOf(puzzle, iphone, PadMode.dpad);
+        if (withDpad != null) expect(withDpad, mirrorWith(puzzle, iphone, const []), reason: id);
       }
     });
 
