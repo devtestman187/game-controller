@@ -5,3 +5,10 @@
 2026-11-15 15:55:59 b023-stats-card finished: result 4 (75 turns, 7 min)
 2026-11-15 15:55:59 STOPPED: jobs that failed or need applying by hand: b023-stats-card:4 (their logs: docs/briefs/m14/bugs12/flash-<job>.log)
 2026-11-15 15:57:08 HAND-FIX b023-stats-card: applied the job's change by hand (it also edited controller_app/lib/src/ui/settings_sections.dart, outside allow:); review.sh 0 fail, targeted test passes
+2026-11-15 15:57:08 start at d398d08 on m14
+2026-11-15 15:57:14 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-15 15:57:15 WARN: b023-stats-card was committed by hand (d398d08); a plain restart would skip its tests-first proof and worker review, so both run now
+2026-11-15 15:58:27 skip b023-stats-card (already done)
+2026-11-15 15:58:27 start b023-first-host-consent
+2026-11-15 16:10:23 b023-first-host-consent finished: result 0 (89 turns, 9 min)
+2026-11-15 16:18:05 committed b023-first-host-consent: 611e2bc Ask the phone's adult for host stats consent at the first host (B-023)
