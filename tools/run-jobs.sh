@@ -97,7 +97,8 @@ check_stop() { # the STOP file: kill the children, log, exit
 }
 handfixed() { # handfixed <job>: was its commit made by hand after a stop?
   [ -f "$B/$1-handfixed" ] && return 0
-  grep -qE "HAND-FIX.*(^|[^A-Za-z0-9_-])$1([^A-Za-z0-9_-]|\$)" "$B/run.log" 2>/dev/null && return 0
+  # only the job named right after "HAND-FIX " counts, never a free-text mention of it
+  grep -qE "(^|[^A-Za-z0-9_-])HAND-FIX $1:" "$B/run.log" 2>/dev/null && return 0
   git log -1 --format=%B -- "$B/$1-report.md" | grep -qi '^Hand-fixed:'
 }
 is_done() { # is_done <job>: in done.txt; no done.txt (older batch): report committed at HEAD
@@ -180,7 +181,9 @@ tests_first() { # tests_first <job>...
     mkdir -p "$tmp/$(dirname "$t")"
     if [ -n "${TF_COMMIT:-}" ]; then git show "$TF_COMMIT:$t" > "$tmp/$t"; else cp "$t" "$tmp/$t"; fi
     cmd="dart test"; grep -q 'sdk: flutter' "$pkg/pubspec.yaml" 2>/dev/null && cmd="flutter test"
-    if ( cd "$tmp/$pkg" && timeout 300 $cmd "${t#"$pkg"/}" >/dev/null 2>&1 ); then
+    if ! ( cd "$tmp/$pkg" && timeout 300 $cmd "${t#"$pkg"/}" >/dev/null 2>&1 ); then
+      note "tests-first ok: $t fails on the old code"
+    else
       exempt=0
       for a in "${ex[@]}"; do case "$t" in "$a"*) exempt=1 ;; esac; done
       if [ $exempt -eq 1 ]; then note "tests-first: $t passes on the old code, exempt by its brief"
@@ -273,6 +276,7 @@ slot_wait() { # at most 3 flash jobs at once, counting the background review cha
 handfix_recheck() { # handfix_recheck <job>: the proof and review a hand commit skipped; once per job
   local j=$1 c
   [ -f "$WORK/rechecked-$j" ] && return 0
+  grep -q "^$j .* proof\$" "$B/done.txt" 2>/dev/null && return 0 # also survives a fresh clone
   c=$(git log -1 --format=%H -- "$B/$j-report.md")
   note "WARN: $j was committed by hand ($(git rev-parse --short "$c")); a plain restart would skip its tests-first proof and worker review, so both run now"
   TF_COMMIT=$c tests_first "$j"
@@ -281,6 +285,9 @@ handfix_recheck() { # handfix_recheck <job>: the proof and review a hand commit 
     start_reviews "$j"
   fi
   : > "$WORK/rechecked-$j"
+  # the marker in done.txt: a restart (or a fresh clone) does not repeat the proof and the review
+  echo "$j $c proof" >> "$B/done.txt"; save "runner: proof and review of hand-fixed $j done" "$B/done.txt"
+  note "hand-fixed $j: tests-first proof and worker review done (marked in done.txt)"
 }
 
 branch=$(git rev-parse --abbrev-ref HEAD)
