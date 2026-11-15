@@ -68,9 +68,9 @@ void main() {
     /// tray is about 80 units wide, and `tray_pile_test.dart` holds the
     /// players' promise of half there). The packer's rule — a piece covers at
     /// most half of the box before it — leaves a piece whose box is mostly
-    /// shape, such as the dragon's front leg or the tractor's ground, under a
-    /// half in the narrowest one: 0.524 and 0.471 at the seeds below (b013).
-    const visibleShare = 0.45;
+    /// shape under a half in the narrowest one: the lowest is the lighthouse's
+    /// tower top, 0.518 at the seeds below, so the floor is 0.50 (b012c).
+    const visibleShare = 0.50;
 
     test('every packed piece keeps about half of itself visible, each one covers at most half the box before it, the '
         'boxes stay in the tray and the height covers them all', () {

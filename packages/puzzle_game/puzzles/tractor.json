@@ -4,17 +4,17 @@
   "id": "tractor",
   "name": "Tractor",
   "level": "hard",
+  "notes": "A farm tractor seen from the side, facing left: the small front wheel under the bonnet, the large rear wheel under the cab, and a roof, window, exhaust and fender filling in the cab.",
   "pieces": [
-    {"id": "engine", "shape": {"rect": [16, 15]}, "color": "red", "at": [38, 49], "rotated": true, "big": true},
-    {"id": "cab", "shape": {"rect": [12, 14]}, "color": "blue", "at": [50, 46], "rotated": true, "big": true},
-    {"id": "big wheel", "shape": {"circle": 9}, "color": "slate", "at": [52, 60], "big": true},
-    {"id": "small wheel", "shape": {"circle": 7.5}, "color": "brown", "at": [24, 61]},
-    {"id": "roof", "shape": {"rect": [13, 9]}, "color": "orange", "at": [50, 37], "rotated": true},
-    {"id": "window", "shape": {"rect": [13, 10]}, "color": "#E91E63", "at": [50, 46], "rotated": true},
-    {"id": "bonnet", "shape": {"rect": [11, 11]}, "color": "green", "at": [27, 51], "rotated": true},
-    {"id": "exhaust", "shape": {"rect": [10, 12]}, "color": "#00897B", "at": [44, 40], "rotated": true},
-    {"id": "ground left", "shape": {"rect": [14, 8]}, "color": "sand", "at": [18, 68], "rotated": true},
-    {"id": "ground right", "shape": {"rect": [14, 8]}, "color": "purple", "at": [46, 68], "rotated": true},
-    {"id": "sun", "shape": {"circle": 9}, "color": "yellow", "at": [68, 22]}
+    {"id": "grille", "shape": {"rect": [8, 10]}, "color": "sand", "at": [11, 39.5], "rotated": true},
+    {"id": "bonnet", "shape": {"rect": [18, 9]}, "color": "red", "at": [23, 39.5], "rotated": true, "big": true},
+    {"id": "chassis", "shape": {"rect": [14, 6]}, "color": "yellow", "at": [30, 47], "rotated": true},
+    {"id": "exhaust", "shape": {"rect": [4, 18]}, "color": "green", "at": [29, 27], "rotated": true},
+    {"id": "cab", "shape": {"rect": [17, 19]}, "color": "blue", "at": [40, 27.5], "rotated": true, "big": true},
+    {"id": "front window", "shape": {"rect": [10, 10]}, "color": "sky", "at": [40, 26], "rotated": true},
+    {"id": "roof", "shape": {"rect": [20, 4]}, "color": "orange", "at": [40, 16], "rotated": true},
+    {"id": "fender", "shape": {"rect": [20, 4]}, "color": "purple", "at": [47, 35], "rotated": true},
+    {"id": "front wheel", "shape": {"circle": 7}, "color": "brown", "at": [16, 50]},
+    {"id": "rear wheel", "shape": {"circle": 10}, "color": "slate", "at": [47, 47], "big": true}
   ]
 }

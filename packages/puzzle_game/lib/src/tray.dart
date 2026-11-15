@@ -8,6 +8,11 @@ import 'puzzle.dart';
 /// pieces' extent on each side.
 const trayGap = 2.0;
 
+/// How far past the tray's edge a box may end and still fit: a tray sized to its
+/// row is `right + trayGap` wide, and `(right + trayGap) - trayGap` can differ
+/// from `right` by float rounding.
+const _fitSlack = 1e-9;
+
 /// Packs pieces into a tray [width] wide, tallest box first, in rows from the
 /// left with a gap of [trayGap] at the edges and between rows. Each piece
 /// after the first in a row starts [overlap] of the previous box's width
@@ -88,7 +93,7 @@ const trayGap = 2.0;
       var wrap = false;
       var o = overlap;
       place = leftAt(o);
-      var check = place.dx + box.width > width - trayGap;
+      var check = place.dx + box.width > width - trayGap + _fitSlack;
       while (!check) {
         final result = hideAt(i, place);
         if (!result.tooMuch) {
@@ -103,7 +108,7 @@ const trayGap = 2.0;
         }
         o = max(0, o - 0.05);
         place = leftAt(o);
-        check = place.dx + box.width > width - trayGap;
+        check = place.dx + box.width > width - trayGap + _fitSlack;
       }
       if (check) {
         wrap = true;

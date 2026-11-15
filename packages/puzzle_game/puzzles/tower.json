@@ -4,17 +4,17 @@
   "id": "tower",
   "name": "Tower",
   "level": "hard",
+  "notes": "A castle tower under a pointed red roof, with three battlements under the eaves, a tall body, a door with a step below it and one window.",
   "pieces": [
-    {"id": "shaft", "shape": {"rect": [16, 19]}, "color": "red", "at": [38, 50], "rotated": true, "big": true},
-    {"id": "top room", "shape": {"rect": [14, 12]}, "color": "sand", "at": [38, 32], "rotated": true, "big": true},
-    {"id": "roof", "shape": {"regular": [3, 8]}, "color": "purple", "at": [38, 20], "rotated": true},
-    {"id": "flag", "shape": {"rect": [9, 13]}, "color": "blue", "at": [46, 14], "rotated": true},
-    {"id": "door", "shape": {"rect": [9, 13]}, "color": "brown", "at": [38, 60], "rotated": true},
-    {"id": "window left", "shape": {"circle": 7.5}, "color": "sky", "at": [34, 32]},
-    {"id": "window right", "shape": {"circle": 7.5}, "color": "yellow", "at": [42, 32]},
-    {"id": "block left", "shape": {"rect": [12, 10]}, "color": "green", "at": [28, 26], "rotated": true},
-    {"id": "block right", "shape": {"rect": [14, 10]}, "color": "orange", "at": [48, 26], "rotated": true},
-    {"id": "ground", "shape": {"rect": [16, 9]}, "color": "#E91E63", "at": [38, 67], "rotated": true, "big": true},
-    {"id": "sun", "shape": {"circle": 9}, "color": "#00897B", "at": [15, 18]}
+    {"id": "body", "shape": {"rect": [20, 32]}, "color": "sand", "at": [40, 56], "rotated": true, "big": true},
+    {"id": "band left", "shape": {"rect": [20, 8]}, "color": "slate", "at": [30.5, 36], "rotated": true, "big": true},
+    {"id": "band right", "shape": {"rect": [19, 8]}, "color": "blue", "at": [50, 36], "rotated": true, "big": true},
+    {"id": "tooth left", "shape": {"rect": [10, 14]}, "color": "purple", "at": [26, 25], "rotated": true},
+    {"id": "tooth middle", "shape": {"rect": [10, 14]}, "color": "purple", "at": [40, 25], "rotated": true},
+    {"id": "tooth right", "shape": {"rect": [10, 14]}, "color": "purple", "at": [54, 25], "rotated": true},
+    {"id": "roof", "shape": {"regular": [3, 10]}, "color": "red", "at": [40, 13], "rotated": true},
+    {"id": "door", "shape": {"rect": [12, 15]}, "color": "#4E342E", "at": [40, 64.5], "rotated": true},
+    {"id": "window", "shape": {"rect": [13, 12]}, "color": "yellow", "at": [40, 46.5], "rotated": true},
+    {"id": "step", "shape": {"rect": [16, 6]}, "color": "silver", "at": [40, 69], "rotated": true}
   ]
 }
