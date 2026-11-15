@@ -10,3 +10,5 @@
 2026-11-15 10:03:48 committed b020-next-map: d187a5b M14 bugs11: proposal for Next map on the Arena's results (B-020)
 2026-11-15 10:12:18 reviewed b020-solo-card: 7 finding(s)
 2026-11-15 10:12:19 reviewed b020-next-map: 10 finding(s)
+2026-11-15 10:12:19 start the run's review
+2026-11-15 10:17:31 DONE: every job is committed. Claude reads the Summary of docs/briefs/m14/bugs11/REVIEW.md, verifies its findings and writes one fix brief
