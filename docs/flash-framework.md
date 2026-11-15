@@ -28,11 +28,11 @@ Between these, Claude stays silent: no progress messages, no reading of logs or 
 `<briefs-dir>/waves.txt` lists the waves: one line per wave, job names separated by spaces; jobs in one wave run together (at most 3) and must share no files. For each wave the runner:
 
 1. starts the jobs, skipping any whose report is committed;
-2. applies a job that only strayed into **always-fine files** (an `analysis_options.yaml`, `.gitignore`, `.gitattributes`, a `pubspec.lock`, Flutter's generated plugin files) and names them in the log; any other file outside `allow:` is a stop;
+2. for a job that ended with files outside `allow:` (result 4): **drops known generated churn** (`docs/design/**/*.png` incl. the m13 sheets and puzzles, `site/shots/**`, `run-base*`, `tv_test_app/windows/flutter/**`, generated plugin files, stray `docs/briefs/**/run-*.patch`; one log line per job names them), **applies always-fine files** (an `analysis_options.yaml`, `.gitignore`, `.gitattributes`, a `pubspec.lock`) and commits them; any other file outside `allow:` (Dart in lib/ or test/, JSON levels) is a stop;
 3. **proves tests-first:** every new test file is run against the code as it was; one that passes there **stops the run** (like a review FAIL), unless the job's brief has a line `tests-first: exempt <reason>` (pure refactors, docs; the exemption covers only test files under that brief's `allow:` paths and is logged);
 4. runs `tools/check.sh` on the combined tree (on a failure it fetches packages and tries once more), then `tools/review.sh`: a FAIL, or a touched `lib` file over **380 lines**, stops the run;
 5. commits and pushes each job (`tools/commit-job.sh --push`);
-6. has **a second worker review each job** (brief made from `docs/briefs/templates/job-review.md`), which writes `<job>-review-report.md`.
+6. has **a second worker review each job** (brief made from `docs/briefs/templates/job-review.md`), which writes `<job>-review-report.md`. The reviews run **in the background while the next wave works** (at most 3 flash jobs in all; the review chain counts as one). Review report files are committed at the next serial point (after the next wave's commit, or at the end of the run; staging only those files). The run's review waits for all of them, and so does a stop.
 
 At the end a last worker job (from `templates/run-review.md`) merges all of that into **`<briefs-dir>/REVIEW.md`**. Progress is in `<briefs-dir>/run.log`; a `STOPPED` line with no later `start at` line needs Claude.
 
@@ -61,6 +61,9 @@ Measured over 193 jobs: a job of 80–149 turns (about 12 minutes) ended badly 3
 - **Split by kind of work, not by size**, and only where the pieces are separable: a phase that needs to re-derive what the last one knew saves nothing.
 - Name phases `<job>-1-build`, `<job>-2-run`, `<job>-3-wrap` so the log reads in order. Each phase is checked, committed and reviewed like any job; the reviews are smaller too.
 - One experiment series per run phase: at most about 6 bench runs in a phase; more experiments mean another phase.
+- **Pre-split (owner, Nov 15, 2026).** Any job estimated over 150 turns is split into phases before it runs, not after it overruns.
+- **Review-fix jobs carry 3 findings or fewer.** Split more findings into several jobs in one wave when their files do not overlap (measured: 6-9 findings ran 194-258 turns).
+- **Brief bodies stay near the 214-word template, about 350 words at most**; longer context goes in a referenced file the brief names in `read:`.
 
 `tools/flash.sh` also gives every worker a short list of **work rules** (read files once and in ranges, batch reads, run a test suite once per change with a quiet reporter, keep thinking and answers short) and caps what one command or file read can add to the conversation (`BASH_MAX_OUTPUT_LENGTH`, `CLAUDE_CODE_FILE_READ_MAX_OUTPUT_TOKENS`). The runner logs each job's turns and minutes in `run.log`, so the effect can be seen. Background and the cost arithmetic: `docs/briefs/tools/research-lean-agents-report.md` (the re-sent conversation is 99% of input tokens but a third of the bill; never put a context-pruning proxy in front of the worker: it would hold the key and turn cache hits into misses).
 
@@ -82,6 +85,9 @@ Workers cannot run `tools/review.sh` or some shell commands in their sandbox; th
 5. **Verify before reporting.** The batch agent runs the full `tools/check.sh` on the final tip, and checks claims (tests-first, fixed counts) against `run.log` and `REVIEW.md`, not the reports.
 6. **Never `git add -A` or `git add .`**: stage named paths only (line-ending noise in generated plugin files and PNGs).
 7. **`allow:` separator is ` · `** (space, middle dot, space), never a plain space: a space-separated list is read as one path and every file is "outside".
+8. **Full waves.** Put up to 3 independent jobs (no shared files) in each wave; avoid single-job waves unless a job depends on the one before (the slowest job sets a wave's pace, so a short job costs nothing beside a long one).
+9. **Phone suite in `check:`.** A brief that changes behaviour pinned by `controller_app` (phone) tests puts `phone` in its `check:` line, so the worker fixes the pins itself instead of the runner's check failing twice.
+10. **Fix jobs: 3 findings or fewer** (see "Keep jobs short"); more findings become several jobs in one wave.
 
 ## Before a build
 

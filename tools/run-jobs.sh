@@ -13,8 +13,11 @@
 # For each wave:
 #   1. start the jobs (tools/flash.sh --brief); a job whose report is already
 #      committed is skipped, so the runner is safe to start again;
-#   2. a job that only changed "always fine" files outside its allow: list
-#      (SAFE_OUTSIDE below) is applied anyway and the files are named in the log;
+#   2. a job that stopped with result 4 (files outside its allow: list): known
+#      generated churn (CHURN_OUTSIDE below: library and m13 PNGs, site/shots,
+#      run-base, tv plugin files, stray run-*.patch) is dropped, one log line
+#      per job; always-fine files (SAFE_OUTSIDE: analysis_options, .gitignore,
+#      .gitattributes, pubspec.lock) are applied; any other file is a stop;
 #   3. new test files are run against the old code: one that passes there was
 #      not written test-first and STOPS the run, unless the job's brief has a
 #      line `tests-first: exempt <reason>` (pure refactors, docs) and the test
@@ -23,7 +26,10 @@
 #      is tried once more before giving up), then tools/review.sh: any FAIL, or
 #      a touched lib file over SIZE_STOP lines, stops the run;
 #   5. each job is committed and pushed (tools/commit-job.sh --push);
-#   6. a reviewer job per committed job writes <job>-review-report.md.
+#   6. a reviewer job per committed job writes <job>-review-report.md. Reviews run
+#      in the background while the next wave works (at most 3 flash jobs in all,
+#      the review chain counting as one); their report files are committed at the
+#      next serial point (after the next wave commit), staging only those files.
 # At the end one more worker job reads everything since the run's first commit
 # and writes <briefs-dir>/REVIEW.md; Claude reads its Summary and writes one
 # fix brief. Progress and stops: <briefs-dir>/run.log (a STOPPED line with no
@@ -32,7 +38,10 @@
 # Exit code: 0 done, 1 stopped, 2 bad use.
 set -u
 cd "$(dirname "$0")/.." || exit 2
-SAFE_OUTSIDE='^(site/shots/.*|docs/design/puzzles/.*.png|docs/design/m13-placed-look.png|([^/]+/)*analysis_options\.yaml|\.gitignore|\.gitattributes|([^/]+/)*pubspec\.lock|.*/flutter/generated_plugin[^/]*)$'
+# Files outside a job's allow: list that are applied and committed (always fine).
+SAFE_OUTSIDE='^(([^/]+/)*analysis_options\.yaml|\.gitignore|\.gitattributes|([^/]+/)*pubspec\.lock)$'
+# Known generated churn outside the list: dropped (never copied), logged per job.
+CHURN_OUTSIDE='^(docs/design/([^/]+/)*[^/]+\.png|site/shots/.*|([^/]+/)*run-base[^/]*|([^/]+/)*tv_test_app/windows/flutter/.*|([^/]+/)*generated_plugin[^/]*|docs/briefs/([^/]+/)*run-[^/]*\.patch)$'
 SIZE_STOP=380
 CHURN=(tv_test_app/windows/flutter/ site/shots/ docs/design/puzzles/ docs/design/m13-placed-look.png)
 
@@ -42,7 +51,7 @@ while [ $# -gt 0 ]; do
     --logs) LOGS=${2:?}; shift 2 ;;
     --no-review) review=0; shift ;;
     --dry-run) dry=1; shift ;;
-    -h|--help) sed -n '2,31p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h|--help) sed -n '2,38p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     -*) echo "Unknown option: $1 (try --help)" >&2; exit 2 ;;
     *) B=${1%/}; shift ;;
   esac
@@ -52,7 +61,7 @@ LOGS=${LOGS:-$B}
 mapfile -t WAVES < <(sed 's/#.*//' "$B/waves.txt" | awk 'NF')
 
 note() { echo "$(date '+%F %T') $*" | tee -a "$B/run.log"; }
-stop() { note "STOPPED: $*"; exit 1; }
+stop() { note "STOPPED: $*"; wait; flush_reviews; exit 1; }
 finding() { echo "- $*" >> "$B/run-findings.md"; note "finding: $*"; }
 usage() { # usage <brief path>: the job's turns and minutes, from the flash usage log
   awk -F'	' -v b="$1" 'index($10, b){t=$3; m=$4/60} END{if(t) printf "%d turns, %.0f min", t, m}' "${FLASH_USAGE_LOG:-$HOME/.thumbparty/flash-usage.tsv}" 2>/dev/null
@@ -78,18 +87,26 @@ if [ $dry -eq 1 ]; then
   echo "then: the run's review -> $B/REVIEW.md"; exit 0
 fi
 
-# 2. A job that stopped with result 4: apply it when every outside file is harmless.
-apply_safe() { # apply_safe <job> <flash-log>; prints the outside files when applied
-  local log=$2 files tree
+# 2. A job that stopped with result 4: outside files that are generated churn are
+# dropped (logged), always-fine ones are applied; any other file stops the job.
+DROPPED="" APPLIED=""
+apply_safe() { # apply_safe <job> <flash-log>; sets DROPPED and APPLIED, returns 0 when applied
+  local log=$2 files tree f ex=()
+  DROPPED="" APPLIED=""
   files=$(awk '/CHANGED FILES OUTSIDE/{on=1;next} /^---- flash:/{on=0} on&&/^  /{print $1}' "$log")
   tree=$(sed -n 's/.*the worktree is kept: //p' "$log" | tail -n 1)
   [ -n "$files" ] && [ -d "$tree" ] || return 1
-  echo "$files" | grep -Evq "$SAFE_OUTSIDE" && return 1
+  for f in $files; do
+    if [[ $f =~ $CHURN_OUTSIDE ]]; then DROPPED+="$f "; ex+=(":(exclude,literal)$f")
+    elif [[ $f =~ $SAFE_OUTSIDE ]]; then APPLIED+="$f "
+    else return 1; fi
+  done
   ( cd "$tree" && git ls-files --others --exclude-standard | xargs -r git add -N &&
-    git diff --binary HEAD -- . ':!tv_test_app/windows/flutter' ':!site' ':!docs/briefs/**/run-base' ) > "$LOGS/run-$1.patch" || return 1
+    git diff --binary HEAD -- . "${ex[@]}" ':(exclude,glob)tv_test_app/windows/flutter/**' ':(exclude,glob)site/shots/**' \
+      ':(exclude,glob)**/run-base*' ':(exclude,glob)docs/briefs/**/run-*.patch' ) > "$LOGS/run-$1.patch" || return 1
   git apply --3way "$LOGS/run-$1.patch" >/dev/null 2>&1 || return 1
   git reset -q; git worktree remove --force "$tree" 2>/dev/null
-  echo "$files" | tr '\n' ' '
+  return 0
 }
 
 # 3. New test files must fail on the code as it was.
@@ -144,27 +161,49 @@ review_brief() { # review_brief <job> <from-sha> <to-sha>
   sed -e "s|{DIR}|$B|g" -e "s|{JOB}|$j|g" -e "s|{RANGE}|$2..$3|g" -e "s|{FILES}|$files|g" \
     docs/briefs/templates/job-review.md > "$B/$j-review.md"
 }
-run_reviews() { # run_reviews <job>...: briefs are already committed
-  local pids=() i
-  for j in "$@"; do
-    tools/flash.sh --brief "$B/$j-review.md" > "$LOGS/flash-$j-review.log" 2>&1 &
-    pids+=($!); sleep 25
-  done
-  i=0
-  for j in "$@"; do
-    wait "${pids[$i]}"; i=$((i + 1))
+# Reviews run in the background while the next wave works (together with that
+# wave's jobs at most 3 flash jobs run: see slot_wait). A review's report is
+# committed only at a serial point (flush_reviews: after the next wave's commit,
+# or the end of the run), staging just the review report files.
+PENDING=()   # jobs whose review was started and whose report is not committed yet
+REVPIDS=()   # the background chains' pids
+start_reviews() { # start_reviews <job>...: briefs are already committed
+  local j
+  for j in "$@"; do rm -f "$LOGS/run-rev-$j.done"; PENDING+=("$j"); done
+  (
+    for j in "$@"; do
+      tools/flash.sh --brief "$B/$j-review.md" > "$LOGS/flash-$j-review.log" 2>&1
+      : > "$LOGS/run-rev-$j.done"
+    done
+  ) &
+  REVPIDS+=($!)
+}
+flush_reviews() { # flush_reviews [wait]: commit the reports of reviews that have finished
+  local keep=() j p
+  if [ "${1:-}" = wait ]; then for p in "${REVPIDS[@]:-}"; do [ -n "$p" ] && wait "$p"; done; REVPIDS=(); fi
+  for j in "${PENDING[@]:-}"; do
+    [ -n "$j" ] || continue
+    [ -f "$LOGS/run-rev-$j.done" ] || { keep+=("$j"); continue; }
+    rm -f "$LOGS/run-rev-$j.done"
     if [ -f "$B/$j-review-report.md" ]; then
-      unchurn; save "review of $j (worker)" "$B/$j-review-report.md"; note "reviewed $j: $(grep -c '^- \*\*' "$B/$j-review-report.md") finding(s)"
+      save "review of $j (worker)" "$B/$j-review-report.md"; note "reviewed $j: $(grep -c '^- \*\*' "$B/$j-review-report.md") finding(s)"
     else
       finding "the review of $j wrote no report (see $LOGS/flash-$j-review.log)"
     fi
   done
+  PENDING=("${keep[@]:-}")
+}
+slot_wait() { # at most 3 flash jobs at once, counting the background review chain as one
+  while [ "$(jobs -rp | wc -l)" -ge 3 ]; do sleep 5; done
 }
 
 branch=$(git rev-parse --abbrev-ref HEAD)
 note "start at $(git rev-parse --short HEAD) on $branch"
 [ -f "$B/run-base" ] || git rev-parse HEAD > "$B/run-base"
 [ -f .dart_tool/package_config.json ] || { note "fetching packages (new folder)"; flutter pub get > "$LOGS/run-pub.log" 2>&1; }
+for r in "$B"/*-review-report.md; do # reports of an earlier run that stopped before it could commit them
+  [ -f "$r" ] && ! committed "$r" && { save "review report left by an earlier run: $(basename "$r")" "$r"; note "committed the left-over $(basename "$r")"; }
+done
 
 for wave in "${WAVES[@]}"; do
   [ "$(wc -w <<< "$wave")" -le 3 ] || stop "a wave has more than 3 jobs: $wave"
@@ -174,6 +213,7 @@ for wave in "${WAVES[@]}"; do
     committed "$B/$j.md" || stop "the brief $B/$j.md is not committed (job folders are cut from the last commit)"
     if committed "$B/$j-report.md"; then note "skip $j (already committed)"; continue; fi
     if [ -f "$B/$j-report.md" ]; then note "resume $j (applied by hand, not committed yet)"; resumed+=("$j"); continue; fi
+    slot_wait
     [ ${#started[@]} -gt 0 ] && sleep 25
     note "start $j"
     tools/flash.sh --brief "$B/$j.md" > "$LOGS/flash-$j.log" 2>&1 &
@@ -185,9 +225,10 @@ for wave in "${WAVES[@]}"; do
     j=${started[$i]}
     wait "${pids[$i]}"; rc=$?
     note "$j finished: result $rc ($(usage "$B/$j.md"))"
-    if [ $rc -eq 4 ] && outside=$(apply_safe "$j" "$LOGS/flash-$j.log"); then
-      note "$j: applied with harmless files outside its list: $outside"
-      extra+=($outside); rc=0
+    if [ $rc -eq 4 ] && apply_safe "$j" "$LOGS/flash-$j.log"; then
+      [ -n "$DROPPED" ] && note "$j: dropped generated churn outside its list: $DROPPED"
+      [ -n "$APPLIED" ] && note "$j: applied always-fine files outside its list: $APPLIED"
+      extra+=($APPLIED); rc=0
     fi
     if [ $rc -eq 0 ] && [ -f "$B/$j-report.md" ]; then ok+=("$j"); else failed+=("$j:$rc"); fi
   done
@@ -209,11 +250,13 @@ for wave in "${WAVES[@]}"; do
     paths=("$B/run.log" "$B/run-base"); [ -f "$B/run-findings.md" ] && paths+=("$B/run-findings.md")
     for j in "${reviewed[@]}"; do paths+=("$B/$j-review.md"); done
     save "runner: log and review briefs after ${ok[*]}" "${paths[@]}"
-    [ ${#reviewed[@]} -gt 0 ] && run_reviews "${reviewed[@]}"
+    flush_reviews
+    [ ${#reviewed[@]} -gt 0 ] && start_reviews "${reviewed[@]}"
   fi
   [ ${#failed[@]} -gt 0 ] && stop "jobs that failed or need applying by hand: ${failed[*]} (their logs: $LOGS/flash-<job>.log)"
 done
 
+flush_reviews wait
 if [ $review -eq 1 ] && ! committed "$B/REVIEW.md"; then
   base=$(cat "$B/run-base")
   files=$(git diff --name-only "$base" HEAD | grep -Ev '^(site/shots/|.*/flutter/generated_|docs/briefs/)' | tr '\n' ' ')

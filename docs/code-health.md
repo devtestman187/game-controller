@@ -110,7 +110,7 @@ The "could" findings of [bugs1's review](briefs/m14/bugs1/REVIEW.md) that the fi
 
 - **toy_look ListTile colour (B-017)**: `toy_theme.dart:41` gives every ListTile `colors.onBackground` (white at night), so a tile on paper is only ink where something puts it back: `ToyCard` and `controller_app/lib/src/ui/paper_tiles.dart` (two copies of the rule). Rec.: make `toyTheme` take `colors.ink` only for tiles on paper (the TV app too), then delete `paperTileTheme` and ToyCard's copy in the same job.
 - **Contrast helper twice**: the WCAG ratio maths sits in `packages/toy_look/test/contrast_test.dart` and `controller_app/test/stick_text_contrast_test.dart`. Rec.: one helper in `toy_look`'s testing library.
-- **Tests rewrite tracked pictures**: a full suite run rewrites `docs/design/maps/*.png` (map_render_test) and `site/shots/*.png` (site_shots.dart). Rec.: write them to a temp dir unless a flag is set.
+- **Tests rewrite tracked pictures**: a full suite run rewrites `docs/design/maps/*.png` (map_render_test) and `site/shots/*.png` (site_shots.dart). Rec.: write them to a temp dir unless a flag is set. Also the PNG tests in `packages/puzzle_game/test/*_png_test.dart` (m13 sheets, puzzles) rewrite `docs/design/**`; the runner now drops that churn on a result-4 stop (Nov 15), but the source fix is the same flag.
 
 ## Before a milestone
 
