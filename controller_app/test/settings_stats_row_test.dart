@@ -66,7 +66,8 @@ void main() {
 
     testWidgets('an answered row opens the Stats screen without asking again', (tester) async {
       final stats = party_test.FakeStats(consent: true);
-      final host = await _hostWithStats(tester, stats);
+      // The saved answer is already there, so the host asks nothing (B-023).
+      final host = await _hostWithStats(tester, stats, mayBeAbsent: true);
       await openSettings(tester);
       await scrollTo(tester, find.byKey(const Key('settingsHostStats')));
       await tapVisible(tester, find.byKey(const Key('settingsHostStats')));
@@ -98,13 +99,15 @@ void main() {
 
 /// The app hosting, with the stats the row reads faked, so a test can move the
 /// state to each of the row's lines. [consent] is what the first host's prompt
-/// is answered with (B-023): "don't share" unless the test needs it open.
+/// is answered with (B-023): "don't share" unless the test needs it open;
+/// [mayBeAbsent] says the fake already holds an answer, so no prompt comes.
 Future<PhoneHost> _hostWithStats(
   WidgetTester tester,
   party_test.FakeStats stats, {
   ConsentAnswer consent = ConsentAnswer.dontShare,
+  bool mayBeAbsent = false,
   bool tablet = false,
 }) async {
   await pumpHostApp(tester, tablet: tablet, extra: [party.statsServiceProvider.overrideWithValue(stats)]);
-  return enterHostMode(tester, consent: consent);
+  return enterHostMode(tester, consent: consent, mayBeAbsent: mayBeAbsent);
 }

@@ -106,7 +106,8 @@ void main() {
     expect(shown.client, isNull);
     await stopHosting(tester, shown);
 
-    final played = await enterHostMode(tester);
+    // The first host's answer stands, so this one asks nothing (B-023).
+    final played = await enterHostMode(tester, mayBeAbsent: true);
     expect(played, isNot(same(shown)));
     expect(ownClientOf(played).snapshot.isConnected, isTrue);
     expect(played.service.gameHost.players.single.number, 1);
@@ -120,7 +121,8 @@ void main() {
     expect(ownClientOf(played).snapshot.isConnected, isTrue);
     await stopHosting(tester, played);
 
-    final shown = await enterHostMode(tester, choice: HostChoice.onDevice);
+    // The first host's answer stands, so this one asks nothing (B-023).
+    final shown = await enterHostMode(tester, choice: HostChoice.onDevice, mayBeAbsent: true);
     expect(shown, isNot(same(played)));
     expect(shown.client, isNull);
     expect(shown.listener, isNull);

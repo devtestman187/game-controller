@@ -241,8 +241,9 @@ void main() {
     expect(ownClientOf(host).snapshot.status, ClientStatus.idle);
     expect(app.discovery.restarts, restarts + 1);
 
-    // Hosting again starts a new host, on the same providers.
-    final second = await enterHostMode(tester);
+    // Hosting again starts a new host, on the same providers, and asks
+    // nothing: the first host's answer stands (B-023).
+    final second = await enterHostMode(tester, mayBeAbsent: true);
     expect(second, isNot(same(host)));
     expect(find.byType(party.GamesScreen), findsOneWidget);
     expect(second.service.gameHost.players.single.number, 1);
@@ -266,8 +267,9 @@ void main() {
     expect(ownClientOf(host).snapshot.status, ClientStatus.idle);
     expect(app.discovery.restarts, restarts + 1);
 
-    // Hosting again starts a new host, on the same providers.
-    final second = await enterHostMode(tester);
+    // Hosting again starts a new host, on the same providers, and asks
+    // nothing: the first host's answer stands (B-023).
+    final second = await enterHostMode(tester, mayBeAbsent: true);
     expect(second, isNot(same(host)));
     expect(find.byType(party.GamesScreen), findsOneWidget);
     expect(second.service.gameHost.players.single.number, 1);

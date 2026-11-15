@@ -44,8 +44,24 @@ class _HostScreenState extends ConsumerState<HostScreen> {
     // The route's first frame ends the start's log (m12 bug 1108b): the time
     // it took to get here is the freeze the player sees after picking a mode.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) ref.read(party.hostStartLogProvider).step(party.HostStartStep.firstFrame);
+      if (!mounted) return;
+      ref.read(party.hostStartLogProvider).step(party.HostStartStep.firstFrame);
+      // The adult is asked about sharing this phone's host stats on its first
+      // host (B-023). Here and not on the Connect panel: starting the host
+      // points this phone's client at its own player, and the panel is rebuilt
+      // away before an answer could come (B-023 review finding 1). The route's
+      // first frame has no round, so the prompt never interrupts one.
+      unawaited(_askConsent());
     });
+  }
+
+  /// Asks the adult about sharing host stats once (PRD v2 T19): the Stats
+  /// screen's own prompt, so the wording and the saved answer are its. A
+  /// prompt closed without an answer still leaves the host running, and the
+  /// next host asks again (B-023).
+  Future<void> _askConsent() async {
+    if (ref.read(party.statsStateProvider).consent != null) return;
+    await party.askConsent(context, ref);
   }
 
   @override

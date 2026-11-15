@@ -72,7 +72,8 @@ void main() {
 
     testWidgets('an adult who already answered gets the Stats screen without being asked again', (tester) async {
       await pumpHostApp(tester, saved: {'statsConsent': true});
-      final host = await enterHostMode(tester);
+      // Answered before this launch, so the host asks nothing (B-023).
+      final host = await enterHostMode(tester, mayBeAbsent: true);
       await openSettings(tester);
       await scrollTo(tester, find.byKey(const Key('settingsHostStats')));
       await tapVisible(tester, find.byKey(const Key('settingsHostStats')));
