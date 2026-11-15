@@ -90,7 +90,8 @@ class SessionCollector {
     p.number = number;
     if (inProcess) p.inProcess = true;
     // A reconnect that names no version keeps the one already known; one that
-    // names a version without a build has none, never the earlier build.
+    // names a version without a build has none, never the earlier build. A
+    // build with no app ("+654") is ignored.
     if (version.app.isNotEmpty) {
       p.app = version.app;
       p.build = version.build;

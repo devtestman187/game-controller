@@ -64,7 +64,7 @@ void main() {
     expect((service.stats as LiveStats).hostApp, '0.11.0');
   });
 
-  test('the welcome to a phone keeps the bare version, build in the label or not', () async {
+  test('the welcome to a phone keeps the bare version, with a nine-digit build in the label', () async {
     final service = await startService(_nineDigit);
     expect((service.stats as LiveStats).server.appVersion, '0.11.0');
   });

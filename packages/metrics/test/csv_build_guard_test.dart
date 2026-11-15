@@ -109,16 +109,12 @@ void main() {
       expect(fields.sublist(35), ['', '']);
     });
 
-    test("a summary whose build is '65a' reads the two build cells empty", () {
-      final fields = rowsOf(summaryWithBuilds('65a')).single.toCsv().split(',');
-      expect(fields, hasLength(37));
-      expect(fields.sublist(35), ['', '']);
-    });
-
-    test("a summary whose build is '1,2' reads the two build cells empty, in a 37-field row", () {
-      final fields = rowsOf(summaryWithBuilds('1,2')).single.toCsv().split(',');
-      expect(fields, hasLength(37));
-      expect(fields.sublist(35), ['', '']);
-    });
+    for (final bad in ['65a', '1,2']) {
+      test("a summary whose build is '$bad' reads the two build cells empty, in a 37-field row", () {
+        final fields = rowsOf(summaryWithBuilds(bad)).single.toCsv().split(',');
+        expect(fields, hasLength(37));
+        expect(fields.sublist(35), ['', '']);
+      });
+    }
   });
 }

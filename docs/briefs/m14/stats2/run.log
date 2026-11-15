@@ -41,3 +41,4 @@
 2026-11-15 17:04:30 reviewed fix3-apps: 2 finding(s)
 2026-11-15 17:04:30 reviewed fix4-docs: 4 finding(s)
 2026-11-15 17:04:30 DONE: every job is committed. Claude reads the Summary of docs/briefs/m14/stats2/REVIEW.md, verifies its findings and writes one fix brief
+2026-11-15 17:07:25 CLOSED by hand (tests/docs only, check.sh format analyze metrics host PASS): fix1 review 2 could; fix2 could x3 and must 'guard tests pass on old code' (accepted: regression guards of the existing buildCell read guard, no lib change can fail them); fix3 must 'cap/hello tests pass on old code' (accepted: pins the existing bare-version hello and 9-digit cap, the failing-on-old tests are the loadIdentity build and ten-digit cases) + name; fix4 4 findings

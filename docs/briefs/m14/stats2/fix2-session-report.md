@@ -8,7 +8,7 @@ Closed REVIEW.md findings 2, 7 and 8 in three files, tests first.
 - **session.dart** (`joined`, ~line 92): `p.build = version.build` now sits in the same `if` that sets `p.app`, so a reconnect with a new bare version (`0.15.0`) has no build, while a reconnect that names no version keeps both. Finding 2.
 - **report.dart** (`ModeRow.toCsv`): `hostBuild` and `build` now pass through `buildCell()`, like `rowsOf` already did, so a hand-built row with a comma in a build cannot shift the row's fields. Finding 7.
 - **Finding 8** needed no lib change: `rowsOf` already sends both builds through `buildCell`; the new cases read a summary with `'build': '65a'` and one with `'1,2'` and assert empty cells in a 37-field row.
-- **Checks:** `tools/check.sh format analyze metrics` → PASS/PASS/PASS, metrics 162 tests (was 157, +5). `tools/review.sh` → 0 fail, 3 notes, all pre-existing (two function-size notes on untouched code paths and session.dart 364 lines).
+- **Checks:** `tools/check.sh format analyze metrics` → PASS/PASS/PASS, metrics 161 tests (was 156, +5). `tools/review.sh` → 0 fail, 3 notes, all pre-existing (two function-size notes on untouched code paths and session.dart 364 lines).
 - Sizes: `session.dart` 364 lines (was 361), `report.dart` 300, `csv_build_guard_test.dart` 124. All under the 380 brief limit and the 500 test limit.
 
 Decisions (low-usage mode):
@@ -32,7 +32,7 @@ Decisions (low-usage mode):
 - Reconnect to `''`: player `app` `0.14.0`, `build` `654` (unchanged on both codes).
 - Hand-built row, `hostBuild: '65,4'`, `build: '1,2'`: after the fix `buildCell` gives `''`/`''`, row 37 fields, last two `''`. Old code: 39 fields (each comma added one).
 - Summary with `'build': '65a'` and with `'1,2'`: both reads give `''`/`''` and 37 fields on old and new code (`buildPattern` = `^[0-9]{1,9}$`).
-- Suite: 157 tests before, 162 after (5 new), all passing.
+- Suite: 156 tests before, 161 after (5 new), all passing.
 
 ## Questions
 
@@ -45,7 +45,7 @@ Decisions (low-usage mode):
 
 ## Hand-over
 
-Done: findings 2, 7 and 8 closed with a tests-first file; metrics 162 green; format/analyze clean; review.sh 0 fail.
+Done: findings 2, 7 and 8 closed with a tests-first file; metrics 161 green; format/analyze clean; review.sh 0 fail.
 
 Open from REVIEW.md after this job: finding 1 (must, `csv_build_test.dart`), 3 and 5 (should, controller_app / party_host / session_clean), 4, 6, 9–14 (could, docs and host wiring). This job touched only `metrics`.
 
@@ -71,7 +71,7 @@ invalid build reads empty build cells.
 
 ## Status row
 
-M14 stats2 fix2 (Nov 15): the reconnect build and the unguarded CSV build cells are fixed, and a summary with an invalid build is tested (build cells empty, row 37 fields); format/analyze clean, metrics 162 tests green; open: the rest of REVIEW.md's fix batch (1, 3, 5, 4, 6, 9–14).
+M14 stats2 fix2 (Nov 15): the reconnect build and the unguarded CSV build cells are fixed, and a summary with an invalid build is tested (build cells empty, row 37 fields); format/analyze clean, metrics 161 tests green; open: the rest of REVIEW.md's fix batch (1, 3, 5, 4, 6, 9–14).
 
 ## Delete
 

@@ -52,7 +52,7 @@ void main() {
       );
     });
 
-    test('a row ends with the host app and the player app', () {
+    test('a row ends with the host app, the player app and their builds', () {
       final fields = rowsOf(summary()).single.toCsv().split(',');
       expect(fields, hasLength(37));
       expect(fields.sublist(33), ['0.12.0', '0.13.2', '', '']);

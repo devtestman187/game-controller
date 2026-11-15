@@ -57,7 +57,7 @@ Map<String, Object?> oldSummary({String hostApp = '0.12.0', String app = '0.13.2
 };
 
 void main() {
-  group('a version with a build number', () {
+  group("a version's app and build", () {
     test('a player sends "0.14.0+654": the summary keeps app 0.14.0 and build 654', () {
       final player = player0(collector().summary(1000));
       expect(player['app'], '0.14.0');
