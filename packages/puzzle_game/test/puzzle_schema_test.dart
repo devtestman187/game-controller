@@ -57,8 +57,9 @@ void main() {
     }
   });
 
-  test('a Hard puzzle is refused, in the words the parser and the rule book use', () {
-    final hard = changed(File('puzzles/sun.json').readAsStringSync(), (json) => json['level'] = 'hard');
-    expect(issuesOf(hard), [notALevel('hard')]);
+  test('a Hard puzzle is accepted, and a level that is not one is refused in the words the parser uses', () {
+    final valid = File('puzzles/sun.json').readAsStringSync();
+    expect(issuesOf(changed(valid, (json) => json['level'] = 'hard')), isEmpty);
+    expect(issuesOf(changed(valid, (json) => json['level'] = 'tricky')), [notALevel('tricky')]);
   });
 }

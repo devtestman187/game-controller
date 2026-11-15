@@ -36,8 +36,9 @@ void main() {
     expect(() => Puzzle.parse(text('"format": 0,')), refuses('starts at 1'));
   });
 
-  test('"hard" is not a level, in the same words tools/level.sh new uses', () {
-    expect(() => Puzzle.parse(text('', level: 'hard')), refusesExactly(notALevel('hard')));
+  test('"hard" is a level, and a level that is not one is refused in the words tools/level.sh new uses', () {
+    expect(Puzzle.parse(text('', level: 'hard')).level, Level.hard);
+    expect(() => Puzzle.parse(text('', level: 'tricky')), refusesExactly(notALevel('tricky')));
   });
 
   test('a bad field is a FormatException naming the puzzle, the piece and the field', () {

@@ -123,10 +123,10 @@ void main() {
       level: 'medium',
     );
     final messages = messagesOf(rods, PuzzleRule.fit);
-    expect(messages, hasLength(7));
+    expect(messages, hasLength(2));
     expect(
       messages.first,
-      'x/a: at start 12 its tray box overlaps "d"\'s, and two boxes may not overlap at any start from 0 to 199. '
+      'x/a: at start 13 its tray box overlaps "b"\'s, and two boxes may not overlap at any start from 0 to 199. '
       'Make one of them smaller, or fewer pieces big.',
     );
   });

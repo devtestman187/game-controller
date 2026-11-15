@@ -83,11 +83,17 @@ void main() {
     expect(() => createLevel(folder, kind: 'puzzle', id: 'house', name: 'House', level: 'easy'), throwsArgumentError);
     expect(() => createLevel(folder, kind: 'puzzle', id: 'Cat', name: 'Cat', level: 'easy'), throwsFormatException);
     expect(
-      () => createLevel(folder, kind: 'puzzle', id: 'cat', name: 'Cat', level: 'hard'),
-      throwsA(isA<FormatException>().having((error) => error.message, 'message', notALevel('hard'))),
+      () => createLevel(folder, kind: 'puzzle', id: 'cat', name: 'Cat', level: 'tricky'),
+      throwsA(isA<FormatException>().having((error) => error.message, 'message', notALevel('tricky'))),
       reason: 'the schema, the parser and the rule book refuse it in these words too',
     );
     expect(idsOf(folder), indexIds(), reason: 'nothing was written');
+  });
+
+  test('a new puzzle may be Hard, and goes after the last Hard puzzle (B-012b)', () {
+    createLevel(folder, kind: 'puzzle', id: 'tricky', name: 'Tricky', level: 'hard');
+    expect(read(folder, 'tricky')['level'], 'hard');
+    expect(idsOf(folder).last, 'tricky', reason: 'the library has no Hard puzzle yet, so the new one goes at the end');
   });
 
   test('new map makes a map from its template, through the same createLevel (M14 k1b)', () {

@@ -99,6 +99,15 @@ class ShapeRaceScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final library = ref.watch(puzzleLibraryProvider);
+    // The first level with a puzzle takes the focus as the list opens, so a
+    // library without an Easy puzzle still starts on a card.
+    final offered = switch (library) {
+      AsyncData(:final value) => value,
+      _ => null,
+    };
+    final firstLevel = offered == null
+        ? null
+        : Level.values.where((level) => offered.ofLevel(level).isNotEmpty).firstOrNull;
     return CallbackShortcuts(
       bindings: {const SingleActivator(LogicalKeyboardKey.escape): () => Navigator.of(context).maybePop()},
       child: HostScreen(
@@ -108,12 +117,12 @@ class ShapeRaceScreen extends ConsumerWidget {
             AsyncData(:final value) => ListView(
               padding: hostMenuPadding(ref.watch(hostBarHeightProvider)),
               children: [
-                for (final (i, level) in Level.values.indexed)
+                for (final level in Level.values)
                   if (value.ofLevel(level) case final puzzles when puzzles.isNotEmpty) ...[
                     _LevelCard(
                       level: level,
                       puzzles: puzzles,
-                      autofocus: i == 0,
+                      autofocus: level == firstLevel,
                       onPlay: (choice) => _play(context, ref, choice),
                     ),
                     const SizedBox(height: ToySizes.space24),

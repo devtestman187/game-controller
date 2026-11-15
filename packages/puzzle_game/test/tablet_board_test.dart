@@ -80,15 +80,15 @@ void main() {
     (
       box: iPadLandscape,
       pad: iPadLandscapePad,
-      scale: 9.671142,
-      world: Rect.fromLTRB(241.280, 124.018, 1124.720, 902.702),
+      scale: 9.699315,
+      world: Rect.fromLTRB(241.280, 123.961, 1124.720, 909.471),
       hud: Rect.fromLTRB(8, 143.36, 233.28, 319.488),
     ),
     (
       box: iPadSmallLandscape,
       pad: iPadSmallLandscapePad,
-      scale: 7.708168,
-      world: Rect.fromLTRB(237.937, 99.384, 942.063, 720.016),
+      scale: 7.661124,
+      world: Rect.fromLTRB(241.102, 99.478, 938.898, 719.922),
       hud: Rect.fromLTRB(8, 114.8, 188.4, 255.84),
     ),
   ];
@@ -149,7 +149,7 @@ void main() {
     // 1024 / 91.348: the world is the box's whole width, centred across.
     expect(parts.world.width, closeTo(iPadPortrait.width, 1e-9));
     expect(parts.world.left, closeTo(0, 1e-9));
-    expectRect(parts.world, const Rect.fromLTRB(0, 120.940, 1024, 1023.517));
+    expectRect(parts.world, const Rect.fromLTRB(0, 120.875, 1024, 1031.363));
     final band = PuzzleCamera.hudUnit(iPadPortrait) * PuzzleCamera.hudTopFraction;
     expect(parts.tray.top, closeTo(band, 1e-9));
     for (final p in iPadPortraitStickPad) {
@@ -161,7 +161,7 @@ void main() {
     // stick's disc with the air kept; still s16's under-the-world place.
     final area = PuzzleCamera.hudPlace(layout, whole, iPadPortrait, hudText(boat), padRects: iPadPortraitStickPad);
     expect(area.form, HudForm.oneLine);
-    expectRect(area.rect, const Rect.fromLTRB(173.8, 1031.517, 712.424, 1146.205));
+    expectRect(area.rect, const Rect.fromLTRB(173.8, 1039.363, 712.424, 1154.051));
     expect(area.rect.top, closeTo(parts.world.bottom + PuzzleCamera.hudWorldGapPx, 1e-9));
     expect(area.rect.left, closeTo(iPadPortraitStickPad.first.right + PuzzleCamera.mirrorGapPx, 1e-9));
     expect(area.rect.right, lessThanOrEqualTo(parts.world.right + 1e-9));
@@ -180,7 +180,7 @@ void main() {
 
   test('a split race on a landscape iPad draws both sides as today, the pad changing nothing', () {
     for (final (id, top, bottom) in [
-      ('boat', const Rect.fromLTRB(392.560, 0, 973.440, 512), const Rect.fromLTRB(392.560, 512, 973.440, 1024)),
+      ('boat', const Rect.fromLTRB(395.084, 0, 970.916, 512), const Rect.fromLTRB(395.084, 512, 970.916, 1024)),
       ('house', const Rect.fromLTRB(438.684, 0, 927.316, 512), const Rect.fromLTRB(438.684, 512, 927.316, 1024)),
     ]) {
       final puzzle = load(id);
@@ -202,9 +202,9 @@ void main() {
     for (final (id, solo, top, bottom) in [
       (
         'boat',
-        const Rect.fromLTRB(203.065, 0, 648.935, 393),
-        const Rect.fromLTRB(314.532, 0, 537.468, 196.5),
-        const Rect.fromLTRB(314.532, 196.5, 537.468, 393),
+        const Rect.fromLTRB(205.002, 0, 646.998, 393),
+        const Rect.fromLTRB(315.501, 0, 536.499, 196.5),
+        const Rect.fromLTRB(315.501, 196.5, 536.499, 393),
       ),
       (
         'house',

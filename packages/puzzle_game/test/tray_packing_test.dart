@@ -10,8 +10,8 @@ void main() {
   group('compact start angles', () {
     const ids = puzzleIds;
 
-    test('a turned piece starts at a whole degree that is at least 30° from correct and as flat (or narrow) as the '
-        'allowed angles get; other pieces start at their target angle', () {
+    test('a turned piece starts at a whole degree at least its level\'s least error from correct, and as flat (or '
+        'narrow) as the allowed angles get; other pieces start at their target angle', () {
       for (final id in ids) {
         final puzzle = load(id);
         for (var seed = 0; seed < 20; seed++) {
@@ -22,11 +22,16 @@ void main() {
               final angle = angles[i]!;
               final reason = '$id seed $seed flat $flat ${spec.id} at $angle';
               if (spec.rotated && shape.symmetry != 0) {
-                expect(angleError(angle, spec.targetAngle, shape.symmetry), greaterThanOrEqualTo(30), reason: reason);
+                final least = leastStartDeg(puzzle.level, shape.symmetry);
+                expect(
+                  angleError(angle, spec.targetAngle, shape.symmetry),
+                  greaterThanOrEqualTo(least),
+                  reason: reason,
+                );
                 expect(angle, angle.roundToDouble(), reason: '$reason: not a whole degree');
                 var smallest = double.infinity;
                 for (var a = 0; a < 360; a++) {
-                  if (angleError(a.toDouble(), spec.targetAngle, shape.symmetry) < 30) continue;
+                  if (angleError(a.toDouble(), spec.targetAngle, shape.symmetry) < least) continue;
                   final box = shape.bounds(a.toDouble());
                   smallest = min(smallest, flat ? box.height : box.width);
                 }

@@ -95,7 +95,7 @@ A piece's `at` is where its outline's **origin** goes on the board. The origin i
 | Field | What it is |
 | --- | --- |
 | `name` | What the players read in the puzzle list. |
-| `level` | `"easy"` or `"medium"`: which list it is in and which rules below it keeps. Hard has its rules ([below](#rules-by-level)) since B-012b, but no file may say `"hard"` yet: the schema, the parser and `tools/level.sh new puzzle` still refuse it, and take it in the job that updates the tests saying so. |
+| `level` | `"easy"`, `"medium"` or `"hard"`: which list it is in and which rules below it keeps (B-012b). The library has no Hard puzzle yet; `tools/level.sh new puzzle <id> --level hard` starts one. |
 | `notes` | Optional, free text, ignored by the app. |
 | `pieces` | The pieces, in drawing order (below). |
 
@@ -120,7 +120,7 @@ Pieces are drawn in the order they are written: a later piece lies over an earli
 
 #### Turning and symmetry
 
-A piece needs turning when `rotated` is set, and it then starts at a random angle at least **30°** from any correct one. Every puzzle in the library starts at least 2 pieces turned, an Easy one no more than 2 and a Hard one every piece that is not a circle. A circle doesn't count, since it can't be turned. A square comes back onto itself every quarter turn, a rectangle every half turn, a regular polygon every `360° / corners`, a circle at any angle (so a circle can't be turned and must not be `rotated`). The app snaps a piece onto its outline by the nearest look-alike angle, so a circle with `rotated` would be unfair, and `check` says so.
+A piece needs turning when `rotated` is set, and it then starts at a random angle at least **30°** from any correct one on Easy, **60°** on Medium and **90°** on Hard — or as far as its shape allows where that is closer (a square 45°, a triangle 60°), since no piece can look further off than half its turn symmetry. Every puzzle in the library starts at least 2 pieces turned, an Easy one no more than 2 and a Hard one every piece that is not a circle. A circle doesn't count, since it can't be turned. A square comes back onto itself every quarter turn, a rectangle every half turn, a regular polygon every `360° / corners`, a circle at any angle (so a circle can't be turned and must not be `rotated`). The app snaps a piece onto its outline by the nearest look-alike angle, so a circle with `rotated` would be unfair, and `check` says so.
 
 ### Rules by level
 

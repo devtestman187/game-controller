@@ -154,9 +154,9 @@ const phoneSizeSeeds = 21;
 
 /// Every piece is drawn at least [minPieceMm] across on the narrowest phone
 /// ([narrowestPhoneSafeArea]), on either side and at any start from 1 to
-/// [phoneSizeSeeds] (M14 g1b).
+/// [phoneSizeSeeds] (M14 g1b). The floor is every level's, Hard too (B-012b).
 void _phoneSize(Puzzle puzzle, List<LevelIssue> issues) {
-  if (puzzle.level == Level.hard || puzzle.pieces.isEmpty) return;
+  if (puzzle.pieces.isEmpty) return;
   final smallest = puzzle.pieces.reduce((a, b) => b.shape.size < a.shape.size ? b : a);
   var lowest = double.infinity;
   for (var seed = 1; seed <= phoneSizeSeeds; seed++) {

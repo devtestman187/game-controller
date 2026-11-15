@@ -89,11 +89,10 @@ enum Level {
   bool get colouredOutlines => this == easy;
 }
 
-/// The levels a puzzle file may say (m14 g1): Easy and Medium. [Level.hard]
-/// has its rules since B-012b (`puzzle_rule_levels.dart`), but no file may say
-/// "hard" until this parser, the schema and the tests that assert the refusal
-/// take it, which is a job of its own.
-const puzzleLevels = ['easy', 'medium'];
+/// The levels a puzzle file may say (m14 g1, B-012b): Easy, Medium and Hard,
+/// each with its own rules in `puzzle_rule_levels.dart` and its own least start
+/// angle in `start_angles.dart`.
+const puzzleLevels = ['easy', 'medium', 'hard'];
 
 /// The refusal of a level this build does not have, in the same words in the
 /// schema, the parser, the rule book and `tools/level.sh new`.
@@ -126,8 +125,9 @@ final class PieceSpec {
   final Offset target;
   final double targetAngle;
 
-  /// Starts at a random angle at least `minStartDeg` from correct (30° today,
-  /// at every level; `start_angles.dart`).
+  /// Starts at a random angle at least `leastStartDeg` from correct: the
+  /// level's 30°, 60° or 90°, or less where the shape's symmetry caps it
+  /// (`start_angles.dart`).
   final bool rotated;
 
   /// A big piece (teams carry it together, M11).

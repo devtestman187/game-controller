@@ -54,15 +54,15 @@ void main() {
       // [hudMarginPx] in and [hudTopFraction] of the box down, their board's
       // own shape at [mirrorFraction] of its drawn size. Seed 1, the layout the
       // camera and size tests pin: the board's units at 852 x 393 are house
-      // 4.4407, rocket 4.9434, tree 3.8529 and boat 4.8810 px, times 0.25882
+      // 4.4407, rocket 4.9434, tree 3.8529 and boat 4.8527 px, times 0.25882
       // (mirrorMinPieceMm / minPieceMm); the top is 0.14 of 393 = 55.02 px.
       const expected = {
         'house': Rect.fromLTWH(8, 55.02, 68.96, 71.26),
         'rocket': Rect.fromLTWH(8, 55.02, 51.18, 75.49),
         'tree': Rect.fromLTWH(8, 55.02, 69.81, 70.80),
-        // The boat's is the room its short-form clock area leaves it, 0.7 px
-        // under the fraction (the text estimate's width sets it).
-        'boat': Rect.fromLTWH(8, 55.02, 92.60, 76.34),
+        // The boat's too: its short-form clock area now leaves it the fraction,
+        // where it used to stop 0.7 px short of it.
+        'boat': Rect.fromLTWH(8, 55.02, 92.94, 76.62),
       };
       for (final MapEntry(key: id, value: e) in expected.entries) {
         final puzzle = load(id);
@@ -76,15 +76,10 @@ void main() {
         expect(rect.width, closeTo(e.width, 0.01), reason: where);
         expect(rect.height, closeTo(e.height, 0.01), reason: where);
         // Their board's own shape at the mirror's scale, never stretched, and
-        // no bigger than the board fraction allows: the boat's is the room its
-        // short-form clock area leaves, the others reach the fraction.
+        // no bigger than the board fraction allows.
         final place = PuzzleCamera.place(l, sideLeft, iphone, PuzzleSide.left);
         final fraction = place.scale * PuzzleCamera.mirrorFraction;
-        if (id == 'boat') {
-          expect(mirror.scale, lessThanOrEqualTo(fraction + 1e-9), reason: where);
-        } else {
-          expect(mirror.scale, closeTo(fraction, 1e-9), reason: where);
-        }
+        expect(mirror.scale, closeTo(fraction, 1e-9), reason: where);
         expect(rect.size.width, closeTo(l.left.board.width * mirror.scale, 1e-9), reason: where);
         // The clock area moved to its right, in the short form, clear of the
         // world (rule 5).
