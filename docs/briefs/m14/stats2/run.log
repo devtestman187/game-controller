@@ -17,3 +17,18 @@
 2026-11-15 16:30:39 reviewed c3-docs: 2 finding(s)
 2026-11-15 16:30:39 start the run's review
 2026-11-15 16:34:24 DONE: every job is committed. Claude reads the Summary of docs/briefs/m14/stats2/REVIEW.md, verifies its findings and writes one fix brief
+2026-11-15 16:35:58 start at 79c3f73 on m14-stats2
+2026-11-15 16:36:03 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-15 16:36:04 skip c1-build-metrics (already done)
+2026-11-15 16:36:04 skip c2-build-wiring (already done)
+2026-11-15 16:36:04 skip c3-docs (already done)
+2026-11-15 16:36:05 start fix1-tests
+2026-11-15 16:36:30 start fix2-session
+2026-11-15 16:36:56 start fix3-apps
+2026-11-15 16:38:11 fix1-tests finished: result 0 (35 turns, 2 min)
+2026-11-15 16:39:32 fix2-session finished: result 0 (36 turns, 3 min)
+2026-11-15 16:45:15 fix3-apps finished: result 4 (48 turns, 5 min)
+2026-11-15 16:45:16 fix3-apps: dropped generated churn outside its list: site/shots/dpad.png site/shots/menus.png site/shots/results.png site/shots/sticks.png site/shots/tilt.png 
+2026-11-15 16:51:56 committed fix1-tests: 9135fb6 M14 stats2: two build tests that fail on the old code, two names
+2026-11-15 16:51:57 committed fix2-session: 1755692 fix(metrics): a reconnect drops its old build
+2026-11-15 16:51:59 committed fix3-apps: d27b9ed Cap both apps' build numbers at the stats' 9 digits
