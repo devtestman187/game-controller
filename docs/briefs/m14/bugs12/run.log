@@ -19,3 +19,12 @@
 2026-11-15 16:32:28 finding: the run's review wrote no REVIEW.md (see docs/briefs/m14/bugs12/flash-run-review.log)
 2026-11-15 16:32:28 DONE: every job is committed. Claude reads the Summary of docs/briefs/m14/bugs12/REVIEW.md, verifies its findings and writes one fix brief
 2026-11-15 16:36:31 HAND-FIX bugs12-wrap: tablet test for the host Stats row, a doc line on the duplicated sharing wording, code-health notes; the tests-first proofs of b023-stats-card (fails +2 -1 on b843a1a) and b023-first-host-consent (fails +1 -3 on 287579b) were run by hand, the runner had skipped them; review.sh 0 fail, settings_stats_row_test 4 pass
+2026-11-15 16:36:32 start at 568bd0b on m14
+2026-11-15 16:36:38 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-15 16:36:38 skip b023-stats-card (already done)
+2026-11-15 16:36:39 WARN: b023-first-host-consent was committed by hand (611e2bc); a plain restart would skip its tests-first proof and worker review, so both run now
+2026-11-15 16:37:56 skip b023-first-host-consent (already done)
+2026-11-15 16:37:57 start f1
+2026-11-15 16:50:09 f1 finished: result 4 (66 turns, 9 min)
+2026-11-15 16:50:10 f1: dropped generated churn outside its list: site/shots/dpad.png site/shots/menus.png site/shots/results.png site/shots/sticks.png site/shots/tilt.png 
+2026-11-15 16:57:03 committed f1: 451c11b Fix the first host consent prompt to ask on the host route
