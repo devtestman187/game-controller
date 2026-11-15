@@ -105,7 +105,7 @@ The PRD's rules stand, except that how often the cat comes now scales with the r
 - **Clock**: 60 s counting down; it stands still whenever the round stands still (`Pausable`'s holds). At 0 the round is over: the most coins wins, ties share the win, and the result has `winners` and `draw` like the puzzle's (scan question 2). Night points: +1 per coin, +5 to each winner, both × `pointsScale`.
 - **Snapshot (version 2)**: top-level `md` (mode), `tl` (time left, ms), `co` (coins: position, gold, sparkle age, dropper); per marble `c` (coins), `dz` (dizzy), `sf` (safe). The HUD shows each player's coins beside their badge with a coin icon, on the host and joined phones.
 - **Sounds** (the a1 files): `dash`, `bump`, `bump_big` (a dash that shoves), `coin`, `coin_gold`, `coin_lost`, `coin_appear`; the music `arena`, `arena_hurry`, `arena_final` following the clock at 15 s and 5 s (look-and-sound §8). `MusicLoop` gains the Arena's trio, chosen by the game; `GameScreen` reports its clock and its end to `HostMusic` as `PuzzleScreen` does. The race Arena stays on `arena`.
-- **Results card** (like Shape Race's): the winners with a crown, each player's coins; Play again / Change mode / Back, or "Next" in a night.
+- **Results card** (like Shape Race's): the winners with a crown, each player's coins; Play again / Change mode / Back, or "Next" and "End night" in a night (the last round: "Next" alone).
 
 ## 7a. Robo, the CPU marble (owner, Nov 9, 2026: "Can we have a simple CPU player for a single player?")
 

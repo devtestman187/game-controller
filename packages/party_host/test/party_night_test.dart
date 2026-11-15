@@ -31,6 +31,17 @@ void main() {
       expect(container.read(partyNightProvider)!.roundsLeft, 0);
     });
 
+    test('a night ended early has no rounds left', () {
+      final (:container, :roster) = nightContainer();
+      roster.put([nightPlayer('p1', 1, 'Mia')]);
+      final night = container.read(partyNightProvider.notifier)..start(length: NightLength.three, awards: threeAwards);
+      night.recordRound(roundResult(points: {'p1': 5}));
+      expect(container.read(partyNightProvider)!.roundsLeft, 2);
+      night.endNow(roundResult(points: {'p1': 5}));
+      expect(container.read(partyNightProvider)!.isOver, isTrue);
+      expect(container.read(partyNightProvider)!.roundsLeft, 0);
+    });
+
     test('a night of five rounds plays five', () {
       final (:container, :roster) = nightContainer();
       roster.put([nightPlayer('p1', 1, 'Mia')]);

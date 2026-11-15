@@ -161,8 +161,8 @@ final class NightState {
   /// Everyone the night has met, so a leaver keeps their badge and nickname.
   final Map<String, NightPlayer> seen;
 
-  /// The night's three awards, decided from the counters when its last round is
-  /// recorded (G4, design section 6): empty until then, and in the night's own
+  /// The night's three awards, decided from the counters when the night ends, on
+  /// its last round or early (G4, B-021, design section 6): empty until then, and in the night's own
   /// order so the reveal follows it. Their +3 points are in [rows]' totals.
   final List<NightAwardOutcome> outcomes;
 

@@ -21,7 +21,12 @@ void main() {
     String? setMap,
   }) async {
     final fake = await pumpHost(tester, screen: const StubHome());
-    if (setMap != null) appContainer(tester).read(arenaSettingsProvider.notifier).setMap(setMap);
+    if (setMap != null) {
+      // Saved as the card's choice and marked used, so Surprise me cannot draw it.
+      appContainer(tester).read(arenaSettingsProvider.notifier)
+        ..setMap(setMap)
+        ..playedMap(setMap);
+    }
     for (final id in phones) {
       fake.state = withController(fake.state, phoneInfo(id, 2));
     }
