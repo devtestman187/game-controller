@@ -1,0 +1,20 @@
+{
+  "$schema": "puzzle.schema.json",
+  "format": 1,
+  "id": "tractor",
+  "name": "Tractor",
+  "level": "hard",
+  "notes": "Candidate A for the tractor redo (bugs7): side view facing left, a classic farm tractor. The small front wheel is under the bonnet, the big rear wheel under the cab, and the roof, rear window, exhaust and fender fill in the cab. Checks as a Hard puzzle with id \"tractor-a\" in the library.",
+  "pieces": [
+    {"id": "grille", "shape": {"rect": [8, 10]}, "color": "sand", "at": [11, 39.5], "rotated": true},
+    {"id": "bonnet", "shape": {"rect": [18, 9]}, "color": "red", "at": [23, 39.5], "rotated": true, "big": true},
+    {"id": "chassis", "shape": {"rect": [14, 6]}, "color": "yellow", "at": [30, 47], "rotated": true},
+    {"id": "exhaust", "shape": {"rect": [4, 18]}, "color": "green", "at": [29, 27], "rotated": true},
+    {"id": "cab", "shape": {"rect": [17, 19]}, "color": "blue", "at": [40, 27.5], "rotated": true, "big": true},
+    {"id": "front window", "shape": {"rect": [10, 10]}, "color": "sky", "at": [40, 26], "rotated": true},
+    {"id": "roof", "shape": {"rect": [20, 4]}, "color": "orange", "at": [40, 16], "rotated": true},
+    {"id": "fender", "shape": {"rect": [20, 4]}, "color": "purple", "at": [47, 35], "rotated": true},
+    {"id": "front wheel", "shape": {"circle": 7}, "color": "brown", "at": [16, 50]},
+    {"id": "rear wheel", "shape": {"circle": 10}, "color": "slate", "at": [47, 47], "big": true}
+  ]
+}

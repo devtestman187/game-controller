@@ -1,0 +1,20 @@
+{
+  "$schema": "puzzle.schema.json",
+  "format": 1,
+  "id": "tower",
+  "name": "Tower",
+  "level": "hard",
+  "notes": "Candidate A of the tower-redo job (M14 bugs7, B-012): a keep, its battlement carrying a flag. Proposal only; it replaces the shipped tower.json when the owner picks it.",
+  "pieces": [
+    {"id": "body", "shape": {"rect": [20, 37]}, "color": "sand", "at": [40, 53.5], "rotated": true, "big": true},
+    {"id": "band left", "shape": {"rect": [20, 8]}, "color": "slate", "at": [30.5, 31], "rotated": true, "big": true},
+    {"id": "band right", "shape": {"rect": [19, 8]}, "color": "blue", "at": [50, 31], "rotated": true, "big": true},
+    {"id": "tooth left", "shape": {"rect": [11, 13]}, "color": "purple", "at": [26, 20.5], "rotated": true},
+    {"id": "tooth middle", "shape": {"rect": [11, 13]}, "color": "purple", "at": [40, 20.5], "rotated": true},
+    {"id": "tooth right", "shape": {"rect": [11, 13]}, "color": "purple", "at": [54, 20.5], "rotated": true},
+    {"id": "pole", "shape": {"rect": [8, 15]}, "color": "brown", "at": [40, 9.5], "rotated": true},
+    {"id": "flag", "shape": {"rect": [13, 9]}, "color": "red", "at": [50.5, 6.5], "rotated": true},
+    {"id": "door", "shape": {"rect": [12, 16]}, "color": "#4E342E", "at": [40, 64], "rotated": true},
+    {"id": "window", "shape": {"rect": [13, 12]}, "color": "yellow", "at": [40, 42], "rotated": true}
+  ]
+}

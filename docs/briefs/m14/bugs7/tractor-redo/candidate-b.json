@@ -1,0 +1,21 @@
+{
+  "$schema": "puzzle.schema.json",
+  "format": 1,
+  "id": "tractor",
+  "name": "Tractor",
+  "level": "hard",
+  "notes": "Candidate B for the tractor redo (bugs7): side view facing right, a working tractor with a raised front loader over the bonnet. Checks as a Hard puzzle with id \"tractor-b\" in the library.",
+  "pieces": [
+    {"id": "cab", "shape": {"rect": [15, 15]}, "color": "blue", "at": [32, 30], "rotated": true, "big": true},
+    {"id": "loader arm", "shape": {"rect": [20, 5]}, "color": "purple", "angle": -25, "at": [48.5, 29.5], "rotated": true},
+    {"id": "roof", "shape": {"rect": [19, 4]}, "color": "orange", "at": [32, 20.5], "rotated": true},
+    {"id": "window", "shape": {"rect": [9, 9]}, "color": "sky", "at": [29, 29], "rotated": true},
+    {"id": "exhaust", "shape": {"rect": [4, 16]}, "color": "green", "at": [42, 29], "rotated": true},
+    {"id": "bucket", "shape": {"rect": [10, 9]}, "color": "#00897B", "at": [61, 29], "rotated": true},
+    {"id": "bonnet", "shape": {"rect": [16, 8]}, "color": "red", "at": [49.5, 41], "rotated": true, "big": true},
+    {"id": "grille", "shape": {"rect": [8, 10]}, "color": "sand", "at": [60.5, 41], "rotated": true},
+    {"id": "chassis", "shape": {"rect": [16, 6]}, "color": "yellow", "at": [41, 48], "rotated": true},
+    {"id": "rear wheel", "shape": {"circle": 10}, "color": "slate", "at": [22, 48], "big": true},
+    {"id": "front wheel", "shape": {"circle": 7}, "color": "brown", "at": [56, 51]}
+  ]
+}
