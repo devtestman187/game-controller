@@ -26,3 +26,7 @@
 2026-11-15 10:44:59 b020-solo-phone-test finished: result 0 (49 turns, 5 min)
 2026-11-15 10:46:05 tests-first: packages/party_host/test/arena_touch_solo_night_test.dart passes on the old code, exempt by its brief
 2026-11-15 10:50:32 committed b020-solo-phone-test: 7f75e5b A lone night player on a phone host starts on Ready
+2026-11-15 10:50:33 reviewed b020-solo-both: 9 finding(s)
+2026-11-15 10:50:34 reviewed b020-health-docs: 6 finding(s)
+2026-11-15 10:56:54 reviewed b020-solo-phone-test: 3 finding(s)
+2026-11-15 10:56:54 DONE: every job is committed. Claude reads the Summary of docs/briefs/m14/bugs11/REVIEW.md, verifies its findings and writes one fix brief
