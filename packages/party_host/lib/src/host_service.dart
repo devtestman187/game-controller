@@ -149,7 +149,7 @@ class LiveHostService implements HostService {
       prefs: prefs,
       exportDirectory: directories.exports,
       hostType: identity.hostType,
-      hostApp: identity.appVersion,
+      hostApp: identity.appWithBuild,
       hostOs: identity.hostOs,
       log: log.sink('stats'),
       uploader: uploader,

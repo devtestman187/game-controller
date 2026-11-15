@@ -61,6 +61,19 @@ final class HostIdentity {
   /// 3F2A` for a phone hosting (M12 design §0, Q3).
   final String serviceName;
 
+  /// The version the stats record, e.g. `0.11.0+123`: [appVersion] plus the
+  /// build number [versionLabel] carries, so two builds of one version can be
+  /// told apart (M14 stats). A label with no number in it, e.g. `0.11.0
+  /// (dev)`, gives the bare [appVersion]. Everything else keeps [appVersion].
+  String get appWithBuild {
+    final build = _buildInLabel.firstMatch(versionLabel)?.group(1);
+    return build == null ? appVersion : '$appVersion+$build';
+  }
+
+  /// The build number [versionLabel] carries, if it carries one: the digits
+  /// in its trailing parentheses.
+  static final _buildInLabel = RegExp(r'\((\d+)\)$');
+
   @override
   bool operator ==(Object other) =>
       other is HostIdentity &&

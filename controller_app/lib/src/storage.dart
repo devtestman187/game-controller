@@ -46,7 +46,7 @@ ControllerIdentity loadIdentity(
     name: phoneName(nickname: saved.nickname, controllerId: id),
     character: saved.character,
     platform: platform,
-    appVersion: appVersion,
+    appVersion: appWithBuild(appVersion, buildNumber),
     capabilities: const [Capability.metrics, Capability.rating, Capability.layout, Capability.status, Capability.view],
     device: DeviceInfo(
       kind: isTablet ? DeviceInfo.tablet : DeviceInfo.phone,
