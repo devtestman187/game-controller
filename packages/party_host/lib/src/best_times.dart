@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'prefs.dart';
 import 'providers.dart';
@@ -10,6 +11,14 @@ import 'providers.dart';
 /// How many times each puzzle's board keeps (M14 c2, design section 9 N14):
 /// the fastest three, each with the names of the players on that board.
 const bestTimesPerBoard = 3;
+
+/// The version of the kept best times (B-012): a host below it has the boards
+/// of [redoneMediumPuzzleIds] cleared once when [BestTimesNotifier] starts.
+const bestTimesVersion = 1;
+
+/// The Medium puzzles redrawn in M14 (B-012): a time kept on an old picture
+/// measures a board that no longer exists, so it is cleared the once.
+const redoneMediumPuzzleIds = ['boat', 'car', 'robot', 'train', 'castle', 'butterfly'];
 
 /// One board's kept time (design section 9 N14): how long it took, in ms, and
 /// who played it.
@@ -109,17 +118,49 @@ final bestTimesProvider = NotifierProvider<BestTimesNotifier, BestTimes>(BestTim
 class BestTimesNotifier extends Notifier<BestTimes> {
   static const _key = 'bestTimes';
 
+  /// The prefs key holding the [bestTimesVersion] the times were last cleaned
+  /// for (B-012). Absent on a host that has never cleaned them.
+  static const _versionKey = 'bestTimesVersion';
+
   @override
   BestTimes build() {
-    final raw = ref.watch(prefsProvider).getString(_key);
-    if (raw == null) return BestTimes.empty;
+    final prefs = ref.watch(prefsProvider);
     final log = ref.read(logProvider).sink('host');
     try {
+      final raw = _clearRedoneBoards(prefs);
+      if (raw == null) return BestTimes.empty;
       return BestTimes.fromJson(jsonDecode(raw));
     } on FormatException catch (error) {
       log('Best times: $error');
       return BestTimes.empty;
     }
+  }
+
+  /// Clears the boards of the puzzles redrawn since the saved times' version
+  /// (B-012), the once, and returns `bestTimes` as it stands now.
+  ///
+  /// Badly formed times throw out to [build], which keeps its own report of
+  /// them; the version then stays behind and the clear is tried again on the
+  /// next start, which does no harm because nothing could be read.
+  String? _clearRedoneBoards(SharedPreferences prefs) {
+    final raw = prefs.getString(_key);
+    if ((prefs.getInt(_versionKey) ?? 0) >= bestTimesVersion) return raw;
+    final redone = {
+      for (final id in redoneMediumPuzzleIds) ...[
+        BestTimes.boardKey(id, team: false),
+        BestTimes.boardKey(id, team: true),
+      ],
+    };
+    var kept = raw;
+    if (raw != null) {
+      final times = jsonDecode(raw);
+      if (times is Map<String, Object?>) {
+        kept = jsonEncode({...times}..removeWhere((key, _) => redone.contains(key)));
+        if (kept != raw) unawaited(prefs.setString(_key, kept));
+      }
+    }
+    unawaited(prefs.setInt(_versionKey, bestTimesVersion));
+    return kept;
   }
 
   /// The times kept for [puzzleId]'s board, fastest first: [BestTimes.boardFor].
