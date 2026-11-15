@@ -60,11 +60,7 @@ void main() {
     );
     expect(find.byKey(const Key('arenaWaitingCard')), findsOneWidget);
     expect(find.byKey(const Key('arenaMode-bumper')), findsOneWidget);
-    expect(
-      find.byKey(const Key('arenaMode-race')),
-      findsNothing,
-      reason: 'a night of two plays the Bumper Round alone',
-    );
+    expect(find.byKey(const Key('arenaMode-race')), findsNothing, reason: 'a night plays the Bumper Round alone');
     expect(find.text('Press A when you\'re ready.'), findsOneWidget, reason: 'the night\'s round is an Arena round');
   });
 
