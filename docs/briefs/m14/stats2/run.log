@@ -9,3 +9,6 @@
 2026-11-15 16:12:43 c2-build-wiring: dropped generated churn outside its list: site/shots/dpad.png site/shots/menus.png site/shots/results.png site/shots/sticks.png site/shots/tilt.png 
 2026-11-15 16:21:31 committed c1-build-metrics: 2c14961 stats: record the app build number in the session summary and CSVs
 2026-11-15 16:21:32 committed c2-build-wiring: cf0522e Send "version+build" as the stats app string
+2026-11-15 16:21:33 start c3-docs
+2026-11-15 16:22:59 c3-docs finished: result 0 (24 turns, 1 min)
+2026-11-15 16:27:37 committed c3-docs: 8d9a55b M14 stats2: CSV build columns, and what frames_drawn and fps mean
