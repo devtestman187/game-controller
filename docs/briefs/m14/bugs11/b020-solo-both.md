@@ -1,0 +1,19 @@
+job: M14 bugs11 b020-solo-both: a solo night's Arena card offers Race and Bumper (B-020 follow-up)
+pub: no
+stop: after it. No Next-map button (that is the proposal b020-next-map).
+read: packages/party_host/lib/src/ui/arena_waiting_card.dart (bumperOnly, _mode, _modeRow) · packages/party_host/lib/src/ui/game_screen.dart (_start about line 187, _stageBody about line 334) · packages/party_host/lib/src/night (how a night records a round) · docs/design/party-night.md (N6, N7, section 8 about line 191) · tests the change could break: packages/party_host/test/solo_arena_card_test.dart, arena_night_test.dart, arena_waiting_test.dart, arena_touch_ready_test.dart, arena_phone_card_test.dart, night_round_test.dart, round_music_test.dart (while working run only `flutter test` on your files plus these; the full `tools/check.sh host` runs once, at the end)
+decide: low-usage mode: never stop for a question. Make the safest choice that fits the design and list each under "Decisions" with one line of why. Stop only if the job truly cannot be done; then say why under "Blocked".
+
+Owner decision (Nov 15, in chat): "Solo party should offer race and bumper." Today (f11c4b1) a night's Arena card shows for one player but has the Bumper button alone (`bumperOnly: night != null`) and a night always starts the Bumper Round (`mode = night == null ? settings.mode : ArenaMode.bumper`).
+Design:
+1 TEST FIRST, new file packages/party_host/test/solo_arena_both_test.dart (must fail on the old code): a night with ONE player opens the Arena card with both `arenaMode-bumper` and `arenaMode-race` keys, on Bumper chosen and Surprise me (even if the saved mode is race); pressing the race button chooses race and its Start plays a race round (the `arena` key shows). A night with two or more players still shows the Bumper button alone, and a night's Bumper Round unchanged.
+2 Fix: `bumperOnly` is true only for a night with two or more players (count as skipsLobby's callers do); a solo night's `_start` uses the mode the card shows. Keep a night's one player opening on Bumper.
+3 A race round has no end and no points (N7). In a solo night a Race pick must not break the night: decide the safest handling (suggest: it plays as a plain race outside the night's scoring, with the Arena's own results/Back, and the night's Bumper rounds go on after it). Read how the night records a round before choosing. List the choice under Decisions and as an open owner question in the Summary.
+4 Update the pins your change breaks (solo_arena_card_test asserts race absent for one player) keeping their intent. Update party-night.md N7 and section 8 (about line 191): a solo night offers Race and Bumper.
+in the report: start with `## Summary` (at most 30 lines, within its first 40 lines): what changed, test counts you saw, decisions, the open question. End with `## Hand-over`. Do not claim a test passes unless you ran it in this job and saw it.
+self-check: docs/review-rules.md part A, items 1-5, one line each in the report with the test that shows it.
+tests: each new test goes in a NEW test file and must fail on the code as it was (the runner proves it and stops otherwise). await every async side effect before teardown.
+rules: aim for 80-150 turns · no lib file you touch may end over 380 lines: split it (the runner stops the run otherwise; game_screen.dart is 373) · tests first: each new test file must fail on the code as it was (the runner checks this) · write only inside allow: · stage nothing yourself · never use git add -A · keep away from packages/metrics, puzzle_session.dart, arena_session.dart, live_stats.dart
+allow: docs/briefs/m14/bugs11/b020-solo-both-report.md · docs/design/party-night.md · packages/party_host/lib/src/ui · packages/party_host/lib/src/night · packages/party_host/test
+check: format analyze host
+report: docs/briefs/m14/bugs11/b020-solo-both-report.md

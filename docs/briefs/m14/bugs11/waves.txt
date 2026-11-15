@@ -1,1 +1,3 @@
 b020-solo-card b020-next-map
+b020-solo-both b020-health-docs
+b020-solo-phone-test
