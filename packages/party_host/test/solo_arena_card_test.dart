@@ -47,7 +47,11 @@ void main() {
       reason: 'the map choice shows for one player too',
     );
     expect(find.byKey(const Key('arenaMode-bumper')), findsOneWidget);
-    expect(find.byKey(const Key('arenaMode-race')), findsNothing, reason: 'a night plays the Bumper Round alone');
+    expect(
+      find.byKey(const Key('arenaMode-race')),
+      findsOneWidget,
+      reason: 'a solo night offers both modes (M14 bugs B-020 follow-up); it still opens on Bumper',
+    );
     expect(find.byKey(const Key('arenaMap-pinball')), findsOneWidget, reason: 'the card\'s map choice is there');
     expect(find.byKey(const Key('chosenMap-pinball')), findsNothing, reason: 'a night opens on Surprise me');
     expect(find.byKey(const Key('notReady-p1')), findsOneWidget, reason: 'the only player has not pressed Start');

@@ -180,23 +180,27 @@ class _GameScreenState extends ConsumerState<GameScreen> {
         );
   }
 
-  /// The card's players are all ready: the round starts (design section 8). A
-  /// night plays the Bumper Round alone, and its points are doubled in the
-  /// night's last round (party-night section 2 N3).
-  void _start(String? chosenMapId) {
+  /// The card's players are all ready: the round starts (design section 8) on
+  /// the mode the card shows and on its map. A night's round scores for the
+  /// night, doubled in its last round (party-night section 2 N3); a night's
+  /// Race has no end and no points (N7), so it plays as a plain race, books
+  /// nothing on the night, and the night's Bumper Rounds go on after it.
+  void _start(ArenaMode mode, String? chosenMapId) {
     final night = ref.read(partyNightProvider);
     final settings = ref.read(arenaSettingsProvider);
-    final mode = night == null ? settings.mode : ArenaMode.bumper;
+    // The night this round scores for: a Bumper Round of a night's, or null
+    // outside a night and for a race.
+    final scored = mode == ArenaMode.bumper ? night : null;
     final map = _mapFor(settings, mode, chosen: chosenMapId);
-    final scale = night != null && night.isNextRoundTheLast ? lastRoundPointsScale : nightPointsScale;
+    final scale = scored != null && scored.isNextRoundTheLast ? lastRoundPointsScale : nightPointsScale;
     // A test's game plays the first round as it was given; every later round is
     // built from the card.
     final game = _game == null && widget.game != null
         ? widget.game!
         : ArenaGame(map: map, mode: mode, random: _random, pointsScale: scale);
     ref.read(arenaSettingsProvider.notifier).playedMap(map.id);
-    if (night != null) ref.read(partyNightProvider.notifier).usedMap(map.id);
-    _roundTags = nightRoundTags(night);
+    if (scored != null) ref.read(partyNightProvider.notifier).usedMap(map.id);
+    _roundTags = scored == null ? const [] : nightRoundTags(scored);
     _log('Round started: $arenaGame, ${mode.name}, ${map.name}');
     setState(() {
       _stage = _Stage.playing;
@@ -329,9 +333,10 @@ class _GameScreenState extends ConsumerState<GameScreen> {
   Widget _stageBody(NightState? night) {
     switch (_stage) {
       // The card shows for a night's one player too (M14 bugs B-020): the map
-      // choice is the host's there, and Start is the only player's press.
+      // choice is the host's there, Start is the only player's press, and both
+      // modes are offered (B-020 follow-up).
       case _Stage.waiting:
-        return ArenaWaitingCard(bumperOnly: night != null, surpriseFirst: night != null, onStart: _start);
+        return ArenaWaitingCard(night: night != null, onStart: _start);
       // The results stand over the field, never in its place: a
       // joined phone keeps the round's last frame under its card,
       // so the session must not end (M14 f1, r5 finding 1).

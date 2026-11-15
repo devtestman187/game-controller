@@ -48,22 +48,22 @@ part 'arena_waiting_widgets.dart';
 /// (M14 b1). The line then says "Tap Ready"; a TV and a phone that only shows
 /// the game keep "Press A", for the joined phones.
 class ArenaWaitingCard extends ConsumerStatefulWidget {
-  const ArenaWaitingCard({super.key, required this.onStart, this.bumperOnly = false, this.surpriseFirst = false});
+  const ArenaWaitingCard({super.key, required this.onStart, this.night = false});
 
-  /// Every joined player is ready: the round may start on the map the card
-  /// shows chosen, or on Surprise me's when that is null. The card's own pick
-  /// rides with it, so a night's card that still shows Surprise me starts on a
-  /// map the night hasn't used rather than the one saved before it (m14 r5 7).
-  final void Function(String? mapId) onStart;
+  /// Every joined player is ready: the round may start on the mode the card
+  /// shows chosen and on the map it shows, or on Surprise me's when that is
+  /// null. The card's own picks ride with it, so a night's card that still
+  /// shows Surprise me starts on a map the night hasn't used rather than the
+  /// one saved before it (m14 r5 7), and a solo night's Race pick starts a race
+  /// (M14 bugs B-020).
+  final void Function(ArenaMode mode, String? mapId) onStart;
 
-  /// Whether the card offers the Bumper Round alone, as a night's does (design
-  /// section 8: in a night the mode button is Bumper's only).
-  final bool bumperOnly;
-
-  /// Whether the card opens on Surprise me rather than on the map saved last
-  /// time: a night's Bumper Round starts on Surprise me, so it plays a map the
-  /// night hasn't used yet (design section 7b).
-  final bool surpriseFirst;
+  /// Whether this is the card of a night's round (M14 bugs B-020): it opens on
+  /// the Bumper Round, and on Surprise me rather than on the map saved last
+  /// time, so the night's Bumper Round plays a map the night hasn't used yet
+  /// (design sections 7b and 8). With two or more players it offers the Bumper
+  /// Round alone; a solo night offers both modes, as outside a night.
+  final bool night;
 
   @override
   ConsumerState<ArenaWaitingCard> createState() => _ArenaWaitingCardState();
@@ -95,6 +95,10 @@ class _ArenaWaitingCardState extends ConsumerState<ArenaWaitingCard> {
   /// Whether the host has picked a map on this card: a night's card opens on
   /// Surprise me, and its pick wins from there.
   bool _picked = false;
+
+  /// Whether the host has picked a mode on this card: a night's card opens on
+  /// the Bumper Round, and its pick wins from there.
+  bool _pickedMode = false;
 
   bool _started = false;
 
@@ -157,7 +161,7 @@ class _ArenaWaitingCardState extends ConsumerState<ArenaWaitingCard> {
     }
     if (players.isNotEmpty && players.every((p) => _ready.contains(p.id))) {
       _started = true;
-      widget.onStart(_chosenId);
+      widget.onStart(_mode, _chosenId);
     } else if (changed && mounted) {
       setState(() {});
     }
@@ -186,14 +190,24 @@ class _ArenaWaitingCardState extends ConsumerState<ArenaWaitingCard> {
   /// Whether [map] can be played in [mode].
   static bool _plays(ArenaMap map, ArenaMode mode) => mode == ArenaMode.race ? map.race != null : map.bumper != null;
 
-  /// The mode the card shows chosen: a night plays the Bumper Round alone.
-  ArenaMode get _mode => widget.bumperOnly ? ArenaMode.bumper : _settings.mode;
+  /// Whether the card offers the Bumper Round alone: a night's card with two
+  /// or more players (design section 8). A night's one player gets both modes,
+  /// as a player outside a night does (M14 bugs B-020).
+  bool get _bumperOnly => widget.night && _joined.length >= 2;
+
+  /// The mode the card shows chosen: a night's card opens on the Bumper Round,
+  /// whatever mode was saved before it, and the host's pick wins from there
+  /// ([_pickedMode]); a night of two or more plays the Bumper Round alone.
+  ArenaMode get _mode {
+    if (_bumperOnly) return ArenaMode.bumper;
+    return widget.night && !_pickedMode ? ArenaMode.bumper : _settings.mode;
+  }
 
   /// The map that plays, or null for Surprise me: a map saved for the other
   /// mode isn't one this card can start on, and a night's card starts on
   /// Surprise me until the host picks one ([_picked]).
   String? get _chosenId {
-    if (widget.surpriseFirst && !_picked) return null;
+    if (widget.night && !_picked) return null;
     final id = _settings.mapId;
     return id == null || !_maps.any((map) => map.id == id) ? null : id;
   }
@@ -217,7 +231,10 @@ class _ArenaWaitingCardState extends ConsumerState<ArenaWaitingCard> {
     return own != null && _joined.any((p) => p.id == own) ? own : null;
   }
 
-  void _pickMode(ArenaMode mode) => ref.read(arenaSettingsProvider.notifier).setMode(mode);
+  void _pickMode(ArenaMode mode) {
+    _pickedMode = true;
+    ref.read(arenaSettingsProvider.notifier).setMode(mode);
+  }
 
   void _pickMap(String? mapId) {
     _picked = true;
@@ -306,7 +323,8 @@ class _ArenaWaitingCardState extends ConsumerState<ArenaWaitingCard> {
 
   /// The mode buttons and the pairing code (frame 8): the chosen mode keeps
   /// the focus fill, so it reads as chosen while the focus is elsewhere; a
-  /// night's card has the Bumper Round alone (design section 8).
+  /// night's card of two or more has the Bumper Round alone (design section
+  /// 8), and a night's one player has both modes (M14 bugs B-020).
   Widget _modeRow(BuildContext context, String code) {
     final mode = _mode;
     return Row(
@@ -318,7 +336,7 @@ class _ArenaWaitingCardState extends ConsumerState<ArenaWaitingCard> {
           focusNode: mode == ArenaMode.bumper ? _modeFocus : null,
           onPressed: () => _pickMode(ArenaMode.bumper),
         ),
-        if (!widget.bumperOnly) ...[
+        if (!_bumperOnly) ...[
           const SizedBox(width: ToySizes.space12),
           _ModeButton(
             key: const Key('arenaMode-race'),
