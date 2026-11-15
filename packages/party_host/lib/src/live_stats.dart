@@ -112,6 +112,9 @@ class LiveStats implements StatsService {
   /// (PRD T8: the latency figures).
   static const pingSampleInterval = Duration(seconds: 5);
 
+  /// How long after a failed upload the queue is tried again (PRD v2 T19).
+  static const _retryInterval = Duration(minutes: 5);
+
   static const _consentKey = 'statsConsent';
   static const _uploadedKey = 'uploadedSessions';
 
@@ -133,6 +136,9 @@ class LiveStats implements StatsService {
   final _present = <String>{};
   bool _uploading = false;
   Timer? _retry;
+
+  /// Set by [dispose]: nothing new may start or be scheduled after it (B-019).
+  bool _disposed = false;
 
   /// The live session's collector, for tests.
   SessionCollector? get session => _session ?? _ending;
@@ -167,6 +173,7 @@ class LiveStats implements StatsService {
   }
 
   void _checkPlayers() {
+    if (_disposed) return;
     final now = host.nowMs;
     final connected = <String, ControllerInfo>{for (final c in server.snapshot.connected) c.controllerId: c};
     final locals = {for (final p in host.players.where((p) => p.local)) p.id: p};
@@ -247,8 +254,11 @@ class LiveStats implements StatsService {
     _present.clear();
     await _saveSession(s, path);
     _log('Stats: session ${s.id} saved (${(s.summary(host.nowMs)['durationS'])} s)');
-    _ending = null;
-    _set(_state.copyWith(current: null));
+    // A newer session ending now owns `current` and `_ending`: leave both (B-019).
+    if (identical(_ending, s)) {
+      _ending = null;
+      _set(_state.copyWith(current: null));
+    }
     await _refreshCounts();
     unawaited(uploadNow());
   }
@@ -260,10 +270,14 @@ class LiveStats implements StatsService {
   @override
   Future<void> pause() => endSession();
 
-  /// The host app is back in front: retries the sessions [pause] left queued
-  /// (B-019).
+  /// The host app is back in front: retries the sessions [pause] left queued,
+  /// then starts a session again for the players who stayed paired, since
+  /// [pause] ended theirs (B-019).
   @override
-  Future<void> resume() => uploadNow();
+  Future<void> resume() async {
+    await uploadNow();
+    _checkPlayers();
+  }
 
   Future<void> _save() async {
     final s = _session;
@@ -303,19 +317,20 @@ class LiveStats implements StatsService {
   @override
   Future<void> uploadNow() async {
     final up = uploader;
-    if (up == null || _state.consent != true || _uploading) return;
+    if (_disposed || up == null || _state.consent != true || _uploading) return;
     _uploading = true;
     _retry?.cancel();
     try {
       final done = _uploadedIds;
-      final pending = (await sessions()).where((f) => !done.contains(f.id) && f.path != _sessionPath).toList();
+      final pending = (await _sessionsOrNone()).where((f) => !done.contains(f.id) && f.path != _sessionPath).toList();
       for (final f in pending) {
         if (_state.consent != true) break;
         final error = await up.upload(f.summary);
         if (error != null) {
           _log('Stats: upload failed, trying again later: $error');
           _set(_state.copyWith(lastError: error));
-          _retry = Timer(const Duration(minutes: 5), () => unawaited(uploadNow()));
+          // dispose() cancelled the timer already: nothing outlives the host (B-019).
+          if (!_disposed) _retry = Timer(_retryInterval, () => unawaited(uploadNow()));
           break;
         }
         done.add(f.id);
@@ -328,8 +343,12 @@ class LiveStats implements StatsService {
     }
   }
 
+  /// The saved sessions; none when the folder is gone (B-019).
+  Future<List<SessionFile>> _sessionsOrNone() =>
+      sessions().catchError((Object _) => <SessionFile>[], test: (e) => e is FileSystemException);
+
   Future<void> _refreshCounts() async {
-    final files = await sessions();
+    final files = await _sessionsOrNone();
     final done = _uploadedIds;
     final waiting = _state.consent == true
         ? files.where((f) => !done.contains(f.id) && f.path != _sessionPath).length
@@ -355,6 +374,7 @@ class LiveStats implements StatsService {
     await _deviceSampler.dispose();
     _pingTimer.cancel();
     _retry?.cancel();
+    _disposed = true;
     await _changes.close();
   }
 }
