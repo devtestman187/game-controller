@@ -23,10 +23,12 @@ const _colourSlots = 6;
 /// One joined phone on the waiting card (frame 8, M14 b1): its badge, its
 /// number and nickname, and the word that says whether it is ready, as the
 /// host's other player rows say it. The row is the card's Start button (M14
-/// bugs B-013): a tap on it readies the player, and so does the remote's OK or a
-/// phone's A with the focus on it.
+/// bugs B-013): the remote's OK or a phone's A with the focus on it readies the
+/// player, and so does a tap on anyone's row but the host device's own (M14
+/// bugs B-025: that one is a label for a thumb, and the card's Ready button
+/// takes its place).
 class _PlayerRow extends StatelessWidget {
-  const _PlayerRow({required this.player, required this.ready, required this.own, required this.onTap});
+  const _PlayerRow({required this.player, required this.ready, required this.own, required this.onPressed});
 
   final GamePlayer player;
   final bool ready;
@@ -34,37 +36,45 @@ class _PlayerRow extends StatelessWidget {
   /// Whether this is the host device's own player (M14 b1): its name then says
   /// "(you)", so the player who can tap the card knows which row is theirs.
   final bool own;
-  final VoidCallback onTap;
+
+  /// What a press of the row does — its focus activation, and its tap unless
+  /// it is the own player's row.
+  final VoidCallback onPressed;
 
   @override
   Widget build(BuildContext context) {
     final look = ToyLookScope.of(context);
+    final row = HostCardButton(
+      onPressed: onPressed,
+      child: Row(
+        key: Key('arenaPlayer-${player.id}'),
+        children: [
+          PlayerBadge(
+            number: player.number,
+            size: look.sizes.buttonHeight * rowBadgeShare,
+            character: player.character,
+          ),
+          const SizedBox(width: ToySizes.space8),
+          Expanded(
+            child: Text(
+              HostText.playerLabel(player.label, simulated: player.simulated, own: own),
+              style: look.type.button.copyWith(color: look.colors.ink),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          const SizedBox(width: ToySizes.space8),
+          _ReadyLabel(ready: ready, id: player.id),
+        ],
+      ),
+    );
     return Padding(
       padding: EdgeInsets.only(top: rowBadgeHeadroom(look), bottom: ToySizes.space4),
-      child: HostCardButton(
-        onPressed: onTap,
-        child: Row(
-          key: Key('arenaPlayer-${player.id}'),
-          children: [
-            PlayerBadge(
-              number: player.number,
-              size: look.sizes.buttonHeight * rowBadgeShare,
-              character: player.character,
-            ),
-            const SizedBox(width: ToySizes.space8),
-            Expanded(
-              child: Text(
-                HostText.playerLabel(player.label, simulated: player.simulated, own: own),
-                style: look.type.button.copyWith(color: look.colors.ink),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            const SizedBox(width: ToySizes.space8),
-            _ReadyLabel(ready: ready, id: player.id),
-          ],
-        ),
-      ),
+      // The own player's row is a status label for touch (M14 bugs B-025): the
+      // pointer never reaches its button, so a tap does nothing and shows no
+      // press, while the focus and its ActivateIntent above keep the pad's A,
+      // the remote's OK and Enter readying that player (B-013).
+      child: own ? IgnorePointer(child: row) : row,
     );
   }
 }

@@ -28,9 +28,16 @@ part 'arena_waiting_widgets.dart';
 /// the card's buttons the way it works every other menu (M14 bugs B-013): its
 /// directions move the focus over the rows and its A presses them, through
 /// [ControllerMenus], and its B leaves the Arena as the join screen's B does
-/// for a player who hasn't joined. A player's own row is the card's Start: A on
-/// it readies that player, and the round starts once every joined player has.
-/// The remote works the same rows with its arrows and OK, and Escape leaves.
+/// for a player who hasn't joined. A player's row is the card's Start: A on it
+/// readies that player, and the round starts once every joined player has. The
+/// remote works the same rows with its arrows and OK, and Escape leaves.
+///
+/// A touch host has no B, and the game screen over the card has no title bar,
+/// so the card carries a Back button of its own (M14 bugs B-024), in the row
+/// under the mode buttons where a phone in landscape shows it without
+/// scrolling. The host device's own row is a label for that thumb (M14 bugs
+/// B-025): a tap on it readies nothing, and the Ready button beside that Back
+/// is what its A would be.
 ///
 /// The menus leave local players alone (a hosting phone's own player, a
 /// keyboard player), so the card reads their pads itself: A readies the local
@@ -163,9 +170,10 @@ class _ArenaWaitingCardState extends ConsumerState<ArenaWaitingCard> {
     }
   }
 
-  /// Readies or un-readies [id] from a press of its row — a tap, the remote's
-  /// OK or a phone's A — or from the card's ready button: what a local
-  /// player's A does, and a second press takes it back.
+  /// Readies or un-readies [id] from a press of its row — a tap on anyone's
+  /// row but the own player's, the remote's OK or a phone's A — or from the
+  /// card's Ready button: what a local player's A does, and a second press
+  /// takes it back.
   void _toggle(String id) => setState(() {
     if (!_ready.remove(id)) _ready.add(id);
   });
@@ -260,13 +268,30 @@ class _ArenaWaitingCardState extends ConsumerState<ArenaWaitingCard> {
       children: [
         _modeRow(context, code),
         const SizedBox(height: ToySizes.space16),
-        // The line and the own player's button sit under the mode row, above
-        // the players and the maps, so a phone in landscape shows them without
-        // scrolling (M14 b1).
-        _ReadyRow(
-          line: own == null ? ArenaText.ready : ArenaText.tapReady,
-          ready: own != null && _ready.contains(own),
-          onReady: own == null ? null : () => _toggle(own),
+        // The line, the own player's button and the card's Back sit under the
+        // mode row, above the players and the maps, so a phone in landscape
+        // shows them without scrolling (M14 b1). Back stands first, as the join
+        // screen's does before its Start, and leaves the Arena as that one
+        // leaves its screen: a thumb has no B and the card has no title bar
+        // (M14 bugs B-024). The mode row keeps its width for the modes and the
+        // code, which a small window already fills.
+        Row(
+          children: [
+            HostButton(
+              key: const Key('arenaBack'),
+              label: HostText.back,
+              icon: Icons.arrow_back,
+              onPressed: () => Navigator.of(context).maybePop(),
+            ),
+            const SizedBox(width: ToySizes.space12),
+            Expanded(
+              child: _ReadyRow(
+                line: own == null ? ArenaText.ready : ArenaText.tapReady,
+                ready: own != null && _ready.contains(own),
+                onReady: own == null ? null : () => _toggle(own),
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: ToySizes.space8),
         if (players.isEmpty)
@@ -274,7 +299,7 @@ class _ArenaWaitingCardState extends ConsumerState<ArenaWaitingCard> {
             child: Text(HostText.noController, style: look.type.body, textAlign: TextAlign.center),
           ),
         for (final p in players)
-          _PlayerRow(player: p, ready: _ready.contains(p.id), own: p.id == own, onTap: () => _toggle(p.id)),
+          _PlayerRow(player: p, ready: _ready.contains(p.id), own: p.id == own, onPressed: () => _toggle(p.id)),
         if (_roboIn) ...[
           _RoboRow(
             level: _settings.roboLevel,
@@ -286,23 +311,27 @@ class _ArenaWaitingCardState extends ConsumerState<ArenaWaitingCard> {
         const SizedBox(height: ToySizes.space8),
         Text(ArenaText.map, style: look.type.button),
         const SizedBox(height: ToySizes.space8),
-        Wrap(
-          spacing: ToySizes.space12,
-          runSpacing: ToySizes.space12,
-          children: [
-            for (final (i, map) in _maps.indexed)
-              _MapCard(
-                map: map,
-                colour: look.colors.player(i % _colourSlots + 1),
-                chosen: _chosenId == map.id,
-                onPressed: () => _pickMap(map.id),
-              ),
-            _SurpriseCard(chosen: _chosenId == null, onPressed: () => _pickMap(null)),
-          ],
-        ),
+        _mapPicker(look),
       ],
     );
   }
+
+  /// The maps the mode plays, then Surprise me (frame 8): each map's card in
+  /// the next player colour, the chosen one ticked.
+  Widget _mapPicker(ToyLook look) => Wrap(
+    spacing: ToySizes.space12,
+    runSpacing: ToySizes.space12,
+    children: [
+      for (final (i, map) in _maps.indexed)
+        _MapCard(
+          map: map,
+          colour: look.colors.player(i % _colourSlots + 1),
+          chosen: _chosenId == map.id,
+          onPressed: () => _pickMap(map.id),
+        ),
+      _SurpriseCard(chosen: _chosenId == null, onPressed: () => _pickMap(null)),
+    ],
+  );
 
   /// The mode buttons and the pairing code (frame 8): the chosen mode keeps
   /// the focus fill, so it reads as chosen while the focus is elsewhere; a
