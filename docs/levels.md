@@ -95,7 +95,7 @@ A piece's `at` is where its outline's **origin** goes on the board. The origin i
 | Field | What it is |
 | --- | --- |
 | `name` | What the players read in the puzzle list. |
-| `level` | `"easy"`, `"medium"` or `"hard"`: which list it is in and which rules below it keeps (B-012b). The library has no Hard puzzle yet; `tools/level.sh new puzzle <id> --level hard` starts one. |
+| `level` | `"easy"`, `"medium"` or `"hard"`: which list it is in and which rules below it keeps (B-012b). The library has six Hard puzzles; `tools/level.sh new puzzle <id> --level hard` starts another. |
 | `notes` | Optional, free text, ignored by the app. |
 | `pieces` | The pieces, in drawing order (below). |
 
