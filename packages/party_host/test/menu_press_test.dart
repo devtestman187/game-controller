@@ -40,10 +40,12 @@ void main() {
       screen: ArenaResults(
         result: RoundResult(game: 'arena', winners: {'p1'}, lines: {'p1': _coin(RoundOutcome.win, 3)}),
         night: false,
+        lastRound: false,
         againFocus: again,
         onAgain: () => pressed.add('again'),
         onChangeMode: () => pressed.add('mode'),
         onNext: () => pressed.add('next'),
+        onEndNight: () => pressed.add('endNight'),
       ),
       overrides: [gamePlayersProvider.overrideWith(TestRoster.new)],
     );
@@ -62,6 +64,43 @@ void main() {
     await press(tester, fake, 'p1', GamepadButton.a);
     await press(tester, fake, 'p1', GamepadButton.a);
     expect(pressed, ['again', 'again', 'mode', 'mode']);
+  });
+
+  testWidgets('a night\'s result card keeps A on Next and Right reaches End night (B-021)', (tester) async {
+    final pressed = <String>[];
+    final next = FocusNode(debugLabel: 'arenaNext');
+    addTearDown(next.dispose);
+    final fake = await pumpHost(
+      tester,
+      screen: ArenaResults(
+        result: RoundResult(game: 'arena', winners: {'p1'}, lines: {'p1': _coin(RoundOutcome.win, 3)}),
+        night: true,
+        lastRound: false,
+        againFocus: next,
+        onAgain: () => pressed.add('again'),
+        onChangeMode: () => pressed.add('mode'),
+        onNext: () => pressed.add('next'),
+        onEndNight: () => pressed.add('endNight'),
+      ),
+      overrides: [gamePlayersProvider.overrideWith(TestRoster.new)],
+    );
+    (appContainer(tester).read(gamePlayersProvider.notifier) as TestRoster).put([nightPlayer('p1', 1, 'Mia')]);
+    await tester.pump();
+    await neutral(tester, fake, ['p1']);
+    // The screen leaves Next with the focus, as the round's end does.
+    next.requestFocus();
+    await tester.pump();
+
+    await press(tester, fake, 'p1', GamepadButton.a);
+    await press(tester, fake, 'p1', GamepadButton.a);
+    expect(pressed, ['next', 'next'], reason: 'Next keeps the card\'s first focus');
+
+    // Right walks to End night beside it, as the brief pins the walk (B-021).
+    await press(tester, fake, 'p1', GamepadButton.dpadRight);
+    expect(focused(tester, 'endNight'), isTrue, reason: 'Right reaches End night');
+    await press(tester, fake, 'p1', GamepadButton.a);
+    await press(tester, fake, 'p1', GamepadButton.a);
+    expect(pressed, ['next', 'next', 'endNight', 'endNight'], reason: 'End night takes A on every press too');
   });
 }
 

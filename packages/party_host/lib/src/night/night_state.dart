@@ -93,6 +93,7 @@ final class NightState {
     required Map<String, NightPlayer> seen,
     required List<NightAwardOutcome> outcomes,
     required List<String> maps,
+    required this.isEndedEarly,
   }) : totals = Map.unmodifiable(totals),
        counters = Map.unmodifiable({
          for (final MapEntry(:key, :value) in counters.entries) key: Map<String, int>.unmodifiable(value),
@@ -124,6 +125,7 @@ final class NightState {
       seen: {for (final p in players) p.id: (number: p.number, nickname: p.nickname, character: p.character)},
       outcomes: const [],
       maps: const [],
+      isEndedEarly: false,
     );
   }
 
@@ -169,20 +171,30 @@ final class NightState {
   /// hasn't used yet.
   final List<String> maps;
 
+  /// Whether the host ended the night before its last round (B-021): the round
+  /// just played is in, so [isOver] is true with rounds still unplayed.
+  final bool isEndedEarly;
+
   /// The night with a round played on [mapId]: Surprise me picks a map the
   /// night hasn't used yet (party-night §7b). A map already played is not
   /// counted twice.
   NightState usedMap(String mapId) => maps.contains(mapId) ? this : _copyWith(maps: [...maps, mapId]);
 
+  /// The night ended by its host on the round just played (B-021): [isOver]
+  /// is true from now on, and its awards are decided as the last round's are,
+  /// while the rounds played, their points and their counters stay as they are.
+  NightState endedEarly() => _copyWith(isEndedEarly: true);
+
   /// The night's rounds.
   int get rounds => length.rounds;
 
-  /// How many rounds are still to play.
-  int get roundsLeft => rounds - round;
+  /// How many rounds are still to play: none once the night is over, however
+  /// it ended.
+  int get roundsLeft => isOver ? 0 : rounds - round;
 
-  /// Whether every round has been played: the final scores follow (design
-  /// section 6).
-  bool get isOver => round >= rounds;
+  /// Whether every round has been played, or the host ended the night early
+  /// (B-021): the final scores follow (design section 6).
+  bool get isOver => isEndedEarly || round >= rounds;
 
   /// Whether the next round is the night's last: the scoreboard shows the
   /// double-points banner before it (design section 4), and the round itself
@@ -300,6 +312,7 @@ final class NightState {
     Map<String, NightPlayer>? seen,
     List<NightAwardOutcome>? outcomes,
     List<String>? maps,
+    bool? isEndedEarly,
   }) => NightState._(
     length: length,
     round: round ?? this.round,
@@ -312,5 +325,6 @@ final class NightState {
     seen: seen ?? this.seen,
     outcomes: outcomes ?? this.outcomes,
     maps: maps ?? this.maps,
+    isEndedEarly: isEndedEarly ?? this.isEndedEarly,
   );
 }

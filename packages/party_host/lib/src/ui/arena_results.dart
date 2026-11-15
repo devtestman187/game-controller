@@ -23,8 +23,9 @@ const _coinShare = 0.7;
 
 /// The Bumper Round's results (M14 b2, design section 7): the winners with a
 /// crown, each player's coins, and Play again / Change mode / Back — or the
-/// night's one Next, which sends the round to the scoreboard (design section
-/// 4). A draw says so, and a round nobody scored in is a draw too.
+/// night's Next, which sends the round to the scoreboard, with End night
+/// beside it until the night's last round (design section 4, B-021). A draw
+/// says so, and a round nobody scored in is a draw too.
 ///
 /// It owns the card alone: the round ended, and the screen starts the next one
 /// from here. On a joined phone each player's own result came with the frame
@@ -34,19 +35,25 @@ class ArenaResults extends ConsumerWidget {
     super.key,
     required this.result,
     required this.night,
+    required this.lastRound,
     required this.againFocus,
     required this.onAgain,
     required this.onChangeMode,
     required this.onNext,
+    required this.onEndNight,
   });
 
   /// The round's result, as the rules left it: the players' lines carry their
   /// coins.
   final RoundResult result;
 
-  /// Whether this is a night's round: its one button is Next, and the night's
-  /// scoreboard follows it.
+  /// Whether this is a night's round: its buttons are Next and, before the
+  /// last round, End night, and the night's scoreboard follows Next.
   final bool night;
+
+  /// Whether the round on the card is the night's last: Next alone then, since
+  /// Next ends the night already (B-021). Nothing outside a night.
+  final bool lastRound;
 
   /// The focus the card's first button starts with, for the remote's OK and a
   /// phone's A.
@@ -60,6 +67,10 @@ class ArenaResults extends ConsumerWidget {
 
   /// A night's Next: the round is recorded and the scoreboard follows.
   final VoidCallback onNext;
+
+  /// A night's End night: the round is recorded and the night ends on it, so
+  /// the awards' reveal and then the final scores follow.
+  final VoidCallback onEndNight;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -103,10 +114,12 @@ class ArenaResults extends ConsumerWidget {
               waiting: waiting,
               roboNumber: roboNumber,
               night: night,
+              lastRound: lastRound,
               againFocus: againFocus,
               onAgain: onAgain,
               onChangeMode: onChangeMode,
               onNext: onNext,
+              onEndNight: onEndNight,
             ),
           ),
         ),
@@ -139,10 +152,12 @@ class _ResultsBody extends StatelessWidget {
     required this.waiting,
     required this.roboNumber,
     required this.night,
+    required this.lastRound,
     required this.againFocus,
     required this.onAgain,
     required this.onChangeMode,
     required this.onNext,
+    required this.onEndNight,
   });
 
   final RoundResult result;
@@ -153,10 +168,12 @@ class _ResultsBody extends StatelessWidget {
   final int roboNumber;
 
   final bool night;
+  final bool lastRound;
   final FocusNode againFocus;
   final VoidCallback onAgain;
   final VoidCallback onChangeMode;
   final VoidCallback onNext;
+  final VoidCallback onEndNight;
 
   @override
   Widget build(BuildContext context) => Column(
@@ -169,20 +186,46 @@ class _ResultsBody extends StatelessWidget {
         _RoboRow(number: roboNumber, coins: line.count ?? 0, won: result.winners.contains(roboPlayerId)),
       for (final p in waiting) _JoinsNextRound(player: p),
       const SizedBox(height: ToySizes.space16),
-      // A wrap, so a narrow card drops a button to a line of its own rather
-      // than spilling it off the card.
-      Wrap(
-        spacing: ToySizes.space12,
-        runSpacing: ToySizes.space8,
-        children: [
-          HostButton(
-            key: Key(night ? 'next' : 'arenaAgain'),
-            label: night ? NightText.next : HostText.playAgain,
-            icon: night ? Icons.skip_next : Icons.replay,
-            focusNode: againFocus,
-            onPressed: night ? onNext : onAgain,
-          ),
-          if (!night) ...[
+      // A night's Next in a row of its own with End night beside it, so the
+      // remote's Right walks the focus from one to the other; a wrap outside a
+      // night, so a narrow card drops a button to a line of its own rather than
+      // spilling it off the card.
+      if (night)
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            HostButton(
+              key: const Key('next'),
+              label: NightText.next,
+              icon: Icons.skip_next,
+              focusNode: againFocus,
+              onPressed: onNext,
+            ),
+            // The host may end the night on the round just played; the night's
+            // last round needs no button for it, since Next ends it (B-021).
+            if (!lastRound) ...[
+              const SizedBox(width: ToySizes.space12),
+              HostButton(
+                key: const Key('endNight'),
+                label: NightText.endNightNow,
+                icon: Icons.flag,
+                onPressed: onEndNight,
+              ),
+            ],
+          ],
+        )
+      else
+        Wrap(
+          spacing: ToySizes.space12,
+          runSpacing: ToySizes.space8,
+          children: [
+            HostButton(
+              key: const Key('arenaAgain'),
+              label: HostText.playAgain,
+              icon: Icons.replay,
+              focusNode: againFocus,
+              onPressed: onAgain,
+            ),
             HostButton(
               key: const Key('arenaChangeMode'),
               label: ArenaText.changeMode,
@@ -196,8 +239,7 @@ class _ResultsBody extends StatelessWidget {
               onPressed: () => Navigator.of(context).maybePop(),
             ),
           ],
-        ],
-      ),
+        ),
     ],
   );
 }

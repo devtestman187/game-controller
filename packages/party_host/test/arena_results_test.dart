@@ -19,6 +19,7 @@ void main() {
     required RoundResult result,
     required List<GamePlayer> players,
     bool night = false,
+    bool lastRound = false,
     List<String> pressed = const [],
   }) async {
     final again = FocusNode(debugLabel: 'arenaAgain');
@@ -28,10 +29,12 @@ void main() {
       screen: ArenaResults(
         result: result,
         night: night,
+        lastRound: lastRound,
         againFocus: again,
         onAgain: () => pressed.add('again'),
         onChangeMode: () => pressed.add('mode'),
         onNext: () => pressed.add('next'),
+        onEndNight: () => pressed.add('endNight'),
       ),
       overrides: [gamePlayersProvider.overrideWith(TestRoster.new)],
     );
@@ -68,6 +71,7 @@ void main() {
     expect(find.byKey(const Key('arenaChangeMode')), findsOneWidget);
     expect(find.byKey(const Key('arenaResultsBack')), findsOneWidget);
     expect(find.byKey(const Key('next')), findsNothing, reason: 'Next is a night\'s button alone');
+    expect(find.byKey(const Key('endNight')), findsNothing, reason: 'so is End night');
   });
 
   testWidgets('Robo’s row says what it won, and a round Robo wins is its banner', (tester) async {
@@ -144,7 +148,7 @@ void main() {
     expect(find.text('1 coin'), findsOneWidget, reason: 'one coin is said in the singular');
   });
 
-  testWidgets('a night\'s round has Next alone, and it records the round', (tester) async {
+  testWidgets('a night\'s round has Next and End night, and each records the round', (tester) async {
     final pressed = <String>[];
     await showResults(
       tester,
@@ -161,6 +165,8 @@ void main() {
 
     expect(find.byKey(const Key('next')), findsOneWidget);
     expect(find.text('Next'), findsOneWidget);
+    expect(find.byKey(const Key('endNight')), findsOneWidget, reason: 'the host may end the night here (B-021)');
+    expect(find.text('End night'), findsOneWidget);
     expect(
       find.byKey(const Key('arenaAgain')),
       findsNothing,
@@ -172,5 +178,22 @@ void main() {
     await tester.tap(find.byKey(const Key('next')));
     await tester.pump();
     expect(pressed, ['next']);
+
+    await tester.tap(find.byKey(const Key('endNight')));
+    await tester.pump();
+    expect(pressed, ['next', 'endNight'], reason: 'End night ends the night on the round just played');
+  });
+
+  testWidgets('the night\'s last round has Next alone, since Next ends the night', (tester) async {
+    await showResults(
+      tester,
+      night: true,
+      lastRound: true,
+      players: [nightPlayer('p1', 1, 'Mia')],
+      result: RoundResult(game: 'arena', winners: {'p1'}, lines: {'p1': coins(RoundOutcome.win, 2)}),
+    );
+
+    expect(find.byKey(const Key('next')), findsOneWidget);
+    expect(find.byKey(const Key('endNight')), findsNothing, reason: 'there is nothing left to end early');
   });
 }

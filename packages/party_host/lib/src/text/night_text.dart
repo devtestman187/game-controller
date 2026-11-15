@@ -25,8 +25,12 @@ abstract final class NightText {
   /// Which round the host is about to pick a game for: "Pick round 1".
   static String pickRound(int round) => 'Pick round $round';
 
-  // The results' one button in a night.
+  // The results' buttons in a night.
   static const next = 'Next';
+
+  /// Ended the night on the round just played, beside Next before the night's
+  /// last round (B-021); [endNight] is the question asked when the host leaves.
+  static const endNightNow = 'End night';
 
   // The scoreboard.
   static String roundOf(int round, int of) => 'Round $round of $of';

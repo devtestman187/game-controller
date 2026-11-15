@@ -1,10 +1,23 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:game_assets/asset_manifest.dart';
 import 'package:toy_look/toy_look.dart';
 
 import '../providers.dart';
 import '../text/host_text.dart';
+
+/// Keys that show or hide the debug overlay: OK on the remote (and Enter),
+/// the remote's Info or Menu key if it has one, and D or F3 on a keyboard.
+final debugKeys = {
+  LogicalKeyboardKey.select,
+  LogicalKeyboardKey.enter,
+  LogicalKeyboardKey.numpadEnter,
+  LogicalKeyboardKey.info,
+  LogicalKeyboardKey.contextMenu,
+  LogicalKeyboardKey.keyD,
+  LogicalKeyboardKey.f3,
+};
 
 /// How far above the bottom edge the arena's note sits, clear of the sprites'
 /// play area.

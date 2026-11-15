@@ -21,23 +21,12 @@ import 'arena_map_choice.dart';
 import 'arena_results.dart';
 import 'arena_waiting_card.dart';
 import 'controller_menus.dart';
+import 'game_debug_overlay.dart';
 import 'game_field.dart';
 import 'lobby_music.dart';
 import 'night_reveal_screen.dart';
 import 'night_scoreboard_screen.dart';
 import 'pause_menu.dart';
-
-/// Keys that show or hide the debug overlay: OK on the remote (and Enter),
-/// the remote's Info or Menu key if it has one, and D or F3 on a keyboard.
-final _debugKeys = {
-  LogicalKeyboardKey.select,
-  LogicalKeyboardKey.enter,
-  LogicalKeyboardKey.numpadEnter,
-  LogicalKeyboardKey.info,
-  LogicalKeyboardKey.contextMenu,
-  LogicalKeyboardKey.keyD,
-  LogicalKeyboardKey.f3,
-};
 
 /// The playable test (PRD T7): the arena, where every player drives their
 /// own sprite in their player colour (T9). It runs through the game host
@@ -155,7 +144,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     // results its buttons are the way on, as Shape Race's are.
     if (_stage != _Stage.results && _keyboard.handle(event)) return KeyEventResult.handled;
     if (event is! KeyDownEvent) return KeyEventResult.ignored;
-    if (_debugKeys.contains(event.logicalKey)) {
+    if (debugKeys.contains(event.logicalKey)) {
       setState(() => _debug = !_debug);
       return KeyEventResult.handled;
     }
@@ -267,20 +256,30 @@ class _GameScreenState extends ConsumerState<GameScreen> {
 
   /// A night's Next (M14 c1, design section 4): the round is recorded, and the
   /// scoreboard follows — or, after the night's last round, the awards' reveal,
-  /// whose final scores take the scoreboard's place (job c2). Everything above
-  /// the game picker goes, so a night of five rounds leaves a phone five routes,
-  /// not fifteen.
+  /// whose final scores take the scoreboard's place (job c2).
   void _next() {
     final result = _result;
     if (result == null) return;
     _log('Results: ${NightText.next}');
     ref.read(partyNightProvider.notifier).recordRound(result);
     final over = ref.read(partyNightProvider)?.isOver ?? false;
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute<void>(builder: (_) => over ? const NightRevealScreen() : const NightScoreboardScreen()),
-      isGamePickerRoute,
-    );
+    _showAfterNight(over ? const NightRevealScreen() : const NightScoreboardScreen());
   }
+
+  /// A night's End night (B-021): the round just played is recorded and the
+  /// night ends on it, so the awards' reveal follows, then its final scores.
+  void _endNight() {
+    final result = _result;
+    if (result == null) return;
+    _log('Results: ${NightText.endNightNow}');
+    ref.read(partyNightProvider.notifier).endNow(result);
+    _showAfterNight(const NightRevealScreen());
+  }
+
+  /// Replaces every route above the game picker with [screen], so a night of
+  /// five rounds leaves a phone five routes, not fifteen.
+  void _showAfterNight(Widget screen) =>
+      Navigator.of(context).pushAndRemoveUntil(MaterialPageRoute<void>(builder: (_) => screen), isGamePickerRoute);
 
   /// The route asked to go: on the results the answer is the game picker, and
   /// in a night the round is recorded first, as Next does (M14 c1). The waiting
@@ -356,10 +355,12 @@ class _GameScreenState extends ConsumerState<GameScreen> {
               ArenaResults(
                 result: result,
                 night: night != null,
+                lastRound: night?.isNextRoundTheLast ?? false,
                 againFocus: _againFocus,
                 onAgain: _again,
                 onChangeMode: _changeMode,
                 onNext: _next,
+                onEndNight: _endNight,
               ),
           ],
         );

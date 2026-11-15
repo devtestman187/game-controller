@@ -85,6 +85,18 @@ class PartyNight extends Notifier<NightState?> {
     state = recorded.isOver ? recorded.awarded(_decide(recorded)) : recorded;
   }
 
+  /// Ends the night on the round just played (B-021), before its last one: it
+  /// records that round as [recordRound] does, then ends the night, so its
+  /// awards are decided as the last round's are and the reveal, then the final
+  /// scores, follow. The night keeps what it has: every round played, their
+  /// points and their awards.
+  void endNow(RoundResult result) {
+    final night = state;
+    if (night == null || night.isOver) return;
+    final recorded = night.remember(ref.read(gamePlayersProvider)).record(result).endedEarly();
+    state = recorded.awarded(_decide(recorded));
+  }
+
   /// Notes the Arena map a round started on (party-night §7b): the night's
   /// Bumper Rounds each start on Surprise me, which picks a map it hasn't used.
   void usedMap(String mapId) {
