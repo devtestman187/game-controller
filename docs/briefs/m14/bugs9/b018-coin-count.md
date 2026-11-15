@@ -1,0 +1,17 @@
+job: M14 bugs9 b018-coin-count: the Bumper Round coin count above a marble is too small and looks cut off (B-018)
+pub: no
+stop: after it.
+read: packages/test_game/lib/src/arena_marble_painter.dart (_coinCount, the coinBadge* shares) · packages/test_game/lib/src/arena_marble_painter tests (grep coinBadge, _coinCount, coinCount in packages/test_game/test) · where the marbles' radius is set (arenaPlayerScale, tvPlayerScale) · docs/design (grep -il "coin count" docs/design for the b2 design)
+decide: low-usage mode: never stop for a question. Make the safest choice that fits the design and list each under "Decisions" with one line of why. Stop only if the job truly cannot be done; then say why under "Blocked".
+
+Owner row B-018 (iPhone 16 Pro Max, build m14.3, Bumper Round): "Coin count in Bumper is too small. Number appears cutoff." Title: "Difficult to read coin count above player's head". The pill above a marble (coin icon, then the count in ink) has its font at 0.95 of the marble's radius, and a marble on a phone is small. "Cutoff" may mean the pill is clipped at the top or sides of the field when a marble is near an edge, or the digits are clipped inside the pill. Not measured on a device.
+Design:
+1 TEST FIRST, new file packages/test_game/test/coin_badge_legibility_test.dart (must fail on the old code). Assert two things with the real painter on a phone-sized field (about 390x844 logical px portrait and 844x390 landscape, with the real marble radius for that field; find how the radius is derived): (a) the count's font size in logical px is at least 14 (and at least 16 for counts with two digits, which must not shrink); (b) the whole pill rectangle, including the pop's peak scale, stays inside the canvas for a marble placed at every edge and corner of the field (the pill is shifted down or sideways to fit, never clipped); also digits of 3 characters ("100") stay inside the pill.
+2 Fix in the painter: a minimum font size in logical px (a documented const, with the pill's coin and padding scaling along with it), and clamp the pill's centre so its box stays on the canvas; when clamped at the top, it may sit over the marble's head rather than above it. Keep it under 380 lines (split the badge into its own file if needed). The TV look's scale stays: a bigger result only.
+3 Run flutter test in packages/test_game once (quiet reporter) and fix pins your change breaks (golden/size pins: update to the new real value keeping the intent).
+in the report: start with `## Summary` (at most 30 lines, within its first 40 lines): the numbers before and after (font px on the phone field, edge clamp behaviour), what was measured versus guessed (the cutoff cause is unmeasured on a device), test results with counts you saw, decisions, anything not done. End with `## Hand-over`. Do not claim a test passes unless you ran it in this job and saw it.
+tests-first: the new test file must fail on the old code.
+rules: aim for 80-150 turns · no lib file you touch may end over 380 lines: split it (the runner stops the run otherwise) · tests first: each new test file must fail on the code as it was (the runner checks this) · write only inside allow: · stage nothing yourself · never use git add -A
+allow: docs/briefs/m14/bugs9/b018-coin-count-report.md · packages/test_game/lib/src · packages/test_game/test
+check: format analyze arena
+report: docs/briefs/m14/bugs9/b018-coin-count-report.md
