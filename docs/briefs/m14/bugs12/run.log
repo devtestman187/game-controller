@@ -1,0 +1,6 @@
+2026-11-15 15:45:23 start at 759e2a2 on m14
+2026-11-15 15:45:23 run-base 759e2a2647b57e9d9b61b3a1d202f85ef6b7086d
+2026-11-15 15:45:29 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-15 15:45:29 start b023-stats-card
+2026-11-15 15:55:59 b023-stats-card finished: result 4 (75 turns, 7 min)
+2026-11-15 15:55:59 STOPPED: jobs that failed or need applying by hand: b023-stats-card:4 (their logs: docs/briefs/m14/bugs12/flash-<job>.log)
