@@ -1,8 +1,9 @@
 import 'dart:math' as math;
 
+import 'package:controller/src/sticks.dart' show StickSettings;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:party_host/party_host.dart' show SettingsText;
+import 'package:party_host/party_host.dart' show PhoneText, SettingsText;
 
 import 'support/pump_app.dart';
 
@@ -15,11 +16,29 @@ DateTime _day() => DateTime(2026, 11, 8, 12);
 /// The evening, so Auto picks the Night palette, whose `onBackground` is white.
 DateTime _night() => DateTime(2026, 11, 8, 20);
 
+/// The settings the test app starts from: nothing is saved, so the dialog
+/// shows the defaults (sticks.dart).
+const _sticks = StickSettings();
+
+/// The dialog's three slider lines, found by the same [SettingsText] calls the
+/// dialog makes (stick_dialog.dart): the button size, the dead zone and the
+/// sensitivity.
+final sliderLines = [
+  SettingsText.stickButtonSizeLine((_sticks.buttonSize * 100).round()),
+  SettingsText.stickDeadZoneLine((_sticks.deadZone * 100).round()),
+  SettingsText.stickSensitivityLine(_sticks.sensitivity, (100 / _sticks.sensitivity).round()),
+];
+
 void main() {
   group('stick text contrast', () {
     // The owner's B-017: "you cannot read the text. The text is white on a
     // light background." The app's palette comes from the Look setting and the
     // clock, not from the system brightness, so both palettes are checked.
+    //
+    // The two dialog tests are B-017's evidence: the dialog's switch title drew
+    // white on cream paper at night, 1.07:1, and they failed on that code. The
+    // two Settings tests guard what `ToyCard` already did — it puts its tiles
+    // back to ink (toy_card.dart) — so they passed before the fix and after.
     Future<void> openStickDialog(WidgetTester tester, DateTime Function() clock) async {
       final app = await pumpApp(tester, paired: true, clock: clock);
       app.client.emit(connected);
@@ -42,9 +61,17 @@ void main() {
         await openStickDialog(tester, clock);
         expectReads(tester, find.text(SettingsText.floatingSticks), 'the Floating sticks title');
         expectReads(tester, find.text(SettingsText.floatingLine), 'its subtitle');
-        // The dialog's own words, which the dialog's text theme colours.
+        // The dialog's own words, which the dialog's text theme colours. Its
+        // title is found under the dialog because 'Sticks' also names the mode
+        // tab behind it.
+        final dialog = find.byType(AlertDialog);
+        expectReads(tester, find.descendant(of: dialog, matching: find.text(PhoneText.sticks)), "the dialog's title");
         expectReads(tester, find.text(SettingsText.stickLine), "the dialog's line about the sticks");
-        expectReads(tester, find.textContaining('Button size:'), "the button size's line");
+        for (final line in sliderLines) {
+          expectReads(tester, find.text(line), 'the line "$line"');
+        }
+        expectReads(tester, find.descendant(of: dialog, matching: find.text(SettingsText.defaults)), 'Defaults');
+        expectReads(tester, find.descendant(of: dialog, matching: find.text(SettingsText.done)), 'Done');
       });
 
       testWidgets('the Sticks section of Settings reads the floating-sticks lines $moment', (tester) async {

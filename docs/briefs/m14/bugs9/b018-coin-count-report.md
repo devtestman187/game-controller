@@ -7,18 +7,20 @@ gives a marble a radius of 0.032 x 390 = **12.48 px**.
 
 Before: the count drew at 0.95 x 12.48 = **11.856 px** whatever its length, in a
 pill 28.8 x 16.4 px whose 3 px ink edge left 10.4 px of inside for its 12 px
-digits: the count's box ran **0.8 px above the pill's inside top and 3.7 px past
+digits: the count's box ran **0.8 px above the pill's inside top and 0.75 px past
 its inside right**, so the digits sat under the pill's own ink edge. A marble at
 the field's top edge had its pill 14.4 px above the field, its pop peak reaching
 **33.2 px above the canvas** — no pill on the screen.
 
 After: **14 px** for a one-digit count and **16 px** for two or more, a
 documented minimum that lifts the pill's coin and padding with it (pill 39.6 x
-25.3 px for `7`, 76.0 x 28.1 px for `100`). Its inside keeps clear of its ink
-edge, and its centre is clamped by its **pop-peak** half size: a marble at the
-top edge now wears a whole pill with its peak top at y = 0 (moved down 33.2 px),
-and one at x = 0 has its peak left edge at x = 0 (moved in 34.1 px for `100`,
-18.7 px for `7`). The TV's look is untouched (its radius is 1.5x, so its count
+25.3 px for `7`, 76.1 x 28.1 px for `100`). Its inside keeps clear of its ink
+edge, and its centre is kept on the field by its **pop-peak** half size. A
+marble at the top edge now wears its pill **below its head** rather than over it
+(rest y 14.4..39.7 px, peak y 10.6..43.5 px on the owner's phone): the clamp
+that kept the pill on the field used to slide it down across the marble's eyes.
+A marble at x = 0 has its peak left edge at x = 0 (moved in 49.5 px for `100`,
+25.7 px for `7`). The TV's look is untouched (its radius is 1.5x, so its count
 already draws at 17.78 px); its pill only grows.
 
 Measured: every number above. Guessed: **the cause of "appears cutoff"** —
@@ -27,9 +29,11 @@ under the pill's ink) were real and both are fixed.
 
 Tests: the new file failed 5 of 5 on the old geometry and passes 5 of 5 now; the
 `test_game` suite passes, **230 tests** (5 new; its count before is not
-measured). Format and analyze are clean.
+measured; 232 after a later job added the eyes test). Format and analyze are
+clean.
 
-Not done: no device look, no golden, no tablet or TV field in the new test.
+Not done: no device look, no golden. A later job added the TV field to the test
+and moved the top-edge pill below the marble (see `f1-review-fixes-report.md`).
 
 ## What changed
 
@@ -55,10 +59,10 @@ All on the owner's field (radius 12.48 px), Sunny look, the arena's style
 | font, one digit | 11.856 px | 14 px |
 | font, two or three digits | 11.856 px | 16 px |
 | pill for `7` | 28.8 x 16.4 | 39.6 x 25.3 |
-| pill for `100` | 52.4 x 16.4 | 76.0 x 28.1 |
-| count inside the pill | 0.8 px over the top, 3.7 px over the right | inside, 3 px + padding clear on every side |
-| pill at the top edge, pop peak | top at -33.2 px (off the canvas) | top at 0, moved down 33.2 px |
-| pill at x = 0, pop peak, `100` | left at -34.1 px | left at 0, moved in 34.1 px |
+| pill for `100` | 52.4 x 16.4 | 76.1 x 28.1 |
+| count inside the pill | 0.8 px over the top, 0.75 px over the right | inside, 3 px + padding clear on every side |
+| pill at the top edge, pop peak | top at -33.2 px (off the canvas) | below the head: rest y 14.4..39.7, peak y 10.6..43.5 (`7`) |
+| pill at x = 0, pop peak, `100` | left at -34.1 px | left at 0, moved in 49.5 px (`7`: 25.7 px) |
 
 The `100` pill's widths after include the count's own width (48 px at 16 px);
 the peak boxes for `7`/`42`/`100` at the top edge are 51.4 x 32.9, 78.2 x 36.5

@@ -18,8 +18,13 @@ surface's tile colours (the look's ink text and icons); the Sticks dialog wraps 
 
 **Tests.** New `controller_app/test/stick_text_contrast_test.dart`, four widget tests (dialog and Settings section,
 midday and night) that resolve each line's effective colour and the surface behind it from the tree, blend
-`inkSoft`'s alpha, and assert 4.5:1: it failed at 1.07:1 on the old code, all four pass now. `tools/check.sh format
-analyze phone`: format PASS, analyze PASS, phone PASS (468 tests).
+`inkSoft`'s alpha, and assert 4.5:1. **Which tests are the evidence:** on the old code the two *dialog* tests failed at
+1.07:1 (the switch title drew white on cream paper at night); the two *Settings section* tests passed then too,
+because `ToyCard` already put its tiles back to ink — they guard that behaviour, not this fix. All four pass now.
+`tools/check.sh format analyze phone`: format PASS, analyze PASS, phone PASS (468 tests). A later review job added
+the dialog's title (`PhoneText.sticks`, found inside the `AlertDialog` because 'Sticks' also names the mode tab), its
+Defaults and Done buttons (5.61:1 at midday, 6.29:1 at night) and all three slider lines, found by the same
+`SettingsText` calls the dialog makes (see `f1-review-fixes-report.md`).
 
 **Decisions:** (1) at the widget, not in `toyTheme`, because `packages/toy_look` and `main.dart` are outside `allow:` and
 ink there would darken the tiles standing on the sky; (2) one shared `paperTileTheme(look)`, not an inline theme, because

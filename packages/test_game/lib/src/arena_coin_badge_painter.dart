@@ -74,7 +74,8 @@ final class CoinBadgeLayout {
 /// Draws the coin count above a marble's head in the Bumper Round (party-night
 /// §7, M14 b2): the game's own coin, then the count in ink, in a paper pill
 /// that pops for a moment when the count changes — up on a pick-up, down on a
-/// drop.
+/// drop. At the field's top edge the pill goes below the head instead, so it
+/// never covers the marble's eyes (M14 bugs9 review).
 final class ArenaCoinBadgePainter {
   ArenaCoinBadgePainter({required this.look, required this.style});
 
@@ -83,7 +84,8 @@ final class ArenaCoinBadgePainter {
 
   /// Where [player]'s badge goes on a canvas of [size] above a marble of
   /// [radius] px, [pop] of the way through its pop (M14 b2): kept on the
-  /// canvas and no smaller than [coinBadgeMinFontPx] (M14 bugs9 B-018).
+  /// canvas, off the marble's eyes, and no smaller than [coinBadgeMinFontPx]
+  /// (M14 bugs9 B-018 and its review).
   CoinBadgeLayout layout(Size size, ArenaPlayerView player, double radius, double pop) {
     final wide = '${player.coins}'.length >= coinBadgeWideDigits;
     final fontPx = max(radius * coinBadgeFontShare, wide ? coinBadgeMinWideFontPx : coinBadgeMinFontPx);
@@ -103,9 +105,15 @@ final class ArenaCoinBadgePainter {
     final height = max(2 * coinRadius, count.height) + 2 * inset;
     final width = 2 * coinRadius + gap + count.width + 2 * inset;
     final scale = 1 + pop * coinBadgePopShare;
+    final half = height / 2 * scale;
     final centre = Offset(
       _kept(player.x * size.width, width / 2 * scale, size.width),
-      _kept(player.y * size.height - radius - gap - height / 2, height / 2 * scale, size.height),
+      _badgeY(
+        player.y * size.height - radius - gap - height / 2,
+        player.y * size.height + radius + gap + height / 2,
+        half,
+        size.height,
+      ),
     );
     final pill = RRect.fromRectAndRadius(
       Rect.fromCenter(center: centre, width: width, height: height),
@@ -123,7 +131,8 @@ final class ArenaCoinBadgePainter {
     );
   }
 
-  /// Draws [player]'s badge on [canvas], above its marble of [radius] px.
+  /// Draws [player]'s badge on [canvas], above its marble of [radius] px (or
+  /// below it at the field's top edge, as [layout] places it).
   void paint(Canvas canvas, Size size, ArenaPlayerView player, double radius, double pop) {
     final badge = layout(size, player, radius, pop);
     final centre = badge.pill.center;
@@ -150,9 +159,20 @@ final class ArenaCoinBadgePainter {
     canvas.restore();
   }
 
-  /// The count's ink at [fontPx], the look's own weight and line height.
+  /// The count's ink at [fontPx]: bold, ink, at the count's own line height.
   TextStyle _countStyle(double fontPx) =>
       TextStyle(color: look.colors.ink, fontSize: fontPx, fontWeight: FontWeight.w700, height: 1);
+
+  /// The pill's middle height on a field [extent] px tall, its peak half
+  /// height [half]: [above] the marble's head, or [below] it when the peak
+  /// would cross the field's top edge above — a pill moved down onto the field
+  /// would cover the marble's eyes (M14 bugs9 review). A marble with room for
+  /// neither keeps the clamp.
+  double _badgeY(double above, double below, double half, double extent) {
+    if (above - half >= 0) return above;
+    if (below + half <= extent) return below;
+    return _kept(above, half, extent);
+  }
 
   /// [value] kept so a box of half size [half] stays within [extent]: the pill
   /// is moved sideways or down rather than drawn off the field (M14 bugs9
