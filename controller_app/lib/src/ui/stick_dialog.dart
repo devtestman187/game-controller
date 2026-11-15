@@ -4,6 +4,7 @@ import 'package:party_host/party_host.dart' show PhoneText, SettingsText, ToyLoo
 
 import '../gyro.dart';
 import '../sticks.dart';
+import 'paper_tiles.dart';
 
 /// Stick dead zone, sensitivity and fixed/floating (PRD C13), and the button
 /// size (v2 C16). The controller stays visible behind the dialog, so size
@@ -24,7 +25,12 @@ class _StickDialog extends ConsumerWidget {
     return AlertDialog(
       title: const Text(PhoneText.sticks),
       scrollable: true,
-      content: SizedBox(width: look.sizes.buttonHeight * _widthShare, child: _content(ref, look)),
+      content: SizedBox(
+        width: look.sizes.buttonHeight * _widthShare,
+        // The dialog's paper has no card under it, so its tiles take the ink
+        // themselves (B-017).
+        child: ListTileTheme(data: paperTileTheme(look), child: _content(ref, look)),
+      ),
       actions: [
         TextButton(onPressed: () => notifier.update(const StickSettings()), child: const Text(SettingsText.defaults)),
         TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text(SettingsText.done)),
