@@ -4,20 +4,12 @@ import 'package:protocol/protocol.dart';
 
 import 'host_device_sample.dart';
 import 'segment.dart';
+import 'session_clean.dart';
 import 'session_device.dart';
 import 'session_player.dart';
 import 'session_stats.dart';
 
-/// What hosted the session (PRD v2 S6).
-abstract final class HostType {
-  static const androidTv = 'android_tv';
-  static const windows = 'windows';
-  static const phone = 'phone';
-
-  /// A tablet hosting its own game (M12 host mode, design §0).
-  static const tablet = 'tablet';
-  static const other = 'other';
-}
+export 'session_clean.dart' show HostType, maxRoundTags;
 
 /// Joins everything the host learns in one play session into one summary
 /// (PRD v2 T17): each phone's mode segments, ratings, latency, connection
@@ -51,9 +43,17 @@ class SessionCollector {
   final _rounds = <Map<String, Object?>>[];
   final _device = HostDeviceTally();
   int? _roundHz;
+
+  /// How far into the session the round began, in seconds, or null when the
+  /// game recorded no start for it (M14 stats b5-2).
+  double? _roundStartS;
   int _frames = 0;
   int _frameDrops = 0;
   bool _inGame = false;
+
+  /// Whether the frames record that follows the last [roundEnded] is still to
+  /// come: the games write it just after a round's end (M14 a3).
+  bool _roundWaitsForFrames = false;
 
   bool get isEmpty => _players.isEmpty;
 
@@ -72,9 +72,9 @@ class SessionCollector {
     String app = '',
     DeviceInfo? device,
   }) {
-    app = _clean(app, 24) ?? '';
-    platform = _clean(platform, 16) ?? '';
-    device = device == null ? null : _cleanDevice(device);
+    app = cleanText(app, 24) ?? '';
+    platform = cleanText(platform, 16) ?? '';
+    device = device == null ? null : cleanDevice(device);
     final p = _players[id] ??= PlayerRecord(number: number, local: local, platform: platform, app: app, device: device);
     p.number = number;
     if (inProcess) p.inProcess = true;
@@ -159,14 +159,14 @@ class SessionCollector {
   void rating(String id, RatingMessage r, {required String game, List<String> roundTags = const []}) {
     final p = _players[id];
     if (p == null || p.ratings.length >= 50) return;
-    final round = _roundTags(roundTags);
+    final round = roundTagsOf(roundTags);
     p.ratings.add({
       'game': game,
       'face': ?r.face?.name,
       if (r.skipped) 'skipped': true,
       'tags': [
         for (final t in r.tags.take(8))
-          if (t.length <= 32 && _tagPattern.hasMatch(t)) t,
+          if (t.length <= 32 && tagPattern.hasMatch(t)) t,
       ],
       'mode': ?p.mode,
       if (round.isNotEmpty) 'round': round,
@@ -193,18 +193,31 @@ class SessionCollector {
   /// A round started at the rate of the view that runs it (m12 §0.4): [hz] is
   /// null when the host keeps the game on its own screen, and the round then
   /// has no rate to be filed under.
-  void roundStarted({int? hz}) {
+  ///
+  /// [atMs] is when it began on the host's clock, the one [startMs] is from:
+  /// the round then says how far into the session it began (M14 stats b5-2).
+  void roundStarted({int? hz, int? atMs}) {
     _inGame = true;
     _roundHz = hz != null && hz >= minViewHz && hz <= maxViewHz ? hz : null;
+    _roundStartS = atMs == null ? null : _sinceStartS(atMs);
   }
+
+  /// [atMs] on the host's clock in seconds from the session's start, to a
+  /// tenth. Never negative: a clock that runs backwards reads as the start.
+  double _sinceStartS(int atMs) =>
+      double.parse((max(0, atMs - startMs) / Duration.millisecondsPerSecond).toStringAsFixed(1));
 
   /// A round ended. [modes] is each player's mode; [winnerId] won, or
   /// [winnerIds] (a team) did; [draw]: a race nobody won. The round keeps the
-  /// rate of the view it started at.
+  /// rate of the view it started at, and how far into the session it began
+  /// when [roundStarted] was given the host's clock.
   ///
   /// [abandoned] is a round nobody played, which the games write when the host
   /// abandons one (M14 design section 2 N1): it adds no round, no count and no
   /// game time, but it still ends the game.
+  ///
+  /// [robotWin] is a round the host's robot won (M14 a2): the round says so,
+  /// and no player gets the win, since the robot is nobody's.
   ///
   /// [tags] say what the round was (M14's "By game and feature"): the game
   /// and the host write short `kind_value` strings such as `mode_bumper`,
@@ -220,48 +233,64 @@ class SessionCollector {
     Set<String> winnerIds = const {},
     bool draw = false,
     bool abandoned = false,
+    bool robotWin = false,
     List<String> tags = const [],
   }) {
     final winners = {...winnerIds, ?winnerId};
     _inGame = false;
+    _roundWaitsForFrames = false;
     if (abandoned) {
       _roundHz = null;
+      _roundStartS = null;
       return;
     }
     if (_rounds.length < 1000) {
-      final roundTags = _roundTags(tags);
+      final roundTags = roundTagsOf(tags);
       _rounds.add({
         'game': game,
         'hz': ?_roundHz,
         'timeS': double.parse(timeS.toStringAsFixed(2)),
+        'startS': ?_roundStartS,
         'players': modes.length,
         'winner': ?_players[winners.firstOrNull]?.number,
         if (winners.length > 1) 'winners': [for (final id in winners) ?_players[id]?.number],
         if (draw) 'draw': true,
+        // A robot's win is the round's, never a player's (M14 a2): the report
+        // names it, and the players' wins don't count it.
+        if (robotWin) 'robot': true,
         if (roundTags.isNotEmpty) 'tags': roundTags,
       });
+      _roundWaitsForFrames = true;
     }
     _roundHz = null;
+    _roundStartS = null;
     for (final MapEntry(key: id, value: mode) in modes.entries) {
       final p = _players[id];
       if (p == null) continue;
       final m = _mode(mode);
       p.modeGames[m] = (p.modeGames[m] ?? 0) + 1;
       if (draw) p.modeDraws[m] = (p.modeDraws[m] ?? 0) + 1;
+      final counts = p.games[game] ??= {};
       if (winners.contains(id)) {
         p.modeWins[m] = (p.modeWins[m] ?? 0) + 1;
-        final counts = p.games[game] ??= {};
         counts['wins'] = (counts['wins'] ?? 0) + 1;
       }
-      final counts = p.games[game] ??= {};
       counts['rounds'] = (counts['rounds'] ?? 0) + 1;
     }
   }
 
-  /// Frames the host drew, and how many took too long (dropped).
+  /// Frames the host drew, and how many took too long (dropped). The record
+  /// that follows a round's end is the round's too (M14 a3): its counts go in
+  /// the round and in the session's either way.
   void frames(int frames, int drops) {
-    _frames += max(0, frames);
-    _frameDrops += max(0, drops);
+    final drawn = max(0, frames);
+    final late = max(0, drops);
+    _frames += drawn;
+    _frameDrops += late;
+    if (!_roundWaitsForFrames) return;
+    _roundWaitsForFrames = false;
+    _rounds.last['framesDrawn'] = drawn;
+    _rounds.last['framesLate'] = late;
   }
 
   /// Gives the round that just ended its battery and heat (m12 §0.8): [start]
@@ -310,42 +339,3 @@ class SessionCollector {
 
 /// Version of the session summary format.
 const summarySchema = 1;
-
-/// The most tags a round or a rating keeps: a game writes a handful, and a
-/// runaway one must not fill the summary.
-const maxRoundTags = 8;
-
-/// The tags of [tags] that look like a round's own (M14): short `kind_value`
-/// strings such as `mode_bumper`, `map_toy-factory` or `night_2of3`. Anything
-/// else — a name, a sentence — is dropped, so no tag can carry a person's
-/// words.
-List<String> _roundTags(List<String> tags) => [
-  for (final tag in tags.take(maxRoundTags))
-    if (_roundTagPattern.hasMatch(tag)) tag,
-];
-
-/// Keeps a short technical string (a version, a model like "Pixel 8" or
-/// "iPhone15,2"), or drops it if it looks like anything else.
-String? _clean(String? s, int maxLength) {
-  if (s == null) return null;
-  final t = s.trim();
-  if (t.isEmpty || t.length > maxLength || !_technical.hasMatch(t) || t.contains("'")) return null;
-  return t;
-}
-
-DeviceInfo _cleanDevice(DeviceInfo d) => DeviceInfo(
-  kind: _clean(d.kind, 16) ?? 'other',
-  model: _clean(d.model, 40),
-  os: _clean(d.os, 40),
-  widthMm: d.widthMm == null || d.widthMm! < 0 || d.widthMm! > 2000 ? null : d.widthMm,
-  heightMm: d.heightMm == null || d.heightMm! < 0 || d.heightMm! > 2000 ? null : d.heightMm,
-  haptics: d.haptics,
-);
-
-final _technical = RegExp(r'^[A-Za-z0-9 ,._()+-]+$');
-
-final _tagPattern = RegExp(r'^[a-z0-9_]+$');
-
-/// A round's tag: lower case and digits, with `_` between a kind and its
-/// value and `-` inside a map's id (`map_toy-factory`).
-final _roundTagPattern = RegExp(r'^[a-z0-9_.-]{1,32}$');

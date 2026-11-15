@@ -18,10 +18,13 @@ class SessionRecorder {
   /// [session] returns the session to record into, or null when none runs,
   /// so the recorder follows the host's session. [log] gets short lines for
   /// the tester. [random] makes the rating prompts' IDs, injected so tests
-  /// are deterministic.
-  SessionRecorder({required this.host, required this.session, LogSink? log, Random? random})
+  /// are deterministic. [nowMs] is the clock the recorder reads, in ms from
+  /// the same origin as the session's start, and is the host's own unless a
+  /// test injects one, so a test needs no real time (M14 stats b5-2).
+  SessionRecorder({required this.host, required this.session, LogSink? log, Random? random, int Function()? nowMs})
     : _log = log ?? ((_) {}),
-      _random = random ?? Random.secure();
+      _random = random ?? Random.secure(),
+      _injectedClock = nowMs;
 
   /// The game host whose players and records are recorded.
   final ServerGameHost host;
@@ -31,6 +34,11 @@ class SessionRecorder {
 
   final LogSink _log;
   final Random _random;
+  final int Function()? _injectedClock;
+
+  /// Now in ms on the recorder's clock: the host's, or the one a test
+  /// injected, which counts from the same start.
+  int get _now => _injectedClock?.call() ?? host.nowMs;
   final _ratings = RatingScheduler();
   final _askedGames = <String, String>{};
 
@@ -70,39 +78,12 @@ class SessionRecorder {
     if (s == null) return;
     switch (r.name) {
       case 'round_start':
-        // The round's game records the rate of the view it runs (m12 §0.4).
+        // The round's game records the rate of the view it runs (m12 §0.4),
+        // and the recorder's clock says when it began (M14 stats b5-2).
         final hz = r.data['hz'];
-        s.roundStarted(hz: hz is int ? hz : null);
+        s.roundStarted(hz: hz is int ? hz : null, atMs: _now);
       case 'round_end':
-        final modes = <String, String>{
-          for (final MapEntry(:key, :value) in ((r.data['modes'] as Map?) ?? const {}).entries)
-            if (key is String && value is String) key: value,
-        };
-        // What the round was (M14's "By game and feature"): its game's own
-        // tags and the host's, which go into the round and its ratings.
-        final tags = [...((r.data['tags'] as List?) ?? const []).whereType<String>()];
-        final time = r.data['timeS'];
-        s.roundEnded(
-          r.game,
-          timeS: time is num ? time.toDouble() : 0,
-          modes: modes,
-          winnerId: r.data['winner'] as String?,
-          // The puzzle (M11): a side or a team wins together, or a race is a draw.
-          winnerIds: {...((r.data['winners'] as List?) ?? const []).whereType<String>()},
-          draw: r.data['draw'] == true,
-          // The games write an abandoned round with nothing but its reason:
-          // nobody played it, so the stats get no round and no time (M14 N1).
-          abandoned: r.data['reason'] == ViewEndReason.abandoned,
-          tags: tags,
-        );
-        // Rounds per format (solo, team, 1v1, 2v1, 2v2). The completion time and
-        // pieces placed come with each player's result.
-        if (r.data['format'] case final String format) {
-          for (final id in modes.keys) {
-            s.gameEvent(r.game, 'rounds_$format', id);
-          }
-        }
-        _maybeAskRatings(r.game, modes.keys, tags);
+        _roundEnd(s, r);
       case 'frames':
         s.frames((r.data['drawn'] as num?)?.toInt() ?? 0, (r.data['late'] as num?)?.toInt() ?? 0);
       case 'player_result':
@@ -125,14 +106,51 @@ class SessionRecorder {
     }
   }
 
+  /// A round ended: its numbers, tags and ratings.
+  void _roundEnd(SessionCollector s, GameRecord r) {
+    final modes = <String, String>{
+      for (final MapEntry(:key, :value) in ((r.data['modes'] as Map?) ?? const {}).entries)
+        if (key is String && value is String) key: value,
+    };
+    // What the round was (M14's "By game and feature"): its game's own
+    // tags and the host's, which go into the round and its ratings.
+    final tags = [...((r.data['tags'] as List?) ?? const []).whereType<String>()];
+    final time = r.data['timeS'];
+    s.roundEnded(
+      r.game,
+      timeS: time is num ? time.toDouble() : 0,
+      modes: modes,
+      winnerId: r.data['winner'] as String?,
+      // The puzzle (M11): a side or a team wins together, or a race is a draw.
+      winnerIds: {...((r.data['winners'] as List?) ?? const []).whereType<String>()},
+      draw: r.data['draw'] == true,
+      // A round Robo won (M14 a2): the round says so, and no player's
+      // wins count it, since Robo is nobody's.
+      robotWin: r.data['robotWin'] == true,
+      // The games write an abandoned round with nothing but its reason:
+      // nobody played it, so the stats get no round and no time (M14 N1).
+      abandoned: r.data['reason'] == ViewEndReason.abandoned,
+      tags: tags,
+    );
+    // Rounds per format (solo, team, 1v1, 2v1, 2v2). The completion time and
+    // pieces placed come with each player's result.
+    if (r.data['format'] case final String format) {
+      for (final id in modes.keys) {
+        s.gameEvent(r.game, 'rounds_$format', id);
+      }
+    }
+    _maybeAskRatings(r.game, modes.keys, tags);
+  }
+
   /// Asks each of [players] how the controls felt, when the rating schedule
   /// says it is their turn (M9). [tags] are the round's, kept for the answer.
   void _maybeAskRatings(String game, Iterable<String> players, List<String> tags) {
     for (final id in players) {
-      if (!_ratings.gameEnded(id, host.nowMs)) continue;
+      final now = _now;
+      if (!_ratings.gameEnded(id, now)) continue;
       final askId = List.generate(6, (_) => _random.nextInt(256).toRadixString(16).padLeft(2, '0')).join();
       if (host.askRating(id, id: askId, game: game)) {
-        _ratings.asked(id, host.nowMs);
+        _ratings.asked(id, now);
         _askedGames[askId] = game;
         _askedRounds[askId] = tags;
         _log('Stats: asked P${host.players.where((p) => p.id == id).firstOrNull?.number ?? '?'} how the controls felt');

@@ -1,3 +1,4 @@
+import 'report.dart';
 import 'report_table.dart';
 import 'session_player.dart';
 
@@ -152,8 +153,12 @@ List<String> _rateCells(RateRow r) => [
 ];
 
 /// The report's round CSV (m12 §1, M14): one row per round, the numbers the
-/// tables above sum and the round's tags, space separated.
-const roundsCsvHeader = 'session,host,game,hz,time_s,battery_start,battery_end,thermal,tags';
+/// tables above sum and the round's tags, space separated, then the host's app
+/// version (M14), who won the round (M14 a2), its frames and fps (M14 a3) and
+/// how far into the session it began (M14 stats b5-2) at the end.
+const roundsCsvHeader =
+    'session,host,game,hz,time_s,battery_start,battery_end,thermal,tags,host_app,winner,draw,players,'
+    'frames_drawn,frames_late,fps,start_s';
 
 /// One CSV row per round of each summary. A round with no rate or no battery
 /// reading leaves those cells empty, so the columns always line up.
@@ -171,18 +176,52 @@ String _roundCsv(Map<String, Object?> summary, Map round) {
     for (final tag in (round['tags'] as List?) ?? const [])
       if (tag is String) tag,
   ];
+  final timeS = _seconds(round['timeS']);
   return [
     summary['id'] as String? ?? '',
     host['type'] as String? ?? '',
     round['game'] as String? ?? '',
     round['hz'] ?? '',
-    _seconds(round['timeS']).toStringAsFixed(1),
+    timeS.toStringAsFixed(1),
     battery['start'] ?? '',
     battery['end'] ?? '',
     round['thermal'] ?? '',
     // A tag holds no comma, so the cells stay lined up.
     tags.join(' '),
+    appCell(host['app'] as String? ?? ''),
+    _winner(round),
+    round['draw'] == true ? '1' : '',
+    round['players'] ?? '',
+    round['framesDrawn'] ?? '',
+    round['framesLate'] ?? '',
+    _fps(round['framesDrawn'], timeS),
+    _startS(round['startS']),
   ].join(',');
+}
+
+/// How far into its session a round began, in seconds, to one decimal (M14
+/// stats b5-2): blank while the round kept no start.
+String _startS(Object? startS) => startS is num ? startS.toDouble().toStringAsFixed(1) : '';
+
+/// The frames a round drew in a second (M14 a3), to one decimal: blank while
+/// the round kept no frames or took no time to divide by.
+String _fps(Object? drawn, double timeS) {
+  if (drawn is! num || timeS <= 0) return '';
+  return (drawn / timeS).toStringAsFixed(1);
+}
+
+/// A round's winner as the CSV names it (M14 a2): the winning player's number,
+/// `robot` for a round Robo won, or the numbers a team won with, space
+/// separated since a cell holds no comma. A round nobody won has none.
+String _winner(Map round) {
+  if (round['robot'] == true) return 'robot';
+  final numbers = [
+    for (final number in (round['winners'] as List?) ?? const [])
+      if (number is int) '$number',
+  ];
+  if (numbers.isNotEmpty) return numbers.join(' ');
+  final winner = round['winner'];
+  return winner is int ? '$winner' : '';
 }
 
 /// The players' touch-to-frame median and p95, or a dash when no player at

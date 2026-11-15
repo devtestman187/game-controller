@@ -37,6 +37,8 @@ final class ModeRow {
     this.viewFrames,
     this.viewGaps,
     this.viewLate,
+    this.hostApp = '',
+    this.app = '',
   });
 
   final String session;
@@ -91,6 +93,11 @@ final class ModeRow {
   final int? viewGaps;
   final int? viewLate;
 
+  /// The host's and the player's app versions (M14), so the analysis can tell
+  /// builds apart: empty in a summary from a version that didn't record them.
+  final String hostApp;
+  final String app;
+
   /// The mode's full time, idle included.
   double get openMinutes => ms / 60000;
 
@@ -103,7 +110,8 @@ final class ModeRow {
   static const csvHeader =
       'session,date,host,install,device,model,platform,mode,minutes,touches,presses,empty,near,slide,rapid,'
       'games,wins,good,okay,bad,early_switch,first_mode,input_median_ms,input_p95_ms,frustration_per_min,'
-      'open_minutes,touch_median_ms,touch_p95_ms,jitter_median_ms,jitter_p95_ms,view_frames,view_gaps,view_late';
+      'open_minutes,touch_median_ms,touch_p95_ms,jitter_median_ms,jitter_p95_ms,view_frames,view_gaps,view_late,'
+      'host_app,app';
 
   String toCsv() => [
     session,
@@ -139,17 +147,26 @@ final class ModeRow {
     viewFrames ?? '',
     viewGaps ?? '',
     viewLate ?? '',
+    appCell(hostApp),
+    appCell(app),
   ].join(',');
 }
+
+/// An app version as a CSV cell (M14): the session keeps a comma in one (a
+/// model such as "iPhone15,2" has it), but a comma here would shift the row's
+/// fields, so the cell reads it as a semicolon.
+String appCell(String app) => app.replaceAll(',', ';');
 
 String _csv(String s) => s.contains(',') || s.contains('"') ? '"${s.replaceAll('"', '""')}"' : s;
 
 /// The rows of one session summary (as saved by the TV app).
 List<ModeRow> rowsOf(Map<String, Object?> summary) {
+  final host = (summary['host'] as Map?) ?? const {};
   final about = (
     session: summary['id'] as String? ?? '',
     date: summary['date'] as String? ?? '',
-    host: (summary['host'] as Map?)?['type'] as String? ?? '',
+    host: host['type'] as String? ?? '',
+    hostApp: host['app'] as String? ?? '',
   );
   return [
     for (final player in (summary['players'] as List?) ?? const [])
@@ -158,7 +175,7 @@ List<ModeRow> rowsOf(Map<String, Object?> summary) {
 }
 
 /// One player's part of a summary, read once for all their modes. The session,
-/// date and host are the same for every row.
+/// date, host and host app are the same for every row.
 class _PlayerRows {
   _PlayerRows(this.player, {required this.about})
     : device = player['device'] as Map? ?? const {},
@@ -179,7 +196,7 @@ class _PlayerRows {
       firstMode = player['firstMode'] as String?;
 
   final Map player;
-  final ({String session, String date, String host}) about;
+  final ({String session, String date, String host, String hostApp}) about;
   final Map device;
   final List<Map> segments;
   final List<Map> ratings;
@@ -250,6 +267,8 @@ class _PlayerRows {
       viewFrames: view['frames'] as int?,
       viewGaps: view['gaps'] as int?,
       viewLate: view['late'] as int?,
+      hostApp: about.hostApp,
+      app: player['app'] as String? ?? '',
     );
   }
 }

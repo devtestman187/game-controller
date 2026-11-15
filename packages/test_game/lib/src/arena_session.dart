@@ -175,6 +175,9 @@ class ArenaSession extends GameSession {
         playerId: winner == roboPlayerId ? null : winner,
         data: {
           ...game.roundEndData({for (final id in ids) id: input(id).mode.name}),
+          // A round Robo won says so (M14 a2): its win is the round's, and no
+          // player's record carries it.
+          if (winner == roboPlayerId) 'robotWin': true,
           'tags': _tags(),
         },
       );

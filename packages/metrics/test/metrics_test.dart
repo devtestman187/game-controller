@@ -93,7 +93,8 @@ void main() {
       expect(s['durationS'], 70);
       expect(s['host'], {'type': 'windows', 'app': '0.9.0'});
       expect(s['rounds'], [
-        {'game': 'arena', 'timeS': 12.35, 'players': 2, 'winner': 1},
+        // The frames recorded after the round's end are the round's too (M14 a3).
+        {'game': 'arena', 'timeS': 12.35, 'players': 2, 'winner': 1, 'framesDrawn': 4200, 'framesLate': 3},
       ]);
       expect(s['frames'], {'drawn': 4200, 'dropped': 3});
 
