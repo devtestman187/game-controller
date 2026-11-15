@@ -35,6 +35,8 @@ void main() {
     expect(find.byKey(const Key('hostOnDevice')), findsOneWidget);
     await tester.tap(find.byKey(const Key('hostOnPhone')));
     await settle(tester);
+    // The first host asks about sharing stats before its route opens (B-023).
+    await answerConsent(tester);
     final host = hostOf(tester);
     await hostReady(tester, host);
     await settle(tester);

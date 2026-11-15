@@ -29,7 +29,9 @@ void main() {
 
       final stats = hostContainer(tester).read(party.statsStateProvider);
       expect(stats.uploadConfigured, isTrue, reason: 'the Stats screen says where the sessions go');
-      expect(stats.consent, isNull, reason: 'off until an adult says yes');
+      // The first host asked (B-023), and this test's adult said no: nothing
+      // leaves the phone until an adult says yes.
+      expect(stats.consent, isFalse);
       await tester.runAsync(host.dispose);
     });
 
@@ -51,7 +53,9 @@ void main() {
       tester,
     ) async {
       final app = await pumpHostApp(tester);
-      final host = await enterHostMode(tester);
+      // The host's own prompt is left unanswered here, as the back gesture
+      // leaves it (B-023), so the Stats screen has to ask.
+      final host = await enterHostMode(tester, consent: ConsentAnswer.dismiss);
       await openSettings(tester);
       await scrollTo(tester, find.byKey(const Key('settingsHostStats')));
       await tapVisible(tester, find.byKey(const Key('settingsHostStats')));

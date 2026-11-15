@@ -13,7 +13,9 @@ void main() {
   group('the host Stats row says what sharing is doing (B-023)', () {
     testWidgets('the row has one status line per state, and Tap to choose before the answer', (tester) async {
       final stats = party_test.FakeStats();
-      final host = await _hostWithStats(tester, stats);
+      // The host's prompt is left unanswered, as the back gesture leaves it
+      // (B-023): the row still has its "not answered" line to show.
+      final host = await _hostWithStats(tester, stats, consent: ConsentAnswer.dismiss);
       await openSettings(tester);
       await scrollTo(tester, find.byKey(const Key('settingsHostStats')));
 
@@ -67,7 +69,8 @@ void main() {
 
     testWidgets('an unanswered row asks first, then opens the Stats screen', (tester) async {
       final stats = party_test.FakeStats();
-      final host = await _hostWithStats(tester, stats);
+      // Unanswered at the host's own prompt (B-023), so the row has to ask.
+      final host = await _hostWithStats(tester, stats, consent: ConsentAnswer.dismiss);
       await openSettings(tester);
       await scrollTo(tester, find.byKey(const Key('settingsHostStats')));
       await tapVisible(tester, find.byKey(const Key('settingsHostStats')));
@@ -84,8 +87,13 @@ void main() {
 }
 
 /// The app hosting, with the stats the row reads faked, so a test can move the
-/// state to each of the row's lines.
-Future<PhoneHost> _hostWithStats(WidgetTester tester, party_test.FakeStats stats) async {
+/// state to each of the row's lines. [consent] is what the first host's prompt
+/// is answered with (B-023): "don't share" unless the test needs it open.
+Future<PhoneHost> _hostWithStats(
+  WidgetTester tester,
+  party_test.FakeStats stats, {
+  ConsentAnswer consent = ConsentAnswer.dontShare,
+}) async {
   await pumpHostApp(tester, extra: [party.statsServiceProvider.overrideWithValue(stats)]);
-  return enterHostMode(tester);
+  return enterHostMode(tester, consent: consent);
 }

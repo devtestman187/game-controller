@@ -2,7 +2,8 @@ import 'package:connection/connection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:party_host/party_host.dart' show PhoneText, ToyButton, ToyLook, ToyLookScope, ToySizes;
+import 'package:party_host/party_host.dart'
+    show askConsent, PhoneText, statsStateProvider, ToyButton, ToyLook, ToyLookScope, ToySizes;
 
 import '../host/host_screen.dart';
 import '../host/host_start_sheet.dart';
@@ -69,6 +70,17 @@ class _NotConnected extends ConsumerWidget {
   }
 }
 
+/// Asks the adult about sharing this phone's host stats the first time it
+/// hosts (B-023): the TV asks on its first launch, but a phone never did, so
+/// its sessions never reached Firebase. The host's own prompt, so the wording
+/// and the saved answer are the Stats screen's (PRD v2 T19); one already
+/// answered asks nothing, and a prompt closed without an answer still lets
+/// the phone host.
+Future<void> _askHostConsent(BuildContext context, WidgetRef ref) async {
+  if (ref.read(statsStateProvider).consent != null) return;
+  await askConsent(context, ref);
+}
+
 /// What to do while no TV answers (v2 C23, m12 §3): the controls without one,
 /// host the game here, or change the settings. The mock-up's three ways on,
 /// as the look's buttons (M13 3c).
@@ -105,6 +117,12 @@ class _NoTvActions extends ConsumerWidget {
             // Phones that join see it only when this phone plays it itself:
             // the host is told which before it starts (m12 bug 1108a rule D).
             final host = hosting.start(playsHere: choice == HostChoice.onPhone);
+            // Then the adult is asked about sharing stats, once, before the
+            // host route opens (B-023). After the start, not before it: the
+            // answer is read from and saved through the host's stats service,
+            // and a host has one only while it runs.
+            await _askHostConsent(context, ref);
+            if (!context.mounted) return;
             await Navigator.of(context).push(
               MaterialPageRoute<void>(
                 builder: (_) => HostScreen(host: host, choice: choice),

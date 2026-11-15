@@ -169,8 +169,37 @@ Future<void> untilPlaying(WidgetTester tester) => until(
   () => 'The Get ready beat did not end: ${hostPhase(tester)}',
 );
 
-/// Opens the start sheet and picks [choice]; returns the host.
-Future<PhoneHost> enterHostMode(WidgetTester tester, {HostChoice choice = HostChoice.onPhone}) async {
+/// What the adult answers when the first host asks about sharing stats
+/// (B-023): one of the prompt's two buttons, or the prompt closed without an
+/// answer, as the back gesture does.
+enum ConsentAnswer { share, dontShare, dismiss }
+
+/// Answers the host stats prompt if it is up, as an adult does (B-023): the
+/// first host asks it before its route opens. "Don't share" unless the test
+/// says otherwise, so no stats leave the phone in a test.
+Future<void> answerConsent(WidgetTester tester, [ConsentAnswer answer = ConsentAnswer.dontShare]) async {
+  // A frame for the prompt to come up: it opens after the host has started.
+  await tester.pump();
+  final dialog = find.byKey(const Key('consentDialog'));
+  if (dialog.evaluate().isEmpty) return;
+  switch (answer) {
+    case ConsentAnswer.share:
+      await tester.tap(find.byKey(const Key('consentYes')));
+    case ConsentAnswer.dontShare:
+      await tester.tap(find.byKey(const Key('consentNo')));
+    case ConsentAnswer.dismiss:
+      Navigator.of(tester.element(dialog)).pop();
+  }
+  await settle(tester);
+}
+
+/// Opens the start sheet and picks [choice]; returns the host. [consent] is
+/// what the first host's prompt is answered with (B-023).
+Future<PhoneHost> enterHostMode(
+  WidgetTester tester, {
+  HostChoice choice = HostChoice.onPhone,
+  ConsentAnswer consent = ConsentAnswer.dontShare,
+}) async {
   final key = switch (choice) {
     HostChoice.onPhone => const Key('hostOnPhone'),
     HostChoice.onDevice => const Key('hostOnDevice'),
@@ -179,6 +208,8 @@ Future<PhoneHost> enterHostMode(WidgetTester tester, {HostChoice choice = HostCh
   await settle(tester);
   await tester.tap(find.byKey(key));
   await settle(tester);
+  // The first host asks about sharing stats before its route opens (B-023).
+  await answerConsent(tester, consent);
   final host = hostOf(tester);
   if (choice == HostChoice.onPhone) {
     // This phone's own player is what its screens wait for (m12 §3).
