@@ -30,3 +30,25 @@
 2026-11-15 10:50:34 reviewed b020-health-docs: 6 finding(s)
 2026-11-15 10:56:54 reviewed b020-solo-phone-test: 3 finding(s)
 2026-11-15 10:56:54 DONE: every job is committed. Claude reads the Summary of docs/briefs/m14/bugs11/REVIEW.md, verifies its findings and writes one fix brief
+2026-11-15 10:59:59 start at 5a4851a on m14
+2026-11-15 11:00:06 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-15 11:00:06 skip b020-solo-card (already committed)
+2026-11-15 11:00:07 skip b020-next-map (already committed)
+2026-11-15 11:00:07 start b020-solo-both
+2026-11-15 11:00:07 skip b020-health-docs (already committed)
+2026-11-15 11:03:01 start at 55bad98 on m14
+2026-11-15 11:03:07 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-15 11:03:07 skip b020-solo-card (already committed)
+2026-11-15 11:03:07 skip b020-next-map (already committed)
+2026-11-15 11:03:08 skip b020-health-docs (already committed)
+2026-11-15 11:03:08 skip b020-solo-phone-test (already committed)
+2026-11-15 11:03:08 start b021-end-night-1
+2026-11-15 11:03:34 start b021-fix-phone-test
+2026-11-15 11:03:59 start b021-fix-card-test
+2026-11-15 11:26:41 b021-end-night-1 finished: result 4 (166 turns, 21 min)
+2026-11-15 11:26:42 b021-end-night-1: dropped generated churn outside its list: site/shots/dpad.png site/shots/menus.png site/shots/results.png site/shots/sticks.png site/shots/tilt.png 
+2026-11-15 11:26:42 b021-fix-phone-test finished: result 0 (20 turns, 4 min)
+2026-11-15 11:26:42 b021-fix-card-test finished: result 0 (19 turns, 4 min)
+2026-11-15 11:32:10 committed b021-end-night-1: 72c5304 Add End night to the Bumper Round's night results (B-021)
+2026-11-15 11:32:11 committed b021-fix-phone-test: b5c85f1 test(party_host): check the waiting card stays in the lone-night phone test
+2026-11-15 11:32:13 committed b021-fix-card-test: d4e323a Fix the solo card test's map check and share the card setup
