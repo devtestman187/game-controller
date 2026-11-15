@@ -112,14 +112,16 @@ void main() {
       expect(prefs.getString('bestTimes'), 'not a times map', reason: 'the clear does not throw on bad data');
     });
 
-    test('unreadable times still count as cleared: a Medium time recorded afterwards stays on the next start',
-        () async {
-      final prefs = await prefsWith({'bestTimes': 'not a times map'});
-      final first = timesContainer(prefs);
-      first.read(bestTimesProvider);
-      first.read(bestTimesProvider.notifier).record(puzzleId: 'boat', team: false, timeMs: 71000, names: ['Mia']);
-      final second = timesContainer(prefs);
-      expect(second.read(bestTimesProvider).bestFor('boat', team: false)?.timeMs, 71000);
-    });
+    test(
+      'unreadable times still count as cleared: a Medium time recorded afterwards stays on the next start',
+      () async {
+        final prefs = await prefsWith({'bestTimes': 'not a times map'});
+        final first = timesContainer(prefs);
+        first.read(bestTimesProvider);
+        first.read(bestTimesProvider.notifier).record(puzzleId: 'boat', team: false, timeMs: 71000, names: ['Mia']);
+        final second = timesContainer(prefs);
+        expect(second.read(bestTimesProvider).bestFor('boat', team: false)?.timeMs, 71000);
+      },
+    );
   });
 }
