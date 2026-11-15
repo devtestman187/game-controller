@@ -50,8 +50,8 @@ void main() {
 
     test('the rounds CSV row has as many fields as its header', () {
       final lines = csvRounds([summary(hostApp: '1.0,2')]).split('\n');
-      expect(lines.first.split(','), hasLength(16));
-      expect(lines.last.split(','), hasLength(16));
+      expect(lines.first.split(','), hasLength(17));
+      expect(lines.last.split(','), hasLength(17));
       expect(lines.last.split(',')[9], '1.0;2');
     });
   });

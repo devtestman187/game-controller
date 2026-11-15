@@ -174,9 +174,9 @@ void main() {
       ]);
       expect(text.split('\n'), [
         'session,host,game,hz,time_s,battery_start,battery_end,thermal,tags,host_app,winner,draw,players,'
-            'frames_drawn,frames_late,fps',
-        's1,phone,arena,60,90.0,0.8,0.79,fair,,0.12.0,,,1,,,',
-        's1,phone,arena,,12.0,,,,,0.12.0,,,1,,,',
+            'frames_drawn,frames_late,fps,start_s',
+        's1,phone,arena,60,90.0,0.8,0.79,fair,,0.12.0,,,1,,,,',
+        's1,phone,arena,,12.0,,,,,0.12.0,,,1,,,,',
       ]);
     });
 

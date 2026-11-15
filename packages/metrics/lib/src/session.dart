@@ -43,6 +43,10 @@ class SessionCollector {
   final _rounds = <Map<String, Object?>>[];
   final _device = HostDeviceTally();
   int? _roundHz;
+
+  /// How far into the session the round began, in seconds, or null when the
+  /// game recorded no start for it (M14 stats b5-2).
+  double? _roundStartS;
   int _frames = 0;
   int _frameDrops = 0;
   bool _inGame = false;
@@ -189,14 +193,23 @@ class SessionCollector {
   /// A round started at the rate of the view that runs it (m12 §0.4): [hz] is
   /// null when the host keeps the game on its own screen, and the round then
   /// has no rate to be filed under.
-  void roundStarted({int? hz}) {
+  ///
+  /// [atMs] is when it began on the host's clock, the one [startMs] is from:
+  /// the round then says how far into the session it began (M14 stats b5-2).
+  void roundStarted({int? hz, int? atMs}) {
     _inGame = true;
     _roundHz = hz != null && hz >= minViewHz && hz <= maxViewHz ? hz : null;
+    _roundStartS = atMs == null ? null : _sinceStartS(atMs);
   }
+
+  /// [atMs] on the host's clock in seconds from the session's start, to a
+  /// tenth. Never negative: a clock that runs backwards reads as the start.
+  double _sinceStartS(int atMs) => double.parse((max(0, atMs - startMs) / 1000).toStringAsFixed(1));
 
   /// A round ended. [modes] is each player's mode; [winnerId] won, or
   /// [winnerIds] (a team) did; [draw]: a race nobody won. The round keeps the
-  /// rate of the view it started at.
+  /// rate of the view it started at, and how far into the session it began
+  /// when [roundStarted] was given the host's clock.
   ///
   /// [abandoned] is a round nobody played, which the games write when the host
   /// abandons one (M14 design section 2 N1): it adds no round, no count and no
@@ -227,6 +240,7 @@ class SessionCollector {
     _roundWaitsForFrames = false;
     if (abandoned) {
       _roundHz = null;
+      _roundStartS = null;
       return;
     }
     if (_rounds.length < 1000) {
@@ -235,6 +249,7 @@ class SessionCollector {
         'game': game,
         'hz': ?_roundHz,
         'timeS': double.parse(timeS.toStringAsFixed(2)),
+        'startS': ?_roundStartS,
         'players': modes.length,
         'winner': ?_players[winners.firstOrNull]?.number,
         if (winners.length > 1) 'winners': [for (final id in winners) ?_players[id]?.number],
@@ -247,6 +262,7 @@ class SessionCollector {
       _roundWaitsForFrames = true;
     }
     _roundHz = null;
+    _roundStartS = null;
     for (final MapEntry(key: id, value: mode) in modes.entries) {
       final p = _players[id];
       if (p == null) continue;

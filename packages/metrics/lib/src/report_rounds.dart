@@ -154,11 +154,11 @@ List<String> _rateCells(RateRow r) => [
 
 /// The report's round CSV (m12 §1, M14): one row per round, the numbers the
 /// tables above sum and the round's tags, space separated, then the host's app
-/// version (M14), who won the round (M14 a2) and its frames and fps (M14 a3) at
-/// the end.
+/// version (M14), who won the round (M14 a2), its frames and fps (M14 a3) and
+/// how far into the session it began (M14 stats b5-2) at the end.
 const roundsCsvHeader =
     'session,host,game,hz,time_s,battery_start,battery_end,thermal,tags,host_app,winner,draw,players,'
-    'frames_drawn,frames_late,fps';
+    'frames_drawn,frames_late,fps,start_s';
 
 /// One CSV row per round of each summary. A round with no rate or no battery
 /// reading leaves those cells empty, so the columns always line up.
@@ -195,8 +195,13 @@ String _roundCsv(Map<String, Object?> summary, Map round) {
     round['framesDrawn'] ?? '',
     round['framesLate'] ?? '',
     _fps(round['framesDrawn'], timeS),
+    _startS(round['startS']),
   ].join(',');
 }
+
+/// How far into its session a round began, in seconds, to one decimal (M14
+/// stats b5-2): blank while the round kept no start.
+String _startS(Object? startS) => startS is num ? startS.toDouble().toStringAsFixed(1) : '';
 
 /// The frames a round drew in a second (M14 a3), to one decimal: blank while
 /// the round kept no frames or took no time to divide by.

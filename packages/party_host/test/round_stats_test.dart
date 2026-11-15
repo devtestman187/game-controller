@@ -14,8 +14,13 @@ void main() {
   late SessionCollector session;
   late SessionRecorder recorder;
 
-  /// The session's rounds, as the summary writes them.
-  List<Object?> rounds() => session.summary(0)['rounds'] as List<Object?>;
+  /// The session's rounds, as the summary writes them, without the start
+  /// offset: the host's clock is real in this file, so that value moves from
+  /// run to run, and round_offset_recorder_test covers it.
+  List<Object?> rounds() => [
+    for (final round in session.summary(0)['rounds'] as List<Object?>)
+      {...(round as Map<String, Object?>)}..remove('startS'),
+  ];
 
   /// P1's record, as the summary writes it.
   Map<String, Object?> player() => (session.summary(0)['players'] as List).single as Map<String, Object?>;

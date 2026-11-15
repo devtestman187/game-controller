@@ -139,15 +139,15 @@ void main() {
     test('the round CSV has one row per round, with the battery and the heat', () {
       expect(csvRounds([tvSummary(), phoneSummary()]).split('\n'), [
         'session,host,game,hz,time_s,battery_start,battery_end,thermal,tags,host_app,winner,draw,players,'
-            'frames_drawn,frames_late,fps',
-        'tv-1,windows,arena,60,90.0,,,,,0.12.0,,,1,,,',
-        'tv-1,windows,arena,60,90.0,,,,,0.12.0,,,1,,,',
-        'ph-1,phone,arena,60,100.0,0.8,0.79,fair,,0.12.0,,,2,,,',
-        'ph-1,phone,arena,60,100.0,0.79,0.78,fair,,0.12.0,,,2,,,',
-        'ph-1,phone,arena,60,100.0,0.78,0.77,fair,,0.12.0,,,2,,,',
-        'ph-1,phone,arena,60,100.0,0.77,0.79,serious,,0.12.0,,,2,,,',
-        'ph-1,phone,arena,30,60.0,0.76,0.75,nominal,,0.12.0,,,2,,,',
-        'ph-1,phone,arena,30,60.0,0.76,0.75,nominal,,0.12.0,,,2,,,',
+            'frames_drawn,frames_late,fps,start_s',
+        'tv-1,windows,arena,60,90.0,,,,,0.12.0,,,1,,,,',
+        'tv-1,windows,arena,60,90.0,,,,,0.12.0,,,1,,,,',
+        'ph-1,phone,arena,60,100.0,0.8,0.79,fair,,0.12.0,,,2,,,,',
+        'ph-1,phone,arena,60,100.0,0.79,0.78,fair,,0.12.0,,,2,,,,',
+        'ph-1,phone,arena,60,100.0,0.78,0.77,fair,,0.12.0,,,2,,,,',
+        'ph-1,phone,arena,60,100.0,0.77,0.79,serious,,0.12.0,,,2,,,,',
+        'ph-1,phone,arena,30,60.0,0.76,0.75,nominal,,0.12.0,,,2,,,,',
+        'ph-1,phone,arena,30,60.0,0.76,0.75,nominal,,0.12.0,,,2,,,,',
       ]);
     });
   });

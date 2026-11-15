@@ -58,14 +58,14 @@ void main() {
     expect(framesOf(c), {'drawn': 120, 'dropped': 3});
   });
 
-  test('the rounds CSV ends with the frames and the fps, after players', () {
-    expect(roundsCsvHeader, endsWith(',players,frames_drawn,frames_late,fps'));
-    expect(roundsCsvHeader.split(','), hasLength(16)); // The 13 before, plus the three.
+  test('the rounds CSV has the frames and the fps after players', () {
+    expect(roundsCsvHeader, contains(',players,frames_drawn,frames_late,fps'));
+    expect(roundsCsvHeader.split(','), hasLength(17)); // The 13 before, the three, and the start offset.
   });
 
   test('a round row carries its frames and the fps it drew', () {
     // 3000 frames in 60 s: 50 a second.
-    expect(rowOf(round()..frames(3000, 20)), 's1,windows,arena,60,60.0,,,,,0.15.0,,,1,3000,20,50.0');
+    expect(rowOf(round()..frames(3000, 20)), 's1,windows,arena,60,60.0,,,,,0.15.0,,,1,3000,20,50.0,');
   });
 
   test('the fps is the round\'s frames a second, to one decimal', () {
@@ -74,7 +74,7 @@ void main() {
       ..roundEnded('arena', timeS: 12.5, modes: {'phone-a': 'dpad'})
       ..frames(830, 4);
     // 830 / 12.5 = 66.4.
-    expect(rowOf(c).split(',').sublist(13), ['830', '4', '66.4']);
+    expect(rowOf(c).split(',').sublist(13, 16), ['830', '4', '66.4']);
   });
 
   test('a round that took no time has its frames but no fps', () {
@@ -82,7 +82,7 @@ void main() {
       ..roundStarted(hz: 60)
       ..roundEnded('arena', timeS: 0, modes: {'phone-a': 'dpad'})
       ..frames(40, 1);
-    expect(rowOf(c), 's1,windows,arena,60,0.0,,,,,0.15.0,,,1,40,1,');
+    expect(rowOf(c), 's1,windows,arena,60,0.0,,,,,0.15.0,,,1,40,1,,');
   });
 
   test('a round from before the frames were kept leaves the three cells empty', () {
@@ -93,6 +93,6 @@ void main() {
         {'game': 'arena', 'hz': 60, 'timeS': 12.5, 'players': 1},
       ],
     };
-    expect(csvRounds([old]).split('\n').last, 's1,windows,arena,60,12.5,,,,,0.14.0,,,1,,,');
+    expect(csvRounds([old]).split('\n').last, 's1,windows,arena,60,12.5,,,,,0.14.0,,,1,,,,');
   });
 }

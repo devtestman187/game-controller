@@ -70,9 +70,10 @@ class SessionRecorder {
     if (s == null) return;
     switch (r.name) {
       case 'round_start':
-        // The round's game records the rate of the view it runs (m12 §0.4).
+        // The round's game records the rate of the view it runs (m12 §0.4),
+        // and the host's own clock says when it began (M14 stats b5-2).
         final hz = r.data['hz'];
-        s.roundStarted(hz: hz is int ? hz : null);
+        s.roundStarted(hz: hz is int ? hz : null, atMs: host.nowMs);
       case 'round_end':
         _roundEnd(s, r);
       case 'frames':
