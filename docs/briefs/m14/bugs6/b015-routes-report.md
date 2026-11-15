@@ -57,7 +57,7 @@ only" test and changes both maps' sheets in `docs/design/maps/`; the landing job
 2. **The west and east keep gates never admit a marble.** The gate is 16.0 units between wall faces; the bar is
    16.0 long and travels 8.0, so at its farthest its tip stands 0.91 units too close to the wall block for a
    marble's centre to fit (it needs 4.455 units from the bar's line and 2.88 from the wall block). The top and
-   bottom gates' bars are 24.0 long and travel 24.0, so they open half a gate (10.4 units between faces).
+   bottom gates' bars are 24.0 long and travel 12.0, so they open half a gate (10.4 units between faces).
 3. **The brief's numbers are kept as written**, since both maps pass every rule; the only correction is the
    arrow's way in the picture (Decision 1).
 4. **Sunny = the file's round, Night = the swapped round**, with the night field built as a mirrored map in the

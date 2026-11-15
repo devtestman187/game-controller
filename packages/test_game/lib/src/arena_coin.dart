@@ -44,8 +44,8 @@ final class ArenaCoin {
   final bool gold;
 
   /// The marble that dropped it on a hazard or a shove into a wall, or null
-  /// for a coin that came out of a zone. A dropped coin is takable at once, by
-  /// anyone but its dropper, and is extra to [coinsOut].
+  /// for a coin that came out of a zone. A dropped coin is out of its dropper's
+  /// reach for [ArenaBumper.dropLockS], then anyone's, and is extra to [coinsOut].
   final String? dropper;
 
   /// Whether it came out of a coin zone rather than a marble's pocket.

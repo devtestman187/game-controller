@@ -14,7 +14,7 @@ const minTurnedPieces = 2;
 /// A Medium puzzle's limits (B-012b phase 2): 8 to 10 pieces, at least
 /// [mediumMinTurnedPieces] of them starting turned (a circle looks the same at
 /// any angle, so it doesn't count), one or two of them big (carried by two
-/// players), and at most one pair of pieces that share a shape (the boat's
+/// players), and at most one pair of pieces that share a shape and size (the boat's
 /// waves). The owner found the old 6 to 8 too easy.
 const mediumMinPieces = 8;
 const mediumMaxPieces = 10;

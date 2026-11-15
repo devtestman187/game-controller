@@ -92,6 +92,19 @@ The "could" findings of [bugs1's review](briefs/m14/bugs1/REVIEW.md) that the fi
 | `arena_hud_coins_test.dart:124` draws four players only in the one-line bar, never the tall bar's second line. | Low | The case the brief names | when touched |
 | Sizes: `match_painter.dart` 377, `lobby_music.dart` 348, `arena_waiting_widgets.dart` 343, `view.dart` 330, `puzzle_painter.dart` 326, `arena_waiting_card.dart` 324. | Low | Room under the 380 stop | split `match_painter` at the HUD seam; others when touched |
 
+### M14 bugs6 leftovers (run review of Nov 14, 2026)
+
+- **puzzle_game (mirror)**: the redone Medium car (9 pieces) has no opponent mirror on an iPhone-sized phone with the D-pad, though it has one with no pad. Risk: low (rule 7 allows "absent"). Rec.: a device look at Medium car on a D-pad phone; if it matters, give the mirror a smaller scale for big boards.
+- **controller_app vs puzzle_game tablet_board_test**: the small iPad boat is pinned at 8.930715 / left 238.081 in `controller_app` and 8.930159 / 238.103 in `puzzle_game` for the same board and box. Risk: low. Rec.: find why before either is re-pinned.
+- **party_host (screens)**: `game_screen.dart` 379/380 and `puzzle_screen.dart` 380/380 lines; `_Results` takes nine parameters (guidelines allow five). Rec.: split each along its waiting/pick seam and fold the results card's menu options into one value object as the next change to either.
+- **puzzle_game (carry)**: `_isPlacing` scans every piece per carrier per step; Fixed, unverified: needs device check of the frame budget. Rec.: reuse one buffer and skip filled pieces.
+- **party_host (settings)**: `reset()` drops a device test's `CAT_PRESET` define; wrap the reset value too. Risk: debug-only.
+- **party_host (solo skip)**: while the map library loads, a night's solo Bumper start draws an empty box (no title or Back) for a few frames. Rec.: a one-line "starting" placeholder.
+- **party_host tests**: `controller_menus_test.dart:143` uses a bare 24 press count; name it or count the buttons.
+- **puzzle_game (messages)**: Medium's big-piece message reads `Mark 1 or 2 pieces "big".`; restore "one or two" if the wording matters.
+- **metrics**: the recorder's `player_result` path (moving/placing seconds) has no party_host test; add one before the next metrics change.
+- **party_host (best times)**: the old Medium best times stay beside the redone boards and cannot be compared; owner decision whether to clear the six Medium boards once (tracker B-012).
+
 ## Before a milestone
 
 | Before | What | Risk | Benefit of doing it first | Rec. |
@@ -102,5 +115,3 @@ The "could" findings of [bugs1's review](briefs/m14/bugs1/REVIEW.md) that the fi
 
 ## Done
 - (none yet)
-
-- (M14 bugs6, b012b-2) The redone Medium car (9 pieces) has no opponent mirror on an iPhone-sized phone with the D-pad (the mirror exists with no pad). The mirror rule allows "absent or clear", so `controller_app/test/mirror_pad_test.dart` now lets a mirror be absent but never moved. A device look at Medium car on a D-pad phone is worth a minute.

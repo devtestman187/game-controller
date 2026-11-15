@@ -55,7 +55,7 @@ final class PuzzleBag {
   ///
   /// A draw that finds the bag empty fills it with every id of the level,
   /// shuffled from [random]; a shuffle that puts [avoidId] first moves it
-  /// behind one other id, so a rematch never gets the round just played while
+  /// to the end of the bag, so a rematch never gets the round just played while
   /// another puzzle is left.
   ({String? id, PuzzleBag following}) draw({
     required Level level,
