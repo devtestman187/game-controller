@@ -157,8 +157,8 @@ final class ModeRow {
     viewLate ?? '',
     appCell(hostApp),
     appCell(app),
-    hostBuild,
-    build,
+    buildCell(hostBuild),
+    buildCell(build),
   ].join(',');
 }
 

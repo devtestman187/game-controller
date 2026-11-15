@@ -89,9 +89,12 @@ class SessionCollector {
     );
     p.number = number;
     if (inProcess) p.inProcess = true;
-    // A reconnect that names no version keeps the one already known.
-    if (version.app.isNotEmpty) p.app = version.app;
-    if (version.build.isNotEmpty) p.build = version.build;
+    // A reconnect that names no version keeps the one already known; one that
+    // names a version without a build has none, never the earlier build.
+    if (version.app.isNotEmpty) {
+      p.app = version.app;
+      p.build = version.build;
+    }
     p.device = device ?? p.device;
     if (p.joinedAtMs != null) return; // Already here.
     final left = p.leftAtMs;
