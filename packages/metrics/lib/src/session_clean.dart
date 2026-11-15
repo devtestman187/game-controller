@@ -42,10 +42,10 @@ const maxBuildDigits = 9;
 final buildPattern = RegExp('^[0-9]{1,$maxBuildDigits}\$');
 
 /// An app version split into its bare version and its build number (M14
-/// stats): the apps send "0.14.0+654" — version, plus, build — an older app
-/// sends "0.14.0" and a local build "0.14.0+dev". The build is empty unless
-/// it is 1 to [maxBuildDigits] digits; the version is what comes before the
-/// last plus, so it never keeps a "dev" in it.
+/// stats): the apps send "0.14.0+654" — version, plus, build — and an older
+/// app, like a local build, sends the bare "0.14.0". The build is empty
+/// unless it is 1 to [maxBuildDigits] digits, so any other tail (`dev`) is
+/// dropped; the version is everything before the last plus.
 ({String app, String build}) splitAppBuild(String app) {
   final plus = app.lastIndexOf('+');
   if (plus < 0) return (app: app, build: '');

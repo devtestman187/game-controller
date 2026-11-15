@@ -139,6 +139,14 @@ The "could" findings of [bugs1's review](briefs/m14/bugs1/REVIEW.md) that the fi
 - **Host disposed under the prompt (f1 review, 4)**: `HostScreen`'s "host disposed" pop pops the top route, which would be the dialog; pop the host route itself. Needs the host to die while the prompt is up (Stop is behind the dialog), so very unlikely.
 - **`joinPhone` helper copied** in `first_host_consent_link_test.dart` and `host_focus_pad_test.dart`: move it to `test/support/host_app.dart`. The link test also repeats `first_host_consent_test.dart`'s assertions, and joins over a real socket like the focus-pad test (guidelines section 9 allows that only for connection tests): write the exception down there.
 
+### M14 stats2 (build columns)
+
+| What | Risk | Benefit | Rec. |
+| --- | --- | --- | --- |
+| The "+build" rule lives in three places: `controller_app/lib/src/app_info.dart:19` writes it, `packages/party_host/lib/src/host_identity.dart:69` builds it from a display label, and `packages/metrics/lib/src/session_clean.dart:42` splits it again (run review). | Low: all three cap the build at 9 digits today, so nothing is sent and then silently dropped | One rule for the two writers and the reader | when touched: move one `appWithBuild` into `metrics` and call it from both apps |
+| `HostIdentity.appWithBuild` (`host_identity.dart:70`) takes the build from a regex match on `versionLabel`, a display string, so a rewording of the label ("1.2.3 build 45", a TestFlight label) drops the build from the session and no test notices (run review). | Low: today's labels carry "(123)" | The display string can change without losing data | when touched: a `build` field the shell passes; the phone's host identity (`controller_app/lib/src/host/phone_host_setup.dart:31`) is the wiring that comes with it, pending bugs12 |
+| `host_service.dart` is 369 lines, past `m12-report.md` §2's 360 budget (stats2's `hostApp` line took it from 368; run review). | Low: covered by the host tests | Room for the next host change | when touched: split the service before adding to it |
+
 ## Before a milestone
 
 | Before | What | Risk | Benefit of doing it first | Rec. |
