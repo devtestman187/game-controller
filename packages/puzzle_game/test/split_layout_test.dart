@@ -233,8 +233,8 @@ void main() {
     /// than 1.3:1 with none need no overlap; the boat's, car's, castle's and
     /// butterfly's rows overlap, and so do the robot's and train's on the seeds
     /// whose widest piece wants the room. Every Hard puzzle but the lighthouse
-    /// overlaps on every seed (b013); the redone tower needs no overlap on any
-    /// seed checked (b012c). Checked for every seed below.
+    /// and the redone tower (b012c) overlaps on every seed (b013). Checked for
+    /// every seed below.
     const overlaps = {
       'house': [0.0],
       'rocket': [0.0],

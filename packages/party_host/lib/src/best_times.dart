@@ -139,9 +139,9 @@ class BestTimesNotifier extends Notifier<BestTimes> {
   /// Clears the boards of the puzzles redrawn since the saved times' version
   /// (B-012), the once, and returns `bestTimes` as it stands now.
   ///
-  /// Badly formed times throw out to [build], which keeps its own report of
-  /// them; the version then stays behind and the clear is tried again on the
-  /// next start, which does no harm because nothing could be read.
+  /// The version is written first, so badly formed times, which throw out to
+  /// [build] and its own report of them, still count as cleared: a Medium time
+  /// recorded afterwards is kept on the next start.
   String? _clearRedoneBoards(SharedPreferences prefs) {
     final raw = prefs.getString(_key);
     if ((prefs.getInt(_versionKey) ?? 0) >= bestTimesVersion) return raw;
@@ -151,6 +151,7 @@ class BestTimesNotifier extends Notifier<BestTimes> {
         BestTimes.boardKey(id, team: true),
       ],
     };
+    unawaited(prefs.setInt(_versionKey, bestTimesVersion));
     var kept = raw;
     if (raw != null) {
       final times = jsonDecode(raw);
@@ -159,7 +160,6 @@ class BestTimesNotifier extends Notifier<BestTimes> {
         if (kept != raw) unawaited(prefs.setString(_key, kept));
       }
     }
-    unawaited(prefs.setInt(_versionKey, bestTimesVersion));
     return kept;
   }
 
