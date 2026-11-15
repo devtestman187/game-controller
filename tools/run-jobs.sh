@@ -327,6 +327,7 @@ for wave in "${WAVES[@]}"; do
   ok=("${resumed[@]}") failed=() extra=()
   for i in "${!started[@]}"; do
     j=${started[$i]}
+    while kill -0 "${pids[$i]}" 2>/dev/null; do check_stop; sleep 5; done # STOP is seen mid-wave
     wait "${pids[$i]}"; rc=$?
     note "$j finished: result $rc ($(usage "$B/$j.md"))"
     if [ $rc -eq 4 ] && apply_safe "$j" "$LOGS/flash-$j.log"; then
