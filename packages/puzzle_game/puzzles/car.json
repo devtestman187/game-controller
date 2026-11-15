@@ -5,12 +5,14 @@
   "name": "Car",
   "level": "medium",
   "pieces": [
-    {"id": "body", "shape": {"rect": [34, 14]}, "color": "red", "at": [38, 50], "big": true},
-    {"id": "cabin", "shape": {"rect": [18, 10]}, "color": "blue", "at": [40, 38], "rotated": true},
-    {"id": "window", "shape": {"rect": [10, 5]}, "color": "sky", "at": [40, 37], "rotated": true},
-    {"id": "wheel front", "shape": {"circle": 7}, "color": "brown", "at": [25, 58]},
-    {"id": "wheel back", "shape": {"circle": 7}, "color": "brown", "at": [51, 58]},
-    {"id": "headlight", "shape": {"circle": 6}, "color": "#FFB020", "at": [61, 46]},
+    {"id": "body", "shape": {"rect": [30, 12]}, "color": "red", "at": [36, 50], "big": true},
+    {"id": "cabin", "shape": {"rect": [15, 9]}, "color": "blue", "at": [38, 38], "rotated": true},
+    {"id": "window", "shape": {"rect": [11, 6]}, "color": "sky", "at": [38, 37.5], "rotated": true},
+    {"id": "door", "shape": {"rect": [9, 8]}, "color": "slate", "at": [46, 49], "rotated": true},
+    {"id": "bonnet", "shape": {"rect": [11, 8]}, "color": "orange", "at": [57, 50], "rotated": true},
+    {"id": "wheel front", "kind": "wheel", "shape": {"circle": 6.5}, "color": "brown", "at": [27, 58]},
+    {"id": "wheel back", "kind": "wheel", "shape": {"circle": 6.5}, "color": "brown", "at": [52, 58]},
+    {"id": "headlight", "shape": {"circle": 6}, "color": "#FFB020", "at": [63, 51]},
     {"id": "road", "shape": {"rect": [44, 4]}, "color": "#7F8C8D", "at": [40, 68]}
   ]
 }

@@ -374,7 +374,9 @@ void main() {
       // g1b), run over the library by library_test.dart.
       expect(load('house').level, Level.easy);
       expect(load('boat').level, Level.medium);
-      expect(load('boat').pieces.where((p) => p.kind == 'wave'), hasLength(2));
+      // Its 8-piece picture, 4 of them turned (B-012b phase 2).
+      expect(load('boat').pieces, hasLength(8));
+      expect(load('boat').pieces.where((p) => p.rotated), hasLength(4));
     });
 
     test('pieces of one kind must have the same shape', () {

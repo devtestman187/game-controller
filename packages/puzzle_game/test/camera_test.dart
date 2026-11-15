@@ -8,11 +8,11 @@ import 'support/match_helpers.dart';
 
 /// The px per world unit the `side` camera draws for the phones world of each
 /// puzzle at seed 1, fitted to a phone box by the smaller of the two box
-/// measurements (s7b-g3-report.md; the boat re-pinned for Medium's 60° start
-/// angles in B-012b).
+/// measurements (s7b-g3-report.md; the boat re-pinned for its 8-piece Medium
+/// picture in B-012b).
 const _g3 = [
-  (Size(667, 375), {'house': 4.2373, 'rocket': 4.7170, 'tree': 3.6765, 'boat': 4.6304}),
-  (Size(734, 372), {'house': 4.2034, 'rocket': 4.6792, 'tree': 3.6471, 'boat': 4.5934}),
+  (Size(667, 375), {'house': 4.2373, 'rocket': 4.7170, 'tree': 3.6765, 'boat': 5.3536}),
+  (Size(734, 372), {'house': 4.2034, 'rocket': 4.6792, 'tree': 3.6471, 'boat': 5.3108}),
 ];
 
 void main() {

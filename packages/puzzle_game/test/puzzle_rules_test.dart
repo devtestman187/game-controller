@@ -89,12 +89,35 @@ void main() {
     );
   });
 
-  test('a Medium puzzle has 6 to 8 pieces, one or two big, and at most one repeated pair', () {
-    expect(joinedOf(puzzleOf(row(5), level: 'medium'), PuzzleRule.level), contains('has 6 to 8 pieces'));
-    expect(joinedOf(puzzleOf(row(7), level: 'medium'), PuzzleRule.level), contains('has 1 or 2 big pieces'));
+  test('a Medium puzzle has 8 to 10 pieces, four turned, one or two big, and at most one repeated pair', () {
+    /// [count] pieces of different sizes along the board, so only the level's
+    /// piece, turned and big counts can speak.
+    String pieces(int count, {String extra = ''}) => [
+      for (var i = 0; i < count; i++)
+        rect(
+          'p$i',
+          6 + i * 0.5,
+          5 + i * 0.4,
+          8 + i * 6.5,
+          20,
+          extra: extra,
+          color: '"#${(0x903020 + i * 0x080808).toRadixString(16).padLeft(6, '0')}"',
+        ),
+    ].join(', ');
+
+    expect(joinedOf(puzzleOf(pieces(7), level: 'medium'), PuzzleRule.level), contains('has 8 to 10 pieces'));
+    expect(joinedOf(puzzleOf(pieces(11), level: 'medium'), PuzzleRule.level), contains('has 8 to 10 pieces'));
+    expect(
+      joinedOf(puzzleOf(pieces(9), level: 'medium'), PuzzleRule.level),
+      contains('starts at least 4 pieces turned, this one starts 0'),
+    );
+    expect(
+      joinedOf(puzzleOf(pieces(9, extra: ', "big": true'), level: 'medium'), PuzzleRule.level),
+      contains('has 1 or 2 big pieces'),
+    );
     final threeAlike = '${rect('a', 8, 8, 10, 20)}, ${rect('b', 8, 8, 30, 20)}, ${rect('c', 8, 8, 50, 20)}';
     expect(
-      joinedOf(puzzleOf('$threeAlike, ${row(3, width: 10)}', level: 'medium'), PuzzleRule.level),
+      joinedOf(puzzleOf('$threeAlike, ${row(5, width: 10)}', level: 'medium'), PuzzleRule.level),
       contains('at most 1 such pair'),
     );
   });

@@ -40,7 +40,7 @@ void main() {
   const reach = PuzzleGame.pickupReach;
   const middle = Offset(60, 45);
 
-  for (final id in ['sail', 'flag']) {
+  for (final id in ['main sail', 'jib', 'flag']) {
     test('held from its left, the $id has the worker on its outline at every turn, moving smoothly', () {
       final shape = boat.pieces.firstWhere((p) => p.id == id).shape;
       Offset? before;

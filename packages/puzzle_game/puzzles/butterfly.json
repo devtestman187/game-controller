@@ -5,11 +5,13 @@
   "name": "Butterfly",
   "level": "medium",
   "pieces": [
-    {"id": "body", "shape": {"rect": [8, 24]}, "color": "brown", "at": [40, 38], "big": true},
+    {"id": "body", "shape": {"rect": [8, 22]}, "color": "brown", "at": [40, 38], "big": true},
     {"id": "upper left", "shape": {"polygon": [[-13, -6], [11, -4], [3, 10]]}, "color": "purple", "at": [26, 30], "rotated": true},
     {"id": "upper right", "shape": {"polygon": [[13, -6], [-11, -4], [-3, 10]]}, "color": "orange", "at": [54, 30], "rotated": true},
-    {"id": "lower left", "shape": {"polygon": [[-9, -4], [7, -2], [2, 8]]}, "color": "green", "at": [32, 45]},
-    {"id": "lower right", "shape": {"polygon": [[9, -4], [-7, -2], [-2, 8]]}, "color": "blue", "at": [48, 45]},
-    {"id": "head", "shape": {"circle": 7}, "color": "yellow", "at": [40, 21]}
+    {"id": "lower left", "shape": {"polygon": [[-9, -4], [7, -2], [2, 8]]}, "color": "green", "at": [32, 45], "rotated": true},
+    {"id": "lower right", "shape": {"polygon": [[9, -4], [-7, -2], [-2, 8]]}, "color": "blue", "at": [48, 45], "rotated": true},
+    {"id": "head", "shape": {"circle": 7}, "color": "yellow", "at": [40, 21]},
+    {"id": "antenna left", "shape": {"rect": [4, 11]}, "color": "red", "at": [36, 18], "rotated": true},
+    {"id": "antenna right", "shape": {"polygon": [[-1.8, -5.5], [1.8, -5.5], [1.8, 5.5], [-1.8, 5.5]]}, "color": "sand", "at": [44, 18], "rotated": true}
   ]
 }

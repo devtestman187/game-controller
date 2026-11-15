@@ -11,11 +11,14 @@ const easyMaxTurnedPieces = 2;
 /// looks the same at any angle, so it doesn't count.
 const minTurnedPieces = 2;
 
-/// A Medium puzzle's limits (m13 s17): 6 to 8 pieces, one or two of them big
-/// (carried by two players), and at most one pair of pieces that share a
-/// shape (the boat's waves).
-const mediumMinPieces = 6;
-const mediumMaxPieces = 8;
+/// A Medium puzzle's limits (B-012b phase 2): 8 to 10 pieces, at least
+/// [mediumMinTurnedPieces] of them starting turned (a circle looks the same at
+/// any angle, so it doesn't count), one or two of them big (carried by two
+/// players), and at most one pair of pieces that share a shape (the boat's
+/// waves). The owner found the old 6 to 8 too easy.
+const mediumMinPieces = 8;
+const mediumMaxPieces = 10;
+const mediumMinTurnedPieces = 4;
 const mediumMinBigPieces = 1;
 const mediumMaxBigPieces = 2;
 const mediumMaxRepeatedPairs = 1;
@@ -87,7 +90,21 @@ const _hardCounts = (
 
 void _medium(Puzzle puzzle, List<LevelIssue> issues) {
   _counts(puzzle, issues, _mediumCounts);
+  _mediumTurned(puzzle, issues);
   _repeatedShapes(puzzle, issues, 'a Medium puzzle', mediumMaxRepeatedPairs);
+}
+
+/// A Medium puzzle starts at least [mediumMinTurnedPieces] pieces turned
+/// (B-012b phase 2): more turning to do is part of what makes it harder.
+void _mediumTurned(Puzzle puzzle, List<LevelIssue> issues) {
+  final turned = puzzle.pieces.where((spec) => spec.rotated && spec.shape.symmetry != 0).length;
+  if (turned >= mediumMinTurnedPieces) return;
+  _levelIssue(
+    puzzle,
+    issues,
+    'a Medium puzzle starts at least $mediumMinTurnedPieces pieces turned, this one starts $turned. '
+    'Set "rotated" on more pieces.',
+  );
 }
 
 void _hard(Puzzle puzzle, List<LevelIssue> issues) {

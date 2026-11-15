@@ -5,12 +5,14 @@
   "name": "Train",
   "level": "medium",
   "pieces": [
-    {"id": "engine", "shape": {"rect": [26, 16]}, "color": "red", "at": [23, 42], "big": true},
-    {"id": "cab", "shape": {"rect": [12, 12]}, "color": "blue", "at": [17, 32], "rotated": true},
-    {"id": "window", "shape": {"rect": [9, 6]}, "color": "sky", "at": [17, 31]},
-    {"id": "chimney", "shape": {"rect": [6, 10]}, "color": "slate", "at": [31, 29]},
-    {"id": "wheel front", "shape": {"circle": 6}, "color": "brown", "at": [24, 52]},
-    {"id": "wheel back", "shape": {"circle": 6}, "color": "brown", "at": [47, 52]},
-    {"id": "carriage", "shape": {"rect": [24, 14]}, "color": "green", "at": [48.5, 44], "rotated": true}
+    {"id": "engine", "shape": {"rect": [24, 15]}, "color": "red", "at": [22, 42], "big": true},
+    {"id": "cab", "shape": {"rect": [12, 12]}, "color": "blue", "at": [16, 32], "rotated": true},
+    {"id": "window", "shape": {"rect": [8, 8]}, "color": "sky", "at": [16, 32], "rotated": true},
+    {"id": "chimney", "shape": {"rect": [7, 10]}, "color": "slate", "at": [31, 29], "rotated": true},
+    {"id": "smokebox", "shape": {"circle": 6.5}, "color": "#4E342E", "at": [32, 37]},
+    {"id": "wheel front", "kind": "wheel", "shape": {"circle": 6}, "color": "brown", "at": [19, 53]},
+    {"id": "wheel back", "kind": "wheel", "shape": {"circle": 6}, "color": "brown", "at": [30, 53]},
+    {"id": "carriage", "shape": {"rect": [22, 13]}, "color": "green", "at": [51, 44], "rotated": true},
+    {"id": "carriage window", "shape": {"rect": [11, 6]}, "color": "sand", "at": [51, 43], "rotated": true}
   ]
 }

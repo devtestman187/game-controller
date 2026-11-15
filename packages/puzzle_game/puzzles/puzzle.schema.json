@@ -29,7 +29,7 @@
     "level": {
       "enum": ["easy", "medium", "hard"],
       "errorMessage": "{value} is not a level: use easy or medium or hard",
-      "description": "Easy: 4-5 pieces, at most 2 turned, no two pieces of the same shape and size. Medium: 6-8 pieces, 1 or 2 big, at most one pair of the same shape. Hard: 10-12 pieces, 3 or 4 big, every piece that is not a circle turned (at least 6), at most two pairs of the same shape."
+      "description": "Easy: 4-5 pieces, at most 2 turned, no two pieces of the same shape and size. Medium: 8-10 pieces, at least 4 turned, 1 or 2 big, at most one pair of the same shape. Hard: 10-12 pieces, 3 or 4 big, every piece that is not a circle turned (at least 6), at most two pairs of the same shape."
     },
     "notes": {
       "type": "string",

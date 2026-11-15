@@ -80,15 +80,15 @@ void main() {
     (
       box: iPadLandscape,
       pad: iPadLandscapePad,
-      scale: 9.699315,
-      world: Rect.fromLTRB(241.280, 123.961, 1124.720, 909.471),
+      scale: 11.209614,
+      world: Rect.fromLTRB(241.280, 120.941, 1124.720, 906.128),
       hud: Rect.fromLTRB(8, 143.36, 233.28, 319.488),
     ),
     (
       box: iPadSmallLandscape,
       pad: iPadSmallLandscapePad,
-      scale: 7.661124,
-      world: Rect.fromLTRB(241.102, 99.478, 938.898, 719.922),
+      scale: 8.930159,
+      world: Rect.fromLTRB(238.103, 96.940, 941.897, 722.460),
       hud: Rect.fromLTRB(8, 114.8, 188.4, 255.84),
     ),
   ];
@@ -102,7 +102,7 @@ void main() {
       final parts = drawn(boat, box, split: false, pads: pad);
       final where = 'solo boat at ${box.width.round()} x ${box.height.round()}';
       // Today's whole match makes room for two worlds stacked: this one is at
-      // least half again as big (rule 1), and exactly 1.52x and 1.51x as big.
+      // least half again as big (rule 1), and exactly 1.53x and 1.52x as big.
       final today = min(box.width / size.width, box.height / (2 * size.height));
       expect(parts.world.width / size.width, greaterThanOrEqualTo(1.5 * today), reason: where);
       expect(parts.world.width / size.width, closeTo(scale, 1e-6), reason: where);
@@ -146,10 +146,10 @@ void main() {
     final boat = load('boat');
     final layout = SplitLayout.of(boat, 1, target: LayoutTarget.phones);
     final parts = drawn(boat, iPadPortrait, split: false, pads: iPadPortraitStickPad);
-    // 1024 / 91.348: the world is the box's whole width, centred across.
+    // 1024 / 78.8: the world is the box's whole width, centred across.
     expect(parts.world.width, closeTo(iPadPortrait.width, 1e-9));
     expect(parts.world.left, closeTo(0, 1e-9));
-    expectRect(parts.world, const Rect.fromLTRB(0, 120.875, 1024, 1031.363));
+    expectRect(parts.world, const Rect.fromLTRB(0, 117.374, 1024, 1027.488));
     final band = PuzzleCamera.hudUnit(iPadPortrait) * PuzzleCamera.hudTopFraction;
     expect(parts.tray.top, closeTo(band, 1e-9));
     for (final p in iPadPortraitStickPad) {
@@ -161,7 +161,7 @@ void main() {
     // stick's disc with the air kept; still s16's under-the-world place.
     final area = PuzzleCamera.hudPlace(layout, whole, iPadPortrait, hudText(boat), padRects: iPadPortraitStickPad);
     expect(area.form, HudForm.oneLine);
-    expectRect(area.rect, const Rect.fromLTRB(173.8, 1039.363, 712.424, 1154.051));
+    expectRect(area.rect, const Rect.fromLTRB(173.8, 1035.488, 712.424, 1150.176));
     expect(area.rect.top, closeTo(parts.world.bottom + PuzzleCamera.hudWorldGapPx, 1e-9));
     expect(area.rect.left, closeTo(iPadPortraitStickPad.first.right + PuzzleCamera.mirrorGapPx, 1e-9));
     expect(area.rect.right, lessThanOrEqualTo(parts.world.right + 1e-9));
@@ -180,7 +180,7 @@ void main() {
 
   test('a split race on a landscape iPad draws both sides as today, the pad changing nothing', () {
     for (final (id, top, bottom) in [
-      ('boat', const Rect.fromLTRB(395.084, 0, 970.916, 512), const Rect.fromLTRB(395.084, 512, 970.916, 1024)),
+      ('boat', const Rect.fromLTRB(394.966, 0, 971.034, 512), const Rect.fromLTRB(394.966, 512, 971.034, 1024)),
       ('house', const Rect.fromLTRB(438.684, 0, 927.316, 512), const Rect.fromLTRB(438.684, 512, 927.316, 1024)),
     ]) {
       final puzzle = load(id);
@@ -202,9 +202,9 @@ void main() {
     for (final (id, solo, top, bottom) in [
       (
         'boat',
-        const Rect.fromLTRB(205.002, 0, 646.998, 393),
-        const Rect.fromLTRB(315.501, 0, 536.499, 196.5),
-        const Rect.fromLTRB(315.501, 196.5, 536.499, 393),
+        const Rect.fromLTRB(204.911, 0, 647.089, 393),
+        const Rect.fromLTRB(315.456, 0, 536.544, 196.5),
+        const Rect.fromLTRB(315.456, 196.5, 536.544, 393),
       ),
       (
         'house',

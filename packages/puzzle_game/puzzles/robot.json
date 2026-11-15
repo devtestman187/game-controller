@@ -5,12 +5,14 @@
   "name": "Robot",
   "level": "medium",
   "pieces": [
-    {"id": "body", "shape": {"rect": [26, 26]}, "color": "blue", "at": [40, 45], "big": true},
-    {"id": "head", "shape": {"rect": [30, 16]}, "color": "purple", "at": [40, 27]},
-    {"id": "eye left", "shape": {"circle": 7}, "color": "yellow", "at": [33, 27]},
-    {"id": "eye right", "shape": {"circle": 7}, "color": "yellow", "at": [47, 27]},
-    {"id": "arm left", "shape": {"rect": [6, 18]}, "color": "#D64545", "at": [24, 46], "rotated": true},
-    {"id": "arm right", "shape": {"rect": [15, 5]}, "color": "orange", "at": [54, 45], "rotated": true},
+    {"id": "body", "shape": {"rect": [24, 22]}, "color": "blue", "at": [40, 44], "big": true},
+    {"id": "head", "shape": {"rect": [26, 14]}, "color": "purple", "at": [40, 25], "rotated": true},
+    {"id": "eye left", "kind": "eye", "shape": {"circle": 7}, "color": "yellow", "at": [33, 25]},
+    {"id": "eye right", "kind": "eye", "shape": {"circle": 7}, "color": "yellow", "at": [47, 25]},
+    {"id": "arm left", "shape": {"rect": [6, 16]}, "color": "#D64545", "at": [25, 44], "rotated": true},
+    {"id": "arm right", "shape": {"rect": [14, 5]}, "color": "orange", "at": [57, 44], "rotated": true},
+    {"id": "leg left", "shape": {"rect": [11, 10]}, "color": "green", "at": [34, 60], "rotated": true},
+    {"id": "leg right", "shape": {"rect": [10, 11]}, "color": "sky", "at": [46, 60], "rotated": true},
     {"id": "base", "shape": {"polygon": [[-12, -4], [12, -4], [9, 4], [-9, 4]]}, "color": "brown", "at": [40, 66]}
   ]
 }

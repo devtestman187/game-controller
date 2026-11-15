@@ -28,7 +28,7 @@ void main() {
     final snapshot = match.snapshot();
     expect(snapshot.boards, hasLength(2));
     for (final board in snapshot.boards) {
-      expect(board.pieces, hasLength(6));
+      expect(board.pieces, hasLength(puzzle.pieces.length));
       expect(board.pieces.where((p) => p.state == PieceState.held), isNotEmpty, reason: 'a piece is carried');
     }
 
