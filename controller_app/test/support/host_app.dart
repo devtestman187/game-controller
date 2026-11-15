@@ -187,7 +187,10 @@ Future<void> answerConsent(
   // A frame for the prompt to come up: it opens after the host route's first.
   await tester.pump();
   final dialog = find.byKey(const Key('consentDialog'));
-  if (mayBeAbsent && dialog.evaluate().isEmpty) return;
+  if (mayBeAbsent) {
+    expect(dialog, findsNothing, reason: 'a host that is not the first asks nothing (B-023)');
+    return;
+  }
   expect(dialog, findsOneWidget, reason: 'the first host asks about sharing stats (B-023)');
   switch (answer) {
     case ConsentAnswer.share:
