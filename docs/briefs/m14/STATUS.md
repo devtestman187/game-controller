@@ -4,7 +4,7 @@ Branch `m14`, worktree `E:\AI\game-controller-m14`, cut from `m13` at 77ccf09 on
 
 ## Resume here (Nov 14, 2026: the m14.3 device-test bug batch, bugs3, is committed, unpushed)
 
-**bugs10 (Nov 15, briefed, NOT started, waiting for the owner's go):** B-019 (phone-host stats upload only at the next app start) in docs/briefs/m14/bugs10: wave 1 b019-1-stats-core, wave 2 b019-2-phone-wiring, wave 3 b019-review; start with `tools/run-jobs.sh docs/briefs/m14/bugs10` only on the owner's word. B-003 and B-010 are ideas the owner parked for M16 (no job).
+**bugs10 (Nov 15, done, unpushed, nothing built):** B-019 (phone-host stats upload) fixed in docs/briefs/m14/bugs10: stats core, phone wiring, then two fix jobs from the run review (resume starts a session, no retry after dispose, save race, phone tests); full check green on the tip; Fixed, unverified: needs device check (phone host: background mid-session, reopen, stop hosting, Stats shows the upload). B-003 and B-010 are ideas the owner parked for M16 (no job).
 
 **bugs9 (Nov 15, unpushed, nothing built):** B-017 (Sticks dialog text white on paper at night; 6b03e0d) and B-018 (Bumper coin count: 14/16 px floors, badge kept on the field and below the head at the top wall; 1a64d76 + ddf6eb2) fixed, both Fixed, unverified: needs device check; briefs docs/briefs/m14/bugs9, toy_look ListTile root cause noted in docs/code-health.md.
 

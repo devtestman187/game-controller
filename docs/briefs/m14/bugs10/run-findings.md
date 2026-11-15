@@ -1,1 +1,0 @@
-- the review of b019-2-phone-wiring wrote no report (see docs/briefs/m14/bugs10/flash-b019-2-phone-wiring-review.log)
