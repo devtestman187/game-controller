@@ -62,20 +62,19 @@ void main() {
   });
 
   group('the round CSV names the host app', () {
-    test('the header ends with host_app', () {
-      expect(roundsCsvHeader, endsWith(',host_app'));
-      expect(roundsCsvHeader.split(','), hasLength(10)); // The nine before, plus the one.
+    test('host_app is the tenth column, where a1 put it', () {
+      expect(roundsCsvHeader.split(',')[9], 'host_app');
     });
 
-    test('a round row ends with the host app', () {
+    test('a round row carries the host app', () {
       final lines = csvRounds([summary()]).split('\n');
       expect(lines.first, roundsCsvHeader);
-      // 60 s at 60 Hz, with no battery reading and no tags.
-      expect(lines.last, 'a1,windows,arena,60,60.0,,,,,0.12.0');
+      // 60 s at 60 Hz, with no battery reading, no tags and no winner (M14 a2).
+      expect(lines.last, 'a1,windows,arena,60,60.0,,,,,0.12.0,,,');
     });
 
     test('a summary with no app leaves the cell empty', () {
-      expect(csvRounds([summary(hostApp: null)]).split('\n').last, 'a1,windows,arena,60,60.0,,,,,');
+      expect(csvRounds([summary(hostApp: null)]).split('\n').last, 'a1,windows,arena,60,60.0,,,,,,,,');
     });
   });
 }

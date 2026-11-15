@@ -74,35 +74,7 @@ class SessionRecorder {
         final hz = r.data['hz'];
         s.roundStarted(hz: hz is int ? hz : null);
       case 'round_end':
-        final modes = <String, String>{
-          for (final MapEntry(:key, :value) in ((r.data['modes'] as Map?) ?? const {}).entries)
-            if (key is String && value is String) key: value,
-        };
-        // What the round was (M14's "By game and feature"): its game's own
-        // tags and the host's, which go into the round and its ratings.
-        final tags = [...((r.data['tags'] as List?) ?? const []).whereType<String>()];
-        final time = r.data['timeS'];
-        s.roundEnded(
-          r.game,
-          timeS: time is num ? time.toDouble() : 0,
-          modes: modes,
-          winnerId: r.data['winner'] as String?,
-          // The puzzle (M11): a side or a team wins together, or a race is a draw.
-          winnerIds: {...((r.data['winners'] as List?) ?? const []).whereType<String>()},
-          draw: r.data['draw'] == true,
-          // The games write an abandoned round with nothing but its reason:
-          // nobody played it, so the stats get no round and no time (M14 N1).
-          abandoned: r.data['reason'] == ViewEndReason.abandoned,
-          tags: tags,
-        );
-        // Rounds per format (solo, team, 1v1, 2v1, 2v2). The completion time and
-        // pieces placed come with each player's result.
-        if (r.data['format'] case final String format) {
-          for (final id in modes.keys) {
-            s.gameEvent(r.game, 'rounds_$format', id);
-          }
-        }
-        _maybeAskRatings(r.game, modes.keys, tags);
+        _roundEnd(s, r);
       case 'frames':
         s.frames((r.data['drawn'] as num?)?.toInt() ?? 0, (r.data['late'] as num?)?.toInt() ?? 0);
       case 'player_result':
@@ -123,6 +95,42 @@ class SessionRecorder {
           if (r.data[key] case final num v) s.gameValue(r.game, '${r.name}.$key', id, v.toDouble());
         }
     }
+  }
+
+  /// A round ended: its numbers, tags and ratings.
+  void _roundEnd(SessionCollector s, GameRecord r) {
+    final modes = <String, String>{
+      for (final MapEntry(:key, :value) in ((r.data['modes'] as Map?) ?? const {}).entries)
+        if (key is String && value is String) key: value,
+    };
+    // What the round was (M14's "By game and feature"): its game's own
+    // tags and the host's, which go into the round and its ratings.
+    final tags = [...((r.data['tags'] as List?) ?? const []).whereType<String>()];
+    final time = r.data['timeS'];
+    s.roundEnded(
+      r.game,
+      timeS: time is num ? time.toDouble() : 0,
+      modes: modes,
+      winnerId: r.data['winner'] as String?,
+      // The puzzle (M11): a side or a team wins together, or a race is a draw.
+      winnerIds: {...((r.data['winners'] as List?) ?? const []).whereType<String>()},
+      draw: r.data['draw'] == true,
+      // A round Robo won (M14 a2): the round says so, and no player's
+      // wins count it, since Robo is nobody's.
+      robotWin: r.data['robotWin'] == true,
+      // The games write an abandoned round with nothing but its reason:
+      // nobody played it, so the stats get no round and no time (M14 N1).
+      abandoned: r.data['reason'] == ViewEndReason.abandoned,
+      tags: tags,
+    );
+    // Rounds per format (solo, team, 1v1, 2v1, 2v2). The completion time and
+    // pieces placed come with each player's result.
+    if (r.data['format'] case final String format) {
+      for (final id in modes.keys) {
+        s.gameEvent(r.game, 'rounds_$format', id);
+      }
+    }
+    _maybeAskRatings(r.game, modes.keys, tags);
   }
 
   /// Asks each of [players] how the controls felt, when the rating schedule

@@ -153,8 +153,9 @@ List<String> _rateCells(RateRow r) => [
 
 /// The report's round CSV (m12 §1, M14): one row per round, the numbers the
 /// tables above sum and the round's tags, space separated, then the host's app
-/// version (M14) at the end.
-const roundsCsvHeader = 'session,host,game,hz,time_s,battery_start,battery_end,thermal,tags,host_app';
+/// version (M14) and who won the round (M14 a2) at the end.
+const roundsCsvHeader =
+    'session,host,game,hz,time_s,battery_start,battery_end,thermal,tags,host_app,winner,draw,players';
 
 /// One CSV row per round of each summary. A round with no rate or no battery
 /// reading leaves those cells empty, so the columns always line up.
@@ -184,7 +185,24 @@ String _roundCsv(Map<String, Object?> summary, Map round) {
     // A tag holds no comma, so the cells stay lined up.
     tags.join(' '),
     host['app'] as String? ?? '',
+    _winner(round),
+    round['draw'] == true ? '1' : '',
+    round['players'] ?? '',
   ].join(',');
+}
+
+/// A round's winner as the CSV names it (M14 a2): the winning player's number,
+/// `robot` for a round Robo won, or the numbers a team won with, space
+/// separated since a cell holds no comma. A round nobody won has none.
+String _winner(Map round) {
+  if (round['robot'] == true) return 'robot';
+  final numbers = [
+    for (final number in (round['winners'] as List?) ?? const [])
+      if (number is int) '$number',
+  ];
+  if (numbers.isNotEmpty) return numbers.join(' ');
+  final winner = round['winner'];
+  return winner is int ? '$winner' : '';
 }
 
 /// The players' touch-to-frame median and p95, or a dash when no player at

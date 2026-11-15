@@ -206,6 +206,9 @@ class SessionCollector {
   /// abandons one (M14 design section 2 N1): it adds no round, no count and no
   /// game time, but it still ends the game.
   ///
+  /// [robotWin] is a round the host's robot won (M14 a2): the round says so,
+  /// and no player gets the win, since the robot is nobody's.
+  ///
   /// [tags] say what the round was (M14's "By game and feature"): the game
   /// and the host write short `kind_value` strings such as `mode_bumper`,
   /// `map_playroom` or `night_2of3` ([RoundTag] names the kinds the report
@@ -220,6 +223,7 @@ class SessionCollector {
     Set<String> winnerIds = const {},
     bool draw = false,
     bool abandoned = false,
+    bool robotWin = false,
     List<String> tags = const [],
   }) {
     final winners = {...winnerIds, ?winnerId};
@@ -238,6 +242,9 @@ class SessionCollector {
         'winner': ?_players[winners.firstOrNull]?.number,
         if (winners.length > 1) 'winners': [for (final id in winners) ?_players[id]?.number],
         if (draw) 'draw': true,
+        // A robot's win is the round's, never a player's (M14 a2): the report
+        // names it, and the players' wins don't count it.
+        if (robotWin) 'robot': true,
         if (roundTags.isNotEmpty) 'tags': roundTags,
       });
     }

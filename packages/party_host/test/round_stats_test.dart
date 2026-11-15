@@ -104,4 +104,23 @@ void main() {
       'tags': ['mode_bumper', 'map_playroom', 'robo_easy', 'finished', 'night_1of3'],
     });
   });
+
+  test('a round Robo won says so, and counts for no player (M14 a2)', () {
+    recorder.onRecord(const GameRecord(game: 'arena', name: 'round_start', data: {'hz': 60}));
+    recorder.onRecord(
+      const GameRecord(
+        game: 'arena',
+        name: 'round_end',
+        data: {
+          'timeS': 60.0,
+          'modes': {'p1': 'dpad'},
+          'winner': 'robo',
+          'robotWin': true,
+        },
+      ),
+    );
+
+    expect(rounds().single, {'game': 'arena', 'hz': 60, 'timeS': 60.0, 'players': 1, 'robot': true});
+    expect(gameCounts('arena'), {'rounds': 1}, reason: 'Robo is no player, so no player won');
+  });
 }
