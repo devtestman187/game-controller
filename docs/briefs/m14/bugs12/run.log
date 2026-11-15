@@ -28,3 +28,5 @@
 2026-11-15 16:50:09 f1 finished: result 4 (66 turns, 9 min)
 2026-11-15 16:50:10 f1: dropped generated churn outside its list: site/shots/dpad.png site/shots/menus.png site/shots/results.png site/shots/sticks.png site/shots/tilt.png 
 2026-11-15 16:57:03 committed f1: 451c11b Fix the first host consent prompt to ask on the host route
+2026-11-15 17:04:03 reviewed f1: 8 finding(s)
+2026-11-15 17:04:03 DONE: every job is committed. Claude reads the Summary of docs/briefs/m14/bugs12/REVIEW.md, verifies its findings and writes one fix brief
