@@ -106,8 +106,12 @@ void main() {
   for (final (name, look) in [('m13-puzzles', sunny), ('m13-puzzles-night', night)]) {
     testWidgets('writes docs/design/$name.png', (tester) async {
       final bytes = await capturePng(tester, grid(look), window: box, box: box, look: look);
-      final file = File('../../docs/design/$name.png')..writeAsBytesSync(bytes);
-      expect(file.lengthSync(), greaterThan(5000));
+      expect(bytes.length, greaterThan(5000));
+      // Write the report pictures only on request, so a plain test run leaves
+      // the tree clean: UPDATE_GOLDENS=1 flutter test ...
+      if (Platform.environment.containsKey('UPDATE_GOLDENS')) {
+        File('../../docs/design/$name.png').writeAsBytesSync(bytes);
+      }
     });
   }
 }

@@ -5,14 +5,17 @@
 # Claude is truly needed. The framework is described in docs/flash-framework.md.
 #
 #   tools/run-jobs.sh <briefs-dir> [--logs <dir>] [--no-review] [--dry-run]
+#   tools/run-jobs.sh <briefs-dir> --drop <job>   (never run <job>; appends to dropped.txt)
+#   touch <briefs-dir>/STOP   (stops a running runner between steps; never kill it)
 #
 # <briefs-dir>/waves.txt: one wave per line, job names (brief files without
 # .md) separated by spaces; `#` starts a comment. Jobs of one wave run at the
 # same time (at most 3) and must share no files.
 #
 # For each wave:
-#   1. start the jobs (tools/flash.sh --brief); a job whose report is already
-#      committed is skipped, so the runner is safe to start again;
+#   1. start the jobs (tools/flash.sh --brief); a job listed in <briefs-dir>/done.txt
+#      (`<job> <sha>`, written after its commit; older batches without a done.txt: a
+#      committed report) or in dropped.txt is skipped, so the runner is safe to start again;
 #   2. a job that stopped with result 4 (files outside its allow: list): known
 #      generated churn (CHURN_OUTSIDE below: library and m13 PNGs, site/shots,
 #      run-base, tv plugin files, stray run-*.patch) is dropped, one log line
@@ -50,6 +53,9 @@
 # Before the first wave a preflight (tools/flash.sh --preflight, a tiny real worker call) must show the
 # worker can run flutter and tools/check.sh; PREFLIGHT_SKIP=1 skips it. A suite that fails with
 # PathNotFoundException (temp-folder race) is retried once, logged as "check retry".
+# STOP file: <briefs-dir>/STOP is checked before each wave, job start, review and commit; when
+# present the runner kills its child processes, logs `STOPPED: stop file` and exits 1; the file
+# is removed at the next start. Never revert a job's commits without `--drop <job>` first.
 # NO_PUSH=1 in the environment commits without pushing.
 # Exit code: 0 done, 1 stopped, 2 bad use.
 set -u
@@ -59,19 +65,23 @@ SAFE_OUTSIDE='^(([^/]+/)*analysis_options\.yaml|\.gitignore|\.gitattributes|([^/
 # Known generated churn outside the list: dropped (never copied), logged per job.
 CHURN_OUTSIDE='^(docs/design/([^/]+/)*[^/]+\.png|site/shots/.*|([^/]+/)*run-base[^/]*|([^/]+/)*tv_test_app/windows/flutter/.*|([^/]+/)*generated_plugin[^/]*|docs/briefs/([^/]+/)*run-[^/]*\.patch)$'
 SIZE_STOP=380
-CHURN=(tv_test_app/windows/flutter/ site/shots/ docs/design/puzzles/ docs/design/m13-placed-look.png)
+CHURN=(tv_test_app/windows/flutter/ site/shots/ docs/design/puzzles/ docs/design/m13-placed-look.png docs/design/m13-puzzles.png docs/design/m13-puzzles-night.png)
 
-B="" LOGS="" review=1 dry=0
+B="" LOGS="" review=1 dry=0 drop=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --logs) LOGS=${2:?}; shift 2 ;;
     --no-review) review=0; shift ;;
     --dry-run) dry=1; shift ;;
-    -h|--help) sed -n '2,52p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    --drop) drop=${2:?}; shift 2 ;;
+    -h|--help) sed -n '2,58p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     -*) echo "Unknown option: $1 (try --help)" >&2; exit 2 ;;
     *) B=${1%/}; shift ;;
   esac
 done
+if [ -n "$drop" ] && [ -n "$B" ] && [ -d "$B" ]; then
+  echo "$drop" >> "$B/dropped.txt"; echo "dropped $drop: $B/dropped.txt (commit it)"; exit 0
+fi
 [ -n "$B" ] && [ -f "$B/waves.txt" ] || { echo "Usage: tools/run-jobs.sh <briefs-dir> (it needs <briefs-dir>/waves.txt)" >&2; exit 2; }
 LOGS=${LOGS:-$B}
 WORK=${RUN_WORK:-.dart_tool/run-jobs/${B//\//_}}
@@ -79,6 +89,25 @@ mkdir -p "$WORK"
 mapfile -t WAVES < <(sed 's/#.*//' "$B/waves.txt" | awk 'NF')
 
 note() { echo "$(date '+%F %T') $*" | tee -a "$B/run.log"; }
+kill_tree() { local c; for c in $(ps -ef 2>/dev/null | awk -v p="$1" '$3==p{print $2}'); do kill_tree "$c"; done; kill "$1" 2>/dev/null; }
+check_stop() { # the STOP file: kill the children, log, exit
+  [ -f "$B/STOP" ] || return 0
+  local p; for p in $(jobs -p); do kill_tree "$p"; done
+  note "STOPPED: stop file"; wait 2>/dev/null; save "runner: log at a stop" "$B/run.log"; exit 1
+}
+handfixed() { # handfixed <job>: was its commit made by hand after a stop?
+  [ -f "$B/$1-handfixed" ] && return 0
+  grep -qE "HAND-FIX.*(^|[^A-Za-z0-9_-])$1([^A-Za-z0-9_-]|\$)" "$B/run.log" 2>/dev/null && return 0
+  git log -1 --format=%B -- "$B/$1-report.md" | grep -qi '^Hand-fixed:'
+}
+is_done() { # is_done <job>: in done.txt; no done.txt (older batch): report committed at HEAD
+  if [ -f "$B/done.txt" ]; then
+    grep -q "^$1 " "$B/done.txt" && return 0
+    handfixed "$1" && committed "$B/$1-report.md"; return
+  fi
+  committed "$B/$1-report.md"
+}
+is_dropped() { grep -qxF "$1" "$B/dropped.txt" 2>/dev/null; }
 stop() { note "STOPPED: $*"; wait; flush_reviews; save "runner: log at a stop" "$B/run.log"; exit 1; }
 finding() { echo "- $*" >> "$B/run-findings.md"; note "finding: $*"; }
 usage() { # usage <brief path>: the job's turns and minutes, from the flash usage log
@@ -99,7 +128,7 @@ if [ $dry -eq 1 ]; then
     n=$((n + 1)); echo "wave $n:"
     for j in $wave; do
       [ -f "$B/$j.md" ] || { echo "  $j: MISSING $B/$j.md"; continue; }
-      if committed "$B/$j-report.md"; then echo "  $j: skip (committed)"; else echo "  $j: run"; fi
+      if is_dropped "$j"; then echo "  $j: skip (dropped)"; elif is_done "$j"; then echo "  $j: skip (committed)"; else echo "  $j: run"; fi
     done
   done
   echo "then: the run's review -> $B/REVIEW.md"; exit 0
@@ -241,11 +270,6 @@ slot_wait() { # at most 3 flash jobs at once, counting the background review cha
   while [ "$(jobs -rp | wc -l)" -ge 3 ]; do sleep 5; done
 }
 
-handfixed() { # handfixed <job>: was its commit made by hand after a stop?
-  [ -f "$B/$1-handfixed" ] && return 0
-  grep -qE "HAND-FIX.*(^|[^A-Za-z0-9_-])$1([^A-Za-z0-9_-]|\$)" "$B/run.log" 2>/dev/null && return 0
-  git log -1 --format=%B -- "$B/$1-report.md" | grep -qi '^Hand-fixed:'
-}
 handfix_recheck() { # handfix_recheck <job>: the proof and review a hand commit skipped; once per job
   local j=$1 c
   [ -f "$WORK/rechecked-$j" ] && return 0
@@ -261,6 +285,7 @@ handfix_recheck() { # handfix_recheck <job>: the proof and review a hand commit 
 
 branch=$(git rev-parse --abbrev-ref HEAD)
 note "start at $(git rev-parse --short HEAD) on $branch"
+[ -f "$B/STOP" ] && { rm -f "$B/STOP"; note "removed the old stop file"; }
 if [ ! -s "$WORK/run-base" ]; then # once, at the batch's first start; recovered from run.log on a fresh clone
   sed -n 's/.* run-base \([0-9a-f]\{7,40\}\)$//p' "$B/run.log" 2>/dev/null | head -n 1 > "$WORK/run-base"
   [ -s "$WORK/run-base" ] || { [ -s "$B/run-base" ] && cp "$B/run-base" "$WORK/run-base" || git rev-parse HEAD > "$WORK/run-base"; }
@@ -279,18 +304,21 @@ if [ -z "${PREFLIGHT_SKIP:-}" ]; then
 fi
 
 for wave in "${WAVES[@]}"; do
+  check_stop
   [ "$(wc -w <<< "$wave")" -le 3 ] || stop "a wave has more than 3 jobs: $wave"
   started=() pids=() resumed=()
   for j in $wave; do
+    check_stop
+    is_dropped "$j" && { note "skip $j (dropped)"; continue; }
     [ -f "$B/$j.md" ] || stop "no brief $B/$j.md"
     committed "$B/$j.md" || stop "the brief $B/$j.md is not committed (job folders are cut from the last commit)"
-    if committed "$B/$j-report.md"; then
-      if handfixed "$j"; then handfix_recheck "$j"; fi
-      note "skip $j (already committed)"; continue
+    if is_done "$j"; then
+      if committed "$B/$j-report.md" && handfixed "$j"; then handfix_recheck "$j"; fi
+      note "skip $j (already done)"; continue
     fi
     if [ -f "$B/$j-report.md" ]; then note "resume $j (applied by hand, not committed yet)"; resumed+=("$j"); continue; fi
     slot_wait
-    [ ${#started[@]} -gt 0 ] && sleep 25
+    [ ${#started[@]} -gt 0 ] && { sleep 25; check_stop; }
     note "start $j"
     tools/flash.sh --brief "$B/$j.md" > "$LOGS/flash-$j.log" 2>&1 &
     pids+=($!) started+=("$j")
@@ -315,24 +343,28 @@ for wave in "${WAVES[@]}"; do
     reviewed=()
     for j in "${ok[@]}"; do
       head -n 40 "$B/$j-report.md" | grep -q '^## Summary' || finding "$j's report has no Summary block in its first 40 lines"
+      check_stop
       from=$(git rev-parse HEAD)
       tools/commit-job.sh "$B/$j.md" $([ -n "${NO_PUSH:-}" ] || echo --push) >> "$WORK/run-commit.log" 2>&1 || stop "commit of $j refused (see $WORK/run-commit.log)"
       note "committed $j: $(git log --oneline -1)"
+      echo "$j $(git rev-parse HEAD)" >> "$B/done.txt"
       if [ $review -eq 1 ] && ! committed "$B/$j-review-report.md"; then
         review_brief "$j" "$from" "$(git rev-parse HEAD)"; reviewed+=("$j")
       fi
     done
     [ ${#extra[@]} -gt 0 ] && save "files outside the jobs' lists, applied by the runner (always-fine list): ${ok[*]}" "${extra[@]}"
-    paths=("$B/run.log"); [ -f "$B/run-findings.md" ] && paths+=("$B/run-findings.md")
+    paths=("$B/run.log" "$B/done.txt"); [ -f "$B/run-findings.md" ] && paths+=("$B/run-findings.md")
     for j in "${reviewed[@]}"; do paths+=("$B/$j-review.md"); done
     save "runner: log and review briefs after ${ok[*]}" "${paths[@]}"
     flush_reviews
+    check_stop
     [ ${#reviewed[@]} -gt 0 ] && start_reviews "${reviewed[@]}"
   fi
   [ ${#failed[@]} -gt 0 ] && stop "jobs that failed or need applying by hand: ${failed[*]} (their logs: $LOGS/flash-<job>.log)"
 done
 
 flush_reviews wait
+check_stop
 if [ $review -eq 1 ] && ! committed "$B/REVIEW.md"; then
   base=$(cat "$WORK/run-base")
   files=$(git diff --name-only "$base" HEAD | grep -Ev '^(site/shots/|.*/flutter/generated_|docs/briefs/)' | tr '\n' ' ')

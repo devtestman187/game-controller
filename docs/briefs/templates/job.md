@@ -10,7 +10,7 @@ do:
 2 Tests: <the cases, each a rule that a test must fail on if broken>
 3 Report: <anything Claude needs to check: line counts, a move map, computed values>
 self-check: docs/review-rules.md part A, items 1–5, one line each in the report with the test that shows it.
-(template note, delete this line: at most 3 independent jobs per wave (no shared files); a job estimated over 150 turns is split into phases first; this brief stays near 214 words (350 at most): longer context goes in a file named in read:. A review-fix job carries 3 findings or fewer.)
+(template note, delete this line: at most 3 independent jobs per wave (no shared files); a job estimated over about 120 turns is split into phases first; this brief stays near 214 words (350 at most): longer context goes in a file named in read:. A review-fix job carries 3 findings or fewer.)
 
 tests: await every async side effect (upload, save, timer) before teardown; in party_host use settleUploads from test/stats_test_support.dart. Run only your test files while working, the full suite once at the end. tests: each new test goes in a NEW test file and must fail on the code as it was (the runner proves it and stops otherwise); for a pure refactor or docs job write `tests-first: exempt <reason>` as a header line. A fix whose cause is not measured says so in the Summary ("Fixed, unverified: needs device check").
 rules: <limits beyond the guidelines: sizes, no behaviour or text changes, …> · tools/review.sh: no FAIL on your lines.

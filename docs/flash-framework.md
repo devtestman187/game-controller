@@ -37,7 +37,7 @@ Agents never wait on a running job (an idle wait ends the turn); they run long c
 
 `<briefs-dir>/waves.txt` lists the waves: one line per wave, job names separated by spaces; jobs in one wave run together (at most 3) and must share no files. For each wave the runner:
 
-1. starts the jobs, skipping any whose report is committed;
+1. starts the jobs, skipping any listed in `<briefs-dir>/done.txt` or `dropped.txt` (see "Stopping, dropping, done.txt" below);
 2. for a job **or a review job** that ended with files outside `allow:` (result 4): **drops known generated churn** (`docs/design/**/*.png` incl. the m13 sheets and puzzles, `site/shots/**`, `run-base*`, `tv_test_app/windows/flutter/**`, generated plugin files, stray `docs/briefs/**/run-*.patch`; one log line per job names them), **applies always-fine files** (an `analysis_options.yaml`, `.gitignore`, `.gitattributes`, a `pubspec.lock`) and commits them; any other file outside `allow:` (Dart in lib/ or test/, JSON levels) is a stop;
 3. **proves tests-first:** every new test file is run against the code as it was; one that passes there **stops the run** (like a review FAIL), unless the job's brief has a line `tests-first: exempt <reason>` (pure refactors, docs; the exemption covers only test files under that brief's `allow:` paths and is logged);
 4. runs `tools/check.sh` on the combined tree (on a failure it fetches packages and tries once more), then `tools/review.sh`: a FAIL, or a touched `lib` file over **380 lines**, stops the run;
@@ -47,6 +47,13 @@ Agents never wait on a running job (an idle wait ends the turn); they run long c
 At the end a last worker job (from `templates/run-review.md`) merges all of that into **`<briefs-dir>/REVIEW.md`**. Progress is in `<briefs-dir>/run.log` (committed at each serial point, at a stop and at the end); a `STOPPED` line with no later `start at` line needs Claude. The runner's working files (`run-base`, `run-check.log`, `run-review.log`, `run-commit.log`, patches, markers) are in `.dart_tool/run-jobs/<briefs-dir>` (gitignored), not in the briefs dir; `run-base` is set once, at the batch's first start, and also logged in `run.log`. The patch taken from a result-4 folder holds only the brief's `allow:`/`report:` paths and the always-fine files, because a job folder is cut from a dirty tree and carries stray edits.
 
 `tools/run-jobs.sh <briefs-dir> --dry-run` shows what would run. `--no-review` leaves out the worker reviews.
+
+### Stopping, dropping, done.txt (owner, Nov 15, 2026)
+
+- **STOP file.** To stop a run, `touch <briefs-dir>/STOP`; never kill the runner. It checks for the file before each wave, each job start, each review and each commit; when found it kills its own child processes (flash workers, checks), logs `STOPPED: stop file` and exits 1. The next start removes the file and logs it.
+- **`tools/run-jobs.sh <briefs-dir> --drop <job>`** appends the job to `<briefs-dir>/dropped.txt` and exits; the runner logs `skip (dropped)` for it. **Never revert a job's commits without dropping it first** (a reverted job loses its report file, and a restart used to take it as unfinished and run it again). Commit `dropped.txt`.
+- **`<briefs-dir>/done.txt`**: after each job's commit the runner appends `<job> <commit sha>`, committed at the same serial point as `run.log`. The skip checks done.txt, not report presence. Older batches with no done.txt keep the old rule (report committed at HEAD means done); a hand-fixed job (see Batch rule 4) in a batch with a done.txt also counts as done when its report is committed.
+- **PNG churn.** `packages/puzzle_game/test/puzzles_png_test.dart` writes `docs/design/m13-puzzles.png` and `m13-puzzles-night.png` only when the environment variable `UPDATE_GOLDENS` is set. Those two and `m13-placed-look.png` are also in the runner's `CHURN` list (restored with `git checkout` before checks and commits).
 
 ## Writing a brief (both modes)
 
@@ -63,7 +70,7 @@ The header and body follow the existing briefs (see any file in `docs/briefs/m15
 
 Measured over 193 jobs: a job of 80–149 turns (about 12 minutes) ended badly 3% of the time; 150–249 turns 10%; 250–399 turns 16%; 400 and more (about an hour) 31%. Long jobs wander outside their file list, fail checks and write reports with claims that are not true. They also cost more per turn, because the whole conversation is sent again each turn. So:
 
-- **Aim for 80–150 turns, 10–20 minutes, per job.** If a job needs more, split it into **phases**, each its own brief in its own wave of `waves.txt` (waves run in order, and each job folder is cut from the last commit, so a later phase sees the earlier one's work):
+- **Aim for 80–120 turns, 10–20 minutes, per job.** If a job needs more, split it into **phases**, each its own brief in its own wave of `waves.txt` (waves run in order, and each job folder is cut from the last commit, so a later phase sees the earlier one's work):
   1. **build**: code and tests from the design; ends when the checks pass.
   2. **run** (hands-on jobs): builds, experiments, measurements; changes only what the runs need.
   3. **report / wrap-up**: documents, tables, corrections; no new behaviour.
@@ -71,7 +78,7 @@ Measured over 193 jobs: a job of 80–149 turns (about 12 minutes) ended badly 3
 - **Split by kind of work, not by size**, and only where the pieces are separable: a phase that needs to re-derive what the last one knew saves nothing.
 - Name phases `<job>-1-build`, `<job>-2-run`, `<job>-3-wrap` so the log reads in order. Each phase is checked, committed and reviewed like any job; the reviews are smaller too.
 - One experiment series per run phase: at most about 6 bench runs in a phase; more experiments mean another phase.
-- **Pre-split (owner, Nov 15, 2026).** Any job estimated over 150 turns is split into phases before it runs, not after it overruns.
+- **Pre-split (owner, Nov 15, 2026).** Any job estimated over about 120 turns (was 150) is split into phases before it runs, not after it overruns.
 - **Review-fix jobs carry 3 findings or fewer.** Split more findings into several jobs in one wave when their files do not overlap (measured: 6-9 findings ran 194-258 turns).
 - **Brief bodies stay near the 214-word template, about 350 words at most**; longer context goes in a referenced file the brief names in `read:`.
 
