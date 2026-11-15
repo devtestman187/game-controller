@@ -22,3 +22,7 @@
 2026-11-15 10:30:31 b020-health-docs finished: result 0 (45 turns, 3 min)
 2026-11-15 10:37:11 committed b020-solo-both: 4440477 Solo night's Arena card offers Race and Bumper
 2026-11-15 10:37:13 committed b020-health-docs: e50cd4a docs/code-health: drop two stale bullets, add bugs11 leftovers
+2026-11-15 10:37:14 start b020-solo-phone-test
+2026-11-15 10:44:59 b020-solo-phone-test finished: result 0 (49 turns, 5 min)
+2026-11-15 10:46:05 tests-first: packages/party_host/test/arena_touch_solo_night_test.dart passes on the old code, exempt by its brief
+2026-11-15 10:50:32 committed b020-solo-phone-test: 7f75e5b A lone night player on a phone host starts on Ready
