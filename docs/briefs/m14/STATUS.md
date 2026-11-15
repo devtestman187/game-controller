@@ -4,6 +4,8 @@ Branch `m14`, worktree `E:\AI\game-controller-m14`, cut from `m13` at 77ccf09 on
 
 ## Resume here (Nov 14, 2026: the m14.3 device-test bug batch, bugs3, is committed, unpushed)
 
+- **Runner fixes (Nov 15, 2026, adddc9d):** STOP file (`touch <briefs-dir>/STOP`, never kill), `--drop <job>` (never revert a job without dropping it), done.txt for the skip, puzzle PNGs only with UPDATE_GOLDENS, pre-split at about 120 turns; see docs/flash-framework.md "Stopping, dropping, done.txt".
+
 **m14.5 tagged (Nov 15, 2026, on 52390cc, build 654, version 0.14.0; owner: go ahead and tag for testing after a clean review).** m14 was fast-forwarded to main, then `tools/release.sh m14.5`; iOS stays internal TestFlight only. Device checks: B-017 (Sticks dialog text), B-018 (coin count size and position); B-019 (a phone host backgrounded, and one that stops hosting, shows the session uploaded); B-020 (a solo night card with map choice, Bumper only); B-021 (End night in Bumper and in Shape Race); stats: one puzzle round to confirm the `level_` tag, and one Windows-hosted round for `hz` and tags; plus the open m14.4 checks below.
 
 **bugs11 + stats merge (Nov 15, done, unpushed, nothing built):** B-020 (a solo night keeps the Arena card, Bumper only) and B-021 (End night on a night's results, Bumper and Shape Race) fixed in docs/briefs/m14/bugs11, both Fixed unverified (device check); the next-map proposal (d187a5b) awaits the owner. Wrap-up fixed the solo card test's flaky map check and pinned roundsLeft; leftovers in docs/code-health.md. m14-stats merged (72e1c89, only code-health.md conflicted). Full check green on the merged tip (before this line).
