@@ -52,3 +52,7 @@
 2026-11-15 11:32:10 committed b021-end-night-1: 72c5304 Add End night to the Bumper Round's night results (B-021)
 2026-11-15 11:32:11 committed b021-fix-phone-test: b5c85f1 test(party_host): check the waiting card stays in the lone-night phone test
 2026-11-15 11:32:13 committed b021-fix-card-test: d4e323a Fix the solo card test's map check and share the card setup
+2026-11-15 11:32:14 start b021-end-night-2
+2026-11-15 11:45:10 b021-end-night-2 finished: result 4 (87 turns, 10 min)
+2026-11-15 11:45:11 b021-end-night-2: dropped generated churn outside its list: site/shots/dpad.png site/shots/menus.png site/shots/results.png site/shots/sticks.png site/shots/tilt.png 
+2026-11-15 11:51:07 committed b021-end-night-2: d63b764 Add End night to Shape Race's night results (B-021)
