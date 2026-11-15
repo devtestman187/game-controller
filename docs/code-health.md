@@ -115,7 +115,7 @@ The "could" findings of [bugs1's review](briefs/m14/bugs1/REVIEW.md) that the fi
 ### M14 bugs11 leftovers (run review of Nov 15, 2026)
 
 - **solo_arena_card_test (the map played)**: "opens on Surprise me" (`solo_arena_card_test.dart:52`) is proved only by the absent `chosenMap-pinball` key, not by the map the round played. Rec.: also assert `arenaSnapshot(tester).mapId` is not `pinball` after `roundStarted`.
-- **solo_arena_card_test (the helper)**: `openNightBumperCard` (`solo_arena_card_test.dart:17`) serves test 2 only and repeats the setup of test 1. Rec.: parameterise it with the `setMap` case or inline it into test 2; the file is rewritten by b020-solo-both, so do it with its next change.
+- **solo_arena_card_test (the helper)**: `openNightBumperCard` (`solo_arena_card_test.dart:17`) serves test 2 only and repeats the setup of test 1. Rec.: parameterise it with the `setMap` case or inline it into test 2.
 - **night_start_screen (the comment)**: `night_start_screen.dart:74` says "for two" where the Shape Race join screen shows for two or more. Rec.: say "for two or more".
 - **next-map proposal (a report only, not built)**: for the follow-up brief of `b020-next-map-report.md`, carry the sizes 373 / 381 / 370 (not 379 / 387 / 376); the Right press at `menu_press_test.dart:61-64` moves off Change mode when the button goes second; a step for `docs/design/party-night.md:107` (the button line of the results); how the callbacks of `_ResultsBody` are carried (it has nine parameters, the proposal adds the tenth) and that the `Wrap` at `:68` belongs to `_ResultsBody`; and that the base of `game_screen.dart` in the run report was 379, not 380.
 
