@@ -1,2 +1,4 @@
 c1-build-metrics c2-build-wiring
 c3-docs
+fix1-tests fix2-session fix3-apps
+fix4-docs
