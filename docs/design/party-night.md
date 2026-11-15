@@ -162,7 +162,7 @@ What is in a map, and what its rules are:
 - **Robo finds its way with the kit's path grid**, so it can steer round any map's walls (section 7a).
 
 **Rethought after the owner's review** (Nov 9, 2026, on mock-up 17: "Why is there still a finish area? Pinball and block castle don't really look like their names would imply. Can we rethink these maps?"). The first sketches had a finish because each map was meant to play both modes; a map built for a race is a corridor, and a corridor makes a dull bumper arena. So:
-- **The new maps are Bumper Round arenas, with no finish.** The race stays on the Playroom (the only map with a `race` section); the kit still allows race maps, for later.
+- **The new maps began as Bumper Round arenas with no finish; the owner reversed this for two (Nov 14, 2026, "Routes look good", B-015): Block Castle and Toy Factory now also carry a `race` section, so with the Playroom three maps play either mode. Pinball and Spinning Tops stay Bumper Round only; the kit still allows race maps.**
 - **Each map looks like its name**: its own floor (`theme`), its own props drawn round the play (`decor`: flags, lights, gears; no collision), and pieces that belong there.
 
 **The pieces** (each in the rules, the painter, the snapshot and the map rules):

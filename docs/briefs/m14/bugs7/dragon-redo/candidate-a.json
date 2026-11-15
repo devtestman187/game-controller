@@ -1,0 +1,20 @@
+{
+  "$schema": "puzzle.schema.json",
+  "format": 1,
+  "id": "dragon",
+  "name": "Dragon",
+  "level": "hard",
+  "notes": "A proposal (M14 bugs7 dragon-redo, candidate a): a dragon seen from the side, standing, facing right. Head high at the right with an open snout (head over jaw) and a horn, a bat wing above the back, a long body (haunch, body, neck), a spiky tail curled at the left, and two legs. Every piece is a compact shape round its own centre so the tray packs it at any start. The picture in the library folder was dragon-a.json, rendered to docs/design/puzzles/dragon-a.png; the sheet is candidate-a-sheet.png beside this file.",
+  "pieces": [
+    {"id": "tail", "shape": {"polygon": [[8, 2], [4, 4], [-1, 4], [-7, 1], [-5, -1], [-6, -5], [-2, -1], [1, -2], [4, -4], [8, -2]]}, "color": "brown", "at": [13, 48], "rotated": true},
+    {"id": "wing", "shape": {"polygon": [[7, 6], [7, -2], [4, 0], [1, -8], [-3, -1], [-7, 0], [-3, 5], [-6, 7], [2, 8]]}, "color": "purple", "at": [34, 26], "rotated": true, "big": true},
+    {"id": "back leg", "shape": {"polygon": [[-5, -7], [3, -7], [5, 1], [2, 7], [-3, 7], [-6, 1]]}, "color": "steel", "at": [30, 54], "rotated": true},
+    {"id": "haunch", "shape": {"polygon": [[-8, -2], [-4, -7], [3, -7], [7, -3], [8, 3], [3, 8], [-4, 7], [-7, 1]]}, "color": "green", "at": [25, 44], "rotated": true, "big": true},
+    {"id": "body", "shape": {"polygon": [[-9, -3], [-4, -7], [3, -6], [8, -2], [9, 3], [3, 7], [-4, 6], [-9, 2]]}, "color": "orange", "at": [38, 42], "rotated": true, "big": true},
+    {"id": "front leg", "shape": {"polygon": [[-5, -7], [3, -7], [3, 2], [7, 4], [-1, 6], [-6, 2]]}, "color": "sand", "at": [44, 51], "rotated": true},
+    {"id": "neck", "shape": {"polygon": [[-6, 7], [-6, -1], [-1, -7], [6, -6], [7, 0], [1, 3], [-1, 9]]}, "color": "slate", "at": [52, 30], "rotated": true},
+    {"id": "head", "shape": {"polygon": [[-9, -4], [-5, -8], [3, -6], [10, -1], [6, 2], [-3, 4], [-9, 1]]}, "color": "blue", "at": [62, 20], "rotated": true, "big": true},
+    {"id": "jaw", "shape": {"polygon": [[-7, -1], [1, -3], [9, 0], [5, 4], [-2, 4], [-8, 2]]}, "color": "red", "at": [63, 30], "rotated": true},
+    {"id": "horn", "shape": {"regular": [3, 7]}, "color": "yellow", "at": [57, 10], "rotated": true}
+  ]
+}
