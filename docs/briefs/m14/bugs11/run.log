@@ -1,0 +1,10 @@
+2026-11-15 09:43:57 start at b8638dd on m14
+2026-11-15 09:43:57 run-base b8638ddc6181cfa6b80c6d40e992cde3c93fca5f
+2026-11-15 09:44:04 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-15 09:44:04 start b020-solo-card
+2026-11-15 09:44:30 start b020-next-map
+2026-11-15 09:57:18 b020-solo-card finished: result 4 (82 turns, 10 min)
+2026-11-15 09:57:19 b020-solo-card: dropped generated churn outside its list: site/shots/dpad.png site/shots/menus.png site/shots/results.png site/shots/sticks.png site/shots/tilt.png 
+2026-11-15 09:57:19 b020-next-map finished: result 0 (51 turns, 4 min)
+2026-11-15 10:03:47 committed b020-solo-card: f11c4b1 M14 bugs11 b020: a night's one player keeps the Arena's card
+2026-11-15 10:03:48 committed b020-next-map: d187a5b M14 bugs11: proposal for Next map on the Arena's results (B-020)
