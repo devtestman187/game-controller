@@ -15,7 +15,7 @@ The owner switches with "low-usage mode" or "back to normal". Note the mode in t
 
 **Normal mode.** Claude writes each brief just before its job, reviews every job as it lands (report, diff, checks), fixes small things by hand, asks the owner at checkpoints.
 
-**Low-usage mode** (updated by the owner on Nov 11, 2026: "I want the low-usage mode to be extremely low utilization"). Claude's whole part in a run is three short visits:
+**Low-usage mode** (updated by the owner on Nov 11, 2026: "I want the low-usage mode to be extremely low utilization"). Claude's whole part in a run is three short visits, and the **batch routine** below keeps the main session idle in between:
 
 1. **Before:** write every brief of the batch in one sitting, plus `waves.txt`; commit; start the runner in the background; say one line to the owner.
 2. **Only if the run stops:** read the last line of `run.log`, fix that one thing, start the runner again (it skips what is committed).
@@ -23,18 +23,28 @@ The owner switches with "low-usage mode" or "back to normal". Note the mode in t
 
 Between these, Claude stays silent: no progress messages, no reading of logs or reports "to see how it goes", no per-job review. A full review by Claude itself happens only before a tagged build (see "Before a build").
 
+### The batch routine (owner, Nov 15, 2026)
+
+1. **Start.** A short agent writes the briefs and `waves.txt`, commits them, starts `tools/run-jobs.sh <dir>` in the background (`run_in_background`), and ends. It does not wait.
+2. **Wait.** The main session waits with **one** background until-loop on `<dir>/run.log` that ends at a `DONE` or `STOPPED` line (for example `until tail -n 3 run.log | grep -qE 'DONE|STOPPED'; do sleep 60; done`). It costs no tokens. Nobody polls the log by hand.
+3. **On STOPPED.** A short agent repairs that one thing and restarts the runner (background again, then the same wait), or hand-applies the job. A hand-applied job is **logged**: append `HAND-FIX <job>: <what was done>` to `run.log` before the restart (the runner then runs that job's tests-first proof and worker review instead of skipping it; see Batch rules 4).
+4. **On DONE.** A short wrap-up agent closes every finding of `REVIEW.md` and the runner warnings (Batch rules 2), runs the full `tools/check.sh` on the tip, updates the tracker and `STATUS.md`, and commits (named paths only). `run.log` is committed (the runner force-adds it), so its `HAND-FIX` and final-check lines stay in the history; the wrap-up agent adds its check result as one line and commits it with the rest.
+5. **Analysis after long batches.** Only for a batch whose wall time was **over 1 hour** (owner: "after longer batches, anything over an hour"): a quick Sonnet or Haiku agent reads `run.log` (turns and minutes per job, stops, hand-fixes) and proposes improvements to the runner, the briefs or this document. Claude reviews the proposals and tells the owner; **only owner-approved changes are applied**.
+
+Agents never wait on a running job (an idle wait ends the turn); they run long commands in the foreground and end when their own work is done.
+
 ## What the runner does (`tools/run-jobs.sh <briefs-dir>`)
 
 `<briefs-dir>/waves.txt` lists the waves: one line per wave, job names separated by spaces; jobs in one wave run together (at most 3) and must share no files. For each wave the runner:
 
 1. starts the jobs, skipping any whose report is committed;
-2. for a job that ended with files outside `allow:` (result 4): **drops known generated churn** (`docs/design/**/*.png` incl. the m13 sheets and puzzles, `site/shots/**`, `run-base*`, `tv_test_app/windows/flutter/**`, generated plugin files, stray `docs/briefs/**/run-*.patch`; one log line per job names them), **applies always-fine files** (an `analysis_options.yaml`, `.gitignore`, `.gitattributes`, a `pubspec.lock`) and commits them; any other file outside `allow:` (Dart in lib/ or test/, JSON levels) is a stop;
+2. for a job **or a review job** that ended with files outside `allow:` (result 4): **drops known generated churn** (`docs/design/**/*.png` incl. the m13 sheets and puzzles, `site/shots/**`, `run-base*`, `tv_test_app/windows/flutter/**`, generated plugin files, stray `docs/briefs/**/run-*.patch`; one log line per job names them), **applies always-fine files** (an `analysis_options.yaml`, `.gitignore`, `.gitattributes`, a `pubspec.lock`) and commits them; any other file outside `allow:` (Dart in lib/ or test/, JSON levels) is a stop;
 3. **proves tests-first:** every new test file is run against the code as it was; one that passes there **stops the run** (like a review FAIL), unless the job's brief has a line `tests-first: exempt <reason>` (pure refactors, docs; the exemption covers only test files under that brief's `allow:` paths and is logged);
 4. runs `tools/check.sh` on the combined tree (on a failure it fetches packages and tries once more), then `tools/review.sh`: a FAIL, or a touched `lib` file over **380 lines**, stops the run;
 5. commits and pushes each job (`tools/commit-job.sh --push`);
 6. has **a second worker review each job** (brief made from `docs/briefs/templates/job-review.md`), which writes `<job>-review-report.md`. The reviews run **in the background while the next wave works** (at most 3 flash jobs in all; the review chain counts as one). Review report files are committed at the next serial point (after the next wave's commit, or at the end of the run; staging only those files). The run's review waits for all of them, and so does a stop.
 
-At the end a last worker job (from `templates/run-review.md`) merges all of that into **`<briefs-dir>/REVIEW.md`**. Progress is in `<briefs-dir>/run.log`; a `STOPPED` line with no later `start at` line needs Claude.
+At the end a last worker job (from `templates/run-review.md`) merges all of that into **`<briefs-dir>/REVIEW.md`**. Progress is in `<briefs-dir>/run.log` (committed at each serial point, at a stop and at the end); a `STOPPED` line with no later `start at` line needs Claude. The runner's working files (`run-base`, `run-check.log`, `run-review.log`, `run-commit.log`, patches, markers) are in `.dart_tool/run-jobs/<briefs-dir>` (gitignored), not in the briefs dir; `run-base` is set once, at the batch's first start, and also logged in `run.log`. The patch taken from a result-4 folder holds only the brief's `allow:`/`report:` paths and the always-fine files, because a job folder is cut from a dirty tree and carries stray edits.
 
 `tools/run-jobs.sh <briefs-dir> --dry-run` shows what would run. `--no-review` leaves out the worker reviews.
 
@@ -81,13 +91,14 @@ Workers cannot run `tools/review.sh` or some shell commands in their sandbox; th
 1. **Tests-first is a gate.** A brief is done only when the runner's evidence (`run.log`, `run-findings.md`) shows each new test failing on the old code; a worker's claim in its report does not count. Put a new test in a new file, so the runner can check it.
 2. **Nothing is left open.** Every finding in `REVIEW.md` and every runner warning is closed before the batch is reported: fixed, or written to `docs/code-health.md` (code debt) or to the tracker row (owner decision), with a reason.
 3. **Unmeasured causes are not "Fixed".** A fix whose cause was not measured or reproduced says so in its report Summary; its tracker row gets status Fixed plus the agent note "Fixed, unverified: needs device check", and the batch report lists it. When the cause is unknown, prefer a measuring or logging step first.
-4. **Hand-copying from a kept worktree** after a stop is allowed only if `tools/review.sh` and the job's tests are re-run on the copied tree before the commit, and it is logged in `run.log`.
+4. **Hand-copying from a kept worktree** after a stop is allowed only if `tools/review.sh` and the job's tests are re-run on the copied tree before the commit, and it is logged in `run.log` as a `HAND-FIX <job>: <what>` line. On the next start the runner finds that line (or a `<job>-handfixed` file, or a `Hand-fixed:` line in the commit message), logs a `WARN`, and runs the job's tests-first proof against the commit's parent and its worker review, instead of skipping the job.
 5. **Verify before reporting.** The batch agent runs the full `tools/check.sh` on the final tip, and checks claims (tests-first, fixed counts) against `run.log` and `REVIEW.md`, not the reports.
 6. **Never `git add -A` or `git add .`**: stage named paths only (line-ending noise in generated plugin files and PNGs).
 7. **`allow:` separator is ` · `** (space, middle dot, space), never a plain space: a space-separated list is read as one path and every file is "outside".
 8. **Full waves.** Put up to 3 independent jobs (no shared files) in each wave; avoid single-job waves unless a job depends on the one before (the slowest job sets a wave's pace, so a short job costs nothing beside a long one).
 9. **Phone suite in `check:`.** A brief that changes behaviour pinned by `controller_app` (phone) tests puts `phone` in its `check:` line, so the worker fixes the pins itself instead of the runner's check failing twice.
-10. **Fix jobs: 3 findings or fewer** (see "Keep jobs short"); more findings become several jobs in one wave.
+10. **Name the tests that could break.** A job's brief lists, in `read:`, the existing test files its change could break (callers' tests, pinned strings, phone tests), so the worker reads them before editing and fixes the pins itself.
+11. **Fix jobs: 3 findings or fewer** (see "Keep jobs short"); more findings become several jobs in one wave.
 
 ## Before a build
 

@@ -34,6 +34,19 @@
 # and writes <briefs-dir>/REVIEW.md; Claude reads its Summary and writes one
 # fix brief. Progress and stops: <briefs-dir>/run.log (a STOPPED line with no
 # later `start at` line needs attention).
+# Working files (run-base, run-check.log, run-review.log, run-commit.log, patches,
+# markers) live in .dart_tool/run-jobs/<briefs-dir name> (gitignored), never in the
+# briefs dir; RUN_WORK overrides. run-base is set once, at the batch's first start
+# (also logged in run.log as `run-base <sha>`, so a fresh clone can recover it).
+# run.log IS committed (force-added) at every serial point, at a stop and at the
+# end, so STOPPED, HAND-FIX and final-check lines survive. A job committed by hand
+# after a stop is marked by a `HAND-FIX <job>: <what>` line in run.log (or a file
+# <briefs-dir>/<job>-handfixed, or a `Hand-fixed:` line in the commit message);
+# on a restart the runner logs a WARN and runs that job's tests-first proof and
+# worker review instead of skipping it. Review jobs drop generated churn too.
+# The patch taken from a result-4 job's kept folder holds only the brief's allow:
+# and report: paths plus the always-fine files (a folder cut from a dirty tree
+# also carries stray edits, which made `git apply` fail on a fix job).
 # NO_PUSH=1 in the environment commits without pushing.
 # Exit code: 0 done, 1 stopped, 2 bad use.
 set -u
@@ -51,17 +64,19 @@ while [ $# -gt 0 ]; do
     --logs) LOGS=${2:?}; shift 2 ;;
     --no-review) review=0; shift ;;
     --dry-run) dry=1; shift ;;
-    -h|--help) sed -n '2,38p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h|--help) sed -n '2,52p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     -*) echo "Unknown option: $1 (try --help)" >&2; exit 2 ;;
     *) B=${1%/}; shift ;;
   esac
 done
 [ -n "$B" ] && [ -f "$B/waves.txt" ] || { echo "Usage: tools/run-jobs.sh <briefs-dir> (it needs <briefs-dir>/waves.txt)" >&2; exit 2; }
 LOGS=${LOGS:-$B}
+WORK=${RUN_WORK:-.dart_tool/run-jobs/${B//\//_}}
+mkdir -p "$WORK"
 mapfile -t WAVES < <(sed 's/#.*//' "$B/waves.txt" | awk 'NF')
 
 note() { echo "$(date '+%F %T') $*" | tee -a "$B/run.log"; }
-stop() { note "STOPPED: $*"; wait; flush_reviews; exit 1; }
+stop() { note "STOPPED: $*"; wait; flush_reviews; save "runner: log at a stop" "$B/run.log"; exit 1; }
 finding() { echo "- $*" >> "$B/run-findings.md"; note "finding: $*"; }
 usage() { # usage <brief path>: the job's turns and minutes, from the flash usage log
   awk -F'	' -v b="$1" 'index($10, b){t=$3; m=$4/60} END{if(t) printf "%d turns, %.0f min", t, m}' "${FLASH_USAGE_LOG:-$HOME/.thumbparty/flash-usage.tsv}" 2>/dev/null
@@ -70,7 +85,7 @@ committed() { git cat-file -e "HEAD:$1" 2>/dev/null; }
 unchurn() { git checkout -- "${CHURN[@]}" 2>/dev/null; }
 save() { # save <message> <path>...: commit and push just these paths
   local msg=$1; shift
-  git reset -q; git add -- "$@" 2>/dev/null
+  git reset -q; git add -f -- "$@" 2>/dev/null
   git diff --cached --quiet && return 0
   git commit -q -m "$msg" && { [ -n "${NO_PUSH:-}" ] || git push -q origin "HEAD:refs/heads/$(git rev-parse --abbrev-ref HEAD)"; }
 }
@@ -90,10 +105,11 @@ fi
 # 2. A job that stopped with result 4: outside files that are generated churn are
 # dropped (logged), always-fine ones are applied; any other file stops the job.
 DROPPED="" APPLIED=""
+outside_files() { awk '/CHANGED FILES OUTSIDE/{on=1;next} /^---- flash:/{on=0} on&&/^  /{print $1}' "$1"; }
 apply_safe() { # apply_safe <job> <flash-log>; sets DROPPED and APPLIED, returns 0 when applied
   local log=$2 files tree f ex=()
   DROPPED="" APPLIED=""
-  files=$(awk '/CHANGED FILES OUTSIDE/{on=1;next} /^---- flash:/{on=0} on&&/^  /{print $1}' "$log")
+  files=$(outside_files "$log")
   tree=$(sed -n 's/.*the worktree is kept: //p' "$log" | tail -n 1)
   [ -n "$files" ] && [ -d "$tree" ] || return 1
   for f in $files; do
@@ -101,28 +117,36 @@ apply_safe() { # apply_safe <job> <flash-log>; sets DROPPED and APPLIED, returns
     elif [[ $f =~ $SAFE_OUTSIDE ]]; then APPLIED+="$f "
     else return 1; fi
   done
-  ( cd "$tree" && git ls-files --others --exclude-standard | xargs -r git add -N &&
-    git diff --binary HEAD -- . "${ex[@]}" ':(exclude,glob)tv_test_app/windows/flutter/**' ':(exclude,glob)site/shots/**' \
-      ':(exclude,glob)**/run-base*' ':(exclude,glob)docs/briefs/**/run-*.patch' ) > "$LOGS/run-$1.patch" || return 1
-  git apply --3way "$LOGS/run-$1.patch" >/dev/null 2>&1 || return 1
+ # only the job's own paths: allow:, report:, and the always-fine files
+  local want=() a
+  while IFS= read -r a; do [ -n "$a" ] && want+=("${a%/}"); done < <(sed -n 's/^\(allow\|report\): *//p' "$B/$1.md" | sed 's/ *· */\n/g')
+  for f in $APPLIED; do want+=("$f"); done
+  [ ${#want[@]} -gt 0 ] || return 1
+  ( cd "$tree" && git ls-files --others --exclude-standard -- "${want[@]}" | xargs -r git add -N &&
+    git diff --binary HEAD -- "${want[@]}" "${ex[@]}" ':(exclude,glob)tv_test_app/windows/flutter/**' ':(exclude,glob)site/shots/**' \
+      ':(exclude,glob)**/run-base*' ':(exclude,glob)docs/briefs/**/run-*.patch' ) > "$WORK/run-$1.patch" || return 1
+  git apply --3way "$WORK/run-$1.patch" >/dev/null 2>&1 || return 1
   git reset -q; git worktree remove --force "$tree" 2>/dev/null
   return 0
 }
 
 # 3. New test files must fail on the code as it was.
 tests_first() { # tests_first <job>...
-  local tests t pkg cmd tmp=$LOGS/run-old-$$ j a ex=() bad=()
+  local tests t pkg cmd tmp=$WORK/old-$$ j a ex=() bad=() base=HEAD
+  # TF_COMMIT=<sha> (a job committed by hand): its new test files are proved against <sha>^
   for j in "$@"; do
     grep -qE '^tests-first: *exempt +[^ ]' "$B/$j.md" || continue
     for a in $(sed -n 's/^allow: *//p' "$B/$j.md" | tr '·' ' '); do ex+=("$a"); done
   done
-  tests=$(git ls-files --others --exclude-standard -- '*_test.dart')
+  if [ -n "${TF_COMMIT:-}" ]; then base=$TF_COMMIT^; tests=$(git diff --name-only --diff-filter=A "$base" "$TF_COMMIT" -- '*_test.dart')
+  else tests=$(git ls-files --others --exclude-standard -- '*_test.dart'); fi
   [ -n "$tests" ] || return 0
-  git worktree add --detach -q "$tmp" HEAD 2>/dev/null || { finding "tests-first could not be checked (no temporary folder)"; return 0; }
+  git worktree add --detach -q "$tmp" "$base" 2>/dev/null || { finding "tests-first could not be checked (no temporary folder)"; return 0; }
   ( cd "$tmp" && flutter pub get >/dev/null 2>&1 )
   for t in $tests; do
     pkg=${t%%/test/*}
-    mkdir -p "$tmp/$(dirname "$t")" && cp "$t" "$tmp/$t"
+    mkdir -p "$tmp/$(dirname "$t")"
+    if [ -n "${TF_COMMIT:-}" ]; then git show "$TF_COMMIT:$t" > "$tmp/$t"; else cp "$t" "$tmp/$t"; fi
     cmd="dart test"; grep -q 'sdk: flutter' "$pkg/pubspec.yaml" 2>/dev/null && cmd="flutter test"
     if ( cd "$tmp/$pkg" && timeout 300 $cmd "${t#"$pkg"/}" >/dev/null 2>&1 ); then
       exempt=0
@@ -138,17 +162,17 @@ tests_first() { # tests_first <job>...
 # 4. The checks, with one self-repair, then the guideline checker.
 checks() {
   unchurn
-  if ! tools/check.sh > "$LOGS/run-check.log" 2>&1; then
+  if ! tools/check.sh > "$WORK/run-check.log" 2>&1; then
     note "checks failed; fetching packages and trying once more"
-    flutter pub get > "$LOGS/run-pub.log" 2>&1; unchurn
-    tools/check.sh > "$LOGS/run-check.log" 2>&1 || stop "checks failed twice on the combined tree after $* (see $LOGS/run-check.log); nothing of this wave is committed"
+    flutter pub get > "$WORK/run-pub.log" 2>&1; unchurn
+    tools/check.sh > "$WORK/run-check.log" 2>&1 || stop "checks failed twice on the combined tree after $* (see $WORK/run-check.log); nothing of this wave is committed"
   fi
   unchurn
   git ls-files --others --exclude-standard | xargs -r git add -N
-  tools/review.sh > "$LOGS/run-review.log" 2>&1
-  [ $? -eq 1 ] && stop "tools/review.sh found a FAIL after $* (see $LOGS/run-review.log); nothing of this wave is committed"
+  tools/review.sh > "$WORK/run-review.log" 2>&1
+  [ $? -eq 1 ] && stop "tools/review.sh found a FAIL after $* (see $WORK/run-review.log); nothing of this wave is committed"
   local big
-  big=$(awk -v max=$SIZE_STOP '$1=="NOTE"&&$2=="size"&&$4+0>max{print $3" ("$4" lines)"}' "$LOGS/run-review.log" | grep '/lib/' | tr '\n' ' ')
+  big=$(awk -v max=$SIZE_STOP '$1=="NOTE"&&$2=="size"&&$4+0>max{print $3" ("$4" lines)"}' "$WORK/run-review.log" | grep '/lib/' | tr '\n' ' ')
   git reset -q
   [ -n "$big" ] && stop "a touched lib file is over $SIZE_STOP lines and must be split: $big; nothing of this wave is committed"
   return 0
@@ -165,15 +189,25 @@ review_brief() { # review_brief <job> <from-sha> <to-sha>
 # wave's jobs at most 3 flash jobs run: see slot_wait). A review's report is
 # committed only at a serial point (flush_reviews: after the next wave's commit,
 # or the end of the run), staging just the review report files.
+review_salvage() { # review_salvage <job> <flash-log>: a review that stopped with result 4 only because of generated churn
+  local j=$1 log=$2 files tree f dropped=""
+  files=$(outside_files "$log"); tree=$(sed -n 's/.*the worktree is kept: //p' "$log" | tail -n 1)
+  [ -n "$files" ] && [ -d "$tree/$B" ] && [ -f "$tree/$B/$j-review-report.md" ] || return 1
+  for f in $files; do [[ $f =~ $CHURN_OUTSIDE ]] && dropped+="$f " || return 1; done
+  cp "$tree/$B/$j-review-report.md" "$B/$j-review-report.md" || return 1
+  git worktree remove --force "$tree" 2>/dev/null
+  note "$j-review: dropped generated churn outside its list: $dropped(report kept)"
+}
 PENDING=()   # jobs whose review was started and whose report is not committed yet
 REVPIDS=()   # the background chains' pids
 start_reviews() { # start_reviews <job>...: briefs are already committed
   local j
-  for j in "$@"; do rm -f "$LOGS/run-rev-$j.done"; PENDING+=("$j"); done
+  for j in "$@"; do rm -f "$WORK/run-rev-$j.done"; PENDING+=("$j"); done
   (
     for j in "$@"; do
       tools/flash.sh --brief "$B/$j-review.md" > "$LOGS/flash-$j-review.log" 2>&1
-      : > "$LOGS/run-rev-$j.done"
+      [ $? -eq 4 ] && review_salvage "$j" "$LOGS/flash-$j-review.log"
+      : > "$WORK/run-rev-$j.done"
     done
   ) &
   REVPIDS+=($!)
@@ -183,8 +217,8 @@ flush_reviews() { # flush_reviews [wait]: commit the reports of reviews that hav
   if [ "${1:-}" = wait ]; then for p in "${REVPIDS[@]:-}"; do [ -n "$p" ] && wait "$p"; done; REVPIDS=(); fi
   for j in "${PENDING[@]:-}"; do
     [ -n "$j" ] || continue
-    [ -f "$LOGS/run-rev-$j.done" ] || { keep+=("$j"); continue; }
-    rm -f "$LOGS/run-rev-$j.done"
+    [ -f "$WORK/run-rev-$j.done" ] || { keep+=("$j"); continue; }
+    rm -f "$WORK/run-rev-$j.done"
     if [ -f "$B/$j-review-report.md" ]; then
       save "review of $j (worker)" "$B/$j-review-report.md"; note "reviewed $j: $(grep -c '^- \*\*' "$B/$j-review-report.md") finding(s)"
     else
@@ -197,10 +231,32 @@ slot_wait() { # at most 3 flash jobs at once, counting the background review cha
   while [ "$(jobs -rp | wc -l)" -ge 3 ]; do sleep 5; done
 }
 
+handfixed() { # handfixed <job>: was its commit made by hand after a stop?
+  [ -f "$B/$1-handfixed" ] && return 0
+  grep -qE "HAND-FIX.*(^|[^A-Za-z0-9_-])$1([^A-Za-z0-9_-]|\$)" "$B/run.log" 2>/dev/null && return 0
+  git log -1 --format=%B -- "$B/$1-report.md" | grep -qi '^Hand-fixed:'
+}
+handfix_recheck() { # handfix_recheck <job>: the proof and review a hand commit skipped; once per job
+  local j=$1 c
+  [ -f "$WORK/rechecked-$j" ] && return 0
+  c=$(git log -1 --format=%H -- "$B/$j-report.md")
+  note "WARN: $j was committed by hand ($(git rev-parse --short "$c")); a plain restart would skip its tests-first proof and worker review, so both run now"
+  TF_COMMIT=$c tests_first "$j"
+  if [ $review -eq 1 ] && ! committed "$B/$j-review-report.md"; then
+    committed "$B/$j-review.md" || { review_brief "$j" "$c^" "$c"; save "runner: review brief for hand-fixed $j" "$B/$j-review.md"; }
+    start_reviews "$j"
+  fi
+  : > "$WORK/rechecked-$j"
+}
+
 branch=$(git rev-parse --abbrev-ref HEAD)
 note "start at $(git rev-parse --short HEAD) on $branch"
-[ -f "$B/run-base" ] || git rev-parse HEAD > "$B/run-base"
-[ -f .dart_tool/package_config.json ] || { note "fetching packages (new folder)"; flutter pub get > "$LOGS/run-pub.log" 2>&1; }
+if [ ! -s "$WORK/run-base" ]; then # once, at the batch's first start; recovered from run.log on a fresh clone
+  sed -n 's/.* run-base \([0-9a-f]\{7,40\}\)$//p' "$B/run.log" 2>/dev/null | head -n 1 > "$WORK/run-base"
+  [ -s "$WORK/run-base" ] || { [ -s "$B/run-base" ] && cp "$B/run-base" "$WORK/run-base" || git rev-parse HEAD > "$WORK/run-base"; }
+  note "run-base $(cat "$WORK/run-base")"
+fi
+[ -f .dart_tool/package_config.json ] || { note "fetching packages (new folder)"; flutter pub get > "$WORK/run-pub.log" 2>&1; }
 for r in "$B"/*-review-report.md; do # reports of an earlier run that stopped before it could commit them
   [ -f "$r" ] && ! committed "$r" && { save "review report left by an earlier run: $(basename "$r")" "$r"; note "committed the left-over $(basename "$r")"; }
 done
@@ -211,7 +267,10 @@ for wave in "${WAVES[@]}"; do
   for j in $wave; do
     [ -f "$B/$j.md" ] || stop "no brief $B/$j.md"
     committed "$B/$j.md" || stop "the brief $B/$j.md is not committed (job folders are cut from the last commit)"
-    if committed "$B/$j-report.md"; then note "skip $j (already committed)"; continue; fi
+    if committed "$B/$j-report.md"; then
+      if handfixed "$j"; then handfix_recheck "$j"; fi
+      note "skip $j (already committed)"; continue
+    fi
     if [ -f "$B/$j-report.md" ]; then note "resume $j (applied by hand, not committed yet)"; resumed+=("$j"); continue; fi
     slot_wait
     [ ${#started[@]} -gt 0 ] && sleep 25
@@ -240,14 +299,14 @@ for wave in "${WAVES[@]}"; do
     for j in "${ok[@]}"; do
       head -n 40 "$B/$j-report.md" | grep -q '^## Summary' || finding "$j's report has no Summary block in its first 40 lines"
       from=$(git rev-parse HEAD)
-      tools/commit-job.sh "$B/$j.md" $([ -n "${NO_PUSH:-}" ] || echo --push) >> "$LOGS/run-commit.log" 2>&1 || stop "commit of $j refused (see $LOGS/run-commit.log)"
+      tools/commit-job.sh "$B/$j.md" $([ -n "${NO_PUSH:-}" ] || echo --push) >> "$WORK/run-commit.log" 2>&1 || stop "commit of $j refused (see $WORK/run-commit.log)"
       note "committed $j: $(git log --oneline -1)"
       if [ $review -eq 1 ] && ! committed "$B/$j-review-report.md"; then
         review_brief "$j" "$from" "$(git rev-parse HEAD)"; reviewed+=("$j")
       fi
     done
     [ ${#extra[@]} -gt 0 ] && save "files outside the jobs' lists, applied by the runner (always-fine list): ${ok[*]}" "${extra[@]}"
-    paths=("$B/run.log" "$B/run-base"); [ -f "$B/run-findings.md" ] && paths+=("$B/run-findings.md")
+    paths=("$B/run.log"); [ -f "$B/run-findings.md" ] && paths+=("$B/run-findings.md")
     for j in "${reviewed[@]}"; do paths+=("$B/$j-review.md"); done
     save "runner: log and review briefs after ${ok[*]}" "${paths[@]}"
     flush_reviews
@@ -258,7 +317,7 @@ done
 
 flush_reviews wait
 if [ $review -eq 1 ] && ! committed "$B/REVIEW.md"; then
-  base=$(cat "$B/run-base")
+  base=$(cat "$WORK/run-base")
   files=$(git diff --name-only "$base" HEAD | grep -Ev '^(site/shots/|.*/flutter/generated_|docs/briefs/)' | tr '\n' ' ')
   sed -e "s|{DIR}|$B|g" -e "s|{RANGE}|$base..$(git rev-parse HEAD)|g" -e "s|{FILES}|$files|g" \
     docs/briefs/templates/run-review.md > "$B/run-review.md"

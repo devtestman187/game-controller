@@ -1,6 +1,6 @@
 job: <milestone> step<N> G<gate> — <what, in one line>
 stop: after G<gate>. <what not to start yet>
-read: <contract or design section> · <the survey or last report, the parts that matter> · docs/coding-guidelines.md · docs/code-health.md (<area>: the items Claude names below)
+read: <contract or design section> · <the survey or last report, the parts that matter> · docs/coding-guidelines.md · docs/code-health.md (<area>: the items Claude names below) · <the existing test files this change could break: callers' tests, pinned strings, phone tests; read them before editing>
 
 decisions (answers to <last report> Q1–n): Q1 … · Q2 …
 code health: <the code-health.md items this job also does, or "none">
