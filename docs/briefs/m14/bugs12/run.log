@@ -18,3 +18,4 @@
 2026-11-15 16:24:41 start the run's review
 2026-11-15 16:32:28 finding: the run's review wrote no REVIEW.md (see docs/briefs/m14/bugs12/flash-run-review.log)
 2026-11-15 16:32:28 DONE: every job is committed. Claude reads the Summary of docs/briefs/m14/bugs12/REVIEW.md, verifies its findings and writes one fix brief
+2026-11-15 16:36:31 HAND-FIX bugs12-wrap: tablet test for the host Stats row, a doc line on the duplicated sharing wording, code-health notes; the tests-first proofs of b023-stats-card (fails +2 -1 on b843a1a) and b023-first-host-consent (fails +1 -3 on 287579b) were run by hand, the runner had skipped them; review.sh 0 fail, settings_stats_row_test 4 pass

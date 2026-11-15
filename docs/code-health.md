@@ -130,6 +130,12 @@ The "could" findings of [bugs1's review](briefs/m14/bugs1/REVIEW.md) that the fi
 | `session_clean.dart`'s name fits half its contents: it holds `HostType` and `cleanDevice` beside the string cleaning b5-1 moved there. | Low: a rename, no behaviour, `metrics.dart` keeps its exports | A reader knows what the file holds | when touched: rename it `session_format.dart` |
 | `cleanDevice` (`session_clean.dart:40-44`) keeps bare `16`, `40` and `2000` for its text and device-size bounds, against the magic-number rule; the move re-added them unchanged. | Low: it only changes what a bad device reports | One place to change a bound | when touched: name them (`maxModelChars`, `maxDeviceMm`) with the reason in the doc |
 
+### M14 bugs12 leftovers (B-023 review of Nov 15, 2026)
+
+- **Host Stats row hint logic**: `_HostStatsStatus` (`settings_sections.dart`) tests `state.consent == null` for the "Tap to choose" hint; the text layer could return a nullable hint (`SettingsText.hostShareHint(StatsState)`). Low risk, when the row is touched next.
+- **Host Stats row on error**: `SettingsText.hostShareLine` shows "last try failed" and drops the uploaded/waiting counts, while `HostText.statusLine` keeps them. Kept short on purpose; revisit if the owner wants the counts.
+- **Consent test key**: tests spell the prefs key `'statsConsent'` (private in `live_stats.dart`); a `party_test` accessor would keep it in one place. Pre-existing in `host_stats_test`.
+
 ## Before a milestone
 
 | Before | What | Risk | Benefit of doing it first | Rec. |

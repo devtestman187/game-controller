@@ -54,6 +54,16 @@ void main() {
       await tester.runAsync(host.dispose);
     });
 
+    testWidgets('the two-line row still shows its status and hint on a tablet', (tester) async {
+      final stats = party_test.FakeStats();
+      final host = await _hostWithStats(tester, stats, consent: ConsentAnswer.dismiss, tablet: true);
+      await openSettings(tester);
+      await scrollTo(tester, find.byKey(const Key('settingsHostStats')));
+      expect(find.text('Sharing hosted sessions: not answered'), findsOneWidget);
+      expect(find.text('Tap to choose'), findsOneWidget);
+      await tester.runAsync(host.dispose);
+    });
+
     testWidgets('an answered row opens the Stats screen without asking again', (tester) async {
       final stats = party_test.FakeStats(consent: true);
       final host = await _hostWithStats(tester, stats);
@@ -93,7 +103,8 @@ Future<PhoneHost> _hostWithStats(
   WidgetTester tester,
   party_test.FakeStats stats, {
   ConsentAnswer consent = ConsentAnswer.dontShare,
+  bool tablet = false,
 }) async {
-  await pumpHostApp(tester, extra: [party.statsServiceProvider.overrideWithValue(stats)]);
+  await pumpHostApp(tester, tablet: tablet, extra: [party.statsServiceProvider.overrideWithValue(stats)]);
   return enterHostMode(tester, consent: consent);
 }

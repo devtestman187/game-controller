@@ -55,7 +55,8 @@ abstract final class SettingsText {
 
   /// The host Stats row's status (B-023), in [HostText.statusLine]'s states:
   /// whether an adult has answered, and what the sessions this phone kept are
-  /// doing. No new state logic: the same fields as the Stats screen's line.
+  /// doing. No new state logic: the same fields as the Stats screen's line,
+  /// worded again in short: a new sharing state goes in both ([HostText.statusLine]).
   static String hostShareLine(StatsState s) {
     if (s.consent == null) return '${_hostShare}not answered';
     if (s.consent != true) return '${_hostShare}off';
