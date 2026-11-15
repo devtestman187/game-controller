@@ -14,13 +14,14 @@ void main() {
   late SessionCollector session;
   late SessionRecorder recorder;
 
-  /// The session's rounds, as the summary writes them, without the start
-  /// offset: the host's clock is real in this file, so that value moves from
-  /// run to run, and round_offset_recorder_test covers it.
-  List<Object?> rounds() => [
-    for (final round in session.summary(0)['rounds'] as List<Object?>)
-      {...(round as Map<String, Object?>)}..remove('startS'),
-  ];
+  /// The recorder's clock, in ms: the session began at 0, so a round started
+  /// now reads 61.5 s into the session.
+  late int clockMs;
+
+  /// The session's rounds, as the summary writes them. The recorder's clock is
+  /// fixed at [clockMs], 61.5 s into the session, so each round's start offset
+  /// is exact.
+  List<Object?> rounds() => session.summary(clockMs)['rounds'] as List<Object?>;
 
   /// P1's record, as the summary writes it.
   Map<String, Object?> player() => (session.summary(0)['players'] as List).single as Map<String, Object?>;
@@ -43,7 +44,8 @@ void main() {
       startMs: 0,
     );
     session.joined('p1', number: 1, atMs: 0);
-    recorder = SessionRecorder(host: host, session: () => session);
+    clockMs = 61500;
+    recorder = SessionRecorder(host: host, session: () => session, nowMs: () => clockMs);
   });
 
   tearDown(() async {
@@ -80,7 +82,7 @@ void main() {
     );
 
     expect(rounds(), [
-      {'game': 'puzzle', 'hz': 60, 'timeS': 42.0, 'players': 1, 'winner': 1},
+      {'game': 'puzzle', 'hz': 60, 'timeS': 42.0, 'startS': 61.5, 'players': 1, 'winner': 1},
     ]);
     expect(gameCounts('puzzle'), {'wins': 1, 'rounds': 1, 'rounds_solo': 1});
   });
@@ -104,6 +106,7 @@ void main() {
       'game': 'arena',
       'hz': 60,
       'timeS': 60.0,
+      'startS': 61.5,
       'players': 1,
       'winner': 1,
       'tags': ['mode_bumper', 'map_playroom', 'robo_easy', 'finished', 'night_1of3'],
@@ -125,7 +128,7 @@ void main() {
       ),
     );
 
-    expect(rounds().single, {'game': 'arena', 'hz': 60, 'timeS': 60.0, 'players': 1, 'robot': true});
+    expect(rounds().single, {'game': 'arena', 'hz': 60, 'timeS': 60.0, 'startS': 61.5, 'players': 1, 'robot': true});
     expect(gameCounts('arena'), {'rounds': 1}, reason: 'Robo is no player, so no player won');
   });
 }

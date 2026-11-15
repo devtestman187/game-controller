@@ -58,8 +58,8 @@ void main() {
     expect(framesOf(c), {'drawn': 120, 'dropped': 3});
   });
 
-  test('the rounds CSV has the frames and the fps after players', () {
-    expect(roundsCsvHeader, contains(',players,frames_drawn,frames_late,fps'));
+  test('the rounds CSV has the frames, the fps and the start offset after players', () {
+    expect(roundsCsvHeader, endsWith(',players,frames_drawn,frames_late,fps,start_s'));
     expect(roundsCsvHeader.split(','), hasLength(17)); // The 13 before, the three, and the start offset.
   });
 

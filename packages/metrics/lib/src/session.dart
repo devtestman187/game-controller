@@ -204,7 +204,8 @@ class SessionCollector {
 
   /// [atMs] on the host's clock in seconds from the session's start, to a
   /// tenth. Never negative: a clock that runs backwards reads as the start.
-  double _sinceStartS(int atMs) => double.parse((max(0, atMs - startMs) / 1000).toStringAsFixed(1));
+  double _sinceStartS(int atMs) =>
+      double.parse((max(0, atMs - startMs) / Duration.millisecondsPerSecond).toStringAsFixed(1));
 
   /// A round ended. [modes] is each player's mode; [winnerId] won, or
   /// [winnerIds] (a team) did; [draw]: a race nobody won. The round keeps the

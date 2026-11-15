@@ -18,10 +18,13 @@ class SessionRecorder {
   /// [session] returns the session to record into, or null when none runs,
   /// so the recorder follows the host's session. [log] gets short lines for
   /// the tester. [random] makes the rating prompts' IDs, injected so tests
-  /// are deterministic.
-  SessionRecorder({required this.host, required this.session, LogSink? log, Random? random})
+  /// are deterministic. [nowMs] is the clock the recorder reads, in ms from
+  /// the same origin as the session's start, and is the host's own unless a
+  /// test injects one, so a test needs no real time (M14 stats b5-2).
+  SessionRecorder({required this.host, required this.session, LogSink? log, Random? random, int Function()? nowMs})
     : _log = log ?? ((_) {}),
-      _random = random ?? Random.secure();
+      _random = random ?? Random.secure(),
+      _injectedClock = nowMs;
 
   /// The game host whose players and records are recorded.
   final ServerGameHost host;
@@ -31,6 +34,11 @@ class SessionRecorder {
 
   final LogSink _log;
   final Random _random;
+  final int Function()? _injectedClock;
+
+  /// Now in ms on the recorder's clock: the host's, or the one a test
+  /// injected, which counts from the same start.
+  int get _now => _injectedClock?.call() ?? host.nowMs;
   final _ratings = RatingScheduler();
   final _askedGames = <String, String>{};
 
@@ -71,9 +79,9 @@ class SessionRecorder {
     switch (r.name) {
       case 'round_start':
         // The round's game records the rate of the view it runs (m12 §0.4),
-        // and the host's own clock says when it began (M14 stats b5-2).
+        // and the recorder's clock says when it began (M14 stats b5-2).
         final hz = r.data['hz'];
-        s.roundStarted(hz: hz is int ? hz : null, atMs: host.nowMs);
+        s.roundStarted(hz: hz is int ? hz : null, atMs: _now);
       case 'round_end':
         _roundEnd(s, r);
       case 'frames':
@@ -138,10 +146,11 @@ class SessionRecorder {
   /// says it is their turn (M9). [tags] are the round's, kept for the answer.
   void _maybeAskRatings(String game, Iterable<String> players, List<String> tags) {
     for (final id in players) {
-      if (!_ratings.gameEnded(id, host.nowMs)) continue;
+      final now = _now;
+      if (!_ratings.gameEnded(id, now)) continue;
       final askId = List.generate(6, (_) => _random.nextInt(256).toRadixString(16).padLeft(2, '0')).join();
       if (host.askRating(id, id: askId, game: game)) {
-        _ratings.asked(id, host.nowMs);
+        _ratings.asked(id, now);
         _askedGames[askId] = game;
         _askedRounds[askId] = tags;
         _log('Stats: asked P${host.players.where((p) => p.id == id).firstOrNull?.number ?? '?'} how the controls felt');
