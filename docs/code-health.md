@@ -103,6 +103,7 @@ The "could" findings of [bugs1's review](briefs/m14/bugs1/REVIEW.md) that the fi
 - **party_host tests**: `controller_menus_test.dart:143` uses a bare 24 press count; name it or count the buttons.
 - **puzzle_game (messages)**: Medium's big-piece message reads `Mark 1 or 2 pieces "big".`; restore "one or two" if the wording matters.
 - **metrics**: the recorder's `player_result` path (moving/placing seconds) has no party_host test; add one before the next metrics change.
+- **puzzle_game (tray packing)**: the tray-packing test's visible-share floor was lowered from 0.55 to 0.45 in b013 because two Hard pieces (the dragon's front leg 0.524, the tractor's ground 0.471) sit under 0.55 in the narrowest made-up tray. Risk: a Hard piece partly hidden in a very narrow tray. Rec.: a device look at Hard dragon and tractor on the smallest phone, or reshape those pieces; the Medium butterfly also loses its mirror on the 852 px phone (pinned in mirror_pad_test).
 - **party_host (best times)**: the old Medium best times stay beside the redone boards and cannot be compared; owner decision whether to clear the six Medium boards once (tracker B-012).
 
 ## Before a milestone
