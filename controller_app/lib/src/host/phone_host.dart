@@ -30,12 +30,17 @@ typedef PhoneHostInputs = ({
 /// Builds the host this app runs; a test overrides it with its own inputs.
 typedef PhoneHostBuilder = PhoneHost Function(PhoneHostInputs inputs, {required bool playsHere});
 
+/// What this host's own app lifecycle callbacks need (B-019): the log a
+/// failure goes to, and the stats the background and the return drive. The app
+/// gives the host service's own stats; a test passes a fake to count the calls.
+typedef _AppServices = ({LogSink log, party.StatsService stats});
+
 /// The phone as a host (m12 §2.7, D1): the service, the link this phone's own
 /// player pairs on when it plays here, and the presence that pauses a round
 /// while the app is hidden. No Riverpod here, so the facts the UI asks
 /// ([live], [disposed]) are plain fields.
 class PhoneHost {
-  PhoneHost._(this.service, this.listener, this.client, this.playsHere, this._start, [this._nowMs]);
+  PhoneHost._(this.service, this.listener, this.client, this.playsHere, this._start, this._app, [this._nowMs]);
 
   /// Builds the host the phone app runs: the server, and, when this phone
   /// plays here ("Play on this phone"), the in-process link for its own
@@ -43,8 +48,15 @@ class PhoneHost {
   /// the phone the game's screen, like the TV, so [playsHere] false builds no
   /// link and no client and pairs no player (m12 bug 1108a rule A).
   /// [nowMs] is the clock the presence measures a hidden period on; a test
-  /// moves it, the app leaves it out.
-  factory PhoneHost.live(PhoneHostInputs inputs, {required bool playsHere, int Function()? nowMs}) {
+  /// moves it, the app leaves it out. [stats] is what the app lifecycle
+  /// drives (B-019): the host service's own, and a test passes a fake to count
+  /// the calls.
+  factory PhoneHost.live(
+    PhoneHostInputs inputs, {
+    required bool playsHere,
+    int Function()? nowMs,
+    party.StatsService? stats,
+  }) {
     final listener = playsHere ? InProcessListener() : null;
     final service = party.LiveHostService(
       prefs: inputs.prefs,
@@ -63,12 +75,19 @@ class PhoneHost {
             log: inputs.log.sink('own'),
           )
         : null;
-    return PhoneHost._(service, listener, client, playsHere, inputs.start, nowMs);
+    return PhoneHost._(service, listener, client, playsHere, inputs.start, (
+      log: inputs.log.sink('host'),
+      stats: stats ?? service.stats,
+    ), nowMs);
   }
 
   /// The log of the start that built this host: what its steps' ms count on
   /// (m12 bug 1108b).
   final party.HostStartLog _start;
+
+  /// The app's own log and stats, which this host's lifecycle callbacks use
+  /// (B-019).
+  final _AppServices _app;
 
   /// The host service: the server, the stats and the games. The live class,
   /// not `HostService`, because only it has `start()` — as the TV app holds
@@ -145,9 +164,22 @@ class PhoneHost {
       nowMs: _nowMs,
       graceS: hostGraceS,
     );
-    _lifecycle = AppLifecycleListener(onHide: presence.hidden, onShow: () => unawaited(presence.shown()));
+    _lifecycle = AppLifecycleListener(
+      onHide: presence.hidden,
+      onShow: () => unawaited(presence.shown()),
+      // The system stops the host's timers once the app is in the background,
+      // so the session is ended and queued there, and the queue is retried
+      // when the app is back (B-019).
+      onPause: () => _statsStep(_app.stats.pause, 'Stats pause'),
+      onResume: () => _statsStep(_app.stats.resume, 'Stats resume'),
+    );
     _started = true;
   }
+
+  /// Runs a stats step from an app lifecycle callback, which must never throw
+  /// (B-019): a failure is logged and the host carries on.
+  void _statsStep(Future<void> Function() step, String what) =>
+      unawaited(step().catchError((Object e) => _app.log('$what failed: $e')));
 
   /// Logs the own player's pairing, once: the start's line for it (m12 bug
   /// 1108b). The subscription ends with the host, or with the pairing itself.
