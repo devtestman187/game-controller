@@ -82,21 +82,22 @@ void main() {
   });
 
   test('the rounds CSV ends with the start offset, after the fps', () {
-    expect(roundsCsvHeader, endsWith(',frames_late,fps,start_s'));
-    expect(roundsCsvHeader.split(','), hasLength(17)); // The 16 before, plus the offset.
+    expect(roundsCsvHeader, endsWith(',frames_late,fps,start_s,host_build'));
+    // The 16 before, the offset and the host build (M14 stats).
+    expect(roundsCsvHeader.split(','), hasLength(18));
   });
 
   test('a round row carries its start offset, to one decimal', () {
     final c = collector()
       ..roundStarted(hz: 60, atMs: 1500)
       ..roundEnded('arena', timeS: 60, modes: {'phone-a': 'dpad'});
-    expect(rowOf(c).split(',').last, '1.5');
+    expect(rowOf(c).split(',')[16], '1.5');
   });
 
   test('a round with no offset leaves its cell empty', () {
     final c = collector()..roundEnded('arena', timeS: 60, modes: {'phone-a': 'dpad'});
-    expect(rowOf(c).split(','), hasLength(17));
-    expect(rowOf(c).split(',').last, '');
+    expect(rowOf(c).split(','), hasLength(18));
+    expect(rowOf(c).split(',')[16], '');
   });
 
   test('a round from before the offset was kept still parses, with an empty cell', () {
@@ -108,7 +109,7 @@ void main() {
       ],
     };
     final cells = csvRounds([old]).split('\n').last.split(',');
-    expect(cells, hasLength(17));
-    expect(cells.sublist(4), ['12.5', '', '', '', '', '0.14.0', '', '', '1', '', '', '', '']);
+    expect(cells, hasLength(18));
+    expect(cells.sublist(4), ['12.5', '', '', '', '', '0.14.0', '', '', '1', '', '', '', '', '']);
   });
 }

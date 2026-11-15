@@ -1,3 +1,4 @@
+import 'session_clean.dart';
 import 'session_player.dart';
 
 /// One player in one input mode in one session: the report's unit of
@@ -39,6 +40,8 @@ final class ModeRow {
     this.viewLate,
     this.hostApp = '',
     this.app = '',
+    this.hostBuild = '',
+    this.build = '',
   });
 
   final String session;
@@ -98,6 +101,11 @@ final class ModeRow {
   final String hostApp;
   final String app;
 
+  /// The host's and the player's build numbers (M14 stats), for telling the
+  /// builds of one version apart: empty when the version carried none.
+  final String hostBuild;
+  final String build;
+
   /// The mode's full time, idle included.
   double get openMinutes => ms / 60000;
 
@@ -111,7 +119,7 @@ final class ModeRow {
       'session,date,host,install,device,model,platform,mode,minutes,touches,presses,empty,near,slide,rapid,'
       'games,wins,good,okay,bad,early_switch,first_mode,input_median_ms,input_p95_ms,frustration_per_min,'
       'open_minutes,touch_median_ms,touch_p95_ms,jitter_median_ms,jitter_p95_ms,view_frames,view_gaps,view_late,'
-      'host_app,app';
+      'host_app,app,host_build,build';
 
   String toCsv() => [
     session,
@@ -149,6 +157,8 @@ final class ModeRow {
     viewLate ?? '',
     appCell(hostApp),
     appCell(app),
+    hostBuild,
+    build,
   ].join(',');
 }
 
@@ -156,6 +166,10 @@ final class ModeRow {
 /// model such as "iPhone15,2" has it), but a comma here would shift the row's
 /// fields, so the cell reads it as a semicolon.
 String appCell(String app) => app.replaceAll(',', ';');
+
+/// A build number as a CSV cell (M14 stats): the summary keeps 1 to 9 digits,
+/// and anything else reads empty, so a cell never shifts the row's fields.
+String buildCell(Object? build) => build is String && buildPattern.hasMatch(build) ? build : '';
 
 String _csv(String s) => s.contains(',') || s.contains('"') ? '"${s.replaceAll('"', '""')}"' : s;
 
@@ -167,6 +181,7 @@ List<ModeRow> rowsOf(Map<String, Object?> summary) {
     date: summary['date'] as String? ?? '',
     host: host['type'] as String? ?? '',
     hostApp: host['app'] as String? ?? '',
+    hostBuild: buildCell(host['build']),
   );
   return [
     for (final player in (summary['players'] as List?) ?? const [])
@@ -196,7 +211,7 @@ class _PlayerRows {
       firstMode = player['firstMode'] as String?;
 
   final Map player;
-  final ({String session, String date, String host, String hostApp}) about;
+  final ({String session, String date, String host, String hostApp, String hostBuild}) about;
   final Map device;
   final List<Map> segments;
   final List<Map> ratings;
@@ -269,6 +284,8 @@ class _PlayerRows {
       viewLate: view['late'] as int?,
       hostApp: about.hostApp,
       app: player['app'] as String? ?? '',
+      hostBuild: about.hostBuild,
+      build: buildCell(player['build']),
     );
   }
 }

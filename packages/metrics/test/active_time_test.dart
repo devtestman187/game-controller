@@ -135,11 +135,11 @@ void main() {
       expect(group.openMinutes, 30000 / 60000);
       expect(table('By input mode', [group]), contains('open min'));
 
-      // The seven viewer columns (m12) and the two app versions (M14) come last.
-      expect(ModeRow.csvHeader, endsWith(',view_late,host_app,app'));
+      // The seven viewer columns (m12) and the two app versions and builds (M14) come last.
+      expect(ModeRow.csvHeader, endsWith(',view_late,host_app,app,host_build,build'));
       final fields = row.toCsv().split(',');
       expect(fields, hasLength(ModeRow.csvHeader.split(',').length));
-      expect(fields, hasLength(35)); // The 26 before, plus the viewer and app columns.
+      expect(fields, hasLength(37)); // The 26 before, plus the viewer, app and build columns.
       expect(fields[8], '0.22'); // The minutes column: active minutes.
       expect(fields[25], '0.50'); // Open minutes, 30000 ms; the viewing cells follow, empty.
     });

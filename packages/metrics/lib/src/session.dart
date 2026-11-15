@@ -23,16 +23,20 @@ class SessionCollector {
   SessionCollector({
     required this.id,
     required this.hostType,
-    required this.hostApp,
+    required String hostApp,
     required this.startedAt,
     required this.startMs,
     this.hostOs,
-  });
+  }) : _hostApp = splitAppBuild(hostApp);
 
   /// Random session ID.
   final String id;
   final String hostType;
-  final String hostApp;
+  final ({String app, String build}) _hostApp;
+
+  /// The host app's bare version, with its build number left out (M14
+  /// stats): the apps send "0.14.0+654".
+  String get hostApp => _hostApp.app;
   final String? hostOs;
   final DateTime startedAt;
 
@@ -72,13 +76,22 @@ class SessionCollector {
     String app = '',
     DeviceInfo? device,
   }) {
-    app = cleanText(app, 24) ?? '';
+    final version = splitAppBuild(cleanText(app, 24) ?? '');
     platform = cleanText(platform, 16) ?? '';
     device = device == null ? null : cleanDevice(device);
-    final p = _players[id] ??= PlayerRecord(number: number, local: local, platform: platform, app: app, device: device);
+    final p = _players[id] ??= PlayerRecord(
+      number: number,
+      local: local,
+      platform: platform,
+      app: version.app,
+      build: version.build,
+      device: device,
+    );
     p.number = number;
     if (inProcess) p.inProcess = true;
-    if (app.isNotEmpty) p.app = app;
+    // A reconnect that names no version keeps the one already known.
+    if (version.app.isNotEmpty) p.app = version.app;
+    if (version.build.isNotEmpty) p.build = version.build;
     p.device = device ?? p.device;
     if (p.joinedAtMs != null) return; // Already here.
     final left = p.leftAtMs;
@@ -322,7 +335,14 @@ class SessionCollector {
     return {
       'schema': summarySchema,
       'id': id,
-      'host': {'type': hostType, 'app': hostApp, 'os': ?hostOs, 'device': ?_device.toJson()},
+      'host': {
+        'type': hostType,
+        'app': hostApp,
+        // The build number, when the version carried one (M14 stats).
+        if (_hostApp.build.isNotEmpty) 'build': _hostApp.build,
+        'os': ?hostOs,
+        'device': ?_device.toJson(),
+      },
       // The day only, not the time: enough for the report, less to know.
       'date': startedAt.toUtc().toIso8601String().substring(0, 10),
       'durationS': (max(0, atMs - startMs) / 1000).round(),

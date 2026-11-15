@@ -85,9 +85,9 @@ void main() {
 
     test('the CSV keeps the seven numbers, after the open minutes', () {
       final fields = rowsOf(viewSummary()).single.toCsv().split(',');
-      expect(fields, hasLength(35));
+      expect(fields, hasLength(37));
       expect(fields.sublist(26, 33), ['41', '62', '3', '9', '720', '3', '5']);
-      expect(csv([viewSummary()]).split('\n').last, endsWith(',41,62,3,9,720,3,5,0.12.0,0.12.0'));
+      expect(csv([viewSummary()]).split('\n').last, endsWith(',41,62,3,9,720,3,5,0.12.0,0.12.0,,'));
     });
 
     test('a phone that does not view shows a dash and empty CSV cells', () {

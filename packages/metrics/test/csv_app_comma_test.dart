@@ -43,15 +43,15 @@ void main() {
   group('an app version with a comma stays one cell', () {
     test('the stats CSV row has as many fields as its header', () {
       final lines = csv([summary(app: '1.0,2')]).split('\n');
-      expect(lines.first.split(','), hasLength(35));
-      expect(lines.last.split(','), hasLength(35));
-      expect(lines.last, endsWith(',0.12.0,1.0;2'));
+      expect(lines.first.split(','), hasLength(37));
+      expect(lines.last.split(','), hasLength(37));
+      expect(lines.last, endsWith(',0.12.0,1.0;2,,'));
     });
 
     test('the rounds CSV row has as many fields as its header', () {
       final lines = csvRounds([summary(hostApp: '1.0,2')]).split('\n');
-      expect(lines.first.split(','), hasLength(17));
-      expect(lines.last.split(','), hasLength(17));
+      expect(lines.first.split(','), hasLength(18));
+      expect(lines.last.split(','), hasLength(18));
       expect(lines.last.split(',')[9], '1.0;2');
     });
   });
