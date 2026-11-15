@@ -20,9 +20,9 @@ What moved (old `session.dart` line ranges → `session_clean.dart`):
 | 367 | `_tagPattern` | `tagPattern` |
 | 369–371 | `_roundTagPattern` | `roundTagPattern` |
 
-Left in `session.dart`: `SessionCollector` and `summarySchema`; its three call
-sites now read `cleanText(…)`, `cleanDevice(…)`, `roundTagsOf(…)`,
-`tagPattern.hasMatch(…)`. `session.dart` re-exports with
+Left in `session.dart`: `SessionCollector` and `summarySchema`; its six
+references now read `cleanText(…)` (twice), `cleanDevice(…)`,
+`roundTagsOf(…)` (twice) and `tagPattern.hasMatch(…)`. `session.dart` re-exports with
 `export 'session_clean.dart' show HostType, maxRoundTags;`, so every public
 name and every existing import path (`package:metrics/metrics.dart`,
 `src/session.dart`) keeps working and `metrics.dart` needs no change.
@@ -37,8 +37,9 @@ Decisions:
 3. `HostType` moved too: the cleaning block alone left `session.dart` at 335
    (with the new import), over the brief's 330 aim; `HostType` is self-contained
    and the guidelines prefer one public type per file. With it the file is 324.
-4. `tagPattern` and `technicalPattern` became nameable, so each got a one-line
-   dartdoc; all other doc text is moved verbatim.
+4. Three names became public, so each got its own dartdoc: `cleanDevice`
+   (`session_clean.dart:36-38`), `technicalPattern` (`:48-49`) and
+   `tagPattern` (`:52-53`); the rest of the moved code keeps its doc text.
 5. `_mode` (one line, four uses) and `summarySchema` stay: they belong to the
    collector, and neither is what makes the file long.
 

@@ -2,9 +2,9 @@ import 'package:metrics/metrics.dart';
 import 'package:test/test.dart';
 
 /// A summary of one player in one mode and one round. Its app versions may
-/// hold a comma: session.dart's `_technical` keeps one (a model such as
-/// "iPhone15,2" has it), so a peer's app string such as "1.0,2" reaches the
-/// summary as written.
+/// hold a comma: `session_clean.dart`'s `technicalPattern` keeps one (a model
+/// such as "iPhone15,2" has it), so a peer's app string such as "1.0,2"
+/// reaches the summary as written.
 Map<String, Object?> summary({String hostApp = '0.12.0', String app = '0.13.2'}) => {
   'schema': summarySchema,
   'id': 'a1',

@@ -119,11 +119,16 @@ The "could" findings of [bugs1's review](briefs/m14/bugs1/REVIEW.md) that the fi
 | What | Risk | Benefit | Rec. |
 | --- | --- | --- | --- |
 | `ModeRow._row` (`report.dart:217`) is 57 lines, against the guideline ~40, and each stats column added since lengthens it (a1 review, fix1). | Low: the row builder, covered by the report and CSV tests | A new report column does not grow one function | when touched: the next report column |
+| `session.dart` is 340 lines (aim 330 in the b5-1 brief, ~300 in the guidelines, 400 limit): the split left 324 and b5-2's round offset took it back over (run review). | Low: a pure move, covered by the metrics tests | Room for the next metrics addition | when touched: move the round-map block into `roundEnded`'s helper first, as the value object takes the collection with it |
+| `SessionCollector.roundEnded` (`session.dart:227`) takes 9 parameters (a2 added `robotWin`; the guidelines allow 5) and its body (`:238-278`) is 41 lines, against ~40. Rec.: a `RoundEnd` value object and the round-map block (`:246-263`) as a private helper (a2 and b5-2 reviews). | Low: the session's record, covered by the stats tests | A new round field does not touch the arguments of every call | when touched: the next round field, as one job before it |
+| `session_clean.dart`'s name fits half its contents: it holds `HostType` and `cleanDevice` beside the string cleaning b5-1 moved there. | Low: a rename, no behaviour, `metrics.dart` keeps its exports | A reader knows what the file holds | when touched: rename it `session_format.dart` |
+| `cleanDevice` (`session_clean.dart:40-44`) keeps bare `16`, `40` and `2000` for its text and device-size bounds, against the magic-number rule; the move re-added them unchanged. | Low: it only changes what a bad device reports | One place to change a bound | when touched: name them (`maxModelChars`, `maxDeviceMm`) with the reason in the doc |
 
 ## Before a milestone
 
 | Before | What | Risk | Benefit of doing it first | Rec. |
 | --- | --- | --- | --- | --- |
+| **M14 stats / the next report table** | The new round columns have no reader: per-round frames and fps (`frames_drawn`, `frames_late`, `fps`, a3) and the round's start offset (`start_s`, b5-2) are in the summary and the CSV only (run review). | Low: the CSV is tested; a table is one new reader | The table shows the columns mean what they say, before anything charted depends on them | **do** before the milestone whose report ends with a new table |
 | **M13** (countdown, celebration, last-15-s warning) | A round's moments and log lines live in the puzzle's screen; the Arena logs no start or end. Move them to the shared round flow (`GameSession`/`Pausable`). (R2 later) | Medium: both games' screens | M13's moments are written once for every game | **do** before M13 |
 | **M13** | "Seconds left" is computed three times from three clocks (the slot, the host card, the phone card). One countdown rule. (R1 later) | Low-medium | The last-15-s warning has one source | **do** before M13 |
 | **Look-and-sound** | Colours and card text as literals: the mirror's orange copies `playerColors[1]`; the cards' opacities; "P2 is away" vs "Player 2 is away" already differ. One palette and one string table. (R3 + R2 later) | Low | A re-skin changes one place | **do** at its start |
