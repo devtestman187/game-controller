@@ -53,7 +53,7 @@ void main() {
       size: const Size(852, 393),
       overrides: ownPhoneOverrides('p1'),
     );
-    fake.state = withController(fake.state, phoneInfo('p2', 2)); // two players: one alone skips the card (B-002)
+    fake.state = withController(fake.state, phoneInfo('p2', 2)); // two players: the second one is not ready
     fake.emit();
     await neutral(tester, fake, ['p1', 'p2']);
     await openNight(tester);

@@ -156,17 +156,20 @@ void main() {
     expect(find.byType(JoinScreen), findsOneWidget);
   });
 
-  testWidgets('a one-player night Bumper round skips the waiting card and starts at once', (tester) async {
+  testWidgets('a one-player night Bumper round starts on its card\'s Start, as the night\'s first round', (
+    tester,
+  ) async {
     final fake = await pumpHost(tester, screen: const StubHome());
     await neutral(tester, fake, ['p1']);
     await openNight(tester);
     await tapVisible(tester, find.byKey(const Key('nightBumper')));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
-    // The round starts after its first frame, once the maps are in.
+    // One player keeps the card (B-020): its Start is that player's A.
+    expect(find.byKey(const Key('arenaWaitingCard')), findsOneWidget);
+    await readyUp(tester, fake);
     await roundStarted(tester);
 
-    expect(find.byKey(const Key('arenaWaitingCard')), findsNothing, reason: 'nobody to ready (B-002)');
     expect(arenaSnapshot(tester).mode, ArenaMode.bumper);
     expect(tester.widget<ArenaView>(find.byType(ArenaView)).roundTags, ['night_1of3']);
   });

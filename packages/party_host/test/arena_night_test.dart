@@ -16,7 +16,7 @@ void main() {
   /// on the button, and the Arena's waiting card waits for the phones.
   Future<FakeHostService> openNightBumper(WidgetTester tester) async {
     final fake = await pumpHost(tester, screen: const StubHome());
-    fake.state = withController(fake.state, phoneInfo('p2', 2)); // two players: one alone skips the card (B-002)
+    fake.state = withController(fake.state, phoneInfo('p2', 2)); // two players: two rows to ready
     fake.emit();
     await neutral(tester, fake, ['p1', 'p2']);
     await openNight(tester);
