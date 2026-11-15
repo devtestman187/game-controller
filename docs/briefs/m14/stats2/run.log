@@ -12,3 +12,6 @@
 2026-11-15 16:21:33 start c3-docs
 2026-11-15 16:22:59 c3-docs finished: result 0 (24 turns, 1 min)
 2026-11-15 16:27:37 committed c3-docs: 8d9a55b M14 stats2: CSV build columns, and what frames_drawn and fps mean
+2026-11-15 16:27:38 reviewed c1-build-metrics: 8 finding(s)
+2026-11-15 16:30:38 reviewed c2-build-wiring: 5 finding(s)
+2026-11-15 16:30:39 reviewed c3-docs: 2 finding(s)
