@@ -1,0 +1,19 @@
+job: M14 bugs7 b015-build: land the confirmed race on Block Castle and Toy Factory (B-015)
+pub: no
+stop: after it.
+read: docs/briefs/m14/bugs6/b015-routes-report.md (Summary and Decisions) · docs/briefs/m14/bugs6/b015-routes/block-castle.race.json and toy-factory.race.json · packages/test_game/maps/block-castle.json and toy-factory.json · packages/test_game/test/four_maps_test.dart · map_check_test.dart · map_render_test.dart · tools/level.sh · docs/levels.md Arena part · packages/test_game/lib/src/map_rules.dart
+decide: low-usage mode: never stop for a question. Make the safest choice that fits the design and list each under "Decisions" with one line of why. Stop only if the job truly cannot be done; then say why under "Blocked".
+
+Owner (Nov 14): "Routes look good": the two race candidates are confirmed. Build exactly that and no other map change (no wall, hazard, coin or Bumper change; Pinball, Spinning Tops and the Playroom stay as they are).
+Design:
+1 Tests first, in a NEW file packages/test_game/test/race_maps_test.dart: block-castle and toy-factory load with a race section whose start, goal and swapSides equal the two .race.json files, still have their bumper section, and pass the rule book (map_rules, as map_check_test does); pinball and spinning-tops still have race == null. It must fail on the code as it was.
+2 Paste the two race sections into packages/test_game/maps/block-castle.json and toy-factory.json (numbers unchanged). Update each file's "notes" text that says "No race section" so it is true (one clause on the race). Keep key order and style of the files.
+3 Update four_maps_test.dart's test "each new map plays the Bumper Round only: no race section" to match reality: all four keep the Bumper Round and only pinball and spinning-tops have no race (rename it so the name is true). Keep its other assertions.
+4 Any other test or doc the race breaks (run the test_game package suite and tools/check.sh arena host; the picker may now offer a race on these maps): update to the new real value keeping its intent, say each in the report. docs/levels.md only if it states which maps have a race.
+5 Regenerate the two map sheets docs/design/maps/block-castle.png and toy-factory.png (cd packages/test_game && flutter test --dart-define=mapId=<id> test/map_render_test.dart; tools/level.sh may be refused in the sandbox).
+6 Needs a device check: there is no play test over the map files; the bugs6 report's steering bot finished both (1.82 s and 2.23 s). Write in the Summary "Fixed, unverified: needs device check" and the risk: Block Castle's keep gate opens only a third of its cycle.
+in the report: start with `## Summary` (at most 30 lines, within its first 40 lines): what changed, the numbers, decisions, anything not done, what the owner should try on a device. Then Self-check: docs/review-rules.md part A, items 1-5, one line each with the test that shows it. Do not claim a test passes unless you ran it in this job and saw it; write "not run" otherwise.
+rules: aim for 80-150 turns · no lib file you touch may end over 380 lines: split it (the runner stops the run otherwise) · no function over 60 lines · tests first: each new test file must fail on the code as it was (the runner checks this) · every text a player sees goes through the text files · write only inside allow: · leave no scratch file behind · stage nothing yourself
+allow: docs/briefs/m14/bugs7/b015-build-report.md · packages/test_game/maps/block-castle.json · packages/test_game/maps/toy-factory.json · packages/test_game/test · docs/design/maps/block-castle.png · docs/design/maps/toy-factory.png · packages/party_host/test · controller_app/test · docs/levels.md
+check: format analyze arena host phone
+report: docs/briefs/m14/bugs7/b015-build-report.md
