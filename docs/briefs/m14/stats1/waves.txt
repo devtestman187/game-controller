@@ -3,3 +3,4 @@ a2-round-winner
 a3-round-frames
 fix1-csv-review b5-1-split
 b5-2-offset
+fix2-tests-clock fix3-docs
