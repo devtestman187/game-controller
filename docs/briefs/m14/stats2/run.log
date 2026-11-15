@@ -32,3 +32,6 @@
 2026-11-15 16:51:56 committed fix1-tests: 9135fb6 M14 stats2: two build tests that fail on the old code, two names
 2026-11-15 16:51:57 committed fix2-session: 1755692 fix(metrics): a reconnect drops its old build
 2026-11-15 16:51:59 committed fix3-apps: d27b9ed Cap both apps' build numbers at the stats' 9 digits
+2026-11-15 16:52:00 start fix4-docs
+2026-11-15 16:54:46 fix4-docs finished: result 0 (34 turns, 2 min)
+2026-11-15 16:59:43 committed fix4-docs: b55e3fe docs: close the stats2 review's docs findings (4, 6, 11-14)
