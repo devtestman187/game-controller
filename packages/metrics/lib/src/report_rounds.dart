@@ -152,8 +152,9 @@ List<String> _rateCells(RateRow r) => [
 ];
 
 /// The report's round CSV (m12 §1, M14): one row per round, the numbers the
-/// tables above sum and the round's tags, space separated.
-const roundsCsvHeader = 'session,host,game,hz,time_s,battery_start,battery_end,thermal,tags';
+/// tables above sum and the round's tags, space separated, then the host's app
+/// version (M14) at the end.
+const roundsCsvHeader = 'session,host,game,hz,time_s,battery_start,battery_end,thermal,tags,host_app';
 
 /// One CSV row per round of each summary. A round with no rate or no battery
 /// reading leaves those cells empty, so the columns always line up.
@@ -182,6 +183,7 @@ String _roundCsv(Map<String, Object?> summary, Map round) {
     round['thermal'] ?? '',
     // A tag holds no comma, so the cells stay lined up.
     tags.join(' '),
+    host['app'] as String? ?? '',
   ].join(',');
 }
 

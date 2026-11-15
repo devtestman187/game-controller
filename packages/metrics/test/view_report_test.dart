@@ -85,9 +85,9 @@ void main() {
 
     test('the CSV keeps the seven numbers, after the open minutes', () {
       final fields = rowsOf(viewSummary()).single.toCsv().split(',');
-      expect(fields, hasLength(33));
-      expect(fields.sublist(26), ['41', '62', '3', '9', '720', '3', '5']);
-      expect(csv([viewSummary()]).split('\n').last, endsWith(',41,62,3,9,720,3,5'));
+      expect(fields, hasLength(35));
+      expect(fields.sublist(26, 33), ['41', '62', '3', '9', '720', '3', '5']);
+      expect(csv([viewSummary()]).split('\n').last, endsWith(',41,62,3,9,720,3,5,0.12.0,0.12.0'));
     });
 
     test('a phone that does not view shows a dash and empty CSV cells', () {
@@ -100,7 +100,7 @@ void main() {
       final text = table('By input mode', groupBy(rows, (r) => r.mode));
       final dataRow = text.split('\n')[3]; // Title, headers, dashes, then the row.
       expect(dataRow, matches(RegExp(r'- +- +-$')));
-      expect(row.toCsv().split(',').sublist(26), everyElement(''));
+      expect(row.toCsv().split(',').sublist(26, 33), everyElement(''));
       expect(report([summary]), contains('By input mode'));
     });
   });
