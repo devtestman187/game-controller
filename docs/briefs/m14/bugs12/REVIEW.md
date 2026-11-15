@@ -28,3 +28,15 @@
 5. could, fake clock cannot show the rebuild: **real**; f1 item 1's test waits for the own client's link.
 6. could, prefs key 'statsConsent' spelled in tests: **real, minor**: code-health.md.
 - Decision 1 (ask after start): the cause of finding 1; f1 moves the ask to HostScreen. Decision 4 (enterHostMode answers "don't share" by default): kept; f1 item 3 tightens the helper.
+
+## f1 findings (verified by Claude, bugs12-wrap2)
+
+Proof: no tests-first line in run.log; run by hand: first_host_consent_link_test.dart on 568bd0b's lib fails at line 57 (HostScreen not found), passes on the tip.
+1. must, joined phone's A/B reach the prompt: **real but narrow** (code verified: controller_menus.dart A/B act on the focused dialog, "Don't share" autofocuses). Needs a phone already joined within seconds of the host start, behind the dialog. Design call; code-health.md, no job.
+2. should, mayBeAbsent still taps: **real, fixed by hand** (helper now expects findsNothing; callers pass).
+3. should, no old-code proof: **real, done** (above).
+4. could, pop pops the dialog: **real, very unlikely**; code-health.md.
+5. could, joinPhone copied: **real, minor**; code-health.md.
+6. could, real socket in a widget test: **real, minor**; code-health.md.
+7. could, duplicated assertions: **real, minor**; code-health.md.
+Decision: keep the "said yes" test. Fixed, unverified: needs device check.
