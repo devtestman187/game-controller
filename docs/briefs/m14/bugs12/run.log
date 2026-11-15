@@ -12,3 +12,6 @@
 2026-11-15 15:58:27 start b023-first-host-consent
 2026-11-15 16:10:23 b023-first-host-consent finished: result 0 (89 turns, 9 min)
 2026-11-15 16:18:05 committed b023-first-host-consent: 611e2bc Ask the phone's adult for host stats consent at the first host (B-023)
+2026-11-15 16:18:06 reviewed b023-stats-card: 8 finding(s)
+2026-11-15 16:24:40 b023-first-host-consent-review: dropped generated churn outside its list: site/shots/dpad.png site/shots/menus.png site/shots/results.png site/shots/sticks.png site/shots/tilt.png (report kept)
+2026-11-15 16:24:40 reviewed b023-first-host-consent: 7 finding(s)
