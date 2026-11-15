@@ -64,15 +64,20 @@ final class HostIdentity {
   /// The version the stats record, e.g. `0.11.0+123`: [appVersion] plus the
   /// build number [versionLabel] carries, so two builds of one version can be
   /// told apart (M14 stats). A label with no number in it, e.g. `0.11.0
-  /// (dev)`, gives the bare [appVersion]. Everything else keeps [appVersion].
+  /// (dev)`, gives the bare [appVersion]. So does a number of more than
+  /// [_maxBuildDigits] digits, which the stats' reader drops (M14 stats).
   String get appWithBuild {
     final build = _buildInLabel.firstMatch(versionLabel)?.group(1);
     return build == null ? appVersion : '$appVersion+$build';
   }
 
+  /// The most digits a build number may have: `metrics`' `splitAppBuild` keeps
+  /// 1 to 9 and reads a longer one as no build (M14 stats).
+  static const _maxBuildDigits = 9;
+
   /// The build number [versionLabel] carries, if it carries one: the digits
   /// in its trailing parentheses.
-  static final _buildInLabel = RegExp(r'\((\d+)\)$');
+  static final _buildInLabel = RegExp('\\(([0-9]{1,$_maxBuildDigits})\\)\$');
 
   @override
   bool operator ==(Object other) =>
