@@ -253,15 +253,27 @@ void main() {
       }
     });
 
-    test('a control anywhere else leaves the mirror where it is', () {
+    test('the D-pad moves no mirror, and only the Medium car and butterfly lose one on this phone', () {
       // The D-pad is below both places, so the mirror it leaves is the one the
-      // game draws with no pad at all.
+      // game draws with no pad at all. A picture whose bigger pieces (Medium's
+      // redone car and butterfly, B-012b) leave no readable room beside it may
+      // lose the mirror instead (rule 7: absent or clear), but it never gets
+      // another place: the list below is exact, so another picture that lost
+      // its mirror would fail here (b013).
+      const lost = ['car', 'butterfly'];
+      final without = [
+        for (final MapEntry(key: id, value: puzzle) in puzzles.entries)
+          if (mirrorOf(puzzle, iphone, PadMode.dpad) == null) id,
+      ];
+      expect(without, lost, reason: 'the pictures the D-pad leaves no mirror for, and no others');
       for (final MapEntry(key: id, value: puzzle) in puzzles.entries) {
-        // The mirror is never moved by the D-pad; a picture whose bigger pieces
-        // (Medium's redone car, B-012b) leave no readable room beside the pad
-        // may lose it (rule 7: absent or clear), but never gets another place.
         final withDpad = mirrorOf(puzzle, iphone, PadMode.dpad);
-        if (withDpad != null) expect(withDpad, mirrorWith(puzzle, iphone, const []), reason: id);
+        if (withDpad == null) continue;
+        expect(
+          withDpad,
+          mirrorWith(puzzle, iphone, const []),
+          reason: '$id: the mirror stays where the padless game puts it',
+        );
       }
     });
 

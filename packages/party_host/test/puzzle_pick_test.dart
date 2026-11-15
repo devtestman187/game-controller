@@ -43,6 +43,18 @@ void main() {
   // build that ships more, and those ids join the cycle shuffled (B-009).
   const easy = ['house', 'rocket', 'tree', 'sun', 'fish', 'snowman'];
   const medium = ['boat', 'car', 'robot', 'train', 'castle', 'butterfly'];
+  const hard = ['dragon', 'windmill', 'lighthouse', 'dinosaur', 'tractor', 'tower'];
+
+  /// The cycle a draw saves beside the waiting ids (b013): the id it played,
+  /// which is also the one played last.
+  Map<String, Object> playedOne(String level, String id) => {
+    'played': {
+      level: {
+        'ids': [id],
+        'last': id,
+      },
+    },
+  };
 
   testWidgets('an any-puzzle round plays its level\'s next id from the bag, and the bag moves on', (tester) async {
     await pumpHost(tester, screen: const StubHome());
@@ -52,6 +64,7 @@ void main() {
     expect(playedPuzzle(tester), 'house', reason: 'the bag\'s first id is the next puzzle');
     expect(savedBag(tester), {
       'easy': ['rocket', 'tree', 'sun', 'fish', 'snowman'],
+      ...playedOne('easy', 'house'),
     }, reason: 'the drawn id leaves the bag, and nothing else moves');
   });
 
@@ -64,7 +77,22 @@ void main() {
     expect(savedBag(tester), {
       'easy': easy,
       'medium': ['car', 'robot', 'train', 'castle', 'butterfly'],
+      ...playedOne('medium', 'boat'),
     }, reason: 'only the medium bag moved');
+  });
+
+  testWidgets('an any-puzzle round on Hard draws from the Hard bag', (tester) async {
+    await pumpHost(tester, screen: const StubHome());
+    await saveBag(tester, {'easy': easy, 'medium': medium, 'hard': hard});
+    await openRound(tester, const PuzzleChoice(level: Level.hard));
+
+    expect(playedPuzzle(tester), 'dragon', reason: 'the Hard bag\'s first id, on the Hard level\'s own bag');
+    expect(savedBag(tester), {
+      'easy': easy,
+      'medium': medium,
+      'hard': ['windmill', 'lighthouse', 'dinosaur', 'tractor', 'tower'],
+      ...playedOne('hard', 'dragon'),
+    }, reason: 'only the Hard bag moved');
   });
 
   testWidgets('a chosen puzzle leaves the bag without a draw; the next any-puzzle round plays on', (tester) async {
@@ -75,6 +103,7 @@ void main() {
     expect(playedPuzzle(tester), 'house');
     expect(savedBag(tester), {
       'easy': ['rocket', 'tree', 'sun', 'fish', 'snowman'],
+      ...playedOne('easy', 'house'),
     }, reason: 'the chosen puzzle leaves the bag, and nothing else moves');
 
     tester.state<NavigatorState>(find.byType(Navigator)).pop();

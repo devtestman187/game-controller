@@ -28,7 +28,7 @@ void main() {
       expect(find.byKey(Key('random-${level.name}')), findsOneWidget, reason: level.name);
     }
     final hard = tester.widget<HostButton>(find.byKey(const Key('random-hard')));
-    expect(hard.label, isNotEmpty);
+    expect(hard.label, 'Any Hard puzzle', reason: 'the card\'s real words (HostText.anyPuzzle of Hard)');
     await tester.scrollUntilVisible(find.byKey(const Key('puzzle-dragon')), 200);
     for (final id in ['dragon', 'windmill', 'lighthouse', 'dinosaur', 'tractor', 'tower']) {
       expect(find.byKey(Key('puzzle-$id')), findsOneWidget, reason: id);

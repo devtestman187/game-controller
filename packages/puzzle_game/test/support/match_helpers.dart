@@ -8,7 +8,8 @@ import 'package:puzzle_game/puzzle_game.dart';
 Puzzle load(String id) => Puzzle.parse(File('puzzles/$id.json').readAsStringSync());
 
 /// Every puzzle's id, in the order `puzzles/index.json` lists them: the six
-/// Easy ones, then the six Medium ones (m13 s17).
+/// Easy ones, then the six Medium ones (m13 s17), then the six Hard ones
+/// (B-012b, b013).
 const puzzleIds = [
   'house',
   'rocket',
@@ -22,6 +23,12 @@ const puzzleIds = [
   'train',
   'castle',
   'butterfly',
+  'dragon',
+  'windmill',
+  'lighthouse',
+  'dinosaur',
+  'tractor',
+  'tower',
 ];
 
 const none = GamepadState(mode: InputMode.dpad);

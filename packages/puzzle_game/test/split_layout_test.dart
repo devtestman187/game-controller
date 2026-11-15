@@ -232,7 +232,8 @@ void main() {
     /// The tray row's overlap per puzzle (m12-phone-layout §0.7c): pieces wider
     /// than 1.3:1 with none need no overlap; the boat's, car's, castle's and
     /// butterfly's rows overlap, and so do the robot's and train's on the seeds
-    /// whose widest piece wants the room. Checked for every seed below.
+    /// whose widest piece wants the room. Every Hard puzzle but the lighthouse
+    /// overlaps on every seed (b013). Checked for every seed below.
     const overlaps = {
       'house': [0.0],
       'rocket': [0.0],
@@ -246,6 +247,12 @@ void main() {
       'train': [0.0, 0.25],
       'castle': [0.25],
       'butterfly': [0.25],
+      'dragon': [0.25],
+      'windmill': [0.25],
+      'lighthouse': [0.0],
+      'dinosaur': [0.25],
+      'tractor': [0.25],
+      'tower': [0.25],
     };
 
     /// The picture a phones board holds: every outline's box at its target

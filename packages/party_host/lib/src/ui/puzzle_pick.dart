@@ -28,13 +28,17 @@ extension _PuzzlePick on _PuzzleScreenState {
   ///
   /// A chosen puzzle draws nothing from the bag; it only leaves it, so
   /// `any <level>` doesn't come back to it before the level's other puzzles.
+  /// Only a pick made on the picker does that: a series' Next or Continue
+  /// hands the puzzle it plays (its choice names one and the series comes
+  /// with it), and the shared bag never drew it, so it stays out of the
+  /// `any <level>` order (b013).
   Puzzle? _picked(PuzzleLibrary library) {
     final choice = widget.choice;
     final id = choice.puzzleId;
     final bag = ref.read(puzzleBagProvider.notifier);
     if (id != null) {
       final chosen = library.byId(id);
-      if (chosen != null) bag.played(choice.level, id);
+      if (chosen != null && widget.series == null) bag.played(choice.level, id);
       return chosen;
     }
     final ids = [for (final puzzle in library.ofLevel(choice.level)) puzzle.id];
@@ -44,10 +48,13 @@ extension _PuzzlePick on _PuzzleScreenState {
 
   /// The series this screen starts, when its choice names a puzzle (B-011):
   /// the picked id is its first round, and the round shows it in [_showPuzzle].
+  /// A night's chosen round starts none (M14 c1): a night's results offer its
+  /// one Next, and a series' Next could never advance past that round.
   PuzzleSeries? _startedSeries() {
     final choice = widget.choice;
     final id = choice.puzzleId;
-    return id == null ? null : PuzzleSeries.start(choice.level).withPlayed(id);
+    if (id == null || ref.read(partyNightProvider) != null) return null;
+    return PuzzleSeries.start(choice.level).withPlayed(id);
   }
 
   /// What this round's results offer (B-011): a night's one Next (M14 c1,
@@ -224,5 +231,9 @@ extension _PuzzlePick on _PuzzleScreenState {
     );
   }
 
+  /// Change teams: the join screen, and the same choice played again by the new
+  /// teams. Its round starts a fresh series on that same pick, with nothing
+  /// played and Shuffle off (B-011): the old series' played ids are the old
+  /// round's, and the teams' next rounds start from the pick (b013).
   void _changeTeams() => _replaceWith(JoinScreen(choice: widget.choice, teams: widget.teams, keyboard: _keyboard));
 }

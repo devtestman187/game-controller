@@ -23,7 +23,8 @@ import 'providers.dart';
 /// order alone.
 ///
 /// It is a value: a draw hands back the bag that follows it, and the host
-/// saves that one.
+/// saves that one — the cycle's played ids and the one played last with it, so
+/// an app that closed between two rounds carries on where it left off.
 @immutable
 final class PuzzleBag {
   const PuzzleBag._(this._waiting, this._playedLast, this._playedThisCycle);
@@ -35,15 +36,16 @@ final class PuzzleBag {
   final Map<String, List<String>> _waiting;
 
   /// Each level's id played last this session, so a new cycle doesn't open
-  /// with it. This one is not saved: after the app closes, a cycle may open
-  /// with the puzzle just finished, and the rematch's guard covers that case.
+  /// with it. It is saved with the cycle ([toJson]), so an app that closed
+  /// between two rounds still doesn't open with the puzzle just finished.
   final Map<String, String> _playedLast;
 
   /// Each level's ids already played since its bag last filled, so an id a
-  /// build adds can be told from one this cycle has had. A bag read back from
-  /// the prefs starts it from the ids the build ships and the bag doesn't hold,
-  /// which were all played: an id a build adds then waits for the next cycle,
-  /// where a repeat could otherwise slip in.
+  /// build adds can be told from one this cycle has had. It is saved too, so
+  /// after a restart an id a build adds joins the cycle at once, rather than
+  /// waiting for the next one. A bag from a save without it (an older build's)
+  /// starts it from the ids the build ships and the bag doesn't hold, which
+  /// were all played.
   final Map<String, Set<String>> _playedThisCycle;
 
   /// The ids of [level] still to play, next first.
@@ -123,15 +125,29 @@ final class PuzzleBag {
       if (!waiting.contains(id)) id,
   };
 
-  /// The bag as the host saves it: each level's ids still to play, in order. A
-  /// level with none left is left out, so an untouched level keeps no key.
-  Map<String, Object?> toJson() => {
-    for (final MapEntry(:key, :value) in _waiting.entries)
-      if (value.isNotEmpty) key: value,
-  };
+  /// The key [toJson] saves each level's cycle under, beside its waiting ids:
+  /// the ids it has played this cycle and which of them played last.
+  static const _playedKey = 'played';
 
-  /// The bag [json] holds. A level this build has no puzzles for, and an id
-  /// that isn't a name, are left out.
+  /// The bag as the host saves it: each level's ids still to play, in order,
+  /// and under [_playedKey] each level's cycle. A level with neither is left
+  /// out, so an untouched level keeps no key, and a bag whose cycles are all
+  /// empty saves none.
+  Map<String, Object?> toJson() {
+    final cycles = {
+      for (final MapEntry(:key, :value) in _playedThisCycle.entries)
+        if (value.isNotEmpty) key: {'ids': value.toList(growable: false), 'last': ?_playedLast[key]},
+    };
+    return {
+      for (final MapEntry(:key, :value) in _waiting.entries)
+        if (value.isNotEmpty) key: value,
+      if (cycles.isNotEmpty) _playedKey: cycles,
+    };
+  }
+
+  /// The bag [json] holds. A level this build has no puzzles for, an id that
+  /// isn't a name, and a cycle without ids are left out; a cycle's last-played
+  /// id that isn't one of its ids is taken from them instead.
   static PuzzleBag fromJson(Object? json) {
     if (json is! Map) return empty;
     final levels = Level.values.asNameMap();
@@ -144,7 +160,25 @@ final class PuzzleBag {
       }
       if (ids.isNotEmpty) waiting[key] = List.unmodifiable(ids);
     }
-    return PuzzleBag._(waiting, const {}, const {});
+    final played = <String, Set<String>>{};
+    final last = <String, String>{};
+    final cycles = json[_playedKey];
+    if (cycles is Map) {
+      for (final MapEntry(key: key, value: cycle) in cycles.entries) {
+        if (key is! String || !levels.containsKey(key) || cycle is! Map) continue;
+        final saved = cycle['ids'];
+        if (saved is! List) continue;
+        final ids = <String>[];
+        for (final id in saved.whereType<String>()) {
+          if (!ids.contains(id)) ids.add(id);
+        }
+        if (ids.isEmpty) continue;
+        played[key] = Set.unmodifiable(ids);
+        final savedLast = cycle['last'];
+        last[key] = savedLast is String && ids.contains(savedLast) ? savedLast : ids.last;
+      }
+    }
+    return PuzzleBag._(waiting, last, played);
   }
 }
 

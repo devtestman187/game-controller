@@ -168,6 +168,11 @@ void main() {
     expect(find.text('You have played every Medium puzzle'), findsOneWidget);
     expect(find.byKey(const Key('continueLevel')), findsNothing, reason: 'Medium is the last level with puzzles');
     expect(find.byKey(const Key('nextPuzzle')), findsNothing);
+    expect(
+      find.byKey(const Key('shuffle')),
+      findsNothing,
+      reason: 'no round can follow, so the switch has nothing to set',
+    );
     expect(find.byKey(const Key('playAgain')), findsOneWidget, reason: 'Play again is all that is left');
     expect(focused(tester, 'playAgain'), isTrue);
   });

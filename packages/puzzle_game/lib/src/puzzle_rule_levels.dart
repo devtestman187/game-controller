@@ -196,7 +196,6 @@ void _repeatedShapes(Puzzle puzzle, List<LevelIssue> issues, String level, int a
 }
 
 void _turned(Puzzle puzzle, List<LevelIssue> issues) {
-  if (puzzle.level == Level.hard) return;
   final turned = puzzle.pieces.where((spec) => spec.rotated && spec.shape.symmetry != 0).length;
   if (turned >= minTurnedPieces) return;
   issues.add(

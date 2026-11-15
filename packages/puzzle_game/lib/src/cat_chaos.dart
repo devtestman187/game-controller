@@ -175,15 +175,18 @@ final class CatChaos implements CatVisit {
   /// When the round's visits come: as many as the round's window holds for the
   /// Cat setting ([CatTuning.visits], b006), each inside its share of the time
   /// between the grace and the tail, and early enough in it to be gone before
-  /// the next share's visit is due. The knocks a Party round allows are counted
-  /// here too.
+  /// the next share's visit is due, with [CatTuning.minQuietS] of quiet left
+  /// before it ([CatTuning]'s promise). The knocks a Party round allows are
+  /// counted here too.
   void _plan() {
     final tuning = CatTuning.of(settings.catPreset);
     _knockBudget = tuning.knocks(settings.chaos, settings.timeLimitS);
     final visits = tuning.visits(settings.chaos, settings.timeLimitS);
     if (visits == 0) return;
     final share = CatTuning.windowS(settings.timeLimitS) / visits;
-    final room = max(0.0, share - CatRules.visitS);
+    // The share a visit may start in: the visit itself and the quiet after it
+    // both come out of it, so two visits never start closer than that apart.
+    final room = max(0.0, share - CatRules.visitS - CatTuning.minQuietS);
     for (var k = 0; k < visits; k++) {
       _planned.add(CatRules.graceS + share * k + _random.nextDouble() * room);
     }
@@ -207,7 +210,6 @@ final class CatChaos implements CatVisit {
   void _start(List<({PuzzleSide side, PuzzleEvent event})> events) {
     _next++;
     final game = _leader();
-    if (game == null) return;
     final target = _targetOf(game);
     if (target == null) return;
     final piece = game.pieces[target];
@@ -225,14 +227,27 @@ final class CatChaos implements CatVisit {
   }
 
   /// The side the cat visits: the one ahead in pieces placed, or either on a
-  /// draw, and never the side it visited last.
-  PuzzleGame? _leader() {
+  /// draw, and never the side it visited last. When the side ahead is the one
+  /// it just visited, it visits the other side instead: the visit the plan
+  /// counts is never dropped (b013). A one-board match has no other side, so it
+  /// visits its one board, which is the visit the plan counted.
+  PuzzleGame _leader() {
     final most = games.map((g) => g.placed).reduce(max);
-    final pool = [
+    final leaders = [
       for (final g in games)
-        if (g.placed == most && g.side != _lastSide) g,
+        if (g.placed == most) g,
     ];
-    return pool.isEmpty ? null : pool[_random.nextInt(pool.length)];
+    final notLast = [
+      for (final g in leaders)
+        if (g.side != _lastSide) g,
+    ];
+    final pool = notLast.isNotEmpty
+        ? notLast
+        : [
+            for (final g in games)
+              if (g.side != _lastSide) g,
+          ];
+    return pool.isEmpty ? games[_random.nextInt(games.length)] : pool[_random.nextInt(pool.length)];
   }
 
   /// The piece the cat is after: a placed one it may knock loose ([_mayKnock]),
@@ -257,8 +272,11 @@ final class CatChaos implements CatVisit {
   /// on one board, only while the round's knocks last ([CatTuning.knocks]), on
   /// a side ahead by at least one piece, and never the picture's last piece —
   /// knocking one of a side's placed pieces while only the last one is left
-  /// would take the round from it.
+  /// would take the round from it. The Chaos setting is read live, as the rest
+  /// of the cat's settings are, so a round changed to A little mid-round
+  /// knocks nothing more (b013).
   bool _mayKnock(PuzzleGame game) =>
+      settings.chaos == Chaos.party &&
       !oneBoard &&
       _knocksUsed < _knockBudget &&
       game.placed <= game.pieces.length - 2 &&

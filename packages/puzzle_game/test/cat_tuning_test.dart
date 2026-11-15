@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:puzzle_game/puzzle_game.dart';
-import 'package:puzzle_game/src/cat_tuning.dart';
 
 /// The cat's intervals by the Cat setting (PRD v2 G3, M14 bug b006): how many
 /// visits and knocks a round's own length gives, counted off its window (its

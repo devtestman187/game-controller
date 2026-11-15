@@ -8,6 +8,7 @@ library;
 export 'src/camera.dart';
 export 'src/cat_moments.dart';
 export 'src/cat_pose.dart';
+export 'src/cat_tuning.dart';
 export 'src/cat_view.dart';
 export 'src/celebration.dart';
 export 'src/game.dart';

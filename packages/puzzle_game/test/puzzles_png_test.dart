@@ -40,7 +40,14 @@ String levelName(Level level) => switch (level) {
   Level.hard => 'Hard',
 };
 
-/// The twelve puzzles finished, four to a row, each with its name and level.
+/// The grid's columns: every level's six puzzles in a row of its own.
+const columns = 6;
+
+/// The grid's rows: one per level.
+const rows = 3;
+
+/// The eighteen puzzles finished, [columns] to a row, each with its name and
+/// level.
 Widget grid(ToyLook look) {
   final style = look.type.body.copyWith(fontSize: 13, color: look.colors.ink);
   Widget cellOf(Puzzle puzzle) => Column(
@@ -64,16 +71,16 @@ Widget grid(ToyLook look) {
     child: Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        for (var row = 0; row < 3; row++)
+        for (var row = 0; row < rows; row++)
           Padding(
             padding: const EdgeInsets.only(bottom: gridGap),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                for (var column = 0; column < 4; column++)
+                for (var column = 0; column < columns; column++)
                   Padding(
                     padding: const EdgeInsets.only(right: gridGap),
-                    child: cellOf(puzzles[row * 4 + column]),
+                    child: cellOf(puzzles[row * columns + column]),
                   ),
               ],
             ),
@@ -83,11 +90,11 @@ Widget grid(ToyLook look) {
   );
 }
 
-/// The grid's own size: four cells a row, three rows, each cell's label above
-/// it, with a gap after every cell and row and around the grid.
+/// The grid's own size: [columns] cells a row, [rows] rows, each cell's label
+/// above it, with a gap after every cell and row and around the grid.
 final box = Size(
-  gridGap + 4 * (cell.width + gridGap) + gridGap,
-  gridGap + 3 * (cell.height + labelHeight + gridGap) + gridGap,
+  gridGap + columns * (cell.width + gridGap) + gridGap,
+  gridGap + rows * (cell.height + labelHeight + gridGap) + gridGap,
 );
 
 /// The report's picture (m13 s17): every puzzle finished, in a grid with its
