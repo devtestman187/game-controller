@@ -40,7 +40,7 @@ Map<String, Object?> summary({String? hostApp = '0.12.0', String? app = '0.13.2'
 
 void main() {
   group('the stats CSV names the app builds', () {
-    test('the header ends with host_app and app, so old columns keep their place', () {
+    test('the header ends with host_build and build, so old columns keep their place', () {
       expect(ModeRow.csvHeader, endsWith(',host_app,app,host_build,build'));
       expect(ModeRow.csvHeader.split(','), hasLength(37)); // The 33 before, plus the four.
       expect(

@@ -70,29 +70,24 @@ void main() {
       expect(host['build'], '654');
     });
 
-    test('a plain version is no build: "0.14.0"', () {
-      final summary = collector(hostApp: '0.14.0', app: '0.14.0').summary(1000);
-      expect((summary['host'] as Map)['app'], '0.14.0');
-      expect((summary['host'] as Map).containsKey('build'), isFalse);
-      expect(player0(summary)['app'], '0.14.0');
-      expect(player0(summary).containsKey('build'), isFalse);
+    test('a plain version and a "dev" build are no build, and the app stays the bare version', () {
+      for (final version in ['0.14.0', '0.14.0+dev']) {
+        final summary = collector(hostApp: version, app: version).summary(1000);
+        expect((summary['host'] as Map)['app'], '0.14.0', reason: version);
+        expect((summary['host'] as Map).containsKey('build'), isFalse, reason: version);
+        expect(player0(summary)['app'], '0.14.0', reason: version);
+        expect(player0(summary).containsKey('build'), isFalse, reason: version);
+      }
     });
 
-    test('a local build "0.14.0+dev" is no build, and the app stays the bare version', () {
-      final summary = collector(hostApp: '0.14.0+dev', app: '0.14.0+dev').summary(1000);
-      expect((summary['host'] as Map)['app'], '0.14.0');
-      expect((summary['host'] as Map).containsKey('build'), isFalse);
-      expect(player0(summary)['app'], '0.14.0');
-      expect(player0(summary).containsKey('build'), isFalse);
-    });
-
-    test('only 1 to 9 digits are a build: ten digits or a letter are none', () {
-      final long = collector(hostApp: '0.14.0+1234567890').summary(1000);
-      expect((long['host'] as Map).containsKey('build'), isFalse);
-      final word = collector(hostApp: '0.14.0+65a').summary(1000);
-      expect((word['host'] as Map).containsKey('build'), isFalse);
-      final empty = collector(hostApp: '0.14.0+').summary(1000);
-      expect((empty['host'] as Map).containsKey('build'), isFalse);
+    test('ten digits, a letter or no tail are no build, and the app stays the bare version', () {
+      for (final version in ['0.14.0+1234567890', '0.14.0+65a', '0.14.0+']) {
+        final summary = collector(hostApp: version, app: version).summary(1000);
+        expect((summary['host'] as Map)['app'], '0.14.0', reason: version);
+        expect((summary['host'] as Map).containsKey('build'), isFalse, reason: version);
+        expect(player0(summary)['app'], '0.14.0', reason: version);
+        expect(player0(summary).containsKey('build'), isFalse, reason: version);
+      }
     });
   });
 

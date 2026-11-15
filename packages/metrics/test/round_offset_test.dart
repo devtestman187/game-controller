@@ -81,7 +81,7 @@ void main() {
     expect(roundOf(c).containsKey('startS'), isFalse);
   });
 
-  test('the rounds CSV ends with the start offset, after the fps', () {
+  test('the rounds CSV ends with start_s and host_build, after the fps', () {
     expect(roundsCsvHeader, endsWith(',frames_late,fps,start_s,host_build'));
     // The 16 before, the offset and the host build (M14 stats).
     expect(roundsCsvHeader.split(','), hasLength(18));
