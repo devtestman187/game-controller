@@ -27,6 +27,11 @@ class FakeStats implements StatsService {
   /// How many times the host app came back, which retries the upload queue.
   int resumes = 0;
 
+  /// While set, [pause] and [resume] throw this instead of counting the call:
+  /// what a failing stats store does, as [FakeUploader.failWith] fails an
+  /// upload (B-019).
+  Object? failWith;
+
   /// Replaces the state and tells the listeners.
   void emit(StatsState s) {
     _state = s;
@@ -61,11 +66,13 @@ class FakeStats implements StatsService {
 
   @override
   Future<void> pause() async {
+    if (failWith case final error?) throw error;
     pauses++;
   }
 
   @override
   Future<void> resume() async {
+    if (failWith case final error?) throw error;
     resumes++;
   }
 }

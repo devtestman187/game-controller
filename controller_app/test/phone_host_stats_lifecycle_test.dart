@@ -1,7 +1,9 @@
+import 'package:controller/src/host/host_start_sheet.dart';
 import 'package:controller/src/host/hosting.dart';
 import 'package:controller/src/host/phone_host.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:party_host/party_host.dart' as party;
 import 'package:party_host/testing.dart' as party_test;
 
 import 'support/host_app.dart';
@@ -38,6 +40,45 @@ void main() {
 
       expect(stats.resumes, 1, reason: 'the queue the pause left is retried once');
       expect(stats.pauses, 1);
+      await tester.runAsync(host.dispose);
+    });
+
+    testWidgets('"Show on this device" ends and retries the session too', (tester) async {
+      final stats = party_test.FakeStats();
+      final host = await _hostWithStats(tester, stats, choice: HostChoice.onDevice);
+      expect(host.playsHere, isFalse, reason: 'this phone only shows the game (m12 bug 1108a rule A)');
+
+      _background(tester);
+      await tester.pump();
+      expect(stats.pauses, 1, reason: 'the background ends the session here too');
+
+      _foreground(tester);
+      await until(tester, () => !host.away.value, () => 'The host did not come back');
+
+      expect(stats.resumes, 1, reason: 'the queue the pause left is retried here too');
+      expect(stats.pauses, 1);
+      await tester.runAsync(host.dispose);
+    });
+
+    testWidgets('a failing stats store is logged once and never thrown', (tester) async {
+      final stats = party_test.FakeStats()..failWith = StateError('the store is closed');
+      final host = await _hostWithStats(tester, stats);
+
+      _background(tester);
+      await tester.pump();
+      _foreground(tester);
+      await until(tester, () => !host.away.value, () => 'The host did not come back');
+      await tester.pump();
+
+      // The app lifecycle callbacks must never throw (B-019): each failure is
+      // one line in the host's log, and the app carries on unpaused.
+      expect(_statsFailures(tester), [
+        'Stats pause failed: Bad state: the store is closed',
+        'Stats resume failed: Bad state: the store is closed',
+      ]);
+      expect(stats.pauses, 0, reason: 'the fake failed instead of counting');
+      expect(stats.resumes, 0);
+      expect(tester.takeException(), isNull, reason: 'the framework callback threw nothing');
       await tester.runAsync(host.dispose);
     });
 
@@ -96,8 +137,13 @@ void main() {
 }
 
 /// Starts a host whose lifecycle steps reach [stats], so the calls the app's
-/// background and foreground make can be counted (B-019).
-Future<PhoneHost> _hostWithStats(WidgetTester tester, party_test.FakeStats stats) async {
+/// background and foreground make can be counted (B-019). [choice] is the
+/// start sheet's answer: "Play on this phone" unless the test says otherwise.
+Future<PhoneHost> _hostWithStats(
+  WidgetTester tester,
+  party_test.FakeStats stats, {
+  HostChoice choice = HostChoice.onPhone,
+}) async {
   await pumpHostApp(
     tester,
     extra: [
@@ -106,8 +152,15 @@ Future<PhoneHost> _hostWithStats(WidgetTester tester, party_test.FakeStats stats
       ),
     ],
   );
-  return enterHostMode(tester);
+  return enterHostMode(tester, choice: choice);
 }
+
+/// The host's log lines for a failed stats step, oldest first: how the app
+/// lifecycle reports a store that will not pause or resume (B-019).
+List<String> _statsFailures(WidgetTester tester) => [
+  for (final line in hostContainer(tester).read(party.logProvider).lines)
+    if (line.message.startsWith('Stats pause failed') || line.message.startsWith('Stats resume failed')) line.message,
+];
 
 /// The app goes to the background as iOS reports it: inactive, hidden, then
 /// paused, where the system stops its timers.
