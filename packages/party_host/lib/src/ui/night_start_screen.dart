@@ -71,7 +71,7 @@ class _NightStartScreenState extends ConsumerState<NightStartScreen> {
 
   /// Starts the night and its first round, the Bumper Round: the Arena's
   /// waiting card follows, with one player or more (design section 2 N6, M14
-  /// bugs B-020), as Shape Race's join screen does for two.
+  /// bugs B-020), as Shape Race's join screen does for two or more.
   void _startBumperRound() {
     ref.read(partyNightProvider.notifier).start(length: _length, awards: _awards);
     _open(const GameScreen());

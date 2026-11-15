@@ -5,12 +5,16 @@ import 'package:party_host/party_host.dart';
 
 import 'support/host_harness.dart';
 import 'support/night_harness.dart';
+import 'support/toy_fonts.dart';
 
 /// A night's only player on a phone host that plays here (M14 bugs B-020, run
 /// review finding 1): the round waits for this phone's own player, who readies
 /// with the waiting card's Ready button as a pad's A would, and never starts
 /// on its own.
 void main() {
+  // The night's screens are measured with the look's real fonts, as a phone draws them.
+  setUpAll(loadLookFonts);
+
   /// What a phone host that plays here supplies: this phone's own player is in
   /// the round, and the host is worked by touch (m12-host-touch rules A and B).
   List<Override> ownPhoneOverrides(String id) => [
@@ -37,6 +41,7 @@ void main() {
 
     // A second of frames: the round starts on the player's Ready, never on its own.
     await tester.pump(const Duration(seconds: 1));
+    expect(find.byKey(const Key('arenaWaitingCard')), findsOneWidget, reason: 'the card still waits for Ready');
     expect(find.byKey(const Key('arena')), findsNothing, reason: 'nobody has tapped Ready');
 
     await tester.tap(find.byKey(const Key('arenaReady')));
