@@ -27,3 +27,6 @@
 2026-11-15 23:21:34 tests-first ok: packages/party_host/test/sound_watchdog_gaps_test.dart fails on the old code
 2026-11-15 23:25:58 committed f1: f4020ea2 Keep the taken-colours band hidden after it hides
 2026-11-15 23:26:00 committed f2: 657d9625 Watch a wished loop whose engine never came up, and test the watchdog
+2026-11-15 23:35:57 reviewed f1: 5 finding(s)
+2026-11-15 23:35:57 reviewed f2: 4 finding(s)
+2026-11-15 23:35:57 DONE: every job is committed. Claude reads the Summary of docs/briefs/m14/bugs14/REVIEW.md, verifies its findings and writes one fix brief
