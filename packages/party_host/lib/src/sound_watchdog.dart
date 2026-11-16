@@ -50,7 +50,10 @@ final class SoundWatchdog {
   /// business, not the watchdog's).
   final bool Function() active;
 
-  /// Whether a loop should be sounding now: one is asked for and loaded.
+  /// Whether a loop should be sounding now: one is asked for and its sounds
+  /// are in, or one is asked for while the load that would bring the engine up
+  /// did not, so its silence is the engine's death (M14 bugs14, review
+  /// finding 3).
   final bool Function() wanted;
 
   /// Whether the music is paused where it is.

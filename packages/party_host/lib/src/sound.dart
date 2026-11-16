@@ -109,21 +109,32 @@ class SoLoudSoundPlayer implements SoundPlayer {
   /// [log] gets short lines about the engine and each sound. [start] is the
   /// log of the host's start this player belongs to (m12 bug 1108b): its first
   /// load adds when the engine came up and when the sounds were in, so a phone
-  /// that froze while it started names that step too.
-  SoLoudSoundPlayer({LogSink? log, HostStartLog? start}) : this._(log ?? ((_) {}), start);
+  /// that froze while it started names that step too. [active] is whether the
+  /// app is on screen, the lifecycle's read unless a test stands in for it.
+  SoLoudSoundPlayer({LogSink? log, HostStartLog? start, bool Function()? active})
+    : this._(log ?? ((_) {}), start, active ?? _appIsActive);
 
-  SoLoudSoundPlayer._(this._log, this._start);
+  SoLoudSoundPlayer._(this._log, this._start, this._isActive);
 
   final LogSink _log;
 
   /// The start's log, for this player's first load only (see [_load]).
   final HostStartLog? _start;
+
+  /// Whether the app is on screen, or has not said: a hidden app's engine is
+  /// the lifecycle's to restart on show, so the watchdog leaves it alone.
+  final bool Function() _isActive;
   final _changes = StreamController<SoundStatus>.broadcast();
   final _sources = <SoundKey, AudioSource>{};
   final _playing = <SoundKey, SoundHandle>{};
   SoundStatus _status = const SoundStatus(engine: 'flutter_soloud');
   Future<void>? _loading;
   Future<void>? _restarting;
+
+  /// Whether a load has been tried: before one, a wished loop is not judged at
+  /// all, and after one that left the engine unready, a wished loop with no
+  /// voice is the engine's death (M14 bugs14, review finding 3).
+  bool _loadTried = false;
 
   /// What this player has been asked for, whatever the engine can do now (M13
   /// section 8): the loop wanted and the volume. It survives a load and a
@@ -163,6 +174,11 @@ class SoLoudSoundPlayer implements SoundPlayer {
     // A restart after the app was hidden is not a start: its engine's time
     // would read as a frame frozen minutes after the tap (m12 bug 1108b).
     final start = _restarting == null ? _start : null;
+    // From here on the loop can be judged: an init that fails leaves `ready`
+    // false and every sound cleared, and without this the watchdog would skip
+    // every look and the engine would stay silent for the session (M14 bugs14,
+    // review finding 3).
+    _loadTried = true;
     final soloud = SoLoud.instance;
     try {
       await soloud.init();
@@ -200,19 +216,31 @@ class SoLoudSoundPlayer implements SoundPlayer {
     _watchdog.start();
   }
 
-  /// Whether the app is on screen, or has not said: a hidden app's engine is
-  /// the lifecycle's to restart on show, so the watchdog leaves it alone.
-  static bool _isActive() {
+  /// The default [active]: whether the app is on screen, or has not said.
+  static bool _appIsActive() {
     final state = WidgetsBinding.instance.lifecycleState;
     return state == null || state == AppLifecycleState.resumed;
   }
 
-  /// Whether the music should be sounding now: the sounds are in, a loop is
-  /// wanted and its file is loaded.
-  bool _isLoopWanted() {
-    final name = _wish.loop;
-    return _status.ready && name != null && _loop.hasSource(name);
+  /// Whether a wished loop should be sounding now, or be counted dead (M14
+  /// bugs14, review finding 3): its sounds are in and its file is loaded, or a
+  /// load was tried and left the engine unready, so the loop's silence is the
+  /// engine's death and not the player's wish. Before a load was tried nothing
+  /// is judged.
+  static bool isLoopWanted({
+    required String? loop,
+    required bool ready,
+    required bool loadTried,
+    required bool Function(String) hasSource,
+  }) {
+    if (loop == null) return false;
+    return ready ? hasSource(loop) : loadTried;
   }
+
+  /// Whether the music should be sounding now, from what this player knows
+  /// (see [isLoopWanted]).
+  bool _isLoopWanted() =>
+      isLoopWanted(loop: _wish.loop, ready: _status.ready, loadTried: _loadTried, hasSource: _loop.hasSource);
 
   /// The loop's share when a restart began, for the new engine to start at.
   double _restartAt = 0;
