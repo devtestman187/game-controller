@@ -1,0 +1,1 @@
+- tests-first: packages/party_host/test/crash_dialog_no_test.dart passes on the old code, so it does not prove new behaviour

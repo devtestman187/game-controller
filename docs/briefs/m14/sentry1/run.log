@@ -97,3 +97,30 @@
 2026-11-16 16:03:53 tests-first ok: packages/party_host/test/stats_retry_once_test.dart fails on the old code
 2026-11-16 16:04:02 tests-first ok: tv_test_app/test/app_with_build_test.dart fails on the old code
 2026-11-16 16:04:03 STOPPED: tests-first: packages/party_host/test/crash_dialog_no_test.dart pass on the old code (write them to fail first, or add 'tests-first: exempt <reason>' to the brief for a pure refactor); nothing of this wave is committed
+2026-11-16 16:05:17 HAND-FIX f3: crash_dialog_no_test.dart passed on the old code (the crashNo behaviour was already right, it only closes a coverage gap), so its three tests were moved into the existing consent_prompts_test.dart (6 tests pass); rest of the job applied as built
+2026-11-16 16:05:21 start at 9aae567d on m14
+2026-11-16 16:05:27 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-16 16:05:27 skip sentry-core (already done)
+2026-11-16 16:05:27 skip stats-optb (already done)
+2026-11-16 16:05:28 skip ci-wiring (already done)
+2026-11-16 16:05:28 skip consent-model (already done)
+2026-11-16 16:05:29 skip host-id (already done)
+2026-11-16 16:05:29 skip stats-bug (already done)
+2026-11-16 16:05:29 skip phone-consent (already done)
+2026-11-16 16:05:29 skip tv-consent (already done)
+2026-11-16 16:05:30 resume f1 (applied by hand, not committed yet)
+2026-11-16 16:05:30 resume f2 (applied by hand, not committed yet)
+2026-11-16 16:05:30 resume f3 (applied by hand, not committed yet)
+2026-11-16 16:06:37 tests-first ok: controller_app/test/connect_consent_pop_test.dart fails on the old code
+2026-11-16 16:06:44 tests-first ok: controller_app/test/stats_consent_recording_test.dart fails on the old code
+2026-11-16 16:06:50 tests-first ok: packages/metrics/test/uploadable_in_process_test.dart fails on the old code
+2026-11-16 16:06:53 tests-first ok: packages/metrics/test/uploadable_old_players_test.dart fails on the old code
+2026-11-16 16:06:55 tests-first ok: packages/metrics/test/uploadable_winners_test.dart fails on the old code
+2026-11-16 16:07:09 tests-first ok: packages/party_host/test/crash_names_test.dart fails on the old code
+2026-11-16 16:07:18 tests-first ok: packages/party_host/test/fake_crash_off_test.dart fails on the old code
+2026-11-16 16:07:28 tests-first ok: packages/party_host/test/live_stats_answer_kept_test.dart fails on the old code
+2026-11-16 16:07:34 tests-first ok: packages/party_host/test/stats_retry_once_test.dart fails on the old code
+2026-11-16 16:07:43 tests-first ok: tv_test_app/test/app_with_build_test.dart fails on the old code
+2026-11-16 16:12:29 committed f1: 52389e7c sentry f1: the review's four findings, each with a test
+2026-11-16 16:12:31 committed f2: 61cc4274 Keep stats answers across a host pause, and honest upload wording
+2026-11-16 16:12:33 committed f3: 3fe324ef Guard the Stats read, privatise the crash button, pin the crash no
