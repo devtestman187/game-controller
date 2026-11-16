@@ -129,3 +129,33 @@
 2026-11-16 16:27:57 reviewed f3: 10 finding(s)
 2026-11-16 16:27:57 start the run's review
 2026-11-16 16:31:35 DONE: every job is committed. Claude reads the Summary of docs/briefs/m14/sentry1/REVIEW.md, verifies its findings and writes one fix brief
+2026-11-16 16:32:48 start at a36ffd65 on m14
+2026-11-16 16:32:54 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-16 16:32:54 skip sentry-core (already done)
+2026-11-16 16:32:54 skip stats-optb (already done)
+2026-11-16 16:32:55 skip ci-wiring (already done)
+2026-11-16 16:32:55 skip consent-model (already done)
+2026-11-16 16:32:55 skip host-id (already done)
+2026-11-16 16:32:56 skip stats-bug (already done)
+2026-11-16 16:32:56 skip phone-consent (already done)
+2026-11-16 16:32:56 skip tv-consent (already done)
+2026-11-16 16:32:57 skip f1 (already done)
+2026-11-16 16:32:57 skip f2 (already done)
+2026-11-16 16:32:57 WARN: f3 was committed by hand (a36ffd65); a plain restart would skip its tests-first proof and worker review, so both run now
+2026-11-16 16:32:58 hand-fixed f3: tests-first proof and worker review done (marked in done.txt)
+2026-11-16 16:32:58 skip f3 (already done)
+2026-11-16 16:32:58 start f4
+2026-11-16 16:33:24 start f5
+2026-11-16 16:33:49 start f6
+2026-11-16 16:42:30 f4 finished: result 4 (67 turns, 7 min)
+2026-11-16 16:42:32 f4: dropped generated churn outside its list: site/shots/dpad.png site/shots/menus.png site/shots/results.png site/shots/sticks.png site/shots/tilt.png 
+2026-11-16 16:47:00 f5 finished: result 0 (92 turns, 11 min)
+2026-11-16 16:48:51 f6 finished: result 4 (101 turns, 11 min)
+2026-11-16 16:48:52 f6: dropped generated churn outside its list: site/shots/dpad.png site/shots/menus.png site/shots/results.png site/shots/sticks.png site/shots/tilt.png 
+2026-11-16 16:49:59 finding: tests-first: controller_app/test/crash_names_host_test.dart passes on the old code, so it does not prove new behaviour
+2026-11-16 16:50:04 tests-first ok: controller_app/test/hosting_state_order_test.dart fails on the old code
+2026-11-16 16:50:11 tests-first ok: controller_app/test/paired_launch_consent_test.dart fails on the old code
+2026-11-16 16:50:25 tests-first ok: packages/party_host/test/crash_names_dispose_test.dart fails on the old code
+2026-11-16 16:50:30 tests-first ok: packages/party_host/test/crash_off_guard_test.dart fails on the old code
+2026-11-16 16:50:35 tests-first ok: packages/party_host/test/host_id_stopped_test.dart fails on the old code
+2026-11-16 16:50:35 STOPPED: tests-first: controller_app/test/crash_names_host_test.dart pass on the old code (write them to fail first, or add 'tests-first: exempt <reason>' to the brief for a pure refactor); nothing of this wave is committed
