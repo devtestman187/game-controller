@@ -5,6 +5,7 @@ Two scripts replace the most repeated manual steps:
 | Script | What it does | Takes |
 | --- | --- | --- |
 | [`tools/check.sh`](../tools/check.sh) | Every automated check (format, analyze, all eight test suites), one line each | about 3 minutes |
+| [`tools/coverage.sh`](../tools/coverage.sh) | Line coverage per package, every `lib/` file counted: runs the tests again with `--coverage` and writes a table to `coverage/summary.txt` | about 3 to 5 minutes (every package's tests once more) |
 | [`tools/review.sh`](../tools/review.sh) | The coding guidelines' mechanical checks over the `.dart` files that changed, one line per finding | a few seconds |
 | [`tools/commit-job.sh`](../tools/commit-job.sh) | Commits one finished job: the changes under its brief's `allow:` paths, the brief, its report and its review files, with the report's draft message | instant |
 | [`tools/release.sh`](../tools/release.sh) | Tags a release with tester notes, pushes it, waits for the Play, TestFlight and Windows builds, and prints a summary | about 20 to 40 minutes, mostly waiting |
@@ -14,7 +15,7 @@ Two scripts replace the most repeated manual steps:
 | [`tools/smoke.sh`](../tools/smoke.sh) | Pairs a simulated controller (and with `--emulator` the phone app) with the development TV app and checks each step against the clients' and the app's own logs | about 30 seconds, a minute longer with the frames step (a few minutes with `--emulator`) |
 | [`tools/audio/`](../tools/audio/README.md) | `render.py`, which generates the game's sound effects, and how to encode them | a few seconds |
 
-They're plain bash (and one PowerShell script for the Windows window) with no paths tied to one computer. `check.sh`, `review.sh`, `commit-job.sh`, `release.sh` and `emulator.sh` work the same on Windows (Git Bash), macOS and Linux; `tv-dev.sh` and `tv-window.ps1` are for Windows, where the desktop TV app runs, and so is `smoke.sh`, which drives them. Each runs from any folder: the scripts move to the repository root themselves. They're written so a person, Claude Code or another AI agent can use them the same way.
+They're plain bash (and one PowerShell script for the Windows window) with no paths tied to one computer. `check.sh`, `coverage.sh`, `review.sh`, `commit-job.sh`, `release.sh` and `emulator.sh` work the same on Windows (Git Bash), macOS and Linux; `tv-dev.sh` and `tv-window.ps1` are for Windows, where the desktop TV app runs, and so is `smoke.sh`, which drives them. Each runs from any folder: the scripts move to the repository root themselves. They're written so a person, Claude Code or another AI agent can use them the same way.
 
 ## What you need
 
@@ -79,11 +80,41 @@ FAIL  puzzle      (24 passed, exit 1, 6s)  log: /tmp/thumbparty-check-.../puzzle
 
 - **Exit code:** 0 when everything passed, 1 when anything failed, 2 for an unknown check name or a missing tool.
 - **Logs:** one file per check in a new folder under the system temp folder (`$TMPDIR`, `%TEMP%` or `/tmp`), named with the date and time.
-- **Formatting:** the width (120 columns) is set in every `analysis_options.yaml` (`formatter: page_width: 120`), so a plain `dart format .` or the editor's format command gives the same result. To fix a `format` failure: `dart format controller_app tv_test_app packages assets`.
+- **Formatting:** the width (120 columns) is set in every `analysis_options.yaml` (`formatter: page_width: 120`), so a plain `dart format .` or the editor's format command gives the same result. To fix a `format` failure: `dart format controller_app tv_test_app packages assets`. CI runs the same command as its **Format** step, before Analyze in `analyze-test-android` (`.github/workflows/ci.yml`), with `--output=none --set-exit-if-changed`: an unformatted file fails the run there too.
 - **Analysis:** `--fatal-infos` makes an info fail the check here, as `flutter analyze` on CI does (it fails on infos), so CI doesn't find what this missed. A `print` in a test is such an info: use `debugPrint`.
 - **Not included:** the on-device sound test (`tv_test_app/integration_test`, needs audio hardware; see [building.md](building.md)) and checks on real devices or the emulator.
 
 Run it before every commit that changes code, and always before a release.
+
+## Coverage: tools/coverage.sh
+
+```bash
+bash tools/coverage.sh                              # every package
+bash tools/coverage.sh puzzle_game controller_app   # only some, by package name
+bash tools/coverage.sh --no-gen                     # don't regenerate the import tests first
+```
+
+`flutter test --coverage` counts only the files a test imports: a `lib/` file that no test imports isn't in the report at all, and the percentage then covers only what the tests happened to load. The script closes that hole:
+
+1. `dart run tools/coverage_imports.dart` (re)writes `test/coverage_all_test.dart` in each package: one generated test that imports every `lib/**.dart` file, so no file can stay out of the coverage report. The files are committed, so a run without this step still counts every file.
+2. `flutter test --coverage` runs in each package, as the test steps do, which also writes that package's `coverage/lcov.info`.
+3. `dart run tools/coverage_summary.dart` reads every package's `coverage/lcov.info`, prints a table and writes the same table to `coverage/summary.txt` at the repository root.
+
+The table, one row per package and a TOTAL row that sums the hit and found lines (sample):
+
+```
+package             lines hit  lines found       %
+controller_app            512          640   80.0
+protocol                  930         1020   91.2
+...
+TOTAL                   19900        24600   80.9
+```
+
+- **Options:** package names (`controller_app`, `puzzle_game`) restrict the run to those; `--no-gen` skips step 1 and uses the committed import tests as they are.
+- **Exclusions:** generated files (`*.g.dart`, `*.freezed.dart`, `*.gr.dart`, the generated localisations, the plugin registrants and `firebase_options.dart`) and `part of` files are left out of the import test and of the table. A `lib/` file that can't load in a VM test (web-only, conditional `dart:html`) is listed with its reason in the generated test's header and left out too.
+- **Exit code:** 0 when every package's tests passed, 1 when one failed; the table is printed either way.
+- **On CI:** the Coverage step of `analyze-test-android` (`.github/workflows/ci.yml`) runs `bash tools/coverage.sh` after the test steps, so the table is in the job log and in the run's summary page (inside a fenced block). The run keeps `coverage/summary.txt` and each package's `coverage/lcov.info` as the `coverage` artifact for 14 days: download it from the run's page, or `gh run download <id> -n coverage`. **No threshold fails CI yet:** the step fails only when a package's tests fail, so a drop in coverage shows in the table and in the review, not as a red run.
+- **Formatting:** the same job checks formatting first, as a **Format** step before Analyze, with the same command as `tools/check.sh format` ([tools/check.sh](#toolschecksh)).
 
 ## tools/review.sh
 

@@ -46,6 +46,8 @@ jobs:
           cache: true
       - name: Get packages (pub workspace)
         run: flutter pub get
+      - name: Format
+        run: dart format --output=none --set-exit-if-changed controller_app tv_test_app packages assets
       - name: Analyze
         run: flutter analyze controller_app tv_test_app packages assets
       - name: Test protocol
@@ -66,6 +68,29 @@ jobs:
       - name: Test TV app
         working-directory: tv_test_app
         run: flutter test
+      - name: Coverage (line % per package; no threshold)
+        run: |
+          status=0
+          bash tools/coverage.sh || status=$?
+          {
+            echo '## Line coverage'
+            echo '```'
+            if [ -f coverage/summary.txt ]; then
+              cat coverage/summary.txt
+            else
+              echo 'no coverage/summary.txt: the Coverage step did not finish'
+            fi
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit $status
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: coverage
+          path: |
+            coverage/summary.txt
+            **/coverage/lcov.info
+          retention-days: 14
       - name: Build controller APK
         working-directory: controller_app
         run: flutter build apk --release
