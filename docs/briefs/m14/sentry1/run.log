@@ -127,3 +127,5 @@
 2026-11-16 16:27:55 reviewed f1: 11 finding(s)
 2026-11-16 16:27:56 reviewed f2: 4 finding(s)
 2026-11-16 16:27:57 reviewed f3: 10 finding(s)
+2026-11-16 16:27:57 start the run's review
+2026-11-16 16:31:35 DONE: every job is committed. Claude reads the Summary of docs/briefs/m14/sentry1/REVIEW.md, verifies its findings and writes one fix brief
