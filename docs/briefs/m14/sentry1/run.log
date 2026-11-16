@@ -42,3 +42,24 @@
 2026-11-16 14:53:54 tests-first ok: tv_test_app/test/first_launch_consent_test.dart fails on the old code
 2026-11-16 14:58:38 committed stats-bug: 2e8c28c0 Show the Stats error with Retry, and add the crash reports button
 2026-11-16 14:58:39 committed tv-consent: 6b797b0b TV asks its two consent questions and starts Sentry
+2026-11-16 14:58:41 reviewed consent-model: 5 finding(s)
+2026-11-16 14:58:41 reviewed host-id: 4 finding(s)
+2026-11-16 14:58:41 STOPPED: jobs that failed or need applying by hand: phone-consent:4 (their logs: docs/briefs/m14/sentry1/flash-<job>.log)
+2026-11-16 15:00:33 HAND-FIX phone-consent: applied the job's patch by hand (3-way apply failed on a concurrent code-health edit); review.sh 0 FAIL, check.sh format analyze phone PASS (521 tests)
+2026-11-16 15:00:44 start at 008548d9 on m14
+2026-11-16 15:00:50 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-16 15:00:50 skip sentry-core (already done)
+2026-11-16 15:00:50 skip stats-optb (already done)
+2026-11-16 15:00:51 skip ci-wiring (already done)
+2026-11-16 15:00:51 skip consent-model (already done)
+2026-11-16 15:00:51 skip host-id (already done)
+2026-11-16 15:00:52 skip stats-bug (already done)
+2026-11-16 15:00:52 WARN: phone-consent was committed by hand (008548d9); a plain restart would skip its tests-first proof and worker review, so both run now
+2026-11-16 15:01:51 tests-first ok: controller_app/test/consent_migration_test.dart fails on the old code
+2026-11-16 15:02:07 tests-first ok: controller_app/test/launch_consent_test.dart fails on the old code
+2026-11-16 15:02:25 tests-first ok: controller_app/test/settings_consent_test.dart fails on the old code
+2026-11-16 15:02:31 tests-first ok: controller_app/test/stats_share_to_host_test.dart fails on the old code
+2026-11-16 15:02:32 hand-fixed phone-consent: tests-first proof and worker review done (marked in done.txt)
+2026-11-16 15:02:32 skip phone-consent (already done)
+2026-11-16 15:02:33 skip tv-consent (already done)
+2026-11-16 15:07:08 reviewed phone-consent: 8 finding(s)
