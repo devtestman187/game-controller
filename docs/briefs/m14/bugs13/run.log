@@ -20,3 +20,5 @@
 2026-11-15 18:05:55 f1: dropped generated churn outside its list: site/shots/dpad.png site/shots/menus.png site/shots/results.png site/shots/sticks.png site/shots/tilt.png 
 2026-11-15 18:07:01 tests-first ok: controller_app/test/first_host_consent_input_test.dart fails on the old code
 2026-11-15 18:11:22 committed f1: e5b9197 The first host's consent prompt is a thumb's alone
+2026-11-15 18:16:49 reviewed f1: 5 finding(s)
+2026-11-15 18:16:49 DONE: every job is committed. Claude reads the Summary of docs/briefs/m14/bugs13/REVIEW.md, verifies its findings and writes one fix brief
