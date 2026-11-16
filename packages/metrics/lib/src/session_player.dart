@@ -51,7 +51,8 @@ class PlayerRecord {
   bool shares = false;
 
   /// Joined over the host device's own link, not a phone on the network
-  /// (m12 §1): only the phone app's host mode has one.
+  /// (m12 §1): only the phone app's host mode has one. Its answer is the
+  /// host's, so it shares like a [local] player does.
   bool inProcess = false;
   final String platform;
 
@@ -98,8 +99,10 @@ Map<String, Object?> playerJson(String id, PlayerRecord p, int atMs) {
   return {
     'install': id,
     'player': p.number,
-    // The upload keeps only the players who said yes (uploadableSummary).
-    'share': p.local || p.shares,
+    // The upload keeps only the players who said yes (uploadableSummary). The
+    // host's own players count as yes, local or over its in-process link: the
+    // host's answer is the one that lets anything go up at all.
+    'share': p.local || p.inProcess || p.shares,
     if (p.local) 'local': true,
     'platform': p.platform,
     'app': p.app,

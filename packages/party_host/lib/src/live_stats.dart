@@ -182,21 +182,10 @@ class LiveStats implements StatsService {
     final s = _session;
     if (s == null) return;
     for (final id in here.difference(_present)) {
-      final c = connected[id];
-      if (c != null) {
-        // The host phone's own player comes in over the in-process link (m12
-        // §1), so its record says where it watched.
-        s.joined(
-          id,
-          number: c.player ?? 0,
-          atMs: now,
-          inProcess: c.isLocal,
-          platform: c.platform,
-          app: c.appVersion,
-          device: c.device,
-        );
-      } else {
-        s.joined(id, number: locals[id]!.number, atMs: now, local: true, platform: hostOs ?? '');
+      if (connected[id] case final c?) {
+        _recorder.controllerJoined(s, id, c, atMs: now);
+      } else if (locals[id] case final p?) {
+        _recorder.localJoined(s, id, p, atMs: now, platform: hostOs ?? '');
       }
     }
     for (final id in _present.difference(here)) {

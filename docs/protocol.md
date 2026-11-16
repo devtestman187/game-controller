@@ -204,7 +204,9 @@ The host closes the connection with 4003 if a controller sends `layout` or `stat
 
 `stats_share` (controller → host): `{"share": true}` or `{"share": false}`, the player's own answer to "share usage stats" (sentry1, stats option B). The controller sends it right after every pairing, a reconnect too, and at once when the answer changes. A host counts a player it never hears from as not sharing.
 
-The host keeps the answer with the player. Its saved session file keeps every player, marked `share` true or false; the session it uploads leaves out the players who did not say yes, with all their own data, and keeps the anonymous round totals (the game, its time and how many players took part). Stats stay aggregates: no names or device IDs.
+The host keeps the answer with the player, for the whole app run: a pause or the two-minute gap ends the session, and a player who stayed paired keeps the answer in the next session without sending it again. Its saved session file keeps every player, marked `share` true or false; the session it uploads leaves out the players who did not say yes, with all their own data, and keeps the anonymous round totals (the game, its time and how many players took part). The round names a winning team only while two of its members share. A file saved before this build, with no `share` on any player, uploads as it was saved. A host's own players — the TV's keyboard player and "Play on this phone" — share with the host, whose answer is what allows any upload.
+
+What goes up carries no names and nothing about who was playing, but it isn't anonymous: each sharing player's random per-install ID (`install`), their device kind and model go up with their number, and the privacy page lists them.
 
 The message needs no capability: a host one build older ignores it as an unknown type (§2), which reads as "not sharing". A `stats_share` from a connection that hasn't paired is ignored.
 

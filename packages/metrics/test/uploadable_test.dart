@@ -45,7 +45,7 @@ void main() {
     expect(upload['frames'], {'drawn': 0, 'dropped': 0});
   });
 
-  test('a winning team keeps only the members who share', () {
+  test('a winning team loses its winners list when one member of it shares', () {
     final session = newSession();
     session
       ..joined('yes', number: 1, atMs: 0)
@@ -58,7 +58,7 @@ void main() {
     final round = mapsOf(uploadableSummary(session.summary(10000))['rounds']).single;
 
     expect(round['winner'], 1, reason: 'the team\'s first player said yes');
-    expect(round['winners'], [1], reason: 'player 2 said no and is left out');
+    expect(round['winners'], isNull, reason: 'player 2 said no, and one sharing member is not a team');
     expect(round['players'], 3, reason: 'three players took part');
   });
 
@@ -68,27 +68,31 @@ void main() {
     expect(mapsOf(session.summary(1000)['players']).single['share'], isTrue);
   });
 
-  test('a summary with no answer at all uploads no player but every round total', () {
-    final old = <String, Object?>{
+  test('an entry with no answer is left out once another player has one', () {
+    final partly = <String, Object?>{
       'schema': 1,
       'id': 'x',
       'host': {'type': 'windows'},
       'durationS': 5,
       'players': [
-        {'install': 'a', 'player': 1},
+        {'install': 'a', 'player': 1, 'share': true},
         {'install': 'b', 'player': 2},
       ],
       'rounds': [
-        {'game': 'arena', 'players': 4, 'timeS': 2.0, 'winner': 1},
+        {'game': 'arena', 'players': 2, 'timeS': 2.0, 'winner': 2},
       ],
       'frames': {'drawn': 10, 'dropped': 1},
     };
 
-    final upload = uploadableSummary(old);
+    final upload = uploadableSummary(partly);
 
-    expect(mapsOf(upload['players']), isEmpty);
-    expect(mapsOf(upload['rounds']).single, {'game': 'arena', 'players': 4, 'timeS': 2.0});
+    expect([for (final p in mapsOf(upload['players'])) p['install']], ['a']);
+    expect(mapsOf(upload['rounds']).single, {
+      'game': 'arena',
+      'players': 2,
+      'timeS': 2.0,
+    }, reason: 'the winner has no answer, so the round keeps only its totals');
     expect(upload['frames'], {'drawn': 10, 'dropped': 1});
-    expect(mapsOf(old['players']), hasLength(2), reason: 'the record handed in is not changed');
+    expect(mapsOf(partly['players']), hasLength(2), reason: 'the record handed in is not changed');
   });
 }

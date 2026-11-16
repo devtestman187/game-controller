@@ -12,6 +12,10 @@ const arenaGameName = 'arena';
 /// ratings, the game's rounds, frames and per-player results, and the rating
 /// prompt after a game (M9 to M11).
 ///
+/// It also keeps each controller's stats answer for the whole app run, so a
+/// player keeps it across a pause and the session gap, which end a session
+/// while the player stays paired (sentry1 stats option B).
+///
 /// Split from the host's [LiveStats], which owns the session's lifetime and
 /// files; this part only reads messages and records.
 class SessionRecorder {
@@ -46,9 +50,23 @@ class SessionRecorder {
   /// what the player was rating (M14's "By game and feature").
   final _askedRounds = <String, List<String>>{};
 
+  /// Each controller's last stats answer, kept for the whole app run: a pause
+  /// or the session gap can end the session it was given in while the player
+  /// stays paired, and the player is not asked again (sentry1 stats option B).
+  final _answers = <String, bool>{};
+
   /// Records a controller message: its input state, a metrics batch or an
   /// answer to a rating prompt.
   void onMessage(ControllerMessage m) {
+    // The answer is read before the session is looked up: it is kept even
+    // between sessions, so the player's next one has it (B-019).
+    if (m.message case final StatsShareMessage share) {
+      // Only the player's own answer; a phone that never says counts as not
+      // sharing (sentry1 stats option B).
+      _answers[m.controllerId] = share.share;
+      session()?.statsShare(m.controllerId, share.share);
+      return;
+    }
     final s = session();
     if (s == null) return;
     switch (m.message) {
@@ -60,10 +78,6 @@ class SessionRecorder {
         // The viewer counted its frames while drawing the host's view: they go
         // under that view's rate, like its stage samples (m12 §0.4).
         s.metrics(m.controllerId, batch, hz: host.viewRateHz);
-      case final StatsShareMessage share:
-        // Only the player's own answer; a phone that never says counts as not
-        // sharing (sentry1 stats option B).
-        s.statsShare(m.controllerId, share.share);
       case final RatingMessage r:
         s.rating(
           m.controllerId,
@@ -73,6 +87,37 @@ class SessionRecorder {
         );
       default:
     }
+  }
+
+  /// Records that controller [id] joined [s]: its details from [c], and the
+  /// stats answer it gave earlier in this app run. The host phone's own player
+  /// comes in over the in-process link (m12 §1), so its record says where it
+  /// watched.
+  void controllerJoined(SessionCollector s, String id, ControllerInfo c, {required int atMs}) {
+    s.joined(
+      id,
+      number: c.player ?? 0,
+      atMs: atMs,
+      inProcess: c.isLocal,
+      platform: c.platform,
+      app: c.appVersion,
+      device: c.device,
+    );
+    _applyAnswer(s, id);
+  }
+
+  /// Records that the host device's own player [p] joined [s]: a keyboard
+  /// player, or a game the host keeps to itself, with the host's platform.
+  void localJoined(SessionCollector s, String id, GamePlayer p, {required int atMs, required String platform}) {
+    s.joined(id, number: p.number, atMs: atMs, local: true, platform: platform);
+    _applyAnswer(s, id);
+  }
+
+  /// Applies the answer [id] gave earlier in this app run; a player who never
+  /// answered counts as not sharing, which is what a new record is.
+  void _applyAnswer(SessionCollector s, String id) {
+    final share = _answers[id];
+    if (share != null) s.statsShare(id, share);
   }
 
   /// Records a game's record: rounds, frames, per-player results and every
