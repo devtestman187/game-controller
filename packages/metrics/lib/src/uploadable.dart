@@ -4,10 +4,10 @@
 /// how many players took part — with a win only when the winner shares, and a
 /// team only while two of its members do.
 ///
-/// A file saved before this build, with no answer on any player, uploads as it
-/// did then (sentry1 f2): the question did not exist for its players, so none
-/// of them is left out. Once any entry has an answer, an entry without one
-/// counts as no.
+/// An entry without an answer counts as no. A file saved before this build has
+/// no answer on any player, so nothing of it is uploaded: the caller drops such
+/// a file ([hasShareMarks]), and the file stays on the device for the Stats
+/// screen (sentry2, the owner's "sessions should be dropped").
 ///
 /// [summary] is not changed: the saved file, the Stats screen and the host's
 /// own records keep the whole thing. What goes up carries no names and nothing
@@ -16,16 +16,6 @@
 /// numbers, as the privacy page lists.
 Map<String, Object?> uploadableSummary(Map<String, Object?> summary) {
   final all = _objects(summary['players']).toList();
-  // A file saved before this build has no answer on any player: it uploads
-  // as it did then, with every player and every winner, rather than with
-  // nobody (sentry1 stats option B).
-  if (!all.any((player) => player.containsKey('share'))) {
-    return {
-      ...summary,
-      'players': [for (final player in all) Map<String, Object?>.of(player)],
-      'rounds': [for (final round in _objects(summary['rounds'])) Map<String, Object?>.of(round)],
-    };
-  }
   final sharing = <int>{};
   final players = <Map<String, Object?>>[];
   for (final player in all) {
@@ -39,6 +29,12 @@ Map<String, Object?> uploadableSummary(Map<String, Object?> summary) {
     'rounds': [for (final round in _objects(summary['rounds'])) _roundTotals(round, sharing)],
   };
 }
+
+/// Whether any player in [summary] carries an answer, yes or no: a file saved
+/// before this build has no `share` key on any of them, so nobody in it was
+/// asked, and [uploadableSummary] would keep nothing of it (sentry2).
+bool hasShareMarks(Map<String, Object?> summary) =>
+    _objects(summary['players']).any((player) => player.containsKey('share'));
 
 /// One round without its non-sharing players: a winner who does not share is
 /// left out, and a team keeps its sharing members only while two or more of

@@ -33,19 +33,21 @@ Map<String, Object?> oldFile() => {
 };
 
 void main() {
-  test('a file saved before this build uploads every player and every winner, as it did then', () {
-    final upload = uploadableSummary(oldFile());
+  test('a file saved before this build uploads no player and no round winner', () {
+    final saved = oldFile();
 
-    expect(
-      [for (final p in mapsOf(upload['players'])) p['install']],
-      ['a', 'b'],
-      reason: 'nobody was asked, so nobody is left out',
-    );
-    expect(mapsOf(upload['players']).first.containsKey('share'), isFalse, reason: 'there is no answer to mark');
-    expect(mapsOf(upload['rounds']).last['winners'], [
-      1,
-      2,
-    ], reason: 'with no answers the round goes up as it was saved');
+    final upload = uploadableSummary(saved);
+
+    expect(hasShareMarks(saved), isFalse, reason: 'nobody in this file was asked');
+    expect(upload['players'], isEmpty, reason: 'the owner drops a session nobody in was asked about (sentry2)');
+    expect(mapsOf(upload['rounds']), hasLength(2), reason: 'the rounds happened, so their totals stay');
+    expect(mapsOf(upload['rounds']).first, {'game': 'arena', 'players': 2, 'timeS': 5.0});
+    expect(mapsOf(upload['rounds']).last, {
+      'game': 'arena',
+      'players': 3,
+      'timeS': 9.0,
+    }, reason: 'the winner and the winning team go with the players');
     expect(upload['frames'], {'drawn': 300, 'dropped': 3}, reason: 'the session totals stay');
+    expect(mapsOf(saved['players']), hasLength(2), reason: 'the saved file itself is not changed');
   });
 }

@@ -117,6 +117,7 @@ class LiveStats implements StatsService {
 
   static const _consentKey = 'statsConsent';
   static const _uploadedKey = 'uploadedSessions';
+  static const _skippedKey = 'skippedSessions';
 
   final _subs = <StreamSubscription<Object?>>[];
   final _changes = StreamController<StatsState>.broadcast();
@@ -311,9 +312,18 @@ class LiveStats implements StatsService {
     _retry?.cancel();
     try {
       final done = _uploadedIds;
-      final pending = (await _sessionsOrNone()).where((f) => !done.contains(f.id) && f.path != _sessionPath).toList();
+      final skipped = (prefs.getStringList(_skippedKey) ?? const []).toSet();
+      final pending = (await _sessionsOrNone())
+          .where((f) => !done.contains(f.id) && !skipped.contains(f.id) && f.path != _sessionPath)
+          .toList();
       for (final f in pending) {
         if (_state.consent != true) break;
+        if (!hasShareMarks(f.summary)) {
+          // Nobody in this file was asked, so it is dropped, not sent (sentry2).
+          skipped.add(f.id);
+          await prefs.setStringList(_skippedKey, skipped.toList());
+          continue;
+        }
         final error = await up.upload(uploadableSummary(f.summary));
         if (error != null) {
           _log('Stats: upload failed, trying again later: $error');
@@ -339,9 +349,10 @@ class LiveStats implements StatsService {
   Future<void> _refreshCounts() async {
     final files = await _sessionsOrNone();
     final done = _uploadedIds;
-    final waiting = _state.consent == true
-        ? files.where((f) => !done.contains(f.id) && f.path != _sessionPath).length
-        : 0;
+    final skipped = (prefs.getStringList(_skippedKey) ?? const []).toSet();
+    bool waits(SessionFile f) =>
+        !done.contains(f.id) && !skipped.contains(f.id) && f.path != _sessionPath && hasShareMarks(f.summary);
+    final waiting = _state.consent == true ? files.where(waits).length : 0;
     _set(_state.copyWith(saved: files.length, waiting: waiting, uploaded: done.length));
   }
 
