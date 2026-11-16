@@ -15,14 +15,16 @@ class RecordedCrash {
   final String? where;
 }
 
-/// A crash reporter for tests: it records every report it is handed, and the
-/// test turns it on and off to check what the app reports while each (design
-/// sentry-consent.md).
+/// A crash reporter for tests: it records every report it is handed while
+/// reports are on, and the test turns it on and off to check what the app
+/// reports while each (design sentry-consent.md).
 ///
-/// It records a report even while off, so a test can show the app itself sent
-/// nothing while reports were off.
+/// Like `SentryCrashReporter`, it drops a report handed over while off, so a
+/// test that sees nothing recorded also covers a missing enabled check at
+/// this boundary.
 class FakeCrashReporter implements CrashReporter {
-  /// Every report given to this reporter, in order.
+  /// Every report this reporter took, in order: only those handed over while
+  /// it was on.
   final captures = <RecordedCrash>[];
 
   /// How many times the app turned reports on.
@@ -50,6 +52,7 @@ class FakeCrashReporter implements CrashReporter {
 
   @override
   void capture(Object error, StackTrace? stack, {String? where}) {
+    if (!_isEnabled) return;
     captures.add(RecordedCrash(error, stack, where));
   }
 }

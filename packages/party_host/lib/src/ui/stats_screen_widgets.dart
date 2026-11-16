@@ -21,9 +21,9 @@ class _SharingButton extends ConsumerWidget {
 /// The crash reports choice (design sentry-consent.md), in the app bar beside
 /// the stats one, and only where a report could be sent: pressing it asks the
 /// crash question, and its label follows this instance's answer.
-class CrashSharingButton extends ConsumerWidget {
+class _CrashSharingButton extends ConsumerWidget {
   /// The button; it draws nothing where [crashAvailableProvider] is false.
-  const CrashSharingButton({super.key});
+  const _CrashSharingButton();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

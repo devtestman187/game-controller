@@ -36,6 +36,12 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
   bool _loading = true;
   bool _failed = false;
 
+  /// Whether a read of the saved sessions is still going. A Retry pressed
+  /// while one is reads nothing, so two quick presses cannot race and a slow
+  /// failure cannot cover a newer table; it clears when the read ends,
+  /// whether it worked or failed (M14 sentry1).
+  bool _reading = false;
+
   @override
   void initState() {
     super.initState();
@@ -45,8 +51,12 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
   /// Reads the saved sessions, as Retry does again: the read's own failure
   /// becomes the screen's error state and a crash report, so it never
   /// leaves the screen on its spinner and never throws on unhandled (M14
-  /// sentry1).
-  Future<void> _load() => CrashReports.guard(_readSessions(), where: 'stats_load');
+  /// sentry1). A second call while one read is going does nothing.
+  Future<void> _load() {
+    if (_reading) return Future<void>.value();
+    _reading = true;
+    return CrashReports.guard(_readSessions(), where: 'stats_load').whenComplete(() => _reading = false);
+  }
 
   Future<void> _readSessions() async {
     final List<SessionFile> list;
@@ -97,7 +107,7 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
         title: HostText.stats,
         actions: [
           _SharingButton(consent: stats.consent),
-          const CrashSharingButton(),
+          const _CrashSharingButton(),
           _ExportButton(onPressed: _export),
         ],
         body: SafeArea(
