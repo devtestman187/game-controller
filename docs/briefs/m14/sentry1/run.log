@@ -1,0 +1,18 @@
+2026-11-16 13:44:30 start at 1c682be7 on m14
+2026-11-16 13:44:30 run-base 1c682be7206e327001b689c5d28556a5d2a575f6
+2026-11-16 13:44:35 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-16 13:44:36 start sentry-core
+2026-11-16 13:45:01 start stats-optb
+2026-11-16 13:45:26 start ci-wiring
+2026-11-16 13:56:47 sentry-core finished: result 0 (75 turns, 9 min)
+2026-11-16 13:59:18 stats-optb finished: result 0 (93 turns, 12 min)
+2026-11-16 13:59:18 ci-wiring finished: result 0 (32 turns, 2 min)
+2026-11-16 13:59:28 tests-first ok: packages/connection/test/stats_share_test.dart fails on the old code
+2026-11-16 13:59:31 tests-first ok: packages/metrics/test/uploadable_test.dart fails on the old code
+2026-11-16 14:00:29 tests-first ok: packages/party_host/test/crash_reports_test.dart fails on the old code
+2026-11-16 14:00:41 tests-first ok: packages/party_host/test/crash_scrub_test.dart fails on the old code
+2026-11-16 14:00:53 tests-first ok: packages/party_host/test/live_stats_share_test.dart fails on the old code
+2026-11-16 14:00:56 tests-first ok: packages/protocol/test/stats_share_test.dart fails on the old code
+2026-11-16 14:06:37 committed sentry-core: 8c621c8b Add the crash reporter, scrubber and CrashReports helper to party_host
+2026-11-16 14:06:39 committed stats-optb: 7eed4bda sentry1 stats-optb: upload only the players who share their stats
+2026-11-16 14:06:40 committed ci-wiring: 6af1b496 Release builds get the Sentry DSN from CI variables (sentry1)
