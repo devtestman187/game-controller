@@ -66,3 +66,4 @@
 2026-11-16 15:07:08 start the run's review
 2026-11-16 15:08:12 reviewed stats-bug: 7 finding(s)
 2026-11-16 15:08:12 reviewed tv-consent: 6 finding(s)
+2026-11-16 15:11:40 DONE: every job is committed. Claude reads the Summary of docs/briefs/m14/sentry1/REVIEW.md, verifies its findings and writes one fix brief
