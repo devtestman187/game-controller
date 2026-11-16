@@ -147,3 +147,6 @@ placement, `sound.dart`'s size) sit behind them. Both bugs stay Fixed, unverifie
 ## Delete
 
 - none
+
+## Round 2 verdicts (f1, f2 reviews)
+f1 review: 0 must, 5 could; f2 review: 0 must, 2 should (no player-level test of _loadTried; _load 45 lines), 2 could. All deferred to docs/code-health.md (M14 bugs14 leftovers). Full check.sh passed.

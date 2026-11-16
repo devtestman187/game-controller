@@ -152,6 +152,11 @@ The "could" findings of [bugs1's review](briefs/m14/bugs1/REVIEW.md) that the fi
 | `HostIdentity.appWithBuild` (`host_identity.dart:70`) takes the build from a regex match on `versionLabel`, a display string, so a rewording of the label ("1.2.3 build 45", a TestFlight label) drops the build from the session and no test notices (run review). | Low: today's labels carry "(123)" | The display string can change without losing data | when touched: a `build` field the shell passes; the phone's host identity (`controller_app/lib/src/host/phone_host_setup.dart:31`) is the wiring that comes with it, pending bugs12 |
 | `host_service.dart` is 369 lines, past `m12-report.md` §2's 360 budget (stats2's `hostApp` line took it from 368; run review). | Low: covered by the host tests | Room for the next host change | when touched: split the service before adding to it |
 
+### M14 bugs14 leftovers (B-027 watchdog, B-028 band; reviews of Nov 15, 2026)
+
+- **Watchdog**: a `play()` that throws restarts the whole engine (one bad effect key restarts every 5 s; restrict to "loop voice also gone"); "frozen" is exact equality of the loop's place (carry the loop length in `SoundPulse`); fixed 5 s cooldown never widens for an engine that cannot come back; `SoundPulse` sits in `sound_watchdog.dart` though `sound_loop.dart` imports it (move beside `SoundLoop`); a paused loop whose engine failed waits for the resume; `isLoopWanted` is public only for the test; no player-level test of `_loadTried` (needs a fake engine seam); `sound.dart` is ~350 lines (split the watchdog/lifecycle wiring when next touched); `_load` is 45 lines.
+- **Band**: `TakenNoticeNotifier.build()` returns null and only listens (seed from the snapshot, up to 1 s late); no test for the `_announced` reset in `build()` and the `asked == null` branch; its tests wait a literal 5 s instead of `takenNoticeDuration`; the notifier could move to `providers/view.dart`; `askedCharacter` dartdoc should say it is also null after a drop. The phone host's own band (Play on this phone) ends on the 5 s only; an accessory that was taken shows no band; the band can sit over the host-away card up to 5 s (all left on purpose).
+
 ## Before a milestone
 
 | Before | What | Risk | Benefit of doing it first | Rec. |
