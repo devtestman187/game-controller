@@ -124,8 +124,8 @@ final class ClientSnapshot {
   bool get isConnected => status == ClientStatus.connected;
 
   /// This connection dropped and another attempt is on its way: the state
-  /// while reconnecting, with what this connection measured forgotten (the
-  /// next one measures its own).
+  /// while reconnecting, with what this connection measured or was told
+  /// forgotten (the next one measures and asks for its own).
   ClientSnapshot reconnecting({String? detail, required int attempt, int? osErrorCode}) => copyWith(
     status: ClientStatus.reconnecting,
     problem: ClientProblem.connectionLost,
@@ -135,11 +135,12 @@ final class ClientSnapshot {
     rttStats: null,
     player: null,
     character: null,
+    askedCharacter: null,
     osErrorCode: osErrorCode,
   );
 
   /// The client gave up for [problem]: the state while failed, with what this
-  /// connection measured forgotten.
+  /// connection measured or was told forgotten.
   ClientSnapshot failed(ClientProblem problem, String? detail) => copyWith(
     status: ClientStatus.failed,
     problem: problem,
@@ -148,6 +149,7 @@ final class ClientSnapshot {
     rttStats: null,
     player: null,
     character: null,
+    askedCharacter: null,
   );
 
   /// The best name for the host: its own name, the advertised one, or its

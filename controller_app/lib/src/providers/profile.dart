@@ -69,9 +69,17 @@ final takenNoticeProvider = NotifierProvider<TakenNoticeNotifier, TakenColours?>
 class TakenNoticeNotifier extends Notifier<TakenColours?> {
   Timer? _hide;
 
+  /// The pair already said, which the hide and the view listener leave alone:
+  /// every heartbeat brings a snapshot with the same answer, and it must not
+  /// bring the line back (B-028). Only a new answer, or one that is no longer
+  /// taken, changes it.
+  TakenColours? _announced;
+
   @override
   TakenColours? build() {
     ref.onDispose(_cancel);
+    // A build starts over, so does what was said: nothing was announced yet.
+    _announced = null;
     final client = ref.watch(clientProvider);
     final sub = client.view.listen((event) {
       if (event is ViewStarted || event is ViewEnded) _hideNow();
@@ -86,13 +94,16 @@ class TakenNoticeNotifier extends Notifier<TakenColours?> {
     final asked = next.askedCharacter;
     final assigned = next.character;
     if (asked == null || assigned == null || asked.colourSlot == assigned.colourSlot) {
+      _announced = null;
       _hideNow();
       return;
     }
+    final answer = (asked: asked, assigned: assigned);
     // Every heartbeat brings a snapshot: the same answer keeps the line's own
-    // seconds rather than starting them again.
-    if (state == (asked: asked, assigned: assigned)) return;
-    state = (asked: asked, assigned: assigned);
+    // seconds rather than starting them again, or saying it after the hide.
+    if (_announced == answer) return;
+    _announced = answer;
+    state = answer;
     _hide?.cancel();
     _hide = Timer(takenNoticeDuration, _hideNow);
   }
