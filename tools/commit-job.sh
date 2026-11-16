@@ -15,6 +15,7 @@
 #   - every change under an allow path, modified, untracked or deleted;
 #   - the brief, its report, and the job's <brief>-review.md,
 #     <brief>-review-report.md and <brief>-plan.md, when they exist.
+#   - the brief's `ci-patch:` file and the paths it changes (.github/, codemagic.yaml);
 # Never a */windows/flutter/generated_* file: Flutter rewrites those on every
 # run. It refuses (exit 1) when anything was already staged before it ran.
 # The message is the report's `## Commit message` section, without its code
@@ -46,7 +47,7 @@ while [ $# -gt 0 ]; do
     --push) push=1 ;;
     --dry-run) dry=1 ;;
     -h | --help)
-      sed -n '2,27p' "$0" | sed 's/^# \{0,1\}//'
+      sed -n '2,28p' "$0" | sed 's/^# \{0,1\}//'
       exit 0
       ;;
     -*)
@@ -108,6 +109,13 @@ add_target() {
 for a in "${allow[@]}"; do add_target "$a"; done
 add_target "$brief"
 add_target "$report"
+# A `ci-patch:` file (a patch for .github/ or codemagic.yaml, which workers may not
+# edit): the runner applied it; its paths and the patch file go into the job commit.
+cipatch="$(field ci-patch)"
+if [ -n "$cipatch" ] && [ -f "$cipatch" ]; then
+  add_target "$cipatch"
+  while IFS=$'\t' read -r _ _ p; do add_target "$p"; done < <(git apply --numstat "$cipatch" 2> /dev/null)
+fi
 stem="${brief%.md}"
 for suffix in -review.md -review-report.md -plan.md; do add_target "$stem$suffix"; done
 if [ ${#targets[@]} = 0 ]; then

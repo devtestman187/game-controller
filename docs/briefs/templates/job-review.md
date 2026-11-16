@@ -1,10 +1,10 @@
-job: review of job {JOB} (read-only): check what it committed against the coding guidelines, the review rules and its own brief; write findings only
+job: review of the jobs of {JOB} ({NAMES}) (read-only): check what they committed against the coding guidelines, the review rules and its own brief; write findings only
 pub: no
 stop: after it.
-read: {DIR}/{JOB}.md (the brief: what was asked) · {DIR}/{JOB}-report.md (what the worker says it did) · docs/coding-guidelines.md · docs/review-rules.md · {DIR}/run-findings.md if it exists · the change itself: `git diff {RANGE}` if the command is allowed, otherwise read these files whole: {FILES}
+read: {BRIEFS} (the briefs: what was asked) · {REPORTS} (what the workers say they did) · docs/coding-guidelines.md · docs/review-rules.md · {DIR}/run-findings.md if it exists · the change itself: `git diff <each of> {RANGE}` if the command is allowed, otherwise read these files whole: {FILES}
 decide: never stop for a question. You change no code and no document except your report. If something cannot be judged from what you can read, say so in one line under "Could not check".
 
-You are the second pair of eyes on another worker's job. Claude (the designer) will read only your Summary, then verify the findings it acts on, so be exact and short: a finding Claude cannot find in the file is worse than none.
+You are the second pair of eyes on the other workers' jobs of one wave (review each job against its own brief). Claude (the designer) will read only your Summary, then verify the findings it acts on, so be exact and short: a finding Claude cannot find in the file is worse than none.
 1. **Guidelines** (docs/coding-guidelines.md): go through the changed files against each rule: size and function length, names, layers and platform rules, error handling, leftovers (prints, TODOs, commented-out code, scratch files), magic numbers, clocks and timers, text and strings.
 2. **Review rules** (docs/review-rules.md, parts A and B): every host setup; when kept state starts and ends; how a new state combines with the others (pause, party night, reconnect); staying in the job's folder; stopping rather than overstepping. Check the report's self-check lines against the code: is each claim true?
 3. **The brief**: is every numbered item done? Is anything built that was not asked for? Is every "Decisions" entry safe, and is any decision hidden (made but not listed)?

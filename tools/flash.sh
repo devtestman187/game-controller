@@ -179,6 +179,21 @@ for r in "${reads[@]+"${reads[@]}"}"; do
   read_abs+=("$a")
 done
 
+# analyze is scoped to the packages of the job's own files (parallel jobs must not fail each
+# other's whole-workspace analyze); the runner runs the whole workspace once per wave.
+# A file that is in no package (docs, tools, a brief) adds nothing; no package at all: unscoped.
+scope=()
+for a in "${allow[@]+"${allow[@]}"}"; do
+  d="$a"
+  while [ -n "$d" ] && [ "$d" != "." ]; do
+    if [ -d "$d" ] && [ -f "$d/pubspec.yaml" ]; then
+      case " ${scope[*]-} " in *" $d "*) ;; *) scope+=("$d") ;; esac
+      break
+    fi
+    case "$d" in */*) d="${d%/*}" ;; *) d="" ;; esac
+  done
+done
+if [ ${#scope[@]} -gt 0 ]; then export CHECK_ANALYZE_PKGS="${scope[*]}"; else unset CHECK_ANALYZE_PKGS; fi
 # Tell the worker its limits; the script enforces them after the run.
 if [ ${#allow[@]} -gt 0 ]; then
   task+=$'\n\n'"You may change only these files (a folder means anything inside it): ${allow[*]}. Changing any other file fails the job."
@@ -198,6 +213,7 @@ The distro has no access to Windows files and must stay that way: never edit /et
 fi
 if [ ${#checks[@]} -gt 0 ]; then
   task+=$'\n'"When done, check with: tools/check.sh ${checks[*]}"
+  [ -n "${CHECK_ANALYZE_PKGS:-}" ] && task+=" (analyze covers only your packages: ${CHECK_ANALYZE_PKGS}; the runner analyzes the whole workspace once per wave, so leave other packages' findings alone)"
 fi
 if [ -n "$report" ]; then
   task+=$'\n'"Write your full report (files changed and why, computed test values, questions, suggestions) to $report."

@@ -8,6 +8,8 @@
 #   tools/check.sh --list          # list the checks
 #   tools/check.sh --verbose ...   # also print every check's full output
 #
+# CHECK_ANALYZE_PKGS="packages/a controller_app" limits the analyze check to those folders
+# (tools/flash.sh sets it for a job from the job's own files; the runner runs the whole workspace).
 # Checks: format analyze protocol connection metrics kit look arena puzzle host phone tv
 # Exit code: 0 if every check passed, 1 if any failed, 2 for bad arguments
 # or a missing tool. Works in Git Bash on Windows and bash on macOS/Linux.
@@ -19,7 +21,7 @@ root="$(pwd)"
 # name | folder | command | what it covers
 checks=(
   "format|.|dart format --output=none --set-exit-if-changed controller_app tv_test_app packages assets|code formatting (120 columns, from analysis_options.yaml)"
-  "analyze|.|dart analyze --fatal-infos|static analysis of the whole workspace (infos fail, as on CI)"
+  "analyze|.|dart analyze --fatal-infos ${CHECK_ANALYZE_PKGS:-}|static analysis of the whole workspace (infos fail, as on CI); CHECK_ANALYZE_PKGS limits it to some folders"
   "protocol|packages/protocol|dart test|messages and codec"
   "connection|packages/connection|dart test|server, client, game host (real sockets on localhost)"
   "metrics|packages/metrics|dart test|analytics counters, sessions, report"
@@ -45,7 +47,7 @@ for arg in "$@"; do
       exit 0
       ;;
     -h | --help)
-      sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//'
+      sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//'
       exit 0
       ;;
     -*)

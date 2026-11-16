@@ -59,6 +59,7 @@
 # NO_PUSH=1 in the environment commits without pushing.
 # Exit code: 0 done, 1 stopped, 2 bad use.
 set -u
+unset CHECK_ANALYZE_PKGS # the runner always analyzes the whole workspace (flash.sh scopes the workers' own analyze)
 cd "$(dirname "$0")/.." || exit 2
 # Files outside a job's allow: list that are applied and committed (always fine).
 SAFE_OUTSIDE='^(([^/]+/)*analysis_options\.yaml|\.gitignore|\.gitattributes|([^/]+/)*pubspec\.lock)$'
@@ -220,12 +221,22 @@ checks() {
   return 0
 }
 
-# 6. A second cheap worker reviews one committed job.
-review_brief() { # review_brief <job> <from-sha> <to-sha>
-  local j=$1 files
-  files=$(git diff --name-only "$2" "$3" | grep -Ev '^(site/shots/|.*/flutter/generated_)' | tr '\n' ' ')
-  sed -e "s|{DIR}|$B|g" -e "s|{JOB}|$j|g" -e "s|{RANGE}|$2..$3|g" -e "s|{FILES}|$files|g" \
-    docs/briefs/templates/job-review.md > "$B/$j-review.md"
+# 6. A second cheap worker reviews one wave (all its jobs together, not one review per job).
+RV_NAMES=() RV_RANGES=()   # the jobs (and their commit ranges) the next wave review covers
+review_brief() { # review_brief <review-name> <names> <ranges>: the brief for one wave's review
+  local j=$1 names=$2 ranges=$3 files="" r briefs="" reports="" n
+  for r in $ranges; do files+="$(git diff --name-only "${r%..*}" "${r#*..}") "; done
+  files=$(printf '%s\n' $files | sort -u | grep -Ev '^(site/shots/|.*/flutter/generated_)' | tr '\n' ' ')
+  for n in $names; do briefs+="$B/$n.md "; reports+="$B/$n-report.md "; done
+  sed -e "s|{DIR}|$B|g" -e "s|{JOB}|$j|g" -e "s|{NAMES}|$names|g" -e "s|{BRIEFS}|${briefs% }|g" -e "s|{REPORTS}|${reports% }|g" \
+    -e "s|{RANGE}|$ranges|g" -e "s|{FILES}|$files|g" docs/briefs/templates/job-review.md > "$B/$j-review.md"
+}
+wave_review() { # wave_review <n>: write the review brief of wave <n> from RV_NAMES/RV_RANGES; sets WREV (empty if none)
+  WREV=""
+  if [ $review -eq 1 ] && [ ${#RV_NAMES[@]} -gt 0 ] && ! committed "$B/wave$1-review-report.md"; then
+    review_brief "wave$1" "${RV_NAMES[*]}" "${RV_RANGES[*]}"; WREV="wave$1"
+  fi
+  RV_NAMES=() RV_RANGES=()
 }
 # Reviews run in the background while the next wave works (together with that
 # wave's jobs at most 3 flash jobs run: see slot_wait). A review's report is
@@ -280,14 +291,45 @@ handfix_recheck() { # handfix_recheck <job>: the proof and review a hand commit 
   c=$(git log -1 --format=%H -- "$B/$j-report.md")
   note "WARN: $j was committed by hand ($(git rev-parse --short "$c")); a plain restart would skip its tests-first proof and worker review, so both run now"
   TF_COMMIT=$c tests_first "$j"
-  if [ $review -eq 1 ] && ! committed "$B/$j-review-report.md"; then
-    committed "$B/$j-review.md" || { review_brief "$j" "$c^" "$c"; save "runner: review brief for hand-fixed $j" "$B/$j-review.md"; }
-    start_reviews "$j"
-  fi
+  # its worker review joins the wave's review (one per wave, not one per hand-fixed job)
+  if [ $review -eq 1 ] && ! committed "$B/$j-review-report.md"; then RV_NAMES+=("$j"); RV_RANGES+=("$c^..$c"); fi
   : > "$WORK/rechecked-$j"
   # the marker in done.txt: a restart (or a fresh clone) does not repeat the proof and the review
   echo "$j $c proof" >> "$B/done.txt"; save "runner: proof and review of hand-fixed $j done" "$B/done.txt"
   note "hand-fixed $j: tests-first proof and worker review done (marked in done.txt)"
+}
+
+# Brief header `dart-fix: <packages>`: run `dart fix --apply` in each package before the job's checks (logged).
+dart_fix() { # dart_fix <job>...
+  local j p pk out
+  for j in "$@"; do
+    pk=$(sed -n 's/^dart-fix: *//p' "$B/$j.md" | head -n 1 | tr -d '\r' | tr '·,' '  ')
+    for p in $pk; do
+      p=${p%/}
+      [ -f "$p/pubspec.yaml" ] || { finding "$j: dart-fix package $p has no pubspec.yaml; skipped"; continue; }
+      out=$( cd "$p" && dart fix --apply 2>&1 ); rc=$?
+      printf '%s\n' "$out" >> "$WORK/run-dartfix.log"
+      if [ $rc -eq 0 ]; then note "dart fix --apply in $p for $j: $(printf '%s\n' "$out" | grep -E 'Applied|Nothing to fix' | tail -n 1)"
+      else finding "$j: dart fix --apply failed in $p (see $WORK/run-dartfix.log); the checks decide"; fi
+    done
+  done
+}
+# Brief header `ci-patch: <patch file>`: a patch for .github/ or codemagic.yaml (workers may not edit them).
+# After the job's checks pass the runner applies it (git apply --check, then git apply), logs it, and
+# tools/commit-job.sh puts the patch file and the files it changes into the job's commit.
+ci_patch() { # ci_patch <job>
+  local j=$1 pf bad
+  pf=$(sed -n 's/^ci-patch: *//p' "$B/$j.md" | head -n 1 | tr -d '\r')
+  [ -n "$pf" ] || return 0
+  [ -f "$pf" ] || stop "$j: ci-patch $pf does not exist; nothing of this wave is committed"
+  committed "$pf" || stop "$j: ci-patch $pf is not committed (commit it with the brief); nothing of this wave is committed"
+  bad=$(git apply --numstat "$pf" 2>/dev/null | cut -f3 | grep -Ev '^(\.github/|codemagic\.yaml$)' | tr '\n' ' ')
+  [ -z "$bad" ] || stop "$j: ci-patch $pf touches files other than .github/ and codemagic.yaml: $bad; nothing of this wave is committed"
+  if git apply --check "$pf" 2>"$WORK/run-cipatch.log"; then
+    git apply "$pf" 2>>"$WORK/run-cipatch.log" || stop "$j: git apply of ci-patch $pf failed (see $WORK/run-cipatch.log); nothing of this wave is committed"
+    note "ci-patch applied for $j: $pf ($(git apply --numstat "$pf" | cut -f3 | tr '\n' ' '))"
+  elif git apply --check -R "$pf" 2>/dev/null; then note "ci-patch for $j already applied: $pf"
+  else stop "$j: git apply --check refused ci-patch $pf (see $WORK/run-cipatch.log); nothing of this wave is committed"; fi
 }
 
 branch=$(git rev-parse --abbrev-ref HEAD)
@@ -310,7 +352,9 @@ if [ -z "${PREFLIGHT_SKIP:-}" ]; then
   else stop "preflight failed: the worker cannot run flutter or tools/check.sh in its sandbox, so no job would run tests (see $WORK/run-preflight.log); nothing was started"; fi
 fi
 
+wn=0
 for wave in "${WAVES[@]}"; do
+  wn=$((wn + 1))
   check_stop
   [ "$(wc -w <<< "$wave")" -le 3 ] || stop "a wave has more than 3 jobs: $wave"
   started=() pids=() resumed=()
@@ -330,7 +374,15 @@ for wave in "${WAVES[@]}"; do
     tools/flash.sh --brief "$B/$j.md" > "$LOGS/flash-$j.log" 2>&1 &
     pids+=($!) started+=("$j")
   done
-  [ ${#started[@]} -eq 0 ] && [ ${#resumed[@]} -eq 0 ] && continue
+  if [ ${#started[@]} -eq 0 ] && [ ${#resumed[@]} -eq 0 ]; then
+    # nothing ran; a hand-fixed job rechecked above still gets its worker review (one for the wave)
+    wave_review "$wn"
+    if [ -n "$WREV" ]; then
+      save "runner: log and review brief for hand-fixed jobs of wave $wn" "$B/run.log" "$B/done.txt" "$B/$WREV-review.md"
+      check_stop; start_reviews "$WREV"
+    fi
+    continue
+  fi
   ok=("${resumed[@]}") failed=() extra=()
   for i in "${!started[@]}"; do
     j=${started[$i]}
@@ -346,20 +398,22 @@ for wave in "${WAVES[@]}"; do
   done
   if [ ${#ok[@]} -gt 0 ]; then
     unchurn
+    dart_fix "${ok[@]}"
     tests_first "${ok[@]}"
     checks "${ok[*]}"
+    for j in "${ok[@]}"; do ci_patch "$j"; done
     reviewed=()
+    wave_from=$(git rev-parse HEAD)
     for j in "${ok[@]}"; do
       head -n 40 "$B/$j-report.md" | grep -q '^## Summary' || finding "$j's report has no Summary block in its first 40 lines"
       check_stop
-      from=$(git rev-parse HEAD)
       tools/commit-job.sh "$B/$j.md" $([ -n "${NO_PUSH:-}" ] || echo --push) >> "$WORK/run-commit.log" 2>&1 || stop "commit of $j refused (see $WORK/run-commit.log)"
       note "committed $j: $(git log --oneline -1)"
       echo "$j $(git rev-parse HEAD)" >> "$B/done.txt"
-      if [ $review -eq 1 ] && ! committed "$B/$j-review-report.md"; then
-        review_brief "$j" "$from" "$(git rev-parse HEAD)"; reviewed+=("$j")
-      fi
     done
+    # one worker review per wave, over all the jobs committed in it (and any hand-fixed job rechecked in it)
+    RV_NAMES+=("${ok[@]}"); RV_RANGES+=("$wave_from..$(git rev-parse HEAD)")
+    wave_review "$wn"; [ -n "$WREV" ] && reviewed+=("$WREV")
     [ ${#extra[@]} -gt 0 ] && save "files outside the jobs' lists, applied by the runner (always-fine list): ${ok[*]}" "${extra[@]}"
     paths=("$B/run.log" "$B/done.txt"); [ -f "$B/run-findings.md" ] && paths+=("$B/run-findings.md")
     for j in "${reviewed[@]}"; do paths+=("$B/$j-review.md"); done

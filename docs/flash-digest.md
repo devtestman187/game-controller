@@ -3,7 +3,7 @@
 For the fixed agents (`.claude/agents/`). Edge cases: [flash-framework.md](flash-framework.md).
 
 ## Layout
-- Batch folder: `docs/briefs/<milestone>/<batch>/` (e.g. `docs/briefs/m14/bugs14/`). Briefs `<job>.md`; `waves.txt`; runner output `run.log`, `done.txt`, `REVIEW.md`, `<job>-report.md`, `<job>-review-report.md`.
+- Batch folder: `docs/briefs/<milestone>/<batch>/` (e.g. `docs/briefs/m14/bugs14/`). Briefs `<job>.md`; `waves.txt`; runner output `run.log`, `done.txt`, `REVIEW.md`, `<job>-report.md`, `<job>-review-report.md` (worker reviews are `wave<N>-review-report.md`, one per wave).
 - Templates in `docs/briefs/templates/` (`job.md`, `triage.md`). Example: `docs/briefs/m14/bugs13/` (see `f1.md`).
 - Milestone hand-over: `docs/briefs/<milestone>/STATUS.md` (keep a "Resume here" line current).
 
@@ -12,6 +12,8 @@ Header lines: `job:` `pub: no` `stop:` `read:` `decide:` (low-usage: never ask, 
 - `allow:` paths separated by ` · ` (space, middle dot, space), never a plain space. Include sibling test files the change can break.
 - `read:` names the files, the tests that could break, and the owner's decision quoted. A worker cannot ask.
 - `check:` e.g. `format analyze phone host`; add `phone` when controller_app pins change.
+- Optional: `ci-patch: <patch file>` (committed patch for `.github/` or `codemagic.yaml`; the runner applies it after the checks and commits it with the job) and `dart-fix: <packages>` (runner runs `dart fix --apply` there before the checks). Workers stay denied `.github/` and `codemagic.yaml`.
+- Worker analyze covers only the job's own packages; the runner analyzes the whole workspace once per wave. Worker review is one per wave (`wave<N>-review-report.md`).
 - Tests first: new tests go in a NEW test file that fails on the old code (the runner proves it). `tests-first: exempt <reason>` only for refactors and docs.
 - `rules:` include "no lib file you touch ends over 380 lines · tests first · write only inside allow: · stage nothing · no git add -A".
 - 80-120 turns per job; over about 120, split into phases `<job>-1-build`, `-2-run`, `-3-wrap`. Body about 350 words at most.
@@ -28,6 +30,7 @@ Header lines: `job:` `pub: no` `stop:` `read:` `decide:` (low-usage: never ask, 
 - `done.txt` lines `<job> <sha>`: committed jobs are skipped on restart.
 
 ## Repair a stop
+- Never hand-apply a CI patch: declare `ci-patch:` in the brief and let the runner apply it.
 - Result 4 (files outside `allow:`): the runner drops known churn and takes always-fine files; Dart or JSON outside allow is yours. Apply the patch from the allowed paths, or hand-apply from the kept worktree; run `tools/review.sh` and the job's tests, commit named paths, and append to run.log exactly `HAND-FIX <job>: <what was done>` (job name right after `HAND-FIX `; never write another job's name before a colon in that text). Restart.
 - Result 5 or any other STOPPED: read the line and the log it names, diagnose, fix the one cause, restart. A tests-first or review FAIL: fix the test or code, not the gate.
 - Two failed repairs of the same job: stop and report.

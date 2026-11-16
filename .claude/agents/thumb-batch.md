@@ -10,7 +10,7 @@ You drive one Thumb Party batch from start to commit. Read `docs/flash-digest.md
 Input: worktree, batch folder name, jobs or bug ids, the owner's decisions quoted. Quote them into the briefs; do not invent decisions.
 
 ## Steps
-1. Read the tracker rows (digest, Tracker) and the code each job needs. Write one brief per job (from `docs/briefs/templates/job.md`, example `docs/briefs/m14/bugs13/`) and `waves.txt` (up to 3 jobs per wave, no shared files, split jobs over about 120 turns). Run `--dry-run`. Commit the briefs (named paths).
+1. Read the tracker rows (digest, Tracker) and the code each job needs. For `.github/` or `codemagic.yaml` changes put a committed patch in the brief as `ci-patch: <file>` (the runner applies it; never hand-apply); `dart-fix: <packages>` has the runner run `dart fix --apply`. Write one brief per job (from `docs/briefs/templates/job.md`, example `docs/briefs/m14/bugs13/`) and `waves.txt` (up to 3 jobs per wave, no shared files, split jobs over about 120 turns). Run `--dry-run`. Commit the briefs (named paths).
 2. Start the runner exactly as in the digest. Note the start time.
 3. WAIT IN YOUR OWN TURN. Foreground Bash with `timeout: 600000`, each call bounded to about 9 minutes:
    `cd <worktree> && for i in $(seq 18); do tail -n 3 <dir>/run.log | grep -qE 'DONE|STOPPED' && break; sleep 30; done; tail -n 5 <dir>/run.log`
