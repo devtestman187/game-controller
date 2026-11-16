@@ -13,3 +13,17 @@
 2026-11-15 23:01:43 reviewed b028-taken-notice: 5 finding(s)
 2026-11-15 23:01:44 start the run's review
 2026-11-15 23:06:16 DONE: every job is committed. Claude reads the Summary of docs/briefs/m14/bugs14/REVIEW.md, verifies its findings and writes one fix brief
+2026-11-15 23:07:42 start at 17147e51 on m14
+2026-11-15 23:07:48 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-15 23:07:48 skip b027-audio-watchdog (already done)
+2026-11-15 23:07:48 skip b028-taken-notice (already done)
+2026-11-15 23:07:49 start f1
+2026-11-15 23:08:14 start f2
+2026-11-15 23:18:40 f1 finished: result 4 (66 turns, 8 min)
+2026-11-15 23:18:41 f1: dropped generated churn outside its list: site/shots/dpad.png site/shots/menus.png site/shots/results.png site/shots/sticks.png site/shots/tilt.png 
+2026-11-15 23:20:12 f2 finished: result 0 (75 turns, 9 min)
+2026-11-15 23:21:19 tests-first ok: controller_app/test/taken_notice_rearm_test.dart fails on the old code
+2026-11-15 23:21:25 tests-first ok: packages/connection/test/client_ask_test.dart fails on the old code
+2026-11-15 23:21:34 tests-first ok: packages/party_host/test/sound_watchdog_gaps_test.dart fails on the old code
+2026-11-15 23:25:58 committed f1: f4020ea2 Keep the taken-colours band hidden after it hides
+2026-11-15 23:26:00 committed f2: 657d9625 Watch a wished loop whose engine never came up, and test the watchdog
