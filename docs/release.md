@@ -76,6 +76,20 @@ Every host keeps its sessions' stats on the device either way: the TV app, and a
 6. Reading the data: `gcloud auth login`, then in `packages/metrics`: `dart run metrics:report --firestore <project ID> --token "$(gcloud auth print-access-token)" --csv sessions.csv`. Or Export on the TV's Stats screen and `dart run metrics:report <folder>`.
 7. The store forms change with M9: see "M9: stats" in [store-listing.md](store-listing.md) and the check in [families-check.md](families-check.md). Update them before the M9 builds go to testers.
 
+### 8. Sentry crash reports (you, sentry1, optional)
+Crash reports go to Sentry only after the adult on that device says yes, and the switch in Settings turns them off again. The app sends no user id, name, email, IP address, screenshot or view hierarchy, and removes player names from what it reports. **An empty or missing DSN turns crash reporting off in that build**, which is what dev builds, local builds and tests get.
+
+Two Sentry projects, one per app: `thumbparty-phone` (the phone and tablet app) and `thumbparty-tv` (the TV app, Android TV and Windows). Both in the US region, as in [sentry-consent.md](design/sentry-consent.md).
+1. Create both projects at https://sentry.io.
+2. In **both** projects, under **Settings → Security and Privacy**, turn on **Prevent Storing of IP Addresses**, and check the **data scrubbing** options there (and under **Settings → Data Scrubbing**): they must not re-add what the app strips, and default-scrub nothing the app needs. Do this before the first tagged build.
+3. Copy each project's DSN (**Settings → Client Keys (DSN)**) and give it to the builds. The names:
+   ```
+   gh variable set SENTRY_DSN_PHONE --body "<the thumbparty-phone DSN>"
+   gh variable set SENTRY_DSN_TV --body "<the thumbparty-tv DSN>"
+   ```
+   For the iOS build, set the same `SENTRY_DSN_PHONE` value as an **environment variable** of the app in Codemagic (**App settings → Environment variables**, group `firestore`, next to the two Firestore ones from step 7). `release.yml` passes the two GitHub variables, and `ios-testflight` passes the Codemagic one, to the builds as `--dart-define=SENTRY_DSN`; only the name is logged, never the value.
+   A DSN can't be used to read a project, but it stays out of the repository all the same: it lives only in the GitHub variables and the Codemagic group.
+
 ## Each release
 1. Make sure `version:` in both `pubspec.yaml` files and `appVersion` in both `lib/src/app_info.dart` say the new version.
 2. Run the checks, then tag with release notes and push:
