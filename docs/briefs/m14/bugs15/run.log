@@ -66,3 +66,21 @@
 2026-11-16 13:21:18 HAND-FIX lint-2-core: wave tree applied by hand (analyze failed in the workers only for the other jobs' packages); full tools/check.sh: only phone failed, FakeHaptics/FakeStats throw wrapper fixed (message kept), format analyze host phone pass
 2026-11-16 13:21:18 HAND-FIX lint-3-apps: wave tree applied by hand (analyze failed in the workers only for the other jobs' packages); full tools/check.sh: only phone failed, FakeHaptics/FakeStats throw wrapper fixed (message kept), format analyze host phone pass
 2026-11-16 13:21:18 HAND-FIX lint-4-host: wave tree applied by hand (analyze failed in the workers only for the other jobs' packages); full tools/check.sh: only phone failed, FakeHaptics/FakeStats throw wrapper fixed (message kept), format analyze host phone pass
+2026-11-16 13:21:23 start at 3d7d4076 on m14
+2026-11-16 13:21:29 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-16 13:21:29 skip b029-b030-arena-music (already done)
+2026-11-16 13:21:29 skip cov-1-tools (already done)
+2026-11-16 13:21:29 skip cov-2-ci-docs (already done)
+2026-11-16 13:21:30 WARN: lint-2-core was committed by hand (0c1e1eed); a plain restart would skip its tests-first proof and worker review, so both run now
+2026-11-16 13:21:31 hand-fixed lint-2-core: tests-first proof and worker review done (marked in done.txt)
+2026-11-16 13:21:31 skip lint-2-core (already done)
+2026-11-16 13:21:32 WARN: lint-3-apps was committed by hand (9a1770bd); a plain restart would skip its tests-first proof and worker review, so both run now
+2026-11-16 13:21:33 hand-fixed lint-3-apps: tests-first proof and worker review done (marked in done.txt)
+2026-11-16 13:21:33 skip lint-3-apps (already done)
+2026-11-16 13:21:34 WARN: lint-4-host was committed by hand (520fdd91); a plain restart would skip its tests-first proof and worker review, so both run now
+2026-11-16 13:21:35 hand-fixed lint-4-host: tests-first proof and worker review done (marked in done.txt)
+2026-11-16 13:21:35 skip lint-4-host (already done)
+2026-11-16 13:27:23 reviewed lint-2-core: 4 finding(s)
+2026-11-16 13:27:24 reviewed lint-3-apps: 6 finding(s)
+2026-11-16 13:27:24 reviewed lint-4-host: 5 finding(s)
+2026-11-16 13:27:24 DONE: every job is committed. Claude reads the Summary of docs/briefs/m14/bugs15/REVIEW.md, verifies its findings and writes one fix brief
