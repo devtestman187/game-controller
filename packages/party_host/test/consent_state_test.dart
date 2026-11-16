@@ -1,7 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:party_host/party_host.dart';
-import 'package:party_host/src/testing/fake_crash.dart';
 import 'package:party_host/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
