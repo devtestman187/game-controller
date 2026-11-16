@@ -16,3 +16,13 @@
 2026-11-16 14:06:37 committed sentry-core: 8c621c8b Add the crash reporter, scrubber and CrashReports helper to party_host
 2026-11-16 14:06:39 committed stats-optb: 7eed4bda sentry1 stats-optb: upload only the players who share their stats
 2026-11-16 14:06:40 committed ci-wiring: 6af1b496 Release builds get the Sentry DSN from CI variables (sentry1)
+2026-11-16 14:06:41 start consent-model
+2026-11-16 14:07:07 start host-id
+2026-11-16 14:21:11 consent-model finished: result 4 (96 turns, 11 min)
+2026-11-16 14:21:12 consent-model: dropped generated churn outside its list: site/shots/dpad.png site/shots/menus.png site/shots/results.png site/shots/sticks.png site/shots/tilt.png 
+2026-11-16 14:21:22 host-id finished: result 0 (68 turns, 11 min)
+2026-11-16 14:22:26 tests-first ok: packages/party_host/test/consent_prompts_test.dart fails on the old code
+2026-11-16 14:22:39 tests-first ok: packages/party_host/test/consent_state_test.dart fails on the old code
+2026-11-16 14:22:47 tests-first ok: packages/party_host/test/host_id_test.dart fails on the old code
+2026-11-16 14:27:22 committed consent-model: 14dc30b5 sentry1: per-instance consent state and prompts in party_host
+2026-11-16 14:27:24 committed host-id: b4052425 Report a failed first-run host id write instead of losing pairings
