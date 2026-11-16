@@ -9,6 +9,7 @@ import 'advertiser.dart';
 import 'host_advertising.dart';
 import 'host_device_monitor.dart';
 import 'host_directories.dart';
+import 'host_id.dart';
 import 'host_identity.dart';
 import 'host_log_export.dart';
 import 'host_view_state.dart';
@@ -119,12 +120,7 @@ class LiveHostService implements HostService {
        _identity = identity,
        _directories = directories {
     _advertiser = advertiser;
-    var id = prefs.getString(_hostIdKey);
-    if (id == null) {
-      id = _randomHex(16);
-      // The constructor can't await, so the write is best-effort (code-health: host id write).
-      unawaited(prefs.setString(_hostIdKey, id));
-    }
+    final id = loadOrMakeHostId(prefs, Random.secure());
     _hostId = id;
     final saved = loadPairings(prefs);
     _server = HostServer(
@@ -169,8 +165,6 @@ class LiveHostService implements HostService {
     _serverSub = _server.changes.listen((_) => _emit());
     _advertiserSub = _advertiser.changes.listen((_) => _emit());
   }
-
-  static const _hostIdKey = 'hostId';
 
   /// How often the host re-reads the machine's addresses while it runs: a
   /// Wi-Fi reconnect changes them, and the home screen shows the latest ones
@@ -351,11 +345,6 @@ class LiveHostService implements HostService {
   void _emit() {
     if (!_disposed && !_changes.isClosed) _changes.add(state);
   }
-}
-
-String _randomHex(int bytes) {
-  final r = Random.secure();
-  return List.generate(bytes, (_) => r.nextInt(256).toRadixString(16).padLeft(2, '0')).join();
 }
 
 /// "Addresses: 192.168.50.193 (en0), 192.168.0.2 (en2); dropped 10.1.2.3
