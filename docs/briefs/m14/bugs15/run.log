@@ -1,0 +1,21 @@
+2026-11-16 11:57:27 start at 91054c35 on m14
+2026-11-16 11:57:27 run-base 91054c356894a7520437e452ad46e1635a128df2
+2026-11-16 11:57:36 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-16 11:57:36 start b029-b030-arena-music
+2026-11-16 11:58:01 start cov-1-tools
+2026-11-16 11:58:27 start cov-2-ci-docs
+2026-11-16 12:09:33 b029-b030-arena-music finished: result 0 (74 turns, 9 min)
+2026-11-16 12:18:17 cov-1-tools finished: result 0 (172 turns, 19 min)
+2026-11-16 12:18:17 cov-2-ci-docs finished: result 0 (33 turns, 2 min)
+2026-11-16 12:19:21 tests-first: controller_app/test/coverage_all_test.dart passes on the old code, exempt by its brief
+2026-11-16 12:19:27 tests-first: packages/connection/test/coverage_all_test.dart passes on the old code, exempt by its brief
+2026-11-16 12:19:36 tests-first: packages/game_kit/test/coverage_all_test.dart passes on the old code, exempt by its brief
+2026-11-16 12:19:39 tests-first: packages/metrics/test/coverage_all_test.dart passes on the old code, exempt by its brief
+2026-11-16 12:19:57 tests-first ok: packages/party_host/test/arena_music_test.dart fails on the old code
+2026-11-16 12:20:02 tests-first: packages/party_host/test/coverage_all_test.dart passes on the old code, exempt by its brief
+2026-11-16 12:20:05 tests-first: packages/protocol/test/coverage_all_test.dart passes on the old code, exempt by its brief
+2026-11-16 12:20:14 tests-first: packages/puzzle_game/test/coverage_all_test.dart passes on the old code, exempt by its brief
+2026-11-16 12:20:22 tests-first: packages/test_game/test/coverage_all_test.dart passes on the old code, exempt by its brief
+2026-11-16 12:20:31 tests-first: packages/toy_look/test/coverage_all_test.dart passes on the old code, exempt by its brief
+2026-11-16 12:20:44 tests-first: tv_test_app/test/coverage_all_test.dart passes on the old code, exempt by its brief
+2026-11-16 12:25:21 STOPPED: tools/review.sh found a FAIL after b029-b030-arena-music cov-1-tools cov-2-ci-docs (see .dart_tool/run-jobs/docs_briefs_m14_bugs15/run-review.log); nothing of this wave is committed
