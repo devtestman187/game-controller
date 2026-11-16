@@ -57,11 +57,13 @@ void main() {
     testWidgets('a phone whose colour was taken says so in a line, and the line goes when it is given its own', (
       tester,
     ) async {
-      // No saved character, so the phone asked for player 1's blue.
+      // The last hello asked for player 1's blue; the host answered teal.
+      final asked = ControllerProfile.initial;
       final app = await pumpApp(tester, paired: true);
       app.client.emit(
         connected.copyWith(
           player: 2,
+          askedCharacter: asked,
           character: const PlayerCharacter(colourSlot: 4, accessory: PlayerAccessory.crown),
         ),
       );
@@ -71,7 +73,11 @@ void main() {
       expect(find.text('Blue is taken tonight, you\'re Teal'), findsOneWidget);
 
       app.client.emit(
-        connected.copyWith(player: 2, character: const PlayerCharacter(colourSlot: 1, accessory: PlayerAccessory.ears)),
+        connected.copyWith(
+          player: 2,
+          askedCharacter: asked,
+          character: const PlayerCharacter(colourSlot: 1, accessory: PlayerAccessory.ears),
+        ),
       );
       await settle(tester);
       expect(find.byKey(const Key('takenNotice')), findsNothing);

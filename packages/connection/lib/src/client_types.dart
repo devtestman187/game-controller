@@ -71,6 +71,7 @@ final class ClientSnapshot {
     this.rttStats,
     this.player,
     this.character,
+    this.askedCharacter,
     this.hostCapabilities = const [],
   });
 
@@ -108,6 +109,13 @@ final class ClientSnapshot {
   /// The character the host gave this phone (M14 L7): its own choice, or the
   /// nearest free one. Null from a host one build older, which sends none.
   final PlayerCharacter? character;
+
+  /// The colour and accessory the last hello asked the host for (M14 L7,
+  /// B-028): what [character] is compared with to say the pick was taken, so a
+  /// player who changes colour in Settings while joined keeps hearing about
+  /// the colour the host was told. Null until a hello goes out, and for a
+  /// phone that sends no character.
+  final PlayerCharacter? askedCharacter;
 
   /// What the host supports ([Capability]), from its welcome (M9). Empty for
   /// TV apps older than M9.
@@ -158,6 +166,7 @@ final class ClientSnapshot {
     Object? rttStats = _keep,
     Object? player = _keep,
     Object? character = _keep,
+    Object? askedCharacter = _keep,
     List<String>? hostCapabilities,
   }) => ClientSnapshot(
     status: status ?? this.status,
@@ -171,6 +180,7 @@ final class ClientSnapshot {
     rttStats: identical(rttStats, _keep) ? this.rttStats : rttStats as RttSummary?,
     player: identical(player, _keep) ? this.player : player as int?,
     character: identical(character, _keep) ? this.character : character as PlayerCharacter?,
+    askedCharacter: identical(askedCharacter, _keep) ? this.askedCharacter : askedCharacter as PlayerCharacter?,
     hostCapabilities: hostCapabilities ?? this.hostCapabilities,
   );
 

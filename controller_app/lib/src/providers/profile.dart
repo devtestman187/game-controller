@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:connection/connection.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:protocol/protocol.dart';
@@ -41,5 +43,67 @@ class ProfileNotifier extends Notifier<ControllerProfile> {
       name: phoneName(nickname: profile.nickname, controllerId: client.identity.controllerId),
       character: profile.character,
     );
+  }
+}
+
+/// The colour the last hello asked the host for and the one it answered (M14
+/// design section 9, mock-up 18, B-028).
+typedef TakenColours = ({PlayerCharacter asked, PlayerCharacter assigned});
+
+/// How long the line that says the host took this phone's colour stays, in
+/// seconds of the phone's own clock, unless the round moves on first (B-028).
+const takenNoticeDuration = Duration(seconds: 5);
+
+/// The line "Blue is taken tonight, you're Teal" (M14 design section 9,
+/// mock-up 18): what this phone asked the host for and got instead, or null
+/// while there is nothing to say.
+///
+/// It compares the host's answer ([ClientSnapshot.character]) with the colour
+/// the last hello asked for ([ClientSnapshot.askedCharacter]), not with the
+/// saved profile: a player who changes colour in Settings while joined sees no
+/// line, and the new colour applies on the next join (B-028). The line goes
+/// after [takenNoticeDuration], or as the round moves on — the game starting
+/// or ending on this phone — whichever is first.
+final takenNoticeProvider = NotifierProvider<TakenNoticeNotifier, TakenColours?>(TakenNoticeNotifier.new);
+
+class TakenNoticeNotifier extends Notifier<TakenColours?> {
+  Timer? _hide;
+
+  @override
+  TakenColours? build() {
+    ref.onDispose(_cancel);
+    final client = ref.watch(clientProvider);
+    final sub = client.view.listen((event) {
+      if (event is ViewStarted || event is ViewEnded) _hideNow();
+    });
+    ref.onDispose(sub.cancel);
+    ref.listen(clientStateProvider, _onHostAnswer);
+    return null;
+  }
+
+  /// The host answered the hello: a colour other than the asked one is said.
+  void _onHostAnswer(ClientSnapshot? previous, ClientSnapshot next) {
+    final asked = next.askedCharacter;
+    final assigned = next.character;
+    if (asked == null || assigned == null || asked.colourSlot == assigned.colourSlot) {
+      _hideNow();
+      return;
+    }
+    // Every heartbeat brings a snapshot: the same answer keeps the line's own
+    // seconds rather than starting them again.
+    if (state == (asked: asked, assigned: assigned)) return;
+    state = (asked: asked, assigned: assigned);
+    _hide?.cancel();
+    _hide = Timer(takenNoticeDuration, _hideNow);
+  }
+
+  void _hideNow() {
+    _cancel();
+    if (state != null) state = null;
+  }
+
+  void _cancel() {
+    _hide?.cancel();
+    _hide = null;
   }
 }

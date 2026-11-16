@@ -107,7 +107,12 @@ final class ClientConnection {
       onDone: () => _onChannelDone(channelId, channel.closeCode, channel.closeReason),
       onError: (Object e) => _host.log('Connection error: ${describeError(e)}'),
     );
-    send(_host.identity.toHello());
+    final hello = _host.identity.toHello();
+    send(hello);
+    // What the hello asked for, kept where the screens read the host's answer:
+    // a player who changes colour meanwhile heard only for the colour the host
+    // was told (B-028).
+    _host.setSnapshot(_host.snapshot.copyWith(askedCharacter: hello.character));
     _heartbeat = Timer.periodic(heartbeatInterval, (_) => _beat(channelId));
   }
 

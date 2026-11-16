@@ -6,19 +6,21 @@ import '../providers.dart';
 
 /// The line that tells the player the host gave them another colour (M14
 /// design section 9, mock-up 18): "Blue is taken tonight, you're Teal", on the
-/// pad's own green band while the host's choice differs from the phone's.
+/// pad's own green band while the host's answer differs from what the last
+/// hello asked for.
 ///
 /// The host keeps colour and accessory unique in a game, so a phone whose
 /// pick was taken wears the nearest free one on its badge and in the game; the
-/// line is how it hears that, in plain words.
+/// line is how it hears that, in plain words. It names the colour the host was
+/// told, not the saved profile's, and goes on its own ([takenNoticeProvider],
+/// B-028).
 class TakenNotice extends ConsumerWidget {
   const TakenNotice({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final assigned = ref.watch(clientStateProvider.select((s) => s.character));
-    final chosen = ref.watch(profileProvider).character;
-    if (assigned == null || assigned.colourSlot == chosen.colourSlot) return const SizedBox.shrink();
+    final taken = ref.watch(takenNoticeProvider);
+    if (taken == null) return const SizedBox.shrink();
     final look = ToyLookScope.of(context);
     return Container(
       key: const Key('takenNotice'),
@@ -32,8 +34,8 @@ class TakenNotice extends ConsumerWidget {
       ),
       child: Text(
         PhoneText.takenTonight(
-          ToyCharacter.colourNames[chosen.colourSlot - ToyCharacter.firstSlot],
-          ToyCharacter.colourNames[assigned.colourSlot - ToyCharacter.firstSlot],
+          ToyCharacter.colourNames[taken.asked.colourSlot - ToyCharacter.firstSlot],
+          ToyCharacter.colourNames[taken.assigned.colourSlot - ToyCharacter.firstSlot],
         ),
         textAlign: TextAlign.center,
         style: look.type.body.copyWith(color: look.colors.ink, fontWeight: FontWeight.bold),
