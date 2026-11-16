@@ -11,8 +11,8 @@ SessionCollector collector() => SessionCollector(
 );
 
 /// The summary's record of [id], the player whose install ID it is.
-Map playerOf(SessionCollector c, String id) =>
-    (c.summary(0)['players'] as List).cast<Map>().firstWhere((p) => p['install'] == id);
+Map<String, Object?> playerOf(SessionCollector c, String id) =>
+    (c.summary(0)['players'] as List).cast<Map<String, Object?>>().firstWhere((p) => p['install'] == id);
 
 /// A batch of [frames] drawn, as a viewer sends it.
 MetricsMessage drawn(int frames) =>

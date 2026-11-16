@@ -113,12 +113,12 @@ class _ControllerScreenState extends ConsumerState<ControllerScreen> with Widget
     if (state == AppLifecycleState.resumed) {
       // A fresh search after returning to the app. This also picks up TVs
       // once the user allows local network access in the iOS prompt.
-      if (!hosting) ref.read(discoveryProvider).restart();
+      if (!hosting) unawaited(ref.read(discoveryProvider).restart());
       // After the phone slept or the app was in the background, the TV has
       // usually dropped the connection: reconnect now, not after the
       // heartbeat times out. In host mode this resumes the own player.
       ref.read(clientProvider).resume();
-      ref.read(gyroProvider.notifier).resume();
+      unawaited(ref.read(gyroProvider.notifier).resume());
       ref.read(hapticsPlayerProvider).paused = false;
     } else {
       // Leaving the app (or a system sheet on top) must not leave input held.
@@ -135,7 +135,7 @@ class _ControllerScreenState extends ConsumerState<ControllerScreen> with Widget
     // may have restarted on another port, or the network may have changed.
     ref.listen(clientStateProvider, (_, next) {
       if (next.status == ClientStatus.reconnecting && next.attempt > 0 && next.attempt % 4 == 0) {
-        ref.read(discoveryProvider).restart();
+        unawaited(ref.read(discoveryProvider).restart());
       }
     });
     // If the TV shows up at a new address (new DHCP lease), reconnect there.
@@ -151,7 +151,7 @@ class _ControllerScreenState extends ConsumerState<ControllerScreen> with Widget
     // through the same client (s5c).
     ref.listen(ratingPromptProvider, (prev, next) {
       final hosting = _hosting || (ref.read(hostingProvider)?.live ?? false);
-      if (next != null && prev == null && !hosting) showRatingPrompt(context);
+      if (next != null && prev == null && !hosting) unawaited(showRatingPrompt(context));
     });
   }
 

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:connection/connection.dart';
@@ -32,11 +33,11 @@ final class ControllerProfile {
   void save(SharedPreferences prefs) {
     final name = nickname;
     if (name == null) {
-      prefs.remove(_nicknameKey);
+      unawaited(prefs.remove(_nicknameKey));
     } else {
-      prefs.setString(_nicknameKey, name);
+      unawaited(prefs.setString(_nicknameKey, name));
     }
-    prefs.setString(_characterKey, jsonEncode(character.toJson()));
+    unawaited(prefs.setString(_characterKey, jsonEncode(character.toJson())));
   }
 
   static PlayerCharacter? _characterOf(String? raw) {

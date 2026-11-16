@@ -88,14 +88,14 @@ class FakeHaptics implements Haptics {
   @override
   Future<void> tick(double intensity) async {
     final error = failWith;
-    if (error != null) throw error;
+    if (error != null) _throwFailure(error);
     ticks.add(intensity);
   }
 
   @override
   Future<void> play(HapticEvent event, HapticPattern pattern) async {
     final error = failWith;
-    if (error != null) throw error;
+    if (error != null) _throwFailure(error);
     played.add((event, pattern));
   }
 }
@@ -234,4 +234,12 @@ class HapticsPlayer {
     if (lastError == null) _log('Haptics error (further ones not logged): $e');
     lastError = '$e';
   }
+}
+
+/// Throws the test's chosen failure: an Error or Exception as it is, anything else as an
+/// Exception with its text (the `only_throw_errors` rule allows nothing else to be thrown).
+Never _throwFailure(Object error) {
+  if (error is Error) throw error;
+  if (error is Exception) throw error;
+  throw Exception('$error');
 }

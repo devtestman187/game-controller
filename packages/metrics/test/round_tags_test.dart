@@ -13,11 +13,11 @@ SessionCollector collector() => SessionCollector(
 )..joined('phone-a', number: 1, atMs: 0);
 
 /// The one round of [c]'s summary, as the report reads it.
-Map roundOf(SessionCollector c) => (c.summary(1000)['rounds'] as List).single as Map;
+Map<String, Object?> roundOf(SessionCollector c) => (c.summary(1000)['rounds'] as List).single as Map<String, Object?>;
 
 /// The one rating of [c]'s summary's player.
-Map ratingOf(SessionCollector c) =>
-    (((c.summary(1000)['players'] as List).single as Map)['ratings'] as List).single as Map;
+Map<String, Object?> ratingOf(SessionCollector c) =>
+    (((c.summary(1000)['players'] as List).single as Map)['ratings'] as List).single as Map<String, Object?>;
 
 void main() {
   test('a round keeps the tags it was given, which place it in the report', () {
@@ -70,7 +70,7 @@ void main() {
     expect(ratingOf(c), {
       'game': 'arena',
       'face': 'good',
-      'tags': [],
+      'tags': <Object?>[],
       'round': ['mode_bumper', 'map_playroom', 'night_1of3'],
     });
   });
@@ -82,6 +82,6 @@ void main() {
         RatingMessage(id: 'r1', face: RatingFace.okay),
         game: 'arena',
       );
-    expect(ratingOf(c), {'game': 'arena', 'face': 'okay', 'tags': []});
+    expect(ratingOf(c), {'game': 'arena', 'face': 'okay', 'tags': <Object?>[]});
   });
 }

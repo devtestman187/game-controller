@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
@@ -32,7 +33,7 @@ ControllerIdentity loadIdentity(
   if (id == null) {
     final r = Random.secure();
     id = List.generate(16, (_) => r.nextInt(256).toRadixString(16).padLeft(2, '0')).join();
-    prefs.setString(_controllerIdKey, id);
+    unawaited(prefs.setString(_controllerIdKey, id));
   }
   final platform = Platform.isIOS
       ? 'ios'
@@ -100,7 +101,7 @@ class ConnectionStore {
     } else {
       all[hostId] = token;
     }
-    _prefs.setString(_tokensKey, jsonEncode(all));
+    unawaited(_prefs.setString(_tokensKey, jsonEncode(all)));
   }
 
   HostAddress? get lastHost {
@@ -115,9 +116,9 @@ class ConnectionStore {
 
   set lastHost(HostAddress? host) {
     if (host == null) {
-      _prefs.remove(_lastHostKey);
+      unawaited(_prefs.remove(_lastHostKey));
     } else {
-      _prefs.setString(_lastHostKey, jsonEncode(host.toJson()));
+      unawaited(_prefs.setString(_lastHostKey, jsonEncode(host.toJson())));
     }
   }
 }

@@ -29,7 +29,7 @@ Map<String, Object?> viewSummary({bool withView = true}) => {
       'modes': {
         'dpad': {'ms': 60000, 'activeMs': 60000, 'games': 1, 'wins': 0},
       },
-      'switches': [],
+      'switches': <Object?>[],
       'segments': [
         {
           'id': 'a-1',
@@ -40,8 +40,8 @@ Map<String, Object?> viewSummary({bool withView = true}) => {
           'data': {'start': 0, 'touches': 40},
         },
       ],
-      'ratings': [],
-      'games': {},
+      'ratings': <Object?>[],
+      'games': <String, Object?>{},
     },
   ],
   'rounds': [],

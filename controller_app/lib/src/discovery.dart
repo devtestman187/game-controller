@@ -162,7 +162,7 @@ class BonsoirHostDiscovery implements HostDiscovery {
         _log('Searching for $serviceType');
       case BonsoirDiscoveryServiceFoundEvent(:final service):
         _log('Found "${service.name}", resolving its address');
-        service.resolve(discovery.serviceResolver).catchError((Object e) => _log('Resolve failed: $e'));
+        unawaited(service.resolve(discovery.serviceResolver).catchError((Object e) => _log('Resolve failed: $e')));
       case BonsoirDiscoveryServiceResolvedEvent(:final service):
         _update(service);
       case BonsoirDiscoveryServiceUpdatedEvent(:final service):

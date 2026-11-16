@@ -32,9 +32,11 @@ class _HostScreenState extends ConsumerState<HostScreen> {
     super.initState();
     // The route goes when the host does: "Stop hosting" and the back press
     // both stop it, and nothing is shown of a stopped host (m12 §3).
-    widget.host.disposed.then((_) {
-      if (mounted) Navigator.of(context).pop();
-    });
+    unawaited(
+      widget.host.disposed.then((_) {
+        if (mounted) Navigator.of(context).pop();
+      }),
+    );
     // iOS stops the app's sound while the app is hidden, when the phone locks
     // or another app takes it, and the engine doesn't come back by itself:
     // start it again the moment the app is shown (s5c). The route owns this

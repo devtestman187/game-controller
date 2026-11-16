@@ -17,7 +17,8 @@ SessionCollector rejoined({required String app, required String rejoin}) {
 }
 
 /// The player's part of [summary], as the report reads it.
-Map player0(Map<String, Object?> summary) => ((summary['players'] as List).first as Map).cast<String, Object?>();
+Map<String, Object?> player0(Map<String, Object?> summary) =>
+    ((summary['players'] as List).first as Map).cast<String, Object?>();
 
 /// A summary from another app, whose host and player both carry [build] as
 /// their build: what a hand-edited or a future summary could hold.
@@ -47,7 +48,7 @@ Map<String, Object?> summaryWithBuilds(String build) => {
           'data': {'start': 0},
         },
       ],
-      'ratings': [],
+      'ratings': <Object?>[],
     },
   ],
   'rounds': [

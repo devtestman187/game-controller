@@ -13,10 +13,12 @@ SessionCollector collector({int startMs = 0}) => SessionCollector(
 )..joined('phone-a', number: 1, atMs: startMs);
 
 /// The one round of [c]'s summary, as the report reads it.
-Map roundOf(SessionCollector c) => (c.summary(60000)['rounds'] as List).single as Map;
+Map<String, Object?> roundOf(SessionCollector c) => (c.summary(60000)['rounds'] as List).single as Map<String, Object?>;
 
 /// Every round of [c]'s summary, in the order they were played.
-List<Map> roundsOf(SessionCollector c) => [for (final round in c.summary(60000)['rounds'] as List) round as Map];
+List<Map<String, Object?>> roundsOf(SessionCollector c) => [
+  for (final round in c.summary(60000)['rounds'] as List) round as Map<String, Object?>,
+];
 
 /// The last line of [c]'s rounds CSV: its last round's row.
 String rowOf(SessionCollector c) => csvRounds([c.summary(60000)]).split('\n').last;

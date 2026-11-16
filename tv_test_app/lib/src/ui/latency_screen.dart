@@ -126,9 +126,6 @@ class _ControllerLatency extends StatelessWidget {
 class _Header extends StatelessWidget {
   const _Header({required this.player, required this.verdict, required this.verdictColor});
 
-  /// The player's badge: the look's own size, a row of figure labels deep.
-  static const _badgeDiameter = 40.0;
-
   final GamePlayer player;
   final String verdict;
   final Color verdictColor;

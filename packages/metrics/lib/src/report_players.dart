@@ -23,7 +23,7 @@ String movingPlacingTable(List<Map<String, Object?>> summaries) {
     for (final player in (summary['players'] as List?) ?? const []) {
       if (player is! Map) continue;
       final games = (player['gameStats'] as Map?) ?? const {};
-      if (games[_puzzle] case final Map stats) {
+      if (games[_puzzle] case final Map<Object?, Object?> stats) {
         final moving = _mean(stats['moveS']);
         final placing = _mean(stats['placeS']);
         if (moving == null || placing == null) continue;

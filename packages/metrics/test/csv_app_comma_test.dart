@@ -30,7 +30,7 @@ Map<String, Object?> summary({String hostApp = '0.12.0', String app = '0.13.2'})
           'data': {'start': 0},
         },
       ],
-      'ratings': [],
+      'ratings': <Object?>[],
     },
   ],
   'rounds': [

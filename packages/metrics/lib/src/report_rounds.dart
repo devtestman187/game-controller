@@ -57,7 +57,7 @@ final class RateRow {
 
   /// Adds one round at this rate: its time, its heat and its battery levels.
   /// A round that charged isn't part of the drop, since its level went up.
-  void addRound(Map round) {
+  void addRound(Map<Object?, Object?> round) {
     rounds++;
     final timeS = _seconds(round['timeS']);
     minutes += timeS / _minuteS;
@@ -74,7 +74,7 @@ final class RateRow {
 
   /// Adds one player's numbers at this rate: their touch-to-frame figures and
   /// the frames they drew late or not at all.
-  void addPlayer(Map player) {
+  void addPlayer(Map<Object?, Object?> player) {
     final touch = ((player['stagesByHz'] as Map?)?['$hz'] as Map?)?['touch_to_frame'] as Map?;
     final median = touch?['median'];
     if (median is int) touchMedians.add(median);
@@ -170,7 +170,7 @@ String csvRounds(List<Map<String, Object?>> summaries) => [
       if (round is Map) _roundCsv(summary, round),
 ].join('\n');
 
-String _roundCsv(Map<String, Object?> summary, Map round) {
+String _roundCsv(Map<String, Object?> summary, Map<Object?, Object?> round) {
   final host = (summary['host'] as Map?) ?? const {};
   final battery = (round['battery'] as Map?) ?? const {};
   final tags = [
@@ -215,7 +215,7 @@ String _fps(Object? drawn, double timeS) {
 /// A round's winner as the CSV names it (M14 a2): the winning player's number,
 /// `robot` for a round Robo won, or the numbers a team won with, space
 /// separated since a cell holds no comma. A round nobody won has none.
-String _winner(Map round) {
+String _winner(Map<Object?, Object?> round) {
   if (round['robot'] == true) return 'robot';
   final numbers = [
     for (final number in (round['winners'] as List?) ?? const [])

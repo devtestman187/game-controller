@@ -11,8 +11,8 @@ SessionCollector collector() => SessionCollector(
 );
 
 /// The summary's record of [id], the player whose install ID it is.
-Map playerOf(SessionCollector c, String id) =>
-    (c.summary(0)['players'] as List).cast<Map>().firstWhere((p) => p['install'] == id);
+Map<String, Object?> playerOf(SessionCollector c, String id) =>
+    (c.summary(0)['players'] as List).cast<Map<String, Object?>>().firstWhere((p) => p['install'] == id);
 
 /// A stage's statistics for one sample.
 Map<String, Object?> one(int ms) => {'n': 1, 'median': ms, 'p95': ms, 'max': ms};

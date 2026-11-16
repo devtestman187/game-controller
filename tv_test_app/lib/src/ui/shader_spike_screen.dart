@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' show max;
 import 'dart:ui' show FragmentProgram;
 
@@ -59,7 +60,7 @@ class _ShaderSpikeScreenState extends State<ShaderSpikeScreen> with TickerProvid
   void initState() {
     super.initState();
     SchedulerBinding.instance.addTimingsCallback(_onTimings);
-    _load();
+    unawaited(_load());
   }
 
   Future<void> _load() async {

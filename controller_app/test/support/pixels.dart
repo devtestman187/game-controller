@@ -1,4 +1,4 @@
-import 'dart:ui' show Canvas, Color, ImageByteFormat, Paint, PictureRecorder, Rect, Size;
+import 'dart:ui' show Canvas, Color, Paint, PictureRecorder, Rect, Size;
 
 import 'package:flutter_test/flutter_test.dart';
 

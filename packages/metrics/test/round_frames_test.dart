@@ -16,10 +16,10 @@ SessionCollector round() => collector()
   ..roundEnded('arena', timeS: 60, modes: {'phone-a': 'dpad'});
 
 /// The one round of [c]'s summary, as the report reads it.
-Map roundOf(SessionCollector c) => (c.summary(1000)['rounds'] as List).single as Map;
+Map<String, Object?> roundOf(SessionCollector c) => (c.summary(1000)['rounds'] as List).single as Map<String, Object?>;
 
 /// [c]'s session totals for frames, as the summary keeps them.
-Map framesOf(SessionCollector c) => c.summary(1000)['frames'] as Map;
+Map<String, Object?> framesOf(SessionCollector c) => c.summary(1000)['frames'] as Map<String, Object?>;
 
 /// The last line of [c]'s rounds CSV: its one round's row.
 String rowOf(SessionCollector c) => csvRounds([c.summary(1000)]).split('\n').last;

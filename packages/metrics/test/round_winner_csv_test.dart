@@ -20,7 +20,7 @@ SessionCollector round(Map<String, String> modes, {String? winnerId, bool draw =
       ..roundEnded('arena', timeS: 60, modes: modes, winnerId: winnerId, draw: draw, robotWin: robotWin);
 
 /// The one round of [c]'s summary, as the report reads it.
-Map roundOf(SessionCollector c) => (c.summary(1000)['rounds'] as List).single as Map;
+Map<String, Object?> roundOf(SessionCollector c) => (c.summary(1000)['rounds'] as List).single as Map<String, Object?>;
 
 /// The last line of [c]'s rounds CSV: its one round's row.
 String rowOf(SessionCollector c) => csvRounds([c.summary(1000)]).split('\n').last;

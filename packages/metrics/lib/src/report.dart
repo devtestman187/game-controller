@@ -210,13 +210,13 @@ class _PlayerRows {
       watched = _watchedOf(player['watched']),
       firstMode = player['firstMode'] as String?;
 
-  final Map player;
+  final Map<Object?, Object?> player;
   final ({String session, String date, String host, String hostApp, String hostBuild}) about;
-  final Map device;
-  final List<Map> segments;
-  final List<Map> ratings;
-  final List<Map> switches;
-  final Map stages;
+  final Map<Object?, Object?> device;
+  final List<Map<Object?, Object?>> segments;
+  final List<Map<Object?, Object?>> ratings;
+  final List<Map<Object?, Object?>> switches;
+  final Map<Object?, Object?> stages;
 
   /// Where the player watched (m12 §0.2), or null when the summary doesn't
   /// say or says something a report can't place.

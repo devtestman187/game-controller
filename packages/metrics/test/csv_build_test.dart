@@ -19,7 +19,8 @@ SessionCollector collector({String hostApp = '0.14.0+654', String? app = '0.14.0
 }
 
 /// The player's part of [summary], as the report reads it.
-Map player0(Map<String, Object?> summary) => ((summary['players'] as List).first as Map).cast<String, Object?>();
+Map<String, Object?> player0(Map<String, Object?> summary) =>
+    ((summary['players'] as List).first as Map).cast<String, Object?>();
 
 /// A summary in the old shape: no build anywhere.
 Map<String, Object?> oldSummary({String hostApp = '0.12.0', String app = '0.13.2'}) => {
@@ -47,7 +48,7 @@ Map<String, Object?> oldSummary({String hostApp = '0.12.0', String app = '0.13.2
           'data': {'start': 0},
         },
       ],
-      'ratings': [],
+      'ratings': <Object?>[],
     },
   ],
   'rounds': [

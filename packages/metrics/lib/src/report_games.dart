@@ -101,7 +101,7 @@ final class FeatureRow {
   int get ratings => good + okay + bad;
 
   /// Adds one round of the row: its time, its players and whether it finished.
-  void addRound(Map round, {required bool finished}) {
+  void addRound(Map<Object?, Object?> round, {required bool finished}) {
     rounds++;
     seconds += _seconds(round['timeS']);
     players += _int(round['players']);
@@ -195,10 +195,10 @@ final class _Features {
   _Features(this.game, this.tags);
 
   /// The round a summary recorded.
-  factory _Features.ofRound(Map round) => _Features(_game(round['game']), _tags(round['tags']));
+  factory _Features.ofRound(Map<Object?, Object?> round) => _Features(_game(round['game']), _tags(round['tags']));
 
   /// The round a rating asked about: its answer carries the round's tags.
-  factory _Features.ofRating(Map rating) => _Features(_game(rating['game']), _tags(rating['round']));
+  factory _Features.ofRating(Map<Object?, Object?> rating) => _Features(_game(rating['game']), _tags(rating['round']));
 
   /// The game's name in the records, or `unknown` when the round names none.
   final String game;

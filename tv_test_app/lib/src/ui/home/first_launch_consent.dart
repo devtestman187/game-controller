@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:party_host/party_host.dart';
@@ -16,7 +18,7 @@ class _FirstLaunchConsentState extends ConsumerState<FirstLaunchConsent> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted && ref.read(statsStateProvider).consent == null) askConsent(context, ref);
+      if (mounted && ref.read(statsStateProvider).consent == null) unawaited(askConsent(context, ref));
     });
   }
 
