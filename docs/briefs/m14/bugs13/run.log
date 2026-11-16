@@ -10,3 +10,13 @@
 2026-11-15 17:42:17 start the run's review
 2026-11-15 17:46:43 DONE: every job is committed. Claude reads the Summary of docs/briefs/m14/bugs13/REVIEW.md, verifies its findings and writes one fix brief
 2026-11-15 17:48:43 HAND-FIX arena-waiting: comment and doc wording for Back's place and the TV line, loadLookFonts in the row-touch test, report citations (review.sh 0 fail, host tests 7/7)
+2026-11-15 17:48:44 start at 6d94362 on m14
+2026-11-15 17:48:50 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-15 17:48:51 WARN: arena-waiting was committed by hand (6d94362); a plain restart would skip its tests-first proof and worker review, so both run now
+2026-11-15 17:48:51 hand-fixed arena-waiting: tests-first proof and worker review done (marked in done.txt)
+2026-11-15 17:48:51 skip arena-waiting (already done)
+2026-11-15 17:48:52 start f1
+2026-11-15 18:05:54 f1 finished: result 4 (126 turns, 14 min)
+2026-11-15 18:05:55 f1: dropped generated churn outside its list: site/shots/dpad.png site/shots/menus.png site/shots/results.png site/shots/sticks.png site/shots/tilt.png 
+2026-11-15 18:07:01 tests-first ok: controller_app/test/first_host_consent_input_test.dart fails on the old code
+2026-11-15 18:11:22 committed f1: e5b9197 The first host's consent prompt is a thumb's alone
