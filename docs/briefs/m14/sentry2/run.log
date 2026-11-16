@@ -7,3 +7,6 @@
 2026-11-16 17:23:10 tests-first ok: packages/party_host/test/live_stats_unmarked_test.dart fails on the old code
 2026-11-16 17:27:35 committed unmarked-drop: ca2306af Drop saved sessions that have no stats answer from the upload
 2026-11-16 17:33:25 finding: the review of wave1 wrote no report (see docs/briefs/m14/sentry2/flash-wave1-review.log)
+2026-11-16 17:33:26 start the run's review
+2026-11-16 17:40:00 finding: the run's review wrote no REVIEW.md (see docs/briefs/m14/sentry2/flash-run-review.log)
+2026-11-16 17:40:00 DONE: every job is committed. Claude reads the Summary of docs/briefs/m14/sentry2/REVIEW.md, verifies its findings and writes one fix brief

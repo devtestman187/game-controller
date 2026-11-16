@@ -1,0 +1,2 @@
+- the review of wave1 wrote no report (see docs/briefs/m14/sentry2/flash-wave1-review.log)
+- the run's review wrote no REVIEW.md (see docs/briefs/m14/sentry2/flash-run-review.log)
