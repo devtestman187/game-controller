@@ -113,6 +113,17 @@ Workers cannot run `tools/review.sh` or some shell commands in their sandbox; th
 13. **Tests await their async side effects before teardown.** A test that starts an unawaited upload, save or timer waits for it (or disposes it) before the temp folder is deleted: in `party_host` use `settleUploads(stats)` from `test/stats_test_support.dart` after `dispose()`, and its `deleteTempFolder`. The runner retries a failed suite once, and only when the failure output contains `PathNotFoundException`, and logs it as `check retry`.
 14. **The worker must be able to run tests.** The runner starts with a preflight (`tools/flash.sh --preflight`: a tiny real worker call that runs `flutter --version` and `tools/check.sh --list` under the job's exact permissions) and stops with `preflight failed` otherwise. The worker's Bash allow-list is by command prefix: plain `tools/check.sh <suite>`, `flutter test <file>`, `dart format`, `dart analyze`, `cd <dir> && ...`, `tail`/`head` are allowed; an absolute-path command or `bash -c` is not.
 
+## Fixed agents (owner, Nov 15, 2026)
+
+Fixed Claude Code subagents in `.claude/agents/` keep the main session's input short; they read [flash-digest.md](flash-digest.md) instead of this file. The routine:
+
+1. The main session calls **thumb-triage** with bug ids (read-only: causes, size, overlap, tracker note drafts).
+2. The owner decides design questions.
+3. The main session calls **thumb-batch** with the worktree, the batch folder and the decisions quoted; it briefs, runs, repairs, wraps and commits alone.
+4. **thumb-release** runs only on the owner's word, with the tag, the base tag and the owner's words.
+
+The main session compacts around 100-120k context.
+
 ## Before a build
 
 Before any tag or tester build, Claude does one review of its own of the milestone's whole change, however the work was done. The worker reviews narrow where to look; they do not replace it.
