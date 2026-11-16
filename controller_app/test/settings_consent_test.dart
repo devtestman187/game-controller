@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:party_host/party_host.dart' as party;
+import 'package:party_host/testing.dart' as party_test;
 
 import 'support/pump_app.dart';
 
@@ -29,7 +30,7 @@ void main() {
   });
 
   testWidgets('the crash switch records the answer and turns reports on and off at once', (tester) async {
-    final reports = _Reports();
+    final reports = party_test.FakeCrashReporter();
     final app = await pumpApp(
       tester,
       paired: true,
@@ -59,34 +60,3 @@ void main() {
 
 /// The switch behind [key] in the Settings.
 SwitchListTile _switch(WidgetTester tester, String key) => tester.widget<SwitchListTile>(find.byKey(Key(key)));
-
-/// The crash reporter the crash switch turns on and off, recording what it was
-/// asked to do: `party_host/testing.dart` keeps the host's fakes, and this one
-/// is the phone app's own (coding guidelines §2).
-class _Reports implements party.CrashReporter {
-  /// How many times the app turned reports on.
-  int enableCount = 0;
-
-  /// How many times the app turned reports off.
-  int disableCount = 0;
-
-  bool _on = false;
-
-  @override
-  bool get enabled => _on;
-
-  @override
-  Future<void> enable() async {
-    enableCount++;
-    _on = true;
-  }
-
-  @override
-  Future<void> disable() async {
-    disableCount++;
-    _on = false;
-  }
-
-  @override
-  void capture(Object error, StackTrace? stack, {String? where}) {}
-}

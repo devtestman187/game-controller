@@ -34,6 +34,9 @@ Future<void> main() async {
         // the answer turns that reporter on or off live (design sentry-consent.md).
         crashAvailableProvider.overrideWithValue(sentryDsn.isNotEmpty),
         crashReporterProvider.overrideWithValue(crashReporter),
+        // The lobby whose names a crash report must hide (design
+        // sentry-consent.md): this TV's own players.
+        crashLobbyProvider.overrideWith((ref) => ref.watch(gamePlayersProvider)),
         hostIdentityProvider.overrideWithValue(tvHostIdentity()),
         hostDirectoriesProvider.overrideWithValue(const TvDirectories()),
         sessionUploaderProvider.overrideWith((ref) => tvUploader()),
@@ -64,6 +67,9 @@ class TvTestApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final look = ref.watch(toyLookProvider);
+    // Keeps the crash reports free of the lobby's names (design
+    // sentry-consent.md).
+    ref.watch(crashNamesProvider);
     return ToyLookScope(
       look: look,
       child: Shortcuts(

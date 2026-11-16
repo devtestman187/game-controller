@@ -42,6 +42,11 @@ class ConnectScreen extends ConsumerStatefulWidget {
 }
 
 class _ConnectScreenState extends ConsumerState<ConnectScreen> {
+  /// True while this screen's launch prompts are up: a connection that lands
+  /// then waits for the answer, so this screen's pop never takes the dialog
+  /// instead of the adult answering it (the run's review: it did).
+  bool _promptUp = false;
+
   @override
   void initState() {
     super.initState();
@@ -52,7 +57,8 @@ class _ConnectScreenState extends ConsumerState<ConnectScreen> {
       // own first frame asks instead (B-023), never a prompt over it.
       if (ref.read(hostingProvider)?.live ?? false) return;
       ref.read(launchConsentAskedProvider.notifier).mark();
-      unawaited(askConsents(context, ref));
+      _promptUp = true;
+      unawaited(askConsents(context, ref).whenComplete(() => _promptUp = false));
     });
   }
 
@@ -62,6 +68,7 @@ class _ConnectScreenState extends ConsumerState<ConnectScreen> {
       // A hosting phone's own player connects to this phone: that is no reason
       // to close this screen, which would pop the host route above it (m12 §3).
       if (ref.read(hostingProvider)?.live ?? false) return;
+      if (_promptUp) return;
       if (next.isConnected && !(previous?.isConnected ?? false)) Navigator.of(context).maybePop();
     });
     final client = ref.watch(clientStateProvider);

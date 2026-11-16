@@ -95,6 +95,15 @@ ControllerIdentity ownPlayerIdentity(ControllerIdentity identity) => identity.co
 /// `localPlayerSourceProvider` is).
 final phoneHostBuilderProvider = Provider<PhoneHostBuilder>((ref) => PhoneHost.live);
 
+/// The players whose names this phone's crash reports must hide, or null when
+/// it has no lobby (design sentry-consent.md): none before the first host, and
+/// none once the running one stops. [gameShownProvider] is this app's signal
+/// for a host that runs, set at its start and cleared at its stop, so the
+/// names end with it; the stopped host stays in [hostingProvider] on purpose.
+final phoneCrashLobbyProvider = Provider<List<GamePlayer>?>(
+  (ref) => ref.watch(gameShownProvider) ? ref.watch(party.gamePlayersProvider) : null,
+);
+
 /// The running host's service, which `party.hostServiceProvider` is overridden
 /// with. It throws before the first "Host a game": nothing that is always on
 /// screen reads it (the host chip returns early, m12 §3).

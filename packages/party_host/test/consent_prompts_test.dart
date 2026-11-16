@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:party_host/party_host.dart';
-import 'package:party_host/src/testing/fake_crash.dart';
+import 'package:party_host/testing.dart';
 
 import 'support/host_harness.dart';
 
@@ -89,6 +89,64 @@ void main() {
     await tester.pumpAndSettle();
     expect(consentContainer(tester).read(prefsProvider).getBool('statsConsent'), isFalse);
   });
+
+  /// The prompt open over the asker, and the providers under it.
+  Future<ProviderContainer> openCrashPrompt(WidgetTester tester) async {
+    await pumpHost(
+      tester,
+      screen: const _CrashAskScreen(),
+      overrides: [crashAvailableProvider.overrideWithValue(true), crashReporterProvider.overrideWithValue(crash)],
+    );
+    await tester.tap(find.byKey(const Key('ask')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('crashConsentDialog')), findsOneWidget);
+    return ProviderScope.containerOf(tester.element(find.byKey(const Key('ask'))));
+  }
+
+  /// Asserts nothing answered the question: no answer in the providers, none
+  /// saved, and the reporter never touched.
+  void expectUnanswered(ProviderContainer ref) {
+    expect(ref.read(consentProvider).crash, isNull, reason: 'the question is still open');
+    expect(ref.read(prefsProvider).getBool('crashConsent'), isNull, reason: 'nothing was saved');
+    expect(crash.enableCount, 0);
+    expect(crash.disableCount, 0, reason: 'the reporter was left as it was');
+  }
+
+  testWidgets('"Don\'t send" answers no, saves it, and keeps reports off', (tester) async {
+    final ref = await openCrashPrompt(tester);
+
+    await tester.tap(find.byKey(const Key('crashNo')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('crashConsentDialog')), findsNothing, reason: 'the answer closes the prompt');
+    expect(ref.read(consentProvider).crash, isFalse);
+    expect(ref.read(prefsProvider).getBool('crashConsent'), isFalse);
+    expect(crash.disableCount, 1, reason: 'the answer reaches the reporter once');
+    expect(crash.enableCount, 0, reason: 'no never starts reports');
+    expect(crash.enabled, isFalse);
+  });
+
+  testWidgets('Esc does not answer the crash question', (tester) async {
+    final ref = await openCrashPrompt(tester);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('crashConsentDialog')), findsOneWidget, reason: 'the prompt stays up');
+    expectUnanswered(ref);
+  });
+
+  testWidgets('back does not answer the crash question', (tester) async {
+    final ref = await openCrashPrompt(tester);
+
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+
+    // A back closes the dialog itself, as it closes any dialog; the question
+    // stays unanswered, so the next launch asks it again.
+    expect(find.byKey(const Key('crashConsentDialog')), findsNothing);
+    expectUnanswered(ref);
+  });
 }
 
 /// A host screen with one button that opens this instance's consent questions,
@@ -107,6 +165,25 @@ class _AskScreen extends ConsumerWidget {
         label: 'Ask',
         onPressed: () async {
           await askConsents(context, ref, touchOnly: touchOnly);
+        },
+      ),
+    ),
+  );
+}
+
+/// A host screen with one button that opens the crash question, as an app's
+/// first launch does.
+class _CrashAskScreen extends ConsumerWidget {
+  const _CrashAskScreen();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) => Scaffold(
+    body: Center(
+      child: HostButton(
+        key: const Key('ask'),
+        label: 'Ask',
+        onPressed: () async {
+          await askCrashConsent(context, ref);
         },
       ),
     ),

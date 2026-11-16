@@ -10,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'src/app_info.dart';
 import 'src/consent_migration.dart';
 import 'src/host/host_overrides.dart';
+import 'src/host/hosting.dart';
 import 'src/host/phone_host_setup.dart';
 import 'src/providers.dart';
 import 'src/ui/controller_screen.dart';
@@ -48,6 +49,10 @@ Future<void> main() async {
         // only in a build that could send a report (design sentry-consent.md).
         party.crashAvailableProvider.overrideWithValue(sentryDsn.isNotEmpty),
         party.crashReporterProvider.overrideWithValue(crashReporter),
+        // The lobby whose names a crash report must hide: this phone has one
+        // only while it hosts (design sentry-consent.md), so a phone that only
+        // pairs a TV reads no host at all.
+        party.crashLobbyProvider.overrideWith((ref) => ref.watch(phoneCrashLobbyProvider)),
         launchConsentAskProvider.overrideWithValue(true),
         ...phoneHostOverrides(directories: const PhoneHostDirectories()),
       ],
@@ -79,6 +84,9 @@ class ControllerApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final look = ref.watch(party.toyLookProvider);
+    // Keeps the crash reports free of the lobby's names (design
+    // sentry-consent.md), from the lobby the override above gives it.
+    ref.watch(party.crashNamesProvider);
     return party.ToyLookScope(
       look: look,
       child: MaterialApp(

@@ -92,7 +92,9 @@ SessionUploader? tvUploader() => firestoreProject.isEmpty ? null : FirestoreUplo
 Future<CrashReporter> tvStartCrashReporting(SharedPreferences prefs, {CrashReporter? reporter}) => startCrashReporting(
   prefs: prefs,
   dsn: sentryDsn,
-  release: versionLabel,
+  // The phone's format too (the run's review: the TV sent "0.14.0 (654)"):
+  // "0.14.0+654", the bare version when the build is dev.
+  release: appWithBuild(appVersion, buildNumber),
   // A debug build says so in its reports; every other build is a store one.
   environment: kDebugMode ? 'debug' : 'production',
   reporter: reporter,
