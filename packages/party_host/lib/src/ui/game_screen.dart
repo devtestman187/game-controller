@@ -121,7 +121,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
         if (mounted) setState(() {});
       },
     );
-    _music = ref.read(lobbyMusicProvider)..roundScreenOpened(this, arena: true, waiting: _stage == _Stage.waiting);
+    _music = ref.read(lobbyMusicProvider)..roundScreenOpened(this, arena: true, waiting: true);
   }
 
   @override

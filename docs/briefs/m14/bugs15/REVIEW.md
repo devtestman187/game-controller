@@ -102,3 +102,14 @@ M14 bugs15 run review: 3 jobs read as one change (Arena music, coverage tools, C
 ## Delete
 
 - none
+
+## Claude's verdicts (wave 1)
+
+- must analyzer exclusion: not real. A broken import fails the coverage test at compile time; the exclusion only hides the intended unused-import lint, and the reason is in docs/code-health.md.
+- must cov-1 report text on the ignore comment, should allow: list: stale report wording only; the commit and code-health note are the record.
+- should arena_back/_waiting test: deferred to docs/code-health.md. should file sizes: code-health.
+- should dev-tools exclusions, sample table, exit code, dart test wording: fixed by hand.
+- should before/after number: measured on the tip: 19,797/21,311 (92.9%) with the generated tests, against 19,778/21,306 before (+5 lines found, only a few files were uncounted).
+- should cov-2 report "not applied": stale, ci.yml was applied by hand (c968b552).
+- could waiting flag and class doc: fixed by hand. assets exclusion line: removed. Others (summary text, named constant, duplicate suffix list, empty-body test): code-health.
+- Open questions: workers may run dart run and tools/coverage.sh (yes); .github edits stay with the driver; assets flutter_test: code-health (leave).

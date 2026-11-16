@@ -49,3 +49,4 @@
 2026-11-16 12:41:18 reviewed cov-2-ci-docs: 9 finding(s)
 2026-11-16 12:41:19 start the run's review
 2026-11-16 12:44:49 DONE: every job is committed. Claude reads the Summary of docs/briefs/m14/bugs15/REVIEW.md, verifies its findings and writes one fix brief
+2026-11-16 12:46:22 wave 1 wrap: hand fixes to the review findings (waiting flag, comments, dev-tools wording, assets exclusion line), code-health leftovers; review.sh 0 fail, analyze clean, music tests pass

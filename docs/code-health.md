@@ -157,6 +157,13 @@ The "could" findings of [bugs1's review](briefs/m14/bugs1/REVIEW.md) that the fi
 - **Watchdog**: a `play()` that throws restarts the whole engine (one bad effect key restarts every 5 s; restrict to "loop voice also gone"); "frozen" is exact equality of the loop's place (carry the loop length in `SoundPulse`); fixed 5 s cooldown never widens for an engine that cannot come back; `SoundPulse` sits in `sound_watchdog.dart` though `sound_loop.dart` imports it (move beside `SoundLoop`); a paused loop whose engine failed waits for the resume; `isLoopWanted` is public only for the test; no player-level test of `_loadTried` (needs a fake engine seam); `sound.dart` is ~350 lines (split the watchdog/lifecycle wiring when next touched); `_load` is 45 lines.
 - **Band**: `TakenNoticeNotifier.build()` returns null and only listens (seed from the snapshot, up to 1 s late); no test for the `_announced` reset in `build()` and the `asked == null` branch; its tests wait a literal 5 s instead of `takenNoticeDuration`; the notifier could move to `providers/view.dart`; `askedCharacter` dartdoc should say it is also null after a drop. The phone host's own band (Play on this phone) ends on the 5 s only; an accessory that was taken shows no band; the band can sit over the host-away card up to 5 s (all left on purpose).
 
+### Coverage and Arena music leftovers (bugs15, Nov 16)
+
+- party_host, `arena_music_test.dart`: no test that Back from the Arena card leaves the lobby loop playing (`HostMusic._waiting` is cleared on `roundScreenClosed`). *when touched*
+- party_host: `game_screen.dart` (378 lines) and `lobby_music.dart` (364) sit past the about-300 aim; split the stage reporting out of `GameScreen` and the round/lobby choice out of `HostMusic` at the next change. After Play again one frame of the `arena_final` loop can sound before the phase is `playing`: guard clock reports until then. *when touched*
+- tools: `coverage_imports.dart` and `coverage_summary.dart` each hold the generated-suffix list (keep one); the generated `coverage_all_test.dart` has an empty body, so a lib file added without rerunning the generator stays uncounted until `tools/coverage.sh` runs (it regenerates); `assets` has one lib file and no test setup, so it is not counted (419 of 420 files). *leave*
+- The generated coverage tests are excluded from the analyzer in each `analysis_options.yaml` because their imports are unused on purpose (`review.sh` forbids ignore comments). A broken import still fails the test run.
+
 ## Before a milestone
 
 | Before | What | Risk | Benefit of doing it first | Rec. |

@@ -97,22 +97,22 @@ bash tools/coverage.sh --no-gen                     # don't regenerate the impor
 `flutter test --coverage` counts only the files a test imports: a `lib/` file that no test imports isn't in the report at all, and the percentage then covers only what the tests happened to load. The script closes that hole:
 
 1. `dart run tools/coverage_imports.dart` (re)writes `test/coverage_all_test.dart` in each package: one generated test that imports every `lib/**.dart` file, so no file can stay out of the coverage report. The files are committed, so a run without this step still counts every file.
-2. `flutter test --coverage` runs in each package, as the test steps do, which also writes that package's `coverage/lcov.info`.
+2. `flutter test --coverage` runs in every package (the pure Dart ones too, where CI's test steps use `dart test`), which also writes that package's `coverage/lcov.info`.
 3. `dart run tools/coverage_summary.dart` reads every package's `coverage/lcov.info`, prints a table and writes the same table to `coverage/summary.txt` at the repository root.
 
-The table, one row per package and a TOTAL row that sums the hit and found lines (sample):
+The table, one row per package and a TOTAL row that sums the hit and found lines (as printed on Nov 16, 2026, abridged):
 
 ```
-package             lines hit  lines found       %
-controller_app            512          640   80.0
-protocol                  930         1020   91.2
+package              | lines hit | lines found | %
+---------------------|-----------|-------------|------
+controller_app       |      3707 |        3993 | 92.8
 ...
-TOTAL                   19900        24600   80.9
+TOTAL                |     19797 |       21311 | 92.9
 ```
 
 - **Options:** package names (`controller_app`, `puzzle_game`) restrict the run to those; `--no-gen` skips step 1 and uses the committed import tests as they are.
-- **Exclusions:** generated files (`*.g.dart`, `*.freezed.dart`, `*.gr.dart`, the generated localisations, the plugin registrants and `firebase_options.dart`) and `part of` files are left out of the import test and of the table. A `lib/` file that can't load in a VM test (web-only, conditional `dart:html`) is listed with its reason in the generated test's header and left out too.
-- **Exit code:** 0 when every package's tests passed, 1 when one failed; the table is printed either way.
+- **Exclusions:** generated files (`*.g.dart`, `*.freezed.dart`, `*.gr.dart`, the generated localisations, the plugin registrants and `firebase_options.dart`) are left out of the import test and of the table (also `*.config.dart` and `*.mocks.dart`); `part of` files can't be imported, so they count through their library. A `lib/` file that can't load in a VM test (web-only, conditional `dart:html`) is listed with its reason in the generated test's header and left out too.
+- **Exit code:** 0 when every package's tests passed, 1 when one failed (the table is printed either way), 2 for a bad argument, an unknown package or a missing tool.
 - **On CI:** the Coverage step of `analyze-test-android` (`.github/workflows/ci.yml`) runs `bash tools/coverage.sh` after the test steps, so the table is in the job log and in the run's summary page (inside a fenced block). The run keeps `coverage/summary.txt` and each package's `coverage/lcov.info` as the `coverage` artifact for 14 days: download it from the run's page, or `gh run download <id> -n coverage`. **No threshold fails CI yet:** the step fails only when a package's tests fail, so a drop in coverage shows in the table and in the review, not as a red run.
 - **Formatting:** the same job checks formatting first, as a **Format** step before Analyze, with the same command as `tools/check.sh format` ([tools/check.sh](#toolschecksh)).
 

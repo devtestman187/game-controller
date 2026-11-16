@@ -20,7 +20,7 @@ part 'lobby_music_widgets.dart';
 /// included. So a round stops the lobby music the moment it opens, and it comes
 /// back when the round's screens close to the join screen or the picker, Change
 /// teams included — or while the Arena's screen sits on its waiting card, which
-/// holds a round open but plays none (M14 bugs B-030). Every stage the round's
+/// holds a round open but plays none (M14 bugs B-030). Every stage but the results the round's
 /// screen enters says so afresh, so Play again's round gets its own music back
 /// (M14 bugs B-029). The two never play together.
 ///
