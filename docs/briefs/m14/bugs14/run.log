@@ -9,3 +9,5 @@
 2026-11-15 22:47:34 tests-first ok: packages/party_host/test/sound_watchdog_test.dart fails on the old code
 2026-11-15 22:52:07 committed b027-audio-watchdog: f1352bf Restart the sound engine when it dies (B-027)
 2026-11-15 22:52:09 committed b028-taken-notice: 8fb95c2 Fix the taken-colours band so it stops over the game (B-028)
+2026-11-15 23:01:42 reviewed b027-audio-watchdog: 7 finding(s)
+2026-11-15 23:01:43 reviewed b028-taken-notice: 5 finding(s)
