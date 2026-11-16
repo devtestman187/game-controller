@@ -6,6 +6,8 @@ import 'package:party_host/party_host.dart';
 import 'package:party_host/src/testing/fake_crash.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'support/recording_reporter.dart';
+
 /// A DSN as a build would pass it: made up, so no project's address is kept in
 /// the repo (design sentry-consent.md).
 const _dsn = 'https://example-public-key@example.invalid/1';
@@ -30,8 +32,15 @@ void main() {
 
   group('capture', () {
     test('sends nothing while reports are off', () {
+      // A reporter that keeps every report it is handed, so this can only pass
+      // because CrashReports itself drops it (the run's review).
+      final reporter = RecordingReporter();
+      CrashReports.use(reporter);
+
       CrashReports.capture(StateError('boom'), StackTrace.current, where: 'test');
-      expect(fake.captures, isEmpty);
+
+      expect(reporter.enabled, isFalse);
+      expect(reporter.captures, isEmpty);
     });
 
     test('sends the error, its stack and where it came from while reports are on', () async {
@@ -51,13 +60,15 @@ void main() {
     });
 
     test('stops sending when reports are turned off again', () async {
-      await fake.enable();
+      final reporter = RecordingReporter();
+      CrashReports.use(reporter);
+      await reporter.enable();
       CrashReports.capture(StateError('before'), null);
-      await fake.disable();
+      await reporter.disable();
       CrashReports.capture(StateError('after'), null);
-      expect(fake.captures, hasLength(1));
-      expect(fake.captures.single.error, isA<StateError>());
-      expect(fake.disableCount, 1);
+      expect(reporter.captures, hasLength(1));
+      expect(reporter.captures.single.error, isA<StateError>());
+      expect(reporter.disableCount, 1);
     });
   });
 
@@ -72,8 +83,10 @@ void main() {
     });
 
     test('sends nothing while reports are off and still does not fail', () async {
+      final reporter = RecordingReporter();
+      CrashReports.use(reporter);
       await CrashReports.guard(Future<void>.error(StateError('boom')), where: 'upload');
-      expect(fake.captures, isEmpty);
+      expect(reporter.captures, isEmpty);
     });
 
     test('sends nothing for a future that completes', () async {

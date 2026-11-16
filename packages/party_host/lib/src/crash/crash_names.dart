@@ -15,8 +15,10 @@ final crashLobbyProvider = Provider<List<GamePlayer>?>((ref) => null);
 /// sentry-consent.md; the run's review found nothing ever set them): every
 /// non-blank nickname is a name that must go out as `[name]` instead, and the
 /// set is empty while nobody is in the lobby. Both apps keep it running at
-/// their root.
+/// their root, and a container that goes leaves no name behind (the run's
+/// review, f1): the set is a static, so it outlived the lobby without this.
 final crashNamesProvider = Provider<void>((ref) {
+  ref.onDispose(() => CrashReports.playerNames = const {});
   final players = ref.watch(crashLobbyProvider);
   CrashReports.playerNames = players == null ? const {} : _namesOf(players);
 });

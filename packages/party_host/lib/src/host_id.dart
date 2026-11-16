@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math';
 
+import 'package:connection/connection.dart' show LogSink;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'crash/crash_reporter.dart';
@@ -34,6 +35,11 @@ const _hexRadix = 16;
 /// at once, so no test waits a real second.
 typedef HostIdWait = Future<void> Function(Duration delay);
 
+/// Whether the host that is saving an id still runs: [persistHostId] stops its
+/// pending retry and writes nothing once this answers false, so a restarted
+/// host never writes a stopped one's id last (the run's review).
+typedef HostIdAlive = bool Function();
+
 /// The id this host runs with (M11): the one saved in [prefs], or a fresh
 /// random one that it starts saving at once, so the next launch keeps the
 /// phones' saved pairings (bugs15).
@@ -41,13 +47,25 @@ typedef HostIdWait = Future<void> Function(Duration delay);
 /// It returns before the write finishes: the host runs with the id as today,
 /// and [persistHostId] reports a write that keeps failing rather than holding
 /// the host up. [random] makes a new id; the app passes `Random.secure()`.
-String loadOrMakeHostId(SharedPreferences prefs, Random random, {HostIdWait wait = _waitOneRetry}) {
+/// [isAlive] and [log] go to [persistHostId] as they are.
+String loadOrMakeHostId(
+  SharedPreferences prefs,
+  Random random, {
+  HostIdWait wait = _waitOneRetry,
+  HostIdAlive isAlive = _hostRuns,
+  LogSink? log,
+}) {
   final saved = prefs.getString(hostIdKey);
   if (saved != null) return saved;
   final id = _randomHex(random, hostIdBytes);
   // The constructor can't await, and a write that fails must not stop the
   // host: it reports, and the host runs with the id it has in memory (bugs15).
-  unawaited(CrashReports.guard(persistHostId(prefs, id, wait: wait), where: hostIdWriteWhere));
+  unawaited(
+    CrashReports.guard(
+      persistHostId(prefs, id, wait: wait, isAlive: isAlive, log: log),
+      where: hostIdWriteWhere,
+    ),
+  );
   return id;
 }
 
@@ -57,12 +75,23 @@ String loadOrMakeHostId(SharedPreferences prefs, Random random, {HostIdWait wait
 /// the phones' saved pairings stop matching.
 ///
 /// After the last failure it reports the error once (design
-/// sentry-consent.md) and returns: it never throws, so the host keeps running
-/// with [id] in memory.
-Future<void> persistHostId(SharedPreferences prefs, String id, {HostIdWait wait = _waitOneRetry}) async {
+/// sentry-consent.md) and logs one line through [log] and returns: it never
+/// throws, so the host keeps running with [id] in memory.
+///
+/// [isAlive] is checked before every try, so a host that is gone by the time a
+/// retry's wait is over writes nothing: its id would only overwrite the id of
+/// the host that replaced it (the run's review).
+Future<void> persistHostId(
+  SharedPreferences prefs,
+  String id, {
+  HostIdWait wait = _waitOneRetry,
+  HostIdAlive isAlive = _hostRuns,
+  LogSink? log,
+}) async {
   Object? failure;
   StackTrace? failureStack;
   for (var tryNumber = 1; tryNumber <= hostIdWriteTries; tryNumber++) {
+    if (!isAlive()) return;
     try {
       if (await prefs.setString(hostIdKey, id)) return;
       failure = StateError('Saving the host id answered false');
@@ -74,8 +103,15 @@ Future<void> persistHostId(SharedPreferences prefs, String id, {HostIdWait wait 
     }
     if (tryNumber < hostIdWriteTries) await wait(hostIdRetryDelay);
   }
-  if (failure != null) CrashReports.capture(failure, failureStack, where: hostIdWriteWhere);
+  if (failure != null) {
+    // One line, with no error text: the log is the part a parent may read, and
+    // the report already holds the detail (design sentry-consent.md).
+    log?.call('Could not save the host id after $hostIdWriteTries tries');
+    CrashReports.capture(failure, failureStack, where: hostIdWriteWhere);
+  }
 }
+
+bool _hostRuns() => true;
 
 Future<void> _waitOneRetry(Duration delay) => Future<void>.delayed(delay);
 

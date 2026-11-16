@@ -120,7 +120,9 @@ class LiveHostService implements HostService {
        _identity = identity,
        _directories = directories {
     _advertiser = advertiser;
-    final id = loadOrMakeHostId(prefs, Random.secure());
+    // A pending retry stops with this service (the run's review): a host
+    // restarted next to it never has the stopped session's id written last.
+    final id = loadOrMakeHostId(prefs, Random.secure(), isAlive: () => !_disposed, log: _log);
     _hostId = id;
     final saved = loadPairings(prefs);
     _server = HostServer(
