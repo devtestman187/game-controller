@@ -15,6 +15,13 @@ export 'src/abandon_signal.dart';
 export 'src/advertiser.dart';
 export 'src/best_times.dart';
 export 'src/controls.dart' show Controls, ControlsClaims;
+// Crash reports (M14): the reporter the apps start after the crash answer,
+// the static helper the app's own code reports through, the pure scrubber the
+// report passes on its way out, and the real Sentry reporter.
+export 'src/crash/crash_reporter.dart';
+export 'src/crash/crash_start.dart';
+export 'src/crash/scrub.dart';
+export 'src/crash/sentry_reporter.dart';
 export 'src/device_sampler.dart';
 export 'src/host_device_monitor.dart';
 export 'src/host_directories.dart';
