@@ -14,6 +14,13 @@ import '../app_info.dart';
 /// Codemagic). Empty in local builds: then nothing can be uploaded.
 const firestoreProject = String.fromEnvironment('FIRESTORE_PROJECT');
 
+/// The Sentry project crash reports go to, set at build time
+/// (`--dart-define=SENTRY_DSN=...`, from the release workflow): the phone app's
+/// own project (design sentry-consent.md). Empty in dev, tests and local
+/// builds, and then nothing is asked about crashes nor sent. Never a value in
+/// the repository.
+const sentryDsn = String.fromEnvironment('SENTRY_DSN');
+
 /// The project's web API key (optional for Firestore, which the security rules
 /// protect).
 const firestoreApiKey = String.fromEnvironment('FIRESTORE_API_KEY');

@@ -17,6 +17,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:controller/main.dart';
 import 'package:controller/src/app_info.dart';
+import 'package:controller/src/consent_migration.dart';
 import 'package:controller/src/controls_settings.dart';
 import 'package:controller/src/device_status.dart';
 import 'package:controller/src/discovery.dart';
@@ -42,6 +43,7 @@ import 'package:controller/src/phone_metrics.dart';
 import 'package:controller/src/profile.dart';
 import 'package:controller/src/providers.dart';
 import 'package:controller/src/providers/connection.dart';
+import 'package:controller/src/providers/consent.dart';
 import 'package:controller/src/providers/controls.dart';
 import 'package:controller/src/providers/device.dart';
 import 'package:controller/src/providers/feedback.dart';

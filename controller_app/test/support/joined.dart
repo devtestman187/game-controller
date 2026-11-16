@@ -31,13 +31,20 @@ double layerOpacity(WidgetTester tester) => tester
     .opacity;
 
 /// The app connected to a host that shows the Arena, with a status panel up
-/// and the first frame drawn.
+/// and the first frame drawn. The adult answered yes to usage stats, so the
+/// touch metrics record as they do in the app (design sentry-consent.md).
 Future<TestApp> joined(
   WidgetTester tester, {
   Size screen = const Size(852, 393),
   FakeViewPadding padding = const FakeViewPadding(),
 }) async {
-  final app = await pumpApp(tester, paired: true, screen: screen, padding: padding);
+  final app = await pumpApp(
+    tester,
+    paired: true,
+    screen: screen,
+    padding: padding,
+    saved: const {'statsConsent': true},
+  );
   app.client.emit(connected);
   app.client.setStatus(StatusMessage(text: 'Left 3/6'));
   await settle(tester);

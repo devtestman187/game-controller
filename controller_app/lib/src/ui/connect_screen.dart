@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:connection/connection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:party_host/party_host.dart' show HostKind, PhoneText, ToyButton, ToyCard, ToyLookScope, ToySizes;
+import 'package:party_host/party_host.dart'
+    show HostKind, PhoneText, ToyButton, ToyCard, ToyLookScope, ToySizes, askConsents;
 
 import '../discovery.dart';
 import '../host/hosting.dart';
@@ -27,11 +30,34 @@ const hostRowCornerShare = 0.2;
 /// The look's card holds the rows (M13 3c): the found TVs on its paper, and a
 /// paper row each, with the screen's title and its way into Diagnostics on the
 /// page's own sky above.
-class ConnectScreen extends ConsumerWidget {
+///
+/// It is a launch's first screen, so it puts this phone's own two questions to
+/// the adult on its first frame (design sentry-consent.md): crash reports first
+/// and then usage stats, once a launch, and never over a game that is running.
+class ConnectScreen extends ConsumerStatefulWidget {
   const ConnectScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ConnectScreen> createState() => _ConnectScreenState();
+}
+
+class _ConnectScreenState extends ConsumerState<ConnectScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (!ref.read(launchConsentAskProvider) || ref.read(launchConsentAskedProvider)) return;
+      // A phone that hosts has its game running under this screen: that game's
+      // own first frame asks instead (B-023), never a prompt over it.
+      if (ref.read(hostingProvider)?.live ?? false) return;
+      ref.read(launchConsentAskedProvider.notifier).mark();
+      unawaited(askConsents(context, ref));
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     ref.listen(clientStateProvider, (previous, next) {
       // A hosting phone's own player connects to this phone: that is no reason
       // to close this screen, which would pop the host route above it (m12 §3).

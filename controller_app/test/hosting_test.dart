@@ -28,6 +28,7 @@ void main() {
       overrides: [
         ...phoneHostOverrides(directories: TempHostDirectories(dir)),
         prefsProvider.overrideWithValue(prefs),
+        party.prefsProvider.overrideWith((ref) => ref.watch(prefsProvider)),
         identityProvider.overrideWithValue(
           const ControllerIdentity(controllerId: 'phone-1', name: 'Phone', platform: 'test', appVersion: 't'),
         ),
@@ -97,6 +98,7 @@ void main() {
       overrides: [
         ...phoneHostOverrides(directories: TempHostDirectories(dir)),
         prefsProvider.overrideWithValue(prefs),
+        party.prefsProvider.overrideWith((ref) => ref.watch(prefsProvider)),
         identityProvider.overrideWithValue(
           const ControllerIdentity(controllerId: 'phone-1', name: 'Phone', platform: 'test', appVersion: 't'),
         ),
@@ -152,6 +154,7 @@ void main() {
       overrides: [
         ...phoneHostOverrides(directories: TempHostDirectories(dir)),
         prefsProvider.overrideWithValue(prefs),
+        party.prefsProvider.overrideWith((ref) => ref.watch(prefsProvider)),
         identityProvider.overrideWithValue(
           const ControllerIdentity(controllerId: 'phone-1', name: 'Phone', platform: 'test', appVersion: 't'),
         ),

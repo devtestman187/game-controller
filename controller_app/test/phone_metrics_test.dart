@@ -122,7 +122,9 @@ void main() {
 
   group('in the app', () {
     testWidgets('a tap beside B arrives as a near miss on B in the next batch', (tester) async {
-      final a = await app.pumpApp(tester, paired: true);
+      // The adult said yes to usage stats on this phone (design
+      // sentry-consent.md): nothing is recorded before an answer.
+      final a = await app.pumpApp(tester, paired: true, saved: const {'statsConsent': true});
       a.client.emit(app.connected);
       await tester.pump();
 
@@ -138,7 +140,7 @@ void main() {
     });
 
     testWidgets('nothing is recorded in the demo or with stats turned off', (tester) async {
-      final a = await app.pumpApp(tester, paired: true, saved: const {'shareStats': false});
+      final a = await app.pumpApp(tester, paired: true, saved: const {'statsConsent': false});
       a.client.emit(app.connected);
       await tester.pump();
       await tester.tap(find.text('Sticks'));
@@ -284,13 +286,13 @@ void main() {
     });
 
     testWidgets('Settings shows that stats are recorded, and the switch is saved', (tester) async {
-      final a = await app.pumpApp(tester, paired: true);
+      final a = await app.pumpApp(tester, paired: true, saved: const {'statsConsent': true});
       await app.openSettings(tester);
       await app.scrollTo(tester, find.byKey(const Key('settingsShareStats')));
       expect(find.textContaining('Never names'), findsOneWidget);
       await tester.tap(find.byKey(const Key('settingsShareStats')));
       await tester.pump();
-      expect(a.prefs.getBool('shareStats'), isFalse);
+      expect(a.prefs.getBool('statsConsent'), isFalse, reason: 'the switch is this phone\'s stats answer');
     });
 
     test('the hello lists metrics and rating, the device kind and the screen size', () async {

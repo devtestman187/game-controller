@@ -110,6 +110,16 @@ class FakeClient extends ControllerClient {
   @override
   void sendRating(RatingMessage rating) => ratings.add(rating);
 
+  /// Every usage stats answer the app told the TV (design sentry-consent.md),
+  /// in order: the answer it starts with, then each change.
+  final statsShares = <bool>[];
+
+  @override
+  void setStatsShare(bool share) {
+    statsShares.add(share);
+    super.setStatsShare(share);
+  }
+
   /// The game's controls and status panel arriving from the TV (M10).
   GameLayoutMessage _layout = GameLayoutMessage.standard();
   StatusMessage _status = StatusMessage.hidden();

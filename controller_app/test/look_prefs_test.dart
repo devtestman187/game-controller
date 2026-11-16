@@ -47,6 +47,7 @@ Future<TestApp> pumpRealRoot(WidgetTester tester, {bool paired = false, Map<Stri
     ProviderScope(
       overrides: [
         prefsProvider.overrideWithValue(app.prefs),
+        party.prefsProvider.overrideWith((ref) => ref.watch(prefsProvider)),
         party.toyShadersProvider.overrideWithValue(party.ToyShaders.none),
         ...phoneHostOverrides(directories: TempHostDirectories(dir)),
         tvClientProvider.overrideWithValue(app.client),

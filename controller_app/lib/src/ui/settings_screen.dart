@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:connection/connection.dart' show maxNicknameLength;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -18,6 +20,8 @@ import 'package:party_host/party_host.dart'
         ToyLookScope,
         ToySizes,
         askConsent,
+        consentProvider,
+        crashAvailableProvider,
         paintAccessory,
         statsStateProvider,
         toyAccessoryHeadroom;
@@ -259,15 +263,24 @@ String eventFeel(HapticEvent e) => SettingsText.eventFeel(e);
 /// What each TV event is called.
 String eventLabel(HapticEvent e) => SettingsText.eventLabel(e);
 
-/// Control stats (PRD v2 privacy rules): every phone shows that the TV
-/// records how the controls are used, and can opt out. A phone that hosts keeps
-/// its own sessions, so it has the host's Stats screen too (M14 r5 8).
+/// The "Crash reports" switch's words (design sentry-consent.md): the privacy
+/// page's crash reports section, in the settings' one short line.
+const _crashReports = 'Crash reports';
+const _crashReportsLine =
+    'The app sends crash and error reports through Sentry, so bugs get fixed: the error, the app version, '
+    'the platform and operating system version, and the device model. Never names, email addresses or an '
+    'identity based on your IP address. Off until you say yes.';
+
+/// The adult's two answers (design sentry-consent.md): usage stats (PRD v2
+/// privacy rules), which every phone has, and crash reports, which only a build
+/// that can send one asks about. A phone that hosts keeps its own sessions, so
+/// it has the host's Stats screen too (M14 r5 8).
 class _StatsSection extends ConsumerWidget {
   const _StatsSection();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final on = ref.watch(shareStatsProvider);
+    final consent = ref.watch(consentProvider);
     // A host's sessions are kept on the phone and shown by its Stats screen,
     // which the host service keeps: there is nothing to show before the first
     // "Host a game".
@@ -280,9 +293,20 @@ class _StatsSection extends ConsumerWidget {
           contentPadding: EdgeInsets.zero,
           title: const Text(SettingsText.shareStats),
           subtitle: const Text(SettingsText.shareStatsLine),
-          value: on,
-          onChanged: ref.read(shareStatsProvider.notifier).set,
+          value: consent.stats == true,
+          onChanged: (share) => unawaited(ref.read(consentProvider.notifier).setStats(share)),
         ),
+        // The crash question is asked only where a report could be sent, so a
+        // build with no Sentry project shows no row (design sentry-consent.md).
+        if (ref.watch(crashAvailableProvider))
+          SwitchListTile(
+            key: const Key('settingsCrashReports'),
+            contentPadding: EdgeInsets.zero,
+            title: const Text(_crashReports),
+            subtitle: const Text(_crashReportsLine),
+            value: consent.crash == true,
+            onChanged: (send) => unawaited(ref.read(consentProvider.notifier).setCrash(send)),
+          ),
         if (hosting)
           ListTile(
             key: const Key('settingsHostStats'),

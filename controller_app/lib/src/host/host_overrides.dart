@@ -17,9 +17,6 @@ import 'phone_host_setup.dart';
 /// this one container, so they can never disagree about the host — and the
 /// dialog, which lives above every route, still sees them.
 List<Override> phoneHostOverrides({required party.HostDirectories directories}) => [
-  // The instance the controller side already loads, so the host's id survives
-  // a restart as the TV's does.
-  party.prefsProvider.overrideWith((ref) => ref.watch(prefsProvider)),
   // The host's name and kind come from this phone's identity, which is built
   // from the prefs and the display: made on first read, not here.
   party.hostIdentityProvider.overrideWith((ref) => phoneHostIdentity(ref.watch(identityProvider))),

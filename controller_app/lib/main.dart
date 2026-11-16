@@ -1,11 +1,14 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:party_host/party_host.dart' as party;
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'src/app_info.dart';
+import 'src/consent_migration.dart';
 import 'src/host/host_overrides.dart';
 import 'src/host/phone_host_setup.dart';
 import 'src/providers.dart';
@@ -18,6 +21,7 @@ Future<void> main() async {
   // Full screen, so the status bar doesn't take room from the pad.
   await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
   final prefs = await SharedPreferences.getInstance();
+  final crashReporter = await _consentAtStartup(prefs);
   // The look's shader, loaded before the first screen (M13 design section 6):
   // a slow device shows its splash a little longer rather than a stalled first
   // menu, and the Canvas fallback draws everything if it doesn't arrive.
@@ -33,15 +37,37 @@ Future<void> main() async {
       // pause menu's dialog and the games all read the one container.
       overrides: [
         prefsProvider.overrideWithValue(prefs),
+        // The host package's settings and consent answers are these prefs.
+        party.prefsProvider.overrideWith((ref) => ref.watch(prefsProvider)),
         party.toyShadersProvider.overrideWithValue(shaders),
         // The sessions this phone hosts go to the stats store, with the adult's
         // yes at the Stats screen, as the TV's do (M14 r5 8). A build with no
         // Firestore project set has none, and the sessions stay on the phone.
         party.sessionUploaderProvider.overrideWith((ref) => phoneUploader()),
+        // This phone's own two questions, a launch's to ask, and the crash one
+        // only in a build that could send a report (design sentry-consent.md).
+        party.crashAvailableProvider.overrideWithValue(sentryDsn.isNotEmpty),
+        party.crashReporterProvider.overrideWithValue(crashReporter),
+        launchConsentAskProvider.overrideWithValue(true),
         ...phoneHostOverrides(directories: const PhoneHostDirectories()),
       ],
       child: const ControllerApp(),
     ),
+  );
+}
+
+/// This phone's consent answers before its first screen (design
+/// sentry-consent.md): an older build's stats answer is carried over to today's
+/// question, and the crash reporter is made — off until this phone says yes,
+/// and only a build with a DSN can send a report. Returns the reporter, which
+/// the root scope provides so the Settings switch turns it on and off live.
+Future<party.CrashReporter> _consentAtStartup(SharedPreferences prefs) async {
+  await migrateLegacyStats(prefs);
+  return party.startCrashReporting(
+    prefs: prefs,
+    dsn: sentryDsn,
+    release: appWithBuild(appVersion, buildNumber),
+    environment: kDebugMode ? 'debug' : 'production',
   );
 }
 

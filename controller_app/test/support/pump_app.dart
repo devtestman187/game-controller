@@ -111,6 +111,10 @@ Future<void> pumpFaked(
       // The host layer's look settings are saved with this phone's other
       // settings, as the app's root scope does while it hosts (m13 §3a).
       party.lookPrefsProvider.overrideWith((ref) => ref.watch(prefsProvider)),
+      // This phone's own consent answers live in the host package and are
+      // saved in the same prefs, as the app's root gives them
+      // (design sentry-consent.md).
+      party.prefsProvider.overrideWith((ref) => ref.watch(prefsProvider)),
       // Auto's palette at midday, so no test turns Night after 19:00 (Claude's
       // 4a review: the TV's tests did). A test about the palette passes its
       // own clock, [clock], rather than overriding this one twice.

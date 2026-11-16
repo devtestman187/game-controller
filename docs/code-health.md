@@ -163,6 +163,11 @@ The "could" findings of [bugs1's review](briefs/m14/bugs1/REVIEW.md) that the fi
 - tools: `coverage_imports.dart` and `coverage_summary.dart` each hold the generated-suffix list (keep one); the generated `coverage_all_test.dart` has an empty body, so a lib file added without rerunning the generator stays uncounted until `tools/coverage.sh` runs (it regenerates); `assets` has one lib file and no test setup, so it is not counted (419 of 420 files). *leave*
 - The generated coverage tests are excluded from the analyzer in each `analysis_options.yaml` because their imports are unused on purpose (`review.sh` forbids ignore comments). A broken import still fails the test run.
 
+### M14 sentry1 (phone consent, Nov 16)
+
+- controller_app, `settings_screen.dart` (371 lines): the crash reports row's words live in the app because `SettingsText` and `ConsentText` have no switch text; move them next to `ConsentText.crashBody` when the TV's Stats screen gains its "Crash reports: on/off" row, so both apps say the same thing. *when touched*
+- controller_app: the connect screen asks the two questions only in a launch (`launchConsentAskProvider`, turned on in `main()`), so a widget test that mounts `ControllerApp` starts past them. A test that wants the prompt overrides it; keep the pair of providers together if a third launcher (a screenshot tool, the Windows shell) ever needs the same. *leave*
+
 ### Fire-and-forget futures the strict lints surfaced (bugs15, Nov 16)
 
 Each is now `unawaited(...)` with no behaviour change; the failure would be lost silently. *when touched*
