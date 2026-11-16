@@ -12,6 +12,7 @@ include: package:flutter_lints/flutter.yaml
 analyzer:
   exclude:
     - build/**
+    - test/coverage_all_test.dart
     - android/**
     - windows/**
 

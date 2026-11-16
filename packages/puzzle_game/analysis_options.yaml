@@ -1,6 +1,7 @@
 analyzer:
   exclude:
     - build/**
+    - test/coverage_all_test.dart
 include: package:flutter_lints/flutter.yaml
 
 # The repo is formatted at 120 columns (dart format reads this).
