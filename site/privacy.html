@@ -13,10 +13,10 @@
     <img src="icon.png" alt="">
     <h1>Privacy policy</h1>
   </header>
-  <p class="lead">For the Thumb Party app (phones and tablets) and the Thumb Party TV app (Android TV and Windows). Effective November 7, 2026 (version 0.12.0). The previous version, from October 29, 2026, said no data was collected.</p>
+  <p class="lead">For the Thumb Party app (phones and tablets) and the Thumb Party TV app (Android TV and Windows). Last updated November 16, 2026 (applies from the next release after version 0.12.0). The previous version, from November 7, 2026, covered anonymous gameplay stats only.</p>
 
   <div class="card">
-    <strong>In short:</strong> the apps don't collect, sell or share any personal information. They have no accounts, no ads and no advertising or analytics tools. From version 0.9.0 the TV app can send <strong>anonymous gameplay stats</strong> to the developer, but only if an adult says yes on the TV. Without that, everything stays on your devices and your home Wi-Fi.
+    <strong>In short:</strong> the apps don't collect, sell or share any personal information. They have no accounts, no ads and no advertising tools. The apps can send <strong>anonymous gameplay stats</strong> and <strong>crash reports</strong> to the developer, but only if an adult says yes, separately for each, on each device. Both are off until then. Without that, everything stays on your devices and your home Wi-Fi.
   </div>
 
   <h2>What the apps do with data</h2>
@@ -27,16 +27,27 @@
     <li><strong>Diagnostics.</strong> The phone's Diagnostics screen shows connection details, battery and temperature readings. They aren't sent anywhere. If you tap <strong>Share</strong>, the report goes only to the app and person you choose.</li>
   </ul>
 
+  <h2>Crash reports</h2>
+  <ul>
+    <li><strong>Off until someone agrees.</strong> The apps use Sentry (Functional Software, Inc.) to send crash and error reports, so the developer can fix bugs. Nothing is sent until an adult says yes to crash reports.</li>
+    <li><strong>What a report includes:</strong> the error, its stack trace (where in the app it happened), the app version, the platform and operating system version, and the device model. The apps don't send names, email addresses, account IDs or an identity based on your IP address (Sentry's "send default PII" option is off).</li>
+    <li><strong>Where it's stored:</strong> Sentry stores the reports for the developer as a service provider. Data region: TODO (owner to confirm the region of the Sentry project before release).</li>
+    <li><strong>Changing your mind:</strong> the answer can be changed at any time in the app's settings.</li>
+  </ul>
+
+  <h2 id="consent">Who is asked</h2>
+  <p>Every app instance asks for itself: the host (the TV app, or a phone hosting a game), each phone used only as a controller, and the TV or Windows app. Each one asks two separate questions, <strong>crash reports</strong> (yes or no) and <strong>usage stats</strong> (yes or no). Either answer can be changed later in that app's settings. One device's answer never decides for another.</p>
+
   <h2>Anonymous gameplay stats</h2>
   <p>To find out which controls feel good and which are hard to use, the apps count how the controls are used. This is how it works:</p>
   <ul>
-    <li><strong>A phone counts, the host collects.</strong> While a phone is connected to a host, it counts things like how often each button is pressed and for how long, taps that miss a control (counted on a coarse grid, never a trace of your touches), how the sticks and tilt are used, and the settings in use. It sends these counts to the host on your Wi-Fi only. The host adds how quick the connection is, how the games went, the picture rate and frame timing of a game shown on the phones, whether each player watched the game on the host's screen or on their own phone, and the answer to "How did the controls feel?" after some games.</li>
+    <li><strong>A phone counts, the host collects.</strong> While a phone is connected to a host, it counts things like how often each button is pressed and for how long, taps that miss a control (counted on a coarse grid, never a trace of your touches), how the sticks and tilt are used, and the settings in use. It sends these counts to the host on your Wi-Fi only, and only if that phone's player agreed to usage stats. The host adds how quick the connection is, how the games went, the picture rate and frame timing of a game shown on the phones, whether each player watched the game on the host's screen or on their own phone, and the answer to "How did the controls feel?" after some games.</li>
     <li><strong>What it includes about the device:</strong> phone or tablet, screen size, model (for example "Google Pixel 8"), operating system version, whether it can vibrate, and a random ID the app makes for each install. Not the device's name, the advertising ID or any hardware ID.</li>
     <li><strong>What it includes about the host phone:</strong> when a phone hosts a game, its battery level at the start and at the end, whether it was charging, whether it was in low power mode, how hot it got, and the picture rate and frame timing of the game.</li>
     <li><strong>What it never includes:</strong> names or nicknames, accounts, email addresses, contacts, photos, location, Wi-Fi or network details, or advertising IDs.</li>
     <li><strong>Kept on the host either way.</strong> The host keeps a summary of each play session on the device. The TV app shows its sessions on its <strong>Stats</strong> screen and can export them to a file. A phone that hosts a game keeps its sessions on the phone, and its Diagnostics screen shows the session you just played, to send with a report.</li>
-    <li><strong>Sent only with an adult's yes.</strong> The first time the TV app starts, it asks the adult in charge whether to share the stats. Only then does it send each session summary, over an encrypted connection, to a database the developer runs on Google Firebase (Firestore). The answer can be changed at any time on the Stats screen. Nothing is shared by default. Sessions from a game hosted on a phone aren't uploaded at all.</li>
-    <li><strong>Each phone can opt out:</strong> in the phone app, <strong>Settings → Control stats</strong> shows that stats are recorded and turns them off for that phone.</li>
+    <li><strong>Sent only with an adult's yes.</strong> The first time an app starts, it asks the adult in charge whether to share usage stats. Only then does it send each session summary, over an encrypted connection, to a database the developer runs on Google Firebase (Firestore). The answer can be changed at any time in settings (on the TV, on the Stats screen). Nothing is shared by default. Sessions from a game hosted on a phone aren't uploaded at all.</li>
+    <li><strong>Each phone can opt out:</strong> a phone used as a controller is asked for itself. If its player says no to usage stats, their play is left out of the uploaded stats, apart from anonymous round totals (for example, that a round happened and how many players took part). In the phone app, <strong>Settings → Control stats</strong> turns this off for that phone later.</li>
     <li><strong>How it's used:</strong> only to make the controls and games better. It's never sold, never used for ads, and never shared with anyone else. Firebase stores it for the developer as a service provider.</li>
     <li><strong>Deleting it:</strong> the stats aren't linked to a person. To have sessions deleted, email the developer the <strong>Controller ID</strong> shown on the phone's Diagnostics screen. Uninstalling the TV app deletes the sessions kept on the TV.</li>
   </ul>
@@ -57,10 +68,10 @@
   </ul>
 
   <h2>Children</h2>
-  <p>Thumb Party is made for families to play together, including children aged 6 and up. The apps collect no personal information from anyone, so they collect none from children: no names, contact details, photos, location or advertising IDs, no accounts, and no ads. The anonymous gameplay stats above are shared only if an adult agrees on the TV. The apps meet Google Play's Families policy.</p>
+  <p>Thumb Party is made for families to play together, including children aged 6 and up. The apps collect no personal information from anyone, so they collect none from children: no names, contact details, photos, location or advertising IDs, no accounts, and no ads. The anonymous gameplay stats and crash reports above are shared only if an adult agrees on the device in question. The apps meet Google Play's Families policy.</p>
 
   <h2>Changes</h2>
-  <p>Any change to this policy will be posted on this page with a new date, before the apps change. If the stats ever include anything new, the TV app will ask again.</p>
+  <p>Any change to this policy will be posted on this page with a new date, before the apps change. If the stats or crash reports ever include anything new, the apps will ask again.</p>
 
   <h2>Contact</h2>
   <p>Questions about privacy: <a href="mailto:mrman187@gmail.com?subject=Thumb%20Party%20privacy">mrman187@gmail.com</a>.</p>
