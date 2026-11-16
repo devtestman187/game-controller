@@ -47,16 +47,7 @@ const sideLeft = PuzzleCamera.side(PuzzleSide.left);
 /// null.
 MirrorPlacement? mirrorWith(Puzzle puzzle, Size box, List<Rect> pad) {
   final layout = SplitLayout.of(puzzle, 1, target: LayoutTarget.phones);
-  return PuzzleCamera.mirrorPlace(
-    puzzle,
-    layout,
-    sideLeft,
-    box,
-    split: true,
-    text: raceText(puzzle),
-    pxPerMm: phonePxPerMm,
-    padRects: pad,
-  );
+  return PuzzleCamera.mirrorPlace(puzzle, layout, sideLeft, box, split: true, text: raceText(puzzle), padRects: pad);
 }
 
 /// The mirror [box] draws for [puzzle]'s race with the app's [mode] pad on the
@@ -87,12 +78,12 @@ List<ControlShape> drawnLeft(Size box, PadMode mode) {
   ];
   switch (mode) {
     case PadMode.dpad:
-      return arms(padLayout(body, mm: phonePxPerMm).dpad);
+      return arms(padLayout(body).dpad);
     case PadMode.sticks:
-      final layout = stickLayout(body, mm: phonePxPerMm);
+      final layout = stickLayout(body);
       return [ControlShape.circle(layout.leftStick.shift(bar)), ...arms(layout.dpad)];
     case PadMode.gyro:
-      return [ControlShape.rect(padLayout(body, mm: phonePxPerMm).leftArea.shift(bar))];
+      return [ControlShape.rect(padLayout(body).leftArea.shift(bar))];
   }
 }
 

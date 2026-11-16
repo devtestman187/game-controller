@@ -32,15 +32,11 @@ Widget _card({String? header = 'Player 2', Color? headerColor, bool popIn = true
   header: header,
   headerColor: headerColor,
   popIn: popIn,
-  child: Column(
+  child: const Column(
     mainAxisSize: MainAxisSize.min,
     children: [
-      const Text('They can join again.'),
-      ListTile(
-        leading: const Icon(Icons.cloud_off),
-        title: const Text('Away'),
-        subtitle: const Text('Since a minute ago'),
-      ),
+      Text('They can join again.'),
+      ListTile(leading: Icon(Icons.cloud_off), title: Text('Away'), subtitle: Text('Since a minute ago')),
     ],
   ),
 );

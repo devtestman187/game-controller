@@ -26,7 +26,7 @@ void main() {
   // what a start does in this app is what these check.
   testWidgets('"Host a game" logs each step of the start with the ms since the tap', (tester) async {
     await pumpHostApp(tester);
-    final host = await enterHostMode(tester, choice: HostChoice.onPhone);
+    final host = await enterHostMode(tester);
 
     final lines = startLines(tester);
     final steps = [for (final (step, _) in lines) step];

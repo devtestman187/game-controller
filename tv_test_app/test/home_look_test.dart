@@ -5,8 +5,8 @@ import 'package:game_assets/asset_manifest.dart';
 import 'package:party_host/party_host.dart';
 import 'package:tvtest/src/ui/home/controllers_panel.dart';
 import 'package:tvtest/src/ui/home/log_panel.dart';
-import 'package:tvtest/src/ui/home/panel.dart';
 import 'package:tvtest/src/ui/home/pairing_panel.dart';
+import 'package:tvtest/src/ui/home/panel.dart';
 import 'package:tvtest/src/ui/status_line.dart';
 
 import 'support/pump_app.dart';
@@ -99,7 +99,7 @@ void main() {
 
     final fake = await pumpApp(tester);
     final s = fake.state;
-    fake.state = HostViewState(hostName: s.hostName, host: s.host, addresses: const []);
+    fake.state = HostViewState(hostName: s.hostName, host: s.host);
     fake.emit();
     await tester.pumpAndSettle();
     expect(statusLine(tester, 'No network connection').color, tvLook.colors.bad);

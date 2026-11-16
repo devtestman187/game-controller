@@ -29,11 +29,11 @@ const Stick _center = (x: 0, y: 0);
 final List<DemoStep> demoSteps = [
   _held({}, 0, -1),
   _held({}, 1, -1),
-  _held({}, 1, 0),
+  _held({}, 1),
   _held({}, 1, 1),
   _held({}, 0, 1),
   _held({}, -1, 1),
-  _held({}, -1, 0),
+  _held({}, -1),
   _held({}, -1, -1),
   _held({}),
   _held({ControllerButton.a}),

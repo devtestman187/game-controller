@@ -23,7 +23,6 @@ ArenaSnapshot frame({
     ArenaPlayerView(id: 'a', x: x, y: 0.5, cooldown: cooldown),
     if (withC) const ArenaPlayerView(id: 'c', x: 0.9, y: 0.1),
   ],
-  start: const Offset(0.07, 0.5),
 );
 
 void main() {

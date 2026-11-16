@@ -222,7 +222,7 @@ void main() {
     });
 
     test('four marbles and three coins fit the 2048-byte frame on the Playroom', () {
-      final g = ArenaGame(map: ArenaMap.playroom, mode: ArenaMode.bumper, size: mapFieldSize);
+      final g = ArenaGame(mode: ArenaMode.bumper, size: mapFieldSize);
       for (final id in ['a', 'b', 'c', 'd']) {
         g.join(id);
       }

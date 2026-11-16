@@ -75,5 +75,4 @@ class TvDirectories implements HostDirectories {
 
 /// Sends finished sessions to Firestore, or null when this build has no
 /// project set (then the Stats screen says the upload isn't configured).
-SessionUploader? tvUploader() =>
-    firestoreProject.isEmpty ? null : FirestoreUploader(project: firestoreProject, apiKey: firestoreApiKey);
+SessionUploader? tvUploader() => firestoreProject.isEmpty ? null : FirestoreUploader(project: firestoreProject);

@@ -92,7 +92,7 @@ class SimView {
         final jitterMs = _timing.addFrame(atMs: frame.atMs, arrivedAtMs: arrivedAtMs);
         _stats.frameArrived(frame.n, jitterMs: jitterMs);
         _buffer.add(frame, frame.atMs);
-        _bytes.add(MessageCodec().encode(frame).length);
+        _bytes.add(const MessageCodec().encode(frame).length);
       case ViewEnded():
         _buffer.clear();
         _lastDrawnN = null;

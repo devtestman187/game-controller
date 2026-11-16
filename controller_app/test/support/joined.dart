@@ -7,14 +7,14 @@ import 'pump_app.dart';
 
 /// The Arena a test's frames carry: one player in the middle of the field,
 /// nothing in its way.
-final arena = ArenaSnapshot(
+final arena = const ArenaSnapshot(
   round: 1,
   roundTimeS: 30,
   phase: ArenaPhase.playing,
-  walls: const [],
-  goal: const Rect.fromLTRB(0.9, 0.4, 1, 0.6),
-  hazards: const [],
-  players: const [ArenaPlayerView(id: 'phone-1', x: 0.5, y: 0.5)],
+  walls: [],
+  goal: Rect.fromLTRB(0.9, 0.4, 1, 0.6),
+  hazards: [],
+  players: [ArenaPlayerView(id: 'phone-1', x: 0.5, y: 0.5)],
 );
 
 /// The start the host sends for [arena], at 60 frames a second.

@@ -1,5 +1,4 @@
 import 'dart:typed_data';
-import 'dart:ui' as ui;
 
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -36,7 +35,7 @@ Future<Pixels> screenPixels(WidgetTester tester) async {
   final size = tester.view.physicalSize / tester.view.devicePixelRatio;
   final layer = tester.binding.renderViews.first.debugLayer! as OffsetLayer;
   final image = (await tester.runAsync(() => layer.toImage(Offset.zero & size)))!;
-  final data = (await tester.runAsync(() => image.toByteData(format: ui.ImageByteFormat.rawRgba)))!;
+  final data = (await tester.runAsync(() => image.toByteData()))!;
   return Pixels(data.buffer.asUint8List(), image.width);
 }
 

@@ -239,13 +239,13 @@ void main() {
     test('Easy never seeks a shove, even with a player beside it holding coins', () {
       final setup = shoveSetUp(RoboLevel.easy, intoWall: false);
       expect(setup, isNotNull, reason: 'one of the maps has open ground to stand on');
-      expect(shovesIn(setup!, seconds: 10), isEmpty);
+      expect(shovesIn(setup!), isEmpty);
     });
 
     test('Medium shoves a close player with coins, at most one every 4 s', () {
       final setup = shoveSetUp(RoboLevel.medium, intoWall: false);
       expect(setup, isNotNull, reason: 'one of the maps has open ground to stand on');
-      final times = shovesIn(setup!, seconds: 10);
+      final times = shovesIn(setup!);
       expect(times, isNotEmpty, reason: 'Medium shoves a close player holding coins');
       for (var i = 1; i < times.length; i++) {
         expect(times[i] - times[i - 1], greaterThanOrEqualTo(4 - stepS), reason: 'shoves at $times');
@@ -257,12 +257,12 @@ void main() {
       final open = shoveSetUp(RoboLevel.hard, intoWall: false);
       expect(wall, isNotNull, reason: 'one of the maps has ground a shove sends a marble into a wall');
       expect(open, isNotNull, reason: 'one of the maps has open ground to stand on');
-      final times = shovesIn(wall!, seconds: 10);
+      final times = shovesIn(wall!);
       expect(times, isNotEmpty, reason: 'Hard shoves a player a wall is behind');
       for (var i = 1; i < times.length; i++) {
         expect(times[i] - times[i - 1], greaterThanOrEqualTo(2 - stepS), reason: 'shoves at $times');
       }
-      expect(shovesIn(open!, seconds: 10), isEmpty, reason: 'a push with nothing behind it is not aimed at anything');
+      expect(shovesIn(open!), isEmpty, reason: 'a push with nothing behind it is not aimed at anything');
     });
   });
 

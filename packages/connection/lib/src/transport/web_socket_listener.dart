@@ -53,7 +53,7 @@ final class WebSocketListener implements ChannelListener {
     Object? lastError;
     for (final (address, port) in attempts) {
       try {
-        return await HttpServer.bind(address, port, v6Only: false);
+        return await HttpServer.bind(address, port);
       } on SocketException catch (e) {
         lastError = e;
         _log('Could not listen on ${address.address} port $port: ${e.osError?.message ?? e.message}');

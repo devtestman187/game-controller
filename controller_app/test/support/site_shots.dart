@@ -384,7 +384,6 @@ class ShotPicture extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: shotGapPx),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           _Framed(image: tv, screen: tvScreenInShot, bezel: tvBezelPx, corner: tvCornerPx, label: 'TV'),
           _Framed(image: phone, screen: phoneScreenInShot, bezel: phoneBezelPx, corner: phoneCornerPx, label: 'Phone'),

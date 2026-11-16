@@ -6,8 +6,8 @@ import 'package:toy_look/toy_look.dart';
 
 import 'arena_coin_painter.dart';
 import 'arena_marble_painter.dart';
-import 'arena_moments.dart';
 import 'arena_mode.dart';
+import 'arena_moments.dart';
 import 'arena_piece_painter.dart';
 import 'arena_roster.dart';
 import 'arena_snapshot.dart';

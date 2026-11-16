@@ -306,12 +306,9 @@ class _CodeEntryState extends ConsumerState<_CodeEntry> {
           mainAxisSize: MainAxisSize.min,
           children: [
             if (busy)
-              Padding(
-                padding: const EdgeInsets.only(right: ToySizes.space12),
-                child: SizedBox.square(
-                  dimension: ToySizes.space24,
-                  child: const CircularProgressIndicator(strokeWidth: 2),
-                ),
+              const Padding(
+                padding: EdgeInsets.only(right: ToySizes.space12),
+                child: SizedBox.square(dimension: ToySizes.space24, child: CircularProgressIndicator(strokeWidth: 2)),
               ),
             ToyButton(label: PhoneText.pair, onPressed: busy ? null : _submit),
             const SizedBox(width: ToySizes.space8),

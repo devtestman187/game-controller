@@ -1,1 +1,2 @@
 b029-b030-arena-music cov-1-tools cov-2-ci-docs
+lint-2-core lint-3-apps lint-4-host

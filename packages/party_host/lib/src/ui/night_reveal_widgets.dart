@@ -20,8 +20,8 @@ class _RevealCard extends StatelessWidget {
     return Stack(
       children: [
         if (outcome.isWon)
-          Positioned.fill(
-            child: IgnorePointer(child: NightConfetti(key: const Key('nightRevealConfetti'))),
+          const Positioned.fill(
+            child: IgnorePointer(child: NightConfetti(key: Key('nightRevealConfetti'))),
           ),
         Center(
           child: SingleChildScrollView(

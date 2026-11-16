@@ -47,7 +47,7 @@ class HostCardFocusPainter extends CustomPainter {
     // The card fills the box; the ring straddles its edge, so it reads as a
     // band outside the card's ink edge.
     final card = (Offset.zero & size).deflate(ToySizes.focusRing / 2);
-    final ring = RRect.fromRectAndRadius(card, Radius.circular(ToySizes.cardCorner + ToySizes.focusRing / 2));
+    final ring = RRect.fromRectAndRadius(card, const Radius.circular(ToySizes.cardCorner + ToySizes.focusRing / 2));
     canvas.drawRRect(
       ring,
       Paint()

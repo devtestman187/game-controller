@@ -199,7 +199,7 @@ void main() {
     await send(tester, frameEvent(0, atMs: 1000, x: 0.25));
     expect(reported, [0.25], reason: 'the frame it draws is reported once');
 
-    await tick(tester, 16);
+    await tick(tester);
     expect(reported, [0.25], reason: 'a frame drawn again on later ticks is not reported again');
 
     await send(tester, frameEvent(1, atMs: 1016, x: 0.75));
@@ -401,14 +401,14 @@ void main() {
   });
 
   testWidgets('a real arenaModule frame draws without throwing', (tester) async {
-    final arena = ArenaSnapshot(
+    final arena = const ArenaSnapshot(
       round: 1,
       roundTimeS: 30,
       phase: ArenaPhase.playing,
-      walls: const [],
-      goal: const Rect.fromLTRB(0.9, 0.4, 1, 0.6),
-      hazards: const [],
-      players: const [ArenaPlayerView(id: 'p1', x: 0.5, y: 0.5)],
+      walls: [],
+      goal: Rect.fromLTRB(0.9, 0.4, 1, 0.6),
+      hazards: [],
+      players: [ArenaPlayerView(id: 'p1', x: 0.5, y: 0.5)],
     );
     // The apps put the look above every screen; the Arena needs one to draw.
     await tester.pumpWidget(

@@ -206,7 +206,7 @@ void main() {
   group('shareView from the start sheet (m12-joined-view §0.1)', () {
     testWidgets('"Play on this phone" lets the phones that join see the game', (tester) async {
       await pumpHostApp(tester);
-      final host = await enterHostMode(tester, choice: HostChoice.onPhone);
+      final host = await enterHostMode(tester);
       expect(host.service.shareView, isTrue, reason: 'the phones that join show the game too');
       await tester.runAsync(host.dispose);
     });

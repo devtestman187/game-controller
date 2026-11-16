@@ -35,7 +35,7 @@ Future<Uint8List> painted(WidgetTester tester, ArenaSnapshot snapshot) async {
   ArenaPainter(snapshot, const {}, look: sunny, moments: ArenaMoments()).paint(canvas, mapBox);
   final picture = recorder.endRecording();
   final image = (await tester.runAsync(() => picture.toImage(mapBox.width.toInt(), mapBox.height.toInt())))!;
-  final data = (await tester.runAsync(() => image.toByteData(format: ui.ImageByteFormat.rawRgba)))!;
+  final data = (await tester.runAsync(() => image.toByteData()))!;
   return data.buffer.asUint8List();
 }
 

@@ -2,8 +2,8 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:toy_look/toy_look.dart';
 import 'package:puzzle_game/puzzle_game.dart' show footTallShare, footUnderShare;
+import 'package:toy_look/toy_look.dart';
 
 import 'support/frames.dart';
 import 'support/look.dart';
@@ -27,14 +27,8 @@ Color workerColour(ToyLook look) => ToyCharacter.forPlayer(1).colourIn(look.colo
 int argb(Color colour) => colour.toARGB32() & 0xFFFFFF;
 
 /// The image px of a frame of [walker]'s cell drawn in [look].
-Future<(int, int, Uint8List)> frame(WidgetTester tester, RunWalker walker, ToyLook look) => capture(
-  tester,
-  runCell(walker, look, box: box),
-  window: box,
-  box: box,
-  pixelRatio: ratio,
-  look: look,
-);
+Future<(int, int, Uint8List)> frame(WidgetTester tester, RunWalker walker, ToyLook look) =>
+    capture(tester, runCell(walker, look), window: box, box: box, pixelRatio: ratio, look: look);
 
 /// The pixels of [bytes] that are a foot (design 5a): the worker's shade in the
 /// band under its body, whose own fill stops at the body's edge and whose ink

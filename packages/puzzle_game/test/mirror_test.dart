@@ -312,7 +312,7 @@ void main() {
       }
 
       final theirs = trayOf(tree);
-      final race = raceOf(tree, theirs: theirs, them: [PlayerView(number: 2, x: 30, y: 50)]);
+      final race = raceOf(tree, theirs: theirs, them: [const PlayerView(number: 2, x: 30, y: 50)]);
       Widget view(MatchSnapshot s, {LayoutTarget target = LayoutTarget.phones, PuzzleCamera camera = sideLeft}) =>
           MatchView(puzzle: tree, snapshot: s, target: target, camera: camera);
       // The probe's place is the mirror's frame when the phone has one.

@@ -179,7 +179,10 @@ void _workerArms(Canvas canvas, WorkerHands hands, double radius, double ink, Co
 /// its mouth is, the stroke width, and the look it gives (design 5a).
 final class _Face {
   _Face(this.radius, this.ink, this.look, this.colours)
-    : eyes = [Offset(-_eyeOffsetShare, _eyeRiseShare) * radius, Offset(_eyeOffsetShare, _eyeRiseShare) * radius],
+    : eyes = [
+        const Offset(-_eyeOffsetShare, _eyeRiseShare) * radius,
+        const Offset(_eyeOffsetShare, _eyeRiseShare) * radius,
+      ],
       mouth = radius * _mouthRiseShare,
       wide = radius * _mouthWideShare;
 

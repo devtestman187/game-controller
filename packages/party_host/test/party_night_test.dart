@@ -84,7 +84,7 @@ void main() {
         RoundResult(
           game: 'puzzle',
           points: {'p1': 3},
-          lines: {'p1': RoundLine(outcome: RoundOutcome.done, timeS: 40)},
+          lines: {'p1': const RoundLine(outcome: RoundOutcome.done, timeS: 40)},
         ),
       );
       final state = container.read(partyNightProvider)!;
@@ -228,7 +228,7 @@ void main() {
     });
 
     test('a night round plays at the night\'s scale, doubled in the last round', () {
-      final host = PuzzleSettings(timeLimitS: 90).withValue('chaos', Chaos.party.name);
+      final host = const PuzzleSettings(timeLimitS: 90).withValue('chaos', Chaos.party.name);
       final first = NightChaos.settingsForRound(host, lastRound: false);
       final last = NightChaos.settingsForRound(host, lastRound: true);
       expect(first.night, isTrue);

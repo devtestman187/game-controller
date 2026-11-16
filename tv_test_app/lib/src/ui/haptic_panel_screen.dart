@@ -62,7 +62,7 @@ class _HapticPanelScreenState extends ConsumerState<HapticPanelScreen> {
     return CallbackShortcuts(
       bindings: {const SingleActivator(LogicalKeyboardKey.escape): () => Navigator.of(context).maybePop()},
       child: Scaffold(
-        appBar: AppBar(title: const Text(TvText.hapticTest), actions: [_Targets()]),
+        appBar: AppBar(title: const Text(TvText.hapticTest), actions: [const _Targets()]),
         body: SafeArea(
           child: ListView(
             padding: const EdgeInsets.all(ToySizes.space8),

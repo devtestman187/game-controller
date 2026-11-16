@@ -74,9 +74,9 @@ void main() {
 
   testWidgets('without a controller the sounds still play', (tester) async {
     final fake = await pumpApp(tester);
-    fake.state = HostViewState(
+    fake.state = const HostViewState(
       hostName: 'Android TV',
-      host: HostSnapshot(running: true, port: 45780, pairingCode: '0427', controllers: const []),
+      host: HostSnapshot(running: true, port: 45780, pairingCode: '0427', controllers: []),
     );
     fake.emit();
     await tester.pumpAndSettle();

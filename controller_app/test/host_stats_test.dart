@@ -18,7 +18,7 @@ void main() {
 
   group('a phone that hosts sends its stats (M14 r5 8)', () {
     test('a build with a Firestore project set uploads, and one without keeps its sessions', () {
-      expect(phoneUploader(project: ''), isNull, reason: 'no project, no upload: the sessions stay on the phone');
+      expect(phoneUploader(), isNull, reason: 'no project, no upload: the sessions stay on the phone');
       expect(phoneUploader(project: 'thumb-party-stats'), isA<party.FirestoreUploader>());
     });
 

@@ -12,7 +12,10 @@ MapGrid ruleGrid(ArenaMap map) => MapGrid(map: map, grow: minGapDiameters * Aren
 /// A wall across the field at 0.4, split by a [gap] in the middle (a fraction
 /// of the field's height).
 ArenaMap withSlit(double gap) => testMap(
-  walls: [WallSpec(Offset(0.4, 0), Offset(0.4, 0.5 - gap / 2)), WallSpec(Offset(0.4, 0.5 + gap / 2), Offset(0.4, 1))],
+  walls: [
+    WallSpec(const Offset(0.4, 0), Offset(0.4, 0.5 - gap / 2)),
+    WallSpec(Offset(0.4, 0.5 + gap / 2), const Offset(0.4, 1)),
+  ],
 );
 
 /// An L of walls closing off the corner past it.

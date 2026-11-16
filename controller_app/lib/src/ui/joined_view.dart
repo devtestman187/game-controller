@@ -32,7 +32,7 @@ List<Rect> leftPadRects(
   // The pad is laid out in the body, below the bar the game shows through.
   final body = Size(box.width, box.height - topBarHeightPx);
   if (body.width <= 0 || body.height <= 0) return const [];
-  final bar = Offset(0, topBarHeightPx);
+  final bar = const Offset(0, topBarHeightPx);
   List<Rect> arms(Rect dpad) => [for (final (_, arm) in dpadArms(dpad.width)) arm.shift(dpad.topLeft + bar)];
   switch (mode) {
     case PadMode.dpad:

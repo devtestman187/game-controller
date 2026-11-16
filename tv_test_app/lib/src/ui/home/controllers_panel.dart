@@ -38,7 +38,7 @@ class ControllersPanel extends ConsumerWidget {
         ],
       ),
       child: controllers.isEmpty
-          ? Center(child: Text(TvText.noControllers, textAlign: TextAlign.center))
+          ? const Center(child: Text(TvText.noControllers, textAlign: TextAlign.center))
           : ListView.separated(
               shrinkWrap: true,
               itemCount: controllers.length,

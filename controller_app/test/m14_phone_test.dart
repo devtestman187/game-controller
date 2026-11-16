@@ -22,7 +22,7 @@ void main() {
       expect(fresh.name.length, 10);
       expect(fresh.character, ControllerProfile.initial);
 
-      ControllerProfile(nickname: 'Mia', character: tealCrown).save(prefs);
+      const ControllerProfile(nickname: 'Mia', character: tealCrown).save(prefs);
       final saved = loadIdentity(prefs).toHello();
       expect(saved.name, 'Mia');
       expect(saved.character, tealCrown);

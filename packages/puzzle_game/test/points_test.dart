@@ -110,7 +110,7 @@ void main() {
     final timedOut = board(twoSquares(), settings: const PuzzleSettings(timeLimitS: 1));
     final game = timedOut.gameOf(PuzzleSide.left);
     place(timedOut, game, 'p1', 0);
-    drive(timedOut, const {'p1': none}, frames: 20, dt: 0.05);
+    drive(timedOut, const {'p1': none}, frames: 20);
     expect(game.phase, PuzzlePhase.timeUp);
     expect(game.points, PuzzlePoints.snap, reason: 'only the snap: nothing was finished');
   });
@@ -125,7 +125,7 @@ void main() {
     place(m, m.gameOf(PuzzleSide.left), 'p1', 0, others: everyone);
     place(m, m.gameOf(PuzzleSide.right), 'p3', 0, others: everyone);
     expect(m.gameOf(PuzzleSide.left).points, m.gameOf(PuzzleSide.right).points);
-    drive(m, everyone, frames: 20, dt: 0.05);
+    drive(m, everyone, frames: 20);
     final round = m.result!.round;
     expect(round.points, {'p1': PuzzlePoints.snap, 'p2': PuzzlePoints.snap, 'p3': PuzzlePoints.snap});
   });
@@ -153,9 +153,9 @@ void main() {
     final start = popups.first.ageMs;
     expect(start, lessThan(50), reason: 'it starts at the drop');
 
-    drive(m, const {'p1': none}, frames: 23, dt: 0.05);
+    drive(m, const {'p1': none}, frames: 23);
     expect(game.snapshot().popups.first.ageMs, closeTo(start + 1150, 2));
-    drive(m, const {'p1': none}, frames: 1, dt: 0.05);
+    drive(m, const {'p1': none});
     expect(game.snapshot().popups, isEmpty, reason: '1.2 s is their whole life');
   });
 
@@ -193,9 +193,9 @@ void main() {
     m.update(0.016, {for (final id in m.teams.keys) id: none});
     final most = [
       for (var i = 0; i < PuzzlePoints.maxPopups; i++)
-        PuzzlePopup(
+        const PuzzlePopup(
           side: PuzzleSide.left,
-          place: const Offset(123.4, 56.7),
+          place: Offset(123.4, 56.7),
           amount: 4,
           ageMs: 1199,
           icon: PuzzleIcon.flag,

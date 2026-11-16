@@ -152,7 +152,7 @@ void main() {
     final s = fake.state;
     fake.state = HostViewState(
       hostName: s.hostName,
-      host: HostSnapshot(running: true, port: 45780, pairingCode: '9001', controllers: const []),
+      host: const HostSnapshot(running: true, port: 45780, pairingCode: '9001', controllers: []),
       addresses: s.addresses,
       advertise: AdvertiseState.failed,
       advertiseError: 'mDNS unavailable',
@@ -287,9 +287,9 @@ void main() {
   testWidgets('the screen stays on while a controller is connected, and may sleep after', (tester) async {
     final fake = await pumpApp(tester);
     expect(awake.on, isTrue, reason: 'the sample state has one connected controller');
-    fake.state = HostViewState(
+    fake.state = const HostViewState(
       hostName: 'Android TV',
-      host: HostSnapshot(running: true, port: 45780, pairingCode: '0427', controllers: const []),
+      host: HostSnapshot(running: true, port: 45780, pairingCode: '0427', controllers: []),
     );
     fake.emit();
     await tester.pumpAndSettle();

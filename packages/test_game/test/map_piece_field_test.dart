@@ -63,7 +63,7 @@ void main() {
   });
 
   test('a post is solid: a marble walks up to it and stops', () {
-    final field = _field(testMap(posts: const [PostSpec(Offset(0.5, 0.5))]), Offset(300, 250));
+    final field = _field(testMap(posts: const [PostSpec(Offset(0.5, 0.5))]), const Offset(300, 250));
     final events = _steps(field, 180, move: const Offset(1, 0));
     expect(field.player('a')!.position.dx, closeTo(500 - postRadius * 500 - _marbleRadius, 1));
     expect(field.player('a')!.position.dy, closeTo(250, 1e-6));

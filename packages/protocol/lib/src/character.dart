@@ -14,14 +14,6 @@ enum PlayerAccessory { ears, antenna, bow, cap, tuft, crown }
 /// ears, player 2 slot 2 and the antenna, and so on. Protocol only, so a host
 /// a build older can ignore it.
 final class PlayerCharacter {
-  const PlayerCharacter({required this.colourSlot, required this.accessory})
-    : assert(colourSlot >= firstSlot && colourSlot <= lastSlot, 'a character wears one of the player colours');
-
-  /// The first and last colour slot a character may wear: the protocol's six
-  /// player colours ([playerColors]).
-  static const firstSlot = 1;
-  static const lastSlot = 6;
-
   /// Player [number]'s default character (M14 design section 9): their colour
   /// slot and the accessory at their place in the list, wrapping past the
   /// sixth as the colours do.
@@ -29,6 +21,13 @@ final class PlayerCharacter {
     colourSlot: (number - firstSlot) % lastSlot + firstSlot,
     accessory: PlayerAccessory.values[(number - firstSlot) % PlayerAccessory.values.length],
   );
+  const PlayerCharacter({required this.colourSlot, required this.accessory})
+    : assert(colourSlot >= firstSlot && colourSlot <= lastSlot, 'a character wears one of the player colours');
+
+  /// The first and last colour slot a character may wear: the protocol's six
+  /// player colours ([playerColors]).
+  static const firstSlot = 1;
+  static const lastSlot = 6;
 
   /// Which of the player colours the body is, 1 to 6.
   final int colourSlot;

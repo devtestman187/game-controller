@@ -111,14 +111,7 @@ class PuzzleMatch {
       final SplitLayout l when format.split => [
         MatchSide(
           PuzzleSide.left,
-          PuzzleGame(
-            puzzle,
-            settings: settings,
-            random: Random(seed),
-            field: l.left,
-            angles: l.angles,
-            side: PuzzleSide.left,
-          ),
+          PuzzleGame(puzzle, settings: settings, random: Random(seed), field: l.left, angles: l.angles),
         ),
         MatchSide(
           PuzzleSide.right,

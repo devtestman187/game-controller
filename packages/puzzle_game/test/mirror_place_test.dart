@@ -44,7 +44,6 @@ void main() {
         box,
         split: true,
         text: raceText(puzzle),
-        pxPerMm: pxPerMm,
         padRects: pad,
       );
     }
@@ -200,15 +199,7 @@ void main() {
       final l = SplitLayout.of(wide, 1, target: LayoutTarget.phones);
       final place = PuzzleCamera.place(l, sideLeft, iphone, PuzzleSide.left);
       final maxScale = place.scale * PuzzleCamera.mirrorFraction;
-      final mirror = PuzzleCamera.mirrorPlace(
-        wide,
-        l,
-        sideLeft,
-        iphone,
-        split: true,
-        text: raceText(wide),
-        pxPerMm: pxPerMm,
-      );
+      final mirror = PuzzleCamera.mirrorPlace(wide, l, sideLeft, iphone, split: true, text: raceText(wide));
       expect(mirror, isNotNull);
       expect(mirror!.scale, closeTo(0.8822, 0.0001), reason: 'the smaller one the box fits');
       expect(mirror.scale, lessThan(maxScale));

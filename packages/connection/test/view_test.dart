@@ -11,7 +11,7 @@ import 'wire_phone.dart';
 /// A controller that shows the game (M12).
 const _view = [Capability.view];
 
-final _start = ViewStartMessage(
+final _start = const ViewStartMessage(
   game: 'shape_race',
   snapshotVersion: 1,
   setup: {'puzzle': 'boat', 'level': 2, 'timeLimitS': 120, 'teams': true},
@@ -88,10 +88,10 @@ void main() {
           capabilities: _view,
           code: server.pairingCode,
         );
-        final again = ViewStartMessage(
+        final again = const ViewStartMessage(
           game: 'shape_race',
           snapshotVersion: 1,
-          setup: const {'puzzle': 'house'},
+          setup: {'puzzle': 'house'},
           hz: 60,
         );
 

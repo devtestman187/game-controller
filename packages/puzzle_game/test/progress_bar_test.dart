@@ -95,7 +95,7 @@ void main() {
     testWidgets('a solo board: the bar fills to its end on the last piece', (tester) async {
       final full = await oneBoard(tester, trayBoard(clockMs: fullClockMs));
       // With 45 s of 120 left, a bar of the clock fills 3/8 of the way.
-      final midRound = await oneBoard(tester, trayBoard(clockMs: timeLeftMs));
+      final midRound = await oneBoard(tester, trayBoard());
       final done = await oneBoard(tester, placedBoard(phase: PuzzlePhase.finished));
       final end = fillEnd(full, strip);
       expect(fillEnd(midRound, strip), lessThan(end - 50), reason: 'mid-round the clock drains the bar');
@@ -115,7 +115,7 @@ void main() {
         box: const Size(960, 540),
       );
       final full = await board(trayBoard(clockMs: fullClockMs, players: players));
-      final midRound = await board(trayBoard(clockMs: timeLeftMs, players: players));
+      final midRound = await board(trayBoard(players: players));
       final done = await board(placedBoard(phase: PuzzlePhase.finished, players: players));
       final end = fillEnd(full, strip);
       expect(fillEnd(midRound, strip), lessThan(end - 50), reason: 'mid-round the clock drains the bar');
@@ -125,7 +125,7 @@ void main() {
     testWidgets('a race: the split screen\'s bar fills to its end on the last piece', (tester) async {
       const box = Size(960, 540);
       const seed = 3;
-      final layout = SplitLayout.of(puzzle, seed, target: LayoutTarget.screen);
+      final layout = SplitLayout.of(puzzle, seed);
       final f = fieldIn(box);
       // The bar sits in the strip along the top, or in the gap between the
       // boards, where no board is (match_hud.dart).
@@ -154,7 +154,7 @@ void main() {
         box: box,
       );
       final full = await race(trayBoard(clockMs: fullClockMs, side: PuzzleSide.left));
-      final midRound = await race(trayBoard(clockMs: timeLeftMs, side: PuzzleSide.left));
+      final midRound = await race(trayBoard(side: PuzzleSide.left));
       final done = await race(placedBoard(phase: PuzzlePhase.finished, side: PuzzleSide.left));
       final end = fillEnd(full, region);
       expect(fillEnd(midRound, region), lessThan(end - 10), reason: 'mid-round the clock drains the bar');
@@ -190,14 +190,9 @@ void main() {
       }
 
       final full = await phone(trayBoard(clockMs: fullClockMs, side: PuzzleSide.left));
-      final midRound = await phone(trayBoard(clockMs: timeLeftMs, side: PuzzleSide.left));
+      final midRound = await phone(trayBoard(side: PuzzleSide.left));
       final done = await phone(placedBoard(phase: PuzzlePhase.finished, side: PuzzleSide.left));
-      final region = barRows(
-        MatchSnapshot(
-          seed: seed,
-          boards: [trayBoard(clockMs: timeLeftMs)],
-        ),
-      );
+      final region = barRows(MatchSnapshot(seed: seed, boards: [trayBoard()]));
       final end = fillEnd(full, region);
       expect(fillEnd(midRound, region), lessThan(end - 10), reason: 'mid-round the clock drains the bar');
       expect(fillEnd(done, region), closeTo(end, 2), reason: 'every piece placed fills the bar');

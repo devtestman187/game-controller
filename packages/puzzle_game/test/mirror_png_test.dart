@@ -55,15 +55,10 @@ void main() {
       right.player('p2')!.pos = right.pieces[trunk].pos;
       helpers.tap(m, 'p2', const {'p1': helpers.none});
       right.pieces[trunk].pos = right.field.origin + const Offset(40, 70);
-      helpers.drive(
-        m,
-        {
-          'p1': helpers.none,
-          'p2': GamepadState(buttons: {GamepadButton.x}, mode: InputMode.dpad),
-        },
-        frames: 6,
-        dt: 0.05,
-      );
+      helpers.drive(m, {
+        'p1': helpers.none,
+        'p2': const GamepadState(buttons: {GamepadButton.x}, mode: InputMode.dpad),
+      }, frames: 6);
 
       final bytes = await capturePng(
         tester,

@@ -39,9 +39,9 @@ void main() {
     );
     expect(
       map.bumper,
-      BumperSpec(
-        starts: const [Offset(0.1, 0.2), Offset(0.1, 0.8), Offset(0.9, 0.2), Offset(0.9, 0.8)],
-        coins: const [Rect.fromLTRB(0.4, 0.4, 0.6, 0.6)],
+      const BumperSpec(
+        starts: [Offset(0.1, 0.2), Offset(0.1, 0.8), Offset(0.9, 0.2), Offset(0.9, 0.8)],
+        coins: [Rect.fromLTRB(0.4, 0.4, 0.6, 0.6)],
       ),
     );
   });

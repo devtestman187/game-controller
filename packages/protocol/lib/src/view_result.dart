@@ -216,7 +216,7 @@ final class ViewResult {
   }
 
   static List<ViewStanding> _standings(Object value) {
-    if (value is! List) throw FormatException('Field "result.standings" must be a list');
+    if (value is! List) throw const FormatException('Field "result.standings" must be a list');
     return List.unmodifiable(value.map(ViewStanding.fromJson));
   }
 }

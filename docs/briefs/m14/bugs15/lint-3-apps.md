@@ -1,0 +1,17 @@
+job: M14 bugs15 lint-3-apps — clear the strict-lint issues in packages/metrics, controller_app and tv_test_app
+pub: no
+tests-first: exempt lint typing fixes; behaviour must not change and the existing tests must pass
+stop: after it. Only the packages listed; no behaviour, text or public-API changes; no new `// ignore` comments.
+read: the package's analysis_options.yaml (strict-casts, strict-inference, strict-raw-types and the new lint list; commit "lint-1" applied `dart fix` already) · docs/coding-guidelines.md · docs/review-rules.md · the files `dart analyze packages/metrics controller_app tv_test_app` names (work from its output) (while working run `dart analyze packages/metrics controller_app tv_test_app` and only the tests of the files you touch; the full check runs once, at the end)
+decide: low-usage mode: never stop for a question; list choices under "Decisions". Stop only if the job cannot be done; then say why under "Blocked".
+
+Goal: `dart analyze packages/metrics controller_app tv_test_app` prints "No issues found" with the strict settings on. Issue kinds you will see: strict_raw_type (write the type arguments: `Map<String, Object?>`, `Future<void>`, `List<Object?>` as the code needs), inference_failure_on_collection_literal / _instance_creation (add the type arguments), argument_type_not_assignable (a `dynamic` from JSON: cast or check explicitly, e.g. `as int`; where the JSON may be wrong keep the existing runtime behaviour: do not throw where the code did not, use the same fallback it used), avoid_dynamic_calls (cast to the real type first), only_throw_errors (throw an Exception/Error subclass, same message), close_sinks / cancel_subscriptions (close or cancel where it is really owned and was missed in a dispose; if it is intentional or owned elsewhere say so in the report and add the cancel/close where it is cheap and safe, else code-health.md), unused_shown_name / unused_field / non_bool_operand (fix the code), discarded_futures / unawaited_futures (a deliberate fire-and-forget gets `unawaited(...)` from dart:async, with a one-line comment if the reason is not obvious; a future that should be awaited gets `await`). In the report list under "Possible real bugs" every discarded future whose failure would be silently lost or whose ordering matters (an unawaited send before a close, a save not awaited before reading), file:line and what could go wrong; do not change their behaviour beyond `unawaited`.
+do:
+1 Fix every issue in packages/metrics, controller_app and tv_test_app until `dart analyze packages/metrics controller_app tv_test_app` is clean. Do not touch other packages.
+2 Run the tests of the touched packages once at the end (`flutter test` or `dart test` in the package folder, as tools/check.sh does) and state the counts you saw.
+in the report: start with `## Summary` (at most 30 lines, within its first 40 lines): counts by kind, "Possible real bugs", decisions, test counts. End with `## Hand-over`. Do not claim a result unless you ran it in this job and saw it.
+self-check: docs/review-rules.md part A, items 1-5, one line each.
+rules: aim for 100-140 turns · no lib file you touch ends over 400 lines (it must not grow past 380 if it was below) · write only inside allow: · stage nothing yourself · never use git add -A · tools/review.sh: no FAIL on your lines.
+allow: docs/briefs/m14/bugs15/lint-3-apps-report.md · docs/code-health.md · packages/metrics · controller_app · tv_test_app
+check: format analyze metrics phone tv
+report: docs/briefs/m14/bugs15/lint-3-apps-report.md

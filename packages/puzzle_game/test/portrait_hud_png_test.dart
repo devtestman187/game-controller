@@ -39,7 +39,6 @@ void main() {
         snapshot: m.snapshot(),
         timeLimitS: limitS,
         target: LayoutTarget.phones,
-        camera: const PuzzleCamera.whole(),
         padRects: iPadPortraitPad,
         pxPerMm: iPadPxPerMm,
       ),

@@ -51,7 +51,7 @@ Future<(int, int, Uint8List)> capture(
   ToyLook? look,
 }) async {
   final image = await captureImage(tester, child, window: window, box: box, pixelRatio: pixelRatio, look: look);
-  final bytes = (await tester.runAsync(() => image.toByteData(format: ui.ImageByteFormat.rawRgba)))!;
+  final bytes = (await tester.runAsync(() => image.toByteData()))!;
   return (image.width, image.height, bytes.buffer.asUint8List());
 }
 

@@ -6,6 +6,12 @@ import 'haptic_patterns.dart';
 
 /// What the phone's vibration hardware can do.
 final class HapticsCapabilities {
+  factory HapticsCapabilities.fromMap(Map<Object?, Object?> map) => HapticsCapabilities(
+    supported: map['supported'] == true,
+    intensityControl: map['intensityControl'] == true,
+    engine: map['engine'] as String? ?? 'unknown',
+    detail: map['detail'] as String?,
+  );
   const HapticsCapabilities({
     required this.supported,
     required this.intensityControl,
@@ -15,13 +21,6 @@ final class HapticsCapabilities {
 
   /// For platforms without the native channel (tests, desktop).
   static const none = HapticsCapabilities(supported: false, intensityControl: false, engine: 'none');
-
-  factory HapticsCapabilities.fromMap(Map<Object?, Object?> map) => HapticsCapabilities(
-    supported: map['supported'] == true,
-    intensityControl: map['intensityControl'] == true,
-    engine: map['engine'] as String? ?? 'unknown',
-    detail: map['detail'] as String?,
-  );
 
   final bool supported;
 

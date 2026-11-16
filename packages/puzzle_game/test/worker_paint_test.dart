@@ -60,7 +60,7 @@ int argb(Color colour) => colour.toARGB32() & 0xFFFFFF;
 Offset at(Offset field) => field * unitsPx;
 
 /// The middle of a standing worker's body, drawn on the grab point [dot].
-Offset bodyMiddle(Offset dot) => at(dot + Offset(0, -standShare * bodyAcross / 2));
+Offset bodyMiddle(Offset dot) => at(dot + const Offset(0, -standShare * bodyAcross / 2));
 
 /// How far the drawing at [from] (image px) reaches toward [step] before the
 /// board shows again: the worker's own edge, its ink and a pixel of
@@ -178,7 +178,7 @@ void main() {
         reason: "$name: the piece's middle, not the worker",
       );
       // The worker, one and a third radii out from the piece's left edge.
-      final body = at(const Offset(35, 50) + Offset(-standShare * bodyAcross / 2, 0));
+      final body = at(const Offset(35, 50) + const Offset(-standShare * bodyAcross / 2, 0));
       expect(
         colourGap(pixel(bytes, width, body.dx.round(), body.dy.round()), argb(look.colors.player(1))),
         lessThanOrEqualTo(8),
@@ -221,7 +221,7 @@ void main() {
     );
     final (width, height, bytes) = await capture(
       tester,
-      MatchView(puzzle: puzzle, snapshot: snapshot, timeLimitS: 65, target: LayoutTarget.phones, pxPerMm: pxPerMm),
+      MatchView(puzzle: puzzle, snapshot: snapshot, timeLimitS: 65, target: LayoutTarget.phones),
       window: phone169,
       box: phone169,
       pixelRatio: ratio,

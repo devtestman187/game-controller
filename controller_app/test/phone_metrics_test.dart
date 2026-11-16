@@ -21,7 +21,7 @@ void main() {
   group('touch map', () {
     test('a touch just beside B is a near miss on B; a blank spot is an empty tap', () {
       final map = touchMapFor(mode: PadMode.dpad, body: body, mm: mm);
-      final square = padLayout(body, mm: mm).faceButtons;
+      final square = padLayout(body).faceButtons;
       final b = square.topLeft + FaceGeometry.classic.centers[ControllerButton.b]! * square.width;
       // 3 mm right of the buttons' square, level with B.
       final beside = Offset(square.right + 3 * mm, b.dy);
@@ -52,14 +52,14 @@ void main() {
         'select',
         'start',
       });
-      final l = stickLayout(body, mm: mm);
+      final l = stickLayout(body);
       final edge = l.leftStick.center + Offset(l.leftStick.width / 2 * 1.1, 0);
       expect(map.hit(edge.dx / mm, edge.dy / mm).control, 'ls');
     });
 
     test('floating sticks take their whole zone', () {
       final map = touchMapFor(mode: PadMode.sticks, body: body, mm: mm, sticks: const StickSettings(floating: true));
-      final zone = stickLayout(body, mm: mm).leftZone;
+      final zone = stickLayout(body).leftZone;
       expect(map.hit((zone.left + 2) / mm, (zone.bottom - 2) / mm).control, 'ls');
     });
 

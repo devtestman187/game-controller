@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:toy_look/toy_look.dart';
 
-import '../text/host_text.dart';
 import '../look_providers.dart';
 import '../sound_settings.dart';
+import '../text/host_text.dart';
 import 'host_focus_ring.dart';
 
 /// The Look and sound settings (M13, docs/design/look-and-sound.md section 8):

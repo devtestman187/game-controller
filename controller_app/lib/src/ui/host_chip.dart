@@ -51,7 +51,12 @@ class HostChip extends ConsumerWidget {
           child: MenuAnchor(
             menuChildren: [
               Padding(
-                padding: EdgeInsets.fromLTRB(ToySizes.space16, ToySizes.space12, ToySizes.space16, ToySizes.space4),
+                padding: const EdgeInsets.fromLTRB(
+                  ToySizes.space16,
+                  ToySizes.space12,
+                  ToySizes.space16,
+                  ToySizes.space4,
+                ),
                 child: Text(
                   code,
                   key: const Key('hostCode'),

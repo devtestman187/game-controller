@@ -86,7 +86,7 @@ void main() {
       app.client.nowMs = 1000;
       app.client.viewStart(arenaStart());
       await settle(tester);
-      app.client.viewFrame(arenaFrame(1, atMs: 1000, sounds: const ['hit']));
+      app.client.viewFrame(arenaFrame(1, sounds: const ['hit']));
       app.client.nowMs = 1016;
       app.client.viewFrame(arenaFrame(2, atMs: 1016));
       app.client.nowMs = 1032;
@@ -279,7 +279,10 @@ void main() {
       // The bar draws the pad's body below its own height: the bar's padding
       // and its 48-high row are [topBarHeightPx], the constant `leftPadRects`
       // measures the controls from.
-      expect(tester.getRect(find.byType(ControlsLayer)), Rect.fromLTWH(0, topBarHeightPx, 852, 393 - topBarHeightPx));
+      expect(
+        tester.getRect(find.byType(ControlsLayer)),
+        const Rect.fromLTWH(0, topBarHeightPx, 852, 393 - topBarHeightPx),
+      );
     });
 
     testWidgets('the full bar comes back when the game ends', (tester) async {

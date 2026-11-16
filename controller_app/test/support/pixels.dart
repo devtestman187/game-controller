@@ -43,7 +43,7 @@ Future<Pixels> paintedPixels(Size size, void Function(Canvas canvas) paint) asyn
   canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), Paint()..color = white);
   paint(canvas);
   final image = await recorder.endRecording().toImage(size.width.round(), size.height.round());
-  final data = await image.toByteData(format: ImageByteFormat.rawRgba);
+  final data = await image.toByteData();
   image.dispose();
   if (data == null) throw StateError('the painter test could not read the image it drew');
   return Pixels(data.buffer.asUint8List(), size.width.round());

@@ -77,7 +77,7 @@ extension _BoardHud on PuzzlePainter {
   /// track with the ink edge.
   void _bar(Canvas canvas, double left, Color fill, _Styles styles) {
     final track = Rect.fromLTWH(field.board.left, field.top - _barTop, field.tray.right - field.board.left, _barHeight);
-    final shape = RRect.fromRectAndRadius(track, Radius.circular(_barHeight / 2));
+    final shape = RRect.fromRectAndRadius(track, const Radius.circular(_barHeight / 2));
     toyShape(canvas, Path()..addRRect(shape), _colours.paper, styles.thin, shade: look.shade);
     if (left <= 0) return;
     canvas

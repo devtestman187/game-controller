@@ -12,7 +12,7 @@ import 'wire_phone.dart';
 /// A controller that shows the game (M12).
 const _view = [Capability.view];
 
-final _start = ViewStartMessage(game: 'arena', snapshotVersion: 1, setup: const {}, hz: 30);
+final _start = const ViewStartMessage(game: 'arena', snapshotVersion: 1, setup: {}, hz: 30);
 
 /// Step [n] of a game, 33 ms after the one before.
 FrameMessage _frame(int n) => FrameMessage(n: n, atMs: 1000 + n * 33, snapshot: {'v': 1, 't': n});

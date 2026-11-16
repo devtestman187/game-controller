@@ -114,7 +114,6 @@ void main() {
         phonePortrait,
         split: true,
         text: text,
-        pxPerMm: phonePxPerMm,
         padRects: pad,
       );
       expect(hud.left, closeTo(world.left, 1e-9), reason: where);

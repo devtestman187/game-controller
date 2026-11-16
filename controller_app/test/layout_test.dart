@@ -194,7 +194,7 @@ void main() {
 
     test('an iPad and an Android tablet get the same physical sizes', () {
       final ipad = stickLayout(tablets['iPad 11-inch']!.body, mm: iPadPxPerMm);
-      final android = stickLayout(tablets['Android tablet 11-inch']!.body, mm: phonePxPerMm);
+      final android = stickLayout(tablets['Android tablet 11-inch']!.body);
       expect(ipad.leftStick.width / iPadPxPerMm, closeTo(android.leftStick.width / phonePxPerMm, 0.5));
       expect(ipad.faceButtonRadius / iPadPxPerMm, closeTo(android.faceButtonRadius / phonePxPerMm, 0.5));
     });

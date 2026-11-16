@@ -59,9 +59,9 @@ void main() {
     }, settings: const PuzzleSettings(night: true));
     final most = [
       for (var i = 0; i < PuzzlePoints.maxPopups; i++)
-        PuzzlePopup(
+        const PuzzlePopup(
           side: PuzzleSide.left,
-          place: const Offset(123.4, 56.7),
+          place: Offset(123.4, 56.7),
           amount: 4,
           ageMs: 1199,
           icon: PuzzleIcon.flag,
@@ -86,13 +86,7 @@ void main() {
           ),
       ],
       seed: 7,
-      cat: const CatView(
-        state: CatState.walk,
-        side: PuzzleSide.right,
-        at: Offset(123.4, 56.7),
-        target: 5,
-        warningMs: 0,
-      ),
+      cat: const CatView(state: CatState.walk, side: PuzzleSide.right, at: Offset(123.4, 56.7), target: 5),
     );
     final bytes = snapshot.encode().length;
     // The number the report quotes.

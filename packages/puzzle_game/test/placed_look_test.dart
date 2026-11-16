@@ -177,7 +177,7 @@ void main() {
     final top = oklab(
       pixel(bytes, width, ((boardRect.left + 40) * scale).round(), ((boardRect.top + 40) * scale).round() + 2),
     );
-    expect(top[0], lessThan(middle[0]), reason: "the shadow falls along the top edge the light reaches");
+    expect(top[0], lessThan(middle[0]), reason: 'the shadow falls along the top edge the light reaches');
   });
 
   // An empty target is drawn as a slot (dashed), a placed piece as a piece

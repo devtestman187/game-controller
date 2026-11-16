@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'dart:typed_data';
-import 'dart:ui' as ui;
 
 import 'package:connection/connection.dart';
 import 'package:controller/src/host/host_start_sheet.dart';
@@ -95,7 +94,7 @@ Future<ScreenPixels> screenPixels(WidgetTester tester) async {
   final size = tester.view.physicalSize / tester.view.devicePixelRatio;
   final layer = tester.binding.renderViews.first.debugLayer! as OffsetLayer;
   final image = (await tester.runAsync(() => layer.toImage(Offset.zero & size)))!;
-  final data = (await tester.runAsync(() => image.toByteData(format: ui.ImageByteFormat.rawRgba)))!;
+  final data = (await tester.runAsync(() => image.toByteData()))!;
   return ScreenPixels(data.buffer.asUint8List(), image.width);
 }
 

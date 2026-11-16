@@ -45,7 +45,7 @@ class HostEdgeBorder extends OutlinedBorder {
 
   /// The paper's rounded rect, [rect]'s own corners.
   static Path _paperPath(Rect rect) =>
-      Path()..addRRect(RRect.fromRectAndRadius(rect, Radius.circular(ToySizes.cardCorner)));
+      Path()..addRRect(RRect.fromRectAndRadius(rect, const Radius.circular(ToySizes.cardCorner)));
 
   @override
   EdgeInsetsGeometry get dimensions => EdgeInsets.all(side.width);

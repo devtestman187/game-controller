@@ -78,7 +78,7 @@ Future<Uint8List> drawMarbles(WidgetTester tester, ArenaSnapshot frame, Size fie
   ).paint(Canvas(recorder), field);
   final picture = recorder.endRecording();
   final image = (await tester.runAsync(() => picture.toImage(field.width.toInt(), field.height.toInt())))!;
-  final data = (await tester.runAsync(() => image.toByteData(format: ui.ImageByteFormat.rawRgba)))!;
+  final data = (await tester.runAsync(() => image.toByteData()))!;
   return data.buffer.asUint8List();
 }
 

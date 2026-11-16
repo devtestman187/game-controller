@@ -89,13 +89,7 @@ void main() {
       tester,
       ToyStillSky(
         child: ToyBackground(
-          child: MatchView(
-            puzzle: puzzle,
-            snapshot: match.snapshot(),
-            timeLimitS: 65,
-            target: LayoutTarget.phones,
-            camera: const PuzzleCamera.whole(),
-          ),
+          child: MatchView(puzzle: puzzle, snapshot: match.snapshot(), timeLimitS: 65, target: LayoutTarget.phones),
         ),
       ),
       window: tabletBox,

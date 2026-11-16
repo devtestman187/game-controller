@@ -42,7 +42,6 @@ void main() {
           snapshot: match.snapshot(),
           timeLimitS: limitS,
           target: LayoutTarget.phones,
-          camera: const PuzzleCamera.whole(),
           padRects: pad,
           pxPerMm: iPadPxPerMm,
         ),

@@ -60,7 +60,7 @@ Future<Uint8List> painted(WidgetTester tester, ArenaSnapshot snapshot, {ToyLook?
   canvas.restore();
   final picture = recorder.endRecording();
   final image = (await tester.runAsync(() => picture.toImage(outer.width.toInt(), outer.height.toInt())))!;
-  final data = (await tester.runAsync(() => image.toByteData(format: ui.ImageByteFormat.rawRgba)))!;
+  final data = (await tester.runAsync(() => image.toByteData()))!;
   return data.buffer.asUint8List();
 }
 

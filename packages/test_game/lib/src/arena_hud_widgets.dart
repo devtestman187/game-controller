@@ -89,7 +89,6 @@ class ArenaHud extends StatelessWidget {
         child: oneLine
             ? Wrap(
                 spacing: _oneLineItemGap,
-                runSpacing: 0,
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: _items(byNumber, bumper, constraints.maxWidth),
               )

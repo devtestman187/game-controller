@@ -110,7 +110,7 @@ class InputVisualizerPainter extends CustomPainter {
     final h = size.height;
     final u = h / 7; // Layout unit.
     final shoulder = Size(w * 0.2, u * 0.75);
-    _pill(canvas, Offset(0, 0) & shoulder, GamepadButton.lb, text: 'LB');
+    _pill(canvas, const Offset(0, 0) & shoulder, GamepadButton.lb, text: 'LB');
     _pill(canvas, Offset(w - shoulder.width, 0) & shoulder, GamepadButton.rb, text: 'RB');
 
     final top = u * 1.1;

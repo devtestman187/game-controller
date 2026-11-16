@@ -1,5 +1,4 @@
 import 'dart:typed_data';
-import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -66,7 +65,7 @@ Future<Uint8List> draw(WidgetTester tester, ArenaSnapshot frame, ToyLook look, {
   }
   final boundary = key.currentContext!.findRenderObject()! as RenderRepaintBoundary;
   final image = (await tester.runAsync(() => boundary.toImage()))!;
-  final data = (await tester.runAsync(() => image.toByteData(format: ui.ImageByteFormat.rawRgba)))!;
+  final data = (await tester.runAsync(() => image.toByteData()))!;
   return data.buffer.asUint8List();
 }
 

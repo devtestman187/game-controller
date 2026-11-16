@@ -64,7 +64,7 @@ void main() {
       tester.view.physicalSize = size;
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.reset);
-      await tester.pumpWidget(_screen(ToyLook.build(palette: ToyPalette.night, tv: tv, effects: true), 3));
+      await tester.pumpWidget(_screen(ToyLook.build(palette: ToyPalette.night, tv: tv), 3));
       expect(tester.takeException(), isNull, reason: '$size');
     }
   });

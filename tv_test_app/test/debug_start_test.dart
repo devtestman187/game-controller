@@ -28,7 +28,7 @@ void main() {
     expect(shareViewDefine, isFalse, reason: 'a test run has no --dart-define');
     expect(shareViewEnabled(), isFalse);
     expect(shareViewEnabled(defined: true), isTrue, reason: 'SHARE_VIEW=true in a debug build');
-    expect(shareViewEnabled(defined: false), isFalse, reason: 'SHARE_VIEW=false shares nothing, as absent does');
+    expect(shareViewEnabled(), isFalse, reason: 'SHARE_VIEW=false shares nothing, as absent does');
     expect(shareViewEnabled(debug: false, defined: true), isFalse, reason: 'a release build ignores it');
   });
 

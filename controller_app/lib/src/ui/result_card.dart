@@ -38,7 +38,6 @@ class ResultCard extends ConsumerWidget {
           constraints: const BoxConstraints(maxWidth: _cardWidth),
           child: ToyCard(
             header: _outcome(result),
-            padding: const EdgeInsets.all(ToySizes.space16),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,

@@ -186,7 +186,7 @@ Future<Uint8List> mirrorFrame(WidgetTester tester, Puzzle puzzle, ToyLook look) 
         scale: 4,
       ).paint(Canvas(recorder));
       final image = await recorder.endRecording().toImage(320, 288);
-      final data = await image.toByteData(format: ui.ImageByteFormat.rawRgba);
+      final data = await image.toByteData();
       return data!.buffer.asUint8List();
     }))!;
 

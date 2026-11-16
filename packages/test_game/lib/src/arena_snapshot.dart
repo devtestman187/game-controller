@@ -310,7 +310,6 @@ extension ArenaSnapshots on ArenaGame {
       mode: mode,
       coins: [for (final c in coins) _coin(c, seats)],
       timeLeftMs: timeLeftS == null ? null : (timeLeftS! * 1000).round(),
-      coinRadius: ArenaCoin.radius,
       mirrored: mirrored,
       movers: [for (final (a, b) in moverBars) (frac(a), frac(b))],
       theme: map.theme,

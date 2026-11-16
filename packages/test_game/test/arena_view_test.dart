@@ -4,9 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:protocol/protocol.dart';
 import 'package:test_game/test_game.dart';
 
-import 'support/maps.dart';
-
 import 'support/look.dart';
+import 'support/maps.dart';
 
 /// A host with phones [ids] (numbered in order), each holding [input].
 MemoryGameHost hostWith(Map<String, InputStateMessage?> players) {
@@ -182,7 +181,7 @@ void main() {
 
   testWidgets('reports rounds, game events, frames and the drawn delay stage to the host', (tester) async {
     final open = ArenaGame(map: testMap());
-    final host = hostWith({'a': InputStateMessage(seq: 1, dx: 1, ax: null)});
+    final host = hostWith({'a': InputStateMessage(seq: 1, dx: 1)});
     final (game, _) = await pump(tester, host, const Size(960, 540), arena: open);
     for (var i = 0; i < 400 && game.phase == ArenaPhase.playing; i++) {
       await tester.pump(const Duration(milliseconds: 16));

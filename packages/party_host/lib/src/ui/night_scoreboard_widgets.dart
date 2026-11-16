@@ -57,7 +57,7 @@ class _ScoreCard extends StatelessWidget {
             // G2's last round is worth double: the scoreboard says so before
             // it is played (frame 5).
             if (!over && night.isNextRoundTheLast) ...[
-              Center(child: NightLastRoundBanner(key: const Key('nightLastRoundBanner'))),
+              const Center(child: NightLastRoundBanner(key: Key('nightLastRoundBanner'))),
               const SizedBox(height: ToySizes.space16),
             ],
             for (final row in rows) _ScoreRow(row: row, roboNumber: roboNumber, finalScores: over),

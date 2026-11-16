@@ -18,15 +18,15 @@ void main() {
     timeLeftMs: 55000,
     phase: PuzzlePhase.playing,
     pieces: const [PieceView(x: 12.3, y: 45.6, angle: 90, state: PieceState.loose)],
-    players: const [PlayerView(number: 1, x: 20, y: 30, held: null)],
+    players: const [PlayerView(number: 1, x: 20, y: 30)],
     points: points,
     night: night,
     popups: popups,
   );
 
   final popups = [
-    PuzzlePopup(side: PuzzleSide.left, place: const Offset(12.3, 45.6), amount: 2, ageMs: 0),
-    PuzzlePopup(side: PuzzleSide.right, place: const Offset(100.1, 20.5), amount: 5, ageMs: 600, icon: PuzzleIcon.flag),
+    const PuzzlePopup(side: PuzzleSide.left, place: Offset(12.3, 45.6), amount: 2, ageMs: 0),
+    const PuzzlePopup(side: PuzzleSide.right, place: Offset(100.1, 20.5), amount: 5, ageMs: 600, icon: PuzzleIcon.flag),
   ];
 
   test('both snapshots are version 2, and so is the module a phone asks for', () {
@@ -63,7 +63,7 @@ void main() {
 
   test('the lerp keeps the points, the night and the pop-ups as the older frame had them', () {
     final a = board(popups: popups);
-    final b = board(points: 11, popups: const []);
+    final b = board(points: 11);
     final between = a.lerpTo(b, 0.5);
     expect(between.points, 7);
     expect(between.night, isTrue);

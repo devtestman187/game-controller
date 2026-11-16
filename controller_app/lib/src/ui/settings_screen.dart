@@ -94,9 +94,9 @@ class SettingsScreen extends ConsumerWidget {
       ],
     );
     if (width >= _twoColumnWidth) {
-      return SingleChildScrollView(
-        padding: const EdgeInsets.all(ToySizes.space16),
-        child: const Row(
+      return const SingleChildScrollView(
+        padding: EdgeInsets.all(ToySizes.space16),
+        child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(child: controls),

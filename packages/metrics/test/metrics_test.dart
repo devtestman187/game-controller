@@ -50,7 +50,7 @@ void main() {
         ),
       );
       // A stale, repeated batch changes nothing.
-      c.metrics('phone-a', MetricsMessage(segment: 'a-1', index: 0, mode: 'dpad', durationMs: 1, data: const {}));
+      c.metrics('phone-a', MetricsMessage(segment: 'a-1', index: 0, mode: 'dpad', durationMs: 1));
       c.metrics(
         'phone-a',
         MetricsMessage(
@@ -188,7 +188,7 @@ void main() {
       );
       c.joined('p', number: 1, atMs: 0);
       for (var i = 0; i < 500; i++) {
-        c.metrics('p', MetricsMessage(segment: 'seg$i', index: 0, mode: 'dpad', durationMs: 100, data: const {}));
+        c.metrics('p', MetricsMessage(segment: 'seg$i', index: 0, mode: 'dpad', durationMs: 100));
       }
       expect(((c.summary(0)['players'] as List)[0] as Map)['segments'], hasLength(200));
     });

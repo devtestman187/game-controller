@@ -9,7 +9,7 @@ import 'wire_phone.dart';
 const tealCrown = PlayerCharacter(colourSlot: 4, accessory: PlayerAccessory.crown);
 
 /// The view a round shows (m12).
-final start = ViewStartMessage(game: 'shape_race', snapshotVersion: 1, setup: const {}, hz: 60);
+final start = const ViewStartMessage(game: 'shape_race', snapshotVersion: 1, setup: {}, hz: 60);
 
 FrameMessage frame(int n) => FrameMessage(n: n, atMs: n * 16, snapshot: const {});
 

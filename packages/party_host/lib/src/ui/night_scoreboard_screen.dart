@@ -117,8 +117,8 @@ class _Scoreboard extends ConsumerWidget {
           children: [
             // The night is won: confetti round the final scores (frame 7).
             if (over)
-              Positioned.fill(
-                child: IgnorePointer(child: NightConfetti(key: const Key('nightConfetti'))),
+              const Positioned.fill(
+                child: IgnorePointer(child: NightConfetti(key: Key('nightConfetti'))),
               ),
             Center(
               child: _ScoreCard(

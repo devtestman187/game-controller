@@ -223,7 +223,6 @@ class _SticksSection extends ConsumerWidget {
           value: s.buttonSize,
           valueText: SettingsText.share(s.buttonSize),
           min: StickSettings.minButtonSize,
-          max: StickSettings.maxButtonSize,
           divisions: 8,
           sliderKey: const Key('settingsStickButtonSize'),
           onChanged: (v) => n.update(s.copyWith(buttonSize: v)),
@@ -270,7 +269,6 @@ class _GameSection extends ConsumerWidget {
           value: s.opacity,
           valueText: SettingsText.share(s.opacity),
           min: ControlsSettings.minOpacity,
-          max: ControlsSettings.maxOpacity,
           // 20% to 100% in steps of 10%.
           divisions: 8,
           sliderKey: const Key('controlsOpacitySlider'),

@@ -123,7 +123,7 @@ void main() {
   });
 
   test('the picture and its pieces fit the board and the tray', () {
-    final off = puzzleOf(piece('a', '{"rect": [10, 10]}', at: '[78, 70]', extra: ''));
+    final off = puzzleOf(piece('a', '{"rect": [10, 10]}', at: '[78, 70]'));
     expect(messagesOf(off, PuzzleRule.fit).single, contains("past the board's edge"));
     final crowded = puzzleOf(
       [for (var i = 0; i < 5; i++) piece('c$i', '{"rect": [60, 50]}', at: '[40, 36]')].join(', '),

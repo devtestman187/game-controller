@@ -192,8 +192,7 @@ void main() {
     });
 
     test('smoothing eases towards a sudden change', () {
-      final p = TiltProcessor(settings: const GyroSettings(smoothing: 0.5, deadZone: 0))
-        ..calibrate((roll: 0, pitch: 0));
+      final p = TiltProcessor(settings: const GyroSettings(deadZone: 0))..calibrate((roll: 0, pitch: 0));
       final first = p.process((roll: 30, pitch: 0)).x;
       final second = p.process((roll: 30, pitch: 0)).x;
       expect(first, closeTo(0.5, 1e-9));

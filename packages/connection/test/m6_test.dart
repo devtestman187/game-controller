@@ -24,7 +24,7 @@ void main() {
       group('player numbers', () {
         test('each controller gets its own number, on the TV and on the phone', () async {
           final host = await startHost(t);
-          final one = await paired(host, t, id: 'phone-1');
+          final one = await paired(host, t);
           final two = await paired(host, t, id: 'phone-2');
           expect((await clientUntil(one, (s) => s.player != null)).player, 1);
           expect((await clientUntil(two, (s) => s.player != null)).player, 2);
@@ -34,7 +34,7 @@ void main() {
 
         test('a controller that drops keeps its number, and a newcomer does not take it', () async {
           final host = await startHost(t);
-          final one = await paired(host, t, id: 'phone-1');
+          final one = await paired(host, t);
           await paired(host, t, id: 'phone-2');
           one.disconnect();
           await hostUntil(host, (h) => h.connected.length == 1);
@@ -297,7 +297,7 @@ void main() {
   });
 
   test('old clock samples are dropped, so drift between the clocks is followed', () {
-    final l = InputLatency(clockWindow: const Duration(seconds: 20));
+    final l = InputLatency();
     l.addPong(sentAtMs: 0, peerMs: 1000, receivedMs: 2); // Very fast, offset 999.
     l.addPong(sentAtMs: 30000, peerMs: 31010, receivedMs: 30010); // Later, offset 1005.
     expect(l.offsetMs, 1005);

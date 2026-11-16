@@ -76,7 +76,7 @@ void main() {
       final colours = look.colors;
       expect(at(bytes, width, const Offset(56, 30)), colours.board.toARGB32() & 0xFFFFFF, reason: "the board's middle");
       expect(at(bytes, width, const Offset(129, 49)), colours.tray.toARGB32() & 0xFFFFFF, reason: "the tray's middle");
-      expect(at(bytes, width, const Offset(2, 2)), colours.background.toARGB32() & 0xFFFFFF, reason: "the sky");
+      expect(at(bytes, width, const Offset(2, 2)), colours.background.toARGB32() & 0xFFFFFF, reason: 'the sky');
     });
   }
 
@@ -107,7 +107,7 @@ void main() {
       window: box,
       box: box,
     );
-    final tint = Color(colour).withValues(alpha: 0.1);
+    final tint = const Color(colour).withValues(alpha: 0.1);
     final expected = Color.alphaBlend(tint, slot).toARGB32() & 0xFFFFFF;
     expect(colourGap(at(bytes, width, const Offset(56, 63)), expected), lessThanOrEqualTo(4));
   });
@@ -134,7 +134,7 @@ void main() {
     // the same target with no hint is only that hint.
     final colours = ToyColors.sunny;
     final slot = Color(0xFF000000 | await slotColour(tester));
-    final plainFill = Color.alphaBlend(Color(colour).withValues(alpha: 0.1), slot);
+    final plainFill = Color.alphaBlend(const Color(colour).withValues(alpha: 0.1), slot);
     final hintedFill = Color.alphaBlend(colours.focus.withValues(alpha: 0.5), plainFill);
     final hinted = await targetColour(true);
     final plain = await targetColour(false);

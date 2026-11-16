@@ -52,14 +52,6 @@ enum ToyAccessory {
 /// L7), the host will hand each player's choice to the views and only where the
 /// character comes from changes — no painter changes.
 final class ToyCharacter {
-  const ToyCharacter({required this.colourSlot, required this.accessory})
-    : assert(colourSlot >= firstSlot && colourSlot <= lastSlot, 'a character wears one of the player colours');
-
-  /// The first and last colour slots a character may wear: the protocol's six
-  /// player colours, which players past the sixth reuse in order (design 5b).
-  static const firstSlot = 1;
-  static const lastSlot = 6;
-
   /// Player [number]'s default character (design 5b): a colour slot and an
   /// accessory. Numbers past the sixth wrap as the protocol's player colours
   /// do, so player 7 is player 1's character.
@@ -74,6 +66,13 @@ final class ToyCharacter {
   factory ToyCharacter.of(PlayerCharacter? choice, int number) => choice == null
       ? ToyCharacter.forPlayer(number)
       : ToyCharacter(colourSlot: choice.colourSlot, accessory: ToyAccessory.values.byName(choice.accessory.name));
+  const ToyCharacter({required this.colourSlot, required this.accessory})
+    : assert(colourSlot >= firstSlot && colourSlot <= lastSlot, 'a character wears one of the player colours');
+
+  /// The first and last colour slots a character may wear: the protocol's six
+  /// player colours, which players past the sixth reuse in order (design 5b).
+  static const firstSlot = 1;
+  static const lastSlot = 6;
 
   /// The player colours' names in words, by slot (M14 design section 9): the
   /// phone's "Blue is taken tonight, you're Teal" says them.

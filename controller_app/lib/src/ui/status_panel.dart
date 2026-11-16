@@ -78,7 +78,7 @@ class StatusPanel extends StatelessWidget {
             style: look.type.body.copyWith(color: colors.ink),
           ),
         if (progress != null) ...[
-          SizedBox(height: ToySizes.space4 / 2),
+          const SizedBox(height: ToySizes.space4 / 2),
           SizedBox(
             width: look.sizes.buttonHeight * statusProgressWidthShare,
             child: ClipRRect(

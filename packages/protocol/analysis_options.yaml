@@ -1,9 +1,33 @@
+# Strict analysis (M14 lint pass): strict-casts, strict-inference, strict-raw-types and the rules below.
+# The repo is formatted at 120 columns (dart format reads the formatter section).
 include: package:lints/recommended.yaml
 
-# The repo is formatted at 120 columns (dart format reads this).
-formatter:
-  page_width: 120
-
 analyzer:
+  language:
+    strict-casts: true
+    strict-inference: true
+    strict-raw-types: true
   exclude:
     - test/coverage_all_test.dart
+
+linter:
+  rules:
+    - avoid_dynamic_calls
+    - avoid_print
+    - prefer_final_locals
+    - prefer_const_constructors
+    - prefer_single_quotes
+    - unawaited_futures
+    - discarded_futures
+    - directives_ordering
+    - sort_constructors_first
+    - avoid_redundant_argument_values
+    - cancel_subscriptions
+    - close_sinks
+    - only_throw_errors
+    - use_super_parameters
+    - always_declare_return_types
+    - type_annotate_public_apis
+
+formatter:
+  page_width: 120

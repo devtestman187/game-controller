@@ -216,7 +216,7 @@ void main() {
   testWidgets('one board\'s HUD shows its points with a star in a night', (tester) async {
     final puzzle = load('tree');
     // A two-digit number, so the test font's box glyphs show the change.
-    final (width, plain) = await draw(tester, puzzle, board(puzzle, points: 0));
+    final (width, plain) = await draw(tester, puzzle, board(puzzle));
     final (_, points) = await draw(tester, puzzle, board(puzzle, points: 12));
     final chip = changed(points, plain, width, 360);
     expect(chip.count, greaterThan(20), reason: 'its star and its number');

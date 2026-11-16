@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart';
 /// The host's frame rate a debug build may start with, in frames a second
 /// (`--dart-define=FRAME_RATE_HZ=30`): 0 when the build didn't pass one. A
 /// release build ignores it (m12 §6).
-const int startFrameRateHz = int.fromEnvironment('FRAME_RATE_HZ', defaultValue: 0);
+const int startFrameRateHz = int.fromEnvironment('FRAME_RATE_HZ');
 
 /// How a host runs a game (m12 §3): the step of its rules and how often it
 /// sends frames to the controllers showing it. Range-checked like
@@ -29,7 +29,7 @@ final class HostingSettings {
   /// [defaultFrameRateHz], and a rate the settings screen can't offer is
   /// refused loudly, so a typo in the option fails at once.
   factory HostingSettings.fromFrameRate(int hz) {
-    if (hz == 0) return HostingSettings(frameRateHz: defaultFrameRateHz);
+    if (hz == 0) return const HostingSettings();
     if (hz < minFrameRateHz || hz > maxFrameRateHz) {
       throw ArgumentError.value(hz, 'hz', 'hz must be $minFrameRateHz to $maxFrameRateHz (or 0 for unset)');
     }

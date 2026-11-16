@@ -38,19 +38,6 @@ enum GamepadButton { a, b, x, y, lb, rb, select, start, dpadUp, dpadDown, dpadLe
 ///
 /// Stick values run from -1 to 1, with y = -1 up, inside the unit circle.
 final class GamepadState {
-  const GamepadState({
-    this.buttons = const {},
-    this.leftX = 0,
-    this.leftY = 0,
-    this.rightX = 0,
-    this.rightY = 0,
-    this.tiltX,
-    this.tiltY,
-    this.mode = InputMode.none,
-  });
-
-  static const neutral = GamepadState();
-
   /// The standard mapping of a phone's input state.
   factory GamepadState.fromInput(InputStateMessage? s) {
     if (s == null) return neutral;
@@ -73,6 +60,18 @@ final class GamepadState {
       mode: mode,
     );
   }
+  const GamepadState({
+    this.buttons = const {},
+    this.leftX = 0,
+    this.leftY = 0,
+    this.rightX = 0,
+    this.rightY = 0,
+    this.tiltX,
+    this.tiltY,
+    this.mode = InputMode.none,
+  });
+
+  static const neutral = GamepadState();
 
   /// The standard button for a phone button.
   static GamepadButton buttonOf(ControllerButton b) => _buttonMap[b]!;

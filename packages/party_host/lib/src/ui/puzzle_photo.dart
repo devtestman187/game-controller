@@ -77,7 +77,10 @@ class _PhotoPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final colors = look.colors;
     final ink = look.sizes.outlineWidth;
-    final frame = RRect.fromRectAndRadius(Offset.zero & size, Radius.circular(ToySizes.cardCorner * _photoCornerShare));
+    final frame = RRect.fromRectAndRadius(
+      Offset.zero & size,
+      const Radius.circular(ToySizes.cardCorner * _photoCornerShare),
+    );
     canvas
       ..drawRRect(
         frame.shift(ToySizes.shadowOffset * _photoShadowShare),

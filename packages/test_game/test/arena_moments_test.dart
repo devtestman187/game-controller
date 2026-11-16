@@ -110,7 +110,7 @@ void main() {
 
   // Claude's design for M14 b2: a marble's coin count pops when it changes, up
   // on a pick-up and down on a drop.
-  test("a coin count pops when it changes, and settles after a moment", () {
+  test('a coin count pops when it changes, and settles after a moment', () {
     final moments = ArenaMoments()..observe(arena(1, [('a', 0.5, 0.5)]));
     expect(moments.coinPopOf('a', 0), 0, reason: 'a count nothing changed is still');
 
@@ -126,7 +126,7 @@ void main() {
 
   test('a new round clears the counts, so nothing pops at its start', () {
     final moments = ArenaMoments()..observe(arena(1, [('a', 0.5, 0.5)], coins: const {'a': 3}, roundTimeS: 1));
-    moments.observe(arena(2, [('a', 0.07, 0.5)], roundTimeS: 0));
+    moments.observe(arena(2, [('a', 0.07, 0.5)]));
     expect(moments.coinPopOf('a', 0), 0);
     expect(moments.coinPopOf('a', coinPopS), 0);
   });

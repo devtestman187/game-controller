@@ -199,7 +199,6 @@ final class WorkerPose {
     look: look,
     squash: squash,
     hands: hands,
-    feet: feetTogether,
     stridePhase: stridePhase,
     slide: slide,
     sweat: sweat,

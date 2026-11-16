@@ -128,8 +128,8 @@ void main() {
     // The engine's image work needs the real event loop, away from the test's
     // own clock.
     final written = (await tester.runAsync(() async {
-      final first = (await picker.toByteData(format: ui.ImageByteFormat.rawRgba))!.buffer.asUint8List();
-      final repeat = (await again.toByteData(format: ui.ImageByteFormat.rawRgba))!.buffer.asUint8List();
+      final first = (await picker.toByteData())!.buffer.asUint8List();
+      final repeat = (await again.toByteData())!.buffer.asUint8List();
       expect(repeat, first, reason: 'the same sky at the same moment is the same picture');
       final recorder = ui.PictureRecorder();
       Canvas(recorder)
@@ -141,7 +141,7 @@ void main() {
         ..drawImage(picker, const Offset(0, _panelHeight + _panelGap), Paint());
       final image = await recorder.endRecording().toImage(_panelWidth.round(), (_panelHeight * 2 + _panelGap).round());
       final png = (await image.toByteData(format: ui.ImageByteFormat.png))!.buffer.asUint8List();
-      final raw = (await image.toByteData(format: ui.ImageByteFormat.rawRgba))!.buffer.asUint8List();
+      final raw = (await image.toByteData())!.buffer.asUint8List();
       final brightest = _brightestPixel(raw);
       image.dispose();
       return (png, brightest);

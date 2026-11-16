@@ -4,8 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:toy_look/toy_look.dart';
 
-import '../text/host_text.dart';
 import '../providers.dart';
+import '../text/host_text.dart';
 import 'host_focus_ring.dart';
 
 /// The room the title bar leaves around its title, and after its actions.

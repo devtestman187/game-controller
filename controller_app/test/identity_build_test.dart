@@ -25,7 +25,7 @@ void main() {
     test('a local "dev" build sends the bare version', () async {
       SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
-      expect(loadIdentity(prefs, build: 'dev').appVersion, '0.14.0');
+      expect(loadIdentity(prefs).appVersion, '0.14.0');
     });
   });
 }

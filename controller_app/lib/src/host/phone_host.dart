@@ -158,12 +158,7 @@ class PhoneHost {
       );
       _notePaired(client);
     }
-    final presence = _presence = party.HostPresence(
-      host: service,
-      onAbandon: abandon,
-      nowMs: _nowMs,
-      graceS: hostGraceS,
-    );
+    final presence = _presence = party.HostPresence(host: service, onAbandon: abandon, nowMs: _nowMs);
     _lifecycle = AppLifecycleListener(
       onHide: presence.hidden,
       onShow: () => unawaited(presence.shown()),

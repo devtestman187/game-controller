@@ -5,6 +5,12 @@
 /// `package:party_host/testing.dart`, which shipped code never imports.
 library;
 
+// The look itself (M13): both apps wrap their MaterialApp in a ToyLookScope
+// with the look their providers build and take toyTheme(look), and the phone
+// app gets the scope and the theme from here because it depends on this
+// package rather than on toy_look.
+export 'package:toy_look/toy_look.dart';
+
 export 'src/abandon_signal.dart';
 export 'src/advertiser.dart';
 export 'src/best_times.dart';
@@ -76,9 +82,3 @@ export 'src/ui/puzzle_settings_screen.dart';
 export 'src/ui/ready_card.dart';
 export 'src/ui/round_phase.dart';
 export 'src/ui/stats_screen.dart';
-
-// The look itself (M13): both apps wrap their MaterialApp in a ToyLookScope
-// with the look their providers build and take toyTheme(look), and the phone
-// app gets the scope and the theme from here because it depends on this
-// package rather than on toy_look.
-export 'package:toy_look/toy_look.dart';

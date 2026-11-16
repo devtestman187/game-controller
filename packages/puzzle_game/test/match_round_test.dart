@@ -29,7 +29,7 @@ void main() {
       'p1': PuzzleSide.left,
       'p2': PuzzleSide.right,
     }, settings: const PuzzleSettings(timeLimitS: 1));
-    drive(m, const {'p1': none, 'p2': none}, frames: 20, dt: 0.05);
+    drive(m, const {'p1': none, 'p2': none}, frames: 20);
     final round = m.result!.round;
     expect(round.draw, isTrue);
     expect(round.winners, isEmpty);
@@ -72,7 +72,7 @@ void main() {
 
   test('one board that ran out of time: a done line with the time played', () {
     final m = begin(twoSquares(), const {'p1': PuzzleSide.left}, settings: const PuzzleSettings(timeLimitS: 1));
-    drive(m, const {'p1': none}, frames: 20, dt: 0.05);
+    drive(m, const {'p1': none}, frames: 20);
     final game = m.gameOf(PuzzleSide.left);
     final round = m.result!.round;
     expect(round.lines['p1']!.outcome, RoundOutcome.done);

@@ -33,7 +33,7 @@ List<String> messagesOf(List<PieceSpec> pieces, PuzzleRule rule) => [
 /// [count] rectangles in a row, each wider than the one before (so no two
 /// share a shape and size), [big] of them big, at y 20.
 List<PieceSpec> row(int count, {int big = 4}) => [
-  for (var i = 0; i < count; i++) rect('p$i', 8.0 + i * 6, 20, width: 6.0 + i, height: 6, big: i < big),
+  for (var i = 0; i < count; i++) rect('p$i', 8.0 + i * 6, 20, width: 6.0 + i, big: i < big),
 ];
 
 void main() {
@@ -52,7 +52,7 @@ void main() {
   });
 
   test('every piece of a Hard puzzle that is not a circle starts turned, at least 6 of them (B-012b)', () {
-    final pieces = row(11)..[7] = rect('p7', 50, 20, width: 13, height: 6, rotated: false);
+    final pieces = row(11)..[7] = rect('p7', 50, 20, width: 13, rotated: false);
     expect(
       messagesOf(pieces, PuzzleRule.level).single,
       'h/p7: it does not start turned, and every piece of a Hard puzzle that is not a circle does. '
@@ -73,8 +73,8 @@ void main() {
   test('a Hard puzzle has at most two pairs of one shape and size (B-012b)', () {
     final threePairs = [
       for (var i = 0; i < 3; i++) ...[
-        rect('a$i', 20.0 + i * 20, 20, width: 8, height: 8, big: i == 0),
-        rect('b$i', 20.0 + i * 20, 40, width: 8, height: 8),
+        rect('a$i', 20.0 + i * 20, 20, height: 8, big: i == 0),
+        rect('b$i', 20.0 + i * 20, 40, height: 8),
       ],
     ];
     expect(threePairs, hasLength(6));
@@ -86,7 +86,7 @@ void main() {
     );
     final twoPairs = [
       ...threePairs.take(3), // three pieces of one shape and size: two pairs
-      for (var i = 0; i < 8; i++) rect('c$i', 8.0 + i * 8, 60, width: 5.0 + i, height: 6, big: i < 2),
+      for (var i = 0; i < 8; i++) rect('c$i', 8.0 + i * 8, 60, width: 5.0 + i, big: i < 2),
     ];
     expect(twoPairs, hasLength(11));
     expect(

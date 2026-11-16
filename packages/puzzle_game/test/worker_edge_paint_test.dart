@@ -55,7 +55,7 @@ int argb(Color colour) => colour.toARGB32() & 0xFFFFFF;
 
 /// The band along the field's left ([left]) or right edge, in image px.
 Rect band({required bool left, required int width}) => left
-    ? Rect.fromLTRB(0, bandTop * unitsPx, bandUnits * unitsPx, bandBottom * unitsPx)
+    ? const Rect.fromLTRB(0, bandTop * unitsPx, bandUnits * unitsPx, bandBottom * unitsPx)
     : Rect.fromLTRB(width - bandUnits * unitsPx, bandTop * unitsPx, width.toDouble(), bandBottom * unitsPx);
 
 /// How many pixels inside [area] (image px) are within [gap] of [colour].

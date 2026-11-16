@@ -347,7 +347,7 @@ void main() {
     // the host reports it, and reads the rate that is running then.
     host.reportStage('phone-e', LatencyStage.touchToFrame, 40);
     await waitFor(() => samples() == 1);
-    host.startView(ViewStartMessage(game: 'shape_race', snapshotVersion: 1, setup: const {}, hz: 60));
+    host.startView(const ViewStartMessage(game: 'shape_race', snapshotVersion: 1, setup: {}, hz: 60));
     host.reportStage('phone-e', LatencyStage.touchToFrame, 30);
     await waitFor(() => samples() == 2);
     host.endView(const ViewEndMessage(reason: ViewEndReason.finished));

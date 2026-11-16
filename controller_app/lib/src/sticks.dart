@@ -1,9 +1,8 @@
 import 'dart:math';
 import 'dart:ui';
 
-import 'package:shared_preferences/shared_preferences.dart';
-
 import 'package:connection/connection.dart' show Stick;
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'tilt.dart';
 

@@ -165,7 +165,7 @@ void main() {
     /// A Bumper Round's map: two starts either side of a coin zone.
     ArenaMap bumperMap() => testMap(
       race: null,
-      bumper: BumperSpec(starts: const [Offset(0.1, 0.3), Offset(0.9, 0.7)], coins: const [centerZone]),
+      bumper: const BumperSpec(starts: [Offset(0.1, 0.3), Offset(0.9, 0.7)], coins: [centerZone]),
     );
 
     /// [count] players joined to [clock]'s host, numbered in order.

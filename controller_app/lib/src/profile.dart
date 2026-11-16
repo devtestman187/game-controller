@@ -9,6 +9,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// sent as the hello's optional `character`. Both are saved beside the
 /// controller ID, so they show again on the next join.
 final class ControllerProfile {
+  /// Reads the phone's saved profile; a phone that never saved one gets
+  /// [initial] and no nickname.
+  factory ControllerProfile.load(SharedPreferences prefs) => ControllerProfile(
+    nickname: prefs.getString(_nicknameKey),
+    character: _characterOf(prefs.getString(_characterKey)) ?? initial,
+  );
   const ControllerProfile({this.nickname, this.character = initial});
 
   /// The character the phone offers first (design section 9): the default it
@@ -21,13 +27,6 @@ final class ControllerProfile {
 
   /// The colour and accessory the player picked; [initial] until they pick.
   final PlayerCharacter character;
-
-  /// Reads the phone's saved profile; a phone that never saved one gets
-  /// [initial] and no nickname.
-  factory ControllerProfile.load(SharedPreferences prefs) => ControllerProfile(
-    nickname: prefs.getString(_nicknameKey),
-    character: _characterOf(prefs.getString(_characterKey)) ?? initial,
-  );
 
   /// Saves this profile for the next launch.
   void save(SharedPreferences prefs) {

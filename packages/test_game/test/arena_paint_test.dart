@@ -1,6 +1,5 @@
 import 'dart:math';
 import 'dart:typed_data';
-import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -176,7 +175,7 @@ Future<Uint8List> fieldBytes(
   }
   final boundary = key.currentContext!.findRenderObject()! as RenderRepaintBoundary;
   final image = (await tester.runAsync(() => boundary.toImage()))!;
-  final data = (await tester.runAsync(() => image.toByteData(format: ui.ImageByteFormat.rawRgba)))!;
+  final data = (await tester.runAsync(() => image.toByteData()))!;
   return data.buffer.asUint8List();
 }
 
@@ -260,7 +259,7 @@ void main() {
       final base = atField(bytes, width, const Offset(0.56, 0.4));
       expect(colourGap(base, argb(look.colors.wall)), lessThanOrEqualTo(1), reason: "$name: the wall's base");
       final band = atField(bytes, width, const Offset(0.56, 0.132));
-      expect(colourGap(band, argb(look.colors.wall)), greaterThan(10), reason: "$name: the top band is lighter");
+      expect(colourGap(band, argb(look.colors.wall)), greaterThan(10), reason: '$name: the top band is lighter');
       expect(lighter(band, base), isTrue, reason: '$name: lighter, not darker');
       // The ink edge, on the wall's top side.
       final top = (wallRect.top * screen.height).round();

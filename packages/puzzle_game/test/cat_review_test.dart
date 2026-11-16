@@ -107,7 +107,7 @@ void main() {
     expect(w.batsOne(), isTrue);
     expect(w.bats.single.knocked, isTrue, reason: 'Party knocks the side ahead');
 
-    m.settings = const PuzzleSettings(chaos: Chaos.little, timeLimitS: 120);
+    m.settings = const PuzzleSettings(chaos: Chaos.little);
     put(m, left, 'p1', 1);
     expect(left.placed, 2, reason: 'the left is ahead again, and allowed to be knocked');
     w.toTheEnd();

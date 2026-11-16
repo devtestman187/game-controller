@@ -8,11 +8,11 @@ import 'host_card_focus.dart';
 /// The keys that press a focused card: Enter, Space, the TV remote's centre
 /// and the gamepad's A, as a [ToyButton] takes them.
 final _activateShortcuts = <ShortcutActivator, Intent>{
-  const SingleActivator(LogicalKeyboardKey.enter): ActivateIntent(),
-  const SingleActivator(LogicalKeyboardKey.numpadEnter): ActivateIntent(),
-  const SingleActivator(LogicalKeyboardKey.space): ActivateIntent(),
-  const SingleActivator(LogicalKeyboardKey.select): ActivateIntent(),
-  const SingleActivator(LogicalKeyboardKey.gameButtonA): ActivateIntent(),
+  const SingleActivator(LogicalKeyboardKey.enter): const ActivateIntent(),
+  const SingleActivator(LogicalKeyboardKey.numpadEnter): const ActivateIntent(),
+  const SingleActivator(LogicalKeyboardKey.space): const ActivateIntent(),
+  const SingleActivator(LogicalKeyboardKey.select): const ActivateIntent(),
+  const SingleActivator(LogicalKeyboardKey.gameButtonA): const ActivateIntent(),
 };
 
 /// A paper card a player picks (M13 3b): [child] is the card, a finger taps it

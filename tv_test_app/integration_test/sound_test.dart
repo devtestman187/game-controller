@@ -8,8 +8,8 @@
 // It plays each sound briefly, so the TV or laptop makes
 // some noise.
 import 'package:flutter_test/flutter_test.dart';
-import 'package:integration_test/integration_test.dart';
 import 'package:game_assets/asset_manifest.dart';
+import 'package:integration_test/integration_test.dart';
 import 'package:party_host/party_host.dart';
 
 void main() {

@@ -1,5 +1,4 @@
 import 'dart:typed_data';
-import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -35,7 +34,7 @@ final snapshot = ArenaSnapshot(
   roundTimeS: 0,
   phase: ArenaPhase.playing,
   walls: [],
-  goal: Rect.fromLTWH(0.86, 0.38, 0.11, 0.24),
+  goal: const Rect.fromLTWH(0.86, 0.38, 0.11, 0.24),
   hazards: [],
   players: [
     ArenaPlayerView(id: 'a', x: leftAt.dx, y: leftAt.dy),
@@ -102,7 +101,7 @@ Future<Uint8List> referenceBytes(WidgetTester tester, ToyLook look, int number) 
   );
   final boundary = key.currentContext!.findRenderObject()! as RenderRepaintBoundary;
   final image = (await tester.runAsync(() => boundary.toImage()))!;
-  final data = (await tester.runAsync(() => image.toByteData(format: ui.ImageByteFormat.rawRgba)))!;
+  final data = (await tester.runAsync(() => image.toByteData()))!;
   return data.buffer.asUint8List();
 }
 
@@ -157,7 +156,7 @@ Future<Uint8List> fieldBytes(WidgetTester tester, ToyLook look) async {
   );
   final boundary = key.currentContext!.findRenderObject()! as RenderRepaintBoundary;
   final image = (await tester.runAsync(() => boundary.toImage()))!;
-  final data = (await tester.runAsync(() => image.toByteData(format: ui.ImageByteFormat.rawRgba)))!;
+  final data = (await tester.runAsync(() => image.toByteData()))!;
   return data.buffer.asUint8List();
 }
 

@@ -108,11 +108,11 @@ class _ToyButtonState extends State<ToyButton> with SingleTickerProviderStateMix
   };
 
   static final _activateShortcuts = <ShortcutActivator, Intent>{
-    SingleActivator(LogicalKeyboardKey.enter): ActivateIntent(),
-    SingleActivator(LogicalKeyboardKey.numpadEnter): ActivateIntent(),
-    SingleActivator(LogicalKeyboardKey.space): ActivateIntent(),
-    SingleActivator(LogicalKeyboardKey.select): ActivateIntent(),
-    SingleActivator(LogicalKeyboardKey.gameButtonA): ActivateIntent(),
+    const SingleActivator(LogicalKeyboardKey.enter): const ActivateIntent(),
+    const SingleActivator(LogicalKeyboardKey.numpadEnter): const ActivateIntent(),
+    const SingleActivator(LogicalKeyboardKey.space): const ActivateIntent(),
+    const SingleActivator(LogicalKeyboardKey.select): const ActivateIntent(),
+    const SingleActivator(LogicalKeyboardKey.gameButtonA): const ActivateIntent(),
   };
 
   late final Action<Intent> _activateAction = CallbackAction<ActivateIntent>(

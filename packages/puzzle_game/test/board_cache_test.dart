@@ -51,7 +51,7 @@ Future<(int, int, Uint8List)> pixels(WidgetTester tester, GlobalKey key) async {
   await tester.pump();
   final boundary = key.currentContext!.findRenderObject()! as RenderRepaintBoundary;
   final image = (await tester.runAsync(() => boundary.toImage()))!;
-  final bytes = (await tester.runAsync(() => image.toByteData(format: ui.ImageByteFormat.rawRgba)))!;
+  final bytes = (await tester.runAsync(() => image.toByteData()))!;
   return (image.width, image.height, bytes.buffer.asUint8List());
 }
 

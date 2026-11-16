@@ -6,7 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 double length(Stick s) => sqrt(s.x * s.x + s.y * s.y);
 
 void main() {
-  const plain = StickSettings(deadZone: 0, sensitivity: 1);
+  const plain = StickSettings(deadZone: 0);
 
   group('stick values', () {
     test('half the travel is half deflection; up is negative y', () {
@@ -23,7 +23,7 @@ void main() {
     });
 
     test('the dead zone removes small jitter and rescales the rest', () {
-      const s = StickSettings(deadZone: 0.1, sensitivity: 1);
+      const s = StickSettings();
       for (final jitter in [const Offset(2, -1), const Offset(-3, 3), const Offset(0, 4.9)]) {
         expect(stickValue(jitter, 50, s), (x: 0.0, y: 0.0));
       }

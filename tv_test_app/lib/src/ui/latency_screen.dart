@@ -141,7 +141,7 @@ class _Header extends StatelessWidget {
       children: [
         Row(
           children: [
-            ToyBadge(number: player.number, diameter: _badgeDiameter),
+            ToyBadge(number: player.number),
             const SizedBox(width: ToySizes.space12),
             Expanded(
               child: Text(

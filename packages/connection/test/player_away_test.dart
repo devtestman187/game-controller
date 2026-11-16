@@ -11,7 +11,7 @@ import 'wire_phone.dart';
 /// runs it out in the middle of one (m12 bug 1107d).
 const _grace = Duration(seconds: 5);
 
-final _start = ViewStartMessage(game: 'shape_race', snapshotVersion: 1, setup: const {}, hz: 60);
+final _start = const ViewStartMessage(game: 'shape_race', snapshotVersion: 1, setup: {}, hz: 60);
 
 const _end = ViewEndMessage(reason: ViewEndReason.finished);
 

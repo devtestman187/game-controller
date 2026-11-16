@@ -64,7 +64,7 @@ void main() {
     expect(g.player('p1')!.pos, g.pieces[i].pos, reason: '$why: the dot went with the piece');
   }
 
-  test("an ordinary piece carried hard left, right, up and down stays inside the field, at 0°, 45° and 90°", () {
+  test('an ordinary piece carried hard left, right, up and down stays inside the field, at 0°, 45° and 90°', () {
     for (final angle in [0.0, 45.0, 90.0]) {
       for (final (name, push) in [('left', pushLeft), ('right', pushRight), ('up', pushUp), ('down', pushDown)]) {
         final g = start(crateAndDoor());

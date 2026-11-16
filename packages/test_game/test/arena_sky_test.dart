@@ -1,5 +1,4 @@
 import 'dart:typed_data';
-import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -31,7 +30,7 @@ ArenaSnapshot arena() => ArenaSnapshot(
   walls: const [Rect.fromLTWH(0.5, 0.1, 0.12, 0.35)],
   goal: const Rect.fromLTWH(0.86, 0.38, 0.11, 0.24),
   hazards: const [Offset(0.2, 0.3)],
-  players: [ArenaPlayerView(id: 'a', x: marbleAt.dx, y: marbleAt.dy, recovering: false)],
+  players: [ArenaPlayerView(id: 'a', x: marbleAt.dx, y: marbleAt.dy)],
   playerRadius: 0.05,
 );
 
@@ -56,7 +55,7 @@ Future<Uint8List> frame(WidgetTester tester, Widget view, ToyLook look) async {
   );
   final boundary = key.currentContext!.findRenderObject()! as RenderRepaintBoundary;
   final image = (await tester.runAsync(() => boundary.toImage()))!;
-  final data = (await tester.runAsync(() => image.toByteData(format: ui.ImageByteFormat.rawRgba)))!;
+  final data = (await tester.runAsync(() => image.toByteData()))!;
   return data.buffer.asUint8List();
 }
 

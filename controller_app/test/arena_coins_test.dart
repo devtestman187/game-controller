@@ -8,14 +8,14 @@ import 'support/pump_app.dart';
 
 /// The Bumper Round the host sends this phone: its own player holds 4 coins,
 /// the other player 2, with 42 s left.
-final bumper = ArenaSnapshot(
+final bumper = const ArenaSnapshot(
   round: 1,
   roundTimeS: 18,
   phase: ArenaPhase.playing,
-  walls: const [],
+  walls: [],
   goal: Rect.zero,
-  hazards: const [],
-  players: const [
+  hazards: [],
+  players: [
     ArenaPlayerView(id: 'test', x: 0.4, y: 0.5, coins: 4),
     ArenaPlayerView(id: 'other', x: 0.6, y: 0.5, coins: 2),
   ],

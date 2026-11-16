@@ -99,8 +99,8 @@ class _ButtonRow extends StatelessWidget {
       spacing: ToySizes.space16,
       runSpacing: ToySizes.space16,
       children: [
-        ToyButton(label: 'Play', icon: Icons.play_arrow, onPressed: _nothing),
-        ToyButton(label: 'Focused', autofocus: true, onPressed: _nothing),
+        const ToyButton(label: 'Play', icon: Icons.play_arrow, onPressed: _nothing),
+        const ToyButton(label: 'Focused', autofocus: true, onPressed: _nothing),
         const ToyButton(label: 'Disabled', icon: Icons.lock_outline, onPressed: null),
         ToyButton(label: 'Second colour', color: look.colors.caution, onPressed: _nothing),
       ],
@@ -114,17 +114,13 @@ class _PlayerCard extends StatelessWidget {
   const _PlayerCard();
 
   @override
-  Widget build(BuildContext context) => ToyCard(
+  Widget build(BuildContext context) => const ToyCard(
     header: 'Player 2',
     child: Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const Text('They can join again from the main menu.'),
-        ListTile(
-          leading: const Icon(Icons.cloud_off),
-          title: const Text('Away'),
-          subtitle: const Text('Since a minute ago'),
-        ),
+        Text('They can join again from the main menu.'),
+        ListTile(leading: Icon(Icons.cloud_off), title: Text('Away'), subtitle: Text('Since a minute ago')),
       ],
     ),
   );

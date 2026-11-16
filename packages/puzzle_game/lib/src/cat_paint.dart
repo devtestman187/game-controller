@@ -76,14 +76,14 @@ void _catShadow(Canvas canvas, Offset at, Color ink) {
     ..drawPath(
       Path()
         ..addPolygon([
-          at + Offset(-w * _catEarShare, -h * 0.3),
-          at + Offset(-w * _catEarShare * 0.4, -h * 0.9),
-          at + Offset(w * 0.05, -h * 0.3),
+          at + const Offset(-w * _catEarShare, -h * 0.3),
+          at + const Offset(-w * _catEarShare * 0.4, -h * 0.9),
+          at + const Offset(w * 0.05, -h * 0.3),
         ], true)
         ..addPolygon([
-          at + Offset(w * _catEarShare * 0.4, -h * 0.3),
-          at + Offset(w * _catEarShare, -h * 0.8),
-          at + Offset(w * 0.1, -h * 0.3),
+          at + const Offset(w * _catEarShare * 0.4, -h * 0.3),
+          at + const Offset(w * _catEarShare, -h * 0.8),
+          at + const Offset(w * 0.1, -h * 0.3),
         ], true),
       paint,
     )

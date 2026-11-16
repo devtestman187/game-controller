@@ -114,7 +114,7 @@ final class WorkerMoments {
   WorkerPose poseOf(int board, int number, int nowMs, {bool effects = true, WorkerFit? fit}) {
     final seen = board < _boards.length ? _boards[board] : null;
     final player = seen?.playerOf(number);
-    if (seen == null || player == null) return WorkerPose.on(Offset.zero);
+    if (seen == null || player == null) return const WorkerPose.on(Offset.zero);
     final frame = _Frame(puzzle, seen.board, player, seen.seenOf(number), nowMs);
     final pose = frame.pose(effects: effects, fit: fit);
     return effects ? pose : pose.still();
