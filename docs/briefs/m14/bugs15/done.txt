@@ -3,3 +3,4 @@ cov-1-tools 9a9a092c5388c1113e290e1cf75dade0a028a3d6 proof
 cov-2-ci-docs c968b5526a59ee222593d235358c23b290aecf96 proof
 lint-2-core 0c1e1eedf91fe671da1c07a4ee024db94c5ff436 proof
 lint-3-apps 9a1770bdac83bc13b850dd01795a712d352c1db9 proof
+lint-4-host 520fdd9148d43cb931a1d730e214e936dea9d2c1 proof
