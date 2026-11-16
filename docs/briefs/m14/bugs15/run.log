@@ -63,3 +63,6 @@
 2026-11-16 13:08:11 lint-3-apps finished: result 5 (119 turns, 11 min)
 2026-11-16 13:13:09 lint-4-host finished: result 5 (84 turns, 14 min)
 2026-11-16 13:13:09 STOPPED: jobs that failed or need applying by hand: lint-2-core:5 lint-3-apps:5 lint-4-host:5 (their logs: docs/briefs/m14/bugs15/flash-<job>.log)
+2026-11-16 13:21:18 HAND-FIX lint-2-core: wave tree applied by hand (analyze failed in the workers only for the other jobs' packages); full tools/check.sh: only phone failed, FakeHaptics/FakeStats throw wrapper fixed (message kept), format analyze host phone pass
+2026-11-16 13:21:18 HAND-FIX lint-3-apps: wave tree applied by hand (analyze failed in the workers only for the other jobs' packages); full tools/check.sh: only phone failed, FakeHaptics/FakeStats throw wrapper fixed (message kept), format analyze host phone pass
+2026-11-16 13:21:18 HAND-FIX lint-4-host: wave tree applied by hand (analyze failed in the workers only for the other jobs' packages); full tools/check.sh: only phone failed, FakeHaptics/FakeStats throw wrapper fixed (message kept), format analyze host phone pass
