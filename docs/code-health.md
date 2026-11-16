@@ -164,6 +164,16 @@ The "could" findings of [bugs1's review](briefs/m14/bugs1/REVIEW.md) that the fi
 - tools: `coverage_imports.dart` and `coverage_summary.dart` each hold the generated-suffix list (keep one); the generated `coverage_all_test.dart` has an empty body, so a lib file added without rerunning the generator stays uncounted until `tools/coverage.sh` runs (it regenerates); `assets` has one lib file and no test setup, so it is not counted (419 of 420 files). *leave*
 - The generated coverage tests are excluded from the analyzer in each `analysis_options.yaml` because their imports are unused on purpose (`review.sh` forbids ignore comments). A broken import still fails the test run.
 
+### Fire-and-forget futures the strict lints surfaced (bugs15, Nov 16)
+
+Each is now `unawaited(...)` with no behaviour change; the failure would be lost silently. *when touched*
+
+- party_host `host_service.dart:125`: the first run's host id write (`prefs.setString`); if it fails the next launch mints a new id and phones' saved pairings stop matching. Make host creation async or log the failure.
+- party_host `stats_screen.dart:39` (`unawaited(_load())`): if `sessions()` throws the screen stays on its loading state; `night_scoreboard_screen.dart:83` and `pause_menu.dart:342` discard dialog futures (no ordering risk).
+- controller_app: the four `SharedPreferences` writers (storage, profile), `discovery.restart` (no internal catch), `host.disposed.then` without `onError`, and the two shader/consent loads; see lint-3-apps-report.md.
+- connection: the swallowed close errors at `host_connection.dart:120` and `client_connection.dart:139`, `host_server` close, `frame_view` cancels (lint-2-core-report.md); `in_process_link.dart` now closes `toHost` before `toController` whichever end closes (not observable today).
+- `FakeHaptics`/`FakeStats` `failWith` wrap a non-Error, non-Exception value in `Exception`: no test sets one. `pause_menu.dart` is exactly 400 lines: split it at the next edit.
+
 ## Before a milestone
 
 | Before | What | Risk | Benefit of doing it first | Rec. |

@@ -4,6 +4,7 @@ Branch `m14`, worktree `E:\AI\game-controller-m14`, cut from `m13` at 77ccf09 on
 
 ## Resume here (Nov 14, 2026: the m14.3 device-test bug batch, bugs3, is committed, unpushed)
 
+- **bugs15 (Nov 16, 2026, unpushed, nothing built):** B-029 (no Arena music after Play again) and B-030 (no music on the Arena card) fixed (c1fb89e2), need a device check. Coverage tooling: `bash tools/coverage.sh` (every lib file counted; total 19,778/21,295 lines = 92.9%, assets uncounted), CI Format and Coverage steps added. Strict lints (3 strict analyzer modes + 16 rules) on in every package; `flutter analyze --fatal-infos` is clean and in CI. Full check.sh passed. Leftovers: docs/code-health.md (fire-and-forget futures). Open: .github is not writable by workers.
 - **bugs14 (Nov 15, 2026, unpushed, nothing built):** B-027 (sound-engine watchdog, f1352bf, 657d962) and B-028 (taken-colours band, 8fb95c2, f4020ea) are fixed; both need device checks (iPad audio after minutes; colour change in Settings mid-game). Full check.sh passed (host 509, phone 504). Leftovers in docs/code-health.md. Tracker rows updated.
 - **Runner fixes (Nov 15, 2026, adddc9d):** STOP file (`touch <briefs-dir>/STOP`, never kill), `--drop <job>` (never revert a job without dropping it), done.txt for the skip, puzzle PNGs only with UPDATE_GOLDENS, pre-split at about 120 turns; see docs/flash-framework.md "Stopping, dropping, done.txt".
 

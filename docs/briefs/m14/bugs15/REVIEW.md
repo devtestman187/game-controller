@@ -113,3 +113,9 @@ M14 bugs15 run review: 3 jobs read as one change (Arena music, coverage tools, C
 - should cov-2 report "not applied": stale, ci.yml was applied by hand (c968b552).
 - could waiting flag and class doc: fixed by hand. assets exclusion line: removed. Others (summary text, named constant, duplicate suffix list, empty-body test): code-health.
 - Open questions: workers may run dart run and tools/coverage.sh (yes); .github edits stay with the driver; assets flutter_test: code-health (leave).
+
+## Claude's verdicts (lint jobs)
+
+- lint-2-core/3-apps/4-host: 0 must. Stale report lines (open analyze counts, Decision 4's throw expression, line numbers off by one, 8 vs 9 literals): the reports are the workers' record of the pre-fix tree; the run.log HAND-FIX lines and this section give the final state (analyze clean, phone fix to the throw helper).
+- should Decision 4 / open list: stale as above, not fixed. could host_service.dart comment: done by hand. Fire-and-forget futures, fake throw wrapper untested, pause_menu at 400 lines, closePipes order, Map<Object?,Object?> API widening in metrics: docs/code-health.md.
+- Fast-forward check: the whole workspace passes `dart analyze --fatal-infos` and tools/check.sh (all 12 checks).

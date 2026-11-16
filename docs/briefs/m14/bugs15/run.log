@@ -84,3 +84,4 @@
 2026-11-16 13:27:24 reviewed lint-3-apps: 6 finding(s)
 2026-11-16 13:27:24 reviewed lint-4-host: 5 finding(s)
 2026-11-16 13:27:24 DONE: every job is committed. Claude reads the Summary of docs/briefs/m14/bugs15/REVIEW.md, verifies its findings and writes one fix brief
+2026-11-16 13:38:36 wave 2 wrap: verdicts, host_service comment, code-health, ci analyze --fatal-infos, STATUS; full check.sh passed (12 checks); coverage 19778/21295 = 92.9%

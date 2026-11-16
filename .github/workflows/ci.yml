@@ -49,7 +49,7 @@ jobs:
       - name: Format
         run: dart format --output=none --set-exit-if-changed controller_app tv_test_app packages assets
       - name: Analyze
-        run: flutter analyze controller_app tv_test_app packages assets
+        run: flutter analyze --fatal-infos controller_app tv_test_app packages assets
       - name: Test protocol
         working-directory: packages/protocol
         run: dart test

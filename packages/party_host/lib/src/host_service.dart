@@ -122,6 +122,7 @@ class LiveHostService implements HostService {
     var id = prefs.getString(_hostIdKey);
     if (id == null) {
       id = _randomHex(16);
+      // The constructor can't await, so the write is best-effort (code-health: host id write).
       unawaited(prefs.setString(_hostIdKey, id));
     }
     _hostId = id;
