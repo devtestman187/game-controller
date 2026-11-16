@@ -1,11 +1,13 @@
 import 'dart:async';
 
 import 'package:connection/connection.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_soloud/flutter_soloud.dart';
 import 'package:game_assets/asset_manifest.dart';
 
 import 'host_start_log.dart';
 import 'sound_loop.dart';
+import 'sound_watchdog.dart';
 import 'sound_wish.dart';
 
 /// What the sound player has loaded, for the screen and the log.
@@ -131,6 +133,23 @@ class SoLoudSoundPlayer implements SoundPlayer {
   /// The loop sounding now, if one is (the host's music, M13 section 8).
   late final SoundLoop _loop = SoundLoop(sources: _sources, volume: () => _wish.musicVolume, log: _log);
 
+  /// Starts the engine again when it dies without saying so (M14 B-027: after
+  /// minutes on an iPad the music and the sounds stopped, and only hiding and
+  /// showing the app brought them back). It watches the music loop, because
+  /// that is the one voice a round keeps sounding, and starts once the sounds
+  /// are in: there is nothing to watch before that.
+  late final SoundWatchdog _watchdog = SoundWatchdog(
+    active: _isActive,
+    wanted: _isLoopWanted,
+    paused: () => _loop.paused,
+    busy: () => _restarting != null,
+    pulse: () => _loop.pulse,
+    restart: () {
+      _log('The sound engine stopped on its own, starting it again');
+      unawaited(restart());
+    },
+  );
+
   @override
   SoundStatus get status => _status;
 
@@ -178,6 +197,21 @@ class SoLoudSoundPlayer implements SoundPlayer {
     // place across a hidden app).
     _applyLoop(at: _restartAt);
     _restartAt = 0;
+    _watchdog.start();
+  }
+
+  /// Whether the app is on screen, or has not said: a hidden app's engine is
+  /// the lifecycle's to restart on show, so the watchdog leaves it alone.
+  static bool _isActive() {
+    final state = WidgetsBinding.instance.lifecycleState;
+    return state == null || state == AppLifecycleState.resumed;
+  }
+
+  /// Whether the music should be sounding now: the sounds are in, a loop is
+  /// wanted and its file is loaded.
+  bool _isLoopWanted() {
+    final name = _wish.loop;
+    return _status.ready && name != null && _loop.hasSource(name);
   }
 
   /// The loop's share when a restart began, for the new engine to start at.
@@ -218,6 +252,9 @@ class SoLoudSoundPlayer implements SoundPlayer {
       _playing[key] = soloud.play(source, volume: _wish.volume);
     } catch (e) {
       _log('Could not play the $name sound: $e');
+      // A play() that throws is the engine showing it is gone: the watchdog
+      // starts it again, at most once per its cooldown (M14 B-027).
+      _watchdog.failed();
     }
   }
 
@@ -292,6 +329,7 @@ class SoLoudSoundPlayer implements SoundPlayer {
 
   @override
   Future<void> dispose() async {
+    _watchdog.dispose();
     await _changes.close();
     _loop.dispose();
     try {

@@ -5,6 +5,7 @@ import 'package:flutter_soloud/flutter_soloud.dart';
 import 'package:game_assets/asset_manifest.dart';
 
 import 'loop_audio_engine.dart';
+import 'sound_watchdog.dart';
 
 /// The one loop the sound engine keeps sounding (M13 design section 8): the
 /// host's music, started at a share of itself, paused where it is, and
@@ -51,6 +52,32 @@ class SoundLoop {
 
   /// The name of the loop sounding now, or null.
   String? get name => _name;
+
+  /// Whether the loop is paused where it is (M13 section 8).
+  bool get paused => _paused;
+
+  /// Whether [name] is loaded, so the loop can play it at all: a player that
+  /// wants a loop its file is missing from is right to stay silent (M14
+  /// B-027).
+  bool hasSource(String name) => _source(name) != null;
+
+  /// Whether the engine still knows the loop's voice and how far it has
+  /// played, or null when no loop sounds: what the watchdog looks at to see
+  /// whether the engine died without saying so (M14 B-027). [SoundPulse.valid]
+  /// is false when the engine lost the voice or threw, so a dead engine is
+  /// told apart from a loop that isn't wanted.
+  SoundPulse? get pulse {
+    final handle = _handle;
+    if (handle == null) return null;
+    final soloud = _engine;
+    try {
+      if (!soloud.getIsValidVoiceHandle(handle)) return (valid: false, position: Duration.zero);
+      return (valid: true, position: soloud.getPosition(handle));
+    } catch (e) {
+      log('Could not read the ${_name ?? 'music'} loop\'s place: $e');
+      return (valid: false, position: Duration.zero);
+    }
+  }
 
   /// Starts [name] from [at], the share of the loop (0 to 1) to begin at: a
   /// tempo change starts the new loop at the place the old one had reached
