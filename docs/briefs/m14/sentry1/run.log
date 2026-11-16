@@ -26,3 +26,19 @@
 2026-11-16 14:22:47 tests-first ok: packages/party_host/test/host_id_test.dart fails on the old code
 2026-11-16 14:27:22 committed consent-model: 14dc30b5 sentry1: per-instance consent state and prompts in party_host
 2026-11-16 14:27:24 committed host-id: b4052425 Report a failed first-run host id write instead of losing pairings
+2026-11-16 14:27:25 reviewed sentry-core: 7 finding(s)
+2026-11-16 14:27:26 reviewed stats-optb: 14 finding(s)
+2026-11-16 14:27:26 reviewed ci-wiring: 6 finding(s)
+2026-11-16 14:27:27 start stats-bug
+2026-11-16 14:27:52 start phone-consent
+2026-11-16 14:41:22 start tv-consent
+2026-11-16 14:41:22 stats-bug finished: result 4 (79 turns, 9 min)
+2026-11-16 14:41:23 stats-bug: dropped generated churn outside its list: site/shots/dpad.png site/shots/menus.png site/shots/results.png site/shots/sticks.png site/shots/tilt.png 
+2026-11-16 14:51:18 phone-consent finished: result 4 (193 turns, 21 min)
+2026-11-16 14:52:04 tv-consent finished: result 0 (97 turns, 9 min)
+2026-11-16 14:53:10 tests-first ok: packages/party_host/test/stats_crash_button_test.dart fails on the old code
+2026-11-16 14:53:26 tests-first ok: packages/party_host/test/stats_screen_failure_test.dart fails on the old code
+2026-11-16 14:53:40 tests-first ok: tv_test_app/test/crash_setup_test.dart fails on the old code
+2026-11-16 14:53:54 tests-first ok: tv_test_app/test/first_launch_consent_test.dart fails on the old code
+2026-11-16 14:58:38 committed stats-bug: 2e8c28c0 Show the Stats error with Retry, and add the crash reports button
+2026-11-16 14:58:39 committed tv-consent: 6b797b0b TV asks its two consent questions and starts Sentry
