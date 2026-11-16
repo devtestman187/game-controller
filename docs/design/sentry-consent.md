@@ -4,7 +4,7 @@ Owner decisions (Nov 16, 2026), quoted:
 - "Let's go with sentry." Package `sentry_flutter` 10.4.0 (already in `packages/party_host/pubspec.yaml`). Two Sentry projects, `thumbparty-phone` and `thumbparty-tv` (US). The DSN comes only from `--dart-define=SENTRY_DSN=...`; an empty DSN means Sentry is off (dev, tests, local builds). Never put a DSN value in the repo.
 - "Go with your recommendation for the separate questions": EVERY app instance (phone host, controller-only phone, TV/Windows app) asks its own two questions, crash reports yes/no and usage stats yes/no, both changeable in settings. The existing stats answer carries over on the instance that gave it.
 - Sentry initialises ONLY after crash consent = yes and can be turned off live. `sendDefaultPii` false, no user id/name/email, no IP; player names stripped from breadcrumbs and messages. Release/app version and environment included.
-- Stats option B: a controller player who said no to stats is left out of the UPLOADED session stats, except anonymous round totals (a round happened, how many players). Aggregates only, no names or device IDs.
+- Stats option B: a controller player who said no to stats is left out of the UPLOADED session stats, except anonymous round totals (a round happened, how many players). Aggregates only: no names. (What does go up for each sharing player: the random per-install ID, device kind and model, see docs/protocol.md section 8c and the privacy page.)
 - The in-app wording must match `site/privacy.html` (crash reports section, "Who is asked", stats section). Do not edit that page.
 
 ## Design

@@ -11,7 +11,7 @@ Findings 12, 13, 14 and the `fake_crash.dart:52` could, fixed, each pinned by ne
   two lib files named it, so no test needed fixing (the brief expected one).
 - `fake_crash.dart`: `capture` drops a report while `enabled` is false, like the real reporter.
 - New: `stats_retry_once_test.dart` (2 tests), `fake_crash_off_test.dart` (3),
-  `crash_dialog_no_test.dart` (3: the no saves false and disables once; Esc and back answer nothing).
+  `crash_dialog_no_test.dart` was written, then moved by hand into `consent_prompts_test.dart` (3 tests: the no saves false and disables once; Esc and back answer nothing).
 - Red first, on the old code: the Retry test read 3 times (`Expected: <2> Actual: <3>`) and 2 of
   the 3 fake tests kept a report while off. The dialog-no file passed on the old code: the behaviour
   it pins was already right and the finding was that no test pinned it.

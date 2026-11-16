@@ -77,7 +77,7 @@ Every host keeps its sessions' stats on the device either way: the TV app, and a
 7. The store forms change with M9: see "M9: stats" in [store-listing.md](store-listing.md) and the check in [families-check.md](families-check.md). Update them before the M9 builds go to testers.
 
 ### 8. Sentry crash reports (you, sentry1, optional)
-Crash reports go to Sentry only after the adult on that device says yes, and the switch in Settings turns them off again. The app sends no user id, name, email, IP address, screenshot or view hierarchy, and removes player names from what it reports. **An empty or missing DSN turns crash reporting off in that build**, which is what dev builds, local builds and tests get.
+Crash reports go to Sentry only after the adult on that device says yes, and the answer can be changed later: in Settings on the phone, on the Stats screen on the TV. The app sends no user id, name, email, IP address, screenshot or view hierarchy, and removes player names from what it reports. **An empty or missing DSN turns crash reporting off in that build**, which is what dev builds, local builds and tests get.
 
 Two Sentry projects, one per app: `thumbparty-phone` (the phone and tablet app) and `thumbparty-tv` (the TV app, Android TV and Windows). Both in the US region, as in [sentry-consent.md](design/sentry-consent.md).
 1. Create both projects at https://sentry.io.
@@ -87,7 +87,7 @@ Two Sentry projects, one per app: `thumbparty-phone` (the phone and tablet app) 
    gh variable set SENTRY_DSN_PHONE --body "<the thumbparty-phone DSN>"
    gh variable set SENTRY_DSN_TV --body "<the thumbparty-tv DSN>"
    ```
-   For the iOS build, set the same `SENTRY_DSN_PHONE` value as an **environment variable** of the app in Codemagic (**App settings → Environment variables**, group `firestore`, next to the two Firestore ones from step 7). `release.yml` passes the two GitHub variables, and `ios-testflight` passes the Codemagic one, to the builds as `--dart-define=SENTRY_DSN`; only the name is logged, never the value.
+   For the iOS build, set the same `SENTRY_DSN_PHONE` value as an **environment variable** of the app in Codemagic (**App settings → Environment variables**, group `firestore`, next to the two Firestore ones from step 7). `release.yml` passes the two GitHub variables, and `ios-testflight` passes the Codemagic one, to the builds as `--dart-define=SENTRY_DSN`; the Codemagic log prints only "Sentry: set" or "Sentry: not set", never the value.
    A DSN can't be used to read a project, but it stays out of the repository all the same: it lives only in the GitHub variables and the Codemagic group.
 
 ## Each release

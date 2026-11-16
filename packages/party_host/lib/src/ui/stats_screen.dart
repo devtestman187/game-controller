@@ -37,7 +37,7 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
   bool _failed = false;
 
   /// Whether a read of the saved sessions is still going. A Retry pressed
-  /// while one is reads nothing, so two quick presses cannot race and a slow
+  /// while one is going reads nothing, so two quick presses cannot race and a slow
   /// failure cannot cover a newer table; it clears when the read ends,
   /// whether it worked or failed (M14 sentry1).
   bool _reading = false;

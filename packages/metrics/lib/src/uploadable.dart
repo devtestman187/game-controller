@@ -40,8 +40,9 @@ Map<String, Object?> uploadableSummary(Map<String, Object?> summary) {
   };
 }
 
-/// One round without its non-sharing players: a winner or a team is left out
-/// unless every listed player shares, while the round's totals stay.
+/// One round without its non-sharing players: a winner who does not share is
+/// left out, and a team keeps its sharing members only while two or more of
+/// them share; the round's totals stay.
 Map<String, Object?> _roundTotals(Map<String, Object?> round, Set<int> sharing) {
   final out = Map<String, Object?>.of(round);
   if (out['winner'] case final int number when !sharing.contains(number)) out.remove('winner');
