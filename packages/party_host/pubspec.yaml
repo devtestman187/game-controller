@@ -33,6 +33,7 @@ dependencies:
     path: ../protocol
   puzzle_game:
     path: ../puzzle_game
+  sentry_flutter: 10.4.0
   shared_preferences: ^2.5.6
   test_game:
     path: ../test_game

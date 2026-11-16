@@ -1,0 +1,28 @@
+# Sentry crash reports and per-instance consent (sentry1 batch)
+
+Owner decisions (Nov 16, 2026), quoted:
+- "Let's go with sentry." Package `sentry_flutter` 10.4.0 (already in `packages/party_host/pubspec.yaml`). Two Sentry projects, `thumbparty-phone` and `thumbparty-tv` (US). The DSN comes only from `--dart-define=SENTRY_DSN=...`; an empty DSN means Sentry is off (dev, tests, local builds). Never put a DSN value in the repo.
+- "Go with your recommendation for the separate questions": EVERY app instance (phone host, controller-only phone, TV/Windows app) asks its own two questions, crash reports yes/no and usage stats yes/no, both changeable in settings. The existing stats answer carries over on the instance that gave it.
+- Sentry initialises ONLY after crash consent = yes and can be turned off live. `sendDefaultPii` false, no user id/name/email, no IP; player names stripped from breadcrumbs and messages. Release/app version and environment included.
+- Stats option B: a controller player who said no to stats is left out of the UPLOADED session stats, except anonymous round totals (a round happened, how many players). Aggregates only, no names or device IDs.
+- The in-app wording must match `site/privacy.html` (crash reports section, "Who is asked", stats section). Do not edit that page.
+
+## Design
+
+Shared code lives in `packages/party_host` (both apps use it).
+
+**Consent state (per instance).** `ConsentNotifier` (Riverpod `NotifierProvider`, `consentProvider`) holds `InstanceConsent { bool? crash, bool? stats }`, null = not asked. Prefs keys: `crashConsent` (new) and `statsConsent` (existing, the same key the host's LiveStats already uses, so old answers carry over). It is the only writer of both keys. `setStats(v)` also calls `statsServiceProvider.setConsent(v)` when `ref.exists(hostServiceProvider)` (a host service already running), so LiveStats' state follows. `setCrash(v)` calls the reporter live.
+
+**Crash reporter.** `CrashReporter` interface (`Future<void> enable()`, `Future<void> disable()`, `bool get enabled`, `void capture(Object error, StackTrace? stack, {String? where})`). `SentryCrashReporter` (real; options in the main apps' `crashSetup`): `Sentry.init` with the DSN, `release` = app version (name+build as the apps already format it), `environment` ('debug' under kDebugMode, else 'production'), `sendDefaultPii=false`, `attachScreenshot=false`, `attachViewHierarchy=false`, no user, no tracing, user-interaction breadcrumbs off, `beforeSend` and `beforeBreadcrumb` run the pure scrubber `scrubText`/`scrubEvent` (removes player names: "P1".."P8" labels are fine, anything from the players' names list is replaced with `[name]`; also drops any `user`, `ip_address`, server name). `disable()` calls `Sentry.close()`. `FakeCrashReporter` in `lib/src/testing/`. A static `CrashReports` (set once at startup, default a no-op reporter) is what non-widget code calls: `CrashReports.capture(e, s, where: 'x')`, plus `CrashReports.guard(Future f, {String where})` for fire-and-forget futures (catches the error, reports it when enabled, never rethrows).
+
+**Handlers.** `installCrashHandlers()` sets `FlutterError.onError` and `PlatformDispatcher.instance.onError` to report through `CrashReports` (only when enabled) and then call the previous handler / return false so the existing behaviour stays.
+
+**Prompts.** `askCrashConsent(context, ref, {touchOnly})` mirrors `askConsent` (stats): wording matches the privacy page (what a report includes, off until yes, Sentry, US, change later in settings). `askConsents(context, ref, {touchOnly})` asks each unanswered question in turn (crash first, then stats). Keys `crashConsentDialog`, `crashNo`, `crashYes`.
+
+**Stats option B.** `StatsShareMessage(share: bool)` (wire type `stats_share`), controller to host, sent after pairing and on every change (the client keeps the last value and resends after a reconnect). The host records it per player; the saved session file keeps everything, but the UPLOAD sends a copy where every player who did not say yes (or never sent the message, e.g. an older phone) is removed together with their per-player data; rounds keep only `game`, time, mode counts and the player COUNT. Local players of the host itself (TV keyboard player) follow the host's own answer (allowed: the host's yes is needed to upload at all). A phone's own answer is its stats consent.
+
+**Phone stats.** `shareStatsProvider` (controller_app) now reads `consentProvider.stats == true` (default off until asked). A one-time migration at startup copies an explicit legacy `shareStats` pref into `statsConsent` when `statsConsent` is absent.
+
+**Crash question only when it can matter.** `crashAvailableProvider` (Provider<bool>, default false) is overridden to true by an app's main when its build has a DSN. With it false (dev, tests, local builds) the crash question is never asked and no crash row or button is shown, so existing tests and flows are unchanged. The stats question is always asked.
+
+**Where each instance asks (first launch of the app, not first host).** Phone: on the first frame of the connect screen, `askConsents(context, ref)`. TV/Windows: `FirstLaunchConsent`. The existing first-host stats prompt on the phone's host route (B-023, touch only) stays as a fallback for an unanswered stats question. Settings: the phone's Settings has a "Crash reports" switch (only when crash is available) and the existing control-stats switch is the stats answer; the TV's Stats screen has "Crash reports: on/off" next to "Sharing". A switch shows on only for an answer of yes; turning it on or off records an answer.
