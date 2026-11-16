@@ -32,7 +32,14 @@ String watchedOf(PlayerRecord p) {
 }
 
 class PlayerRecord {
-  PlayerRecord({required this.number, required this.local, required this.platform, required this.app, this.device});
+  PlayerRecord({
+    required this.number,
+    required this.local,
+    required this.platform,
+    required this.app,
+    this.build = '',
+    this.device,
+  });
 
   int number;
   final bool local;
@@ -41,7 +48,11 @@ class PlayerRecord {
   /// (m12 §1): only the phone app's host mode has one.
   bool inProcess = false;
   final String platform;
+
+  /// The player's bare version, and the build number it carried (M14 stats):
+  /// empty for a version that carried none.
   String app;
+  String build;
   DeviceInfo? device;
   int connectedMs = 0;
   int? joinedAtMs;
@@ -84,6 +95,8 @@ Map<String, Object?> playerJson(String id, PlayerRecord p, int atMs) {
     if (p.local) 'local': true,
     'platform': p.platform,
     'app': p.app,
+    // The build number, when the version carried one (M14 stats).
+    if (p.build.isNotEmpty) 'build': p.build,
     'device': ?p.device?.toJson(),
     'connectedS': (connected / 1000).round(),
     'disconnects': p.joinedAtMs == null ? max(0, p.disconnects - 1) : p.disconnects,

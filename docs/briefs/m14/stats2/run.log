@@ -1,0 +1,44 @@
+2026-11-15 16:02:24 start at 8720fd9 on m14-stats2
+2026-11-15 16:02:24 run-base 8720fd949bf4bd70568b9be4aa1f54d902b780ef
+2026-11-15 16:02:25 fetching packages (new folder)
+2026-11-15 16:02:32 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-15 16:02:32 start c1-build-metrics
+2026-11-15 16:02:57 start c2-build-wiring
+2026-11-15 16:09:05 c1-build-metrics finished: result 0 (97 turns, 6 min)
+2026-11-15 16:12:42 c2-build-wiring finished: result 4 (47 turns, 7 min)
+2026-11-15 16:12:43 c2-build-wiring: dropped generated churn outside its list: site/shots/dpad.png site/shots/menus.png site/shots/results.png site/shots/sticks.png site/shots/tilt.png 
+2026-11-15 16:21:31 committed c1-build-metrics: 2c14961 stats: record the app build number in the session summary and CSVs
+2026-11-15 16:21:32 committed c2-build-wiring: cf0522e Send "version+build" as the stats app string
+2026-11-15 16:21:33 start c3-docs
+2026-11-15 16:22:59 c3-docs finished: result 0 (24 turns, 1 min)
+2026-11-15 16:27:37 committed c3-docs: 8d9a55b M14 stats2: CSV build columns, and what frames_drawn and fps mean
+2026-11-15 16:27:38 reviewed c1-build-metrics: 8 finding(s)
+2026-11-15 16:30:38 reviewed c2-build-wiring: 5 finding(s)
+2026-11-15 16:30:39 reviewed c3-docs: 2 finding(s)
+2026-11-15 16:30:39 start the run's review
+2026-11-15 16:34:24 DONE: every job is committed. Claude reads the Summary of docs/briefs/m14/stats2/REVIEW.md, verifies its findings and writes one fix brief
+2026-11-15 16:35:58 start at 79c3f73 on m14-stats2
+2026-11-15 16:36:03 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-15 16:36:04 skip c1-build-metrics (already done)
+2026-11-15 16:36:04 skip c2-build-wiring (already done)
+2026-11-15 16:36:04 skip c3-docs (already done)
+2026-11-15 16:36:05 start fix1-tests
+2026-11-15 16:36:30 start fix2-session
+2026-11-15 16:36:56 start fix3-apps
+2026-11-15 16:38:11 fix1-tests finished: result 0 (35 turns, 2 min)
+2026-11-15 16:39:32 fix2-session finished: result 0 (36 turns, 3 min)
+2026-11-15 16:45:15 fix3-apps finished: result 4 (48 turns, 5 min)
+2026-11-15 16:45:16 fix3-apps: dropped generated churn outside its list: site/shots/dpad.png site/shots/menus.png site/shots/results.png site/shots/sticks.png site/shots/tilt.png 
+2026-11-15 16:51:56 committed fix1-tests: 9135fb6 M14 stats2: two build tests that fail on the old code, two names
+2026-11-15 16:51:57 committed fix2-session: 1755692 fix(metrics): a reconnect drops its old build
+2026-11-15 16:51:59 committed fix3-apps: d27b9ed Cap both apps' build numbers at the stats' 9 digits
+2026-11-15 16:52:00 start fix4-docs
+2026-11-15 16:54:46 fix4-docs finished: result 0 (34 turns, 2 min)
+2026-11-15 16:59:43 committed fix4-docs: b55e3fe docs: close the stats2 review's docs findings (4, 6, 11-14)
+2026-11-15 16:59:44 reviewed fix1-tests: 2 finding(s)
+2026-11-15 16:59:44 reviewed fix2-session: 4 finding(s)
+2026-11-15 17:04:30 fix3-apps-review: dropped generated churn outside its list: site/shots/dpad.png site/shots/menus.png site/shots/results.png site/shots/sticks.png site/shots/tilt.png (report kept)
+2026-11-15 17:04:30 reviewed fix3-apps: 2 finding(s)
+2026-11-15 17:04:30 reviewed fix4-docs: 4 finding(s)
+2026-11-15 17:04:30 DONE: every job is committed. Claude reads the Summary of docs/briefs/m14/stats2/REVIEW.md, verifies its findings and writes one fix brief
+2026-11-15 17:07:25 CLOSED by hand (tests/docs only, check.sh format analyze metrics host PASS): fix1 review 2 could; fix2 could x3 and must 'guard tests pass on old code' (accepted: regression guards of the existing buildCell read guard, no lib change can fail them); fix3 must 'cap/hello tests pass on old code' (accepted: pins the existing bare-version hello and 9-digit cap, the failing-on-old tests are the loadIdentity build and ten-digit cases) + name; fix4 4 findings

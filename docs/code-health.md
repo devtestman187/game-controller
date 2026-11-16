@@ -125,8 +125,8 @@ The "could" findings of [bugs1's review](briefs/m14/bugs1/REVIEW.md) that the fi
 | What | Risk | Benefit | Rec. |
 | --- | --- | --- | --- |
 | `ModeRow._row` (`report.dart:217`) is 57 lines, against the guideline ~40, and each stats column added since lengthens it (a1 review, fix1). | Low: the row builder, covered by the report and CSV tests | A new report column does not grow one function | when touched: the next report column |
-| `session.dart` is 340 lines (aim 330 in the b5-1 brief, ~300 in the guidelines, 400 limit): the split left 324 and b5-2's round offset took it back over (run review). | Low: a pure move, covered by the metrics tests | Room for the next metrics addition | when touched: move the round-map block into `roundEnded`'s helper first, as the value object takes the collection with it |
-| `SessionCollector.roundEnded` (`session.dart:227`) takes 9 parameters (a2 added `robotWin`; the guidelines allow 5) and its body (`:238-278`) is 41 lines, against ~40. Rec.: a `RoundEnd` value object and the round-map block (`:246-263`) as a private helper (a2 and b5-2 reviews). | Low: the session's record, covered by the stats tests | A new round field does not touch the arguments of every call | when touched: the next round field, as one job before it |
+| `session.dart` was 340 lines when measured, 364 after stats2 (aim 330 in the b5-1 brief, ~300 in the guidelines, 400 limit): the split left 324 and b5-2's round offset took it back over (run review). | Low: a pure move, covered by the metrics tests | Room for the next metrics addition | when touched: move the round-map block into `roundEnded`'s helper first, as the value object takes the collection with it |
+| `SessionCollector.roundEnded` (`session.dart:244`) takes 9 parameters (a2 added `robotWin`; the guidelines allow 5) and its body (`:238-278`) is 41 lines, against ~40. Rec.: a `RoundEnd` value object and the round-map block (`:246-263`) as a private helper (a2 and b5-2 reviews). | Low: the session's record, covered by the stats tests | A new round field does not touch the arguments of every call | when touched: the next round field, as one job before it |
 | `session_clean.dart`'s name fits half its contents: it holds `HostType` and `cleanDevice` beside the string cleaning b5-1 moved there. | Low: a rename, no behaviour, `metrics.dart` keeps its exports | A reader knows what the file holds | when touched: rename it `session_format.dart` |
 | `cleanDevice` (`session_clean.dart:40-44`) keeps bare `16`, `40` and `2000` for its text and device-size bounds, against the magic-number rule; the move re-added them unchanged. | Low: it only changes what a bad device reports | One place to change a bound | when touched: name them (`maxModelChars`, `maxDeviceMm`) with the reason in the doc |
 
@@ -143,6 +143,14 @@ The "could" findings of [bugs1's review](briefs/m14/bugs1/REVIEW.md) that the fi
 - **Arena card split**: `_cardBody` is 56 lines and `_tick` 43 (guidelines: about 40); `arena_waiting_card.dart` (365) and `arena_waiting_widgets.dart` (354) grew for B-013, B-024 and B-025. Split the ready row, roster and maps into their own widgets in the next card job (*before a milestone* that touches the card).
 - **Doubled pins**: `arena_row_touch_test.dart` re-pins three paths (Ready button, a joined phone's A, remote OK/Enter on the focused row) that `arena_touch_ready_test.dart`, `arena_phone_card_test.dart` and `arena_waiting_test.dart` already pin; move them back when those files are next edited. The run is not broken by it (the file as a whole fails on the old code).
 - **Narrow touch card**: an own player's Ready line beside Back below 852 px wide (the 600 px window) is untested.
+
+### M14 stats2 (build columns)
+
+| What | Risk | Benefit | Rec. |
+| --- | --- | --- | --- |
+| The "+build" rule lives in three places: `controller_app/lib/src/app_info.dart:19` writes it, `packages/party_host/lib/src/host_identity.dart:69` builds it from a display label, and `packages/metrics/lib/src/session_clean.dart:42` splits it again (run review). | Low: all three cap the build at 9 digits today, so nothing is sent and then silently dropped | One rule for the two writers and the reader | when touched: move one `appWithBuild` into `metrics` and call it from both apps |
+| `HostIdentity.appWithBuild` (`host_identity.dart:70`) takes the build from a regex match on `versionLabel`, a display string, so a rewording of the label ("1.2.3 build 45", a TestFlight label) drops the build from the session and no test notices (run review). | Low: today's labels carry "(123)" | The display string can change without losing data | when touched: a `build` field the shell passes; the phone's host identity (`controller_app/lib/src/host/phone_host_setup.dart:31`) is the wiring that comes with it, pending bugs12 |
+| `host_service.dart` is 369 lines, past `m12-report.md` §2's 360 budget (stats2's `hostApp` line took it from 368; run review). | Low: covered by the host tests | Room for the next host change | when touched: split the service before adding to it |
 
 ## Before a milestone
 

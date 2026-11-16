@@ -18,11 +18,15 @@ import 'profile.dart';
 /// The hello's name is the player's saved [profile] nickname, or the phone's
 /// own "Phone 1A2B" when they saved none (M14 N13), and its `character` is
 /// their saved choice (design section 9).
+///
+/// [build] is the store build number the hello's app version carries (M14
+/// stats): the compiled-in [buildNumber] unless a caller names one.
 ControllerIdentity loadIdentity(
   SharedPreferences prefs, {
   bool isTablet = false,
   Size? screenMm,
   ControllerProfile? profile,
+  String build = buildNumber,
 }) {
   var id = prefs.getString(_controllerIdKey);
   if (id == null) {
@@ -46,7 +50,7 @@ ControllerIdentity loadIdentity(
     name: phoneName(nickname: saved.nickname, controllerId: id),
     character: saved.character,
     platform: platform,
-    appVersion: appVersion,
+    appVersion: appWithBuild(appVersion, build),
     capabilities: const [Capability.metrics, Capability.rating, Capability.layout, Capability.status, Capability.view],
     device: DeviceInfo(
       kind: isTablet ? DeviceInfo.tablet : DeviceInfo.phone,

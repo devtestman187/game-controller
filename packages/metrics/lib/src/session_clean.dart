@@ -33,6 +33,26 @@ String? cleanText(String? s, int maxLength) {
   return t;
 }
 
+/// The longest build number a version carries: a digit string longer than
+/// this is not one, and the summary keeps no build (M14 stats).
+const maxBuildDigits = 9;
+
+/// A build number as an app sends it after the plus: 1 to [maxBuildDigits]
+/// digits, and nothing else.
+final buildPattern = RegExp('^[0-9]{1,$maxBuildDigits}\$');
+
+/// An app version split into its bare version and its build number (M14
+/// stats): the apps send "0.14.0+654" — version, plus, build — and an older
+/// app, like a local build, sends the bare "0.14.0". The build is empty
+/// unless it is 1 to [maxBuildDigits] digits, so any other tail (`dev`) is
+/// dropped; the version is everything before the last plus.
+({String app, String build}) splitAppBuild(String app) {
+  final plus = app.lastIndexOf('+');
+  if (plus < 0) return (app: app, build: '');
+  final build = app.substring(plus + 1);
+  return (app: app.substring(0, plus), build: buildPattern.hasMatch(build) ? build : '');
+}
+
 /// A device's [DeviceInfo], with each of its text fields cleaned by
 /// [cleanText] and its sizes dropped when they can't be a tablet's or a
 /// phone's.
