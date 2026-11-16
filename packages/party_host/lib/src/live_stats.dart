@@ -325,7 +325,7 @@ class LiveStats implements StatsService {
       final pending = (await _sessionsOrNone()).where((f) => !done.contains(f.id) && f.path != _sessionPath).toList();
       for (final f in pending) {
         if (_state.consent != true) break;
-        final error = await up.upload(f.summary);
+        final error = await up.upload(uploadableSummary(f.summary));
         if (error != null) {
           _log('Stats: upload failed, trying again later: $error');
           _set(_state.copyWith(lastError: error));

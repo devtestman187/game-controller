@@ -18,6 +18,8 @@ import 'rtt.dart';
 import 'transport/connector.dart';
 import 'viewer_stats.dart';
 
+part 'controller_client_host.dart';
+
 /// The phone's side of the connection: connects to a host, pairs with the
 /// code (or a saved token), keeps heartbeats going and reconnects on its own
 /// after a drop.
@@ -165,6 +167,20 @@ class ControllerClient {
   /// Answers a rating prompt (M9). Sent only if connected.
   void sendRating(RatingMessage rating) {
     if (_snap.isConnected && _snap.hostCapabilities.contains(Capability.rating)) _send(rating);
+  }
+
+  /// Whether this phone's player shares their stats (sentry1 stats option B),
+  /// or null until the app has an answer: nothing is sent then, and the host
+  /// counts the player as not sharing.
+  bool? get statsShare => _statsShare;
+  bool? _statsShare;
+
+  /// Tells the host whether this phone's player shares their stats. Sent at
+  /// once while paired, and again after every pairing, a reconnect too; a host
+  /// that hears nothing counts the player as not sharing.
+  void setStatsShare(bool share) {
+    _statsShare = share;
+    if (_snap.isConnected) _send(StatsShareMessage(share: share));
   }
 
   /// Sets the controller's input and sends it if connected. While not
@@ -331,69 +347,4 @@ class ControllerClient {
     if (wasConnected && !next.isConnected) _controls.reset();
     if (!_changes.isClosed) _changes.add(next);
   }
-}
-
-/// What the channel and the message handlers can do with a [ControllerClient]
-/// (internal), so the client's own members stay private.
-final class _ClientHost implements ClientHost {
-  _ClientHost(this._client);
-
-  final ControllerClient _client;
-
-  @override
-  void log(String message) => _client._log(message);
-
-  @override
-  int get nowMs => _client.nowMs;
-
-  @override
-  ClientSnapshot get snapshot => _client._snap;
-
-  @override
-  void setSnapshot(ClientSnapshot next) => _client._set(next);
-
-  @override
-  String? takePendingCode() {
-    final code = _client._pendingCode;
-    _client._pendingCode = null;
-    return code;
-  }
-
-  @override
-  bool get everPaired => _client._everPaired;
-
-  @override
-  set everPaired(bool value) => _client._everPaired = value;
-
-  @override
-  bool get welcomed => _client._welcomed;
-
-  @override
-  set welcomed(bool value) => _client._welcomed = value;
-
-  @override
-  String? tokenFor(String hostId) => _client._tokens[hostId];
-
-  @override
-  void saveToken(String hostId, String? token) => _client._saveToken(hostId, token);
-
-  @override
-  ControllerIdentity get identity => _client.identity;
-
-  @override
-  bool get hostTakesMetrics => _client.hostTakesMetrics;
-
-  @override
-  void send(Message message) => _client._send(message);
-
-  @override
-  void dropChannel({int? closeCode}) => _client._channel?.dropChannel(closeCode: closeCode);
-
-  @override
-  void scheduleRetry({String? detail, int? osErrorCode, Duration? delay}) =>
-      _client._scheduleRetry(detail: detail, osErrorCode: osErrorCode, delay: delay);
-
-  @override
-  void giveUp(ClientProblem problem, String? detail, {int? closeCode}) =>
-      _client._giveUp(problem, detail, closeCode: closeCode);
 }

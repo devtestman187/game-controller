@@ -27,7 +27,6 @@ Every known code change that isn't a feature: review findings and tech debt, gro
 | What | Risk | Benefit | Rec. |
 | --- | --- | --- | --- |
 | **Smoke's `disconnect` step on the owner's PC:** the TV log had `Session of Smoke controller ended after 11 s` **twice** and no `Smoke controller disconnected` line, which `onClosed` always writes (`host_connection.dart:118`). So the session ended by another path, or the log lost lines. The phones' own logs on Nov 7 show the line as usual. Triage before relying on that step. | None (a triage) | Know whether a host-side close path is wrong | when touched: `host_connection.dart`, or run smoke once from the owner's terminal |
-| `host_connection.dart` is 398 of 400 lines, `client_messages.dart` `onData` 58 of 40: the next message means a split first. (R1) | Low (a move), but in the busiest code | The next protocol change stays readable | when touched: before the next message |
 | The away grace is a wall-clock timer: it runs while the round stands still (a menu, the app hidden). (R1 later) | Medium: two clocks to reconcile | Fair grace when the host pauses too | when touched: pause or away code |
 | `_sendView` re-sends everything to a re-pairing viewer except `host_away`. (R1 later) | Low | A late viewer sees the right card | when touched |
 
@@ -184,4 +183,4 @@ Each is now `unawaited(...)` with no behaviour change; the failure would be lost
 | **Look-and-sound** | Colours and card text as literals: the mirror's orange copies `playerColors[1]`; the cards' opacities; "P2 is away" vs "Player 2 is away" already differ. One palette and one string table. (R3 + R2 later) | Low | A re-skin changes one place | **do** at its start |
 
 ## Done
-- (none yet)
+- connection, before adding a message (sentry1 stats-optb): `host_connection.dart` 392 lines split into it and `host_connection_info.dart` (`toInfo`, `latencyLine` as library-private functions), and `client_messages.dart`'s `onData` (60 lines) split into it plus `_onControlMessage` and `_onViewEvent`. Now 364 and 44 lines, `onData` 35.

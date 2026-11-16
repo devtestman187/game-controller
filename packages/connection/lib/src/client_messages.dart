@@ -44,50 +44,24 @@ final class ClientMessages {
         _onWelcome(message);
       case PairResultMessage():
         _onPairResult(message);
-      case HapticEventMessage():
-        // Only while paired: a TV we are not paired with has no business here.
-        if (!_host.snapshot.isConnected) return;
-        _controls.addHaptic(message);
-      case PlayerMessage():
-        final snapshot = _host.snapshot;
-        if (!snapshot.isConnected) return;
-        if (snapshot.player != message.number || snapshot.character != message.character) {
-          _host.log('The TV made this phone player ${message.number}');
-          _host.setSnapshot(snapshot.copyWith(player: message.number, character: message.character));
-        }
       case MetricsAckMessage():
         _metrics.acknowledge(message);
-      case RatingAskMessage():
-        if (!_host.snapshot.isConnected || !_host.identity.capabilities.contains(Capability.rating)) return;
-        _controls.addRatingAsk(message);
-      case GameLayoutMessage():
-        if (!_host.snapshot.isConnected || !_host.identity.capabilities.contains(Capability.layout)) return;
-        _controls.setLayout(message);
-      case StatusMessage():
-        if (!_host.snapshot.isConnected || !_host.identity.capabilities.contains(Capability.status)) return;
-        _controls.setStatus(message);
-      case ViewStartMessage():
-        if (!_showsView) return;
-        _controls.addViewStart(message);
-      case FrameMessage():
-        if (!_showsView) return;
-        _controls.addViewFrame(message, arrivedAtMs: _host.nowMs);
-      case ViewEndMessage():
-        if (!_showsView) return;
-        _controls.addViewEnd(message);
-      case HostAwayMessage():
-        if (!_showsView) return;
-        _controls.addHostAway(message, arrivedAtMs: _host.nowMs);
-      case HostBackMessage():
-        if (!_showsView) return;
-        _controls.addHostBack();
-      case PlayerAwayMessage():
-        if (!_showsView) return;
-        _controls.addPlayerAway(message, arrivedAtMs: _host.nowMs);
-      case PlayerBackMessage():
-        if (!_showsView) return;
-        _controls.addPlayerBack(message);
-      case HelloMessage() || PairRequestMessage() || InputStateMessage() || MetricsMessage() || RatingMessage():
+      case HapticEventMessage() || PlayerMessage() || RatingAskMessage() || GameLayoutMessage() || StatusMessage():
+        _onControlMessage(message);
+      case ViewStartMessage() ||
+          FrameMessage() ||
+          ViewEndMessage() ||
+          HostAwayMessage() ||
+          HostBackMessage() ||
+          PlayerAwayMessage() ||
+          PlayerBackMessage():
+        _onViewEvent(message);
+      case HelloMessage() ||
+          PairRequestMessage() ||
+          InputStateMessage() ||
+          MetricsMessage() ||
+          RatingMessage() ||
+          StatsShareMessage():
         _host.log('Ignoring unexpected ${message.type} from the TV');
     }
   }
@@ -95,6 +69,59 @@ final class ClientMessages {
   /// True while this phone shows the game (M12): paired, and its identity
   /// listed [Capability.view].
   bool get _showsView => _host.snapshot.isConnected && _host.identity.capabilities.contains(Capability.view);
+
+  /// A message about this phone's controls (M5, M9, M10): haptics, its player,
+  /// a rating prompt, the game's layout and its status panel.
+  void _onControlMessage(Message message) {
+    final snapshot = _host.snapshot;
+    switch (message) {
+      case HapticEventMessage():
+        // Only while paired: a TV we are not paired with has no business here.
+        if (snapshot.isConnected) _controls.addHaptic(message);
+      case PlayerMessage():
+        if (!snapshot.isConnected) return;
+        if (snapshot.player != message.number || snapshot.character != message.character) {
+          _host.log('The TV made this phone player ${message.number}');
+          _host.setSnapshot(snapshot.copyWith(player: message.number, character: message.character));
+        }
+      case RatingAskMessage():
+        if (snapshot.isConnected && _host.identity.capabilities.contains(Capability.rating)) {
+          _controls.addRatingAsk(message);
+        }
+      case GameLayoutMessage():
+        if (snapshot.isConnected && _host.identity.capabilities.contains(Capability.layout)) {
+          _controls.setLayout(message);
+        }
+      case StatusMessage():
+        if (snapshot.isConnected && _host.identity.capabilities.contains(Capability.status)) {
+          _controls.setStatus(message);
+        }
+      default:
+    }
+  }
+
+  /// A message about the game this phone shows (M12): dropped unless it shows
+  /// the game.
+  void _onViewEvent(Message message) {
+    if (!_showsView) return;
+    switch (message) {
+      case ViewStartMessage():
+        _controls.addViewStart(message);
+      case FrameMessage():
+        _controls.addViewFrame(message, arrivedAtMs: _host.nowMs);
+      case ViewEndMessage():
+        _controls.addViewEnd(message);
+      case HostAwayMessage():
+        _controls.addHostAway(message, arrivedAtMs: _host.nowMs);
+      case HostBackMessage():
+        _controls.addHostBack();
+      case PlayerAwayMessage():
+        _controls.addPlayerAway(message, arrivedAtMs: _host.nowMs);
+      case PlayerBackMessage():
+        _controls.addPlayerBack(message);
+      default:
+    }
+  }
 
   /// The decoded message, or null when it was bad (the client gives up then)
   /// or an optional type this phone doesn't know.
@@ -164,6 +191,9 @@ final class ClientMessages {
       // held right now (also after a reconnect).
       _host.send(_input.nextState(_host.nowMs));
       _resendMetrics();
+      // The TV counts a player it never hears from as not sharing (sentry1
+      // stats option B), so every pairing states the answer again.
+      if (_host.statsShare case final share?) _host.send(StatsShareMessage(share: share));
       return;
     }
     switch (result.failure!) {

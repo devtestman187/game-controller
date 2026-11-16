@@ -153,6 +153,14 @@ class SessionCollector {
   /// The player's current input mode (from their input), for game events.
   void mode(String id, String mode) => _players[id]?.mode = _mode(mode);
 
+  /// Whether player [id] said yes to their stats going up with the session
+  /// (sentry1 stats option B). The summary keeps everyone, marked with their
+  /// answer; [uploadableSummary] leaves the others out of the upload.
+  void statsShare(String id, bool share) {
+    final p = _players[id];
+    if (p != null) p.shares = share;
+  }
+
   void input(String id) => _players[id]?.inputs++;
 
   void ping(String id, int ms) => _players[id]?.ping.add(ms);

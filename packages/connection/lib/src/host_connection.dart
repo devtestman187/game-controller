@@ -8,6 +8,8 @@ import 'latency.dart';
 import 'rtt.dart';
 import 'transport/message_channel.dart';
 
+part 'host_connection_info.dart';
+
 /// What the log calls a peer without a network address: the host phone's own
 /// player (D1).
 const String localPeerLabel = 'the local player';
@@ -161,45 +163,11 @@ final class HostConnection {
 
   /// This connection as the host UI shows it, on the host's clock, when it is
   /// paired or still pairing. Must not be called before hello.
-  ControllerInfo toInfo(int now) => ControllerInfo(
-    controllerId: hello!.controllerId,
-    name: hello!.name,
-    platform: hello!.platform,
-    appVersion: hello!.appVersion,
-    remoteAddress: remoteAddress,
-    isLocal: _channel.isLocal,
-    state: paired ? ControllerState.connected : ControllerState.pairing,
-    since: since,
-    rttMs: rttMs,
-    rttStats: rttWindow.summary(now),
-    input: paired ? input : null,
-    player: paired ? player : null,
-    inputLatency: latency.summary(now),
-    inputLatencySession: switch (latency.session) {
-      final t when t.count > 0 => RttSummary(minMs: t.minMs!, avgMs: t.avgMs!, maxMs: t.maxMs!, samples: t.count),
-      _ => null,
-    },
-    latencyErrorMs: latency.uncertaintyMs,
-    capabilities: hello!.capabilities,
-    device: hello!.device,
-    role: hello!.role,
-    inputAtMs: paired ? inputAtMs : null,
-    character: paired ? character : null,
-  );
+  ControllerInfo toInfo(int now) => _infoOf(this, now);
 
   /// The latency log line for this connection, or null before the first ping
   /// came back.
-  String? latencyLine(int now) {
-    final rtt = rttWindow.summary(now);
-    if (rtt == null) return null;
-    final latency = this.latency.summary(now);
-    final error = this.latency.uncertaintyMs;
-    final inputText = latency == null
-        ? 'input delay not measured${this.latency.offsetMs == null ? ' (phone sends no clock)' : ''}'
-        : 'input delay ~ avg ${latency.avgMs} · p95 ${latency.p95Ms} · max ${latency.maxMs} ms (± $error ms, '
-              '${latency.samples} states)';
-    return 'Latency $who: ping $rtt, $inputText';
-  }
+  String? latencyLine(int now) => _latencyLineOf(this, now);
 
   /// The decoded message, or null when it was bad (the connection is closed
   /// then) or an optional type this host doesn't know.
@@ -231,6 +199,10 @@ final class HostConnection {
       case MetricsMessage():
         _onMetrics(message);
       case RatingMessage():
+        if (paired) _forward(message, _host.nowMs);
+      case StatsShareMessage():
+        // Recorded from the player's own answer only; a phone that never says
+        // counts as not sharing (sentry1 stats option B).
         if (paired) _forward(message, _host.nowMs);
       case WelcomeMessage() ||
           PairResultMessage() ||

@@ -46,6 +46,10 @@ abstract interface class ClientHost {
   /// Whether the connected host takes metrics batches.
   bool get hostTakesMetrics;
 
+  /// Whether this phone's player shares their stats, or null before the app
+  /// has an answer (sentry1 stats option B).
+  bool? get statsShare;
+
   /// Sends [message] to the TV, if a channel is open.
   void send(Message message);
 

@@ -25,6 +25,7 @@ class MessageCodec {
     MetricsAckMessage.wireType: MetricsAckMessage.fromPayload,
     RatingAskMessage.wireType: RatingAskMessage.fromPayload,
     RatingMessage.wireType: RatingMessage.fromPayload,
+    StatsShareMessage.wireType: StatsShareMessage.fromPayload,
     GameLayoutMessage.wireType: GameLayoutMessage.fromPayload,
     StatusMessage.wireType: StatusMessage.fromPayload,
     ViewStartMessage.wireType: ViewStartMessage.fromPayload,

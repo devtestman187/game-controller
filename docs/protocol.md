@@ -200,6 +200,14 @@ A status with none of `text`, `shape` and `progress` hides the panel. The host s
 
 The host closes the connection with 4003 if a controller sends `layout` or `status`.
 
+## 8c. Stats sharing (`stats_share`)
+
+`stats_share` (controller → host): `{"share": true}` or `{"share": false}`, the player's own answer to "share usage stats" (sentry1, stats option B). The controller sends it right after every pairing, a reconnect too, and at once when the answer changes. A host counts a player it never hears from as not sharing.
+
+The host keeps the answer with the player. Its saved session file keeps every player, marked `share` true or false; the session it uploads leaves out the players who did not say yes, with all their own data, and keeps the anonymous round totals (the game, its time and how many players took part). Stats stay aggregates: no names or device IDs.
+
+The message needs no capability: a host one build older ignores it as an unknown type (§2), which reads as "not sharing". A `stats_share` from a connection that hasn't paired is ignored.
+
 ## 9. Metrics (capability `metrics`)
 
 ### `metrics` (controller → host)
@@ -280,6 +288,7 @@ The host closes with 4003 if a controller sends one of these view messages.
 | `welcome`, `pair_result`, `player`, `haptic` | host → controller | |
 | `ping`, `pong` | both | |
 | `metrics`, `rating` | controller → host | host listed `metrics` / `rating` |
+| `stats_share` | controller → host | |
 | `metrics_ack`, `rate_ask` | host → controller | controller listed `metrics` / `rating` |
 | `layout`, `status` | host → controller | controller listed `layout` / `status` |
 | `view_start`, `frame`, `view_end`, `host_away`, `host_back`, `player_away`, `player_back` | host → controller | controller listed `view` |

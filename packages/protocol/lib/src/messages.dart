@@ -6,6 +6,7 @@ part 'game_controls.dart';
 part 'haptic.dart';
 part 'input.dart';
 part 'metrics.dart';
+part 'stats_share.dart';
 part 'view.dart';
 part 'view_result.dart';
 

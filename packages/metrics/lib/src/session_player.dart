@@ -44,6 +44,12 @@ class PlayerRecord {
   int number;
   final bool local;
 
+  /// Whether the player said yes to their stats going up with the session
+  /// (sentry1 stats option B). A player who never said counts as not sharing;
+  /// the host's own players share, since the host's consent is the one that
+  /// lets anything go up at all.
+  bool shares = false;
+
   /// Joined over the host device's own link, not a phone on the network
   /// (m12 §1): only the phone app's host mode has one.
   bool inProcess = false;
@@ -92,6 +98,8 @@ Map<String, Object?> playerJson(String id, PlayerRecord p, int atMs) {
   return {
     'install': id,
     'player': p.number,
+    // The upload keeps only the players who said yes (uploadableSummary).
+    'share': p.local || p.shares,
     if (p.local) 'local': true,
     'platform': p.platform,
     'app': p.app,

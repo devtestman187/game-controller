@@ -60,6 +60,10 @@ class SessionRecorder {
         // The viewer counted its frames while drawing the host's view: they go
         // under that view's rate, like its stage samples (m12 §0.4).
         s.metrics(m.controllerId, batch, hz: host.viewRateHz);
+      case final StatsShareMessage share:
+        // Only the player's own answer; a phone that never says counts as not
+        // sharing (sentry1 stats option B).
+        s.statsShare(m.controllerId, share.share);
       case final RatingMessage r:
         s.rating(
           m.controllerId,
