@@ -25,7 +25,7 @@ void installCrashHandlers() {
 
   FlutterError.onError = (details) {
     CrashReports.capture(details.exception, details.stack, where: _whereFlutterError);
-    previousFlutterError?.call(details);
+    (previousFlutterError ?? FlutterError.presentError)(details);
   };
   PlatformDispatcher.instance.onError = (error, stack) {
     CrashReports.capture(error, stack, where: _wherePlatformError);
@@ -51,7 +51,13 @@ Future<CrashReporter> startCrashReporting({
   CrashReports.use(chosen);
   installCrashHandlers();
   if (prefs.getBool(crashConsentKey) == true && dsn.isNotEmpty) {
-    await chosen.enable();
+    // A reporter that cannot start leaves reports off, never the app (review: an
+    // unguarded enable could abort main before runApp).
+    try {
+      await chosen.enable();
+    } on Object catch (_) {
+      // Reports stay off; nothing to do.
+    }
   }
   return chosen;
 }

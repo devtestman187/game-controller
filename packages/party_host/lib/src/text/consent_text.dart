@@ -14,7 +14,7 @@ abstract final class ConsentText {
       'A report holds the error, where in the app it happened, the app version, the platform and operating '
       'system version, and the device model. No names, email addresses or account IDs are sent.\n\n'
       'Sentry stores the reports for the developer in the United States. You can change this at any time in '
-      'settings. The privacy policy explains it in full.';
+      'settings (on the TV, on the Stats screen). The privacy policy explains it in full.';
 
   /// The crash prompt's "no" button.
   static const dontSend = 'Don\'t send';

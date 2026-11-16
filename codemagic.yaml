@@ -10,6 +10,8 @@
 # (Team settings > Integrations > Developer Portal) under the name "Thumb Party", the app record
 # com.thumbparty.app in App Store Connect, and its signing certificate and profile in Codemagic
 # (Code signing identities). The build number is the commit count, the same as the Android builds.
+# Optional, and empty when unset: SENTRY_DSN_PHONE (the Sentry crash-report project, docs/release.md
+# step 8; empty = crash reporting off in that build).
 # Optional, and empty when unset: FIRESTORE_PROJECT and FIRESTORE_API_KEY, the Firebase project
 # the stats go to (docs/release.md step 7), as environment variables of the app in Codemagic.
 #
@@ -161,7 +163,10 @@ workflows:
           if [ -n "${FIRESTORE_PROJECT:-}" ]; then DEFINES+=(--dart-define=FIRESTORE_PROJECT="$FIRESTORE_PROJECT"); fi
           if [ -n "${FIRESTORE_API_KEY:-}" ]; then DEFINES+=(--dart-define=FIRESTORE_API_KEY="$FIRESTORE_API_KEY"); fi
           if [ -n "${FIRESTORE_API_KEY:-}" ]; then KEY_STATE=set; else KEY_STATE="not set"; fi
+          SENTRY_DSN_PHONE=$(printf '%s' "${SENTRY_DSN_PHONE:-}" | tr -d '[:space:]')
+          if [ -n "${SENTRY_DSN_PHONE:-}" ]; then DEFINES+=(--dart-define=SENTRY_DSN="$SENTRY_DSN_PHONE"); SENTRY_STATE=set; else SENTRY_STATE="not set"; fi
           echo "Stats project: ${FIRESTORE_PROJECT:-not set}; API key: $KEY_STATE"
+          echo "Sentry: $SENTRY_STATE"
           flutter build ipa --release \
             --build-number="$BUILD" \
             "${DEFINES[@]}" \

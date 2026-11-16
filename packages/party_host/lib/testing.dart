@@ -7,6 +7,7 @@
 library;
 
 export 'src/testing/adapter_fakes.dart';
+export 'src/testing/fake_crash.dart';
 export 'src/testing/fake_stats.dart';
 export 'src/testing/host_fakes.dart';
 export 'src/testing/samples.dart';

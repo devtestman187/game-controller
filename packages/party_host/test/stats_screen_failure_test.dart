@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:party_host/party_host.dart';
-import 'package:party_host/src/testing/fake_crash.dart';
 import 'package:party_host/testing.dart';
 
 import 'support/host_harness.dart';

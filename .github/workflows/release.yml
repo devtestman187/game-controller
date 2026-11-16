@@ -20,6 +20,10 @@
 #   FIRESTORE_PROJECT, FIRESTORE_API_KEY (M9, optional)
 #     The Firebase project the apps upload stats to (with consent). Without them an app
 #     keeps stats on the device only. docs/release.md step 7.
+#   SENTRY_DSN_PHONE, SENTRY_DSN_TV (sentry1, optional)
+#     The Sentry projects the phone app and the TV app (Android TV and Windows) send crash
+#     reports to, only after an adult says yes. Without them crash reporting is off in that
+#     build. docs/release.md step 8.
 
 name: Release
 
@@ -95,6 +99,7 @@ jobs:
           --dart-define=BUILD_NUMBER=${{ steps.version.outputs.build }}
           --dart-define=FIRESTORE_PROJECT=${{ vars.FIRESTORE_PROJECT }}
           --dart-define=FIRESTORE_API_KEY=${{ vars.FIRESTORE_API_KEY }}
+          --dart-define=SENTRY_DSN=${{ vars.SENTRY_DSN_PHONE }}
       - name: Build the TV app bundle
         working-directory: tv_test_app
         run: >
@@ -103,6 +108,7 @@ jobs:
           --dart-define=BUILD_NUMBER=${{ steps.version.outputs.build }}
           --dart-define=FIRESTORE_PROJECT=${{ vars.FIRESTORE_PROJECT }}
           --dart-define=FIRESTORE_API_KEY=${{ vars.FIRESTORE_API_KEY }}
+          --dart-define=SENTRY_DSN=${{ vars.SENTRY_DSN_TV }}
       - name: Name the bundles
         run: |
           mkdir -p dist
@@ -165,6 +171,7 @@ jobs:
           --dart-define=BUILD_NUMBER=${{ steps.version.outputs.build }}
           --dart-define=FIRESTORE_PROJECT=${{ vars.FIRESTORE_PROJECT }}
           --dart-define=FIRESTORE_API_KEY=${{ vars.FIRESTORE_API_KEY }}
+          --dart-define=SENTRY_DSN=${{ vars.SENTRY_DSN_TV }}
       - name: Zip it
         id: zip
         shell: pwsh
