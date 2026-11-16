@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:metrics/metrics.dart';
 import 'package:party_host/party_host.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app_info.dart';
 
@@ -15,6 +16,12 @@ const firestoreProject = String.fromEnvironment('FIRESTORE_PROJECT');
 /// The project's web API key (optional for Firestore, which the security
 /// rules protect).
 const firestoreApiKey = String.fromEnvironment('FIRESTORE_API_KEY');
+
+/// The Sentry project the TV app's crash reports go to, set at build time
+/// (`--dart-define=SENTRY_DSN=...`, from the release workflow). Empty in local
+/// builds and tests: then the app asks nothing about crash reports and sends
+/// none (design sentry-consent.md). A DSN value never goes in the repo.
+const sentryDsn = String.fromEnvironment('SENTRY_DSN');
 
 /// The TV app's host identity (S-a): its version, the host type the stats
 /// record, the kind phones see in the TXT record, and the names it advertises
@@ -76,3 +83,17 @@ class TvDirectories implements HostDirectories {
 /// Sends finished sessions to Firestore, or null when this build has no
 /// project set (then the Stats screen says the upload isn't configured).
 SessionUploader? tvUploader() => firestoreProject.isEmpty ? null : FirestoreUploader(project: firestoreProject);
+
+/// Starts this TV or Windows build's crash reporting at startup (design
+/// sentry-consent.md): reports go through the returned reporter, and they are
+/// on from the start only when this instance already answered yes and the
+/// build has a [sentryDsn]. [reporter] lets a test hand in its own; the app
+/// passes none and `main()` provides the one this returns.
+Future<CrashReporter> tvStartCrashReporting(SharedPreferences prefs, {CrashReporter? reporter}) => startCrashReporting(
+  prefs: prefs,
+  dsn: sentryDsn,
+  release: versionLabel,
+  // A debug build says so in its reports; every other build is a store one.
+  environment: kDebugMode ? 'debug' : 'production',
+  reporter: reporter,
+);

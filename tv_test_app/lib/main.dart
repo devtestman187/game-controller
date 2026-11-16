@@ -14,6 +14,9 @@ import 'src/ui/home/home_screen.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final prefs = await SharedPreferences.getInstance();
+  // This instance's crash reporting, before any screen can go wrong: on from
+  // the start only after a yes, and only with a DSN (design sentry-consent.md).
+  final crashReporter = await tvStartCrashReporting(prefs);
   // The look's shader, loaded before the first screen (M13 design section 6):
   // a slow TV box shows its splash a little longer rather than a stalled first
   // menu, and the Canvas fallback draws everything if it doesn't arrive.
@@ -27,6 +30,10 @@ Future<void> main() async {
     ProviderScope(
       overrides: [
         prefsProvider.overrideWithValue(prefs),
+        // This build asks the crash question only where a report could go, and
+        // the answer turns that reporter on or off live (design sentry-consent.md).
+        crashAvailableProvider.overrideWithValue(sentryDsn.isNotEmpty),
+        crashReporterProvider.overrideWithValue(crashReporter),
         hostIdentityProvider.overrideWithValue(tvHostIdentity()),
         hostDirectoriesProvider.overrideWithValue(const TvDirectories()),
         sessionUploaderProvider.overrideWith((ref) => tvUploader()),

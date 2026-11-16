@@ -37,10 +37,19 @@ Future<void> tapVisible(WidgetTester tester, Finder finder) async {
 /// [clock] is the device's time for Auto's palette: midday unless a test says
 /// otherwise, so no test turns Night after 19:00 (Claude's 4a review: five
 /// home_look tests failed in the evening).
+///
+/// [consent] is the stats answer this launch starts with, kept as the app
+/// keeps it: true (already answered) unless a test passes null (never asked,
+/// so the first launch asks). [keptPrefs] are the answers an earlier launch
+/// left behind, which the app reads at startup. [crashAvailable] is whether
+/// this build could send crash reports (it has a DSN), so the launch asks the
+/// crash question too; false keeps the plain build's single question.
 Future<FakeHostService> pumpApp(
   WidgetTester tester, {
   Size size = const Size(960, 540),
   bool? consent = true,
+  Map<String, Object> keptPrefs = const {},
+  bool crashAvailable = false,
   List<Map<String, Object?>> sessions = const [],
   LocalPlayerSourceFactory? localPlayer,
   String game = '',
@@ -55,12 +64,13 @@ Future<FakeHostService> pumpApp(
   addTearDown(tester.view.reset);
   final fake = FakeHostService(state ?? sampleState(), consent: consent);
   fake.stats.summaries.addAll(sessions);
-  SharedPreferences.setMockInitialValues({});
+  SharedPreferences.setMockInitialValues({...keptPrefs, statsConsentKey: ?consent});
   final prefs = await SharedPreferences.getInstance();
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
         prefsProvider.overrideWithValue(prefs),
+        crashAvailableProvider.overrideWithValue(crashAvailable),
         puzzleLibraryProvider.overrideWith((ref) => testPuzzles()),
         hostServiceProvider.overrideWithValue(fake),
         soundPlayerProvider.overrideWithValue(sounds),
