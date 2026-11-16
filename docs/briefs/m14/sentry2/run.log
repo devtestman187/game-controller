@@ -1,0 +1,8 @@
+2026-11-16 17:11:55 start at 39f3cae5 on m14
+2026-11-16 17:11:55 run-base 39f3cae5e9fcf7b882e296cf8694eda6dd637642
+2026-11-16 17:12:00 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-16 17:12:01 start unmarked-drop
+2026-11-16 17:21:55 unmarked-drop finished: result 0 (62 turns, 7 min)
+2026-11-16 17:22:05 tests-first ok: packages/metrics/test/uploadable_unmarked_test.dart fails on the old code
+2026-11-16 17:23:10 tests-first ok: packages/party_host/test/live_stats_unmarked_test.dart fails on the old code
+2026-11-16 17:27:35 committed unmarked-drop: ca2306af Drop saved sessions that have no stats answer from the upload
