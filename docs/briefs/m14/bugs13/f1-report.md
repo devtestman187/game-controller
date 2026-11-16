@@ -9,14 +9,14 @@ once it is answered the phones work the host's menus again. The Stats screen's
 and the Settings row's prompts are unchanged.
 
 - `askConsent` takes `touchOnly` (false by default); `HostScreen` passes true.
-- `ThumbOnly` (new, in `controller_menus.dart`) wraps the prompt: a
+- `_ThumbOnly` (new, private in `stats_screen.dart`) wraps the prompt: a
   `ControlsClaim` with `Controls.menus(only: <String>{})`, so no phone may work
   the menus while it is up, and `ExcludeFocus`, so no key has a button to
   reach. A touch still works.
 - New file `controller_app/test/first_host_consent_input_test.dart` (6 tests);
   one new test in `packages/party_host/test/stats_screen_test.dart` (the Stats
   screen's prompt still answers with a phone's A and the remote's OK).
-- `joinPhone` now lives in `test/support/host_app.dart`; the new test uses it.
+- a third `joinPhone` copy now lives in `test/support/host_app.dart` (the two older files keep theirs; see code-health.md).
 - The "First host prompt vs joined phones" entry is gone from
   `docs/code-health.md`, and its `joinPhone` entry now says where the one
   helper lives.

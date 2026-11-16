@@ -22,3 +22,4 @@
 2026-11-15 18:11:22 committed f1: e5b9197 The first host's consent prompt is a thumb's alone
 2026-11-15 18:16:49 reviewed f1: 5 finding(s)
 2026-11-15 18:16:49 DONE: every job is committed. Claude reads the Summary of docs/briefs/m14/bugs13/REVIEW.md, verifies its findings and writes one fix brief
+HAND-FIX f1: moved the thumb-only wrapper private into the stats screen, wrote the socket exception in the test header, corrected two report lines

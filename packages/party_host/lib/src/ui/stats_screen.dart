@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:metrics/metrics.dart';
+import 'package:metrics/metrics.dart' hide Controls;
 import 'package:toy_look/toy_look.dart';
 
+import '../controls.dart';
 import '../providers.dart';
 import '../stats_service.dart';
 import '../stats_state.dart';
@@ -224,8 +225,27 @@ Future<void> askConsent(BuildContext context, WidgetRef ref, {bool touchOnly = f
           ),
         ],
       );
-      return touchOnly ? ThumbOnly(child: prompt) : prompt;
+      return touchOnly ? _ThumbOnly(child: prompt) : prompt;
     },
   );
   if (share != null) ref.read(statsServiceProvider).setConsent(share);
+}
+
+/// Keeps the phones and the remote off the dialog it wraps, so only a thumb on
+/// the host's own screen works it (B-023's first-host prompt).
+///
+/// The claim is how a screen says who may work it: with no player in its
+/// [Controls.only], a joined phone's A presses nothing and its B closes
+/// nothing. [ExcludeFocus] keeps every key off the dialog's buttons, so a
+/// remote's OK, Enter and back reach nothing either; a touch still works.
+class _ThumbOnly extends StatelessWidget {
+  const _ThumbOnly({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => ControlsClaim(
+    controls: const Controls.menus(only: <String>{}),
+    child: ExcludeFocus(child: child),
+  );
 }

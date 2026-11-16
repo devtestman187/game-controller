@@ -19,6 +19,8 @@ void main() {
   // The puzzle files are read once, before any test runs: no test here waits
   // on their real reads while it runs (s9g).
   setUpAll(loadPuzzles);
+  // Real-socket exception to coding-guidelines §9: the prompt's claim is only
+  // seen by a phone that joined through the host's own server.
   // The joined phone connects over a socket on this machine, as a real phone
   // does: the test binding blocks real WebSockets by default.
   setUp(() => HttpOverrides.global = null);

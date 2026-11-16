@@ -90,3 +90,12 @@ Run review of bugs13 (one job, arena-waiting c6d18ce) written: 0 must, 3 should,
 6. Report line 118 cites a test that never looks at arenaBack: real -> citation corrected (arena_back_test.dart:40-52).
 Open questions: kept as the review proposes; the Back look on a TV is for the owner's eyes. No code-sized finding: the fix brief f1 carries only the owner's consent decision.
 Not touched: the review's "could not check" items (device only).
+
+## Claude's verdicts on the f1 review (Nov 15, 2026)
+
+1. must, two new tests pass on the old code: real but not a defect; the report states them as guards (Decisions 4, "guards the default path"); the brief asked for both behaviours. Kept in the new file.
+2. should, real-socket join without the §9 exception written down: real, trivial -> comment added to the test's setUp (fixed by hand).
+3. should, `ThumbOnly` exported for one caller: real -> moved private into stats_screen.dart as `_ThumbOnly` (fixed by hand; analyze, review.sh, stats/menus/consent tests pass).
+4. could, report says joinPhone "lives" in host_app.dart: real -> report reworded; the two older copies stay (already in code-health.md).
+5. could, self-check claims Settings/TV prompts tested: real -> reworded to "not affected, touchOnly defaults to false".
+Decisions to confirm: empty `Controls.only` meaning nobody stays (no Controls.none yet); remote back stays a guard; held-A latch is a device check. No code-sized finding.
