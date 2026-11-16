@@ -103,3 +103,21 @@ line, the unguarded Retry and the public crash button.
 ## Delete
 
 - none
+
+## Verdicts (Claude/driver, Nov 16)
+
+Verified at file:line against HEAD before writing.
+- must release.yml / codemagic.yaml DSN, must release.md:90: real; fixed by hand (commit 74159b5e). The worker was denied `.github/` and `codemagic.yaml`.
+- must metrics.dart:46 stats off not reaching recorder: real; fix job f1 item 1.
+- must CrashReports.playerNames never set: real; fix job f1 item 2.
+- should crash_start presentError and unguarded enable: real; fixed by hand (74159b5e) with test crash_start_guard_test.dart. Idempotent install (Open question 9): not done, tests call it repeatedly; noted in code-health.
+- should empty catches in crash_reporter/sentry_reporter (no log): minor; code-health.
+- should host_id retry not stopped at dispose: minor (2 s window, only a stop+restart inside it); code-health.
+- should resume loses answers: real; f2 item 1.
+- should in-process player never shares: real; f2 item 2.
+- should docs claim "no device IDs": real wording bug; the controller ID is kept on purpose (the privacy page uses it for deletion requests), so reword; f2 item 3.
+- should Retry in-flight guard, CrashSharingButton public, crashNo test: real; f3.
+- should site/shots PNGs modified: churn from site_shots_test, not ours; left unstaged (a restore was refused by the permission system).
+- should fake export, local fakes: export fixed by hand; local fakes removal in f1 item 4.
+- should "in settings" wording on the TV: real; fixed by hand (texts now say "on the TV, on the Stats screen").
+- could setConsent second writer, substring scrub, uploadable old files, TV release format, connect pop, coverage_all hand imports, weak test names, settings_text.dart:74 wording, sizes, no tv-consent review: some in f1-f3 (fake while off, uploadable, TV release, connect pop); the rest go to docs/code-health.md.
