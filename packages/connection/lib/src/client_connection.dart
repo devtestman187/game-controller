@@ -136,7 +136,7 @@ final class ClientConnection {
     _host.welcomed = false;
     _channelId++;
     // close() can wait a long time on a dead network, so don't await it.
-    channel?.close(closeCode ?? 1000).then((_) {}, onError: (_) {});
+    unawaited(channel?.close(closeCode ?? 1000).then((_) {}, onError: (_) {}));
   }
 
   /// Replaces the channel when the app was away for longer than half the

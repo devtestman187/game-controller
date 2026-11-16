@@ -45,14 +45,13 @@ final class WebSocketConnector implements Connector {
         http.close(force: true);
         _log('Could not connect to $uri: ${describeError(e)}');
       }
-      final opened = socket;
-      if (opened == null) continue;
+      if (socket == null) continue;
       if (isCancelled()) {
         // Cancelled while the connect ran: hand nothing back.
-        opened.close(CloseCodes.goingAway).ignore();
+        socket.close(CloseCodes.goingAway).ignore();
         throw ConnectFailed(_cancelledMessage);
       }
-      return WebSocketChannelAdapter(opened, remoteAddress: displayIp(address));
+      return WebSocketChannelAdapter(socket, remoteAddress: displayIp(address));
     }
     throw _failed(lastError);
   }

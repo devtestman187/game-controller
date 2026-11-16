@@ -137,14 +137,14 @@ class _FrameViewState extends State<FrameView> with SingleTickerProviderStateMix
   void didUpdateWidget(FrameView oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.views != oldWidget.views) {
-      _subscription?.cancel();
+      unawaited(_subscription?.cancel());
       _listen();
     }
   }
 
   @override
   void dispose() {
-    _subscription?.cancel();
+    unawaited(_subscription?.cancel());
     _ticker.dispose();
     super.dispose();
   }

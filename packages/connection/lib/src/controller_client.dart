@@ -275,7 +275,8 @@ class ControllerClient {
 
   /// Starts an attempt to reach the host again for [session].
   void _open(int session) {
-    _connection.open(session, ClientMessages(_host, rtt: _rtt, controls: _controls, input: _input, metrics: _metrics));
+    final messages = ClientMessages(_host, rtt: _rtt, controls: _controls, input: _input, metrics: _metrics);
+    unawaited(_connection.open(session, messages));
   }
 
   /// Saves [token] for [hostId], or forgets it with null, and tells the app

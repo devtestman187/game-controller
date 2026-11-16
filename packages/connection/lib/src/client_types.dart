@@ -194,6 +194,6 @@ final class ClientSnapshot {
 /// Whether two lists hold the same strings in the same order (a host's
 /// addresses, for one).
 bool sameStrings(List<String> a, List<String> b) =>
-    a.length == b.length && Iterable.generate(a.length).every((i) => a[i] == b[i]);
+    a.length == b.length && Iterable<int>.generate(a.length).every((i) => a[i] == b[i]);
 
 const Object _keep = Object();

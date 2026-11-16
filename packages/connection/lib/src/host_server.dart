@@ -282,7 +282,7 @@ class HostServer {
   /// Takes one new channel from a listener. The server owns it from here on.
   void _onChannel(MessageChannel channel) {
     if (!_running) {
-      channel.close(CloseCodes.goingAway, 'Host is closing');
+      unawaited(channel.close(CloseCodes.goingAway, 'Host is closing'));
       return;
     }
     final s = HostConnection(channel, _now, _SessionHost(this));

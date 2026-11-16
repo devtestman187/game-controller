@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:protocol/protocol.dart';
 
 import 'host_pairings.dart';
@@ -115,7 +117,7 @@ final class HostConnection {
     if (closed) return;
     _ended();
     // close() can wait a long time on a dead network, so don't await it.
-    _channel.close(code, reason).then((_) {}, onError: (_) {});
+    unawaited(_channel.close(code, reason).then((_) {}, onError: (_) {}));
   }
 
   /// Sends [message] to this controller, if the connection is still open.

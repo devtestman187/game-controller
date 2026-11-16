@@ -159,7 +159,7 @@ final class HostAddress {
       other.name == name &&
       other.isLocal == isLocal &&
       other.addresses.length == addresses.length &&
-      Iterable.generate(addresses.length).every((i) => other.addresses[i] == addresses[i]);
+      Iterable<int>.generate(addresses.length).every((i) => other.addresses[i] == addresses[i]);
 
   @override
   int get hashCode => Object.hash(Object.hashAll(addresses), port, hostId, name, isLocal);

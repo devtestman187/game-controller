@@ -133,7 +133,7 @@ Future<void> main(List<String> args) async {
         drops++;
       case ClientStatus.waitingForCode:
         stdout.write('Pairing code shown on the TV: ');
-        lines.first.then((code) => client.submitCode(code.trim()), onError: (_) {});
+        unawaited(lines.first.then((code) => client.submitCode(code.trim()), onError: (_) {}));
       case ClientStatus.failed:
         if (!done.isCompleted) done.complete(2);
       default:
@@ -185,9 +185,11 @@ Future<void> main(List<String> args) async {
       if (!done.isCompleted) done.complete(wasConnected ? 0 : 1);
     });
   }
-  ProcessSignal.sigint.watch().first.then((_) {
-    if (!done.isCompleted) done.complete(wasConnected ? 0 : 1);
-  });
+  unawaited(
+    ProcessSignal.sigint.watch().first.then((_) {
+      if (!done.isCompleted) done.complete(wasConnected ? 0 : 1);
+    }),
+  );
 
   stdout.writeln('Simulated controller $id → ${target.display}');
   // With a saved pairing the code isn't needed; without one, connect as before.

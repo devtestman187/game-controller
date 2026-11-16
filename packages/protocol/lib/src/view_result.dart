@@ -201,21 +201,21 @@ final class ViewResult {
     );
   }
 
-  static int? _optionalInt(Map json, String key) {
+  static int? _optionalInt(Map<Object?, Object?> json, String key) {
     final value = json[key];
     if (value == null) return null;
     if (value is! int) throw FormatException('Field "result.$key" must be an integer, got ${value.runtimeType}');
     return value;
   }
 
-  static List<String> _stringList(Object value, String field) {
+  static List<String> _stringList(Object? value, String field) {
     if (value is! List || value.any((e) => e is! String)) {
       throw FormatException('Field "$field" must be a list of strings');
     }
     return List.unmodifiable(value.cast<String>());
   }
 
-  static List<ViewStanding> _standings(Object value) {
+  static List<ViewStanding> _standings(Object? value) {
     if (value is! List) throw const FormatException('Field "result.standings" must be a list');
     return List.unmodifiable(value.map(ViewStanding.fromJson));
   }

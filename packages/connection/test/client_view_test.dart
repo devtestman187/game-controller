@@ -112,7 +112,7 @@ void main() {
 
         client.sendMetrics(batch(0));
         expect(client.metricsWaiting, 1, reason: 'kept for a host that takes them');
-        host.channels.single.close(CloseCodes.goingAway);
+        await host.channels.single.close(CloseCodes.goingAway);
 
         final resent = await got.future.timeout(const Duration(seconds: 5));
         expect(resent.stages[LatencyStage.touchToFrame], [
@@ -146,15 +146,14 @@ int _sendTime(InputStateMessage state) => state.sentAtMs ?? fail('the client sen
 /// The metrics batches a host receives, kept as they arrive.
 final class _Batches {
   _Batches(HostServer host) {
-    _sub = host.messages.listen((m) {
+    final sub = host.messages.listen((m) {
       if (m.message is MetricsMessage && !_arrived.isClosed) _arrived.add(m.message as MetricsMessage);
     });
     addTearDown(_arrived.close);
-    addTearDown(_sub.cancel);
+    addTearDown(sub.cancel);
   }
 
   final _arrived = StreamController<MetricsMessage>.broadcast();
-  late final StreamSubscription<ControllerMessage> _sub;
 
   /// The next batch the host gets.
   Future<MetricsMessage> next() => _arrived.stream.first.timeout(const Duration(seconds: 5));

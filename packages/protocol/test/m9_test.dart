@@ -133,7 +133,7 @@ void main() {
         'i': 0,
         'mode': 'dpad',
         'ms': 10,
-        'data': {},
+        'data': <String, Object?>{},
       });
       expect((codec.decode(frame) as MetricsMessage).ended, isFalse);
     });
@@ -146,7 +146,7 @@ void main() {
         'i': 0,
         'mode': 'dpad',
         'ms': 10,
-        'data': [],
+        'data': <Object?>[],
       });
       expect(() => codec.decode(frame), throwsA(isA<ProtocolFormatException>()));
     });

@@ -13,7 +13,14 @@ final class InProcessLink {
   factory InProcessLink() {
     final toHost = StreamController<String>();
     final toController = StreamController<String>();
-    final closing = _Closing();
+    // Both controllers hold one end's frames each: closing them delivers what
+    // is already buffered, in order, then done, on both ends. A controller's
+    // close future waits for a listener that may never come, so nobody waits
+    // for it, and there is nothing to wait for in-process.
+    final closing = _Closing(() {
+      unawaited(toHost.close());
+      unawaited(toController.close());
+    });
     // Each end reads the other end's stream and writes its own.
     return InProcessLink._(_InProcessEnd(closing, toHost, toController), _InProcessEnd(closing, toController, toHost));
   }
@@ -27,9 +34,15 @@ final class InProcessLink {
   final MessageChannel controller;
 }
 
-/// What both ends of a link share: closing either closes both, with the same
-/// code and reason.
+/// What both ends of a link share: the way to close both pipes, and the close
+/// state. Closing either end closes both pipes, with the same code and reason,
+/// so both ends see the close.
 final class _Closing {
+  _Closing(this.closePipes);
+
+  /// Closes the link's two controllers; [InProcessLink] builds it with them.
+  final void Function() closePipes;
+
   bool closed = false;
   int? code;
   String? reason;
@@ -77,12 +90,7 @@ final class _InProcessEnd implements MessageChannel {
       ..closed = true
       ..code = code
       ..reason = reason;
-    // Both controllers hold one end's frames each: closing them delivers
-    // what is already buffered, in order, then done, on both ends. There is
-    // nothing to wait for in-process, and a controller's close future waits
-    // for a listener that may never come.
-    unawaited(_incoming.close());
-    unawaited(_outgoing.close());
+    _closing.closePipes();
     return Future.value();
   }
 }

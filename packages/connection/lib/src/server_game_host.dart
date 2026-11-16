@@ -396,4 +396,4 @@ class ServerGameHost implements GameHost {
 }
 
 bool _samePlayers(List<GamePlayer> a, List<GamePlayer> b) =>
-    a.length == b.length && Iterable.generate(a.length).every((i) => a[i] == b[i]);
+    a.length == b.length && Iterable<int>.generate(a.length).every((i) => a[i] == b[i]);
