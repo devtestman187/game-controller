@@ -11,3 +11,5 @@
 2026-11-15 22:52:09 committed b028-taken-notice: 8fb95c2 Fix the taken-colours band so it stops over the game (B-028)
 2026-11-15 23:01:42 reviewed b027-audio-watchdog: 7 finding(s)
 2026-11-15 23:01:43 reviewed b028-taken-notice: 5 finding(s)
+2026-11-15 23:01:44 start the run's review
+2026-11-15 23:06:16 DONE: every job is committed. Claude reads the Summary of docs/briefs/m14/bugs14/REVIEW.md, verifies its findings and writes one fix brief
