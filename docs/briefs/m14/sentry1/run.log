@@ -67,3 +67,33 @@
 2026-11-16 15:08:12 reviewed stats-bug: 7 finding(s)
 2026-11-16 15:08:12 reviewed tv-consent: 6 finding(s)
 2026-11-16 15:11:40 DONE: every job is committed. Claude reads the Summary of docs/briefs/m14/sentry1/REVIEW.md, verifies its findings and writes one fix brief
+2026-11-16 15:15:09 start at cbe8b7f5 on m14
+2026-11-16 15:15:14 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-16 15:15:15 skip sentry-core (already done)
+2026-11-16 15:15:15 skip stats-optb (already done)
+2026-11-16 15:15:15 skip ci-wiring (already done)
+2026-11-16 15:15:16 skip consent-model (already done)
+2026-11-16 15:15:16 skip host-id (already done)
+2026-11-16 15:15:16 skip stats-bug (already done)
+2026-11-16 15:15:17 skip phone-consent (already done)
+2026-11-16 15:15:17 skip tv-consent (already done)
+2026-11-16 15:15:17 start f1
+2026-11-16 15:15:43 start f2
+2026-11-16 15:16:08 start f3
+2026-11-16 16:01:48 f1 finished: result 4 (259 turns, 43 min)
+2026-11-16 16:01:49 f1: dropped generated churn outside its list: site/shots/dpad.png site/shots/menus.png site/shots/results.png site/shots/sticks.png site/shots/tilt.png 
+2026-11-16 16:01:49 f2 finished: result 0 (72 turns, 11 min)
+2026-11-16 16:01:49 f3 finished: result 4 (86 turns, 9 min)
+2026-11-16 16:01:50 f3: dropped generated churn outside its list: site/shots/dpad.png site/shots/menus.png site/shots/results.png site/shots/sticks.png site/shots/tilt.png 
+2026-11-16 16:02:57 tests-first ok: controller_app/test/connect_consent_pop_test.dart fails on the old code
+2026-11-16 16:03:05 tests-first ok: controller_app/test/stats_consent_recording_test.dart fails on the old code
+2026-11-16 16:03:11 tests-first ok: packages/metrics/test/uploadable_in_process_test.dart fails on the old code
+2026-11-16 16:03:13 tests-first ok: packages/metrics/test/uploadable_old_players_test.dart fails on the old code
+2026-11-16 16:03:16 tests-first ok: packages/metrics/test/uploadable_winners_test.dart fails on the old code
+2026-11-16 16:03:31 finding: tests-first: packages/party_host/test/crash_dialog_no_test.dart passes on the old code, so it does not prove new behaviour
+2026-11-16 16:03:36 tests-first ok: packages/party_host/test/crash_names_test.dart fails on the old code
+2026-11-16 16:03:41 tests-first ok: packages/party_host/test/fake_crash_off_test.dart fails on the old code
+2026-11-16 16:03:47 tests-first ok: packages/party_host/test/live_stats_answer_kept_test.dart fails on the old code
+2026-11-16 16:03:53 tests-first ok: packages/party_host/test/stats_retry_once_test.dart fails on the old code
+2026-11-16 16:04:02 tests-first ok: tv_test_app/test/app_with_build_test.dart fails on the old code
+2026-11-16 16:04:03 STOPPED: tests-first: packages/party_host/test/crash_dialog_no_test.dart pass on the old code (write them to fail first, or add 'tests-first: exempt <reason>' to the brief for a pure refactor); nothing of this wave is committed
