@@ -167,7 +167,7 @@ final class PuzzleSnapshot implements GameSnapshot {
       warning: j['w'] == 1,
       phase: PuzzlePhase.values[j['ph'] as int],
       pieces: [
-        for (final (i, p) in (j['pc'] as List).cast<List>().indexed)
+        for (final (i, p) in (j['pc'] as List).cast<List<Object?>>().indexed)
           PieceView(
             x: d(p[0]),
             y: d(p[1]),
@@ -178,7 +178,7 @@ final class PuzzleSnapshot implements GameSnapshot {
           ),
       ],
       players: [
-        for (final p in (j['pl'] as List).cast<List>())
+        for (final p in (j['pl'] as List).cast<List<Object?>>())
           PlayerView(number: p[0] as int, x: d(p[1]), y: d(p[2]), held: p.length > 3 ? p[3] as int : null),
       ],
       readyTargets: {...((j['rd'] as List?) ?? const []).cast<int>()},
@@ -188,7 +188,7 @@ final class PuzzleSnapshot implements GameSnapshot {
       night: j['nt'] == 1,
       side: j['sd'] == null ? null : PuzzleSide.values[j['sd'] as int],
       popups: [
-        for (final p in (j['pop'] as List? ?? const []).cast<List>())
+        for (final p in (j['pop'] as List? ?? const []).cast<List<Object?>>())
           PuzzlePopup(
             side: PuzzleSide.values[p[0] as int],
             place: Offset(d(p[1]), d(p[2])),

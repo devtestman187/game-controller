@@ -145,7 +145,7 @@ final class PieceShape {
       if (r <= 0) throw const FormatException('A regular shape needs a radius above 0');
       return PieceShape.regular(sides, r.toDouble());
     }
-    if (json['polygon'] case final List points when points.length >= 3) {
+    if (json['polygon'] case final List<Object?> points when points.length >= 3) {
       return PieceShape.polygon([
         for (final p in points)
           if (p case [final num x, final num y])

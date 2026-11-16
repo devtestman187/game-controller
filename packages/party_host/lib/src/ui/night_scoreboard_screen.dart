@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:connection/connection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -78,7 +80,7 @@ class _NightScoreboardScreenState extends ConsumerState<NightScoreboardScreen> {
               // Back asks first: only its Yes clears the night.
               canPop: false,
               onPopInvokedWithResult: (didPop, _) {
-                if (!didPop) _askToEnd(context);
+                if (!didPop) unawaited(_askToEnd(context));
               },
               // A night that is ending draws nothing for the frame before the
               // picker is back.

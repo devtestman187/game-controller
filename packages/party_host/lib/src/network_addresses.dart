@@ -51,7 +51,7 @@ List<LocalAddress> orderedAddresses(Iterable<LocalAddress> addresses) {
 /// True when [a] and [b] hold the same addresses in the same order, so a
 /// refresh that changed nothing doesn't reach the screen.
 bool sameAddresses(List<LocalAddress> a, List<LocalAddress> b) =>
-    a.length == b.length && Iterable.generate(a.length).every((i) => a[i] == b[i]);
+    a.length == b.length && Iterable<int>.generate(a.length).every((i) => a[i] == b[i]);
 
 /// The ranks [orderedAddresses] sorts by: Wi-Fi first, then a wired or
 /// hotspot interface, then virtual, VPN or peer-to-peer; [_cellularRank] is

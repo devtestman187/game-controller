@@ -192,11 +192,12 @@ void main() {
         );
       }
       host.reportStage('phone-a', LatencyStage.receivedToDrawn, 7);
-      await waitFor(
-        () =>
-            (stats.session!.summary(host.nowMs)['players'] as List).isNotEmpty &&
-            ((stats.session!.summary(host.nowMs)['players'] as List).first as Map)['ratings'].isNotEmpty,
-      );
+      await waitFor(() {
+        final players = stats.session!.summary(host.nowMs)['players'] as List<Object?>;
+        if (players.isEmpty) return false;
+        final ratings = (players.first as Map<String, Object?>)['ratings'] as List<Object?>;
+        return ratings.isNotEmpty;
+      });
 
       // The phone leaves; the session ends after the gap and is saved.
       p.disconnect();
@@ -339,7 +340,8 @@ void main() {
     await until(p.changes, (s) => s.isConnected);
     await waitFor(() => stats.session != null && host.players.isNotEmpty);
 
-    Map? player() => (stats.session!.summary(host.nowMs)['players'] as List).cast<Map?>().firstOrNull;
+    Map<String, Object?>? player() =>
+        (stats.session!.summary(host.nowMs)['players'] as List<Object?>).cast<Map<String, Object?>?>().firstOrNull;
     int samples() => (((player()?['stages'] as Map?)?['touch_to_frame'] as Map?)?['n'] as int?) ?? 0;
 
     // One sample with no view, one while a 60 Hz view runs, one after it. Each
@@ -400,6 +402,6 @@ void main() {
     final path = await stats.exportAll();
     final copied = Directory(path).listSync().whereType<File>().toList();
     expect(copied, hasLength(1));
-    expect(jsonDecode(copied.single.readAsStringSync())['schema'], summarySchema);
+    expect((jsonDecode(copied.single.readAsStringSync()) as Map<String, Object?>)['schema'], summarySchema);
   });
 }

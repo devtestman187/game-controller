@@ -339,7 +339,7 @@ class _PausableState extends ConsumerState<Pausable> {
       if (ref.read(playersAwayProvider).isNotEmpty) return;
       final can = widget.players;
       final by = pressed.where((p) => can == null || can.contains(p.id)).firstOrNull;
-      if (widget.enabled && by != null && _sinceStartMs >= Pausable.startGrace.inMilliseconds) _pause(by);
+      if (widget.enabled && by != null && _sinceStartMs >= Pausable.startGrace.inMilliseconds) unawaited(_pause(by));
     } else if (menu != null) {
       final resumers = _resumers(players);
       if (resumers == null || pressed.any((p) => resumers.contains(p.id))) Navigator.of(menu).pop();

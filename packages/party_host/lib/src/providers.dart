@@ -218,7 +218,7 @@ class GamePlayersNotifier extends Notifier<List<GamePlayer>> {
   }
 
   static bool _same(List<GamePlayer> a, List<GamePlayer> b) =>
-      a.length == b.length && Iterable.generate(a.length).every((i) => a[i] == b[i]);
+      a.length == b.length && Iterable<int>.generate(a.length).every((i) => a[i] == b[i]);
 }
 
 /// Plays every sound a game asks for (PRD v2 S5). The home screen keeps it

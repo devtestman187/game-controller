@@ -66,13 +66,13 @@ class FakeStats implements StatsService {
 
   @override
   Future<void> pause() async {
-    if (failWith case final error?) throw error;
+    if (failWith case final error?) _throwFailure(error);
     pauses++;
   }
 
   @override
   Future<void> resume() async {
-    if (failWith case final error?) throw error;
+    if (failWith case final error?) _throwFailure(error);
     resumes++;
   }
 }
@@ -91,4 +91,12 @@ class FakeUploader implements SessionUploader {
     uploaded.add(summary);
     return null;
   }
+}
+
+/// Throws the test's chosen failure: an Error or Exception as it is, anything else as an
+/// Exception with its text (the `only_throw_errors` rule allows nothing else to be thrown).
+Never _throwFailure(Object error) {
+  if (error is Error) throw error;
+  if (error is Exception) throw error;
+  throw Exception('$error');
 }

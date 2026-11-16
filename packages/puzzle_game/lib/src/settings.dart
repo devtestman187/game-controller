@@ -110,7 +110,7 @@ final class PuzzleSettings {
 
   /// Unknown or broken values fall back to the defaults, clamped to range.
   static PuzzleSettings fromJson(Object? json) {
-    final m = json is Map ? json : const {};
+    final m = json is Map<String, Object?> ? json : const <String, Object?>{};
     double d(String key, double fallback) {
       final v = m[key];
       final r = ranges[key]!;

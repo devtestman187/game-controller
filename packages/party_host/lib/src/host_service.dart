@@ -122,7 +122,7 @@ class LiveHostService implements HostService {
     var id = prefs.getString(_hostIdKey);
     if (id == null) {
       id = _randomHex(16);
-      prefs.setString(_hostIdKey, id);
+      unawaited(prefs.setString(_hostIdKey, id));
     }
     _hostId = id;
     final saved = loadPairings(prefs);

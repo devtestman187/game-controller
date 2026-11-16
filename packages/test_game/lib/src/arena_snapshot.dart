@@ -193,7 +193,8 @@ final class ArenaSnapshot implements GameSnapshot {
       walls: [for (final w in j['wl'] as List) rect(w)],
       goal: j['g'] == null ? Rect.zero : rect(j['g']),
       hazards: [
-        for (final h in (j['hz'] as List).cast<List>()) Offset((h[0] as num).toDouble(), (h[1] as num).toDouble()),
+        for (final h in (j['hz'] as List).cast<List<Object?>>())
+          Offset((h[0] as num).toDouble(), (h[1] as num).toDouble()),
       ],
       players: [for (final p in (j['pl'] as List).cast<Map<String, Object?>>()) ArenaPlayerView.fromJson(p)],
       start: switch (j['st']) {

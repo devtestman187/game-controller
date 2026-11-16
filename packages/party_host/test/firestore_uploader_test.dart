@@ -27,9 +27,10 @@ void main() {
     expect(error, isNull);
     expect(uri!.path, '/v1/projects/p/databases/(default)/documents/sessions');
     expect(uri!.queryParameters['documentId'], 'abc');
-    final fields = got!['fields'] as Map;
+    final fields = got!['fields'] as Map<String, Object?>;
     expect(fields.keys.toSet(), {'json', 'schema', 'date', 'app', 'host'});
-    expect(jsonDecode((fields['json'] as Map)['stringValue'] as String)['id'], 'abc');
+    final sent = (fields['json'] as Map<String, Object?>)['stringValue'] as String;
+    expect((jsonDecode(sent) as Map<String, Object?>)['id'], 'abc');
   });
 }
 

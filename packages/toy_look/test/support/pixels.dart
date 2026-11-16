@@ -1,4 +1,4 @@
-import 'dart:ui' show Canvas, Color, ImageByteFormat, Paint, PictureRecorder, Rect, Size;
+import 'dart:ui' show Canvas, Color, Paint, PictureRecorder, Rect, Size;
 
 /// The white every test paints over first, so a shape's transparent parts and
 /// its shadow read as colour rather than as alpha.
