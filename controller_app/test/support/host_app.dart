@@ -236,6 +236,38 @@ Future<PhoneHost> enterHostMode(
   return host;
 }
 
+/// A phone that joins [host] over a socket on this machine, as one on the LAN
+/// would: the host sees it as a phone, not as its own player. The test binding
+/// blocks real WebSockets, so a file that joins one sets
+/// `HttpOverrides.global = null` in its `setUp`.
+Future<ControllerClient> joinPhone(WidgetTester tester, PhoneHost host, String id) async {
+  await until(
+    tester,
+    () => host.service.state.host.port != null,
+    () => 'The host did not start listening: ${host.service.state.host}',
+  );
+  final state = host.service.state;
+  final port = state.host.port;
+  if (port == null) fail('The host is not listening');
+  final client = ControllerClient(
+    identity: ControllerIdentity(controllerId: id, name: id, platform: 'android', appVersion: 't'),
+    connector: WebSocketConnector(),
+    heartbeatInterval: const Duration(milliseconds: 100),
+    heartbeatTimeout: const Duration(seconds: 2),
+    retryDelays: const [Duration(milliseconds: 50)],
+  );
+  client.connect(
+    HostAddress(addresses: ['127.0.0.1'], port: port),
+    code: state.host.pairingCode,
+  );
+  await until(
+    tester,
+    () => client.snapshot.isConnected && host.service.gameHost.players.any((p) => p.id == id),
+    () => 'The phone did not join: ${client.snapshot} / ${host.service.gameHost.players}',
+  );
+  return client;
+}
+
 /// Stops the host from its chip, as a player does (s7d2 Q1): "Stop hosting",
 /// then the host route pops and the Connect screen is back under it.
 Future<void> stopHosting(WidgetTester tester, PhoneHost host) async {

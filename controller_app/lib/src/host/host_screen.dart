@@ -58,10 +58,12 @@ class _HostScreenState extends ConsumerState<HostScreen> {
   /// Asks the adult about sharing host stats once (PRD v2 T19): the Stats
   /// screen's own prompt, so the wording and the saved answer are its. A
   /// prompt closed without an answer still leaves the host running, and the
-  /// next host asks again (B-023).
+  /// next host asks again (B-023). It is touch only: the host already accepts
+  /// the players' phones, so their A and B must not answer for the adult
+  /// whose phone this is (B-023 follow-up).
   Future<void> _askConsent() async {
     if (ref.read(party.statsStateProvider).consent != null) return;
-    await party.askConsent(context, ref);
+    await party.askConsent(context, ref, touchOnly: true);
   }
 
   @override

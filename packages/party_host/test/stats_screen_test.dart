@@ -1,3 +1,4 @@
+import 'package:connection/connection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -37,6 +38,29 @@ void main() {
     expect(fake.stats.consents, [false]);
     expect(find.text('Sharing: off'), findsOneWidget);
     expect(find.textContaining('nothing leaves this device'), findsOneWidget);
+  });
+
+  testWidgets('the prompt the Stats screen opens answers with a phone\'s A and the remote, as before', (tester) async {
+    final fake = await pumpHost(tester, screen: const StatsScreen());
+    fake.state = withController(fake.state, phoneInfo('p2', 2));
+    fake.emit();
+    await neutral(tester, fake, ['p2']);
+
+    // The screen's own Sharing prompt is the screens' prompt (B-023): the
+    // phones' and the remote's buttons work it, as they always did. Only the
+    // first host's prompt is a thumb's alone.
+    await tester.tap(find.byKey(const Key('statsSharing')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('consentDialog')), findsOneWidget);
+    await press(tester, fake, 'p2', GamepadButton.a);
+    await tester.pumpAndSettle();
+    expect(fake.stats.consents, [false], reason: 'a phone\'s A presses the focused "Don\'t share"');
+
+    await tester.tap(find.byKey(const Key('statsSharing')));
+    await tester.pumpAndSettle();
+    await tester.sendKeyEvent(LogicalKeyboardKey.select);
+    await tester.pumpAndSettle();
+    expect(fake.stats.consents, [false, false], reason: 'the remote\'s OK presses it too');
   });
 
   testWidgets('the Stats screen with no sessions, and in a small window', (tester) async {

@@ -62,6 +62,25 @@ class _ControlsClaimState extends ConsumerState<ControlsClaim> {
   Widget build(BuildContext context) => widget.child;
 }
 
+/// Keeps the phones and the remote off the dialog it wraps, so only a thumb on
+/// the host's own screen works it (B-023's first-host prompt).
+///
+/// The claim is how a screen says who may work it: with no player in its
+/// [Controls.only], a joined phone's A presses nothing and its B closes
+/// nothing. [ExcludeFocus] keeps every key off the dialog's buttons, so a
+/// remote's OK, Enter and back reach nothing either; a touch still works.
+class ThumbOnly extends StatelessWidget {
+  const ThumbOnly({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => ControlsClaim(
+    controls: const Controls.menus(only: <String>{}),
+    child: ExcludeFocus(child: child),
+  );
+}
+
 enum _Key { up, down, left, right, a, b }
 
 /// Lets the players' phones work every screen of the host like the remote

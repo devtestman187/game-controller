@@ -4,10 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:metrics/metrics.dart';
 import 'package:toy_look/toy_look.dart';
 
-import '../text/host_text.dart';
 import '../providers.dart';
 import '../stats_service.dart';
 import '../stats_state.dart';
+import '../text/host_text.dart';
+import 'controller_menus.dart';
 import 'host_button.dart';
 import 'host_card_button.dart';
 import 'host_screen.dart';
@@ -197,29 +198,34 @@ const _consentWidthPx = 560.0;
 ///
 /// Its paper, ink edge and ink text come from the look's dialog theme (M13
 /// 3a); M13 3b gives it the host's own buttons, so the remote's focus and a
-/// thumb press work as they do everywhere else.
-Future<void> askConsent(BuildContext context, WidgetRef ref) async {
+/// thumb press work as they do everywhere else. [touchOnly] is the first
+/// host's prompt (B-023), which only a thumb on the hosting phone answers.
+Future<void> askConsent(BuildContext context, WidgetRef ref, {bool touchOnly = false}) async {
   final share = await showDialog<bool>(
     context: context,
     barrierDismissible: false,
-    builder: (context) => AlertDialog(
-      key: const Key('consentDialog'),
-      title: const Text(HostText.consentQuestion),
-      content: const SizedBox(width: _consentWidthPx, child: Text(HostText.consentBody)),
-      actions: [
-        HostButton(
-          key: const Key('consentNo'),
-          label: HostText.dontShare,
-          autofocus: true,
-          onPressed: () => Navigator.of(context).pop(false),
-        ),
-        HostButton(
-          key: const Key('consentYes'),
-          label: HostText.shareStats,
-          onPressed: () => Navigator.of(context).pop(true),
-        ),
-      ],
-    ),
+    builder: (context) {
+      final prompt = AlertDialog(
+        key: const Key('consentDialog'),
+        title: const Text(HostText.consentQuestion),
+        content: const SizedBox(width: _consentWidthPx, child: Text(HostText.consentBody)),
+        actions: [
+          HostButton(
+            key: const Key('consentNo'),
+            label: HostText.dontShare,
+            // A thumb-only prompt shows no focus, so no key has a way in.
+            autofocus: !touchOnly,
+            onPressed: () => Navigator.of(context).pop(false),
+          ),
+          HostButton(
+            key: const Key('consentYes'),
+            label: HostText.shareStats,
+            onPressed: () => Navigator.of(context).pop(true),
+          ),
+        ],
+      );
+      return touchOnly ? ThumbOnly(child: prompt) : prompt;
+    },
   );
   if (share != null) ref.read(statsServiceProvider).setConsent(share);
 }
