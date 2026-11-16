@@ -17,9 +17,12 @@ part 'lobby_music_widgets.dart';
 /// it still counts, so the Shape Race list, the puzzle settings, the join
 /// screen, the stats and the settings keep it. A round is open while its screen
 /// is ([RoundHold]): `PuzzleScreen` or `GameScreen`, their results and pause
-/// included. So a round stops the lobby music the moment it opens; Play again
-/// keeps it off; and it comes back when the round's screens close to the join
-/// screen or the picker, Change teams included. The two never play together.
+/// included. So a round stops the lobby music the moment it opens, and it comes
+/// back when the round's screens close to the join screen or the picker, Change
+/// teams included — or while the Arena's screen sits on its waiting card, which
+/// holds a round open but plays none (M14 bugs B-030). Every stage the round's
+/// screen enters says so afresh, so Play again's round gets its own music back
+/// (M14 bugs B-029). The two never play together.
 ///
 /// The round's music starts at the round's "go" ([RoundPhase.playing], which
 /// `Pausable` publishes after the 3-2-1, or at once where there is no beat) and
@@ -86,6 +89,11 @@ class HostMusic {
   /// at 5 s, rather than the puzzle's warning.
   bool _arena = false;
 
+  /// Whether the round's screen is on its waiting card: a round held open but
+  /// not playing, which is the lobby's stage and plays its loop (M14 bugs
+  /// B-030).
+  bool _waiting = false;
+
   /// Whether the app is shown.
   bool _shown = true;
 
@@ -133,17 +141,22 @@ class HostMusic {
     settle();
   }
 
-  /// A round's screen opened: its clock and its end are [writer]'s to report
-  /// from here. The round's music starts at the round's own "go", so a Play
-  /// again's round waits for its 3-2-1 like any other. [arena] says the round
-  /// is the Arena's, which has its own piece and clock (M14 design section 7).
-  void roundScreenOpened(Object writer, {bool arena = false}) {
+  /// A round's screen opened, or entered another of its stages: its clock and
+  /// its end are [writer]'s to report from here, and the last round's end is
+  /// forgot, so Play again's round gets its music back (M14 bugs B-029). The
+  /// round's music starts at the round's own "go", so a Play again's round waits
+  /// for its 3-2-1 like any other. [arena] says the round is the Arena's, which
+  /// has its own piece and clock (M14 design section 7), and [waiting] that the
+  /// screen is on its waiting card: the lobby's loop plays there while a lobby
+  /// is open, as on the picker (M14 bugs B-030).
+  void roundScreenOpened(Object writer, {bool arena = false, bool waiting = false}) {
     if (_disposed) return;
     _roundWriter = writer;
     _roundEnded = false;
     _timeLeftMs = null;
     _warningS = 0;
     _arena = arena;
+    _waiting = waiting;
     settle();
   }
 
@@ -174,6 +187,7 @@ class HostMusic {
     _timeLeftMs = null;
     _warningS = 0;
     _arena = false;
+    _waiting = false;
     settle();
   }
 
@@ -213,9 +227,11 @@ class HostMusic {
       : MusicLoop.forRound(timeLeftMs: _timeLeftMs, warningS: _warningS);
 
   /// The loop wanted now, or null for no music: a round's while its round runs
-  /// and isn't over, the lobby's while a lobby is open and no round is.
+  /// and isn't over, the lobby's while a lobby is open and no round plays. A
+  /// screen on its waiting card holds a round open but plays none, so the
+  /// lobby's loop is the one there (M14 bugs B-030).
   MusicLoop? get _wanted {
-    if (_rounds > 0) return _roundEnded || !_isPlayingRound ? null : _roundLoop;
+    if (_rounds > 0 && !_waiting) return _roundEnded || !_isPlayingRound ? null : _roundLoop;
     return _lobbies > 0 ? MusicLoop.lobby : null;
   }
 

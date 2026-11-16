@@ -69,9 +69,10 @@ class _GameScreenState extends ConsumerState<GameScreen> {
   /// Where the round's moments go (m12 bug 1107e): Diagnostics reads them back.
   late final LogSink _log;
 
-  /// The host's music (M13 design section 8): this round reports its clock and
-  /// its end, so the Arena's piece speeds up with the Bumper Round's clock and
-  /// fades out on the results. Made here, not lazily: dispose() can't read
+  /// The host's music (M13 design section 8): this round reports its clock, its
+  /// end and its stage, so the Arena's piece speeds up with the Bumper Round's
+  /// clock, fades out on the results and gives way to the lobby's on the waiting
+  /// card (M14 bugs B-029, B-030). Made here, not lazily: dispose() can't read
   /// providers any more.
   late final HostMusic _music;
 
@@ -120,7 +121,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
         if (mounted) setState(() {});
       },
     );
-    _music = ref.read(lobbyMusicProvider)..roundScreenOpened(this, arena: true);
+    _music = ref.read(lobbyMusicProvider)..roundScreenOpened(this, arena: true, waiting: _stage == _Stage.waiting);
   }
 
   @override
@@ -192,6 +193,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
       _result = null;
       _game = game;
     });
+    _music.roundScreenOpened(this, arena: true);
     _takeFocus();
   }
 
@@ -217,6 +219,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
       _result = null;
       _game = game;
     });
+    _music.roundScreenOpened(this, arena: true);
     _takeFocus();
   }
 
@@ -228,6 +231,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
       _stage = _Stage.waiting;
       _result = null;
     });
+    _music.roundScreenOpened(this, arena: true, waiting: true);
   }
 
   /// The Bumper Round's clock ran out: the results card is up, each joined
