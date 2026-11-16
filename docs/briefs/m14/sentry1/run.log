@@ -159,3 +159,28 @@
 2026-11-16 16:50:30 tests-first ok: packages/party_host/test/crash_off_guard_test.dart fails on the old code
 2026-11-16 16:50:35 tests-first ok: packages/party_host/test/host_id_stopped_test.dart fails on the old code
 2026-11-16 16:50:35 STOPPED: tests-first: controller_app/test/crash_names_host_test.dart pass on the old code (write them to fail first, or add 'tests-first: exempt <reason>' to the brief for a pure refactor); nothing of this wave is committed
+2026-11-16 16:51:22 HAND-FIX f6: crash_names_host_test.dart passed on the old code (it closes a coverage gap, no behaviour changed), so its test was moved into the existing host_focus_pad_test.dart (2 tests pass); rest of the job applied as built
+2026-11-16 16:51:22 start at 1ab3d65c on m14
+2026-11-16 16:51:28 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-16 16:51:29 skip sentry-core (already done)
+2026-11-16 16:51:29 skip stats-optb (already done)
+2026-11-16 16:51:30 skip ci-wiring (already done)
+2026-11-16 16:51:30 skip consent-model (already done)
+2026-11-16 16:51:30 skip host-id (already done)
+2026-11-16 16:51:31 skip stats-bug (already done)
+2026-11-16 16:51:31 skip phone-consent (already done)
+2026-11-16 16:51:31 skip tv-consent (already done)
+2026-11-16 16:51:32 skip f1 (already done)
+2026-11-16 16:51:32 skip f2 (already done)
+2026-11-16 16:51:32 skip f3 (already done)
+2026-11-16 16:51:32 resume f4 (applied by hand, not committed yet)
+2026-11-16 16:51:33 resume f5 (applied by hand, not committed yet)
+2026-11-16 16:51:33 resume f6 (applied by hand, not committed yet)
+2026-11-16 16:52:37 tests-first ok: controller_app/test/hosting_state_order_test.dart fails on the old code
+2026-11-16 16:52:43 tests-first ok: controller_app/test/paired_launch_consent_test.dart fails on the old code
+2026-11-16 16:52:58 tests-first ok: packages/party_host/test/crash_names_dispose_test.dart fails on the old code
+2026-11-16 16:53:03 tests-first ok: packages/party_host/test/crash_off_guard_test.dart fails on the old code
+2026-11-16 16:53:07 tests-first ok: packages/party_host/test/host_id_stopped_test.dart fails on the old code
+2026-11-16 16:57:38 committed f4: fd253221 Pop Connect after the answer, ask a paired phone's questions
+2026-11-16 16:57:39 committed f5: d61ba342 sentry f5: host id retry stops with its host; off tests pin guard
+2026-11-16 16:57:40 committed f6: 6a6a3e67 sentry1 f6: lobby names under a real phone host, host set first
