@@ -55,13 +55,17 @@ void main() {
             final pill = pop == 0 ? badge.pill.outerRect : badge.peakBox;
             final at = '$where: a marble at $place with $coins at pop $pop wears its pill at $pill, eyes at $eyes';
             expect(pill.overlaps(eyes), isFalse, reason: at);
-            expect(pill.left, greaterThanOrEqualTo(0), reason: at);
-            expect(pill.top, greaterThanOrEqualTo(0), reason: at);
-            expect(pill.right, lessThanOrEqualTo(field.width), reason: at);
-            expect(pill.bottom, lessThanOrEqualTo(field.height), reason: at);
+            expect(pill.left, greaterThanOrEqualTo(-_eps), reason: at);
+            expect(pill.top, greaterThanOrEqualTo(-_eps), reason: at);
+            expect(pill.right, lessThanOrEqualTo(field.width + _eps), reason: at);
+            expect(pill.bottom, lessThanOrEqualTo(field.height + _eps), reason: at);
           }
         }
       }
     });
   }
 }
+
+/// Float slack for the edge checks: layout sums can land a hair past an edge
+/// (-1.4e-14 on the Linux CI) without the pill being outside it.
+const _eps = 1e-9;

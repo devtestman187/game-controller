@@ -148,10 +148,10 @@ void main() {
         for (final coins in const [7, 100]) {
           final box = badgeOn(field, place, coins, pop: 1, look: look).peakBox;
           final where = '$field: a marble at $place with $coins wears its pill at $box';
-          expect(box.left, greaterThanOrEqualTo(0), reason: where);
-          expect(box.top, greaterThanOrEqualTo(0), reason: where);
-          expect(box.right, lessThanOrEqualTo(field.width), reason: where);
-          expect(box.bottom, lessThanOrEqualTo(field.height), reason: where);
+          expect(box.left, greaterThanOrEqualTo(-_eps), reason: where);
+          expect(box.top, greaterThanOrEqualTo(-_eps), reason: where);
+          expect(box.right, lessThanOrEqualTo(field.width + _eps), reason: where);
+          expect(box.bottom, lessThanOrEqualTo(field.height + _eps), reason: where);
         }
       }
     }
@@ -166,10 +166,10 @@ void main() {
         final inner = badge.pill.outerRect.deflate(arenaStyleOf(look).outlineWidth);
         final box = badge.countBox;
         final where = '$field: $coins wears its digits at $box inside the pill $inner';
-        expect(box.left, greaterThanOrEqualTo(inner.left), reason: where);
-        expect(box.top, greaterThanOrEqualTo(inner.top), reason: where);
-        expect(box.right, lessThanOrEqualTo(inner.right), reason: where);
-        expect(box.bottom, lessThanOrEqualTo(inner.bottom), reason: where);
+        expect(box.left, greaterThanOrEqualTo(inner.left - _eps), reason: where);
+        expect(box.top, greaterThanOrEqualTo(inner.top - _eps), reason: where);
+        expect(box.right, lessThanOrEqualTo(inner.right + _eps), reason: where);
+        expect(box.bottom, lessThanOrEqualTo(inner.bottom + _eps), reason: where);
       }
     }
   });
@@ -190,3 +190,7 @@ void main() {
     expect(pill.height, greaterThanOrEqualTo(badge.pill.height - 2 * ink - 1), reason: where);
   });
 }
+
+/// Float slack for the edge checks: layout sums can land a hair past an edge
+/// (-1.4e-14 on the Linux CI) without the pill being outside it.
+const _eps = 1e-9;
