@@ -124,3 +124,6 @@
 2026-11-16 16:12:29 committed f1: 52389e7c sentry f1: the review's four findings, each with a test
 2026-11-16 16:12:31 committed f2: 61cc4274 Keep stats answers across a host pause, and honest upload wording
 2026-11-16 16:12:33 committed f3: 3fe324ef Guard the Stats read, privatise the crash button, pin the crash no
+2026-11-16 16:27:55 reviewed f1: 11 finding(s)
+2026-11-16 16:27:56 reviewed f2: 4 finding(s)
+2026-11-16 16:27:57 reviewed f3: 10 finding(s)
