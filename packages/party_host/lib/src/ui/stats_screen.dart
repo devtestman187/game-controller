@@ -6,12 +6,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:metrics/metrics.dart' hide Controls;
 import 'package:toy_look/toy_look.dart';
 
-import '../controls.dart';
+import '../consent/consent_prompts.dart';
 import '../providers.dart';
 import '../stats_service.dart';
 import '../stats_state.dart';
 import '../text/host_text.dart';
-import 'controller_menus.dart';
 import 'host_button.dart';
 import 'host_card_button.dart';
 import 'host_screen.dart';
@@ -188,66 +187,5 @@ class _Cell extends StatelessWidget {
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.only(right: ToySizes.space24, bottom: ToySizes.space8),
     child: Text(text, style: style ?? ToyLookScope.of(context).type.body),
-  );
-}
-
-/// How wide the consent prompt's text is, in logical pixels: a comfortable
-/// line length for a paragraph an adult reads once.
-const _consentWidthPx = 560.0;
-
-/// The consent prompt (PRD v2 T19): on first launch, and from the Stats
-/// screen to change the answer. It is for the adult, so it says plainly what
-/// is shared and that nothing is shared by default.
-///
-/// Its paper, ink edge and ink text come from the look's dialog theme (M13
-/// 3a); M13 3b gives it the host's own buttons, so the remote's focus and a
-/// thumb press work as they do everywhere else. [touchOnly] is the first
-/// host's prompt (B-023), which only a thumb on the hosting phone answers.
-Future<void> askConsent(BuildContext context, WidgetRef ref, {bool touchOnly = false}) async {
-  final share = await showDialog<bool>(
-    context: context,
-    barrierDismissible: false,
-    builder: (context) {
-      final prompt = AlertDialog(
-        key: const Key('consentDialog'),
-        title: const Text(HostText.consentQuestion),
-        content: const SizedBox(width: _consentWidthPx, child: Text(HostText.consentBody)),
-        actions: [
-          HostButton(
-            key: const Key('consentNo'),
-            label: HostText.dontShare,
-            // A thumb-only prompt shows no focus, so no key has a way in.
-            autofocus: !touchOnly,
-            onPressed: () => Navigator.of(context).pop(false),
-          ),
-          HostButton(
-            key: const Key('consentYes'),
-            label: HostText.shareStats,
-            onPressed: () => Navigator.of(context).pop(true),
-          ),
-        ],
-      );
-      return touchOnly ? _ThumbOnly(child: prompt) : prompt;
-    },
-  );
-  if (share != null) ref.read(statsServiceProvider).setConsent(share);
-}
-
-/// Keeps the phones and the remote off the dialog it wraps, so only a thumb on
-/// the host's own screen works it (B-023's first-host prompt).
-///
-/// The claim is how a screen says who may work it: with no player in its
-/// [Controls.only], a joined phone's A presses nothing and its B closes
-/// nothing. [ExcludeFocus] keeps every key off the dialog's buttons, so a
-/// remote's OK, Enter and back reach nothing either; a touch still works.
-class _ThumbOnly extends StatelessWidget {
-  const _ThumbOnly({required this.child});
-
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) => ControlsClaim(
-    controls: const Controls.menus(only: <String>{}),
-    child: ExcludeFocus(child: child),
   );
 }

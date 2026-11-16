@@ -14,6 +14,10 @@ export 'package:toy_look/toy_look.dart';
 export 'src/abandon_signal.dart';
 export 'src/advertiser.dart';
 export 'src/best_times.dart';
+// This instance's own consent answers (M14): the two questions each app asks
+// for itself, the prompts that ask them, and the wording they use.
+export 'src/consent/consent_prompts.dart';
+export 'src/consent/consent_state.dart';
 export 'src/controls.dart' show Controls, ControlsClaims;
 // Crash reports (M14): the reporter the apps start after the crash answer,
 // the static helper the app's own code reports through, the pure scrubber the
@@ -54,6 +58,7 @@ export 'src/sound_wish.dart';
 export 'src/stats_service.dart';
 export 'src/stats_state.dart';
 export 'src/text/arena_text.dart';
+export 'src/text/consent_text.dart';
 export 'src/text/host_text.dart';
 export 'src/text/night_text.dart';
 export 'src/text/phone_text.dart';
