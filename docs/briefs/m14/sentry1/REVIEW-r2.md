@@ -105,3 +105,12 @@ wrong. Code-health records two of the items the verdicts sent it.
 ## Delete
 
 - none
+
+## Verdicts (driver, Nov 16, round 2)
+
+- must connect_screen.dart:61 deferred pop: real; f4 item 1.
+- should crash_reports_test guard weakness: real; f5 item 2. host_id retry vs dispose, no log: real; f5 item 1. TV wrapper assertion: real; f5 item 3. Phone lobby names under a real host: real; f6 item 1.
+- should design line "no names or device IDs", uploadable.dart:44 doc, f3-report accuracy, code-health entries: fixed by hand (docs only).
+- should empty catches: minor; code-health (listed).
+- could: stats_screen.dart comment typo fixed; release.md lines fixed by hand; hosting.dart order and crash_names onDispose: f6; the rest (scrub boundaries, setConsent second writer, settings_text wording, scroll view, weak test names, coverage_all hand imports, duplicate appWithBuild, sizes, installCrashHandlers once) in docs/code-health.md "M14 sentry1". Commits that cannot build their own suites: noted, no action (the run commits per wave).
+- Open question 1: yes, pop (f4). Q2: yes, ask on the controller screen too (f4 item 2). Q3: yes, the host phone's own player shares (the host's yes allows the upload). Q4: owner call, listed in the report. Q7 (back closes the crash prompt unanswered, asked again next launch): acceptable, listed.

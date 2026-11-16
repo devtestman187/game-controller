@@ -185,3 +185,4 @@
 2026-11-16 16:57:39 committed f5: d61ba342 sentry f5: host id retry stops with its host; off tests pin guard
 2026-11-16 16:57:40 committed f6: 6a6a3e67 sentry1 f6: lobby names under a real phone host, host set first
 2026-11-16 16:57:41 DONE: every job is committed. Claude reads the Summary of docs/briefs/m14/sentry1/REVIEW.md, verifies its findings and writes one fix brief
+2026-11-16 17:02:24 full tools/check.sh on the tip: all checks passed (host 585, phone 528, puzzle 442, connection 303, metrics 169, protocol 120, tv ok)
