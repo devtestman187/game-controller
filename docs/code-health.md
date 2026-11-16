@@ -194,3 +194,6 @@ Each is now `unawaited(...)` with no behaviour change; the failure would be lost
 
 ## Done
 - connection, before adding a message (sentry1 stats-optb): `host_connection.dart` 392 lines split into it and `host_connection_info.dart` (`toInfo`, `latencyLine` as library-private functions), and `client_messages.dart`'s `onData` (60 lines) split into it plus `_onControlMessage` and `_onViewEvent`. Now 364 and 44 lines, `onData` 35.
+
+### M14 sentry2 (unmarked sessions dropped, Nov 16)
+Review of `docs/briefs/m14/sentry2/REVIEW.md`, minor items left open: `live_stats.dart` is at the 380-line cap with the drop rule in three places, so split the upload queue into `session_upload_queue.dart` at the next stats job; `skippedSessions` is written once per dropped file and never pruned (batch the write, prune ids whose file is gone); a dropped file leaves no log line; `StatsState.waiting` doc should say unmarked sessions never count; add tests for all-`share: false` (still uploads totals) and consent off (no skip written); `live_stats_unmarked_test.dart` spells prefs keys as literals and uses real-time `waitFor` (B-019).

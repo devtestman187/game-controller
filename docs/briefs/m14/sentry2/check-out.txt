@@ -1,0 +1,13 @@
+PASS  format      (3s)
+PASS  analyze     (6s)
+PASS  protocol    (120 tests, 2s)
+PASS  connection  (303 tests, 12s)
+PASS  metrics     (171 tests, 2s)
+PASS  kit         (74 tests, 5s)
+PASS  look        (131 tests, 7s)
+PASS  arena       (236 tests, 21s)
+PASS  puzzle      (442 tests, 91s)
+PASS  host        (586 tests, 53s)
+PASS  phone       (528 tests, 45s)
+PASS  tv          (12s)
+All checks passed (259s). Logs: C:\Users\mrman\AppData\Local\Temp/thumbparty-check-20261116-174040

@@ -10,3 +10,5 @@
 2026-11-16 17:33:26 start the run's review
 2026-11-16 17:40:00 finding: the run's review wrote no REVIEW.md (see docs/briefs/m14/sentry2/flash-run-review.log)
 2026-11-16 17:40:00 DONE: every job is committed. Claude reads the Summary of docs/briefs/m14/sentry2/REVIEW.md, verifies its findings and writes one fix brief
+2026-11-17 17:40:40 HAND-FIX unmarked-drop: protocol.md line 207 reworded; duplicate uploadable_old_players_test.dart deleted; minor findings to code-health
+2026-11-16 17:46:09 check.sh on tip: All checks passed (259s)
