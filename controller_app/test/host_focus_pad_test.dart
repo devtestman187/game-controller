@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:connection/connection.dart';
 import 'package:controller/src/host/host_start_sheet.dart';
+import 'package:controller/src/host/hosting.dart';
 import 'package:controller/src/host/phone_host.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -176,6 +177,50 @@ void main() {
     expect(edgeInk(await screenPixels(tester), focusedRect(), ink), greaterThan(0));
 
     await tester.runAsync(phone.dispose);
+    await tester.runAsync(host.dispose);
+  });
+
+  // The phone host's lobby names reach the crash scrubber (sentry1 f6).
+  tearDown(() => party.CrashReports.playerNames = const {});
+
+  testWidgets('the phone host`s lobby names reach the scrubber, and leave when the lobby empties', (tester) async {
+    await pumpHostApp(
+      tester,
+      extra: [
+        // As this app's main gives it (main.dart:55): the lobby of the host it
+        // runs, and only while it runs one.
+        party.crashLobbyProvider.overrideWith((ref) => ref.watch(phoneCrashLobbyProvider)),
+      ],
+    );
+    // "Show on this device": the host pairs no own player, so every name in
+    // the lobby is a phone's.
+    final host = await enterHostMode(tester, choice: HostChoice.onDevice);
+    expect(party.CrashReports.playerNames, isEmpty, reason: 'nobody has joined yet');
+
+    // A phone called Sam joins the host over its link.
+    final phone = await joinPhone(tester, host, 'Sam');
+    await until(
+      tester,
+      () => party.CrashReports.playerNames.contains('Sam'),
+      () => 'Sam did not reach the scrubber: ${party.CrashReports.playerNames}',
+    );
+    expect(party.CrashReports.playerNames, {'Sam'});
+    expect(
+      party.scrubText('Sam could not pair', party.CrashReports.playerNames),
+      '[name] could not pair',
+      reason: 'a report that names Sam goes out without it',
+    );
+
+    // Sam leaves: the lobby has nobody, so there is no name to hide.
+    await tester.runAsync(phone.dispose);
+    await until(
+      tester,
+      () => party.CrashReports.playerNames.isEmpty,
+      () => 'Sam`s name stayed after he left: ${party.CrashReports.playerNames}',
+    );
+    expect(party.scrubText('Sam could not pair', party.CrashReports.playerNames), 'Sam could not pair');
+
+    // Everything that outlives a frame is stopped in the real clock.
     await tester.runAsync(host.dispose);
   });
 }

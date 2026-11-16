@@ -34,6 +34,8 @@ const hostRowCornerShare = 0.2;
 /// It is a launch's first screen, so it puts this phone's own two questions to
 /// the adult on its first frame (design sentry-consent.md): crash reports first
 /// and then usage stats, once a launch, and never over a game that is running.
+/// A phone that starts already paired never opens this screen; the controller's
+/// first frame asks there instead, through the same once-a-launch flag.
 class ConnectScreen extends ConsumerStatefulWidget {
   const ConnectScreen({super.key});
 
@@ -47,6 +49,11 @@ class _ConnectScreenState extends ConsumerState<ConnectScreen> {
   /// instead of the adult answering it (the run's review: it did).
   bool _promptUp = false;
 
+  /// A connection landed under the launch prompts: its pop waited for the
+  /// answer and is made up then, instead of being dropped for good (the run's
+  /// review: it was).
+  bool _popWaits = false;
+
   @override
   void initState() {
     super.initState();
@@ -58,8 +65,20 @@ class _ConnectScreenState extends ConsumerState<ConnectScreen> {
       if (ref.read(hostingProvider)?.live ?? false) return;
       ref.read(launchConsentAskedProvider.notifier).mark();
       _promptUp = true;
-      unawaited(askConsents(context, ref).whenComplete(() => _promptUp = false));
+      unawaited(askConsents(context, ref).whenComplete(_afterLaunchConsent));
     });
+  }
+
+  /// After the launch's answer, closes this screen for a connection that
+  /// waited under the prompt, if the TV is still there: the adult paired to
+  /// play, not to look at Connect (the run's review, finding 1).
+  void _afterLaunchConsent() {
+    _promptUp = false;
+    if (!_popWaits) return;
+    _popWaits = false;
+    if (!mounted) return;
+    if (ref.read(hostingProvider)?.live ?? false) return;
+    if (ref.read(clientStateProvider).isConnected) Navigator.of(context).maybePop();
   }
 
   @override
@@ -68,8 +87,14 @@ class _ConnectScreenState extends ConsumerState<ConnectScreen> {
       // A hosting phone's own player connects to this phone: that is no reason
       // to close this screen, which would pop the host route above it (m12 §3).
       if (ref.read(hostingProvider)?.live ?? false) return;
-      if (_promptUp) return;
-      if (next.isConnected && !(previous?.isConnected ?? false)) Navigator.of(context).maybePop();
+      if (!next.isConnected || (previous?.isConnected ?? false)) return;
+      // A connection that lands under the launch prompt waits for the answer:
+      // a pop here would take the dialog, not this screen (the run's review).
+      if (_promptUp) {
+        _popWaits = true;
+        return;
+      }
+      Navigator.of(context).maybePop();
     });
     final client = ref.watch(clientStateProvider);
 

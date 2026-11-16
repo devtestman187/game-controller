@@ -76,7 +76,12 @@ class _ControllerScreenState extends ConsumerState<ControllerScreen> with Widget
       // Back to the last TV if still paired, otherwise straight to choosing
       // one. A hosting phone has no TV to find: its own player is already
       // connecting.
-      if (!hosting && !ref.read(connectionActionsProvider).reconnectToLastHost()) openConnect(context);
+      final paired = !hosting && ref.read(connectionActionsProvider).reconnectToLastHost();
+      if (!hosting && !paired) openConnect(context);
+      // A phone that stays here never opens the Connect screen, where a launch
+      // puts this phone's own two questions (design sentry-consent.md): this
+      // first frame asks them instead.
+      if (paired) _askLaunchConsent();
       // The mode used last (saved).
       unawaited(ref.read(gyroProvider.notifier).restoreMode());
       // The battery and CPU readout is the controller's; a host has its own.
@@ -90,6 +95,17 @@ class _ControllerScreenState extends ConsumerState<ControllerScreen> with Widget
     final changed = _phaseChanged;
     if (changed != null) _phase?.removeListener(changed);
     super.dispose();
+  }
+
+  /// Puts this launch's own two questions (design sentry-consent.md) to the
+  /// adult, for a launch whose first screen is this one and not the Connect
+  /// screen. The launch's flag means the two screens never ask twice, and a
+  /// host route above asks its own (B-023), so nothing goes over a game.
+  void _askLaunchConsent() {
+    if (ref.read(hostingProvider)?.live ?? false) return;
+    if (!ref.read(launchConsentAskProvider) || ref.read(launchConsentAskedProvider)) return;
+    ref.read(launchConsentAskedProvider.notifier).mark();
+    unawaited(party.askConsents(context, ref));
   }
 
   /// The round started, stopped or started again (m12-host-touch rules 1, 2):

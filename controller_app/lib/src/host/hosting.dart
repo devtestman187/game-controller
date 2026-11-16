@@ -34,6 +34,11 @@ class HostingNotifier extends Notifier<PhoneHost?> {
     // so the bar falls back to what it shows without a player (rule B).
     final client = host.client;
     if (client != null) ref.read(ownClientProvider.notifier).set(client);
+    // The host is in the state before the flag says a game shows (the run's
+    // review, f1 finding): the flag is what the crash lobby's names hang off,
+    // and reading them goes through `phoneServiceProvider`, which asks this
+    // state for the host, so a read in that gap threw "No host is running".
+    state = host;
     // Over a game the controls take the saved opacity and the bar shows the
     // ping instead of the status panel (m12 §2.7). Set here, not by the
     // route: Riverpod refuses a provider changed from a widget's dispose.
@@ -42,7 +47,6 @@ class HostingNotifier extends Notifier<PhoneHost?> {
     // Searching for a TV is pointless while this phone is the host, and
     // Bonsoir would browse for the app's life (m12 §3).
     unawaited(ref.read(discoveryProvider).stop());
-    state = host;
     return host;
   }
 
