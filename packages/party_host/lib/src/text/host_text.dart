@@ -280,6 +280,8 @@ abstract final class HostText {
     'Rating',
   ];
   static const noSessions = 'No sessions yet. Stats are recorded while phones are connected.';
+  static const sessionsFailed = 'Could not read the saved sessions.';
+  static const retry = 'Retry';
   static const noPlayersYet = 'No players yet.';
   static const inputDelayNote =
       'Input delay is the median for the whole session. Near misses are taps within about 8 mm of a control '

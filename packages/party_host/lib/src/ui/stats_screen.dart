@@ -7,9 +7,12 @@ import 'package:metrics/metrics.dart' hide Controls;
 import 'package:toy_look/toy_look.dart';
 
 import '../consent/consent_prompts.dart';
+import '../consent/consent_state.dart';
+import '../crash/crash_reporter.dart';
 import '../providers.dart';
 import '../stats_service.dart';
 import '../stats_state.dart';
+import '../text/consent_text.dart';
 import '../text/host_text.dart';
 import 'host_button.dart';
 import 'host_card_button.dart';
@@ -31,6 +34,7 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
   List<SessionFile> _sessions = const [];
   int _selected = 0;
   bool _loading = true;
+  bool _failed = false;
 
   @override
   void initState() {
@@ -38,12 +42,31 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
     unawaited(_load());
   }
 
-  Future<void> _load() async {
-    final list = await ref.read(statsServiceProvider).sessions();
+  /// Reads the saved sessions, as Retry does again: the read's own failure
+  /// becomes the screen's error state and a crash report, so it never
+  /// leaves the screen on its spinner and never throws on unhandled (M14
+  /// sentry1).
+  Future<void> _load() => CrashReports.guard(_readSessions(), where: 'stats_load');
+
+  Future<void> _readSessions() async {
+    final List<SessionFile> list;
+    try {
+      list = await ref.read(statsServiceProvider).sessions();
+    } on Object {
+      if (mounted) {
+        setState(() {
+          _failed = true;
+          _loading = false;
+        });
+      }
+      // The guard above reports it, under the stats_load tag.
+      rethrow;
+    }
     if (!mounted) return;
     setState(() {
       _sessions = list;
       _loading = false;
+      _failed = false;
       _selected = _selected.clamp(0, list.isEmpty ? 0 : list.length);
     });
   }
@@ -74,6 +97,7 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
         title: HostText.stats,
         actions: [
           _SharingButton(consent: stats.consent),
+          const CrashSharingButton(),
           _ExportButton(onPressed: _export),
         ],
         body: SafeArea(
@@ -81,10 +105,14 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
             padding: const EdgeInsets.all(ToySizes.space16),
             child: _StatsBody(
               stats: stats,
-              loading: _loading,
-              entries: entries,
-              selected: _selected,
-              onSelect: (i) => setState(() => _selected = i),
+              read: _SessionsRead(
+                entries: entries,
+                selected: _selected,
+                onSelect: (i) => setState(() => _selected = i),
+                isLoading: _loading,
+                hasFailed: _failed,
+                onRetry: () => unawaited(_load()),
+              ),
             ),
           ),
         ),

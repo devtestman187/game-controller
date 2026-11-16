@@ -21,4 +21,10 @@ abstract final class ConsentText {
 
   /// The crash prompt's "yes" button.
   static const sendCrashReports = 'Send crash reports';
+
+  /// The Stats screen's crash reports button, while reports are sent.
+  static const crashOn = 'Crash reports: on';
+
+  /// The Stats screen's crash reports button, while nothing is sent.
+  static const crashOff = 'Crash reports: off';
 }

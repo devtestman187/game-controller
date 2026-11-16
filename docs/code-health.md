@@ -167,7 +167,7 @@ The "could" findings of [bugs1's review](briefs/m14/bugs1/REVIEW.md) that the fi
 
 Each is now `unawaited(...)` with no behaviour change; the failure would be lost silently. *when touched*
 
-- party_host `stats_screen.dart:39` (`unawaited(_load())`): if `sessions()` throws the screen stays on its loading state; `night_scoreboard_screen.dart:83` and `pause_menu.dart:342` discard dialog futures (no ordering risk).
+- party_host: `night_scoreboard_screen.dart:83` and `pause_menu.dart:342` discard dialog futures (no ordering risk).
 - controller_app: the four `SharedPreferences` writers (storage, profile), `discovery.restart` (no internal catch), `host.disposed.then` without `onError`, and the two shader/consent loads; see lint-3-apps-report.md.
 - connection: the swallowed close errors at `host_connection.dart:120` and `client_connection.dart:139`, `host_server` close, `frame_view` cancels (lint-2-core-report.md); `in_process_link.dart` now closes `toHost` before `toController` whichever end closes (not observable today).
 - `FakeHaptics`/`FakeStats` `failWith` wrap a non-Error, non-Exception value in `Exception`: no test sets one. `pause_menu.dart` is exactly 400 lines: split it at the next edit.
