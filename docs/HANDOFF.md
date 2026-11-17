@@ -32,7 +32,7 @@ Other useful docs: `docs/project-notes.md`, `docs/ios-setup.md`, `docs/design/se
 ### Branches
 
 - `m14` is the current development branch. Work on it. On the owner's machine it is a git worktree at `E:\AI\game-controller-m14`; on a new machine a normal clone and `git checkout m14` is fine.
-- `main` is the last release, `m14.8` (tag 43913c55 on commit c9e0de68). Never push to `main` unless the owner asks for a release (section 8).
+- `main` is the last release, `m14.9` (tag 0e4bcca on commit cdbbdd14). Never push to `main` unless the owner asks for a release (section 8).
 - `m15` is a separate experimental streaming branch. Leave it alone unless the owner asks.
 - Other branches (`m12`, `m13`, `demo-video`, `m14-stats*`) are history. The folder `E:\AI\game-controller` (a frozen copy) must not be touched.
 - In git commands spell branches `refs/heads/<name>`: tags with the same names exist (for example `m13`), so a bare name can be ambiguous.
@@ -171,8 +171,8 @@ Privacy (hard rules; background in `docs/design/sentry-consent.md`):
 
 ## 7. Current state and open items (as of Nov 17, 2026)
 
-- **Released:** `m14.8` (Nov 16, 2026), version 0.14.0 build 835, tag on commit c9e0de68: Windows zip (GitHub Release), Google Play internal, TestFlight internal (not promoted).
-- **Since m14.8, on `m14`:** B-031 (a stick disposed under a thumb crashed on a stale `ref`): fixed in `controller_app/lib/src/ui/stick_widgets.dart` (commit 231c5a68), test `controller_app/test/stick_dispose_test.dart`. Status **Fixed, unverified: needs device check** (hold a stick while the pad goes away, for example when the round ends or the host leaves). Run, review and verdicts: `docs/briefs/m14/bugs16/`. Everything up to and including this hand-off guide is pushed to `origin/m14`; start from there.
+- **Released:** `m14.9` (Nov 17, 2026), version 0.14.0 build 845, tag on commit cdbbdd14: Windows zip (GitHub Release), Google Play internal (both apps), TestFlight internal (not promoted).
+- **In m14.9:** B-031 (a stick disposed under a thumb crashed on a stale `ref`): fixed in `controller_app/lib/src/ui/stick_widgets.dart` (commit 231c5a68), test `controller_app/test/stick_dispose_test.dart`. Status **Fixed; device check passed (owner, Nov 17)**: a stick held while the pad went away, no crash. Run, review and verdicts: `docs/briefs/m14/bugs16/`. Everything up to and including this hand-off guide is pushed to `origin/main` and `origin/m14`; start from there.
 - **Owner actions still open (not yours):** turn on "Prevent Storing of IP Addresses" in both Sentry projects (`thumbparty-phone`, `thumbparty-tv`); the m14.8 device checks (STATUS.md: the Sentry consent prompt on phone Settings and on the TV Stats screen, stats not uploaded for sessions before consent, music fixes B-029 and B-030 by ear), and the older still-open checks listed in STATUS.md.
 - **Open owner question:** should dropped sessions (not uploaded, no share marks; see sentry2) show on the Stats screen? Do not decide; wait.
 - **Deferred items** (all in `docs/code-health.md`; take them when you touch the area or when the owner asks):
@@ -183,7 +183,7 @@ Privacy (hard rules; background in `docs/design/sentry-consent.md`):
   - Migration of the legacy `shareStats` preference is unverified.
   - `live_stats.dart` is at the 380-line cap: split the upload queue into `session_upload_queue.dart` at the next stats job; `skippedSessions` is never pruned; more under "M14 sentry2", "M14 sentry1", "Fire-and-forget futures" and "Coverage and Arena music leftovers".
 - Anything else: read `docs/briefs/m14/STATUS.md` (the per-batch lines are history; the top block and this file are current) and the "Now" and "Before a milestone" tables in `docs/code-health.md`. If they disagree with this file, trust the code and ask the owner.
-- Fixes still waiting for a device check: B-017, B-018, B-019, B-020, B-021, B-023, B-027, B-028, B-029, B-030, B-031 (what to check is in STATUS.md).
+- Fixes still waiting for a device check: B-017, B-018, B-019, B-020, B-021, B-023, B-027, B-028, B-029, B-030 (what to check is in STATUS.md).
 
 ## 8. Releasing (only when the owner asks)
 
