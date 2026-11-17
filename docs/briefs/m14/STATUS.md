@@ -2,6 +2,8 @@
 
 Branch `m14`, worktree `E:\AI\game-controller-m14`, cut from `m13` at 77ccf09 on Nov 9, 2026, after M13's closing review R4 and its fixes. The plan is docs/PRD-v2.md "Milestone 14" (G1–G5, G9, C20, T15, results on joined phones, the Arena waits for its players).
 
+**New developer or other agent taking over: read [docs/HANDOFF.md](../../HANDOFF.md) first.** It holds the rules, setup and current open items; this file is the per-batch history.
+
 **m14.8 tagged Nov 16, 2026** on c9e0de68, version 0.14.0 build 835: Windows and Android builds succeeded, the GitHub Release is up, TestFlight internal succeeded (not promoted). Device check (Fixed, unverified): Sentry consent prompt on phone Settings and TV Stats screen (yes sends a crash report, no sends nothing, change later works); stats not uploaded for sessions before consent; music fixes B-029 and B-030 by ear.
 
 ## Resume here (Nov 14, 2026: the m14.3 device-test bug batch, bugs3, is committed, unpushed)

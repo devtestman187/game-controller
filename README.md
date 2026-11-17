@@ -11,6 +11,7 @@ A phone game controller (Android + iOS) and a TV test app it drives (Android TV 
 | [packages/metrics/](packages/metrics) | Analytics: the phone's touch counters, session summaries and the report tool |
 | [packages/test_game/](packages/test_game) | The Arena game (top-down arena, one sprite per controller) |
 | [packages/puzzle_game/](packages/puzzle_game) | Shape Race, the puzzle game: data, rules, snapshots and view |
+| [packages/game_kit/](packages/game_kit), [packages/party_host/](packages/party_host), [packages/toy_look/](packages/toy_look) | The session loop and modules; the host's services and screens (sound, stats, consent, crash reports); the look (palettes, theme, shapes, shaders) |
 | [tools/](docs/dev-tools.md) | `check.sh` (every check), `release.sh` (tag and release), `tv-dev.sh` and `tv-window.ps1` (the Windows TV app for checks), `emulator.sh` (the phone app on the Android emulator), release notes, signing and artwork scripts |
 | [assets/](assets/CREDITS.md) | Images, audio and their credits |
 | [docs/](docs) | PRD, [architecture](docs/architecture.md), [decisions](docs/decisions.md), [building](docs/building.md), [developer tools](docs/dev-tools.md), [making a level](docs/levels.md), [project notes](docs/project-notes.md), [release](docs/release.md), [protocol](docs/protocol.md), [checklists](docs/checklists) |
@@ -42,6 +43,14 @@ Toolchain setup, Android/TV install steps and the Windows Firewall notes are in 
 | M9 Analytics and platform groundwork | Done (`m9`, `m9.1`, `m9.2`; Android phone and tablet tests pending) |
 | M10 Puzzle game (Shape Race) for 1 player, game-defined controls | Done (`m10` to `m10.3`; Android phone and tablet tests pending) |
 | M11 Shape Race for 2 to 4 players, the whole TV app from a controller | Built (`m11` to `m11.3`); device tests carried as tech debt |
-| M12 Phone-hosted play | In progress (design: docs/design/m12.md) |
+| M12 Phone-hosted play | Done (design: docs/design/m12.md) |
+| M13 Look and sound ("Toy Box Toon" look, music and sounds) | Done (`m13` to `m13.4`) |
+| M14 Party night (points, a night of rounds with a scoreboard, the Bumper Round in the Arena, stats and crash reports with consent) | Released as `m14.8` (version 0.14.0, build 835, Nov 16, 2026); development continues on `m14` |
 
-All v1 milestones (docs/PRD.md) are done. v2 (docs/PRD-v2.md) runs from M7 to M13; M7 closes the pending v1 Android phone tests.
+All v1 milestones (docs/PRD.md) are done. v2 (docs/PRD-v2.md) runs from M7 to M14; M7 closes the pending v1 Android phone tests.
+
+### Where development stands (Nov 17, 2026)
+- **Latest release: `m14.8`** (tag on `main`, version 0.14.0, build 835): Windows zip, Google Play internal testing, TestFlight internal. It adds Sentry crash reports that are sent only after the adult on that device says yes (asked on the phone, the TV and the Windows app, changeable later) and stats sharing where a phone that said no is left out of the upload, on top of the earlier M14 fixes (details: [docs/briefs/m14/STATUS.md](docs/briefs/m14/STATUS.md)).
+- **On the `m14` branch since then:** the B-031 fix (a stick disposed under a thumb no longer crashes the phone app). It is fixed but still needs a device check, as do several earlier fixes (the list is in STATUS.md).
+- Open items and deferred tech debt are in [docs/code-health.md](docs/code-health.md). Builds and tags happen only on the owner's word.
+- **New developers and other agents: start with [docs/HANDOFF.md](docs/HANDOFF.md)** (setup, coding and test rules, git rules, current state, releasing).
