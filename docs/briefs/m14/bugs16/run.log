@@ -6,3 +6,6 @@
 2026-11-16 19:29:57 tests-first ok: controller_app/test/stick_dispose_test.dart fails on the old code
 2026-11-16 19:34:29 committed b031-stick-dispose: 231c5a68 Fix B-031: a stick disposed under a thumb no longer crashes
 2026-11-16 19:39:43 reviewed wave1: 8 finding(s)
+2026-11-16 19:39:44 start the run's review
+2026-11-16 19:44:30 finding: the run's review wrote no REVIEW.md (see docs/briefs/m14/bugs16/flash-run-review.log)
+2026-11-16 19:44:30 DONE: every job is committed. Claude reads the Summary of docs/briefs/m14/bugs16/REVIEW.md, verifies its findings and writes one fix brief
