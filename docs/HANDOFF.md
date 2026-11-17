@@ -52,7 +52,7 @@ Full instructions: `docs/building.md` ("One-time toolchain") and `docs/dev-tools
 After cloning:
 
 ```bash
-git clone <the repository's origin URL>   # ask the owner if you do not have it
+git clone https://github.com/devtestman187/game-controller.git
 cd <the clone>
 git checkout m14
 flutter pub get          # once, at the repository root: one pub workspace covers every package
@@ -172,7 +172,7 @@ Privacy (hard rules; background in `docs/design/sentry-consent.md`):
 ## 7. Current state and open items (as of Nov 17, 2026)
 
 - **Released:** `m14.8` (Nov 16, 2026), version 0.14.0 build 835, tag on commit c9e0de68: Windows zip (GitHub Release), Google Play internal, TestFlight internal (not promoted).
-- **Since m14.8, on `m14`:** B-031 (a stick disposed under a thumb crashed on a stale `ref`): fixed in `controller_app/lib/src/ui/stick_widgets.dart` (commit 231c5a68), test `controller_app/test/stick_dispose_test.dart`. Status **Fixed, unverified: needs device check** (hold a stick while the pad goes away, for example when the round ends or the host leaves). Run, review and verdicts: `docs/briefs/m14/bugs16/`. HEAD at hand-off: see `git log -3`. Check `git log origin/m14..m14` to see what is unpushed.
+- **Since m14.8, on `m14`:** B-031 (a stick disposed under a thumb crashed on a stale `ref`): fixed in `controller_app/lib/src/ui/stick_widgets.dart` (commit 231c5a68), test `controller_app/test/stick_dispose_test.dart`. Status **Fixed, unverified: needs device check** (hold a stick while the pad goes away, for example when the round ends or the host leaves). Run, review and verdicts: `docs/briefs/m14/bugs16/`. Everything up to and including this hand-off guide is pushed to `origin/m14`; start from there.
 - **Owner actions still open (not yours):** turn on "Prevent Storing of IP Addresses" in both Sentry projects (`thumbparty-phone`, `thumbparty-tv`); the m14.8 device checks (STATUS.md: the Sentry consent prompt on phone Settings and on the TV Stats screen, stats not uploaded for sessions before consent, music fixes B-029 and B-030 by ear), and the older still-open checks listed in STATUS.md.
 - **Open owner question:** should dropped sessions (not uploaded, no share marks; see sentry2) show on the Stats screen? Do not decide; wait.
 - **Deferred items** (all in `docs/code-health.md`; take them when you touch the area or when the owner asks):
