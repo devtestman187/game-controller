@@ -2,6 +2,8 @@
 
 Branch `m14`, worktree `E:\AI\game-controller-m14`, cut from `m13` at 77ccf09 on Nov 9, 2026, after M13's closing review R4 and its fixes. The plan is docs/PRD-v2.md "Milestone 14" (G1–G5, G9, C20, T15, results on joined phones, the Arena waits for its players).
 
+**m14.8 tagged Nov 16, 2026** on c9e0de68, version 0.14.0 build 835: Windows and Android builds succeeded, the GitHub Release is up, TestFlight internal succeeded (not promoted). Device check (Fixed, unverified): Sentry consent prompt on phone Settings and TV Stats screen (yes sends a crash report, no sends nothing, change later works); stats not uploaded for sessions before consent; music fixes B-029 and B-030 by ear.
+
 ## Resume here (Nov 14, 2026: the m14.3 device-test bug batch, bugs3, is committed, unpushed)
 
 - **sentry1 (Nov 16, 2026, unpushed, nothing built, no tag):** Sentry crash reports (`sentry_flutter` 10.4.0, party_host `src/crash`, DSN only via `--dart-define=SENTRY_DSN`, passed by release.yml and codemagic.yaml) with per-instance consent (crash and stats questions on the phone, the TV and the Windows app; `consentProvider`), stats option B (a phone that said no is left out of the upload), the host-id write retry and the Stats screen error state. Design: docs/design/sentry-consent.md; run: docs/briefs/m14/sentry1 (REVIEW-r1.md, REVIEW-r2.md with verdicts); leftovers in docs/code-health.md "M14 sentry1". Owner device checks and Sentry project settings (IP storage off) are in the batch report. Next: a build with the DSNs, one test crash per project.
