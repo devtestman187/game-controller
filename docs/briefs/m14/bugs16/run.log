@@ -9,3 +9,5 @@
 2026-11-16 19:39:44 start the run's review
 2026-11-16 19:44:30 finding: the run's review wrote no REVIEW.md (see docs/briefs/m14/bugs16/flash-run-review.log)
 2026-11-16 19:44:30 DONE: every job is committed. Claude reads the Summary of docs/briefs/m14/bugs16/REVIEW.md, verifies its findings and writes one fix brief
+2026-11-16 19:45:10 HAND-FIX b031-stick-dispose: made _scope a plain nullable field, corrected the report's old-code test list and line count; REVIEW.md copied from the kept worktree (run-review result 4 on site/shots churn) and runner patched to salvage it
+2026-11-16 19:50:12 check.sh: All checks passed (267s) on the final tip

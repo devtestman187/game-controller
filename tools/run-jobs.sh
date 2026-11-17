@@ -435,6 +435,14 @@ if [ $review -eq 1 ] && ! committed "$B/REVIEW.md"; then
   save "runner: the brief for the run's review" "$B/run-review.md" "$B/run.log"
   note "start the run's review"
   tools/flash.sh --brief "$B/run-review.md" > "$LOGS/flash-run-review.log" 2>&1
+  if [ $? -eq 4 ] && [ ! -f "$B/REVIEW.md" ]; then # result 4 only because of generated churn: keep REVIEW.md, as review_salvage does
+    rf=$(outside_files "$LOGS/flash-run-review.log"); rtree=$(sed -n 's/.*the worktree is kept: //p' "$LOGS/flash-run-review.log" | tail -n 1); rok=1
+    for f in $rf; do [[ $f =~ $CHURN_OUTSIDE || $f == "$B/REVIEW.md" ]] || rok=0; done
+    if [ $rok -eq 1 ] && [ -f "$rtree/$B/REVIEW.md" ]; then
+      cp "$rtree/$B/REVIEW.md" "$B/REVIEW.md" && git worktree remove --force "$rtree" 2>/dev/null
+      note "the run's review: dropped generated churn outside its list (report kept)"
+    fi
+  fi
   if [ -f "$B/REVIEW.md" ]; then unchurn; save "the run's review (worker)" "$B/REVIEW.md"; else finding "the run's review wrote no REVIEW.md (see $LOGS/flash-run-review.log)"; fi
 fi
 note "DONE: every job is committed. Claude reads the Summary of $B/REVIEW.md, verifies its findings and writes one fix brief"

@@ -100,7 +100,7 @@ class _AnalogStickViewState extends ConsumerState<AnalogStickView> {
   /// on the stick when the screen goes must let go in [dispose], where [ref]
   /// no longer works (B-031).
   late final PadNotifier _pad;
-  late final State<ProviderScope>? _scope;
+  State<ProviderScope>? _scope;
 
   double get _radius => widget.home.width / 2;
 

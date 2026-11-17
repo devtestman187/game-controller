@@ -21,10 +21,11 @@ What changed in `controller_app/lib/src/ui/stick_widgets.dart`:
   tell, and the call would throw `UnmountedRefException`).
 
 Tests: new file `controller_app/test/stick_dispose_test.dart`, 4 tests. On the old
-code two failed: the lift after dispose with `setState() called after dispose()`, and
-the release test with left still at `(0.0, -0.444)`. All 4 pass now. The normal
-down/move/up test also passed on the old code — it is the regression guard the brief
-asks for, not a failing-first test. Checks: `format` PASS, `analyze` PASS, `phone`
+code three failed (the gate proves the file, not each test): the lift test and the
+whole-tree test with `setState() called after dispose()`, and the release test with
+left still at `(0.0, -0.444)`. All 4 pass now. The normal down/move/up test also
+passed on the old code: it is the regression guard the brief (item 1c) asks for. Checks: `format` PASS,
+`analyze` PASS, `phone`
 PASS (532 tests), `tools/review.sh` 0 fail, 0 note.
 
 Stick behaviour while mounted, layout, look and settings are unchanged.
@@ -33,7 +34,7 @@ Stick behaviour while mounted, layout, look and settings are unchanged.
 
 ## Files changed
 
-- `controller_app/lib/src/ui/stick_widgets.dart` (273 lines, was 237): the two
+- `controller_app/lib/src/ui/stick_widgets.dart` (273 lines, was 236): the two
   mounted guards, the captured pad and scope, and the release in `dispose`.
 - `controller_app/test/stick_dispose_test.dart` (new, 129 lines): the four tests.
 
