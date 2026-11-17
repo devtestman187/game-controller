@@ -45,12 +45,14 @@ Toolchain setup, Android/TV install steps and the Windows Firewall notes are in 
 | M11 Shape Race for 2 to 4 players, the whole TV app from a controller | Built (`m11` to `m11.3`); device tests carried as tech debt |
 | M12 Phone-hosted play | Done (design: docs/design/m12.md) |
 | M13 Look and sound ("Toy Box Toon" look, music and sounds) | Done (`m13` to `m13.4`) |
-| M14 Party night (points, a night of rounds with a scoreboard, the Bumper Round in the Arena, stats and crash reports with consent) | Released as `m14.8` (version 0.14.0, build 835, Nov 16, 2026); development continues on `m14` |
+| M14 Party night (points, a night of rounds with a scoreboard, the Bumper Round in the Arena, stats and crash reports with consent) | Done; released as `m14.9` (version 0.14.0, build 845, Nov 17, 2026). M14 closed |
+| M15 Streaming prototype | Parked (research and three probes only, nothing of the product built: [docs/briefs/m15/](docs/briefs/m15/STATUS.md)) |
+| M16 The friendlier app start | Next. Scope is written by the owner, not yet in the PRD |
 
-All v1 milestones (docs/PRD.md) are done. v2 (docs/PRD-v2.md) runs from M7 to M14; M7 closes the pending v1 Android phone tests.
+All v1 milestones (docs/PRD.md) are done. v2 (docs/PRD-v2.md) ran from M7 to M14. M15 streaming is parked, not cancelled; M16 is the next milestone.
 
 ### Where development stands (Nov 17, 2026)
-- **Latest release: `m14.8`** (tag on `main`, version 0.14.0, build 835): Windows zip, Google Play internal testing, TestFlight internal. It adds Sentry crash reports that are sent only after the adult on that device says yes (asked on the phone, the TV and the Windows app, changeable later) and stats sharing where a phone that said no is left out of the upload, on top of the earlier M14 fixes (details: [docs/briefs/m14/STATUS.md](docs/briefs/m14/STATUS.md)).
-- **On the `m14` branch since then:** the B-031 fix (a stick disposed under a thumb no longer crashes the phone app). It is fixed but still needs a device check, as do several earlier fixes (the list is in STATUS.md).
+- **Latest release: `m14.9`** (tag on `main`, version 0.14.0, build 845): Windows zip, Google Play internal testing, TestFlight internal. It carries the B-031 fix — a stick disposed under a thumb no longer crashes the phone app — on top of m14.8's Sentry crash reports and stats consent (details: [docs/briefs/m14/STATUS.md](docs/briefs/m14/STATUS.md)).
+- **M14 is closed.** Its ten remaining device checks (B-017, B-018, B-019, B-020, B-021, B-023, B-027, B-028, B-029, B-030) and the open question about dropped sessions on the Stats screen carry over to M16. No M16 work has started; the owner writes that plan.
 - Open items and deferred tech debt are in [docs/code-health.md](docs/code-health.md). Builds and tags happen only on the owner's word.
 - **New developers and other agents: start with [docs/HANDOFF.md](docs/HANDOFF.md)** (setup, coding and test rules, git rules, current state, releasing).

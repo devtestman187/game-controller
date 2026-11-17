@@ -183,6 +183,16 @@ Each is now `unawaited(...)` with no behaviour change; the failure would be lost
 - connection: the swallowed close errors at `host_connection.dart:120` and `client_connection.dart:139`, `host_server` close, `frame_view` cancels (lint-2-core-report.md); `in_process_link.dart` now closes `toHost` before `toController` whichever end closes (not observable today).
 - `FakeHaptics`/`FakeStats` `failWith` wrap a non-Error, non-Exception value in `Exception`: no test sets one. `pause_menu.dart` is exactly 400 lines: split it at the next edit.
 
+## Carried into M16 (M14 closed, Nov 17, 2026)
+
+M14 closed at `m14.9` with no code left in flight. These cross the milestone boundary:
+
+- **Ten device checks the owner has not run yet:** B-017, B-018, B-019, B-020, B-021, B-023, B-027, B-028, B-029, B-030. Each fix is in and unit-tested; what is missing is one real-device look, and what to check is in [briefs/m14/STATUS.md](briefs/m14/STATUS.md). This is not code debt: no change is needed unless a check fails.
+- **One open owner question:** should dropped sessions (not uploaded, no share marks) show on the Stats screen? It is decided in M16, not before.
+- **The deferred items below**, still taken when their area is next touched. The M14 leftovers most likely to meet M16's work: the stale-lift pattern the sticks no longer have on the D-pad, small button and face buttons (`pad_widgets.dart`, `face_buttons.dart`); the uncaught `pad.stick` in `_AnalogStickViewState.dispose`; the `live_stats.dart` 380-line split; and Sentry name scrubbing over-blanking one-letter nicknames.
+
+M15 streaming is parked: its own open items stay in [briefs/m15/STATUS.md](briefs/m15/STATUS.md) and are not M16's.
+
 ## Before a milestone
 
 | Before | What | Risk | Benefit of doing it first | Rec. |

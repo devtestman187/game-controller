@@ -2,7 +2,7 @@
 
 You are taking over development of Thumb Party directly, as the only developer. The owner decides what to build and when to ship; you write the code, prove it works, and keep quality at least where it is now. This file is the entry point. It links to the long documents instead of copying them; read the ones marked **must read** before your first change.
 
-The project used a helper framework (`tools/flash.sh`, `tools/run-jobs.sh`, briefs, `docs/flash-framework.md`, `docs/flash-digest.md`, `.claude/agents/`). That is **history**. Do not use it and do not write briefs. The rules those documents enforced on workers (tests first, evidence, small files, review gates) now apply to you. Old briefs and reports under `docs/briefs/` are a useful record of why things were done.
+**Which harness are you in?** This project is worked on from two, and exactly one rule differs between them. In **Claude Code** the helper framework still stands: use `tools/flash.sh`, `tools/run-jobs.sh`, briefs, `docs/flash-framework.md`, `docs/flash-digest.md` and `.claude/agents/` as those documents say. In **DeepSeek Harness** that framework is not used — read **section 10** before your first change. Everything else in this file (sections 1 to 9: machine setup, coding rules, test rules, git rules, owner rules, releasing) applies in both. Old briefs and reports under `docs/briefs/` are a useful record of why things were done, whichever you are.
 
 ## 1. What the project is
 
@@ -31,9 +31,10 @@ Other useful docs: `docs/project-notes.md`, `docs/ios-setup.md`, `docs/design/se
 
 ### Branches
 
-- `m14` is the current development branch. Work on it. On the owner's machine it is a git worktree at `E:\AI\game-controller-m14`; on a new machine a normal clone and `git checkout m14` is fine.
+- `m16` is the current development branch, cut from the `m14` line after the `m14.9` release. Work on it. On the owner's machine it is a git worktree at `E:\AI\game-controller-m16`; on a new machine a normal clone and `git checkout m16` is fine.
+- `m14` is the closed M14 line, last released as `m14.9`. Do not add features to it; its record is `docs/briefs/m14/STATUS.md`.
 - `main` is the last release, `m14.9` (tag 0e4bcca on commit cdbbdd14). Never push to `main` unless the owner asks for a release (section 8).
-- `m15` is a separate experimental streaming branch. Leave it alone unless the owner asks.
+- `m15` is the **parked** streaming branch: research and three probes, nothing of the product built. Leave it alone unless the owner asks.
 - Other branches (`m12`, `m13`, `demo-video`, `m14-stats*`) are history. The folder `E:\AI\game-controller` (a frozen copy) must not be touched.
 - In git commands spell branches `refs/heads/<name>`: tags with the same names exist (for example `m13`), so a bare name can be ambiguous.
 
@@ -54,7 +55,7 @@ After cloning:
 ```bash
 git clone https://github.com/devtestman187/game-controller.git
 cd <the clone>
-git checkout m14
+git checkout m16
 flutter pub get          # once, at the repository root: one pub workspace covers every package
 tools/check.sh           # must be all PASS on a fresh clone
 ```
@@ -146,7 +147,7 @@ Git:
 - **Stage named paths only**: `git add path/one path/two`. Never `git add -A`, `git add .` or `git commit -a`. Check `git status` and `git diff --cached --stat` before committing; churn files (section 2) must not be in it.
 - **Never a bare `git stash` or `git stash pop`** (the stack is shared between worktrees). To set work aside, make a WIP commit, or use `git stash push -u -m <unique-tag>`, apply by SHA, drop by tag.
 - Commit messages explain **why**: the symptom, the cause, the fix, the test that proves it, what is still unverified. Small, focused commits.
-- **Push `m14` only when the owner says.** Do not push `main`. No force-push; do not rewrite pushed commits. Never skip hooks or checks to get a commit through.
+- **Push the current milestone branch only when the owner says.** Do not push `main`. No force-push; do not rewrite pushed commits. Never skip hooks or checks to get a commit through.
 
 Without the owner's explicit word, do NOT:
 - make builds or tags, run `tools/release.sh`, or push to `main` (every tag triggers store builds);
@@ -164,17 +165,19 @@ Privacy (hard rules; background in `docs/design/sentry-consent.md`):
 ## 6. Bug workflow
 
 - Bugs live in the owner's tracker, a claude.ai artifact (rows `B-001`, ...; statuses New, Triaged, In fix, Fixed). Your harness probably cannot read it, so **the owner will paste or relay bugs**. Ask for the row text if you only get an id.
-- Keep a repo-side record: a dated line in `docs/briefs/m14/STATUS.md` ("Resume here": bug id, cause, fix commit, test, status) and any leftover or deferred item in `docs/code-health.md`. In your reply give the owner a note to paste into the tracker row (append to the row, never overwrite).
+- Keep a repo-side record: a dated line in the current milestone's `STATUS.md` ("Resume here": bug id, cause, fix commit, test, status) and any leftover or deferred item in `docs/code-health.md`. In your reply give the owner a note to paste into the tracker row (append to the row, never overwrite).
 - Order of work: find the cause by reading the code (or reproducing); write the failing test; prove it fails on old code; fix; run the test, then the full check; self-review; commit; report with evidence and an honest status.
 - **Gameplay or map changes are proposals to the owner**, never done unasked: write what you would change, why and the effect, then wait. **Design questions go to the owner too** (what shows where, which stats to display): write the question and the options, and meanwhile do other work.
 - Parked by the owner for M16: B-003 and B-010 (ideas). No work on them.
 
 ## 7. Current state and open items (as of Nov 17, 2026)
 
-- **Released:** `m14.9` (Nov 17, 2026), version 0.14.0 build 845, tag on commit cdbbdd14: Windows zip (GitHub Release), Google Play internal (both apps), TestFlight internal (not promoted).
-- **In m14.9:** B-031 (a stick disposed under a thumb crashed on a stale `ref`): fixed in `controller_app/lib/src/ui/stick_widgets.dart` (commit 231c5a68), test `controller_app/test/stick_dispose_test.dart`. Status **Fixed; device check passed (owner, Nov 17)**: a stick held while the pad went away, no crash. Run, review and verdicts: `docs/briefs/m14/bugs16/`. Everything up to and including this hand-off guide is pushed to `origin/main` and `origin/m14`; start from there.
-- **Owner actions still open (not yours):** turn on "Prevent Storing of IP Addresses" in both Sentry projects (`thumbparty-phone`, `thumbparty-tv`); the m14.8 device checks (STATUS.md: the Sentry consent prompt on phone Settings and on the TV Stats screen, stats not uploaded for sessions before consent, music fixes B-029 and B-030 by ear), and the older still-open checks listed in STATUS.md.
-- **Open owner question:** should dropped sessions (not uploaded, no share marks; see sentry2) show on the Stats screen? Do not decide; wait.
+- **M14 is closed** (Nov 17, 2026). Last release `m14.9`, version 0.14.0 build 845, tag 0e4bcca on commit cdbbdd14: Windows zip (GitHub Release), Google Play internal (both apps), TestFlight internal (not promoted).
+- **In m14.9:** B-031 (a stick disposed under a thumb crashed on a stale `ref`): fixed in `controller_app/lib/src/ui/stick_widgets.dart` (commit 231c5a68), test `controller_app/test/stick_dispose_test.dart`. Status **Fixed; device check passed (owner, Nov 17)**: a stick held while the pad went away, no crash. Run, review and verdicts: `docs/briefs/m14/bugs16/`.
+- **M16 is next, and its scope is not written yet.** The owner writes the M16 plan separately (the friendlier app start, 11 approved UX suggestions, mock-ups before building). There is no `## Milestone 16` section in `docs/PRD-v2.md` yet: do not build from this file's one-line summary, wait for the plan.
+- **M15 streaming is parked**, not cancelled: research and three probes, nothing of the product built. Its own open items are in `docs/briefs/m15/STATUS.md` and are not M16's.
+- **Carried into M16** (not code debt: no change is needed unless a check fails): the ten device checks the owner has not run, B-017, B-018, B-019, B-020, B-021, B-023, B-027, B-028, B-029, B-030 (what to check is in `docs/briefs/m14/STATUS.md`), and the open question of whether dropped sessions show on the Stats screen. **Do not decide the Stats question; wait.**
+- **Closed since the m14.8 list:** the Sentry "Prevent Storing of IP Addresses" setting is **done** in both projects (`thumbparty-phone`, `thumbparty-tv`).
 - **Deferred items** (all in `docs/code-health.md`; take them when you touch the area or when the owner asks):
   - D-pad, small button and face buttons (`pad_widgets.dart`, `face_buttons.dart`) keep the stale-lift pattern sticks no longer have: add the mounted guard and a release on dispose, with tests.
   - The deferred stick release in `_AnalogStickViewState.dispose` has no `catch` around `pad.stick`; log through `LogSink`.
@@ -182,8 +185,7 @@ Privacy (hard rules; background in `docs/design/sentry-consent.md`):
   - `Sentry.close()` followed by `enable()` (consent off then on in one run) is unverified.
   - Migration of the legacy `shareStats` preference is unverified.
   - `live_stats.dart` is at the 380-line cap: split the upload queue into `session_upload_queue.dart` at the next stats job; `skippedSessions` is never pruned; more under "M14 sentry2", "M14 sentry1", "Fire-and-forget futures" and "Coverage and Arena music leftovers".
-- Anything else: read `docs/briefs/m14/STATUS.md` (the per-batch lines are history; the top block and this file are current) and the "Now" and "Before a milestone" tables in `docs/code-health.md`. If they disagree with this file, trust the code and ask the owner.
-- Fixes still waiting for a device check: B-017, B-018, B-019, B-020, B-021, B-023, B-027, B-028, B-029, B-030 (what to check is in STATUS.md).
+- Anything else: read the current milestone's `STATUS.md` (the M14 close-out is `docs/briefs/m14/STATUS.md`; its per-batch lines are history, the top block and this file are current) and the "Now", "Carried into M16" and "Before a milestone" tables in `docs/code-health.md`. If they disagree with this file, trust the code and ask the owner.
 
 ## 8. Releasing (only when the owner asks)
 
@@ -191,16 +193,29 @@ Do not release on your own. A general "continue" is not a release order; the own
 
 1. Full `tools/check.sh` green on the tip; `tools/review.sh --base origin/main` clean; the review `docs/review-rules.md` asks for before a public build is done.
 2. The owner gives the tag name (pattern `m14.9`, `m15`, `v1.0`) or confirms yours, and the tester notes (Google Play limit: 500 characters including the header).
-3. `tools/release.sh` requires: tracked files clean, `HEAD == origin/main`, both apps with the same `version:`. So `main` is fast-forwarded to `m14` and pushed first. Ask the owner before pushing `main`.
+3. `tools/release.sh` requires: tracked files clean, `HEAD == origin/main`, both apps with the same `version:`. So `main` is fast-forwarded to the milestone branch and pushed first. Ask the owner before pushing `main`.
 4. `tools/release.sh <tag> "<notes>"` makes the annotated tag on HEAD, pushes it, waits for the GitHub "Release" workflow (Android bundles to Google Play, Windows zip to a GitHub Release) and the Codemagic TestFlight build, and prints one summary. `tools/release.sh --status <tag>` checks an existing release without changing anything. It needs `gh` signed in.
 5. iOS goes to the **internal** TestFlight group only. Promotion to the external group `Testers` is the owner's decision, asked separately each time.
-6. Add the tag to `docs/briefs/m14/STATUS.md` with the device checks the owner should do. Details: `docs/release.md`, `docs/dev-tools.md` ("tools/release.sh").
+6. Add the tag to the current milestone's `STATUS.md` with the device checks the owner should do. Details: `docs/release.md`, `docs/dev-tools.md` ("tools/release.sh").
 
 ## 9. Daily routine
 
-1. `git status -sb`, `git log --oneline -10`; read the top of `docs/briefs/m14/STATUS.md`.
+1. `git status -sb`, `git log --oneline -10`; read the top of the current milestone's `STATUS.md` (`docs/briefs/m16/STATUS.md` once the M16 plan creates it; until then the M14 close-out in `docs/briefs/m14/STATUS.md` is the record).
 2. Take one bug or task. Find the cause. Write the failing test and prove it fails on old code. Fix. Run the test, then format, analyze and the touched package's tests.
 3. `bash tools/review.sh`; read your diff; answer the part A questions.
 4. Full `tools/check.sh` (and coverage if you added code). Commit named paths with a message that explains why.
 5. Update STATUS.md (and `code-health.md` for leftovers). Tell the owner the result with evidence, the honest status, and what needs a device check.
 6. If something in this file is out of date, fix this file.
+
+## 10. DeepSeek Harness sessions (this section applies there only)
+
+Read this section **only** when the session runs in DeepSeek Harness (DSH). A Claude Code session ignores it and follows the flash framework the intro names. The rest of this file — sections 1 to 9 — applies in both.
+
+- **The flash framework is not used from here.** Do not run `tools/flash.sh` or `tools/run-jobs.sh`, and do not write briefs for that runner. `docs/flash-framework.md` and `docs/flash-digest.md` describe the other line's tooling: for you they are history, not instructions.
+- **You are the only developer in the session.** The rules that framework enforced on its workers — tests first, evidence for every fix, small files, review gates — apply to you directly. Sections 3 and 4 are not optional.
+- **Delegation, when the owner asks for it, is DSH subagents.** Use the `subagent`, `subagent_fork` and `workflow` tools. A child does not see this conversation, so give it a self-contained task: the paths it needs, the rule it must prove, the evidence it must return. Pass `provider` and `model` explicitly instead of relying on inheritance, so a child's route is a decision on the record. Hold children to the same bar — their word is not evidence, their test output is.
+- **Never take a child's "done" on trust.** You integrate the work: read the final diff, run the checks yourself, and answer the section 3 and 4 questions for the merged result, not for each child's slice.
+- **Records still live under `docs/briefs/<milestone>/`.** A dated line in that milestone's `STATUS.md` (bug id, cause, fix commit, test, status) and any leftover in `docs/code-health.md`. That is the project's record-keeping, not a "brief for the runner" — keep doing it.
+- **Model routes on the owner's machine:** only `deepseek-account/deepseek-flash` (DeepSeek-V4.1-Flash) is authorized. Do not assume a stronger route exists; if a task seems to need one, say so and let the owner decide.
+- **Report like the other line does:** what changed, the evidence (test output, `tools/check.sh`, `tools/review.sh`), the honest status, and what needs a device check. Anything that depends on a real device is "Fixed, unverified: needs device check", never plain "Fixed".
+- **Do not run two full checks at once.** If a check dies early on an environment fault (for example a pub-cache entry mid-write), stop the run, fix the cause, then run once.
