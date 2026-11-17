@@ -1,0 +1,7 @@
+2026-11-16 19:15:09 start at ca2af4a4 on m14
+2026-11-16 19:15:10 run-base ca2af4a49e488fc66a4203563b3b34b53df57231
+2026-11-16 19:15:15 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-16 19:15:16 start b031-stick-dispose
+2026-11-16 19:28:51 b031-stick-dispose finished: result 0 (108 turns, 11 min)
+2026-11-16 19:29:57 tests-first ok: controller_app/test/stick_dispose_test.dart fails on the old code
+2026-11-16 19:34:29 committed b031-stick-dispose: 231c5a68 Fix B-031: a stick disposed under a thumb no longer crashes
