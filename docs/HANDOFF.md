@@ -211,6 +211,7 @@ Do not release on your own. A general "continue" is not a release order; the own
 
 Read this section **only** when the session runs in DeepSeek Harness (DSH). A Claude Code session ignores it and follows the flash framework the intro names. The rest of this file — sections 1 to 9 — applies in both.
 
+- **Your working method is `docs/agent-workflow.md`:** the architect/worker split, the per-task loop, the brief template, model pinning, and what to verify before calling work done. Read it before your first delegation.
 - **The flash framework is not used from here.** Do not run `tools/flash.sh` or `tools/run-jobs.sh`, and do not write briefs for that runner. `docs/flash-framework.md` and `docs/flash-digest.md` describe the other line's tooling: for you they are history, not instructions.
 - **You are the only developer in the session.** The rules that framework enforced on its workers — tests first, evidence for every fix, small files, review gates — apply to you directly. Sections 3 and 4 are not optional.
 - **Delegation, when the owner asks for it, is DSH subagents.** Use the `subagent`, `subagent_fork` and `workflow` tools. A child does not see this conversation, so give it a self-contained task: the paths it needs, the rule it must prove, the evidence it must return. Pass `provider` and `model` explicitly instead of relying on inheritance, so a child's route is a decision on the record. Hold children to the same bar — their word is not evidence, their test output is.
