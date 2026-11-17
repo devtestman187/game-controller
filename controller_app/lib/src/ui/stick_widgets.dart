@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
@@ -95,7 +96,20 @@ class _AnalogStickViewState extends ConsumerState<AnalogStickView> {
   int? _pointer;
   Offset? _center;
 
+  /// The pad, and the app scope it lives in, kept while mounted: a thumb still
+  /// on the stick when the screen goes must let go in [dispose], where [ref]
+  /// no longer works (B-031).
+  late final PadNotifier _pad;
+  late final State<ProviderScope>? _scope;
+
   double get _radius => widget.home.width / 2;
+
+  @override
+  void initState() {
+    super.initState();
+    _scope = context.findAncestorStateOfType<State<ProviderScope>>();
+    _pad = ref.read(padProvider.notifier);
+  }
 
   void _down(PointerDownEvent e) {
     if (_pointer != null) return; // One thumb per stick.
@@ -111,19 +125,42 @@ class _AnalogStickViewState extends ConsumerState<AnalogStickView> {
 
   void _move(Offset position) {
     final center = _center;
-    if (center == null) return;
+    // A pointer move can land after the stick is gone (B-031): ref is unusable
+    // then, and dispose has already let the stick go.
+    if (!mounted || center == null) return;
     ref
         .read(padProvider.notifier)
         .stick(widget.side, stickValue(position - center, _radius, ref.read(stickSettingsProvider)));
   }
 
   void _up(int pointer) {
-    if (pointer != _pointer) return;
+    // The same: a lift can land after the stick is gone, and dispose has let
+    // the stick go already.
+    if (!mounted || pointer != _pointer) return;
     setState(() {
       _pointer = null;
       _center = null;
     });
     ref.read(padProvider.notifier).stick(widget.side, stickCenter, touched: false);
+  }
+
+  @override
+  void dispose() {
+    // A thumb on the stick when its screen goes (a round ends, the layout
+    // changes, a reconnect) never lifts: let the stick go, or the TV keeps it
+    // pushed (B-031). A provider can't change while the widget tree is
+    // finalizing, so the release goes out right after this frame, unless the
+    // app's scope went with the screen and no pad is left to tell.
+    if (_pointer != null) {
+      final side = widget.side;
+      final pad = _pad;
+      unawaited(
+        Future.microtask(() {
+          if (_scope?.mounted ?? false) pad.stick(side, stickCenter, touched: false);
+        }),
+      );
+    }
+    super.dispose();
   }
 
   @override
