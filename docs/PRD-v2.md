@@ -481,6 +481,7 @@ Numbering continues from v1, so tags stay unique (m7 and later). Each milestone 
 | M13 | Look and sound | Gives Shape Race, the Arena and every menu the "Toy Box Toon" look, with music and volume, before outside testers' first impression |
 | M14 | Party night | Turns rounds into a party: points, a night of 3 or 5 rounds with a scoreboard, the cat, end-of-night awards, nicknames and best times. Built on M13's characters and sound, before outside testers judge it |
 | M15 | More party, content and the first outside playtest | Adds power-ups and more chaos if M14's night lands, all 9 puzzles and tuning, and puts it in testers' hands, who judge the party features too |
+| M16 | Friendlier start and the UX review's fixes | Applies the measured player-flow fixes and the home screen + coach marks, so testers meet the friendlier start and the fixed flow |
 
 The Apple and Google account sign-ups should start during M7, because verification can take several days.
 
@@ -799,6 +800,70 @@ Milestone 15 adds the rest of the party ideas if M14's night lands with the owne
 - [ ] The report compares the three modes and the three Chaos settings on frustration signals, completion time and ratings, and compares TV play with phone play. The findings are written up in /docs.
 - [ ] `sim_controller --check` passes against the Android TV, Windows and phone-host builds.
 - [ ] The v3 platform recommendation is written and reviewed.
+
+## Milestone 16: Friendlier start and the UX review's fixes
+
+**Approved by the owner** (Nov 18, 2026). Milestone 16 applies the evidence-driven UX review: the
+nine measured fixes to the player flow (`docs/briefs/m16/ux-review/PROPOSAL.md`) and the friendlier
+app start (`docs/briefs/m16/ux-review/APP-START.md`). The review is grounded in live capture on the
+Pixel Tablet + Sony BRAVIA TV, a 10-size logical matrix, and six competitive digests; the mock-ups
+are `docs/briefs/m16/ux-review/mockups/`. The earlier 11 UX suggestions are superseded by this fresh
+list (owner, Nov 18, 2026).
+
+**Deployable builds**
+
+- Controller: home screen with the three roles (Join a Game / Play here / Display here), nickname +
+  colour + accessory, the coach marks with a Show-tips toggle, the round's state on the phone, and
+  the contrast / touch-target / accessibility fixes.
+- TV app: the pairing code on the join screen, a visible drop/away state, end-of-night awards, and
+  the consistency fixes.
+
+**Scope**
+
+In build order (impact ÷ effort; see PROPOSAL.md "Recommendations at a glance"):
+
+1. Show the pairing code on the join screen, and prefer live discovery over the stale remembered
+   host (item 3).
+2. Fix the sub-3:1 contrast — "Ready"/"+43" good-on-paper, the dashed face circles, the state dot,
+   the D-pad and the stick knobs (item 4).
+3. Make a drop visible and restore the side on re-entry: an "away" state + grace period, side
+   restore, and a host-away card on the phone (item 2).
+4. Put the round's state on the phone: the clock, coins, round number and the result (item 1).
+   This needs an additive, capability-gated protocol field (approved, owner Nov 18), with a test
+   that an older peer still works; `docs/protocol.md` is updated in the same change.
+5. Player identity: nickname + colour + accessory on the phone, shown on the TV (item 5). The six
+   defaults ship now; the future path (more colours and accessories, and customisation) is in
+   PROPOSAL.md "Colour + accessory: the path for more later".
+6. End-of-night awards: the three awards promised on setup are shown and awarded at the end
+   (item 6).
+7. The friendlier app start (APP-START.md): the home screen, the three device roles in a fixed
+   button order, the coach marks (Join a Game → Play here → Display here) with a Show-tips toggle,
+   and "screen" not "TV" in the generic strings.
+8. The consistency and hygiene bundle (items 7–9): round numbering + map name + clock turns red +
+   Resume colour; 48 dp targets + truncation; slider a11y values + a11y strings.
+
+**Acceptance tests**
+
+- [ ] On the join screen the 4-digit code is visible where a player looks, and the phone's first
+  tap reaches the discovered host, not a stale remembered one; a host one build older still works.
+- [ ] "Ready", "+43", the dashed face circles, the state dot, the D-pad and the knobs all pass 3:1
+  (control parts) and 4.5:1 (text) in both palettes, checked by the `toy_look` contrast test.
+- [ ] A dropped player shows as "away" with a grace period on the TV (the slot is not removed),
+  re-entering restores their side, and backgrounding the host shows a host-away card on the phone.
+- [ ] During a round the phone shows the clock, its coins and the round number, and its result at
+  the end; a phone one build older shows the pad as before.
+- [ ] A player picks a nickname, colour and accessory on the phone; the TV and every phone draw
+  them; a second player picking a taken colour or accessory gets the nearest free one and is told
+  so; a host one build older shows the defaults.
+- [ ] The night's three awards are shown and awarded at the end, and tied players each get one.
+- [ ] On first launch the home screen shows the three roles in a fixed order with the coach marks
+  (Join a Game → Play here → Display here), each tap advancing and Skip dismissing; the Show-tips
+  setting replays them; and the generic strings say "screen", not "TV".
+- [ ] The HUD names the map and "Round N of M", the clock turns red in the final 15 s, and Resume
+  is the same colour on both devices.
+- [ ] Every touch target is at least 48 dp, the connect pill's label does not truncate at 667×375,
+  and the slider a11y values match their labels.
+- [ ] Full `tools/check.sh` green, coverage not below 92.9%, and no `lib/` file over 380 lines.
 
 ## Test strategy
 

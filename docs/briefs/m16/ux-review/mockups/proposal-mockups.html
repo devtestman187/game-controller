@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Thumb Party M16: UX proposal mock-ups</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800&display=block" rel="stylesheet">
+<style>
+  body { margin: 0; font-family: Nunito, sans-serif; background: #f3efe6; color: #1e1646; }
+  body.single { background: transparent; }
+  header { padding: 20px 24px 8px; }
+  h1 { font-family: Fredoka, sans-serif; font-weight: 600; margin: 0 0 6px; }
+  .bar button { font: 700 15px Nunito, sans-serif; padding: 8px 14px; margin-right: 6px; border: 3px solid #1e1646; border-radius: 99px; background: #fff6e3; cursor: pointer; }
+  .bar button.on { background: #ffd23f; }
+  figure { margin: 18px 24px 28px; }
+  figcaption { font-weight: 700; margin-bottom: 8px; max-width: 1280px; }
+  figcaption span { font-weight: 600; opacity: .75; display: block; }
+  svg { display: block; max-width: 100%; height: auto; }
+  body.single svg { max-width: none; }
+</style>
+</head>
+<body>
+<header id="head">
+  <h1>Thumb Party M16: UX proposal mock-ups</h1>
+  <p>Proposals for the M16 UX review (docs/briefs/m16/ux-review). Reuses docs/design/party-mockups.html's parts; TV frames 1280×720, phone frames 816×384. One frame alone: ?frame=N&theme=sunny|night.</p>
+  <div class="bar">
+    <button id="b-sunny">Sunny (recommended)</button><button id="b-night">Night</button>
+    <button id="b-fx1">Effects on</button><button id="b-fx0">Effects off</button>
+  </div>
+</header>
+<main id="out"></main>
+<script src="../../../../design/mockup-parts.js"></script>
+<script src="../../../../design/mockup-maps.js"></script>
+<script>
+// ---- M16 UX proposals: the party page's own parts, copied from docs/design/party-mockups.html so
+// these frames draw in the same look from the same helpers. The shared parts (palettes, cards,
+// buttons, badges, the worker, marbles, the coin, the accessory) are in mockup-parts.js, and the
+// Arena's maps and their pieces in mockup-maps.js.
+
+// A player's badge wears the accessory of its character (look-and-sound 5b: 1 round ears,
+// 2 an antenna with a ball, 3 a bow, 4 a cap, 5 a tuft of hair, 6 a tiny crown), and keeps its
+// number, so colour and shape both tell the players apart. Every badge on this page is one.
+const ACCESSORY = { 1: 'ears', 2: 'antenna', 3: 'bow', 4: 'cap', 5: 'tuft', 6: 'crown' };
+const playerBadge = (cx, cy, r, n, color) => badge(cx, cy, r, n, color) + accessory(ACCESSORY[n], cx, cy, r, color);
+
+function star(cx, cy, r, color = C.focus, o = {}) {
+  const pts = [];
+  for (let i = 0; i < 10; i++) {
+    const a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? r * .46 : r;
+    pts.push(`${(cx + Math.cos(a) * rr).toFixed(1)},${(cy + Math.sin(a) * rr).toFixed(1)}`);
+  }
+  return `<polygon points="${pts.join(' ')}" fill="${color}" stroke="${T.ink}" stroke-width="${o.ow ?? Math.max(1.8, r * .16)}" stroke-linejoin="round"/>`;
+}
+function crown(cx, cy, w, h) {
+  const x = cx - w / 2, y = cy - h / 2, p = `M${x} ${y + h} L${x} ${y + h * .22} L${x + w * .24} ${y + h * .58} L${x + w * .5} ${y} L${x + w * .76} ${y + h * .58} L${x + w} ${y + h * .22} L${x + w} ${y + h} Z`;
+  const ow = Math.max(2, w * .03);
+  return `<path d="${p}" transform="translate(${w * .05} ${h * .12})" fill="${T.ink}" fill-opacity=".35"/>` +
+    `<path d="${p}" fill="${C.sun}" stroke="${T.ink}" stroke-width="${ow}" stroke-linejoin="round"/>` +
+    `<circle cx="${x + w * .2}" cy="${y + h * .8}" r="${h * .05}" fill="${C.p[2]}" stroke="${T.ink}" stroke-width="${ow * .6}"/>` +
+    `<circle cx="${x + w * .5}" cy="${y + h * .76}" r="${h * .07}" fill="${C.p[4]}" stroke="${T.ink}" stroke-width="${ow * .6}"/>` +
+    `<circle cx="${x + w * .8}" cy="${y + h * .8}" r="${h * .05}" fill="${C.p[2]}" stroke="${T.ink}" stroke-width="${ow * .6}"/>`;
+}
+function rosette(cx, cy, r, color, icon) {
+  const ow = Math.max(2.5, r * .12);
+  let g = `<path d="M${cx - r * .5} ${cy + r * .5} L${cx - r * .72} ${cy + r * 1.5} L${cx - r * .1} ${cy + r * 1.2} L${cx + r * .3} ${cy + r * 1.55} L${cx + r * .18} ${cy + r * .55}Z" fill="${dark(color, .12)}" stroke="${T.ink}" stroke-width="${ow}" stroke-linejoin="round"/>`;
+  g += toy('circle', cx - r, cy - r, r * 2, r * 2, color, { ow: ow, shadow: r * .14 });
+  return g + icon(cx, cy + r * .02, r * .52);
+}
+const CONFETTI = [[.06, .1, .2], [.15, .3, .5], [.28, .06, .8], [.42, .16, .35], [.55, .04, .65], [.7, .12, .9],
+  [.86, .06, .1], [.94, .32, .55], [.09, .56, .7], [.2, .82, .25], [.88, .62, .75], [.92, .86, .4], [.5, .93, .15], [.66, .88, .85]];
+function confetti(w, h) {
+  return CONFETTI.map(([fx, fy, f], i) => {
+    const x = fx * w, y = fy * h;
+    return `<rect x="${x}" y="${y}" width="18" height="10" rx="2" fill="${C.p[i % 6]}" stroke="${T.ink}" stroke-width="2" transform="rotate(${Math.round(f * 360)} ${x} ${y})"/>`;
+  }).join('');
+}
+
+// ---- The Bumper Round's top bar and a map in play: the map frames share them, so every map is
+// drawn once (mockup-maps.js) and a round reads like frame 10's whatever the map.
+function bumperBar(name, clock, counts, warn) { // counts: [player, colour, coins], four at most
+  let g = `<rect x="0" y="0" width="1280" height="56" fill="${T.paper}"/><line x1="0" y1="56" x2="1280" y2="56" stroke="${T.ink}" stroke-width="3.5"/>`;
+  g += txt(22, 38, 'Bumper Round', 26) + txt(240, 36, name, 18, { font: 'Nunito', w: 800, fill: dark(T.paper, .45) });
+  g += clockChip(640, 7, clock, 28, warn);
+  counts.forEach(([n, color, k], i) => {
+    const x = 760 + i * 120;
+    g += playerBadge(x, 30, 15, n, color) + coin(x + 30, 30, 11) + txt(x + 48, 39, k, 24, { w: 700 });
+  });
+  return g + txt(1258, 36, 'A: dash', 17, { anchor: 'end', font: 'Nunito', w: 800, fill: dark(T.paper, .45) });
+}
+function mapPlay(key, clock, warn) { // one map as a whole TV frame: its pieces, its coins, its marbles
+  const m = MAPS[key], b = arenaBox(0, 56, 1280, 664), u = b.u;
+  let g = m.draw(0, 56, 1280, 664);
+  m.spots.coins.forEach(([a, c, o]) => g += coin(...at(b, a, c), u * .32, o));
+  m.spots.marbles.forEach(([a, c, n]) => {
+    const p = at(b, a, c);
+    g += marble(p[0], p[1], u * .38, C.p[n - 1], n) + accessory(ACCESSORY[n], p[0], p[1], u * .38, C.p[n - 1]);
+  });
+  return g + bumperBar(m.name, clock, m.spots.marbles.map(([a, c, n, k]) => [n, C.p[n - 1], String(k)]), warn);
+}
+function mapCard(x, y, w, h, name, color, draw) {
+  const hh = Math.round(h * .2), pad = 8;
+  let g = card(x, y, w, h, { header: name, hc: color, hh: hh, hs: Math.round(hh * .5) });
+  const ix = x + pad, iy = y + hh + pad, iw = w - pad * 2, ih = h - hh - pad * 2;
+  defs.push(`<clipPath id="mp${++uid}"><rect x="${ix}" y="${iy}" width="${iw}" height="${ih}" rx="8"/></clipPath>`);
+  return g + `<g clip-path="url(#mp${uid})">${draw(ix, iy, iw, ih)}</g>`;
+}
+
+// ---- Cards built out of the parts, for the scoreboard and the joining screens
+const pill = (x, y, w, h, label, o = {}) =>
+  card(x, y, w, h, { fill: o.fill ?? T.paper, ow: o.ow ?? 3 }) +
+  txt(x + w / 2, y + h / 2 + 2, label, o.size ?? h * .5, { anchor: 'middle', base: 'middle', w: 700 });
+function scoreRow(x, y, w, r) { // r: [place, n, name, total, "+7" or '', colour]
+  const [place, n, name, total, plus, color] = r;
+  return txt(x + 60, y + 10, place, 32, { anchor: 'middle', w: 700, fill: dark(T.paper, .35) }) +
+    playerBadge(x + 130, y, 26, n, color) + txt(x + 172, y + 10, name, 31, { font: 'Nunito', w: 800 }) +
+    star(x + 600, y + 2, 16) + txt(x + 628, y + 10, total, 34, { w: 700 }) +
+    (plus ? txt(x + w - 40, y + 10, plus, 30, { anchor: 'end', w: 700, fill: C.good }) : '');
+}
+function scoreFrame(title, rows, o = {}) {
+  let g = bg(1280, 720);
+  g += card(190, 30, 900, 660, { header: title, hc: C.p[3], hh: 76, hs: 38 });
+  if (o.banner) {
+    g += card(230, 120, 820, 64, { fill: C.focus, ow: 3 });
+    g += txt(640, 163, o.banner, 30, { anchor: 'middle', w: 700 }) + star(258, 152, 14, '#fff') + star(1022, 152, 14, '#fff');
+  }
+  const y0 = o.banner ? 246 : 178, dy = o.banner ? 86 : 96;
+  rows.forEach((r, i) => g += scoreRow(220, y0 + i * dy, 840, r));
+  g += btn(300, 552, 300, 76, 'Shape Race') + btn(680, 552, 300, 76, 'Bumper Round');
+  return g;
+}
+const joinedRow = (y, n, name, color, ready) =>
+  playerBadge(240, y, 22, n, color) + txt(280, y + 9, name, 27, { font: 'Nunito', w: 800 }) + check(1050, y, 18, ready);
+
+// mockup-maps.js gives spots (where a round's coins and marbles stand) to Pinball, Block Castle,
+// Toy Factory and Spinning Tops, but not to the Playroom: party-mockups.html draws the Playroom in
+// play by hand. This page needs the Playroom through mapPlay, so it supplies the Playroom's spots
+// here and leaves the shared file untouched.
+if (!MAPS.playroom.spots) MAPS.playroom.spots = {
+  marbles: [[5.6, 3.2, 1, 4], [8.4, 6.4, 2, 2], [10.4, 3.4, 3, 1]],
+  coins: [[6.8, 7, { spin: .12 }], [9.6, 1.6, { gold: true, spin: .2 }], [12.3, 6.2, { spin: .55 }], [5.2, 4.6, { spin: .8 }]],
+};
+
+// ---- Frames
+const F = [];
+F.push(["Phone: the round's state on the pad", 'The joined phone now shows the round state it was missing: round, clock, your coins and your place.', 816, 384, () => {
+  const W = 780, H = 360;
+  let g = bg(W, H);
+  // the top strip the party page uses for "your colour is taken", carrying the round's state now
+  g += `<rect x="0" y="0" width="${W}" height="48" fill="${T.paper}"/><line x1="0" y1="48" x2="${W}" y2="48" stroke="${T.ink}" stroke-width="3"/>`;
+  g += playerBadge(44, 24, 14, 1, C.p[0]);
+  g += txt(74, 33, 'Round 1 of 3', 22, { w: 700 });
+  g += clockChip(320, 8, '0:42', 24);
+  g += coin(404, 26, 14) + txt(426, 33, '4', 24, { w: 700 });
+  g += txt(744, 34, '2nd', 24, { anchor: 'end', w: 700 });
+  // the pad below, undimmed: this phone is in the round
+  g += pad(40, 150, 120) + faces(660, 210, 30, 60);
+  // these two sit on the sky/grape itself, so they take T.onBg (ink on sunny, white on night)
+  g += txt(390, 224, 'Bumper Round', 30, { anchor: 'middle', fill: T.onBg });
+  g += txt(390, 254, 'Playroom', 16, { anchor: 'middle', font: 'Nunito', w: 800, fill: T.onBg });
+  return phone(W, H, g);
+}]);
+F.push(['TV: a dropped player is shown as away', 'A dropped player is shown as away and their side is held, instead of the slot silently vanishing.', 1280, 720, () => {
+  let g = bg(1280, 720);
+  g += card(120, 30, 1040, 660, { header: 'Shape Race', hc: C.p[0], hh: 74, hs: 38 });
+  g += card(160, 140, 460, 500, { header: 'Left side', hc: light(C.p[0], .3), hh: 52, hs: 24 });
+  g += card(680, 140, 440, 500, { header: 'Room for 1 more', hc: light(C.p[1], .3), hh: 52, hs: 24 });
+  // the dropped player stays in their slot, dimmed
+  g += `<g opacity=".45">${playerBadge(250, 262, 34, 1, C.p[0])}</g>`;
+  g += txt(300, 274, 'Mia', 34, { font: 'Nunito', w: 800 });
+  g += card(200, 320, 380, 66, { fill: light(C.caution, .3), ow: 3 });
+  g += `<circle cx="232" cy="353" r="11" fill="${C.caution}" stroke="${T.ink}" stroke-width="2.5"/><circle cx="232" cy="353" r="4.5" fill="${T.paper}"/>`;
+  g += txt(256, 362, 'Mia is away', 26, { w: 700 });
+  g += txt(200, 428, 'Holding the left side · back in 0:14', 17, { font: 'Nunito', w: 700, fill: dark(T.paper, .5) });
+  // the open slot beside it, not a vanished one
+  g += `<rect x="740" y="230" width="320" height="300" rx="18" fill="${T.ink}" fill-opacity=".04" stroke="${T.ink}" stroke-opacity=".3" stroke-width="3" stroke-dasharray="12 10"/>`;
+  g += txt(900, 396, 'A phone can join', 20, { anchor: 'middle', font: 'Nunito', w: 800, fill: dark(T.paper, .45) });
+  return g;
+}]);
+F.push(['TV: the pairing code on the join screen', 'The join screen shows the code the phones need, where players are actually looking.', 1280, 720, () => {
+  let g = bg(1280, 720);
+  g += card(120, 60, 1040, 620, { header: 'Shape Race', hc: C.p[0], hh: 74, hs: 38 });
+  g += card(890, 72, 230, 50, { ow: 3 }) + txt(908, 106, 'Code', 17, { font: 'Nunito', w: 700 }) + txt(1102, 108, '4821', 28, { anchor: 'end', w: 700 });
+  g += card(170, 160, 430, 400, { header: 'Room for 2 more', hc: light(C.p[0], .3), hh: 54, hs: 23 });
+  g += card(660, 160, 430, 400, { header: 'Room for 2 more', hc: light(C.p[1], .3), hh: 54, hs: 23 });
+  [170, 660].forEach(x => {
+    g += `<rect x="${x + 30}" y="240" width="370" height="76" rx="16" fill="${T.ink}" fill-opacity=".04" stroke="${T.ink}" stroke-opacity=".25" stroke-width="3" stroke-dasharray="10 9"/>`;
+    g += `<rect x="${x + 30}" y="336" width="370" height="76" rx="16" fill="${T.ink}" fill-opacity=".04" stroke="${T.ink}" stroke-opacity=".25" stroke-width="3" stroke-dasharray="10 9"/>`;
+  });
+  g += btn(540, 588, 200, 62, 'Start', { color: C.good, state: 'focus' });
+  return g;
+}]);
+F.push(['Phone: contrast-safe controls', 'The sub-3:1 greys are lifted to ink/paper so the state dot, D-pad and empty face circles read.', 816, 384, () => {
+  const W = 780, H = 360;
+  let g = bg(W, H);
+  // the connecting pill keeps its ink outline; the state dot is now a paper core inside its caution ring
+  g += pill(200, 22, 340, 56, 'Connecting…', { size: 22 });
+  g += `<circle cx="232" cy="50" r="12" fill="${C.caution}" stroke="${T.ink}" stroke-width="3"/><circle cx="232" cy="50" r="5" fill="${T.paper}"/>`;
+  // the D-pad, its arrows solid ink rather than the faded grey
+  g += pad(50, 140, 130);
+  const a = 130 / 3;
+  [[50 + 65, 140 + a * .5, 0], [50 + 130 - a * .5, 140 + 65, 90], [50 + 65, 140 + 130 - a * .5, 180], [50 + a * .5, 140 + 65, 270]]
+    .forEach(([cx, cy, r]) => g += `<path d="M${cx} ${cy - 9} l9 11 h-18z" fill="${T.ink}" transform="rotate(${r} ${cx} ${cy})"/>`);
+  // three empty face circles: a paper fill inside the ink dashes, so they read on both themes
+  [[660, 134], [598, 196], [722, 196]].forEach(([cx, cy]) =>
+    g += `<circle cx="${cx}" cy="${cy}" r="31" fill="${T.paper}" stroke="${T.ink}" stroke-width="3.5" stroke-dasharray="10 8"/>`);
+  g += toy('circle', 660 - 31, 258 - 31, 62, 62, C.face.A, { ow: 3.5, shadow: 5 }) + txt(660, 260, 'A', 30, { anchor: 'middle', base: 'middle', w: 700 });
+  return phone(W, H, g);
+}]);
+F.push(['Phone: nickname, colour and accessory', 'Nickname, colour and accessory are set on the phone and shown next time you join.', 816, 384, () => {
+  const W = 780, H = 360;
+  let g = bg(W, H);
+  g += card(40, 18, 700, 324, { header: 'Settings', hc: light(C.p[0], .3), hh: 48, hs: 25 });
+  g += txt(70, 92, 'Nickname', 17, { w: 700 });
+  g += `<rect x="70" y="100" width="300" height="42" rx="12" fill="#FFFFFF" stroke="${T.ink}" stroke-width="3.5"/>`;
+  g += txt(88, 129, 'Mia', 22, { font: 'Nunito', w: 800 }) + `<rect x="138" y="110" width="3" height="24" fill="${T.ink}"/>`;
+  g += txt(386, 127, '3 / 10', 12, { font: 'Nunito', w: 700, fill: dark(T.paper, .5) });
+  g += btn(540, 100, 170, 42, 'Save', { color: C.good, size: 18 });
+  g += txt(70, 158, 'Up to 10 characters: letters, numbers and spaces.', 11, { font: 'Nunito', w: 700, fill: dark(T.paper, .55) });
+  g += txt(70, 184, 'Colour', 17, { w: 700 });
+  C.p.forEach((c, i) => {
+    const cx = 92 + i * 46;
+    if (i === 0) g += `<circle cx="${cx}" cy="224" r="25" fill="none" stroke="${T.ink}" stroke-width="6"/><circle cx="${cx}" cy="224" r="25" fill="none" stroke="${C.focus}" stroke-width="3.5"/>`;
+    g += toy('circle', cx - 19, 205, 38, 38, c, { ow: 3, shadow: 3 });
+  });
+  g += txt(70, 274, 'Accessory', 17, { w: 700 });
+  Object.values(ACCESSORY).forEach((kind, i) => {
+    const cx = 92 + i * 46;
+    if (i === 0) g += `<circle cx="${cx}" cy="310" r="22" fill="none" stroke="${T.ink}" stroke-width="5"/><circle cx="${cx}" cy="310" r="22" fill="none" stroke="${C.focus}" stroke-width="3"/>`;
+    g += toy('circle', cx - 17, 293, 34, 34, T.board, { ow: 2.5, shadow: 2, glint: false }) + accessory(kind, cx, 310, 13, T.ink);
+  });
+  // the preview starts below the nickname row, so it no longer covers the Save button beside the field
+  g += card(430, 150, 290, 176, { header: 'You', hc: light(C.p[0], .3), hh: 34, hs: 17 });
+  g += worker(505, 228, 24, C.p[0], 1, 'happy') + accessory('ears', 505, 228, 24, C.p[0]);
+  g += marble(640, 228, 22, C.p[0], 1) + accessory('ears', 640, 228, 22, C.p[0]);
+  g += txt(505, 272, 'worker', 11, { anchor: 'middle', font: 'Nunito', w: 700, fill: dark(T.paper, .5) });
+  g += txt(640, 272, 'marble', 11, { anchor: 'middle', font: 'Nunito', w: 700, fill: dark(T.paper, .5) });
+  g += txt(575, 308, 'Shows next time you join.', 12, { anchor: 'middle', font: 'Nunito', w: 800, fill: dark(T.paper, .5) });
+  return phone(W, H, g);
+}]);
+F.push(['TV: players by name and character', "The TV shows each player's nickname and character, not a device-derived name.", 1280, 720, () => {
+  let g = bg(1280, 720);
+  g += card(180, 20, 920, 680, { header: 'Shape Race', hc: C.p[0], hh: 74, hs: 38 });
+  g += txt(640, 210, "Press A when you're ready.", 24, { anchor: 'middle', font: 'Nunito', w: 800 });
+  [[268, 1, 'Mia', C.p[0], 'Blue · ears', true], [348, 2, 'Dad', C.p[1], 'Orange · antenna', true], [428, 3, 'Sam', C.p[2], 'Purple · bow', false]]
+    .forEach(([y, n, name, color, character, ready]) => {
+      g += joinedRow(y, n, name, color, ready);
+      g += txt(280, y + 30, character, 15, { font: 'Nunito', w: 700, fill: dark(T.paper, .5) });
+      g += txt(1008, y + 10, ready ? 'Ready' : 'Not ready', 18, { anchor: 'end', font: 'Nunito', w: 800, fill: dark(T.paper, .5) });
+    });
+  g += btn(540, 590, 200, 62, 'Start', { color: C.good, state: 'focus' });
+  return g;
+}]);
+F.push(["TV: the night's awards are delivered", 'The three awards promised at setup are shown and awarded at the end of the night.', 1280, 720, () => {
+  // scoreFrame's banner slot is the only room between the header (its divider sits at y 106) and the
+  // first row (its badges start at y 214): the three award chips go there, clear of the divider.
+  let g = scoreFrame('Final scores', [
+    ['1', 1, 'Mia', '34', '', C.p[0]],
+    ['2', 2, 'Dad', '30', '', C.p[1]],
+    ['3', 3, 'Sam', '21', '', C.p[2]],
+    ['4', 4, 'Ada', '19', '', C.p[3]],
+  ], { banner: ' ' });
+  g += confetti(1280, 720);
+  // the banner slot is emptied first: paper over the card's own body, so the chips sit on paper
+  g += `<rect x="192" y="112" width="896" height="84" fill="${T.paper}"/>`;
+  [['Sharpshooter', C.p[0], 210], ['Best Helper', C.p[3], 505], ['Coin Collector', C.p[5], 800]].forEach(([name, color, x]) => {
+    g += card(x, 132, 270, 56, { fill: light(color, .55), ow: 3 });
+    g += rosette(x + 34, 160, 15, color, (cx, cy, r) => star(cx, cy, r, '#fff'));
+    g += txt(x + 62, 168, name, 19, { font: 'Nunito', w: 800 });
+    g += star(x + 246, 160, 9);
+  });
+  return g;
+}]);
+F.push(['TV: a consistent in-round HUD', "The HUD now names the map, numbers the round as 'of 3', and turns the clock red in the final 15 s.", 1280, 720, () => {
+  let g = mapPlay('playroom', '0:14', true);
+  // the corrected top bar, over the map's own
+  g += `<rect x="0" y="0" width="1280" height="56" fill="${T.paper}"/><line x1="0" y1="56" x2="1280" y2="56" stroke="${T.ink}" stroke-width="3.5"/>`;
+  g += txt(22, 38, 'Bumper Round · Playroom', 24);
+  g += txt(400, 37, 'Round 1 of 3', 20, { font: 'Nunito', w: 800, fill: dark(T.paper, .45) });
+  g += clockChip(640, 7, '0:14', 28, true);
+  [[1, C.p[0], '4', 760], [2, C.p[1], '2', 880], [3, C.p[2], '1', 1000]].forEach(([n, color, k, x]) =>
+    g += playerBadge(x, 30, 15, n, color) + coin(x + 30, 30, 11) + txt(x + 48, 39, k, 24, { w: 700 }));
+  g += txt(1258, 36, 'A: shove', 17, { anchor: 'end', font: 'Nunito', w: 800, fill: dark(T.paper, .45) });
+  return g;
+}]);
+F.push(['Phone: full label and 48 dp targets', 'The connect label no longer truncates and every touch target is at least 48 dp.', 816, 384, () => {
+  const W = 780, H = 360;
+  let g = bg(W, H);
+  g += pill(190, 18, 400, 54, 'Connecting… · tap to connect', { size: 18 });
+  g += `<circle cx="220" cy="45" r="11" fill="${C.caution}" stroke="${T.ink}" stroke-width="2.5"/><circle cx="220" cy="45" r="4" fill="${T.paper}"/>`;
+  g += btn(158, 92, 150, 48, 'D-pad', { color: C.focus, state: 'focus', size: 19 });
+  g += btn(320, 92, 140, 48, 'Gyro', { size: 19 });
+  g += btn(472, 92, 150, 48, 'Sticks', { size: 19 });
+  g += `<line x1="636" y1="92" x2="636" y2="140" stroke="${T.ink}" stroke-opacity=".45" stroke-width="2"/><line x1="630" y1="92" x2="642" y2="92" stroke="${T.ink}" stroke-opacity=".45" stroke-width="2"/><line x1="630" y1="140" x2="642" y2="140" stroke="${T.ink}" stroke-opacity=".45" stroke-width="2"/>`;
+  g += txt(650, 121, '48 dp', 14, { font: 'Nunito', w: 800, fill: dark(T.paper, .5) });
+  g += pad(70, 190, 120) + faces(640, 230, 30, 60);
+  return phone(W, H, g);
+}]);
+F.push(['Phone: settings that agree with their labels', 'Slider labels and their announced accessibility values now agree (5 of 7 were wrong).', 816, 384, () => {
+  const W = 780, H = 360;
+  let g = bg(W, H);
+  g += card(40, 14, 700, 332, { header: 'Settings', hc: light(C.p[0], .3), hh: 48, hs: 25 });
+  [['Sensitivity 1.00×', .5], ['Gyro dead zone 5%', .05], ['Smoothing 50%', .5], ['Button size 75%', .75], ['Sticks dead zone 10%', .1]]
+    .forEach(([label, t], i) => {
+      const y = 100 + i * 50, x0 = 320, tw = 380, tx = x0 + tw * t;
+      g += txt(70, y + 7, label, 19);
+      g += `<rect x="${x0}" y="${y - 6}" width="${tw}" height="12" rx="6" fill="${T.paper}" stroke="${T.ink}" stroke-width="2.5"/>`;
+      g += `<rect x="${x0 + 1.5}" y="${y - 4}" width="${Math.max(1.5, tw * t)}" height="8" rx="4" fill="${C.p[0]}"/>`;
+      g += `<circle cx="${tx}" cy="${y}" r="11" fill="${T.paper}" stroke="${T.ink}" stroke-width="3"/>`;
+    });
+  return phone(W, H, g);
+}]);
+// ---- The app's first moments on the phone: the home screen it opens to (with a TV on the Wi-Fi
+// and without one), the three coach marks that point at its roles the first time, and the
+// connection settings behind them. The home's own words sit on the bg, so they take T.onBg (ink on
+// Sunny, white on Night); over a coach mark's scrim the chrome is paper, and its hints are cards.
+F.push(['Phone: home screen with a found screen', 'The app opens to a home screen; a known screen is found, so Join a Game is primary (one tap to connect).', 816, 384, () => {
+  const W = 780, H = 360;
+  let g = bg(W, H);
+  // the title, and who you are: the character you picked and your nickname, with the way to change
+  // them right beside the name
+  g += txt(44, 56, 'Thumb Party', 40, { fill: T.onBg });
+  g += worker(70, 108, 20, C.p[0], 1) + accessory('ears', 70, 108, 20, C.p[0]);
+  g += txt(102, 116, 'Mia', 22, { font: 'Nunito', w: 800, fill: T.onBg });
+  g += `<rect x="150" y="99" width="62" height="26" rx="13" fill="${T.paper}" stroke="${T.ink}" stroke-width="2.5"/>`;
+  g += txt(181, 115, 'Edit', 12, { anchor: 'middle', w: 700 });
+  g += btn(628, 32, 112, 42, 'Settings', { size: 14 });
+  // the TV found on the Wi-Fi
+  g += card(40, 144, 700, 96, { header: 'Found nearby', hc: light(C.p[2], .3), hh: 28, hs: 16 });
+  g += `<path d="M90 186 L78 178 M90 186 L102 178" fill="none" stroke="${T.ink}" stroke-width="3" stroke-linecap="round"/>`;
+  g += toy('rect', 64, 186, 52, 36, C.p[1], { ow: 3, shadow: 3 });
+  g += `<rect x="82" y="223" width="16" height="6" rx="3" fill="${T.ink}"/>`;
+  g += txt(136, 204, 'Thumb Party TV · Android TV', 19);
+  g += txt(136, 226, 'Found on your Wi-Fi', 13, { font: 'Nunito', w: 700, fill: dark(T.paper, .55) });
+  g += txt(716, 206, 'Ready to join', 13, { anchor: 'end', font: 'Nunito', w: 700, fill: dark(T.paper, .55) });
+  // this device's three roles: joining the game it found is the one to press
+  g += btn(40, 264, 218, 56, 'Join a Game', { color: C.good, state: 'focus', size: 19 });
+  g += btn(281, 264, 218, 56, 'Play here', { size: 19 });
+  g += btn(522, 264, 218, 56, 'Display here', { size: 19 });
+  return phone(W, H, g);
+}]);
+// The Home screen with no TV on the Wi-Fi: it is frame 11, and the dimmed base the three coach
+// marks point at, so both draw it from here. The three roles always read in this order; only the
+// colour and the focus ring move with the state (found TV: Join a Game; no TV: Play here).
+function homeNoTV() {
+  let g = bg(780, 360);
+  g += txt(44, 56, 'Thumb Party', 40, { fill: T.onBg });
+  g += worker(70, 108, 20, C.p[0], 1) + accessory('ears', 70, 108, 20, C.p[0]);
+  g += txt(102, 116, 'Mia', 22, { font: 'Nunito', w: 800, fill: T.onBg });
+  g += `<rect x="150" y="99" width="62" height="26" rx="13" fill="${T.paper}" stroke="${T.ink}" stroke-width="2.5"/>`;
+  g += txt(181, 115, 'Edit', 12, { anchor: 'middle', w: 700 });
+  g += btn(628, 32, 112, 42, 'Settings', { size: 14 });
+  // nothing on the Wi-Fi: a caution chip where the listing goes
+  g += card(40, 144, 700, 96, { header: 'Nearby', hc: light(C.caution, .3), hh: 28, hs: 16 });
+  g += `<rect x="64" y="188" width="210" height="36" rx="18" fill="${light(C.caution, .35)}" stroke="${T.ink}" stroke-width="3"/>`;
+  g += `<circle cx="88" cy="206" r="9" fill="${C.caution}" stroke="${T.ink}" stroke-width="2.5"/><circle cx="88" cy="206" r="3.5" fill="${T.paper}"/>`;
+  g += txt(106, 213, 'No screen found', 17, { w: 700 });
+  g += txt(716, 210, 'Turn on the screen, then search again.', 13, { anchor: 'end', font: 'Nunito', w: 700, fill: dark(T.paper, .55) });
+  g += btn(40, 264, 218, 56, 'Join a Game', { size: 19 });
+  g += btn(281, 264, 218, 56, 'Play here', { color: C.good, state: 'focus', size: 19 });
+  g += btn(522, 264, 218, 56, 'Display here', { size: 19 });
+  return g;
+}
+F.push(['Phone: home with no screen found', 'No screen found — the home screen leads with Play here (hosting on this device).', 816, 384, () => phone(780, 360, homeNoTV())]);
+// The tips' step dots: one per tip, the current one lit in the focus colour, the count written
+// under them — or beside them, where a frame has no room below.
+function stepDots(x, cy, n, of, o = {}) {
+  let g = '';
+  for (let i = 0; i < n; i++) {
+    g += `<circle cx="${x + i * 26}" cy="${cy}" r="9" fill="${i === of - 1 ? C.focus : T.paper}" stroke="${T.ink}" stroke-width="3"/>`;
+  }
+  const label = `${of} of ${n}`, fill = o.fill ?? T.onBg;
+  return o.label === 'right'
+    ? g + txt(x + (n - 1) * 26 + 22, cy + 5, label, 14, { font: 'Nunito', w: 800, fill })
+    : g + txt(x + (n - 1) * 13, cy + 30, label, 14, { anchor: 'middle', font: 'Nunito', w: 800, fill });
+}
+// A coach mark over that Home screen: the whole frame dimmed, the button the hint is about back at
+// full colour with its focus ring, and a paper hint above the row with its tail on that button.
+// n: 0 Join a Game, 1 Play here, 2 Display here.
+function coachMark(n) {
+  const marks = [
+    { bx: 40, cardX: 40, h: 56, lines: ["Join a friend's game"] },
+    { bx: 281, cardX: 200, h: 66, lines: ['Play on this screen', 'or host a game'] },
+    { bx: 522, cardX: 360, h: 66, lines: ['Create and watch the game here.', 'Control from another screen'] },
+  ];
+  const m = marks[n], tx = m.bx + 109, top = 242 - m.h;
+  let g = homeNoTV();
+  g += `<rect width="816" height="384" fill="${T.ink}" fill-opacity=".55"/>`;
+  // the button the hint is about, back at full colour
+  g += btn(m.bx, 264, 218, 56, ['Join a Game', 'Play here', 'Display here'][n], { color: C.good, state: 'focus', size: 19 });
+  // the hint, and its tail resting on that button; it stays clear of the card's header above
+  g += card(m.cardX, top, 380, m.h, { fill: T.paper, ow: 3.5 });
+  const firstY = top + (m.h === 56 ? 35 : 22);
+  m.lines.forEach((s, k) => g += txt(m.cardX + 190, firstY + k * 28, s, 18, { anchor: 'middle', w: 700 }));
+  g += `<path d="M${tx - 13} ${top + m.h - 2} L${tx} 258 L${tx + 13} ${top + m.h - 2}" fill="${T.paper}" stroke="${T.ink}" stroke-width="3" stroke-linejoin="round"/>`;
+  // Skip, where Settings sits under the scrim, and where the tips have got to
+  g += `<rect x="628" y="32" width="112" height="42" rx="21" fill="${T.paper}" stroke="${T.ink}" stroke-width="3.5"/>`;
+  g += txt(684, 58, 'Skip', 15, { anchor: 'middle', w: 700 });
+  g += stepDots(60, 342, 3, n + 1, { label: 'right', fill: T.paper });
+  return g;
+}
+F.push(['Phone: coach mark — Join a Game', 'Coach mark 1 of 3: the first time you see Home, a hint points at Join a Game. Tap to advance.', 816, 384, () => phone(780, 360, coachMark(0))]);
+F.push(['Phone: coach mark — Play here', 'Coach mark 2 of 3: the hint moves to Play here.', 816, 384, () => phone(780, 360, coachMark(1))]);
+F.push(['Phone: coach mark — Display here', 'Coach mark 3 of 3: the hint moves to Display here.', 816, 384, () => phone(780, 360, coachMark(2))]);
+F.push(['Phone: connection settings', 'Auto-join can be turned off in Settings.', 816, 384, () => {
+  const W = 780, H = 360;
+  let g = bg(W, H);
+  g += card(40, 24, 700, 312, { header: 'Settings', hc: light(C.p[0], .3), hh: 48, hs: 25 });
+  // row 1: joining the last TV by itself, and what that means
+  g += txt(70, 110, 'Auto-join last screen', 20, { w: 700 });
+  g += txt(70, 134, "Join the last screen you played with when it's nearby.", 13, { font: 'Nunito', w: 700, fill: dark(T.paper, .55) });
+  g += toggle(626, 97, true);
+  g += `<line x1="70" y1="160" x2="710" y2="160" stroke="${T.ink}" stroke-opacity=".2" stroke-width="2"/>`;
+  // row 2: keeping the TV on this phone
+  g += txt(70, 210, 'Remember this screen', 20, { w: 700 });
+  g += toggle(626, 185, true);
+  g += `<line x1="70" y1="248" x2="710" y2="248" stroke="${T.ink}" stroke-opacity=".2" stroke-width="2"/>`;
+  // row 3: bringing the first-time hints back
+  g += txt(70, 286, 'Show tips', 20, { w: 700 });
+  g += txt(70, 310, 'Show the first-time hints again.', 13, { font: 'Nunito', w: 700, fill: dark(T.paper, .55) });
+  g += toggle(626, 273, true);
+  return phone(W, H, g);
+}]);
+startPage(F);
+</script>
+</body>
+</html>
