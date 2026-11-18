@@ -8,7 +8,7 @@ plan is `docs/PRD-v2.md` "Milestone 16", written from the evidence-driven UX rev
 
 ## Resume here (Nov 18, 2026: the UX review is done; nothing is built yet)
 
-- **ux-review (done, uncommitted as of writing).** The end-to-end player-flow review and the
+- **ux-review (done; committed as `1d593136`).** The end-to-end player-flow review and the
   mock-ups are complete and owner-approved. Deliverables under `docs/briefs/m16/ux-review/`:
   - `PROPOSAL.md` — the 9 recommendations (five-first summary, 13-stage flow, recommendations at
     a glance, rejected ideas, decisions).
