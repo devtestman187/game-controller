@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'src/debug_start.dart';
 import 'src/keyboard_player.dart';
+import 'src/tv_host_presence.dart';
 import 'src/tv_host_setup.dart';
 import 'src/tv_text.dart';
 import 'src/ui/home/home_screen.dart';
@@ -45,6 +46,9 @@ Future<void> main() async {
         // it, so a measuring run needs only the TV and a joined phone (m12
         // §2.9).
         shareViewProvider.overrideWithValue(shareViewEnabled()),
+        // The TV's away state, so the phones that show the game say it is
+        // waiting for the host while the app is hidden (M16 item 2).
+        hostAwayProvider.overrideWith((ref) => ref.watch(tvHostPresenceProvider).away),
         // This is the TV (M13): the TV's type and sizes, and the shader it
         // just loaded.
         toyTvProvider.overrideWithValue(true),
@@ -70,6 +74,9 @@ class TvTestApp extends ConsumerWidget {
     // Keeps the crash reports free of the lobby's names (design
     // sentry-consent.md).
     ref.watch(crashNamesProvider);
+    // The TV's host presence for the app's whole life (M16 item 2): hidden
+    // while the app is hidden, so the phones it hosts show the away card.
+    ref.watch(tvHostPresenceProvider);
     return ToyLookScope(
       look: look,
       child: Shortcuts(
@@ -77,6 +84,7 @@ class TvTestApp extends ConsumerWidget {
         shortcuts: hostActivateShortcuts,
         child: MaterialApp(
           title: TvText.name,
+          navigatorKey: tvNavigatorKey,
           // The phones work every screen like the remote (PRD v2 T21).
           builder: (context, child) => ControllerMenus(child: child!),
           debugShowCheckedModeBanner: false,

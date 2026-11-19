@@ -77,7 +77,7 @@ void main() {
         expect(events, hasLength(3), reason: 'and nothing else');
       });
 
-      test('hostAway sends nothing before a view starts', () async {
+      test('hostAway with no view running reaches a connected phone as HostAway(30) then HostBack', () async {
         final server = await startHost(t);
         final host = ServerGameHost(server);
         addTearDown(host.dispose);
@@ -92,7 +92,13 @@ void main() {
         host.hostAway(30);
         host.hostAway(null);
         await viewer.drain();
-        expect(_views(viewer), isEmpty, reason: 'no view_start yet');
+
+        final messages = _views(viewer);
+        expect(messages.map((m) => m.type), [
+          'host_away',
+          'host_back',
+        ], reason: 'the phone shows a host-away card without a view_start');
+        expect((messages.first as HostAwayMessage).secondsLeft, 30);
       });
 
       test('a viewer that pairs while the host is away is told, with the time left', () async {
@@ -158,7 +164,7 @@ void main() {
         expect(_views(other), isEmpty);
       });
 
-      test('with shareView false a viewer gets nothing, and true reaches it from the next view_start', () async {
+      test('with shareView false a viewer gets no game view, and true reaches it from the next view_start', () async {
         final server = await startHost(t);
         final host = ServerGameHost(server)..shareView = false;
         addTearDown(host.dispose);
@@ -170,19 +176,29 @@ void main() {
           code: server.pairingCode,
         );
 
-        expect(host.hasViewers, isFalse, reason: 'a viewer that gets nothing is no viewer');
+        expect(host.hasViewers, isFalse, reason: 'the host shares no game view with this phone');
         _sendWholeView(host);
         await viewer.drain();
-        expect(_views(viewer), isEmpty, reason: 'no start, frame, away or end goes out');
+        expect(_views(viewer).map((m) => m.type), [
+          'host_away',
+          'host_back',
+        ], reason: 'no start, frame or end goes out; the host\'s own away is not part of the view');
 
         host.shareView = true;
         host.publishFrame(_frame(1));
         await viewer.drain();
-        expect(_views(viewer), isEmpty, reason: 'a running view keeps the setting it began with');
+        expect(_views(viewer).map((m) => m.type), [
+          'host_away',
+          'host_back',
+        ], reason: 'a running view keeps the setting it began with');
 
         host.startView(_start);
         await viewer.drain();
-        expect(_views(viewer).map((m) => m.type), ['view_start'], reason: 'the change applies from the next start');
+        expect(_views(viewer).map((m) => m.type), [
+          'host_away',
+          'host_back',
+          'view_start',
+        ], reason: 'the change applies from the next start');
         expect(host.hasViewers, isTrue);
       });
     });

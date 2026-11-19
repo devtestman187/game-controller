@@ -284,9 +284,10 @@ class ServerGameHost implements GameHost {
 
   @override
   void hostAway(int? secondsLeft) {
-    // Only a running view sends: a host that isn't sharing has no viewer to
-    // tell (m12 §2.10).
-    if (_viewStart == null) return;
+    // A host tells its phones whenever it steps away, whether or not a view
+    // runs: the phone shows a host-away card without a view_start (m16 item 2).
+    // The message still needs the view capability, so no other controller gets
+    // it, and a view the host doesn't share is no reason to keep it back.
     _hostAwayEndsAtMs = secondsLeft == null ? null : nowMs + secondsLeft * Duration.millisecondsPerSecond;
     final message = secondsLeft == null ? const HostBackMessage() : HostAwayMessage(secondsLeft: secondsLeft);
     server.sendToAll(message);
