@@ -6,7 +6,7 @@ plan is `docs/PRD-v2.md` "Milestone 16", written from the evidence-driven UX rev
 
 **New developer or other agent taking over: read [docs/HANDOFF.md](../../HANDOFF.md) first.**
 
-## Resume here (Nov 19, 2026: item 2 built; item 1 next)
+## Resume here (Nov 19, 2026: item 1 slice A built; slice B next)
 
 - **ux-review (done; committed as `1d593136`).** The end-to-end player-flow review and the
   mock-ups are complete and owner-approved. Deliverables under `docs/briefs/m16/ux-review/`:
@@ -67,7 +67,19 @@ plan is `docs/PRD-v2.md` "Milestone 16", written from the evidence-driven UX rev
   - Tests: `host_away_test` (hostAway reaches a phone with no view) + a new `host_away_tv_test`
     (lifecycle flips the away value and sends the messages). Full `tools/check.sh` green (12/12).
   - Unverified: real-device backgrounding on Android TV, and the abandon-after-grace path.
-- **Next:** item 1, the round's state on the phone (PRD-v2.md "Milestone 16").
+- **M16 item 1 slice A (done; commits `3b15897` protocol, `2fdda979` threading, `cfb805c` phone UI):**
+  the round's clock and number on the joined phone.
+  - Protocol (A1): `ViewStartMessage` gains optional `round`/`rounds`, `FrameMessage` gains optional
+    `timeLeftMs` (additive, omitted when null, so an older peer decodes as before); `GameSnapshot`
+    exposes a generic `timeLeftMs`; both games' snapshots expose their clock. `docs/protocol.md`
+    updated.
+  - Threading (A2a): party_host passes `round`/`rounds` from `NightState` (new `nightRoundNumbers`)
+    into the game views → sessions → `view_start`.
+  - Phone (A2b): a `roundStateProvider` reads the fields, and a paper strip over the pad shows
+    "Round N of M" + a clock chip (mock-up frame 0). Tests: night/arena e2e + `round_state_test`.
+    Full `tools/check.sh` green (12/12).
+  - Visual: not captured — the emulator was stopped for the harness update.
+- **Next:** item 1 slice B — the coins and the round's result on the phone (PRD-v2.md "Milestone 16").
 - **Carried into M16** (unchanged): the ten device checks the owner has not run, and the open
   Stats question (whether dropped sessions show on the Stats screen). **Do not decide the Stats
   question; wait.** See docs/HANDOFF.md section 7.
