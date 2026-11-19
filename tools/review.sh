@@ -242,8 +242,9 @@ for f in ${files[@]+"${files[@]}"}; do
             }
             next
           }
-          # "({" and ", {" open a named-parameter list, not a body.
-          if ((ind == 0 || ind == 2) && $0 ~ /\{[ \t]*$/ && $0 !~ /(\(|,[ \t]*)\{[ \t]*$/ && !isDecl($0)) {
+          # "({" and ", {" open a named-parameter list, not a body; "key: {"
+          # opens a map literal, also not a body.
+          if ((ind == 0 || ind == 2) && $0 ~ /\{[ \t]*$/ && $0 !~ /(\(|,[ \t]*|:[ \t]*)\{[ \t]*$/ && !isDecl($0)) {
             start = FNR; ind0 = ind; sig = $0
           }
         }
