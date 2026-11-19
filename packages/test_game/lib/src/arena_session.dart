@@ -57,6 +57,10 @@ class ArenaSession extends GameSession {
   /// b3): a Bumper Round with one player gives it a seat, played by a
   /// [CpuPilot] on the host. A race, or a round with two players or more,
   /// never does.
+  ///
+  /// [round] and [rounds] are the round's number from 1 and how many the match
+  /// runs (M16 A2), for a phone's "Round N of M"; null when the host names no
+  /// series.
   ArenaSession({
     required super.host,
     required this.onEvent,
@@ -64,6 +68,8 @@ class ArenaSession extends GameSession {
     super.settings,
     this.roboLevel = RoboLevel.medium,
     this.roundTags = const [],
+    super.round,
+    super.rounds,
   }) : game = game ?? ArenaGame(),
        super(module: arenaModule, setup: arenaSetup);
 

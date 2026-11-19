@@ -52,6 +52,10 @@ class PuzzleSession extends GameSession {
   /// [settings] is how the host runs the round (m12 §3): the frame rate it
   /// sends frames to the phones at, which the round records. Null takes this
   /// build's start option ([HostingSettings.fromEnvironment]).
+  ///
+  /// [round] and [rounds] are the round's number from 1 and how many the match
+  /// runs (M16 A2), for a phone's "Round N of M"; null when the host names no
+  /// series.
   PuzzleSession({
     required GameHost host,
     required Puzzle puzzle,
@@ -61,17 +65,28 @@ class PuzzleSession extends GameSession {
     LayoutTarget target = LayoutTarget.screen,
     HostingSettings? settings,
     PuzzleMatch? match,
+    int? round,
+    int? rounds,
     void Function(MatchResult result)? onFinished,
   }) : this._(
          host: host,
          match: match ?? PuzzleMatch(puzzle, teams: teams, settings: playtest(), random: random, target: target),
          playtest: playtest,
          settings: settings,
+         round: round,
+         rounds: rounds,
          onFinished: onFinished,
        );
 
-  PuzzleSession._({required super.host, required this.match, required this.playtest, super.settings, this.onFinished})
-    : super(module: shapeRaceModule, setup: shapeRaceSetup(match)) {
+  PuzzleSession._({
+    required super.host,
+    required this.match,
+    required this.playtest,
+    super.settings,
+    super.round,
+    super.rounds,
+    this.onFinished,
+  }) : super(module: shapeRaceModule, setup: shapeRaceSetup(match)) {
     _record('round_start', data: _roundStartData(match, settings));
   }
 

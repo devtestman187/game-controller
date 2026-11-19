@@ -316,6 +316,8 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
                         // side's mirror clear of both (m12-opponent-mirror
                         // rules 3, 7 and 8). A host with no pad passes none.
                         final pad = ref.watch(hostPadProvider);
+                        final night = ref.read(partyNightProvider);
+                        final numbers = nightRoundNumbers(night);
                         return PuzzlePlayView(
                           key: _play,
                           host: ref.read(gameHostProvider),
@@ -333,7 +335,9 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
                           settings: _roundSettings,
                           // The host's tags (M14): a night's round number,
                           // read as the round starts.
-                          roundTags: nightRoundTags(ref.read(partyNightProvider)),
+                          roundTags: nightRoundTags(night),
+                          round: numbers?.round,
+                          rounds: numbers?.rounds,
                           onFinished: _finished,
                           onClock: _clocked,
                         );

@@ -29,6 +29,8 @@ class ArenaView extends StatefulWidget {
     this.game,
     this.settings,
     this.roboLevel = RoboLevel.medium,
+    this.round,
+    this.rounds,
     this.roundTags = const [],
     this.paused = false,
     this.abandon,
@@ -42,6 +44,11 @@ class ArenaView extends StatefulWidget {
   /// Robo's level, from the waiting card (party-night §7a): the session gives
   /// Robo a seat at it in a Bumper Round with one player.
   final RoboLevel roboLevel;
+
+  /// This round's number from 1 and how many the match runs (M16 A2): a phone
+  /// shows "Round N of M". Null when the host names no rounds.
+  final int? round;
+  final int? rounds;
 
   /// Tags the host adds to the round's summary (M14's "By game and feature"):
   /// a party night's round, `night_2of3`, which no game can know.
@@ -90,6 +97,8 @@ class _ArenaViewState extends State<ArenaView> with SingleTickerProviderStateMix
       game: widget.game,
       settings: widget.settings,
       roboLevel: widget.roboLevel,
+      round: widget.round,
+      rounds: widget.rounds,
       roundTags: widget.roundTags,
       onEvent: widget.onEvent,
     )..paused = widget.paused;

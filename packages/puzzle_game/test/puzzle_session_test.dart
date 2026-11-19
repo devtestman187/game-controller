@@ -28,14 +28,17 @@ final class Clock {
   }
 }
 
-/// A session with [twoOnOneBoard], both players here, playing with [playtest]
-/// and the host's [roundTags] (M14's "By game and feature").
+/// A session with [twoOnOneBoard], both players here, playing with [playtest],
+/// the host's [roundTags] (M14's "By game and feature") and the round's
+/// [round]/[rounds] (M16 A2).
 PuzzleSession sessionFor(
   Clock clock, {
   Map<String, PuzzleSide> teams = twoOnOneBoard,
   HostingSettings? settings,
   PuzzleSettings playtest = PuzzleSettings.defaults,
   List<String> roundTags = const [],
+  int? round,
+  int? rounds,
 }) {
   clock.host
     ..setPlayer(const GamePlayer(id: 'p1', number: 1, nickname: 'Phone p1'))
@@ -49,6 +52,8 @@ PuzzleSession sessionFor(
     random: Random(1),
     playtest: () => playtest,
     settings: settings,
+    round: round,
+    rounds: rounds,
   )..roundTags = roundTags;
 }
 
@@ -136,6 +141,24 @@ void main() {
       'teams': {'p1': 'left', 'p2': 'left'},
     });
     expect(start.hz, HostingSettings.defaults.frameRateHz);
+    session.dispose();
+  });
+
+  test('view_start carries the round and its count, for a phone\'s "Round N of M" (M16 A2)', () {
+    final clock = Clock();
+    final session = sessionFor(clock, round: 2, rounds: 3);
+    final start = clock.host.viewStarts.single;
+    expect(start.round, 2);
+    expect(start.rounds, 3);
+    session.dispose();
+  });
+
+  test('a game that names no rounds sends none with its view (M16 A2)', () {
+    final clock = Clock();
+    final session = sessionFor(clock);
+    final start = clock.host.viewStarts.single;
+    expect(start.round, isNull);
+    expect(start.rounds, isNull);
     session.dispose();
   });
 

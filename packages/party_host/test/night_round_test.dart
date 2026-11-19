@@ -42,6 +42,14 @@ void main() {
     expect(tester.widget<PuzzlePlayView>(find.byType(PuzzlePlayView)).roundTags, ['night_1of3']);
   });
 
+  testWidgets('a night\'s round hands the phones its number and count (M16 A2)', (tester) async {
+    final fake = await openNightRound(tester);
+    // The night's first of three: a phone showing the game says "Round 1 of 3".
+    final start = fake.gameHost.viewStarts.single;
+    expect(start.round, 1);
+    expect(start.rounds, 3);
+  });
+
   testWidgets('a night\'s round 1 keeps the host\'s Chaos setting', (tester) async {
     await openNightRound(tester, chaos: Chaos.party);
     final settings = tester.widget<PuzzlePlayView>(find.byType(PuzzlePlayView)).settings();
@@ -90,6 +98,9 @@ void main() {
     expect(settings.night, isFalse);
     expect(settings.chaos, Chaos.party);
     expect(appContainer(tester).read(partyNightProvider), isNull);
+    final view = tester.widget<PuzzlePlayView>(find.byType(PuzzlePlayView));
+    expect(view.round, isNull, reason: 'outside a night there is no series to number');
+    expect(view.rounds, isNull);
   });
 
   testWidgets('a one-player night round skips the join screen and starts solo', (tester) async {

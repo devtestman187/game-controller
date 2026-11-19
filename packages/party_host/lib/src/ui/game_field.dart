@@ -5,6 +5,7 @@ import 'package:test_game/test_game.dart';
 import 'package:toy_look/toy_look.dart';
 
 import '../abandon_signal.dart';
+import '../night/party_night.dart';
 import '../providers.dart';
 import '../text/host_text.dart';
 import 'game_debug_overlay.dart';
@@ -55,6 +56,8 @@ class GameField extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final nobody = ref.watch(gamePlayersProvider.select((p) => p.isEmpty));
+    // The round's number and count (M16 A2), which only the night knows.
+    final numbers = nightRoundNumbers(ref.watch(partyNightProvider));
     return Pausable(
       // Start pauses a round that is on alone: the results are no round (m12
       // §2.10), though the field stays drawn under them (M14 f1).
@@ -68,6 +71,8 @@ class GameField extends ConsumerWidget {
             host: ref.read(gameHostProvider),
             settings: hosting,
             roboLevel: ref.watch(arenaSettingsProvider.select((s) => s.roboLevel)),
+            round: numbers?.round,
+            rounds: numbers?.rounds,
             roundTags: roundTags,
             onEvent: onEvent,
             onClock: onClock,

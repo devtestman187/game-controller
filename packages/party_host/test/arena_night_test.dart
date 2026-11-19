@@ -155,4 +155,14 @@ void main() {
     // summary is filed under, alongside the game's own.
     expect(tester.widget<ArenaView>(find.byType(ArenaView)).roundTags, ['night_2of3']);
   });
+
+  testWidgets('a night\'s Bumper Round hands the phones its number and count (M16 A2)', (tester) async {
+    final fake = await bumperFromScoreboard(tester, rounds: 1);
+    await readyUp(tester, fake);
+    await roundStarted(tester);
+    // One round played, so this is the night's second of three.
+    final start = fake.gameHost.viewStarts.single;
+    expect(start.round, 2);
+    expect(start.rounds, 3);
+  });
 }

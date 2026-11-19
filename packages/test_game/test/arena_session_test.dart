@@ -57,6 +57,24 @@ void main() {
     session.dispose();
   });
 
+  test('view_start carries the round and its count, for a phone\'s "Round N of M" (M16 A2)', () {
+    final clock = Clock();
+    final session = ArenaSession(host: clock.host, onEvent: (_) {}, round: 2, rounds: 3);
+    final start = clock.host.viewStarts.single;
+    expect(start.round, 2);
+    expect(start.rounds, 3);
+    session.dispose();
+  });
+
+  test('a game that names no rounds sends none with its view (M16 A2)', () {
+    final clock = Clock();
+    final session = ArenaSession(host: clock.host, onEvent: (_) {});
+    final start = clock.host.viewStarts.single;
+    expect(start.round, isNull);
+    expect(start.rounds, isNull);
+    session.dispose();
+  });
+
   test('the round is reported at the rate the host settings ask for', () {
     final clock = Clock();
     clock.host

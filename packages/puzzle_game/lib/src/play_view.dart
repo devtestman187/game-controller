@@ -42,6 +42,8 @@ class PuzzlePlayView extends StatefulWidget {
     this.onClock,
     this.match,
     this.abandon,
+    this.round,
+    this.rounds,
     this.roundTags = const [],
   });
 
@@ -98,6 +100,11 @@ class PuzzlePlayView extends StatefulWidget {
   /// abandoned, and the view ends `abandoned`.
   final Listenable? abandon;
 
+  /// This round's number from 1 and how many the match runs (M16 A2): a phone
+  /// shows "Round N of M". Null when the host names no rounds.
+  final int? round;
+  final int? rounds;
+
   /// Tags the host adds to the round's summary (M14's "By game and feature"):
   /// a party night's round, `night_2of3`, which no game can know.
   final List<String> roundTags;
@@ -129,6 +136,8 @@ class PuzzlePlayViewState extends State<PuzzlePlayView> with SingleTickerProvide
             target: widget.target,
             settings: widget.hosting,
             match: widget.match,
+            round: widget.round,
+            rounds: widget.rounds,
             onFinished: widget.onFinished,
           )
           ..paused = widget.paused

@@ -123,9 +123,18 @@ class PartyNight extends Notifier<NightState?> {
 /// The night running on this host, or null: see [PartyNight].
 final partyNightProvider = NotifierProvider<PartyNight, NightState?>(PartyNight.new);
 
+/// The round a night's next round is, for a viewer's "Round N of M" (M16 A2):
+/// its number from 1 and how many the night runs, or null outside a night. Both
+/// game screens pass it to their view when the round starts, as they do the
+/// tags, since the night counts the round only when it ends.
+({int round, int rounds})? nightRoundNumbers(NightState? night) =>
+    night == null ? null : (round: night.round + 1, rounds: night.rounds);
+
 /// The tags a round started while [night] runs puts on its summary (M14's "By
 /// game and feature"): `night_2of3` for the night's second round of three, or
 /// none outside a night. Both game screens read it when the round starts, since
 /// the night counts the round only when it ends.
-List<String> nightRoundTags(NightState? night) =>
-    night == null ? const [] : [RoundTag.of(RoundTag.night, '${night.round + 1}of${night.rounds}')];
+List<String> nightRoundTags(NightState? night) {
+  final numbers = nightRoundNumbers(night);
+  return numbers == null ? const [] : [RoundTag.of(RoundTag.night, '${numbers.round}of${numbers.rounds}')];
+}
