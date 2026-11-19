@@ -80,9 +80,6 @@ class ServerGameHost implements GameHost {
   /// The dropped players who still hold their slot (m12 bug 1107d).
   late final AwaySlots _away;
 
-  /// Whether a round runs, [startView] to [endView] (m12 bug 1107d).
-  bool _roundRunning = false;
-
   /// The view a game asked for, kept for viewers that pair mid-game (m12 §2).
   ViewStartMessage? _viewStart;
   ViewStartMessage? _latestStart;
@@ -241,7 +238,6 @@ class ServerGameHost implements GameHost {
   @override
   void startView(ViewStartMessage start) {
     _latestStart = start;
-    _roundRunning = true;
     _hostAwayEndsAtMs = null;
     // A view that isn't shared is no view here: no start is kept, so no frame
     // or end can follow, and a viewer that pairs later gets nothing.
@@ -273,7 +269,6 @@ class ServerGameHost implements GameHost {
   @override
   void endView(ViewEndMessage end, {ViewStartMessage? of}) {
     if (of != null && !identical(of, _latestStart)) return;
-    _roundRunning = false;
     final wasRunning = _viewStart != null;
     _viewStart = null;
     _viewFrame = null;
@@ -337,7 +332,7 @@ class ServerGameHost implements GameHost {
   ControllerInfo? _info(String id) => server.snapshot.connected.where((c) => c.controllerId == id).firstOrNull;
 
   void _checkPlayers() {
-    _away.noteRoster(players, roundRunning: _roundRunning);
+    _away.noteRoster(players);
     final now = players;
     if (_samePlayers(now, _lastPlayers)) return;
     // A phone that (re)joined gets the game's controls and panel again; one

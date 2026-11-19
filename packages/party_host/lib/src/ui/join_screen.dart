@@ -147,12 +147,11 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
   void _tick() {
     if (!mounted) return;
     final host = ref.read(gameHostProvider);
-    // A phone that is away isn't listed and keeps no team (m12 bug 1107d).
-    final players = [
-      for (final p in host.players)
-        if (!p.away) p,
-    ];
-    var changed = _prune(players);
+    // A phone that is away keeps its side and shows as away (M16 item 2); it
+    // has no buttons, so it isn't read or labelled.
+    final roster = host.players;
+    final players = roster.where((p) => !p.away).toList();
+    var changed = _prune(roster);
     if (_ownJoin(players)) changed = true;
     for (final p in players) {
       if (p.simulated) {
@@ -168,9 +167,10 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
     if (changed) setState(() {});
   }
 
-  /// Drops the players who left; true when a side lost a player.
-  bool _prune(List<GamePlayer> players) {
-    bool gone(String id) => !players.any((p) => p.id == id);
+  /// Drops the players who left [roster] (an away player still keeps their
+  /// side); true when a side lost a player.
+  bool _prune(List<GamePlayer> roster) {
+    bool gone(String id) => !roster.any((p) => p.id == id);
     _before.removeWhere((id, _) => gone(id));
     _labelled.removeWhere((id, _) => gone(id));
     if (!_teams.keys.any(gone)) return false;
@@ -313,11 +313,10 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // A phone that is away isn't listed on this screen (m12 bug 1107d).
-    final players = [
-      for (final p in ref.watch(gamePlayersProvider))
-        if (!p.away) p,
-    ];
+    // A phone that is away keeps its side and shows as away (M16 item 2); it
+    // has no buttons and isn't waiting to join.
+    final roster = ref.watch(gamePlayersProvider);
+    final players = roster.where((p) => !p.away).toList();
     final watching = [
       for (final p in players)
         if (!_teams.containsKey(p.id)) p,
@@ -350,9 +349,9 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
                   SizedBox(height: tight ? _tightGapPx : _hintGapPx),
                   Expanded(
                     child: _Sides(
-                      players: players,
+                      players: roster,
                       teams: _teams,
-                      ownPlayerId: ownHere,
+                      ownPlayerId: own,
                       tight: tight,
                       onPick: ownHere == null ? null : (side) => _pickSide(ownHere, side),
                     ),

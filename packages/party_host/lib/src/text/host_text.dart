@@ -78,6 +78,10 @@ abstract final class HostText {
   /// The players who haven't picked a side yet.
   static String notJoined(String names) => 'Not joined: $names';
 
+  /// A player whose phone dropped, while the join screen holds their side
+  /// (M16 item 2): "Mia is away".
+  static String awayLabel(String name) => '$name is away';
+
   /// The format the joined players make: "1 vs 1", "2 vs 2".
   static String formatName(MatchFormat format) => switch (format) {
     MatchFormat.solo => '1 player',

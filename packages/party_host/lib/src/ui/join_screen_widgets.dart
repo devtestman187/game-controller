@@ -1,5 +1,9 @@
 part of 'join_screen.dart';
 
+/// How much of a dropped player's row shows while their side is held for them
+/// (M16 item 2, mock-up frame 1): dimmed, but in their slot.
+const _awayRowOpacity = 0.45;
+
 /// The ink a side's empty seat's dashed line is drawn in, as a share of the
 /// look's ink: faint enough to read as a place waiting for a phone. Its words
 /// are the look's soft ink, which keeps 4.5:1.
@@ -48,7 +52,8 @@ class _JoinCode extends ConsumerWidget {
 
 /// One side of the join screen (M13 3b, mock-up `join-screen`): a [ToyCard]
 /// whose header band is the side's colour and name, one row for each joined
-/// player with their [ToyBadge], and a dashed seat for each phone still to
+/// player with their [ToyBadge] (a dropped player's row stays, dimmed, while
+/// their side is held: M16 item 2), and a dashed seat for each phone still to
 /// join. On the host phone it is a touch target too (m12-host-touch rule 5): a
 /// tap moves the own player here, when the side has room.
 class _SidePanel extends StatelessWidget {
@@ -74,8 +79,12 @@ class _SidePanel extends StatelessWidget {
   /// player here.
   final VoidCallback? onTap;
 
-  /// A player's name, and "(you)" for the host phone's own player.
-  String _label(GamePlayer p) => HostText.playerLabel(p.label, simulated: p.simulated, own: p.id == ownPlayerId);
+  /// A player's name, and "(you)" for the host phone's own player; a dropped
+  /// player's phone is away, and their side is held for them (M16 item 2).
+  String _label(GamePlayer p) {
+    final label = HostText.playerLabel(p.label, simulated: p.simulated, own: p.id == ownPlayerId);
+    return p.away ? HostText.awayLabel(label) : label;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -97,11 +106,14 @@ class _SidePanel extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           for (final (i, p) in players.indexed)
-            _PlayerRow(
-              label: _label(p),
-              number: p.number,
-              character: p.character,
-              roomAbove: i == 0 ? firstRoom : headroom,
+            Opacity(
+              opacity: p.away ? _awayRowOpacity : 1,
+              child: _PlayerRow(
+                label: _label(p),
+                number: p.number,
+                character: p.character,
+                roomAbove: i == 0 ? firstRoom : headroom,
+              ),
             ),
           for (var i = players.length; i < maxPerSide; i++)
             _EmptySeat(roomLeft: i == players.length ? maxPerSide - players.length : null),
@@ -212,7 +224,8 @@ class EmptySeatPainter extends CustomPainter {
   bool shouldRepaint(EmptySeatPainter oldDelegate) => oldDelegate.look != look;
 }
 
-/// Both sides, side by side.
+/// Both sides, side by side. [players] is the whole roster, so an away player
+/// who has a side keeps it (M16 item 2).
 class _Sides extends StatelessWidget {
   const _Sides({required this.players, required this.teams, this.ownPlayerId, this.tight = false, this.onPick});
 

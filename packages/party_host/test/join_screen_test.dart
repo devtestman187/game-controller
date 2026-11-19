@@ -248,23 +248,48 @@ void main() {
       expect(tester.widget<Text>(find.byKey(const Key('joinFormat'))).data, startsWith('1 player'));
     });
 
-    testWidgets('the own player back from away joins a side again', (tester) async {
+    testWidgets('the own player keeps its side while away and is back on it', (tester) async {
       final fake = await openOwnJoin(tester);
       expect(sideText('left', 'P1 iPhone 3F1C (you)'), findsOneWidget);
 
-      // Away: the join screen drops its side (m12 bug 1107d).
+      // Away: the join screen holds its side and says it is away (M16 item 2).
       fake.gameHost.setAway('p1', isAway: true);
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 16));
-      expect(sideText('left', 'P1 iPhone 3F1C (you)'), findsNothing);
-      expect(find.text('Nobody has joined yet.'), findsOneWidget);
+      expect(sideText('left', 'P1 iPhone 3F1C (you) is away'), findsOneWidget, reason: 'the side is held');
+      expect(sideText('left', 'P1 iPhone 3F1C (you)'), findsNothing, reason: 'the row says it is away');
 
-      // Back: it takes a side by itself again.
+      // Back: the same side again, and the away line goes.
       fake.gameHost.setAway('p1', isAway: false);
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 16));
       expect(sideText('left', 'P1 iPhone 3F1C (you)'), findsOneWidget);
+      expect(find.textContaining('is away'), findsNothing);
     });
+  });
+
+  // M16 item 2, first half: a phone that drops in the lobby keeps its side
+  // and shows as away (mock-up frame 1), and comes back to the same side.
+  testWidgets('a player who drops in the lobby keeps their side, shows as away, and is back on it', (tester) async {
+    final fake = await pumpHost(tester, screen: const StubHome());
+    await neutral(tester, fake, ['p1']);
+    await openJoin(tester);
+    await press(tester, fake, 'p1', GamepadButton.a);
+    expect(sideText('left', 'P1 iPhone 3F1C'), findsOneWidget);
+
+    fake.gameHost.setAway('p1', isAway: true);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 16));
+    final awayText = sideText('left', 'P1 iPhone 3F1C is away');
+    expect(awayText, findsOneWidget, reason: 'the side is held');
+    final dimmed = tester.widgetList<Opacity>(find.ancestor(of: awayText, matching: find.byType(Opacity)));
+    expect(dimmed.any((row) => row.opacity < 1), isTrue, reason: 'the away row is dimmed');
+
+    fake.gameHost.setAway('p1', isAway: false);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 16));
+    expect(sideText('left', 'P1 iPhone 3F1C'), findsOneWidget, reason: 'the same side is still there');
+    expect(find.textContaining('is away'), findsNothing);
   });
 
   // m12 bug 1108c: the owner read "press A or start to begin" on a phone that

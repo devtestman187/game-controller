@@ -211,14 +211,16 @@ void main() {
       reason: 'a report that names Sam goes out without it',
     );
 
-    // Sam leaves: the lobby has nobody, so there is no name to hide.
+    // Sam's phone drops: his slot is held as away for the host's grace (M16
+    // item 2), so his name stays in the scrubber while he is away. It leaves
+    // only when the grace ends (tested in packages/connection/test/player_away_test.dart).
     await tester.runAsync(phone.dispose);
     await until(
       tester,
-      () => party.CrashReports.playerNames.isEmpty,
-      () => 'Sam`s name stayed after he left: ${party.CrashReports.playerNames}',
+      () => party.CrashReports.playerNames.contains('Sam'),
+      () => 'Sam`s name did not stay while away: ${party.CrashReports.playerNames}',
     );
-    expect(party.scrubText('Sam could not pair', party.CrashReports.playerNames), 'Sam could not pair');
+    expect(party.scrubText('Sam could not pair', party.CrashReports.playerNames), '[name] could not pair');
 
     // Everything that outlives a frame is stopped in the real clock.
     await tester.runAsync(host.dispose);

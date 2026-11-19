@@ -180,7 +180,26 @@ void main() {
       expect(host.players, isEmpty, reason: 'a rematch never waits for someone who left');
     });
 
-    test('a phone that drops with no round running leaves at once', () async {
+    test('a phone that drops with no round running keeps its slot, away, until the grace ends', () async {
+      final server = await startHost(t);
+      final host = ServerGameHost(server, awayGrace: const Duration(milliseconds: 500));
+      addTearDown(host.dispose);
+      final one = await join(server, t, newClient(t));
+      await playersUntil(host, (p) => p.length == 1);
+
+      one.disconnect();
+      final away = await playersUntil(host, (p) => p.any((x) => x.away));
+
+      expect(away, hasLength(1), reason: 'the lobby holds the slot too (M16 item 2)');
+      expect(away.single.id, 'phone-1');
+      expect(away.single.number, 1, reason: 'the number stays with the player');
+      expect(away.single.away, isTrue);
+
+      final players = await playersUntil(host, (p) => p.isEmpty);
+      expect(players, isEmpty, reason: 'the grace frees the slot in the lobby too');
+    });
+
+    test('a phone that comes back within the grace with no round running is not away', () async {
       final server = await startHost(t);
       final host = ServerGameHost(server, awayGrace: _grace);
       addTearDown(host.dispose);
@@ -188,9 +207,12 @@ void main() {
       await playersUntil(host, (p) => p.length == 1);
 
       one.disconnect();
-      final players = await playersUntil(host, (p) => p.isEmpty);
+      await playersUntil(host, (p) => p.any((x) => x.away));
+      await join(server, t, one);
+      final players = await playersUntil(host, (p) => p.length == 1 && !p.single.away);
 
-      expect(players, isEmpty, reason: 'on the picker nobody waits, so the next round never starts paused');
+      expect(players.single.id, 'phone-1');
+      expect(players.single.number, 1, reason: 'it gets its own number back');
     });
 
     test('dispose cancels the away timers', () async {

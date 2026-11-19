@@ -10,11 +10,11 @@ import 'host_server.dart';
 /// host clock when its grace ends, and the timer that ends it.
 ///
 /// [ServerGameHost] gives it the roster at every change. It holds a slot for a
-/// player that dropped while a round runs, frees it when the phone is back or
-/// the grace is over, and tells the viewers with `player_away` and
-/// `player_back` (m12 §2). The slot's timer is owned here, from [_hold] on.
-/// Every ending goes to [ends] with its reason, for the host's log (m12 bug
-/// 1108g).
+/// player that dropped, whether or not a round runs (M16 item 2: the join screen
+/// holds their side too), frees it when the phone is back or the grace is over,
+/// and tells the viewers with `player_away` and `player_back` (m12 §2). The
+/// slot's timer is owned here, from [_hold] on. Every ending goes to [ends] with
+/// its reason, for the host's log (m12 bug 1108g).
 final class AwaySlots {
   AwaySlots({
     required this.server,
@@ -60,19 +60,19 @@ final class AwaySlots {
   bool get isEmpty => _slots.isEmpty;
 
   /// Notes the roster of this check: a player who was here at the last one and
-  /// isn't now keeps their slot for [grace] while [roundRunning], and one whose
-  /// phone is back loses it (m12 bug 1107d). A simulated controller never gets
-  /// a slot: the round doesn't wait for a test tool. Nor does the host phone's
-  /// own player, whose link drops with the host's own app (a lock does it): the
-  /// host-away pause covers that, and no one is told to wait for the host
-  /// (m12 code health N5).
-  void noteRoster(List<GamePlayer> roster, {required bool roundRunning}) {
+  /// isn't now keeps their slot for [grace], whether or not a round runs (M16
+  /// item 2: the lobby holds it too), and one whose phone is back loses it (m12
+  /// bug 1107d). A simulated controller never gets a slot: the round doesn't
+  /// wait for a test tool. Nor does the host phone's own player, whose link
+  /// drops with the host's own app (a lock does it): the host-away pause covers
+  /// that, and no one is told to wait for the host (m12 code health N5).
+  void noteRoster(List<GamePlayer> roster) {
     final live = <String, GamePlayer>{
       for (final p in roster)
         if (!p.away && !p.local && !p.simulated && !p.ownPlayer) p.id: p,
     };
     for (final MapEntry(key: id, value: player) in _live.entries) {
-      if (roundRunning && !live.containsKey(id) && !_slots.containsKey(id)) _hold(player);
+      if (!live.containsKey(id) && !_slots.containsKey(id)) _hold(player);
     }
     for (final id in _slots.keys.toList()) {
       if (live.containsKey(id)) end(id, AwayEnd.back);
