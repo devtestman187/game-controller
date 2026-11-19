@@ -48,6 +48,7 @@ abstract final class HostText {
 
   // The join screen.
   static const join = 'Join';
+  static const code = 'Code';
   static const start = 'Start';
   static const leave = 'Leave';
   static const leftSide = '◀ Left';

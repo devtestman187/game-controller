@@ -336,6 +336,7 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
         onKeyEvent: _onKey,
         child: HostScreen(
           title: _title(),
+          actions: const [_JoinCode()],
           body: SafeArea(
             child: Padding(
               padding: hostMenuPadding(barHeight),

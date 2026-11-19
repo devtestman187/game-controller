@@ -374,6 +374,17 @@ void main() {
     }
   });
 
+  // M16 item 3 (PRD v2, Milestone 16 acceptance): the code a player types
+  // into their phone is on the join screen, at the title bar's right end,
+  // where they look.
+  testWidgets('the join screen shows the pairing code where players look', (tester) async {
+    final fake = await pumpHost(tester, screen: const StubHome());
+    await neutral(tester, fake, ['p1']);
+    await openJoin(tester);
+    expect(find.byKey(const Key('joinCode')), findsOneWidget);
+    expect(find.descendant(of: find.byKey(const Key('joinCode')), matching: find.text('0427')), findsOneWidget);
+  });
+
   testWidgets('each row wears its player\'s character, and has the room above it for the accessory', (tester) async {
     final fake = await pumpHost(tester, screen: const StubHome());
     fake.state = withController(fake.state, phoneInfo('p2', 2));

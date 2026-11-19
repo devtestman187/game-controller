@@ -14,6 +14,38 @@ const _seatGapPx = 7.0;
 /// and the right is player 2's, as the mock-up draws them.
 Color sideColor(ToyLook look, PuzzleSide side) => look.colors.player(side == PuzzleSide.left ? 1 : 2);
 
+/// The pairing code in the join screen's title bar (M16 item 3, PRD v2's
+/// acceptance: "the 4-digit code is visible where a player looks"): the paper
+/// chip the Arena's waiting card shows, with the word and the four figures.
+/// It only says the code: a tap does nothing and it takes no focus.
+class _JoinCode extends ConsumerWidget {
+  const _JoinCode();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final look = ToyLookScope.of(context);
+    final code = ref.watch(hostStateProvider.select((s) => s.host.pairingCode));
+    return ToyCard(
+      key: const Key('joinCode'),
+      padding: const EdgeInsets.symmetric(horizontal: ToySizes.space12, vertical: ToySizes.space8),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(HostText.code, style: look.type.body.copyWith(color: look.colors.inkSoft)),
+          const SizedBox(width: ToySizes.space8),
+          Text(
+            code,
+            style: look.type.button.copyWith(
+              color: look.colors.ink,
+              fontFeatures: const [FontFeature.tabularFigures()],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 /// One side of the join screen (M13 3b, mock-up `join-screen`): a [ToyCard]
 /// whose header band is the side's colour and name, one row for each joined
 /// player with their [ToyBadge], and a dashed seat for each phone still to
