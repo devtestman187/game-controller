@@ -33,6 +33,14 @@ plan is `docs/PRD-v2.md` "Milestone 16", written from the evidence-driven UX rev
     covered (coverage reads 92.8% — the Nov 16 92.9% baseline's denominator drifted +368 lines on
     this toolchain, not from this change).
   - Unverified: real-device discovery timing vs the 1 s window — needs a device check.
+  - Visually verified on the emulator (owner, Nov 19): see the gate below.
+- **Emulator visual-verification gate (owner reviews each item's screens before the next):** boot
+  the `m8_pixel_tablet` AVD, `flutter build apk --release` in `controller_app`, install, drive the
+  UI with `adb shell input tap`, and screencap via `adb shell screencap -p` + `adb pull` (never a
+  PowerShell `>` redirect) into `docs/briefs/m16/emulator/`. Item 3 was verified this way
+  (`01-connect`, `02-join` = "Show on this device", `03-play-phone-join`, `04-play-phone-game`):
+  the join screen's "Code" chip renders in both host modes, and the pad overlay appears only on the
+  game screen, clearing the game UI.
 - **Next:** item 4, the sub-3:1 contrast fixes (PRD-v2.md "Milestone 16").
 - **Carried into M16** (unchanged): the ten device checks the owner has not run, and the open
   Stats question (whether dropped sessions show on the Stats screen). **Do not decide the Stats
