@@ -268,6 +268,21 @@ void main() {
     expect(clock.host.viewEnds.last.reason, ViewEndReason.finished);
   });
 
+  // M16 item 1 slice A1: the view_start names the round and its count, and
+  // every frame carries the round's clock from the snapshot, so a phone can
+  // show the clock and "Round N of M".
+  test('the view start carries the round and its count, and the frames carry the clock', () {
+    final clock = Clock()..host.hasViewers = true;
+    final session = CounterSession(host: clock.host, round: 2, rounds: 3, timeLeftMs: 42000);
+    final start = clock.host.viewStarts.single;
+    expect(start.round, 2);
+    expect(start.rounds, 3);
+
+    clock.frame(session, 100);
+    expect(clock.host.frames, isNotEmpty);
+    expect(clock.host.frames.map((f) => f.timeLeftMs), everyElement(42000));
+  });
+
   // Owner's test of m13.3 (Nov 9): Play again builds the new round, and its
   // view starts, before the old round's screen is disposed. The old round's
   // end must not end the new view, or a joined phone loses the game.

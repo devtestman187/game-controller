@@ -32,6 +32,11 @@ abstract interface class GameSnapshot {
   /// The frame's JSON, as the module sends it.
   Map<String, Object?> toJson();
 
+  /// The round's clock in ms left (M16 slice A1), which the session puts on
+  /// each frame so a phone shows it. Null when the game has no clock; a
+  /// snapshot without a clock keeps this null.
+  int? get timeLeftMs => null;
+
   /// The state at [t] between this snapshot (0) and [next] (1): positions
   /// lerp, angles take the shortest arc, and everything else (phase, IDs,
   /// counts, who holds what) is this snapshot's. Players or pieces only in

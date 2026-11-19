@@ -75,6 +75,10 @@ final class PuzzleSnapshot implements GameSnapshot {
 
   /// Which puzzle: the receiver draws its own copy of the puzzle data.
   final String puzzleId;
+
+  /// The board's clock in ms left, which the session puts on each frame so a
+  /// phone shows it (M16 A1).
+  @override
   final int timeLeftMs;
   final bool warning;
   final PuzzlePhase phase;
@@ -282,6 +286,12 @@ final class MatchSnapshot implements GameSnapshot {
   /// This is a party night's round (N4): one of the boards says so, and the
   /// view draws the points and the pop-ups.
   bool get night => boards.any((b) => b.night);
+
+  /// The match's clock in ms left (M16 A1): both boards race against one
+  /// clock, so the first board's reading is the match's. Null for a match
+  /// without a board.
+  @override
+  int? get timeLeftMs => boards.firstOrNull?.timeLeftMs;
 
   @override
   Map<String, Object?> toJson() => {

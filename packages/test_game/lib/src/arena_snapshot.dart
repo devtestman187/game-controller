@@ -85,7 +85,9 @@ final class ArenaSnapshot implements GameSnapshot {
   /// The coins on the field, in the order they came out; none in the race.
   final List<ArenaCoinView> coins;
 
-  /// The Bumper Round's clock in milliseconds, or null in the race.
+  /// The Bumper Round's clock in milliseconds, or null in the race. The
+  /// session puts it on each frame so a phone shows it (M16 A1).
+  @override
   final int? timeLeftMs;
 
   /// A coin's radius as a fraction of the field's shorter side (G9).

@@ -31,6 +31,8 @@ abstract class GameSession {
     required this.module,
     required Map<String, Object?> setup,
     HostingSettings? settings,
+    this.round,
+    this.rounds,
   }) : settings = settings ?? HostingSettings.fromEnvironment() {
     host.startView(
       _start = ViewStartMessage(
@@ -38,6 +40,8 @@ abstract class GameSession {
         snapshotVersion: module.snapshotVersion,
         setup: setup,
         hz: this.settings.frameRateHz,
+        round: round,
+        rounds: rounds,
       ),
     );
   }
@@ -71,6 +75,11 @@ abstract class GameSession {
   /// ([HostingSettings.fromEnvironment]), so every game gets it with no
   /// change of its own.
   final HostingSettings settings;
+
+  /// This round's number from 1 and how many the match runs (M16 A1), or null
+  /// when the game names no rounds: a viewer shows no "Round N of M" then.
+  final int? round;
+  final int? rounds;
 
   Duration _last = Duration.zero;
   double _accS = 0;
@@ -283,6 +292,7 @@ abstract class GameSession {
     n: n,
     atMs: atMs,
     snapshot: current.toJson(),
+    timeLeftMs: current.timeLeftMs,
     sounds: sounds,
     acks: _acks(),
     roster: {for (final p in _players) p.id: (number: p.number, name: p.nickname ?? '')},

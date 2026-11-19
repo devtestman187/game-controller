@@ -5,12 +5,17 @@ import 'package:game_kit/game_kit.dart';
 /// A snapshot with a step count and the buttons its step saw: enough to check
 /// the loop, with nothing to draw.
 final class FakeSnapshot implements GameSnapshot {
-  const FakeSnapshot(this.steps, {this.buttons = const {}});
+  const FakeSnapshot(this.steps, {this.buttons = const {}, this.timeLeftMs});
 
   final int steps;
 
   /// The buttons each player held in this step.
   final Map<String, Set<GamepadButton>> buttons;
+
+  /// The round's clock the frame carries (M16 A1), or null for a game without
+  /// a clock.
+  @override
+  final int? timeLeftMs;
 
   @override
   Map<String, Object?> toJson() => {'n': steps};
@@ -47,11 +52,21 @@ final class FakeViewer implements GameViewer {
 /// A session that counts its steps, remembers the buttons each one saw, and
 /// plays [playSounds] on every step.
 class CounterSession extends GameSession {
-  CounterSession({required super.host, this.playSounds = const [], super.settings})
-    : super(module: const FakeModule(), setup: const {'k': 'v'});
+  CounterSession({
+    required super.host,
+    this.playSounds = const [],
+    super.settings,
+    super.round,
+    super.rounds,
+    this.timeLeftMs,
+  }) : super(module: const FakeModule(), setup: const {'k': 'v'});
 
   /// Sound names every [step] plays.
   final List<String> playSounds;
+
+  /// The round's clock each snapshot carries (M16 A1), or null when the game
+  /// has none.
+  final int? timeLeftMs;
 
   /// What each step saw, per player.
   final seen = <Map<String, Set<GamepadButton>>>[];
@@ -65,5 +80,6 @@ class CounterSession extends GameSession {
   }
 
   @override
-  GameSnapshot snapshot() => FakeSnapshot(stepCount, buttons: seen.isEmpty ? const {} : seen.last);
+  GameSnapshot snapshot() =>
+      FakeSnapshot(stepCount, buttons: seen.isEmpty ? const {} : seen.last, timeLeftMs: timeLeftMs);
 }

@@ -100,6 +100,40 @@ void main() {
     });
   });
 
+  // M16 item 1 slice A1: the round's clock and number travel in the view so a
+  // newer phone can show the clock and "Round N of M", while an older peer
+  // decodes the same messages.
+  group('round state (M16 A1)', () {
+    test('the round, the round count and the clock round-trip, and are left out when null', () {
+      const start = ViewStartMessage(game: 'arena', snapshotVersion: 2, setup: {}, hz: 30, round: 2, rounds: 3);
+      final startBack = roundTrip(start) as ViewStartMessage;
+      expect(startBack, start);
+      expect(startBack.round, 2);
+      expect(startBack.rounds, 3);
+      expect(wire(start)['round'], 2);
+      expect(wire(start)['rounds'], 3);
+
+      final frame = FrameMessage(n: 42, atMs: 672, snapshot: {'v': 2}, timeLeftMs: 61000);
+      final frameBack = roundTrip(frame) as FrameMessage;
+      expect(frameBack, frame);
+      expect(frameBack.timeLeftMs, 61000, reason: 'the round clock a newer host sends');
+      expect(wire(frame)['tl'], 61000);
+
+      // An older host sends none of the new fields: they decode as null.
+      const oldStart = ViewStartMessage(game: 'arena', snapshotVersion: 2, setup: {}, hz: 30);
+      final oldStartBack = roundTrip(oldStart) as ViewStartMessage;
+      expect(oldStartBack.round, isNull, reason: 'an older host knows no round');
+      expect(oldStartBack.rounds, isNull);
+      expect(wire(oldStart).containsKey('round'), isFalse);
+      expect(wire(oldStart).containsKey('rounds'), isFalse);
+
+      final oldFrame = FrameMessage(n: 42, atMs: 672, snapshot: {'v': 2});
+      final oldFrameBack = roundTrip(oldFrame) as FrameMessage;
+      expect(oldFrameBack.timeLeftMs, isNull, reason: 'an older host has no clock to send');
+      expect(wire(oldFrame).containsKey('tl'), isFalse);
+    });
+  });
+
   group('view_end (M12)', () {
     test('every reason round-trips', () {
       for (final reason in ViewEndReason.all) {
@@ -225,6 +259,16 @@ void main() {
         json: {'t': 'view_start', 'game': 'a', 'sv': 1, 'setup': <String, Object?>{}, 'hz': '60'},
         field: 'hz',
       ),
+      (
+        what: 'view_start with a string round',
+        json: {'t': 'view_start', 'game': 'a', 'sv': 1, 'setup': <String, Object?>{}, 'hz': 60, 'round': '2'},
+        field: 'round',
+      ),
+      (
+        what: 'view_start with a string round count',
+        json: {'t': 'view_start', 'game': 'a', 'sv': 1, 'setup': <String, Object?>{}, 'hz': 60, 'rounds': '3'},
+        field: 'rounds',
+      ),
       (what: 'frame without a step number', json: {'t': 'frame', 'at': 1, 's': <String, Object?>{}}, field: 'n'),
       (
         what: 'frame with a string time',
@@ -232,6 +276,11 @@ void main() {
         field: 'at',
       ),
       (what: 'frame without a snapshot', json: {'t': 'frame', 'n': 1, 'at': 1}, field: 's'),
+      (
+        what: 'frame with a string clock',
+        json: {'t': 'frame', 'n': 1, 'at': 1, 's': <String, Object?>{}, 'tl': '1'},
+        field: 'tl',
+      ),
       (
         what: 'frame with a string sounds list',
         json: {'t': 'frame', 'n': 1, 'at': 1, 's': {}, 'snd': 'snap'},

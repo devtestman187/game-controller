@@ -15,6 +15,9 @@ final class DotSnapshot implements GameSnapshot {
   Map<String, Object?> toJson() => {'v': version, 'x': x};
 
   @override
+  int? get timeLeftMs => null;
+
+  @override
   GameSnapshot lerpTo(GameSnapshot next, double t) {
     if (next is! DotSnapshot) throw ArgumentError.value(next, 'next', 'A dot snapshot lerps with another dot snapshot');
     return DotSnapshot(x + (next.x - x) * t);

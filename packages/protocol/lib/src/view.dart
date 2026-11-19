@@ -4,9 +4,17 @@ part of 'messages.dart';
 ///
 /// It carries what a viewer needs before the first frame: which module to
 /// draw, which snapshot version its frames have, the game's setup and the
-/// frame rate.
+/// frame rate. From M16 it may also carry the round's number and how many the
+/// match runs, so a phone can show "Round N of M".
 final class ViewStartMessage extends Message {
-  const ViewStartMessage({required this.game, required this.snapshotVersion, required this.setup, required this.hz});
+  const ViewStartMessage({
+    required this.game,
+    required this.snapshotVersion,
+    required this.setup,
+    required this.hz,
+    this.round,
+    this.rounds,
+  });
 
   static const String wireType = 'view_start';
 
@@ -24,17 +32,35 @@ final class ViewStartMessage extends Message {
   /// Frames per second the host publishes (m12 §3).
   final int hz;
 
+  /// This round's number from 1 (M16 slice A1), so a viewer shows "Round N of
+  /// M". Null from a host that names no round: an older build, or a game
+  /// outside a series of rounds.
+  final int? round;
+
+  /// How many rounds the match runs (M16 slice A1), next to [round]; null
+  /// when the host names no series.
+  final int? rounds;
+
   @override
   String get type => wireType;
 
   @override
-  Map<String, Object?> toPayload() => {'game': game, 'sv': snapshotVersion, 'setup': setup, 'hz': hz};
+  Map<String, Object?> toPayload() => {
+    'game': game,
+    'sv': snapshotVersion,
+    'setup': setup,
+    'hz': hz,
+    'round': ?round,
+    'rounds': ?rounds,
+  };
 
   static ViewStartMessage fromPayload(Map<String, Object?> p) => ViewStartMessage(
     game: requireString(p, 'game'),
     snapshotVersion: requireInt(p, 'sv'),
     setup: _objectField(p, 'setup'),
     hz: requireInt(p, 'hz'),
+    round: optionalInt(p, 'round'),
+    rounds: optionalInt(p, 'rounds'),
   );
 }
 
@@ -51,6 +77,7 @@ final class FrameMessage extends Message {
     List<String> sounds = const [],
     Map<String, int> acks = const {},
     Map<String, ({int number, String name})> roster = const {},
+    this.timeLeftMs,
   }) : snapshot = Map.unmodifiable(snapshot),
        sounds = List.unmodifiable(sounds),
        acks = Map.unmodifiable(acks),
@@ -84,6 +111,11 @@ final class FrameMessage extends Message {
   /// has none.
   final Map<String, ({int number, String name})> roster;
 
+  /// The round's clock in ms left at this step (M16 slice A1), from the game's
+  /// snapshot, so a viewer shows the clock without decoding the snapshot. Null
+  /// when the game has no clock, or from an older host.
+  final int? timeLeftMs;
+
   @override
   String get type => wireType;
 
@@ -92,6 +124,7 @@ final class FrameMessage extends Message {
     'n': n,
     'at': atMs,
     's': snapshot,
+    'tl': ?timeLeftMs,
     'snd': ?(sounds.isEmpty ? null : sounds),
     'acks': acks,
     'pl': {
@@ -106,6 +139,7 @@ final class FrameMessage extends Message {
     sounds: stringList(p, 'snd'),
     acks: _intMapField(p, 'acks'),
     roster: _rosterField(p),
+    timeLeftMs: optionalInt(p, 'tl'),
   );
 }
 
