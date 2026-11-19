@@ -244,6 +244,11 @@ class _ControllerScreenState extends ConsumerState<ControllerScreen> with Widget
             ],
           ),
         ),
+        // The round's number and clock (M16 item 1), in the slot the top bar
+        // reserves: it covers the bar while a round names itself or its clock,
+        // stays clear of the game's own HUD below that slot, and holds the
+        // slot's touches, so a tap on it can't press the hidden bar under it.
+        const Positioned(top: 0, left: 0, right: 0, child: _RoundStrip()),
         // The host was away too long (m12 §0.5): said over the controls for a
         // moment, which stay usable under it.
         const Positioned.fill(child: AbandonedNotice()),
@@ -268,6 +273,79 @@ class _ControllerScreenState extends ConsumerState<ControllerScreen> with Widget
         // section 9): the card over the last frame, and over the pad with it.
         const Positioned.fill(child: _ResultOverlay()),
       ],
+    );
+  }
+}
+
+/// The strip's height, in logical pixels: the mock-up's 48 px paper strip
+/// across the top of a joined phone (M16 item 1, `proposal-mockups.html` frame
+/// 0). Its slot adds the bar's own top padding, so it ends on the line the
+/// bar's row ends on ([topBarHeightPx]).
+const _roundStripHeightPx = 48.0;
+
+/// The round's number and clock over a joined phone's pad (M16 item 1, mock-up
+/// frame 0): on the look's paper strip, with the ink line under it, drawn only
+/// while the view names a round or carries a clock. It holds no state and no
+/// timer: every frame the host sends moves the clock.
+class _RoundStrip extends ConsumerWidget {
+  const _RoundStrip();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final round = ref.watch(roundStateProvider);
+    if (round == null || (round.round == null && round.timeLeftMs == null)) return const SizedBox.shrink();
+    final look = party.ToyLookScope.of(context);
+    final label = round.round;
+    final timeLeftMs = round.timeLeftMs;
+    return Padding(
+      padding: const EdgeInsets.only(top: barTopPaddingPx),
+      child: Container(
+        key: const Key('roundStrip'),
+        height: _roundStripHeightPx,
+        color: look.colors.paper,
+        foregroundDecoration: BoxDecoration(
+          border: Border(
+            bottom: BorderSide(color: look.colors.ink, width: look.sizes.outlineWidth),
+          ),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: party.ToySizes.space12),
+        child: Row(
+          children: [
+            if (label != null)
+              Text(_roundLabel(label, round.rounds), style: look.type.button.copyWith(color: look.colors.ink)),
+            if (label != null && timeLeftMs != null) const SizedBox(width: party.ToySizes.space12),
+            if (timeLeftMs != null) _ClockChip(timeLeftMs: timeLeftMs),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// A round's label: "Round N of M", or "Round N" for a host that names no
+/// series (M16 item 1, mock-up frame 0).
+String _roundLabel(int round, int? rounds) => rounds == null ? 'Round $round' : 'Round $round of $rounds';
+
+/// The strip's clock chip: the round's time left as `m:ss`, e.g. "0:42", from
+/// the milliseconds each frame carries (M16 item 1, mock-up frame 0).
+class _ClockChip extends StatelessWidget {
+  const _ClockChip({required this.timeLeftMs});
+
+  final int timeLeftMs;
+
+  @override
+  Widget build(BuildContext context) {
+    final look = party.ToyLookScope.of(context);
+    final style = look.type.button.copyWith(color: look.colors.ink, fontFeatures: const [FontFeature.tabularFigures()]);
+    final minutes = timeLeftMs ~/ Duration.millisecondsPerMinute;
+    final seconds = (timeLeftMs ~/ Duration.millisecondsPerSecond) % Duration.secondsPerMinute;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: party.ToySizes.space12, vertical: party.ToySizes.space4),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(party.ToySizes.cardCorner),
+        border: Border.all(color: look.colors.ink, width: look.sizes.outlineWidth),
+      ),
+      child: Text(party.PhoneText.clock(minutes, seconds), style: style),
     );
   }
 }

@@ -154,6 +154,33 @@ class ViewResultNotifier extends Notifier<ViewResult?> {
   }
 }
 
+/// The round this phone shows (M16 item 1): its number and how many the match
+/// runs, from the view's start, and the clock each frame carries. Null while no
+/// view runs, and after a link that goes down, as the view itself is.
+typedef RoundState = ({int? round, int? rounds, int? timeLeftMs});
+
+final roundStateProvider = NotifierProvider<RoundStateNotifier, RoundState?>(RoundStateNotifier.new);
+
+class RoundStateNotifier extends Notifier<RoundState?> {
+  @override
+  RoundState? build() {
+    final client = ref.watch(clientProvider);
+    final sub = client.view.listen((event) {
+      state = switch (event) {
+        ViewStarted(:final start) => (round: start.round, rounds: start.rounds, timeLeftMs: null),
+        ViewFrame(:final frame) => (round: state?.round, rounds: state?.rounds, timeLeftMs: frame.timeLeftMs),
+        ViewEnded() => null,
+        HostAway() || HostBack() || PlayerAway() || PlayerBack() => state,
+      };
+    });
+    ref.onDispose(sub.cancel);
+    ref.listen(clientStateProvider, (previous, next) {
+      if (!next.isConnected) state = null;
+    });
+    return null;
+  }
+}
+
 /// Which of the waits a phone that shows a game is in (m12-joined-view §0.3,
 /// m12 bug 1107d).
 enum HostWaitKind {
