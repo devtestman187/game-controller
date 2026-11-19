@@ -258,7 +258,7 @@ class StickPainter extends CustomPainter {
     final body = Paint()..color = fill.withValues(alpha: idleAlpha * alpha);
     canvas
       ..drawPath(knob, body)
-      ..drawPath(knob, padInkEdge(look)..color = look.colors.ink.withValues(alpha: idleAlpha * alpha));
+      ..drawPath(knob, padInkEdge(look));
   }
 
   @override

@@ -145,8 +145,14 @@ Color linkDotColor(ToyLook look, ClientStatus status) => switch (status) {
   ClientStatus.idle || ClientStatus.failed => look.colors.paper,
 };
 
+/// The share of the dot's radius its paper core takes: a state disc stays a
+/// badge with a paper middle, and the core holds the edge's 3:1 on its own
+/// (M16 item 4).
+const _coreShare = 0.42;
+
 /// Paints [LinkDot]: the state's disc with the look's ink edge, as a badge is
-/// drawn, so a dot reads on the pad and on the sky alike.
+/// drawn, so a dot reads on the pad and on the sky alike; a paper core on top,
+/// as the mock-up's third frame draws it.
 class LinkDotPainter extends CustomPainter {
   const LinkDotPainter({required this.look, required this.color});
 
@@ -166,7 +172,8 @@ class LinkDotPainter extends CustomPainter {
       ..color = look.colors.ink;
     canvas
       ..drawCircle(centre, radius, Paint()..color = color)
-      ..drawCircle(centre, radius, edge);
+      ..drawCircle(centre, radius, edge)
+      ..drawCircle(centre, radius * _coreShare, Paint()..color = look.colors.paper);
   }
 
   @override

@@ -180,7 +180,7 @@ class _ScoreRow extends StatelessWidget {
         child: Text(
           row.roundPoints == 0 ? '' : NightText.roundPoints(row.roundPoints),
           key: Key('nightRoundPoints-${row.id}'),
-          style: style.copyWith(color: look.colors.good),
+          style: style.copyWith(color: look.colors.ink),
           textAlign: TextAlign.end,
         ),
       ),

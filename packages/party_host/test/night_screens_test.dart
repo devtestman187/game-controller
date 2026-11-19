@@ -127,6 +127,14 @@ void main() {
       expect(tester.widget<Text>(find.byKey(const Key('nightPlace-p1'))).data, '1');
       expect(tester.widget<Text>(find.byKey(const Key('nightTotal-p1'))).data, '10');
       expect(tester.widget<Text>(find.byKey(const Key('nightRoundPoints-p1'))).data, '+5');
+      // The round's points are the row's ink, not its good green: good on
+      // paper is only 2:1 (M16 item 4).
+      final look = ToyLookScope.of(tester.element(find.byKey(const Key('nightRoundPoints-p1'))));
+      expect(
+        tester.widget<Text>(find.byKey(const Key('nightRoundPoints-p1'))).style?.color,
+        look.colors.ink,
+        reason: 'the round points are ink, not good',
+      );
       expect(find.byKey(const Key('nightShapeRace')), findsOneWidget);
     });
 

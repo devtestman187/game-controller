@@ -8,7 +8,8 @@ import 'package:controller/src/ui/pad_widgets.dart';
 import 'package:controller/src/ui/stick_widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:party_host/party_host.dart' show ToyLook, ToyLookScope, ToyPalette, ToySizes, toyShadowAlpha;
+import 'package:party_host/party_host.dart'
+    show ToyLook, ToyLookScope, ToyPalette, ToySizes, padFaintAlpha, toyShadowAlpha;
 import 'package:protocol/protocol.dart';
 
 import 'support/pixels.dart';
@@ -145,20 +146,18 @@ void main() {
       expectAt(pressed, fillProbe(ControllerButton.b), rgb(faceFills(_sunny.colors)[ControllerButton.b]!));
     });
 
-    test('a hidden button has no fill where its disc was, and no shadow', () async {
+    test('a hidden button is a paper disc with an ink edge, and no shadow', () async {
       final pixels = await paintFaces(_sunny, hidden: {ControllerButton.y});
-      expectAt(pixels, fillProbe(ControllerButton.y), rgb(white), reason: 'no fill');
+      expectAt(pixels, fillProbe(ControllerButton.y), rgb(_sunny.colors.paper), reason: 'a paper fill');
       expectAt(pixels, squishProbe(ControllerButton.y), rgb(white), reason: 'no shadow');
       expectAt(pixels, fillProbe(ControllerButton.x), rgb(_sunny.colors.faceX), reason: 'the others stay');
-    });
-
-    // Claude's step 8 review: ink at the shadow's strength all but vanished on
-    // Night's grape. The outline sits on the background, not on paper, so it
-    // takes the background's text colour, faint.
-    test("a hidden button's outline is the background's text colour, faint, in both palettes", () {
-      for (final look in [_sunny, _night]) {
-        expect(padHiddenOutline(look), look.colors.onBackground.withValues(alpha: toyShadowAlpha));
-      }
+      // The disc's edge is the look's full ink, drawn in dashes round it.
+      final row = centreOf(ControllerButton.y).dy.floor();
+      expect(
+        firstColumn(pixels, row, 120, 150, rgb(_sunny.colors.ink)),
+        isNotNull,
+        reason: 'an ink dash on the hidden disc\'s edge',
+      );
     });
 
     test('letters are ink in the button family and labels ink in the body', () {
@@ -202,9 +201,9 @@ void main() {
       }
     });
 
-    test('the centre dot is ink at toyShadowAlpha and paper lies beside it', () async {
+    test('the centre dot is ink at padFaintAlpha and paper lies beside it', () async {
       final pixels = await paintDpad(_sunny);
-      final dot = blend(rgb(_sunny.colors.ink), rgb(_sunny.colors.paper), toyShadowAlpha);
+      final dot = blend(rgb(_sunny.colors.ink), rgb(_sunny.colors.paper), padFaintAlpha);
       expectAt(pixels, const Offset(100, 100), dot, reason: 'the centre dot');
       for (final beside in const [Offset(75, 100), Offset(125, 100), Offset(100, 75), Offset(100, 125)]) {
         expectAt(pixels, beside, rgb(_sunny.colors.paper), reason: 'paper beside the dot at $beside');

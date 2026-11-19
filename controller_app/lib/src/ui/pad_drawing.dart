@@ -1,5 +1,5 @@
 import 'package:flutter/painting.dart';
-import 'package:party_host/party_host.dart' show ToyColors, ToyLook, ToySizes, paintStickerShadow, toyShadowAlpha;
+import 'package:party_host/party_host.dart' show ToyColors, ToyLook, ToySizes, paintStickerShadow, padFaintAlpha;
 
 /// The colour a pad part takes from this phone's player: their own colour when
 /// the host has given them a number, and player 1's before one is known (M13
@@ -11,14 +11,9 @@ Color padPlayerColour(ToyColors colors, int? player) => colors.player(player ?? 
 /// isn't pressed (M13 step 8, rule 3).
 Offset padSquish(bool pressed) => pressed ? ToySizes.shadowOffset : Offset.zero;
 
-/// The ink at the look's shadow strength ([toyShadowAlpha]): the D-pad's
-/// centre dot, which sits on the pad's paper (M13 step 8, rule 4).
-Color padFaintInk(ToyLook look) => look.colors.ink.withValues(alpha: toyShadowAlpha);
-
-/// A hidden button's dashed outline (P5): it sits on the background, not on
-/// paper, so it is the background's text colour at the shadow's strength.
-/// Ink there all but vanished on Night's grape (Claude's step 8 review).
-Color padHiddenOutline(ToyLook look) => look.colors.onBackground.withValues(alpha: toyShadowAlpha);
+/// The ink at [padFaintAlpha]'s strength: the D-pad's centre dot, which sits
+/// on the pad's paper (M13 step 8, rule 4) and keeps 3:1 there (M16 item 4).
+Color padFaintInk(ToyLook look) => look.colors.ink.withValues(alpha: padFaintAlpha);
 
 /// The ink edge every pad part is drawn with: the look's outline width, its
 /// corners and ends round, in [colour] or the look's ink (M13 step 8).

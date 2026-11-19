@@ -79,11 +79,11 @@ class _PlayerRow extends StatelessWidget {
   }
 }
 
-/// A player's readiness in words (M14 b1): "Ready" in the look's good green,
-/// or "Not ready yet" in its soft ink until they are. It takes the place of
-/// the ✓ and ✗ discs, so a player's row reads as the host's other rows do —
-/// the badge, the name, and a small word — and the words carry it, never the
-/// colour alone (G5).
+/// A player's readiness in words (M14 b1): "Ready" and "Not ready yet" both in
+/// the look's ink. It takes the place of the ✓ and ✗ discs, so a player's row
+/// reads as the host's other rows do — the badge, the name, and a small word —
+/// and the words carry it, never the colour alone (G5). Ink keeps both words
+/// at 4.5:1 (M16 item 4).
 class _ReadyLabel extends StatelessWidget {
   const _ReadyLabel({required this.ready, required this.id});
 
@@ -98,7 +98,7 @@ class _ReadyLabel extends StatelessWidget {
     return Text(
       ready ? ArenaText.readyLabel : ArenaText.notReadyLabel,
       key: Key('${ready ? 'ready' : 'notReady'}-$id'),
-      style: look.type.body.copyWith(color: ready ? look.colors.good : look.colors.inkSoft),
+      style: look.type.body.copyWith(color: look.colors.ink),
     );
   }
 }

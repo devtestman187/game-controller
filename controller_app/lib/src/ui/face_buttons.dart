@@ -104,7 +104,7 @@ const _labelDropShare = 0.05;
 /// Draws A, B, X and Y the look's way (M13 step 8, rule 2): each in its face
 /// colour with the ink edge and the hard shadow, pressed ones pushed in and
 /// their shadow gone, and the game's label under the letter. A button the game
-/// doesn't use (P5) is a dashed ink outline alone, in the same place.
+/// doesn't use (P5) is a paper disc with a dashed ink edge, in the same place.
 ///
 /// Its fields are the painter's whole input, so a test paints it on its own.
 class FaceButtonsPainter extends CustomPainter {
@@ -132,8 +132,8 @@ class FaceButtonsPainter extends CustomPainter {
   /// The game's labels (P5), drawn inside the button under its letter.
   final Map<ControllerButton, String> labels;
 
-  /// Buttons the game doesn't use: only a faint dashed outline, so the others
-  /// keep their places.
+  /// Buttons the game doesn't use: a paper disc with a dashed ink edge, so the
+  /// others keep their places.
   final Set<ControllerButton> hidden;
 
   @override
@@ -145,7 +145,8 @@ class FaceButtonsPainter extends CustomPainter {
       final r = geometry.radius * s;
       if (hidden.contains(button)) {
         final circle = Path()..addOval(Rect.fromCircle(center: c, radius: r));
-        paintDashedEdge(canvas, circle, padInkEdge(look, colour: padHiddenOutline(look)));
+        canvas.drawPath(circle, Paint()..color = look.colors.paper);
+        paintDashedEdge(canvas, circle, padInkEdge(look));
         continue;
       }
       _paintButton(canvas, button, c, r, fills[button]!);

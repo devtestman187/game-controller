@@ -22,6 +22,11 @@ const toyShadowOffset = Offset(2.25, 3);
 /// ink at 35%).
 const toyShadowAlpha = 0.35;
 
+/// How strongly the D-pad's centre dot inks the paper, 0 to 1: the pad's
+/// off-arrow strength, strong enough that the ink at this alpha still keeps
+/// 3:1 on paper in both palettes (M16 item 4).
+const padFaintAlpha = 0.5;
+
 /// Where the shader's light comes from, in the shape's -1..1 box, top-left
 /// negative (design section 6).
 const toyLight = Offset(-0.55, -0.65);

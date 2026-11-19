@@ -10,6 +10,7 @@ import 'package:party_host/party_host.dart'
 import 'package:protocol/protocol.dart';
 
 import 'support/joined.dart';
+import 'support/pixels.dart';
 import 'support/pump_app.dart';
 
 /// The look the phone draws, for a test that has no widget to ask.
@@ -139,6 +140,20 @@ void main() {
       // the Night sky (Claude's 3c review).
       expect(linkDotColor(sunny, ClientStatus.failed), sunny.colors.paper);
       expect(linkDotColor(sunny, ClientStatus.idle), sunny.colors.paper);
+    });
+
+    test('the dot paints a paper core inside its state disc and ink edge', () async {
+      // Mock-up frame 3: the paper middle keeps the dot a badge, and the edge
+      // and core stay at 3:1 on the bar's sky (M16 item 4).
+      const size = Size.square(40);
+      final pixels = await paintedPixels(
+        size,
+        (canvas) => LinkDotPainter(look: sunny, color: sunny.colors.good).paint(canvas, size),
+      );
+      const centre = 20;
+      expectPixel(pixels, centre, centre, rgb(sunny.colors.paper), reason: 'the paper core');
+      expectPixel(pixels, centre + 12, centre, rgb(sunny.colors.good), reason: 'the state disc');
+      expectPixel(pixels, centre + 18, centre, rgb(sunny.colors.ink), reason: 'the ink edge');
     });
 
     testWidgets('the bar\'s text and icons are onBackground', (tester) async {

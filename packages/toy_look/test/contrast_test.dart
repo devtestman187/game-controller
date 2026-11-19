@@ -101,6 +101,36 @@ void main() {
     });
   }
 
+  for (final palette in ToyPalette.values) {
+    test('${palette.name}: the pad parts keep 3:1 on their surface', () {
+      // WCAG's 3:1 for the parts of a control (owner, Nov 8, 2026): the pad's
+      // faint centre dot, the knob's edge and the dashes must read on the
+      // surface each lies on, in both palettes (M16 item 4).
+      final colors = ToyColors.of(palette);
+      final dot = contrastRatio(
+        Color.alphaBlend(colors.ink.withValues(alpha: padFaintAlpha), colors.paper),
+        colors.paper,
+      );
+      expect(
+        dot,
+        greaterThanOrEqualTo(3),
+        reason: '${palette.name}: the D-pad centre dot is ${dot.toStringAsFixed(2)}:1',
+      );
+      final knobEdge = contrastRatio(colors.ink, colors.paper);
+      expect(
+        knobEdge,
+        greaterThanOrEqualTo(3),
+        reason: '${palette.name}: the knob edge is ${knobEdge.toStringAsFixed(2)}:1',
+      );
+      final dashes = contrastRatio(colors.onBackground, colors.background);
+      expect(
+        dashes,
+        greaterThanOrEqualTo(3),
+        reason: '${palette.name}: the dashed edge is ${dashes.toStringAsFixed(2)}:1',
+      );
+    });
+  }
+
   test('the contrast formula gives the ratios the design was measured with', () {
     // Black on white is the formula's largest ratio, 21:1.
     expect(contrastRatio(const Color(0xFF000000), const Color(0xFFFFFFFF)), closeTo(21, 0.005));

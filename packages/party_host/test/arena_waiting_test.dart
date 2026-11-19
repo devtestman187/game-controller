@@ -78,6 +78,14 @@ void main() {
     await focusRow(tester, 'p1');
     await press(tester, fake, 'p1', GamepadButton.a);
     expect(find.byKey(const Key('ready-p1')), findsOneWidget);
+    // "Ready" is the look's ink, not its good green: good on paper is only
+    // 2:1, and the words carry the state (M16 item 4).
+    final cardLook = ToyLookScope.of(tester.element(find.byKey(const Key('ready-p1'))));
+    expect(
+      tester.widget<Text>(find.byKey(const Key('ready-p1'))).style?.color,
+      cardLook.colors.ink,
+      reason: 'the ready label is ink, not good',
+    );
     expect(find.byKey(const Key('notReady-p2')), findsOneWidget, reason: 'P2 hasn\'t pressed yet');
 
     // A again un-readies: the card is the player's to change until the round.

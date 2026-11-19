@@ -183,7 +183,7 @@ class DpadView extends ConsumerWidget {
 /// The D-pad as one paper plus (M13 step 8, rule 4): the arms' union, so the
 /// centre has no seam, with one ink edge and one hard shadow under the whole
 /// shape; ink arrows on the arms, the lit arms filled in this phone's player
-/// colour and pushed in, and the centre dot ink at [toyShadowAlpha].
+/// colour and pushed in, and the centre dot ink at [padFaintAlpha].
 class DpadPainter extends CustomPainter {
   const DpadPainter({required this.look, required this.dx, required this.dy, this.player});
 
