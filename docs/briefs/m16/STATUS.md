@@ -6,6 +6,29 @@ plan is `docs/PRD-v2.md` "Milestone 16", written from the evidence-driven UX rev
 
 **New developer or other agent taking over: read [docs/HANDOFF.md](../../HANDOFF.md) first.**
 
+## How we work with the Flash agents (DeepSeek Harness, Nov 19)
+
+The architect (deepseek-v4-pro — this session's "lead") frames, briefs, reviews, gates and commits;
+the Flash workers (deepseek-account/deepseek-flash) do the mechanical work. The full method is
+docs/agent-workflow.md and docs/HANDOFF.md §10. Session refinements to keep:
+
+- **Pin the route on every child**: pass `provider: "deepseek-account"`, `model: "deepseek-flash"`
+  explicitly on every `subagent` call; never rely on inheritance.
+- **Slice complex items BEFORE dispatch** (one bounded change per worker). The host-away card
+  failed twice as a combined connection+TV task, then succeeded split into two.
+- **Skip standalone recon** when the architect already has the context (PROPOSAL/findings or its own
+  read); fold "find the seam" into one tight implementer brief. Item 1 used 3 Flash workers (one per
+  slice) rather than recon+implement per item.
+- **The architect does the small edits itself**: test fixes, `docs/protocol.md`, tooling fixes (the
+  `review.sh` map-literal fix), plus the final diff review and the `tools/check.sh`/`review.sh`/
+  `coverage.sh` gate.
+- **Emulator visual gate**: after each visual item, boot the `m8_pixel_tablet` AVD, build
+  `controller_app`, drive the UI with `adb shell input tap`, screencap via `adb shell screencap -p`
+  + `adb pull` into `docs/briefs/m16/emulator/`, and let the owner review before proceeding. The
+  emulator is stopped as of Nov 19 for a harness update; the round-state strip is not yet captured.
+- **Never take a child's word as evidence**: read the diff, re-run the gate, verify the test
+  assertions, and check `git status` for churn before committing.
+
 ## Resume here (Nov 19, 2026: item 1 slice A built; slice B next)
 
 - **ux-review (done; committed as `1d593136`).** The end-to-end player-flow review and the
