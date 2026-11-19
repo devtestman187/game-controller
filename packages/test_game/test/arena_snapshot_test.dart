@@ -55,4 +55,55 @@ void main() {
     expect(s.roundTimeS, closeTo(3, 1e-9), reason: '2 + (4 - 2) / 2');
     expect(s.hazards.single, const Offset(0.3, 0.3));
   });
+
+  group('the phone\'s own coins and place (M16 slice B)', () {
+    /// A Bumper Round frame whose players hold [coins], each as `(id, coins)`.
+    ArenaSnapshot bumper(List<(String, int)> players) => ArenaSnapshot(
+      round: 1,
+      roundTimeS: 30,
+      phase: ArenaPhase.playing,
+      walls: const [],
+      goal: Rect.zero,
+      hazards: const [],
+      players: [for (final (id, coins) in players) ArenaPlayerView(id: id, x: 0.5, y: 0.5, coins: coins)],
+      mode: ArenaMode.bumper,
+      timeLeftMs: 30000,
+    );
+
+    test('coinsOf reads the player\'s own coins, and is null in the race', () {
+      final frame = bumper([('a', 3), ('b', 1)]);
+      expect(frame.coinsOf('a'), 3);
+      expect(frame.coinsOf('b'), 1);
+      expect(frame.coinsOf('nobody'), isNull);
+      final race = const ArenaSnapshot(
+        round: 1,
+        roundTimeS: 30,
+        phase: ArenaPhase.playing,
+        walls: [],
+        goal: Rect.zero,
+        hazards: [],
+        players: [ArenaPlayerView(id: 'a', x: 0.5, y: 0.5, coins: 5)],
+      );
+      expect(race.coinsOf('a'), isNull, reason: 'the race counts no coins');
+    });
+
+    test('placeOf ranks by coins, ties share the higher place, and it is null in the race', () {
+      final frame = bumper([('a', 7), ('b', 7), ('c', 3), ('d', 1)]);
+      expect(frame.placeOf('a'), 1);
+      expect(frame.placeOf('b'), 1, reason: 'tied coins share first');
+      expect(frame.placeOf('c'), 3, reason: 'two above, so third');
+      expect(frame.placeOf('d'), 4);
+      expect(frame.placeOf('nobody'), isNull);
+      final race = const ArenaSnapshot(
+        round: 1,
+        roundTimeS: 30,
+        phase: ArenaPhase.playing,
+        walls: [],
+        goal: Rect.zero,
+        hazards: [],
+        players: [ArenaPlayerView(id: 'a', x: 0.5, y: 0.5, coins: 5)],
+      );
+      expect(race.placeOf('a'), isNull, reason: 'the race has no coin order');
+    });
+  });
 }

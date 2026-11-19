@@ -1,4 +1,7 @@
+import 'package:controller/src/providers.dart';
+import 'package:controller/src/ui/controls_layer.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:protocol/protocol.dart';
 import 'package:test_game/test_game.dart';
@@ -58,5 +61,42 @@ void main() {
     app.client.viewStart(roundStart(round: 2, rounds: null));
     await settle(tester);
     expect(find.text('Round 2'), findsOneWidget);
+  });
+
+  testWidgets('the strip shows this phone\'s coins and its place, from the frame', (tester) async {
+    final app = await pumpApp(tester, paired: true);
+    app.client.emit(connected);
+    await settle(tester);
+
+    // This phone's player, as the host names it: a Bumper Round frame where a
+    // rival holds more coins, so the phone is second.
+    final container = ProviderScope.containerOf(tester.element(find.byType(ControlsLayer)));
+    final me = container.read(identityProvider).controllerId;
+    final frame = ArenaSnapshot(
+      round: 1,
+      roundTimeS: 30,
+      phase: ArenaPhase.playing,
+      walls: const [],
+      goal: Rect.zero,
+      hazards: const [],
+      players: [
+        const ArenaPlayerView(id: 'rival', x: 0.5, y: 0.5, coins: 7),
+        ArenaPlayerView(id: me, x: 0.5, y: 0.5, coins: 4),
+        const ArenaPlayerView(id: 'third', x: 0.5, y: 0.5, coins: 1),
+      ],
+      mode: ArenaMode.bumper,
+      timeLeftMs: 42000,
+    );
+
+    app.client.nowMs = 1000;
+    app.client.viewStart(roundStart());
+    await settle(tester);
+    app.client.viewFrame(FrameMessage(n: 1, atMs: 2000, snapshot: frame.toJson(), timeLeftMs: 42000));
+    await settle(tester);
+
+    expect(find.byKey(const Key('roundCoins')), findsOneWidget);
+    expect(tester.widget<Text>(find.byKey(const Key('roundCoins'))).data, '4');
+    expect(find.byKey(const Key('roundPlace')), findsOneWidget);
+    expect(tester.widget<Text>(find.byKey(const Key('roundPlace'))).data, '2nd');
   });
 }

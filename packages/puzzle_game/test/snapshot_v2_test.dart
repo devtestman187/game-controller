@@ -35,6 +35,15 @@ void main() {
     expect(shapeRaceModule.snapshotVersion, 2);
   });
 
+  test('the puzzle reports no coins and no coin order through the generic accessors', () {
+    final s = board();
+    expect(s.coinsOf('p1'), isNull, reason: 'Shape Race counts no coins');
+    expect(s.placeOf('p1'), isNull, reason: 'Shape Race has no live coin order');
+    final match = MatchSnapshot(boards: [s]);
+    expect(match.coinsOf('p1'), isNull);
+    expect(match.placeOf('p1'), isNull);
+  });
+
   test('a board round-trips with its points, its night and its pop-ups\' places and ages', () {
     final s = board(popups: popups);
     final again = PuzzleSnapshot.decode(s.encode());

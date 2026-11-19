@@ -175,6 +175,23 @@ abstract final class PhoneText {
   static String pointsEarned(int points) => '+$points points';
   static String pieces(int count) => '$count pieces';
   static String coins(int count) => '$count coins';
+
+  /// A player's place in the round's live coin order, as an ordinal (M16 item
+  /// 1): "1st", "2nd" ...
+  static String place(int place) {
+    final tens = place % 100;
+    final suffix = switch (tens) {
+      11 || 12 || 13 => 'th',
+      _ => switch (place % 10) {
+        1 => 'st',
+        2 => 'nd',
+        3 => 'rd',
+        _ => 'th',
+      },
+    };
+    return '$place$suffix';
+  }
+
   static const standings = 'Standings';
   static const waitingForNext = 'Waiting for the host to pick what\'s next.';
 

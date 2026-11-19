@@ -116,6 +116,19 @@ final class ArenaSnapshot implements GameSnapshot {
   ArenaPlayerView? player(String id) => players.where((p) => p.id == id).firstOrNull;
 
   @override
+  int? coinsOf(String playerId) => mode == ArenaMode.bumper ? player(playerId)?.coins : null;
+
+  @override
+  int? placeOf(String playerId) {
+    if (mode != ArenaMode.bumper) return null;
+    final own = player(playerId);
+    if (own == null) return null;
+    // Tied coins share the higher place: two at 7 are both 1st, and a player
+    // at 3 is 3rd (competition ranking).
+    return players.where((p) => p.coins > own.coins).length + 1;
+  }
+
+  @override
   Map<String, Object?> toJson() => {
     'v': version,
     'mid': mapId,

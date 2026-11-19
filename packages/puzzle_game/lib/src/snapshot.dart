@@ -80,6 +80,15 @@ final class PuzzleSnapshot implements GameSnapshot {
   /// phone shows it (M16 A1).
   @override
   final int timeLeftMs;
+
+  /// Shape Race counts no coins, so no player's coin count (M16 slice B).
+  @override
+  int? coinsOf(String playerId) => null;
+
+  /// Shape Race has no live coin order, so no player's place (M16 slice B).
+  @override
+  int? placeOf(String playerId) => null;
+
   final bool warning;
   final PuzzlePhase phase;
   final List<PieceView> pieces;
@@ -292,6 +301,14 @@ final class MatchSnapshot implements GameSnapshot {
   /// without a board.
   @override
   int? get timeLeftMs => boards.firstOrNull?.timeLeftMs;
+
+  /// The match counts no coins, so no player's coin count (M16 slice B).
+  @override
+  int? coinsOf(String playerId) => null;
+
+  /// The match has no live coin order, so no player's place (M16 slice B).
+  @override
+  int? placeOf(String playerId) => null;
 
   @override
   Map<String, Object?> toJson() => {

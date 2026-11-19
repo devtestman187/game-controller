@@ -18,6 +18,12 @@ final class DotSnapshot implements GameSnapshot {
   int? get timeLeftMs => null;
 
   @override
+  int? coinsOf(String playerId) => null;
+
+  @override
+  int? placeOf(String playerId) => null;
+
+  @override
   GameSnapshot lerpTo(GameSnapshot next, double t) {
     if (next is! DotSnapshot) throw ArgumentError.value(next, 'next', 'A dot snapshot lerps with another dot snapshot');
     return DotSnapshot(x + (next.x - x) * t);

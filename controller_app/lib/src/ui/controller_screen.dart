@@ -4,6 +4,7 @@ import 'package:connection/connection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:party_host/party_host.dart' as party;
+import 'package:test_game/test_game.dart' show ArenaCoinIcon;
 
 import '../controls_settings.dart';
 import '../gyro.dart';
@@ -283,6 +284,10 @@ class _ControllerScreenState extends ConsumerState<ControllerScreen> with Widget
 /// bar's row ends on ([topBarHeightPx]).
 const _roundStripHeightPx = 48.0;
 
+/// The strip's coin, a little smaller than the bar's own picture of the coin
+/// (M16 item 1, mock-up frame 0).
+const _roundCoinSize = 16.0;
+
 /// The round's number and clock over a joined phone's pad (M16 item 1, mock-up
 /// frame 0): on the look's paper strip, with the ink line under it, drawn only
 /// while the view names a round or carries a clock. It holds no state and no
@@ -294,7 +299,16 @@ class _RoundStrip extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final round = ref.watch(roundStateProvider);
     if (round == null || (round.round == null && round.timeLeftMs == null)) return const SizedBox.shrink();
+    // This phone's own coins and place (M16 item 1): the last frame the game
+    // drew names every player's coins, and this phone reads its own by the
+    // player the host gave it. Nothing for a game that counts no coins, or a
+    // phone that plays none.
+    final drawn = ref.watch(viewDrawnProvider);
+    final me = ref.watch(identityProvider).controllerId;
+    final coins = drawn?.frame.coinsOf(me);
+    final place = drawn?.frame.placeOf(me);
     final look = party.ToyLookScope.of(context);
+    final style = look.type.button.copyWith(color: look.colors.ink);
     final label = round.round;
     final timeLeftMs = round.timeLeftMs;
     return Padding(
@@ -311,10 +325,19 @@ class _RoundStrip extends ConsumerWidget {
         padding: const EdgeInsets.symmetric(horizontal: party.ToySizes.space12),
         child: Row(
           children: [
-            if (label != null)
-              Text(_roundLabel(label, round.rounds), style: look.type.button.copyWith(color: look.colors.ink)),
+            if (label != null) Text(_roundLabel(label, round.rounds), style: style),
             if (label != null && timeLeftMs != null) const SizedBox(width: party.ToySizes.space12),
             if (timeLeftMs != null) _ClockChip(timeLeftMs: timeLeftMs),
+            if (coins != null) ...[
+              const SizedBox(width: party.ToySizes.space12),
+              const ArenaCoinIcon(size: _roundCoinSize),
+              const SizedBox(width: party.ToySizes.space4),
+              Text('$coins', key: const Key('roundCoins'), style: style),
+            ],
+            if (place != null) ...[
+              const Spacer(),
+              Text(party.PhoneText.place(place), key: const Key('roundPlace'), style: style),
+            ],
           ],
         ),
       ),

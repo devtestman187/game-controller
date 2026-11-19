@@ -29,7 +29,7 @@ docs/agent-workflow.md and docs/HANDOFF.md §10. Session refinements to keep:
 - **Never take a child's word as evidence**: read the diff, re-run the gate, verify the test
   assertions, and check `git status` for churn before committing.
 
-## Resume here (Nov 19, 2026: item 1 slice A built; slice B next)
+## Resume here (Nov 19, 2026: item 1 built; item 5 next)
 
 - **ux-review (done; committed as `1d593136`).** The end-to-end player-flow review and the
   mock-ups are complete and owner-approved. Deliverables under `docs/briefs/m16/ux-review/`:
@@ -102,7 +102,20 @@ docs/agent-workflow.md and docs/HANDOFF.md §10. Session refinements to keep:
     "Round N of M" + a clock chip (mock-up frame 0). Tests: night/arena e2e + `round_state_test`.
     Full `tools/check.sh` green (12/12).
   - Visual: not captured — the emulator was stopped for the harness update.
-- **Next:** item 1 slice B — the coins and the round's result on the phone (PRD-v2.md "Milestone 16").
+- **M16 item 1 slice B (done): the phone's own coins and its place in the round.**
+  - No wire change: a frame already carries every player's coins (`players[].coins`), so each phone
+    reads its own from the decoded snapshot by its player id; an older peer is unaffected.
+  - `GameSnapshot` gains `coinsOf(playerId)` / `placeOf(playerId)`; the Arena overrides them for the
+    Bumper Round (place = coin rank, ties share the higher place), and the puzzle's snapshots keep
+    null. `PhoneText.place(n)` says the ordinal ("1st", "2nd").
+  - The strip adds a coin + the count and, right-aligned, the place, read from the last frame this
+    phone drew (`viewDrawnProvider` + its own id). Tests: `arena_snapshot_test`, a puzzle snapshot
+    test, `phone_text_test` and `round_state_test`. Full `tools/check.sh` green (12/12);
+    `review.sh` 0 fail; coverage 92.8% (held).
+  - Visual: not captured — the emulator is still stopped for the harness update (slice A's strip is
+    also still uncaptured).
+- **Next:** item 5 — nickname + colour + accessory on the phone, shown on the TV (PRD-v2.md
+  "Milestone 16").
 - **Carried into M16** (unchanged): the ten device checks the owner has not run, and the open
   Stats question (whether dropped sessions show on the Stats screen). **Do not decide the Stats
   question; wait.** See docs/HANDOFF.md section 7.

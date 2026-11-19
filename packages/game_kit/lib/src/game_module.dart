@@ -37,6 +37,16 @@ abstract interface class GameSnapshot {
   /// snapshot without a clock keeps this null.
   int? get timeLeftMs => null;
 
+  /// The coins [playerId] holds right now (M16 slice B), for a phone to show
+  /// as its own. Null when the game counts no coins (the race, the puzzle), or
+  /// when the player isn't in this frame.
+  int? coinsOf(String playerId) => null;
+
+  /// [playerId]'s place in the round's live order (M16 slice B), 1 first, for
+  /// a game that ranks its players (the Bumper Round by coins). Null when the
+  /// game has no such order, or when the player isn't in this frame.
+  int? placeOf(String playerId) => null;
+
   /// The state at [t] between this snapshot (0) and [next] (1): positions
   /// lerp, angles take the shortest arc, and everything else (phase, IDs,
   /// counts, who holds what) is this snapshot's. Players or pieces only in

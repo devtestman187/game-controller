@@ -18,6 +18,12 @@ final class FakeSnapshot implements GameSnapshot {
   final int? timeLeftMs;
 
   @override
+  int? coinsOf(String playerId) => null;
+
+  @override
+  int? placeOf(String playerId) => null;
+
+  @override
   Map<String, Object?> toJson() => {'n': steps};
 
   @override
