@@ -6,7 +6,7 @@ plan is `docs/PRD-v2.md` "Milestone 16", written from the evidence-driven UX rev
 
 **New developer or other agent taking over: read [docs/HANDOFF.md](../../HANDOFF.md) first.**
 
-## Resume here (Nov 18, 2026: item 3 built; item 4 next)
+## Resume here (Nov 19, 2026: item 4 built; item 2 next)
 
 - **ux-review (done; committed as `1d593136`).** The end-to-end player-flow review and the
   mock-ups are complete and owner-approved. Deliverables under `docs/briefs/m16/ux-review/`:
@@ -41,7 +41,15 @@ plan is `docs/PRD-v2.md` "Milestone 16", written from the evidence-driven UX rev
   (`01-connect`, `02-join` = "Show on this device", `03-play-phone-join`, `04-play-phone-game`):
   the join screen's "Code" chip renders in both host modes, and the pad overlay appears only on the
   game screen, clearing the game UI.
-- **Next:** item 4, the sub-3:1 contrast fixes (PRD-v2.md "Milestone 16").
+- **M16 item 4 (done; commit `b79ca83d`): the six sub-3:1 contrast fixes.**
+  - "Ready"/"+43" text `good` → `ink` (4.5:1); D-pad centre dot → `padFaintAlpha` 0.5 (3.26:1);
+    unused face circles → paper disc + ink dashes; state dot → paper core + state ring + ink edge;
+    stick knob → full-ink edge (6.05:1).
+  - Tests: new `toy_look` contrast test ("the pad parts keep 3:1") fails on old code (2.17:1) and
+    passes after; `pad_look`/`phone_look`/`arena_waiting`/`night_screens` tests pin the new colours.
+    Full `tools/check.sh` green (12/12); `tools/review.sh` 0 fail; coverage 92.8% (held).
+  - Visually verified on the emulator (owner, Nov 19): `05`–`15` in `emulator/`.
+- **Next:** item 2, the visible drop/away state + side restore (PRD-v2.md "Milestone 16").
 - **Carried into M16** (unchanged): the ten device checks the owner has not run, and the open
   Stats question (whether dropped sessions show on the Stats screen). **Do not decide the Stats
   question; wait.** See docs/HANDOFF.md section 7.
