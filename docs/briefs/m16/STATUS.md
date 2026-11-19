@@ -49,7 +49,17 @@ plan is `docs/PRD-v2.md` "Milestone 16", written from the evidence-driven UX rev
     passes after; `pad_look`/`phone_look`/`arena_waiting`/`night_screens` tests pin the new colours.
     Full `tools/check.sh` green (12/12); `tools/review.sh` 0 fail; coverage 92.8% (held).
   - Visually verified on the emulator (owner, Nov 19): `05`–`15` in `emulator/`.
-- **Next:** item 2, the visible drop/away state + side restore (PRD-v2.md "Milestone 16").
+- **M16 item 2 first half (done; commit `de4d4bd5`): hold a dropped player's slot in the lobby +
+  restore their side.**
+  - `AwaySlots.noteRoster` now holds a slot regardless of round (the `roundRunning` gate is gone);
+    the join screen keeps an away player's team, dims their row (`_awayRowOpacity`) and labels it
+    "… is away" (`HostText.awayLabel`, mock-up frame 1). Re-entry restores the same side.
+  - Tests: `player_away_test` "drops with no round running keeps its slot, away" (fails on old code,
+    passes after); a `join_screen_test` asserts the side is held and restored; the phone-host
+    crash-scrubber test was updated (a dropped name now stays while away). Full `tools/check.sh`
+    green (12/12).
+  - Visual: unit-tested (a real two-device drop is needed to show it on the emulator — deferred).
+- **Next:** item 2 second half, the host-away card on the phone (PRD-v2.md "Milestone 16").
 - **Carried into M16** (unchanged): the ten device checks the owner has not run, and the open
   Stats question (whether dropped sessions show on the Stats screen). **Do not decide the Stats
   question; wait.** See docs/HANDOFF.md section 7.
