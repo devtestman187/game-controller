@@ -29,8 +29,12 @@ docs/agent-workflow.md and docs/HANDOFF.md §10. Session refinements to keep:
 - **Never take a child's word as evidence**: read the diff, re-run the gate, verify the test
   assertions, and check `git status` for churn before committing.
 
-## Resume here (Nov 19, 2026: item 1 built; item 5 next)
+## Resume here (Nov 19, 2026: item 1 built; paused for a host/commentator reconsideration)
 
+- **Paused (owner, Nov 19).** The owner is investigating a host/commentator element (see the
+  untracked `docs/briefs/m17/AI-HostCommentator-Investigation.md`) and is reconsidering the UX.
+  Item 5 (nickname + colour + accessory) and the rest of the build order are on hold until that
+  direction settles — **confirm with the owner before continuing.**
 - **ux-review (done; committed as `1d593136`).** The end-to-end player-flow review and the
   mock-ups are complete and owner-approved. Deliverables under `docs/briefs/m16/ux-review/`:
   - `PROPOSAL.md` — the 9 recommendations (five-first summary, 13-stage flow, recommendations at
