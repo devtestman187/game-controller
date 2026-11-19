@@ -114,6 +114,44 @@ void main() {
       expect(find.text('Connect to a TV'), findsNothing);
       expect(find.byKey(const Key('dpad')), findsOneWidget);
     });
+
+    testWidgets('reconnects to the remembered host\'s live address when discovery found it', (tester) async {
+      final app = await pumpApp(tester, paired: true, reconnectWait: const Duration(seconds: 1));
+      app.discovery.emit(
+        DiscoveryState(
+          running: true,
+          everFound: true,
+          hosts: [
+            DiscoveredHost(
+              address: HostAddress(
+                addresses: ['192.168.1.99'],
+                port: 45780,
+                hostId: 'tv-1',
+                name: 'Thumb Party TV (Android TV)',
+              ),
+            ),
+          ],
+        ),
+      );
+      await tester.pump();
+      expect(app.client.calls, ['connect 192.168.1.99:45780']);
+      expect(find.text('Connect to a TV'), findsNothing);
+    });
+
+    testWidgets('opens the Connect screen when the remembered host is gone and another host is live', (tester) async {
+      final app = await pumpApp(tester, paired: true, reconnectWait: const Duration(seconds: 1));
+      app.discovery.emit(
+        DiscoveryState(running: true, everFound: true, hosts: [hostFrom('A TV', '192.168.1.77', party.HostKind.tv)]),
+      );
+      // Discovery found another host but not the remembered one, so the wait
+      // ends and the Connect screen opens (M16 item 3), never connecting to
+      // the stale remembered address. The second frame brings the pushed
+      // route onstage: Flutter keeps a new route offstage for its first frame.
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pump();
+      expect(find.text('Connect to a TV'), findsOneWidget);
+      expect(app.client.calls, isEmpty);
+    });
   });
 
   group('the host list labels (m12 §0.6)', () {

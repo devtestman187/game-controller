@@ -147,16 +147,28 @@ final localNetworkStatusProvider = Provider<LocalNetworkStatus>(
   ),
 );
 
+/// How long a launch waits for discovery to find the remembered host before
+/// falling back to the address it remembers (M16 item 3): a live host wins
+/// over a stale one, while a phone whose TV is off still opens Connect soon.
+final reconnectDiscoveryWaitProvider = Provider<Duration>((ref) => const Duration(seconds: 1));
+
 /// What the screens do. Keeps "remember the last TV" next to connecting.
 final connectionActionsProvider = Provider<ConnectionActions>(
-  (ref) => ConnectionActions(ref.watch(clientProvider), ref.watch(storeProvider)),
+  (ref) => ConnectionActions(
+    ref.watch(clientProvider),
+    ref.watch(storeProvider),
+    ref.watch(discoveryProvider),
+    reconnectDiscoveryWait: ref.watch(reconnectDiscoveryWaitProvider),
+  ),
 );
 
 class ConnectionActions {
-  ConnectionActions(this._client, this._store);
+  ConnectionActions(this._client, this._store, this._discovery, {required this.reconnectDiscoveryWait});
 
   final ControllerClient _client;
   final ConnectionStore _store;
+  final HostDiscovery _discovery;
+  final Duration reconnectDiscoveryWait;
 
   void connect(HostAddress host, {String? code}) => _client.connect(host, code: code);
 
@@ -170,13 +182,44 @@ class ConnectionActions {
   }
 
   /// On launch: reconnect to the last TV if this phone is still paired with
-  /// it. Returns false if there is nothing to reconnect to.
-  bool reconnectToLastHost() {
+  /// it. Prefers the address discovery found for that host over the remembered
+  /// one (M16 item 3). Returns false when there is nothing to reconnect to, or
+  /// when the host is gone while others are live: the caller opens Connect.
+  Future<bool> reconnectToLastHost() async {
     final last = _store.lastHost;
     final id = last?.hostId;
     if (last == null || id == null || !_client.tokens.containsKey(id)) return false;
+    final live = await _waitForFound(id);
+    if (live != null) {
+      _client.connect(live.address);
+      return true;
+    }
+    if (_discovery.state.hosts.isNotEmpty) return false;
     _client.connect(last);
     return true;
+  }
+
+  /// The live address of [hostId] once discovery reports it, or null if it
+  /// isn't found within [reconnectDiscoveryWait] (M16 item 3).
+  Future<DiscoveredHost?> _waitForFound(String hostId) async {
+    final completer = Completer<DiscoveredHost?>();
+    final sub = _discovery.changes.listen((state) {
+      for (final host in state.hosts) {
+        if (host.address.hostId == hostId) {
+          if (!completer.isCompleted) completer.complete(host);
+          return;
+        }
+      }
+    });
+    final timer = Timer(reconnectDiscoveryWait, () {
+      if (!completer.isCompleted) completer.complete(null);
+    });
+    try {
+      return await completer.future;
+    } finally {
+      unawaited(sub.cancel());
+      timer.cancel();
+    }
   }
 }
 

@@ -55,6 +55,11 @@ Future<TestApp> pumpApp(
   List<Override> extra = const [],
   bool stillSky = true,
   DateTime Function()? clock,
+
+  /// How long the launch waits for discovery to find the remembered host
+  /// (M16 item 3). Zero by default so every other test keeps the old launch
+  /// behaviour; the tests about preferring a discovered host pass a wait.
+  Duration reconnectWait = Duration.zero,
 }) async {
   // A landscape phone (iPhone 15-ish) unless the test picks another screen.
   // [padding] is its safe area: a notch, the home indicator.
@@ -80,7 +85,7 @@ Future<TestApp> pumpApp(
     log: log,
     device: device,
     click: click,
-    extra: extra,
+    extra: [...extra, reconnectDiscoveryWaitProvider.overrideWithValue(reconnectWait)],
     stillSky: stillSky,
     clock: clock,
   );

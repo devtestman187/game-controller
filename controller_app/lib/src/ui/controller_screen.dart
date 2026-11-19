@@ -71,21 +71,23 @@ class _ControllerScreenState extends ConsumerState<ControllerScreen> with Widget
       _phaseChanged = _notePhase;
       phase.addListener(_notePhase);
     }
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
+      // The mode used last (saved).
+      unawaited(ref.read(gyroProvider.notifier).restoreMode());
+      // The battery and CPU readout is the controller's; a host has its own.
+      if (!hosting) ref.read(sessionMonitorProvider).start();
       // Back to the last TV if still paired, otherwise straight to choosing
-      // one. A hosting phone has no TV to find: its own player is already
-      // connecting.
-      final paired = !hosting && ref.read(connectionActionsProvider).reconnectToLastHost();
+      // one. The reconnect waits a moment for discovery and prefers a live
+      // address over the remembered one (M16 item 3). A hosting phone has no
+      // TV to find: its own player is already connecting.
+      final paired = !hosting && await ref.read(connectionActionsProvider).reconnectToLastHost();
+      if (!mounted) return;
       if (!hosting && !paired) openConnect(context);
       // A phone that stays here never opens the Connect screen, where a launch
       // puts this phone's own two questions (design sentry-consent.md): this
       // first frame asks them instead.
       if (paired) _askLaunchConsent();
-      // The mode used last (saved).
-      unawaited(ref.read(gyroProvider.notifier).restoreMode());
-      // The battery and CPU readout is the controller's; a host has its own.
-      if (!hosting) ref.read(sessionMonitorProvider).start();
     });
   }
 
