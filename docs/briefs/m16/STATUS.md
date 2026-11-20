@@ -29,12 +29,12 @@ docs/agent-workflow.md and docs/HANDOFF.md §10. Session refinements to keep:
 - **Never take a child's word as evidence**: read the diff, re-run the gate, verify the test
   assertions, and check `git status` for churn before committing.
 
-## Resume here (Nov 19, 2026: item 1 built; paused for a host/commentator reconsideration)
+## Resume here (Nov 20, 2026: item 1 built; host/commentator direction settled — see `docs/briefs/m17/STATUS.md`)
 
-- **Paused (owner, Nov 19).** The owner is investigating a host/commentator element (see the
-  untracked `docs/briefs/m17/AI-HostCommentator-Investigation.md`) and is reconsidering the UX.
-  Item 5 (nickname + colour + accessory) and the rest of the build order are on hold until that
-  direction settles — **confirm with the owner before continuing.**
+- **Paused → resolved (Nov 20).** The host/commentator direction has settled: a dedicated host
+  character **Thumby** (see `docs/briefs/m17/STATUS.md` and `docs/briefs/m17/ux-review/PROPOSAL.md`),
+  layered on top of M16 item 6 (end-of-night awards). Item 5 (nickname + colour + accessory) and
+  the rest of the build order can resume. **Confirm with the owner before continuing.**
 - **ux-review (done; committed as `1d593136`).** The end-to-end player-flow review and the
   mock-ups are complete and owner-approved. Deliverables under `docs/briefs/m16/ux-review/`:
   - `PROPOSAL.md` — the 9 recommendations (five-first summary, 13-stage flow, recommendations at
@@ -118,6 +118,13 @@ docs/agent-workflow.md and docs/HANDOFF.md §10. Session refinements to keep:
     `review.sh` 0 fail; coverage 92.8% (held).
   - Visual: not captured — the emulator is still stopped for the harness update (slice A's strip is
     also still uncaptured).
+- **Thumby hooks added to the M16 spec (Nov 20).** The AI host Thumby is built in M17
+  (`docs/briefs/m17/ux-review/PROPOSAL-v2.md`); M16 must be built ready for it. See PROPOSAL.md
+  "Thumby integration (M17)" and PRD-v2.md "Prepares for M17 Thumby". Items that gained work: **5**
+  (stable ID + spoken name per colour+accessory), **6** (caption/bubble slot, 3rd->2nd->1st order,
+  timing for speech), **7** (host-side first-time-host flag with the coach marks), the picker (Party
+  card first, highlighted), the phone-host fit of the night cards (measure first), lobby events as
+  providers, and no growth of `sound.dart`. Item 5 onward resumes with these included.
 - **Next:** item 5 — nickname + colour + accessory on the phone, shown on the TV (PRD-v2.md
   "Milestone 16").
 - **Carried into M16** (unchanged): the ten device checks the owner has not run, and the open

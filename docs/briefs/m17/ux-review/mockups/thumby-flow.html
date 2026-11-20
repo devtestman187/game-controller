@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Thumby on the flow frames F16–F21 — the final character</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800&display=block" rel="stylesheet">
+<style>
+  body { margin: 0; font-family: Nunito, sans-serif; background: #f3efe6; color: #1e1646; }
+  body.single { background: transparent; }
+  header { padding: 20px 24px 8px; }
+  h1 { font-family: Fredoka, sans-serif; font-weight: 600; margin: 0 0 6px; }
+  .bar button { font: 700 15px Nunito, sans-serif; padding: 8px 14px; margin-right: 6px; border: 3px solid #1e1646; border-radius: 99px; background: #fff6e3; cursor: pointer; }
+  .bar button.on { background: #ffd23f; }
+  figure { margin: 18px 24px 28px; }
+  figcaption { font-weight: 700; margin-bottom: 8px; max-width: 1280px; }
+  figcaption span { font-weight: 600; opacity: .75; display: block; }
+  svg { display: block; max-width: 100%; height: auto; }
+  body.single svg { max-width: none; }
+</style>
+</head>
+<body>
+<header id="head">
+  <h1>Thumby on the flow frames F16–F21 — the final character</h1>
+  <p>The FINAL Thumby (<code>thumby-final.html</code>: Rally's tall leaning body, Cheer's face high under
+  the pad, one small mic, a smooth lower body, a six-stripe rainbow nail) replaces the old headset Thumby
+  on the six flow frames of <code>proposal-m17.html</code>. Each frame keeps its speech bubble — the same
+  text, size and placement (bottom-left; F21 below the card) — and nothing overlaps card text, buttons,
+  the crown or the +3. Frame numbers stay proposal-m17.html's own, so one frame alone is
+  <code>?frame=16&amp;theme=sunny|night</code> and the renderer writes <code>m17-f16-sunny.png</code> etc.
+  The old character sheet (F22) is not repeated here: it is superseded by
+  <code>thumby-final-sunny.png</code>.</p>
+  <div class="bar">
+    <button id="b-sunny">Sunny</button><button id="b-night">Night</button>
+    <button id="b-fx1">Effects on</button><button id="b-fx0">Effects off</button>
+  </div>
+</header>
+<main id="out"></main>
+<script src="mockup-parts.js"></script>
+<script src="mockup-maps.js"></script>
+<script>
+// ============================================================================================
+// This page re-draws proposal-m17.html's frames 16–21 with the final Thumby. It is that page's
+// M17 block copied over, plus the final character's drawing code copied verbatim from
+// thumby-final.html, so the frames are pixel-identical to proposal-m17.html's except the character.
+// The shared parts (palettes, cards, buttons, badges, the worker, coins, marbles, the accessory)
+// are mockup-parts.js; the Arena's maps and their pieces are mockup-maps.js.
+// ============================================================================================
+
+// ---- A player's badge wears the accessory of its character (look-and-sound 5b), as in proposal.
+const ACCESSORY = { 1: 'ears', 2: 'antenna', 3: 'bow', 4: 'cap', 5: 'tuft', 6: 'crown' };
+const playerBadge = (cx, cy, r, n, color) => badge(cx, cy, r, n, color) + accessory(ACCESSORY[n], cx, cy, r, color);
+
+function star(cx, cy, r, color = C.focus, o = {}) {
+  const pts = [];
+  for (let i = 0; i < 10; i++) {
+    const a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? r * .46 : r;
+    pts.push(`${(cx + Math.cos(a) * rr).toFixed(1)},${(cy + Math.sin(a) * rr).toFixed(1)}`);
+  }
+  return `<polygon points="${pts.join(' ')}" fill="${color}" stroke="${T.ink}" stroke-width="${o.ow ?? Math.max(1.8, r * .16)}" stroke-linejoin="round"/>`;
+}
+function crown(cx, cy, w, h) {
+  const x = cx - w / 2, y = cy - h / 2, p = `M${x} ${y + h} L${x} ${y + h * .22} L${x + w * .24} ${y + h * .58} L${x + w * .5} ${y} L${x + w * .76} ${y + h * .58} L${x + w} ${y + h * .22} L${x + w} ${y + h} Z`;
+  const ow = Math.max(2, w * .03);
+  return `<path d="${p}" transform="translate(${w * .05} ${h * .12})" fill="${T.ink}" fill-opacity=".35"/>` +
+    `<path d="${p}" fill="${C.sun}" stroke="${T.ink}" stroke-width="${ow}" stroke-linejoin="round"/>` +
+    `<circle cx="${x + w * .2}" cy="${y + h * .8}" r="${h * .05}" fill="${C.p[2]}" stroke="${T.ink}" stroke-width="${ow * .6}"/>` +
+    `<circle cx="${x + w * .5}" cy="${y + h * .76}" r="${h * .07}" fill="${C.p[4]}" stroke="${T.ink}" stroke-width="${ow * .6}"/>` +
+    `<circle cx="${x + w * .8}" cy="${y + h * .8}" r="${h * .05}" fill="${C.p[2]}" stroke="${T.ink}" stroke-width="${ow * .6}"/>`;
+}
+const CONFETTI = [[.06, .1, .2], [.15, .3, .5], [.28, .06, .8], [.42, .16, .35], [.55, .04, .65], [.7, .12, .9],
+  [.86, .06, .1], [.94, .32, .55], [.09, .56, .7], [.2, .82, .25], [.88, .62, .75], [.92, .86, .4], [.5, .93, .15], [.66, .88, .85]];
+function confetti(w, h) {
+  return CONFETTI.map(([fx, fy, f], i) => {
+    const x = fx * w, y = fy * h;
+    return `<rect x="${x}" y="${y}" width="18" height="10" rx="2" fill="${C.p[i % 6]}" stroke="${T.ink}" stroke-width="2" transform="rotate(${Math.round(f * 360)} ${x} ${y})"/>`;
+  }).join('');
+}
+
+// ---- mockup-maps.js gives spots to Pinball, Block Castle, Toy Factory and Spinning Tops, but not to
+// the Playroom: proposal-m17.html supplies the Playroom's spots for arenaField, so this page does too.
+if (!MAPS.playroom.spots) MAPS.playroom.spots = {
+  marbles: [[5.6, 3.2, 1, 4], [8.4, 6.4, 2, 2], [10.4, 3.4, 3, 1]],
+  coins: [[6.8, 7, { spin: .12 }], [9.6, 1.6, { gold: true, spin: .2 }], [12.3, 6.2, { spin: .55 }], [5.2, 4.6, { spin: .8 }]],
+};
+
+// ============================================================================================
+// THE FINAL THUMBY, copied verbatim from thumby-final.html: Rally's tall leaning body, Cheer's face
+// high under the pad, one small handheld mic, a smooth lower body (no joint folds) and the oval nail
+// filled with six-stripe rainbow polish. The front view is what every flow frame uses.
+// ============================================================================================
+const SK = { skin: '#FFD1A8', light: '#FFE6CA', high: '#FFF0DE', shade: '#E9A978', deep: '#CE8349',
+  nail: '#FFF2DD' };
+const GEAR = { body: '#C9D2E8', dark: '#8C9BD8' };   // V1's mic grey-blue; never a player colour
+const RB = ['#E23B30', '#F6851F', '#FFCF3A', '#34A853', '#2E63D8', '#6C3FB5']; // rainbow polish
+
+// ---- the look's skin fill: a radial with a hard highlight band, the base, a shade band, a dark rim
+function skinPaint() {
+  const id = 'sk' + (++uid);
+  defs.push(`<radialGradient id="${id}" cx="33%" cy="32%" r="96%">
+    <stop offset="0" stop-color="${SK.high}"/><stop offset=".16" stop-color="${SK.high}"/>
+    <stop offset=".16" stop-color="${SK.light}"/>
+    <stop offset=".52" stop-color="${SK.skin}"/>
+    <stop offset=".82" stop-color="${SK.shade}"/>
+    <stop offset="1" stop-color="${SK.deep}"/></radialGradient>`);
+  return `url(#${id})`;
+}
+
+// ---- body layers: hard ink shadow under it, the peach body, and the outline again on top of the
+//      features (so the rainbow nail that reaches the silhouette is cut by the ink outline)
+function bodyLayers(d, o = {}) {
+  const clip = 'cut' + (++uid);
+  defs.push(`<clipPath id="${clip}"><path d="${d}"/></clipPath>`);
+  const ow = o.ow ?? .052;
+  return {
+    under: `<path d="${d}" transform="translate(${o.sdx ?? .085} ${o.sdy ?? .115})" fill="${T.ink}" fill-opacity=".18"/>` +
+      `<path d="${d}" fill="${skinPaint()}" stroke="${T.ink}" stroke-width="${ow}" stroke-linejoin="round"/>`,
+    clip: `clip-path="url(#${clip})"`,
+    over: `<path d="${d}" fill="none" stroke="${T.ink}" stroke-width="${ow}" stroke-linejoin="round"/>`,
+  };
+}
+function host(x, y, rx, ry) {
+  return `<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" fill="${T.ink}" fill-opacity=".14"/>`;
+}
+// a soft gloss — always drawn upright-ish, so it can never read as a band across the body
+function sheen(x, y, rx, ry, rot) {
+  return `<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" fill="#fff" fill-opacity=".58" transform="rotate(${rot} ${x} ${y})"/>`;
+}
+// ---- Cheer's eyes: a big white eye with an ink pupil and a glint
+function eye(x, y, rx, ry, o = {}) {
+  const lw = o.lw ?? .032, px = o.px ?? .03, py = o.py ?? .014;
+  return `<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" fill="#fff" stroke="${T.ink}" stroke-width="${lw}"/>` +
+    `<circle cx="${(x + px).toFixed(4)}" cy="${(y + py).toFixed(4)}" r="${(Math.min(rx, ry) * .44).toFixed(4)}" fill="${T.ink}"/>` +
+    `<circle cx="${(x + px - rx * .30).toFixed(4)}" cy="${(y + py - ry * .30).toFixed(4)}" r="${(Math.min(rx, ry) * .17).toFixed(4)}" fill="#fff"/>`;
+}
+// ---- Cheer's brow: a bold, friendly arc
+function brow(x, y, w, h, lw = .052, rot = 0) {
+  return `<path d="M${(x - w).toFixed(3)} ${(y + h).toFixed(3)} Q${x.toFixed(3)} ${(y - h * 1.2).toFixed(3)} ${(x + w).toFixed(3)} ${(y + h * .5).toFixed(3)}" fill="none" stroke="${T.ink}" stroke-width="${lw}" stroke-linecap="round" transform="rotate(${rot} ${x} ${y})"/>`;
+}
+// ---- Cheer's small nose: one short hooked line
+function nose(x, y, s = .05) {
+  return `<path d="M${x.toFixed(3)} ${y.toFixed(3)} q${(-s).toFixed(3)} ${(s * .8).toFixed(3)} 0 ${(s * 1.4).toFixed(3)}" fill="none" stroke="${T.ink}" stroke-opacity=".62" stroke-width=".030" stroke-linecap="round"/>`;
+}
+// ---- the WIDE GRIN: wide and shallow, corners up — teeth at the top, a pink tongue low, so it
+//      reads as a grin and never as Rally's tall open shout
+function grin(x, y, w, h, o = {}) {
+  const lw = o.lw ?? .040;
+  const d = `M${(x - w).toFixed(3)} ${y.toFixed(3)} Q${x.toFixed(3)} ${(y + h * .16).toFixed(3)} ${(x + w).toFixed(3)} ${y.toFixed(3)} ` +
+    `Q${(x + w * .60).toFixed(3)} ${(y + h * .96).toFixed(3)} ${x.toFixed(3)} ${(y + h * 1.02).toFixed(3)} ` +
+    `Q${(x - w * .60).toFixed(3)} ${(y + h * .96).toFixed(3)} ${(x - w).toFixed(3)} ${y.toFixed(3)} Z`;
+  const cid = 'gn' + (++uid);
+  defs.push(`<clipPath id="${cid}"><path d="${d}"/></clipPath>`);
+  let g = `<path d="${d}" fill="${T.ink}"/>`;
+  g += `<g clip-path="url(#${cid})">` +
+    // the upper teeth, a wide band right under the top lip
+    `<path d="M${(x - w * 1.2).toFixed(3)} ${(y - h * .30).toFixed(3)} L${(x + w * 1.2).toFixed(3)} ${(y - h * .30).toFixed(3)} ` +
+    `L${(x + w * 1.2).toFixed(3)} ${(y + h * .52).toFixed(3)} Q${x.toFixed(3)} ${(y + h * .62).toFixed(3)} ${(x - w * 1.2).toFixed(3)} ${(y + h * .52).toFixed(3)} Z" fill="#FFF6E3"/>` +
+    // the pink tongue low in the grin
+    `<ellipse cx="${x.toFixed(3)}" cy="${(y + h * .98).toFixed(3)}" rx="${(w * .40).toFixed(3)}" ry="${(h * .34).toFixed(3)}" fill="#FF7A9A"/>` +
+    `</g>`;
+  g += `<path d="${d}" fill="none" stroke="${T.ink}" stroke-width="${lw}" stroke-linejoin="round"/>`;
+  return g;
+}
+// ---- THE RAINBOW NAIL. The oval plate is Rally's: a lighter nail plate with a hard ink outline kept
+//      around it. Inside sits the rainbow polish — six bright stripes across the plate, with a gloss
+//      and a hard shade so it still reads as a curved nail. This is the sheet's one colour pop.
+function rainbowNail(x, y, rx, ry, rot, o = {}) {
+  const ow = o.ow ?? .042;
+  const ins = o.inset ?? .80;              // the pale nail plate shows as a thin rim under the polish
+  const n = o.bands ?? 6;
+  const ri = rx * ins, rj = ry * ins;
+  const f = o.free ?? .62;                 // where the free edge sits on the plate
+  const cid = 'rb' + (++uid);
+  defs.push(`<clipPath id="${cid}"><ellipse cx="${x}" cy="${y}" rx="${ri}" ry="${rj}"/></clipPath>`);
+  let g = `<g transform="rotate(${rot} ${x} ${y})">`;
+  // the hard ink shadow under the plate
+  g += `<ellipse cx="${(x + .018).toFixed(3)}" cy="${(y + .045).toFixed(3)}" rx="${rx}" ry="${ry}" fill="${T.ink}" fill-opacity=".20"/>`;
+  // the lighter nail plate UNDER the rainbow
+  g += `<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" fill="${SK.nail}"/>`;
+  // the rainbow polish, clipped inside the plate
+  g += `<g clip-path="url(#${cid})">`;
+  const bw = (2 * ri) / n;
+  for (let i = 0; i < n; i++) {
+    const sx = x - ri + i * bw;
+    g += `<rect x="${(sx - .002).toFixed(3)}" y="${(y - rj - .02).toFixed(3)}" width="${(bw + .004).toFixed(3)}" height="${(2 * rj + .04).toFixed(3)}" fill="${RB[i % RB.length]}"/>`;
+  }
+  // a hard shade at the base of the polish, so the plate still curves, and one thin gloss-free edge
+  g += `<ellipse cx="${x}" cy="${(y + rj * 1.04).toFixed(3)}" rx="${(ri * 1.05).toFixed(3)}" ry="${(rj * .44).toFixed(3)}" fill="${T.ink}" fill-opacity=".11"/>`;
+  // the free edge of the nail, a thin pale arc at the tip (a nail, not a badge)
+  const fx = rx * Math.sqrt(Math.max(.05, 1 - f * f));
+  g += `<path d="M${(x - fx).toFixed(3)} ${(y - ry * f).toFixed(3)} Q${x.toFixed(3)} ${(y - ry * (f + .30)).toFixed(3)} ${(x + fx).toFixed(3)} ${(y - ry * f).toFixed(3)}" fill="none" stroke="#fff" stroke-opacity=".80" stroke-width=".026" stroke-linecap="round"/>`;
+  g += `</g>`;
+  // the hard ink outline AROUND the nail plate
+  g += `<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" fill="none" stroke="${T.ink}" stroke-width="${ow}"/>`;
+  // the cuticle fold just under the plate (a nail detail, never a band across the body)
+  g += `<path d="M${(x - rx * .64).toFixed(3)} ${(y + ry * .92).toFixed(3)} Q${x.toFixed(3)} ${(y + ry * 1.30).toFixed(3)} ${(x + rx * .64).toFixed(3)} ${(y + ry * .92).toFixed(3)}" fill="none" stroke="${T.ink}" stroke-opacity=".28" stroke-width=".026" stroke-linecap="round"/>`;
+  g += '</g>';
+  return g;
+}
+// ---- a slim mitten arm: ink limb with the skin laid inside it, drawn BEHIND the body so it comes
+//      out from behind the silhouette; the mitten hand is drawn over its end
+function arm(x1, y1, x2, y2, w = .17, sag = 0.02) {
+  const mx = (x1 + x2) / 2, my = (y1 + y2) / 2 + sag;
+  const d = `M${x1} ${y1} Q${mx} ${my} ${x2} ${y2}`;
+  return `<path d="${d}" fill="none" stroke="${T.ink}" stroke-width="${w}" stroke-linecap="round"/>` +
+    `<path d="${d}" fill="none" stroke="${SK.skin}" stroke-width="${(w - .095).toFixed(3)}" stroke-linecap="round"/>`;
+}
+function hand(x, y, r = .10) {
+  return `<circle cx="${x}" cy="${y}" r="${r}" fill="${SK.light}" stroke="${T.ink}" stroke-width=".045"/>`;
+}
+// a short motion mark (Rally's ink dashes), outside the silhouette so it is never a body line
+function dash(x, y, len, ang, lw = .042, op = .40, bow = 0) {
+  const a = ang * Math.PI / 180, dx = Math.cos(a) * len / 2, dy = Math.sin(a) * len / 2;
+  const d = bow
+    ? `M${(x - dx).toFixed(3)} ${(y - dy).toFixed(3)} Q${(x + Math.cos(a + 1.57) * bow).toFixed(3)} ${(y + Math.sin(a + 1.57) * bow).toFixed(3)} ${(x + dx).toFixed(3)} ${(y + dy).toFixed(3)}`
+    : `M${(x - dx).toFixed(3)} ${(y - dy).toFixed(3)} L${(x + dx).toFixed(3)} ${(y + dy).toFixed(3)}`;
+  return `<path d="${d}" fill="none" stroke="${T.ink}" stroke-opacity="${op}" stroke-width="${lw}" stroke-linecap="round"/>`;
+}
+// ---- V1's small handheld mic, at body scale: a gear-blue ball with grille bars, a short handle.
+//      The head sits at (x, y) and the whole mic is rotated by `ang`; the handle runs down from it.
+function smallMic(x, y, ang, o = {}) {
+  const ink = T.ink, ow = o.ow ?? .034;
+  const hr = o.hr ?? .092, hw = o.hw ?? .074, hl = o.hl ?? .30;
+  const rad = ang * Math.PI / 180;
+  let g = `<g transform="rotate(${ang} ${x} ${y})">`;
+  // the handle, ink outline and gear-dark fill, with a lighter wrap near the head
+  g += `<rect x="${(x - hw / 2).toFixed(3)}" y="${(y + hr * .62).toFixed(3)}" width="${hw.toFixed(3)}" height="${hl.toFixed(3)}" rx="${(hw / 2).toFixed(3)}" fill="${GEAR.dark}" stroke="${ink}" stroke-width="${ow}"/>`;
+  g += `<rect x="${(x - hw / 2).toFixed(3)}" y="${(y + hr * .62 + hl * .07).toFixed(3)}" width="${hw.toFixed(3)}" height="${(hl * .12).toFixed(3)}" rx="${(hw * .4).toFixed(3)}" fill="${GEAR.body}"/>`;
+  // the head, drawn over the handle's top: a gear-blue ball with three grille bars and a glint
+  g += `<circle cx="${x}" cy="${y}" r="${hr}" fill="${GEAR.body}" stroke="${ink}" stroke-width="${ow}"/>`;
+  [-.34, 0, .34].forEach(d => {
+    const half = hr * Math.sqrt(1 - d * d) * .84;
+    g += `<path d="M${(x - half).toFixed(3)} ${(y + d * hr).toFixed(3)} H${(x + half).toFixed(3)}" stroke="${ink}" stroke-opacity=".32" stroke-width="${(hr * .15).toFixed(3)}" stroke-linecap="round"/>`;
+  });
+  g += `<ellipse cx="${(x - hr * .34).toFixed(3)}" cy="${(y - hr * .38).toFixed(3)}" rx="${(hr * .22).toFixed(3)}" ry="${(hr * .14).toFixed(3)}" fill="#fff" fill-opacity=".9" transform="rotate(-28 ${x} ${y})"/>`;
+  g += '</g>';
+  // where the fist grips the handle, so the caller can put the mitten hand there
+  const grip = o.grip ?? .32;
+  return { svg: g, gx: x + (-Math.sin(rad)) * grip, gy: y + Math.cos(rad) * grip };
+}
+
+// ---- THUMBY, FRONT, the final character: Rally's body (I3) unchanged; Cheer's face (I1) high under
+//      the pad; one small mic. No folds on the fist end, so the lower body is one clean surface.
+const D3 = 'M-0.43 1.00 C-0.49 0.92 -0.49 0.80 -0.45 0.66 C-0.40 0.46 -0.34 0.22 -0.31 0.00 ' +
+  'C-0.29 -0.16 -0.32 -0.30 -0.38 -0.44 C-0.46 -0.62 -0.50 -0.84 -0.42 -1.04 ' +
+  'C-0.34 -1.24 -0.14 -1.35 0.04 -1.35 C0.24 -1.35 0.44 -1.21 0.48 -1.01 ' +
+  'C0.52 -0.81 0.44 -0.61 0.38 -0.45 C0.33 -0.31 0.31 -0.18 0.32 -0.03 ' +
+  'C0.34 0.20 0.37 0.44 0.40 0.64 C0.43 0.80 0.43 0.94 0.34 1.00 ' +
+  'C0.18 1.10 -0.26 1.10 -0.43 1.00 Z';
+
+function finalFront(cx, cy, s) {
+  const b = bodyLayers(D3);
+  const mic = smallMic(0.465, -0.255, -20, { grip: .315, hr: .092, hw: .074, hl: .30 });
+  let g = `<g transform="translate(${cx} ${cy}) scale(${s}) rotate(6)">`;
+  g += host(0.00, 1.08, 0.50, 0.070);
+  // slim mitten arms, behind the body: the free arm raised, the mic arm up to the grin
+  g += arm(-0.30, 0.10, -0.57, -0.11, 0.17, 0.02);
+  g += arm(0.30, 0.16, mic.gx, mic.gy, 0.16, 0.012);
+  g += b.under;
+  g += `<g ${b.clip}>`;
+  g += sheen(-0.34, -1.03, 0.080, 0.032, -64);
+  g += sheen(-0.46, -0.52, 0.090, 0.032, -58);
+  // the rainbow nail on the pad: a flat oval plate, the pale plate and its ink outline kept.
+  // ENLARGED ~1.45x (was .235/.128 at y -.965) so it dominates the crown of the pad; the plate
+  // still sits inside the pad silhouette, with the brows/eyes/grin kept clear below it.
+  g += rainbowNail(0.04, -1.01, 0.335, 0.187, 14);
+  // Cheer's face, moved up under the pad: brows, eyes, nose, wide grin
+  g += eye(-0.155, -0.375, 0.130, 0.158, { px: .030, py: .012 });
+  g += eye(0.175, -0.375, 0.130, 0.158, { px: .032, py: .012 });
+  g += brow(-0.170, -0.605, 0.125, 0.052, 0.052, -6);
+  g += brow(0.165, -0.590, 0.125, 0.052, 0.052, -2);
+  g += nose(0.02, -0.270, 0.048);
+  g += grin(0.02, -0.135, 0.225, 0.145);
+  g += '</g>' + b.over;
+  // the small mic, then the mitten hands over the arm ends and the mic grip
+  g += mic.svg;
+  g += hand(mic.gx, mic.gy, 0.100);
+  g += hand(-0.60, -0.145, 0.105);
+  // Rally's ink dashes, kept outside the silhouette
+  g += dash(-0.88, -0.62, 0.12, 66, 0.042, 0.40, 0.04);
+  g += dash(-0.91, -0.24, 0.10, 78, 0.038, 0.32, 0.03);
+  g += `</g>`;
+  return g;
+}
+
+// ---- Place the final Thumby standing on a floor line: H is the figure's height in px (the drawing
+//      spans 2.46 local units from the top of the body to the base), (cx, floorY) is where its
+//      lower-body base meets the floor. Returns the SVG to append after the frame's card.
+//      The x is chosen per frame so the (unchanged) bubble tail comes down onto the right side of
+//      the head, clear of the rainbow nail — the tail never covers the nail, the eyes or the grin.
+function placeThumby(cx, floorY, H) {
+  const s = H / 2.46;
+  return finalFront(cx, floorY - 1.10 * s, s);
+}
+
+// ---- Robo's badge (the app's RoboBadge): a player-colour disc with a paper robot head in it.
+function roboHead(cx, cy, r) {
+  const ink = T.ink, ow = Math.max(1.4, r * .1);
+  let g = `<circle cx="${cx}" cy="${cy - r * .82}" r="${r * .16}" fill="${T.paper}" stroke="${ink}" stroke-width="${ow}"/>`;
+  g += `<path d="M${cx} ${cy - r * .44} V${cy - r * .66}" stroke="${ink}" stroke-width="${ow}" stroke-linecap="round"/>`;
+  g += `<rect x="${cx - r * .62}" y="${cy - r * .44}" width="${r * 1.24}" height="${r * 1.1}" rx="${r * .3}" fill="${T.paper}" stroke="${ink}" stroke-width="${ow}"/>`;
+  g += `<circle cx="${cx - r * .26}" cy="${cy}" r="${r * .13}" fill="${ink}"/><circle cx="${cx + r * .26}" cy="${cy}" r="${r * .13}" fill="${ink}"/>`;
+  g += `<path d="M${cx - r * .2} ${cy + r * .32} H${cx + r * .2}" stroke="${ink}" stroke-width="${ow}" stroke-linecap="round"/>`;
+  return g;
+}
+function roboBadge(cx, cy, r) {
+  return toy('circle', cx - r, cy - r, r * 2, r * 2, C.p[1], { ow: Math.max(2.5, r * .13), shadow: r * .16, glint: false }) + roboHead(cx, cy, r * .74);
+}
+
+// The Best Helper award's picture: a paper hand holding a heart, on the award's own disc.
+function helpIcon(cx, cy, r) {
+  // the heart
+  let g = `<path d="M${cx} ${cy - r * .3} C${cx - r * .62} ${cy - r * .72} ${cx - r * .3} ${cy - r * 1.12} ${cx} ${cy - r * .8}` +
+    ` C${cx + r * .3} ${cy - r * 1.12} ${cx + r * .62} ${cy - r * .72} ${cx} ${cy - r * .3}Z" fill="${T.paper}"/>`;
+  // the palm, the fingers and the thumb under it
+  g += `<rect x="${cx - r * .46}" y="${cy + r * .22}" width="${r * .92}" height="${r * .34}" rx="${r * .16}" fill="${T.paper}"/>`;
+  [[-.29, .3], [-.02, .44], [.25, .3]].forEach(([fx, len]) => {
+    g += `<rect x="${cx + r * fx - r * .09}" y="${cy + r * .24 - r * len}" width="${r * .18}" height="${r * len}" rx="${r * .09}" fill="${T.paper}"/>`;
+  });
+  g += `<rect x="${cx - r * .54}" y="${cy + r * .06}" width="${r * .2}" height="${r * .34}" rx="${r * .1}" fill="${T.paper}" transform="rotate(-26 ${cx - r * .46} ${cy + r * .24})"/>`;
+  return g;
+}
+
+// A speech bubble with a hard ink outline, its tail pointing at Thumby. (x, y) is the top-left;
+// tipX/tipY is where the tail points. Copied verbatim from proposal-m17.html — every flow frame
+// calls it with exactly the arguments proposal-m17.html used, so the bubble is unchanged.
+function speechBubble(x, y, w, lines, o = {}) {
+  const size = o.size ?? 22, lh = size * 1.32, padX = size * .9, padY = size * .55;
+  const h = lines.length * lh + padY * 2;
+  const r = Math.min(18, h * .32);
+  const tipX = o.tailX ?? x + w * .32, tipY = o.tailY ?? y + h + size * .95, base = size * .55;
+  const p = `M${x + r} ${y} H${x + w - r} Q${x + w} ${y} ${x + w} ${y + r} V${y + h - r}` +
+    ` Q${x + w} ${y + h} ${x + w - r} ${y + h} H${tipX + base} L${tipX} ${tipY} L${tipX - base} ${y + h}` +
+    ` H${x + r} Q${x} ${y + h} ${x} ${y + h - r} V${y + r} Q${x} ${y} ${x + r} ${y}Z`;
+  let g = `<path d="${p}" transform="translate(4 6)" fill="${T.ink}" fill-opacity=".26"/>`;
+  g += `<path d="${p}" fill="${T.paper}" stroke="${T.ink}" stroke-width="${o.ow ?? 3.5}" stroke-linejoin="round"/>`;
+  lines.forEach((line, i) => {
+    g += txt(x + w / 2, y + padY + lh * (i + .5), line, size, { anchor: 'middle', base: 'middle', font: o.font ?? 'Nunito', w: o.w ?? 800 });
+  });
+  return g;
+}
+
+// ---- The night's field behind a results card: the Playroom, its coins and marbles, so the card reads
+// as the Arena's own round result. The card dims it, as Shape Race's results card dims the board.
+function arenaField() {
+  const b = arenaBox(0, 0, 1280, 720), u = b.u;
+  let g = MAPS.playroom.draw(0, 0, 1280, 720);
+  MAPS.playroom.spots.coins.forEach(([a, c, o]) => g += coin(...at(b, a, c), u * .32, o));
+  MAPS.playroom.spots.marbles.forEach(([a, c, n]) => {
+    const p = at(b, a, c);
+    g += marble(p[0], p[1], u * .38, C.p[n - 1], n) + accessory(ACCESSORY[n], p[0], p[1], u * .38, C.p[n - 1]);
+  });
+  return g;
+}
+// The one-row HUD the Get ready beat shows (vf-2dev-round Record 2): the round, the clock, Best.
+function arenaHud(round = 'Round 2 of 3') {
+  let g = `<rect x="0" y="0" width="1280" height="64" fill="${T.paper}"/><line x1="0" y1="64" x2="1280" y2="64" stroke="${T.ink}" stroke-width="3.5"/>`;
+  g += txt(24, 42, 'Bumper Round · Playroom', 24);
+  g += txt(330, 41, round, 20, { font: 'Nunito', w: 800, fill: dark(T.paper, .45) });
+  g += clockChip(640, 9, '60.0 s', 26);
+  g += txt(1256, 41, 'Best –', 18, { anchor: 'end', font: 'Nunito', w: 800, fill: dark(T.paper, .45) });
+  return g;
+}
+// A scoreboard row: place, badge (Robo's disc or a player's), name, star, total and the round's points.
+function nightRow(x, y, w, r) {
+  const [place, kind, name, total, plus, color] = r;
+  let g = txt(x + 34, y + 8, place, 30, { anchor: 'middle', w: 700, fill: dark(T.paper, .35) });
+  g += kind === 'robo' ? roboBadge(x + 86, y, 26) : playerBadge(x + 86, y, 26, kind, color);
+  g += txt(x + 128, y + 9, name, 30, { font: 'Nunito', w: 800 });
+  g += star(x + 470, y + 2, 17) + txt(x + 498, y + 9, total, 34, { w: 700 });
+  if (plus) g += txt(x + w - 20, y + 9, plus, 30, { anchor: 'end', w: 700, fill: C.good });
+  return g;
+}
+// A final-scores row: the winner's crown in the slot before the place, then the same as a night row.
+function finalRow(x, y, r) {
+  const [place, kind, name, total, plus, color] = r;
+  let g = '';
+  if (place === '1') g += crown(x + 44, y - 6, 70, 40);
+  g += txt(x + 104, y + 9, place, 32, { anchor: 'middle', w: 700, fill: dark(T.paper, .35) });
+  g += kind === 'robo' ? roboBadge(x + 150, y, 26) : playerBadge(x + 150, y, 26, kind, color);
+  g += txt(x + 192, y + 10, name, 32, { font: 'Nunito', w: 800 });
+  g += star(x + 470, y + 2, 18) + txt(x + 500, y + 10, total, 36, { w: 700 });
+  if (plus) g += txt(x + 638, y + 9, plus, 30, { anchor: 'end', w: 700, fill: C.good });
+  return g;
+}
+
+// ============================================================================================
+// Frames 16–21: the six flow frames, copied from proposal-m17.html. The ONLY change is the
+// character: each `thumby(...)` call becomes `placeThumby(cx, floor, H)` with the final Thumby.
+// Placement rule kept: Thumby and its bubble stand in empty space, bottom-left by preference, and
+// never over text, buttons, badges, the crown or the +3; F21's pair sits below the card.
+// ============================================================================================
+const FLOW = [];
+FLOW.push(['TV: the round result, with Thumby', "The Arena's round result card keeps its orange bar, navy title and the two coin rows; the card dims the field behind it. Thumby (final character) and the same bubble take the card's free left band.", 1280, 720, () => {
+  let g = arenaField() + `<rect width="1280" height="720" fill="${T.ink}" fill-opacity=".45"/>`;
+  const x = 410, y = 120, w = 460, h = 390;
+  g += card(x, y, w, h, { header: 'Robo wins!', hc: C.p[1], hh: 62, hs: 31 });
+  g += playerBadge(x + 42, y + 110, 20, 1, C.p[0]) + txt(x + 76, y + 118, 'P1 Phone 1719', 23, { font: 'Nunito', w: 800 });
+  g += coin(x + w - 132, y + 110, 14) + txt(x + w - 42, y + 118, '0 coins', 23, { anchor: 'end', w: 700 });
+  g += roboBadge(x + 42, y + 190, 20) + txt(x + 76, y + 198, 'Robo', 23, { font: 'Nunito', w: 800 });
+  g += crown(x + 178, y + 188, 30, 19);
+  g += coin(x + w - 132, y + 190, 14) + txt(x + w - 42, y + 198, '7 coins', 23, { anchor: 'end', w: 700 });
+  g += btn(x + 26, y + h - 94, 190, 58, 'Next', { color: C.good, size: 22 });
+  g += btn(x + 232, y + h - 94, 202, 58, 'End night', { color: C.good, size: 22 });
+  g += placeThumby(126, 690, 178);
+  g += speechBubble(20, 445, 310, ['Robo takes the round!'], { size: 24, tailX: 160, tailY: 526 });
+  return g;
+}]);
+FLOW.push(['TV: the night scoreboard, with Thumby', "Between rounds the scoreboard card takes the middle; Thumby (final character) and the same bubble stand in the clean left band. Robo's row wears the robot disc the app gives it, and the round's points stay green on the right.", 1280, 720, () => {
+  let g = bg(1280, 720);
+  const x = 330, y = 26, w = 810, h = 668;
+  g += card(x, y, w, h, { header: 'Round 2 of 3', hc: C.p[3], hh: 76, hs: 38 });
+  g += nightRow(360, 250, 750, ['1', 'robo', 'Robo', '12', '+7', C.p[1]]);
+  g += nightRow(360, 370, 750, ['2', 1, 'Phone 1719', '5', '+2', C.p[0]]);
+  g += btn(420, 540, 300, 74, 'Shape Race') + btn(750, 540, 300, 74, 'Bumper Round');
+  g += placeThumby(121, 690, 175);
+  g += speechBubble(12, 415, 240, ["Robo's ahead —", "but it's early!"], { size: 22, tailX: 154, tailY: 534 });
+  return g;
+}]);
+FLOW.push(['TV: the round intro, with Thumby', "The Get ready card keeps the screen's centre exactly as it is today (paper, no header band, the numeral huge). Thumby (final character) stands on the field's empty floor in the free left band; its bubble is well clear of the countdown.", 1280, 720, () => {
+  let g = arenaField() + arenaHud();
+  const x = 480, y = 150, w = 320, h = 470;
+  g += card(x, y, w, h, { fill: T.paper, ow: 4.5 });
+  g += txt(x + w / 2, y + 108, 'Get ready', 38, { anchor: 'middle' });
+  g += txt(x + w / 2, y + 340, '3', 214, { anchor: 'middle', base: 'middle' });
+  g += placeThumby(115, 690, 183);
+  g += speechBubble(8, 436, 286, ['Round 2 — here we go!'], { size: 22, tailX: 150, tailY: 526 });
+  return g;
+}]);
+FLOW.push(['TV: an award, won', "The won award in the app's own order — the disc, \"One winner\", the winner's badge and name, the reason in the heading type, then the star and the +3 — with the confetti behind it. Thumby (final character) takes the left band the reveal leaves and reads the award out.", 1280, 720, () => {
+  let g = bg(1280, 720) + confetti(1280, 720);
+  const x = 320, y = 186, w = 640, hh = 86, pad = 32, h = 370;
+  g += card(x, y, w, h, { header: 'Best Helper', hc: C.p[0], hh, hs: 44 });
+  const dcx = x + pad + 55, dcy = y + hh + pad + 55;
+  g += toy('circle', dcx - 55, dcy - 55, 110, 110, C.p[0], { ow: 5, shadow: 8 });
+  g += helpIcon(dcx, dcy, 48);
+  const bx = x + pad + 110 + 24;
+  g += txt(bx, y + hh + 52, 'One winner', 22, { font: 'Nunito', w: 800, fill: dark(T.paper, .5) });
+  g += roboBadge(bx + 26, y + hh + 104, 26);
+  g += txt(bx + 62, y + hh + 113, 'Robo', 32, { font: 'Nunito', w: 800 });
+  g += txt(bx, y + hh + 182, 'Most carries home together', 30, { w: 600 });
+  g += star(bx + 18, y + hh + 236, 23);
+  g += txt(bx + 50, y + hh + 249, '+3 points', 36, { w: 700, fill: C.good });
+  g += placeThumby(107, 690, 169);
+  g += speechBubble(8, 445, 290, ['For the most carries', 'home together — Robo!'], { size: 20, tailX: 138, tailY: 546 });
+  return g;
+}]);
+FLOW.push(['TV: an award nobody won', "The same award in its short state: the disc, \"Not won tonight\" and the award's line — no winner row, no +3, no confetti. Thumby (final character) takes the left band once more and says it kindly.", 1280, 720, () => {
+  let g = bg(1280, 720);
+  const x = 400, y = 236, w = 520, hh = 86, pad = 32, h = 264;
+  g += card(x, y, w, h, { header: 'Best Helper', hc: C.p[0], hh, hs: 44 });
+  const dcx = x + pad + 55, dcy = y + hh + pad + 55;
+  g += toy('circle', dcx - 55, dcy - 55, 110, 110, C.p[0], { ow: 5, shadow: 8 });
+  g += helpIcon(dcx, dcy, 48);
+  const bx = x + pad + 110 + 24;
+  g += txt(bx, y + hh + 74, 'Not won tonight', 32, { w: 600 });
+  g += txt(bx, y + hh + 116, 'Most carries home together', 20, { font: 'Nunito', w: 700, fill: dark(T.paper, .45) });
+  g += placeThumby(120, 692, 175);
+  g += speechBubble(14, 438, 330, ['Nobody took it tonight!'], { size: 24, tailX: 152, tailY: 544 });
+  return g;
+}]);
+FLOW.push(['TV: the final scores, with Thumby', "The final scores keep their crown and the +12. The card sits high, in the biggest clean band the capture found — below it — so Thumby (final character) and the same bubble go there, and nothing of the crown, the rows or the button is covered.", 1280, 720, () => {
+  let g = bg(1280, 720) + confetti(1280, 720);
+  const x = 300, y = 20, w = 680, h = 440;
+  g += card(x, y, w, h, { header: 'Final scores', hc: C.p[3], hh: 76, hs: 38 });
+  g += finalRow(330, 200, ['1', 'robo', 'Robo', '12', '+12', C.p[1]]);
+  g += finalRow(330, 300, ['2', 1, 'Phone 1719', '0', '', C.p[0]]);
+  g += btn(x + 190, 350, 300, 72, 'Back to games', { color: C.good, state: 'focus' });
+  g += placeThumby(119, 704, 163);
+  g += speechBubble(20, 470, 430, ['And the champion is… Robo!'], { size: 26, tailX: 150, tailY: 556 });
+  return g;
+}]);
+
+// ============================================================================================
+// The harness, with proposal-m17.html's frame numbers kept: FLOW[0] is frame 16, so a single frame
+// is ?frame=16 and the renderer writes m17-f16-sunny.png. Re-render the whole set with:
+//
+//   M17_PAGE=thumby-flow.html node render/render.mjs 16:sunny 16:night 17:sunny 17:night \
+//     18:sunny 18:night 19:sunny 19:night 20:sunny 20:night 21:sunny 21:night
+//
+// (M17_OUT is left at its default, m17-f{frame}; the theme is appended.)
+// ============================================================================================
+const FLOW0 = 16;
+function renderFlow() {
+  const out = document.getElementById('out'); out.innerHTML = '';
+  const only = q.get('frame');
+  FLOW.forEach(([title, note, w, h, draw], i) => {
+    const n = FLOW0 + i;
+    if (only != null && +only !== n) return;
+    uid = n * 1000; defs = [];
+    const s = svg(w, h, draw());
+    out.insertAdjacentHTML('beforeend', only != null ? s
+      : `<figure><figcaption>${n}. ${title} (${T.name}${FX ? '' : ', effects off'})<span>${note}</span></figcaption>${s}</figure>`);
+  });
+  document.querySelectorAll('.bar button').forEach(b => b.classList.toggle('on',
+    (b.id === 'b-sunny' && T === PAL.sunny) || (b.id === 'b-night' && T === PAL.night) || (b.id === 'b-fx1' && FX) || (b.id === 'b-fx0' && !FX)));
+}
+function startFlow() {
+  T = PAL[q.get('theme')] ?? PAL.sunny; FX = q.get('fx') !== '0';
+  if (q.get('frame') != null) { document.body.classList.add('single'); document.getElementById('head').remove(); }
+  else {
+    document.getElementById('b-sunny').onclick = () => { T = PAL.sunny; renderFlow(); };
+    document.getElementById('b-night').onclick = () => { T = PAL.night; renderFlow(); };
+    document.getElementById('b-fx1').onclick = () => { FX = true; renderFlow(); };
+    document.getElementById('b-fx0').onclick = () => { FX = false; renderFlow(); };
+  }
+  document.fonts.ready.then(() => renderFlow());
+  renderFlow();
+}
+startFlow();
+</script>
+</body>
+</html>

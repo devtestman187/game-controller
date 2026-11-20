@@ -22,6 +22,10 @@ choice:
 - **Play here** — this device hosts *and* plays; no separate screen.
 - **Display here** — this device is a display-only screen while another device hosts.
 
+Thumby (M17): the three-role home stays as is. Inside "Play here", Party night becomes the first,
+highlighted card in the game picker (`games_screen.dart`); the coach marks stay controller-side and
+a separate host-side first-time-host flag is added (see PROPOSAL.md "Thumby integration (M17)").
+
 ## The decided design
 
 - **Landscape**, matching the pad.

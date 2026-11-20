@@ -49,7 +49,7 @@ v2 succeeds when someone who isn't the developer can follow a one-page guide and
 **Non-goals**
 
 - A public production release on the Play Store or App Store. v2 stays on testing tracks. Production is a later step.
-- Internet play. This is still a firm non-goal. The only internet use in v2 is the opt-in analytics upload.
+- Internet play. This is still a firm non-goal. The only internet use in v2 is the opt-in analytics upload, plus (from M17) the optional "Smarter Thumby" line selector, which sends no personal data.
 - Acting as a Bluetooth gamepad (HID). Still a firm non-goal: iPhones can't do it, and free Android apps already do.
 - Streaming video, or building the streaming framework, the engine kits (Unity, Godot), the PC bridge or a browser controller. These are v3 candidates, with streaming preferred. v2 only lays the groundwork (P1 to P7, S1 to S9) and phone hosting.
 - Apple TV, Samsung, LG, Roku or Fire TV apps. The hosts are Android TV, Windows and, from M12, phones. Fire TV (Fire OS) is a cheap later addition once a test device is available, and the rest are v3 stream-receiver candidates (see Platform direction).
@@ -443,7 +443,7 @@ v1's requirements still apply. These are added or changed.
 
 ## Architecture changes
 
-The architecture stays as it is: two Flutter apps, a shared protocol, a WebSocket over the local network. v2 adds two packages, a game-facing interface, phone hosting and one internet connection, used only for the analytics upload.
+The architecture stays as it is: two Flutter apps, a shared protocol, a WebSocket over the local network. v2 adds two packages, a game-facing interface, phone hosting and one internet connection, used for the analytics upload. M17 adds a second internet use: the optional "Smarter Thumby" switch (default on, in settings) calls a thin endpoint to choose among vetted line IDs. It sends only numbers and closed-set IDs (never nicknames, device names, IPs, codes, photos or free text), receives nothing generated, and falls back to the on-device rule director when offline or off. The privacy policy and store data forms are updated when it ships.
 
 ```
  TV or PC hosts (as today)               Phone hosts (M12)
@@ -482,6 +482,7 @@ Numbering continues from v1, so tags stay unique (m7 and later). Each milestone 
 | M14 | Party night | Turns rounds into a party: points, a night of 3 or 5 rounds with a scoreboard, the cat, end-of-night awards, nicknames and best times. Built on M13's characters and sound, before outside testers judge it |
 | M15 | More party, content and the first outside playtest | Adds power-ups and more chaos if M14's night lands, all 9 puzzles and tuning, and puts it in testers' hands, who judge the party features too |
 | M16 | Friendlier start and the UX review's fixes | Applies the measured player-flow fixes and the home screen + coach marks, so testers meet the friendlier start and the fixed flow |
+| M17 | Thumby, the AI host | A pre-rendered, vetted-line host for the party night, built on M16's identity, awards and phone-fit layout |
 
 The Apple and Google account sign-ups should start during M7, because verification can take several days.
 
@@ -864,6 +865,39 @@ In build order (impact ÷ effort; see PROPOSAL.md "Recommendations at a glance")
 - [ ] Every touch target is at least 48 dp, the connect pill's label does not truncate at 667×375,
   and the slider a11y values match their labels.
 - [ ] Full `tools/check.sh` green, coverage not below 92.9%, and no `lib/` file over 380 lines.
+
+**Prepares for M17 Thumby** (hooks M16 must provide; see PROPOSAL.md "Thumby integration (M17)")
+
+- Party night is the first, highlighted card in the game picker; the three-role home stays.
+- The night cards (start, scoreboard, reveal, results) fit a ~360x640 dp phone host and leave room
+  for Thumby's corner head + 2-line caption strip (S) or bubble (M/L). Measuring this is a prerequisite.
+- Item 5: each colour + accessory combination has a stable ID and a display/spoken name ("the Red
+  Bow"); nicknames are caption-only, never spoken.
+- Item 6: the reveal and final screens leave a caption/bubble slot, ceremony order 3rd -> 2nd -> 1st,
+  and timing that tolerates a spoken line (missed-award 2 s may be too short; a design point).
+- A host-side first-time-host flag, used by the coach marks and Thumby's lobby explainer.
+- Lobby events (player joined, look picked, game chosen) exposed as providers/events.
+- Sound: Thumby gets its own voice channel/volume and music ducking later; `sound.dart` (375/380
+  lines) does not grow in M16.
+
+## Milestone 17: Thumby, the AI host
+
+**Settled** (owner accepted all answers, Nov 20, 2026). Plan: `docs/briefs/m17/ux-review/PROPOSAL-v2.md`.
+
+- Thumby hosts a whole party in 7 beats (intro, lobby, pre-game, after-round, leaderboard, party end;
+  in-round stays silent) plus an optional end-of-party bonus round with its own mini-podium.
+- It never generates anything at run time: pre-written, human-reviewed, compositional lines
+  (fixed phrases plus closed-set slots) pre-rendered with Kokoro-82M `af_heart` (Apache-2.0); captions
+  always on; a ~5-7 MB voice pack. Jokes only about thumbs and games.
+- Now: a rule-based Director turns events into facts, picks lines and feeds a speech queue.
+- Later (Option B): an optional live LLM selector returns only vetted line IDs and slot values,
+  validated on device, with the rule selector as the fallback. The interface is fixed now.
+- Phone-host first: a small corner head + caption strip, growing to a bubble on tablet/TV/Windows.
+  Host screen only; joined phones stay silent (no protocol change).
+- The bonus round is a scoring rule on an existing game (`pointsScale`); it never changes the champion.
+- Phases: 0 decisions + phone-fit measurement, 1 captions-only, 2 voice pack, 3 lobby + first-time
+  host, 4 ceremony + stories, 5 bonus round, 6 Option B, 7 tablet/TV polish: about 34-45 flash jobs.
+- Needs M16 items 5 and 6 and the hooks above first.
 
 ## Test strategy
 

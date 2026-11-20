@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Thumby — final character sheet (M17)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800&display=block" rel="stylesheet">
+<style>
+  body { margin: 0; font-family: Nunito, sans-serif; background: #f3efe6; color: #1e1646; }
+  body.single { background: transparent; }
+  header { padding: 20px 24px 8px; }
+  h1 { font-family: Fredoka, sans-serif; font-weight: 600; margin: 0 0 6px; }
+  .bar button { font: 700 15px Nunito, sans-serif; padding: 8px 14px; margin-right: 6px; border: 3px solid #1e1646; border-radius: 99px; background: #fff6e3; cursor: pointer; }
+  .bar button.on { background: #ffd23f; }
+  figure { margin: 18px 24px 28px; }
+  figcaption { font-weight: 700; margin-bottom: 8px; max-width: 1280px; }
+  figcaption span { font-weight: 600; opacity: .75; display: block; }
+  svg { display: block; max-width: 100%; height: auto; }
+  body.single svg { max-width: none; }
+</style>
+</head>
+<body>
+<header id="head">
+  <h1>Thumby — the final character sheet</h1>
+  <p>The owner's exact combination, drawn as one character. The <strong>body</strong> is I3 Rally's
+  tall thumb leaning 6° (pad head, narrow neck, fist end, slim mitten arms, about 2.4 : 1); the
+  <strong>face</strong> is I1 Cheer's — brows, a small nose and a wide grin — set high under the pad where
+  Rally's face sat, so no bold-brow shout. One small <strong>V1 mic</strong> is held in a mitten hand.
+  The <strong>lower body is smooth</strong>: Rally's three stacked joint folds are gone, so there is not
+  one horizontal line. The oval <strong>nail</strong> is filled with a bright rainbow polish inside its
+  hard ink outline: the sheet's one deliberate colour pop. Sunny only, 1280×720, one frame
+  (<code>?frame=0&amp;theme=sunny</code>). Reuses <code>mockup-parts.js</code> and the M17 frame harness.</p>
+  <div class="bar">
+    <button id="b-sunny">Sunny</button><button id="b-night">Night</button>
+    <button id="b-fx1">Effects on</button><button id="b-fx0">Effects off</button>
+  </div>
+</header>
+<main id="out"></main>
+<script src="mockup-parts.js"></script>
+<script>
+// ============================================================================================
+// THUMBY — THE FINAL CHARACTER SHEET (Sunny). The owner's exact combination:
+//
+//   BODY   I3 Rally's silhouette, unchanged: a tall thumb leaning 6°, pad head, narrow neck,
+//          fist end, slim mitten arms, about 2.4 : 1.
+//   FACE   I1 Cheer's face, moved UP to where Rally's face sat: two brows, a small nose and a
+//          WIDE GRIN high under the pad. Rally's bold-brow open shout is not used.
+//   PROP   V1's small handheld mic, in the right mitten hand — small against the pad head.
+//   BASE   Rally's three stacked joint folds are REMOVED. Nothing crosses the lower body sideways.
+//   NAIL   The oval nail plate is filled with rainbow polish — six bright stripes inside the pale
+//          nail plate, with the hard ink outline kept around the plate. The sheet's one colour pop.
+//
+// Style: Toy Box Toon — navy #1E1646 ink outline + hard ink shadow, peach-cream #FFD1A8 skin in
+// the look's hard-stop radial fill, lighter #FFF2DD nail plate, pink #FF7A9A mouth. No player colours.
+// ============================================================================================
+const SK = { skin: '#FFD1A8', light: '#FFE6CA', high: '#FFF0DE', shade: '#E9A978', deep: '#CE8349',
+  nail: '#FFF2DD' };
+const GEAR = { body: '#C9D2E8', dark: '#8C9BD8' };   // V1's mic grey-blue; never a player colour
+const RB = ['#E23B30', '#F6851F', '#FFCF3A', '#34A853', '#2E63D8', '#6C3FB5']; // rainbow polish
+
+// ---- the look's skin fill: a radial with a hard highlight band, the base, a shade band, a dark rim
+function skinPaint() {
+  const id = 'sk' + (++uid);
+  defs.push(`<radialGradient id="${id}" cx="33%" cy="32%" r="96%">
+    <stop offset="0" stop-color="${SK.high}"/><stop offset=".16" stop-color="${SK.high}"/>
+    <stop offset=".16" stop-color="${SK.light}"/>
+    <stop offset=".52" stop-color="${SK.skin}"/>
+    <stop offset=".82" stop-color="${SK.shade}"/>
+    <stop offset="1" stop-color="${SK.deep}"/></radialGradient>`);
+  return `url(#${id})`;
+}
+
+// ---- body layers: hard ink shadow under it, the peach body, and the outline again on top of the
+//      features (so the rainbow nail that reaches the silhouette is cut by the ink outline)
+function bodyLayers(d, o = {}) {
+  const clip = 'cut' + (++uid);
+  defs.push(`<clipPath id="${clip}"><path d="${d}"/></clipPath>`);
+  const ow = o.ow ?? .052;
+  return {
+    under: `<path d="${d}" transform="translate(${o.sdx ?? .085} ${o.sdy ?? .115})" fill="${T.ink}" fill-opacity=".18"/>` +
+      `<path d="${d}" fill="${skinPaint()}" stroke="${T.ink}" stroke-width="${ow}" stroke-linejoin="round"/>`,
+    clip: `clip-path="url(#${clip})"`,
+    over: `<path d="${d}" fill="none" stroke="${T.ink}" stroke-width="${ow}" stroke-linejoin="round"/>`,
+  };
+}
+function host(x, y, rx, ry) {
+  return `<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" fill="${T.ink}" fill-opacity=".14"/>`;
+}
+// a soft gloss — always drawn upright-ish, so it can never read as a band across the body
+function sheen(x, y, rx, ry, rot) {
+  return `<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" fill="#fff" fill-opacity=".58" transform="rotate(${rot} ${x} ${y})"/>`;
+}
+// ---- Cheer's eyes: a big white eye with an ink pupil and a glint
+function eye(x, y, rx, ry, o = {}) {
+  const lw = o.lw ?? .032, px = o.px ?? .03, py = o.py ?? .014;
+  return `<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" fill="#fff" stroke="${T.ink}" stroke-width="${lw}"/>` +
+    `<circle cx="${(x + px).toFixed(4)}" cy="${(y + py).toFixed(4)}" r="${(Math.min(rx, ry) * .44).toFixed(4)}" fill="${T.ink}"/>` +
+    `<circle cx="${(x + px - rx * .30).toFixed(4)}" cy="${(y + py - ry * .30).toFixed(4)}" r="${(Math.min(rx, ry) * .17).toFixed(4)}" fill="#fff"/>`;
+}
+// ---- Cheer's brow: a bold, friendly arc
+function brow(x, y, w, h, lw = .052, rot = 0) {
+  return `<path d="M${(x - w).toFixed(3)} ${(y + h).toFixed(3)} Q${x.toFixed(3)} ${(y - h * 1.2).toFixed(3)} ${(x + w).toFixed(3)} ${(y + h * .5).toFixed(3)}" fill="none" stroke="${T.ink}" stroke-width="${lw}" stroke-linecap="round" transform="rotate(${rot} ${x} ${y})"/>`;
+}
+// ---- Cheer's small nose: one short hooked line
+function nose(x, y, s = .05) {
+  return `<path d="M${x.toFixed(3)} ${y.toFixed(3)} q${(-s).toFixed(3)} ${(s * .8).toFixed(3)} 0 ${(s * 1.4).toFixed(3)}" fill="none" stroke="${T.ink}" stroke-opacity=".62" stroke-width=".030" stroke-linecap="round"/>`;
+}
+// ---- the WIDE GRIN: wide and shallow, corners up — teeth at the top, a pink tongue low, so it
+//      reads as a grin and never as Rally's tall open shout
+function grin(x, y, w, h, o = {}) {
+  const lw = o.lw ?? .040;
+  const d = `M${(x - w).toFixed(3)} ${y.toFixed(3)} Q${x.toFixed(3)} ${(y + h * .16).toFixed(3)} ${(x + w).toFixed(3)} ${y.toFixed(3)} ` +
+    `Q${(x + w * .60).toFixed(3)} ${(y + h * .96).toFixed(3)} ${x.toFixed(3)} ${(y + h * 1.02).toFixed(3)} ` +
+    `Q${(x - w * .60).toFixed(3)} ${(y + h * .96).toFixed(3)} ${(x - w).toFixed(3)} ${y.toFixed(3)} Z`;
+  const cid = 'gn' + (++uid);
+  defs.push(`<clipPath id="${cid}"><path d="${d}"/></clipPath>`);
+  let g = `<path d="${d}" fill="${T.ink}"/>`;
+  g += `<g clip-path="url(#${cid})">` +
+    // the upper teeth, a wide band right under the top lip
+    `<path d="M${(x - w * 1.2).toFixed(3)} ${(y - h * .30).toFixed(3)} L${(x + w * 1.2).toFixed(3)} ${(y - h * .30).toFixed(3)} ` +
+    `L${(x + w * 1.2).toFixed(3)} ${(y + h * .52).toFixed(3)} Q${x.toFixed(3)} ${(y + h * .62).toFixed(3)} ${(x - w * 1.2).toFixed(3)} ${(y + h * .52).toFixed(3)} Z" fill="#FFF6E3"/>` +
+    // the pink tongue low in the grin
+    `<ellipse cx="${x.toFixed(3)}" cy="${(y + h * .98).toFixed(3)}" rx="${(w * .40).toFixed(3)}" ry="${(h * .34).toFixed(3)}" fill="#FF7A9A"/>` +
+    `</g>`;
+  g += `<path d="${d}" fill="none" stroke="${T.ink}" stroke-width="${lw}" stroke-linejoin="round"/>`;
+  return g;
+}
+// ---- THE RAINBOW NAIL. The oval plate is Rally's: a lighter nail plate with a hard ink outline kept
+//      around it. Inside sits the rainbow polish — six bright stripes across the plate, with a gloss
+//      and a hard shade so it still reads as a curved nail. This is the sheet's one colour pop.
+function rainbowNail(x, y, rx, ry, rot, o = {}) {
+  const ow = o.ow ?? .042;
+  const ins = o.inset ?? .80;              // the pale nail plate shows as a thin rim under the polish
+  const n = o.bands ?? 6;
+  const ri = rx * ins, rj = ry * ins;
+  const f = o.free ?? .62;                 // where the free edge sits on the plate
+  const cid = 'rb' + (++uid);
+  defs.push(`<clipPath id="${cid}"><ellipse cx="${x}" cy="${y}" rx="${ri}" ry="${rj}"/></clipPath>`);
+  let g = `<g transform="rotate(${rot} ${x} ${y})">`;
+  // the hard ink shadow under the plate
+  g += `<ellipse cx="${(x + .018).toFixed(3)}" cy="${(y + .045).toFixed(3)}" rx="${rx}" ry="${ry}" fill="${T.ink}" fill-opacity=".20"/>`;
+  // the lighter nail plate UNDER the rainbow
+  g += `<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" fill="${SK.nail}"/>`;
+  // the rainbow polish, clipped inside the plate
+  g += `<g clip-path="url(#${cid})">`;
+  const bw = (2 * ri) / n;
+  for (let i = 0; i < n; i++) {
+    const sx = x - ri + i * bw;
+    g += `<rect x="${(sx - .002).toFixed(3)}" y="${(y - rj - .02).toFixed(3)}" width="${(bw + .004).toFixed(3)}" height="${(2 * rj + .04).toFixed(3)}" fill="${RB[i % RB.length]}"/>`;
+  }
+  // a hard shade at the base of the polish, so the plate still curves, and one thin gloss-free edge
+  g += `<ellipse cx="${x}" cy="${(y + rj * 1.04).toFixed(3)}" rx="${(ri * 1.05).toFixed(3)}" ry="${(rj * .44).toFixed(3)}" fill="${T.ink}" fill-opacity=".11"/>`;
+  // the free edge of the nail, a thin pale arc at the tip (a nail, not a badge)
+  const fx = rx * Math.sqrt(Math.max(.05, 1 - f * f));
+  g += `<path d="M${(x - fx).toFixed(3)} ${(y - ry * f).toFixed(3)} Q${x.toFixed(3)} ${(y - ry * (f + .30)).toFixed(3)} ${(x + fx).toFixed(3)} ${(y - ry * f).toFixed(3)}" fill="none" stroke="#fff" stroke-opacity=".80" stroke-width=".026" stroke-linecap="round"/>`;
+  g += `</g>`;
+  // the hard ink outline AROUND the nail plate
+  g += `<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" fill="none" stroke="${T.ink}" stroke-width="${ow}"/>`;
+  // the cuticle fold just under the plate (a nail detail, never a band across the body)
+  g += `<path d="M${(x - rx * .64).toFixed(3)} ${(y + ry * .92).toFixed(3)} Q${x.toFixed(3)} ${(y + ry * 1.30).toFixed(3)} ${(x + rx * .64).toFixed(3)} ${(y + ry * .92).toFixed(3)}" fill="none" stroke="${T.ink}" stroke-opacity=".28" stroke-width=".026" stroke-linecap="round"/>`;
+  g += '</g>';
+  return g;
+}
+// ---- a slim mitten arm: ink limb with the skin laid inside it, drawn BEHIND the body so it comes
+//      out from behind the silhouette; the mitten hand is drawn over its end
+function arm(x1, y1, x2, y2, w = .17, sag = 0.02) {
+  const mx = (x1 + x2) / 2, my = (y1 + y2) / 2 + sag;
+  const d = `M${x1} ${y1} Q${mx} ${my} ${x2} ${y2}`;
+  return `<path d="${d}" fill="none" stroke="${T.ink}" stroke-width="${w}" stroke-linecap="round"/>` +
+    `<path d="${d}" fill="none" stroke="${SK.skin}" stroke-width="${(w - .095).toFixed(3)}" stroke-linecap="round"/>`;
+}
+function hand(x, y, r = .10) {
+  return `<circle cx="${x}" cy="${y}" r="${r}" fill="${SK.light}" stroke="${T.ink}" stroke-width=".045"/>`;
+}
+// a short motion mark (Rally's ink dashes), outside the silhouette so it is never a body line
+function dash(x, y, len, ang, lw = .042, op = .40, bow = 0) {
+  const a = ang * Math.PI / 180, dx = Math.cos(a) * len / 2, dy = Math.sin(a) * len / 2;
+  const d = bow
+    ? `M${(x - dx).toFixed(3)} ${(y - dy).toFixed(3)} Q${(x + Math.cos(a + 1.57) * bow).toFixed(3)} ${(y + Math.sin(a + 1.57) * bow).toFixed(3)} ${(x + dx).toFixed(3)} ${(y + dy).toFixed(3)}`
+    : `M${(x - dx).toFixed(3)} ${(y - dy).toFixed(3)} L${(x + dx).toFixed(3)} ${(y + dy).toFixed(3)}`;
+  return `<path d="${d}" fill="none" stroke="${T.ink}" stroke-opacity="${op}" stroke-width="${lw}" stroke-linecap="round"/>`;
+}
+// ---- V1's small handheld mic, at body scale: a gear-blue ball with grille bars, a short handle.
+//      The head sits at (x, y) and the whole mic is rotated by `ang`; the handle runs down from it.
+function smallMic(x, y, ang, o = {}) {
+  const ink = T.ink, ow = o.ow ?? .034;
+  const hr = o.hr ?? .092, hw = o.hw ?? .074, hl = o.hl ?? .30;
+  const rad = ang * Math.PI / 180;
+  let g = `<g transform="rotate(${ang} ${x} ${y})">`;
+  // the handle, ink outline and gear-dark fill, with a lighter wrap near the head
+  g += `<rect x="${(x - hw / 2).toFixed(3)}" y="${(y + hr * .62).toFixed(3)}" width="${hw.toFixed(3)}" height="${hl.toFixed(3)}" rx="${(hw / 2).toFixed(3)}" fill="${GEAR.dark}" stroke="${ink}" stroke-width="${ow}"/>`;
+  g += `<rect x="${(x - hw / 2).toFixed(3)}" y="${(y + hr * .62 + hl * .07).toFixed(3)}" width="${hw.toFixed(3)}" height="${(hl * .12).toFixed(3)}" rx="${(hw * .4).toFixed(3)}" fill="${GEAR.body}"/>`;
+  // the head, drawn over the handle's top: a gear-blue ball with three grille bars and a glint
+  g += `<circle cx="${x}" cy="${y}" r="${hr}" fill="${GEAR.body}" stroke="${ink}" stroke-width="${ow}"/>`;
+  [-.34, 0, .34].forEach(d => {
+    const half = hr * Math.sqrt(1 - d * d) * .84;
+    g += `<path d="M${(x - half).toFixed(3)} ${(y + d * hr).toFixed(3)} H${(x + half).toFixed(3)}" stroke="${ink}" stroke-opacity=".32" stroke-width="${(hr * .15).toFixed(3)}" stroke-linecap="round"/>`;
+  });
+  g += `<ellipse cx="${(x - hr * .34).toFixed(3)}" cy="${(y - hr * .38).toFixed(3)}" rx="${(hr * .22).toFixed(3)}" ry="${(hr * .14).toFixed(3)}" fill="#fff" fill-opacity=".9" transform="rotate(-28 ${x} ${y})"/>`;
+  g += '</g>';
+  // where the fist grips the handle, so the caller can put the mitten hand there
+  const grip = o.grip ?? .32;
+  return { svg: g, gx: x + (-Math.sin(rad)) * grip, gy: y + Math.cos(rad) * grip };
+}
+
+// ============================================================================================
+// THUMBY, FRONT.  Rally's body (I3) unchanged; Cheer's face (I1) high under the pad; one small mic.
+// No folds on the fist end, so the lower body is one clean surface.
+// ============================================================================================
+const D3 = 'M-0.43 1.00 C-0.49 0.92 -0.49 0.80 -0.45 0.66 C-0.40 0.46 -0.34 0.22 -0.31 0.00 ' +
+  'C-0.29 -0.16 -0.32 -0.30 -0.38 -0.44 C-0.46 -0.62 -0.50 -0.84 -0.42 -1.04 ' +
+  'C-0.34 -1.24 -0.14 -1.35 0.04 -1.35 C0.24 -1.35 0.44 -1.21 0.48 -1.01 ' +
+  'C0.52 -0.81 0.44 -0.61 0.38 -0.45 C0.33 -0.31 0.31 -0.18 0.32 -0.03 ' +
+  'C0.34 0.20 0.37 0.44 0.40 0.64 C0.43 0.80 0.43 0.94 0.34 1.00 ' +
+  'C0.18 1.10 -0.26 1.10 -0.43 1.00 Z';
+
+function finalFront(cx, cy, s) {
+  const b = bodyLayers(D3);
+  const mic = smallMic(0.465, -0.255, -20, { grip: .315, hr: .092, hw: .074, hl: .30 });
+  let g = `<g transform="translate(${cx} ${cy}) scale(${s}) rotate(6)">`;
+  g += host(0.00, 1.08, 0.50, 0.070);
+  // slim mitten arms, behind the body: the free arm raised, the mic arm up to the grin
+  g += arm(-0.30, 0.10, -0.57, -0.11, 0.17, 0.02);
+  g += arm(0.30, 0.16, mic.gx, mic.gy, 0.16, 0.012);
+  g += b.under;
+  g += `<g ${b.clip}>`;
+  g += sheen(-0.34, -1.03, 0.080, 0.032, -64);
+  g += sheen(-0.46, -0.52, 0.090, 0.032, -58);
+  // the rainbow nail on the pad: a flat oval plate, the pale plate and its ink outline kept.
+  // ENLARGED ~1.45x (was .235/.128 at y -.965) so it dominates the crown of the pad; the plate
+  // still sits inside the pad silhouette, with the brows/eyes/grin kept clear below it.
+  g += rainbowNail(0.04, -1.01, 0.335, 0.187, 14);
+  // Cheer's face, moved up under the pad: brows, eyes, nose, wide grin
+  g += eye(-0.155, -0.375, 0.130, 0.158, { px: .030, py: .012 });
+  g += eye(0.175, -0.375, 0.130, 0.158, { px: .032, py: .012 });
+  g += brow(-0.170, -0.605, 0.125, 0.052, 0.052, -6);
+  g += brow(0.165, -0.590, 0.125, 0.052, 0.052, -2);
+  g += nose(0.02, -0.270, 0.048);
+  g += grin(0.02, -0.135, 0.225, 0.145);
+  g += '</g>' + b.over;
+  // the small mic, then the mitten hands over the arm ends and the mic grip
+  g += mic.svg;
+  g += hand(mic.gx, mic.gy, 0.100);
+  g += hand(-0.60, -0.145, 0.105);
+  // Rally's ink dashes, kept outside the silhouette
+  g += dash(-0.88, -0.62, 0.12, 66, 0.042, 0.40, 0.04);
+  g += dash(-0.91, -0.24, 0.10, 78, 0.038, 0.32, 0.03);
+  g += `</g>`;
+  return g;
+}
+
+// ============================================================================================
+// THUMBY, SIDE.  Rally's slim side body; Cheer's face in profile; the rainbow nail foreshortened;
+// the small mic held out in front. Again: no folds, so no line crosses the lower body.
+// ============================================================================================
+const D3S = 'M-0.34 0.98 C-0.40 0.90 -0.40 0.78 -0.37 0.64 C-0.33 0.44 -0.28 0.22 -0.26 0.00 ' +
+  'C-0.24 -0.16 -0.26 -0.30 -0.30 -0.44 C-0.36 -0.62 -0.39 -0.84 -0.33 -1.04 ' +
+  'C-0.27 -1.24 -0.11 -1.35 0.03 -1.35 C0.18 -1.35 0.33 -1.21 0.36 -1.01 ' +
+  'C0.39 -0.81 0.34 -0.61 0.29 -0.45 C0.25 -0.31 0.24 -0.18 0.25 -0.03 ' +
+  'C0.27 0.20 0.29 0.44 0.31 0.64 C0.33 0.80 0.33 0.94 0.26 0.98 ' +
+  'C0.13 1.08 -0.20 1.08 -0.34 0.98 Z';
+
+function finalSide(cx, cy, s) {
+  const b = bodyLayers(D3S);
+  const mic = smallMic(0.400, -0.250, -8, { grip: .30, hr: .088, hw: .066, hl: .28, ow: .030 });
+  let g = `<g transform="translate(${cx} ${cy}) scale(${s}) rotate(6)">`;
+  g += host(0.02, 1.06, 0.38, 0.056);
+  g += arm(0.10, 0.18, mic.gx, mic.gy, 0.15, 0.010);
+  g += b.under;
+  g += `<g ${b.clip}>`;
+  g += sheen(-0.18, -1.02, 0.055, 0.024, -68);
+  g += sheen(-0.28, -0.48, 0.062, 0.025, -60);
+  // the same nail, foreshortened: enlarged by the same factor and re-centred on the narrow profile
+  g += rainbowNail(-0.08, -0.980, 0.205, 0.145, -6, { ow: .034, bands: 6 });
+  g += eye(0.035, -0.395, 0.105, 0.132, { px: .018, py: .010 });
+  g += brow(0.020, -0.575, 0.095, 0.040, 0.048, -6);
+  g += nose(0.130, -0.255, 0.042);
+  g += grin(0.035, -0.160, 0.145, 0.115);
+  g += '</g>' + b.over;
+  g += mic.svg;
+  g += hand(mic.gx, mic.gy, 0.085);
+  g += dash(-0.46, -0.62, 0.09, 62, 0.034, 0.34, 0.03);
+  g += `</g>`;
+  return g;
+}
+
+// ============================================================================================
+// THE SHEET: the name in the title type, a large front view and a small side view on a paper stage,
+// and the notes card with the five specs and the skin / ink / rainbow-nail swatches.
+// ============================================================================================
+const HERO_CX = 252, SMALL_CX = 628, FLOOR = 592;
+const HERO_BB = [-0.93, -1.36, 0.70, 1.10];
+const SMALL_BB = [-0.55, -1.36, 0.56, 1.09];
+
+function placeView(bb, draw, cx, h) {
+  const s = h / (bb[3] - bb[1]);
+  return draw(cx, FLOOR - bb[3] * s, s);
+}
+// the rainbow-nail swatch: the same six polish stripes inside a pale plate and an ink ring
+function rainbowSwatch(cx, cy, r) {
+  const cid = 'sw' + (++uid);
+  defs.push(`<clipPath id="${cid}"><circle cx="${cx}" cy="${cy}" r="${r - 2.5}"/></clipPath>`);
+  let g = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${SK.nail}"/>`;
+  g += `<g clip-path="url(#${cid})">`;
+  const bw = (2 * (r - 2.5)) / 6;
+  for (let i = 0; i < 6; i++) g += `<rect x="${(cx - (r - 2.5) + i * bw).toFixed(1)}" y="${cy - r}" width="${(bw + .3).toFixed(1)}" height="${2 * r}" fill="${RB[i]}"/>`;
+  g += `</g>`;
+  g += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${T.ink}" stroke-width="3.5"/>`;
+  return g;
+}
+
+function finalSheet() {
+  const ink = T.ink;
+  let g = bg(1280, 720);
+  // ---- title: the name in the title type
+  g += txt(56, 46, `THUMBY · FINAL CHARACTER SHEET · RALLY BODY + CHEER FACE · SUNNY`, 15,
+    { font: 'Nunito', w: 800, fill: T.onBg, extra: 'letter-spacing="1.7" opacity=".62"' });
+  g += txt(54, 112, 'Thumby', 64);
+  g += txt(58, 152, `Rally's tall leaning body, Cheer's face high under the pad, one small mic, a smooth base, a rainbow nail.`, 20, { font: 'Nunito', w: 800, fill: T.onBg, extra: 'opacity=".82"' });
+
+  // ---- the stage
+  g += card(44, 176, 756, 496, { fill: T.paper, ow: 4 });
+  g += `<line x1="82" y1="${FLOOR + 10}" x2="766" y2="${FLOOR + 10}" stroke="${T.ink}" stroke-opacity=".17" stroke-width="3" stroke-linecap="round"/>`;
+  g += placeView(HERO_BB, finalFront, HERO_CX, 368);
+  g += placeView(SMALL_BB, finalSide, SMALL_CX, 230);
+  g += txt(HERO_CX, 626, 'FRONT VIEW', 14, { anchor: 'middle', font: 'Nunito', w: 800, extra: 'letter-spacing="2.2" opacity=".55"' });
+  g += txt(SMALL_CX, 626, 'SIDE VIEW', 14, { anchor: 'middle', font: 'Nunito', w: 800, extra: 'letter-spacing="2.2" opacity=".55"' });
+  g += txt(HERO_CX, 650, 'tall thumb leaning 6° · wide grin high under the pad · small mic', 12, { anchor: 'middle', font: 'Nunito', w: 700, extra: 'opacity=".48"' });
+  g += txt(SMALL_CX, 650, 'profile · the rainbow nail foreshortened', 12, { anchor: 'middle', font: 'Nunito', w: 700, extra: 'opacity=".48"' });
+
+  // ---- spec callouts on the front view: the rainbow nail, the small mic, the smooth base
+  const co = (label, lx, ly, anchor, tx, ty, sx, sy) => {
+    let c = txt(lx, ly, label, 12, { anchor, font: 'Nunito', w: 800, fill: ink, extra: 'letter-spacing="1.8" opacity=".60"' });
+    c += `<path d="M${sx} ${sy} L${tx} ${ty}" stroke="${ink}" stroke-opacity=".42" stroke-width="2"/>`;
+    c += `<circle cx="${tx}" cy="${ty}" r="3.4" fill="${ink}" fill-opacity=".55"/>`;
+    return c;
+  };
+  g += co('RAINBOW NAIL', 270, 202, 'middle', 270, 238, 270, 213);
+  g += co('SMALL MIC', 398, 383, 'start', 340, 393, 392, 385);
+  g += co('SMOOTH BASE · NO FOLDS', 360, 516, 'start', 290, 533, 354, 519);
+
+  // ---- the notes card
+  const x = 824, y = 176, w = 412, h = 496;
+  g += card(x, y, w, h, { header: 'Thumby — the final combination', hc: SK.light, hh: 52, hs: 21 });
+  const secs = [
+    ['BODY — FROM I3 RALLY', ['The tall leaning thumb kept whole: pad', 'head, narrow neck, fist end, slim arms, ~2.4 : 1.']],
+    ['FACE — FROM I1 CHEER', ['Brows, a small nose and a WIDE grin, set', 'high under the pad — no bold-brow shout.']],
+    ['PROP — ONE SMALL MIC · SMOOTH BASE', ["V1's small mic in one mitten hand; the lower", 'body has no joint folds and no lines at all.']],
+    ['NAIL — RAINBOW POLISH', ['Six bright stripes inside the pale nail plate;', 'the hard ink outline stays around the plate.']],
+  ];
+  secs.forEach(([label, lines], i) => {
+    const top = y + 78 + i * 68;
+    g += txt(x + 32, top, label, 12, { font: 'Nunito', w: 800, fill: ink, extra: 'letter-spacing="1.2" opacity=".50"' });
+    lines.forEach((line, j) => g += txt(x + 32, top + 24 + j * 21, line, 13.5, { font: 'Nunito', w: 800 }));
+  });
+  g += `<line x1="${x + 24}" y1="${y + 336}" x2="${x + w - 24}" y2="${y + 336}" stroke="${ink}" stroke-opacity=".16" stroke-width="2"/>`;
+  // ---- the swatches: skin / ink / rainbow nail
+  g += txt(x + 32, y + 358, 'SKIN / INK / RAINBOW NAIL', 12, { font: 'Nunito', w: 800, fill: ink, extra: 'letter-spacing="1.3" opacity=".50"' });
+  const sw = [
+    { label: 'skin', note: '#FFD1A8', draw: (cx, cy) => `<circle cx="${cx}" cy="${cy}" r="22" fill="${SK.skin}" stroke="${ink}" stroke-width="3.5"/>` },
+    { label: 'ink', note: '#1E1646', draw: (cx, cy) => `<circle cx="${cx}" cy="${cy}" r="22" fill="${ink}" stroke="${ink}" stroke-width="3.5"/>` },
+    { label: 'rainbow nail', note: '6 polish hues', draw: (cx, cy) => rainbowSwatch(cx, cy, 22) },
+  ];
+  sw.forEach((c, i) => {
+    const cx = x + 74 + i * 124, cy = y + 404;
+    g += c.draw(cx, cy);
+    g += txt(cx, cy + 43, c.label, 14, { anchor: 'middle', font: 'Nunito', w: 800 });
+    g += txt(cx, cy + 60, c.note, 11, { anchor: 'middle', font: 'Nunito', w: 700, fill: ink, extra: 'opacity=".55"' });
+  });
+  return g;
+}
+
+const F = [];
+F.push(['Thumby — the final character sheet',
+  'Body I3 Rally · face I1 Cheer · one small V1 mic · smooth base · rainbow nail — Sunny, 1280×720.',
+  1280, 720, () => finalSheet()]);
+startPage(F);
+</script>
+</body>
+</html>

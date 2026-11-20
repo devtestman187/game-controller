@@ -40,12 +40,16 @@ Notation: **now** = measured current behaviour; **proposed** = the change; **why
 4. **Player creation / colour & accessory** — now: none live (nickname field clipped to 4 px).
    proposed: nickname + colour + accessory on the phone, shown on the TV. why: stage 4; every peer has
    some identity (name/character/Mii); Thumb Party's planned colour+accessory is ahead of the field.
+   Thumby: each colour+accessory combination needs a stable ID and a spoken name ("the Red Bow");
+   nicknames are caption-only.
 5. **Lobby & waiting** — now: join-screen footer or the Arena waiting card; no ready-check, no map
    name. proposed: a per-slot ready state with a readable "Ready" (contrast) and the code on-screen.
    why: CC 12; LEGO per-slot ready, AirConsole "Has everyone joined?", Jackbox VIP start — none auto-start.
+   Thumby: expose player joined / look picked / game chosen as events; a host-side first-time-host flag.
 6. **Game selection** — now: "Pick round 1" sits 466 px below the fold; card text truncates. proposed:
    move the action above the fold and stop the ellipsis. why: `vf-tv-01`; Wii Party shows count+duration
    before commitment.
+   Thumby: Party night is the first, highlighted card; the three-role home stays.
 7. **Round intro / countdown** — now: TV 3-2-1 card, phone shows nothing; HUD band jumps 108→284 px.
    proposed: stable band; the phone shows the countdown. why: CC 1; Mario Party/LEGO give a rules/controls
    beat; AirConsole owns a 3 s resume countdown.
@@ -58,12 +62,14 @@ Notation: **now** = measured current behaviour; **proposed** = the change; **why
 10. **Results / scoreboard** — now: coins→points are never reconciled; "Round 1" drawn twice;
     `+43` at 1.97:1. proposed: one numbering ("Round 2 of 3"), convert coins→points visibly, fix `good`
     text. why: CC 2, 12; Mario Party/LEGO have a clear ranking + tiebreak.
+    Thumby: scoreboard cards must fit a phone host and leave the caption strip free.
 11. **Next round / Play again** — now: one press picks *and* starts the next game, no confirm.
     proposed: a confirm, or a distinct "Play again". why: `vf-2dev-round`; Wii Party offers "replay the
     same game".
 12. **End of night** — now: the three awards are promised on setup but never appear. proposed: deliver
     them at the end. why: CC 21; Mario Party/LEGO/Wii Party all end with a ceremony; none has a
     cross-game summary, so skip that.
+    Thumby: leave a caption/bubble slot, ceremony order 3rd -> 2nd -> 1st, timing that tolerates speech.
 13. **Re-entry after a drop** — now: slot vanishes in 0.9 s, no away state; host-away shows no card.
     proposed: "away" state + grace period + side restore; host-away card on the phone. why: stage 13;
     AirConsole reserves `device_id`; Jackbox pauses 5 min on host drop.
@@ -81,6 +87,31 @@ Notation: **now** = measured current behaviour; **proposed** = the change; **why
 | 7 | Consistency pass (numbering, map name, clock, Resume) | Med | Low | No |
 | 8 | 48 dp targets + truncation | Med | Low | No |
 | 9 | Accessibility (slider values, a11y strings) | Med | Low | No |
+
+## Thumby integration (M17)
+
+The AI host "Thumby" is settled (`docs/briefs/m17/ux-review/PROPOSAL-v2.md`, owner answers Nov 20)
+and is built in M17 on top of M16. M16 changes no behaviour for it, but must be built so it slots in:
+
+- **Picker.** Party night is the **first, highlighted card** in the game picker (`games_screen.dart`).
+  The three-role home (Join / Play here / Display here) stays unchanged.
+- **Phone host first (prerequisite).** The night cards (start, scoreboard, reveal, results) are
+  fixed-width for 1280x720 (`nightStartCardWidthPx` 1040, `nightScoreCardWidthPx` 900,
+  `nightRevealCardWidthPx` 860). M16 must make them fit a ~360x640 dp phone host and reserve room for
+  Thumby: a 56 dp corner head plus a 2-line caption strip (S, phone), a bubble on tablet/TV (M/L).
+  **Measuring how they fit a phone is a prerequisite** (unverified today; no FittedBox or breakpoint).
+- **Identity (item 5).** Each colour + accessory combination (36) gets a **stable ID** and a
+  **display/spoken name** ("the Red Bow") that M16 shows and Thumby speaks. Nicknames are caption-only,
+  never spoken.
+- **Awards (item 6).** The reveal and final screens leave a slot for Thumby's caption/bubble and use a
+  ceremony order 3rd -> 2nd -> 1st. Reveal timing must tolerate a spoken line: the missed-award 2 s
+  may be too short (a design point, not a decision).
+- **First-time-host flag (host side).** Used by the coach marks and by Thumby's lobby explainer.
+  "Show tips" is controller-side today, so this is a new host-side flag.
+- **Lobby events.** Player joined, look picked and game chosen are exposed as providers/events the
+  Thumby director can listen to (`playerJoinedProvider` exists; look pick and game choice do not).
+- **Sound.** Thumby gets its own voice channel/volume and music ducking later. M16 must **not grow
+  `sound.dart`** (375 of 380 lines).
 
 ## Every host setup
 

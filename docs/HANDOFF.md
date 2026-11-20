@@ -170,11 +170,12 @@ Privacy (hard rules; background in `docs/design/sentry-consent.md`):
 - **Gameplay or map changes are proposals to the owner**, never done unasked: write what you would change, why and the effect, then wait. **Design questions go to the owner too** (what shows where, which stats to display): write the question and the options, and meanwhile do other work.
 - Parked by the owner for M16: B-003 and B-010 (ideas). No work on them.
 
-## 7. Current state and open items (as of Nov 17, 2026)
+## 7. Current state and open items (as of Nov 20, 2026)
 
 - **M14 is closed** (Nov 17, 2026). Last release `m14.9`, version 0.14.0 build 845, tag 0e4bcca on commit cdbbdd14: Windows zip (GitHub Release), Google Play internal (both apps), TestFlight internal (not promoted).
 - **In m14.9:** B-031 (a stick disposed under a thumb crashed on a stale `ref`): fixed in `controller_app/lib/src/ui/stick_widgets.dart` (commit 231c5a68), test `controller_app/test/stick_dispose_test.dart`. Status **Fixed; device check passed (owner, Nov 17)**: a stick held while the pad went away, no crash. Run, review and verdicts: `docs/briefs/m14/bugs16/`.
 - **M16 is next, and its scope is written** (Nov 18, 2026): the evidence-driven UX review and mock-ups are done (`docs/briefs/m16/ux-review/`), and the build order is `## Milestone 16` in `docs/PRD-v2.md`. The earlier 11 UX suggestions are superseded by this fresh list. Resume from `docs/briefs/m16/STATUS.md`.
+- **M17 (AI host/commentator) UX is done** (Nov 20, 2026). The concept — a named host character **Thumby** (a cute cartoony thumb) narrating the round result, the award reveal and the final crown with a short line, text + a canned voice, host screen only — is researched and mocked under `docs/briefs/m17/` (see its `STATUS.md` and `ux-review/PROPOSAL.md`). No code written; implementation resumes from `docs/briefs/m17/STATUS.md`. Commentary layers on top of M16 item 6 (end-of-night awards).
 - **M15 streaming is parked**, not cancelled: research and three probes, nothing of the product built. Its own open items are in `docs/briefs/m15/STATUS.md` and are not M16's.
 - **Carried into M16** (not code debt: no change is needed unless a check fails): the ten device checks the owner has not run, B-017, B-018, B-019, B-020, B-021, B-023, B-027, B-028, B-029, B-030 (what to check is in `docs/briefs/m14/STATUS.md`), and the open question of whether dropped sessions show on the Stats screen. **Do not decide the Stats question; wait.**
 - **Closed since the m14.8 list:** the Sentry "Prevent Storing of IP Addresses" setting is **done** in both projects (`thumbparty-phone`, `thumbparty-tv`).
