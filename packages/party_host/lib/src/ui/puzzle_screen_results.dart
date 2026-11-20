@@ -22,9 +22,11 @@ extension _PuzzleResultsRoute on _PuzzleScreenState {
 
   /// The route asked: on the results the answer is the game picker. A round
   /// that waits for a phone that dropped stays where it is: the away card
-  /// blocks the Back and is the way on (m12 code health N1).
+  /// blocks the Back and is the way on (m12 code health N1). Only a phone the
+  /// round seats counts (M16 item 2): a lobby slot waits on no results.
   void _leaveForGames(bool didPop) {
-    if (didPop || ref.read(playersAwayProvider).isNotEmpty) return;
+    final away = ref.read(playersAwayProvider);
+    if (didPop || awayInRound(away, widget.teams.keys.toSet()).isNotEmpty) return;
     // A night's round is played and scored: Back records it as Next does, and
     // the scoreboard's Back is the one that asks to end the night.
     if (ref.read(partyNightProvider) != null) return _next();

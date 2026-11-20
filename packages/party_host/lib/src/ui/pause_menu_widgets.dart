@@ -1,5 +1,40 @@
 part of 'pause_menu.dart';
 
+/// The labels while the game is paused: the menu, and Start to resume.
+const _pauseLabels = {
+  ControllerButton.a: HostText.ok,
+  ControllerButton.b: HostText.resume,
+  ControllerButton.start: HostText.resume,
+};
+
+/// The buttons a phone never shows while the game is paused.
+const _pauseHidden = {
+  ControllerButton.x,
+  ControllerButton.y,
+  ControllerButton.lb,
+  ControllerButton.rb,
+  ControllerButton.select,
+};
+
+/// The buttons while the game is paused: the menu, and Start to resume.
+final pauseLayout = GameLayoutMessage(labels: _pauseLabels, hidden: _pauseHidden);
+
+/// Who may resume the round the menu paused: the player who paused and Player
+/// 1, or anyone if neither is here. It lives here, with the menu that asks it,
+/// to keep the screen file within its size.
+extension _PausableResumers on _PausableState {
+  /// Who may resume: the player who paused and Player 1, or anyone if
+  /// neither is here.
+  Set<String>? _resumers(List<GamePlayer> players) {
+    final by = _pausedBy;
+    final ids = {
+      for (final p in players)
+        if (p.id == by?.id || p.number == 1) p.id,
+    };
+    return ids.isEmpty ? null : ids;
+  }
+}
+
 /// The pause menu's card (M13 3b, mock-up `phone-paused`): a [ToyCard] headed
 /// `focus`, the badge of the player who paused — wearing their character (M13
 /// 4c), in the room the card keeps above it for the accessory — beside who may

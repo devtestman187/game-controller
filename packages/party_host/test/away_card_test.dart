@@ -2,7 +2,6 @@ import 'package:connection/connection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:party_host/party_host.dart';
-import 'package:party_host/testing.dart';
 import 'package:protocol/protocol.dart';
 
 import 'support/host_harness.dart';
@@ -41,17 +40,14 @@ void main() {
   });
 
   testWidgets('two away players get a line each', (tester) async {
+    // Both phones on the race's sides drop: a line each, both counted down
+    // (M16 item 2: only the players the round seats get one).
     final fake = await openRace(tester);
-    fake.state = withController(fake.state, phoneInfo('p3', 3));
-    fake.emit();
-    await tester.pump();
-    await neutral(tester, fake, ['p3']);
-
     await holdSlot(tester, fake, 'p2');
-    fake.gameHost.setAway('p3', isAway: true);
+    await holdSlot(tester, fake, 'p1');
     await tester.pump();
+    expect(find.text('Player 1 is away'), findsOneWidget);
     expect(find.text('Player 2 is away'), findsOneWidget);
-    expect(find.text('Player 3 is away'), findsOneWidget);
     expect(find.textContaining('back in 30 s'), findsNWidgets(2));
   });
 

@@ -26,25 +26,6 @@ export 'leave_round.dart';
 
 part 'pause_menu_widgets.dart';
 
-/// The labels while the game is paused: the menu, and Start to resume.
-const _pauseLabels = {
-  ControllerButton.a: HostText.ok,
-  ControllerButton.b: HostText.resume,
-  ControllerButton.start: HostText.resume,
-};
-
-/// The buttons a phone never shows while the game is paused.
-const _pauseHidden = {
-  ControllerButton.x,
-  ControllerButton.y,
-  ControllerButton.lb,
-  ControllerButton.rb,
-  ControllerButton.select,
-};
-
-/// The buttons while the game is paused: the menu, and Start to resume.
-final pauseLayout = GameLayoutMessage(labels: _pauseLabels, hidden: _pauseHidden);
-
 /// Pausing with Start, for any game (PRD v2 M11): any player's Start pauses
 /// the game for everyone and opens the pause menu (Resume, Quit). Only the
 /// player who paused and Player 1 can work it, or press Start again to
@@ -186,7 +167,12 @@ class _PausableState extends ConsumerState<Pausable> {
 
   /// The round stands still: the results, an open menu, the host app away or a
   /// phone the round waits for (m12 §2.10, bug 1107d).
-  bool get _stopped => !_running || ref.read(hostAwayProvider).value || ref.read(playersAwayProvider).isNotEmpty;
+  bool get _stopped => !_running || ref.read(hostAwayProvider).value || _awayInRound.isNotEmpty;
+
+  /// The away players this round waits for (M16 item 2): only the ones on its
+  /// roster ([Pausable.players]); a lobby slot of a player it doesn't seat
+  /// pauses nothing, though the host still keeps their place.
+  List<AwayPlayer> get _awayInRound => awayInRound(ref.read(playersAwayProvider), widget.players);
 
   /// The "Get ready" beat is still holding the round (m12-host-touch rule 3).
   bool get _onBeat => _readyMs > 0;
@@ -283,17 +269,6 @@ class _PausableState extends ConsumerState<Pausable> {
     _publish();
   }
 
-  /// Who may resume: the player who paused and Player 1, or anyone if
-  /// neither is here.
-  Set<String>? _resumers(List<GamePlayer> players) {
-    final by = _pausedBy;
-    final ids = {
-      for (final p in players)
-        if (p.id == by?.id || p.number == 1) p.id,
-    };
-    return ids.isEmpty ? null : ids;
-  }
-
   void _tick() {
     if (!mounted) return;
     final host = ref.read(gameHostProvider);
@@ -336,7 +311,7 @@ class _PausableState extends ConsumerState<Pausable> {
       // The away card is the screen's menu while the round waits for a phone
       // that dropped: Start opens no second one (m12 bug 1107d). A menu that
       // was already open can still resume.
-      if (ref.read(playersAwayProvider).isNotEmpty) return;
+      if (_awayInRound.isNotEmpty) return;
       final can = widget.players;
       final by = pressed.where((p) => can == null || can.contains(p.id)).firstOrNull;
       if (widget.enabled && by != null && _sinceStartMs >= Pausable.startGrace.inMilliseconds) unawaited(_pause(by));
@@ -372,9 +347,10 @@ class _PausableState extends ConsumerState<Pausable> {
   @override
   Widget build(BuildContext context) {
     final hostAway = ref.watch(hostAwayProvider);
-    // Who the round waits for (m12 bug 1107d): it stands still while anyone
-    // is away, as it does for the menu or a hidden app.
-    final away = ref.watch(playersAwayProvider);
+    // Who the round waits for (m12 bug 1107d, M16 item 2): the away players it
+    // seats, and no one else; it stands still while there is one, as it does
+    // for the menu or a hidden app.
+    final away = awayInRound(ref.watch(playersAwayProvider), widget.players);
     final waiting = widget.enabled && away.isNotEmpty;
     // A phone that drops or comes back changes the phase at once, not on the
     // beat's next step (m12-host-touch).

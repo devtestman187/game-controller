@@ -17,6 +17,17 @@ typedef AwayPlayer = ({GamePlayer player, int secondsLeft});
 /// pause the round while it isn't, and the host's screen shows the away card.
 final playersAwayProvider = NotifierProvider<PlayersAwayNotifier, List<AwayPlayer>>(PlayersAwayNotifier.new);
 
+/// The away players a round waits for (M16 item 2): only the ones its
+/// [players] seats, since a lobby slot of a player the round doesn't have must
+/// not pause it or show the away card. Null [players] asks for everyone, the
+/// Arena's rule.
+List<AwayPlayer> awayInRound(List<AwayPlayer> away, Set<String>? players) => players == null
+    ? away
+    : [
+        for (final a in away)
+          if (players.contains(a.player.id)) a,
+      ];
+
 /// Keeps the away players and the seconds their grace has left in step with
 /// the game host: a player is away from the first roster the host reports them
 /// in until they are back or their slot ends, and their grace counts from that
