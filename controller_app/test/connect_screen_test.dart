@@ -138,6 +138,31 @@ void main() {
       expect(find.text('Connect to a TV'), findsNothing);
     });
 
+    testWidgets('reconnects at once to the remembered host when discovery already holds it', (tester) async {
+      final app = await pumpApp(
+        tester,
+        paired: true,
+        reconnectWait: const Duration(seconds: 1),
+        discovered: DiscoveryState(
+          running: true,
+          everFound: true,
+          hosts: [
+            DiscoveredHost(
+              address: HostAddress(
+                addresses: ['192.168.1.99'],
+                port: 45780,
+                hostId: 'tv-1',
+                name: 'Thumb Party TV (Android TV)',
+              ),
+            ),
+          ],
+        ),
+      );
+      // No change event ever comes: the host was found before launch.
+      expect(app.client.calls, ['connect 192.168.1.99:45780']);
+      expect(find.text('Connect to a TV'), findsNothing);
+    });
+
     testWidgets('opens the Connect screen when the remembered host is gone and another host is live', (tester) async {
       final app = await pumpApp(tester, paired: true, reconnectWait: const Duration(seconds: 1));
       app.discovery.emit(

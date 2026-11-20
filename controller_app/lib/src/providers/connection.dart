@@ -202,6 +202,10 @@ class ConnectionActions {
   /// The live address of [hostId] once discovery reports it, or null if it
   /// isn't found within [reconnectDiscoveryWait] (M16 item 3).
   Future<DiscoveredHost?> _waitForFound(String hostId) async {
+    // Already found before this call: no change event will come for it.
+    for (final host in _discovery.state.hosts) {
+      if (host.address.hostId == hostId) return host;
+    }
     final completer = Completer<DiscoveredHost?>();
     final sub = _discovery.changes.listen((state) {
       for (final host in state.hosts) {

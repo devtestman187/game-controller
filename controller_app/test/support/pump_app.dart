@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:connection/connection.dart';
 import 'package:controller/main.dart';
+import 'package:controller/src/discovery.dart';
 import 'package:controller/src/gyro.dart';
 import 'package:controller/src/haptics.dart';
 import 'package:controller/src/providers.dart';
@@ -60,6 +61,9 @@ Future<TestApp> pumpApp(
   /// (M16 item 3). Zero by default so every other test keeps the old launch
   /// behaviour; the tests about preferring a discovered host pass a wait.
   Duration reconnectWait = Duration.zero,
+
+  /// What discovery already holds when the app starts (a TV found before launch).
+  DiscoveryState? discovered,
 }) async {
   // A landscape phone (iPhone 15-ish) unless the test picks another screen.
   // [padding] is its safe area: a notch, the home indicator.
@@ -71,7 +75,7 @@ Future<TestApp> pumpApp(
   final prefs = await SharedPreferences.getInstance();
   final app = TestApp(
     FakeClient(savedTokens: paired ? {'tv-1': 'token'} : {}),
-    FakeDiscovery(),
+    discovered == null ? FakeDiscovery() : FakeDiscovery(discovered),
     haptics ?? FakeHaptics(),
     prefs,
     motion ?? FakeMotionSensors(),
