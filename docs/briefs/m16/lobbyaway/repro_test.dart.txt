@@ -1,0 +1,31 @@
+import 'package:connection/connection.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+import 'package:party_host/party_host.dart';
+import 'package:party_host/testing.dart';
+
+import 'support/host_harness.dart';
+
+void main() {
+  testWidgets('a round started while a lobby away-slot is held (M16 item 2)', (tester) async {
+    final fake = await pumpHost(tester, screen: const StubHome());
+    fake.state = withController(fake.state, phoneInfo('p2', 2));
+    fake.emit();
+    await neutral(tester, fake, ['p1', 'p2']);
+    await openJoin(tester);
+
+    // P2 drops on the join screen; its slot is held for the grace.
+    await holdSlot(tester, fake, 'p2');
+    // P1 joins and starts the round within the grace.
+    await startRound(tester, fake);
+    await tester.pump(const Duration(milliseconds: 500));
+
+    final card = find.byKey(const Key('awayCard')).evaluate().isNotEmpty;
+    final t0 = timeLeftMs(tester);
+    await tester.pump(const Duration(seconds: 2));
+    final t1 = timeLeftMs(tester);
+    // ignore: avoid_print
+    print('OBSERVED awayCard=$card timeLeft $t0 -> $t1');
+  });
+}
