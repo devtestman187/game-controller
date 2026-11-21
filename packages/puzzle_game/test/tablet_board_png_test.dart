@@ -12,6 +12,11 @@ import 'support/look_fonts.dart';
 import 'support/match_helpers.dart' as helpers;
 import 'support/portrait_pads.dart';
 
+/// Whether this run replaces the committed picture: `UPDATE_PNG=1` in the
+/// environment, or `--dart-define=UPDATE_PNG=true` (the same guard the other
+/// picture tests use).
+final _updatePng = Platform.environment['UPDATE_PNG'] == '1' || const bool.fromEnvironment('UPDATE_PNG');
+
 /// The report's picture (m13 s18, device test 3): the owner's iPad, joined to
 /// a phone, drawing a solo boat as one board that fills the box, in landscape
 /// (1366 x 1024) and in portrait (1024 x 1366). The app's sticks are drawn as
@@ -19,10 +24,16 @@ import 'support/portrait_pads.dart';
 /// [iPadPortraitStickPad]), so the clearance the board keeps can be seen.
 /// Sunny, with the look's own fonts, and deterministic: the match starts fresh
 /// and its clock shows the limit.
+///
+/// Every run draws the picture and checks it; the committed file is replaced
+/// only when a run asks for it, so a plain test run leaves
+/// `docs/design/m13-tablet-board.png` untouched. To refresh it, run
+/// `UPDATE_PNG=1 flutter test test/tablet_board_png_test.dart` (or pass
+/// `--dart-define=UPDATE_PNG=true`).
 void main() {
   setUpAll(loadLookFonts);
 
-  testWidgets('writes docs/design/m13-tablet-board.png', (tester) async {
+  testWidgets('the tablet board renders, and refreshes the PNG only when asked', (tester) async {
     const limitS = 600;
     final puzzle = helpers.load('boat');
 
@@ -81,7 +92,10 @@ void main() {
     final picture = recorder.endRecording();
     final image = await tester.runAsync(() => picture.toImage(width, height));
     final data = await tester.runAsync(() => image!.toByteData(format: ui.ImageByteFormat.png));
-    final file = File('../../docs/design/m13-tablet-board.png')..writeAsBytesSync(data!.buffer.asUint8List());
-    expect(file.lengthSync(), greaterThan(5000));
+    final bytes = data!.buffer.asUint8List();
+    if (_updatePng) {
+      File('../../docs/design/m13-tablet-board.png').writeAsBytesSync(bytes);
+    }
+    expect(bytes.length, greaterThan(5000));
   });
 }
