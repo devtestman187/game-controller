@@ -1,0 +1,15 @@
+2026-11-21 07:48:09 start at aa0549ca on m16
+2026-11-21 07:48:09 run-base aa0549ca68d8c7f66ac5c59b476e57478317c36f
+2026-11-21 07:48:17 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-21 07:48:17 start pad
+2026-11-21 07:48:43 start night
+2026-11-21 07:49:08 start teams
+2026-11-21 08:10:12 pad finished: result 5 (80 turns, 15 min)
+2026-11-21 08:12:54 night finished: result 0 (127 turns, 20 min)
+2026-11-21 08:15:31 teams finished: result 0 (113 turns, 23 min)
+2026-11-21 08:17:27 tests-first ok: controller_app/test/pad_clearance_frame_test.dart fails on the old code
+2026-11-21 08:17:51 tests-first ok: packages/party_host/test/night_labels_fit_test.dart fails on the old code
+2026-11-21 08:18:19 tests-first ok: packages/party_host/test/puzzle_controls_fit_test.dart fails on the old code
+2026-11-21 08:18:29 tests-first ok: packages/party_host/test/puzzle_pad_clearance_test.dart fails on the old code
+2026-11-21 08:25:09 checks failed; fetching packages and trying once more
+2026-11-21 08:31:55 STOPPED: checks failed twice on the combined tree after night teams (see .dart_tool/run-jobs/docs_briefs_m16_phonehost3/run-check.log); nothing of this wave is committed
