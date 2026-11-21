@@ -25,3 +25,16 @@
 2026-11-21 00:33:31 reviewed wave2: 9 finding(s)
 2026-11-21 00:33:32 start the run's review
 2026-11-21 00:37:01 DONE: every job is committed. Claude reads the Summary of docs/briefs/m16/phonehost2/REVIEW.md, verifies its findings and writes one fix brief
+2026-11-21 00:38:50 start at 12068ab3 on m16
+2026-11-21 00:38:59 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-21 00:38:59 start s6a
+2026-11-21 00:39:25 start s8p
+2026-11-21 00:39:51 start wtv
+2026-11-21 01:11:59 s6a finished: result 0 (189 turns, 30 min)
+2026-11-21 01:12:00 s8p finished: result 0 (147 turns, 23 min)
+2026-11-21 01:12:00 wtv finished: result 0 (71 turns, 9 min)
+2026-11-21 01:13:54 tests-first ok: packages/party_host/test/arena_results_frame_test.dart fails on the old code
+2026-11-21 01:14:06 tests-first ok: packages/party_host/test/games_screen_frame_test.dart fails on the old code
+2026-11-21 01:14:33 tests-first ok: tv_test_app/test/host_frame_wiring_test.dart fails on the old code
+2026-11-21 01:20:56 checks failed; fetching packages and trying once more
+2026-11-21 01:27:20 STOPPED: checks failed twice on the combined tree after s6a s8p wtv (see .dart_tool/run-jobs/docs_briefs_m16_phonehost2/run-check.log); nothing of this wave is committed
