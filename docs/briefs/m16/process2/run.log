@@ -1,0 +1,9 @@
+2026-11-21 14:52:15 start at e53cc348 on m16
+2026-11-21 14:52:15 run-base e53cc34831958c15b5c413c3d6358529cf6b56f5
+2026-11-21 14:52:26 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-21 14:52:26 start p2-harness
+2026-11-21 14:52:52 start p2-prompt
+2026-11-21 14:56:44 p2-harness finished: result 0 (34 turns, 4 min)
+2026-11-21 14:56:44 p2-prompt finished: result 0 (38 turns, 2 min)
+2026-11-21 15:03:46 checks failed; fetching packages and trying once more
+2026-11-21 15:10:55 STOPPED: checks failed twice on the combined tree after p2-harness p2-prompt (see .dart_tool/run-jobs/docs_briefs_m16_process2/run-check.log); nothing of this wave is committed
