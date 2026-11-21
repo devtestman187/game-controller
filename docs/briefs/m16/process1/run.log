@@ -19,3 +19,9 @@
 2026-11-21 14:24:19 committed f1: 9ce9674e docs: record why f1 is blocked on riverpod's duplicate-override rule
 2026-11-21 14:24:20 wave review skipped: wave 1 is the whole run, the run review covers it
 2026-11-21 14:24:21 DONE: every job is committed. Claude reads the Summary of docs/briefs/m16/process1/REVIEW.md, verifies its findings and writes one fix brief
+2026-11-21 14:24:35 start at 03bb5d9e on m16
+2026-11-21 14:24:45 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-21 14:24:46 start f2
+2026-11-21 14:33:30 f2 finished: result 0 (29 turns, 5 min)
+2026-11-21 14:40:26 committed f2: 69cd5724 test: pin the all-looks helper's overrides merge with a marker provider
+2026-11-21 14:40:26 wave review skipped: wave 1 is the whole run, the run review covers it
