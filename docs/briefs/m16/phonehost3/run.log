@@ -29,3 +29,17 @@
 2026-11-21 08:48:38 reviewed wave1: 13 finding(s)
 2026-11-21 08:48:39 start the run's review
 2026-11-21 08:53:56 DONE: every job is committed. Claude reads the Summary of docs/briefs/m16/phonehost3/REVIEW.md, verifies its findings and writes one fix brief
+2026-11-21 08:54:43 start at 19c3840d on m16
+2026-11-21 08:54:53 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-21 08:54:54 WARN: pad was committed by hand (730140fa); a plain restart would skip its tests-first proof and worker review, so both run now
+2026-11-21 08:56:50 tests-first ok: controller_app/test/pad_clearance_frame_test.dart fails on the old code
+2026-11-21 08:57:15 tests-first ok: packages/party_host/test/puzzle_pad_clearance_test.dart fails on the old code
+2026-11-21 08:57:17 hand-fixed pad: tests-first proof and worker review done (marked in done.txt)
+2026-11-21 08:57:17 skip pad (already done)
+2026-11-21 08:57:18 skip night (already done)
+2026-11-21 08:57:18 skip teams (already done)
+2026-11-21 08:57:19 start f1
+2026-11-21 09:17:35 f1 finished: result 4 (78 turns, 16 min)
+2026-11-21 09:17:37 f1: dropped generated churn outside its list: site/shots/dpad.png site/shots/join.png site/shots/menus.png site/shots/results.png site/shots/sticks.png site/shots/tilt.png 
+2026-11-21 09:19:37 tests-first ok: controller_app/test/pad_clearance_screen_test.dart fails on the old code
+2026-11-21 09:26:31 committed f1: 4ed8c34e Fix the framed board's pad clearance, 52 device px too low
