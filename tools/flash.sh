@@ -63,7 +63,8 @@
 # Needs: DEEPSEEK_API_KEY in the environment, or (Windows) as a user
 # environment variable, which the script reads itself and never prints.
 # Optional: FLASH_MODEL (default deepseek-v4-flash), FLASH_WORKTREES (where
-# job worktrees go).
+# job worktrees go), FLASH_EXTRACT (the worker rule extract, default
+# docs/worker-extract.md).
 # Exit code: 0 if everything passed; otherwise, the first that applies:
 # 3 a protected file changed, 4 a file outside --allow changed, the headless
 # run's own exit code, 5 a --check failed, 6 the changes couldn't be applied
@@ -245,12 +246,15 @@ Code is formatted at 120 columns (dart format). Python isn't installed: use Dart
 Never: run git commands that change anything (add, commit, push, tag, reset, checkout, stash, rm); run tools/release.sh; start apps, emulators or devices; edit .github/, codemagic.yaml, firebase/ or anything with keys or secrets; touch docs/PRD - Copy.md, docs/PRD-old*.md or kenney-audio/.
 To create a new file, use Edit with an empty old_string and the whole file as new_string.
 Project rules and lessons learned are in docs/project-notes.md: read the parts that apply before changing code.
-Read docs/coding-guidelines.md before every job and follow it: a diff that breaks it is sent back.
+The extract below is the rules; open docs/coding-guidelines.md or docs/review-rules.md only for a question it does not answer. A diff that breaks them is sent back.
 Claude, who wrote this task, is the source of truth. Suggestions and questions go in your report; don't act on them.
 The task names a review gate (G0 survey, G1 plan, G2 contract and tests, G3 first slice, G4 complete, or a review). Stop at that gate, even if more looks easy.
 If the task needs a design decision, is unclear, or turns out bigger than described, stop and say so instead of guessing.
 Work rules (they keep the job short, and short jobs go wrong less): read a file once, and only the part you need (use line ranges for files over 300 lines); never re-read a file you have not changed; ask for several files or greps in one step when you know you need them; run a test suite once per change, on the smallest package that covers it, and read only the failures; do not print long command output (pipe through tail or grep); run commands as plain commands from the repository root (tools/check.sh <suite>, flutter test <file>, dart format <files>, dart analyze), with no absolute path in front; cd <dir> && cmd is allowed too; keep your thinking to the decision at hand and your messages to a few lines; write the report once, at the end.
 Finish with: the files you changed (one line each, what changed), the checks you ran and their result, and anything you weren't sure about."
+# The short rule extract (docs/worker-extract.md) is part of the standing prompt, so workers do not re-read the full docs.
+extract="${FLASH_EXTRACT:-docs/worker-extract.md}"
+[ -f "$extract" ] && rules+=$'\n\n'"$(cat "$extract")"
 
 # --bare offers only Read, Edit (which also creates files) and Bash, so
 # searching goes through git grep and git ls-files.
@@ -260,6 +264,9 @@ allowed=(
   "Bash(tools/check.sh:*)" "Bash(tools/review.sh:*)" "Bash(bash tools/review.sh:*)" "Bash(bash -n:*)"
   "Bash(cd:*)" "Bash(bash tools/check.sh:*)" "Bash(./tools/check.sh:*)" "Bash(sh tools/check.sh:*)" "Bash(flutter --version:*)" "Bash(dart --version:*)" "Bash(tail:*)" "Bash(head:*)"
   "Bash(git status:*)" "Bash(git log:*)" "Bash(git diff:*)" "Bash(git show:*)" "Bash(git merge-base:*)" "Bash(ls:*)" "Bash(wc:*)"
+  "Bash(tools/mine.sh:*)" "Bash(bash tools/mine.sh:*)" "Bash(tools/wait-run.sh:*)" "Bash(bash tools/wait-run.sh:*)"
+  "Bash(tools/run-stop.sh:*)" "Bash(bash tools/run-stop.sh:*)" "Bash(tools/selftest.sh:*)" "Bash(bash tools/selftest.sh:*)"
+  "Bash(bash tools/tests/:*)" "Bash(tools/tests/:*)"
 )
 [ "$pub" = 1 ] && allowed+=("Bash(flutter pub get:*)" "Bash(dart pub get:*)")
 # A distro job: commands inside that one distro (as root; `--` ends wsl's own

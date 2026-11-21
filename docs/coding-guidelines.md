@@ -1,5 +1,7 @@
 # Coding guidelines
 
+> `docs/worker-extract.md` is the short copy workers get in their prompt; update it with this file.
+
 Rules for every change in this repository, by Claude or by the flash-worker. The flash-worker gets this file with every job and must follow it; a diff that breaks a rule is sent back, whatever else it gets right. Where a brief and this file disagree, stop and report it: don't pick one.
 
 ## 1. Layers and dependencies

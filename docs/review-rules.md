@@ -1,5 +1,7 @@
 # Review rules
 
+> `docs/worker-extract.md` is the short copy workers get in their prompt; update it with this file.
+
 What a review checks, beyond [coding-guidelines.md](coding-guidelines.md) (which every job already follows). Written Nov 7, 2026 from the M12 build 4 findings, with the owner: "If the review has a high cost then let's make it count."
 
 ## When reviews happen (owner's decision, Nov 7, 2026)
