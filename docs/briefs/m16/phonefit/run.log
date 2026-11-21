@@ -10,3 +10,5 @@
 2026-11-20 18:01:57 committed pf1: 289de18b Add a phone-fit measurement test for the night screens
 2026-11-20 18:01:59 committed pf2: 8a26cbdb m16 phonefit: capture the joined phone's round strip as a PNG
 2026-11-20 18:08:22 reviewed wave1: 5 finding(s)
+2026-11-20 18:08:24 start the run's review
+2026-11-20 18:13:00 DONE: every job is committed. Claude reads the Summary of docs/briefs/m16/phonefit/REVIEW.md, verifies its findings and writes one fix brief
