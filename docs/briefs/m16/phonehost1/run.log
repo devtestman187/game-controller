@@ -69,3 +69,5 @@
 2026-11-20 22:42:02 committed f1: c67c9d37 HostFrame: no device text scale, ToyType.frame inside, empty size safe
 2026-11-20 22:42:04 committed f2: d992a92f Claim the safe-area insets once in HostFrameScreen
 2026-11-20 22:42:07 committed f3: 406bb9f0 Test ScoreRow's zero rules and RoundSegment's disabled state
+2026-11-20 22:51:17 reviewed wave3: 5 finding(s)
+2026-11-20 22:51:17 DONE: every job is committed. Claude reads the Summary of docs/briefs/m16/phonehost1/REVIEW.md, verifies its findings and writes one fix brief
