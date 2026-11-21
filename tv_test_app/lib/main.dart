@@ -85,8 +85,10 @@ class TvTestApp extends ConsumerWidget {
         child: MaterialApp(
           title: TvText.name,
           navigatorKey: tvNavigatorKey,
-          // The phones work every screen like the remote (PRD v2 T21).
-          builder: (context, child) => ControllerMenus(child: child!),
+          // The phones work every screen like the remote (PRD v2 T21), and
+          // every screen, dialog and overlay is drawn in the host's frame
+          // (M16 phonehost1 S1, DESIGN section 5).
+          builder: (context, child) => hostFrameBuilder(context, ControllerMenus(child: child!)),
           debugShowCheckedModeBanner: false,
           theme: toyTheme(look),
           // A page's push or pop works the palette out again (design D1),

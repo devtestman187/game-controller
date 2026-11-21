@@ -15,6 +15,11 @@ import 'support/pump_app.dart';
 /// Sunny palette the tests' clock picks.
 final tvLook = ToyLook.build(palette: ToyPalette.sunny, tv: true);
 
+/// The look the home screen reads now it is drawn in the host's frame (M16):
+/// [HostFrame] hands its screens `ToyType.frame`, whose clock (the title size)
+/// is 40 frame px, not the TV's 56. The palette and the sizes are unchanged.
+final frameLook = tvLook.withType(ToyType.frame);
+
 /// The first [ShapeDecoration] a panel draws, which is its paper.
 ShapeDecoration? panelPaper(WidgetTester tester, Finder panel) {
   for (final element in find.descendant(of: panel, matching: find.byType(DecoratedBox)).evaluate()) {
@@ -70,8 +75,8 @@ void main() {
 
     final title = tester.widget<Text>(find.descendant(of: panel, matching: find.text('Pairing code')));
     expect(title.style?.color, tvLook.colors.ink);
-    expect(title.style?.fontFamily, tvLook.type.button.fontFamily);
-    expect(title.style?.fontSize, tvLook.type.button.fontSize);
+    expect(title.style?.fontFamily, frameLook.type.button.fontFamily);
+    expect(title.style?.fontSize, frameLook.type.button.fontSize);
   });
 
   testWidgets('each controller state is a dot in its token, beside ink text', (tester) async {
@@ -110,8 +115,8 @@ void main() {
     await pumpApp(tester);
     final style = tester.widget<Text>(find.byKey(const Key('pairingCode'))).style;
     expect(style?.color, tvLook.colors.ink);
-    expect(style?.fontFamily, tvLook.type.clock.fontFamily);
-    expect(style?.fontSize, tvLook.type.clock.fontSize);
+    expect(style?.fontFamily, frameLook.type.clock.fontFamily);
+    expect(style?.fontSize, frameLook.type.clock.fontSize, reason: 'the frame\'s 40 frame px clock, scaled to the TV');
   });
 
   testWidgets('the log is ink paper in the platform\'s monospace family', (tester) async {

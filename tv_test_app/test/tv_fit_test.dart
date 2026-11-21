@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:party_host/party_host.dart';
@@ -15,6 +14,11 @@ import 'support/pump_app.dart';
 
 /// The TV's screen: 960 x 540 at 1:1, which is how the TV app measures.
 const tvSize = Size(960, 540);
+
+/// The slack the frame's math is compared with: [Size] holds two doubles, and
+/// a window's size divides into a frame a hair off the design's
+/// (host_frame_screen_test.dart's tolerance).
+const _frameTolerance = 1e-9;
 
 /// Noon and late evening, so Auto's palette picks Sunny and Night.
 DateTime noon() => DateTime(2026, 5, 1, 12);
@@ -101,21 +105,28 @@ void main() {
     expect(tops.length, lessThanOrEqualTo(2), reason: 'the header\'s buttons take at most two rows');
   });
 
-  testWidgets('the narrow home scrolls and fits at 700 x 500', (tester) async {
-    await pumpApp(tester, size: const Size(700, 500));
+  testWidgets('a small 700 x 500 window draws the TV layout in its frame', (tester) async {
+    // Before the frame (M16) this window stacked and scrolled: now the home is
+    // the TV's one layout in the frame, `s = 700 / 960` and the frame
+    // 960 x 685.7 with the window's spare height (DESIGN sections 2 and 5).
+    const window = Size(700, 500);
+    await pumpApp(tester, size: window);
     expect(tester.takeException(), isNull);
-    // It stacks: the header, the pairing panel, then the rest below.
-    final home = find.byType(Scrollable).first;
-    expect(tester.getTopLeft(find.byType(PairingPanel)).dy, greaterThan(tester.getTopLeft(find.byType(Header)).dy));
+    final info = HostFrameInfo.of(tester.element(find.byType(HomeScreen)));
+    expect(info.frame.width, closeTo(tvSize.width, _frameTolerance));
+    expect(info.frame.height, closeTo(tvSize.width * window.height / window.width, _frameTolerance));
+    expect(tester.getSize(find.byType(HomeScreen)), info.frame);
     // The title is whole here too.
     final title = tester.renderObject<RenderParagraph>(find.text(TvText.name));
     final words = TextPainter(text: title.text, textDirection: TextDirection.ltr, maxLines: 1)..layout();
     expect(words.width, lessThanOrEqualTo(title.size.width + 0.5));
-    // The pieces below are reached by scrolling, and fit when they are.
-    await tester.dragUntilVisible(find.byType(ControllersPanel), home, const Offset(0, -200));
-    expect(tester.takeException(), isNull);
-    await tester.dragUntilVisible(find.byType(LogPanel), home, const Offset(0, -200));
-    expect(tester.takeException(), isNull);
+    // The pieces are side by side, never stacked below each other: the
+    // controllers to the right of the pairing panel and the log under it.
+    final pairing = tester.getRect(find.byType(PairingPanel));
+    final controllers = tester.getRect(find.byType(ControllersPanel));
+    final log = tester.getRect(find.byType(LogPanel));
+    expect(controllers.left, greaterThan(pairing.right), reason: 'the controllers keep their column');
+    expect(log.top, greaterThanOrEqualTo(pairing.bottom), reason: 'the log stays under the pairing code');
   });
 
   testWidgets('the haptic test fits a 960 x 540 TV', (tester) async {
