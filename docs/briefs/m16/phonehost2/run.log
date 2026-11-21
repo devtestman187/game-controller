@@ -98,3 +98,23 @@
 2026-11-21 04:12:06 committed s9t: 361c2b9a Test the TV focus ring's device px at three sizes
 2026-11-21 04:12:07 STOPPED: jobs that failed or need applying by hand: s6b2:4 (their logs: docs/briefs/m16/phonehost2/flash-<job>.log)
 2026-11-21 04:21:41 HAND-FIX s6b2: the runner stopped on result 4 for generated site/shots churn only (the job's own result was fine); copied the ten allowed files from the kept worktree, tests-first proved by hand on a temporary checkout of HEAD (puzzle_results_layout_test fails there), tools/review.sh 0 fail, full tools/check.sh all passed
+2026-11-21 04:21:49 start at 13abcf54 on m16
+2026-11-21 04:21:57 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-21 04:21:58 skip wph (already done)
+2026-11-21 04:21:58 skip fA (already done)
+2026-11-21 04:21:59 skip fB (already done)
+2026-11-21 04:21:59 WARN: s6b2 was committed by hand (3e94c775); a plain restart would skip its tests-first proof and worker review, so both run now
+2026-11-21 04:23:53 tests-first ok: packages/party_host/test/puzzle_results_layout_test.dart fails on the old code
+2026-11-21 04:23:55 hand-fixed s6b2: tests-first proof and worker review done (marked in done.txt)
+2026-11-21 04:23:55 skip s6b2 (already done)
+2026-11-21 04:23:55 WARN: fstart was committed by hand (9d2921ec); a plain restart would skip its tests-first proof and worker review, so both run now
+2026-11-21 04:25:48 tests-first ok: controller_app/test/host_bar_zero_in_frame_test.dart fails on the old code
+2026-11-21 04:26:17 tests-first ok: packages/party_host/test/night_start_noscroll_test.dart fails on the old code
+2026-11-21 04:26:19 hand-fixed fstart: tests-first proof and worker review done (marked in done.txt)
+2026-11-21 04:26:19 skip fstart (already done)
+2026-11-21 04:26:20 skip s9t (already done)
+2026-11-21 04:26:20 start s8j
+2026-11-21 05:06:01 s8j finished: result 4 (218 turns, 35 min)
+2026-11-21 05:06:03 s8j: dropped generated churn outside its list: site/shots/dpad.png site/shots/join.png site/shots/menus.png site/shots/results.png site/shots/sticks.png site/shots/tilt.png 
+2026-11-21 05:08:04 tests-first ok: packages/party_host/test/join_screen_frame_test.dart fails on the old code
+2026-11-21 05:14:56 committed s8j: 2213c36a Draw the join screen in the host frame with short side cards
