@@ -1,0 +1,104 @@
+diff --git a/docs/briefs/m16/phonehost2/s3-report.md b/docs/briefs/m16/phonehost2/s3-report.md
+index 9deb94d3..4dded25e 100644
+--- a/docs/briefs/m16/phonehost2/s3-report.md
++++ b/docs/briefs/m16/phonehost2/s3-report.md
+@@ -33,8 +33,9 @@
+ 
+ - Header 64, footer 84, body 392 (a 960x540, 1170.687x540 or 960x600 frame) / 572 (960x720): unchanged.
+ - Footer band: the footer's whole 84 x frame width; its ink line is the look's `outlineWidth` (4 px with the
+-  TV look, 3 px with a menu look), and the buttons' row is inset 24 either side from under it, so a 64 px
+-  button has 16 px of air above it inside the band.
++  TV look, 3 px with a menu look), the buttons' row is inset 24 either side, and the band pads its content by
++  the ink line's width above and below the row, so a 64 px button stands 10 px above and 10 px below inside
++  the band (corrected by brief fB: the first band gave 12 above and 8 below, and said 16).
+ - Stage = frame width - 48 (912 at 960, 1122.687 at 1170.687). Award tiles: `(stage - 2*16)/3` =
+   **293.333 x 84** at 960, **363.562 x 84** at 852x393's frame; the three share one row (asserted equal and
+   asserted against that formula).
+diff --git a/packages/party_host/lib/src/ui/host_frame_screen.dart b/packages/party_host/lib/src/ui/host_frame_screen.dart
+index d8e60f69..08646c25 100644
+--- a/packages/party_host/lib/src/ui/host_frame_screen.dart
++++ b/packages/party_host/lib/src/ui/host_frame_screen.dart
+@@ -166,6 +166,10 @@ class _FrameBackButton extends StatelessWidget {
+ /// Each button is [Flexible], so two buttons that together want more room than
+ /// the frame has give room to each other instead of overflowing it: a button's
+ /// label is ellipsised, which the look's [ToyButton] already does.
++///
++/// The ink line's width is padding at the top and the same at the bottom, so
++/// the buttons stand centred in the band below the line: as much room above
++/// them as below (brief fB).
+ class _FrameFooter extends StatelessWidget {
+   const _FrameFooter({required this.buttons});
+ 
+@@ -182,7 +186,7 @@ class _FrameFooter extends StatelessWidget {
+         border: Border(top: edge),
+       ),
+       child: Padding(
+-        padding: EdgeInsets.fromLTRB(hostFrameGutterPx, edge.width, hostFrameGutterPx, 0),
++        padding: EdgeInsets.symmetric(horizontal: hostFrameGutterPx, vertical: edge.width),
+         child: Row(
+           mainAxisAlignment: MainAxisAlignment.end,
+           children: [
+diff --git a/packages/party_host/lib/src/ui/night_reveal_widgets.dart b/packages/party_host/lib/src/ui/night_reveal_widgets.dart
+index 1ac78561..e4837cec 100644
+--- a/packages/party_host/lib/src/ui/night_reveal_widgets.dart
++++ b/packages/party_host/lib/src/ui/night_reveal_widgets.dart
+@@ -7,9 +7,38 @@ const nightRevealBadgePx = 190.0;
+ /// The award's name on the reveal, in frame px (DESIGN section 4: 52).
+ const nightRevealAwardPx = 52.0;
+ 
+-/// A winner's name on the reveal, in frame px (DESIGN section 4: 40).
++/// A winner's name on the reveal, in frame px (DESIGN section 4: 40), while
++/// the award has one or two winners ([nightRevealWinnerPxFor]).
+ const nightRevealWinnerPx = 40.0;
+ 
++/// How many winners keep the design's [nightRevealWinnerPx]: one or two (brief
++/// fB's size tiers).
++const nightRevealWinnerPxMaxWinners = 2;
++
++/// A tied winner's name on the reveal, in frame px, when three share the
++/// award: three 40 px lines overflow the card's 328 px of room at 640x360
++/// (brief fB's size tiers).
++const nightRevealTieWinnerPx = 32.0;
++
++/// How many winners take [nightRevealTieWinnerPx]: three (brief fB's size
++/// tiers).
++const nightRevealTiePxMaxWinners = 3;
++
++/// A tied winner's name on the reveal, in frame px, when four or more share
++/// the award: six such lines still fit the card, and 24 stays above the
++/// frame's 20 px floor (brief fB's size tiers).
++const nightRevealTieManyWinnerPx = 24.0;
++
++/// The size a winner's name takes when [winners] players share the award, in
++/// frame px (brief fB): the design's [nightRevealWinnerPx] for one or two,
++/// [nightRevealTieWinnerPx] for three and [nightRevealTieManyWinnerPx] for four
++/// or more, so a full tie keeps one line per name inside the card.
++double nightRevealWinnerPxFor(int winners) => switch (winners) {
++  <= nightRevealWinnerPxMaxWinners => nightRevealWinnerPx,
++  <= nightRevealTiePxMaxWinners => nightRevealTieWinnerPx,
++  _ => nightRevealTieManyWinnerPx,
++};
++
+ /// The reason the award was won, in frame px (DESIGN section 4: 26).
+ const nightRevealReasonPx = 26.0;
+ 
+@@ -136,6 +165,7 @@ class _AwardBody extends StatelessWidget {
+       );
+     }
+     final winners = [for (final id in outcome.winners) _who(night, players, id)];
++    final tied = winner.copyWith(fontSize: nightRevealWinnerPxFor(winners.length));
+     return Column(
+       mainAxisSize: MainAxisSize.min,
+       crossAxisAlignment: CrossAxisAlignment.start,
+@@ -143,8 +173,9 @@ class _AwardBody extends StatelessWidget {
+         _RevealLine(outcome.award.title, style: name),
+         const SizedBox(height: ToySizes.space8),
+         // A tie gives each winner a line of their own, ellipsised rather than
+-        // wrapped, so the card keeps its height at two names (brief S5).
+-        for (final who in winners) _RevealLine(NightText.playerName(who.nickname, who.number), style: winner),
++        // wrapped, at the size the tie's count takes (brief fB), so a tie of
++        // the night's six players still fits the card.
++        for (final who in winners) _RevealLine(NightText.playerName(who.nickname, who.number), style: tied),
+         const SizedBox(height: ToySizes.space16),
+         _RevealLine(outcome.reason ?? outcome.award.line, style: reason, maxLines: nightRevealReasonLines),
+         const SizedBox(height: ToySizes.space16),
