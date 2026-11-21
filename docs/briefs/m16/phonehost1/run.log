@@ -9,3 +9,11 @@
 2026-11-20 21:11:39 tests-first ok: packages/party_host/test/host_frame_test.dart fails on the old code
 2026-11-20 21:18:09 committed s1: ef9aad1b Add the host frame scaler, its info and the frame type (M16 S1)
 2026-11-20 21:18:11 committed s9a: beaeec05 Stop the tablet-board test rewriting its PNG on every run
+2026-11-20 21:18:14 start s2
+2026-11-20 21:18:39 start s7
+2026-11-20 21:34:53 s2 finished: result 0 (96 turns, 14 min)
+2026-11-20 21:34:53 s7 finished: result 0 (48 turns, 7 min)
+2026-11-20 21:36:41 tests-first ok: packages/party_host/test/host_frame_screen_test.dart fails on the old code
+2026-11-20 21:37:08 tests-first: packages/party_host/test/phone_fit_picker_join_test.dart passes on the old code, exempt by its brief
+2026-11-20 21:43:36 committed s2: a43a2bee Add the host frame screen scaffold, score row and round segment (M16 S2)
+2026-11-20 21:43:38 committed s7: b77edb67 Measure the game picker and the join screen at the five host sizes
