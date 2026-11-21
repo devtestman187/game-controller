@@ -20,12 +20,14 @@ Header lines: `job:` `pub: no` `stop:` `read:` (first entry `docs/briefs/templat
 
 ## Batch rules (short)
 1 Tests-first is proved by run.log, not by a report. 2 Every REVIEW.md finding and runner WARN is closed: fixed, or put in `docs/code-health.md` (debt) or a tracker row (owner call). 3 Cause not measured: the report says so; tracker status Fixed plus note "Fixed, unverified: needs device check". 4 Hand-fix only after `tools/review.sh` and the job's tests on the copied tree, logged. 5 Verify against run.log and REVIEW.md; run the full `tools/check.sh` on the tip. 6 Never `git add -A` or `.`; stage named paths. 7 `allow:` separator ` · `. 8 Waves of up to 3 jobs, no shared files; avoid one-job waves. 9 `phone` in `check:` when phone pins change. 10 `read:` lists tests that could break. 11 Fix jobs carry 3 findings or fewer. 12 Jobs run only their own tests; full check once at the end. 13 Tests await async side effects (`settleUploads` in party_host). 14 Worker Bash is allow-listed by prefix: `tools/check.sh <suite>`, `flutter test <file>`, `dart format`, `dart analyze`; no absolute paths, no `bash -c`. 15 UI sizes are tested under every look, menu and TV (`toyTvProvider.overrideWithValue(true)`; helper `packages/party_host/test/support/all_looks.dart`); content that holds a look-sized widget gets no fixed pixel height.
+16 `tools/mine.sh` checks a worker's change in one call (format, analyze, the touched tests, the churn revert) and prints failures only; `docs/dev-tools.md` has its exit codes.
 
 ## Run
 - `waves.txt`: one wave per line, job names space-separated; waves run in order; each job folder is cut from the last commit, so commit briefs first.
 - Dry run: `bash tools/run-jobs.sh <dir> --dry-run`.
 - Start: `NO_PUSH=1 nohup bash tools/run-jobs.sh <dir> > /dev/null 2>&1 &`
 - Progress: last lines of `<dir>/run.log`. `DONE:` means finished. `STOPPED:` with no later `start at` line needs you.
+- Trial: wait-run. `bash tools/wait-run.sh <dir>` blocks up to 170 s, prints the new lines, and exits 0 DONE / 1 STOPPED / 2 STALLED or OVERRUN / 4 still running; repeat until it isn't 4 (3 is bad input). The drivers keep their tail loop until the owner says otherwise.
 - Stop: `touch <dir>/STOP` (never kill). Drop a job: `bash tools/run-jobs.sh <dir> --drop <job>`, commit `dropped.txt`; never revert a job's commits before dropping it.
 - `done.txt` lines `<job> <sha>`: committed jobs are skipped on restart.
 

@@ -6,7 +6,10 @@ Two scripts replace the most repeated manual steps:
 | --- | --- | --- |
 | [`tools/check.sh`](../tools/check.sh) | Every automated check (format, analyze, all eight test suites), one line each | about 3 minutes |
 | [`tools/coverage.sh`](../tools/coverage.sh) | Line coverage per package, every `lib/` file counted: runs the tests again with `--coverage` and writes a table to `coverage/summary.txt` | about 3 to 5 minutes (every package's tests once more) |
+| [`tools/mine.sh`](../tools/mine.sh) | Formats, analyzes and tests only what a change touches, then reverts the generated churn: one call, quiet when it's green | seconds to a few minutes (the touched packages' tests) |
+| [`tools/selftest.sh`](../tools/selftest.sh) | The shell tools' own tests (`tools/tests/*-test.sh`), a PASS, FAIL or TIMEOUT line each | a minute or two |
 | [`tools/review.sh`](../tools/review.sh) | The coding guidelines' mechanical checks over the `.dart` files that changed, one line per finding | a few seconds |
+| [`tools/wait-run.sh`](../tools/wait-run.sh) | Waits for a batch run without polling by hand: blocks, prints the new `run.log` lines and exits on DONE or STOPPED | up to 170 s per call |
 | [`tools/commit-job.sh`](../tools/commit-job.sh) | Commits one finished job: the changes under its brief's `allow:` paths, the brief, its report and its review files, with the report's draft message | instant |
 | [`tools/release.sh`](../tools/release.sh) | Tags a release with tester notes, pushes it, waits for the Play, TestFlight and Windows builds, and prints a summary | about 20 to 40 minutes, mostly waiting |
 | [`tools/tv-dev.sh`](../tools/tv-dev.sh) | Starts and stops a development copy of the Windows TV app, and prints its port and pairing code | a few seconds (a few minutes for the first build) |
@@ -15,7 +18,7 @@ Two scripts replace the most repeated manual steps:
 | [`tools/smoke.sh`](../tools/smoke.sh) | Pairs a simulated controller (and with `--emulator` the phone app) with the development TV app and checks each step against the clients' and the app's own logs | about 30 seconds, a minute longer with the frames step (a few minutes with `--emulator`) |
 | [`tools/audio/`](../tools/audio/README.md) | `render.py`, which generates the game's sound effects, and how to encode them | a few seconds |
 
-They're plain bash (and one PowerShell script for the Windows window) with no paths tied to one computer. `check.sh`, `coverage.sh`, `review.sh`, `commit-job.sh`, `release.sh` and `emulator.sh` work the same on Windows (Git Bash), macOS and Linux; `tv-dev.sh` and `tv-window.ps1` are for Windows, where the desktop TV app runs, and so is `smoke.sh`, which drives them. Each runs from any folder: the scripts move to the repository root themselves. They're written so a person, Claude Code or another AI agent can use them the same way.
+They're plain bash (and one PowerShell script for the Windows window) with no paths tied to one computer. `check.sh`, `coverage.sh`, `mine.sh`, `selftest.sh`, `wait-run.sh`, `review.sh`, `commit-job.sh`, `release.sh` and `emulator.sh` work the same on Windows (Git Bash), macOS and Linux; `tv-dev.sh` and `tv-window.ps1` are for Windows, where the desktop TV app runs, and so is `smoke.sh`, which drives them. Each runs from any folder: the scripts move to the repository root themselves. They're written so a person, Claude Code or another AI agent can use them the same way.
 
 ## What you need
 
@@ -57,6 +60,7 @@ tools/check.sh --verbose puzzle # also print the full output
 | `host` | `packages/party_host` | `flutter test` |
 | `phone` | `controller_app` | `flutter test` |
 | `tv` | `tv_test_app` | `flutter test` |
+| `tools` | repo root | `bash tools/selftest.sh` (the shell tools' own tests) |
 
 Output, all passing:
 
@@ -115,6 +119,52 @@ TOTAL                |     19797 |       21311 | 92.9
 - **Exit code:** 0 when every package's tests passed, 1 when one failed (the table is printed either way), 2 for a bad argument, an unknown package or a missing tool.
 - **On CI:** the Coverage step of `analyze-test-android` (`.github/workflows/ci.yml`) runs `bash tools/coverage.sh` after the test steps, so the table is in the job log and in the run's summary page (inside a fenced block). The run keeps `coverage/summary.txt` and each package's `coverage/lcov.info` as the `coverage` artifact for 14 days: download it from the run's page, or `gh run download <id> -n coverage`. **No threshold fails CI yet:** the step fails only when a package's tests fail, so a drop in coverage shows in the table and in the review, not as a red run.
 - **Formatting:** the same job checks formatting first, as a **Format** step before Analyze, with the same command as `tools/check.sh format` ([tools/check.sh](#toolschecksh)).
+
+## tools/mine.sh
+
+```bash
+tools/mine.sh          # the whole check on `git status`'s change list
+tools/mine.sh -h       # this help
+```
+
+Checks what a change touches, in one call: `dart format` on the changed `.dart` files, `dart analyze` once per touched package (found by the nearest `pubspec.yaml`), one `flutter test` or `dart test` per package, and the generated churn reverted last, so a test run never leaves it behind. It's quiet when it's green: analyzer errors, failing tests (the test's name and the first 8 lines under it), `NO TESTS <package>`, one `OK <n> tests <package>` line for each package whose tests passed, and a `RESULT:` line last.
+
+- **The tests it runs:** the touched `*_test.dart` files that still exist, plus every test under the package's `test/` folder that names a touched lib file's basename (`git grep -l`), each once. A test it misses still runs in the full `tools/check.sh`, which stays the authority on the whole tree.
+- **Environment:** `DART` and `FLUTTER` are the commands to run (default `dart` and `flutter`; the self-test stubs them), and `MINE_TIMEOUT` is the limit for the whole run in seconds (default 900).
+- **Exit code:** 0 ok, 1 a check failed, 2 `MINE_TIMEOUT` ran out or a command stalled, 3 bad input or setup (not a git worktree, `dart` or `flutter` missing, another copy running).
+- **One copy at a time:** `.dart_tool/mine.lock` holds the running copy's process; a second copy is refused and a stale lock (its process gone) is replaced.
+- **The churn:** [`tools/churn.sh`](../tools/churn.sh) is sourced, not run: it lists the generated files the TV build and the tests rewrite (`tv_test_app/windows/flutter/`, the `docs/design` PNGs, `run-*.patch`) and does a `git checkout --` on those paths only, never on a person's file. Its lists mirror `tools/run-jobs.sh`'s and must be kept in step.
+- **Tested:** `tools/tests/mine-test.sh` (it copies a scratch worktree and stubs `dart` and `flutter`), run by `tools/selftest.sh` or as part of `tools/check.sh tools`.
+
+## tools/selftest.sh
+
+```bash
+tools/selftest.sh            # every tools/tests/*-test.sh
+tools/selftest.sh <dir>      # the *-test.sh scripts in another folder
+tools/selftest.sh -h         # this help
+```
+
+Runs the shell tooling's own tests, one script at a time, each under `timeout(1)` so a hung test can't stall the check. It prints one `PASS <script> (<n>s)` line per script (`FAIL` or `TIMEOUT` in place of `PASS` when it fails or hangs), the failing script's own `FAIL` lines indented under it, and a `RESULT:` line last. `tools/check.sh tools` runs the same thing as one of its checks.
+
+- **The tests:** `tools/tests/` holds one per tool: `mine-test.sh` (`tools/mine.sh` and `tools/churn.sh`), `wait-run-test.sh` (`tools/wait-run.sh`), `selftest-test.sh` (this script itself) and `run-stop-test.sh` (`tools/run-stop.sh`). Each builds its fixtures in a temp folder and prints `PASS <case>` or `FAIL <case>` lines.
+- **Environment:** `SELFTEST_TIMEOUT` is the seconds one script may take (default 120), and `SELFTEST_LOCK` is the lock file from the repository root (default `.dart_tool/selftest.lock`): a second copy on the same lock is refused, and a stale one (its process gone) is replaced.
+- **Exit code:** 0 every script passed, 1 any failed, 2 any timed out, 3 bad arguments or setup (a missing folder, no `*-test.sh`, another copy running).
+
+## tools/wait-run.sh
+
+```bash
+bash tools/wait-run.sh <briefs-dir>            # one window of up to 170 s
+bash tools/wait-run.sh <briefs-dir> --max 60   # a shorter window
+```
+
+Waits for a batch run ([`tools/run-jobs.sh`](../tools/run-jobs.sh)) without polling by hand: it blocks for a while, prints the `run.log` lines written since the last call, and exits as soon as the run logs DONE or STOPPED. A position file keeps the byte offset already printed, so a repeat call prints only new lines; a new `start at` line moves it back to that line, so a fresh run is printed from its own first line (which names the commit). No git command runs: `run.log`, the briefs and the usage log are its only inputs.
+
+- **The window:** one call blocks at most `WAIT_MAX_S` seconds (default 170, and capped at 170 because the agent shell moves a call still running at 180 s into the background), polling every `WAIT_POLL_S` (default 5 s). Repeat until the exit code isn't 4.
+- **A job's expected minutes:** an `expected-min:` line in its brief, else the median of that job's last `WAIT_RECENT_ROWS` rows in `FLASH_USAGE_LOG`, else `WAIT_EXPECT_DEFAULT_MIN`.
+- **Environment:** `WAIT_MAX_S` (the window, default and cap 170), `WAIT_POLL_S` (5), `WAIT_STALL_MIN` (20: `run.log`, the batch's `flash-*.log` files and the run's work folder unchanged this many minutes counts as STALLED), `WAIT_EXPECT_DEFAULT_MIN` (15), `WAIT_RECENT_ROWS` (30), `FLASH_USAGE_LOG` (`~/.thumbparty/flash-usage.tsv`), `RUN_WORK` (the runner's work folder, named as `tools/run-jobs.sh` names it: `.dart_tool/run-jobs/<briefs-dir, / as _>`), `WAIT_LOGS` (the folder the runner was given as `--logs`, when the `flash-*.log` files aren't in the briefs folder) and `WAIT_STATE_DIR` (`.dart_tool/wait-run`: the lock, position and marker files; a test points it at a temp folder).
+- **Exit code:** 0 DONE (a DONE line after the run's last `start at` line), 1 STOPPED (read the lines above it and the logs it names), 2 STALLED or OVERRUN (a job with no `finished` line has run past 1.5 × its expected minutes), 3 bad input (no folder, no `run.log`, a bad option, or another waiter on the same folder), 4 still running (the window ended with the run going; the result names the job, its minutes so far and its expected minutes, so call it again).
+- **Status:** a trial for the next batch (owner, Nov 21): the batch drivers keep their `tail` loop until the owner says otherwise.
+- **Tested:** `tools/tests/wait-run-test.sh`, on a fake briefs folder with `WAIT_STATE_DIR` inside it.
 
 ## tools/review.sh
 
@@ -395,7 +445,7 @@ How they're used:
 
 ## DeepSeek Flash helper: set up, check, remove
 
-**How Claude and flash-worker share the work** (the two working modes, how to write a brief, the standing rules) is in [flash-framework.md](flash-framework.md). **`tools/run-jobs.sh <briefs-dir>`** is the unattended runner for a folder of briefs (`waves.txt` lists the waves): it starts the jobs, applies always-fine files outside a job's list, proves new tests fail on the old code, runs `tools/check.sh` (once more after fetching packages if it fails) and `tools/review.sh` (a FAIL or a touched lib file over 380 lines stops it), commits and pushes each job, has a second worker review each job from `docs/briefs/templates/job-review.md`, and ends with one worker review of the whole run in `<briefs-dir>/REVIEW.md`. On a run of a single wave the per-wave review is skipped, because the run's review covers it. Before wave 1 it also checks that every brief's `report:` line is exactly one bare path, and stops with a message otherwise. Progress is in `<briefs-dir>/run.log`; `--dry-run` shows the plan, `--no-review` leaves the worker reviews out.
+**How Claude and flash-worker share the work** (the two working modes, how to write a brief, the standing rules) is in [flash-framework.md](flash-framework.md). **`tools/run-jobs.sh <briefs-dir>`** is the unattended runner for a folder of briefs (`waves.txt` lists the waves): it starts the jobs, applies always-fine files outside a job's list, proves new tests fail on the old code, runs `tools/check.sh` (once more after fetching packages if it fails) and `tools/review.sh` (a FAIL or a touched lib file over 380 lines stops it), commits and pushes each job, has a second worker review each job from `docs/briefs/templates/job-review.md`, and ends with one worker review of the whole run in `<briefs-dir>/REVIEW.md`. On a run of a single wave the per-wave review is skipped, because the run's review covers it. Before wave 1 it also checks that every brief's `report:` line is exactly one bare path, and stops with a message otherwise. Progress is in `<briefs-dir>/run.log`; `--dry-run` shows the plan, `--no-review` leaves the worker reviews out. Every brief names [worker-extract.md](worker-extract.md) first: a short copy of the coding guidelines and the review rules (size, style, tests, the self-check and the before-you-write rules) that every job follows, so a brief doesn't repeat them; the two full files stay the source of truth.
 
 `tools/flash.sh` sends pattern-copying work to DeepSeek Flash so it doesn't use the Claude subscription. The main Claude Code session stays on the subscription. Only the separate process that [`tools/flash.sh`](../tools/flash.sh) starts talks to DeepSeek, and only while it runs: nothing is installed, and Claude Code's sign-in and settings aren't changed.
 
