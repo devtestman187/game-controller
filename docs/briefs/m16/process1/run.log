@@ -26,3 +26,4 @@
 2026-11-21 14:40:26 committed f2: 69cd5724 test: pin the all-looks helper's overrides merge with a marker provider
 2026-11-21 14:40:26 wave review skipped: wave 1 is the whole run, the run review covers it
 2026-11-21 14:40:27 DONE: every job is committed. Claude reads the Summary of docs/briefs/m16/process1/REVIEW.md, verifies its findings and writes one fix brief
+2026-11-21 14:47:47 final check.sh: All checks passed (412s)

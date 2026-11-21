@@ -225,3 +225,10 @@ Minor items from `docs/briefs/m16/phonehost3/REVIEW.md` and `wave2-review-report
 - night_start_back_out_test.dart:39 is named "the frame's back arrow" but taps the Shape Race pick's arrow; the start card's own frame arrow is never tapped (reword or pump the card above a home route).
 - award_tile.dart:41 awardExplanationFixedPx is exported but read only in its file; make it private or fold it into awardExplanationHeightPx.
 - f1-report.md:43 self-check 3 cites night_start_frame_test.dart:240-257 as proof for pairings it does not test.
+
+## M16 process1 leftovers (Nov 21)
+- `packages/party_host/test/support/all_looks.dart` `pumpHostLook` takes 10 named parameters (guideline limit 5); fold into one mount-options value object when `pumpHost` next changes.
+- The award tests `award_explanation_{size,tv,looks}_test.dart` each copy `_Case`, `_cases`, `_tileWidthPx`, `_TileUnderTest`, `_expectInside` and the two keys; move them to one support file in a brief that allows editing all three.
+- `tools/run-jobs.sh` is about 485 lines (guideline 400, the brief set 520); split the reviewer/commit half into a second script before the next addition.
+- `award_explanation_looks_test.dart` repeats the menu-look checks of `award_explanation_size_test.dart` to prove the helper's path; drop its menu half if it slows the suite.
+- The one-wave review skip in `tools/run-jobs.sh` was proven by the f1/f2 run itself (run.log: "wave review skipped"); the brief lint by dry run and a real stop on a scratch batch (Nov 21).

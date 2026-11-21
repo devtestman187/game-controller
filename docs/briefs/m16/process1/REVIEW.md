@@ -70,3 +70,10 @@ m16 process1 run reviewed: 9 findings (2 must, 1 should, 6 could) in docs/briefs
 ## Delete
 
 - none
+
+
+## Verdicts (Claude, Nov 21)
+- must 1 (overrides merge untested): real; f1 was blocked (Riverpod refuses two overrides of one provider, so the order change is not possible by design); f2 pinned the merge with a test-local marker provider, break-and-restore shown in f2-report.md. Fixed.
+- must 2 (lint and skip never run): verified by hand: dry run on a scratch batch printed LINT FAIL for a two-token, a missing and a doubled report: line (exit 0); a real run stopped before wave 1 with "STOPPED: brief lint: b: ..." (exit 1). The f1/f2 runs logged "wave review skipped: wave 1 is the whole run". Fixed.
+- should (menu-look claim): true as noted; kept the menu half, noted in code-health.
+- could: override order withdrawn (impossible, see above); 10 parameters, test dedup, 485-line runner: code-health; docs/flash-digest.md line 16 fixed by hand; report wording nits ignored.
