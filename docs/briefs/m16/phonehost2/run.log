@@ -125,3 +125,4 @@
 2026-11-21 05:39:44 reviewed wave3: 8 finding(s)
 2026-11-21 05:47:44 reviewed wave4: 4 finding(s)
 2026-11-21 05:47:44 DONE: every job is committed. Claude reads the Summary of docs/briefs/m16/phonehost2/REVIEW.md, verifies its findings and writes one fix brief
+2026-11-21 06:09:55 HAND-FIX phonehost2-wrap: deleted dead NightGameButtons, NightAwardCard, two widths and NightText.winners; join screen hides the PlayHint pill again on touch-first hosts (wave3 review should); full tools/check.sh all passed

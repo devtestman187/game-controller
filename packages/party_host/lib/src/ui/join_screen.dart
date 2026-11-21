@@ -344,7 +344,7 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
           trailing: const _JoinCode(),
           body: _JoinBody(
             hint: _hint(hasOwnPlayer: ownHere != null, hasKeyboard: _keyboard.available),
-            keyboard: _keyboard,
+            keyboard: ref.watch(hostTouchFirstProvider) ? null : _keyboard,
             players: roster,
             teams: _teams,
             ownPlayerId: own,

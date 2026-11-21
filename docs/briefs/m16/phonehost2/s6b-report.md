@@ -30,7 +30,7 @@ Stopped before the results layout; decision (c) is done.
 ## What changed
 
 - `packages/party_host/lib/src/ui/player_badge.dart`
-  - `badgeNumberShare = 0.55` — how `ToyBadge` sizes the number against the disc (toy_look's private
+  - the 0.55 number share (a test-only copy; player_badge.dart has `badgeNumberFloorPx` and `badgeNumberMinDiameterPx`) — how `ToyBadge` sizes the number against the disc (toy_look's private
     `_numberShare`), documented as a copy because the floor is this widget's to keep.
   - `badgeNumberFloorPx = 20.0` — DESIGN section 1, rule 3's text floor.
   - `badgeNumberMinDiameterPx = 37.0` — 20 / 0.55 = 36.36 rounded up, so the number sits over the floor.

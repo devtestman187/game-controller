@@ -4,17 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:toy_look/toy_look.dart';
 
 import '../night/night_awards.dart';
-import '../text/host_text.dart';
 import '../text/night_text.dart';
 import 'host_button.dart';
-
-/// How wide one of the night's award cards is, in logical pixels: three fit
-/// inside the start card, as the mock-up draws them (frame 2).
-const nightAwardCardWidthPx = 300.0;
-
-/// How wide the night's two game buttons are, in logical pixels (frame 2): they
-/// wrap onto two lines on a phone's host screen rather than spill off it.
-const nightGameButtonWidthPx = 460.0;
 
 /// How strong a leaver's row is on the scoreboard (design section 4): the row
 /// stays, greyed, and comes back to full strength if they rejoin.
@@ -115,47 +106,6 @@ class NightDisc extends StatelessWidget {
   }
 }
 
-/// One of the night's three awards on the start card (frame 2): its name in the
-/// header, its picture on a rosette and the one line that says who wins it.
-class NightAwardCard extends StatelessWidget {
-  const NightAwardCard({super.key, required this.award, required this.colour});
-
-  /// The award this card names.
-  final NightAward award;
-
-  /// The award's colour: the header's tint and the rosette's fill.
-  final Color colour;
-
-  @override
-  Widget build(BuildContext context) {
-    final look = ToyLookScope.of(context);
-    final colors = look.colors;
-    return SizedBox(
-      width: nightAwardCardWidthPx,
-      child: ToyCard(
-        header: award.title,
-        headerColor: Color.alphaBlend(colour.withValues(alpha: 0.3), colors.paper),
-        padding: const EdgeInsets.all(ToySizes.space12),
-        popIn: false,
-        child: Row(
-          children: [
-            NightDisc(colour: colour, icon: nightAwardIcon(award.picture), size: look.sizes.buttonHeight * 0.8),
-            const SizedBox(width: ToySizes.space8),
-            Expanded(
-              child: Text(
-                award.line,
-                style: look.type.body.copyWith(color: colors.inkSoft),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 /// The banner over the scoreboard before the night's last round (frame 5):
 /// "Last round: double points!", in the look's focus yellow with a star at each
 /// end, so the words are never carried by colour alone (G5).
@@ -184,58 +134,6 @@ class NightLastRoundBanner extends StatelessWidget {
           Icon(Icons.star, size: style.fontSize, color: colors.ink),
         ],
       ),
-    );
-  }
-}
-
-/// The two buttons that pick the next round (design section 2 N6): Shape Race,
-/// and the Bumper Round, live now that the Arena reports its rounds (M14 b2).
-/// A build that turns [nightBumperRoundReady] off waits with "Soon" beside the
-/// disabled button, as the mock-up's frame 2 drew it.
-class NightGameButtons extends StatelessWidget {
-  const NightGameButtons({super.key, required this.onShapeRace, required this.onBumperRound, this.autofocus = false});
-
-  /// Plays a Shape Race round: its puzzle pick and join screen follow.
-  final VoidCallback onShapeRace;
-
-  /// Plays a Bumper Round; null disables the button.
-  final VoidCallback? onBumperRound;
-
-  /// Whether Shape Race takes the focus first.
-  final bool autofocus;
-
-  @override
-  Widget build(BuildContext context) {
-    final look = ToyLookScope.of(context);
-    final soon = onBumperRound == null;
-    return Wrap(
-      spacing: ToySizes.space12,
-      runSpacing: ToySizes.space12,
-      crossAxisAlignment: WrapCrossAlignment.center,
-      children: [
-        SizedBox(
-          width: nightGameButtonWidthPx,
-          child: HostButton(
-            key: const Key('nightShapeRace'),
-            label: HostText.shapeRace,
-            icon: Icons.extension,
-            autofocus: autofocus,
-            onPressed: onShapeRace,
-          ),
-        ),
-        SizedBox(
-          width: nightGameButtonWidthPx,
-          child: HostButton(
-            key: const Key('nightBumper'),
-            label: NightText.bumperRound,
-            icon: Icons.sports_baseball,
-            onPressed: onBumperRound,
-          ),
-        ),
-        // A disabled button says why in a word beside it (frame 2): a dashed
-        // edge alone would leave a child waiting for it to light up.
-        if (soon) Text(NightText.soon, style: look.type.body.copyWith(color: look.colors.onBackground)),
-      ],
     );
   }
 }

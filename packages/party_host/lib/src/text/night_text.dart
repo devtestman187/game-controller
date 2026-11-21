@@ -52,9 +52,6 @@ abstract final class NightText {
   // section 6, frame 6).
   static const notWon = 'Not won tonight';
 
-  /// How many players share an award: "One winner", "3 winners".
-  static String winners(int count) => count == 1 ? 'One winner' : '$count winners';
-
   /// What an award adds to a winner's total: "+3 points".
   static String awardPoints(int points) => '+$points points';
 
