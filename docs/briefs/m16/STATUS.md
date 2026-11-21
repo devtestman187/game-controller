@@ -25,7 +25,7 @@ docs/agent-workflow.md and docs/HANDOFF.md §10. Session refinements to keep:
 - **Emulator visual gate**: after each visual item, boot the `m8_pixel_tablet` AVD, build
   `controller_app`, drive the UI with `adb shell input tap`, screencap via `adb shell screencap -p`
   + `adb pull` into `docs/briefs/m16/emulator/`, and let the owner review before proceeding. The
-  emulator is stopped as of Nov 19 for a harness update; the round-state strip is not yet captured.
+  emulator is stopped as of Nov 19 for a harness update; the round-state strip is captured by a widget test (`docs/briefs/m16/phonefit/round-strip-852x393.png`, Nov 20); an emulator capture is still open.
 - **Never take a child's word as evidence**: read the diff, re-run the gate, verify the test
   assertions, and check `git status` for churn before committing.
 
