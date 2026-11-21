@@ -1,0 +1,787 @@
+[
+  {
+    "screen": "games-picker",
+    "size": "640x360",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 253.0,
+        "viewport": 304.0
+      }
+    ],
+    "clipped": [],
+    "texts": 11,
+    "smallestFontDp": 15.0,
+    "label24Dp": [
+      24.0
+    ],
+    "wayOn": {
+      "key": "pickShapeRace",
+      "onScreen": true,
+      "top": 80.0,
+      "bottom": 272.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "games-picker-640x360",
+    "layout": "plain",
+    "layoutSize": "640x360",
+    "frame": null,
+    "scale": 1.0,
+    "scrollExtent": 253.0,
+    "contentHeight": 557.0,
+    "screenHeight": 360.0,
+    "fitsNoScroll": false,
+    "smallestFontFramePx": 15.0,
+    "wayOnSettings": null
+  },
+  {
+    "screen": "games-picker",
+    "size": "640x360",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 0.0,
+        "viewport": 484.0
+      }
+    ],
+    "clipped": [],
+    "texts": 11,
+    "smallestFontDp": 10.0,
+    "label24Dp": [
+      16.0
+    ],
+    "wayOn": {
+      "key": "pickShapeRace",
+      "onScreen": true,
+      "top": 80.0,
+      "bottom": 272.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "games-picker-640x360-frame",
+    "layout": "frame",
+    "layoutSize": "960x540",
+    "frame": "960x540",
+    "scale": 0.6667,
+    "scrollExtent": 0.0,
+    "contentHeight": 484.0,
+    "screenHeight": 540.0,
+    "fitsNoScroll": true,
+    "smallestFontFramePx": 15.0,
+    "wayOnSettings": {
+      "key": "openPuzzleSettings",
+      "onScreen": true,
+      "top": 296.0,
+      "bottom": 344.0
+    }
+  },
+  {
+    "screen": "join-screen",
+    "size": "640x360",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 49.0,
+        "viewport": 71.0
+      },
+      {
+        "extent": 49.0,
+        "viewport": 71.0
+      }
+    ],
+    "clipped": [],
+    "texts": 17,
+    "smallestFontDp": 15.0,
+    "label24Dp": [
+      24.0
+    ],
+    "wayOn": {
+      "key": "joinStart",
+      "onScreen": true,
+      "top": 288.0,
+      "bottom": 336.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "join-screen-640x360",
+    "layout": "plain",
+    "layoutSize": "640x360",
+    "frame": null,
+    "scale": 1.0,
+    "scrollExtent": 49.0,
+    "contentHeight": 120.0,
+    "screenHeight": 360.0,
+    "fitsNoScroll": false,
+    "smallestFontFramePx": 15.0,
+    "wayOnSettings": null
+  },
+  {
+    "screen": "join-screen",
+    "size": "640x360",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 0.0,
+        "viewport": 120.0
+      },
+      {
+        "extent": 0.0,
+        "viewport": 120.0
+      }
+    ],
+    "clipped": [],
+    "texts": 17,
+    "smallestFontDp": 10.0,
+    "label24Dp": [
+      16.0
+    ],
+    "wayOn": {
+      "key": "joinStart",
+      "onScreen": true,
+      "top": 468.0,
+      "bottom": 516.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "join-screen-640x360-frame",
+    "layout": "frame",
+    "layoutSize": "960x540",
+    "frame": "960x540",
+    "scale": 0.6667,
+    "scrollExtent": 0.0,
+    "contentHeight": 120.0,
+    "screenHeight": 540.0,
+    "fitsNoScroll": true,
+    "smallestFontFramePx": 15.0,
+    "wayOnSettings": null
+  },
+  {
+    "screen": "games-picker",
+    "size": "852x393",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 4.0,
+        "viewport": 337.0
+      }
+    ],
+    "clipped": [],
+    "texts": 11,
+    "smallestFontDp": 15.0,
+    "label24Dp": [
+      24.0
+    ],
+    "wayOn": {
+      "key": "pickShapeRace",
+      "onScreen": true,
+      "top": 80.0,
+      "bottom": 272.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "games-picker-852x393",
+    "layout": "plain",
+    "layoutSize": "852x393",
+    "frame": null,
+    "scale": 1.0,
+    "scrollExtent": 4.0,
+    "contentHeight": 341.0,
+    "screenHeight": 393.0,
+    "fitsNoScroll": false,
+    "smallestFontFramePx": 15.0,
+    "wayOnSettings": {
+      "key": "openPuzzleSettings",
+      "onScreen": true,
+      "top": 296.0,
+      "bottom": 344.0
+    }
+  },
+  {
+    "screen": "games-picker",
+    "size": "852x393",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 0.0,
+        "viewport": 484.0
+      }
+    ],
+    "clipped": [],
+    "texts": 11,
+    "smallestFontDp": 10.917,
+    "label24Dp": [
+      17.467
+    ],
+    "wayOn": {
+      "key": "pickShapeRace",
+      "onScreen": true,
+      "top": 80.0,
+      "bottom": 272.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "games-picker-852x393-frame",
+    "layout": "frame",
+    "layoutSize": "1171x540",
+    "frame": "1171x540",
+    "scale": 0.7278,
+    "scrollExtent": 0.0,
+    "contentHeight": 484.0,
+    "screenHeight": 540.0,
+    "fitsNoScroll": true,
+    "smallestFontFramePx": 15.0,
+    "wayOnSettings": {
+      "key": "openPuzzleSettings",
+      "onScreen": true,
+      "top": 296.0,
+      "bottom": 344.0
+    }
+  },
+  {
+    "screen": "join-screen",
+    "size": "852x393",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 16.0,
+        "viewport": 104.0
+      },
+      {
+        "extent": 16.0,
+        "viewport": 104.0
+      }
+    ],
+    "clipped": [],
+    "texts": 17,
+    "smallestFontDp": 15.0,
+    "label24Dp": [
+      24.0
+    ],
+    "wayOn": {
+      "key": "joinStart",
+      "onScreen": true,
+      "top": 321.0,
+      "bottom": 369.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "join-screen-852x393",
+    "layout": "plain",
+    "layoutSize": "852x393",
+    "frame": null,
+    "scale": 1.0,
+    "scrollExtent": 16.0,
+    "contentHeight": 120.0,
+    "screenHeight": 393.0,
+    "fitsNoScroll": false,
+    "smallestFontFramePx": 15.0,
+    "wayOnSettings": null
+  },
+  {
+    "screen": "join-screen",
+    "size": "852x393",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 0.0,
+        "viewport": 120.0
+      },
+      {
+        "extent": 0.0,
+        "viewport": 120.0
+      }
+    ],
+    "clipped": [],
+    "texts": 17,
+    "smallestFontDp": 10.917,
+    "label24Dp": [
+      17.467
+    ],
+    "wayOn": {
+      "key": "joinStart",
+      "onScreen": true,
+      "top": 468.0,
+      "bottom": 516.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "join-screen-852x393-frame",
+    "layout": "frame",
+    "layoutSize": "1171x540",
+    "frame": "1171x540",
+    "scale": 0.7278,
+    "scrollExtent": 0.0,
+    "contentHeight": 120.0,
+    "screenHeight": 540.0,
+    "fitsNoScroll": true,
+    "smallestFontFramePx": 15.0,
+    "wayOnSettings": null
+  },
+  {
+    "screen": "games-picker",
+    "size": "1024x768",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 0.0,
+        "viewport": 712.0
+      }
+    ],
+    "clipped": [],
+    "texts": 11,
+    "smallestFontDp": 15.0,
+    "label24Dp": [
+      24.0
+    ],
+    "wayOn": {
+      "key": "pickShapeRace",
+      "onScreen": true,
+      "top": 80.0,
+      "bottom": 272.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "games-picker-1024x768",
+    "layout": "plain",
+    "layoutSize": "1024x768",
+    "frame": null,
+    "scale": 1.0,
+    "scrollExtent": 0.0,
+    "contentHeight": 712.0,
+    "screenHeight": 768.0,
+    "fitsNoScroll": true,
+    "smallestFontFramePx": 15.0,
+    "wayOnSettings": {
+      "key": "openPuzzleSettings",
+      "onScreen": true,
+      "top": 296.0,
+      "bottom": 344.0
+    }
+  },
+  {
+    "screen": "games-picker",
+    "size": "1024x768",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 0.0,
+        "viewport": 664.0
+      }
+    ],
+    "clipped": [],
+    "texts": 11,
+    "smallestFontDp": 16.0,
+    "label24Dp": [
+      25.6
+    ],
+    "wayOn": {
+      "key": "pickShapeRace",
+      "onScreen": true,
+      "top": 80.0,
+      "bottom": 272.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "games-picker-1024x768-frame",
+    "layout": "frame",
+    "layoutSize": "960x720",
+    "frame": "960x720",
+    "scale": 1.0667,
+    "scrollExtent": 0.0,
+    "contentHeight": 664.0,
+    "screenHeight": 720.0,
+    "fitsNoScroll": true,
+    "smallestFontFramePx": 15.0,
+    "wayOnSettings": {
+      "key": "openPuzzleSettings",
+      "onScreen": true,
+      "top": 296.0,
+      "bottom": 344.0
+    }
+  },
+  {
+    "screen": "join-screen",
+    "size": "1024x768",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 0.0,
+        "viewport": 120.0
+      },
+      {
+        "extent": 0.0,
+        "viewport": 120.0
+      }
+    ],
+    "clipped": [],
+    "texts": 17,
+    "smallestFontDp": 15.0,
+    "label24Dp": [
+      24.0
+    ],
+    "wayOn": {
+      "key": "joinStart",
+      "onScreen": true,
+      "top": 696.0,
+      "bottom": 744.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "join-screen-1024x768",
+    "layout": "plain",
+    "layoutSize": "1024x768",
+    "frame": null,
+    "scale": 1.0,
+    "scrollExtent": 0.0,
+    "contentHeight": 120.0,
+    "screenHeight": 768.0,
+    "fitsNoScroll": true,
+    "smallestFontFramePx": 15.0,
+    "wayOnSettings": null
+  },
+  {
+    "screen": "join-screen",
+    "size": "1024x768",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 0.0,
+        "viewport": 120.0
+      },
+      {
+        "extent": 0.0,
+        "viewport": 120.0
+      }
+    ],
+    "clipped": [],
+    "texts": 17,
+    "smallestFontDp": 16.0,
+    "label24Dp": [
+      25.6
+    ],
+    "wayOn": {
+      "key": "joinStart",
+      "onScreen": true,
+      "top": 648.0,
+      "bottom": 696.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "join-screen-1024x768-frame",
+    "layout": "frame",
+    "layoutSize": "960x720",
+    "frame": "960x720",
+    "scale": 1.0667,
+    "scrollExtent": 0.0,
+    "contentHeight": 120.0,
+    "screenHeight": 720.0,
+    "fitsNoScroll": true,
+    "smallestFontFramePx": 15.0,
+    "wayOnSettings": null
+  },
+  {
+    "screen": "games-picker",
+    "size": "1280x800",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 0.0,
+        "viewport": 744.0
+      }
+    ],
+    "clipped": [],
+    "texts": 11,
+    "smallestFontDp": 15.0,
+    "label24Dp": [
+      24.0
+    ],
+    "wayOn": {
+      "key": "pickShapeRace",
+      "onScreen": true,
+      "top": 80.0,
+      "bottom": 272.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "games-picker-1280x800",
+    "layout": "plain",
+    "layoutSize": "1280x800",
+    "frame": null,
+    "scale": 1.0,
+    "scrollExtent": 0.0,
+    "contentHeight": 744.0,
+    "screenHeight": 800.0,
+    "fitsNoScroll": true,
+    "smallestFontFramePx": 15.0,
+    "wayOnSettings": {
+      "key": "openPuzzleSettings",
+      "onScreen": true,
+      "top": 296.0,
+      "bottom": 344.0
+    }
+  },
+  {
+    "screen": "games-picker",
+    "size": "1280x800",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 0.0,
+        "viewport": 544.0
+      }
+    ],
+    "clipped": [],
+    "texts": 11,
+    "smallestFontDp": 20.0,
+    "label24Dp": [
+      32.0
+    ],
+    "wayOn": {
+      "key": "pickShapeRace",
+      "onScreen": true,
+      "top": 80.0,
+      "bottom": 272.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "games-picker-1280x800-frame",
+    "layout": "frame",
+    "layoutSize": "960x600",
+    "frame": "960x600",
+    "scale": 1.3333,
+    "scrollExtent": 0.0,
+    "contentHeight": 544.0,
+    "screenHeight": 600.0,
+    "fitsNoScroll": true,
+    "smallestFontFramePx": 15.0,
+    "wayOnSettings": {
+      "key": "openPuzzleSettings",
+      "onScreen": true,
+      "top": 296.0,
+      "bottom": 344.0
+    }
+  },
+  {
+    "screen": "join-screen",
+    "size": "1280x800",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 0.0,
+        "viewport": 120.0
+      },
+      {
+        "extent": 0.0,
+        "viewport": 120.0
+      }
+    ],
+    "clipped": [],
+    "texts": 17,
+    "smallestFontDp": 15.0,
+    "label24Dp": [
+      24.0
+    ],
+    "wayOn": {
+      "key": "joinStart",
+      "onScreen": true,
+      "top": 728.0,
+      "bottom": 776.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "join-screen-1280x800",
+    "layout": "plain",
+    "layoutSize": "1280x800",
+    "frame": null,
+    "scale": 1.0,
+    "scrollExtent": 0.0,
+    "contentHeight": 120.0,
+    "screenHeight": 800.0,
+    "fitsNoScroll": true,
+    "smallestFontFramePx": 15.0,
+    "wayOnSettings": null
+  },
+  {
+    "screen": "join-screen",
+    "size": "1280x800",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 0.0,
+        "viewport": 120.0
+      },
+      {
+        "extent": 0.0,
+        "viewport": 120.0
+      }
+    ],
+    "clipped": [],
+    "texts": 17,
+    "smallestFontDp": 20.0,
+    "label24Dp": [
+      32.0
+    ],
+    "wayOn": {
+      "key": "joinStart",
+      "onScreen": true,
+      "top": 528.0,
+      "bottom": 576.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "join-screen-1280x800-frame",
+    "layout": "frame",
+    "layoutSize": "960x600",
+    "frame": "960x600",
+    "scale": 1.3333,
+    "scrollExtent": 0.0,
+    "contentHeight": 120.0,
+    "screenHeight": 600.0,
+    "fitsNoScroll": true,
+    "smallestFontFramePx": 15.0,
+    "wayOnSettings": null
+  },
+  {
+    "screen": "games-picker",
+    "size": "1920x1080",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 0.0,
+        "viewport": 1024.0
+      }
+    ],
+    "clipped": [],
+    "texts": 11,
+    "smallestFontDp": 15.0,
+    "label24Dp": [
+      24.0
+    ],
+    "wayOn": {
+      "key": "pickShapeRace",
+      "onScreen": true,
+      "top": 80.0,
+      "bottom": 272.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "games-picker-1920x1080",
+    "layout": "plain",
+    "layoutSize": "1920x1080",
+    "frame": null,
+    "scale": 1.0,
+    "scrollExtent": 0.0,
+    "contentHeight": 1024.0,
+    "screenHeight": 1080.0,
+    "fitsNoScroll": true,
+    "smallestFontFramePx": 15.0,
+    "wayOnSettings": {
+      "key": "openPuzzleSettings",
+      "onScreen": true,
+      "top": 296.0,
+      "bottom": 344.0
+    }
+  },
+  {
+    "screen": "games-picker",
+    "size": "1920x1080",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 0.0,
+        "viewport": 484.0
+      }
+    ],
+    "clipped": [],
+    "texts": 11,
+    "smallestFontDp": 30.0,
+    "label24Dp": [
+      48.0
+    ],
+    "wayOn": {
+      "key": "pickShapeRace",
+      "onScreen": true,
+      "top": 80.0,
+      "bottom": 272.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "games-picker-1920x1080-frame",
+    "layout": "frame",
+    "layoutSize": "960x540",
+    "frame": "960x540",
+    "scale": 2.0,
+    "scrollExtent": 0.0,
+    "contentHeight": 484.0,
+    "screenHeight": 540.0,
+    "fitsNoScroll": true,
+    "smallestFontFramePx": 15.0,
+    "wayOnSettings": {
+      "key": "openPuzzleSettings",
+      "onScreen": true,
+      "top": 296.0,
+      "bottom": 344.0
+    }
+  },
+  {
+    "screen": "join-screen",
+    "size": "1920x1080",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 0.0,
+        "viewport": 120.0
+      },
+      {
+        "extent": 0.0,
+        "viewport": 120.0
+      }
+    ],
+    "clipped": [],
+    "texts": 17,
+    "smallestFontDp": 15.0,
+    "label24Dp": [
+      24.0
+    ],
+    "wayOn": {
+      "key": "joinStart",
+      "onScreen": true,
+      "top": 1008.0,
+      "bottom": 1056.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "join-screen-1920x1080",
+    "layout": "plain",
+    "layoutSize": "1920x1080",
+    "frame": null,
+    "scale": 1.0,
+    "scrollExtent": 0.0,
+    "contentHeight": 120.0,
+    "screenHeight": 1080.0,
+    "fitsNoScroll": true,
+    "smallestFontFramePx": 15.0,
+    "wayOnSettings": null
+  },
+  {
+    "screen": "join-screen",
+    "size": "1920x1080",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 0.0,
+        "viewport": 120.0
+      },
+      {
+        "extent": 0.0,
+        "viewport": 120.0
+      }
+    ],
+    "clipped": [],
+    "texts": 17,
+    "smallestFontDp": 30.0,
+    "label24Dp": [
+      48.0
+    ],
+    "wayOn": {
+      "key": "joinStart",
+      "onScreen": true,
+      "top": 468.0,
+      "bottom": 516.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "join-screen-1920x1080-frame",
+    "layout": "frame",
+    "layoutSize": "960x540",
+    "frame": "960x540",
+    "scale": 2.0,
+    "scrollExtent": 0.0,
+    "contentHeight": 120.0,
+    "screenHeight": 540.0,
+    "fitsNoScroll": true,
+    "smallestFontFramePx": 15.0,
+    "wayOnSettings": null
+  }
+]
