@@ -55,3 +55,16 @@
 2026-11-21 01:58:36 tests-first ok: packages/party_host/test/night_scoreboard_card_test.dart fails on the old code
 2026-11-21 02:05:06 checks failed; fetching packages and trying once more
 2026-11-21 02:11:39 STOPPED: checks failed twice on the combined tree after wph fA (see .dart_tool/run-jobs/docs_briefs_m16_phonehost2/run-check.log); nothing of this wave is committed
+2026-11-21 02:12:23 start at 668afbb7 on m16
+2026-11-21 02:12:32 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-21 02:12:33 resume wph (applied by hand, not committed yet)
+2026-11-21 02:12:33 resume fA (applied by hand, not committed yet)
+2026-11-21 02:12:34 start fB
+2026-11-21 02:26:21 fB finished: result 0 (63 turns, 10 min)
+2026-11-21 02:28:20 tests-first ok: controller_app/test/host_frame_wiring_test.dart fails on the old code
+2026-11-21 02:28:46 tests-first ok: packages/party_host/test/night_reveal_tie_test.dart fails on the old code
+2026-11-21 02:28:58 tests-first ok: packages/party_host/test/night_scoreboard_card_test.dart fails on the old code
+2026-11-21 02:35:51 checks failed; fetching packages and trying once more
+2026-11-21 02:42:38 committed wph: 57b32111 Draw the phone host's screens in HostFrame below the bar
+2026-11-21 02:42:40 committed fA: b07f1672 Give the night score card the stage width and test it at five sizes
+2026-11-21 02:42:43 committed fB: 36b7483b The reveal's tie names shrink and split in two columns; the band pads evenly
