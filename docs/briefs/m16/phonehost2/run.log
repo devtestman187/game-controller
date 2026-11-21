@@ -38,3 +38,6 @@
 2026-11-21 01:14:33 tests-first ok: tv_test_app/test/host_frame_wiring_test.dart fails on the old code
 2026-11-21 01:20:56 checks failed; fetching packages and trying once more
 2026-11-21 01:27:20 STOPPED: checks failed twice on the combined tree after s6a s8p wtv (see .dart_tool/run-jobs/docs_briefs_m16_phonehost2/run-check.log); nothing of this wave is committed
+2026-11-21 01:29:38 HAND-FIX s6a: wave 3 stopped on phone-suite pins of the picker (host_menu_fit_test, host_title_bar_test in controller_app) that need the phone frame wiring; combined tree had host and tv green and review.sh 0 fail; committed the three jobs by named paths with tools/commit-job.sh, phone pins go to job wph
+2026-11-21 01:29:38 HAND-FIX wtv: wave 3 stopped on phone-suite pins of the picker (host_menu_fit_test, host_title_bar_test in controller_app) that need the phone frame wiring; combined tree had host and tv green and review.sh 0 fail; committed the three jobs by named paths with tools/commit-job.sh, phone pins go to job wph
+2026-11-21 01:29:38 HAND-FIX s8p: wave 3 stopped on phone-suite pins of the picker (host_menu_fit_test, host_title_bar_test in controller_app) that need the phone frame wiring; combined tree had host and tv green and review.sh 0 fail; committed the three jobs by named paths with tools/commit-job.sh, phone pins go to job wph

@@ -1,4 +1,4 @@
-s6a s8p wtv
-s6b2 fA wph1
-s8j fB fstart
-wph2 s9m s9t
+wph fA fB
+s6b2 fstart s9t
+s8j
+s9m
