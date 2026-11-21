@@ -13,7 +13,7 @@ Header lines: `job:` `pub: no` `stop:` `read:` (first entry `docs/briefs/templat
 - `read:` names the files, the tests that could break, and the owner's decision quoted. A worker cannot ask.
 - `check:` e.g. `format analyze phone host`; add `phone` when controller_app pins change.
 - Optional: `ci-patch: <patch file>` (committed patch for `.github/` or `codemagic.yaml`; the runner applies it after the checks and commits it with the job) and `dart-fix: <packages>` (runner runs `dart fix --apply` there before the checks). Workers stay denied `.github/` and `codemagic.yaml`.
-- Worker analyze covers only the job's own packages; the runner analyzes the whole workspace once per wave. Worker review is one per wave (`wave<N>-review-report.md`).
+- Worker analyze covers only the job's own packages; the runner analyzes the whole workspace once per wave. Worker review is one per wave (`wave<N>-review-report.md`); a single-wave plan has no per-wave review, the run review covers it.
 - Tests first: new tests go in a NEW test file that fails on the old code (the runner proves it). `tests-first: exempt <reason>` only for refactors and docs.
 - 80-120 turns per job; over about 120, split into phases `<job>-1-build`, `-2-run`, `-3-wrap`. Briefs target about 200 words (350 at most).
 - Brief lint: every `report:` line is one bare path (the runner checks it before wave 1 and stops with a message otherwise).
