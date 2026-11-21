@@ -52,3 +52,6 @@
 2026-11-21 16:06:00 skip p2-ptest (already done)
 2026-11-21 16:09:38 reviewed wave3: 10 finding(s)
 2026-11-21 16:14:31 committed p2-split: 886e8a58 Runner: move its steps and reviews into sourced files
+2026-11-21 16:14:32 start p2-wire
+2026-11-21 16:31:26 p2-wire finished: result 0 (102 turns, 16 min)
+2026-11-21 16:40:35 committed p2-wire: 573e61a2 M16 process2: the runner writes STOP.md, locks and times itself
