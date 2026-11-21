@@ -7,8 +7,49 @@ const nightRevealBadgePx = 190.0;
 /// The award's name on the reveal, in frame px (DESIGN section 4: 52).
 const nightRevealAwardPx = 52.0;
 
-/// A winner's name on the reveal, in frame px (DESIGN section 4: 40).
+/// A winner's name on the reveal, in frame px (DESIGN section 4: 40), while
+/// the award has one or two winners ([nightRevealWinnerPxFor]).
 const nightRevealWinnerPx = 40.0;
+
+/// How many winners keep the design's [nightRevealWinnerPx]: one or two (brief
+/// fB's size tiers).
+const nightRevealWinnerPxMaxWinners = 2;
+
+/// A tied winner's name on the reveal, in frame px, when three share the
+/// award: three 40 px lines plus the card's 188 px of other content need 358
+/// of its 328 px of room at 640x360, 30 px too many (brief fB's size tiers).
+const nightRevealTieWinnerPx = 32.0;
+
+/// How many winners take [nightRevealTieWinnerPx]: three (brief fB's size
+/// tiers).
+const nightRevealTiePxMaxWinners = 3;
+
+/// A tied winner's name on the reveal, in frame px, when four or more share
+/// the award: above the frame's 20 px floor, and four 34 px rows plus the
+/// card's 188 px of other content take 324 of its 328 px at 640x360 (brief
+/// fB's size tiers).
+const nightRevealTieManyWinnerPx = 24.0;
+
+/// The size a winner's name takes when [winners] players share the award, in
+/// frame px (brief fB): the design's [nightRevealWinnerPx] for one or two,
+/// [nightRevealTieWinnerPx] for three and [nightRevealTieManyWinnerPx] for four
+/// or more, so a tie keeps its names inside the card.
+double nightRevealWinnerPxFor(int winners) => switch (winners) {
+  <= nightRevealWinnerPxMaxWinners => nightRevealWinnerPx,
+  <= nightRevealTiePxMaxWinners => nightRevealTieWinnerPx,
+  _ => nightRevealTieManyWinnerPx,
+};
+
+/// How many winners a tie needs before its names take two columns: five, the
+/// first count that no longer fits one column of the card at 640x360 (brief
+/// fB).
+const nightRevealTieColumnMinWinners = 5;
+
+/// How many columns a tie's names take from
+/// [nightRevealTieColumnMinWinners] on: two, so six 24 px names need three
+/// rows of about 102 px rather than six rows of 204, which with the card's
+/// 188 px of other content overflows its 328 px at 640x360 by 64 (brief fB).
+const nightRevealTieColumns = 2;
 
 /// The reason the award was won, in frame px (DESIGN section 4: 26).
 const nightRevealReasonPx = 26.0;
@@ -136,6 +177,7 @@ class _AwardBody extends StatelessWidget {
       );
     }
     final winners = [for (final id in outcome.winners) _who(night, players, id)];
+    final tied = winner.copyWith(fontSize: nightRevealWinnerPxFor(winners.length));
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -143,8 +185,10 @@ class _AwardBody extends StatelessWidget {
         _RevealLine(outcome.award.title, style: name),
         const SizedBox(height: ToySizes.space8),
         // A tie gives each winner a line of their own, ellipsised rather than
-        // wrapped, so the card keeps its height at two names (brief S5).
-        for (final who in winners) _RevealLine(NightText.playerName(who.nickname, who.number), style: winner),
+        // wrapped, at the size its count takes; five or six share the lines in
+        // two columns, so a tie of the night's six players still fits (brief
+        // fB).
+        _RevealNames(names: [for (final who in winners) NightText.playerName(who.nickname, who.number)], style: tied),
         const SizedBox(height: ToySizes.space16),
         _RevealLine(outcome.reason ?? outcome.award.line, style: reason, maxLines: nightRevealReasonLines),
         const SizedBox(height: ToySizes.space16),
@@ -156,6 +200,48 @@ class _AwardBody extends StatelessWidget {
             Text(NightText.awardPoints(awardPoints), style: reason.copyWith(color: colors.good)),
           ],
         ),
+      ],
+    );
+  }
+}
+
+/// The winners' names on the card's right, one ellipsised line each: one
+/// column for up to four, two columns of up to three for five or six (brief
+/// fB).
+class _RevealNames extends StatelessWidget {
+  const _RevealNames({required this.names, required this.style});
+
+  /// Each winner's line, in the order they won.
+  final List<String> names;
+
+  /// The size and colour every name takes ([nightRevealWinnerPxFor]).
+  final TextStyle style;
+
+  @override
+  Widget build(BuildContext context) {
+    if (names.length < nightRevealTieColumnMinWinners) {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [for (final name in names) _RevealLine(name, style: style)],
+      );
+    }
+    // Column-major, the first column the taller half: five names make three
+    // rows of three and two, six make three and three (brief fB).
+    final rows = (names.length + 1) ~/ 2;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (var column = 0; column < nightRevealTieColumns; column++) ...[
+          if (column > 0) const SizedBox(width: ToySizes.space16),
+          Expanded(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [for (final name in names.skip(column * rows).take(rows)) _RevealLine(name, style: style)],
+            ),
+          ),
+        ],
       ],
     );
   }

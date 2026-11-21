@@ -166,6 +166,10 @@ class _FrameBackButton extends StatelessWidget {
 /// Each button is [Flexible], so two buttons that together want more room than
 /// the frame has give room to each other instead of overflowing it: a button's
 /// label is ellipsised, which the look's [ToyButton] already does.
+///
+/// The ink line's width is padding above the row and the same below it, so the
+/// buttons stand centred in the band under the line: a 64 px button has 10
+/// frame px above it and 10 below, with the TV look's 4 px line (brief fB).
 class _FrameFooter extends StatelessWidget {
   const _FrameFooter({required this.buttons});
 
@@ -182,7 +186,7 @@ class _FrameFooter extends StatelessWidget {
         border: Border(top: edge),
       ),
       child: Padding(
-        padding: EdgeInsets.fromLTRB(hostFrameGutterPx, edge.width, hostFrameGutterPx, 0),
+        padding: EdgeInsets.symmetric(horizontal: hostFrameGutterPx, vertical: edge.width),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.end,
           children: [

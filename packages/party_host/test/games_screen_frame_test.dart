@@ -216,7 +216,7 @@ void main() {
     expect(
       buttonTopPx - bandTopPx,
       moreOrLessEquals(
-        (84 - look.sizes.outlineWidth - look.sizes.buttonHeight) / 2 + look.sizes.outlineWidth,
+        (84 - 2 * look.sizes.outlineWidth - look.sizes.buttonHeight) / 2 + look.sizes.outlineWidth,
         epsilon: 1e-6,
       ),
       reason: 'the button is centred between the band\'s ink line and the frame\'s bottom',

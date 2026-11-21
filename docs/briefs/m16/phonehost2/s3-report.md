@@ -33,8 +33,9 @@
 
 - Header 64, footer 84, body 392 (a 960x540, 1170.687x540 or 960x600 frame) / 572 (960x720): unchanged.
 - Footer band: the footer's whole 84 x frame width; its ink line is the look's `outlineWidth` (4 px with the
-  TV look, 3 px with a menu look), and the buttons' row is inset 24 either side from under it, so a 64 px
-  button has 16 px of air above it inside the band.
+  TV look, 3 px with a menu look), the buttons' row is inset 24 either side, and the band pads its content
+  by the ink line's width above and below the row, so a 64 px button stands 10 px above and 10 px below
+  inside the band (corrected by brief fB: the first band gave 12 above and 8 below, and said 16).
 - Stage = frame width - 48 (912 at 960, 1122.687 at 1170.687). Award tiles: `(stage - 2*16)/3` =
   **293.333 x 84** at 960, **363.562 x 84** at 852x393's frame; the three share one row (asserted equal and
   asserted against that formula).
