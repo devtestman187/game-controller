@@ -55,3 +55,4 @@
 2026-11-21 16:14:32 start p2-wire
 2026-11-21 16:31:26 p2-wire finished: result 0 (102 turns, 16 min)
 2026-11-21 16:40:35 committed p2-wire: 573e61a2 M16 process2: the runner writes STOP.md, locks and times itself
+2026-11-21 16:44:23 reviewed wave4: 12 finding(s)
