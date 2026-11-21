@@ -22,12 +22,14 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(NightStartScreen), findsOneWidget);
-    expect(find.text('Rounds'), findsOneWidget);
+    // The rounds are the header's segment now (M16 phonehost2 S3), and the
+    // night's way on, Shape Race, takes the focus first.
+    expect(find.byType(RoundSegment), findsOneWidget);
     expect(find.text('3 rounds'), findsOneWidget);
     expect(find.text('5 rounds'), findsOneWidget);
-    expect(focused(tester, 'nightRounds-3'), isTrue, reason: '3 rounds starts focused (frame 2)');
+    expect(focused(tester, 'nightShapeRace'), isTrue, reason: 'the way on starts focused');
     expect(find.text("The night's three awards"), findsOneWidget);
-    expect(find.byType(NightAwardCard), findsNWidgets(3));
+    expect(find.byType(AwardTile), findsNWidgets(3));
     expect(find.text("The cat visits the side that's ahead."), findsOneWidget);
     expect(find.text('Pick round 1'), findsOneWidget);
     expect(find.text('Shape Race'), findsOneWidget);
@@ -40,7 +42,7 @@ void main() {
   testWidgets('a seed fixes the start card\'s three awards', (tester) async {
     await pumpHost(tester, screen: const NightStartScreen(seed: 7));
     const games = {NightAwardGame.puzzle, NightAwardGame.bumper};
-    final shown = [for (final card in tester.widgetList<NightAwardCard>(find.byType(NightAwardCard))) card.award];
+    final shown = [for (final card in tester.widgetList<AwardTile>(find.byType(AwardTile))) card.award];
     expect(shown, drawAwards(Random(7), games: games), reason: 'the card draws from its seed (design section 4)');
   });
 
@@ -51,14 +53,14 @@ void main() {
     appContainer(tester).read(partyNightProvider.notifier).start(length: NightLength.five, awards: threeAwards);
     await openNight(tester);
 
-    Color? fillOf(String key) => tester.widget<HostButton>(find.byKey(Key(key))).fill;
-    expect(fillOf('nightRounds-5'), isNotNull, reason: 'the running night\'s length is the one lit');
-    final shown = [for (final card in tester.widgetList<NightAwardCard>(find.byType(NightAwardCard))) card.award];
+    RoundSegment segment() => tester.widget<RoundSegment>(find.byType(RoundSegment));
+    expect(segment().value, 5, reason: 'the running night\'s length is the one shown');
+    final shown = [for (final card in tester.widgetList<AwardTile>(find.byType(AwardTile))) card.award];
     expect(shown, threeAwards, reason: 'the night\'s own three awards');
-    await tapVisible(tester, find.byKey(const Key('nightRounds-3')));
+    await tapVisible(tester, find.text('3 rounds'));
     await tester.pumpAndSettle();
-    expect(fillOf('nightRounds-5'), isNotNull, reason: 'its length cannot be changed once it is set up');
-    expect(fillOf('nightRounds-3'), isNull);
+    expect(segment().value, 5, reason: 'its length cannot be changed once it is set up');
+    expect(segment().onChanged, isNull, reason: 'the chips pick nothing');
   });
 
   testWidgets('the start card hides the cat\'s line while the host\'s Chaos is off', (tester) async {
@@ -66,7 +68,7 @@ void main() {
     appContainer(tester).read(puzzleSettingsProvider.notifier).set(withChaos(Chaos.off));
     await openNight(tester);
 
-    expect(find.text('Rounds'), findsOneWidget);
+    expect(find.byType(RoundSegment), findsOneWidget);
     expect(find.text("The cat visits the side that's ahead."), findsNothing);
   });
 
@@ -82,8 +84,19 @@ void main() {
     final fake = await pumpHost(tester, screen: const StubHome());
     await openNight(tester);
     await neutral(tester, fake, ['p1']);
-    await press(tester, fake, 'p1', GamepadButton.dpadRight);
-    expect(focused(tester, 'nightRounds-5'), isTrue);
+    // Shape Race, the night's way on, takes the focus first; up walks from the
+    // footer to the round chips in the header (M16 phonehost2 S3).
+    expect(focused(tester, 'nightShapeRace'), isTrue);
+    bool onSegment() =>
+        FocusManager.instance.primaryFocus?.context?.findAncestorWidgetOfExactType<RoundSegment>() != null;
+    for (var i = 0; i < 4 && !onSegment(); i++) {
+      await press(tester, fake, 'p1', GamepadButton.dpadUp);
+    }
+    expect(onSegment(), isTrue, reason: 'up reaches the header\'s chips');
+    if (!Focus.of(tester.element(find.text('5 rounds'))).hasFocus) {
+      await press(tester, fake, 'p1', GamepadButton.dpadRight);
+    }
+    expect(Focus.of(tester.element(find.text('5 rounds'))).hasFocus, isTrue, reason: 'right reaches 5 rounds');
     await press(tester, fake, 'p1', GamepadButton.a);
     expect(appContainer(tester).read(partyNightProvider), isNull, reason: 'choosing rounds does not start the night');
 

@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:toy_look/toy_look.dart';
 
+import '../text/host_text.dart';
+import 'host_focus_ring.dart';
+
 /// The frame's header, in frame px (DESIGN section 1, rule 5): the screen's
 /// title on the left and its round or state chip on the right, the same on
 /// every screen, so the chip's place never moves.
@@ -27,6 +30,13 @@ const hostFrameGutterPx = 24.0;
 /// The design draws no host screen per device (rule 1): [title], the header's
 /// [trailing] chip, the body and the footer's buttons are all the screen needs
 /// to say, and the frame's scale makes them fit every one.
+///
+/// The footer sits on the look's paper, with an ink line above it (the look's
+/// "footer bar", M16 phonehost2 S3): the way-on buttons stand on a band of
+/// their own rather than on the sky, so they read as the screen's end wherever
+/// the body stops. The header shows the phone's or remote's way back — a back
+/// arrow that pops the route — only while there is a route to go back to, as
+/// the title bar's arrow always did (m12 bug 1107f rule C).
 ///
 /// The column is in a [SafeArea], so this scaffold claims the device's insets
 /// once for every screen (a notched phone's top strip, a home bar's bottom):
@@ -82,10 +92,13 @@ class HostFrameScreen extends StatelessWidget {
   }
 }
 
-/// The header's one row (DESIGN section 1, rule 5): the title on the left, in
-/// the frame's title type on the background, and the screen's chip at the
-/// right end. A title too long for the room the chip leaves is ellipsised, so
-/// a long screen name never pushes the chip off the frame.
+/// The header's one row (DESIGN section 1, rule 5): the way back, the title on
+/// the left in the frame's title type on the background, and the screen's chip
+/// at the right end. A title too long for the room the arrow and the chip leave
+/// is ellipsised, so a long screen name never pushes either off the frame.
+///
+/// The row keeps the title bar's key, so a finder that looked for the old
+/// title bar's row finds this one on a screen the frame now draws.
 class _FrameHeader extends StatelessWidget {
   const _FrameHeader({required this.title, this.trailing});
 
@@ -99,7 +112,12 @@ class _FrameHeader extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: hostFrameGutterPx),
       child: Row(
+        key: const Key('hostTitleBar'),
         children: [
+          if (Navigator.of(context).canPop()) ...[
+            _FrameBackButton(color: colors.onBackground),
+            const SizedBox(width: ToySizes.space8),
+          ],
           Expanded(
             child: Text(
               title,
@@ -115,8 +133,35 @@ class _FrameHeader extends StatelessWidget {
   }
 }
 
-/// The footer's one row: the screen's buttons at the right end, in the order
-/// given, with the look's room between them.
+/// The way back out of a screen the frame draws, at the header's left end: the
+/// title bar's arrow (key `hostTitleBarBack`, m12 bug 1107f rule C) in the
+/// look's ink on the background, with the host's focus ring around it, popping
+/// the route it is in.
+class _FrameBackButton extends StatelessWidget {
+  const _FrameBackButton({required this.color});
+
+  /// The arrow's colour: the look's ink on the frame's background.
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => HostFocusRing(
+    child: IconButton(
+      key: const Key('hostTitleBarBack'),
+      tooltip: HostText.back,
+      color: color,
+      icon: const Icon(Icons.arrow_back),
+      onPressed: () => Navigator.of(context).maybePop(),
+    ),
+  );
+}
+
+/// The footer's one row on the look's paper band (key `hostFrameFooterBand`):
+/// a line of ink along its top, then the screen's buttons at the right end, in
+/// the order given, with the look's room between them.
+///
+/// The band is what makes the footer read as the screen's end (DESIGN section
+/// 1, rule 5: "the footer bar"): the body's sky stops at its ink line, and the
+/// way-on buttons stand on paper wherever the body ends.
 ///
 /// Each button is [Flexible], so two buttons that together want more room than
 /// the frame has give room to each other instead of overflowing it: a button's
@@ -128,16 +173,25 @@ class _FrameFooter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: hostFrameGutterPx),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          for (var i = 0; i < buttons.length; i++) ...[
-            if (i > 0) const SizedBox(width: ToySizes.space16),
-            Flexible(child: buttons[i]),
+    final look = ToyLookScope.of(context);
+    final edge = BorderSide(color: look.colors.ink, width: look.sizes.outlineWidth);
+    return DecoratedBox(
+      key: const Key('hostFrameFooterBand'),
+      decoration: BoxDecoration(
+        color: look.colors.paper,
+        border: Border(top: edge),
+      ),
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(hostFrameGutterPx, edge.width, hostFrameGutterPx, 0),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            for (var i = 0; i < buttons.length; i++) ...[
+              if (i > 0) const SizedBox(width: ToySizes.space16),
+              Flexible(child: buttons[i]),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }

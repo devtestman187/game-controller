@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'package:connection/connection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,20 +11,21 @@ import '../night/night_state.dart';
 import '../night/party_night.dart';
 import '../providers.dart';
 import '../text/night_text.dart';
+import 'award_tile.dart';
 import 'game_screen.dart';
 import 'games_screen.dart';
-import 'host_button.dart';
-import 'host_screen.dart';
+import 'host_frame_screen.dart';
 import 'lobby_music.dart';
+import 'night_footer_buttons.dart';
 import 'night_widgets.dart';
+import 'player_badge.dart';
+import 'round_segment.dart';
 
-/// How wide the start card is, in logical pixels: the mock-up's 1040, inside a
-/// screen of 1280 (frame 2).
-const nightStartCardWidthPx = 1040.0;
-
-/// The night's start card (design section 4, mock-up frame 2): how many rounds
-/// the night plays (3, focused, or 5), the three awards drawn for it, the cat's
-/// line when Chaos isn't off, and the two buttons that pick round 1.
+/// The night's start card (design section 4, as the frame draws it since M16
+/// phonehost2 S3): how many rounds the night plays (3, or 5) in the header's
+/// segment, the three awards drawn for it as one row of tiles, the cat's line
+/// when Chaos isn't off, the players who joined, and the two footer buttons
+/// that pick round 1.
 ///
 /// The night starts on the first game's press and the round follows: Shape Race
 /// goes through its puzzle pick as it does outside a night (design section 2
@@ -63,6 +65,17 @@ class _NightStartScreenState extends ConsumerState<NightStartScreen> {
     setState(() => _length = length);
   }
 
+  /// The length the header's segment was picked with: the chip's value is the
+  /// night's own rounds ([NightLength.rounds]), so the segment and the night
+  /// cannot name two different counts.
+  void _pickRounds(int rounds) => _pick(NightLength.values.firstWhere((length) => length.rounds == rounds));
+
+  /// What a chip says, in the night's own words for its length.
+  static String _roundsLabel(NightLength length) => switch (length) {
+    NightLength.three => NightText.threeRounds,
+    NightLength.five => NightText.fiveRounds,
+  };
+
   /// Starts the night and its first round's Shape Race.
   void _start() {
     ref.read(partyNightProvider.notifier).start(length: _length, awards: _awards);
@@ -83,30 +96,69 @@ class _NightStartScreenState extends ConsumerState<NightStartScreen> {
   Widget build(BuildContext context) {
     final catVisits = NightChaos.catVisitsTonight(ref.watch(puzzleSettingsProvider));
     final running = ref.watch(partyNightProvider);
+    final length = running?.length ?? _length;
     return CallbackShortcuts(
       bindings: {const SingleActivator(LogicalKeyboardKey.escape): () => Navigator.of(context).maybePop()},
-      child: HostScreen(
+      child: HostFrameScreen(
         title: NightText.partyNight,
+        trailing: RoundSegment(
+          value: length.rounds,
+          // A night already under way keeps its length, so its chips show the
+          // night's count but pick nothing (M14 r5 12).
+          onChanged: running == null ? _pickRounds : null,
+          options: [
+            for (final option in NightLength.values) RoundOption(value: option.rounds, label: _roundsLabel(option)),
+          ],
+        ),
         body: LobbyHold(
-          child: SafeArea(
-            child: ListView(
-              padding: hostMenuPadding(ref.watch(hostBarHeightProvider)),
-              children: [
-                Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: nightStartCardWidthPx),
-                    child: _StartCard(
-                      length: running?.length ?? _length,
-                      awards: running?.awards ?? _awards,
-                      catVisits: catVisits,
-                      onPick: _pick,
-                      onShapeRace: _start,
-                      onBumperRound: nightBumperRoundReady ? _startBumperRound : null,
-                    ),
-                  ),
-                ),
-              ],
-            ),
+          child: _StartBody(
+            awards: running?.awards ?? _awards,
+            catVisits: catVisits,
+            players: ref.watch(gamePlayersProvider),
+          ),
+        ),
+        footer: [
+          NightFooterButtons(
+            onShapeRace: _start,
+            onBumperRound: nightBumperRoundReady ? _startBumperRound : null,
+            autofocus: true,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The start card's body (design section 4, as the frame draws it): the three
+/// awards as one row of equal tiles, the cat's line when Chaos isn't off, the
+/// players who joined on one line, and the line naming the round the buttons
+/// pick.
+///
+/// The column fills the body and scrolls only if it cannot: inside the frame it
+/// always fits (392 px of body against the design's ~290 px of content at 4 and
+/// 6 players), and the scroll is the design's unreachable safety net (DESIGN
+/// section 1, rule 6) for a screen drawn on a device smaller than the frame,
+/// which the apps have until they put [HostFrame] above the navigator.
+class _StartBody extends StatelessWidget {
+  const _StartBody({required this.awards, required this.catVisits, required this.players});
+
+  final List<NightAward> awards;
+
+  /// Whether the cat may visit tonight, so the card says so (design section 4:
+  /// only while the host's Chaos setting isn't off).
+  final bool catVisits;
+
+  /// The players the host has joined, in their numbers' order.
+  final List<GamePlayer> players;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) => SingleChildScrollView(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minHeight: constraints.maxHeight),
+          child: IntrinsicHeight(
+            child: _StartColumn(awards: awards, catVisits: catVisits, players: players),
           ),
         ),
       ),
@@ -114,117 +166,52 @@ class _NightStartScreenState extends ConsumerState<NightStartScreen> {
   }
 }
 
-/// The start card's paper: the night's rounds, its awards, the cat's line and
-/// the button that opens round 1 (mock-up frame 2).
-class _StartCard extends StatelessWidget {
-  const _StartCard({
-    required this.length,
-    required this.awards,
-    required this.catVisits,
-    required this.onPick,
-    required this.onShapeRace,
-    required this.onBumperRound,
-  });
+/// The start card's lines in one column, with the pick-round line pushed to the
+/// body's bottom end.
+class _StartColumn extends StatelessWidget {
+  const _StartColumn({required this.awards, required this.catVisits, required this.players});
 
-  final NightLength length;
   final List<NightAward> awards;
-
-  /// Whether the cat may visit tonight, so the card says so (design section 4:
-  /// only while the host's Chaos setting isn't off).
   final bool catVisits;
-  final ValueChanged<NightLength> onPick;
-  final VoidCallback onShapeRace;
-  final VoidCallback? onBumperRound;
+  final List<GamePlayer> players;
 
   @override
   Widget build(BuildContext context) {
     final colors = ToyLookScope.of(context).colors;
-    final heading = ToyLookScope.of(context).type.button.copyWith(color: colors.ink);
-    return ToyCard(
-      header: NightText.partyNight,
-      headerColor: colors.player(3),
-      padding: const EdgeInsets.all(ToySizes.space24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _RoundsRow(length: length, onPick: onPick, heading: heading),
-          const SizedBox(height: ToySizes.space24),
-          _AwardsRow(awards: awards, heading: heading),
-          if (catVisits) ...[const SizedBox(height: ToySizes.space24), _CatLine(heading: heading)],
-          const SizedBox(height: ToySizes.space24),
-          Text(NightText.pickRound(1), style: heading),
-          const SizedBox(height: ToySizes.space12),
-          NightGameButtons(onShapeRace: onShapeRace, onBumperRound: onBumperRound),
-        ],
-      ),
-    );
-  }
-}
-
-/// "Rounds" and the two choices: the one picked takes the focus yellow.
-class _RoundsRow extends StatelessWidget {
-  const _RoundsRow({required this.length, required this.onPick, required this.heading});
-
-  final NightLength length;
-  final ValueChanged<NightLength> onPick;
-  final TextStyle heading;
-
-  @override
-  Widget build(BuildContext context) {
-    final focus = ToyLookScope.of(context).colors.focus;
+    final text = ToyType.frame.body.copyWith(color: colors.onBackground);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
       children: [
-        Text(NightText.rounds, style: heading),
-        const SizedBox(height: ToySizes.space8),
-        Wrap(
-          spacing: ToySizes.space12,
-          children: [
-            HostButton(
-              key: const Key('nightRounds-3'),
-              label: NightText.threeRounds,
-              autofocus: true,
-              fill: length == NightLength.three ? focus : null,
-              onPressed: () => onPick(NightLength.three),
-            ),
-            HostButton(
-              key: const Key('nightRounds-5'),
-              label: NightText.fiveRounds,
-              fill: length == NightLength.five ? focus : null,
-              onPressed: () => onPick(NightLength.five),
-            ),
-          ],
-        ),
+        Text(NightText.awardsTitle, style: text),
+        const SizedBox(height: ToySizes.space12),
+        _AwardsRow(awards: awards),
+        if (catVisits) ...[const SizedBox(height: ToySizes.space16), _CatLine(style: text)],
+        if (players.isNotEmpty) ...[const SizedBox(height: ToySizes.space16), _PlayersLine(players: players)],
+        const Spacer(),
+        Text(NightText.pickRound(1), style: text),
       ],
     );
   }
 }
 
-/// "The night's three awards" and the cards they were drawn into.
+/// The night's three awards as one row of equal tiles: the frame's width shared
+/// out evenly, so no award reads as the bigger one (DESIGN section 1, rule 4).
 class _AwardsRow extends StatelessWidget {
-  const _AwardsRow({required this.awards, required this.heading});
+  const _AwardsRow({required this.awards});
 
   final List<NightAward> awards;
-  final TextStyle heading;
 
   @override
   Widget build(BuildContext context) {
     final colors = ToyLookScope.of(context).colors;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
+    return Row(
       children: [
-        Text(NightText.awardsTitle, style: heading),
-        const SizedBox(height: ToySizes.space12),
-        Wrap(
-          spacing: ToySizes.space16,
-          runSpacing: ToySizes.space16,
-          children: [
-            for (final (i, award) in awards.indexed) NightAwardCard(award: award, colour: colors.player(i + 1)),
-          ],
-        ),
+        for (final (i, award) in awards.indexed) ...[
+          if (i > 0) const SizedBox(width: awardTileGapPx),
+          Expanded(
+            child: AwardTile(award: award, colour: colors.player(i + 1)),
+          ),
+        ],
       ],
     );
   }
@@ -232,18 +219,58 @@ class _AwardsRow extends StatelessWidget {
 
 /// The cat's line, shown while the host's Chaos setting is on.
 class _CatLine extends StatelessWidget {
-  const _CatLine({required this.heading});
+  const _CatLine({required this.style});
 
-  final TextStyle heading;
+  final TextStyle style;
 
   @override
   Widget build(BuildContext context) {
     final look = ToyLookScope.of(context);
     return Row(
       children: [
-        NightDisc(colour: look.colors.player(5), icon: Icons.pets, size: look.sizes.buttonHeight * 0.7),
+        NightDisc(colour: look.colors.player(5), icon: Icons.pets, size: awardTileDiscPx),
         const SizedBox(width: ToySizes.space12),
-        Flexible(child: Text(NightText.catLine, style: heading)),
+        Flexible(child: Text(NightText.catLine, style: style)),
+      ],
+    );
+  }
+}
+
+/// The players who joined tonight, on one line: each one's badge and name, the
+/// names ellipsised rather than wrapped, so four or six players still read as
+/// one row (DESIGN section 4: "player names on one line").
+class _PlayersLine extends StatelessWidget {
+  const _PlayersLine({required this.players});
+
+  final List<GamePlayer> players;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = ToyLookScope.of(context).colors;
+    final style = ToyType.frame.body.copyWith(color: colors.onBackground);
+    return Row(
+      children: [
+        for (final player in players)
+          Flexible(
+            child: Padding(
+              padding: const EdgeInsets.only(right: ToySizes.space12),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  PlayerBadge(number: player.number, size: awardTileDiscPx, character: player.character),
+                  const SizedBox(width: ToySizes.space8),
+                  Flexible(
+                    child: Text(
+                      NightText.playerName(player.nickname, player.number),
+                      style: style,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
       ],
     );
   }
