@@ -1,0 +1,16 @@
+job: M16 phonehost2 S6b — puzzle results in HostFrameScreen, badge number floor
+stop: after S6b. Do not edit host_frame_screen.dart, score_row.dart, arena_results.dart or night files.
+read: docs/briefs/m16/phonehost2/COMMON.md (shared decisions, read first) · docs/briefs/m16/phonefit/optionC/design/DESIGN.md (section 1 rules 3-6, section 4 puzzle results, section 5 Type) · packages/party_host/lib/src/ui/puzzle_screen.dart (:290-375 where results mount; it is 375 lines: move code into the part files, never grow it) · puzzle_results_widgets.dart · puzzle_screen_results.dart · player_badge.dart · host_frame_screen.dart · test/puzzle_results_test.dart · test/puzzle_screen_test.dart · test/player_badge_test.dart · test/screen_fit_test.dart
+decisions: (a) The results card is full stage width: the finished picture(s) at the left, headline + stars + per-player pieces at the right (names 24 px, pieces 20 px); the winner headline stays the card's title. (b) The footer carries the buttons (Play again / Next / Change teams / Back, the series Wrap, a night's Next and End night), at most two wide at 28 px; any that cannot fit move into the body's right column (say which). Only DESIGN rules 3-5 apply. (c) PlayerBadge: a badge number is never drawn under 20 frame px inside the frame (measure what it draws at 38 and smaller; fix in player_badge.dart only; do not edit packages/toy_look). (d) The in-round board is unchanged.
+
+do:
+1 Tests first, NEW file test/puzzle_results_frame_test.dart: Shape Race results under HostFrame at the five sizes (a 2-player and a 4-player round, a night's round with End night, a series round): no scrollable, footer buttons on screen and tappable, nothing under 20 px, the picture left of the text, PlayerBadge's number >= 20 px at sizes 38 and 28.
+2 Code: results in the frame; delete the plain card widths it used. Fix the tests it breaks (puzzle_results_test, puzzle_screen_test, player_badge_test, screen_fit_test) without weakening them.
+3 Report: sizes in frame px; which buttons moved; tests rewritten.
+in the report: `## Summary` (at most 30 lines), end `## Hand-over`.
+self-check: docs/review-rules.md part A, items 1-5, one line each with the test that shows it.
+tests: tests-first: new file above. Await async effects.
+rules: aim 80-120 turns · no lib file you touch ends over 380 lines · tests first · write only inside allow: · stage nothing · no git add -A · tools/review.sh: no FAIL on your lines · no new strings except parameters · leave docs/design/, site/shots/ and tv_test_app/windows/flutter/ alone.
+allow: packages/party_host/lib/src/ui/puzzle_screen.dart · packages/party_host/lib/src/ui/puzzle_results_widgets.dart · packages/party_host/lib/src/ui/puzzle_screen_results.dart · packages/party_host/lib/src/ui/puzzle_screen_widgets.dart · packages/party_host/lib/src/ui/player_badge.dart · packages/party_host/test/puzzle_results_frame_test.dart · packages/party_host/test/puzzle_results_test.dart · packages/party_host/test/puzzle_screen_test.dart · packages/party_host/test/player_badge_test.dart · packages/party_host/test/screen_fit_test.dart · docs/briefs/m16/phonehost2/s6b-report.md
+check: format analyze host
+report: docs/briefs/m16/phonehost2/s6b-report.md
