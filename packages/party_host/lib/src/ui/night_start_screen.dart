@@ -55,9 +55,9 @@ class _NightStartScreenState extends ConsumerState<NightStartScreen> {
   late final List<NightAward> _awards = drawAwards(_random, games: _games);
   NightLength _length = NightLength.three;
 
-  /// The night the host left before round 1, if there is one: its own length
-  /// and awards stand, so the card never names a draw the night isn't playing
-  /// for (M14 r5 12).
+  /// The night under way, if there is one: a night with a recorded round, whose
+  /// own length and awards stand, so the card never names a draw the night
+  /// isn't playing for (M14 r5 12; a night left before round 1 is dropped, B-032).
   NightState? get _running => ref.read(partyNightProvider);
 
   void _pick(NightLength length) {

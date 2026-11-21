@@ -32,7 +32,7 @@ run (1 of 1011: `live_stats_share_test.dart` "a phone that said no is left out o
 saw the ids in the other order — unrelated code, and it passes alone); `tools/check.sh host`
 rerun: PASS (128 s).
 
-Line counts: `night_start_screen.dart` 218, `party_night.dart` 148 (limit 380).
+Line counts: `night_start_screen.dart` 221, `party_night.dart` 148 (limit 380).
 
 Self-check (review-rules.md part A):
 
