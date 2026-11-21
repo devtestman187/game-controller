@@ -220,3 +220,8 @@ Flaky: `live_stats_share_test` ("a phone that said no is left out of the upload,
 
 ### M16 phonehost3 (pad clearance, clipped labels, Nov 21)
 Minor items from `docs/briefs/m16/phonehost3/REVIEW.md` and `wave2-review-report.md`, left open: one shared content-width helper for a ToyButton label (night footer and results controls each restate it; the controls measure without the DefaultTextStyle/text scaler); `nightFooterButtonsWidthPx` is read only by tests; five-player night names (3 + 2) use half-stage slots under third slots; `labels` restates `buttons` in `puzzle_results_widgets.dart`; the night/controls test harness lays the frame in the whole device box, not the gate's room below the bar; copied helpers `frameScaleAt`/`drawnArmsInBoardBox` in two pad tests; `host_overrides.dart` uses the bar constant while `hostBarHeightProvider` is 0 in the frame (say why in the doc); night_start_screen.dart doc says 286 px at six names.
+
+## M16 bugs1 leftovers (Nov 21)
+- night_start_back_out_test.dart:39 is named "the frame's back arrow" but taps the Shape Race pick's arrow; the start card's own frame arrow is never tapped (reword or pump the card above a home route).
+- award_tile.dart:41 awardExplanationFixedPx is exported but read only in its file; make it private or fold it into awardExplanationHeightPx.
+- f1-report.md:43 self-check 3 cites night_start_frame_test.dart:240-257 as proof for pairings it does not test.

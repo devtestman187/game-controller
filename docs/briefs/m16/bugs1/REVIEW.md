@@ -118,3 +118,10 @@ Run reviewed: one fix batch (the award popover is 207 px but needs 223 on the TV
 ## Delete
 
 - none
+
+## Verdicts (driver, Nov 21)
+- must award_tile TV height: verified at award_tile.dart:41/:131; fixed in f1 (962c4aa0), TV test added.
+- should live_stats_share flake: fixed in f2 (1e4d6cb9). should night_start doc: fixed in f2.
+- should one-pass commit of wave 1: process note, no code; next time run jobs with disjoint test files or accept (the tests sat in 8623c2af).
+- could games pin, back-out arrow, b032 line count, b033 "open": fixed in f1/f2. could site/shots churn: restored, not staged.
+- Wave 2 review (clean, 3 could): back-out test name says "frame's back arrow" but taps the pick's arrow, awardExplanationFixedPx exported unused, f1 self-check 3 cites a test that covers only closing: all minor, in docs/code-health.md.

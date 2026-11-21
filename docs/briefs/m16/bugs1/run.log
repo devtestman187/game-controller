@@ -40,3 +40,4 @@
 2026-11-21 13:01:27 committed f2: 1e4d6cb9 M16 bugs1 f2: order-free stats check, stale doc, tighter footer pin
 2026-11-21 13:07:54 reviewed wave2: 3 finding(s)
 2026-11-21 13:07:54 DONE: every job is committed. Claude reads the Summary of docs/briefs/m16/bugs1/REVIEW.md, verifies its findings and writes one fix brief
+2026-11-21 13:16:53 check.sh full on tip 305f481b: 12/12 PASS (402s)
