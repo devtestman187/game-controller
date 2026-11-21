@@ -33,6 +33,7 @@
 #      in the background while the next wave works (at most 3 flash jobs in all,
 #      the review chain counting as one); their report files are committed at the
 #      next serial point (after the next wave commit), staging only those files.
+#      A plan with a single wave skips this review: the run review covers it.
 # At the end one more worker job reads everything since the run's first commit
 # and writes <briefs-dir>/REVIEW.md; Claude reads its Summary and writes one
 # fix brief. Progress and stops: <briefs-dir>/run.log (a STOPPED line with no
@@ -53,6 +54,8 @@
 # Before the first wave a preflight (tools/flash.sh --preflight, a tiny real worker call) must show the
 # worker can run flutter and tools/check.sh; PREFLIGHT_SKIP=1 skips it. A suite that fails with
 # PathNotFoundException (temp-folder race) is retried once, logged as "check retry".
+# Before the preflight every brief's report: line is linted: it must be exactly one bare path
+# (no second report: line, no words after the path), or the run stops before wave 1.
 # STOP file: <briefs-dir>/STOP is checked before each wave, job start, review and commit; when
 # present the runner kills its child processes, logs `STOPPED: stop file` and exits 1; the file
 # is removed at the next start. Never revert a job's commits without `--drop <job>` first.
@@ -66,6 +69,8 @@ SAFE_OUTSIDE='^(([^/]+/)*analysis_options\.yaml|\.gitignore|\.gitattributes|([^/
 # Known generated churn outside the list: dropped (never copied), logged per job.
 CHURN_OUTSIDE='^(docs/design/([^/]+/)*[^/]+\.png|site/shots/.*|([^/]+/)*run-base[^/]*|([^/]+/)*tv_test_app/windows/flutter/.*|([^/]+/)*generated_plugin[^/]*|docs/briefs/([^/]+/)*run-[^/]*\.patch)$'
 SIZE_STOP=380
+# A brief's report: line must be exactly one bare path (spaces, quotes and backticks are refused).
+REPORT_BARE='^[^[:space:]`"'\'']+$'
 CHURN=(tv_test_app/windows/flutter/ site/shots/ docs/design/puzzles/ docs/design/m13-placed-look.png docs/design/m13-puzzles.png docs/design/m13-puzzles-night.png)
 
 B="" LOGS="" review=1 dry=0 drop=""
@@ -75,7 +80,7 @@ while [ $# -gt 0 ]; do
     --no-review) review=0; shift ;;
     --dry-run) dry=1; shift ;;
     --drop) drop=${2:?}; shift 2 ;;
-    -h|--help) sed -n '2,58p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h|--help) sed -n '2,63p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     -*) echo "Unknown option: $1 (try --help)" >&2; exit 2 ;;
     *) B=${1%/}; shift ;;
   esac
@@ -123,6 +128,28 @@ save() { # save <message> <path>...: commit and push just these paths
   git diff --cached --quiet && return 0
   git commit -q -m "$msg" && { [ -n "${NO_PUSH:-}" ] || git push -q origin "HEAD:refs/heads/$(git rev-parse --abbrev-ref HEAD)"; }
 }
+report_bad() { # report_bad <job>: why the brief's report: line is not one bare path (nothing when it is)
+  local n v
+  n=$(grep -c '^report:' "$B/$1.md")
+  [ "$n" -eq 0 ] && { echo "no report: line"; return; }
+  [ "$n" -gt 1 ] && { echo "two report: lines"; return; }
+  v=$(sed -n 's/^report: *//p' "$B/$1.md" | tr -d '\r')
+  [[ $v =~ $REPORT_BARE ]] || echo "${v:-nothing after report:}"
+}
+brief_lint() { # brief_lint: every job still to run has exactly one bare report: path; a dry run prints LINT FAIL lines
+  local wave j why bad=0
+  for wave in "${WAVES[@]}"; do
+    for j in $wave; do
+      if is_dropped "$j" || is_done "$j"; then continue; fi
+      [ -f "$B/$j.md" ] || continue # the wave loop's own message covers a missing brief
+      why=$(report_bad "$j"); [ -n "$why" ] || continue
+      bad=1
+      if [ $dry -eq 1 ]; then echo "LINT FAIL $j: report: line must be exactly one bare path (got: $why)"
+      else note "STOPPED: brief lint: $j: report: line must be exactly one bare path (got: $why)"; fi
+    done
+  done
+  return $bad
+}
 
 if [ $dry -eq 1 ]; then
   n=0
@@ -133,6 +160,7 @@ if [ $dry -eq 1 ]; then
       if is_dropped "$j"; then echo "  $j: skip (dropped)"; elif is_done "$j"; then echo "  $j: skip (committed)"; else echo "  $j: run"; fi
     done
   done
+  brief_lint
   echo "then: the run's review -> $B/REVIEW.md"; exit 0
 fi
 
@@ -233,8 +261,12 @@ review_brief() { # review_brief <review-name> <names> <ranges>: the brief for on
 }
 wave_review() { # wave_review <n>: write the review brief of wave <n> from RV_NAMES/RV_RANGES; sets WREV (empty if none)
   WREV=""
-  if [ $review -eq 1 ] && [ ${#RV_NAMES[@]} -gt 0 ] && ! committed "$B/wave$1-review-report.md"; then
-    review_brief "wave$1" "${RV_NAMES[*]}" "${RV_RANGES[*]}"; WREV="wave$1"
+  if [ $review -eq 1 ] && [ ${#RV_NAMES[@]} -gt 0 ]; then
+    if [ ${#WAVES[@]} -eq 1 ]; then # the whole run: its review covers it, no per-wave one
+      note "wave review skipped: wave 1 is the whole run, the run review covers it"
+    elif ! committed "$B/wave$1-review-report.md"; then
+      review_brief "wave$1" "${RV_NAMES[*]}" "${RV_RANGES[*]}"; WREV="wave$1"
+    fi
   fi
   RV_NAMES=() RV_RANGES=()
 }
@@ -344,6 +376,9 @@ fi
 for r in "$B"/*-review-report.md; do # reports of an earlier run that stopped before it could commit them
   [ -f "$r" ] && ! committed "$r" && { save "review report left by an earlier run: $(basename "$r")" "$r"; note "committed the left-over $(basename "$r")"; }
 done
+
+# Brief lint: the runner commits the report: path whole, so it must be exactly one bare path.
+brief_lint || { save "runner: log at a stop" "$B/run.log"; exit 1; }
 
 # Preflight: a worker that cannot run flutter and tools/check.sh would run blind (bugs10 job 1),
 # so one tiny real worker call proves it before any job starts. PREFLIGHT_SKIP=1 skips it.
