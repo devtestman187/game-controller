@@ -81,3 +81,4 @@
 2026-11-21 03:13:30 tests-first: tv_test_app/test/tv_focus_ring_frame_test.dart passes on the old code, exempt by its brief
 2026-11-21 03:20:01 checks failed; fetching packages and trying once more
 2026-11-21 03:26:39 STOPPED: checks failed twice on the combined tree after s6b2 fstart s9t (see .dart_tool/run-jobs/docs_briefs_m16_phonehost2/run-check.log); nothing of this wave is committed
+2026-11-21 03:27:56 HAND-FIX fstart: the night start without its scroll net overflowed two arena touch tests that draw it unframed at 852x393 (outside the brief's allow); added a framed flag to pumpHost in test/support/host_harness.dart and set it in arena_touch_solo_night_test and arena_touch_ready_test; the three files, night_start_frame_test and night_screens_test pass
