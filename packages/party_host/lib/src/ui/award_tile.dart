@@ -29,6 +29,17 @@ const awardTileGapPx = ToySizes.space16;
 /// never covers the awards it explains (DESIGN section 4).
 const awardExplanationWidthPx = 480.0;
 
+/// How tall the award's explanation is, in frame px (B-033): one height for
+/// every award, so a player's eye finds the same box whatever line it holds.
+///
+/// Measured from the tallest of the twelve awards laid out at
+/// [awardExplanationWidthPx] in the frame's type: its header band, the 24 px
+/// padding above and below the body, one line of 22 px text, the 24 px gap and
+/// the 48 px OK button. At 432 px of room every award's line stays on one line,
+/// so this holds the longest, and it fits the shortest frame (540 px) with room
+/// to spare, so the box never has to scroll.
+const awardExplanationHeightPx = 207.0;
+
 /// One of the night's three awards on its start card (M16 phonehost2 S3,
 /// DESIGN section 4): its picture and its name on one line, and an "i" that
 /// opens the line that says who wins it.
@@ -100,6 +111,12 @@ class AwardTile extends StatelessWidget {
 /// The award's explanation (DESIGN section 4): its name and the one line that
 /// says who wins it, in a small card over the screen. A tap outside it, Escape
 /// or its own button closes it, so it never traps a player mid-screen.
+///
+/// Every award's explanation is the same [awardExplanationWidthPx] by
+/// [awardExplanationHeightPx] box (B-033): the award's own line decides what
+/// it says, never how big it is. The card is given that size rather than
+/// growing to its text, and its body scrolls only if a longer line one day
+/// needs more than the height has.
 class _AwardExplanation extends StatelessWidget {
   const _AwardExplanation({required this.award});
 
@@ -109,13 +126,15 @@ class _AwardExplanation extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = ToyLookScope.of(context).colors;
     return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: awardExplanationWidthPx),
+      child: SizedBox(
+        width: awardExplanationWidthPx,
+        height: awardExplanationHeightPx,
         child: ToyCard(
           key: const Key('awardExplanation'),
           header: award.title,
           padding: const EdgeInsets.all(ToySizes.space24),
           popIn: false,
+          scrollBody: true,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
