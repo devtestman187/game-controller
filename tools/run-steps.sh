@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # Sourced by tools/run-jobs.sh, after it has cd'd to the repo root:
 #   . "$dir/run-steps.sh"   (dir: the folder holding run-jobs.sh)
-# The steps the runner takes between a job's start and its commit. Not run on its
-# own; it reads the runner's globals (B, WORK, CHURN_OUTSIDE, SAFE_OUTSIDE,
-# SIZE_STOP) and its note, finding, stop, unchurn and committed helpers.
+# The steps the runner takes between a job's start and its commit, and its stop
+# helpers (STOP.md, the time limit and the lock). Not run on its own; it reads the
+# runner's globals (B, WORK, CHURN_OUTSIDE, SAFE_OUTSIDE, SIZE_STOP, RUN_MAX_MIN,
+# RUN_START_S) and its note, finding, stop, unchurn and committed helpers.
 
 # 2. A job that stopped with result 4: outside files that are generated churn are
 # dropped (logged), always-fine ones are applied; any other file stops the job.
@@ -120,4 +121,55 @@ ci_patch() { # ci_patch <job>
     note "ci-patch applied for $j: $pf ($(git apply --numstat "$pf" | cut -f3 | tr '\n' ' '))"
   elif git apply --check -R "$pf" 2>/dev/null; then note "ci-patch for $j already applied: $pf"
   else stop "$j: git apply --check refused ci-patch $pf (see $WORK/run-cipatch.log); nothing of this wave is committed"; fi
+}
+
+# The stop report, the run's own time limit and the one-runner lock. The runner calls
+# these from its stop, check_stop and start; they read its globals (B, WORK, RUN_MAX_MIN,
+# RUN_START_S) and its note, finding and stop helpers.
+
+save_stop() { # save_stop <message>: the log, and STOP.md when this stop left one
+  local paths=("$B/run.log")
+  [ -f "$B/STOP.md" ] && paths+=("$B/STOP.md")
+  save "$1" "${paths[@]}"
+}
+
+lint_stop() { # lint_stop: brief_lint failed: STOP.md, the log, exit 1 (a dry run only prints)
+  write_stop "brief lint: a brief's report: line is not exactly one bare path (the LINT lines above name it)"
+  save_stop "runner: log at a stop"
+  exit 1
+}
+
+clear_last_stop() { # clear_last_stop: the last stop's STOP.md goes at a new start, its removal committed
+  [ -f "$B/STOP.md" ] || return 0
+  rm -f "$B/STOP.md"
+  note "removed the last stop's STOP.md"
+  committed "$B/STOP.md" && save "runner: removal of the last stop's STOP.md" "$B/STOP.md"
+}
+
+write_stop() { # write_stop <cause> [flash-log]: <batch>/STOP.md now, while the cause is fresh
+  local log=${2:-}
+  if [ -n "$log" ] && [ -f "$log" ]; then
+    bash tools/run-stop.sh "$B" "$WORK" "$1" "$log" > "$WORK/run-stop.log" 2>&1
+  else
+    bash tools/run-stop.sh "$B" "$WORK" "$1" > "$WORK/run-stop.log" 2>&1
+  fi || finding "STOP.md was not written (see $WORK/run-stop.log); the stop stands anyway"
+}
+
+time_check() { # time_check: past RUN_MAX_MIN the run stops itself, so a person can look
+  local limit=$((RUN_MAX_MIN * 60)) elapsed
+  elapsed=$(($(date +%s) - RUN_START_S))
+  [ "$elapsed" -ge "$limit" ] || return 0
+  stop "TIMEOUT: the run passed RUN_MAX_MIN=$RUN_MAX_MIN min (counted from the last 'start at' line in run.log); a person should look at $B/run.log before more code is written"
+}
+
+lock_take() { # lock_take: one runner per batch; a second exits 2, a lock whose pid is gone is replaced
+  local pid=""
+  [ -f "$WORK/lock" ] && pid=$(cat "$WORK/lock" 2>/dev/null)
+  if [ -n "$pid" ] && [ "$pid" != "$$" ] && kill -0 "$pid" 2>/dev/null; then
+    echo "RESULT: refused, a run is active (pid $pid)"
+    exit 2
+  fi
+  [ -n "$pid" ] && note "replaced a stale lock (pid $pid is gone)"
+  echo "$$" > "$WORK/lock" || { echo "RESULT: FAILED: cannot write the lock $WORK/lock" >&2; exit 2; }
+  trap 'rm -f "$WORK/lock"' EXIT INT TERM
 }

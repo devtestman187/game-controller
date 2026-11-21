@@ -5,10 +5,11 @@
 #   . tools/churn.sh
 #   churn_revert      # git checkout -- on the dirty generated paths, quietly
 #
-# The caller's working directory must be the repository root. The lists mirror
-# tools/run-jobs.sh's CHURN and CHURN_OUTSIDE (the paths the runner drops from a
-# stopped job); keep the pairs in step. `git checkout --` on these paths only is
-# what docs/briefs/m16/process2/script-rules.md allows.
+# The caller's working directory must be the repository root. These are the one
+# list: tools/run-jobs.sh sources this file for its CHURN_OUTSIDE (the paths it
+# drops from a result-4 job) and its unchurn paths, so nothing has to be kept in
+# step. `git checkout --` on these paths only is what
+# docs/briefs/m16/process2/script-rules.md allows.
 #
 # A deleted generated file comes back from the checkout; an untracked one stays
 # (checkout has nothing to restore), so the caller still sees that one.
@@ -22,8 +23,10 @@ CHURN_PATHS=(
   docs/design/m13-puzzles.png
   docs/design/m13-puzzles-night.png
 )
-# tools/run-jobs.sh's CHURN_OUTSIDE: the same churn wherever a build puts it.
-CHURN_REGEX='^(docs/design/([^/]+/)*[^/]+\.png|site/shots/.*|([^/]+/)*run-base[^/]*|([^/]+/)*tv_test_app/windows/flutter/.*|([^/]+/)*generated_plugin[^/]*|docs/briefs/([^/]+/)*run-[^/]*\.patch)$'
+# tools/run-jobs.sh's CHURN_OUTSIDE: the same churn wherever a build puts it. A
+# test that writes its measurements next to its report (`s7-results.json`, which
+# made three phonehost1 jobs stop with result 4) is churn too, one file per run.
+CHURN_REGEX='^(docs/design/([^/]+/)*[^/]+\.png|site/shots/.*|([^/]+/)*run-base[^/]*|([^/]+/)*tv_test_app/windows/flutter/.*|([^/]+/)*generated_plugin[^/]*|docs/briefs/([^/]+/)*run-[^/]*\.patch|([^/]+/)*[^/]+-results\.json)$'
 
 churn_path() { # <path>: is it one of the known generated paths?
   local listed

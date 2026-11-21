@@ -17,10 +17,11 @@
 #      (`<job> <sha>`, written after its commit; older batches without a done.txt: a
 #      committed report) or in dropped.txt is skipped, so the runner is safe to start again;
 #   2. a job that stopped with result 4 (files outside its allow: list): known
-#      generated churn (CHURN_OUTSIDE below: library and m13 PNGs, site/shots,
-#      run-base, tv plugin files, stray run-*.patch) is dropped, one log line
-#      per job; always-fine files (SAFE_OUTSIDE: analysis_options, .gitignore,
-#      .gitattributes, pubspec.lock) are applied; any other file is a stop;
+#      generated churn (CHURN_OUTSIDE, from tools/churn.sh: library and m13 PNGs,
+#      site/shots, run-base, tv plugin files, stray run-*.patch, a test-written
+#      *-results.json) is dropped, one log line per job, so such a job is applied
+#      and never a stop; always-fine files (SAFE_OUTSIDE: analysis_options,
+#      .gitignore, .gitattributes, pubspec.lock) are applied; any other file stops;
 #   3. new test files are run against the old code: one that passes there was
 #      not written test-first and STOPS the run, unless the job's brief has a
 #      line `tests-first: exempt <reason>` (pure refactors, docs) and the test
@@ -59,6 +60,12 @@
 # STOP file: <briefs-dir>/STOP is checked before each wave, job start, review and commit; when
 # present the runner kills its child processes, logs `STOPPED: stop file` and exits 1; the file
 # is removed at the next start. Never revert a job's commits without `--drop <job>` first.
+# Every stop writes <briefs-dir>/STOP.md through tools/run-stop.sh (why, the failing lines, the
+# last run.log lines, a suggested repair) and commits it; the next start removes and commits it.
+# One runner per batch: the work folder's lock holds its pid, so a second runner on the same
+# batch exits 2 with `RESULT: refused, a run is active (pid N)`; a lock whose pid is gone is
+# replaced. RUN_MAX_MIN (360, minutes) is the run's limit: past it the runner stops with
+# `STOPPED: TIMEOUT`, so a person can look before more code is written.
 # NO_PUSH=1 in the environment commits without pushing.
 # Its step and review helpers live next to it in tools/run-steps.sh and
 # tools/run-review.sh, sourced after the cd to the repo root below.
@@ -67,16 +74,18 @@ set -u
 unset CHECK_ANALYZE_PKGS # the runner always analyzes the whole workspace (flash.sh scopes the workers' own analyze)
 dir=$(cd "$(dirname "$0")" && pwd) || exit 2
 cd "$dir/.." || exit 2
+. "$dir/churn.sh" || exit 2
 . "$dir/run-steps.sh" || exit 2
 . "$dir/run-review.sh" || exit 2
 # Files outside a job's allow: list that are applied and committed (always fine).
 SAFE_OUTSIDE='^(([^/]+/)*analysis_options\.yaml|\.gitignore|\.gitattributes|([^/]+/)*pubspec\.lock)$'
-# Known generated churn outside the list: dropped (never copied), logged per job.
-CHURN_OUTSIDE='^(docs/design/([^/]+/)*[^/]+\.png|site/shots/.*|([^/]+/)*run-base[^/]*|([^/]+/)*tv_test_app/windows/flutter/.*|([^/]+/)*generated_plugin[^/]*|docs/briefs/([^/]+/)*run-[^/]*\.patch)$'
+# Known generated churn outside the list: dropped (never copied), logged per job. The one
+# list is tools/churn.sh's, sourced above: CHURN_REGEX and CHURN_PATHS (the unchurn below).
+CHURN_OUTSIDE=$CHURN_REGEX
+unchurn() { git checkout -- "${CHURN_PATHS[@]}" 2>/dev/null; }
 SIZE_STOP=380
 # A brief's report: line must be exactly one bare path (spaces, quotes and backticks are refused).
 REPORT_BARE='^[^[:space:]`"'\'']+$'
-CHURN=(tv_test_app/windows/flutter/ site/shots/ docs/design/puzzles/ docs/design/m13-placed-look.png docs/design/m13-puzzles.png docs/design/m13-puzzles-night.png)
 
 B="" LOGS="" review=1 dry=0 drop=""
 while [ $# -gt 0 ]; do
@@ -85,7 +94,7 @@ while [ $# -gt 0 ]; do
     --no-review) review=0; shift ;;
     --dry-run) dry=1; shift ;;
     --drop) drop=${2:?}; shift 2 ;;
-    -h|--help) sed -n '2,65p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h|--help) sed -n '2,72p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     -*) echo "Unknown option: $1 (try --help)" >&2; exit 2 ;;
     *) B=${1%/}; shift ;;
   esac
@@ -97,14 +106,17 @@ fi
 LOGS=${LOGS:-$B}
 WORK=${RUN_WORK:-.dart_tool/run-jobs/${B//\//_}}
 mkdir -p "$WORK"
+RUN_MAX_MIN=${RUN_MAX_MIN:-360}
+case $RUN_MAX_MIN in *[!0-9]*) echo "RUN_MAX_MIN takes whole minutes; using 360" >&2; RUN_MAX_MIN=360 ;; esac
+RUN_START_S=$(date +%s) # the run's time limit counts from here (time_check)
 mapfile -t WAVES < <(sed 's/#.*//' "$B/waves.txt" | awk 'NF')
 
 note() { echo "$(date '+%F %T') $*" | tee -a "$B/run.log"; }
 kill_tree() { local c; for c in $(ps -ef 2>/dev/null | awk -v p="$1" '$3==p{print $2}'); do kill_tree "$c"; done; kill "$1" 2>/dev/null; }
-check_stop() { # the STOP file: kill the children, log, exit
+check_stop() { # the time limit first, then the STOP file: either one stops the run
+  time_check
   [ -f "$B/STOP" ] || return 0
-  local p; for p in $(jobs -p); do kill_tree "$p"; done
-  note "STOPPED: stop file"; wait 2>/dev/null; save "runner: log at a stop" "$B/run.log"; exit 1
+  stop "stop file"
 }
 handfixed() { # handfixed <job>: was its commit made by hand after a stop?
   [ -f "$B/$1-handfixed" ] && return 0
@@ -120,16 +132,23 @@ is_done() { # is_done <job>: in done.txt; no done.txt (older batch): report comm
   committed "$B/$1-report.md"
 }
 is_dropped() { grep -qxF "$1" "$B/dropped.txt" 2>/dev/null; }
-stop() { note "STOPPED: $*"; wait; flush_reviews; save "runner: log at a stop" "$B/run.log"; exit 1; }
+stop() { # stop <cause> [flash-log]: STOP.md first, then kill the children, log, commit, exit 1
+  local cause=$1 log=${2:-} p
+  note "STOPPED: $cause"
+  write_stop "$cause" "$log"
+  for p in $(jobs -p); do kill_tree "$p"; done
+  wait 2>/dev/null; flush_reviews
+  save_stop "runner: log and STOP.md at a stop"
+  exit 1
+}
 finding() { echo "- $*" >> "$B/run-findings.md"; note "finding: $*"; }
 usage() { # usage <brief path>: the job's turns and minutes, from the flash usage log
   awk -F'	' -v b="$1" 'index($10, b){t=$3; m=$4/60} END{if(t) printf "%d turns, %.0f min", t, m}' "${FLASH_USAGE_LOG:-$HOME/.thumbparty/flash-usage.tsv}" 2>/dev/null
 }
 committed() { git cat-file -e "HEAD:$1" 2>/dev/null; }
-unchurn() { git checkout -- "${CHURN[@]}" 2>/dev/null; }
 save() { # save <message> <path>...: commit and push just these paths
   local msg=$1; shift
-  git reset -q; git add -f -- "$@" 2>/dev/null
+  git reset -q; git add -A -f -- "$@" 2>/dev/null
   git diff --cached --quiet && return 0
   git commit -q -m "$msg" && { [ -n "${NO_PUSH:-}" ] || git push -q origin "HEAD:refs/heads/$(git rev-parse --abbrev-ref HEAD)"; }
 }
@@ -191,9 +210,11 @@ handfix_recheck() { # handfix_recheck <job>: the proof and review a hand commit 
   note "hand-fixed $j: tests-first proof and worker review done (marked in done.txt)"
 }
 
+lock_take # after the dry run, which changes nothing: a second runner on this batch exits 2 here
 branch=$(git rev-parse --abbrev-ref HEAD)
 note "start at $(git rev-parse --short HEAD) on $branch"
 [ -f "$B/STOP" ] && { rm -f "$B/STOP"; note "removed the old stop file"; }
+clear_last_stop
 if [ ! -s "$WORK/run-base" ]; then # once, at the batch's first start; recovered from run.log on a fresh clone
   sed -n 's/.* run-base \([0-9a-f]\{7,40\}\)$//p' "$B/run.log" 2>/dev/null | head -n 1 > "$WORK/run-base"
   [ -s "$WORK/run-base" ] || { [ -s "$B/run-base" ] && cp "$B/run-base" "$WORK/run-base" || git rev-parse HEAD > "$WORK/run-base"; }
@@ -205,7 +226,7 @@ for r in "$B"/*-review-report.md; do # reports of an earlier run that stopped be
 done
 
 # Brief lint: the runner commits the report: path whole, so it must be exactly one bare path.
-brief_lint || { save "runner: log at a stop" "$B/run.log"; exit 1; }
+brief_lint || lint_stop
 
 # Preflight: a worker that cannot run flutter and tools/check.sh would run blind (bugs10 job 1),
 # so one tiny real worker call proves it before any job starts. PREFLIGHT_SKIP=1 skips it.
@@ -284,7 +305,10 @@ for wave in "${WAVES[@]}"; do
     check_stop
     [ ${#reviewed[@]} -gt 0 ] && start_reviews "${reviewed[@]}"
   fi
-  [ ${#failed[@]} -gt 0 ] && stop "jobs that failed or need applying by hand: ${failed[*]} (their logs: $LOGS/flash-<job>.log)"
+  if [ ${#failed[@]} -gt 0 ]; then # the first failed job's log goes into STOP.md, quoted by its outside block
+    stop "jobs that failed or need applying by hand: ${failed[*]} (their logs: $LOGS/flash-<job>.log)" \
+      "$LOGS/flash-${failed[0]%%:*}.log"
+  fi
 done
 
 flush_reviews wait
