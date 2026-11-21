@@ -122,3 +122,6 @@
 2026-11-21 05:31:17 s9m finished: result 0 (113 turns, 13 min)
 2026-11-21 05:33:05 tests-first ok: packages/party_host/test/phone_fit_matrix_test.dart fails on the old code
 2026-11-21 05:39:42 committed s9m: 93b49f56 Add the phone-fit matrix: eight host screens, 4 and 6 players
+2026-11-21 05:39:44 reviewed wave3: 8 finding(s)
+2026-11-21 05:47:44 reviewed wave4: 4 finding(s)
+2026-11-21 05:47:44 DONE: every job is committed. Claude reads the Summary of docs/briefs/m16/phonehost2/REVIEW.md, verifies its findings and writes one fix brief
