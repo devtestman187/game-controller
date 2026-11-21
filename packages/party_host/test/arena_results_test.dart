@@ -47,7 +47,7 @@ void main() {
   RoundLine coins(RoundOutcome outcome, int count) =>
       RoundLine(outcome: outcome, count: count, countOf: RoundCount.coins);
 
-  testWidgets('each player\'s coins, the winner\'s crown and the three ways on', (tester) async {
+  testWidgets('each player\'s coins, the winner\'s crown and the two ways on', (tester) async {
     await showResults(
       tester,
       players: [nightPlayer('p1', 1, 'Mia'), nightPlayer('p2', 2, 'Sam')],
@@ -60,7 +60,8 @@ void main() {
     );
 
     expect(find.byKey(const Key('arenaResults')), findsOneWidget);
-    expect(find.text('P1 Mia wins!'), findsOneWidget, reason: 'the winner is named in the card\'s band');
+    expect(find.byKey(const Key('hostFrameHeader')), findsOneWidget, reason: 'the results are drawn in the frame');
+    expect(find.text('P1 Mia wins!'), findsOneWidget, reason: 'the winner is named in the frame\'s title');
     expect(find.byKey(const Key('arenaResultRow-p1')), findsOneWidget);
     expect(find.byKey(const Key('arenaResultRow-p2')), findsOneWidget);
     expect(find.text('7 coins'), findsOneWidget, reason: 'each player\'s coins, as the round counted them');
@@ -69,7 +70,11 @@ void main() {
     expect(find.byKey(const Key('arenaCrown-p2')), findsNothing, reason: 'the crown is the winner\'s alone');
     expect(find.byKey(const Key('arenaAgain')), findsOneWidget);
     expect(find.byKey(const Key('arenaChangeMode')), findsOneWidget);
-    expect(find.byKey(const Key('arenaResultsBack')), findsOneWidget);
+    expect(
+      find.byKey(const Key('arenaResultsBack')),
+      findsNothing,
+      reason: 'Back is the header\'s arrow: three buttons do not fit the footer\'s 480 px budget',
+    );
     expect(find.byKey(const Key('next')), findsNothing, reason: 'Next is a night\'s button alone');
     expect(find.byKey(const Key('endNight')), findsNothing, reason: 'so is End night');
   });
@@ -87,10 +92,11 @@ void main() {
     );
 
     expect(find.byKey(const Key('arenaResultRow-robo')), findsOneWidget, reason: 'Robo has a seat, so a row');
+    expect(find.text('Robo wins!'), findsOneWidget, reason: 'the title names the round’s winner, CPU or not');
     expect(
-      tester.widget<Text>(find.byKey(const Key('arenaResultTitle'))).data,
-      'Robo wins!',
-      reason: 'the band names the round’s winner, CPU or not',
+      find.descendant(of: find.byKey(const Key('arenaResultRow-robo')), matching: find.text('bot')),
+      findsOneWidget,
+      reason: 'Robo\'s row is tagged rather than numbered (DESIGN section 4)',
     );
     expect(find.byKey(const Key('arenaCrown-robo')), findsOneWidget);
     expect(find.byKey(const Key('arenaCrown-p1')), findsNothing);
@@ -109,11 +115,7 @@ void main() {
       ),
     );
 
-    expect(
-      tester.widget<Text>(find.byKey(const Key('arenaResultTitle'))).data,
-      'Draw!',
-      reason: 'equal coins are a draw (design section 7)',
-    );
+    expect(find.text('Draw!'), findsOneWidget, reason: 'equal coins are a draw (design section 7)');
     expect(find.byKey(const Key('arenaCrown-p1')), findsNothing);
     expect(find.byKey(const Key('arenaCrown-p2')), findsNothing);
     expect(find.text('2 coins'), findsNWidgets(2));

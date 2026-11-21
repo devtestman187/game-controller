@@ -6,6 +6,8 @@ import 'package:toy_look/toy_look.dart';
 
 import 'player_badge.dart';
 
+part 'score_row_parts.dart';
+
 /// A score row's height, in frame px (DESIGN sections 1 and 4): the design's
 /// 52 px line, so six rows make 312 and fit the 392 px body of a 540-high frame.
 const scoreRowHeightPx = 52.0;
@@ -94,6 +96,20 @@ class ScoreRowKeys {
   final Key? roundPoints;
 }
 
+/// What a row counts at its end in place of the night's star and points
+/// (DESIGN section 4, the Arena results): an icon and the count in words, as a
+/// round that counts coins rather than points says it.
+@immutable
+class ScoreRowValue {
+  const ScoreRowValue({required this.icon, required this.text});
+
+  /// The mark before the count: coins, a flag, whatever the round counted.
+  final IconData icon;
+
+  /// The count in the round's own words ("4 coins").
+  final String text;
+}
+
 /// One player's line on a score card (M16 phonehost1 S2, DESIGN section 4):
 /// where they stand, who they are, and the round's and the night's points.
 ///
@@ -164,6 +180,10 @@ class ScoreRowData {
 /// top three wear a podium disc ([ScoreRowData.medal]); a leaver's row is
 /// greyed, a robot's badge is its head, and a tied rank shows "3=". Every one
 /// of those is a field of the row, so the row never asks which screen it is on.
+///
+/// A round that counts something else says so with [value] (the Arena's coins)
+/// and marks a row with [tag] (Robo's "bot"); [isHighlighted] puts a winner in
+/// the focus yellow on the plain 52 px line, as a round's results do.
 class ScoreRow extends StatelessWidget {
   const ScoreRow({
     super.key,
@@ -172,6 +192,9 @@ class ScoreRow extends StatelessWidget {
     this.keys,
     this.awayOpacity = scoreRowAwayOpacity,
     this.badgeMark,
+    this.value,
+    this.tag,
+    this.isHighlighted = false,
   });
 
   /// The player's line.
@@ -193,6 +216,19 @@ class ScoreRow extends StatelessWidget {
   /// its winner (DESIGN section 4), or null for a badge with nothing on it.
   final Widget? badgeMark;
 
+  /// What the row counts at its end, in place of the star and
+  /// [ScoreRowData.points], or null for the star and the points.
+  final ScoreRowValue? value;
+
+  /// A word beside the name that says what the row is (a robot's "bot"), or
+  /// null for a row with nothing to add.
+  final String? tag;
+
+  /// Whether the row is washed in the look's focus yellow without the winner's
+  /// taller line: a round's winner keeps the 52 px rows its card is drawn in
+  /// (the Arena's results, DESIGN section 4).
+  final bool isHighlighted;
+
   @override
   Widget build(BuildContext context) {
     final look = ToyLookScope.of(context);
@@ -208,7 +244,7 @@ class ScoreRow extends StatelessWidget {
         opacity: row.isAway ? awayOpacity : 1,
         child: DecoratedBox(
           // The winner's gold wash runs the row's whole width on the paper.
-          decoration: winner
+          decoration: winner || isHighlighted
               ? BoxDecoration(
                   color: colors.focus.withValues(alpha: scoreWinnerWashAlpha),
                   borderRadius: BorderRadius.circular(ToySizes.cardCorner),
@@ -217,18 +253,19 @@ class ScoreRow extends StatelessWidget {
           child: Row(
             children: [
               ..._head(colors, style),
-              SizedBox(
-                width: scoreRowNameWidthPx,
-                child: Text(row.name, key: keys?.name, style: style, maxLines: 1, overflow: TextOverflow.ellipsis),
-              ),
+              SizedBox(width: scoreRowNameWidthPx, child: _name(colors, style)),
               const SizedBox(width: ToySizes.space12),
               Expanded(
                 child: _ScoreBar(fraction: _share(row.points), color: colors.player(row.number)),
               ),
               const SizedBox(width: ToySizes.space12),
-              Icon(Icons.star, size: scoreRowStarPx, color: colors.star),
-              const SizedBox(width: ToySizes.space4),
-              Text('${row.points}', key: keys?.total, style: style, maxLines: 1),
+              _RowValue(
+                icon: value?.icon ?? Icons.star,
+                iconColor: value == null ? colors.star : colors.focus,
+                text: value?.text ?? '${row.points}',
+                textKey: keys?.total,
+                style: style,
+              ),
               if (row.delta != 0) ...[
                 const SizedBox(width: ToySizes.space12),
                 Text(
@@ -242,6 +279,21 @@ class ScoreRow extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+
+  /// The name in its column, with [tag] beside it: the tag stays whole while
+  /// the name ellipsises, so a marked row always says what marks it.
+  Widget _name(ToyColors colors, TextStyle style) {
+    final name = Text(row.name, key: keys?.name, style: style, maxLines: 1, overflow: TextOverflow.ellipsis);
+    final tag = this.tag;
+    if (tag == null) return name;
+    return Row(
+      children: [
+        Flexible(child: name),
+        const SizedBox(width: ToySizes.space8),
+        ToyPill(label: tag, fill: colors.tray),
+      ],
     );
   }
 
@@ -291,90 +343,4 @@ class ScoreRow extends StatelessWidget {
 
   /// The row's share of the card's leader, from 0 to 1; empty with no points.
   double _share(int points) => maxPoints <= 0 ? 0.0 : math.min(1.0, points / maxPoints);
-}
-
-/// The disc a card's top three wear in the rank's column (DESIGN section 4).
-class _MedalDisc extends StatelessWidget {
-  const _MedalDisc({required this.colour, required this.label, required this.style, this.labelKey});
-
-  /// The metal's fill.
-  final Color colour;
-
-  /// The rank the disc shows, a tie's "=" included.
-  final String label;
-
-  final TextStyle style;
-
-  final Key? labelKey;
-
-  @override
-  Widget build(BuildContext context) {
-    final look = ToyLookScope.of(context);
-    return SizedBox.square(
-      dimension: scoreRowMedalPx,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: colour,
-          shape: BoxShape.circle,
-          border: Border.all(color: look.colors.ink, width: look.sizes.outlineWidth),
-        ),
-        child: Center(
-          child: Text(
-            label,
-            key: labelKey,
-            style: style.copyWith(color: look.colors.ink),
-            maxLines: 1,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// The row's bar: a track in the look's tray colour, filled by [fraction].
-class _ScoreBar extends StatelessWidget {
-  const _ScoreBar({required this.fraction, required this.color});
-
-  /// How much of the track is filled, from 0 to 1.
-  final double fraction;
-
-  /// The fill: the player's own colour, so a row reads as theirs.
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    final look = ToyLookScope.of(context);
-    final colors = look.colors;
-    final edge = BorderSide(color: colors.ink, width: look.sizes.outlineWidth);
-    return SizedBox(
-      height: scoreRowBarHeightPx,
-      child: DecoratedBox(
-        key: const Key('scoreRowBar'),
-        decoration: ShapeDecoration(
-          color: colors.tray,
-          shape: StadiumBorder(side: edge),
-        ),
-        child: Padding(
-          // The fill sits inside the track's ink edge, so the edge stays whole
-          // along the bar however full it is.
-          padding: EdgeInsets.all(edge.width),
-          child: Align(
-            alignment: Alignment.centerLeft,
-            // An empty bar is its track alone: a fill of no width has nothing
-            // to show, and a share of the width the card is only measuring
-            // (unbounded) is a share of an infinite width, which cannot lay out.
-            child: fraction == 0
-                ? const SizedBox.shrink()
-                : FractionallySizedBox(
-                    widthFactor: fraction,
-                    heightFactor: 1,
-                    child: DecoratedBox(
-                      decoration: ShapeDecoration(color: color, shape: const StadiumBorder()),
-                    ),
-                  ),
-          ),
-        ),
-      ),
-    );
-  }
 }
