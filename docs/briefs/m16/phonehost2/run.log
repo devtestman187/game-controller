@@ -41,3 +41,17 @@
 2026-11-21 01:29:38 HAND-FIX s6a: wave 3 stopped on phone-suite pins of the picker (host_menu_fit_test, host_title_bar_test in controller_app) that need the phone frame wiring; combined tree had host and tv green and review.sh 0 fail; committed the three jobs by named paths with tools/commit-job.sh, phone pins go to job wph
 2026-11-21 01:29:38 HAND-FIX wtv: wave 3 stopped on phone-suite pins of the picker (host_menu_fit_test, host_title_bar_test in controller_app) that need the phone frame wiring; combined tree had host and tv green and review.sh 0 fail; committed the three jobs by named paths with tools/commit-job.sh, phone pins go to job wph
 2026-11-21 01:29:38 HAND-FIX s8p: wave 3 stopped on phone-suite pins of the picker (host_menu_fit_test, host_title_bar_test in controller_app) that need the phone frame wiring; combined tree had host and tv green and review.sh 0 fail; committed the three jobs by named paths with tools/commit-job.sh, phone pins go to job wph
+2026-11-21 01:30:03 start at 98201163 on m16
+2026-11-21 01:30:12 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-21 01:30:12 start wph
+2026-11-21 01:30:38 start fA
+2026-11-21 01:31:04 start fB
+2026-11-21 01:55:59 wph finished: result 4 (165 turns, 23 min)
+2026-11-21 01:56:00 wph: dropped generated churn outside its list: site/shots/dpad.png site/shots/join.png site/shots/menus.png site/shots/results.png site/shots/sticks.png site/shots/tilt.png 
+2026-11-21 01:56:01 fA finished: result 0 (43 turns, 9 min)
+2026-11-21 01:56:01 fB finished: result 5 (64 turns, 12 min)
+2026-11-21 01:57:58 tests-first ok: controller_app/test/host_frame_wiring_test.dart fails on the old code
+2026-11-21 01:58:24 tests-first ok: packages/party_host/test/night_reveal_tie_test.dart fails on the old code
+2026-11-21 01:58:36 tests-first ok: packages/party_host/test/night_scoreboard_card_test.dart fails on the old code
+2026-11-21 02:05:06 checks failed; fetching packages and trying once more
+2026-11-21 02:11:39 STOPPED: checks failed twice on the combined tree after wph fA (see .dart_tool/run-jobs/docs_briefs_m16_phonehost2/run-check.log); nothing of this wave is committed
