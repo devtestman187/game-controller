@@ -1,0 +1,10 @@
+2026-11-20 23:04:25 start at 44644996 on m16
+2026-11-20 23:04:25 run-base 4464499625ae772fb39886dc4a863dc3b0e0a4e9
+2026-11-20 23:04:34 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-20 23:04:34 start s3
+2026-11-20 23:05:00 start s9p
+2026-11-20 23:23:24 s3 finished: result 0 (119 turns, 16 min)
+2026-11-20 23:23:24 s9p finished: result 0 (27 turns, 2 min)
+2026-11-20 23:25:13 tests-first ok: packages/party_host/test/night_start_frame_test.dart fails on the old code
+2026-11-20 23:31:44 committed s3: 9d78817b Draw the night start in the host frame, with award tiles and a footer band
+2026-11-20 23:31:47 committed s9p: 10f9b05e Refresh the tablet-board picture to what the code renders
