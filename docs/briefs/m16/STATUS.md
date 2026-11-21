@@ -180,3 +180,5 @@ engine in S4/S6; (2) in-game boards are out of scope and may still scroll or ove
 scale: measure later; (3) the 20 px floor is 13.3 dp at 640x360 and needs a real small-phone check (owner
 answer 1); (4) the picker and join screen were never measured, so S8's size is unknown; (5) a global scaler
 touches the TV d-pad focus ring: check 1920x1080.
+
+**Released (Nov 21): m16.1 (0.14.0, build 981)** on 6272d949; Android + Windows + iOS internal TestFlight built (not promoted). Fixed, unverified, needs device check: pad clearance on a real phone and a notch; 13.3 dp small phone (640x360 frame is 11.4 dp); reveal crown at 640x360; join hint pill; reconnect to last host; away seat in the lobby.
