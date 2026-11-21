@@ -6,3 +6,5 @@
 2026-11-20 19:17:23 tests-first ok: packages/party_host/test/phone_fit_option_c_test.dart fails on the old code
 2026-11-20 19:23:48 committed oc1: f81342a2 M16 phonefit: measure a 960x540 design frame on five devices
 2026-11-20 19:30:01 reviewed wave1: 17 finding(s)
+2026-11-20 19:30:03 start the run's review
+2026-11-20 19:36:31 DONE: every job is committed. Claude reads the Summary of docs/briefs/m16/phonefit/optionC/REVIEW.md, verifies its findings and writes one fix brief
