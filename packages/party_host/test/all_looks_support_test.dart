@@ -6,19 +6,25 @@ import 'package:party_host/party_host.dart';
 import 'support/all_looks.dart';
 import 'support/host_harness.dart';
 
-/// The hour the caller's own clock gives, so a test sees its override kept in
-/// both looks ([harnessNow] is midday).
-const _callerHour = 23;
+/// The value [_marker] gives when nothing overrides it.
+const _defaultMarker = 'default';
 
-/// The clock a test hands the helper as its own override.
-DateTime _callerClock() => DateTime(2026, 11, 8, _callerHour);
+/// The value a test's own override gives [_marker], so a test sees it kept in
+/// both looks.
+const _callerMarker = 'caller';
+
+/// A provider the host harness never overrides, so a test can pass its own
+/// override through [pumpHostLook] without a duplicate for one provider.
+final _marker = Provider<String>((ref) => _defaultMarker);
 
 /// The key the probe's text carries, so a test finds it once.
 const _probeKey = Key('probe');
 
-/// What the probe says: the TV flag the scope answers, and the hour of the
-/// clock it gives, so a test reads both the look's override and its own.
-String _probeText({required bool isTv, required int hour}) => 'tv:$isTv hour:$hour';
+/// What the probe says: the TV flag the scope answers, the hour of the clock it
+/// gives, and the marker it reads, so a test sees the look's overrides and its
+/// own.
+String _probeText({required bool isTv, required int hour, String marker = _defaultMarker}) =>
+    'tv:$isTv hour:$hour marker:$marker';
 
 /// A screen that says what the scope it was mounted in answers.
 class _Probe extends ConsumerWidget {
@@ -29,7 +35,7 @@ class _Probe extends ConsumerWidget {
     final isTv = ref.watch(toyTvProvider);
     final hour = ref.watch(lookClockProvider)().hour;
     return Text(
-      _probeText(isTv: isTv, hour: hour),
+      _probeText(isTv: isTv, hour: hour, marker: ref.watch(_marker)),
       key: _probeKey,
     );
   }
@@ -72,9 +78,12 @@ void main() {
 
   testWidgets('the helper keeps the caller\'s own overrides in both looks', (tester) async {
     await forEachLook(tester, (look) async {
-      await pumpHostLook(tester, look, screen: const _Probe(), clock: _callerClock);
-      final probe = tester.widget<Text>(find.byKey(_probeKey));
-      expect(probe.data, endsWith('hour:$_callerHour'), reason: 'the ${look.name} look keeps the caller\'s clock');
+      await pumpHostLook(tester, look, screen: const _Probe(), overrides: [_marker.overrideWithValue(_callerMarker)]);
+      expect(
+        find.text(_probeText(isTv: look == HostLook.tv, hour: harnessNow.hour, marker: _callerMarker)),
+        findsOneWidget,
+        reason: 'the ${look.name} look keeps the caller\'s own override and its own TV flag',
+      );
     });
   });
 }
