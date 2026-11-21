@@ -17,3 +17,14 @@
 2026-11-21 12:24:03 reviewed wave1: 5 finding(s)
 2026-11-21 12:24:04 start the run's review
 2026-11-21 12:29:22 DONE: every job is committed. Claude reads the Summary of docs/briefs/m16/bugs1/REVIEW.md, verifies its findings and writes one fix brief
+2026-11-21 12:30:05 start at d7fa4127 on m16
+2026-11-21 12:30:14 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-21 12:30:15 skip b032 (already done)
+2026-11-21 12:30:15 skip b033 (already done)
+2026-11-21 12:30:16 skip b034 (already done)
+2026-11-21 12:30:16 start f1
+2026-11-21 12:30:42 start f2
+2026-11-21 12:43:36 f1 finished: result 0 (55 turns, 10 min)
+2026-11-21 12:43:36 f2 finished: result 0 (40 turns, 7 min)
+2026-11-21 12:45:27 tests-first ok: packages/party_host/test/award_explanation_tv_test.dart fails on the old code
+2026-11-21 12:52:13 STOPPED: commit of f1 refused (see .dart_tool/run-jobs/docs_briefs_m16_bugs1/run-commit.log)
