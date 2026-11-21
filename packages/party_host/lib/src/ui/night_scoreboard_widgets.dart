@@ -63,9 +63,16 @@ class _Scoreboard extends StatelessWidget {
     children: [
       // The night is won: confetti behind the final scores (frame 7).
       if (night.isOver) const IgnorePointer(child: NightConfetti(key: Key('nightConfetti'))),
-      Align(
-        alignment: Alignment.topCenter,
-        child: _ScoreCard(night: night, players: players),
+      // The card fills the stage: it is given the body's width, so its width
+      // never follows the length of its rows (DESIGN section 1, rule 4).
+      LayoutBuilder(
+        builder: (context, constraints) => Align(
+          alignment: Alignment.topCenter,
+          child: SizedBox(
+            width: constraints.maxWidth,
+            child: _ScoreCard(night: night, players: players),
+          ),
+        ),
       ),
     ],
   );
