@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/widgets.dart';
+import 'package:toy_look/toy_look.dart';
 
 /// The frame every host screen is drawn in, in frame px (M16 phonehost1 S1,
 /// DESIGN section 1, rule 1): the TV's 960x540. Screens are one layout for
@@ -26,7 +27,9 @@ const _frameDevicePixelRatio = 1.0;
 /// height on a tablet, never both. Inside it every screen reads
 /// [MediaQuery.size] as the frame's size and a device pixel ratio of 1, so
 /// text sizes, hit testing, the focus ring and the TV's d-pad all work in frame
-/// px and the transform does the rest.
+/// px and the transform does the rest. It also drops the device's text scale,
+/// which would only overflow the fixed layout, and gives its screens the look
+/// it finds above it in [ToyType.frame] (DESIGN section 5).
 ///
 /// The host apps put it above the navigator with [hostFrameBuilder], so every
 /// screen, dialog and overlay is in the frame.
@@ -40,6 +43,9 @@ class HostFrame extends StatelessWidget {
   Widget build(BuildContext context) {
     final device = MediaQuery.of(context);
     final size = device.size;
+    // A minimised window, or the first layout before the device's size
+    // arrives, has nothing to scale: s would be 0 and the frame infinite.
+    if (size.isEmpty) return const SizedBox.shrink();
     final scale = math.min(size.width / _designFrameWidthPx, size.height / _designFrameHeightPx);
     final frame = Size(size.width / scale, size.height / scale);
     return FittedBox(
@@ -50,7 +56,7 @@ class HostFrame extends StatelessWidget {
         height: frame.height,
         child: MediaQuery(
           data: _frameMedia(device, frame, scale),
-          child: HostFrameInfo(scale: scale, frame: frame, child: child),
+          child: HostFrameInfo(scale: scale, frame: frame, child: _frameLook(context, child)),
         ),
       ),
     );
@@ -58,15 +64,33 @@ class HostFrame extends StatelessWidget {
 }
 
 /// What a screen inside the frame reads from [MediaQuery]: the frame's own
-/// size, one pixel ratio, and the device's insets divided by the scale so a
-/// safe area still covers the same strip of the screen.
+/// size, one pixel ratio, the device's insets divided by the scale so a safe
+/// area still covers the same strip of the screen, and no text scaling.
+///
+/// The frame is a fixed 960x540 layout (DESIGN section 1, rule 1), so a phone's
+/// larger system text would only overflow it: the screens are drawn at their
+/// frame sizes and the scale does the rest (DESIGN section 5).
 MediaQueryData _frameMedia(MediaQueryData device, Size frame, double scale) => device.copyWith(
   size: frame,
   devicePixelRatio: _frameDevicePixelRatio,
   padding: device.padding / scale,
   viewPadding: device.viewPadding / scale,
   viewInsets: device.viewInsets / scale,
+  textScaler: TextScaler.noScaling,
 );
+
+/// [child] in the frame's type (DESIGN section 5: "the host picks `frame` when
+/// it is inside `HostFrame`").
+///
+/// The host app's scope holds the phone's look - the same app draws the pad
+/// screens - so the frame hands its screens that look with [ToyType.frame] for
+/// its type. With no look above it, the child is left as it is: the frame
+/// draws the host's screens but does not choose the palette.
+Widget _frameLook(BuildContext context, Widget child) {
+  final look = ToyLookScope.maybeOf(context);
+  if (look == null) return child;
+  return ToyLookScope(look: look.withType(ToyType.frame), child: child);
+}
 
 /// What the host's screens read about their frame (M16 phonehost1 S1, DESIGN
 /// sections 2 and 3): the scale they are drawn at, the frame they are laid out

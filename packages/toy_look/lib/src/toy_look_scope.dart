@@ -13,15 +13,22 @@ final class ToyLookScope extends InheritedWidget {
   /// The look every widget below this scope reads.
   final ToyLook look;
 
+  /// The look above [context], or null if there is no [ToyLookScope].
+  ///
+  /// A widget that draws with any look it is given asks for this one; the host
+  /// frame reads it to hand its screens the frame's type, and still works where
+  /// a test mounts it with no look above.
+  static ToyLook? maybeOf(BuildContext context) => context.dependOnInheritedWidgetOfExactType<ToyLookScope>()?.look;
+
   /// The look above [context].
   ///
   /// It's an error to call this with no [ToyLookScope] above: the apps put one
   /// above every screen, so a missing one is a wiring mistake that should show
   /// up in the first test rather than draw with no look.
   static ToyLook of(BuildContext context) {
-    final scope = context.dependOnInheritedWidgetOfExactType<ToyLookScope>();
-    assert(scope != null, 'ToyLookScope.of() needs a ToyLookScope above this widget');
-    return scope!.look;
+    final look = maybeOf(context);
+    assert(look != null, 'ToyLookScope.of() needs a ToyLookScope above this widget');
+    return look!;
   }
 
   /// Only an equal look leaves the widgets below alone, so a screen rebuilds

@@ -97,4 +97,46 @@ void main() {
     expect(seen, hasLength(2), reason: 'a changed look notifies once');
     expect(seen.last, night);
   });
+
+  test('withType changes the type and keeps every other field (M16 phonehost1)', () {
+    final phone = ToyLook.build(palette: ToyPalette.sunny, tv: false, effects: false);
+    final framed = phone.withType(ToyType.frame);
+    expect(framed.type, same(ToyType.frame));
+    expect(framed.palette, phone.palette);
+    expect(framed.colors, same(phone.colors));
+    expect(framed.sizes, same(phone.sizes));
+    expect(framed.shade, phone.shade);
+    expect(framed.backdrop, phone.backdrop);
+    expect(framed.effects, phone.effects);
+    // The same type back is the same look, so nothing below a scope rebuilds.
+    expect(phone.withType(ToyType.phone), phone);
+    expect(framed.withType(ToyType.frame), framed);
+  });
+
+  testWidgets('a scope shows the look and, with none above, maybeOf is null', (tester) async {
+    ToyLook? found = ToyLook.build(palette: ToyPalette.sunny, tv: true);
+    await tester.pumpWidget(
+      Builder(
+        builder: (context) {
+          found = ToyLookScope.maybeOf(context);
+          return const SizedBox.shrink();
+        },
+      ),
+    );
+    expect(found, isNull);
+
+    final sunny = ToyLook.build(palette: ToyPalette.sunny, tv: true);
+    await tester.pumpWidget(
+      ToyLookScope(
+        look: sunny,
+        child: Builder(
+          builder: (context) {
+            found = ToyLookScope.maybeOf(context);
+            return const SizedBox.shrink();
+          },
+        ),
+      ),
+    );
+    expect(found, sunny);
+  });
 }

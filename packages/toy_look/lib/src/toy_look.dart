@@ -68,6 +68,23 @@ final class ToyLook {
   /// Whether the device's effects setting is on (design D8).
   final bool effects;
 
+  /// This look with [type] for its type and every other field kept (M16
+  /// phonehost1, DESIGN section 5).
+  ///
+  /// The host app's scope holds the phone's look, but a host screen is laid out
+  /// in [ToyType.frame]'s sizes, so `party_host`'s `HostFrame` hands its screens
+  /// the same look with the frame's type. That is a change of type only: the
+  /// palette, the outline sizes and the shaders stay the device's.
+  ToyLook withType(ToyType type) => ToyLook(
+    palette: palette,
+    colors: colors,
+    sizes: sizes,
+    type: type,
+    shade: shade,
+    backdrop: backdrop,
+    effects: effects,
+  );
+
   /// Equal when every field is: the fields are const values, so two looks built
   /// the same way hold the same ones.
   @override
