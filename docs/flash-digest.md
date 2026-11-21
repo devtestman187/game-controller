@@ -8,7 +8,7 @@ For the fixed agents (`.claude/agents/`). Edge cases: [flash-framework.md](flash
 - Milestone hand-over: `docs/briefs/<milestone>/STATUS.md` (keep a "Resume here" line current).
 
 ## Brief
-Header lines: `job:` `pub: no` `stop:` `read:` `decide:` (low-usage: never ask, list choices under "Decisions"), numbered `do` items, `in the report` (start `## Summary` at most 30 lines, end `## Hand-over`), `self-check`, `tests:`, `rules:`, `allow:`, `check:`, `report:`.
+Header lines: `job:` `pub: no` `stop:` `read:` `decide:` (low-usage: never ask, list choices under "Decisions"), numbered `do` items, `in the report` (start `## Summary` at most 30 lines, end `## Hand-over`), `self-check`, `tests:`, `rules:`, `allow:`, `check:`, `report:` (exactly one path and nothing else on the line: the runner reads it as the file to commit, and extra text stops the commit).
 - `allow:` paths separated by ` · ` (space, middle dot, space), never a plain space. Include sibling test files the change can break.
 - `read:` names the files, the tests that could break, and the owner's decision quoted. A worker cannot ask.
 - `check:` e.g. `format analyze phone host`; add `phone` when controller_app pins change.

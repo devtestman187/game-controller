@@ -17,3 +17,4 @@ rules: <limits beyond the guidelines: sizes, no behaviour or text changes, …> 
 allow: <path> · <path>   (separator is space, middle dot, space); may include sibling test files in the same package that the change can break (you fix them in this job)
 check: <check names: format analyze <packages>; add `phone` when the job changes behaviour pinned by controller_app tests, so you fix the pins yourself>
 report: docs/briefs/<milestone>/s<N>-g<gate>-report.md
+(the report: line holds exactly one path, nothing else)
