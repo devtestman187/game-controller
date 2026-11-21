@@ -21,3 +21,16 @@
 2026-11-20 21:48:22 reviewed wave2: 8 finding(s)
 2026-11-20 21:48:23 start the run's review
 2026-11-20 21:53:45 DONE: every job is committed. Claude reads the Summary of docs/briefs/m16/phonehost1/REVIEW.md, verifies its findings and writes one fix brief
+2026-11-20 21:54:33 start at bfec69d8 on m16
+2026-11-20 21:54:41 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-20 21:54:42 skip s1 (already done)
+2026-11-20 21:54:42 skip s9a (already done)
+2026-11-20 21:54:43 skip s2 (already done)
+2026-11-20 21:54:43 skip s7 (already done)
+2026-11-20 21:54:44 start f1
+2026-11-20 21:55:10 start f2
+2026-11-20 21:55:35 start f3
+2026-11-20 22:10:56 f1 finished: result 4 (64 turns, 13 min)
+2026-11-20 22:10:56 f2 finished: result 4 (45 turns, 7 min)
+2026-11-20 22:10:56 f3 finished: result 4 (60 turns, 10 min)
+2026-11-20 22:10:56 STOPPED: jobs that failed or need applying by hand: f1:4 f2:4 f3:4 (their logs: docs/briefs/m16/phonehost1/flash-<job>.log)
