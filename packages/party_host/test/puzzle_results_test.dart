@@ -34,6 +34,11 @@ Future<void> openAnyPuzzle(
   }
 }
 
+/// The colour of the results' headline chip: the card is headed in the
+/// winning side's colour (M13 3b).
+Color? chipColour(WidgetTester tester) =>
+    (tester.widget<Container>(find.byKey(const Key('puzzleResultChip'))).decoration! as BoxDecoration).color;
+
 void main() {
   testWidgets('on the results the phone works the menu: left/right, A and B; the A that finished does nothing', (
     tester,
@@ -79,21 +84,19 @@ void main() {
     await phone(tester, fake, 'p1', {});
     expect(find.text('Done!'), findsOneWidget);
     expect(focused(tester, 'nextPuzzle'), isTrue);
-    // Right moves along the series' buttons — Shuffle, then Play again — and
-    // the card's second row is reached from there: down to Back, left to
-    // Change teams (B-011's five buttons take two rows on a host's screen).
+    // Up leaves the footer for the series' buttons in the card — Change
+    // teams, then Play again, then Shuffle (B-011's buttons sit above the
+    // footer, so the pad reads them right to left) — and down comes back.
     for (final (direction, key) in [
-      (GamepadButton.dpadRight, 'shuffle'),
-      (GamepadButton.dpadRight, 'playAgain'),
-      (GamepadButton.dpadDown, 'resultsBack'),
-      (GamepadButton.dpadLeft, 'changeTeams'),
+      (GamepadButton.dpadUp, 'changeTeams'),
+      (GamepadButton.dpadLeft, 'playAgain'),
+      (GamepadButton.dpadLeft, 'shuffle'),
     ]) {
       await press(tester, fake, 'p1', direction);
       expect(focused(tester, key), isTrue, reason: 'the pad reaches $key');
     }
-    // Up and left come back to Next puzzle.
-    await press(tester, fake, 'p1', GamepadButton.dpadUp);
-    await press(tester, fake, 'p1', GamepadButton.dpadLeft);
+    // Down is Next puzzle again.
+    await press(tester, fake, 'p1', GamepadButton.dpadDown);
     expect(focused(tester, 'nextPuzzle'), isTrue);
     // A presses Next puzzle: a new puzzle starts.
     await press(tester, fake, 'p1', GamepadButton.a);
@@ -178,14 +181,14 @@ void main() {
       await stick(const GamepadState(mode: InputMode.sticks));
       expect(buttons.any((key) => focused(tester, key)), isTrue, reason: 'after a push to ($x, $y)');
     }
-    // Back on Next puzzle with the stick, A starts a new puzzle: up returns to
-    // the buttons' first row (B-011) and left to the first button.
-    await stick(const GamepadState(leftY: -1, mode: InputMode.sticks));
-    await stick(const GamepadState(mode: InputMode.sticks));
-    for (var i = 0; i < 4; i++) {
-      await stick(const GamepadState(leftX: -1, mode: InputMode.sticks));
+    // Back on Next puzzle with the stick, A starts a new puzzle: down returns
+    // to the footer, left to its first button.
+    for (var i = 0; i < 3; i++) {
+      await stick(const GamepadState(leftY: 1, mode: InputMode.sticks));
       await stick(const GamepadState(mode: InputMode.sticks));
     }
+    await stick(const GamepadState(leftX: -1, mode: InputMode.sticks));
+    await stick(const GamepadState(mode: InputMode.sticks));
     expect(focused(tester, 'nextPuzzle'), isTrue);
     await stick(const GamepadState(buttons: {GamepadButton.a}, mode: InputMode.sticks));
     await stick(const GamepadState(mode: InputMode.sticks));
@@ -303,7 +306,7 @@ void main() {
     expect(tester.widget<Text>(find.byKey(const Key('puzzleResultTitle'))).data, 'Left wins!');
     // The card is headed in the winning side's colour (M13 3b).
     final look = ToyLookScope.of(tester.element(find.byKey(const Key('puzzleResults'))));
-    expect(tester.widget<ToyCard>(find.byKey(const Key('puzzleResults'))).headerColor, look.colors.player(1));
+    expect(chipColour(tester), look.colors.player(1));
     expect(tester.widget<Text>(find.byKey(const Key('puzzleResultLine-left'))).data, endsWith('seconds'));
     // The winner's time and tick are ink: good on paper is 2:1 (Claude's 3b
     // review); the header says who won.
@@ -408,6 +411,6 @@ void main() {
 
     expect(find.text('Draw!'), findsOneWidget);
     final look = ToyLookScope.of(tester.element(find.byKey(const Key('puzzleResults'))));
-    expect(tester.widget<ToyCard>(find.byKey(const Key('puzzleResults'))).headerColor, look.colors.focus);
+    expect(chipColour(tester), look.colors.focus);
   });
 }

@@ -25,6 +25,7 @@ import '../text/night_text.dart';
 import '../text/record_text.dart';
 import 'controller_menus.dart';
 import 'host_button.dart';
+import 'host_frame_screen.dart';
 import 'join_screen.dart';
 import 'lobby_music.dart';
 import 'night_reveal_screen.dart';
@@ -345,26 +346,22 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
                     ),
                   ),
                   if (_cardShown && result != null)
-                    // A phone host's screen is short, and a series' card is
-                    // taller than the round's own (B-011's prompt and its
-                    // buttons): the card scrolls rather than losing a button.
-                    Center(
-                      child: SingleChildScrollView(
-                        child: Center(
-                          child: _Results(
-                            result: result,
-                            teams: widget.teams,
-                            total: puzzle.pieces.length,
-                            menu: _menu,
-                            onChangeTeams: _changeTeams,
-                            night: ref.read(partyNightProvider) != null,
-                            lastRound: ref.read(partyNightProvider)?.isNextRoundTheLast ?? false,
-                            onEndNight: _endNight,
-                            puzzle: puzzle,
-                            match: _play.currentState?.match,
-                            times: _times,
-                          ),
-                        ),
+                    // The results cover the board (it stays mounted: the
+                    // results' photos are its last frame) and are drawn in the
+                    // host's frame, so their way on is always on screen.
+                    Positioned.fill(
+                      child: _Results(
+                        result: result,
+                        teams: widget.teams,
+                        total: puzzle.pieces.length,
+                        menu: _menu,
+                        onChangeTeams: _changeTeams,
+                        night: ref.read(partyNightProvider) != null,
+                        lastRound: ref.read(partyNightProvider)?.isNextRoundTheLast ?? false,
+                        onEndNight: _endNight,
+                        puzzle: puzzle,
+                        match: _play.currentState?.match,
+                        times: _times,
                       ),
                     ),
                 ],

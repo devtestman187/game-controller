@@ -1,11 +1,31 @@
 part of 'puzzle_screen.dart';
 
-/// The results over the board: the winner, each side's finished picture as a
-/// photo (design 3a), its time or pieces placed, its best time and any new
-/// record (T15), and the first button (Rematch, Play again or Next puzzle),
-/// Change teams and Back (T14). A night's round keeps its Next and, before the
-/// night's last round, End night beside it (M14 c1, B-021); a round of a series
-/// adds Next puzzle and the Shuffle switch (B-011).
+/// The room the results card keeps round its content, in frame px: the design's
+/// 24 px gutter at the sides (DESIGN section 1, rule 4) and 8 px above and
+/// below, as the Arena results' card has it, so a race's rows fit the body of a
+/// 540-high frame.
+const _cardPadding = EdgeInsets.symmetric(horizontal: ToySizes.space24, vertical: ToySizes.space8);
+
+/// A side's name on the results, in frame px (DESIGN section 4: the puzzle
+/// results' names are 24 px, between the frame's body 22 and its button 28).
+const _sideNamePx = 24.0;
+
+/// A side's time or pieces, and the row's other words, in frame px (DESIGN
+/// section 4: the pieces are 20 px, the frame's floor).
+const _detailPx = 20.0;
+
+/// The results over the board (DESIGN section 4): a [HostFrameScreen], so the
+/// winner heads a screen with the way on in its footer and nothing scrolls at
+/// any of the supported sizes (DESIGN section 1, rules 5 and 6). The card fills
+/// the stage: each side's finished picture as a photo (design 3a) at its left,
+/// and at its right the round's headline on a chip in its colour (M13 3b), the
+/// series' prompt (B-011), each side's time or pieces placed with its best time
+/// and any new record (T15), and the controls the footer cannot hold — a
+/// series' Shuffle and Play again, and Change teams — as compact buttons.
+///
+/// The footer holds the way on alone (the S6b decision): the first button
+/// (Rematch, Play again or Next puzzle) with Back beside it (T14), or a night's
+/// Next with End night before the night's last round (M14 c1, B-021).
 class _Results extends ConsumerWidget {
   const _Results({
     required this.result,
@@ -55,63 +75,177 @@ class _Results extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final look = ToyLookScope.of(context);
+    final (:title, :colour) = _resultsHead(look, result);
+    return HostFrameScreen(
+      // The frame's header names the screen; the round's own headline stays on
+      // the card, with the words the results have always said.
+      title: HostText.shapeRace,
+      body: _card(context, ref, title: title, colour: colour),
+      footer: _footer(context),
+    );
+  }
+
+  /// The card the body fills the stage with (DESIGN section 1, rule 4): the
+  /// pictures at its left, the round's words and controls at its right.
+  Widget _card(BuildContext context, WidgetRef ref, {required String title, required Color colour}) {
+    final look = ToyLookScope.of(context);
     final players = ref.watch(gamePlayersProvider);
     final bestTimes = ref.watch(bestTimesProvider);
-    final (:title, :colour) = _resultsHead(look, result);
-    final photos = _photos();
-
-    return ToyCard(
-      key: const Key('puzzleResults'),
-      header: title,
-      headerKey: const Key('puzzleResultTitle'),
-      headerColor: colour,
-      padding: const EdgeInsets.symmetric(horizontal: ToySizes.space32, vertical: ToySizes.space24),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (photos.isNotEmpty) ...[
-            Row(mainAxisSize: MainAxisSize.min, children: photos),
-            const SizedBox(height: ToySizes.space16),
-          ],
-          for (final side in result.sides.keys)
-            _ResultSideRow(
-              side: side,
-              result: result,
-              teams: teams,
-              players: players,
-              total: total,
-              best: bestTimes.bestFor(puzzle.id, team: playersOn(side, result.format, teams, players).length > 1),
-              isRecord: times[side]?.isRecord ?? false,
-            ),
-          const SizedBox(height: ToySizes.space24),
-          _buttons(),
-        ],
+    final prompt = menu.series?.prompt;
+    return Align(
+      alignment: Alignment.topCenter,
+      child: SizedBox(
+        width: double.infinity,
+        child: ToyCard(
+          key: const Key('puzzleResults'),
+          padding: _cardPadding,
+          popIn: false,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(mainAxisSize: MainAxisSize.min, children: _photos()),
+              const SizedBox(width: ToySizes.space24),
+              Expanded(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _headline(look, title, colour),
+                    if (prompt != null) ...[
+                      const SizedBox(height: ToySizes.space8),
+                      Text(
+                        prompt,
+                        key: const Key('seriesPrompt'),
+                        style: look.type.body.copyWith(color: look.colors.ink),
+                      ),
+                    ],
+                    for (final side in result.sides.keys)
+                      _ResultSideRow(
+                        side: side,
+                        result: result,
+                        teams: teams,
+                        players: players,
+                        total: total,
+                        best: bestTimes.bestFor(
+                          puzzle.id,
+                          team: playersOn(side, result.format, teams, players).length > 1,
+                        ),
+                        isRecord: times[side]?.isRecord ?? false,
+                      ),
+                    ..._controls(context),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
 
-  /// The card's buttons: a series round's Wrap (B-011), else the row a night's
-  /// round and an `any <level>` round have always had (T14, M14 c1). A night's
-  /// round before its last adds End night beside Next (B-021), both in one Row
-  /// so the remote's Right walks from one to the other.
-  Widget _buttons() {
-    final series = menu.series;
-    if (series != null) {
-      return _SeriesButtons(again: menu.again, replay: menu.replay, options: series, onChangeTeams: onChangeTeams);
-    }
-    final next = _ResultButtons(again: menu.again, onChangeTeams: onChangeTeams, night: night);
-    if (!night || lastRound) return next;
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        next,
-        const SizedBox(width: ToySizes.space12),
-        HostButton(key: const Key('endNight'), label: NightText.endNightNow, icon: Icons.flag, onPressed: onEndNight),
-      ],
+  /// The round's headline on a chip in its colour (M13 3b: a race's winner's
+  /// colour, the focus yellow for a draw, good or caution for one board).
+  Widget _headline(ToyLook look, String title, Color colour) {
+    final colors = look.colors;
+    return Container(
+      key: const Key('puzzleResultChip'),
+      padding: const EdgeInsets.symmetric(horizontal: ToySizes.space12, vertical: ToySizes.space4),
+      decoration: BoxDecoration(
+        color: colour,
+        border: Border.all(color: colors.ink, width: look.sizes.outlineWidth),
+        borderRadius: BorderRadius.circular(ToySizes.cardCorner),
+      ),
+      child: Text(
+        title,
+        key: const Key('puzzleResultTitle'),
+        style: look.type.button.copyWith(color: colors.ink),
+      ),
     );
   }
 
-  /// Each side's picture as the round left it, side by side under the header
+  /// The footer's way on (DESIGN section 1, rule 5): the round's first button
+  /// with Back, or a night's Next, with End night before the night's last round
+  /// (B-021).
+  ///
+  /// The first button and Back go without their icons: with them the pair wants
+  /// more than the 480 frame px the footer keeps beside Thumby's corner
+  /// (DESIGN section 3), as the Arena results' pair found, and their words say
+  /// what they do. A night's two buttons keep theirs.
+  List<Widget> _footer(BuildContext context) {
+    final again = menu.again;
+    if (night) {
+      return [
+        HostButton(
+          key: Key(again.key),
+          label: again.label,
+          icon: again.icon,
+          focusNode: again.focusNode,
+          onPressed: again.onPressed,
+        ),
+        // The night's last round needs no button for it, since Next ends it.
+        if (!lastRound)
+          HostButton(key: const Key('endNight'), label: NightText.endNightNow, icon: Icons.flag, onPressed: onEndNight),
+      ];
+    }
+    return [
+      HostButton(key: Key(again.key), label: again.label, focusNode: again.focusNode, onPressed: again.onPressed),
+      HostButton(
+        key: const Key('resultsBack'),
+        label: HostText.back,
+        onPressed: () => Navigator.of(context).maybePop(),
+      ),
+    ];
+  }
+
+  /// The controls the 84 px footer cannot hold (the S6b decision): a series'
+  /// Shuffle and Play again, and Change teams, as compact buttons under the
+  /// rows in the card's right column, with the keys they have always had. A
+  /// night's round draws none — its next teams are picked on the next round's
+  /// join screen — and an `any <level>` round only Change teams.
+  ///
+  /// They are a [Row] of [Flexible] buttons, as the frame's footer has its pair:
+  /// the three together fit the column on a device, and where a host's screen
+  /// leaves the card too little room for their labels, they give room to each
+  /// other and the look ellipsises a label rather than the card taking a second
+  /// line — a line more than a phone-sized host's body has (DESIGN section 1,
+  /// rule 6).
+  List<Widget> _controls(BuildContext context) {
+    final series = menu.series;
+    final replay = menu.replay;
+    final buttons = <Widget>[
+      if (series?.shuffle != null) _ShuffleSwitch(shuffle: series!.shuffle!, compact: true),
+      if (replay != null)
+        HostButton(
+          key: Key(replay.key),
+          label: replay.label,
+          icon: replay.icon,
+          compact: true,
+          onPressed: replay.onPressed,
+        ),
+      if (!night)
+        HostButton(
+          key: const Key('changeTeams'),
+          label: HostText.changeTeams,
+          icon: Icons.group,
+          compact: true,
+          onPressed: onChangeTeams,
+        ),
+    ];
+    if (buttons.isEmpty) return const [];
+    return [
+      const SizedBox(height: ToySizes.space12),
+      Row(
+        children: [
+          for (var i = 0; i < buttons.length; i++) ...[
+            if (i > 0) const SizedBox(width: ToySizes.space12),
+            Flexible(child: buttons[i]),
+          ],
+        ],
+      ),
+    ];
+  }
+
+  /// Each side's picture as the round left it, side by side at the card's left
   /// (design 3a): its own board of a race, else the one board.
   List<Widget> _photos() {
     final round = match;
@@ -136,10 +270,13 @@ class _Results extends ConsumerWidget {
   }
 }
 
-/// One side's row on the results: its players, its time, or how many pieces it
-/// placed, then the board's best time and the "New record!" chip when it beat
-/// it (design 3a places a photo of each side's picture beside these rows; T15
-/// adds the times, on the row so a small phone's card still fits).
+/// One side's row on the results: its name in a race, its players' badges, its
+/// time or how many pieces it placed, then the board's best time and the "New
+/// record!" chip when it beat it (T15).
+///
+/// Its parts are a [Wrap], so a crowded row — two players a side with a best
+/// time and a new record — takes a second line in the card's column rather than
+/// overflowing it (DESIGN section 1, rule 6: the results never scroll).
 class _ResultSideRow extends StatelessWidget {
   const _ResultSideRow({
     required this.side,
@@ -172,45 +309,33 @@ class _ResultSideRow extends StatelessWidget {
     final r = result.sides[side]!;
     final line = r.finished ? HostText.seconds(r.timeS!) : HostText.piecesPlaced(r.placed, total);
     final boardBest = best;
+    final detail = look.type.body.copyWith(fontSize: _detailPx, color: colors.ink);
     return Padding(
       padding: EdgeInsets.only(top: rowBadgeHeadroom(look), bottom: ToySizes.space4),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
+      child: Wrap(
+        spacing: ToySizes.space8,
+        runSpacing: ToySizes.space4,
+        crossAxisAlignment: WrapCrossAlignment.center,
         children: [
           if (race)
             SizedBox(
               width: look.sizes.buttonHeight * 2,
               child: Text(
                 side == PuzzleSide.left ? HostText.left : HostText.right,
-                style: look.type.button.copyWith(color: colors.ink),
+                style: look.type.button.copyWith(fontSize: _sideNamePx, color: colors.ink),
               ),
             ),
-          for (final p in badges) ...[
-            ToyBadge(
-              number: p.number,
-              diameter: look.sizes.buttonHeight * rowBadgeShare,
-              character: ToyCharacter.of(p.character, p.number),
-            ),
-            const SizedBox(width: ToySizes.space8),
-          ],
-          const SizedBox(width: ToySizes.space8),
-          Text(
-            line,
-            key: Key('puzzleResultLine-${side.name}'),
-            style: look.type.button.copyWith(color: colors.ink),
-          ),
-          if (r.finished) ...[
-            const SizedBox(width: ToySizes.space8),
-            Icon(Icons.check, size: look.type.button.fontSize, color: colors.ink),
-          ],
+          for (final p in badges)
+            PlayerBadge(number: p.number, size: look.sizes.buttonHeight * rowBadgeShare, character: p.character),
+          Text(line, key: Key('puzzleResultLine-${side.name}'), style: detail),
+          if (r.finished) Icon(Icons.check, size: _detailPx, color: colors.ink),
           if (r.finished && boardBest != null) ...[
-            const SizedBox(width: ToySizes.space12),
             Text(
               RecordText.best(boardBest.timeMs),
               key: Key('bestTime-${side.name}'),
-              style: look.type.body.copyWith(color: colors.inkSoft),
+              style: detail.copyWith(color: colors.inkSoft),
             ),
-            if (isRecord) ...[const SizedBox(width: ToySizes.space8), const _NewRecordChip()],
+            if (isRecord) const _NewRecordChip(),
           ],
         ],
       ),

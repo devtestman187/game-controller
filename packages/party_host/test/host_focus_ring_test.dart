@@ -236,13 +236,15 @@ void main() {
     }
 
     await ringed('nextPuzzle');
-    // The series' buttons take two rows on a host's screen (B-011): right along
-    // the first, then down to Back and left to Change teams.
+    // The pad climbs from the footer into the card's controls (B-011's buttons)
+    // and reads them right to left, then comes back down: Next puzzle, on to
+    // Back.
     for (final (direction, key) in [
-      (GamepadButton.dpadRight, 'shuffle'),
-      (GamepadButton.dpadRight, 'rematch'),
-      (GamepadButton.dpadDown, 'resultsBack'),
-      (GamepadButton.dpadLeft, 'changeTeams'),
+      (GamepadButton.dpadUp, 'changeTeams'),
+      (GamepadButton.dpadLeft, 'rematch'),
+      (GamepadButton.dpadLeft, 'shuffle'),
+      (GamepadButton.dpadDown, 'nextPuzzle'),
+      (GamepadButton.dpadRight, 'resultsBack'),
     ]) {
       await press(tester, fake, 'p1', direction);
       await ringed(key);

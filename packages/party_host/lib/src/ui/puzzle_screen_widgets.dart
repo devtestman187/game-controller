@@ -32,46 +32,7 @@ String _playersLine(int count) => count == 1 ? '1 player' : '$count players';
 
 /// The results' first button (T14): Rematch or Play again for one chosen
 /// puzzle, Next puzzle after a round that played `any <level> puzzle` (m12
-/// bug 1108e). The focus starts on it, so the remote's OK and a phone's A work
-/// at once.
+/// bug 1108e), and a night's Next (M14 c1). The focus starts on it, so the
+/// remote's OK and a phone's A work at once; the results draw it in the frame's
+/// footer.
 typedef _AgainButton = ({String label, IconData icon, String key, FocusNode focusNode, VoidCallback onPressed});
-
-/// The first button (Rematch, Play again or Next puzzle), Change teams and
-/// Back; a night's round has the first button alone, Next (M14 c1).
-class _ResultButtons extends StatelessWidget {
-  const _ResultButtons({required this.again, required this.onChangeTeams, required this.night});
-
-  final _AgainButton again;
-  final VoidCallback onChangeTeams;
-  final bool night;
-
-  @override
-  Widget build(BuildContext context) => Row(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      HostButton(
-        key: Key(again.key),
-        label: again.label,
-        icon: again.icon,
-        focusNode: again.focusNode,
-        onPressed: again.onPressed,
-      ),
-      if (!night) ...[
-        const SizedBox(width: ToySizes.space12),
-        HostButton(
-          key: const Key('changeTeams'),
-          label: HostText.changeTeams,
-          icon: Icons.group,
-          onPressed: onChangeTeams,
-        ),
-        const SizedBox(width: ToySizes.space12),
-        HostButton(
-          key: const Key('resultsBack'),
-          label: HostText.back,
-          icon: Icons.arrow_back,
-          onPressed: () => Navigator.of(context).maybePop(),
-        ),
-      ],
-    ],
-  );
-}

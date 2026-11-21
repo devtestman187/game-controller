@@ -86,92 +86,18 @@ typedef _MenuButton = ({String label, IconData icon, String key, VoidCallback on
 /// when the round was one of a series.
 typedef _ResultMenu = ({_AgainButton again, _MenuButton? replay, _SeriesOptions? series});
 
-/// A series round's results buttons (B-011, design item 2): Next puzzle — or,
-/// once every puzzle of the level has played, the prompt and its Continue —
-/// then the Shuffle switch, Play again, Change teams and Back. They go in a
-/// [Wrap], so a phone host's narrow card takes them as more than one row rather
-/// than overflowing.
-class _SeriesButtons extends StatelessWidget {
-  const _SeriesButtons({required this.again, required this.replay, required this.options, required this.onChangeTeams});
-
-  /// The first button: Next puzzle, the prompt's Continue, or Play again on the
-  /// last level.
-  final _AgainButton again;
-
-  /// Play again beside the first button, or null when nothing is left to play.
-  final _MenuButton? replay;
-
-  final _SeriesOptions options;
-  final VoidCallback onChangeTeams;
-
-  @override
-  Widget build(BuildContext context) {
-    final look = ToyLookScope.of(context);
-    final prompt = options.prompt;
-    final shuffle = options.shuffle;
-    final replayButton = replay;
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (prompt != null) ...[
-          Text(
-            prompt,
-            key: const Key('seriesPrompt'),
-            textAlign: TextAlign.center,
-            style: look.type.button.copyWith(color: look.colors.ink),
-          ),
-          const SizedBox(height: ToySizes.space12),
-        ],
-        // Five buttons are more than one row of a host's card holds, so the pad
-        // walks them by where they land: right along the first row, then down
-        // to Back and left to Change teams (B-011).
-        Wrap(
-          alignment: WrapAlignment.center,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          spacing: ToySizes.space12,
-          runSpacing: ToySizes.space12,
-          children: [
-            HostButton(
-              key: Key(again.key),
-              label: again.label,
-              icon: again.icon,
-              focusNode: again.focusNode,
-              onPressed: again.onPressed,
-            ),
-            if (shuffle != null) _ShuffleSwitch(shuffle: shuffle),
-            if (replayButton != null)
-              HostButton(
-                key: Key(replayButton.key),
-                label: replayButton.label,
-                icon: replayButton.icon,
-                onPressed: replayButton.onPressed,
-              ),
-            HostButton(
-              key: const Key('changeTeams'),
-              label: HostText.changeTeams,
-              icon: Icons.group,
-              onPressed: onChangeTeams,
-            ),
-            HostButton(
-              key: const Key('resultsBack'),
-              label: HostText.back,
-              icon: Icons.arrow_back,
-              onPressed: () => Navigator.of(context).maybePop(),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
 /// The series' Shuffle switch (B-011): the label with a switch's own icon,
 /// filled with the focus yellow while it is on, so a thumb and the remote's A
-/// both see the state and change it.
+/// both see the state and change it. The results draw it compact, under the
+/// card's rows, where the footer has no room for it.
 class _ShuffleSwitch extends StatelessWidget {
-  const _ShuffleSwitch({required this.shuffle});
+  const _ShuffleSwitch({required this.shuffle, this.compact = false});
 
   final _Shuffle shuffle;
+
+  /// Whether the switch is the results card's compact button rather than a
+  /// full one.
+  final bool compact;
 
   @override
   Widget build(BuildContext context) => HostButton(
@@ -179,6 +105,7 @@ class _ShuffleSwitch extends StatelessWidget {
     label: HostText.shuffle,
     icon: shuffle.isOn ? Icons.toggle_on : Icons.toggle_off,
     fill: shuffle.isOn ? ToyLookScope.of(context).colors.focus : null,
+    compact: compact,
     onPressed: () => shuffle.onChanged(!shuffle.isOn),
   );
 }
