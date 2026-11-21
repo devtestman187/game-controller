@@ -28,3 +28,13 @@
 2026-11-21 12:43:36 f2 finished: result 0 (40 turns, 7 min)
 2026-11-21 12:45:27 tests-first ok: packages/party_host/test/award_explanation_tv_test.dart fails on the old code
 2026-11-21 12:52:13 STOPPED: commit of f1 refused (see .dart_tool/run-jobs/docs_briefs_m16_bugs1/run-commit.log)
+2026-11-21 12:52:34 start at 898cc326 on m16
+2026-11-21 12:52:42 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-21 12:52:43 skip b032 (already done)
+2026-11-21 12:52:43 skip b033 (already done)
+2026-11-21 12:52:44 skip b034 (already done)
+2026-11-21 12:52:44 resume f1 (applied by hand, not committed yet)
+2026-11-21 12:52:45 resume f2 (applied by hand, not committed yet)
+2026-11-21 12:54:36 tests-first ok: packages/party_host/test/award_explanation_tv_test.dart fails on the old code
+2026-11-21 13:01:25 committed f1: 962c4aa0 M16 bugs1 f1: the award popover height follows the look's button
+2026-11-21 13:01:27 committed f2: 1e4d6cb9 M16 bugs1 f2: order-free stats check, stale doc, tighter footer pin
