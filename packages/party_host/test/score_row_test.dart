@@ -61,12 +61,8 @@ void main() {
   testWidgets('a card with no points yet draws an empty bar and never divides by zero', (tester) async {
     await _pumpRow(tester, row: const ScoreRowData(rank: 1, number: 1, name: 'Nightshade', points: 0), maxPoints: 0);
 
-    expect(
-      tester.widget<FractionallySizedBox>(_barFill).widthFactor,
-      0.0,
-      reason: 'a card with no leader fills nothing',
-    );
-    expect(tester.getSize(_barFill).width, 0.0, reason: 'the fill is empty');
+    expect(_barFill, findsNothing, reason: 'a card with no leader fills nothing: the track is the whole bar');
+    expect(find.byKey(const Key('scoreRowBar')), findsOneWidget, reason: 'the track still shows the bar');
     expect(tester.takeException(), isNull);
   });
 }
