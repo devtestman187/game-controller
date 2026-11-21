@@ -5,6 +5,7 @@ import 'package:controller/src/providers.dart';
 import 'package:controller/src/ui/bar_modes.dart';
 import 'package:controller/src/ui/connect_screen.dart';
 import 'package:controller/src/ui/controls_layer.dart';
+import 'package:controller/src/ui/top_bar_metrics.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:party_host/party_host.dart' as party;
@@ -13,6 +14,17 @@ import 'package:puzzle_game/puzzle_game.dart';
 
 import 'support/host_app.dart';
 import 'support/pump_app.dart';
+
+/// Expects [finder]'s rect to be [expected] to within a rounding of the
+/// frame's transform (M16 phonehost2 wph: a host screen's device rect is its
+/// frame rect times the frame's scale, and the last bit can split).
+void expectRect(WidgetTester tester, Finder finder, Rect expected) {
+  final rect = tester.getRect(finder);
+  expect(rect.left, closeTo(expected.left, 1e-6));
+  expect(rect.top, closeTo(expected.top, 1e-6));
+  expect(rect.right, closeTo(expected.right, 1e-6));
+  expect(rect.bottom, closeTo(expected.bottom, 1e-6));
+}
 
 void main() {
   // The puzzle files are read once, before any test runs: no test here waits
@@ -41,11 +53,11 @@ void main() {
     await hostReady(tester, host);
     await settle(tester);
 
-    // The picker fills the safe area, behind the bar (m12 §5), with no pad
-    // over it: outside a round the host's screens are touch screens
-    // (m12-host-touch rule 1).
+    // The picker fills the host's frame, which starts under the phone's bar
+    // (M16 phonehost2 wph), with no pad over it: outside a round the host's
+    // screens are touch screens (m12-host-touch rule 1).
     expect(find.byType(party.GamesScreen), findsOneWidget);
-    expect(tester.getRect(find.byType(party.GamesScreen)), const Rect.fromLTWH(0, 0, 852, 393));
+    expectRect(tester, find.byType(party.GamesScreen), const Rect.fromLTRB(0, topBarHeightPx, 852, 393));
     expect(find.byKey(const Key('pickShapeRace')), findsOneWidget);
     expect(find.byType(ControlsLayer), findsNothing);
     expect(find.byKey(const Key('faceButtons')), findsNothing);
@@ -88,7 +100,7 @@ void main() {
     await untilShown(tester, find.byType(party.JoinScreen), 'The join screen');
     await settle(tester);
     expect(find.byType(party.JoinScreen), findsOneWidget);
-    expect(tester.getRect(find.byType(party.JoinScreen)), const Rect.fromLTWH(0, 0, 852, 393));
+    expectRect(tester, find.byType(party.JoinScreen), const Rect.fromLTRB(0, topBarHeightPx, 852, 393));
     expect(find.byType(ControlsLayer), findsNothing);
     expect(find.byKey(const Key('faceButtons')), findsNothing);
     expect(find.byType(BarModes), findsOneWidget, reason: 'the join screen is outside the round too');
@@ -101,7 +113,7 @@ void main() {
     expect(puzzle.teams.keys, [ownClientOf(host).identity.controllerId]);
     expect(puzzle.teams.values.map((s) => s.name), ['left']);
     await settle(tester);
-    expect(tester.getRect(find.byType(party.PuzzleScreen)), const Rect.fromLTWH(0, 0, 852, 393));
+    expectRect(tester, find.byType(party.PuzzleScreen), const Rect.fromLTRB(0, topBarHeightPx, 852, 393));
 
     // The round starts with the "Get ready" beat (rule 3): the pad is already
     // up under the card, so thumbs find it before the clock runs.
@@ -162,9 +174,9 @@ void main() {
     expect(find.byKey(const Key('dpad')), findsNothing);
     expect(find.byType(BarModes), findsNothing);
     expect(find.byTooltip('Settings'), findsNothing);
-    // It takes the whole safe area, behind the bar (m12 §5): unlike "Play on
-    // this phone", nothing sits beside the game (C34).
-    expect(tester.getRect(find.byType(party.GamesScreen)), const Rect.fromLTWH(0, 0, 852, 393));
+    // It takes the whole frame under the bar (M16 phonehost2 wph): unlike
+    // "Play on this phone", nothing sits beside the game (C34).
+    expectRect(tester, find.byType(party.GamesScreen), const Rect.fromLTRB(0, topBarHeightPx, 852, 393));
 
     // The bar over the picker is the full one on this route too
     // (m12-host-touch rule 1, both host routes): the host's chip with its code

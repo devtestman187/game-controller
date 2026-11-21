@@ -10,10 +10,6 @@ import 'package:puzzle_game/puzzle_game.dart';
 import 'support/host_app.dart';
 import 'support/pump_app.dart';
 
-/// The phone the bug was shot on, in landscape: an iPhone 15 (the tests' own
-/// screen, unless one asks for another).
-const phoneScreenHeightPx = 393.0;
-
 /// The parts of the phone's own bar: the host's chip and code, the mode's
 /// three labels, Settings and Diagnostics (m12-host-touch rule 1).
 List<(String, Finder)> barParts() => [
@@ -33,12 +29,33 @@ bool lit(WidgetTester tester, String key) => tester
     .widget<party.HostCardFocus>(find.descendant(of: find.byKey(Key(key)), matching: find.byType(party.HostCardFocus)))
     .isLit;
 
+/// The frame's scale for [screen]'s picture, or 1 outside a frame.
+double frameScaleOf(WidgetTester tester, Type screen) =>
+    party.HostFrameInfo.maybeOf(tester.element(find.byType(screen)))?.scale ?? 1.0;
+
+/// Expects [finder]'s rect to be [expected] to within a rounding of the
+/// frame's transform: a host screen's device rect is its frame rect times the
+/// frame's scale, and the last bit can split (M16 phonehost2 wph).
+void expectRect(WidgetTester tester, Finder finder, Rect expected) {
+  final rect = tester.getRect(finder);
+  expect(rect.left, closeTo(expected.left, 1e-6));
+  expect(rect.top, closeTo(expected.top, 1e-6));
+  expect(rect.right, closeTo(expected.right, 1e-6));
+  expect(rect.bottom, closeTo(expected.bottom, 1e-6));
+}
+
 /// Checks that [screen]'s title bar starts below the phone's bar and meets none
 /// of its parts (m12 bug 1107f rule C): its title ran into the bar's mode
 /// labels, and its back arrow hid under the player's chip.
+///
+/// The screens here are still on the old `HostScreen`, which keeps the phone
+/// bar's height above its title bar in frame px. Inside the host's frame (M16
+/// phonehost2 wph) the frame itself already starts under the bar, so both are
+/// added up: `topBarHeightPx` on the device plus `topBarHeightPx` of frame.
 void expectRoomBelowTheBar(WidgetTester tester, Type screen) {
+  final scale = frameScaleOf(tester, screen);
   final bar = tester.getRect(titleBarOf(screen));
-  expect(bar.top, topBarHeightPx, reason: 'the title bar starts below the phone bar');
+  expect(bar.top, closeTo(topBarHeightPx * (1 + scale), 1e-6), reason: 'the title bar starts below the phone bar');
   for (final (name, part) in barParts()) {
     if (part.evaluate().isEmpty) continue;
     expect(bar.overlaps(tester.getRect(part)), isFalse, reason: 'the title bar meets $name');
@@ -55,12 +72,16 @@ void main() {
     await pumpHostApp(tester);
     final host = await enterHostMode(tester);
 
-    // The picker has nothing to go back to, so it draws no title bar at all and
-    // its body starts right under the phone's bar (m12 bug 1107f rule D).
-    expect(find.byKey(const Key('hostTitleBar')), findsNothing);
-    final picker = find.descendant(of: find.byType(party.GamesScreen), matching: find.byType(Scrollable)).first;
-    expect(tester.getRect(picker).top, topBarHeightPx);
-    expect(tester.getSize(picker).height, phoneScreenHeightPx - topBarHeightPx);
+    // The picker is a frame screen (S8p), so it has the frame's 64 px header
+    // at the frame's top, under the phone's bar (M16 phonehost2 wph). It has
+    // nothing to go back to, so no back arrow (m12 bug 1107f rule D).
+    final pickerBar = titleBarOf(party.GamesScreen);
+    expect(pickerBar, findsOneWidget);
+    expect(tester.getRect(pickerBar).top, closeTo(topBarHeightPx, 1e-6));
+    expect(
+      find.descendant(of: find.byType(party.GamesScreen), matching: find.byKey(const Key('hostTitleBarBack'))),
+      findsNothing,
+    );
 
     // The level list, where "Shape Race" was almost cut off by the bar (bug
     // 1107f): its title and its back arrow are down here, in the clear.
@@ -70,9 +91,11 @@ void main() {
     expectRoomBelowTheBar(tester, party.ShapeRaceScreen);
     final title = find.descendant(of: find.byType(party.ShapeRaceScreen), matching: find.text('Shape Race'));
     expect(tester.getRect(title).top, greaterThanOrEqualTo(topBarHeightPx), reason: 'the title is below the bar');
-    // What the room costs the menus: the phone's screen, less the bar and the
-    // title bar, is what the list has (m12 bug 1107f rule C's height cost).
-    expect(tester.getSize(find.byType(Scrollable).first).height, phoneScreenHeightPx - topBarHeightPx - kToolbarHeight);
+    // What the room costs the menus, in the frame's px: the frame's height,
+    // less the bar and the title bar the old screen keeps in it (m12 bug
+    // 1107f rule C's height cost). A size inside the frame is frame px; only
+    // its rect is drawn at the frame's scale.
+    expect(tester.getSize(find.byType(Scrollable).first).height, 540 - topBarHeightPx - kToolbarHeight);
 
     // The join screen, whose title ran into the bar's labels too.
     await tester.tap(find.byKey(const Key('random-easy')));
@@ -107,26 +130,26 @@ void main() {
     await tester.runAsync(host.dispose);
   });
 
-  testWidgets('"Show on this device" loses the picker\'s title bar too', (tester) async {
+  testWidgets('"Show on this device" loses the picker\'s back arrow too', (tester) async {
     await pumpHostApp(tester);
     final host = await enterHostMode(tester, choice: HostChoice.onDevice);
-    // The bar is above the games here too, and the picker is still the route
-    // with nothing to go back to (rule D).
-    expect(find.byKey(const Key('hostTitleBar')), findsNothing);
+    // The frame is under the bar here too, and the picker is still the route
+    // with nothing to go back to (rule D): its header stays, its arrow does not.
+    final pickerBar = titleBarOf(party.GamesScreen);
+    expect(tester.getRect(pickerBar).top, closeTo(topBarHeightPx, 1e-6));
     expect(
-      tester.getRect(find.descendant(of: find.byType(party.GamesScreen), matching: find.byType(Scrollable)).first).top,
-      topBarHeightPx,
+      find.descendant(of: find.byType(party.GamesScreen), matching: find.byKey(const Key('hostTitleBarBack'))),
+      findsNothing,
     );
     await tester.runAsync(host.dispose);
   });
 
-  testWidgets('the phone\'s menus leave 12 at the top of their bodies, where 24 would waste room', (tester) async {
+  testWidgets('the menus still on the old screen leave 12 at the top of their bodies', (tester) async {
     await pumpHostApp(tester);
     final host = await enterHostMode(tester);
-    final picker = tester.widget<ListView>(
-      find.descendant(of: find.byType(party.GamesScreen), matching: find.byType(ListView)),
-    );
-    expect(picker.padding, const EdgeInsets.fromLTRB(24, 12, 24, 24));
+    // The picker is a frame screen now and uses none of the old menu's
+    // padding (S8p); the rule stays for the lists still on HostScreen.
+    expect(find.descendant(of: find.byType(party.GamesScreen), matching: find.byType(ListView)), findsNothing);
 
     await tester.tap(find.byKey(const Key('pickShapeRace')));
     await untilShown(tester, find.byType(party.ShapeRaceScreen), 'The Shape Race screen');
@@ -139,15 +162,16 @@ void main() {
     await tester.runAsync(host.dispose);
   });
 
-  testWidgets('the round keeps the whole screen: the board still fills it behind the bar', (tester) async {
+  testWidgets('the round fills the frame below the bar', (tester) async {
     await pumpHostApp(tester);
     final host = await soloRound(tester);
 
-    // Only the menus have a title bar; the round draws under the bar as it
-    // did (m12 bug 1107f rule C), so its board keeps every pixel (m12 §5).
+    // Only the menus have a title bar; the round is the frame's whole picture
+    // (M16 phonehost2 wph), which starts under the bar, so the board keeps
+    // every pixel the host's frame has (m12 §5).
     expect(find.byKey(const Key('hostTitleBar')), findsNothing);
-    expect(tester.getRect(find.byType(party.PuzzleScreen)), const Rect.fromLTWH(0, 0, 852, 393));
-    expect(tester.getRect(find.byType(PuzzlePlayView)), const Rect.fromLTWH(0, 0, 852, 393));
+    expectRect(tester, find.byType(party.PuzzleScreen), const Rect.fromLTRB(0, topBarHeightPx, 852, 393));
+    expectRect(tester, find.byType(PuzzlePlayView), const Rect.fromLTRB(0, topBarHeightPx, 852, 393));
 
     await tester.runAsync(host.dispose);
   });
