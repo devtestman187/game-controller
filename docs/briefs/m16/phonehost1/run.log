@@ -1,0 +1,11 @@
+2026-11-20 20:50:44 start at 0d1d3cc3 on m16
+2026-11-20 20:50:44 run-base 0d1d3cc3d466854d43b2d0e416cf0cd7052cf0ae
+2026-11-20 20:50:53 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-20 20:50:53 start s1
+2026-11-20 20:51:19 start s9a
+2026-11-20 21:09:49 s1 finished: result 0 (72 turns, 16 min)
+2026-11-20 21:09:49 s9a finished: result 4 (31 turns, 4 min)
+2026-11-20 21:09:50 s9a: dropped generated churn outside its list: docs/design/m13-placed-look.png docs/design/puzzles/boat.png docs/design/puzzles/butterfly.png docs/design/puzzles/car.png docs/design/puzzles/castle.png docs/design/puzzles/fish.png docs/design/puzzles/house.png docs/design/puzzles/robot.png docs/design/puzzles/rocket.png docs/design/puzzles/snowman.png docs/design/puzzles/sun.png docs/design/puzzles/train.png docs/design/puzzles/tree.png 
+2026-11-20 21:11:39 tests-first ok: packages/party_host/test/host_frame_test.dart fails on the old code
+2026-11-20 21:18:09 committed s1: ef9aad1b Add the host frame scaler, its info and the frame type (M16 S1)
+2026-11-20 21:18:11 committed s9a: beaeec05 Stop the tablet-board test rewriting its PNG on every run
