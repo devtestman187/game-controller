@@ -10,7 +10,7 @@
 #
 # CHECK_ANALYZE_PKGS="packages/a controller_app" limits the analyze check to those folders
 # (tools/flash.sh sets it for a job from the job's own files; the runner runs the whole workspace).
-# Checks: format analyze protocol connection metrics kit look arena puzzle host phone tv
+# Checks: format analyze protocol connection metrics kit look arena puzzle host phone tv tools
 # Exit code: 0 if every check passed, 1 if any failed, 2 for bad arguments
 # or a missing tool. Works in Git Bash on Windows and bash on macOS/Linux.
 set -u
@@ -32,6 +32,7 @@ checks=(
   "host|packages/party_host|flutter test|the host service, host screens, sound and stats"
   "phone|controller_app|flutter test|the phone app's widget tests"
   "tv|tv_test_app|flutter test|the TV app's widget tests"
+  "tools|.|bash tools/selftest.sh|shell tool self-tests (tools/tests/*-test.sh)"
 )
 
 verbose=0
