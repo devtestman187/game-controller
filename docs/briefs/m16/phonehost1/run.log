@@ -52,3 +52,4 @@
 2026-11-20 22:32:32 tests-first ok: packages/party_host/test/round_segment_test.dart fails on the old code
 2026-11-20 22:32:42 finding: tests-first: packages/party_host/test/score_row_test.dart passes on the old code, so it does not prove new behaviour
 2026-11-20 22:32:43 STOPPED: tests-first: packages/party_host/test/score_row_test.dart pass on the old code (write them to fail first, or add 'tests-first: exempt <reason>' to the brief for a pure refactor); nothing of this wave is committed
+2026-11-20 22:32:50 HAND-FIX f3: brief gets tests-first: exempt (score_row_test passes on old code: coverage-only finding)
