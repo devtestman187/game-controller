@@ -314,11 +314,8 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
                     child: LayoutBuilder(
                       builder: (context, box) {
                         // Where this app draws its own pad over the game, and
-                        // its screen's density: the round keeps the other
-                        // side's mirror clear of both (m12-opponent-mirror
-                        // rules 3, 7 and 8). A host with no pad passes none.
-                        // The pad measures in device px and the board in frame
-                        // px (M16 phonehost3 pad).
+                        // its density: the round keeps the mirror clear of both
+                        // (m12-opponent-mirror rules 3, 7 and 8; no pad, none).
                         final pad = padClearanceFor(context, ref.watch(hostPadProvider), box.biggest);
                         final night = ref.read(partyNightProvider);
                         final numbers = nightRoundNumbers(night);

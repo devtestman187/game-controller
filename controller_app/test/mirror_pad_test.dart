@@ -330,7 +330,19 @@ void main() {
       // is in frame px: the pad's device figures are divided by s.
       final s = party.HostFrameInfo.of(tester.element(find.byType(MatchView))).scale;
       expect(view.pxPerMm, closeTo(phonePxPerMm / s, 1e-9));
-      final device = leftPadRects(box * s, mode: PadMode.dpad, mm: phonePxPerMm);
+      // The board's box is the room below this phone's bar, in device px, and
+      // `leftPadRects` lays the pad out for a whole screen: it takes the bar off
+      // the box and shifts its rects down by it, so the pad's answer for the
+      // board is its answer for the room plus the bar, moved back up by the bar
+      // (M16 phonehost3 f1).
+      final device = [
+        for (final rect in leftPadRects(
+          Size(box.width * s, box.height * s + topBarHeightPx),
+          mode: PadMode.dpad,
+          mm: phonePxPerMm,
+        ))
+          rect.translate(0, -topBarHeightPx),
+      ];
       expect(view.padRects.length, device.length);
       for (var i = 0; i < device.length; i++) {
         expect(view.padRects[i].left, closeTo(device[i].left / s, 1e-6));

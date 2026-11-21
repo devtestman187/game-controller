@@ -5,6 +5,7 @@ import 'package:party_host/party_host.dart' as party;
 
 import '../gyro.dart';
 import '../providers.dart';
+import '../sticks.dart';
 import '../ui/joined_view.dart';
 import '../ui/top_bar_metrics.dart';
 import 'host_monitor.dart';
@@ -74,6 +75,18 @@ List<Override> phoneHostOverrides({required party.HostDirectories directories}) 
     if (host == null || !host.service.shareView) return (pxPerMm: mm, rects: (Size box) => const <Rect>[]);
     final mode = ref.watch(gyroProvider.select((g) => g.mode));
     final sticks = ref.watch(stickSettingsProvider);
-    return (pxPerMm: mm, rects: (Size box) => leftPadRects(box, mode: mode, mm: mm, sticks: sticks));
+    return (pxPerMm: mm, rects: (Size box) => _hostPadRects(box, mode: mode, mm: mm, sticks: sticks));
   }),
+];
+
+/// The pad's rects in the box of a host screen, `box`, which the frame gate
+/// lays out in the room below this phone's bar, in device px (M16 phonehost3
+/// f1). [leftPadRects] lays the pad out for a whole screen: it takes the bar
+/// off the box and shifts its rects down by it. So it is asked about the room
+/// plus the bar, and its answer is moved back up into the room: a framed board
+/// keeps clear of the arms where they are drawn (8 device px from its top at
+/// 852x393, not 60).
+List<Rect> _hostPadRects(Size box, {required PadMode mode, required double mm, required StickSettings sticks}) => [
+  for (final rect in leftPadRects(Size(box.width, box.height + topBarHeightPx), mode: mode, mm: mm, sticks: sticks))
+    rect.shift(const Offset(0, -topBarHeightPx)),
 ];

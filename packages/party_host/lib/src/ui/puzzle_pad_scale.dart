@@ -11,11 +11,14 @@ typedef PadClearance = ({List<Rect> rects, double pxPerMm});
 /// draws with (M16 phonehost3 pad).
 ///
 /// `hostPadProvider` answers in device px: its rects and its `pxPerMm` are
-/// measured on the phone's screen. A board inside [HostFrame] draws in frame
-/// px, where one device px is `scale` frame px (`device = frame x s`), so the
-/// pad is asked about the device-sized box and its answer is divided by the
-/// scale. With no frame above (the TV, "Show on this device") the board is the
-/// device, and nothing changes.
+/// measured on the phone's screen, where the host draws its pad, in the box it
+/// is asked about. The phone app answers for the board's own box, the room
+/// below its bar, moved out of the bar the whole screen would add (M16
+/// phonehost3 f1). A board inside [HostFrame] draws in frame px, where one
+/// device px is `scale` frame px (`device = frame x s`), so the pad is asked
+/// about the device-sized box and its answer is divided by the scale. With no
+/// frame above (the TV, "Show on this device") the board is the device, and
+/// nothing changes.
 PadClearance padClearanceFor(BuildContext context, HostPad pad, Size boardBox) {
   final frame = HostFrameInfo.maybeOf(context);
   if (frame == null) return (rects: pad.rects(boardBox), pxPerMm: pad.pxPerMm);
