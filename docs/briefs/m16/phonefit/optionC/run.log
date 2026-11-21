@@ -5,3 +5,4 @@
 2026-11-20 19:15:45 oc1 finished: result 0 (112 turns, 16 min)
 2026-11-20 19:17:23 tests-first ok: packages/party_host/test/phone_fit_option_c_test.dart fails on the old code
 2026-11-20 19:23:48 committed oc1: f81342a2 M16 phonefit: measure a 960x540 design frame on five devices
+2026-11-20 19:30:01 reviewed wave1: 17 finding(s)
