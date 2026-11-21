@@ -17,3 +17,5 @@
 2026-11-20 21:37:08 tests-first: packages/party_host/test/phone_fit_picker_join_test.dart passes on the old code, exempt by its brief
 2026-11-20 21:43:36 committed s2: a43a2bee Add the host frame screen scaffold, score row and round segment (M16 S2)
 2026-11-20 21:43:38 committed s7: b77edb67 Measure the game picker and the join screen at the five host sizes
+2026-11-20 21:43:40 reviewed wave1: 6 finding(s)
+2026-11-20 21:48:22 reviewed wave2: 8 finding(s)
