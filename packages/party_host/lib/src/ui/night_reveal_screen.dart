@@ -12,7 +12,7 @@ import '../night/night_state.dart';
 import '../night/party_night.dart';
 import '../providers.dart';
 import '../text/night_text.dart';
-import 'host_screen.dart';
+import 'host_frame_screen.dart';
 import 'lobby_music.dart';
 import 'night_scoreboard_screen.dart';
 import 'night_widgets.dart';
@@ -28,15 +28,15 @@ const nightAwardRevealMs = 4000;
 /// tonight" for 2 s): there is no fanfare and no winner to read.
 const nightAwardMissedRevealMs = 2000;
 
-/// How wide the reveal's card is, in logical pixels: the mock-up's 860 inside a
-/// screen of 1280 (frame 6).
-const nightRevealCardWidthPx = 860.0;
-
 /// The awards' reveal between the night's last results and its final scores
 /// (M14 c2, design section 6, frame 6): each of the night's three awards in the
 /// order it was drawn, with its picture, winners, the reason they won it and
 /// their +3 points, then the final scores take its place. An award nobody
 /// qualified for says "Not won tonight" for a shorter moment.
+///
+/// In the frame (M16 phonehost2 S5, DESIGN section 4) it is one full-width
+/// card under a header and over a footer with nothing in it: the reveal has no
+/// Skip and no dots until Thumby's speech timing arrives (owner answer 4).
 ///
 /// Escape skips the rest, as the remote's Back does, so a night never waits on
 /// the reveal.
@@ -132,19 +132,17 @@ class _NightRevealScreenState extends ConsumerState<NightRevealScreen> {
         // reveal is skipped, never waited on).
         child: Focus(
           autofocus: true,
-          child: HostScreen(
+          child: HostFrameScreen(
             title: NightText.partyNight,
             body: LobbyHold(
-              child: SafeArea(
-                child: outcome == null || night == null
-                    ? const SizedBox.shrink()
-                    : _RevealCard(
-                        outcome: outcome,
-                        colour: ToyLookScope.of(context).colors.player(_index + 1),
-                        night: night,
-                        players: ref.watch(gamePlayersProvider),
-                      ),
-              ),
+              child: outcome == null || night == null
+                  ? const SizedBox.shrink()
+                  : _RevealCard(
+                      outcome: outcome,
+                      colour: ToyLookScope.of(context).colors.player(_index + 1),
+                      night: night,
+                      players: ref.watch(gamePlayersProvider),
+                    ),
             ),
           ),
         ),
