@@ -51,6 +51,7 @@ void main() {
       tester,
       screen: const StubHome(),
       size: const Size(852, 393),
+      framed: true,
       overrides: ownPhoneOverrides('p1'),
     );
     fake.state = withController(fake.state, phoneInfo('p2', 2)); // two players: the second one is not ready

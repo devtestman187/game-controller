@@ -45,6 +45,9 @@ final harnessNow = DateTime(2026, 11, 8, 12);
 /// app's home screen comes from the app; the tests here start on [StubHome].
 /// [clock] is the device's time for Auto's palette, [harnessNow] by default.
 ///
+/// [framed] puts the app in the host frame (HostFrame, as both host apps do),
+/// for a test that draws a screen at a phone size without its scroll net.
+///
 /// [stillSky] puts a [ToyStillSky] above the app, as every widget test that
 /// settles needs (the sky drifts for as long as a menu is open): a test about
 /// the drift itself passes false, and settles by pumping instead.
@@ -58,6 +61,7 @@ Future<FakeHostService> pumpHost(
   DateTime Function()? clock,
   bool stillSky = true,
   PuzzleLibrary? library,
+  bool framed = false,
 }) async {
   sounds = FakeSoundPlayer();
   awake = FakeScreenAwake();
@@ -84,7 +88,11 @@ Future<FakeHostService> pumpHost(
       child: Shortcuts(
         // The TV app's own keys, so the tests press what the remote presses.
         shortcuts: hostActivateShortcuts,
-        child: stillSky ? ToyStillSky(child: _HarnessApp(screen: screen)) : _HarnessApp(screen: screen),
+        child: stillSky
+            ? ToyStillSky(
+                child: _HarnessApp(screen: screen, framed: framed),
+              )
+            : _HarnessApp(screen: screen, framed: framed),
       ),
     ),
   );
@@ -102,9 +110,12 @@ Future<FakeHostService> pumpHost(
 /// observer, so a page's push or pop works the palette out again. It's a phone
 /// look (the menu sizes and the phone's type).
 class _HarnessApp extends ConsumerWidget {
-  const _HarnessApp({required this.screen});
+  const _HarnessApp({required this.screen, this.framed = false});
 
   final Widget screen;
+
+  /// Whether the app draws in the host frame, as the TV and the phone host do.
+  final bool framed;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -117,7 +128,10 @@ class _HarnessApp extends ConsumerWidget {
         navigatorObservers: [ref.watch(toyLookRouteObserverProvider)],
         // The phones work every screen like the remote (PRD v2 T21), and a
         // touch-first host's thumbs take a focus look away (m12 bug 1107f).
-        builder: (context, child) => HostFocusScope(child: ControllerMenus(child: child!)),
+        builder: (context, child) {
+          final menus = HostFocusScope(child: ControllerMenus(child: child!));
+          return framed ? hostFrameBuilder(context, menus) : menus;
+        },
         home: screen,
       ),
     );

@@ -27,6 +27,7 @@ void main() {
       tester,
       screen: const StubHome(),
       size: const Size(852, 393),
+      framed: true,
       overrides: ownPhoneOverrides('p1'),
     );
     await neutral(tester, fake, ['p1']);
