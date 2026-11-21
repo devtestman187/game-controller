@@ -33,3 +33,21 @@
 2026-11-21 15:56:14 p2-ptest finished: result 0 (40 turns, 8 min)
 2026-11-21 16:04:41 committed p2-docs: 9ff8cc46 docs: document mine.sh, wait-run.sh and selftest.sh, and the worker extract
 2026-11-21 16:04:43 committed p2-ptest: 850f6c9d Add a self-test for flash.sh's prompt extract and allow list
+2026-11-21 16:04:45 reviewed wave2: 11 finding(s)
+2026-11-21 16:04:46 STOPPED: jobs that failed or need applying by hand: p2-split:6 (their logs: docs/briefs/m16/process2/flash-<job>.log)
+2026-11-21 16:05:21 HAND-FIX p2-split: patch applied by hand except docs/dev-tools.md (result 6: p2-docs edited the same file in wave 3, my brief mistake); its one dev-tools sentence applied by hand
+2026-11-21 16:05:43 start at 31bdf5a5 on m16
+2026-11-21 16:05:53 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-21 16:05:54 WARN: p2-harness was committed by hand (6041b205); a plain restart would skip its tests-first proof and worker review, so both run now
+2026-11-21 16:05:55 hand-fixed p2-harness: tests-first proof and worker review done (marked in done.txt)
+2026-11-21 16:05:55 skip p2-harness (already done)
+2026-11-21 16:05:55 WARN: p2-prompt was committed by hand (f4ed1fcb); a plain restart would skip its tests-first proof and worker review, so both run now
+2026-11-21 16:05:57 hand-fixed p2-prompt: tests-first proof and worker review done (marked in done.txt)
+2026-11-21 16:05:57 skip p2-prompt (already done)
+2026-11-21 16:05:57 skip p2-mine (already done)
+2026-11-21 16:05:58 skip p2-wait (already done)
+2026-11-21 16:05:58 skip p2-stop (already done)
+2026-11-21 16:05:59 resume p2-split (applied by hand, not committed yet)
+2026-11-21 16:05:59 skip p2-docs (already done)
+2026-11-21 16:06:00 skip p2-ptest (already done)
+2026-11-21 16:09:38 reviewed wave3: 10 finding(s)
