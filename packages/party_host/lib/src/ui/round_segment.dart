@@ -91,6 +91,11 @@ class _RoundChip extends StatelessWidget {
       button: true,
       selected: isSelected,
       label: option.label,
+      // The chip's tap sits under ExcludeSemantics (it is drawn and hit-tested
+      // there), so a screen reader needs it named here: TalkBack on a phone host
+      // finds the button and presses it (finding 10). Null with no callback, so
+      // a night already under way offers nothing to press.
+      onTap: onPressed,
       child: ExcludeSemantics(
         child: HostFocusRing(
           child: FocusableActionDetector(
