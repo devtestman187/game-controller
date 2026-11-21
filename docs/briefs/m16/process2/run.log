@@ -56,3 +56,5 @@
 2026-11-21 16:31:26 p2-wire finished: result 0 (102 turns, 16 min)
 2026-11-21 16:40:35 committed p2-wire: 573e61a2 M16 process2: the runner writes STOP.md, locks and times itself
 2026-11-21 16:44:23 reviewed wave4: 12 finding(s)
+2026-11-21 16:44:24 start the run's review
+2026-11-21 16:52:51 DONE: every job is committed. Claude reads the Summary of docs/briefs/m16/process2/REVIEW.md, verifies its findings and writes one fix brief
