@@ -30,6 +30,7 @@ docs/agent-workflow.md and docs/HANDOFF.md §10. Session refinements to keep:
   assertions, and check `git status` for churn before committing.
 
 ## Resume here (Nov 20, 2026: item 1 built; host/commentator direction settled — see `docs/briefs/m17/STATUS.md`)
+**Phone-host layout, foundation built (phonehost1, Nov 20):** S1 HostFrame/HostFrameInfo/ThumbySlot/hostFrameBuilder + ToyType.frame, S2 HostFrameScreen/ScoreRow/RoundSegment, S9a PNG guard, S7 measurement done and green (full check.sh passed). NOT wired into any app yet (TV line + phone-app gate need a decision); S3-S6, S8, S9 matrix wait for review. Details and open questions: `docs/briefs/m16/phonehost1/`.
 
 - **Paused → resolved (Nov 20).** The host/commentator direction has settled: a dedicated host
   character **Thumby** (see `docs/briefs/m17/STATUS.md` and `docs/briefs/m17/ux-review/PROPOSAL.md`),

@@ -99,3 +99,10 @@ phonehost1 reviewed: S1 (HostFrame/HostFrameInfo/ThumbySlot/hostFrameBuilder, To
 ## Delete
 
 - none
+
+## Verdicts (Claude's batch driver, Nov 20)
+
+- Fixed in f1 (c67c9d37): findings 1, 2, 9 (also 12-adjacent focus rect check was not added; deferred). Fixed in f2 (d992a92f): 3, 6. Fixed in f3 (406bb9f0): 10; 5 and 11 added as tests (finding 5 pinned, not proven: coverage-only).
+- Hand-fixed (HAND-FIX line in run.log): 4 (and the cause of f1-f3's result 4: the S7 test rewrote s7-results.json on every run; now only with PHONE_FIT=1 and a complete run), 7.
+- Deferred to docs/code-health.md ("M16 phonehost1"): 8, 12, 13, 14, 15, 16, 17, 18 and wave3's five coulds; open questions 1-13 go to the main session (STATUS.md).
+- wave3 review: 0 must, 0 should, 5 could, all deferred; the safe-area file has 7 of 9 tests that pin existing behaviour, only the notched ones prove the fix.

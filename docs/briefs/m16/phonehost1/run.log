@@ -71,3 +71,5 @@
 2026-11-20 22:42:07 committed f3: 406bb9f0 Test ScoreRow's zero rules and RoundSegment's disabled state
 2026-11-20 22:51:17 reviewed wave3: 5 finding(s)
 2026-11-20 22:51:17 DONE: every job is committed. Claude reads the Summary of docs/briefs/m16/phonehost1/REVIEW.md, verifies its findings and writes one fix brief
+2026-11-20 22:51:58 wrap: verdicts written; running full check.sh
+2026-11-20 22:58:44 wrap: check.sh all 12 PASS
