@@ -1,0 +1,612 @@
+[
+  {
+    "screen": "night-start",
+    "size": "640x360",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 551.0,
+        "viewport": 304.0
+      }
+    ],
+    "clipped": [],
+    "texts": 23,
+    "smallestFontDp": 15.0,
+    "label24Dp": [
+      24.0
+    ],
+    "wayOn": {
+      "key": "nightShapeRace",
+      "onScreen": false,
+      "top": 755.0,
+      "bottom": 803.0
+    },
+    "scalesAwayFromOne": []
+  },
+  {
+    "screen": "night-scoreboard",
+    "size": "640x360",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 175.0,
+        "viewport": 304.0
+      }
+    ],
+    "clipped": [],
+    "texts": 27,
+    "smallestFontDp": 18.0,
+    "label24Dp": [
+      24.0
+    ],
+    "wayOn": {
+      "key": "nightShapeRace",
+      "onScreen": false,
+      "top": 387.0,
+      "bottom": 435.0
+    },
+    "scalesAwayFromOne": []
+  },
+  {
+    "screen": "night-final",
+    "size": "640x360",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 115.0,
+        "viewport": 304.0
+      }
+    ],
+    "clipped": [],
+    "texts": 25,
+    "smallestFontDp": 18.0,
+    "label24Dp": [
+      24.0
+    ],
+    "wayOn": {
+      "key": "nightBackToGames",
+      "onScreen": false,
+      "top": 387.0,
+      "bottom": 435.0
+    },
+    "scalesAwayFromOne": []
+  },
+  {
+    "screen": "night-reveal",
+    "size": "640x360",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 15.0,
+        "viewport": 304.0
+      }
+    ],
+    "clipped": [],
+    "texts": 8,
+    "smallestFontDp": 13.499999999999659,
+    "label24Dp": [],
+    "wayOn": null,
+    "scalesAwayFromOne": []
+  },
+  {
+    "screen": "arena-results",
+    "size": "640x360",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 71.0,
+        "viewport": 360.0
+      }
+    ],
+    "clipped": [],
+    "texts": 19,
+    "smallestFontDp": 18.0,
+    "label24Dp": [],
+    "wayOn": {
+      "key": "arenaAgain",
+      "onScreen": true,
+      "top": 303.0,
+      "bottom": 351.0
+    },
+    "scalesAwayFromOne": []
+  },
+  {
+    "screen": "puzzle-results",
+    "size": "640x360",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 86.0,
+        "viewport": 360.0
+      }
+    ],
+    "clipped": [],
+    "texts": 19,
+    "smallestFontDp": 13.499999999999659,
+    "label24Dp": [],
+    "wayOn": {
+      "key": "nextPuzzle",
+      "onScreen": true,
+      "top": 305.0,
+      "bottom": 348.0
+    },
+    "scalesAwayFromOne": []
+  },
+  {
+    "screen": "night-start",
+    "size": "360x640",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 300.0,
+        "viewport": 584.0
+      }
+    ],
+    "clipped": [],
+    "texts": 23,
+    "smallestFontDp": 15.0,
+    "label24Dp": [
+      24.0
+    ],
+    "wayOn": {
+      "key": "nightShapeRace",
+      "onScreen": false,
+      "top": 784.0,
+      "bottom": 832.0
+    },
+    "scalesAwayFromOne": []
+  },
+  {
+    "screen": "night-scoreboard",
+    "size": "360x640",
+    "errors": [
+      "A RenderFlex overflowed by 15 pixels on the right.",
+      "A RenderFlex overflowed by 16 pixels on the right.",
+      "A RenderFlex overflowed by 7.7 pixels on the right.",
+      "A RenderFlex overflowed by 8.6 pixels on the right."
+    ],
+    "scrolls": [
+      {
+        "extent": 0.0,
+        "viewport": 584.0
+      }
+    ],
+    "clipped": [
+      {
+        "text": "Bartholomew The Great",
+        "wanted": 201.0,
+        "given": 0.0,
+        "laidOut": 0.0,
+        "ellipsis": true
+      },
+      {
+        "text": "Maximilian Thunderbolt",
+        "wanted": 199.0,
+        "given": 0.0,
+        "laidOut": 0.0,
+        "ellipsis": true
+      },
+      {
+        "text": "Alexandria Nightshade",
+        "wanted": 190.0,
+        "given": 0.0,
+        "laidOut": 0.0,
+        "ellipsis": true
+      },
+      {
+        "text": "Christopher Von Trapp",
+        "wanted": 185.0,
+        "given": 0.0,
+        "laidOut": 0.0,
+        "ellipsis": true
+      }
+    ],
+    "texts": 27,
+    "smallestFontDp": 18.0,
+    "label24Dp": [
+      24.0
+    ],
+    "wayOn": {
+      "key": "nightShapeRace",
+      "onScreen": true,
+      "top": 387.0,
+      "bottom": 435.0
+    },
+    "scalesAwayFromOne": []
+  },
+  {
+    "screen": "night-final",
+    "size": "360x640",
+    "errors": [
+      "A RenderFlex overflowed by 18 pixels on the right.",
+      "A RenderFlex overflowed by 18 pixels on the right.",
+      "A RenderFlex overflowed by 14 pixels on the right.",
+      "A RenderFlex overflowed by 7.3 pixels on the right."
+    ],
+    "scrolls": [
+      {
+        "extent": 0.0,
+        "viewport": 584.0
+      }
+    ],
+    "clipped": [
+      {
+        "text": "Bartholomew The Great",
+        "wanted": 201.0,
+        "given": 0.0,
+        "laidOut": 0.0,
+        "ellipsis": true
+      },
+      {
+        "text": "Maximilian Thunderbolt",
+        "wanted": 199.0,
+        "given": 0.0,
+        "laidOut": 0.0,
+        "ellipsis": true
+      },
+      {
+        "text": "Alexandria Nightshade",
+        "wanted": 190.0,
+        "given": 0.0,
+        "laidOut": 0.0,
+        "ellipsis": true
+      },
+      {
+        "text": "Christopher Von Trapp",
+        "wanted": 185.0,
+        "given": 0.0,
+        "laidOut": 0.0,
+        "ellipsis": true
+      }
+    ],
+    "texts": 25,
+    "smallestFontDp": 18.0,
+    "label24Dp": [
+      24.0
+    ],
+    "wayOn": {
+      "key": "nightBackToGames",
+      "onScreen": true,
+      "top": 387.0,
+      "bottom": 435.0
+    },
+    "scalesAwayFromOne": []
+  },
+  {
+    "screen": "night-reveal",
+    "size": "360x640",
+    "errors": [
+      "A RenderFlex overflowed by 121 pixels on the right."
+    ],
+    "scrolls": [
+      {
+        "extent": 0.0,
+        "viewport": 371.0
+      }
+    ],
+    "clipped": [],
+    "texts": 8,
+    "smallestFontDp": 13.500000000000085,
+    "label24Dp": [],
+    "wayOn": null,
+    "scalesAwayFromOne": []
+  },
+  {
+    "screen": "arena-results",
+    "size": "360x640",
+    "errors": [
+      "A RenderFlex overflowed by 3.1 pixels on the right.",
+      "A RenderFlex overflowed by 63 pixels on the right.",
+      "A RenderFlex overflowed by 56 pixels on the right.",
+      "A RenderFlex overflowed by 39 pixels on the right."
+    ],
+    "scrolls": [
+      {
+        "extent": 0.0,
+        "viewport": 487.0
+      }
+    ],
+    "clipped": [],
+    "texts": 19,
+    "smallestFontDp": 18.0,
+    "label24Dp": [],
+    "wayOn": {
+      "key": "arenaAgain",
+      "onScreen": true,
+      "top": 379.0,
+      "bottom": 427.0
+    },
+    "scalesAwayFromOne": []
+  },
+  {
+    "screen": "puzzle-results",
+    "size": "360x640",
+    "errors": [
+      "A RenderFlex overflowed by 188 pixels on the right.",
+      "A RenderFlex overflowed by 17 pixels on the right."
+    ],
+    "scrolls": [
+      {
+        "extent": 0.0,
+        "viewport": 566.0
+      }
+    ],
+    "clipped": [],
+    "texts": 19,
+    "smallestFontDp": 13.499999999999659,
+    "label24Dp": [],
+    "wayOn": {
+      "key": "nextPuzzle",
+      "onScreen": true,
+      "top": 348.0,
+      "bottom": 391.0
+    },
+    "scalesAwayFromOne": []
+  },
+  {
+    "screen": "night-start",
+    "size": "1280x800",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 0.0,
+        "viewport": 744.0
+      }
+    ],
+    "clipped": [],
+    "texts": 23,
+    "smallestFontDp": 15.0,
+    "label24Dp": [
+      24.0
+    ],
+    "wayOn": {
+      "key": "nightShapeRace",
+      "onScreen": true,
+      "top": 634.0,
+      "bottom": 682.0
+    },
+    "scalesAwayFromOne": []
+  },
+  {
+    "screen": "night-scoreboard",
+    "size": "1280x800",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 0.0,
+        "viewport": 744.0
+      }
+    ],
+    "clipped": [],
+    "texts": 27,
+    "smallestFontDp": 18.0,
+    "label24Dp": [
+      24.0
+    ],
+    "wayOn": {
+      "key": "nightShapeRace",
+      "onScreen": true,
+      "top": 387.0,
+      "bottom": 435.0
+    },
+    "scalesAwayFromOne": []
+  },
+  {
+    "screen": "night-final",
+    "size": "1280x800",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 0.0,
+        "viewport": 744.0
+      }
+    ],
+    "clipped": [],
+    "texts": 25,
+    "smallestFontDp": 18.0,
+    "label24Dp": [
+      24.0
+    ],
+    "wayOn": {
+      "key": "nightBackToGames",
+      "onScreen": true,
+      "top": 387.0,
+      "bottom": 435.0
+    },
+    "scalesAwayFromOne": []
+  },
+  {
+    "screen": "night-reveal",
+    "size": "1280x800",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 0.0,
+        "viewport": 319.0
+      }
+    ],
+    "clipped": [],
+    "texts": 8,
+    "smallestFontDp": 13.499999999999659,
+    "label24Dp": [],
+    "wayOn": null,
+    "scalesAwayFromOne": []
+  },
+  {
+    "screen": "arena-results",
+    "size": "1280x800",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 0.0,
+        "viewport": 431.0
+      }
+    ],
+    "clipped": [],
+    "texts": 19,
+    "smallestFontDp": 18.0,
+    "label24Dp": [],
+    "wayOn": {
+      "key": "arenaAgain",
+      "onScreen": true,
+      "top": 487.0,
+      "bottom": 535.0
+    },
+    "scalesAwayFromOne": []
+  },
+  {
+    "screen": "puzzle-results",
+    "size": "1280x800",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 0.0,
+        "viewport": 446.0
+      }
+    ],
+    "clipped": [],
+    "texts": 19,
+    "smallestFontDp": 13.499999999999659,
+    "label24Dp": [],
+    "wayOn": {
+      "key": "nextPuzzle",
+      "onScreen": true,
+      "top": 482.0,
+      "bottom": 525.0
+    },
+    "scalesAwayFromOne": []
+  },
+  {
+    "screen": "night-start",
+    "size": "1280x720",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 70.0,
+        "viewport": 664.0
+      }
+    ],
+    "clipped": [],
+    "texts": 23,
+    "smallestFontDp": 15.0,
+    "label24Dp": [
+      24.0
+    ],
+    "wayOn": {
+      "key": "nightShapeRace",
+      "onScreen": true,
+      "top": 634.0,
+      "bottom": 682.0
+    },
+    "scalesAwayFromOne": []
+  },
+  {
+    "screen": "night-scoreboard",
+    "size": "1280x720",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 0.0,
+        "viewport": 664.0
+      }
+    ],
+    "clipped": [],
+    "texts": 27,
+    "smallestFontDp": 18.0,
+    "label24Dp": [
+      24.0
+    ],
+    "wayOn": {
+      "key": "nightShapeRace",
+      "onScreen": true,
+      "top": 387.0,
+      "bottom": 435.0
+    },
+    "scalesAwayFromOne": []
+  },
+  {
+    "screen": "night-final",
+    "size": "1280x720",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 0.0,
+        "viewport": 664.0
+      }
+    ],
+    "clipped": [],
+    "texts": 25,
+    "smallestFontDp": 18.0,
+    "label24Dp": [
+      24.0
+    ],
+    "wayOn": {
+      "key": "nightBackToGames",
+      "onScreen": true,
+      "top": 387.0,
+      "bottom": 435.0
+    },
+    "scalesAwayFromOne": []
+  },
+  {
+    "screen": "night-reveal",
+    "size": "1280x720",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 0.0,
+        "viewport": 319.0
+      }
+    ],
+    "clipped": [],
+    "texts": 8,
+    "smallestFontDp": 13.499999999999659,
+    "label24Dp": [],
+    "wayOn": null,
+    "scalesAwayFromOne": []
+  },
+  {
+    "screen": "arena-results",
+    "size": "1280x720",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 0.0,
+        "viewport": 431.0
+      }
+    ],
+    "clipped": [],
+    "texts": 19,
+    "smallestFontDp": 18.0,
+    "label24Dp": [],
+    "wayOn": {
+      "key": "arenaAgain",
+      "onScreen": true,
+      "top": 447.0,
+      "bottom": 495.0
+    },
+    "scalesAwayFromOne": []
+  },
+  {
+    "screen": "puzzle-results",
+    "size": "1280x720",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 0.0,
+        "viewport": 446.0
+      }
+    ],
+    "clipped": [],
+    "texts": 19,
+    "smallestFontDp": 13.499999999999659,
+    "label24Dp": [],
+    "wayOn": {
+      "key": "nextPuzzle",
+      "onScreen": true,
+      "top": 442.0,
+      "bottom": 485.0
+    },
+    "scalesAwayFromOne": []
+  }
+]
