@@ -17,6 +17,12 @@ const hostFrameFooterHeightPx = 84.0;
 /// section 1, rule 4): a card fills the stage minus this gutter.
 const hostFrameGutterPx = 24.0;
 
+/// How far the footer's band stands from the frame's sides and bottom, in
+/// frame px (B-034): the band is a rounded card like the rest of the look, so
+/// its ink outline wraps every side and stays off the frame's edges, where the
+/// bottom line would be cut off by the screen's own edge.
+const hostFrameFooterInsetPx = 8.0;
+
 /// A host screen drawn in the frame (M16 phonehost1 S2, DESIGN section 1,
 /// rule 5): a [hostFrameHeaderHeightPx] header, the body that takes the rest,
 /// and a [hostFrameFooterHeightPx] footer.
@@ -31,10 +37,11 @@ const hostFrameGutterPx = 24.0;
 /// [trailing] chip, the body and the footer's buttons are all the screen needs
 /// to say, and the frame's scale makes them fit every one.
 ///
-/// The footer sits on the look's paper, with an ink line above it (the look's
-/// "footer bar", M16 phonehost2 S3): the way-on buttons stand on a band of
-/// their own rather than on the sky, so they read as the screen's end wherever
-/// the body stops. The header shows the phone's or remote's way back — a back
+/// The footer sits on the look's paper, in a rounded ink outline like the
+/// look's cards (the look's "footer bar", M16 phonehost2 S3; B-034): the
+/// way-on buttons stand on a band of their own rather than on the sky, so they
+/// read as the screen's end wherever the body stops. The header shows the
+/// phone's or remote's way back — a back
 /// arrow that pops the route — only while there is a route to go back to, as
 /// the title bar's arrow always did (m12 bug 1107f rule C).
 ///
@@ -156,20 +163,30 @@ class _FrameBackButton extends StatelessWidget {
 }
 
 /// The footer's one row on the look's paper band (key `hostFrameFooterBand`):
-/// a line of ink along its top, then the screen's buttons at the right end, in
-/// the order given, with the look's room between them.
+/// a card of paper with an ink outline all round it, holding the screen's
+/// buttons at the right end, in the order given, with the look's room between
+/// them.
 ///
 /// The band is what makes the footer read as the screen's end (DESIGN section
-/// 1, rule 5: "the footer bar"): the body's sky stops at its ink line, and the
-/// way-on buttons stand on paper wherever the body ends.
+/// 1, rule 5: "the footer bar"): the body's sky stops at its top line, and the
+/// way-on buttons stand on paper wherever the body ends. It is drawn as the
+/// look's other cards are, [Border.all] in ink at [ToySizes.cardCorner], so the
+/// footer is outlined like everything else on the screen (B-034), and it keeps
+/// [hostFrameFooterInsetPx] from the frame's sides and bottom so that outline
+/// shows on every side instead of being cut off by the frame's edge. The
+/// footer's total stays [hostFrameFooterHeightPx]: the inset comes out of the
+/// band, not out of the footer.
 ///
 /// Each button is [Flexible], so two buttons that together want more room than
 /// the frame has give room to each other instead of overflowing it: a button's
 /// label is ellipsised, which the look's [ToyButton] already does.
 ///
-/// The ink line's width is padding above the row and the same below it, so the
-/// buttons stand centred in the band under the line: a 64 px button has 10
-/// frame px above it and 10 below, with the TV look's 4 px line (brief fB).
+/// The outline's width is padding above the row and the same below it, and the
+/// row is centred in what is left: a 64 px button has 6 frame px of the band
+/// above it and 6 below, with the TV look's 4 px outline and 2 px of slack.
+/// The side padding gives back the inset ([hostFrameGutterPx] less
+/// [hostFrameFooterInsetPx]), so the buttons end at the stage's edge as the
+/// body does.
 class _FrameFooter extends StatelessWidget {
   const _FrameFooter({required this.buttons});
 
@@ -179,22 +196,30 @@ class _FrameFooter extends StatelessWidget {
   Widget build(BuildContext context) {
     final look = ToyLookScope.of(context);
     final edge = BorderSide(color: look.colors.ink, width: look.sizes.outlineWidth);
-    return DecoratedBox(
-      key: const Key('hostFrameFooterBand'),
-      decoration: BoxDecoration(
-        color: look.colors.paper,
-        border: Border(top: edge),
+    return Padding(
+      padding: const EdgeInsets.only(
+        left: hostFrameFooterInsetPx,
+        right: hostFrameFooterInsetPx,
+        bottom: hostFrameFooterInsetPx,
       ),
-      child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: hostFrameGutterPx, vertical: edge.width),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            for (var i = 0; i < buttons.length; i++) ...[
-              if (i > 0) const SizedBox(width: ToySizes.space16),
-              Flexible(child: buttons[i]),
+      child: DecoratedBox(
+        key: const Key('hostFrameFooterBand'),
+        decoration: BoxDecoration(
+          color: look.colors.paper,
+          border: Border.all(color: edge.color, width: edge.width),
+          borderRadius: BorderRadius.circular(ToySizes.cardCorner),
+        ),
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: hostFrameGutterPx - hostFrameFooterInsetPx, vertical: edge.width),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              for (var i = 0; i < buttons.length; i++) ...[
+                if (i > 0) const SizedBox(width: ToySizes.space16),
+                Flexible(child: buttons[i]),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );
