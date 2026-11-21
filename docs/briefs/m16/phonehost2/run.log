@@ -82,3 +82,17 @@
 2026-11-21 03:20:01 checks failed; fetching packages and trying once more
 2026-11-21 03:26:39 STOPPED: checks failed twice on the combined tree after s6b2 fstart s9t (see .dart_tool/run-jobs/docs_briefs_m16_phonehost2/run-check.log); nothing of this wave is committed
 2026-11-21 03:27:56 HAND-FIX fstart: the night start without its scroll net overflowed two arena touch tests that draw it unframed at 852x393 (outside the brief's allow); added a framed flag to pumpHost in test/support/host_harness.dart and set it in arena_touch_solo_night_test and arena_touch_ready_test; the three files, night_start_frame_test and night_screens_test pass
+2026-11-21 03:28:06 start at ec5dfa09 on m16
+2026-11-21 03:28:15 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-21 03:28:15 skip wph (already done)
+2026-11-21 03:28:16 skip fA (already done)
+2026-11-21 03:28:16 skip fB (already done)
+2026-11-21 03:28:17 start s6b2
+2026-11-21 03:28:17 resume fstart (applied by hand, not committed yet)
+2026-11-21 03:28:18 resume s9t (applied by hand, not committed yet)
+2026-11-21 04:02:16 s6b2 finished: result 4 (200 turns, 30 min)
+2026-11-21 04:04:12 tests-first ok: controller_app/test/host_bar_zero_in_frame_test.dart fails on the old code
+2026-11-21 04:04:42 tests-first ok: packages/party_host/test/night_start_noscroll_test.dart fails on the old code
+2026-11-21 04:05:07 tests-first: tv_test_app/test/tv_focus_ring_frame_test.dart passes on the old code, exempt by its brief
+2026-11-21 04:12:03 committed fstart: 9d2921ec Drop the night start's scroll net; zero the bar inside the frame
+2026-11-21 04:12:06 committed s9t: 361c2b9a Test the TV focus ring's device px at three sizes
