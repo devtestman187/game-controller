@@ -62,7 +62,9 @@
   1080 - 84 x 2 = 912…1080 at 1920x1080) and stays there while the body's 1200 px list scrolls.
 - Six score rows: 6 x 52 = **312** ≤ 392, each row the body's full 912 (960) / 1122.687 (1170.687) wide.
 - The bar takes every spare frame px: 210.687 wider at 852x393's frame than at 960 (the frame's `extraW`).
-- Chip 48 px inside the 64 px header (8 above and below); title 40 px; every row text ≥ 20 px (body 22, delta 20).
+- Chip 48 px inside the 64 px header (8 above and below), asserted at the five sizes by
+  `host_frame_screen_safe_area_test.dart` (added in f2; S2 only drew it); title 40 px; every row text ≥ 20 px (body 22,
+  delta 20).
 - `Nightshade` (10 characters) at the frame's body size measures inside the 190 px column (`didExceedMaxLines`
   false); a 21-character name exceeds it and is ellipsised rather than clipped.
 
@@ -94,6 +96,8 @@ Confirmed as fixed by Claude: the scaffold is `HostFrameScreen` in `host_frame_s
 1. **Safe-area insets inside the frame.** `HostFrameScreen` does not wrap its column in a `SafeArea`, so the
    64/84 are exact; on a phone with a notch in landscape the frame's insets (`HostFrameInfo` divides them by the
    scale) would be unclaimed. Should the scaffold take them (and give up some of the 64/84) or do S4/S6's screens?
+   **Answered in f2:** the scaffold claims them once (`SafeArea` around its column); the 64/84 stay the content's
+   heights and the insets add room outside them. See `f2-report.md`.
 2. **The footer has no band.** The design says "footer bar" and puts Thumby's corner "at the left end of the
    footer bar"; the footer here is the sky with the buttons at its right end. Is a paper strip wanted (S3)?
 3. **The final scores' taller winner row** (58 px badge, 32 px type) needs a size variant of `ScoreRow`; the row's

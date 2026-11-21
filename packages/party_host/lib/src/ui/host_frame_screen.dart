@@ -27,6 +27,13 @@ const hostFrameGutterPx = 24.0;
 /// The design draws no host screen per device (rule 1): [title], the header's
 /// [trailing] chip, the body and the footer's buttons are all the screen needs
 /// to say, and the frame's scale makes them fit every one.
+///
+/// The column is in a [SafeArea], so this scaffold claims the device's insets
+/// once for every screen (a notched phone's top strip, a home bar's bottom):
+/// the header starts under the notch and the footer stops above the home bar,
+/// the 64 and 84 px are the room the content has, and the insets add room
+/// outside them ([HostFrame] divides them by the scale, so they cover the same
+/// strip of the screen). Without one the insets are zero and nothing changes.
 class HostFrameScreen extends StatelessWidget {
   const HostFrameScreen({super.key, required this.title, this.trailing, required this.body, this.footer = const []});
 
@@ -48,26 +55,28 @@ class HostFrameScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Column(
-        children: [
-          SizedBox(
-            key: const Key('hostFrameHeader'),
-            height: hostFrameHeaderHeightPx,
-            child: _FrameHeader(title: title, trailing: trailing),
-          ),
-          Expanded(
-            key: const Key('hostFrameBody'),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: hostFrameGutterPx),
-              child: body,
+      body: SafeArea(
+        child: Column(
+          children: [
+            SizedBox(
+              key: const Key('hostFrameHeader'),
+              height: hostFrameHeaderHeightPx,
+              child: _FrameHeader(title: title, trailing: trailing),
             ),
-          ),
-          SizedBox(
-            key: const Key('hostFrameFooter'),
-            height: hostFrameFooterHeightPx,
-            child: _FrameFooter(buttons: footer),
-          ),
-        ],
+            Expanded(
+              key: const Key('hostFrameBody'),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: hostFrameGutterPx),
+                child: body,
+              ),
+            ),
+            SizedBox(
+              key: const Key('hostFrameFooter'),
+              height: hostFrameFooterHeightPx,
+              child: _FrameFooter(buttons: footer),
+            ),
+          ],
+        ),
       ),
     );
   }
