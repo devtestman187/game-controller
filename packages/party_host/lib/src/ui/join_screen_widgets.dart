@@ -1,24 +1,6 @@
 part of 'join_screen.dart';
 
-/// How much of a dropped player's row shows while their side is held for them
-/// (M16 item 2, mock-up frame 1): dimmed, but in their slot.
-const _awayRowOpacity = 0.45;
-
-/// The ink a side's empty seat's dashed line is drawn in, as a share of the
-/// look's ink: faint enough to read as a place waiting for a phone. Its words
-/// are the look's soft ink, which keeps 4.5:1.
-const _emptySeatAlpha = 0.45;
-
-/// How long a dash of the empty seat's line is, and the gap after it (M13 3b,
-/// mock-up `join-screen`).
-const _seatDashPx = 8.0;
-const _seatGapPx = 7.0;
-
-/// The colour a side's header band takes: the left side is player 1's colour
-/// and the right is player 2's, as the mock-up draws them.
-Color sideColor(ToyLook look, PuzzleSide side) => look.colors.player(side == PuzzleSide.left ? 1 : 2);
-
-/// The pairing code in the join screen's title bar (M16 item 3, PRD v2's
+/// The pairing code in the frame's header (M16 item 3, PRD v2's
 /// acceptance: "the 4-digit code is visible where a player looks"): the paper
 /// chip the Arena's waiting card shows, with the word and the four figures.
 /// It only says the code: a tap does nothing and it takes no focus.
@@ -50,225 +32,6 @@ class _JoinCode extends ConsumerWidget {
   }
 }
 
-/// One side of the join screen (M13 3b, mock-up `join-screen`): a [ToyCard]
-/// whose header band is the side's colour and name, one row for each joined
-/// player with their [ToyBadge] (a dropped player's row stays, dimmed, while
-/// their side is held: M16 item 2), and a dashed seat for each phone still to
-/// join. On the host phone it is a touch target too (m12-host-touch rule 5): a
-/// tap moves the own player here, when the side has room.
-class _SidePanel extends StatelessWidget {
-  const _SidePanel({
-    super.key,
-    required this.side,
-    required this.players,
-    this.ownPlayerId,
-    this.tight = false,
-    this.onTap,
-  });
-
-  final PuzzleSide side;
-  final List<GamePlayer> players;
-
-  /// The host phone's own player, marked "(you)" on its row; null on a TV.
-  final String? ownPlayerId;
-
-  /// Less room inside, under the phone's own bar (bug 1107f).
-  final bool tight;
-
-  /// A tap moves the own player to this side; null when there is no own
-  /// player here.
-  final VoidCallback? onTap;
-
-  /// A player's name, and "(you)" for the host phone's own player; a dropped
-  /// player's phone is away, and their side is held for them (M16 item 2).
-  String _label(GamePlayer p) {
-    final label = HostText.playerLabel(p.label, simulated: p.simulated, own: p.id == ownPlayerId);
-    return p.away ? HostText.awayLabel(label) : label;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final look = ToyLookScope.of(context);
-    final panelRoom = tight ? _tightPanelPaddingPx : _panelPaddingPx;
-    // Each row keeps the room its badge's accessory is drawn in (M13 4c); the
-    // panel's own padding is already above the first row, so that one keeps
-    // only what is left of it.
-    final headroom = rowBadgeHeadroom(look);
-    final firstRoom = math.max(0.0, headroom - panelRoom);
-    final card = ToyCard(
-      header: side == PuzzleSide.left ? HostText.leftSide : HostText.rightSide,
-      headerColor: sideColor(look, side),
-      padding: EdgeInsets.all(panelRoom),
-      // Scrolls when the screen is too short for a full side (a landscape
-      // phone hosting, with its own bar above): on a TV it always fits.
-      scrollBody: true,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          for (final (i, p) in players.indexed)
-            Opacity(
-              opacity: p.away ? _awayRowOpacity : 1,
-              child: _PlayerRow(
-                label: _label(p),
-                number: p.number,
-                character: p.character,
-                roomAbove: i == 0 ? firstRoom : headroom,
-              ),
-            ),
-          for (var i = players.length; i < maxPerSide; i++)
-            _EmptySeat(roomLeft: i == players.length ? maxPerSide - players.length : null),
-        ],
-      ),
-    );
-    final tap = onTap;
-    return GestureDetector(behavior: HitTestBehavior.opaque, onTap: tap, child: card);
-  }
-}
-
-/// One joined player's row: their badge, wearing their character (M13 4c), and
-/// their name, on the paper. The row keeps [roomAbove] for the character's
-/// accessory, which is drawn above the badge's box.
-class _PlayerRow extends StatelessWidget {
-  const _PlayerRow({required this.label, required this.number, required this.roomAbove, this.character});
-
-  final String label;
-  final int number;
-
-  /// The character the host gave them (M14 L7), or null for the default.
-  final PlayerCharacter? character;
-
-  /// The room above the badge for its accessory, in pixels.
-  final double roomAbove;
-
-  @override
-  Widget build(BuildContext context) {
-    final look = ToyLookScope.of(context);
-    return Padding(
-      padding: EdgeInsets.only(top: roomAbove),
-      child: Row(
-        children: [
-          ToyBadge(
-            number: number,
-            diameter: look.sizes.buttonHeight * rowBadgeShare,
-            character: ToyCharacter.of(character, number),
-          ),
-          const SizedBox(width: ToySizes.space12),
-          Expanded(
-            child: Text(
-              label,
-              style: look.type.button.copyWith(color: look.colors.ink),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// A seat no phone has taken yet: a dashed line across the side's paper, with
-/// the room it leaves.
-class _EmptySeat extends StatelessWidget {
-  const _EmptySeat({required this.roomLeft});
-
-  /// How many more players the whole side has room for, said on its first
-  /// empty seat only; null on the others, which keep the line's height.
-  final int? roomLeft;
-
-  @override
-  Widget build(BuildContext context) {
-    final look = ToyLookScope.of(context);
-    return Padding(
-      padding: const EdgeInsets.only(top: ToySizes.space4),
-      child: CustomPaint(
-        painter: EmptySeatPainter(look: look),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: ToySizes.space8),
-          child: Text(
-            roomLeft == null ? '' : HostText.roomFor(roomLeft!),
-            textAlign: TextAlign.center,
-            style: look.type.body.copyWith(color: look.colors.inkSoft),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Draws an empty seat's dashed rounded line (M13 3b): [toyShape] would fill
-/// it, so the dashes are cut from the rounded rect's path by hand.
-class EmptySeatPainter extends CustomPainter {
-  const EmptySeatPainter({required this.look});
-
-  /// The look the line is drawn in.
-  final ToyLook look;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final radius = Radius.circular(size.height / 2);
-    final path = Path()
-      ..addRRect(RRect.fromRectAndRadius((Offset.zero & size).deflate(look.sizes.outlineWidth / 2), radius));
-    final paint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = look.sizes.outlineWidth
-      ..color = look.colors.ink.withValues(alpha: _emptySeatAlpha);
-    for (final metric in path.computeMetrics()) {
-      for (var at = 0.0; at < metric.length; at += _seatDashPx + _seatGapPx) {
-        canvas.drawPath(metric.extractPath(at, math.min(at + _seatDashPx, metric.length)), paint);
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(EmptySeatPainter oldDelegate) => oldDelegate.look != look;
-}
-
-/// Both sides, side by side. [players] is the whole roster, so an away player
-/// who has a side keeps it (M16 item 2).
-class _Sides extends StatelessWidget {
-  const _Sides({required this.players, required this.teams, this.ownPlayerId, this.tight = false, this.onPick});
-
-  final List<GamePlayer> players;
-  final Map<String, PuzzleSide> teams;
-
-  /// The host phone's own player, marked on its side; null on a TV.
-  final String? ownPlayerId;
-
-  /// Less room inside the panels, under the phone's own bar (bug 1107f).
-  final bool tight;
-
-  /// Moves the own player to the tapped side; null on a TV, whose panels are
-  /// then not tappable at all.
-  final void Function(PuzzleSide side)? onPick;
-
-  @override
-  Widget build(BuildContext context) {
-    final pick = onPick;
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        for (final (i, side) in PuzzleSide.values.indexed) ...[
-          if (i > 0) const SizedBox(width: ToySizes.space16),
-          Expanded(
-            child: _SidePanel(
-              key: Key('side-${side.name}'),
-              side: side,
-              players: [
-                for (final p in players)
-                  if (teams[p.id] == side) p,
-              ],
-              ownPlayerId: ownPlayerId,
-              tight: tight,
-              onTap: pick == null ? null : () => pick(side),
-            ),
-          ),
-        ],
-      ],
-    );
-  }
-}
-
 /// The players who haven't picked a side yet.
 class _NotJoined extends StatelessWidget {
   const _NotJoined({required this.watching});
@@ -294,9 +57,43 @@ String _beginText({required bool touchFirst, required bool hasOwnPlayer}) {
   return hasOwnPlayer ? HostText.beginTouch : HostText.beginTouchOrPad;
 }
 
-/// Start, Back, and the format the joined players make.
-class _JoinButtons extends ConsumerWidget {
-  const _JoinButtons({required this.teams, required this.ownPlayerId, required this.startFocus, required this.onStart});
+/// The screen's way on, in the frame's footer (DESIGN section 1, rule 5):
+/// Start, with the focus the remote's OK presses, and Back.
+class _JoinButtons extends StatelessWidget {
+  const _JoinButtons({required this.startFocus, required this.onStart});
+
+  /// The focus Start takes on entry, so a remote's OK begins the match.
+  final FocusNode startFocus;
+
+  final VoidCallback onStart;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      HostButton(
+        key: const Key('joinStart'),
+        label: HostText.start,
+        icon: Icons.play_arrow,
+        focusNode: startFocus,
+        onPressed: onStart,
+      ),
+      const SizedBox(width: ToySizes.space12),
+      HostButton(
+        key: const Key('joinBack'),
+        label: HostText.back,
+        icon: Icons.arrow_back,
+        onPressed: () => Navigator.of(context).maybePop(),
+      ),
+    ],
+  );
+}
+
+/// The format the joined players make, under the sides ("2 vs 2. Press A or
+/// Start to begin."): the way on is the footer's, so the line has the body's
+/// width for its words where the buttons would have taken it.
+class _FormatLine extends ConsumerWidget {
+  const _FormatLine({required this.teams, required this.ownPlayerId});
 
   final Map<String, PuzzleSide> teams;
 
@@ -304,42 +101,20 @@ class _JoinButtons extends ConsumerWidget {
   /// this phone"); null on a TV and on a phone that only shows the game.
   final String? ownPlayerId;
 
-  final FocusNode startFocus;
-  final VoidCallback onStart;
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final look = ToyLookScope.of(context);
     // A touch-first host has no pad, so the line says what its screen does
     // (m12 bug 1108c); the flag is read here, where the words are chosen.
     final begin = _beginText(touchFirst: ref.watch(hostTouchFirstProvider), hasOwnPlayer: ownPlayerId != null);
-    return Row(
-      children: [
-        HostButton(
-          key: const Key('joinStart'),
-          label: HostText.start,
-          icon: Icons.play_arrow,
-          focusNode: startFocus,
-          onPressed: onStart,
-        ),
-        const SizedBox(width: ToySizes.space12),
-        HostButton(
-          key: const Key('joinBack'),
-          label: HostText.back,
-          icon: Icons.arrow_back,
-          onPressed: () => Navigator.of(context).maybePop(),
-        ),
-        const SizedBox(width: ToySizes.space24),
-        Expanded(
-          child: Text(
-            teams.isEmpty ? HostText.nobodyJoined : '${HostText.formatName(MatchFormat.of(teams))}. $begin',
-            key: const Key('joinFormat'),
-            style: teams.isEmpty
-                ? look.type.body.copyWith(color: look.colors.onBackground)
-                : look.type.button.copyWith(color: look.colors.onBackground),
-          ),
-        ),
-      ],
+    return Text(
+      teams.isEmpty ? HostText.nobodyJoined : '${HostText.formatName(MatchFormat.of(teams))}. $begin',
+      key: const Key('joinFormat'),
+      maxLines: 2,
+      overflow: TextOverflow.ellipsis,
+      style: teams.isEmpty
+          ? look.type.body.copyWith(color: look.colors.onBackground)
+          : look.type.button.copyWith(color: look.colors.onBackground),
     );
   }
 }
@@ -348,9 +123,8 @@ class _JoinButtons extends ConsumerWidget {
 /// pause and leave the round (owner, Nov 8, 2026: "Is that text necessary when
 /// a game is in progress?"): said here so nothing is drawn over the boards in
 /// play, and set inline after the instructions' last word, where the line has
-/// room, so the sides keep their height for four players and the title keeps
-/// its row (Claude's 4c review). [keyboard] is null on a phone host, which has
-/// its own pause button and no room to spare (bug 1107f): no hint there.
+/// room, so the sides keep their height (Claude's 4c review). [keyboard] is
+/// null only where no keyboard can play.
 class _JoinHint extends StatelessWidget {
   const _JoinHint({required this.text, required this.keyboard});
 
@@ -375,6 +149,62 @@ class _JoinHint extends StatelessWidget {
         ],
       ),
       style: look.type.button.copyWith(color: look.colors.onBackground),
+    );
+  }
+}
+
+/// The join screen's body (DESIGN section 1 rule 5): the hint, the two side
+/// cards, the line naming the players who haven't joined and, under the cards,
+/// the format line.
+class _JoinBody extends StatelessWidget {
+  const _JoinBody({
+    required this.hint,
+    required this.keyboard,
+    required this.players,
+    required this.teams,
+    required this.ownPlayerId,
+    required this.onPick,
+    required this.watching,
+    required this.ownHere,
+  });
+
+  final String hint;
+  final LocalPlayerSource? keyboard;
+  final List<GamePlayer> players;
+  final Map<String, PuzzleSide> teams;
+  final String? ownPlayerId;
+  final void Function(PuzzleSide side)? onPick;
+  final List<GamePlayer> watching;
+  final String? ownHere;
+
+  @override
+  Widget build(BuildContext context) {
+    final content = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _JoinHint(text: hint, keyboard: keyboard),
+        const SizedBox(height: _hintGapPx),
+        Expanded(
+          child: _Sides(players: players, teams: teams, ownPlayerId: ownPlayerId, onPick: onPick),
+        ),
+        if (watching.isNotEmpty) ...[const SizedBox(height: _lineGapPx), _NotJoined(watching: watching)],
+        const SizedBox(height: _lineGapPx),
+        _FormatLine(teams: teams, ownPlayerId: ownHere),
+      ],
+    );
+    return LayoutBuilder(
+      builder: (context, room) {
+        // The body fills the frame's room, which is at least
+        // [_frameBodyFloorPx] (DESIGN section 1 rule 7). A host that draws the
+        // screen without the frame gives it less: the body is then drawn at its
+        // floor and scaled down, never overflowed.
+        if (room.maxHeight >= _frameBodyFloorPx) return content;
+        return FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.topCenter,
+          child: SizedBox(height: _frameBodyFloorPx, width: room.maxWidth, child: content),
+        );
+      },
     );
   }
 }

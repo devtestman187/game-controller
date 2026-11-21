@@ -15,13 +15,15 @@ import '../providers.dart';
 import '../text/host_text.dart';
 import 'controller_menus.dart';
 import 'host_button.dart';
-import 'host_screen.dart';
+import 'host_frame_screen.dart';
 import 'play_hint.dart';
 import 'player_badge.dart';
 import 'puzzle_choice.dart';
 import 'puzzle_screen.dart';
+import 'score_row.dart';
 
 part 'join_screen_widgets.dart';
+part 'join_side_panel.dart';
 
 /// The buttons a phone never shows on this screen.
 const _hidden = {
@@ -52,18 +54,20 @@ final joinLayout = GameLayoutMessage(labels: _joinLabels, hidden: _hidden);
 /// The buttons once joined: A or Start begins the match, B leaves the side.
 final joinedLayout = GameLayoutMessage(labels: _joinedLabels, hidden: _hidden);
 
-/// The most players on one side.
+/// The most players on one side: Shape Race seats two a side, and
+/// [MatchFormat.of] reads the match's format from that.
 const maxPerSide = 2;
 
-/// The join screen's gaps: under the hint, around the sides, and both where
-/// the phone's own bar is above (bug 1107f).
-const _hintGapPx = 16.0;
-const _gapPx = 12.0;
-const _tightGapPx = 8.0;
+/// The join screen's gaps, in frame px: under the hint, and between the lines
+/// under the sides.
+const _hintGapPx = ToySizes.space16;
+const _lineGapPx = ToySizes.space8;
 
-/// The room inside a side's panel, and where the phone's own bar is above.
-const _panelPaddingPx = 16.0;
-const _tightPanelPaddingPx = 12.0;
+/// The least a frame screen's body is tall, in frame px: DESIGN section 1
+/// rule 7 keeps the stage at 960x540, and the header and footer take 148 of
+/// it, so the body the screen fills is at least this tall. A narrower body is
+/// one a host has drawn outside the frame.
+const _frameBodyFloorPx = 392.0;
 
 /// Where a joining player goes: the side with fewer players (left on a
 /// tie), or null when both are full.
@@ -91,6 +95,12 @@ enum _Key { a, b, left, right, start }
 ///
 /// The phone that hosts has no pad here (m12-host-touch rules 1, 5): its own
 /// player joins by itself and a tap on a side picks or moves it.
+///
+/// It is a [HostFrameScreen] since M16 phonehost2 S8j (DESIGN section 1, rule
+/// 5): the title and the pairing code in the 64 px header, the hint, the two
+/// short sides and their lines in the body, and Start and Back in the 84 px
+/// footer, where a thumb reaches them. The sides never scroll (rule 6): a seat
+/// is one 52 px row, the most Shape Race seats ([maxPerSide] a side).
 class JoinScreen extends ConsumerStatefulWidget {
   const JoinScreen({super.key, required this.choice, this.teams = const {}, this.keyboard});
 
@@ -323,47 +333,26 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
     ];
     final own = _ownPlayer;
     final ownHere = own != null && players.any((p) => p.id == own) ? own : null;
-    // Under the phone's own bar the screen is short: tighter gaps and panels,
-    // so a side with the own player fits without scrolling (bug 1107f).
-    final barHeight = ref.watch(hostBarHeightProvider);
-    final tight = barHeight > 0;
     return ControlsClaim(
       controls: const Controls.game(),
       child: Focus(
         autofocus: true,
         skipTraversal: true,
         onKeyEvent: _onKey,
-        child: HostScreen(
+        child: HostFrameScreen(
           title: _title(),
-          actions: const [_JoinCode()],
-          body: SafeArea(
-            child: Padding(
-              padding: hostMenuPadding(barHeight),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _JoinHint(
-                    text: _hint(hasOwnPlayer: ownHere != null, hasKeyboard: _keyboard.available),
-                    keyboard: tight ? null : _keyboard,
-                  ),
-                  SizedBox(height: tight ? _tightGapPx : _hintGapPx),
-                  Expanded(
-                    child: _Sides(
-                      players: roster,
-                      teams: _teams,
-                      ownPlayerId: own,
-                      tight: tight,
-                      onPick: ownHere == null ? null : (side) => _pickSide(ownHere, side),
-                    ),
-                  ),
-                  SizedBox(height: tight ? _tightGapPx : _gapPx),
-                  if (watching.isNotEmpty) _NotJoined(watching: watching),
-                  SizedBox(height: tight ? _tightGapPx : _gapPx),
-                  _JoinButtons(teams: _teams, ownPlayerId: ownHere, startFocus: _startFocus, onStart: _start),
-                ],
-              ),
-            ),
+          trailing: const _JoinCode(),
+          body: _JoinBody(
+            hint: _hint(hasOwnPlayer: ownHere != null, hasKeyboard: _keyboard.available),
+            keyboard: _keyboard,
+            players: roster,
+            teams: _teams,
+            ownPlayerId: own,
+            onPick: ownHere == null ? null : (side) => _pickSide(ownHere, side),
+            watching: watching,
+            ownHere: ownHere,
           ),
+          footer: [_JoinButtons(startFocus: _startFocus, onStart: _start)],
         ),
       ),
     );

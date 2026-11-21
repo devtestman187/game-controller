@@ -295,6 +295,9 @@ Future<PhoneHost> soloRound(WidgetTester tester) async {
   await tester.tap(find.byKey(const Key('random-easy')));
   await untilShown(tester, find.byType(party.JoinScreen), 'The join screen');
   await untilShown(tester, ownPlayerOn('left'), 'The own player on the left');
+  // The own player shows on the join screen's first tick, while the route is
+  // still sliding in: let it land so the Start button is where a finger is.
+  await settle(tester);
   await tester.tap(find.byKey(const Key('joinStart')));
   await untilShown(tester, find.byType(party.PuzzleScreen), 'The puzzle screen');
   await untilPlaying(tester);

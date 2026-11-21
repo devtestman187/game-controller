@@ -13,13 +13,6 @@ double scrollRangeOf(WidgetTester tester, Type screen) => tester
     .position
     .maxScrollExtent;
 
-/// One side of the join screen, which scrolls its own content when the screen
-/// is too short for it.
-double sideRangeOf(WidgetTester tester, String side) => tester
-    .state<ScrollableState>(find.descendant(of: find.byKey(Key('side-$side')), matching: find.byType(Scrollable)))
-    .position
-    .maxScrollExtent;
-
 void main() {
   // The screens are measured with a real font, as a device draws them (see
   // test_font.dart), and the puzzles are read once before the tests run (s9g).
@@ -46,7 +39,7 @@ void main() {
     await tester.runAsync(host.dispose);
   });
 
-  testWidgets('both sides of the join screen fit at 852x393 without scrolling', (tester) async {
+  testWidgets('the join screen fits at 852x393 without scrolling', (tester) async {
     await pumpHostApp(tester);
     final host = await enterHostMode(tester);
     await tester.tap(find.byKey(const Key('pickShapeRace')));
@@ -56,10 +49,12 @@ void main() {
     await untilShown(tester, ownPlayerOn('left'), 'The own player on the left');
     await settle(tester);
 
-    // Both sides fit: the right one empty, the left one with the own player and
-    // "Room for 1 more" (the join screen's tighter gaps under the phone's bar).
-    expect(sideRangeOf(tester, 'left'), 0, reason: 'the left side fits');
-    expect(sideRangeOf(tester, 'right'), 0, reason: 'the right side fits');
+    // The join screen is the frame's now (S8j): its sides are short cards that
+    // hold their rows without a list, so nothing on it scrolls, and the two
+    // cards, the hint, the "not joined" line and the format line all fit.
+    final scrolls = find.descendant(of: find.byType(party.JoinScreen), matching: find.byType(Scrollable));
+    expect(scrolls, findsNothing, reason: 'nothing on the join screen scrolls');
+    expect(tester.takeException(), isNull, reason: 'the join screen fits');
 
     await tester.runAsync(host.dispose);
   });

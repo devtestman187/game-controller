@@ -89,12 +89,18 @@ void main() {
       reason: 'the picker stays the first route, so its header has no way back',
     );
 
-    // The join screen, whose title ran into the bar's labels too.
+    // The join screen, whose title ran into the bar's labels too. It draws the
+    // frame's own 64 px header since S8j, so in this unframed harness that
+    // header starts the screen; in the app the frame sits below the phone's bar
+    // (the gate gives it that room, fstart), which controller_app's title bar
+    // test checks.
     await tester.tap(find.byKey(const Key('pickShapeRace')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('puzzle-house')));
     await tester.pumpAndSettle();
-    expect(tester.getRect(titleBarOf(JoinScreen)).top, phoneBarPx);
+    final joinHeader = tester.getRect(titleBarOf(JoinScreen));
+    expect(joinHeader.top, 0, reason: 'the screen\'s own header, inside the frame the app draws below the bar');
+    expect(joinHeader.height, 64, reason: 'the frame\'s header');
   });
 
   testWidgets('the settings screen leaves the phone bar free too', (tester) async {

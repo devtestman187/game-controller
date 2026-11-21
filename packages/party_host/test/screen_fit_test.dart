@@ -52,7 +52,7 @@ void main() {
 
   for (final look in _looks) {
     testWidgets('the menus fit at ${look.name}', (tester) async {
-      final fake = await pumpIn(tester, look);
+      await pumpIn(tester, look);
       // The game picker.
       await tapVisible(tester, find.byKey(const Key('openPlay')));
       await tester.pumpAndSettle();
@@ -67,13 +67,28 @@ void main() {
       await tester.sendKeyEvent(LogicalKeyboardKey.escape);
       await tester.pumpAndSettle();
 
-      // The Shape Race list, then the join screen with P1 on the left.
+      // The Shape Race list. The join screen it opens is a frame screen since
+      // S8j, so it is measured in its own test in the frame, as the app draws
+      // it (the plain 852x393 phone's 245 px body is not a layout it has any
+      // more: its sides need the frame's room).
       await tapVisible(tester, find.byKey(const Key('pickShapeRace')));
       await tester.pumpAndSettle();
       expect(find.byType(ShapeRaceScreen), findsOneWidget);
       expect(tester.takeException(), isNull);
-      await tapVisible(tester, find.byKey(const Key('puzzle-house')));
-      await tester.pumpAndSettle();
+    });
+
+    testWidgets('the join screen fits at ${look.name}', (tester) async {
+      // In the frame, as the app draws it: 1171x540 at the phone's 852x393,
+      // 960x540 at a TV's.
+      final fake = await pumpHost(
+        tester,
+        screen: const StubHome(),
+        size: look.size,
+        clock: () => look.clock,
+        framed: true,
+        overrides: [toyTvProvider.overrideWithValue(look.tv)],
+      );
+      await openJoin(tester);
       await neutral(tester, fake, ['p1']);
       await press(tester, fake, 'p1', GamepadButton.a);
       expect(find.byType(JoinScreen), findsOneWidget);
@@ -81,12 +96,21 @@ void main() {
     });
 
     testWidgets('the cards over the round fit at ${look.name}', (tester) async {
-      final fake = await openRace(
+      // The round is reached through the frame's join screen (S8j), as the app
+      // shows it (openRace's plain layout has no room for the sides).
+      final fake = await pumpHost(
         tester,
+        screen: const StubHome(),
         size: look.size,
         clock: () => look.clock,
+        framed: true,
         overrides: [toyTvProvider.overrideWithValue(look.tv)],
       );
+      fake.state = withController(fake.state, phoneInfo('p2', 2));
+      fake.emit();
+      await neutral(tester, fake, ['p1', 'p2']);
+      await openJoin(tester);
+      await startRace(tester, fake);
       expect(find.byType(PuzzleScreen), findsOneWidget);
       expect(tester.takeException(), isNull);
 

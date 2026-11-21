@@ -377,12 +377,17 @@ void main() {
     await press(tester, fake, 'p1', GamepadButton.a);
 
     final look = ToyLookScope.of(tester.element(find.byType(JoinScreen)));
-    ToyCard card(String side) =>
-        tester.widget<ToyCard>(find.descendant(of: find.byKey(Key('side-$side')), matching: find.byType(ToyCard)));
-    expect(card('left').header, HostText.leftSide);
-    expect(card('left').headerColor, look.colors.player(1), reason: 'the left side is player 1\'s colour');
-    expect(card('right').header, HostText.rightSide);
-    expect(card('right').headerColor, look.colors.player(2), reason: 'the right side is player 2\'s colour');
+    // The side's band is the card's own since S8j (a short 28 px band), so it
+    // is found by its key rather than through [ToyCard.header].
+    Color? bandColor(String side) {
+      final band = tester.widget<DecoratedBox>(find.byKey(Key('sideHeader-$side')));
+      return (band.decoration as BoxDecoration).color;
+    }
+
+    expect(find.descendant(of: find.byKey(const Key('side-left')), matching: find.text(HostText.leftSide)), findsOne);
+    expect(bandColor('left'), look.colors.player(1), reason: 'the left side is player 1\'s colour');
+    expect(find.descendant(of: find.byKey(const Key('side-right')), matching: find.text(HostText.rightSide)), findsOne);
+    expect(bandColor('right'), look.colors.player(2), reason: 'the right side is player 2\'s colour');
 
     // P1 is on the left: a badge on its row, and none on the empty right side.
     expect(find.descendant(of: find.byKey(const Key('side-left')), matching: find.byType(ToyBadge)), findsOneWidget);
