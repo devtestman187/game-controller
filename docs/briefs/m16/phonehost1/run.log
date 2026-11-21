@@ -34,3 +34,4 @@
 2026-11-20 22:10:56 f2 finished: result 4 (45 turns, 7 min)
 2026-11-20 22:10:56 f3 finished: result 4 (60 turns, 10 min)
 2026-11-20 22:10:56 STOPPED: jobs that failed or need applying by hand: f1:4 f2:4 f3:4 (their logs: docs/briefs/m16/phonehost1/flash-<job>.log)
+2026-11-20 22:11:46 HAND-FIX f1: s7 measuring test (phone_fit_picker_join_test) no longer rewrites s7-results.json on every run (it caused result 4 in f1 f2 f3); gated on PHONE_FIT=1 and all 20 cases; also fixed the UPDATE_PNG doc comment; picker/join test run: 20 pass

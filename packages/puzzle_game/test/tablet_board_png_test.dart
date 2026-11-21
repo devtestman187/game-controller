@@ -13,8 +13,8 @@ import 'support/match_helpers.dart' as helpers;
 import 'support/portrait_pads.dart';
 
 /// Whether this run replaces the committed picture: `UPDATE_PNG=1` in the
-/// environment, or `--dart-define=UPDATE_PNG=true` (the same guard the other
-/// picture tests use).
+/// environment, or `--dart-define=UPDATE_PNG=true` (the guard party_host's PHONE_FIT
+/// tests use).
 final _updatePng = Platform.environment['UPDATE_PNG'] == '1' || const bool.fromEnvironment('UPDATE_PNG');
 
 /// The report's picture (m13 s18, device test 3): the owner's iPad, joined to

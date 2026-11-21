@@ -68,7 +68,8 @@ void main() {
   // The screens are measured with their real fonts, as a device draws them.
   setUpAll(loadLookFonts);
   tearDownAll(() {
-    if (_results.isEmpty) return;
+    // The evidence file is rewritten only on purpose (PHONE_FIT=1) and only by a complete run of all 20 cases.
+    if (Platform.environment['PHONE_FIT'] != '1' || _results.length != _devices.length * _screens.length * 2) return;
     File('${_outDir.path}/s7-results.json').writeAsStringSync(const JsonEncoder.withIndent('  ').convert(_results));
   });
 
