@@ -18,3 +18,4 @@
 2026-11-21 14:17:25 f1 finished: result 0 (28 turns, 5 min)
 2026-11-21 14:24:19 committed f1: 9ce9674e docs: record why f1 is blocked on riverpod's duplicate-override rule
 2026-11-21 14:24:20 wave review skipped: wave 1 is the whole run, the run review covers it
+2026-11-21 14:24:21 DONE: every job is committed. Claude reads the Summary of docs/briefs/m16/process1/REVIEW.md, verifies its findings and writes one fix brief
