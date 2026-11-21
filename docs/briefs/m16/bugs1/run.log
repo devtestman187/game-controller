@@ -38,3 +38,5 @@
 2026-11-21 12:54:36 tests-first ok: packages/party_host/test/award_explanation_tv_test.dart fails on the old code
 2026-11-21 13:01:25 committed f1: 962c4aa0 M16 bugs1 f1: the award popover height follows the look's button
 2026-11-21 13:01:27 committed f2: 1e4d6cb9 M16 bugs1 f2: order-free stats check, stale doc, tighter footer pin
+2026-11-21 13:07:54 reviewed wave2: 3 finding(s)
+2026-11-21 13:07:54 DONE: every job is committed. Claude reads the Summary of docs/briefs/m16/bugs1/REVIEW.md, verifies its findings and writes one fix brief
