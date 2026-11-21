@@ -15,3 +15,5 @@
 2026-11-21 12:19:08 committed b033: f22448cb B-033: one size for every award's "i" explanation box
 2026-11-21 12:19:10 committed b034: ac1618ec B-034: outline the host frame's footer on all four sides
 2026-11-21 12:24:03 reviewed wave1: 5 finding(s)
+2026-11-21 12:24:04 start the run's review
+2026-11-21 12:29:22 DONE: every job is committed. Claude reads the Summary of docs/briefs/m16/bugs1/REVIEW.md, verifies its findings and writes one fix brief
