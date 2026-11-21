@@ -1,0 +1,15 @@
+job: M16 phonehost3 night: "Bumper Round" footer label and six-player night start names fit
+stop: after the night footer and night start names. Do not touch puzzle results or the pad.
+read: docs/briefs/m16/phonehost3/COMMON.md (first) · docs/briefs/m16/phonehost2/s9m-report.md (measurements: "Bumper Round" 187 wanted in 148 px; six names get 84 px each, intrinsic 113-124 px; four players get 126 px) · packages/party_host/lib/src/ui/night_footer_buttons.dart (480 px footer budget, 232 px per button) · host_button.dart · night_start_screen.dart · night_widgets.dart · host_frame_screen.dart (footer) · tests that could break: test/night_start_frame_test.dart, night_start_noscroll_test.dart, phone_fit_matrix_test.dart, the scoreboard/final-scores tests that use NightFooterButtons
+decisions: (a) Give the footer pair the width its labels need: measure icon + label with TextPainter at the button text style and size the buttons by content with a larger shared budget, keeping the footer's other content (back arrow, Thumby corner room) and no overflow at the five sizes. Never shrink text under 20 px. (b) Six-player night start: nicknames of 10 characters (the 113-124 px intrinsic names in the s9m report) must show whole, not ellipsised; re-flow the six (for example 3 columns x 2 rows or wider slots); no scroll; every Text >= 20 frame px; the 20 px floor unchanged.
+do:
+1 Tests first, NEW file packages/party_host/test/night_labels_fit_test.dart: at the five sizes, the "Shape Race" and "Bumper Round" labels are not ellipsised (TextPainter width <= available width), the six-player night start shows six 10-character names whole (names as in s9m: 113-124 px), no scroll, buttons whole on screen, no overflow, text >= 20 px.
+2 Code in the files above. Fix the tests it breaks without weakening them.
+3 Report: label widths and name slot widths, before and after.
+in the report: `## Summary` (at most 30 lines), end `## Hand-over`.
+self-check: docs/review-rules.md part A, items 1-5, one line each with the test that shows it.
+tests: tests-first: new file above.
+rules: aim 80-120 turns, never over 120 · no lib file you touch ends over 380 lines · tests first · write only inside allow: · stage nothing · no git add -A · tools/review.sh: no FAIL on your lines · no new strings.
+allow: packages/party_host/lib/src/ui/night_footer_buttons.dart · packages/party_host/lib/src/ui/night_start_screen.dart · packages/party_host/lib/src/ui/night_widgets.dart · packages/party_host/lib/src/ui/night_start_names.dart · packages/party_host/test/night_labels_fit_test.dart · packages/party_host/test/night_start_frame_test.dart · packages/party_host/test/night_start_noscroll_test.dart · packages/party_host/test/phone_fit_matrix_test.dart · packages/party_host/test/night_scoreboard_screen_test.dart · packages/party_host/test/night_round_test.dart · packages/party_host/test/lobby_music_test.dart · packages/party_host/test/end_night_puzzle_test.dart · docs/briefs/m16/phonehost3/night-report.md
+check: format analyze host
+report: docs/briefs/m16/phonehost3/night-report.md
