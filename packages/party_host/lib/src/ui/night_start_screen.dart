@@ -17,8 +17,8 @@ import 'games_screen.dart';
 import 'host_frame_screen.dart';
 import 'lobby_music.dart';
 import 'night_footer_buttons.dart';
+import 'night_start_names.dart';
 import 'night_widgets.dart';
-import 'player_badge.dart';
 import 'round_segment.dart';
 
 /// The night's start card (design section 4, as the frame draws it since M16
@@ -132,8 +132,8 @@ class _NightStartScreenState extends ConsumerState<NightStartScreen> {
 /// The start card's lines in one column (design section 4, as the frame draws
 /// it), with the pick-round line pushed to the body's bottom end: the three
 /// awards as one row of equal tiles, the cat's line when Chaos isn't off, the
-/// players who joined on one line, and the line naming the round the buttons
-/// pick.
+/// players who joined (one line up to four, two rows of three after that), and
+/// the line naming the round the buttons pick.
 ///
 /// The column fills the body and never scrolls (DESIGN section 1, rule 6): the
 /// frame's body has room for it at every size (392 px at the shortest, against
@@ -163,7 +163,7 @@ class _StartColumn extends StatelessWidget {
         const SizedBox(height: ToySizes.space12),
         _AwardsRow(awards: awards),
         if (catVisits) ...[const SizedBox(height: ToySizes.space16), _CatLine(style: text)],
-        if (players.isNotEmpty) ...[const SizedBox(height: ToySizes.space16), _PlayersLine(players: players)],
+        if (players.isNotEmpty) ...[const SizedBox(height: ToySizes.space16), NightStartNames(players: players)],
         const Spacer(),
         Text(NightText.pickRound(1), style: text),
       ],
@@ -208,46 +208,6 @@ class _CatLine extends StatelessWidget {
         NightDisc(colour: look.colors.player(5), icon: Icons.pets, size: awardTileDiscPx),
         const SizedBox(width: ToySizes.space12),
         Flexible(child: Text(NightText.catLine, style: style)),
-      ],
-    );
-  }
-}
-
-/// The players who joined tonight, on one line: each one's badge and name, the
-/// names ellipsised rather than wrapped, so four or six players still read as
-/// one row (DESIGN section 4: "player names on one line").
-class _PlayersLine extends StatelessWidget {
-  const _PlayersLine({required this.players});
-
-  final List<GamePlayer> players;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = ToyLookScope.of(context).colors;
-    final style = ToyType.frame.body.copyWith(color: colors.onBackground);
-    return Row(
-      children: [
-        for (final player in players)
-          Flexible(
-            child: Padding(
-              padding: const EdgeInsets.only(right: ToySizes.space12),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  PlayerBadge(number: player.number, size: awardTileDiscPx, character: player.character),
-                  const SizedBox(width: ToySizes.space8),
-                  Flexible(
-                    child: Text(
-                      NightText.playerName(player.nickname, player.number),
-                      style: style,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
       ],
     );
   }
