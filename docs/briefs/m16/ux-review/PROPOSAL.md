@@ -95,6 +95,7 @@ and is built in M17 on top of M16. M16 changes no behaviour for it, but must be 
 
 - **Picker.** Party night is the **first, highlighted card** in the game picker (`games_screen.dart`).
   The three-role home (Join / Play here / Display here) stays unchanged.
+- **Layout basis (Nov 20):** the phone-host layout is M16 item 1, built on `docs/briefs/m16/phonefit/optionC/design/DESIGN.md` (960x540 design frame, scaler, Thumby slot).
 - **Phone host first (prerequisite).** The night cards (start, scoreboard, reveal, results) are
   fixed-width for 1280x720 (`nightStartCardWidthPx` 1040, `nightScoreCardWidthPx` 900,
   `nightRevealCardWidthPx` 860). M16 must make them fit a ~360x640 dp phone host and reserve room for

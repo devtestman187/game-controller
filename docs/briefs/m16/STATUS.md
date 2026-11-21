@@ -125,8 +125,51 @@ docs/agent-workflow.md and docs/HANDOFF.md §10. Session refinements to keep:
   timing for speech), **7** (host-side first-time-host flag with the coach marks), the picker (Party
   card first, highlighted), the phone-host fit of the night cards (measure first), lobby events as
   providers, and no growth of `sound.dart`. Item 5 onward resumes with these included.
-- **Next:** item 5 — nickname + colour + accessory on the phone, shown on the TV (PRD-v2.md
-  "Milestone 16").
+- **Next (owner, Nov 20): "option C" is now the FIRST remaining M16 item, "Phone-host layout".** Build order:
+  1) phone-host layout (slices below), 2) item 5 identity, 3) item 6 awards, 4) item 7 home screen + coach
+  marks, then M17 Thumby. The owner said **not to start building yet**: slices are planned, nothing is
+  briefed or dispatched. Design: `phonefit/optionC/design/DESIGN.md` (owner answers + review fix at the end);
+  measurements: `phonefit/optionC/FINDINGS.md`.
 - **Carried into M16** (unchanged): the ten device checks the owner has not run, and the open
   Stats question (whether dropped sessions show on the Stats screen). **Do not decide the Stats
   question; wait.** See docs/HANDOFF.md section 7.
+
+## Phone-host layout: slices (planned Nov 20, not started)
+
+Scope: night start, scoreboard, final scores, awards reveal, Arena results, puzzle results, game picker
+(`games_screen.dart`), join screen (`join_screen.dart`). In-game boards are out. Each slice is one flash job
+(at most 150 turns, one bounded change, brief of about 350 words, tests first in a new test file). All
+paths below are under `packages/party_host/` unless noted. Note: `ui/host_screen.dart` already exists; read it
+before S2 and extend or rename rather than clash with the design's new `HostScreen`.
+
+- **S1 Frame scaler.** `HostFrame` + `HostFrameInfo` + `ToyType.frame` (title 40 / button 28 / body 22 / small
+  20) in a new file wrapped in `lib/party_host.dart` above the Navigator; `ThumbySlot` empty. Test: new file
+  reusing the harness of `test/phone_fit_option_c_test.dart` (frame size, s, MediaQuery override, tap hit-test
+  still lands). Needs: none.
+- **S2 Screen scaffold + shared widgets.** `HostScreen` (header / flexing body / always-visible footer),
+  `ScoreRow`, `RoundSegment`. Test: footer never scrolls at the five sizes. Needs: S1.
+- **S3 Night start + awards tile.** `night_start_screen.dart`, `AwardTile` with "i" popover; delete
+  `nightStartCardWidthPx`. Test: no scroll, button visible, 4 players, five sizes. Needs: S2.
+- **S4 Scoreboard + final scores** (4 and 6 players). `night_scoreboard_screen.dart`,
+  `night_scoreboard_widgets.dart`; delete `nightScoreCardWidthPx`. Needs: S2.
+- **S5 Awards reveal.** `night_reveal_screen.dart`, `night_reveal_widgets.dart`; delete
+  `nightRevealCardWidthPx`; no Skip button (owner: waits for M17). Needs: S2.
+- **S6 Arena results + puzzle results.** `arena_results.dart`, `puzzle_results_widgets.dart`,
+  `puzzle_screen_results.dart`; delete `arenaResultsWidthPx`; badge number minimum 20 px (`player_badge.dart`).
+  Needs: S2.
+- **S7 Measure picker + join screen (no fix).** Extend the phone_fit test to `games_screen.dart` and
+  `join_screen.dart` (never measured); report scroll, button, smallest text at the five sizes. Needs: S1.
+- **S8 Fix picker + join screen** from S7's numbers (one job per screen if S7 shows both fail). Needs: S2, S7.
+- **S9 Test hygiene + final gate.** Stop `packages/puzzle_game/test/tablet_board_png_test.dart:84` rewriting
+  `docs/design/m13-tablet-board.png` on every run (write only under an env flag such as `UPDATE_PNG=1`);
+  then the full phone_fit matrix (4 and 6 players, 5 sizes, smallest text >= 13 dp at 640x360) and the TV
+  check at 1920x1080. Needs: S3-S8 for the matrix; the PNG change has no dependency and can run any time.
+
+Parallel (no shared files): after S1, S2 and S7 together; after S2, S3 + S4 + S5 (waves of up to 3 jobs);
+then S6 with S8; S9's PNG change in any wave. Commit briefs before each wave; `HostFrame` edits stay in S1.
+
+Risks: (1) a 10-character nickname in the 190 px name column was judged by eye only: measure with the font
+engine in S4/S6; (2) in-game boards are out of scope and may still scroll or overflow under the new frame
+scale: measure later; (3) the 20 px floor is 13.3 dp at 640x360 and needs a real small-phone check (owner
+answer 1); (4) the picker and join screen were never measured, so S8's size is unknown; (5) a global scaler
+touches the TV d-pad focus ring: check 1920x1080.

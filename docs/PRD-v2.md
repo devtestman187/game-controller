@@ -821,30 +821,43 @@ list (owner, Nov 18, 2026).
 
 **Scope**
 
-In build order (impact ÷ effort; see PROPOSAL.md "Recommendations at a glance"):
+In build order (impact ÷ effort; see PROPOSAL.md "Recommendations at a glance"). Since Nov 20 the order is
+1) phone-host layout, 2) identity (6), 3) awards (7), 4) home screen + coach marks (8), then M17 Thumby; the
+bundle (9) and the already-built 2–5 keep their place. "(item N)" is the review's number, not the list's:
 
-1. Show the pairing code on the join screen, and prefer live discovery over the stale remembered
+1. **Phone-host layout** (owner, Nov 20: "option C" goes first; design `docs/briefs/m16/phonefit/optionC/design/DESIGN.md`).
+   Goal: the screens players see on a phone host fit with no scrolling. Rules: one design frame of at least
+   960x540 with `s = min(W/960, H/540)` and any extra room used; text at least 20 frame px; cards fill the frame;
+   an always-visible footer bar holds the way-on button; the Thumby slot is the spare dimension, or on an exact
+   16:9 frame an overlay above the footer; the same scaler on the TV (s = 2 at 1920x1080). Scope: the six
+   party-night screens (night start, scoreboard, final scores, awards reveal, Arena results, puzzle results)
+   plus the game picker (`games_screen.dart`) and the join screen (`join_screen.dart`). In-game boards (Arena and
+   puzzle gameplay) are out of scope until measured. Slices: `docs/briefs/m16/STATUS.md`.
+2. Show the pairing code on the join screen, and prefer live discovery over the stale remembered
    host (item 3).
-2. Fix the sub-3:1 contrast — "Ready"/"+43" good-on-paper, the dashed face circles, the state dot,
+3. Fix the sub-3:1 contrast — "Ready"/"+43" good-on-paper, the dashed face circles, the state dot,
    the D-pad and the stick knobs (item 4).
-3. Make a drop visible and restore the side on re-entry: an "away" state + grace period, side
+4. Make a drop visible and restore the side on re-entry: an "away" state + grace period, side
    restore, and a host-away card on the phone (item 2).
-4. Put the round's state on the phone: the clock, coins, round number and the result (item 1).
+5. Put the round's state on the phone: the clock, coins, round number and the result (item 1).
    This needs an additive, capability-gated protocol field (approved, owner Nov 18), with a test
    that an older peer still works; `docs/protocol.md` is updated in the same change.
-5. Player identity: nickname + colour + accessory on the phone, shown on the TV (item 5). The six
+6. Player identity: nickname + colour + accessory on the phone, shown on the TV (item 5). The six
    defaults ship now; the future path (more colours and accessories, and customisation) is in
    PROPOSAL.md "Colour + accessory: the path for more later".
-6. End-of-night awards: the three awards promised on setup are shown and awarded at the end
+7. End-of-night awards: the three awards promised on setup are shown and awarded at the end
    (item 6).
-7. The friendlier app start (APP-START.md): the home screen, the three device roles in a fixed
+8. The friendlier app start (APP-START.md): the home screen, the three device roles in a fixed
    button order, the coach marks (Join a Game → Play here → Display here) with a Show-tips toggle,
    and "screen" not "TV" in the generic strings.
-8. The consistency and hygiene bundle (items 7–9): round numbering + map name + clock turns red +
+9. The consistency and hygiene bundle (items 7–9): round numbering + map name + clock turns red +
    Resume colour; 48 dp targets + truncation; slider a11y values + a11y strings.
 
 **Acceptance tests**
 
+- [ ] Phone-host layout: the `phone_fit` tests at 640x360, 852x393, 1024x768, 1280x800 and 1920x1080 show no
+  scroll and the way-on button visible for 4 and 6 players on every in-scope screen, and the smallest text is at
+  least 13 dp on 640x360.
 - [ ] On the join screen the 4-digit code is visible where a player looks, and the phone's first
   tap reaches the discovered host, not a stale remembered one; a host one build older still works.
 - [ ] "Ready", "+43", the dashed face circles, the state dot, the D-pad and the knobs all pass 3:1
@@ -870,7 +883,7 @@ In build order (impact ÷ effort; see PROPOSAL.md "Recommendations at a glance")
 
 - Party night is the first, highlighted card in the game picker; the three-role home stays.
 - The night cards (start, scoreboard, reveal, results) fit a ~360x640 dp phone host and leave room
-  for Thumby's corner head + 2-line caption strip (S) or bubble (M/L). Measuring this is a prerequisite.
+  for Thumby's corner head + 2-line caption strip (S) or bubble (M/L). Measured; built as list item 1 (Phone-host layout).
 - Item 5: each colour + accessory combination has a stable ID and a display/spoken name ("the Red
   Bow"); nicknames are caption-only, never spoken.
 - Item 6: the reveal and final screens leave a caption/bubble slot, ceremony order 3rd -> 2nd -> 1st,
