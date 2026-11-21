@@ -9,3 +9,4 @@
 2026-11-21 13:51:19 tests-first ok: packages/party_host/test/award_explanation_looks_test.dart fails on the old code
 2026-11-21 13:58:18 committed looks-helper: 3c2e7453 Add an all-looks pump helper and check the award popover in both looks
 2026-11-21 13:58:20 committed runner-lean: 215038bb Run jobs: skip wave review on a one-wave run, lint report lines
+2026-11-21 14:02:17 reviewed wave1: 5 finding(s)
