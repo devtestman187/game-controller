@@ -24,3 +24,12 @@
 2026-11-21 15:44:28 committed p2-mine: f1336bcd Add tools/mine.sh: format, analyze, touched tests and churn revert
 2026-11-21 15:44:30 committed p2-wait: 3ef5ded5 Add tools/wait-run.sh so a driver stops polling run.log
 2026-11-21 15:44:33 committed p2-stop: 83b7bddc Add tools/run-stop.sh: a STOP.md report at every runner stop
+2026-11-21 15:44:35 reviewed wave1: 12 finding(s)
+2026-11-21 15:44:35 start p2-split
+2026-11-21 15:45:01 start p2-docs
+2026-11-21 15:48:10 start p2-ptest
+2026-11-21 15:50:32 p2-split finished: result 6 (58 turns, 5 min)
+2026-11-21 15:50:32 p2-docs finished: result 0 (38 turns, 2 min)
+2026-11-21 15:56:14 p2-ptest finished: result 0 (40 turns, 8 min)
+2026-11-21 16:04:41 committed p2-docs: 9ff8cc46 docs: document mine.sh, wait-run.sh and selftest.sh, and the worker extract
+2026-11-21 16:04:43 committed p2-ptest: 850f6c9d Add a self-test for flash.sh's prompt extract and allow list
