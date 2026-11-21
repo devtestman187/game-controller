@@ -16,13 +16,14 @@ const screenHeightPx = 540.0;
 Finder titleBarOf(Type screen) =>
     find.descendant(of: find.byType(screen), matching: find.byKey(const Key('hostTitleBar')));
 
-/// [screen]'s scrolling list.
-Finder listOf(Type screen) => find.descendant(of: find.byType(screen), matching: find.byType(Scrollable)).first;
-
 /// The host's screens as the phone app mounts them: the picker is the first
 /// route under the phone's bar, so there is nothing below it to go back to.
 Future<void> pumpPhone(WidgetTester tester) =>
     pumpHost(tester, screen: const GamesScreen(), overrides: [hostBarHeightProvider.overrideWithValue(phoneBarPx)]);
+
+/// [screen]'s level list, the menu the phone's bar gives its 12 px of room to
+/// since the picker moved into the frame (M16 phonehost2 S8p).
+Finder menuOf(Type screen) => find.descendant(of: find.byType(screen), matching: find.byType(ListView));
 
 void main() {
   test('a menu keeps 12 at the top where the phone bar is above, and 24 where it is not', () {
@@ -30,28 +31,35 @@ void main() {
     expect(hostMenuPadding(0), const EdgeInsets.all(24));
   });
 
-  testWidgets('the picker on the phone has no title bar, so its body starts under the bar', (tester) async {
+  testWidgets('the picker draws the frame\'s header at the top, and its body starts under it', (tester) async {
     await pumpPhone(tester);
-    // Nothing to go back to: no title bar at all (m12 bug 1107f rule D).
-    expect(find.byKey(const Key('hostTitleBar')), findsNothing);
-    expect(tester.getRect(listOf(GamesScreen)).top, phoneBarPx);
-    expect(tester.getSize(listOf(GamesScreen)).height, screenHeightPx - phoneBarPx);
+    // The picker is the frame's screen since M16 phonehost2 S8p: its 64 px
+    // header is at the top of the screen, its title in it, and its body under
+    // it. It is the first route, so the header has no back arrow.
+    final header = tester.getRect(titleBarOf(GamesScreen));
+    expect(header.top, 0);
+    expect(header.height, 64);
+    expect(find.descendant(of: find.byKey(const Key('hostFrameHeader')), matching: find.text('Play')), findsOneWidget);
+    expect(find.byKey(const Key('hostTitleBarBack')), findsNothing, reason: 'nothing below the picker to go back to');
+    final body = tester.getRect(find.byKey(const Key('hostFrameBody')));
+    expect(body.top, header.bottom);
+    expect(body.height, screenHeightPx - 64 - 84, reason: 'the frame\'s 64 px header and 84 px footer');
   });
 
-  testWidgets('a phone menu leaves 12 at the top, where its bar gives the room', (tester) async {
+  testWidgets('a phone menu below the picker leaves 12 at the top, where its bar gives the room', (tester) async {
     await pumpPhone(tester);
-    final list = tester.widget<ListView>(
-      find.descendant(of: find.byType(GamesScreen), matching: find.byType(ListView)),
-    );
-    expect(list.padding, const EdgeInsets.fromLTRB(24, 12, 24, 24));
+    await tapVisible(tester, find.byKey(const Key('pickShapeRace')));
+    await tester.pumpAndSettle();
+    // Shape Race's level list is still the old title-bar screen (M16
+    // phonehost2 S8p leaves it as it was), so it keeps the bar's 12 px.
+    expect(tester.widget<ListView>(menuOf(ShapeRaceScreen)).padding, const EdgeInsets.fromLTRB(24, 12, 24, 24));
   });
 
   testWidgets('a TV menu keeps its 24 at the top', (tester) async {
     await pumpHost(tester, screen: const GamesScreen());
-    final list = tester.widget<ListView>(
-      find.descendant(of: find.byType(GamesScreen), matching: find.byType(ListView)),
-    );
-    expect(list.padding, const EdgeInsets.all(24));
+    await tapVisible(tester, find.byKey(const Key('pickShapeRace')));
+    await tester.pumpAndSettle();
+    expect(tester.widget<ListView>(menuOf(ShapeRaceScreen)).padding, const EdgeInsets.all(24));
   });
 
   testWidgets('every host screen with a title bar leaves the phone bar free, and its back arrow pops', (tester) async {
@@ -75,7 +83,11 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(ShapeRaceScreen), findsNothing);
     expect(find.byKey(const Key('pickShapeRace')), findsOneWidget);
-    expect(find.byKey(const Key('hostTitleBar')), findsNothing, reason: 'the picker stays without one');
+    expect(
+      find.descendant(of: find.byType(GamesScreen), matching: find.byKey(const Key('hostTitleBarBack'))),
+      findsNothing,
+      reason: 'the picker stays the first route, so its header has no way back',
+    );
 
     // The join screen, whose title ran into the bar's labels too.
     await tester.tap(find.byKey(const Key('pickShapeRace')));

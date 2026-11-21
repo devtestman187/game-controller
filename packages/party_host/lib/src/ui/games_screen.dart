@@ -1,5 +1,3 @@
-import 'dart:math';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -17,6 +15,7 @@ import 'game_screen.dart';
 import 'host_button.dart';
 import 'host_card_button.dart';
 import 'host_card_focus.dart';
+import 'host_frame_screen.dart';
 import 'host_screen.dart';
 import 'join_screen.dart';
 import 'lobby_music.dart';
@@ -32,17 +31,21 @@ part 'games_screen_widgets.dart';
 /// The game picker's route name: Quit in the pause menu comes back here.
 const gamesRouteName = '/games';
 
-/// The game picker (PRD v2 T11): Shape Race (the puzzle) and the Arena, and
-/// the puzzle's playtest settings. Works with the remote.
+/// The game picker (PRD v2 T11), drawn in the host's frame since M16 phonehost2
+/// S8p (DESIGN section 1, rules 4-6): Shape Race (the puzzle), the Arena and
+/// the party night as three cards across the stage, the puzzle's playtest line
+/// under them, and the playtest settings as the footer's button. Works with
+/// the remote.
 ///
-/// Each game is a big card with a drawn picture, its title and a line (M13 3b,
-/// mock-up `game-picker`); the settings button and its line are under them.
+/// Each game is a card with a drawn picture, its title and a line (M13 3b,
+/// mock-up `game-picker`). The cards are the screen's way on and stay in the
+/// body: rule 5 asks way-on buttons to live in the footer, and a picker's
+/// choice is its content, so the footer keeps the one other way on.
 class GamesScreen extends ConsumerWidget {
   const GamesScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final look = ToyLookScope.of(context);
     // Watching the night keeps it listening to the roster while the picker is
     // on screen, so a player who leaves then keeps their row.
     final night = ref.watch(partyNightProvider);
@@ -51,39 +54,28 @@ class GamesScreen extends ConsumerWidget {
     final touchFirst = ref.watch(hostTouchFirstProvider);
     return CallbackShortcuts(
       bindings: {const SingleActivator(LogicalKeyboardKey.escape): () => Navigator.of(context).maybePop()},
-      child: HostScreen(
+      child: HostFrameScreen(
         title: HostText.playTitle,
         body: LobbyHold(
-          child: SafeArea(
-            child: ListView(
-              padding: hostMenuPadding(ref.watch(hostBarHeightProvider)),
-              children: [
-                _GameRow(
-                  autofocusShapeRace: touchFirst,
-                  autofocusNight: !touchFirst,
-                  onShapeRace: () => _open(context, const ShapeRaceScreen()),
-                  onArena: () => _open(context, const GameScreen()),
-                  onNight: () => _open(
-                    context,
-                    night != null && night.round > 0 ? const NightScoreboardScreen() : const NightStartScreen(),
-                  ),
-                ),
-                const SizedBox(height: ToySizes.space24),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: HostButton(
-                    key: const Key('openPuzzleSettings'),
-                    label: HostText.puzzleSettings,
-                    icon: Icons.tune,
-                    onPressed: () => _open(context, const PuzzleSettingsScreen()),
-                  ),
-                ),
-                const SizedBox(height: ToySizes.space8),
-                Text(HostText.playtestLine, style: look.type.body.copyWith(color: look.colors.onBackground)),
-              ],
+          child: _PickerBody(
+            autofocusShapeRace: touchFirst,
+            autofocusNight: !touchFirst,
+            onShapeRace: () => _open(context, const ShapeRaceScreen()),
+            onArena: () => _open(context, const GameScreen()),
+            onNight: () => _open(
+              context,
+              night != null && night.round > 0 ? const NightScoreboardScreen() : const NightStartScreen(),
             ),
           ),
         ),
+        footer: [
+          HostButton(
+            key: const Key('openPuzzleSettings'),
+            label: HostText.puzzleSettings,
+            icon: Icons.tune,
+            onPressed: () => _open(context, const PuzzleSettingsScreen()),
+          ),
+        ],
       ),
     );
   }

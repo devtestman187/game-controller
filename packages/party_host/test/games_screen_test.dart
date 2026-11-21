@@ -26,21 +26,27 @@ void main() {
     expect(find.byType(GameScreen), findsOneWidget);
   });
 
-  testWidgets('the picker\'s cards hold the look\'s type without spilling it', (tester) async {
-    // A card is 380 wide where the screen has room for it, and four button
-    // heights high in the look (M13 3b); on a TV the three of them stand in one
-    // row (M14 c1). The test bundle's own font draws every letter as a box, so
-    // the words take more room than a device's: the card's line stops at two
-    // lines with an ellipsis rather than pushing the card's type out of it.
+  testWidgets('the picker\'s three cards share the stage\'s width and hold their type without spilling it', (
+    tester,
+  ) async {
+    // The three cards fill the screen's width less the frame's gutter, sharing
+    // it evenly (DESIGN section 1, rule 4). The test bundle's own font draws
+    // every letter as a box, so the words take more room than a device's: the
+    // card's line stops at two rows with an ellipsis rather than pushing the
+    // card's type out of it.
     await pumpHost(tester, screen: const StubHome(), size: const Size(1280, 720));
     await tapVisible(tester, find.byKey(const Key('openPlay')));
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
-    expect(tester.getSize(find.byKey(const Key('pickShapeRace'))).width, 380);
-    expect(tester.getSize(find.byKey(const Key('pickArena'))).width, 380);
+    // 1280 less the two 24 px gutters, less the two 16 px gaps, in three:
+    // (1280 - 48 - 32) / 3 = 400.
+    const cardWidth = (1280 - 2 * hostFrameGutterPx - 2 * ToySizes.space16) / 3;
+    for (final key in [const Key('pickShapeRace'), const Key('pickArena'), const Key('pickPartyNight')]) {
+      expect(tester.getSize(find.byKey(key)).width, cardWidth, reason: '$key takes a third of the stage');
+    }
   });
 
-  testWidgets('each game\'s card draws its own picture, 0.4 of the card high, above its name', (tester) async {
+  testWidgets('each game\'s card draws its own picture at its top, above its name', (tester) async {
     await pumpHost(tester, screen: const StubHome());
     await tapVisible(tester, find.byKey(const Key('openPlay')));
     await tester.pumpAndSettle();
@@ -50,10 +56,13 @@ void main() {
     expect(tester.widget<GamePictureView>(shapes).picture, GamePicture.shapeRace);
     expect(tester.widget<GamePictureView>(arena).picture, GamePicture.arena);
 
-    // The picture is the top 40% of the card's box, with the name under it.
+    // The picture is the card's top band, [gamePictureHeightPx] tall under the
+    // card's focus ring and padding, with the name under it (M16 phonehost2
+    // S8p: the picture gives way to the type, never the other way round).
     final card = tester.getRect(find.byKey(const Key('pickShapeRace')));
     final picture = tester.getRect(shapes);
-    expect(picture.height, closeTo(card.height * 0.4, 0.01));
+    expect(picture.height, closeTo(gamePictureHeightPx, 0.01));
+    expect(picture.top, closeTo(card.top + ToySizes.focusRing + ToySizes.space12, 0.01));
     final title = tester.getRect(
       find.descendant(of: find.byKey(const Key('pickShapeRace')), matching: find.text('Shape Race')),
     );
