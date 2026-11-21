@@ -263,7 +263,7 @@ void main() {
           }
           expect(
             total + (buttons.length - 1) * nightFooterButtonGapPx,
-            lessThanOrEqualTo(nightFooterButtonsWidthPx),
+            lessThanOrEqualTo(_arenaFooterPairWidthPx),
             reason: 'the footer keeps room for Thumby beside its buttons (DESIGN section 3): $total px',
           );
         });
@@ -366,7 +366,7 @@ void main() {
     final mode = tester.getSize(find.byKey(const Key('arenaChangeMode'))).width;
     expect(
       pair + nightFooterButtonGapPx + mode,
-      lessThanOrEqualTo(nightFooterButtonsWidthPx),
+      lessThanOrEqualTo(_arenaFooterPairWidthPx),
       reason: 'Play again and Change mode are the footer\'s whole room: ${pair + mode + nightFooterButtonGapPx} px',
     );
     expect(find.byKey(const Key('arenaResultsBack')), findsNothing, reason: 'Back is the header\'s arrow alone');
@@ -458,3 +458,6 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 }
+
+/// The arena's footer pair keeps the 480 frame px it always had beside Thumby's corner (the night's own budget is wider since phonehost3).
+const _arenaFooterPairWidthPx = 480.0;

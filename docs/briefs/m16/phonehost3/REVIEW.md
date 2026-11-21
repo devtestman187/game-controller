@@ -145,3 +145,12 @@ say what the code does.
 ## Delete
 
 - none
+
+## Verdicts (driver, Nov 21)
+- must 1 (mirror_pad_test uncommitted): fixed, committed with f1 brief; f1 re-pinned it to the drawn pad.
+- must 2 (pad 52 device px low) and should 4 (frame test restated the code): real, fixed by f1 (4ed8c34e); wave2 review clean.
+- should 3 (arena footer bound loosened by 480 -> 640): fixed by hand (arena_results_frame_test.dart: own 480 constant).
+- should 6 (puzzle_screen.dart 375 lines): fixed by f1 (back to 372).
+- should 5 (shared content-width helper in toy_look) and the could findings: deferred, tracked below for owner/next batch (not code-health debt of this batch).
+- should 7 (night job ran 127 turns, brief said 120): noted; the 120-turn cap is advisory in the runner.
+- Owner questions left: the bar mapping on a notched phone; five players 3 + 2 vs one row; whether the night footer budget stays 640 (pair 521 px, 391 px left beside Thumby); the results' left-aligned spare.
