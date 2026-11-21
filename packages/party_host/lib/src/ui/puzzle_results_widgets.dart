@@ -2,8 +2,7 @@ part of 'puzzle_screen.dart';
 
 /// The room the results card keeps round its content, in frame px: the design's
 /// 24 px gutter at the sides (DESIGN section 1, rule 4) and 8 px above and
-/// below, as the Arena results' card has it, so a race's rows fit the body of a
-/// 540-high frame.
+/// below, as the Arena results' card has it, so a race's rows fit a 540 frame.
 const _cardPadding = EdgeInsets.symmetric(horizontal: ToySizes.space24, vertical: ToySizes.space8);
 
 /// A side's name on the results, in frame px (DESIGN section 4: the puzzle
@@ -23,9 +22,7 @@ const _detailPx = 20.0;
 /// and any new record (T15), and the controls the footer cannot hold — a
 /// series' Shuffle and Play again, and Change teams — as compact buttons.
 ///
-/// The footer holds the way on alone (the S6b decision): the first button
-/// (Rematch, Play again or Next puzzle) with Back beside it (T14), or a night's
-/// Next with End night before the night's last round (M14 c1, B-021).
+/// The footer holds the way on alone (the S6b decision).
 class _Results extends ConsumerWidget {
   const _Results({
     required this.result,
@@ -145,32 +142,27 @@ class _Results extends ConsumerWidget {
 
   /// The round's headline on a chip in its colour (M13 3b: a race's winner's
   /// colour, the focus yellow for a draw, good or caution for one board).
-  Widget _headline(ToyLook look, String title, Color colour) {
-    final colors = look.colors;
-    return Container(
-      key: const Key('puzzleResultChip'),
-      padding: const EdgeInsets.symmetric(horizontal: ToySizes.space12, vertical: ToySizes.space4),
-      decoration: BoxDecoration(
-        color: colour,
-        border: Border.all(color: colors.ink, width: look.sizes.outlineWidth),
-        borderRadius: BorderRadius.circular(ToySizes.cardCorner),
-      ),
-      child: Text(
-        title,
-        key: const Key('puzzleResultTitle'),
-        style: look.type.button.copyWith(color: colors.ink),
-      ),
-    );
-  }
+  Widget _headline(ToyLook look, String title, Color colour) => Container(
+    key: const Key('puzzleResultChip'),
+    padding: const EdgeInsets.symmetric(horizontal: ToySizes.space12, vertical: ToySizes.space4),
+    decoration: BoxDecoration(
+      color: colour,
+      border: Border.all(color: look.colors.ink, width: look.sizes.outlineWidth),
+      borderRadius: BorderRadius.circular(ToySizes.cardCorner),
+    ),
+    child: Text(
+      title,
+      key: const Key('puzzleResultTitle'),
+      style: look.type.button.copyWith(color: look.colors.ink),
+    ),
+  );
 
   /// The footer's way on (DESIGN section 1, rule 5): the round's first button
   /// with Back, or a night's Next, with End night before the night's last round
-  /// (B-021).
-  ///
-  /// The first button and Back go without their icons: with them the pair wants
-  /// more than the 480 frame px the footer keeps beside Thumby's corner
-  /// (DESIGN section 3), as the Arena results' pair found, and their words say
-  /// what they do. A night's two buttons keep theirs.
+  /// (B-021). The first button and Back go without their icons: with them the
+  /// pair wants more than the 480 frame px the footer keeps beside Thumby's
+  /// corner, as the Arena results' pair found, and their words say what they
+  /// do. A night's two buttons keep theirs.
   List<Widget> _footer(BuildContext context) {
     final again = menu.again;
     if (night) {
@@ -198,18 +190,16 @@ class _Results extends ConsumerWidget {
   }
 
   /// The controls the 84 px footer cannot hold (the S6b decision): a series'
-  /// Shuffle and Play again, and Change teams, as compact buttons under the
-  /// rows in the card's right column, with the keys they have always had. A
-  /// night's round draws none — its next teams are picked on the next round's
-  /// join screen — and an `any <level>` round only Change teams.
+  /// Shuffle and its replay, and Change teams, as compact buttons under the rows
+  /// in the card's right column, with the keys they have always had. A night's
+  /// round draws none (its next teams are picked on the next join screen), and
+  /// an `any <level>` round only Change teams.
   ///
-  /// They are a [Row] of [Flexible] buttons, as the frame's footer has its pair:
-  /// the three together fit the column on a device, and where a host's screen
-  /// leaves the card too little room for their labels, they give room to each
-  /// other and the look ellipsises a label rather than the card taking a second
-  /// line — a line more than a phone-sized host's body has (DESIGN section 1,
-  /// rule 6).
+  /// Each button's share of the row is the width it wants ([_controlFlexPx]):
+  /// equal shares cut Change teams at the 960-wide frames (222 wanted in 207,
+  /// M16 phonehost3); a narrower card shrinks all labels alike and never scrolls.
   List<Widget> _controls(BuildContext context) {
+    final look = ToyLookScope.of(context);
     final series = menu.series;
     final replay = menu.replay;
     final buttons = <Widget>[
@@ -231,22 +221,40 @@ class _Results extends ConsumerWidget {
           onPressed: onChangeTeams,
         ),
     ];
+    // In step with [buttons]: each button's share is the width its words want.
+    final labels = [
+      if (series?.shuffle != null) HostText.shuffle,
+      if (replay != null) replay.label,
+      if (!night) HostText.changeTeams,
+    ];
     if (buttons.isEmpty) return const [];
     return [
       const SizedBox(height: ToySizes.space12),
       Row(
+        spacing: ToySizes.space12,
         children: [
-          for (var i = 0; i < buttons.length; i++) ...[
-            if (i > 0) const SizedBox(width: ToySizes.space12),
-            Flexible(child: buttons[i]),
-          ],
+          for (var i = 0; i < buttons.length; i++)
+            Flexible(flex: _controlFlexPx(context, look, labels[i]), child: buttons[i]),
         ],
       ),
     ];
   }
 
-  /// Each side's picture as the round left it, side by side at the card's left
-  /// (design 3a): its own board of a race, else the one board.
+  /// The flex a compact control's share of the row gets, in frame px: its words
+  /// in the type [ToyButton] draws (button family, body size), [ToySizes.space24]
+  /// of padding a side, and the icon at the words' size with [ToySizes.space8].
+  int _controlFlexPx(BuildContext context, ToyLook look, String label) {
+    final style = look.type.button.copyWith(fontSize: look.type.body.fontSize);
+    final words = TextPainter(
+      text: TextSpan(text: label, style: style),
+      textDirection: Directionality.of(context),
+    )..layout();
+    final flex = (words.width + 2 * ToySizes.space24 + style.fontSize! + ToySizes.space8).ceil();
+    words.dispose();
+    return flex;
+  }
+
+  /// Each side's picture as the round left it (design 3a): its own board, else the one.
   List<Widget> _photos() {
     final round = match;
     if (round == null) return const [];
@@ -272,11 +280,9 @@ class _Results extends ConsumerWidget {
 
 /// One side's row on the results: its name in a race, its players' badges, its
 /// time or how many pieces it placed, then the board's best time and the "New
-/// record!" chip when it beat it (T15).
-///
-/// Its parts are a [Wrap], so a crowded row — two players a side with a best
-/// time and a new record — takes a second line in the card's column rather than
-/// overflowing it (DESIGN section 1, rule 6: the results never scroll).
+/// record!" chip when it beat it (T15). Its parts are a [Wrap], so a crowded
+/// row — two players a side with a best time and a new record — takes a second
+/// line in the card's column rather than overflowing it (DESIGN rule 6).
 class _ResultSideRow extends StatelessWidget {
   const _ResultSideRow({
     required this.side,
@@ -343,29 +349,27 @@ class _ResultSideRow extends StatelessWidget {
   }
 }
 
-/// The chip a finished board wears when it beat its best (T15, frame 14):
-/// "New record!", in the focus yellow with a star, so the words carry it too.
+/// The chip a finished board wears when it beat its best (T15, frame 14): the words with a star, in the focus yellow.
 class _NewRecordChip extends StatelessWidget {
   const _NewRecordChip();
 
   @override
   Widget build(BuildContext context) {
     final look = ToyLookScope.of(context);
-    final colors = look.colors;
     return Container(
       key: const Key('newRecord'),
       padding: const EdgeInsets.symmetric(horizontal: ToySizes.space8, vertical: ToySizes.space4),
       decoration: BoxDecoration(
-        color: colors.focus,
-        border: Border.all(color: colors.ink, width: look.sizes.outlineWidth),
+        color: look.colors.focus,
+        border: Border.all(color: look.colors.ink, width: look.sizes.outlineWidth),
         borderRadius: BorderRadius.circular(ToySizes.cardCorner),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.star, size: look.type.body.fontSize, color: colors.ink),
+          Icon(Icons.star, size: look.type.body.fontSize, color: look.colors.ink),
           const SizedBox(width: ToySizes.space4),
-          Text(RecordText.newRecord, style: look.type.body.copyWith(color: colors.ink)),
+          Text(RecordText.newRecord, style: look.type.body.copyWith(color: look.colors.ink)),
         ],
       ),
     );
