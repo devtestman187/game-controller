@@ -45,6 +45,11 @@ const _tileWidthPx = 320.0;
 /// in the box may be drawn smaller.
 const _minTypePx = 20.0;
 
+/// The height the explanation needs in the menu look, in frame px (M16 bugs1
+/// f1): B-033's fixed part, the header and body over 24 px paddings and the
+/// 24 px gap, plus the menu's 48 px OK button.
+const _menuHeightPx = 207.0;
+
 /// One award's tile alone on a screen in the frame, so a test can open the "i"
 /// of every one of the twelve awards without a night's draw deciding which
 /// three it shows.
@@ -117,6 +122,17 @@ void main() {
         _expectInside(tester, line, box, 'the line');
         _expectInside(tester, find.byKey(_closeKey), box, 'the OK button');
 
+        // The body scrolls only as a guard (B-033): the box is tall enough for
+        // its content, so nothing is hidden behind a scroll the remote cannot
+        // work.
+        final scrollable = find.descendant(of: card, matching: find.byType(Scrollable));
+        expect(scrollable, findsOneWidget, reason: 'the box\'s body is the guard scroll');
+        expect(
+          tester.state<ScrollableState>(scrollable).position.maxScrollExtent,
+          moreOrLessEquals(0, epsilon: _tolerance),
+          reason: '${award.title}\'s box fits the menu look with no scroll',
+        );
+
         // The box is read in the frame, where the design's 20 px floor applies
         // (DESIGN section 1, rule 3).
         for (final element in find.descendant(of: card, matching: find.byType(Text)).evaluate()) {
@@ -151,6 +167,11 @@ void main() {
         );
       }
       expect(first.width, moreOrLessEquals(awardExplanationWidthPx, epsilon: _tolerance));
+      expect(
+        first.height,
+        moreOrLessEquals(_menuHeightPx, epsilon: _tolerance),
+        reason: 'the box is as tall as the menu look\'s button needs',
+      );
       final frame = HostFrameInfo.of(tester.element(find.byType(Scaffold))).frame;
       expect(first.width, lessThanOrEqualTo(frame.width), reason: 'the box fits the frame\'s width');
       expect(first.height, lessThanOrEqualTo(frame.height), reason: 'the box fits the frame\'s height');

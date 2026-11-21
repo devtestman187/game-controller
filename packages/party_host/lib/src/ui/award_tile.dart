@@ -29,16 +29,23 @@ const awardTileGapPx = ToySizes.space16;
 /// never covers the awards it explains (DESIGN section 4).
 const awardExplanationWidthPx = 480.0;
 
-/// How tall the award's explanation is, in frame px (B-033): one height for
-/// every award, so a player's eye finds the same box whatever line it holds.
+/// What the award's explanation is tall besides its OK button, in frame px
+/// (B-033): one height for every award, so a player's eye finds the same box
+/// whatever line it holds.
 ///
 /// Measured from the tallest of the twelve awards laid out at
 /// [awardExplanationWidthPx] in the frame's type: its header band, the 24 px
-/// padding above and below the body, one line of 22 px text, the 24 px gap and
-/// the 48 px OK button. At 432 px of room every award's line stays on one line,
-/// so this holds the longest, and it fits the shortest frame (540 px) with room
-/// to spare, so the box never has to scroll.
-const awardExplanationHeightPx = 207.0;
+/// padding above and below the body, one line of 22 px text and the 24 px gap
+/// (207 measured with the menu's 48 px button less that button). At 432 px of
+/// room every award's line stays on one line, so this holds the longest.
+const awardExplanationFixedPx = 159.0;
+
+/// How tall the award's explanation is in [look], in frame px (B-033, M16 bugs1
+/// f1): [awardExplanationFixedPx] plus the look's own button, so the OK button
+/// sits wholly inside the box on every host — 207 with the menu's 48 px button
+/// and 223 with the TV's 64 px one. Both fit the shortest frame (540 px) with
+/// room to spare, so the box never has to scroll.
+double awardExplanationHeightPx(ToyLook look) => awardExplanationFixedPx + look.sizes.buttonHeight;
 
 /// One of the night's three awards on its start card (M16 phonehost2 S3,
 /// DESIGN section 4): its picture and its name on one line, and an "i" that
@@ -113,9 +120,9 @@ class AwardTile extends StatelessWidget {
 /// or its own button closes it, so it never traps a player mid-screen.
 ///
 /// Every award's explanation is the same [awardExplanationWidthPx] by
-/// [awardExplanationHeightPx] box (B-033): the award's own line decides what
-/// it says, never how big it is. The card is given that size rather than
-/// growing to its text, and its body scrolls only if a longer line one day
+/// [awardExplanationHeightPx] box in a look (B-033): the award's own line
+/// decides what it says, never how big it is. The card is given that size rather
+/// than growing to its text, and its body scrolls only if a longer line one day
 /// needs more than the height has.
 class _AwardExplanation extends StatelessWidget {
   const _AwardExplanation({required this.award});
@@ -124,11 +131,12 @@ class _AwardExplanation extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = ToyLookScope.of(context).colors;
+    final look = ToyLookScope.of(context);
+    final colors = look.colors;
     return Center(
       child: SizedBox(
         width: awardExplanationWidthPx,
-        height: awardExplanationHeightPx,
+        height: awardExplanationHeightPx(look),
         child: ToyCard(
           key: const Key('awardExplanation'),
           header: award.title,

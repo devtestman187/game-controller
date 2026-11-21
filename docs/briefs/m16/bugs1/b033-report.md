@@ -80,6 +80,10 @@ overflow.
 M16 bugs1 B-033: done — every award's "i" popover is the same 480 x 207 frame px box at all five frame sizes, with
 a test over all twelve awards; open: nothing.
 
+Fixed by f1: the TV look's popover is 223 px (the 159 px fixed part plus the look's 64 px OK button), so its OK
+button is wholly inside the box there too; `award_explanation_tv_test.dart` checks all twelve awards at the five
+frame sizes.
+
 ## Delete
 
 - none

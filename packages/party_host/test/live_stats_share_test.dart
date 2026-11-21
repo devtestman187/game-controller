@@ -143,10 +143,12 @@ void main() {
     expect(round['players'], 2, reason: 'the round happened, and two players took part');
     expect(round.containsKey('winner'), isFalse, reason: 'the winner said no');
 
-    // What the TV keeps: both players, each with their answer.
+    // What the TV keeps: both players, each with their answer. The two
+    // connects race, so the list's order is not pinned: each install is checked
+    // against its own share.
     final saved = (await stats.sessions()).single.summary;
-    expect([for (final p in mapsOf(saved['players'])) p['install']], ['phone-yes', 'phone-no']);
-    expect([for (final p in mapsOf(saved['players'])) p['share']], [true, false]);
+    final shares = {for (final p in mapsOf(saved['players'])) p['install']: p['share']};
+    expect(shares, {'phone-yes': true, 'phone-no': false});
     expect(mapsOf(saved['rounds']).single['winner'], isNotNull);
   });
 }

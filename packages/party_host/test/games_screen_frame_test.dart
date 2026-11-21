@@ -213,8 +213,11 @@ void main() {
     // and right-aligned at the stage's edge.
     expect(settings.height, moreOrLessEquals(look.sizes.buttonHeight * frameCase.scale, epsilon: _tolerance));
     final bandTopPx = band.top / frameCase.scale;
-    final bandHeightPx = band.height / frameCase.scale;
     final buttonTopPx = settings.top / frameCase.scale;
+    // The footer's box is hostFrameFooterHeightPx and the inset comes out of it,
+    // leaving the band: computed from the constants, not the band's measured
+    // height, so a wrong band height fails the pin.
+    final bandHeightPx = hostFrameFooterHeightPx - hostFrameFooterInsetPx;
     expect(
       buttonTopPx - bandTopPx,
       moreOrLessEquals(

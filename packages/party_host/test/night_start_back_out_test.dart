@@ -36,6 +36,22 @@ void main() {
     expect(segment(tester).value, 3, reason: 'and back to 3');
   });
 
+  testWidgets('the frame\'s back arrow leaves round 1 and also drops the unplayed night', (tester) async {
+    await pumpHost(tester, screen: const NightStartScreen(seed: 7));
+    final container = appContainer(tester);
+
+    await tester.tap(find.byKey(const Key('nightShapeRace')));
+    await tester.pumpAndSettle();
+    expect(container.read(partyNightProvider), isNotNull, reason: 'the night starts with its first round');
+
+    // A phone host leaves round 1 by the frame's back arrow, the tap the card
+    // puts on screen, not the pick screen's Escape shortcut (B-032).
+    await tester.tap(find.byKey(const Key('hostTitleBarBack')));
+    await tester.pumpAndSettle();
+    expect(find.byType(NightStartScreen), findsOneWidget);
+    expect(container.read(partyNightProvider), isNull, reason: 'the unplayed night is dropped (B-032)');
+  });
+
   testWidgets('a night with a recorded round keeps its length and its chips pick nothing', (tester) async {
     await pumpHost(tester, screen: const NightStartScreen(seed: 7));
     final container = appContainer(tester);
