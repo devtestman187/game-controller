@@ -1,0 +1,7 @@
+2026-11-20 18:56:26 start at 5659f019 on m16
+2026-11-20 18:56:26 run-base 5659f0193fc426c516978822e77da2a23f197684
+2026-11-20 18:56:34 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-20 18:56:35 start oc1
+2026-11-20 19:15:45 oc1 finished: result 0 (112 turns, 16 min)
+2026-11-20 19:17:23 tests-first ok: packages/party_host/test/phone_fit_option_c_test.dart fails on the old code
+2026-11-20 19:23:48 committed oc1: f81342a2 M16 phonefit: measure a 960x540 design frame on five devices
