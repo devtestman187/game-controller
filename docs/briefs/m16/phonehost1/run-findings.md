@@ -1,0 +1,1 @@
+- tests-first: packages/party_host/test/score_row_test.dart passes on the old code, so it does not prove new behaviour

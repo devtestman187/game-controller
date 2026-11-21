@@ -53,3 +53,19 @@
 2026-11-20 22:32:42 finding: tests-first: packages/party_host/test/score_row_test.dart passes on the old code, so it does not prove new behaviour
 2026-11-20 22:32:43 STOPPED: tests-first: packages/party_host/test/score_row_test.dart pass on the old code (write them to fail first, or add 'tests-first: exempt <reason>' to the brief for a pure refactor); nothing of this wave is committed
 2026-11-20 22:32:50 HAND-FIX f3: brief gets tests-first: exempt (score_row_test passes on old code: coverage-only finding)
+2026-11-20 22:32:51 start at fd37d604 on m16
+2026-11-20 22:33:00 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-20 22:33:00 skip s1 (already done)
+2026-11-20 22:33:01 skip s9a (already done)
+2026-11-20 22:33:01 skip s2 (already done)
+2026-11-20 22:33:02 skip s7 (already done)
+2026-11-20 22:33:02 resume f1 (applied by hand, not committed yet)
+2026-11-20 22:33:03 resume f2 (applied by hand, not committed yet)
+2026-11-20 22:33:03 resume f3 (applied by hand, not committed yet)
+2026-11-20 22:34:53 tests-first ok: packages/party_host/test/host_frame_look_test.dart fails on the old code
+2026-11-20 22:35:04 tests-first ok: packages/party_host/test/host_frame_screen_safe_area_test.dart fails on the old code
+2026-11-20 22:35:14 tests-first ok: packages/party_host/test/round_segment_test.dart fails on the old code
+2026-11-20 22:35:23 tests-first: packages/party_host/test/score_row_test.dart passes on the old code, exempt by its brief
+2026-11-20 22:42:02 committed f1: c67c9d37 HostFrame: no device text scale, ToyType.frame inside, empty size safe
+2026-11-20 22:42:04 committed f2: d992a92f Claim the safe-area insets once in HostFrameScreen
+2026-11-20 22:42:07 committed f3: 406bb9f0 Test ScoreRow's zero rules and RoundSegment's disabled state
