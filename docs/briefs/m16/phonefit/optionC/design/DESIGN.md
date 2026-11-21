@@ -105,3 +105,14 @@ puzzle: how well the team did. All are one bubble, 2 to 4 lines, no layout depen
 4. Reveal gets a Skip button and progress dots. OK, or keep it button-less until Thumby arrives?
 5. With Thumby *off*, should the cards fill 1171 px wide frames (as drawn in rule 4), or stay 960 wide and centred?
 6. Do we adopt `HostFrame` for the TV too (s = 2 at 1920x1080), or keep the TV at the current unscaled look?
+
+## Owner answers (Nov 20, 2026: all recommendations accepted)
+
+1. Text floor stays 20 frame px (≈13.3 dp at 640x360); verify on a real small phone during the build.
+2. Award explanations on the start card show on tapping "i"; Thumby's first-time explainer covers them too.
+3. Final scores keep the podium feel (gold/silver/bronze discs, highlighted winner row); a 3-step podium graphic may come with Thumby's ceremony in M17.
+4. The reveal's Skip button and progress dots wait for M17 (Thumby's speech timing changes the reveal).
+5. With Thumby off, cards fill the whole frame width (no centred 960 card with empty sides).
+6. TV uses the same scaler (s = 2 at 1920x1080): one layout everywhere.
+
+**Review fix (architect, Nov 20):** at an exact 16:9 frame (no spare dimension) Thumby must not share the footer bar with the game buttons: the 640x360 scoreboard mockup's footer overflows ("Next up" wraps, Bumper Round is clipped). On 16:9 frames Thumby's head + caption sit as an overlay along the bottom edge of the card, above the footer bar. Name fit (10 chars in the 190 px column) is judged by eye only; measure it in Flutter during the build.
