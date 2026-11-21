@@ -34,6 +34,7 @@ import 'pause_menu.dart';
 import 'player_badge.dart';
 import 'puzzle_best_times.dart';
 import 'puzzle_choice.dart';
+import 'puzzle_pad_scale.dart';
 import 'puzzle_photo.dart';
 
 part 'puzzle_continue.dart';
@@ -316,7 +317,9 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
                         // its screen's density: the round keeps the other
                         // side's mirror clear of both (m12-opponent-mirror
                         // rules 3, 7 and 8). A host with no pad passes none.
-                        final pad = ref.watch(hostPadProvider);
+                        // The pad measures in device px and the board in frame
+                        // px (M16 phonehost3 pad).
+                        final pad = padClearanceFor(context, ref.watch(hostPadProvider), box.biggest);
                         final night = ref.read(partyNightProvider);
                         final numbers = nightRoundNumbers(night);
                         return PuzzlePlayView(
@@ -328,7 +331,7 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
                           target: _target,
                           hosting: _hosting,
                           camera: _camera,
-                          padRects: pad.rects(box.biggest),
+                          padRects: pad.rects,
                           pxPerMm: pad.pxPerMm,
                           match: widget.match,
                           paused: paused,
