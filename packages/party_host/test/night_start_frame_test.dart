@@ -193,21 +193,27 @@ void main() {
       expect(tops.toSet().length, 1, reason: 'the three tiles stand in one row');
     });
 
-    testWidgets('${frameCase.label}: the footer is a paper band with an ink line above it', (tester) async {
+    testWidgets('${frameCase.label}: the footer is a paper band in a rounded ink outline', (tester) async {
       await _pumpNight(tester, frameCase.device);
 
       final look = ToyLookScope.of(tester.element(find.byKey(_bandKey)));
       final band = tester.widget<DecoratedBox>(find.byKey(_bandKey));
       final decoration = band.decoration as BoxDecoration;
       expect(decoration.color, look.colors.paper, reason: 'the buttons stand on the look\'s paper');
-      final border = decoration.border as Border?;
-      expect(border?.top.color, look.colors.ink, reason: 'the band is closed by a line of ink');
-      expect(border?.top.width, greaterThan(0));
-      expect(
-        tester.getRect(find.byKey(_bandKey)),
-        tester.getRect(find.byKey(_footerKey)),
-        reason: 'the band fills the footer, edge to edge',
-      );
+      final border = decoration.border as Border;
+      expect(border.top.color, look.colors.ink, reason: 'the band is closed by a line of ink');
+      expect(border.top.width, greaterThan(0));
+      expect(border.bottom.color, look.colors.ink, reason: 'and the outline wraps the band all round (B-034)');
+
+      // The band keeps the footer's top and stands its inset inside the
+      // footer's sides and bottom, so the outline shows on every side (B-034).
+      final footer = tester.getRect(find.byKey(_footerKey));
+      final bandRect = tester.getRect(find.byKey(_bandKey));
+      final inset = hostFrameFooterInsetPx * frameCase.scale;
+      expect(bandRect.top, moreOrLessEquals(footer.top, epsilon: _tolerance));
+      expect(bandRect.left - footer.left, moreOrLessEquals(inset, epsilon: _tolerance));
+      expect(footer.right - bandRect.right, moreOrLessEquals(inset, epsilon: _tolerance));
+      expect(footer.bottom - bandRect.bottom, moreOrLessEquals(inset, epsilon: _tolerance));
     });
   }
 

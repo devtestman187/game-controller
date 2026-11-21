@@ -199,7 +199,7 @@ void main() {
     expect(smallest * frameCase.scale, greaterThanOrEqualTo(_smallestTextFloorDp));
   });
 
-  testWidgets('640x360: the settings button stands on the footer band under its ink line', (tester) async {
+  testWidgets('640x360: the settings button stands on the footer band inside its ink outline', (tester) async {
     final frameCase = _cases.first;
     await _pumpPicker(tester, frameCase.device);
 
@@ -208,18 +208,20 @@ void main() {
     final band = tester.getRect(find.byKey(_bandKey));
     final settings = tester.getRect(find.byKey(_settingsKey));
     expect(view.label, HostText.puzzleSettings);
-    // The band's ink line is its top edge; the button is the look's height,
-    // centred in the rest of the band and right-aligned at the stage's edge.
+    // The band's outline is drawn inside its box on all four sides (B-034);
+    // the button is the look's height, centred in the room the outline leaves
+    // and right-aligned at the stage's edge.
     expect(settings.height, moreOrLessEquals(look.sizes.buttonHeight * frameCase.scale, epsilon: _tolerance));
     final bandTopPx = band.top / frameCase.scale;
+    final bandHeightPx = band.height / frameCase.scale;
     final buttonTopPx = settings.top / frameCase.scale;
     expect(
       buttonTopPx - bandTopPx,
       moreOrLessEquals(
-        (84 - 2 * look.sizes.outlineWidth - look.sizes.buttonHeight) / 2 + look.sizes.outlineWidth,
+        (bandHeightPx - 2 * look.sizes.outlineWidth - look.sizes.buttonHeight) / 2 + look.sizes.outlineWidth,
         epsilon: 1e-6,
       ),
-      reason: 'the button is centred between the band\'s ink line and the frame\'s bottom',
+      reason: 'the button is centred between the band\'s top ink line and its bottom outline',
     );
     expect(settings.right, moreOrLessEquals((960 - hostFrameGutterPx) * frameCase.scale, epsilon: 1e-6));
   });

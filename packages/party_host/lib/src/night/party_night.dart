@@ -118,6 +118,14 @@ class PartyNight extends Notifier<NightState?> {
   /// scoreboard's "End the party night?" Yes both do this, so the picker's card
   /// opens a fresh start card afterwards.
   void end() => state = null;
+
+  /// Drops a night the host never played (B-032): one whose round 1 was left
+  /// before any round was recorded leaves nothing behind, so the start card is
+  /// a fresh pick again. A night with a recorded round is kept.
+  void dropIfUnplayed() {
+    final night = state;
+    if (night != null && night.round == 0) state = null;
+  }
 }
 
 /// The night running on this host, or null: see [PartyNight].

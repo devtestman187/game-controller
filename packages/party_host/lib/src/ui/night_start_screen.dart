@@ -77,20 +77,27 @@ class _NightStartScreenState extends ConsumerState<NightStartScreen> {
   };
 
   /// Starts the night and its first round's Shape Race.
-  void _start() {
-    ref.read(partyNightProvider.notifier).start(length: _length, awards: _awards);
-    _open(const ShapeRaceScreen());
-  }
+  Future<void> _start() => _startNight(const ShapeRaceScreen());
 
   /// Starts the night and its first round, the Bumper Round: the Arena's
   /// waiting card follows, with one player or more (design section 2 N6, M14
   /// bugs B-020), as Shape Race's join screen does for two or more.
-  void _startBumperRound() {
-    ref.read(partyNightProvider.notifier).start(length: _length, awards: _awards);
-    _open(const GameScreen());
+  Future<void> _startBumperRound() => _startNight(const GameScreen());
+
+  /// Starts the night with [first] as its round 1. A host who comes back to
+  /// this card with no round recorded has left the night unplayed, so it is
+  /// dropped and the chips pick again (B-032); a night with a recorded round
+  /// keeps its length as it always did (M14 r5 12).
+  Future<void> _startNight(Widget first) async {
+    final night = ref.read(partyNightProvider.notifier);
+    night.start(length: _length, awards: _awards);
+    await _open(first);
+    night.dropIfUnplayed();
   }
 
-  void _open(Widget screen) => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => screen));
+  Future<void> _open(Widget screen) async {
+    await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => screen));
+  }
 
   @override
   Widget build(BuildContext context) {
