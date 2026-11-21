@@ -1,4 +1,5 @@
 import 'package:flutter/widgets.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:party_host/party_host.dart' as party;
 
 import '../ui/top_bar_metrics.dart';
@@ -20,6 +21,13 @@ import '../ui/top_bar_metrics.dart';
 /// 1349.2x540; 640x360: 0.57037, the frame 1122.1x540). The strip above the
 /// frame is filled with the look's background, so the sky the bar shows
 /// through it ends at a line that reads as the bar's rather than as a gap.
+///
+/// The frame's screens read no phone bar of their own: the strip above the
+/// frame is the bar's room, so `hostBarHeightProvider` is 0 inside the frame
+/// (M16 phonehost2 fstart). A screen still on the old `HostScreen` keeps that
+/// height above its title bar in frame px, and inside the frame the strip
+/// would otherwise be added a second time (84.84 device px at 852x393,
+/// wph-report question 2).
 class HostFrameGate extends StatelessWidget {
   const HostFrameGate({super.key, required this.child});
 
@@ -50,7 +58,10 @@ class HostFrameGate extends StatelessWidget {
                   : MediaQuery(
                       data: MediaQuery.of(context)
                           .copyWith(size: room, padding: EdgeInsets.zero, viewPadding: EdgeInsets.zero),
-                      child: party.HostFrame(child: child),
+                      child: ProviderScope(
+                        overrides: [party.hostBarHeightProvider.overrideWithValue(0)],
+                        child: party.HostFrame(child: child),
+                      ),
                     ),
             ),
           ],

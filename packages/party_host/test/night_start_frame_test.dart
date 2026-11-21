@@ -128,12 +128,13 @@ void main() {
     ) async {
       await _pumpNight(tester, frameCase.device);
 
-      final scrollable = find.descendant(of: find.byKey(_bodyKey), matching: find.byType(Scrollable));
-      expect(scrollable, findsOneWidget);
+      // The body has room for the card, so it holds no list at all: a host
+      // screen never scrolls (DESIGN section 1, rule 6), and the frame is now
+      // the only layout the apps draw the night start in (fstart).
       expect(
-        tester.state<ScrollableState>(scrollable).position.maxScrollExtent,
-        0,
-        reason: 'the body has room for the card, so the list never scrolls (DESIGN section 1, rule 6)',
+        find.descendant(of: find.byKey(_bodyKey), matching: find.byType(Scrollable)),
+        findsNothing,
+        reason: 'the body has room for the card, so it needs no scrollable (DESIGN section 1, rule 6)',
       );
       expect(tester.takeException(), isNull, reason: 'nothing overflows the frame');
 

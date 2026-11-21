@@ -111,7 +111,7 @@ class _NightStartScreenState extends ConsumerState<NightStartScreen> {
           ],
         ),
         body: LobbyHold(
-          child: _StartBody(
+          child: _StartColumn(
             awards: running?.awards ?? _awards,
             catVisits: catVisits,
             players: ref.watch(gamePlayersProvider),
@@ -129,19 +129,20 @@ class _NightStartScreenState extends ConsumerState<NightStartScreen> {
   }
 }
 
-/// The start card's body (design section 4, as the frame draws it): the three
+/// The start card's lines in one column (design section 4, as the frame draws
+/// it), with the pick-round line pushed to the body's bottom end: the three
 /// awards as one row of equal tiles, the cat's line when Chaos isn't off, the
 /// players who joined on one line, and the line naming the round the buttons
 /// pick.
 ///
-/// The column fills the body and scrolls only if it cannot: inside the frame it
-/// always fits (392 px of body against the design's ~290 px of content at 4 and
-/// 6 players), and the scroll is the design's unreachable safety net (DESIGN
-/// section 1, rule 6) for a screen drawn on a device smaller than the frame,
-/// which the apps have until they put [HostFrame] above the navigator.
-class _StartBody extends StatelessWidget {
-  const _StartBody({required this.awards, required this.catVisits, required this.players});
+/// The column fills the body and never scrolls (DESIGN section 1, rule 6): the
+/// frame's body has room for it at every size (392 px at the shortest, against
+/// 286 px of content at 4 and 6 players), and a screen that did not fit would
+/// be redesigned rather than scrolled.
+class _StartColumn extends StatelessWidget {
+  const _StartColumn({required this.awards, required this.catVisits, required this.players});
 
+  /// The three awards the night plays for.
   final List<NightAward> awards;
 
   /// Whether the cat may visit tonight, so the card says so (design section 4:
@@ -149,30 +150,6 @@ class _StartBody extends StatelessWidget {
   final bool catVisits;
 
   /// The players the host has joined, in their numbers' order.
-  final List<GamePlayer> players;
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) => SingleChildScrollView(
-        child: ConstrainedBox(
-          constraints: BoxConstraints(minHeight: constraints.maxHeight),
-          child: IntrinsicHeight(
-            child: _StartColumn(awards: awards, catVisits: catVisits, players: players),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// The start card's lines in one column, with the pick-round line pushed to the
-/// body's bottom end.
-class _StartColumn extends StatelessWidget {
-  const _StartColumn({required this.awards, required this.catVisits, required this.players});
-
-  final List<NightAward> awards;
-  final bool catVisits;
   final List<GamePlayer> players;
 
   @override

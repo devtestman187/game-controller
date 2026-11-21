@@ -29,10 +29,6 @@ bool lit(WidgetTester tester, String key) => tester
     .widget<party.HostCardFocus>(find.descendant(of: find.byKey(Key(key)), matching: find.byType(party.HostCardFocus)))
     .isLit;
 
-/// The frame's scale for [screen]'s picture, or 1 outside a frame.
-double frameScaleOf(WidgetTester tester, Type screen) =>
-    party.HostFrameInfo.maybeOf(tester.element(find.byType(screen)))?.scale ?? 1.0;
-
 /// Expects [finder]'s rect to be [expected] to within a rounding of the
 /// frame's transform: a host screen's device rect is its frame rect times the
 /// frame's scale, and the last bit can split (M16 phonehost2 wph).
@@ -49,13 +45,17 @@ void expectRect(WidgetTester tester, Finder finder, Rect expected) {
 /// labels, and its back arrow hid under the player's chip.
 ///
 /// The screens here are still on the old `HostScreen`, which keeps the phone
-/// bar's height above its title bar in frame px. Inside the host's frame (M16
-/// phonehost2 wph) the frame itself already starts under the bar, so both are
-/// added up: `topBarHeightPx` on the device plus `topBarHeightPx` of frame.
+/// bar's height above its title bar. Inside the host's frame (M16 phonehost2
+/// wph) the frame itself already starts under the bar, and the gate gives the
+/// frame's screens no bar of their own (fstart), so the title bar starts at the
+/// frame's top: `topBarHeightPx` on the device.
 void expectRoomBelowTheBar(WidgetTester tester, Type screen) {
-  final scale = frameScaleOf(tester, screen);
   final bar = tester.getRect(titleBarOf(screen));
-  expect(bar.top, closeTo(topBarHeightPx * (1 + scale), 1e-6), reason: 'the title bar starts below the phone bar');
+  expect(
+    bar.top,
+    closeTo(topBarHeightPx, 1e-6),
+    reason: 'the title bar starts at the frame\'s top, below the phone bar',
+  );
   for (final (name, part) in barParts()) {
     if (part.evaluate().isEmpty) continue;
     expect(bar.overlaps(tester.getRect(part)), isFalse, reason: 'the title bar meets $name');
@@ -92,10 +92,12 @@ void main() {
     final title = find.descendant(of: find.byType(party.ShapeRaceScreen), matching: find.text('Shape Race'));
     expect(tester.getRect(title).top, greaterThanOrEqualTo(topBarHeightPx), reason: 'the title is below the bar');
     // What the room costs the menus, in the frame's px: the frame's height,
-    // less the bar and the title bar the old screen keeps in it (m12 bug
-    // 1107f rule C's height cost). A size inside the frame is frame px; only
-    // its rect is drawn at the frame's scale.
-    expect(tester.getSize(find.byType(Scrollable).first).height, 540 - topBarHeightPx - kToolbarHeight);
+    // less the title bar the old screen keeps in it (m12 bug 1107f rule C's
+    // height cost). The frame starts under the bar and the gate gives its
+    // screens no bar of their own (fstart), so no inset is taken twice. A size
+    // inside the frame is frame px; only its rect is drawn at the frame's
+    // scale.
+    expect(tester.getSize(find.byType(Scrollable).first).height, 540 - kToolbarHeight);
 
     // The join screen, whose title ran into the bar's labels too.
     await tester.tap(find.byKey(const Key('random-easy')));
@@ -144,7 +146,7 @@ void main() {
     await tester.runAsync(host.dispose);
   });
 
-  testWidgets('the menus still on the old screen leave 12 at the top of their bodies', (tester) async {
+  testWidgets('the menus still on the old screen leave their 24 round the body inside the frame', (tester) async {
     await pumpHostApp(tester);
     final host = await enterHostMode(tester);
     // The picker is a frame screen now and uses none of the old menu's
@@ -157,7 +159,10 @@ void main() {
     final levels = tester.widget<ListView>(
       find.descendant(of: find.byType(party.ShapeRaceScreen), matching: find.byType(ListView)),
     );
-    expect(levels.padding, const EdgeInsets.fromLTRB(24, 12, 24, 24));
+    // Inside the frame no bar is above the list, so the menu trims nothing at
+    // its top (hostMenuPadding: 12 only where `hostBarHeightProvider` is not
+    // zero). The gate's strip is the bar's room (fstart).
+    expect(levels.padding, const EdgeInsets.all(party.hostMenuPaddingPx));
 
     await tester.runAsync(host.dispose);
   });

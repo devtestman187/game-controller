@@ -105,7 +105,10 @@ void main() {
     expect(find.byKey(const Key('faceButtons')), findsNothing);
     expect(find.byType(BarModes), findsOneWidget, reason: 'the join screen is outside the round too');
     expect(hostPhase(tester), party.RoundPhase.none);
-    expect(find.text('Tap a side to play; press A on a phone to join.'), findsOneWidget);
+    // Inside the frame no bar takes the join screen's room, so it lays out as
+    // the TV's does and keeps the keyboard hint beside the side hint (fstart:
+    // the gate's strip is the bar's room, `hostBarHeightProvider` is 0 there).
+    expect(find.textContaining('Tap a side to play; press A on a phone to join.'), findsOneWidget);
     await untilShown(tester, ownPlayerOn('left'), 'The own player on the left');
     await tester.tap(find.byKey(const Key('joinStart')));
     await untilShown(tester, find.byType(party.PuzzleScreen), 'The puzzle screen');
