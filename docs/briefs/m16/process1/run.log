@@ -1,0 +1,11 @@
+2026-11-21 13:36:45 start at c60ea5a7 on m16
+2026-11-21 13:36:45 run-base c60ea5a7a6f5a02f4d7b3f901347e7392ba49c4d
+2026-11-21 13:36:53 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-21 13:36:54 start looks-helper
+2026-11-21 13:37:19 start runner-lean
+2026-11-21 13:49:06 looks-helper finished: result 0 (31 turns, 9 min)
+2026-11-21 13:49:06 runner-lean finished: result 0 (48 turns, 3 min)
+2026-11-21 13:50:57 tests-first ok: packages/party_host/test/all_looks_support_test.dart fails on the old code
+2026-11-21 13:51:19 tests-first ok: packages/party_host/test/award_explanation_looks_test.dart fails on the old code
+2026-11-21 13:58:18 committed looks-helper: 3c2e7453 Add an all-looks pump helper and check the award popover in both looks
+2026-11-21 13:58:20 committed runner-lean: 215038bb Run jobs: skip wave review on a one-wave run, lint report lines
