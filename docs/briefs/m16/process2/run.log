@@ -7,3 +7,11 @@
 2026-11-21 14:56:44 p2-prompt finished: result 0 (38 turns, 2 min)
 2026-11-21 15:03:46 checks failed; fetching packages and trying once more
 2026-11-21 15:10:55 STOPPED: checks failed twice on the combined tree after p2-harness p2-prompt (see .dart_tool/run-jobs/docs_briefs_m16_process2/run-check.log); nothing of this wave is committed
+2026-11-21 15:12:55 HAND-FIX p2-harness: selftest.sh trap fix (a second TERM from timeout's process group interrupted cleanup), applied by hand after the combined check failed on its own interrupt test
+2026-11-21 15:12:55 HAND-FIX p2-prompt: tools/flash.sh edits and the notes in the two docs applied by hand (flash.sh is protected from workers); its test moved to job p2-ptest in wave 3
+2026-11-21 15:12:56 start at 923c053c on m16
+2026-11-21 15:13:07 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-21 15:13:07 resume p2-harness (applied by hand, not committed yet)
+2026-11-21 15:13:07 resume p2-prompt (applied by hand, not committed yet)
+2026-11-21 15:19:59 committed p2-harness: 6041b205 Add tools/selftest.sh and a tools check for shell self-tests
+2026-11-21 15:20:01 committed p2-prompt: f4ed1fcb Add the worker rules extract (45 lines) for the standing prompt
