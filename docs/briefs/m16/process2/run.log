@@ -15,3 +15,12 @@
 2026-11-21 15:13:07 resume p2-prompt (applied by hand, not committed yet)
 2026-11-21 15:19:59 committed p2-harness: 6041b205 Add tools/selftest.sh and a tools check for shell self-tests
 2026-11-21 15:20:01 committed p2-prompt: f4ed1fcb Add the worker rules extract (45 lines) for the standing prompt
+2026-11-21 15:20:03 start p2-mine
+2026-11-21 15:20:29 start p2-wait
+2026-11-21 15:23:54 start p2-stop
+2026-11-21 15:29:47 p2-mine finished: result 0 (64 turns, 9 min)
+2026-11-21 15:35:39 p2-wait finished: result 0 (94 turns, 15 min)
+2026-11-21 15:35:39 p2-stop finished: result 0 (51 turns, 6 min)
+2026-11-21 15:44:28 committed p2-mine: f1336bcd Add tools/mine.sh: format, analyze, touched tests and churn revert
+2026-11-21 15:44:30 committed p2-wait: 3ef5ded5 Add tools/wait-run.sh so a driver stops polling run.log
+2026-11-21 15:44:33 committed p2-stop: 83b7bddc Add tools/run-stop.sh: a STOP.md report at every runner stop
