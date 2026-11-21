@@ -24,8 +24,18 @@ void main() {
     expect(phone.body.fontSize, 15);
   });
 
+  test('the host frame\'s sizes are the design\'s: 40, 28, 40 and 22, with 20 for small text', () {
+    final frame = ToyType.frame;
+    expect(frame.title.fontSize, 40);
+    expect(frame.button.fontSize, 28);
+    expect(frame.clock.fontSize, 40);
+    expect(frame.body.fontSize, 22);
+    expect(frame.clock, same(frame.title));
+    expect(ToyType.frameSmall.fontSize, 20);
+  });
+
   test('titles, buttons and the clock are Fredoka 600 in the package\'s own font', () {
-    for (final type in [ToyType.tv, ToyType.phone]) {
+    for (final type in [ToyType.tv, ToyType.phone, ToyType.frame]) {
       for (final style in [type.title, type.button, type.clock]) {
         expect(style.fontFamily, 'packages/toy_look/Fredoka');
         expect(style.fontWeight, FontWeight.w600);
@@ -35,18 +45,25 @@ void main() {
   });
 
   test('body text is Nunito 700 in the package\'s own font', () {
-    for (final type in [ToyType.tv, ToyType.phone]) {
+    for (final type in [ToyType.tv, ToyType.phone, ToyType.frame]) {
       expect(type.body.fontFamily, 'packages/toy_look/Nunito');
       expect(type.body.fontWeight, FontWeight.w700);
       expect(type.body.fontVariations, _w700);
     }
   });
 
+  test('the frame\'s small text is body text at the 20 px floor', () {
+    expect(ToyType.frameSmall.fontFamily, 'packages/toy_look/Nunito');
+    expect(ToyType.frameSmall.fontWeight, FontWeight.w700);
+    expect(ToyType.frameSmall.fontVariations, _w700);
+  });
+
   test('the type carries no colour: the theme and the widgets add it', () {
-    for (final type in [ToyType.tv, ToyType.phone]) {
+    for (final type in [ToyType.tv, ToyType.phone, ToyType.frame]) {
       for (final style in [type.title, type.button, type.clock, type.body]) {
         expect(style.color, isNull);
       }
     }
+    expect(ToyType.frameSmall.color, isNull);
   });
 }

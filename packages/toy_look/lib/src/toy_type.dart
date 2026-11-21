@@ -17,6 +17,16 @@ const _titlePhonePx = 32.0;
 const _buttonPhonePx = 18.0;
 const _bodyPhonePx = 15.0;
 
+/// The host's frame sizes (M16, DESIGN section 5): one set for every host
+/// device, because the frame scales the whole screen to the device.
+const _titleFramePx = 40.0;
+const _buttonFramePx = 28.0;
+const _bodyFramePx = 22.0;
+
+/// The frame's smallest size, the design's floor of 20 frame px (DESIGN
+/// section 1, rule 3): captions, chips and the details on a card.
+const _smallFramePx = 20.0;
+
 /// The `wght` axis values: Fredoka is asked for 600 and Nunito for 700.
 const _semibold = 600.0;
 const _bold = 700.0;
@@ -75,9 +85,46 @@ const _bodyPhone = TextStyle(
   fontVariations: [FontVariation('wght', _bold)],
 );
 
+/// Fredoka 600 at the host frame's title size: the titles and the clock.
+const _titleFrame = TextStyle(
+  fontFamily: _fredoka,
+  package: _package,
+  fontSize: _titleFramePx,
+  fontWeight: FontWeight.w600,
+  fontVariations: [FontVariation('wght', _semibold)],
+);
+
+/// Fredoka 600 at the host frame's button size.
+const _buttonFrame = TextStyle(
+  fontFamily: _fredoka,
+  package: _package,
+  fontSize: _buttonFramePx,
+  fontWeight: FontWeight.w600,
+  fontVariations: [FontVariation('wght', _semibold)],
+);
+
+/// Nunito 700 at the host frame's body size.
+const _bodyFrame = TextStyle(
+  fontFamily: _nunito,
+  package: _package,
+  fontSize: _bodyFramePx,
+  fontWeight: FontWeight.w700,
+  fontVariations: [FontVariation('wght', _bold)],
+);
+
+/// Nunito 700 at the host frame's smallest size, the 20 px floor.
+const _smallFrame = TextStyle(
+  fontFamily: _nunito,
+  package: _package,
+  fontSize: _smallFramePx,
+  fontWeight: FontWeight.w700,
+  fontVariations: [FontVariation('wght', _bold)],
+);
+
 /// The look's type (M13, docs/design/look-and-sound.md section 3): Fredoka 600
 /// for titles, buttons and the clock, Nunito 700 for body text, at a size for
-/// reading from 3 metres ([tv]) or at arm's length ([phone]).
+/// reading from 3 metres ([tv]), at arm's length ([phone]) or drawn in the
+/// host's 960x540 frame ([frame], M16).
 ///
 /// The two fonts travel with this package (design D7), so a style names it as
 /// `package: 'toy_look'`. A variable font picks its weight from its axis on
@@ -96,6 +143,17 @@ final class ToyType {
   /// A phone's sizes: Fredoka 32 for titles and the clock, 18 for buttons,
   /// Nunito 15 for body text.
   static const phone = ToyType._(title: _titlePhone, button: _buttonPhone, clock: _titlePhone, body: _bodyPhone);
+
+  /// The host's sizes inside its frame (M16, DESIGN section 5): Fredoka 40 for
+  /// titles and the clock, 28 for buttons, Nunito 22 for body text. The frame
+  /// scales the whole screen to the device, so one set serves every host, the
+  /// TV included.
+  static const frame = ToyType._(title: _titleFrame, button: _buttonFrame, clock: _titleFrame, body: _bodyFrame);
+
+  /// The frame's smallest size, the design's floor of 20 px (DESIGN section 1,
+  /// rule 3): captions, chips and the details on a card. It sits beside
+  /// [frame] rather than in every set because only the frame has a floor.
+  static const frameSmall = _smallFrame;
 
   /// A screen's title and the finished card's heading.
   final TextStyle title;
