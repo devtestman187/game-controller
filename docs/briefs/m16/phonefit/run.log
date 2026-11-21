@@ -9,3 +9,4 @@
 2026-11-20 17:55:38 tests-first: packages/party_host/test/phone_fit_test.dart passes on the old code, exempt by its brief
 2026-11-20 18:01:57 committed pf1: 289de18b Add a phone-fit measurement test for the night screens
 2026-11-20 18:01:59 committed pf2: 8a26cbdb m16 phonefit: capture the joined phone's round strip as a PNG
+2026-11-20 18:08:22 reviewed wave1: 5 finding(s)
