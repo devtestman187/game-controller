@@ -27,3 +27,5 @@
 2026-11-21 08:43:06 committed night: 4217bdad Size the night footer by its labels and re-flow six start names
 2026-11-21 08:43:09 committed teams: 1b0ae28d Fit the puzzle results' controls by their labels
 2026-11-21 08:48:38 reviewed wave1: 13 finding(s)
+2026-11-21 08:48:39 start the run's review
+2026-11-21 08:53:56 DONE: every job is committed. Claude reads the Summary of docs/briefs/m16/phonehost3/REVIEW.md, verifies its findings and writes one fix brief
