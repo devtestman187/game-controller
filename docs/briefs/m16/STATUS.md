@@ -34,6 +34,8 @@ docs/agent-workflow.md and docs/HANDOFF.md §10. Session refinements to keep:
 
 **Resume here (phonehost2, Nov 21):** the phone-host layout is built and wired: night start, scoreboard, final scores, reveal, Arena results, puzzle results, picker and join screen are HostFrameScreen; the TV wears HostFrame at the root, the phone host inside HostFrameGate below the 52 px bar; matrix (80 cases) and TV ring test green. Open for the owner / a device: (1) at 640x360 the phone host scales 0.570 (bar), so 20 frame px = 11.4 dp, not 13.3; (2) in-game board pad clearance is wrong by the frame scale (wph-report); (3) "Bumper Round" and "Change teams" footer labels ellipsise, six-player night start names get 84 px; (4) join seats stay 2 a side; (5) puzzle results answers Q2-Q5 in s6b2.md. Details: `docs/briefs/m16/phonehost2/`.
 
+**Next (Nov 21, stopped on the owner's word):** waiting on the owner's choice for (1): let the phone host frame overlap the 52 px bar, or raise the 20 px frame floor. Then one fix batch: (1) as chosen, (2) pad clearance, (3) clipped labels; then device checks (pad clearance, notch, reveal crown at 640x360, join hint pill, 13.3 dp on a real small phone). Nothing pushed since 56259780; push only on the owner's word. Batch lessons: split jobs over 120 turns into build + wrap phases; list `phone` and controller_app tests in briefs that touch the phone app; run the suite once before writing `allow:`.
+
 - **Paused → resolved (Nov 20).** The host/commentator direction has settled: a dedicated host
   character **Thumby** (see `docs/briefs/m17/STATUS.md` and `docs/briefs/m17/ux-review/PROPOSAL.md`),
   layered on top of M16 item 6 (end-of-night awards). Item 5 (nickname + colour + accessory) and
