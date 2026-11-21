@@ -1,7 +1,7 @@
 ---
 name: thumb-batch
 description: Runs one whole flash-worker batch alone (briefs, runner, repairs, review wrap-up, check, tracker, commit). Give it the milestone worktree, the batch folder name, and the job list or bug ids with the owner's decisions quoted. Stops and reports on design questions; never pushes, tags or builds.
-tools: Bash, Read, Write, Edit, Glob, Grep, Artifact
+tools: Bash, Read, Write, Edit, Glob, Grep, Artifact, ArtifactData, ToolSearch
 model: sonnet
 ---
 
