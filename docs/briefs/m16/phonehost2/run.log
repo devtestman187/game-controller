@@ -68,3 +68,16 @@
 2026-11-21 02:42:38 committed wph: 57b32111 Draw the phone host's screens in HostFrame below the bar
 2026-11-21 02:42:40 committed fA: b07f1672 Give the night score card the stage width and test it at five sizes
 2026-11-21 02:42:43 committed fB: 36b7483b The reveal's tie names shrink and split in two columns; the band pads evenly
+2026-11-21 02:42:45 start s6b2
+2026-11-21 02:43:11 start fstart
+2026-11-21 02:43:37 start s9t
+2026-11-21 03:08:22 s6b2 finished: result 4 (123 turns, 21 min)
+2026-11-21 03:08:23 s6b2: dropped generated churn outside its list: site/shots/dpad.png site/shots/join.png site/shots/menus.png site/shots/results.png site/shots/sticks.png site/shots/tilt.png 
+2026-11-21 03:10:40 fstart finished: result 4 (159 turns, 23 min)
+2026-11-21 03:10:42 fstart: dropped generated churn outside its list: site/shots/dpad.png site/shots/join.png site/shots/menus.png site/shots/results.png site/shots/sticks.png site/shots/tilt.png 
+2026-11-21 03:10:42 s9t finished: result 0 (90 turns, 14 min)
+2026-11-21 03:12:35 tests-first ok: controller_app/test/host_bar_zero_in_frame_test.dart fails on the old code
+2026-11-21 03:13:04 tests-first ok: packages/party_host/test/night_start_noscroll_test.dart fails on the old code
+2026-11-21 03:13:30 tests-first: tv_test_app/test/tv_focus_ring_frame_test.dart passes on the old code, exempt by its brief
+2026-11-21 03:20:01 checks failed; fetching packages and trying once more
+2026-11-21 03:26:39 STOPPED: checks failed twice on the combined tree after s6b2 fstart s9t (see .dart_tool/run-jobs/docs_briefs_m16_phonehost2/run-check.log); nothing of this wave is committed
