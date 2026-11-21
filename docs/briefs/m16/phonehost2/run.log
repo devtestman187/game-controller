@@ -23,3 +23,5 @@
 2026-11-21 00:22:15 committed s6b: 8cd1455d Floor a badge's number at 20 frame px inside the host frame
 2026-11-21 00:22:17 reviewed wave1: 7 finding(s)
 2026-11-21 00:33:31 reviewed wave2: 9 finding(s)
+2026-11-21 00:33:32 start the run's review
+2026-11-21 00:37:01 DONE: every job is committed. Claude reads the Summary of docs/briefs/m16/phonehost2/REVIEW.md, verifies its findings and writes one fix brief
