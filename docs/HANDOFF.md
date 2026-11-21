@@ -2,7 +2,7 @@
 
 You are taking over development of Thumb Party directly, as the only developer. The owner decides what to build and when to ship; you write the code, prove it works, and keep quality at least where it is now. This file is the entry point. It links to the long documents instead of copying them; read the ones marked **must read** before your first change.
 
-**Which harness are you in?** This project is worked on from two, and exactly one rule differs between them. In **Claude Code** the helper framework still stands: use `tools/flash.sh`, `tools/run-jobs.sh`, briefs, `docs/flash-framework.md`, `docs/flash-digest.md` and `.claude/agents/` as those documents say. In **DeepSeek Harness** that framework is not used — read **section 10** before your first change. Everything else in this file (sections 1 to 9: machine setup, coding rules, test rules, git rules, owner rules, releasing) applies in both. Old briefs and reports under `docs/briefs/` are a useful record of why things were done, whichever you are.
+**Which harness are you in?** This project is worked on from two, and exactly one rule differs between them. In **Claude Code** the helper framework still stands (and section 11 says how to keep Claude usage low): use `tools/flash.sh`, `tools/run-jobs.sh`, briefs, `docs/flash-framework.md`, `docs/flash-digest.md` and `.claude/agents/` as those documents say. In **DeepSeek Harness** that framework is not used — read **section 10** before your first change. Everything else in this file (sections 1 to 9: machine setup, coding rules, test rules, git rules, owner rules, releasing) applies in both. Old briefs and reports under `docs/briefs/` are a useful record of why things were done, whichever you are.
 
 ## 1. What the project is
 
@@ -164,7 +164,7 @@ Privacy (hard rules; background in `docs/design/sentry-consent.md`):
 
 ## 6. Bug workflow
 
-- Bugs live in the owner's tracker, a claude.ai artifact (rows `B-001`, ...; statuses New, Triaged, In fix, Fixed). Your harness probably cannot read it, so **the owner will paste or relay bugs**. Ask for the row text if you only get an id.
+- Bugs live in the owner's tracker, a claude.ai artifact (rows `B-001`, ...; statuses New, Triaged, In fix, Fixed). Your harness probably cannot read it, so **the owner will paste or relay bugs**. Ask for the row text if you only get an id. In Claude Code, agents read and update the rows directly with the ArtifactData tool (collection `bugs`), as `docs/flash-digest.md` "Tracker" says.
 - Keep a repo-side record: a dated line in the current milestone's `STATUS.md` ("Resume here": bug id, cause, fix commit, test, status) and any leftover or deferred item in `docs/code-health.md`. In your reply give the owner a note to paste into the tracker row (append to the row, never overwrite).
 - Order of work: find the cause by reading the code (or reproducing); write the failing test; prove it fails on old code; fix; run the test, then the full check; self-review; commit; report with evidence and an honest status.
 - **Gameplay or map changes are proposals to the owner**, never done unasked: write what you would change, why and the effect, then wait. **Design questions go to the owner too** (what shows where, which stats to display): write the question and the options, and meanwhile do other work.
@@ -221,3 +221,17 @@ Read this section **only** when the session runs in DeepSeek Harness (DSH). A Cl
 - **Model routes on the owner's machine:** only `deepseek-account/deepseek-flash` (DeepSeek-V4.1-Flash) is authorized. Do not assume a stronger route exists; if a task seems to need one, say so and let the owner decide.
 - **Report like the other line does:** what changed, the evidence (test output, `tools/check.sh`, `tools/review.sh`), the honest status, and what needs a device check. Anything that depends on a real device is "Fixed, unverified: needs device check", never plain "Fixed".
 - **Do not run two full checks at once.** If a check dies early on an environment fault (for example a pub-cache entry mid-write), stop the run, fix the cause, then run once.
+
+## 11. Claude Code sessions: how to work (this section applies there only)
+
+Written Nov 21, 2026 with the owner. Claude usage is the owner's scarce resource; flash-worker (DeepSeek) is cheap and does not count against the Claude plan. Work so that Claude spends tokens only on decisions and reviews.
+
+- **Roles.** The main Claude session gives short instructions, reads short agent reports, reviews findings and asks the owner for decisions. It does not read long documents, logs or diffs, and does not write code unless that is clearly cheapest.
+- **Low-usage mode is standing.** flash-worker does all code through `tools/run-jobs.sh`. A Sonnet agent drives each batch (`.claude/agents/thumb-batch.md`: briefs, runner, repairs, wrap-up, one report of at most 15 lines). Haiku does mechanical work (running tools, collecting figures, git checks). No Opus subagents. If the project agents do not load (session started outside the repo), launch a general-purpose Sonnet agent told to read and follow the agent file.
+- **Keep every wait under 5 minutes.** The prompt cache lasts 5 minutes. An agent that waits longer between calls re-sends its whole context on the next call. On Nov 21 the 9-minute wait loops of the batch drivers were 85-97% of their cost (phonehost2: 9.7M of 10.0M cache-write tokens over 7 hours). Drivers now wait in foreground Bash calls of 4.5 minutes (`seq 9` x 30 s, `timeout: 300000`). Any new agent that polls must do the same.
+- **Keep jobs short.** Each flash job at most 120 turns; split longer work into build and wrap-up phases. Briefs about 350 words. The runner does not enforce the cap, so size jobs when writing briefs (a job like phonehost3 `night`, 127 turns, should be two).
+- **Keep agent contexts small.** A driver's cost per call grows with its context; long batches (7 h, ~280k context) are expensive even with a warm cache. Prefer batches of about 2 hours; start a fresh driver for a new batch rather than continuing an old one.
+- **Main session context.** Keep it near 100-120k tokens; at a natural break, save notes and start a fresh session or compact.
+- **After any batch over an hour,** a cheap agent checks run.log turns and minutes, stops and hand-fixes, and proposes improvements; the owner approves before anything changes.
+- **Never without the owner's word:** push, tag, build, promote TestFlight testers, or start development. Stop when the owner says stop.
+- **Measure usage** from the Claude Code transcripts (`~/.claude/projects/**/*.jsonl`, `message.usage` per call, deduplicated by message id; subagents are under `subagents/`). Look for cache-write spikes after gaps over 5 minutes. flash-worker's own figures are in `~/.thumbparty/flash-usage.tsv`.
