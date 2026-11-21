@@ -97,3 +97,4 @@
 2026-11-21 04:12:03 committed fstart: 9d2921ec Drop the night start's scroll net; zero the bar inside the frame
 2026-11-21 04:12:06 committed s9t: 361c2b9a Test the TV focus ring's device px at three sizes
 2026-11-21 04:12:07 STOPPED: jobs that failed or need applying by hand: s6b2:4 (their logs: docs/briefs/m16/phonehost2/flash-<job>.log)
+2026-11-21 04:21:41 HAND-FIX s6b2: the runner stopped on result 4 for generated site/shots churn only (the job's own result was fine); copied the ten allowed files from the kept worktree, tests-first proved by hand on a temporary checkout of HEAD (puzzle_results_layout_test fails there), tools/review.sh 0 fail, full tools/check.sh all passed
