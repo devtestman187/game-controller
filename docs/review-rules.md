@@ -18,6 +18,7 @@ Answer each in the report, one line, with the test that shows it. "Not affected"
 3. **How a new state combines with the others.** For anything that pauses, hides, waits or blocks input: how it combines with the pause menu, the host away, a player away, "Get ready", a dropped link, the results, and leaving. Name the pairs that can happen together and test them. Exactly one owner decides each state (today: `Pausable` for a round's pause and phase).
 4. **Stay in the job's folder.** Write only inside the job's own folder, and only the files in `allow:`. *(Found: a plan written to `E:\game-controller-m12-jobs`.)*
 5. **Stop rather than overstep.** A needed file outside `allow:`, a brief that contradicts the code, a rule that can't be met: stop and say which and why. *(Done well in s10b.)*
+6. **Every look.** UI sizes are tested under every look: the menu look and the TV look (`toyTvProvider.overrideWithValue(true)`, use the all-looks pump helper in `packages/party_host/test/support/all_looks.dart`). Content that holds a look-sized widget (a 48 px menu button, a 64 px TV one) gets no fixed pixel height. *(Found: B-033's award popover was sized with the menu's button and clipped the TV's.)*
 
 ## B. Game code: what a review looks for
 The guidelines' §5 rules (fixed step, determinism, untrusted input, per-frame cost, snapshots, events, dispose) plus:
