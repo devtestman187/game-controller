@@ -43,3 +43,5 @@
 2026-11-21 09:17:37 f1: dropped generated churn outside its list: site/shots/dpad.png site/shots/join.png site/shots/menus.png site/shots/results.png site/shots/sticks.png site/shots/tilt.png 
 2026-11-21 09:19:37 tests-first ok: controller_app/test/pad_clearance_screen_test.dart fails on the old code
 2026-11-21 09:26:31 committed f1: 4ed8c34e Fix the framed board's pad clearance, 52 device px too low
+2026-11-21 09:35:37 reviewed wave2: 5 finding(s)
+2026-11-21 09:35:37 DONE: every job is committed. Claude reads the Summary of docs/briefs/m16/phonehost3/REVIEW.md, verifies its findings and writes one fix brief
