@@ -1,0 +1,2692 @@
+[
+  {
+    "screen": "night-start",
+    "size": "640x360",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 250.0,
+        "viewport": 484.0
+      }
+    ],
+    "clipped": [],
+    "texts": 23,
+    "smallestFontDp": 10.0,
+    "label24Dp": [
+      16.0
+    ],
+    "wayOn": {
+      "key": "nightShapeRace",
+      "onScreen": false,
+      "top": 634.0,
+      "bottom": 682.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "night-start-640x360",
+    "device": "640x360",
+    "frame": "960x540",
+    "layout": "960x540",
+    "scale": 0.6667,
+    "thumby": false,
+    "scrollExtent": 250.0,
+    "contentHeight": 734.0,
+    "fitsNoScroll": false,
+    "dominant": "#fff6e3",
+    "unusedPct": 60.5
+  },
+  {
+    "screen": "night-start",
+    "size": "640x360",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 310.0,
+        "viewport": 424.0
+      }
+    ],
+    "clipped": [],
+    "texts": 23,
+    "smallestFontDp": 10.0,
+    "label24Dp": [
+      16.0
+    ],
+    "wayOn": {
+      "key": "nightShapeRace",
+      "onScreen": false,
+      "top": 634.0,
+      "bottom": 682.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "night-start-640x360-thumby",
+    "device": "640x360",
+    "frame": "960x540",
+    "layout": "960x480",
+    "scale": 0.6667,
+    "thumby": true,
+    "scrollExtent": 310.0,
+    "contentHeight": 734.0,
+    "fitsNoScroll": false,
+    "dominant": "#fff6e3",
+    "unusedPct": 57.1
+  },
+  {
+    "screen": "night-scoreboard",
+    "size": "640x360",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 0.0,
+        "viewport": 484.0
+      }
+    ],
+    "clipped": [],
+    "texts": 27,
+    "smallestFontDp": 12.0,
+    "label24Dp": [
+      16.0
+    ],
+    "wayOn": {
+      "key": "nightShapeRace",
+      "onScreen": true,
+      "top": 387.0,
+      "bottom": 435.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "night-scoreboard-640x360",
+    "device": "640x360",
+    "frame": "960x540",
+    "layout": "960x540",
+    "scale": 0.6667,
+    "thumby": false,
+    "scrollExtent": 0.0,
+    "contentHeight": 484.0,
+    "fitsNoScroll": true,
+    "dominant": "#fff6e3",
+    "unusedPct": 56.3
+  },
+  {
+    "screen": "night-scoreboard",
+    "size": "640x360",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 55.0,
+        "viewport": 424.0
+      }
+    ],
+    "clipped": [],
+    "texts": 27,
+    "smallestFontDp": 12.0,
+    "label24Dp": [
+      16.0
+    ],
+    "wayOn": {
+      "key": "nightShapeRace",
+      "onScreen": true,
+      "top": 387.0,
+      "bottom": 435.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "night-scoreboard-640x360-thumby",
+    "device": "640x360",
+    "frame": "960x540",
+    "layout": "960x480",
+    "scale": 0.6667,
+    "thumby": true,
+    "scrollExtent": 55.0,
+    "contentHeight": 479.0,
+    "fitsNoScroll": false,
+    "dominant": "#fff6e3",
+    "unusedPct": 59.3
+  },
+  {
+    "screen": "night-final",
+    "size": "640x360",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 0.0,
+        "viewport": 484.0
+      }
+    ],
+    "clipped": [],
+    "texts": 25,
+    "smallestFontDp": 12.0,
+    "label24Dp": [
+      16.0
+    ],
+    "wayOn": {
+      "key": "nightBackToGames",
+      "onScreen": true,
+      "top": 387.0,
+      "bottom": 435.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "night-final-640x360",
+    "device": "640x360",
+    "frame": "960x540",
+    "layout": "960x540",
+    "scale": 0.6667,
+    "thumby": false,
+    "scrollExtent": 0.0,
+    "contentHeight": 484.0,
+    "fitsNoScroll": true,
+    "dominant": "#fff6e3",
+    "unusedPct": 22.3
+  },
+  {
+    "screen": "night-final",
+    "size": "640x360",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 0.0,
+        "viewport": 424.0
+      }
+    ],
+    "clipped": [],
+    "texts": 25,
+    "smallestFontDp": 12.0,
+    "label24Dp": [
+      16.0
+    ],
+    "wayOn": {
+      "key": "nightBackToGames",
+      "onScreen": true,
+      "top": 387.0,
+      "bottom": 435.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "night-final-640x360-thumby",
+    "device": "640x360",
+    "frame": "960x540",
+    "layout": "960x480",
+    "scale": 0.6667,
+    "thumby": true,
+    "scrollExtent": 0.0,
+    "contentHeight": 424.0,
+    "fitsNoScroll": true,
+    "dominant": "#fff6e3",
+    "unusedPct": 25.1
+  },
+  {
+    "screen": "night-reveal",
+    "size": "640x360",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 0.0,
+        "viewport": 319.0
+      }
+    ],
+    "clipped": [],
+    "texts": 8,
+    "smallestFontDp": 9.0,
+    "label24Dp": [],
+    "wayOn": null,
+    "scalesAwayFromOne": [],
+    "case": "night-reveal-640x360",
+    "device": "640x360",
+    "frame": "960x540",
+    "layout": "960x540",
+    "scale": 0.6667,
+    "thumby": false,
+    "scrollExtent": 0.0,
+    "contentHeight": 319.0,
+    "fitsNoScroll": true,
+    "dominant": "#fff6e3",
+    "unusedPct": 13.2
+  },
+  {
+    "screen": "night-reveal",
+    "size": "640x360",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 0.0,
+        "viewport": 319.0
+      }
+    ],
+    "clipped": [],
+    "texts": 8,
+    "smallestFontDp": 9.0,
+    "label24Dp": [],
+    "wayOn": null,
+    "scalesAwayFromOne": [],
+    "case": "night-reveal-640x360-thumby",
+    "device": "640x360",
+    "frame": "960x540",
+    "layout": "960x480",
+    "scale": 0.6667,
+    "thumby": true,
+    "scrollExtent": 0.0,
+    "contentHeight": 319.0,
+    "fitsNoScroll": true,
+    "dominant": "#fff6e3",
+    "unusedPct": 14.9
+  },
+  {
+    "screen": "arena-results",
+    "size": "640x360",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 0.0,
+        "viewport": 431.0
+      }
+    ],
+    "clipped": [],
+    "texts": 19,
+    "smallestFontDp": 12.0,
+    "label24Dp": [],
+    "wayOn": {
+      "key": "arenaAgain",
+      "onScreen": true,
+      "top": 357.0,
+      "bottom": 405.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "arena-results-640x360",
+    "device": "640x360",
+    "frame": "960x540",
+    "layout": "960x540",
+    "scale": 0.6667,
+    "thumby": false,
+    "scrollExtent": 0.0,
+    "contentHeight": 431.0,
+    "fitsNoScroll": true,
+    "dominant": "#fff6e3",
+    "unusedPct": 29.6
+  },
+  {
+    "screen": "arena-results",
+    "size": "640x360",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 0.0,
+        "viewport": 431.0
+      }
+    ],
+    "clipped": [],
+    "texts": 19,
+    "smallestFontDp": 12.0,
+    "label24Dp": [],
+    "wayOn": {
+      "key": "arenaAgain",
+      "onScreen": true,
+      "top": 327.0,
+      "bottom": 375.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "arena-results-640x360-thumby",
+    "device": "640x360",
+    "frame": "960x540",
+    "layout": "960x480",
+    "scale": 0.6667,
+    "thumby": true,
+    "scrollExtent": 0.0,
+    "contentHeight": 431.0,
+    "fitsNoScroll": true,
+    "dominant": "#fff6e3",
+    "unusedPct": 33.3
+  },
+  {
+    "screen": "puzzle-results",
+    "size": "640x360",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 0.0,
+        "viewport": 446.0
+      }
+    ],
+    "clipped": [],
+    "texts": 19,
+    "smallestFontDp": 9.0,
+    "label24Dp": [],
+    "wayOn": {
+      "key": "nextPuzzle",
+      "onScreen": true,
+      "top": 352.0,
+      "bottom": 395.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "puzzle-results-640x360",
+    "device": "640x360",
+    "frame": "960x540",
+    "layout": "960x540",
+    "scale": 0.6667,
+    "thumby": false,
+    "scrollExtent": 0.0,
+    "contentHeight": 446.0,
+    "fitsNoScroll": true,
+    "dominant": "#fff6e3",
+    "unusedPct": 43.8
+  },
+  {
+    "screen": "puzzle-results",
+    "size": "640x360",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 0.0,
+        "viewport": 446.0
+      }
+    ],
+    "clipped": [],
+    "texts": 19,
+    "smallestFontDp": 9.0,
+    "label24Dp": [],
+    "wayOn": {
+      "key": "nextPuzzle",
+      "onScreen": true,
+      "top": 322.0,
+      "bottom": 365.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "puzzle-results-640x360-thumby",
+    "device": "640x360",
+    "frame": "960x540",
+    "layout": "960x480",
+    "scale": 0.6667,
+    "thumby": true,
+    "scrollExtent": 0.0,
+    "contentHeight": 446.0,
+    "fitsNoScroll": true,
+    "dominant": "#fff6e3",
+    "unusedPct": 49.3
+  },
+  {
+    "screen": "night-scoreboard-6p",
+    "size": "640x360",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 107.0,
+        "viewport": 484.0
+      }
+    ],
+    "clipped": [],
+    "texts": 37,
+    "smallestFontDp": 12.0,
+    "label24Dp": [
+      16.0
+    ],
+    "wayOn": {
+      "key": "nightShapeRace",
+      "onScreen": false,
+      "top": 499.0,
+      "bottom": 547.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "night-scoreboard-6p-640x360",
+    "device": "640x360",
+    "frame": "960x540",
+    "layout": "960x540",
+    "scale": 0.6667,
+    "thumby": false,
+    "scrollExtent": 107.0,
+    "contentHeight": 591.0,
+    "fitsNoScroll": false,
+    "dominant": "#fff6e3",
+    "unusedPct": 65.4
+  },
+  {
+    "screen": "night-scoreboard-6p",
+    "size": "640x360",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 167.0,
+        "viewport": 424.0
+      }
+    ],
+    "clipped": [],
+    "texts": 37,
+    "smallestFontDp": 12.0,
+    "label24Dp": [
+      16.0
+    ],
+    "wayOn": {
+      "key": "nightShapeRace",
+      "onScreen": false,
+      "top": 499.0,
+      "bottom": 547.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "night-scoreboard-6p-640x360-thumby",
+    "device": "640x360",
+    "frame": "960x540",
+    "layout": "960x480",
+    "scale": 0.6667,
+    "thumby": true,
+    "scrollExtent": 167.0,
+    "contentHeight": 591.0,
+    "fitsNoScroll": false,
+    "dominant": "#fff6e3",
+    "unusedPct": 66.3
+  },
+  {
+    "screen": "night-final-6p",
+    "size": "640x360",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 47.0,
+        "viewport": 484.0
+      }
+    ],
+    "clipped": [],
+    "texts": 35,
+    "smallestFontDp": 12.0,
+    "label24Dp": [
+      16.0
+    ],
+    "wayOn": {
+      "key": "nightBackToGames",
+      "onScreen": false,
+      "top": 499.0,
+      "bottom": 547.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "night-final-6p-640x360",
+    "device": "640x360",
+    "frame": "960x540",
+    "layout": "960x540",
+    "scale": 0.6667,
+    "thumby": false,
+    "scrollExtent": 47.0,
+    "contentHeight": 531.0,
+    "fitsNoScroll": false,
+    "dominant": "#fff6e3",
+    "unusedPct": 29.3
+  },
+  {
+    "screen": "night-final-6p",
+    "size": "640x360",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 107.0,
+        "viewport": 424.0
+      }
+    ],
+    "clipped": [],
+    "texts": 35,
+    "smallestFontDp": 12.0,
+    "label24Dp": [
+      16.0
+    ],
+    "wayOn": {
+      "key": "nightBackToGames",
+      "onScreen": false,
+      "top": 499.0,
+      "bottom": 547.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "night-final-6p-640x360-thumby",
+    "device": "640x360",
+    "frame": "960x540",
+    "layout": "960x480",
+    "scale": 0.6667,
+    "thumby": true,
+    "scrollExtent": 107.0,
+    "contentHeight": 531.0,
+    "fitsNoScroll": false,
+    "dominant": "#fff6e3",
+    "unusedPct": 29.2
+  },
+  {
+    "screen": "night-start",
+    "size": "852x393",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 250.0,
+        "viewport": 484.0
+      }
+    ],
+    "clipped": [],
+    "texts": 23,
+    "smallestFontDp": 10.917,
+    "label24Dp": [
+      17.467
+    ],
+    "wayOn": {
+      "key": "nightShapeRace",
+      "onScreen": false,
+      "top": 634.0,
+      "bottom": 682.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "night-start-852x393",
+    "device": "852x393",
+    "frame": "1171x540",
+    "layout": "1171x540",
+    "scale": 0.7278,
+    "thumby": false,
+    "scrollExtent": 250.0,
+    "contentHeight": 734.0,
+    "fitsNoScroll": false,
+    "dominant": "#fff6e3",
+    "unusedPct": 53.1
+  },
+  {
+    "screen": "night-start",
+    "size": "852x393",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 310.0,
+        "viewport": 424.0
+      }
+    ],
+    "clipped": [],
+    "texts": 23,
+    "smallestFontDp": 10.917,
+    "label24Dp": [
+      17.467
+    ],
+    "wayOn": {
+      "key": "nightShapeRace",
+      "onScreen": false,
+      "top": 634.0,
+      "bottom": 682.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "night-start-852x393-thumby",
+    "device": "852x393",
+    "frame": "1171x540",
+    "layout": "1171x480",
+    "scale": 0.7278,
+    "thumby": true,
+    "scrollExtent": 310.0,
+    "contentHeight": 734.0,
+    "fitsNoScroll": false,
+    "dominant": "#fff6e3",
+    "unusedPct": 50.3
+  },
+  {
+    "screen": "night-scoreboard",
+    "size": "852x393",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 0.0,
+        "viewport": 484.0
+      }
+    ],
+    "clipped": [],
+    "texts": 27,
+    "smallestFontDp": 13.1,
+    "label24Dp": [
+      17.467
+    ],
+    "wayOn": {
+      "key": "nightShapeRace",
+      "onScreen": true,
+      "top": 387.0,
+      "bottom": 435.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "night-scoreboard-852x393",
+    "device": "852x393",
+    "frame": "1171x540",
+    "layout": "1171x540",
+    "scale": 0.7278,
+    "thumby": false,
+    "scrollExtent": 0.0,
+    "contentHeight": 484.0,
+    "fitsNoScroll": true,
+    "dominant": "#fff6e3",
+    "unusedPct": 46.1
+  },
+  {
+    "screen": "night-scoreboard",
+    "size": "852x393",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 55.0,
+        "viewport": 424.0
+      }
+    ],
+    "clipped": [],
+    "texts": 27,
+    "smallestFontDp": 13.1,
+    "label24Dp": [
+      17.467
+    ],
+    "wayOn": {
+      "key": "nightShapeRace",
+      "onScreen": true,
+      "top": 387.0,
+      "bottom": 435.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "night-scoreboard-852x393-thumby",
+    "device": "852x393",
+    "frame": "1171x540",
+    "layout": "1171x480",
+    "scale": 0.7278,
+    "thumby": true,
+    "scrollExtent": 55.0,
+    "contentHeight": 479.0,
+    "fitsNoScroll": false,
+    "dominant": "#fff6e3",
+    "unusedPct": 48.6
+  },
+  {
+    "screen": "night-final",
+    "size": "852x393",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 0.0,
+        "viewport": 484.0
+      }
+    ],
+    "clipped": [],
+    "texts": 25,
+    "smallestFontDp": 13.1,
+    "label24Dp": [
+      17.467
+    ],
+    "wayOn": {
+      "key": "nightBackToGames",
+      "onScreen": true,
+      "top": 387.0,
+      "bottom": 435.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "night-final-852x393",
+    "device": "852x393",
+    "frame": "1171x540",
+    "layout": "1171x540",
+    "scale": 0.7278,
+    "thumby": false,
+    "scrollExtent": 0.0,
+    "contentHeight": 484.0,
+    "fitsNoScroll": true,
+    "dominant": "#fff6e3",
+    "unusedPct": 18.3
+  },
+  {
+    "screen": "night-final",
+    "size": "852x393",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 0.0,
+        "viewport": 424.0
+      }
+    ],
+    "clipped": [],
+    "texts": 25,
+    "smallestFontDp": 13.1,
+    "label24Dp": [
+      17.467
+    ],
+    "wayOn": {
+      "key": "nightBackToGames",
+      "onScreen": true,
+      "top": 387.0,
+      "bottom": 435.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "night-final-852x393-thumby",
+    "device": "852x393",
+    "frame": "1171x540",
+    "layout": "1171x480",
+    "scale": 0.7278,
+    "thumby": true,
+    "scrollExtent": 0.0,
+    "contentHeight": 424.0,
+    "fitsNoScroll": true,
+    "dominant": "#fff6e3",
+    "unusedPct": 20.5
+  },
+  {
+    "screen": "night-reveal",
+    "size": "852x393",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 0.0,
+        "viewport": 319.0
+      }
+    ],
+    "clipped": [],
+    "texts": 8,
+    "smallestFontDp": 9.825,
+    "label24Dp": [],
+    "wayOn": null,
+    "scalesAwayFromOne": [],
+    "case": "night-reveal-852x393",
+    "device": "852x393",
+    "frame": "1171x540",
+    "layout": "1171x540",
+    "scale": 0.7278,
+    "thumby": false,
+    "scrollExtent": 0.0,
+    "contentHeight": 319.0,
+    "fitsNoScroll": true,
+    "dominant": "#fff6e3",
+    "unusedPct": 10.8
+  },
+  {
+    "screen": "night-reveal",
+    "size": "852x393",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 0.0,
+        "viewport": 319.0
+      }
+    ],
+    "clipped": [],
+    "texts": 8,
+    "smallestFontDp": 9.825,
+    "label24Dp": [],
+    "wayOn": null,
+    "scalesAwayFromOne": [],
+    "case": "night-reveal-852x393-thumby",
+    "device": "852x393",
+    "frame": "1171x540",
+    "layout": "1171x480",
+    "scale": 0.7278,
+    "thumby": true,
+    "scrollExtent": 0.0,
+    "contentHeight": 319.0,
+    "fitsNoScroll": true,
+    "dominant": "#fff6e3",
+    "unusedPct": 12.2
+  },
+  {
+    "screen": "arena-results",
+    "size": "852x393",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 0.0,
+        "viewport": 431.0
+      }
+    ],
+    "clipped": [],
+    "texts": 19,
+    "smallestFontDp": 13.1,
+    "label24Dp": [],
+    "wayOn": {
+      "key": "arenaAgain",
+      "onScreen": true,
+      "top": 357.0,
+      "bottom": 405.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "arena-results-852x393",
+    "device": "852x393",
+    "frame": "1171x540",
+    "layout": "1171x540",
+    "scale": 0.7278,
+    "thumby": false,
+    "scrollExtent": 0.0,
+    "contentHeight": 431.0,
+    "fitsNoScroll": true,
+    "dominant": "#fff6e3",
+    "unusedPct": 24.3
+  },
+  {
+    "screen": "arena-results",
+    "size": "852x393",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 0.0,
+        "viewport": 431.0
+      }
+    ],
+    "clipped": [],
+    "texts": 19,
+    "smallestFontDp": 13.1,
+    "label24Dp": [],
+    "wayOn": {
+      "key": "arenaAgain",
+      "onScreen": true,
+      "top": 327.0,
+      "bottom": 375.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "arena-results-852x393-thumby",
+    "device": "852x393",
+    "frame": "1171x540",
+    "layout": "1171x480",
+    "scale": 0.7278,
+    "thumby": true,
+    "scrollExtent": 0.0,
+    "contentHeight": 431.0,
+    "fitsNoScroll": true,
+    "dominant": "#fff6e3",
+    "unusedPct": 27.3
+  },
+  {
+    "screen": "puzzle-results",
+    "size": "852x393",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 0.0,
+        "viewport": 446.0
+      }
+    ],
+    "clipped": [],
+    "texts": 19,
+    "smallestFontDp": 9.825,
+    "label24Dp": [],
+    "wayOn": {
+      "key": "nextPuzzle",
+      "onScreen": true,
+      "top": 352.0,
+      "bottom": 395.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "puzzle-results-852x393",
+    "device": "852x393",
+    "frame": "1171x540",
+    "layout": "1171x540",
+    "scale": 0.7278,
+    "thumby": false,
+    "scrollExtent": 0.0,
+    "contentHeight": 446.0,
+    "fitsNoScroll": true,
+    "dominant": "#fff6e3",
+    "unusedPct": 35.9
+  },
+  {
+    "screen": "puzzle-results",
+    "size": "852x393",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 0.0,
+        "viewport": 446.0
+      }
+    ],
+    "clipped": [],
+    "texts": 19,
+    "smallestFontDp": 9.825,
+    "label24Dp": [],
+    "wayOn": {
+      "key": "nextPuzzle",
+      "onScreen": true,
+      "top": 322.0,
+      "bottom": 365.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "puzzle-results-852x393-thumby",
+    "device": "852x393",
+    "frame": "1171x540",
+    "layout": "1171x480",
+    "scale": 0.7278,
+    "thumby": true,
+    "scrollExtent": 0.0,
+    "contentHeight": 446.0,
+    "fitsNoScroll": true,
+    "dominant": "#fff6e3",
+    "unusedPct": 40.4
+  },
+  {
+    "screen": "night-scoreboard-6p",
+    "size": "852x393",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 107.0,
+        "viewport": 484.0
+      }
+    ],
+    "clipped": [],
+    "texts": 37,
+    "smallestFontDp": 13.1,
+    "label24Dp": [
+      17.467
+    ],
+    "wayOn": {
+      "key": "nightShapeRace",
+      "onScreen": false,
+      "top": 499.0,
+      "bottom": 547.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "night-scoreboard-6p-852x393",
+    "device": "852x393",
+    "frame": "1171x540",
+    "layout": "1171x540",
+    "scale": 0.7278,
+    "thumby": false,
+    "scrollExtent": 107.0,
+    "contentHeight": 591.0,
+    "fitsNoScroll": false,
+    "dominant": "#fff6e3",
+    "unusedPct": 53.6
+  },
+  {
+    "screen": "night-scoreboard-6p",
+    "size": "852x393",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 167.0,
+        "viewport": 424.0
+      }
+    ],
+    "clipped": [],
+    "texts": 37,
+    "smallestFontDp": 13.1,
+    "label24Dp": [
+      17.467
+    ],
+    "wayOn": {
+      "key": "nightShapeRace",
+      "onScreen": false,
+      "top": 499.0,
+      "bottom": 547.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "night-scoreboard-6p-852x393-thumby",
+    "device": "852x393",
+    "frame": "1171x540",
+    "layout": "1171x480",
+    "scale": 0.7278,
+    "thumby": true,
+    "scrollExtent": 167.0,
+    "contentHeight": 591.0,
+    "fitsNoScroll": false,
+    "dominant": "#fff6e3",
+    "unusedPct": 54.3
+  },
+  {
+    "screen": "night-final-6p",
+    "size": "852x393",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 47.0,
+        "viewport": 484.0
+      }
+    ],
+    "clipped": [],
+    "texts": 35,
+    "smallestFontDp": 13.1,
+    "label24Dp": [
+      17.467
+    ],
+    "wayOn": {
+      "key": "nightBackToGames",
+      "onScreen": false,
+      "top": 499.0,
+      "bottom": 547.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "night-final-6p-852x393",
+    "device": "852x393",
+    "frame": "1171x540",
+    "layout": "1171x540",
+    "scale": 0.7278,
+    "thumby": false,
+    "scrollExtent": 47.0,
+    "contentHeight": 531.0,
+    "fitsNoScroll": false,
+    "dominant": "#fff6e3",
+    "unusedPct": 23.9
+  },
+  {
+    "screen": "night-final-6p",
+    "size": "852x393",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 107.0,
+        "viewport": 424.0
+      }
+    ],
+    "clipped": [],
+    "texts": 35,
+    "smallestFontDp": 13.1,
+    "label24Dp": [
+      17.467
+    ],
+    "wayOn": {
+      "key": "nightBackToGames",
+      "onScreen": false,
+      "top": 499.0,
+      "bottom": 547.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "night-final-6p-852x393-thumby",
+    "device": "852x393",
+    "frame": "1171x540",
+    "layout": "1171x480",
+    "scale": 0.7278,
+    "thumby": true,
+    "scrollExtent": 107.0,
+    "contentHeight": 531.0,
+    "fitsNoScroll": false,
+    "dominant": "#fff6e3",
+    "unusedPct": 23.9
+  },
+  {
+    "screen": "night-start",
+    "size": "1024x768",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 70.0,
+        "viewport": 664.0
+      }
+    ],
+    "clipped": [],
+    "texts": 23,
+    "smallestFontDp": 16.0,
+    "label24Dp": [
+      25.6
+    ],
+    "wayOn": {
+      "key": "nightShapeRace",
+      "onScreen": true,
+      "top": 634.0,
+      "bottom": 682.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "night-start-1024x768",
+    "device": "1024x768",
+    "frame": "960x720",
+    "layout": "960x720",
+    "scale": 1.0667,
+    "thumby": false,
+    "scrollExtent": 70.0,
+    "contentHeight": 734.0,
+    "fitsNoScroll": false,
+    "dominant": "#fff6e3",
+    "unusedPct": 64.5
+  },
+  {
+    "screen": "night-start",
+    "size": "1024x768",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 130.0,
+        "viewport": 604.0
+      }
+    ],
+    "clipped": [],
+    "texts": 23,
+    "smallestFontDp": 16.0,
+    "label24Dp": [
+      25.6
+    ],
+    "wayOn": {
+      "key": "nightShapeRace",
+      "onScreen": false,
+      "top": 634.0,
+      "bottom": 682.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "night-start-1024x768-thumby",
+    "device": "1024x768",
+    "frame": "960x720",
+    "layout": "960x660",
+    "scale": 1.0667,
+    "thumby": true,
+    "scrollExtent": 130.0,
+    "contentHeight": 734.0,
+    "fitsNoScroll": false,
+    "dominant": "#fff6e3",
+    "unusedPct": 64.6
+  },
+  {
+    "screen": "night-scoreboard",
+    "size": "1024x768",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 0.0,
+        "viewport": 664.0
+      }
+    ],
+    "clipped": [],
+    "texts": 27,
+    "smallestFontDp": 19.2,
+    "label24Dp": [
+      25.6
+    ],
+    "wayOn": {
+      "key": "nightShapeRace",
+      "onScreen": true,
+      "top": 387.0,
+      "bottom": 435.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "night-scoreboard-1024x768",
+    "device": "1024x768",
+    "frame": "960x720",
+    "layout": "960x720",
+    "scale": 1.0667,
+    "thumby": false,
+    "scrollExtent": 0.0,
+    "contentHeight": 664.0,
+    "fitsNoScroll": true,
+    "dominant": "#fff6e3",
+    "unusedPct": 42.2
+  },
+  {
+    "screen": "night-scoreboard",
+    "size": "1024x768",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 0.0,
+        "viewport": 604.0
+      }
+    ],
+    "clipped": [],
+    "texts": 27,
+    "smallestFontDp": 19.2,
+    "label24Dp": [
+      25.6
+    ],
+    "wayOn": {
+      "key": "nightShapeRace",
+      "onScreen": true,
+      "top": 387.0,
+      "bottom": 435.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "night-scoreboard-1024x768-thumby",
+    "device": "1024x768",
+    "frame": "960x720",
+    "layout": "960x660",
+    "scale": 1.0667,
+    "thumby": true,
+    "scrollExtent": 0.0,
+    "contentHeight": 604.0,
+    "fitsNoScroll": true,
+    "dominant": "#fff6e3",
+    "unusedPct": 46.0
+  },
+  {
+    "screen": "night-final",
+    "size": "1024x768",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 0.0,
+        "viewport": 664.0
+      }
+    ],
+    "clipped": [],
+    "texts": 25,
+    "smallestFontDp": 19.2,
+    "label24Dp": [
+      25.6
+    ],
+    "wayOn": {
+      "key": "nightBackToGames",
+      "onScreen": true,
+      "top": 387.0,
+      "bottom": 435.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "night-final-1024x768",
+    "device": "1024x768",
+    "frame": "960x720",
+    "layout": "960x720",
+    "scale": 1.0667,
+    "thumby": false,
+    "scrollExtent": 0.0,
+    "contentHeight": 664.0,
+    "fitsNoScroll": true,
+    "dominant": "#fff6e3",
+    "unusedPct": 16.7
+  },
+  {
+    "screen": "night-final",
+    "size": "1024x768",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 0.0,
+        "viewport": 604.0
+      }
+    ],
+    "clipped": [],
+    "texts": 25,
+    "smallestFontDp": 19.2,
+    "label24Dp": [
+      25.6
+    ],
+    "wayOn": {
+      "key": "nightBackToGames",
+      "onScreen": true,
+      "top": 387.0,
+      "bottom": 435.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "night-final-1024x768-thumby",
+    "device": "1024x768",
+    "frame": "960x720",
+    "layout": "960x660",
+    "scale": 1.0667,
+    "thumby": true,
+    "scrollExtent": 0.0,
+    "contentHeight": 604.0,
+    "fitsNoScroll": true,
+    "dominant": "#fff6e3",
+    "unusedPct": 18.3
+  },
+  {
+    "screen": "night-reveal",
+    "size": "1024x768",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 0.0,
+        "viewport": 319.0
+      }
+    ],
+    "clipped": [],
+    "texts": 8,
+    "smallestFontDp": 14.4,
+    "label24Dp": [],
+    "wayOn": null,
+    "scalesAwayFromOne": [],
+    "case": "night-reveal-1024x768",
+    "device": "1024x768",
+    "frame": "960x720",
+    "layout": "960x720",
+    "scale": 1.0667,
+    "thumby": false,
+    "scrollExtent": 0.0,
+    "contentHeight": 319.0,
+    "fitsNoScroll": true,
+    "dominant": "#fff6e3",
+    "unusedPct": 9.9
+  },
+  {
+    "screen": "night-reveal",
+    "size": "1024x768",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 0.0,
+        "viewport": 319.0
+      }
+    ],
+    "clipped": [],
+    "texts": 8,
+    "smallestFontDp": 14.4,
+    "label24Dp": [],
+    "wayOn": null,
+    "scalesAwayFromOne": [],
+    "case": "night-reveal-1024x768-thumby",
+    "device": "1024x768",
+    "frame": "960x720",
+    "layout": "960x660",
+    "scale": 1.0667,
+    "thumby": true,
+    "scrollExtent": 0.0,
+    "contentHeight": 319.0,
+    "fitsNoScroll": true,
+    "dominant": "#fff6e3",
+    "unusedPct": 10.8
+  },
+  {
+    "screen": "arena-results",
+    "size": "1024x768",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 0.0,
+        "viewport": 431.0
+      }
+    ],
+    "clipped": [],
+    "texts": 19,
+    "smallestFontDp": 19.2,
+    "label24Dp": [],
+    "wayOn": {
+      "key": "arenaAgain",
+      "onScreen": true,
+      "top": 447.0,
+      "bottom": 495.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "arena-results-1024x768",
+    "device": "1024x768",
+    "frame": "960x720",
+    "layout": "960x720",
+    "scale": 1.0667,
+    "thumby": false,
+    "scrollExtent": 0.0,
+    "contentHeight": 431.0,
+    "fitsNoScroll": true,
+    "dominant": "#fff6e3",
+    "unusedPct": 22.2
+  },
+  {
+    "screen": "arena-results",
+    "size": "1024x768",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 0.0,
+        "viewport": 431.0
+      }
+    ],
+    "clipped": [],
+    "texts": 19,
+    "smallestFontDp": 19.2,
+    "label24Dp": [],
+    "wayOn": {
+      "key": "arenaAgain",
+      "onScreen": true,
+      "top": 417.0,
+      "bottom": 465.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "arena-results-1024x768-thumby",
+    "device": "1024x768",
+    "frame": "960x720",
+    "layout": "960x660",
+    "scale": 1.0667,
+    "thumby": true,
+    "scrollExtent": 0.0,
+    "contentHeight": 431.0,
+    "fitsNoScroll": true,
+    "dominant": "#fff6e3",
+    "unusedPct": 24.3
+  },
+  {
+    "screen": "puzzle-results",
+    "size": "1024x768",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 0.0,
+        "viewport": 446.0
+      }
+    ],
+    "clipped": [],
+    "texts": 19,
+    "smallestFontDp": 14.4,
+    "label24Dp": [],
+    "wayOn": {
+      "key": "nextPuzzle",
+      "onScreen": true,
+      "top": 442.0,
+      "bottom": 485.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "puzzle-results-1024x768",
+    "device": "1024x768",
+    "frame": "960x720",
+    "layout": "960x720",
+    "scale": 1.0667,
+    "thumby": false,
+    "scrollExtent": 0.0,
+    "contentHeight": 446.0,
+    "fitsNoScroll": true,
+    "dominant": "#fff6e3",
+    "unusedPct": 32.9
+  },
+  {
+    "screen": "puzzle-results",
+    "size": "1024x768",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 0.0,
+        "viewport": 446.0
+      }
+    ],
+    "clipped": [],
+    "texts": 19,
+    "smallestFontDp": 14.4,
+    "label24Dp": [],
+    "wayOn": {
+      "key": "nextPuzzle",
+      "onScreen": true,
+      "top": 412.0,
+      "bottom": 455.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "puzzle-results-1024x768-thumby",
+    "device": "1024x768",
+    "frame": "960x720",
+    "layout": "960x660",
+    "scale": 1.0667,
+    "thumby": true,
+    "scrollExtent": 0.0,
+    "contentHeight": 446.0,
+    "fitsNoScroll": true,
+    "dominant": "#fff6e3",
+    "unusedPct": 35.8
+  },
+  {
+    "screen": "night-scoreboard-6p",
+    "size": "1024x768",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 0.0,
+        "viewport": 664.0
+      }
+    ],
+    "clipped": [],
+    "texts": 37,
+    "smallestFontDp": 19.2,
+    "label24Dp": [
+      25.6
+    ],
+    "wayOn": {
+      "key": "nightShapeRace",
+      "onScreen": true,
+      "top": 499.0,
+      "bottom": 547.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "night-scoreboard-6p-1024x768",
+    "device": "1024x768",
+    "frame": "960x720",
+    "layout": "960x720",
+    "scale": 1.0667,
+    "thumby": false,
+    "scrollExtent": 0.0,
+    "contentHeight": 664.0,
+    "fitsNoScroll": true,
+    "dominant": "#fff6e3",
+    "unusedPct": 56.2
+  },
+  {
+    "screen": "night-scoreboard-6p",
+    "size": "1024x768",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 0.0,
+        "viewport": 604.0
+      }
+    ],
+    "clipped": [],
+    "texts": 37,
+    "smallestFontDp": 19.2,
+    "label24Dp": [
+      25.6
+    ],
+    "wayOn": {
+      "key": "nightShapeRace",
+      "onScreen": true,
+      "top": 499.0,
+      "bottom": 547.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "night-scoreboard-6p-1024x768-thumby",
+    "device": "1024x768",
+    "frame": "960x720",
+    "layout": "960x660",
+    "scale": 1.0667,
+    "thumby": true,
+    "scrollExtent": 0.0,
+    "contentHeight": 604.0,
+    "fitsNoScroll": true,
+    "dominant": "#fff6e3",
+    "unusedPct": 61.3
+  },
+  {
+    "screen": "night-final-6p",
+    "size": "1024x768",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 0.0,
+        "viewport": 664.0
+      }
+    ],
+    "clipped": [],
+    "texts": 35,
+    "smallestFontDp": 19.2,
+    "label24Dp": [
+      25.6
+    ],
+    "wayOn": {
+      "key": "nightBackToGames",
+      "onScreen": true,
+      "top": 499.0,
+      "bottom": 547.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "night-final-6p-1024x768",
+    "device": "1024x768",
+    "frame": "960x720",
+    "layout": "960x720",
+    "scale": 1.0667,
+    "thumby": false,
+    "scrollExtent": 0.0,
+    "contentHeight": 664.0,
+    "fitsNoScroll": true,
+    "dominant": "#fff6e3",
+    "unusedPct": 22.9
+  },
+  {
+    "screen": "night-final-6p",
+    "size": "1024x768",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 0.0,
+        "viewport": 604.0
+      }
+    ],
+    "clipped": [],
+    "texts": 35,
+    "smallestFontDp": 19.2,
+    "label24Dp": [
+      25.6
+    ],
+    "wayOn": {
+      "key": "nightBackToGames",
+      "onScreen": true,
+      "top": 499.0,
+      "bottom": 547.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "night-final-6p-1024x768-thumby",
+    "device": "1024x768",
+    "frame": "960x720",
+    "layout": "960x660",
+    "scale": 1.0667,
+    "thumby": true,
+    "scrollExtent": 0.0,
+    "contentHeight": 604.0,
+    "fitsNoScroll": true,
+    "dominant": "#fff6e3",
+    "unusedPct": 25.0
+  },
+  {
+    "screen": "night-start",
+    "size": "1280x800",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 190.0,
+        "viewport": 544.0
+      }
+    ],
+    "clipped": [],
+    "texts": 23,
+    "smallestFontDp": 20.0,
+    "label24Dp": [
+      32.0
+    ],
+    "wayOn": {
+      "key": "nightShapeRace",
+      "onScreen": false,
+      "top": 634.0,
+      "bottom": 682.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "night-start-1280x800",
+    "device": "1280x800",
+    "frame": "960x600",
+    "layout": "960x600",
+    "scale": 1.3333,
+    "thumby": false,
+    "scrollExtent": 190.0,
+    "contentHeight": 734.0,
+    "fitsNoScroll": false,
+    "dominant": "#fff6e3",
+    "unusedPct": 63.4
+  },
+  {
+    "screen": "night-start",
+    "size": "1280x800",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 250.0,
+        "viewport": 484.0
+      }
+    ],
+    "clipped": [],
+    "texts": 23,
+    "smallestFontDp": 20.0,
+    "label24Dp": [
+      32.0
+    ],
+    "wayOn": {
+      "key": "nightShapeRace",
+      "onScreen": false,
+      "top": 634.0,
+      "bottom": 682.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "night-start-1280x800-thumby",
+    "device": "1280x800",
+    "frame": "960x600",
+    "layout": "960x540",
+    "scale": 1.3333,
+    "thumby": true,
+    "scrollExtent": 250.0,
+    "contentHeight": 734.0,
+    "fitsNoScroll": false,
+    "dominant": "#fff6e3",
+    "unusedPct": 60.4
+  },
+  {
+    "screen": "night-scoreboard",
+    "size": "1280x800",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 0.0,
+        "viewport": 544.0
+      }
+    ],
+    "clipped": [],
+    "texts": 27,
+    "smallestFontDp": 24.0,
+    "label24Dp": [
+      32.0
+    ],
+    "wayOn": {
+      "key": "nightShapeRace",
+      "onScreen": true,
+      "top": 387.0,
+      "bottom": 435.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "night-scoreboard-1280x800",
+    "device": "1280x800",
+    "frame": "960x600",
+    "layout": "960x600",
+    "scale": 1.3333,
+    "thumby": false,
+    "scrollExtent": 0.0,
+    "contentHeight": 544.0,
+    "fitsNoScroll": true,
+    "dominant": "#fff6e3",
+    "unusedPct": 50.6
+  },
+  {
+    "screen": "night-scoreboard",
+    "size": "1280x800",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 0.0,
+        "viewport": 484.0
+      }
+    ],
+    "clipped": [],
+    "texts": 27,
+    "smallestFontDp": 24.0,
+    "label24Dp": [
+      32.0
+    ],
+    "wayOn": {
+      "key": "nightShapeRace",
+      "onScreen": true,
+      "top": 387.0,
+      "bottom": 435.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "night-scoreboard-1280x800-thumby",
+    "device": "1280x800",
+    "frame": "960x600",
+    "layout": "960x540",
+    "scale": 1.3333,
+    "thumby": true,
+    "scrollExtent": 0.0,
+    "contentHeight": 484.0,
+    "fitsNoScroll": true,
+    "dominant": "#fff6e3",
+    "unusedPct": 56.3
+  },
+  {
+    "screen": "night-final",
+    "size": "1280x800",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 0.0,
+        "viewport": 544.0
+      }
+    ],
+    "clipped": [],
+    "texts": 25,
+    "smallestFontDp": 24.0,
+    "label24Dp": [
+      32.0
+    ],
+    "wayOn": {
+      "key": "nightBackToGames",
+      "onScreen": true,
+      "top": 387.0,
+      "bottom": 435.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "night-final-1280x800",
+    "device": "1280x800",
+    "frame": "960x600",
+    "layout": "960x600",
+    "scale": 1.3333,
+    "thumby": false,
+    "scrollExtent": 0.0,
+    "contentHeight": 544.0,
+    "fitsNoScroll": true,
+    "dominant": "#fff6e3",
+    "unusedPct": 20.1
+  },
+  {
+    "screen": "night-final",
+    "size": "1280x800",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 0.0,
+        "viewport": 484.0
+      }
+    ],
+    "clipped": [],
+    "texts": 25,
+    "smallestFontDp": 24.0,
+    "label24Dp": [
+      32.0
+    ],
+    "wayOn": {
+      "key": "nightBackToGames",
+      "onScreen": true,
+      "top": 387.0,
+      "bottom": 435.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "night-final-1280x800-thumby",
+    "device": "1280x800",
+    "frame": "960x600",
+    "layout": "960x540",
+    "scale": 1.3333,
+    "thumby": true,
+    "scrollExtent": 0.0,
+    "contentHeight": 484.0,
+    "fitsNoScroll": true,
+    "dominant": "#fff6e3",
+    "unusedPct": 22.3
+  },
+  {
+    "screen": "night-reveal",
+    "size": "1280x800",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 0.0,
+        "viewport": 319.0
+      }
+    ],
+    "clipped": [],
+    "texts": 8,
+    "smallestFontDp": 18.0,
+    "label24Dp": [],
+    "wayOn": null,
+    "scalesAwayFromOne": [],
+    "case": "night-reveal-1280x800",
+    "device": "1280x800",
+    "frame": "960x600",
+    "layout": "960x600",
+    "scale": 1.3333,
+    "thumby": false,
+    "scrollExtent": 0.0,
+    "contentHeight": 319.0,
+    "fitsNoScroll": true,
+    "dominant": "#fff6e3",
+    "unusedPct": 11.9
+  },
+  {
+    "screen": "night-reveal",
+    "size": "1280x800",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 0.0,
+        "viewport": 319.0
+      }
+    ],
+    "clipped": [],
+    "texts": 8,
+    "smallestFontDp": 18.0,
+    "label24Dp": [],
+    "wayOn": null,
+    "scalesAwayFromOne": [],
+    "case": "night-reveal-1280x800-thumby",
+    "device": "1280x800",
+    "frame": "960x600",
+    "layout": "960x540",
+    "scale": 1.3333,
+    "thumby": true,
+    "scrollExtent": 0.0,
+    "contentHeight": 319.0,
+    "fitsNoScroll": true,
+    "dominant": "#fff6e3",
+    "unusedPct": 13.2
+  },
+  {
+    "screen": "arena-results",
+    "size": "1280x800",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 0.0,
+        "viewport": 431.0
+      }
+    ],
+    "clipped": [],
+    "texts": 19,
+    "smallestFontDp": 24.0,
+    "label24Dp": [],
+    "wayOn": {
+      "key": "arenaAgain",
+      "onScreen": true,
+      "top": 387.0,
+      "bottom": 435.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "arena-results-1280x800",
+    "device": "1280x800",
+    "frame": "960x600",
+    "layout": "960x600",
+    "scale": 1.3333,
+    "thumby": false,
+    "scrollExtent": 0.0,
+    "contentHeight": 431.0,
+    "fitsNoScroll": true,
+    "dominant": "#fff6e3",
+    "unusedPct": 26.7
+  },
+  {
+    "screen": "arena-results",
+    "size": "1280x800",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 0.0,
+        "viewport": 431.0
+      }
+    ],
+    "clipped": [],
+    "texts": 19,
+    "smallestFontDp": 24.0,
+    "label24Dp": [],
+    "wayOn": {
+      "key": "arenaAgain",
+      "onScreen": true,
+      "top": 357.0,
+      "bottom": 405.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "arena-results-1280x800-thumby",
+    "device": "1280x800",
+    "frame": "960x600",
+    "layout": "960x540",
+    "scale": 1.3333,
+    "thumby": true,
+    "scrollExtent": 0.0,
+    "contentHeight": 431.0,
+    "fitsNoScroll": true,
+    "dominant": "#fff6e3",
+    "unusedPct": 29.6
+  },
+  {
+    "screen": "puzzle-results",
+    "size": "1280x800",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 0.0,
+        "viewport": 446.0
+      }
+    ],
+    "clipped": [],
+    "texts": 19,
+    "smallestFontDp": 18.0,
+    "label24Dp": [],
+    "wayOn": {
+      "key": "nextPuzzle",
+      "onScreen": true,
+      "top": 382.0,
+      "bottom": 425.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "puzzle-results-1280x800",
+    "device": "1280x800",
+    "frame": "960x600",
+    "layout": "960x600",
+    "scale": 1.3333,
+    "thumby": false,
+    "scrollExtent": 0.0,
+    "contentHeight": 446.0,
+    "fitsNoScroll": true,
+    "dominant": "#fff6e3",
+    "unusedPct": 39.4
+  },
+  {
+    "screen": "puzzle-results",
+    "size": "1280x800",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 0.0,
+        "viewport": 446.0
+      }
+    ],
+    "clipped": [],
+    "texts": 19,
+    "smallestFontDp": 18.0,
+    "label24Dp": [],
+    "wayOn": {
+      "key": "nextPuzzle",
+      "onScreen": true,
+      "top": 352.0,
+      "bottom": 395.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "puzzle-results-1280x800-thumby",
+    "device": "1280x800",
+    "frame": "960x600",
+    "layout": "960x540",
+    "scale": 1.3333,
+    "thumby": true,
+    "scrollExtent": 0.0,
+    "contentHeight": 446.0,
+    "fitsNoScroll": true,
+    "dominant": "#fff6e3",
+    "unusedPct": 43.8
+  },
+  {
+    "screen": "night-scoreboard-6p",
+    "size": "1280x800",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 47.0,
+        "viewport": 544.0
+      }
+    ],
+    "clipped": [],
+    "texts": 37,
+    "smallestFontDp": 24.0,
+    "label24Dp": [
+      32.0
+    ],
+    "wayOn": {
+      "key": "nightShapeRace",
+      "onScreen": true,
+      "top": 499.0,
+      "bottom": 547.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "night-scoreboard-6p-1280x800",
+    "device": "1280x800",
+    "frame": "960x600",
+    "layout": "960x600",
+    "scale": 1.3333,
+    "thumby": false,
+    "scrollExtent": 47.0,
+    "contentHeight": 591.0,
+    "fitsNoScroll": false,
+    "dominant": "#fff6e3",
+    "unusedPct": 64.7
+  },
+  {
+    "screen": "night-scoreboard-6p",
+    "size": "1280x800",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 107.0,
+        "viewport": 484.0
+      }
+    ],
+    "clipped": [],
+    "texts": 37,
+    "smallestFontDp": 24.0,
+    "label24Dp": [
+      32.0
+    ],
+    "wayOn": {
+      "key": "nightShapeRace",
+      "onScreen": false,
+      "top": 499.0,
+      "bottom": 547.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "night-scoreboard-6p-1280x800-thumby",
+    "device": "1280x800",
+    "frame": "960x600",
+    "layout": "960x540",
+    "scale": 1.3333,
+    "thumby": true,
+    "scrollExtent": 107.0,
+    "contentHeight": 591.0,
+    "fitsNoScroll": false,
+    "dominant": "#fff6e3",
+    "unusedPct": 65.4
+  },
+  {
+    "screen": "night-final-6p",
+    "size": "1280x800",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 0.0,
+        "viewport": 544.0
+      }
+    ],
+    "clipped": [],
+    "texts": 35,
+    "smallestFontDp": 24.0,
+    "label24Dp": [
+      32.0
+    ],
+    "wayOn": {
+      "key": "nightBackToGames",
+      "onScreen": true,
+      "top": 499.0,
+      "bottom": 547.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "night-final-6p-1280x800",
+    "device": "1280x800",
+    "frame": "960x600",
+    "layout": "960x600",
+    "scale": 1.3333,
+    "thumby": false,
+    "scrollExtent": 0.0,
+    "contentHeight": 544.0,
+    "fitsNoScroll": true,
+    "dominant": "#fff6e3",
+    "unusedPct": 27.5
+  },
+  {
+    "screen": "night-final-6p",
+    "size": "1280x800",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 47.0,
+        "viewport": 484.0
+      }
+    ],
+    "clipped": [],
+    "texts": 35,
+    "smallestFontDp": 24.0,
+    "label24Dp": [
+      32.0
+    ],
+    "wayOn": {
+      "key": "nightBackToGames",
+      "onScreen": false,
+      "top": 499.0,
+      "bottom": 547.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "night-final-6p-1280x800-thumby",
+    "device": "1280x800",
+    "frame": "960x600",
+    "layout": "960x540",
+    "scale": 1.3333,
+    "thumby": true,
+    "scrollExtent": 47.0,
+    "contentHeight": 531.0,
+    "fitsNoScroll": false,
+    "dominant": "#fff6e3",
+    "unusedPct": 29.3
+  },
+  {
+    "screen": "night-start",
+    "size": "1920x1080",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 250.0,
+        "viewport": 484.0
+      }
+    ],
+    "clipped": [],
+    "texts": 23,
+    "smallestFontDp": 30.0,
+    "label24Dp": [
+      48.0
+    ],
+    "wayOn": {
+      "key": "nightShapeRace",
+      "onScreen": false,
+      "top": 634.0,
+      "bottom": 682.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "night-start-1920x1080",
+    "device": "1920x1080",
+    "frame": "960x540",
+    "layout": "960x540",
+    "scale": 2.0,
+    "thumby": false,
+    "scrollExtent": 250.0,
+    "contentHeight": 734.0,
+    "fitsNoScroll": false,
+    "dominant": "#fff6e3",
+    "unusedPct": 60.5
+  },
+  {
+    "screen": "night-start",
+    "size": "1920x1080",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 310.0,
+        "viewport": 424.0
+      }
+    ],
+    "clipped": [],
+    "texts": 23,
+    "smallestFontDp": 30.0,
+    "label24Dp": [
+      48.0
+    ],
+    "wayOn": {
+      "key": "nightShapeRace",
+      "onScreen": false,
+      "top": 634.0,
+      "bottom": 682.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "night-start-1920x1080-thumby",
+    "device": "1920x1080",
+    "frame": "960x540",
+    "layout": "960x480",
+    "scale": 2.0,
+    "thumby": true,
+    "scrollExtent": 310.0,
+    "contentHeight": 734.0,
+    "fitsNoScroll": false,
+    "dominant": "#fff6e3",
+    "unusedPct": 57.2
+  },
+  {
+    "screen": "night-scoreboard",
+    "size": "1920x1080",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 0.0,
+        "viewport": 484.0
+      }
+    ],
+    "clipped": [],
+    "texts": 27,
+    "smallestFontDp": 36.0,
+    "label24Dp": [
+      48.0
+    ],
+    "wayOn": {
+      "key": "nightShapeRace",
+      "onScreen": true,
+      "top": 387.0,
+      "bottom": 435.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "night-scoreboard-1920x1080",
+    "device": "1920x1080",
+    "frame": "960x540",
+    "layout": "960x540",
+    "scale": 2.0,
+    "thumby": false,
+    "scrollExtent": 0.0,
+    "contentHeight": 484.0,
+    "fitsNoScroll": true,
+    "dominant": "#fff6e3",
+    "unusedPct": 56.3
+  },
+  {
+    "screen": "night-scoreboard",
+    "size": "1920x1080",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 55.0,
+        "viewport": 424.0
+      }
+    ],
+    "clipped": [],
+    "texts": 27,
+    "smallestFontDp": 36.0,
+    "label24Dp": [
+      48.0
+    ],
+    "wayOn": {
+      "key": "nightShapeRace",
+      "onScreen": true,
+      "top": 387.0,
+      "bottom": 435.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "night-scoreboard-1920x1080-thumby",
+    "device": "1920x1080",
+    "frame": "960x540",
+    "layout": "960x480",
+    "scale": 2.0,
+    "thumby": true,
+    "scrollExtent": 55.0,
+    "contentHeight": 479.0,
+    "fitsNoScroll": false,
+    "dominant": "#fff6e3",
+    "unusedPct": 59.3
+  },
+  {
+    "screen": "night-final",
+    "size": "1920x1080",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 0.0,
+        "viewport": 484.0
+      }
+    ],
+    "clipped": [],
+    "texts": 25,
+    "smallestFontDp": 36.0,
+    "label24Dp": [
+      48.0
+    ],
+    "wayOn": {
+      "key": "nightBackToGames",
+      "onScreen": true,
+      "top": 387.0,
+      "bottom": 435.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "night-final-1920x1080",
+    "device": "1920x1080",
+    "frame": "960x540",
+    "layout": "960x540",
+    "scale": 2.0,
+    "thumby": false,
+    "scrollExtent": 0.0,
+    "contentHeight": 484.0,
+    "fitsNoScroll": true,
+    "dominant": "#fff6e3",
+    "unusedPct": 22.3
+  },
+  {
+    "screen": "night-final",
+    "size": "1920x1080",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 0.0,
+        "viewport": 424.0
+      }
+    ],
+    "clipped": [],
+    "texts": 25,
+    "smallestFontDp": 36.0,
+    "label24Dp": [
+      48.0
+    ],
+    "wayOn": {
+      "key": "nightBackToGames",
+      "onScreen": true,
+      "top": 387.0,
+      "bottom": 435.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "night-final-1920x1080-thumby",
+    "device": "1920x1080",
+    "frame": "960x540",
+    "layout": "960x480",
+    "scale": 2.0,
+    "thumby": true,
+    "scrollExtent": 0.0,
+    "contentHeight": 424.0,
+    "fitsNoScroll": true,
+    "dominant": "#fff6e3",
+    "unusedPct": 25.1
+  },
+  {
+    "screen": "night-reveal",
+    "size": "1920x1080",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 0.0,
+        "viewport": 319.0
+      }
+    ],
+    "clipped": [],
+    "texts": 8,
+    "smallestFontDp": 27.0,
+    "label24Dp": [],
+    "wayOn": null,
+    "scalesAwayFromOne": [],
+    "case": "night-reveal-1920x1080",
+    "device": "1920x1080",
+    "frame": "960x540",
+    "layout": "960x540",
+    "scale": 2.0,
+    "thumby": false,
+    "scrollExtent": 0.0,
+    "contentHeight": 319.0,
+    "fitsNoScroll": true,
+    "dominant": "#fff6e3",
+    "unusedPct": 13.2
+  },
+  {
+    "screen": "night-reveal",
+    "size": "1920x1080",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 0.0,
+        "viewport": 319.0
+      }
+    ],
+    "clipped": [],
+    "texts": 8,
+    "smallestFontDp": 27.0,
+    "label24Dp": [],
+    "wayOn": null,
+    "scalesAwayFromOne": [],
+    "case": "night-reveal-1920x1080-thumby",
+    "device": "1920x1080",
+    "frame": "960x540",
+    "layout": "960x480",
+    "scale": 2.0,
+    "thumby": true,
+    "scrollExtent": 0.0,
+    "contentHeight": 319.0,
+    "fitsNoScroll": true,
+    "dominant": "#fff6e3",
+    "unusedPct": 14.9
+  },
+  {
+    "screen": "arena-results",
+    "size": "1920x1080",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 0.0,
+        "viewport": 431.0
+      }
+    ],
+    "clipped": [],
+    "texts": 19,
+    "smallestFontDp": 36.0,
+    "label24Dp": [],
+    "wayOn": {
+      "key": "arenaAgain",
+      "onScreen": true,
+      "top": 357.0,
+      "bottom": 405.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "arena-results-1920x1080",
+    "device": "1920x1080",
+    "frame": "960x540",
+    "layout": "960x540",
+    "scale": 2.0,
+    "thumby": false,
+    "scrollExtent": 0.0,
+    "contentHeight": 431.0,
+    "fitsNoScroll": true,
+    "dominant": "#fff6e3",
+    "unusedPct": 29.6
+  },
+  {
+    "screen": "arena-results",
+    "size": "1920x1080",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 0.0,
+        "viewport": 431.0
+      }
+    ],
+    "clipped": [],
+    "texts": 19,
+    "smallestFontDp": 36.0,
+    "label24Dp": [],
+    "wayOn": {
+      "key": "arenaAgain",
+      "onScreen": true,
+      "top": 327.0,
+      "bottom": 375.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "arena-results-1920x1080-thumby",
+    "device": "1920x1080",
+    "frame": "960x540",
+    "layout": "960x480",
+    "scale": 2.0,
+    "thumby": true,
+    "scrollExtent": 0.0,
+    "contentHeight": 431.0,
+    "fitsNoScroll": true,
+    "dominant": "#fff6e3",
+    "unusedPct": 33.3
+  },
+  {
+    "screen": "puzzle-results",
+    "size": "1920x1080",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 0.0,
+        "viewport": 446.0
+      }
+    ],
+    "clipped": [],
+    "texts": 19,
+    "smallestFontDp": 27.0,
+    "label24Dp": [],
+    "wayOn": {
+      "key": "nextPuzzle",
+      "onScreen": true,
+      "top": 352.0,
+      "bottom": 395.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "puzzle-results-1920x1080",
+    "device": "1920x1080",
+    "frame": "960x540",
+    "layout": "960x540",
+    "scale": 2.0,
+    "thumby": false,
+    "scrollExtent": 0.0,
+    "contentHeight": 446.0,
+    "fitsNoScroll": true,
+    "dominant": "#fff6e3",
+    "unusedPct": 43.8
+  },
+  {
+    "screen": "puzzle-results",
+    "size": "1920x1080",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 0.0,
+        "viewport": 446.0
+      }
+    ],
+    "clipped": [],
+    "texts": 19,
+    "smallestFontDp": 27.0,
+    "label24Dp": [],
+    "wayOn": {
+      "key": "nextPuzzle",
+      "onScreen": true,
+      "top": 322.0,
+      "bottom": 365.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "puzzle-results-1920x1080-thumby",
+    "device": "1920x1080",
+    "frame": "960x540",
+    "layout": "960x480",
+    "scale": 2.0,
+    "thumby": true,
+    "scrollExtent": 0.0,
+    "contentHeight": 446.0,
+    "fitsNoScroll": true,
+    "dominant": "#fff6e3",
+    "unusedPct": 49.3
+  },
+  {
+    "screen": "night-scoreboard-6p",
+    "size": "1920x1080",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 107.0,
+        "viewport": 484.0
+      }
+    ],
+    "clipped": [],
+    "texts": 37,
+    "smallestFontDp": 36.0,
+    "label24Dp": [
+      48.0
+    ],
+    "wayOn": {
+      "key": "nightShapeRace",
+      "onScreen": false,
+      "top": 499.0,
+      "bottom": 547.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "night-scoreboard-6p-1920x1080",
+    "device": "1920x1080",
+    "frame": "960x540",
+    "layout": "960x540",
+    "scale": 2.0,
+    "thumby": false,
+    "scrollExtent": 107.0,
+    "contentHeight": 591.0,
+    "fitsNoScroll": false,
+    "dominant": "#fff6e3",
+    "unusedPct": 65.4
+  },
+  {
+    "screen": "night-scoreboard-6p",
+    "size": "1920x1080",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 167.0,
+        "viewport": 424.0
+      }
+    ],
+    "clipped": [],
+    "texts": 37,
+    "smallestFontDp": 36.0,
+    "label24Dp": [
+      48.0
+    ],
+    "wayOn": {
+      "key": "nightShapeRace",
+      "onScreen": false,
+      "top": 499.0,
+      "bottom": 547.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "night-scoreboard-6p-1920x1080-thumby",
+    "device": "1920x1080",
+    "frame": "960x540",
+    "layout": "960x480",
+    "scale": 2.0,
+    "thumby": true,
+    "scrollExtent": 167.0,
+    "contentHeight": 591.0,
+    "fitsNoScroll": false,
+    "dominant": "#fff6e3",
+    "unusedPct": 66.3
+  },
+  {
+    "screen": "night-final-6p",
+    "size": "1920x1080",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 47.0,
+        "viewport": 484.0
+      }
+    ],
+    "clipped": [],
+    "texts": 35,
+    "smallestFontDp": 36.0,
+    "label24Dp": [
+      48.0
+    ],
+    "wayOn": {
+      "key": "nightBackToGames",
+      "onScreen": false,
+      "top": 499.0,
+      "bottom": 547.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "night-final-6p-1920x1080",
+    "device": "1920x1080",
+    "frame": "960x540",
+    "layout": "960x540",
+    "scale": 2.0,
+    "thumby": false,
+    "scrollExtent": 47.0,
+    "contentHeight": 531.0,
+    "fitsNoScroll": false,
+    "dominant": "#fff6e3",
+    "unusedPct": 29.3
+  },
+  {
+    "screen": "night-final-6p",
+    "size": "1920x1080",
+    "errors": [],
+    "scrolls": [
+      {
+        "extent": 107.0,
+        "viewport": 424.0
+      }
+    ],
+    "clipped": [],
+    "texts": 35,
+    "smallestFontDp": 36.0,
+    "label24Dp": [
+      48.0
+    ],
+    "wayOn": {
+      "key": "nightBackToGames",
+      "onScreen": false,
+      "top": 499.0,
+      "bottom": 547.0
+    },
+    "scalesAwayFromOne": [],
+    "case": "night-final-6p-1920x1080-thumby",
+    "device": "1920x1080",
+    "frame": "960x540",
+    "layout": "960x480",
+    "scale": 2.0,
+    "thumby": true,
+    "scrollExtent": 107.0,
+    "contentHeight": 531.0,
+    "fitsNoScroll": false,
+    "dominant": "#fff6e3",
+    "unusedPct": 29.2
+  }
+]
