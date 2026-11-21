@@ -10,3 +10,5 @@
 2026-11-21 13:58:18 committed looks-helper: 3c2e7453 Add an all-looks pump helper and check the award popover in both looks
 2026-11-21 13:58:20 committed runner-lean: 215038bb Run jobs: skip wave review on a one-wave run, lint report lines
 2026-11-21 14:02:17 reviewed wave1: 5 finding(s)
+2026-11-21 14:02:18 start the run's review
+2026-11-21 14:07:18 DONE: every job is committed. Claude reads the Summary of docs/briefs/m16/process1/REVIEW.md, verifies its findings and writes one fix brief
