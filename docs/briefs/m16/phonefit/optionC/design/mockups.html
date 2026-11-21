@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<title>Thumb Party M16: option C host screens in a 960x540 design frame</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800&display=block" rel="stylesheet">
+<style>
+:root{--ink:#1e1646;--sky:#7cc8f8;--glow:#c4eaff;--paper:#fff6e3;--gold:#ffd23f;--good:#2fcb74;--peach:#ffc9a0;--shadow:rgba(30,22,70,.35)}
+*{box-sizing:border-box}
+body{margin:0;font-family:Nunito,sans-serif;color:var(--ink);background:#f3efe6}
+body.solo{background:#000;overflow:hidden}
+.page{padding:16px 24px}
+h1{font-family:Fredoka,sans-serif;font-weight:600;margin:0 0 4px}
+.note{max-width:900px;margin:0 0 16px;font-weight:600}
+.row{display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start;margin-bottom:28px}
+figure{margin:0}figcaption{font-weight:800;margin-bottom:6px}
+.dev{position:relative;overflow:hidden;outline:3px solid #1e1646;background:var(--sky)}
+.frame{position:absolute;left:0;top:0;transform-origin:0 0;background:radial-gradient(ellipse at 50% 60%,var(--glow),var(--sky) 75%);overflow:hidden}
+.frame:before{content:"";position:absolute;inset:0;background-image:radial-gradient(rgba(255,255,255,.28) 3px,transparent 3.5px);background-size:48px 48px}
+.stage{position:absolute;left:0;top:0;display:flex;flex-direction:column}
+.hdr{height:64px;flex:none;display:flex;align-items:center;gap:20px;padding:0 24px;position:relative}
+.hdr h2{font:600 40px Fredoka,sans-serif;margin:0;flex:1;white-space:nowrap}
+.chip{font:600 22px Fredoka,sans-serif;background:var(--paper);border:3px solid var(--ink);border-radius:99px;padding:3px 18px;box-shadow:0 4px 0 var(--shadow);white-space:nowrap}
+.chip.y{background:var(--gold)}
+.seg{display:flex;gap:8px}
+.body{flex:1;min-height:0;padding:8px 24px 12px;display:flex;position:relative}
+.ftr{height:84px;flex:none;display:flex;align-items:center;gap:16px;padding:0 24px;background:rgba(255,246,227,.55);border-top:3px solid var(--ink);position:relative}
+.ftr .sp{flex:1}
+.btn{font:600 28px Fredoka,sans-serif;background:var(--good);border:4px solid var(--ink);border-radius:99px;padding:8px 30px;box-shadow:0 5px 0 var(--shadow),0 0 0 4px var(--gold);white-space:nowrap}
+.btn.alt{background:#a9dcfb;box-shadow:0 5px 0 var(--shadow)}
+.card{background:var(--paper);border:4px solid var(--ink);border-radius:22px;box-shadow:0 6px 0 var(--shadow);flex:1;display:flex;flex-direction:column;padding:12px 20px;min-width:0}
+.t20{font-size:20px;font-weight:700}
+.bd{position:relative;flex:none;border-radius:50%;border:3px solid var(--ink);display:grid;place-items:center;font:700 22px Fredoka,sans-serif;color:var(--ink)}
+.bd i{position:absolute;display:block;background:var(--ink);border-radius:50%}
+.c1{background:#2e9bf0}.c2{background:#ff9a1f}.c3{background:#a35cf6}.c4{background:#14c79b}.c5{background:#ff5d7d}.c6{background:#ffd23f}
+.rows{display:flex;flex-direction:column;justify-content:space-around;flex:1;min-height:0}
+.r{display:flex;align-items:center;gap:14px;font:600 26px Fredoka,sans-serif;position:relative}
+.rk{width:36px;text-align:center;font:700 22px Nunito;opacity:.7}
+.nm{width:190px;white-space:nowrap}
+.bar{flex:1;height:22px;border-radius:99px;background:rgba(30,22,70,.1);position:relative;min-width:60px}
+.bar b{position:absolute;left:0;top:0;bottom:0;border-radius:99px;border:3px solid var(--ink)}
+.pts{width:78px;text-align:right}.pts:before{content:"\2605 ";color:var(--gold);-webkit-text-stroke:1px var(--ink)}
+.dl{width:60px;font:800 22px Nunito;color:#16965a}
+.top{background:rgba(255,210,63,.35);border-radius:16px;margin:0 -8px;padding:2px 8px}
+.medal{width:36px;height:36px;border-radius:50%;border:3px solid var(--ink);display:grid;place-items:center;font:700 22px Fredoka;flex:none}
+.m1{background:#ffd23f}.m2{background:#d8dde8}.m3{background:#e5a36b}
+.crown{position:absolute;width:44px;height:16px;background:var(--gold);border:3px solid var(--ink);border-radius:3px 3px 6px 6px;z-index:2}
+.crown:before{content:"";position:absolute;left:-3px;right:-3px;top:-16px;height:14px;background:var(--gold);clip-path:polygon(0 100%,0 0,25% 60%,50% 0,75% 60%,100% 0,100% 100%)}
+.th{position:absolute;display:flex;align-items:center;gap:10px}
+.head{flex:none;position:relative;background:var(--peach);border:3px solid var(--ink);border-radius:50% 50% 46% 46%/58% 58% 42% 42%;box-shadow:0 4px 0 var(--shadow)}
+.head:before{content:"";position:absolute;left:30%;top:7%;width:40%;height:18%;border-radius:50%;background:#ffe6d2;border:2px solid rgba(30,22,70,.4)}
+.head .e{position:absolute;top:44%;width:11%;height:14%;background:var(--ink);border-radius:50%}
+.head .e.l{left:30%}.head .e.r{right:30%}
+.head .m{position:absolute;left:36%;right:36%;top:66%;height:12%;border-bottom:3px solid var(--ink);border-radius:0 0 50% 50%}
+.bub{background:#fff;border:3px solid var(--ink);border-radius:18px;padding:8px 14px;font:700 20px/1.2 Nunito;box-shadow:0 4px 0 var(--shadow);position:relative}
+.tag{font:800 20px Nunito;background:var(--ink);color:#fff;border-radius:99px;padding:0 12px;display:inline-block}
+.awd{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;border:4px solid var(--ink);border-radius:20px;box-shadow:0 5px 0 var(--shadow);position:relative}
+.awd .ic{width:84px;height:84px;border-radius:50%;border:4px solid var(--ink);background:#fff;display:grid;place-items:center;font:700 40px Fredoka}
+.awd .nmx{font:600 30px Fredoka}
+.awd .i{position:absolute;right:12px;top:10px;width:30px;height:30px;border-radius:50%;border:3px solid var(--ink);background:var(--paper);font:800 20px/24px Nunito;text-align:center}
+.dots span{display:inline-block;width:20px;height:20px;border-radius:50%;border:3px solid var(--ink);background:var(--paper);margin-right:8px}
+.dots span.on{background:var(--gold)}
+.conf i{position:absolute;width:12px;height:20px;border-radius:3px}
+</style></head>
+<body>
+<script>
+const SC=['start','scoreboard','final','reveal','arena','puzzle'];
+const SHAPES={'640x360':[640,360],'852x393':[852,393],'1024x768':[1024,768]};
+const NAMES4=[['Bartholome',1,44,7],['Maxi',2,25,5],['Alexandria',3,15,3],['Chris',4,5,1]];
+const NAMES6=[['Bartholome',1,44,7],['Maxi',2,25,5],['Alexandria',3,15,3],['Nightshade',5,12,2],['Chris',4,5,1],['Zed',6,3,0]];
+const ACC={1:'<i style="left:-6px;top:-6px;width:16px;height:16px"></i><i style="right:-6px;top:-6px;width:16px;height:16px"></i>',
+2:'<i style="left:48%;top:-14px;width:3px;height:14px;border-radius:0"></i><i style="left:42%;top:-20px;width:12px;height:12px"></i>',
+3:'<i style="left:36%;top:-8px;width:28%;height:12px;border-radius:6px"></i>',
+4:'<i style="left:-4px;top:-4px;right:-4px;height:14px;border-radius:14px 14px 0 0"></i>',
+5:'<i style="left:30%;top:-8px;width:3px;height:12px;border-radius:0;transform:rotate(-20deg)"></i><i style="left:50%;top:-10px;width:3px;height:14px;border-radius:0"></i><i style="right:30%;top:-8px;width:3px;height:12px;border-radius:0;transform:rotate(20deg)"></i>',
+6:'<i style="left:30%;top:-10px;width:40%;height:12px;border-radius:2px;background:#ffd23f;border:2px solid #1e1646"></i>'};
+const badge=(n,sz)=>`<div class="bd c${n}" style="width:${sz}px;height:${sz}px;font-size:${Math.round(sz*.5)}px">${ACC[n]}${n}</div>`;
+const COL={1:'#2e9bf0',2:'#ff9a1f',3:'#a35cf6',4:'#14c79b',5:'#ff5d7d',6:'#ffd23f'};
+const thumb=(sz)=>`<div class="head" style="width:${sz}px;height:${sz*1.15}px"><span class="e l"></span><span class="e r"></span><span class="m"></span></div>`;
+
+// Where does Thumby go? (DESIGN.md section 3)
+function layout(Wf,Hf){
+  const ex=Wf-960, ey=Hf-540;
+  if(ex>=120){const c=Math.min(ex,240);return{mode:'side',col:c,sw:Wf-c,sh:Hf}}
+  if(ey>=120){const c=Math.min(ey,180);return{mode:'strip',col:c,sw:Wf,sh:Hf-c}}
+  return{mode:'corner',col:0,sw:Wf,sh:Hf};
+}
+const SAY={start:'Hi, I am Thumby! Pick a game to start.',scoreboard:'Red Bow leads by 3, but there are 2 rounds to go!',final:'And your champion... the Red Bow!',reveal:'Best Helper goes to the Red Bow!',arena:'That was close! The Blue Ears take the round!',puzzle:'You did it together! Great picture!'};
+
+function scoreRows(P,opt={}){
+  const max=Math.max(...P.map(p=>p[2]));
+  const sz=P.length>4?38:44;
+  return `<div class="rows">`+P.map((p,i)=>{
+    const top=opt.final&&i===0;
+    const lead=opt.final?`<div class="medal m${i<3?i+1:0}" ${i>=3?'style="background:transparent;border-color:transparent;opacity:.7"':''}>${i+1}</div>`:`<div class="rk">${i+1}</div>`;
+    const big=top?(P.length>4?50:58):sz;
+    return `<div class="r ${top?'top':''}" style="${top?'font-size:32px':''}">${lead}<div style="position:relative">${top?'<div class="crown" style="left:50%;margin-left:-22px;top:-14px"></div>':''}${badge(p[1],big)}</div><div class="nm" style="${top?'width:210px':''}">${p[0]}</div><div class="bar"><b style="width:${Math.max(4,p[2]/max*100)}%;background:${COL[p[1]]}"></b></div><div class="pts">${p[2]}</div><div class="dl">${p[3]?'+'+p[3]:''}</div></div>`;
+  }).join('')+`</div>`;
+}
+
+const SCREENS={
+start:{title:'Party night',right:`<div class="seg"><span class="chip y">3 rounds</span><span class="chip">5 rounds</span></div>`,
+ body:()=>`<div class="card"><div style="font:600 28px Fredoka;margin-bottom:10px">Tonight's three awards <span class="t20" style="opacity:.7;font-family:Nunito">tap one to see how it's won</span></div>
+ <div style="display:flex;gap:16px;flex:1;min-height:0;padding-bottom:6px">
+ ${[['Best Helper','#c4d9e8','❤'],['Comeback','#ffd5a8','▲'],['Try Again','#e3cdf0','↻']].map(a=>`<div class="awd" style="background:${a[1]}"><div class="i">i</div><div class="ic">${a[2]}</div><div class="nmx">${a[0]}</div></div>`).join('')}
+ </div><div class="t20" style="margin-top:8px">4 players ready: ${NAMES4.map(p=>p[0]).join(', ')}</div></div>`,
+ foot:`<div class="btn">Shape Race</div><div class="btn alt">Bumper Round</div>`},
+scoreboard:{title:'Party night',right:`<span class="chip">Round 2 of 5</span>`,body:()=>`<div class="card">${scoreRows(NAMES6)}</div>`,foot:`<span class="t20" style="opacity:.8">Next up: pick a game</span><div class="sp"></div><div class="btn">Shape Race</div><div class="btn alt">Bumper Round</div>`},
+final:{title:'Final scores',right:`<span class="chip y">Party night</span>`,conf:1,body:()=>`<div class="card">${scoreRows(NAMES6,{final:1})}</div>`,foot:`<div class="sp"></div><div class="btn">Back to games</div>`},
+reveal:{title:'Awards',right:`<span class="chip">Award 1 of 3</span>`,body:()=>`<div class="card" style="flex-direction:row;align-items:center;justify-content:center;gap:40px;background:#c4d9e8">
+ <div style="position:relative"><div class="crown" style="left:50%;margin-left:-22px;top:-8px"></div>${badge(1,190)}</div>
+ <div><div style="font:600 52px Fredoka">Best Helper</div><div style="font:600 40px Fredoka;margin:4px 0">Bartholome</div><div style="font:700 26px Nunito">Carried the most home together</div><div class="t20" style="margin-top:8px;opacity:.7">The Red Bow</div></div></div>`,
+ foot:`<div class="dots"><span class="on"></span><span></span><span></span></div><div class="sp"></div><div class="chip">Skip</div>`},
+arena:{title:'Round 3 results',right:`<span class="chip y">Bumper Round</span>`,body:()=>{const P=[['Maxi',2,18],['Bartholome',1,14],['Robo',0,9],['Chris',4,6],['Alexandria',3,3]];const mx=18;return`<div class="card"><div class="rows">${P.map((p,i)=>`<div class="r ${i===0?'top':''}"><div class="rk">${i+1}</div>${p[1]?badge(p[1],42):'<div class="bd" style="width:42px;height:42px;background:#d8dde8">R</div>'}<div class="nm">${p[0]}${p[1]?'':' <span class="tag">bot</span>'}</div><div class="bar"><b style="width:${p[2]/mx*100}%;background:${p[1]?COL[p[1]]:'#aab'}"></b></div><div class="pts" style="width:120px">${p[2]} coins</div></div>`).join('')}</div></div>`},foot:`<span class="t20" style="opacity:.8">Everybody did great!</span><div class="sp"></div><div class="btn">Next</div>`},
+puzzle:{title:'Shape Race done!',right:`<span class="chip y">1:42</span>`,body:()=>`<div class="card" style="flex-direction:row;gap:28px;align-items:center">
+ <svg viewBox="0 0 200 160" style="height:100%;max-height:300px;flex:none"><rect width="200" height="160" rx="14" fill="#a9dcfb" stroke="#1e1646" stroke-width="5"/><rect x="50" y="70" width="100" height="70" fill="#ffb020" stroke="#1e1646" stroke-width="5"/><polygon points="40,72 100,22 160,72" fill="#ff4d5e" stroke="#1e1646" stroke-width="5" stroke-linejoin="round"/><rect x="88" y="100" width="24" height="40" fill="#2e9bf0" stroke="#1e1646" stroke-width="4"/><circle cx="168" cy="34" r="16" fill="#ffd23f" stroke="#1e1646" stroke-width="4"/></svg>
+ <div style="flex:1;min-width:0"><div style="font:600 40px Fredoka">Picture complete!</div><div style="font:600 36px Fredoka;color:#e8a800;-webkit-text-stroke:1.5px #1e1646;margin:4px 0">★ ★ ★</div>
+ <div style="display:flex;flex-wrap:wrap;gap:10px 18px;margin-top:6px">${NAMES4.map(p=>`<div style="display:flex;align-items:center;gap:8px;font:600 24px Fredoka">${badge(p[1],38)}${p[0]} <span class="t20">${[9,7,6,4][p[1]-1]} pieces</span></div>`).join('')}</div></div></div>`,
+ foot:`<div class="sp"></div><div class="btn alt">Play again</div><div class="btn">Back to games</div>`}
+};
+
+function build(screen,shape){
+  const [W,H]=SHAPES[shape];const s=Math.min(W/960,H/540);const Wf=W/s,Hf=H/s;const L=layout(Wf,Hf);const S=SCREENS[screen];
+  const say=SAY[screen];
+  let th='';
+  if(L.mode==='side')th=`<div class="th" style="left:${L.sw}px;top:0;width:${L.col}px;height:${Hf}px;flex-direction:column;justify-content:center;padding:0 12px">${thumb(96)}<div class="bub">${say}</div><span class="tag">Thumby: side column</span></div>`;
+  if(L.mode==='strip')th=`<div class="th" style="left:0;top:${L.sh}px;width:${Wf}px;height:${L.col}px;padding:0 32px;gap:20px;border-top:3px solid var(--ink);background:rgba(255,246,227,.55)">${thumb(104)}<div class="bub" style="font-size:24px;flex:1">${say}</div><span class="tag">Thumby: bottom strip</span></div>`;
+  const corner=L.mode==='corner'?`<div class="th" style="left:20px;top:4px;height:76px">${thumb(60)}<div class="bub" style="width:330px;font-size:20px;padding:6px 12px">${say}</div></div><div style="width:430px;flex:none"></div>`:'';
+  const conf=S.conf?`<div class="conf">${Array.from({length:22},(_,i)=>`<i style="left:${(i*137)%Wf}px;top:${70+(i*91)%(Hf-170)}px;background:${['#2e9bf0','#ff9a1f','#a35cf6','#14c79b','#ff5d7d','#ffd23f'][i%6]};transform:rotate(${i*37}deg);opacity:.8"></i>`).join('')}</div>`:'';
+  return `<div class="dev" style="width:${W}px;height:${H}px"><div class="frame" style="width:${Wf}px;height:${Hf}px;transform:scale(${s})">
+   ${conf}<div class="stage" style="width:${L.sw}px;height:${L.sh}px">
+   <div class="hdr"><div class="bd" style="width:30px;height:30px;border-radius:6px;font-size:16px;background:var(--paper)">←</div><h2>${S.title}</h2>${S.right}</div>
+   <div class="body">${S.body()}</div>
+   <div class="ftr">${corner}${S.foot}</div></div>${th}</div></div>`;
+}
+const q=new URLSearchParams(location.hash.slice(1));
+if(q.get('screen')){document.body.className='solo';document.body.innerHTML=build(q.get('screen'),q.get('shape')||'852x393');}
+else{
+  let h=`<div class="page"><h1>Option C: host screens in a 960x540 design frame</h1><p class="note">Each screen is drawn once at the frame size and scaled by s = min(W/960, H/540). Thumby's spot is the dimension the device has extra: corner at 16:9 (640x360), side column on wide phones (852x393, frame 1171x540), bottom strip on 4:3 (1024x768, frame 960x720). Single screen: #screen=start|scoreboard|final|reveal|arena|puzzle&amp;shape=640x360|852x393|1024x768.</p>`;
+  for(const sc of SC){h+=`<h2 style="font-family:Fredoka">${sc}</h2><div class="row">`;for(const sh in SHAPES)h+=`<figure><figcaption>${sh}</figcaption>${build(sc,sh)}</figure>`;h+='</div>'}
+  document.body.innerHTML=h+'</div>';
+}
+</script></body></html>
