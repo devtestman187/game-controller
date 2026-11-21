@@ -326,8 +326,18 @@ void main() {
       final host = await soloRound(tester);
       final view = tester.widget<MatchView>(find.byType(MatchView));
       final box = tester.getSize(find.byType(MatchView));
-      expect(view.pxPerMm, phonePxPerMm);
-      expect(view.padRects, leftPadRects(box, mode: PadMode.dpad, mm: phonePxPerMm));
+      // The host's screens are drawn in a frame of scale s, so the game's box
+      // is in frame px: the pad's device figures are divided by s.
+      final s = party.HostFrameInfo.of(tester.element(find.byType(MatchView))).scale;
+      expect(view.pxPerMm, closeTo(phonePxPerMm / s, 1e-9));
+      final device = leftPadRects(box * s, mode: PadMode.dpad, mm: phonePxPerMm);
+      expect(view.padRects.length, device.length);
+      for (var i = 0; i < device.length; i++) {
+        expect(view.padRects[i].left, closeTo(device[i].left / s, 1e-6));
+        expect(view.padRects[i].top, closeTo(device[i].top / s, 1e-6));
+        expect(view.padRects[i].right, closeTo(device[i].right / s, 1e-6));
+        expect(view.padRects[i].bottom, closeTo(device[i].bottom / s, 1e-6));
+      }
       await tester.runAsync(host.dispose);
     });
 
