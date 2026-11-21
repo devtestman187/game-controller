@@ -2,6 +2,8 @@
 
 ## Summary
 
+> Correction (driver, Nov 21): the flash.sh wiring (extract append, FLASH_EXTRACT, allow entries) and the two doc notes were applied by hand in f4ed1fcb (run.log HAND-FIX p2-prompt); the test is tools/tests/flash-prompt-test.sh (job p2-ptest). The "could not" text below is the worker's view when it ran.
+
 **Stopped at step 2 of 5.** This job cannot change `tools/flash.sh`: every flash run adds
 `Edit(./tools/flash.sh)` to the deny list (tools/flash.sh:274, `protected`), and the edit tool refuses the file
 ("File is in a directory that is denied by your permission settings") before any write happens. A retry was refused

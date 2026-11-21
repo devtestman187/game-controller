@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # The known generated churn: the files the TV build and the tests rewrite, never
-# a person's work. Sourced, not run; tools/mine.sh is the caller.
+# a person's work. Sourced, not run; tools/mine.sh and tools/run-jobs.sh (through run-steps.sh) are the callers.
 #
 #   . tools/churn.sh
 #   churn_revert      # git checkout -- on the dirty generated paths, quietly
@@ -14,7 +14,7 @@
 # A deleted generated file comes back from the checkout; an untracked one stays
 # (checkout has nothing to restore), so the caller still sees that one.
 
-# The folders and files tools/run-jobs.sh calls CHURN.
+# The folders and files that tools/mine.sh and the runner treat as churn (CHURN_PATHS, CHURN_REGEX).
 CHURN_PATHS=(
   tv_test_app/windows/flutter/
   site/shots/

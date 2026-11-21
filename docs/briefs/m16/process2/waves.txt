@@ -1,4 +1,2 @@
-p2-harness p2-prompt
-p2-mine p2-wait p2-stop
-p2-split p2-docs p2-ptest
-p2-wire
+# fix round 1
+f1 f2 f3

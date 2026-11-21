@@ -246,7 +246,7 @@ Code is formatted at 120 columns (dart format). Python isn't installed: use Dart
 Never: run git commands that change anything (add, commit, push, tag, reset, checkout, stash, rm); run tools/release.sh; start apps, emulators or devices; edit .github/, codemagic.yaml, firebase/ or anything with keys or secrets; touch docs/PRD - Copy.md, docs/PRD-old*.md or kenney-audio/.
 To create a new file, use Edit with an empty old_string and the whole file as new_string.
 Project rules and lessons learned are in docs/project-notes.md: read the parts that apply before changing code.
-The extract below is the rules; open docs/coding-guidelines.md or docs/review-rules.md only for a question it does not answer. A diff that breaks them is sent back.
+Where the extract below is present it is the rules; open docs/coding-guidelines.md or docs/review-rules.md only for a question it does not answer. A diff that breaks them is sent back.
 Claude, who wrote this task, is the source of truth. Suggestions and questions go in your report; don't act on them.
 The task names a review gate (G0 survey, G1 plan, G2 contract and tests, G3 first slice, G4 complete, or a review). Stop at that gate, even if more looks easy.
 If the task needs a design decision, is unclear, or turns out bigger than described, stop and say so instead of guessing.

@@ -15,6 +15,7 @@ Input: worktree, batch folder name, jobs or bug ids, the owner's decisions quote
 3. WAIT IN YOUR OWN TURN. Foreground Bash with `timeout: 170000`, each call bounded to 2.5 minutes (the shell moves any call still running at 180 s into the background, measured Nov 21; and the prompt cache lasts 5 minutes, so a wait over 5 minutes re-sends your whole context, which was 85-97% of a driver's cost on Nov 21):
    `cd <worktree> && for i in $(seq 5); do tail -n 3 <dir>/run.log | grep -qE 'DONE|STOPPED' && break; sleep 30; done; tail -n 5 <dir>/run.log`
    Repeat until DONE or STOPPED shows after the last `start at` line. Never use run_in_background for the wait. Never end your turn while the run is going.
+   Trial (owner, Nov 21: the loop stays the default until the owner says otherwise): use `bash tools/wait-run.sh <dir>` (timeout 175000) instead of the for loop; it prints new lines and exits 0 DONE, 1 STOPPED, 2 STALLED or OVERRUN, 4 still running (repeat); fall back to the loop if it errors.
 4. On STOPPED: repair the one cause (digest, Repair a stop), restart, keep waiting. After 2 failed repairs of the same job, stop and report. Stop a run with the STOP file, never by killing.
 5. On DONE: verify each finding at its file:line, write verdicts in REVIEW.md. Trivial: fix by hand. Minor: `docs/code-health.md`. Real: at most 3 per fix job `f<n>` in the same folder, run the same way (max 2 fix rounds). Then the full `bash tools/check.sh` on the tip, tracker rows (append notes), STATUS.md "Resume here" line, commit named paths only.
 
