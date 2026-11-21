@@ -1,0 +1,16 @@
+2026-11-21 11:48:13 start at 803c0a8e on m16
+2026-11-21 11:48:13 run-base 803c0a8eb8935e6984f6da91a38e7a84e80d3bdb
+2026-11-21 11:48:22 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-21 11:48:22 start b032
+2026-11-21 11:48:47 start b033
+2026-11-21 11:49:13 start b034
+2026-11-21 12:04:10 b032 finished: result 0 (42 turns, 11 min)
+2026-11-21 12:06:06 b033 finished: result 0 (62 turns, 13 min)
+2026-11-21 12:09:43 b034 finished: result 4 (61 turns, 16 min)
+2026-11-21 12:09:45 b034: dropped generated churn outside its list: site/shots/join.png site/shots/menus.png 
+2026-11-21 12:11:40 tests-first ok: packages/party_host/test/award_explanation_size_test.dart fails on the old code
+2026-11-21 12:11:48 tests-first ok: packages/party_host/test/host_frame_footer_outline_test.dart fails on the old code
+2026-11-21 12:11:59 tests-first ok: packages/party_host/test/night_start_back_out_test.dart fails on the old code
+2026-11-21 12:19:06 committed b032: 8623c2af B-032: drop an unplayed night when the host backs out of round 1
+2026-11-21 12:19:08 committed b033: f22448cb B-033: one size for every award's "i" explanation box
+2026-11-21 12:19:10 committed b034: ac1618ec B-034: outline the host frame's footer on all four sides
