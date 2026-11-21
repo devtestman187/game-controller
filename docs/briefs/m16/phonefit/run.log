@@ -1,0 +1,11 @@
+2026-11-20 17:38:51 start at 0b9d1b5f on m16
+2026-11-20 17:38:52 run-base 0b9d1b5ff34a68f46c1c6f300cd861a124dcbeb3
+2026-11-20 17:39:00 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-20 17:39:00 start pf1
+2026-11-20 17:39:26 start pf2
+2026-11-20 17:54:08 pf1 finished: result 0 (124 turns, 13 min)
+2026-11-20 17:54:08 pf2 finished: result 0 (60 turns, 6 min)
+2026-11-20 17:55:21 tests-first: controller_app/test/round_strip_png_test.dart passes on the old code, exempt by its brief
+2026-11-20 17:55:38 tests-first: packages/party_host/test/phone_fit_test.dart passes on the old code, exempt by its brief
+2026-11-20 18:01:57 committed pf1: 289de18b Add a phone-fit measurement test for the night screens
+2026-11-20 18:01:59 committed pf2: 8a26cbdb m16 phonefit: capture the joined phone's round strip as a PNG
