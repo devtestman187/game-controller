@@ -41,3 +41,5 @@ HAND-FIX p4a: edited tools/tests/fixtures/brief-check/changes-hit-later-wave/con
 2026-11-22 13:24:25 STOPPED: job p4d passed its limit (45 min, estimate 30)
 2026-11-22 13:24:27 reviewed wave1: 13 finding(s)
 RESULT: STOPPED: job p4d passed its limit (45 min, estimate 30)
+HAND-FIX p4c: copied tools/run-jobs.sh, tools/run-wave.sh, tools/tests/run-wave-test.sh, tools/tests/run-wire-test.sh, tools/tests/run-base-test.sh, tools/tests/run-jobs-split-test.sh, tools/tests/run-limits-wire-test.sh, tools/tests/process3-fix1-test.sh from the kept tree (worker killed by p4d's limit stop); wrote p4c-report.md
+HAND-FIX p4d: copied tools/apply-job.sh, tools/tests/apply-job-test.sh from the kept tree (worker passed its limit); wrote p4d-report.md
