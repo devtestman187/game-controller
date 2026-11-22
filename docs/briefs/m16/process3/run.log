@@ -56,3 +56,16 @@ RESULT: STOPPED: checks failed twice on the combined tree after p3d p3e
 2026-11-22 05:06:02 reviewed wave2: 14 finding(s)
 RESULT: STOPPED: job p3f passed its limit (22 min, estimate 15)
 2026-11-22 05:07:26 HAND-FIX p3f: stopped at its 22 min limit (estimate 15 too small; worker was nearly done, no report); expected-min raised to 25 and the job restarted from scratch
+2026-11-22 05:07:27 start at 0debb143 on m16
+2026-11-22 05:07:38 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-22 05:07:38 skip p3a (already done)
+2026-11-22 05:07:39 skip p3b (already done)
+2026-11-22 05:07:39 skip p3c (already done)
+2026-11-22 05:07:40 WARN: p3d was committed by hand (269882af); a plain restart would skip its tests-first proof and worker review, so both run now
+2026-11-22 05:07:41 hand-fixed p3d: tests-first proof and worker review done (marked in done.txt)
+2026-11-22 05:07:41 skip p3d (already done)
+2026-11-22 05:07:41 skip p3e (already done)
+2026-11-22 05:07:42 wave 2 review skipped: the committed wave2-review-report.md already covers p3d
+2026-11-22 05:07:42 start p3f
+2026-11-22 05:36:18 p3f finished: result 0 (47 turns, 22 min)
+2026-11-22 05:48:49 committed p3f: 4d08818b runner: refuse a wave whose base does not compile
