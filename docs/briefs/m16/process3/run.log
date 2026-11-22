@@ -73,3 +73,4 @@ RESULT: STOPPED: job p3f passed its limit (22 min, estimate 15)
 2026-11-22 05:53:18 start the run's review
 2026-11-22 05:58:05 DONE: every job is committed. Claude reads the Summary of docs/briefs/m16/process3/REVIEW.md, verifies its findings and writes one fix brief
 RESULT: DONE: 6 jobs, 50 min
+2026-11-22 05:59:05 HAND-FIX f1: none; trivial hand edits (RUN_TURN_CAP env, unused test fns, selftest -h line, REHEARSAL rows 3/6, digest note) committed before the fix job
