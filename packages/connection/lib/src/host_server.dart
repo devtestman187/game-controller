@@ -3,6 +3,7 @@ import 'dart:math';
 
 import 'package:protocol/protocol.dart';
 
+import 'game_types.dart';
 import 'host_connection.dart';
 import 'host_pairings.dart';
 import 'host_types.dart';
@@ -12,6 +13,7 @@ import 'transport/channel_listener.dart';
 import 'transport/message_channel.dart';
 
 part 'host_character_reservation.dart';
+part 'host_players_broadcast.dart';
 
 /// The server that runs on the TV (and on the laptop), and on a phone hosting
 /// a game itself (M12).
@@ -94,6 +96,11 @@ class HostServer {
   bool _running = false;
   Timer? _heartbeat;
   int _lastLatencyLogMs = 0;
+
+  /// Whether a round runs (M16 identity), moved by [roundStarted] and
+  /// [roundEnded]: a character a player asks for during one waits for its end,
+  /// so a running round's players never change.
+  bool _roundRunning = false;
 
   /// Fires a new snapshot after every visible change, including each new RTT.
   Stream<HostSnapshot> get changes => _changes.stream;
@@ -197,20 +204,7 @@ class HostServer {
   /// viewers is the reason, m12 §2). Returns how many it went to.
   int sendToAll(Message message) {
     final paired = _sessions.where((s) => s.paired && _accepts(s, message)).toList();
-    if (paired.isEmpty) return 0;
-    final String text;
-    try {
-      text = _codec.encode(message);
-    } catch (e) {
-      // A payload that can't be encoded (a game snapshot with something that
-      // isn't JSON) goes to nobody, and the host carries on.
-      _log('Could not encode ${message.type} for ${paired.length} controller(s): $e');
-      return 0;
-    }
-    for (final s in paired) {
-      s.sendText(text);
-    }
-    return paired.length;
+    return _sendToAll(this, paired, message);
   }
 
   /// Sends [message] to a paired controller. Returns false if it isn't
@@ -219,7 +213,7 @@ class HostServer {
   bool send(String controllerId, Message message) {
     final s = _sessions.where((s) => s.paired && s.hello?.controllerId == controllerId).firstOrNull;
     if (s == null || !_accepts(s, message)) return false;
-    s.send(message);
+    s.send(_forSession(s, message));
     return true;
   }
 
@@ -228,6 +222,7 @@ class HostServer {
   static String? capabilityFor(Message message) => switch (message) {
     MetricsAckMessage() => Capability.metrics,
     RatingAskMessage() => Capability.rating,
+    PlayersMessage() => Capability.identity,
     GameLayoutMessage() => Capability.layout,
     StatusMessage() => Capability.status,
     ViewStartMessage() ||
@@ -361,6 +356,12 @@ final class _SessionHost implements HostSessionHost {
   @override
   PlayerCharacter reserveCharacter(HostConnection session, PlayerCharacter? wanted) =>
       _server._reserveCharacter(session, wanted);
+
+  @override
+  void characterChosen(HostConnection session, PlayerCharacter wanted) => _server.characterChosen(session, wanted);
+
+  @override
+  void playersChanged() => _server.broadcastPlayers();
 
   @override
   void sessionEnded(HostConnection session) => _server._sessions.remove(session);

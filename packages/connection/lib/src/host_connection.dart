@@ -53,6 +53,13 @@ abstract interface class HostSessionHost {
   /// nearest free colour and accessory among the other paired controllers.
   PlayerCharacter reserveCharacter(HostConnection session, PlayerCharacter? wanted);
 
+  /// The player of [session] chose another character (M16 identity).
+  void characterChosen(HostConnection session, PlayerCharacter wanted);
+
+  /// Tells the phones that take them who wears what (M16 identity): a player
+  /// joined, left or changed character.
+  void playersChanged();
+
   /// [session] is gone; the server forgets it.
   void sessionEnded(HostConnection session);
 
@@ -91,6 +98,9 @@ final class HostConnection {
 
   /// The character the host gave this controller when it paired (M14 L7).
   PlayerCharacter? character;
+
+  /// A character asked for during a round (M16 identity), applied at its end.
+  PlayerCharacter? heldCharacter;
   final latency = InputLatency();
 
   /// The name for logs: the controller's own, or its address before hello.
@@ -205,9 +215,7 @@ final class HostConnection {
         // counts as not sharing (sentry1 stats option B).
         if (paired) _forward(message, _host.nowMs);
       case SetCharacterMessage():
-        // i1d gives the player the character they asked for, and says which in
-        // a PlayerMessage. Until then the hello's character stands.
-        break;
+        _host.characterChosen(this, message.character);
       case WelcomeMessage() ||
           PairResultMessage() ||
           HapticEventMessage() ||
@@ -339,6 +347,7 @@ final class HostConnection {
     _host.log('${hello.name} connected ($how), player $player');
     if (changed) _host.pairingsChanged();
     _host.emit();
+    _host.playersChanged();
   }
 
   void _forward(Message message, int now, {int? delayMs}) =>
@@ -356,6 +365,8 @@ final class HostConnection {
         'Session of $who ended after ${_duration(connectedFor)}: input delay ~ $total'
         '${latency.uncertaintyMs == null ? '' : ' (± ${latency.uncertaintyMs} ms)'}',
       );
+      // The player's row goes from every phone's list (M16 identity).
+      _host.playersChanged();
     }
     // No stuck inputs: whoever reads the input stream sees everything released.
     final input = this.input;

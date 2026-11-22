@@ -11,6 +11,8 @@ import 'host_types.dart';
 import 'local_player.dart';
 import 'rtt.dart';
 
+part 'server_game_frames.dart';
+
 /// The [GameHost] of the TV and Windows apps: the phones connected to a
 /// [HostServer], plus local players.
 class ServerGameHost implements GameHost {
@@ -19,7 +21,14 @@ class ServerGameHost implements GameHost {
       server: server,
       grace: awayGrace,
       nowMs: () => nowMs,
-      hasView: () => _viewStart != null,
+      hasView: () => _view.isOn,
+      onEnded: _checkPlayers,
+    );
+    _view = RoundView(
+      server: server,
+      away: _away,
+      nowMs: () => nowMs,
+      characters: () => _characters,
       onEnded: _checkPlayers,
     );
     _serverSub = server.changes.listen((_) => _checkPlayers());
@@ -80,21 +89,24 @@ class ServerGameHost implements GameHost {
   /// The dropped players who still hold their slot (m12 bug 1107d).
   late final AwaySlots _away;
 
-  /// The view a game asked for, kept for viewers that pair mid-game (m12 §2).
-  ViewStartMessage? _viewStart;
-  ViewStartMessage? _latestStart;
-  FrameMessage? _viewFrame;
+  /// The view a game shows on the phones, kept for viewers that pair mid-game
+  /// (m12 §2).
+  late final RoundView _view;
 
-  /// When the host's away grace runs out, on its clock (m12 R1 finding 9).
-  int? _hostAwayEndsAtMs;
+  /// The character each player wears right now, by player ID (M16 identity):
+  /// the roster's, refreshed at every change, so each frame's `chars` costs no
+  /// more than the frame's own roster.
+  Map<String, PlayerCharacter> _characters = const {};
 
   /// Whether phones show this host's game at all (m12-joined-view §0.1): a
   /// change applies from the next [startView].
-  bool shareView = true;
+  bool get shareView => _view.shareView;
+
+  set shareView(bool value) => _view.shareView = value;
 
   /// The rate of the view a game is running, in frames a second (m12 §0.4):
   /// the rate viewers were told. Null between games, and when not shared.
-  int? get viewRateHz => _viewStart?.hz;
+  int? get viewRateHz => _view.rateHz;
 
   /// Everything games report, for the analytics collector.
   Stream<GameRecord> get records => _records.stream;
@@ -230,68 +242,22 @@ class ServerGameHost implements GameHost {
   };
 
   @override
-  bool get hasViewers => shareView && server.snapshot.connected.any(_isViewer);
-
-  /// A controller that gets frames: it listed [Capability.view].
-  static bool _isViewer(ControllerInfo info) => info.supports(Capability.view);
+  bool get hasViewers => _view.hasViewers;
 
   @override
-  void startView(ViewStartMessage start) {
-    _latestStart = start;
-    _hostAwayEndsAtMs = null;
-    // A view that isn't shared is no view here: no start is kept, so no frame
-    // or end can follow, and a viewer that pairs later gets nothing.
-    _viewStart = shareView ? start : null;
-    // A viewer that pairs from now on gets this start and the frames after it,
-    // never a frame of a game that has ended or a previous one.
-    _viewFrame = null;
-    if (_viewStart == null) return;
-    server.sendToAll(start);
-  }
+  void startView(ViewStartMessage start) => _view.start(start);
 
   @override
-  void publishFrame(FrameMessage frame) {
-    if (_viewStart == null) return;
-    _viewFrame = frame;
-    server.sendToAll(frame);
-  }
+  void publishFrame(FrameMessage frame) => _view.publish(frame);
 
   @override
-  void showResults(Map<String, ViewResult> results) {
-    // The view stays on: each phone keeps the last frame and draws its result
-    // over it, until the round's own end (M14 design section 9).
-    if (_viewStart == null) return;
-    for (final MapEntry(key: playerId, value: result) in results.entries) {
-      server.send(playerId, ViewEndMessage(reason: ViewEndReason.finished, result: result));
-    }
-  }
+  void showResults(Map<String, ViewResult> results) => _view.results(results);
 
   @override
-  void endView(ViewEndMessage end, {ViewStartMessage? of}) {
-    if (of != null && !identical(of, _latestStart)) return;
-    final wasRunning = _viewStart != null;
-    _viewStart = null;
-    _viewFrame = null;
-    _hostAwayEndsAtMs = null;
-    if (wasRunning) server.sendToAll(end);
-    // A slot ends with the round (m12 bug 1107d): when it is over, the
-    // players away lose it at once, so a rematch never waits for someone
-    // who left. The game has already stopped, so no step sees them go.
-    if (_away.isEmpty) return;
-    _away.endAll();
-    _checkPlayers();
-  }
+  void endView(ViewEndMessage end, {ViewStartMessage? of}) => _view.end(end, of: of);
 
   @override
-  void hostAway(int? secondsLeft) {
-    // A host tells its phones whenever it steps away, whether or not a view
-    // runs: the phone shows a host-away card without a view_start (m16 item 2).
-    // The message still needs the view capability, so no other controller gets
-    // it, and a view the host doesn't share is no reason to keep it back.
-    _hostAwayEndsAtMs = secondsLeft == null ? null : nowMs + secondsLeft * Duration.millisecondsPerSecond;
-    final message = secondsLeft == null ? const HostBackMessage() : HostAwayMessage(secondsLeft: secondsLeft);
-    server.sendToAll(message);
-  }
+  void hostAway(int? secondsLeft) => _view.hostAway(secondsLeft);
 
   @override
   void record(GameRecord record) {
@@ -335,6 +301,7 @@ class ServerGameHost implements GameHost {
   void _checkPlayers() {
     _away.noteRoster(players);
     final now = players;
+    _characters = {for (final p in now) p.id: ?p.character};
     if (_samePlayers(now, _lastPlayers)) return;
     // A phone that (re)joined gets the game's controls and panel again; one
     // that came back from a drop counts as rejoined, not as already here.
@@ -346,7 +313,7 @@ class ServerGameHost implements GameHost {
       if (p.local || p.away || before.contains(p.id)) continue;
       if (_layouts[p.id] case final layout?) server.send(p.id, layout);
       if (_statuses[p.id] case final status?) _sendStatus(p.id, status);
-      _sendView(p.id);
+      _view.sendTo(p.id);
     }
     _lastPlayers = now;
     if (!_playersChanged.isClosed) _playersChanged.add(now);
@@ -355,26 +322,6 @@ class ServerGameHost implements GameHost {
   @override
   void goOnWithout(String playerId) {
     if (_away.end(playerId, AwayEnd.wentOnWithout)) _checkPlayers();
-  }
-
-  /// A viewer that just (re)paired mid-game gets the view's start, its latest
-  /// frame and the aways before any later frame (m12 §2).
-  void _sendView(String controllerId) {
-    final start = _viewStart;
-    if (start == null) return;
-    server.send(controllerId, start);
-    if (_viewFrame case final frame?) server.send(controllerId, frame);
-    _away.sendTo(controllerId);
-    if (_hostAwayEndsAtMs case final endsAt?) {
-      server.send(controllerId, HostAwayMessage(secondsLeft: _secondsToGo(endsAt)));
-    }
-  }
-
-  /// The whole seconds left of the host's away grace at [endsAtMs], rounded up
-  /// like the wait's own count, and 0 once it is over.
-  int _secondsToGo(int endsAtMs) {
-    final ms = endsAtMs - nowMs;
-    return ms <= 0 ? 0 : (ms / Duration.millisecondsPerSecond).ceil();
   }
 
   Future<void> dispose() async {

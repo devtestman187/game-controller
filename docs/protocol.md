@@ -217,7 +217,7 @@ The message needs no capability: a host one build older ignores it as an unknown
 
 Every player wears one of 36 characters: one of the six player colours and one of the six accessories (§5's `character` in the hello). A character has a **stable ID**, `<colour>.<accessory>`. The colour half is the palette's own colour name in lower case, Blue first and in the player colours' order: `blue`, `orange`, `purple`, `teal`, `pink`, `yellow`; the accessory half is the accessory's wire name: `ears`, `antenna`, `bow`, `cap`, `tuft`, `crown`. So player 1's default is `blue.ears`, and `orange.bow` is the second colour with a bow. The ID names the character, never the player: the number and nickname are not part of it, so two players who wear one character share its ID. A screen that names a character in words says **"the Blue Bow"**: the colour name and the accessory's, `the` before them. The words agree with the ID, one per colour and per accessory, in every build.
 
-`players` (host → controller, sent only to a controller that listed `identity`): every player's character. The host sends it after pairing and again whenever the players or their characters change.
+`players` (host → controller, sent only to a controller that listed `identity`): every player's character. The host sends it after pairing and again when a player joins, leaves or changes character, to every controller that listed `identity`. It lists every player paired at that moment, in number order, whatever the phone of each one listed.
 
 ```json
 {"pl": [{"id": "c1f2", "n": 1, "name": "Mia", "character": {"c": 1, "a": "ears"}},
@@ -232,9 +232,9 @@ Every player wears one of 36 characters: one of the six player colours and one o
 | `name` | The player's nickname; left out or `""` when they have none |
 | `character` | The character they wear: `c` the colour slot 1 to 6, `a` the accessory's name |
 
-`set_character` (controller → host, sent only to a host that listed `identity`): the player chose another character in the phone's settings, `{"c": 4, "a": "crown"}`. The host answers with a `player` message carrying the character the player now wears: the one asked for, or the nearest free one when another player wears it (§5).
+`set_character` (controller → host, sent only to a host that listed `identity`): the player chose another character in the phone's settings, `{"c": 4, "a": "crown"}`. A change is allowed in the lobby and between rounds, and never during one: the host takes it at once then, and during a round it keeps it until the round ends, so a running round's players never change. Either way it answers with a `player` message carrying the character the player now wears: the one asked for, or the nearest free one when another player wears it (§5). The new `players` list follows the answer.
 
-A `frame` sent to a viewer that listed `identity` also carries `chars` next to `pl`: player ID → `{"c", "a"}`, the character each player in the roster wears. It is left out when no player in the frame has one, and a viewer that finds none draws each player's number's default character.
+A `frame` sent to a viewer that listed `identity` also carries `chars` next to `pl`: player ID → `{"c", "a"}`, the character each player in the roster wears, a player away whose phone dropped included. It is left out when no player in the frame has one, and a viewer that finds none draws each player's number's default character. A viewer that didn't list `identity` gets the frame without `chars` and without `players`, as it always has.
 
 **A peer one build older.** All of this is additive. A host without `identity` sends no `players` and no `chars`, and a phone one build older ignores `players` and `set_character` as unknown types (§2) and `chars` as an unknown field. A host one build older ignores `set_character`, and the player keeps the character their hello asked for.
 
