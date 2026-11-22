@@ -19,3 +19,10 @@
 2026-11-22 00:30:24 start i1a2
 2026-11-22 00:30:25 resume i1b (applied by hand, not committed yet)
 2026-11-22 00:32:57 STOPPED: stop file
+2026-11-22 00:33:37 start at 424d1f29 on m16
+2026-11-22 00:33:37 removed the last stop's STOP.md
+2026-11-22 00:33:48 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-22 00:33:49 start i1a2
+2026-11-22 00:34:14 start i1b
+2026-11-22 00:36:42 i1a2 finished: result 0 (31 turns, 2 min)
+2026-11-22 01:30:30 STOPPED: stop file
