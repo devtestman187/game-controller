@@ -70,3 +70,6 @@ RESULT: STOPPED: job p3f passed its limit (22 min, estimate 15)
 2026-11-22 05:36:18 p3f finished: result 0 (47 turns, 22 min)
 2026-11-22 05:48:49 committed p3f: 4d08818b runner: refuse a wave whose base does not compile
 2026-11-22 05:53:17 reviewed wave3: 6 finding(s)
+2026-11-22 05:53:18 start the run's review
+2026-11-22 05:58:05 DONE: every job is committed. Claude reads the Summary of docs/briefs/m16/process3/REVIEW.md, verifies its findings and writes one fix brief
+RESULT: DONE: 6 jobs, 50 min
