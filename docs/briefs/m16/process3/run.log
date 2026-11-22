@@ -111,3 +111,6 @@ RESULT: STOPPED: commit of f1 refused (see .dart_tool/run-jobs/docs_briefs_m16_p
 2026-11-22 07:03:40 skip p3f (already done)
 2026-11-22 07:04:01 resume f1 (applied by hand, not committed yet)
 2026-11-22 07:17:29 committed f1: c1bfe333 runner: every job's limit is polled in one loop, no retry for format/analyze, run's review is not a job
+2026-11-22 07:21:59 reviewed wave4: 9 finding(s)
+2026-11-22 07:21:59 DONE: every job is committed. Claude reads the Summary of docs/briefs/m16/process3/REVIEW.md, verifies its findings and writes one fix brief
+RESULT: DONE: 7 jobs, 19 min
