@@ -4,8 +4,13 @@
 # The second cheap worker's review of each wave and of the run: the briefs, their
 # start and reports, and slot_wait's limit of 3 flash jobs. Not run on its own; it
 # reads the runner's globals (B, LOGS, WORK, review, WAVES, CHURN_OUTSIDE, RV_NAMES,
-# RV_RANGES, PENDING, REVPIDS) and its note, save, finding, stop, check_stop,
-# committed, outside_files and unchurn helpers.
+# RV_RANGES, PENDING, REVPIDS) and its note, save, finding, stop, check_stop, kill_tree,
+# committed, outside_files and unchurn helpers. A review waits at most RUN_REVIEW_MAX_MIN
+# (tools/run-limits.sh, sourced below), and FLASH_CMD names the worker (default tools/flash.sh).
+
+# The limits and their helpers; a folder holding only the runner's files has no run-limits.sh,
+# and then a review keeps no limit of its own, as it had none before the limits existed.
+if [ -n "${dir:-}" ] && [ -f "$dir/run-limits.sh" ]; then . "$dir/run-limits.sh"; fi
 
 # 6. A second cheap worker reviews one wave (all its jobs together, not one review per job).
 review_brief() { # review_brief <review-name> <names> <ranges>: the brief for one wave's review
@@ -61,7 +66,7 @@ start_reviews() { # start_reviews <job>...: briefs are already committed
   for j in "$@"; do rm -f "$WORK/run-rev-$j.done"; PENDING+=("$j"); done
   (
     for j in "$@"; do
-      tools/flash.sh --brief "$B/$j-review.md" > "$LOGS/flash-$j-review.log" 2>&1
+      ${FLASH_CMD:-tools/flash.sh} --brief "$B/$j-review.md" > "$LOGS/flash-$j-review.log" 2>&1
       [ $? -eq 4 ] && review_salvage "$j" "$LOGS/flash-$j-review.log"
       : > "$WORK/run-rev-$j.done"
     done
@@ -87,20 +92,36 @@ slot_wait() { # at most 3 flash jobs at once, counting the background review cha
   while [ "$(jobs -rp | wc -l)" -ge 3 ]; do sleep 5; done
 }
 # The run's own review, one worker job over everything since run-base. It runs in the
-# background under a 5 s check_stop poll, like a wave's job, so the STOP file is seen and
-# RUN_MAX_MIN stops a stuck review with STOPPED: TIMEOUT (the old foreground call had no
-# time check at all and kept the runner waiting behind it).
+# background under a RUN_POLL_S check_stop poll, like a wave's job, so the STOP file is seen,
+# RUN_MAX_MIN stops a stuck review with STOPPED: TIMEOUT, and its own RUN_REVIEW_MAX_MIN ends
+# one that a worker left going (the old foreground call had no time check at all and kept the
+# runner waiting behind it).
+review_over() { # review_over <start s>: 0 when the review passed RUN_REVIEW_MAX_MIN (0: no limit)
+  local limit=${RUN_REVIEW_MAX_MIN:-0}
+  [ "$limit" -gt 0 ] || return 1
+  [ $(($(date +%s) - $1)) -ge $((limit * RUN_LIMIT_UNIT_S)) ]
+}
 run_review() { # run_review: commit the brief of the run's review and run it; returns flash's result
-  local base files pid rc
+  local base files pid rc start
   base=$(cat "$WORK/run-base")
   files=$(git diff --name-only "$base" HEAD | grep -Ev '^(site/shots/|.*/flutter/generated_|docs/briefs/)' | tr '\n' ' ')
   sed -e "s|{DIR}|$B|g" -e "s|{RANGE}|$base..$(git rev-parse HEAD)|g" -e "s|{FILES}|$files|g" \
     docs/briefs/templates/run-review.md > "$B/run-review.md"
   save "runner: the brief for the run's review" "$B/run-review.md" "$B/run.log"
   note "start the run's review"
-  tools/flash.sh --brief "$B/run-review.md" > "$LOGS/flash-run-review.log" 2>&1 &
+  ${FLASH_CMD:-tools/flash.sh} --brief "$B/run-review.md" > "$LOGS/flash-run-review.log" 2>&1 &
   pid=$!
-  while kill -0 "$pid" 2>/dev/null; do check_stop; sleep 5; done
+  start=$(date +%s)
+  while kill -0 "$pid" 2>/dev/null; do
+    check_stop
+    if review_over "$start"; then
+      kill_tree "$pid"
+      wait "$pid" 2>/dev/null
+      stop "REVIEW TIMEOUT: the run's review passed RUN_REVIEW_MAX_MIN=$RUN_REVIEW_MAX_MIN min and was killed" \
+        "(see $LOGS/flash-run-review.log); nothing of this wave is committed"
+    fi
+    sleep "${RUN_POLL_S:-1}"
+  done
   wait "$pid"; rc=$?
   return "$rc"
 }

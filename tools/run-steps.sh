@@ -4,7 +4,13 @@
 # The steps the runner takes between a job's start and its commit, and its stop
 # helpers (STOP.md, the time limit and the lock). Not run on its own; it reads the
 # runner's globals (B, WORK, CHURN_OUTSIDE, SAFE_OUTSIDE, SIZE_STOP, RUN_MAX_MIN,
-# RUN_START_S) and its note, finding, stop, unchurn and committed helpers.
+# RUN_START_S) and its note, finding, stop, unchurn, committed and kill_tree helpers.
+# The combined check runs under the limits of tools/run-limits.sh (sourced below).
+
+# The per-step limits and their helpers. A folder holding only the runner's files, as the
+# copies in tools/tests/run-wire-test.sh do, has no run-limits.sh: the check keeps no limit of
+# its own there, as it had none before the limits existed.
+if [ -n "${dir:-}" ] && [ -f "$dir/run-limits.sh" ]; then . "$dir/run-limits.sh"; fi
 
 # 2. A job that stopped with result 4: outside files that are generated churn are
 # dropped (logged), always-fine ones are applied; any other file stops the job.
@@ -91,19 +97,43 @@ tests_first() { # tests_first <job>...
   [ ${#bad[@]} -eq 0 ] || stop "tests-first: ${bad[*]} pass on the old code (write them to fail first, or add 'tests-first: exempt <reason>' to the brief for a pure refactor); nothing of this wave is committed"
 }
 
-# 4. The checks, with one self-repair, then the guideline checker.
+# 4. The checks, with one self-repair, then the guideline checker. tools/check.sh runs in the
+# background, so the STOP file and the time limits are seen while it works (a wave whose check
+# took 40 min unseen was a wave-1 defect); its own limit ends it with a stop naming the limit.
+check_once() { # check_once: tools/check.sh with the runner's fail-fast on, watched while it runs
+  # for the STOP file and RUN_MAX_MIN (through check_stop) and for RUN_CHECK_MAX_MIN; it stops
+  # the run when that limit ended the check. Returns check.sh's own exit code.
+  local pid start limit_s=${RUN_CHECK_MAX_MIN:-0} poll_s=${RUN_POLL_S:-1}
+  [ "$limit_s" -gt 0 ] && limit_s=$((limit_s * RUN_LIMIT_UNIT_S))
+  CHECK_FAIL_FAST=1 tools/check.sh > "$WORK/run-check.log" 2>&1 &
+  pid=$!
+  start=$(date +%s)
+  while kill -0 "$pid" 2> /dev/null; do
+    if [ "$limit_s" -gt 0 ] && [ $(($(date +%s) - start)) -ge "$limit_s" ]; then
+      kill_tree "$pid"
+      wait "$pid" 2> /dev/null
+      stop "CHECK TIMEOUT: the combined check passed RUN_CHECK_MAX_MIN=$RUN_CHECK_MAX_MIN min and was killed" \
+        "(see $WORK/run-check.log); nothing of this wave is committed"
+    fi
+    check_stop # RUN_MAX_MIN or the STOP file: its stop kills this shell's background children
+    sleep "$poll_s"
+  done
+  wait "$pid"
+}
 checks() {
   unchurn
-  if ! tools/check.sh > "$WORK/run-check.log" 2>&1; then
+  if ! check_once; then
     # A temp-folder race in a test (PathNotFoundException) is retried once, and only that.
     if grep -q PathNotFoundException "$WORK/run-check.log"; then
       note "check retry: PathNotFoundException in the failed suite (temp-folder race); running the checks once more"
       cp "$WORK/run-check.log" "$WORK/run-check-first.log"; unchurn
-      tools/check.sh > "$WORK/run-check.log" 2>&1 || stop "checks failed after the PathNotFoundException retry on the combined tree after $* (see $WORK/run-check.log); nothing of this wave is committed"
+      check_once || stop "checks failed after the PathNotFoundException retry on the combined tree after $*" \
+        "(see $WORK/run-check.log); nothing of this wave is committed"
     else
       note "checks failed; fetching packages and trying once more"
       flutter pub get > "$WORK/run-pub.log" 2>&1; unchurn
-      tools/check.sh > "$WORK/run-check.log" 2>&1 || stop "checks failed twice on the combined tree after $* (see $WORK/run-check.log); nothing of this wave is committed"
+      check_once || stop "checks failed twice on the combined tree after $*" \
+        "(see $WORK/run-check.log); nothing of this wave is committed"
     fi
   fi
   unchurn
