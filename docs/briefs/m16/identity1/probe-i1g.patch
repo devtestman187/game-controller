@@ -1,0 +1,23 @@
+diff --git a/packages/puzzle_game/lib/src/snapshot.dart b/packages/puzzle_game/lib/src/snapshot.dart
+index 368e6fc8..aae609e2 100644
+--- a/packages/puzzle_game/lib/src/snapshot.dart
++++ b/packages/puzzle_game/lib/src/snapshot.dart
+@@ -35,7 +35,7 @@ final class PieceView {
+ 
+ /// A player's dot as the view sees it.
+ final class PlayerView {
+-  const PlayerView({required this.number, required this.x, required this.y, this.held});
++  const PlayerView({required this.number, required this.x, required this.y, this.held, this.character});
+ 
+   final int number;
+   final double x;
+@@ -43,6 +43,9 @@ final class PlayerView {
+ 
+   /// The index of the piece it carries.
+   final int? held;
++
++  /// Probe stub: the chosen character's id (i1g), null for the player's default.
++  final String? character;
+ }
+ 
+ /// The whole game as one value the view draws from (PRD v2 S8): rules and

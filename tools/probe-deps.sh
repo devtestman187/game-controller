@@ -161,8 +161,8 @@ names() { # names <space-separated jobs>: "a", or "a and b"
   printf '%s' "$out"
 }
 
-run_limited() { # run_limited <command line> <deadline> <log>: the command in $wt, killed at the deadline
-  [ "$(date +%s)" -lt "$2" ] || return 3
+run_limited() { # run_limited <command line> <deadline> <log>: the command in $wt, killed at the deadline # returns 124 at the deadline (dart analyze itself exits 3 on errors)
+  [ "$(date +%s)" -lt "$2" ] || return 124
   ( cd "$wt" && exec $1 ) > "$3" 2>&1 &
   child=$!
   while kill -0 "$child" 2> /dev/null; do
@@ -170,7 +170,7 @@ run_limited() { # run_limited <command line> <deadline> <log>: the command in $w
       kill_tree "$child"
       wait "$child" 2> /dev/null
       child=""
-      return 3
+      return 124
     fi
     sleep "$PROBE_POLL_S"
   done
@@ -258,6 +258,7 @@ review_warns() { # review_warns <brief> <review log>: a layers FAIL in a file th
   local brief=$1 line rest f
   while IFS= read -r line; do
     rest=${line#FAIL layers }
+    rest=${rest#"${rest%%[![:space:]]*}"} # review.sh pads its columns
     f=${rest%% *}
     f=${f%:*}
     in_allow "$f" "$brief" || continue
@@ -273,12 +274,12 @@ probe_cmds() { # probe_cmds <brief> <wave> <patch>: pub get, analyze and review 
   log="$tmp/$job-pub.log"
   run_limited "${PROBE_PUB_CMD:-flutter pub get}" "$deadline" "$log"
   rc=$?
-  [ "$rc" = 3 ] && timeout_at "$job" "${PROBE_PUB_CMD:-flutter pub get}"
+  [ "$rc" = 124 ] && timeout_at "$job" "${PROBE_PUB_CMD:-flutter pub get}"
   [ "$rc" = 0 ] || setup_failed "$job: ${PROBE_PUB_CMD:-flutter pub get} failed: $(first_line "$log")"
   log="$tmp/$job-analyze.log"
   run_limited "${PROBE_ANALYZE_CMD:-dart analyze --fatal-infos}" "$deadline" "$log"
   rc=$?
-  [ "$rc" = 3 ] && timeout_at "$job" "${PROBE_ANALYZE_CMD:-dart analyze --fatal-infos}"
+  [ "$rc" = 124 ] && timeout_at "$job" "${PROBE_ANALYZE_CMD:-dart analyze --fatal-infos}"
   patch_files "$patch" > "$tmp/patched"
   files=$(error_files "$log")
   n=$(printf '%s\n' "$files" | grep -c .)
@@ -295,7 +296,7 @@ probe_cmds() { # probe_cmds <brief> <wave> <patch>: pub get, analyze and review 
     git -C "$wt" add -N . > /dev/null 2>&1
     log="$tmp/$job-review.log"
     run_limited "${PROBE_REVIEW_CMD:-bash tools/review.sh}" "$deadline" "$log"
-    [ "$?" = 3 ] && timeout_at "$job" "${PROBE_REVIEW_CMD:-bash tools/review.sh}"
+    [ "$?" = 124 ] && timeout_at "$job" "${PROBE_REVIEW_CMD:-bash tools/review.sh}"
     review_warns "$1" "$log"
   fi
 }

@@ -29,4 +29,6 @@ Read before writing briefs (Sonnet driver) and before any helper step (Haiku). E
 18. The main session reviews "Proposed" at batch review. It promotes or rejects each one, merges duplicates, drops rules a tool now enforces, and tells the owner what changed.
 
 ## Proposed
-(none yet)
+- P1 A tool that maps a child command's exit code to its own states must not reuse a code the child uses: probe-deps.sh read dart analyze's exit 3 (errors) as its timeout 3 and reported TIMEOUT within 40 s (process4 REHEARSAL 2c; fixed with 124). Tool tests must stub the child with its real exit codes.
+- P2 Fixture .dart files under tools/tests/ are seen by the workspace analyze: write them analyzer-clean (comments for the searched names) (process4 p4a, run.log 12:37: base does not compile before wave 2).
+- P3 Tools jobs ran 41-52 min against estimates of 30-35 (p4b 52, p4d 45, p4g 37 of 25): set expected-min 45 for a tools job with a new script plus test (process4 run.log 12:33, 13:24, 14:07). A change that moves a default (the backstop floor) names its pinned tests in allow (p4e: run-limits-wire-test).
