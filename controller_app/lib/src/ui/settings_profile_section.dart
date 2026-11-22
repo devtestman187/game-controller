@@ -14,7 +14,7 @@ class _PlayerSection extends ConsumerWidget {
     return _Section(
       title: PhoneText.you,
       children: [
-        const _NicknameRow(),
+        const SettingsNicknameRow(),
         const SizedBox(height: ToySizes.space8),
         Text(PhoneText.colour, style: _labelStyle(context)),
         const SizedBox(height: ToySizes.space4),
@@ -58,74 +58,6 @@ class _PlayerSection extends ConsumerWidget {
 
 /// A row's label, as the settings' own labels are drawn.
 TextStyle _labelStyle(BuildContext context) => ToyLookScope.of(context).type.button;
-
-/// The nickname field and its count (mock-up 17): what the hello sends as the
-/// phone's name, saved as it is typed.
-class _NicknameRow extends ConsumerStatefulWidget {
-  const _NicknameRow();
-
-  @override
-  ConsumerState<_NicknameRow> createState() => _NicknameRowState();
-}
-
-class _NicknameRowState extends ConsumerState<_NicknameRow> {
-  late final TextEditingController _text;
-
-  @override
-  void initState() {
-    super.initState();
-    _text = TextEditingController(text: ref.read(profileProvider).nickname ?? '');
-  }
-
-  @override
-  void dispose() {
-    _text.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final look = ToyLookScope.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(PhoneText.nickname, style: _labelStyle(context)),
-        const SizedBox(height: ToySizes.space4),
-        Row(
-          children: [
-            Expanded(
-              child: TextField(
-                key: const Key('settingsNickname'),
-                controller: _text,
-                // The phone's own name shows on the TV when the field is blank.
-                decoration: const InputDecoration(border: OutlineInputBorder()),
-                inputFormatters: [
-                  FilteringTextInputFormatter.allow(_nicknameCharacters),
-                  LengthLimitingTextInputFormatter(maxNicknameLength),
-                ],
-                onChanged: (text) => ref.read(profileProvider.notifier).setNickname(nicknameOfText(text)),
-              ),
-            ),
-            const SizedBox(width: ToySizes.space8),
-            ValueListenableBuilder<TextEditingValue>(
-              valueListenable: _text,
-              builder: (context, value, _) => Text(
-                PhoneText.nicknameCount(value.text.length),
-                key: const Key('nicknameCount'),
-                style: look.type.body.copyWith(color: look.colors.inkSoft),
-              ),
-            ),
-          ],
-        ),
-        Text(PhoneText.nicknameHint, style: look.type.body.copyWith(color: look.colors.inkSoft)),
-      ],
-    );
-  }
-}
-
-/// What a nickname may hold: letters, numbers and spaces (design section 9),
-/// the same rule [nicknameOfText] applies.
-final _nicknameCharacters = RegExp(r'[\p{L}\p{N} ]', unicode: true);
 
 /// A colour the player may pick (mock-up 17): the player colour as a round
 /// button, ringed in the look's ink and, when picked, in paper inside.

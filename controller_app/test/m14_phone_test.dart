@@ -28,11 +28,12 @@ void main() {
       expect(saved.character, tealCrown);
     });
 
-    test('the nickname keeps letters, numbers and spaces only, and ten characters', () {
+    test('the nickname keeps letters, numbers, spaces and basic punctuation, and ten characters', () {
       expect(nicknameOfText('Mia'), 'Mia');
       expect(nicknameOfText('Mia Maria Mia Mia'), 'Mia Maria');
       expect(nicknameOfText('  Mia  '), 'Mia');
-      expect(nicknameOfText('M1a!?'), 'M1a');
+      expect(nicknameOfText('M1a!?'), 'M1a!?', reason: 'basic punctuation is kept (M16 identity)');
+      expect(nicknameOfText('M1a🐱'), 'M1a', reason: 'an emoji is dropped (M16 identity)');
       expect(nicknameOfText('  '), isNull);
     });
 
@@ -70,7 +71,7 @@ void main() {
       await settle(tester);
 
       expect(find.byKey(const Key('takenNotice')), findsOneWidget);
-      expect(find.text('Blue is taken tonight, you\'re Teal'), findsOneWidget);
+      expect(find.text('Blue was taken: you\'re Teal'), findsOneWidget);
 
       app.client.emit(
         connected.copyWith(

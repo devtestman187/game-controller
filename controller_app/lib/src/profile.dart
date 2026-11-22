@@ -56,17 +56,30 @@ final class ControllerProfile {
 String phoneName({String? nickname, required String controllerId}) =>
     nickname ?? 'Phone ${controllerId.substring(0, 4).toUpperCase()}';
 
-/// The nickname [text] may become (design section 9): letters, numbers and
-/// spaces only, cut to [maxNicknameLength], or null when nothing is left — the
-/// phone then sends its own name, and the host falls back to "P1".
+/// The nickname [text] may become (M16 identity, design section 9): letters,
+/// numbers, spaces and the basic punctuation `. , ! ? ' - _`, cut to
+/// [maxNicknameLength], or null when nothing is left — the phone then sends its
+/// own name, and the host falls back to "P1".
 String? nicknameOfText(String text) {
   final trimmed = text.replaceAll(_notNickname, '').trim();
   if (trimmed.isEmpty) return null;
   return trimmed.length <= maxNicknameLength ? trimmed : trimmed.substring(0, maxNicknameLength).trimRight();
 }
 
-/// What a nickname may hold: everything but letters, numbers and spaces.
-final _notNickname = RegExp(r'[^\p{L}\p{N} ]', unicode: true);
+/// What a nickname may hold: letters, numbers, spaces and the punctuation a
+/// phone keyboard types — `. , ! ? ' - _`. Everything else, an emoji or a
+/// control character, is dropped.
+///
+/// The nickname field keeps [nicknameCharacters], and [nicknameOfText] cuts
+/// [_notNickname], its other side: one character class, so a character the
+/// field lets through is never cut from the saved name behind the count.
+const _nicknameClass = r"\p{L}\p{N} .,!?'\-_";
+
+/// The characters a nickname field keeps, one at a time (M16 identity).
+final nicknameCharacters = RegExp('[$_nicknameClass]', unicode: true);
+
+/// Everything a nickname may not hold, [_nicknameClass]'s other side.
+final _notNickname = RegExp('[^$_nicknameClass]', unicode: true);
 
 const _nicknameKey = 'profileNickname';
 const _characterKey = 'profileCharacter';

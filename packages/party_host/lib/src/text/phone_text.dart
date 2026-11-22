@@ -43,6 +43,13 @@ abstract final class PhoneText {
   static const settings = 'Settings';
   static const tryWithoutTv = 'Try without a TV';
 
+  /// The saved character on the join screen (M16 identity): "You: the Blue
+  /// Crown", the character the next hello asks the host for, in words.
+  static String yourCharacter(String name) => 'You: $name';
+
+  /// The link beside it, which opens the Settings screen.
+  static const change = 'Change';
+
   /// A host's second line: its kind's word, then what it shows today.
   static String hostLine(String kindWord, String shown) => kindWord.isEmpty ? shown : '$kindWord · $shown';
 
@@ -153,7 +160,7 @@ abstract final class PhoneText {
 
   // The phone's player: nickname and character (M14 design section 9).
   static const nickname = 'Nickname';
-  static const nicknameHint = 'Up to 10 characters: letters, numbers and spaces.';
+  static const nicknameHint = 'Up to 10 characters: letters, numbers, spaces and basic punctuation.';
   static String nicknameCount(int length) => '$length / $maxNicknameLength';
   static const colour = 'Colour';
   static const accessory = 'Accessory';
@@ -162,9 +169,9 @@ abstract final class PhoneText {
   static const marble = 'marble';
   static const showsNextTime = 'Shows next time you join.';
 
-  /// What the phone says when the host gave it another colour (M14 design
-  /// section 9): "Blue is taken tonight, you're Teal".
-  static String takenTonight(String wanted, String given) => '$wanted is taken tonight, you\'re $given';
+  /// What the phone says when the host gave it another colour (M16 identity,
+  /// M14 design section 9): "Blue was taken: you're Teal".
+  static String takenTonight(String wanted, String given) => '$wanted was taken: you\'re $given';
 
   // The results card over the last frame (M14 design section 9).
   static const youWin = 'You win!';

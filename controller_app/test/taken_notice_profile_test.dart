@@ -46,7 +46,7 @@ void main() {
       await settle(tester);
 
       expect(find.byKey(const Key('takenNotice')), findsOneWidget);
-      expect(find.text('Blue is taken tonight, you\'re Teal'), findsOneWidget);
+      expect(find.text('Blue was taken: you\'re Teal'), findsOneWidget);
 
       // The player picks teal for the next join: the answer to the blue hello
       // stands, so the line still names blue (B-028).
@@ -57,7 +57,7 @@ void main() {
       await closeSettings(tester);
 
       expect(find.byKey(const Key('takenNotice')), findsOneWidget);
-      expect(find.text('Blue is taken tonight, you\'re Teal'), findsOneWidget);
+      expect(find.text('Blue was taken: you\'re Teal'), findsOneWidget);
 
       // The band's own seconds end it.
       await tester.pump(const Duration(seconds: 5));

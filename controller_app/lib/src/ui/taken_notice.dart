@@ -4,10 +4,10 @@ import 'package:party_host/party_host.dart' show PhoneText, ToyLookScope, ToySiz
 
 import '../providers.dart';
 
-/// The line that tells the player the host gave them another colour (M14
-/// design section 9, mock-up 18): "Blue is taken tonight, you're Teal", on the
-/// pad's own green band while the host's answer differs from what the last
-/// hello asked for.
+/// The line that tells the player the host gave them another colour (M16
+/// identity, M14 design section 9, mock-up 18): "Blue was taken: you're Teal",
+/// on the pad's own green band while the host's answer differs from what the
+/// last hello asked for.
 ///
 /// The host keeps colour and accessory unique in a game, so a phone whose
 /// pick was taken wears the nearest free one on its badge and in the game; the

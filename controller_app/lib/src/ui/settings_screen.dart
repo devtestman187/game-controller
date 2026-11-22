@@ -1,8 +1,6 @@
 import 'dart:async';
 
-import 'package:connection/connection.dart' show maxNicknameLength;
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:party_host/party_host.dart'
     show
@@ -36,10 +34,10 @@ import '../gyro.dart';
 import '../haptics.dart';
 import '../host/hosting.dart';
 import '../host/hosting_frame_rate.dart';
-import '../profile.dart';
 import '../providers.dart';
 import '../sticks.dart';
 import '../tilt.dart';
+import 'settings_nickname_row.dart';
 
 part 'settings_profile_section.dart';
 part 'settings_sections.dart';
