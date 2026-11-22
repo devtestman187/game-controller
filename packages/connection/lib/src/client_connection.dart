@@ -201,8 +201,30 @@ final class ClientConnection {
     }
   }
 
+  /// Tells the host the character the player picked since the last request
+  /// (M16 identity), for a host that lists [Capability.identity].
+  ///
+  /// The app changes the identity in place, which a phone can notice only when
+  /// it is awake anyway: the heartbeat is that moment, so the change reaches
+  /// the host within one interval. The ask is recorded in the snapshot before
+  /// it goes, so the next beat doesn't repeat it and the taken notice compares
+  /// the host's answer with this pick. The host decides whether it takes effect
+  /// now or at the next round; this only says what the player wants. A host one
+  /// build older lists no identity, and is told nothing.
+  void _tellCharacterIfChosen() {
+    final snapshot = _host.snapshot;
+    final wanted = _host.identity.character;
+    if (!snapshot.isConnected || wanted == null) return;
+    if (snapshot.askedCharacter == wanted) return;
+    if (!snapshot.hostCapabilities.contains(Capability.identity)) return;
+    _host.setSnapshot(snapshot.copyWith(askedCharacter: wanted));
+    _host.log('The player chose another character, asking the host for it');
+    send(SetCharacterMessage(character: wanted));
+  }
+
   void _beat(int channelId) {
     if (channelId != _channelId) return;
+    _tellCharacterIfChosen();
     final quietMs = _host.nowMs - _lastHeardMs;
     if (quietMs > heartbeatTimeout.inMilliseconds) {
       _host.log('No heartbeat for ${(quietMs / 1000).toStringAsFixed(1)} s, the connection is gone');

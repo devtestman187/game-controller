@@ -22,8 +22,9 @@ class ProfileNotifier extends Notifier<ControllerProfile> {
   /// sends as its name.
   void setNickname(String? nickname) => _save(ControllerProfile(nickname: nickname, character: state.character));
 
-  /// Saves the colour and accessory the player picked, which the next hello
-  /// sends for the host to give them (nearest free).
+  /// Saves the colour and accessory the player picked: a joined client tells
+  /// the host at once (M16 identity, a `set_character` message), which gives
+  /// them the nearest free one, and the next hello asks for it again.
   void setCharacter(PlayerCharacter character) =>
       _save(ControllerProfile(nickname: state.nickname, character: character));
 
@@ -36,8 +37,9 @@ class ProfileNotifier extends Notifier<ControllerProfile> {
   }
 
   /// The next hello says the new profile: a client connects with the identity
-  /// it holds, so it takes the name and the character here ("shows next time
-  /// you join").
+  /// it holds, so it takes the name and the character here. A client that is
+  /// joined tells the host the new character itself (M16 identity, from the
+  /// next heartbeat), and the next hello asks for it again.
   void _apply(ControllerProfile profile, ControllerClient client) {
     client.identity = client.identity.copyWith(
       name: phoneName(nickname: profile.nickname, controllerId: client.identity.controllerId),

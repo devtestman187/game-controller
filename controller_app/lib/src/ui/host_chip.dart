@@ -35,9 +35,11 @@ class HostChip extends ConsumerWidget {
     if (host == null || !host.live) return const SizedBox.shrink();
     final hosting = ref.read(hostingProvider.notifier);
     final state = ref.watch(party.hostStateProvider);
-    // The own player's number, as the host gave it out: the screens' client
-    // is the own player's while this phone hosts (m12 §3).
+    // The own player's number and character, as the host gave them out: the
+    // screens' client is the own player's while this phone hosts (m12 §3,
+    // M16 identity).
     final player = ref.watch(clientStateProvider.select((s) => s.player));
+    final character = ref.watch(clientStateProvider.select((s) => s.character));
     final address = state.addresses.firstOrNull?.address;
     final code = state.host.pairingCode;
     final look = ToyLookScope.of(context);
@@ -46,7 +48,10 @@ class HostChip extends ConsumerWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (!compact && player != null) ...[PlayerBadge(number: player), const SizedBox(width: ToySizes.space8)],
+        if (!compact && player != null) ...[
+          PlayerBadge(number: player, character: character),
+          const SizedBox(width: ToySizes.space8),
+        ],
         Flexible(
           child: MenuAnchor(
             menuChildren: [

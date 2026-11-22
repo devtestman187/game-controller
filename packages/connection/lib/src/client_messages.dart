@@ -57,9 +57,7 @@ final class ClientMessages {
           PlayerBackMessage():
         _onViewEvent(message);
       case PlayersMessage():
-        // i1e remembers who wears what. Until then a phone draws each number's
-        // default character, as it does with a host one build older.
-        break;
+        _onPlayers(message);
       case HelloMessage() ||
           PairRequestMessage() ||
           InputStateMessage() ||
@@ -103,6 +101,17 @@ final class ClientMessages {
         }
       default:
     }
+  }
+
+  /// Who wears what (M16 identity): the host's list of the players, kept for
+  /// the lobby list and the result card. Only while paired — a host this phone
+  /// hasn't joined says nothing about its players — and the newest list
+  /// replaces the last, as a player who leaves goes with it. A host one build
+  /// older sends none, so the list stays empty and each player shows the
+  /// default of their number.
+  void _onPlayers(PlayersMessage message) {
+    if (!_host.snapshot.isConnected) return;
+    _host.setSnapshot(_host.snapshot.copyWith(players: message.players));
   }
 
   /// A message about the game this phone shows (M12): dropped unless it shows

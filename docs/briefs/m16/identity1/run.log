@@ -45,3 +45,4 @@
 2026-11-22 08:17:25 STOPPED: job i1e used 151 turns, over its cap of 120
 2026-11-22 08:17:27 reviewed wave1: 8 finding(s)
 RESULT: STOPPED: job i1e used 151 turns, over its cap of 120
+2026-11-22 HAND-FIX i1e: applied from job worktree flash-20261122-080034-737458 after the 151-turn stop; 5 tests fail (host_chip x2, phone_metrics, m9 x2), finished by i1e2; tests-first proof and worker review not run

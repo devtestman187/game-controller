@@ -1,8 +1,11 @@
+import 'package:connection/connection.dart';
+import 'package:controller/src/providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:party_host/party_host.dart' as party;
 import 'package:party_host/testing.dart' as party_test;
+import 'package:protocol/protocol.dart';
 
 import 'support/host_app.dart';
 import 'support/pump_app.dart';
@@ -44,6 +47,35 @@ void main() {
 
     await tester.runAsync(host.dispose);
   });
+
+  for (final tv in [false, true]) {
+    testWidgets(
+      'the chip\'s badge wears the character the host gave the own player, in ${tv ? 'the TV' : 'the menu'} look',
+      (tester) async {
+        // The own player's client, as the host answered it: player 4 in the
+        // teal crown, which is not player 4's default (M16 identity).
+        await pumpHostApp(
+          tester,
+          tablet: tv,
+          screen: tv ? const Size(1180, 820) : const Size(852, 393),
+          extra: [
+            if (tv) party.toyTvProvider.overrideWithValue(true),
+            _clientState(connected.copyWith(player: 4, character: tealCrown)),
+          ],
+        );
+        final host = await enterHostMode(tester);
+
+        final badge = tester.widget<party.PlayerBadge>(
+          find.descendant(of: find.byKey(const Key('playerBadge')), matching: find.byType(party.PlayerBadge)),
+        );
+        expect(badge.number, 4);
+        expect(badge.character, tealCrown, reason: 'the host\'s answer, not player 4\'s default');
+        expect(tester.takeException(), isNull);
+
+        await tester.runAsync(host.dispose);
+      },
+    );
+  }
 }
 
 /// The app's host state replaced with [state], so the chip's address line is
@@ -71,4 +103,23 @@ party.HostViewState _stateWith(List<party.LocalAddress> addresses) {
     advertise: sample.advertise,
     advertisedName: sample.advertisedName,
   );
+}
+
+/// The character the host gave this phone's own player (M16 identity): the
+/// teal crown, which no player number's default gives.
+const tealCrown = PlayerCharacter(colourSlot: 4, accessory: PlayerAccessory.crown);
+
+/// This phone's own player's client state, replaced with [snapshot], so the
+/// chip's badge reads a known answer without a host's round.
+Override _clientState(ClientSnapshot snapshot) => clientStateProvider.overrideWith(() => _FixedClientState(snapshot));
+
+/// A client state that never changes: the chip only reads its snapshot.
+class _FixedClientState extends ClientStateNotifier {
+  _FixedClientState(this.initial);
+
+  /// What the screens show for the whole test.
+  final ClientSnapshot initial;
+
+  @override
+  ClientSnapshot build() => initial;
 }

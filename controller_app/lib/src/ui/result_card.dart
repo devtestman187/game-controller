@@ -27,9 +27,11 @@ class ResultCard extends ConsumerWidget {
     final number = ref.watch(clientStateProvider.select((s) => s.player));
     final character = ref.watch(clientStateProvider.select((s) => s.character));
     final own = result.standings.where((s) => s.number == number).firstOrNull;
-    final name =
-        own?.name ?? ref.watch(profileProvider).nickname ?? (number == null ? null : PhoneText.playerShort(number));
-    final toy = ToyCharacter.of(own?.character ?? character, own?.number ?? number ?? 1);
+    final ownNumber = own?.number ?? number ?? 1;
+    // A name the host left blank is this player's number in words (M16
+    // identity): "Player 2", as the lobby list says it too.
+    final name = PhoneText.playerName(own?.name ?? ref.watch(profileProvider).nickname ?? '', ownNumber);
+    final toy = ToyCharacter.of(own?.character ?? character, ownNumber);
     return Material(
       type: MaterialType.transparency,
       child: Center(
@@ -43,7 +45,7 @@ class ResultCard extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const _Picture(),
-                _nameRow(context, name: name, number: own?.number ?? number ?? 1, toy: toy),
+                _nameRow(context, name: name, number: ownNumber, toy: toy),
                 ..._night(context, number: number),
                 const SizedBox(height: ToySizes.space12),
                 Text(
@@ -61,7 +63,7 @@ class ResultCard extends ConsumerWidget {
   }
 
   /// The row across the card: the badge, the name, and the time or count.
-  Widget _nameRow(BuildContext context, {required String? name, required int number, required ToyCharacter toy}) {
+  Widget _nameRow(BuildContext context, {required String name, required int number, required ToyCharacter toy}) {
     final look = ToyLookScope.of(context);
     return Row(
       children: [
@@ -69,7 +71,7 @@ class ResultCard extends ConsumerWidget {
         const SizedBox(width: ToySizes.space8),
         Expanded(
           child: Text(
-            name ?? '',
+            name,
             key: const Key('resultName'),
             style: look.type.button.copyWith(color: look.colors.ink),
             maxLines: 1,
@@ -225,7 +227,9 @@ class _StandingRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final look = ToyLookScope.of(context);
     final style = look.type.body.copyWith(color: look.colors.ink, fontWeight: own ? FontWeight.bold : null);
-    final name = standing.name;
+    // A row the host left unnamed is "Player N", as the lobby list says it
+    // (M16 identity); Robo's row has its own name.
+    final name = PhoneText.playerName(standing.name, standing.number);
     return Padding(
       key: Key('standing-${standing.number}'),
       padding: const EdgeInsets.symmetric(vertical: 2),

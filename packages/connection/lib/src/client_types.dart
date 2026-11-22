@@ -72,6 +72,7 @@ final class ClientSnapshot {
     this.player,
     this.character,
     this.askedCharacter,
+    this.players = const [],
     this.hostCapabilities = const [],
   });
 
@@ -110,12 +111,20 @@ final class ClientSnapshot {
   /// nearest free one. Null from a host one build older, which sends none.
   final PlayerCharacter? character;
 
-  /// The colour and accessory the last hello asked the host for (M14 L7,
-  /// B-028): what [character] is compared with to say the pick was taken, so a
-  /// player who changes colour in Settings while joined keeps hearing about
-  /// the colour the host was told. Null until a hello goes out, and for a
-  /// phone that sends no character.
+  /// The colour and accessory the phone last asked the host for (M14 L7,
+  /// B-028, M16 identity): the hello's, or a [SetCharacterMessage]'s sent
+  /// while joined. It is what [character] is compared with to say the pick was
+  /// taken, and what the client compares its identity with to notice a change
+  /// the host hasn't heard yet. Null until a request goes out, and for a phone
+  /// that asks for nothing.
   final PlayerCharacter? askedCharacter;
+
+  /// The players the host says are here (M16 identity): who wears what, for
+  /// the lobby list and the result card. In the host's own order, and empty
+  /// until a host that lists [Capability.identity] sends its `players` message:
+  /// a host one build older sends none, and every player shows their number's
+  /// default then.
+  final List<PlayerRow> players;
 
   /// What the host supports ([Capability]), from its welcome (M9). Empty for
   /// TV apps older than M9.
@@ -136,6 +145,7 @@ final class ClientSnapshot {
     player: null,
     character: null,
     askedCharacter: null,
+    players: const [],
     osErrorCode: osErrorCode,
   );
 
@@ -150,6 +160,7 @@ final class ClientSnapshot {
     player: null,
     character: null,
     askedCharacter: null,
+    players: const [],
   );
 
   /// The best name for the host: its own name, the advertised one, or its
@@ -169,6 +180,7 @@ final class ClientSnapshot {
     Object? player = _keep,
     Object? character = _keep,
     Object? askedCharacter = _keep,
+    List<PlayerRow>? players,
     List<String>? hostCapabilities,
   }) => ClientSnapshot(
     status: status ?? this.status,
@@ -183,6 +195,7 @@ final class ClientSnapshot {
     player: identical(player, _keep) ? this.player : player as int?,
     character: identical(character, _keep) ? this.character : character as PlayerCharacter?,
     askedCharacter: identical(askedCharacter, _keep) ? this.askedCharacter : askedCharacter as PlayerCharacter?,
+    players: players ?? this.players,
     hostCapabilities: hostCapabilities ?? this.hostCapabilities,
   );
 

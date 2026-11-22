@@ -120,6 +120,14 @@ abstract final class PhoneText {
   /// A player's number as the bar's badge says it: "P2".
   static String playerShort(int number) => 'P$number';
 
+  /// A player's name on the phone's own lists (M16 identity, owner decision
+  /// Nov 21): their nickname, or "Player 2" when the host has none for them
+  /// (REVIEW-1b Minor 3). [number] is the number the host gave them.
+  static String playerName(String name, int number) {
+    final trimmed = name.trim();
+    return trimmed.isEmpty ? 'Player $number' : trimmed;
+  }
+
   /// The bar's connection as its label and ping: "Android TV · 9 ms".
   static String linkWithPing(String label, int? ms) => '$label · ${ms ?? HostText.dash} ms';
   static String tapToConnect(String label) => '$label · tap to connect';

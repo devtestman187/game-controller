@@ -45,12 +45,24 @@ final class ControllerIdentity {
     character: character ?? this.character,
   );
 
+  /// The capabilities this controller library reads and sends itself, so
+  /// every hello lists them whatever the app named (M16 identity): a phone
+  /// that sends a [SetCharacterMessage] understands the host's
+  /// [PlayersMessage]s and a frame's `chars`.
+  static const libraryCapabilities = [Capability.identity];
+
+  /// This identity as the hello sends it: [capabilities] plus the ones the
+  /// library adds ([libraryCapabilities]).
   HelloMessage toHello() => HelloMessage(
     controllerId: controllerId,
     name: name,
     platform: platform,
     appVersion: appVersion,
-    capabilities: capabilities,
+    capabilities: [
+      ...capabilities,
+      for (final capability in libraryCapabilities)
+        if (!capabilities.contains(capability)) capability,
+    ],
     device: device,
     character: character,
   );

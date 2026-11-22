@@ -9,6 +9,7 @@ import '../gyro.dart';
 import '../layout.dart';
 import '../providers.dart';
 import '../sticks.dart';
+import 'lobby_players.dart';
 import 'pad_widgets.dart';
 import 'top_bar_metrics.dart';
 
@@ -51,9 +52,9 @@ List<Rect> leftPadRects(
 /// away or the link is down (m12-joined-view §0.3); the last frame it drew
 /// stays under the card until the link is back or the player leaves.
 ///
-/// Shown only while the host shows a view, and nothing at all while it shows
-/// none, so a phone joined to a host that sends it no game keeps its
-/// controller screen.
+/// Shown only while the host shows a view, so a phone joined to a host that
+/// sends it no game keeps its controller screen; with no game on screen it
+/// draws the lobby's players instead ([LobbyPlayers], M16 identity).
 class JoinedView extends ConsumerStatefulWidget {
   const JoinedView({super.key});
 
@@ -103,6 +104,11 @@ class _JoinedViewState extends ConsumerState<JoinedView> {
     // stays under the card until the link is back or the player leaves: the
     // card then covers the game they played last (m12-joined-view §0.3).
     final drawn = ref.watch(viewActiveProvider) || ref.watch(hostWaitProvider) != null;
+    // The lobby (M16 identity): with no game on screen, and no result card
+    // over it, the phone says who the host has in the lobby, on the sky the
+    // game would draw on. A host one build older sends no list, and this is
+    // the empty box it always was.
+    final lobby = !drawn && ref.watch(viewResultProvider) == null;
     // The whole safe area, which is the box the game draws in: the pad's
     // controls are measured in the same box, so the game keeps clear of where
     // they are (m12-opponent-mirror rule 3).
@@ -110,6 +116,7 @@ class _JoinedViewState extends ConsumerState<JoinedView> {
       builder: (context, window) => Stack(
         fit: StackFit.expand,
         children: [
+          if (lobby) const LobbyPlayers(),
           // The view stays mounted while none is on, so it hears the start
           // that turns one on: it draws nothing itself until then. Keeping it
           // off the screen and its ticker quiet is all this does.
