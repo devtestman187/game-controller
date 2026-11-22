@@ -11,3 +11,9 @@
 RESULT: STOPPED: job p4b passed its limit (52 min, estimate 35)
 HAND-FIX p4b: copied tools/probe-deps.sh, tools/tests/probe-deps-test.sh, tools/tests/fixtures/probe-deps/ from the kept tree (worker passed its limit); wrote p4b-report.md
 HAND-FIX p4e: edited tools/tests/run-limits-wire-test.sh (pinned backstop 25 -> 45, class c)
+2026-11-22 12:35:31 RUN_MAX_MIN=157 min (computed backstop of the jobs still to do)
+2026-11-22 12:35:31 start at 95eec1b1 on m16
+2026-11-22 12:35:31 removed the last stop's STOP.md
+2026-11-22 12:35:44 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-22 12:37:10 STOPPED: the base does not compile: FAIL  analyze     (exit 3, 75s)  log: C:\Users\mrman\AppData\Local\Temp/thumbparty-check-20261122-123544/analyze.log (log .dart_tool/run-jobs/docs_briefs_m16_process4/run-base-check.log); no job of wave 1 was started
+RESULT: STOPPED: the base does not compile: FAIL  analyze     (exit 3, 75s)  log: C:\Users\mrman\AppData\Local\Temp/thumbparty-check-20261122-123544/analyze.log (log .dart_tool/run-jobs/docs_briefs_m16_process4/run-base-check.log); no job of wave 1 was started
