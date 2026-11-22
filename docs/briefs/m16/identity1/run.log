@@ -27,3 +27,14 @@
 2026-11-22 00:36:42 i1a2 finished: result 0 (31 turns, 2 min)
 2026-11-22 01:30:30 STOPPED: stop file
 2026-11-22 01:50:00 HAND-FIX i1b: applied from job worktree flash-20261122-003415-326933 after base fix (i1a2 committed); combined check green (707 s); tests-first proof and worker review not run
+2026-11-22 07:56:44 RUN_MAX_MIN=85 min (computed backstop of the jobs still to do)
+2026-11-22 07:56:44 start at f08753b2 on m16
+2026-11-22 07:56:44 removed the last stop's STOP.md
+2026-11-22 07:56:57 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-22 07:57:18 skip i1a (already done)
+2026-11-22 07:57:19 WARN: i1b was committed by hand (05c5d72b); a plain restart would skip its tests-first proof and worker review, so both run now
+2026-11-22 07:59:30 tests-first ok: controller_app/test/identity_change_link_test.dart fails on the old code
+2026-11-22 07:59:43 tests-first ok: controller_app/test/identity_nickname_test.dart fails on the old code
+2026-11-22 07:59:45 hand-fixed i1b: tests-first proof and worker review done (marked in done.txt)
+2026-11-22 07:59:45 skip i1b (already done)
+2026-11-22 07:59:46 skip i1c (already done)
