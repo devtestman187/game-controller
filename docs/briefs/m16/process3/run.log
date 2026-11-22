@@ -51,3 +51,7 @@ RESULT: STOPPED: checks failed twice on the combined tree after p3d p3e
 2026-11-22 04:31:07 resume p3e (applied by hand, not committed yet)
 2026-11-22 04:43:23 committed p3d: 269882af tools: per-job limits, a turn cap and a RESULT line in the runner
 2026-11-22 04:43:25 committed p3e: c013ff71 p3e: add a stand-in worker for runner rehearsals
+2026-11-22 04:43:27 start p3f
+2026-11-22 05:06:00 STOPPED: job p3f passed its limit (22 min, estimate 15)
+2026-11-22 05:06:02 reviewed wave2: 14 finding(s)
+RESULT: STOPPED: job p3f passed its limit (22 min, estimate 15)
