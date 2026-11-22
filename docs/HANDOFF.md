@@ -2,7 +2,7 @@
 
 You are taking over development of Thumb Party directly, as the only developer. The owner decides what to build and when to ship; you write the code, prove it works, and keep quality at least where it is now. This file is the entry point. It links to the long documents instead of copying them; read the ones marked **must read** before your first change.
 
-**Which harness are you in?** This project is worked on from two, and exactly one rule differs between them. In **Claude Code** the helper framework still stands (and section 11 says how to keep Claude usage low): use `tools/flash.sh`, `tools/run-jobs.sh`, briefs, `docs/flash-framework.md`, `docs/flash-digest.md` and `.claude/agents/` as those documents say. In **DeepSeek Harness** that framework is not used — read **section 10** before your first change. Everything else in this file (sections 1 to 9: machine setup, coding rules, test rules, git rules, owner rules, releasing) applies in both. Old briefs and reports under `docs/briefs/` are a useful record of why things were done, whichever you are.
+**Which harness are you in?** This project is worked on from two, and exactly one rule differs between them. In **Claude Code** the helper framework still stands (section 11 says how to work, how to keep Claude usage low, and what comes next): use `tools/flash.sh`, `tools/run-jobs.sh`, briefs, `docs/flash-framework.md`, `docs/flash-digest.md` and `.claude/agents/` as those documents say. In **DeepSeek Harness** that framework is not used — read **section 10** before your first change. Everything else in this file (sections 1 to 9: machine setup, coding rules, test rules, git rules, owner rules, releasing) applies in both. Old briefs and reports under `docs/briefs/` are a useful record of why things were done, whichever you are.
 
 ## 1. What the project is
 
@@ -224,20 +224,57 @@ Read this section **only** when the session runs in DeepSeek Harness (DSH). A Cl
 
 ## 11. Claude Code sessions: how to work (this section applies there only)
 
-Written Nov 21, 2026 with the owner. Claude usage is the owner's scarce resource; flash-worker (DeepSeek) is cheap and does not count against the Claude plan. Work so that Claude spends tokens only on decisions and reviews.
+Rewritten Nov 21, 2026 with the owner. Claude usage is the owner's scarce resource; flash-worker (DeepSeek) is not on the Claude plan. Claude spends tokens only on decisions and reviews. Three parts: A is how we work now, B is what to improve later, C is what to build next.
 
-- **Roles.** The main Claude session gives short instructions, reads short agent reports, reviews findings and asks the owner for decisions. It does not read long documents, logs or diffs, and does not write code unless that is clearly cheapest.
-- **Low-usage mode is standing.** flash-worker does all code through `tools/run-jobs.sh`. A Sonnet agent drives each batch (`.claude/agents/thumb-batch.md`: briefs, runner, repairs, wrap-up, one report of at most 15 lines). Haiku does mechanical work (running tools, collecting figures, git checks). No Opus subagents. If the project agents do not load (session started outside the repo), launch a general-purpose Sonnet agent told to read and follow the agent file.
-- **Delegate by default (owner, Nov 21, 2026: "leverage haiku and sonnet. Delegate tasks so you use less resources").** Before doing a task in the main session, hand it to the cheapest agent that can do it:
-  - **Haiku:** running tools and scripts, collecting logs, figures and usage numbers, git/gh status checks, checking a tag, release or build result, simple searches.
-  - **Sonnet:** anything that needs reading or writing: briefs, batch driving, triage, summaries of builds or reports, diagnosing a stop or a failed build, doc and STATUS edits, release steps, code reviews before a tag.
-  - **flash-worker:** all code changes and tests.
-  - **Main session (Opus):** only the owner's questions, decisions, design, and a short check of each agent's report. Do it in the main session only when it is a single quick command or delegating would clearly cost more.
-  Ask agents for short reports (at most 15 lines) and full detail in a file, so the main session reads little.
-- **Keep every wait under 5 minutes.** The prompt cache lasts 5 minutes. An agent that waits longer between calls re-sends its whole context on the next call. On Nov 21 the 9-minute wait loops of the batch drivers were 85-97% of their cost (phonehost2: 9.7M of 10.0M cache-write tokens over 7 hours). Drivers now wait in foreground Bash calls of 2.5 minutes (`seq 5` x 30 s, `timeout: 170000`): the shell moves any call still running at 180 s into the background (measured Nov 21), so a foreground call cannot be longer than that. Any new agent that polls must do the same. Long commands such as the 7-minute full check.sh go in run_in_background, then are polled in calls under 3 minutes.
-- **Keep jobs short.** Each flash job at most 120 turns; split longer work into build and wrap-up phases. Briefs about 350 words. The runner does not enforce the cap, so size jobs when writing briefs (a job like phonehost3 `night`, 127 turns, should be two).
-- **Keep agent contexts small.** A driver's cost per call grows with its context; long batches (7 h, ~280k context) are expensive even with a warm cache. Prefer batches of about 2 hours; start a fresh driver for a new batch rather than continuing an old one.
-- **Main session context.** Keep it near 100-120k tokens; at a natural break, save notes and start a fresh session or compact.
-- **After any batch over an hour,** a cheap agent checks run.log turns and minutes, stops and hand-fixes, and proposes improvements; the owner approves before anything changes.
+### A. Current working model
+
+- **Roles.** The owner decides what is built, when, and whether anything ships. The main Claude session (Opus) only decides and reviews: short instructions, short agent reports, a check of each report, questions to the owner. It reads no long documents, logs or diffs and writes no code unless that is clearly cheapest. No Opus subagents.
+- **Sonnet drives batches** with the thumb-batch agent (`.claude/agents/thumb-batch.md`): briefs, runner, repairs, wrap-up, one report of at most 15 lines. If the project agents do not load (session started outside the repo), launch a general-purpose agent on Sonnet and tell it to read `.claude/agents/thumb-batch.md` when it starts. Sonnet also does anything that needs reading or writing: triage, summaries, STATUS and doc edits, diagnosing a stop, pre-tag reviews.
+- **Haiku does mechanical checks:** running tools, collecting logs and figures, git and gh status, checking a tag or build.
+- **flash-worker writes all code and tests**, through `tools/run-jobs.sh`.
+- **Delegate by default.** Hand a task to the cheapest agent that can do it; the main session does it only when it is one quick command. Ask agents for reports of at most 15 lines with detail in a file.
+- **Job and batch size.** Aim for at most 120 turns per job. The runner does not enforce turns, only `RUN_MAX_MIN` (minutes), so size the jobs when you write the briefs. A batch is about 2 hours, then a fresh driver. Keep driver and main contexts small (main near 100-120k tokens; compact or restart at a break).
+- **One file, one owner per wave.** No two jobs in the same wave may write the same file; put jobs that share a file in different waves. Process2 lost time to this twice.
+- **Briefs** are about 200 words and name `docs/briefs/templates/COMMON.md` first in `read:`; the shared worker rules live there, not in each brief. The every-look rule applies: UI sizes are tested under every look (menu and TV).
+- **Waits.** Keep every foreground call under 170 s: the shell moves a call still running at 180 s into the background, and the prompt cache lasts 5 minutes, so a longer gap re-sends the whole context. Anything longer (the 7-minute full `check.sh`) goes in `run_in_background`. On Nov 21 the old 9-minute wait loops were 85-97% of a driver's cost.
+- **After any batch over an hour,** a cheap agent reads run.log (turns, minutes, stops, hand-fixes) and proposes improvements; the owner approves before anything changes.
 - **Never without the owner's word:** push, tag, build, promote TestFlight testers, or start development. Stop when the owner says stop.
-- **Measure usage** from the Claude Code transcripts (`~/.claude/projects/**/*.jsonl`, `message.usage` per call, deduplicated by message id; subagents are under `subagents/`). Look for cache-write spikes after gaps over 5 minutes. flash-worker's own figures are in `~/.thumbparty/flash-usage.tsv`.
+- **Measure usage** from the Claude Code transcripts (`~/.claude/projects/**/*.jsonl`, `message.usage` per call, deduplicated by message id; subagents are under `subagents/`); look for cache-write spikes after gaps over 5 minutes. flash-worker's figures are in `~/.thumbparty/flash-usage.tsv`.
+
+**The new tools** (details in `docs/dev-tools.md`):
+
+- `tools/mine.sh`: the worker's "check what I touched": formats, analyzes and tests only what changed, reverts generated churn, prints failures only.
+- `tools/churn.sh`: the one list of generated files that are never committed (used by mine.sh and the runner).
+- `tools/wait-run.sh <dir> [--max s]`: waits for a batch run and prints only new run.log lines. Exit codes: 0 DONE, 1 STOPPED, 2 STALLED or OVERRUN, 3 bad input, 4 still running. Max 170 s per call.
+- `tools/run-stop.sh`: writes `STOP.md` at every runner stop. When a run stops, read STOP.md first, not the logs.
+- `tools/selftest.sh`: the shell tools' own tests; it is the same as `bash tools/check.sh tools`.
+- The runner is split into `run-jobs.sh`, `run-steps.sh` and `run-review.sh`, with a lock file and the `RUN_MAX_MIN` time limit.
+- `docs/worker-extract.md` is appended to every worker's prompt by `tools/flash.sh`. `tools/flash.sh` is protected from workers (as is `.claude/**`) and stays hand-edited.
+
+### B. Remaining improvements (only after one clean real batch with the current setup)
+
+Recommendation: run the next real M16 batch first, to prove the process2 changes on real work. Only then do these, in this order:
+
+1. Fix `tools/wait-run.sh`: OVERRUN repeats on every call with no way to acknowledge it; it says "running: preflight" during the final combined check (needs a "checking" state); a `resume <job>` line is not tracked as a job start. This is needed before the no-polling trial.
+2. The no-polling driver trial: the driver makes no calls while the runner works (it uses `wait-run.sh` or Monitor), and the runner writes a digest of about 40 lines (Summary, must/should lines, run.log tail) that is all the driver reads.
+3. `tools/wrap.sh <dir>`: writes the STATUS result line and final report block from run.log and done.txt.
+4. A `RESULT:` line printed at the end of each run, watched by Monitor.
+5. `tools/tidy.sh`: reverts known generated churn and lists anything else dirty.
+6. `tools/where.sh` (F2 in `docs/briefs/m16/scriptable-work.md`).
+7. Per-job commits, so history and bisect are per bug.
+8. Enforce the 120-turn cap in the runner (job f2 ran 147 turns and 73 minutes).
+9. The code-health list "M16 process2 leftovers" in `docs/code-health.md`.
+
+Lessons from process2 (3 h 45 min against a 2 h target): too many jobs (12), shared files across a wave, and one oversized fix brief. Fewer, smaller jobs with one file owner each is the fix.
+
+### C. Next steps for M16
+
+Nothing starts without the owner's go. In this order:
+
+1. **Owner device checks of m16.1, plus local fixes:** pad clearance on a real or notched phone; the 13.3 dp labels on a small phone; the reveal crown at 640x360; the join hint pill; B-032 (Fixed, unverified), B-033, B-034. The bugs1, process1 and process2 commits are local on branch m16 and in no build yet; a new test build needs the owner's word.
+2. Item 5: identity.
+3. Item 6: awards.
+4. Item 7: home screen and coach marks.
+5. Then M17, the Thumby host.
+
+Bugs come through the tracker artifact (ArtifactData collection `bugs`); triage runs on the owner's word.
