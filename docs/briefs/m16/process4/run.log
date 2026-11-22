@@ -57,3 +57,8 @@ HAND-FIX p4d: copied tools/apply-job.sh, tools/tests/apply-job-test.sh from the 
 2026-11-22 13:29:46 hand-fixed p4d: tests-first proof and worker review done (marked in done.txt)
 2026-11-22 13:29:46 skip p4d (already done)
 2026-11-22 13:29:46 skip p4f (already done)
+2026-11-22 13:30:09 start p4g
+2026-11-22 14:07:41 job p4g passed its limit (37 min, estimate 25) (parked, siblings continue)
+2026-11-22 14:07:41 STOPPED: jobs that failed or passed their limit (parked, not committed): p4g (their logs: docs/briefs/m16/process4/flash-<job>.log)
+2026-11-22 14:07:43 reviewed wave2: 12 finding(s)
+RESULT: STOPPED: jobs that failed or passed their limit (parked, not committed): p4g (their logs: docs/briefs/m16/process4/flash-<job>.log)
