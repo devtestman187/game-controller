@@ -1,0 +1,12 @@
+# replay: batch | tool | what the tool must print (a file name or phrase on a FAIL line) | recorded miss
+wave1 brief-check changes client_messages.dart  identity1 i1a+i1c wave: non_exhaustive_switch (client_messages.dart:38)
+wave1 brief-check changes host_connection.dart  host_connection.dart:188
+wave1 brief-check changes codec.dart            i1a result 5: codec _decoders outside allow
+wave1 brief-check changes m9_test.dart          i1d/i1e: m9_test pinned the capability/message set
+wave1 probe-deps  files  client_messages.dart + host_connection.dart (analyze errors with the probe-i1a.patch stub; in no job's allow)
+wave1-split probe-deps dependence i1a2 (fixes files the i1a stub breaks) in the same wave as i1a: the i1b/i1a2 dependence
+wave2 brief-check changes phone_metrics_test.dart  hello capability list, phone_metrics_test.dart:303
+wave2 brief-check changes m9_test.dart            i1e/i1d: m9_test
+wave2 probe-deps  layers arena_roster.dart  WARN: a layer violation in an allowed file (arena_roster imports toy_look); the fix needed the NEW arena_character_painter.dart
+wave2 apply-job   untracked arena_character_painter.dart is brought over by apply-job.sh (rehearsal item, not selftest)
+# bases for BRIEF_CHECK_REF / PROBE_BASE: see BASES.txt (wave1 and wave1-split: line 1, wave2: line 2)
