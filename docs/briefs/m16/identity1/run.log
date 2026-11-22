@@ -38,3 +38,10 @@
 2026-11-22 07:59:45 hand-fixed i1b: tests-first proof and worker review done (marked in done.txt)
 2026-11-22 07:59:45 skip i1b (already done)
 2026-11-22 07:59:46 skip i1c (already done)
+2026-11-22 08:00:08 start i1d
+2026-11-22 08:00:34 start i1e
+2026-11-22 08:08:13 start i1f
+2026-11-22 08:17:25 i1e finished: result 4 (151 turns, 12 min)
+2026-11-22 08:17:25 STOPPED: job i1e used 151 turns, over its cap of 120
+2026-11-22 08:17:27 reviewed wave1: 8 finding(s)
+RESULT: STOPPED: job i1e used 151 turns, over its cap of 120
