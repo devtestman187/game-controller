@@ -3,6 +3,7 @@ import 'dart:math' show pi;
 import 'package:flutter/material.dart';
 import 'package:toy_look/toy_look.dart';
 
+import 'arena_character_painter.dart';
 import 'arena_coin_badge_painter.dart';
 import 'arena_mode.dart';
 import 'arena_moments.dart';
@@ -62,10 +63,16 @@ final class ArenaMarblePainter {
     required this.look,
     required this.style,
     required this.moments,
+    this.characters = const {},
   });
 
   final ArenaSnapshot snapshot;
   final ArenaRoster roster;
+
+  /// The character each player chose (M16 identity), beside [roster]: a player
+  /// missing here wears its number's default.
+  final ArenaCharacters characters;
+
   final ToyLook look;
   final ToyShapeStyle style;
   final ArenaMoments moments;
@@ -81,10 +88,10 @@ final class ArenaMarblePainter {
   /// One marble: its aim cursor, its glow, then its body and face (the fading
   /// ones inside a layer of their own alpha).
   void _paintOne(Canvas canvas, Size size, ArenaPlayerView player) {
-    // The player's number becomes a character in one place (design 5b), once a
-    // player a paint: Robo's is its number's colour and the antenna (party-night
-    // §7a).
-    final character = arenaCharacterFor(roster, player.id);
+    // The player's character in one place (design 5b), once a player a paint:
+    // the one they chose, else their number's default, and for Robo its
+    // number's colour and the antenna (party-night §7a).
+    final character = arenaCharacterFor(roster, player.id, characters: characters);
     final colour = character.colourIn(look.colors);
     final centre = Offset(player.x * size.width, player.y * size.height);
     final radius = snapshot.playerRadius * size.shortestSide * arenaPlayerScale(look);

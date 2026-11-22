@@ -44,6 +44,10 @@ final class ArenaViewer implements GameViewer {
     // above its screens; a screen without one throws, as the puzzle's do.
     // The phone's own player is marked in the bar, so a joined player can tell
     // their counters from everyone else's (M14 bugs2 7).
+    //
+    // The characters a host chose for the players (M16 identity) come to a
+    // viewer with the frame's `chars`, which a `ViewContext` does not carry yet:
+    // until it does, this phone draws every player's number's default.
     return ArenaBoard(snapshot: snapshot, roster: arenaRosterFor(snapshot, view.roster), ownId: view.playerId);
   }
 }

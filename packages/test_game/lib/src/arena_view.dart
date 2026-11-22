@@ -144,6 +144,7 @@ class _ArenaViewState extends State<ArenaView> with SingleTickerProviderStateMix
   Widget build(BuildContext context) => ArenaBoard(
     snapshot: _snapshot,
     roster: arenaRosterFor(_snapshot, arenaRosterOf(widget.host.players)),
+    characters: arenaCharactersOf(widget.host.players),
     onResize: _session.resize,
   );
 }

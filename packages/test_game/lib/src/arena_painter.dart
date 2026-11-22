@@ -79,10 +79,21 @@ const startGapShare = 0.013;
 /// and a joined phone. The look comes in as a value (design D5), so a painter
 /// never reads a scope or a theme.
 class ArenaPainter extends CustomPainter {
-  ArenaPainter(this.s, this.roster, {required this.look, required this.moments, this.fillsBackground = true});
+  ArenaPainter(
+    this.s,
+    this.roster, {
+    required this.look,
+    required this.moments,
+    this.fillsBackground = true,
+    this.characters = const {},
+  });
 
   final ArenaSnapshot s;
   final ArenaRoster roster;
+
+  /// The character each player chose (M16 identity), beside [roster], so the
+  /// marbles wear it: a player missing here keeps its number's default.
+  final ArenaCharacters characters;
 
   /// The look this arena is drawn in: its tokens, its outline width and its
   /// body shader (or the Canvas fallback).
@@ -122,7 +133,14 @@ class ArenaPainter extends CustomPainter {
     pieces.movers(canvas, size);
     _hazards(canvas, px, s.hazardRadius * unit, unit, style);
     ArenaCoinPainter(coins: s.coins, radius: s.coinRadius * unit, look: look, style: style).paint(canvas, size);
-    ArenaMarblePainter(snapshot: s, roster: roster, look: look, style: style, moments: moments).paint(canvas, size);
+    ArenaMarblePainter(
+      snapshot: s,
+      roster: roster,
+      characters: characters,
+      look: look,
+      style: style,
+      moments: moments,
+    ).paint(canvas, size);
   }
 
   /// The play mat: a small dot at each point of the old grid, in the `matDot`

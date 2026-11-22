@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:toy_look/toy_look.dart';
 
 import 'arena.dart';
+import 'arena_character_painter.dart';
 import 'arena_coin_icon_widgets.dart';
 import 'arena_mode.dart';
 import 'arena_robo.dart';
@@ -35,7 +36,14 @@ const _bumperNameShare = 0.24;
 /// race's wins, hits and dashes stay out of it and live in the results and the
 /// stats. The race's bar is as it has always been.
 class ArenaHud extends StatelessWidget {
-  const ArenaHud({super.key, required this.snapshot, required this.roster, this.ownId, this.oneLine = false});
+  const ArenaHud({
+    super.key,
+    required this.snapshot,
+    required this.roster,
+    this.characters = const {},
+    this.ownId,
+    this.oneLine = false,
+  });
 
   /// The box height, in px, below which the bar folds to one line: landscape
   /// phones are 375–393 high and the TV and tablets 540 and up, so a box
@@ -68,6 +76,10 @@ class ArenaHud extends StatelessWidget {
 
   final ArenaSnapshot snapshot;
   final ArenaRoster roster;
+
+  /// The character each player chose (M16 identity), beside [roster]: the dot
+  /// wears its colour, and a player missing here keeps its number's colour.
+  final ArenaCharacters characters;
 
   /// The player of the phone this bar is drawn on, whose name it marks "(you)";
   /// null where every player is alike, as on a TV (M14 bugs2 7).
@@ -118,11 +130,14 @@ class ArenaHud extends StatelessWidget {
         _PlayerRow(
           id: id,
           player: player,
+          character: arenaCharacterFor(roster, id, characters: characters),
           view: p,
-          own: id == ownId,
-          oneLine: oneLine,
-          bumper: bumper,
-          nameMaxWidth: bumper ? width * _bumperNameShare : null,
+          layout: (
+            own: id == ownId,
+            oneLine: oneLine,
+            bumper: bumper,
+            nameMaxWidth: bumper ? width * _bumperNameShare : null,
+          ),
         ),
   ];
 }
@@ -177,30 +192,31 @@ class _PlayerRow extends StatelessWidget {
   const _PlayerRow({
     required this.id,
     required this.player,
+    required this.character,
     required this.view,
-    required this.own,
-    required this.oneLine,
-    required this.bumper,
-    this.nameMaxWidth,
+    required this.layout,
   });
 
   final String id;
   final ({int number, String name}) player;
+
+  /// The character this player wears (M16 identity): the one they chose, or
+  /// their number's default, and for Robo its number's colour with the antenna.
+  final ToyCharacter character;
+
   final ArenaPlayerView view;
 
-  /// Whether this is the phone's own player, whose name is marked "(you)".
-  final bool own;
-  final bool oneLine;
-  final bool bumper;
-
-  /// The widest the name may be, in px, or null to take what it needs: a
-  /// Bumper Round's bar caps it so four counts still fit a phone.
-  final double? nameMaxWidth;
+  /// How the bar lays this row out: whether this is the phone's own player,
+  /// whose name is marked "(you)"; whether the bar is the one-line form; whether
+  /// it is a Bumper Round's; and the widest the name may be, in px, or null to
+  /// take what it needs (a Bumper Round's bar caps it so four counts fit).
+  final ({bool own, bool oneLine, bool bumper, double? nameMaxWidth}) layout;
 
   @override
   Widget build(BuildContext context) {
     final colours = ToyLookScope.of(context).colors;
     final text = Theme.of(context).textTheme;
+    final oneLine = layout.oneLine;
     final small = (oneLine ? text.bodySmall : text.bodyMedium)?.copyWith(
       fontFeatures: const [FontFeature.tabularFigures()],
       color: colours.ink,
@@ -214,7 +230,7 @@ class _PlayerRow extends StatelessWidget {
         crossAxisAlignment: WrapCrossAlignment.center,
         children: [
           _name(colours, text, small),
-          if (bumper)
+          if (layout.bumper)
             _coins(small)
           else ...[
             Text('Wins ${view.wins}', key: Key('wins-$id'), style: small),
@@ -236,24 +252,25 @@ class _PlayerRow extends StatelessWidget {
   Widget _coins(TextStyle? small) => Row(
     mainAxisSize: MainAxisSize.min,
     children: [
-      ArenaCoinIcon(key: Key('coin-$id'), size: oneLine ? ArenaHud._oneLineCoin : ArenaHud._coin),
-      SizedBox(width: oneLine ? ArenaHud._oneLineDotGap : ArenaHud._dotGap),
+      ArenaCoinIcon(key: Key('coin-$id'), size: layout.oneLine ? ArenaHud._oneLineCoin : ArenaHud._coin),
+      SizedBox(width: layout.oneLine ? ArenaHud._oneLineDotGap : ArenaHud._dotGap),
       Text('${view.coins}', key: Key('coins-$id'), style: small),
     ],
   );
 
   /// The player's colour dot and its number and name: small in the one-line
-  /// bar, and a title on a tall box. Robo has no number to wear (party-night
-  /// §7a): its dot is the robot's head and its name is its own. A name wider
-  /// than [nameMaxWidth] is cut with an ellipsis, never the count. The phone's
-  /// own player is marked "(you)" (M14 bugs2 7).
+  /// bar, and a title on a tall box. The dot wears the player's own character
+  /// colour (M16 identity), as the marble does. Robo has no number to wear
+  /// (party-night §7a): its dot is the robot's head and its name is its own. A
+  /// name wider than [nameMaxWidth] is cut with an ellipsis, never the count.
+  /// The phone's own player is marked "(you)" (M14 bugs2 7).
   Widget _name(ToyColors colours, TextTheme text, TextStyle? small) {
     final robo = id == roboPlayerId;
-    final width = nameMaxWidth;
+    final width = layout.nameMaxWidth;
     final named = robo ? roboName : 'P${player.number} ${player.name}';
     final name = Text(
-      own ? ArenaBarText.own(named) : named,
-      style: oneLine ? small : text.titleSmall?.copyWith(color: colours.ink),
+      layout.own ? ArenaBarText.own(named) : named,
+      style: layout.oneLine ? small : text.titleSmall?.copyWith(color: colours.ink),
       maxLines: width == null ? null : 1,
       overflow: width == null ? null : TextOverflow.ellipsis,
     );
@@ -262,10 +279,10 @@ class _PlayerRow extends StatelessWidget {
       children: [
         Icon(
           robo ? Icons.smart_toy : Icons.circle,
-          size: oneLine ? ArenaHud._oneLineDot : ArenaHud._dot,
-          color: colours.player(player.number),
+          size: layout.oneLine ? ArenaHud._oneLineDot : ArenaHud._dot,
+          color: character.colourIn(colours),
         ),
-        SizedBox(width: oneLine ? ArenaHud._oneLineDotGap : ArenaHud._dotGap),
+        SizedBox(width: layout.oneLine ? ArenaHud._oneLineDotGap : ArenaHud._dotGap),
         if (width == null)
           name
         else
@@ -287,7 +304,7 @@ class _PlayerRow extends StatelessWidget {
       children: [
         if (ready) ...[
           SizedBox.square(
-            dimension: oneLine ? ArenaHud._oneLineDot : ArenaHud._dot,
+            dimension: layout.oneLine ? ArenaHud._oneLineDot : ArenaHud._dot,
             child: DecoratedBox(
               key: Key('dashReady-$id'),
               decoration: ShapeDecoration(
@@ -298,7 +315,7 @@ class _PlayerRow extends StatelessWidget {
               ),
             ),
           ),
-          SizedBox(width: oneLine ? ArenaHud._oneLineDotGap : ArenaHud._dotGap),
+          SizedBox(width: layout.oneLine ? ArenaHud._oneLineDotGap : ArenaHud._dotGap),
         ],
         Text(
           ready ? _dashReady : 'Dash in ${(view.cooldown * ArenaGame.dashCooldownS).toStringAsFixed(1)} s',

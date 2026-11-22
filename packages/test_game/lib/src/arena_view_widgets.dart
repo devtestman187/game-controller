@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:toy_look/toy_look.dart';
 
 import 'arena.dart';
+import 'arena_character_painter.dart';
 import 'arena_hud_widgets.dart';
 import 'arena_moments.dart';
 import 'arena_painter.dart';
@@ -19,10 +20,22 @@ import 'arena_snapshot.dart';
 /// and the winner's card read the scope themselves, and a board drawn with no
 /// scope above it throws, as the puzzle's views do (M13 9a review).
 class ArenaBoard extends StatelessWidget {
-  const ArenaBoard({super.key, required this.snapshot, required this.roster, this.ownId, this.onResize});
+  const ArenaBoard({
+    super.key,
+    required this.snapshot,
+    required this.roster,
+    this.characters = const {},
+    this.ownId,
+    this.onResize,
+  });
 
   final ArenaSnapshot snapshot;
   final ArenaRoster roster;
+
+  /// The character each player chose (M16 identity), beside [roster]: the bar
+  /// and the marbles wear it, and a player missing here keeps its number's
+  /// default.
+  final ArenaCharacters characters;
 
   /// The player of the phone this board is drawn on, marked "(you)" in the bar;
   /// null on a TV or the host's own screen, where every player is alike (M14
@@ -43,11 +56,12 @@ class ArenaBoard extends StatelessWidget {
           ArenaHud(
             snapshot: snapshot,
             roster: roster,
+            characters: characters,
             ownId: ownId,
             oneLine: constraints.maxHeight < ArenaHud.oneLineBelow,
           ),
           Expanded(
-            child: ArenaField(snapshot: snapshot, roster: roster, onResize: onResize),
+            child: ArenaField(snapshot: snapshot, roster: roster, characters: characters, onResize: onResize),
           ),
         ],
       ),
@@ -62,10 +76,21 @@ class ArenaBoard extends StatelessWidget {
 /// moved (rule 3): the moments are fed every new snapshot and nothing about
 /// them goes into a snapshot or the protocol.
 class ArenaField extends StatefulWidget {
-  const ArenaField({super.key, required this.snapshot, required this.roster, this.onResize});
+  const ArenaField({
+    super.key,
+    required this.snapshot,
+    required this.roster,
+    this.characters = const {},
+    this.onResize,
+  });
 
   final ArenaSnapshot snapshot;
   final ArenaRoster roster;
+
+  /// The character each player chose (M16 identity), beside [roster], so the
+  /// marbles wear it.
+  final ArenaCharacters characters;
+
   final ValueChanged<Size>? onResize;
 
   @override
@@ -103,6 +128,7 @@ class _ArenaFieldState extends State<ArenaField> {
                 painter: ArenaPainter(
                   s,
                   widget.roster,
+                  characters: widget.characters,
                   look: look,
                   moments: _moments,
                   // The screen's sky shows behind the arena where a
@@ -119,17 +145,21 @@ class _ArenaFieldState extends State<ArenaField> {
     );
   }
 
-  /// Who won and how soon the next round starts, headed in the winner's colour
-  /// — or in `good` when no player won — as the look's card.
+  /// Who won and how soon the next round starts, headed in the winner's own
+  /// colour — the one its marble wears (M16 identity) — or in `good` when no
+  /// player won, as the look's card.
   Widget _winnerBanner(ArenaSnapshot s, ToyLook look) {
     final id = s.winnerId;
     final winner = id == null ? null : widget.roster[id];
     final timeS = (s.lastTimeS ?? 0).toStringAsFixed(1);
     final whoWon = widget.roster.length > 1 && winner != null;
+    final colour = id == null || winner == null
+        ? null
+        : arenaCharacterFor(widget.roster, id, characters: widget.characters);
     return ArenaBanner(
       whoWon ? 'P${winner.number} wins! $timeS s' : 'Goal! $timeS s',
       'Next round in ${max(0, s.breakLeftS).ceil()}…',
-      color: winner == null ? look.colors.good : look.colors.player(winner.number),
+      color: colour == null ? look.colors.good : colour.colourIn(look.colors),
     );
   }
 }
