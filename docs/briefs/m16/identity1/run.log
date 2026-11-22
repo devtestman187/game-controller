@@ -116,3 +116,6 @@ RESULT: STOPPED: tools/review.sh found a FAIL after i1d i1f i1e2 (see .dart_tool
 2026-11-22 09:30:51 committed i1f: a7125f73 arena: draw players by the character they chose
 2026-11-22 09:30:53 committed i1e2: dfbefcf3 phone tests: reach host mode for the chip's badge, list identity
 2026-11-22 09:35:22 reviewed wave2: 8 finding(s)
+2026-11-22 09:35:23 start the run's review
+2026-11-22 09:44:05 DONE: every job is committed. Claude reads the Summary of docs/briefs/m16/identity1/REVIEW.md, verifies its findings and writes one fix brief
+RESULT: DONE: 6 jobs, 28 min
