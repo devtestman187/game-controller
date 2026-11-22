@@ -2,6 +2,10 @@ job: <milestone> step<N> G<gate> — <what, in one line>
 stop: after G<gate>. <what not to start yet>
 read: docs/briefs/templates/COMMON.md (worker rules: decide, report, tests, rules) · <contract or design section> · <the survey or last report, the parts that matter> · docs/coding-guidelines.md · docs/code-health.md (<area>: the items Claude names below) · <the existing test files this change could break: callers' tests, pinned strings, phone tests; read them before editing> (while working run only `flutter test <your test files>` plus these; the full `tools/check.sh <suite>` runs once, at the end)
 
+changes: <types, enum values, constants, strings, keys this job changes, ` · ` separated; a sibling for a new sealed subtype or enum value; brief-check searches them in lib and test>
+probe: <stub patch adding the new type, optional; probe-deps checks the stubbed workspace's error files are allowed>
+(allow: must cover every file those names hit and every NEW file the job creates)
+
 decisions (answers to <last report> Q1–n): Q1 … · Q2 …
 code health: <the code-health.md items this job also does, or "none">
 

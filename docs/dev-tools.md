@@ -10,6 +10,9 @@ The most repeated manual steps have scripts:
 | [`tools/selftest.sh`](../tools/selftest.sh) | The shell tools' own tests (`tools/tests/*-test.sh`), a PASS, FAIL or TIMEOUT line each | a minute or two |
 | [`tools/review.sh`](../tools/review.sh) | The coding guidelines' mechanical checks over the `.dart` files that changed, one line per finding | a few seconds |
 | [`tools/wait-run.sh`](../tools/wait-run.sh) | Waits for a batch run without polling by hand: blocks, prints the new `run.log` lines and exits on DONE or STOPPED | up to 170 s per call |
+| [`tools/brief-check.sh`](../tools/brief-check.sh) | Checks a batch's briefs before a run: two jobs of one wave allowing the same path, a new file outside `allow:`, a `changes:` item hit in a file no job (of that or an earlier wave) allows; `run-jobs.sh --dry-run` and the start run it (`BRIEF_CHECK_SKIP=<reason>` overrides, logged) | seconds |
+| [`tools/probe-deps.sh`](../tools/probe-deps.sh) | Applies a brief's `probe:` stub in a throwaway worktree, analyzes the workspace and reports error files no earlier job allows | a few minutes |
+| [`tools/apply-job.sh`](../tools/apply-job.sh) | Hand-applies a stopped job's kept worktree: only allowed changed, new and deleted files, and it logs the HAND-FIX line | seconds |
 | [`tools/commit-job.sh`](../tools/commit-job.sh) | Commits one finished job: the changes under its brief's `allow:` paths, the brief, its report and its review files, with the report's draft message | instant |
 | [`tools/release.sh`](../tools/release.sh) | Tags a release with tester notes, pushes it, waits for the Play, TestFlight and Windows builds, and prints a summary | about 20 to 40 minutes, mostly waiting |
 | [`tools/tv-dev.sh`](../tools/tv-dev.sh) | Starts and stops a development copy of the Windows TV app, and prints its port and pairing code | a few seconds (a few minutes for the first build) |
