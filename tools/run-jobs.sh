@@ -56,6 +56,7 @@
 # Before the first wave a preflight (tools/flash.sh --preflight, a tiny real worker call) must show the
 # worker can run flutter and tools/check.sh; PREFLIGHT_SKIP=1 skips it. A suite that fails with
 # PathNotFoundException (temp-folder race) is retried once, logged as "check retry".
+# Before every wave the base check (tools/run-base.sh: format and analyze of the last commit) must pass; RUN_BASE_CHECK_SKIP=1 skips it.
 # Before the preflight every brief's report: line is linted: it must be exactly one bare path
 # (no second report: line, no words after the path), or the run stops before wave 1.
 # STOP file: <briefs-dir>/STOP is checked before each wave, job start, review and commit; when
@@ -88,6 +89,7 @@ cd "$dir/.." || exit 2
 # The per-step limits and the backstop. A folder holding only the runner's files, as the fixture
 # copies in tools/tests do, has no run-limits.sh: no limit of its own, as before they existed.
 [ -f "$dir/run-limits.sh" ] && . "$dir/run-limits.sh"
+[ -f "$dir/run-base.sh" ] && . "$dir/run-base.sh" # the base check; an older fixture has no such file
 # Files outside a job's allow: list that are applied and committed (always fine).
 SAFE_OUTSIDE='^(([^/]+/)*analysis_options\.yaml|\.gitignore|\.gitattributes|([^/]+/)*pubspec\.lock)$'
 # Known generated churn outside the list: dropped (never copied), logged per job. The one
@@ -106,7 +108,7 @@ while [ $# -gt 0 ]; do
     --no-review) review=0; shift ;;
     --dry-run) dry=1; shift ;;
     --drop) drop=${2:?}; shift 2 ;;
-    -h|--help) sed -n '2,80p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h|--help) sed -n '2,81p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     -*) echo "Unknown option: $1 (try --help)" >&2; exit 2 ;;
     *) B=${1%/}; shift ;;
   esac
@@ -277,6 +279,12 @@ wn=0
 for wave in "${WAVES[@]}"; do
   wn=$((wn + 1))
   check_stop
+  if [ -n "${RUN_BASE_CHECK_SKIP:-}" ]; then note "base check skipped (RUN_BASE_CHECK_SKIP)"
+  elif declare -F run_base_check > /dev/null; then
+    run_base_check "$WORK/run-base-check.log" ||
+      stop "the base $RUN_BASE_WHY (log $WORK/run-base-check.log); no job of wave $wn was started" \
+        "$WORK/run-base-check.log"
+  fi
   [ "$(wc -w <<< "$wave")" -le 3 ] || stop "a wave has more than 3 jobs: $wave"
   started=() pids=() since=() resumed=()
   for j in $wave; do
