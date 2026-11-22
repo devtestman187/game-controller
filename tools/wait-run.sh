@@ -21,11 +21,14 @@
 #   4 running   the window ended with the run still going; the result names the
 #               job, its minutes so far and its expected minutes: call again; after
 #               the last job it says `checking: the combined check for <n> min`,
+#               during the run's review `reviewing: the run's review for <n> min`,
 #               and before the first job `preflight (no job started yet)`
 #
 # A job starts at its `start <job>` line, or at its `resume <job> (applied by hand,
 # not committed yet)` line when the runner found its report already in the folder;
 # it ends at its `finished: result` or `committed <job>:` line, whichever comes last.
+# The runner's `start the run's review` note is not a job: it shows as `reviewing`
+# and never OVERRUNs (the review has RUN_REVIEW_MAX_MIN, not a job's estimate).
 #
 # A job's expected minutes: an `expected-min:` line in its brief, else the
 # median of that job's last WAIT_RECENT_ROWS flash-usage rows (FLASH_USAGE_LOG),
@@ -142,7 +145,9 @@ unfinished_jobs() { # `start time<TAB>job` for each job with no finished or comm
     rest ~ /^start / {
       job = rest
       sub(/^start /, "", job)
-      if (job !~ /^at / && !(job in started)) started[job] = ts
+      # The `start at <sha>` line is the run itself, and the runner note that begins the run
+      # review (tools/run-review.sh) is not a job: neither is named or overrun here.
+      if (job !~ /^at / && job !~ /^the run.s review$/ && !(job in started)) started[job] = ts
     }
     rest ~ /^resume / { # a report left in the folder: the runner applies the job by hand
       job = rest
@@ -173,6 +178,11 @@ minutes_since() { # minutes_since <YYYY-MM-DD HH:MM:SS>: whole minutes from it t
 last_job_ts() { # the time of this run's last `<job> finished: result` or `committed <job>:` line, empty when none
   tail -n "+$((start_ln + 1))" "$LOG" |
     grep -E '^[0-9-]+ [0-9:]+ ([^ ]+ finished: result |committed [^ ]+: )' |
+    tail -n 1 | cut -c1-19
+}
+review_ts() { # the time of this run's last `start the run's review` note, empty when it has none
+  tail -n "+$((start_ln + 1))" "$LOG" |
+    grep -E '^[0-9-]+ [0-9:]+ start the run.s review$' |
     tail -n 1 | cut -c1-19
 }
 seen_reset() { # a new run (a later `start at` line) forgets the overruns the last one reported
@@ -228,6 +238,11 @@ running_text() { # the exit-4 sentence: the running job, the check after the las
   if [ -n "${job:-}" ]; then
     printf '%s for %d min (expected ~%s)' "$job" "$(minutes_since "$ts")" "$(expected_min "$job")"
     seen_has "$job" && printf ', overrun already reported'
+    return 0
+  fi
+  ts=$(review_ts) # the run's own review runs after every job and is not a job: no OVERRUN
+  if [ -n "$ts" ]; then
+    printf "reviewing: the run's review for %d min" "$(minutes_since "$ts")"
     return 0
   fi
   ts=$(last_job_ts) # no job is running: the combined check runs after the last job's line

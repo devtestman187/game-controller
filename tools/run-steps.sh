@@ -97,9 +97,10 @@ tests_first() { # tests_first <job>...
   [ ${#bad[@]} -eq 0 ] || stop "tests-first: ${bad[*]} pass on the old code (write them to fail first, or add 'tests-first: exempt <reason>' to the brief for a pure refactor); nothing of this wave is committed"
 }
 
-# 4. The checks, with one self-repair, then the guideline checker. tools/check.sh runs in the
-# background, so the STOP file and the time limits are seen while it works (a wave whose check
-# took 40 min unseen was a wave-1 defect); its own limit ends it with a stop naming the limit.
+# 4. The checks, with one self-repair for a failing suite (but never for format or analyze),
+# then the guideline checker. tools/check.sh runs in the background, so the STOP file and the
+# time limits are seen while it works (a wave whose check took 40 min unseen was a wave-1
+# defect); its own limit ends it with a stop naming the limit.
 check_once() { # check_once: tools/check.sh with the runner's fail-fast on, watched while it runs
   # for the STOP file and RUN_MAX_MIN (through check_stop) and for RUN_CHECK_MAX_MIN; it stops
   # the run when that limit ended the check. Returns check.sh's own exit code.
@@ -123,6 +124,13 @@ check_once() { # check_once: tools/check.sh with the runner's fail-fast on, watc
 checks() {
   unchurn
   if ! check_once; then
+    # A failed format or analyze check is the tree's own state: no retry can fix it.
+    local bad
+    bad=$(awk '$1 == "FAIL" && ($2 == "format" || $2 == "analyze") { print $2; exit }' "$WORK/run-check.log")
+    if [ -n "$bad" ]; then
+      stop "checks failed on the combined tree after $*: ${bad% } cannot be fixed by a retry" \
+        "(see $WORK/run-check.log); nothing of this wave is committed"
+    fi
     # A temp-folder race in a test (PathNotFoundException) is retried once, and only that.
     if grep -q PathNotFoundException "$WORK/run-check.log"; then
       note "check retry: PathNotFoundException in the failed suite (temp-folder race); running the checks once more"
@@ -140,8 +148,7 @@ checks() {
   git ls-files --others --exclude-standard | xargs -r git add -N
   tools/review.sh > "$WORK/run-review.log" 2>&1
   [ $? -eq 1 ] && stop "tools/review.sh found a FAIL after $* (see $WORK/run-review.log); nothing of this wave is committed"
-  local big
-  big=$(awk -v max=$SIZE_STOP '$1=="NOTE"&&$2=="size"&&$4+0>max{print $3" ("$4" lines)"}' "$WORK/run-review.log" | grep '/lib/' | tr '\n' ' ')
+  local big=$(awk -v max=$SIZE_STOP '$1=="NOTE"&&$2=="size"&&$4+0>max{print $3" ("$4" lines)"}' "$WORK/run-review.log" | grep '/lib/' | tr '\n' ' ')
   git reset -q
   [ -n "$big" ] && stop "a touched lib file is over $SIZE_STOP lines and must be split: $big; nothing of this wave is committed"
   return 0

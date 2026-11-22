@@ -26,9 +26,9 @@
 #      not written test-first and STOPS the run, unless the job's brief has a
 #      line `tests-first: exempt <reason>` (pure refactors, docs) and the test
 #      lies under one of its allow: paths;
-#   4. tools/check.sh on the combined tree (packages are fetched and the check
-#      is tried once more before giving up), then tools/review.sh: any FAIL, or
-#      a touched lib file over SIZE_STOP lines, stops the run;
+#   4. tools/check.sh on the combined tree (a failing suite, but never format or
+#      analyze, is tried once more with the packages fetched), then
+#      tools/review.sh: any FAIL, or a touched lib file over SIZE_STOP lines, stops the run;
 #   5. each job is committed and pushed (tools/commit-job.sh --push);
 #   6. a reviewer job per committed job writes <job>-review-report.md. Reviews run
 #      in the background while the next wave works (at most 3 flash jobs in all,
@@ -54,8 +54,8 @@
 # and report: paths plus the always-fine files (a folder cut from a dirty tree
 # also carries stray edits, which made `git apply` fail on a fix job).
 # Before the first wave a preflight (tools/flash.sh --preflight, a tiny real worker call) must show the
-# worker can run flutter and tools/check.sh; PREFLIGHT_SKIP=1 skips it. A suite that fails with
-# PathNotFoundException (temp-folder race) is retried once, logged as "check retry".
+# worker can run flutter and tools/check.sh; PREFLIGHT_SKIP=1 skips it. A failed suite is tried
+# once more; PathNotFoundException (temp-folder race) retries at once, format and analyze never do.
 # Before every wave the base check (tools/run-base.sh: format and analyze of the last commit) must pass; RUN_BASE_CHECK_SKIP=1 skips it.
 # Before the preflight every brief's report: line is linted: it must be exactly one bare path
 # (no second report: line, no words after the path), or the run stops before wave 1.
@@ -175,6 +175,33 @@ turn_cap() {
   cap=$(sed -n 's/^turns:[[:space:]]*\([0-9][0-9]*\).*/\1/p' "$B/$1.md" | head -n 1)
   case $cap in '' | 0) cap=$RUN_TURN_CAP ;; esac
   [ "$t" -le "$cap" ] || stop "job $1 used $t turns, over its cap of $cap"
+}
+# The wave's wait: one poll for every job it started, so a job's own limit is checked while
+# any job of the wave runs. The per-job loop this replaced waited the jobs one after another
+# and only tested the one it was waiting on, so a later job passed its limit unseen (p3e ran
+# 48 min against 30 while p3d's job was waited out).
+job_limit_over() { # job_limit_over <index into started>: 0 when that job passed its own limit
+  local i=$1
+  [ "${limits[$i]}" -gt 0 ] || return 1
+  [ $(($(date +%s) - ${since[$i]})) -ge "${limits[$i]}" ]
+}
+limit_stop() { # limit_stop <index>: the job's limit stop, naming it and its estimate
+  local i=$1 j
+  j=${started[$i]}
+  stop "job $j passed its limit ($((${limits[$i]} / ${RUN_LIMIT_UNIT_S:-60})) min, estimate $(run_expected_min "$B/$j.md"))"
+}
+finished_job() { # finished_job <index>: wait its exit, log it, cap it, then sort it into ok or failed
+  local i=$1 j rc
+  j=${started[$i]}
+  wait "${pids[$i]}"; rc=$?
+  note "$j finished: result $rc ($(usage "$B/$j.md"))"
+  turn_cap "$j" # before the checks: a job over its turn cap is a stop of its own
+  if [ $rc -eq 4 ] && apply_safe "$j" "$LOGS/flash-$j.log"; then
+    [ -n "$DROPPED" ] && note "$j: dropped generated churn outside its list: $DROPPED"
+    [ -n "$APPLIED" ] && note "$j: applied always-fine files outside its list: $APPLIED"
+    extra+=($APPLIED); rc=0
+  fi
+  if [ $rc -eq 0 ] && [ -f "$B/$j-report.md" ]; then ok+=("$j"); else failed+=("$j:$rc"); fi
 }
 committed() { git cat-file -e "HEAD:$1" 2>/dev/null; }
 save() { # save <message> <path>...: commit and push just these paths
@@ -314,26 +341,21 @@ for wave in "${WAVES[@]}"; do
     continue
   fi
   ok=("${resumed[@]}") failed=() extra=()
+  limits=() # each started job's own limit in seconds; 0 (no run-limits.sh): STOP file only
   for i in "${!started[@]}"; do
-    j=${started[$i]}
-    job_limit_s=0 # no run-limits.sh: the job is only watched for the STOP file
-    declare -F run_job_limit_s > /dev/null && job_limit_s=$(run_job_limit_s "$B/$j.md")
-    while kill -0 "${pids[$i]}" 2>/dev/null; do # the STOP file and the job's own limit, mid-wave
-      check_stop
-      if [ "$job_limit_s" -gt 0 ] && [ $(($(date +%s) - ${since[$i]})) -ge "$job_limit_s" ]; then
-        stop "job $j passed its limit ($((job_limit_s / ${RUN_LIMIT_UNIT_S:-60})) min, estimate $(run_expected_min "$B/$j.md"))"
-      fi
-      sleep "${RUN_POLL_S:-5}"
+    limits[$i]=0
+    declare -F run_job_limit_s > /dev/null && limits[$i]=$(run_job_limit_s "$B/${started[$i]}.md")
+  done
+  pending=("${!pids[@]}")
+  while [ ${#pending[@]} -gt 0 ]; do # one poll: every job's limit, the STOP file, then exits
+    check_stop
+    for i in "${pending[@]}"; do job_limit_over "$i" && limit_stop "$i"; done
+    rest=()
+    for i in "${pending[@]}"; do
+      if kill -0 "${pids[$i]}" 2>/dev/null; then rest+=("$i"); else finished_job "$i"; fi
     done
-    wait "${pids[$i]}"; rc=$?
-    note "$j finished: result $rc ($(usage "$B/$j.md"))"
-    turn_cap "$j" # before the checks: a job over its turn cap is a stop of its own
-    if [ $rc -eq 4 ] && apply_safe "$j" "$LOGS/flash-$j.log"; then
-      [ -n "$DROPPED" ] && note "$j: dropped generated churn outside its list: $DROPPED"
-      [ -n "$APPLIED" ] && note "$j: applied always-fine files outside its list: $APPLIED"
-      extra+=($APPLIED); rc=0
-    fi
-    if [ $rc -eq 0 ] && [ -f "$B/$j-report.md" ]; then ok+=("$j"); else failed+=("$j:$rc"); fi
+    pending=("${rest[@]}")
+    [ ${#pending[@]} -gt 0 ] && sleep "${RUN_POLL_S:-5}"
   done
   if [ ${#ok[@]} -gt 0 ]; then
     unchurn
