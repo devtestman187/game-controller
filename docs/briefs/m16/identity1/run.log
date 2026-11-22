@@ -133,3 +133,5 @@ RESULT: STOPPED: TIMEOUT: the run passed RUN_MAX_MIN=20 min (counted from the la
 2026-11-22 10:07:27 tests-first ok: controller_app/test/host_lists_identity_test.dart fails on the old code
 2026-11-22 10:20:52 committed f1: c188841b host: offer identity, so phones can change character
 2026-11-22 10:20:52 wave review skipped: wave 1 is the whole run, the run review covers it
+2026-11-22 10:20:53 DONE: every job is committed. Claude reads the Summary of docs/briefs/m16/identity1/REVIEW.md, verifies its findings and writes one fix brief
+RESULT: DONE: 1 jobs, 15 min
