@@ -14,11 +14,18 @@
 #   1 STOPPED   a `STOPPED: <why>` line there (read the lines above and the logs)
 #   2 STALLED   run.log, the batch's flash-*.log files and the run's work folder
 #               unchanged for WAIT_STALL_MIN minutes, or OVERRUN: a job with no
-#               `finished` line yet runs past 1.5 x its expected minutes
+#               `finished` line yet runs past 1.5 x its expected minutes (once per
+#               job: a later call says so and waits the window instead)
 #   3 BAD INPUT no folder, no run.log, a bad option, or another waiter on the
 #               same folder
 #   4 running   the window ended with the run still going; the result names the
-#               job, its minutes so far and its expected minutes: call again
+#               job, its minutes so far and its expected minutes: call again; after
+#               the last job it says `checking: the combined check for <n> min`,
+#               and before the first job `preflight (no job started yet)`
+#
+# A job starts at its `start <job>` line, or at its `resume <job> (applied by hand,
+# not committed yet)` line when the runner found its report already in the folder;
+# it ends at its `finished: result` or `committed <job>:` line, whichever comes last.
 #
 # A job's expected minutes: an `expected-min:` line in its brief, else the
 # median of that job's last WAIT_RECENT_ROWS flash-usage rows (FLASH_USAGE_LOG),
@@ -30,8 +37,9 @@
 # tools/run-jobs.sh names it: .dart_tool/run-jobs/<briefs-dir, / as _>),
 # WAIT_LOGS (the folder the runner was given as --logs, when the flash-*.log
 # files are not in the briefs folder), WAIT_STATE_DIR (.dart_tool/wait-run: the
-# lock, position and marker files; a test points it at a temp folder). The four
-# counts are whole numbers of at least 1; anything else is BAD INPUT (exit 3).
+# lock, position, marker and overrun files; a test points it at a temp folder).
+# The four counts are whole numbers of at least 1; anything else is BAD INPUT
+# (exit 3).
 #
 # The position file holds the byte offset already printed, so a repeat call
 # prints only new lines; a new `start at` line moves it back to that line, so a
@@ -124,22 +132,58 @@ run_ended() { # 0 and END_KIND/END_TEXT when this run logged DONE or STOPPED
     *) END_KIND=STOPPED; END_TEXT=${line#* STOPPED: } ;;
   esac
 }
-unfinished_jobs() { # `start time<TAB>job` for each job with no finished line yet, earliest first
+unfinished_jobs() { # `start time<TAB>job` for each job with no finished or committed line yet, earliest first
   tail -n "+$((start_ln + 1))" "$LOG" | awk '
-    / start / {
-      rest = $0
-      sub(/^[0-9-]+ [0-9:]+ start /, "", rest)
-      if (rest !~ /^at /) started[rest] = substr($0, 1, 19)
-    }
-    / finished: result / {
+    {
+      ts = substr($0, 1, 19) # the runner prefixes every line with its time
       rest = $0
       sub(/^[0-9-]+ [0-9:]+ /, "", rest)
-      sub(/ finished: result .*/, "", rest)
-      if (rest in started) delete started[rest]
+    }
+    rest ~ /^start / {
+      job = rest
+      sub(/^start /, "", job)
+      if (job !~ /^at / && !(job in started)) started[job] = ts
+    }
+    rest ~ /^resume / { # a report left in the folder: the runner applies the job by hand
+      job = rest
+      sub(/^resume /, "", job)
+      sub(/ \(applied by hand.*/, "", job)
+      if (job != "" && !(job in started)) started[job] = ts
+    }
+    rest ~ / finished: result / {
+      job = rest
+      sub(/ finished: result .*/, "", job)
+      if (job in started) delete started[job]
+    }
+    rest ~ /^committed [^ ]+: / { # a resumed job has no finished line; its commit ends it
+      job = rest
+      sub(/^committed /, "", job)
+      sub(/: .*/, "", job)
+      if (job in started) delete started[job]
     }
     END { for (job in started) printf "%s\t%s\n", started[job], job }
   ' | sort
 }
+minutes_since() { # minutes_since <YYYY-MM-DD HH:MM:SS>: whole minutes from it to now, 0 when unreadable
+  local from
+  from=$(epoch "$1")
+  [ -n "$from" ] || { printf '0\n'; return; }
+  printf '%s\n' $((($(date +%s) - from) / 60))
+}
+last_job_ts() { # the time of this run's last `<job> finished: result` or `committed <job>:` line, empty when none
+  tail -n "+$((start_ln + 1))" "$LOG" |
+    grep -E '^[0-9-]+ [0-9:]+ ([^ ]+ finished: result |committed [^ ]+: )' |
+    tail -n 1 | cut -c1-19
+}
+seen_reset() { # a new run (a later `start at` line) forgets the overruns the last one reported
+  [ "$(head -n 1 "$SEEN" 2> /dev/null)" = "run $start_ln" ] && return 0
+  printf 'run %s\n' "$start_ln" > "$SEEN" 2> /dev/null
+}
+seen_has() { # seen_has <job>: 0 when a call of this run already reported that job's overrun
+  [ "$(head -n 1 "$SEEN" 2> /dev/null)" = "run $start_ln" ] || return 1
+  grep -qxF -- "$1" "$SEEN" 2> /dev/null
+}
+seen_add() { printf '%s\n' "$1" >> "$SEEN"; }
 expected_min() { # expected_min <job>: minutes from its brief, else the usage median, else the default
   local brief="$B/$1.md" v
   if [ -f "$brief" ]; then
@@ -154,7 +198,7 @@ expected_min() { # expected_min <job>: minutes from its brief, else the usage me
   [ -n "$v" ] && { printf '%s\n' "$v"; return; }
   printf '%s\n' "$WAIT_EXPECT_DEFAULT_MIN"
 }
-overrun() { # exit 2 when a job still running passed 1.5 x its expected minutes
+overrun() { # exit 2 the first time a job still running passed 1.5 x its expected minutes
   local ts job from mins now elapsed
   now=$(date +%s)
   while IFS=$'\t' read -r ts job; do
@@ -163,7 +207,8 @@ overrun() { # exit 2 when a job still running passed 1.5 x its expected minutes
     [ -n "$from" ] || continue
     mins=$(expected_min "$job")
     elapsed=$((now - from))
-    if [ "$elapsed" -gt $((mins * 90)) ]; then
+    if [ "$elapsed" -gt $((mins * 90)) ] && ! seen_has "$job"; then
+      seen_add "$job" # the driver saw it; the next call keeps waiting and says so
       result 2 "OVERRUN: $job has run $((elapsed / 60)) min, expected ~$mins (1.5 x is $((mins * 90 / 60)) min)"
     fi
   done < <(unfinished_jobs)
@@ -177,18 +222,22 @@ stalled() { # 0 when run.log, the flash logs and the work folder stood still too
   have_marker=1
   [ -z "$(find "${watched[@]}" -newer "$MARKER" -print -quit 2> /dev/null)" ]
 }
-running_text() { # `<job> for <n> min (expected ~<m>)`: the earliest unfinished job, or the run before one starts
-  local ts job from mins now
-  now=$(date +%s)
+running_text() { # the exit-4 sentence: the running job, the check after the last job, or the run before its first job
+  local ts job
   IFS=$'\t' read -r ts job < <(unfinished_jobs | head -n 1) || true
-  if [ -z "${job:-}" ]; then
-    job="preflight (no job started yet)"
-    ts=$(grep -E ' start at ' "$LOG" | tail -n 1 | cut -c1-19) # the run itself, from its start at line
+  if [ -n "${job:-}" ]; then
+    printf '%s for %d min (expected ~%s)' "$job" "$(minutes_since "$ts")" "$(expected_min "$job")"
+    seen_has "$job" && printf ', overrun already reported'
+    return 0
   fi
-  from=$(epoch "$ts")
-  [ -n "$from" ] || from=$now
-  mins=$(expected_min "$job")
-  printf '%s for %d min (expected ~%s)' "$job" $(((now - from) / 60)) "$mins"
+  ts=$(last_job_ts) # no job is running: the combined check runs after the last job's line
+  if [ -n "$ts" ]; then
+    printf 'checking: the combined check for %d min' "$(minutes_since "$ts")"
+    return 0
+  fi
+  ts=$(grep -E ' start at ' "$LOG" | tail -n 1 | cut -c1-19) # the run itself, from its start at line
+  printf 'preflight (no job started yet) for %d min (expected ~%s)' "$(minutes_since "$ts")" \
+    "$(expected_min 'preflight (no job started yet)')"
 }
 nap() { # nap <seconds>: a sleep that a TERM interrupts at once
   sleep "$1" &
@@ -238,6 +287,7 @@ name=$(printf '%s' "$B" | tr -c 'A-Za-z0-9._-' '_') # a path can hold / \ : and 
 LOCK="$state/$name.lock"
 POS="$state/$name.pos"
 MARKER="$state/$name.marker"
+SEEN="$state/$name.overrun"
 WORK=${RUN_WORK:-.dart_tool/run-jobs/${B//\//_}}
 watched=("$LOG")
 for f in "$B"/flash-*.log; do [ -f "$f" ] && watched+=("$f"); done
@@ -255,6 +305,7 @@ take_lock
 start_ln=$(run_start_line)
 run_start_off=$(first_line_off)
 run_started_s=$(epoch "$(grep -E ' start at ' "$LOG" | tail -n 1 | cut -c1-19)")
+seen_reset
 read_pos
 deadline=$(($(date +%s) + WAIT_MAX_S))
 printf 'WAIT: %s, window %s s, poll %s s\n' "$B" "$WAIT_MAX_S" "$WAIT_POLL_S"
@@ -263,6 +314,7 @@ while :; do
   start_ln=$(run_start_line)
   run_start_off=$(first_line_off)
   run_started_s=$(epoch "$(grep -E ' start at ' "$LOG" | tail -n 1 | cut -c1-19)")
+  seen_reset # a restart while we wait (a new start at line) is a new run
   print_new
   if run_ended; then
     [ "$END_KIND" = DONE ] && result 0 "ok: DONE: $END_TEXT"
