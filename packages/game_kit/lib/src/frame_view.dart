@@ -301,6 +301,7 @@ class _FrameViewState extends State<FrameView> with SingleTickerProviderStateMix
     final snapshot = b == null ? a.snapshot : a.snapshot.lerpTo(b.snapshot, _t);
     return viewer.build(context, _toDraw(snapshot), (
       roster: a.frame.roster,
+      characters: a.frame.characters,
       playerId: widget.playerId,
       wholeMatch: widget.wholeMatch,
       padRects: widget.padRects,

@@ -48,6 +48,7 @@ Widget draw(
       child: Builder(
         builder: (context) => viewer.build(context, snapshot, (
           roster: const {},
+          characters: const {},
           playerId: playerId,
           wholeMatch: wholeMatch,
           padRects: padRects,

@@ -1,4 +1,5 @@
 import 'package:flutter/widgets.dart';
+import 'package:protocol/protocol.dart' show PlayerCharacter;
 
 /// A game a viewer can draw (m12 §4): its ID, its snapshot version, and how
 /// to build a viewer for one game. Each game package exports its own module,
@@ -72,4 +73,7 @@ typedef ViewContext = ({
   bool wholeMatch,
   List<Rect> padRects,
   double pxPerMm,
+  // The character each player chose (M16 identity), by player ID: empty when
+  // the host sent none. A player missing here wears their number's default.
+  Map<String, PlayerCharacter> characters,
 });

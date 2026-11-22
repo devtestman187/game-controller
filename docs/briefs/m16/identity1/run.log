@@ -136,3 +136,5 @@ RESULT: STOPPED: TIMEOUT: the run passed RUN_MAX_MIN=20 min (counted from the la
 2026-11-22 10:20:53 DONE: every job is committed. Claude reads the Summary of docs/briefs/m16/identity1/REVIEW.md, verifies its findings and writes one fix brief
 RESULT: DONE: 1 jobs, 15 min
 2026-11-22 10:32 full check.sh on tip: all suites PASS; puzzle failed once under load (puzzle_new_test did not complete), passes alone (445 tests)
+HAND-FIX i1g1: apply-job.sh applied 7 files: docs/briefs/m16/identity1/i1g1-report.md, packages/game_kit/lib/src/frame_view.dart, packages/game_kit/lib/src/game_module.dart, packages/game_kit/test/view_characters_test.dart, packages/puzzle_game/test/puzzle_module_test.dart, packages/test_game/lib/src/arena_module.dart, packages/test_game/test/arena_phone_identity_test.dart
+HAIKU-DIRECT i1g1: 5 min (15:48-15:53), 34 turns, 7 files (3 lib, 1 test edit, 2 new tests, report); first Agent isolation:worktree attempt cut from frozen E:/AI/game-controller and blocked (1 min, 11 calls), reran in own worktree E:/AI/game-controller-m16-i1g1

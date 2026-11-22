@@ -45,9 +45,14 @@ final class ArenaViewer implements GameViewer {
     // The phone's own player is marked in the bar, so a joined player can tell
     // their counters from everyone else's (M14 bugs2 7).
     //
-    // The characters a host chose for the players (M16 identity) come to a
-    // viewer with the frame's `chars`, which a `ViewContext` does not carry yet:
-    // until it does, this phone draws every player's number's default.
-    return ArenaBoard(snapshot: snapshot, roster: arenaRosterFor(snapshot, view.roster), ownId: view.playerId);
+    // The characters a host chose for the players (M16 identity) come with the
+    // frame, as `ViewContext.characters`: a player with none wears the number's
+    // default.
+    return ArenaBoard(
+      snapshot: snapshot,
+      roster: arenaRosterFor(snapshot, view.roster),
+      characters: view.characters,
+      ownId: view.playerId,
+    );
   }
 }

@@ -1,3 +1,4 @@
+SUPERSEDED (Nov 22): split into i1g1.md (contract) and i1g2.md (painters), see NEXT-i1g.md. Kept as history; not in waves.txt.
 job: M16 identity1 i1g: Shape Race workers, TV scores and badges draw the chosen character; audit of every painter
 pub: no
 stop: after it. The Arena is i1f's.
