@@ -23,7 +23,7 @@ Short copy of docs/coding-guidelines.md (G) and docs/review-rules.md (R); the fu
 
 ## Tests (G9)
 
-- New tests in a NEW file, and they fail on the code as it was; while working run only your own test files.
+- New tests in a NEW file, and they fail on the code as it was; check with `tools/mine.sh` (format, analyze, touched tests, churn revert, failures only), never raw dart/flutter or a partial `tools/check.sh`.
 - Each test name states the rule it checks; no real time (fake clocks, injected nowMs).
 - Widget tests run at more than one size when layout matters.
 - Await every async side effect before teardown; a pure refactor or docs job says tests-first: exempt <reason>.
@@ -41,5 +41,6 @@ Short copy of docs/coding-guidelines.md (G) and docs/review-rules.md (R); the fu
 ## Before you write
 
 - Read docs/project-notes.md for the parts that apply to the change.
+- When a change is ready run `tools/mine.sh`; run it again after each fix.
 - Stop at the gate the task names; if a design decision is unclear, stop and say so.
 - Write the report once, at the end, with the closing sections the task names.
