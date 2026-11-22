@@ -9,3 +9,5 @@
 2026-11-22 12:29:20 p4a finished: result 0 (102 turns, 41 min)
 2026-11-22 12:33:45 STOPPED: job p4b passed its limit (52 min, estimate 35)
 RESULT: STOPPED: job p4b passed its limit (52 min, estimate 35)
+HAND-FIX p4b: copied tools/probe-deps.sh, tools/tests/probe-deps-test.sh, tools/tests/fixtures/probe-deps/ from the kept tree (worker passed its limit); wrote p4b-report.md
+HAND-FIX p4e: edited tools/tests/run-limits-wire-test.sh (pinned backstop 25 -> 45, class c)
