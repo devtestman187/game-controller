@@ -16,7 +16,7 @@
 #
 # Env knobs, each a whole number (anything else keeps the default):
 #   RUN_JOB_FACTOR_PCT 150      a job's limit over its estimate (owner, Nov 22)
-#   RUN_CHECK_MAX_MIN 12        the combined check (tools/check.sh) and its one retry
+#   RUN_CHECK_MAX_MIN 20        the combined check (tools/check.sh) and its one retry
 #   RUN_REVIEW_MAX_MIN 10       one worker review (a wave's or the run's)
 #   RUN_EXPECT_DEFAULT_MIN 20   a job with no expected-min: line and no usable usage rows
 #   RUN_POLL_S 5                how often a step waiting in the background looks again
@@ -37,7 +37,7 @@ run_number() { # run_number <value> <default>: <value> when it is a whole number
 }
 
 RUN_JOB_FACTOR_PCT=$(run_number "${RUN_JOB_FACTOR_PCT:-}" 150)
-RUN_CHECK_MAX_MIN=$(run_number "${RUN_CHECK_MAX_MIN:-}" 12)
+RUN_CHECK_MAX_MIN=$(run_number "${RUN_CHECK_MAX_MIN:-}" 20)
 RUN_REVIEW_MAX_MIN=$(run_number "${RUN_REVIEW_MAX_MIN:-}" 10)
 RUN_EXPECT_DEFAULT_MIN=$(run_number "${RUN_EXPECT_DEFAULT_MIN:-}" 20)
 RUN_POLL_S=$(run_number "${RUN_POLL_S:-}" 5)

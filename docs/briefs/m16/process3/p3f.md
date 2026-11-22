@@ -2,7 +2,7 @@ job: M16 process3 p3f: the runner refuses a wave whose base does not compile
 pub: no
 stop: after it. A new sourced helper, a few lines in tools/run-jobs.sh, a new test.
 tests-first: exempt (shell tool: the new test script is run against the old runner first and must show FAIL lines; say so in the report).
-expected-min: 15
+expected-min: 25
 read: docs/briefs/templates/COMMON.md · tools/run-jobs.sh (the wave loop after the preflight, `stop`, `note`, STOP.md writing; p3d has just rewritten it) · tools/run-steps.sh (how checks() calls check.sh and stops) · tools/run-limits.sh (env limits, RUN_LIMIT_UNIT_S) · tools/tests/run-limits-wire-test.sh (fake repo and stub FLASH_CMD to copy) · docs/briefs/m16/identity1/WAVE1.md (i1b's job check could never pass on a base without i1a2's fix and ran 60 min)
 decisions (owner and main session, Nov 22): "the runner preflight analyzes the base (format+analyze via check.sh or mine.sh on the base) and refuses to start a wave whose base doesn't compile, writing STOP.md with the reason".
 do:

@@ -55,3 +55,4 @@ RESULT: STOPPED: checks failed twice on the combined tree after p3d p3e
 2026-11-22 05:06:00 STOPPED: job p3f passed its limit (22 min, estimate 15)
 2026-11-22 05:06:02 reviewed wave2: 14 finding(s)
 RESULT: STOPPED: job p3f passed its limit (22 min, estimate 15)
+2026-11-22 05:07:26 HAND-FIX p3f: stopped at its 22 min limit (estimate 15 too small; worker was nearly done, no report); expected-min raised to 25 and the job restarted from scratch
