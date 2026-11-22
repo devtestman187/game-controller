@@ -36,9 +36,10 @@
 #      next serial point (after the next wave commit), staging only those files.
 #      A plan with a single wave skips this review: the run review covers it.
 # At the end one more worker job reads everything since the run's first commit
-# and writes <briefs-dir>/REVIEW.md; Claude reads its Summary and writes one
-# fix brief. Progress and stops: <briefs-dir>/run.log (a STOPPED line with no
-# later `start at` line needs attention).
+# and writes <briefs-dir>/REVIEW.md; it runs in the background under the same 5 s
+# check_stop poll as a job, so RUN_MAX_MIN stops a stuck review. Claude reads its
+# Summary and writes one fix brief. Progress and stops: <briefs-dir>/run.log (a
+# STOPPED line with no later `start at` line needs attention).
 # Working files (run-base, run-check.log, run-review.log, run-commit.log, patches,
 # markers) live in .dart_tool/run-jobs/<briefs-dir name> (gitignored), never in the
 # briefs dir; RUN_WORK overrides. run-base is set once, at the batch's first start
@@ -58,8 +59,10 @@
 # Before the preflight every brief's report: line is linted: it must be exactly one bare path
 # (no second report: line, no words after the path), or the run stops before wave 1.
 # STOP file: <briefs-dir>/STOP is checked before each wave, job start, review and commit; when
-# present the runner kills its child processes, logs `STOPPED: stop file` and exits 1; the file
-# is removed at the next start. Never revert a job's commits without `--drop <job>` first.
+# present the runner kills its child processes at once, logs `STOPPED: stop file` and exits 1;
+# the file is removed at the next start. Every other stop waits for a running wave review and
+# commits its report before killing, so no review is lost. Never revert a job's commits
+# without `--drop <job>` first.
 # Every stop writes <briefs-dir>/STOP.md through tools/run-stop.sh (why, the failing lines, the
 # last run.log lines, a suggested repair) and commits it; the next start removes and commits it.
 # One runner per batch: the work folder's lock holds its pid, so a second runner on the same
@@ -94,7 +97,7 @@ while [ $# -gt 0 ]; do
     --no-review) review=0; shift ;;
     --dry-run) dry=1; shift ;;
     --drop) drop=${2:?}; shift 2 ;;
-    -h|--help) sed -n '2,72p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h|--help) sed -n '2,75p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     -*) echo "Unknown option: $1 (try --help)" >&2; exit 2 ;;
     *) B=${1%/}; shift ;;
   esac
@@ -132,10 +135,14 @@ is_done() { # is_done <job>: in done.txt; no done.txt (older batch): report comm
   committed "$B/$1-report.md"
 }
 is_dropped() { grep -qxF "$1" "$B/dropped.txt" 2>/dev/null; }
-stop() { # stop <cause> [flash-log]: STOP.md first, then kill the children, log, commit, exit 1
+stop() { # stop <cause> [flash-log]: STOP.md first, then the children; the STOP file kills at once
   local cause=$1 log=${2:-} p
   note "STOPPED: $cause"
   write_stop "$cause" "$log"
+  # A wave review running in the background holds another job's work: let it finish and flush
+  # its report before the kill, or that report is lost. The STOP file is the one cause that
+  # kills at once, because a person asking for the run to end wants it gone now.
+  case $cause in "stop file") ;; *) flush_reviews wait ;; esac
   for p in $(jobs -p); do kill_tree "$p"; done
   wait 2>/dev/null; flush_reviews
   save_stop "runner: log and STOP.md at a stop"
@@ -313,24 +320,7 @@ done
 
 flush_reviews wait
 check_stop
-if [ $review -eq 1 ] && ! committed "$B/REVIEW.md"; then
-  base=$(cat "$WORK/run-base")
-  files=$(git diff --name-only "$base" HEAD | grep -Ev '^(site/shots/|.*/flutter/generated_|docs/briefs/)' | tr '\n' ' ')
-  sed -e "s|{DIR}|$B|g" -e "s|{RANGE}|$base..$(git rev-parse HEAD)|g" -e "s|{FILES}|$files|g" \
-    docs/briefs/templates/run-review.md > "$B/run-review.md"
-  save "runner: the brief for the run's review" "$B/run-review.md" "$B/run.log"
-  note "start the run's review"
-  tools/flash.sh --brief "$B/run-review.md" > "$LOGS/flash-run-review.log" 2>&1
-  if [ $? -eq 4 ] && [ ! -f "$B/REVIEW.md" ]; then # result 4 only because of generated churn: keep REVIEW.md, as review_salvage does
-    rf=$(outside_files "$LOGS/flash-run-review.log"); rtree=$(sed -n 's/.*the worktree is kept: //p' "$LOGS/flash-run-review.log" | tail -n 1); rok=1
-    for f in $rf; do [[ $f =~ $CHURN_OUTSIDE || $f == "$B/REVIEW.md" ]] || rok=0; done
-    if [ $rok -eq 1 ] && [ -f "$rtree/$B/REVIEW.md" ]; then
-      cp "$rtree/$B/REVIEW.md" "$B/REVIEW.md" && git worktree remove --force "$rtree" 2>/dev/null
-      note "the run's review: dropped generated churn outside its list (report kept)"
-    fi
-  fi
-  if [ -f "$B/REVIEW.md" ]; then unchurn; save "the run's review (worker)" "$B/REVIEW.md"; else finding "the run's review wrote no REVIEW.md (see $LOGS/flash-run-review.log)"; fi
-fi
+[ $review -eq 1 ] && ! committed "$B/REVIEW.md" && final_review
 note "DONE: every job is committed. Claude reads the Summary of $B/REVIEW.md, verifies its findings and writes one fix brief"
 paths=("$B/run.log"); [ -f "$B/run-findings.md" ] && paths+=("$B/run-findings.md")
 save "runner: log at the end of the run" "${paths[@]}"

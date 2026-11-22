@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # Sourced by tools/run-jobs.sh, after it has cd'd to the repo root:
 #   . "$dir/run-review.sh"   (dir: the folder holding run-jobs.sh)
-# The second cheap worker's review of each wave: its brief, its start and its
-# report, and slot_wait's limit of 3 flash jobs. Not run on its own; it reads the
-# runner's globals (B, LOGS, WORK, review, WAVES, CHURN_OUTSIDE, RV_NAMES,
-# RV_RANGES, PENDING, REVPIDS) and its note, save, finding, stop, committed and
-# outside_files helpers.
+# The second cheap worker's review of each wave and of the run: the briefs, their
+# start and reports, and slot_wait's limit of 3 flash jobs. Not run on its own; it
+# reads the runner's globals (B, LOGS, WORK, review, WAVES, CHURN_OUTSIDE, RV_NAMES,
+# RV_RANGES, PENDING, REVPIDS) and its note, save, finding, stop, check_stop,
+# committed, outside_files and unchurn helpers.
 
 # 6. A second cheap worker reviews one wave (all its jobs together, not one review per job).
 review_brief() { # review_brief <review-name> <names> <ranges>: the brief for one wave's review
@@ -16,13 +16,29 @@ review_brief() { # review_brief <review-name> <names> <ranges>: the brief for on
   sed -e "s|{DIR}|$B|g" -e "s|{JOB}|$j|g" -e "s|{NAMES}|$names|g" -e "s|{BRIEFS}|${briefs% }|g" -e "s|{REPORTS}|${reports% }|g" \
     -e "s|{RANGE}|$ranges|g" -e "s|{FILES}|$files|g" docs/briefs/templates/job-review.md > "$B/$j-review.md"
 }
+review_covers() { # review_covers <report> <name>...: the report committed at HEAD names every job
+  local text n
+  text=$(git show "HEAD:$1" 2>/dev/null) || return 1
+  for n in "${@:2}"; do
+    grep -qE "(^|[^A-Za-z0-9_-])$n([^A-Za-z0-9_-]|$)" <<< "$text" || return 1
+  done
+}
 wave_review() { # wave_review <n>: write the review brief of wave <n> from RV_NAMES/RV_RANGES; sets WREV (empty if none)
+  local name="wave$1"
   WREV=""
   if [ $review -eq 1 ] && [ ${#RV_NAMES[@]} -gt 0 ]; then
     if [ ${#WAVES[@]} -eq 1 ]; then # the whole run: its review covers it, no per-wave one
       note "wave review skipped: wave 1 is the whole run, the run review covers it"
-    elif ! committed "$B/wave$1-review-report.md"; then
-      review_brief "wave$1" "${RV_NAMES[*]}" "${RV_RANGES[*]}"; WREV="wave$1"
+    elif committed "$B/wave$1-review-report.md" && review_covers "$B/wave$1-review-report.md" "${RV_NAMES[@]}"; then
+      note "wave $1 review skipped: the committed wave$1-review-report.md already covers ${RV_NAMES[*]}"
+    else
+      # A job committed after that report exists (a split's second job, a hand-fix restart) is
+      # not covered by it: the brief is named after its first job, so it is a review of its own.
+      if committed "$B/wave$1-review-report.md"; then
+        name="wave$1-${RV_NAMES[0]}"
+        note "wave $1 review: wave$1-review-report.md does not cover ${RV_NAMES[*]}, so its review is $name"
+      fi
+      review_brief "$name" "${RV_NAMES[*]}" "${RV_RANGES[*]}"; WREV="$name"
     fi
   fi
   RV_NAMES=() RV_RANGES=()
@@ -69,4 +85,36 @@ flush_reviews() { # flush_reviews [wait]: commit the reports of reviews that hav
 }
 slot_wait() { # at most 3 flash jobs at once, counting the background review chain as one
   while [ "$(jobs -rp | wc -l)" -ge 3 ]; do sleep 5; done
+}
+# The run's own review, one worker job over everything since run-base. It runs in the
+# background under a 5 s check_stop poll, like a wave's job, so the STOP file is seen and
+# RUN_MAX_MIN stops a stuck review with STOPPED: TIMEOUT (the old foreground call had no
+# time check at all and kept the runner waiting behind it).
+run_review() { # run_review: commit the brief of the run's review and run it; returns flash's result
+  local base files pid rc
+  base=$(cat "$WORK/run-base")
+  files=$(git diff --name-only "$base" HEAD | grep -Ev '^(site/shots/|.*/flutter/generated_|docs/briefs/)' | tr '\n' ' ')
+  sed -e "s|{DIR}|$B|g" -e "s|{RANGE}|$base..$(git rev-parse HEAD)|g" -e "s|{FILES}|$files|g" \
+    docs/briefs/templates/run-review.md > "$B/run-review.md"
+  save "runner: the brief for the run's review" "$B/run-review.md" "$B/run.log"
+  note "start the run's review"
+  tools/flash.sh --brief "$B/run-review.md" > "$LOGS/flash-run-review.log" 2>&1 &
+  pid=$!
+  while kill -0 "$pid" 2>/dev/null; do check_stop; sleep 5; done
+  wait "$pid"; rc=$?
+  return "$rc"
+}
+final_review() { # final_review: the run's review and its report (REVIEW.md, salvaged from result-4 churn)
+  local rc=0 rf rtree rok=1 f
+  run_review || rc=$?
+  if [ "$rc" -eq 4 ] && [ ! -f "$B/REVIEW.md" ]; then # result 4 only because of generated churn: keep REVIEW.md, as review_salvage does
+    rf=$(outside_files "$LOGS/flash-run-review.log"); rtree=$(sed -n 's/.*the worktree is kept: //p' "$LOGS/flash-run-review.log" | tail -n 1)
+    for f in $rf; do [[ $f =~ $CHURN_OUTSIDE || $f == "$B/REVIEW.md" ]] || rok=0; done
+    if [ $rok -eq 1 ] && [ -f "$rtree/$B/REVIEW.md" ]; then
+      cp "$rtree/$B/REVIEW.md" "$B/REVIEW.md" && git worktree remove --force "$rtree" 2>/dev/null
+      note "the run's review: dropped generated churn outside its list (report kept)"
+    fi
+  fi
+  if [ -f "$B/REVIEW.md" ]; then unchurn; save "the run's review (worker)" "$B/REVIEW.md"
+  else finding "the run's review wrote no REVIEW.md (see $LOGS/flash-run-review.log)"; fi
 }

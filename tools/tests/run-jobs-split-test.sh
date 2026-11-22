@@ -5,7 +5,9 @@
 # a job to run, a missing brief and a bad report: line) prints the text the old
 # file printed; --help, an unknown option, a missing waves.txt and a batch path
 # with spaces behave as before; every moved function is defined once; the sizes
-# hold; no job starts.
+# hold; no job starts. It also checks the wave review's naming rule on its own
+# (tools/run-review.sh sourced with a fake review_brief): a covered wave is
+# skipped, a job the committed report does not name gets wave1-<first job>.
 #
 #   bash tools/tests/run-jobs-split-test.sh
 #
@@ -102,10 +104,64 @@ report "a batch folder path with spaces works (dry run)" "$r"
 if [ -e "$tmp/flash-ran" ]; then r=1; else r=0; fi
 report "no job started: the flash stub left no marker" "$r"
 
+# The wave review's rule (tools/run-review.sh): skip only when the committed report names
+# every job the wave covers; a job it does not name means a review of its own, named after
+# that job. Each case sources run-review.sh with a fake review_brief, so no worker starts.
+rv_batch=docs/briefs/fix # repo-relative, because the case's batch path would be absolute
+rv_repo() { # rv_repo <dir> <report text or empty>: a repo whose wave1 review report is committed
+  local dir=$1 text=$2
+  mkdir -p "$dir/$rv_batch"
+  git -C "$dir" init -q
+  git -C "$dir" config user.email t@example.com
+  git -C "$dir" config user.name t
+  printf 'base\n' > "$dir/base.txt"
+  if [ -n "$text" ]; then printf '%s\n' "$text" > "$dir/$rv_batch/wave1-review-report.md"; fi
+  git -C "$dir" add -A
+  git -C "$dir" commit -q -m base
+}
+rv_wave() { # rv_wave <dir> <job>...: the WREV wave_review 1 sets, with a fake review_brief
+  (
+    cd "$1" || exit 2
+    shift
+    B=$rv_batch review=1
+    WAVES=(one two) RV_NAMES=("$@") RV_RANGES=("x..y")
+    . "$loc/tools/run-review.sh" # defines the functions first: the fakes below replace its review_brief
+    note() { :; }; save() { :; }; finding() { :; }; stop() { exit 9; }
+    committed() { git cat-file -e "HEAD:$1" 2>/dev/null; }
+    review_brief() { WREV=$1; }
+    wave_review 1
+    printf '%s\n' "${WREV:-none}"
+  )
+}
+
+rv_repo "$tmp/rv-covered" '# Wave1 review: runjob'
+wrev=$(rv_wave "$tmp/rv-covered" runjob)
+if [ "$wrev" = none ]; then r=0; else r=1; fi
+echo "WREV=$wrev" > "$out"
+report "a wave whose committed report names its job is not reviewed again" "$r"
+
+rv_repo "$tmp/rv-uncovered" '# Wave1 review: otherjob'
+wrev=$(rv_wave "$tmp/rv-uncovered" runjob otherjob)
+if [ "$wrev" = wave1-runjob ]; then r=0; else r=1; fi
+echo "WREV=$wrev" > "$out"
+report "a job its committed report does not name gets a review named wave1-<first job>" "$r"
+
+rv_repo "$tmp/rv-partial" '# Wave1 review: p2-split'
+wrev=$(rv_wave "$tmp/rv-partial" p2)
+if [ "$wrev" = wave1-p2 ]; then r=0; else r=1; fi
+echo "WREV=$wrev" > "$out"
+report "a report naming p2-split does not cover the job p2 (whole names only)" "$r"
+
+rv_repo "$tmp/rv-noreport" ''
+wrev=$(rv_wave "$tmp/rv-noreport" runjob)
+if [ "$wrev" = wave1 ]; then r=0; else r=1; fi
+echo "WREV=$wrev" > "$out"
+report "with no committed report the wave review keeps its plain wave1 name" "$r"
+
 # One version of every moved function: a definition of each name in exactly one file.
 dups=()
-for f in apply_safe outside_files tests_first checks dart_fix ci_patch review_brief wave_review \
-  review_salvage start_reviews flush_reviews slot_wait; do
+for f in apply_safe outside_files tests_first checks dart_fix ci_patch review_brief wave_review review_covers \
+  review_salvage start_reviews flush_reviews slot_wait run_review final_review; do
   n=$(cat "$loc/tools/run-jobs.sh" "$loc/tools/run-steps.sh" "$loc/tools/run-review.sh" | grep -cE "^$f\(\) \{")
   [ "$n" = 1 ] || dups+=("$f=$n")
 done
