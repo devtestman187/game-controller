@@ -65,6 +65,9 @@
 # Optional: FLASH_MODEL (default deepseek-v4-flash), FLASH_WORKTREES (where
 # job worktrees go), FLASH_EXTRACT (the worker rule extract, default
 # docs/worker-extract.md).
+# FLASH_WORKER=claude (tools/claude-worker.sh sets it): the Anthropic subscription login and Haiku
+# (CLAUDE_WORKER_MODEL, default claude-haiku-5-5; --max-turns CLAUDE_WORKER_MAX_TURNS, default 35)
+# instead of DeepSeek; --safe-mode replaces --bare. Not for --web jobs.
 # Exit code: 0 if everything passed; otherwise, the first that applies:
 # 3 a protected file changed, 4 a file outside --allow changed, the headless
 # run's own exit code, 5 a --check failed, 6 the changes couldn't be applied
@@ -230,7 +233,17 @@ if ! command -v claude > /dev/null 2>&1; then
   exit 2
 fi
 
-model="${FLASH_MODEL:-deepseek-v4-flash}"
+# FLASH_WORKER=claude (set by tools/claude-worker.sh): the same worker on the Anthropic subscription login, Haiku,
+# no DeepSeek variables, isolated by --safe-mode instead of --bare (which cannot use the login). Default: flash.
+wkind="${FLASH_WORKER:-flash}"
+case "$wkind" in
+  flash) model="${FLASH_MODEL:-deepseek-v4-flash}"; maxturns="${FLASH_MAX_TURNS:-150}"; iso=(--bare) ;;
+  claude)
+    model="${CLAUDE_WORKER_MODEL:-claude-haiku-5-5}"; maxturns="${CLAUDE_WORKER_MAX_TURNS:-35}"
+    iso=(--safe-mode --strict-mcp-config --disable-slash-commands --no-session-persistence)
+    if [ "$web" = 1 ]; then echo "flash: --web is a DeepSeek-only job type (no claude worker)" >&2; exit 2; fi ;;
+  *) echo "flash: FLASH_WORKER must be flash or claude, got $wkind" >&2; exit 2 ;;
+esac
 # The process ID keeps two jobs started in the same second apart (the log
 # name is also the job worktree's name).
 log="${TMPDIR:-/tmp}/flash-$(date +%Y%m%d-%H%M%S)-$$.log"
@@ -328,36 +341,44 @@ Prefer official documentation and primary sources, give dates and versions, and 
   add_dirs=()
 fi
 
-cmd=(claude --bare -p "$task"
+cmd=(claude "${iso[@]}" -p "$task"
   --model "$model"
   --permission-mode acceptEdits
   --append-system-prompt "$rules"
   --allowedTools "${allowed[@]}"
   --disallowedTools "${denied[@]}"
   "${add_dirs[@]+"${add_dirs[@]}"}"
-  --max-turns "${FLASH_MAX_TURNS:-150}"
+  --max-turns "$maxturns"
   --output-format json)
 
 if [ "$dry" = 1 ]; then
-  echo "allow: ${allow[*]:-none (read-only)} | check: ${checks[*]:-none} | report: ${report:-none} | pub: $pub | web: $web | wsl: ${wsl:-none} | worktree: $([ "$here" = 1 ] && echo no || echo yes)"
+  echo "worker: $wkind | model: $model | max-turns: $maxturns | allow: ${allow[*]:-none (read-only)} | check: ${checks[*]:-none} | report: ${report:-none} | pub: $pub | web: $web | wsl: ${wsl:-none} | worktree: $([ "$here" = 1 ] && echo no || echo yes)"
   printf '%q ' "${cmd[@]}"; echo
   exit 0
 fi
 
-if [ -z "${DEEPSEEK_API_KEY:-}" ] && command -v powershell.exe > /dev/null 2>&1; then
-  DEEPSEEK_API_KEY="$(powershell.exe -NoProfile -Command "[Environment]::GetEnvironmentVariable('DEEPSEEK_API_KEY','User')" | tr -d '\r\n')"
-fi
-if [ -z "${DEEPSEEK_API_KEY:-}" ]; then
-  echo "flash: DEEPSEEK_API_KEY isn't set" >&2
-  exit 2
-fi
+if [ "$wkind" = claude ]; then
+  # The subscription login: no DeepSeek variables, and no key or base URL that would send the
+  # worker to an API account instead. Auto-memory stays off (--safe-mode also skips CLAUDE.md,
+  # hooks, MCP servers, skills and agents; docs/dev-tools.md, claude-worker.sh).
+  unset ANTHROPIC_BASE_URL ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN
+  export CLAUDE_CODE_DISABLE_AUTO_MEMORY=1
+else
+  if [ -z "${DEEPSEEK_API_KEY:-}" ] && command -v powershell.exe > /dev/null 2>&1; then
+    DEEPSEEK_API_KEY="$(powershell.exe -NoProfile -Command "[Environment]::GetEnvironmentVariable('DEEPSEEK_API_KEY','User')" | tr -d '\r\n')"
+  fi
+  if [ -z "${DEEPSEEK_API_KEY:-}" ]; then
+    echo "flash: DEEPSEEK_API_KEY isn't set" >&2
+    exit 2
+  fi
 
-# Point only this process at DeepSeek. --bare never reads the saved
-# Claude login, so the subscription can't be used by mistake.
-export ANTHROPIC_BASE_URL="https://api.deepseek.com/anthropic"
-export ANTHROPIC_API_KEY="$DEEPSEEK_API_KEY"
-unset ANTHROPIC_AUTH_TOKEN
-export ANTHROPIC_DEFAULT_HAIKU_MODEL="$model" ANTHROPIC_DEFAULT_SONNET_MODEL="$model" ANTHROPIC_DEFAULT_OPUS_MODEL="$model"
+  # Point only this process at DeepSeek. --bare never reads the saved
+  # Claude login, so the subscription can't be used by mistake.
+  export ANTHROPIC_BASE_URL="https://api.deepseek.com/anthropic"
+  export ANTHROPIC_API_KEY="$DEEPSEEK_API_KEY"
+  unset ANTHROPIC_AUTH_TOKEN
+  export ANTHROPIC_DEFAULT_HAIKU_MODEL="$model" ANTHROPIC_DEFAULT_SONNET_MODEL="$model" ANTHROPIC_DEFAULT_OPUS_MODEL="$model"
+fi
 export CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1
 # Caps on what one command or one file read can add to the conversation, which
 # is sent again on every later turn (docs/flash-framework.md, "Keep jobs short").
@@ -371,7 +392,7 @@ unset WSLENV
 # would run blind (bugs10: a worker that could not run any test). Exit 7 if it cannot.
 if [ "$pre" = 1 ]; then
   pcmd=("${cmd[@]}")
-  pcmd[3]="Preflight, nothing else: run the command flutter --version, then the command tools/check.sh --list, then answer PREFLIGHT-DONE. Change no file."
+  pcmd[$((${#iso[@]} + 2))]="Preflight, nothing else: run the command flutter --version, then the command tools/check.sh --list, then answer PREFLIGHT-DONE. Change no file."
   pcmd+=(--max-turns 8)
   plog="${TMPDIR:-/tmp}/flash-preflight-$$.log"
   "${pcmd[@]}" < /dev/null > "$plog" 2> "$plog.err"
