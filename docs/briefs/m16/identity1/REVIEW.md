@@ -111,3 +111,9 @@ include the six-parameter painters and one stale STATUS line.
 - i1g1 wave4 review (0 must, 2 should, 4 could): the TV-look claim "toyTvProvider does not exist" in i1g1-report.md was wrong (it is in party_host/look_providers.dart; the real reason is game packages cannot import party_host). Verified; report wording deferred to code-health. Weak crown test (render difference only), duplicated `capture` harness, thin self-check, stale path in report, ViewContext dartdoc not naming `characters`: all minor, deferred.
 - i1g2 wave5 review (1 must, 2 should, 2 could): the must is real but small (score_bar_identity_test second test passes on the old code: it is a default guard, kept as such). Deferred: MatchView in play_view.dart makes two public widgets (own file later, with slot_paint marks); no split/phones-camera MatchPainter test with a non-default character; Robo comment in puzzle_screen_test.dart:177; new TV test sits in an existing file. Cat Chaos draws no players (nothing to fix). Mirror dots stay on player 2's colour (owner question). `_charactersOf` fills defaults for every roster entry (accepted).
 - Gate results: i1g2 review.sh 0 fail; check format analyze puzzle host pass (449 / host 102 s); i1g1 kit 77, arena 252, puzzle 445 pass.
+
+## Owner answers (Nov 22, after wave 3)
+- Blank nickname: the phone keeps sending its phone name in the hello; screens translate a phone-style name to "Player N" (display rule). One small fix job, first Claude-only batch.
+- Phone's own host mode (storage.dart:55): leave as is; the library adds `identity` to every hello. Tidy in a later cleanup at most.
+- Results band in the winner's character colour (arena_view_widgets.dart:158): keep, with its test.
+- Shape Race mirror dots and frame on player 2's colour: keep for this milestone.
