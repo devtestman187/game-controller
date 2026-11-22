@@ -135,3 +135,4 @@ RESULT: STOPPED: TIMEOUT: the run passed RUN_MAX_MIN=20 min (counted from the la
 2026-11-22 10:20:52 wave review skipped: wave 1 is the whole run, the run review covers it
 2026-11-22 10:20:53 DONE: every job is committed. Claude reads the Summary of docs/briefs/m16/identity1/REVIEW.md, verifies its findings and writes one fix brief
 RESULT: DONE: 1 jobs, 15 min
+2026-11-22 10:32 full check.sh on tip: all suites PASS; puzzle failed once under load (puzzle_new_test did not complete), passes alone (445 tests)

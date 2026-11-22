@@ -7,3 +7,5 @@
 - 09:00 first i1d apply attempt failed (patch included i1f); I stopped the runner by STOP file, applied only connection+docs paths; restart
 - 09:17 review.sh FAIL (layers) after wave: hand-fixed i1f by moving arenaCharacterFor; restart. waiter 4: 6 calls exit 1. my calls ~38
 - 09:50 wave 2 DONE (committed 8e19e4cb i1d, a7125f73 i1f, dfbefcf3 i1e2) 28 min run; run review: 2 must; must1 (untracked file) hand-committed; fix round 1 = f1 (must 2 + 2 doc lines). waiter 5: 12 calls exit 0. my calls ~46
+- 10:07 f1 TIMEOUT at run backstop 20 (estimate 15 too low); hand-applied f1 from kept worktree, restart RUN_MAX_MIN=40. waiter 6: 8 calls exit 1. my calls ~51
+- 10:32 f1 committed c188841b (waiter 7: 7 calls exit 0; full-check waiter returned early after 4 calls, I polled myself 3 calls). check green (puzzle flake rerun green). STATUS, code-health, waves.txt (i1g restored) updated. Total wall 07:55-10:33. my calls ~62
