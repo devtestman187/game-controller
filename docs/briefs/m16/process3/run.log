@@ -11,3 +11,10 @@
 2026-11-22 02:35:41 committed p3a: c6b21038 wait-run: OVERRUN once per job, a checking result, resume as a start
 2026-11-22 02:35:44 committed p3b: d53bcfc6 Fail-fast check.sh and per-script limits for selftest.sh
 2026-11-22 02:35:46 committed p3c: 0eb48804 tools: run-limits.sh, a watched combined check and a review limit
+2026-11-22 02:35:48 start p3d
+2026-11-22 02:36:14 start p3e
+2026-11-22 03:24:06 p3d finished: result 5 (67 turns, 43 min)
+2026-11-22 03:24:06 p3e finished: result 0 (74 turns, 32 min)
+2026-11-22 03:36:07 checks failed; fetching packages and trying once more
+2026-11-22 03:48:41 STOPPED: checks failed twice on the combined tree after p3e (see .dart_tool/run-jobs/docs_briefs_m16_process3/run-check.log); nothing of this wave is committed
+2026-11-22 03:48:52 reviewed wave1: 16 finding(s)

@@ -1,0 +1,28 @@
+STOP 2026-11-22 03:48:41 docs/briefs/m16/process3
+cause: checks failed twice on the combined tree after p3e (see .dart_tool/run-jobs/docs_briefs_m16_process3/run-check.log); nothing of this wave is committed
+class: check-failed
+repair: run tools/check.sh <suite> for the failing name above, fix the one cause, append "HAND-FIX <job>: ..." to run.log and restart (docs/flash-digest.md "Repair a stop").
+failing tests and errors (run-check.log):
+  none found
+files outside allow (flash log):
+  none found
+run.log (last 20 lines):
+  2026-11-22 01:47:36 start at 88bad26f on m16
+  2026-11-22 01:47:36 run-base 88bad26ffdb8a775da7e0586a6e2e0440bc0cb51
+  2026-11-22 01:47:47 preflight ok: the worker ran flutter --version and tools/check.sh --list
+  2026-11-22 01:47:47 start p3a
+  2026-11-22 01:48:13 start p3b
+  2026-11-22 01:48:38 start p3c
+  2026-11-22 02:19:56 p3a finished: result 0 (65 turns, 27 min)
+  2026-11-22 02:19:56 p3b finished: result 4 (59 turns, 26 min)
+  2026-11-22 02:19:58 p3b: dropped generated churn outside its list: tv_test_app/windows/flutter/generated_plugin_registrant.cc tv_test_app/windows/flutter/generated_plugin_registrant.h tv_test_app/windows/flutter/generated_plugins.cmake 
+  2026-11-22 02:23:11 p3c finished: result 0 (67 turns, 30 min)
+  2026-11-22 02:35:41 committed p3a: c6b21038 wait-run: OVERRUN once per job, a checking result, resume as a start
+  2026-11-22 02:35:44 committed p3b: d53bcfc6 Fail-fast check.sh and per-script limits for selftest.sh
+  2026-11-22 02:35:46 committed p3c: 0eb48804 tools: run-limits.sh, a watched combined check and a review limit
+  2026-11-22 02:35:48 start p3d
+  2026-11-22 02:36:14 start p3e
+  2026-11-22 03:24:06 p3d finished: result 5 (67 turns, 43 min)
+  2026-11-22 03:24:06 p3e finished: result 0 (74 turns, 32 min)
+  2026-11-22 03:36:07 checks failed; fetching packages and trying once more
+  2026-11-22 03:48:41 STOPPED: checks failed twice on the combined tree after p3e (see .dart_tool/run-jobs/docs_briefs_m16_process3/run-check.log); nothing of this wave is committed
