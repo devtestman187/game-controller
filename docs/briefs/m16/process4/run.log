@@ -34,3 +34,10 @@ HAND-FIX p4a: edited tools/tests/fixtures/brief-check/changes-hit-later-wave/con
 2026-11-22 12:38:33 WARN: p4e was committed by hand (895a5146); a plain restart would skip its tests-first proof and worker review, so both run now
 2026-11-22 12:38:34 hand-fixed p4e: tests-first proof and worker review done (marked in done.txt)
 2026-11-22 12:38:34 skip p4e (already done)
+2026-11-22 12:38:57 start p4c
+2026-11-22 12:39:23 start p4d
+2026-11-22 12:43:43 start p4f
+2026-11-22 13:22:11 p4f finished: result 0 (101 turns, 30 min)
+2026-11-22 13:24:25 STOPPED: job p4d passed its limit (45 min, estimate 30)
+2026-11-22 13:24:27 reviewed wave1: 13 finding(s)
+RESULT: STOPPED: job p4d passed its limit (45 min, estimate 30)
