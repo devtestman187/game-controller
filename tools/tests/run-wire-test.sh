@@ -15,7 +15,7 @@
 #
 #   bash tools/tests/run-wire-test.sh
 #
-# Every case builds a throwaway git repo in a temp folder: the four runner files are
+# Every case builds a throwaway git repo in a temp folder: the five runner files are
 # copies, and tools/flash.sh, check.sh, review.sh, commit-job.sh and run-stop.sh are stubs
 # driven by FLASH_MODE and the STUB_* variables, so no worker, test suite or check runs.
 # The briefs folder sits inside the repo, because the runner asks git about its paths.
@@ -23,6 +23,9 @@
 # so RUN_MAX_MIN runs out in seconds.
 # Prints PASS <case> / FAIL <case> and exits 1 if any case failed.
 set -u
+# The caller's limit and poll settings must not reach the runner: each case sets its own below.
+unset RUN_CHECK_MAX_MIN RUN_REVIEW_MAX_MIN RUN_POLL_S RUN_LIMIT_UNIT_S RUN_JOB_FACTOR_PCT \
+  RUN_EXPECT_DEFAULT_MIN RUN_TURN_CAP RUN_BASE_CHECK_MAX_MIN BRIEF_CHECK_SKIP
 cd "$(dirname "$0")/../.." || exit 2
 loc=$(pwd)
 tmp="$(mktemp -d "${TMPDIR:-${TEMP:-/tmp}}/run-wire-test-XXXXXX")" || exit 2
@@ -167,7 +170,8 @@ fixture() { # fixture <case> [badreport]: a fresh repo, batch and work folder, a
   FLASH_MODE=plain STUB_CHECK_FAIL=0 STUB_STOP_FAIL=0 PREFLIGHT_SKIP=1 RUN_MAX_MIN=360
   STUB_REVIEW_SLEEP_S="" STUB_FAIL_BRIEF="" STUB_STOP_ON_FAIL=0 STUB_JUMP_S="" STUB_NOW=""
   mkdir -p "$repo/tools" "$repo/src" "$repo/$batch" "$repo/.dart_tool" "$work"
-  cp "$loc/tools/run-jobs.sh" "$loc/tools/run-steps.sh" "$loc/tools/run-review.sh" "$loc/tools/churn.sh" "$repo/tools/"
+  cp "$loc/tools/run-jobs.sh" "$loc/tools/run-steps.sh" "$loc/tools/run-review.sh" "$loc/tools/churn.sh" \
+    "$loc/tools/run-wave.sh" "$repo/tools/"
   stubs
   printf 'base\n' > "$repo/src/app.dart"
   printf '{}\n' > "$repo/.dart_tool/package_config.json"
@@ -394,14 +398,15 @@ if [ "$rc" = 0 ] && diff -u "$expected" "$out" > "$tmp/diff.txt" && [ ! -f "$wor
   [ ! -f "$repo/$batch/STOP.md" ] && [ ! -f "$STUB_MARK" ]; then r=0; else r=1; fi
 report "the dry run prints its plan and takes no lock, writes no STOP.md, starts no job (exit 0)" "$r"
 
-# 11. A stop (a failed job) waits for the running wave review and commits its report. The
-# job's report is seeded, so the runner resumes it and the case costs the failing wave only.
+# 11. A stop (a job parked: its siblings are committed first) waits for the running wave review
+# and commits its report. The job's report is seeded, so the runner resumes it and the case costs
+# the parked wave only.
 fixture waitreview
 more_briefs runjob failjob
 seed_report runjob
 STUB_REVIEW_SLEEP_S=6 STUB_FAIL_BRIEF=failjob.md # still running when the stop comes at ~5 s
 run_jobs
-if [ "$rc" = 1 ] && logged "STOPPED: jobs that failed" &&
+if [ "$rc" = 1 ] && logged "STOPPED: jobs that failed or passed their limit (parked, not committed): failjob" &&
   git -C "$repo" cat-file -e "HEAD:$batch/wave1-review-report.md" 2>/dev/null &&
   [ -f "$tmp/waitreview/review-done" ]; then r=0; else r=1; fi
 report "a stop waits for the running wave review and commits its report (exit 1)" "$r"

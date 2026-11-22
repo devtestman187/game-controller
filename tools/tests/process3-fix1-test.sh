@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Tests the three process3 review fixes of the runner and its waiter:
-#   1. tools/run-jobs.sh checks every started job's own limit in the same poll, so a later
-#      job of a wave that passes its limit while an earlier one still runs stops the run
-#      (p3e ran 48 min against 30 because its loop only began after p3d finished);
+#   1. tools/run-jobs.sh checks every started job's own limit in the same poll (tools/run-wave.sh),
+#      so a later job of a wave that passes its limit while an earlier one still runs is parked
+#      while that one finishes and is committed (p3e ran 48 min against 30 because its loop only
+#      began after p3d finished), and the run then stops naming the parked job;
 #   2. tools/run-steps.sh retries a failed check only when the log names a failing suite
 #      other than format or analyze (or a PathNotFoundException): a failed format check
 #      stops the run at once with one check run, a failed suite's is tried once more;
@@ -20,6 +21,9 @@
 # builds a fake run.log (no repo). The whole script runs in about 25 s.
 # Prints PASS <case> / FAIL <case> and exits 1 if any case failed.
 set -u
+# The caller's limit and poll settings must not reach the runner: each case sets its own below.
+unset RUN_CHECK_MAX_MIN RUN_REVIEW_MAX_MIN RUN_POLL_S RUN_LIMIT_UNIT_S RUN_JOB_FACTOR_PCT \
+  RUN_EXPECT_DEFAULT_MIN RUN_TURN_CAP RUN_BASE_CHECK_MAX_MIN BRIEF_CHECK_SKIP
 cd "$(dirname "$0")/../.." || exit 2
 loc=$(pwd)
 tmp="$(mktemp -d "${TMPDIR:-${TEMP:-/tmp}}/process3-fix1-test-XXXXXX")" || exit 2
@@ -101,7 +105,7 @@ fixture() { # fixture <case>: a fresh repo, batch and work folder, one brief, de
   repo="$base/repo" work="$base/work"
   mkdir -p "$repo/tools" "$repo/src" "$repo/$batch" "$repo/.dart_tool" "$work"
   cp "$loc/tools/run-jobs.sh" "$loc/tools/run-steps.sh" "$loc/tools/run-review.sh" \
-    "$loc/tools/churn.sh" "$loc/tools/run-limits.sh" "$repo/tools/"
+    "$loc/tools/churn.sh" "$loc/tools/run-limits.sh" "$loc/tools/run-wave.sh" "$repo/tools/"
   stubs
   printf 'base\n' > "$repo/src/app.dart"
   printf '{}\n' > "$repo/.dart_tool/package_config.json"
@@ -134,8 +138,9 @@ check_runs() { # check_runs: how many times the case's check stub ran
 
 # 1. Two jobs of one wave: `slow` may run 150 s and `quick` 1 min x1.5 = 1 s (both 1 s
 #    "minutes"). slow starts first and sleeps 8 s, quick starts next and sleeps 3 s: quick
-#    passes its limit and exits while slow still runs, so the old order (wait slow out, then
-#    test quick, already gone) never saw it; the shared poll stops naming quick.
+#    passes its limit and is parked while slow still runs, so the old order (wait slow out, then
+#    test quick, already gone) never saw it; slow then finishes and is committed, and the run
+#    stops naming quick.
 fixture wave-limit
 printf 'allow: src/app.dart · %s/slow-report.md\nreport: %s/slow-report.md\nexpected-min: 100\nstub-sleep: 8\n' \
   "$batch" "$batch" > "$repo/$batch/slow.md"
@@ -146,10 +151,11 @@ git -C "$repo" add -A && git -C "$repo" commit -q -m "two briefs"
 start_s=$SECONDS
 run_jobs --no-review
 elapsed_s=$((SECONDS - start_s))
-if [ "$rc" = 1 ] && logged "STOPPED: job quick passed its limit (1 min, estimate 1)" &&
-  [ "$(last_line)" = "RESULT: STOPPED: job quick passed its limit (1 min, estimate 1)" ] &&
-  ! logged "quick finished" && ! logged "committed quick" && [ "$elapsed_s" -lt 10 ]; then r=0; else r=1; fi
-report "a wave's second job over its own limit stops the run while the first still runs (${elapsed_s}s)" "$r"
+if [ "$rc" = 1 ] && logged "job quick passed its limit (1 min, estimate 1) (parked, siblings continue)" &&
+  logged "committed slow" && ! logged "quick finished" && ! logged "committed quick" &&
+  [ "$(last_line)" = "RESULT: STOPPED: jobs that failed or passed their limit (parked, not committed): quick (their logs: $batch/flash-<job>.log)" ] &&
+  [ "$elapsed_s" -lt 25 ]; then r=0; else r=1; fi
+report "a wave's second job over its own limit is parked while the first finishes and is committed (${elapsed_s}s)" "$r"
 
 # 2. A failed format check: no retry and no package fetch, one check run, the stop names format.
 fixture check-format

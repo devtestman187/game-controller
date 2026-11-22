@@ -70,14 +70,17 @@
 # batch exits 2 with `RESULT: refused, a run is active (pid N)`; a lock whose pid is gone is
 # replaced. Time limits (tools/run-limits.sh): RUN_MAX_MIN minutes is the run's (an explicit value,
 # else the computed backstop: the undone jobs' estimates +25%, logged at the start), and past it
-# `STOPPED: TIMEOUT`. A job's is its `expected-min:` x1.5: `job <j> passed its limit (<n> min,
-# estimate <m>)`. A job over RUN_TURN_CAP turns (120; a brief line `turns: <n>` raises it) stops
-# the run after it, before its checks. Every run ends with `RESULT: DONE: <n> jobs, <m> min` or
-# `RESULT: STOPPED: <cause>`, printed and in run.log. FLASH_CMD (default tools/flash.sh) runs the
-# preflight and every job, so a stand-in worker can drive a run.
-# NO_PUSH=1 in the environment commits without pushing.
-# Its step and review helpers live next to it in tools/run-steps.sh and
-# tools/run-review.sh, sourced after the cd to the repo root below.
+# `STOPPED: TIMEOUT`. A job's is its `expected-min:` x1.5; a job past it or a failed job is parked
+# alone (logged `job <j> passed its limit (<n> min, estimate <m>) (parked, siblings continue)`, its
+# tree killed), its siblings finish and are committed, then the run stops naming the parked jobs,
+# which a restart runs again. A job over RUN_TURN_CAP turns (120; a brief line `turns: <n>` raises
+# it) with its own result 0 and a report is accepted with a WARN, else parked. Every run ends with
+# `RESULT: DONE: <n> jobs, <m> min` or `RESULT: STOPPED: <cause>`, printed and in run.log.
+# FLASH_CMD (default tools/flash.sh) runs the preflight and every job, so a stand-in worker can
+# drive a run. NO_PUSH=1 in the environment commits without pushing.
+# Its step, wave and review helpers live next to it in tools/run-steps.sh, tools/run-wave.sh and
+# tools/run-review.sh; tools/run-gate.sh, when present, is the brief gate. All are sourced after
+# the cd to the repo root below.
 # Exit code: 0 done, 1 stopped, 2 bad use.
 set -u
 unset CHECK_ANALYZE_PKGS # the runner always analyzes the whole workspace (flash.sh scopes the workers' own analyze)
@@ -86,10 +89,12 @@ cd "$dir/.." || exit 2
 . "$dir/churn.sh" || exit 2
 . "$dir/run-steps.sh" || exit 2
 . "$dir/run-review.sh" || exit 2
+. "$dir/run-wave.sh" || exit 2
 # The per-step limits and the backstop. A folder holding only the runner's files, as the fixture
 # copies in tools/tests do, has no run-limits.sh: no limit of its own, as before they existed.
 [ -f "$dir/run-limits.sh" ] && . "$dir/run-limits.sh"
 [ -f "$dir/run-base.sh" ] && . "$dir/run-base.sh" # the base check; an older fixture has no such file
+[ -f "$dir/run-gate.sh" ] && . "$dir/run-gate.sh" # the brief gate (p4g's); an older fixture has no such file
 # Files outside a job's allow: list that are applied and committed (always fine).
 SAFE_OUTSIDE='^(([^/]+/)*analysis_options\.yaml|\.gitignore|\.gitattributes|([^/]+/)*pubspec\.lock)$'
 # Known generated churn outside the list: dropped (never copied), logged per job. The one
@@ -108,7 +113,7 @@ while [ $# -gt 0 ]; do
     --no-review) review=0; shift ;;
     --dry-run) dry=1; shift ;;
     --drop) drop=${2:?}; shift 2 ;;
-    -h|--help) sed -n '2,81p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h|--help) sed -n '2,84p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     -*) echo "Unknown option: $1 (try --help)" >&2; exit 2 ;;
     *) B=${1%/}; shift ;;
   esac
@@ -165,44 +170,6 @@ finding() { echo "- $*" >> "$B/run-findings.md"; note "finding: $*"; }
 usage() { # usage <brief path>: the job's turns and minutes, from the flash usage log
   awk -F'	' -v b="$1" 'index($10, b){t=$3; m=$4/60} END{if(t) printf "%d turns, %.0f min", t, m}' "${FLASH_USAGE_LOG:-$HOME/.thumbparty/flash-usage.tsv}" 2>/dev/null
 }
-# turn_cap <job>: the job's turns, from the usage row `usage` reads, against RUN_TURN_CAP or its
-# brief's `turns: <n>` line; more turns than the cap stops the run. No usage row (a stand-in
-# worker): nothing to count.
-turn_cap() {
-  local t cap
-  t=$(usage "$B/$1.md" | sed -n 's/^\([0-9][0-9]*\) turns.*/\1/p')
-  [ -n "$t" ] || return 0
-  cap=$(sed -n 's/^turns:[[:space:]]*\([0-9][0-9]*\).*/\1/p' "$B/$1.md" | head -n 1)
-  case $cap in '' | 0) cap=$RUN_TURN_CAP ;; esac
-  [ "$t" -le "$cap" ] || stop "job $1 used $t turns, over its cap of $cap"
-}
-# The wave's wait: one poll for every job it started, so a job's own limit is checked while
-# any job of the wave runs. The per-job loop this replaced waited the jobs one after another
-# and only tested the one it was waiting on, so a later job passed its limit unseen (p3e ran
-# 48 min against 30 while p3d's job was waited out).
-job_limit_over() { # job_limit_over <index into started>: 0 when that job passed its own limit
-  local i=$1
-  [ "${limits[$i]}" -gt 0 ] || return 1
-  [ $(($(date +%s) - ${since[$i]})) -ge "${limits[$i]}" ]
-}
-limit_stop() { # limit_stop <index>: the job's limit stop, naming it and its estimate
-  local i=$1 j
-  j=${started[$i]}
-  stop "job $j passed its limit ($((${limits[$i]} / ${RUN_LIMIT_UNIT_S:-60})) min, estimate $(run_expected_min "$B/$j.md"))"
-}
-finished_job() { # finished_job <index>: wait its exit, log it, cap it, then sort it into ok or failed
-  local i=$1 j rc
-  j=${started[$i]}
-  wait "${pids[$i]}"; rc=$?
-  note "$j finished: result $rc ($(usage "$B/$j.md"))"
-  turn_cap "$j" # before the checks: a job over its turn cap is a stop of its own
-  if [ $rc -eq 4 ] && apply_safe "$j" "$LOGS/flash-$j.log"; then
-    [ -n "$DROPPED" ] && note "$j: dropped generated churn outside its list: $DROPPED"
-    [ -n "$APPLIED" ] && note "$j: applied always-fine files outside its list: $APPLIED"
-    extra+=($APPLIED); rc=0
-  fi
-  if [ $rc -eq 0 ] && [ -f "$B/$j-report.md" ]; then ok+=("$j"); else failed+=("$j:$rc"); fi
-}
 committed() { git cat-file -e "HEAD:$1" 2>/dev/null; }
 save() { # save <message> <path>...: commit and push just these paths
   local msg=$1; shift
@@ -232,6 +199,15 @@ brief_lint() { # brief_lint: every job still to run has exactly one bare report:
   done
   return $bad
 }
+# The brief gate (tools/run-gate.sh, p4g's): a dry run and the start ask it, when present, and a
+# refusal is the stop. A folder without run-gate.sh (an older fixture) skips it, as before.
+gate_step() { # gate_step <dry|start>: a refusal's own message is printed (dry, exit 1) or the stop's cause
+  type brief_gate > /dev/null 2>&1 || return 0
+  local msg
+  if msg=$(brief_gate "$1" 2>&1); then return 0; fi
+  [ "$1" = dry ] && { echo "${msg:-the brief gate refused this plan}"; exit 1; }
+  stop "brief gate: ${msg:-refused (see $B/run.log)}"
+}
 
 if [ $dry -eq 1 ]; then
   n=0
@@ -243,6 +219,7 @@ if [ $dry -eq 1 ]; then
     done
   done
   brief_lint
+  gate_step dry
   echo "then: the run's review -> $B/REVIEW.md"; exit 0
 fi
 
@@ -294,6 +271,7 @@ done
 
 # Brief lint: the runner commits the report: path whole, so it must be exactly one bare path.
 brief_lint || lint_stop
+gate_step start
 
 # Preflight: a worker that cannot run flutter and tools/check.sh would run blind (bugs10 job 1),
 # so one tiny real worker call proves it before any job starts. PREFLIGHT_SKIP=1 skips it.
@@ -340,23 +318,13 @@ for wave in "${WAVES[@]}"; do
     fi
     continue
   fi
-  ok=("${resumed[@]}") failed=() extra=()
+  ok=("${resumed[@]}") parked=() extra=()
   limits=() # each started job's own limit in seconds; 0 (no run-limits.sh): STOP file only
   for i in "${!started[@]}"; do
     limits[$i]=0
     declare -F run_job_limit_s > /dev/null && limits[$i]=$(run_job_limit_s "$B/${started[$i]}.md")
   done
-  pending=("${!pids[@]}")
-  while [ ${#pending[@]} -gt 0 ]; do # one poll: every job's limit, the STOP file, then exits
-    check_stop
-    for i in "${pending[@]}"; do job_limit_over "$i" && limit_stop "$i"; done
-    rest=()
-    for i in "${pending[@]}"; do
-      if kill -0 "${pids[$i]}" 2>/dev/null; then rest+=("$i"); else finished_job "$i"; fi
-    done
-    pending=("${rest[@]}")
-    [ ${#pending[@]} -gt 0 ] && sleep "${RUN_POLL_S:-5}"
-  done
+  wave_wait # one poll: every job's limit, the STOP file, then the exits (tools/run-wave.sh)
   if [ ${#ok[@]} -gt 0 ]; then
     unchurn
     dart_fix "${ok[@]}"
@@ -383,9 +351,9 @@ for wave in "${WAVES[@]}"; do
     check_stop
     [ ${#reviewed[@]} -gt 0 ] && start_reviews "${reviewed[@]}"
   fi
-  if [ ${#failed[@]} -gt 0 ]; then # the first failed job's log goes into STOP.md, quoted by its outside block
-    stop "jobs that failed or need applying by hand: ${failed[*]} (their logs: $LOGS/flash-<job>.log)" \
-      "$LOGS/flash-${failed[0]%%:*}.log"
+  if [ ${#parked[@]} -gt 0 ]; then # the first parked job's log goes into STOP.md, quoted by its outside block
+    stop "jobs that failed or passed their limit (parked, not committed): ${parked[*]} (their logs: $LOGS/flash-<job>.log)" \
+      "$LOGS/flash-${parked[0]}.log"
   fi
 done
 

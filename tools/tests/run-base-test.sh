@@ -7,7 +7,7 @@
 #
 #   bash tools/tests/run-base-test.sh
 #
-# Every case builds a throwaway git repo in a temp folder: the runner's six files are copies
+# Every case builds a throwaway git repo in a temp folder: the runner's seven files are copies
 # (tools/run-base.sh and tools/run-limits.sh included), tools/check.sh, review.sh, commit-job.sh
 # and run-stop.sh are stubs, RUN_BASE_CHECK_CMD is a stub check (fail, pass or sleep) and FLASH_CMD
 # points at a stub worker that writes the brief's report, so no worker, test suite or real check
@@ -15,6 +15,9 @@
 # runner look every second, so each case ends in a few seconds. Prints PASS <case> / FAIL <case>
 # and exits 1 if any case failed.
 set -u
+# The caller's limit and poll settings must not reach the runner: each case sets its own below.
+unset RUN_CHECK_MAX_MIN RUN_REVIEW_MAX_MIN RUN_POLL_S RUN_LIMIT_UNIT_S RUN_JOB_FACTOR_PCT \
+  RUN_EXPECT_DEFAULT_MIN RUN_TURN_CAP RUN_BASE_CHECK_MAX_MIN BRIEF_CHECK_SKIP
 cd "$(dirname "$0")/../.." || exit 2
 loc=$(pwd)
 tmp="$(mktemp -d "${TMPDIR:-${TEMP:-/tmp}}/run-base-test-XXXXXX")" || exit 2
@@ -97,7 +100,8 @@ fixture() { # fixture <case>: a fresh repo, batch and work folder, default knobs
   repo="$base/repo" work="$base/work"
   mkdir -p "$repo/tools" "$repo/src" "$repo/$batch" "$repo/.dart_tool" "$work"
   cp "$loc/tools/run-jobs.sh" "$loc/tools/run-steps.sh" "$loc/tools/run-review.sh" \
-    "$loc/tools/churn.sh" "$loc/tools/run-limits.sh" "$loc/tools/run-base.sh" "$repo/tools/"
+    "$loc/tools/churn.sh" "$loc/tools/run-limits.sh" "$loc/tools/run-base.sh" "$loc/tools/run-wave.sh" \
+    "$repo/tools/"
   stubs
   printf 'base\n' > "$repo/src/app.dart"
   printf '{}\n' > "$repo/.dart_tool/package_config.json"

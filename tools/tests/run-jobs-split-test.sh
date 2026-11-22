@@ -1,19 +1,23 @@
 #!/usr/bin/env bash
-# Tests that the split of tools/run-jobs.sh (its step and review helpers now in
-# tools/run-steps.sh and tools/run-review.sh) changed no behaviour: in a temp git
-# repo copy of the tools, --dry-run on a fixture batch (a done job, a dropped job,
-# a job to run, a missing brief and a bad report: line) prints the text the old
-# file printed; --help, an unknown option, a missing waves.txt and a batch path
-# with spaces behave as before; every moved function is defined once; the sizes
-# hold; no job starts. It also checks the wave review's naming rule on its own
-# (tools/run-review.sh sourced with a fake review_brief): a covered wave is
-# skipped, a job the committed report does not name gets wave1-<first job>.
+# Tests that the split of tools/run-jobs.sh (its step and review helpers in
+# tools/run-steps.sh and tools/run-review.sh, its wave wait in tools/run-wave.sh)
+# changed no behaviour: in a temp git repo copy of the tools, --dry-run on a
+# fixture batch (a done job, a dropped job, a job to run, a missing brief and a
+# bad report: line) prints the text the old file printed; --help, an unknown
+# option, a missing waves.txt and a batch path with spaces behave as before; every
+# moved function is defined once; the sizes hold; no job starts. It also checks
+# the wave review's naming rule on its own (tools/run-review.sh sourced with a
+# fake review_brief): a covered wave is skipped, a job the committed report does
+# not name gets wave1-<first job>.
 #
 #   bash tools/tests/run-jobs-split-test.sh
 #
 # tools/flash.sh is a stub that would leave a marker, so a dry run that started a
 # job would show it. Prints PASS <case> / FAIL <case> and exits 1 on any FAIL.
 set -u
+# The caller's limit and poll settings must not reach the runner: this case sets its own below.
+unset RUN_CHECK_MAX_MIN RUN_REVIEW_MAX_MIN RUN_POLL_S RUN_LIMIT_UNIT_S RUN_JOB_FACTOR_PCT \
+  RUN_EXPECT_DEFAULT_MIN RUN_TURN_CAP RUN_BASE_CHECK_MAX_MIN BRIEF_CHECK_SKIP
 cd "$(dirname "$0")/../.." || exit 2
 loc=$(pwd)
 tmp="$(mktemp -d "${TMPDIR:-${TEMP:-/tmp}}/run-jobs-split-test-XXXXXX")" || exit 2
@@ -30,13 +34,14 @@ report() { # report <case> <0 passed | 1 failed>: on a failure, show what the ru
 
 out="$tmp/out.txt"
 rc=0
-# The temp repo's path holds a space; the tools are the three files of the split.
+# The temp repo's path holds a space; the tools are the four files of the split.
 repo="$tmp/repo one"
 batch="$repo/docs/briefs/fix"
 spaced="$repo/docs/briefs/fix batch"
 work="$tmp/work one"
 mkdir -p "$repo/tools" "$batch" "$spaced" "$work"
-cp "$loc/tools/run-jobs.sh" "$loc/tools/run-steps.sh" "$loc/tools/run-review.sh" "$loc/tools/churn.sh" "$repo/tools/"
+cp "$loc/tools/run-jobs.sh" "$loc/tools/run-steps.sh" "$loc/tools/run-review.sh" \
+  "$loc/tools/churn.sh" "$loc/tools/run-wave.sh" "$repo/tools/"
 cat > "$repo/tools/flash.sh" <<EOF
 #!/usr/bin/env bash
 echo flash >> "$tmp/flash-ran"
@@ -161,27 +166,32 @@ report "with no committed report the wave review keeps its plain wave1 name" "$r
 # One version of every moved function: a definition of each name in exactly one file.
 dups=()
 for f in apply_safe outside_files tests_first checks dart_fix ci_patch review_brief wave_review review_covers \
-  review_salvage start_reviews flush_reviews slot_wait run_review final_review; do
-  n=$(cat "$loc/tools/run-jobs.sh" "$loc/tools/run-steps.sh" "$loc/tools/run-review.sh" | grep -cE "^$f\(\) \{")
+  review_salvage start_reviews flush_reviews slot_wait run_review final_review job_limit_over limit_stop \
+  finished_job turn_cap wave_wait park; do
+  n=$(cat "$loc/tools/run-jobs.sh" "$loc/tools/run-steps.sh" "$loc/tools/run-review.sh" "$loc/tools/run-wave.sh" |
+    grep -cE "^$f\(\) \{")
   [ "$n" = 1 ] || dups+=("$f=$n")
 done
 echo "not defined once: ${dups[*]:-none}" > "$out"
 if [ ${#dups[@]} = 0 ]; then r=0; else r=1; fi
-report "every moved function is defined exactly once across the three files" "$r"
+report "every moved function is defined exactly once across the four files" "$r"
 
-# The sizes the split promises: the runner at or under 400 lines (raised from 380 when the wave
-# wait gained the one poll that checks every job's limit), each helper under 250.
+# The sizes the split promises: the runner at or under 380 lines (its wave wait moved to
+# tools/run-wave.sh, which with the two helpers stays under 250).
 runner_lines=$(wc -l < "$loc/tools/run-jobs.sh")
+wave_lines=$(wc -l < "$loc/tools/run-wave.sh")
 steps_lines=$(wc -l < "$loc/tools/run-steps.sh")
 review_lines=$(wc -l < "$loc/tools/run-review.sh")
-echo "runner=$runner_lines steps=$steps_lines review=$review_lines" > "$out"
-if [ "$runner_lines" -le 400 ] && [ "$steps_lines" -lt 250 ] && [ "$review_lines" -lt 250 ]; then r=0; else r=1; fi
-report "the sizes hold (runner $runner_lines <= 400, steps $steps_lines and review $review_lines < 250)" "$r"
+echo "runner=$runner_lines wave=$wave_lines steps=$steps_lines review=$review_lines" > "$out"
+if [ "$runner_lines" -le 380 ] && [ "$wave_lines" -lt 250 ] && [ "$steps_lines" -lt 250 ] &&
+  [ "$review_lines" -lt 250 ]; then r=0; else r=1; fi
+report "the sizes hold (runner $runner_lines <= 380, wave $wave_lines, steps $steps_lines and review $review_lines < 250)" "$r"
 
 rc=0
-{ bash -n "$loc/tools/run-jobs.sh" && bash -n "$loc/tools/run-steps.sh" && bash -n "$loc/tools/run-review.sh"; } > "$out" 2>&1 || rc=$?
+{ bash -n "$loc/tools/run-jobs.sh" && bash -n "$loc/tools/run-steps.sh" && bash -n "$loc/tools/run-review.sh" &&
+  bash -n "$loc/tools/run-wave.sh"; } > "$out" 2>&1 || rc=$?
 if [ "$rc" = 0 ]; then r=0; else r=1; fi
-report "bash -n accepts the runner and both sourced files" "$r"
+report "bash -n accepts the runner and its three sourced files" "$r"
 
 if [ "$fails" -gt 0 ]; then
   echo "RESULT: FAILED: $fails of $cases case(s) failed"

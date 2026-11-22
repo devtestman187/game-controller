@@ -1,20 +1,24 @@
 #!/usr/bin/env bash
-# Tests the per-job wiring of the limits in the runner (tools/run-jobs.sh): a job's own limit
-# (its `expected-min:` x1.5) stops the run when it runs out, a job over the 120-turn cap stops it
-# after the job and before the checks (a brief's `turns: <n>` line raises the cap for that job),
-# the run's limit is the computed backstop when RUN_MAX_MIN is not given (logged once), every run
-# ends with a `RESULT: DONE: <n> jobs, <m> min` or `RESULT: STOPPED: <cause>` line (printed and in
-# run.log), and FLASH_CMD is the worker of the preflight and of every job start.
+# Tests the per-job wiring of the limits in the runner (tools/run-jobs.sh): a job past its own
+# limit (its `expected-min:` x1.5) is parked, so the run stops after the wave naming it, a job
+# over the 120-turn cap whose own run ended with result 0 and a report is accepted with a WARN
+# and committed (a brief's `turns: <n>` line raises the cap for that job), the run's limit is the
+# computed backstop when RUN_MAX_MIN is not given (logged once), every run ends with a
+# `RESULT: DONE: <n> jobs, <m> min` or `RESULT: STOPPED: <cause>` line (printed and in run.log),
+# and FLASH_CMD is the worker of the preflight and of every job start.
 #
 #   bash tools/tests/run-limits-wire-test.sh
 #
-# Every case builds a throwaway git repo in a temp folder: the runner's five files are copies
+# Every case builds a throwaway git repo in a temp folder: the runner's six files are copies
 # (tools/run-limits.sh included), tools/check.sh, review.sh, commit-job.sh and run-stop.sh are
 # stubs, and FLASH_CMD points at a stub worker that sleeps and writes the brief's report, so no
 # worker, test suite or check runs. RUN_LIMIT_UNIT_S=1 makes one "minute" of every limit one
 # second and RUN_POLL_S=1 makes the runner look every second, so each case ends in a few
 # seconds. Prints PASS <case> / FAIL <case> and exits 1 if any case failed.
 set -u
+# The caller's limit and poll settings must not reach the runner: each case sets its own below.
+unset RUN_CHECK_MAX_MIN RUN_REVIEW_MAX_MIN RUN_POLL_S RUN_LIMIT_UNIT_S RUN_JOB_FACTOR_PCT \
+  RUN_EXPECT_DEFAULT_MIN RUN_TURN_CAP RUN_BASE_CHECK_MAX_MIN BRIEF_CHECK_SKIP
 cd "$(dirname "$0")/../.." || exit 2
 loc=$(pwd)
 tmp="$(mktemp -d "${TMPDIR:-${TEMP:-/tmp}}/run-limits-wire-test-XXXXXX")" || exit 2
@@ -79,7 +83,7 @@ fixture() { # fixture <case> [extra brief lines]: a fresh repo, batch and work f
   repo="$base/repo" work="$base/work"
   mkdir -p "$repo/tools" "$repo/src" "$repo/$batch" "$repo/.dart_tool" "$work"
   cp "$loc/tools/run-jobs.sh" "$loc/tools/run-steps.sh" "$loc/tools/run-review.sh" \
-    "$loc/tools/churn.sh" "$loc/tools/run-limits.sh" "$repo/tools/"
+    "$loc/tools/churn.sh" "$loc/tools/run-limits.sh" "$loc/tools/run-wave.sh" "$repo/tools/"
   stubs
   printf 'base\n' > "$repo/src/app.dart"
   printf '{}\n' > "$repo/.dart_tool/package_config.json"
@@ -111,29 +115,30 @@ usage_row() { # usage_row <turns> <minutes>: one flash usage row for the job's b
   export FLASH_USAGE_LOG
 }
 
-# 1. A job past its own limit: 2 min x 1.5 = 3 "minutes" of 1 s, and the runner stops at 3-4 s
-#    even though the stub worker sleeps 30 s.
+# 1. A job past its own limit: 2 min x 1.5 = 3 "minutes" of 1 s, so it is parked at 3-4 s even
+#    though the stub worker sleeps 30 s; with no sibling the run then stops naming it.
 fixture overlimit 'expected-min: 2'
 STUB_SLEEP_S=30
 start_s=$SECONDS
 run_jobs --no-review
 elapsed_s=$((SECONDS - start_s))
-if [ "$rc" = 1 ] && logged "STOPPED: job runjob passed its limit (3 min, estimate 2)" &&
-  [ "$(last_line)" = "RESULT: STOPPED: job runjob passed its limit (3 min, estimate 2)" ] &&
-  grep -qF "job runjob passed its limit" "$repo/$batch/STOP.md" 2>/dev/null &&
-  [ "$elapsed_s" -lt 20 ]; then r=0; else r=1; fi
-report "a job over its limit (2 min x1.5 = 3 s) stops the run with the RESULT: STOPPED line (${elapsed_s}s)" "$r"
+if [ "$rc" = 1 ] && logged "job runjob passed its limit (3 min, estimate 2) (parked, siblings continue)" &&
+  [ "$(last_line)" = "RESULT: STOPPED: jobs that failed or passed their limit (parked, not committed): runjob (their logs: $batch/flash-<job>.log)" ] &&
+  grep -qF "jobs that failed or passed their limit (parked, not committed): runjob" "$repo/$batch/STOP.md" 2>/dev/null &&
+  ! logged "committed runjob" && [ "$elapsed_s" -lt 20 ]; then r=0; else r=1; fi
+report "a job over its limit (2 min x1.5 = 3 s) is parked and the run stops naming it (${elapsed_s}s)" "$r"
 
-# 2. The 120-turn cap: the job's usage row says 130 turns, so it stops after the job and before
-#    its checks (nothing is committed).
+# 2. The 120-turn cap with the job's own run at result 0 and its report: accepted with the WARN,
+#    logged, and committed (flash.sh's --max-turns stays the hard stop).
 fixture turncap
 usage_row 130 20 # its minutes are the job's estimate too: 20 min is a 30 s limit here
 STUB_SLEEP_S=1
 run_jobs --no-review
-if [ "$rc" = 1 ] && logged "STOPPED: job runjob used 130 turns, over its cap of 120" &&
-  [ "$(last_line)" = "RESULT: STOPPED: job runjob used 130 turns, over its cap of 120" ] &&
-  ! logged "committed runjob"; then r=0; else r=1; fi
-report "a job at 130 turns stops on the 120-turn cap before its checks, with the RESULT: STOPPED line (exit 1)" "$r"
+if [ "$rc" = 0 ] &&
+  logged "WARN: job runjob used 130 turns, over its cap of 120 (its own checks passed; accepted)" &&
+  logged "committed runjob" && ! logged "STOPPED" &&
+  [ "$(last_line)" = "RESULT: DONE: 1 jobs, 0 min" ]; then r=0; else r=1; fi
+report "a job at 130 turns with result 0 is accepted with the WARN on the 120-turn cap and committed (exit 0)" "$r"
 
 # 3. A brief's `turns: 140` line raises the cap for that job, so the same 130 turns runs on to
 #    DONE, whose RESULT: line is printed and in run.log.
