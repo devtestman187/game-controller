@@ -8,4 +8,4 @@ Why wave 1 workers used tools/mine.sh 0 times (from the files): flash.sh puts do
 4. Optional, tools/flash.sh (protected): `--max-turns "${FLASH_MAX_TURNS:-120}"` on the worker command, a hard form of B.8 beside the runner's after-the-fact cap.
 5. docs/flash-digest.md: after p3 ships, note `RESULT:` lines, the per-step limits and FLASH_CMD; wait-run no longer repeats OVERRUN.
 
-Items 1, 2 are applied (Nov 22, docs only); item 3 is a `.claude/` configuration change and waits for the owner's word. Items 4 and 5 are proposals.
+Items 1, 2, 3 are applied (Nov 22; item 3 on the owner's approval of the process3 plan, plus the wave-independence line). Item 4 approved by the main session with default 150 (hard backstop; sizing target stays 120). Item 5 after p3 ships.
