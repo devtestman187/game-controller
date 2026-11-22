@@ -67,8 +67,13 @@
 # last run.log lines, a suggested repair) and commits it; the next start removes and commits it.
 # One runner per batch: the work folder's lock holds its pid, so a second runner on the same
 # batch exits 2 with `RESULT: refused, a run is active (pid N)`; a lock whose pid is gone is
-# replaced. RUN_MAX_MIN (360, minutes) is the run's limit: past it the runner stops with
-# `STOPPED: TIMEOUT`, so a person can look before more code is written.
+# replaced. Time limits (tools/run-limits.sh): RUN_MAX_MIN minutes is the run's (an explicit value,
+# else the computed backstop: the undone jobs' estimates +25%, logged at the start), and past it
+# `STOPPED: TIMEOUT`. A job's is its `expected-min:` x1.5: `job <j> passed its limit (<n> min,
+# estimate <m>)`. A job over RUN_TURN_CAP turns (120; a brief line `turns: <n>` raises it) stops
+# the run after it, before its checks. Every run ends with `RESULT: DONE: <n> jobs, <m> min` or
+# `RESULT: STOPPED: <cause>`, printed and in run.log. FLASH_CMD (default tools/flash.sh) runs the
+# preflight and every job, so a stand-in worker can drive a run.
 # NO_PUSH=1 in the environment commits without pushing.
 # Its step and review helpers live next to it in tools/run-steps.sh and
 # tools/run-review.sh, sourced after the cd to the repo root below.
@@ -80,6 +85,9 @@ cd "$dir/.." || exit 2
 . "$dir/churn.sh" || exit 2
 . "$dir/run-steps.sh" || exit 2
 . "$dir/run-review.sh" || exit 2
+# The per-step limits and the backstop. A folder holding only the runner's files, as the fixture
+# copies in tools/tests do, has no run-limits.sh: no limit of its own, as before they existed.
+[ -f "$dir/run-limits.sh" ] && . "$dir/run-limits.sh"
 # Files outside a job's allow: list that are applied and committed (always fine).
 SAFE_OUTSIDE='^(([^/]+/)*analysis_options\.yaml|\.gitignore|\.gitattributes|([^/]+/)*pubspec\.lock)$'
 # Known generated churn outside the list: dropped (never copied), logged per job. The one
@@ -87,6 +95,7 @@ SAFE_OUTSIDE='^(([^/]+/)*analysis_options\.yaml|\.gitignore|\.gitattributes|([^/
 CHURN_OUTSIDE=$CHURN_REGEX
 unchurn() { git checkout -- "${CHURN_PATHS[@]}" 2>/dev/null; }
 SIZE_STOP=380
+RUN_TURN_CAP=120 # the most turns one job may take; a brief line `turns: <n>` raises it for that job
 # A brief's report: line must be exactly one bare path (spaces, quotes and backticks are refused).
 REPORT_BARE='^[^[:space:]`"'\'']+$'
 
@@ -97,7 +106,7 @@ while [ $# -gt 0 ]; do
     --no-review) review=0; shift ;;
     --dry-run) dry=1; shift ;;
     --drop) drop=${2:?}; shift 2 ;;
-    -h|--help) sed -n '2,75p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h|--help) sed -n '2,80p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     -*) echo "Unknown option: $1 (try --help)" >&2; exit 2 ;;
     *) B=${1%/}; shift ;;
   esac
@@ -109,12 +118,13 @@ fi
 LOGS=${LOGS:-$B}
 WORK=${RUN_WORK:-.dart_tool/run-jobs/${B//\//_}}
 mkdir -p "$WORK"
-RUN_MAX_MIN=${RUN_MAX_MIN:-360}
-case $RUN_MAX_MIN in *[!0-9]*) echo "RUN_MAX_MIN takes whole minutes; using 360" >&2; RUN_MAX_MIN=360 ;; esac
+RUN_MAX_MIN=${RUN_MAX_MIN:-} # empty: the computed backstop, set at the start below
+case $RUN_MAX_MIN in *[!0-9]*) echo "RUN_MAX_MIN takes whole minutes; using the backstop" >&2; RUN_MAX_MIN="" ;; esac
 RUN_START_S=$(date +%s) # the run's time limit counts from here (time_check)
 mapfile -t WAVES < <(sed 's/#.*//' "$B/waves.txt" | awk 'NF')
 
 note() { echo "$(date '+%F %T') $*" | tee -a "$B/run.log"; }
+result() { echo "RESULT: $*" | tee -a "$B/run.log"; } # the last line of every run, printed and in run.log
 kill_tree() { local c; for c in $(ps -ef 2>/dev/null | awk -v p="$1" '$3==p{print $2}'); do kill_tree "$c"; done; kill "$1" 2>/dev/null; }
 check_stop() { # the time limit first, then the STOP file: either one stops the run
   time_check
@@ -145,12 +155,24 @@ stop() { # stop <cause> [flash-log]: STOP.md first, then the children; the STOP 
   case $cause in "stop file") ;; *) flush_reviews wait ;; esac
   for p in $(jobs -p); do kill_tree "$p"; done
   wait 2>/dev/null; flush_reviews
+  result "STOPPED: $cause"
   save_stop "runner: log and STOP.md at a stop"
   exit 1
 }
 finding() { echo "- $*" >> "$B/run-findings.md"; note "finding: $*"; }
 usage() { # usage <brief path>: the job's turns and minutes, from the flash usage log
   awk -F'	' -v b="$1" 'index($10, b){t=$3; m=$4/60} END{if(t) printf "%d turns, %.0f min", t, m}' "${FLASH_USAGE_LOG:-$HOME/.thumbparty/flash-usage.tsv}" 2>/dev/null
+}
+# turn_cap <job>: the job's turns, from the usage row `usage` reads, against RUN_TURN_CAP or its
+# brief's `turns: <n>` line; more turns than the cap stops the run. No usage row (a stand-in
+# worker): nothing to count.
+turn_cap() {
+  local t cap
+  t=$(usage "$B/$1.md" | sed -n 's/^\([0-9][0-9]*\) turns.*/\1/p')
+  [ -n "$t" ] || return 0
+  cap=$(sed -n 's/^turns:[[:space:]]*\([0-9][0-9]*\).*/\1/p' "$B/$1.md" | head -n 1)
+  case $cap in '' | 0) cap=$RUN_TURN_CAP ;; esac
+  [ "$t" -le "$cap" ] || stop "job $1 used $t turns, over its cap of $cap"
 }
 committed() { git cat-file -e "HEAD:$1" 2>/dev/null; }
 save() { # save <message> <path>...: commit and push just these paths
@@ -217,6 +239,15 @@ handfix_recheck() { # handfix_recheck <job>: the proof and review a hand commit 
   note "hand-fixed $j: tests-first proof and worker review done (marked in done.txt)"
 }
 
+# The run's own limit: an explicit RUN_MAX_MIN wins, else the computed backstop of the jobs still
+# to do. A folder without run-limits.sh keeps the fixed 360, and no job left keeps one job's time.
+if [ -z "$RUN_MAX_MIN" ] && declare -F run_backstop_min > /dev/null; then
+  RUN_MAX_MIN=$(run_backstop_min "$B/waves.txt")
+  [ "$RUN_MAX_MIN" -ge "$RUN_EXPECT_DEFAULT_MIN" ] || RUN_MAX_MIN=$RUN_EXPECT_DEFAULT_MIN
+  note "RUN_MAX_MIN=$RUN_MAX_MIN min (computed backstop of the jobs still to do)"
+fi
+[ -n "$RUN_MAX_MIN" ] || RUN_MAX_MIN=360
+
 lock_take # after the dry run, which changes nothing: a second runner on this batch exits 2 here
 branch=$(git rev-parse --abbrev-ref HEAD)
 note "start at $(git rev-parse --short HEAD) on $branch"
@@ -238,7 +269,7 @@ brief_lint || lint_stop
 # Preflight: a worker that cannot run flutter and tools/check.sh would run blind (bugs10 job 1),
 # so one tiny real worker call proves it before any job starts. PREFLIGHT_SKIP=1 skips it.
 if [ -z "${PREFLIGHT_SKIP:-}" ]; then
-  if tools/flash.sh --preflight > "$WORK/run-preflight.log" 2>&1; then note "preflight ok: the worker ran flutter --version and tools/check.sh --list"
+  if ${FLASH_CMD:-tools/flash.sh} --preflight > "$WORK/run-preflight.log" 2>&1; then note "preflight ok: the worker ran flutter --version and tools/check.sh --list"
   else stop "preflight failed: the worker cannot run flutter or tools/check.sh in its sandbox, so no job would run tests (see $WORK/run-preflight.log); nothing was started"; fi
 fi
 
@@ -247,7 +278,7 @@ for wave in "${WAVES[@]}"; do
   wn=$((wn + 1))
   check_stop
   [ "$(wc -w <<< "$wave")" -le 3 ] || stop "a wave has more than 3 jobs: $wave"
-  started=() pids=() resumed=()
+  started=() pids=() since=() resumed=()
   for j in $wave; do
     check_stop
     is_dropped "$j" && { note "skip $j (dropped)"; continue; }
@@ -261,7 +292,8 @@ for wave in "${WAVES[@]}"; do
     slot_wait
     [ ${#started[@]} -gt 0 ] && { sleep 25; check_stop; }
     note "start $j"
-    tools/flash.sh --brief "$B/$j.md" > "$LOGS/flash-$j.log" 2>&1 &
+    since+=("$(date +%s)") # the job's limit counts from here
+    ${FLASH_CMD:-tools/flash.sh} --brief "$B/$j.md" > "$LOGS/flash-$j.log" 2>&1 &
     pids+=($!) started+=("$j")
   done
   if [ ${#started[@]} -eq 0 ] && [ ${#resumed[@]} -eq 0 ]; then
@@ -276,9 +308,18 @@ for wave in "${WAVES[@]}"; do
   ok=("${resumed[@]}") failed=() extra=()
   for i in "${!started[@]}"; do
     j=${started[$i]}
-    while kill -0 "${pids[$i]}" 2>/dev/null; do check_stop; sleep 5; done # STOP is seen mid-wave
+    job_limit_s=0 # no run-limits.sh: the job is only watched for the STOP file
+    declare -F run_job_limit_s > /dev/null && job_limit_s=$(run_job_limit_s "$B/$j.md")
+    while kill -0 "${pids[$i]}" 2>/dev/null; do # the STOP file and the job's own limit, mid-wave
+      check_stop
+      if [ "$job_limit_s" -gt 0 ] && [ $(($(date +%s) - ${since[$i]})) -ge "$job_limit_s" ]; then
+        stop "job $j passed its limit ($((job_limit_s / ${RUN_LIMIT_UNIT_S:-60})) min, estimate $(run_expected_min "$B/$j.md"))"
+      fi
+      sleep "${RUN_POLL_S:-5}"
+    done
     wait "${pids[$i]}"; rc=$?
     note "$j finished: result $rc ($(usage "$B/$j.md"))"
+    turn_cap "$j" # before the checks: a job over its turn cap is a stop of its own
     if [ $rc -eq 4 ] && apply_safe "$j" "$LOGS/flash-$j.log"; then
       [ -n "$DROPPED" ] && note "$j: dropped generated churn outside its list: $DROPPED"
       [ -n "$APPLIED" ] && note "$j: applied always-fine files outside its list: $APPLIED"
@@ -322,5 +363,6 @@ flush_reviews wait
 check_stop
 [ $review -eq 1 ] && ! committed "$B/REVIEW.md" && final_review
 note "DONE: every job is committed. Claude reads the Summary of $B/REVIEW.md, verifies its findings and writes one fix brief"
+result "DONE: $(printf '%s\n' "${WAVES[@]}" | wc -w) jobs, $(( ($(date +%s) - RUN_START_S) / 60 )) min"
 paths=("$B/run.log"); [ -f "$B/run-findings.md" ] && paths+=("$B/run-findings.md")
 save "runner: log at the end of the run" "${paths[@]}"
