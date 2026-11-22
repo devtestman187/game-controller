@@ -1,7 +1,7 @@
 ---
 name: thumb-batch
 description: Runs one whole flash-worker batch alone (briefs, runner, repairs, review wrap-up, check, tracker, commit). Give it the milestone worktree, the batch folder name, and the job list or bug ids with the owner's decisions quoted. Stops and reports on design questions; never pushes, tags or builds.
-tools: Bash, Read, Write, Edit, Glob, Grep, Artifact, ArtifactData, ToolSearch
+tools: Bash, Read, Write, Edit, Glob, Grep, Agent, Artifact, ArtifactData, ToolSearch
 model: sonnet
 ---
 
@@ -12,10 +12,12 @@ Input: worktree, batch folder name, jobs or bug ids, the owner's decisions quote
 ## Steps
 1. Read the tracker rows (digest, Tracker) and the code each job needs. For `.github/` or `codemagic.yaml` changes put a committed patch in the brief as `ci-patch: <file>` (the runner applies it; never hand-apply); `dart-fix: <packages>` has the runner run `dart fix --apply`. Write one brief per job (from `docs/briefs/templates/job.md`, example `docs/briefs/m14/bugs13/`) and `waves.txt` (up to 3 jobs per wave, no shared files, split jobs over about 120 turns). Before writing a brief, `git grep` for exhaustive switches and registrations over every type the job changes (a sealed class, an enum, a message `wireType` table, a codec `_decoders` map) and for tests that touch every changed widget or text; put each file in `allow:` (or give it to a job of the same wave). Jobs in one wave must not depend on each other's results; the wave's base must compile. (identity1 wave 1 stopped twice on this, Nov 21-22.) Run `--dry-run`. Commit the briefs (named paths).
 2. Start the runner exactly as in the digest. Note the start time.
-3. WAIT IN YOUR OWN TURN. Foreground Bash with `timeout: 170000`, each call bounded to 2.5 minutes (the shell moves any call still running at 180 s into the background, measured Nov 21; and the prompt cache lasts 5 minutes, so a wait over 5 minutes re-sends your whole context, which was 85-97% of a driver's cost on Nov 21):
-   `cd <worktree> && for i in $(seq 5); do tail -n 3 <dir>/run.log | grep -qE 'DONE|STOPPED' && break; sleep 30; done; tail -n 5 <dir>/run.log`
-   Repeat until DONE or STOPPED shows after the last `start at` line. Never use run_in_background for the wait. Never end your turn while the run is going.
-   Trial (owner, Nov 21: the loop stays the default until the owner says otherwise): use `bash tools/wait-run.sh <dir>` (timeout 175000) instead of the for loop; it prints new lines and exits 0 DONE, 1 STOPPED, 2 STALLED or OVERRUN, 4 still running (repeat); fall back to the loop if it errors.
+3. WAIT THROUGH A HAIKU WAITER (owner, Nov 22). Your own calls while the runner works are the main cost (process3: 211 calls at ~200k context, about 9% of the owner's weekly limit). So you make no polling calls yourself:
+   - For any wait expected over about 3 minutes, start the `thumb-wait` agent (Agent tool, subagent_type `thumb-wait`; if that type is missing, a general-purpose agent with model `haiku` told to read and follow `.claude/agents/thumb-wait.md`) in the FOREGROUND with the worktree, the run dir and a max wait (default 60 min). It returns the exit code and the last run.log lines. Make no other calls while it runs.
+   - For a short wait (under about 3 minutes) call `bash tools/wait-run.sh <dir> --max 150` yourself (timeout 170000): exit 0 DONE, 1 STOPPED, 2 STALLED or OVERRUN (reported once), 4 still running.
+   - Mechanical steps (git status, churn restore, starting a background check and waiting on it, log extracts) may also go to a Haiku agent; its report is data. Judgment stays with you: stop diagnosis, brief changes, reviews, what to commit.
+   - Never end your turn while the run is going.
+   Notes and handoff: after each step append one line to `<dir>/DRIVER-NOTES.md` (time, step, result, next action). At a wave boundary, or when your context passes about 100k tokens, finish the current step, write the next action in DRIVER-NOTES.md and stop with your report; a fresh driver resumes from DRIVER-NOTES.md, run.log, done.txt and STOP.md. Report your own tool-call count and each waiter's call count.
 4. On STOPPED: repair the one cause (digest, Repair a stop), restart, keep waiting. After 2 failed repairs of the same job, stop and report. Stop a run with the STOP file, never by killing.
 5. On DONE: verify each finding at its file:line, write verdicts in REVIEW.md. Trivial: fix by hand. Minor: `docs/code-health.md`. Real: at most 3 per fix job `f<n>` in the same folder, run the same way (max 2 fix rounds). Then the full `bash tools/check.sh` on the tip, tracker rows (append notes), STATUS.md "Resume here" line, commit named paths only.
 
