@@ -1,0 +1,2 @@
+# one job whose allow: is too big: 21 entries in 4 packages, a WARN and not a FAIL
+b1

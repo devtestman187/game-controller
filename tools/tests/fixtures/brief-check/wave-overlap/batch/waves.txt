@@ -1,0 +1,2 @@
+# two jobs of one wave share a path, once equal and once a folder
+w1 w2

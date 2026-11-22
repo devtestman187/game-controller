@@ -1,0 +1,2 @@
+# one job whose new file is missing from its own allow:
+m1

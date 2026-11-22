@@ -1,0 +1,2 @@
+# a clean batch: one wave, two jobs, no shared file and no changes: hit outside an allow:
+g1 g2
