@@ -62,3 +62,6 @@ HAND-FIX p4d: copied tools/apply-job.sh, tools/tests/apply-job-test.sh from the 
 2026-11-22 14:07:41 STOPPED: jobs that failed or passed their limit (parked, not committed): p4g (their logs: docs/briefs/m16/process4/flash-<job>.log)
 2026-11-22 14:07:43 reviewed wave2: 12 finding(s)
 RESULT: STOPPED: jobs that failed or passed their limit (parked, not committed): p4g (their logs: docs/briefs/m16/process4/flash-<job>.log)
+HAND-FIX p4g: apply-job.sh applied 2 files: tools/run-gate.sh, tools/tests/run-gate-test.sh
+HAND-FIX p4g: edited tools/tests/run-gate-test.sh line 138 (expected FAIL line is brief-check's 'FAIL wave two:')
+HAND-FIX review: edited tools/run-limits.sh (comment), tools/tests/run-base-test.sh (unset), docs/code-health.md

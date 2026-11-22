@@ -2,7 +2,7 @@
 # The per-step time limits of one run, and where they come from. Sourced, no side effects:
 #   . tools/run-limits.sh                          # sets the RUN_* values below, adds no work
 #   . tools/run-limits.sh && run_expected_min x.md # a job's estimate, its limit, the backstop
-# tools/run-jobs.sh and its helpers (tools/run-steps.sh, tools/run-review.sh) source it after
+# tools/run-jobs.sh and its helpers (tools/run-steps.sh, tools/run-review.sh, tools/run-wave.sh) source it after
 # the cd to the repo root. Every limit counts in RUN_LIMIT_UNIT_S-second "minutes", so a test
 # sets RUN_LIMIT_UNIT_S=1 and a 12 min limit runs out in 12 s.
 #
