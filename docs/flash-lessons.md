@@ -33,7 +33,11 @@ Read before writing briefs (Sonnet driver) and before any helper step (Haiku). E
 18. The main session reviews "Proposed" at batch review. It promotes or rejects each one, merges duplicates, drops rules a tool now enforces, and tells the owner what changed.
 
 ## Proposed
-(none; P1-P3 of process4 promoted Nov 22: P1 → 19, P2 → 20, P3 → 2 and 9)
+P1 A Haiku coder in an Agent worktree (`isolation: worktree`) starts from the frozen main repo, not the milestone branch: make `git worktree add <dir> refs/heads/<branch>` and tell it to work only there (identity1 i1g1: first try blocked after 11 calls, no briefs or tools/mine.sh in its tree).
+P2 A brief's `changes:` item must be a rare symbol: common words (`characters`, `forPlayer`, `PuzzlePainter`) gave 121 then 15 FAILs; use `ViewContext`, `_paintWorkers` (identity1 i1g1/i1g2 brief-check, Nov 22).
+P3 Before a restart, add every hand-committed job to done.txt with its sha, or the runner reruns it (identity1 i1g1: done.txt line added before the i1g2 run; run.log 16:04 "committed by hand" WARN still reran its proofs). And a wait-run STALLED on a running flash job is not a stall until the worker log has been still longer than the job's expected-min (i1g2: spurious at 20 min, log writes only at the end).
+
+(P1-P3 of process4 promoted Nov 22: P1 → 19, P2 → 20, P3 → 2 and 9)
 
 <!-- promoted:
 - P1 A tool that maps a child command's exit code to its own states must not reuse a code the child uses: probe-deps.sh read dart analyze's exit 3 (errors) as its timeout 3 and reported TIMEOUT within 40 s (process4 REHEARSAL 2c; fixed with 124). Tool tests must stub the child with its real exit codes.
