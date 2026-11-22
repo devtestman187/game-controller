@@ -1,0 +1,35 @@
+--- a/packages/protocol/lib/src/messages.dart
++++ b/packages/protocol/lib/src/messages.dart
+@@ -4,6 +4,7 @@
+ part 'character.dart';
+ part 'game_controls.dart';
+ part 'haptic.dart';
++part 'identity.dart';
+ part 'input.dart';
+ part 'metrics.dart';
+ part 'stats_share.dart';
+--- a/packages/protocol/lib/src/identity.dart
++++ b/packages/protocol/lib/src/identity.dart
+@@ -0,0 +1,22 @@
++part of 'messages.dart';
++
++/// Probe stub: the two new message types of identity1 i1a, with no behaviour.
++final class PlayersMessage extends Message {
++  const PlayersMessage();
++  static const wireType = 'players';
++  @override
++  String get type => wireType;
++  @override
++  Map<String, Object?> toPayload() => const {};
++  static PlayersMessage fromPayload(Map<String, Object?> p) => const PlayersMessage();
++}
++
++final class SetCharacterMessage extends Message {
++  const SetCharacterMessage();
++  static const wireType = 'set_character';
++  @override
++  String get type => wireType;
++  @override
++  Map<String, Object?> toPayload() => const {};
++  static SetCharacterMessage fromPayload(Map<String, Object?> p) => const SetCharacterMessage();
++}
