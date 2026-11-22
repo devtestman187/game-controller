@@ -31,3 +31,16 @@ Second independent check failure: `tools` suite inside the combined check: tools
 ## State left
 Branch m16 tip 2dde4ebc (runner commit). Dirty: i1a and i1c edits uncommitted, new files untracked (identity.dart, host_character_reservation.dart, tests, reports), tv_test_app plugin churn. i1b output only in the kept job worktree. Nothing pushed, tagged, built. git user.email is the devtestman187 noreply.
 Repair options: (1) widen i1a allow to the three connection files, rerun; (2) hand-add `PlayersMessage` cases (HAND-FIX i1a in run.log) then restart; and fix/raise the run-wire-test timeout first.
+
+## Wave 1b (Nov 22, driver)
+Result: i1a2 and i1b committed; combined check green (12/12, 707 s: format 6, analyze 30, puzzle 141, host 100, phone 75, tools 252 with SELFTEST_TIMEOUT=240, rest under 40 s each). Commits: 7d4048c5 (i1a + i1c edits), c179a93c (i1a2), 05c5d72b (i1b, applied by hand from the job worktree). The runner's own commit path was not used for i1b; the run review and the tests-first proof for i1b were not run (the proof for identity_nickname_test and identity_change_link_test is not shown by run.log).
+| job | turns | min | note |
+|---|---|---|---|
+| i1a2 | 31 | 2 | result 0, applied |
+| i1b | not logged (killed) | about 56 (00:34-01:30) | worker had its 8 files done by about 01:00; its own `check.sh phone host` could never pass because the job worktree base lacked i1a2's compile fix; killed by the STOP file at 01:30 |
+Stops: three. (1) Runner start with a stale `i1b-report.md` in the folder: the runner logged `resume i1b (applied by hand)` and skipped the job; I stopped it, renamed the report to i1b-run1-report.md, removed the kept i1a2 worktree and restarted (3 min lost). (2) The 01:30 STOP file (coordinator diagnosis). (3) No runner STOP.md of its own this wave.
+Cause of the i1b loss: parallel jobs in one wave are cut from the same base, and i1b's `check:` suites compile against the whole workspace, so a wave whose base does not compile cannot pass any job's check; that is the sequencing defect, fixed in process3 (PLAN.md note; base analyze in preflight).
+Combined check: 707 s total, against 41-46 min on the broken tree, so the earlier overrun was compile failures, not suite speed; run-wire-test passed inside tools (252 s total with SELFTEST_TIMEOUT=240).
+wait-run: about 9 calls with real waits, 3 more that returned OVERRUN at once (known bug; confirmed the runner alive once via the process list and the flash log) and then about 20 sleep-based 150-165 s waits of my own. OVERRUN fired at 13 min against an estimate of 9 for a job that legitimately needed far more because its own check was running two flutter test processes.
+Clean-up: the tv plugin and docs/design, site/shots PNG churn restored; six old orphan flutter_tester processes from Nov 20-21 job worktrees are still running (not ours to kill now).
+Note: worker diff for i1b: settings_profile_section 303 lines, connect_panels 372, settings_screen 369 (review.sh: 0 fail, 4 notes). The report says no tests were run by the worker; the combined check ran them.

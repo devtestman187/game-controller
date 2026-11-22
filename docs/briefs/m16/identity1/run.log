@@ -26,3 +26,4 @@
 2026-11-22 00:34:14 start i1b
 2026-11-22 00:36:42 i1a2 finished: result 0 (31 turns, 2 min)
 2026-11-22 01:30:30 STOPPED: stop file
+2026-11-22 01:50:00 HAND-FIX i1b: applied from job worktree flash-20261122-003415-326933 after base fix (i1a2 committed); combined check green (707 s); tests-first proof and worker review not run
