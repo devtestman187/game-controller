@@ -115,3 +115,4 @@ RESULT: STOPPED: tools/review.sh found a FAIL after i1d i1f i1e2 (see .dart_tool
 2026-11-22 09:30:49 committed i1d: 8e19e4cb host: gate character changes, send players and frame chars
 2026-11-22 09:30:51 committed i1f: a7125f73 arena: draw players by the character they chose
 2026-11-22 09:30:53 committed i1e2: dfbefcf3 phone tests: reach host mode for the chip's badge, list identity
+2026-11-22 09:35:22 reviewed wave2: 8 finding(s)
