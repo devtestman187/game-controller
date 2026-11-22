@@ -71,3 +71,12 @@
 2026-11-21 18:19:40 committed f3: 432d29f7 M16 process2 f3: validate the run-stop and wait-run env knobs
 2026-11-21 18:19:40 wave review skipped: wave 1 is the whole run, the run review covers it
 2026-11-21 18:19:41 STOPPED: jobs that failed or need applying by hand: f2:4 (their logs: docs/briefs/m16/process2/flash-<job>.log)
+2026-11-21 18:22:29 HAND-FIX f2: patch applied by hand (result 4 not auto-applied: f1 and f2 both changed tools/tests/run-wire-test.sh, my brief mistake); the test file merged by hand (kept f1's and f2's stub modes), run-wire and run-jobs-split tests pass
+2026-11-21 18:22:38 start at ec2cd9d2 on m16
+2026-11-21 18:22:38 removed the last stop's STOP.md
+2026-11-21 18:22:48 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-21 18:22:48 skip f1 (already done)
+2026-11-21 18:22:49 resume f2 (applied by hand, not committed yet)
+2026-11-21 18:22:49 skip f3 (already done)
+2026-11-21 18:33:28 committed f2: ae93fbe8 Wait for a wave review at a stop; poll the run's review
+2026-11-21 18:33:28 wave review skipped: wave 1 is the whole run, the run review covers it
