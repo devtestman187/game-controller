@@ -1,0 +1,9 @@
+diff --git a/src/patched.dart b/src/patched.dart
+new file mode 100644
+--- /dev/null
++++ b/src/patched.dart
+@@ -0,0 +1,4 @@
++/// The stub the probe adds: what a job's new class would be.
++class Patched {
++  const Patched();
++}
