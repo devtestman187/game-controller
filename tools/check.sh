@@ -7,9 +7,14 @@
 #   tools/check.sh phone tv        # only some checks (names below)
 #   tools/check.sh --list          # list the checks
 #   tools/check.sh --verbose ...   # also print every check's full output
+#   tools/check.sh --fail-fast ... # stop after a failed format or analyze
 #
 # CHECK_ANALYZE_PKGS="packages/a controller_app" limits the analyze check to those folders
 # (tools/flash.sh sets it for a job from the job's own files; the runner runs the whole workspace).
+# CHECK_FAIL_FAST=1 (the same as --fail-fast): when format or analyze fails, every check
+# after it is printed as SKIPPED and none of them runs; off by default.
+# CHECK_DART and CHECK_FLUTTER: the commands to run (default dart and flutter; the
+# self-test stubs them).
 # Checks: format analyze protocol connection metrics kit look arena puzzle host phone tv tools
 # Exit code: 0 if every check passed, 1 if any failed, 2 for bad arguments
 # or a missing tool. Works in Git Bash on Windows and bash on macOS/Linux.
@@ -17,6 +22,21 @@ set -u
 
 cd "$(dirname "$0")/.." || exit 2
 root="$(pwd)"
+
+# The commands to run: the self-test stubs these, so a case never needs the toolchain.
+dart_cmd="${CHECK_DART:-dart}"
+flutter_cmd="${CHECK_FLUTTER:-flutter}"
+
+# Fail-fast: after a failed format or analyze, the checks after it don't run.
+fail_fast=0
+case "${CHECK_FAIL_FAST:-0}" in
+  0) ;;
+  1) fail_fast=1 ;;
+  *)
+    echo "CHECK_FAIL_FAST must be 0 or 1, got '$CHECK_FAIL_FAST'" >&2
+    exit 2
+    ;;
+esac
 
 # name | folder | command | what it covers
 checks=(
@@ -35,11 +55,22 @@ checks=(
   "tools|.|bash tools/selftest.sh|shell tool self-tests (tools/tests/*-test.sh)"
 )
 
+# Runs one check's command, with the toolchain hooks swapped in for the commands
+# that name dart or flutter; anything else runs as written.
+run_cmd() { # <the check's command>
+  case "$1" in
+    dart\ *) eval "\"$dart_cmd\" ${1#dart }" ;;
+    flutter\ *) eval "\"$flutter_cmd\" ${1#flutter }" ;;
+    *) eval "$1" ;;
+  esac
+}
+
 verbose=0
 wanted=()
 for arg in "$@"; do
   case "$arg" in
     -v | --verbose) verbose=1 ;;
+    -f | --fail-fast) fail_fast=1 ;;
     -l | --list)
       for c in "${checks[@]}"; do
         IFS='|' read -r name dir cmd about <<< "$c"
@@ -48,7 +79,7 @@ for arg in "$@"; do
       exit 0
       ;;
     -h | --help)
-      sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//'
+      sed -n '2,20p' "$0" | sed 's/^# \{0,1\}//'
       exit 0
       ;;
     -*)
@@ -69,9 +100,10 @@ for w in ${wanted[@]+"${wanted[@]}"}; do
   fi
 done
 
-for tool in dart flutter; do
+for tool in "$dart_cmd" "$flutter_cmd"; do
   if ! command -v "$tool" > /dev/null 2>&1; then
-    echo "$tool isn't on the PATH. See docs/building.md (One-time toolchain)." >&2
+    echo "$tool isn't on the PATH (set CHECK_DART or CHECK_FLUTTER)." >&2
+    echo "See docs/building.md (One-time toolchain)." >&2
     exit 2
   fi
 done
@@ -84,6 +116,7 @@ mkdir -p "$logs" || exit 2
 interesting='\[E\]|Expected:|Actual:|Which:|Error:|error -|warning -|info -|Changed |Some tests failed|Failed to load|Exception|Test failed'
 
 failed=()
+skip_reason=""
 start_all=$(date +%s)
 for c in "${checks[@]}"; do
   IFS='|' read -r name dir cmd about <<< "$c"
@@ -92,9 +125,13 @@ for c in "${checks[@]}"; do
     for w in "${wanted[@]}"; do [ "$w" = "$name" ] && skip=0; done
     [ $skip = 1 ] && continue
   fi
+  if [ -n "$skip_reason" ]; then
+    printf 'SKIPPED %s (%s)\n' "$name" "$skip_reason"
+    continue
+  fi
   log="$logs/$name.log"
   start=$(date +%s)
-  (cd "$root/$dir" && eval "$cmd") > "$log" 2>&1
+  (cd "$root/$dir" && run_cmd "$cmd") > "$log" 2>&1
   rc=$?
   secs=$(($(date +%s) - start))
   # "+262: All tests passed!" → 262 tests. Progress lines use \r, so split on it.
@@ -108,6 +145,11 @@ for c in "${checks[@]}"; do
     [ -n "$count" ] && detail="$count passed, "
     printf 'FAIL  %-11s (%sexit %s, %ss)  log: %s\n' "$name" "$detail" "$rc" "$secs" "$log"
     tr '\r' '\n' < "$log" | grep -E "$interesting" | grep -vE '^\s+(dart:|package:)' | awk '!seen[$0]++' | head -40 | sed 's/^/      /'
+  fi
+  if [ $rc != 0 ] && [ $fail_fast = 1 ]; then
+    case "$name" in
+      format | analyze) skip_reason="$name failed" ;;
+    esac
   fi
   [ $verbose = 1 ] && sed 's/^/      | /' "$log"
 done

@@ -7,6 +7,9 @@
 #
 # Each script runs under timeout(1) so a hung test can't stall the check.
 # SELFTEST_TIMEOUT: seconds allowed per script (default 120).
+# SELFTEST_TIMEOUTS: per-script limits as basename=seconds pairs, comma separated
+# (default run-wire-test.sh=240: its runner cases are the slow ones). A script
+# not named there gets SELFTEST_TIMEOUT.
 # SELFTEST_LOCK: lock file, from the repository root (default
 # .dart_tool/selftest.lock). A second copy on the same lock is refused; a stale
 # lock (its pid no longer alive) is replaced.
@@ -30,7 +33,7 @@ dir="tools/tests"
 [ $# -le 1 ] || bad_input "one folder at most (got $#: $*)"
 case "${1:-}" in
   -h | --help)
-    sed -n '2,18p' "$0" | sed 's/^# \{0,1\}//'
+    sed -n '2,20p' "$0" | sed 's/^# \{0,1\}//'
     exit 0
     ;;
   -*) bad_input "unknown option: $1 (try --help)" ;;
@@ -43,6 +46,36 @@ case "$timeout_s" in
   '' | *[!0-9]*) bad_input "SELFTEST_TIMEOUT must be whole seconds, got '$timeout_s'" ;;
 esac
 [ "$timeout_s" -gt 0 ] || bad_input "SELFTEST_TIMEOUT must be at least 1 second"
+
+# The per-script limits: basename=seconds pairs, comma separated. A script the
+# list doesn't name runs under SELFTEST_TIMEOUT.
+timeouts="${SELFTEST_TIMEOUTS:-run-wire-test.sh=240}"
+IFS=',' read -ra limits <<< "$timeouts"
+for entry in "${limits[@]}"; do
+  case "$entry" in
+    *=*) ;;
+    *) bad_input "SELFTEST_TIMEOUTS entries are name=seconds, got '$entry'" ;;
+  esac
+  entry_name="${entry%%=*}"
+  entry_s="${entry#*=}"
+  [ -n "$entry_name" ] || bad_input "SELFTEST_TIMEOUTS entry '$entry' names no script"
+  case "$entry_s" in
+    '' | *[!0-9]*) bad_input "SELFTEST_TIMEOUTS: $entry_name must be whole seconds, got '$entry_s'" ;;
+  esac
+  [ "$entry_s" -gt 0 ] || bad_input "SELFTEST_TIMEOUTS: $entry_name must be at least 1 second"
+done
+
+# limit_for <script's basename>: its SELFTEST_TIMEOUTS limit, or SELFTEST_TIMEOUT.
+limit_for() {
+  for entry in "${limits[@]}"; do
+    if [ "${entry%%=*}" = "$1" ]; then
+      echo "${entry#*=}"
+      return 0
+    fi
+  done
+  echo "$timeout_s"
+}
+
 command -v timeout > /dev/null 2>&1 || bad_input "timeout isn't on the PATH (it comes with coreutils)"
 
 [ -d "$dir" ] || bad_input "no such folder: $dir"
@@ -91,8 +124,9 @@ timed_out=0
 # a hung script finishes.
 for script in "${scripts[@]}"; do
   log="$tmp/$(basename "$script").log"
+  script_limit="$(limit_for "$(basename "$script")")"
   start=$(date +%s)
-  timeout "$timeout_s" bash "$script" > "$log" 2>&1 &
+  timeout "$script_limit" bash "$script" > "$log" 2>&1 &
   child=$!
   wait "$child"
   rc=$?
@@ -103,7 +137,7 @@ for script in "${scripts[@]}"; do
     passed=$((passed + 1))
   elif [ "$rc" = 124 ]; then
     printf 'TIMEOUT %s (%ss)\n' "$script" "$secs"
-    echo "TIMEOUT: $script exceeded ${timeout_s}s"
+    echo "TIMEOUT: $script exceeded ${script_limit}s"
     timed_out=$((timed_out + 1))
   else
     printf 'FAIL  %s (%ss)\n' "$script" "$secs"
@@ -119,7 +153,7 @@ done
 total=$(($(date +%s) - start_all))
 count=${#scripts[@]}
 if [ "$timed_out" -gt 0 ]; then
-  echo "RESULT: TIMEOUT: $timed_out of $count script(s) exceeded ${timeout_s}s ($passed passed, $failed failed, ${total}s)"
+  echo "RESULT: TIMEOUT: $timed_out of $count script(s) exceeded their limit ($passed passed, $failed failed, ${total}s)"
   exit 2
 fi
 if [ "$failed" -gt 0 ]; then
