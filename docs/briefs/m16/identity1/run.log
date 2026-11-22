@@ -174,3 +174,19 @@ HAIKU-DIRECT i1g1: 5 min (15:48-15:53), 34 turns, 7 files (3 lib, 1 test edit, 2
 RESULT: STOPPED: jobs that failed or passed their limit (parked, not committed): i1g2 (their logs: docs/briefs/m16/identity1/flash-<job>.log)
 HAND-FIX i1g2: apply-job.sh applied 14 files: docs/briefs/m16/identity1/i1g2-report.md, packages/party_host/lib/src/ui/puzzle_screen.dart, packages/party_host/lib/src/ui/score_row.dart, packages/party_host/lib/src/ui/score_row_bar.dart, packages/party_host/lib/src/ui/score_row_parts.dart, packages/party_host/test/puzzle_screen_test.dart, packages/party_host/test/score_bar_identity_test.dart, packages/puzzle_game/lib/src/match_painter.dart, packages/puzzle_game/lib/src/play_view.dart, packages/puzzle_game/lib/src/puzzle_module.dart, packages/puzzle_game/lib/src/puzzle_painter.dart, packages/puzzle_game/lib/src/view.dart, packages/puzzle_game/lib/src/worker_painter.dart, packages/puzzle_game/test/worker_identity_test.dart
 HAND-FIX i1g2 note: worker 161 turns (cap 120), 23 min, result 4 (churn PNGs + run.log only); review 0 fail, check puzzle 449 + host pass
+2026-11-22 16:39:40 RUN_MAX_MIN=20 min (computed backstop of the jobs still to do)
+2026-11-22 16:39:40 start at 37e32bdc on m16
+2026-11-22 16:39:50 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-22 16:40:11 skip i1a (already done)
+2026-11-22 16:40:11 skip i1b (already done)
+2026-11-22 16:40:12 skip i1c (already done)
+2026-11-22 16:40:33 skip i1d (already done)
+2026-11-22 16:40:33 skip i1f (already done)
+2026-11-22 16:40:33 skip i1e2 (already done)
+2026-11-22 16:40:54 skip f1 (already done)
+2026-11-22 16:41:15 skip i1g1 (already done)
+2026-11-22 16:41:36 WARN: i1g2 was committed by hand (c42ceed3); a plain restart would skip its tests-first proof and worker review, so both run now
+2026-11-22 16:43:27 tests-first ok: packages/party_host/test/score_bar_identity_test.dart fails on the old code
+2026-11-22 16:43:42 tests-first ok: packages/puzzle_game/test/worker_identity_test.dart fails on the old code
+2026-11-22 16:43:43 hand-fixed i1g2: tests-first proof and worker review done (marked in done.txt)
+2026-11-22 16:43:43 skip i1g2 (already done)
