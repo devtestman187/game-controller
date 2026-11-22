@@ -26,7 +26,7 @@ Input: worktree, batch folder name, jobs or bug ids, the owner's decisions quote
 Design or gameplay questions; a real finding that needs an owner call; check.sh failing twice; anything the digest does not cover.
 
 ## Never
-Push, tag, build, merge branches, kill processes, touch other sessions' branches, `git add -A`, stage the uncommitted PNGs or `.patch` files, bare `git stash` or `pop`.
+Push, tag, build, merge branches, kill processes, touch other sessions' branches, `git add -A`, stage the uncommitted PNGs or stray `.patch` files (owner, Nov 22: `tools/tests/fixtures/**` patches and `docs/briefs/**/probe-*.patch` stubs are committed on purpose), bare `git stash` or `pop`.
 
 ## Final report (at most 15 lines)
 Commits; Proposed lessons: n; jobs with turns and minutes (from run.log); findings real/fixed/deferred; check.sh result; tracker and STATUS updates; "Fixed, unverified" items needing device checks; open questions. Note the batch's wall time. If over 1 hour, add a 5-line improvement analysis (turns, stops, hand-fixes, proposed runner or brief changes; proposals only, apply none).
