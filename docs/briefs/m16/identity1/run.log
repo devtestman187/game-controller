@@ -77,3 +77,4 @@ RESULT: STOPPED: job i1e2 used 76 turns, over its cap of 70
 2026-11-22 08:56:47 i1d finished: result 4 (134 turns, 18 min)
 2026-11-22 08:56:47 STOPPED: job i1d used 134 turns, over its cap of 120
 RESULT: STOPPED: job i1d used 134 turns, over its cap of 120
+2026-11-22 HAND-FIX i1d: applied from job worktree flash-20261122-083439-760026 after the 134-turn stop (its own check failed only on m9_test, fixed by i1e2 already in the tree)
