@@ -160,3 +160,8 @@ HAIKU-DIRECT i1g1: 5 min (15:48-15:53), 34 turns, 7 files (3 lib, 1 test edit, 2
 2026-11-22 16:03:55 tests-first ok: controller_app/test/host_lists_identity_test.dart fails on the old code
 2026-11-22 16:03:57 hand-fixed f1: tests-first proof and worker review done (marked in done.txt)
 2026-11-22 16:03:57 skip f1 (already done)
+2026-11-22 16:04:19 WARN: i1g1 was committed by hand (d321bcdf); a plain restart would skip its tests-first proof and worker review, so both run now
+2026-11-22 16:04:40 tests-first ok: packages/game_kit/test/view_characters_test.dart fails on the old code
+2026-11-22 16:04:54 tests-first ok: packages/test_game/test/arena_phone_identity_test.dart fails on the old code
+2026-11-22 16:04:56 hand-fixed i1g1: tests-first proof and worker review done (marked in done.txt)
+2026-11-22 16:04:56 skip i1g1 (already done)
