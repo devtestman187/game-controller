@@ -100,3 +100,14 @@ RESULT: STOPPED: job f1 passed its limit (45 min, estimate 30)
 2026-11-22 06:49:04 resume f1 (applied by hand, not committed yet)
 2026-11-22 07:02:10 STOPPED: commit of f1 refused (see .dart_tool/run-jobs/docs_briefs_m16_process3/run-commit.log)
 RESULT: STOPPED: commit of f1 refused (see .dart_tool/run-jobs/docs_briefs_m16_process3/run-commit.log)
+2026-11-22 07:02:26 HAND-FIX f1: added the missing ## Commit message section to f1-report.md (the commit was refused for an empty message); checks had passed
+2026-11-22 07:02:26 start at a39fb18b on m16
+2026-11-22 07:02:36 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-22 07:02:57 skip p3a (already done)
+2026-11-22 07:02:57 skip p3b (already done)
+2026-11-22 07:02:58 skip p3c (already done)
+2026-11-22 07:03:19 skip p3d (already done)
+2026-11-22 07:03:19 skip p3e (already done)
+2026-11-22 07:03:40 skip p3f (already done)
+2026-11-22 07:04:01 resume f1 (applied by hand, not committed yet)
+2026-11-22 07:17:29 committed f1: c1bfe333 runner: every job's limit is polled in one loop, no retry for format/analyze, run's review is not a job
