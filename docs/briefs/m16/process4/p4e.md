@@ -9,7 +9,7 @@ decisions (owner, Nov 22): the estimate is a floor, not the brief's word alone: 
 do:
 1 Extend tools/tests/run-limits-test.sh first: brief 20 and median 30 gives 30; brief 40 and median 10 gives 40; no brief line, median 12 gives 12; f2 with brief 10 gives 25; f2 with brief 40 gives 40; a non-fix name is not floored; backstop of one 15-min job gives 45 (the floor) and of three 40-min jobs gives 150; the helpers print minutes whatever RUN_LIMIT_UNIT_S is.
 2 Implement in tools/run-limits.sh; update its header comment (how to read each helper). Keep every existing case passing.
-allow: tools/run-limits.sh · tools/tests/run-limits-test.sh · docs/briefs/m16/process4/p4e-report.md
+allow: tools/tests/run-limits-wire-test.sh · tools/run-limits.sh · tools/tests/run-limits-test.sh · docs/briefs/m16/process4/p4e-report.md
 check: tools
 report: docs/briefs/m16/process4/p4e-report.md
 rules: aim 60-80 turns · write only inside allow: · tools/review.sh: no FAIL on your lines.

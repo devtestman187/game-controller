@@ -146,14 +146,14 @@ if [ "$rc" = 0 ] && logged "committed runjob" && ! logged "STOPPED" &&
 report "a brief's turns: 140 raises the cap and 130 turns finishes with RESULT: DONE (exit 0)" "$r"
 
 # 4. The run's limit without RUN_MAX_MIN: the computed backstop of the one job (20 min, its
-#    default, x1.25 = 25), logged once; the preflight runs through FLASH_CMD too.
+#    default, x1.25 = 25, floored at 45 by p4e), logged once; the preflight runs through FLASH_CMD too.
 fixture backstop
 PREFLIGHT_SKIP=""
 STUB_SLEEP_S=1
 run_jobs --no-review
 if [ "$rc" = 0 ] && logged "preflight ok: the worker ran flutter --version and tools/check.sh --list" &&
-  logged "RUN_MAX_MIN=25 min" && [ -f "$STUB_MARK" ] && ! logged "RUN_MAX_MIN=360"; then r=0; else r=1; fi
-report "the computed backstop is the logged RUN_MAX_MIN (one job, 20 min default -> 25 min) and FLASH_CMD ran the preflight" "$r"
+  logged "RUN_MAX_MIN=45 min" && [ -f "$STUB_MARK" ] && ! logged "RUN_MAX_MIN=360"; then r=0; else r=1; fi
+report "the computed backstop is the logged RUN_MAX_MIN (one job, 20 min default -> floor 45 min) and FLASH_CMD ran the preflight" "$r"
 
 if [ "$fails" -gt 0 ]; then
   echo "RESULT: FAILED: $fails of $cases case(s) failed"
