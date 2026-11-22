@@ -14,10 +14,10 @@ Purpose: prove the new limits, the STOP file, the RESULT line and wait-run's sta
 |---|---|---|---|---|
 | 1 | none (fake check: `tools/check.sh` stubbed via CHECK_DART/CHECK_FLUTTER stubs, or `check: none`) | `start r1`, `start r2`, `r1 finished: result 0 (10 turns, ...)`, `committed r1`, `committed r2`, `DONE: every job is committed` | exit 0 | `RESULT: DONE: 2 jobs, <n> min` |
 | 2 | `FAKE_FLASH_SLEEP_S=6` and `expected-min: 1` in r1 (limit 1.5 s unit) | `STOPPED: job r1 passed its limit (...)` ; STOP.md written | first call exit 2 OVERRUN, second call exit 4/1 (reported once) | `RESULT: STOPPED: job r1 passed its limit ...` |
-| 3 | `FAKE_FLASH_TURNS=121` | `STOPPED: r1 used 121 turns, cap 120` before any check | exit 1 | `RESULT: STOPPED: ...turn cap...` |
+| 3 | `FAKE_FLASH_TURNS=121` | `STOPPED: job r1 used 121 turns, over its cap of 120` before any check | exit 1 | `RESULT: STOPPED: ...turn cap...` |
 | 4 | stub check sleeps 30 s, `RUN_CHECK_MAX_MIN=3` | `STOPPED: the combined check passed RUN_CHECK_MAX_MIN=3`; wait-run during it prints `checking: the combined check for <n> min` | exit 1 | `RESULT: STOPPED: ...check...` |
 | 5 | `touch docs/briefs/rehearsal/STOP` during the check of run 4 | `STOPPED: stop file` within RUN_POLL_S seconds, not after the check | exit 1 | `RESULT: STOPPED: stop file` |
-| 6 | `FAKE_FLASH_HANG=1`, no RUN_MAX_MIN, 2 briefs of `expected-min: 1` | backstop = (1+1) x 1.25 = 2.5 units, logged at the start; `STOPPED: TIMEOUT` | exit 1 | `RESULT: STOPPED: TIMEOUT...` |
+| 6 | `FAKE_FLASH_HANG=1`, no RUN_MAX_MIN, 2 briefs of `expected-min: 1` | backstop = max((1+1) x 1.25, RUN_EXPECT_DEFAULT_MIN 20) = 20 units (logged at the start), so with RUN_LIMIT_UNIT_S=1 the job limit fires first: `STOPPED: job r1 passed its limit (1 min, estimate 1)` (set RUN_EXPECT_DEFAULT_MIN=2 to see TIMEOUT instead) | exit 1 | `RESULT: STOPPED: TIMEOUT...` |
 | 7 | after a stop in run 3: `resume r1` (report present, uncommitted) | `resume r1 (applied by hand, ...)`; wait-run shows r1 as running until its commit | exit 4 then 0 | `RESULT: DONE: ...` |
 
 After each run: delete `docs/briefs/rehearsal/STOP*`, `done.txt` and the run's work folder `.dart_tool/run-jobs/docs_briefs_rehearsal`, and `git reset --hard` the throwaway branch to its first commit. The usage log is the scratch one, so the real flash-usage.tsv gets no fake rows.

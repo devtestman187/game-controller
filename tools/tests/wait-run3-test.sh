@@ -24,7 +24,6 @@ trap 'rm -rf "$tmp"' EXIT
 fails=0
 cases=0
 pass() { echo "PASS $1"; }
-fail() { echo "FAIL $1"; fails=$((fails + 1)); }
 
 # report <case> <0 passed | 1 failed>: on a failure, the FAIL line names the exit
 # code and the last line printed (tools/selftest.sh shows only FAIL lines), and
@@ -50,7 +49,6 @@ run() { # <briefs-dir>: runs wait-run.sh, storing its exit code and output
   env "${envs[@]}" bash "$wait_sh" "$@" > "$out" 2>&1 || rc=$?
 }
 last() { tail -n 1 "$out"; }
-now() { date '+%F %T'; }
 ago() { date -d "-$1 minutes" '+%F %T'; }
 batch() { mkdir -p "$tmp/$1" && printf '%s\n' "$tmp/$1"; }
 

@@ -245,3 +245,11 @@ Minor items from `docs/briefs/m16/phonehost3/REVIEW.md` and `wave2-review-report
 - Owner decision "empty nickname shows Player N" has no test yet: i1b only pins `phoneName` ("Phone AB12") and the codec test carries a `name: ''` row; i1d/i1e (wave 2) must show "Player N" for an empty name and test it.
 - No test shows the host ignoring `SetCharacterMessage` or a phone ignoring a stray one (`host_connection.dart`, `client_messages.dart` new cases); wave 2 replaces both with real handling and tests them.
 - `connect_panels.dart` is 372 lines (ceiling 380); the next addition splits `_YourCharacter` into its own file.
+## M16 process3 leftovers (Nov 22, from docs/briefs/m16/process3/REVIEW.md)
+- docs/dev-tools.md never names `RUN_CHECK_MAX_MIN`, `RUN_REVIEW_MAX_MIN`, `CHECK_FAIL_FAST`, `CHECK_DART`/`CHECK_FLUTTER`, `SELFTEST_TIMEOUTS`, three new tests, nor wait-run's overrun record, checking text and resume rule; a docs job adds them.
+- `review_over`/`REVIEW TIMEOUT` (run-review.sh) have no test; the 20 default of `RUN_CHECK_MAX_MIN` is pinned by no case.
+- The no-estimate default is 20 in run-limits.sh and 15 in wait-run.sh; the median logic exists twice: make wait-run.sh source run-limits.sh.
+- run-base-test case 4 measures only wall time, not the tree kill; run-base-test takes 29 s (brief said 20); wait-run3-test case 3 takes 4 s.
+- p3d-report Decision 2 and p3c/p3d hand-over numbers are stale (computed backstop floors to RUN_EXPECT_DEFAULT_MIN, 20).
+- `run_number` silently takes the default for a malformed value; `RUN_LIMIT_UNIT_S` unvalidated when run-base.sh is sourced alone; `run-base.sh` source has no `|| exit 2`; base-check header line is 136 columns; runner is 376 of 380 lines (split before the next addition).
+- `--drop` and `--dry-run` print no RESULT line; `fake-flash.sh` defaults FLASH_USAGE_LOG to the real log; `seen_add` in wait-run.sh is not quiet on a read-only state dir; selftest SELFTEST_TIMEOUTS entries with a space after a comma match nothing.

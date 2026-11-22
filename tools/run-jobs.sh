@@ -97,7 +97,7 @@ SAFE_OUTSIDE='^(([^/]+/)*analysis_options\.yaml|\.gitignore|\.gitattributes|([^/
 CHURN_OUTSIDE=$CHURN_REGEX
 unchurn() { git checkout -- "${CHURN_PATHS[@]}" 2>/dev/null; }
 SIZE_STOP=380
-RUN_TURN_CAP=120 # the most turns one job may take; a brief line `turns: <n>` raises it for that job
+RUN_TURN_CAP=${RUN_TURN_CAP:-120} # the most turns one job may take; a brief line `turns: <n>` raises it for that job
 # A brief's report: line must be exactly one bare path (spaces, quotes and backticks are refused).
 REPORT_BARE='^[^[:space:]`"'\'']+$'
 

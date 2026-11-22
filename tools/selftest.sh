@@ -33,7 +33,7 @@ dir="tools/tests"
 [ $# -le 1 ] || bad_input "one folder at most (got $#: $*)"
 case "${1:-}" in
   -h | --help)
-    sed -n '2,20p' "$0" | sed 's/^# \{0,1\}//'
+    sed -n '2,21p' "$0" | sed 's/^# \{0,1\}//'
     exit 0
     ;;
   -*) bad_input "unknown option: $1 (try --help)" ;;
