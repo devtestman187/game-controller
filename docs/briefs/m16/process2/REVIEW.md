@@ -121,3 +121,8 @@ Findings only; this report is the only file the job writes.
 
 - none
 
+
+## Verdicts (driver, Nov 21)
+- must 1 (p2-split never reviewed): deferred, run review covered the final tree; the cause (review skipped when its report exists) fixed in f2. must 2 and must 3 and the dev-tools, digest, churn.sh, flash-framework and flash.sh wording findings: fixed by hand (25a8d244).
+- should (f1) run-steps trap, finding commit, churn-only result 4: fixed (42b8a1e3). should (f2) stop vs reviews and the final-review time limit, review skip: fixed (f2, hand-applied). should (f3) knob validation, rename test: fixed (432d29f7).
+- Other should and all could findings: deferred to docs/code-health.md "M16 process2 leftovers". Not done: the stray `flash-20261121-155004-86602` folder (not found in the jobs folder list, nothing to delete).

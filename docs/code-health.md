@@ -232,3 +232,10 @@ Minor items from `docs/briefs/m16/phonehost3/REVIEW.md` and `wave2-review-report
 - `tools/run-jobs.sh` is about 485 lines (guideline 400, the brief set 520); split the reviewer/commit half into a second script before the next addition.
 - `award_explanation_looks_test.dart` repeats the menu-look checks of `award_explanation_size_test.dart` to prove the helper's path; drop its menu half if it slows the suite.
 - The one-wave review skip in `tools/run-jobs.sh` was proven by the f1/f2 run itself (run.log: "wave review skipped"); the brief lint by dry run and a real stop on a scratch batch (Nov 21).
+## M16 process2 leftovers (Nov 21)
+- `tools/run-jobs.sh` was split (326 lines, `run-steps.sh` 212, `run-review.sh` 120); the 330/300-line ceilings of the briefs are not met exactly (script-rules said 300 per file); accept, or move the stop/lock/time helpers into a fourth sourced file at the next runner change.
+- `tools/selftest.sh`: a hung test's own `sleep` child survives the kill (run each script in its own process group and kill the group); the lock is created check-then-write (use `set -C`/mkdir); the stale-lock test uses pid 999999 (use a pid that has just exited).
+- `tools/wait-run.sh`: OVERRUN repeats at once on every later call with no way to acknowledge it (add `--ack` or a longer next window); between the last job end and DONE (the combined check, 5-10 min) it says "running: preflight (no job started yet) for N min", needs a "checking" state; a `resume <job>` line is not tracked as a job start; the `WAIT:` banner line is printed every call.
+- Header claims "bash on macOS/Linux" in selftest.sh, mine.sh and wait-run.sh, but they need GNU `timeout`/`date -d`; say "Git Bash on Windows and Linux" or fall back to `gtimeout`.
+- Nine scripts print no RESULT line when `cd "$(dirname "$0")/.."` fails; `tools/run-stop.sh` repeats `outside_files` of `run-steps.sh` (kept so it stays standalone); `apply_safe` repeats four churn paths as exclude globs; the mine.sh `dart format`/`dart analyze` failure output has no test.
+- Shell self-tests are not tests-first proved by the runner (it proves only `*_test.dart`); the digest says so.
