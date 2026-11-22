@@ -1,0 +1,17 @@
+diff --git a/packages/game_kit/lib/src/game_module.dart b/packages/game_kit/lib/src/game_module.dart
+index e73fc110..a67c92a0 100644
+--- a/packages/game_kit/lib/src/game_module.dart
++++ b/packages/game_kit/lib/src/game_module.dart
+@@ -1,4 +1,5 @@
+ import 'package:flutter/widgets.dart';
++import 'package:protocol/protocol.dart' show PlayerCharacter;
+ 
+ /// A game a viewer can draw (m12 §4): its ID, its snapshot version, and how
+ /// to build a viewer for one game. Each game package exports its own module,
+@@ -72,4 +73,6 @@ typedef ViewContext = ({
+   bool wholeMatch,
+   List<Rect> padRects,
+   double pxPerMm,
++  // Probe stub (i1g1): player ID to the character they chose; empty when none.
++  Map<String, PlayerCharacter> characters,
+ });
