@@ -69,3 +69,4 @@ RESULT: STOPPED: job p3f passed its limit (22 min, estimate 15)
 2026-11-22 05:07:42 start p3f
 2026-11-22 05:36:18 p3f finished: result 0 (47 turns, 22 min)
 2026-11-22 05:48:49 committed p3f: 4d08818b runner: refuse a wave whose base does not compile
+2026-11-22 05:53:17 reviewed wave3: 6 finding(s)
