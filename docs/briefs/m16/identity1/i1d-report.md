@@ -121,11 +121,15 @@ player and "Show on this device").
 
 ## Questions
 
-1. **Who lists `identity` on the host?** `controller_app/lib/src/storage.dart:55` and
-   `packages/party_host/lib/src/host_service.dart:142` do not, so in the apps the TV's welcome says no
-   identity: phones never send `set_character` and never get `players`/`chars`. Both files are outside
-   this job's `allow:`; the tests start their host with `capabilities: [view, identity]`. Should the two
-   lists gain `Capability.identity`?
+1. **Who lists `identity` on the host?** `packages/party_host/lib/src/host_service.dart:142` does not,
+   so in the apps a host's welcome says no identity and a phone never sends `set_character`
+   (`client_connection.dart:219` asks only a host that listed it). `players` and `chars` do reach an
+   app host already: what a *host message* is gated on is the session's hello (`host_server.dart:225`),
+   and every phone's hello lists `identity` through the client library
+   (`ControllerIdentity.libraryCapabilities`). `controller_app/lib/src/storage.dart:55` is the phone's
+   own hello list, not a host's: the phone library adds `identity` to it anyway. Both files are outside
+   this job's `allow:`; the tests start their host with `capabilities: [view, identity]`. Should
+   `host_service.dart`'s list gain `Capability.identity`?
 2. **`m9_test.dart:33` fails, and it is not mine.** "each side learns what the other supports" expects
    the phone's hello capabilities to be exactly `[metrics, rating]`; i1e's
    `ControllerIdentity.libraryCapabilities` adds `identity` to every hello, so the host sees
@@ -146,8 +150,9 @@ player and "Show on this device").
 
 ## Suggestions (not acted on)
 
-- Put `Capability.identity` in the two host capability lists (Question 1) — until then the feature is
-  dormant in the apps although every part of it is in place.
+- Put `Capability.identity` in the host's capability list (Question 1) — until then the character
+  change is dormant in the apps, though `players` and `chars` already flow, although every part of it
+  is in place.
 - A `FrameMessage.copyWith` in protocol would replace the two copies of the field list in
   `server_game_frames.dart` and `host_players_broadcast.dart`.
 
@@ -155,7 +160,7 @@ player and "Show on this device").
 
 - i1e2/i1g: the phone gets `players` and `chars` from a host that lists `identity`; nothing on the phone
   side needs to change for this job.
-- Still open: the host app capability lists (Question 1) and the `m9_test` expectations (Question 2).
+- Still open: the host app's capability list (Question 1) and the `m9_test` expectations (Question 2).
 
 ## Commit message
 

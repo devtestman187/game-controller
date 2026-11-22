@@ -138,8 +138,10 @@ class LiveHostService implements HostService {
       pairings: saved,
       onPairingsChanged: (p) => savePairings(prefs, p),
       log: log.sink('host'),
-      // Touch metrics and the rating prompt (M9).
-      capabilities: const [Capability.metrics, Capability.rating],
+      // Touch metrics and the rating prompt (M9), and each player's character
+      // in the players message and the frames (M16 identity): a phone asks for
+      // another character only of a host that lists it.
+      capabilities: const [Capability.metrics, Capability.rating, Capability.identity],
     );
     _gameHost = ServerGameHost(_server)..shareView = shareView;
     _stats = LiveStats(
