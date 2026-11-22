@@ -127,7 +127,8 @@ git -C "$repo_path" mv app/lib/screen.dart app/lib/home.dart
 reset_stub
 mine "$repo_path"
 if [ "$rc" = 0 ] && grep -qF 'format app/lib/home.dart' "$stub/log" &&
-  ! grep -qF 'format app/lib/screen.dart' "$stub/log"; then r=0; else r=1; fi
+  ! grep -qF 'format app/lib/screen.dart' "$stub/log" &&
+  grep -qF 'flutter test test/screen_test.dart' "$stub/log"; then r=0; else r=1; fi
 report "a renamed file is formatted under its new path (and its tests still run)" "$r"
 
 repo spaces

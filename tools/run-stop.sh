@@ -17,10 +17,12 @@
 # review-fail size brief-lint preflight stop-file commit-refused job-failed
 # timeout other, taken from the cause text the runner passes.
 #
-# Env knobs: STOP_MAX_LINES (40, the file's hard line limit) · STOP_LOG_TAIL
-# (20, the run.log lines kept) · STOP_ERROR_LINES (8, the most error lines) ·
-# STOP_OUTSIDE_LINES (5, the most outside files) · STOP_COL (300, the most
-# columns one quoted line keeps, since a whole run.log line can be long).
+# Env knobs, each a whole number of at least 1 (anything else: exit 3):
+# STOP_MAX_LINES (40, the file's hard line limit, at least 10) · STOP_LOG_TAIL
+# (20, the run.log lines kept, capped so the file fits STOP_MAX_LINES) ·
+# STOP_ERROR_LINES (8, the most error lines) · STOP_OUTSIDE_LINES (5, the most
+# outside files) · STOP_COL (300, the most columns one quoted line keeps, since
+# a whole run.log line can be long).
 # Exit codes: 0 STOP.md is written, whatever it says · 3 bad arguments or an
 # unwritable batch folder. Works in Git Bash on Windows and bash on macOS/Linux.
 set -u
@@ -35,7 +37,11 @@ INTERESTING='\[E\]|Expected:|Actual:|Which:|Error:|error -|warning -|info -|Chan
 
 bad_input() { echo "RESULT: BAD INPUT: $1"; exit 3; }
 
-usage() { sed -n '2,25p' "$0" | sed 's/^# \{0,1\}//'; }
+whole() { # whole <knob> <value>: a whole number, or bad input naming the knob
+  case "$2" in '' | *[!0-9]*) bad_input "$1 takes a whole number, got '$2'" ;; esac
+}
+
+usage() { sed -n '2,27p' "$0" | sed 's/^# \{0,1\}//'; }
 
 classify() { # classify <cause>: one word from the class list in the header
   case "$1" in
@@ -103,6 +109,25 @@ B=${1%/} WORK=${2%/} raw_cause=$3 flash=${4:-}
 [ -w "$B" ] || bad_input "the batch folder is not writable: ${1}"
 [ -z "$WORK" ] && WORK=.
 
+# ---- env knobs: a bad one is bad input, never a broken or over-long file ----
+whole STOP_MAX_LINES "$STOP_MAX_LINES"
+whole STOP_LOG_TAIL "$STOP_LOG_TAIL"
+whole STOP_ERROR_LINES "$STOP_ERROR_LINES"
+whole STOP_OUTSIDE_LINES "$STOP_OUTSIDE_LINES"
+whole STOP_COL "$STOP_COL"
+[ "$STOP_MAX_LINES" -ge 10 ] || bad_input "STOP_MAX_LINES takes at least 10 lines, got $STOP_MAX_LINES"
+[ "$STOP_LOG_TAIL" -ge 1 ] || bad_input "STOP_LOG_TAIL takes at least 1 line, got $STOP_LOG_TAIL"
+[ "$STOP_ERROR_LINES" -ge 1 ] || bad_input "STOP_ERROR_LINES takes at least 1, got $STOP_ERROR_LINES"
+[ "$STOP_OUTSIDE_LINES" -ge 1 ] || bad_input "STOP_OUTSIDE_LINES takes at least 1, got $STOP_OUTSIDE_LINES"
+[ "$STOP_COL" -ge 1 ] || bad_input "STOP_COL takes at least 1 column, got $STOP_COL"
+# The head line, the three section lines and one line each for errors and files
+# leave the tail this much room; a bigger knob is capped rather than obeyed.
+tail_cap=$((STOP_MAX_LINES - 9))
+if [ "$STOP_LOG_TAIL" -gt "$tail_cap" ]; then
+  STOP_LOG_TAIL=$tail_cap
+  echo "NOTE: STOP_LOG_TAIL is capped at $STOP_LOG_TAIL lines so STOP.md fits $STOP_MAX_LINES"
+fi
+
 # ---- input files (a missing one is "none found", not an error) ----
 checklog="$WORK/run-check.log"; [ -f "$checklog" ] || checklog=""
 runlog="$B/run.log"; [ -f "$runlog" ] || runlog=""
@@ -118,11 +143,11 @@ errs=() outs=() logs=()
 [ -n "$runlog" ] && mapfile -t logs < <(tr -d '\r' < "$runlog" | tail -n "$STOP_LOG_TAIL")
 
 # ---- the report: 4 head lines, 3 section lines, the caps from the env knobs ----
+# The tail cap above keeps room at 2 or more, and two lines each for errors and
+# files are the least those sections need, so the file stays within the limit.
 room=$((STOP_MAX_LINES - 7 - STOP_LOG_TAIL))
-[ "$room" -lt 2 ] && room=2
 errmax=$((room - 1)); [ "$errmax" -gt "$STOP_ERROR_LINES" ] && errmax=$STOP_ERROR_LINES
 outmax=$((room - errmax)); [ "$outmax" -gt "$STOP_OUTSIDE_LINES" ] && outmax=$STOP_OUTSIDE_LINES
-[ "$outmax" -lt 1 ] && outmax=1
 
 out=("STOP $(date '+%F %T') $B" "cause: $(short "${cause:-(empty)}")" "class: $cl" "repair: $(repair_for "$cl")")
 out+=("failing tests and errors (run-check.log):")

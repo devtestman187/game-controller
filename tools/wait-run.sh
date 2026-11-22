@@ -30,7 +30,8 @@
 # tools/run-jobs.sh names it: .dart_tool/run-jobs/<briefs-dir, / as _>),
 # WAIT_LOGS (the folder the runner was given as --logs, when the flash-*.log
 # files are not in the briefs folder), WAIT_STATE_DIR (.dart_tool/wait-run: the
-# lock, position and marker files; a test points it at a temp folder).
+# lock, position and marker files; a test points it at a temp folder). The four
+# counts are whole numbers of at least 1; anything else is BAD INPUT (exit 3).
 #
 # The position file holds the byte offset already printed, so a repeat call
 # prints only new lines; a new `start at` line moves it back to that line, so a
@@ -211,11 +212,21 @@ done
 LOG="$B/run.log"
 [ -f "$LOG" ] || bad "no run.log in $B (the runner writes it; is a run going?)"
 case "$WAIT_MAX_S" in '' | *[!0-9]*) bad "the window takes whole seconds (WAIT_MAX_S=$WAIT_MAX_S)" ;; esac
+case "$WAIT_STALL_MIN" in
+  '' | *[!0-9]*) bad "the stall window takes whole minutes (WAIT_STALL_MIN=$WAIT_STALL_MIN)" ;;
+esac
+case "$WAIT_POLL_S" in '' | *[!0-9]*) bad "the poll takes whole seconds (WAIT_POLL_S=$WAIT_POLL_S)" ;; esac
+case "$WAIT_RECENT_ROWS" in
+  '' | *[!0-9]*) bad "the usage rows take a whole number (WAIT_RECENT_ROWS=$WAIT_RECENT_ROWS)" ;;
+esac
 if [ -n "$max" ]; then
   case "$max" in *[!0-9]*) bad "--max takes whole seconds, not $max" ;; esac
   WAIT_MAX_S=$max
 fi
 [ "$WAIT_MAX_S" -ge 1 ] || bad "the wait window takes at least 1 second"
+[ "$WAIT_STALL_MIN" -ge 1 ] || bad "the stall window takes at least 1 minute"
+[ "$WAIT_POLL_S" -ge 1 ] || bad "the poll takes at least 1 second"
+[ "$WAIT_RECENT_ROWS" -ge 1 ] || bad "the usage rows take at least 1"
 if [ "$WAIT_MAX_S" -gt "$WAIT_CAP_S" ]; then
   echo "NOTE: the wait window is capped at ${WAIT_CAP_S} s"
   WAIT_MAX_S=$WAIT_CAP_S

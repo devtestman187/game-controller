@@ -65,6 +65,30 @@ run "$d" --max abc
 if [ "$rc" = 3 ] && last | grep -qF 'RESULT: BAD INPUT: --max takes whole seconds'; then r=0; else r=1; fi
 report "a non-numeric --max is bad input (exit 3)" "$r"
 
+# The other count knobs take whole numbers of at least 1 too: a bad one is BAD
+# INPUT (exit 3) with its RESULT line, never an abort inside $(( )).
+bad_knob() { # bad_knob <slug> <case text> <VAR=value> <message fragment>
+  local d
+  d=$(batch "bad-knob-$1")
+  printf '%s\n' "$(now) start at abc1234 on m16" > "$d/run.log"
+  rc=0
+  env "${envs[@]}" "$3" bash "$wait_sh" "$d" --max 2 > "$out" 2>&1 || rc=$?
+  if [ "$rc" = 3 ] && last | grep -qF "RESULT: BAD INPUT: $4"; then r=0; else r=1; fi
+  report "$2" "$r"
+}
+bad_knob stall-abc "a non-numeric WAIT_STALL_MIN is bad input (exit 3)" \
+  WAIT_STALL_MIN=abc "the stall window takes whole minutes"
+bad_knob poll-abc "a non-numeric WAIT_POLL_S is bad input (exit 3)" \
+  WAIT_POLL_S=fast "the poll takes whole seconds"
+bad_knob rows-abc "a non-numeric WAIT_RECENT_ROWS is bad input (exit 3)" \
+  WAIT_RECENT_ROWS=many "the usage rows take a whole number"
+bad_knob stall-zero "WAIT_STALL_MIN=0 is bad input (exit 3)" \
+  WAIT_STALL_MIN=0 "the stall window takes at least 1 minute"
+bad_knob poll-zero "WAIT_POLL_S=0 is bad input (exit 3)" \
+  WAIT_POLL_S=0 "the poll takes at least 1 second"
+bad_knob rows-zero "WAIT_RECENT_ROWS=0 is bad input (exit 3)" \
+  WAIT_RECENT_ROWS=0 "the usage rows take at least 1"
+
 d=$(batch done)
 {
   echo "$(ago 30) start at c60ea5a7 on m16"

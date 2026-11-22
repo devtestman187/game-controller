@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Tests tools/run-stop.sh against docs/briefs/m16/process2/script-rules.md and
 # the p2-stop brief: one case per class, the failing names and log tail, the
-# outside files, missing logs, huge logs, bad arguments, a path with spaces,
-# a cause with quotes and newlines, and nothing else in the folder changed.
+# outside files, missing logs, huge logs, bad arguments and env knobs (non-numeric,
+# below the minimum, capped), a path with spaces, a cause with quotes and
+# newlines, and nothing else in the folder changed.
 #
 #   bash tools/tests/run-stop-test.sh
 #
@@ -142,6 +143,51 @@ fixture args
 bad_case "a missing batch folder is bad input (exit 3)" "$tmp/no-such-batch" "$work" "cause"
 echo x > "$tmp/a-file"
 bad_case "a batch path that is a file is bad input (exit 3)" "$tmp/a-file" "$work" "cause"
+
+# An env knob takes a whole number: a bad one is bad input (exit 3, RESULT last,
+# no STOP.md), never an abort inside $(( )) with no line saying why.
+knob_case() { # knob_case <slug> <case text> <VAR=value> <message fragment>
+  fixture "knob-$1"
+  log_with 3
+  rc=0
+  env "$3" bash "$stop" "$batch" "$work" "checks failed twice on the combined tree" > "$out" 2>&1 || rc=$?
+  if [ "$rc" = 3 ] && tail -n 1 "$out" | grep -qF "RESULT: BAD INPUT: $4" && [ ! -f "$batch/STOP.md" ]; then r=0; else r=1; fi
+  report "$2" "$r"
+}
+knob_case max-abc "a non-numeric STOP_MAX_LINES is bad input (exit 3)" \
+  STOP_MAX_LINES=abc "STOP_MAX_LINES takes a whole number"
+knob_case tail-abc "a non-numeric STOP_LOG_TAIL is bad input (exit 3)" \
+  STOP_LOG_TAIL=abc "STOP_LOG_TAIL takes a whole number"
+knob_case errs-abc "a non-numeric STOP_ERROR_LINES is bad input (exit 3)" \
+  STOP_ERROR_LINES=many "STOP_ERROR_LINES takes a whole number"
+knob_case outside-abc "a non-numeric STOP_OUTSIDE_LINES is bad input (exit 3)" \
+  STOP_OUTSIDE_LINES=2x "STOP_OUTSIDE_LINES takes a whole number"
+knob_case col-abc "a non-numeric STOP_COL is bad input (exit 3)" \
+  STOP_COL=wide "STOP_COL takes a whole number"
+knob_case max-nine "STOP_MAX_LINES below 10 is bad input (exit 3)" \
+  STOP_MAX_LINES=9 "STOP_MAX_LINES takes at least 10 lines"
+knob_case tail-zero "STOP_LOG_TAIL=0 is bad input (exit 3)" \
+  STOP_LOG_TAIL=0 "STOP_LOG_TAIL takes at least 1 line"
+
+# A tail bigger than the limit allows is capped: 40 - 9 leaves 31, so of 61
+# run.log lines the oldest kept is line 31 and the file is exactly 40 lines.
+fixture tail-large
+log_with 60
+rc=0
+STOP_LOG_TAIL=60 bash "$stop" "$batch" "$work" "checks failed twice on the combined tree" > "$out" 2>&1 || rc=$?
+n=$(wc -l < "$batch/STOP.md")
+if [ "$rc" = 0 ] && [ "$n" -eq 40 ] && grep -qF 'NOTE: STOP_LOG_TAIL is capped at 31 lines' "$out" &&
+  has "LAST-LINE" && grep -q 'log line 31$' "$batch/STOP.md" && ! grep -q 'log line 30$' "$batch/STOP.md"; then r=0; else r=1; fi
+report "STOP_LOG_TAIL=60 is capped at 31 lines and STOP.md stays 40 lines ($n lines)" "$r"
+
+# The smallest limit still writes a whole file: 10 - 9 leaves a one-line tail.
+fixture max-smallest
+log_with 30
+rc=0
+STOP_MAX_LINES=10 bash "$stop" "$batch" "$work" "checks failed twice on the combined tree" > "$out" 2>&1 || rc=$?
+n=$(wc -l < "$batch/STOP.md")
+if [ "$rc" = 0 ] && [ "$n" -eq 10 ] && has "class: check-failed" && has "LAST-LINE"; then r=0; else r=1; fi
+report "STOP_MAX_LINES=10 keeps the head and one log line, exactly 10 lines ($n lines)" "$r"
 
 # A batch folder path with spaces works.
 fixture "spaces one"
