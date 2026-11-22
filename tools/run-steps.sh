@@ -9,26 +9,53 @@
 # 2. A job that stopped with result 4: outside files that are generated churn are
 # dropped (logged), always-fine ones are applied; any other file stops the job.
 outside_files() { awk '/CHANGED FILES OUTSIDE/{on=1;next} /^---- flash:/{on=0} on&&/^  /{print $1}' "$1"; }
+copy_paths() { # copy_paths <tree> <path>...: the kept worktree's version of each path, a deletion included
+  local tree=$1 p
+  shift
+  for p in "$@"; do
+    if [ -d "$tree/$p" ]; then mkdir -p "$p" && cp -R "$tree/$p/." "$p/" || return 1
+    elif [ -e "$tree/$p" ]; then mkdir -p "$(dirname "$p")" && cp -f "$tree/$p" "$p" || return 1
+    elif git -C "$tree" cat-file -e "HEAD:$p" 2>/dev/null; then rm -f "$p" || return 1 # the job deleted it
+    fi
+  done
+}
 apply_safe() { # apply_safe <job> <flash-log>; sets DROPPED and APPLIED, returns 0 when applied
-  local log=$2 files tree f ex=()
+  local log=$2 files tree f ex=() want=() a patch all_churn=1
   DROPPED="" APPLIED=""
   files=$(outside_files "$log")
   tree=$(sed -n 's/.*the worktree is kept: //p' "$log" | tail -n 1)
   [ -n "$files" ] && [ -d "$tree" ] || return 1
   for f in $files; do
     if [[ $f =~ $CHURN_OUTSIDE ]]; then DROPPED+="$f "; ex+=(":(exclude,literal)$f")
-    elif [[ $f =~ $SAFE_OUTSIDE ]]; then APPLIED+="$f "
+    elif [[ $f =~ $SAFE_OUTSIDE ]]; then APPLIED+="$f "; all_churn=0
     else return 1; fi
   done
- # only the job's own paths: allow:, report:, and the always-fine files
-  local want=() a
-  while IFS= read -r a; do [ -n "$a" ] && want+=("${a%/}"); done < <(sed -n 's/^\(allow\|report\): *//p' "$B/$1.md" | sed 's/ *· */\n/g')
-  for f in $APPLIED; do want+=("$f"); done
+ # only the job's own paths, once each: allow:, report:, and the always-fine files
+  while IFS= read -r a; do
+    a=${a%/}
+    [ -n "$a" ] || continue
+    case " ${want[*]:-} " in *" $a "*) continue ;; esac
+    want+=("$a")
+  done < <(sed -n 's/^\(allow\|report\): *//p' "$B/$1.md" | sed 's/ *· */\n/g')
+  for f in $APPLIED; do
+    case " ${want[*]:-} " in *" $f "*) continue ;; esac
+    want+=("$f")
+  done
   [ ${#want[@]} -gt 0 ] || return 1
-  ( cd "$tree" && git ls-files --others --exclude-standard -- "${want[@]}" | xargs -r git add -N &&
+  patch=$WORK/run-$1.patch
+  if ! ( cd "$tree" && git ls-files --others --exclude-standard -- "${want[@]}" | xargs -r git add -N &&
     git diff --binary HEAD -- "${want[@]}" "${ex[@]}" ':(exclude,glob)tv_test_app/windows/flutter/**' ':(exclude,glob)site/shots/**' \
-      ':(exclude,glob)**/run-base*' ':(exclude,glob)docs/briefs/**/run-*.patch' ) > "$WORK/run-$1.patch" || return 1
-  git apply --3way "$WORK/run-$1.patch" >/dev/null 2>&1 || return 1
+      ':(exclude,glob)**/run-base*' ':(exclude,glob)docs/briefs/**/run-*.patch' ) > "$patch"; then
+    : > "$patch" # a failed diff leaves the copy below to bring the files over
+  fi
+  if [ ! -s "$patch" ] || ! git apply --3way "$patch" >/dev/null 2>&1; then
+    # s6b2's stop: with only generated churn outside, an empty or unappliable patch keeps the job's
+    # own files in the kept worktree alone, so they are copied over and the churn is left behind
+    [ $all_churn -eq 1 ] || return 1
+    copy_paths "$tree" "${want[@]}" || return 1
+    note "$1: the patch was empty or did not apply (only generated churn outside its list);" \
+      "copied its own paths from the kept worktree: ${want[*]}"
+  fi
   git reset -q; git worktree remove --force "$tree" 2>/dev/null
   return 0
 }
@@ -127,9 +154,10 @@ ci_patch() { # ci_patch <job>
 # these from its stop, check_stop and start; they read its globals (B, WORK, RUN_MAX_MIN,
 # RUN_START_S) and its note, finding and stop helpers.
 
-save_stop() { # save_stop <message>: the log, and STOP.md when this stop left one
+save_stop() { # save_stop <message>: the log, STOP.md when this stop left one, and the findings
   local paths=("$B/run.log")
   [ -f "$B/STOP.md" ] && paths+=("$B/STOP.md")
+  [ -f "$B/run-findings.md" ] && paths+=("$B/run-findings.md") # e.g. "STOP.md was not written"
   save "$1" "${paths[@]}"
 }
 
@@ -162,6 +190,11 @@ time_check() { # time_check: past RUN_MAX_MIN the run stops itself, so a person 
   stop "TIMEOUT: the run passed RUN_MAX_MIN=$RUN_MAX_MIN min (counted from the last 'start at' line in run.log); a person should look at $B/run.log before more code is written"
 }
 
+lock_remove() { # lock_remove: the lock goes at the exit, and only when it holds this run's pid
+  [ "$(cat "$WORK/lock" 2>/dev/null)" = "$$" ] || return 0
+  rm -f "$WORK/lock"
+}
+
 lock_take() { # lock_take: one runner per batch; a second exits 2, a lock whose pid is gone is replaced
   local pid=""
   [ -f "$WORK/lock" ] && pid=$(cat "$WORK/lock" 2>/dev/null)
@@ -170,6 +203,10 @@ lock_take() { # lock_take: one runner per batch; a second exits 2, a lock whose 
     exit 2
   fi
   [ -n "$pid" ] && note "replaced a stale lock (pid $pid is gone)"
+  # The traps go in before the lock is written, so a signal in between cannot leave it behind.
+  # A signal ends the run (130 on INT, 143 on TERM) with further signals off, as tools/selftest.sh does.
+  trap lock_remove EXIT
+  trap 'trap "" INT TERM; exit 130' INT
+  trap 'trap "" INT TERM; exit 143' TERM
   echo "$$" > "$WORK/lock" || { echo "RESULT: FAILED: cannot write the lock $WORK/lock" >&2; exit 2; }
-  trap 'rm -f "$WORK/lock"' EXIT INT TERM
 }
