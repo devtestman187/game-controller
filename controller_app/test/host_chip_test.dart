@@ -1,5 +1,5 @@
-import 'package:connection/connection.dart';
-import 'package:controller/src/providers.dart';
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -52,24 +52,26 @@ void main() {
     testWidgets(
       'the chip\'s badge wears the character the host gave the own player, in ${tv ? 'the TV' : 'the menu'} look',
       (tester) async {
-        // The own player's client, as the host answered it: player 4 in the
-        // teal crown, which is not player 4's default (M16 identity).
+        // This phone joins as the teal crown, which is no player number's
+        // default, so the chip can only wear the host's answer (M16 identity).
+        // The profile is the ask; the host's answer comes back over its link.
         await pumpHostApp(
           tester,
           tablet: tv,
           screen: tv ? const Size(1180, 820) : const Size(852, 393),
-          extra: [
-            if (tv) party.toyTvProvider.overrideWithValue(true),
-            _clientState(connected.copyWith(player: 4, character: tealCrown)),
-          ],
+          saved: {_characterKey: jsonEncode(tealCrown.toJson())},
+          extra: [if (tv) party.toyTvProvider.overrideWithValue(true)],
         );
         final host = await enterHostMode(tester);
 
+        final own = ownClientOf(host).snapshot;
+        expect(own.player, isNotNull, reason: 'the host named the own player');
+        expect(own.character, tealCrown, reason: 'the host gave this phone what its hello asked for');
         final badge = tester.widget<party.PlayerBadge>(
           find.descendant(of: find.byKey(const Key('playerBadge')), matching: find.byType(party.PlayerBadge)),
         );
-        expect(badge.number, 4);
-        expect(badge.character, tealCrown, reason: 'the host\'s answer, not player 4\'s default');
+        expect(badge.number, own.player);
+        expect(badge.character, tealCrown, reason: 'the host\'s answer, not the player number\'s default');
         expect(tester.takeException(), isNull);
 
         await tester.runAsync(host.dispose);
@@ -105,21 +107,10 @@ party.HostViewState _stateWith(List<party.LocalAddress> addresses) {
   );
 }
 
-/// The character the host gave this phone's own player (M16 identity): the
-/// teal crown, which no player number's default gives.
+/// The character this phone saves, and so asks the host for (M16 identity):
+/// the teal crown, which no player number's default gives.
 const tealCrown = PlayerCharacter(colourSlot: 4, accessory: PlayerAccessory.crown);
 
-/// This phone's own player's client state, replaced with [snapshot], so the
-/// chip's badge reads a known answer without a host's round.
-Override _clientState(ClientSnapshot snapshot) => clientStateProvider.overrideWith(() => _FixedClientState(snapshot));
-
-/// A client state that never changes: the chip only reads its snapshot.
-class _FixedClientState extends ClientStateNotifier {
-  _FixedClientState(this.initial);
-
-  /// What the screens show for the whole test.
-  final ClientSnapshot initial;
-
-  @override
-  ClientSnapshot build() => initial;
-}
+/// The saved settings key of the phone's character (`profile.dart`'s own, which
+/// is private): what this phone's next hello asks the host to give it.
+const _characterKey = 'profileCharacter';

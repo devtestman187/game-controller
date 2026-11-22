@@ -306,6 +306,9 @@ void main() {
         Capability.layout,
         Capability.status,
         Capability.view,
+        // The client library adds the capability it implements itself (M16
+        // identity), after the app's own list.
+        Capability.identity,
       ]);
       expect(hello.device!.kind, DeviceInfo.tablet);
       expect((hello.device!.widthMm, hello.device!.heightMm), (250, 160));
