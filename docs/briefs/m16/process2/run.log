@@ -70,3 +70,4 @@
 2026-11-21 18:19:38 committed f1: 42b8a1e3 runner: end the run on a signal, keep findings, rescue churn-only jobs
 2026-11-21 18:19:40 committed f3: 432d29f7 M16 process2 f3: validate the run-stop and wait-run env knobs
 2026-11-21 18:19:40 wave review skipped: wave 1 is the whole run, the run review covers it
+2026-11-21 18:19:41 STOPPED: jobs that failed or need applying by hand: f2:4 (their logs: docs/briefs/m16/process2/flash-<job>.log)
