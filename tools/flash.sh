@@ -335,6 +335,7 @@ cmd=(claude --bare -p "$task"
   --allowedTools "${allowed[@]}"
   --disallowedTools "${denied[@]}"
   "${add_dirs[@]+"${add_dirs[@]}"}"
+  --max-turns "${FLASH_MAX_TURNS:-150}"
   --output-format json)
 
 if [ "$dry" = 1 ]; then

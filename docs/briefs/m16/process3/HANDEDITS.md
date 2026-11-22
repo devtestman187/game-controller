@@ -9,3 +9,5 @@ Why wave 1 workers used tools/mine.sh 0 times (from the files): flash.sh puts do
 5. docs/flash-digest.md: after p3 ships, note `RESULT:` lines, the per-step limits and FLASH_CMD; wait-run no longer repeats OVERRUN.
 
 Items 1, 2, 3 are applied (Nov 22; item 3 on the owner's approval of the process3 plan, plus the wave-independence line). Item 4 approved by the main session with default 150 (hard backstop; sizing target stays 120). Item 5 after p3 ships.
+
+Item 4 applied Nov 22 with the default 150: tools/flash.sh passes `--max-turns "${FLASH_MAX_TURNS:-150}"` (the flag was already used by the preflight there; flash-prompt-test passes).
