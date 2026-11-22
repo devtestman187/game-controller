@@ -239,3 +239,9 @@ Minor items from `docs/briefs/m16/phonehost3/REVIEW.md` and `wave2-review-report
 - Header claims "bash on macOS/Linux" in selftest.sh, mine.sh and wait-run.sh, but they need GNU `timeout`/`date -d`; say "Git Bash on Windows and Linux" or fall back to `gtimeout`.
 - Nine scripts print no RESULT line when `cd "$(dirname "$0")/.."` fails; `tools/run-stop.sh` repeats `outside_files` of `run-steps.sh` (kept so it stays standalone); `apply_safe` repeats four churn paths as exclude globs; the mine.sh `dart format`/`dart analyze` failure output has no test.
 - Shell self-tests are not tests-first proved by the runner (it proves only `*_test.dart`); the digest says so.
+## M16 identity1 wave 1b leftovers (Nov 22)
+- `controller_app/test/identity_change_link_test.dart` and `identity_nickname_test.dart` run the TV look on a 1180x820 tablet screen, not the phone's 852x393; the phone never wears the TV look, but if it ever does the join-screen line is untested at that size.
+- `PhoneText.takenTonight` keeps its old name after the wording became "was taken"; rename (to `wasTaken`) when phone_text.dart is next touched.
+- Owner decision "empty nickname shows Player N" has no test yet: i1b only pins `phoneName` ("Phone AB12") and the codec test carries a `name: ''` row; i1d/i1e (wave 2) must show "Player N" for an empty name and test it.
+- No test shows the host ignoring `SetCharacterMessage` or a phone ignoring a stray one (`host_connection.dart`, `client_messages.dart` new cases); wave 2 replaces both with real handling and tests them.
+- `connect_panels.dart` is 372 lines (ceiling 380); the next addition splits `_YourCharacter` into its own file.
