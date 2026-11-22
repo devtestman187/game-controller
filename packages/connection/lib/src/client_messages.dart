@@ -56,12 +56,17 @@ final class ClientMessages {
           PlayerAwayMessage() ||
           PlayerBackMessage():
         _onViewEvent(message);
+      case PlayersMessage():
+        // i1e remembers who wears what. Until then a phone draws each number's
+        // default character, as it does with a host one build older.
+        break;
       case HelloMessage() ||
           PairRequestMessage() ||
           InputStateMessage() ||
           MetricsMessage() ||
           RatingMessage() ||
-          StatsShareMessage():
+          StatsShareMessage() ||
+          SetCharacterMessage():
         _host.log('Ignoring unexpected ${message.type} from the TV');
     }
   }

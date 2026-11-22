@@ -204,6 +204,10 @@ final class HostConnection {
         // Recorded from the player's own answer only; a phone that never says
         // counts as not sharing (sentry1 stats option B).
         if (paired) _forward(message, _host.nowMs);
+      case SetCharacterMessage():
+        // i1d gives the player the character they asked for, and says which in
+        // a PlayerMessage. Until then the hello's character stands.
+        break;
       case WelcomeMessage() ||
           PairResultMessage() ||
           HapticEventMessage() ||
@@ -218,7 +222,8 @@ final class HostConnection {
           HostAwayMessage() ||
           HostBackMessage() ||
           PlayerAwayMessage() ||
-          PlayerBackMessage():
+          PlayerBackMessage() ||
+          PlayersMessage():
         close(CloseCodes.protocolError, 'Unexpected ${message.type}');
     }
   }
