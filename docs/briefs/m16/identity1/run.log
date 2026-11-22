@@ -13,3 +13,9 @@
 2026-11-21 21:49:12 tests-first ok: packages/toy_look/test/toy_character_name_test.dart fails on the old code
 2026-11-21 22:30:45 checks failed; fetching packages and trying once more
 2026-11-21 23:17:16 STOPPED: checks failed twice on the combined tree after i1b i1c (see .dart_tool/run-jobs/docs_briefs_m16_identity1/run-check.log); nothing of this wave is committed
+2026-11-22 00:30:12 start at 42529a19 on m16
+2026-11-22 00:30:12 removed the last stop's STOP.md
+2026-11-22 00:30:23 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-22 00:30:24 start i1a2
+2026-11-22 00:30:25 resume i1b (applied by hand, not committed yet)
+2026-11-22 00:32:57 STOPPED: stop file
