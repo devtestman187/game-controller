@@ -125,3 +125,11 @@ RESULT: DONE: 6 jobs, 28 min
 2026-11-22 09:45:13 start f1
 2026-11-22 10:04:41 STOPPED: TIMEOUT: the run passed RUN_MAX_MIN=20 min (counted from the last 'start at' line in run.log); a person should look at docs/briefs/m16/identity1/run.log before more code is written
 RESULT: STOPPED: TIMEOUT: the run passed RUN_MAX_MIN=20 min (counted from the last 'start at' line in run.log); a person should look at docs/briefs/m16/identity1/run.log before more code is written
+2026-11-22 HAND-FIX f1: run backstop 20 min hit while the worker's check ran (my estimate 15 too low); applied from worktree flash-20261122-094514-816980; resume runs proof, review, check
+2026-11-22 10:05:06 start at 4d4fef27 on m16
+2026-11-22 10:05:06 removed the last stop's STOP.md
+2026-11-22 10:05:16 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-22 10:05:36 resume f1 (applied by hand, not committed yet)
+2026-11-22 10:07:27 tests-first ok: controller_app/test/host_lists_identity_test.dart fails on the old code
+2026-11-22 10:20:52 committed f1: c188841b host: offer identity, so phones can change character
+2026-11-22 10:20:52 wave review skipped: wave 1 is the whole run, the run review covers it
