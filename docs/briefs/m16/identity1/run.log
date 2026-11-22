@@ -190,3 +190,6 @@ HAND-FIX i1g2 note: worker 161 turns (cap 120), 23 min, result 4 (churn PNGs + r
 2026-11-22 16:43:42 tests-first ok: packages/puzzle_game/test/worker_identity_test.dart fails on the old code
 2026-11-22 16:43:43 hand-fixed i1g2: tests-first proof and worker review done (marked in done.txt)
 2026-11-22 16:43:43 skip i1g2 (already done)
+2026-11-22 16:49:31 reviewed wave5: 8 finding(s)
+2026-11-22 16:49:31 DONE: every job is committed. Claude reads the Summary of docs/briefs/m16/identity1/REVIEW.md, verifies its findings and writes one fix brief
+RESULT: DONE: 9 jobs, 9 min
