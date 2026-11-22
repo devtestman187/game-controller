@@ -119,3 +119,9 @@ RESULT: STOPPED: tools/review.sh found a FAIL after i1d i1f i1e2 (see .dart_tool
 2026-11-22 09:35:23 start the run's review
 2026-11-22 09:44:05 DONE: every job is committed. Claude reads the Summary of docs/briefs/m16/identity1/REVIEW.md, verifies its findings and writes one fix brief
 RESULT: DONE: 6 jobs, 28 min
+2026-11-22 09:44:41 RUN_MAX_MIN=20 min (computed backstop of the jobs still to do)
+2026-11-22 09:44:41 start at ad4d8c92 on m16
+2026-11-22 09:44:52 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-22 09:45:13 start f1
+2026-11-22 10:04:41 STOPPED: TIMEOUT: the run passed RUN_MAX_MIN=20 min (counted from the last 'start at' line in run.log); a person should look at docs/briefs/m16/identity1/run.log before more code is written
+RESULT: STOPPED: TIMEOUT: the run passed RUN_MAX_MIN=20 min (counted from the last 'start at' line in run.log); a person should look at docs/briefs/m16/identity1/run.log before more code is written
