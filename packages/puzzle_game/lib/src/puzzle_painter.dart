@@ -28,6 +28,7 @@ class PuzzlePainter extends CustomPainter {
     this.hud = true,
     this.pxPerMm,
     this.cat,
+    this.characters = const {},
     this.fillsBackground = true,
   });
 
@@ -78,6 +79,11 @@ class PuzzlePainter extends CustomPainter {
   /// The cat, while it visits this board (M14 a2); null when it is away or on
   /// the other side's board.
   final CatView? cat;
+
+  /// Who each player is drawn as, by player number (M16 identity): the
+  /// character the host gave them, or a missing entry for the default their
+  /// number gives (a local player, Robo, an old host).
+  final Map<int, ToyCharacter> characters;
 
   /// Whether the painter fills its box with the look's background. Off where a
   /// `ToyBackground` is behind the view, so the screen's sky shows round the
@@ -346,5 +352,6 @@ class PuzzlePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(PuzzlePainter old) => !identical(old.s, s) || old.nowMs != nowMs || old.look != look;
+  bool shouldRepaint(PuzzlePainter old) =>
+      !identical(old.s, s) || old.nowMs != nowMs || old.look != look || !mapEquals(old.characters, characters);
 }

@@ -6,6 +6,7 @@ import 'package:toy_look/toy_look.dart';
 
 import 'player_badge.dart';
 
+part 'score_row_bar.dart';
 part 'score_row_parts.dart';
 
 /// A score row's height, in frame px (DESIGN sections 1 and 4): the design's
@@ -256,7 +257,7 @@ class ScoreRow extends StatelessWidget {
               SizedBox(width: scoreRowNameWidthPx, child: _name(colors, style)),
               const SizedBox(width: ToySizes.space12),
               Expanded(
-                child: _ScoreBar(fraction: _share(row.points), color: colors.player(row.number)),
+                child: _ScoreBar(fraction: _share(row.points), character: ToyCharacter.of(row.character, row.number)),
               ),
               const SizedBox(width: ToySizes.space12),
               _RowValue(

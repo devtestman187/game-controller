@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:game_kit/game_kit.dart';
 import 'package:party_host/party_host.dart';
+import 'package:party_host/testing.dart';
+import 'package:protocol/protocol.dart';
 import 'package:puzzle_game/puzzle_game.dart';
 
 import 'support/host_harness.dart';
@@ -167,6 +169,22 @@ void main() {
     expect(view.padRects, [overGame]);
     expect(view.pxPerMm, 7.5);
     expect(asked, tester.getSize(find.byType(MatchView)), reason: 'the box the game draws in, as the screen has it');
+  });
+
+  testWidgets('the TV gives the round each player\'s chosen character, by number', (tester) async {
+    // The host's players keep the choice their phone sent (M16 identity), so
+    // the round's workers wear it; a player who chose nothing keeps its
+    // number's default, and Robo, who never chooses, its next free number's.
+    const crown = PlayerCharacter(colourSlot: 4, accessory: PlayerAccessory.crown);
+    final fake = await pumpHost(tester, screen: const StubHome());
+    fake.state = withController(fake.state, phoneInfo('p2', 2, character: crown));
+    fake.emit();
+    await neutral(tester, fake, ['p1', 'p2']);
+    await openJoin(tester);
+    await startRace(tester, fake);
+    final view = tester.widget<MatchView>(find.byType(MatchView));
+    expect(view.characters[2], ToyCharacter.of(crown, 2), reason: 'p2 chose the crown');
+    expect(view.characters[1], ToyCharacter.forPlayer(1), reason: 'p1 chose nothing: its number decides');
   });
 
   testWidgets('a host with the room for both sides draws the whole match', (tester) async {

@@ -1,18 +1,27 @@
 import 'package:flutter/widgets.dart';
 import 'package:game_kit/game_kit.dart';
+import 'package:toy_look/toy_look.dart';
 
 import 'camera.dart';
 import 'library.dart';
 import 'match.dart';
+import 'play_view.dart';
 import 'puzzle.dart';
 import 'snapshot.dart';
 import 'split_layout.dart';
-import 'view.dart';
 
 /// The setup's "layout" value for the `phones` world (m12 §0.4). The key is
 /// absent for the screen layout, so an app that doesn't know it reads the
 /// setup as before.
 const phonesLayoutName = 'phones';
+
+/// Who each player is drawn as, by player number (M16 identity): the choice
+/// the frame carried for a player of [roster], or the default its number gives
+/// when the host sent none (an old host, a local player, Robo).
+Map<int, ToyCharacter> _charactersOf(ViewContext view) => {
+  for (final MapEntry(:key, :value) in view.roster.entries)
+    value.number: ToyCharacter.of(view.characters[key], value.number),
+};
 
 /// The Shape Race viewer setup (m12 §4): the puzzle to draw, its level, the
 /// clock the bar fills against, who plays on which side, and the world the
@@ -138,6 +147,7 @@ final class ShapeRaceViewer implements GameViewer {
         camera: camera,
         padRects: view.padRects,
         pxPerMm: view.pxPerMm,
+        characters: _charactersOf(view),
       ),
     );
   }

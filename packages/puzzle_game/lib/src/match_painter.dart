@@ -21,6 +21,7 @@ class MatchPainter extends CustomPainter {
     this.camera = const PuzzleCamera.whole(),
     this.padRects = const [],
     this.pxPerMm = phonePxPerMm,
+    this.characters = const {},
     this.fillsBackground = true,
   });
 
@@ -68,6 +69,10 @@ class MatchPainter extends CustomPainter {
   /// (rule 7): the app's own reading, so a screen of another density measures
   /// its own floor.
   final double pxPerMm;
+
+  /// Who each player is drawn as, by player number (M16 identity), for both
+  /// boards' workers; a missing entry wears the default its number gives.
+  final Map<int, ToyCharacter> characters;
 
   /// Whether the painter fills its box with the look's background, as the board's painter does.
   final bool fillsBackground;
@@ -132,6 +137,7 @@ class MatchPainter extends CustomPainter {
         hud: false,
         cache: cache,
         cat: s.cat?.side == PuzzleSide.values[i] ? s.cat : null,
+        characters: characters,
         fillsBackground: fillsBackground,
       ).paint(canvas, box.size);
       _dimming(canvas, box.size, i);
@@ -180,6 +186,7 @@ class MatchPainter extends CustomPainter {
         cat: s.cat != null && (!s.split || s.cat!.side == side) ? s.cat : null,
         // The worker's smallest body is the phone's own measure (design 5a).
         pxPerMm: pxPerMm,
+        characters: characters,
         fillsBackground: fillsBackground,
       ).paint(canvas, layout.left.size);
       _dimming(canvas, layout.left.size, s.split ? side.index : 0);
@@ -223,5 +230,6 @@ class MatchPainter extends CustomPainter {
       old.target != target ||
       old.camera != camera ||
       old.pxPerMm != pxPerMm ||
-      !listEquals(old.padRects, padRects);
+      !listEquals(old.padRects, padRects) ||
+      !mapEquals(old.characters, characters);
 }

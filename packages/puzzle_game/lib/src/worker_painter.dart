@@ -77,9 +77,10 @@ extension _WorkerPaint on PuzzlePainter {
     // rule 4): the field it is clipped to, its stand, and its ink's reach.
     final fit = (inside: Offset.zero & field.size, stand: _standShare * radius, ink: _inkShare * radius);
     for (final p in snapshot.players) {
-      // The player's number becomes a character in one place (design 5b), once
-      // a player a paint, and a later milestone hands a chosen character here.
-      final character = ToyCharacter.forPlayer(p.number);
+      // The character the host chose for the player (M16 identity), or the one
+      // their number gives when there is none (a local player, Robo, an old
+      // host), so every worker is a character and never a number.
+      final character = characters[p.number] ?? ToyCharacter.forPlayer(p.number);
       final pose =
           workers?.poseOf(board, p.number, nowMs, effects: look.effects, fit: fit) ?? WorkerPose.on(Offset(p.x, p.y));
       _worker(canvas, pose, character: character, radius: radius, px: px, look: look);

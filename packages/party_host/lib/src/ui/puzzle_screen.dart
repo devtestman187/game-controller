@@ -270,6 +270,11 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
   Widget build(BuildContext context) {
     final puzzle = widget.match?.puzzle ?? _puzzle;
     final result = _result;
+    // Who each player is drawn as (M16 identity): the host's own players keep
+    // the choice their phone sent, so the round's workers wear it.
+    final characters = {
+      for (final p in ref.watch(gamePlayersProvider)) p.number: ToyCharacter.of(p.character, p.number),
+    };
     // The round's sky stands still (design section 6): a drifting background
     // under a board only costs a phone its battery.
     return RoundHold(
@@ -291,7 +296,7 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
               // pressed nothing (m10.2 device test).
               skipTraversal: true,
               onKeyEvent: _onKey,
-              child: _screen(puzzle, result),
+              child: _screen(puzzle, result, characters),
             ),
           ),
         ),
@@ -299,8 +304,9 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
     );
   }
 
-  /// The board, the results over it, and the play hint.
-  Widget _screen(Puzzle? puzzle, MatchResult? result) => Scaffold(
+  /// The board, the results over it, and the play hint, with the players' own
+  /// [characters] drawn on it.
+  Widget _screen(Puzzle? puzzle, MatchResult? result, Map<int, ToyCharacter> characters) => Scaffold(
     body: SafeArea(
       child: puzzle == null
           ? const Center(child: CircularProgressIndicator())
@@ -339,6 +345,7 @@ class _PuzzleScreenState extends ConsumerState<PuzzleScreen> {
                           roundTags: nightRoundTags(night),
                           round: numbers?.round,
                           rounds: numbers?.rounds,
+                          characters: characters,
                           onFinished: _finished,
                           onClock: _clocked,
                         );
