@@ -11,6 +11,8 @@ import 'saved_pairing.dart';
 import 'transport/channel_listener.dart';
 import 'transport/message_channel.dart';
 
+part 'host_character_reservation.dart';
+
 /// The server that runs on the TV (and on the laptop), and on a phone hosting
 /// a game itself (M12).
 ///
@@ -243,41 +245,10 @@ class HostServer {
     return needed == null || (s.hello?.supports(needed) ?? false);
   }
 
-  /// Takes the lowest free player number for a local player.
-  int reserveLocalPlayer() {
-    final n = _pairings.reserveLocalPlayer(taken: _takenPlayerNumbers);
-    _emit();
-    return n;
-  }
-
-  void releaseLocalPlayer(int number) {
-    if (_pairings.releaseLocalPlayer(number)) _emit();
-  }
-
   int get _now => _clock.elapsedMilliseconds;
 
   /// The controllers of the sessions that are paired right now.
   Set<String> get _liveIds => {for (final s in _sessions.where((s) => s.paired)) s.hello!.controllerId};
-
-  /// The player numbers the live paired sessions hold.
-  Set<int> get _takenPlayerNumbers => {for (final s in _sessions.where((s) => s.paired && s.player != null)) s.player!};
-
-  /// The controller's number from before if it's still free, otherwise the
-  /// lowest free one.
-  int _reservePlayerNumber(int? previous) => _pairings.pickPlayer(previous, taken: _takenPlayerNumbers);
-
-  /// The character [session]'s controller wears (M14 L7): the one it asked
-  /// for, or the nearest free colour and accessory among the other paired
-  /// controllers. A phone that sends none gets its number's default, so it
-  /// still looks as it did before M14.
-  PlayerCharacter _reserveCharacter(HostConnection session, PlayerCharacter? wanted) {
-    final taken = [
-      for (final s in _sessions)
-        if (s != session && s.paired && s.character != null) s.character!,
-    ];
-    final number = session.player ?? 1;
-    return (wanted ?? PlayerCharacter.forPlayer(number)).nearestFreeIn(taken);
-  }
 
   /// Takes one new channel from a listener. The server owns it from here on.
   void _onChannel(MessageChannel channel) {

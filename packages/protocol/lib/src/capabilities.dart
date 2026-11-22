@@ -25,6 +25,11 @@ abstract final class Capability {
   /// lists it gets a [ViewStartMessage], the game's [FrameMessage]s and a
   /// [ViewEndMessage].
   static const view = 'view';
+
+  /// What each player wears (M16 identity): a host sends [PlayersMessage]s and
+  /// a frame's `chars` to a controller that lists it, and a controller sends a
+  /// [SetCharacterMessage] to a host that lists it.
+  static const identity = 'identity';
 }
 
 /// What a device is for (PRD v2 S3), in [HelloMessage.role]. A role is

@@ -40,6 +40,18 @@ enum ToyAccessory {
     ToyAccessory.tuft => 'a tuft',
     ToyAccessory.crown => 'a crown',
   };
+
+  /// The noun a character's spoken name uses for it (M16 identity): "Ears",
+  /// "Antenna", "Bow", "Cap", "Tuft", "Crown". Capitalised and without an
+  /// article, because it follows the colour in [ToyCharacter.spokenName].
+  String get spokenNoun => switch (this) {
+    ToyAccessory.ears => 'Ears',
+    ToyAccessory.antenna => 'Antenna',
+    ToyAccessory.bow => 'Bow',
+    ToyAccessory.cap => 'Cap',
+    ToyAccessory.tuft => 'Tuft',
+    ToyAccessory.crown => 'Crown',
+  };
 }
 
 /// Who a player is shown as (M13 design 5b): a colour and an accessory, never a
@@ -87,6 +99,12 @@ final class ToyCharacter {
 
   /// The body colour's name in words, from [colourNames].
   String get colourName => colourNames[colourSlot - firstSlot];
+
+  /// The character's name in words (M16 identity): its colour and accessory,
+  /// "the Blue Bow". It names the character, never the player: the number and
+  /// nickname are not part of it, so two players with one character say one
+  /// name. The protocol's character ID (M16, `blue.bow`) uses the same words.
+  String get spokenName => 'the $colourName ${accessory.spokenNoun}';
 
   /// This character's body colour in [colors]: the slot's player colour, the
   /// same on the host and on every phone (design D6).

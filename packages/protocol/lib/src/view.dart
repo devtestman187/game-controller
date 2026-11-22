@@ -77,11 +77,13 @@ final class FrameMessage extends Message {
     List<String> sounds = const [],
     Map<String, int> acks = const {},
     Map<String, ({int number, String name})> roster = const {},
+    Map<String, PlayerCharacter> characters = const {},
     this.timeLeftMs,
   }) : snapshot = Map.unmodifiable(snapshot),
        sounds = List.unmodifiable(sounds),
        acks = Map.unmodifiable(acks),
-       roster = Map.unmodifiable(roster);
+       roster = Map.unmodifiable(roster),
+       characters = Map.unmodifiable(characters);
 
   static const String wireType = 'frame';
 
@@ -111,6 +113,12 @@ final class FrameMessage extends Message {
   /// has none.
   final Map<String, ({int number, String name})> roster;
 
+  /// Player ID → the character they wear (M16 identity), for the players in
+  /// [roster]. Sent only to a viewer that listed [Capability.identity], and
+  /// left out of the wire when empty; a viewer without one draws the number's
+  /// default.
+  final Map<String, PlayerCharacter> characters;
+
   /// The round's clock in ms left at this step (M16 slice A1), from the game's
   /// snapshot, so a viewer shows the clock without decoding the snapshot. Null
   /// when the game has no clock, or from an older host.
@@ -130,6 +138,9 @@ final class FrameMessage extends Message {
     'pl': {
       for (final MapEntry(key: id, value: player) in roster.entries) id: [player.number, player.name],
     },
+    'chars': ?(characters.isEmpty
+        ? null
+        : {for (final MapEntry(key: id, value: character) in characters.entries) id: character.toJson()}),
   };
 
   static FrameMessage fromPayload(Map<String, Object?> p) => FrameMessage(
@@ -139,6 +150,7 @@ final class FrameMessage extends Message {
     sounds: stringList(p, 'snd'),
     acks: _intMapField(p, 'acks'),
     roster: _rosterField(p),
+    characters: _characterMapField(p, 'chars'),
     timeLeftMs: optionalInt(p, 'tl'),
   );
 }

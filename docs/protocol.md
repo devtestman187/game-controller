@@ -55,6 +55,7 @@ The version number changes only for a breaking change. Everything else is additi
 | `layout` | `layout` (host → controller): the game's labels, hidden buttons and modes | M10 |
 | `status` | `status` (host → controller): the phone's status panel | M10 |
 | `view` | `view_start`, `frame`, `view_end`, `host_away`, `host_back`, `player_away` and `player_back` (host → controller): the game itself, for a controller that shows it (§10a) | M12 |
+| `identity` | `players` (host → controller), `set_character` (controller → host) and a `frame`'s `chars` field: every player's character (§8d) | M16 |
 
 Peers without capabilities (apps before 0.9.0) send no `caps`; treat that as an empty list. The v1 messages (§6 to §9) need no capability.
 
@@ -67,6 +68,8 @@ controller                                   host
     | -- pair (code or token) ----------------> |
     | <-------------------------- pair_result -- |
     | <-------------------------------- player -- |   (if accepted)
+    | <------------------------------- players -- |   (M16, if the phone listed identity)
+    | -- set_character -------------------------> |   (M16, if the TV listed identity)
     | <-- ping / pong, both ways, every second --> |
     | -- input, metrics, rating --------------> |
     | <------------- haptic, rate_ask, metrics_ack |
@@ -85,7 +88,7 @@ controller                                   host
 | `device` | object | no | Device class for analytics, below |
 | `character` | object | no | The colour and accessory the player chose, below (M14 L7) |
 
-`character`: `c` (colour slot 1 to 6, the player colours below) and `a` (an accessory: `ears`, `antenna`, `bow`, `cap`, `tuft` or `crown`). A phone prefers one that no other player in the game wears, first come first served; when its own is taken the host gives the nearest free colour and the nearest free accessory, and tells the phone in the `player` message. A host one build older ignores the field and gives `ToyCharacter.forPlayer(number)`'s defaults, and so does the host for a player who sends none (an older phone, a local player).
+`character`: `c` (colour slot 1 to 6, the player colours below) and `a` (an accessory: `ears`, `antenna`, `bow`, `cap`, `tuft` or `crown`). The pair names one of 36 characters, each with a stable ID such as `blue.ears` (§8d), and the same object a `set_character` carries. A phone prefers one that no other player in the game wears, first come first served; when its own is taken the host gives the nearest free colour and the nearest free accessory, and tells the phone in the `player` message. A host one build older ignores the field and gives `ToyCharacter.forPlayer(number)`'s defaults, and so does the host for a player who sends none (an older phone, a local player).
 
 `device`: `kind` (`phone`, `tablet`, `foldable`, `desktop`, `sim`; required), and optional `model` (hardware model such as `iPhone15,2` or `Google Pixel 8`, never the user's own name for the device), `os` (e.g. `iOS 26.0`), `wMm` and `hMm` (physical screen size in mm, landscape: width is the long side), `haptics` (boolean).
 
@@ -210,6 +213,31 @@ What goes up carries no names and nothing about who was playing, but it isn't an
 
 The message needs no capability: a host one build older ignores it as an unknown type (§2), which reads as "not sharing". A `stats_share` from a connection that hasn't paired is ignored.
 
+## 8d. Player characters (capability `identity`, M16)
+
+Every player wears one of 36 characters: one of the six player colours and one of the six accessories (§5's `character` in the hello). A character has a **stable ID**, `<colour>.<accessory>`. The colour half is the palette's own colour name in lower case, Blue first and in the player colours' order: `blue`, `orange`, `purple`, `teal`, `pink`, `yellow`; the accessory half is the accessory's wire name: `ears`, `antenna`, `bow`, `cap`, `tuft`, `crown`. So player 1's default is `blue.ears`, and `orange.bow` is the second colour with a bow. The ID names the character, never the player: the number and nickname are not part of it, so two players who wear one character share its ID. A screen that names a character in words says **"the Blue Bow"**: the colour name and the accessory's, `the` before them. The words agree with the ID, one per colour and per accessory, in every build.
+
+`players` (host → controller, sent only to a controller that listed `identity`): every player's character. The host sends it after pairing and again whenever the players or their characters change.
+
+```json
+{"pl": [{"id": "c1f2", "n": 1, "name": "Mia", "character": {"c": 1, "a": "ears"}},
+        {"id": "c3d4", "n": 2, "name": "", "character": {"c": 2, "a": "bow"}}]}
+```
+
+| Field | Meaning |
+| --- | --- |
+| `pl` | One row per player; missing means none |
+| `id` | The player's ID, as in a frame's `pl` and `acks` (not the character's ID) |
+| `n` | The player's number, from 1 |
+| `name` | The player's nickname; left out or `""` when they have none |
+| `character` | The character they wear: `c` the colour slot 1 to 6, `a` the accessory's name |
+
+`set_character` (controller → host, sent only to a host that listed `identity`): the player chose another character in the phone's settings, `{"c": 4, "a": "crown"}`. The host answers with a `player` message carrying the character the player now wears: the one asked for, or the nearest free one when another player wears it (§5).
+
+A `frame` sent to a viewer that listed `identity` also carries `chars` next to `pl`: player ID → `{"c", "a"}`, the character each player in the roster wears. It is left out when no player in the frame has one, and a viewer that finds none draws each player's number's default character.
+
+**A peer one build older.** All of this is additive. A host without `identity` sends no `players` and no `chars`, and a phone one build older ignores `players` and `set_character` as unknown types (§2) and `chars` as an unknown field. A host one build older ignores `set_character`, and the player keeps the character their hello asked for.
+
 ## 9. Metrics (capability `metrics`)
 
 ### `metrics` (controller → host)
@@ -247,7 +275,7 @@ A controller that lists `view` also shows the game itself: the host runs the gam
 | Message | Direction | Fields (wire key: meaning) |
 | --- | --- | --- |
 | `view_start` | host → controller | `game`: module ID (`shape_race`, `arena`) · `sv`: the snapshot version the frames carry · `setup`: the module's setup JSON · `hz`: frames a second the host publishes · `round`, `rounds`: the round's number from 1 and how many the match runs, both left out when the host names no series (M16 item 1) |
-| `frame` | host → controller | `n`: step number: `-1` for the frame a host sends before the first step while the round is held (the "Get ready" beat), then from 0 · `at`: the host's clock in ms at that step · `s`: the module's snapshot JSON · `tl`: the round's clock in ms left, from the game's snapshot, left out when the game has no clock or from an older host (M16 item 1) · `snd`: sound names since the last sent frame, left out when empty · `acks`: player ID → the last input seq the host applied (only players with one) · `pl`: player ID → `[number, name]`, the name `""` when the player has none |
+| `frame` | host → controller | `n`: step number: `-1` for the frame a host sends before the first step while the round is held (the "Get ready" beat), then from 0 · `at`: the host's clock in ms at that step · `s`: the module's snapshot JSON · `tl`: the round's clock in ms left, from the game's snapshot, left out when the game has no clock or from an older host (M16 item 1) · `snd`: sound names since the last sent frame, left out when empty · `acks`: player ID → the last input seq the host applied (only players with one) · `pl`: player ID → `[number, name]`, the name `""` when the player has none · `chars`: player ID → `{c, a}`, each player's character, only to a viewer that listed `identity`, left out when there is none (M16, §8d) |
 | `view_end` | host → controller | `reason`: `finished` (the game ended), `quit` (someone left) or `abandoned` (the game stopped without ending: the host closed, the connection dropped, a new game started) · `result`: this phone's own result of the round, below, sent with `finished` (M14 design section 9) |
 | `host_away` | host → controller | `s`: whole seconds left before the round ends if the host stays away (0 or more) |
 | `host_back` | host → controller | no fields |
@@ -294,6 +322,8 @@ The host closes with 4003 if a controller sends one of these view messages.
 | `metrics_ack`, `rate_ask` | host → controller | controller listed `metrics` / `rating` |
 | `layout`, `status` | host → controller | controller listed `layout` / `status` |
 | `view_start`, `frame`, `view_end`, `host_away`, `host_back`, `player_away`, `player_back` | host → controller | controller listed `view` |
+| `players` (and a `frame`'s `chars`) | host → controller | controller listed `identity` |
+| `set_character` | controller → host | host listed `identity` |
 
 A host that receives a host-only message (or the reverse) closes with 4003; a controller ignores it.
 

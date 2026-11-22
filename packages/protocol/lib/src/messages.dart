@@ -4,6 +4,7 @@ part 'capabilities.dart';
 part 'character.dart';
 part 'game_controls.dart';
 part 'haptic.dart';
+part 'identity.dart';
 part 'input.dart';
 part 'metrics.dart';
 part 'stats_share.dart';
@@ -332,19 +333,6 @@ final class PlayerMessage extends Message {
     );
   }
 }
-
-/// Player colours as 0xAARRGGBB, used for the sprite on the TV and the badge
-/// on the phone. Players past the end reuse them in order.
-///
-/// The values are the look's (M13, design D6 and D12): bright enough for the
-/// toy palette, and dark ink reads at 4.5:1 on every one of them. Player 3 is
-/// `0xFFA66CFF`, lightened from the mock-ups' `0xFF9B5CFF`, which failed that
-/// rule. The look package reads this one list, so a player is the same colour
-/// on the host and on every phone.
-const playerColors = [0xFF2E9BF0, 0xFFFF8A1F, 0xFFA66CFF, 0xFF14C8A0, 0xFFFF5C8A, 0xFFF2C200];
-
-/// Player [number]'s colour, wrapping round once the palette runs out.
-int playerColor(int number) => playerColors[(number - 1) % playerColors.length];
 
 // Field helpers. They throw FormatException, which the codec turns into a
 // ProtocolFormatException.
