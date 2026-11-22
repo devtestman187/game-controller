@@ -81,3 +81,4 @@
 2026-11-21 18:33:28 committed f2: ae93fbe8 Wait for a wave review at a stop; poll the run's review
 2026-11-21 18:33:28 wave review skipped: wave 1 is the whole run, the run review covers it
 2026-11-21 18:33:29 DONE: every job is committed. Claude reads the Summary of docs/briefs/m16/process2/REVIEW.md, verifies its findings and writes one fix brief
+2026-11-21 18:44:24 final check: tools/check.sh 12/12 PASS (636 s, tip 64d9cc82)
