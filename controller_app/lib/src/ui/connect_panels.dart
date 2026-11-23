@@ -85,6 +85,7 @@ class _YourCharacter extends ConsumerWidget {
         ),
         const SizedBox(width: ToySizes.space8),
         Flexible(child: Text(PhoneText.yourCharacter(toy.spokenName), style: panelStyle(look))),
+        const SizedBox(width: ToySizes.space8),
         TextButton(
           key: const Key('changeCharacter'),
           onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const SettingsScreen())),
