@@ -2,8 +2,7 @@ import 'package:connection/connection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:party_host/party_host.dart'
-    show PhoneText, ToyBadge, ToyButton, ToyCharacter, ToyLook, ToyLookScope, ToySizes, toyAccessoryHeadroom;
+import 'package:party_host/party_host.dart' show PhoneText, ToyButton, ToyLook, ToyLookScope, ToySizes;
 
 import '../host/host_screen.dart';
 import '../host/host_start_sheet.dart';
@@ -11,6 +10,7 @@ import '../host/hosting.dart';
 import '../providers.dart';
 import 'labels.dart';
 import 'settings_screen.dart';
+import 'your_character.dart';
 
 /// A panel's icon, in shares of the look's title size: the 40 px link and
 /// warning icons the panel always drew.
@@ -47,51 +47,10 @@ class ConnectionPanel extends ConsumerWidget {
           children: [
             status,
             const SizedBox(height: ToySizes.space16),
-            const _YourCharacter(),
+            const YourCharacter(),
           ],
         ),
       ),
-    );
-  }
-}
-
-/// The character this phone joins as (M16 identity): the saved colour and
-/// accessory as the menus' badge, named in words, with the way to change it.
-/// The picker lives in Settings only, so the join screen links there.
-class _YourCharacter extends ConsumerWidget {
-  const _YourCharacter();
-
-  /// The badge's diameter in logical pixels: the size the menus draw a player
-  /// at, so the line reads as the TV's roster does.
-  static const _badgeDiameter = ToyBadge.defaultDiameter;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final look = ToyLookScope.of(context);
-    final character = ref.watch(profileProvider).character;
-    final toy = ToyCharacter.of(character, character.colourSlot);
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        // A badge's accessory reaches above its box, so the box keeps the room.
-        SizedBox(
-          width: _badgeDiameter + ToySizes.space4,
-          height: _badgeDiameter + toyAccessoryHeadroom(_badgeDiameter),
-          child: Align(
-            alignment: Alignment.bottomCenter,
-            // The join line names the character, and no player number exists until the TV pairs.
-            child: ToyBadge(number: character.colourSlot, character: toy, numbered: false),
-          ),
-        ),
-        const SizedBox(width: ToySizes.space8),
-        Flexible(child: Text(PhoneText.yourCharacter(toy.spokenName), style: panelStyle(look))),
-        const SizedBox(width: ToySizes.space8),
-        TextButton(
-          key: const Key('changeCharacter'),
-          onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const SettingsScreen())),
-          child: const Text(PhoneText.change),
-        ),
-      ],
     );
   }
 }
