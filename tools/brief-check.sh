@@ -277,12 +277,16 @@ check_changes() { # check_changes <job> <wave>: FAIL for a hit outside an earlie
   return 0
 }
 
+# The test-only WARN lives in its own file to keep this one under 300 lines.
+[ -f tools/brief-check-testonly.sh ] && . tools/brief-check-testonly.sh
+
 check_waves
 for i in "${!jobs[@]}"; do
   j=${jobs[$i]}
   check_allow_size "$j"
   check_new_files "$j"
   check_changes "$j" "${job_wave[$i]}"
+  declare -F testonly_warn > /dev/null && testonly_warn "$j" "$B/$j.md"
 done
 
 n=${#jobs[@]}
