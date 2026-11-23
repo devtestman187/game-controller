@@ -77,3 +77,6 @@ M16 identity1-clean run review: done (REVIEW.md written, verdict needs Claude's 
 - should stick_widgets.dart:199 doc: in f1.
 - could PadFill ==/hashCode test: f2. tilt_view padPlayerColour: leave (colour, not the pair). ct-report Summary: report-only, accepted. litPaint name: leave.
 - Open questions: turns-case fail-proof and the tools suite are covered by cproof and the full check.
+
+## Round 2 (f1, f2)
+Run review of round 2 not rerun (f1 refactor, f2 test-only; reports show mine/check green). Verdicts above stand; f1 closes the must (StickPainter 5 params). Fail-proofs: see DRIVER-NOTES.md.
