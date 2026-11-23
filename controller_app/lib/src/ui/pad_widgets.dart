@@ -188,7 +188,7 @@ class DpadView extends ConsumerWidget {
 
 /// The D-pad as one paper plus (M13 step 8, rule 4): the arms' union, so the
 /// centre has no seam, with one ink edge and one hard shadow under the whole
-/// shape; ink arrows on the arms, the lit arms filled in this phone's player
+/// shape; ink arrows on the arms, the lit arms filled in this phone's fill (its character's colour, else its player's)
 /// colour and pushed in, and the centre dot ink at [padFaintAlpha].
 class DpadPainter extends CustomPainter {
   const DpadPainter({required this.look, required this.dx, required this.dy, this.fill = const PadFill()});
@@ -230,7 +230,7 @@ class DpadPainter extends CustomPainter {
     return plus!;
   }
 
-  /// A lit arm's fill: the player's colour, moved by the squish and clipped to
+  /// A lit arm's fill: the pad fill's colour, moved by the squish and clipped to
   /// the plus, so a moved fill never shows outside the plus's edge.
   void _paintLitArms(Canvas canvas, Path plus, double s) {
     final litPaint = Paint()..color = fill.colour(look.colors);
@@ -331,7 +331,7 @@ class SmallButton extends ConsumerWidget {
 }
 
 /// A small button's pill (M13 step 8, rule 6): paper with an ink edge and the
-/// hard shadow, filled with this phone's player colour and pushed in while
+/// hard shadow, filled with this phone's fill colour and pushed in while
 /// it's pressed. The label is a [Text] above it, so a tap still finds it.
 class SmallButtonPainter extends CustomPainter {
   const SmallButtonPainter({required this.look, required this.pressed, this.fill = const PadFill()});

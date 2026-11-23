@@ -70,3 +70,10 @@ M16 identity1-clean run review: done (REVIEW.md written, verdict needs Claude's 
 ## Delete
 
 - none
+
+## Verdicts (Claude, round 1)
+- must stick_widgets.dart:201 7 params: real, fix job f1 (StickGeometry).
+- should pad_widgets.dart:191/233/334 docs: real, fixed by hand (comment-only).
+- should stick_widgets.dart:199 doc: in f1.
+- could PadFill ==/hashCode test: f2. tilt_view padPlayerColour: leave (colour, not the pair). ct-report Summary: report-only, accepted. litPaint name: leave.
+- Open questions: turns-case fail-proof and the tools suite are covered by cproof and the full check.
