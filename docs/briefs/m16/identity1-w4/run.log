@@ -59,3 +59,8 @@ RESULT: STOPPED: tests-first: packages/puzzle_game/test/match_split_identity_tes
 2026-11-23 02:54:01 committed w4e: 76d5f1c6 Move MatchView to match_view.dart; test split-board characters
 2026-11-23 02:54:03 committed w4h: 95d1cbad Fix frame characters shortcut to compare values
 2026-11-23 02:54:03 wave review skipped: wave 1 is the whole run, the run review covers it
+METRICS w4d worker=claude model=claude-haiku-5-5 turns=32 in=50 out=24909 cache=998336 min=7.5 result=4
+METRICS w4e worker=claude model=claude-haiku-5-5 turns=10 in=22 out=5200 cache=845071 min=0.5 result=4
+METRICS w4h worker=claude model=claude-haiku-5-5 turns=14 in=28 out=10360 cache=356121 min=2.2 result=0
+2026-11-23 02:54:08 DONE: every job is committed. Claude reads the Summary of docs/briefs/m16/identity1-w4/REVIEW.md, verifies its findings and writes one fix brief
+RESULT: DONE: 3 jobs, 26 min
