@@ -1,0 +1,14 @@
+job: M16 bugs3 wrap320 — connect screen join line wraps on a narrow phone
+stop: after it. connect_screen.dart:348 (the manual address row) is a DIFFERENT row: do not touch it, only measure and report its overflow at 320x640.
+read: docs/briefs/templates/COMMON.md · controller_app/lib/src/ui/connect_panels.dart:56-106 (_YourCharacter; the file is 374 lines, cap 380, so move it to a new file controller_app/lib/src/ui/your_character.dart as public YourCharacter before adding lines) · controller_app/test/connect_identity_gap_test.dart · controller_app/test/identity_change_link_test.dart · controller_app/test/join_badge_test.dart · controller_app/test/support/pump_app.dart · owner decision (Nov 23): "on a narrow phone the join line should WRAP. Rule: when the row cannot fit the identity text (at its smallest allowed size) plus the 8 px gap plus the Change button, Change moves onto its own line under the text, centred; wider phones keep one row."
+changes: _YourCharacter -> YourCharacter (moved to your_character.dart) · key changeCharacter (kept) · the wrap breakpoint
+turns: 60
+expected-min: 25
+do:
+1 Tests first: in controller_app/test/connect_identity_gap_test.dart restore a 320x640 case (menu look and TV look): no overflow exception, the key 'changeCharacter' button sits BELOW the text (button top >= text bottom), its centre x within 1 px of the text column's centre; at 852x393 and 393x852 it stays one row (same centre y within 2 px, gap >= 8). Also pump 360x640 and print which way it falls. Run it, see it fail, then fix lib.
+2 Move _YourCharacter to your_character.dart as public YourCharacter (no behaviour change), update the one use in connect_panels.dart, then in it use a LayoutBuilder: width of the badge slot + 8 + the text at its smallest allowed width (read the code: today the text is Flexible and only ellipsises, so use a sensible minimum from the look's type, state it) + 8 + the button's width; if that exceeds constraints.maxWidth build a Column(crossAxisAlignment center) with the badge and text row, then the TextButton centred under it. Else today's Row unchanged.
+3 Measure connect_screen.dart:348's overflow at 320x640 (temporary pump, do not commit it) and report the number only.
+4 Run the tests in allow and report measured positions.
+allow: controller_app/lib/src/ui/connect_panels.dart · controller_app/lib/src/ui/your_character.dart · controller_app/test/connect_identity_gap_test.dart · controller_app/test/identity_change_link_test.dart · controller_app/test/join_badge_test.dart · controller_app/test/lobby_alignment_test.dart · controller_app/test/identity_phone_test.dart · controller_app/test/phone_name_display_test.dart · controller_app/test/connect_screen_test.dart · docs/briefs/m16/bugs3/wrap320-report.md
+check: format analyze phone
+report: docs/briefs/m16/bugs3/wrap320-report.md

@@ -1,0 +1,1 @@
+- 22:55 briefs b037 b038 wrap320 b036 b041 written; brief-check ok (WARN b041 4 packages); waves.txt holds wave 1 only; wave 2 line to add later: 'b036 b041'. next: commit, start runner
