@@ -91,6 +91,16 @@ run
 if [ "$rc" = 0 ] && ! has "run-jobs.sh"; then r=0; else r=1; fi
 report "bash tools/run-jobs.sh is not in the allow list" "$r"
 
+rc=0
+PATH="$stubbin:$PATH" bash "$flash" --dry-run --check "format analyze" "task" > "$out" 2>&1 || rc=$?
+if [ "$rc" = 0 ] && has "check with tools/mine.sh only" && has "do not run tools/check.sh yourself" && has "tools/check.sh format analyze after you finish"; then r=0; else r=1; fi
+report "the worker is told to check with tools/mine.sh only, not the check: suites" "$r"
+
+rc=0
+r=0
+grep -q 'export MINE_TIMEOUT="${MINE_TIMEOUT:-300}"' "$flash" || r=1
+report "flash.sh gives the worker MINE_TIMEOUT 300 unless set" "$r"
+
 if [ "$fails" -gt 0 ]; then
   echo "RESULT: FAILED: $fails of $cases case(s) failed"
   exit 1
