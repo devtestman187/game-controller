@@ -48,3 +48,13 @@ HAND-FIX fpad: apply-job.sh applied 5 files: controller_app/lib/src/ui/pad_drawi
 2026-11-23 08:33:19 skip ft (already done)
 2026-11-23 08:33:19 skip fpad (already done)
 2026-11-23 08:33:19 wave review skipped: wave 1 is the whole run, the run review covers it
+2026-11-23 08:33:21 start the run's review
+METRICS fm1 worker=claude model=claude-haiku-5-5 turns=34 in=50 out=24443 cache=998805 min=3.2 result=0
+METRICS fm2 worker=claude model=claude-haiku-5-5 turns=21 in=28 out=14377 cache=405464 min=11.3 result=0
+METRICS fm3 worker=claude model=claude-haiku-5-5 turns=36 in=70 out=22159 cache=1525516 min=6.8 result=4
+METRICS fpad worker=claude model=claude-haiku-5-5 turns=51 in=100 out=32117 cache=2574459 min=6.4 result=4
+METRICS fq6 worker=claude model=claude-haiku-5-5 turns=44 in=48 out=31380 cache=1136282 min=3.7 result=4
+METRICS ft worker=claude model=claude-haiku-5-5 turns=40 in=32 out=11090 cache=555935 min=2.3 result=0
+METRICS run-review worker=claude model=claude-haiku-5-5 turns=48 in=60 out=49812 cache=1786016 min=3.9 result=0
+2026-11-23 08:37:51 DONE: every job is committed. Claude reads the Summary of docs/briefs/m16/identity1-fix/REVIEW.md, verifies its findings and writes one fix brief
+RESULT: DONE: 3 jobs, 5 min
