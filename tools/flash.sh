@@ -240,6 +240,8 @@ case "$wkind" in
   flash) model="${FLASH_MODEL:-deepseek-v4-flash}"; maxturns="${FLASH_MAX_TURNS:-150}"; iso=(--bare) ;;
   claude)
     model="${CLAUDE_WORKER_MODEL:-claude-haiku-5-5}"; maxturns="${CLAUDE_WORKER_MAX_TURNS:-35}"
+    # A brief line `turns: <n>` raises the worker's own cap too (the runner's RUN_TURN_CAP alone did not).
+    if [ -n "$brief" ]; then bt=$(field turns); case "$bt" in ''|*[!0-9]*) ;; *) [ "$bt" -gt "$maxturns" ] && maxturns=$bt ;; esac; fi
     iso=(--safe-mode --strict-mcp-config --disable-slash-commands --no-session-persistence)
     if [ "$web" = 1 ]; then echo "flash: --web is a DeepSeek-only job type (no claude worker)" >&2; exit 2; fi ;;
   *) echo "flash: FLASH_WORKER must be flash or claude, got $wkind" >&2; exit 2 ;;
