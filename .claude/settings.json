@@ -1,0 +1,4 @@
+{
+  "promptCacheTtl": "1h",
+  "subagentPromptCacheTtl": "1h"
+}

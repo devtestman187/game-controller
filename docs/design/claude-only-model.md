@@ -104,3 +104,22 @@ The Agent-tool path (Sonnet starts Haiku directly) stays a fallback, always in a
 1. Tools batch (on flash, as today): claude-worker.sh, worktree.sh, context-pack.sh, run-escalate.sh, job-metrics.sh, the brief-size rule, the 85k stop, fake-claude-worker.sh and runner tests.
 2. Rehearsal: one real wave of 2-3 jobs on Haiku; measure per job against flash (minutes, attempts, findings, tokens, weekly usage).
 3. Switch: update the digest, framework, agents and memory; flash stays as fallback for one milestone.
+
+## Prompt cache lifetime (Nov 23, 2026)
+`.claude/settings.json` sets `"promptCacheTtl": "1h"` and `"subagentPromptCacheTtl": "1h"` (Claude Code 2.1.242 or later; docs: https://code.claude.com/docs/en/prompt-caching).
+- **Why:**
+  - By default subagents (the Sonnet drivers, thumb-haiku, thumb-wait) keep a 5-minute cache, so a driver resuming after a 5–60 minute runner wait rewrites its whole context.
+  - Nov 23 logs: Sonnet subagent cache cost $20.23 in 460 calls (4.37M tokens written). Replaying the same calls with a 1-hour cache: $15.07 (1.29M written), about $5 a day or 2% of the weekly limit. Haiku subagents go from $0.18 to $0.24.
+  - 1-hour writes cost 2× input against 1.25× for 5-minute writes; reads cost 0.1× and restart the timer.
+  - `promptCacheTtl` keeps the main session on 1 hour once the plan limit is passed and usage credits are in use (Claude Code drops it to 5 minutes there by default).
+- **Scope:**
+  - Applies to sessions and `claude -p` runs started inside this worktree.
+  - A session started in another folder (for example `E:/AI`) reads that folder's settings instead; set the same keys in the user settings, or start the session here.
+  - An agent's `experimental.cacheTtl` frontmatter would be ignored on usage credits; these settings are not.
+- **Check:**
+  - Run `claude -p "hello" --output-format json` in the worktree. `usage.cache_creation.ephemeral_1h_input_tokens` should be non-zero.
+  - For subagents, look in the session's `subagents/*.jsonl` transcripts.
+- **Revert:**
+  - Delete the two keys, or the whole file if nothing else has been added; the defaults come back.
+  - Or force 5 minutes everywhere without editing the file: set the environment variable `FORCE_PROMPT_CACHING_5M=1`, which takes precedence over these settings.
+  - Revert it if a batch shows more cache writes than before, for example if drivers stop waiting (the Sonnet-cost plan) and most subagents run under 5 minutes.
