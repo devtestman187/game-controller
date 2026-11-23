@@ -78,6 +78,7 @@
 # `RESULT: DONE: <n> jobs, <m> min` or `RESULT: STOPPED: <cause>`, printed and in run.log.
 # FLASH_CMD (default tools/flash.sh) runs the preflight and every job, so a stand-in worker can
 # drive a run. NO_PUSH=1 in the environment commits without pushing.
+# WORKER=flash|claude picks the worker (claude: tools/claude-worker.sh; FLASH_CMD wins), logged as `worker: <name>`.
 # Its step, wave and review helpers live next to it in tools/run-steps.sh, tools/run-wave.sh and
 # tools/run-review.sh; tools/run-gate.sh, when present, is the brief gate. All are sourced after
 # the cd to the repo root below.
@@ -113,7 +114,7 @@ while [ $# -gt 0 ]; do
     --no-review) review=0; shift ;;
     --dry-run) dry=1; shift ;;
     --drop) drop=${2:?}; shift 2 ;;
-    -h|--help) sed -n '2,84p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h|--help) sed -n '2,85p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     -*) echo "Unknown option: $1 (try --help)" >&2; exit 2 ;;
     *) B=${1%/}; shift ;;
   esac
@@ -122,6 +123,13 @@ if [ -n "$drop" ] && [ -n "$B" ] && [ -d "$B" ]; then
   echo "$drop" >> "$B/dropped.txt"; echo "dropped $drop: $B/dropped.txt (commit it)"; exit 0
 fi
 [ -n "$B" ] && [ -f "$B/waves.txt" ] || { echo "Usage: tools/run-jobs.sh <briefs-dir> (it needs <briefs-dir>/waves.txt)" >&2; exit 2; }
+# The worker (header: WORKER), resolved before the first FLASH_CMD use; an explicit FLASH_CMD wins.
+WORKER=${WORKER:-flash}
+case $WORKER in
+  flash) ;;
+  claude) [ -n "${FLASH_CMD:-}" ] || FLASH_CMD=tools/claude-worker.sh ;;
+  *) echo "WORKER must be flash or claude, got $WORKER" >&2; exit 2 ;;
+esac
 LOGS=${LOGS:-$B}
 WORK=${RUN_WORK:-.dart_tool/run-jobs/${B//\//_}}
 mkdir -p "$WORK"
@@ -257,6 +265,7 @@ fi
 lock_take # after the dry run, which changes nothing: a second runner on this batch exits 2 here
 branch=$(git rev-parse --abbrev-ref HEAD)
 note "start at $(git rev-parse --short HEAD) on $branch"
+note "worker: $WORKER" # the line tools/job-metrics.sh reads for a batch's worker
 [ -f "$B/STOP" ] && { rm -f "$B/STOP"; note "removed the old stop file"; }
 clear_last_stop
 if [ ! -s "$WORK/run-base" ]; then # once, at the batch's first start; recovered from run.log on a fresh clone
@@ -360,6 +369,11 @@ done
 flush_reviews wait
 check_stop
 [ $review -eq 1 ] && ! committed "$B/REVIEW.md" && final_review
+# METRICS line per worker log (tools/job-metrics.sh); only before DONE; a failure changes nothing.
+if [ -f tools/job-metrics.sh ]; then
+  bash tools/job-metrics.sh "$B" --append > "$WORK/run-metrics.log" 2>&1 ||
+    note "WARN: tools/job-metrics.sh failed (see $WORK/run-metrics.log); the run's result is unchanged"
+fi
 note "DONE: every job is committed. Claude reads the Summary of $B/REVIEW.md, verifies its findings and writes one fix brief"
 result "DONE: $(printf '%s\n' "${WAVES[@]}" | wc -w) jobs, $(( ($(date +%s) - RUN_START_S) / 60 )) min"
 paths=("$B/run.log"); [ -f "$B/run-findings.md" ] && paths+=("$B/run-findings.md")

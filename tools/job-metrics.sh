@@ -94,7 +94,7 @@ read_log() { # read_log <log>: fills the cells from one worker log, `-` for what
         in_tokens=$3
         cache_tokens=$(($4 + $5))
         out_tokens=$6
-        minutes=$(awk -v s="$seconds" 'BEGIN { printf "%.1f", s / 60 }')
+        minutes=$(LC_ALL=C awk -v s="$seconds" 'BEGIN { printf "%.1f", s / 60 }')
       fi
       ;;
   esac

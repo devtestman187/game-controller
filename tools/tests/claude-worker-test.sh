@@ -84,7 +84,7 @@ if [ "$rc" = 0 ] && has "model: claude-haiku-9-9-test | max-turns: 7 |" \
 report "CLAUDE_WORKER_MODEL and CLAUDE_WORKER_MAX_TURNS set the model and the turn cap" "$r"
 
 rc=0
-PATH="$stub_path:$PATH" bash "$flash" --dry-run "task" > "$out" 2>&1 || rc=$?
+PATH="$stub_path:$PATH" env -u FLASH_MODEL -u FLASH_MAX_TURNS bash "$flash" --dry-run "task" > "$out" 2>&1 || rc=$?
 r=1
 if [ "$rc" = 0 ] && has "worker: flash | model: deepseek-v4-flash | max-turns: 150 |" && has "--bare" \
   && has "--max-turns 150"; then r=0; fi

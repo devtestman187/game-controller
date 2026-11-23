@@ -263,3 +263,8 @@ Minor items from `docs/briefs/m16/phonehost3/REVIEW.md` and `wave2-review-report
 - Runner: one stop kills the parallel jobs of its wave (i1d/i1f lost work twice); the computed backstop floors at 20 min for a single 15 min job (f1 timed out); a `turns:` line lowers the cap too.
 - Process4 review leftovers (tools): brief-check.sh's done.txt/dropped.txt skip and its missing-waves.txt path have no test case; apply-job.sh has no folder-allow or rename case, refuses a no-op apply with exit 1 and runs the dirty-target check in --dry; run-wave.sh parks a result-4 job whose outside files are all churn (apply_safe could take it); run-stop.sh classifies the park stop by matching "jobs that failed" with no test; process3-fix1-test.sh:157 bound equals its own timeout; run-wave-test.sh header says 45 s, brief says 20 s.
 - i1g wave 3 leftovers (identity1): i1g1-report.md self-check lines 1-5 and the wrong toyTvProvider claim; crown test in arena_phone_identity_test.dart:125 compares renders only; MatchView shares play_view.dart with PuzzlePlayView (move to match_view.dart); no split-board MatchPainter character test; score_bar_identity_test second test is a default guard; puzzle_screen_test.dart:177 Robo comment; mirror dots use player 2's colour.
+
+## process5 leftovers (Nov 22)
+- tools/job-metrics.sh: the last `worker:` line in run.log relabels every row (scope by timestamp); `--help` slices fixed header lines; no case for the terminal_reason branch or the `nousage` append line.
+- tools/fake-claude-worker.sh: `--max-turns` fallback duplicates flash.sh's 35; `-h` slices fixed header lines; no cases for the denial answer or the exit-2 input checks.
+- p5a/p5b reports: the check PASS and the FAIL-before evidence are suite-level only.

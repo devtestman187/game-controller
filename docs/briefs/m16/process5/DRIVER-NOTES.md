@@ -1,1 +1,2 @@
 - 19:10 p5a parked at 67 min (class: limit; worker 64 min + check); applied via apply-job --tree, committed 41fb991c, in done.txt. Restart for wave 2 (p5c p5d).
+- 21:08 p5c parked at limit (class: limit); hand-applied, trimmed run-jobs.sh to 380 (size gate), review verdicts in REVIEW.md, check tools PASS.

@@ -36,6 +36,9 @@ Read before writing briefs (Sonnet driver) and before any helper step (Haiku). E
 P1 A Haiku coder in an Agent worktree (`isolation: worktree`) starts from the frozen main repo, not the milestone branch: make `git worktree add <dir> refs/heads/<branch>` and tell it to work only there (identity1 i1g1: first try blocked after 11 calls, no briefs or tools/mine.sh in its tree).
 P2 A brief's `changes:` item must be a rare symbol: common words (`characters`, `forPlayer`, `PuzzlePainter`) gave 121 then 15 FAILs; use `ViewContext`, `_paintWorkers` (identity1 i1g1/i1g2 brief-check, Nov 22).
 P3 Before a restart, add every hand-committed job to done.txt with its sha, or the runner reruns it (identity1 i1g1: done.txt line added before the i1g2 run; run.log 16:04 "committed by hand" WARN still reran its proofs). And a wait-run STALLED on a running flash job is not a stall until the worker log has been still longer than the job's expected-min (i1g2: spurious at 20 min, log writes only at the end).
+P4 A tools job whose brief ends in `check: tools` spends 10-15 min of its limit in the suite (check.sh tools took 586-603 s here): a job with a new script, a test and that check needs `expected-min: 65`, or `check: <its own test>` (process5 p5a worker 64 min, parked at 67 inside its check; p5c parked at 67 in its closing phase).
+P5 A file the runner's size gate counts (run-jobs.sh, <= 380 lines; tools/tests/run-jobs-split-test.sh) is near its cap: tell the job in the brief or put the new code in a sourced file (process5 p5c: 391 lines, found only by the final check).
+P6 `--max-turns` counts model rounds, num_turns counts each tool call of a parallel batch: a job reports more turns than its cap without any bug (checked with DeepSeek flash Nov 22: cap 3 gave 11 turns, cap 2 sequential stopped at 3 with exit 1 error_max_turns); do not size caps or limits from num_turns alone.
 
 (P1-P3 of process4 promoted Nov 22: P1 → 19, P2 → 20, P3 → 2 and 9)
 

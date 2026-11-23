@@ -108,7 +108,7 @@ case "$mode" in
     denials+='{"command":"tools/check.sh --list"}}]'
     ;;
   max_turns)
-    subtype="error_max_turns" is_error=true num_turns=$((cap + 1))
+    subtype="error_max_turns" is_error=true num_turns=$((10#$cap + 1))
     result_text="Stopped at the maximum number of turns"
     terminal=',"terminal_reason":"max_turns"'
     code=1

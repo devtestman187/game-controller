@@ -31,3 +31,5 @@ RESULT: STOPPED: jobs that failed or passed their limit (parked, not committed):
 HAND-FIX p5c: apply-job.sh applied 2 files: tools/run-jobs.sh, tools/tests/run-worker-switch-test.sh
 2026-11-22 20:45:35 reviewed wave2: 4 finding(s)
 RESULT: STOPPED: jobs that failed or passed their limit (parked, not committed): p5c (their logs: docs/briefs/m16/process5/flash-<job>.log)
+2026-11-22 21:06:32 check.sh tools on the tip: PASS (620 s)
+2026-11-22 21:06:32 HAND-FIX p5c note: worker 67-min limit hit in its closing phase (no report); applied via apply-job --tree; runner trimmed to 380 lines; test 6/6
