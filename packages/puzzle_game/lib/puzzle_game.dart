@@ -14,6 +14,7 @@ export 'src/celebration.dart';
 export 'src/game.dart';
 export 'src/library.dart';
 export 'src/match.dart';
+export 'src/match_view.dart';
 export 'src/piece_colors.dart';
 export 'src/piece_moments.dart';
 export 'src/piece_size.dart';

@@ -174,7 +174,7 @@ void main() {
   testWidgets('the TV gives the round each player\'s chosen character, by number', (tester) async {
     // The host's players keep the choice their phone sent (M16 identity), so
     // the round's workers wear it; a player who chose nothing keeps its
-    // number's default, and Robo, who never chooses, its next free number's.
+    // number's default. The test checks players 1 and 2 only.
     const crown = PlayerCharacter(colourSlot: 4, accessory: PlayerAccessory.crown);
     final fake = await pumpHost(tester, screen: const StubHome());
     fake.state = withController(fake.state, phoneInfo('p2', 2, character: crown));
