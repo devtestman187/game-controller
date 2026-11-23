@@ -38,7 +38,7 @@ format_job_files() { # format_job_files <job>...: dart format on the .dart files
       a=${a%/}
       [ -n "$a" ] || continue
       if [ -d "$a" ]; then
-        while IFS= read -r f; do format_one "$j" "$f"; done < <(find "$a" -name '*.dart' -type f)
+        while IFS= read -r f; do format_one "$j" "$f"; done < <(git ls-files -m -o --exclude-standard -- "$a" | grep '\.dart$') # only files the wave changed
       elif [[ $a == *.dart && -f $a ]]; then
         format_one "$j" "$a"
       fi

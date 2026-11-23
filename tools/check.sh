@@ -155,7 +155,7 @@ while [ $# -gt 0 ]; do
       done
       exit 0
       ;;
-    -h | --help) sed -n '2,20p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h | --help) sed -n '2,27p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     -*)
       echo "Unknown option: $arg (try --help)" >&2
       exit 2
