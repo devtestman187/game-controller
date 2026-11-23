@@ -157,7 +157,12 @@ final class RoundView {
       for (final MapEntry(key: id, value: character) in known.entries)
         if (frame.roster.containsKey(id)) id: character,
     };
-    if (shown.length == frame.characters.length) return frame;
+    // Equal lengths are not enough: a roster player's entry may differ from the
+    // host's. [shown] holds every key of the frame's, so same length and same
+    // values for each of its keys means the frame already agrees.
+    final agrees =
+        shown.length == frame.characters.length && shown.entries.every((e) => frame.characters[e.key] == e.value);
+    if (agrees) return frame;
     return FrameMessage(
       n: frame.n,
       atMs: frame.atMs,
