@@ -102,3 +102,7 @@ RESULT: STOPPED: checks failed twice on the combined tree after w4f w4g
 2026-11-23 03:47:47 committed w4f: f2a2689c (none: no change made)
 2026-11-23 03:47:50 committed w4g: f3b59242 M16 w4g: test the chip's host answer, identity join, palette words
 2026-11-23 03:47:51 wave review skipped: wave 1 is the whole run, the run review covers it
+METRICS w4f worker=claude model=claude-haiku-5-5 turns=9 in=14 out=7239 cache=148797 min=0.6 result=0
+METRICS w4g worker=claude model=claude-haiku-5-5 turns=19 in=30 out=15181 cache=433753 min=5.5 result=4
+2026-11-23 03:47:58 DONE: every job is committed. Claude reads the Summary of docs/briefs/m16/identity1-w4/REVIEW.md, verifies its findings and writes one fix brief
+RESULT: DONE: 2 jobs, 8 min
