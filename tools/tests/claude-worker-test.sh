@@ -98,6 +98,22 @@ r=1
 if [ "$rc" = 2 ] && has "DeepSeek-only"; then r=0; fi
 report "--web under the claude worker is refused with exit 2 (a DeepSeek-only job type)" "$r"
 
+turns_brief="$tmp/turns-brief.md"
+printf 'job: turns case\nturns: 50\nreport: docs/turns-case.md\n' > "$turns_brief"
+rc=0
+PATH="$stub_path:$PATH" bash "$worker" --brief "$turns_brief" --dry-run > "$out" 2>&1 || rc=$?
+r=1
+if [ "$rc" = 0 ] && has "max-turns: 50"; then r=0; fi
+report "a brief's turns line raises the claude worker's --max-turns (50)" "$r"
+
+low_brief="$tmp/low-turns-brief.md"
+printf 'job: low turns case\nturns: 20\nreport: docs/low-turns-case.md\n' > "$low_brief"
+rc=0
+PATH="$stub_path:$PATH" bash "$worker" --brief "$low_brief" --dry-run > "$out" 2>&1 || rc=$?
+r=1
+if [ "$rc" = 0 ] && has "max-turns: 35"; then r=0; fi
+report "a brief's turns line below the default does not lower the claude worker's --max-turns (35)" "$r"
+
 args_ok="$tmp/args-ok.txt"
 run_preflight FAKE_CLAUDE_ARGS_FILE="$args_ok"
 r=1
