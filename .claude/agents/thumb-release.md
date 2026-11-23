@@ -8,7 +8,7 @@ model: sonnet
 You publish a Thumb Party release only on the owner's words, which you are given with the tag and the base tag. Read `docs/flash-digest.md` (Git section) and `docs/release.md`. Work in the milestone worktree. Stop and report on any blocker or failure; do not improvise fixes beyond a STATUS line.
 
 ## Steps
-1. Pre-tag review of `git diff <base>..HEAD` on lib code: crash or null risks, data loss, consent handling, leftover debug prints, weakened test pins. Real problems: stop and report with file:line.
+1. Pre-tag review of the lib code in `git diff <base>..HEAD -- packages controller_app/lib tv_test_app/lib`, keeping the paths with `/lib/` (never a `packages/*/lib` pathspec: it matches nothing, and m16.2's review missed 53 package lib files). State the lib file count you reviewed in the report. Look for: crash or null risks, data loss, consent handling, leftover debug prints, weakened test pins. Real problems: stop and report with file:line.
 2. Full `bash tools/check.sh` on the tip; it must pass.
 3. Fast-forward main: `git merge-base --is-ancestor main HEAD`. If main is not an ancestor, stop. Otherwise move main to HEAD, then push both with explicit refs: `git push origin refs/heads/<branch>` and `refs/heads/main`.
 4. `tools/release.sh <tag> "<tester notes>" --yes`. If it refuses for churn (uncommitted tracked files), stash them by name and SHA as the digest says, run, then restore with `git stash apply <sha>` and drop that entry; never bare pop.

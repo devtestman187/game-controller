@@ -26,6 +26,7 @@ Read before writing briefs (Sonnet driver) and before any helper step (Haiku). E
 11. After a stop, diagnose from Haiku's evidence pack (≤30 lines). Record the cause in DRIVER-NOTES with its class: a switch, b registration, c pinned test, d widget test, e layers, f new file, g wave sharing or dependence, limit, other.
 12. Hand-fix only with `tools/apply-job.sh`, never freehand; add every hand-committed job to done.txt with its sha before a restart, or the runner reruns it. A Haiku coder started through the Agent tool works in `git worktree add <dir> refs/heads/<branch>`, never `isolation: worktree` (it cuts from the frozen main repo). (identity1: i1d/i1f applies; i1g1 blocked first try)
 13. Stop a run with the STOP file, never by killing.
+26. One batch at a time per machine: two runners share the CPU, Flutter's lock and the pub cache, and their combined checks fail on each other. Serialise them, or set RUN_CHECK_SKIP for the one that does not need a suite. (identity1-w4 wave C: two failed combined checks while tools7 ran, about 30 min)
 25. Before accepting a job, grep its report for "not run" and "stopped": the runner accepts result 0 whatever the report says. (tools7 t1b, t1c second pass: both unrun, saved only by the combined check)
 
 ## Helper steps (Haiku)
