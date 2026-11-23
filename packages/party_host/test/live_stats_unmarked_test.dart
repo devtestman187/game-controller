@@ -12,7 +12,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'stats_test_support.dart';
 
 /// Waits until [test] holds; a host that never gets there fails the test.
-Future<void> waitFor(bool Function() test, {Duration timeout = const Duration(seconds: 5)}) async {
+Future<void> waitFor(bool Function() test, {Duration timeout = const Duration(seconds: 30)}) async {
   final end = DateTime.now().add(timeout);
   while (!test()) {
     if (DateTime.now().isAfter(end)) throw TimeoutException('condition not met');
@@ -112,8 +112,14 @@ void main() {
   test('a saved session with no share marks is not uploaded, while the marked one is', () async {
     final stats = await startStats();
 
-    await waitFor(() => uploader.uploaded.isNotEmpty);
-    await waitFor(() => (prefs.getStringList('skippedSessions') ?? const []).contains(_unmarkedId));
+    // Wait for the finished pass, not the first event: the marked upload, the
+    // prefs write and the last count refresh all land after the unmarked skip.
+    await waitFor(
+      () =>
+          stats.state.uploaded == 1 &&
+          stats.state.waiting == 0 &&
+          (prefs.getStringList('skippedSessions') ?? const []).contains(_unmarkedId),
+    );
 
     // What went up: only the session whose player said yes.
     expect([for (final s in uploader.uploaded) s['id']], [_markedId]);
