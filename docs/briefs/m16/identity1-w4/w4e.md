@@ -1,5 +1,6 @@
 job: M16 w4e wave 3 leftovers: MatchView in its own file, a split-board MatchPainter character test, the Robo comment
 pub: no
+tests-first: exempt the split-board test guards behaviour the old code already has (characters reach MatchPainter); the move is a refactor
 turns: 40
 expected-min: 25
 stop: after the three items. No behaviour change in the move.
