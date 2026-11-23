@@ -56,7 +56,7 @@ Future<Uint8List> painted(WidgetTester tester, ArenaSnapshot snapshot, {ToyLook?
   canvas
     ..save()
     ..translate(margin, margin);
-  ArenaPainter(snapshot, const {}, look: look ?? sunny, moments: ArenaMoments()).paint(canvas, mapBox);
+  ArenaPainter(snapshot, const ArenaCast({}), look: look ?? sunny, moments: ArenaMoments()).paint(canvas, mapBox);
   canvas.restore();
   final picture = recorder.endRecording();
   final image = (await tester.runAsync(() => picture.toImage(outer.width.toInt(), outer.height.toInt())))!;

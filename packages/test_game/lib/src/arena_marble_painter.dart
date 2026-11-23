@@ -59,19 +59,17 @@ const aimColourShare = 0.6;
 final class ArenaMarblePainter {
   ArenaMarblePainter({
     required this.snapshot,
-    required this.roster,
+    required this.cast,
     required this.look,
     required this.style,
     required this.moments,
-    this.characters = const {},
   });
 
   final ArenaSnapshot snapshot;
-  final ArenaRoster roster;
 
-  /// The character each player chose (M16 identity), beside [roster]: a player
-  /// missing here wears its number's default.
-  final ArenaCharacters characters;
+  /// Who the players are and the character each chose (M16 identity): a player
+  /// missing from the characters wears its number's default.
+  final ArenaCast cast;
 
   final ToyLook look;
   final ToyShapeStyle style;
@@ -91,7 +89,7 @@ final class ArenaMarblePainter {
     // The player's character in one place (design 5b), once a player a paint:
     // the one they chose, else their number's default, and for Robo its
     // number's colour and the antenna (party-night §7a).
-    final character = arenaCharacterFor(roster, player.id, characters: characters);
+    final character = arenaCharacterFor(cast.roster, player.id, characters: cast.characters);
     final colour = character.colourIn(look.colors);
     final centre = Offset(player.x * size.width, player.y * size.height);
     final radius = snapshot.playerRadius * size.shortestSide * arenaPlayerScale(look);

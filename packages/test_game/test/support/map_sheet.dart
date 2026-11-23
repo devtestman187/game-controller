@@ -52,7 +52,7 @@ Widget panel(ArenaMap map, ToyLook look, String lookName) {
               children: [
                 Positioned.fill(
                   child: CustomPaint(
-                    painter: ArenaPainter(mapSnapshot(map), const {}, look: look, moments: ArenaMoments()),
+                    painter: ArenaPainter(mapSnapshot(map), const ArenaCast({}), look: look, moments: ArenaMoments()),
                   ),
                 ),
                 Positioned.fill(child: CustomPaint(painter: MapMarksPainter(map, look))),

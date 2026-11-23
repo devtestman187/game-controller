@@ -89,7 +89,7 @@ void main() {
     expect(
       ArenaPainter(
         board.s,
-        board.roster,
+        board.cast,
         look: sunny,
         moments: board.moments,
         fillsBackground: board.fillsBackground,

@@ -32,7 +32,7 @@ const inkGap = 8;
 Future<Uint8List> painted(WidgetTester tester, ArenaSnapshot snapshot) async {
   final recorder = ui.PictureRecorder();
   final canvas = Canvas(recorder);
-  ArenaPainter(snapshot, const {}, look: sunny, moments: ArenaMoments()).paint(canvas, mapBox);
+  ArenaPainter(snapshot, const ArenaCast({}), look: sunny, moments: ArenaMoments()).paint(canvas, mapBox);
   final picture = recorder.endRecording();
   final image = (await tester.runAsync(() => picture.toImage(mapBox.width.toInt(), mapBox.height.toInt())))!;
   final data = (await tester.runAsync(() => image.toByteData()))!;

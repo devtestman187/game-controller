@@ -127,8 +127,7 @@ class _ArenaFieldState extends State<ArenaField> {
                 key: const Key('arena'),
                 painter: ArenaPainter(
                   s,
-                  widget.roster,
-                  characters: widget.characters,
+                  ArenaCast(widget.roster, characters: widget.characters),
                   look: look,
                   moments: _moments,
                   // The screen's sky shows behind the arena where a

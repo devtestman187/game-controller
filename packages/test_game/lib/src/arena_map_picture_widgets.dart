@@ -6,6 +6,7 @@ import 'arena_map.dart';
 import 'arena_mode.dart';
 import 'arena_moments.dart';
 import 'arena_painter.dart';
+import 'arena_roster.dart';
 import 'arena_snapshot.dart';
 
 /// A map as the waiting card shows it (M14 b2, design sections 7b and 8): the
@@ -37,12 +38,7 @@ class ArenaMapPicture extends StatelessWidget {
     return ClipRect(
       child: CustomPaint(
         key: const Key('arenaMapPicture'),
-        painter: ArenaPainter(
-          field,
-          const <String, ({int number, String name})>{},
-          look: ToyLookScope.of(context),
-          moments: ArenaMoments(),
-        ),
+        painter: ArenaPainter(field, const ArenaCast({}), look: ToyLookScope.of(context), moments: ArenaMoments()),
       ),
     );
   }

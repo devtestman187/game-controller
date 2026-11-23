@@ -71,7 +71,7 @@ Future<Uint8List> drawMarbles(WidgetTester tester, ArenaSnapshot frame, Size fie
   final recorder = ui.PictureRecorder();
   ArenaMarblePainter(
     snapshot: frame,
-    roster: roster,
+    cast: const ArenaCast(roster),
     look: sunny,
     style: arenaStyleOf(sunny),
     moments: ArenaMoments(),

@@ -16,6 +16,21 @@ typedef ArenaRoster = Map<String, ({int number, String name})>;
 /// (Robo, a local player) still has a character.
 typedef ArenaCharacters = Map<String, PlayerCharacter>;
 
+/// The players an arena draws, with what they chose: who each player is
+/// ([roster]) and the character each one picked ([characters]). The arena's
+/// painters take this one value rather than the two maps, so a painter's
+/// parameter list stays short; a player missing from [characters] wears its
+/// number's default.
+final class ArenaCast {
+  const ArenaCast(this.roster, {this.characters = const {}});
+
+  /// Who each player is, by player ID.
+  final ArenaRoster roster;
+
+  /// The character each player chose, by player ID.
+  final ArenaCharacters characters;
+}
+
 /// The roster of the host's live [players], in the form a frame carries.
 ArenaRoster arenaRosterOf(List<GamePlayer> players) => {
   for (final p in players) p.id: (number: p.number, name: p.nickname ?? ''),
