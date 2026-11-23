@@ -1,0 +1,9 @@
+2026-11-22 17:39:35 RUN_MAX_MIN=200 min (computed backstop of the jobs still to do)
+2026-11-22 17:39:35 start at 3259ef2c on m16
+2026-11-22 17:39:35 run-base 3259ef2c5390403888ed400432f947fec59ccf53
+2026-11-22 17:39:51 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-22 17:40:11 start p5a
+2026-11-22 17:40:37 start p5b
+2026-11-22 18:41:44 p5b finished: result 0 (100 turns, 51 min)
+2026-11-22 18:47:42 job p5a passed its limit (67 min, estimate 45) (parked, siblings continue)
+2026-11-22 19:03:59 committed p5b: d7a591ca tools/job-metrics.sh: one metrics row per job from a batch's worker logs
