@@ -55,7 +55,7 @@ void main() {
         // This phone joins as the teal crown, which is no player number's
         // default, so the chip can only wear the host's answer (M16 identity).
         // The profile is the ask; the host's answer comes back over its link.
-        await pumpHostApp(
+        final app = await pumpHostApp(
           tester,
           tablet: tv,
           screen: tv ? const Size(1180, 820) : const Size(852, 393),
@@ -63,6 +63,9 @@ void main() {
           extra: [if (tv) party.toyTvProvider.overrideWithValue(true)],
         );
         final host = await enterHostMode(tester);
+        // The profile changes once the phone has paired: the chip must still wear the host's answer (the teal
+        // crown), not the profile it now saves (the orange bow).
+        await tester.runAsync(() => app.prefs.setString(_characterKey, jsonEncode(orangeBow.toJson())));
 
         final own = ownClientOf(host).snapshot;
         expect(own.player, isNotNull, reason: 'the host named the own player');
@@ -110,6 +113,10 @@ party.HostViewState _stateWith(List<party.LocalAddress> addresses) {
 /// The character this phone saves, and so asks the host for (M16 identity):
 /// the teal crown, which no player number's default gives.
 const tealCrown = PlayerCharacter(colourSlot: 4, accessory: PlayerAccessory.crown);
+
+/// The character the phone's profile changes to once it has paired: not the
+/// teal crown, so a chip that shows the profile fails the badge check.
+const orangeBow = PlayerCharacter(colourSlot: 2, accessory: PlayerAccessory.bow);
 
 /// The saved settings key of the phone's character (`profile.dart`'s own, which
 /// is private): what this phone's next hello asks the host to give it.

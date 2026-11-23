@@ -154,8 +154,9 @@ void main() {
         // Player 1 is the phone one build older: it is a player all the same.
         expect(playersTo(first).single.players.map((r) => r.id), ['phone-9', 'phone-1']);
 
-        // A second phone joins: both identity phones hear the new list.
-        final second = newClient(t, id: 'phone-2', capabilities: viewOnly);
+        // A second phone joins: both identity phones hear the new list. It is a current build: the library adds
+        // identity to its hello, so it listens for the list too.
+        final second = newClient(t, id: 'phone-2');
         second.connect(addressOf(server, t), code: server.pairingCode);
         await clientUntil(second, (s) => s.status == ClientStatus.connected && s.players.isNotEmpty);
         await first.drain();
