@@ -2,7 +2,7 @@
 # Tests tools/selftest.sh's per-script limits against the rules in
 # docs/briefs/m16/process2/script-rules.md and the M16 process3 decision:
 # SELFTEST_TIMEOUTS holds basename=seconds pairs, comma separated (default
-# run-wire-test.sh=240), SELFTEST_TIMEOUT stays the limit for every other script,
+# run-wire-test.sh=240,run-wire2-test.sh=240), SELFTEST_TIMEOUT stays the limit for every other script,
 # and the TIMEOUT line names the limit that ran out.
 #
 #   bash tools/tests/selftest-limits-test.sh

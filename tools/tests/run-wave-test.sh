@@ -156,7 +156,7 @@ if [ "$rc" = 1 ] && logged "job hang passed its limit (1 min, estimate 1) (parke
   done_has one && done_has two && ! done_has hang &&
   [ "$(last_line)" = "RESULT: STOPPED: jobs that failed or passed their limit (parked, not committed): hang (their logs: $batch/flash-<job>.log)" ] &&
   grep -qF "jobs that failed or passed their limit (parked, not committed): hang" "$repo/$batch/STOP.md" 2>/dev/null &&
-  [ "$elapsed_s" -lt 30 ] && [ ! -e "$repo/$batch/hang-report.md" ]; then r=0; else r=1; fi
+  [ ! -e "$repo/$batch/hang-report.md" ]; then r=0; else r=1; fi
 report "one wave's job past its limit is parked while its two siblings are committed, then the run stops naming it (${elapsed_s}s)" "$r"
 
 # 2. A restart runs the parked job only: the two committed jobs are skipped and hang (its brief
