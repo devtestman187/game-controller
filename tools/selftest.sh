@@ -12,7 +12,7 @@
 # has finished, so the lines and the RESULT line match a run with -j 1.
 # SELFTEST_TIMEOUT: seconds allowed per script (default 120).
 # SELFTEST_TIMEOUTS: per-script limits as basename=seconds pairs, comma separated
-# (default run-wire-test.sh=240,run-wire2-test.sh=240: their runner cases are the
+# (default run-wire-test.sh=240,run-wire2-test.sh=240,check-cache-test.sh=420: their runner cases are the
 # slow ones). A script not named there gets SELFTEST_TIMEOUT.
 # SELFTEST_LOCK: lock file, from the repository root (default
 # .dart_tool/selftest.lock). A second copy on the same lock is refused; a stale
@@ -82,7 +82,7 @@ esac
 
 # The per-script limits: basename=seconds pairs, comma separated. A script the
 # list doesn't name runs under SELFTEST_TIMEOUT.
-timeouts="${SELFTEST_TIMEOUTS:-run-wire-test.sh=240,run-wire2-test.sh=240}"
+timeouts="${SELFTEST_TIMEOUTS:-run-wire-test.sh=240,run-wire2-test.sh=240,check-cache-test.sh=420}"
 IFS=',' read -ra limits <<< "$timeouts"
 for entry in "${limits[@]}"; do
   case "$entry" in
