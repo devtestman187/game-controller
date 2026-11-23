@@ -81,6 +81,11 @@ class HostServer {
   /// With [Capability.metrics] the server acknowledges each metrics batch.
   final List<String> capabilities;
 
+  /// Where the rows of a `players` message come from when a game host runs
+  /// (M16 identity): its players, local and away ones too. Null: the paired
+  /// sessions alone, as a host with no game has them.
+  List<PlayerRow> Function()? playerSource;
+
   /// The server's clock in ms, the one [ControllerInfo.inputAtMs] uses.
   int get nowMs => _now;
 

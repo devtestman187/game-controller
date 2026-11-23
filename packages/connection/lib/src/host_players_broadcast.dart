@@ -6,9 +6,13 @@ part of 'host_server.dart';
 /// Part of `host_server.dart`, so it reads the server's own sessions and the
 /// characters their controllers were given.
 extension HostPlayersBroadcast on HostServer {
+  /// The rows of a `players` message: the game's players when a game host runs
+  /// ([playerSource]), else the paired sessions.
+  List<PlayerRow> get playerRows => playerSource?.call() ?? _sessionRows;
+
   /// One row for each paired controller, by number: the ID and number a frame
   /// uses, the nickname it shows, and the character it wears.
-  List<PlayerRow> get playerRows {
+  List<PlayerRow> get _sessionRows {
     final rows = <PlayerRow>[];
     for (final s in _sessions) {
       final hello = s.hello;

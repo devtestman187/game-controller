@@ -31,6 +31,7 @@ class ServerGameHost implements GameHost {
       characters: () => _characters,
       onEnded: _checkPlayers,
     );
+    server.playerSource = _playerRows;
     _serverSub = server.changes.listen((_) => _checkPlayers());
     _messagesSub = server.messages.listen((m) {
       final message = m.message;
@@ -316,8 +317,21 @@ class ServerGameHost implements GameHost {
       _view.sendTo(p.id);
     }
     _lastPlayers = now;
+    server.broadcastPlayers();
     if (!_playersChanged.isClosed) _playersChanged.add(now);
   }
+
+  /// The rows of every `players` message (M16 identity): the game's players,
+  /// local and away ones too, so a phone knows every player the round knows.
+  List<PlayerRow> _playerRows() => [
+    for (final p in players)
+      (
+        id: p.id,
+        number: p.number,
+        name: p.nickname ?? '',
+        character: p.character ?? PlayerCharacter.forPlayer(p.number),
+      ),
+  ];
 
   @override
   void goOnWithout(String playerId) {
@@ -325,6 +339,7 @@ class ServerGameHost implements GameHost {
   }
 
   Future<void> dispose() async {
+    server.playerSource = null;
     for (final t in _statusTimers.values) {
       t.cancel();
     }
