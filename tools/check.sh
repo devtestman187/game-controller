@@ -55,7 +55,7 @@ checks=(
   "host|packages/party_host|flutter test|the host service, host screens, sound and stats"
   "phone|controller_app|flutter test|the phone app's widget tests"
   "tv|tv_test_app|flutter test|the TV app's widget tests"
-  "tools|.|bash tools/selftest.sh|shell tool self-tests (tools/tests/*-test.sh)"
+  "tools|.|bash tools/selftest.sh -j 4|shell tool self-tests (tools/tests/*-test.sh), four at once"
 )
 
 # Runs one check's command, with the toolchain hooks swapped in for the commands

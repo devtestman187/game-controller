@@ -63,7 +63,7 @@ tools/check.sh --verbose puzzle # also print the full output
 | `host` | `packages/party_host` | `flutter test` |
 | `phone` | `controller_app` | `flutter test` |
 | `tv` | `tv_test_app` | `flutter test` |
-| `tools` | repo root | `bash tools/selftest.sh` (the shell tools' own tests) |
+| `tools` | repo root | `bash tools/selftest.sh -j 4` (the shell tools' own tests, four at once) |
 
 Output, all passing:
 
