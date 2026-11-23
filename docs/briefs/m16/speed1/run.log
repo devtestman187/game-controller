@@ -79,3 +79,17 @@ RESULT: STOPPED: REVIEW TIMEOUT: the run's review passed RUN_REVIEW_MAX_MIN=10 m
 2026-11-23 12:47:09 skip sp3 (already done)
 2026-11-23 12:47:10 skip sp4 (already done)
 2026-11-23 12:47:10 skip sp6 (already done)
+2026-11-23 12:47:11 start the run's review
+METRICS run-review worker=claude model=claude-haiku-5-5 turns=62 in=46 out=62401 cache=1617718 min=4.8 wall=- result=0
+METRICS sp1 worker=claude model=claude-haiku-5-5 turns=21 in=34 out=55017 cache=1033456 min=5.9 wall=6.6 result=4
+METRICS sp2 worker=claude model=claude-haiku-5-5 turns=21 in=40 out=45068 cache=988784 min=4.5 wall=5.1 result=4
+METRICS sp3 worker=claude model=claude-haiku-5-5 turns=1 in=4 out=143 cache=116214 min=0.0 wall=17.5 result=4
+METRICS sp4 worker=claude model=claude-haiku-5-5 turns=47 in=66 out=79930 cache=3266471 min=7.8 wall=8.4 result=4
+METRICS sp5 worker=claude model=claude-haiku-5-5 turns=43 in=64 out=40049 cache=1523960 min=4.0 wall=4.6 result=4
+METRICS sp6 worker=claude model=claude-haiku-5-5 turns=14 in=20 out=16967 cache=282363 min=1.5 wall=2.2 result=4
+METRICS wave1-review worker=claude model=claude-haiku-5-5 turns=17 in=18 out=26648 cache=316718 min=2.0 wall=- result=0
+METRICS wave1-sp2-review worker=claude model=claude-haiku-5-5 turns=33 in=34 out=30884 cache=940902 min=3.2 wall=- result=0
+METRICS wave2-review worker=claude model=claude-haiku-5-5 turns=45 in=36 out=39209 cache=994385 min=4.5 wall=- result=0
+METRICS wave2-sp3-review worker=claude model=claude-haiku-5-5 turns=19 in=22 out=25492 cache=411234 min=2.1 wall=- result=0
+2026-11-23 12:52:35 DONE: every job is committed. Claude reads the Summary of docs/briefs/m16/speed1/REVIEW.md, verifies its findings and writes one fix brief
+RESULT: DONE: 6 jobs, 7 min
