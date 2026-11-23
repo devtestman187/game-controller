@@ -40,6 +40,10 @@ P4 A tools job whose brief ends in `check: tools` spends 10-15 min of its limit 
 P5 A file the runner's size gate counts (run-jobs.sh, <= 380 lines; tools/tests/run-jobs-split-test.sh) is near its cap: tell the job in the brief or put the new code in a sourced file (process5 p5c: 391 lines, found only by the final check).
 P6 `--max-turns` counts model rounds, num_turns counts each tool call of a parallel batch: a job reports more turns than its cap without any bug (checked with DeepSeek flash Nov 22: cap 3 gave 11 turns, cap 2 sequential stopped at 3 with exit 1 error_max_turns); do not size caps or limits from num_turns alone.
 
+P7 The combined check's `tools` suite (550 s) failed twice on run-wire-test.sh (8 cases) while the same script passes alone on the same tree: a batch whose jobs change no tools file can skip it, or the stop must name the failing case (rehearsal1 run.log 22:52-23:09; STOP.md said "none found").
+P8 `changes: none` is searched as a symbol (238 FAILs); a comment-only job names one rare symbol and puts the files that use it in allow: (rehearsal1 n2).
+P9 Haiku coders finish 3-6 file jobs in 9-34 turns and 1-11 min with 0 repairs when `read:` gives exact line ranges: size jobs by files and ranges, not by the flash 80-120 turn habit (rehearsal1 METRICS lines).
+
 (P1-P3 of process4 promoted Nov 22: P1 → 19, P2 → 20, P3 → 2 and 9)
 
 <!-- promoted:
