@@ -76,3 +76,6 @@ M16 identity1 w4 run reviewed (REVIEW.md, 10 findings, 1 must): w4a, w4b, w4c co
 ## Delete
 
 - none
+
+## Driver verdicts, wave A (Nov 23)
+Held for the single end-of-run fix round (f1), not fixed now: must 1 (paintToyBadge 7 params: fold character+numbered into one object; real), should 2 (decisions.md row + D10), should 3 (pixel check on the join badge), should 5 (run the named arena host suite: done at the final check), coulds 6, 7, 8, 10 (comments, report line). should 4 (tv_test_app generated files) is churn, never staged. could 9 (connect_panels 373 lines) to code-health. Open questions 6-8 accepted as suggested; 1, 2, 4, 5 go in f1 as suggested (owner may veto); 3 accepted (harness proved tests-first).
