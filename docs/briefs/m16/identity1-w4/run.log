@@ -18,3 +18,10 @@
 2026-11-23 01:49:51 committed w4b: b6066567 Refactor: pass the arena's roster and characters as one ArenaCast
 2026-11-23 01:49:53 committed w4c: 52ae31ce M16 w4c: join-screen badge shows no number or Player label
 2026-11-23 01:49:54 wave review skipped: wave 1 is the whole run, the run review covers it
+2026-11-23 01:49:55 start the run's review
+METRICS run-review worker=claude model=claude-haiku-5-5 turns=29 in=32 out=45260 cache=736078 min=3.4 result=0
+METRICS w4a worker=claude model=claude-haiku-5-5 turns=17 in=26 out=10113 cache=288658 min=2.1 result=0
+METRICS w4b worker=claude model=claude-haiku-5-5 turns=6 in=10 out=2852 cache=202421 min=0.2 result=4
+METRICS w4c worker=claude model=claude-haiku-5-5 turns=33 in=54 out=28126 cache=1185472 min=8.7 result=4
+2026-11-23 01:53:54 DONE: every job is committed. Claude reads the Summary of docs/briefs/m16/identity1-w4/REVIEW.md, verifies its findings and writes one fix brief
+RESULT: DONE: 3 jobs, 28 min
