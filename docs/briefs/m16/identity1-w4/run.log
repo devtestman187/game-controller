@@ -78,3 +78,15 @@ RESULT: DONE: 3 jobs, 26 min
 2026-11-23 03:14:18 checks failed; fetching packages and trying once more
 2026-11-23 03:21:50 STOPPED: checks failed twice on the combined tree after w4f w4g
 RESULT: STOPPED: checks failed twice on the combined tree after w4f w4g
+2026-11-23 03:22:59 RUN_MAX_MIN=75 min (computed backstop of the jobs still to do)
+2026-11-23 03:23:00 start at 859e1f8c on m16
+2026-11-23 03:23:00 worker: claude
+2026-11-23 03:23:00 removed the last stop's STOP.md
+2026-11-23 03:23:13 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-23 03:23:34 resume w4f (applied by hand, not committed yet)
+2026-11-23 03:23:35 resume w4g (applied by hand, not committed yet)
+2026-11-23 03:23:57 tests-first: packages/toy_look/test/palette_order_test.dart passes on the old code, exempt by its brief
+2026-11-23 03:23:59 combined check: the tools suite runs (a job changed a file under tools/)
+2026-11-23 03:31:10 checks failed; fetching packages and trying once more
+2026-11-23 03:38:26 STOPPED: checks failed twice on the combined tree after w4f w4g
+RESULT: STOPPED: checks failed twice on the combined tree after w4f w4g
