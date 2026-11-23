@@ -180,7 +180,7 @@ void main() {
     const pad = [Rect.fromLTWH(24, 250, 120, 120)];
     await tester.pumpWidget(draw(phones, phonesSnapshot, playerId: 'p1', padRects: pad));
     await tester.pump();
-    expect(padRectsOf(tester), pad);
+    expect(padRectsOf(tester), [const Rect.fromLTWH(24, 198, 120, 120)], reason: 'shifted up by the 52 px top bar');
     await tester.pumpWidget(draw(phones, phonesSnapshot, playerId: 'p1', padRects: pad, pxPerMm: 8.5));
     await tester.pump();
     expect(pxPerMmOf(tester), 8.5);

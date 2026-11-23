@@ -137,21 +137,39 @@ final class ShapeRaceViewer implements GameViewer {
       playerId: view.playerId,
       wholeMatch: view.wholeMatch,
     );
+    final onPhone = target == LayoutTarget.phones;
     return _LoadedPuzzle(
       puzzleId: puzzleId,
-      builder: (puzzle) => MatchView(
-        puzzle: puzzle,
-        snapshot: snapshot,
-        timeLimitS: timeLimitS,
-        target: target,
-        camera: camera,
-        padRects: view.padRects,
-        pxPerMm: view.pxPerMm,
-        characters: _charactersOf(view),
-      ),
+      builder: (puzzle) {
+        final match = MatchView(
+          puzzle: puzzle,
+          snapshot: snapshot,
+          timeLimitS: timeLimitS,
+          target: target,
+          camera: camera,
+          padRects: onPhone
+              ? [for (final r in view.padRects) r.shift(const Offset(0, -phoneBarClearPx))]
+              : view.padRects,
+          pxPerMm: view.pxPerMm,
+          characters: _charactersOf(view),
+        );
+        return onPhone
+            ? Padding(
+                padding: const EdgeInsets.only(top: phoneBarClearPx),
+                child: match,
+              )
+            : match;
+      },
     );
   }
 }
+
+/// The top this viewer leaves clear on a joined phone for the controller's top
+/// bar (controller_app `topBarHeightPx`: 4 + 48), which covers the match with
+/// the time and the rounds. Only a joined phone runs this viewer: the host phone
+/// draws PuzzleScreen, whose room already lies below its own bar, so this
+/// number is not used there.
+const phoneBarClearPx = 52.0;
 
 /// One load of the shared puzzle files, started by the first viewer to draw
 /// and shared by every viewer after it (Q1): a phone builds one viewer per
