@@ -9,6 +9,7 @@
 #   tools/check.sh --verbose ...   # also print every check's full output
 #   tools/check.sh --fail-fast ... # stop after a failed format or analyze
 #   tools/check.sh -j 4 ...        # the suites four at a time (format and analyze run first)
+#   tools/check.sh --no-cache ...  # every suite runs (the result cache is on by default; CHECK_CACHE=0 too)
 #
 # CHECK_ANALYZE_PKGS="packages/a controller_app" limits the analyze check to those folders
 # (tools/flash.sh sets it for a job from the job's own files; the runner runs the whole workspace).
@@ -112,12 +113,14 @@ run_check() {
     printf 'SKIPPED %s (%s)\n' "$name" "$skip_reason"
     return 0
   fi
+  if [ "$cache" = 1 ] && cache_lookup "$name"; then cached_line "$name"; return 0; fi
   log="$logs/$name.log"
   start=$(date +%s)
   (cd "$root/$dir" && run_cmd "$cmd") > "$log" 2>&1
   rc=$?
   secs=$(($(date +%s) - start))
   print_result "$name" "$rc" "$secs" "$log"
+  if [ "$cache" = 1 ] && [ $rc = 0 ]; then cache_record "$name" "$cache_key"; fi
   if [ $rc != 0 ] && [ $fail_fast = 1 ]; then
     case "$name" in
       format | analyze) skip_reason="$name failed" ;;
@@ -127,6 +130,7 @@ run_check() {
 
 verbose=0
 wanted=()
+cache=1; [ "${CHECK_CACHE:-1}" = 0 ] && cache=0 # 0 turns the result cache off (--no-cache too)
 jobs="${CHECK_JOBS:-1}" # the suites at once; 1 runs them serially
 while [ $# -gt 0 ]; do
   arg="$1"
@@ -134,6 +138,7 @@ while [ $# -gt 0 ]; do
   case "$arg" in
     -v | --verbose) verbose=1 ;;
     -f | --fail-fast) fail_fast=1 ;;
+    --no-cache) cache=0 ;;
     -j | --jobs)
       if [ $# = 0 ]; then
         echo "$arg needs the number of suites to run at once (try --help)" >&2
@@ -150,10 +155,7 @@ while [ $# -gt 0 ]; do
       done
       exit 0
       ;;
-    -h | --help)
-      sed -n '2,20p' "$0" | sed 's/^# \{0,1\}//'
-      exit 0
-      ;;
+    -h | --help) sed -n '2,20p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     -*)
       echo "Unknown option: $arg (try --help)" >&2
       exit 2
@@ -176,6 +178,8 @@ if [ "$jobs" -gt 1 ]; then
   fi
   . "$root/tools/check-par.sh"
 fi
+
+if [ "$cache" = 1 ] && [ -f "$root/tools/check-cache.sh" ]; then . "$root/tools/check-cache.sh"; else cache=0; fi
 
 # Every name asked for must exist.
 for w in ${wanted[@]+"${wanted[@]}"}; do
@@ -239,8 +243,8 @@ fi
 
 total=$(($(date +%s) - start_all))
 if [ ${#failed[@]} = 0 ]; then
-  echo "All checks passed (${total}s). Logs: $logs"
+  echo "All checks passed (${total}s, ${cached:-0} cached). Logs: $logs"
   exit 0
 fi
-echo "${#failed[@]} failed: ${failed[*]} (${total}s). Logs: $logs"
+echo "${#failed[@]} failed: ${failed[*]} (${total}s, ${cached:-0} cached). Logs: $logs"
 exit 1

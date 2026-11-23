@@ -12,6 +12,7 @@
 # so no real test runs. Prints PASS <case> / FAIL <case> and exits 1 if any case
 # failed.
 set -u
+export CHECK_CACHE=0 # these cases rerun the same stub tree with other outcomes: no result cache
 
 cd "$(dirname "$0")/../.." || exit 2
 check="$(pwd)/tools/check.sh"

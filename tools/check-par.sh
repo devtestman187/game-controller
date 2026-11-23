@@ -1,13 +1,14 @@
 # The parallel suites of tools/check.sh: sourced by check.sh when -j N or CHECK_JOBS=N is above 1, never
 # run on its own. It uses check.sh's variables and functions (deferred, jobs, logs, root, run_cmd,
-# skipped_by_env, skip_reason, print_result). Each suite runs in the background into its own log and
+# skipped_by_env, skip_reason, print_result, and the cache's cache, cache_lookup, cached_line, cache_record).
+# Each suite runs in the background into its own log and
 # writes a status file last; the lines print afterwards in check order, as the serial run prints them.
 # Bash 3.2 has no `wait -n`, so the running suites are polled for their status files.
 
 # run_parallel_suites: runs the deferred suites jobs at a time, then prints each one's line in check order.
 run_parallel_suites() {
   local i n name dir cmd about rc secs
-  local -a line_name skip_line active pid_of
+  local -a line_name skip_line active pid_of hit key_of
   n=${#deferred[@]}
   line_name=()
   skip_line=()
@@ -20,12 +21,15 @@ run_parallel_suites() {
       skip_line[i]="SKIPPED $name (CHECK_SKIP)"
     elif [ -n "$skip_reason" ]; then
       skip_line[i]="SKIPPED $name ($skip_reason)"
+    elif [ "$cache" = 1 ] && cache_lookup "$name"; then
+      hit[i]=1
     else
       while [ ${#active[@]} -ge "$jobs" ]; do
         sleep 0.2
         reap_finished
       done
       start_suite "$i" "$name" "$dir" "$cmd"
+      key_of[i]="${cache_key:-}"
     fi
   done
   while [ ${#active[@]} -gt 0 ]; do
@@ -33,11 +37,14 @@ run_parallel_suites() {
     reap_finished
   done
   for ((i = 0; i < n; i++)); do
-    if [ -n "${skip_line[i]:-}" ]; then
+    if [ "${hit[i]:-0}" = 1 ]; then
+      cached_line "${line_name[i]}"
+    elif [ -n "${skip_line[i]:-}" ]; then
       printf '%s\n' "${skip_line[i]}"
     else
       read -r rc secs < "$logs/${line_name[i]}.status"
       print_result "${line_name[i]}" "$rc" "$secs" "$logs/${line_name[i]}.log"
+      if [ "$cache" = 1 ] && [ "$rc" = 0 ]; then cache_record "${line_name[i]}" "${key_of[i]:-}"; fi
     fi
   done
 }

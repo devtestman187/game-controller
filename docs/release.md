@@ -94,7 +94,7 @@ Two Sentry projects, one per app: `thumbparty-phone` (the phone and tablet app) 
 1. Make sure `version:` in both `pubspec.yaml` files and `appVersion` in both `lib/src/app_info.dart` say the new version.
 2. Run the checks, then tag with release notes and push:
    ```bash
-   tools/check.sh
+   tools/check.sh --no-cache   # a release always runs every suite uncached (docs/dev-tools.md, result cache)
    tools/release.sh m10.3 "What changed, for testers"
    ```
    `release.sh` checks the tag, the notes' length, the version and that `main` is pushed, asks before tagging, then waits for every build and prints what happened (details in [dev-tools.md](dev-tools.md)). By hand it's `git tag -a m10.3 -m "What changed, for testers"` then `git push origin m10.3`. Every release needs notes, even "Minor update for testing."
