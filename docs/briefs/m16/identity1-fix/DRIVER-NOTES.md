@@ -7,3 +7,4 @@ NEXT (wave B, owner stop at the boundary): write briefs fq6, ft, fpad; waves.txt
 - Wrap: code-health.md: ToyBadgeFace accepted exception + Later items from MILESTONE-VERDICTS; STATUS.md resume line; full check.sh via Haiku.
 08:07 wave B briefs committed (fq6 ft fpad), runner starting
 08:32 WAVE B: ft committed by runner a3b94b90; fq6 and fpad parked result 4 (generated_plugin churn outside allow; fq6 44 turns>35, fpad 51>50); hand-fixed via apply-job (fpad test: Vec3 import added, unused import removed); mine ok. Next: run review (REVIEW.md), wrap.
+08:48 WAVE B DONE; wrap committed; full check green

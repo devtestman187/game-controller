@@ -58,3 +58,4 @@ METRICS ft worker=claude model=claude-haiku-5-5 turns=40 in=32 out=11090 cache=5
 METRICS run-review worker=claude model=claude-haiku-5-5 turns=48 in=60 out=49812 cache=1786016 min=3.9 result=0
 2026-11-23 08:37:51 DONE: every job is committed. Claude reads the Summary of docs/briefs/m16/identity1-fix/REVIEW.md, verifies its findings and writes one fix brief
 RESULT: DONE: 3 jobs, 5 min
+2026-11-23 08:49 check.sh full: All checks passed (593s), 13/13 suites incl. tools -j 4 (183s)

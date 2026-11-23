@@ -87,3 +87,9 @@ M16 identity1-fix run review: done (one fix batch: 0 must, 8 should, 6 could, se
 ## Delete
 
 - none
+
+## Verdicts (driver, Nov 23)
+- All 8 should and 6 could: verified plausible against the files; none blocks. The owner asked only for the wrap, so none became a fix job (limit would be 3 per job and they are test or tool debt): all recorded in docs/code-health.md "M16 identity1-fix leftovers". The ToyBadgeFace note (should 6) is now in code-health.md.
+- Working-tree churn (should 8): generated_plugin files are not staged; run.log is committed by the wrap.
+- Open questions 1-8: 1, 2, 3, 4, 5: accepted as the review suggests (item 1 noted in code-health). 6: not run; recorded. 7: flash.sh turns change is commit 0d0f2953 (the owner session), covered by a code-health item. 8: owner call.
+- Hand-fixes: fm3, fq6 (apply-job after result 4 from generated plugin churn), fpad (apply-job; Vec3 import added, unused import removed). fpad has no report (the worker ran out of turns at 51 of 50).
