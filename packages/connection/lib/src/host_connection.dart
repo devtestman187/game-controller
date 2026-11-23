@@ -50,6 +50,9 @@ abstract interface class HostSessionHost {
   /// The controllers that are paired right now, in any order.
   Set<String> get pairedControllerIds;
 
+  /// Whether a round runs (M16 identity): a phone that pairs again during one keeps the look it wore until it ends.
+  bool get roundRunning;
+
   /// The character [session]'s controller wears (M14 L7): [wanted], or the
   /// nearest free colour and accessory among the other paired controllers.
   PlayerCharacter reserveCharacter(HostConnection session, PlayerCharacter? wanted);

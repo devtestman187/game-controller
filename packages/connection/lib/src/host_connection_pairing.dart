@@ -70,7 +70,11 @@ extension HostConnectionPairing on HostConnection {
     paired = true;
     since = DateTime.now();
     player = number;
-    final picked = _host.reserveCharacter(this, hello.character);
+    // A phone that drops mid-round and pairs again keeps the look it wore; the look its hello asks for waits
+    // for the round's end, like a set_character (M16 identity).
+    final worn = _host.roundRunning ? book.known(hello.controllerId)?.character : null;
+    final picked = _host.reserveCharacter(this, worn ?? hello.character);
+    if (worn != null && hello.character != null && hello.character != worn) heldCharacter = hello.character;
     character = picked;
     final changed = book.remember(
       hello,

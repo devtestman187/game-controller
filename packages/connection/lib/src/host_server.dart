@@ -359,6 +359,8 @@ final class _SessionHost implements HostSessionHost {
 
   @override
   Set<String> get pairedControllerIds => _server._liveIds;
+  @override
+  bool get roundRunning => _server._roundRunning;
 
   @override
   PlayerCharacter reserveCharacter(HostConnection session, PlayerCharacter? wanted) =>
