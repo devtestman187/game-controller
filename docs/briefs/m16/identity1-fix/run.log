@@ -32,3 +32,5 @@ RESULT: STOPPED: checks failed on the combined tree after fm1 fm2: format cannot
 2026-11-23 08:19:00 combined check: the tools suite runs (a job changed a file under tools/)
 2026-11-23 08:29:19 committed ft: a3b94b90 tools: run the tools suite four scripts at once
 2026-11-23 08:29:19 wave review skipped: wave 1 is the whole run, the run review covers it
+2026-11-23 08:29:20 STOPPED: jobs that failed or passed their limit (parked, not committed): fq6 fpad (their logs: docs/briefs/m16/identity1-fix/flash-<job>.log)
+RESULT: STOPPED: jobs that failed or passed their limit (parked, not committed): fq6 fpad (their logs: docs/briefs/m16/identity1-fix/flash-<job>.log)
