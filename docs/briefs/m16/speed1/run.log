@@ -64,3 +64,4 @@ HAND-FIX sp3: apply-job.sh applied 5 files: docs/briefs/m16/speed1/sp3-report.md
 2026-11-23 12:32:24 skip sp4 (already done)
 2026-11-23 12:32:25 skip sp6 (already done)
 2026-11-23 12:32:25 wave 2 review: wave2-review-report.md does not cover sp3, so its review is wave2-sp3
+2026-11-23 12:34:59 reviewed wave2-sp3: 10 finding(s)
