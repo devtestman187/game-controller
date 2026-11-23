@@ -18,3 +18,20 @@
 RESULT: STOPPED: jobs that failed or passed their limit (parked, not committed): t1a (their logs: docs/briefs/m16/tools7/flash-<job>.log)
 HAND-FIX t1a: apply-job.sh applied 4 files: docs/briefs/m16/tools7/t1a-report.md, tools/tests/run-wire-lib.sh, tools/tests/run-wire-test.sh, tools/tests/run-wire2-test.sh
 HAND-FIX t1a: applied the kept worktree's 3 test files; end_runner releases the slow stub after the signal (INT case flaked once under load, passes 3 of 3 after)
+2026-11-23 02:15:35 RUN_MAX_MIN=113 min (computed backstop of the jobs still to do)
+2026-11-23 02:15:36 start at 39d03539 on m16
+2026-11-23 02:15:36 worker: claude
+2026-11-23 02:15:36 removed the last stop's STOP.md
+2026-11-23 02:15:48 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-23 02:16:09 start t1b
+2026-11-23 02:16:35 start t1c
+2026-11-23 02:19:47 t1b finished: result 0 (38 turns, 3 min)
+2026-11-23 02:19:47 WARN: job t1b used 38 turns, over its cap of 35 (its own checks passed; accepted)
+2026-11-23 02:19:47 t1c finished: result 0 (31 turns, 3 min)
+2026-11-23 02:20:09 tests-first ok: packages/connection/test/frame_characters_test.dart fails on the old code
+2026-11-23 02:20:16 tests-first ok: packages/connection/test/identity_rows_test.dart fails on the old code
+2026-11-23 02:20:18 combined check: the tools suite runs (a job changed a file under tools/)
+2026-11-23 02:39:29 committed t1b: c5f5c30a t1b: shorter run-gate, wait-run, worker-switch and process3 tests
+2026-11-23 02:39:29 finding: t1c's report has no Summary block in its first 40 lines
+2026-11-23 02:39:32 committed t1c: 2fc71a05 tools7 t1c: fixture repo built once; run-wave case 1 load-tolerant
+2026-11-23 02:39:32 wave review skipped: wave 1 is the whole run, the run review covers it
