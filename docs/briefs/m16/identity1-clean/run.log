@@ -43,3 +43,7 @@ RESULT: STOPPED: tests-first: controller_app/test/pad_fill_test.dart pass on the
 2026-11-23 10:19:23 committed f1: 21f7f1a2 m16 identity1-clean f1: StickPainter takes one StickGeometry
 2026-11-23 10:19:25 committed f2: 16c53ef5 m16 identity1-clean f2: PadFill equality and colour tests
 2026-11-23 10:19:25 wave review skipped: wave 1 is the whole run, the run review covers it
+METRICS f1 worker=claude model=claude-haiku-5-5 turns=27 in=32 out=11222 cache=417390 min=6.0 result=4
+METRICS f2 worker=claude model=claude-haiku-5-5 turns=18 in=28 out=10280 cache=336984 min=5.8 result=4
+2026-11-23 10:19:29 DONE: every job is committed. Claude reads the Summary of docs/briefs/m16/identity1-clean/REVIEW.md, verifies its findings and writes one fix brief
+RESULT: DONE: 2 jobs, 9 min
