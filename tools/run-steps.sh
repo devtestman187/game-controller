@@ -105,7 +105,7 @@ check_once() { # check_once: tools/check.sh with the runner's fail-fast on, watc
   # watched for the STOP file, RUN_MAX_MIN (check_stop) and RUN_CHECK_MAX_MIN; returns check.sh's own exit code.
   local pid start limit_s=${RUN_CHECK_MAX_MIN:-0} poll_s=${RUN_POLL_S:-1}
   [ "$limit_s" -gt 0 ] && limit_s=$((limit_s * RUN_LIMIT_UNIT_S))
-  CHECK_SKIP="${RUN_CHECK_SKIP:-}" CHECK_FAIL_FAST=1 tools/check.sh > "$WORK/run-check.log" 2>&1 &
+  CHECK_SKIP="${RUN_CHECK_SKIP:-}" CHECK_FAIL_FAST=1 tools/check.sh -j "${RUN_CHECK_JOBS:-4}" > "$WORK/run-check.log" 2>&1 &
   pid=$!
   start=$(date +%s)
   while kill -0 "$pid" 2> /dev/null; do
@@ -122,7 +122,7 @@ check_once() { # check_once: tools/check.sh with the runner's fail-fast on, watc
 }
 checks() {
   unchurn
-  declare -F check_scope > /dev/null && check_scope # tools/run-scope.sh
+  declare -F check_scope > /dev/null && check_scope "$@" # tools/run-scope.sh
   if ! check_once; then
     # A failed format or analyze check is the tree's own state: no retry can fix it.
     local bad

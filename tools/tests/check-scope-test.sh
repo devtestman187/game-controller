@@ -122,6 +122,7 @@ steps_repo() { # steps_repo <name>: a fresh repo with a committed tools/ folder;
   mkdir -p "$repo/tools"
   printf '#!/usr/bin/env bash\necho "${CHECK_SKIP-unset}" >> "$SKIP_LOG"\nexit 0\n' > "$repo/tools/check.sh"
   printf '#!/usr/bin/env bash\nexit 0\n' > "$repo/tools/review.sh"
+  printf '#!/usr/bin/env bash\necho\n' > "$repo/tools/affected.sh" # --not prints no suite: every suite is selected
   git -C "$repo" init -q
   git -C "$repo" add tools
   git -C "$repo" -c user.name=test -c user.email=test@example.invalid commit -qm base
