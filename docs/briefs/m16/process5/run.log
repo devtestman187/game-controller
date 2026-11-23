@@ -7,3 +7,6 @@
 2026-11-22 18:41:44 p5b finished: result 0 (100 turns, 51 min)
 2026-11-22 18:47:42 job p5a passed its limit (67 min, estimate 45) (parked, siblings continue)
 2026-11-22 19:03:59 committed p5b: d7a591ca tools/job-metrics.sh: one metrics row per job from a batch's worker logs
+2026-11-22 19:04:01 STOPPED: jobs that failed or passed their limit (parked, not committed): p5a (their logs: docs/briefs/m16/process5/flash-<job>.log)
+HAND-FIX p5a: apply-job.sh applied 4 files: docs/briefs/m16/process5/p5a-report.md, tools/claude-worker.sh, tools/fake-claude-worker.sh, tools/tests/claude-worker-test.sh
+2026-11-22 19:04:47 HAND-FIX p5a note: worker finished 72 turns, 64 min; the limit (67) parked it inside its own tools check; committed by hand 41fb991c; tools test 15 pass, review 0 fail

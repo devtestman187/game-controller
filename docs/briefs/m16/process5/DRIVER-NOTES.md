@@ -1,0 +1,1 @@
+- 19:10 p5a parked at 67 min (class: limit; worker 64 min + check); applied via apply-job --tree, committed 41fb991c, in done.txt. Restart for wave 2 (p5c p5d).
