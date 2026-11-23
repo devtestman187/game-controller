@@ -68,3 +68,14 @@ HAND-FIX sp3: apply-job.sh applied 5 files: docs/briefs/m16/speed1/sp3-report.md
 2026-11-23 12:35:00 start the run's review
 2026-11-23 12:45:04 STOPPED: REVIEW TIMEOUT: the run's review passed RUN_REVIEW_MAX_MIN=10 min and was killed
 RESULT: STOPPED: REVIEW TIMEOUT: the run's review passed RUN_REVIEW_MAX_MIN=10 min and was killed
+2026-11-23 12:45:19 RUN_MAX_MIN=20 min (computed backstop of the jobs still to do)
+2026-11-23 12:45:20 start at d9fd89ce on m16
+2026-11-23 12:45:20 worker: claude
+2026-11-23 12:45:20 removed the last stop's STOP.md
+2026-11-23 12:45:30 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-23 12:46:47 skip sp1 (already done)
+2026-11-23 12:46:48 skip sp2 (already done)
+2026-11-23 12:46:48 skip sp5 (already done)
+2026-11-23 12:47:09 skip sp3 (already done)
+2026-11-23 12:47:10 skip sp4 (already done)
+2026-11-23 12:47:10 skip sp6 (already done)
