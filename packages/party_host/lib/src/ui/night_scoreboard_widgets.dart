@@ -1,7 +1,7 @@
 part of 'night_scoreboard_screen.dart';
 
 /// The crown on the night's winner's badge, in frame px (DESIGN section 4,
-/// "final scores"): wide enough to read on the winner's 58 px badge and small
+/// "final scores"): wide enough to read on the winner's 48 px badge and small
 /// enough to sit on it.
 const nightWinnerCrownPx = 30.0;
 

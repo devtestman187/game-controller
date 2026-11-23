@@ -20,8 +20,14 @@ const scoreWinnerRowHeightPx = 68.0;
 /// The badge's diameter in a score row, in frame px (DESIGN section 4).
 const scoreRowBadgePx = 38.0;
 
-/// The winner's badge diameter, in frame px (DESIGN section 4: "58 px badge").
-const scoreWinnerBadgePx = 58.0;
+/// The winner's badge diameter, in frame px (DESIGN section 4: "48 px badge"):
+/// a step up from the 38 px badge, and small enough that its crown sits on the
+/// disc's rim inside the 68 px winner row.
+const scoreWinnerBadgePx = 48.0;
+
+/// How far the crown's bottom edge sits over the top of the badge's disc, in
+/// frame px: a few px, so the crown is seated on the rim and not floating above.
+const scoreCrownRimOverlapPx = 4.0;
 
 /// The name's column in a score row, in frame px (DESIGN sections 4 and 6): a
 /// longer name is ellipsised rather than shrunk.
@@ -38,6 +44,10 @@ const scoreTieSuffix = '=';
 
 /// The podium disc's diameter, in frame px: the rank's own column.
 const scoreRowMedalPx = scoreRowRankWidthPx;
+
+/// The rank's largest text inside a podium disc, as a share of the disc's
+/// diameter: the number sits inside the disc's outline, not over it (B-037).
+const scoreRankTextShare = 0.625;
 
 /// The silver of a podium's second place: the look's cool wall grey, which
 /// reads as metal on the card's paper with ink on it.
@@ -330,7 +340,19 @@ class ScoreRow extends StatelessWidget {
     if (mark == null) return badge;
     return SizedBox.square(
       dimension: size,
-      child: Stack(alignment: Alignment.topCenter, children: [badge, mark]),
+      child: Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.topCenter,
+        children: [
+          badge,
+          // The mark stands on the disc's top edge (its own height up), then
+          // drops back by the overlap so it sits on the rim.
+          Transform.translate(
+            offset: const Offset(0, scoreCrownRimOverlapPx),
+            child: FractionalTranslation(translation: const Offset(0, -1), child: mark),
+          ),
+        ],
+      ),
     );
   }
 

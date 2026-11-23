@@ -17,6 +17,8 @@ class _MedalDisc extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final look = ToyLookScope.of(context);
+    final rankPx = scoreRowMedalPx * scoreRankTextShare;
+    const rankLineHeight = 1.0;
     return SizedBox.square(
       dimension: scoreRowMedalPx,
       child: DecoratedBox(
@@ -29,7 +31,12 @@ class _MedalDisc extends StatelessWidget {
           child: Text(
             label,
             key: labelKey,
-            style: style.copyWith(color: look.colors.ink),
+            // Leading is trimmed (height 1) so the number's box is its size, and the size is capped to the disc.
+            style: style.copyWith(
+              color: look.colors.ink,
+              fontSize: math.min(style.fontSize ?? rankPx, rankPx),
+              height: rankLineHeight,
+            ),
             maxLines: 1,
           ),
         ),
