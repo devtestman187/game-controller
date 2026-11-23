@@ -51,3 +51,5 @@ Read before writing briefs (Sonnet driver) and before any helper step (Haiku). E
 - P3 Tools jobs ran 41-52 min against estimates of 30-35 (p4b 52, p4d 45, p4g 37 of 25): set expected-min 45 for a tools job with a new script plus test (process4 run.log 12:33, 13:24, 14:07). A change that moves a default (the backstop floor) names its pinned tests in allow (p4e: run-limits-wire-test).
 -->
 
+- P-bugs3-1 A brief's size cap must be checked against the existing floor tests: b037 said "cap the number at 0.55 of the disc", phone_fit_matrix_test pins 20 px text (17.6 < 20), so the combined check stopped the run (run.log 17:01:29). Grep the pinned limit (20 px, tests named "20 px text") before choosing a cap.
+- P-bugs3-2 Result 4 with only generated churn outside allow is not a failure: the runner drops it; read the STOP's failing-test list, not the result code.

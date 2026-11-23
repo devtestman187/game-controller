@@ -18,3 +18,4 @@
 2026-11-23 16:59:26 checks failed; fetching packages and trying once more
 2026-11-23 17:01:29 STOPPED: checks failed twice on the combined tree after b037 b038 wrap320
 RESULT: STOPPED: checks failed twice on the combined tree after b037 b038 wrap320
+2026-11-23 17:04:11 HAND-FIX b037: scoreRankTextShare 0.55 -> 0.625 (20 px floor, phone_fit_matrix_test) and its test limit; the three jobs' tree was committed by the driver after check.sh phone puzzle passed and the host failures passed on rerun (live_stats flake)

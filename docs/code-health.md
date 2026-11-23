@@ -304,3 +304,4 @@ Not built. bugs2 wave A with the 1-hour cache showed no large Sonnet cache write
 - To check first: whether a runner started by a subagent survives the subagent's exit (if not, the main session starts it); a main-session wait over an hour rewrites its context once, so compact at milestone boundaries; Haiku prompts stay under 100K (36 Haiku calls on Nov 23 passed it, 5x price).
 - If built: revisit the 1-hour subagent cache (claude-only-model.md "Prompt cache lifetime"), since short-lived subagents would then pay 2x writes for nothing.
 
+- (bugs3 wrap320, Nov 23) controller_app/lib/src/ui/connect_screen.dart:348 the manual address row overflows at 320x640: 39 px menu, 109 px TV; the app bar at :102 overflows 45 px in the TV look. Not the join line; needs its own layout decision (wrap the Connect button under the field).
