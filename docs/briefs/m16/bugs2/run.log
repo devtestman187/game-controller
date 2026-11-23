@@ -40,3 +40,10 @@ RESULT: STOPPED: the base does not compile: FAIL  format      (exit 1, 6s)  log:
 2026-11-23 15:41:30 committed b039: e110d713 Lay out the phone lobby list as one left-aligned column
 2026-11-23 15:41:32 committed flk1: 2964c410 Make the unmarked-session test wait for the finished pass
 2026-11-23 15:41:32 wave review skipped: wave 1 is the whole run, the run review covers it
+2026-11-23 15:41:34 start the run's review
+METRICS b035 worker=claude model=claude-haiku-5-5 turns=25 in=40 out=14219 cache=529137 min=5.4 wall=- result=4
+METRICS b039 worker=claude model=claude-haiku-5-5 turns=11 in=22 out=8636 cache=251863 min=3.5 wall=- result=4
+METRICS flk1 worker=claude model=claude-haiku-5-5 turns=13 in=18 out=4982 cache=187931 min=3.6 wall=- result=4
+METRICS run-review worker=claude model=claude-haiku-5-5 turns=23 in=24 out=26212 cache=439706 min=2.1 wall=- result=0
+2026-11-23 15:44:16 DONE: every job is committed. Claude reads the Summary of docs/briefs/m16/bugs2/REVIEW.md, verifies its findings and writes one fix brief
+RESULT: DONE: 3 jobs, 7 min
