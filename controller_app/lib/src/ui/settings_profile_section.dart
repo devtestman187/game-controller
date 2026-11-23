@@ -292,7 +292,7 @@ class _PreviewFigure extends StatelessWidget {
           height: diameter + toyAccessoryHeadroom(diameter),
           child: Align(
             alignment: Alignment.bottomCenter,
-            child: ToyBadge(number: number, diameter: diameter, character: toy),
+            child: ToyBadge(number: number, diameter: diameter, character: toy, numbered: false),
           ),
         ),
         const SizedBox(height: ToySizes.space4),

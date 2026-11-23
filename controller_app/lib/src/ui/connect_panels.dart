@@ -79,7 +79,8 @@ class _YourCharacter extends ConsumerWidget {
           height: _badgeDiameter + toyAccessoryHeadroom(_badgeDiameter),
           child: Align(
             alignment: Alignment.bottomCenter,
-            child: ToyBadge(number: character.colourSlot, character: toy),
+            // The join line names the character, and no player number exists until the TV pairs.
+            child: ToyBadge(number: character.colourSlot, character: toy, numbered: false),
           ),
         ),
         const SizedBox(width: ToySizes.space8),

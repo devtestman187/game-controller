@@ -120,7 +120,7 @@ void main() {
     });
   });
 
-  group('in the app', () {
+  group('in the app, and what the hello says', () {
     testWidgets('a tap beside B arrives as a near miss on B in the next batch', (tester) async {
       // The adult said yes to usage stats on this phone (design
       // sentry-consent.md): nothing is recorded before an answer.
@@ -295,26 +295,29 @@ void main() {
       expect(a.prefs.getBool('statsConsent'), isFalse, reason: 'the switch is this phone\'s stats answer');
     });
 
-    test('the hello lists metrics and rating, the device kind and the screen size', () async {
-      SharedPreferences.setMockInitialValues({});
-      final prefs = await SharedPreferences.getInstance();
-      final identity = loadIdentity(prefs, isTablet: true, screenMm: const Size(160, 250));
-      final hello = identity.toHello();
-      expect(hello.capabilities, [
-        Capability.metrics,
-        Capability.rating,
-        Capability.layout,
-        Capability.status,
-        Capability.view,
-        // The client library adds the capability it implements itself (M16
-        // identity), after the app's own list.
-        Capability.identity,
-      ]);
-      expect(hello.device!.kind, DeviceInfo.tablet);
-      expect((hello.device!.widthMm, hello.device!.heightMm), (250, 160));
-      final detailed = withDeviceDetails(identity, model: 'Google Pixel Tablet', os: 'Android 15', haptics: false);
-      expect(detailed.device!.model, 'Google Pixel Tablet');
-      expect(detailed.device!.widthMm, 250);
-    });
+    test(
+      'the hello lists six capabilities, metrics and rating among them, the device kind and the screen size',
+      () async {
+        SharedPreferences.setMockInitialValues({});
+        final prefs = await SharedPreferences.getInstance();
+        final identity = loadIdentity(prefs, isTablet: true, screenMm: const Size(160, 250));
+        final hello = identity.toHello();
+        expect(hello.capabilities, [
+          Capability.metrics,
+          Capability.rating,
+          Capability.layout,
+          Capability.status,
+          Capability.view,
+          // The client library adds the capability it implements itself (M16
+          // identity), after the app's own list.
+          Capability.identity,
+        ]);
+        expect(hello.device!.kind, DeviceInfo.tablet);
+        expect((hello.device!.widthMm, hello.device!.heightMm), (250, 160));
+        final detailed = withDeviceDetails(identity, model: 'Google Pixel Tablet', os: 'Android 15', haptics: false);
+        expect(detailed.device!.model, 'Google Pixel Tablet');
+        expect(detailed.device!.widthMm, 250);
+      },
+    );
   });
 }
