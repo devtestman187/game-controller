@@ -8,11 +8,14 @@
 #   tools/check.sh --list          # list the checks
 #   tools/check.sh --verbose ...   # also print every check's full output
 #   tools/check.sh --fail-fast ... # stop after a failed format or analyze
+#   tools/check.sh -j 4 ...        # the suites four at a time (format and analyze run first)
 #
 # CHECK_ANALYZE_PKGS="packages/a controller_app" limits the analyze check to those folders
 # (tools/flash.sh sets it for a job from the job's own files; the runner runs the whole workspace).
 # CHECK_FAIL_FAST=1 (the same as --fail-fast): when format or analyze fails, every check
 # after it is printed as SKIPPED and none of them runs; off by default.
+# -j N (or -jN, --jobs N, CHECK_JOBS=N): the suites run N at a time, in tools/check-par.sh; format and
+# analyze still run first, serially. The lines print in check order after the run; 1 (the default) is serial.
 # CHECK_SKIP="tools" (names separated by a space or a comma): each named check prints
 # "SKIPPED <name> (CHECK_SKIP)" and does not run; it is not a failure. The runner sets it
 # to skip the tools suite when no job changed a file under tools/. An unknown name is bad input.
@@ -68,12 +71,78 @@ run_cmd() { # <the check's command>
   esac
 }
 
+# selected <name>: 0 when the check was asked for, or when no check name was given.
+selected() {
+  local w
+  [ ${#wanted[@]} = 0 ] && return 0
+  for w in "${wanted[@]}"; do [ "$w" = "$1" ] && return 0; done
+  return 1
+}
+
+# skipped_by_env <name>: 0 when CHECK_SKIP names the check.
+skipped_by_env() {
+  case " $skip_list " in
+    *" $1 "*) return 0 ;;
+  esac
+  return 1
+}
+
+# print_result <name> <rc> <secs> <log>: the check's PASS or FAIL line, the lines that matter from a
+# failed log, and the whole log with -v. A failure is added to failed. Shared by the serial and parallel runs.
+print_result() {
+  local name="$1" rc="$2" secs="$3" log="$4" count detail=""
+  # "+262: All tests passed!" → 262 tests. Progress lines use \r, so split on it.
+  count="$(tr '\r' '\n' < "$log" | grep -oE '\+[0-9]+(: All tests passed| -[0-9]+: Some tests failed)' | tail -1 | grep -oE '^\+[0-9]+' | tr -d '+')"
+  [ -n "$count" ] && detail="$count tests, "
+  if [ $rc = 0 ]; then
+    printf 'PASS  %-11s (%s%ss)\n' "$name" "$detail" "$secs"
+  else
+    failed+=("$name")
+    [ -n "$count" ] && detail="$count passed, "
+    printf 'FAIL  %-11s (%sexit %s, %ss)  log: %s\n' "$name" "$detail" "$rc" "$secs" "$log"
+    tr '\r' '\n' < "$log" | grep -E "$interesting" | grep -vE '^\s+(dart:|package:)' | awk '!seen[$0]++' | head -40 | sed 's/^/      /'
+  fi
+  if [ $verbose = 1 ]; then sed 's/^/      | /' "$log"; fi
+}
+
+# run_check <name> <folder> <command>: runs one check in turn, or prints SKIPPED after a failed format or analyze.
+run_check() {
+  local name="$1" dir="$2" cmd="$3" log start rc secs
+  if [ -n "$skip_reason" ]; then
+    printf 'SKIPPED %s (%s)\n' "$name" "$skip_reason"
+    return 0
+  fi
+  log="$logs/$name.log"
+  start=$(date +%s)
+  (cd "$root/$dir" && run_cmd "$cmd") > "$log" 2>&1
+  rc=$?
+  secs=$(($(date +%s) - start))
+  print_result "$name" "$rc" "$secs" "$log"
+  if [ $rc != 0 ] && [ $fail_fast = 1 ]; then
+    case "$name" in
+      format | analyze) skip_reason="$name failed" ;;
+    esac
+  fi
+}
+
 verbose=0
 wanted=()
-for arg in "$@"; do
+jobs="${CHECK_JOBS:-1}" # the suites at once; 1 runs them serially
+while [ $# -gt 0 ]; do
+  arg="$1"
+  shift
   case "$arg" in
     -v | --verbose) verbose=1 ;;
     -f | --fail-fast) fail_fast=1 ;;
+    -j | --jobs)
+      if [ $# = 0 ]; then
+        echo "$arg needs the number of suites to run at once (try --help)" >&2
+        exit 2
+      fi
+      jobs="$1"
+      shift
+      ;;
+    -j*) jobs="${arg#-j}" ;;
     -l | --list)
       for c in "${checks[@]}"; do
         IFS='|' read -r name dir cmd about <<< "$c"
@@ -92,6 +161,21 @@ for arg in "$@"; do
     *) wanted+=("$arg") ;;
   esac
 done
+
+# The job count: a whole number of at least 1 (from -j, or CHECK_JOBS when no -j is given).
+case "$jobs" in
+  '' | *[!0-9]* | 0)
+    echo "The job count must be a whole number of at least 1, got '$jobs' (-j or CHECK_JOBS)" >&2
+    exit 2
+    ;;
+esac
+if [ "$jobs" -gt 1 ]; then
+  if [ ! -f "$root/tools/check-par.sh" ]; then
+    echo "tools/check-par.sh is missing (it runs the suites for -j $jobs)" >&2
+    exit 2
+  fi
+  . "$root/tools/check-par.sh"
+fi
 
 # Every name asked for must exist.
 for w in ${wanted[@]+"${wanted[@]}"}; do
@@ -134,48 +218,24 @@ interesting='\[E\]|Expected:|Actual:|Which:|Error:|error -|warning -|info -|Chan
 
 failed=()
 skip_reason=""
+deferred=() # the suites that check-par.sh runs at once after format and analyze (-j above 1)
 start_all=$(date +%s)
 for c in "${checks[@]}"; do
   IFS='|' read -r name dir cmd about <<< "$c"
-  if [ ${#wanted[@]} -gt 0 ]; then
-    skip=1
-    for w in "${wanted[@]}"; do [ "$w" = "$name" ] && skip=0; done
-    [ $skip = 1 ] && continue
-  fi
-  case " $skip_list " in
-    *" $name "*)
-      printf 'SKIPPED %s (CHECK_SKIP)\n' "$name"
-      continue
-      ;;
-  esac
-  if [ -n "$skip_reason" ]; then
-    printf 'SKIPPED %s (%s)\n' "$name" "$skip_reason"
+  selected "$name" || continue
+  if [ "$jobs" -gt 1 ] && [ "$name" != format ] && [ "$name" != analyze ]; then
+    deferred+=("$c")
     continue
   fi
-  log="$logs/$name.log"
-  start=$(date +%s)
-  (cd "$root/$dir" && run_cmd "$cmd") > "$log" 2>&1
-  rc=$?
-  secs=$(($(date +%s) - start))
-  # "+262: All tests passed!" → 262 tests. Progress lines use \r, so split on it.
-  count="$(tr '\r' '\n' < "$log" | grep -oE '\+[0-9]+(: All tests passed| -[0-9]+: Some tests failed)' | tail -1 | grep -oE '^\+[0-9]+' | tr -d '+')"
-  detail=""
-  [ -n "$count" ] && detail="$count tests, "
-  if [ $rc = 0 ]; then
-    printf 'PASS  %-11s (%s%ss)\n' "$name" "$detail" "$secs"
-  else
-    failed+=("$name")
-    [ -n "$count" ] && detail="$count passed, "
-    printf 'FAIL  %-11s (%sexit %s, %ss)  log: %s\n' "$name" "$detail" "$rc" "$secs" "$log"
-    tr '\r' '\n' < "$log" | grep -E "$interesting" | grep -vE '^\s+(dart:|package:)' | awk '!seen[$0]++' | head -40 | sed 's/^/      /'
+  if skipped_by_env "$name"; then
+    printf 'SKIPPED %s (CHECK_SKIP)\n' "$name"
+    continue
   fi
-  if [ $rc != 0 ] && [ $fail_fast = 1 ]; then
-    case "$name" in
-      format | analyze) skip_reason="$name failed" ;;
-    esac
-  fi
-  [ $verbose = 1 ] && sed 's/^/      | /' "$log"
+  run_check "$name" "$dir" "$cmd"
 done
+if [ "$jobs" -gt 1 ]; then
+  run_parallel_suites
+fi
 
 total=$(($(date +%s) - start_all))
 if [ ${#failed[@]} = 0 ]; then
