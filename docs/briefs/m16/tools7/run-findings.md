@@ -1,1 +1,2 @@
 - t1c's report has no Summary block in its first 40 lines
+- tests-first: packages/toy_look/test/palette_order_test.dart passes on the old code, so it does not prove new behaviour
