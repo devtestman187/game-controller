@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Tests tools/job-metrics.sh, the batch's table of what each worker log cost: one row per
-# flash-*.log with its job, worker, model, turns, in / out / cache tokens, minutes and result;
+# flash-*.log with its job, worker, model, turns, in / out / cache tokens, minutes, wall and result;
 # the worker is claude when the model starts with claude-, else flash, and a date-prefixed
 # `worker: <name>` line in run.log wins; cache is read + write summed; minutes are seconds / 60
 # to one decimal; a log with no usage line prints `-` and `no result`; the JSON log the
@@ -59,19 +59,19 @@ printf '%s\n' \
   "---- flash: worker exit 0, model deepseek-v4-flash, log $tmp/gone-too.json" > "$batch/flash-nousage.log"
 : > "$batch/flash-empty.log"
 
-# 1. The header names the nine columns and every flash-*.log gets one row.
+# 1. The header names the ten columns and every flash-*.log gets one row.
 tool "$batch"
-if [ "$rc" = 0 ] && row 'JOB WORKER MODEL TURNS IN OUT CACHE MINUTES RESULT' && [ "$(rows)" = 4 ]; then
+if [ "$rc" = 0 ] && row 'JOB WORKER MODEL TURNS IN OUT CACHE MINUTES WALL RESULT' && [ "$(rows)" = 4 ]; then
   r=0
 else
   r=1
 fi
-report "the table's header names the nine columns and one row per flash-*.log" "$r"
+report "the table's header names the ten columns and one row per flash-*.log" "$r"
 
-# 2. A claude-model log: worker claude, its model, its numbers, 1234 s as 20.6 min, its result
-#    code with the JSON log's subtype (50000 + 7000 = 57000 cache tokens).
+# 2. A claude-model log: worker claude, its model, its numbers, 1234 s as 20.6 min, no run.log so
+#    no WALL (`-`), its result code with the JSON log's subtype (50000 + 7000 = 57000 cache tokens).
 tool "$batch"
-if [ "$rc" = 0 ] && row 'cli claude claude-haiku-5-5 40 1200 3400 57000 20.6 0 (subtype=success)'; then
+if [ "$rc" = 0 ] && row 'cli claude claude-haiku-5-5 40 1200 3400 57000 20.6 - 0 (subtype=success)'; then
   r=0
 else
   r=1
@@ -80,7 +80,7 @@ report "a claude-model log's row names the claude worker, its usage and the resu
 
 # 3. A deepseek log: worker flash, cache read + write summed (9000 + 1000 = 10000), 1386 s as
 #    23.1 min, and the gone JSON log adds nothing to the result.
-if [ "$rc" = 0 ] && row 'deep flash deepseek-v4-flash 161 5000 20000 10000 23.1 4'; then
+if [ "$rc" = 0 ] && row 'deep flash deepseek-v4-flash 161 5000 20000 10000 23.1 - 4'; then
   r=0
 else
   r=1
@@ -88,7 +88,7 @@ fi
 report "a deepseek log's row names the flash worker and sums cache read + write" "$r"
 
 # 4. A log that never reached the worker's answer: every number is `-` and there is no result.
-if [ "$rc" = 0 ] && row 'nousage flash deepseek-v4-flash - - - - - no result'; then
+if [ "$rc" = 0 ] && row 'nousage flash deepseek-v4-flash - - - - - - no result'; then
   r=0
 else
   r=1
@@ -96,7 +96,7 @@ fi
 report "a log with no usage line prints - for its numbers and no result" "$r"
 
 # 5. An empty log: model too, and the model-less worker falls back to flash.
-if [ "$rc" = 0 ] && row 'empty flash - - - - - - no result'; then
+if [ "$rc" = 0 ] && row 'empty flash - - - - - - - no result'; then
   r=0
 else
   r=1
@@ -109,8 +109,8 @@ cp -r "$batch" "$tmp/withworker"
 printf '%s\n' '2026-11-22 16:39:40 start at 37e32bdc on m16' '2026-11-22 16:39:41 worker: claude' \
   > "$tmp/withworker/run.log"
 tool "$tmp/withworker"
-if [ "$rc" = 0 ] && row 'deep claude deepseek-v4-flash 161 5000 20000 10000 23.1 4' &&
-  row 'cli claude claude-haiku-5-5 40 1200 3400 57000 20.6 0 (subtype=success)'; then
+if [ "$rc" = 0 ] && row 'deep claude deepseek-v4-flash 161 5000 20000 10000 23.1 - 4' &&
+  row 'cli claude claude-haiku-5-5 40 1200 3400 57000 20.6 - 0 (subtype=success)'; then
   r=0
 else
   r=1
@@ -123,9 +123,9 @@ cp -r "$batch" "$tmp/append"
 printf '%s\n' '2026-11-22 16:39:40 start at 37e32bdc on m16' > "$tmp/append/run.log"
 tool "$tmp/append" --append
 if [ "$rc" = 0 ] && [ "$(mlines "$tmp/append/run.log")" = 4 ] &&
-  grep -qxF 'METRICS cli worker=claude model=claude-haiku-5-5 turns=40 in=1200 out=3400 cache=57000 min=20.6 result=0' "$tmp/append/run.log" &&
-  grep -qxF 'METRICS deep worker=flash model=deepseek-v4-flash turns=161 in=5000 out=20000 cache=10000 min=23.1 result=4' "$tmp/append/run.log" &&
-  grep -qxF 'METRICS empty worker=flash model=- turns=- in=- out=- cache=- min=- result=-' "$tmp/append/run.log" &&
+  grep -qxF 'METRICS cli worker=claude model=claude-haiku-5-5 turns=40 in=1200 out=3400 cache=57000 min=20.6 wall=- result=0' "$tmp/append/run.log" &&
+  grep -qxF 'METRICS deep worker=flash model=deepseek-v4-flash turns=161 in=5000 out=20000 cache=10000 min=23.1 wall=- result=4' "$tmp/append/run.log" &&
+  grep -qxF 'METRICS empty worker=flash model=- turns=- in=- out=- cache=- min=- wall=- result=-' "$tmp/append/run.log" &&
   grep -qxF '2026-11-22 16:39:40 start at 37e32bdc on m16' "$tmp/append/run.log" &&
   grep -qF 'appended 4 METRICS line(s)' "$out"; then
   r=0

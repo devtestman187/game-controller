@@ -17,6 +17,10 @@
 #   TURNS    the usage line's turns
 #   IN       input tokens; OUT output tokens; CACHE cache read + cache write as one sum
 #   MINUTES  the usage line's seconds / 60, one decimal
+#   WALL     the job's start-to-finish minutes, one decimal: from its last `start <job>` or
+#            `resume <job>` line in the batch's run.log to the `<job> finished: result` line after
+#            it; `-` for a review log and when run.log has no such pair (no run.log, no start line,
+#            or no finish line after the start, as for a run started again after its finish)
 #   RESULT   the `---- flash: result` code, `no result` when the log has none; when the JSON
 #            result log the worker-exit line names is still there, its subtype and
 #            terminal_reason follow in brackets
@@ -24,9 +28,10 @@
 # far as the worker answering.
 #
 # --append also adds one line per job to <batch dir>/run.log:
-#   METRICS <job> worker=<w> model=<m> turns=<t> in=<i> out=<o> cache=<c> min=<n> result=<r>
-# with a `-` where the log has no value (result=- where it has no result). A job that already
-# has a METRICS line in run.log is skipped, so a second --append changes nothing.
+#   METRICS <job> worker=<w> model=<m> turns=<t> in=<i> out=<o> cache=<c> min=<n> wall=<n> result=<r>
+# with a `-` where the log has no value (result=- where it has no result; wall=- as the WALL
+# column). A job that already has a METRICS line in run.log is skipped, so a second --append
+# changes nothing.
 #
 # Exit codes: 0 done (also when nothing was appended); 2 bad use, or no flash-*.log in the
 # folder. The table and the append's count line go to stdout.
@@ -41,7 +46,7 @@ dir=""
 append=0
 for arg in "$@"; do
   case "$arg" in
-    -h | --help) sed -n '2,32p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h | --help) sed -n '2,37p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     --append) append=1 ;;
     -*) bad_use "unknown option $arg" ;;
     *)
@@ -68,8 +73,40 @@ if [ -f "$run_log" ]; then
     END { if (found != "") print found }' "$run_log")
 fi
 
+# A job's WALL cell: the minutes from its last `start <job>` or `resume <job>` line in run.log to
+# the `<job> finished: result` line after it, one decimal, or `-` when there is no such pair. A
+# start after the finish cancels the finish. The job name matches exactly. Dates become day
+# counts (from 1970, only differences matter), so a run that passes midnight comes out right.
+wall_minutes() { # wall_minutes <job>: prints the minutes, or `-`
+  LC_ALL=C awk -v job="$1" '
+    function days_from(y, m, d,   era, yoe, doy, doe) {
+      if (m <= 2) y--
+      era = int(y / 400)
+      yoe = y - era * 400
+      doy = int((153 * ((m + 9) % 12) + 2) / 5) + d - 1
+      doe = yoe * 365 + int(yoe / 4) - int(yoe / 100) + doy
+      return era * 146097 + doe
+    }
+    $1 ~ /^[0-9]+-[0-9]+-[0-9]+$/ && $2 ~ /^[0-9]+:[0-9]+:[0-9]+$/ {
+      split($1, day, "-")
+      split($2, clock, ":")
+      when = days_from(day[1] + 0, day[2] + 0, day[3] + 0) * 86400 + clock[1] * 3600 + clock[2] * 60 + clock[3]
+      if (($3 == "start" || $3 == "resume") && $4 == job) {
+        start = when
+        started = 1
+        finish = ""
+      } else if ($3 == job && $4 == "finished:" && started) {
+        finish = when
+      }
+    }
+    END {
+      if (started && finish != "") printf "%.1f\n", (finish - start) / 60
+      else print "-"
+    }' "$run_log"
+}
+
 # The cells of the log read_log took; reset before each log, `-` where the log has no value.
-job="" worker="" model="" turns="" in_tokens="" out_tokens="" cache_tokens="" minutes=""
+job="" worker="" model="" turns="" in_tokens="" out_tokens="" cache_tokens="" minutes="" wall=""
 result="" result_cell=""
 
 read_log() { # read_log <log>: fills the cells from one worker log, `-` for what it lacks
@@ -79,6 +116,8 @@ read_log() { # read_log <log>: fills the cells from one worker log, `-` for what
   job=${job%.log}
   model=- turns=- in_tokens=- out_tokens=- cache_tokens=- minutes=-
   result=- result_cell="no result"
+  wall=-
+  if [ -f "$run_log" ] && [ "${job%-review}" = "$job" ]; then wall=$(wall_minutes "$job"); fi
   line=$(sed -n 's/^---- flash usage: \{0,1\}//p' "$f" | tail -n 1)
   case "$line" in
     '' | 'not available'*) ;; # the worker never answered: no usage line to read
@@ -120,7 +159,7 @@ read_log() { # read_log <log>: fills the cells from one worker log, `-` for what
   return 0
 }
 
-widths=(0 0 0 0 0 0 0 0 0 0)
+widths=(0 0 0 0 0 0 0 0 0 0 0)
 widen() { # widen <cell>...: each column's width grows to hold its cell
   local i=1 v
   for v in "$@"; do
@@ -129,18 +168,19 @@ widen() { # widen <cell>...: each column's width grows to hold its cell
   done
 }
 
-row_line() { # row_line <job> <worker> <model> <turns> <in> <out> <cache> <minutes> <result>
-  printf '%-*s %-*s %-*s %*s %*s %*s %*s %*s %s\n' \
+row_line() { # row_line <job> <worker> <model> <turns> <in> <out> <cache> <minutes> <wall> <result>
+  printf '%-*s %-*s %-*s %*s %*s %*s %*s %*s %*s %s\n' \
     "${widths[1]}" "$1" "${widths[2]}" "$2" "${widths[3]}" "$3" "${widths[4]}" "$4" \
-    "${widths[5]}" "$5" "${widths[6]}" "$6" "${widths[7]}" "$7" "${widths[8]}" "$8" "$9"
+    "${widths[5]}" "$5" "${widths[6]}" "$6" "${widths[7]}" "$7" "${widths[8]}" "$8" \
+    "${widths[9]}" "$9" "${10}"
 }
 
 print_table() { # print_table: the header, then one line per log in the order the logs came
-  local j w m t i o c n r
-  widen JOB WORKER MODEL TURNS IN OUT CACHE MINUTES RESULT
-  row_line JOB WORKER MODEL TURNS IN OUT CACHE MINUTES RESULT
-  while IFS=$'\t' read -r j w m t i o c n r; do
-    row_line "$j" "$w" "$m" "$t" "$i" "$o" "$c" "$n" "$r"
+  local j w m t i o c n wl r
+  widen JOB WORKER MODEL TURNS IN OUT CACHE MINUTES WALL RESULT
+  row_line JOB WORKER MODEL TURNS IN OUT CACHE MINUTES WALL RESULT
+  while IFS=$'\t' read -r j w m t i o c n wl r; do
+    row_line "$j" "$w" "$m" "$t" "$i" "$o" "$c" "$n" "$wl" "$r"
   done < <(printf '%s\n' "${rows[@]}")
 }
 
@@ -152,11 +192,11 @@ metrics=()
 for f in "${logs[@]}"; do
   read_log "$f"
   rows+=("$(printf '%s\t' "$job" "$worker" "$model" "$turns" "$in_tokens" "$out_tokens" \
-    "$cache_tokens" "$minutes")$result_cell")
-  widen "$job" "$worker" "$model" "$turns" "$in_tokens" "$out_tokens" "$cache_tokens" "$minutes"
+    "$cache_tokens" "$minutes" "$wall")$result_cell")
+  widen "$job" "$worker" "$model" "$turns" "$in_tokens" "$out_tokens" "$cache_tokens" "$minutes" "$wall"
   if [ "$append" = 1 ] && ! grep -qF -- "METRICS $job " "$run_log" 2> /dev/null; then
     metrics_line="METRICS $job worker=$worker model=$model turns=$turns in=$in_tokens"
-    metrics+=("$metrics_line out=$out_tokens cache=$cache_tokens min=$minutes result=$result")
+    metrics+=("$metrics_line out=$out_tokens cache=$cache_tokens min=$minutes wall=$wall result=$result")
   fi
 done
 
