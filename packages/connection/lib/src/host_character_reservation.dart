@@ -45,6 +45,8 @@ extension HostCharacterReservation on HostServer {
       final character = s.character;
       if (s != session && s.paired && character != null) taken.add(character);
     }
+    // A dropped player's pick stays taken for the reserve minute, as its number does.
+    taken.addAll(_pairings.recentCharacters(except: session.hello?.controllerId ?? '', live: _liveIds));
     final number = session.player ?? 1;
     return (wanted ?? PlayerCharacter.forPlayer(number)).nearestFreeIn(taken);
   }

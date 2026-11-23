@@ -39,6 +39,7 @@ class HostServer {
     this.capabilities = const [],
     LogSink? log,
     Random? random,
+    DateTime Function()? clock,
   }) : _log = log ?? noLog,
        _listeners = List.unmodifiable(listeners),
        _pairings = PairingBook(
@@ -46,6 +47,7 @@ class HostServer {
          maxSavedPairings: maxSavedPairings,
          maxWrongCodes: maxWrongCodes,
          pairings: pairings,
+         now: clock ?? DateTime.now,
        );
 
   final String hostId;

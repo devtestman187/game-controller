@@ -68,7 +68,10 @@ extension HostPlayersBroadcast on HostServer {
     final number = session.player;
     if (number == null) return false;
     final before = session.character;
-    session.character = _reserveCharacter(session, wanted);
+    final picked = _reserveCharacter(session, wanted);
+    session.character = picked;
+    final id = session.hello?.controllerId;
+    if (id != null) _pairings.noteCharacter(id, picked);
     _log('${session.who} now wears ${session.character?.id}');
     session.send(PlayerMessage(number: number, character: session.character));
     if (session.character == before) return false;

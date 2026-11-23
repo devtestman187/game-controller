@@ -121,3 +121,6 @@ RESULT: DONE: 2 jobs, 8 min
 2026-11-23 04:12:24 checks failed; fetching packages and trying once more
 2026-11-23 04:19:19 STOPPED: checks failed twice on the combined tree after w4f2
 RESULT: STOPPED: checks failed twice on the combined tree after w4f2
+HAND-FIX f1: apply-job.sh applied 7 files: controller_app/test/join_badge_test.dart, docs/briefs/m16/identity1-w4/f1-report.md, docs/decisions.md, docs/design/look-and-sound.md, packages/toy_look/lib/src/toy_badge.dart, packages/toy_look/test/toy_badge_test.dart, packages/toy_look/test/toy_badge_unnumbered_test.dart
+HAND-FIX w4f2: identity_host_test.dart change step asks a free character (phone-2's colour is reserved the minute after it left); runner combined check failed on it twice
+check.sh full on tip: All checks passed (1051 s, incl tools 613 s)

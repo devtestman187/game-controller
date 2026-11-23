@@ -23,7 +23,7 @@ void main() {
   test('a badge is the player\'s colour, inked round the edge, with its shadow down and to the right', () async {
     final pixels = await paintedPixels(
       const Size(200, 200),
-      (canvas) => paintToyBadge(canvas, _centre, _diameter, 2, _sunny),
+      (canvas) => paintToyBadge(canvas, _centre, _diameter, _sunny, const ToyBadgeFace(number: 2)),
     );
     // Inside the disc and above the number, player 2's orange (255, 138, 31).
     expect(pixels.at(100, 75), (255, 138, 31));
@@ -39,7 +39,8 @@ void main() {
       final character = ToyCharacter.forPlayer(player);
       final pixels = await paintedPixels(
         const Size(200, 200),
-        (canvas) => paintToyBadge(canvas, _centre, _diameter, player, _sunny, character: character),
+        (canvas) =>
+            paintToyBadge(canvas, _centre, _diameter, _sunny, ToyBadgeFace(number: player, character: character)),
       );
       final inkAbove = [
         for (var y = _centre.dy.round() - toyAccessoryHeadroom(_diameter).round(); y < _centre.dy; y++)

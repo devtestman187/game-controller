@@ -30,6 +30,8 @@ docs/agent-workflow.md and docs/HANDOFF.md §10. Session refinements to keep:
   assertions, and check `git status` for churn before committing.
 
 ## Resume here (Nov 20, 2026: item 1 built; host/commentator direction settled — see `docs/briefs/m17/STATUS.md`)
+
+**Resume here (identity1 wave 4, Nov 23):** identity1 wave 4 done (waves A-C, w4f2 reserve minute with a clock seam, f1 badge value object and decisions row); full check.sh green. Next: the identity1 milestone-end review (main session). Details: `docs/briefs/m16/identity1-w4/`.
 **Phone-host layout, foundation built (phonehost1, Nov 20):** S1 HostFrame/HostFrameInfo/ThumbySlot/hostFrameBuilder + ToyType.frame, S2 HostFrameScreen/ScoreRow/RoundSegment, S9a PNG guard, S7 measurement done and green (full check.sh passed). NOT wired into any app yet (TV line + phone-app gate need a decision); S3-S6, S8, S9 matrix wait for review. Details and open questions: `docs/briefs/m16/phonehost1/`.
 
 **Resume here (phonehost2, Nov 21):** the phone-host layout is built and wired: night start, scoreboard, final scores, reveal, Arena results, puzzle results, picker and join screen are HostFrameScreen; the TV wears HostFrame at the root, the phone host inside HostFrameGate below the 52 px bar; matrix (80 cases) and TV ring test green. Open for the owner / a device: (1) at 640x360 the phone host scales 0.570 (bar), so 20 frame px = 11.4 dp, not 13.3; (2) in-game board pad clearance is wrong by the frame scale (wph-report); (3) "Bumper Round" and "Change teams" footer labels ellipsise, six-player night start names get 84 px; (4) join seats stay 2 a side; (5) puzzle results answers Q2-Q5 in s6b2.md. Details: `docs/briefs/m16/phonehost2/`.

@@ -8,3 +8,6 @@
 03:39 wave C stopped again: same tools-suite lock collision with tools7 selftest (pid 2150461). The tools suite only runs because tools7's uncommitted tools/ edits are in the tree, not a w4 job. Restarting with RUN_CHECK_SKIP=tools (logged); tools suite is covered by the final check.sh.
 03:48 WAVE C DONE: w4f f2a2689c (EMPTY: design stop, no clock seam in HostServer, Q2 reservation not implemented, needs owner/main call), w4g f3b59242. Wave C needed RUN_CHECK_SKIP=tools twice-collision workaround (tools7 selftest lock). STOP and report. NEXT ACTION (after owner/main answer on w4f): f1 (toy_badge value object, decisions row, pixel check [+ w4f seam if decided]), full check.sh via Haiku in background, STATUS.md line, commit.
 03:50 resumed (fresh driver). Briefs w4f2 and f1 written, waves.txt='w4f2 f1'. NEXT: brief-check, dry-run, commit briefs, start run.
+03:50 briefs committed 928a9681, wave (w4f2 f1) started; waiting via thumb-wait
+04:20 wave STOPPED on identity_host_test (reservation changes behaviour: phone-2's colour reserved); hand-fixed test (changed char slot5 tuft); applied f1 via apply-job (result 4 was only outside-allow noise + 55 turns over cap 35). Both uncommitted in tree. NEXT: full check.sh via Haiku, commit w4f2 and f1 paths, done.txt, STATUS line.
+04:38 committing w4f2 + f1 + STATUS

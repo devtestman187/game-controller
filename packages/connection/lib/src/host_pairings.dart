@@ -5,11 +5,15 @@ import 'package:protocol/protocol.dart';
 import 'host_types.dart';
 import 'saved_pairing.dart';
 
+/// How long a dropped controller keeps its player number and its colour and
+/// accessory: a short Wi-Fi drop must not swap players or looks (M14 L7).
+const _reserveWindow = Duration(minutes: 1);
+
 /// One pairing the host remembers: the controller's last hello, its token,
-/// its last network address and the player number it had (internal to the
-/// package, [PairingBook]'s entry).
+/// its last network address and the player number and character it had
+/// (internal to the package, [PairingBook]'s entry).
 final class KnownPairing {
-  KnownPairing(this.hello, this.token, this.remoteAddress);
+  KnownPairing(this.hello, this.token, this.remoteAddress, {required this.lastSeen});
 
   final HelloMessage hello;
   final String token;
@@ -20,11 +24,15 @@ final class KnownPairing {
 
   /// When this controller last connected or disconnected; the order saved
   /// pairings are kept in.
-  DateTime lastSeen = DateTime.now();
+  DateTime lastSeen;
 
   /// The player number it was given, kept reserved for a minute after it
   /// drops so a short Wi-Fi drop doesn't swap players.
   int? player;
+
+  /// The colour and accessory it wore, kept reserved for the same minute as
+  /// [player] so a short drop doesn't change how it looks.
+  PlayerCharacter? character;
 
   /// The row the host UI shows while this controller is away.
   ControllerInfo toInfo() => ControllerInfo(
@@ -54,6 +62,7 @@ final class PairingBook {
     required this.maxSavedPairings,
     required this.maxWrongCodes,
     Iterable<SavedPairing> pairings = const [],
+    this.now = DateTime.now,
   }) : _random = random,
        _code = _codeFrom(random) {
     for (final p in pairings) {
@@ -61,6 +70,7 @@ final class PairingBook {
         HelloMessage(controllerId: p.controllerId, name: p.name, platform: p.platform, appVersion: p.appVersion),
         p.token,
         p.remoteAddress,
+        lastSeen: now(),
       );
     }
   }
@@ -72,6 +82,9 @@ final class PairingBook {
   final int maxWrongCodes;
 
   final Random _random;
+
+  /// The clock the reserve minute is counted on; tests pass a fake one.
+  final DateTime Function() now;
   final _known = <String, KnownPairing>{};
   final _localNumbers = <int>{};
   String _code;
@@ -152,16 +165,38 @@ final class PairingBook {
     required Set<String> live,
   }) {
     final previous = _known[hello.controllerId];
-    _known[hello.controllerId] = KnownPairing(hello, token, remoteAddress ?? previous?.remoteAddress)..player = player;
+    _known[hello.controllerId] = KnownPairing(hello, token, remoteAddress ?? previous?.remoteAddress, lastSeen: now())
+      ..player = player;
     _trim(live);
     return previous == null || previous.token != token || previous.hello.name != hello.name;
+  }
+
+  /// Keeps the colour and accessory [controllerId] wears, so they stay
+  /// reserved for the same minute its number does.
+  void noteCharacter(String controllerId, PlayerCharacter character) {
+    final k = _known[controllerId];
+    if (k != null) k.character = character;
+  }
+
+  /// The colours and accessories held by the pairings reserved within the
+  /// minute, except [except]'s own and any of the [live] controllers': they
+  /// are taken until the minute is up.
+  Set<PlayerCharacter> recentCharacters({required String except, required Set<String> live}) {
+    final cutoff = now().subtract(_reserveWindow);
+    final recent = <PlayerCharacter>{};
+    for (final e in _known.entries) {
+      final character = e.value.character;
+      if (character == null || e.key == except || live.contains(e.key)) continue;
+      if (e.value.lastSeen.isAfter(cutoff)) recent.add(character);
+    }
+    return recent;
   }
 
   /// Notes that [controllerId]'s connection ended just now, so its player
   /// number stays reserved for a minute.
   void markSeen(String controllerId) {
     final k = _known[controllerId];
-    if (k != null) k.lastSeen = DateTime.now();
+    if (k != null) k.lastSeen = now();
   }
 
   /// Forgets every pairing whose controller isn't in [live], so those
@@ -179,7 +214,7 @@ final class PairingBook {
   /// the numbers local players hold are counted as well.
   int pickPlayer(int? previous, {required Set<int> taken}) {
     final used = {...taken, ..._localNumbers};
-    final cutoff = DateTime.now().subtract(const Duration(minutes: 1));
+    final cutoff = now().subtract(_reserveWindow);
     final reserved = {
       for (final k in _known.values)
         if (k.player != null && k.lastSeen.isAfter(cutoff) && !used.contains(k.player)) k.player!,

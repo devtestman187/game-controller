@@ -61,7 +61,7 @@ void main() {
         expect(second, const PlayerCharacter(colourSlot: 2, accessory: PlayerAccessory.antenna));
       });
 
-      test('a dropped player\'s pick is free at once, while its number waits the reserve minute', () async {
+      test('a dropped player\'s pick and number wait the same reserve minute', () async {
         final host = await startHost(t);
         final dropped = controller(t, id: 'phone-1', character: contested);
         dropped.connect(addressOf(host, t), code: host.pairingCode);
@@ -80,12 +80,13 @@ void main() {
         await hostUntil(host, (s) => s.connected.every((c) => c.controllerId != 'phone-1'));
 
         // The number 1 is held for the reserve minute, so the next phone gets
-        // 3; the pick is free once the dropped player's connection is gone.
+        // 3; its pick is held too, so it gets a free one (identity_reserve_minute_test.dart
+        // frees it once the minute is up).
         final next = controller(t, id: 'phone-3', character: contested);
         next.connect(addressOf(host, t), code: host.pairingCode);
         final third = await paired(next);
         expect(third.player, 3);
-        expect(third.character, contested);
+        expect(third.character, isNot(contested));
       });
 
       test('a returning player keeps its number and its pick within the reserve minute', () async {

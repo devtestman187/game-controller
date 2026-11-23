@@ -168,11 +168,12 @@ void main() {
         await first.drain();
         expect(playersTo(first).last.players.map((r) => r.id), ['phone-9', 'phone-1']);
 
-        // A change: the list says what it changed to.
-        await first.ask<PlayerMessage>(const SetCharacterMessage(character: bow));
+        // A change: the list says what it changed to. Phone-2 left a minute ago, so its colour and accessory are still reserved: ask for a free pair.
+        const changed = PlayerCharacter(colourSlot: 5, accessory: PlayerAccessory.tuft);
+        await first.ask<PlayerMessage>(const SetCharacterMessage(character: changed));
         await first.drain();
         final row = playersTo(first).last.players.firstWhere((r) => r.id == 'phone-1');
-        expect(row.character, bow);
+        expect(row.character, changed);
 
         // The phone one build older has heard none of it.
         expect(playersTo(older), isEmpty);

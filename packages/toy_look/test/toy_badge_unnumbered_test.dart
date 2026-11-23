@@ -13,7 +13,8 @@ const _diameter = 80.0;
 
 /// The square round the middle the digit is drawn in: 20 to either side of
 /// the centre, where the digit's ink sits (its font is 55% of the diameter) and
-/// well inside the disc, whose edge is 34 from the centre.
+/// well inside the disc: its ink edge is centred on the rim, 40 from the centre,
+/// and 5.71 wide, so the inner edge is about 37.1 from the centre.
 const _middleHalf = 20;
 
 /// A point inside the disc above the digit, to read the player's colour from.
@@ -25,7 +26,7 @@ void main() {
   test('an unnumbered badge paints no digit: its middle is the player\'s colour all through', () async {
     final pixels = await paintedPixels(
       const Size(200, 200),
-      (canvas) => paintToyBadge(canvas, _centre, _diameter, 2, _sunny, numbered: false),
+      (canvas) => paintToyBadge(canvas, _centre, _diameter, _sunny, const ToyBadgeFace(number: 2, numbered: false)),
     );
     // Player 2's orange, as the numbered badge in toy_badge_test.dart reads it.
     expect(pixels.at(_discSample.$1, _discSample.$2), (255, 138, 31));
@@ -36,7 +37,7 @@ void main() {
   test('a numbered badge paints its digit in the middle, so the middle is not one colour', () async {
     final pixels = await paintedPixels(
       const Size(200, 200),
-      (canvas) => paintToyBadge(canvas, _centre, _diameter, 2, _sunny),
+      (canvas) => paintToyBadge(canvas, _centre, _diameter, _sunny, const ToyBadgeFace(number: 2)),
     );
     expect(pixels.at(_discSample.$1, _discSample.$2), (255, 138, 31));
     expect(_middleMismatches(pixels, (255, 138, 31)), greaterThan(0), reason: 'the digit is ink in the middle');

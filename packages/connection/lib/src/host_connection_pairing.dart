@@ -70,7 +70,8 @@ extension HostConnectionPairing on HostConnection {
     paired = true;
     since = DateTime.now();
     player = number;
-    character = _host.reserveCharacter(this, hello.character);
+    final picked = _host.reserveCharacter(this, hello.character);
+    character = picked;
     final changed = book.remember(
       hello,
       token,
@@ -78,6 +79,7 @@ extension HostConnectionPairing on HostConnection {
       player: number,
       live: _host.pairedControllerIds,
     );
+    book.noteCharacter(hello.controllerId, picked);
     send(PairResultMessage.accepted(token: token));
     send(PlayerMessage(number: number, character: character));
     _host.log('${hello.name} connected ($how), player $player');
