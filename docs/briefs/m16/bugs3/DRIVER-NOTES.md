@@ -7,3 +7,9 @@
 - open: connect_screen.dart:348 overflow (code-health); wrap320 Change width is an estimate; no tracker row for wrap320 (bugs2 B-035 follow-up, owner to check on device)
 - calls so far: driver ~40, thumb-wait 1 agent (11 wait-run calls)
 - 17:12 wave 2 briefs refreshed (b036 gets test_game showHud; b041 allow trimmed), brief-check ok, dry run ok. next: commit, start runner
+## Next action (17:40)
+- run: docs/briefs/m16/bugs3, STOPPED 17:33 (check-failed: phone, b041's intentionally red tablet_shape_race_test). Neither wave-2 job committed. done.txt unchanged.
+- b036 BLOCKED (design): banner + 6 players + Robo overflows 540-high results frame by 79 px; worktree kept /e/AI/game-controller-m16-jobs/flash-20261123-171520-2917 (report there). Owner must pick the banner's place.
+- b041 STOPPED by its own rule (design): at 1180x820 with stick pad PuzzleCamera.mirrorPlace returns null, dropping the tablet override would hide the other side on the owner's iPad. Options a/b/c in b041-report.md. Untracked: controller_app/test/tablet_shape_race_test.dart (red on purpose), b041-report.md.
+- not done: REVIEW.md wrap, check.sh, tracker rows, STATUS. Waiting for owner decisions.
+- calls: driver ~14, thumb-wait 1 (9 calls)
