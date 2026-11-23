@@ -1,0 +1,10 @@
+2026-11-22 23:41:00 RUN_MAX_MIN=57 min (computed backstop of the jobs still to do)
+2026-11-22 23:41:00 start at dbab34d2 on m16
+2026-11-22 23:41:00 worker: claude
+2026-11-22 23:41:00 run-base dbab34d2eb1396628ea0396dd318b63a3eec206d
+2026-11-22 23:41:09 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-22 23:41:25 start p6a
+2026-11-23 00:00:15 p6a finished: result 0 (31 turns, 18 min)
+2026-11-23 00:13:52 checks failed; fetching packages and trying once more
+2026-11-23 00:27:12 STOPPED: checks failed twice on the combined tree after p6a
+RESULT: STOPPED: checks failed twice on the combined tree after p6a
