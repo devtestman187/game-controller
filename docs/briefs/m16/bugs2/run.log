@@ -1,0 +1,20 @@
+2026-11-23 15:21:15 RUN_MAX_MIN=82 min (computed backstop of the jobs still to do)
+2026-11-23 15:21:15 start at 2aeec568 on m16
+2026-11-23 15:21:15 worker: claude
+2026-11-23 15:21:15 run-base 2aeec5681f3f99e05352e7f47fa2fe49b57a831d
+2026-11-23 15:21:30 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-23 15:21:51 start b035
+2026-11-23 15:22:16 start b039
+2026-11-23 15:22:42 start flk1
+2026-11-23 15:26:38 b039 finished: result 4 (11 turns, 4 min)
+2026-11-23 15:26:40 b039: dropped generated churn outside its list: tv_test_app/windows/flutter/generated_plugin_registrant.cc tv_test_app/windows/flutter/generated_plugin_registrant.h tv_test_app/windows/flutter/generated_plugins.cmake 
+2026-11-23 15:27:01 flk1 finished: result 4 (13 turns, 4 min)
+2026-11-23 15:27:03 flk1: dropped generated churn outside its list: tv_test_app/windows/flutter/generated_plugin_registrant.cc tv_test_app/windows/flutter/generated_plugin_registrant.h tv_test_app/windows/flutter/generated_plugins.cmake 
+2026-11-23 15:28:04 b035 finished: result 4 (25 turns, 5 min)
+2026-11-23 15:28:06 b035: dropped generated churn outside its list: tv_test_app/windows/flutter/generated_plugin_registrant.cc tv_test_app/windows/flutter/generated_plugin_registrant.h tv_test_app/windows/flutter/generated_plugins.cmake 
+2026-11-23 15:29:58 tests-first ok: controller_app/test/connect_identity_gap_test.dart fails on the old code
+2026-11-23 15:30:09 tests-first ok: controller_app/test/lobby_alignment_test.dart fails on the old code
+2026-11-23 15:30:33 combined check: skips protocol connection metrics kit look arena puzzle tools (no job's change reaches them)
+2026-11-23 15:33:29 checks failed; fetching packages and trying once more
+2026-11-23 15:35:06 STOPPED: checks failed twice on the combined tree after b039 flk1 b035
+RESULT: STOPPED: checks failed twice on the combined tree after b039 flk1 b035
