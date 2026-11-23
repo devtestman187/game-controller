@@ -42,3 +42,20 @@ RESULT: DONE: 3 jobs, 28 min
 2026-11-23 02:26:41 finding: tests-first: packages/puzzle_game/test/match_split_identity_test.dart passes on the old code, so it does not prove new behaviour
 2026-11-23 02:26:42 STOPPED: tests-first: packages/puzzle_game/test/match_split_identity_test.dart pass on the old code (write them to fail first, or add 'tests-first: exempt <reason>' to the brief for a pure refactor); nothing of this wave is committed
 RESULT: STOPPED: tests-first: packages/puzzle_game/test/match_split_identity_test.dart pass on the old code (write them to fail first, or add 'tests-first: exempt <reason>' to the brief for a pure refactor); nothing of this wave is committed
+2026-11-23 02:27:15 RUN_MAX_MIN=100 min (computed backstop of the jobs still to do)
+2026-11-23 02:27:15 start at b238dca1 on m16
+2026-11-23 02:27:15 worker: claude
+2026-11-23 02:27:15 removed the last stop's STOP.md
+2026-11-23 02:27:36 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-23 02:28:02 resume w4d (applied by hand, not committed yet)
+2026-11-23 02:28:03 resume w4e (applied by hand, not committed yet)
+2026-11-23 02:28:04 resume w4h (applied by hand, not committed yet)
+2026-11-23 02:28:23 tests-first ok: packages/connection/test/frame_characters_test.dart fails on the old code
+2026-11-23 02:28:29 tests-first ok: packages/connection/test/identity_rows_test.dart fails on the old code
+2026-11-23 02:28:45 tests-first: packages/puzzle_game/test/match_split_identity_test.dart passes on the old code, exempt by its brief
+2026-11-23 02:28:46 combined check: the tools suite runs (a job changed a file under tools/)
+2026-11-23 02:36:03 checks failed; fetching packages and trying once more
+2026-11-23 02:53:58 committed w4d: deb0e982 Subject: M16 w4d: the players list holds local and away players
+2026-11-23 02:54:01 committed w4e: 76d5f1c6 Move MatchView to match_view.dart; test split-board characters
+2026-11-23 02:54:03 committed w4h: 95d1cbad Fix frame characters shortcut to compare values
+2026-11-23 02:54:03 wave review skipped: wave 1 is the whole run, the run review covers it
