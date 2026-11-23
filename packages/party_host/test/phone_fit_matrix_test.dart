@@ -108,7 +108,9 @@ void _expectFits(MatrixCase screen, MatrixRoster roster, MatrixDevice device, Ma
   final where = '${screen.name} at ${device.name} with ${roster.label}';
   expect(m.measured.errors, isEmpty, reason: '$where overflows: ${m.measured.errors}');
   expect(m.measured.texts, greaterThan(0), reason: '$where drew no text');
-  for (final scroll in m.measured.scrolls) {
+  // The arena results' card scrolls under its banner when it is full (B-036, owner:
+  // "Card scrolls"); every other screen still must not scroll.
+  for (final scroll in m.measured.scrolls.where((_) => screen.name != 'arena-results')) {
     expect(
       scroll.extent,
       lessThanOrEqualTo(matrixSlop),

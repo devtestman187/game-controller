@@ -231,11 +231,18 @@ void main() {
         ) async {
           await _pumpResults(tester, frameCase.device, names: names, coins: coins, night: night);
 
-          expect(
+          // The banner stays on top and a card taller than the body scrolls under
+          // it (B-036, owner: "Card scrolls"), so only a full card may scroll.
+          final scrollable = tester.state<ScrollableState>(
             find.descendant(of: find.byKey(_bodyKey), matching: find.byType(Scrollable)),
-            findsNothing,
-            reason: 'the rows and Robo fit the body, so nothing scrolls (DESIGN section 1, rule 6)',
           );
+          if (players <= _fourPlayers) {
+            expect(
+              scrollable.position.maxScrollExtent,
+              0,
+              reason: 'four players and Robo fit the body, so nothing scrolls',
+            );
+          }
           expect(tester.takeException(), isNull, reason: 'nothing overflows the frame');
 
           for (final id in [...coins.keys, roboPlayerId]) {

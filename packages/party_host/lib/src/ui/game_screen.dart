@@ -354,6 +354,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
               onEvent: _onEvent,
               onClock: _clocked,
               onFinished: _finished,
+              showHud: _stage != _Stage.results,
             ),
             if (_stage == _Stage.results && result != null)
               ArenaResults(

@@ -15,6 +15,7 @@ import 'host_button.dart';
 import 'host_frame_screen.dart';
 import 'night_widgets.dart';
 import 'score_row.dart';
+import 'winner_banner.dart';
 
 /// The winner's crown on its row's badge, in frame px (DESIGN section 4, the
 /// Arena results): the night's 30 px crown, on the row's 38 px badge.
@@ -111,9 +112,11 @@ class ArenaResults extends ConsumerWidget {
       for (final p in players)
         if (!result.lines.containsKey(p.id)) p,
     ];
+    // The header keeps its back arrow but no title: the winner's banner over
+    // the card says who won (M16 bugs3 B-036), clear of the top bar.
     return HostFrameScreen(
-      title: title,
-      body: _ResultsBody(result: result, rows: rows, waiting: waiting, roboNumber: roboNumber),
+      title: '',
+      body: _ResultsBody(result: result, rows: rows, waiting: waiting, roboNumber: roboNumber, title: title),
       footer: _footer(),
     );
   }
@@ -169,10 +172,17 @@ class ArenaResults extends ConsumerWidget {
 
 /// The card's body (M14 b2; DESIGN section 4): a full-stage-width card with a
 /// row per player in the round, Robo's row, and the players who join next
-/// round. The winner's name and the way on are the screen's header and footer,
-/// so the card holds nothing but what a player did.
+/// round. The winner's banner stands over the card (M16 bugs3 B-036), and the
+/// way on is the screen's footer, so the card holds nothing but what a player
+/// did.
 class _ResultsBody extends StatelessWidget {
-  const _ResultsBody({required this.result, required this.rows, required this.waiting, required this.roboNumber});
+  const _ResultsBody({
+    required this.result,
+    required this.rows,
+    required this.waiting,
+    required this.roboNumber,
+    required this.title,
+  });
 
   /// The round's result, whose lines carry the coins.
   final RoundResult result;
@@ -185,6 +195,9 @@ class _ResultsBody extends StatelessWidget {
 
   /// The number Robo's colour comes from when its line is in the round.
   final int roboNumber;
+
+  /// The winner's line, or the draw, shown in the banner above the card.
+  final String title;
 
   /// The most coins any line took, which the bars are drawn against: the
   /// winner's bar fills the row, as the night's leader's does.
@@ -199,19 +212,35 @@ class _ResultsBody extends StatelessWidget {
         // The card fills the stage the frame's body gives it (rule 4), however
         // few rows it holds.
         width: double.infinity,
-        child: ToyCard(
-          key: const Key('arenaResults'),
-          padding: _cardPadding,
-          popIn: false,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              for (final p in rows) _row(p),
-              if (roboLine != null) _roboRow(roboLine),
-              for (final p in waiting) _JoinsNextRound(player: p),
-            ],
-          ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Align(
+              child: WinnerBanner(key: const Key('winnerBanner'), text: title),
+            ),
+            const SizedBox(height: ToySizes.space12),
+            // The banner stays on top; a card taller than the body (six players
+            // and Robo) scrolls under it (B-036, owner: "Card scrolls").
+            Flexible(
+              child: SingleChildScrollView(
+                child: ToyCard(
+                  key: const Key('arenaResults'),
+                  padding: _cardPadding,
+                  popIn: false,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      for (final p in rows) _row(p),
+                      if (roboLine != null) _roboRow(roboLine),
+                      for (final p in waiting) _JoinsNextRound(player: p),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

@@ -27,6 +27,7 @@ class ArenaBoard extends StatelessWidget {
     this.characters = const {},
     this.ownId,
     this.onResize,
+    this.showHud = true,
   });
 
   final ArenaSnapshot snapshot;
@@ -46,6 +47,10 @@ class ArenaBoard extends StatelessWidget {
   /// can move in it. A viewer has no rules and passes none.
   final ValueChanged<Size>? onResize;
 
+  /// Whether the round strip is drawn. When it is not, its space stays (M16
+  /// bugs3 B-036), so the field keeps the size it has.
+  final bool showHud;
+
   @override
   Widget build(BuildContext context) => ToyLookScope(
     look: ToyLookScope.of(context),
@@ -53,12 +58,18 @@ class ArenaBoard extends StatelessWidget {
       builder: (context, constraints) => Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          ArenaHud(
-            snapshot: snapshot,
-            roster: roster,
-            characters: characters,
-            ownId: ownId,
-            oneLine: constraints.maxHeight < ArenaHud.oneLineBelow,
+          Visibility(
+            visible: showHud,
+            maintainSize: true,
+            maintainState: true,
+            maintainAnimation: true,
+            child: ArenaHud(
+              snapshot: snapshot,
+              roster: roster,
+              characters: characters,
+              ownId: ownId,
+              oneLine: constraints.maxHeight < ArenaHud.oneLineBelow,
+            ),
           ),
           Expanded(
             child: ArenaField(snapshot: snapshot, roster: roster, characters: characters, onResize: onResize),

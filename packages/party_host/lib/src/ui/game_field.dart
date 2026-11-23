@@ -27,6 +27,7 @@ class GameField extends ConsumerWidget {
     required this.onEvent,
     required this.onClock,
     required this.onFinished,
+    this.showHud = true,
   });
 
   /// The round's game. A new round is a new field: Play again starts from the
@@ -39,6 +40,9 @@ class GameField extends ConsumerWidget {
 
   /// Whether the debug overlay is shown.
   final bool debug;
+
+  /// Whether the round strip is drawn; the results hide it (M16 bugs3 B-036).
+  final bool showHud;
 
   /// How the round runs (m12 §3): read when the round started.
   final HostingSettings hosting;
@@ -77,6 +81,7 @@ class GameField extends ConsumerWidget {
             onEvent: onEvent,
             onClock: onClock,
             onFinished: onFinished,
+            showHud: showHud,
             paused: paused,
             abandon: ref.read(hostAbandonProvider),
           ),

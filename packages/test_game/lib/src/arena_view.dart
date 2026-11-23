@@ -36,10 +36,16 @@ class ArenaView extends StatefulWidget {
     this.abandon,
     this.onClock,
     this.onFinished,
+    this.showHud = true,
   });
 
   final GameHost host;
   final void Function(GameEvent event) onEvent;
+
+  /// Whether the round strip (the counters bar) is drawn. A host hides it while
+  /// its results show (M16 bugs3 B-036); its space stays, so the field does not
+  /// move.
+  final bool showHud;
 
   /// Robo's level, from the waiting card (party-night §7a): the session gives
   /// Robo a seat at it in a Bumper Round with one player.
@@ -146,5 +152,6 @@ class _ArenaViewState extends State<ArenaView> with SingleTickerProviderStateMix
     roster: arenaRosterFor(_snapshot, arenaRosterOf(widget.host.players)),
     characters: arenaCharactersOf(widget.host.players),
     onResize: _session.resize,
+    showHud: widget.showHud,
   );
 }
