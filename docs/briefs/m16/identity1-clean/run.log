@@ -32,3 +32,14 @@ RESULT: DONE: 2 jobs, 21 min
 2026-11-23 10:09:27 finding: tests-first: controller_app/test/pad_fill_test.dart passes on the old code, so it does not prove new behaviour
 2026-11-23 10:09:28 STOPPED: tests-first: controller_app/test/pad_fill_test.dart pass on the old code (write them to fail first, or add 'tests-first: exempt <reason>' to the brief for a pure refactor); nothing of this wave is committed
 RESULT: STOPPED: tests-first: controller_app/test/pad_fill_test.dart pass on the old code (write them to fail first, or add 'tests-first: exempt <reason>' to the brief for a pure refactor); nothing of this wave is committed
+2026-11-23 10:09:51 RUN_MAX_MIN=63 min (computed backstop of the jobs still to do)
+2026-11-23 10:09:51 start at 49a67dab on m16
+2026-11-23 10:09:51 worker: claude
+2026-11-23 10:10:03 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-23 10:10:24 resume f1 (applied by hand, not committed yet)
+2026-11-23 10:10:25 resume f2 (applied by hand, not committed yet)
+2026-11-23 10:12:15 tests-first: controller_app/test/pad_fill_test.dart passes on the old code, exempt by its brief
+2026-11-23 10:12:16 combined check: the tools suite is skipped (no job changed a file under tools/)
+2026-11-23 10:19:23 committed f1: 21f7f1a2 m16 identity1-clean f1: StickPainter takes one StickGeometry
+2026-11-23 10:19:25 committed f2: 16c53ef5 m16 identity1-clean f2: PadFill equality and colour tests
+2026-11-23 10:19:25 wave review skipped: wave 1 is the whole run, the run review covers it
