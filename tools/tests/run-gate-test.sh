@@ -14,9 +14,9 @@
 # Every case builds a throwaway git repo in a temp folder: the runner's files are copies (with
 # tools/brief-check.sh, and tools/run-gate.sh where the case wants it), tools/check.sh, review.sh,
 # commit-job.sh and run-stop.sh are stubs, and FLASH_CMD points at a stub worker that writes the
-# brief's report and ends with STUB_RC, so no worker, test suite or check runs. A 25 s sleep stub
-# shortens the runner's wait between a wave's starts to 1 s, so the whole script runs in about
-# 15 s. The wire tests are minutes long (run-wire-test.sh has a 240 s allowance in
+# brief's report and ends with STUB_RC, so no worker, test suite or check runs. Each kind of repo
+# is built once and copied per case. A 25 s sleep stub shortens the runner's wait between a wave's
+# starts to 0.1 s. The wire tests are minutes long (run-wire-test.sh has a 240 s allowance in
 # tools/selftest.sh), so this script never runs them: the tools suite runs each once with a clean
 # environment, and the leak case checks the unsets that keep a caller's numbers out of their cases.
 # Prints PASS <case> / FAIL <case> and exits 1 if any case failed.
@@ -47,11 +47,11 @@ mkdir -p "$tmp/bin"
 printf '#!/usr/bin/env bash\nexit 0\n' > "$tmp/bin/flutter"
 cp "$tmp/bin/flutter" "$tmp/bin/dart"
 real_sleep=$(command -v sleep)
-# The runner's one 25 s wait between the starts of a wave's jobs: 1 s is enough here, and every
-# other sleep (RUN_POLL_S=1) is the caller's own.
+# The runner's one 25 s wait between the starts of a wave's jobs: 0.1 s keeps the order of the
+# starts (the cases only read the lines, not the timing), and every other sleep is the caller's own.
 cat > "$tmp/bin/sleep" <<EOF
 #!/usr/bin/env bash
-case "\${1:-}" in 25) exec "$real_sleep" 1 ;; *) exec "$real_sleep" "\$@" ;; esac
+case "\${1:-}" in 25) exec "$real_sleep" 0.1 ;; *) exec "$real_sleep" "\$@" ;; esac
 EOF
 chmod +x "$tmp/bin/flutter" "$tmp/bin/dart" "$tmp/bin/sleep"
 # The stub worker FLASH_CMD names: it marks the call, answers the preflight, writes the report its
@@ -90,10 +90,12 @@ EOF
   chmod +x "$repo"/tools/*.sh
 }
 
-fixture() { # fixture <case> [nogate]: a fresh repo, batch and work folder, one brief `runjob`
-  local base="$tmp/$1" nogate=${2:-}
-  repo="$base/repo" work="$base/work"
-  mkdir -p "$repo/tools" "$repo/src" "$repo/$batch" "$repo/.dart_tool" "$work"
+template() { # template <kind> [nogate]: the repo every case of that kind copies, built once: the runner's
+  # files, the stubs, one brief `runjob` and the base commit (one git init and commit per kind)
+  local kind=$1 nogate=${2:-} dir="$tmp/tpl-$1"
+  [ -d "$dir" ] && return 0
+  repo=$dir
+  mkdir -p "$repo/tools" "$repo/src" "$repo/$batch" "$repo/.dart_tool"
   cp "$loc/tools/run-jobs.sh" "$loc/tools/run-steps.sh" "$loc/tools/run-review.sh" \
     "$loc/tools/churn.sh" "$loc/tools/run-limits.sh" "$loc/tools/run-wave.sh" \
     "$loc/tools/brief-check.sh" "$repo/tools/"
@@ -109,6 +111,15 @@ fixture() { # fixture <case> [nogate]: a fresh repo, batch and work folder, one 
   git -C "$repo" config user.name t
   git -C "$repo" add -A
   git -C "$repo" commit -q -m base || exit 2
+}
+
+fixture() { # fixture <case> [nogate]: a copy of the template repo, a work folder, and the case's env
+  local base="$tmp/$1" nogate=${2:-} kind=gate
+  [ -n "$nogate" ] && kind=nogate
+  template "$kind" "$nogate"
+  repo="$base/repo" work="$base/work"
+  mkdir -p "$base" "$work"
+  cp -r "$tmp/tpl-$kind" "$repo"
   unset BRIEF_CHECK_SKIP BRIEF_CHECK_CMD # each case sets the ones it needs
   STUB_MARK="$base/flash-ran" STUB_RC="" PREFLIGHT_SKIP=1 RUN_MAX_MIN=
   FLASH_USAGE_LOG="$tmp/no-usage.tsv" # no real usage log reaches the turn counts

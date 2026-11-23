@@ -60,10 +60,12 @@ exit 0
 EOF
 }
 
-fixture() { # fixture <case> [metrics]: a fresh repo, batch and work folder, and the stubs
-  local base="$tmp/$1"
-  repo="$base/repo" work="$base/work"
-  mkdir -p "$repo/tools" "$repo/src" "$repo/$batch" "$repo/.dart_tool" "$work"
+template() { # template <kind>: the repo every case of that kind copies, built once (kind metrics adds
+  # tools/job-metrics.sh): the runner's files, the stubs, one brief `runjob` and the base commit
+  local kind=$1 dir="$tmp/tpl-$1"
+  [ -d "$dir" ] && return 0
+  repo=$dir
+  mkdir -p "$repo/tools" "$repo/src" "$repo/$batch" "$repo/.dart_tool"
   cp "$loc/tools/run-jobs.sh" "$loc/tools/run-steps.sh" "$loc/tools/run-review.sh" "$loc/tools/churn.sh" \
     "$loc/tools/run-wave.sh" "$repo/tools/"
   worker_stub flash.sh
@@ -86,7 +88,7 @@ EOF
 printf 'STOP (stub)\ncause: %s\n' "${3:-}" > "${1%/}/STOP.md"
 echo "RESULT: ok: STOP.md written (stub)"
 EOF
-  if [ "${2:-}" = metrics ]; then
+  if [ "$kind" = metrics ]; then
     cat > "$repo/tools/job-metrics.sh" <<'EOF'
 #!/usr/bin/env bash
 # A stand-in tools/job-metrics.sh: one METRICS line for the run's job, or the --append is missing.
@@ -106,6 +108,15 @@ EOF
   git -C "$repo" config user.name t
   git -C "$repo" add -A
   git -C "$repo" commit -q -m base || exit 2
+}
+
+fixture() { # fixture <case> [metrics]: a copy of the kind's template repo, a work folder, and the env
+  local base="$tmp/$1" kind=plain
+  [ "${2:-}" = metrics ] && kind=metrics
+  template "$kind"
+  repo="$base/repo" work="$base/work"
+  mkdir -p "$base" "$work"
+  cp -r "$tmp/tpl-$kind" "$repo"
   STUB_MARK="$base/flash-ran" STUB_REPORT="$batch/runjob-report.md" FLASH_USAGE_LOG="$base/none.tsv"
   export STUB_MARK STUB_REPORT FLASH_USAGE_LOG
 }

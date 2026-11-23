@@ -49,6 +49,16 @@ now() { date '+%F %T'; }
 ago() { date -d "-$1 minutes" '+%F %T'; }
 batch() { mkdir -p "$tmp/$1" && printf '%s\n' "$tmp/$1"; }
 reset_envs() { envs=(WAIT_STATE_DIR="$state" FLASH_USAGE_LOG="$usage"); }
+# wait_for_lock: polls every 0.1 s (50 steps at most) until a waiter holds its lock in $state;
+# returns 1 at the cap, and the case then fails on its lock_seen check.
+wait_for_lock() {
+  local _
+  for _ in $(seq 50); do
+    [ -n "$(ls "$state"/*.lock 2> /dev/null)" ] && return 0
+    sleep 0.1
+  done
+  return 1
+}
 
 run "$tmp/no-such-folder"
 if [ "$rc" = 3 ] && last | grep -qF 'RESULT: BAD INPUT: no such folder'; then r=0; else r=1; fi
@@ -225,9 +235,11 @@ d=$(batch locked)
   echo "$(now) start x"
 } > "$d/run.log"
 env "${envs[@]}" timeout 3 bash "$wait_sh" "$d" --max 20 > "$tmp/background.txt" 2>&1 &
-for _ in $(seq 50); do [ -n "$(ls "$state"/*.lock 2> /dev/null)" ] && break; sleep 0.1; done
+lock_seen=0
+wait_for_lock && lock_seen=1
 run "$d" --max 3
-if [ "$rc" = 3 ] && grep -qF 'another waiter' "$out" && last | grep -qF 'RESULT: BAD INPUT:'; then r=0; else r=1; fi
+if [ "$lock_seen" = 1 ] && [ "$rc" = 3 ] && grep -qF 'another waiter' "$out" &&
+  last | grep -qF 'RESULT: BAD INPUT:'; then r=0; else r=1; fi
 report "a second waiter on the same folder is refused (exit 3)" "$r"
 wait
 left=$(ls "$state"/*.lock "$state"/*.marker 2> /dev/null | tr '\n' ' ')
@@ -267,11 +279,12 @@ d=$(batch live)
 } > "$d/run.log"
 env "${envs[@]}" bash "$wait_sh" "$d" --max 6 > "$out" 2>&1 &
 bgpid=$!
-sleep 1
+lock_seen=0
+wait_for_lock && lock_seen=1
 echo "$(now) a line written while the waiter waits" >> "$d/run.log"
 wait "$bgpid"
 rc=$?
-if [ "$rc" = 4 ] && grep -qF 'a line written while the waiter waits' "$out" &&
+if [ "$lock_seen" = 1 ] && [ "$rc" = 4 ] && grep -qF 'a line written while the waiter waits' "$out" &&
   last | grep -qF 'RESULT: running: w for'; then r=0; else r=1; fi
 report "a line appended during the wait is printed by that same call" "$r"
 

@@ -17,8 +17,8 @@
 # stubs, and FLASH_CMD points at a stub worker that sleeps and writes the brief's report, so no
 # worker, test suite or real check runs. RUN_LIMIT_UNIT_S=1 makes one limit "minute" one second
 # and RUN_POLL_S=1 makes the runner look every second. The runner waits 25 s between the starts
-# of one wave's jobs, so a sleep stub in the case's PATH shortens that one wait to 1 s. Case 4
-# builds a fake run.log (no repo). The whole script runs in about 25 s.
+# of one wave's jobs, so a sleep stub in the case's PATH shortens that one wait to 0.1 s. The repo
+# is built once and copied per case. Case 4 builds a fake run.log (no repo).
 # Prints PASS <case> / FAIL <case> and exits 1 if any case failed.
 set -u
 # The caller's limit and poll settings must not reach the runner: each case sets its own below.
@@ -48,11 +48,11 @@ mkdir -p "$tmp/bin"
 printf '#!/usr/bin/env bash\nexit 0\n' > "$tmp/bin/flutter"
 cp "$tmp/bin/flutter" "$tmp/bin/dart"
 real_sleep=$(command -v sleep)
-# The runner's one 25 s wait between the starts of a wave's jobs: 1 s is enough here, all
-# other sleeps (RUN_POLL_S=1) are the caller's own.
+# The runner's one 25 s wait between the starts of a wave's jobs: 0.1 s keeps the order of the
+# starts, and all other sleeps (RUN_POLL_S=1) are the caller's own.
 cat > "$tmp/bin/sleep" <<EOF
 #!/usr/bin/env bash
-case "\${1:-}" in 25) exec "$real_sleep" 1 ;; *) exec "$real_sleep" "\$@" ;; esac
+case "\${1:-}" in 25) exec "$real_sleep" 0.1 ;; *) exec "$real_sleep" "\$@" ;; esac
 EOF
 chmod +x "$tmp/bin/flutter" "$tmp/bin/dart" "$tmp/bin/sleep"
 # The stub worker FLASH_CMD names: it marks the call, answers the preflight, sleeps (a brief's
@@ -100,10 +100,11 @@ EOF
   chmod +x "$repo"/tools/*.sh
 }
 
-fixture() { # fixture <case>: a fresh repo, batch and work folder, one brief, default knobs
-  local base="$tmp/$1"
-  repo="$base/repo" work="$base/work"
-  mkdir -p "$repo/tools" "$repo/src" "$repo/$batch" "$repo/.dart_tool" "$work"
+template() { # template: the repo every case copies, built once: the runner's files, the stubs, one brief
+  # `runjob` and the base commit (one git init and commit for the whole script)
+  [ -d "$tmp/tpl" ] && return 0
+  repo="$tmp/tpl"
+  mkdir -p "$repo/tools" "$repo/src" "$repo/$batch" "$repo/.dart_tool"
   cp "$loc/tools/run-jobs.sh" "$loc/tools/run-steps.sh" "$loc/tools/run-review.sh" \
     "$loc/tools/churn.sh" "$loc/tools/run-limits.sh" "$loc/tools/run-wave.sh" "$repo/tools/"
   stubs
@@ -117,6 +118,14 @@ fixture() { # fixture <case>: a fresh repo, batch and work folder, one brief, de
   git -C "$repo" config user.name t
   git -C "$repo" add -A
   git -C "$repo" commit -q -m base || exit 2
+}
+
+fixture() { # fixture <case>: a copy of the template repo, a work folder, and the case's default knobs
+  local base="$tmp/$1"
+  template
+  repo="$base/repo" work="$base/work"
+  mkdir -p "$base" "$work"
+  cp -r "$tmp/tpl" "$repo"
   STUB_MARK="$base/flash-ran" STUB_SLEEP_S="" PREFLIGHT_SKIP=1 RUN_MAX_MIN=
   STUB_CHECK_MODE=ok STUB_CHECK_CALLS="$base/check-calls"
   FLASH_USAGE_LOG="$tmp/no-usage.tsv" # no real usage log reaches the turn counts
@@ -137,12 +146,12 @@ check_runs() { # check_runs: how many times the case's check stub ran
 }
 
 # 1. Two jobs of one wave: `slow` may run 150 s and `quick` 1 min x1.5 = 1 s (both 1 s
-#    "minutes"). slow starts first and sleeps 8 s, quick starts next and sleeps 3 s: quick
+#    "minutes"). slow starts first and sleeps 4 s, quick starts next and sleeps 3 s: quick
 #    passes its limit and is parked while slow still runs, so the old order (wait slow out, then
 #    test quick, already gone) never saw it; slow then finishes and is committed, and the run
 #    stops naming quick.
 fixture wave-limit
-printf 'allow: src/app.dart · %s/slow-report.md\nreport: %s/slow-report.md\nexpected-min: 100\nstub-sleep: 8\n' \
+printf 'allow: src/app.dart · %s/slow-report.md\nreport: %s/slow-report.md\nexpected-min: 100\nstub-sleep: 4\n' \
   "$batch" "$batch" > "$repo/$batch/slow.md"
 printf 'allow: src/app.dart · %s/quick-report.md\nreport: %s/quick-report.md\nexpected-min: 1\nstub-sleep: 3\n' \
   "$batch" "$batch" > "$repo/$batch/quick.md"
