@@ -117,3 +117,11 @@ include the six-parameter painters and one stale STATUS line.
 - Phone's own host mode (storage.dart:55): leave as is; the library adds `identity` to every hello. Tidy in a later cleanup at most.
 - Results band in the winner's character colour (arena_view_widgets.dart:158): keep, with its test.
 - Shape Race mirror dots and frame on player 2's colour: keep for this milestone.
+
+## Owner answers (Nov 23, before identity1 wave 4)
+- Q2: yes — a dropped player's colour and accessory stay reserved for the reserve minute (use the host `nowMs` seam).
+- Q4: yes — local players (TV keyboard, host phone's own player) get a `players` row with `PlayerCharacter.forPlayer(number)`.
+- Q5: yes — `players` keeps an away player while the round holds their slot (same rows as the frame's `pl`).
+- Join-screen badge (connect_panels.dart:82, settings_profile_section.dart:246): no number and no "Player N" label until paired.
+- Q8: yes — one value object for roster + characters in ArenaPainter / ArenaMarblePainter.
+- Q10: rename phone_metrics_test's group name in the phone job.

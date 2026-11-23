@@ -1,0 +1,2 @@
+wave B (not yet in waves.txt): w4d w4e w4h
+wave C: w4f w4g
