@@ -291,7 +291,7 @@ allowed=(
 # permission rules (an Edit rule covers every file-editing tool, Write
 # included), and checked again after the run.
 protected=(".github/**" "codemagic.yaml" "firebase/**" ".claude/**" "kenney-audio/**"
-  "docs/PRD*" "tools/release.sh" "tools/flash.sh" "tools/flash_usage.dart" "tools/wsl-*.sh")
+  "docs/PRD*" "tools/release.sh" "tools/flash.sh" "tools/claude-worker.sh" "tools/flash_usage.dart" "tools/wsl-*.sh")
 # Files it may not even read, because whatever it reads is sent to DeepSeek.
 # Signing keys and service accounts (the .gitignore list), in case one is
 # ever put in the repository. Reading outside the repository isn't allowed
