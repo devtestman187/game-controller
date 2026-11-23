@@ -87,7 +87,7 @@ final class ToyCharacter {
   static const lastSlot = 6;
 
   /// The player colours' names in words, by slot (M14 design section 9): the
-  /// phone's "Blue is taken tonight, you're Teal" says them.
+  /// phone's "Blue was taken: you're Teal" says them.
   static const colourNames = ['Blue', 'Orange', 'Purple', 'Teal', 'Pink', 'Yellow'];
 
   /// Which of the protocol's player colours the body is drawn in, 1 to 6: the

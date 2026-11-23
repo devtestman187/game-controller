@@ -27,7 +27,7 @@
   the field filters with, so the field and the saved name can never disagree behind the count.
 - `controller_app/lib/src/ui/settings_nickname_row.dart` (new, plain sibling library as
   `docs/project-notes.md:51` asks): `SettingsNicknameRow` — the label, the field (now drawn at the look's
-  body size in ink on the field's paper, instead of the M3 title size the theme gave it) and one line under
+  body size in ink on the field's paper; the theme's body text was already that size, so only the colour changed) and one line under
   it with the hint on the left and the `0 / 10` count on the right. The count can no longer be squeezed
   beside a field that grows with the look's type.
 - `controller_app/lib/src/ui/settings_profile_section.dart`: `_NicknameRow`, its state and the old
@@ -84,6 +84,8 @@
 
 1. Host setups: the Change line shows on every Connect-screen state because it sits in `ConnectionPanel`
    under the status child; the test covers the idle state (`identity_change_link_test.dart`, both looks).
+   None of the Connect-screen states draws the taken-colour line; its setups are a joined phone and a
+   peer one build older.
 2. Kept state: nothing new is kept; the row reads the saved profile it always kept (the saved-character case
    in `identity_change_link_test.dart`, the saved nickname path in `identity_nickname_test.dart`).
 3. New state against the pause menu, host away, results, leaving: none added — the row is plain profile

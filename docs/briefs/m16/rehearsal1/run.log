@@ -16,3 +16,4 @@
 2026-11-22 22:52:44 checks failed; fetching packages and trying once more
 2026-11-22 23:09:01 STOPPED: checks failed twice on the combined tree after n3 n2 n1
 RESULT: STOPPED: checks failed twice on the combined tree after n3 n2 n1
+2026-11-22 23:20:00 HAND-FIX n1: the runner had applied n1 n2 n3 to the tree; the combined check passed every suite but tools (run-wire-test, passes alone); reviewed the diff, tools/review.sh 0 fail, committed by hand

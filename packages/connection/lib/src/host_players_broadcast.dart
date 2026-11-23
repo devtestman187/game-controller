@@ -73,6 +73,10 @@ extension HostPlayersBroadcast on HostServer {
   }
 }
 
+/// True when the phone of [session] listed [Capability.identity] in its hello,
+/// so it may be sent the characters a frame carries (M16 identity).
+bool _takesIdentity(HostConnection session) => session.hello?.supports(Capability.identity) ?? false;
+
 /// Sends [message] to [sessions], encoding it once (a frame at 60 Hz to
 /// several viewers is why, m12 §2). A frame that carries characters goes
 /// twice: with them to the phones that listed [Capability.identity] and
@@ -83,7 +87,7 @@ int _sendToAll(HostServer server, List<HostConnection> sessions, Message message
   final identity = <HostConnection>[];
   final others = <HostConnection>[];
   for (final s in sessions) {
-    ((s.hello?.supports(Capability.identity) ?? false) ? identity : others).add(s);
+    (_takesIdentity(s) ? identity : others).add(s);
   }
   var sent = 0;
   if (identity.isNotEmpty) sent += _encodeTo(server, identity, message);
@@ -116,7 +120,7 @@ int _encodeTo(HostServer server, List<HostConnection> sessions, Message message)
 /// gets the frame it has always had.
 Message _forSession(HostConnection session, Message message) {
   if (message is! FrameMessage || message.characters.isEmpty) return message;
-  if (session.hello?.supports(Capability.identity) ?? false) return message;
+  if (_takesIdentity(session)) return message;
   return _withoutCharacters(message);
 }
 

@@ -23,8 +23,12 @@
 
 ## Files changed
 
-- `packages/test_game/lib/src/arena_roster.dart`: `ArenaCharacters` typedef,
-  `arenaCharactersOf`, `arenaCharacterFor` takes the chosen characters and falls back per player.
+- `packages/test_game/lib/src/arena_roster.dart`: `ArenaCharacters` typedef and `arenaCharactersOf`.
+- `packages/test_game/lib/src/arena_character_painter.dart` (NEW, outside `allow:`, widened by hand, see
+  REVIEW.md): `arenaCharacterFor` takes the chosen characters and falls back per player (it moved here
+  from `arena_roster.dart`).
+- `packages/test_game/lib/test_game.dart` (outside `allow:`, widened by hand, see REVIEW.md): exports the
+  new `arena_character_painter.dart`.
 - `packages/test_game/lib/src/arena_marble_painter.dart`: an optional `characters` map, passed to
   `arenaCharacterFor`.
 - `packages/test_game/lib/src/arena_painter.dart`: an optional `characters` map, passed to the
@@ -90,8 +94,9 @@
    choice isn't known falls back to their number's colour; the results' banner takes the winner's
    character ("the winner's band is the winner's chosen colour"); Robo is never in the map and keeps
    the next free number's colour ("Robo keeps the next free number's colour…").
-4. **Job folder and `allow:`.** Only the seven allowed lib files, the one allowed new test file and
-   this report changed. (`docs/briefs/m16/identity1/DRIVER-NOTES.md` and `run.log` are the driver's
+4. **Job folder and `allow:`.** The allowed lib files, the one allowed new test file and this report
+   changed, plus two files outside `allow:` that were widened by hand (see REVIEW.md):
+   `arena_character_painter.dart` (new) and `test_game.dart` (its export). (`docs/briefs/m16/identity1/DRIVER-NOTES.md` and `run.log` are the driver's
    own changes in this worktree, not mine.)
 5. **Stop rather than overstep.** `packages/game_kit/lib/src/game_module.dart` (`ViewContext`) is
    outside `allow:`, so the joined phone's characters wait for a job that owns it (question 1);

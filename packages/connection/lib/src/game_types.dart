@@ -78,13 +78,20 @@ final class GamePlayer {
 /// the phone takes 10, and a host one build older cuts to the same.
 const maxNicknameLength = 10;
 
+final _phoneStyleName = RegExp(r'^Phone [0-9A-Fa-f]{4}$');
+
+/// Whether [name] is a phone's own name, "Phone AB12" (M16 identity): what a
+/// phone sends in its hello when its player left the nickname blank. Screens
+/// show such a name as "Player N", as they show a blank one.
+bool isPhoneStyleName(String name) => _phoneStyleName.hasMatch(name.trim());
+
 /// A controller's name as the host shows it (M14 design section 9): trimmed
-/// and cut to [maxNicknameLength], or null when it is blank, so the player
-/// falls back to `P1` and their number. The name itself stays as it came, for
-/// diagnostics.
+/// and cut to [maxNicknameLength], or null when it is blank or a phone's own
+/// name ([isPhoneStyleName]), so the player falls back to `P1` and their
+/// number. The name itself stays as it came, for diagnostics.
 String? nicknameOf(String name) {
   final trimmed = name.trim();
-  if (trimmed.isEmpty) return null;
+  if (trimmed.isEmpty || isPhoneStyleName(trimmed)) return null;
   if (trimmed.length <= maxNicknameLength) return trimmed;
   return trimmed.substring(0, maxNicknameLength).trimRight();
 }

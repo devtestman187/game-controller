@@ -1,4 +1,5 @@
-import 'package:connection/connection.dart' show ClientProblem, ClientSnapshot, ClientStatus, maxNicknameLength;
+import 'package:connection/connection.dart'
+    show ClientProblem, ClientSnapshot, ClientStatus, isPhoneStyleName, maxNicknameLength;
 import 'package:protocol/protocol.dart' show RatingTag;
 
 import 'host_text.dart';
@@ -122,10 +123,12 @@ abstract final class PhoneText {
 
   /// A player's name on the phone's own lists (M16 identity, owner decision
   /// Nov 21): their nickname, or "Player 2" when the host has none for them
-  /// (REVIEW-1b Minor 3). [number] is the number the host gave them.
+  /// (REVIEW-1b Minor 3). A phone's own name, "Phone AB12", reads the same
+  /// way: a host one build older still sends it for a blank nickname. [number]
+  /// is the number the host gave them.
   static String playerName(String name, int number) {
     final trimmed = name.trim();
-    return trimmed.isEmpty ? 'Player $number' : trimmed;
+    return trimmed.isEmpty || isPhoneStyleName(trimmed) ? 'Player $number' : trimmed;
   }
 
   /// The bar's connection as its label and ping: "Android TV · 9 ms".

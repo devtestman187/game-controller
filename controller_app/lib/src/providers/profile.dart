@@ -56,14 +56,16 @@ typedef TakenColours = ({PlayerCharacter asked, PlayerCharacter assigned});
 /// seconds of the phone's own clock, unless the round moves on first (B-028).
 const takenNoticeDuration = Duration(seconds: 5);
 
-/// The line "Blue is taken tonight, you're Teal" (M14 design section 9,
-/// mock-up 18): what this phone asked the host for and got instead, or null
-/// while there is nothing to say.
+/// The line "Blue was taken: you're Teal" (M14 design section 9, mock-up 18):
+/// what this phone asked the host for and got instead, or null while there is
+/// nothing to say.
 ///
 /// It compares the host's answer ([ClientSnapshot.character]) with the colour
 /// the last hello asked for ([ClientSnapshot.askedCharacter]), not with the
-/// saved profile: a player who changes colour in Settings while joined sees no
-/// line, and the new colour applies on the next join (B-028). The line goes
+/// saved profile. A player who changes colour in Settings while joined sends
+/// it to the host (set_character); the host answers with the colour it gave,
+/// and the line follows that answer as the badge updates. During a running
+/// round the host holds the change until the round ends (B-028). The line goes
 /// after [takenNoticeDuration], or as the round moves on — the game starting
 /// or ending on this phone — whichever is first.
 final takenNoticeProvider = NotifierProvider<TakenNoticeNotifier, TakenColours?>(TakenNoticeNotifier.new);

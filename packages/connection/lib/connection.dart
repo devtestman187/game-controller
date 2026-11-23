@@ -13,7 +13,16 @@ export 'src/controller_identity.dart';
 export 'src/demo_input.dart';
 export 'src/game_host.dart' show GameHost, PlayerLatency;
 export 'src/game_types.dart'
-    show AwayEnd, AwayEnded, GamePlayer, GameRecord, LatencyStage, StageSample, maxNicknameLength, nicknameOf;
+    show
+        AwayEnd,
+        AwayEnded,
+        GamePlayer,
+        GameRecord,
+        LatencyStage,
+        StageSample,
+        isPhoneStyleName,
+        maxNicknameLength,
+        nicknameOf;
 export 'src/gamepad.dart';
 export 'src/host_address.dart';
 export 'src/host_server.dart';
