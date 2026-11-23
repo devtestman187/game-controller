@@ -2,6 +2,8 @@
 
 Read this before starting any flash-worker job. It is the one place that says how Claude and flash-worker share the work. The tools' details are in [dev-tools.md](dev-tools.md#deepseek-flash-helper-set-up-check-remove).
 
+Default worker (Nov 22): Haiku through `WORKER=claude`, per [design/claude-only-model.md](design/claude-only-model.md) and the digest's escalation ladder. Flash is the fallback; the text below still describes it.
+
 ## Who does what
 
 - **Claude** (the Claude subscription, scarce): design, architecture, decisions, briefs, the final say. "You are the source of truth for flash worker. It may provide you with suggestions or questions but you always approve" (owner).
