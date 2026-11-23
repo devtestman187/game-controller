@@ -1,0 +1,18 @@
+job: M16 process6 p6a: the combined check skips the tools suite when no tool changed; STOP.md names the failing suite and case
+pub: no
+turns: 35
+expected-min: 45
+tests-first: exempt (shell tools: run each new test before your edits and show its FAIL lines in the report)
+stop: after it. Do not touch tools/run-jobs.sh (380-line gate) or docs/dev-tools.md (the driver edits it).
+read: docs/briefs/templates/COMMON.md · tools/check.sh:1-20 (header), 28-60 (checks table, run_cmd), 82-100 (wanted names validation), 107-150 (the loop, `interesting`, skip_reason, FAIL line) · tools/run-steps.sh:100-150 (check_once, checks) · tools/run-stop.sh:35 (INTERESTING) and 82-85 (interesting_lines) · tools/selftest.sh:130-150 (its real output: `FAIL  <script> (<n>s)` then `  FAIL <case>` lines, then `RESULT: FAILED: ...`) · tools/tests/check-failfast-test.sh:1-95 (stubs, report helper) · tools/tests/run-stop-test.sh:1-60,95-104 (run_stop helper)
+changes: CHECK_SKIP · RUN_CHECK_SKIP · check_scope
+decisions (owner, Nov 22, "fix the runner"): the combined check skips the `tools` suite when no job in the wave changed a file under tools/ (one log line says so and why); when the combined check fails, STOP.md names the failing suite and the failing case or script (rehearsal1: it said "none found" while tools/tests/run-wire-test.sh failed: check.sh's output filter drops selftest's FAIL lines).
+do:
+1 tools/check.sh: env `CHECK_SKIP` (names separated by space or comma): a named check prints `SKIPPED <name> (CHECK_SKIP)`, does not run, is not a failure; an unknown name exits 2 like an unknown argument. Add the `^ *FAIL[ :]` lines to the `interesting` filter so a failed suite's own FAIL lines (selftest's script and case lines) are printed. Document both in the header.
+2 tools/run-steps.sh: new `check_scope` (sets RUN_CHECK_SKIP=tools and notes "combined check: the tools suite is skipped (no job changed a file under tools/)" when `git status --porcelain -- tools` is empty; else RUN_CHECK_SKIP="" and notes "combined check: the tools suite runs (a job changed a file under tools/)"). `checks()` calls it once after `unchurn`, before the first check_once; `check_once` runs `CHECK_SKIP="${RUN_CHECK_SKIP:-}" CHECK_FAIL_FAST=1 tools/check.sh`.
+3 tools/run-stop.sh: add the same `^ *FAIL[ :]` alternative to INTERESTING, so STOP.md lists `FAIL  tools (...)` and the script and case lines.
+4 NEW tools/tests/check-scope-test.sh (temp dir, check.sh copied under <tmp>/repo/tools with a stub selftest script in the temp repo (what `tools` runs) that prints selftest's real failing shape and exits 1; dart and flutter stubbed as in check-failfast-test.sh; never the real selftest): CHECK_SKIP=tools gives `SKIPPED tools`, exit 0, stub selftest not run; unset runs it, exit 1, output holds `FAIL  tools/tests/x-test.sh` and `  FAIL <case>` lines; an unknown CHECK_SKIP name exits 2; run-stop.sh on that real output as run-check.log gives a STOP.md with the suite, script and case and no "none found" under the failing-tests heading. Also source tools/run-steps.sh in a temp git repo (note, unchurn, stop, kill_tree, check_stop stubbed; a stub tools/check.sh that records $CHECK_SKIP): `checks` skips tools when tools/ is clean, runs it after a file under tools/ changes, and logs one line each way.
+5 Run bash tools/tests/check-scope-test.sh, check-failfast-test.sh, run-stop-test.sh, run-jobs-split-test.sh and run-wire-test.sh (5 min); all must pass.
+allow: tools/check.sh · tools/run-steps.sh · tools/run-stop.sh · tools/tests/check-scope-test.sh · docs/briefs/m16/process6/p6a-report.md
+check: format
+report: docs/briefs/m16/process6/p6a-report.md
