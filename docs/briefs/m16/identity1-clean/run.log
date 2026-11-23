@@ -13,3 +13,9 @@
 2026-11-23 09:53:16 committed ct: 8e92b196 Pin the brief turns line in the claude worker test
 2026-11-23 09:53:18 committed cp: 4e56e823 Pad painters take one PadFill for player and character
 2026-11-23 09:53:18 wave review skipped: wave 1 is the whole run, the run review covers it
+2026-11-23 09:53:20 start the run's review
+METRICS cp worker=claude model=claude-haiku-5-5 turns=35 in=30 out=16804 cache=538537 min=5.5 result=4
+METRICS ct worker=claude model=claude-haiku-5-5 turns=12 in=14 out=4037 cache=129343 min=0.7 result=0
+METRICS run-review worker=claude model=claude-haiku-5-5 turns=24 in=32 out=21921 cache=491356 min=1.7 result=0
+2026-11-23 09:55:36 DONE: every job is committed. Claude reads the Summary of docs/briefs/m16/identity1-clean/REVIEW.md, verifies its findings and writes one fix brief
+RESULT: DONE: 2 jobs, 21 min
