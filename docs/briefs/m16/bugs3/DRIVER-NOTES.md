@@ -13,3 +13,4 @@
 - b041 STOPPED by its own rule (design): at 1180x820 with stick pad PuzzleCamera.mirrorPlace returns null, dropping the tablet override would hide the other side on the owner's iPad. Options a/b/c in b041-report.md. Untracked: controller_app/test/tablet_shape_race_test.dart (red on purpose), b041-report.md.
 - not done: REVIEW.md wrap, check.sh, tracker rows, STATUS. Waiting for owner decisions.
 - calls: driver ~14, thumb-wait 1 (9 calls)
+- 17:46 b036 applied+scroll, committed b1618ff6; b041 rewritten (MatchView wholeIfNoMirror, owner: phone rule where it fits)

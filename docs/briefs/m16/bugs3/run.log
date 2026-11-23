@@ -41,3 +41,5 @@ RESULT: STOPPED: checks failed twice on the combined tree after b037 b038 wrap32
 2026-11-23 17:33:03 STOPPED: checks failed twice on the combined tree after b041
 2026-11-23 17:33:05 reviewed wave1: 8 finding(s)
 RESULT: STOPPED: checks failed twice on the combined tree after b041
+HAND-FIX b036: apply-job.sh applied 8 files: docs/briefs/m16/bugs3/b036-report.md, packages/party_host/lib/src/ui/arena_results.dart, packages/party_host/lib/src/ui/game_field.dart, packages/party_host/lib/src/ui/game_screen.dart, packages/party_host/lib/src/ui/winner_banner.dart, packages/party_host/test/winner_banner_test.dart, packages/test_game/lib/src/arena_view.dart, packages/test_game/lib/src/arena_view_widgets.dart
+2026-11-23 17:45:48 HAND-FIX b036: applied kept tree, scroll under banner (owner Card scrolls), frame and matrix pins updated
