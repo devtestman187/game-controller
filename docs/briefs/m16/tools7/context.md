@@ -1,0 +1,4 @@
+# tools7 context (read with the brief)
+`bash tools/check.sh tools` runs tools/selftest.sh: 24 *-test.sh scripts in sequence, about 526 s. Eight runner end-to-end tests are about 60 percent (run-wire 97 s; run-gate, wait-run, run-worker-switch, process3-fix1, run-limits-wire, run-wave, mine 29-41 s). Cause: slow Git Bash process starts (every git call, every sourced runner), a fresh git init plus commit per case, real sleeps and 60 s timeouts.
+
+Goal per script: fewer process starts per case (build one fixture repo, copy it per case), waits on a condition (file or log line) instead of fixed sleeps, stub sleeps as short as the logic allows (the case's own limit logic must still be exercised), and no weaker assertion. Tests must stay load-tolerant: never tighten a timeout; guard timeouts stay as generous as before; a case that needs a time limit uses a fake clock or a 1 s limit with a stub that sleeps well past it.
