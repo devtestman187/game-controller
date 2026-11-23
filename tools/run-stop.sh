@@ -33,7 +33,8 @@ STOP_ERROR_LINES=${STOP_ERROR_LINES:-8}
 STOP_OUTSIDE_LINES=${STOP_OUTSIDE_LINES:-5}
 STOP_COL=${STOP_COL:-300}
 # The lines worth quoting from a failed check: the pattern tools/check.sh uses.
-INTERESTING='\[E\]|Expected:|Actual:|Which:|Error:|error -|warning -|info -|Changed |Some tests failed|Failed to load|Exception|Test failed'
+# The FAIL lines name a failed shell suite's script and case (tools/check.sh keeps them too).
+INTERESTING='\[E\]|Expected:|Actual:|Which:|Error:|error -|warning -|info -|Changed |Some tests failed|Failed to load|Exception|Test failed|^ *FAIL[ :]'
 
 bad_input() { echo "RESULT: BAD INPUT: $1"; exit 3; }
 

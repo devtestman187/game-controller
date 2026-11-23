@@ -11,7 +11,7 @@
 # copies in tools/tests/run-wire-test.sh do, has no run-limits.sh: the check keeps no limit of
 # its own there, as it had none before the limits existed.
 if [ -n "${dir:-}" ] && [ -f "$dir/run-limits.sh" ]; then . "$dir/run-limits.sh"; fi
-
+[ -f "${BASH_SOURCE[0]%/*}/run-scope.sh" ] && . "${BASH_SOURCE[0]%/*}/run-scope.sh"
 # 2. A job that stopped with result 4: outside files that are generated churn are
 # dropped (logged), always-fine ones are applied; any other file stops the job.
 outside_files() { awk '/CHANGED FILES OUTSIDE/{on=1;next} /^---- flash:/{on=0} on&&/^  /{print $1}' "$1"; }
@@ -102,11 +102,10 @@ tests_first() { # tests_first <job>...
 # time limits are seen while it works (a wave whose check took 40 min unseen was a wave-1
 # defect); its own limit ends it with a stop naming the limit.
 check_once() { # check_once: tools/check.sh with the runner's fail-fast on, watched while it runs
-  # for the STOP file and RUN_MAX_MIN (through check_stop) and for RUN_CHECK_MAX_MIN; it stops
-  # the run when that limit ended the check. Returns check.sh's own exit code.
+  # watched for the STOP file, RUN_MAX_MIN (check_stop) and RUN_CHECK_MAX_MIN; returns check.sh's own exit code.
   local pid start limit_s=${RUN_CHECK_MAX_MIN:-0} poll_s=${RUN_POLL_S:-1}
   [ "$limit_s" -gt 0 ] && limit_s=$((limit_s * RUN_LIMIT_UNIT_S))
-  CHECK_FAIL_FAST=1 tools/check.sh > "$WORK/run-check.log" 2>&1 &
+  CHECK_SKIP="${RUN_CHECK_SKIP:-}" CHECK_FAIL_FAST=1 tools/check.sh > "$WORK/run-check.log" 2>&1 &
   pid=$!
   start=$(date +%s)
   while kill -0 "$pid" 2> /dev/null; do
@@ -123,6 +122,7 @@ check_once() { # check_once: tools/check.sh with the runner's fail-fast on, watc
 }
 checks() {
   unchurn
+  declare -F check_scope > /dev/null && check_scope # tools/run-scope.sh
   if ! check_once; then
     # A failed format or analyze check is the tree's own state: no retry can fix it.
     local bad

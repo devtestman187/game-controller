@@ -20,6 +20,9 @@
 # or setup (missing folder, no *-test.sh, another copy running).
 # Works in Git Bash on Windows and bash on macOS/Linux.
 set -u
+# The tests must not see the runner's own settings (WORKER, NO_PUSH, CHECK_*): a combined check run by tools/run-jobs.sh
+# passes them down, and they changed the run-wire test (rehearsal1, process6).
+unset WORKER NO_PUSH CHECK_FAIL_FAST CHECK_SKIP RUN_CHECK_SKIP
 
 cd "$(dirname "$0")/.." || exit 2
 

@@ -13,6 +13,9 @@
 # (tools/flash.sh sets it for a job from the job's own files; the runner runs the whole workspace).
 # CHECK_FAIL_FAST=1 (the same as --fail-fast): when format or analyze fails, every check
 # after it is printed as SKIPPED and none of them runs; off by default.
+# CHECK_SKIP="tools" (names separated by a space or a comma): each named check prints
+# "SKIPPED <name> (CHECK_SKIP)" and does not run; it is not a failure. The runner sets it
+# to skip the tools suite when no job changed a file under tools/. An unknown name is bad input.
 # CHECK_DART and CHECK_FLUTTER: the commands to run (default dart and flutter; the
 # self-test stubs them).
 # Checks: format analyze protocol connection metrics kit look arena puzzle host phone tv tools
@@ -100,6 +103,18 @@ for w in ${wanted[@]+"${wanted[@]}"}; do
   fi
 done
 
+# CHECK_SKIP: the names to skip, with commas read as spaces; every name must exist.
+skip_list="${CHECK_SKIP:-}"
+skip_list="${skip_list//,/ }"
+for s in $skip_list; do
+  found=0
+  for c in "${checks[@]}"; do [ "${c%%|*}" = "$s" ] && found=1; done
+  if [ $found = 0 ]; then
+    echo "Unknown check in CHECK_SKIP: $s (try --list)" >&2
+    exit 2
+  fi
+done
+
 for tool in "$dart_cmd" "$flutter_cmd"; do
   if ! command -v "$tool" > /dev/null 2>&1; then
     echo "$tool isn't on the PATH (set CHECK_DART or CHECK_FLUTTER)." >&2
@@ -113,7 +128,9 @@ mkdir -p "$logs" || exit 2
 
 # The lines worth showing from a failed run: test names that failed, the
 # expectation lines, compile and analyzer errors, files that need formatting.
-interesting='\[E\]|Expected:|Actual:|Which:|Error:|error -|warning -|info -|Changed |Some tests failed|Failed to load|Exception|Test failed'
+# The FAIL lines of a failed shell suite (tools/selftest.sh prints "FAIL  <script>" and "  FAIL <case>")
+# are kept, so the failing script and case show here and in STOP.md.
+interesting='\[E\]|Expected:|Actual:|Which:|Error:|error -|warning -|info -|Changed |Some tests failed|Failed to load|Exception|Test failed|^ *FAIL[ :]'
 
 failed=()
 skip_reason=""
@@ -125,6 +142,12 @@ for c in "${checks[@]}"; do
     for w in "${wanted[@]}"; do [ "$w" = "$name" ] && skip=0; done
     [ $skip = 1 ] && continue
   fi
+  case " $skip_list " in
+    *" $name "*)
+      printf 'SKIPPED %s (CHECK_SKIP)\n' "$name"
+      continue
+      ;;
+  esac
   if [ -n "$skip_reason" ]; then
     printf 'SKIPPED %s (%s)\n' "$name" "$skip_reason"
     continue

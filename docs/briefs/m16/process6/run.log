@@ -8,3 +8,4 @@
 2026-11-23 00:13:52 checks failed; fetching packages and trying once more
 2026-11-23 00:27:12 STOPPED: checks failed twice on the combined tree after p6a
 RESULT: STOPPED: checks failed twice on the combined tree after p6a
+2026-11-23 01:10:51 HAND-FIX p6a: combined check failed on tools: run-steps.sh over 250 lines (check_scope moved to tools/run-scope.sh) and run-wire-test saw the runner's WORKER=claude (tools/selftest.sh now unsets runner vars); tools suite passes on the tip
