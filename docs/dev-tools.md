@@ -488,6 +488,7 @@ How it fits together: Claude Code (subscription) → `tools/flash.sh` (run direc
 - **Dependencies:** `--pub` (or `pub: yes` in the brief) lets the worker run `flutter pub get` and change `pubspec.lock`, for a brief that adds a dependency.
 - **A worktree per job:** by default the job runs in a worktree of its own in `<repo>-jobs/` next to the checkout: a copy of the checkout as it is, uncommitted and untracked files included (not `kenney-audio/`), with its packages resolved. You and Claude can keep working in the checkout, and jobs on separate files can run side by side. At the end the job's changes are applied back to the checkout and the worktree is removed; if the same files changed in the checkout meanwhile, nothing is applied, and the patch and the worktree are kept (exit 6). `--here` runs in the checkout instead, the old way.
 - **What it knows about the project:** `--bare` skips Claude Code's project notes, so the script gives it a short set of rules and points it to [project-notes.md](project-notes.md).
+- **`FLASH_WORKER=claude`** runs the same job with the same script on the Claude subscription login with Haiku instead of DeepSeek ([the claude worker](#the-claude-worker-toolsclaude-workersh)), and `tools/claude-worker.sh` sets it for one job.
 
 It ends by printing the files this run changed, their `git diff --stat`, the check results and `flash: result <code>`: 0 when everything passed, otherwise the first that applies of 3 (protected file), 4 (outside `--allow`), the worker's own exit code, 5 (a check failed), 6 (the changes couldn't be applied back); 2 for bad arguments, a missing key or a failed worktree setup.
 
@@ -534,6 +535,59 @@ Then, in Claude Code: "use the flash-worker to <a job>" (or let Claude Code deci
 Open a new terminal and restart Claude Code afterwards. Delete the key at platform.deepseek.com too if it won't be used again.
 
 **Remove it from the repository:** revert the commit that added it (`git log --oneline -- tools/flash.sh` finds it, then `git revert <commit>`), or delete the `flash-worker` branch if it was never merged.
+
+## The claude worker: tools/claude-worker.sh
+
+The DeepSeek worker above is one way to run a batch. The same runner and the same [`tools/flash.sh`](../tools/flash.sh) can run its jobs on the Anthropic subscription login with Haiku instead, which needs no DeepSeek key; the plan and its rollout are in [claude-only-model.md](design/claude-only-model.md). One setting on the runner selects it, and two tools sit beside the worker: a stand-in for the `claude` CLI, so its tests need no login or token spend, and a reader that puts each job's numbers into the batch's table and `run.log`.
+
+### The runner's worker (tools/run-jobs.sh): WORKER=flash|claude
+
+```bash
+WORKER=claude tools/run-jobs.sh docs/briefs/m16/process5   # every job through tools/claude-worker.sh
+```
+
+- **`WORKER=flash`** (the default) changes nothing: every job and preflight is `FLASH_CMD`, `tools/flash.sh` unless you set it, on DeepSeek.
+- **`WORKER=claude`** makes `FLASH_CMD` default to `tools/claude-worker.sh`, so `tools/run-review.sh`'s reviews run on it too; an explicit `FLASH_CMD` still wins. Any other value stops the run before the first job, `WORKER must be flash or claude, got <v>`, exit 2.
+- **In `run.log`:** a `worker: <name>` line right after the `start at` line (a dry run writes none). [`tools/job-metrics.sh`](#toolsjob-metricssh) reads it, so a claude batch's table doesn't read as flash.
+- **At the end:** before the last `RESULT:` line the runner appends one `METRICS` line per job to `run.log` through `tools/job-metrics.sh --append`, when that script is there; a fixture without it, or an append that fails, never changes the run's result.
+
+### tools/claude-worker.sh
+
+```bash
+tools/claude-worker.sh --brief docs/briefs/m16/process5/p5d.md   # a job, as tools/flash.sh runs one
+tools/claude-worker.sh --preflight                               # one tiny real call; exit 7 if it fails
+```
+
+It is `tools/flash.sh` with `FLASH_WORKER=claude` (it execs flash.sh), so the worktree, the allow and deny lists, the turn cap, the preflight, the checks, the result codes and the report handling are flash.sh's own; only the worker changes, to the subscription login and Haiku in place of `--bare` and DeepSeek. Two variables set the worker: `CLAUDE_WORKER_MODEL`, the model (an exact id and not an alias, default `claude-haiku-5-5`) and `CLAUDE_WORKER_MAX_TURNS`, the model rounds before the CLI stops a job (default 35). Not for `--web` jobs, which flash.sh refuses; its exit codes are flash.sh's, and a failed `--preflight` is 7.
+
+- **Turns:** `--max-turns` counts model rounds, while the CLI's `num_turns` (and the runner's turn cap) counts every tool call of a parallel batch, so a job can report more turns than its cap (identity1 i1g2: 161 turns under cap 150; checked Nov 22 with `--max-turns 3`: 1 round, 11 turns).
+- **Isolation it achieves:** `--safe-mode` in place of `--bare` loads no CLAUDE.md or user memory, no hooks, MCP servers, skills, agents or plugins; `--strict-mcp-config` keeps a settings file's MCP servers out, `--disable-slash-commands` the slash commands, `--no-session-persistence` the session file; `CLAUDE_CODE_DISABLE_AUTO_MEMORY=1` stops the automatic memory notes; and `ANTHROPIC_BASE_URL`, `ANTHROPIC_API_KEY` and `ANTHROPIC_AUTH_TOKEN` are unset, so a key or base URL in the caller's shell can't send the run to an API account.
+- **Isolation it does not achieve:** admin-managed settings and an organisation's policy still apply; the run shares the account's 5-hour and weekly limits with every other Claude session, so a plan cutoff ends it; the CLI still reads its own auth files, as it must to use the login; and `CLAUDE_CODE_*` variables the caller exported reach the worker (flash.sh sets the caps on purpose).
+
+### tools/fake-claude-worker.sh
+
+```bash
+FAKE_CLAUDE_MODE=denial tools/fake-claude-worker.sh --model claude-haiku-5-5 --max-turns 3
+```
+
+It stands in for the `claude` CLI itself in the worker's tests: one line of the JSON a headless run prints with `--output-format json`, and the exit code the CLI gives, so the preflight and a job's log are tested with no Claude login, no network and no token spend. It reads the worker's own options (`--model`, `--max-turns`) and ignores the rest.
+
+- **`FAKE_CLAUDE_MODE`** picks the answer: `ok` (the default: no denial, result `PREFLIGHT-DONE`, exit 0), `denial` (the same with one `permission_denials` entry, exit 0), `max_turns` (an `error_max_turns` stop with `num_turns` one past the cap, exit 1) and `auth` ("Invalid API key - Please run /login", exit 1).
+- **`FAKE_CLAUDE_ARGS_FILE`** is a file that gets, per run, the argument list as one line and a line `env: base=<ANTHROPIC_BASE_URL> key=<ANTHROPIC_API_KEY>`.
+- **Exit code:** 0 for `ok` and `denial`, 1 for `max_turns` and `auth` as the CLI does, 2 for a bad mode or a `--max-turns` that isn't a whole number.
+
+### tools/job-metrics.sh
+
+```bash
+tools/job-metrics.sh docs/briefs/m16/process5           # the table
+tools/job-metrics.sh docs/briefs/m16/process5 --append  # also one METRICS line per job in its run.log
+```
+
+One row per worker log of a batch: what each job cost and how it ended, read from the lines `tools/flash.sh` prints into `<batch dir>/flash-<job>.log`. The table is for comparing one batch with another (a claude worker against flash). [`tools/tests/job-metrics-test.sh`](../tools/tests/job-metrics-test.sh) checks it.
+
+- **The columns:** JOB, WORKER, MODEL, TURNS, IN, OUT, CACHE (read plus write as one sum), MINUTES (seconds / 60, one decimal) and RESULT, with the result log's subtype and terminal_reason in brackets when the JSON the worker-exit line names is still there. WORKER is claude when the model starts with `claude-`, else flash, and a `worker:` line in `run.log` wins over the model. A field the log lacks prints `-`; `-review` and `wave<N>-review` logs are rows too.
+- **`--append`** adds one `METRICS <job> worker=<w> model=<m> turns=<t> in=<i> out=<o> cache=<c> min=<n> result=<r>` line per job to `<batch dir>/run.log`, and a job that already has one is skipped, so a second `--append` changes nothing ([the runner](#the-runners-worker-toolsrun-jobssh-workerflashclaude) does this at the end of a run).
+- **Exit code:** 0 done (also when nothing was appended), 2 bad use or no `flash-*.log` in the folder.
 
 ## Moving development to another computer
 
