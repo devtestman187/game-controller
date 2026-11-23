@@ -26,3 +26,8 @@ RESULT: STOPPED: jobs that failed or passed their limit (parked, not committed):
 2026-11-22 19:21:18 p5d finished: result 0 (31 turns, 2 min)
 2026-11-22 20:25:33 job p5c passed its limit (67 min, estimate 45) (parked, siblings continue)
 2026-11-22 20:42:51 committed p5d: 48982c6e docs(dev-tools): claude worker, WORKER switch and job-metrics.sh
+2026-11-22 20:42:53 reviewed wave1-p5a: 9 finding(s)
+2026-11-22 20:42:53 STOPPED: jobs that failed or passed their limit (parked, not committed): p5c (their logs: docs/briefs/m16/process5/flash-<job>.log)
+HAND-FIX p5c: apply-job.sh applied 2 files: tools/run-jobs.sh, tools/tests/run-worker-switch-test.sh
+2026-11-22 20:45:35 reviewed wave2: 4 finding(s)
+RESULT: STOPPED: jobs that failed or passed their limit (parked, not committed): p5c (their logs: docs/briefs/m16/process5/flash-<job>.log)
