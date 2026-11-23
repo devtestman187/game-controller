@@ -279,7 +279,7 @@ allowed=(
   "Bash(git status:*)" "Bash(git log:*)" "Bash(git diff:*)" "Bash(git show:*)" "Bash(git merge-base:*)" "Bash(ls:*)" "Bash(wc:*)"
   "Bash(tools/mine.sh:*)" "Bash(bash tools/mine.sh:*)" "Bash(tools/wait-run.sh:*)" "Bash(bash tools/wait-run.sh:*)"
   "Bash(tools/run-stop.sh:*)" "Bash(bash tools/run-stop.sh:*)" "Bash(tools/selftest.sh:*)" "Bash(bash tools/selftest.sh:*)"
-  "Bash(bash tools/tests/:*)" "Bash(tools/tests/:*)"
+  "Bash(bash tools/tests/*)" "Bash(tools/tests/*)"
 )
 [ "$pub" = 1 ] && allowed+=("Bash(flutter pub get:*)" "Bash(dart pub get:*)")
 # A distro job: commands inside that one distro (as root; `--` ends wsl's own

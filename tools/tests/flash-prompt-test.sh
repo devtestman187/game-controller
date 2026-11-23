@@ -61,7 +61,7 @@ for entry in \
   "Bash(tools/wait-run.sh:*)" "Bash(bash tools/wait-run.sh:*)" \
   "Bash(tools/run-stop.sh:*)" "Bash(bash tools/run-stop.sh:*)" \
   "Bash(tools/selftest.sh:*)" "Bash(bash tools/selftest.sh:*)" \
-  "Bash(bash tools/tests/:*)" "Bash(tools/tests/:*)"; do
+  "Bash(bash tools/tests/*)" "Bash(tools/tests/*)"; do
   if [ "$rc" = 0 ] && has "$entry"; then r=0; else r=1; fi
   report "the allow list has $entry" "$r"
 done
