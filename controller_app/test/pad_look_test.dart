@@ -89,9 +89,7 @@ Future<Pixels> paintStick(ToyLook look, {bool active = false, bool faint = false
   _stickCanvas,
   (canvas) => StickPainter(
     look: look,
-    center: _stickCentre,
-    radius: _stickRadius,
-    value: stickCenter,
+    geometry: const StickGeometry(center: _stickCentre, radius: _stickRadius, value: stickCenter),
     active: active,
     faint: faint,
     fill: PadFill(player: player),

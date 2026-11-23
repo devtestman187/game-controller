@@ -182,9 +182,7 @@ class _AnalogStickViewState extends ConsumerState<AnalogStickView> {
         size: Size.infinite,
         painter: StickPainter(
           look: look,
-          center: _center ?? widget.home.center,
-          radius: _radius,
-          value: value,
+          geometry: StickGeometry(center: _center ?? widget.home.center, radius: _radius, value: value),
           active: _pointer != null,
           // An idle floating stick is shown faintly where it will appear.
           faint: floating && _pointer == null,
@@ -195,15 +193,36 @@ class _AnalogStickViewState extends ConsumerState<AnalogStickView> {
   }
 }
 
+/// Where a stick is drawn and where its knob sits: the base's [center] and [radius], and the knob's [value], the
+/// stick's tilt from the middle (each axis from -1 to 1).
+class StickGeometry {
+  const StickGeometry({required this.center, required this.radius, required this.value});
+
+  /// The centre of the base, in the pad's pixels.
+  final Offset center;
+
+  /// The radius of the base, in pixels.
+  final double radius;
+
+  /// The knob's tilt, each axis from -1 to 1; (0, 0) is the middle.
+  final Stick value;
+
+  @override
+  bool operator ==(Object other) =>
+      other is StickGeometry && other.center == center && other.radius == radius && other.value == value;
+
+  @override
+  int get hashCode => Object.hash(center, radius, value);
+}
+
 /// A stick in the look (M13 step 8, rule 5): the base a paper ring with an ink
-/// edge at today's alpha, the knob the player's colour with an ink edge and the
-/// hard shadow, pushed in while it's held, and not held at today's faded alpha.
+/// edge at today's alpha, the knob the fill's colour (the character's, else the
+/// player's) with an ink edge and the hard shadow, pushed in while it's held, and
+/// not held at today's faded alpha.
 class StickPainter extends CustomPainter {
   const StickPainter({
     required this.look,
-    required this.center,
-    required this.radius,
-    required this.value,
+    required this.geometry,
     required this.active,
     required this.faint,
     this.fill = const PadFill(),
@@ -212,9 +231,8 @@ class StickPainter extends CustomPainter {
   /// The look the pad is drawn in.
   final ToyLook look;
 
-  final Offset center;
-  final double radius;
-  final Stick value;
+  /// Where the stick is drawn and where its knob sits.
+  final StickGeometry geometry;
 
   /// Whether a thumb holds the stick now (the knob drawn full, and squished).
   final bool active;
@@ -233,10 +251,13 @@ class StickPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final alpha = faint ? faintAlpha : 1.0;
+    final center = geometry.center;
+    final radius = geometry.radius;
     canvas.drawCircle(center, radius, Paint()..color = look.colors.paper.withValues(alpha: alpha));
     canvas.drawCircle(center, radius, padInkEdge(look)..color = look.colors.ink.withValues(alpha: alpha));
     final knobRadius = max(14.0, radius * 0.42);
     final travel = radius - knobRadius * 0.5;
+    final value = geometry.value;
     final knob = Path()
       ..addOval(Rect.fromCircle(center: center + Offset(value.x, value.y) * travel, radius: knobRadius));
     _paintKnob(canvas, knob, alpha);
@@ -264,11 +285,5 @@ class StickPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(StickPainter old) =>
-      old.look != look ||
-      old.center != center ||
-      old.value != value ||
-      old.active != active ||
-      old.faint != faint ||
-      old.radius != radius ||
-      old.fill != fill;
+      old.look != look || old.geometry != geometry || old.active != active || old.faint != faint || old.fill != fill;
 }

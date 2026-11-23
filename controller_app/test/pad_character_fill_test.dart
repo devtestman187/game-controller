@@ -70,9 +70,7 @@ Future<Pixels> _stick(ToyLook look, PlayerCharacter? character) => paintedPixels
   _stickCanvas,
   (canvas) => StickPainter(
     look: look,
-    center: _stickCentre,
-    radius: _stickRadius,
-    value: stickCenter,
+    geometry: const StickGeometry(center: _stickCentre, radius: _stickRadius, value: stickCenter),
     active: true,
     faint: false,
     fill: PadFill(player: _playerNumber, character: character),
