@@ -137,7 +137,7 @@ Fixed Claude Code subagents in `.claude/agents/` keep the main session's input s
 2. The owner decides design questions.
 3. The main session calls **thumb-batch** with the worktree, the batch folder and the decisions quoted; it briefs, runs, repairs, wraps and commits alone. It reads [driver-kit.md](driver-kit.md) (about 5K tokens) instead of this file, the digest, flash-lessons and dev-tools (cost1, Nov 23).
 4. **thumb-release** (Haiku, a short checklist) runs only on the owner's word, with the tag, the base tag and the owner's words. Triage and repairs stay on Sonnet.
-5. Every batch report puts `tools/agent-cost.sh --since <batch start> --line` next to job-metrics. After editing an agent, run `tools/sync-agents.sh` (user-level copies); a changed agent may need a new session.
+5. Every batch report puts `tools/agent-cost.sh --since <batch start> --line` next to job-metrics. After editing an agent, run `tools/sync-agents.sh` (user-level copies). Sessions started in the E-drive AI folder see only those copies; a running session picks up a new copy within minutes (seen Nov 23).
 
 The main session compacts around 100-120k context.
 

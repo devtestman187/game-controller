@@ -2,8 +2,8 @@
 # Copies this repo's fixed Thumb Party agents (.claude/agents/thumb-*.md) to the user-level agents
 # folder (~/.claude/agents), so a session started outside the worktree (for example in the E-drive
 # AI folder) finds them. The repo file is the source; run this after editing one. Each copy gets a
-# comment line after its frontmatter naming its source. Agent definitions load at session start:
-# a running session may need a new session to see a changed agent.
+# comment line after its frontmatter naming its source. A session started outside a git repo reads
+# agents only from ~/.claude/agents; a running session picked up new copies with no restart (Nov 23).
 #
 #   tools/sync-agents.sh [--dest <dir>] [--check]
 #

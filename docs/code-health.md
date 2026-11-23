@@ -296,3 +296,11 @@ Minor items from `docs/briefs/m16/phonehost3/REVIEW.md` and `wave2-review-report
 - `live_stats_unmarked_test.dart` `waitFor` timeout is 30 s now (bounds a failure only; guidelines prefer no longer timeouts: drop to 5 s if the order-based wait proves enough).
 - New tests build their own TV-look pump; consider `all_looks.dart` if controller_app can import it.
 - The affected-only check's first real run skipped protocol connection metrics kit look arena puzzle tools and ran phone + host: correct for these changes. Under `check.sh -j 4` arena (map_new_test did not complete) and tools (run-wire2-test STOP-file case) failed once under load and passed serially: more load flakes.
+
+## cost1 step d: drivers don't wait (option for later, owner Nov 23)
+Not built. bugs2 wave A with the 1-hour cache showed no large Sonnet cache writes on resumes (3 resumes over 5 min wrote 0.00M; $1.34 Sonnet for the wave), so the trigger the owner set was not met. The option, if waits grow past an hour or driver contexts stay over 100K:
+- A Sonnet driver writes briefs, starts the runner, writes DRIVER-NOTES.md with a complete "Next action" block (docs/driver-kit.md section 8), and hands back.
+- The main session waits in the background (`run_in_background` on `tools/wait-run.sh` in a loop, or an until-loop on run.log); no Sonnet runs while the wave works. On DONE no Sonnet is needed until the wrap; on STOPPED a fresh, small Sonnet repair agent reads only DRIVER-NOTES, STOP.md and the evidence.
+- To check first: whether a runner started by a subagent survives the subagent's exit (if not, the main session starts it); a main-session wait over an hour rewrites its context once, so compact at milestone boundaries; Haiku prompts stay under 100K (36 Haiku calls on Nov 23 passed it, 5x price).
+- If built: revisit the 1-hour subagent cache (claude-only-model.md "Prompt cache lifetime"), since short-lived subagents would then pay 2x writes for nothing.
+

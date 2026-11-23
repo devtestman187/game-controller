@@ -614,7 +614,7 @@ What the Claude agents (main sessions, subagents, `claude -p` workers) cost, fro
 
 ### tools/sync-agents.sh
 
-`tools/sync-agents.sh [--dest <dir>] [--check]` copies `.claude/agents/thumb-*.md` to `~/.claude/agents` with a copy note after the frontmatter, so a session started outside the worktree finds the fixed agents. Run it after editing an agent; agent definitions load at session start, so a running session may need a new one. `--check` copies nothing and exits 1 when a copy differs. [`tools/tests/sync-agents-test.sh`](../tools/tests/sync-agents-test.sh) checks it.
+`tools/sync-agents.sh [--dest <dir>] [--check]` copies `.claude/agents/thumb-*.md` to `~/.claude/agents` with a copy note after the frontmatter, so a session started outside the worktree finds the fixed agents. Run it after editing an agent: a session started in the E-drive AI folder (not a git repo) reads agents only from `~/.claude/agents`, and a running session picked up the new copies within minutes, with no restart (Nov 23). `--check` copies nothing and exits 1 when a copy differs. [`tools/tests/sync-agents-test.sh`](../tools/tests/sync-agents-test.sh) checks it.
 
 ## Moving development to another computer
 
