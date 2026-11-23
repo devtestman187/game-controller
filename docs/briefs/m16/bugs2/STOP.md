@@ -1,7 +1,7 @@
-STOP 2026-11-23 15:35:06 docs/briefs/m16/bugs2
-cause: checks failed twice on the combined tree after b039 flk1 b035
-class: check-failed
-repair: run tools/check.sh <suite> for the failing name above, fix the one cause, append "HAND-FIX <job>: ..." to run.log and restart (docs/flash-digest.md "Repair a stop").
+STOP 2026-11-23 15:36:25 docs/briefs/m16/bugs2
+cause: the base does not compile: FAIL format (exit 1, 6s) log: C:\Users\mrman\AppData\Local\Temp/thumbparty-check-20261123-153615/format.log (log .dart_tool/run-jobs/docs_briefs_m16_bugs2/run-base-check.log); no job of wave 1 was started
+class: other
+repair: read the cause and the lines below, fix the one cause, append "HAND-FIX <job>: ..." to run.log, then restart (docs/flash-digest.md "Repair a stop").
 failing tests and errors (run-check.log):
   FAIL  phone       (exit 1, 70s)  log: C:\Users\mrman\AppData\Local\Temp/thumbparty-check-20261123-153333/phone.log
         Expected: null
@@ -14,12 +14,6 @@ failing tests and errors (run-check.log):
 files outside allow (flash log):
   none found
 run.log (last 20 lines):
-  2026-11-23 15:21:15 RUN_MAX_MIN=82 min (computed backstop of the jobs still to do)
-  2026-11-23 15:21:15 start at 2aeec568 on m16
-  2026-11-23 15:21:15 worker: claude
-  2026-11-23 15:21:15 run-base 2aeec5681f3f99e05352e7f47fa2fe49b57a831d
-  2026-11-23 15:21:30 preflight ok: the worker ran flutter --version and tools/check.sh --list
-  2026-11-23 15:21:51 start b035
   2026-11-23 15:22:16 start b039
   2026-11-23 15:22:42 start flk1
   2026-11-23 15:26:38 b039 finished: result 4 (11 turns, 4 min)
@@ -33,3 +27,10 @@ run.log (last 20 lines):
   2026-11-23 15:30:33 combined check: skips protocol connection metrics kit look arena puzzle tools (no job's change reaches them)
   2026-11-23 15:33:29 checks failed; fetching packages and trying once more
   2026-11-23 15:35:06 STOPPED: checks failed twice on the combined tree after b039 flk1 b035
+  RESULT: STOPPED: checks failed twice on the combined tree after b039 flk1 b035
+  2026-11-23 15:36:00 HAND-FIX b035: narrow-phone test changed from 320x640 (row overflowed before the change, outside the brief) to 568x320; test file only
+  2026-11-23 15:36:01 RUN_MAX_MIN=82 min (computed backstop of the jobs still to do)
+  2026-11-23 15:36:02 start at 7bc7dff7 on m16
+  2026-11-23 15:36:02 worker: claude
+  2026-11-23 15:36:15 preflight ok: the worker ran flutter --version and tools/check.sh --list
+  2026-11-23 15:36:25 STOPPED: the base does not compile: FAIL  format      (exit 1, 6s)  log: C:\Users\mrman\AppData\Local\Temp/thumbparty-check-20261123-153615/format.log (log .dart_tool/run-jobs/docs_briefs_m16_bugs2/run-base-check.log); no job of wave 1 was started
