@@ -49,3 +49,4 @@ RESULT: STOPPED: jobs that failed or passed their limit (parked, not committed):
 2026-11-23 12:13:04 STOPPED: jobs that failed or passed their limit (parked, not committed): sp3 (their logs: docs/briefs/m16/speed1/flash-<job>.log)
 2026-11-23 12:18:03 reviewed wave2: 9 finding(s)
 RESULT: STOPPED: jobs that failed or passed their limit (parked, not committed): sp3 (their logs: docs/briefs/m16/speed1/flash-<job>.log)
+HAND-FIX sp3: apply-job.sh applied 5 files: docs/briefs/m16/speed1/sp3-report.md, tools/check-cache.sh, tools/check-par.sh, tools/check.sh, tools/tests/check-cache-test.sh
