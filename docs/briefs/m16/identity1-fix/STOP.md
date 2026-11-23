@@ -1,0 +1,26 @@
+STOP 2026-11-23 08:01:58 docs/briefs/m16/identity1-fix
+cause: checks failed on the combined tree after fm1 fm2: format cannot be fixed by a retry
+class: check-failed
+repair: run tools/check.sh <suite> for the failing name above, fix the one cause, append "HAND-FIX <job>: ..." to run.log and restart (docs/flash-digest.md "Repair a stop").
+failing tests and errors (run-check.log):
+  FAIL  format      (exit 1, 6s)  log: C:\Users\mrman\AppData\Local\Temp/thumbparty-check-20261123-080147/format.log
+        Changed packages\test_game\test\arena_phone_identity_test.dart
+files outside allow (flash log):
+  none found
+run.log (last 20 lines):
+  2026-11-23 07:43:20 RUN_MAX_MIN=88 min (computed backstop of the jobs still to do)
+  2026-11-23 07:43:20 start at 4f273fb5 on m16
+  2026-11-23 07:43:20 worker: claude
+  2026-11-23 07:43:20 run-base 4f273fb5565d185c44fa1d845fd48e34fe6ea6d3
+  2026-11-23 07:43:35 preflight ok: the worker ran flutter --version and tools/check.sh --list
+  2026-11-23 07:44:01 start fm1
+  2026-11-23 07:44:27 start fm2
+  2026-11-23 07:44:52 start fm3
+  2026-11-23 07:48:28 fm1 finished: result 0 (34 turns, 3 min)
+  2026-11-23 07:53:09 fm3 finished: result 4 (36 turns, 7 min)
+  2026-11-23 07:53:11 fm3: dropped generated churn outside its list: docs/design/m13-placed-look.png docs/design/puzzles/boat.png docs/design/puzzles/butterfly.png docs/design/puzzles/car.png docs/design/puzzles/castle.png docs/design/puzzles/fish.png docs/design/puzzles/house.png docs/design/puzzles/...
+  2026-11-23 07:53:11 job fm3 parked (result 0); its siblings continue
+  2026-11-23 08:01:28 fm2 finished: result 0 (21 turns, 11 min)
+  2026-11-23 08:01:46 tests-first ok: packages/connection/test/identity_fix_test.dart fails on the old code
+  2026-11-23 08:01:47 combined check: the tools suite is skipped (no job changed a file under tools/)
+  2026-11-23 08:01:58 STOPPED: checks failed on the combined tree after fm1 fm2: format cannot be fixed by a retry
