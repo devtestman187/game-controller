@@ -45,3 +45,7 @@ RESULT: STOPPED: jobs that failed or passed their limit (parked, not committed):
 2026-11-23 12:02:09 combined check: the tools suite runs (a job changed a file under tools/)
 2026-11-23 12:13:00 committed sp6: 9cf192a9 brief-check: WARN when a job's allow: holds only test files
 2026-11-23 12:13:02 committed sp4: f5965c0f runner: combined check runs affected suites, -j 4, formats job files
+2026-11-23 12:13:04 reviewed wave1-sp2: 8 finding(s)
+2026-11-23 12:13:04 STOPPED: jobs that failed or passed their limit (parked, not committed): sp3 (their logs: docs/briefs/m16/speed1/flash-<job>.log)
+2026-11-23 12:18:03 reviewed wave2: 9 finding(s)
+RESULT: STOPPED: jobs that failed or passed their limit (parked, not committed): sp3 (their logs: docs/briefs/m16/speed1/flash-<job>.log)
