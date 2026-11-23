@@ -22,3 +22,9 @@ Host: character.dart:144 palette literals in protocol; host_connection.dart:198 
 
 ## Coverage
 The UI review lists 30 drawing places: all use the chosen character or are intended defaults (Robo, palette picker, award colours, mirror dots, side colours), except the phone's own pad fill (owner question 2).
+
+## Owner answers Nov 23 (review)
+- "Run the fix batch fm1-fm3": yes (batch folder docs/briefs/m16/identity1-fix/).
+- Q6: a phone that drops and re-pairs mid-round: its hello's character "should be held until the round ends" (like set_character). docs/protocol.md:235's "one exception" sentence is corrected in fq6 (wave B).
+- Switch `check.sh tools` to `selftest.sh -j 4`: yes (job ft, wave B; first make claude-worker-test load-tolerant).
+- Questions 2 (pad fill, job fpad) and 3 (ToyBadgeFace) are still open; fpad is not written until the main session says so.
