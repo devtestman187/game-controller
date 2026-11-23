@@ -21,3 +21,8 @@ RESULT: STOPPED: jobs that failed or passed their limit (parked, not committed):
 2026-11-22 19:17:37 skip p5a (already done)
 2026-11-22 19:17:38 skip p5b (already done)
 2026-11-22 19:17:38 wave 1 review: wave1-review-report.md does not cover p5a, so its review is wave1-p5a
+2026-11-22 19:18:01 start p5c
+2026-11-22 19:18:26 start p5d
+2026-11-22 19:21:18 p5d finished: result 0 (31 turns, 2 min)
+2026-11-22 20:25:33 job p5c passed its limit (67 min, estimate 45) (parked, siblings continue)
+2026-11-22 20:42:51 committed p5d: 48982c6e docs(dev-tools): claude worker, WORKER switch and job-metrics.sh
