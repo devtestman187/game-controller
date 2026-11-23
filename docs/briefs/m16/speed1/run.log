@@ -17,3 +17,6 @@
 2026-11-23 11:40:22 STOPPED: jobs that failed or passed their limit (parked, not committed): sp5 sp2 (their logs: docs/briefs/m16/speed1/flash-<job>.log)
 HAND-FIX sp2: apply-job.sh applied 3 files: docs/briefs/m16/speed1/sp2-report.md, tools/affected.sh, tools/tests/affected-test.sh
 HAND-FIX sp5: apply-job.sh applied 4 files: docs/briefs/m16/speed1/sp5-report.md, tools/job-metrics.sh, tools/tests/job-metrics-test.sh, tools/tests/job-wall-test.sh
+2026-11-23 11:42:48 RUN_MAX_MIN=169 min (computed backstop of the jobs still to do)
+2026-11-23 11:42:56 reviewed wave1: 8 finding(s)
+RESULT: STOPPED: jobs that failed or passed their limit (parked, not committed): sp5 sp2 (their logs: docs/briefs/m16/speed1/flash-<job>.log)
