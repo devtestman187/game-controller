@@ -16,7 +16,7 @@
 set -u
 # The caller's limit and poll settings must not reach the runner: each case sets its own below.
 unset RUN_CHECK_MAX_MIN RUN_REVIEW_MAX_MIN RUN_POLL_S RUN_LIMIT_UNIT_S RUN_JOB_FACTOR_PCT \
-  RUN_EXPECT_DEFAULT_MIN RUN_TURN_CAP RUN_BASE_CHECK_MAX_MIN BRIEF_CHECK_SKIP
+  RUN_EXPECT_DEFAULT_MIN RUN_TURN_CAP RUN_BASE_CHECK_MAX_MIN BRIEF_CHECK_SKIP BRIEF_CHECK_CMD
 cd "$(dirname "$0")/../.." || exit 2
 loc=$(pwd)
 tmp="$(mktemp -d "${TMPDIR:-${TEMP:-/tmp}}/run-wire2-test-XXXXXX")" || exit 2

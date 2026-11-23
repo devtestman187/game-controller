@@ -33,10 +33,8 @@ export RUN_POLL_S
 
 fails=0
 cases=0
-dbg="$loc/.dart_tool/worker-switch-debug.log" # DEBUG (removed before the report)
-: > "$dbg"
-pass() { echo "PASS $1"; echo "PASS $1" >> "$dbg"; }
-fail() { echo "FAIL $1"; fails=$((fails + 1)); echo "FAIL $1" >> "$dbg"; }
+pass() { echo "PASS $1"; }
+fail() { echo "FAIL $1"; fails=$((fails + 1)); }
 report() { # report <case> <0 passed | 1 failed>: on a failure, show what the runner printed
   cases=$((cases + 1))
   if [ "$2" = 0 ]; then pass "$1"; else fail "$1"; sed 's/^/    | /' "$out"; fi
@@ -123,13 +121,9 @@ fixture() { # fixture <case> [metrics]: a copy of the kind's template repo, a wo
 
 run_jobs() { # run_jobs [args]: the runner from the repo root, stubs first on PATH; sets rc and out
   # 40 s is a whole case's run (a run here takes seconds): a hung runner fails its case, not this script.
-  local t0=$SECONDS
-  echo "start ${repo#"$tmp"/} $*" >> "$dbg"
   rc=0
   ( cd "$repo" && PATH="$tmp/bin:$PATH" NO_PUSH=1 RUN_WORK="$work" \
     timeout -k 5 40 bash tools/run-jobs.sh "$batch" "$@" ) > "$out" 2>&1 || rc=$?
-  echo "end ${repo#"$tmp"/} rc=$rc ${SECONDS}s ($((SECONDS - t0))s)" >> "$dbg"
-  sed 's/^/  out| /' "$out" >> "$dbg" # DEBUG
 }
 logged() { grep -qF "$1" "$repo/$batch/run.log" 2>/dev/null; } # logged <text>: run.log has it
 ran() { grep -qx "$1" "$STUB_MARK" 2>/dev/null; } # ran <tool line>: a worker stub recorded it

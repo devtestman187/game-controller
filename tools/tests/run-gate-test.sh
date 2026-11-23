@@ -243,8 +243,8 @@ clears_env() { # clears_env <script> <var>: 0 when the script's own unset drops 
 
 leak_case() { # leak_case: every setting must be cleared by both wire tests; prints the leaks
   local v s leaked=""
-  for v in RUN_CHECK_MAX_MIN RUN_POLL_S RUN_LIMIT_UNIT_S RUN_TURN_CAP BRIEF_CHECK_SKIP; do
-    for s in run-wire-test.sh run-limits-wire-test.sh; do
+  for v in RUN_CHECK_MAX_MIN RUN_POLL_S RUN_LIMIT_UNIT_S RUN_TURN_CAP BRIEF_CHECK_SKIP BRIEF_CHECK_CMD; do
+    for s in run-wire-test.sh run-wire2-test.sh run-limits-wire-test.sh; do
       clears_env "$loc/tools/tests/$s" "$v" || leaked="$leaked $s:$v"
     done
   done
@@ -254,7 +254,7 @@ leak_case() { # leak_case: every setting must be cleared by both wire tests; pri
 
 # 8. Each caller export is gone after the wire test's own unset, in both wire tests.
 if leak_case > "$out" 2>&1; then r=0; else r=1; fi
-report "the wire tests' own unset clears each limit setting a caller exports (5 settings, both tests)" "$r"
+report "the wire tests' own unset clears each limit setting a caller exports (6 settings, all three tests)" "$r"
 
 if [ "$fails" -gt 0 ]; then
   echo "RESULT: FAILED: $fails of $cases case(s) failed"

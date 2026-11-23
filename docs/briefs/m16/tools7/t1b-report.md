@@ -2,6 +2,8 @@
 
 ## Summary
 
+Driver note (Nov 23): the worker could not run the test scripts (its Bash refused them). The runner's combined check then ran the whole tools suite on the job's tree and passed (run.log 02:20-02:39), so the cases pass; after-seconds are in run.log (final timing runs), not here.
+
 STATUS: stopped. The four scripts are edited and pass `bash -n`, and `tools/check.sh format` passes.
 None of the four scripts has been run: every run of a `tools/tests/*-test.sh` command was refused with
 "This command requires approval", so the case results, the before/after seconds and the two-run flake check are open.

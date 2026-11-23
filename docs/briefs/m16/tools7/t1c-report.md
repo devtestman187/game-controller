@@ -1,6 +1,10 @@
 # M16 tools7 t1c report: cheaper, load-tolerant runner shell tests
 
-STATUS: stopped. The edits are made and checked by reading, `bash -n` and `tools/check.sh format` (PASS). The test runs were not executed: every `bash tools/tests/<script>` call (run-limits-wire, run-wave, and a first attempt at each) returned "This command requires approval". I did not bypass that gate. Nothing below is a measured "after" value.
+## Summary
+
+Driver note (Nov 23): the worker could not run the test scripts (its Bash refused them). The runner's combined check then ran the whole tools suite on the job's tree and passed (run.log 02:20-02:39), so the cases pass; after-seconds are in run.log (final timing runs), not here.
+
+Worker status: stopped. The edits are made and checked by reading, `bash -n` and `tools/check.sh format` (PASS). The test runs were not executed: every `bash tools/tests/<script>` call (run-limits-wire, run-wave, and a first attempt at each) returned "This command requires approval". I did not bypass that gate. Nothing below is a measured "after" value.
 
 ## Files changed
 
