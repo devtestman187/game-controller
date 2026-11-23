@@ -49,6 +49,19 @@ tools/check.sh --list           # the checks and what each covers
 tools/check.sh --verbose puzzle # also print the full output
 ```
 
+**Faster checks (speed1, Nov 23).** Three switches, all optional:
+
+```bash
+tools/check.sh -j 4              # the test suites four at a time (format and analyze first, serially)
+tools/check.sh --no-cache        # run every suite (the result cache is on by default; CHECK_CACHE=0 does the same)
+bash tools/affected.sh           # the suites the working tree's changes reach (--not: the others, for CHECK_SKIP)
+```
+
+- **`-j N` / `CHECK_JOBS=N`:** each suite's output goes to its own log; the PASS/FAIL lines print in the fixed order after the run, same text as serial. The default stays serial. Sourced code: `tools/check-par.sh`. Measured on this PC (16 cores, Defender exclusions on): parallel does not scale by four; the suites compete for CPU and disk (puzzle 145 s serial, 332 s at `-j 4`), and a timing-sensitive host test (`live_stats_unmarked_test.dart`) failed twice under that load while passing serially. A failed suite is retried by the runner, and the cache makes that retry run only the failed suite.
+- **Result cache (`tools/check-cache.sh`):** a suite is skipped (`CACHED  <name> (passed 3m ago)`) when a content hash of its package, every package it depends on (`tools/affected.sh --deps <suite>`), `tools/check.sh`, `tools/check-par.sh`, `tools/check-cache.sh` and `pubspec.lock` equals that of a recorded passing run. The file is `.dart_tool/check-cache.tsv`; format and analyze are never cached; only passes are recorded; outside a git tree nothing is cached. It does not hash the SDK version. **A release always runs uncached** (`tools/check.sh --no-cache`, docs/release.md); so does any run you want to trust fully.
+- **`tools/affected.sh [--not] [--deps <suite>] [paths...]`:** maps changed paths (default `git status`) to suites using the `path:` dependencies in the pubspecs: a protocol change runs protocol and every dependent; `controller_app` runs phone; `tools/` runs tools; any pubspec, `pubspec.lock`, `analysis_options.yaml` or `tools/check.sh` runs everything; `docs/` and top-level `*.md` run nothing; any other path runs everything. Exit 0, 2 bad input. Tested by `tools/tests/affected-test.sh`.
+- **The runner** (`tools/run-scope.sh`): the combined check runs format and analyze of the whole workspace plus the suites `affected.sh` names (`RUN_CHECK_FULL=1` forces all; `RUN_CHECK_JOBS`, default 4, is the `-j`); before it, `dart format` runs on the wave's changed `.dart` files in each job's `allow:` (log: `formatted <file> for <job>`) instead of stopping on format. The full check stays at the batch end (the driver's wrap) and before every build.
+
 | Check | Folder | Command |
 | --- | --- | --- |
 | `format` | repo root | `dart format --output=none --set-exit-if-changed controller_app tv_test_app packages assets` |
@@ -133,7 +146,7 @@ tools/mine.sh -h       # this help
 Checks what a change touches, in one call: `dart format` on the changed `.dart` files, `dart analyze` once per touched package (found by the nearest `pubspec.yaml`), one `flutter test` or `dart test` per package, and the generated churn reverted last, so a test run never leaves it behind. It's quiet when it's green: analyzer errors, failing tests (the test's name and the first 8 lines under it), `NO TESTS <package>`, one `OK <n> tests <package>` line for each package whose tests passed, and a `RESULT:` line last.
 
 - **The tests it runs:** the touched `*_test.dart` files that still exist, plus every test under the package's `test/` folder that names a touched lib file's basename (`git grep -l`), each once. A test it misses still runs in the full `tools/check.sh`, which stays the authority on the whole tree.
-- **Environment:** `DART` and `FLUTTER` are the commands to run (default `dart` and `flutter`; the self-test stubs them), and `MINE_TIMEOUT` is the limit for the whole run in seconds (default 900).
+- **Environment:** `DART` and `FLUTTER` are the commands to run (default `dart` and `flutter`; the self-test stubs them), and `MINE_TIMEOUT` is the limit for the whole run in seconds (default 900; a worker run gets 300, `tools/flash.sh` sets it).
 - **Exit code:** 0 ok, 1 a check failed, 2 `MINE_TIMEOUT` ran out or a command stalled, 3 bad input or setup (not a git worktree, `dart` or `flutter` missing, another copy running).
 - **One copy at a time:** `.dart_tool/mine.lock` holds the running copy's process; a second copy is refused and a stale lock (its process gone) is replaced.
 - **The churn:** [`tools/churn.sh`](../tools/churn.sh) is sourced, not run: it lists the generated files the TV build and the tests rewrite (`tv_test_app/windows/flutter/`, the `docs/design` PNGs, `run-*.patch`, a test-written `*-results.json`) and does a `git checkout --` on those paths only, never on a person's file. It is the one list: `tools/run-jobs.sh` sources it for the churn it drops from a result-4 job and for its own unchurn paths.
@@ -585,8 +598,8 @@ tools/job-metrics.sh docs/briefs/m16/process5 --append  # also one METRICS line 
 
 One row per worker log of a batch: what each job cost and how it ended, read from the lines `tools/flash.sh` prints into `<batch dir>/flash-<job>.log`. The table is for comparing one batch with another (a claude worker against flash). [`tools/tests/job-metrics-test.sh`](../tools/tests/job-metrics-test.sh) checks it.
 
-- **The columns:** JOB, WORKER, MODEL, TURNS, IN, OUT, CACHE (read plus write as one sum), MINUTES (seconds / 60, one decimal) and RESULT, with the result log's subtype and terminal_reason in brackets when the JSON the worker-exit line names is still there. WORKER is claude when the model starts with `claude-`, else flash, and a `worker:` line in `run.log` wins over the model. A field the log lacks prints `-`; `-review` and `wave<N>-review` logs are rows too.
-- **`--append`** adds one `METRICS <job> worker=<w> model=<m> turns=<t> in=<i> out=<o> cache=<c> min=<n> result=<r>` line per job to `<batch dir>/run.log`, and a job that already has one is skipped, so a second `--append` changes nothing ([the runner](#the-runners-worker-toolsrun-jobssh-workerflashclaude) does this at the end of a run).
+- **The columns:** JOB, WORKER, MODEL, TURNS, IN, OUT, CACHE (read plus write as one sum), MINUTES (seconds / 60, one decimal), WALL (minutes from the job's last `start` or `resume` line in run.log to its `finished` line, `-` for reviews and jobs without both; checks and waits are not in MINUTES) and RESULT, with the result log's subtype and terminal_reason in brackets when the JSON the worker-exit line names is still there. WORKER is claude when the model starts with `claude-`, else flash, and a `worker:` line in `run.log` wins over the model. A field the log lacks prints `-`; `-review` and `wave<N>-review` logs are rows too.
+- **`--append`** adds one `METRICS <job> worker=<w> model=<m> turns=<t> in=<i> out=<o> cache=<c> min=<n> wall=<w> result=<r>` line per job to `<batch dir>/run.log`, and a job that already has one is skipped, so a second `--append` changes nothing ([the runner](#the-runners-worker-toolsrun-jobssh-workerflashclaude) does this at the end of a run).
 - **Exit code:** 0 done (also when nothing was appended), 2 bad use or no `flash-*.log` in the folder.
 
 ## Moving development to another computer

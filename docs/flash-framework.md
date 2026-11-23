@@ -98,6 +98,12 @@ Workers get the sandbox preflight and the test rules in Batch rules 12-14.
 
 Workers cannot run `tools/review.sh` or some shell commands in their sandbox; the runner runs the checker for them, so a brief should not ask for its output.
 
+### Where a wave's time goes: checks (speed1, Nov 23)
+- **One check per place.** A worker runs `tools/mine.sh` only (format, analyze, the touched tests; `MINE_TIMEOUT` 300 in a worker run, set by `tools/flash.sh`; the prompt says "do not run tools/check.sh yourself"). The brief's `check:` line is what `flash.sh` itself runs after the worker ends, so it stays short: `check: format` (a Dart job: `format analyze`; add `phone` only when controller_app pins change). Never list suites the touched tests already cover; the runner's combined check runs the rest.
+- **The runner's combined check** runs format and analyze of the whole workspace plus only the suites `tools/affected.sh` names for the wave's changes, `-j 4`, with the result cache on (a retry reruns only the suite that failed). `RUN_CHECK_FULL=1` forces every suite. The full uncached check stays at the batch end (the driver's wrap) and before every build and release.
+- **Stops that no longer happen:** a misformatted job file is formatted by the runner (logged) instead of stopping on format; a job over its turn cap whose own result is 0 and whose report exists is accepted with a WARN (as before; one without a report is parked); `tools/brief-check.sh` WARNs for a job whose `allow:` holds only test files and no `tests-first: exempt` line.
+- **Reading a batch:** `tools/job-metrics.sh` shows WALL (start to finish) beside MINUTES (model time).
+
 ## What Claude still owns in low-usage mode
 
 - The design in the briefs, and the answer to every open question in `REVIEW.md` that is not the owner's.

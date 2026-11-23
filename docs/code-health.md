@@ -275,3 +275,17 @@ Minor items from `docs/briefs/m16/phonehost3/REVIEW.md` and `wave2-review-report
 - UI (later): `score_bar_identity_test` second test is a default guard; no mirror-dot colour test; `connect_panels.dart:83` passes a colour slot as `number`; no host-chip character test (and no test pins the `hostCode` key); side colours by player 1/2; `connect_panels`, `settings_screen`, `puzzle_screen` near the 380 aim; `i1g1-report.md:29` wrong toyTvProvider claim.
 - Wave B review (should, deferred): `identity_hello_hold_test.dart:23-46` repeats helpers of `identity_fix_test.dart:5-46`: share them. `_Reference` in `arena_phone_identity_test.dart:169` copies the painter's drawing. Open (identity1-clean): `tilt_view.dart:42` still fills the tilt dot with `padPlayerColour` (player and character loose), not `PadFill`.
 - Accepted (Nov 23): the re-pairing hold (fq6) is not gated on the `identity` capability; an older phone sends no hello character, so nothing is held for it.
+
+## M16 speed1 leftovers (Nov 23, from docs/briefs/m16/speed1/REVIEW.md)
+- tools/churn.sh `churn_revert` reverts every dirty churn-matching file, including edits made before the job (gone from the PNGs and 3 tv_test_app generated files; no real work lost): record the dirty paths at job start and revert only the job's own. Design change.
+- tools/tests/check-cache-test.sh cases 5a, 6b, 7a, 7b, 8a pass without a cache: assert `cached` = ALL before each edit or flag change.
+- tools/tests/check-par-test.sh:146-155 (bad -j counts) and tools/tests/affected-test.sh:90, 91, 118 pass on the old code: assert the "job count must be a whole number" text, and the exit code of each `expect ""`.
+- tools/check-par.sh: the status file is written only on the subshell's normal path (a killed subshell would make `reap_finished` poll forever): write it from an EXIT trap; `sleep 0.2` as a named POLL_S.
+- tools/check-cache.sh: the temp file name is fixed (`mktemp` in the same folder); the key hashes no toolchain version (a pass from an older SDK is reused: add `flutter --version`, or accept the limit); one cache lookup costs about 1.5 s (`tools/affected.sh --deps` per suite): one call that prints every suite's folders would cut a fully cached run by about 15 s.
+- Default `-j 4` is spelled in run-steps.sh (`RUN_CHECK_JOBS`) and in check.sh: one named default.
+- tools/brief-check.sh (298 lines), tools/check.sh (250), tools/run-steps.sh (249) are at their caps: split before the next change. brief-check-testonly.sh never WARNs for a folder in allow:, and is skipped silently when missing.
+- tools/job-metrics-test.sh: no case shows a numeric `wall=` from `--append`; job-metrics.sh `read_log` is 49 lines.
+- tools/affected.sh: only `path:` values starting with `.` count; the real-repo test copies the suite list.
+- sp3-report.md and sp6-report.md lack the part A self-check; sp1-report.md serial stub times disagree (12 s / 8 s).
+- Over 120 columns: tools/tests/check-par-test.sh:46,122; job-metrics-test.sh:126-128; affected-test.sh:134; check-cache-test.sh:153,161,172; run-affected-test.sh:66,126,135; tools/run-scope.sh:18.
+- The affected-only combined check (sp4) has run only in stubs; its first real wave is the next batch (watch the `combined check: skips ...` log line).
