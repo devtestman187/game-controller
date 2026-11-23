@@ -90,3 +90,15 @@ RESULT: STOPPED: checks failed twice on the combined tree after w4f w4g
 2026-11-23 03:31:10 checks failed; fetching packages and trying once more
 2026-11-23 03:38:26 STOPPED: checks failed twice on the combined tree after w4f w4g
 RESULT: STOPPED: checks failed twice on the combined tree after w4f w4g
+2026-11-23 03:39:10 RUN_MAX_MIN=75 min (computed backstop of the jobs still to do)
+2026-11-23 03:39:10 start at cc93dc19 on m16
+2026-11-23 03:39:10 worker: claude
+2026-11-23 03:39:10 removed the last stop's STOP.md
+2026-11-23 03:39:23 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-23 03:39:44 resume w4f (applied by hand, not committed yet)
+2026-11-23 03:39:45 resume w4g (applied by hand, not committed yet)
+2026-11-23 03:40:07 tests-first: packages/toy_look/test/palette_order_test.dart passes on the old code, exempt by its brief
+2026-11-23 03:40:08 combined check: the tools suite is skipped (no job changed a file under tools/)
+2026-11-23 03:47:47 committed w4f: f2a2689c (none: no change made)
+2026-11-23 03:47:50 committed w4g: f3b59242 M16 w4g: test the chip's host answer, identity join, palette words
+2026-11-23 03:47:51 wave review skipped: wave 1 is the whole run, the run review covers it
