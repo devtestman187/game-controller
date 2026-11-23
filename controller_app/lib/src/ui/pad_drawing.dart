@@ -1,10 +1,12 @@
 import 'package:flutter/painting.dart';
 import 'package:party_host/party_host.dart' show ToyColors, ToyLook, ToySizes, paintStickerShadow, padFaintAlpha;
+import 'package:protocol/protocol.dart' show PlayerCharacter;
 
-/// The colour a pad part takes from this phone's player: their own colour when
-/// the host has given them a number, and player 1's before one is known (M13
-/// step 8, rules 4 and 5).
-Color padPlayerColour(ToyColors colors, int? player) => colors.player(player ?? 1);
+/// The colour a pad part takes from this phone: the colour of the character the
+/// host gave it (M16 identity fpad), else the colour of its player number, and
+/// player 1's before either is known (M13 step 8, rules 4 and 5).
+Color padPlayerColour(ToyColors colors, int? player, {PlayerCharacter? character}) =>
+    colors.player(character?.colourSlot ?? player ?? 1);
 
 /// Where a pressed part draws its body, in logical pixels: the hard shadow's
 /// offset, so the part looks pushed in (design section 4), or nowhere when it

@@ -169,6 +169,7 @@ class _AnalogStickViewState extends ConsumerState<AnalogStickView> {
     final floating = ref.watch(stickSettingsProvider.select((s) => s.floating));
     final look = ref.watch(toyLookProvider);
     final player = ref.watch(clientStateProvider.select((s) => s.player));
+    final character = ref.watch(clientStateProvider.select((s) => s.character));
     return Listener(
       behavior: HitTestBehavior.translucent,
       onPointerDown: _down,
@@ -188,6 +189,7 @@ class _AnalogStickViewState extends ConsumerState<AnalogStickView> {
           // An idle floating stick is shown faintly where it will appear.
           faint: floating && _pointer == null,
           player: player,
+          character: character,
         ),
       ),
     );
@@ -206,6 +208,7 @@ class StickPainter extends CustomPainter {
     required this.active,
     required this.faint,
     this.player,
+    this.character,
   });
 
   /// The look the pad is drawn in.
@@ -223,6 +226,10 @@ class StickPainter extends CustomPainter {
 
   /// This phone's player, or null before the host gives them a number.
   final int? player;
+
+  /// The character the host gave this phone, whose colour the knob takes over the
+  /// player's own; null before the host gives one.
+  final PlayerCharacter? character;
 
   /// The alpha everything takes when [faint] (today's 0.4), and the knob's
   /// when it isn't held (today's 0.55).
@@ -244,7 +251,7 @@ class StickPainter extends CustomPainter {
   /// The knob: pushed in while it's held (no shadow, body moved), otherwise the
   /// hard shadow under it and today's faded colour.
   void _paintKnob(Canvas canvas, Path knob, double alpha) {
-    final fill = padPlayerColour(look.colors, player);
+    final fill = padPlayerColour(look.colors, player, character: character);
     if (active) {
       final body = knob.shift(padSquish(true));
       canvas
@@ -269,5 +276,6 @@ class StickPainter extends CustomPainter {
       old.active != active ||
       old.faint != faint ||
       old.radius != radius ||
-      old.player != player;
+      old.player != player ||
+      old.character != character;
 }
