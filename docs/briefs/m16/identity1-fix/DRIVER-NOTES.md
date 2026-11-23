@@ -5,3 +5,5 @@ NEXT (wave B, owner stop at the boundary): write briefs fq6, ft, fpad; waves.txt
 - ft: check.sh line 58 -> `bash tools/selftest.sh -j 4`; first make claude-worker-test load-tolerant (no timing assumption found by grep: read the test cases); check: check-scope, check-failfast, selftest-test, selftest-limits-test, claude-worker-test; expected-min 45. Mention exact bare command lines.
 - fpad: controller_app pad_drawing.dart:7 fill from chosen character colour (colourIn), fallback colors.player(number); sites pad_widgets.dart:230,340, stick_widgets.dart:247, tilt_view.dart:41; pixel test under every look + TV (toyTvProvider.overrideWithValue(true)); check phone; turns 50.
 - Wrap: code-health.md: ToyBadgeFace accepted exception + Later items from MILESTONE-VERDICTS; STATUS.md resume line; full check.sh via Haiku.
+08:07 wave B briefs committed (fq6 ft fpad), runner starting
+08:32 WAVE B: ft committed by runner a3b94b90; fq6 and fpad parked result 4 (generated_plugin churn outside allow; fq6 44 turns>35, fpad 51>50); hand-fixed via apply-job (fpad test: Vec3 import added, unused import removed); mine ok. Next: run review (REVIEW.md), wrap.
