@@ -79,3 +79,10 @@ M16 identity1 w4 run reviewed (REVIEW.md, 10 findings, 1 must): w4a, w4b, w4c co
 
 ## Driver verdicts, wave A (Nov 23)
 Held for the single end-of-run fix round (f1), not fixed now: must 1 (paintToyBadge 7 params: fold character+numbered into one object; real), should 2 (decisions.md row + D10), should 3 (pixel check on the join badge), should 5 (run the named arena host suite: done at the final check), coulds 6, 7, 8, 10 (comments, report line). should 4 (tv_test_app generated files) is churn, never staged. could 9 (connect_panels 373 lines) to code-health. Open questions 6-8 accepted as suggested; 1, 2, 4, 5 go in f1 as suggested (owner may veto); 3 accepted (harness proved tests-first).
+
+## Driver verdicts, wave B (Nov 23)
+No worker review of wave B exists: the run skipped the wave review (single-wave run) and no run review started after 02:54 (run-review.md is still the 01:49 wave A one; run-findings.md holds only the tests-first line, resolved by `tests-first: exempt` in the w4e brief). Real findings queued for f1 from wave B: none. Wave B's commits (w4d deb0e982, w4e 76d5f1c6, w4h 95d1cbad) get read with wave C in the review after it.
+
+## Driver verdicts, wave C (Nov 23)
+- w4f (owner Q2: a dropped player's colour/accessory stay reserved for the reserve minute): Haiku stopped before any edit; commit f2a2689c is empty ("none: no change made"). Cause: no testable clock seam; HostServer reads a private Stopwatch (host_server.dart:96, _now :248, nowMs :89-90), other identity tests do not fake time. REAL, needs an owner/main-session call (add a clock seam to HostServer, or accept a test that ends the away slot by hand and skips the minute). Not queued into f1; Q2 is NOT implemented.
+- w4g (f2a... f3b59242): committed; checks passed with the tools suite skipped. No wave review ran (single-wave run); read with the final check.
