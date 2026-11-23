@@ -15,3 +15,4 @@
 2026-11-23 08:01:47 combined check: the tools suite is skipped (no job changed a file under tools/)
 2026-11-23 08:01:58 STOPPED: checks failed on the combined tree after fm1 fm2: format cannot be fixed by a retry
 RESULT: STOPPED: checks failed on the combined tree after fm1 fm2: format cannot be fixed by a retry
+2026-11-23 08:25 HAND-FIX fm3: the worker left a debug expect (DBG) in the test and the file unformatted (parked, result 4 + check fail); removed the debug expect, dart format, mine ok, review 0 fail

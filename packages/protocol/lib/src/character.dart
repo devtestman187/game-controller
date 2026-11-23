@@ -98,13 +98,13 @@ final class PlayerCharacter {
   /// accessory's name.
   static PlayerCharacter fromJson(Object? json) {
     if (json is! Map) throw FormatException('Field "character" must be an object, got ${json.runtimeType}');
-    return _fromFields(json, 'character.');
+    return _fromFields(json.cast<String, Object?>(), 'character.');
   }
 
   /// Reads the `c` and `a` fields of a `{"c", "a"}` object, naming [prefix] in
   /// an error: `character.` for the hello's object, none for a
   /// [SetCharacterMessage]'s own fields, `chars.<id>.` for a frame's entry.
-  static PlayerCharacter _fromFields(Map<dynamic, dynamic> json, String prefix) {
+  static PlayerCharacter _fromFields(Map<String, Object?> json, String prefix) {
     final slot = json['c'];
     if (slot is! int || slot < firstSlot || slot > lastSlot) {
       throw FormatException('Field "${prefix}c" must be a colour slot $firstSlot to $lastSlot, got $slot');

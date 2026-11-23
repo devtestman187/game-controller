@@ -27,4 +27,5 @@ The UI review lists 30 drawing places: all use the chosen character or are inten
 - "Run the fix batch fm1-fm3": yes (batch folder docs/briefs/m16/identity1-fix/).
 - Q6: a phone that drops and re-pairs mid-round: its hello's character "should be held until the round ends" (like set_character). docs/protocol.md:235's "one exception" sentence is corrected in fq6 (wave B).
 - Switch `check.sh tools` to `selftest.sh -j 4`: yes (job ft, wave B; first make claude-worker-test load-tolerant).
-- Questions 2 (pad fill, job fpad) and 3 (ToyBadgeFace) are still open; fpad is not written until the main session says so.
+- Q2 pad fill: "Yes": the phone's own pad fill (controller_app pad_drawing.dart:7, used at pad_widgets.dart:230,340, stick_widgets.dart:247, tilt_view.dart:41) takes the chosen character's colour, falling back to the number's colour without a character (job fpad, wave B).
+- Q3 ToyBadgeFace: "Yes": it stays in toy_badge.dart; docs/code-health.md notes it as an accepted exception to one public type per file.

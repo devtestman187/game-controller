@@ -89,7 +89,7 @@ PlayerRow _playerRow(Object? row, String field) {
     id: id,
     number: number,
     name: name is String ? name : '',
-    character: PlayerCharacter._fromFields(character, 'character.'),
+    character: PlayerCharacter._fromFields(character.cast<String, Object?>(), 'character.'),
   );
 }
 
@@ -107,7 +107,7 @@ Map<String, PlayerCharacter> _characterMapField(Map<String, Object?> p, String f
     if (character is! Map) {
       throw FormatException('Field "$field" character for "$id" must be an object, got ${character.runtimeType}');
     }
-    characters[id] = PlayerCharacter._fromFields(character, '$field.$id.');
+    characters[id] = PlayerCharacter._fromFields(character.cast<String, Object?>(), '$field.$id.');
   }
   return Map.unmodifiable(characters);
 }

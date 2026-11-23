@@ -5,7 +5,7 @@ import 'package:toy_look/toy_look.dart';
 import 'camera.dart';
 import 'library.dart';
 import 'match.dart';
-import 'play_view.dart';
+import 'match_view.dart';
 import 'puzzle.dart';
 import 'snapshot.dart';
 import 'split_layout.dart';

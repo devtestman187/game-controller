@@ -37,13 +37,18 @@ extension HostCharacterReservation on HostServer {
 
   /// The character [session]'s controller wears (M14 L7): the one it asked
   /// for, or the nearest free colour and accessory among the other paired
-  /// controllers. A phone that sends none gets its number's default, so it
+  /// controllers and the game's local and away players. A phone that sends none gets its number's default, so it
   /// still looks as it did before M14.
   PlayerCharacter _reserveCharacter(HostConnection session, PlayerCharacter? wanted) {
     final taken = <PlayerCharacter>[];
     for (final s in _sessions) {
       final character = s.character;
       if (s != session && s.paired && character != null) taken.add(character);
+    }
+    // The game's local and away players wear looks too: a phone is never given one of them.
+    final controllerId = session.hello?.controllerId;
+    for (final row in playerSource?.call() ?? const <PlayerRow>[]) {
+      if (row.id != controllerId) taken.add(row.character);
     }
     // A dropped player's pick stays taken for the reserve minute, as its number does.
     taken.addAll(_pairings.recentCharacters(except: session.hello?.controllerId ?? '', live: _liveIds));

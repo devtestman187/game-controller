@@ -136,7 +136,15 @@ final class AwaySlots {
       if (end(player.id, AwayEnd.graceOver)) onEnded();
     });
     final slot = _Slot(
-      GamePlayer(id: player.id, number: player.number, nickname: player.nickname, mode: player.mode, away: true),
+      GamePlayer(
+        id: player.id,
+        number: player.number,
+        nickname: player.nickname,
+        mode: player.mode,
+        away: true,
+        // The look the player chose stays on its row while its slot is held (M16 identity fm1).
+        character: player.character,
+      ),
       at + grace.inMilliseconds,
       timer,
     );

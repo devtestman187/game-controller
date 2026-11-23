@@ -40,11 +40,6 @@ class HostChip extends ConsumerWidget {
     // M16 identity).
     final player = ref.watch(clientStateProvider.select((s) => s.player));
     final character = ref.watch(clientStateProvider.select((s) => s.character));
-    final address = state.addresses.firstOrNull?.address;
-    final code = state.host.pairingCode;
-    final look = ToyLookScope.of(context);
-    // The menu is a surface of its own: its rows take the look's ink on it.
-    final rowStyle = MenuItemButton.styleFrom(foregroundColor: look.colors.ink);
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -53,42 +48,78 @@ class HostChip extends ConsumerWidget {
           const SizedBox(width: ToySizes.space8),
         ],
         Flexible(
-          child: MenuAnchor(
-            menuChildren: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  ToySizes.space16,
-                  ToySizes.space12,
-                  ToySizes.space16,
-                  ToySizes.space4,
-                ),
-                child: Text(
-                  code,
-                  key: const Key('hostCode'),
-                  style: look.type.title.copyWith(color: look.colors.ink, letterSpacing: ToySizes.space8),
-                ),
-              ),
-              _JoinHint(address: address),
-              MenuItemButton(
-                key: const Key('newCode'),
-                style: rowStyle,
-                leadingIcon: const Icon(Icons.refresh),
-                onPressed: host.service.newPairingCode,
-                child: const Text(PhoneText.newCode),
-              ),
-              MenuItemButton(
-                key: const Key('stopHosting'),
-                style: rowStyle,
-                leadingIcon: const Icon(Icons.stop_circle_outlined),
-                // The host route pops itself once the host is down.
-                onPressed: hosting.stop,
-                child: const Text(PhoneText.stopHosting),
-              ),
-            ],
-            builder: (context, menu, _) => _CodeChip(menu: menu, code: code, compact: compact),
+          child: _HostMenu(
+            code: state.host.pairingCode,
+            address: state.addresses.firstOrNull?.address,
+            compact: compact,
+            onNewCode: host.service.newPairingCode,
+            onStop: hosting.stop,
           ),
         ),
       ],
+    );
+  }
+}
+
+/// The host's menu behind the chip: the code, how to join by address, "New code"
+/// and "Stop hosting". The chip opens and closes it.
+class _HostMenu extends StatelessWidget {
+  const _HostMenu({
+    required this.code,
+    required this.address,
+    required this.compact,
+    required this.onNewCode,
+    required this.onStop,
+  });
+
+  /// The pairing code players type in.
+  final String code;
+
+  /// The address to type in, or null when this host has none a phone can reach.
+  final String? address;
+
+  /// True for the code alone, in the compact bar over a game.
+  final bool compact;
+
+  /// Asks the host for a new pairing code.
+  final VoidCallback onNewCode;
+
+  /// Stops hosting.
+  final VoidCallback onStop;
+
+  @override
+  Widget build(BuildContext context) {
+    final look = ToyLookScope.of(context);
+    // The menu is a surface of its own: its rows take the look's ink on it.
+    final rowStyle = MenuItemButton.styleFrom(foregroundColor: look.colors.ink);
+    return MenuAnchor(
+      menuChildren: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(ToySizes.space16, ToySizes.space12, ToySizes.space16, ToySizes.space4),
+          child: Text(
+            code,
+            key: const Key('hostCode'),
+            style: look.type.title.copyWith(color: look.colors.ink, letterSpacing: ToySizes.space8),
+          ),
+        ),
+        _JoinHint(address: address),
+        MenuItemButton(
+          key: const Key('newCode'),
+          style: rowStyle,
+          leadingIcon: const Icon(Icons.refresh),
+          onPressed: onNewCode,
+          child: const Text(PhoneText.newCode),
+        ),
+        MenuItemButton(
+          key: const Key('stopHosting'),
+          style: rowStyle,
+          leadingIcon: const Icon(Icons.stop_circle_outlined),
+          // The host route pops itself once the host is down.
+          onPressed: onStop,
+          child: const Text(PhoneText.stopHosting),
+        ),
+      ],
+      builder: (context, menu, _) => _CodeChip(menu: menu, code: code, compact: compact),
     );
   }
 }

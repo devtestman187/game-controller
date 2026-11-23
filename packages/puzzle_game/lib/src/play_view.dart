@@ -16,9 +16,6 @@ import 'settings.dart';
 import 'snapshot.dart';
 import 'split_layout.dart';
 
-// MatchView moved to match_view.dart; puzzle_module.dart reaches it through this file.
-export 'match_view.dart';
-
 /// Plays one match through the game host (PRD v2 P3): every player on a side
 /// drives a dot on their side's board. [PuzzleSession] runs the rules and
 /// their effects (haptics, sounds by name, layouts, statuses, the report) and
