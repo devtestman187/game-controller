@@ -41,3 +41,7 @@ Read before writing briefs (Sonnet driver) and before any helper step (Haiku). E
 - P2 Fixture .dart files under tools/tests/ are seen by the workspace analyze: write them analyzer-clean (comments for the searched names) (process4 p4a, run.log 12:37: base does not compile before wave 2).
 - P3 Tools jobs ran 41-52 min against estimates of 30-35 (p4b 52, p4d 45, p4g 37 of 25): set expected-min 45 for a tools job with a new script plus test (process4 run.log 12:33, 13:24, 14:07). A change that moves a default (the backstop floor) names its pinned tests in allow (p4e: run-limits-wire-test).
 -->
+
+- P-tools7-1 A brief for a shell-tool job gives the exact bare command lines the worker may run (`bash tools/tests/<name>-test.sh`, nothing wrapped in `time`, `date`, `cd`, pipes or redirects): the first t1b and t1c attempts were refused every run, made no edits and cost one 36 min pass (tools7 run.log 01:26-02:05).
+- P-tools7-2 A worker report that says "not run" or "stopped" with result 0 is accepted by the runner; the driver greps the report's Summary for "not run" before accepting a job (tools7 t1b, t1c second pass: both unrun, saved only by the combined check).
+- P-tools7-3 Kill-the-stub tests (TERM/INT on a runner whose stub sleeps) release the stub right after the signal: bash runs the trap when the foreground child returns (tools7 run-wire2 INT case, flaked under load).

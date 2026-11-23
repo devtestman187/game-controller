@@ -89,3 +89,11 @@ M16 tools7 run review: verdict one fix batch (1 must, 12 should, 4 could; phone 
 ## Delete
 
 - none
+
+## Driver verdicts (Nov 23, Sonnet)
+- #1 must (run-worker-switch dbg log): real, fixed (705e28e0). #6 (leak guard, BRIEF_CHECK_CMD): real, fixed (6 settings, three wire tests). #12 (end_runner release): hand-fix verified, run-wire2 passed 3 of 3 after it and the full suite passed in the runner's combined check.
+- #2, #3, #14 (toy_badge.dart, connect_panels, settings_profile_section): not this batch; they are identity1-w4 files. Left to that driver.
+- #4 (sleep 0.3 after the signal): the INT case flaked once under load; cause is bash running the trap only after the slow stub returns; now released by end_runner. Comment-level: deferred (could).
+- #5 (run-wave 30 s bound): deferred to wave 2 (t2 re-measures with the final runs); the hang-report.md absence check is the real proof.
+- #7 (SELFTEST_TIMEOUTS run-wire2): goes into t2 (it edits selftest.sh anyway). #8 shared lib for all runner tests: design call, deferred (owner/Opus). #9-#11 reports: fixed with a driver note. #13 t1b unmeasured gaps: final timing runs at batch end. could items (#15-#17, the badge rename): deferred to docs/code-health.md at batch end.
+- Q1 claude-worker-test: passes at HEAD (7 s); its one failure in the loaded t1c worker run did not reproduce.

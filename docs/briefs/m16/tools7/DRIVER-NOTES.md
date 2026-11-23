@@ -1,2 +1,3 @@
 01:22:59 wave-1 briefs committed 4c29132f; runner started WORKER=claude; next: thumb-wait, then verdicts, check, commit
 02:15:25 wave1 retry: t1a hand-applied be3b71f998a59739c0c2125dfa69c04936772d26; t1b/t1c first attempt refused bare-command rules (no edits), briefs fixed with baselines, reports removed, rerunning
+02:48:01 WAVE 1 DONE+committed: t1a 3a hand-applied, t1b c5f5c30a, t1c 2fc71a05, f1 705e28e0. Baseline suite 799 s under load. NEXT: write t2 brief (selftest.sh -j N, selftest-test, add run-wire2-test.sh=... to SELFTEST_TIMEOUTS, bare commands only in do:), waves.txt add t2, then final timing + 2 check.sh tools runs when identity1-w4 is idle. Lessons proposed: see docs/flash-lessons.md Proposed.
