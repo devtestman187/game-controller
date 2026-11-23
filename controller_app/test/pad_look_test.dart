@@ -65,7 +65,12 @@ Future<Pixels> paintFaces(
 
 Future<Pixels> paintDpad(ToyLook look, {int dx = 0, int dy = 0, int? player}) => paintedPixels(
   const Size.square(_side),
-  (canvas) => DpadPainter(look: look, dx: dx, dy: dy, player: player).paint(canvas, const Size.square(_side)),
+  (canvas) => DpadPainter(
+    look: look,
+    dx: dx,
+    dy: dy,
+    fill: PadFill(player: player),
+  ).paint(canvas, const Size.square(_side)),
 );
 
 const _stickCanvas = Size(120, 120);
@@ -89,7 +94,7 @@ Future<Pixels> paintStick(ToyLook look, {bool active = false, bool faint = false
     value: stickCenter,
     active: active,
     faint: faint,
-    player: player,
+    fill: PadFill(player: player),
   ).paint(canvas, _stickCanvas),
 );
 
@@ -110,7 +115,11 @@ const _smallCanvas = Size(120, 70);
 
 Future<Pixels> paintSmall(ToyLook look, {bool pressed = false, int? player}) => paintedPixels(_smallCanvas, (canvas) {
   canvas.translate(_smallAt.dx, _smallAt.dy);
-  SmallButtonPainter(look: look, pressed: pressed, player: player).paint(canvas, _smallSize);
+  SmallButtonPainter(
+    look: look,
+    pressed: pressed,
+    fill: PadFill(player: player),
+  ).paint(canvas, _smallSize);
 });
 
 void main() {

@@ -188,8 +188,7 @@ class _AnalogStickViewState extends ConsumerState<AnalogStickView> {
           active: _pointer != null,
           // An idle floating stick is shown faintly where it will appear.
           faint: floating && _pointer == null,
-          player: player,
-          character: character,
+          fill: PadFill(player: player, character: character),
         ),
       ),
     );
@@ -207,8 +206,7 @@ class StickPainter extends CustomPainter {
     required this.value,
     required this.active,
     required this.faint,
-    this.player,
-    this.character,
+    this.fill = const PadFill(),
   });
 
   /// The look the pad is drawn in.
@@ -224,12 +222,8 @@ class StickPainter extends CustomPainter {
   /// Whether the stick is an idle floating one, drawn faintly where it appears.
   final bool faint;
 
-  /// This phone's player, or null before the host gives them a number.
-  final int? player;
-
-  /// The character the host gave this phone, whose colour the knob takes over the
-  /// player's own; null before the host gives one.
-  final PlayerCharacter? character;
+  /// The colour the knob is filled with: the character's over the player's.
+  final PadFill fill;
 
   /// The alpha everything takes when [faint] (today's 0.4), and the knob's
   /// when it isn't held (today's 0.55).
@@ -251,18 +245,18 @@ class StickPainter extends CustomPainter {
   /// The knob: pushed in while it's held (no shadow, body moved), otherwise the
   /// hard shadow under it and today's faded colour.
   void _paintKnob(Canvas canvas, Path knob, double alpha) {
-    final fill = padPlayerColour(look.colors, player, character: character);
+    final colour = fill.colour(look.colors);
     if (active) {
       final body = knob.shift(padSquish(true));
       canvas
-        ..drawPath(body, Paint()..color = fill.withValues(alpha: alpha))
+        ..drawPath(body, Paint()..color = colour.withValues(alpha: alpha))
         ..drawPath(body, padInkEdge(look)..color = look.colors.ink.withValues(alpha: alpha));
       return;
     }
     // The shadow keeps the look's own alpha: a faint stick is only a hint of
     // where it appears, and it casts the same sticker shadow as the rest.
     paintStickerShadow(canvas, knob, look.colors.ink);
-    final body = Paint()..color = fill.withValues(alpha: idleAlpha * alpha);
+    final body = Paint()..color = colour.withValues(alpha: idleAlpha * alpha);
     canvas
       ..drawPath(knob, body)
       ..drawPath(knob, padInkEdge(look));
@@ -276,6 +270,5 @@ class StickPainter extends CustomPainter {
       old.active != active ||
       old.faint != faint ||
       old.radius != radius ||
-      old.player != player ||
-      old.character != character;
+      old.fill != fill;
 }

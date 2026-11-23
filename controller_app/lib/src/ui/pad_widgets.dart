@@ -171,7 +171,12 @@ class DpadView extends ConsumerWidget {
               },
               child: CustomPaint(
                 size: Size.square(side),
-                painter: DpadPainter(look: look, dx: input.dx, dy: input.dy, player: player, character: character),
+                painter: DpadPainter(
+                  look: look,
+                  dx: input.dx,
+                  dy: input.dy,
+                  fill: PadFill(player: player, character: character),
+                ),
               ),
             ),
           ),
@@ -186,7 +191,7 @@ class DpadView extends ConsumerWidget {
 /// shape; ink arrows on the arms, the lit arms filled in this phone's player
 /// colour and pushed in, and the centre dot ink at [padFaintAlpha].
 class DpadPainter extends CustomPainter {
-  const DpadPainter({required this.look, required this.dx, required this.dy, this.player, this.character});
+  const DpadPainter({required this.look, required this.dx, required this.dy, this.fill = const PadFill()});
 
   /// The look the pad is drawn in.
   final ToyLook look;
@@ -195,12 +200,8 @@ class DpadPainter extends CustomPainter {
   final int dx;
   final int dy;
 
-  /// The character the host gave this phone, whose colour fills a lit arm over
-  /// the player's own; null before the host gives one.
-  final PlayerCharacter? character;
-
-  /// This phone's player, or null before the host gives them a number.
-  final int? player;
+  /// The colour a lit arm is filled with: the character's over the player's.
+  final PadFill fill;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -232,14 +233,14 @@ class DpadPainter extends CustomPainter {
   /// A lit arm's fill: the player's colour, moved by the squish and clipped to
   /// the plus, so a moved fill never shows outside the plus's edge.
   void _paintLitArms(Canvas canvas, Path plus, double s) {
-    final fill = Paint()..color = padPlayerColour(look.colors, player, character: character);
+    final litPaint = Paint()..color = fill.colour(look.colors);
     final shift = padSquish(true);
     canvas
       ..save()
       ..clipPath(plus);
     for (final ((ax, ay), rect) in dpadArms(s)) {
       if (!_lit(ax, ay)) continue;
-      canvas.drawRRect(RRect.fromRectAndRadius(rect.shift(shift), Radius.circular(s * _armRoundShare)), fill);
+      canvas.drawRRect(RRect.fromRectAndRadius(rect.shift(shift), Radius.circular(s * _armRoundShare)), litPaint);
     }
     canvas.restore();
   }
@@ -269,8 +270,7 @@ class DpadPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(DpadPainter old) =>
-      old.look != look || old.dx != dx || old.dy != dy || old.player != player || old.character != character;
+  bool shouldRepaint(DpadPainter old) => old.look != look || old.dx != dx || old.dy != dy || old.fill != fill;
 }
 
 /// Start, Select, LB and RB: pills. Sliding off releases.
@@ -305,7 +305,11 @@ class SmallButton extends ConsumerWidget {
           shapeOf: (_, s) => Path()..addRRect(RRect.fromRectAndRadius(Offset.zero & s, Radius.circular(s.height / 2))),
           child: CustomPaint(
             size: size,
-            painter: SmallButtonPainter(look: look, pressed: on, player: player, character: character),
+            painter: SmallButtonPainter(
+              look: look,
+              pressed: on,
+              fill: PadFill(player: player, character: character),
+            ),
             // The label sits on the pill, so it goes where the pill did.
             child: Transform.translate(
               offset: padSquish(on),
@@ -330,29 +334,24 @@ class SmallButton extends ConsumerWidget {
 /// hard shadow, filled with this phone's player colour and pushed in while
 /// it's pressed. The label is a [Text] above it, so a tap still finds it.
 class SmallButtonPainter extends CustomPainter {
-  const SmallButtonPainter({required this.look, required this.pressed, this.player, this.character});
+  const SmallButtonPainter({required this.look, required this.pressed, this.fill = const PadFill()});
 
   /// The look the pad is drawn in.
   final ToyLook look;
 
-  /// The character the host gave this phone, whose colour fills the pressed pill
-  /// over the player's own; null before the host gives one.
-  final PlayerCharacter? character;
-
   /// Whether the button is held now.
   final bool pressed;
 
-  /// This phone's player, or null before the host gives them a number.
-  final int? player;
+  /// The colour the pressed pill is filled with: the character's over the player's.
+  final PadFill fill;
 
   @override
   void paint(Canvas canvas, Size size) {
     final pill = Path()..addRRect(RRect.fromRectAndRadius(Offset.zero & size, Radius.circular(size.height / 2)));
-    final fill = pressed ? padPlayerColour(look.colors, player, character: character) : look.colors.paper;
-    paintPadPart(canvas, pill, look: look, fill: fill, pressed: pressed);
+    final colour = pressed ? fill.colour(look.colors) : look.colors.paper;
+    paintPadPart(canvas, pill, look: look, fill: colour, pressed: pressed);
   }
 
   @override
-  bool shouldRepaint(SmallButtonPainter old) =>
-      old.look != look || old.pressed != pressed || old.player != player || old.character != character;
+  bool shouldRepaint(SmallButtonPainter old) => old.look != look || old.pressed != pressed || old.fill != fill;
 }

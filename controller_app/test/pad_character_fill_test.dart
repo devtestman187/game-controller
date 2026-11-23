@@ -1,6 +1,7 @@
 import 'package:connection/connection.dart';
 import 'package:controller/src/sticks.dart';
 import 'package:controller/src/tilt.dart';
+import 'package:controller/src/ui/pad_drawing.dart';
 import 'package:controller/src/ui/pad_widgets.dart';
 import 'package:controller/src/ui/stick_widgets.dart';
 import 'package:controller/src/ui/tilt_view.dart';
@@ -49,15 +50,18 @@ Future<Pixels> _dpad(ToyLook look, PlayerCharacter? character) => paintedPixels(
     look: look,
     dx: 1,
     dy: 0,
-    player: _playerNumber,
-    character: character,
+    fill: PadFill(player: _playerNumber, character: character),
   ).paint(canvas, const Size.square(_side)),
 );
 
 /// A pressed small button, painted with [character] (or none).
 Future<Pixels> _small(ToyLook look, PlayerCharacter? character) => paintedPixels(_smallCanvas, (canvas) {
   canvas.translate(_smallAt.dx, _smallAt.dy);
-  SmallButtonPainter(look: look, pressed: true, player: _playerNumber, character: character).paint(canvas, _smallSize);
+  SmallButtonPainter(
+    look: look,
+    pressed: true,
+    fill: PadFill(player: _playerNumber, character: character),
+  ).paint(canvas, _smallSize);
 });
 
 /// A stick held down, so its knob is drawn in full colour, painted with
@@ -71,8 +75,7 @@ Future<Pixels> _stick(ToyLook look, PlayerCharacter? character) => paintedPixels
     value: stickCenter,
     active: true,
     faint: false,
-    player: _playerNumber,
-    character: character,
+    fill: PadFill(player: _playerNumber, character: character),
   ).paint(canvas, _stickCanvas),
 );
 

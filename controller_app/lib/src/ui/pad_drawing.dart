@@ -8,6 +8,27 @@ import 'package:protocol/protocol.dart' show PlayerCharacter;
 Color padPlayerColour(ToyColors colors, int? player, {PlayerCharacter? character}) =>
     colors.player(character?.colourSlot ?? player ?? 1);
 
+/// What a pad part is filled with: this phone's character's colour, else its player's (M16 identity fpad). The
+/// pad painters take this one value rather than the player and the character separately.
+class PadFill {
+  const PadFill({this.player, this.character});
+
+  /// This phone's player, or null before the host gives them a number.
+  final int? player;
+
+  /// The character the host gave this phone; null before the host gives one.
+  final PlayerCharacter? character;
+
+  /// The colour this fill paints in, from the look's colours.
+  Color colour(ToyColors colors) => padPlayerColour(colors, player, character: character);
+
+  @override
+  bool operator ==(Object other) => other is PadFill && other.player == player && other.character == character;
+
+  @override
+  int get hashCode => Object.hash(player, character);
+}
+
 /// Where a pressed part draws its body, in logical pixels: the hard shadow's
 /// offset, so the part looks pushed in (design section 4), or nowhere when it
 /// isn't pressed (M13 step 8, rule 3).
