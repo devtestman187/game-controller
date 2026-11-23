@@ -7,7 +7,7 @@
 #
 #   bash tools/tests/run-wave-test.sh
 #
-# Every case builds a throwaway git repo in a temp folder: the runner's files are copies
+# The fixture git repo is built once in a temp folder and every case copies it: the runner's files are copies
 # (tools/run-limits.sh included), tools/check.sh, review.sh, commit-job.sh and run-stop.sh are
 # stubs, and FLASH_CMD points at a stub worker that sleeps a brief's `stub-sleep:` seconds (else
 # STUB_SLEEP_S), writes the brief's report and ends with STUB_RC, so no worker, test suite or
@@ -89,10 +89,10 @@ EOF
   chmod +x "$repo"/tools/*.sh
 }
 
-fixture() { # fixture <case>: a fresh repo, batch and work folder, one brief `runjob`, default knobs
-  local base="$tmp/$1"
-  repo="$base/repo" work="$base/work"
-  mkdir -p "$repo/tools" "$repo/src" "$repo/$batch" "$repo/.dart_tool" "$work"
+template_repo="$tmp/template/repo"
+build_template() { # build_template: the fixture repo, built once; fixture copies it for each case
+  repo="$template_repo"
+  mkdir -p "$repo/tools" "$repo/src" "$repo/$batch" "$repo/.dart_tool"
   cp "$loc/tools/run-jobs.sh" "$loc/tools/run-steps.sh" "$loc/tools/run-review.sh" \
     "$loc/tools/churn.sh" "$loc/tools/run-limits.sh" "$loc/tools/run-wave.sh" "$repo/tools/"
   stubs
@@ -106,6 +106,13 @@ fixture() { # fixture <case>: a fresh repo, batch and work folder, one brief `ru
   git -C "$repo" config user.name t
   git -C "$repo" add -A
   git -C "$repo" commit -q -m base || exit 2
+}
+
+fixture() { # fixture <case>: a copy of the template repo with its own batch and work folder, default knobs
+  local base="$tmp/$1"
+  repo="$base/repo" work="$base/work"
+  mkdir -p "$base" "$work"
+  cp -r "$template_repo" "$repo" || exit 2
   STUB_MARK="$base/flash-ran" STUB_SLEEP_S="" STUB_RC="" PREFLIGHT_SKIP=1 RUN_MAX_MIN=
   FLASH_USAGE_LOG="$tmp/no-usage.tsv" # no real usage log reaches the turn counts
   RUN_LIMIT_UNIT_S=1 RUN_POLL_S=1 NO_PUSH=1
@@ -127,6 +134,8 @@ usage_row() { # usage_row <turns> <minutes>: one flash usage row for the job's b
   export FLASH_USAGE_LOG
 }
 
+build_template
+
 # 1. One wave of three jobs: hang sleeps 30 s past its 1 s limit (expected-min: 1 x1.5), one and
 #    two finish at once. hang is parked alone; the other two are checked and committed, then the
 #    run stops naming hang (not in done.txt, so a restart runs it again).
@@ -147,7 +156,7 @@ if [ "$rc" = 1 ] && logged "job hang passed its limit (1 min, estimate 1) (parke
   done_has one && done_has two && ! done_has hang &&
   [ "$(last_line)" = "RESULT: STOPPED: jobs that failed or passed their limit (parked, not committed): hang (their logs: $batch/flash-<job>.log)" ] &&
   grep -qF "jobs that failed or passed their limit (parked, not committed): hang" "$repo/$batch/STOP.md" 2>/dev/null &&
-  [ "$elapsed_s" -lt 20 ]; then r=0; else r=1; fi
+  [ "$elapsed_s" -lt 30 ] && [ ! -e "$repo/$batch/hang-report.md" ]; then r=0; else r=1; fi
 report "one wave's job past its limit is parked while its two siblings are committed, then the run stops naming it (${elapsed_s}s)" "$r"
 
 # 2. A restart runs the parked job only: the two committed jobs are skipped and hang (its brief

@@ -9,8 +9,8 @@
 #
 #   bash tools/tests/run-limits-wire-test.sh
 #
-# Every case builds a throwaway git repo in a temp folder: the runner's six files are copies
-# (tools/run-limits.sh included), tools/check.sh, review.sh, commit-job.sh and run-stop.sh are
+# The fixture git repo is built once in a temp folder and every case copies it: the runner's six
+# files are copies (tools/run-limits.sh included), tools/check.sh, review.sh, commit-job.sh and run-stop.sh are
 # stubs, and FLASH_CMD points at a stub worker that sleeps and writes the brief's report, so no
 # worker, test suite or check runs. RUN_LIMIT_UNIT_S=1 makes one "minute" of every limit one
 # second and RUN_POLL_S=1 makes the runner look every second, so each case ends in a few
@@ -78,23 +78,34 @@ EOF
   chmod +x "$repo"/tools/*.sh
 }
 
-fixture() { # fixture <case> [extra brief lines]: a fresh repo, batch and work folder, default knobs
-  local base="$tmp/$1"
-  repo="$base/repo" work="$base/work"
-  mkdir -p "$repo/tools" "$repo/src" "$repo/$batch" "$repo/.dart_tool" "$work"
+template_repo="$tmp/template/repo"
+build_template() { # build_template: the fixture repo, built once; fixture copies it for each case
+  repo="$template_repo"
+  mkdir -p "$repo/tools" "$repo/src" "$repo/$batch" "$repo/.dart_tool"
   cp "$loc/tools/run-jobs.sh" "$loc/tools/run-steps.sh" "$loc/tools/run-review.sh" \
     "$loc/tools/churn.sh" "$loc/tools/run-limits.sh" "$loc/tools/run-wave.sh" "$repo/tools/"
   stubs
   printf 'base\n' > "$repo/src/app.dart"
   printf '{}\n' > "$repo/.dart_tool/package_config.json"
-  printf 'allow: src/app.dart · %s/runjob-report.md\nreport: %s/runjob-report.md\n%s\n' \
-    "$batch" "$batch" "${2:-}" > "$repo/$batch/runjob.md"
   printf 'runjob\n' > "$repo/$batch/waves.txt"
   git -C "$repo" init -q
   git -C "$repo" config user.email t@example.com
   git -C "$repo" config user.name t
+  printf 'allow: src/app.dart · %s/runjob-report.md\nreport: %s/runjob-report.md\n\n' "$batch" "$batch" \
+    > "$repo/$batch/runjob.md"
   git -C "$repo" add -A
   git -C "$repo" commit -q -m base || exit 2
+}
+
+fixture() { # fixture <case> [extra brief lines]: a copy of the template repo with its own brief and work folder
+  local base="$tmp/$1"
+  repo="$base/repo" work="$base/work"
+  mkdir -p "$base" "$work"
+  cp -r "$template_repo" "$repo" || exit 2
+  printf 'allow: src/app.dart · %s/runjob-report.md\nreport: %s/runjob-report.md\n%s\n' \
+    "$batch" "$batch" "${2:-}" > "$repo/$batch/runjob.md"
+  git -C "$repo" add -A
+  git -C "$repo" commit -q --allow-empty -m brief || exit 2
   STUB_MARK="$base/flash-ran" STUB_SLEEP_S="" PREFLIGHT_SKIP=1 RUN_MAX_MIN=
   FLASH_USAGE_LOG="$tmp/no-usage.tsv" # no real usage log reaches the turn counts
   RUN_LIMIT_UNIT_S=1 RUN_POLL_S=1 NO_PUSH=1
@@ -115,6 +126,8 @@ usage_row() { # usage_row <turns> <minutes>: one flash usage row for the job's b
   export FLASH_USAGE_LOG
 }
 
+build_template
+
 # 1. A job past its own limit: 2 min x 1.5 = 3 "minutes" of 1 s, so it is parked at 3-4 s even
 #    though the stub worker sleeps 30 s; with no sibling the run then stops naming it.
 fixture overlimit 'expected-min: 2'
@@ -132,7 +145,6 @@ report "a job over its limit (2 min x1.5 = 3 s) is parked and the run stops nami
 #    logged, and committed (flash.sh's --max-turns stays the hard stop).
 fixture turncap
 usage_row 130 20 # its minutes are the job's estimate too: 20 min is a 30 s limit here
-STUB_SLEEP_S=1
 run_jobs --no-review
 if [ "$rc" = 0 ] &&
   logged "WARN: job runjob used 130 turns, over its cap of 120 (its own checks passed; accepted)" &&
@@ -144,7 +156,6 @@ report "a job at 130 turns with result 0 is accepted with the WARN on the 120-tu
 #    DONE, whose RESULT: line is printed and in run.log.
 fixture turnraise 'turns: 140'
 usage_row 130 20
-STUB_SLEEP_S=1
 run_jobs --no-review
 if [ "$rc" = 0 ] && logged "committed runjob" && ! logged "STOPPED" &&
   [ "$(last_line)" = "RESULT: DONE: 1 jobs, 0 min" ] && logged "RESULT: DONE: 1 jobs, 0 min"; then r=0; else r=1; fi
@@ -154,7 +165,6 @@ report "a brief's turns: 140 raises the cap and 130 turns finishes with RESULT: 
 #    default, x1.25 = 25, floored at 45 by p4e), logged once; the preflight runs through FLASH_CMD too.
 fixture backstop
 PREFLIGHT_SKIP=""
-STUB_SLEEP_S=1
 run_jobs --no-review
 if [ "$rc" = 0 ] && logged "preflight ok: the worker ran flutter --version and tools/check.sh --list" &&
   logged "RUN_MAX_MIN=45 min" && [ -f "$STUB_MARK" ] && ! logged "RUN_MAX_MIN=360"; then r=0; else r=1; fi
