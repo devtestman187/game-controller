@@ -1,0 +1,15 @@
+2026-11-23 09:33:40 RUN_MAX_MIN=88 min (computed backstop of the jobs still to do)
+2026-11-23 09:33:40 start at 68cc99bb on m16
+2026-11-23 09:33:40 worker: claude
+2026-11-23 09:33:40 run-base 68cc99bba03d01feeaab7ad4a3823249f66fe782
+2026-11-23 09:33:55 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-23 09:34:16 start cp
+2026-11-23 09:34:42 start ct
+2026-11-23 09:36:05 ct finished: result 0 (12 turns, 1 min)
+2026-11-23 09:43:01 cp finished: result 4 (35 turns, 6 min)
+2026-11-23 09:43:03 cp: dropped generated churn outside its list: site/shots/dpad.png site/shots/join.png site/shots/menus.png site/shots/results.png site/shots/sticks.png site/shots/tilt.png tv_test_app/windows/flutter/generated_plugin_registrant.cc tv_test_app/windows/flutter/generated_plugin_registrant.h tv_test_app/windows/flutter/generated_plugins.cmake 
+2026-11-23 09:43:04 combined check: the tools suite runs (a job changed a file under tools/)
+2026-11-23 09:53:14 finding: ct's report has no Summary block in its first 40 lines
+2026-11-23 09:53:16 committed ct: 8e92b196 Pin the brief turns line in the claude worker test
+2026-11-23 09:53:18 committed cp: 4e56e823 Pad painters take one PadFill for player and character
+2026-11-23 09:53:18 wave review skipped: wave 1 is the whole run, the run review covers it
