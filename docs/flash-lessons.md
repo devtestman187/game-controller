@@ -40,6 +40,9 @@ Read before writing briefs (Sonnet driver) and before any helper step (Haiku). E
 18. The main session reviews "Proposed" at batch review. It promotes or rejects each one, merges duplicates, drops rules a tool now enforces, and tells the owner what changed.
 
 ## Proposed
+- P-bugs2-1 A brief must not demand a layout result at a size where the code already fails: b035 asked for 320x640 with no overflow; the row overflowed 74 px before the change, so the job stopped (result 4 + failed combined check, run.log 15:35:06). Brief writers check the baseline at the test's size first.
+- P-bugs2-2 A flaky async test is fixed by waiting for the pass's settled state (final counts), not the first visible event: flk1 (order of files made the two waits pass mid-pass). Use state fields the code sets last.
+- P-bugs2-3 After a hand-fix to a test file, run `dart format` on it before restarting: the runner's base check stopped on format (run.log 15:36:25).
 (none; Nov 23 speed1 review: turns/review limit → 9, optional-mechanism tests → 27. Earlier Nov 23 review: P-tools7-1 → 23, P-tools7-2 → 25, P-tools7-3 → 24; identity1-fix candidates: turns → 8, tests first → 22; "generated_plugin churn outside allow:" rejected, tools/churn.sh already drops it, fq6 and fpad parked on turns. Nov 22: P1 → 12, P2 and P8 → 1, P3 → 10 and 12, P4 → 9, P5 → 21, P6 → 8, P9 → 7; P7 rejected as a rule)
 
 <!-- promoted:

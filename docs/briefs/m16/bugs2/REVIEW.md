@@ -74,3 +74,20 @@ M16 bugs2 run review: done (read-only). Open: 320 px join-row overflow needs a l
 ## Delete
 
 - none
+
+## Driver verdicts (Nov 23)
+- must 1 (320x640 test): rejected as written; the overflow existed before the change and is outside the brief. Test is 568x320; 320 px overflow in code-health, owner call.
+- must 2 (30 s waitFor): accepted as is (it bounds a failure only); noted in code-health.
+- must 3 (phone_name_display, identity_phone not run): closed; the combined check ran the whole phone suite (run.log 15:39:48 to 15:41:28) and the full check passed.
+- must 4 (no full check on tip): closed; full check.sh --no-cache passed 13/13 (731 s) at the tip, line in run.log. The first -j 4 attempt showed arena and tools load flakes, serial passes.
+- should (flk1 unproven): 6 extra runs passed beside a -j 4 full check; "Fixed, unverified" until a real loaded run. Reports' stale text fixed in b035-report; numbers (edges) left, minor.
+- could: code-health.
+
+## Metrics
+JOB        WORKER MODEL            TURNS IN   OUT  CACHE MINUTES WALL RESULT
+b035       claude claude-haiku-5-5    25 40 14219 529137     5.4    - 4 (subtype=success, terminal_reason=completed)
+b039       claude claude-haiku-5-5    11 22  8636 251863     3.5    - 4 (subtype=success, terminal_reason=completed)
+flk1       claude claude-haiku-5-5    13 18  4982 187931     3.6    - 4 (subtype=success, terminal_reason=completed)
+run-review claude claude-haiku-5-5    23 24 26212 439706     2.1    - 0 (subtype=success, terminal_reason=completed)
+
+agent-cost since 2026-11-23 15:19: haiku $0.01 (cw5m 0.00M cw1h 0.03M), opus $1.21 (cw5m 0.00M cw1h 0.02M), sonnet $1.26 (cw5m 0.00M cw1h 0.12M); total $2.48; sonnet resumes >5m 3 (0.00M written), >60m 0 (0.00M written)

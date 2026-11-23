@@ -289,3 +289,10 @@ Minor items from `docs/briefs/m16/phonehost3/REVIEW.md` and `wave2-review-report
 - sp3-report.md and sp6-report.md lack the part A self-check; sp1-report.md serial stub times disagree (12 s / 8 s).
 - Over 120 columns: tools/tests/check-par-test.sh:46,122; job-metrics-test.sh:126-128; affected-test.sh:134; check-cache-test.sh:153,161,172; run-affected-test.sh:66,126,135; tools/run-scope.sh:18.
 - The affected-only combined check (sp4) has run only in stubs; its first real wave is the next batch (watch the `combined check: skips ...` log line).
+
+### M16 bugs2 leftovers (Nov 23)
+- `controller_app` join row (`connect_panels.dart` `_YourCharacter`) overflows at 320 px width (74 px before B-035, 82 after) and `connect_screen.dart:348` by 39 px: needs an owner layout decision (let Change wrap below a width).
+- `connect_panels.dart` is 374 lines (cap 380): split `_YourCharacter` out at the next touch.
+- `live_stats_unmarked_test.dart` `waitFor` timeout is 30 s now (bounds a failure only; guidelines prefer no longer timeouts: drop to 5 s if the order-based wait proves enough).
+- New tests build their own TV-look pump; consider `all_looks.dart` if controller_app can import it.
+- The affected-only check's first real run skipped protocol connection metrics kit look arena puzzle tools and ran phone + host: correct for these changes. Under `check.sh -j 4` arena (map_new_test did not complete) and tools (run-wire2-test STOP-file case) failed once under load and passed serially: more load flakes.
