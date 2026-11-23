@@ -29,3 +29,15 @@ RESULT: STOPPED: checks failed twice on the combined tree after b037 b038 wrap32
 2026-11-23 17:14:55 skip b037 (already done)
 2026-11-23 17:14:55 skip b038 (already done)
 2026-11-23 17:14:56 skip wrap320 (already done)
+2026-11-23 17:15:19 start b036
+2026-11-23 17:15:45 start b041
+2026-11-23 17:26:16 b041 finished: result 4 (43 turns, 7 min)
+2026-11-23 17:26:18 b041: dropped generated churn outside its list: site/shots/dpad.png site/shots/join.png site/shots/menus.png site/shots/results.png site/shots/sticks.png site/shots/tilt.png tv_test_app/windows/flutter/generated_plugin_registrant.cc tv_test_app/windows/flutter/generated_plugin_registrant.h tv_test_app/windows/flutter/generated_plugins.cmake 
+2026-11-23 17:27:40 b036 finished: result 4 (61 turns, 12 min)
+2026-11-23 17:27:40 job b036 used 61 turns, over its cap of 60 (parked, siblings continue)
+2026-11-23 17:29:35 tests-first ok: controller_app/test/tablet_shape_race_test.dart fails on the old code
+2026-11-23 17:29:54 combined check: skips protocol connection metrics kit look arena puzzle host tv tools (no job's change reaches them)
+2026-11-23 17:31:27 checks failed; fetching packages and trying once more
+2026-11-23 17:33:03 STOPPED: checks failed twice on the combined tree after b041
+2026-11-23 17:33:05 reviewed wave1: 8 finding(s)
+RESULT: STOPPED: checks failed twice on the combined tree after b041
