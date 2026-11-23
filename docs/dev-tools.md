@@ -602,6 +602,20 @@ One row per worker log of a batch: what each job cost and how it ended, read fro
 - **`--append`** adds one `METRICS <job> worker=<w> model=<m> turns=<t> in=<i> out=<o> cache=<c> min=<n> wall=<w> result=<r>` line per job to `<batch dir>/run.log`, and a job that already has one is skipped, so a second `--append` changes nothing ([the runner](#the-runners-worker-toolsrun-jobssh-workerflashclaude) does this at the end of a run).
 - **Exit code:** 0 done (also when nothing was appended), 2 bad use or no `flash-*.log` in the folder.
 
+### tools/agent-cost.sh
+
+```bash
+tools/agent-cost.sh --since today                         # table: model x main/sub
+tools/agent-cost.sh --since 2026-11-23T14:00 --line        # one line for a batch's REVIEW.md
+tools/agent-cost.sh --since 2h --match E--AI-game-controller-m16
+```
+
+What the Claude agents (main sessions, subagents, `claude -p` workers) cost, from the Claude Code transcripts (`~/.claude/projects/**/*.jsonl`, `subagents/` included), at API prices (Opus $4/$20, Sonnet $2/$10, Haiku $0.10/$0.50 or $0.50/$2.50 over a 100K prompt; cache read 0.1x input, cache write 1.25x for 5m or 2x for 1h). Each call counts once (message id + requestId). Cache writes are split 5m / 1h from `usage.cache_creation`. The last line counts Sonnet calls more than 5 and 60 minutes after the same transcript's previous call, with the cache they wrote: the resumes the 1-hour cache is for. `--since` takes ISO (local unless it has an offset), `today`, or `30m`/`2h`/`1d`; `--until`, `--match <path text>`, `--root <dir>`. Exit 0, 2 bad use. Python (`tools/agent_cost.py`); [`tools/tests/agent-cost-test.sh`](../tools/tests/agent-cost-test.sh) checks it. Every batch REVIEW.md gets its `--line` output next to job-metrics.
+
+### tools/sync-agents.sh
+
+`tools/sync-agents.sh [--dest <dir>] [--check]` copies `.claude/agents/thumb-*.md` to `~/.claude/agents` with a copy note after the frontmatter, so a session started outside the worktree finds the fixed agents. Run it after editing an agent; agent definitions load at session start, so a running session may need a new one. `--check` copies nothing and exits 1 when a copy differs. [`tools/tests/sync-agents-test.sh`](../tools/tests/sync-agents-test.sh) checks it.
+
 ## Moving development to another computer
 
 Everything needed to build and test is in the repository. A few things live outside it.

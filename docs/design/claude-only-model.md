@@ -29,6 +29,9 @@ Lessons: Haiku writes correct small contract code fast, but skipped review-rules
 | Haiku coder | One job from a brief and a context pack | Decisions, commits, editing the brief |
 | Haiku scout | Trims a context pack when it is over budget | Code |
 | Haiku helper | Review-finding triage, long waits (thumb-wait) | Anything a ≤30-line script output already answers |
+| Haiku release (thumb-release) | The release checklist: lib review by `git diff`, uncached check, release.sh, build watch (cost1, Nov 23) | Fixes, triage, repairs (those stay on Sonnet) |
+
+Drivers read [driver-kit.md](../driver-kit.md) (about 5K tokens) instead of the digest, flash-lessons, the framework and dev-tools (cost1, Nov 23: driver contexts were 77-199K). Every batch report carries a `tools/agent-cost.sh --line` result.
 
 Rule: an agent runs only where a decision is needed. A script whose output is at most about 30 lines is run by the driver directly, which is cheaper than starting a helper.
 
@@ -85,7 +88,8 @@ The Agent-tool path (Sonnet starts Haiku directly) stays a fallback, always in a
 | `run-escalate.sh` | attempt counting, next attempt's input, when to page Sonnet |
 | `job-metrics.sh <dir>` | worker JSON → one run.log line per job (tokens, turns, minutes, attempt, level) and the batch table |
 | `brief-size.sh` (or a brief-check rule) | token estimate per brief, warn over 70k |
-| `sync-agents.sh` | copy repo `.claude/agents/*` to the user-level agents folder |
+| `sync-agents.sh` | copy repo `.claude/agents/thumb-*` to the user-level agents folder (written in cost1, Nov 23) |
+| `agent-cost.sh` | per-model tokens and API-price estimate from the Claude transcripts; 5m/1h cache split; Sonnet resumes over 5/60 min (cost1, Nov 23) |
 | `fake-claude-worker.sh` | test stub with the real exit codes and JSON shape (flash-lessons rule 19) |
 
 ## Dependencies to settle in the tools batch
