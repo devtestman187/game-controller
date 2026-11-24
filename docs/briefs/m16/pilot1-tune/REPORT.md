@@ -1,0 +1,24 @@
+# pilot1-tune report (inline batch, no runner; Nov 24, unmeasured rehearsal)
+
+Base e9f25e1b. Tooling and docs only; no app code. Owner: "Yes, run it."
+
+## Jobs
+1. Hand-back template + REPORT.md: docs/driver-kit.md section 12 (old 15-line rule replaced; hand-back max 6 lines, one template line, owner questions one line each below), .claude/agents/thumb-batch.md, tools/verify-batch.sh `report` check (FAIL on missing or empty REPORT.md; forward-only, older batches fail it) + test (good-report, report-missing; 13/13). thumb-verify unchanged.
+2. Inline batches still write `<batch>/run.log` with the `full check:` line and commit in range: stated in driver-kit section 12 and thumb-batch.md.
+3. `.gitignore`: `docs/briefs/**/.start` (git check-ignore confirms on bugs4/.start). No tree-check exception.
+4. Headless Haiku cost. Before: not counted. `claude -p` workers run with `--no-session-persistence` (tools/flash.sh:249), so no transcript exists under ~/.claude/projects; the version1 window (15:35-16:20) showed haiku only as subagents ($0.01, 17 calls). Fix: tools/agent_cost.py `read_headless` reads the `flash usage:` line and model of each `flash-*.log` under `--flash-logs` (default docs/briefs when --root is not given), counted as WHO `head`, one call per run, 5m cache write, never the 5x long-prompt rate. After: version1 window shows 4 headless runs ($0.06), total $1.55 vs $1.23 before. Test: 3 new cases in tools/tests/agent-cost-test.sh (counted, row, off without folder). Caveats: log mtime is the time; logs are gitignored (*.log) so history is lost on worktree cleanup; deepseek logs are skipped (no price).
+5. Baseline: docs/design/agent-issue-db-feasibility.md pilot gates. bugs4 window 11:30-13:30 after the fix: $13.81 / 9 jobs = $1.53 per job (old $1.48 = $13.29 / 9); includes 16 headless Haiku runs ($0.48), but also $3.21 Fable design review and the whole main Opus session ($4.72); without Fable $1.18 per job. Cold-start gate redefined as growth above the empty-session floor; main context growth = session usage at batch start vs end.
+6. Seeded-fault test of thumb-verify: scratch worktree + branch (deleted after) with a batch folder whose run.log passes and REVIEW.md has a MUST finding without a verdict. verify-batch.sh itself returned PASS (it cannot see it); thumb-verify returned FAIL naming the open finding (11.4K tokens, 2 tool calls). Weakness: it did not open the finding's file:line to confirm. The grep for "not run" was muddled by REVIEW.md text.
+7. .claude/agents/fable-review.md (model fable, `tools: Agent(thumb-haiku, Explore, general-purpose)`), rules as briefed; tools/sync-agents.sh now also copies fable-*.md. Agent(type) allowlist: per the Claude Code docs (claude-code-guide, source code.claude.com/docs/en/sub-agents.md) it is enforced only when the agent runs as the main thread (`claude --agent`); as a spawned subagent the list is ignored, so the def also states the rule in text. Synced to ~/.claude/agents.
+8. fable-review test. The real agent type was NOT loadable in this driver session ("Agent type 'fable-review' not found", twice; the registry is fixed at session start, so a new agent type needs a new session). So the test ran as stand-ins: general-purpose agents on model fable with the def's rules pasted in. They do not show the tool restriction (they had Read/Bash), only the behaviour. Re-run with the real type in a fresh session.
+ - (a) four-changes question, 62.5K tokens total (3 tool uses incl. 1 helper) vs 65K baseline; the fixed overhead of the general-purpose stand-in (about 54K) is unchanged, so the saving of the real def (Agent tool only, small prompt) is unmeasured. Content useful: 4 verdicts, risk (truth moves out of main's sight), spot-check confirmed .gitignore:42 and verify-batch tree check.
+ - (b) pack that invited reading the script ("read it yourself if you want"): 69.6K tokens, 3 tool uses, all helpers (no direct read by the reviewer as far as its report shows); confirmed REPORT check at verify-batch.sh:66.
+ - (c) pack missing the flags and log format: 67K, 3 Explore helpers on haiku, did not guess; it also correctly said one log is one run and needed a decision on the unit.
+ - Ran on Fable: yes (model parameter fable); the real def's `model: fable` is untested.
+ Review points taken: forward-only note on the report check (done); the template is 6 lines (the owner question text said 10) with owner questions outside the cap; the driver-kit tells main to open REPORT.md only for owner questions or a STOPPED. Not taken: content check on REPORT.md (optional).
+
+## Check
+`bash tools/check.sh tools`: see the run.log line. verify-batch.sh on this batch: see the hand-back.
+
+## Proposed lessons: 0 (no flash-lessons edit).
+## Calls: driver about 45 tool calls; waiters 0. Helpers: claude-code-guide 1, thumb-verify 1, fable stand-ins 3 (+ 7 haiku helpers inside them).

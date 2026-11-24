@@ -162,10 +162,10 @@ Fit for a `specs/` folder here: the minimal subset is cheap (one file per screen
 - Main spawns the verifier, not the driver, so the check stays independent. Run `tools/sync-agents.sh` after adding it.
 - The driver writes the STATUS block. Main writes 2-3 memory lines, design calls, Fable reviews of owner questions, and talks to the owner. Releases stay with thumb-release, and the milestone-end review stays with main.
 - Gates:
-  - Total $ per job, counting verify and Fable spend, against bugs4's $1.48 per job (one batch with a protocol change, so a weak baseline). Opus $ is a secondary figure.
-  - Main context growth per batch under 15K.
+  - Total $ per job, counting verify and Fable spend. Baseline bugs4: $13.81 over 9 jobs = $1.53 per job, from `tools/agent-cost.sh --since 2026-11-24T11:30 --until 2026-11-24T13:30` after the headless-Haiku fix (Nov 24, pilot1-tune). It includes headless Haiku (the runner's `claude -p` workers, read from the flash-*.log usage lines: 16 runs, $0.48; the old figure $1.48 = $13.29 / 9 missed them, the transcripts do not exist because of --no-session-persistence). It also includes $3.21 of Fable design review and the whole main Opus session ($4.72) inside that window, so it is a weak baseline: without Fable $10.60 / 9 = $1.18 per job. Opus $ is a secondary figure.
+  - Main context growth per batch under 15K, measured as main session usage at batch start and at batch end (the `context` or token count the session shows, written down by main at both points).
   - Owner-question latency.
-  - Cold-start "what's next?" from STATUS and memory under 10K tokens.
+  - Cold start: growth above the empty-session floor (the tokens a fresh session already carries from CLAUDE.md, memory index and tools), not an absolute 10K. Gate: "what's next?" answered from the pilot memory note and the STATUS START HERE line adds under 10K above that floor.
   - Main fully shadow-checks one job in wave 1. Misses are counted again at the milestone-end review.
 - Note: the CLAUDE.md driver-kit fix lands at the same time and moves the Sonnet numbers on its own.
 - Rollback: main verifies again.

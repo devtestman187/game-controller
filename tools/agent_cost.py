@@ -5,6 +5,7 @@ import collections
 import datetime
 import json
 import os
+import re
 import sys
 
 # Dollars per 1M tokens: (input, output). Cache read 0.1x input, cache write 1.25x (5m) or 2x (1h).
@@ -98,9 +99,44 @@ def read_calls(root, since, until):
                     }
 
 
+USAGE_RE = re.compile(r"flash usage: (\d+) turns, \d+ s, input (\d+) \+ cache read (\d+) \+ cache write (\d+), "
+                      r"output (\d+) tokens")
+MODEL_RE = re.compile(r"worker exit \d+, model (\S+?),")
+
+
+def read_headless(logs, since, until):
+    """Yields one dict per headless worker run (flash-<job>.log under logs). A `claude -p` worker
+    runs with --no-session-persistence, so it leaves no transcript; its log keeps one usage line
+    (turns, input, cache read, cache write, output) and the model. The run counts as one call
+    stamped with the log's last-write time; cache write counts as 5m (the log has no split)."""
+    for d, _, files in os.walk(logs):
+        for f in files:
+            if not (f.startswith("flash-") and f.endswith(".log")):
+                continue
+            path = os.path.join(d, f)
+            try:
+                t = os.path.getmtime(path)
+                text = open(path, encoding="utf-8", errors="replace").read()
+            except OSError:
+                continue
+            if t < since or (until is not None and t >= until):
+                continue
+            u, m = USAGE_RE.search(text), MODEL_RE.search(text)
+            if not u or not m:
+                continue
+            yield {"path": path, "t": t, "sub": "head", "model": m.group(1),
+                   "in": int(u.group(2)), "out": int(u.group(5)), "cr": int(u.group(3)),
+                   "cw5": int(u.group(4)), "cw1": 0, "agg": True}
+
+
+def is_long(c):
+    # A headless run is a whole run's totals, not one prompt, so the 100K rule cannot apply to it.
+    return not c.get("agg") and c["in"] + c["cr"] + c["cw5"] + c["cw1"] > LONG_PROMPT
+
+
 def cost(fam, c):
     pi, po = PRICES[fam]
-    if fam == "haiku" and c["in"] + c["cr"] + c["cw5"] + c["cw1"] > LONG_PROMPT:
+    if fam == "haiku" and is_long(c):
         pi, po = HAIKU_LONG
     return (c["in"] * pi + c["out"] * po + c["cr"] * READ_MULT.get(fam, 0.1) * pi
             + c["cw5"] * 1.25 * pi + c["cw1"] * 2.0 * pi) / 1e6
@@ -110,7 +146,10 @@ def main(argv):
     ap = argparse.ArgumentParser(prog="agent-cost.sh", add_help=False)
     ap.add_argument("--since", required=True)
     ap.add_argument("--until")
-    ap.add_argument("--root", default=os.path.join(os.path.expanduser("~"), ".claude", "projects"))
+    default_root = os.path.join(os.path.expanduser("~"), ".claude", "projects")
+    ap.add_argument("--root", default=default_root)
+    ap.add_argument("--flash-logs", help="folder searched for flash-*.log headless worker logs "
+                    "(default: this repo's docs/briefs when --root is not given; none otherwise)")
     ap.add_argument("--match", default="", help="only transcripts whose path contains this text")
     ap.add_argument("--line", action="store_true")
     try:
@@ -128,7 +167,13 @@ def main(argv):
     rows = collections.defaultdict(lambda: dict.fromkeys(keys, 0))
     unknown = collections.Counter()
     by_agent = collections.defaultdict(list)
-    for c in read_calls(a.root, since, until):
+    logs = a.flash_logs
+    if logs is None and a.root == default_root:
+        logs = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "docs", "briefs")
+    calls = list(read_calls(a.root, since, until))
+    if logs and os.path.isdir(logs):
+        calls += list(read_headless(logs, since, until))
+    for c in calls:
         if a.match and a.match not in c["path"].replace(os.sep, "/"):
             continue
         fam = family(c["model"])
@@ -136,12 +181,12 @@ def main(argv):
             if c["model"] != "<synthetic>":
                 unknown[str(c["model"])] += 1
             continue
-        r = rows[(fam, "sub" if c["sub"] else "main")]
+        r = rows[(fam, c["sub"] if isinstance(c["sub"], str) else "sub" if c["sub"] else "main")]
         r["calls"] += 1
         for k in ("in", "out", "cr", "cw5", "cw1"):
             r[k] += c[k]
         r["cost"] += cost(fam, c)
-        if fam == "haiku" and c["in"] + c["cr"] + c["cw5"] + c["cw1"] > LONG_PROMPT:
+        if fam == "haiku" and is_long(c):
             r["long"] += 1
         if fam == "sonnet":
             by_agent[c["path"]].append(c)

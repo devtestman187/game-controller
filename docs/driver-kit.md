@@ -105,5 +105,12 @@ https://claude.ai/artifact/8vDcqYR8QghaGfVPdQDvQR, collection `bugs`, via Artifa
 - Commit as `devtestman187 <347253452+devtestman187@users.noreply.github.com>`.
 - Never touch the frozen `E:\AI\game-controller`, other sessions' branches, or processes you did not start. Keep each foreground call under 170 s.
 
-## 12. Final report (at most 15 lines)
-Commits; jobs with turns and minutes; ladder level per job; findings real/fixed/deferred; check.sh result; job-metrics and agent-cost lines; tracker and STATUS updates; "Fixed, unverified" items; Proposed lessons count; your call count and each waiter's; wall time (over 1 hour: a 5-line improvement analysis, proposals only).
+## 12. Report and hand-back (owner, Nov 24: the main session's context is the scarce one)
+- The full report goes to a file: `docs/briefs/<milestone>/<batch>/REPORT.md` (commits, jobs with turns and minutes, ladder level per job, findings real/fixed/deferred, check.sh result, job-metrics and agent-cost lines, tracker and STATUS updates, "Fixed, unverified" items, Proposed lessons count, call counts, wall time; over 1 hour a 5-line improvement analysis, proposals only). Commit it. `tools/verify-batch.sh` FAILs when it is missing.
+- The hand-back to main is only this template, at most 6 lines:
+```
+tip: <sha> | range: <base..tip> | RESULT: PASS/STOPPED | report: <path> | owner questions: <n, one line each, or none>
+```
+  One line per owner question below it. Nothing else: no summaries, no tables.
+- Inline batches (no runner): still write `<batch>/run.log` with a `full check:` line (the output of `bash tools/check.sh`, "All checks passed"), and commit inside the range; verify-batch.sh reads both.
+- thumb-verify stays read-only and writes no file; its output is its own reply.

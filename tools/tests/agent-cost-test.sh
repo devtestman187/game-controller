@@ -3,7 +3,9 @@
 # calls before --since are left out; a <synthetic> model is skipped; cache writes split into 5m
 # and 1h (a call with no split counts as 5m); prices per model with Haiku at 5x over a 100K
 # prompt; Sonnet resumes over 5 and 60 minutes counted per transcript with what they wrote;
-# --match keeps matching paths; bad arguments exit 2.
+# --match keeps matching paths; headless worker logs (flash-<job>.log, no transcript because the
+# worker runs with --no-session-persistence) count when --flash-logs names their folder, as one
+# Haiku call priced at the normal rate (not the 5x long-prompt rate); bad arguments exit 2.
 #
 #   bash tools/tests/agent-cost-test.sh
 #
@@ -70,6 +72,20 @@ if grep -q synthetic "$out"; then echo "FAIL synthetic-skipped"; fails=$((fails 
 
 bash tools/agent-cost.sh --root "$tmp/projects" --since "$since" --match agent-h --line > "$out" 2>&1
 check match 'haiku $0.01 (cw5m 0.00M cw1h 0.00M); total $0.01'
+
+mkdir -p "$tmp/logs/b"
+cat > "$tmp/logs/b/flash-hjob.log" <<'LOG'
+---- flash: worker exit 0, model claude-haiku-5-5, log /tmp/x.log
+---- flash usage: 12 turns, 51 s, input 1000 + cache read 1000000 + cache write 100000, output 2000 tokens
+LOG
+touch -d 2026-11-23T10:30:00Z "$tmp/logs/b/flash-hjob.log"
+# input 1000*0.1 + output 2000*0.5 + read 1M*0.01 + write 100K*0.125 = 23600 / 1e6 = 0.0236 (a 5x rate would be 0.118)
+bash tools/agent-cost.sh --root "$tmp/projects" --since "$since" --flash-logs "$tmp/logs" --match hjob --line > "$out" 2>&1
+check headless-counted 'haiku $0.02 (cw5m 0.10M cw1h 0.00M); total $0.02'
+bash tools/agent-cost.sh --root "$tmp/projects" --since "$since" --flash-logs "$tmp/logs" > "$out" 2>&1
+check headless-row 'haiku    head       1      1000      2000     1000000     100000          0     0.02'
+bash tools/agent-cost.sh --root "$tmp/projects" --since "$since" --match hjob --line > "$out" 2>&1
+check headless-off-without-folder 'no calls'
 
 bash tools/agent-cost.sh --root "$tmp/projects" > "$out" 2>&1
 rc=$?

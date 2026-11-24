@@ -15,11 +15,14 @@
 # Checks (one line each: OK|FAIL|SKIP <name>: detail):
 #   commits   the range has commits and every author and committer is devtestman187's noreply identity
 #   runlog    the batch's run.log last "full check:" line says "All checks passed"
+#   report    the batch has REPORT.md (the driver's full report; the hand-back to main is only the
+#             fixed template, see docs/driver-kit.md section 12)
 #   tree      git status shows nothing but known churn (tools/churn.sh CHURN_REGEX), tracked or untracked
 #   tracker   every --claim row exists in --tracker-dir with that status
 #   status    <milestone>/STATUS.md has a block (lines from the first one naming the batch to the next
 #             blank line) that names the tip commit (8-character prefix); when the tip itself edits
 #             STATUS.md it cannot name itself, so its parent counts
+# The report check is forward-only: batches before Nov 24 (pilot1-tune) have no REPORT.md and FAIL it.
 # The last line is RESULT: PASS or RESULT: FAIL.
 # Exit codes: 0 PASS (SKIP lines allowed) · 1 FAIL · 2 bad use.
 set -u
@@ -59,6 +62,9 @@ last="$(grep 'full check:' "$batch/run.log" 2> /dev/null | tail -n 1)"
 if [ -z "$last" ]; then say FAIL runlog "no 'full check:' line in $batch/run.log"
 elif printf '%s' "$last" | grep -q 'All checks passed'; then say OK runlog "$last"
 else say FAIL runlog "last full check line: $last"; fi
+
+# report
+if [ -s "$batch/REPORT.md" ]; then say OK report "$batch/REPORT.md present"; else say FAIL report "missing or empty $batch/REPORT.md"; fi
 
 # tree
 . "$here/tools/churn.sh"

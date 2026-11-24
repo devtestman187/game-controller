@@ -2,7 +2,7 @@
 # Tests tools/verify-batch.sh on a temp repository: a good batch passes (tracker rows read from
 # JSON files, untracked churn ignored); each check fails alone when its input is wrong (foreign commit
 # identity, failed or missing full-check line, a dirty non-churn file, a tracker status that differs
-# from the claim, a STATUS block that does not name the tip); the tip that edits STATUS.md may name
+# from the claim, a missing REPORT.md, a STATUS block that does not name the tip); the tip that edits STATUS.md may name
 # its parent; no tracker input is a SKIP, not a FAIL; bad arguments exit 2.
 #
 #   bash tools/tests/verify-batch-test.sh
@@ -24,6 +24,7 @@ base="$(git -C "$r" rev-parse HEAD)"
 echo "x" > "$r/a.txt"; git -C "$r" add a.txt; git -C "$r" commit -q -m work
 work="$(git -C "$r" rev-parse --short=8 HEAD)"
 echo "2026-11-24 10:00:00 full check: All checks passed (13 suites, 5 s, uncached)" > "$r/docs/briefs/m1/b1/run.log"
+echo "# Report" > "$r/docs/briefs/m1/b1/REPORT.md"
 printf '**Resume here (b1, Nov 24):** done at %s.\n\nother\n' "$work" > "$r/docs/briefs/m1/STATUS.md"
 git -C "$r" add docs; git -C "$r" commit -q -m wrap
 tip="$(git -C "$r" rev-parse HEAD)"
@@ -42,6 +43,7 @@ expect() { # expect <case> <rc> <text>
 v "$base..$tip" --tracker-dir "$tmp/rows" --claim B-1=Fixed
 expect good 0 "RESULT: PASS"
 expect good-tracker 0 "OK tracker: 1 rows match"
+expect good-report 0 "OK report:"
 expect good-status 0 "OK status: block names $work"
 v "$base..$tip" --tracker-dir "$tmp/rows" --claim B-1=New
 expect tracker-mismatch 1 "FAIL tracker: mismatch: B-1(row: Fixed, claimed: New)"
@@ -63,6 +65,9 @@ expect runlog-fail 1 "FAIL runlog: last full check line"
 rm "$r/docs/briefs/m1/b1/run.log"
 v "$base..$tip" --no-tracker
 expect runlog-missing 1 "FAIL runlog: no 'full check:' line"
+mv "$r/docs/briefs/m1/b1/REPORT.md" "$tmp/REPORT.md"
+v "$base..$tip" --no-tracker
+expect report-missing 1 "FAIL report: missing or empty"
 bash "$root/tools/verify-batch.sh" > "$out" 2>&1; rc=$?
 expect bad-use 2 "usage:"
 [ "$fails" = 0 ] || exit 1

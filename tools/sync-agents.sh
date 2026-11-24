@@ -32,7 +32,7 @@ render() { # render <source>: the source with the copy note after the closing fr
 
 stale=0
 mkdir -p "$dest" 2> /dev/null || [ "$check" = 1 ] || exit 2
-for f in .claude/agents/thumb-*.md; do
+for f in .claude/agents/thumb-*.md .claude/agents/fable-*.md; do
   [ -f "$f" ] || continue
   name="$(basename "$f")"
   if [ "$check" = 1 ]; then
