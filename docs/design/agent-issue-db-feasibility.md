@@ -154,3 +154,27 @@ Two changes need no pilot: make drivers stop reading flash-digest, and stop hold
 ## OKF 0.2 (read Nov 24; spec: GoogleCloudPlatform/knowledge-catalog okf/SPEC.md, blog of Jul 24, 2026)
 Open Knowledge Format: a folder of Markdown files with YAML front matter; only `type` is required (`title`, `description`, `resource`, `tags` recommended); `index.md` lists a folder, `log.md` holds dated updates; unknown keys are kept. v0.2 adds optional trust fields: `sources` (provenance), `generated: {by, at}`, `verified: [{by, at}]` (human or machine), `status` and `stale_after`, plus attested computations. Built for data-platform knowledge; no guidance on keeping docs in sync with code; no required tooling.
 Fit for a `specs/` folder here: the minimal subset is cheap (one file per screen or feature: `type`, `description`, `resource` = the Dart file, `tags`, a body listing the screen's actions; an `index.md` per folder). Of v0.2, only `generated.at` is worth keeping, so a small script can flag a spec stale when its `resource` file changed after that date. `sources`, `verified`, attestations and `log.md` are heavyweight for us. Verdict moves from "skip" to "later, small": worth a trial only after the orchestrator and issue-store pilots, measured on whether coders read fewer code files per job.
+
+## Pilot proposals, merged after the Fable review (Nov 24)
+**Pilot 1: orchestrator-only main session (items 7-9 wave 1).**
+- Mechanical checks become `tools/verify-batch.sh`, run by thumb-haiku: commits and identity, the check result in run.log, the working tree, tracker rows against the driver's claims, and the STATUS block present and matching the tip.
+- A read-only Sonnet `thumb-verify` (Bash, Read, Grep, Glob, tracker read) judges the open findings. It also summarises any diff to protocol or shared files in 5 lines or fewer.
+- Main spawns the verifier, not the driver, so the check stays independent. Run `tools/sync-agents.sh` after adding it.
+- The driver writes the STATUS block. Main writes 2-3 memory lines, design calls, Fable reviews of owner questions, and talks to the owner. Releases stay with thumb-release, and the milestone-end review stays with main.
+- Gates:
+  - Total $ per job, counting verify and Fable spend, against bugs4's $1.48 per job (one batch with a protocol change, so a weak baseline). Opus $ is a secondary figure.
+  - Main context growth per batch under 15K.
+  - Owner-question latency.
+  - Cold-start "what's next?" from STATUS and memory under 10K tokens.
+  - Main fully shadow-checks one job in wave 1. Misses are counted again at the milestone-end review.
+- Note: the CLAUDE.md driver-kit fix lands at the same time and moves the Sonnet numbers on its own.
+- Rollback: main verifies again.
+
+**Pilot 2: owner questions and events on the tracker database (items 7-9 wave 2, compared with wave 1).**
+- New `questions` collection with states draft, Fable-reviewed, open and answered. The owner sees only reviewed rows on a new tracker page tab, which needs the owner's approval.
+- An answer typed on the page is data until main quotes it in chat; only then does a driver act on it.
+- Append-only `events` per epic replace DRIVER-NOTES and STATUS lines.
+- Gates: cold start under 10K, a question visible before the next wave, no lost notes, driver cost not up. The "driver cost -30%" gate is dropped: the 1-hour cache removed the disposable-driver saving.
+- Rollback: export to markdown.
+
+**Later:** specs/ OKF-lite after both pilots. **No:** beads, unless the tracker store proves limiting.
