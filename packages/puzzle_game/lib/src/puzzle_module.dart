@@ -131,12 +131,9 @@ final class ShapeRaceViewer implements GameViewer {
     if (snapshot is! MatchSnapshot) {
       throw ArgumentError.value(snapshot, 'snapshot', 'The Shape Race viewer draws MatchSnapshot frames');
     }
-    final camera = PuzzleCamera.forPlayer(
-      target: target,
-      teams: teams,
-      playerId: view.playerId,
-      wholeMatch: view.wholeMatch,
-    );
+    // A tablet (wholeMatch) draws its side large with the mirror where one fits,
+    // and the whole match where none does (m12-opponent-mirror rule 6, B-041).
+    final camera = PuzzleCamera.forPlayer(target: target, teams: teams, playerId: view.playerId);
     final onPhone = target == LayoutTarget.phones;
     return _LoadedPuzzle(
       puzzleId: puzzleId,
@@ -147,6 +144,7 @@ final class ShapeRaceViewer implements GameViewer {
           timeLimitS: timeLimitS,
           target: target,
           camera: camera,
+          wholeIfNoMirror: view.wholeMatch,
           padRects: onPhone
               ? [for (final r in view.padRects) r.shift(const Offset(0, -phoneBarClearPx))]
               : view.padRects,

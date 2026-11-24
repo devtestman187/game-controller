@@ -27,6 +27,7 @@ class MatchView extends StatefulWidget {
     this.timeLimitS,
     this.target = LayoutTarget.screen,
     this.camera = const PuzzleCamera.whole(),
+    this.wholeIfNoMirror = false,
     this.padRects = const [],
     this.pxPerMm = phonePxPerMm,
     this.paused = false,
@@ -49,6 +50,12 @@ class MatchView extends StatefulWidget {
   /// What the box shows, for a phone (m12-phone-layout §2). The screen always
   /// draws the whole match.
   final PuzzleCamera camera;
+
+  /// Whether a side camera falls back to the whole match where the other side's
+  /// mirror has no spot in the box (m12-opponent-mirror rule 6, B-041): a tablet
+  /// draws its side large with the mirror where one fits, and the whole match
+  /// where it does not. A phone keeps its side.
+  final bool wholeIfNoMirror;
 
   /// Where the app draws this phone's pad, in the box's px, which the other
   /// side's mirror keeps clear of (m12-opponent-mirror rule 3, code-health
@@ -124,8 +131,39 @@ class _MatchViewState extends State<MatchView> {
     _catMoments.observe(widget.snapshot.cat, _nowMs);
   }
 
+  /// The camera the view draws with in [box]: the side it was given, or the
+  /// whole match where [PuzzleCamera.mirrorPlace] finds no spot for the other
+  /// side's mirror and [wholeIfNoMirror] asks for that. A snapshot without a
+  /// seed keeps the side, as the painter has no layout to measure.
+  PuzzleCamera _cameraIn(Size box) {
+    final camera = widget.camera;
+    final snapshot = widget.snapshot;
+    final seed = snapshot.seed;
+    if (!widget.wholeIfNoMirror || camera.side == null || !snapshot.split || seed == null) return camera;
+    final layout = SplitLayout.of(widget.puzzle, seed, target: widget.target);
+    final text = phoneHud(snapshot, camera.side);
+    final mirror = PuzzleCamera.mirrorPlace(
+      widget.puzzle,
+      layout,
+      camera,
+      box,
+      split: snapshot.split,
+      text: (score: text.score, short: text.short),
+      pxPerMm: widget.pxPerMm,
+      padRects: widget.padRects,
+    );
+    return mirror == null ? const PuzzleCamera.whole() : camera;
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (!widget.wholeIfNoMirror) return _draw(context, widget.camera);
+    return LayoutBuilder(builder: (context, constraints) => _draw(context, _cameraIn(constraints.biggest)));
+  }
+
+  /// The view drawn with [camera] for a phone, or the split screen and the
+  /// board as [PuzzleView] draws it.
+  Widget _draw(BuildContext context, PuzzleCamera camera) {
     final look = ToyLookScope.of(context);
     final snapshot = widget.snapshot;
     // As [PuzzleView] does: the sky shows round the boards where there is one.
@@ -145,7 +183,7 @@ class _MatchViewState extends State<MatchView> {
               nowMs: _nowMs,
               timeLimitS: widget.timeLimitS,
               target: widget.target,
-              camera: widget.camera,
+              camera: camera,
               padRects: widget.padRects,
               pxPerMm: widget.pxPerMm,
               characters: widget.characters,

@@ -10,7 +10,7 @@ The owner's words: "Can we do option A but also show what the remote player is a
 3. **The piece they hold** is drawn with their dot, turned as they turn it, from pickup to drop or snap.
 4. Orange marks the other side (frame, dot, "Them 2/4"); your own count stays as today.
 5. Where it goes: top left, about a quarter of the board's size, under the top bar and clear of the stick; the clock and counts move to its right. A phone too narrow for it keeps today's count only.
-6. Not shown: in solo and team games (one board), on a tablet that already draws the whole match, and on the TV.
+6. Not shown: in solo and team games (one board), where a tablet draws the whole match because the mirror has no spot (a tablet shows the mirror too where one fits; B-041, Nov 23, owner: "Phone rule where it fits"), and on the TV.
 7. A 2-v-1: the mirror shows the other side's board and every dot on it.
 
 ## Where it goes with each pad (owner, Nov 7 evening: "Go with your recommendation")

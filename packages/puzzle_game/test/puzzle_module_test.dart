@@ -9,6 +9,7 @@ import 'package:game_kit/game_kit.dart';
 import 'package:puzzle_game/puzzle_game.dart';
 
 import 'support/look.dart';
+import 'support/portrait_pads.dart';
 
 Puzzle house() => Puzzle.parse(File('puzzles/house.json').readAsStringSync());
 
@@ -39,12 +40,13 @@ Widget draw(
   bool wholeMatch = false,
   List<Rect> padRects = const [],
   double pxPerMm = phonePxPerMm,
+  Size box = const Size(960, 540),
 }) => withLook(
   Directionality(
     textDirection: TextDirection.ltr,
     child: SizedBox(
-      width: 960,
-      height: 540,
+      width: box.width,
+      height: box.height,
       child: Builder(
         builder: (context) => viewer.build(context, snapshot, (
           roster: const {},
@@ -61,6 +63,10 @@ Widget draw(
 
 /// The camera the drawn [MatchView] paints with.
 PuzzleCamera cameraOf(WidgetTester tester) => tester.widget<MatchView>(find.byType(MatchView)).camera;
+
+/// The camera the painter draws with, after a tablet's fallback to the whole match.
+PuzzleCamera paintedCameraOf(WidgetTester tester) =>
+    (tester.widget<CustomPaint>(find.byKey(const Key('puzzleView'))).painter! as MatchPainter).camera;
 
 /// The app's controls the drawn [MatchView] keeps clear of, as it was given them.
 List<Rect> padRectsOf(WidgetTester tester) => tester.widget<MatchView>(find.byType(MatchView)).padRects;
@@ -166,9 +172,45 @@ void main() {
     await tester.pump();
     expect(cameraOf(tester), const PuzzleCamera.whole(), reason: 'this phone plays no side');
 
-    await tester.pumpWidget(draw(phones, phonesSnapshot, playerId: 'p2', wholeMatch: true));
+    // A tablet keeps its side with the mirror where one fits (B-041), and draws
+    // the whole match where none does. A control over the whole box leaves no
+    // room for the mirror, whatever the puzzle.
+    const box = Size(1180, 820);
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = box;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(
+      draw(
+        phones,
+        phonesSnapshot,
+        playerId: 'p2',
+        wholeMatch: true,
+        box: box,
+        padRects: const [Rect.fromLTWH(0, 0, 1180, 820)],
+        pxPerMm: iPadPxPerMm,
+      ),
+    );
     await tester.pump();
-    expect(cameraOf(tester), const PuzzleCamera.whole(), reason: 'a tablet draws both sides');
+    expect(
+      paintedCameraOf(tester),
+      const PuzzleCamera.whole(),
+      reason: 'a tablet with no room for the mirror draws both sides',
+    );
+    tester.view.physicalSize = const Size(1366, 1024);
+    await tester.pumpWidget(
+      draw(
+        phones,
+        phonesSnapshot,
+        playerId: 'p2',
+        wholeMatch: true,
+        box: const Size(1366, 1024),
+        padRects: iPadLandscapePad,
+        pxPerMm: iPadPxPerMm,
+      ),
+    );
+    await tester.pump();
+    expect(paintedCameraOf(tester), const PuzzleCamera.side(PuzzleSide.right), reason: 'a mirror fits at 1366 x 1024');
 
     await tester.pumpWidget(draw(screen, snapshot, playerId: 'p2'));
     await tester.pump();

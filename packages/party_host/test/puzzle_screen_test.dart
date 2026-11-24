@@ -187,13 +187,15 @@ void main() {
     expect(view.characters[1], ToyCharacter.forPlayer(1), reason: 'p1 chose nothing: its number decides');
   });
 
-  testWidgets('a host with the room for both sides draws the whole match', (tester) async {
+  testWidgets('a tablet host asks for the whole match only where the mirror has no spot (B-041)', (tester) async {
     await openRound(
       tester,
       const {'p1': PuzzleSide.left, 'p2': PuzzleSide.right},
       overrides: [ownPlayerIdProvider.overrideWithValue('p2'), wholeMatchProvider.overrideWithValue(true)],
     );
-    expect(drawnCamera(tester).side, isNull, reason: 'a tablet has the room for both sides');
+    final view = tester.widget<MatchView>(find.byType(MatchView));
+    expect(view.camera.side, PuzzleSide.right, reason: 'a tablet draws its own side like a phone');
+    expect(view.wholeIfNoMirror, isTrue, reason: 'and the whole match where no mirror fits');
   });
 
   testWidgets('the round runs at the rate the hosting settings ask for', (tester) async {
