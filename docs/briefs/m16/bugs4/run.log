@@ -13,3 +13,9 @@
 2026-11-24 11:57:56 combined check: skips protocol connection metrics kit look arena puzzle tools (no job's change reaches them)
 2026-11-24 12:00:36 committed b040awards: c1d6d559 bugs4 B-040: the phone's standings on a night's last round carry the awards
 2026-11-24 12:00:38 committed b040fit: 001b77e0 Fit the joined phone's result card to a small landscape phone
+2026-11-24 12:00:55 start b040win
+2026-11-24 12:07:34 b040win finished: result 4 (24 turns, 4 min)
+2026-11-24 12:07:35 b040win: dropped generated churn outside its list: tv_test_app/windows/flutter/generated_plugin_registrant.cc tv_test_app/windows/flutter/generated_plugin_registrant.h tv_test_app/windows/flutter/generated_plugins.cmake 
+2026-11-24 12:08:51 tests-first ok: controller_app/test/result_card_night_test.dart fails on the old code
+2026-11-24 12:09:00 combined check: skips protocol connection metrics kit look arena puzzle tools (no job's change reaches them)
+2026-11-24 12:11:34 committed b040win: 7260eca2 bugs4 B-040: the joined phone's card names the night's winner
