@@ -296,7 +296,7 @@ void main() {
     });
 
     test(
-      'the hello lists six capabilities, metrics and rating among them, the device kind and the screen size',
+      'the hello lists seven capabilities, metrics and rating among them, the device kind and the screen size',
       () async {
         SharedPreferences.setMockInitialValues({});
         final prefs = await SharedPreferences.getInstance();
@@ -308,9 +308,10 @@ void main() {
           Capability.layout,
           Capability.status,
           Capability.view,
-          // The client library adds the capability it implements itself (M16
-          // identity), after the app's own list.
+          // The client library adds the capabilities it implements itself (M16
+          // identity, M16 bugs4 night), after the app's own list.
           Capability.identity,
+          Capability.night,
         ]);
         expect(hello.device!.kind, DeviceInfo.tablet);
         expect((hello.device!.widthMm, hello.device!.heightMm), (250, 160));

@@ -102,7 +102,8 @@ void main() {
         expect(hello?.capabilities, [
           Capability.view,
           Capability.identity,
-        ], reason: 'the app listed view; the client library adds the identity it implements');
+          Capability.night,
+        ], reason: 'the app listed view; the client library adds the identity and night it implements');
       });
 
       test('a character picked while joined goes to a host that lists identity as set_character', () async {

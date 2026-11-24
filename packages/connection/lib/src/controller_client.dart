@@ -139,6 +139,10 @@ class ControllerClient {
   /// arrival times and the end, for a phone that listed [Capability.view].
   Stream<ViewEvent> get view => _controls.views;
 
+  /// The night's final awards and standings (M16 bugs4), for a phone that
+  /// listed [Capability.night], only while paired.
+  Stream<NightEndMessage> get nightEnds => _controls.nightEnds;
+
   /// The viewer's measurements since its last metrics batch (m12 §4, §6):
   /// `FrameView` or `SimView` feeds them; null without [Capability.view].
   ViewerStats? get viewerStats => _viewer?.stats;

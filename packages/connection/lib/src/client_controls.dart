@@ -14,6 +14,7 @@ final class ClientControls {
   final _layouts = StreamController<GameLayoutMessage>.broadcast();
   final _statuses = StreamController<StatusMessage>.broadcast();
   final _views = StreamController<ViewEvent>.broadcast();
+  final _nightEnds = StreamController<NightEndMessage>.broadcast();
   GameLayoutMessage _layout = GameLayoutMessage.standard();
   StatusMessage _status = StatusMessage.hidden();
   int _hapticsReceived = 0;
@@ -42,6 +43,10 @@ final class ClientControls {
   /// [Capability.view], only while paired.
   Stream<ViewEvent> get views => _views.stream;
 
+  /// The night's final awards and standings from the TV (M16 bugs4), only while
+  /// paired and only to a phone that listed [Capability.night].
+  Stream<NightEndMessage> get nightEnds => _nightEnds.stream;
+
   /// Hands [event] to the haptic listeners and counts it.
   void addHaptic(HapticEventMessage event) {
     _hapticsReceived++;
@@ -63,6 +68,11 @@ final class ClientControls {
     if (status == _status) return;
     _status = status;
     if (!_statuses.isClosed) _statuses.add(status);
+  }
+
+  /// Hands [end] to the night listeners.
+  void addNightEnd(NightEndMessage end) {
+    if (!_nightEnds.isClosed) _nightEnds.add(end);
   }
 
   /// Hands [start] to the view listeners.
@@ -120,6 +130,7 @@ final class ClientControls {
     await _layouts.close();
     await _statuses.close();
     await _views.close();
+    await _nightEnds.close();
   }
 }
 

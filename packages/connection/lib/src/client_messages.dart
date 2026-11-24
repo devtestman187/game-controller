@@ -59,7 +59,8 @@ final class ClientMessages {
       case PlayersMessage():
         _onPlayers(message);
       case NightEndMessage():
-        break; // routed to the card by the night-end stream (job nk1)
+        // Only while paired, as the players list is: a TV we are not paired with says nothing about the night.
+        if (_host.snapshot.isConnected) _controls.addNightEnd(message);
       case HelloMessage() ||
           PairRequestMessage() ||
           InputStateMessage() ||

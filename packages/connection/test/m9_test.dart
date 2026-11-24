@@ -32,7 +32,7 @@ void main() {
           final h = await hostUntil(host, (h) => h.connected.isNotEmpty);
           // The hello lists the app's capabilities and the identity the client
           // library implements itself (M16).
-          expect(h.connected.single.capabilities, [..._both, Capability.identity]);
+          expect(h.connected.single.capabilities, [..._both, Capability.identity, Capability.night]);
           expect(h.connected.single.role, DeviceRole.controller);
         });
 

@@ -48,8 +48,9 @@ final class ControllerIdentity {
   /// The capabilities this controller library reads and sends itself, so
   /// every hello lists them whatever the app named (M16 identity): a phone
   /// that sends a [SetCharacterMessage] understands the host's
-  /// [PlayersMessage]s and a frame's `chars`.
-  static const libraryCapabilities = [Capability.identity];
+  /// [PlayersMessage]s and a frame's `chars`; and [Capability.night], so a host
+  /// sends its night's end ([NightEndMessage]) to this phone.
+  static const libraryCapabilities = [Capability.identity, Capability.night];
 
   /// This identity as the hello sends it: [capabilities] plus the ones the
   /// library adds ([libraryCapabilities]).

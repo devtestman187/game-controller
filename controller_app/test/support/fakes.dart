@@ -185,8 +185,19 @@ class FakeClient extends ControllerClient {
   /// The player [playerId] is back, so its card line goes.
   void playerBack(String playerId) => _view.add(PlayerBack(playerId));
 
+  /// The night's end the host sends this phone (M16 bugs4): the test adds it
+  /// to this stream, as the client's handler would.
+  final _nightEnds = StreamController<NightEndMessage>.broadcast();
+
+  @override
+  Stream<NightEndMessage> get nightEnds => _nightEnds.stream;
+
+  /// The host's night ended with [end], arriving now.
+  void nightEnd(NightEndMessage end) => _nightEnds.add(end);
+
   @override
   Future<void> dispose() async {
+    await _nightEnds.close();
     await _view.close();
     await _changes.close();
   }
