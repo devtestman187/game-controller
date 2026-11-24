@@ -1,2 +1,6 @@
 b040fit b040awards
 b040win
+nc1
+nh1 nk1
+nh2 np1
+np2

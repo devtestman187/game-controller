@@ -1,0 +1,13 @@
+job: M16 bugs4 nk1 — the phone client lists `night` and exposes the night's end
+stop: after it. No card, no provider, no host change.
+read: docs/briefs/templates/COMMON.md · packages/connection/lib/src/controller_identity.dart:40-70 · packages/connection/lib/src/client_messages.dart:60-135 · packages/connection/lib/src/client_controls.dart:1-60,100-125 · packages/connection/lib/src/controller_client.dart:130-145 · controller_app/test/support/fakes.dart:140-190 (FakeClient) · packages/connection/test/identity_client_test.dart:95-115 · the tests that pin the hello's capability list: packages/connection/test/m9_test.dart:35, controller_app/test/phone_metrics_test.dart:313 · packages/protocol/lib/src/night.dart (from job nc1)
+changes: ControllerIdentity.libraryCapabilities (adds Capability.night) · ControllerClient.nightEnds (new Stream<NightEndMessage>) · ClientControls.addNightEnd (new) · FakeClient.nightEnd (new test helper)
+turns: 60
+expected-min: 30
+do:
+1 Tests first: new packages/connection/test/night_end_client_test.dart: the hello lists Capability.night beside Capability.identity; a paired client whose host sends a night_end gets it on `nightEnds`; a host that never lists or sends it (an older host) leaves the client working as before (no event, nothing else changes); a night_end before pairing is dropped, as `players` is. Run it, see it fail, then write lib.
+2 controller_identity.dart libraryCapabilities adds Capability.night (documented). client_controls.dart: a broadcast `_nightEnds` stream, `addNightEnd`, closed in close(). client_messages.dart: NightEndMessage goes to addNightEnd, only while paired. controller_client.dart: `Stream<NightEndMessage> get nightEnds`. controller_app/test/support/fakes.dart FakeClient: override nightEnds with a broadcast controller and add `void nightEnd(NightEndMessage m)`.
+3 Fix the pinned capability lists in m9_test, identity_client_test and phone_metrics_test (the new entry), nothing else. Run the packages/connection tests that mention capabilities and controller_app phone_metrics_test.
+allow: packages/connection/lib/src/controller_identity.dart · packages/connection/lib/src/client_controls.dart · packages/connection/lib/src/client_messages.dart · packages/connection/lib/src/controller_client.dart · packages/connection/test/night_end_client_test.dart · packages/connection/test/m9_test.dart · packages/connection/test/identity_client_test.dart · controller_app/test/support/fakes.dart · controller_app/test/phone_metrics_test.dart · docs/briefs/m16/bugs4/nk1-report.md
+check: format analyze phone
+report: docs/briefs/m16/bugs4/nk1-report.md
