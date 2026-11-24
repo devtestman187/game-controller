@@ -34,3 +34,13 @@ Five files are over 380 today (gyro.dart 398, game_session.dart 399, arena_map.d
 ## Q7. A paired phone on relaunch (added by the main session)
 - **A (recommended):** a phone that is still paired opens straight on the pad as today; Home shows when not paired, and from the pad's menu.
 - **B:** Home always opens first.
+
+## Merged recommendations after the Fable review (Opus, Nov 24)
+- Q1 A (scope), but the phone's final card is Q8, not a number fix.
+- Q2 A, one consent-ask function with two entry points (Home and the pad).
+- Q3 A. Q4 A, but "a failed connect goes back to Home, no raw error card" stays in item 8.
+- Q5 **changed to B** (no unread flag; M17 defines "first time").
+- Q6 **changed to B** (400 in PRD and guideline; split only files a job touches; no 9f).
+- Q7 A with the rule: pad only when the last host is found live within the discovery wait; otherwise Home.
+- **Q8 (new, blocks m16.3):** last round on a joined phone. A for m16.3 (round result + "Awards are on the big screen"), then B as job 7b (a second send with the +3 after the reveal).
+Plan changes accepted from FABLE-REVIEW.md: item 8 contract covers navigation, Home inputs and coach-mark anchors; 8b cut into 8b0/8b1/8b2; inventory jobs before 8e and 9b; 9d cut into three; 9c sets the callback at the four sites; puzzle HUD round and party_host 48 dp added; a "TV" guard test; items 7-9 start only after m16.3 is tagged.
