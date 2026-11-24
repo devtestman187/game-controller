@@ -21,3 +21,12 @@
 2026-11-24 12:11:34 committed b040win: 7260eca2 bugs4 B-040: the joined phone's card names the night's winner
 2026-11-24 12:11:35 reviewed wave1: 8 finding(s)
 2026-11-24 12:12:53 reviewed wave2: 7 finding(s)
+2026-11-24 12:12:54 start the run's review
+METRICS b040awards worker=claude model=claude-haiku-5-5 turns=25 in=34 out=18880 cache=681661 min=4.1 wall=4.7 result=4
+METRICS b040fit worker=claude model=claude-haiku-5-5 turns=20 in=32 out=15627 cache=566031 min=3.9 wall=6.5 result=4
+METRICS b040win worker=claude model=claude-haiku-5-5 turns=24 in=30 out=20503 cache=599123 min=4.1 wall=6.7 result=4
+METRICS run-review worker=claude model=claude-haiku-5-5 turns=44 in=38 out=58301 cache=1125874 min=4.5 wall=- result=0
+METRICS wave1-review worker=claude model=claude-haiku-5-5 turns=20 in=28 out=18998 cache=480599 min=1.6 wall=- result=0
+METRICS wave2-review worker=claude model=claude-haiku-5-5 turns=13 in=18 out=11039 cache=234360 min=1.0 wall=- result=0
+2026-11-24 12:17:52 DONE: every job is committed. Claude reads the Summary of docs/briefs/m16/bugs4/REVIEW.md, verifies its findings and writes one fix brief
+RESULT: DONE: 3 jobs, 29 min
