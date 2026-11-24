@@ -17,7 +17,7 @@ NightEndMessage nightEndFor(NightState night, List<GamePlayer> players) => Night
       NightAwardRow(
         id: outcome.award.name,
         name: outcome.award.title,
-        points: awardPoints,
+        points: outcome.isWon ? awardPoints : 0,
         winners: outcome.winners,
         reason: outcome.reason,
       ),

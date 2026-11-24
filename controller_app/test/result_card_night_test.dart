@@ -206,7 +206,7 @@ void main() {
         awards: const [
           NightAwardRow(id: 'fast', name: 'Fastest', points: 3, winners: ['mia']),
           NightAwardRow(id: 'clean', name: 'Cleanest', points: 3, winners: ['dad', 'ben']),
-          NightAwardRow(id: 'lucky', name: 'Luckiest', points: 3, winners: []),
+          NightAwardRow(id: 'lucky', name: 'Luckiest', points: 0, winners: []),
         ],
         standings: [idStanding('mia', 1, 'Mia', 10), idStanding('ben', 6, 'Ben', 9), idStanding('dad', 2, 'Dad', 8)],
       );
@@ -219,7 +219,7 @@ void main() {
       expect(tester.widget<Text>(find.byKey(const Key('resultAward-clean'))).data, 'Cleanest: Dad and Ben (+3)');
       expect(
         tester.widget<Text>(find.byKey(const Key('resultAward-lucky'))).data,
-        PhoneText.awardLine('Luckiest', PhoneText.awardNotWon, 3),
+        PhoneText.awardLine('Luckiest', PhoneText.awardNotWon, 0),
         reason: 'an award nobody won',
       );
       expect(PhoneText.awardNotWon, 'Not won tonight');
@@ -241,6 +241,18 @@ void main() {
         PhoneText.nightWinner('Mia and Dad'),
       );
       expect(PhoneText.nightWinner('Mia and Dad'), 'Mia and Dad won the night!');
+    });
+
+    testWidgets('a phone that is one of the tied winners says "You won the night!"', (tester) async {
+      final tied = NightEndMessage(
+        awards: const [],
+        standings: [idStanding('mia', 1, 'Mia', 10), idStanding('dad', 2, 'Dad', 10), idStanding('sam', 3, 'Sam', 4)],
+      );
+      final app = await endRound(tester, player: 1, result: benFirstAtLastRound);
+
+      await sendNightEnd(tester, app, tied);
+
+      expect(tester.widget<Text>(find.byKey(const Key('resultNightWinner'))).data, PhoneText.youWonNight);
     });
 
     testWidgets('a night\'s end on a round that is not the last changes nothing on the card', (tester) async {
@@ -272,7 +284,7 @@ void main() {
         awards: const [
           NightAwardRow(id: 'fast', name: 'Fastest', points: 3, winners: ['p1']),
           NightAwardRow(id: 'clean', name: 'Cleanest', points: 3, winners: ['p2', 'p3']),
-          NightAwardRow(id: 'lucky', name: 'Luckiest', points: 3, winners: []),
+          NightAwardRow(id: 'lucky', name: 'Luckiest', points: 0, winners: []),
         ],
         standings: [
           idStanding('p1', 1, 'Mia', 15),

@@ -1,2 +1,5 @@
 - 11:48 briefs written (fit, awards wave1; win wave2); cause measured: card overflow at 568x320 (waiting line off screen with 6 rows) + last-round standings lack awards. next: start runner
 - 12:21 wave 1-3 (fit, awards, win) DONE 29 min; owner Q8 rework: waves 4-8 nc1 | nh1 nk1 | nh2 np1 | np2 written (vsplit skipped: new provider in its own file). next: start runner
+- 12:28 nc1 STOPPED on analyze (2 exhaustive switches, class a); hand-fixed, committed dfb3f9336f03b4b9f8c2e442e0df11a98c113780. next: restart
+- 12:59 wave5 STOPPED host check (11 reveal tests, class c), fixed; committed nh2 np1. next: restart for np2
+- 13:28 wrap: REVIEW.md, code-health, lessons P-bugs4-1..3, STATUS written. next: commit, tracker

@@ -56,3 +56,6 @@ Read before writing briefs (Sonnet driver) and before any helper step (Haiku). E
 
 - P-bugs3-1 A brief's size cap must be checked against the existing floor tests: b037 said "cap the number at 0.55 of the disc", phone_fit_matrix_test pins 20 px text (17.6 < 20), so the combined check stopped the run (run.log 17:01:29). Grep the pinned limit (20 px, tests named "20 px text") before choosing a cap.
 - P-bugs3-2 Result 4 with only generated churn outside allow is not a failure: the runner drops it; read the STOP's failing-test list, not the result code.
+- P-bugs4-1 A new `Message` subtype breaks every exhaustive `switch (message)` in connection (client_messages.dart, host_connection.dart): `changes:` naming the type did not find them because the switch names no symbol of the brief. Give the contract job both files in allow: (bugs4 nc1, run.log 12:27 STOPPED analyze).
+- P-bugs4-2 A host screen that now reads `gameHostProvider` needs a host service in every test that mounts it bare: grep the screen's tests for ProviderScope without hostServiceProvider before the brief (bugs4 nh2, run.log 12:58, 11 reveal tests).
+- P-bugs4-3 The measured cause of a "nothing shown" report can be a layout overflow, not a missing send: probe the card at the smallest landscape size with the largest data before reading the host code (bugs4 B-040: Waiting line at y 341 of 320).

@@ -138,8 +138,6 @@ class _AwardRow extends StatelessWidget {
       PhoneText.awardLine(award.name, winners, award.points),
       key: Key('resultAward-${award.id}'),
       style: look.type.body.copyWith(color: look.colors.ink),
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
     );
   }
 }

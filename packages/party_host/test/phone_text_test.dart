@@ -36,6 +36,6 @@ void main() {
   test('an award is one line: its name, its winners and its points', () {
     expect(PhoneText.awardLine('Fastest', 'Mia', 3), 'Fastest: Mia (+3)');
     expect(PhoneText.awardLine('Cleanest', 'Dad and Ben', 3), 'Cleanest: Dad and Ben (+3)');
-    expect(PhoneText.awardLine('Luckiest', PhoneText.awardNotWon, 3), 'Luckiest: Not won tonight (+3)');
+    expect(PhoneText.awardLine('Luckiest', PhoneText.awardNotWon, 0), 'Luckiest: Not won tonight');
   });
 }

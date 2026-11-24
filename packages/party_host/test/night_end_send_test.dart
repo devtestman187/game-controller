@@ -102,7 +102,11 @@ void main() {
     final awards = fake.gameHost.shownNightEnds.single.awards;
     expect(awards.map((award) => award.id), ['bestHelper', 'comeback', 'catCatcher']);
     expect(awards.map((award) => award.name), ['Best Helper', 'Comeback', 'Cat Catcher']);
-    expect(awards.map((award) => award.points), [awardPoints, awardPoints, awardPoints]);
+    expect(awards.map((award) => award.points), [
+      awardPoints,
+      awardPoints,
+      0,
+    ], reason: 'an award nobody won adds nothing');
     expect(awards.map((award) => award.winners), [
       ['p2'],
       ['p1'],
