@@ -27,4 +27,15 @@ void main() {
   test('the last round\'s card says the awards are coming, in place of the standings', () {
     expect(PhoneText.awardsComing, 'Awards coming…');
   });
+
+  test('the awards are headed "Awards", and an award nobody won says "Not won tonight"', () {
+    expect(PhoneText.awardsHeading, 'Awards');
+    expect(PhoneText.awardNotWon, 'Not won tonight');
+  });
+
+  test('an award is one line: its name, its winners and its points', () {
+    expect(PhoneText.awardLine('Fastest', 'Mia', 3), 'Fastest: Mia (+3)');
+    expect(PhoneText.awardLine('Cleanest', 'Dad and Ben', 3), 'Cleanest: Dad and Ben (+3)');
+    expect(PhoneText.awardLine('Luckiest', PhoneText.awardNotWon, 3), 'Luckiest: Not won tonight (+3)');
+  });
 }

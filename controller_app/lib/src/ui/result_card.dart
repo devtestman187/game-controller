@@ -34,6 +34,7 @@ class ResultCard extends ConsumerWidget {
     // identity): "Player 2", as the lobby list says it too.
     final name = PhoneText.playerName(own?.name ?? ref.watch(profileProvider).nickname ?? '', ownNumber);
     final toy = ToyCharacter.of(own?.character ?? character, ownNumber);
+    final nightEnd = ref.watch(nightEndProvider);
     return Material(
       type: MaterialType.transparency,
       child: LayoutBuilder(
@@ -56,7 +57,7 @@ class ResultCard extends ConsumerWidget {
                     children: [
                       const _Picture(),
                       _nameRow(context, name: name, number: ownNumber, toy: toy),
-                      ResultNight(result: result, number: number),
+                      ResultNight(result: result, number: number, end: nightEnd),
                       const SizedBox(height: ToySizes.space12),
                       Text(
                         PhoneText.waitingForNext,

@@ -222,6 +222,15 @@ abstract final class PhoneText {
   /// The card's line on a night's last round naming the winners, "Mia and Dad": another
   /// phone's card says who won (B-040).
   static String nightWinner(String names) => '$names won the night!';
+
+  /// The heading over a night's awards on the last round's card, after the host's reveal (B-040, np2).
+  static const awardsHeading = 'Awards';
+
+  /// An award's winners' place on the card when nobody won it (B-040, np2).
+  static const awardNotWon = 'Not won tonight';
+
+  /// One award on the card: its name, who won it and the points it adds, "Fastest: Mia (+3)" (B-040, np2).
+  static String awardLine(String name, String winners, int points) => '$name: $winners (+$points)';
   static const waitingForNext = 'Waiting for the host to pick what\'s next.';
 
   /// A round's time as the results card and the game's clock say it: "1:42".
