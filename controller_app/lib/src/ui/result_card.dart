@@ -2,12 +2,12 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:party_host/party_host.dart'
-    show PhoneText, PuzzlePhoto, RoboBadge, ToyBadge, ToyCard, ToyCharacter, ToyLookScope, ToySizes;
+import 'package:party_host/party_host.dart' show PhoneText, PuzzlePhoto, ToyCard, ToyCharacter, ToyLookScope, ToySizes;
 import 'package:protocol/protocol.dart';
 import 'package:puzzle_game/puzzle_game.dart';
 
 import '../providers.dart';
+import 'result_night.dart';
 
 /// This phone's own result of the round it just drew (M14 design section 9,
 /// mock-up 12): the card over the last frame, with the side's picture as the
@@ -56,7 +56,7 @@ class ResultCard extends ConsumerWidget {
                     children: [
                       const _Picture(),
                       _nameRow(context, name: name, number: ownNumber, toy: toy),
-                      ..._night(context, number: number),
+                      ResultNight(result: result, number: number),
                       const SizedBox(height: ToySizes.space12),
                       Text(
                         PhoneText.waitingForNext,
@@ -80,7 +80,7 @@ class ResultCard extends ConsumerWidget {
     final look = ToyLookScope.of(context);
     return Row(
       children: [
-        _Badge(toy: toy, number: number),
+        ResultBadge(toy: toy, number: number),
         const SizedBox(width: ToySizes.space8),
         Expanded(
           child: Text(
@@ -99,54 +99,6 @@ class ResultCard extends ConsumerWidget {
           ),
       ],
     );
-  }
-
-  /// The points earned in a night, the night's winner on its last round, and the
-  /// night's standings, when the host sent them.
-  List<Widget> _night(BuildContext context, {required int? number}) {
-    final look = ToyLookScope.of(context);
-    final points = result.points;
-    final winner = _nightWinnerLine(result, number: number);
-    return [
-      if (points != null) ...[
-        const SizedBox(height: ToySizes.space8),
-        Text(
-          PhoneText.pointsEarned(points),
-          key: const Key('resultPoints'),
-          textAlign: TextAlign.center,
-          style: look.type.button.copyWith(color: look.colors.good),
-        ),
-      ],
-      if (winner != null) ...[
-        const SizedBox(height: ToySizes.space12),
-        Text(
-          winner,
-          key: const Key('resultNightWinner'),
-          textAlign: TextAlign.center,
-          style: look.type.button.copyWith(color: look.colors.good),
-        ),
-      ],
-      if (result.standings.isNotEmpty) ...[
-        const SizedBox(height: ToySizes.space12),
-        Text(PhoneText.standings, style: look.type.body.copyWith(color: look.colors.inkSoft)),
-        const SizedBox(height: ToySizes.space4),
-        for (final standing in result.standings) _StandingRow(standing: standing, own: standing.number == number),
-      ],
-    ];
-  }
-
-  /// The line naming a night's winner, on the night's last round only (B-040): the
-  /// standings with the most points, or "You won the night!" when this phone's
-  /// player is one of them. Null on any other round, or with no standings.
-  static String? _nightWinnerLine(ViewResult result, {required int? number}) {
-    final round = result.round;
-    final total = result.of;
-    if (round == null || total == null || round != total || result.standings.isEmpty) return null;
-    final top = result.standings.map((s) => s.points).reduce((a, b) => math.max(a, b));
-    final winners = result.standings.where((s) => s.points == top).toList();
-    if (winners.any((s) => s.number == number)) return PhoneText.youWonNight;
-    final names = winners.map((s) => PhoneText.playerName(s.name, s.number)).join(' and ');
-    return PhoneText.nightWinner(names);
   }
 
   /// The mock-up's card width, in logical pixels: wider than a phone's narrow
@@ -235,63 +187,4 @@ class _Picture extends ConsumerWidget {
         'right' => PuzzleSide.right,
         _ => null,
       };
-}
-
-/// The player's own badge on the card: the look's toy disc, wearing the
-/// character the host gave them.
-class _Badge extends StatelessWidget {
-  const _Badge({required this.toy, required this.number});
-
-  final ToyCharacter toy;
-  final int number;
-
-  @override
-  Widget build(BuildContext context) => ToyBadge(number: number, diameter: _diameter, character: toy);
-
-  static const _diameter = 32.0;
-}
-
-/// One row of the night's standings: the character, the name and the points.
-class _StandingRow extends StatelessWidget {
-  const _StandingRow({required this.standing, required this.own});
-
-  final ViewStanding standing;
-
-  /// Whether this row is this phone's player.
-  final bool own;
-
-  @override
-  Widget build(BuildContext context) {
-    final look = ToyLookScope.of(context);
-    final style = look.type.body.copyWith(color: look.colors.ink, fontWeight: own ? FontWeight.bold : null);
-    // A row the host left unnamed is "Player N", as the lobby list says it
-    // (M16 identity); Robo's row has its own name.
-    final name = PhoneText.playerName(standing.name, standing.number);
-    return Padding(
-      key: Key('standing-${standing.number}'),
-      padding: const EdgeInsets.symmetric(vertical: 2),
-      child: Row(
-        children: [
-          // Robo wears the robot disc the TV gives it, never a player's badge
-          // (m14 r5 9).
-          if (standing.isRobo)
-            RoboBadge(number: standing.number, size: _diameter)
-          else
-            ToyBadge(
-              number: standing.number,
-              diameter: _diameter,
-              character: ToyCharacter.of(standing.character, standing.number),
-            ),
-          const SizedBox(width: ToySizes.space8),
-          Expanded(
-            child: Text(name, style: style, maxLines: 1, overflow: TextOverflow.ellipsis),
-          ),
-          Text('${standing.points}', key: Key('standingPoints-${standing.number}'), style: style),
-        ],
-      ),
-    );
-  }
-
-  /// The row's badge, a little smaller than the card's own.
-  static const _diameter = 24.0;
 }

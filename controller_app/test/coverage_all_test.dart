@@ -50,6 +50,7 @@ import 'package:controller/src/providers/feedback.dart';
 import 'package:controller/src/providers/game_feedback.dart';
 import 'package:controller/src/providers/haptics.dart';
 import 'package:controller/src/providers/metrics.dart';
+import 'package:controller/src/providers/night_end.dart';
 import 'package:controller/src/providers/pad.dart';
 import 'package:controller/src/providers/profile.dart';
 import 'package:controller/src/providers/view.dart';

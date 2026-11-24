@@ -212,6 +212,10 @@ abstract final class PhoneText {
 
   static const standings = 'Standings';
 
+  /// The card's line on a night's last round, in place of the standings: the host
+  /// sends the night's awards and final winner after its reveal (B-040, np1).
+  static const awardsComing = 'Awards coming…';
+
   /// The card's line on a night's last round when this phone's player won it (B-040).
   static const youWonNight = 'You won the night!';
 

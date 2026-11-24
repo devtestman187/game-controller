@@ -23,4 +23,8 @@ void main() {
     expect(PhoneText.youWonNight, 'You won the night!');
     expect(PhoneText.nightWinner('Mia and Dad'), 'Mia and Dad won the night!');
   });
+
+  test('the last round\'s card says the awards are coming, in place of the standings', () {
+    expect(PhoneText.awardsComing, 'Awards coming…');
+  });
 }

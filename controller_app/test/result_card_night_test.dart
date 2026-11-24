@@ -62,55 +62,61 @@ void main() {
   // The card is measured with a real font, as a device draws it (see test_font.dart).
   setUpAll(loadHostFonts);
 
-  group('the night\'s winner on the card (B-040)', () {
-    testWidgets('the phone whose player won the night\'s last round says so', (tester) async {
-      await endRound(
-        tester,
-        player: 1,
-        result: resultAt(round: 3, total: 3, standings: [standing(1, 'Mia', 12), standing(2, 'Dad', 9)]),
-      );
+  group('the last round\'s card says the awards are coming (np1)', () {
+    testWidgets('on the night\'s last round the card names no winner and no standings, for any player', (tester) async {
+      final standings = [standing(1, 'Mia', 12), standing(2, 'Dad', 9)];
+      for (final player in [1, 2]) {
+        await endRound(
+          tester,
+          player: player,
+          result: resultAt(round: 3, total: 3, standings: standings),
+        );
 
-      expect(find.byKey(const Key('resultNightWinner')), findsOneWidget);
-      expect(tester.widget<Text>(find.byKey(const Key('resultNightWinner'))).data, PhoneText.youWonNight);
-      expect(PhoneText.youWonNight, 'You won the night!');
+        expect(find.byKey(const Key('resultAwardsComing')), findsOneWidget, reason: 'player $player');
+        expect(tester.widget<Text>(find.byKey(const Key('resultAwardsComing'))).data, PhoneText.awardsComing);
+        expect(PhoneText.awardsComing, 'Awards coming…');
+        expect(find.byKey(const Key('resultNightWinner')), findsNothing, reason: 'player $player');
+        expect(find.byKey(const Key('standing-1')), findsNothing, reason: 'player $player');
+        expect(find.byKey(const Key('standing-2')), findsNothing, reason: 'player $player');
+        expect(find.byKey(const Key('resultWaiting')), findsOneWidget, reason: 'player $player');
+      }
     });
 
-    testWidgets('another phone names the night\'s winner by name at the last round', (tester) async {
-      await endRound(
-        tester,
-        player: 2,
-        result: resultAt(round: 3, total: 3, standings: [standing(1, 'Mia', 12), standing(2, 'Dad', 9)]),
-      );
-
-      expect(tester.widget<Text>(find.byKey(const Key('resultNightWinner'))).data, PhoneText.nightWinner('Mia'));
-      expect(PhoneText.nightWinner('Mia'), 'Mia won the night!');
-    });
-
-    testWidgets('a tie for first names both winners in standings order, and the tied phone says so', (tester) async {
+    testWidgets('a tie on the night\'s last round says the awards are coming, not who won', (tester) async {
       final tied = resultAt(
         round: 3,
         total: 3,
         standings: [standing(1, 'Mia', 12), standing(2, 'Dad', 12), standing(3, 'Sam', 7)],
       );
       await endRound(tester, player: 3, result: tied);
-      expect(tester.widget<Text>(find.byKey(const Key('resultNightWinner'))).data, 'Mia and Dad won the night!');
 
-      await endRound(tester, player: 2, result: tied);
-      expect(tester.widget<Text>(find.byKey(const Key('resultNightWinner'))).data, PhoneText.youWonNight);
+      expect(tester.widget<Text>(find.byKey(const Key('resultAwardsComing'))).data, PhoneText.awardsComing);
+      expect(find.byKey(const Key('resultNightWinner')), findsNothing);
+      expect(find.byKey(const Key('standing-3')), findsNothing);
     });
 
-    testWidgets('no winner line before the night\'s last round, or when the round is not in a night', (tester) async {
+    testWidgets('before the night\'s last round the standings show, with no awards line', (tester) async {
       final standings = [standing(1, 'Mia', 12), standing(2, 'Dad', 9)];
       await endRound(tester, player: 1, result: resultAt(round: 2, total: 3, standings: standings));
-      expect(find.byKey(const Key('resultNightWinner')), findsNothing);
-      expect(find.byKey(const Key('resultCard')), findsOneWidget);
 
-      await endRound(tester, player: 1, result: resultAt(round: null, total: null, standings: standings));
+      expect(find.byKey(const Key('standing-1')), findsOneWidget);
+      expect(find.byKey(const Key('standing-2')), findsOneWidget);
+      expect(find.byKey(const Key('resultAwardsComing')), findsNothing);
       expect(find.byKey(const Key('resultNightWinner')), findsNothing);
       expect(find.byKey(const Key('resultCard')), findsOneWidget);
     });
 
-    testWidgets('the winner line fits a small landscape phone in both palettes', (tester) async {
+    testWidgets('when the round is not in a night the standings show, with no awards line', (tester) async {
+      final standings = [standing(1, 'Mia', 12), standing(2, 'Dad', 9)];
+      await endRound(tester, player: 1, result: resultAt(round: null, total: null, standings: standings));
+
+      expect(find.byKey(const Key('standing-1')), findsOneWidget);
+      expect(find.byKey(const Key('standing-2')), findsOneWidget);
+      expect(find.byKey(const Key('resultAwardsComing')), findsNothing);
+      expect(find.byKey(const Key('resultCard')), findsOneWidget);
+    });
+
+    testWidgets('the awards line fits a small landscape phone in both palettes', (tester) async {
       for (final palette in ['sunny', 'night']) {
         // An empty tree drops the last look's routes, as eachLook does.
         await tester.pumpWidget(const SizedBox.shrink());
@@ -127,7 +133,7 @@ void main() {
         await settle(tester);
 
         expect(tester.takeException(), isNull, reason: 'the night card in $palette');
-        expect(find.byKey(const Key('resultNightWinner')), findsOneWidget, reason: 'the winner line in $palette');
+        expect(find.byKey(const Key('resultAwardsComing')), findsOneWidget, reason: 'the awards line in $palette');
         final waiting = tester.getRect(find.byKey(const Key('resultWaiting')));
         expect(waiting.top, greaterThanOrEqualTo(0), reason: 'the waiting line\'s top in $palette');
         expect(waiting.bottom, lessThanOrEqualTo(320), reason: 'the waiting line\'s bottom in $palette');
