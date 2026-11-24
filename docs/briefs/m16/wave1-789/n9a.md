@@ -11,6 +11,7 @@ do:
 4 App bar (connect_screen.dart:~101-117): title ellipsis (overflow ellipsis, one line) so the StatusChip and the diagnostics button stay and the bar does not overflow at 320.
 5 Report: connect_screen.dart line count (378 or fewer), the sizes tested.
 UI: both looks; test names say which.
-allow: controller_app/lib/src/ui/connect_screen.dart · controller_app/lib/src/ui/connect_manual_entry.dart · controller_app/test/connect_narrow_test.dart · controller_app/test/connect_screen_test.dart · controller_app/test/connect_identity_gap_test.dart · controller_app/test/connect_consent_pop_test.dart
+allow: controller_app/lib/src/ui/connect_panels.dart · controller_app/lib/src/ui/connect_screen.dart · controller_app/lib/src/ui/connect_manual_entry.dart · controller_app/test/connect_narrow_test.dart · controller_app/test/connect_screen_test.dart · controller_app/test/connect_identity_gap_test.dart · controller_app/test/connect_consent_pop_test.dart
+repair: a first attempt (kept in the job log flash-n9a.log) left ONE failing case: the TV look at 568x320 overflows a RenderFlex by 12 px on the right. Find the overflowing widget first (print the exception's widget path with tester.takeException().toString() or debugDumpApp), then fix it: in ManualEntry or the app bar, or (allowed now) in connect_panels.dart if the overflow is in the right-hand panel in the TV look. All 9 narrow cases must pass in both looks; also fix the stale line references in connect_identity_gap_test.dart if a test fails on them.
 check: format analyze phone
 report: docs/briefs/m16/wave1-789/n9a-report.md
