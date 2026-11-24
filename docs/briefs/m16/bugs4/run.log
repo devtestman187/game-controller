@@ -58,3 +58,14 @@ HAND-FIX nc1: added NightEndMessage to the exhaustive switches in client_message
 2026-11-24 12:29:50 tests-first ok: packages/protocol/test/night_end_test.dart fails on the old code
 2026-11-24 12:29:51 hand-fixed nc1: tests-first proof and worker review done (marked in done.txt)
 2026-11-24 12:29:51 skip nc1 (already done)
+2026-11-24 12:30:08 start nh1
+2026-11-24 12:30:34 start nk1
+2026-11-24 12:34:11 nh1 finished: result 4 (24 turns, 3 min)
+2026-11-24 12:34:13 nh1: dropped generated churn outside its list: tv_test_app/windows/flutter/generated_plugin_registrant.cc tv_test_app/windows/flutter/generated_plugin_registrant.h tv_test_app/windows/flutter/generated_plugins.cmake 
+2026-11-24 12:36:51 nk1 finished: result 4 (43 turns, 4 min)
+2026-11-24 12:36:53 nk1: dropped generated churn outside its list: tv_test_app/windows/flutter/generated_plugin_registrant.cc tv_test_app/windows/flutter/generated_plugin_registrant.h tv_test_app/windows/flutter/generated_plugins.cmake 
+2026-11-24 12:37:05 tests-first ok: packages/connection/test/night_end_client_test.dart fails on the old code
+2026-11-24 12:37:08 tests-first ok: packages/connection/test/night_end_send_test.dart fails on the old code
+2026-11-24 12:37:26 combined check: skips protocol metrics look tools (no job's change reaches them)
+2026-11-24 12:41:11 committed nh1: babbc3b4 connection: GameHost.showNightEnd sends the night's end to night phones
+2026-11-24 12:41:13 committed nk1: 6e40b9ef Phone client lists night and exposes the night's end
