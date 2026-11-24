@@ -1,0 +1,15 @@
+2026-11-24 11:48:23 RUN_MAX_MIN=100 min (computed backstop of the jobs still to do)
+2026-11-24 11:48:24 start at 15d4384c on m16
+2026-11-24 11:48:24 worker: claude
+2026-11-24 11:48:24 run-base 15d4384cc19082248c09638b4ff644ad5a761e3f
+2026-11-24 11:48:38 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-24 11:49:54 start b040fit
+2026-11-24 11:50:20 start b040awards
+2026-11-24 11:55:03 b040awards finished: result 4 (25 turns, 4 min)
+2026-11-24 11:55:05 b040awards: dropped generated churn outside its list: docs/design/m13-placed-look.png docs/design/puzzles/boat.png docs/design/puzzles/butterfly.png docs/design/puzzles/car.png docs/design/puzzles/castle.png docs/design/puzzles/fish.png docs/design/puzzles/house.png docs/design/puzzles/robot.png docs/design/puzzles/rocket.png docs/design/puzzles/snowman.png docs/design/puzzles/sun.png docs/design/puzzles/train.png docs/design/puzzles/tree.png site/shots/dpad.png site/shots/join.png site/shots/menus.png site/shots/results.png site/shots/sticks.png site/shots/tilt.png tv_test_app/windows/flutter/generated_plugin_registrant.cc tv_test_app/windows/flutter/generated_plugin_registrant.h tv_test_app/windows/flutter/generated_plugins.cmake 
+2026-11-24 11:56:27 b040fit finished: result 4 (20 turns, 4 min)
+2026-11-24 11:56:28 b040fit: dropped generated churn outside its list: docs/design/m13-placed-look.png docs/design/puzzles/boat.png docs/design/puzzles/butterfly.png docs/design/puzzles/car.png docs/design/puzzles/castle.png docs/design/puzzles/fish.png docs/design/puzzles/house.png docs/design/puzzles/robot.png docs/design/puzzles/rocket.png docs/design/puzzles/snowman.png docs/design/puzzles/sun.png docs/design/puzzles/train.png docs/design/puzzles/tree.png site/shots/dpad.png site/shots/join.png site/shots/menus.png site/shots/results.png site/shots/sticks.png site/shots/tilt.png tv_test_app/windows/flutter/generated_plugin_registrant.cc tv_test_app/windows/flutter/generated_plugin_registrant.h tv_test_app/windows/flutter/generated_plugins.cmake 
+2026-11-24 11:57:46 tests-first ok: controller_app/test/result_card_fit_test.dart fails on the old code
+2026-11-24 11:57:56 combined check: skips protocol connection metrics kit look arena puzzle tools (no job's change reaches them)
+2026-11-24 12:00:36 committed b040awards: c1d6d559 bugs4 B-040: the phone's standings on a night's last round carry the awards
+2026-11-24 12:00:38 committed b040fit: 001b77e0 Fit the joined phone's result card to a small landscape phone
