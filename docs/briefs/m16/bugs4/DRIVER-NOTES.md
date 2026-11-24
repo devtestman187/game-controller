@@ -1,0 +1,1 @@
+- 11:48 briefs written (fit, awards wave1; win wave2); cause measured: card overflow at 568x320 (waiting line off screen with 6 rows) + last-round standings lack awards. next: start runner

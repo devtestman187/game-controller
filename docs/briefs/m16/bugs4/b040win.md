@@ -1,0 +1,14 @@
+job: M16 bugs4 b040win — the joined phone's card names the night's winner after the night's last round
+stop: after it. No awards, no new message, no protocol field, no change to the host. Do not touch the card's scaling (job b040fit did it).
+read: docs/briefs/templates/COMMON.md · controller_app/lib/src/ui/result_card.dart (all, 260 lines; _night() builds points and standings) · packages/party_host/lib/src/text/phone_text.dart:186-215 · packages/party_host/test/phone_text_test.dart · controller_app/test/m14_phone_test.dart:98-135 · owner B-040 (Nov 23): "Go with option A" = the standings after each round (already on the card) and a final winner card at the night's end, from data already sent.
+changes: PhoneText.nightWinner (new, String Function(String names)) · PhoneText.youWonNight (new const) · key 'resultNightWinner' (new) · ResultCard._night
+turns: 60
+expected-min: 30
+do:
+1 Tests first: new controller_app/test/result_card_night_test.dart (setup as in m14_phone_test: pumpApp paired, connected as player 1, viewEnd with a ViewResult). Cases: (a) round 3 of 3, standings Mia 12 (number 1, own), Dad 9: card shows Key('resultNightWinner') with PhoneText.youWonNight; (b) same but own number 2: text is PhoneText.nightWinner('Mia'); (c) a tie for first (both 12): names joined with ' and ' in standings order; (d) round 2 of 3, or round null: no resultNightWinner; (e) at 568x320 with 6 standings, round 3 of 3, sunny and night palettes (key 'look.choice' in saved, setUpAll(loadHostFonts)): no exception and Key('resultWaiting') inside the screen. Run it, see it fail, then write lib.
+2 phone_text.dart: add `static const youWonNight = 'You won the night!';` and `static String nightWinner(String names) => '$names won the night!';` next to `standings`. Add a line to packages/party_host/test/phone_text_test.dart pinning both.
+3 result_card.dart _night(): when result.round != null && result.of != null && result.round == result.of && standings is not empty, before the 'Standings' heading add a centred Text, key Key('resultNightWinner'), look.type.button in look.colors.good: the winners are the standings with the highest points (names via PhoneText.playerName(standing.name, standing.number), joined ' and '); if this phone's own number is among them show PhoneText.youWonNight, else PhoneText.nightWinner(names).
+4 Run the new test, m14_phone_test, phone_text_test (party_host), and result_card_fit_test.
+allow: controller_app/lib/src/ui/result_card.dart · controller_app/test/result_card_night_test.dart · controller_app/test/m14_phone_test.dart · controller_app/test/result_card_fit_test.dart · packages/party_host/lib/src/text/phone_text.dart · packages/party_host/test/phone_text_test.dart · docs/briefs/m16/bugs4/b040win-report.md
+check: format analyze phone
+report: docs/briefs/m16/bugs4/b040win-report.md

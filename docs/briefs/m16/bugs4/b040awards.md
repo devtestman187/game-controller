@@ -1,0 +1,14 @@
+job: M16 bugs4 b040awards — the phone's standings after a night's last round include the +3 per award, as the host's final scores do
+stop: after it. No protocol change, no new message or field, no change to the host's screens or to who wins an award.
+read: docs/briefs/templates/COMMON.md · packages/party_host/lib/src/night/round_results.dart:1-70 · packages/party_host/lib/src/night/party_night.dart:70-115 · packages/party_host/lib/src/night/night_state.dart:195-215 (awarded, awardsWonBy) · packages/party_host/lib/src/night/night_award_results.dart:115-140 (decideAwards) · packages/party_host/test/round_results_test.dart · coordinator finding: viewResultsFor projects night.record(result) but never decides the awards, so on the night's last round the phone's standings leave out the +3 per award the host's final scores include and can name another winner. Owner B-040 (Nov 23): "Go with option A" from data already sent.
+changes: NightState.withAwards (new method) · PartyNight._decide (private, removed)
+turns: 50
+expected-min: 25
+do:
+1 Tests first, in packages/party_host/test/round_results_test.dart: a three-round night with two rounds recorded and a third RoundResult whose stats give one player an award's counter (use the night's drawn awards and their counters; pick the counter names from night_award_results.dart), so that player gains +3 and passes the other. Assert the standings viewResultsFor returns for that last round have the same points and order as `night.record(result).withAwards().rows(players)` and equal the totals the PartyNight notifier holds after recordRound(result); assert round 1 of 3 (not over) carries no award points. Run it, see it fail, then change lib.
+2 night_state.dart: add `NightState withAwards()` returning `awarded(decideAwards(awards: awards, counters: counters, roundsWon: roundsWon, lastRoundPoints: lastRoundPoints, people: seen.keys.toSet()))`, documented as what PartyNight decides at the night's end. party_night.dart: `_decide` and its two callers use it (recorded.isOver ? recorded.withAwards() : recorded; endNow: recorded.withAwards()); delete `_decide` and any import it leaves unused.
+3 round_results.dart: after `final recorded = night?.remember(players).record(result)`, use `final after = (recorded != null && recorded.isOver) ? recorded.withAwards() : recorded;`. A night ended early cannot be known here (the host decides after the card); say so in a comment.
+4 Run round_results_test, night_state tests and party_night tests in packages/party_host (grep for them).
+allow: packages/party_host/lib/src/night/round_results.dart · packages/party_host/lib/src/night/night_state.dart · packages/party_host/lib/src/night/party_night.dart · packages/party_host/test/round_results_test.dart · docs/briefs/m16/bugs4/b040awards-report.md
+check: format analyze
+report: docs/briefs/m16/bugs4/b040awards-report.md
