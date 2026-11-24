@@ -1,2 +1,4 @@
 - tests-first: controller_app/test/app_version_test.dart passes on the old code, so it does not prove new behaviour
 - tests-first: tv_test_app/test/app_version_test.dart passes on the old code, so it does not prove new behaviour
+- tests-first: controller_app/test/app_version_test.dart passes on the old code, so it does not prove new behaviour
+- tests-first: tv_test_app/test/app_version_test.dart passes on the old code, so it does not prove new behaviour
