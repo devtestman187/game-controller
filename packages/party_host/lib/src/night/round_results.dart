@@ -18,7 +18,10 @@ Map<String, ViewResult> viewResultsFor({
   required NightState? night,
   required List<GamePlayer> players,
 }) {
-  final after = night?.remember(players).record(result);
+  final recorded = night?.remember(players).record(result);
+  // The awards are decided only when the night's last round is in: a night the
+  // host ends early is not known here, since the host decides it after the card.
+  final after = (recorded != null && recorded.isOver) ? recorded.withAwards() : recorded;
   final rows = after?.rows(players) ?? const <NightRow>[];
   final rowsById = {for (final row in rows) row.id: row};
   // Robo has no row of the roster's own but can win a round (party-night §7a),

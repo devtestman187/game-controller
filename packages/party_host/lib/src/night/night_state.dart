@@ -211,6 +211,19 @@ final class NightState {
   /// their row's total from now on (G4), and nothing else changes.
   NightState awarded(List<NightAwardOutcome> outcomes) => _copyWith(outcomes: outcomes);
 
+  /// The night with its three awards decided from the night's numbers, as
+  /// PartyNight decides them when the night ends (G4). The phone's standings use
+  /// it too, so they carry the +3 the host's final scores do.
+  NightState withAwards() => awarded(
+    decideAwards(
+      awards: awards,
+      counters: counters,
+      roundsWon: roundsWon,
+      lastRoundPoints: lastRoundPoints,
+      people: seen.keys.toSet(),
+    ),
+  );
+
   /// One of [playerId]'s award counters, 0 when they have none.
   int counter(String playerId, String name) => counters[playerId]?[name] ?? 0;
 

@@ -4,7 +4,6 @@ import 'package:metrics/metrics.dart' show RoundTag;
 import 'package:puzzle_game/puzzle_game.dart' show Chaos, PuzzleSettings;
 
 import '../providers.dart';
-import 'night_award_results.dart';
 import 'night_awards.dart';
 import 'night_state.dart';
 
@@ -82,7 +81,7 @@ class PartyNight extends Notifier<NightState?> {
     final night = state;
     if (night == null || night.isOver) return;
     final recorded = night.remember(ref.read(gamePlayersProvider)).record(result);
-    state = recorded.isOver ? recorded.awarded(_decide(recorded)) : recorded;
+    state = recorded.isOver ? recorded.withAwards() : recorded;
   }
 
   /// Ends the night on the round just played (B-021), before its last one: it
@@ -94,7 +93,7 @@ class PartyNight extends Notifier<NightState?> {
     final night = state;
     if (night == null || night.isOver) return;
     final recorded = night.remember(ref.read(gamePlayersProvider)).record(result).endedEarly();
-    state = recorded.awarded(_decide(recorded));
+    state = recorded.withAwards();
   }
 
   /// Notes the Arena map a round started on (party-night §7b): the night's
@@ -103,16 +102,6 @@ class PartyNight extends Notifier<NightState?> {
     final night = state;
     if (night != null) state = night.usedMap(mapId);
   }
-
-  /// The night's three awards, from the counters it has summed: the players it
-  /// has met are the only ones who may win (so Robo never does).
-  List<NightAwardOutcome> _decide(NightState night) => decideAwards(
-    awards: night.awards,
-    counters: night.counters,
-    roundsWon: night.roundsWon,
-    lastRoundPoints: night.lastRoundPoints,
-    people: night.seen.keys.toSet(),
-  );
 
   /// Ends the night, clearing it: the final scores' "Back to games" and the
   /// scoreboard's "End the party night?" Yes both do this, so the picker's card
