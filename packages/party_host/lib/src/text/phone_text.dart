@@ -211,6 +211,13 @@ abstract final class PhoneText {
   }
 
   static const standings = 'Standings';
+
+  /// The card's line on a night's last round when this phone's player won it (B-040).
+  static const youWonNight = 'You won the night!';
+
+  /// The card's line on a night's last round naming the winners, "Mia and Dad": another
+  /// phone's card says who won (B-040).
+  static String nightWinner(String names) => '$names won the night!';
   static const waitingForNext = 'Waiting for the host to pick what\'s next.';
 
   /// A round's time as the results card and the game's clock say it: "1:42".

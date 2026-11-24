@@ -18,4 +18,9 @@ void main() {
     expect(PhoneText.place(22), '22nd');
     expect(PhoneText.place(23), '23rd');
   });
+
+  test('the night\'s winner is named on the last round\'s card, or "You won the night!" for the winner', () {
+    expect(PhoneText.youWonNight, 'You won the night!');
+    expect(PhoneText.nightWinner('Mia and Dad'), 'Mia and Dad won the night!');
+  });
 }

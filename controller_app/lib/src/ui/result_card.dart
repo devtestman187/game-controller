@@ -101,17 +101,27 @@ class ResultCard extends ConsumerWidget {
     );
   }
 
-  /// The points earned in a night and the night's standings, when the host
-  /// sent them.
+  /// The points earned in a night, the night's winner on its last round, and the
+  /// night's standings, when the host sent them.
   List<Widget> _night(BuildContext context, {required int? number}) {
     final look = ToyLookScope.of(context);
     final points = result.points;
+    final winner = _nightWinnerLine(result, number: number);
     return [
       if (points != null) ...[
         const SizedBox(height: ToySizes.space8),
         Text(
           PhoneText.pointsEarned(points),
           key: const Key('resultPoints'),
+          textAlign: TextAlign.center,
+          style: look.type.button.copyWith(color: look.colors.good),
+        ),
+      ],
+      if (winner != null) ...[
+        const SizedBox(height: ToySizes.space12),
+        Text(
+          winner,
+          key: const Key('resultNightWinner'),
           textAlign: TextAlign.center,
           style: look.type.button.copyWith(color: look.colors.good),
         ),
@@ -123,6 +133,20 @@ class ResultCard extends ConsumerWidget {
         for (final standing in result.standings) _StandingRow(standing: standing, own: standing.number == number),
       ],
     ];
+  }
+
+  /// The line naming a night's winner, on the night's last round only (B-040): the
+  /// standings with the most points, or "You won the night!" when this phone's
+  /// player is one of them. Null on any other round, or with no standings.
+  static String? _nightWinnerLine(ViewResult result, {required int? number}) {
+    final round = result.round;
+    final total = result.of;
+    if (round == null || total == null || round != total || result.standings.isEmpty) return null;
+    final top = result.standings.map((s) => s.points).reduce((a, b) => math.max(a, b));
+    final winners = result.standings.where((s) => s.points == top).toList();
+    if (winners.any((s) => s.number == number)) return PhoneText.youWonNight;
+    final names = winners.map((s) => PhoneText.playerName(s.name, s.number)).join(' and ');
+    return PhoneText.nightWinner(names);
   }
 
   /// The mock-up's card width, in logical pixels: wider than a phone's narrow
