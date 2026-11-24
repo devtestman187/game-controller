@@ -8,6 +8,7 @@ import 'package:game_assets/asset_manifest.dart';
 import 'package:toy_look/toy_look.dart';
 
 import '../night/night_award_results.dart';
+import '../night/night_end.dart';
 import '../night/night_state.dart';
 import '../night/party_night.dart';
 import '../providers.dart';
@@ -104,6 +105,12 @@ class _NightRevealScreenState extends ConsumerState<NightRevealScreen> {
     if (_finished) return;
     _finished = true;
     _timer?.cancel();
+    // The phones' night ends with the reveal, once: their final standings and
+    // awards come from the host's night here (M16 bugs4 nh2).
+    final night = ref.read(partyNightProvider);
+    if (night != null && night.isOver) {
+      ref.read(gameHostProvider).showNightEnd(nightEndFor(night, ref.read(gamePlayersProvider)));
+    }
     Navigator.of(context).pushReplacement(MaterialPageRoute<void>(builder: (_) => const NightScoreboardScreen()));
   }
 

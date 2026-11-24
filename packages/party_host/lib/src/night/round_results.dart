@@ -19,21 +19,43 @@ Map<String, ViewResult> viewResultsFor({
   required List<GamePlayer> players,
 }) {
   final recorded = night?.remember(players).record(result);
-  // The awards are decided only when the night's last round is in: a night the
-  // host ends early is not known here, since the host decides it after the card.
-  final after = (recorded != null && recorded.isOver) ? recorded.withAwards() : recorded;
-  final rows = after?.rows(players) ?? const <NightRow>[];
+  // The standings are the totals before the awards: the awards are decided with
+  // the night's last round, and the host's final scores come in the night's end
+  // message (M16 bugs4 nh2), so a last-round card never names or counts them.
+  final rows = recorded?.rows(players) ?? const <NightRow>[];
   final rowsById = {for (final row in rows) row.id: row};
   // Robo has no row of the roster's own but can win a round (party-night §7a),
   // so a win it takes is named as the host names it.
   String nameOf(String id) => id == roboPlayerId ? roboName : (_name(rowsById[id]) ?? id);
+  final standings = viewStandingsOf(rows);
+  return {
+    for (final MapEntry(key: id, value: line) in result.lines.entries)
+      id: ViewResult(
+        outcome: line.outcome.name,
+        timeS: line.timeS,
+        count: line.count,
+        countOf: line.countOf?.name,
+        points: night == null ? null : (result.points[id] ?? 0),
+        round: recorded?.round,
+        of: recorded?.rounds,
+        place: rowsById[id]?.place,
+        winners: [for (final winner in result.winners) nameOf(winner)],
+        standings: standings,
+      ),
+  };
+}
+
+/// The standings a phone is sent for [rows], first place first (M14 design
+/// section 9): each joined player with their number, name and character, and
+/// Robo with the free colour its disc takes (party-night §7a).
+List<ViewStanding> viewStandingsOf(List<NightRow> rows) {
   // Robo's disc takes a free player colour, as its row on the TV's scoreboard
   // does (party-night §7a): the phone shows it by its name, not a number.
   final roboNumber = roboNumberFor([
     for (final row in rows)
       if (row.number > 0 && row.id != roboPlayerId) row.number,
   ]);
-  final standings = [
+  return [
     for (final row in rows)
       if (row.id == roboPlayerId)
         ViewStanding(
@@ -45,27 +67,13 @@ Map<String, ViewResult> viewResultsFor({
         )
       else if (row.number > 0)
         ViewStanding(
+          id: row.id,
           number: row.number,
           name: _name(row) ?? row.id,
           points: row.total,
           character: row.character ?? PlayerCharacter.forPlayer(row.number),
         ),
   ];
-  return {
-    for (final MapEntry(key: id, value: line) in result.lines.entries)
-      id: ViewResult(
-        outcome: line.outcome.name,
-        timeS: line.timeS,
-        count: line.count,
-        countOf: line.countOf?.name,
-        points: night == null ? null : (result.points[id] ?? 0),
-        round: after?.round,
-        of: after?.rounds,
-        place: rowsById[id]?.place,
-        winners: [for (final winner in result.winners) nameOf(winner)],
-        standings: standings,
-      ),
-  };
 }
 
 /// A row's name: its nickname, or the player's label when they have none

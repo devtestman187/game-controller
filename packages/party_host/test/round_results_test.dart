@@ -39,7 +39,7 @@ void main() {
     expect(view.place, 2);
   });
 
-  test('the last round\'s standings add the +3 an award gives, as the host\'s final totals do', () {
+  test('the last round\'s standings carry no award points: the night\'s end sends the final scores', () {
     final (:container, :roster) = nightContainer();
     roster.put([nightPlayer('p1', 1, 'Mia'), nightPlayer('p2', 2, 'Ben')]);
     final notifier = container.read(partyNightProvider.notifier);
@@ -47,7 +47,7 @@ void main() {
     notifier.recordRound(resultOf(points: {'p1': 6, 'p2': 4}));
     notifier.recordRound(resultOf(points: {'p1': 3, 'p2': 3}));
     final players = container.read(gamePlayersProvider);
-    // Ben carries once in the last round, which is Best Helper's counter: his +3 passes Mia's 9.
+    // Ben carries once in the last round, which is Best Helper's counter: his +3 would pass Mia's 9.
     // Nobody scores in that round, so Comeback (which needs at least 1) goes to nobody.
     final last = resultOf(
       points: {'p1': 0, 'p2': 0},
@@ -57,16 +57,14 @@ void main() {
     );
     final night = container.read(partyNightProvider)!;
     final view = viewResultsFor(result: last, night: night, players: players)['p1']!;
-    final expected = night.record(last).withAwards().rows(players);
-
-    expect(view.standings.map((standing) => standing.name), ['Ben', 'Mia'], reason: 'the award takes Ben past Mia');
-    expect(view.standings.map((standing) => standing.points), [10, 9], reason: 'Ben 7 + 3, Mia 6 + 3');
-    expect(view.standings.map((standing) => standing.points), expected.map((row) => row.total));
+    // The awards are decided with the night's end, so the last round's card shows the totals before them (M16 bugs4 nh2).
+    expect(view.standings.map((standing) => standing.name), ['Mia', 'Ben'], reason: 'no award yet');
+    expect(view.standings.map((standing) => standing.points), [9, 7], reason: 'Mia 6 + 3, Ben 4 + 3 over two rounds');
 
     notifier.recordRound(last);
     final hostRows = container.read(partyNightProvider)!.rows(players);
     expect(hostRows.map((row) => row.id), ['p2', 'p1']);
-    expect(hostRows.map((row) => row.total), [10, 9], reason: 'the host\'s totals hold the same +3');
+    expect(hostRows.map((row) => row.total), [10, 9], reason: 'the final totals: Ben 7 + 3 for Best Helper, Mia 9');
   });
 
   test('a round one of three of a night carries no award points', () {

@@ -117,6 +117,8 @@ Future<void> _pumpFrame(WidgetTester tester, Size device, {required Widget home,
         prefsProvider.overrideWithValue(prefs),
         soundPlayerProvider.overrideWithValue(FakeSoundPlayer()),
         gamePlayersProvider.overrideWith(TestRoster.new),
+        // The reveal's end tells the phones the night is over (M16 bugs4 nh2).
+        hostServiceProvider.overrideWithValue(FakeHostService(sampleState())),
       ],
       // The sky drifts for as long as a menu is open, so every test that
       // settles puts the still one above the app (`host_harness.dart`).
