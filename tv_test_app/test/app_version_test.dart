@@ -6,6 +6,7 @@ void main() {
     test('appVersion is a x.y.z version, with -dev on a local build', () {
       expect(appVersion, isNotEmpty);
       expect(appVersion, const String.fromEnvironment('APP_VERSION', defaultValue: '0.0.0-dev'));
+      expect(appVersion, matches(RegExp(r'^[0-9]+\.[0-9]+\.[0-9]+(-dev)?$')));
     });
 
     test('versionLabel shows the version and the build number', () {

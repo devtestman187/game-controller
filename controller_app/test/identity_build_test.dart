@@ -5,10 +5,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   group('loadIdentity\'s build number (M14 stats)', () {
-    test('a build passed in joins the version: "0.14.0+654"', () async {
+    test('a build passed in joins the version: appVersion+654', () async {
       SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
-      // 0.14.0 is the app's version, 654 the commit count as CI passes it: the
+      // appVersion is the app's version, 654 the commit count as CI passes it: the
       // identity the phone says hello with carries the build the caller names,
       // not only the one compiled in.
       expect(loadIdentity(prefs, build: '654').appVersion, '$appVersion+654');

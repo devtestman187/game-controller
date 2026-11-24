@@ -11,7 +11,7 @@
 # What it checks first: the tag is new and looks like m10, m10.1 or v1.0;
 # the notes aren't empty and fit Google Play (500 characters with the
 # header); tracked files have no uncommitted changes; this commit is the
-# tip of origin/main; both apps have the same version.
+# tip of origin/main; the tag has an app version (the app version comes from the tag: tools/tag-to-version.sh).
 # Then: annotated tag on HEAD, push, wait for the GitHub "Release" run
 # (Android bundles to Play, Windows zip to a GitHub Release) and the
 # Codemagic TestFlight check, and print what each did.
@@ -55,7 +55,6 @@ repo="$(gh repo view --json nameWithOwner -q .nameWithOwner 2>/dev/null)" || die
 find_run_timeout=180
 testflight_timeout=3600
 
-version_of() { grep -m1 '^version:' "$1" | sed 's/version: *//; s/+.*//' | tr -d '\r'; }
 
 # --- Report on a tag that's already pushed -------------------------------
 report() {
@@ -109,12 +108,7 @@ git diff --quiet && git diff --cached --quiet || die "tracked files have uncommi
 [ "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" ] ||
   die "HEAD isn't origin/main: push your commits (git push origin main) or check out main"
 
-phone_version="$(version_of controller_app/pubspec.yaml)"
-tv_version="$(version_of tv_test_app/pubspec.yaml)"
-[ "$phone_version" = "$tv_version" ] || die "versions differ: phone $phone_version, TV $tv_version"
-for f in controller_app/lib/src/app_info.dart tv_test_app/lib/src/app_info.dart; do
-  grep -q "appVersion = '$phone_version'" "$f" || die "$f doesn't say appVersion = '$phone_version'"
-done
+phone_version="$(bash tools/tag-to-version.sh "$tag")" || die "tag '$tag' has no app version (m16.4 -> 0.16.4)"
 
 # Play shows at most 500 characters, including the "Thumb Party x (build n)" header.
 build="$(git rev-list --count HEAD)"

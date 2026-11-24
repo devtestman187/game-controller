@@ -1,0 +1,2 @@
+- 15:36 started runner (base 5a3877b7). next: waiter
+- 15:46 tests-first stop on appver (regex test passed old code); fixed brief, restarted

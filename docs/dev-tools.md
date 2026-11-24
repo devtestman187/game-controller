@@ -267,7 +267,7 @@ tools/release.sh --status m10.2                      # report on a release alrea
 - the notes aren't empty and fit Google Play's 500 characters together with the "Thumb Party 0.10.0 (build 78)" header;
 - tracked files have no uncommitted changes (untracked files, like the PRD backups, are ignored);
 - this commit is the tip of `origin/main` (push your commits first);
-- both apps' `pubspec.yaml` and `lib/src/app_info.dart` have the same version.
+- the tag has an app version (`tools/tag-to-version.sh`).
 
 Then it shows the tag, version, build number and notes, and asks **Tag and push? [y/N]** (skipped with `--yes`; in a shell with no terminal, such as a script or an agent, it counts as "no" unless `--yes` is given).
 
@@ -291,7 +291,7 @@ All done.
 
 - **Exit code:** 0 when everything succeeded; 1 when a build or upload failed or didn't finish in time; 2 when a check before tagging failed (nothing was tagged).
 - **If the window closes while waiting,** nothing is lost: the builds run in the cloud. Run `tools/release.sh --status <tag>` later.
-- **What it doesn't do:** bump the version (edit the two `pubspec.yaml` and two `app_info.dart` files and commit first), or fix failed uploads. For those, see "If something goes wrong" in [release.md](release.md).
+- **What it doesn't do:** bump the version (it comes from the tag), or fix failed uploads. For those, see "If something goes wrong" in [release.md](release.md).
 
 ## Checking on screens: the TV app and the phone app
 

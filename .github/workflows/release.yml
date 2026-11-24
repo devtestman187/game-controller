@@ -2,7 +2,7 @@
 # tablet app, and the TV app), and the Windows zip on a GitHub Release. The iOS build goes to
 # TestFlight from Codemagic (codemagic.yaml). One-time setup: docs/release.md.
 #
-# Version name: from pubspec.yaml. Build number: the commit count, so every tag gets a higher one
+# Version name: from the tag (tools/tag-to-version.sh: m16.4 -> 0.16.4), passed as --build-name and --dart-define=APP_VERSION. Build number: the commit count, so every tag gets a higher one
 # and the stores, Diagnostics and the TV home screen all show the same number.
 #
 # Release notes: tools/release-notes.sh (the tag message, or the commits since the last tag) go to
@@ -62,7 +62,10 @@ jobs:
         id: version
         run: |
           echo "build=$(git rev-list --count HEAD)" >> "$GITHUB_OUTPUT"
-          echo "name=$(grep -m1 '^version:' controller_app/pubspec.yaml | sed 's/version: *//; s/+.*//')" >> "$GITHUB_OUTPUT"
+          # A manual start (workflow_dispatch) runs on a branch: take the newest release tag then.
+          TAG="$GITHUB_REF_NAME"
+          bash tools/tag-to-version.sh "$TAG" > /dev/null 2>&1 || TAG="$(git describe --tags --abbrev=0 --match "m*" --match "v*")"
+          echo "name=$(bash tools/tag-to-version.sh "$TAG")" >> "$GITHUB_OUTPUT"
       - name: Upload key
         env:
           KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
@@ -96,6 +99,8 @@ jobs:
         run: >
           flutter build appbundle --release
           --build-number=${{ steps.version.outputs.build }}
+          --build-name=${{ steps.version.outputs.name }}
+          --dart-define=APP_VERSION=${{ steps.version.outputs.name }}
           --dart-define=BUILD_NUMBER=${{ steps.version.outputs.build }}
           --dart-define=FIRESTORE_PROJECT=${{ vars.FIRESTORE_PROJECT }}
           --dart-define=FIRESTORE_API_KEY=${{ vars.FIRESTORE_API_KEY }}
@@ -105,6 +110,8 @@ jobs:
         run: >
           flutter build appbundle --release
           --build-number=${{ steps.version.outputs.build }}
+          --build-name=${{ steps.version.outputs.name }}
+          --dart-define=APP_VERSION=${{ steps.version.outputs.name }}
           --dart-define=BUILD_NUMBER=${{ steps.version.outputs.build }}
           --dart-define=FIRESTORE_PROJECT=${{ vars.FIRESTORE_PROJECT }}
           --dart-define=FIRESTORE_API_KEY=${{ vars.FIRESTORE_API_KEY }}
@@ -160,7 +167,10 @@ jobs:
         shell: bash
         run: |
           echo "build=$(git rev-list --count HEAD)" >> "$GITHUB_OUTPUT"
-          echo "name=$(grep -m1 '^version:' tv_test_app/pubspec.yaml | sed 's/version: *//; s/+.*//')" >> "$GITHUB_OUTPUT"
+          # A manual start (workflow_dispatch) runs on a branch: take the newest release tag then.
+          TAG="$GITHUB_REF_NAME"
+          bash tools/tag-to-version.sh "$TAG" > /dev/null 2>&1 || TAG="$(git describe --tags --abbrev=0 --match "m*" --match "v*")"
+          echo "name=$(bash tools/tag-to-version.sh "$TAG")" >> "$GITHUB_OUTPUT"
       - name: Get packages
         run: flutter pub get
       - name: Build Thumb Party TV for Windows
@@ -168,6 +178,8 @@ jobs:
         run: >
           flutter build windows --release
           --build-number=${{ steps.version.outputs.build }}
+          --build-name=${{ steps.version.outputs.name }}
+          --dart-define=APP_VERSION=${{ steps.version.outputs.name }}
           --dart-define=BUILD_NUMBER=${{ steps.version.outputs.build }}
           --dart-define=FIRESTORE_PROJECT=${{ vars.FIRESTORE_PROJECT }}
           --dart-define=FIRESTORE_API_KEY=${{ vars.FIRESTORE_API_KEY }}

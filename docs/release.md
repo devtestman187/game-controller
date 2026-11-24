@@ -9,7 +9,7 @@ Every milestone tag (`m8`, `m9`, … and fixes like `m8.1`) builds:
 | Thumb Party TV for Android TV (`com.thumbparty.tv`) | GitHub Actions, `release.yml` | Google Play closed testing, Android TV track |
 | Thumb Party TV for Windows | GitHub Actions, `release.yml` | A GitHub Release with the zip |
 
-Version name: `version:` in each app's `pubspec.yaml` (both apps share it). Build number: the number of commits, the same on every store, shown in the phone's **Settings → About** and at the top of the TV home screen.
+Version name: from the release tag (`tools/tag-to-version.sh`: `mX.Y` gives 0.X.Y, `m16.4` gives 0.16.4), passed as `--build-name` and `--dart-define=APP_VERSION`; there is no `version:` line in the apps' `pubspec.yaml`. Build number: the number of commits, the same on every store, shown in the phone's **Settings → About** and at the top of the TV home screen.
 
 The tester guide and privacy policy are in `site/` and publish to https://devtestman187.github.io/game-controller/ on every push that changes them (`pages.yml`).
 
@@ -91,7 +91,7 @@ Two Sentry projects, one per app: `thumbparty-phone` (the phone and tablet app) 
    A DSN can't be used to read a project, but it stays out of the repository all the same: it lives only in the GitHub variables and the Codemagic group.
 
 ## Each release
-1. Make sure `version:` in both `pubspec.yaml` files and `appVersion` in both `lib/src/app_info.dart` say the new version.
+1. Nothing to bump: the app version comes from the tag (`tools/tag-to-version.sh`: `m16.4` gives 0.16.4), passed to every build as `--build-name` and `--dart-define=APP_VERSION`. Local builds say 0.0.0-dev.
 2. Run the checks, then tag with release notes and push:
    ```bash
    tools/check.sh --no-cache   # a release always runs every suite uncached (docs/dev-tools.md, result cache)

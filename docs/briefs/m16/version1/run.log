@@ -56,3 +56,4 @@ METRICS run-review worker=claude model=claude-haiku-5-5 turns=26 in=28 out=38369
 METRICS tagver worker=claude model=claude-haiku-5-5 turns=17 in=20 out=11247 cache=248687 min=0.9 wall=- result=4
 2026-11-24 16:02:39 DONE: every job is committed. Claude reads the Summary of docs/briefs/m16/version1/REVIEW.md, verifies its findings and writes one fix brief
 RESULT: DONE: 3 jobs, 15 min
+2026-11-24 16:16:20 full check: All checks passed (13 suites; tools 16 tag-to-version cases + agent-cost PASS; uncached phone/tv/puzzle run after the hand-fixes)

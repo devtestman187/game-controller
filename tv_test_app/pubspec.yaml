@@ -2,7 +2,6 @@ name: tvtest
 description: "TV test app for the phone controller (Android TV + Windows desktop)."
 publish_to: 'none'
 
-version: 0.14.0+14
 
 environment:
   sdk: ^3.13.0

@@ -80,3 +80,60 @@ version1 run review: 12 findings (2 must, 9 should, 1 could); open: release.sh a
 ## Delete
 
 - none
+
+## Driver verdicts (Nov 24)
+
+- must 1 release.sh: fixed by hand (tag-derived version, app_info loop removed).
+- must 2 codemagic.yaml: fixed by hand (diff below); release.yml too.
+- pubspec version lines: deleted (one source: the tag). Docs release.md and dev-tools.md updated.
+- should 4 comment, 6/7 regex assertions, 8 test name, 12 stale reason: fixed. 3 (doc comment) now true.
+- should 9 (agent-cost 2-decimal checks cannot see the multiplier), 10 (shell tests not wired into check.sh), 11 (churn_revert reverts paths dirty at start): deferred to docs/code-health.md.
+- Open questions 7 (Fable 5.2 vs 5.1 price row) and 8 (stats accept 0.0.0-dev: technicalPattern allows it): owner/none.
+- Fixed, unverified: needs device check: a release build shows 0.16.4 (TestFlight, Play, TV) after the next tag.
+
+## job-metrics
+JOB        WORKER MODEL            TURNS IN   OUT  CACHE MINUTES WALL RESULT
+aggcost    claude claude-haiku-5-5    12 22  9312 247478     0.8    - 4 (subtype=success, terminal_reason=completed)
+appver     claude claude-haiku-5-5    21 24 11360 319276     2.8    - 4 (subtype=success, terminal_reason=completed)
+run-review claude claude-haiku-5-5    26 28 38369 600016     3.0    - 0 (subtype=success, terminal_reason=completed)
+tagver     claude claude-haiku-5-5    17 20 11247 248687     0.9    - 4 (subtype=success, terminal_reason=completed)
+
+## agent-cost
+agent-cost since 2026-11-24 15:35: haiku $0.01 (cw5m 0.00M cw1h 0.02M), sonnet $0.67 (cw5m 0.00M cw1h 0.05M); total $0.68; sonnet resumes >5m 2 (0.00M written), >60m 0 (0.00M written)
+
+Corrected bugs4 window (11:30-13:30, Opus/Sonnet reads at 0.05x): opus 4.72 + sonnet 5.32 + haiku 0.08 = 10.12 over 9 jobs = about $1.12/job (old figure $1.48 = 13.29/9 at 0.1x). Fable excluded (not in the old figure).
+
+## CI diff (hand edits)
+```diff
+--- a/.github/workflows/release.yml
++++ b/.github/workflows/release.yml
+-# Version name: from pubspec.yaml. Build number: the commit count, so every tag gets a higher one
++# Version name: from the tag (tools/tag-to-version.sh: m16.4 -> 0.16.4), passed as --build-name and --dart-define=APP_VERSION. Build number: the commit count, so every tag gets a higher one
+-          echo "name=$(grep -m1 '^version:' controller_app/pubspec.yaml | sed 's/version: *//; s/+.*//')" >> "$GITHUB_OUTPUT"
++          # A manual start (workflow_dispatch) runs on a branch: take the newest release tag then.
++          TAG="$GITHUB_REF_NAME"
++          bash tools/tag-to-version.sh "$TAG" > /dev/null 2>&1 || TAG="$(git describe --tags --abbrev=0 --match "m*" --match "v*")"
++          echo "name=$(bash tools/tag-to-version.sh "$TAG")" >> "$GITHUB_OUTPUT"
++          --build-name=${{ steps.version.outputs.name }}
++          --dart-define=APP_VERSION=${{ steps.version.outputs.name }}
++          --build-name=${{ steps.version.outputs.name }}
++          --dart-define=APP_VERSION=${{ steps.version.outputs.name }}
+-          echo "name=$(grep -m1 '^version:' tv_test_app/pubspec.yaml | sed 's/version: *//; s/+.*//')" >> "$GITHUB_OUTPUT"
++          # A manual start (workflow_dispatch) runs on a branch: take the newest release tag then.
++          TAG="$GITHUB_REF_NAME"
++          bash tools/tag-to-version.sh "$TAG" > /dev/null 2>&1 || TAG="$(git describe --tags --abbrev=0 --match "m*" --match "v*")"
++          echo "name=$(bash tools/tag-to-version.sh "$TAG")" >> "$GITHUB_OUTPUT"
++          --build-name=${{ steps.version.outputs.name }}
++          --dart-define=APP_VERSION=${{ steps.version.outputs.name }}
+--- a/codemagic.yaml
++++ b/codemagic.yaml
+-          VERSION=$(grep -m1 '^version:' controller_app/pubspec.yaml | sed 's/version: *//; s/+.*//')
++          TAG="${CM_TAG:-$(git describe --tags --abbrev=0 --match 'm*' --match 'v*')}"
++          VERSION=$(bash tools/tag-to-version.sh "$TAG")
++          TAG="${CM_TAG:-$(git describe --tags --abbrev=0 --match 'm*' --match 'v*')}"
++          VERSION=$(bash tools/tag-to-version.sh "$TAG")
++          echo "App version $VERSION"
+-          DEFINES=(--dart-define=BUILD_NUMBER="$BUILD")
++          DEFINES=(--dart-define=BUILD_NUMBER="$BUILD" --dart-define=APP_VERSION="$VERSION")
++            --build-name="$VERSION" \
+```

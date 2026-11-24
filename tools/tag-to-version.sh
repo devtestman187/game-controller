@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Prints the app version for a release tag, so both apps take their version from the tag:
+# Prints the app version for a release tag, so both apps take their version from the tag (CI passes it as --build-name and --dart-define=APP_VERSION):
 # m16.4 -> 0.16.4 (milestone 16, release 4), m16 -> 0.16.0, v1.0 -> 1.0.0, v2 -> 2.0.0.
 # Any other tag, or a wrong number of arguments, exits 2 with a message on stderr.
 #

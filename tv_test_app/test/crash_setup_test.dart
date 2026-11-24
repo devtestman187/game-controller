@@ -31,7 +31,7 @@ void main() {
     final sentry = started as SentryCrashReporter;
     // A build with no SENTRY_DSN never initialises Sentry: the fields are the
     // only thing a test can read, and they are what the reports carry.
-    expect(sentry.release, appWithBuild(appVersion, buildNumber), reason: 'the phone\'s "0.14.0+654" format');
+    expect(sentry.release, appWithBuild(appVersion, buildNumber), reason: 'the phone\'s "version+build" format');
     expect(sentry.environment, 'debug', reason: 'flutter test runs a debug build');
   });
 
