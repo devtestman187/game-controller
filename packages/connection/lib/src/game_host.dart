@@ -100,6 +100,11 @@ abstract interface class GameHost {
   /// is running.
   void showResults(Map<String, ViewResult> results);
 
+  /// The night's awards reveal ended or was skipped (M16 bugs4): sent once,
+  /// to every paired phone that lists [Capability.night], whether or not a
+  /// view runs. The reveal comes after the round, so no view is needed.
+  void showNightEnd(NightEndMessage message);
+
   /// This host is away for a while, so the viewers it shows the game to can
   /// say "Waiting for the host" and count down (m12 §2.10). [secondsLeft] is
   /// how long the round still runs; null says the host is back. Ignored when

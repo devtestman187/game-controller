@@ -255,6 +255,9 @@ class ServerGameHost implements GameHost {
   void showResults(Map<String, ViewResult> results) => _view.results(results);
 
   @override
+  void showNightEnd(NightEndMessage message) => server.sendToAll(message);
+
+  @override
   void endView(ViewEndMessage end, {ViewStartMessage? of}) => _view.end(end, of: of);
 
   @override

@@ -155,6 +155,9 @@ class FakeGameHost implements GameHost {
   /// design section 9).
   final shownResults = <Map<String, ViewResult>>[];
 
+  /// Every [showNightEnd] call, in order (M16 bugs4 nh1).
+  final shownNightEnds = <NightEndMessage>[];
+
   /// Every [hostAway] call, in order: the seconds left, or null for "back".
   final hostAways = <int?>[];
 
@@ -253,6 +256,9 @@ class FakeGameHost implements GameHost {
 
   @override
   void showResults(Map<String, ViewResult> results) => shownResults.add(Map.unmodifiable(results));
+
+  @override
+  void showNightEnd(NightEndMessage message) => shownNightEnds.add(message);
 
   @override
   void hostAway(int? secondsLeft) => hostAways.add(secondsLeft);
