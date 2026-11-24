@@ -44,3 +44,7 @@ Five files are over 380 today (gyro.dart 398, game_session.dart 399, arena_map.d
 - Q7 A with the rule: pad only when the last host is found live within the discovery wait; otherwise Home.
 - **Q8 (new, blocks m16.3):** last round on a joined phone. A for m16.3 (round result + "Awards are on the big screen"), then B as job 7b (a second send with the +3 after the reveal).
 Plan changes accepted from FABLE-REVIEW.md: item 8 contract covers navigation, Home inputs and coach-mark anchors; 8b cut into 8b0/8b1/8b2; inventory jobs before 8e and 9b; 9d cut into three; 9c sets the callback at the four sites; puzzle HUD round and party_host 48 dp added; a "TV" guard test; items 7-9 start only after m16.3 is tagged.
+
+## Owner answers (Nov 24)
+- Q1-Q7: "Accept all" (the merged recommendations above).
+- Q8: the owner wants the correct awards on the joined phone ("There may be situations where the player cannot see the host's screen"). Decided: a new capability-gated message with the awards (winners, ties) and the final standings including the +3, sent when the host's reveal ends or is skipped; the phone shows "Awards coming…" until then, then the awards and the true winner. It goes into B-040 (bugs4) and m16.3 waits for it. Job 7b is therefore done in bugs4, and item 7 shrinks to the host-side pinning test.
