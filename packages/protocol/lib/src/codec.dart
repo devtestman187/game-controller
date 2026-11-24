@@ -37,6 +37,7 @@ class MessageCodec {
     PlayerBackMessage.wireType: PlayerBackMessage.fromPayload,
     PlayersMessage.wireType: PlayersMessage.fromPayload,
     SetCharacterMessage.wireType: SetCharacterMessage.fromPayload,
+    NightEndMessage.wireType: NightEndMessage.fromPayload,
   };
 
   String encode(Message message) => jsonEncode({'v': protocolVersion, 't': message.type, ...message.toPayload()});

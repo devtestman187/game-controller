@@ -235,7 +235,8 @@ final class HostConnection {
           HostBackMessage() ||
           PlayerAwayMessage() ||
           PlayerBackMessage() ||
-          PlayersMessage():
+          PlayersMessage() ||
+          NightEndMessage():
         close(CloseCodes.protocolError, 'Unexpected ${message.type}');
     }
   }

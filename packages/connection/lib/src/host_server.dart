@@ -224,12 +224,12 @@ class HostServer {
     return true;
   }
 
-  /// The capability a host message needs, or null for the v1 messages every
-  /// controller takes.
+  /// The capability a host message needs, or null for the v1 messages every controller takes.
   static String? capabilityFor(Message message) => switch (message) {
     MetricsAckMessage() => Capability.metrics,
     RatingAskMessage() => Capability.rating,
     PlayersMessage() => Capability.identity,
+    NightEndMessage() => Capability.night,
     GameLayoutMessage() => Capability.layout,
     StatusMessage() => Capability.status,
     ViewStartMessage() ||

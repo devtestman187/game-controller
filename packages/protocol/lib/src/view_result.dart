@@ -33,12 +33,17 @@ abstract final class ViewCount {
 /// design section 9): who, their points, and the character their badge wears.
 final class ViewStanding {
   const ViewStanding({
+    this.id,
     required this.number,
     required this.name,
     required this.points,
     required this.character,
     this.isRobo = false,
   });
+
+  /// The player's controller ID, so a phone can find its own row. Null for a
+  /// row from a host that didn't send it, and for Robo.
+  final String? id;
 
   /// The player's number, 1 to 6. Robo has no player number of its own: it
   /// carries the free colour its disc takes (see `roboNumberFor`).
@@ -58,6 +63,7 @@ final class ViewStanding {
   final bool isRobo;
 
   Map<String, Object?> toJson() => {
+    'id': ?id,
     'n': number,
     'name': name,
     'pts': points,
@@ -68,6 +74,10 @@ final class ViewStanding {
   static ViewStanding fromJson(Object? json) {
     if (json is! Map) {
       throw FormatException('Field "result.standings" entry must be an object, got ${json.runtimeType}');
+    }
+    final id = json['id'];
+    if (id != null && id is! String) {
+      throw FormatException('Field "result.standings.id" must be a string, got ${id.runtimeType}');
     }
     final number = json['n'];
     if (number is! int || number < 1) {
@@ -86,6 +96,7 @@ final class ViewStanding {
       throw FormatException('Field "result.standings.robo" must be true or false, got ${robo.runtimeType}');
     }
     return ViewStanding(
+      id: id is String ? id : null,
       number: number,
       name: name,
       points: points,
@@ -97,6 +108,7 @@ final class ViewStanding {
   @override
   bool operator ==(Object other) =>
       other is ViewStanding &&
+      other.id == id &&
       other.number == number &&
       other.name == name &&
       other.points == points &&
@@ -104,7 +116,7 @@ final class ViewStanding {
       other.isRobo == isRobo;
 
   @override
-  int get hashCode => Object.hash(number, name, points, character, isRobo);
+  int get hashCode => Object.hash(id, number, name, points, character, isRobo);
 }
 
 /// A joined phone's own result, sent with the [ViewEndMessage] that ends a

@@ -56,6 +56,7 @@ The version number changes only for a breaking change. Everything else is additi
 | `status` | `status` (host → controller): the phone's status panel | M10 |
 | `view` | `view_start`, `frame`, `view_end`, `host_away`, `host_back`, `player_away` and `player_back` (host → controller): the game itself, for a controller that shows it (§10a) | M12 |
 | `identity` | `players` (host → controller), `set_character` (controller → host) and a `frame`'s `chars` field: every player's character (§8d) | M16 |
+| `night` | `night_end` (host → controller): the night's final awards and standings (§8e) | M16 bugs4 |
 
 Peers without capabilities (apps before 0.9.0) send no `caps`; treat that as an empty list. The v1 messages (§6 to §9) need no capability.
 
@@ -237,6 +238,19 @@ Every player wears one of 36 characters: one of the six player colours and one o
 A `frame` sent to a viewer that listed `identity` also carries `chars` next to `pl`: player ID → `{"c", "a"}`, the character each player in the roster wears, a player away whose phone dropped included. It is left out when no player in the frame has one, and a viewer that finds none draws each player's number's default character. A viewer that didn't list `identity` gets the frame without `chars` and without `players`, as it always has.
 
 **A peer one build older.** All of this is additive. A host without `identity` sends no `players` and no `chars`, and a phone one build older ignores `players` and `set_character` as unknown types (§2) and `chars` as an unknown field. A host one build older ignores `set_character`, and the player keeps the character their hello asked for.
+
+## 8e. The night's end (capability `night`, M16 bugs4)
+
+`night_end` (host → controller, sent only to a controller that listed `night`): the night's final awards and standings. The host sends it once per night, when its awards reveal ends or is skipped, and a phone shows it after the host reveal, on its results card.
+
+Fields:
+
+- `awards`: a list, in the order the host revealed them, each `{"id", "name", "pts", "w", "reason"}`: `id` the award's own ID, `name` its name, `pts` the points each winner gets, `w` the winners' player IDs in the host's order (empty when nobody won), and `reason` why nobody won, left out when there is none.
+- `standings`: a list of the final standings, first place first, each a `result.standings` entry (§10a) with its `id` (the player's controller ID, left out when unset) and the award points included in `pts`.
+
+Both lists are optional on read: a missing one is empty.
+
+**A peer one build older.** A host never sends `night_end` to a controller that did not list `night`. A controller that lists `night` on an older host simply never gets it, and it shows no awards or final standings until the next night. A host without `night` sends no `night_end`, and a controller one build older ignores it as an unknown type (§2).
 
 ## 9. Metrics (capability `metrics`)
 

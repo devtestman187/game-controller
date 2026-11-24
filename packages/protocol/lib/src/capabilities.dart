@@ -30,6 +30,9 @@ abstract final class Capability {
   /// a frame's `chars` to a controller that lists it, and a controller sends a
   /// [SetCharacterMessage] to a host that lists it.
   static const identity = 'identity';
+
+  /// The night's final awards and standings ([NightEndMessage]). M16 bugs4.
+  static const night = 'night';
 }
 
 /// What a device is for (PRD v2 S3), in [HelloMessage.role]. A role is

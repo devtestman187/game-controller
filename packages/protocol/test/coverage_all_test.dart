@@ -11,6 +11,7 @@
 //   lib/src/haptic.dart - part of another library
 //   lib/src/input.dart - part of another library
 //   lib/src/metrics.dart - part of another library
+//   lib/src/night.dart - part of another library
 //   lib/src/view.dart - part of another library
 //   lib/src/view_result.dart - part of another library
 // (analysis_options.yaml excludes this file: its imports are unused on purpose.)

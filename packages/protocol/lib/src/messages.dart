@@ -7,6 +7,7 @@ part 'haptic.dart';
 part 'identity.dart';
 part 'input.dart';
 part 'metrics.dart';
+part 'night.dart';
 part 'stats_share.dart';
 part 'view.dart';
 part 'view_result.dart';

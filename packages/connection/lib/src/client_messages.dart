@@ -58,6 +58,8 @@ final class ClientMessages {
         _onViewEvent(message);
       case PlayersMessage():
         _onPlayers(message);
+      case NightEndMessage():
+        break; // routed to the card by the night-end stream (job nk1)
       case HelloMessage() ||
           PairRequestMessage() ||
           InputStateMessage() ||
