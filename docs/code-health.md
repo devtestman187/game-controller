@@ -292,6 +292,7 @@ Minor items from `docs/briefs/m16/phonehost3/REVIEW.md` and `wave2-review-report
 
 ### M16 bugs2 leftovers (Nov 23)
 - `controller_app` join row (`connect_panels.dart` `_YourCharacter`) overflows at 320 px width (74 px before B-035, 82 after) and `connect_screen.dart:348` by 39 px: needs an owner layout decision (let Change wrap below a width).
+  - **Decided (owner, Nov 24): folded into M16 item 9.** The phone app is landscape-only on phones (`main.dart:21`, Info.plist, `sensorLandscape`), so 320x640 is reached only in a narrow iPad window (Slide Over, Stage Manager) or Android multi-window/large-screen overrides; a release build clips the row, hiding Connect. Item 9 scope: address row into its own file (`connect_screen.dart` is 378/380) with Connect wrapping under the field when narrow; the app-bar title ellipsises; connect-screen tests at 568x320 and 640x360 landscape, 320x640 and 375x667 portrait (named iPad windows) and 1.3x text at 568x320; check Flutter's Android targetSdk (API 36 large-screen orientation override). The phone app does not clamp system text scale and no test runs at large text.
 - `connect_panels.dart` is 374 lines (cap 380): split `_YourCharacter` out at the next touch.
 - `live_stats_unmarked_test.dart` `waitFor` timeout is 30 s now (bounds a failure only; guidelines prefer no longer timeouts: drop to 5 s if the order-based wait proves enough).
 - New tests build their own TV-look pump; consider `all_looks.dart` if controller_app can import it.
