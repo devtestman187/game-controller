@@ -14,3 +14,4 @@
 - not done: REVIEW.md wrap, check.sh, tracker rows, STATUS. Waiting for owner decisions.
 - calls: driver ~14, thumb-wait 1 (9 calls)
 - 17:46 b036 applied+scroll, committed b1618ff6; b041 rewritten (MatchView wholeIfNoMirror, owner: phone rule where it fits)
+- 18:13 wave 2 done, wrap written, full check green. DONE.

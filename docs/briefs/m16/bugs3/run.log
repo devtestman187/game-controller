@@ -59,3 +59,6 @@ HAND-FIX b036: apply-job.sh applied 8 files: docs/briefs/m16/bugs3/b036-report.m
 2026-11-23 17:57:17 job b041 used 61 turns, over its cap of 60 (parked, siblings continue)
 2026-11-23 17:57:17 STOPPED: jobs that failed or passed their limit (parked, not committed): b041 (their logs: docs/briefs/m16/bugs3/flash-<job>.log)
 RESULT: STOPPED: jobs that failed or passed their limit (parked, not committed): b041 (their logs: docs/briefs/m16/bugs3/flash-<job>.log)
+HAND-FIX b041: apply-job.sh applied 4 files: packages/puzzle_game/lib/src/match_view.dart, packages/puzzle_game/lib/src/puzzle_module.dart, packages/puzzle_game/test/match_view_whole_if_no_mirror_test.dart, packages/puzzle_game/test/puzzle_module_test.dart
+2026-11-23 18:01:20 HAND-FIX b041: applied kept tree, finished play_view/puzzle_screen/pins by hand
+2026-11-23 18:13:14 full check.sh --no-cache on d1baad91: All checks passed (706s)

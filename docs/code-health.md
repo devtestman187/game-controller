@@ -305,3 +305,5 @@ Not built. bugs2 wave A with the 1-hour cache showed no large Sonnet cache write
 - If built: revisit the 1-hour subagent cache (claude-only-model.md "Prompt cache lifetime"), since short-lived subagents would then pay 2x writes for nothing.
 
 - (bugs3 wrap320, Nov 23) controller_app/lib/src/ui/connect_screen.dart:348 the manual address row overflows at 320x640: 39 px menu, 109 px TV; the app bar at :102 overflows 45 px in the TV look. Not the join line; needs its own layout decision (wrap the Connect button under the field).
+
+- (bugs3 wave 2, Nov 23) packages/party_host/lib/src/ui/game_screen.dart is 379 lines (lib limit 400) and `_stageBody` is 42 lines; arena_results.dart 339 lines. Split before the next feature there. B-041's tablet fit is measured only with the boat puzzle; a puzzle with smaller pieces may lose the mirror earlier (the fallback shows the whole match, so nothing hides).
