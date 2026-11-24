@@ -11,7 +11,9 @@
 #   opus  m1: 1000 in, 2000 out, 10000 read, 4000 1h write  = 0.08
 #   sonnet s1 50000 5m write (no split) + s2 (10 min later) 20000 1h + s3 (70 min later) 30000 1h
 #          = 0.12602 + 0.08102 + 0.12 = 0.33
-#   haiku h1 small 0.0006 + h2 200000 read (long) 0.0125 = 0.01; total 0.42
+#   fable f1 1000 in, 1000 out, 100000 read (0.025x), 10000 5m write (1.25x), at 8/40
+#          = 0.008 + 0.04 + 0.02 + 0.1 = 0.168; total 0.588
+#   haiku h1 small 0.0006 + h2 200000 read (long) 0.0125 = 0.01; total 0.42 without fable
 # Prints PASS <case> / FAIL <case> and exits 1 if any case failed.
 set -u
 cd "$(dirname "$0")/../.." || exit 2
@@ -46,12 +48,17 @@ line() { # line <id> <ts> <model> <usage json>
   line h2 2026-11-23T10:05:00Z claude-haiku-5-5 '{"input_tokens":0,"output_tokens":1000,"cache_read_input_tokens":200000}'
 } > "$root/sess/subagents/agent-h.jsonl"
 
+{
+  line f1 2026-11-23T10:30:00Z claude-fable-5-2 '{"input_tokens":1000,"output_tokens":1000,"cache_read_input_tokens":100000,"cache_creation_input_tokens":10000}'
+} > "$root/sess/subagents/agent-f.jsonl"
+
 since=2026-11-23T09:30:00Z
 bash tools/agent-cost.sh --root "$tmp/projects" --since "$since" --line > "$out" 2>&1
 check line-opus 'opus $0.08 (cw5m 0.00M cw1h 0.00M)'
 check line-sonnet 'sonnet $0.33 (cw5m 0.05M cw1h 0.05M)'
 check line-haiku 'haiku $0.01'
-check line-total 'total $0.42'
+check line-fable 'fable $0.17 (cw5m 0.01M cw1h 0.00M)'
+check line-total 'total $0.59'
 check line-gaps 'sonnet resumes >5m 2 (0.05M written), >60m 1 (0.03M written)'
 
 bash tools/agent-cost.sh --root "$tmp/projects" --since "$since" > "$out" 2>&1

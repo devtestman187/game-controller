@@ -8,11 +8,17 @@ import os
 import sys
 
 # Dollars per 1M tokens: (input, output). Cache read 0.1x input, cache write 1.25x (5m) or 2x (1h).
+# Source: https://platform.claude.com/docs/en/about-claude/pricing (Model pricing table, read Nov 24):
+# Claude Fable 5.2 $8 input / $40 output per MTok, 5m write $10, 1h write $16, cache hits $0.20
+# (0.025x input). No long-prompt surcharge listed for Fable. Opus 5.5 and Sonnet 5.5 cache hits are
+# listed at 0.05x input; this tool still uses 0.1x for them (open, see code-health).
 PRICES = {
+    "fable": (8.0, 40.0),
     "opus": (4.0, 20.0),
     "sonnet": (2.0, 10.0),
     "haiku": (0.10, 0.50),
 }
+READ_MULT = {"fable": 0.025}  # cache read x input price; other models 0.1
 HAIKU_LONG = (0.50, 2.50)  # a Haiku call whose prompt is over 100K tokens
 LONG_PROMPT = 100_000
 GAPS = (5 * 60, 60 * 60)
@@ -94,7 +100,7 @@ def cost(fam, c):
     pi, po = PRICES[fam]
     if fam == "haiku" and c["in"] + c["cr"] + c["cw5"] + c["cw1"] > LONG_PROMPT:
         pi, po = HAIKU_LONG
-    return (c["in"] * pi + c["out"] * po + c["cr"] * 0.1 * pi
+    return (c["in"] * pi + c["out"] * po + c["cr"] * READ_MULT.get(fam, 0.1) * pi
             + c["cw5"] * 1.25 * pi + c["cw1"] * 2.0 * pi) / 1e6
 
 
