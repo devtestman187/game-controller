@@ -34,3 +34,18 @@ RESULT: STOPPED: stop file
 2026-11-24 15:46:43 finding: tests-first: tv_test_app/test/app_version_test.dart passes on the old code, so it does not prove new behaviour
 2026-11-24 15:46:44 STOPPED: tests-first: controller_app/test/app_version_test.dart tv_test_app/test/app_version_test.dart pass on the old code (write them to fail first, or add 'tests-first: exempt <reason>' to the brief for a pure refactor); nothing of this wave is committed
 RESULT: STOPPED: tests-first: controller_app/test/app_version_test.dart tv_test_app/test/app_version_test.dart pass on the old code (write them to fail first, or add 'tests-first: exempt <reason>' to the brief for a pure refactor); nothing of this wave is committed
+2026-11-24 15:47:04 RUN_MAX_MIN=125 min (computed backstop of the jobs still to do)
+2026-11-24 15:47:04 start at 703a793a on m16
+2026-11-24 15:47:04 worker: claude
+2026-11-24 15:47:13 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-24 15:47:29 resume tagver (applied by hand, not committed yet)
+2026-11-24 15:47:29 resume appver (applied by hand, not committed yet)
+2026-11-24 15:47:29 resume aggcost (applied by hand, not committed yet)
+2026-11-24 15:48:36 tests-first ok: controller_app/test/app_version_test.dart fails on the old code
+2026-11-24 15:48:46 tests-first ok: tv_test_app/test/app_version_test.dart fails on the old code
+2026-11-24 15:48:56 combined check: skips protocol connection metrics kit look arena puzzle host (no job's change reaches them)
+2026-11-24 15:54:19 checks failed; fetching packages and trying once more
+2026-11-24 15:59:09 committed tagver: 833b178f Release version comes from the tag (m16.4 -> 0.16.4)
+2026-11-24 15:59:10 committed appver: e2e67f54 Read app version from APP_VERSION define, not a copy
+2026-11-24 15:59:12 committed aggcost: 67defc6f agent_cost: price Opus and Sonnet cache reads at 0.05x input
+2026-11-24 15:59:12 wave review skipped: wave 1 is the whole run, the run review covers it
