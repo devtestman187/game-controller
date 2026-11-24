@@ -1,0 +1,6 @@
+# wave 1: disjoint files (controller_app connect, sliders, game_screen shell)
+n9a n9c n9d1
+# wave 2: after n9d1 compiles; n7a is tests only, n9d2 is test_game
+n7a n9d2
+# wave 3: n9d3 shares arena_hud_widgets.dart with n9d2
+n9d3
