@@ -30,3 +30,18 @@ METRICS wave1-review worker=claude model=claude-haiku-5-5 turns=20 in=28 out=189
 METRICS wave2-review worker=claude model=claude-haiku-5-5 turns=13 in=18 out=11039 cache=234360 min=1.0 wall=- result=0
 2026-11-24 12:17:52 DONE: every job is committed. Claude reads the Summary of docs/briefs/m16/bugs4/REVIEW.md, verifies its findings and writes one fix brief
 RESULT: DONE: 3 jobs, 29 min
+2026-11-24 12:21:42 RUN_MAX_MIN=244 min (computed backstop of the jobs still to do)
+2026-11-24 12:21:42 start at e2218b16 on m16
+2026-11-24 12:21:42 worker: claude
+2026-11-24 12:22:05 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-24 12:22:21 skip b040fit (already done)
+2026-11-24 12:22:21 skip b040awards (already done)
+2026-11-24 12:22:37 skip b040win (already done)
+2026-11-24 12:22:53 start nc1
+2026-11-24 12:26:22 nc1 finished: result 4 (43 turns, 3 min)
+2026-11-24 12:26:23 nc1: dropped generated churn outside its list: tv_test_app/windows/flutter/generated_plugin_registrant.cc tv_test_app/windows/flutter/generated_plugin_registrant.h tv_test_app/windows/flutter/generated_plugins.cmake 
+2026-11-24 12:26:36 tests-first ok: packages/connection/test/night_end_gate_test.dart fails on the old code
+2026-11-24 12:26:39 tests-first ok: packages/protocol/test/night_end_test.dart fails on the old code
+2026-11-24 12:26:52 combined check: the tools suite is skipped (no job changed a file under tools/)
+2026-11-24 12:27:23 STOPPED: checks failed on the combined tree after nc1: analyze cannot be fixed by a retry
+RESULT: STOPPED: checks failed on the combined tree after nc1: analyze cannot be fixed by a retry
