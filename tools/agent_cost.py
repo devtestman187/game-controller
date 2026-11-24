@@ -11,14 +11,16 @@ import sys
 # Source: https://platform.claude.com/docs/en/about-claude/pricing (Model pricing table, read Nov 24):
 # Claude Fable 5.2 $8 input / $40 output per MTok, 5m write $10, 1h write $16, cache hits $0.20
 # (0.025x input). No long-prompt surcharge listed for Fable. Opus 5.5 and Sonnet 5.5 cache hits are
-# listed at 0.05x input; this tool still uses 0.1x for them (open, see code-health).
+# listed at $0.20 and $0.10 per MTok, which is 0.05x input.
 PRICES = {
     "fable": (8.0, 40.0),
     "opus": (4.0, 20.0),
     "sonnet": (2.0, 10.0),
     "haiku": (0.10, 0.50),
 }
-READ_MULT = {"fable": 0.025}  # cache read x input price; other models 0.1
+# Cache read x input price. Haiku and any model not listed here read at 0.1x. Source: official price
+# list (Model pricing table), read Nov 24.
+READ_MULT = {"fable": 0.025, "opus": 0.05, "sonnet": 0.05}
 HAIKU_LONG = (0.50, 2.50)  # a Haiku call whose prompt is over 100K tokens
 LONG_PROMPT = 100_000
 GAPS = (5 * 60, 60 * 60)

@@ -8,12 +8,13 @@
 #   bash tools/tests/agent-cost-test.sh
 #
 # Expected costs (per 1M: opus 4/20, sonnet 2/10, haiku 0.10/0.50 or 0.50/2.50 long):
-#   opus  m1: 1000 in, 2000 out, 10000 read, 4000 1h write  = 0.08
+#   opus  m1: 1000 in, 2000 out, 10000 read (0.05x), 4000 1h write = 0.004 + 0.04 + 0.002 + 0.032
+#          = 0.078
 #   sonnet s1 50000 5m write (no split) + s2 (10 min later) 20000 1h + s3 (70 min later) 30000 1h
-#          = 0.12602 + 0.08102 + 0.12 = 0.33
+#          = 0.12602 + 0.08102 + 0.12 = 0.32704 (no cache reads)
 #   fable f1 1000 in, 1000 out, 100000 read (0.025x), 10000 5m write (1.25x), at 8/40
-#          = 0.008 + 0.04 + 0.02 + 0.1 = 0.168; total 0.588
-#   haiku h1 small 0.0006 + h2 200000 read (long) 0.0125 = 0.01; total 0.42 without fable
+#          = 0.008 + 0.04 + 0.02 + 0.1 = 0.168; total 0.078 + 0.32704 + 0.0131 + 0.168 = 0.58614
+#   haiku h1 small 0.0006 + h2 200000 read (long, 0.1x) 0.0125 = 0.0131; total 0.418 without fable
 # Prints PASS <case> / FAIL <case> and exits 1 if any case failed.
 set -u
 cd "$(dirname "$0")/../.." || exit 2
