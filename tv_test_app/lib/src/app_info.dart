@@ -1,5 +1,6 @@
-/// Shown on screen and sent to controllers. Keep in step with pubspec.yaml.
-const String appVersion = '0.14.0';
+/// Shown on screen and sent to controllers. CI passes the version from the release tag
+/// with `--dart-define=APP_VERSION=...` (tools/tag-to-version.sh); local builds say "0.0.0-dev".
+const String appVersion = String.fromEnvironment('APP_VERSION', defaultValue: '0.0.0-dev');
 
 /// The store build number: CI passes the commit count with
 /// `--dart-define=BUILD_NUMBER=...`, the same number the stores show. Local
