@@ -83,3 +83,19 @@ HAND-FIX nc1: added NightEndMessage to the exhaustive switches in client_message
 2026-11-24 12:58:15 STOPPED: checks failed twice on the combined tree after nh2 np1
 2026-11-24 12:58:16 reviewed wave4: 6 finding(s)
 RESULT: STOPPED: checks failed twice on the combined tree after nh2 np1
+HAND-FIX nh2: night_reveal_frame_test and night_reveal_tie_test override hostServiceProvider (class c: pinned tests mount the reveal without a host); committed nh2 efb59bdf np1 883919d56875df4208718e968d6306e897621e7b
+2026-11-24 12:59:04 RUN_MAX_MIN=45 min (computed backstop of the jobs still to do)
+2026-11-24 12:59:04 start at 883919d5 on m16
+2026-11-24 12:59:04 worker: claude
+2026-11-24 12:59:14 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-24 12:59:30 skip b040fit (already done)
+2026-11-24 12:59:31 skip b040awards (already done)
+2026-11-24 12:59:46 skip b040win (already done)
+2026-11-24 13:00:02 skip nc1 (already done)
+2026-11-24 13:00:18 skip nh1 (already done)
+2026-11-24 13:00:18 skip nk1 (already done)
+2026-11-24 13:00:34 WARN: nh2 was committed by hand (efb59bdf); a plain restart would skip its tests-first proof and worker review, so both run now
+2026-11-24 13:01:50 tests-first ok: packages/party_host/test/night_end_send_test.dart fails on the old code
+2026-11-24 13:01:51 hand-fixed nh2: tests-first proof and worker review done (marked in done.txt)
+2026-11-24 13:01:51 skip nh2 (already done)
+2026-11-24 13:01:51 skip np1 (already done)
