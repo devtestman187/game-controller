@@ -49,3 +49,10 @@ RESULT: STOPPED: tests-first: controller_app/test/app_version_test.dart tv_test_
 2026-11-24 15:59:10 committed appver: e2e67f54 Read app version from APP_VERSION define, not a copy
 2026-11-24 15:59:12 committed aggcost: 67defc6f agent_cost: price Opus and Sonnet cache reads at 0.05x input
 2026-11-24 15:59:12 wave review skipped: wave 1 is the whole run, the run review covers it
+2026-11-24 15:59:13 start the run's review
+METRICS aggcost worker=claude model=claude-haiku-5-5 turns=12 in=22 out=9312 cache=247478 min=0.8 wall=- result=4
+METRICS appver worker=claude model=claude-haiku-5-5 turns=21 in=24 out=11360 cache=319276 min=2.8 wall=- result=4
+METRICS run-review worker=claude model=claude-haiku-5-5 turns=26 in=28 out=38369 cache=600016 min=3.0 wall=- result=0
+METRICS tagver worker=claude model=claude-haiku-5-5 turns=17 in=20 out=11247 cache=248687 min=0.9 wall=- result=4
+2026-11-24 16:02:39 DONE: every job is committed. Claude reads the Summary of docs/briefs/m16/version1/REVIEW.md, verifies its findings and writes one fix brief
+RESULT: DONE: 3 jobs, 15 min
