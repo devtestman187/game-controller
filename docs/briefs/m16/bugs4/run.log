@@ -104,3 +104,17 @@ HAND-FIX nh2: night_reveal_frame_test and night_reveal_tie_test override hostSer
 2026-11-24 13:11:06 np2: dropped generated churn outside its list: tv_test_app/windows/flutter/generated_plugin_registrant.cc tv_test_app/windows/flutter/generated_plugin_registrant.h tv_test_app/windows/flutter/generated_plugins.cmake 
 2026-11-24 13:11:16 combined check: skips protocol connection metrics kit look arena puzzle tools (no job's change reaches them)
 2026-11-24 13:14:46 committed np2: 81c3ee87 bugs4 np2: phone shows the night's awards and winner after the reveal
+2026-11-24 13:14:48 reviewed wave5: 6 finding(s)
+2026-11-24 13:16:50 reviewed wave6: 7 finding(s)
+METRICS nc1 worker=claude model=claude-haiku-5-5 turns=43 in=60 out=26934 cache=1204248 min=3.0 wall=3.5 result=4
+METRICS nh1 worker=claude model=claude-haiku-5-5 turns=24 in=38 out=13008 cache=527173 min=3.4 wall=4.0 result=4
+METRICS nh2 worker=claude model=claude-haiku-5-5 turns=69 in=116 out=55882 cache=4291320 min=8.6 wall=9.2 result=4
+METRICS nk1 worker=claude model=claude-haiku-5-5 turns=43 in=52 out=21940 cache=1033568 min=3.8 wall=6.3 result=4
+METRICS np1 worker=claude model=claude-haiku-5-5 turns=46 in=86 out=37806 cache=2411389 min=7.4 wall=10.1 result=4
+METRICS np2 worker=claude model=claude-haiku-5-5 turns=38 in=56 out=34727 cache=1478100 min=6.4 wall=8.9 result=4
+METRICS wave3-review worker=claude model=claude-haiku-5-5 turns=25 in=30 out=26382 cache=665416 min=2.1 wall=- result=0
+METRICS wave4-review worker=claude model=claude-haiku-5-5 turns=32 in=32 out=29387 cache=756306 min=2.3 wall=- result=0
+METRICS wave5-review worker=claude model=claude-haiku-5-5 turns=23 in=26 out=18930 cache=443510 min=1.6 wall=- result=0
+METRICS wave6-review worker=claude model=claude-haiku-5-5 turns=26 in=22 out=20545 cache=410810 min=1.7 wall=- result=0
+2026-11-24 13:16:58 DONE: every job is committed. Claude reads the Summary of docs/briefs/m16/bugs4/REVIEW.md, verifies its findings and writes one fix brief
+RESULT: DONE: 9 jobs, 17 min
