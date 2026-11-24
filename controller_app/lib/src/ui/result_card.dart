@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:party_host/party_host.dart'
@@ -34,27 +36,38 @@ class ResultCard extends ConsumerWidget {
     final toy = ToyCharacter.of(own?.character ?? character, ownNumber);
     return Material(
       type: MaterialType.transparency,
-      child: Center(
-        child: ConstrainedBox(
+      child: LayoutBuilder(
+        builder: (context, room) => Center(
           // The mock-up's card leaves the frame's edges clear around it.
-          constraints: const BoxConstraints(maxWidth: _cardWidth),
-          child: ToyCard(
-            header: _outcome(result),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const _Picture(),
-                _nameRow(context, name: name, number: ownNumber, toy: toy),
-                ..._night(context, number: number),
-                const SizedBox(height: ToySizes.space12),
-                Text(
-                  PhoneText.waitingForNext,
-                  key: const Key('resultWaiting'),
-                  textAlign: TextAlign.center,
-                  style: look.type.body.copyWith(color: look.colors.inkSoft),
+          child: Padding(
+            padding: const EdgeInsets.all(ToySizes.space8),
+            // A card taller or wider than the room shrinks as a whole, so its
+            // text keeps its proportions and the waiting line stays on screen.
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: SizedBox(
+                width: math.min(_cardWidth, room.maxWidth - 2 * ToySizes.space8),
+                child: ToyCard(
+                  key: const Key('resultCard'),
+                  header: _outcome(result),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const _Picture(),
+                      _nameRow(context, name: name, number: ownNumber, toy: toy),
+                      ..._night(context, number: number),
+                      const SizedBox(height: ToySizes.space12),
+                      Text(
+                        PhoneText.waitingForNext,
+                        key: const Key('resultWaiting'),
+                        textAlign: TextAlign.center,
+                        style: look.type.body.copyWith(color: look.colors.inkSoft),
+                      ),
+                    ],
+                  ),
                 ),
-              ],
+              ),
             ),
           ),
         ),
