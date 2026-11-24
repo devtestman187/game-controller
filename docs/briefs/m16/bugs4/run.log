@@ -99,3 +99,8 @@ HAND-FIX nh2: night_reveal_frame_test and night_reveal_tie_test override hostSer
 2026-11-24 13:01:51 hand-fixed nh2: tests-first proof and worker review done (marked in done.txt)
 2026-11-24 13:01:51 skip nh2 (already done)
 2026-11-24 13:01:51 skip np1 (already done)
+2026-11-24 13:02:09 start np2
+2026-11-24 13:11:05 np2 finished: result 4 (38 turns, 6 min)
+2026-11-24 13:11:06 np2: dropped generated churn outside its list: tv_test_app/windows/flutter/generated_plugin_registrant.cc tv_test_app/windows/flutter/generated_plugin_registrant.h tv_test_app/windows/flutter/generated_plugins.cmake 
+2026-11-24 13:11:16 combined check: skips protocol connection metrics kit look arena puzzle tools (no job's change reaches them)
+2026-11-24 13:14:46 committed np2: 81c3ee87 bugs4 np2: phone shows the night's awards and winner after the reveal
