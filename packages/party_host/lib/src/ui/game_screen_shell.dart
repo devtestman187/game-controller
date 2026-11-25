@@ -7,6 +7,7 @@ import 'lobby_music.dart';
 
 /// What the shell does when the route is asked to pop (the Back guard).
 class ShellBack {
+  /// Both parts are required: the shell cannot guard Back with half of it.
   const ShellBack({required this.canPop, required this.onPopInvoked});
 
   /// Whether the route may pop now. The results hold it, so Back goes to the game picker.

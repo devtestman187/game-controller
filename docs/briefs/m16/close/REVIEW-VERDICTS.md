@@ -7,3 +7,9 @@
 - could: driver-kit sentence - trivial - fixed. could: folder entries in allow: match exactly - minor - code-health.
 - decision (shared path stays and is committed with the sibling): accepted, documented in driver-kit.
 - c1 showHud name and ArenaHud ignoring it: accepted; the name is the existing field's.
+
+# Wave 2 (c2 review, pause after wave 2)
+- c2 should: report lacks checks/self-check - should - fixed (report extended by the driver).
+- c2 should: stray report path - should - fixed (A4 line in the report).
+- c2 could: ShellBack constructor dartdoc - trivial - fixed.
+- c4: no change; owner question (options A/B/C in c4-report.md): pad top bar at 568x320 TV look needs a design choice.
