@@ -326,7 +326,7 @@ sim_log="$out/sim.log"
 # The host's welcome is its answer to the hello, so it proves the hello landed.
 sim_step hello "$sim_log" 'Welcome from ' "$sim_name \(sim[^)]*\) says hello from"
 sim_step paired "$sim_log" 'Paired with ' "$sim_name connected \(pairing code\), player [0-9]+"
-sim_step player "$sim_log" 'The TV made this phone player [0-9]+' "$sim_name connected \(pairing code\), player [0-9]+"
+sim_step player "$sim_log" 'The screen made this phone player [0-9]+' "$sim_name connected \(pairing code\), player [0-9]+"
 # The host answers pings and takes input and metrics batches without a line of
 # its own, so these three steps are the simulated controller's word alone.
 sim_step ping "$sim_log" 'ping [0-9]+ ms'
