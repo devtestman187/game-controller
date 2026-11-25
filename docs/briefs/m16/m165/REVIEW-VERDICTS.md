@@ -1,1 +1,2 @@
 a2 findings: all should/could, none must: tests-first gap - invalid (run.log 13:52 'tests-first ok: ... fails on the old code'); held press, combinations, file size, fixture copy, rename, unused return, hard-coded string - minor, docs/code-health.md (m165).
+wave review (a2, wave1-review-report.md): tilt keeps sending under the card (should) - minor, docs/code-health.md; standings loop with no rows passes - minor (test, code-health); no held-press B4 test - minor (already in code-health); the two could items - minor. No must.

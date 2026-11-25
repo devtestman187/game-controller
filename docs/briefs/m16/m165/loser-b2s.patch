@@ -1,0 +1,322 @@
+diff --git a/controller_app/test/chip_readable_test.dart b/controller_app/test/chip_readable_test.dart
+new file mode 100644
+index 00000000..937d8d54
+--- /dev/null
++++ b/controller_app/test/chip_readable_test.dart
+@@ -0,0 +1,61 @@
++import 'package:flutter/material.dart';
++import 'package:flutter/rendering.dart';
++import 'package:flutter_test/flutter_test.dart';
++import 'package:party_host/party_host.dart' as party;
++
++import 'support/pump_app.dart';
++import 'touch_targets_test.dart' show minTargetDp;
++
++/// The two landscape phones the owner asked the chip to be readable on.
++const _screens = {'568x320': Size(568, 320), '667x375': Size(667, 375)};
++
++/// Cases where the chip is not readable today (B-044 control, reported not redesigned), keyed
++/// `'<screen> <look>'` to what was measured; each is skipped until the bar is fixed.
++const _knownUnreadable = <String, String>{
++  '568x320 menu': 'label "Android TV" cut, chip rect (12, 4, 161.9, 52)',
++  '568x320 TV': 'chip rect (12, 4, 47.9, 52) is 35.9 dp wide',
++  '667x375 TV': 'label "Android TV" cut, chip rect (12, 4, 146.9, 52)',
++};
++
++void main() {
++  for (final entry in _screens.entries) {
++    for (final tv in [false, true]) {
++      final look = tv ? 'TV' : 'menu';
++      final unreadable = _knownUnreadable['${entry.key} $look'];
++      testWidgets(
++        'the connected chip is inside the screen, 48 dp square, uncut and overflow-free at '
++        '${entry.key} in the $look look',
++        skip: unreadable != null,
++        (tester) async {
++          final app = await pumpApp(
++            tester,
++            paired: true,
++            screen: entry.value,
++            extra: [if (tv) party.toyTvProvider.overrideWithValue(true)],
++          );
++          app.client.emit(connected);
++          await settle(tester);
++          final chip = find.byKey(const Key('connectionChip'));
++          expect(chip, findsOneWidget, reason: 'no chip at ${entry.key} in the $look look');
++          final rect = tester.getRect(chip);
++          final screenRect = Offset.zero & entry.value;
++          expect(
++            rect.left >= screenRect.left &&
++                rect.top >= screenRect.top &&
++                rect.right <= screenRect.right &&
++                rect.bottom <= screenRect.bottom,
++            isTrue,
++            reason: 'chip rect $rect lies outside ${entry.value}',
++          );
++          expect(rect.width, greaterThanOrEqualTo(minTargetDp), reason: 'chip rect $rect');
++          expect(rect.height, greaterThanOrEqualTo(minTargetDp), reason: 'chip rect $rect');
++          final label = find.descendant(of: chip, matching: find.byType(Text));
++          final paragraph = tester.renderObject<RenderParagraph>(label);
++          final text = paragraph.text.toPlainText();
++          expect(paragraph.didExceedMaxLines, isFalse, reason: 'chip label "$text" is cut (rect $rect)');
++          expect(tester.takeException(), isNull, reason: 'layout overflow at ${entry.key} in the $look look');
++        },
++      );
++    }
++  }
++}
+diff --git a/controller_app/test/connect_narrow_test.dart b/controller_app/test/connect_narrow_test.dart
+index 6da9ba93..558c9595 100644
+--- a/controller_app/test/connect_narrow_test.dart
++++ b/controller_app/test/connect_narrow_test.dart
+@@ -53,12 +53,7 @@ Future<void> expectManualRowFits(
+   addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+   final overflows = <String>[];
+   final previous = FlutterError.onError;
+-  // Known, not this job's: the pad's top bar overflows 12 px at 568x320 in the TV look (a TV-look
+-  // sizing on a phone-wide screen; code-health.md). Only that one case is let through.
+-  final knownTopBarOverflow = tv && screen.width == 568;
+-  FlutterError.onError = (details) {
+-    if (!knownTopBarOverflow) overflows.add(details.exceptionAsString());
+-  };
++  FlutterError.onError = (details) => overflows.add(details.exceptionAsString());
+   addTearDown(() => FlutterError.onError = previous);
+   await pumpApp(tester, screen: screen, extra: [if (tv) party.toyTvProvider.overrideWithValue(true)]);
+   await reachConnect(tester);
+diff --git a/controller_app/test/connection_chip_test.dart b/controller_app/test/connection_chip_test.dart
+index 5574194f..c621c4f3 100644
+--- a/controller_app/test/connection_chip_test.dart
++++ b/controller_app/test/connection_chip_test.dart
+@@ -12,51 +12,52 @@ const _landscape = Size(667, 375);
+ void main() {
+   for (final tv in [false, true]) {
+     final look = tv ? 'TV' : 'menu';
+-    testWidgets('the connected chip is at least 48 dp square and its label is not cut at 667x375 in the $look look', (
+-      tester,
+-    ) async {
+-      final app = await pumpApp(
+-        tester,
+-        paired: true,
+-        screen: _landscape,
+-        extra: [if (tv) party.toyTvProvider.overrideWithValue(true)],
+-      );
+-      app.client.emit(connected);
+-      await settle(tester);
+-      final size = tester.getSize(find.byKey(const Key('connectionChip')));
+-      expect(size.width, greaterThanOrEqualTo(minTargetDp), reason: 'chip width $size');
+-      expect(size.height, greaterThanOrEqualTo(minTargetDp), reason: 'chip height $size');
+-      // Open: the TV look's bar is 87 dp wide at 667x375 (the mode control takes the rest), too narrow for any host
+-      // name at the TV look's type size, and BarModes is outside this job; only the menu look's label is checked.
+-      if (tv) return;
+-      final label = find.descendant(of: find.byKey(const Key('connectionChip')), matching: find.byType(Text));
+-      final paragraph = tester.renderObject<RenderParagraph>(label);
+-      expect(paragraph.didExceedMaxLines, isFalse, reason: 'the chip label "${paragraph.text.toPlainText()}" is cut');
+-    });
+-  }
+-
+-  for (final entry in targetScreens.entries) {
+-    for (final tv in [false, true]) {
+-      // The TV look's top bar overflows at 568x320: known, out of this job's scope.
+-      if (tv && entry.key == '568x320') continue;
+-      testWidgets('the connected chip is at least 48 dp square at ${entry.key} in the ${tv ? 'TV' : 'menu'} look', (
+-        tester,
+-      ) async {
++    // B-044 control: the TV look's label is cut at 667x375 (chip rect 12, 4, 146.9, 52); chip_readable_test.dart.
++    testWidgets(
++      'the connected chip is at least 48 dp square and its label is not cut at 667x375 in the $look look',
++      skip: tv,
++      (tester) async {
+         final app = await pumpApp(
+           tester,
+           paired: true,
+-          screen: entry.value,
++          screen: _landscape,
+           extra: [if (tv) party.toyTvProvider.overrideWithValue(true)],
+         );
+         app.client.emit(connected);
+         await settle(tester);
+-        final chip = find.byKey(const Key('connectionChip'));
+-        // The portrait phone asks to be turned and shows no bar chip.
+-        if (entry.value.height > entry.value.width && chip.evaluate().isEmpty) return;
+-        final size = tester.getSize(chip);
++        final size = tester.getSize(find.byKey(const Key('connectionChip')));
+         expect(size.width, greaterThanOrEqualTo(minTargetDp), reason: 'chip width $size');
+         expect(size.height, greaterThanOrEqualTo(minTargetDp), reason: 'chip height $size');
+-      });
++        final label = find.descendant(of: find.byKey(const Key('connectionChip')), matching: find.byType(Text));
++        final paragraph = tester.renderObject<RenderParagraph>(label);
++        expect(paragraph.didExceedMaxLines, isFalse, reason: 'the chip label "${paragraph.text.toPlainText()}" is cut');
++      },
++    );
++  }
++
++  for (final entry in targetScreens.entries) {
++    for (final tv in [false, true]) {
++      // B-044 control: at 568x320 in the TV look the chip rect is (12, 4, 47.9, 52), 35.9 dp wide.
++      testWidgets(
++        'the connected chip is at least 48 dp square at ${entry.key} in the ${tv ? 'TV' : 'menu'} look',
++        skip: tv && entry.key == '568x320',
++        (tester) async {
++          final app = await pumpApp(
++            tester,
++            paired: true,
++            screen: entry.value,
++            extra: [if (tv) party.toyTvProvider.overrideWithValue(true)],
++          );
++          app.client.emit(connected);
++          await settle(tester);
++          final chip = find.byKey(const Key('connectionChip'));
++          // The portrait phone asks to be turned and shows no bar chip.
++          if (entry.value.height > entry.value.width && chip.evaluate().isEmpty) return;
++          final size = tester.getSize(chip);
++          expect(size.width, greaterThanOrEqualTo(minTargetDp), reason: 'chip width $size');
++          expect(size.height, greaterThanOrEqualTo(minTargetDp), reason: 'chip height $size');
++        },
++      );
+     }
+   }
+ }
+diff --git a/controller_app/test/touch_targets_test.dart b/controller_app/test/touch_targets_test.dart
+index 61277da4..f1016384 100644
+--- a/controller_app/test/touch_targets_test.dart
++++ b/controller_app/test/touch_targets_test.dart
+@@ -41,46 +41,48 @@ void main() {
+   for (final screen in TargetScreen.values) {
+     for (final entry in targetScreens.entries) {
+       for (final tv in [false, true]) {
+-        // Known, not this job's: at 568x320 in the TV look the top bar overflows 12 px
+-        // (controller_top_bar.dart:89), on the pad and also under Connect and Settings, so that size/look is left out.
+-        if (tv && entry.key == '568x320') continue;
+-        testWidgets('every touch target on ${screen.label} at ${entry.key} in the ${tv ? 'TV' : 'menu'} look is '
+-            'at least 48 dp or listed in knownBelow48', (tester) async {
+-          final app = await pumpApp(
+-            tester,
+-            // The portrait pad has no Settings button, so Settings opens from Connect's Settings button.
+-            paired: screen == TargetScreen.pad,
+-            screen: entry.value,
+-            extra: [if (tv) party.toyTvProvider.overrideWithValue(true)],
+-          );
+-          if (screen != TargetScreen.pad) await reachConnect(tester);
+-          if (screen == TargetScreen.pad) {
+-            // Connected, so the bar shows the mode control a linked pad has.
+-            app.client.emit(connected);
+-            await settle(tester);
+-          }
+-          if (screen == TargetScreen.settings) {
+-            // Connect's list may hide its Settings button below the fold on a short screen: scroll it into view first.
+-            await tester.ensureVisible(find.text('Settings'));
+-            await tester.tap(find.text('Settings'));
+-            await settle(tester);
+-          }
+-          final found = screen == TargetScreen.settings
+-              ? await measureScrolling(tester, screen.label)
+-              : measureTargets(tester, screen.label);
+-          // The pad in portrait shows no control (the phone asks to be turned), so only it may find none.
+-          final portraitPad = screen == TargetScreen.pad && entry.value.height > entry.value.width;
+-          if (!portraitPad) expect(found, isNotEmpty, reason: 'no touch target found on ${screen.label}');
+-          final below = {
+-            for (final e in found.entries)
+-              if (_below(e.value)) e.key: e.value,
+-          };
+-          final unlisted = [
+-            for (final e in below.entries)
+-              if (!knownBelow48.containsKey(e.key)) '${e.key}: ${e.value} (${entry.key}, ${tv ? 'TV' : 'menu'})',
+-          ];
+-          expect(unlisted, isEmpty, reason: 'touch targets below 48 dp that knownBelow48 does not list');
+-        });
++        // B-044 control: pad at 568x320 in the TV look, connectionChip measures 35.9 x 48.
++        testWidgets(
++          'every touch target on ${screen.label} at ${entry.key} in the ${tv ? 'TV' : 'menu'} look is '
++          'at least 48 dp or listed in knownBelow48',
++          skip: tv && entry.key == '568x320' && screen == TargetScreen.pad,
++          (tester) async {
++            final app = await pumpApp(
++              tester,
++              // The portrait pad has no Settings button, so Settings opens from Connect's Settings button.
++              paired: screen == TargetScreen.pad,
++              screen: entry.value,
++              extra: [if (tv) party.toyTvProvider.overrideWithValue(true)],
++            );
++            if (screen != TargetScreen.pad) await reachConnect(tester);
++            if (screen == TargetScreen.pad) {
++              // Connected, so the bar shows the mode control a linked pad has.
++              app.client.emit(connected);
++              await settle(tester);
++            }
++            if (screen == TargetScreen.settings) {
++              // Connect's list may hide its Settings button below the fold on a short screen: scroll it into view first.
++              await tester.ensureVisible(find.text('Settings'));
++              await tester.tap(find.text('Settings'));
++              await settle(tester);
++            }
++            final found = screen == TargetScreen.settings
++                ? await measureScrolling(tester, screen.label)
++                : measureTargets(tester, screen.label);
++            // The pad in portrait shows no control (the phone asks to be turned), so only it may find none.
++            final portraitPad = screen == TargetScreen.pad && entry.value.height > entry.value.width;
++            if (!portraitPad) expect(found, isNotEmpty, reason: 'no touch target found on ${screen.label}');
++            final below = {
++              for (final e in found.entries)
++                if (_below(e.value)) e.key: e.value,
++            };
++            final unlisted = [
++              for (final e in below.entries)
++                if (!knownBelow48.containsKey(e.key)) '${e.key}: ${e.value} (${entry.key}, ${tv ? 'TV' : 'menu'})',
++            ];
++            expect(unlisted, isEmpty, reason: 'touch targets below 48 dp that knownBelow48 does not list');
++          },
++        );
+       }
+     }
+   }
+diff --git a/docs/briefs/m16/m165/b2s-report.md b/docs/briefs/m16/m165/b2s-report.md
+new file mode 100644
+index 00000000..46bc1e20
+--- /dev/null
++++ b/docs/briefs/m16/m165/b2s-report.md
+@@ -0,0 +1,34 @@
++# b2s report
++
++tests-first: exempt tests only, no lib change.
++
++## Files changed
++- controller_app/test/chip_readable_test.dart (new): chip at 568x320 and 667x375, menu and TV look: exists, inside screen, >= 48 dp, label not cut (didExceedMaxLines), no thrown exception.
++- controller_app/test/connect_narrow_test.dart: `knownTopBarOverflow` removed; the 568 TV case now passes.
++- controller_app/test/connection_chip_test.dart: `if (tv) return` removed; both TV cases that now fail are marked `skip`.
++- controller_app/test/touch_targets_test.dart: the 568 TV `continue` removed; only the pad case at 568 TV is skipped (it fails).
++
++## Open (chip not readable; lib not touched)
++flutter_test's `skip` takes a bool, so the measurements are in comments and in `_knownUnreadable`, not in a skip string.
++- 568x320 menu: label "Android TV" cut (didExceedMaxLines true), chip rect (12, 4, 161.9, 52).
++- 568x320 TV: chip rect (12, 4, 47.9, 52), 35.9 dp wide (< 48). Also fails touch_targets (pad: 35.9 x 48) and connection_chip 568 TV.
++- 667x375 TV: label "Android TV" cut, chip rect (12, 4, 146.9, 52). Also fails connection_chip 667 TV.
++- 667x375 menu passes. No layout overflow exception was seen in any case (the old 12 px top-bar overflow is gone, connect_narrow passes).
++- Skipped (not deleted): 3 in chip_readable_test, 2 in connection_chip_test, 1 in touch_targets_test.
++
++## Questions
++- Skips here hide the cut label at 568 menu; the owner may want the bar fixed rather than the cases skipped.
++
++## Commit message
++m165 b2s: chip readability tests, three old skips removed
++
++New chip_readable_test checks the connection chip at 568x320 and 667x375
++in the menu and TV look. The three old TV skips are removed; the cases
++that still fail (cut label, chip under 48 dp wide) are skipped with their
++measured values as B-044 control, lib untouched.
++
++## Status row
++b2s: chip readable test added and old skips removed; open: chip cut/narrow at 568 menu, 568 TV, 667 TV (6 skipped cases).
++
++## Delete
++- none
+diff --git a/docs/briefs/m16/m165/run.log b/docs/briefs/m16/m165/run.log
+index 2d154ad4..4f46cd4d 100644
+--- a/docs/briefs/m16/m165/run.log
++++ b/docs/briefs/m16/m165/run.log
+@@ -64,3 +64,6 @@ H2H a1s won over a1h: applied by tools/h2h.sh (loser patch: docs/briefs/m16/m165
+ 2026-11-25 14:01:54 tests-first ok: controller_app/test/result_card_pad_test.dart fails on the old code
+ 2026-11-25 14:01:55 hand-fixed a2: tests-first proof and worker review done (marked in done.txt)
+ 2026-11-25 14:01:55 skip a2 (already done)
++2026-11-25 14:02:11 phase: worker (worker took 93s)
++2026-11-25 14:02:12 start c0a
++2026-11-25 14:02:39 start b2s
