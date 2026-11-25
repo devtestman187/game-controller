@@ -5,6 +5,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:puzzle_game/puzzle_game.dart';
 
 import 'support/match_helpers.dart';
+import 'support/mirror_helpers.dart' show phone169, raceText, sideLeft;
+
+/// A control the size of a hand's touch, as the test places it.
+const handPx = 40.0;
 
 /// A tablet held upright, 1640 x 2360 (B-044): the box the right hand's
 /// controls are checked in.
@@ -52,6 +56,46 @@ void main() {
       final strip = Rect.fromLTWH(0, without.rect.top, portrait.width / 2, without.rect.height);
       final placed = PuzzleCamera.hudPlace(layout, whole, portrait, text, hudRects: [strip]);
       expect(placed.rect.overlaps(strip.inflate(PuzzleCamera.mirrorGapPx)), isFalse, reason: '${placed.rect}');
+    });
+  });
+
+  group('the mirror and place() ignore the right hand\'s controls in the board (B-044)', () {
+    /// The mirror [phone169] draws for the house's race with [hudRects] in the box.
+    MirrorPlacement? mirrorWith(List<Rect> hudRects) => PuzzleCamera.mirrorPlace(
+      house,
+      layout,
+      sideLeft,
+      phone169,
+      split: true,
+      text: raceText(house),
+      hudRects: hudRects,
+    );
+
+    test('a control over the board\'s centre leaves the mirror\'s rect and scale as they were', () {
+      final world = PuzzleCamera.place(layout, sideLeft, phone169, PuzzleSide.left);
+      final centre = world.origin + layout.left.board.center * world.scale;
+      final overBoard = Rect.fromCenter(center: centre, width: handPx, height: handPx);
+      final free = mirrorWith(const []);
+      final held = mirrorWith([overBoard]);
+      expect(free, isNotNull);
+      expect(held?.rect, free?.rect);
+      expect(held?.scale, free?.scale);
+    });
+
+    test('place() gives the same origin and scale before and after the mirror is fitted with a control', () {
+      final before = PuzzleCamera.place(layout, sideLeft, phone169, PuzzleSide.left);
+      final world = PuzzleCamera.place(layout, sideLeft, phone169, PuzzleSide.left);
+      final centre = world.origin + layout.left.board.center * world.scale;
+      mirrorWith([Rect.fromCenter(center: centre, width: handPx, height: handPx)]);
+      final after = PuzzleCamera.place(layout, sideLeft, phone169, PuzzleSide.left);
+      expect(after.origin, before.origin);
+      expect(after.scale, before.scale);
+    });
+
+    test('a control over the clock area\'s spot: the area moves clear of it and its air', () {
+      final spot = mirrorWith(const [])!.hud.rect;
+      final moved = mirrorWith([spot])!;
+      expect(moved.hud.rect.overlaps(spot.inflate(PuzzleCamera.mirrorGapPx)), isFalse, reason: '${moved.hud.rect}');
     });
   });
 }
