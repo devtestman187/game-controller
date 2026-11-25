@@ -123,3 +123,30 @@ METRICS wave2-review worker=claude model=claude-haiku-5-5 turns=21 in=26 out=205
 METRICS wave3-review worker=claude model=claude-haiku-5-5 turns=26 in=28 out=18171 cache=556023 min=1.5 wall=- result=0
 2026-11-25 14:40:37 DONE: every job is committed. Claude reads the Summary of docs/briefs/m16/m165/REVIEW.md, verifies its findings and writes one fix brief
 RESULT: DONE: 7 jobs, 16 min
+2026-11-25 14:41:52 RUN_MAX_MIN=300 min (computed backstop of the jobs still to do)
+2026-11-25 14:41:52 start at 8a5f6337 on m16
+2026-11-25 14:41:52 worker: claude
+2026-11-25 14:41:53 proc-sweep: proc-sweep: 0 process(es) listed (0 orphaned flutter_tester/dart)
+2026-11-25 14:42:13 phase: preflight
+2026-11-25 14:42:20 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-25 14:42:35 phase: worker (preflight took 22s)
+2026-11-25 14:42:36 skip a1s (kept: apply: no arm already ran)
+2026-11-25 14:42:36 skip a1h (kept: apply: no arm already ran)
+2026-11-25 14:42:36 skip a2 (already done)
+2026-11-25 14:42:51 phase: worker (worker took 16s)
+2026-11-25 14:42:52 skip c0a (already done)
+2026-11-25 14:42:52 skip b2s (kept: apply: no arm already ran)
+2026-11-25 14:42:52 skip b2h (kept: apply: no arm already ran)
+2026-11-25 14:43:08 phase: worker (worker took 16s)
+2026-11-25 14:43:08 skip c0b (already done)
+2026-11-25 14:43:23 phase: worker (worker took 16s)
+2026-11-25 14:43:24 start b1s
+2026-11-25 14:43:50 start b1h
+2026-11-25 14:53:25 b1s finished: result 0 (49 turns, 5 min) model claude-sonnet-5-5, ladder 1, tokens in/read/write/out 62/1297023/50499/18022
+2026-11-25 14:53:26 job b1s kept /e/AI/game-controller-m16-jobs/flash-20261125-144325-2945 (apply: no; worker result 0, 49 turns, 5 min)
+2026-11-25 14:57:25 b1h finished: result 0 (59 turns, 9 min) model claude-haiku-5-5, ladder 1, tokens in/read/write/out 96/3355253/94873/47323
+2026-11-25 14:57:25 job b1h kept /e/AI/game-controller-m16-jobs/flash-20261125-144351-3227 (apply: no; worker result 0, 59 turns, 9 min)
+METRICS b1h worker=claude model=claude-haiku-5-5 turns=59 in=96 out=47323 cache=3450126 min=8.5 wall=13.6 result=0
+METRICS b1s worker=claude model=claude-sonnet-5-5 turns=49 in=62 out=18022 cache=1347522 min=4.9 wall=10.0 result=0
+2026-11-25 14:57:31 DONE: every job is committed. Claude reads the Summary of docs/briefs/m16/m165/REVIEW.md, verifies its findings and writes one fix brief
+RESULT: DONE: 9 jobs, 15 min
