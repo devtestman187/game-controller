@@ -3,13 +3,13 @@ import 'dart:async';
 import 'package:connection/connection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:party_host/party_host.dart'
-    show HostKind, PhoneText, ToyButton, ToyCard, ToyLookScope, ToySizes, askConsents;
+import 'package:party_host/party_host.dart' show HostKind, PhoneText, ToyCard, ToyLookScope, ToySizes, askConsents;
 
 import '../discovery.dart';
 import '../host/hosting.dart';
 import '../providers.dart';
 import 'bar_connection.dart';
+import 'connect_manual_entry.dart';
 import 'connect_panels.dart';
 import 'diagnostics_screen.dart';
 import 'labels.dart';
@@ -100,9 +100,13 @@ class _ConnectScreenState extends ConsumerState<ConnectScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text(PhoneText.connectTitle),
+        // One line, cut short with an ellipsis, so the chip and diagnostics keep
+        // their room on a 320 dp phone (item 9a).
+        title: const Text(PhoneText.connectTitle, maxLines: 1, overflow: TextOverflow.ellipsis),
         actions: [
-          StatusChip(client: client),
+          // Flexible: the diagnostics button is laid out first, and the chip takes what
+          // is left, so a long status cuts short rather than pushing the button off.
+          Flexible(child: StatusChip(client: client)),
           IconButton(
             tooltip: PhoneText.diagnostics,
             icon: const Icon(Icons.monitor_heart_outlined),
@@ -145,7 +149,16 @@ class StatusChip extends StatelessWidget {
       children: [
         LinkDot(status: client.status),
         const SizedBox(width: ToySizes.space8),
-        Text(label, style: look.type.body.copyWith(color: look.colors.onBackground)),
+        // The label gives way to an ellipsis on a narrow bar, so the chip and the
+        // diagnostics button beside it keep their room (item 9a).
+        Flexible(
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: look.type.body.copyWith(color: look.colors.onBackground),
+          ),
+        ),
       ],
     );
   }
@@ -196,7 +209,7 @@ class _HostList extends ConsumerWidget {
                     ),
             ),
           ),
-          const _ManualEntry(),
+          const ManualEntry(),
         ],
       ),
     );
@@ -310,65 +323,6 @@ class _NoHosts extends StatelessWidget {
           Expanded(child: Text(error == null ? PhoneText.searching : PhoneText.discoveryFailed(error), style: style)),
         ],
       ),
-    );
-  }
-}
-
-class _ManualEntry extends ConsumerStatefulWidget {
-  const _ManualEntry();
-
-  @override
-  ConsumerState<_ManualEntry> createState() => _ManualEntryState();
-}
-
-class _ManualEntryState extends ConsumerState<_ManualEntry> {
-  final _controller = TextEditingController();
-  String? _error;
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _connect() {
-    try {
-      final host = HostAddress.parse(_controller.text);
-      setState(() => _error = null);
-      FocusScope.of(context).unfocus();
-      ref.read(connectionActionsProvider).connect(host);
-    } on FormatException catch (e) {
-      setState(() => _error = e.message);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final look = ToyLookScope.of(context);
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        Expanded(
-          child: TextField(
-            key: const Key('manualAddress'),
-            controller: _controller,
-            keyboardType: TextInputType.url,
-            autocorrect: false,
-            textInputAction: TextInputAction.go,
-            onSubmitted: (_) => _connect(),
-            // Text on the theme's paper field is ink (Claude's 3c review).
-            style: look.type.body.copyWith(color: look.colors.ink),
-            decoration: InputDecoration(
-              isDense: true,
-              labelText: PhoneText.addressLabel,
-              hintText: PhoneText.addressHint,
-              errorText: _error,
-            ),
-          ),
-        ),
-        const SizedBox(width: ToySizes.space8),
-        ToyButton(label: PhoneText.connect, onPressed: _connect),
-      ],
     );
   }
 }
