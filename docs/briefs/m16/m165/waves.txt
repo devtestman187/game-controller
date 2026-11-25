@@ -1,2 +1,6 @@
 # wave A: head-to-head 1 (two arms, apply: no) and a2
 a1s a1h a2
+# wave B1: contract 1 (puzzle_game chain) and the control arms (tests only)
+c0a b2s b2h
+# wave B2: contract 2 (game_kit, party_host, host_overrides)
+c0b

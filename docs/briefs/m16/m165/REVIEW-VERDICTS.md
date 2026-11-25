@@ -1,0 +1,1 @@
+a2 findings: all should/could, none must: tests-first gap - invalid (run.log 13:52 'tests-first ok: ... fails on the old code'); held press, combinations, file size, fixture copy, rename, unused return, hard-coded string - minor, docs/code-health.md (m165).

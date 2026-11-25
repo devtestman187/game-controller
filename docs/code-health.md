@@ -324,3 +324,7 @@ Not built. bugs2 wave A with the 1-hour cache showed no large Sonnet cache write
 - Constructor dartdoc missing: ManualEntry, ShowTipsRow, GameScreenShell. 'Round N of M' built in puzzle_game and test_game (one helper when a third needs it).
 - park_keeps folder entries in `allow:` match exactly. arena_map_names table stays (no wire change; drift test guards it). phone_home_screen search timer: one timer, cancelled in dispose, no issue shown.
 - Owner question open: pad top bar 12 px overflow at 568x320 TV look (c4-report.md options A/B/C); test exception stays.
+
+## m165 (Nov 25), from the a2 review (B-043, pad hidden under the result card)
+- controller_screen.dart: a press held on the pad when the result card arrives stays held under Offstage (rule B4); add a test (down, card, up) and release if it does not clear. 365 lines: move `_body`'s Stack children into a widget of their own file before the next change to this screen.
+- result_card_pad_test.dart: compare the waiting text with `PhoneText.waitingForNext`; `finishRound` returns an unused value; the finished-round fixture is copied from result_card_fit_test.dart (move to test/support/). Combinations (pause menu, host away, dropped link, hosting) of the hidden pad are untested.

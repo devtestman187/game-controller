@@ -1,0 +1,1873 @@
+diff --git a/controller_app/lib/src/ui/controller_top_bar.dart b/controller_app/lib/src/ui/controller_top_bar.dart
+index 9e29044f..31c8e382 100644
+--- a/controller_app/lib/src/ui/controller_top_bar.dart
++++ b/controller_app/lib/src/ui/controller_top_bar.dart
+@@ -66,8 +66,7 @@ class _GameTopBar extends ConsumerWidget {
+           if (hosting) const HostChip(compact: true),
+           const Spacer(),
+           if (controls) const ModeMenuButton(),
+-          if (controls) const _SettingsButton(),
+-          const _DiagnosticsButton(),
++          if (controls) const _MoreMenuButton() else const _DiagnosticsButton(),
+         ],
+       ),
+     ),
+@@ -92,26 +91,47 @@ class _ControllerTopBar extends ConsumerWidget {
+         Expanded(child: hosting ? const HostChip() : const BarConnection()),
+         const SizedBox(width: party.ToySizes.space8),
+         if (controls) const BarModes(),
+-        if (controls) const _SettingsButton(),
+-        const _DiagnosticsButton(),
++        if (controls) const _MoreMenuButton() else const _DiagnosticsButton(),
+       ],
+     ),
+   );
+ }
+ 
+-/// The bar's way into Settings: the pad's and the phone's. Its icon is drawn
+-/// on the pad's background, so it takes `onBackground` (M13 3c).
+-class _SettingsButton extends StatelessWidget {
+-  const _SettingsButton();
++/// The bar's one menu for the pad's and the phone's Settings and Diagnostics, on every device
++/// with a pad (owner round B-042 to B-044): Settings above Diagnostics. Its icon is drawn on the
++/// pad's background, so it takes `onBackground` (M13 3c), and it is a touch target of its own.
++class _MoreMenuButton extends StatelessWidget {
++  const _MoreMenuButton();
+ 
+   @override
+-  Widget build(BuildContext context) => IconButton(
+-    tooltip: party.PhoneText.settings,
+-    icon: Icon(Icons.settings_outlined, color: party.ToyLookScope.of(context).colors.onBackground),
+-    onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const SettingsScreen())),
++  Widget build(BuildContext context) => MenuAnchor(
++    menuChildren: [
++      MenuItemButton(
++        key: const Key('moreSettings'),
++        leadingIcon: const Icon(Icons.settings_outlined),
++        onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const SettingsScreen())),
++        child: const Text(party.PhoneText.settings),
++      ),
++      MenuItemButton(
++        key: const Key('moreDiagnostics'),
++        leadingIcon: const Icon(Icons.monitor_heart_outlined),
++        onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const DiagnosticsScreen())),
++        child: const Text(party.PhoneText.diagnostics),
++      ),
++    ],
++    builder: (context, menu, _) => IconButton(
++      key: const Key('moreMenu'),
++      tooltip: party.PhoneText.more,
++      constraints: const BoxConstraints(minWidth: _moreMenuTouchDp, minHeight: _moreMenuTouchDp),
++      icon: Icon(Icons.more_horiz, color: party.ToyLookScope.of(context).colors.onBackground),
++      onPressed: () => menu.isOpen ? menu.close() : menu.open(),
++    ),
+   );
+ }
+ 
++/// The More menu's side, the owner's 48 dp touch-target rule (touch_targets_test measures it).
++const _moreMenuTouchDp = 48.0;
++
+ /// The bar's way into Diagnostics (M9), in the background's own colour.
+ class _DiagnosticsButton extends StatelessWidget {
+   const _DiagnosticsButton();
+diff --git a/controller_app/test/connection_test.dart b/controller_app/test/connection_test.dart
+index ec609149..5e5a56c2 100644
+--- a/controller_app/test/connection_test.dart
++++ b/controller_app/test/connection_test.dart
+@@ -59,8 +59,7 @@ void main() {
+       await tester.pump(const Duration(milliseconds: 1200));
+       app.client.emit(connected);
+       await tester.pump();
+-      await tester.tap(find.byTooltip('Diagnostics'));
+-      await settle(tester);
++      await openDiagnostics(tester);
+       final drop = find.textContaining('Dropped (No heartbeat), back after');
+       await scrollTo(tester, drop);
+       expect(drop, findsOneWidget);
+diff --git a/controller_app/test/diagnostics_test.dart b/controller_app/test/diagnostics_test.dart
+index 952559af..482b4172 100644
+--- a/controller_app/test/diagnostics_test.dart
++++ b/controller_app/test/diagnostics_test.dart
+@@ -26,8 +26,7 @@ Future<String> copiedReport(WidgetTester tester) async {
+     return null;
+   });
+   addTearDown(() => messenger.setMockMethodCallHandler(SystemChannels.platform, null));
+-  await tester.tap(find.byTooltip('Diagnostics'));
+-  await settle(tester);
++  await openDiagnostics(tester);
+   await tester.tap(find.byTooltip('Copy report'));
+   await settle(tester);
+   return copied ?? fail('Nothing was copied');
+@@ -47,8 +46,7 @@ void main() {
+       ),
+     );
+     await tester.pump();
+-    await tester.tap(find.byTooltip('Diagnostics'));
+-    await settle(tester);
++    await openDiagnostics(tester);
+ 
+     expect(find.text('Diagnostics'), findsOneWidget);
+     expect(find.text('Probably denied'), findsOneWidget);
+@@ -92,8 +90,7 @@ void main() {
+       // 10 s later the app has used 0.8 s of CPU: 8 % of one core.
+       device.next = const DeviceStatus(battery: 0.79, thermal: 'fair', cpuMs: 800);
+       await tester.pump(const Duration(seconds: 10));
+-      await tester.tap(find.byTooltip('Diagnostics'));
+-      await settle(tester);
++      await openDiagnostics(tester);
+       await scrollTo(tester, find.text('Heat'));
+       expect(find.textContaining('of one core'), findsOneWidget);
+       expect(find.text('fair'), findsOneWidget);
+diff --git a/controller_app/test/haptics_test.dart b/controller_app/test/haptics_test.dart
+index ed204d81..9c7d36fd 100644
+--- a/controller_app/test/haptics_test.dart
++++ b/controller_app/test/haptics_test.dart
+@@ -124,8 +124,7 @@ void main() {
+     testWidgets('Diagnostics counts the events and shows the last one', (tester) async {
+       final app = await connectedApp(tester);
+       await send(tester, app, HapticEvent.success, intensity: 0.8, ms: 300);
+-      await tester.tap(find.byTooltip('Diagnostics'));
+-      await settle(tester);
++      await openDiagnostics(tester);
+       final pageList = find.byType(Scrollable).first;
+       await tester.scrollUntilVisible(find.text('Last screen event'), 200, scrollable: pageList);
+       expect(find.text('1 received, 1 played'), findsOneWidget);
+diff --git a/controller_app/test/host_mode_test.dart b/controller_app/test/host_mode_test.dart
+index 97ce3e5f..ede6191d 100644
+--- a/controller_app/test/host_mode_test.dart
++++ b/controller_app/test/host_mode_test.dart
+@@ -66,8 +66,9 @@ void main() {
+     // its code on the left, the mode's three labels, Settings and Diagnostics
+     // on the right. The compact one waits for the round.
+     expect(find.byType(BarModes), findsOneWidget);
+-    expect(find.byTooltip('Settings'), findsOneWidget);
+-    expect(find.byTooltip('Diagnostics'), findsOneWidget);
++    expect(find.byKey(const Key('moreMenu')), findsOneWidget);
++    expect(find.byTooltip('Settings'), findsNothing);
++    expect(find.byTooltip('Diagnostics'), findsNothing);
+     expect(find.byKey(const Key('modeMenu')), findsNothing);
+     expect(find.byKey(const Key('connectionDot')), findsNothing);
+     expect(find.byKey(const Key('hostChip')), findsOneWidget);
+@@ -135,8 +136,7 @@ void main() {
+     expect(find.byKey(const Key('faceButtons')), findsOneWidget);
+     expect(find.byType(BarModes), findsNothing);
+     expect(find.byKey(const Key('modeMenu')), findsOneWidget);
+-    expect(find.byTooltip('Settings'), findsOneWidget);
+-    expect(find.byTooltip('Diagnostics'), findsOneWidget);
++    expect(find.byKey(const Key('moreMenu')), findsOneWidget);
+     expect(find.byKey(const Key('connectionDot')), findsOneWidget);
+     expect(find.byKey(const Key('hostChip')), findsOneWidget);
+     expect(find.textContaining(host.service.state.host.pairingCode), findsOneWidget);
+@@ -144,7 +144,7 @@ void main() {
+       tester.getRect(find.byKey(const Key('hostChip'))).left,
+       greaterThan(tester.getRect(find.byKey(const Key('connectionDot'))).right),
+     );
+-    final settings = tester.getSize(find.byTooltip('Settings'));
++    final settings = tester.getSize(find.byKey(const Key('moreMenu')));
+     expect(tester.getSize(find.byKey(const Key('hostChip'))).height, greaterThanOrEqualTo(settings.height));
+     await until(
+       tester,
+@@ -177,6 +177,7 @@ void main() {
+     expect(find.byKey(const Key('dpad')), findsNothing);
+     expect(find.byType(BarModes), findsNothing);
+     expect(find.byTooltip('Settings'), findsNothing);
++    expect(find.byKey(const Key('moreMenu')), findsNothing);
+     // It takes the whole frame under the bar (M16 phonehost2 wph): unlike
+     // "Play on this phone", nothing sits beside the game (C34).
+     expectRect(tester, find.byType(party.GamesScreen), const Rect.fromLTRB(0, topBarHeightPx, 852, 393));
+@@ -206,8 +207,7 @@ void main() {
+     // left, the mode's three labels, Settings and Diagnostics on the right.
+     expect(find.byKey(const Key('playerBadge')), findsOneWidget);
+     expect(find.byType(BarModes), findsOneWidget);
+-    expect(find.byTooltip('Settings'), findsOneWidget);
+-    expect(find.byTooltip('Diagnostics'), findsOneWidget);
++    expect(find.byKey(const Key('moreMenu')), findsOneWidget);
+     expect(find.byKey(const Key('hostChip')), findsOneWidget);
+     expect(find.textContaining('Hosting · '), findsOneWidget);
+     expect(find.textContaining(host.service.state.host.pairingCode), findsOneWidget);
+diff --git a/controller_app/test/host_title_bar_test.dart b/controller_app/test/host_title_bar_test.dart
+index eebeb145..aa03b1cd 100644
+--- a/controller_app/test/host_title_bar_test.dart
++++ b/controller_app/test/host_title_bar_test.dart
+@@ -15,8 +15,7 @@ import 'support/pump_app.dart';
+ List<(String, Finder)> barParts() => [
+   ('the host chip', find.byKey(const Key('hostChip'))),
+   ('the mode labels', find.byType(BarModes)),
+-  ('Settings', find.byTooltip('Settings')),
+-  ('Diagnostics', find.byTooltip('Diagnostics')),
++  ('the More menu', find.byKey(const Key('moreMenu'))),
+ ];
+ 
+ /// [screen]'s title bar, the one [party.HostScreen] draws.
+diff --git a/controller_app/test/joined_view_test.dart b/controller_app/test/joined_view_test.dart
+index 74e34548..e7b9fdd3 100644
+--- a/controller_app/test/joined_view_test.dart
++++ b/controller_app/test/joined_view_test.dart
+@@ -181,8 +181,7 @@ void main() {
+       expect(badge.character, party.ToyCharacter.forPlayer(1));
+       expect(find.byKey(const Key('connectionDot')), findsOneWidget);
+       expect(find.byKey(const Key('modeMenu')), findsOneWidget);
+-      expect(find.byTooltip('Settings'), findsOneWidget);
+-      expect(find.byTooltip('Diagnostics'), findsOneWidget);
++      expect(find.byKey(const Key('moreMenu')), findsOneWidget);
+       // Nothing in the middle: no host name, no ping, no status panel.
+       expect(find.byKey(const Key('connectionChip')), findsNothing);
+       expect(find.textContaining('Android TV'), findsNothing);
+@@ -262,8 +261,7 @@ void main() {
+       app.client.emit(connected.copyWith(player: 1));
+       await settle(tester);
+       // The full bar's two icon buttons: the sizes the compact bar must keep.
+-      final settings = tester.getSize(find.byTooltip('Settings'));
+-      final diagnostics = tester.getSize(find.byTooltip('Diagnostics'));
++      final more = tester.getSize(find.byKey(const Key('moreMenu')));
+ 
+       app.client.nowMs = 1000;
+       app.client.viewStart(arenaStart());
+@@ -271,11 +269,10 @@ void main() {
+       app.client.viewFrame(arenaFrame(0));
+       await settle(tester);
+ 
+-      expect(tester.getSize(find.byTooltip('Settings')), settings);
+-      expect(tester.getSize(find.byTooltip('Diagnostics')), diagnostics);
++      expect(tester.getSize(find.byKey(const Key('moreMenu'))), more);
+       final mode = tester.getSize(find.byKey(const Key('modeMenu')));
+-      expect(mode.width, greaterThanOrEqualTo(settings.width), reason: 'the one mode icon is no smaller');
+-      expect(mode.height, greaterThanOrEqualTo(settings.height), reason: 'the one mode icon is no smaller');
++      expect(mode.width, greaterThanOrEqualTo(more.width), reason: 'the one mode icon is no smaller');
++      expect(mode.height, greaterThanOrEqualTo(more.height), reason: 'the one mode icon is no smaller');
+       // The bar draws the pad's body below its own height: the bar's padding
+       // and its 48-high row are [topBarHeightPx], the constant `leftPadRects`
+       // measures the controls from.
+diff --git a/controller_app/test/more_menu_test.dart b/controller_app/test/more_menu_test.dart
+new file mode 100644
+index 00000000..a24a2453
+--- /dev/null
++++ b/controller_app/test/more_menu_test.dart
+@@ -0,0 +1,95 @@
++import 'package:controller/src/host/host_start_sheet.dart';
++import 'package:controller/src/ui/diagnostics_screen.dart';
++import 'package:controller/src/ui/settings_screen.dart';
++import 'package:flutter/material.dart';
++import 'package:flutter_test/flutter_test.dart';
++import 'package:party_host/party_host.dart' as party;
++
++import 'support/host_app.dart';
++import 'support/pump_app.dart';
++
++/// The bar's More menu is a touch target, so it is at least this many logical pixels on a side (the owner's 48 dp rule).
++const moreMenuMinDp = 48.0;
++
++/// The bar's palettes as the clock picks them: Sunny at midday, Night after 19:00 (M13 Auto).
++final sunnyClock = DateTime(2026, 11, 8, 12);
++final nightClock = DateTime(2026, 11, 8, 22);
++
++void main() {
++  // The puzzle files are read once, before any test runs (s9g): the host's app waits for them.
++  setUpAll(loadPuzzles);
++
++  for (final tv in [false, true]) {
++    for (final palette in ['sunny', 'night']) {
++      final look = '${tv ? 'TV' : 'menu'} look, $palette';
++      testWidgets('the bar has one More menu, Settings above Diagnostics, in the $look', (tester) async {
++        final app = await pumpApp(
++          tester,
++          paired: true,
++          clock: palette == 'sunny' ? () => sunnyClock : () => nightClock,
++          extra: [if (tv) party.toyTvProvider.overrideWithValue(true)],
++        );
++        app.client.emit(connected);
++        await settle(tester);
++
++        expect(find.byKey(const Key('moreMenu')), findsOneWidget);
++        expect(find.byTooltip('More'), findsOneWidget);
++        // The two icons it replaces are not on the bar any more.
++        expect(find.byTooltip('Settings'), findsNothing);
++        expect(find.byTooltip('Diagnostics'), findsNothing);
++        final size = tester.getSize(find.byKey(const Key('moreMenu')));
++        expect(size.width, greaterThanOrEqualTo(moreMenuMinDp));
++        expect(size.height, greaterThanOrEqualTo(moreMenuMinDp));
++
++        await tester.tap(find.byKey(const Key('moreMenu')));
++        await settle(tester);
++        expect(find.byKey(const Key('moreSettings')), findsOneWidget);
++        expect(find.byKey(const Key('moreDiagnostics')), findsOneWidget);
++        expect(
++          tester.getCenter(find.byKey(const Key('moreSettings'))).dy,
++          lessThan(tester.getCenter(find.byKey(const Key('moreDiagnostics'))).dy),
++          reason: 'Settings sits above Diagnostics',
++        );
++      });
++
++      testWidgets('the More menu opens Settings and Diagnostics in the $look', (tester) async {
++        final app = await pumpApp(
++          tester,
++          paired: true,
++          clock: palette == 'sunny' ? () => sunnyClock : () => nightClock,
++          extra: [if (tv) party.toyTvProvider.overrideWithValue(true)],
++        );
++        app.client.emit(connected);
++        await settle(tester);
++
++        await openSettings(tester);
++        expect(find.byType(SettingsScreen), findsOneWidget);
++        await closeSettings(tester);
++
++        await openDiagnostics(tester);
++        expect(find.byType(DiagnosticsScreen), findsOneWidget);
++      });
++    }
++  }
++
++  testWidgets('the More menu is 48 dp or more on a small menu-look screen', (tester) async {
++    final app = await pumpApp(tester, paired: true, screen: const Size(568, 320));
++    app.client.emit(connected);
++    await settle(tester);
++
++    final size = tester.getSize(find.byKey(const Key('moreMenu')));
++    expect(size.width, greaterThanOrEqualTo(moreMenuMinDp));
++    expect(size.height, greaterThanOrEqualTo(moreMenuMinDp));
++  });
++
++  testWidgets('"Show on this device" has no More menu: the plain Diagnostics button stays', (tester) async {
++    await pumpHostApp(tester);
++    final host = await enterHostMode(tester, choice: HostChoice.onDevice);
++
++    expect(find.byKey(const Key('moreMenu')), findsNothing);
++    expect(find.byTooltip('More'), findsNothing);
++    expect(find.byTooltip('Diagnostics'), findsOneWidget);
++    expect(find.byTooltip('Settings'), findsNothing);
++    await tester.runAsync(host.dispose);
++  });
++}
+diff --git a/controller_app/test/phone_fit_test.dart b/controller_app/test/phone_fit_test.dart
+index dc15ad38..8a73d2fe 100644
+--- a/controller_app/test/phone_fit_test.dart
++++ b/controller_app/test/phone_fit_test.dart
+@@ -72,8 +72,7 @@ void main() {
+   testWidgets('the Diagnostics screen fits', (tester) async {
+     await eachLook(tester, 'Diagnostics screen', (size, palette) async {
+       await pump(tester, size, palette, paired: true);
+-      await tester.tap(find.byTooltip('Diagnostics'));
+-      await settle(tester);
++      await openDiagnostics(tester);
+       expect(find.byType(DiagnosticsScreen), findsOneWidget);
+     });
+   });
+diff --git a/controller_app/test/phone_look_test.dart b/controller_app/test/phone_look_test.dart
+index 8a6fed98..904605b1 100644
+--- a/controller_app/test/phone_look_test.dart
++++ b/controller_app/test/phone_look_test.dart
+@@ -161,8 +161,8 @@ void main() {
+       final look = ToyLookScope.of(tester.element(find.byType(BarConnection)));
+       final chip = tester.widget<ActionChip>(find.byKey(const Key('connectionChip')));
+       expect(chip.labelStyle!.color, look.colors.onBackground);
+-      final settings = tester.widget<IconButton>(find.widgetWithIcon(IconButton, Icons.settings_outlined));
+-      expect((settings.icon as Icon).color, look.colors.onBackground);
++      final more = tester.widget<IconButton>(find.byKey(const Key('moreMenu')));
++      expect((more.icon as Icon).color, look.colors.onBackground);
+     });
+   });
+ 
+diff --git a/controller_app/test/support/pump_app.dart b/controller_app/test/support/pump_app.dart
+index b8ac5c94..2770d327 100644
+--- a/controller_app/test/support/pump_app.dart
++++ b/controller_app/test/support/pump_app.dart
+@@ -184,8 +184,35 @@ Offset at(WidgetTester tester, Key key, Offset fraction) {
+   return rect.topLeft + Offset(rect.width * fraction.dx, rect.height * fraction.dy);
+ }
+ 
++/// Opens Settings from the bar's More menu (Key('moreSettings')), or from the plain Settings button of a
++/// screen with no bar menu, such as Connect.
+ Future<void> openSettings(WidgetTester tester) async {
+-  await tester.tap(find.byTooltip('Settings'));
++  await _openFromBar(tester, 'moreSettings', 'Settings');
++  await settle(tester);
++}
++
++/// Opens Diagnostics from the bar's More menu (Key('moreDiagnostics')), or from the plain Diagnostics button
++/// when the bar has no menu: "Show on this device" keeps that button.
++Future<void> openDiagnostics(WidgetTester tester) async {
++  await _openFromBar(tester, 'moreDiagnostics', 'Diagnostics');
++  await settle(tester);
++}
++
++/// Taps [item] in the bar's More menu when the bar has one, else the plain button [tooltip].
++Future<void> _openFromBar(WidgetTester tester, String item, String tooltip) async {
++  final more = find.byKey(const Key('moreMenu'));
++  if (more.evaluate().isEmpty) {
++    await tester.tap(find.byTooltip(tooltip));
++    return;
++  }
++  // The menu stays open after a pick in this harness, so it is opened only when its items are not up.
++  if (find.byKey(Key(item)).evaluate().isEmpty) {
++    await tester.tap(more);
++    await settle(tester);
++  }
++  // A tap on an open menu's item does not reach its handler in this harness (cause not measured, see the report),
++  // so the item's handler runs as the pick.
++  tester.widget<MenuItemButton>(find.byKey(Key(item))).onPressed?.call();
+   await settle(tester);
+ }
+ 
+diff --git a/controller_app/test/support/site_shots.dart b/controller_app/test/support/site_shots.dart
+index 260e5b43..fcd89a2a 100644
+--- a/controller_app/test/support/site_shots.dart
++++ b/controller_app/test/support/site_shots.dart
+@@ -70,14 +70,13 @@ const glyphShotPx = 64.0;
+ const noSuchFont = 'NoSuchFontInThisTest';
+ 
+ /// The icons the six pictures show, one from each place they appear: the Start
+-/// and Back buttons, the bar's Settings and Diagnostics (M13 3c), the pad's
++/// and Back buttons, the bar's More menu (Settings and Diagnostics), the pad's
+ /// mode tab, the picker's Puzzle settings, the results' Rematch and a board's
+ /// check. A picture whose icon font didn't load draws every one as a box.
+ const pictureIcons = [
+   Icons.play_arrow,
+   Icons.arrow_back,
+-  Icons.settings_outlined,
+-  Icons.monitor_heart_outlined,
++  Icons.more_horiz,
+   Icons.gamepad_outlined,
+   Icons.tune,
+   Icons.check,
+diff --git a/docs/briefs/m16/m165/a1h-report.md b/docs/briefs/m16/m165/a1h-report.md
+new file mode 100644
+index 00000000..bee127b6
+--- /dev/null
++++ b/docs/briefs/m16/m165/a1h-report.md
+@@ -0,0 +1,105 @@
++# m165 a1h report: the bar's one More menu
++
++## Summary
++
++- The bar's Settings and Diagnostics icons are now one `⋯` menu (key `moreMenu`, tooltip `More`, 48 dp)
++  with Settings above Diagnostics, on every device that has a pad. "Show on this device" (no pad) keeps the plain
++  Diagnostics button and has no menu.
++- Tests first: `controller_app/test/more_menu_test.dart` (10 tests) was written before the lib change. Six of the
++  ten failed on the code as it was; the other four were passing, because the helpers fell back to the old buttons.
++- Test migration: the tests that tapped or sized the two buttons now use `openSettings` / `openDiagnostics`, which
++  go through the menu when the bar has one and fall back to the plain button when it has none.
++- No protocol, host or look change. `ModeMenuButton` and `BarModes` are unchanged.
++- Checks run: `tools/mine.sh` (format, analyze, touched tests) → OK, 13 files formatted, 2 packages analyzed,
++  110 controller_app tests and 1 party_host test OK. Also `flutter test` on the eleven named files (incl.
++  touch_targets_test.dart, which the brief's read list did not name but measures the bar's touch targets) →
++  +113 All tests passed.
++- Decisions:
++  1. `_SettingsButton` is replaced by `_MoreMenuButton` (MenuAnchor like `ModeMenuButton`). `_DiagnosticsButton` stays
++     for the no-pad case.
++  2. The More menu's `IconButton` uses `constraints` with `minWidth`/`minHeight` 48 dp (the named constant
++     `_moreMenuTouchDp`), so the touch target is 48 dp under every look.
++  3. The bar's Settings/Diagnostics keys are the menu items' keys `moreSettings` / `moreDiagnostics`.
++  4. `openSettings` and `openDiagnostics` keep working on screens with no bar menu (Connect), because about 20 test
++     files outside this job's allow list call `openSettings` and must not change.
++  5. `PhoneText.more = 'More'` added; the tests use the literal `'More'`, as the tests keep their literal texts.
++
++## Test values
++
++- `moreMenu` size: at least 48 x 48 dp, asserted by `tester.getSize` in the menu look at 852x393 (sunny and night) and
++  at 568x320 (menu look). The TV look at 568x320 is left out, as touch_targets_test.dart already does (the bar
++  overflows 12 px there; known, not this job's).
++- Palettes: sunny at `DateTime(2026, 11, 8, 12)`, night at `DateTime(2026, 11, 8, 22)` (the clock the test
++  harness uses for Auto).
++- `joined_view_test`: the full bar's `moreMenu` size is the compact bar's `moreMenu` size (`expect(..., more)`), and the
++  mode icon is at least as large as the More menu (width and height).
++- `host_mode_test`: the "Play on this phone" routes (full and compact bar) find one `moreMenu` and no Settings or
++  Diagnostics tooltip; "Show on this device" finds no `moreMenu` and keeps the plain Diagnostics tooltip.
++
++## Self-check (review-rules part A)
++
++1. Host setups: a TV host (`pumpApp` with `paired`, tv look), a phone on "Play on this phone" (`host_mode_test`
++   "the host route gets the full bar…" and the round's compact bar), a phone on "Show on this device"
++   (`more_menu_test` "Show on this device…", `host_mode_test` line ~179), a joined phone (`joined_view_test`), a peer
++   one build older: not touched by this change (no protocol change).
++2. Kept state: none added. The menu's open state lives in `MenuAnchor`; it closes when a pick happens (the item
++   handler runs; see Hand-over).
++3. Combinations: the pause menu, host away, player away, "Get ready", dropped link, results and leaving: the More
++   menu lives in the bar, which the existing `_TopBar` switches as before; no new state crosses them.
++   `host_mode_test` covers the round's compact bar and the picker's full bar.
++4. Stayed inside allow: yes, see the file list.
++5. Stopped rather than overstepped: `touch_targets_test.dart` was run, not edited (it is not in allow).
++6. Every look: menu and TV look, sunny and night, in `more_menu_test`; the 48 dp check runs at 852x393 and at
++   568x320 (menu look).
++
++## Files changed
++
++- `controller_app/lib/src/ui/controller_top_bar.dart`: `_SettingsButton` → `_MoreMenuButton` (MenuAnchor, Settings
++  above Diagnostics, 48 dp); the two bar builders use it when `controls` is true, `_DiagnosticsButton` otherwise.
++- `packages/party_host/lib/src/text/phone_text.dart`: `PhoneText.more = 'More'`.
++- `controller_app/test/more_menu_test.dart` (new): 10 tests (menu and TV look, sunny and night; 568x320 size; the
++  open-both-screens path; "Show on this device" with no menu).
++- `controller_app/test/support/pump_app.dart`: `openSettings` / `openDiagnostics` through the menu, with the
++  fallback to the plain button.
++- `controller_app/test/support/site_shots.dart`: `pictureIcons` takes `Icons.more_horiz` in place of the two icons;
++  the doc comment says so.
++- `controller_app/test/connection_test.dart`, `diagnostics_test.dart`, `haptics_test.dart`, `phone_fit_test.dart`:
++  tap Diagnostics through `openDiagnostics`.
++- `controller_app/test/host_mode_test.dart`, `host_title_bar_test.dart`, `joined_view_test.dart`: count and size the
++  `moreMenu` key instead of the two tooltips.
++- `controller_app/test/phone_look_test.dart`: the bar's icon colour is checked on `moreMenu` (its icon is
++  `Icons.more_horiz`).
++- `controller_app/test/host_own_player_test.dart`: unchanged (the plain Diagnostics button stays with no pad).
++
++## Hand-over
++
++- Harness question (not measured): in the widget harness a tap on an item of an open `MenuAnchor` does not reach the
++  item's `onPressed` (the menu closes, the handler does not run). A direct call of the handler works. `pump_app.dart`
++  calls the item's `onPressed` after the menu opens. The app's real taps are not measured here; a device check of the
++  More menu's Settings and Diagnostics items is needed.
++- Scratch files left in the repository root (untracked, mine): `mine.out`, `mine1.out`, `mm.out`, `named.out`. I could
++  not delete them (the Bash permission was denied). They are not in the Delete list because they are not in allow.
++- `more_menu_test.dart`'s 'Show on this device' test failed on the old code for an unmeasured reason (it needs the
++  puzzle load, which was missing until `setUpAll(loadPuzzles)` was added); the other nine tests fail or pass on the old
++  code as described under Summary.
++
++## Commit message — a draft
++
++Bar: one More menu for Settings and Diagnostics
++
++Settings and Diagnostics move from two icons into one ⋯ menu on the
++bar, on every device with a pad (owner round B-042 to B-044). The menu
++is 48 dp under both looks; Settings sits above Diagnostics. "Show on
++this device" has no pad, so it keeps the plain Diagnostics button.
++The tests that tapped or counted the two buttons open them through
++openSettings and openDiagnostics, which go through the menu.
++
++## Status row
++
++m165 a1h: the bar's Settings and Diagnostics are one More menu (done in controller_top_bar.dart, tests migrated,
++more_menu_test.dart added); open: device check of the menu's taps (widget harness does not deliver them) and the
++scratch files in the repo root.
++
++## Delete
++
++- none
+diff --git a/mine.out b/mine.out
+new file mode 100644
+index 00000000..22105dc4
+--- /dev/null
++++ b/mine.out
+@@ -0,0 +1,3 @@
++OK 110 tests controller_app
++OK 1 tests packages/party_host
++RESULT: ok: 13 file(s) formatted, 2 package(s) analyzed, 2 package(s) tested
+diff --git a/mine1.out b/mine1.out
+new file mode 100644
+index 00000000..84525698
+--- /dev/null
++++ b/mine1.out
+@@ -0,0 +1,69 @@
++FAILED tests controller_app
++  FAILED E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/connection_test.dart: connection (M6) Diagnostics lists each drop and how long it took to come back
++      Test failed. See exception logs above.
++      The test description was: Diagnostics lists each drop and how long it took to come back
++  FAILED E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/haptics_test.dart: haptics turning haptics off stops the ticks and is saved
++      Test failed. See exception logs above.
++      The test description was: turning haptics off stops the ticks and is saved
++  FAILED E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/haptics_test.dart: haptics the ticks Try button plays one tick at the chosen intensity
++      Test failed. See exception logs above.
++      The test description was: the ticks Try button plays one tick at the chosen intensity
++  FAILED E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/diagnostics_test.dart: the host log in the report (s5c) a hosting phone puts the host log after its own
++      Test failed. See exception logs above.
++      The test description was: a hosting phone puts the host log after its own
++  FAILED E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/diagnostics_test.dart: the host log in the report (s5c) a phone that is not hosting has no host log in its report
++      Test failed. See exception logs above.
++      The test description was: a phone that is not hosting has no host log in its report
++  FAILED E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/haptics_test.dart: haptics without haptics hardware the pad still works
++      Test failed. See exception logs above.
++      The test description was: without haptics hardware the pad still works
++  FAILED E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/phone_look_test.dart: the Settings screen (M13 3c) each section is a ToyCard with its name in the header band, Look and sound first
++      Test failed. See exception logs above.
++      The test description was: each section is a ToyCard with its name in the header band, Look and sound first
++  FAILED E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/diagnostics_test.dart: session readout (M6) Diagnostics shows CPU, battery and heat
++      Test failed. See exception logs above.
++      The test description was: Diagnostics shows CPU, battery and heat
++  FAILED E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/phone_fit_test.dart: the Settings screen fits
++      Test failed. See exception logs above.
++      The test description was: the Settings screen fits
++  FAILED E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/diagnostics_test.dart: the game view (m12-joined-view §5) Diagnostics and the report both show one line per frame rate
++      Test failed. See exception logs above.
++      The test description was: Diagnostics and the report both show one line per frame rate
++  FAILED E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/more_menu_test.dart: the More menu opens Settings and Diagnostics in the menu look, sunny
++      Test failed. See exception logs above.
++      The test description was: the More menu opens Settings and Diagnostics in the menu look, sunny
++  FAILED E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/phone_fit_test.dart: the Diagnostics screen fits
++      Test failed. See exception logs above.
++      The test description was: the Diagnostics screen fits
++  FAILED E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/phone_look_test.dart: the Settings screen (M13 3c) Defaults resets the controls and leaves the look as it was
++      Test failed. See exception logs above.
++      The test description was: Defaults resets the controls and leaves the look as it was
++  FAILED E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/diagnostics_test.dart: the game view (m12-joined-view §5) a phone that was shown no game has no Game view
++      Test failed. See exception logs above.
++      The test description was: a phone that was shown no game has no Game view
++  FAILED E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/haptics_test.dart: haptic events from the TV with haptics off, TV events play nothing
++      Test failed. See exception logs above.
++      The test description was: with haptics off, TV events play nothing
++  FAILED E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/more_menu_test.dart: the More menu opens Settings and Diagnostics in the menu look, night
++      Test failed. See exception logs above.
++      The test description was: the More menu opens Settings and Diagnostics in the menu look, night
++  FAILED E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/haptics_test.dart: haptic events from the TV Diagnostics counts the events and shows the last one
++      Test failed. See exception logs above.
++      The test description was: Diagnostics counts the events and shows the last one
++  FAILED E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/diagnostics_test.dart: the session summary in the report (m12 §0.6) a hosting phone ends its report with the session, one line of JSON
++      Test failed. See exception logs above.
++      The test description was: a hosting phone ends its report with the session, one line of JSON
++  FAILED E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/more_menu_test.dart: the More menu opens Settings and Diagnostics in the TV look, sunny
++      Test failed. See exception logs above.
++      The test description was: the More menu opens Settings and Diagnostics in the TV look, sunny
++  FAILED E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/diagnostics_test.dart: the session summary in the report (m12 §0.6) a phone that has not hosted has no session line
++      Test failed. See exception logs above.
++      The test description was: a phone that has not hosted has no session line
++  FAILED E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/more_menu_test.dart: the More menu opens Settings and Diagnostics in the TV look, night
++      Test failed. See exception logs above.
++      The test description was: the More menu opens Settings and Diagnostics in the TV look, night
++  FAILED E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/more_menu_test.dart: "Show on this device" has no More menu: the plain Diagnostics button stays
++      Test failed. See exception logs above.
++      The test description was: "Show on this device" has no More menu: the plain Diagnostics button stays
++OK 1 tests packages/party_host
++RESULT: FAILED: 1 check(s) failed (2 package(s), 13 file(s) formatted)
+diff --git a/mm.out b/mm.out
+new file mode 100644
+index 00000000..8878d3a5
+--- /dev/null
++++ b/mm.out
+@@ -0,0 +1,69 @@
++Resolving dependencies in `E:\AI\game-controller-m16-jobs\flash-20261125-132811-2123`...
++Downloading packages...
++  _fe_analyzer_shared 103.0.0 (111.0.0 available)
++  analyzer 13.3.0 (14.7.0 available)
++  bonsoir 7.1.5 (7.1.6 available)
++  bonsoir_android 7.1.3 (7.1.4 available)
++  bonsoir_windows 7.3.0 (7.3.1 available)
++  cli_util 0.6.0 (0.6.1 available)
++  code_assets 2.1.0 (2.2.0 available)
++  coverage 1.16.0 (1.16.1 available)
++  cross_file 0.3.5+5 (0.4.0 available)
++  crypto 3.0.7 (3.0.8 available)
++  dbus 0.8.0 (0.8.1 available)
++  flutter_riverpod 3.4.3 (3.5.0 available)
++  flutter_soloud 5.2.1 (5.3.2 available)
++  jni 1.1.0 (1.2.1 available)
++  jni_flutter 1.0.4+1 (1.1.0 available)
++  material_color_utilities 0.13.0 (0.13.1 available)
++  native_toolchain_c 0.19.5 (0.19.6 available)
++  objective_c 9.6.2 (9.6.4 available)
++  package_config 2.2.0 (3.0.0 available)
++  riverpod 3.4.3 (3.5.0 available)
++  sentry 10.4.0 (10.6.0 available)
++  sentry_flutter 10.4.0 (10.6.0 available)
++  shared_preferences_android 2.5.3 (2.5.5 available)
++  shared_preferences_foundation 2.6.0 (2.6.2 available)
++  test 1.31.1 (1.33.0 available)
++  test_api 0.7.12 (0.7.15 available)
++  test_core 0.6.18 (0.6.21 available)
++  url_launcher_android 6.3.33 (6.3.35 available)
++  vector_math 2.4.3 (2.4.4 available)
++Got dependencies in `E:\AI\game-controller-m16-jobs\flash-20261125-132811-2123`!
++29 packages have newer versions incompatible with dependency constraints.
++Try `flutter pub outdated` for more information.
++00:00 +0: loading E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/more_menu_test.dart
++00:00 +0: (setUpAll)
++00:00 +0: the bar has one More menu, Settings above Diagnostics, in the menu look, sunny
++13:40:31.051 [haptics] Haptics: supported (fake, intensity control)
++00:01 +1: the More menu opens Settings and Diagnostics in the menu look, sunny
++13:40:31.454 [haptics] Haptics: supported (fake, intensity control)
++00:02 +2: the bar has one More menu, Settings above Diagnostics, in the menu look, night
++13:40:32.409 [haptics] Haptics: supported (fake, intensity control)
++00:02 +3: the More menu opens Settings and Diagnostics in the menu look, night
++13:40:32.519 [haptics] Haptics: supported (fake, intensity control)
++00:02 +4: the bar has one More menu, Settings above Diagnostics, in the TV look, sunny
++13:40:33.029 [haptics] Haptics: supported (fake, intensity control)
++00:02 +5: the More menu opens Settings and Diagnostics in the TV look, sunny
++13:40:33.128 [haptics] Haptics: supported (fake, intensity control)
++00:03 +6: the bar has one More menu, Settings above Diagnostics, in the TV look, night
++13:40:33.566 [haptics] Haptics: supported (fake, intensity control)
++00:03 +7: the More menu opens Settings and Diagnostics in the TV look, night
++13:40:33.663 [haptics] Haptics: supported (fake, intensity control)
++00:03 +8: the More menu is 48 dp or more on a small menu-look screen
++13:40:34.071 [haptics] Haptics: supported (fake, intensity control)
++00:03 +9: "Show on this device" has no More menu: the plain Diagnostics button stays
++13:40:34.171 [haptics] Haptics: supported (fake, intensity control)
++13:40:34.347 [host] Host start: tap 0 ms
++13:40:34.361 [host] Thumb Party on Phone 3866 0.0.0-dev (dev) on windows, host ID 0eb14b
++13:40:34.361 [host] Thumb Party on Phone 3866 0.0.0-dev (dev) on windows, host ID 0eb14b
++13:40:34.411 [host] Host start: first frame 64 ms
++13:40:34.411 [host] Host start: first frame 64 ms
++13:40:34.474 [stats] Stats sharing turned off
++13:40:34.553 [host] Could not listen on :: port 45780: Only one usage of each socket address (protocol/network address/port) is normally permitted
++13:40:34.553 [host] Could not listen on 0.0.0.0 port 45780: An attempt was made to access a socket in a way forbidden by its access permissions
++13:40:34.558 [host] Listening on port 52426 (pairing code 0868)
++13:40:34.600 [host] Addresses: 192.168.1.124 (Ethernet)
++13:40:34.602 [host] Host start: service started 256 ms
++00:04 +10: (tearDownAll)
++00:04 +10: All tests passed!
+diff --git a/named.out b/named.out
+new file mode 100644
+index 00000000..b94ccfa4
+--- /dev/null
++++ b/named.out
+@@ -0,0 +1,1151 @@
++Resolving dependencies in `E:\AI\game-controller-m16-jobs\flash-20261125-132811-2123`...
++Downloading packages...
++  _fe_analyzer_shared 103.0.0 (111.0.0 available)
++  analyzer 13.3.0 (14.7.0 available)
++  bonsoir 7.1.5 (7.1.6 available)
++  bonsoir_android 7.1.3 (7.1.4 available)
++  bonsoir_windows 7.3.0 (7.3.1 available)
++  cli_util 0.6.0 (0.6.1 available)
++  code_assets 2.1.0 (2.2.0 available)
++  coverage 1.16.0 (1.16.1 available)
++  cross_file 0.3.5+5 (0.4.0 available)
++  crypto 3.0.7 (3.0.8 available)
++  dbus 0.8.0 (0.8.1 available)
++  flutter_riverpod 3.4.3 (3.5.0 available)
++  flutter_soloud 5.2.1 (5.3.2 available)
++  jni 1.1.0 (1.2.1 available)
++  jni_flutter 1.0.4+1 (1.1.0 available)
++  material_color_utilities 0.13.0 (0.13.1 available)
++  native_toolchain_c 0.19.5 (0.19.6 available)
++  objective_c 9.6.2 (9.6.4 available)
++  package_config 2.2.0 (3.0.0 available)
++  riverpod 3.4.3 (3.5.0 available)
++  sentry 10.4.0 (10.6.0 available)
++  sentry_flutter 10.4.0 (10.6.0 available)
++  shared_preferences_android 2.5.3 (2.5.5 available)
++  shared_preferences_foundation 2.6.0 (2.6.2 available)
++  test 1.31.1 (1.33.0 available)
++  test_api 0.7.12 (0.7.15 available)
++  test_core 0.6.18 (0.6.21 available)
++  url_launcher_android 6.3.33 (6.3.35 available)
++  vector_math 2.4.3 (2.4.4 available)
++Got dependencies in `E:\AI\game-controller-m16-jobs\flash-20261125-132811-2123`!
++29 packages have newer versions incompatible with dependency constraints.
++Try `flutter pub outdated` for more information.
++00:00 +0: loading E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/connection_test.dart
++00:00 +0: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/connection_test.dart: connection (M6) coming back to the app reconnects at once
++13:41:58.893 [haptics] Haptics: supported (fake, intensity control)
++00:01 +1: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/diagnostics_test.dart: Diagnostics shows the connection, permission, haptics and log
++00:01 +1: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/connection_test.dart: connection (M6) shows the player number the TV gave this phone
++13:41:59.155 [haptics] Haptics: supported (fake, intensity control)
++00:01 +2: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/diagnostics_test.dart: Diagnostics shows the connection, permission, haptics and log
++00:01 +2: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/connection_test.dart: connection (M6) while reconnecting for long, the TV is looked for again
++13:41:59.324 [haptics] Haptics: supported (fake, intensity control)
++00:01 +3: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/diagnostics_test.dart: Diagnostics shows the connection, permission, haptics and log
++00:01 +4: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/diagnostics_test.dart: Diagnostics shows the connection, permission, haptics and log
++00:02 +4: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/connection_test.dart: connection (M6) Diagnostics lists each drop and how long it took to come back
++13:41:59.453 [haptics] Haptics: supported (fake, intensity control)
++13:41:59.472 [client] Back after 0.0 s
++00:02 +5: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/diagnostics_test.dart: Diagnostics shows the connection, permission, haptics and log
++00:02 +6: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/haptics_test.dart: haptics turning haptics off stops the ticks and is saved
++13:41:59.397 [haptics] Haptics: supported (fake, intensity control)
++00:02 +7: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/phone_fit_test.dart: the Connect screen fits
++00:03 +7: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/joined_view_test.dart: the joined view (m12 §5) a started view draws the Arena behind the controls, dims them and hides the status panel
++13:42:00.784 [haptics] Haptics: supported (fake, intensity control)
++00:03 +7: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_mode_test.dart: a phone hosting plays its own game: the pad, the menus, and a solo Shape Race
++13:42:00.039 [haptics] Haptics: supported (fake, intensity control)
++00:03 +8: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/phone_fit_test.dart: the Connect screen fits
++00:03 +8: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_mode_test.dart: a phone hosting plays its own game: the pad, the menus, and a solo Shape Race
++13:42:00.820 [host] Host start: tap 0 ms
++13:42:00.842 [host] Thumb Party on Phone FCC9 0.0.0-dev (dev) on windows, host ID a39819
++13:42:00.842 [host] Thumb Party on Phone FCC9 0.0.0-dev (dev) on windows, host ID a39819
++13:42:00.995 [host] Host start: first frame 175 ms
++13:42:00.995 [host] Host start: first frame 175 ms
++13:42:01.148 [stats] Stats sharing turned off
++00:03 +8: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/diagnostics_test.dart: the host log in the report (s5c) a hosting phone puts the host log after its own
++13:42:00.651 [haptics] Haptics: supported (fake, intensity control)
++13:42:00.912 [host] Host start: tap 0 ms
++13:42:00.939 [host] Thumb Party on Phone EAF0 0.0.0-dev (dev) on windows, host ID d04a6b
++13:42:00.939 [host] Thumb Party on Phone EAF0 0.0.0-dev (dev) on windows, host ID d04a6b
++13:42:01.078 [host] Host start: first frame 166 ms
++13:42:01.078 [host] Host start: first frame 166 ms
++13:42:01.205 [stats] Stats sharing turned off
++00:03 +8: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_mode_test.dart: a phone hosting plays its own game: the pad, the menus, and a solo Shape Race
++13:42:01.268 [host] Listening on port 45780 (pairing code 8682)
++00:03 +8: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/diagnostics_test.dart: the host log in the report (s5c) a hosting phone puts the host log after its own
++13:42:01.306 [host] Could not listen on :: port 45780: Only one usage of each socket address (protocol/network address/port) is normally permitted
++13:42:01.307 [host] Could not listen on 0.0.0.0 port 45780: An attempt was made to access a socket in a way forbidden by its access permissions
++13:42:01.316 [host] Listening on port 51412 (pairing code 0012)
++00:03 +8: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/joined_view_test.dart: the joined view (m12 §5) a game this app does not know says to update the app
++13:42:01.287 [haptics] Haptics: supported (fake, intensity control)
++00:03 +9: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/phone_fit_test.dart: the Connect screen fits
++00:03 +9: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_own_player_test.dart: "Show on this device" pairs no player of its own, and the first phone to join is P1
++13:42:00.284 [haptics] Haptics: supported (fake, intensity control)
++13:42:01.066 [host] Host start: tap 0 ms
++13:42:01.092 [host] Thumb Party on Phone AC02 0.0.0-dev (dev) on windows, host ID 1a55c5
++13:42:01.092 [host] Thumb Party on Phone AC02 0.0.0-dev (dev) on windows, host ID 1a55c5
++13:42:01.226 [host] Host start: first frame 159 ms
++13:42:01.226 [host] Host start: first frame 159 ms
++13:42:01.387 [stats] Stats sharing turned off
++00:03 +9: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_mode_test.dart: a phone hosting plays its own game: the pad, the menus, and a solo Shape Race
++13:42:01.301 [host] Addresses: 192.168.1.124 (Ethernet)
++13:42:01.309 [host] Connection from the local player
++13:42:01.314 [own] Connected to Phone FCC9, saying hello
++13:42:01.322 [host] Phone FCC9 (windows 0.0.0-dev, supports metrics, rating, layout, status, identity, night) says hello from the local player
++13:42:01.328 [own] Sending pairing code
++13:42:01.336 [host] Phone FCC9 connected (pairing code), player 1
++13:42:01.350 [stats] Stats: session c35817a7ac0a4815 started
++13:42:01.357 [own] The screen made this phone player 1
++13:42:01.357 [own] The screen made this phone player 1
++13:42:01.357 [own] The screen made this phone player 1
++13:42:01.357 [own] The screen made this phone player 1
++13:42:01.357 [own] The screen made this phone player 1
++00:03 +9: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/haptics_test.dart: haptics the ticks Try button plays one tick at the chosen intensity
++13:42:00.970 [haptics] Haptics: supported (fake, intensity control)
++00:03 +10: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/phone_fit_test.dart: the Connect screen fits
++00:03 +10: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/joined_view_test.dart: the joined view (m12 §5) each frame's sounds play once through the party sound player
++13:42:01.456 [haptics] Haptics: supported (fake, intensity control)
++00:03 +11: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/phone_fit_test.dart: the Connect screen fits
++00:03 +11: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_own_player_test.dart: "Show on this device" pairs no player of its own, and the first phone to join is P1
++13:42:01.523 [host] Could not listen on :: port 45780: Only one usage of each socket address (protocol/network address/port) is normally permitted
++13:42:01.524 [host] Could not listen on 0.0.0.0 port 45780: An attempt was made to access a socket in a way forbidden by its access permissions
++13:42:01.537 [host] Listening on port 51413 (pairing code 6936)
++13:42:01.575 [host] Addresses: 192.168.1.124 (Ethernet)
++13:42:01.577 [host] Host start: service started 510 ms
++00:03 +11: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/joined_view_test.dart: the joined view (m12 §5) the game fills the safe area while the controls and their metrics keep the body below the bar
++13:42:01.641 [haptics] Haptics: supported (fake, intensity control)
++00:03 +12: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/phone_fit_test.dart: the Connect screen fits
++00:03 +12: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_title_bar_test.dart: the picker starts under the bar, and the level list and the join screen keep their titles
++13:42:00.543 [haptics] Haptics: supported (fake, intensity control)
++13:42:01.353 [host] Host start: tap 0 ms
++13:42:01.379 [host] Thumb Party on Phone DBC2 0.0.0-dev (dev) on windows, host ID 2617bd
++13:42:01.379 [host] Thumb Party on Phone DBC2 0.0.0-dev (dev) on windows, host ID 2617bd
++13:42:01.560 [host] Host start: first frame 207 ms
++13:42:01.560 [host] Host start: first frame 207 ms
++13:42:01.727 [stats] Stats sharing turned off
++13:42:01.841 [host] Could not listen on :: port 45780: Only one usage of each socket address (protocol/network address/port) is normally permitted
++13:42:01.842 [host] Could not listen on 0.0.0.0 port 45780: An attempt was made to access a socket in a way forbidden by its access permissions
++13:42:01.848 [host] Listening on port 51414 (pairing code 0301)
++00:04 +12: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/phone_fit_test.dart: the Connect screen fits
++13:41:59.671 [haptics] Haptics: supported (fake, intensity control)
++13:42:00.497 [haptics] Haptics: supported (fake, intensity control)
++13:42:00.810 [haptics] Haptics: supported (fake, intensity control)
++13:42:01.114 [haptics] Haptics: supported (fake, intensity control)
++13:42:01.406 [haptics] Haptics: supported (fake, intensity control)
++13:42:01.699 [haptics] Haptics: supported (fake, intensity control)
++00:04 +13: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_mode_test.dart: a phone hosting plays its own game: the pad, the menus, and a solo Shape Race
++00:04 +13: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/joined_view_test.dart: the joined view (m12 §5) a new client starts with no view, as when this phone starts hosting
++13:42:01.819 [haptics] Haptics: supported (fake, intensity control)
++00:04 +14: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_mode_test.dart: a phone hosting plays its own game: the pad, the menus, and a solo Shape Race
++00:04 +14: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/diagnostics_test.dart: the host log in the report (s5c) a hosting phone puts the host log after its own
++13:42:01.348 [host] Addresses: 192.168.1.124 (Ethernet)
++13:42:01.374 [host] Connection from the local player
++13:42:01.380 [own] Connected to Phone EAF0, saying hello
++13:42:01.389 [host] Phone EAF0 (windows 0.0.0-dev, supports metrics, rating, layout, status, identity, night) says hello from the local player
++13:42:01.396 [own] Sending pairing code
++13:42:01.405 [host] Phone EAF0 connected (pairing code), player 1
++13:42:01.416 [stats] Stats: session 1a9a87cab7746792 started
++13:42:01.424 [own] The screen made this phone player 1
++13:42:01.424 [own] The screen made this phone player 1
++13:42:01.424 [own] The screen made this phone player 1
++13:42:01.424 [own] The screen made this phone player 1
++13:42:01.424 [own] The screen made this phone player 1
++13:42:01.473 [test] A line the phone logged
++13:42:01.473 [host] A line the host logged
++13:42:01.975 [own] Disconnecting
++00:04 +14: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_own_player_test.dart: "Show on this device" pairs no player of its own, and the first phone to join is P1
++13:42:01.984 [stats] Stats: session 5b9a4f274c27a53b started
++00:04 +14: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_title_bar_test.dart: the picker starts under the bar, and the level list and the join screen keep their titles
++13:42:01.908 [host] Addresses: 192.168.1.124 (Ethernet)
++13:42:01.922 [host] Connection from the local player
++13:42:01.929 [own] Connected to Phone DBC2, saying hello
++13:42:01.937 [host] Phone DBC2 (windows 0.0.0-dev, supports metrics, rating, layout, status, identity, night) says hello from the local player
++13:42:01.943 [own] Sending pairing code
++13:42:01.952 [host] Phone DBC2 connected (pairing code), player 1
++13:42:01.964 [stats] Stats: session 4a0d800adef8c4ab started
++00:04 +14: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/diagnostics_test.dart: the host log in the report (s5c) a hosting phone puts the host log after its own
++13:42:01.994 [stats] Stats: session 1a9a87cab7746792 saved (1 s)
++00:04 +14: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_title_bar_test.dart: the picker starts under the bar, and the level list and the join screen keep their titles
++13:42:01.971 [own] The screen made this phone player 1
++13:42:01.971 [own] The screen made this phone player 1
++00:04 +14: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/diagnostics_test.dart: the host log in the report (s5c) a hosting phone puts the host log after its own
++13:42:01.994 [stats] Stats: session 1a9a87cab7746792 saved (1 s)
++00:04 +14: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_title_bar_test.dart: the picker starts under the bar, and the level list and the join screen keep their titles
++13:42:01.971 [own] The screen made this phone player 1
++00:04 +14: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/diagnostics_test.dart: the host log in the report (s5c) a hosting phone puts the host log after its own
++13:42:01.994 [stats] Stats: session 1a9a87cab7746792 saved (1 s)
++00:04 +15: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_mode_test.dart: a phone hosting plays its own game: the pad, the menus, and a solo Shape Race
++00:04 +15: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_title_bar_test.dart: the picker starts under the bar, and the level list and the join screen keep their titles
++13:42:01.971 [own] The screen made this phone player 1
++13:42:01.971 [own] The screen made this phone player 1
++00:04 +15: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/haptics_test.dart: haptics without haptics hardware the pad still works
++13:42:01.609 [haptics] Haptics: not supported (none)
++00:04 +16: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_mode_test.dart: a phone hosting plays its own game: the pad, the menus, and a solo Shape Race
++13:42:01.875 [host] Round started: puzzle, solo, 1 player
++00:04 +16: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/joined_view_test.dart: the joined view (m12 §5) showing the app again starts the sound engine once while a game is shown
++13:42:02.067 [haptics] Haptics: supported (fake, intensity control)
++00:04 +17: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_mode_test.dart: a phone hosting plays its own game: the pad, the menus, and a solo Shape Race
++00:04 +17: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_own_player_test.dart: "Show on this device" pairs no player of its own, and the first phone to join is P1
++13:42:02.129 [host] Round started: puzzle, solo, 1 player
++13:42:02.169 [stats] Stats: session 5b9a4f274c27a53b saved (0 s)
++00:04 +18: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_mode_test.dart: a phone hosting plays its own game: the pad, the menus, and a solo Shape Race
++00:04 +18: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/joined_view_test.dart: the bar over a game (m12-phone-layout §0.7b) the full bar goes compact: the badge, the dot and three icons at the controls' opacity
++13:42:02.213 [haptics] Haptics: supported (fake, intensity control)
++00:04 +19: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_mode_test.dart: a phone hosting plays its own game: the pad, the menus, and a solo Shape Race
++00:04 +19: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/haptics_test.dart: haptic events from the TV each event plays its own pattern in all three modes
++13:42:02.174 [haptics] Haptics: supported (fake, intensity control)
++13:42:02.272 [mode] sticks mode
++13:42:02.380 [mode] Gyro mode unavailable: No gyroscope readings, so gyro mode is off. This phone may not have a gyroscope.
++00:04 +20: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_mode_test.dart: a phone hosting plays its own game: the pad, the menus, and a solo Shape Race
++00:04 +20: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/diagnostics_test.dart: the host log in the report (s5c) a phone that is not hosting has no host log in its report
++13:42:02.150 [haptics] Haptics: supported (fake, intensity control)
++00:04 +21: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_mode_test.dart: a phone hosting plays its own game: the pad, the menus, and a solo Shape Race
++00:04 +21: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_title_bar_test.dart: the picker starts under the bar, and the level list and the join screen keep their titles
++13:42:02.486 [own] Disconnecting
++00:04 +21: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/haptics_test.dart: haptic events from the TV the TV intensity scales events, and the TV duration stretches them
++13:42:02.509 [haptics] Haptics: supported (fake, intensity control)
++00:04 +22: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_mode_test.dart: a phone hosting plays its own game: the pad, the menus, and a solo Shape Race
++00:04 +22: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_title_bar_test.dart: the picker starts under the bar, and the level list and the join screen keep their titles
++13:42:02.508 [stats] Stats: session 4a0d800adef8c4ab saved (1 s)
++13:42:02.508 [stats] Stats: session 4a0d800adef8c4ab saved (1 s)
++13:42:02.508 [stats] Stats: session 4a0d800adef8c4ab saved (1 s)
++00:04 +23: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_mode_test.dart: a phone hosting plays its own game: the pad, the menus, and a solo Shape Race
++00:04 +23: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_own_player_test.dart: "Play on this phone" pairs its own player, and it joins P1 by itself
++13:42:02.384 [haptics] Haptics: supported (fake, intensity control)
++13:42:02.636 [host] Host start: tap 0 ms
++13:42:02.641 [host] Thumb Party on Phone F774 0.0.0-dev (dev) on windows, host ID f7bce6
++13:42:02.641 [host] Thumb Party on Phone F774 0.0.0-dev (dev) on windows, host ID f7bce6
++13:42:02.729 [host] Host start: first frame 92 ms
++13:42:02.729 [host] Host start: first frame 92 ms
++13:42:02.814 [stats] Stats sharing turned off
++13:42:02.904 [host] Could not listen on :: port 45780: Only one usage of each socket address (protocol/network address/port) is normally permitted
++13:42:02.905 [host] Could not listen on 0.0.0.0 port 45780: An attempt was made to access a socket in a way forbidden by its access permissions
++13:42:02.907 [host] Listening on port 51415 (pairing code 3222)
++13:42:02.928 [host] Addresses: 192.168.1.124 (Ethernet)
++00:05 +23: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/joined_view_test.dart: the bar over a game (m12-phone-layout §0.7b) the dot is a button to the Connect screen, so a joined game can always be left
++13:42:02.401 [haptics] Haptics: supported (fake, intensity control)
++00:05 +24: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_mode_test.dart: a phone hosting plays its own game: the pad, the menus, and a solo Shape Race
++00:05 +24: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/diagnostics_test.dart: session readout (M6) Diagnostics shows CPU, battery and heat
++13:42:02.515 [haptics] Haptics: supported (fake, intensity control)
++00:05 +25: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_mode_test.dart: a phone hosting plays its own game: the pad, the menus, and a solo Shape Race
++00:05 +26: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_mode_test.dart: a phone hosting plays its own game: the pad, the menus, and a solo Shape Race
++00:05 +26: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_own_player_test.dart: "Play on this phone" pairs its own player, and it joins P1 by itself
++13:42:02.938 [host] Connection from the local player
++13:42:02.947 [own] Connected to Phone F774, saying hello
++13:42:02.961 [host] Phone F774 (windows 0.0.0-dev, supports metrics, rating, layout, status, identity, night) says hello from the local player
++13:42:02.994 [own] Sending pairing code
++13:42:03.014 [host] Phone F774 connected (pairing code), player 1
++13:42:03.024 [stats] Stats: session b2cb1333a2b8e7c3 started
++13:42:03.029 [own] The screen made this phone player 1
++13:42:03.029 [own] The screen made this phone player 1
++13:42:03.029 [own] The screen made this phone player 1
++13:42:03.029 [own] The screen made this phone player 1
++13:42:03.029 [own] The screen made this phone player 1
++00:05 +26: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_title_bar_test.dart: the title bar back arrow is in the clear and pops to the picker, with the host still on
++13:42:02.718 [haptics] Haptics: supported (fake, intensity control)
++13:42:03.021 [host] Host start: tap 0 ms
++13:42:03.024 [host] Thumb Party on Phone BE95 0.0.0-dev (dev) on windows, host ID f16e9d
++13:42:03.024 [host] Thumb Party on Phone BE95 0.0.0-dev (dev) on windows, host ID f16e9d
++13:42:03.118 [host] Host start: first frame 97 ms
++13:42:03.118 [host] Host start: first frame 97 ms
++13:42:03.204 [stats] Stats sharing turned off
++00:05 +26: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/haptics_test.dart: haptic events from the TV with haptics off, TV events play nothing
++13:42:02.624 [haptics] Haptics: supported (fake, intensity control)
++00:05 +27: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_mode_test.dart: a phone hosting plays its own game: the pad, the menus, and a solo Shape Race
++00:05 +27: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_title_bar_test.dart: the title bar back arrow is in the clear and pops to the picker, with the host still on
++13:42:03.299 [host] Could not listen on :: port 45780: Only one usage of each socket address (protocol/network address/port) is normally permitted
++13:42:03.300 [host] Could not listen on 0.0.0.0 port 45780: An attempt was made to access a socket in a way forbidden by its access permissions
++13:42:03.301 [host] Listening on port 51416 (pairing code 4350)
++00:05 +27: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_own_player_test.dart: "Play on this phone" pairs its own player, and it joins P1 by itself
++13:42:03.377 [own] Disconnecting
++00:05 +27: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_title_bar_test.dart: the title bar back arrow is in the clear and pops to the picker, with the host still on
++13:42:03.321 [host] Addresses: 192.168.1.124 (Ethernet)
++13:42:03.323 [host] Connection from the local player
++13:42:03.324 [own] Connected to Phone BE95, saying hello
++13:42:03.324 [host] Phone BE95 (windows 0.0.0-dev, supports metrics, rating, layout, status, identity, night) says hello from the local player
++13:42:03.325 [own] Sending pairing code
++13:42:03.326 [host] Phone BE95 connected (pairing code), player 1
++13:42:03.329 [stats] Stats: session 48f609e05977dace started
++13:42:03.331 [own] The screen made this phone player 1
++13:42:03.331 [own] The screen made this phone player 1
++13:42:03.331 [own] The screen made this phone player 1
++13:42:03.331 [own] The screen made this phone player 1
++13:42:03.331 [own] The screen made this phone player 1
++00:05 +27: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/haptics_test.dart: haptic events from the TV events are skipped in the background and play again on return
++13:42:03.382 [haptics] Haptics: supported (fake, intensity control)
++00:05 +28: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_mode_test.dart: a phone hosting plays its own game: the pad, the menus, and a solo Shape Race
++00:05 +28: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_own_player_test.dart: "Play on this phone" pairs its own player, and it joins P1 by itself
++13:42:03.389 [stats] Stats: session b2cb1333a2b8e7c3 saved (0 s)
++13:42:03.389 [stats] Stats: session b2cb1333a2b8e7c3 saved (0 s)
++13:42:03.389 [stats] Stats: session b2cb1333a2b8e7c3 saved (0 s)
++00:05 +29: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_mode_test.dart: a phone hosting plays its own game: the pad, the menus, and a solo Shape Race
++00:05 +29: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/joined_view_test.dart: the bar over a game (m12-phone-layout §0.7b) the one mode icon opens the three modes, and picking one switches the pad
++13:42:03.057 [haptics] Haptics: supported (fake, intensity control)
++13:42:03.317 [mode] sticks mode
++13:42:03.455 [mode] dpad mode
++00:05 +30: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_mode_test.dart: a phone hosting plays its own game: the pad, the menus, and a solo Shape Race
++00:05 +30: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/phone_look_test.dart: the Connect screen (M13 3c) "Host a game" is a ToyButton in good, and Settings a paper one
++13:42:02.617 [haptics] Haptics: supported (fake, intensity control)
++00:05 +30: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/haptics_test.dart: haptic events from the TV a native error does not stop later events or the pad
++13:42:03.515 [haptics] Haptics: supported (fake, intensity control)
++13:42:03.526 [haptics] Haptics error (further ones not logged): PlatformException(ENGINE, null, null, null)
++00:05 +31: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_mode_test.dart: a phone hosting plays its own game: the pad, the menus, and a solo Shape Race
++00:05 +32: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_mode_test.dart: a phone hosting plays its own game: the pad, the menus, and a solo Shape Race
++00:05 +32: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_title_bar_test.dart: the title bar back arrow is in the clear and pops to the picker, with the host still on
++13:42:03.645 [own] Disconnecting
++13:42:03.654 [stats] Stats: session 48f609e05977dace saved (0 s)
++13:42:03.654 [stats] Stats: session 48f609e05977dace saved (0 s)
++13:42:03.654 [stats] Stats: session 48f609e05977dace saved (0 s)
++00:05 +33: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_mode_test.dart: a phone hosting plays its own game: the pad, the menus, and a solo Shape Race
++00:05 +33: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/diagnostics_test.dart: the game view (m12-joined-view §5) Diagnostics and the report both show one line per frame rate
++13:42:03.081 [haptics] Haptics: supported (fake, intensity control)
++00:05 +34: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_mode_test.dart: a phone hosting plays its own game: the pad, the menus, and a solo Shape Race
++00:06 +34: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_own_player_test.dart: stopping a "Show on this device" host and playing here pairs a player again
++13:42:03.548 [haptics] Haptics: supported (fake, intensity control)
++13:42:03.813 [host] Host start: tap 0 ms
++13:42:03.816 [host] Thumb Party on Phone 8D9B 0.0.0-dev (dev) on windows, host ID 1335ea
++13:42:03.816 [host] Thumb Party on Phone 8D9B 0.0.0-dev (dev) on windows, host ID 1335ea
++13:42:03.896 [host] Host start: first frame 83 ms
++13:42:03.896 [host] Host start: first frame 83 ms
++13:42:03.969 [stats] Stats sharing turned off
++00:06 +34: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/phone_look_test.dart: the Connect screen (M13 3c) the address field is the theme's paper field with ink text, at night too
++13:42:03.701 [haptics] Haptics: supported (fake, intensity control)
++00:06 +35: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_mode_test.dart: a phone hosting plays its own game: the pad, the menus, and a solo Shape Race
++00:06 +35: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_own_player_test.dart: stopping a "Show on this device" host and playing here pairs a player again
++13:42:04.056 [host] Could not listen on :: port 45780: Only one usage of each socket address (protocol/network address/port) is normally permitted
++13:42:04.057 [host] Could not listen on 0.0.0.0 port 45780: An attempt was made to access a socket in a way forbidden by its access permissions
++13:42:04.059 [host] Listening on port 51417 (pairing code 2628)
++00:06 +35: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/joined_view_test.dart: the bar over a game (m12-phone-layout §0.7b) the mode menu holds the mode in use's settings, which open the full bar's dialog
++13:42:03.609 [haptics] Haptics: supported (fake, intensity control)
++13:42:03.772 [mode] sticks mode
++00:06 +36: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_mode_test.dart: a phone hosting plays its own game: the pad, the menus, and a solo Shape Race
++00:06 +36: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/haptics_test.dart: haptic events from the TV Diagnostics counts the events and shows the last one
++13:42:03.660 [haptics] Haptics: supported (fake, intensity control)
++00:06 +37: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_mode_test.dart: a phone hosting plays its own game: the pad, the menus, and a solo Shape Race
++00:06 +37: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_title_bar_test.dart: "Show on this device" loses the picker's back arrow too
++13:42:03.800 [haptics] Haptics: supported (fake, intensity control)
++13:42:04.081 [host] Host start: tap 0 ms
++13:42:04.084 [host] Thumb Party on Phone B9E0 0.0.0-dev (dev) on windows, host ID 77b8a3
++13:42:04.084 [host] Thumb Party on Phone B9E0 0.0.0-dev (dev) on windows, host ID 77b8a3
++13:42:04.175 [host] Host start: first frame 94 ms
++13:42:04.175 [host] Host start: first frame 94 ms
++13:42:04.253 [stats] Stats sharing turned off
++00:06 +37: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_own_player_test.dart: stopping a "Show on this device" host and playing here pairs a player again
++13:42:04.077 [host] Addresses: 192.168.1.124 (Ethernet)
++13:42:04.078 [host] Host start: service started 266 ms
++00:06 +37: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/joined_view_test.dart: the bar over a game (m12-phone-layout §0.7b) the compact bar keeps the full bar's touch sizes and the pad's body below it (C14 to C16)
++13:42:04.228 [haptics] Haptics: supported (fake, intensity control)
++00:06 +38: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_mode_test.dart: a phone hosting plays its own game: the pad, the menus, and a solo Shape Race
++00:06 +38: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_title_bar_test.dart: "Show on this device" loses the picker's back arrow too
++13:42:04.343 [host] Could not listen on :: port 45780: Only one usage of each socket address (protocol/network address/port) is normally permitted
++13:42:04.344 [host] Could not listen on 0.0.0.0 port 45780: An attempt was made to access a socket in a way forbidden by its access permissions
++13:42:04.344 [host] Listening on port 51418 (pairing code 7137)
++00:06 +38: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_own_player_test.dart: stopping a "Show on this device" host and playing here pairs a player again
++13:42:04.346 [tv] The screen may sleep again
++00:06 +38: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_title_bar_test.dart: "Show on this device" loses the picker's back arrow too
++13:42:04.362 [host] Addresses: 192.168.1.124 (Ethernet)
++00:06 +38: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/phone_look_test.dart: the Connect screen (M13 3c) each host found is a paper row with the ink edge
++13:42:04.093 [haptics] Haptics: supported (fake, intensity control)
++00:06 +39: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_mode_test.dart: a phone hosting plays its own game: the pad, the menus, and a solo Shape Race
++00:06 +39: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_title_bar_test.dart: "Show on this device" loses the picker's back arrow too
++13:42:04.363 [host] Host start: service started 281 ms
++00:06 +40: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_mode_test.dart: a phone hosting plays its own game: the pad, the menus, and a solo Shape Race
++00:06 +40: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/joined_view_test.dart: the bar over a game (m12-phone-layout §0.7b) the full bar comes back when the game ends
++13:42:04.423 [haptics] Haptics: supported (fake, intensity control)
++00:06 +41: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_mode_test.dart: a phone hosting plays its own game: the pad, the menus, and a solo Shape Race
++00:06 +41: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/diagnostics_test.dart: the game view (m12-joined-view §5) a phone that was shown no game has no Game view
++13:42:03.974 [haptics] Haptics: supported (fake, intensity control)
++00:06 +42: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_mode_test.dart: a phone hosting plays its own game: the pad, the menus, and a solo Shape Race
++00:06 +42: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_own_player_test.dart: stopping a "Show on this device" host and playing here pairs a player again
++13:42:04.582 [host] Host start: tap 0 ms
++13:42:04.586 [host] Thumb Party on Phone 8D9B 0.0.0-dev (dev) on windows, host ID 1335ea
++13:42:04.586 [host] Thumb Party on Phone 8D9B 0.0.0-dev (dev) on windows, host ID 1335ea
++13:42:04.684 [host] Host start: first frame 103 ms
++13:42:04.684 [host] Host start: first frame 103 ms
++13:42:04.756 [host] Could not listen on :: port 45780: Only one usage of each socket address (protocol/network address/port) is normally permitted
++13:42:04.757 [host] Could not listen on 0.0.0.0 port 45780: An attempt was made to access a socket in a way forbidden by its access permissions
++13:42:04.758 [host] Listening on port 51420 (pairing code 4616)
++13:42:04.776 [host] Addresses: 192.168.1.124 (Ethernet)
++13:42:04.777 [host] Connection from the local player
++13:42:04.779 [own] Connected to Phone 8D9B, saying hello
++13:42:04.779 [host] Phone 8D9B (windows 0.0.0-dev, supports metrics, rating, layout, status, identity, night) says hello from the local player
++13:42:04.779 [own] Sending pairing code
++13:42:04.781 [host] Phone 8D9B connected (pairing code), player 1
++13:42:04.783 [stats] Stats: session 3b7e90aae6a89945 started
++13:42:04.784 [own] The screen made this phone player 1
++13:42:04.784 [own] The screen made this phone player 1
++13:42:04.784 [own] The screen made this phone player 1
++13:42:04.784 [own] The screen made this phone player 1
++13:42:04.784 [own] The screen made this phone player 1
++13:42:04.811 [own] Disconnecting
++00:06 +42: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/joined_view_test.dart: a round the host abandoned (m12 §0.5) says the host was away too long, then goes after a moment
++13:42:04.652 [haptics] Haptics: supported (fake, intensity control)
++00:06 +43: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_mode_test.dart: a phone hosting plays its own game: the pad, the menus, and a solo Shape Race
++00:06 +43: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_own_player_test.dart: stopping a "Show on this device" host and playing here pairs a player again
++13:42:04.817 [stats] Stats: session 3b7e90aae6a89945 saved (0 s)
++13:42:04.817 [stats] Stats: session 3b7e90aae6a89945 saved (0 s)
++13:42:04.817 [stats] Stats: session 3b7e90aae6a89945 saved (0 s)
++00:06 +44: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_mode_test.dart: a phone hosting plays its own game: the pad, the menus, and a solo Shape Race
++00:06 +44: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_title_bar_test.dart: the menus still on the old screen leave their 24 round the body inside the frame
++13:42:04.517 [haptics] Haptics: supported (fake, intensity control)
++13:42:04.734 [host] Host start: tap 0 ms
++13:42:04.736 [host] Thumb Party on Phone 614D 0.0.0-dev (dev) on windows, host ID 1f5bd8
++13:42:04.736 [host] Thumb Party on Phone 614D 0.0.0-dev (dev) on windows, host ID 1f5bd8
++13:42:04.819 [host] Host start: first frame 85 ms
++13:42:04.819 [host] Host start: first frame 85 ms
++13:42:04.879 [stats] Stats sharing turned off
++13:42:04.954 [host] Could not listen on :: port 45780: Only one usage of each socket address (protocol/network address/port) is normally permitted
++13:42:04.955 [host] Could not listen on 0.0.0.0 port 45780: An attempt was made to access a socket in a way forbidden by its access permissions
++13:42:04.956 [host] Listening on port 51421 (pairing code 8682)
++00:07 +44: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_mode_test.dart: a phone hosting plays its own game: the pad, the menus, and a solo Shape Race
++13:42:04.987 [own] Disconnecting
++00:07 +44: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/joined_view_test.dart: a round the host abandoned (m12 §0.5) a round that finished shows no notice
++13:42:04.895 [haptics] Haptics: supported (fake, intensity control)
++00:07 +45: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_mode_test.dart: a phone hosting plays its own game: the pad, the menus, and a solo Shape Race
++00:07 +45: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_title_bar_test.dart: the menus still on the old screen leave their 24 round the body inside the frame
++13:42:04.972 [host] Addresses: 192.168.1.124 (Ethernet)
++13:42:04.974 [host] Connection from the local player
++13:42:04.975 [own] Connected to Phone 614D, saying hello
++13:42:04.975 [host] Phone 614D (windows 0.0.0-dev, supports metrics, rating, layout, status, identity, night) says hello from the local player
++13:42:04.976 [own] Sending pairing code
++13:42:04.977 [host] Phone 614D connected (pairing code), player 1
++13:42:04.979 [stats] Stats: session a52510d7bcc16a61 started
++13:42:04.980 [own] The screen made this phone player 1
++13:42:04.980 [own] The screen made this phone player 1
++13:42:04.980 [own] The screen made this phone player 1
++13:42:04.980 [own] The screen made this phone player 1
++13:42:04.980 [own] The screen made this phone player 1
++00:07 +45: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/diagnostics_test.dart: the session summary in the report (m12 §0.6) a hosting phone ends its report with the session, one line of JSON
++13:42:04.701 [haptics] Haptics: supported (fake, intensity control)
++13:42:04.888 [host] Host start: tap 0 ms
++13:42:04.891 [host] Thumb Party on Phone 1943 0.0.0-dev (dev) on windows, host ID bcc555
++13:42:04.891 [host] Thumb Party on Phone 1943 0.0.0-dev (dev) on windows, host ID bcc555
++13:42:04.958 [host] Host start: first frame 70 ms
++13:42:04.958 [host] Host start: first frame 70 ms
++13:42:05.016 [stats] Stats sharing turned off
++00:07 +45: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/phone_fit_test.dart: the Settings screen fits
++13:42:02.016 [haptics] Haptics: supported (fake, intensity control)
++13:42:02.707 [haptics] Haptics: supported (fake, intensity control)
++13:42:03.163 [haptics] Haptics: supported (fake, intensity control)
++13:42:03.722 [haptics] Haptics: supported (fake, intensity control)
++13:42:04.303 [haptics] Haptics: supported (fake, intensity control)
++13:42:04.767 [haptics] Haptics: supported (fake, intensity control)
++00:07 +46: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_mode_test.dart: a phone hosting plays its own game: the pad, the menus, and a solo Shape Race
++13:42:05.007 [stats] Stats: session c35817a7ac0a4815 saved (4 s)
++13:42:05.007 [stats] Stats: session c35817a7ac0a4815 saved (4 s)
++13:42:05.007 [stats] Stats: session c35817a7ac0a4815 saved (4 s)
++00:07 +47: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/phone_look_test.dart: the Settings screen (M13 3c) each section is a ToyCard with its name in the header band, Look and sound first
++00:07 +47: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/diagnostics_test.dart: the session summary in the report (m12 §0.6) a hosting phone ends its report with the session, one line of JSON
++13:42:05.103 [host] Listening on port 45780 (pairing code 4819)
++00:07 +47: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_title_bar_test.dart: the menus still on the old screen leave their 24 round the body inside the frame
++13:42:05.138 [own] Disconnecting
++00:07 +47: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/diagnostics_test.dart: the session summary in the report (m12 §0.6) a hosting phone ends its report with the session, one line of JSON
++13:42:05.120 [host] Addresses: 192.168.1.124 (Ethernet)
++13:42:05.121 [host] Connection from the local player
++13:42:05.122 [own] Connected to Phone 1943, saying hello
++13:42:05.123 [host] Phone 1943 (windows 0.0.0-dev, supports metrics, rating, layout, status, identity, night) says hello from the local player
++13:42:05.123 [own] Sending pairing code
++13:42:05.124 [host] Phone 1943 connected (pairing code), player 1
++13:42:05.125 [stats] Stats: session f72febfed2bfc993 started
++13:42:05.127 [own] The screen made this phone player 1
++13:42:05.127 [own] The screen made this phone player 1
++13:42:05.127 [own] The screen made this phone player 1
++13:42:05.127 [own] The screen made this phone player 1
++13:42:05.127 [own] The screen made this phone player 1
++00:07 +47: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_title_bar_test.dart: the menus still on the old screen leave their 24 round the body inside the frame
++13:42:05.143 [stats] Stats: session a52510d7bcc16a61 saved (0 s)
++13:42:05.143 [stats] Stats: session a52510d7bcc16a61 saved (0 s)
++13:42:05.143 [stats] Stats: session a52510d7bcc16a61 saved (0 s)
++00:07 +48: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/phone_look_test.dart: the Settings screen (M13 3c) each section is a ToyCard with its name in the header band, Look and sound first
++13:42:04.555 [haptics] Haptics: supported (fake, intensity control)
++00:07 +49: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/diagnostics_test.dart: the session summary in the report (m12 §0.6) a hosting phone ends its report with the session, one line of JSON
++00:07 +49: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_own_player_test.dart: stopping a host that played here and showing on this device pairs no player
++13:42:04.933 [haptics] Haptics: supported (fake, intensity control)
++13:42:05.197 [host] Host start: tap 0 ms
++13:42:05.200 [host] Thumb Party on Phone 4F05 0.0.0-dev (dev) on windows, host ID 200bc3
++13:42:05.200 [host] Thumb Party on Phone 4F05 0.0.0-dev (dev) on windows, host ID 200bc3
++13:42:05.283 [host] Host start: first frame 85 ms
++13:42:05.283 [host] Host start: first frame 85 ms
++13:42:05.346 [stats] Stats sharing turned off
++13:42:05.434 [host] Could not listen on :: port 45780: Only one usage of each socket address (protocol/network address/port) is normally permitted
++13:42:05.435 [host] Could not listen on 0.0.0.0 port 45780: An attempt was made to access a socket in a way forbidden by its access permissions
++13:42:05.436 [host] Listening on port 51424 (pairing code 1031)
++00:07 +49: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/diagnostics_test.dart: the session summary in the report (m12 §0.6) a hosting phone ends its report with the session, one line of JSON
++13:42:05.163 [stats] Stats: exported 1 session file to C:\Users\mrman\AppData\Local\Temp\thumb-party-host-63762576\thumb-party-sessions-20261125-1342
++13:42:05.454 [own] Disconnecting
++13:42:05.461 [stats] Stats: session f72febfed2bfc993 saved (0 s)
++13:42:05.461 [stats] Stats: session f72febfed2bfc993 saved (0 s)
++13:42:05.461 [stats] Stats: session f72febfed2bfc993 saved (0 s)
++00:07 +50: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_own_player_test.dart: stopping a host that played here and showing on this device pairs no player
++00:07 +50: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_mode_test.dart: "Show on this device" shows the game alone: no pad, no modes, no Settings
++13:42:05.189 [haptics] Haptics: supported (fake, intensity control)
++13:42:05.414 [host] Host start: tap 0 ms
++13:42:05.418 [host] Thumb Party on Phone F868 0.0.0-dev (dev) on windows, host ID f18831
++13:42:05.418 [host] Thumb Party on Phone F868 0.0.0-dev (dev) on windows, host ID f18831
++13:42:05.498 [host] Host start: first frame 84 ms
++13:42:05.498 [host] Host start: first frame 84 ms
++13:42:05.556 [stats] Stats sharing turned off
++00:07 +50: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_own_player_test.dart: stopping a host that played here and showing on this device pairs no player
++13:42:05.453 [host] Addresses: 192.168.1.124 (Ethernet)
++13:42:05.455 [host] Connection from the local player
++13:42:05.456 [own] Connected to Phone 4F05, saying hello
++13:42:05.457 [host] Phone 4F05 (windows 0.0.0-dev, supports metrics, rating, layout, status, identity, night) says hello from the local player
++13:42:05.458 [own] Sending pairing code
++13:42:05.459 [host] Phone 4F05 connected (pairing code), player 1
++13:42:05.461 [stats] Stats: session 8a4d46086fe31bb0 started
++13:42:05.462 [own] The screen made this phone player 1
++13:42:05.462 [own] The screen made this phone player 1
++13:42:05.462 [own] The screen made this phone player 1
++13:42:05.462 [own] The screen made this phone player 1
++13:42:05.462 [own] The screen made this phone player 1
++13:42:05.612 [own] Disconnecting
++13:42:05.613 [host] Session of Phone 4F05 ended after 0 s: input delay ~ no samples (± 2 ms)
++13:42:05.613 [host] Session of Phone 4F05 ended after 0 s: input delay ~ no samples (± 2 ms)
++00:07 +50: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_title_bar_test.dart: the round fills the frame below the bar
++13:42:05.256 [haptics] Haptics: supported (fake, intensity control)
++13:42:05.472 [host] Host start: tap 0 ms
++13:42:05.475 [host] Thumb Party on Phone 265F 0.0.0-dev (dev) on windows, host ID 073009
++13:42:05.475 [host] Thumb Party on Phone 265F 0.0.0-dev (dev) on windows, host ID 073009
++13:42:05.544 [host] Host start: first frame 72 ms
++13:42:05.544 [host] Host start: first frame 72 ms
++13:42:05.608 [stats] Stats sharing turned off
++00:07 +50: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_mode_test.dart: "Show on this device" shows the game alone: no pad, no modes, no Settings
++13:42:05.642 [host] Listening on port 45780 (pairing code 4857)
++00:07 +50: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_own_player_test.dart: stopping a host that played here and showing on this device pairs no player
++13:42:05.627 [tv] The screen may sleep again
++00:07 +50: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_mode_test.dart: "Show on this device" shows the game alone: no pad, no modes, no Settings
++13:42:05.658 [host] Addresses: 192.168.1.124 (Ethernet)
++00:07 +50: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_title_bar_test.dart: the round fills the frame below the bar
++13:42:05.688 [host] Listening on port 45780 (pairing code 5824)
++00:07 +50: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_own_player_test.dart: stopping a host that played here and showing on this device pairs no player
++13:42:05.704 [stats] Stats: session 8a4d46086fe31bb0 saved (0 s)
++00:07 +50: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_title_bar_test.dart: the round fills the frame below the bar
++13:42:05.707 [host] Addresses: 192.168.1.124 (Ethernet)
++00:07 +50: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_mode_test.dart: "Show on this device" shows the game alone: no pad, no modes, no Settings
++13:42:05.659 [host] Host start: service started 245 ms
++00:07 +50: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_title_bar_test.dart: the round fills the frame below the bar
++13:42:05.709 [host] Connection from the local player
++13:42:05.710 [own] Connected to Phone 265F, saying hello
++00:07 +51: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_own_player_test.dart: stopping a host that played here and showing on this device pairs no player
++00:07 +51: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_title_bar_test.dart: the round fills the frame below the bar
++13:42:05.711 [host] Phone 265F (windows 0.0.0-dev, supports metrics, rating, layout, status, identity, night) says hello from the local player
++13:42:05.712 [own] Sending pairing code
++13:42:05.713 [host] Phone 265F connected (pairing code), player 1
++13:42:05.714 [stats] Stats: session f06a2bc2a5b80e89 started
++13:42:05.716 [own] The screen made this phone player 1
++13:42:05.716 [own] The screen made this phone player 1
++13:42:05.716 [own] The screen made this phone player 1
++13:42:05.716 [own] The screen made this phone player 1
++13:42:05.716 [own] The screen made this phone player 1
++00:08 +51: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/diagnostics_test.dart: the session summary in the report (m12 §0.6) the session stays in the report after the host stops
++13:42:05.576 [haptics] Haptics: supported (fake, intensity control)
++13:42:05.791 [host] Host start: tap 0 ms
++13:42:05.795 [host] Thumb Party on Phone 6979 0.0.0-dev (dev) on windows, host ID 827752
++13:42:05.795 [host] Thumb Party on Phone 6979 0.0.0-dev (dev) on windows, host ID 827752
++13:42:05.942 [host] Host start: first frame 150 ms
++13:42:05.942 [host] Host start: first frame 150 ms
++13:42:06.008 [stats] Stats sharing turned off
++00:08 +51: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_own_player_test.dart: stopping a host that played here and showing on this device pairs no player
++13:42:05.950 [host] Host start: tap 0 ms
++13:42:05.954 [host] Thumb Party on Phone 4F05 0.0.0-dev (dev) on windows, host ID 200bc3
++13:42:05.954 [host] Thumb Party on Phone 4F05 0.0.0-dev (dev) on windows, host ID 200bc3
++13:42:05.954 [host] Thumb Party on Phone 4F05 0.0.0-dev (dev) on windows, host ID 200bc3
++13:42:06.040 [host] Host start: first frame 90 ms
++13:42:06.040 [host] Host start: first frame 90 ms
++00:08 +51: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/diagnostics_test.dart: the session summary in the report (m12 §0.6) the session stays in the report after the host stops
++13:42:06.091 [host] Could not listen on :: port 45780: Only one usage of each socket address (protocol/network address/port) is normally permitted
++13:42:06.092 [host] Could not listen on 0.0.0.0 port 45780: An attempt was made to access a socket in a way forbidden by its access permissions
++13:42:06.093 [host] Listening on port 51426 (pairing code 1892)
++00:08 +51: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/phone_look_test.dart: the Settings screen (M13 3c) Defaults resets the controls and leaves the look as it was
++13:42:05.351 [haptics] Haptics: supported (fake, intensity control)
++00:08 +52: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_own_player_test.dart: stopping a host that played here and showing on this device pairs no player
++00:08 +52: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_title_bar_test.dart: the round fills the frame below the bar
++13:42:06.075 [host] Round started: puzzle, solo, 1 player
++00:08 +52: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/diagnostics_test.dart: the session summary in the report (m12 §0.6) the session stays in the report after the host stops
++13:42:06.107 [host] Addresses: 192.168.1.124 (Ethernet)
++13:42:06.108 [host] Connection from the local player
++13:42:06.110 [own] Connected to Phone 6979, saying hello
++13:42:06.110 [host] Phone 6979 (windows 0.0.0-dev, supports metrics, rating, layout, status, identity, night) says hello from the local player
++13:42:06.111 [own] Sending pairing code
++13:42:06.112 [host] Phone 6979 connected (pairing code), player 1
++13:42:06.113 [stats] Stats: session 11e1ba1bfb5a43fc started
++13:42:06.114 [own] The screen made this phone player 1
++13:42:06.114 [own] The screen made this phone player 1
++13:42:06.114 [own] The screen made this phone player 1
++13:42:06.114 [own] The screen made this phone player 1
++13:42:06.114 [own] The screen made this phone player 1
++00:08 +52: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_own_player_test.dart: stopping a host that played here and showing on this device pairs no player
++13:42:06.155 [host] Could not listen on :: port 45780: Only one usage of each socket address (protocol/network address/port) is normally permitted
++13:42:06.155 [host] Could not listen on 0.0.0.0 port 45780: An attempt was made to access a socket in a way forbidden by its access permissions
++13:42:06.157 [host] Listening on port 51427 (pairing code 4781)
++00:08 +52: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/diagnostics_test.dart: the session summary in the report (m12 §0.6) the session stays in the report after the host stops
++13:42:06.162 [stats] Stats: exported 1 session file to C:\Users\mrman\AppData\Local\Temp\thumb-party-host-2b82f353\thumb-party-sessions-20261125-1342
++13:42:06.166 [own] Disconnecting
++00:08 +52: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_own_player_test.dart: stopping a host that played here and showing on this device pairs no player
++13:42:06.175 [host] Addresses: 192.168.1.124 (Ethernet)
++13:42:06.176 [host] Host start: service started 226 ms
++13:42:06.193 [stats] Stats: session 9c5219a2ccea87f3 started
++13:42:06.198 [stats] Stats: session 9c5219a2ccea87f3 saved (0 s)
++00:08 +53: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/phone_fit_test.dart: the Diagnostics screen fits
++00:08 +53: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_mode_test.dart: the host route gets the full bar over its menus (m12-host-touch rule 1)
++13:42:05.882 [haptics] Haptics: supported (fake, intensity control)
++13:42:06.112 [host] Host start: tap 0 ms
++13:42:06.115 [host] Thumb Party on Phone E981 0.0.0-dev (dev) on windows, host ID fdbe36
++13:42:06.115 [host] Thumb Party on Phone E981 0.0.0-dev (dev) on windows, host ID fdbe36
++13:42:06.230 [host] Host start: first frame 118 ms
++13:42:06.230 [host] Host start: first frame 118 ms
++13:42:06.303 [stats] Stats sharing turned off
++00:08 +53: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/phone_look_test.dart: the cards over the pad (M13 3c) the waiting card has a caution header
++13:42:06.191 [haptics] Haptics: supported (fake, intensity control)
++00:08 +54: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/phone_fit_test.dart: the Diagnostics screen fits
++00:08 +54: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_mode_test.dart: the host route gets the full bar over its menus (m12-host-touch rule 1)
++13:42:06.390 [host] Could not listen on :: port 45780: Only one usage of each socket address (protocol/network address/port) is normally permitted
++13:42:06.391 [host] Could not listen on 0.0.0.0 port 45780: An attempt was made to access a socket in a way forbidden by its access permissions
++13:42:06.392 [host] Listening on port 51428 (pairing code 6069)
++13:42:06.410 [host] Addresses: 192.168.1.124 (Ethernet)
++13:42:06.412 [host] Connection from the local player
++13:42:06.413 [own] Connected to Phone E981, saying hello
++13:42:06.414 [host] Phone E981 (windows 0.0.0-dev, supports metrics, rating, layout, status, identity, night) says hello from the local player
++13:42:06.415 [own] Sending pairing code
++13:42:06.417 [host] Phone E981 connected (pairing code), player 1
++13:42:06.420 [stats] Stats: session 08573b6c000badec started
++13:42:06.422 [own] The screen made this phone player 1
++13:42:06.422 [own] The screen made this phone player 1
++13:42:06.422 [own] The screen made this phone player 1
++13:42:06.422 [own] The screen made this phone player 1
++13:42:06.422 [own] The screen made this phone player 1
++13:42:06.452 [own] Disconnecting
++00:08 +54: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/diagnostics_test.dart: the session summary in the report (m12 §0.6) the session stays in the report after the host stops
++13:42:06.179 [stats] Stats: session 11e1ba1bfb5a43fc saved (0 s)
++13:42:06.179 [stats] Stats: session 11e1ba1bfb5a43fc saved (0 s)
++13:42:06.179 [stats] Stats: session 11e1ba1bfb5a43fc saved (0 s)
++00:08 +55: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/phone_fit_test.dart: the Diagnostics screen fits
++00:08 +55: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_mode_test.dart: the host route gets the full bar over its menus (m12-host-touch rule 1)
++13:42:06.458 [stats] Stats: session 08573b6c000badec saved (0 s)
++13:42:06.458 [stats] Stats: session 08573b6c000badec saved (0 s)
++13:42:06.458 [stats] Stats: session 08573b6c000badec saved (0 s)
++00:08 +56: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/phone_fit_test.dart: the Diagnostics screen fits
++00:08 +56: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/phone_look_test.dart: the cards over the pad (M13 3c) the abandoned card has a bad header
++13:42:06.454 [haptics] Haptics: supported (fake, intensity control)
++00:08 +57: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/phone_fit_test.dart: the Diagnostics screen fits
++00:08 +57: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/phone_look_test.dart: the cards over the pad (M13 3c) the rating card has a focus header
++13:42:06.640 [haptics] Haptics: supported (fake, intensity control)
++13:42:06.649 [rating] The screen asks how the controls felt (arena)
++00:08 +58: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/phone_fit_test.dart: the Diagnostics screen fits
++00:08 +59: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/phone_fit_test.dart: the Diagnostics screen fits
++00:08 +60: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/phone_fit_test.dart: the Diagnostics screen fits
++00:08 +60: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/diagnostics_test.dart: the session summary in the report (m12 §0.6) a phone that has not hosted has no session line
++13:42:06.529 [haptics] Haptics: supported (fake, intensity control)
++00:08 +61: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/phone_fit_test.dart: the Diagnostics screen fits
++13:42:05.158 [haptics] Haptics: supported (fake, intensity control)
++13:42:05.434 [haptics] Haptics: supported (fake, intensity control)
++13:42:05.674 [haptics] Haptics: supported (fake, intensity control)
++13:42:05.984 [haptics] Haptics: supported (fake, intensity control)
++13:42:06.325 [haptics] Haptics: supported (fake, intensity control)
++13:42:06.593 [haptics] Haptics: supported (fake, intensity control)
++00:08 +62: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_title_bar_test.dart: the round fills the frame below the bar
++00:08 +62: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/phone_look_test.dart: the bar over the pad (M13 3c) the bar's text and icons are onBackground
++13:42:06.859 [haptics] Haptics: supported (fake, intensity control)
++00:08 +63: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_title_bar_test.dart: the round fills the frame below the bar
++00:08 +64: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_title_bar_test.dart: the round fills the frame below the bar
++00:08 +65: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_title_bar_test.dart: the round fills the frame below the bar
++00:09 +65: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_mode_test.dart: shareView from the start sheet (m12-joined-view §0.1) "Play on this phone" lets the phones that join see the game
++13:42:06.562 [haptics] Haptics: supported (fake, intensity control)
++13:42:06.771 [host] Host start: tap 0 ms
++13:42:06.773 [host] Thumb Party on Phone 034D 0.0.0-dev (dev) on windows, host ID e1ad4e
++13:42:06.773 [host] Thumb Party on Phone 034D 0.0.0-dev (dev) on windows, host ID e1ad4e
++13:42:06.859 [host] Host start: first frame 88 ms
++13:42:06.859 [host] Host start: first frame 88 ms
++13:42:06.917 [stats] Stats sharing turned off
++00:09 +65: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/more_menu_test.dart: the bar has one More menu, Settings above Diagnostics, in the menu look, sunny
++13:42:06.557 [haptics] Haptics: supported (fake, intensity control)
++00:09 +66: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_title_bar_test.dart: the round fills the frame below the bar
++00:09 +66: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_mode_test.dart: shareView from the start sheet (m12-joined-view §0.1) "Play on this phone" lets the phones that join see the game
++13:42:06.999 [host] Could not listen on :: port 45780: Only one usage of each socket address (protocol/network address/port) is normally permitted
++13:42:06.999 [host] Could not listen on 0.0.0.0 port 45780: An attempt was made to access a socket in a way forbidden by its access permissions
++13:42:07.000 [host] Listening on port 51429 (pairing code 3484)
++13:42:07.014 [host] Addresses: 192.168.1.124 (Ethernet)
++13:42:07.015 [host] Connection from the local player
++13:42:07.016 [own] Connected to Phone 034D, saying hello
++13:42:07.016 [host] Phone 034D (windows 0.0.0-dev, supports metrics, rating, layout, status, identity, night) says hello from the local player
++13:42:07.017 [own] Sending pairing code
++13:42:07.017 [host] Phone 034D connected (pairing code), player 1
++13:42:07.019 [stats] Stats: session cbab2f2478e5abc3 started
++13:42:07.020 [own] The screen made this phone player 1
++13:42:07.020 [own] The screen made this phone player 1
++13:42:07.020 [own] The screen made this phone player 1
++13:42:07.020 [own] The screen made this phone player 1
++13:42:07.020 [own] The screen made this phone player 1
++13:42:07.062 [own] Disconnecting
++13:42:07.070 [stats] Stats: session cbab2f2478e5abc3 saved (0 s)
++13:42:07.070 [stats] Stats: session cbab2f2478e5abc3 saved (0 s)
++13:42:07.070 [stats] Stats: session cbab2f2478e5abc3 saved (0 s)
++00:09 +67: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_title_bar_test.dart: the round fills the frame below the bar
++00:09 +67: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/phone_fit_test.dart: the bar and its status panel fit
++13:42:06.899 [haptics] Haptics: supported (fake, intensity control)
++13:42:06.968 [haptics] Haptics: supported (fake, intensity control)
++13:42:07.020 [haptics] Haptics: supported (fake, intensity control)
++13:42:07.092 [haptics] Haptics: supported (fake, intensity control)
++13:42:07.155 [haptics] Haptics: supported (fake, intensity control)
++13:42:07.219 [haptics] Haptics: supported (fake, intensity control)
++00:09 +68: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_title_bar_test.dart: the round fills the frame below the bar
++00:09 +68: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/touch_targets_test.dart: every touch target on pad at 568x320 in the menu look is at least 48 dp or listed in knownBelow48
++13:42:07.237 [haptics] Haptics: supported (fake, intensity control)
++00:09 +69: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_title_bar_test.dart: the round fills the frame below the bar
++00:09 +69: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_mode_test.dart: shareView from the start sheet (m12-joined-view §0.1) "Show on this device" keeps the game on this screen
++13:42:07.169 [haptics] Haptics: supported (fake, intensity control)
++13:42:07.328 [host] Host start: tap 0 ms
++13:42:07.330 [host] Thumb Party on Phone F950 0.0.0-dev (dev) on windows, host ID c81a84
++13:42:07.330 [host] Thumb Party on Phone F950 0.0.0-dev (dev) on windows, host ID c81a84
++13:42:07.379 [host] Host start: first frame 51 ms
++13:42:07.379 [host] Host start: first frame 51 ms
++13:42:07.434 [stats] Stats sharing turned off
++13:42:07.514 [host] Could not listen on :: port 45780: Only one usage of each socket address (protocol/network address/port) is normally permitted
++13:42:07.514 [host] Could not listen on 0.0.0.0 port 45780: An attempt was made to access a socket in a way forbidden by its access permissions
++13:42:07.515 [host] Listening on port 51430 (pairing code 4223)
++13:42:07.536 [host] Addresses: 192.168.1.124 (Ethernet)
++00:09 +69: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/touch_targets_test.dart: every touch target on pad at 640x360 in the menu look is at least 48 dp or listed in knownBelow48
++13:42:07.534 [haptics] Haptics: supported (fake, intensity control)
++00:09 +70: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_title_bar_test.dart: the round fills the frame below the bar
++00:09 +70: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_mode_test.dart: shareView from the start sheet (m12-joined-view §0.1) "Show on this device" keeps the game on this screen
++13:42:07.537 [host] Host start: service started 209 ms
++00:09 +71: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_title_bar_test.dart: the round fills the frame below the bar
++00:09 +71: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/touch_targets_test.dart: every touch target on pad at 640x360 in the TV look is at least 48 dp or listed in knownBelow48
++13:42:07.678 [haptics] Haptics: supported (fake, intensity control)
++00:09 +72: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_title_bar_test.dart: the round fills the frame below the bar
++00:09 +72: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/touch_targets_test.dart: every touch target on pad at 375x667 in the menu look is at least 48 dp or listed in knownBelow48
++13:42:07.809 [haptics] Haptics: supported (fake, intensity control)
++00:09 +73: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_title_bar_test.dart: the round fills the frame below the bar
++00:09 +73: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/touch_targets_test.dart: every touch target on pad at 375x667 in the TV look is at least 48 dp or listed in knownBelow48
++13:42:07.882 [haptics] Haptics: supported (fake, intensity control)
++00:09 +74: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_title_bar_test.dart: the round fills the frame below the bar
++00:10 +74: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/touch_targets_test.dart: every touch target on pad at 320x640 in the menu look is at least 48 dp or listed in knownBelow48
++13:42:07.958 [haptics] Haptics: supported (fake, intensity control)
++00:10 +75: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_title_bar_test.dart: the round fills the frame below the bar
++00:10 +75: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/touch_targets_test.dart: every touch target on pad at 320x640 in the TV look is at least 48 dp or listed in knownBelow48
++13:42:08.029 [haptics] Haptics: supported (fake, intensity control)
++00:10 +76: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_title_bar_test.dart: the round fills the frame below the bar
++00:10 +76: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_mode_test.dart: Stop hosting in the chip stops the host, and a second "Host a game" works
++13:42:07.688 [haptics] Haptics: supported (fake, intensity control)
++13:42:07.895 [host] Host start: tap 0 ms
++13:42:07.898 [host] Thumb Party on Phone 3D7B 0.0.0-dev (dev) on windows, host ID 94e20c
++13:42:07.898 [host] Thumb Party on Phone 3D7B 0.0.0-dev (dev) on windows, host ID 94e20c
++13:42:07.990 [host] Host start: first frame 96 ms
++13:42:07.990 [host] Host start: first frame 96 ms
++13:42:08.047 [stats] Stats sharing turned off
++13:42:08.128 [host] Could not listen on :: port 45780: Only one usage of each socket address (protocol/network address/port) is normally permitted
++13:42:08.129 [host] Could not listen on 0.0.0.0 port 45780: An attempt was made to access a socket in a way forbidden by its access permissions
++13:42:08.130 [host] Listening on port 51431 (pairing code 0491)
++13:42:08.147 [host] Addresses: 192.168.1.124 (Ethernet)
++00:10 +76: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/phone_fit_test.dart: the waiting card fits
++13:42:07.299 [haptics] Haptics: supported (fake, intensity control)
++13:42:07.468 [haptics] Haptics: supported (fake, intensity control)
++13:42:07.629 [haptics] Haptics: supported (fake, intensity control)
++13:42:07.778 [haptics] Haptics: supported (fake, intensity control)
++13:42:07.917 [haptics] Haptics: supported (fake, intensity control)
++13:42:08.080 [haptics] Haptics: supported (fake, intensity control)
++00:10 +77: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_title_bar_test.dart: the round fills the frame below the bar
++00:10 +77: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_mode_test.dart: Stop hosting in the chip stops the host, and a second "Host a game" works
++13:42:08.148 [host] Connection from the local player
++13:42:08.149 [own] Connected to Phone 3D7B, saying hello
++13:42:08.150 [host] Phone 3D7B (windows 0.0.0-dev, supports metrics, rating, layout, status, identity, night) says hello from the local player
++13:42:08.150 [own] Sending pairing code
++13:42:08.151 [host] Phone 3D7B connected (pairing code), player 1
++13:42:08.153 [stats] Stats: session 68df5f4cd919c881 started
++13:42:08.155 [own] The screen made this phone player 1
++13:42:08.155 [own] The screen made this phone player 1
++13:42:08.155 [own] The screen made this phone player 1
++13:42:08.155 [own] The screen made this phone player 1
++13:42:08.155 [own] The screen made this phone player 1
++13:42:08.384 [own] Disconnecting
++13:42:08.385 [host] Session of Phone 3D7B ended after 0 s: input delay ~ no samples (± 1 ms)
++13:42:08.385 [host] Session of Phone 3D7B ended after 0 s: input delay ~ no samples (± 1 ms)
++00:10 +77: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/more_menu_test.dart: the More menu opens Settings and Diagnostics in the menu look, sunny
++13:42:07.094 [haptics] Haptics: supported (fake, intensity control)
++00:10 +78: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_title_bar_test.dart: the round fills the frame below the bar
++00:10 +78: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_mode_test.dart: Stop hosting in the chip stops the host, and a second "Host a game" works
++13:42:08.399 [tv] The screen may sleep again
++13:42:08.468 [stats] Stats: session 68df5f4cd919c881 saved (0 s)
++00:10 +78: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/more_menu_test.dart: the bar has one More menu, Settings above Diagnostics, in the menu look, night
++13:42:08.542 [haptics] Haptics: supported (fake, intensity control)
++00:10 +79: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_title_bar_test.dart: the round fills the frame below the bar
++00:10 +79: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_mode_test.dart: Stop hosting in the chip stops the host, and a second "Host a game" works
++13:42:08.698 [host] Host start: tap 0 ms
++13:42:08.702 [host] Thumb Party on Phone 3D7B 0.0.0-dev (dev) on windows, host ID 94e20c
++13:42:08.702 [host] Thumb Party on Phone 3D7B 0.0.0-dev (dev) on windows, host ID 94e20c
++13:42:08.702 [host] Thumb Party on Phone 3D7B 0.0.0-dev (dev) on windows, host ID 94e20c
++13:42:08.777 [host] Host start: first frame 78 ms
++13:42:08.777 [host] Host start: first frame 78 ms
++00:10 +79: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/touch_targets_test.dart: every touch target on connect at 568x320 in the menu look is at least 48 dp or listed in knownBelow48
++13:42:08.150 [haptics] Haptics: supported (fake, intensity control)
++00:10 +80: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_title_bar_test.dart: the round fills the frame below the bar
++00:10 +80: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_mode_test.dart: Stop hosting in the chip stops the host, and a second "Host a game" works
++13:42:08.883 [host] Could not listen on :: port 45780: Only one usage of each socket address (protocol/network address/port) is normally permitted
++13:42:08.884 [host] Could not listen on 0.0.0.0 port 45780: An attempt was made to access a socket in a way forbidden by its access permissions
++13:42:08.885 [host] Listening on port 51433 (pairing code 4787)
++13:42:08.904 [host] Addresses: 192.168.1.124 (Ethernet)
++13:42:08.905 [host] Connection from the local player
++13:42:08.906 [own] Connected to Phone 3D7B, saying hello
++13:42:08.906 [host] Phone 3D7B (windows 0.0.0-dev, supports metrics, rating, layout, status, identity, night) says hello from the local player
++13:42:08.908 [own] Sending pairing code
++13:42:08.910 [host] Phone 3D7B connected (pairing code), player 1
++13:42:08.911 [stats] Stats: session 269603c8eae194c5 started
++13:42:08.912 [own] The screen made this phone player 1
++13:42:08.912 [own] The screen made this phone player 1
++13:42:08.912 [own] The screen made this phone player 1
++13:42:08.912 [own] The screen made this phone player 1
++13:42:08.912 [own] The screen made this phone player 1
++13:42:08.975 [own] Disconnecting
++13:42:08.986 [stats] Stats: session 269603c8eae194c5 saved (0 s)
++13:42:08.986 [stats] Stats: session 269603c8eae194c5 saved (0 s)
++13:42:08.986 [stats] Stats: session 269603c8eae194c5 saved (0 s)
++00:11 +81: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_title_bar_test.dart: the round fills the frame below the bar
++00:11 +81: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/phone_fit_test.dart: the abandoned card fits
++13:42:08.220 [haptics] Haptics: supported (fake, intensity control)
++13:42:08.375 [haptics] Haptics: supported (fake, intensity control)
++13:42:08.553 [haptics] Haptics: supported (fake, intensity control)
++13:42:08.733 [haptics] Haptics: supported (fake, intensity control)
++13:42:08.884 [haptics] Haptics: supported (fake, intensity control)
++13:42:09.039 [haptics] Haptics: supported (fake, intensity control)
++00:11 +82: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_title_bar_test.dart: the round fills the frame below the bar
++00:11 +82: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/touch_targets_test.dart: every touch target on connect at 640x360 in the menu look is at least 48 dp or listed in knownBelow48
++13:42:08.960 [haptics] Haptics: supported (fake, intensity control)
++00:11 +83: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_title_bar_test.dart: the round fills the frame below the bar
++13:42:09.296 [own] Disconnecting
++13:42:09.302 [stats] Stats: session f06a2bc2a5b80e89 saved (4 s)
++13:42:09.302 [stats] Stats: session f06a2bc2a5b80e89 saved (4 s)
++13:42:09.302 [stats] Stats: session f06a2bc2a5b80e89 saved (4 s)
++00:11 +84: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/more_menu_test.dart: the More menu opens Settings and Diagnostics in the menu look, night
++00:11 +84: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_mode_test.dart: a stopped host lets a second "Host a game" start on the same providers
++13:42:09.103 [haptics] Haptics: supported (fake, intensity control)
++13:42:09.287 [host] Host start: tap 0 ms
++13:42:09.289 [host] Thumb Party on Phone 6577 0.0.0-dev (dev) on windows, host ID 14705a
++13:42:09.289 [host] Thumb Party on Phone 6577 0.0.0-dev (dev) on windows, host ID 14705a
++13:42:09.355 [host] Host start: first frame 68 ms
++13:42:09.355 [host] Host start: first frame 68 ms
++13:42:09.402 [stats] Stats sharing turned off
++00:11 +84: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/more_menu_test.dart: the More menu opens Settings and Diagnostics in the menu look, night
++13:42:08.723 [haptics] Haptics: supported (fake, intensity control)
++00:11 +85: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_mode_test.dart: a stopped host lets a second "Host a game" start on the same providers
++00:11 +85: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/touch_targets_test.dart: every touch target on connect at 640x360 in the TV look is at least 48 dp or listed in knownBelow48
++13:42:09.247 [haptics] Haptics: supported (fake, intensity control)
++00:11 +86: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_mode_test.dart: a stopped host lets a second "Host a game" start on the same providers
++13:42:09.480 [host] Listening on port 45780 (pairing code 7004)
++13:42:09.496 [host] Addresses: 192.168.1.124 (Ethernet)
++13:42:09.497 [host] Connection from the local player
++13:42:09.499 [own] Connected to Phone 6577, saying hello
++13:42:09.499 [host] Phone 6577 (windows 0.0.0-dev, supports metrics, rating, layout, status, identity, night) says hello from the local player
++13:42:09.500 [own] Sending pairing code
++13:42:09.501 [host] Phone 6577 connected (pairing code), player 1
++13:42:09.502 [stats] Stats: session 50fe4036a023f029 started
++13:42:09.503 [own] The screen made this phone player 1
++13:42:09.503 [own] The screen made this phone player 1
++13:42:09.503 [own] The screen made this phone player 1
++13:42:09.503 [own] The screen made this phone player 1
++13:42:09.503 [own] The screen made this phone player 1
++13:42:09.548 [own] Disconnecting
++13:42:09.549 [host] Session of Phone 6577 ended after 0 s: input delay ~ no samples
++13:42:09.549 [host] Session of Phone 6577 ended after 0 s: input delay ~ no samples
++13:42:09.556 [tv] The screen may sleep again
++00:11 +86: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/more_menu_test.dart: the bar has one More menu, Settings above Diagnostics, in the TV look, sunny
++13:42:09.521 [haptics] Haptics: supported (fake, intensity control)
++00:11 +87: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_mode_test.dart: a stopped host lets a second "Host a game" start on the same providers
++13:42:09.600 [stats] Stats: session 50fe4036a023f029 saved (0 s)
++00:11 +87: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/touch_targets_test.dart: every touch target on connect at 375x667 in the menu look is at least 48 dp or listed in knownBelow48
++13:42:09.492 [haptics] Haptics: supported (fake, intensity control)
++00:11 +88: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_mode_test.dart: a stopped host lets a second "Host a game" start on the same providers
++00:11 +88: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_title_bar_test.dart: the hosted menus show no focus ring, and a thumb does not start one
++13:42:09.408 [haptics] Haptics: supported (fake, intensity control)
++13:42:09.575 [host] Host start: tap 0 ms
++13:42:09.578 [host] Thumb Party on Phone B6C1 0.0.0-dev (dev) on windows, host ID e59d98
++13:42:09.578 [host] Thumb Party on Phone B6C1 0.0.0-dev (dev) on windows, host ID e59d98
++13:42:09.635 [host] Host start: first frame 60 ms
++13:42:09.635 [host] Host start: first frame 60 ms
++13:42:09.680 [stats] Stats sharing turned off
++13:42:09.753 [host] Listening on port 45780 (pairing code 3547)
++13:42:09.767 [host] Addresses: 192.168.1.124 (Ethernet)
++13:42:09.768 [host] Connection from the local player
++13:42:09.769 [own] Connected to Phone B6C1, saying hello
++13:42:09.770 [host] Phone B6C1 (windows 0.0.0-dev, supports metrics, rating, layout, status, identity, night) says hello from the local player
++13:42:09.771 [own] Sending pairing code
++13:42:09.771 [host] Phone B6C1 connected (pairing code), player 1
++13:42:09.774 [stats] Stats: session c4f05b30a584b5ab started
++13:42:09.775 [own] The screen made this phone player 1
++13:42:09.775 [own] The screen made this phone player 1
++13:42:09.775 [own] The screen made this phone player 1
++13:42:09.775 [own] The screen made this phone player 1
++13:42:09.775 [own] The screen made this phone player 1
++13:42:09.804 [own] Disconnecting
++13:42:09.816 [stats] Stats: session c4f05b30a584b5ab saved (0 s)
++13:42:09.816 [stats] Stats: session c4f05b30a584b5ab saved (0 s)
++13:42:09.816 [stats] Stats: session c4f05b30a584b5ab saved (0 s)
++00:11 +89: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_mode_test.dart: a stopped host lets a second "Host a game" start on the same providers
++13:42:09.773 [host] Host start: tap 0 ms
++13:42:09.776 [host] Thumb Party on Phone 6577 0.0.0-dev (dev) on windows, host ID 14705a
++13:42:09.776 [host] Thumb Party on Phone 6577 0.0.0-dev (dev) on windows, host ID 14705a
++13:42:09.776 [host] Thumb Party on Phone 6577 0.0.0-dev (dev) on windows, host ID 14705a
++13:42:09.846 [host] Host start: first frame 74 ms
++13:42:09.846 [host] Host start: first frame 74 ms
++00:11 +89: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/touch_targets_test.dart: every touch target on connect at 375x667 in the TV look is at least 48 dp or listed in knownBelow48
++13:42:09.687 [haptics] Haptics: supported (fake, intensity control)
++00:11 +90: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_mode_test.dart: a stopped host lets a second "Host a game" start on the same providers
++13:42:09.939 [host] Listening on port 45780 (pairing code 3762)
++00:12 +90: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/phone_fit_test.dart: the rating card fits, on both its steps
++13:42:09.176 [haptics] Haptics: supported (fake, intensity control)
++13:42:09.182 [rating] The screen asks how the controls felt (arena)
++13:42:09.322 [haptics] Haptics: supported (fake, intensity control)
++13:42:09.328 [rating] The screen asks how the controls felt (arena)
++13:42:09.436 [haptics] Haptics: supported (fake, intensity control)
++13:42:09.445 [rating] The screen asks how the controls felt (arena)
++13:42:09.576 [haptics] Haptics: supported (fake, intensity control)
++13:42:09.584 [rating] The screen asks how the controls felt (arena)
++13:42:09.687 [haptics] Haptics: supported (fake, intensity control)
++13:42:09.699 [rating] The screen asks how the controls felt (arena)
++13:42:09.882 [haptics] Haptics: supported (fake, intensity control)
++13:42:09.891 [rating] The screen asks how the controls felt (arena)
++00:12 +91: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_mode_test.dart: a stopped host lets a second "Host a game" start on the same providers
++13:42:09.957 [host] Addresses: 192.168.1.124 (Ethernet)
++13:42:09.958 [host] Connection from the local player
++13:42:09.959 [own] Connected to Phone 6577, saying hello
++13:42:09.959 [host] Phone 6577 (windows 0.0.0-dev, supports metrics, rating, layout, status, identity, night) says hello from the local player
++13:42:09.960 [own] Sending pairing code
++13:42:09.961 [host] Phone 6577 connected (pairing code), player 1
++13:42:09.962 [stats] Stats: session 9ab895fcab5a783e started
++13:42:09.963 [own] The screen made this phone player 1
++13:42:09.963 [own] The screen made this phone player 1
++13:42:09.963 [own] The screen made this phone player 1
++13:42:09.963 [own] The screen made this phone player 1
++13:42:09.963 [own] The screen made this phone player 1
++13:42:09.988 [own] Disconnecting
++13:42:09.993 [stats] Stats: session 9ab895fcab5a783e saved (0 s)
++13:42:09.993 [stats] Stats: session 9ab895fcab5a783e saved (0 s)
++13:42:09.993 [stats] Stats: session 9ab895fcab5a783e saved (0 s)
++00:12 +92: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/more_menu_test.dart: the More menu opens Settings and Diagnostics in the TV look, sunny
++00:12 +92: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/touch_targets_test.dart: every touch target on connect at 320x640 in the menu look is at least 48 dp or listed in knownBelow48
++13:42:09.905 [haptics] Haptics: supported (fake, intensity control)
++00:12 +93: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/more_menu_test.dart: the More menu opens Settings and Diagnostics in the TV look, sunny
++13:42:09.643 [haptics] Haptics: supported (fake, intensity control)
++00:12 +94: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/phone_fit_test.dart: the host start sheet fits
++00:12 +94: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/touch_targets_test.dart: every touch target on connect at 320x640 in the TV look is at least 48 dp or listed in knownBelow48
++13:42:10.101 [haptics] Haptics: supported (fake, intensity control)
++00:12 +95: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/phone_fit_test.dart: the host start sheet fits
++00:12 +95: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/more_menu_test.dart: the bar has one More menu, Settings above Diagnostics, in the TV look, night
++13:42:10.210 [haptics] Haptics: supported (fake, intensity control)
++00:12 +96: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/phone_fit_test.dart: the host start sheet fits
++00:12 +96: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_mode_test.dart: a rating prompt for the own player shows no dialog while this phone hosts
++13:42:10.081 [haptics] Haptics: supported (fake, intensity control)
++13:42:10.258 [host] Host start: tap 0 ms
++13:42:10.260 [host] Thumb Party on Phone 8EFD 0.0.0-dev (dev) on windows, host ID 3f8894
++13:42:10.260 [host] Thumb Party on Phone 8EFD 0.0.0-dev (dev) on windows, host ID 3f8894
++13:42:10.326 [host] Host start: first frame 68 ms
++13:42:10.326 [host] Host start: first frame 68 ms
++13:42:10.373 [stats] Stats sharing turned off
++13:42:10.453 [host] Listening on port 45780 (pairing code 3410)
++13:42:10.470 [host] Addresses: 192.168.1.124 (Ethernet)
++13:42:10.471 [host] Connection from the local player
++13:42:10.471 [own] Connected to Phone 8EFD, saying hello
++13:42:10.472 [host] Phone 8EFD (windows 0.0.0-dev, supports metrics, rating, layout, status, identity, night) says hello from the local player
++13:42:10.472 [own] Sending pairing code
++13:42:10.473 [host] Phone 8EFD connected (pairing code), player 1
++13:42:10.474 [stats] Stats: session deb5c3dcb956537a started
++13:42:10.475 [own] The screen made this phone player 1
++13:42:10.475 [own] The screen made this phone player 1
++13:42:10.475 [own] The screen made this phone player 1
++13:42:10.475 [own] The screen made this phone player 1
++13:42:10.475 [own] The screen made this phone player 1
++13:42:10.514 [rating] The screen asks how the controls felt (arena)
++13:42:10.530 [own] Disconnecting
++13:42:10.535 [stats] Stats: session deb5c3dcb956537a saved (0 s)
++13:42:10.535 [stats] Stats: session deb5c3dcb956537a saved (0 s)
++13:42:10.535 [stats] Stats: session deb5c3dcb956537a saved (0 s)
++00:12 +97: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/phone_fit_test.dart: the host start sheet fits
++00:12 +97: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/more_menu_test.dart: the More menu opens Settings and Diagnostics in the TV look, night
++13:42:10.317 [haptics] Haptics: supported (fake, intensity control)
++00:12 +98: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/phone_fit_test.dart: the host start sheet fits
++00:12 +98: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/more_menu_test.dart: the More menu is 48 dp or more on a small menu-look screen
++13:42:10.809 [haptics] Haptics: supported (fake, intensity control)
++00:12 +99: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/phone_fit_test.dart: the host start sheet fits
++00:12 +99: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_mode_test.dart: the system back on the results goes to the picker and the host stays on
++13:42:10.617 [haptics] Haptics: supported (fake, intensity control)
++13:42:10.768 [host] Host start: tap 0 ms
++13:42:10.770 [host] Thumb Party on Phone 5AF6 0.0.0-dev (dev) on windows, host ID aca993
++13:42:10.770 [host] Thumb Party on Phone 5AF6 0.0.0-dev (dev) on windows, host ID aca993
++13:42:10.830 [host] Host start: first frame 63 ms
++13:42:10.830 [host] Host start: first frame 63 ms
++13:42:10.872 [stats] Stats sharing turned off
++13:42:10.941 [host] Listening on port 45780 (pairing code 3746)
++13:42:10.960 [host] Addresses: 192.168.1.124 (Ethernet)
++13:42:10.961 [host] Connection from the local player
++13:42:10.962 [own] Connected to Phone 5AF6, saying hello
++13:42:10.962 [host] Phone 5AF6 (windows 0.0.0-dev, supports metrics, rating, layout, status, identity, night) says hello from the local player
++13:42:10.962 [own] Sending pairing code
++13:42:10.963 [host] Phone 5AF6 connected (pairing code), player 1
++13:42:10.964 [stats] Stats: session cfdef8dd69b65aa7 started
++13:42:10.966 [own] The screen made this phone player 1
++13:42:10.966 [own] The screen made this phone player 1
++13:42:10.966 [own] The screen made this phone player 1
++13:42:10.966 [own] The screen made this phone player 1
++13:42:10.966 [own] The screen made this phone player 1
++00:13 +99: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/phone_fit_test.dart: the host start sheet fits
++13:42:10.018 [haptics] Haptics: supported (fake, intensity control)
++13:42:10.239 [haptics] Haptics: supported (fake, intensity control)
++13:42:10.451 [haptics] Haptics: supported (fake, intensity control)
++13:42:10.638 [haptics] Haptics: supported (fake, intensity control)
++13:42:10.818 [haptics] Haptics: supported (fake, intensity control)
++13:42:10.987 [haptics] Haptics: supported (fake, intensity control)
++00:13 +100: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/touch_targets_test.dart: every touch target on settings at 568x320 in the menu look is at least 48 dp or listed in knownBelow48
++00:13 +100: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_mode_test.dart: the system back on the results goes to the picker and the host stays on
++13:42:11.160 [host] Round started: puzzle, solo, 1 player
++00:13 +100: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/more_menu_test.dart: "Show on this device" has no More menu: the plain Diagnostics button stays
++13:42:10.890 [haptics] Haptics: supported (fake, intensity control)
++13:42:11.171 [host] Host start: tap 0 ms
++13:42:11.191 [host] Thumb Party on Phone 4F70 0.0.0-dev (dev) on windows, host ID bee7f6
++13:42:11.191 [host] Thumb Party on Phone 4F70 0.0.0-dev (dev) on windows, host ID bee7f6
++13:42:11.284 [host] Host start: first frame 113 ms
++13:42:11.284 [host] Host start: first frame 113 ms
++13:42:11.379 [stats] Stats sharing turned off
++13:42:11.471 [host] Could not listen on :: port 45780: Only one usage of each socket address (protocol/network address/port) is normally permitted
++13:42:11.471 [host] Could not listen on 0.0.0.0 port 45780: An attempt was made to access a socket in a way forbidden by its access permissions
++13:42:11.476 [host] Listening on port 51435 (pairing code 0458)
++13:42:11.497 [host] Addresses: 192.168.1.124 (Ethernet)
++00:13 +100: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/touch_targets_test.dart: every touch target on settings at 568x320 in the menu look is at least 48 dp or listed in knownBelow48
++13:42:10.305 [haptics] Haptics: supported (fake, intensity control)
++00:13 +101: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_mode_test.dart: the system back on the results goes to the picker and the host stays on
++00:13 +101: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/more_menu_test.dart: "Show on this device" has no More menu: the plain Diagnostics button stays
++13:42:11.499 [host] Host start: service started 328 ms
++00:13 +102: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_mode_test.dart: the system back on the results goes to the picker and the host stays on
++00:14 +102: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/touch_targets_test.dart: every touch target on settings at 640x360 in the menu look is at least 48 dp or listed in knownBelow48
++13:42:11.553 [haptics] Haptics: supported (fake, intensity control)
++00:14 +103: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_mode_test.dart: the system back on the results goes to the picker and the host stays on
++00:15 +103: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/touch_targets_test.dart: every touch target on settings at 640x360 in the TV look is at least 48 dp or listed in knownBelow48
++13:42:12.293 [haptics] Haptics: supported (fake, intensity control)
++00:15 +104: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_mode_test.dart: the system back on the results goes to the picker and the host stays on
++13:42:13.331 [host] Round ended: Done! (0.0 s)
++00:15 +104: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/touch_targets_test.dart: every touch target on settings at 375x667 in the menu look is at least 48 dp or listed in knownBelow48
++13:42:12.974 [haptics] Haptics: supported (fake, intensity control)
++00:15 +105: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_mode_test.dart: the system back on the results goes to the picker and the host stays on
++00:16 +105: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/touch_targets_test.dart: every touch target on settings at 375x667 in the TV look is at least 48 dp or listed in knownBelow48
++13:42:13.562 [haptics] Haptics: supported (fake, intensity control)
++00:16 +106: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_mode_test.dart: the system back on the results goes to the picker and the host stays on
++13:42:14.864 [host] Results: back to the games
++13:42:14.891 [own] Disconnecting
++00:16 +106: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/touch_targets_test.dart: every touch target on settings at 320x640 in the menu look is at least 48 dp or listed in knownBelow48
++13:42:14.352 [haptics] Haptics: supported (fake, intensity control)
++00:16 +107: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_mode_test.dart: the system back on the results goes to the picker and the host stays on
++13:42:14.895 [stats] Stats: session cfdef8dd69b65aa7 saved (4 s)
++13:42:14.895 [stats] Stats: session cfdef8dd69b65aa7 saved (4 s)
++13:42:14.895 [stats] Stats: session cfdef8dd69b65aa7 saved (4 s)
++00:16 +108: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/touch_targets_test.dart: every touch target on settings at 320x640 in the TV look is at least 48 dp or listed in knownBelow48
++00:17 +108: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_mode_test.dart: Start on the pad pauses the round: the menu is touch, Resume brings the pad back
++13:42:14.956 [haptics] Haptics: supported (fake, intensity control)
++13:42:15.050 [host] Host start: tap 0 ms
++13:42:15.053 [host] Thumb Party on Phone A491 0.0.0-dev (dev) on windows, host ID 3fb3bf
++13:42:15.053 [host] Thumb Party on Phone A491 0.0.0-dev (dev) on windows, host ID 3fb3bf
++13:42:15.085 [host] Host start: first frame 35 ms
++13:42:15.085 [host] Host start: first frame 35 ms
++13:42:15.112 [stats] Stats sharing turned off
++13:42:15.171 [host] Listening on port 45780 (pairing code 7782)
++13:42:15.185 [host] Addresses: 192.168.1.124 (Ethernet)
++13:42:15.186 [host] Connection from the local player
++13:42:15.186 [own] Connected to Phone A491, saying hello
++13:42:15.187 [host] Phone A491 (windows 0.0.0-dev, supports metrics, rating, layout, status, identity, night) says hello from the local player
++13:42:15.187 [own] Sending pairing code
++13:42:15.188 [host] Phone A491 connected (pairing code), player 1
++13:42:15.188 [stats] Stats: session 040f569532445ee2 started
++13:42:15.189 [own] The screen made this phone player 1
++13:42:15.189 [own] The screen made this phone player 1
++13:42:15.189 [own] The screen made this phone player 1
++13:42:15.189 [own] The screen made this phone player 1
++13:42:15.189 [own] The screen made this phone player 1
++13:42:15.334 [host] Round started: puzzle, solo, 1 player
++00:17 +108: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/touch_targets_test.dart: every touch target on settings at 320x640 in the TV look is at least 48 dp or listed in knownBelow48
++13:42:14.916 [haptics] Haptics: supported (fake, intensity control)
++00:17 +109: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_mode_test.dart: Start on the pad pauses the round: the menu is touch, Resume brings the pad back
++13:42:17.141 [host] Round paused: P1 pressed Start
++13:42:17.289 [host] Round resumed: the menu closed
++13:42:17.325 [own] Disconnecting
++13:42:17.329 [stats] Stats: session 040f569532445ee2 saved (2 s)
++13:42:17.329 [stats] Stats: session 040f569532445ee2 saved (2 s)
++13:42:17.329 [stats] Stats: session 040f569532445ee2 saved (2 s)
++00:19 +110: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_mode_test.dart: a round starts with a 3 s Get ready beat: the pad is up and the clock is held
++13:42:17.384 [haptics] Haptics: supported (fake, intensity control)
++13:42:17.457 [host] Host start: tap 0 ms
++13:42:17.458 [host] Thumb Party on Phone BCCB 0.0.0-dev (dev) on windows, host ID 9249c6
++13:42:17.458 [host] Thumb Party on Phone BCCB 0.0.0-dev (dev) on windows, host ID 9249c6
++13:42:17.486 [host] Host start: first frame 29 ms
++13:42:17.486 [host] Host start: first frame 29 ms
++13:42:17.505 [stats] Stats sharing turned off
++13:42:17.564 [host] Listening on port 45780 (pairing code 9182)
++13:42:17.574 [host] Addresses: 192.168.1.124 (Ethernet)
++13:42:17.574 [host] Connection from the local player
++13:42:17.575 [own] Connected to Phone BCCB, saying hello
++13:42:17.575 [host] Phone BCCB (windows 0.0.0-dev, supports metrics, rating, layout, status, identity, night) says hello from the local player
++13:42:17.575 [own] Sending pairing code
++13:42:17.575 [host] Phone BCCB connected (pairing code), player 1
++13:42:17.577 [stats] Stats: session a895b90ce4541eef started
++13:42:17.577 [own] The screen made this phone player 1
++13:42:17.577 [own] The screen made this phone player 1
++13:42:17.577 [own] The screen made this phone player 1
++13:42:17.577 [own] The screen made this phone player 1
++13:42:17.577 [own] The screen made this phone player 1
++13:42:17.691 [host] Round started: puzzle, solo, 1 player
++13:42:17.761 [own] Disconnecting
++13:42:17.765 [stats] Stats: session a895b90ce4541eef saved (0 s)
++13:42:17.765 [stats] Stats: session a895b90ce4541eef saved (0 s)
++13:42:17.765 [stats] Stats: session a895b90ce4541eef saved (0 s)
++00:19 +111: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_mode_test.dart: a pad hidden under a held finger lets go of it with one neutral input
++13:42:17.809 [haptics] Haptics: supported (fake, intensity control)
++13:42:17.881 [host] Host start: tap 0 ms
++13:42:17.882 [host] Thumb Party on Phone 5E5C 0.0.0-dev (dev) on windows, host ID 1ebaab
++13:42:17.882 [host] Thumb Party on Phone 5E5C 0.0.0-dev (dev) on windows, host ID 1ebaab
++13:42:17.910 [host] Host start: first frame 29 ms
++13:42:17.910 [host] Host start: first frame 29 ms
++13:42:17.931 [stats] Stats sharing turned off
++13:42:17.993 [host] Listening on port 45780 (pairing code 0138)
++13:42:18.005 [host] Addresses: 192.168.1.124 (Ethernet)
++13:42:18.006 [host] Connection from the local player
++13:42:18.006 [own] Connected to Phone 5E5C, saying hello
++13:42:18.007 [host] Phone 5E5C (windows 0.0.0-dev, supports metrics, rating, layout, status, identity, night) says hello from the local player
++13:42:18.007 [own] Sending pairing code
++13:42:18.008 [host] Phone 5E5C connected (pairing code), player 1
++13:42:18.009 [stats] Stats: session a1f9d15692afb154 started
++13:42:18.009 [own] The screen made this phone player 1
++13:42:18.009 [own] The screen made this phone player 1
++13:42:18.009 [own] The screen made this phone player 1
++13:42:18.009 [own] The screen made this phone player 1
++13:42:18.009 [own] The screen made this phone player 1
++13:42:18.145 [host] Round started: puzzle, solo, 1 player
++13:42:19.760 [host] Round paused: P1 pressed Start
++13:42:19.793 [host] Round resumed: the menu closed
++13:42:19.827 [own] Disconnecting
++13:42:19.830 [stats] Stats: session a1f9d15692afb154 saved (2 s)
++13:42:19.830 [stats] Stats: session a1f9d15692afb154 saved (2 s)
++13:42:19.830 [stats] Stats: session a1f9d15692afb154 saved (2 s)
++00:21 +112: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_mode_test.dart: the system back press stops hosting rather than leaving the server behind it
++13:42:19.880 [haptics] Haptics: supported (fake, intensity control)
++13:42:19.947 [host] Host start: tap 0 ms
++13:42:19.947 [host] Thumb Party on Phone 764C 0.0.0-dev (dev) on windows, host ID 65c350
++13:42:19.947 [host] Thumb Party on Phone 764C 0.0.0-dev (dev) on windows, host ID 65c350
++13:42:19.977 [host] Host start: first frame 30 ms
++13:42:19.977 [host] Host start: first frame 30 ms
++13:42:19.999 [stats] Stats sharing turned off
++13:42:20.058 [host] Listening on port 45780 (pairing code 6592)
++13:42:20.068 [host] Addresses: 192.168.1.124 (Ethernet)
++13:42:20.068 [host] Connection from the local player
++13:42:20.069 [own] Connected to Phone 764C, saying hello
++13:42:20.069 [host] Phone 764C (windows 0.0.0-dev, supports metrics, rating, layout, status, identity, night) says hello from the local player
++13:42:20.069 [own] Sending pairing code
++13:42:20.070 [host] Phone 764C connected (pairing code), player 1
++13:42:20.071 [stats] Stats: session 2bd01d4e6351fbed started
++13:42:20.071 [own] The screen made this phone player 1
++13:42:20.071 [own] The screen made this phone player 1
++13:42:20.071 [own] The screen made this phone player 1
++13:42:20.071 [own] The screen made this phone player 1
++13:42:20.071 [own] The screen made this phone player 1
++13:42:20.081 [own] Disconnecting
++13:42:20.081 [host] Session of Phone 764C ended after 0 s: input delay ~ no samples
++13:42:20.081 [host] Session of Phone 764C ended after 0 s: input delay ~ no samples
++13:42:20.087 [tv] The screen may sleep again
++13:42:20.121 [stats] Stats: session 2bd01d4e6351fbed saved (0 s)
++00:22 +113: E:/AI/game-controller-m16-jobs/flash-20261125-132811-2123/controller_app/test/host_mode_test.dart: (tearDownAll)
++00:22 +113: All tests passed!
+diff --git a/packages/party_host/lib/src/text/phone_text.dart b/packages/party_host/lib/src/text/phone_text.dart
+index 010d327b..ae3cd974 100644
+--- a/packages/party_host/lib/src/text/phone_text.dart
++++ b/packages/party_host/lib/src/text/phone_text.dart
+@@ -20,6 +20,9 @@ abstract final class PhoneText {
+   static const gamesOnWifi = 'Games on this Wi-Fi';
+   static const searchAgain = 'Search again';
+   static const diagnostics = 'Diagnostics';
++
++  /// The tooltip of the bar's one menu holding Settings and Diagnostics (owner round B-042 to B-044).
++  static const more = 'More';
+   static const kindPc = 'PC';
+   static const kindPhone = 'Phone';
+   static const kindTablet = 'Tablet';
