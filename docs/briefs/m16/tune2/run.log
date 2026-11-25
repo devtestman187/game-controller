@@ -1,0 +1,2 @@
+2026-11-24 inline batch (no runner): tooling-only tune2, base 89f1a212. Items 1a 1c 2 3 4 plus failure class and HAND-FIX-EVENT logging.
+full check: All checks passed (297s, 10 cached)
