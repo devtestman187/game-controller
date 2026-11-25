@@ -58,6 +58,17 @@ void main() {
     expect(find.byType(ConnectScreen), findsOneWidget);
   });
 
+  testWidgets('Try without a TV on Connect closes Home too and shows the pad with the demo link', (tester) async {
+    await pumpApp(tester, saved: saved('sunny'), toConnect: false);
+    await reachConnect(tester);
+    await tester.tap(find.byKey(const Key('tryWithoutTv')));
+    await settle(tester);
+    expect(find.byType(ConnectScreen), findsNothing);
+    expect(homes(), findsNothing, reason: 'Home closes when the demo starts, as it does on a connection');
+    expect(find.byType(ControllerScreen), findsOneWidget);
+    expect(find.byKey(const Key('demoReadout')), findsOneWidget);
+  });
+
   testWidgets('Back on the launch Home exits and never returns to the pad', (tester) async {
     final exit = _FakeExit();
     await pumpApp(

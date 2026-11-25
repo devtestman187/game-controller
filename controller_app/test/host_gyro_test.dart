@@ -1,8 +1,12 @@
+import 'dart:async';
 import 'dart:math';
 
+import 'package:controller/src/gyro.dart';
 import 'package:controller/src/providers.dart';
 import 'package:controller/src/tilt.dart';
+import 'package:controller/src/ui/controller_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:party_host/party_host.dart' as party;
 import 'package:protocol/protocol.dart';
@@ -24,11 +28,15 @@ void main() {
   // m12 fix-f2, R3 finding 4: tilt is the one input that sends by itself, so
   // it follows the pad, which a host phone builds only in a round.
   testWidgets('gyro mode on the host phone sends tilt only in a round', (tester) async {
-    final app = await pumpHostApp(tester, saved: {'padMode': 'gyro'});
-    // The mode used last comes back at launch, after the second gyro mode
-    // gives the side its settle (M3), and sends where the pad is: in
-    // controller mode, as it always has.
-    await tester.pump(const Duration(seconds: 1));
+    final app = await pumpHostApp(tester);
+    // The launch's own restore of the saved mode has run out of its wait for a
+    // first reading by the time Home and Connect are open (the unpaired launch
+    // goes through both), so gyro mode is turned on here, once the phone holds
+    // still, and sends where the pad is: in controller mode, as it always has.
+    final gyro = ProviderScope.containerOf(tester.element(find.byType(ControllerScreen, skipOffstage: false)))
+        .read(gyroProvider.notifier);
+    unawaited(gyro.setMode(PadMode.gyro));
+    await tester.pump(const Duration(milliseconds: 100));
     app.motion.hold(tilted(0), samples: 50);
     await tester.pump(const Duration(milliseconds: 100));
     final controller = app.client.inputs.length;

@@ -235,6 +235,8 @@ Future<TestApp> pumpPhone(
   );
   await settle(tester);
   if (!paired) {
+    // The launch opens Home; the shot is of the Connect screen behind its Join a Game.
+    await reachConnect(tester);
     // A TV found on the Wi-Fi asking for its code: the phone's side of joining.
     app.discovery.emit(DiscoveryState(running: true, everFound: true, hosts: [DiscoveredHost(address: tv)]));
     await settle(tester);

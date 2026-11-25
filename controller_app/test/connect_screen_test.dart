@@ -1,5 +1,6 @@
 import 'package:connection/connection.dart';
 import 'package:controller/src/discovery.dart';
+import 'package:controller/src/home/home_text.dart';
 import 'package:controller/src/host/hosting.dart';
 import 'package:controller/src/ui/connect_screen.dart';
 import 'package:flutter/material.dart';
@@ -163,17 +164,19 @@ void main() {
       expect(find.text('Connect to a TV'), findsNothing);
     });
 
-    testWidgets('opens the Connect screen when the remembered host is gone and another host is live', (tester) async {
+    testWidgets('opens Home when the remembered host is gone and another host is live', (tester) async {
       final app = await pumpApp(tester, paired: true, reconnectWait: const Duration(seconds: 1));
       app.discovery.emit(
         DiscoveryState(running: true, everFound: true, hosts: [hostFrom('A TV', '192.168.1.77', party.HostKind.tv)]),
       );
       // Discovery found another host but not the remembered one, so the wait
-      // ends and the Connect screen opens (M16 item 3), never connecting to
+      // ends and Home opens (M16 item 3, owner Q7 A), never connecting to
       // the stale remembered address. The second frame brings the pushed
       // route onstage: Flutter keeps a new route offstage for its first frame.
       await tester.pump(const Duration(seconds: 1));
       await tester.pump();
+      expect(find.text(HomeText.joinGame), findsOneWidget);
+      await reachConnect(tester);
       expect(find.text('Connect to a TV'), findsOneWidget);
       expect(app.client.calls, isEmpty);
     });

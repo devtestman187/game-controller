@@ -100,7 +100,7 @@ class _PhoneHomeScreenState extends ConsumerState<PhoneHomeScreen> {
     if (mounted) setState(() => _promptUp = false);
     if (!_closeWaits) return;
     _closeWaits = false;
-    if (mounted && ref.read(clientStateProvider).isConnected) _close();
+    if (mounted && (ref.read(clientStateProvider).isConnected || ref.read(demoProvider))) _close();
   }
 
   /// Removes this route itself, not whichever route is on top: the Connect
@@ -129,6 +129,15 @@ class _PhoneHomeScreenState extends ConsumerState<PhoneHomeScreen> {
   Widget build(BuildContext context) {
     ref.listen(clientStateProvider, (previous, next) {
       if (!next.isConnected || (previous?.isConnected ?? false)) return;
+      if (_promptUp) {
+        _closeWaits = true;
+        return;
+      }
+      _close();
+    });
+    // "Try without a TV" on the Connect screen above Home shows the pad with the demo link.
+    ref.listen(demoProvider, (previous, next) {
+      if (!next || previous == true) return;
       if (_promptUp) {
         _closeWaits = true;
         return;

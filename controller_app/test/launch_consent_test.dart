@@ -1,3 +1,4 @@
+import 'package:controller/src/home/home_text.dart';
 import 'package:controller/src/providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -55,12 +56,16 @@ void main() {
     await settle(tester);
     expect(find.byKey(const Key('consentDialog')), findsNothing);
 
-    // The bar's chip opens the connect screen again; the launch's questions
-    // were put already.
+    // The question sat on Home, over its Join a Game, so Connect is reached
+    // only now. Back from Connect lands on Home; Join a Game opens Connect
+    // again, and the launch's questions were put already.
+    await reachConnect(tester);
+    expect(find.text('Connect to a TV'), findsOneWidget);
+    expect(find.byKey(const Key('consentDialog')), findsNothing);
     await tester.pageBack();
     await settle(tester);
-    await tester.tap(find.byKey(const Key('connectionChip')));
-    await settle(tester);
+    expect(find.text(HomeText.joinGame), findsOneWidget);
+    await reachConnect(tester);
     expect(find.text('Connect to a TV'), findsOneWidget);
     expect(find.byKey(const Key('consentDialog')), findsNothing);
   });
