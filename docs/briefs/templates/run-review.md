@@ -12,6 +12,8 @@ Claude (the designer) reads only your Summary first, verifies the findings it ac
 4. **Unverified fixes**: list every fix whose cause was not measured or reproduced (a report saying so, or a fix by reasoning alone): the batch must mark these "Fixed, unverified: needs device check".
 5. **Numbers**: where reports give measurements, list the ones that miss a target stated in the briefs or in STATUS.md.
 
+1b. **Already verdicted**: if `{DIR}/REVIEW-VERDICTS.md` exists (the driver's verdicts on the wave reviews, fix-as-you-go), skip every finding it lists or that a committed `f<n>` fix job of this folder already fixed; carry over only what is not in it.
+
 6. **Fix-job sizing**: for each finding give its file, and note which ones would be pinned by controller_app (phone) tests, so Claude can split the fixes into jobs of 3 findings or fewer with no shared files, in one wave (phone-pinned ones get `phone` in `check:`).
 
 in the report, in this order and nothing else:

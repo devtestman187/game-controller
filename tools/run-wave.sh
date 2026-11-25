@@ -55,7 +55,7 @@ finished_job() { # finished_job <index>: wait its exit, log it, cap it, then sor
   local i=$1 j rc
   j=${started[$i]}
   wait "${pids[$i]}"; rc=$?
-  note "$j finished: result $rc ($(usage "$B/$j.md"))"
+  note "$j finished: result $rc ($(usage "$B/$j.md")) $(job_line "$j")"
   turn_cap "$j" "$rc" || { park "$j"; return; }
   if [ $rc -eq 4 ] && apply_safe "$j" "$LOGS/flash-$j.log"; then
     [ -n "$DROPPED" ] && note "$j: dropped generated churn outside its list: $DROPPED"
@@ -82,4 +82,33 @@ wave_wait() { # wave_wait: the poll on every started job: each job's limit, the 
     pending=("${rest[@]}")
     [ ${#pending[@]} -gt 0 ] && sleep "${RUN_POLL_S:-5}"
   done
+}
+
+job_line() { # job_line <job>: `model <id>, ladder <n>, tokens in/read/write/out <a>/<b>/<c>/<d>` for run.log
+  # model: the brief's `model:` line (haiku default, or sonnet) or CLAUDE_WORKER_MODEL; ladder: the brief's
+  # `ladder: <n>` line, else 2 when it carries a `repair:` note, else 1; tokens: the job's flash usage row.
+  local f=$B/$1.md m lv tok
+  m=$(sed -n 's/^model: *//p' "$f" | head -n 1 | tr -d '\r')
+  case $m in sonnet) m=claude-sonnet-5-5 ;; haiku) m=claude-haiku-5-5 ;; '') m=${CLAUDE_WORKER_MODEL:-claude-haiku-5-5} ;; esac
+  [ "${WORKER:-}" = claude ] || m=${FLASH_MODEL:-flash}
+  lv=$(sed -n 's/^ladder: *\([0-9][0-9]*\).*/\1/p' "$f" | head -n 1)
+  [ -n "$lv" ] || { grep -q '^repair:' "$f" && lv=2 || lv=1; }
+  tok=$(awk -F'\t' -v b="$f" 'index($10, b){t=$5"/"$6"/"$7"/"$8} END{print t}' "${FLASH_USAGE_LOG:-$HOME/.thumbparty/flash-usage.tsv}" 2>/dev/null)
+  echo "model $m, ladder $lv, tokens in/read/write/out ${tok:-n/a}"
+}
+
+pause_after_wave() { # pause_after_wave <n>: RUN_PAUSE_AFTER_WAVE=1 stops (a clean pause) after every wave but the last
+  # Its review is committed first (stop waits for it). The driver verdicts the findings, writes the must-fix ones as a
+  # fix job `f<n>` in the NEXT wave of waves.txt (files no later job allows), commits, and restarts (docs/driver-kit.md 6b).
+  [ "${RUN_PAUSE_AFTER_WAVE:-}" = 1 ] && [ "$1" -lt "${#WAVES[@]}" ] || return 0
+  stop "PAUSED after wave $1 (RUN_PAUSE_AFTER_WAVE=1): its review is committed; verdict it, add fix jobs to the next wave of waves.txt, commit, restart"
+}
+
+# 3b. A finished job leaves no debug code (tools/debug-leftovers.sh): BISECT markers, debug early returns, prints in tests.
+leftovers() { # leftovers <job>...
+  local out
+  [ -f tools/debug-leftovers.sh ] || return 0
+  out=$(bash tools/debug-leftovers.sh 2>&1) && return 0
+  finding "debug leftovers after $*: $(grep -m3 ^FAIL <<< "$out" | tr '\n' ';')"
+  stop "debug leftovers in the wave's added Dart lines ($(grep -c ^FAIL <<< "$out") found; run tools/debug-leftovers.sh); nothing of this wave is committed"
 }

@@ -15,6 +15,7 @@ job: <batch> <job> — <one line>
 stop: <what not to start>
 read: docs/briefs/templates/COMMON.md · <file>:<from>-<to> · <tests that could break> · <owner decision quoted>
 changes: <types, enum values, constants, strings, keys changed, ` · ` separated>
+model: haiku            (optional; haiku default, or sonnet: see 6)
 turns: 35
 expected-min: 20
 do:
@@ -22,6 +23,7 @@ do:
 2 Tests: write the NEW test file and run it first, then change lib, then write the report.
 allow: <path> · <path>
 check: format analyze
+ladder: <n>            optional: the ladder level the driver sets when it escalates a job (run.log shows it)
 report: docs/briefs/<milestone>/<batch>/<job>-report.md
 ```
 - `allow:` separator is ` · ` (space, middle dot, space); include every NEW file (L5) and sibling tests the change can break (L2: grep the pinned literal in test trees).
@@ -29,6 +31,8 @@ report: docs/briefs/<milestone>/<batch>/<job>-report.md
 - `changes:` always present, rare bare symbols (L1); a new sealed subtype or enum value names a sibling. Never `changes: none`.
 - `check:` short: `format` or `format analyze`; add `phone` when controller_app pins change. The runner's combined check runs the rest.
 - `report:` exactly one bare path (linted). `rules:` only for limits beyond COMMON.md: exactly one path on the line.
+- `model: haiku|sonnet` is read by tools/flash.sh next to `turns:` (exact ids claude-haiku-5-5 / claude-sonnet-5-5; no line: CLAUDE_WORKER_MODEL, default Haiku). brief-check FAILs any other value and a `model: sonnet` brief with no `turns:` (Sonnet briefs carry an explicit `turns:` about 50).
+- Gates every brief meets (Nov 24, wave1-789): (a) a job whose tests-first test pins behaviour already correct on the base carries `tests-first: exempt <reason>` up front (not mechanically checkable; the driver asks it of every new-test job; the runner's tests-first proof fails without it); (b) a brief whose change shrinks layout (FittedBox, scale-down, smaller font or size to fit) lists the 48 dp touch-target test in the same job, or `touch-target: exempt <reason>`: brief-check FAILs otherwise (tools/brief-check-rules.sh); (c) every worker runs `dart analyze` (or `flutter analyze`) on its own changed files before finishing, and the brief's last `do:` line says so; infos are NOT made non-fatal in check.sh. The runner rejects added debug leftovers in Dart code (`BISECT`, `// debug|temp|hack` markers, `print(`/`debugPrint(` in test files: tools/debug-leftovers.sh, run after tests-first; stops the wave).
 - Optional: `tests-first: exempt <reason>` (refactor, docs), `ci-patch: <file>` (for `.github/` or `codemagic.yaml`; never hand-apply), `dart-fix: <packages>`, `probe: <patch>` (stub for a new type, L3).
 - Sizes (L7, L8, L9): Haiku about 8 files in 2 packages. `turns:` 35 small, 60 for a new test file plus 3-5 source edits or a tools job with a new script, 120 flash. `expected-min:` at least the usage median; fix jobs 25+; tools job with new script and test 45 (65 if `check:` is the whole tools suite; prefer its own test).
 - UI jobs: test under every look, menu and TV (`toyTvProvider.overrideWithValue(true)`, helper `packages/party_host/test/support/all_looks.dart`); no fixed pixel height for content holding a look-sized widget.
@@ -61,12 +65,22 @@ Your own calls while the runner works are the main cost. Make no polling calls.
 - Trust a STALLED only after the worker log has been still longer than the job's expected-min; a STOPPED only if newer than your restart (L10).
 - Never end your turn while the run is going, unless the main session told you to hand back after starting it (it then waits).
 
-## 6. Escalation ladder (per job)
-1. Haiku attempt from the brief.
-2. A fresh Haiku with the failing output as a `repair:` note in the brief.
-3. You write a repair note (file:line, what to change) from a 30-line evidence pack; a fresh Haiku applies it.
-4. You hand-fix at most 30 lines through `apply-job.sh`, or park the job.
-A design stop (contract wrong, brief contradicts code) goes to the main session (Opus). Never resume an old worker session. A plan-limit cutoff is a pause, not an attempt. Two failed repairs of one job: stop and report.
+## 6. Tiering and escalation ladder (per job)
+Tag rule: first ask whether the job should be split (smaller Haiku jobs beat a Sonnet one). Tag `model: sonnet` only for (i) a new widget or flow test file, or (ii) dialog or layout work at narrow sizes; Sonnet briefs carry an explicit `turns:` about 50. If more than 30% of a run's jobs are Sonnet, justify each tag in REPORT.md.
+- Haiku job: 1 Haiku from the brief. 2 a fresh Haiku with the failing output as a `repair:` note. 3 a fresh Sonnet worker (`model: sonnet`, `turns:` about 50, `ladder: 3`) with the repair note, written from a 30-line evidence pack. 4 you hand-fix at most 30 lines through `apply-job.sh`, or park the job.
+- Sonnet job: 1 Sonnet. 2 Sonnet with the repair note (`ladder: 2`). Then hand-fix (at most 30 lines) or park.
+- Before any hand-commit run `dart analyze` on the touched files; `tools/review.sh` and the job's tests too.
+- A design stop (contract wrong, brief contradicts code) goes to the main session (Opus). Never resume an old worker session. A plan-limit cutoff is a pause, not an attempt. Two failed repairs of one job: stop and report.
+- run.log shows per job: `finished: result <rc> (<turns>, <min>) model <id>, ladder <n>, tokens in/read/write/out <a>/<b>/<c>/<d>`. Set the brief's `ladder: <n>` when you escalate (a `repair:` note alone counts as 2).
+- Failure class: for every job that fails or stops, write one line in DRIVER-NOTES and REPORT.md: `<job> class: capability | brief | gate | environment`. capability = turn cap hit, or wrong/incomplete after a repair; brief = the brief or allow: was wrong or missing a file; gate = a runner or review gate misjudged; environment = pre-existing breakage (the base was already red).
+- Every hand-fix is its own run.log event: `apply-job.sh` writes `HAND-FIX <job>: ...` and `HAND-FIX-EVENT <job>: <n> lines changed, replaced ladder level <l>`; a fix made without apply-job.sh gets the same event line appended by you.
+
+## 6b. Fix as you go (after each wave review)
+Start the runner with `RUN_PAUSE_AFTER_WAVE=1`: after each wave but the last it commits that wave's review and stops with `STOPPED: PAUSED after wave <n>` (a pause, not a failure; STOP.md is removed at the restart).
+1. Read the wave review, verdict every finding in `<dir>/REVIEW-VERDICTS.md` (`<finding> - must|minor|trivial|invalid - <fix job or code-health>`).
+2. Every must finding becomes a fix job `f<n>` (3 findings or fewer, at most 3 jobs in the wave) in the NEXT wave of waves.txt, scoped to files no later job of the run allows (brief-check shows the clash; otherwise a wave of its own or the end). Commit briefs, restart.
+3. Trivial: fix by hand; minor: `docs/code-health.md`.
+4. The end-of-run review brief skips items already in REVIEW-VERDICTS.md or fixed by a committed `f<n>`; at the end verdict only what is new. Max 2 fix rounds per wave.
 
 ## 7. Repair a stop
 - Diagnose from the STOPPED line and the log it names (or Haiku's evidence pack, at most 30 lines). Record the cause and its class in DRIVER-NOTES (L11): a switch, b registration, c pinned test, d widget test, e layers, f new file, g wave sharing or dependence, limit, other.
@@ -88,6 +102,7 @@ One line per step, appended: `- HH:MM <step>: <result>. next: <action>`. At a wa
 ```
 
 ## 9. Wrap (after DONE)
+0. Findings already verdicted per wave (6b) are closed; verdict only new ones.
 1. Read the REVIEW.md Summary; open each real finding at its file:line; write verdicts in REVIEW.md.
 2. Trivial: fix by hand. Minor: `docs/code-health.md`. Real: one fix job `f<n>` (3 findings or fewer) in the same folder, same runner (max 2 rounds).
 3. Full `bash tools/check.sh` on the tip (release checks: `--no-cache`); add its result as one line to run.log.
@@ -106,7 +121,7 @@ https://claude.ai/artifact/8vDcqYR8QghaGfVPdQDvQR, collection `bugs`, via Artifa
 - Never touch the frozen `E:\AI\game-controller`, other sessions' branches, or processes you did not start. Keep each foreground call under 170 s.
 
 ## 12. Report and hand-back (owner, Nov 24: the main session's context is the scarce one)
-- The full report goes to a file: `docs/briefs/<milestone>/<batch>/REPORT.md` (commits, jobs with turns and minutes, ladder level per job, findings real/fixed/deferred, check.sh result, job-metrics and agent-cost lines, tracker and STATUS updates, "Fixed, unverified" items, Proposed lessons count, call counts, wall time; over 1 hour a 5-line improvement analysis, proposals only). Commit it. `tools/verify-batch.sh` FAILs when it is missing.
+- The full report goes to a file: `docs/briefs/<milestone>/<batch>/REPORT.md` (commits, jobs with turns and minutes, model and ladder level per job, failure class per failed job, hand-fix events, the Sonnet share and a justification per Sonnet tag when over 30%, findings real/fixed/deferred, check.sh result, job-metrics and agent-cost lines, tracker and STATUS updates, "Fixed, unverified" items, Proposed lessons count, call counts, wall time; over 1 hour a 5-line improvement analysis, proposals only). Commit it. `tools/verify-batch.sh` FAILs when it is missing.
 - The hand-back to main is only this template, at most 6 lines:
 ```
 tip: <sha> | range: <base..tip> | RESULT: PASS/STOPPED | report: <path> | owner questions: <n, one line each, or none>

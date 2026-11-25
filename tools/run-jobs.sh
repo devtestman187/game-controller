@@ -337,7 +337,7 @@ for wave in "${WAVES[@]}"; do
   if [ ${#ok[@]} -gt 0 ]; then
     unchurn
     dart_fix "${ok[@]}"
-    tests_first "${ok[@]}"
+    tests_first "${ok[@]}"; leftovers "${ok[@]}"
     checks "${ok[*]}"
     for j in "${ok[@]}"; do ci_patch "$j"; done
     reviewed=()
@@ -357,13 +357,13 @@ for wave in "${WAVES[@]}"; do
     for j in "${reviewed[@]}"; do paths+=("$B/$j-review.md"); done
     save "runner: log and review briefs after ${ok[*]}" "${paths[@]}"
     flush_reviews
-    check_stop
-    [ ${#reviewed[@]} -gt 0 ] && start_reviews "${reviewed[@]}"
+    check_stop; [ ${#reviewed[@]} -gt 0 ] && start_reviews "${reviewed[@]}"
   fi
   if [ ${#parked[@]} -gt 0 ]; then # the first parked job's log goes into STOP.md, quoted by its outside block
     stop "jobs that failed or passed their limit (parked, not committed): ${parked[*]} (their logs: $LOGS/flash-<job>.log)" \
       "$LOGS/flash-${parked[0]}.log"
   fi
+  pause_after_wave "$wn"
 done
 
 flush_reviews wait

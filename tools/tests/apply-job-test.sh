@@ -99,13 +99,13 @@ report "changed, new, deleted and report files inside allow: are applied; outsid
 
 # 2. The one line docs/flash-digest.md asks for, once, with the applied paths in order.
 want='HAND-FIX j1: apply-job.sh applied 5 files: lib/a.dart, lib/b.bin, lib/c.dart, lib/new.dart, reports/j1.md'
-if grep -qxF -- "$want" "$batch/run.log" && [ "$(lines "$batch/run.log")" = 1 ]; then
+if grep -qxF -- "$want" "$batch/run.log" && grep -qE "^HAND-FIX-EVENT j1: [0-9]+ lines changed" "$batch/run.log" && [ "$(lines "$batch/run.log")" = 2 ]; then
   r=0
 else
   r=1
   cat "$batch/run.log" >> "$out" # what was logged instead
 fi
-report "run.log gets the exact HAND-FIX line, once, with the paths applied" "$r"
+report "run.log gets the exact HAND-FIX line, once, with the paths applied, plus its event line" "$r"
 
 # 3. A --only path outside the brief's allow: and report: refuses the run before it copies.
 reset_repo
@@ -121,7 +121,8 @@ if [ "$rc" = 0 ] && [ "$(content "$repo/lib/a.dart")" = a2 ] &&
   [ "$(content "$repo/lib/b.bin")" = b1 ] && [ "$(content "$repo/reports/j1.md")" = r1 ] &&
   [ -e "$repo/lib/c.dart" ] && [ ! -e "$repo/lib/new.dart" ] &&
   exact 'applied 1 files:' && exact 'SKIPPED by --only: lib/new.dart' &&
-  grep -qxF -- 'HAND-FIX j1: apply-job.sh applied 1 files: lib/a.dart' "$batch/run.log"; then
+  grep -qxF -- 'HAND-FIX j1: apply-job.sh applied 1 files: lib/a.dart' "$batch/run.log" &&
+  grep -qE '^HAND-FIX-EVENT j1: [0-9]+ lines changed, replaced ladder level [?]$' "$batch/run.log"; then
   r=0
 else
   r=1

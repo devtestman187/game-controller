@@ -13,6 +13,8 @@ do:
 1 <one change per line: the type or file, what it does, the rule it follows>
 2 Tests: <the cases, each a rule that a test must fail on if broken>
 3 Report: <anything Claude needs to check: line counts, a move map, computed values>
+4 Before finishing run `flutter analyze` (or `dart analyze`) on the files you changed and fix every info, warning and error on them.
+(optional header lines: `model: haiku|sonnet` (sonnet only for a new widget/flow test file or narrow-size dialog/layout work, with `turns: 50`); `tests-first: exempt <reason>` up front when the new test pins behaviour already correct on the base; a layout-shrinking change (FittedBox, scale-down, smaller font) lists the 48 dp touch-target test in the same job or `touch-target: exempt <reason>`.)
 UI: say which looks the change touches (menu, TV) and name the test for each.
 (template note, delete this line: at most 3 independent jobs per wave (no shared files); add `turns: 35` for a Haiku job (about 8 files, 2 packages at most); a job over that, or over about 120 turns on flash, is split into phases first; this brief targets about 200 words (350 at most); the repeated decide/report/tests/rules text lives in COMMON.md, so do not copy it here; add a `rules:` line only for limits beyond it: longer context goes in a file named in read:. A review-fix job carries 3 findings or fewer.)
 

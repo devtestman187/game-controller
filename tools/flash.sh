@@ -244,6 +244,8 @@ case "$wkind" in
   flash) model="${FLASH_MODEL:-deepseek-v4-flash}"; maxturns="${FLASH_MAX_TURNS:-150}"; iso=(--bare) ;;
   claude)
     model="${CLAUDE_WORKER_MODEL:-claude-haiku-5-5}"; maxturns="${CLAUDE_WORKER_MAX_TURNS:-35}"
+    # A brief line `model: haiku|sonnet` picks the tier (exact id, tools/flash-model.sh); no line keeps the default above.
+    if [ -n "$brief" ]; then . "$(dirname "$0")/flash-model.sh"; model=$(worker_model "$(field model)" "$model") || exit 2; fi
     # A brief line `turns: <n>` raises the worker's own cap too (the runner's RUN_TURN_CAP alone did not).
     if [ -n "$brief" ]; then bt=$(field turns); case "$bt" in ''|*[!0-9]*) ;; *) [ "$bt" -gt "$maxturns" ] && maxturns=$bt ;; esac; fi
     iso=(--safe-mode --strict-mcp-config --disable-slash-commands --no-session-persistence)
@@ -270,6 +272,7 @@ Claude, who wrote this task, is the source of truth. Suggestions and questions g
 The task names a review gate (G0 survey, G1 plan, G2 contract and tests, G3 first slice, G4 complete, or a review). Stop at that gate, even if more looks easy.
 If the task needs a design decision, is unclear, or turns out bigger than described, stop and say so instead of guessing.
 Work rules (they keep the job short, and short jobs go wrong less): read a file once, and only the part you need (use line ranges for files over 300 lines); never re-read a file you have not changed; ask for several files or greps in one step when you know you need them; run a test suite once per change, on the smallest package that covers it, and read only the failures; do not print long command output (pipe through tail or grep); run commands as plain commands from the repository root (tools/check.sh <suite>, flutter test <file>, dart format <files>, dart analyze), with no absolute path in front; cd <dir> && cmd is allowed too; keep your thinking to the decision at hand and your messages to a few lines; write the report once, at the end.
+Before finishing run dart analyze on the files you changed and fix every finding on them (infos too); leave no debug code (BISECT markers, debug early returns, print in tests).
 Finish with: the files you changed (one line each, what changed), the checks you ran and their result, and anything you weren't sure about."
 # The short rule extract (docs/worker-extract.md) is part of the standing prompt, so workers do not re-read the full docs.
 extract="${FLASH_EXTRACT:-docs/worker-extract.md}"

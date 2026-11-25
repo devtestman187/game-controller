@@ -26,7 +26,8 @@
 #
 # On success it appends one line to <batch dir>/run.log, as docs/flash-digest.md asks:
 # "HAND-FIX <job>: apply-job.sh applied <n> files: <a>, <b>", then prints the paths and the next
-# steps (tools/review.sh, the job's tests, commit named paths).
+# steps (tools/review.sh, the job's tests, commit named paths). A second line, "HAND-FIX-EVENT <job>:
+# <n> lines changed, replaced ladder level <l>" (the brief's `ladder:` line, ? when none), is the hand-fix's own event.
 # Exit code: 0 applied (or shown, with --dry), 1 refused, 2 bad use. Works in Git Bash on Windows
 # and bash on macOS and Linux.
 set -u
@@ -224,9 +225,10 @@ if [ "$dry" = 1 ]; then
   echo "dry run: nothing copied, run.log unchanged"
   exit 0
 fi
-i=0
+i=0 changed=0
 while [ "$i" -lt "${#targets[@]}" ]; do
   target=${targets[$i]}
+  changed=$((changed + $(diff "$target" "$tree/$target" 2> /dev/null | grep -c "^[<>]"))) # lines changed, for the log
   if [ "${kinds[$i]}" = delete ]; then
     rm -f "$target" || refuse "couldn't delete $target"
   else
@@ -237,6 +239,8 @@ while [ "$i" -lt "${#targets[@]}" ]; do
 done
 line="HAND-FIX $job: apply-job.sh applied ${#targets[@]} files: $(join ', ' "${targets[@]}")"
 printf '%s\n' "$line" >> "$batch/run.log" || refuse "the files are copied, but $batch/run.log couldn't be written"
+lvl=$(sed -n 's/^ladder: *\([0-9][0-9]*\).*/\1/p' "$brief" 2> /dev/null | head -n 1)
+printf 'HAND-FIX-EVENT %s: %s lines changed, replaced ladder level %s\n' "$job" "$changed" "${lvl:-?}" >> "$batch/run.log"
 echo "$line"
 echo "next: run tools/review.sh and the job's tests, then commit these paths only (tools/commit-job.sh $brief)"
 exit 0

@@ -87,6 +87,16 @@ check headless-row 'haiku    head       1      1000      2000     1000000     10
 bash tools/agent-cost.sh --root "$tmp/projects" --since "$since" --match hjob --line > "$out" 2>&1
 check headless-off-without-folder 'no calls'
 
+mkdir -p "$tmp/logs/s"
+cat > "$tmp/logs/s/flash-sjob.log" <<'LOG'
+---- flash: worker exit 0, model claude-sonnet-5-5, log /tmp/y.log
+---- flash usage: 12 turns, 51 s, input 1000 + cache read 1000000 + cache write 100000, output 2000 tokens
+LOG
+touch -d 2026-11-23T10:30:00Z "$tmp/logs/s/flash-sjob.log"
+# sonnet 2/10: input 2000 + output 20000 + read 1M*0.05*2=100000 + write 100K*1.25*2=250000 = 372000 / 1e6 = 0.372
+bash tools/agent-cost.sh --root "$tmp/projects" --since "$since" --flash-logs "$tmp/logs" --match sjob --line > "$out" 2>&1
+check headless-sonnet-priced 'sonnet $0.37'
+
 bash tools/agent-cost.sh --root "$tmp/projects" > "$out" 2>&1
 rc=$?
 if [ "$rc" = 2 ]; then echo "PASS no-since-exit-2"; else echo "FAIL no-since-exit-2 (got $rc)"; fails=$((fails + 1)); fi
