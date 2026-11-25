@@ -293,3 +293,7 @@ HAND-FIX-EVENT n8b3: 14 lines changed, replaced ladder level 3
 2026-11-25 01:48:37 STOPPED: checks failed twice on the combined tree after n8e2 n8e3
 2026-11-25 01:48:39 reviewed wave6: 13 finding(s)
 RESULT: STOPPED: checks failed twice on the combined tree after n8e2 n8e3
+HAND-FIX f4: apply-job.sh applied 7 files: controller_app/lib/src/home/phone_home_screen.dart, controller_app/test/connect_screen_test.dart, controller_app/test/host_gyro_test.dart, controller_app/test/launch_consent_test.dart, controller_app/test/launch_home_test.dart, controller_app/test/support/site_shots.dart, docs/briefs/m16/wave2-789/f4-report.md
+HAND-FIX-EVENT f4: 62 lines changed, replaced ladder level ?
+HAND-FIX-EVENT f4: 0 lines changed (applied as is; sonnet 75 turns over cap 70, mine.sh 66 tests passed, full controller_app suite passes), replaced ladder level 2
+HAND-FIX n8e2 n8e3: committed by hand because the combined check ran without parked f4 (its repins were needed); no line changed
