@@ -1,4 +1,3 @@
 class Holder {
-  // holds a NewThing
-  Object? thing;
+  NewThing? thing; // holds a NewThing
 }

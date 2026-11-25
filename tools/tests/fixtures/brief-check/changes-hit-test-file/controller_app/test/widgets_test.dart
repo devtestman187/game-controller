@@ -1,3 +1,3 @@
 void main() {
-  // builds a NewWidget()
+  final w = NewWidget();
 }

@@ -77,6 +77,11 @@ check "$fixtures/changes-hit-test-file"
 if [ "$rc" = 1 ] && exact "$want" && exact 'RESULT: FAILED: 1 FAIL, 0 WARN (1 job(s) checked)'; then r=0; else r=1; fi
 report "a changes: item used in a test file outside every allow: FAILs naming job, item and file" "$r"
 
+# 5b. The same item only named in comments (doc, line, trailing, block) of that test file is not a use: passes.
+check "$fixtures/changes-comment-only"
+if [ "$rc" = 0 ] && ! exact 'FAIL changes c1: NewWidget is used in controller_app/test/widgets_test.dart, which no job of wave 1 or earlier allows'; then r=0; else r=1; fi
+report "a changes: item that appears only in comments is not a hit" "$r"
+
 # 6. A changes: item used in a file only a later wave's job allows: too late for wave 1's check,
 #    so a FAIL; the same item in a file a wave 1 job allows passes, so exactly one FAIL.
 want='FAIL changes late: NewThing is used in controller_app/lib/holds.dart, which only holder of wave 2'

@@ -174,16 +174,24 @@ first_allow() { # first_allow <path>: the earliest wave's job whose allow: cover
   return 0
 }
 
-search_item() { # search_item <text>: the lib/ and test/ .dart files under root that use it
+search_item() { # search_item <text>: the lib/ and test/ .dart files under root that use it in code
+  # A mention in a comment (`//`, `///`, a `/* */` or `*` line, or after a trailing `//`) is not a use (tune3, Nov 25).
   local item=$1
-  if [ -n "$ref" ]; then
-    (cd "$root" && git grep -l -w -F -e "$item" "$ref" -- '*.dart' 2> /dev/null) |
-      sed 's/^[^:]*://' | grep -E '(^|/)(lib|test)/'
-  else
-    (cd "$root" && grep -rlwF -e "$item" --include='*.dart' --exclude-dir=.dart_tool \
-      --exclude-dir=.git --exclude-dir=build . 2> /dev/null) |
-      sed 's|^\./||' | grep -E '(^|/)(lib|test)/'
-  fi | LC_ALL=C sort -u
+  {
+    if [ -n "$ref" ]; then
+      (cd "$root" && git grep -n -w -F -e "$item" "$ref" -- '*.dart' 2> /dev/null) | sed 's/^[^:]*://'
+    else
+      (cd "$root" && grep -rnwF -e "$item" --include='*.dart' --exclude-dir=.dart_tool \
+        --exclude-dir=.git --exclude-dir=build . 2> /dev/null) | sed 's|^\./||'
+    fi
+  } | awk -v item="$item" '{
+      f = $0; sub(/:.*/, "", f)
+      t = $0; sub(/^[^:]*:[0-9]+:/, "", t)
+      c = t; sub(/^[ \t]+/, "", c)
+      if (c ~ /^(\/\/|\/\*|\*)/) next
+      sub(/\/\/.*/, "", t)
+      if (index(t, item)) print f
+    }' | grep -E '(^|/)(lib|test)/' | LC_ALL=C sort -u
 }
 
 check_pair() { # check_pair <jobA> <jobB>: FAIL for every allow: path the two of one wave share
