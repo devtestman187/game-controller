@@ -23,6 +23,14 @@ import 'launch_consent.dart';
 /// answer on a home network, short enough that a lone phone is not left waiting.
 const homeSearchWait = Duration(seconds: 3);
 
+/// Quits the app, when Back is pressed on a launch's first Home. The platform's
+/// exit sits behind this provider so the screen never calls the platform itself,
+/// and tests put a fake in its place.
+final appExitProvider = Provider<Future<void> Function()>(
+  (ref) =>
+      () => SystemNavigator.pop(),
+);
+
 /// The Home hub wired to the app (APP-START.md, item 8 of JOBS.md): the roles
 /// open the Connect screen or start this phone's host, Settings and the name row
 /// open Settings, and the launch's consent questions are put on its first frame.
@@ -55,6 +63,11 @@ class _PhoneHomeScreenState extends ConsumerState<PhoneHomeScreen> {
   /// A connection landed under the prompts: the close is made up after them.
   bool _closeWaits = false;
 
+  /// True once the three role buttons were laid out with a size after the first
+  /// frame. The marks wait for it: a step with no box is skipped, and the skip's
+  /// finish would save the tips as seen with nothing shown.
+  bool _anchorsReady = false;
+
   @override
   void initState() {
     super.initState();
@@ -63,8 +76,18 @@ class _PhoneHomeScreenState extends ConsumerState<PhoneHomeScreen> {
       _searchTimer = Timer(homeSearchWait, () {
         if (mounted) setState(() => _searchWaited = true);
       });
+      if (_allAnchorsLaidOut()) setState(() => _anchorsReady = true);
       unawaited(askLaunchConsent(context, ref).whenComplete(_afterConsent));
     });
+  }
+
+  /// Whether all three role buttons have a size on screen.
+  bool _allAnchorsLaidOut() => [_anchors.join, _anchors.play, _anchors.display].every(_isLaidOut);
+
+  /// A button with no box, or one never laid out, counts as not laid out.
+  static bool _isLaidOut(GlobalKey anchor) {
+    final box = anchor.currentContext?.findRenderObject();
+    return box is RenderBox && box.attached && box.hasSize;
   }
 
   @override
@@ -116,7 +139,7 @@ class _PhoneHomeScreenState extends ConsumerState<PhoneHomeScreen> {
     return PopScope(
       canPop: !widget.fromLaunch,
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) unawaited(SystemNavigator.pop());
+        if (!didPop) unawaited(ref.read(appExitProvider)());
       },
       child: Scaffold(
         body: Stack(
@@ -142,8 +165,10 @@ class _PhoneHomeScreenState extends ConsumerState<PhoneHomeScreen> {
     );
   }
 
-  /// Whether the coach marks are on: the saved flag allows them and Home is idle.
+  /// Whether the coach marks are on: the buttons are laid out, the saved flag allows
+  /// them, and Home is idle.
   bool _marksShow(BuildContext context) =>
+      _anchorsReady &&
       ref.watch(showTipsProvider) &&
       phoneHomeMarksIdle(
         isPromptUp: _promptUp,

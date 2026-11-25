@@ -10,7 +10,6 @@ import 'package:controller/src/providers.dart';
 import 'package:controller/src/ui/controller_screen.dart';
 import 'package:controller/src/ui/settings_screen.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:party_host/party_host.dart' as party;
@@ -27,8 +26,22 @@ class _ResettableAsked extends LaunchConsentAskedNotifier {
   void reset() => state = false;
 }
 
-/// What the platform channel was told, so Back's exit can be seen.
-final _platformCalls = <String>[];
+/// Records the exits Back asks for, in place of the platform's exit.
+class _FakeExit {
+  int calls = 0;
+
+  Future<void> call() async {
+    calls++;
+  }
+}
+
+/// A client state the test sets, so a connection can land while this phone hosts.
+class _SetClientState extends ClientStateNotifier {
+  @override
+  ClientSnapshot build() => const ClientSnapshot(status: ClientStatus.idle);
+
+  void emit(ClientSnapshot snapshot) => state = snapshot;
+}
 
 /// Pushes Home over the app's pad and lets its first frame run.
 Future<void> openHome(WidgetTester tester, {bool fromLaunch = false}) async {
@@ -57,23 +70,6 @@ Color? buttonColor(WidgetTester tester, String label) =>
 DiscoveryState found() => DiscoveryState(running: true, everFound: true, hosts: [DiscoveredHost(address: tv)]);
 
 void main() {
-  setUp(() {
-    _platformCalls.clear();
-    TestWidgetsFlutterBinding.ensureInitialized().defaultBinaryMessenger.setMockMethodCallHandler(
-      SystemChannels.platform,
-      (call) async {
-        _platformCalls.add(call.method);
-        return null;
-      },
-    );
-  });
-  tearDown(() {
-    TestWidgetsFlutterBinding.ensureInitialized().defaultBinaryMessenger.setMockMethodCallHandler(
-      SystemChannels.platform,
-      null,
-    );
-  });
-
   group('the three buttons', () {
     testWidgets('Join a Game opens the Connect screen', (tester) async {
       await pumpApp(tester, paired: true, saved: noTips);
@@ -214,21 +210,59 @@ void main() {
     });
 
     testWidgets('Back on a launch Home exits the app', (tester) async {
-      await pumpApp(tester, paired: true, saved: noTips);
+      final exit = _FakeExit();
+      await pumpApp(tester, paired: true, saved: noTips, extra: [appExitProvider.overrideWithValue(exit.call)]);
       await openHome(tester, fromLaunch: true);
       await tester.binding.handlePopRoute();
       await settle(tester);
-      expect(_platformCalls, contains('SystemNavigator.pop'));
+      expect(exit.calls, 1, reason: 'Back asks the app to exit once');
       expect(find.byType(HomeView), findsOneWidget, reason: 'the app exits, Home is not popped');
     });
 
     testWidgets('Back on a Home from the pad menu returns to the pad', (tester) async {
-      await pumpApp(tester, paired: true, saved: noTips);
+      final exit = _FakeExit();
+      await pumpApp(tester, paired: true, saved: noTips, extra: [appExitProvider.overrideWithValue(exit.call)]);
       await openHome(tester);
       await tester.binding.handlePopRoute();
       await settle(tester);
-      expect(_platformCalls, isNot(contains('SystemNavigator.pop')));
+      expect(exit.calls, 0, reason: 'the pad is shown, the app does not exit');
       expect(find.byType(HomeView), findsNothing);
+    });
+
+    testWidgets('leaving before the search wait ends leaves no timer pending', (tester) async {
+      await pumpApp(tester, paired: true, saved: noTips);
+      await openHome(tester);
+      // Home goes before homeSearchWait is up; its timer must be cancelled, as the
+      // test binding fails a test that ends with a timer pending.
+      await tester.pumpWidget(const SizedBox.shrink());
+      expect(find.byType(HomeView), findsNothing);
+    });
+
+    testWidgets('Home on a phone that hosts live asks nothing and stays open when a client connects', (tester) async {
+      final client = _SetClientState();
+      await pumpHostApp(
+        tester,
+        saved: noTips,
+        extra: [
+          launchConsentAskProvider.overrideWithValue(true),
+          launchConsentAskedProvider.overrideWith(_ResettableAsked.new),
+          clientStateProvider.overrideWith(() => client),
+        ],
+      );
+      await openHome(tester);
+      await tester.tap(find.text(HomeText.playHere));
+      await settle(tester);
+      await answerConsent(tester);
+      final container = hostContainer(tester);
+      expect(hostOf(tester).live, isTrue, reason: 'this phone hosts a live game');
+      // A launch's questions put again over a live host: the game asks instead, so Home asks nothing.
+      forgetAsked(tester);
+      await openHome(tester);
+      expect(find.byKey(const Key('consentDialog')), findsNothing, reason: 'a live game asks nothing over Home');
+      client.emit(connected);
+      await settle(tester);
+      expect(find.byType(HomeView), findsOneWidget, reason: 'a live host keeps Home open');
+      await tester.runAsync(container.read(hostingProvider.notifier).stop);
     });
   });
 
@@ -247,7 +281,7 @@ void main() {
             screen: screen,
             extra: [if (tv) party.toyTvProvider.overrideWithValue(true)],
           );
-          expect(tester.takeException(), isNull, reason: 'the pad alone overflows');
+          expect(tester.takeException(), isNull, reason: 'the pad alone must not overflow');
           await openHome(tester);
           for (final label in [HomeText.joinGame, HomeText.playHere, HomeText.displayHere]) {
             expect(find.text(label), findsOneWidget);
