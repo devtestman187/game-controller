@@ -71,12 +71,12 @@ cap_verify() { # cap_verify <job>: the runner's own format/analyze and the job's
   suites=$(sed -n 's/^check: *//p' "$B/$j.md" | head -n 1 | tr -d '\r')
   [ -n "$suites" ] || suites="format analyze"
   # shellcheck disable=SC2086
-  tools/check.sh $suites > "$out" 2>&1 || return 1
+  tools/check.sh $suites > "$out" 2>&1 < /dev/null || return 1
   while IFS= read -r t; do
     [ -f "$t" ] || continue
     pkg=${t%%/test/*}
     cmd="dart test"; grep -q 'sdk: flutter' "$pkg/pubspec.yaml" 2> /dev/null && cmd="flutter test"
-    ( cd "$pkg" && timeout 300 $cmd "${t#"$pkg"/}" ) >> "$out" 2>&1 || return 1
+    ( cd "$pkg" && timeout 300 $cmd "${t#"$pkg"/}" ) >> "$out" 2>&1 < /dev/null || return 1
   done < <(sed -n 's/^allow: *//p' "$B/$j.md" | tr -d '\r' | sed 's/ *· */\n/g' | grep '/test/.*_test\.dart$')
   return 0
 }
@@ -95,11 +95,21 @@ turn_cap() { # turn_cap <job> <rc>: the job's turns, from the usage row `usage` 
   # a WARN and 0 (accepted); over the cap with any other result: a park line and 1. No usage row
   # (a stand-in worker): nothing to count.
   local j=$1 rc=$2 t cap
+  CAP_APPLIED=0
   t=$(usage "$B/$j.md" | sed -n 's/^\([0-9][0-9]*\) turns.*/\1/p')
   [ -n "$t" ] || return 0
   cap=$(sed -n 's/^turns:[[:space:]]*\([0-9][0-9]*\).*/\1/p' "$B/$j.md" | head -n 1)
   case $cap in '' | 0) cap=$RUN_TURN_CAP ;; esac
   [ "$t" -gt "$cap" ] || return 0
+  # tune4 T3: the worker ended nonzero only because it hit its turn cap (flash.sh still applied its files; result 3-7 are
+  # protected files, outside files, a failed check or apply, or a failed preflight, never this) and its report is finished
+  # (a Summary block): the runner's own check and new tests decide, as for a result 0. Green: applied, not parked.
+  if [ "$rc" -gt 0 ] && { [ "$rc" -lt 3 ] || [ "$rc" -gt 7 ]; } && [ -f "$B/$j-report.md" ] &&
+    head -n 40 "$B/$j-report.md" | grep -q '^## Summary' && cap_verify "$j"; then
+    note "over-cap applied: job $j used $t turns, over its cap of $cap (worker result $rc; the runner's own checks are green and its report is finished)"
+    CAP_APPLIED=1
+    return 0
+  fi
   if [ "$rc" -eq 0 ] && [ -f "$B/$j-report.md" ]; then
     if cap_verify "$j"; then
       note "WARN: job $j used $t turns, over its cap of $cap (its own checks passed; accepted)"
@@ -139,6 +149,7 @@ finished_job() { # finished_job <index>: wait its exit, log it, cap it, then sor
     extra+=($APPLIED); rc=0
   fi
   turn_cap "$j" "$rc" || { park "$j"; return; }
+  [ "${CAP_APPLIED:-0}" = 1 ] && rc=0 # over-cap applied (turn_cap): the job goes on as a result 0
   if [ $rc -eq 0 ] && [ -f "$B/$j-report.md" ]; then ok+=("$j")
   else note "job $j parked (result $rc); its siblings continue"; park "$j"; fi
 }
@@ -149,7 +160,9 @@ wave_wait() { # wave_wait: the poll on every started job: each job's limit, the 
     check_stop
     rest=()
     for i in "${pending[@]}"; do
-      if job_limit_over "$i"; then limit_stop "$i"; else rest+=("$i"); fi # a parked job is not waited for
+      if job_limit_over "$i"; then limit_stop "$i"
+      elif declare -F job_idle_over > /dev/null && job_idle_over "$i"; then idle_stop "$i"
+      else rest+=("$i"); fi # a parked job is not waited for
     done
     pending=("${rest[@]}")
     rest=()

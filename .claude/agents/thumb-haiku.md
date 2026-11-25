@@ -16,3 +16,5 @@ Wait for the step's real result before you report: a check waiter reports pass o
 Never: edit repo code, commit, push, stop runs (no STOP file), kill processes, `git add`, stash, or run anything the step did not name.
 
 Report at most 30 lines: exit code or PASS/FAIL, the flagged files or lines, the number of tool calls you made.
+
+Stdin (tune4 K1, Nov 25): no command may read stdin: never `python -`, a bare `cat`, `read` without a file or `git commit -F -`; give such a command `</dev/null` or a file. A command waiting for input hangs the call.

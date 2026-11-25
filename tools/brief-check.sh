@@ -23,6 +23,8 @@
 #              that only a later wave's job allows is a FAIL too: that wave runs after this one.
 #   shrink, model (FAIL) per-brief rules in tools/brief-check-rules.sh: layout-shrinking do: lines need a 48 dp
 #              touch-target test; model: is haiku or sonnet, sonnet needs turns:
+#   pins (WARN) a lib file in the allow: defines a widget that a test file names, and no job of the wave or an
+#              earlier one allows that test (tools/brief-check-pins.sh)
 #   allow-size (WARN) an allow: with over 20 entries or over 3 packages (packages/<x>,
 #              controller_app, tools, docs): split the job
 #
@@ -287,7 +289,7 @@ check_changes() { # check_changes <job> <wave>: FAIL for a hit outside an earlie
   return 0
 }
 
-for f in testonly rules; do [ -f tools/brief-check-$f.sh ] && . tools/brief-check-$f.sh; done
+for f in testonly rules pins; do [ -f tools/brief-check-$f.sh ] && . tools/brief-check-$f.sh; done
 
 check_waves
 for i in "${!jobs[@]}"; do
@@ -297,6 +299,7 @@ for i in "${!jobs[@]}"; do
   check_changes "$j" "${job_wave[$i]}"
   declare -F testonly_warn > /dev/null && testonly_warn "$j" "$B/$j.md"
   declare -F rules_check > /dev/null && rules_check "$j" "$B/$j.md"
+  declare -F pins_warn > /dev/null && pins_warn "$j" "${job_wave[$i]}"
 done
 
 n=${#jobs[@]}

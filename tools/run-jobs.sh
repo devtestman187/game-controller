@@ -96,6 +96,10 @@ cd "$dir/.." || exit 2
 [ -f "$dir/run-limits.sh" ] && . "$dir/run-limits.sh"
 [ -f "$dir/run-base.sh" ] && . "$dir/run-base.sh" # the base check; an older fixture has no such file
 [ -f "$dir/run-gate.sh" ] && . "$dir/run-gate.sh" # the brief gate (p4g's); an older fixture has no such file
+# tune4: tree kill (K2), hung-job guard and phase lines (T2, M2); an older fixture has neither file
+[ -f "$dir/proc-lib.sh" ] && . "$dir/proc-lib.sh"
+[ -f "$dir/run-guard.sh" ] && . "$dir/run-guard.sh"
+type phase > /dev/null 2>&1 || phase() { :; } # an older fixture has no run-guard.sh
 # Files outside a job's allow: list that are applied and committed (always fine).
 SAFE_OUTSIDE='^(([^/]+/)*analysis_options\.yaml|\.gitignore|\.gitattributes|([^/]+/)*pubspec\.lock)$'
 # Known generated churn outside the list: dropped (never copied), logged per job. The one
@@ -141,6 +145,7 @@ mapfile -t WAVES < <(sed 's/#.*//' "$B/waves.txt" | awk 'NF')
 note() { echo "$(date '+%F %T') $*" | tee -a "$B/run.log"; }
 result() { echo "RESULT: $*" | tee -a "$B/run.log"; } # the last line of every run, printed and in run.log
 kill_tree() { local c; for c in $(ps -ef 2>/dev/null | awk -v p="$1" '$3==p{print $2}'); do kill_tree "$c"; done; kill "$1" 2>/dev/null; }
+type tree_kill > /dev/null 2>&1 && kill_tree() { tree_kill "$1"; } # tools/proc-lib.sh: also the Windows twins (K2)
 check_stop() { # the time limit first, then the STOP file: either one stops the run
   time_check
   [ -f "$B/STOP" ] || return 0
@@ -238,20 +243,6 @@ PENDING=()    # jobs whose review was started and whose report is not committed 
 REVPIDS=()    # the background review chains' pids
 DROPPED="" APPLIED="" # set by apply_safe (tools/run-steps.sh): churn dropped, always-fine files applied
 
-handfix_recheck() { # handfix_recheck <job>: the proof and review a hand commit skipped; once per job
-  local j=$1 c
-  [ -f "$WORK/rechecked-$j" ] && return 0
-  grep -q "^$j .* proof\$" "$B/done.txt" 2>/dev/null && return 0 # also survives a fresh clone
-  c=$(git log -1 --format=%H -- "$B/$j-report.md")
-  note "WARN: $j was committed by hand ($(git rev-parse --short "$c")); a plain restart would skip its tests-first proof and worker review, so both run now"
-  TF_COMMIT=$c tests_first "$j"
-  # its worker review joins the wave's review (one per wave, not one per hand-fixed job)
-  if [ $review -eq 1 ] && ! committed "$B/$j-review-report.md"; then RV_NAMES+=("$j"); RV_RANGES+=("$c^..$c"); fi
-  : > "$WORK/rechecked-$j"
-  # the marker in done.txt: a restart (or a fresh clone) does not repeat the proof and the review
-  echo "$j $c proof" >> "$B/done.txt"; save "runner: proof and review of hand-fixed $j done" "$B/done.txt"
-  note "hand-fixed $j: tests-first proof and worker review done (marked in done.txt)"
-}
 
 # The run's own limit: an explicit RUN_MAX_MIN wins, else the computed backstop of the jobs still
 # to do. A folder without run-limits.sh keeps the fixed 360, and no job left keeps one job's time.
@@ -266,6 +257,7 @@ lock_take # after the dry run, which changes nothing: a second runner on this ba
 branch=$(git rev-parse --abbrev-ref HEAD)
 note "start at $(git rev-parse --short HEAD) on $branch"
 note "worker: $WORKER" # the line tools/job-metrics.sh reads for a batch's worker
+[ -f tools/proc-sweep.sh ] && [ -z "${PROC_SWEEP_SKIP:-}" ] && { bash tools/proc-sweep.sh < /dev/null 2>&1 | while IFS= read -r l; do note "proc-sweep: $l"; done; } # tune4 K3: report only
 [ -f "$B/STOP" ] && { rm -f "$B/STOP"; note "removed the old stop file"; }
 clear_last_stop
 if [ ! -s "$WORK/run-base" ]; then # once, at the batch's first start; recovered from run.log on a fresh clone
@@ -285,7 +277,8 @@ gate_step start
 # Preflight: a worker that cannot run flutter and tools/check.sh would run blind (bugs10 job 1),
 # so one tiny real worker call proves it before any job starts. PREFLIGHT_SKIP=1 skips it.
 if [ -z "${PREFLIGHT_SKIP:-}" ]; then
-  if ${FLASH_CMD:-tools/flash.sh} --preflight > "$WORK/run-preflight.log" 2>&1; then note "preflight ok: the worker ran flutter --version and tools/check.sh --list"
+  phase preflight
+  if ${FLASH_CMD:-tools/flash.sh} --preflight > "$WORK/run-preflight.log" 2>&1 < /dev/null; then note "preflight ok: the worker ran flutter --version and tools/check.sh --list"
   else stop "preflight failed: the worker cannot run flutter or tools/check.sh in its sandbox, so no job would run tests (see $WORK/run-preflight.log); nothing was started"; fi
 fi
 
@@ -300,6 +293,7 @@ for wave in "${WAVES[@]}"; do
         "$WORK/run-base-check.log"
   fi
   [ "$(wc -w <<< "$wave")" -le 3 ] || stop "a wave has more than 3 jobs: $wave"
+  phase worker
   started=() pids=() since=() resumed=(); churn_snapshot "$WORK/churn-snapshot" # unchurn reverts only what is clean now
   for j in $wave; do
     check_stop
@@ -315,7 +309,7 @@ for wave in "${WAVES[@]}"; do
     [ ${#started[@]} -gt 0 ] && { sleep 25; check_stop; }
     note "start $j"
     since+=("$(date +%s)") # the job's limit counts from here
-    ${FLASH_CMD:-tools/flash.sh} --brief "$B/$j.md" > "$LOGS/flash-$j.log" 2>&1 &
+    ${FLASH_CMD:-tools/flash.sh} --brief "$B/$j.md" > "$LOGS/flash-$j.log" 2>&1 < /dev/null &
     pids+=($!) started+=("$j")
   done
   if [ ${#started[@]} -eq 0 ] && [ ${#resumed[@]} -eq 0 ]; then
@@ -337,9 +331,10 @@ for wave in "${WAVES[@]}"; do
   if [ ${#ok[@]} -gt 0 ]; then
     unchurn
     dart_fix "${ok[@]}"
-    tests_first "${ok[@]}"; leftovers "${ok[@]}"
-    checks "${ok[*]}"
+    phase tests-first; tests_first "${ok[@]}"; leftovers "${ok[@]}"
+    phase check; checks "${ok[*]}"
     for j in "${ok[@]}"; do ci_patch "$j"; done
+    phase apply
     reviewed=()
     wave_from=$(git rev-parse HEAD)
     for j in "${ok[@]}"; do
@@ -351,7 +346,7 @@ for wave in "${WAVES[@]}"; do
     done
     # one worker review per wave, over all the jobs committed in it (and any hand-fixed job rechecked in it)
     RV_NAMES+=("${ok[@]}"); RV_RANGES+=("$wave_from..$(git rev-parse HEAD)")
-    wave_review "$wn"; [ -n "$WREV" ] && reviewed+=("$WREV")
+    phase review; wave_review "$wn"; [ -n "$WREV" ] && reviewed+=("$WREV")
     [ ${#extra[@]} -gt 0 ] && save "files outside the jobs' lists, applied by the runner (always-fine list): ${ok[*]}" "${extra[@]}"
     paths=("$B/run.log" "$B/done.txt"); [ -f "$B/run-findings.md" ] && paths+=("$B/run-findings.md")
     for j in "${reviewed[@]}"; do paths+=("$B/$j-review.md"); done

@@ -78,13 +78,13 @@ tests_first() { # tests_first <job>...
   else tests=$(git ls-files --others --exclude-standard -- '*_test.dart'); fi
   [ -n "$tests" ] || return 0
   git worktree add --detach -q "$tmp" "$base" 2>/dev/null || { finding "tests-first could not be checked (no temporary folder)"; return 0; }
-  ( cd "$tmp" && flutter pub get >/dev/null 2>&1 )
+  ( cd "$tmp" && flutter pub get >/dev/null 2>&1 </dev/null )
   for t in $tests; do
     pkg=${t%%/test/*}
     mkdir -p "$tmp/$(dirname "$t")"
     if [ -n "${TF_COMMIT:-}" ]; then git show "$TF_COMMIT:$t" > "$tmp/$t"; else cp "$t" "$tmp/$t"; fi
     cmd="dart test"; grep -q 'sdk: flutter' "$pkg/pubspec.yaml" 2>/dev/null && cmd="flutter test"
-    if ! ( cd "$tmp/$pkg" && timeout 300 $cmd "${t#"$pkg"/}" >/dev/null 2>&1 ); then
+    if ! ( cd "$tmp/$pkg" && timeout 300 $cmd "${t#"$pkg"/}" >/dev/null 2>&1 </dev/null ); then
       note "tests-first ok: $t fails on the old code"
     else
       exempt=0
@@ -105,7 +105,7 @@ check_once() { # check_once: tools/check.sh with the runner's fail-fast on, watc
   # watched for the STOP file, RUN_MAX_MIN (check_stop) and RUN_CHECK_MAX_MIN; returns check.sh's own exit code.
   local pid start limit_s=${RUN_CHECK_MAX_MIN:-0} poll_s=${RUN_POLL_S:-1}
   [ "$limit_s" -gt 0 ] && limit_s=$((limit_s * RUN_LIMIT_UNIT_S))
-  CHECK_SKIP="${RUN_CHECK_SKIP:-}" CHECK_FAIL_FAST=1 tools/check.sh -j "${RUN_CHECK_JOBS:-4}" > "$WORK/run-check.log" 2>&1 &
+  CHECK_SKIP="${RUN_CHECK_SKIP:-}" CHECK_FAIL_FAST=1 tools/check.sh -j "${RUN_CHECK_JOBS:-4}" > "$WORK/run-check.log" 2>&1 < /dev/null &
   pid=$!
   start=$(date +%s)
   while kill -0 "$pid" 2> /dev/null; do
@@ -139,7 +139,7 @@ checks() {
         "(see $WORK/run-check.log); nothing of this wave is committed"
     else
       note "checks failed; fetching packages and trying once more"
-      flutter pub get > "$WORK/run-pub.log" 2>&1; unchurn
+      flutter pub get > "$WORK/run-pub.log" 2>&1 < /dev/null; unchurn
       check_once || stop "checks failed twice on the combined tree after $*" \
         "(see $WORK/run-check.log); nothing of this wave is committed"
     fi
@@ -162,7 +162,7 @@ dart_fix() { # dart_fix <job>...
     for p in $pk; do
       p=${p%/}
       [ -f "$p/pubspec.yaml" ] || { finding "$j: dart-fix package $p has no pubspec.yaml; skipped"; continue; }
-      out=$( cd "$p" && dart fix --apply 2>&1 ); rc=$?
+      out=$( cd "$p" && dart fix --apply 2>&1 < /dev/null ); rc=$?
       printf '%s\n' "$out" >> "$WORK/run-dartfix.log"
       if [ $rc -eq 0 ]; then note "dart fix --apply in $p for $j: $(printf '%s\n' "$out" | grep -E 'Applied|Nothing to fix' | tail -n 1)"
       else finding "$j: dart fix --apply failed in $p (see $WORK/run-dartfix.log); the checks decide"; fi

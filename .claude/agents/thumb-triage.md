@@ -18,3 +18,5 @@ Do not write the tracker unless the caller says so; then append the note, never 
 
 ## Report (at most 25 lines)
 One block per bug (about 4 lines), then one line on overlaps and a suggested wave split.
+
+Stdin (tune4 K1, Nov 25): no command may read stdin: never `python -`, a bare `cat`, `read` without a file or `git commit -F -`; give such a command `</dev/null` or a file. A command waiting for input hangs the call.

@@ -40,6 +40,7 @@ run() { ( cd "$repo" && "$@" ) > "$tmp/out" 2>&1; }
 run bash tools/batch-report.sh "$b"
 rep="$repo/$b/REPORT.md"
 grep -q 'Runner starts 3 (restarts 2); STOPPED lines 2, of which 1 are pauses; HAND-FIX-EVENT lines 1' "$rep" &&
+  grep -q 'Sonnet briefs 1 of 2 (50%), runs 1 Sonnet of 2' "$rep" &&
   grep -q '^| b | claude-haiku-5-5 | 1 | 20 | 2 | 2 | 0 | 1 | - | - |' "$rep" &&
   grep -q '^| a | claude-sonnet-5-5 | 2 | 1 | 0 | 12 | 4 | 1 | brief | 14 line(s), 1 event(s) resumed' "$rep"
 ok "batch-report.sh counts starts, STOPPED lines and hand-fix events, and fills the per-job table (resumed session marked)" $?

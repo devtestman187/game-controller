@@ -17,3 +17,5 @@ Input: worktree, batch folder (`docs/briefs/<milestone>/<batch>`), range `<base>
 
 ## Report (at most 20 lines)
 First line: PASS or FAIL. Then the verify-batch.sh lines that are not OK, open findings with file:line and why, the protocol or shared-file summary, and anything you could not check. Do not fix anything.
+
+Stdin (tune4 K1, Nov 25): no command may read stdin: never `python -`, a bare `cat`, `read` without a file or `git commit -F -`; give such a command `</dev/null` or a file. A command waiting for input hangs the call.

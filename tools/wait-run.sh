@@ -3,7 +3,7 @@
 # a while, prints the run.log lines that are new since the last call, and exits
 # as soon as the run logs DONE or STOPPED.
 #
-#   tools/wait-run.sh <briefs-dir> [--max <s>]
+#   tools/wait-run.sh <briefs-dir> [--max <s>] [--since <epoch>]
 #
 # One call blocks at most WAIT_MAX_S seconds (default 170, capped at 170: the
 # agent shell moves a call still running at 180 s into the background), so a
@@ -16,6 +16,7 @@
 #               unchanged for WAIT_STALL_MIN minutes, or OVERRUN: a job with no
 #               `finished` line yet runs past 1.5 x its expected minutes (once per
 #               job: a later call says so and waits the window instead)
+#   5 NO START  --since only: no `start at` line newer than the waiter's launch appeared within WAIT_START_GRACE_S
 #   3 BAD INPUT no folder, no run.log, a bad option, or another waiter on the
 #               same folder
 #   4 running   the window ended with the run still going; the result names the
@@ -23,6 +24,12 @@
 #               the last job it says `checking: the combined check for <n> min`,
 #               during the run's review `reviewing: the run's review for <n> min`,
 #               and before the first job `preflight (no job started yet)`
+#
+# --since <epoch> (tune4 T1, Nov 25): the waiter's own launch time, taken once (`date +%s`) and passed on every call. A run is
+# the one that wrote a `start at` line at or after it; until then an older DONE or STOPPED (a PAUSED stop of the run
+# before a restart) is not reported, the call says it is waiting for the new start (exit 4). Without it the old
+# stop would be returned at once when the waiter starts before the restarted runner has written its line.
+# WAIT_START_GRACE_S (default 300): how long a `--since` waiter waits for that line before it exits 5.
 #
 # A job starts at its `start <job>` line, or at its `resume <job> (applied by hand,
 # not committed yet)` line when the runner found its report already in the folder;
@@ -58,6 +65,7 @@ WAIT_CAP_S=170
 WAIT_MAX_S=${WAIT_MAX_S:-$WAIT_CAP_S}
 WAIT_POLL_S=${WAIT_POLL_S:-5}
 WAIT_STALL_MIN=${WAIT_STALL_MIN:-20}
+WAIT_START_GRACE_S=${WAIT_START_GRACE_S:-300}
 WAIT_EXPECT_DEFAULT_MIN=${WAIT_EXPECT_DEFAULT_MIN:-15}
 WAIT_RECENT_ROWS=${WAIT_RECENT_ROWS:-30}
 USAGE_LOG=${FLASH_USAGE_LOG:-$HOME/.thumbparty/flash-usage.tsv}
@@ -263,14 +271,17 @@ nap() { # nap <seconds>: a sleep that a TERM interrupts at once
 
 B=""
 max=""
+since=""
 while [ $# -gt 0 ]; do
   case "$1" in
+    --since) [ $# -ge 2 ] || bad "--since needs an epoch"; since=$2; shift 2 ;;
     --max) [ $# -ge 2 ] || bad "--max needs a number of seconds"; max=$2; shift 2 ;;
     -h | --help) awk 'NR > 1 && /^set -u/ { exit } NR > 1 { sub(/^# ?/, ""); print }' "$0"; exit 0 ;;
     -*) bad "unknown option $1 (try --help)" ;;
     *) [ -z "$B" ] || bad "one briefs folder at a time (got $B and ${1%/})"; B=${1%/}; shift ;;
   esac
 done
+case "$since" in *[!0-9]*) bad "--since takes epoch seconds, not $since" ;; esac
 [ -n "$B" ] || bad "usage: tools/wait-run.sh <briefs-dir> [--max <s>]"
 [ -d "$B" ] || bad "no such folder: $B"
 LOG="$B/run.log"
@@ -330,6 +341,13 @@ while :; do
   run_start_off=$(first_line_off)
   run_started_s=$(epoch "$(grep -E ' start at ' "$LOG" | tail -n 1 | cut -c1-19)")
   seen_reset # a restart while we wait (a new start at line) is a new run
+  if [ -n "$since" ] && { [ -z "$run_started_s" ] || [ "$run_started_s" -lt $((since - 2)) ]; }; then
+    now=$(date +%s)
+    [ $((now - since)) -ge "$WAIT_START_GRACE_S" ] && result 5 "NO START: no start at line newer than this waiter appeared in $WAIT_START_GRACE_S s (is the runner running?)"
+    [ "$now" -ge "$deadline" ] && result 4 "running: waiting for the runner's new start at line (the last one is older than this waiter)"
+    nap $((deadline - now < WAIT_POLL_S ? deadline - now : WAIT_POLL_S))
+    continue
+  fi
   print_new
   if run_ended; then
     [ "$END_KIND" = DONE ] && result 0 "ok: DONE: $END_TEXT"

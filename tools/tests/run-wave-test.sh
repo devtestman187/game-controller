@@ -180,16 +180,16 @@ if [ "$rc" = 0 ] &&
   [ "$(last_line)" = "RESULT: DONE: 1 jobs, 0 min" ]; then r=0; else r=1; fi
 report "a job over its 120-turn cap with result 0 and a report is accepted with the WARN and committed (exit 0)" "$r"
 
-# 4. Over the 120-turn cap with result 1: parked, never committed, and the run stops naming it.
+# 4. Over the 120-turn cap with result 5 (a failed check; result 1, the turn cap itself, is applied: tune4 T3, run-stops case 8): parked, never committed, and the run stops naming it.
 fixture capfail
 usage_row 130 20
-STUB_RC=1
+STUB_RC=5
 run_jobs --no-review
 if [ "$rc" = 1 ] &&
   logged "job runjob used 130 turns, over its cap of 120 (parked, siblings continue)" &&
   ! logged "committed runjob" &&
   [ "$(last_line)" = "RESULT: STOPPED: jobs that failed or passed their limit (parked, not committed): runjob (their logs: $batch/flash-<job>.log)" ]; then r=0; else r=1; fi
-report "a job over its 120-turn cap with result 1 is parked, not accepted (exit 1)" "$r"
+report "a job over its 120-turn cap with result 5 is parked, not accepted (exit 1)" "$r"
 
 if [ "$fails" -gt 0 ]; then
   echo "RESULT: FAILED: $fails of $cases case(s) failed"

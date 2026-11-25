@@ -110,7 +110,7 @@ job="" worker="" model="" turns="" in_tokens="" out_tokens="" cache_tokens="" mi
 result="" result_cell=""
 
 read_log() { # read_log <log>: fills the cells from one worker log, `-` for what it lacks
-  local f=$1 line numbers seconds subtype terminal detail json_log
+  local f=$1 line runs seconds subtype terminal detail json_log
   job=${f##*/}
   job=${job#flash-}
   job=${job%.log}
@@ -118,25 +118,22 @@ read_log() { # read_log <log>: fills the cells from one worker log, `-` for what
   result=- result_cell="no result"
   wall=-
   if [ -f "$run_log" ] && [ "${job%-review}" = "$job" ]; then wall=$(wall_minutes "$job"); fi
-  line=$(sed -n 's/^---- flash usage: \{0,1\}//p' "$f" | tail -n 1)
-  case "$line" in
-    '' | 'not available'*) ;; # the worker never answered: no usage line to read
-    *)
-      # flash_usage.dart prints the numbers in one order: turns, seconds, input, cache read,
-      # cache write, output. Six of them, or the line is not one of its own.
-      numbers=$(printf '%s\n' "$line" | sed 's/[^0-9]/ /g')
-      # Word splitting on purpose: each number is one field.
-      set -- $numbers
-      if [ $# = 6 ]; then
-        turns=$1
-        seconds=$2
-        in_tokens=$3
-        cache_tokens=$(($4 + $5))
-        out_tokens=$6
-        minutes=$(LC_ALL=C awk -v s="$seconds" 'BEGIN { printf "%.1f", s / 60 }')
-      fi
-      ;;
-  esac
+  # tune4 M1: one usage line per worker run, and a resumed job (a repair, a second try) has several in its log: they are
+  # ADDED, so the row is the job's whole cost, not the last run's (n9b2 and n8b3 of wave2-789 showed 1 turn for ~25 min).
+  # flash_usage.dart prints the numbers in one order: turns, seconds, input, cache read, cache write, output. A line
+  # with six numbers counts; `not available` or anything else does not.
+  runs=$(sed -n 's/^---- flash usage: \{0,1\}//p' "$f" | sed 's/[^0-9]/ /g' |
+    awk 'NF == 6 { for (i = 1; i <= 6; i++) s[i] += $i; n++ } END { if (n) print s[1], s[2], s[3], s[4], s[5], s[6], n }')
+  if [ -n "$runs" ]; then
+    # Word splitting on purpose: each number is one field.
+    set -- $runs
+    turns=$1
+    seconds=$2
+    in_tokens=$3
+    cache_tokens=$(($4 + $5))
+    out_tokens=$6
+    minutes=$(LC_ALL=C awk -v s="$seconds" 'BEGIN { printf "%.1f", s / 60 }')
+  fi
   model=$(sed -n 's/^---- flash: worker exit [^,]*, model \([^,]*\), log .*/\1/p' "$f" | tail -n 1)
   [ -n "$model" ] || model=-
   worker=flash

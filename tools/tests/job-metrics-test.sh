@@ -165,6 +165,17 @@ else
 fi
 report "a folder with no flash-*.log is bad use, exit 2" "$r"
 
+
+# 11. tune4 M1: a log with two usage lines (a job run twice: first try and repair) shows the SUM, not the last run's row.
+b2="$tmp/batch-resumed"; mkdir -p "$b2"
+printf '%s\n' \
+  '---- flash usage: 30 turns, 600 s, input 1000 + cache read 4000 + cache write 500, output 2000 tokens' \
+  '---- flash usage: 1 turns, 12 s, input 10 + cache read 20 + cache write 30, output 40 tokens' \
+  "---- flash: worker exit 0, model claude-haiku-5-5, log $tmp/gone.json" \
+  '---- flash: result 0' > "$b2/flash-two.log"
+tool "$b2"
+if [ "$rc" = 0 ] && row 'two claude claude-haiku-5-5 31 1010 2040 4550 10.2 - 0'; then r=0; else r=1; fi
+report "a job with two usage lines (a resume) is summed: 31 turns, 10.2 min, not the last run's 1 turn" "$r"
 if [ "$fails" -gt 0 ]; then
   echo "RESULT: FAILED: $fails of $cases case(s) failed"
   exit 1

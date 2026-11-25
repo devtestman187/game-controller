@@ -2,7 +2,7 @@ job: the run's review (read-only): everything committed in this run, read as one
 pub: no
 stop: after it.
 read: {DIR}/STATUS.md if it exists · every `{DIR}/*-review-report.md` (the per-job reviews) · {DIR}/run-findings.md if it exists · the Summary block of every `{DIR}/*-report.md` · docs/coding-guidelines.md · docs/review-rules.md · the whole change: `git diff {RANGE}` if the command is allowed, otherwise these files whole: {FILES}
-decide: never stop for a question. You change no code and no document except your report. If something cannot be judged from what you can read, say so in one line under "Could not check".
+decide: write `{DIR}/REVIEW.md` EARLY and keep it up to date: after the carry-over (step 1) create it with a `## Summary` whose first line says `partial` and the findings so far, then rewrite it as each later step finishes, and drop `partial` only in your last edit. You may run out of turns: a REVIEW.md that exists beats a perfect one that does not. Never stop for a question. You change no code and no document except your report. If something cannot be judged from what you can read, say so in one line under "Could not check".
 
 Claude (the designer) reads only your Summary first, verifies the findings it acts on, and writes ONE fix brief from your list. So: merge, de-duplicate and rank; a finding Claude cannot find in the file is worse than none.
 1. **Carry over** every finding of the per-job reviews and of run-findings.md that still holds in the final code (a later job may have fixed it: check, and drop it if so).

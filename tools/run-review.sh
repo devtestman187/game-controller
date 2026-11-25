@@ -66,7 +66,7 @@ start_reviews() { # start_reviews <job>...: briefs are already committed
   for j in "$@"; do rm -f "$WORK/run-rev-$j.done"; PENDING+=("$j"); done
   (
     for j in "$@"; do
-      ${FLASH_CMD:-tools/flash.sh} --brief "$B/$j-review.md" > "$LOGS/flash-$j-review.log" 2>&1
+      ${FLASH_CMD:-tools/flash.sh} --brief "$B/$j-review.md" > "$LOGS/flash-$j-review.log" 2>&1 < /dev/null
       [ $? -eq 4 ] && review_salvage "$j" "$LOGS/flash-$j-review.log"
       : > "$WORK/run-rev-$j.done"
     done
@@ -109,7 +109,7 @@ run_review() { # run_review: commit the brief of the run's review and run it; re
     docs/briefs/templates/run-review.md > "$B/run-review.md"
   save "runner: the brief for the run's review" "$B/run-review.md" "$B/run.log"
   note "start the run's review"
-  ${FLASH_CMD:-tools/flash.sh} --brief "$B/run-review.md" > "$LOGS/flash-run-review.log" 2>&1 &
+  ${FLASH_CMD:-tools/flash.sh} --brief "$B/run-review.md" > "$LOGS/flash-run-review.log" 2>&1 < /dev/null &
   pid=$!
   start=$(date +%s)
   while kill -0 "$pid" 2>/dev/null; do
@@ -137,5 +137,31 @@ final_review() { # final_review: the run's review and its report (REVIEW.md, sal
     fi
   fi
   if [ -f "$B/REVIEW.md" ]; then unchurn; save "the run's review (worker)" "$B/REVIEW.md"
-  else finding "the run's review wrote no REVIEW.md (see $LOGS/flash-run-review.log)"; fi
+  else # tune4 T5: a REVIEW.md always exists (the worker may have hit its turn cap before writing it)
+    printf '## Summary
+
+partial: the run review worker wrote no REVIEW.md (log: %s). The per-wave reviews (%s/*-review-report.md) and run-findings.md stand.
+
+## Findings
+
+- none recorded by the run review
+' "$LOGS/flash-run-review.log" "$B" > "$B/REVIEW.md"
+    save "the run's review (stub: the worker wrote none)" "$B/REVIEW.md"
+    finding "the run's review wrote no REVIEW.md (see $LOGS/flash-run-review.log); a partial stub was written"
+  fi
+}
+
+handfix_recheck() { # handfix_recheck <job>: the proof and review a hand commit skipped; once per job
+  local j=$1 c
+  [ -f "$WORK/rechecked-$j" ] && return 0
+  grep -q "^$j .* proof\$" "$B/done.txt" 2>/dev/null && return 0 # also survives a fresh clone
+  c=$(git log -1 --format=%H -- "$B/$j-report.md")
+  note "WARN: $j was committed by hand ($(git rev-parse --short "$c")); a plain restart would skip its tests-first proof and worker review, so both run now"
+  TF_COMMIT=$c tests_first "$j"
+  # its worker review joins the wave's review (one per wave, not one per hand-fixed job)
+  if [ $review -eq 1 ] && ! committed "$B/$j-review-report.md"; then RV_NAMES+=("$j"); RV_RANGES+=("$c^..$c"); fi
+  : > "$WORK/rechecked-$j"
+  # the marker in done.txt: a restart (or a fresh clone) does not repeat the proof and the review
+  echo "$j $c proof" >> "$B/done.txt"; save "runner: proof and review of hand-fixed $j done" "$B/done.txt"
+  note "hand-fixed $j: tests-first proof and worker review done (marked in done.txt)"
 }

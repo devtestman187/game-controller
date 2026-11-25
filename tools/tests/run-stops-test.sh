@@ -39,7 +39,12 @@ echo flash >> "$STUB_MARK"
 if [ "${1:-}" = "--preflight" ]; then echo "preflight ok (stub)"; exit 0; fi
 brief=${2:-}
 f() { sed -n "s/^$1: *//p" "$brief" | head -n 1; }
-nap=$(f stub-sleep); [ -n "$nap" ] && sleep "$nap"
+nap=$(f stub-sleep); swt=$(f stub-worktree); [ -n "$swt" ] && echo "---- flash: job worktree $swt"
+std=$(f stub-touch)
+if [ "$(f stub-stdin)" = yes ]; then IFS= read -r line; echo "stdin:${line:-EOF}" >> "$STUB_STDIN_OUT"; fi
+if [ -n "$nap" ]; then
+  if [ -n "$std" ]; then for _ in $(seq "$nap"); do echo x > "$std/f"; sleep 1; done; else sleep "$nap"; fi
+fi
 wf=$(f stub-wait-for); if [ -n "$wf" ]; then for _ in $(seq 100); do [ -e "$wf" ] && break; sleep 0.1; done; fi
 w=$(f stub-write); [ -n "$w" ] && { mkdir -p "$(dirname "$w")"; printf '%s\n' "${STUB_CONTENT:-job}" >> "$w"; }
 rep=$(f report)
@@ -72,7 +77,7 @@ template="$tmp/template/repo"
 repo="$template"
 mkdir -p "$repo/tools" "$repo/src" "$repo/$batch" "$repo/.dart_tool" "$repo/tv_test_app/windows/flutter"
 cp "$loc"/tools/run-jobs.sh "$loc"/tools/run-steps.sh "$loc"/tools/run-review.sh "$loc"/tools/churn.sh \
-  "$loc"/tools/run-limits.sh "$loc"/tools/run-wave.sh "$repo/tools/"
+  "$loc"/tools/run-limits.sh "$loc"/tools/run-wave.sh "$loc"/tools/run-guard.sh "$loc"/tools/proc-lib.sh "$repo/tools/"
 for opt in run-capcheck.sh; do [ -f "$loc/tools/$opt" ] && cp "$loc/tools/$opt" "$repo/tools/"; done
 stubs
 printf 'base\n' > "$repo/src/app.dart"
@@ -189,5 +194,96 @@ rcw=0; WAIT_STATE_DIR="$tmp/wait/state" bash "$loc/tools/wait-run.sh" "$wd" --ma
 if [ "$rcw" = 1 ]; then r=0; else r=1; fi
 report "wait-run.sh reports the stop line the run itself logged (exit $rcw, want 1)" "$r"
 
+
+# 6b. tune4 T1, the stale waiter: a waiter launched before the restarted runner wrote its `start at` line must not
+#     return the stop of the run before (PAUSED). Without --since that old stop is returned at once (exit 1: the bug).
+wd2="$tmp/wait2/docs/briefs/w"; mkdir -p "$wd2" "$tmp/wait2/state"
+printf '2026-11-24 22:00:00 start at aaaaaaa on m16\n2026-11-24 22:10:00 STOPPED: PAUSED after wave 1\nRESULT: STOPPED: PAUSED after wave 1\n' > "$wd2/run.log"
+printf 'job: w j\nexpected-min: 600\nreport: x\n' > "$wd2/job1.md"
+rcw=0; WAIT_STATE_DIR="$tmp/wait2/state" bash "$loc/tools/wait-run.sh" "$wd2" --max 2 > "$out" 2>&1 || rcw=$?
+old_rc=$rcw
+since=$(date +%s)
+rcw=0; WAIT_STATE_DIR="$tmp/wait2/state" bash "$loc/tools/wait-run.sh" "$wd2" --max 2 --since "$since" > "$out" 2>&1 || rcw=$?
+if [ "$old_rc" = 1 ] && [ "$rcw" = 4 ] && grep -q "waiting for the runner's new start at" "$out"; then r=0; else r=1; fi
+report "a waiter with --since does not return the old stop before the restart's start at line (without it exit $old_rc; with it $rcw, want 4)" "$r"
+printf '%s start at bbbbbbb on m16\n' "$(date '+%F %T')" >> "$wd2/run.log"
+rcw=0; WAIT_STATE_DIR="$tmp/wait2/state" bash "$loc/tools/wait-run.sh" "$wd2" --max 2 --since "$since" > "$out" 2>&1 || rcw=$?
+if [ "$rcw" = 4 ] && ! grep -q "PAUSED" "$out"; then r=0; else r=1; fi
+report "after the new start at line the --since waiter follows the new run (exit $rcw, want 4, no old stop printed)" "$r"
+rcw=0; WAIT_STATE_DIR="$tmp/wait2/state" WAIT_START_GRACE_S=1 bash "$loc/tools/wait-run.sh" "$wd" --max 5 --since "$(( $(date +%s) - 10 ))" > "$out" 2>&1 || rcw=$?
+if [ "$rcw" = 5 ]; then r=0; else r=1; fi
+report "a --since waiter with no newer start at line gives up with NO START (exit $rcw, want 5)" "$r"
+
+# 7. tune4 T2, the hung-job guard: a job whose worktree and log show no change for RUN_JOB_IDLE_MIN minutes is killed and
+#    logged "hung" (parked, the sibling is committed). A job that keeps writing files is not hung however long it runs.
+fixture hung
+mkdir -p "$tmp/wt-hung"
+brief hj "stub-sleep: 27" "stub-worktree: $tmp/wt-hung"
+brief sib
+waves "hj sib"
+export RUN_JOB_IDLE_MIN=3 RUN_IDLE_POLL_S=1
+run_jobs
+if [ "$rc" = 1 ] && logged "job hj hung: no file of its worktree or log changed for 3 min" && logged "committed sib" && ! done_has hj; then r=0; else r=1; fi
+report "a job with no file change for RUN_JOB_IDLE_MIN is logged hung and parked; its sibling is committed (exit $rc)" "$r"
+fixture busy
+mkdir -p "$tmp/wt-busy"
+brief bj "stub-sleep: 8" "stub-worktree: $tmp/wt-busy" "stub-touch: $tmp/wt-busy"
+waves bj
+run_jobs
+if [ "$rc" = 0 ] && done_has bj && ! logged "hung"; then r=0; else r=1; fi
+report "a job that keeps writing files for longer than RUN_JOB_IDLE_MIN is not hung (exit $rc)" "$r"
+unset RUN_JOB_IDLE_MIN RUN_IDLE_POLL_S
+
+# 8. tune4 T3, over-cap auto-apply: a job over its cap whose worker ended nonzero (result 1: the turn cap), whose own
+#    checks are green and whose report has a Summary is applied ("over-cap applied"); a failing result 5 is still parked.
+fixture overcap
+brief oc "turns: 5" "stub-write: src/app.dart" "stub-rc: 1"
+waves oc; row oc 8 60
+run_jobs
+if [ "$rc" = 0 ] && done_has oc && logged "over-cap applied: job oc used 8 turns, over its cap of 5" && logged "committed oc"; then r=0; else r=1; fi
+report "an over-cap job (worker result 1) with green checks and a finished report is applied, not parked (exit $rc)" "$r"
+fixture overcap5
+brief oc5 "turns: 5" "stub-write: src/app.dart" "stub-rc: 5"
+waves oc5; row oc5 8 60
+run_jobs
+if [ "$rc" = 1 ] && ! done_has oc5 && ! logged "over-cap applied"; then r=0; else r=1; fi
+report "an over-cap job with worker result 5 (a failed check) is still parked (exit $rc)" "$r"
+fixture overcapbad
+brief ocb "turns: 5" "stub-write: src/app.dart" "stub-rc: 1"
+waves ocb; row ocb 8 60
+STUB_CONTENT=BROKEN run_jobs
+if [ "$rc" = 1 ] && ! done_has ocb && ! logged "over-cap applied"; then r=0; else r=1; fi
+report "an over-cap job with a failing runner check is parked even with a report (exit $rc)" "$r"
+
+# 9. tune4 M2, phase lines: run.log names the phases (preflight is skipped here, worker, check, apply), each closing the last.
+fixture phases
+brief pj
+waves pj
+run_jobs
+if grep -q "phase: worker" "$repo/$batch/run.log" && grep -q "phase: check (tests-first took " "$repo/$batch/run.log" &&
+  grep -q "phase: apply (check took " "$repo/$batch/run.log"; then r=0; else r=1; fi
+report "run.log carries phase lines: worker, tests-first, check (tests-first took ...), apply (check took ...)" "$r"
+
+# 10. tune4 T5: a run review that wrote no REVIEW.md leaves a partial stub (a REVIEW.md always exists).
+(
+  B="$tmp/rev"; LOGS="$tmp/rev"; mkdir -p "$B"; WORK="$tmp/rev"
+  note() { :; }; save() { echo "saved $*" >> "$tmp/rev/saves"; }; finding() { echo "finding $*" >> "$tmp/rev/saves"; }
+  unchurn() { :; }; run_review() { return 1; }; outside_files() { :; }; CHURN_OUTSIDE=x
+  . "$loc/tools/run-review.sh"
+  run_review() { return 1; }
+  final_review
+) > "$out" 2>&1
+if grep -q '^## Summary' "$tmp/rev/REVIEW.md" 2> /dev/null && grep -q 'partial' "$tmp/rev/REVIEW.md" && grep -q "stub" "$tmp/rev/saves"; then r=0; else r=1; fi
+report "a run review with no REVIEW.md leaves a partial stub that is saved" "$r"
+
+# 11. tune4 K1: the worker is started with </dev/null: a worker that reads stdin sees EOF, not the runner's input.
+fixture stdin
+printf 'typed\n' > "$tmp/typed"
+export STUB_STDIN_OUT="$tmp/stdin-out"; : > "$STUB_STDIN_OUT"
+brief sj "stub-stdin: yes"
+waves sj
+run_jobs < "$tmp/typed"
+if [ "$rc" = 0 ] && grep -q "^stdin:EOF" "$STUB_STDIN_OUT"; then r=0; else r=1; fi
+report "the runner starts the worker with </dev/null (it read: $(cat "$STUB_STDIN_OUT"))" "$r"
 if [ "$fails" -gt 0 ]; then echo "RESULT: FAILED: $fails of $cases case(s) failed"; exit 1; fi
 echo "RESULT: ok: $cases case(s) passed"

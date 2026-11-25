@@ -30,7 +30,7 @@ cd "$repo" 2> /dev/null || { echo "batch-close: no folder $repo" >&2; exit 2; }
 [ -n "$dir" ] && [ -f "$dir/run.log" ] || { echo "batch-close: usage: batch-close.sh <batch-dir> (--line <text> | --run-check) [--tip sha]" >&2; exit 2; }
 [ -n "$line" ] || [ "$runcheck" = 1 ] || { echo "batch-close: give --line \"<text>\" or --run-check" >&2; exit 2; }
 if [ "$runcheck" = 1 ]; then
-  outp=$(bash tools/check.sh 2>&1); rc=$?
+  outp=$(bash tools/check.sh 2>&1 < /dev/null); rc=$?
   line=$(printf '%s\n' "$outp" | grep -E 'All checks passed|FAIL' | tail -n 1)
   [ "$rc" = 0 ] || { echo "batch-close: tools/check.sh failed ($rc): ${line:-no summary line}" >&2; exit 1; }
 fi
@@ -38,6 +38,8 @@ case "$line" in *"All checks passed"*) ;; *) echo "batch-close: the check line d
 short=$(git rev-parse --short=8 "${tip:-HEAD}" 2> /dev/null) || { echo "batch-close: unknown tip ${tip:-HEAD}" >&2; exit 2; }
 echo "full check: $line $(date +%F) $short" >> "$dir/run.log"
 echo "batch-close: run.log gets the full check line"
+# tune4 K3: leftover processes of this worktree, report only (the driver pastes this into its hand-back)
+if [ -f tools/proc-sweep.sh ]; then bash tools/proc-sweep.sh < /dev/null 2>&1 | sed "s/^/batch-close: /"; fi
 if [ -e "$dir/STOP.md" ]; then rm -f "$dir/STOP.md"; echo "batch-close: removed $dir/STOP.md"; fi
 batch=$(basename "$dir")
 status="$(dirname "$dir")/STATUS.md"

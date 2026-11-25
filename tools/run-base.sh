@@ -30,7 +30,7 @@ run_base_check() { # run_base_check <log>: the base's format and analyze (see th
   RUN_BASE_WHY=""
   limit_s=$((RUN_BASE_CHECK_MAX_MIN * ${RUN_LIMIT_UNIT_S:-60}))
   [ "$limit_s" -gt 0 ] || limit_s=1 # a 0 s limit would refuse every base at once
-  ${RUN_BASE_CHECK_CMD:-bash tools/check.sh --fail-fast format analyze} > "$log" 2>&1 &
+  ${RUN_BASE_CHECK_CMD:-bash tools/check.sh --fail-fast format analyze} > "$log" 2>&1 < /dev/null &
   pid=$!
   start=$(date +%s)
   while kill -0 "$pid" 2> /dev/null; do

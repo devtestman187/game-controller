@@ -38,4 +38,4 @@ set -u
 # flash.sh picks the worker from FLASH_WORKER (its wkind block); everything else
 # is its own. exec keeps its exit code and its output as they are.
 export FLASH_WORKER=claude
-exec bash "$(dirname "$0")/flash.sh" "$@"
+exec bash "$(dirname "$0")/flash.sh" "$@" < /dev/null # no stdin for the worker or its children (tune4 K1)

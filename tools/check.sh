@@ -116,7 +116,8 @@ run_check() {
   if [ "$cache" = 1 ] && cache_lookup "$name"; then cached_line "$name"; return 0; fi
   log="$logs/$name.log"
   start=$(date +%s)
-  (cd "$root/$dir" && run_cmd "$cmd") > "$log" 2>&1
+  (cd "$root/$dir" && run_cmd "$cmd") > "$log" 2>&1 < /dev/null &
+  wait $! # a wait, so the guard trap (tune4 K4) runs at once and kills this suite
   rc=$?
   secs=$(($(date +%s) - start))
   print_result "$name" "$rc" "$secs" "$log"
@@ -213,6 +214,15 @@ done
 
 logs="${TMPDIR:-${TEMP:-/tmp}}/thumbparty-check-$(date +%Y%m%d-%H%M%S)"
 mkdir -p "$logs" || exit 2
+
+# CHECK_MAX_MIN (default 20): a wall limit for the whole run; past it every suite is killed and the run exits 1.
+# An EXIT/INT/TERM trap kills the children's trees (tools/proc-lib.sh, tune4 K4; without that file: no guard).
+GUARD_MAX_MIN=${CHECK_MAX_MIN:-20}
+case "$GUARD_MAX_MIN" in '' | *[!0-9]*) GUARD_MAX_MIN=20 ;; esac
+if [ -f "$root/tools/proc-lib.sh" ]; then
+  . "$root/tools/proc-lib.sh"
+  guard_script check.sh "${CHECK_MAX_S:-$((GUARD_MAX_MIN * 60))}"
+fi
 
 # The lines worth showing from a failed run: test names that failed, the
 # expectation lines, compile and analyzer errors, files that need formatting.

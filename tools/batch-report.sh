@@ -10,7 +10,7 @@
 #   Counts      jobs, runner starts and restarts (`start at` lines; restarts = starts - 1), STOPPED lines (pauses counted
 #               apart), HAND-FIX-EVENT lines, Sonnet share, the `full check:` line
 #   Jobs        one table row per job: model, ladder, turns, minutes (usage row), wall minutes (start to finished line),
-#               result, attempts, failure class (a `<job> class: <capability|brief|gate|environment>` phrase in
+#               result, runs, failure class (a `<job> class: <capability|brief|gate|environment>` phrase in
 #               DRIVER-NOTES.md), hand fix (lines changed, from HAND-FIX-EVENT lines). A row whose logged turns are under 3
 #               while the job ran 5+ wall minutes is marked "resumed": the usage row covers the last resume only.
 #   Metrics     tools/job-metrics.sh output when the script runs
@@ -42,12 +42,14 @@ first_start=$(grep -E ' start at ' "$log" | head -n 1 | cut -c1-19)
 last_ts=$(grep -E '^[0-9-]+ [0-9:]+ ' "$log" | tail -n 1 | cut -c1-19)
 jobs=$(grep -E ' finished: result ' "$log" | sed -E 's/^[0-9-]+ [0-9:]+ ([^ ]+) finished.*/\1/' | awk '!s[$0]++')
 njobs=$(printf '%s\n' "$jobs" | grep -c .)
-nsonnet=0
+nsonnet=0 nruns=0 nsonnet_runs=0
 
 rows=""
 for j in $jobs; do
   fin=$(grep -E "^[0-9-]+ [0-9:]+ $j finished: result " "$log" | tail -n 1)
   attempts=$(grep -cE "^[0-9-]+ [0-9:]+ $j finished: result " "$log")
+  nruns=$((nruns + attempts))
+  nsonnet_runs=$((nsonnet_runs + $(grep -E "^[0-9-]+ [0-9:]+ $j finished: result " "$log" | grep -c "model claude-sonnet" || true)))
   rc=$(sed -E 's/.* finished: result ([0-9]+).*/\1/' <<< "$fin")
   turns=$(sed -nE 's/.*\(([0-9]+) turns?, ([0-9]+) min\).*/\1/p' <<< "$fin")
   mins=$(sed -nE 's/.*\(([0-9]+) turns?, ([0-9]+) min\).*/\2/p' <<< "$fin")
@@ -70,11 +72,11 @@ gen() {
   echo
   echo "## Counts"
   echo "- Runner starts $starts (restarts $((starts > 0 ? starts - 1 : 0))); STOPPED lines $stops, of which $pauses are pauses; HAND-FIX-EVENT lines $events."
-  echo "- Jobs run $njobs; Sonnet $nsonnet of $njobs$([ "$njobs" -gt 0 ] && echo " ($((nsonnet * 100 / njobs))%)"); first start ${first_start:-?}, last log line ${last_ts:-?}."
+  echo "- Jobs run $njobs; Sonnet briefs $nsonnet of $njobs$([ "$njobs" -gt 0 ] && echo " ($((nsonnet * 100 / njobs))%)"), runs $nsonnet_runs Sonnet of $nruns (a repair or resume is a second run of one brief); first start ${first_start:-?}, last log line ${last_ts:-?}."
   echo "- ${fullcheck:-full check: (none logged yet)}"
   echo
   echo "## Jobs"
-  echo "| job | model | ladder | turns | min | wall min | result | attempts | class | hand fix |"
+  echo "| job | model | ladder | turns | min | wall min | result | runs | class | hand fix |"
   echo "|---|---|---|---|---|---|---|---|---|---|"
   printf '%s' "$rows"
   echo

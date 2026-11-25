@@ -21,3 +21,5 @@ Build locally, promote testers, force-push, delete tags, touch other branches, `
 
 ## Report (at most 12 lines)
 Tag and commit; lib file count and review result; check result; main and push result; each build's outcome; tag and release verification; STATUS line; blockers.
+
+Stdin (tune4 K1, Nov 25): no command may read stdin: never `python -`, a bare `cat`, `read` without a file or `git commit -F -`; give such a command `</dev/null` or a file. A command waiting for input hangs the call.

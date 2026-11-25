@@ -70,7 +70,7 @@ start_suite() {
   status="$logs/$name.status"
   (
     start=$(date +%s)
-    (cd "$root/$dir" && run_cmd "$cmd") > "$log" 2>&1
+    (cd "$root/$dir" && run_cmd "$cmd") > "$log" 2>&1 < /dev/null
     rc=$?
     echo "$rc $(($(date +%s) - start))" > "$status.tmp" && mv "$status.tmp" "$status"
   ) &
