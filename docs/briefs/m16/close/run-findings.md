@@ -1,2 +1,3 @@
 - t1's report has no Summary block in its first 40 lines
 - c4's report has no Summary block in its first 40 lines
+- the run's review wrote no REVIEW.md (see docs/briefs/m16/close/flash-run-review.log)
