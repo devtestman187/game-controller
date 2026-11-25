@@ -5,6 +5,17 @@
 # writes a status file last; the lines print afterwards in check order, as the serial run prints them.
 # Bash 3.2 has no `wait -n`, so the running suites are polled for their status files.
 
+# heartbeat: one HEARTBEAT line every CHECK_HEARTBEAT_S seconds (default 300, 0 = off) naming the suites still running,
+# so a long or failing suite (wave2-789: a phone suite ran 22 min, ~100 failures, no log line) shows the run is alive.
+heartbeat() {
+  local iv="${CHECK_HEARTBEAT_S:-300}" i names=""
+  case "$iv" in '' | *[!0-9]*) return 0 ;; esac
+  [ "$iv" -gt 0 ] && [ $((SECONDS - ${hb_last:-0})) -ge "$iv" ] || return 0
+  hb_last=$SECONDS
+  for i in ${active[@]+"${active[@]}"}; do names="$names${line_name[i]} "; done
+  echo "HEARTBEAT: ${SECONDS}s since this check started, still running: ${names:-none}"
+}
+
 # run_parallel_suites: runs the deferred suites jobs at a time, then prints each one's line in check order.
 run_parallel_suites() {
   local i n name dir cmd about rc secs
@@ -27,6 +38,7 @@ run_parallel_suites() {
       while [ ${#active[@]} -ge "$jobs" ]; do
         sleep 0.2
         reap_finished
+        heartbeat
       done
       start_suite "$i" "$name" "$dir" "$cmd"
       key_of[i]="${cache_key:-}"
@@ -35,6 +47,7 @@ run_parallel_suites() {
   while [ ${#active[@]} -gt 0 ]; do
     sleep 0.2
     reap_finished
+    heartbeat
   done
   for ((i = 0; i < n; i++)); do
     if [ "${hit[i]:-0}" = 1 ]; then

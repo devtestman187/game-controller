@@ -4,6 +4,7 @@
 # non-last wave only with RUN_PAUSE_AFTER_WAVE=1 and never after the last wave.
 #   bash tools/tests/run-tune2-test.sh
 set -u
+for v in $(compgen -e | grep -E "^RUN_"); do unset "$v"; done # the caller's RUN_* settings (RUN_PAUSE_AFTER_WAVE leaked, Nov 25)
 cd "$(dirname "$0")/../.." || exit 2
 tmp="$(mktemp -d "${TMPDIR:-${TEMP:-/tmp}}/run-tune2-test-XXXXXX")" || exit 2
 trap 'rm -rf "$tmp"' EXIT

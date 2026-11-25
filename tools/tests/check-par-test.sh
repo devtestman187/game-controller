@@ -54,7 +54,7 @@ case "${1:-}" in
   format) rc="${STUB_FORMAT_RC:-0}" ;;
   analyze) rc="${STUB_ANALYZE_RC:-0}" ;;
   *)
-    sleep 1
+    sleep "${STUB_SLEEP:-1}"
     if [ "$(basename "$PWD")" = "${STUB_FAIL_SUITE:-none}" ]; then
       echo "+1 -1: Some tests failed."
       echo "  Expected: the stub's rule"
@@ -73,7 +73,7 @@ for tool in dart flutter; do
 done
 
 set_env() { # set_env [NAME=value ...]: a fresh stub environment, then these overrides
-  unset CHECK_JOBS CHECK_FAIL_FAST CHECK_SKIP
+  unset CHECK_JOBS CHECK_FAIL_FAST CHECK_SKIP CHECK_HEARTBEAT_S STUB_SLEEP
   export STUB_LOG="$tmp/calls.txt" CHECK_DART="$tmp/dart" CHECK_FLUTTER="$tmp/flutter"
   export STUB_FORMAT_RC=0 STUB_ANALYZE_RC=0 STUB_FAIL_SUITE=none
   for assignment in "$@"; do export "$assignment"; done
@@ -175,6 +175,16 @@ run protocol kit
 if [ "$rc" = 0 ] && [ "$(names "$out")" = "$(printf 'PASS protocol\nPASS kit')" ]; then r=0; else r=1; fi
 [ -f "$aside" ] && mv "$aside" "$par"
 report "the serial run needs no tools/check-par.sh: protocol and kit pass and exit 0" "$r"
+
+# Case 10: a long suite run prints a HEARTBEAT line naming the running suites (CHECK_HEARTBEAT_S); 0 turns it off.
+set_env STUB_SLEEP=4 CHECK_HEARTBEAT_S=1
+run -j 2 protocol kit
+if [ "$rc" = 0 ] && grep -q '^HEARTBEAT: .*still running: .*protocol' "$out" && grep -q '^PASS  *protocol' "$out"; then r=0; else r=1; fi
+report "-j 2 with a 4 s suite and CHECK_HEARTBEAT_S=1 prints HEARTBEAT lines naming the running suites" "$r"
+set_env STUB_SLEEP=2 CHECK_HEARTBEAT_S=0
+run -j 2 protocol kit
+if [ "$rc" = 0 ] && ! grep -q HEARTBEAT "$out"; then r=0; else r=1; fi
+report "CHECK_HEARTBEAT_S=0 prints no HEARTBEAT line" "$r"
 
 if [ "$fails" -gt 0 ]; then
   echo "RESULT: FAILED: $fails of $cases case(s) failed"
