@@ -25,7 +25,12 @@ HomeRole? highlightedRole(HomeFind find) => switch (find) {
 class HomeAnchors {
   HomeAnchors() : join = GlobalKey(), play = GlobalKey(), display = GlobalKey();
 
+  /// Marks the Join a Game button.
   final GlobalKey join;
+
+  /// Marks the Play here button.
   final GlobalKey play;
+
+  /// Marks the Display here button.
   final GlobalKey display;
 }
