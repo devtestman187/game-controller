@@ -189,7 +189,7 @@ class _RoundRow extends StatelessWidget {
 
   /// Whether the clock is in its last stretch: a Bumper Round with time left
   /// and no more than [ArenaHud._hurryLeftMs] of it.
-  bool get _hurrying {
+  bool get isHurrying {
     final leftMs = snapshot.timeLeftMs;
     return leftMs != null && leftMs > 0 && leftMs <= ArenaHud._hurryLeftMs;
   }
@@ -199,10 +199,8 @@ class _RoundRow extends StatelessWidget {
     final look = ToyLookScope.of(context);
     final text = Theme.of(context).textTheme;
     final style = (oneLine ? text.bodySmall : text.titleMedium)?.copyWith(color: look.colors.ink);
-    final tabular = style?.copyWith(
-      fontFeatures: const [FontFeature.tabularFigures()],
-      color: _hurrying ? look.colors.bad : look.colors.ink,
-    );
+    final tabular = style?.copyWith(fontFeatures: const [FontFeature.tabularFigures()]);
+    final clockStyle = tabular?.copyWith(color: isHurrying ? look.colors.bad : look.colors.ink);
     final best = snapshot.bestTimeS;
     final bestId = snapshot.bestId;
     final bestBy = roster.length > 1 && bestId != null ? roster[bestId]?.number : null;
@@ -214,7 +212,7 @@ class _RoundRow extends StatelessWidget {
       children: [
         if (mapName != null) Text(mapName, key: const Key('mapName'), style: style),
         Text(_roundLabel, style: style),
-        Text(_clock, key: const Key('roundTime'), style: tabular),
+        Text(_clock, key: const Key('roundTime'), style: clockStyle),
         Text(
           'Best ${best == null ? '–' : '${best.toStringAsFixed(1)} s${bestBy == null ? '' : ' (P$bestBy)'}'}',
           style: tabular,

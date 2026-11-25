@@ -8,9 +8,9 @@ import 'support/look.dart';
 /// The players these tests draw: two phones, numbered in the order they joined.
 const two = {'a': (number: 1, name: 'Ada'), 'b': (number: 2, name: 'Bo')};
 
-/// The Bumper Round's frame at [round], with [timeLeftMs] left on its clock
+/// The frame at [round] in [mode], with [timeLeftMs] left on its clock
 /// (null for a race, which has none).
-ArenaSnapshot bumperFrame({required int round, int? timeLeftMs}) => ArenaSnapshot(
+ArenaSnapshot bumperFrame({required int round, int? timeLeftMs, ArenaMode mode = ArenaMode.bumper}) => ArenaSnapshot(
   round: round,
   roundTimeS: 43.4,
   phase: ArenaPhase.playing,
@@ -22,7 +22,7 @@ ArenaSnapshot bumperFrame({required int round, int? timeLeftMs}) => ArenaSnapsho
       ArenaPlayerView(id: id, x: 0.15 + 0.15 * player.number, y: 0.5),
   ],
   mapId: 'test',
-  mode: ArenaMode.bumper,
+  mode: mode,
   timeLeftMs: timeLeftMs,
 );
 
@@ -56,6 +56,9 @@ Future<void> pumpHud(
 /// The colour of the round's clock text.
 Color? clockColor(WidgetTester tester) => tester.widget<Text>(find.byKey(const Key('roundTime'))).style?.color;
 
+/// The colour of the round's best-time text, which starts with "Best".
+Color? bestColor(WidgetTester tester) => tester.widget<Text>(find.textContaining('Best')).style?.color;
+
 void main() {
   testWidgets('the round reads Round N of M when the match names its rounds, on both looks', (tester) async {
     for (final look in [sunny, tvLook]) {
@@ -85,9 +88,17 @@ void main() {
     }
   });
 
+  testWidgets('only the clock turns bad in its last 15 s; Best stays ink, on both looks', (tester) async {
+    for (final look in [sunny, tvLook]) {
+      await pumpHud(tester, bumperFrame(round: 1, timeLeftMs: 10000), look: look);
+      expect(clockColor(tester), look.colors.bad, reason: 'at 10000 ms left the clock warns');
+      expect(bestColor(tester), look.colors.ink, reason: 'the best time is not a warning');
+    }
+  });
+
   testWidgets('a race has no clock to warn about, so its time run keeps the ink, on both looks', (tester) async {
     for (final look in [sunny, tvLook]) {
-      await pumpHud(tester, bumperFrame(round: 1), look: look);
+      await pumpHud(tester, bumperFrame(round: 1, mode: ArenaMode.race), look: look);
       expect(clockColor(tester), look.colors.ink, reason: 'a race shows the time it has run');
     }
   });
