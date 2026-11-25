@@ -32,7 +32,7 @@ final class HostAddress {
       if (text.toLowerCase().startsWith(prefix)) text = text.substring(prefix.length);
     }
     if (text.endsWith('/')) text = text.substring(0, text.length - 1);
-    if (text.isEmpty) throw const FormatException('Enter the address shown on the TV');
+    if (text.isEmpty) throw const FormatException('Enter the address shown on the screen');
     if (text.contains(RegExp(r'\s'))) throw const FormatException('The address can\'t contain spaces');
 
     String host;
@@ -53,7 +53,7 @@ final class HostAddress {
     } else {
       host = text; // No port, or a bare IPv6 address.
     }
-    if (host.isEmpty) throw const FormatException('Enter the address shown on the TV');
+    if (host.isEmpty) throw const FormatException('Enter the address shown on the screen');
 
     var port = defaultPort;
     if (portText != null) {

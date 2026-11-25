@@ -17,7 +17,7 @@ const updateAppText = 'Update the app to see this game';
 /// What a phone shows when its app is newer than its host (m14 §5): the host
 /// sends snapshots this app has moved past, so the TV needs the update. An
 /// unknown game says [updateAppText]: the phone can't tell whose side is old.
-const updateHostText = 'Update the TV to see this game';
+const updateHostText = 'Update the screen to see this game';
 
 /// One frame as the view keeps it: the host's message and its decoded
 /// snapshot.

@@ -68,7 +68,7 @@ final class ClientMessages {
           RatingMessage() ||
           StatsShareMessage() ||
           SetCharacterMessage():
-        _host.log('Ignoring unexpected ${message.type} from the TV');
+        _host.log('Ignoring unexpected ${message.type} from the screen');
     }
   }
 
@@ -146,14 +146,14 @@ final class ClientMessages {
     try {
       return _codec.decode(data);
     } on ProtocolVersionMismatch catch (e) {
-      _host.log('The TV uses protocol v${e.actual}, this phone uses v${e.expected}');
+      _host.log('The screen uses protocol v${e.actual}, this phone uses v${e.expected}');
       _host.giveUp(
         ClientProblem.versionMismatch,
         'TV protocol v${e.actual}, phone v${e.expected}',
         closeCode: CloseCodes.versionMismatch,
       );
     } on ProtocolFormatException catch (e) {
-      _host.log('Bad message from the TV: ${e.message}');
+      _host.log('Bad message from the screen: ${e.message}');
       _host.giveUp(ClientProblem.protocolError, e.message, closeCode: CloseCodes.protocolError);
     }
     return null;
