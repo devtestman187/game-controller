@@ -6,6 +6,7 @@ import 'package:party_host/testing.dart';
 import 'support/all_looks.dart';
 import 'support/host_harness.dart';
 import 'support/night_harness.dart';
+import 'support/toy_fonts.dart';
 
 /// The three players every night here has, by id: P1 is the sample host's own
 /// phone, and P2 and P3 join as [_join] makes them.
@@ -114,33 +115,54 @@ Future<void> _playNight(
 
   // The reveal is a fresh mount: the night it names is the one the card showed, with the same rounds.
   await tester.pumpWidget(const SizedBox.shrink());
+  await _mountReveal(tester, look, shown, size: size, phoneHost: phoneHost);
+  for (final outcome in night.reveals) {
+    await _expectRevealStep(tester, outcome);
+  }
+  await _expectFinalScores(tester, night);
+}
+
+/// Mounts the reveal in [look] at [size] over a night of [awards] with the three rounds in, as a
+/// phone host when [phoneHost] is set.
+Future<void> _mountReveal(
+  WidgetTester tester,
+  HostLook look,
+  List<NightAward> awards, {
+  required Size size,
+  required bool phoneHost,
+}) async {
   final reveal = await pumpHostLook(tester, look, screen: const NightRevealScreen(), size: size, framed: phoneHost);
   if (phoneHost) reveal.shareView = true;
   await _join(tester, reveal);
   final played = appContainer(tester).read(partyNightProvider.notifier)
-    ..start(length: NightLength.three, awards: shown);
+    ..start(length: NightLength.three, awards: awards);
   for (final round in _rounds) {
     played.recordRound(round);
   }
   await tester.pump();
+}
 
-  for (final (i, outcome) in night.reveals.indexed) {
-    if (i == 0) return; // BISECT-TEMP
-    expect(find.text(outcome.award.title), findsOneWidget, reason: 'reveal ${i + 1} names ${outcome.award.title}');
-    final reason = outcome.reason;
-    if (reason == null) {
-      expect(find.text('Not won tonight'), findsOneWidget, reason: '${outcome.award.title} is not won');
-    } else {
-      for (final id in outcome.winners) {
-        expect(find.text(_names[id]!), findsOneWidget, reason: '${outcome.award.title} names $id');
-      }
-      expect(find.text(reason), findsOneWidget);
-      expect(find.text('+$awardPoints points'), findsOneWidget, reason: 'each winner gets the award\'s points');
+/// Checks one award's moment on the reveal, then keeps it up for its stay: its name, and either
+/// its winners, reason and points, or "Not won tonight" for an award nobody won.
+Future<void> _expectRevealStep(WidgetTester tester, _Reveal outcome) async {
+  expect(find.text(outcome.award.title), findsOneWidget, reason: 'the reveal names ${outcome.award.title}');
+  final reason = outcome.reason;
+  if (reason == null) {
+    expect(find.text(NightText.notWon), findsOneWidget, reason: '${outcome.award.title} is not won');
+  } else {
+    for (final id in outcome.winners) {
+      expect(find.text(_names[id]!), findsOneWidget, reason: '${outcome.award.title} names $id');
     }
-    final stayMs = reason == null ? nightAwardMissedRevealMs : nightAwardRevealMs;
-    await tester.pump(Duration(milliseconds: stayMs));
+    expect(find.text(reason), findsOneWidget);
+    expect(find.text('+$awardPoints points'), findsOneWidget, reason: 'each winner gets the award\'s points');
   }
+  final stayMs = reason == null ? nightAwardMissedRevealMs : nightAwardRevealMs;
+  await tester.pump(Duration(milliseconds: stayMs));
+}
 
+/// Checks the totals once the reveal is over: the final scores are on screen, and each player's
+/// round points plus [awardPoints] per award the reveal named them for.
+Future<void> _expectFinalScores(WidgetTester tester, _Night night) async {
   await tester.pumpAndSettle();
   expect(find.byType(NightScoreboardScreen), findsOneWidget, reason: 'the final scores follow the reveal');
   final host = appContainer(tester).read(partyNightProvider)!;
@@ -161,9 +183,11 @@ Future<void> _playNight(
 /// the card's awards are the ones the reveal names in turn, a tied award goes to every player level
 /// on its best value, and an award nobody won adds nothing.
 void main() {
-  // SKIPPED, lib bug for the driver: the reveal throws when it first builds a card with two winners
-  // (a tie), in both looks; the exception text is in the flutter log, which mine.sh does not show.
-  testWidgets('a night with a tied award: the card, the reveal and the final scores agree in both looks', skip: true, (
+  // The look's own fonts: the test font draws every letter as a full box, so text measures wider
+  // than on a device and a tie's reason or points line wraps into the card (`toy_fonts.dart`).
+  setUpAll(loadLookFonts);
+
+  testWidgets('a night with a tied award: the card, the reveal and the final scores agree in both looks', (
     tester,
   ) async {
     await forEachLook(tester, (look) => _playNight(tester, look, _tieNight));
@@ -177,8 +201,7 @@ void main() {
     await _playNight(tester, HostLook.menu, _noTieNight, size: const Size(640, 360), phoneHost: true);
   });
 
-  // SKIPPED, lib bug for the driver: the same tie as above, at 640x360 as a phone host.
-  testWidgets('a phone host at 640x360 plays the tied night to the same final scores', skip: true, (tester) async {
+  testWidgets('a phone host at 640x360 plays the tied night to the same final scores', (tester) async {
     await _playNight(tester, HostLook.menu, _tieNight, size: const Size(640, 360), phoneHost: true);
   });
 }
