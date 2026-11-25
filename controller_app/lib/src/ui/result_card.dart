@@ -63,7 +63,7 @@ class ResultCard extends ConsumerWidget {
                         PhoneText.waitingForNext,
                         key: const Key('resultWaiting'),
                         textAlign: TextAlign.center,
-                        style: look.type.body.copyWith(color: look.colors.inkSoft),
+                        style: look.type.button.copyWith(color: look.colors.inkSoft),
                       ),
                     ],
                   ),

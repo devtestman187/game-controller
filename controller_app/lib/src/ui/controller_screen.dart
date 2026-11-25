@@ -185,6 +185,9 @@ class _ControllerScreenState extends ConsumerState<ControllerScreen> with Widget
     // A host has nothing to find, so no search and nothing to rate.
     if (!hosting) _followTheTv(context);
     final mode = ref.watch(gyroProvider.select((g) => g.mode));
+    // The result card covers the pad (M14 design section 9): the pad is not
+    // drawn or touched while it shows.
+    final resultShown = ref.watch(viewResultProvider) != null;
     // Re-laid out when the button size or fixed/floating changes, so the
     // metrics' touch areas follow.
     ref.watch(stickSettingsProvider);
@@ -198,13 +201,19 @@ class _ControllerScreenState extends ConsumerState<ControllerScreen> with Widget
     // its battery, while the Connect screen, the host's picker, join screens
     // and stats are menus and drift as the TV's do.
     return Scaffold(
-      body: SafeArea(child: LayoutBuilder(builder: (context, window) => _body(window, mode))),
+      body: SafeArea(child: LayoutBuilder(builder: (context, window) => _body(window, mode, resultShown))),
     );
   }
 
+  /// The pad, not drawn or touched while the result card covers it (B-043).
+  Widget _pad(PadMode mode, Size body, bool resultShown) => Offstage(
+    offstage: resultShown,
+    child: _Controls(mode: mode, body: body, hosting: _hosting, controls: widget.controls),
+  );
+
   /// The screen's contents in the pad's window: the game behind the top bar
   /// and the controls, with the waiting cards over them.
-  Widget _body(BoxConstraints window, PadMode mode) {
+  Widget _body(BoxConstraints window, PadMode mode, bool resultShown) {
     // Too narrow for even the top bar (a phone in split screen, a small window
     // on a tablet): only the message (v2 C32).
     if (window.maxWidth < minWindowWidth) return const TooSmallView();
@@ -220,9 +229,8 @@ class _ControllerScreenState extends ConsumerState<ControllerScreen> with Widget
               _TopBar(hosting: _hosting, controls: widget.controls),
               Expanded(
                 child: LayoutBuilder(
-                  builder: (context, body) => body.maxHeight < minBodyHeight
-                      ? const TooSmallView()
-                      : _Controls(mode: mode, body: body.biggest, hosting: _hosting, controls: widget.controls),
+                  builder: (context, body) =>
+                      body.maxHeight < minBodyHeight ? const TooSmallView() : _pad(mode, body.biggest, resultShown),
                 ),
               ),
             ],
