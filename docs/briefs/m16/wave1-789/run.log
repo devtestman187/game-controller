@@ -73,3 +73,8 @@ RESULT: STOPPED: tests-first: packages/party_host/test/volume_semantics_test.dar
 2026-11-24 18:36:18 tests-first ok: packages/test_game/test/arena_hud_round_test.dart fails on the old code
 2026-11-24 18:36:28 combined check: skips protocol connection metrics look tools (no job's change reaches them)
 2026-11-24 18:39:58 committed n9d2: d796f71f arena: HUD shows Round N of M and warns the clock in its last 15 s
+2026-11-24 18:40:00 reviewed wave1: 8 finding(s)
+2026-11-24 18:40:00 STOPPED: jobs that failed or passed their limit (parked, not committed): n7a (their logs: docs/briefs/m16/wave1-789/flash-<job>.log)
+2026-11-24 18:41:39 RUN_MAX_MIN=75 min (computed backstop of the jobs still to do)
+2026-11-24 18:41:40 reviewed wave2: 5 finding(s)
+RESULT: STOPPED: jobs that failed or passed their limit (parked, not committed): n7a (their logs: docs/briefs/m16/wave1-789/flash-<job>.log)
