@@ -1,12 +1,20 @@
+import 'dart:io';
+
 import 'package:connection/connection.dart';
 import 'package:controller/src/discovery.dart';
 import 'package:controller/src/home/home_text.dart';
 import 'package:controller/src/home/phone_home_screen.dart';
+import 'package:controller/src/host/host_overrides.dart';
+import 'package:controller/src/host/hosting.dart';
+import 'package:controller/src/host/phone_host.dart';
 import 'package:controller/src/ui/connect_screen.dart';
 import 'package:controller/src/ui/controller_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:party_host/party_host.dart' as party;
+import 'package:party_host/testing.dart' as party_test;
 
+import 'support/host_app.dart';
 import 'support/pump_app.dart';
 
 /// Records the exits Back asks for, in place of the platform's exit.
@@ -54,6 +62,7 @@ void main() {
 
   testWidgets('Join a Game on the launch Home opens Connect', (tester) async {
     await pumpApp(tester, saved: saved('sunny'), toConnect: false);
+    expect(find.text(HomeText.joinGame), findsOneWidget, reason: 'the launch opens Home first');
     await reachConnect(tester);
     expect(find.byType(ConnectScreen), findsOneWidget);
   });
@@ -117,6 +126,15 @@ void main() {
   });
 
   testWidgets('a link that dropped after connecting does not return to Home', (tester) async {
+    // Positive control on its own app: a connect that fails without connecting does return to Home.
+    final failing = await pumpApp(tester, paired: true, saved: saved('sunny'), discovered: liveHost('tv-1'));
+    failing.client.emit(const ClientSnapshot(status: ClientStatus.connecting));
+    await settle(tester);
+    failing.client.emit(const ClientSnapshot(status: ClientStatus.failed, problem: ClientProblem.unreachable));
+    await settle(tester);
+    expect(homes(), findsOneWidget, reason: 'the failed attempt returns to Home');
+
+    // The dropped run, on a separate app.
     final app = await pumpApp(tester, paired: true, saved: saved('sunny'), discovered: liveHost('tv-1'));
     app.client.emit(connected);
     await settle(tester);
@@ -125,5 +143,36 @@ void main() {
     app.client.emit(const ClientSnapshot(status: ClientStatus.failed, problem: ClientProblem.unreachable));
     await settle(tester);
     expect(homes(), findsNothing, reason: 'the waiting card handles a dropped link');
+  });
+
+  testWidgets('a connect that fails on the pad while this phone hosts does not open Home', (tester) async {
+    final dir = Directory.systemTemp.createTempSync('thumb-party-launch-');
+    addTearDown(() => dir.deleteSync(recursive: true));
+    final app = await pumpApp(
+      tester,
+      paired: true,
+      saved: saved('sunny'),
+      discovered: liveHost('tv-1'),
+      extra: [
+        ...phoneHostOverrides(directories: TempHostDirectories(dir)),
+        party.advertiserProvider.overrideWithValue(party_test.FakeAdvertiser()),
+        party.soundPlayerProvider.overrideWithValue(party_test.FakeSoundPlayer()),
+        party.screenAwakeProvider.overrideWithValue(party_test.FakeScreenAwake()),
+      ],
+    );
+    // "Show on this device": the phone hosts without a player of its own, so no link is needed.
+    late PhoneHost host;
+    await tester.runAsync(() async {
+      host = hostContainer(tester).read(hostingProvider.notifier).start(playsHere: false);
+    });
+    expect(host.live, isTrue, reason: 'this phone is hosting');
+
+    app.client.emit(const ClientSnapshot(status: ClientStatus.connecting));
+    await settle(tester);
+    app.client.emit(const ClientSnapshot(status: ClientStatus.failed, problem: ClientProblem.unreachable));
+    await settle(tester);
+    expect(homes(), findsNothing, reason: 'a hosting phone never gets Home');
+
+    await tester.runAsync(host.dispose);
   });
 }
