@@ -29,6 +29,7 @@ Design or gameplay questions; a real finding that needs an owner call; check.sh 
 
 ## Never
 Push, tag, build, merge branches, kill processes, touch other sessions' branches, `git add -A`, stage the uncommitted PNGs or stray `.patch` files (owner, Nov 22: `tools/tests/fixtures/**` patches and `docs/briefs/**/probe-*.patch` stubs are committed on purpose), bare `git stash` or `pop`.
+Release notes (owner rule, Nov 25): at batch start write `<dir>/RELEASE-NOTES.md` covering everything since the last release tag, with this batch's planned items marked "(in progress)", and commit it with your first commit. At the end, rewrite it to what actually landed. It is for testers: a summary of the features, fixes and changes they will notice, with bug ids in brackets, in 500 characters or fewer (Google Play's limit). Never use wave, batch, job, arm, head-to-head or other process or tooling terms. Mark device-unverified fixes "please check". Put the final text in the hand-back.
 
 ## Report and hand-back (docs/driver-kit.md section 12)
 Write the full report to `docs/briefs/<milestone>/<batch>/REPORT.md` and commit it (commits, jobs with turns and minutes, ladder level, findings real/fixed/deferred, check.sh result, job-metrics and agent-cost lines, tracker and STATUS updates, "Fixed, unverified" items, Proposed lessons count, your call count and each waiter's, wall time; over 1 hour a 5-line improvement analysis). verify-batch.sh FAILs without it. An inline batch (no runner) still writes `<batch>/run.log` with the `full check:` line and commits in range.
