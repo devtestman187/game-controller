@@ -3,3 +3,5 @@
 - 18:18 n9a: 568x320 TV overflow is the pad's top bar (controller_top_bar.dart:89, 12px, preexisting): test ignores it, code-health item. n9c: hand-fixed test (getSemantics value) via apply-job. next: review.sh, commit-job n9a n9d1 n9c, restart
 - 18:21 n9c tests: analyze infos fixed by hand (base analyze FAIL); restart
 - 18:24 tests-first stop on n9c volume test (default formatter already right): brief exempt line; restart
+- 18:41 n7a parked (51 turns, BISECT debug left, names not found); repair brief + partial file committed; restart. wave1 review: 3 must 4 should (n9c tests: ignore comments, per-slider equality, volume no TV look) handle at wrap
+- 19:07 DONE 6 jobs; REVIEW 6 must: BISECT-TEMP left in n7a test (tie overflow 11px real), filter hides top bar overflow, Best red, ignores. fix round 1 briefs f1-f5
