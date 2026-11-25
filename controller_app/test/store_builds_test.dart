@@ -13,11 +13,11 @@ void main() {
       await settle(tester);
       expect(find.text('Connect to a screen'), findsNothing);
       expect(find.textContaining('Demo, no screen'), findsOneWidget);
-      expect(find.text('Demo: a TV would get nothing pressed'), findsOneWidget);
+      expect(find.text('Demo: a screen would get nothing pressed'), findsOneWidget);
 
       final a = await tester.startGesture(at(tester, const Key('faceButtons'), const Offset(0.5, 0.81)));
       await tester.pump();
-      expect(find.textContaining('Demo: a TV would get A'), findsOneWidget);
+      expect(find.textContaining('Demo: a screen would get A'), findsOneWidget);
       expect(app.haptics.ticks, isNotEmpty, reason: 'the phone still ticks');
       await a.up();
       await tester.pump();

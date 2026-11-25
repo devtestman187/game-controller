@@ -140,7 +140,7 @@ class DemoReadout extends ConsumerWidget {
           borderRadius: BorderRadius.circular(12),
         ),
         child: Text(
-          'Demo: a TV would get ${input.isNeutral ? 'nothing pressed' : input.toString()}',
+          'Demo: a screen would get ${input.isNeutral ? 'nothing pressed' : input.toString()}',
           textAlign: TextAlign.center,
           maxLines: 2,
           overflow: TextOverflow.ellipsis,

@@ -290,20 +290,20 @@ String buildReport(WidgetRef ref) {
     ..writeln('Phone: ${identity.name} (${identity.platform}), app $versionLabel, protocol v$protocolVersion')
     ..writeln('Controller ID: ${identity.controllerId}')
     ..writeln(
-      'Connection: ${client.status.name}, TV ${client.hostLabel}, ${client.target?.addresses.join(', ')} '
+      'Connection: ${client.status.name}, screen ${client.hostLabel}, ${client.target?.addresses.join(', ')} '
       'port ${client.target?.port}, ping ${client.rttMs ?? '-'} ms',
     )
     ..writeln('Problem: ${client.problem?.name ?? '-'} ${client.detail ?? ''} (OS error ${client.osErrorCode ?? '-'})')
     ..writeln('Local network: ${network.label}. ${network.explanation}')
     ..writeln(
-      'Haptics: ${ref.read(hapticsPlayerProvider).capabilities.engine}, setting ${ref.read(hapticSettingsProvider).enabled ? 'on' : 'off'} ${ref.read(hapticSettingsProvider).intensity}, played ${ref.read(hapticsPlayerProvider).played}, TV events ${ref.read(tvHapticsProvider).received} received ${ref.read(tvHapticsProvider).played} played (last ${ref.read(tvHapticsProvider).last ?? '-'}), error ${ref.read(hapticsPlayerProvider).lastError ?? '-'}',
+      'Haptics: ${ref.read(hapticsPlayerProvider).capabilities.engine}, setting ${ref.read(hapticSettingsProvider).enabled ? 'on' : 'off'} ${ref.read(hapticSettingsProvider).intensity}, played ${ref.read(hapticsPlayerProvider).played}, screen events ${ref.read(tvHapticsProvider).received} received ${ref.read(tvHapticsProvider).played} played (last ${ref.read(tvHapticsProvider).last ?? '-'}), error ${ref.read(hapticsPlayerProvider).lastError ?? '-'}',
     )
     ..writeln(
       'Ping, last 30 s: ${client.rttStats ?? '-'}${client.rttStats == null ? '' : ', p95 ${client.rttStats!.p95Ms} ms'}',
     )
     ..writeln('Player: ${client.player == null ? '-' : 'P${client.player}'}')
     ..writeln(
-      'TV event strengths: ${HapticEvent.values.map((e) => '${e.name} ${(ref.read(hapticSettingsProvider).eventIntensity(e) * 100).round()}%').join(', ')}',
+      'Screen event strengths: ${HapticEvent.values.map((e) => '${e.name} ${(ref.read(hapticSettingsProvider).eventIntensity(e) * 100).round()}%').join(', ')}',
     )
     ..writeln('Session: ${_sessionLine(ref.read(sessionStatsProvider))}')
     ..writeln('Reconnects (newest first): ${ref.read(outagesProvider).isEmpty ? 'none' : ''}')
