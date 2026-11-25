@@ -115,4 +115,5 @@ Future<void> _pumpWithTealCrown(WidgetTester tester, {required bool tv}) async {
     saved: {'profileCharacter': '{"c":4,"a":"crown"}'},
     extra: [if (tv) party.toyTvProvider.overrideWithValue(true)],
   );
+  await reachConnect(tester);
 }

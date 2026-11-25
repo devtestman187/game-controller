@@ -52,6 +52,7 @@ void main() {
             screen: entry.value,
             extra: [if (tv) party.toyTvProvider.overrideWithValue(true)],
           );
+          if (screen != TargetScreen.pad) await reachConnect(tester);
           if (screen == TargetScreen.pad) {
             // Connected, so the bar shows the mode control a linked pad has.
             app.client.emit(connected);

@@ -22,6 +22,7 @@ void main() {
 
     testWidgets('a phone that never picked a character shows the one it would get as player 1', (tester) async {
       await pumpApp(tester);
+      await reachConnect(tester);
       expect(find.text('You: the Blue Ears'), findsOneWidget);
     });
   });
@@ -43,6 +44,7 @@ Future<void> expectCharacterAndChange(WidgetTester tester, {required bool tv}) a
     saved: {'profileCharacter': '{"c":4,"a":"crown"}'},
     extra: [if (tv) party.toyTvProvider.overrideWithValue(true)],
   );
+  await reachConnect(tester);
   expect(find.text('You: the Teal Crown'), findsOneWidget);
   expect(tester.takeException(), isNull, reason: 'the line fits the panel at the look\'s type size');
 

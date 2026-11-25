@@ -69,6 +69,7 @@ void main() {
     // The harness is not a launch of the app: no prompt, and the answers come
     // from the test's mock preferences (design sentry-consent.md).
     await pumpApp(tester);
+    await reachConnect(tester);
     expect(find.text('Connect to a TV'), findsOneWidget);
     expect(find.byKey(const Key('consentDialog')), findsNothing);
   });

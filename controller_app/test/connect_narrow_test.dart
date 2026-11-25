@@ -61,6 +61,7 @@ Future<void> expectManualRowFits(
   };
   addTearDown(() => FlutterError.onError = previous);
   await pumpApp(tester, screen: screen, extra: [if (tv) party.toyTvProvider.overrideWithValue(true)]);
+  await reachConnect(tester);
 
   final label = '${screen.width.toInt()}x${screen.height.toInt()} at scale $textScale';
   expect(overflows, isEmpty, reason: 'the Connect screen overflows at $label');

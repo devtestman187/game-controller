@@ -26,6 +26,7 @@ void main() {
       tester,
     ) async {
       await pumpApp(tester, screen: const Size(568, 320));
+      await reachConnect(tester);
       expect(find.text(joinLine), findsOneWidget);
       expect(find.byKey(changeCharacter), findsOneWidget);
       expect(tester.takeException(), isNull, reason: 'the text shrinks first and the row still fits');
@@ -49,6 +50,7 @@ void main() {
 
     testWidgets('a 360x640 phone reports which way the join line falls', (tester) async {
       await pumpApp(tester, screen: const Size(360, 640));
+      await reachConnect(tester);
       final textRect = tester.getRect(find.text(joinLine));
       final buttonRect = tester.getRect(find.byKey(changeCharacter));
       final wrapped = buttonRect.top >= textRect.bottom;
@@ -63,6 +65,7 @@ void main() {
 /// the button's padding counts toward the gap.
 Future<void> expectGapBeforeChange(WidgetTester tester, {required Size screen, required bool tv}) async {
   await pumpApp(tester, screen: screen, extra: [if (tv) party.toyTvProvider.overrideWithValue(true)]);
+  await reachConnect(tester);
   final lineRight = tester.getTopRight(find.text(joinLine)).dx;
   final buttonLeft = tester.getRect(find.byKey(changeCharacter)).left;
   final gap = buttonLeft - lineRight;
@@ -91,6 +94,7 @@ void expectJoinLineInsideItsBox(WidgetTester tester) {
 /// sit below the line, centred under the badge-and-text block.
 Future<void> expectWrappedBelowLine(WidgetTester tester, {required Size screen, required bool tv}) async {
   await pumpApp(tester, screen: screen, extra: [if (tv) party.toyTvProvider.overrideWithValue(true)]);
+  await reachConnect(tester);
   expectJoinLineInsideItsBox(tester);
   final textRect = tester.getRect(find.text(joinLine));
   final buttonRect = tester.getRect(find.byKey(changeCharacter));
@@ -108,6 +112,7 @@ Future<void> expectWrappedBelowLine(WidgetTester tester, {required Size screen, 
 /// with the 8 px gap before it.
 Future<void> expectOneRow(WidgetTester tester, {required Size screen}) async {
   await pumpApp(tester, screen: screen);
+  await reachConnect(tester);
   expect(tester.takeException(), isNull);
   final textRect = tester.getRect(find.text(joinLine));
   final buttonRect = tester.getRect(find.byKey(changeCharacter));

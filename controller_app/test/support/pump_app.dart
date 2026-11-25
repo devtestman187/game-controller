@@ -5,6 +5,7 @@ import 'package:controller/main.dart';
 import 'package:controller/src/discovery.dart';
 import 'package:controller/src/gyro.dart';
 import 'package:controller/src/haptics.dart';
+import 'package:controller/src/home/home_text.dart';
 import 'package:controller/src/providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -150,6 +151,17 @@ Future<void> pumpFaked(
 Future<void> settle(WidgetTester tester) async {
   await tester.pump();
   await tester.pump(const Duration(milliseconds: 500));
+}
+
+/// Gets a test from an unpaired launch to the Connect screen. The launch opens
+/// Home, and "Join a Game" there opens Connect (owner decision). A launch that
+/// already opens Connect has no such button on screen, so this does nothing and
+/// the test reads the same either way.
+Future<void> reachConnect(WidgetTester tester) async {
+  final joinGame = find.text(HomeText.joinGame);
+  if (joinGame.evaluate().isEmpty) return;
+  await tapVisible(tester, joinGame);
+  await settle(tester);
 }
 
 /// A point [fraction] of the way across the widget behind [key].
