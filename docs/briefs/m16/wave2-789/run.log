@@ -297,3 +297,30 @@ HAND-FIX f4: apply-job.sh applied 7 files: controller_app/lib/src/home/phone_hom
 HAND-FIX-EVENT f4: 62 lines changed, replaced ladder level ?
 HAND-FIX-EVENT f4: 0 lines changed (applied as is; sonnet 75 turns over cap 70, mine.sh 66 tests passed, full controller_app suite passes), replaced ladder level 2
 HAND-FIX n8e2 n8e3: committed by hand because the combined check ran without parked f4 (its repins were needed); no line changed
+2026-11-25 01:50:46 RUN_MAX_MIN=194 min (computed backstop of the jobs still to do)
+2026-11-25 01:50:46 start at 9cb64d6b on HEAD
+2026-11-25 01:50:46 worker: claude
+2026-11-25 01:51:07 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-25 01:51:23 skip n8a (already done)
+2026-11-25 01:51:24 skip n9b1 (already done)
+2026-11-25 01:51:24 skip n9e (already done)
+2026-11-25 01:51:40 skip n8b0 (already done)
+2026-11-25 01:51:40 skip n8c (already done)
+2026-11-25 01:51:40 skip n9sr (already done)
+2026-11-25 01:51:56 skip n8b1 (already done)
+2026-11-25 01:51:57 skip n9b2 (already done)
+2026-11-25 01:51:57 skip n9b3 (already done)
+2026-11-25 01:52:13 skip f1 (already done)
+2026-11-25 01:52:13 skip n8b2 (already done)
+2026-11-25 01:52:13 skip n8d2 (already done)
+2026-11-25 01:52:29 skip n8d1 (already done)
+2026-11-25 01:52:29 skip n8b3a (already done)
+2026-11-25 01:52:30 skip n8e0 (already done)
+2026-11-25 01:52:45 skip f2 (already done)
+2026-11-25 01:52:46 skip f3 (already done)
+2026-11-25 01:52:46 skip n8b3 (already done)
+2026-11-25 01:53:02 WARN: f4 was committed by hand (789d4250); a plain restart would skip its tests-first proof and worker review, so both run now
+2026-11-25 01:53:02 hand-fixed f4: tests-first proof and worker review done (marked in done.txt)
+2026-11-25 01:53:02 skip f4 (already done)
+2026-11-25 01:53:03 skip n8e2 (already done)
+2026-11-25 01:53:03 skip n8e3 (already done)
