@@ -53,3 +53,7 @@
 - phone_home_screen.dart:139-146 demo branches untested - should - f6
 - host_gyro_test cause unverified - minor - REPORT.md: cause (launch restore timing) is the worker's claim, restoreMode itself is covered by gyro_mode_test.dart
 - site_shots.dart:238 comment - trivial - code-health
+## wave 8 (n8e1 n8e4 n8e6)
+- controller_parts.dart:143 still says TV - should - n8e5 (wave 9, already briefed)
+- client_messages.dart:152 :90 :179 :218 :227 still TV - should/could - f7
+- launch_home_test.dart:61 stale test name - could - f6

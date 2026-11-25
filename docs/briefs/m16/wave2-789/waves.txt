@@ -16,5 +16,7 @@ f4 n8e2 n8e3
 n8e1 n8e4 n8e6
 # wave 9: controller_parts/diagnostics sweep, pause Resume label for resumers only (disjoint)
 n8e5 n9e3 f5
-# wave 10: TV word guard (all sweeps done)
-n8g f6
+# wave 10: demo tests, remaining connection strings (disjoint)
+f6 f7
+# wave 11: TV word guard (all sweeps done)
+n8g
