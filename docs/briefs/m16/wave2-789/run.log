@@ -89,3 +89,29 @@ RESULT: STOPPED: tools/review.sh found a FAIL after n8b1 n9b3 n9b2 (see .dart_to
 HAND-FIX n8b1 n9b2: runner review.sh FAIL (func over 60 lines: home_view.dart build 69, bar_connection.dart build 69); split by hand (extract _layout, _chip), analyze, review.sh 0 FAIL, 87 tests pass
 HAND-FIX-EVENT n8b1: 12 lines moved, replaced ladder level 2 (no model repair)
 HAND-FIX-EVENT n9b2: 25 lines moved, replaced ladder level 2 (no model repair)
+2026-11-24 23:23:04 RUN_MAX_MIN=119 min (computed backstop of the jobs still to do)
+2026-11-24 23:23:04 start at 4dd9982a on HEAD
+2026-11-24 23:23:04 worker: claude
+2026-11-24 23:23:17 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-24 23:23:33 skip n8a (already done)
+2026-11-24 23:23:33 skip n9b1 (already done)
+2026-11-24 23:23:34 skip n9e (already done)
+2026-11-24 23:23:49 skip n8b0 (already done)
+2026-11-24 23:23:50 skip n8c (already done)
+2026-11-24 23:23:50 skip n9sr (already done)
+2026-11-24 23:24:06 skip n8b1 (already done)
+2026-11-24 23:24:06 skip n9b2 (already done)
+2026-11-24 23:24:06 skip n9b3 (already done)
+2026-11-24 23:24:23 start f1
+2026-11-24 23:24:48 start n8b2
+2026-11-24 23:25:14 start n8d2
+2026-11-24 23:31:08 n8d2 finished: result 4 (26 turns, 3 min) model claude-haiku-5-5, ladder 1, tokens in/read/write/out 30/535315/43141/15620
+2026-11-24 23:31:09 n8d2: dropped generated churn outside its list: tv_test_app/windows/flutter/generated_plugin_registrant.cc tv_test_app/windows/flutter/generated_plugin_registrant.h tv_test_app/windows/flutter/generated_plugins.cmake 
+2026-11-24 23:32:16 f1 finished: result 4 (46 turns, 7 min) model claude-haiku-5-5, ladder 1, tokens in/read/write/out 72/2141668/73473/48563
+2026-11-24 23:32:17 f1: dropped generated churn outside its list: tv_test_app/windows/flutter/generated_plugin_registrant.cc tv_test_app/windows/flutter/generated_plugin_registrant.h tv_test_app/windows/flutter/generated_plugins.cmake 
+2026-11-24 23:36:37 n8b2 finished: result 4 (75 turns, 11 min) model claude-sonnet-5-5, ladder 1, tokens in/read/write/out 84/2222856/69324/27108
+2026-11-24 23:36:37 job n8b2 used 75 turns, over its cap of 70 (parked, siblings continue)
+2026-11-24 23:37:59 tests-first ok: controller_app/test/settings_tips_test.dart fails on the old code
+2026-11-24 23:38:26 combined check: skips protocol connection metrics kit look arena puzzle host tv tools (no job's change reaches them)
+2026-11-24 23:39:58 committed n8d2: aa820953 settings: a Show tips switch saves the coach-marks choice
+2026-11-24 23:40:00 committed f1: f784fe27 coach_marks: re-read the anchor on layout changes; add 6 tests
