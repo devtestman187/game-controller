@@ -78,3 +78,18 @@ RESULT: STOPPED: tests-first: packages/party_host/test/volume_semantics_test.dar
 2026-11-24 18:41:39 RUN_MAX_MIN=75 min (computed backstop of the jobs still to do)
 2026-11-24 18:41:40 reviewed wave2: 5 finding(s)
 RESULT: STOPPED: jobs that failed or passed their limit (parked, not committed): n7a (their logs: docs/briefs/m16/wave1-789/flash-<job>.log)
+2026-11-24 18:42:30 RUN_MAX_MIN=75 min (computed backstop of the jobs still to do)
+2026-11-24 18:42:30 start at 164feac1 on m16
+2026-11-24 18:42:30 worker: claude
+2026-11-24 18:42:30 removed the last stop's STOP.md
+2026-11-24 18:42:42 preflight ok: the worker ran flutter --version and tools/check.sh --list
+2026-11-24 18:42:58 skip n9a (already done)
+2026-11-24 18:42:58 skip n9c (already done)
+2026-11-24 18:42:58 skip n9d1 (already done)
+2026-11-24 18:43:14 start n7a
+2026-11-24 18:43:15 skip n9d2 (already done)
+2026-11-24 18:50:59 n7a finished: result 4 (54 turns, 7 min)
+2026-11-24 18:51:00 n7a: dropped generated churn outside its list: tv_test_app/windows/flutter/generated_plugin_registrant.cc tv_test_app/windows/flutter/generated_plugin_registrant.h tv_test_app/windows/flutter/generated_plugins.cmake 
+2026-11-24 18:51:03 combined check: skips protocol connection metrics kit look arena puzzle tools (no job's change reaches them)
+2026-11-24 18:53:36 committed n7a: 90b0713f test(party_host): the awards flow from start card to final scores (n7a)
+2026-11-24 18:53:36 wave 2 review: wave2-review-report.md does not cover n7a, so its review is wave2-n7a
