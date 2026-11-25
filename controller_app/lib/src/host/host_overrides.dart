@@ -80,7 +80,7 @@ List<Override> phoneHostOverrides({required party.HostDirectories directories}) 
     return (
       pxPerMm: mm,
       rects: (Size box) => _hostPadRects(box, mode: mode, mm: mm, sticks: sticks),
-      hudRects: (Size box) => const <Rect>[],
+      hudRects: (Size box) => _hostHudRects(box, mode: mode, mm: mm, sticks: sticks),
     );
   }),
 ];
@@ -94,5 +94,13 @@ List<Override> phoneHostOverrides({required party.HostDirectories directories}) 
 /// 852x393, not 60).
 List<Rect> _hostPadRects(Size box, {required PadMode mode, required double mm, required StickSettings sticks}) => [
   for (final rect in leftPadRects(Size(box.width, box.height + topBarHeightPx), mode: mode, mm: mm, sticks: sticks))
+    rect.shift(const Offset(0, -topBarHeightPx)),
+];
+
+/// The right hand's rects in the box of a host screen, `box`, moved into the
+/// room the same way [_hostPadRects] moves the left hand's (B-044): the HUD
+/// keeps clear of them in the room, where they are drawn.
+List<Rect> _hostHudRects(Size box, {required PadMode mode, required double mm, required StickSettings sticks}) => [
+  for (final rect in rightPadRects(Size(box.width, box.height + topBarHeightPx), mode: mode, mm: mm, sticks: sticks))
     rect.shift(const Offset(0, -topBarHeightPx)),
 ];

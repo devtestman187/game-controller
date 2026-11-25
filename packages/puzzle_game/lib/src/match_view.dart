@@ -161,6 +161,7 @@ class _MatchViewState extends State<MatchView> {
       text: (score: text.score, short: text.short),
       pxPerMm: widget.pxPerMm,
       padRects: widget.padRects,
+      hudRects: widget.hudRects,
     );
     return mirror == null ? const PuzzleCamera.whole() : camera;
   }

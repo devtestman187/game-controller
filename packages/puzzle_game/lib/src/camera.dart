@@ -224,7 +224,9 @@ final class PuzzleCamera {
   /// board's drawn size — and keeps it only if its smallest piece still draws
   /// at [mirrorMinPieceMm], which [pxPerMm] turns into px. [puzzle] is their
   /// picture; [text] the HUD the phone draws without a mirror; [padRects] the
-  /// controls the app draws under the game, passed through the view.
+  /// controls the app draws under the game, passed through the view. [hudRects]
+  /// are the right hand's controls the clock area keeps clear of (B-044): they
+  /// go to [hudPlace] only, so the board and the mirror are fitted as before.
   static MirrorPlacement? mirrorPlace(
     Puzzle puzzle,
     SplitLayout layout,
@@ -234,6 +236,7 @@ final class PuzzleCamera {
     required ({String score, List<String> short}) text,
     double pxPerMm = phonePxPerMm,
     List<Rect> padRects = const [],
+    List<Rect> hudRects = const [],
   }) {
     if (!split || camera.side == null || layout.target != LayoutTarget.phones) return null;
     final world = place(layout, camera, box, camera.side!);
@@ -252,7 +255,7 @@ final class PuzzleCamera {
     // What the mirror must not meet: their board and tray row, this phone's own
     // pad (rules 3 and 8), and the clock area.
     final boardAndTray = [onScreen(board), onScreen(layout.left.tray), ...padRects];
-    final hud = hudPlace(layout, camera, box, text, padRects: padRects, split: split);
+    final hud = hudPlace(layout, camera, box, text, padRects: padRects, split: split, hudRects: hudRects);
     // The corner, with the clock area to its right in its short form, clear of
     // the world: its left edge is where the mirror's right must stop.
     final unit = hudUnit(box);
@@ -267,7 +270,7 @@ final class PuzzleCamera {
     final corner = _fitting(box, board.size, at, maxScale, floor, [...boardAndTray, besideHud]);
     if (corner != null) {
       final rect = Rect.fromLTWH(at.dx, at.dy, board.width * corner, board.height * corner);
-      return (rect: rect, scale: corner, hud: hudPlace(layout, camera, box, text, mirror: rect));
+      return (rect: rect, scale: corner, hud: hudPlace(layout, camera, box, text, mirror: rect, hudRects: hudRects));
     }
     // The gap, under the clock area, right of the controls that reach into the
     // band the mirror can take there.
@@ -292,8 +295,10 @@ final class PuzzleCamera {
   /// With a [mirror] to its left the area starts at the mirror's right edge
   /// and draws the short form (rule 5). [padRects] are the controls the app
   /// draws under the game: the area keeps clear of them like the mirror does.
-  /// [hudRects] are the controls the HUD keeps clear of, which the board and
-  /// the mirror may go under (B-044); not used yet, so the placement ignores them.
+  /// [hudRects] are the right hand's controls the area keeps
+  /// [mirrorGapPx] clear of, as it does of [padRects], wherever it is placed
+  /// (B-044); the corner it falls back to is not moved for them. The board and
+  /// the mirror are not fitted to them: [place] takes no [hudRects].
   /// [split] says whether the match has two sides, which decides the world the
   /// area goes under and the one the camera draws.
   static ({Rect rect, HudForm form}) hudPlace(
@@ -318,18 +323,25 @@ final class PuzzleCamera {
       final size = _hudSize(form, text);
       final width = unit * size.width;
       if (spare < width) continue;
-      return (rect: Rect.fromLTWH(left, top, width, unit * size.height), form: form);
+      final rect = Rect.fromLTWH(left, top, width, unit * size.height);
+      if (_meetsControls(rect, hudRects)) continue;
+      return (rect: rect, form: form);
     }
     if (mirror == null) {
       // Under the world is the last place before the corner: the world drawn
       // last, a side camera's only world or the lower one of a whole match.
       final side = camera.side ?? (split ? PuzzleSide.right : PuzzleSide.left);
       final under = place(layout, camera, box, side, split: split, padRects: padRects);
-      final fits = _hudUnder(box, text, (
-        left: under.origin.dx,
-        top: under.origin.dy + layout.left.size.height * under.scale + hudWorldGapPx,
-        room: layout.left.size.width * under.scale,
-      ), padRects);
+      final fits = _hudUnder(
+        box,
+        text,
+        (
+          left: under.origin.dx,
+          top: under.origin.dy + layout.left.size.height * under.scale + hudWorldGapPx,
+          room: layout.left.size.width * under.scale,
+        ),
+        [...padRects, ...hudRects],
+      );
       if (fits != null) return fits;
     }
     final board = Rect.fromLTWH(

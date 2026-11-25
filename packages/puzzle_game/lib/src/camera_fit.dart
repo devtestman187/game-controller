@@ -16,29 +16,35 @@ double? _fitting(Size box, Size board, Offset at, double maxScale, double floor,
   return scale + PuzzleCamera._floorSlack >= floor ? scale : null;
 }
 
+/// Whether [rect] meets any of [controls] with [PuzzleCamera.mirrorGapPx] of
+/// air round each (B-044).
+bool _meetsControls(Rect rect, List<Rect> controls) =>
+    controls.any((control) => control.inflate(PuzzleCamera.mirrorGapPx).overlaps(rect));
+
 /// The clock area under the world in [box] at [under], in the first of
 /// [HudForm]'s forms that fits its width, or null where none does (device
-/// test 3). It starts right of a pad whose band it meets, and keeps
-/// [PuzzleCamera.mirrorGapPx] of air from every one of [padRects].
+/// test 3). It starts right of a control whose band it meets, and keeps
+/// [PuzzleCamera.mirrorGapPx] of air from every one of [controls]: the pad's
+/// controls and the right hand's (B-044).
 ({Rect rect, HudForm form})? _hudUnder(
   Size box,
   ({String score, List<String> short}) text,
   ({double left, double top, double room}) under,
-  List<Rect> padRects,
+  List<Rect> controls,
 ) {
   final unit = PuzzleCamera.hudUnit(box);
   for (final form in const [HudForm.oneLine, HudForm.twoLines, HudForm.short]) {
     final size = PuzzleCamera._hudSize(form, text);
     final width = unit * size.width;
     var left = under.left;
-    for (final pad in padRects) {
-      final air = pad.inflate(PuzzleCamera.mirrorGapPx);
+    for (final control in controls) {
+      final air = control.inflate(PuzzleCamera.mirrorGapPx);
       final inBand = air.top < under.top + unit * size.height && air.bottom > under.top;
       if (inBand && air.right > left && air.left < left + width) left = air.right;
     }
     final rect = Rect.fromLTWH(left, under.top, width, unit * size.height);
     final inside = rect.left >= 0 && rect.top >= 0 && rect.right <= box.width && rect.bottom <= box.height;
-    final clear = padRects.every((pad) => !pad.inflate(PuzzleCamera.mirrorGapPx).overlaps(rect));
+    final clear = !_meetsControls(rect, controls);
     if (!inside || !clear || rect.right > under.left + under.room + PuzzleCamera._floorSlack) continue;
     return (rect: rect, form: form);
   }

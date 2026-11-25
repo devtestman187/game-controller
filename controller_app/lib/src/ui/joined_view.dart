@@ -46,6 +46,36 @@ List<Rect> leftPadRects(
   }
 }
 
+/// The right hand's controls, in a screen of [box], as [mode] draws them, in the
+/// screen's px, passed to the game through [FrameView.hudRects] (B-044). The
+/// clock area keeps clear of them, while the board and the mirror do not: they
+/// keep to [leftPadRects]. They are the face buttons and Start in every mode,
+/// and in stick mode the right stick (its zone while a floating stick may be
+/// anywhere).
+List<Rect> rightPadRects(
+  Size box, {
+  required PadMode mode,
+  required double mm,
+  StickSettings sticks = const StickSettings(),
+}) {
+  final body = Size(box.width, box.height - topBarHeightPx);
+  if (body.width <= 0 || body.height <= 0) return const [];
+  final bar = const Offset(0, topBarHeightPx);
+  switch (mode) {
+    case PadMode.dpad:
+    case PadMode.gyro:
+      final layout = padLayout(body, mm: mm);
+      return [layout.faceButtons.shift(bar), layout.start.shift(bar)];
+    case PadMode.sticks:
+      final layout = stickLayout(body, mm: mm, buttonSize: sticks.buttonSize);
+      return [
+        layout.faceButtons.shift(bar),
+        (sticks.floating ? layout.rightZone : layout.rightStick).shift(bar),
+        layout.start.shift(bar),
+      ];
+  }
+}
+
 /// The game the host shows this phone (m12 §5), drawn behind this phone's own
 /// controls: the frames the client receives, and each frame's sounds played
 /// by the party sound player. The waiting card sits over it while the host is
@@ -136,6 +166,8 @@ class _JoinedViewState extends ConsumerState<JoinedView> {
               // phone-layout §0.6); a phone draws its own.
               wholeMatch: ref.watch(isTabletProvider),
               padRects: leftPadRects(window.biggest, mode: mode, mm: mm, sticks: sticks),
+              // The right hand's controls: the clock area keeps clear of them (B-044).
+              hudRects: rightPadRects(window.biggest, mode: mode, mm: mm, sticks: sticks),
               // The screen's own density: the game keeps the other side's
               // mirror's marks at a physical size by it (rule 7).
               pxPerMm: mm,
