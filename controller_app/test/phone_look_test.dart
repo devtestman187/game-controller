@@ -178,7 +178,7 @@ void main() {
 
     test('a host\'s row, a player, a share and a TV event', () {
       expect(PhoneText.hostLine(PhoneText.hostKindWord('phone'), '192.168.1.51:45780'), 'Phone · 192.168.1.51:45780');
-      expect(SettingsText.playerOnTv(2), 'P2 on the TV');
+      expect(SettingsText.playerOnTv(2), 'P2 on the screen');
       expect(SettingsText.share(0.4), '40%');
       expect(SettingsText.percent(70), '70%');
       expect(SettingsText.eventStrength('hit', 70), 'hit 70%');

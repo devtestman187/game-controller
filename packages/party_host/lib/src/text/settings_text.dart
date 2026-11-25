@@ -15,12 +15,13 @@ abstract final class SettingsText {
   static const resetLine = 'Haptics, gyro, stick and game settings go back to how they were on a fresh install.';
   static const reset = 'Reset';
   static const haptics = 'Haptics';
-  static const hapticsLine = 'A tick on every press, and the TV\'s game events';
+  static const hapticsLine = 'A tick on every press, and the screen\'s game events';
   static const buttonTick = 'Button tick';
   static const trySomething = 'Try';
-  static const tvEvents = 'TV events';
+  static const tvEvents = 'Screen events';
   static const tvEventsLine =
-      'How strong each event from the TV feels, on its own. 0% turns that event off. The button tick isn\'t affected.';
+      'How strong each event from the screen feels, on its own. 0% turns that event off. '
+      'The button tick isn\'t affected.';
   static const off = 'Off';
   static const checkingHardware = 'Checking the hardware…';
   static const noHaptics = 'This device has no haptics. Everything else still works.';
@@ -67,7 +68,7 @@ abstract final class SettingsText {
 
   /// What [hostShareLine]'s statuses have in common.
   static const _hostShare = 'Sharing hosted sessions: ';
-  static const shareStats = 'Share control stats with the TV';
+  static const shareStats = 'Share control stats with the screen';
   static const shareStatsLine =
       'The host counts how the controls are used: presses, missed taps, timing and how each mode feels. '
       'Never names, contacts, location or a trace of your touches. '
@@ -135,9 +136,9 @@ abstract final class SettingsText {
   static const copySubject = 'Controller diagnostics';
   static const connectionSection = 'Connection';
   static const statusRow = 'Status';
-  static const tvRow = 'TV';
+  static const tvRow = 'Screen';
   static const addressRow = 'Address';
-  static const tvIdRow = 'TV ID';
+  static const tvIdRow = 'Screen ID';
   static const playerRow = 'Player';
   static const pingRow = 'Ping';
   static const pingLast30Row = 'Ping, last 30 s';
@@ -160,11 +161,11 @@ abstract final class SettingsText {
   static const onOffOnly = 'No (on/off only)';
   static const settingRow = 'Setting';
   static String tickStrength(int percent) => 'On, tick $percent%';
-  static const eventStrengthsRow = 'TV event strengths';
+  static const eventStrengthsRow = 'Screen event strengths';
   static const ticksPlayedRow = 'Ticks played';
-  static const tvEventsRow = 'TV events';
+  static const tvEventsRow = 'Screen events';
   static String receivedPlayed(int received, int played) => '$received received, $played played';
-  static const lastEventRow = 'Last TV event';
+  static const lastEventRow = 'Last screen event';
   static String eventDetail(String name, int percent, int durationMs) => '$name, $percent%, $durationMs ms';
   static const lastErrorRow = 'Last error';
   static const nativeDetailRow = 'Native detail';
@@ -224,7 +225,7 @@ abstract final class SettingsText {
       '$addresses port $port · ID ${id ?? questionMark} · protocol v${version ?? questionMark}';
 
   /// A player's row: "P2 on the TV".
-  static String playerOnTv(int number) => '${PhoneText.playerShort(number)} on the TV';
+  static String playerOnTv(int number) => '${PhoneText.playerShort(number)} on the screen';
 
   /// A ping in a row: "42 ms", or a dash.
   static String milliseconds(int? ms) => ms == null ? HostText.dash : '$ms ms';

@@ -127,7 +127,7 @@ void main() {
       await tester.tap(find.byTooltip('Diagnostics'));
       await settle(tester);
       final pageList = find.byType(Scrollable).first;
-      await tester.scrollUntilVisible(find.text('Last TV event'), 200, scrollable: pageList);
+      await tester.scrollUntilVisible(find.text('Last screen event'), 200, scrollable: pageList);
       expect(find.text('1 received, 1 played'), findsOneWidget);
       expect(find.text('success, 80%, 300 ms'), findsOneWidget);
     });
